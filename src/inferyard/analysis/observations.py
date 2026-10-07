@@ -49,8 +49,6 @@ class Observations:
         if code.startswith(("L", "C")):
             # Pair comparability also needs environment, token scope and adapter checks.
             limitations.append("performance_comparison_gate_pending")
-            if self.run["origin"] == "migrated":
-                limitations.append("migrated_measurement_not_performance_qualified")
             comparison = False
         item = {
             "schema_version": SCHEMA_VERSION,

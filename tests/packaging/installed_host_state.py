@@ -5,6 +5,8 @@ No model service, engine binary, download, or product lock-path switch.
 """
 
 import argparse
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -21,6 +23,36 @@ def guard():
         raise RuntimeError("requires_explicit_disposable_github_hosted_runner")
 
 
+def initialize(out):
+    guard()
+    from inferyard.cli import main as cli_main
+    from inferyard.runtime.host_files import exists
+    from inferyard.runtime.host_receipt import receipt_path
+    from inferyard.runtime.lock import STATE_PATH, HostLock
+
+    if exists(STATE_PATH) or exists(receipt_path()):
+        raise RuntimeError("disposable_host_already_initialized_or_interrupted")
+    capture = io.StringIO()
+    with contextlib.redirect_stdout(capture):
+        code = cli_main(["host-state", "migrate"])
+    result = json.loads(capture.getvalue())
+    assert code == 0 and result["status"] == "migrated", result
+    with HostLock() as lock:
+        assert lock.state["dirty"] is False
+    with out.open("x", encoding="utf-8") as stream:
+        json.dump(
+            {
+                "kind": "installed_host_initialization.v1",
+                "explicit_initialization": True,
+                "fixed_paths": True,
+                "model_requests_sent": 0,
+                "result": result,
+            },
+            stream,
+            indent=2,
+        )
+
+
 def child(mode):
     from inferyard.platforms.identity import PreflightError, process_start_ticks
     from inferyard.runtime.lock import HostLock
@@ -33,7 +65,7 @@ def child(mode):
             assert str(exc) == "host_lock_unavailable"
         return
     with HostLock() as lock:
-        assert not lock.state or not lock.state.get("dirty"), "runner has prior dirty evidence"
+        assert lock.state["dirty"] is False, "runner has prior dirty evidence"
         lock.dirty(
             "synthetic-installed-crash",
             {
@@ -51,15 +83,24 @@ def child(mode):
 def main():
     guard()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--child", choices=("hold", "contend"))
+    action = parser.add_mutually_exclusive_group()
+    action.add_argument("--child", choices=("hold", "contend"))
+    action.add_argument("--initialize", action="store_true")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     if args.child:
         child(args.child)
         return
+    if args.out is None:
+        parser.error("--out is required")
+    if args.initialize:
+        initialize(args.out)
+        return
     from inferyard.platforms.identity import PreflightError, process_start_ticks
     from inferyard.runtime.lock import HostLock
 
+    with HostLock() as lock:
+        assert lock.state["dirty"] is False, "explicit clean initialization required"
     argv = [sys.executable, "-I", str(Path(__file__).resolve()), "--child"]
     process = subprocess.Popen(
         [*argv, "hold"],

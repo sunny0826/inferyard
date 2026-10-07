@@ -27,15 +27,16 @@ from inferyard.runtime.runner import Dependencies, execute_async
 
 
 @pytest.fixture
-def scenario(tmp_path, monkeypatch, config_path):
+def scenario(tmp_path, monkeypatch, config_path, *, initialize_host=True):
     # Synthetic orchestration must not depend on the developer's free RAM.
     monkeypatch.setattr("inferyard.runtime.trial_runner.memory_available", lambda: 16 * 1024**3)
     monkeypatch.setattr(locking, "LEGACY_ROOT", None)
     monkeypatch.setattr(locking, "LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr(locking, "STATE_PATH", tmp_path / "host.state.json")
-    from tests.host_state_helpers import initialize
+    if initialize_host:
+        from tests.host_state_helpers import initialize
 
-    initialize()
+        initialize()
     loaded = load_config(config_path)
     config = loaded.config.to_dict()
     config["endpoint"].pop("api_key_env")

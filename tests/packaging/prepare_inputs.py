@@ -38,6 +38,8 @@ def main():
     for relative in (
         "__init__.py",
         "integration/test_runner.py",
+        "host_state_helpers.py",
+        "fixtures/host-lock-baseline.txt",
         "fixtures/config/valid.toml",
         "fixtures/contracts/bundle.valid.json",
     ):

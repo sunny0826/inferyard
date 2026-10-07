@@ -37,6 +37,9 @@ def main():
 
     assert "site-packages" in Path(inferyard.__file__).parts
     fixed = {name: getattr(locking, name) for name in ("LOCK_PATH", "STATE_PATH", "LEGACY_ROOT")}
+    # Initialization belongs to the explicit first CI step, never either request check.
+    with locking.HostLock() as lock:
+        assert lock.state["dirty"] is (args.mode == "dirty"), "unexpected runner dirty state"
     sys.path.insert(0, str(args.fixtures / "ci-tests"))
     from tests.integration.test_runner import scenario
 
@@ -44,7 +47,9 @@ def main():
     work.mkdir()
     config = args.fixtures / "ci-tests/tests/fixtures/config/valid.toml"
     with pytest.MonkeyPatch.context() as patch:
-        request, deps, calls, _settings = scenario.__wrapped__(work, patch, config)
+        request, deps, calls, _settings = scenario.__wrapped__(
+            work, patch, config, initialize_host=False
+        )
         for name, value in fixed.items():
             patch.setattr(locking, name, value)
         capture = io.StringIO()

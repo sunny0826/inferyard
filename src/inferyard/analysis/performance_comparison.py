@@ -34,9 +34,6 @@ def performance_comparison(left, right, comparison, evidence, *, definition="pha
 
     require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
     reasons = list(comparison["blockers"])
-    for side, data in (("left", left), ("right", right)):
-        if data["run"]["origin"] == "migrated":
-            reasons.append(side + ":migrated_measurement_not_performance_qualified")
     for condition in comparison["conditions"]:
         if condition["impact"] == "performance" and condition["status"] not in (
             "same",

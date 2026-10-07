@@ -1,58 +1,60 @@
-"""Unsupported locator options are input errors, not successful ignored flags."""
+"""Old artifacts remain explicit input errors through every locator entrypoint."""
 
+import json
 import shutil
 
 import pytest
 
 from inferyard.cli import main
 from inferyard.evidence.storage import json_bytes
-from inferyard.reporting.comparison_report import build_comparison
-from inferyard.reporting.report import build_index
-from inferyard.reporting.report_assets import template_name
-from inferyard.reporting.report_common import _environment, render_report_html
 from tests.helpers import fixture_run
 
 
-def legacy_report(roots, out, *, version=6, comparison=None):
-    index = build_index(roots, out, format_version=version, comparison_path=comparison)
-    (out / "index.json").write_bytes(json_bytes(index))
-    (out / "report.html").write_text(
-        render_report_html(_environment(), template_name(version), index)
-    )
+def assert_unsupported(out, commands, mapping, version, supported, capsys):
+    before = {p.name: p.read_bytes() for p in out.iterdir()}
+    for command, flag in commands:
+        for options in ([], ["--source-root", mapping]):
+            assert main([command, flag, str(out), *options]) == 2
+            result = json.loads(capsys.readouterr().out)
+            assert result["limitations"] == ["unsupported_format"]
+            assert result["details"]["saved_version"] == version
+            assert result["details"]["supported_versions"] == [supported]
+            assert before == {p.name: p.read_bytes() for p in out.iterdir()}
 
 
 @pytest.mark.parametrize("version", [1, 2, 3])
 def test_legacy_comparison_mapping_rejected_by_both_entrypoints(tmp_path, version, capsys):
-    roots = [fixture_run(tmp_path / name) for name in ("left", "right")]
     out = tmp_path / "comparison"
     out.mkdir()
     (out / "comparison.json").write_bytes(
-        json_bytes(build_comparison(*roots, format_version=version))
+        json_bytes({"schema_version": 3, "format_version": version})
     )
-    legacy_report(roots, out, comparison=out)
-    mapping = f"{roots[0]}={tmp_path / 'absent'}"
-    for command, flag in (("compare-check", "--run"), ("verify", "--path")):
-        args = [command, flag, str(out)]
-        assert main(args) == 0
-        assert main([*args, "--source-root", mapping]) == 2
-        capsys.readouterr()
-    (roots[0] / "events.jsonl").write_bytes(b"corrupt source")
-    for command, flag in (("compare-check", "--run"), ("verify", "--path")):
-        assert main([command, flag, str(out)]) == 4
-        capsys.readouterr()
+    (out / "index.json").write_bytes(json_bytes({"schema_version": 3, "report_format_version": 6}))
+    assert_unsupported(
+        out,
+        (("compare-check", "--run"), ("verify", "--path")),
+        f"{tmp_path / 'source'}={tmp_path / 'absent'}",
+        version,
+        4,
+        capsys,
+    )
 
 
 @pytest.mark.parametrize("version", [1, 6])
-def test_legacy_report_mapping_remains_input_error_in_generic_verify(tmp_path, version, capsys):
-    root = fixture_run(tmp_path / "source")
+def test_legacy_report_mapping_rejected_by_both_entrypoints(tmp_path, version, capsys):
     out = tmp_path / "report"
     out.mkdir()
-    legacy_report([root], out, version=version)
-    for command, flag in (("report-check", "--run"), ("verify", "--path")):
-        args = [command, flag, str(out)]
-        assert main(args) == 0
-        assert main([*args, "--source-root", f"{root}={tmp_path / 'absent'}"]) == 2
-        capsys.readouterr()
+    (out / "index.json").write_bytes(
+        json_bytes({"schema_version": 3, "report_format_version": version})
+    )
+    assert_unsupported(
+        out,
+        (("report-check", "--run"), ("verify", "--path")),
+        f"{tmp_path / 'source'}={tmp_path / 'absent'}",
+        version,
+        7,
+        capsys,
+    )
 
 
 @pytest.mark.parametrize("present", [True, False])

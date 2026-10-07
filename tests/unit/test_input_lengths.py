@@ -26,11 +26,30 @@ def test_template_counts_bind_frozen_order_and_cannot_use_target_as_actual():
         "source": TOKEN_SOURCE,
         "verification": "verified",
     }
-    assert bind_token_counts(["c"], [{}, {}, budget], 512)["c"]["actual_input_tokens"] == 31
-    assert bind_token_counts(["c"], [{}, {}, {**budget, "output_budget": 128}], 512) == {}
+
+    def envelope(formal):
+        return {
+            "definition": "token-budgets.v2",
+            "entries": [
+                {"phase": "probe", "case_id": None, "budget": {}},
+                {"phase": "warmup", "case_id": None, "budget": {}},
+                *[{"phase": "formal", "case_id": cid, "budget": row} for cid, row in formal],
+            ],
+        }
+
+    assert (
+        bind_token_counts(["c"], envelope([("c", budget)]), 512)["c"]["actual_input_tokens"] == 31
+    )
+    assert bind_token_counts(["c"], envelope([("c", {**budget, "output_budget": 128})]), 512) == {}
+    assert bind_token_counts(["c"], envelope([("c", {})]), 512) == {}
     assert bind_token_counts(["c"], None, 512) == {}
-    with pytest.raises(EvidenceError, match="inventory"):
-        bind_token_counts(["c"], [budget], 512)
+    for selected, formal in (
+        (["c"], []),
+        (["c"], [("other", budget)]),
+        (["c", "d"], [("d", budget), ("c", budget)]),
+    ):
+        with pytest.raises(EvidenceError, match="inventory"):
+            bind_token_counts(selected, envelope(formal), 512)
 
 
 def test_real_length_cohort_keeps_failure_denominator_and_latency_convention():

@@ -65,6 +65,38 @@ wheel 为 `3dcd2363c31ff3a34f92bde4dbd114e9a82a94ac06f942a7ef5c6d6cbdafbf0b`。
 Windows 原生 msvcrt/ACL/reparse/多账户/卷路径验证；未发送真实模型请求、未迁移系统主机状态。
 统一提交后停写交审，不 push、不合并；父会话按剩余计划裁定 Gate A/B 与 Windows 未验范围。
 
+### P1 回审修复（基于 87bc484，2026-10-08）
+
+父会话已复现源码外导出夹具缺依赖及 CI 新主机未初始化两项安装回归；原 P0 子集通过不覆盖这两条实际安装路径。
+
+- prepare_inputs 导出补齐 `tests.host_state_helpers` 与其固定旧 HostLock 夹具；新增回归实际生成 inputs，
+  在源码外 `python -I` 子进程构建默认 scenario，并用删除导出 helper 的反例确认源码路径不会兜底。
+- CI 明确执行 **初始化 → success → crash → dirty 拒绝**。初始化受三项 disposable guard 约束，
+  拒绝已有新 state/receipt；请求链及 crash 阶段要求既有 ready，scenario 禁止重复初始化。
+  隔离子进程检查初始化缺失时拒绝、成功时 8 个合成请求、崩溃后的 dirty 拒绝为 0 个请求，
+  同时逐字节确认 dirty、维护凭据及退休标记未被最后阶段改变；后续阶段若调用迁移器则测试立即失败。
+- 清除已不可达的 migrated 性能资格分支、历史错误标签及报告中的迁移徽章/说明。
+  **当前 `templates/report.html` 有变更**，模板摘要随之变化；父会话仍须实际 HTML 验证。
+  Schema 历史枚举、题包嵌入证明与审核资产保持不变。
+- 定向回归：141 passed（`/private/tmp/inferyard-p1-targeted.log`）；其中 6 项源码外夹具/生命周期检查
+  使用复制包、临时注入锁根与真实子进程，不是 wheel 安装或 Windows 原生验收。
+  旧错误标签清理后另有 30 passed（`/private/tmp/inferyard-p1-delta.log`）；Ruff、Schema/community 导出、保护基线和本地链接通过。
+- 父会话 87bc484 全量结果为 11 failed、4386 passed、52 skipped；11 项旧测试构造已同步：
+  cache comparison 使用当前正式封存入口；预算 V1/混入 V1 明确拒绝且原件不改；
+  实际 token 绑定改用 V2 信封；旧 report/comparison 静态负例保留双 CLI 与有/无 source-root 拒绝覆盖。
+  上述四文件与 CI 修复两文件最终 **59 passed**，12.55 秒，
+  `/private/tmp/inferyard-p1-parent-regressions-final.log`。未重跑全量，最终全量仍由父会话负责。
+- observations.py 的变化使 metrics.json 内 43 处 evidence SHA 过期；已核验差异仅为该文件哈希，
+  ID/名称/单位/定义不变。该目录文件不在原 ownership，已报告且尚未修改；
+  `export_catalogue.py --check` 仍因该文件过期失败，不能将本批称为全部检查通过。
+  按父会话追加提交后停写的指令，提交已授权范围；目录同步转交父会话，或待明确扩展授权后追加。
+  精确差异：`/private/tmp/inferyard-p1-metrics-preview.diff`；预览数据：`/private/tmp/inferyard-p1-metrics-preview.json`。
+- 最终静态检查：Ruff check/format、Schema/community 导出、28 份保护文件、依赖元数据、
+  43 metric/199 method IDs、292 源码 AST/导入、职责路径、本地文档链接和 diff 空白检查通过。
+  全部结果（含 catalogue 唯一失败）记录在 `/private/tmp/inferyard-p1-final-checks.log`。
+
+本 worker 不运行固定系统路径脚本或全量 pytest，不修改父会话冻结副本、main 或原项目。
+
 ## 后续工程工作
 
 | 工作 | 边界 |

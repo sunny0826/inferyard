@@ -11,6 +11,7 @@ import pytest
 from inferyard.analysis import scoring
 from inferyard.cli import main
 from inferyard.contracts.validation import Document
+from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
 from inferyard.evidence.token_budgets import V1, V2
@@ -140,11 +141,14 @@ def test_lab_budget_v2_rejects_bad_shape_and_inventory(lab_scenario, damage):
     else:
         (root / V1).write_bytes(json_bytes([]))
     (root / V2).write_bytes(json_bytes(value))
-    with pytest.raises(EvidenceError):
+    before = {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
+    expected = UnsupportedFormat if damage == "conflict" else EvidenceError
+    with pytest.raises(expected):
         read_trial(root)
+    assert before == {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
 
 
-def test_lab_budget_v1_remains_readable(lab_scenario):
+def test_lab_budget_v1_is_unsupported_without_rewriting(lab_scenario):
     command, deps, _ = lab_scenario
     code, result = asyncio.run(execute_async(command, deps))
     assert code == 0
@@ -153,7 +157,11 @@ def test_lab_budget_v1_remains_readable(lab_scenario):
     entries = read_json(root / V2)["entries"]
     (root / V2).unlink()
     (root / V1).write_bytes(json_bytes([e["budget"] for e in entries]))
-    assert read_trial(root)["summary"]["counts"]["completed"] > 0
+    before = {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
+    with pytest.raises(UnsupportedFormat, match="unsupported_format") as error:
+        read_trial(root)
+    assert error.value.saved == V1
+    assert before == {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
 
 
 @pytest.mark.parametrize(

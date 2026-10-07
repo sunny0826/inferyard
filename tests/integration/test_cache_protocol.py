@@ -139,8 +139,8 @@ def test_cache_sequence_rebuilt_from_all_raw_request_phases(scenario):
 def test_two_frozen_cache_policies_compare_with_replayed_evidence(scenario, monkeypatch):
     from copy import deepcopy
 
-    from inferyard.evidence.storage import atomic_bytes
-    from inferyard.reporting.comparison_report import build_comparison, verify_comparison
+    from inferyard.application.types import CommandRequest
+    from inferyard.reporting.comparison_report import build_comparison, execute, verify_comparison
     from tests.unit.test_environment import state
 
     # Synthetic admission only; does not approve any real corpus.
@@ -175,8 +175,11 @@ def test_two_frozen_cache_policies_compare_with_replayed_evidence(scenario, monk
     assert result["eligibility"]["completion"]
     assert result["eligibility"]["performance"] is False
     dest = roots[0].parent / "cache-comparison"
-    dest.mkdir()
-    atomic_bytes(dest / "comparison.json", json_bytes(result))
+    code, _ = execute(CommandRequest("compare", left=roots[0], right=roots[1], out=dest))
+    assert code == 0
+    assert {"comparison.json", "index.json", "report.html", "artifact-manifest.json"} <= {
+        path.name for path in dest.iterdir()
+    }
     assert verify_comparison(dest)["verified"]
     assert before == {
         str(p): sha256_file(p) for root in roots for p in root.iterdir() if p.is_file()

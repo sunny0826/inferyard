@@ -7,10 +7,16 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from run_installed import artifact_files, environment, read_json, run_matrix
+if __package__:
+    from .installed_host_state import guard
+    from .run_installed import artifact_files, environment, read_json, run_matrix
+else:
+    from installed_host_state import guard
+    from run_installed import artifact_files, environment, read_json, run_matrix
 
 
 def main():
+    guard()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifact", type=Path, required=True)
     parser.add_argument("--inputs", type=Path, required=True)
@@ -50,40 +56,49 @@ def main():
     )
     request_script = out / "inputs/installed_request_chain.py"
     shutil.copyfile(Path(__file__).with_name("installed_request_chain.py"), request_script)
-    script = args.out / "inputs/installed_host_state.py"
+    script = out / "inputs/installed_host_state.py"
     shutil.copyfile(Path(__file__).with_name("installed_host_state.py"), script)
 
-    def request_check(mode):
+    host_python = (
+        out / "tools/inferyard" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    )
+    run_host_checks(test_python, host_python, request_script, script, out, env)
+
+
+def run_host_checks(request_python, host_python, request_script, host_script, out, env):
+    guard()
+    steps = [
+        [str(host_script), "--initialize", "--out", str(out / "host-initialization.json")],
+        [
+            str(request_script),
+            "--fixtures",
+            str(out / "inputs/fixtures"),
+            "--mode",
+            "success",
+            "--out",
+            str(out / "request-chain-success.json"),
+        ],
+        [str(host_script), "--out", str(out / "host-state.json")],
+        [
+            str(request_script),
+            "--fixtures",
+            str(out / "inputs/fixtures"),
+            "--mode",
+            "dirty",
+            "--out",
+            str(out / "request-chain-dirty.json"),
+        ],
+    ]
+    for python, step in zip(
+        (host_python, request_python, host_python, request_python), steps, strict=True
+    ):
         subprocess.run(
-            [
-                str(test_python),
-                "-I",
-                str(request_script),
-                "--fixtures",
-                str(out / "inputs/fixtures"),
-                "--mode",
-                mode,
-                "--out",
-                str(out / f"request-chain-{mode}.json"),
-            ],
+            [str(python), "-I", *step],
             cwd=out / "empty-cwd",
             env=env,
             check=True,
             timeout=60,
         )
-
-    request_check("success")
-    python = (
-        args.out / "tools/inferyard" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-    )
-    subprocess.run(
-        [str(python), "-I", str(script), "--out", str(args.out / "host-state.json")],
-        cwd=args.out / "empty-cwd",
-        env=environment(args.out),
-        check=True,
-        timeout=60,
-    )
-    request_check("dirty")
 
 
 if __name__ == "__main__":
