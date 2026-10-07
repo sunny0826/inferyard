@@ -126,6 +126,26 @@ def read_frozen_plan(path):
     """Verify all frozen inputs without accessing the original source directory."""
     root = path.parent.resolve()
     plan = strict_json_loads(read_document(path).decode())
+    if type(plan) is not dict or type(plan.get("schema_version")) is not int:
+        raise EvidenceError("invalid_artifact_version")
+    # This canonical self-hash is interpretable without loading an old schema.
+    if "plan_sha256" in plan:
+        from inferyard.config.plan_math import plan_hash
+
+        digest = plan["plan_sha256"]
+        if (
+            type(digest) is not str
+            or len(digest) != 64
+            or any(c not in "0123456789abcdef" for c in digest)
+            or digest != plan_hash(plan)
+        ):
+            raise EvidenceError("plan_content_hash_mismatch")
+    if "experiment" in plan:
+        experiment = plan["experiment"]
+        if type(experiment) is not dict or type(experiment.get("schema_version")) is not int:
+            raise EvidenceError("invalid_artifact_version")
+        if experiment["schema_version"] != plan["schema_version"]:
+            raise EvidenceError("plan_version_conflict")
     require_core(plan, "plan")
     require_core(plan["experiment"], "experiment")
     validate_document("plan", plan)

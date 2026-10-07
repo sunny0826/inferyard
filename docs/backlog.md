@@ -119,6 +119,30 @@ Windows 原生 msvcrt/ACL/reparse/多账户/卷路径验证；未发送真实模
 
 本地追加提交后停写，父会话继续负责最终全量与 Gate 验收。
 
+
+### P1 哈希校验与格式拒绝优先级（基于 1bff404，2026-10-08）
+
+父会话复现当前 write_plan 原件可核验，而仅篡改嵌套 experiment.schema_version 后，
+新增版本拒绝提前返回 unsupported/2，掩盖未更新的 plan_sha256。本轮先检查必要 JSON 类型，
+核验可解释的 plan 自哈希，再判断删除版本；内外版本声明冲突仍为证据错误/4。
+完整真实 v2 plan 仍返回 unsupported/2，不恢复旧 schema 或读取实现。
+
+rescore 同样存在先 require_core 再检查摘要的问题：已将既有记录自哈希、父分析引用摘要和
+parent-lineage 摘要放在版本拒绝前，并保留所需容器/字段类型检查。
+创建下一次修订时，也先核验已提交的父 lineage 绑定；坏摘要不能因旧分析版本标记而变成 2。
+
+- 新回归覆盖当前 plan 原件、嵌套/外层版本及 migrated 标记篡改，重新计算自哈希后的
+  格式声明冲突，完整真实 v2 plan 与坏摘要/摘要类型/版本类型；rescore 覆盖两个 CLI 的
+  原件、父分析摘要损坏、坏记录自哈希与旧分析标记，以及下一次修订拒绝。
+  所有拒绝均核对原件字节不变，修订拒绝不创建输出；使用合成证据，零模型请求。
+- 修复前：9 failed、4 passed，`/private/tmp/inferyard-hash-priority-before.log`。
+- 最终 6 文件 **145 passed**，6.12 秒；`/private/tmp/inferyard-hash-priority-final.log`。
+- Ruff、Schema/community 导出、静态导入/职责/链接、28 份保护文件、依赖和 ID 基线检查通过；
+  `/private/tmp/inferyard-hash-priority-checks.log`。上一批 metrics.json 的 43 处 observations.py SHA
+  仍未同步，catalogue 检查仍失败并由父会话处理；本轮未修改该文件。
+
+本地追加提交后停写；未重跑全量、构建安装或实际主机测试，未 push/合并。
+
 ## 后续工程工作
 
 | 工作 | 边界 |

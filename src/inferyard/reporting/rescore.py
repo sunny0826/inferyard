@@ -143,6 +143,8 @@ def build_rescore(
     parent = deepcopy(parent) if parent is not None else original
     from inferyard.evidence.formats import require_core
 
+    if parent_evidence is not None:
+        _check_saved_hashes(parent_evidence)
     require_core(parent, "analysis")
     validate_document("analysis", parent)
     if parent["source_runs"] != original["source_runs"]:
@@ -258,17 +260,15 @@ def read_revision(out):
 
 
 def _check_saved_hashes(files):
-    """Check stored lineage bindings before reporting an unavailable scorer identity."""
+    """Check stored lineage bindings before rejecting formats or scorer identities."""
     try:
         record, analysis = files["rescore.json"], files["analysis.json"]
-        from inferyard.evidence.formats import require_core
-
-        require_core(analysis, "analysis")
-        validate_document("analysis", analysis)
-        from inferyard.evidence.formats import require_core
-
-        require_core(files["parent-analysis.json"], "analysis")
-        validate_document("analysis", files["parent-analysis.json"])
+        if any(
+            type(value) is not dict for value in (record, analysis, files["parent-analysis.json"])
+        ):
+            raise EvidenceError("rescore_parent_evidence_missing")
+        if type(analysis.get("metrics")) is not list:
+            raise EvidenceError("rescore_parent_evidence_missing")
         body = {k: v for k, v in record.items() if k != "analysis_id"}
         aid = "rescore-" + hashlib.sha256(json_bytes(body)).hexdigest()[:32]
         if record["analysis_id"] != aid or analysis["analysis_id"] != aid:
@@ -279,13 +279,28 @@ def _check_saved_hashes(files):
             name: hashlib.sha256(json_bytes(value)).hexdigest() for name, value in files.items()
         }
         for metric in analysis["metrics"]:
+            if type(metric) is not dict or type(metric.get("evidence_refs")) is not list:
+                raise EvidenceError("rescore_parent_evidence_missing")
             for ref in metric["evidence_refs"]:
+                if (
+                    type(ref) is not dict
+                    or type(ref.get("path")) is not str
+                    or type(ref.get("sha256")) is not str
+                    or len(ref["sha256"]) != 64
+                    or any(c not in "0123456789abcdef" for c in ref["sha256"])
+                ):
+                    raise EvidenceError("rescore_parent_evidence_missing")
                 if ref["path"] in files and hashes[ref["path"]] != ref["sha256"]:
                     raise EvidenceError("rescore_parent_recomputation_mismatch")
         if "parent_lineage_sha256" in record:
             lineage = files["parent-lineage.json"]
             if hashlib.sha256(json_bytes(lineage)).hexdigest() != record["parent_lineage_sha256"]:
                 raise EvidenceError("rescore_parent_recomputation_mismatch")
+        from inferyard.evidence.formats import require_core
+
+        for document in (analysis, files["parent-analysis.json"]):
+            require_core(document, "analysis")
+            validate_document("analysis", document)
     except (KeyError, TypeError, ContractError) as exc:
         raise EvidenceError("rescore_parent_evidence_missing") from exc
 
