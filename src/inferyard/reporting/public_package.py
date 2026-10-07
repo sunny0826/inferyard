@@ -167,7 +167,6 @@ def payloads(candidate):
         "run the frozen plan only after those checks. The private output contains "
         "local configuration and task text; it is not a public package.\n"
     )
-    removed = REMOVED
     removed = [item for item in REMOVED if item != "per_request_metrics_and_sensor_sources"] + [
         "unreviewed_metric_labels_and_sensor_source_text",
         "absolute_sample_clocks_and_raw_request_identifiers",

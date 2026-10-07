@@ -168,6 +168,27 @@ community 检查未重新验证 ZIP 归档。以上为软件修复和定向验�
 不能将该审核结论视为接受后续修复；父会话按原计划完成最终全量、构建安装、实际 HTML 和 Gate A/B。
 报告当前模板有变更，需实际浏览验证；未改真实主机状态、未发模型请求、未 push 或合并。
 
+
+### P1 文档与死代码收尾（基于 ee37db7，2026-10-08）
+
+父会话收到针对 87bc484 冻结副本的静态 approve；该结论未覆盖随后排队复现和修复，
+不视为最终通过。此前 CI/11 项旧测试、大型报告、plan/rescore 哈希优先级及 metrics 同步
+均已按上表分批完成，保留全部提交；最后修复 SHA 另交增量复审。
+
+本次将 scoped-measurement 契约按 ADR038 收窄为 report7/comparison4，计算语义 phase2.v3，
+删除旧报告/比较读取承诺，并纠正 requests.jsonl 历史副本的拒绝表述。
+无 definition 的全目录模型身份算法明确仅保留给当前 engine_fit_plan.v1；
+plan.v2–v4 历史无 definition 目录回退不再支持，算法代码未改。
+CLI 命令表排版统一，旧报告/比较和预算快照说明同步当前范围。
+删除 public_package.payloads 的覆盖前死赋值，rescore 的 require_core 合并为单处导入，
+保持已经修复的哈希校验顺序；不重复修改 migrated 分支，不加已撤销 cap 的错误标签，不扩展锁清理逻辑。
+
+- 8 文件定向回归 **43 passed**，4.62 秒；`/private/tmp/inferyard-final-tidy-tests.log`。
+- 最终 Ruff、Schema/catalogue/community `--check`、保护基线、导入/资源职责/链接和 diff 检查：
+  `/private/tmp/inferyard-final-tidy-checks.log`。43/199 个目录 ID 与已批准 43 处摘要同步保持。
+- 全量 pytest、构建安装、实际 HTML、原生 Windows 和最终 Gate 仍由父会话完成。
+  本地追加提交后停写，未 push/合并，未修改 main、原项目或父会话冻结副本。
+
 ## 后续工程工作
 
 | 工作 | 边界 |

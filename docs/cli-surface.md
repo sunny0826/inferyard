@@ -4,17 +4,17 @@
 
 ## 命令与请求范围
 
-| 用途           | 命令                                                       | 请求范围                                                                     |
-| -------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| 安装与配置     | `init`、`runtime prepare`、`config assets/create/bind` | 本地准备；prepare/create 有界查询引擎版本，无模型请求 |
-| 设备与目录     | `device-check`、`catalogue`                                | 本地设备、文件或已安装目录数据                                               |
-| 实验准备       | `plan`                                                     | 离线预览或冻结实验                                                           |
-| 服务诊断与执行 | `probe`、`overhead`、`prepare-length`、`run`、`resume`     | 连接已有模型服务；诊断和准备也可能发送请求                                   |
-| 派生分析       | `repeat-summary`、`rescore`、`export`、`filter-candidates` | 离线读取已有证据或分析                                                       |
-| 报告与证据     | `report`、`compare`、`verify`                   | 离线生成新产物、核验                                               |
-| 公开包         | `public package`、`public plan`                            | 本地打包和冻结复现计划                                                       |
-| 扩展协议       | `extension freeze`、`extension run`、`extension replay`    | freeze / replay 离线；run 连接真实服务                                       |
-| 同机引擎适配   | `engine-fit engines/plan/run/compare/verify`               | engines 离线列出能力；plan 冻结目录或单 GGUF；run 按引擎范围连接已有本机服务 |
+| 用途 | 命令 | 请求范围 |
+| --- | --- | --- |
+| 安装与配置 | `init`、`runtime prepare`、`config assets/create/bind` | 本地准备；prepare/create 有界查询引擎版本，无模型请求 |
+| 设备与目录 | `device-check`、`catalogue` | 本地设备、文件或已安装目录数据 |
+| 实验准备 | `plan` | 离线预览或冻结实验 |
+| 服务诊断与执行 | `probe`、`overhead`、`prepare-length`、`run`、`resume` | 连接已有模型服务；诊断和准备也可能发送请求 |
+| 派生分析 | `repeat-summary`、`rescore`、`export`、`filter-candidates` | 离线读取已有证据或分析 |
+| 报告与证据 | `report`、`compare`、`verify` | 离线生成新产物、核验 |
+| 公开包 | `public package`、`public plan` | 本地打包和冻结复现计划 |
+| 扩展协议 | `extension freeze`、`extension run`、`extension replay` | freeze / replay 离线；run 连接真实服务 |
+| 同机引擎适配 | `engine-fit engines/plan/run/compare/verify` | engines 离线列出能力；plan 冻结目录或单 GGUF；run 按引擎范围连接已有本机服务 |
 
 各动作的全部选项使用 `inferyard <命令> --help` 查询。元数据查询为 `--version`、`--versions`、`--schema KIND`，帮助和元数据不加载实时后端。stdout 输出 JSON，`device-check` 默认人类摘要，Agent 使用 `--json` / `--format json`；诊断走 stderr。退出码为 0 完成、2 输入/预检阻断、3 不完整或核验条件未通过、4 工具/证据错误、130 取消。
 
@@ -23,7 +23,7 @@
 probe 仍发送普通和流式请求；正式题序与分母不随预热次数变化。
 日常可直接 run，它包含当次双探测；独立 probe 为可选排障。
 预算只覆盖当次输入，0 预热不预算 warmup，run/resume 只预算选中题；
-新旧快照读取规则见[预算契约](data-contract.md#命令内复用与预算快照)。
+当前快照读取规则见[预算契约](data-contract.md#命令内复用与预算快照)。
 离线核验显示固定安全原因；rescore 身份变化为 `rescore_scorer_identity_changed`、
 退出 4，不返回 verified，也不证明保存记录被篡改。
 
@@ -35,7 +35,7 @@ engine-fit 中断后以 plan.json、checkpoint.json 和 requests.json 只读取�
 新 report v7/comparison v4/engine-fit manifest v2 默认分开核验字节、来源与语义，
 `verify --rerender` 可选重渲染；`engine-fit verify` 也接受 --rerender。
 新普通报告/比较可用重复的 `--source-root OLD=NEW` 显式映射源根（相对参数按当前目录解析）；
-不修改保存文件、不搜索磁盘。旧版本仍走原规则。详见[离线读取契约](contracts/offline-reading-contract.md)。
+不修改保存文件、不搜索磁盘。旧 report/comparison 版本按 ADR038 拒绝。详见[离线读取契约](contracts/offline-reading-contract.md)。
 
 `device-check` 在 macOS/Linux/Windows 只读检测；不指定模型且没有发现模型时返回 `inspected` / 0，显式模型或资源条件不满足仍退出 2。`--out` 要求新目录，保存 JSON，包括模型建议阻断的结果。格式、来源和实时平台边界见[设备检测](device-check.md)。
 

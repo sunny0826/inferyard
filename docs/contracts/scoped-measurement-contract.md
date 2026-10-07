@@ -1,6 +1,6 @@
 # 职责身份、持久化与校准契约
 
-依据 [ADR036](../decisions/036-scoped-measurement-cost.md)，遵循[证据血缘总规则](../data-contract.md#证据血缘与比较结论)。
+依据 [ADR036](../decisions/036-scoped-measurement-cost.md)，格式支持范围以 [ADR038](../decisions/038-inferyard-current-format.md) 为准，遵循[证据血缘总规则](../data-contract.md#证据血缘与比较结论)。
 
 ## 身份与分派
 
@@ -14,11 +14,12 @@ Python 实现/版本与 httpx/httpcore/anyio/h11/certifi/idna、jsonschema 及�
 缺依赖版本以 null+原因表达，不将未知与未知判相等，不阻断无关指标的描述读取。
 每命令一个上下文计算一次并显式传给 journal、batch、rerun；原评分上下文计数保持。
 
-旧 run/batch 缺少此字段时保持旧全包身份条件。新 rerun/batch 按 measurement/scoring
-匹配，呈现修改不阻断执行；旧身份不改值。当前比较 format4 / phase2.v3 按指标读取对应身份；旧格式由 ADR038 停止支持。
-报告 v6 使用 v3 隐式比较；报告 v5 保留 v2，v1–v4 保留 v1。
-新目录模型清单声明 model-assets.v2，列相对路径与内容哈希；根路径只用于定位。
-旧清单缺声明时仍全目录核验；目录中的缓存/README 不属于新资产集合。
+当前 schema3 run/batch 缺少此字段时保持全包身份条件。新 rerun/batch 按 measurement/scoring
+匹配，呈现修改不阻断执行；保存身份不改值。当前比较 format4 / phase2.v3 按指标读取对应身份。
+报告仅接受 v7，隐式比较计算使用 phase2.v3；report v1–v6 和 comparison v1–v3 按 ADR038 拒绝。
+model-assets.v2 目录清单列相对路径与内容哈希；根路径只用于定位，缓存/README 不属于该资产集合。
+当前 engine_fit_plan.v1 保留无 definition 清单及全目录身份算法；plan.v2–v4 的目录清单必须声明
+model-assets.v2，不再接受历史无 definition 的目录回退。
 
 ## 请求期检查与原始持久化
 
@@ -32,7 +33,8 @@ TrialJournal.event 已对 request_started/request_finished/score/run_stopped 使
 写 request_finished，沿用其已有 sync=True；BaselineJournal 的 off 臂仍只缓存在内存，
 不增加测量期间落盘。
 完成事件先于评分，故取消、评分异常或评分写盘失败仍可恢复已持久化的终态；存储错误
-立即停止，既有封存/dirty 语义不变。旧 manifest 列出的 requests.jsonl 仍按 derived 核验。
+立即停止，既有封存/dirty 语义不变。requests.jsonl 历史副本按 ADR038 拒绝；
+如有可解释封存，先核验其哈希，坏哈希返回证据错误，不降格为 unsupported。
 删除副本同步后，尚未同步的采样日志等待下一现有同步事件、到期的 flush_due 或 seal；
 close 也保留原有同步。flush_due 在调用时判断 0.5s 间隔，并非独立定时写盘任务，
 不承诺逐样本持久化或硬性的最大落盘延迟。
@@ -42,7 +44,7 @@ environment.jsonl 与 schedule.jsonl 保留；删除 sampler.environment 累积�
 
 ## 性能资格与适用域
 
-comparison v3 使用 total-observer-applicability.v2：总开销来源包须通过既有完整核验，
+当前 comparison format4 / phase2.v3 使用 total-observer-applicability.v2：总开销来源包须通过既有完整核验，
 live 且 hardware_qualified；明确绑定来源 manifest、控制臂与目标运行。增量 ABBA 可选，
 存在时展示独立诊断状态，不要求与总开销容差相同；原逐指标专项资格仍保留。
 
@@ -51,7 +53,7 @@ live 且 hardware_qualified；明确绑定来源 manifest、控制臂与目标�
 仅排除定位路径、PID/启动 ticks/端口等执行定位字段；来源执行身份本身仍由原校验器核验。
 不证明跨 boot 或不同输出工作量的可复用性，分别保留明确原因；未知测量身份拒绝新资格。
 总开销不足时普通描述仍展示当前校准状态，无资格性能差值保持 null。
-已有量化 qualification 结果只在 v3 传给性能比较，不重复谱系核验；不同权重的 tokenizer
+已有量化 qualification 结果在 phase2.v3 传给性能比较，不重复谱系核验；不同权重的 tokenizer
 相等需双方已核验 tokenizer_sha256 且模板相同，不能只看自报字段或猜测词表。
 
 
@@ -68,8 +70,8 @@ CLI 参数结果已冻结为输入，帮助文本和 HTML 不属于测量源码�
 model-assets.v2 支持 safetensors/GGUF/PT/PTH/NPZ 权重、模型 BIN、权重 index JSON、
 config/generation_config、tokenizer/vocab/merges/spiece、added_tokens.json 附加词表、聊天模板及模型 Python 实现；
 排除 `.git/.cache/__pycache__/cache/logs` 与普通说明文件。所选文件的链接/目标 stamp 在全量
-哈希前后对照；目录根只定位，同字节目录搬迁不改变内容摘要。未声明版本的冻结计划继续
-使用原全目录算法；不存在跨 plan/run 阶段的免校验缓存。
+哈希前后对照；目录根只定位，同字节目录搬迁不改变内容摘要。全目录算法仅保留给当前
+engine_fit_plan.v1 的模型清单；plan.v2–v4 的未声明版本目录清单拒绝。不存在跨 plan/run 阶段的免校验缓存。
 
 离线 `compare --left-overhead DIR --right-overhead DIR` 两侧目录可只提供
 `total-control-binding.json`，格式仍为：
@@ -79,7 +81,7 @@ config/generation_config、tokenizer/vocab/merges/spiece、added_tokens.json 附
 ```
 
 来源包必须通过完整封存、live 来源、控制臂原始记录、独立 guardian 和 hardware_qualified
-核验。v3 消费核验过程中返回的两个 on 臂，不按路径长期缓存，不重复读取目标 ledger。
+核验。phase2.v3 消费核验过程中返回的两个 on 臂，不按路径长期缓存，不重复读取目标 ledger。
 可选 protocol.json/trials.json 仍独立核验；增量失败不代替总开销判断。首事件、引擎速率等
 专项指标仍须其原有目标绑定、环境、同 boot 先后和专项估计通过，不由总开销单独放行。
 已有 comparison1–3 文件由 ADR038 明确拒绝；当前资格规则保持。

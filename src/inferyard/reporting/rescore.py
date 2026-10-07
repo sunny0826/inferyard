@@ -10,6 +10,7 @@ from inferyard.analysis.scoring import ScoringContext, score_case, scorer_hash, 
 from inferyard.analysis.scoring_revision import resolve
 from inferyard.application.types import CommandResult
 from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.evidence.formats import require_core
 from inferyard.evidence.storage import (
     EvidenceError,
     atomic_bytes,
@@ -141,8 +142,6 @@ def build_rescore(
         raise EvidenceError("rescore_parent_source_mismatch")
     original, _ = trial_analysis(root, producer=producer, loaded=loaded)
     parent = deepcopy(parent) if parent is not None else original
-    from inferyard.evidence.formats import require_core
-
     if parent_evidence is not None:
         _check_saved_hashes(parent_evidence)
     require_core(parent, "analysis")
@@ -225,8 +224,6 @@ def build_rescore(
             *(["duration_scores_are_repeated_probes_not_whole_bundle"] if repeated else []),
         ],
     }
-    from inferyard.evidence.formats import require_core
-
     require_core(analysis, "analysis")
     validate_document("analysis", analysis)
     files = {"analysis.json": analysis, "rescore.json": record, "parent-analysis.json": parent}
@@ -296,8 +293,6 @@ def _check_saved_hashes(files):
             lineage = files["parent-lineage.json"]
             if hashlib.sha256(json_bytes(lineage)).hexdigest() != record["parent_lineage_sha256"]:
                 raise EvidenceError("rescore_parent_recomputation_mismatch")
-        from inferyard.evidence.formats import require_core
-
         for document in (analysis, files["parent-analysis.json"]):
             require_core(document, "analysis")
             validate_document("analysis", document)
