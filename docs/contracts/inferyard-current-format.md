@@ -1,6 +1,6 @@
 # InferYard 当前格式与主机状态契约
 
-状态：T0 已通过 Reviewer/父会话审核，P0 已放行；软件交付与原生验收状态见 [backlog](../backlog.md)。
+状态：现行契约。软件检查与原生验证范围见 [backlog](../backlog.md)。
 依据 [ADR 038](../decisions/038-inferyard-current-format.md)，writer 核查基线为
 `fe1052a41afbddc1b7ceff852e794d6d872977ce`。
 证据解释沿用[血缘规则](../data-contract.md#证据血缘与比较结论)。
@@ -61,7 +61,7 @@ report v7/comparison v4/engine-fit manifest.v2 保持保存字节与显式 `--re
 
 ## 锁迁移
 
-以下为 T0 已批准事务，软件实现与原生验收状态分别记入 backlog。对照方案与代价见 [ADR 038](../decisions/038-inferyard-current-format.md#替代方案与风险)。
+以下事务的实现与原生验证范围分别记录在 [backlog](../backlog.md)。对照方案与代价见 [ADR 038](../decisions/038-inferyard-current-format.md#替代方案与风险)。
 目标是退休固定旧工具的实时入口，而不是让新旧工具迁移后继续执行测评。
 
 ### 固定旧基线与退休拒绝证明
@@ -179,9 +179,9 @@ Windows 保留 file fsync + MoveFileExW(WRITE_THROUGH) 和 `directory_fsync=fals
 
 ## 安装检查与资格版本
 
-基线 [installed_probe.py](../../tests/packaging/installed_probe.py) 在三次安装探针中生成 report v1–v6，
-并计算 v1–v7 模板摘要；[release_common.py](../../scripts/release_common.py) 的 SCOPE 包含
-`synthetic_historical_reports`，`validate_installation` 要求 installed_safe_checks.v2。
+清理前的 [installed_probe.py](../../tests/packaging/installed_probe.py) 在三次安装探针中生成 report v1–v6，
+并计算 v1–v7 模板摘要；[release_common.py](../../scripts/release_common.py) 的旧 SCOPE 包含
+`synthetic_historical_reports`，旧 `validate_installation` 要求 installed_safe_checks.v2。
 这不是可原样保留的当前安装资格。
 
 - 探针改用当前 writer 生成 report7、verify 和显式 rerender；只核验当前模板摘要。
@@ -206,12 +206,12 @@ Windows 保留 file fsync + MoveFileExW(WRITE_THROUGH) 和 `directory_fsync=fals
 这是安装验证语义改变所需的单独升版，不改变产品版本、核心 schema 3 或业务协议编号。
 安装安全探针不操作系统真实锁；迁移证明仍由隔离临时根的进程测试及独立 Windows 原生检查提供。
 
-## 父会话终审边界
+## 验证边界
 
-1. T0 已通过 Reviewer/root，P0 已批准；实现、定向证据和独立终审仍分开记录。
-2. 请接受或具体指出固定 2fa125c/fe1052a 范围内的反例。任意古老 D-only 程序、管理员删除状态/
-   更换公共根、断电持久性是明确边界，不再把它们扩大成永久兼容义务；Windows 原生尚未验。
-3. 安装结果 v3 和候选外壳 v2 的组合已批准；实际构建安装由父会话终验，不能继承旧安装资格。
+退休拒绝保证以固定 `2fa125c/fe1052a` 基线、公共标记完整和路径稳定为前提。
+任意古老 D-only 程序、管理员删除状态或更换公共根，以及跨文件断电持久性，不在保证范围内。
+安装结果 v3 与候选外壳 v2 绑定同批源码及产物字节；旧安装资格不自动继承。
+隔离目录进程测试不代替 Windows 原生验证，平台实际覆盖见 [backlog](../backlog.md)。
 
 ## 不变的运行边界
 
