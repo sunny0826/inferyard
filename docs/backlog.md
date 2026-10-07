@@ -97,6 +97,28 @@ Windows 原生 msvcrt/ACL/reparse/多账户/卷路径验证；未发送真实模
 
 本 worker 不运行固定系统路径脚本或全量 pytest，不修改父会话冻结副本、main 或原项目。
 
+
+### P1 大型当前报告读取修复（基于 2d043ea，2026-10-08）
+
+父会话复现：合法冻结输入小于配置既有 16 MiB 限制，当前 report v7 writer 聚合后产出大于
+16 MiB 的 index.json，通用读取新增的硬上限却使同份产物核验失败。本轮撤销
+`storage.read_json` 与 `TrialReads.json` 的全局大小限制；严格 UTF-8、重复键、非有限数检查保持，
+配置、observer、host state 各自已有的限制不变。契约改为各产物既有结构和已声明大小限制，
+未限制当前 writer、未升级 schema、未扩大安全重构范围。
+
+- 新回归使用真实 journal/report writer 和合成证据，生成大于 16 MiB 的当前 index；
+  覆盖两种通用读取、字节长度与哈希、普通 verify 和显式 rerender，并确认源证据/报告字节不变。
+  不调用模型、不修改实际主机状态。
+- 修复前：1 failed、4 passed，确认为 `json_evidence_size_limit`；
+  `/private/tmp/inferyard-large-report-before.log`。
+- 修复后：6 文件 **106 passed**，4.10 秒；`/private/tmp/inferyard-large-report-targeted.log`。
+  Ruff、Schema/community 导出、静态导入/职责/链接、保护基线和 diff 空白检查通过，
+  `/private/tmp/inferyard-large-report-checks.log`。未运行全量或构建安装。
+- 上一批 observations.py 引起的 metrics.json 43 处 SHA 过期仍转交父会话，catalogue 检查仍失败；
+  本轮未修改该目录文件，不能将此次定向通过写成全部验收通过。
+
+本地追加提交后停写，父会话继续负责最终全量与 Gate 验收。
+
 ## 后续工程工作
 
 | 工作 | 边界 |

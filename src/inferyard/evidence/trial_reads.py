@@ -22,9 +22,7 @@ class TrialReads:
         if name not in self.documents:
             try:
                 with local_file(self.root, name).open("rb") as stream:
-                    raw = stream.read(16 * 1024 * 1024 + 1)
-                if len(raw) > 16 * 1024 * 1024:
-                    raise EvidenceError("json_evidence_size_limit")
+                    raw = stream.read()
                 self.hashes[name] = hashlib.sha256(raw).hexdigest()
                 self.sizes[name] = len(raw)
                 self.documents[name] = strict_json_loads(raw.decode("utf-8"))

@@ -150,9 +150,7 @@ def local_file(root: Path, relative: str) -> Path:
 def read_json(path: Path):
     try:
         with filesystem_path(path).open("rb") as stream:
-            raw = stream.read(16 * 1024 * 1024 + 1)
-        if len(raw) > 16 * 1024 * 1024:
-            raise EvidenceError("json_evidence_size_limit")
+            raw = stream.read()
         return strict_json_loads(raw.decode("utf-8"))
     except (OSError, UnicodeError, ContractError) as exc:
         raise EvidenceError("invalid_json_evidence") from exc
