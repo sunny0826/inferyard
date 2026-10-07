@@ -21,9 +21,11 @@ def trial():
         "run": {
             "origin": "measured",
             "trial_id": "t",
-            "definition_versions": {"measurement": "v2"},
+            "definition_versions": {"measurement": "v2", "scoring": "phase2.v1"},
+            "run_id": "synthetic",
             "tool_source_sha256": "a",
         },
+        "bundle": {"cases": [{"case_id": "case"}], "answer_policy": {}, "task_protocol": "quality"},
         "selection": {"bundle_sha256": "b", "scorer_sha256": "c", "case_ids": ["case"]},
         "config": {
             "device": {"id": "host"},
@@ -54,7 +56,11 @@ def trial():
         "environment_start": dict.fromkeys(
             ("platform", "architecture", "cpu_model", "kernel"), "known"
         ),
-        "summary": {"completeness": "complete", "completion_rate": {"value": 1}},
+        "summary": {
+            "completeness": "complete",
+            "completion_rate": {"value": 1},
+            "counts": {"planned": 1, "valid_executed": 1},
+        },
         "plan": {
             "experiment": {
                 "comparison": {"mode": "model", "factor": None},

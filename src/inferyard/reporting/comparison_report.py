@@ -1,11 +1,9 @@
 """Offline pair comparison; raw source runs are never changed."""
 
-from pathlib import Path
-
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandResult, VerificationOptions
-from inferyard.contracts.validation import ContractError
+from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import (
     EvidenceError,
@@ -42,11 +40,10 @@ def build_comparison(
     left_overhead=None,
     right_overhead=None,
     loaded=None,
-    format_version=3,
+    format_version=4,
     source_roots=(),
 ):
-    if type(format_version) is not int or format_version not in (1, 2, 3, 4):
-        raise EvidenceError("comparison_format_invalid")
+    require_version({"version": format_version}, "version", (4,), "comparison")
     if (left_overhead is None) != (right_overhead is None):
         raise EvidenceError("both_performance_overhead_sources_required")
     loaded = (
@@ -57,32 +54,20 @@ def build_comparison(
     (left, left_ref), (right, right_ref) = loaded
     evidence = None
     if left_overhead is not None:
-        from inferyard.evidence.performance_evidence import load_performance_evidence
+        from inferyard.evidence.total_applicability import load_performance_evidence_v3
 
-        if format_version >= 3:
-            from inferyard.evidence.total_applicability import load_performance_evidence_v3
-
-            evidence = [
-                load_performance_evidence_v3(
-                    root,
-                    target,
-                    data=data,
-                    reference=reference,
-                    **(
-                        {"source_roots": source_roots}
-                        if format_version == 4 and source_roots
-                        else {}
-                    ),
-                )
-                for root, target, (data, reference) in zip(
-                    (left_overhead, right_overhead), (left_path, right_path), loaded, strict=True
-                )
-            ]
-        else:
-            evidence = [
-                load_performance_evidence(root, target)
-                for root, target in ((left_overhead, left_path), (right_overhead, right_path))
-            ]
+        evidence = [
+            load_performance_evidence_v3(
+                root,
+                target,
+                data=data,
+                reference=reference,
+                **({"source_roots": source_roots} if source_roots else {}),
+            )
+            for root, target, (data, reference) in zip(
+                (left_overhead, right_overhead), (left_path, right_path), loaded, strict=True
+            )
+        ]
         for proof, ref in zip(evidence, (left_ref, right_ref), strict=True):
             if proof["target_manifest_sha256"] != ref["manifest_sha256"]:
                 raise EvidenceError("performance_target_changed_during_read")
@@ -91,7 +76,7 @@ def build_comparison(
         right,
         mode=mode,
         performance_evidence=evidence,
-        definition=f"phase2.v{min(format_version, 3)}",
+        definition="phase2.v3",
     )
     result["schema_version"] = SCHEMA_VERSION
     result["format_version"] = format_version
@@ -115,38 +100,39 @@ def build_comparison(
 
 def read_verified_comparison(root, *, loaded=None, source_roots=()):
     saved = read_json(local_file(root, "comparison.json"))
+    if (
+        type(saved) is not dict
+        or type(saved.get("schema_version")) is not int
+        or type(saved.get("format_version")) is not int
+        or saved.get("schema_version") != 3
+        or saved.get("format_version") != 4
+    ):
+        check_presentation_seal(root)
+    require_core(saved, "comparison")
+    require_version(saved, "format_version", (4,), "comparison")
     try:
         sources = saved["source_runs"]
         if (
             type(saved["schema_version"]) is not int
             or type(saved["format_version"]) is not int
             or saved["schema_version"] != SCHEMA_VERSION
-            or saved["format_version"] not in (1, 2, 3, 4)
+            or saved["format_version"] != 4
             or len(sources) != 2
         ):
             raise EvidenceError("comparison_format_invalid")
-        modern = saved["format_version"] == 4
-        if source_roots and not modern:
-            raise ContractError(
-                "source_root", "legacy comparisons retain original absolute locators"
-            )
-        if modern:
-            from inferyard.evidence.artifact_seal import read_sealed
-            from inferyard.evidence.source_locations import resolve_source
+        from inferyard.evidence.artifact_seal import read_sealed
+        from inferyard.evidence.source_locations import resolve_source
 
-            blobs = read_sealed(root, ["index.json", "report.html", "comparison.json"])
-            if blobs["comparison.json"] != json_bytes(saved):
-                raise EvidenceError("comparison_changed_during_read")
-            paths = [resolve_source(root, ref["path"], source_roots) for ref in sources]
-            loaded = (
-                loaded
-                if loaded is not None
-                else [comparison_input(path, bind_unsealed=True) for path in paths]
-            )
-            actual = [{**ref, "path": sources[i]["path"]} for i, (_, ref) in enumerate(loaded)]
-        else:
-            paths = [Path(ref["path"]) for ref in sources]
-            actual = [ref for _, ref in loaded] if loaded is not None else None
+        blobs = read_sealed(root, ["index.json", "report.html", "comparison.json"])
+        if blobs["comparison.json"] != json_bytes(saved):
+            raise EvidenceError("comparison_changed_during_read")
+        paths = [resolve_source(root, ref["path"], source_roots) for ref in sources]
+        loaded = (
+            loaded
+            if loaded is not None
+            else [comparison_input(path, bind_unsealed=True) for path in paths]
+        )
+        actual = [{**ref, "path": sources[i]["path"]} for i, (_, ref) in enumerate(loaded)]
         if actual is not None and sources != actual:
             raise EvidenceError("report_comparison_sources_or_order_mismatch")
         options = {}
@@ -156,8 +142,6 @@ def read_verified_comparison(root, *, loaded=None, source_roots=()):
                 raise EvidenceError("comparison_format_invalid")
             options = {
                 key: resolve_source(root, proof["source"]["path"], source_roots)
-                if modern
-                else Path(proof["source"]["path"])
                 for key, proof in zip(("left_overhead", "right_overhead"), proofs, strict=True)
             }
         expected = build_comparison(
@@ -169,10 +153,9 @@ def read_verified_comparison(root, *, loaded=None, source_roots=()):
             source_roots=source_roots,
             **options,
         )
-        if modern:
-            from inferyard.evidence.source_locations import retain_comparison_locations
+        from inferyard.evidence.source_locations import retain_comparison_locations
 
-            retain_comparison_locations(expected, saved)
+        retain_comparison_locations(expected, saved)
     except (KeyError, TypeError, IndexError) as exc:
         raise EvidenceError("comparison_format_invalid") from exc
     if json_bytes(saved) != json_bytes(expected):

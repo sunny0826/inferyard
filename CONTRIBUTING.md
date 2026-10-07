@@ -76,7 +76,7 @@ mise exec -- uv run --frozen python scripts/verify_release_candidate.py --manife
 保留构建清单、安装结果及候选原件，不手工编辑 JSON 代替通过检查。
 
 安装检查使用合成输入，在独立环境实际检查 uv tool/uvx、核心离线命令、工作区导出及 report/verify，
-输出 `installed_safe_checks.v2`；首次准备 Python 和依赖需要联网，不发送模型请求。
+输出 `installed_safe_checks.v3`；首次准备 Python 和依赖需要联网，不发送模型请求。
 至少一个平台完成后可生成 `community_distribution.v2` 候选；每个额外实测平台使用重复的
 `--installed RESULT` 参数，未测平台保留 `not_verified`。这不代表原生模型准备或性能验收。
 

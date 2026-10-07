@@ -73,7 +73,7 @@ def test_context_grants_only_validated_metrics_without_mutating_source():
 
 
 @pytest.mark.parametrize(
-    "change", ["overhead", "binding", "environment", "tolerance", "incomplete", "side_by_side"]
+    "change", ["overhead", "binding", "environment", "incomplete", "side_by_side"]
 )
 def test_failed_prerequisite_cannot_produce_any_performance_delta(change):
     left, right, proofs = inputs()
@@ -84,8 +84,6 @@ def test_failed_prerequisite_cannot_produce_any_performance_delta(change):
         proofs[1]["target_run_id"] = "wrong"
     elif change == "environment":
         right["environment_start"]["cpu_policies"] = "different"
-    elif change == "tolerance":
-        proofs[1]["tolerance_ratio"] = 0.1
     elif change == "incomplete":
         right["summary"]["completeness"] = "incomplete"
     else:
@@ -94,6 +92,13 @@ def test_failed_prerequisite_cannot_produce_any_performance_delta(change):
     assert not result["eligibility"]["performance"]
     assert result["performance_analysis"]["blockers"]
     assert all(r["difference"] is None for r in result["performance_analysis"]["differences"])
+
+
+def test_current_comparison_accepts_independently_qualified_tolerances():
+    left, right, proofs = inputs()
+    proofs[1]["tolerance_ratio"] = 0.1
+    result = compare_trials(left, right, performance_evidence=proofs)
+    assert result["eligibility"]["performance"]
 
 
 def test_different_model_tokenizer_blocks_rate_but_not_task_e2e():

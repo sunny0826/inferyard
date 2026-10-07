@@ -7,7 +7,15 @@ import zipfile
 
 from scripts.check_distribution import inspect_sdist, inspect_wheel
 from scripts.export_runtime_constraints import validate
-from scripts.release_common import COMMANDS, SCOPE, URLS, file_record, sha
+from scripts.release_common import (
+    COMMANDS,
+    REPORT_PROBES,
+    SCOPE,
+    URLS,
+    file_record,
+    report_format_check,
+    sha,
+)
 
 COMMIT = "a" * 40
 VERSION = "0.0.1"
@@ -38,10 +46,12 @@ inferyard = "inferyard.cli:main"
         + "".join(f"Project-URL: {k}, {v}\n" for k, v in URLS.items())
     ).encode()
     init = b'__version__ = "0.0.1"\n'
-    resources = {"__init__.py": sha(init)}
+    template = b"synthetic current template"
+    resources = {"__init__.py": sha(init), "templates/report.html": sha(template)}
     wheel = io.BytesIO()
     with zipfile.ZipFile(wheel, "w") as archive:
         archive.writestr("inferyard/__init__.py", init)
+        archive.writestr("inferyard/templates/report.html", template)
         prefix = f"inferyard-{VERSION}.dist-info/"
         archive.writestr(prefix + "METADATA", metadata)
         archive.writestr(prefix + "licenses/LICENSE", license_raw)
@@ -62,6 +72,7 @@ inferyard = "inferyard.cli:main"
             **source,
             "PKG-INFO": metadata,
             "src/inferyard/__init__.py": init,
+            "src/inferyard/templates/report.html": template,
         }.items():
             item = tarfile.TarInfo(f"inferyard-{VERSION}/{name}")
             item.size = len(raw)
@@ -99,7 +110,8 @@ inferyard = "inferyard.cli:main"
     manifest = root / "manifest.json"
     manifest.write_text(json.dumps(data), encoding="utf-8")
     evidence = dict(
-        kind="installed_safe_checks.v2",
+        kind="installed_safe_checks.v3",
+        report_format_checks={n: report_format_check(wheel.getvalue()) for n in REPORT_PROBES},
         status="passed",
         completed=True,
         source_commit=COMMIT,

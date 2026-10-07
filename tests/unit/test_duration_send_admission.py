@@ -51,6 +51,9 @@ def pipeline(tmp_path, monkeypatch, config_path):
     monkeypatch.setattr(locking, "LEGACY_ROOT", None)
     monkeypatch.setattr(locking, "LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr(locking, "STATE_PATH", tmp_path / "host.state.json")
+    from tests.host_state_helpers import initialize
+
+    initialize()
 
     @asynccontextmanager
     async def create(*, post=None):

@@ -82,11 +82,6 @@ def _load_manifest(root):
     content = _read(root, "manifest.json")
     manifest = _json(content)
     fields(manifest, {"schema_version", "definition", "kind", "files"}, "manifest_fields")
-    require(type(manifest["schema_version"]) is int and manifest["schema_version"] == 3, "schema")
-    require(
-        manifest["definition"] in ("engine_fit_manifest.v1", "engine_fit_manifest.v2"),
-        "manifest_definition",
-    )
     require(manifest["kind"] in ("run", "comparison"), "manifest_kind")
     names = RUN_FILES if manifest["kind"] == "run" else COMPARISON_FILES
     fields(manifest["files"], set(names), "manifest_files")
@@ -94,9 +89,13 @@ def _load_manifest(root):
         require(type(digest) is str and re.fullmatch(r"[a-f0-9]{64}", digest), "manifest_hash")
     blobs = {name: _read(root, name) for name in names}
     require(
-        manifest == _manifest(blobs, manifest["kind"], definition=manifest["definition"]),
+        manifest["files"] == {name: _sha(raw) for name, raw in blobs.items()},
         "hash_mismatch",
     )
+    from inferyard.evidence.formats import require_core, require_version
+
+    require_core(manifest, "engine-fit manifest")
+    require_version(manifest, "definition", ("engine_fit_manifest.v2",), "engine-fit manifest")
     return manifest, {**blobs, "manifest.json": content}
 
 
@@ -112,7 +111,7 @@ def _verified_run(root, *, rerender=False, verified=None):
     rows = _json(blobs["requests.json"])
     validate_run(plan, run, rows)
     data = {"kind": "engine_fit_run", "plan": plan, "run": run, "requests": rows}
-    if manifest["definition"] == "engine_fit_manifest.v1" or rerender:
+    if rerender:
         require(blobs["report.html"] == render([data]).encode("utf-8"), "html_rebuild_mismatch")
     return {**data, "manifest": manifest}, blobs
 
@@ -238,7 +237,7 @@ def verify(path, *, rerender=False):
     rebuilt = _comparison(runs, hashes)
     # Canonical bytes distinguish bool from int (Python structural equality does not).
     require(json_bytes(saved) == json_bytes(rebuilt), "comparison_rebuild_mismatch")
-    if manifest["definition"] == "engine_fit_manifest.v1" or rerender:
+    if rerender:
         require(
             blobs["report.html"] == render(runs, comparison=True).encode(), "html_rebuild_mismatch"
         )

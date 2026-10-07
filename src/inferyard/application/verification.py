@@ -99,8 +99,6 @@ def _check_markers(root: Path, kinds: set[str]) -> None:
             }[kind]
         )
         marker = _object(root, primary)
-        if kind == "report" and marker.get("report_format_version") not in (1, 2, 3, 4, 5, 6, 7):
-            raise EvidenceError("unsupported_report_format")
         for version in ("schema_version", "format_version", "report_format_version"):
             if version in marker and type(marker[version]) is not int:
                 raise EvidenceError("invalid_artifact_version:" + primary)

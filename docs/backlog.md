@@ -23,23 +23,47 @@ wheel 为 `3dcd2363c31ff3a34f92bde4dbd114e9a82a94ac06f942a7ef5c6d6cbdafbf0b`。
 
 ## 兼容边界
 
-以下为基线源码现状。[ADR 038](decisions/038-inferyard-current-format.md) 已提出用户授权的局部取代范围；
-尚未实施，不能把下列历史支持承诺当作新方案的永久要求。
+当前源码按 [ADR 038](decisions/038-inferyard-current-format.md) 实施局部取代；
+历史支持承诺的取代范围以该决策和格式矩阵为准。
 
 - 核心数据保持 `schema_version = 3`，Schema URN 保留 `urn:local-ai-bench:`，不改字段与 ID。
-- 主机锁和 dirty 状态沿用 `local-ai-benchmark-host.*` 路径，防止与源项目并存时绕过互斥或恢复要求。
-- 历史报告模板、兼容夹具及已审核题包保留字节；其中的旧名称属于原件内容。新报告采用 InferYard 品牌。
+- 主机状态按 ADR038 一次性显式迁移到 inferyard-host.*；退休旧入口，pending 不放行，ready dirty 不被迁移清空。
+- 历史报告模板和运行迁移器已删除；已审核题包及嵌入审核证明保持原字节，旧名称属于原件内容。
 - 源项目的测试和真机记录不自动转移为 InferYard 新候选的验收结论；当前包须独立检查。
 
 ## 当前格式清理与主机锁迁移
 
-- 用户已授权只支持当前生产格式、删除旧运行迁移与历史报告兼容；T0 三件套已形成，待独立 Reviewer 与父会话审核，源码/测试未改。
+- 用户已授权只支持当前生产格式、删除旧运行迁移与历史报告兼容；T0 已获独立 Reviewer approve，父会话已批准 P0；单 worker 已完成软件实现与定向回归，待独立 Reviewer/root 终审。
 - 基线 `fe1052a41afbddc1b7ceff852e794d6d872977ce`；[格式矩阵](contracts/inferyard-current-format.md#格式支持矩阵) 保留 engine-fit 当前多版本、评分定义及已审核题包证明，不按 v1/v2 名称清理。
-- [锁提案](contracts/inferyard-current-format.md#锁迁移) 优先评估显式 clean 迁移、固定旧入口退休和新锁/state 独立运行；永久桥接仅为对照，不作为已冻结结论。原字节凭据、pending→ready、中断重试及首次部署边界已列明，未执行真实迁移。
+- [锁事务](contracts/inferyard-current-format.md#锁迁移) 采用显式 clean 迁移、固定旧入口退休和新锁/state 独立运行。原字节凭据、pending→ready、中断重试及首次部署已实现；测试仅使用隔离临时根，未操作真实主机状态。
 - 旧 HostLock 固定为源项目 `2fa125ccbe97d7d029fbbea494970f2336829ca2`，与新基线仅包名不同；公共退休 state 能阻断该基线，Windows 后加 D 不独自构成绕过。管理员破坏公共状态和任意古老 D-only 程序单列边界。
-- installed_probe 的历史 report1–6 成功路径拟改为 report7 成功及旧格式拒绝，安装结果升 installed_safe_checks.v3；不继承旧安装资格，候选外壳 community_distribution.v2 保留。
-- Reviewer/root 尚须审核首选退休事务、可证范围与安装结果版本；T0 审核及父会话放行前实施门保持关闭。
-- 后续单 worker 实施、Reviewer 审核与父会话 Gate A/Gate B 见[计划](plans/inferyard-current-format.md)；不继承此前构建或原生验收，Windows 无新原生证据时保持未验。
+- installed_probe 的历史 report1–6 成功路径改为 report7 成功及旧格式拒绝，安装结果升 installed_safe_checks.v3；不继承旧安装资格，候选外壳 community_distribution.v2 保留。
+- 退休事务、固定旧基线、安装 v3/candidate v2 已按 P0 实现；交付审核与集成 Gate A/B 尚未完成。
+- 后续 Reviewer 审核、必要定向修复与父会话 Gate A/Gate B 见[计划](plans/inferyard-current-format.md)；不继承此前构建或原生验收，Windows 无新原生证据时保持未验。
+
+### P0 软件交付与定向证据（2026-10-08）
+
+- 已删除历史运行迁移器、旧模板与旧格式分派；格式拒绝独立返回 unsupported/2，损坏 seal/hash 保持 4。
+  schema3 migrated 来源在直接、报告、比较、公开包递归入口拒绝；题包内嵌审核证明保留。
+- engine-fit plan1–4/run1–6、plan1 全目录身份及 scorer1/2 保留；当前比较只计算 phase2.v3。
+  候选筛选同步解析 comparison4 的相对来源，再核验内容及顺序，不能只比较路径字符串。
+- 主机维护实现原件凭据→pending→公共退休→D 退休→ready；排他创建记录原 lock 是否存在，
+  新 lock-only 可首次初始化，旧 lock-only 拒绝。正常 ready 只访问新锁/state/凭据；dirty 不被迁移清空。
+  固定旧 HostLock 在实时入口前拒绝，测试使用真实子进程与隔离临时根，未操作真实主机锁。
+- 安装 writer、三探针报告字段、validator 和候选消费链采用 installed_safe_checks.v3；旧 v2 资格拒绝。
+  探针源码和资格夹具已验证，实际 wheel/sdist 构建、三次安装闭环仍由父会话执行。
+
+| 检查 | 实际结果与本机证据 |
+| --- | --- |
+| 95 文件受影响回归 | 1884 passed、7 failed、3 skipped；失败已逐项修正并在下述最终集合复验。诊断日志 `/private/tmp/inferyard-affected-final.log`，不将初轮计为全绿 |
+| 最终 17 文件定向复验 | **292 passed、1 skipped**，78.54 秒；`/private/tmp/inferyard-final-verified.log`。唯一 skip 为需要原生 Linux `/proc` 的资源组 |
+| 最后增量回归 | 32 passed；主机首写前中断、凭据形状、编码与职责身份，`/private/tmp/inferyard-final-delta.log` |
+| Ruff 与导出 | Ruff check/format、Schema/catalogue/community `--check`、`git diff --check` 通过；`/private/tmp/inferyard-final-checks.log`。community 未重新核验归档 ZIP |
+| 静态与保护 | 292 个源码 AST/绝对包导入、资源职责路径、本地文档链接通过；28 份保护文件、依赖/元数据、43 metric IDs、199 method IDs 均不变；`/private/tmp/inferyard-final-static.log` |
+
+上述检查不是全量最终验收、原生模型测试或性能结论。未执行最终构建安装、实际 HTML 浏览、
+Windows 原生 msvcrt/ACL/reparse/多账户/卷路径验证；未发送真实模型请求、未迁移系统主机状态。
+统一提交后停写交审，不 push、不合并；父会话按剩余计划裁定 Gate A/B 与 Windows 未验范围。
 
 ## 后续工程工作
 

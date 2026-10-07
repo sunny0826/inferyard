@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from inferyard.contracts.validation import strict_json_loads
+from inferyard.evidence.formats import UnsupportedFormat, require_core, require_version
 from inferyard.evidence.storage import EvidenceError
 
 if __package__:
@@ -45,7 +46,7 @@ else:
         require,
     )
 
-SUPPORTED = {"lab_observer.v1", "lab_observer.v2"}
+SUPPORTED = {"lab_observer.v2"}
 SUMMARY_DEFINITION = "lab_observer_summary.v2"
 
 
@@ -74,11 +75,14 @@ def analyze(path: Path, *, allow_incomplete: bool = False) -> dict:
                 raise ObserverError("observer_json_invalid") from exc
             require(
                 type(item) is dict
-                and item.get("schema_version") == 3
-                and type(item["schema_version"]) is int
+                and type(item.get("schema_version")) is int
                 and type(item.get("definition")) is str
-                and item.get("definition") in SUPPORTED
             )
+            if h is None:
+                require_core(item, "observer")
+                require_version(item, "definition", ("lab_observer.v2",), "observer")
+            else:
+                require(item["schema_version"] == 3 and item["definition"] == h["definition"])
             require(
                 type(item.get("session_id")) is str
                 and re.fullmatch(r"[0-9a-f]{32}", item["session_id"]) is not None
@@ -189,7 +193,7 @@ def analyze(path: Path, *, allow_incomplete: bool = False) -> dict:
         "kind": "observer_diagnostic_summary",
         "definition": SUMMARY_DEFINITION,
         "input_definition": h["definition"],
-        "disk_scope": h.get("disk_scope", "observer_cwd_filesystem_legacy_v1"),
+        "disk_scope": h["disk_scope"],
         "completeness": "complete" if complete else "incomplete",
         "stop_reason": end["stop_reason"] if end is not None else "end_record_missing",
         "end_record_present": end is not None,
@@ -243,6 +247,19 @@ def main(argv: list[str] | None = None) -> int:
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
+    except UnsupportedFormat as exc:
+        print(
+            json.dumps(
+                {
+                    "reason": "unsupported_format",
+                    "artifact": exc.artifact,
+                    "saved_version": exc.saved,
+                    "supported_versions": exc.supported,
+                }
+            ),
+            file=sys.stderr,
+        )
+        return 2
     except OSError, ValueError, KeyError, TypeError, OverflowError, EvidenceError:
         print(
             "observer_analysis_failed; input invalid, incomplete or output already exists",

@@ -48,12 +48,18 @@ def trial_analysis(root, *, producer=None, loaded=None):
             "original_scoring_not_rescored",
         ],
     }
+    from inferyard.evidence.formats import require_core
+
+    require_core(analysis, "analysis")
     validate_document("analysis", analysis)
     return analysis, {"kind": "trial", "path": str(root.resolve()), "producer": producer}
 
 
 def existing_analysis(path):
     analysis = read_json(path)
+    from inferyard.evidence.formats import require_core
+
+    require_core(analysis, "analysis")
     validate_document("analysis", analysis)
     for metric in analysis["metrics"]:
         for ref in metric["evidence_refs"]:

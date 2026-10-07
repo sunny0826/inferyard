@@ -313,10 +313,15 @@ def test_html_is_escaped_and_versioned_rebuild_is_explicit(tmp_path, plan, versi
     manifest["definition"] = f"engine_fit_manifest.v{version}"
     (path / "manifest.json").write_bytes(json_bytes(manifest))
     _replace(path, "report.html", html.replace("引擎适配诊断", "unverified").encode())
-    if version == 2:
+    if version == 1:
+        from inferyard.evidence.formats import UnsupportedFormat
+
+        with pytest.raises(UnsupportedFormat):
+            verify(path)
+    else:
         assert verify(path)["kind"] == "engine_fit_run"
-    with pytest.raises(EvidenceError, match="html_rebuild_mismatch"):
-        verify(path, rerender=version == 2)
+        with pytest.raises(EvidenceError, match="html_rebuild_mismatch"):
+            verify(path, rerender=True)
 
 
 def test_new_engine_fit_seal_needs_no_renderer_but_checks_saved_bytes(tmp_path, plan, monkeypatch):

@@ -1,6 +1,6 @@
 # InferYard 当前格式与主机状态契约
 
-状态：T0 冻结提案，待 Reviewer/父会话通过；不代表源码已经实现。
+状态：T0 已通过 Reviewer/父会话审核，P0 已放行；软件交付与原生验收状态见 [backlog](../backlog.md)。
 依据 [ADR 038](../decisions/038-inferyard-current-format.md)，writer 核查基线为
 `fe1052a41afbddc1b7ceff852e794d6d872977ce`。
 证据解释沿用[血缘规则](../data-contract.md#证据血缘与比较结论)。
@@ -26,7 +26,7 @@
 | 身份/资产 | implementation-identity.v1、model-assets.v2；plan.v1 当前使用的无 definition 全目录清单 | 仅由历史 plan.v2–v4 触发的无 definition 目录回退；旧比较身份算法 | [IdentityContext](../../src/inferyard/implementation_identity.py)、[assets](../../src/inferyard/config/engine_fit_assets.py)、[model_manifest](../../src/inferyard/platforms/engine_fit.py) |
 | token 预算/原始日志 | token-budgets.v2.json / token-budgets.v2；原始 events、样本与请求前身份检查点 | token-budgets.json 位置数组；旧 requests.jsonl 派生副本专用重建/兼容 | [预算 writer](../../src/inferyard/evidence/token_budgets.py)、[ledger](../../src/inferyard/evidence/ledger.py)、[Journal](../../src/inferyard/evidence/journal.py) |
 | 扩展及开销 | closed_concurrency.v1、native_tools.v1、total_observer_control.v1/v2；extension_event.v1、trial_control_baseline.v1；当前开销、重复和谱系定义 | 不按 v1/v2 扫除；此任务不重编独立实验协议 | [freeze/run](../../src/inferyard/extensions/workflow.py)、[extension journal](../../src/inferyard/extensions/extension_evidence.py)、[baseline](../../src/inferyard/extensions/trial_control_baseline.py) |
-| 准备/发行/锁 | community_init/config_assets/config_candidate/config_binding.v1；基线 installed_safe_checks.v2，因 scope 改变拟升 v3；community_distribution.v2；运行 state 版本 1 | 安装旧 v2 不继承新资格；其他编号不因数字小而删除；退休标记见下文 | [CLI 字段](../cli-surface.md)、[发行工具](../../scripts/README.md)、[HostLock](../../src/inferyard/runtime/lock.py) |
+| 准备/发行/锁 | community_init/config_assets/config_candidate/config_binding.v1；installed_safe_checks.v3；community_distribution.v2；运行 state 版本 1 | 安装旧 v2 不继承新资格；其他编号不因数字小而删除；退休标记见下文 | [CLI 字段](../cli-surface.md)、[发行工具](../../scripts/README.md)、[HostLock](../../src/inferyard/runtime/lock.py) |
 
 保持 `urn:local-ai-bench:`、目录方法/指标 ID、题目 ID、bundle ID 与哈希算法。
 核心 Schema 中 `origin=migrated` 等历史枚举不借本次改变结构定义；应用读取入口明确拒绝其运行包。
@@ -57,7 +57,7 @@ report v7/comparison v4/engine-fit manifest.v2 保持保存字节与显式 `--re
 
 ## 锁迁移
 
-以下是首选待审方案，不是已批准实现。对照方案与代价见 [ADR 038](../decisions/038-inferyard-current-format.md#替代方案与风险)。
+以下为 T0 已批准事务，软件实现与原生验收状态分别记入 backlog。对照方案与代价见 [ADR 038](../decisions/038-inferyard-current-format.md#替代方案与风险)。
 目标是退休固定旧工具的实时入口，而不是让新旧工具迁移后继续执行测评。
 
 ### 固定旧基线与退休拒绝证明
@@ -69,7 +69,7 @@ report v7/comparison v4/engine-fit manifest.v2 保持保存字节与显式 `--re
 新基线文件 SHA256 为 `3c969665902d636fb14b994e03601b7cd6e11ad373f987b066c109dba9d739ae`。
 两者 windows_host_paths.py 字节相同；公共根均由原生 Common AppData 查询取得。
 
-退休标记拟采用严格 JSON：`schema_version=2`、`definition="inferyard-host-retired.v1"`、
+退休标记采用严格 JSON：`schema_version=2`、`definition="inferyard-host-retired.v1"`、
 `migration_id`、`receipt_sha256` 四键；不含 dirty，不假装普通 clean 状态。
 这是独立主机维护标记，不改变测量 schema 3 或现行运行 state schema 1。
 旧 `_read_state` 要求 `schema_version == LOCK_FORMAT_VERSION == 1`，因此必抛
@@ -110,7 +110,7 @@ ready 后新 dirty/clean 写入必须保留 migration envelope，不得丢掉提
 
 ### 首次部署与显式事务
 
-统一使用拟新增的 `inferyard host-state migrate` 做首次建立或旧状态迁移；普通实时入口不自行创建 clean。
+统一使用 `inferyard host-state migrate` 做首次建立或旧状态迁移；普通实时入口不自行创建 clean。
 无新 ready 时，发现任一旧 lock/state 返回 `host_state_migration_required`；全部旧位置无文件则返回
 `host_state_initialization_required`。pending、孤立凭据、缺失或损坏新 state 都不当作首次。
 只读离线入口不建立主机状态。这样即便从未运行过旧工具，也须先退休旧入口再运行新工具。
@@ -202,13 +202,12 @@ Windows 保留 file fsync + MoveFileExW(WRITE_THROUGH) 和 `directory_fsync=fals
 这是安装验证语义改变所需的单独升版，不改变产品版本、核心 schema 3 或业务协议编号。
 安装安全探针不操作系统真实锁；迁移证明仍由隔离临时根的进程测试及独立 Windows 原生检查提供。
 
-## 父会话裁定项
+## 父会话终审边界
 
-1. 请 Reviewer/root 审核一次性迁移、退休标记和 pending→ready 事务；不改锁名与持续桥接仅为对照，
-   未通过时维持当前源码，不能自行实施某个备选方案。
+1. T0 已通过 Reviewer/root，P0 已批准；实现、定向证据和独立终审仍分开记录。
 2. 请接受或具体指出固定 2fa125c/fe1052a 范围内的反例。任意古老 D-only 程序、管理员删除状态/
    更换公共根、断电持久性是明确边界，不再把它们扩大成永久兼容义务；Windows 原生尚未验。
-3. 安装结果 v3 和候选外壳 v2 的组合一并审核；不能继承旧安装资格。
+3. 安装结果 v3 和候选外壳 v2 的组合已批准；实际构建安装由父会话终验，不能继承旧安装资格。
 
 ## 不变的运行边界
 

@@ -12,6 +12,7 @@ from inferyard.cli.metadata import versions
 from inferyard.contracts.schemas import export_schema
 from inferyard.contracts.validation import ContractError
 from inferyard.evidence.error_reasons import safe_reason
+from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.storage import EvidenceError
 from inferyard.platforms.identity import PreflightError
 
@@ -43,11 +44,50 @@ def run(
         code, result = handler(request)
         if code not in (0, 2, 3, 4, 130) or result.command != request.command:
             raise RuntimeError("invalid backend result")
+    except UnsupportedFormat as exc:
+        print("unsupported_format; use the original project for historical data", file=sys.stderr)
+        code, result = (
+            2,
+            CommandResult(
+                command,
+                "blocked",
+                limitations=("unsupported_format",),
+                details={
+                    "artifact": exc.artifact,
+                    "saved_version": exc.saved,
+                    "supported_versions": exc.supported,
+                },
+            ),
+        )
     except (ContractError, ArgumentError) as exc:
         print(str(exc), file=sys.stderr)
         code, result = 2, CommandResult(command, "blocked", limitations=("invalid_input",))
     except PreflightError as exc:
-        if str(exc) == "windows_phase2_live_not_supported":
+        if str(exc) in (
+            "host_state_initialization_required",
+            "host_state_migration_required",
+            "host_state_migration_pending",
+        ):
+            print(
+                "run inferyard host-state migrate to initialize/complete host retirement",
+                file=sys.stderr,
+            )
+            limitation = str(exc)
+        elif str(exc) == "host_state_old_lock_only_investigate":
+            print(
+                "old lock has no state; use the original tool's established recovery flow "
+                "to obtain verifiable clean state, or investigate manually",
+                file=sys.stderr,
+            )
+            limitation = str(exc)
+        elif str(exc) == "host_state_source_changed_investigate":
+            print(
+                "old state changed after receipt publication; manual investigation required; "
+                "the receipt and state were preserved",
+                file=sys.stderr,
+            )
+            limitation = str(exc)
+        elif str(exc) == "windows_phase2_live_not_supported":
             print("Windows live experiments are not supported yet", file=sys.stderr)
             limitation = "windows_phase2_live_not_supported"
         else:

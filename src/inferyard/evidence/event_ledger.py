@@ -2,6 +2,7 @@
 
 from inferyard import SCHEMA_VERSION
 from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.evidence.formats import require_core
 from inferyard.evidence.storage import EvidenceError
 
 
@@ -14,6 +15,7 @@ def reduce_events(events, run, selection, cases, *, duration=None):
     previous_time = 0
     for index, event in enumerate(events, 1):
         try:
+            require_core(event, "event")
             validate_document("event", event)
         except ContractError as exc:
             raise EvidenceError("invalid_event") from exc

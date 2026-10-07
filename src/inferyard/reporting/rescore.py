@@ -141,6 +141,9 @@ def build_rescore(
         raise EvidenceError("rescore_parent_source_mismatch")
     original, _ = trial_analysis(root, producer=producer, loaded=loaded)
     parent = deepcopy(parent) if parent is not None else original
+    from inferyard.evidence.formats import require_core
+
+    require_core(parent, "analysis")
     validate_document("analysis", parent)
     if parent["source_runs"] != original["source_runs"]:
         raise EvidenceError("rescore_parent_source_mismatch")
@@ -220,6 +223,9 @@ def build_rescore(
             *(["duration_scores_are_repeated_probes_not_whole_bundle"] if repeated else []),
         ],
     }
+    from inferyard.evidence.formats import require_core
+
+    require_core(analysis, "analysis")
     validate_document("analysis", analysis)
     files = {"analysis.json": analysis, "rescore.json": record, "parent-analysis.json": parent}
     if parent_evidence is not None:
@@ -255,7 +261,13 @@ def _check_saved_hashes(files):
     """Check stored lineage bindings before reporting an unavailable scorer identity."""
     try:
         record, analysis = files["rescore.json"], files["analysis.json"]
+        from inferyard.evidence.formats import require_core
+
+        require_core(analysis, "analysis")
         validate_document("analysis", analysis)
+        from inferyard.evidence.formats import require_core
+
+        require_core(files["parent-analysis.json"], "analysis")
         validate_document("analysis", files["parent-analysis.json"])
         body = {k: v for k, v in record.items() if k != "analysis_id"}
         aid = "rescore-" + hashlib.sha256(json_bytes(body)).hexdigest()[:32]

@@ -88,6 +88,10 @@ def test_build_refusal(tmp_path, change):
         "scope",
         "arch",
         "old",
+        "v2",
+        "missing_probe",
+        "missing_negative",
+        "wrong_template",
     ],
 )
 def test_installation_refusal(tmp_path, change):
@@ -108,6 +112,16 @@ def test_installation_refusal(tmp_path, change):
         evidence["scope"] = ["offline_core"]
     elif change == "arch":
         evidence["architecture"] = "x86_64"
+    elif change == "v2":
+        evidence["kind"] = "installed_safe_checks.v2"
+    elif change == "missing_probe":
+        del evidence["report_format_checks"]["probe-rollback"]
+    elif change == "missing_negative":
+        evidence["report_format_checks"]["probe-install-b"][
+            "unsupported_report_formats_rejected"
+        ] = [1, 2]
+    elif change == "wrong_template":
+        evidence["report_format_checks"]["probe-install-a"]["template_hashes"]["7"] = "0" * 64
     elif change == "old":
         evidence["kind"] = "installed_safe_checks.v1"
     installed.write_text(json.dumps(evidence), encoding="utf-8")
@@ -188,6 +202,12 @@ def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch
     def fake_run(argv, **kwargs):
         name = COMMANDS[len(calls)]
         calls.append(name)
+        if name.startswith("probe-"):
+            from scripts.release_common import report_format_check
+
+            return subprocess.CompletedProcess(
+                argv, 0, json.dumps(report_format_check(files["wheel"].raw)), ""
+            )
         if name == "init":
             (out / "中文 workspace").mkdir()
             (out / "中文 workspace/preparation.json").write_bytes(b"frozen")

@@ -32,6 +32,9 @@ def native_service(tmp_path, config_path, monkeypatch):
     monkeypatch.setattr("inferyard.runtime.lock.LEGACY_ROOT", None)
     monkeypatch.setattr("inferyard.runtime.lock.LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr("inferyard.runtime.lock.STATE_PATH", tmp_path / "host.state.json")
+    from tests.host_state_helpers import initialize
+
+    initialize()
     model = tmp_path / "模拟 fixture.gguf"
     template = tmp_path / "template.jinja"
     model.write_bytes(b"synthetic file; not inference weights")

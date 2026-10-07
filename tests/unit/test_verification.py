@@ -275,7 +275,7 @@ def loaded_source(root):
     )
 
 
-@pytest.mark.parametrize("policy", ["public-summary.v3", "public-summary.v4", "public-summary.v5"])
+@pytest.mark.parametrize("policy", ["public-summary.v5"])
 def test_public_source_and_config_preserve_mismatch_and_readiness(tmp_path, policy):
     from inferyard.reporting.comparison_report import comparison_input
     from inferyard.reporting.public_package import payloads, projection
@@ -477,7 +477,9 @@ def test_path_is_required_and_must_be_a_directory(tmp_path):
     file = tmp_path / "index.json"
     file.write_text("{}")
     for path in (file, tmp_path / "absent"):
-        with pytest.raises(EvidenceError, match="directory|invalid_verify_artifact"):
+        with pytest.raises(
+            EvidenceError, match="directory|invalid_verify_artifact|invalid_artifact_version"
+        ):
             execute(CommandRequest("verify", run=path))
 
 

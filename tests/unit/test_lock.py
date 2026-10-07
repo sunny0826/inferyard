@@ -15,6 +15,9 @@ def paths(tmp_path, monkeypatch):
     monkeypatch.setattr(locking, "LEGACY_ROOT", None)
     monkeypatch.setattr(locking, "LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr(locking, "STATE_PATH", tmp_path / "host.state.json")
+    from tests.host_state_helpers import initialize
+
+    initialize()
     if sys.platform not in ("linux", "win32", "darwin"):
         # Keep real kernel-lock/dirty-state coverage where the production process
         # identity reader is unavailable; only its service identity is synthetic.
@@ -60,6 +63,7 @@ def test_dirty_state_survives_release_and_bound_confirmation(paths):
 def test_symlink_lock_rejected(paths):
     target = paths / "target"
     target.touch(mode=0o600)
+    locking.LOCK_PATH.unlink()  # Isolated temporary lock replaced to test rejection.
     symlink_or_skip(locking.LOCK_PATH, target)
     with pytest.raises(PreflightError):
         with HostLock():

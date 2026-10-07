@@ -58,6 +58,9 @@ def execute(request, kind):
 
         plan, loaded = read_frozen_plan(local_file(root, "frozen-plan/plan.json"))
         meta = read_json(local_file(root, "batch.json"))
+        from inferyard.evidence.formats import require_core
+
+        require_core(meta, "batch")
         if (
             type(meta) is not dict
             or type(meta.get("schema_version")) is not int

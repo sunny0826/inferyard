@@ -1,8 +1,6 @@
 """Platform-specific file publication, preserving exclusive creation and no-follow opens."""
 
-import hashlib
 import os
-import re
 import stat
 from pathlib import Path
 
@@ -27,15 +25,6 @@ def resolved_within(path, root):
         return Path(value)
 
     return plain(path).is_relative_to(plain(root))
-
-
-def legacy_request_alias(name):
-    """A deterministic filename for sealed Linux request snapshots containing ':'."""
-    if re.fullmatch(
-        r"[A-Za-z0-9][A-Za-z0-9._-]*:(?:probe|warmup|formal):[1-9][0-9]*\.request\.json", name
-    ):
-        return "request-files/" + hashlib.sha256(name.encode("utf-8")).hexdigest() + ".request.json"
-    return None
 
 
 def open_nofollow(path, flags, mode=0o600):

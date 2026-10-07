@@ -279,21 +279,28 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             if arm["mode"] == "off":
                 assert not data["samples"]
                 assert not (path / "environment.jsonl").read_text()
-        from inferyard.evidence.performance_evidence import load_performance_evidence
+        from inferyard.evidence.total_applicability import load_performance_evidence_v3
         from inferyard.platforms.resources import ResourceSampler
-        from inferyard.reporting.comparison_report import build_comparison, verify_comparison
-        from inferyard.runtime.trial_runner import run_trial
 
         # An ABBA arm is not an independent subsequent target.
-        circular = load_performance_evidence(root, root / trials[1]["path"])
+        from inferyard.reporting.comparison_report import (
+            build_comparison,
+            comparison_input,
+            verify_comparison,
+        )
+        from inferyard.runtime.trial_runner import run_trial
+
+        target = root / trials[1]["path"]
+        target_data, reference = comparison_input(target)
+        circular = load_performance_evidence_v3(root, target, data=target_data, reference=reference)
         assert not circular["eligible"]
-        assert "preflight_not_before_target_in_same_boot" in circular["reasons"]
+        assert circular["assessment"] == {}
         assert "formal_trial_total_observer_evidence_missing" in circular["reasons"]
         # Isolate incremental per-metric gates in this synthetic fixture.
         # The actual full-trial path and missing-proof rejection have separate regressions.
         monkeypatch.setattr(
-            "inferyard.evidence.total_control_binding.load_total_binding",
-            lambda *args: {"eligible": True, "reasons": [], "tolerance_ratio": 0.99},
+            "inferyard.evidence.total_applicability.load_total_applicability",
+            lambda *args, **kwargs: {"eligible": True, "reasons": [], "tolerance_ratio": 0.99},
         )
         # Only this synthetic test bypasses human corpus admission.
         monkeypatch.setattr("inferyard.runtime.trial_runner.require_review", lambda bundle: None)
@@ -312,7 +319,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             assert code == 0 and data["summary"]["completeness"] == "complete"
             targets.append(path)
         comparison = build_comparison(
-            *targets, left_overhead=root, right_overhead=root, format_version=2
+            *targets, left_overhead=root, right_overhead=root, format_version=4
         )
         assert comparison["eligibility"]["performance"], comparison["performance_analysis"][
             "blockers"
@@ -341,35 +348,21 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             assert all(r["passed"] for r in result["first_event_assessments"].values())
             assert {"L01", "L02"} <= {r["metric_id"] for r in eligible}
         out = output / "performance-comparison"
-        out.mkdir()
-        (out / "comparison.json").write_bytes(json_bytes(comparison))
+        from inferyard.application.types import CommandRequest
+        from inferyard.reporting.comparison_report import execute as write_comparison
+
+        write_comparison(
+            CommandRequest(
+                "compare",
+                left=targets[0],
+                right=targets[1],
+                out=out,
+                left_overhead=root,
+                right_overhead=root,
+            )
+        )
         assert verify_comparison(out)["verified"]
         from inferyard.reporting.report import verify_report, write_report
-
-        if mode == "boundary":
-            from inferyard.reporting.report import build_index
-            from inferyard.reporting.report_assets import template_name
-            from inferyard.reporting.report_common import _environment, render_report_html
-
-            legacy = build_comparison(
-                *targets, left_overhead=root, right_overhead=root, format_version=1
-            )
-            assert "definition" not in legacy and "observed_differences" not in legacy
-            assert legacy["eligibility"]["performance"]
-            old_comparison = output / "v1-comparison"
-            old_comparison.mkdir()
-            (old_comparison / "comparison.json").write_bytes(json_bytes(legacy))
-            assert verify_comparison(old_comparison)["verified"]
-            old_report = output / "v4-report"
-            old_report.mkdir()
-            old_index = build_index(
-                targets, old_report, comparison_path=old_comparison, format_version=4
-            )
-            (old_report / "index.json").write_bytes(json_bytes(old_index))
-            (old_report / "report.html").write_text(
-                render_report_html(_environment(), template_name(4), old_index)
-            )
-            assert verify_report(old_report)["verified"]
 
         report = output / "linked-performance-report"
         index = write_report(targets, report, comparison_path=out)
@@ -450,9 +443,9 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             filter_candidates({**spec, "reference": str(targets[1])}, output)
         comparison["performance_evidence"][0]["eligible"] = False
         (out / "comparison.json").write_bytes(json_bytes(comparison))
-        with pytest.raises(EvidenceError, match="recomputation_mismatch"):
+        with pytest.raises(EvidenceError, match="presentation_bytes_changed"):
             verify_comparison(out)
-        with pytest.raises(EvidenceError, match="recomputation_mismatch"):
+        with pytest.raises(EvidenceError, match="presentation_bytes_changed"):
             verify_report(report)
-        with pytest.raises(EvidenceError, match="recomputation_mismatch"):
+        with pytest.raises(EvidenceError, match="presentation_bytes_changed"):
             filter_candidates(spec, output)

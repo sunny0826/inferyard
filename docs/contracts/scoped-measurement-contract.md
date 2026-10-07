@@ -15,7 +15,7 @@ Python 实现/版本与 httpx/httpcore/anyio/h11/certifi/idna、jsonschema 及�
 每命令一个上下文计算一次并显式传给 journal、batch、rerun；原评分上下文计数保持。
 
 旧 run/batch 缺少此字段时保持旧全包身份条件。新 rerun/batch 按 measurement/scoring
-匹配，呈现修改不阻断执行；旧身份不改值。比较 v3 按指标读取对应身份，v1/v2 不变。
+匹配，呈现修改不阻断执行；旧身份不改值。当前比较 format4 / phase2.v3 按指标读取对应身份；旧格式由 ADR038 停止支持。
 报告 v6 使用 v3 隐式比较；报告 v5 保留 v2，v1–v4 保留 v1。
 新目录模型清单声明 model-assets.v2，列相对路径与内容哈希；根路径只用于定位。
 旧清单缺声明时仍全目录核验；目录中的缓存/README 不属于新资产集合。
@@ -82,7 +82,7 @@ config/generation_config、tokenizer/vocab/merges/spiece、added_tokens.json 附
 核验。v3 消费核验过程中返回的两个 on 臂，不按路径长期缓存，不重复读取目标 ledger。
 可选 protocol.json/trials.json 仍独立核验；增量失败不代替总开销判断。首事件、引擎速率等
 专项指标仍须其原有目标绑定、环境、同 boot 先后和专项估计通过，不由总开销单独放行。
-已有 v1/v2 比较文件仍要求其原双证据/容差规则。
+已有 comparison1–3 文件由 ADR038 明确拒绝；当前资格规则保持。
 
 新适用域仅移除明确定位字段（endpoint、输出目录、模型/模板/二进制/库清单路径、输入引用
 路径），启动参数保留加载选项并规范化已绑定资产定位值。设备、模型/引擎摘要、运行库、

@@ -116,28 +116,6 @@ def validate_provenance(bundle):
     return result
 
 
-def upgrade_legacy_bundle(source):
-    """Copy dict input, or preserve exact JSON text; never synthesize approval.
-
-    Unreviewed corpora may be migrated for diagnostic use, but require_review
-    continues to reject them. Callers must keep the original artifact as well.
-    """
-    from inferyard.config.bundle import content_hash, validate_bundle
-
-    raw = source if type(source) is str else _canonical(source)
-    source = strict_json_loads(raw)
-    current, _ = _legacy_source(source)
-    current["review_provenance"] = [
-        {
-            "source_json": raw,
-            "source_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
-            "source_content_sha256": content_hash(source),
-        }
-    ]
-    validate_bundle(current)
-    return current
-
-
 def case_content_hash(bundle, case):
     """Review identity excludes display/license metadata, never execution content."""
     value = {

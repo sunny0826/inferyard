@@ -37,7 +37,6 @@ LEGACY_INPUTS = [
     ["report-check", "--run", "source"],
     ["compare", "--left", "a", "--right", "b", "--out", "out", "--left-overhead", "oh"],
     ["compare-check", "--run", "source"],
-    ["migrate", "--run", "source", "--out", "out"],
     ["filter-candidates", "--spec", "filter.json", "--out", "out"],
     [
         "overhead",

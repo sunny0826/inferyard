@@ -1,4 +1,4 @@
-"""Simulate Windows drive layouts with real host kernel locks and durable states."""
+"""Real kernel locks and fixed-old-baseline retirement, only in temporary roots."""
 
 import os
 import subprocess
@@ -7,32 +7,30 @@ from types import SimpleNamespace
 import pytest
 
 import inferyard.runtime.lock as locking
-from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, read_json
+from inferyard.evidence.storage import atomic_bytes, json_bytes, read_json
 from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.windows_host_paths import common_data_root
+from inferyard.runtime import host_migration
+from inferyard.runtime.host_receipt import receipt_path
 from tests.helpers import python_worker, readline_timeout
+from tests.host_state_helpers import old_lock
 
 
 @pytest.fixture
 def paths(tmp_path, monkeypatch):
-    common = tmp_path / "ProgramData"
+    common, legacy = tmp_path / "ProgramData", tmp_path / "D"
     common.mkdir()
-    legacy = tmp_path / "D"
-    monkeypatch.setattr(locking, "LOCK_PATH", common / "local-ai-benchmark-host.lock")
-    monkeypatch.setattr(locking, "STATE_PATH", common / "local-ai-benchmark-host.state.json")
+    monkeypatch.setattr(locking, "LOCK_PATH", common / "inferyard-host.lock")
+    monkeypatch.setattr(locking, "STATE_PATH", common / "inferyard-host.state.json")
     monkeypatch.setattr(locking, "LEGACY_ROOT", legacy)
     return legacy, common
 
 
-def dirty_state(token="old-token"):
-    return {
-        "schema_version": 1,
-        "dirty": True,
-        "dirty_token": token,
-        "run_id": "old-run",
-        "server_pid": 111,
-        "process_start_ticks": 222,
-    }
+def clean(root, value=None):
+    atomic_bytes(
+        root / "local-ai-benchmark-host.state.json",
+        json_bytes(value or {"schema_version": 1, "dirty": False}),
+    )
 
 
 def test_system_folder_comes_from_native_common_appdata_not_user_environment(monkeypatch):
@@ -57,173 +55,278 @@ def test_system_folder_comes_from_native_common_appdata_not_user_environment(mon
     assert seen == [(None, 0x0023, None, 0)]
 
 
-def test_no_d_drive_uses_common_lock_and_retains_dirty(paths):
-    legacy, _ = paths
-    with locking.HostLock() as lock:
-        lock.write(dirty_state())
-        with pytest.raises(PreflightError, match="host_lock_unavailable"):
-            locking.HostLock().__enter__()
+def test_new_check_lock_only_does_not_poison_fresh_initialization(paths):
+    legacy, common = paths
+    with pytest.raises(PreflightError, match="initialization_required"):
+        locking.HostLock().__enter__()
+    assert locking.LOCK_PATH.exists() and not locking.STATE_PATH.exists()
+    assert host_migration.migrate()["mode"] == "fresh"
+    inode = (common / "local-ai-benchmark-host.lock").stat().st_ino
+    with pytest.raises(PreflightError, match="invalid_host_state"):
+        old_lock(common).__enter__()
+    assert (common / "local-ai-benchmark-host.lock").stat().st_ino == inode
     assert not legacy.exists()
     with locking.HostLock() as lock:
-        assert lock.state == dirty_state()
+        assert not lock.state["dirty"]
 
 
-def test_old_dirty_requires_same_manual_recovery_and_is_mirrored(paths, monkeypatch):
-    legacy, _ = paths
+@pytest.mark.parametrize("d_exists", [False, True])
+def test_original_bytes_receipt_retirement_order_and_inode(paths, monkeypatch, d_exists):
+    legacy, common = paths
+    roots = [common]
+    if d_exists:
+        legacy.mkdir()
+        roots.append(legacy)
+    originals, inodes = {}, {}
+    for root in roots:
+        clean(root)
+        with old_lock(root):
+            pass
+        originals[str(root)] = (root / "local-ai-benchmark-host.state.json").read_bytes()
+        inodes[root] = (root / "local-ai-benchmark-host.lock").stat().st_ino
+    stages = []
+    monkeypatch.setattr(host_migration, "_checkpoint", stages.append)
+    result = host_migration.migrate()
+    assert result["ready_to_run"] is False and result["mode"] == "migrate"
+    assert stages == [
+        "locks",
+        "receipt",
+        "pending",
+        "retired_common",
+        *(["retired_d"] if d_exists else []),
+        "ready",
+    ]
+    from inferyard.runtime.host_receipt import original
+
+    receipt = read_json(receipt_path())
+    assert {s["root"]: original(s) for s in receipt["slots"]} == originals
+    for root in roots:
+        assert (root / "local-ai-benchmark-host.lock").stat().st_ino == inodes[root]
+    with pytest.raises(PreflightError, match="invalid_host_state"):
+        old_lock(common, legacy).__enter__()
+
+
+def test_ready_normal_use_ignores_old_locks_and_later_d(paths):
+    legacy, common = paths
+    host_migration.migrate()
     legacy.mkdir()
-    state_path = legacy / "local-ai-benchmark-host.state.json"
-    atomic_bytes(state_path, json_bytes(dirty_state()))
-    monkeypatch.setattr(locking, "process_start_ticks", lambda pid: 222)
-    with locking.HostLock() as lock:
-        assert lock.state == dirty_state()
-        assert read_json(locking.STATE_PATH) == dirty_state()
-        with pytest.raises(PreflightError, match="old_service_still_alive"):
-            lock.verify_manual_recovery("old-token", "restarted", {"server_pid": 333})
-
-        def gone(pid):
-            raise PreflightError("service_process_unavailable")
-
-        monkeypatch.setattr(locking, "process_start_ticks", gone)
-        assert lock.verify_manual_recovery(
-            "old-token", "restarted", {"server_pid": 333, "process_start_ticks": 444}
-        )["old_process_gone"]
-        lock.clean()
-    assert not read_json(state_path)["dirty"]
-    assert read_json(state_path) == read_json(locking.STATE_PATH)
-
-
-def test_old_version_lock_and_new_version_exclude_each_other(paths):
-    legacy, _ = paths
-    legacy.mkdir()
-    old_path = legacy / "local-ai-benchmark-host.lock"
-    fd = locking.open_nofollow(old_path, os.O_RDWR | os.O_CREAT)
+    clean(legacy)
+    old = old_lock(common, legacy)
+    with pytest.raises(PreflightError, match="invalid_host_state"):
+        old.__enter__()
+    (legacy / "local-ai-benchmark-host.state.json").write_bytes(b"broken")
+    fd = locking.open_nofollow(common / "local-ai-benchmark-host.lock", os.O_RDWR)
     try:
         locking._lock(fd)
-        candidate = locking.HostLock()
-        with pytest.raises(PreflightError, match="host_lock_unavailable"):
-            candidate.__enter__()
-        assert not candidate._fds and candidate.fd is None
+        with locking.HostLock() as new:
+            new.dirty(
+                "run",
+                {"url": "http://127.0.0.1:1", "server_pid": 111, "process_start_ticks": 222},
+                "request",
+            )
+            assert new.state["migration"]["phase"] == "ready"
     finally:
         os.close(fd)
-    with locking.HostLock():
-        fd = locking.open_nofollow(old_path, os.O_RDWR)
+    raw = locking.STATE_PATH.read_bytes()
+    with pytest.raises(PreflightError):
+        host_migration.migrate()
+    assert locking.STATE_PATH.read_bytes() == raw
+
+
+@pytest.mark.parametrize(
+    "damage",
+    ["lock_only", "dirty", "bad_json", "bool_version", "symlink", "hardlink", "permissions"],
+)
+def test_old_state_fail_closed_preserves_bytes(paths, damage):
+    legacy, common = paths
+    legacy.mkdir()
+    clean(common)
+    path = legacy / "local-ai-benchmark-host.state.json"
+    if damage == "lock_only":
+        (legacy / "local-ai-benchmark-host.lock").touch(mode=0o600)
+    elif damage == "symlink":
+        from tests.helpers import symlink_or_skip
+
+        symlink_or_skip(path, common / "local-ai-benchmark-host.state.json")
+    elif damage == "hardlink":
+        os.link(common / "local-ai-benchmark-host.state.json", path)
+    else:
+        value = {
+            "schema_version": True if damage == "bool_version" else 1,
+            "dirty": damage == "dirty",
+        }
+        clean(legacy, value)
+        if damage == "bad_json":
+            path.write_bytes(b"bad")
+        if damage == "permissions":
+            if os.name == "nt":
+                pytest.skip("POSIX mode case; Windows native ACL verification remains separate")
+            path.chmod(0o644)
+    before = path.read_bytes() if path.exists() else None
+    with pytest.raises(PreflightError):
+        host_migration.migrate()
+    assert (path.read_bytes() if path.exists() else None) == before
+    assert not receipt_path().exists() and not locking.STATE_PATH.exists()
+    for root in (common, legacy):
+        fd = locking.open_nofollow(root / "local-ai-benchmark-host.lock", os.O_RDWR)
         try:
-            with pytest.raises(OSError):
-                locking._lock(fd)
+            locking._lock(fd)
         finally:
             os.close(fd)
 
 
-def test_legacy_process_crash_preserves_dirty_and_releases_both_locations(paths):
-    legacy, _ = paths
+@pytest.mark.parametrize(
+    "stage", ["locks", "receipt", "pending", "retired_common", "retired_d", "ready"]
+)
+def test_process_kill_retry_same_receipt_without_reset(paths, stage):
+    legacy, common = paths
     legacy.mkdir()
+    clean(legacy)
+    clean(common)
     script = """
 import sys, time
 from pathlib import Path
-import inferyard.runtime.lock as locking
-locking.LEGACY_ROOT = None
-locking.LOCK_PATH = Path(sys.argv[1]) / 'local-ai-benchmark-host.lock'
-locking.STATE_PATH = Path(sys.argv[1]) / 'local-ai-benchmark-host.state.json'
-with locking.HostLock() as lock:
-    lock.dirty('legacy-crash', {'url': 'http://127.0.0.1:1', 'server_pid': 111,
-                              'process_start_ticks': 222}, 'pending')
-    print('ready', flush=True)
-    time.sleep(30)
+import inferyard.runtime.lock as lock
+from inferyard.runtime import host_migration as migration
+lock.LOCK_PATH = Path(sys.argv[1]) / 'inferyard-host.lock'
+lock.STATE_PATH = Path(sys.argv[1]) / 'inferyard-host.state.json'
+lock.LEGACY_ROOT = Path(sys.argv[2])
+def checkpoint(stage):
+    if stage == sys.argv[3]:
+        print('paused', flush=True)
+        time.sleep(30)
+migration._checkpoint = checkpoint
+migration.migrate()
 """
-    child = subprocess.Popen(python_worker(script, str(legacy)), stdout=subprocess.PIPE, text=True)
+    child = subprocess.Popen(
+        python_worker(script, str(common), str(legacy), stage), stdout=subprocess.PIPE, text=True
+    )
     try:
-        assert readline_timeout(child, 5) == "ready"
+        assert readline_timeout(child) == "paused"
         with pytest.raises(PreflightError, match="host_lock_unavailable"):
-            locking.HostLock().__enter__()
+            host_migration.migrate()
+        raw = receipt_path().read_bytes() if receipt_path().exists() else None
         child.kill()
-        child.wait(timeout=5)
-        with locking.HostLock() as lock:
-            assert lock.state["dirty"] and lock.state["run_id"] == "legacy-crash"
-            assert read_json(locking.STATE_PATH) == lock.state
+        child.wait(timeout=8)
+        if stage != "ready":
+            with pytest.raises(PreflightError):
+                locking.HostLock().__enter__()
+        if stage in ("retired_common", "retired_d", "ready"):
+            with pytest.raises(PreflightError, match="invalid_host_state"):
+                old_lock(common, legacy).__enter__()
+        assert host_migration.migrate()["status"] in ("migrated", "already_migrated")
+        if raw is not None:
+            assert receipt_path().read_bytes() == raw
+        with locking.HostLock() as ready:
+            assert ready.state["dirty"] is False
     finally:
         if child.poll() is None:
             child.kill()
-            child.wait(timeout=5)
+            child.wait(timeout=8)
         child.stdout.close()
 
 
-@pytest.mark.parametrize("operation", ["dirty", "clean"])
-def test_interrupted_mirror_write_never_forgets_dirty_and_releases_all_locks(
-    paths, monkeypatch, operation
-):
-    legacy, _ = paths
-    legacy.mkdir()
-    original = locking.atomic_bytes
+def test_old_state_change_after_receipt_requires_investigation(paths, monkeypatch):
+    _, common = paths
+    clean(common)
+
+    def crash(stage):
+        if stage == "receipt":
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(host_migration, "_checkpoint", crash)
+    with pytest.raises(KeyboardInterrupt):
+        host_migration.migrate()
+    receipt = receipt_path().read_bytes()
+    path = common / "local-ai-benchmark-host.state.json"
+    path.write_bytes(b'{"dirty":false, "schema_version":1}\n')
+    monkeypatch.setattr(host_migration, "_checkpoint", lambda stage: None)
+    with pytest.raises(PreflightError, match="source_changed_investigate"):
+        host_migration.migrate()
+    assert receipt_path().read_bytes() == receipt and not locking.STATE_PATH.exists()
+
+
+def test_ready_reentry_cannot_clear_dirty_and_receipt_loss_cannot_reinitialize(paths):
+    host_migration.migrate()
     with locking.HostLock() as lock:
-        if operation == "clean":
-            lock.write(dirty_state())
-
-        def interrupted(path, content, **kwargs):
-            if path == locking.STATE_PATH:
-                raise EvidenceError("simulated_crash")
-            original(path, content, **kwargs)
-
-        monkeypatch.setattr(locking, "atomic_bytes", interrupted)
-        with pytest.raises(EvidenceError, match="simulated_crash"):
-            lock.clean() if operation == "clean" else lock.write(dirty_state())
-    monkeypatch.setattr(locking, "atomic_bytes", original)
-    with locking.HostLock() as lock:
-        assert lock.state["dirty"]
-    assert read_json(legacy / "local-ai-benchmark-host.state.json") == read_json(locking.STATE_PATH)
-
-
-def test_conflicting_dirty_states_fail_closed_and_unlock(paths):
-    legacy, _ = paths
-    legacy.mkdir()
-    atomic_bytes(legacy / "local-ai-benchmark-host.state.json", json_bytes(dirty_state()))
-    atomic_bytes(locking.STATE_PATH, json_bytes(dirty_state("different-token")))
-    lock = locking.HostLock()
-    with pytest.raises(PreflightError, match="conflicting_host_dirty_states"):
-        lock.__enter__()
-    assert lock.fd is None and lock._fds == []
-
-
-def test_unreadable_existing_d_drive_is_not_treated_as_absent(paths, monkeypatch):
-    legacy, _ = paths
-    original = type(legacy).stat
-
-    def stat(path, *args, **kwargs):
-        if path == legacy:
-            raise PermissionError("D unavailable")
-        return original(path, *args, **kwargs)
-
-    monkeypatch.setattr(type(legacy), "stat", stat)
-    with pytest.raises(PreflightError, match="host_lock_unavailable"):
+        lock.dirty(
+            "run",
+            {"url": "http://127.0.0.1:1", "server_pid": 111, "process_start_ticks": 222},
+            "request",
+        )
+    raw = locking.STATE_PATH.read_bytes()
+    with pytest.raises(PreflightError, match="new_dirty_use_recovery"):
+        host_migration.migrate()
+    assert locking.STATE_PATH.read_bytes() == raw
+    receipt_path().unlink()  # Deliberate damage to this test's temporary evidence.
+    with pytest.raises(PreflightError):
         locking.HostLock().__enter__()
+    with pytest.raises(PreflightError):
+        host_migration.migrate()
+    assert locking.STATE_PATH.read_bytes() == raw
 
 
-def test_unreadable_legacy_state_is_not_ignored_and_all_locks_are_released(paths, monkeypatch):
-    legacy, _ = paths
-    legacy.mkdir()
-    state_path = legacy / "local-ai-benchmark-host.state.json"
-    atomic_bytes(state_path, json_bytes(dirty_state()))
-    original = type(state_path).stat
-    original_lstat = type(state_path).lstat
+def test_old_running_process_excludes_migration(paths):
+    _, common = paths
+    script = """
+import sys, time
+from pathlib import Path
+from tests.host_state_helpers import old_lock
+with old_lock(Path(sys.argv[1])):
+    print('held', flush=True)
+    time.sleep(30)
+"""
+    child = subprocess.Popen(python_worker(script, str(common)), stdout=subprocess.PIPE, text=True)
+    try:
+        assert readline_timeout(child) == "held"
+        with pytest.raises(PreflightError, match="host_lock_unavailable"):
+            host_migration.migrate()
+        assert not receipt_path().exists()
+    finally:
+        child.kill()
+        child.wait(timeout=8)
+        child.stdout.close()
 
-    def stat(path, *args, **kwargs):
-        if path == state_path:
-            raise PermissionError("old state unreadable")
-        return original(path, *args, **kwargs)
 
-    monkeypatch.setattr(type(state_path), "stat", stat)
+@pytest.mark.parametrize(
+    "damage", ["extra_slot", "identity_type", "fresh_with_original", "state_identity_null"]
+)
+def test_receipt_shape_damage_fails_closed(paths, damage):
+    _, common = paths
+    clean(common)
+    host_migration.migrate()
+    before = locking.STATE_PATH.read_bytes()
+    value = read_json(receipt_path())
+    if damage == "extra_slot":
+        value["slots"].insert(0, 42)
+    elif damage == "identity_type":
+        value["slots"][0]["lock_identity"]["inode"] = True
+    elif damage == "fresh_with_original":
+        value["mode"] = "fresh"
+    else:
+        value["slots"][0]["state_identity"] = None
+    atomic_bytes(receipt_path(), json_bytes(value), overwrite=True)
+    for action in (lambda: locking.HostLock().__enter__(), host_migration.migrate):
+        with pytest.raises(PreflightError):
+            action()
+        assert locking.STATE_PATH.read_bytes() == before
 
-    def lstat(path, *args, **kwargs):
-        if path == state_path:
-            raise PermissionError("old state unreadable")
-        return original_lstat(path, *args, **kwargs)
 
-    monkeypatch.setattr(type(state_path), "lstat", lstat)
-    lock = locking.HostLock()
-    with pytest.raises(PreflightError, match="host_lock_unavailable"):
-        lock.__enter__()
-    assert lock.fd is None and not lock._fds
-    monkeypatch.setattr(type(state_path), "stat", original)
-    monkeypatch.setattr(type(state_path), "lstat", original_lstat)
-    assert read_json(state_path) == dirty_state()
-    with locking.HostLock() as lock:
-        assert lock.state == dirty_state()
+def test_racing_old_lock_creation_is_not_recorded_as_fresh(paths, monkeypatch):
+    _, common = paths
+    path = common / "local-ai-benchmark-host.lock"
+    actual_open = locking.open_nofollow
+    raced = False
+
+    def race(target, flags, *args):
+        nonlocal raced
+        if target == path and flags & os.O_EXCL and not raced:
+            raced = True
+            fd = actual_open(target, flags, *args)
+            os.close(fd)  # The old process crashed before writing its state.
+        return actual_open(target, flags, *args)
+
+    monkeypatch.setattr(locking, "open_nofollow", race)
+    with pytest.raises(PreflightError, match="old_lock_only_investigate"):
+        host_migration.migrate()
+    assert raced and not receipt_path().exists() and not locking.STATE_PATH.exists()

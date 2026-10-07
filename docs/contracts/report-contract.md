@@ -2,7 +2,7 @@
 
 依据 [ADR 011](../decisions/011-report-dashboard.md)、[ADR 033](../decisions/033-svg-generative-category.md)
 及 [ADR037](../decisions/037-offline-evidence-reading.md)。新建报告 `schema_version = 3`、
-`report_format_version = 7`；接受历史 v1–v6，按原投影和模板重算，不迁移或覆盖旧 HTML。
+`report_format_version = 7`；仅接受 v7；历史 v1–v6 返回 unsupported_format/2，旧 HTML 交原项目处理。
 各版本 `template_sha256` 绑定所用模板目录内排序后的文件名与字节，包含样式、脚本和子模板。
 v7 将模板摘要保留为生成溯源，另封存 HTML 字节并核验来源和数据语义；重渲染是显式选项，
 见[离线读取契约](offline-reading-contract.md)。`script-src` 的 SHA-256 按所渲染模板版本的
@@ -22,7 +22,7 @@ v4 在运行概览 KPI 之后新增 `svg_gallery` 与「SVG 生成展示 · 不�
 整栏图形原始渲染，附题面、解析状态、字节数、耗时、输出 token 与题目详情锚点；提取失败
 （`not_found`/`malformed`/`too_large`）降级为状态说明，不渲染。无 svg 题的运行为空列表，
 不渲染该区段。画廊与逐题 `svg_view` 同源自 request 的 `content` 现算，渲染规则与安全
-约束同下节；非 SVG 行零字段变化，v1–v3 投影不含 `svg_gallery`。
+约束同下节；当前非 SVG 行保留既有语义。
 
 ## v3 SVG 展示与 CSP
 
@@ -41,7 +41,7 @@ stdlib XML 解析禁止 DTD，根元素须为 SVG；非法 XML 为 `malformed`�
 原始 CSS 可能影响页面布局；XML 检查不评价图形质量或布局隔离。
 证据资格遵循[总规则](../data-contract.md#证据血缘与比较结论)。
 
-报告完整性、诊断 / 迁移和比较资格继续分别展示；单次资源读数不授予严格比较资格。报告使用已封存数据，来源源码与报告生成源码分别记录。原始 trial 仍由 manifest / `read_trial` 核验，派生报告通过 `inferyard verify --path REPORT`。
+报告完整性、诊断和比较资格继续分别展示；单次资源读数不授予严格比较资格。报告使用已封存数据，来源源码与报告生成源码分别记录。原始 trial 仍由 manifest / `read_trial` 核验，派生报告通过 `inferyard verify --path REPORT`。
 
 比较产物的 `schema_version`、`format_version` 必须是整数；离线重建结果按规范 JSON
 逐项核对，嵌套布尔、整数与浮点数不能利用 Python 宽松相等互相冒充。
@@ -52,15 +52,15 @@ stdlib XML 解析禁止 DTD，根元素须为 SVG；非法 XML 为 `malformed`�
 ## v5 描述性比较
 
 [ADR035](../decisions/035-purpose-specific-admission.md) 新增 comparison format v2 /
-phase2.v2。v5 的隐式比较使用此定义；v1–v4 的隐式比较保留 phase2.v1，关联比较则按
-comparison.json 自身版本重算。执行 plan/run 标记保持 phase2.v1。
+phase2.v2；现由 ADR038 收敛为 comparison4 / phase2.v3 与 report7。旧格式不再重算。
+执行 plan/run 标记保持 phase2.v1。
 observed_differences 展示同口径完成率/质量观测、逐题记录、条件差异与样本范围。
 质量总体差值要求相同题目内容、答案政策、规则、协议、评分器、分母及完整评分。
 性能先展示匹配定义/来源/单位的双侧值；无开销/环境/逐指标资格时差值仍为 null。
 eligibility 继续表达受控结论资格，不用描述性字段授予因果或性能结论。
 
-## v6 / v7 兼容边界
+## 当前 v7 边界
 
-v6 隐式比较采用 comparison v3 / phase2.v3，校准适用域见
+当前隐式比较采用 comparison4 / phase2.v3，校准适用域见
 [职责身份契约](scoped-measurement-contract.md)。v7 沿用此计算语义，新增呈现封存和来源相对定位；
-comparison v4 同样只改变封存/定位结构。关联比较始终按自身版本核验。
+comparison v4 同样只改变封存/定位结构。关联比较仅接受 format4。

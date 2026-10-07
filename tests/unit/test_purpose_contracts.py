@@ -9,14 +9,13 @@ from inferyard.config.bundle import content_hash, require_review
 from inferyard.config.bundle_review import approved_cases, case_content_hash
 from inferyard.config.environment_binding import admission
 from inferyard.contracts.validation import ContractError, Document
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.evidence.storage import json_bytes
 from inferyard.platforms.identity import PreflightError
 from inferyard.reporting.comparison_report import (
     build_comparison,
     comparison_input,
     read_verified_comparison,
 )
-from inferyard.reporting.report import build_index, verify_report, write_report
 from inferyard.runtime.service_reuse import require_transition
 from tests.helpers import fixture_run
 
@@ -30,7 +29,7 @@ def test_side_by_side_observed_quality_with_device_and_engine_differences(pair):
     a, b = pair
     b["config"]["device"]["id"] = "different"
     b["config"]["engine"]["release"] = "different"
-    result = compare_trials(a, b, definition="phase2.v2")
+    result = compare_trials(a, b, definition="phase2.v3")
     assert not result["eligibility"]["quality"]
     observed = result["observed_differences"]
     assert observed["completion_rate"]["difference"] == 0
@@ -58,7 +57,7 @@ def test_quality_overall_null_when_content_or_scope_does_not_match(pair, change)
         b["summary"]["counts"]["valid_executed"] -= 1
     else:
         b["summary"]["completeness"] = "incomplete"
-    observed = compare_trials(a, b, definition="phase2.v2")["observed_differences"]
+    observed = compare_trials(a, b, definition="phase2.v3")["observed_differences"]
     assert all(row["difference"] is None for row in observed["quality"])
     assert observed["per_case"]
 
@@ -66,36 +65,24 @@ def test_quality_overall_null_when_content_or_scope_does_not_match(pair, change)
 def test_only_offline_v2_ignores_legacy_comparison_marker(pair):
     a, b = pair
     b["run"]["definition_versions"]["comparison"] = "legacy-marker"
-    old = compare_trials(a, b)
-    new = compare_trials(a, b, definition="phase2.v2")
-    assert "run.definition_versions:different" in old["blockers"]
+    new = compare_trials(a, b, definition="phase2.v3")
     assert all("comparison" not in c["field"] for c in new["conditions"])
     b["run"]["definition_versions"]["measurement"] = "different"
-    changed = compare_trials(a, b, definition="phase2.v2")["observed_differences"]
+    changed = compare_trials(a, b, definition="phase2.v3")["observed_differences"]
     assert changed["completion_rate"]["difference"] is None
 
 
 @pytest.mark.parametrize("version", [1, 2, 3])
-def test_comparison_and_linked_reports_dispatch_own_version(tmp_path, version):
-    roots = [fixture_run(tmp_path / s) for s in ("a", "b")]
-    out = tmp_path / "comparison"
-    out.mkdir()
-    value = build_comparison(*roots, format_version=version)
-    (out / "comparison.json").write_bytes(json_bytes(value))
-    assert read_verified_comparison(out) == value
-    for report_version in range(1, 7):
-        index = build_index(
-            roots, tmp_path / "report", comparison_path=out, format_version=report_version
-        )
-        assert index["comparison"] == value
-    report = tmp_path / "report"
-    index = write_report(roots, report, comparison_path=out)
-    assert index["report_format_version"] == 7
-    assert verify_report(report)["verified"]
-    value["format_version"] = 5
-    (out / "comparison.json").write_bytes(json_bytes(value))
-    with pytest.raises(EvidenceError, match="comparison_format_invalid"):
-        read_verified_comparison(out)
+def test_old_comparison_rejected_before_source_loading(tmp_path, version):
+    from inferyard.evidence.formats import UnsupportedFormat
+
+    (tmp_path / "comparison.json").write_bytes(
+        json_bytes({"schema_version": 3, "format_version": version})
+    )
+    with pytest.raises(UnsupportedFormat):
+        read_verified_comparison(tmp_path)
+    with pytest.raises(UnsupportedFormat):
+        build_comparison(tmp_path / "missing", tmp_path / "missing2", format_version=version)
 
 
 @pytest.mark.parametrize("diagnostic", [False, True])
@@ -301,13 +288,13 @@ def test_v2_definition_checks_apply_to_their_metric_family(pair):
     for d in pair:
         d["plan"]["experiment"]["comparison"] = {"mode": "model", "factor": None}
     b["run"]["definition_versions"]["scoring"] = "different"
-    result = compare_trials(a, b, definition="phase2.v2")
+    result = compare_trials(a, b, definition="phase2.v3")
     assert not result["eligibility"]["quality"]
     assert result["eligibility"]["completion"]
     assert not any("scoring" in reason for reason in result["blockers"])
     b["run"]["definition_versions"]["scoring"] = a["run"]["definition_versions"]["scoring"]
     b["run"]["definition_versions"]["measurement"] = "different"
-    result = compare_trials(a, b, definition="phase2.v2")
+    result = compare_trials(a, b, definition="phase2.v3")
     assert result["eligibility"]["quality"]
     assert not result["eligibility"]["completion"]
     assert any(

@@ -123,10 +123,3 @@ def require_review(bundle):
     if approved(bundle) or any(inherited):
         return
     raise ContractError("bundle.review_records", "human_corpus_review_required")
-
-
-def upgrade_legacy_bundle(source):
-    """Explicitly migrate a legacy corpus, retaining its original review evidence."""
-    from inferyard.config.bundle_review import upgrade_legacy_bundle as upgrade
-
-    return upgrade(source)

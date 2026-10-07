@@ -1,4 +1,4 @@
-"""Strict v1/v2 observer record validation; no live backend or model requests."""
+"""Strict v2 observer record validation; no live backend or model requests."""
 
 from __future__ import annotations
 
@@ -110,7 +110,7 @@ def header(item: dict) -> None:
             "benchmark_binding",
             "clock",
         }
-        | ({"disk_scope"} if item["definition"] == "lab_observer.v2" else set()),
+        | {"disk_scope"},
     )
     require(item["kind"] == "observer_header")
     require(item["clock"] == "session_monotonic_ns_not_benchmark_clock")
@@ -125,11 +125,10 @@ def header(item: dict) -> None:
     target(item["targets"][0])
     target(item["observer_target"])
     binding = item["benchmark_binding"]
-    if item["definition"] == "lab_observer.v2":
-        require(
-            item["disk_scope"]
-            == ("benchmark_run_filesystem" if binding is not None else "observer_cwd_filesystem")
-        )
+    require(
+        item["disk_scope"]
+        == ("benchmark_run_filesystem" if binding is not None else "observer_cwd_filesystem")
+    )
     if binding is not None:
         fields(
             binding,

@@ -18,11 +18,13 @@ from inferyard.config.plan_inputs import (
 )
 from inferyard.config.plan_math import plan_hash, workload_budget
 from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.evidence.formats import require_core, require_input
 from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes
 
 
 def compile_plan(experiment):
     """Expand a validated definition. Source/capability verification is separate."""
+    require_input(experiment, "experiment")
     validate_document("experiment", experiment)
     if experiment.get("capacity_stop") is not None and any(
         w["protocol"]["kind"] != "fixed"
@@ -96,6 +98,8 @@ def compile_plan(experiment):
         ],
     }
     plan["plan_sha256"] = plan_hash(plan)
+    require_core(plan, "plan")
+    require_core(plan["experiment"], "experiment")
     validate_document("plan", plan)
     return plan
 
@@ -132,6 +136,7 @@ def prepare_plan(source: Path):
                     loaded[kind] = strict_json_loads(content.decode())
                 except UnicodeError as exc:
                     raise ContractError("experiment.workloads", "invalid source encoding") from exc
+                require_input(loaded[kind], kind)
                 validate_document(kind, loaded[kind])
             previous = artifacts.get(reference["path"])
             if previous is not None and previous != content:
@@ -151,6 +156,8 @@ def prepare_plan(source: Path):
         plan["runtime_bindings"].append(binding)
         artifacts[binding["config"]["path"]] = snapshot
     plan["plan_sha256"] = plan_hash(plan)
+    require_core(plan, "plan")
+    require_core(plan["experiment"], "experiment")
     validate_document("plan", plan)
     return plan, artifacts
 

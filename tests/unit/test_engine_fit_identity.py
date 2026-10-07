@@ -348,10 +348,16 @@ def test_asset_v2_excludes_documentation_cache_and_location(tmp_path, monkeypatc
     (root / "README.md").write_bytes(b"changed")
     (cache / "more.bin").write_bytes(b"cache")
     assert model_asset_manifest(root) == first
-    old = model_asset_manifest(root, definition=None)
+    from inferyard.evidence.formats import UnsupportedFormat
+
+    with pytest.raises(UnsupportedFormat):
+        model_asset_manifest(root, definition=None)
+    old = fit.model_manifest(root)
     assert "definition" not in old
     assert len(old["files"]) == 7
-    assert _manifest({"definition": "engine_fit_plan.v4", "model": old}) == old
+    assert _manifest({"definition": "engine_fit_plan.v1", "model": old}) == old
+    with pytest.raises(UnsupportedFormat):
+        _manifest({"definition": "engine_fit_plan.v4", "model": old})
     relocated = tmp_path / "second"
     root.rename(relocated)
     second = model_asset_manifest(relocated)
@@ -371,14 +377,18 @@ def test_added_token_vocabulary_is_bound_in_frozen_and_runtime_assets(tmp_path, 
     extra = tmp_path / "added_tokens.json"
     if change != "add":
         extra.write_text('{"alpha":100}')
-    before = model_asset_manifest(tmp_path, definition=definition)
-    plan = {"definition": "engine_fit_plan.v4", "model": before}
+    manifest = fit.model_manifest if definition is None else model_asset_manifest
+    before = manifest(tmp_path)
+    plan = {
+        "definition": "engine_fit_plan.v1" if definition is None else "engine_fit_plan.v4",
+        "model": before,
+    }
     assert _manifest(plan) == before
     if change == "delete":
         extra.unlink()
     else:
         extra.write_text('{"beta":100}')
-    after = model_asset_manifest(tmp_path, definition=definition)
+    after = manifest(tmp_path)
     assert before["sha256"] != after["sha256"]
     assert _manifest(plan) == after
     assert (extra.name in {row["path"] for row in after["files"]}) == (change != "delete")

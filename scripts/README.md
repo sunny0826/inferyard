@@ -16,7 +16,7 @@
 | 扫描准备 | [prepare_length_scan.py](prepare_length_scan.py)、[prepare_position_scan.py](prepare_position_scan.py) | 从准备证据生成新实验定义，检查各脚本要求 |
 | 原生采集 | [collect_windows_machine.py](collect_windows_machine.py)、[collect_thermal_diagnostic.py](collect_thermal_diagnostic.py) | 读取设备/温度与来源，写诊断，不等于模型测评 |
 | 观察器 | [build_observer.py](build_observer.py)、[analyze_observer.py](analyze_observer.py) | 构建独立 Go 二进制，或只读 JSONL/封存 run 写新摘要 |
-| 来源与迁移 | [verify_lineage_files.py](verify_lineage_files.py)、[import_external_measurements.py](import_external_measurements.py)、[migrate_request_snapshots.py](migrate_request_snapshots.py) | 核对谱系、导入有来源观测或处理历史文件名；不替代 `inferyard migrate` |
+| 来源核对 | [verify_lineage_files.py](verify_lineage_files.py)、[import_external_measurements.py](import_external_measurements.py) | 核对谱系、导入有来源观测；历史迁移工具已移除，旧数据回原项目处理 |
 
 题包生成器依赖 `phase2_review.html`，它是活动模板，保留。
 真实 candidate/bound/frozen 配置和 `validation/` 不作为这些工具的默认回归或发行输入。
@@ -47,8 +47,7 @@
 
 `operator_acceptance.py` 保留原特定安全配方，不是所有实验的统一验收入口，也不要求另一操作者签收。
 这些工具不自动继承历史温度/内存覆盖授权；停止后保留原件，不因脚本名字而反复执行。
-[prepare_windows_evidence.py](prepare_windows_evidence.py) 读取指定旧 Git 对象用于历史便携副本，
-是显式历史工具，不属于默认测试或构建依赖；参数按帮助核对。
+历史请求快照迁移及 Windows 证据转换脚本已移除；旧数据处理回原项目进行。
 
 ## 社区资源与发行检查
 
@@ -67,7 +66,7 @@ mise exec -- uv run --frozen python scripts/export_community.py --check --archiv
 完整命令顺序见[候选构建与安装检查](../CONTRIBUTING.md#本地候选构建与安装检查)：
 `build_distribution.py` → `tests.packaging.prepare_inputs` → `tests/packaging/run_installed.py`
 → `prepare_release_candidate.py` → `verify_release_candidate.py`。前两步生成构建和合成输入；
-安装检查必须在源码外新目录实际完成，输出 `installed_safe_checks.v2`。候选生成器接受
+安装检查必须在源码外新目录实际完成，输出 `installed_safe_checks.v3`。候选生成器接受
 `--manifest BUILD/manifest.json --installed RESULT --source-commit SHA --out NEW`，
 `--installed` 可重复，按实际平台汇总为 `community_distribution.v2`。
 至少一个平台通过，其余为 `not_verified`；旧 v1 不能默认为通过新条件。

@@ -71,15 +71,16 @@ def validate_plan(plan):
         "request_count max_request_wall_seconds",
         "plan",
     )
-    _require(type(plan["schema_version"]) is int and plan["schema_version"] == 3)
+    from inferyard.evidence.formats import require_core, require_version
+
     _require(
-        plan["definition"]
-        in (
-            "engine_fit_plan.v1",
-            "engine_fit_plan.v2",
-            "engine_fit_plan.v3",
-            "engine_fit_plan.v4",
-        )
+        _sha(plan["plan_id"])
+        and plan["plan_id"] == digest({k: v for k, v in plan.items() if k != "plan_id"}),
+        "plan_id",
+    )
+    require_core(plan, "engine-fit plan")
+    require_version(
+        plan, "definition", tuple(f"engine_fit_plan.v{i}" for i in range(1, 5)), "engine-fit plan"
     )
     override = plan["definition"] == "engine_fit_plan.v3"
     memory_override = plan["definition"] == "engine_fit_plan.v4"
@@ -96,6 +97,10 @@ def validate_plan(plan):
     _require(len(set(engines)) == len(engines), "engines")
     model = plan["model"]
     model_keys = "path sha256 files kind" if modern else "path sha256 files"
+    if modern and model.get("kind") == "directory" and "definition" not in model:
+        from inferyard.evidence.formats import UnsupportedFormat
+
+        raise UnsupportedFormat("model-assets", "unversioned", ("model-assets.v2",))
     if "definition" in model:
         _require(
             modern

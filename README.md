@@ -67,3 +67,12 @@ CLI 连接操作者启动的本机服务；`run` 包含当次普通/流式探测
 
 本仓库以 InferYard 当前源码建立全新 Git 历史。原始运行、模型资产与源项目旧 Git 历史不随仓库或安装包分发。
 公开证据可通过 `public package` 生成脱敏包，结论范围见[证据血缘规则](docs/data-contract.md#证据血缘与比较结论)。
+
+## 首次主机初始化
+
+首次实时操作前执行 `inferyard host-state migrate`。它保存旧状态原字节、退休固定旧工具入口，
+然后提交新状态；成功仍为 ready_to_run=false，运行前还要核验服务、资产和预算。
+旧 dirty 先用原项目恢复；旧 lock-only 或凭据发布后来源变化需要调查，不能删锁或清空状态。
+正常运行仅访问 inferyard-host.* 和不可变凭据。离线 verify/report 不建立主机状态。
+历史格式和 origin=migrated 明确返回 unsupported_format/2；旧数据留在原项目处理。
+Windows 原生迁移本次未验。详见[当前格式契约](docs/contracts/inferyard-current-format.md)。

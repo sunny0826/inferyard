@@ -24,6 +24,7 @@ from inferyard.contracts.validation import ContractError, strict_json_loads, val
 from inferyard.evidence.capacity_stop import validate_capacity_stop
 from inferyard.evidence.duration_ledger import duration_summary
 from inferyard.evidence.event_ledger import reduce_events
+from inferyard.evidence.formats import UnsupportedFormat, require_core
 from inferyard.evidence.journal import trial_for
 from inferyard.evidence.storage import (
     EvidenceError,
@@ -58,24 +59,15 @@ def _inputs(root, reads, limits):
         data = reads.json(filename)
         if filename in reads.errors:
             raise reads.errors[filename]
+        require_core(data, kind)
         try:
             validate_document(kind, data)
         except ContractError as exc:
             raise EvidenceError("invalid_trial_input") from exc
         documents[kind] = data
     run, plan, selection = (documents[k] for k in ("run", "plan", "selection"))
-    if (root / "migration.json").exists() and run["origin"] != "migrated":
-        raise EvidenceError("migration_receipt_requires_migrated_origin")
-    if run["origin"] == "migrated":
-        from inferyard.evidence.migration import verify_migrated_run
-
-        verify_migrated_run(root)
-    if (
-        run["schema_version"] != SCHEMA_VERSION
-        or plan["schema_version"] != SCHEMA_VERSION
-        or selection["schema_version"] != SCHEMA_VERSION
-    ):
-        raise EvidenceError("trial_requires_active_envelopes")
+    if (root / "migration.json").exists():
+        raise UnsupportedFormat("run.source", "migration.json", ("measured",))
     if (
         run["plan_sha256"] != plan["plan_sha256"]
         or run["experiment_id"] != plan["experiment"]["experiment_id"]
@@ -106,15 +98,7 @@ def _inputs(root, reads, limits):
     if selected != expected or selected != [cid for cid in trial["case_order"] if cid in selected]:
         raise EvidenceError("trial_selection_mismatch")
     if (run["parent_run_id"] is None) != (selection["parent_events_sha256"] is None):
-        if (
-            run["origin"] == "migrated"
-            and run["relation"] == "rerun"
-            and run["parent_run_id"] is not None
-            and selection["parent_events_sha256"] is None
-        ):
-            limits.append("migrated_parent_events_hash_unavailable")
-        else:
-            raise EvidenceError("parent_evidence_binding_missing")
+        raise EvidenceError("parent_evidence_binding_missing")
     for name in ("config", "bundle"):
         filename = "config.frozen.json" if name == "config" else "bundle.json"
         if selection[name + "_sha256"] != reads.hashes[filename]:
@@ -138,6 +122,10 @@ def read_trial(root: Path, *, metadata=None):
         reads.json(name)
     events, event_tails = reads.jsonl("events.jsonl")
     samples, sample_tails = reads.jsonl("memory.jsonl")
+    if reads.manifest is not None and (
+        type(reads.manifest) is not dict or type(reads.manifest.get("files")) is not dict
+    ):
+        raise EvidenceError("invalid_manifest")
     manifest_files = reads.manifest["files"] if reads.manifest is not None else {}
     for name in (
         "identity.json",
@@ -150,6 +138,11 @@ def read_trial(root: Path, *, metadata=None):
         if name in manifest_files:
             reads.json(name)
     limits = verify_manifest(root, _manifest=reads.manifest, _observed=reads.observed())
+    if (root / "requests.jsonl").exists():
+        raise UnsupportedFormat("run.source", "requests.jsonl", ("events.jsonl",))
+    from inferyard.evidence.request_snapshots import require_current_sources
+
+    require_current_sources(root, manifest_files)
     documents, limits = _inputs(root, reads, limits)
     if reads.errors:
         raise next(iter(reads.errors.values()))
@@ -214,6 +207,7 @@ def read_trial(root: Path, *, metadata=None):
     limits += sample_tails
     for i, sample in enumerate(samples, 1):
         try:
+            require_core(sample, "sample")
             validate_document("sample", sample)
         except ContractError as exc:
             raise EvidenceError("invalid_sample") from exc
@@ -267,8 +261,6 @@ def read_trial(root: Path, *, metadata=None):
     )
     if run["kind"] == "check":
         limits.append("check_only_no_formal_cases")
-    if run["origin"] == "migrated":
-        limits.append("migrated_evidence_does_not_grant_current_performance_qualification")
     if run["relation"] == "resume":
         limits.append("resume_is_partial_observation_not_complete_trial")
     if run["diagnostic"]:

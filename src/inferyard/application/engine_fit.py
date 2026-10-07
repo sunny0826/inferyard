@@ -53,10 +53,7 @@ def execute(request):
                 "bytes_verified": sealed,
                 "sources_verified": sealed,
                 "semantic_verified": True,
-                "render_checked": sealed
-                and (
-                    request.rerender or data["manifest"]["definition"] == "engine_fit_manifest.v1"
-                ),
+                "render_checked": sealed and request.rerender,
                 **(
                     {
                         "execution_completeness": execution["completeness"],

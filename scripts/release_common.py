@@ -1,8 +1,10 @@
 """Byte snapshots and installation scope shared by release producers and consumers."""
 
 import hashlib
+import io
 import json
 import re
+import zipfile
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
@@ -45,7 +47,8 @@ SCOPE = [
     "resources_identity",
     "uv_uvx_isolation",
     "synthetic_upgrade_rollback",
-    "synthetic_historical_reports",
+    "current_format_reports",
+    "unsupported_format_rejection",
 ]
 
 
@@ -159,7 +162,7 @@ def validate_installation(evidence, build, build_sha, files):
     target = platform_target(evidence.get("platform"), evidence.get("architecture", ""))
     expected = [{"name": n, "returncode": 1 if n == "uvx-cold-offline" else 0} for n in COMMANDS]
     if (
-        evidence.get("kind") != "installed_safe_checks.v2"
+        evidence.get("kind") != "installed_safe_checks.v3"
         or evidence.get("status") != "passed"
         or evidence.get("completed") is not True
         or evidence.get("source_commit") != build["source_commit"]
@@ -178,4 +181,47 @@ def validate_installation(evidence, build, build_sha, files):
         or evidence.get("host_lock_tests") != "not_run"
     ):
         raise ValueError("installation_evidence_mismatch")
+    expected_formats = report_format_check(files["wheel"].raw)
+    checks = evidence.get("report_format_checks")
+    if (
+        type(checks) is not dict
+        or set(checks) != set(REPORT_PROBES)
+        or any(checks[name] != expected_formats for name in REPORT_PROBES)
+    ):
+        raise ValueError("installation_evidence_report_formats")
+    for value in checks.values():
+        if any(
+            type(v) is not int
+            for key in ("current_report_formats_verified", "unsupported_report_formats_rejected")
+            for v in value[key]
+        ):
+            raise ValueError("installation_evidence_report_formats")
     return target
+
+
+REPORT_PROBES = ("probe-install-a", "probe-install-b", "probe-rollback")
+
+
+def report_format_check(wheel_raw):
+    """Derive the current installed template identity from the approved wheel bytes."""
+    digest = hashlib.sha256()
+    with zipfile.ZipFile(io.BytesIO(wheel_raw)) as archive:
+        prefix = "inferyard/templates/"
+        names = sorted(
+            name
+            for name in archive.namelist()
+            if name.startswith(prefix)
+            and "/" not in name[len(prefix) :]
+            and name[len(prefix) :].startswith("report")
+            and name.endswith(".html")
+        )
+        if prefix + "report.html" not in names or prefix + "report_v1.html" in names:
+            raise ValueError("installation_evidence_current_templates_missing")
+        for name in names:
+            digest.update(name[len(prefix) :].encode() + b"\0")
+            digest.update(hashlib.sha256(archive.read(name)).digest())
+    return {
+        "current_report_formats_verified": [7],
+        "unsupported_report_formats_rejected": [1, 2, 3, 4, 5, 6],
+        "template_hashes": {"7": digest.hexdigest()},
+    }

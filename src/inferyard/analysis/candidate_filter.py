@@ -191,7 +191,12 @@ def filter_candidates(spec, base):
         comparison = compare_trials(reference, data)
         linked = spec.get("comparisons", {}).get(path)
         if linked is not None:
-            comparison = read_verified_comparison((base / linked).resolve())
+            from inferyard.evidence.source_locations import comparison_locations, resolve_source
+
+            comparison_root = (base / linked).resolve()
+            comparison = read_verified_comparison(comparison_root)
+            for source in comparison_locations(comparison):
+                source["path"] = str(resolve_source(comparison_root, source["path"]))
             if comparison["source_runs"] != [reference_ref, ref]:
                 raise EvidenceError("candidate_comparison_sources_or_order_mismatch")
         candidates.append(

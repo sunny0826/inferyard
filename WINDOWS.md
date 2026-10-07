@@ -52,19 +52,18 @@ KVMem/NInfer 的 `auto` 模式可使用原生 OpenAI 生成信号，但不推断
 
 ## 锁、持久化与离线证据
 
-所有工作副本共享系统公共数据目录（原生 `CSIDL_COMMON_APPDATA`，通常为 `C:\ProgramData`）中的
-`local-ai-benchmark-host.lock` 和 `local-ai-benchmark-host.state.json`。
-D 盘存在时先持有旧 `D:\local-ai-benchmark-host.lock`，再持有公共目录锁，并同步核验两处状态。
-任一 dirty、锁占用、状态冲突或权限错误均阻断；仅 D 盘确实不存在时单独使用公共目录。
-文件及最终路径拒绝 reparse point。无 D 盘/多账户场景的当前原生覆盖仍待验证。
+首次实时操作前运行 `inferyard host-state migrate`。新锁与状态位于原生
+`CSIDL_COMMON_APPDATA`（通常为 `C:\ProgramData`）中的 `inferyard-host.lock` 与
+`inferyard-host.state.json`，不可变凭据为同目录 `inferyard-host-migration.json`。
+维护时按 D 旧锁（存在时）→公共旧锁→新锁获取，先退休公共旧 state，再退休 D state。
+原旧锁 inode 保留；任一旧 dirty、锁占用、状态冲突或权限错误阻断。无 D 盘不额外禁止部署。
+ready 后正常运行只用新状态与凭据，不再桥接旧状态。固定旧基线在公共退休标记处拒绝。
+文件拒绝 reparse point，保留 file fsync 与 MoveFileExW(WRITE_THROUGH)；目录 fsync 不可用。
+本次 Windows 原生迁移、ACL、卷变化与持久化尚未验，临时目录模拟及 Go 交叉构建不算原生证据。
+完整事务、已知边界和调查指引见[当前格式契约](docs/contracts/inferyard-current-format.md)。
 
-`Ctrl+C` 记录取消；强制结束进程不能保证收尾。按[恢复步骤](docs/usage.md#取消与-dirty-恢复)
-确认旧服务消失、新身份与空闲，不删除锁文件。CLI 不替操作者停止或重启模型服务。
-文件内容使用 `fsync`，快照通过 `MoveFileExW(WRITE_THROUGH)` 发布；`directory_fsync: false`
-如实保留，不能授予与 Linux 相同的断电目录持久性资格。
-
-`report`、`compare`、`verify` 和显式 `migrate` 可离线使用；迁移/派生输出写入新目录。
-`verify` 支持原始 run/batch/冻结计划与派生产物，具体格式见[CLI 参考](docs/cli-surface.md)。
+`report`、`compare`、`verify` 可离线使用；仅接受当前格式，旧证据回原项目处理。
+派生产物写新目录，不能把格式拒绝当成证据完整性通过。
 
 ## Windows engine-fit 诊断
 

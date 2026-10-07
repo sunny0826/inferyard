@@ -53,7 +53,7 @@ Linux CPU HZ 从 `AT_CLKTCK` 读取，无法读取不猜 100；RSS 来自 status
 
 Go 0.2.0 输出 `schema_version = 3`、`definition = lab_observer.v2`。header 新增必填 `disk_scope`，取值为 `benchmark_run_filesystem` / `observer_cwd_filesystem`；`--bench-run` 以所传 run 目录读取磁盘，直接 PID 以当前目录读取。静态 snapshot 仍以当前目录读取。所有 record definition 在单会话内一致。
 
-离线桥兼容 `lab_observer.v1` 原始字节：v1 header 没有 disk_scope，解释为 `observer_cwd_filesystem_legacy_v1`。不补造旧观测或把它解释为 run 文件系统。新摘要固定 `lab_observer_summary.v2`，另记 `input_definition`。
+离线桥只接受 `lab_observer.v2`，严格核验 disk_scope。旧 v1 返回 unsupported_format，不补造观测或推断文件系统范围。摘要固定 `lab_observer_summary.v2`，另记 `input_definition`；此支持边界由 [ADR 038](../decisions/038-inferyard-current-format.md) 局部取代原兼容承诺。
 
 ### 完整与部分摘要
 

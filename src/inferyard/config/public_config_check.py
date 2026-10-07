@@ -20,8 +20,6 @@ REQUIRED = {
 def check_config(root, loaded):
     verify_public(root)
     candidate = read_json(local_file(root, "candidate.json"))
-    if candidate["policy"] not in ("public-summary.v3", "public-summary.v4", "public-summary.v5"):
-        raise EvidenceError("portable_configuration_requires_public_v3")
     config = loaded.config.to_dict()
     reproduction = candidate["reproduction"]
     mismatches = []

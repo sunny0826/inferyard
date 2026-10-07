@@ -13,7 +13,7 @@ CATEGORIES = {
 }
 
 
-def request_details(request, case, ordinal, *, format_version=3):
+def request_details(request, case, ordinal, *, format_version=7):
     timing = request_timing(request)
     details = {
         "ordinal": ordinal,
@@ -28,7 +28,7 @@ def request_details(request, case, ordinal, *, format_version=3):
         "finish_reason": request.get("finish_reason"),
         "reasoning": request.get("reasoning", ""),
     }
-    if format_version >= 3 and case["category"] == "svg":
+    if case["category"] == "svg":
         details["svg_view"] = check_svg(extract_svg(request.get("content", "")))
     return details
 

@@ -18,6 +18,7 @@ from inferyard.contracts.validation import (
     strict_json_loads,
     validate_document,
 )
+from inferyard.evidence.formats import require_core, require_input
 from inferyard.evidence.storage import EvidenceError, json_bytes
 
 
@@ -33,6 +34,7 @@ def normalized_config(raw, filename, source_directory, bundle_path):
         raise ContractError("plan.config", "invalid source encoding or TOML") from exc
     defaulted = []
     if filename.endswith(".toml"):
+        require_input(config, "config")
         validate_document("config_input", config)
         for section, defaults in CONFIG_DEFAULTS.items():
             target = config.setdefault(section, {})
@@ -124,6 +126,8 @@ def read_frozen_plan(path):
     """Verify all frozen inputs without accessing the original source directory."""
     root = path.parent.resolve()
     plan = strict_json_loads(read_document(path).decode())
+    require_core(plan, "plan")
+    require_core(plan["experiment"], "experiment")
     validate_document("plan", plan)
     if not plan["runtime_bindings"]:
         raise EvidenceError("plan_runtime_bindings_missing")
@@ -141,6 +145,7 @@ def read_frozen_plan(path):
         _, raw = source_bytes(root, workload["config"])
         _, bundle_raw = source_bytes(root, workload["bundle"])
         bundle = strict_json_loads(bundle_raw.decode())
+        require_core(bundle, "bundle")
         validate_document("bundle", bundle)
         _, snapshot_raw = source_bytes(root, binding["config"])
         snapshot = strict_json_loads(snapshot_raw.decode())

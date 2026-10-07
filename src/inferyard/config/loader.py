@@ -78,6 +78,9 @@ class LoadedConfig:
 
 def validate_runtime_config(config: dict) -> None:
     """Apply credential and capacity rules to TOML and frozen JSON alike."""
+    from inferyard.evidence.formats import require_input
+
+    require_input(config, "config")
     validate_document("config", config)
     validate_endpoint(config["endpoint"]["url"])
     for index, argument in enumerate(config["engine"]["startup_args"]):
@@ -99,6 +102,9 @@ def load_config(path: str | Path) -> LoadedConfig:
     except (tomllib.TOMLDecodeError, UnicodeError) as exc:
         # TOMLDecodeError messages may contain rejected values (including secrets).
         raise ContractError("config", "invalid UTF-8 TOML syntax") from exc
+    from inferyard.evidence.formats import require_input
+
+    require_input(incoming, "config")
     validate_document("config_input", incoming)
     normalized = deepcopy(incoming)
     defaulted = []
@@ -143,6 +149,7 @@ def load_config(path: str | Path) -> LoadedConfig:
         bundle_data = strict_json_loads(bundle_raw.decode("utf-8"))
     except UnicodeError as exc:
         raise ContractError("bundle", "invalid UTF-8") from exc
+    require_input(bundle_data, "bundle")
     bundle = Document.parse("bundle", bundle_data)
     if bundle_data["version"] != normalized["bundle"]["version"]:
         raise ContractError("config.bundle.version", "does not match corpus version")

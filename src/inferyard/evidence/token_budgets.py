@@ -1,5 +1,6 @@
-"""Versioned, explicit token-budget inventory; legacy positional arrays remain readable."""
+"""Versioned, explicit token-budget inventory; current inventory only."""
 
+from inferyard.evidence.formats import UnsupportedFormat, require_version
 from inferyard.evidence.storage import EvidenceError, local_file, read_json
 
 V1 = "token-budgets.json"
@@ -32,6 +33,7 @@ async def collect_budgets(adapter, config, bundle, selected, *, kind="run"):
 
 
 def entries_v2(value):
+    require_version(value, "definition", (DEFINITION,), "token-budgets")
     if (
         type(value) is not dict
         or set(value) != {"definition", "entries"}
@@ -67,32 +69,25 @@ def validate_inventory(value, config, selected, *, kind="run"):
 
 def read_budgets(root, config, selected, *, kind="run", manifest=None, reader=None):
     present = [name for name in (V1, V2) if local_file(root, name).exists()]
-    if len(present) > 1:
-        raise EvidenceError("token_budget_formats_conflict")
+    if V1 in present:
+        raise UnsupportedFormat("token-budget", "positional.v1", (DEFINITION,))
     if not present:
         return None, None
     name = present[0]
     if manifest is not None and name not in manifest:
         raise EvidenceError("token_budget_evidence_unsealed")
     value = reader(name) if reader is not None else read_json(local_file(root, name))
-    if name == V2:
-        validate_inventory(value, config, selected, kind=kind)
-    elif type(value) is not list:
-        raise EvidenceError("token_budget_definition_invalid")
+    validate_inventory(value, config, selected, kind=kind)
     return name, value
 
 
 def probe_budget(value):
-    return entries_v2(value)[0]["budget"] if type(value) is dict else value[0]
+    return entries_v2(value)[0]["budget"]
 
 
 def formal_budgets(value, selected):
-    if type(value) is dict:
-        entries = entries_v2(value)
-        formal = [e for e in entries if e["phase"] == "formal"]
-        if [e["case_id"] for e in formal] != list(selected):
-            raise EvidenceError("template_token_inventory_mismatch")
-        return [e["budget"] for e in formal]
-    if not isinstance(value, list) or len(value) != len(selected) + 2:
+    entries = entries_v2(value)
+    formal = [e for e in entries if e["phase"] == "formal"]
+    if [e["case_id"] for e in formal] != list(selected):
         raise EvidenceError("template_token_inventory_mismatch")
-    return value[2:]
+    return [e["budget"] for e in formal]

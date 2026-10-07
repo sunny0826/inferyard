@@ -13,6 +13,7 @@ from inferyard.analysis.scoring import score_case
 from inferyard.config.bundle import require_review
 from inferyard.contracts.validation import ContractError
 from inferyard.evidence.error_reasons import safe_reason
+from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.journal import TrialJournal, trial_for
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, Redactor, read_json
@@ -306,6 +307,8 @@ async def run_trial(
             if budget_expired
             else (130, "user_cancelled")
         )
+    except UnsupportedFormat:
+        raise
     except (PreflightError, ContractError) as exc:
         code = 3 if execution and execution.formal_started else 2
         reason = exc.reason if isinstance(exc, ContractError) else str(exc)

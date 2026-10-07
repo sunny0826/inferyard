@@ -29,7 +29,10 @@ def metric_index(data):
     return indexed
 
 
-def performance_comparison(left, right, comparison, evidence, *, definition="phase2.v1"):
+def performance_comparison(left, right, comparison, evidence, *, definition="phase2.v3"):
+    from inferyard.evidence.formats import require_version
+
+    require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
     reasons = list(comparison["blockers"])
     for side, data in (("left", left), ("right", right)):
         if data["run"]["origin"] == "migrated":
@@ -63,11 +66,6 @@ def performance_comparison(left, right, comparison, evidence, *, definition="pha
         )
         if workload["protocol"]["kind"] != "fixed":
             reasons.append(side + ":duration_cohort_comparison_pending")
-    if (
-        definition != "phase2.v3"
-        and evidence[0]["tolerance_ratio"] != evidence[1]["tolerance_ratio"]
-    ):
-        reasons.append("different_frozen_overhead_tolerances")
     for field in fields(
         [d.get("environment_start", {}) for d in (left, right)], include_policy=True
     ):
@@ -79,7 +77,7 @@ def performance_comparison(left, right, comparison, evidence, *, definition="pha
         and left["config"]["model"][key] == right["config"]["model"].get(key)
         for key in ("sha256", "template_sha256")
     )
-    if definition == "phase2.v3" and not same_tokenizer:
+    if not same_tokenizer:
         from inferyard.analysis.quantization_comparison import verified_tokenizer_equal
 
         same_tokenizer = verified_tokenizer_equal(

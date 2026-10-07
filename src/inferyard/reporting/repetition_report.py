@@ -125,6 +125,9 @@ def verify_repetition_summary(out):
         raise EvidenceError("repeat_analysis_inventory_changed")
     for name, group in zip(names, (g for g in groups if any(g["run_ids"])), strict=True):
         analysis = read_json(local_file(out, name))
+        from inferyard.evidence.formats import require_core
+
+        require_core(analysis, "analysis")
         validate_document("analysis", analysis)
         expected = make_analysis(
             group,

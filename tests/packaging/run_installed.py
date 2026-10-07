@@ -12,9 +12,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from release_common import (  # noqa: E402
+    REPORT_PROBES,
     SCOPE,
     artifact_files,
     read_json,
+    report_format_check,
     sha,
     validate_installation,
 )
@@ -136,7 +138,7 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
             "--fixtures",
             incoming / "fixtures",
             "--out",
-            out / "historical-a",
+            out / "formats-a",
         ],
         settings=offline_env,
     )
@@ -266,7 +268,7 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
             "--fixtures",
             incoming / "fixtures",
             "--out",
-            out / "historical-b",
+            out / "formats-b",
         ],
         settings=dict(second, UV_OFFLINE="1"),
     )
@@ -294,15 +296,28 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
             "--fixtures",
             incoming / "fixtures",
             "--out",
-            out / "historical-rollback",
+            out / "formats-rollback",
         ],
         settings=offline_env,
     )
     assert (
         hashlib.sha256((out / "中文 workspace/preparation.json").read_bytes()).hexdigest() == before
     )
+    expected_formats = report_format_check(files["wheel"].raw)
+    report_checks = {}
+    for name in REPORT_PROBES:
+        probe = read_json((out / f"{name}.stdout").read_bytes())
+        actual = {key: probe.get(key) for key in expected_formats}
+        if actual != expected_formats or any(
+            type(version) is not int
+            for key in ("current_report_formats_verified", "unsupported_report_formats_rejected")
+            for version in actual[key]
+        ):
+            raise ValueError("installation_probe_report_formats")
+        report_checks[name] = actual
     result = {
-        "kind": "installed_safe_checks.v2",
+        "report_format_checks": report_checks,
+        "kind": "installed_safe_checks.v3",
         "status": "passed",
         "completed": True,
         "source_commit": build["source_commit"],

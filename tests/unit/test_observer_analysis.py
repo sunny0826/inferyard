@@ -22,7 +22,7 @@ def measured(value, source="fixture"):
 
 
 def records():
-    base = {"schema_version": 3, "definition": "lab_observer.v1", "session_id": "a" * 32}
+    base = {"schema_version": 3, "definition": "lab_observer.v2", "session_id": "a" * 32}
     target = {"pid": 42, "process_start_ticks": 123, "name": "fixture"}
     own = {**target, "pid": 43}
     header = {
@@ -38,6 +38,7 @@ def records():
         "targets": [target],
         "observer_target": own,
         "benchmark_binding": None,
+        "disk_scope": "observer_cwd_filesystem",
         "system": {
             "os": "linux",
             "arch": "amd64",
@@ -172,7 +173,8 @@ def test_corrupt_or_incomplete_stream_refused(bridge, tmp_path, case):
         values[-1]["performance_comparison_qualified"] = True
     else:
         sample["endpoint_health"]["pid_ownership_verified"] = True
-    with pytest.raises(bridge.ObserverError):
+    error = bridge.UnsupportedFormat if case in ("schema", "definition") else bridge.ObserverError
+    with pytest.raises(error):
         bridge.analyze(save(tmp_path, values))
 
 

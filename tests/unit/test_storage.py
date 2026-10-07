@@ -60,7 +60,7 @@ def test_no_overwrite_and_manifest_classification(tmp_path):
     manifest["files"]["plan.json"]["derived"] = True
     (store.path / "manifest.json").write_text(json.dumps(manifest))
     (store.path / "plan.json").write_text("tampered")
-    with pytest.raises(EvidenceError, match="invalid_manifest"):
+    with pytest.raises(EvidenceError, match="original_evidence_hash_mismatch"):
         verify_manifest(store.path)
     with pytest.raises(FileExistsError):
         EvidenceStore(tmp_path, run_id="first")
@@ -169,7 +169,7 @@ def make_journal(root):
     return TrialJournal(root, plan, plan["trials"][0]["trial_id"], config, bundle)
 
 
-def test_no_new_request_copy_and_legacy_copy_remains_derived(tmp_path):
+def test_no_new_request_copy_and_legacy_hash_damage_is_integrity_error(tmp_path):
     store = EvidenceStore(tmp_path, run_id="modern")
     assert "requests.jsonl" not in store._logs
     assert not (store.path / "requests.jsonl").exists()
@@ -180,5 +180,10 @@ def test_no_new_request_copy_and_legacy_copy_remains_derived(tmp_path):
     (legacy.path / "requests.jsonl").write_bytes(b"{}\n")
     legacy.seal()
     legacy.close()
+    from inferyard.evidence.formats import UnsupportedFormat
+
+    with pytest.raises(UnsupportedFormat):
+        verify_manifest(legacy.path)
     (legacy.path / "requests.jsonl").write_bytes(b"damaged")
-    assert verify_manifest(legacy.path) == ["derived_evidence_damaged:requests.jsonl"]
+    with pytest.raises(EvidenceError, match="original_evidence_hash_mismatch"):
+        verify_manifest(legacy.path)

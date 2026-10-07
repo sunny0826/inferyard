@@ -93,7 +93,10 @@ def test_comparison_v3_scope_dispatch_and_legacy_full_hash(tmp_path):
     right["run"]["tool_source_sha256"] = "b" * 64
     scoped = compare_trials(left, right, definition="phase2.v3")
     assert scoped["eligibility"]["quality"] and scoped["eligibility"]["completion"]
-    assert not compare_trials(left, right, definition="phase2.v2")["eligibility"]["quality"]
+    from inferyard.evidence.formats import UnsupportedFormat
+
+    with pytest.raises(UnsupportedFormat):
+        compare_trials(left, right, definition="phase2.v2")
     assert scoped["calibration_status"][0]["status"] == "not_supplied"
     assert all(r["difference"] is None for r in scoped["observed_differences"]["performance"])
     right["run"].pop("implementation_identity")

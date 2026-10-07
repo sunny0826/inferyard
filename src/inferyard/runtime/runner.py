@@ -19,6 +19,7 @@ from inferyard.config.loader import LoadedConfig
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.contracts.validation import ContractError, Document
 from inferyard.evidence.error_reasons import safe_reason
+from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import (
@@ -349,6 +350,8 @@ async def execute_async(request, dependencies: Dependencies | None = None):
                 )
             except (EvidenceError, OSError) as exc:
                 code, reason = 4, safe_reason(exc, "evidence_io_error")
+    except UnsupportedFormat:
+        raise
     except (PreflightError, ContractError) as exc:
         code = 3 if execution and execution.formal_started else 2
         reason = exc.reason if isinstance(exc, ContractError) else str(exc)

@@ -26,6 +26,9 @@ def fit_service(tmp_path, monkeypatch):
     monkeypatch.setattr(lock, "LEGACY_ROOT", None)
     monkeypatch.setattr(lock, "LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr(lock, "STATE_PATH", tmp_path / "host.state.json")
+    from tests.host_state_helpers import initialize
+
+    initialize()
     model = tmp_path / "model"
     model.mkdir()
     (model / "config.json").write_text('{"model_type":"fixture"}')

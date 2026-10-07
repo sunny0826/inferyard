@@ -11,7 +11,7 @@
 | 实验准备       | `plan`                                                     | 离线预览或冻结实验                                                           |
 | 服务诊断与执行 | `probe`、`overhead`、`prepare-length`、`run`、`resume`     | 连接已有模型服务；诊断和准备也可能发送请求                                   |
 | 派生分析       | `repeat-summary`、`rescore`、`export`、`filter-candidates` | 离线读取已有证据或分析                                                       |
-| 报告与证据     | `report`、`compare`、`verify`、`migrate`                   | 离线生成新产物、核验或显式迁移                                               |
+| 报告与证据     | `report`、`compare`、`verify`                   | 离线生成新产物、核验                                               |
 | 公开包         | `public package`、`public plan`                            | 本地打包和冻结复现计划                                                       |
 | 扩展协议       | `extension freeze`、`extension run`、`extension replay`    | freeze / replay 离线；run 连接真实服务                                       |
 | 同机引擎适配   | `engine-fit engines/plan/run/compare/verify`               | engines 离线列出能力；plan 冻结目录或单 GGUF；run 按引擎范围连接已有本机服务 |
@@ -262,7 +262,7 @@ manifest 与离线报告披露观测路径；原生路径不授予引擎内部�
 
 核验只读，不发送模型请求，不授予当前测量或性能比较资格。报告、比较、重评分、导出和两类开销协议有不同输入与来源规则，不能因共享入口而合并语义。
 
-`report` 的[离线 HTML](reports.md)包含模型 / 机器档案、生成参数核验、分类成绩、独立来源资源曲线与逐题检索。新产物使用报告格式 v7，核心 schema 仍为 3；历史 v1–v6 保留原投影与模板重算，不改写旧 HTML。
+`report` 的[离线 HTML](reports.md)包含模型 / 机器档案、生成参数核验、分类成绩、独立来源资源曲线与逐题检索。新产物使用报告格式 v7，核心 schema 仍为 3；仅接受 v7；v1–v6 返回 unsupported_format/2，旧数据回原项目处理。
 
 ### 社区准备 details 的字段类型补充
 
@@ -281,3 +281,17 @@ Windows candidate 引用 runtime prepare 目录中的实际引擎和清单，不
 移动或删除该目录会使既有候选路径失效；应在确定的新资产位置重新准备候选并绑定服务，
 不能只移动候选文件或修改回执来继承原服务身份。单独移动完整 runtime 目录后生成**新候选**时，
 回执相对路径仍须通过包内 profile 和实际文件复核。
+
+## 主机状态初始化与一次性迁移
+
+`inferyard host-state migrate` 在首次实时运行前显式执行，无路径参数、force、reset 或 rollback。
+保存原旧 state 字节及文件身份到不可变凭据，发布 pending，再退休公共旧 state 与可用 D state，最后提交 ready。
+成功 details.status 为 migrated/already_migrated，ready_to_run 固定 false；它不核验或启动模型服务。
+新工具普通检查创建的新 lock-only 不妨碍初始化。旧 lock-only 则阻断：应由原工具既有流程形成
+可核验 clean 状态，或人工调查。旧 dirty 先用原工具恢复；新 ready dirty 用新工具恢复。
+凭据发布后旧 state 改变时必须调查；不会删除凭据、重置或覆盖变更状态。
+退出码：输入/状态/占锁 2，写盘工具故障 4，取消 130。不要删锁或 dirty 绕过准入。
+
+可识别的不支持格式返回 unsupported_format/2，details 含 artifact、saved_version、supported_versions。
+坏 JSON、布尔版本、坏 seal/hash 或当前格式语义冲突为证据错误/4；配置输入错误为 2。
+支持矩阵与主机维护细节见[当前格式契约](contracts/inferyard-current-format.md)。

@@ -139,7 +139,7 @@ def test_full_diagnostic_trial_probes_warmups_and_formal_are_distinct(scenario):
     assert data["summary"]["evidence_complete"]
     assert (root / "identity.json").exists()
     assert (root / "effective-stream.json").exists()
-    assert not locking.read_json(locking.STATE_PATH)["dirty"]
+    assert not read_json(locking.STATE_PATH)["dirty"]
 
 
 def test_unreviewed_formal_bundle_is_blocked_before_any_request(scenario):
@@ -175,7 +175,7 @@ def test_cancel_full_trial_preserves_remaining_cases_and_cleans_idle(scenario):
     assert code == 130
     assert data["summary"]["counts"]["cancelled"] == 1
     assert data["summary"]["counts"]["not_executed"] == 2
-    assert not locking.read_json(locking.STATE_PATH)["dirty"]
+    assert not read_json(locking.STATE_PATH)["dirty"]
 
 
 @pytest.mark.parametrize("failure", ["probe", "warmup", "busy", "host_lock"])

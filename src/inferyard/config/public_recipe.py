@@ -10,7 +10,7 @@ def fingerprint(value):
     return hashlib.sha256(json_bytes(value)).hexdigest()
 
 
-def reproduction_recipe(data, numeric, *, portable=False, repeat_orders=False):
+def reproduction_recipe(data, numeric):
     config = data["config"]
     experiment = data["plan"]["experiment"]
     trial = next(t for t in data["plan"]["trials"] if t["trial_id"] == data["run"]["trial_id"])
@@ -136,26 +136,24 @@ def reproduction_recipe(data, numeric, *, portable=False, repeat_orders=False):
         }
     else:
         result["safety"] = None
-    if portable:
-        required.pop("engine.startup_args")
-        result["startup"] = portable_startup(config)
-    if repeat_orders:
-        result["workload"]["repeat_case_orders"] = [
-            [{"bundle_index": cases[c][0], "case_sha256": cases[c][1]} for c in t["case_order"]]
-            for t in data["plan"]["trials"]
-            if t["workload_id"] == trial["workload_id"]
-        ]
-        result["definitions"] = {
-            k: v
-            for k, v in data["run"]["definition_versions"].items()
-            if v in ("phase2.v1", "phase2.v2")
+    required.pop("engine.startup_args")
+    result["startup"] = portable_startup(config)
+    result["workload"]["repeat_case_orders"] = [
+        [{"bundle_index": cases[c][0], "case_sha256": cases[c][1]} for c in t["case_order"]]
+        for t in data["plan"]["trials"]
+        if t["workload_id"] == trial["workload_id"]
+    ]
+    result["definitions"] = {
+        k: v
+        for k, v in data["run"]["definition_versions"].items()
+        if v in ("phase2.v1", "phase2.v2")
+    }
+    result["workload"]["position_cases"] = [
+        {
+            **{k: v for k, v in r.items() if k not in ("case_id", "family_id")},
+            "bundle_index": cases[r["case_id"]][0],
+            "family_id": "family-" + fingerprint(r["family_id"])[:32],
         }
-        result["workload"]["position_cases"] = [
-            {
-                **{k: v for k, v in r.items() if k not in ("case_id", "family_id")},
-                "bundle_index": cases[r["case_id"]][0],
-                "family_id": "family-" + fingerprint(r["family_id"])[:32],
-            }
-            for r in workload.get("position_cases", [])
-        ]
+        for r in workload.get("position_cases", [])
+    ]
     return result

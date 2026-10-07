@@ -13,7 +13,7 @@ import inferyard.runtime.lock as locking
 from inferyard.analysis.scoring import score_case
 from inferyard.application.types import CommandRequest
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import sha256_file
+from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.runtime.batch_runner import execute_async
 from tests.helpers import readline_timeout
 from tests.integration.test_runner import scenario
@@ -127,7 +127,7 @@ def test_killed_controller_rebuilds_and_resumes_without_overwriting(
         deps = fixture[1]
         deps.scorer = score_case
         endpoint = fixture[0].config.config.to_dict()["endpoint"]
-        state = locking.read_json(locking.STATE_PATH) if locking.STATE_PATH.exists() else {}
+        state = read_json(locking.STATE_PATH) if locking.STATE_PATH.exists() else {}
         request = CommandRequest(
             "resume",
             from_run=parent_path,
@@ -144,7 +144,7 @@ def test_killed_controller_rebuilds_and_resumes_without_overwriting(
         assert child_data["summary"]["completeness"] == "incomplete"
         assert len(fixture[2]) == 5 + remaining
         assert before == {p.name: sha256_file(p) for p in parent_path.iterdir()}
-        assert not locking.read_json(locking.STATE_PATH)["dirty"]
+        assert not read_json(locking.STATE_PATH)["dirty"]
     finally:
         cleanup(child)
 

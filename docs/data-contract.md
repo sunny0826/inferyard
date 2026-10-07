@@ -12,7 +12,7 @@
 
 统一沿用实验/轮次身份：`experiment_id`、`trial_id`、`run_id`、`request_id` 和计划哈希。`run --config` 在请求前编译为一个 workload、一个 trial；`run --plan` 执行显式冻结实验。`probe`（兼容入口 `check`）只探测，不产生正式成绩。
 
-运行包的 wire 枚举仍为 `kind = check | run`（`probe` 写入 `check`）、`execution_mode = single | experiment`、`origin = measured | migrated`。两种执行方式使用同一 Journal 和 ledger。Windows 单次及受支持的批量入口保留原生身份与内存采样；macOS 通过平台工厂使用原生采集器，不调用 Linux 专用采集。
+运行包的 wire 枚举仍为 `kind = check | run`（`probe` 写入 `check`）、`execution_mode = single | experiment`、`origin = measured | migrated`（Schema 枚举保留，但应用拒绝 migrated）。两种执行方式使用同一 Journal 和 ledger。Windows 单次及受支持的批量入口保留原生身份与内存采样；macOS 通过平台工厂使用原生采集器，不调用 Linux 专用采集。
 
 | 文件 / kind                                              | 责任                                                 |
 | -------------------------------------------------------- | ---------------------------------------------------- |
@@ -102,23 +102,18 @@ Schema 不扩展 CPU/传感器枚举；正式 Prism 批量分派与缺测证据�
 ## InferYard 名称与兼容边界
 
 公开项目、Python 包和 CLI 名称统一为 `inferyard`，独立监测命令为 `inferyard-observer`。
-监测流的 `lab_observer.v1` / `lab_observer.v2` 定义标识保持兼容。核心 Schema 仍为 v3，
-`urn:local-ai-bench:` 是沿用的协议标识，不是安装包名；字段、枚举和资格语义不随品牌修改。
-主机锁与 dirty 状态保留 `local-ai-benchmark-host.*` 路径，确保源项目与 InferYard 共用互斥边界。
-历史版本报告模板、封存夹具与已审核题包保持原字节，新报告使用 InferYard 品牌。
-源码和当前模板变化会产生新身份，不继承旧测量、评分或性能资格。
+监测流仅接受 `lab_observer.v2`。核心 Schema 仍为 v3，`urn:local-ai-bench:` 不变；
+题包与审核证明原字节保留。报告仅接受 v7、比较仅接受 format4 / phase2.v3、公开包仅接受 v5。
+新锁使用 inferyard-host.*，一次性显式维护退休旧入口，见[当前格式契约](contracts/inferyard-current-format.md)。
+源码与模板变化产生新身份，不继承旧测量、评分或性能资格。
 
-## 历史迁移
+## 历史输入边界
 
-核心 v1/v2 原件通过 `migrate` 显式转换为活动 v3。engine-fit 的 plan/run/manifest、
-report_format_version 与 comparison format_version 则是独立定义版本，不是旧核心 Schema。
-它们按保存版本分派，详见[引擎契约](contracts/engine-fit-contract.md#常用引擎扩展)、
-[Windows 引擎契约](contracts/engine-fit-contract.md#windows-原生来源)和[离线读取契约](contracts/offline-reading-contract.md)。
-通用 `verify` 已可直接识别 engine-fit 及原始 run/batch/冻结计划；不会因此转换保存字节。
-
-迁移应先核验原始封存哈希，在新目录保存新包及迁移凭据，记录旧来源、旧测量源码、旧评分身份、转换规则和缺失项。旧单次结果补出的实验上下文明确标为迁移生成；不声称它曾在测量前冻结。旧原件及历史 manifest 字节不变。
-
-迁移包的 `origin = migrated`；缺少原始来源时不补造观测。旧评分转换与重新评分分开，格式迁移不赋予当前评分器或当前性能资格。普通运行/报告不自动探测旧格式。
+InferYard 不迁移核心 v1/v2、不接受 origin=migrated（即使 schema3），递归来源也遵循相同集合。
+旧报告、比较、公开包与混合历史来源返回 unsupported_format/2；可核验的坏封存先返回 4。
+旧数据保留原字节并交原项目处理。内嵌题包 source_json 仅用于审核证明，不能作为活动输入。
+engine-fit plan1–4/run1–6 都有现行 writer，继续保留；只删除 manifest1 与历史资产回退。
+通用 verify 可直接核验当前 run/batch/冻结计划及 engine-fit，不改保存字节。
 
 ## 保持的行为
 
@@ -130,11 +125,11 @@ CLI stdout 为 JSON，`device-check` 默认人类摘要，Agent 使用 `--json` 
 [ADR035](decisions/035-purpose-specific-admission.md) 定义新的离线比较、诊断准入、
 评分继续、服务复用与逐题审核边界。
 
-- comparison.json 的 format_version=2、definition=phase2.v2；旧 format_version=1
-  不补新字段。plan/run 的 definition_versions.comparison 保持 phase2.v1。
+- comparison.json 的 format_version=4、definition=phase2.v3；旧 format1–3 不支持。
+  plan/run 的 definition_versions.comparison 保持 phase2.v1。
   observed_differences 与 eligibility 分开：前者描述当前样本，后者仍为受控结论。
   总体质量必须同题/同规则/同评分器/同分母且评分完整；性能仍需原逐指标资格。
-- report_format_version=5 使用新比较定义；旧 v1–v4 保留旧隐式比较和模板。
+- report_format_version=7 使用当前比较定义及根模板；旧报告1–6不支持。
 - 可选 environment_admission={definition: environment-admission.v2, required_fields: [...]}
   在配置 conditions 或 experiment 声明；字段限定 ac_online/profile/governor/epp/
   macos_power_policy。未声明保持旧正式执行准入；probe/diagnostic 仅记录差异。
@@ -178,7 +173,7 @@ native client_http 完成只允许原串行流程继续；不确定响应、dirt
 
 [ADR036](decisions/036-scoped-measurement-cost.md) 和[职责身份契约](contracts/scoped-measurement-contract.md)
 定义新 run/batch 的可选 implementation_identity、目录资产 model-assets.v2，以及
-comparison format v3 / phase2.v3、report v6。旧 comparison v1/v2 和 report v1–v5 按原版本重算，
+comparison format4 / phase2.v3、report7。历史重算已由 ADR038 取消，
 plan/run 的 comparison 标记仍为 phase2.v1。总源码摘要继续保存溯源；新执行身份只比较
 measurement/scoring，未知依赖不能作相等证明。新运行只持久化原始请求事件，不写 requests.jsonl；
-旧副本仍按 derived 条目核验。校准总开销与增量诊断分开，适用域及未覆盖条件见主题契约。
+混入旧副本的来源明确拒绝。校准总开销与增量诊断分开，适用域及未覆盖条件见主题契约。

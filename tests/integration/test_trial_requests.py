@@ -10,7 +10,7 @@ from inferyard.analysis.scoring import score_case
 from inferyard.config.planning import compile_plan
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, Redactor
+from inferyard.evidence.storage import EvidenceError, Redactor, read_json
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.request_execution import TrialRequests
 from tests.integration.test_runner import scenario as runner_scenario
@@ -87,7 +87,7 @@ def test_streams_failures_and_no_implicit_retries(scenario):
     assert row["arrival_capture"] == {"source": "decoded_delta", "streaming": True}
     assert row["block_arrivals"][0]["monotonic_ns"] == row["t_first_content_ns"]
     assert data["summary"]["performance"][row["category"]]["metrics"]["L03"]["sample_count"] >= 1
-    assert not locking.read_json(locking.STATE_PATH)["dirty"]
+    assert not read_json(locking.STATE_PATH)["dirty"]
 
 
 def test_cancel_terminates_once_and_does_not_start_next_case(scenario):
@@ -103,7 +103,7 @@ def test_cancel_terminates_once_and_does_not_start_next_case(scenario):
     assert data["summary"]["counts"]["cancelled"] == 1
     assert data["summary"]["counts"]["not_executed"] == 2
     assert len(scenario[2]) == 1
-    assert not locking.read_json(locking.STATE_PATH)["dirty"]
+    assert not read_json(locking.STATE_PATH)["dirty"]
 
 
 def test_scorer_exception_keeps_all_model_completions(scenario):
@@ -136,7 +136,7 @@ def test_unknown_residual_keeps_dirty_and_blocks_following_requests(scenario):
     assert reason == "service_stop_unconfirmed"
     assert len(calls) == 1
     assert data["summary"]["counts"]["not_executed"] == 2
-    assert locking.read_json(locking.STATE_PATH)["dirty"]
+    assert read_json(locking.STATE_PATH)["dirty"]
 
 
 def test_concurrent_invocation_rejected_without_second_dispatch(scenario):
@@ -166,7 +166,7 @@ def test_io_failure_leaves_invalid_not_model_failed(scenario, monkeypatch):
     assert data["summary"]["counts"]["invalid"] == 1
     assert data["summary"]["counts"]["failed"] == 0
     assert data["summary"]["counts"]["not_executed"] == 2
-    assert locking.read_json(locking.STATE_PATH)["dirty"]
+    assert read_json(locking.STATE_PATH)["dirty"]
 
 
 @pytest.mark.parametrize("field,value", [("category", "qa"), ("scorer_sha256", "f" * 64)])
@@ -217,7 +217,7 @@ def test_duration_admission_rechecks_deadline_after_durable_preparation(scenario
         )
         assert terminal is None
         assert execution.next_formal == 0 and not calls
-        assert not locking.read_json(locking.STATE_PATH)["dirty"]
+        assert not read_json(locking.STATE_PATH)["dirty"]
 
     data, _ = asyncio.run(pipeline(scenario, crosses_deadline))
     assert all(r["execution_state"] == "not_executed" for r in data["requests"])

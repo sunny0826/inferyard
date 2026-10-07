@@ -2,7 +2,7 @@
 
 import hashlib
 
-from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.contracts.validation import ContractError, strict_json_loads
 from inferyard.evidence.storage import EvidenceError, local_file
 
 
@@ -14,11 +14,6 @@ class TrialReads:
         self.sizes = {}
         self.errors = {}
         self.manifest = self.json("manifest.json") if self.exists("manifest.json") else None
-        if self.exists("manifest.json"):
-            try:
-                validate_document("manifest", self.manifest)
-            except ContractError as exc:
-                raise EvidenceError("invalid_manifest") from exc
 
     def exists(self, name):
         return local_file(self.root, name).exists()
@@ -26,7 +21,10 @@ class TrialReads:
     def json(self, name):
         if name not in self.documents:
             try:
-                raw = local_file(self.root, name).read_bytes()
+                with local_file(self.root, name).open("rb") as stream:
+                    raw = stream.read(16 * 1024 * 1024 + 1)
+                if len(raw) > 16 * 1024 * 1024:
+                    raise EvidenceError("json_evidence_size_limit")
                 self.hashes[name] = hashlib.sha256(raw).hexdigest()
                 self.sizes[name] = len(raw)
                 self.documents[name] = strict_json_loads(raw.decode("utf-8"))

@@ -101,7 +101,7 @@ def test_partial_mode_does_not_accept_corruption(bridge, tmp_path, case):
     elif case == "counter":
         values[2]["processes"][0]["cpu_percent_one_core"]["value"] = 88
     elif case == "mixed":
-        values[2]["definition"] = "lab_observer.v2"
+        values[2]["definition"] = "lab_observer.v1"
     path = save(tmp_path, values)
     if case == "truncated":
         path.write_bytes(path.read_bytes()[:-1])
@@ -109,20 +109,19 @@ def test_partial_mode_does_not_accept_corruption(bridge, tmp_path, case):
         bridge.analyze(path, allow_incomplete=True)
 
 
-def test_v2_disk_scope_and_v1_legacy_meaning(bridge, tmp_path):
+def test_v2_disk_scope_and_v1_rejection(bridge, tmp_path):
     values = records()
-    legacy = bridge.analyze(save(tmp_path, values))
-    assert legacy["disk_scope"] == "observer_cwd_filesystem_legacy_v1"
-    for item in values:
-        item["definition"] = "lab_observer.v2"
-    values[0]["disk_scope"] = "observer_cwd_filesystem"
-    current = bridge.analyze(save(tmp_path, values))
-    assert current["definition"] == "lab_observer_summary.v2"
+    path = save(tmp_path, values)
+    current = bridge.analyze(path)
     assert current["input_definition"] == "lab_observer.v2"
     assert current["disk_scope"] == "observer_cwd_filesystem"
-    values[0]["disk_scope"] = "benchmark_run_filesystem"
-    with pytest.raises(bridge.ObserverError):
+    for item in values:
+        item["definition"] = "lab_observer.v1"
+    with pytest.raises(bridge.UnsupportedFormat, match="unsupported_format"):
         bridge.analyze(save(tmp_path, values))
+    out = tmp_path / "unsupported-summary.json"
+    assert bridge.main(["--log", str(path), "--out", str(out)]) == 2
+    assert not out.exists()
 
 
 def test_partial_header_only_is_not_an_observation(bridge, tmp_path):

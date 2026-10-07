@@ -35,7 +35,9 @@ def close_remaining(fds, close):
 def test_exit_attempts_every_unlock_and_close_and_raises_first(
     dual_paths, monkeypatch, failure, error_type
 ):
-    lock = locking.HostLock().__enter__()
+    lock = locking.HostLock()
+    lock.fd = lock._acquire(locking.LEGACY_ROOT / "local-ai-benchmark-host.lock")
+    lock._acquire(locking.LOCK_PATH)
     fds = list(reversed(lock._fds))
     original_lock = locking._lock
     original_close = os.close
@@ -70,8 +72,10 @@ def test_exit_attempts_every_unlock_and_close_and_raises_first(
         assert lock.fd is None and lock._fds == [] and lock._locked_fds == set()
         # Even a close error before closing cannot strand the other kernel lock.
         # Explicit unlocking also lets a new owner acquire both locations.
-        with locking.HostLock():
-            pass
+        check = locking.HostLock()
+        check._acquire(locking.LOCK_PATH)
+        check._acquire(locking.LEGACY_ROOT / "local-ai-benchmark-host.lock")
+        check.__exit__(None, None, None)
     finally:
         close_remaining(fds, original_close)
 
@@ -81,6 +85,8 @@ def test_exit_attempts_every_unlock_and_close_and_raises_first(
 def test_enter_failure_attempts_all_closes_and_preserves_original_error(
     dual_paths, monkeypatch, failure, close_before
 ):
+    from inferyard.runtime import host_migration
+
     lock = locking.HostLock()
     original_lock = locking._lock
     original_close = os.close
@@ -108,8 +114,9 @@ def test_enter_failure_attempts_all_closes_and_preserves_original_error(
         original_lock(fd, release=release)
         acquired.append(fd)
 
-    def read_state(path):
-        raise original_error
+    def checkpoint(stage):
+        if stage == "locks":
+            raise original_error
 
     def close(fd):
         closed.append(fd)
@@ -122,12 +129,14 @@ def test_enter_failure_attempts_all_closes_and_preserves_original_error(
     try:
         with monkeypatch.context() as patch:
             patch.setattr(locking, "_lock", acquire)
-            patch.setattr(lock, "_read_state", read_state)
+            patch.setattr(host_migration, "_checkpoint", checkpoint)
+            patch.setattr(locking, "HostLock", lambda: lock)
             patch.setattr(locking.os, "close", close)
             expected_type = KeyboardInterrupt if failure == "interrupt" else PreflightError
             with pytest.raises(expected_type) as caught:
-                lock.__enter__()
-        assert len(opened) == 2 and closed == list(reversed(opened))
+                host_migration.migrate()
+        assert len(opened) == (2 if failure == "acquire" else 3)
+        assert closed == list(reversed(opened))
         assert released == list(reversed(acquired))
         assert calls == [
             (operation, fd)
@@ -140,12 +149,16 @@ def test_enter_failure_attempts_all_closes_and_preserves_original_error(
             assert caught.value.__cause__ is original_error
         else:
             assert caught.value is original_error
-        assert original_error.__notes__ == [f"host_lock_cleanup_failed: {cleanup_error!r}"]
+        assert (caught.value if failure == "acquire" else original_error).__notes__ == [
+            "host_lock_cleanup_failed"
+        ]
         with pytest.raises(OSError):
             os.fstat(opened[0])
         # Reacquisition must succeed before test teardown closes a fd whose
         # injected close failed before releasing it.
-        with locking.HostLock():
-            pass
+        check = locking.HostLock()
+        check._acquire(locking.LOCK_PATH)
+        check._acquire(locking.LEGACY_ROOT / "local-ai-benchmark-host.lock")
+        check.__exit__(None, None, None)
     finally:
         close_remaining(opened, original_close)

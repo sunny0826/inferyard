@@ -248,20 +248,13 @@ def validate_run(plan, run, rows):
         "engine_fit_run.v5",
         "engine_fit_run.v6",
     )
-    fields(run, RUN_FIELDS | ({"platform"} if modern else set()), "run_fields")
-    require(type(run["schema_version"]) is int and run["schema_version"] == 3, "schema_version")
-    require(
-        run["definition"]
-        in (
-            "engine_fit_run.v1",
-            "engine_fit_run.v2",
-            "engine_fit_run.v3",
-            "engine_fit_run.v4",
-            "engine_fit_run.v5",
-            "engine_fit_run.v6",
-        ),
-        "run_definition",
+    from inferyard.evidence.formats import require_core, require_version
+
+    require_core(run, "engine-fit run")
+    require_version(
+        run, "definition", tuple(f"engine_fit_run.v{i}" for i in range(1, 7)), "engine-fit run"
     )
+    fields(run, RUN_FIELDS | ({"platform"} if modern else set()), "run_fields")
     windows = run["definition"] == "engine_fit_run.v6"
     if windows:
         require(

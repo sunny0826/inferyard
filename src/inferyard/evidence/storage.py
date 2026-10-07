@@ -14,7 +14,6 @@ from inferyard import SCHEMA_VERSION
 from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
 from inferyard.platforms.platform_io import (
     filesystem_path,
-    legacy_request_alias,
     open_nofollow,
     publish,
     resolved_within,
@@ -133,35 +132,6 @@ def atomic_bytes(path: Path, content: bytes, *, overwrite=False) -> None:
 
 
 def local_file(root: Path, relative: str) -> Path:
-    # Renamed historical snapshots remain bound by the original manifest keys.
-    # Resolve only known filename grammars; metadata cannot supply arbitrary paths.
-    name = Path(relative)
-    colon_alias = legacy_request_alias(relative)
-    if (
-        name.is_absolute()
-        or (PureWindowsPath(relative).drive and colon_alias is None)
-        or ".." in name.parts
-        or not name.parts
-    ):
-        raise EvidenceError("unsafe_evidence_path")
-    if relative.endswith(".request.json"):
-        original_usable = os.name != "nt" or ":" not in relative
-        if not original_usable or not filesystem_path(root / relative).is_file():
-            from inferyard.evidence.request_snapshots import migrated_snapshot_path
-
-            migrated = migrated_snapshot_path(root, relative)
-            if migrated is not None and filesystem_path(migrated).is_file():
-                if not resolved_within(migrated, root):
-                    raise EvidenceError("unsafe_evidence_symlink")
-                return filesystem_path(migrated)
-    alias = legacy_request_alias(relative)
-    if alias is not None and (os.name == "nt" or not filesystem_path(root / relative).exists()):
-        # Never open an NTFS alternate data stream. Only the exact historical
-        # request-name grammar has an alias, created by the archival copy tool.
-        candidate = local_file(root, alias)
-        if not candidate.is_file():
-            raise EvidenceError("portable_legacy_request_missing")
-        return candidate
     name = Path(relative)
     if (
         name.is_absolute()
@@ -179,7 +149,11 @@ def local_file(root: Path, relative: str) -> Path:
 
 def read_json(path: Path):
     try:
-        return strict_json_loads(filesystem_path(path).read_text(encoding="utf-8"))
+        with filesystem_path(path).open("rb") as stream:
+            raw = stream.read(16 * 1024 * 1024 + 1)
+        if len(raw) > 16 * 1024 * 1024:
+            raise EvidenceError("json_evidence_size_limit")
+        return strict_json_loads(raw.decode("utf-8"))
     except (OSError, UnicodeError, ContractError) as exc:
         raise EvidenceError("invalid_json_evidence") from exc
 
@@ -311,15 +285,10 @@ def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
     manifest = _manifest if _manifest is not None else read_json(manifest_path)
     if (
         not isinstance(manifest, dict)
-        or manifest.get("schema_version") != SCHEMA_VERSION
         or manifest.get("sealed") is not True
         or not isinstance(manifest.get("files"), dict)
     ):
         raise EvidenceError("invalid_manifest")
-    try:
-        validate_document("manifest", manifest)
-    except ContractError as exc:
-        raise EvidenceError("invalid_manifest") from exc
     for name, info in manifest["files"].items():
         if name == "manifest.json" or not isinstance(info, dict):
             raise EvidenceError("invalid_manifest_entry")
@@ -332,8 +301,17 @@ def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
             valid = valid and sha256_file(path) == info.get("sha256")
         if not valid:
             # Classification is code-owned; do not trust a tampered 'derived' flag.
-            if name in ("summary.json", "report.html", "requests.jsonl"):
+            if name in ("summary.json", "report.html"):
                 limitations.append(f"derived_evidence_damaged:{name}")
             else:
                 raise EvidenceError("original_evidence_hash_mismatch")
+    from inferyard.evidence.formats import UnsupportedFormat, require_core
+
+    require_core(manifest, "manifest")
+    try:
+        validate_document("manifest", manifest)
+    except ContractError as exc:
+        raise EvidenceError("invalid_manifest") from exc
+    if "requests.jsonl" in manifest["files"]:
+        raise UnsupportedFormat("run.source", "requests.jsonl", ("events.jsonl",))
     return limitations

@@ -34,6 +34,14 @@ def model_asset_manifest(path, *, definition="model-assets.v2"):
     if path.is_symlink():
         raise PreflightError("engine_fit_directory_symlink")
     if path.is_dir():
+        from inferyard.evidence.formats import UnsupportedFormat, require_version
+
+        if definition is None:
+            raise UnsupportedFormat("model-assets", "unversioned", ("model-assets.v2",))
+
+        require_version(
+            {"definition": definition}, "definition", ("model-assets.v2",), "model-assets"
+        )
         return {"kind": "directory", **model_manifest(path, definition=definition)}
     try:
         root = path.resolve(strict=True)

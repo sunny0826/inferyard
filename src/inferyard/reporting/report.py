@@ -5,6 +5,7 @@ from pathlib import Path
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandResult, VerificationOptions
+from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
 from inferyard.evidence.storage import (
     EvidenceError,
     atomic_bytes,
@@ -15,7 +16,7 @@ from inferyard.evidence.storage import (
 )
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input, read_verified_comparison
-from inferyard.reporting.report_assets import template_hash, template_name
+from inferyard.reporting.report_assets import template_hash
 from inferyard.reporting.report_common import (
     _environment,
     _new_output,
@@ -30,7 +31,7 @@ from inferyard.reporting.report_resources import resource_view
 from inferyard.reporting.report_scans import scan_view
 
 
-def presentation(data, source, out, *, format_version=6):
+def presentation(data, source, out, *, format_version=7):
     summary = data["summary"]
     cases = {case["case_id"]: case for case in data["bundle"]["cases"]}
     rows = []
@@ -49,12 +50,11 @@ def presentation(data, source, out, *, format_version=6):
                 "error": request.get("error_category"),
             }
         )
-        if format_version >= 2:
-            rows[-1].update(
-                request_details(
-                    request, cases[request["case_id"]], ordinal, format_version=format_version
-                )
+        rows[-1].update(
+            request_details(
+                request, cases[request["case_id"]], ordinal, format_version=format_version
             )
+        )
     values = [row["latency_ms"] for row in rows if row["latency_ms"] is not None]
     view = {
         "schema_version": SCHEMA_VERSION,
@@ -82,23 +82,21 @@ def presentation(data, source, out, *, format_version=6):
     }
     if summary.get("engine_observation") is not None:
         view["engine_observation"] = summary["engine_observation"]
-    if format_version >= 2:
-        view["profile"] = profile_view(data)
-        view["dashboard"] = dashboard_view(data, view["resource_view"])
-    if format_version >= 4:
-        view["svg_gallery"] = [
-            {
-                "ordinal": row["ordinal"],
-                "case_id": row["case_id"],
-                "prompt": row["prompt"],
-                "latency_ms": row["latency_ms"],
-                "completion_tokens": row.get("completion_tokens"),
-                "finish_reason": row.get("finish_reason"),
-                "svg_view": row["svg_view"],
-            }
-            for row in rows
-            if row.get("category") == "svg"
-        ]
+    view["profile"] = profile_view(data)
+    view["dashboard"] = dashboard_view(data, view["resource_view"])
+    view["svg_gallery"] = [
+        {
+            "ordinal": row["ordinal"],
+            "case_id": row["case_id"],
+            "prompt": row["prompt"],
+            "latency_ms": row["latency_ms"],
+            "completion_tokens": row.get("completion_tokens"),
+            "finish_reason": row.get("finish_reason"),
+            "svg_view": row["svg_view"],
+        }
+        for row in rows
+        if row.get("category") == "svg"
+    ]
     return view
 
 
@@ -112,12 +110,11 @@ def build_index(
     *,
     producer=None,
     comparison_path=None,
-    format_version=6,
+    format_version=7,
     loaded=None,
     verified_comparison=None,
 ):
-    if type(format_version) is not int or format_version not in (1, 2, 3, 4, 5, 6, 7):
-        raise EvidenceError("unsupported_report_format")
+    require_version({"version": format_version}, "version", (7,), "report")
     out = out.resolve()
     if comparison_path is not None:
         comparison_path = comparison_path.resolve()
@@ -126,12 +123,7 @@ def build_index(
     loaded = (
         loaded
         if loaded is not None
-        else [
-            comparison_input(root, bind_unsealed=True)
-            if format_version >= 7
-            else report_input(root)
-            for root in roots
-        ]
+        else [comparison_input(root, bind_unsealed=True) for root in roots]
     )
     ids = [ref["run_id"] for _, ref in loaded]
     if len(set(ids)) != len(ids):
@@ -164,11 +156,7 @@ def build_index(
         comparison = compare_trials(
             loaded[0][0],
             loaded[1][0],
-            definition="phase2.v3"
-            if format_version >= 6
-            else "phase2.v2"
-            if format_version == 5
-            else "phase2.v1",
+            definition="phase2.v3",
         )
     index = {
         "schema_version": SCHEMA_VERSION,
@@ -214,43 +202,18 @@ def write_report(roots, out, *, comparison_path=None):
 def verify_report(out, *, options=None):
     saved = read_json(local_file(out, "index.json"))
     if (
-        type(saved) is dict
-        and type(saved.get("report_format_version")) is int
-        and saved["report_format_version"] == 7
+        type(saved) is not dict
+        or type(saved.get("schema_version")) is not int
+        or type(saved.get("report_format_version")) is not int
+        or saved.get("schema_version") != 3
+        or saved.get("report_format_version") != 7
     ):
-        from inferyard.reporting.sealed_report import verify
+        check_presentation_seal(out)
+    require_core(saved, "report")
+    require_version(saved, "report_format_version", (7,), "report")
+    from inferyard.reporting.sealed_report import verify
 
-        return verify(out, saved, options=options or VerificationOptions())
-    if options is not None and options.source_roots:
-        from inferyard.contracts.validation import ContractError
-
-        raise ContractError("source_root", "legacy reports retain original absolute locators")
-    try:
-        version = saved["report_format_version"]
-        if (
-            type(version) is not int
-            or version not in (1, 2, 3, 4, 5, 6)
-            or saved["schema_version"] != SCHEMA_VERSION
-        ):
-            raise EvidenceError("unsupported_report_format")
-        roots = [Path(run["source"]["path"]) for run in saved["runs"]]
-        linked = Path(saved["comparison_source"]["path"]) if "comparison_source" in saved else None
-        expected = build_index(
-            roots,
-            out,
-            producer=saved["generator_source_sha256"],
-            comparison_path=linked,
-            format_version=version,
-        )
-    except (KeyError, TypeError) as exc:
-        raise EvidenceError("invalid_report_index") from exc
-    # JSON persists tuple intervals as arrays; compare the serialized contract.
-    if json_bytes(expected) != json_bytes(saved):
-        raise EvidenceError("report_index_recomputation_mismatch")
-    expected_html = render_report_html(_environment(), template_name(version), expected)
-    if local_file(out, "report.html").read_bytes() != expected_html.encode():
-        raise EvidenceError("report_html_recomputation_mismatch")
-    return {"verified": True, "source_runs": len(roots), "html_matches_index": True}
+    return verify(out, saved, options=options or VerificationOptions())
 
 
 def execute(request, *, options=None):

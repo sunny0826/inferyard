@@ -33,8 +33,8 @@ checkpoint.json 是在途辅助文件，最终封存后固定保留但忽略，�
 ## 新呈现封存与定位
 
 report v7 的 artifact-manifest.json 封存 index.json/report.html（比较时另含 comparison.json）。
-comparison v4 保留 phase2.v3 计算语义，仅改变来源定位结构；旧 v1–v3 不改义。
-engine-fit manifest v2 继续封存原四文件和携带来源；旧 v1 仍校验当前渲染重建。
+comparison v4 保留 phase2.v3 计算语义，使用相对来源定位；旧 v1–v3 不支持。
+engine-fit manifest v2 继续封存原四文件和携带来源；旧 manifest1 返回 unsupported_format/2。
 新验证分别报告 bytes_verified、sources_verified、semantic_verified、render_checked。
 新格式默认不调用 renderer，--rerender 显式请求当前 renderer 一致性；渲染变化不能
 自动改写原报告。摘要一致不独自代替来源和语义核验。
@@ -44,12 +44,12 @@ engine-fit manifest v2 继续封存原四文件和携带来源；旧 v1 仍校�
 普通报告 source.path 为相对报告目录的外部定位，可含 ..；manifest 摘要和 run_id 仍是
 身份。--source-root OLD=NEW 可重复，以明确前缀映射定位，拒绝重复/歧义根，不搜索磁盘。
 原始数据/HTML 字节不改。携带包 sources/N 始终限于包内且拒绝 symlink/逃逸，不应用
-外部根映射。旧格式保持旧绝对定位规则，不追改旧字节。
+外部根映射。旧格式交原项目处理，不追改旧字节。
 
 未封存的原始 run 可生成描述报告：新 source 另存 unsealed_content_sha256，绑定本次
 严格读取所得数据投影；manifest_sha256 保持 null，不把投影摘要称为原始封存。
 显示链接按保存的来源定位确定性重建；显式映射仅改变验证读取的位置，不修改原链接。
-旧报告不支持源根映射，须保留其原定位；新比较中已绑定的旧总开销源绝对引用可按显式
+旧报告一律不支持；当前比较中已绑定的总开销源绝对引用可按显式
 根映射定位，原绑定文件字节及 manifest 摘要仍核验。
 
 ## 共享边界

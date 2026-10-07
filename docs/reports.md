@@ -28,4 +28,4 @@ inferyard verify --path reports/NEW_REPORT
 
 ## 报告格式
 
-当前新报告为 `report_format_version = 7`，核心仍为 `schema_version = 3`。v1–v6 继续按各自历史规则只读核验，原有报告字节不变；这与核心旧 v1/v2 数据须显式迁移是不同的版本边界。字段来源及限制见[报告契约](contracts/report-contract.md)，封存与核验见[离线读取契约](contracts/offline-reading-contract.md)，历史设计依据见 [ADR 011](decisions/011-report-dashboard.md)。
+当前新报告为 `report_format_version = 7`，核心仍为 `schema_version = 3`。仅接受 v7；旧报告 v1–v6 和核心旧 v1/v2 明确拒绝，原字节留在原项目。字段来源及限制见[报告契约](contracts/report-contract.md)，封存与核验见[离线读取契约](contracts/offline-reading-contract.md)，历史设计依据见 [ADR 011](decisions/011-report-dashboard.md)。

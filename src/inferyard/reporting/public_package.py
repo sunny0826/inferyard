@@ -7,6 +7,7 @@ import re
 from inferyard.analysis.public_metrics import project_metrics
 from inferyard.application.types import CommandResult
 from inferyard.config.public_recipe import reproduction_recipe
+from inferyard.evidence.formats import require_version
 from inferyard.evidence.storage import (
     EvidenceError,
     atomic_bytes,
@@ -19,8 +20,6 @@ from inferyard.reporting.comparison_report import comparison_input
 from inferyard.reporting.report_common import _new_output
 
 POLICY = "public-summary.v5"
-REPEAT_POLICIES = ("public-summary.v4", POLICY)
-PORTABLE_POLICIES = ("public-summary.v3", *REPEAT_POLICIES)
 REMOVED = [
     "local_paths",
     "endpoint_and_credentials",
@@ -69,6 +68,7 @@ def digest(value):
 
 
 def projection(data, source, *, policy=POLICY):
+    require_version({"policy": policy}, "policy", (POLICY,), "public-summary")
     config, summary = data["config"], data["summary"]
     counts = {
         key: number(summary["counts"].get(key))
@@ -122,15 +122,11 @@ def projection(data, source, *, policy=POLICY):
         "quality_Q01": quality,
         "limitations": LIMITS,
     }
-    if policy != "public-summary.v1":
-        candidate["reproduction"] = reproduction_recipe(
-            data,
-            number,
-            portable=policy in PORTABLE_POLICIES,
-            repeat_orders=policy in REPEAT_POLICIES,
-        )
-    if policy == POLICY:
-        candidate["metrics"] = project_metrics(summary["metric_observations"], number)
+    candidate["reproduction"] = reproduction_recipe(
+        data,
+        number,
+    )
+    candidate["metrics"] = project_metrics(summary["metric_observations"], number)
     candidate["candidate_id"] = (
         "candidate-" + hashlib.sha256(json_bytes(candidate)).hexdigest()[:32]
     )
@@ -139,58 +135,54 @@ def projection(data, source, *, policy=POLICY):
 
 def payloads(candidate):
     instructions = README
-    if candidate["policy"] != "public-summary.v1":
-        instructions += (
-            "\n## Reproduction conditions\n\n"
-            "The reproduction section includes cache/reasoning mode, power policy, "
-            "execution and telemetry settings, workload timing, order and budgets. "
-            "case_order uses zero-based indices into the hash-matched bundle; verify "
-            "each case_sha256 using canonical JSON before running.\n\n"
-            "locally_required_sha256 lists redacted values that must be supplied from "
-            "local artifacts. Null policy labels mean undisclosed/unknown, not default. "
-            "A missing safety section means no periodic safety policy was frozen. "
-            "Do not treat this as a ready-to-run configuration or infer equivalence "
-            "when any required local value is unavailable.\n"
-        )
-    if candidate["policy"] in PORTABLE_POLICIES:
-        instructions += (
-            "\n## Local binding check\n\n"
-            "Run: inferyard public-config-check --run PACKAGE_DIRECTORY --config LOCAL_CONFIG\n\n"
-            "Model/template paths and loopback host/port can change. The portable startup "
-            "fingerprint retains all other arguments and their order; duplicate local "
-            "bindings are rejected. Artifact hashes remain bound separately. This checks "
-            "declared configuration only, not artifact bytes or a running service. "
-            "A match still requires a new frozen plan and runtime preflight.\n"
-        )
-    if candidate["policy"] in REPEAT_POLICIES:
-        instructions += (
-            "\n## Freeze the reproduced workload\n\n"
-            "Run: inferyard public-plan --run PACKAGE_DIRECTORY --config LOCAL_CONFIG "
-            "--out NEW_PRIVATE_DIRECTORY\n\n"
-            "This creates a private input snapshot and frozen/plan.json, with all repeats "
-            "and exact per-repeat case orders for the selected workload. Other workloads "
-            "from the original experiment are not included. No generation is performed. "
-            "Local model files, service preparation and live preflight are still required; "
-            "run the frozen plan only after those checks. The private output contains "
-            "local configuration and task text; it is not a public package.\n"
-        )
+    instructions += (
+        "\n## Reproduction conditions\n\n"
+        "The reproduction section includes cache/reasoning mode, power policy, "
+        "execution and telemetry settings, workload timing, order and budgets. "
+        "case_order uses zero-based indices into the hash-matched bundle; verify "
+        "each case_sha256 using canonical JSON before running.\n\n"
+        "locally_required_sha256 lists redacted values that must be supplied from "
+        "local artifacts. Null policy labels mean undisclosed/unknown, not default. "
+        "A missing safety section means no periodic safety policy was frozen. "
+        "Do not treat this as a ready-to-run configuration or infer equivalence "
+        "when any required local value is unavailable.\n"
+    )
+    instructions += (
+        "\n## Local binding check\n\n"
+        "Run: inferyard public-config-check --run PACKAGE_DIRECTORY --config LOCAL_CONFIG\n\n"
+        "Model/template paths and loopback host/port can change. The portable startup "
+        "fingerprint retains all other arguments and their order; duplicate local "
+        "bindings are rejected. Artifact hashes remain bound separately. This checks "
+        "declared configuration only, not artifact bytes or a running service. "
+        "A match still requires a new frozen plan and runtime preflight.\n"
+    )
+    instructions += (
+        "\n## Freeze the reproduced workload\n\n"
+        "Run: inferyard public-plan --run PACKAGE_DIRECTORY --config LOCAL_CONFIG "
+        "--out NEW_PRIVATE_DIRECTORY\n\n"
+        "This creates a private input snapshot and frozen/plan.json, with all repeats "
+        "and exact per-repeat case orders for the selected workload. Other workloads "
+        "from the original experiment are not included. No generation is performed. "
+        "Local model files, service preparation and live preflight are still required; "
+        "run the frozen plan only after those checks. The private output contains "
+        "local configuration and task text; it is not a public package.\n"
+    )
     removed = REMOVED
-    if candidate["policy"] == POLICY:
-        removed = [item for item in REMOVED if item != "per_request_metrics_and_sensor_sources"] + [
-            "unreviewed_metric_labels_and_sensor_source_text",
-            "absolute_sample_clocks_and_raw_request_identifiers",
-        ]
-        instructions += (
-            "\n## Public metric observations\n\n"
-            "metrics preserves every source observation and numeric value, null, denominator, "
-            "sample count and exclusion. Text descriptors contain value, sha256 and redacted; "
-            "unknown labels and sensor paths are hashed, never silently combined. A redacted "
-            "missing reason is distinct from no missing reason. Request/workload identities "
-            "are hashed; absolute clocks and raw evidence references are omitted. Hashes "
-            "are linkable and do not guarantee anonymity. Source eligibility does not authorize "
-            "public performance comparisons. Source-backed verification requires "
-            "original evidence.\n"
-        )
+    removed = [item for item in REMOVED if item != "per_request_metrics_and_sensor_sources"] + [
+        "unreviewed_metric_labels_and_sensor_source_text",
+        "absolute_sample_clocks_and_raw_request_identifiers",
+    ]
+    instructions += (
+        "\n## Public metric observations\n\n"
+        "metrics preserves every source observation and numeric value, null, denominator, "
+        "sample count and exclusion. Text descriptors contain value, sha256 and redacted; "
+        "unknown labels and sensor paths are hashed, never silently combined. A redacted "
+        "missing reason is distinct from no missing reason. Request/workload identities "
+        "are hashed; absolute clocks and raw evidence references are omitted. Hashes "
+        "are linkable and do not guarantee anonymity. Source eligibility does not authorize "
+        "public performance comparisons. Source-backed verification requires "
+        "original evidence.\n"
+    )
     return {
         "candidate.json": json_bytes(candidate),
         "redactions.json": json_bytes({"policy": candidate["policy"], "omitted_sections": removed}),
@@ -218,8 +210,9 @@ def verify_public(out, source_root=None):
     saved = read_json(local_file(out, "manifest.json"))
     expected_names = {"candidate.json", "redactions.json", "REPRODUCE.md"}
     if (
-        saved.get("policy") not in ("public-summary.v1", "public-summary.v2", *PORTABLE_POLICIES)
-        or set(saved.get("files", {})) != expected_names
+        type(saved) is not dict
+        or type(saved.get("files")) is not dict
+        or set(saved["files"]) != expected_names
     ):
         raise EvidenceError("public_inventory_mismatch")
     if {p.name for p in out.iterdir()} != expected_names | {"manifest.json"}:
@@ -229,11 +222,19 @@ def verify_public(out, source_root=None):
             raise EvidenceError("public_hash_mismatch")
     candidate = read_json(local_file(out, "candidate.json"))
     if (
+        type(candidate) is not dict
+        or type(saved.get("policy")) is not str
+        or not re.fullmatch(r"public-summary\.v[0-9]+", saved["policy"])
+    ):
+        raise EvidenceError("public_policy_mismatch")
+    if (
         candidate.get("policy") != saved["policy"]
         or type(candidate.get("format_version")) is not int
         or candidate["format_version"] != int(saved["policy"].rsplit("v", 1)[1])
     ):
         raise EvidenceError("public_policy_mismatch")
+    require_version(saved, "policy", (POLICY,), "public-summary")
+    require_version(candidate, "format_version", (5,), "public-summary")
     identity = candidate.pop("candidate_id")
     if identity != "candidate-" + hashlib.sha256(json_bytes(candidate)).hexdigest()[:32]:
         raise EvidenceError("public_candidate_identity_mismatch")
@@ -243,10 +244,9 @@ def verify_public(out, source_root=None):
     for name, expected in payloads(candidate).items():
         if name != "candidate.json" and local_file(out, name).read_bytes() != expected:
             raise EvidenceError("public_policy_payload_mismatch")
-    if candidate["policy"] == POLICY:
-        from inferyard.analysis.public_metrics_check import validate_metrics
+    from inferyard.analysis.public_metrics_check import validate_metrics
 
-        validate_metrics(candidate.get("metrics"))
+    validate_metrics(candidate.get("metrics"))
     result = {
         "integrity_verified": True,
         "policy_consistency_verified": True,

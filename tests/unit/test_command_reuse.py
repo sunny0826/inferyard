@@ -11,13 +11,10 @@ import pytest
 from inferyard.analysis import scoring, scoring_revision
 from inferyard.application.types import CommandRequest
 from inferyard.contracts.validation import ContractError
-from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, json_bytes
 from inferyard.registry import components
 from inferyard.reporting import comparison_report, rescore
 from inferyard.reporting.report import build_index, verify_report
-from inferyard.reporting.report_assets import template_name
-from inferyard.reporting.report_common import _environment, render_report_html
 from tests.helpers import fixture_run
 from tests.unit.test_scoring_contract import BUNDLE, POLICY
 
@@ -153,34 +150,17 @@ def test_core_logs_are_read_once_and_facets_do_not_reopen_events(tmp_path, monke
 
 
 def test_pre_a_ledger_comparison_and_all_report_indexes_remain_equivalent(tmp_path):
-    fixture = Path(__file__).parents[1] / "fixtures/pre_a_reduction.json.gz"
-    saved = json.loads(gzip.decompress(fixture.read_bytes()))
-    roots = []
-    for run in saved["runs"]:
-        root = tmp_path / Path(run["path"]).relative_to(saved["base"])
-        root.mkdir(parents=True)
-        for name, text in run["files"].items():
-            (root / name).write_bytes(text.encode())
-        assert json_bytes(read_trial(root)) == json_bytes(run["ledger"])
-        roots.append(root)
+    from inferyard.evidence.formats import UnsupportedFormat
 
-    def relocated(value):
-        return json.loads(
-            json.dumps(value).replace(str(Path(saved["base"]).resolve()), str(tmp_path.resolve()))
+    saved = json.loads(
+        gzip.decompress(
+            (Path(__file__).parents[1] / "fixtures/pre_a_reduction.json.gz").read_bytes()
         )
-
-    expected = relocated(saved["comparison"])
-    assert comparison_report.build_comparison(*roots, format_version=1) == expected
-    for version, old in saved["indexes"].items():
-        out = tmp_path / "report"
-        index = build_index(roots, out, producer="a" * 64, format_version=int(version))
-        assert json_bytes(index) == json_bytes(relocated(old))
-        out.mkdir(exist_ok=True)
-        (out / "index.json").write_bytes(json_bytes(index))
-        (out / "report.html").write_text(
-            render_report_html(_environment(), template_name(int(version)), index)
-        )
-        assert verify_report(out)["verified"]
+    )
+    value = saved["comparison"]
+    (tmp_path / "comparison.json").write_bytes(json_bytes(value))
+    with pytest.raises(UnsupportedFormat):
+        comparison_report.read_verified_comparison(tmp_path)
 
 
 def test_scoring_source_bytes_read_once_for_each_required_version(monkeypatch):
@@ -260,34 +240,14 @@ def test_explicit_custom_identity_is_not_bypassed_by_builtin_scorer():
 
 
 def test_pre_c_ledger_comparison_v2_and_report_v5_remain_equivalent(tmp_path):
-    from inferyard.reporting.report_assets import template_hash
+    from inferyard.evidence.formats import UnsupportedFormat
 
-    fixture = Path(__file__).parents[1] / "fixtures/pre_c_reduction.json.gz"
-    saved = json.loads(gzip.decompress(fixture.read_bytes()))
-    assert saved["baseline"] == "4eb0d4d122c65ffbb04ad0c6ab9e783f35466d55"
-    roots = []
-    for run in saved["runs"]:
-        root = tmp_path / Path(run["path"]).relative_to(saved["base"])
-        root.mkdir(parents=True)
-        for name, text in run["files"].items():
-            (root / name).write_bytes(text.encode())
-        assert json_bytes(read_trial(root)) == json_bytes(run["ledger"])
-        roots.append(root)
-
-    def relocated(value):
-        text = json.dumps(value).replace(
-            str(Path(saved["base"]).resolve()), str(tmp_path.resolve())
+    saved = json.loads(
+        gzip.decompress(
+            (Path(__file__).parents[1] / "fixtures/pre_c_reduction.json.gz").read_bytes()
         )
-        return json.loads(text.replace(saved["base"], str(tmp_path)))
-
-    assert comparison_report.build_comparison(*roots, format_version=2) == relocated(
-        saved["comparison"]
     )
-    assert template_hash(5) == saved["template_sha256"]
-    out = tmp_path / "report"
-    index = build_index(roots, out, producer="a" * 64, format_version=5)
-    assert json_bytes(index) == json_bytes(relocated(saved["index"]))
-    out.mkdir()
-    (out / "index.json").write_bytes(json_bytes(index))
-    (out / "report.html").write_text(render_report_html(_environment(), template_name(5), index))
-    assert verify_report(out)["verified"]
+    value = saved["comparison"]
+    (tmp_path / "comparison.json").write_bytes(json_bytes(value))
+    with pytest.raises(UnsupportedFormat):
+        comparison_report.read_verified_comparison(tmp_path)

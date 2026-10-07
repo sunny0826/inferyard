@@ -3,14 +3,16 @@
 import argparse
 import hashlib
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 from inferyard import __version__
 from inferyard.analysis.scoring import scorer_hash
+from inferyard.application.types import VerificationOptions
 from inferyard.provenance import tool_source_hash
-from inferyard.reporting.report import _environment, build_index, verify_report
-from inferyard.reporting.report_assets import template_hash, template_name
-from inferyard.reporting.report_common import render_report_html
+from inferyard.reporting.report import verify_report, write_report
+from inferyard.reporting.report_assets import template_hash
 
 
 def main():
@@ -33,22 +35,29 @@ def main():
     assert scorer_hash() == expected["scorer_hash"], "installed scoring identity differs"
     assert __version__ == "0.0.1"
     args.out.mkdir()
-    verified = []
     run = args.fixtures / expected["fixture_relative"]
-    # These are newly rendered synthetic historical-format inputs, not historical device evidence.
+    current = args.out / "current-report"
+    write_report([run], current)
+    assert verify_report(current)["verified"]
+    assert verify_report(current, options=VerificationOptions(rerender=True))["verified"]
+    rejected = []
     for version in range(1, 7):
-        out = args.out / f"synthetic-report-v{version}"
+        out = args.out / f"unsupported-report-v{version}"
         out.mkdir()
-        index = build_index([run], out, format_version=version, producer=tool_source_hash())
         (out / "index.json").write_text(
-            json.dumps(index, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            json.dumps({"schema_version": 3, "report_format_version": version}), encoding="utf-8"
         )
-        (out / "report.html").write_text(
-            render_report_html(_environment(), template_name(version), index), encoding="utf-8"
+        result = subprocess.run(
+            [sys.executable, "-I", "-m", "inferyard", "verify", "--path", str(out)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
         )
-        assert verify_report(out)["verified"]
-        verified.append(version)
-    templates = {str(version): template_hash(version) for version in range(1, 8)}
+        assert result.returncode == 2, (version, result.returncode)
+        assert "unsupported_format" in json.loads(result.stdout)["limitations"]
+        rejected.append(version)
+    templates = {"7": template_hash(7)}
     print(
         json.dumps(
             {
@@ -57,7 +66,8 @@ def main():
                 "tool_source_hash": tool_source_hash(),
                 "scorer_hash": scorer_hash(),
                 "resource_files": len(resources),
-                "synthetic_historical_reports_verified": verified,
+                "current_report_formats_verified": [7],
+                "unsupported_report_formats_rejected": rejected,
                 "template_hashes": templates,
             }
         )

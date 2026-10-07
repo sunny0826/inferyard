@@ -24,8 +24,6 @@ def materialize(package, loaded, out):
     if not matched["declared_configuration_matches"]:
         raise EvidenceError("public_local_configuration_mismatch")
     candidate = read_json(local_file(package, "candidate.json"))
-    if candidate["policy"] not in ("public-summary.v4", "public-summary.v5"):
-        raise EvidenceError("public_plan_requires_repeat_orders_v4")
     if candidate["identities"]["scorer_sha256"] != scorer_hash():
         raise EvidenceError("public_plan_scorer_source_mismatch")
     reproduction = candidate["reproduction"]

@@ -28,9 +28,10 @@ def normalized_args(args, excluded=()):
     return result
 
 
-def compare_trials(left, right, *, mode=None, performance_evidence=None, definition="phase2.v1"):
-    if definition not in ("phase2.v1", "phase2.v2", "phase2.v3"):
-        raise EvidenceError("unsupported_comparison_definition")
+def compare_trials(left, right, *, mode=None, performance_evidence=None, definition="phase2.v3"):
+    from inferyard.evidence.formats import require_version
+
+    require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
     declared = [d["plan"]["experiment"]["comparison"] for d in (left, right)]
     chosen = mode or (declared[0]["mode"] if declared[0] == declared[1] else "side-by-side")
     if chosen not in ("model", "config", "side-by-side"):
@@ -38,11 +39,10 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     conditions = []
 
     def check(field, a, b, *, allowed=False, impact="common"):
-        if definition in ("phase2.v2", "phase2.v3"):
-            if field in ("run.definition_versions.scoring", "selection.scorer_sha256"):
-                impact = "quality"
-            elif field == "run.definition_versions.measurement":
-                impact = "performance"
+        if field in ("run.definition_versions.scoring", "selection.scorer_sha256"):
+            impact = "quality"
+        elif field == "run.definition_versions.measurement":
+            impact = "performance"
         known = _known(a) and _known(b)
         state = (
             "unknown"
@@ -120,10 +120,8 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
         "environment_start.cpu_model",
         "environment_start.kernel",
     ):
-        if (
-            path == "run.tool_source_sha256"
-            and definition == "phase2.v3"
-            and any("implementation_identity" in d["run"] for d in (left, right))
+        if path == "run.tool_source_sha256" and any(
+            "implementation_identity" in d["run"] for d in (left, right)
         ):
             from inferyard.implementation_identity import role_identities
 
@@ -137,7 +135,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
                     *[identity[role] for identity in identities],
                     impact=impact,
                 )
-        elif path == "run.definition_versions" and definition in ("phase2.v2", "phase2.v3"):
+        elif path == "run.definition_versions":
             for component in ("measurement", "scoring"):
                 field = path + "." + component
                 check(field, _get(left, field), _get(right, field))
@@ -334,27 +332,25 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
                 "ordered_probe_warmup_and_request_sequence_scope_only",
             ]
         )
-    if definition in ("phase2.v2", "phase2.v3"):
-        from inferyard.analysis.observed_comparison import observed_differences
+    from inferyard.analysis.observed_comparison import observed_differences
 
-        result["definition"] = definition
-        result["observed_differences"] = observed_differences(left, right, result)
-        if definition == "phase2.v3":
-            result["calibration_status"] = (
-                [
-                    {
-                        "status": "qualified" if p["eligible"] else "limited",
-                        "reasons": p["reasons"],
-                        "incremental_diagnostic": p.get("incremental_diagnostic"),
-                    }
-                    for p in performance_evidence
-                ]
-                if performance_evidence is not None
-                else [
-                    {"status": "not_supplied", "reasons": ["performance_evidence_not_supplied"]}
-                    for _ in (left, right)
-                ]
-            )
+    result["definition"] = definition
+    result["observed_differences"] = observed_differences(left, right, result)
+    result["calibration_status"] = (
+        [
+            {
+                "status": "qualified" if p["eligible"] else "limited",
+                "reasons": p["reasons"],
+                "incremental_diagnostic": p.get("incremental_diagnostic"),
+            }
+            for p in performance_evidence
+        ]
+        if performance_evidence is not None
+        else [
+            {"status": "not_supplied", "reasons": ["performance_evidence_not_supplied"]}
+            for _ in (left, right)
+        ]
+    )
     return result
 
 

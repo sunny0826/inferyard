@@ -18,7 +18,7 @@ def package(root, candidate, change_payload=None):
     (root / "manifest.json").write_bytes(
         json_bytes(
             {
-                "policy": "public-summary.v1",
+                "policy": "public-summary.v5",
                 "candidate_id": candidate["candidate_id"],
                 "files": {
                     name: hashlib.sha256(content).hexdigest() for name, content in files.items()
@@ -30,13 +30,13 @@ def package(root, candidate, change_payload=None):
 
 @pytest.mark.parametrize("filename", ["redactions.json", "REPRODUCE.md"])
 def test_rehashed_policy_payload_tampering_is_rejected(tmp_path, filename):
-    package(tmp_path, {"policy": "public-summary.v1", "format_version": 1}, filename)
+    package(tmp_path, {"policy": "public-summary.v5", "format_version": 5}, filename)
     with pytest.raises(EvidenceError, match="policy_payload"):
         verify_public(tmp_path)
 
 
 @pytest.mark.parametrize("version", [2, True, "1"])
 def test_rehashed_inconsistent_version_is_rejected(tmp_path, version):
-    package(tmp_path, {"policy": "public-summary.v1", "format_version": version})
+    package(tmp_path, {"policy": "public-summary.v5", "format_version": version})
     with pytest.raises(EvidenceError, match="policy_mismatch"):
         verify_public(tmp_path)
