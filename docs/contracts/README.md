@@ -4,6 +4,7 @@
 
 | 职责 | 契约 |
 | --- | --- |
+| 当前格式清理与锁迁移（T0 待审核） | [格式支持矩阵、拒绝与安全桥](inferyard-current-format.md) |
 | 执行窗口 | [持续负载发送准入](duration-send-contract.md) |
 | 平台身份与采集 | [macOS](macos-contract.md) · [Windows Prism 批量](windows-prism-batch-contract.md) |
 | 引擎适配 | [engine-fit](engine-fit-contract.md) · [Windows KVMem/NInfer](windows-ninfer-adaptation-contract.md) |
@@ -12,4 +13,5 @@
 | 工程辅助库 | [源码获取宿主](windows-source-host-contract.md) |
 
 旧 definition 的字段和拒绝语义在对应契约中注明，不能用新版本重新解释旧证据。
+当前格式清理实施后，读取支持集合以新契约矩阵为准；T0 文档不代表源码已删除兼容分支。
 操作步骤见[使用指南](../usage.md)，长期取舍见 [ADR](../decisions/README.md)。

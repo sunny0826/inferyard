@@ -23,10 +23,21 @@ wheel 为 `3dcd2363c31ff3a34f92bde4dbd114e9a82a94ac06f942a7ef5c6d6cbdafbf0b`。
 
 ## 兼容边界
 
+以下为基线源码现状。[ADR 038](decisions/038-inferyard-current-format.md) 已提出用户授权的局部取代范围；
+尚未实施，不能把下列历史支持承诺当作新方案的永久要求。
+
 - 核心数据保持 `schema_version = 3`，Schema URN 保留 `urn:local-ai-bench:`，不改字段与 ID。
 - 主机锁和 dirty 状态沿用 `local-ai-benchmark-host.*` 路径，防止与源项目并存时绕过互斥或恢复要求。
 - 历史报告模板、兼容夹具及已审核题包保留字节；其中的旧名称属于原件内容。新报告采用 InferYard 品牌。
 - 源项目的测试和真机记录不自动转移为 InferYard 新候选的验收结论；当前包须独立检查。
+
+## 当前格式清理与主机锁迁移
+
+- 用户已授权只支持当前生产格式、删除旧运行迁移与历史报告兼容；T0 三件套已形成，待独立 Reviewer 与父会话审核，源码/测试未改。
+- 基线 `fe1052a41afbddc1b7ceff852e794d6d872977ce`；[格式矩阵](contracts/inferyard-current-format.md#格式支持矩阵) 保留 engine-fit 当前多版本、评分定义及已审核题包证明，不按 v1/v2 名称清理。
+- [锁提案](contracts/inferyard-current-format.md#锁迁移) 使用新主路径与持续旧锁/dirty 镜像；现有旧状态仅由显式 clean 迁移接管，不在本机执行真实迁移。
+- 父会话须裁定持续旧桥和 Windows D 根动态变化的支持边界；裁定及 T0 审核前保持实施门关闭。
+- 后续单 worker 实施、Reviewer 审核与父会话 Gate A/Gate B 见[计划](plans/inferyard-current-format.md)；不继承此前构建或原生验收，Windows 无新原生证据时保持未验。
 
 ## 后续工程工作
 
