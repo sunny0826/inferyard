@@ -232,14 +232,16 @@ def verify_public(out, source_root=None):
         or candidate["format_version"] != int(saved["policy"].rsplit("v", 1)[1])
     ):
         raise EvidenceError("public_policy_mismatch")
-    require_version(saved, "policy", (POLICY,), "public-summary")
-    require_version(candidate, "format_version", (5,), "public-summary")
-    identity = candidate.pop("candidate_id")
-    if identity != "candidate-" + hashlib.sha256(json_bytes(candidate)).hexdigest()[:32]:
+    identity = candidate.get("candidate_id")
+    if type(identity) is not str or type(saved.get("candidate_id")) is not str:
+        raise EvidenceError("public_candidate_identity_mismatch")
+    body = {key: value for key, value in candidate.items() if key != "candidate_id"}
+    if identity != "candidate-" + hashlib.sha256(json_bytes(body)).hexdigest()[:32]:
         raise EvidenceError("public_candidate_identity_mismatch")
     if identity != saved["candidate_id"]:
         raise EvidenceError("public_candidate_identity_mismatch")
-    candidate["candidate_id"] = identity
+    require_version(saved, "policy", (POLICY,), "public-summary")
+    require_version(candidate, "format_version", (5,), "public-summary")
     for name, expected in payloads(candidate).items():
         if name != "candidate.json" and local_file(out, name).read_bytes() != expected:
             raise EvidenceError("public_policy_payload_mismatch")

@@ -189,6 +189,29 @@ CLI 命令表排版统一，旧报告/比较和预算快照说明同步当前范
 - 全量 pytest、构建安装、实际 HTML、原生 Windows 和最终 Gate 仍由父会话完成。
   本地追加提交后停写，未 push/合并，未修改 main、原项目或父会话冻结副本。
 
+
+### F5 公开包 candidate 自哈希优先级（基于 dacde34，2026-10-08）
+
+父会话复现：当前 public writer 的合法包仅改旧 policy/format_version，并同步 manifest 的
+policy 和 candidate.json 文件摘要后，文件封存可通过，但原 candidate_id 已与内容不符。
+旧版拒绝此前先执行，错误返回 unsupported/2。本轮将 candidate_id 的存在/类型、既有
+canonical 自哈希及 manifest 的 candidate_id 一致性核验移到版本拒绝前；自哈希算法保持
+`candidate-{sha256(json_bytes(body))[:32]}`，不恢复旧投影或改变架构。
+
+- 当前真实 writer 生成包验证成功后，对 public v1–v4 分别覆盖坏自哈希 + 旧声明返回 4，
+  重算 candidate_id 及文件封存后的完整旧声明返回 2；public-check 与 verify 均覆盖。
+  每次 CLI 核验前后比较输入包及源证据的全部文件摘要；另覆盖 candidate/manifest 的 ID
+  缺失、null、bool 类型拒绝，并保留文件封存损坏优先级检查。
+- 修复前新增回归为 10 failed、25 passed；`/private/tmp/inferyard-f5-public-before.log`。
+  修复后 5 文件 **132 passed**，5.61 秒；`/private/tmp/inferyard-f5-public-final.log`。
+- ADR038 的失效 `#父会话裁定项` 链接已改为当前 `#父会话终审边界`，对目标标题作定向核验。
+- 最终 Ruff、导出、保护基线、静态导入/职责/链接与空白检查见
+  `/private/tmp/inferyard-f5-public-checks.log`；metrics 43 处已批准摘要及 43/199 个 ID 保持。
+
+本轮只在原修复 worktree 定向验证，不运行全量、构建安装或真实锁/模型请求。
+父会话在 dacde34 完成的静态/安装 v3 检查不冒充新提交验收；新提交由父会话重建产物并交增量复审。
+追加本地提交后停写，不 push/合并，不改主目录、原项目或父会话冻结副本。
+
 ## 后续工程工作
 
 | 工作 | 边界 |

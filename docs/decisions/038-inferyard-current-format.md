@@ -87,5 +87,5 @@ InferYard 只支持[格式矩阵](../contracts/inferyard-current-format.md#格�
 父会话完成 Gate A 集成回归及 Gate B 代表性离线/进程验证后才能接受；
 Windows 原生未验单列，不以模拟或跨平台编译替代，不发送真实模型请求。
 
-实施前 Reviewer/父会话须审核[方案及可证边界](../contracts/inferyard-current-format.md#父会话裁定项)。
+实施前 Reviewer/父会话须审核[方案及可证边界](../contracts/inferyard-current-format.md#父会话终审边界)。
 完整 DAG、责任与检查见[实施计划](../plans/inferyard-current-format.md)。

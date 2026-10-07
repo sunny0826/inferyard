@@ -101,10 +101,27 @@ def test_bad_presentation_seal_precedes_unsupported(tmp_path, capsys):
 
 
 @pytest.mark.parametrize("version", [1, 2, 3, 4])
-def test_public_old_policy_rejected_after_hash_checks(tmp_path, version):
+def test_public_old_policy_rejected_after_hash_checks(tmp_path, version, capsys):
+    from inferyard.evidence.storage import EvidenceError
+    from tests.unit.test_verification import digest_tree
+
     root = fixture_run(tmp_path / "source")
+    before_source = digest_tree(root)
     out = tmp_path / "public"
     write_public(root, out)
+    assert verify_public(out)["integrity_verified"]
+
+    def check_cli(code, reason):
+        before = digest_tree(out)
+        for command, flag in (("public-check", "--run"), ("verify", "--path")):
+            assert main([command, flag, str(out)]) == code
+            result = json.loads(capsys.readouterr().out)
+            if reason is not None:
+                assert result["limitations"] == [reason]
+            assert digest_tree(out) == before
+        assert digest_tree(root) == before_source
+
+    check_cli(0, None)
     candidate = json.loads((out / "candidate.json").read_bytes())
     candidate.update(policy=f"public-summary.v{version}", format_version=version)
     raw = json_bytes(candidate)
@@ -113,11 +130,22 @@ def test_public_old_policy_rejected_after_hash_checks(tmp_path, version):
     manifest.update(policy=candidate["policy"])
     manifest["files"]["candidate.json"] = hashlib.sha256(raw).hexdigest()
     (out / "manifest.json").write_bytes(json_bytes(manifest))
+    # File seals match, but the existing canonical candidate self-hash is now wrong.
+    with pytest.raises(EvidenceError, match="public_candidate_identity_mismatch"):
+        verify_public(out)
+    check_cli(4, "public_candidate_identity_mismatch")
+
+    body = {key: value for key, value in candidate.items() if key != "candidate_id"}
+    candidate["candidate_id"] = "candidate-" + hashlib.sha256(json_bytes(body)).hexdigest()[:32]
+    raw = json_bytes(candidate)
+    (out / "candidate.json").write_bytes(raw)
+    manifest["candidate_id"] = candidate["candidate_id"]
+    manifest["files"]["candidate.json"] = hashlib.sha256(raw).hexdigest()
+    (out / "manifest.json").write_bytes(json_bytes(manifest))
     with pytest.raises(UnsupportedFormat):
         verify_public(out)
+    check_cli(2, "unsupported_format")
     (out / "REPRODUCE.md").write_bytes(b"changed")
-    from inferyard.evidence.storage import EvidenceError
-
     with pytest.raises(EvidenceError, match="public_hash_mismatch"):
         verify_public(out)
 
