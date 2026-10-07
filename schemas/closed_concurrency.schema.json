@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:closed_concurrency",
+  "title": "InferYard closed_concurrency v3",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    },
+    "definition": {
+      "type": "string",
+      "enum": [
+        "closed_concurrency.v1"
+      ]
+    },
+    "case_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+      },
+      "minItems": 1
+    },
+    "concurrency": {
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        4
+      ]
+    },
+    "server_slots": {
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        4
+      ]
+    },
+    "timeout_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "drain_timeout_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "max_wall_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "latency_limit_ms": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "require_quality": {
+      "type": "boolean"
+    },
+    "max_dispatch_delay_ns": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_client_cpu_fraction": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "definition",
+    "case_ids",
+    "concurrency",
+    "server_slots",
+    "timeout_seconds",
+    "drain_timeout_seconds",
+    "max_wall_seconds",
+    "latency_limit_ms",
+    "require_quality",
+    "max_dispatch_delay_ns",
+    "max_client_cpu_fraction"
+  ],
+  "additionalProperties": false
+}

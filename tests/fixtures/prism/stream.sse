@@ -1,0 +1,46 @@
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"role":"assistant","content":null}}],"created":1790677746,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"北京"}}],"created":1790677746,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"\n"}}],"created":1790677747,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"上海"}}],"created":1790677747,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"\n"}}],"created":1790677747,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"广州"}}],"created":1790677748,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"\n"}}],"created":1790677748,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"深圳"}}],"created":1790677749,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"\n"}}],"created":1790677749,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"成都"}}],"created":1790677749,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"\n"}}],"created":1790677750,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"武汉"}}],"created":1790677750,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"\n"}}],"created":1790677750,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"杭州"}}],"created":1790677751,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"\n"}}],"created":1790677751,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"重庆"}}],"created":1790677752,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"\n"}}],"created":1790677752,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"西安"}}],"created":1790677752,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"\n"}}],"created":1790677753,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"南京"}}],"created":1790677753,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[{"finish_reason":"stop","index":0,"delta":{}}],"created":1790677753,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk"}
+
+data: {"choices":[],"created":1790677753,"id":"chatcmpl-5X5bHIhWnKhbM14gyGuwcqtPuuYjoXZy","model":"/home/guo/codes/local-ai/benchmark/local-ai-community-benchmark/artifacts/bonsai2/Ternary-Bonsai-2-27B-PQ2_0.gguf","system_fingerprint":"b10743-adfffbe41","object":"chat.completion.chunk","usage":{"completion_tokens":20,"prompt_tokens":28,"total_tokens":48,"prompt_tokens_details":{"cached_tokens":0}},"timings":{"cache_n":0,"prompt_n":28,"prompt_ms":2773.577,"prompt_per_token_ms":99.05632142857144,"prompt_per_second":10.095266870182439,"predicted_n":20,"predicted_ms":6929.477,"predicted_per_token_ms":364.7093157894737,"predicted_per_second":2.7419096708164266}}
+
+data: [DONE]
+

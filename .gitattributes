@@ -1,0 +1,10 @@
+# Stable source hashes across Windows and Linux checkouts.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+# Preserve model outputs and sealed validation files byte for byte.
+validation/** -text -whitespace
+# Sealed migration packets and protocol captures must survive Windows checkout unchanged.
+tests/fixtures/legacy/** -text -whitespace
+tests/fixtures/prism/** -text -whitespace
+tests/fixtures/legacy/README.md text eol=lf
+tests/fixtures/prism/README.md text eol=lf

@@ -1,0 +1,52 @@
+{
+  "schema_version": 3,
+  "bundle_id": "t01-fixture",
+  "version": "fixture-v1",
+  "language": "zh-CN",
+  "license_note": "Original synthetic test cases; not the formal benchmark corpus.",
+  "review_records": [],
+  "answer_policy": {
+    "instruction_newlines": "crlf_to_lf",
+    "strip_line_edges": true,
+    "ignore_empty_lines": true,
+    "unicode_normalization": "none",
+    "reasoning": "separate_channel_excluded_content_unchanged"
+  },
+  "cases": [
+    {
+      "case_id": "instruction-01",
+      "category": "instruction",
+      "prompt": "只回答：北京",
+      "reference_answer": "北京",
+      "rules": {
+        "literal_contains": [
+          "北京"
+        ],
+        "literal_forbidden": [
+          "上海"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "extraction-01",
+      "category": "extraction",
+      "prompt": "姓名为小明，年龄为12。仅返回name与age的JSON。",
+      "reference_answer": "{\"name\":\"小明\",\"age\":12}",
+      "rules": {
+        "fields": {
+          "name": {
+            "type": "string",
+            "value": "小明"
+          },
+          "age": {
+            "type": "integer",
+            "value": 12
+          }
+        },
+        "allow_extra_fields": false
+      }
+    }
+  ],
+  "task_protocol": "quality"
+}

@@ -1,0 +1,19 @@
+{
+  "protocol": "lab_observation.v1",
+  "server_instance_id": "11111111111111111111111111111111",
+  "engine": "ninfer",
+  "build_id": "lab-patched-build",
+  "model": {
+    "kind": "ninfer",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "bytes": 100
+  },
+  "template_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "capabilities": {
+    "lifecycle": true,
+    "request_cancel": true,
+    "request_id": true,
+    "token_budget": false,
+    "effective_parameters": false
+  }
+}

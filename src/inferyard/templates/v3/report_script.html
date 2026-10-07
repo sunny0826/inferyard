@@ -1,0 +1,68 @@
+const controls = Object.fromEntries(['query','state','bundle','recipe','date-from','date-to','date-state'].map(id => [id, document.getElementById(id)]));
+const cards = [...document.querySelectorAll('article.run')];
+function filterRuns() {
+  let count = 0;
+  const from = controls['date-from'].value, to = controls['date-to'].value;
+  for (const card of cards) {
+    const d = card.dataset, date = d.date;
+    const match = d.search.toLowerCase().includes(controls.query.value.toLowerCase())
+      && ['state','bundle','recipe'].every(k => controls[k].value === 'all' || d[k] === controls[k].value)
+      && (controls['date-state'].value === 'all' || (controls['date-state'].value === 'known' ? !!date : !date))
+      && (!from || (date && date >= from)) && (!to || (date && date <= to));
+    card.hidden = !match;
+    if (match) count++;
+  }
+  document.getElementById('visible').textContent = `显示 ${count} / ${cards.length} 次运行；各次成绩和分母分别保留。`;
+  document.getElementById('empty').hidden = count !== 0;
+  const pair = document.querySelector('.comparison');
+  if (pair) pair.hidden = cards.some(card => card.hidden);
+  const first = cards.find(card => !card.hidden);
+  for (const link of document.querySelectorAll('[data-section]')) {
+    link.href = first ? `#${link.dataset.section}-${first.dataset.runIndex}` : '#top';
+  }
+}
+for (const control of Object.values(controls)) {
+  control.addEventListener('input', filterRuns);
+  control.addEventListener('change', filterRuns);
+}
+filterRuns();
+for (const list of document.querySelectorAll('.case-list')) {
+  const query = list.querySelector('.case-query'), category = list.querySelector('.case-category'), outcome = list.querySelector('.case-outcome');
+  const rows = [...list.querySelectorAll('.case-row')].map(row => ({row, text: row.textContent.toLowerCase()}));
+  const filterCases = () => {
+    let count = 0;
+    for (const {row, text} of rows) {
+      const d = row.dataset;
+      const stateMatches = outcome.value === 'all'
+        || (outcome.value === 'incorrect' && d.quality === 'fail')
+        || (outcome.value === 'execution_issue' && d.execution !== 'completed')
+        || (outcome.value === 'unscorable' && !['pass','fail'].includes(d.quality));
+      const match = text.includes(query.value.toLowerCase()) && (category.value === 'all' || d.category === category.value) && stateMatches;
+      row.hidden = !match;
+      if (match) count++;
+    }
+    list.querySelector('.case-count').textContent = `显示 ${count} / ${rows.length} 项；成绩与原分母保持不变。`;
+    list.querySelector('.empty-cases').hidden = count !== 0;
+  };
+  for (const control of [query, category, outcome]) {
+    control.addEventListener('input', filterCases);
+    control.addEventListener('change', filterCases);
+  }
+}
+function revealCase() {
+  let id;
+  try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+  if (!id.startsWith('case-')) return;
+  const target = document.getElementById(id);
+  if (!target || !target.classList.contains('case-row')) return;
+  const list = target.closest('.case-list');
+  for (const control of list.querySelectorAll('input,select')) {
+    control.value = control.tagName === 'SELECT' ? 'all' : '';
+    control.dispatchEvent(new Event('input'));
+  }
+  target.open = true;
+  target.scrollIntoView({block: 'start'});
+}
+window.addEventListener('hashchange', revealCase);
+revealCase();
+document.getElementById('print-report').addEventListener('click', () => window.print());

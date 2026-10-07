@@ -1,0 +1,2661 @@
+{
+  "schema_version": 3,
+  "bundle_id": "zh-core-v2",
+  "version": "2.0.0-draft.1",
+  "language": "zh-CN",
+  "license_note": "本项目原创合成测试题，不引用外部题库；可随项目测评证据公开。",
+  "review_records": [
+    {
+      "reviewer": "Xudong（当前用户，本会话明确确认）",
+      "reviewed_at": "2026-09-30T05:09:11.422017+00:00",
+      "content_sha256": "022ebb43192769cfba05ee2dc70322961e1ad8c6e4010b9c237c71facf894f86",
+      "conclusion": "approved"
+    }
+  ],
+  "answer_policy": {
+    "instruction_newlines": "crlf_to_lf",
+    "strip_line_edges": true,
+    "ignore_empty_lines": true,
+    "unicode_normalization": "none",
+    "reasoning": "separate_channel_excluded_content_unchanged"
+  },
+  "cases": [
+    {
+      "case_id": "instruction-01",
+      "category": "instruction",
+      "prompt": "写一行中文，包含“星光”，不要包含“月亮”。",
+      "reference_answer": "星光照亮夜空。",
+      "rules": {
+        "literal_contains": [
+          "星光"
+        ],
+        "literal_forbidden": [
+          "月亮"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-02",
+      "category": "instruction",
+      "prompt": "写一行中文，包含“苹果”和“香蕉”，不要包含“梨”。",
+      "reference_answer": "苹果和香蕉都在桌上。",
+      "rules": {
+        "literal_contains": [
+          "苹果",
+          "香蕉"
+        ],
+        "literal_forbidden": [
+          "梨"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-03",
+      "category": "instruction",
+      "prompt": "写两行，每行都非空；全文包含“春天”和“秋天”，不要包含“冬天”。",
+      "reference_answer": "春天花开。\n秋天叶落。",
+      "rules": {
+        "literal_contains": [
+          "春天",
+          "秋天"
+        ],
+        "literal_forbidden": [
+          "冬天"
+        ],
+        "nonempty_line_count": 2
+      }
+    },
+    {
+      "case_id": "instruction-04",
+      "category": "instruction",
+      "prompt": "写三行，每行都非空；全文包含“红色”“蓝色”“绿色”。",
+      "reference_answer": "红色。\n蓝色。\n绿色。",
+      "rules": {
+        "literal_contains": [
+          "红色",
+          "蓝色",
+          "绿色"
+        ],
+        "literal_forbidden": [],
+        "nonempty_line_count": 3
+      }
+    },
+    {
+      "case_id": "instruction-05",
+      "category": "instruction",
+      "prompt": "写一行，包含字母串“ABC”，不要包含小写字母串“abc”。",
+      "reference_answer": "ABC",
+      "rules": {
+        "literal_contains": [
+          "ABC"
+        ],
+        "literal_forbidden": [
+          "abc"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-06",
+      "category": "instruction",
+      "prompt": "写一行，包含数字串“2026”，不要包含“2025”。",
+      "reference_answer": "年份为2026。",
+      "rules": {
+        "literal_contains": [
+          "2026"
+        ],
+        "literal_forbidden": [
+          "2025"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-07",
+      "category": "instruction",
+      "prompt": "写两行非空文本，全文包含“早安”和“晚安”，不要包含“午安”。",
+      "reference_answer": "早安。\n晚安。",
+      "rules": {
+        "literal_contains": [
+          "早安",
+          "晚安"
+        ],
+        "literal_forbidden": [
+          "午安"
+        ],
+        "nonempty_line_count": 2
+      }
+    },
+    {
+      "case_id": "instruction-08",
+      "category": "instruction",
+      "prompt": "写一行中文，包含“安静”，不要包含“喧闹”和“吵闹”。",
+      "reference_answer": "这里很安静。",
+      "rules": {
+        "literal_contains": [
+          "安静"
+        ],
+        "literal_forbidden": [
+          "喧闹",
+          "吵闹"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-09",
+      "category": "instruction",
+      "prompt": "写一行，包含“北京”和“中国”，不要包含“上海”。",
+      "reference_answer": "北京位于中国。",
+      "rules": {
+        "literal_contains": [
+          "北京",
+          "中国"
+        ],
+        "literal_forbidden": [
+          "上海"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-10",
+      "category": "instruction",
+      "prompt": "写两行非空文本，全文包含“阅读”和“写作”。",
+      "reference_answer": "阅读书籍。\n练习写作。",
+      "rules": {
+        "literal_contains": [
+          "阅读",
+          "写作"
+        ],
+        "literal_forbidden": [],
+        "nonempty_line_count": 2
+      }
+    },
+    {
+      "case_id": "instruction-11",
+      "category": "instruction",
+      "prompt": "写一行，包含完整短语“保持耐心”，不要包含“放弃”。",
+      "reference_answer": "请保持耐心。",
+      "rules": {
+        "literal_contains": [
+          "保持耐心"
+        ],
+        "literal_forbidden": [
+          "放弃"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-12",
+      "category": "instruction",
+      "prompt": "写三行非空文本，全文包含“一”“二”“三”，不要包含“四”。",
+      "reference_answer": "一。\n二。\n三。",
+      "rules": {
+        "literal_contains": [
+          "一",
+          "二",
+          "三"
+        ],
+        "literal_forbidden": [
+          "四"
+        ],
+        "nonempty_line_count": 3
+      }
+    },
+    {
+      "case_id": "instruction-13",
+      "category": "instruction",
+      "prompt": "写一行，包含“猫”，不要包含“狗”。",
+      "reference_answer": "猫正在休息。",
+      "rules": {
+        "literal_contains": [
+          "猫"
+        ],
+        "literal_forbidden": [
+          "狗"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-14",
+      "category": "instruction",
+      "prompt": "写两行非空文本，全文包含“开始”和“结束”，不要包含“中断”。",
+      "reference_answer": "开始工作。\n结束工作。",
+      "rules": {
+        "literal_contains": [
+          "开始",
+          "结束"
+        ],
+        "literal_forbidden": [
+          "中断"
+        ],
+        "nonempty_line_count": 2
+      }
+    },
+    {
+      "case_id": "instruction-15",
+      "category": "instruction",
+      "prompt": "写一行，包含“山”和“海”，不要包含“河”。",
+      "reference_answer": "山与海相望。",
+      "rules": {
+        "literal_contains": [
+          "山",
+          "海"
+        ],
+        "literal_forbidden": [
+          "河"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-16",
+      "category": "instruction",
+      "prompt": "写一行，包含“谢谢”，不要包含“抱歉”。",
+      "reference_answer": "谢谢你的帮助。",
+      "rules": {
+        "literal_contains": [
+          "谢谢"
+        ],
+        "literal_forbidden": [
+          "抱歉"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-17",
+      "category": "instruction",
+      "prompt": "写三行非空文本，全文包含“计划”“执行”“复盘”。",
+      "reference_answer": "制定计划。\n认真执行。\n及时复盘。",
+      "rules": {
+        "literal_contains": [
+          "计划",
+          "执行",
+          "复盘"
+        ],
+        "literal_forbidden": [],
+        "nonempty_line_count": 3
+      }
+    },
+    {
+      "case_id": "instruction-18",
+      "category": "instruction",
+      "prompt": "写一行，包含大小写完全一致的“Local AI”，不要包含“Cloud AI”。",
+      "reference_answer": "Local AI",
+      "rules": {
+        "literal_contains": [
+          "Local AI"
+        ],
+        "literal_forbidden": [
+          "Cloud AI"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "instruction-19",
+      "category": "instruction",
+      "prompt": "写两行非空文本，全文包含“输入”和“输出”，不要包含“错误”。",
+      "reference_answer": "准备输入。\n检查输出。",
+      "rules": {
+        "literal_contains": [
+          "输入",
+          "输出"
+        ],
+        "literal_forbidden": [
+          "错误"
+        ],
+        "nonempty_line_count": 2
+      }
+    },
+    {
+      "case_id": "instruction-20",
+      "category": "instruction",
+      "prompt": "写一行，包含“完成”，不要包含“失败”和“重试”。",
+      "reference_answer": "任务完成。",
+      "rules": {
+        "literal_contains": [
+          "完成"
+        ],
+        "literal_forbidden": [
+          "失败",
+          "重试"
+        ],
+        "nonempty_line_count": 1
+      }
+    },
+    {
+      "case_id": "extraction-01",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：name、age。类型要求：name为string；age为integer。文本：姓名小明，年龄12岁。",
+      "reference_answer": "{\"name\":\"小明\",\"age\":12}",
+      "rules": {
+        "fields": {
+          "name": {
+            "type": "string",
+            "value": "小明"
+          },
+          "age": {
+            "type": "integer",
+            "value": 12
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-02",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：city、country。类型要求：city为string；country为string。文本：城市北京，国家中国。",
+      "reference_answer": "{\"city\":\"北京\",\"country\":\"中国\"}",
+      "rules": {
+        "fields": {
+          "city": {
+            "type": "string",
+            "value": "北京"
+          },
+          "country": {
+            "type": "string",
+            "value": "中国"
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-03",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：product、quantity。类型要求：product为string；quantity为integer。文本：商品名称铅笔，数量3支。",
+      "reference_answer": "{\"product\":\"铅笔\",\"quantity\":3}",
+      "rules": {
+        "fields": {
+          "product": {
+            "type": "string",
+            "value": "铅笔"
+          },
+          "quantity": {
+            "type": "integer",
+            "value": 3
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-04",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：order_id、paid。类型要求：order_id为string；paid为boolean。文本：订单编号A-102，已经付款。",
+      "reference_answer": "{\"order_id\":\"A-102\",\"paid\":true}",
+      "rules": {
+        "fields": {
+          "order_id": {
+            "type": "string",
+            "value": "A-102"
+          },
+          "paid": {
+            "type": "boolean",
+            "value": true
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-05",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：nickname、email。类型要求：nickname为string；email为null。文本：用户昵称小雨，没有提供电子邮箱。邮箱字段用null。",
+      "reference_answer": "{\"nickname\":\"小雨\",\"email\":null}",
+      "rules": {
+        "fields": {
+          "nickname": {
+            "type": "string",
+            "value": "小雨"
+          },
+          "email": {
+            "type": "null",
+            "value": null
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-06",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：title、pages。类型要求：title为string；pages为integer。文本：书名《春日》，页数128。书名不要包含书名号。",
+      "reference_answer": "{\"title\":\"春日\",\"pages\":128}",
+      "rules": {
+        "fields": {
+          "title": {
+            "type": "string",
+            "value": "春日"
+          },
+          "pages": {
+            "type": "integer",
+            "value": 128
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-07",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：room、occupied。类型要求：room为string；occupied为boolean。文本：房间号B203，当前空闲。occupied字段表示是否已被占用。",
+      "reference_answer": "{\"room\":\"B203\",\"occupied\":false}",
+      "rules": {
+        "fields": {
+          "room": {
+            "type": "string",
+            "value": "B203"
+          },
+          "occupied": {
+            "type": "boolean",
+            "value": false
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-08",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：temperature、location。类型要求：temperature为number；location为string。文本：温度为12.5摄氏度，测量地点为室内。",
+      "reference_answer": "{\"temperature\":12.5,\"location\":\"室内\"}",
+      "rules": {
+        "fields": {
+          "temperature": {
+            "type": "number",
+            "value": 12.5
+          },
+          "location": {
+            "type": "string",
+            "value": "室内"
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-09",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：filename、size_bytes。类型要求：filename为string；size_bytes为integer。文本：文件名notes.txt，文件大小为0字节。",
+      "reference_answer": "{\"filename\":\"notes.txt\",\"size_bytes\":0}",
+      "rules": {
+        "fields": {
+          "filename": {
+            "type": "string",
+            "value": "notes.txt"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "value": 0
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-10",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：date、time。类型要求：date为string；time为string。文本：会议日期2026-09-29，开始时间09:30。",
+      "reference_answer": "{\"date\":\"2026-09-29\",\"time\":\"09:30\"}",
+      "rules": {
+        "fields": {
+          "date": {
+            "type": "string",
+            "value": "2026-09-29"
+          },
+          "time": {
+            "type": "string",
+            "value": "09:30"
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-11",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：recipient、packages、received。类型要求：recipient为string；packages为integer；received为boolean。文本：收件人李华，包裹共2件，尚未签收。",
+      "reference_answer": "{\"recipient\":\"李华\",\"packages\":2,\"received\":false}",
+      "rules": {
+        "fields": {
+          "recipient": {
+            "type": "string",
+            "value": "李华"
+          },
+          "packages": {
+            "type": "integer",
+            "value": 2
+          },
+          "received": {
+            "type": "boolean",
+            "value": false
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-12",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：course、score。类型要求：course为string；score为integer。文本：课程名称数学，成绩95分。",
+      "reference_answer": "{\"course\":\"数学\",\"score\":95}",
+      "rules": {
+        "fields": {
+          "course": {
+            "type": "string",
+            "value": "数学"
+          },
+          "score": {
+            "type": "integer",
+            "value": 95
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-13",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：model、wifi_enabled。类型要求：model为string；wifi_enabled为boolean。文本：设备型号K1，已开启无线网络。",
+      "reference_answer": "{\"model\":\"K1\",\"wifi_enabled\":true}",
+      "rules": {
+        "fields": {
+          "model": {
+            "type": "string",
+            "value": "K1"
+          },
+          "wifi_enabled": {
+            "type": "boolean",
+            "value": true
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-14",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：author、year。类型要求：author为string；year为null。文本：作者名字为林，不知道出版年份。年份字段用null。",
+      "reference_answer": "{\"author\":\"林\",\"year\":null}",
+      "rules": {
+        "fields": {
+          "author": {
+            "type": "string",
+            "value": "林"
+          },
+          "year": {
+            "type": "null",
+            "value": null
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-15",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：price、currency。类型要求：price为number；currency为string。文本：商品价格19.5元，货币代码CNY。",
+      "reference_answer": "{\"price\":19.5,\"currency\":\"CNY\"}",
+      "rules": {
+        "fields": {
+          "price": {
+            "type": "number",
+            "value": 19.5
+          },
+          "currency": {
+            "type": "string",
+            "value": "CNY"
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-16",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：route、destination。类型要求：route为integer；destination为string。文本：路线编号7，终点站公园。",
+      "reference_answer": "{\"route\":7,\"destination\":\"公园\"}",
+      "rules": {
+        "fields": {
+          "route": {
+            "type": "integer",
+            "value": 7
+          },
+          "destination": {
+            "type": "string",
+            "value": "公园"
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-17",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：task_id、status。类型要求：task_id为string；status为string。文本：任务标识task-03，状态为完成。",
+      "reference_answer": "{\"task_id\":\"task-03\",\"status\":\"完成\"}",
+      "rules": {
+        "fields": {
+          "task_id": {
+            "type": "string",
+            "value": "task-03"
+          },
+          "status": {
+            "type": "string",
+            "value": "完成"
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-18",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：name、species、age。类型要求：name为string；species为string；age为integer。文本：宠物名字团子，品种为猫，年龄2岁。",
+      "reference_answer": "{\"name\":\"团子\",\"species\":\"猫\",\"age\":2}",
+      "rules": {
+        "fields": {
+          "name": {
+            "type": "string",
+            "value": "团子"
+          },
+          "species": {
+            "type": "string",
+            "value": "猫"
+          },
+          "age": {
+            "type": "integer",
+            "value": 2
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-19",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：warehouse、stock。类型要求：warehouse为string；stock为integer。文本：仓库代号W2，可用库存为15件。",
+      "reference_answer": "{\"warehouse\":\"W2\",\"stock\":15}",
+      "rules": {
+        "fields": {
+          "warehouse": {
+            "type": "string",
+            "value": "W2"
+          },
+          "stock": {
+            "type": "integer",
+            "value": 15
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "extraction-20",
+      "category": "extraction",
+      "prompt": "从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：survey_id、consent、note。类型要求：survey_id为string；consent为boolean；note为null。文本：调查编号S9，同意参与，没有填写备注。备注字段用null。",
+      "reference_answer": "{\"survey_id\":\"S9\",\"consent\":true,\"note\":null}",
+      "rules": {
+        "fields": {
+          "survey_id": {
+            "type": "string",
+            "value": "S9"
+          },
+          "consent": {
+            "type": "boolean",
+            "value": true
+          },
+          "note": {
+            "type": "null",
+            "value": null
+          }
+        },
+        "allow_extra_fields": false
+      }
+    },
+    {
+      "case_id": "qa-01",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n青禾站的失物招领处在二层。售票处在一层。失物招领处在哪一层？",
+      "reference_answer": "二层",
+      "rules": {
+        "answers": [
+          "二层"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-02",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n松果小组周一由林悦值班，周二由周宁值班。周二谁值班？",
+      "reference_answer": "周宁",
+      "rules": {
+        "answers": [
+          "周宁"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-03",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n小站只在周三和周六接收旧报纸，其余日期不接收。周四是否接收？只答“是”或“否”。",
+      "reference_answer": "否",
+      "rules": {
+        "answers": [
+          "否"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-04",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n原计划在南门集合；通知改为在西门集合，时间不变。最终在哪个门集合？",
+      "reference_answer": "西门",
+      "rules": {
+        "answers": [
+          "西门"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-05",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n红盒编号K7，蓝盒编号K9，绿盒编号K3。蓝盒的编号是什么？",
+      "reference_answer": "K9",
+      "rules": {
+        "answers": [
+          "K9"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-06",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n甲车先到，丙车最后到，乙车在两者之间到达。第二个到达的是哪辆车？",
+      "reference_answer": "乙车",
+      "rules": {
+        "answers": [
+          "乙车"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-07",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n短桥因维修关闭，行人须绕行长桥。短桥关闭的原因是什么？",
+      "reference_answer": "维修",
+      "rules": {
+        "answers": [
+          "维修"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-08",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n报名截止于5月12日，作品提交截止于5月19日。报名截止日期是什么？按“5月12日”格式回答。",
+      "reference_answer": "5月12日",
+      "rules": {
+        "answers": [
+          "5月12日"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-09",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n活动每队4人。蓝队有林、王、赵、陈；赵临时退出，孙替补。最终蓝队是否包含赵？只答“是”或“否”。",
+      "reference_answer": "否",
+      "rules": {
+        "answers": [
+          "否"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-10",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n东库只存纸箱，西库只存木箱。需要领取木箱，应去哪座库？",
+      "reference_answer": "西库",
+      "rules": {
+        "answers": [
+          "西库"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-11",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n任务A依赖任务B完成，任务B依赖任务C完成。三个任务中必须最先完成哪个？",
+      "reference_answer": "任务C",
+      "rules": {
+        "answers": [
+          "任务C"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-12",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n寄件单：收件人韩雪；寄件人杜林；经办人叶青。收件人是谁？",
+      "reference_answer": "韩雪",
+      "rules": {
+        "answers": [
+          "韩雪"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-13",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n小树在2024年加入小组，翌年转入绘画组。小树哪年转入绘画组？只答四位年份。",
+      "reference_answer": "2025",
+      "rules": {
+        "answers": [
+          "2025"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-14",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n一号柜钥匙交给了阿青；阿青随后将这把钥匙交给阿宁。按最后一条记录，谁持有一号柜钥匙？",
+      "reference_answer": "阿宁",
+      "rules": {
+        "answers": [
+          "阿宁"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-15",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n预约记录只有房间号和使用日期，没有填写人数。能否从记录确定人数？只答“能”或“不能”。",
+      "reference_answer": "不能",
+      "rules": {
+        "answers": [
+          "不能"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-16",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n白卡可进入阅览室，黑卡可进入设备室；两者均不可进入仓库。哪种卡可进入设备室？",
+      "reference_answer": "黑卡",
+      "rules": {
+        "answers": [
+          "黑卡"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-17",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n雪芽茶每盒30元，山泉水每瓶3元。材料中哪件商品按盒出售？",
+      "reference_answer": "雪芽茶",
+      "rules": {
+        "answers": [
+          "雪芽茶"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-18",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n灯亮表示机器待机，灯闪表示运行，灯灭表示断电。目前灯闪。机器处于什么状态？",
+      "reference_answer": "运行",
+      "rules": {
+        "answers": [
+          "运行"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-19",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n会议原定14:00，后推迟30分钟。最终开始时间是什么？用24小时制HH:MM回答。",
+      "reference_answer": "14:30",
+      "rules": {
+        "answers": [
+          "14:30"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "qa-20",
+      "category": "qa",
+      "prompt": "仅根据材料回答，只输出答案，不加解释。\n名册中小周负责摄影，小吴负责剪辑，小郑负责配音。谁负责剪辑？",
+      "reference_answer": "小吴",
+      "rules": {
+        "answers": [
+          "小吴"
+        ],
+        "normalization": "strip"
+      }
+    },
+    {
+      "case_id": "math-01",
+      "category": "math",
+      "prompt": "仓库有17盒彩笔，收到8盒又发出9盒，剩几盒？\n只输出数值及单位“盒”，不加解释。",
+      "reference_answer": "16盒",
+      "rules": {
+        "expected": 16,
+        "unit": "盒",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-02",
+      "category": "math",
+      "prompt": "每袋6颗糖，4袋共几颗？\n只输出数值及单位“颗”，不加解释。",
+      "reference_answer": "24颗",
+      "rules": {
+        "expected": 24,
+        "unit": "颗",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-03",
+      "category": "math",
+      "prompt": "45张卡片平均分给5人，每人几张？\n只输出数值及单位“张”，不加解释。",
+      "reference_answer": "9张",
+      "rules": {
+        "expected": 9,
+        "unit": "张",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-04",
+      "category": "math",
+      "prompt": "一件商品原价80元，按原价的75%出售，售价多少元？\n只输出数值及单位“元”，不加解释。",
+      "reference_answer": "60元",
+      "rules": {
+        "expected": 60,
+        "unit": "元",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-05",
+      "category": "math",
+      "prompt": "走完3千米用了30分钟，平均每分钟多少米？\n只输出数值及单位“米/分钟”，不加解释。",
+      "reference_answer": "100米/分钟",
+      "rules": {
+        "expected": 100,
+        "unit": "米/分钟",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-06",
+      "category": "math",
+      "prompt": "长方形长8厘米、宽5厘米，周长多少厘米？\n只输出数值及单位“厘米”，不加解释。",
+      "reference_answer": "26厘米",
+      "rules": {
+        "expected": 26,
+        "unit": "厘米",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-07",
+      "category": "math",
+      "prompt": "长方形长8厘米、宽5厘米，面积多少平方厘米？\n只输出数值及单位“平方厘米”，不加解释。",
+      "reference_answer": "40平方厘米",
+      "rules": {
+        "expected": 40,
+        "unit": "平方厘米",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-08",
+      "category": "math",
+      "prompt": "温度从零下3度升高8度，最终温度是多少度？\n只输出数值及单位“度”，不加解释。",
+      "reference_answer": "5度",
+      "rules": {
+        "expected": 5,
+        "unit": "度",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-09",
+      "category": "math",
+      "prompt": "2.5升水倒出0.75升，剩余多少升？\n只输出数值及单位“升”，不加解释。",
+      "reference_answer": "1.75升",
+      "rules": {
+        "expected": 1.75,
+        "unit": "升",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-10",
+      "category": "math",
+      "prompt": "三个数4、7、10的平均数是多少？\n只输出数值，不加单位和解释。",
+      "reference_answer": "7",
+      "rules": {
+        "expected": 7,
+        "unit": "",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-11",
+      "category": "math",
+      "prompt": "某等差数列前三项为2、5、8，第六项是多少？\n只输出数值，不加单位和解释。",
+      "reference_answer": "17",
+      "rules": {
+        "expected": 17,
+        "unit": "",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-12",
+      "category": "math",
+      "prompt": "甲比乙多4张票，两人共有20张票，甲有几张票？\n只输出数值及单位“张”，不加解释。",
+      "reference_answer": "12张",
+      "rules": {
+        "expected": 12,
+        "unit": "张",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-13",
+      "category": "math",
+      "prompt": "今天是星期二，10天后是星期几？只用数字1至7表示周一至周日。\n只输出数值，不加单位和解释。",
+      "reference_answer": "5",
+      "rules": {
+        "expected": 5,
+        "unit": "",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-14",
+      "category": "math",
+      "prompt": "时钟从09:40走到11:05，经过多少分钟？\n只输出数值及单位“分钟”，不加解释。",
+      "reference_answer": "85分钟",
+      "rules": {
+        "expected": 85,
+        "unit": "分钟",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-15",
+      "category": "math",
+      "prompt": "有红球3个、蓝球2个，每个球被等概率抽到。抽到蓝球的概率是多少？用0到1的小数回答。\n只输出数值，不加单位和解释。",
+      "reference_answer": "0.4",
+      "rules": {
+        "expected": 0.4,
+        "unit": "",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-16",
+      "category": "math",
+      "prompt": "一个数乘3再加2得到23，这个数是多少？\n只输出数值，不加单位和解释。",
+      "reference_answer": "7",
+      "rules": {
+        "expected": 7,
+        "unit": "",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-17",
+      "category": "math",
+      "prompt": "七个人每两个人握手一次，共握手多少次？\n只输出数值及单位“次”，不加解释。",
+      "reference_answer": "21次",
+      "rules": {
+        "expected": 21,
+        "unit": "次",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-18",
+      "category": "math",
+      "prompt": "17个零件每盒最多装5个，装完至少需要几个盒子？\n只输出数值及单位“个”，不加解释。",
+      "reference_answer": "4个",
+      "rules": {
+        "expected": 4,
+        "unit": "个",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-19",
+      "category": "math",
+      "prompt": "计算10除以3，结果保留两位小数。\n只输出数值，不加单位和解释。",
+      "reference_answer": "3.33",
+      "rules": {
+        "expected": 3.33,
+        "unit": "",
+        "absolute_tolerance": 0.005,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "math-20",
+      "category": "math",
+      "prompt": "数列1、1、2、3、5中，从第三项起每项等于前两项之和。第八项是多少？\n只输出数值，不加单位和解释。",
+      "reference_answer": "21",
+      "rules": {
+        "expected": 21,
+        "unit": "",
+        "absolute_tolerance": 0,
+        "relative_tolerance": 0
+      }
+    },
+    {
+      "case_id": "classification-01",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：包裹三天没有更新运输位置，请查询。",
+      "reference_answer": "物流",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "物流"
+      }
+    },
+    {
+      "case_id": "classification-02",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：同一笔订单被扣款两次，请核对。",
+      "reference_answer": "账务",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "账务"
+      }
+    },
+    {
+      "case_id": "classification-03",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：应用打开后立即闪退，无法操作。",
+      "reference_answer": "技术",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "技术"
+      }
+    },
+    {
+      "case_id": "classification-04",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：你们周末的营业时间是什么？",
+      "reference_answer": "其他",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "其他"
+      }
+    },
+    {
+      "case_id": "classification-05",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：快递显示签收，但收件处没有包裹。",
+      "reference_answer": "物流",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "物流"
+      }
+    },
+    {
+      "case_id": "classification-06",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：请为这笔已付款订单开具发票。",
+      "reference_answer": "账务",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "账务"
+      }
+    },
+    {
+      "case_id": "classification-07",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：点击保存按钮后界面报错。",
+      "reference_answer": "技术",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "技术"
+      }
+    },
+    {
+      "case_id": "classification-08",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：我想了解线下门店的位置。",
+      "reference_answer": "其他",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "其他"
+      }
+    },
+    {
+      "case_id": "classification-09",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：货物预计什么时候送到？",
+      "reference_answer": "物流",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "物流"
+      }
+    },
+    {
+      "case_id": "classification-10",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：退款已申请七天，金额还没有到账。",
+      "reference_answer": "账务",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "账务"
+      }
+    },
+    {
+      "case_id": "classification-11",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：网页图片无法加载，刷新也无效。",
+      "reference_answer": "技术",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "技术"
+      }
+    },
+    {
+      "case_id": "classification-12",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：感谢客服耐心解答，服务很好。",
+      "reference_answer": "其他",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "其他"
+      }
+    },
+    {
+      "case_id": "classification-13",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：寄出的包裹一直停留在分拣中心。",
+      "reference_answer": "物流",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "物流"
+      }
+    },
+    {
+      "case_id": "classification-14",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：付款账单上的总金额与订单不一致。",
+      "reference_answer": "账务",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "账务"
+      }
+    },
+    {
+      "case_id": "classification-15",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：软件登录后一直白屏。",
+      "reference_answer": "技术",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "技术"
+      }
+    },
+    {
+      "case_id": "classification-16",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：请问是否正在招聘客服人员？",
+      "reference_answer": "其他",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "其他"
+      }
+    },
+    {
+      "case_id": "classification-17",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：快递员把包裹送到了隔壁楼，请协助找回。",
+      "reference_answer": "物流",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "物流"
+      }
+    },
+    {
+      "case_id": "classification-18",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：请修改发票上的购买方抬头。",
+      "reference_answer": "账务",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "账务"
+      }
+    },
+    {
+      "case_id": "classification-19",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：新版本安装时提示文件损坏。",
+      "reference_answer": "技术",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "技术"
+      }
+    },
+    {
+      "case_id": "classification-20",
+      "category": "classification",
+      "prompt": "将以下客服消息归类，只输出一个标签。\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\n消息：我希望下次推出绿色款式。",
+      "reference_answer": "其他",
+      "rules": {
+        "labels": [
+          "物流",
+          "账务",
+          "技术",
+          "其他"
+        ],
+        "expected": "其他"
+      }
+    },
+    {
+      "case_id": "structured-01",
+      "category": "structured",
+      "prompt": "联系人叫林青，城市为杭州，邮编未知。输出name字符串和address对象；address含city字符串、zip空值。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"name\": \"林青\", \"address\": {\"city\": \"杭州\", \"zip\": null}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "address": {
+              "type": "object",
+              "properties": {
+                "city": {
+                  "type": "string"
+                },
+                "zip": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "city",
+                "zip"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "name",
+            "address"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "name": "林青",
+          "address": {
+            "city": "杭州",
+            "zip": null
+          }
+        },
+        "fields": [
+          "/name",
+          "/address/city",
+          "/address/zip"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-02",
+      "category": "structured",
+      "prompt": "订单编号A17，已付款，未发货。输出id字符串和status对象；status含paid、shipped两个布尔值。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"id\": \"A17\", \"status\": {\"paid\": true, \"shipped\": false}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "object",
+              "properties": {
+                "paid": {
+                  "type": "boolean"
+                },
+                "shipped": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "paid",
+                "shipped"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "id": "A17",
+          "status": {
+            "paid": true,
+            "shipped": false
+          }
+        },
+        "fields": [
+          "/id",
+          "/status/paid",
+          "/status/shipped"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-03",
+      "category": "structured",
+      "prompt": "购物清单按顺序为苹果2个、梨3个。输出items数组，每项含name字符串、count整数。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"items\": [{\"name\": \"苹果\", \"count\": 2}, {\"name\": \"梨\", \"count\": 3}]}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "items"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "items": [
+            {
+              "name": "苹果",
+              "count": 2
+            },
+            {
+              "name": "梨",
+              "count": 3
+            }
+          ]
+        },
+        "fields": [
+          "/items/0/name",
+          "/items/0/count",
+          "/items/1/name",
+          "/items/1/count"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-04",
+      "category": "structured",
+      "prompt": "两次温度读数按顺序为零下2度、5度。输出readings数值数组和unit字符串“度”。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"readings\": [-2, 5], \"unit\": \"度\"}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "readings": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "unit": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "readings",
+            "unit"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "readings": [
+            -2,
+            5
+          ],
+          "unit": "度"
+        },
+        "fields": [
+          "/readings/0",
+          "/readings/1",
+          "/unit"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-05",
+      "category": "structured",
+      "prompt": "会议标题为周会，没有参会者。输出meeting对象，含title字符串和attendees空数组。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"meeting\": {\"title\": \"周会\", \"attendees\": []}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "meeting": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "attendees": {
+                  "type": "array",
+                  "items": false,
+                  "maxItems": 0
+                }
+              },
+              "required": [
+                "title",
+                "attendees"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "meeting"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "meeting": {
+            "title": "周会",
+            "attendees": []
+          }
+        },
+        "fields": [
+          "/meeting/title",
+          "/meeting/attendees"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-06",
+      "category": "structured",
+      "prompt": "会员编号U03，有效会员，积分为0。输出user对象，含id字符串、active布尔值、points整数。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"user\": {\"id\": \"U03\", \"active\": true, \"points\": 0}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "user": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "points": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "active",
+                "points"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "user"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "user": {
+            "id": "U03",
+            "active": true,
+            "points": 0
+          }
+        },
+        "fields": [
+          "/user/id",
+          "/user/active",
+          "/user/points"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-07",
+      "category": "structured",
+      "prompt": "任务名为备份，状态为进行中。输出task对象，含name和state；state使用枚举：待办todo、进行中doing、完成done。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"task\": {\"name\": \"备份\", \"state\": \"doing\"}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "task": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "doing",
+                    "done"
+                  ]
+                }
+              },
+              "required": [
+                "name",
+                "state"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "task": {
+            "name": "备份",
+            "state": "doing"
+          }
+        },
+        "fields": [
+          "/task/name",
+          "/task/state"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-08",
+      "category": "structured",
+      "prompt": "矩阵第一行为1、2，第二行为3、4。输出matrix，值为按行排列的二维整数数组。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"matrix\": [[1, 2], [3, 4]]}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "matrix": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "integer"
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "integer"
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "matrix"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "matrix": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        "fields": [
+          "/matrix/0/0",
+          "/matrix/0/1",
+          "/matrix/1/0",
+          "/matrix/1/1"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-09",
+      "category": "structured",
+      "prompt": "两名队员按顺序为林甲、陈乙；林甲是队长，陈乙不是。输出members数组，每项含name字符串和captain布尔值。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"members\": [{\"name\": \"林甲\", \"captain\": true}, {\"name\": \"陈乙\", \"captain\": false}]}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "members": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "captain": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "captain"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "captain": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "captain"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "members"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "members": [
+            {
+              "name": "林甲",
+              "captain": true
+            },
+            {
+              "name": "陈乙",
+              "captain": false
+            }
+          ]
+        },
+        "fields": [
+          "/members/0/name",
+          "/members/0/captain",
+          "/members/1/name",
+          "/members/1/captain"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-10",
+      "category": "structured",
+      "prompt": "文件夹名为资料，包含文件a.txt和b.txt，顺序不变。输出folder对象，含name字符串、files字符串数组。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"folder\": {\"name\": \"资料\", \"files\": [\"a.txt\", \"b.txt\"]}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "folder": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "files": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              },
+              "required": [
+                "name",
+                "files"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "folder"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "folder": {
+            "name": "资料",
+            "files": [
+              "a.txt",
+              "b.txt"
+            ]
+          }
+        },
+        "fields": [
+          "/folder/name",
+          "/folder/files/0",
+          "/folder/files/1"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-11",
+      "category": "structured",
+      "prompt": "坐标横向为1.5，纵向为零下2.5。输出point对象，含x、y两个数值。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"point\": {\"x\": 1.5, \"y\": -2.5}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "point": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "x",
+                "y"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "point"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "point": {
+            "x": 1.5,
+            "y": -2.5
+          }
+        },
+        "fields": [
+          "/point/x",
+          "/point/y"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-12",
+      "category": "structured",
+      "prompt": "库存中“笔”为12，“本”为0。输出stock对象，其键恰为“笔”和“本”，值为整数。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"stock\": {\"笔\": 12, \"本\": 0}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "stock": {
+              "type": "object",
+              "properties": {
+                "笔": {
+                  "type": "integer"
+                },
+                "本": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "笔",
+                "本"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "stock"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "stock": {
+            "笔": 12,
+            "本": 0
+          }
+        },
+        "fields": [
+          "/stock/笔",
+          "/stock/本"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-13",
+      "category": "structured",
+      "prompt": "错误记录：代码E2，信息为超时，可以重试。输出error对象，含code、message两个字符串和retryable布尔值。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"error\": {\"code\": \"E2\", \"message\": \"超时\", \"retryable\": true}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "retryable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "code",
+                "message",
+                "retryable"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "error": {
+            "code": "E2",
+            "message": "超时",
+            "retryable": true
+          }
+        },
+        "fields": [
+          "/error/code",
+          "/error/message",
+          "/error/retryable"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-14",
+      "category": "structured",
+      "prompt": "课程名为绘画，教师未知，教室为B2。输出course对象，含name字符串、teacher空值、room字符串。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"course\": {\"name\": \"绘画\", \"teacher\": null, \"room\": \"B2\"}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "course": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "teacher": {
+                  "type": "null"
+                },
+                "room": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "teacher",
+                "room"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "course"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "course": {
+            "name": "绘画",
+            "teacher": null,
+            "room": "B2"
+          }
+        },
+        "fields": [
+          "/course/name",
+          "/course/teacher",
+          "/course/room"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-15",
+      "category": "structured",
+      "prompt": "两个标签按原顺序为“重要”“待办”，保留顺序。输出meta对象，含tags字符串数组和archived布尔值false。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"meta\": {\"tags\": [\"重要\", \"待办\"], \"archived\": false}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "meta": {
+              "type": "object",
+              "properties": {
+                "tags": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "archived": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "tags",
+                "archived"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "meta"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "meta": {
+            "tags": [
+              "重要",
+              "待办"
+            ],
+            "archived": false
+          }
+        },
+        "fields": [
+          "/meta/tags/0",
+          "/meta/tags/1",
+          "/meta/archived"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-16",
+      "category": "structured",
+      "prompt": "商品编号P8，价格12.5元，数量2。输出product对象，含id字符串、price数值、quantity整数。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"product\": {\"id\": \"P8\", \"price\": 12.5, \"quantity\": 2}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "product": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "number"
+                },
+                "quantity": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "price",
+                "quantity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "product"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "product": {
+            "id": "P8",
+            "price": 12.5,
+            "quantity": 2
+          }
+        },
+        "fields": [
+          "/product/id",
+          "/product/price",
+          "/product/quantity"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-17",
+      "category": "structured",
+      "prompt": "路线依次经过东站、南站、西站。输出route数组，每项含stop字符串和从1开始的order整数。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"route\": [{\"stop\": \"东站\", \"order\": 1}, {\"stop\": \"南站\", \"order\": 2}, {\"stop\": \"西站\", \"order\": 3}]}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "route": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "stop": {
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "stop",
+                    "order"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "stop": {
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "stop",
+                    "order"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "stop": {
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "stop",
+                    "order"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "items": false,
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "required": [
+            "route"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "route": [
+            {
+              "stop": "东站",
+              "order": 1
+            },
+            {
+              "stop": "南站",
+              "order": 2
+            },
+            {
+              "stop": "西站",
+              "order": 3
+            }
+          ]
+        },
+        "fields": [
+          "/route/0/stop",
+          "/route/0/order",
+          "/route/1/stop",
+          "/route/1/order",
+          "/route/2/stop",
+          "/route/2/order"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-18",
+      "category": "structured",
+      "prompt": "原始字段名为a/b，值为启用；原始字段名为x~y，值为false。输出fields对象，保留这两个原始字段名。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"fields\": {\"a/b\": \"启用\", \"x~y\": false}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "object",
+              "properties": {
+                "a/b": {
+                  "type": "string"
+                },
+                "x~y": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "a/b",
+                "x~y"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "fields"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "fields": {
+            "a/b": "启用",
+            "x~y": false
+          }
+        },
+        "fields": [
+          "/fields/a~1b",
+          "/fields/x~0y"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-19",
+      "category": "structured",
+      "prompt": "区间下界为0，上界为10；包含下界，不包含上界。输出range对象，含min、max数值和includeMin、includeMax布尔值。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"range\": {\"min\": 0, \"max\": 10, \"includeMin\": true, \"includeMax\": false}}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "range": {
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "integer"
+                },
+                "max": {
+                  "type": "integer"
+                },
+                "includeMin": {
+                  "type": "boolean"
+                },
+                "includeMax": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "min",
+                "max",
+                "includeMin",
+                "includeMax"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "range"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "range": {
+            "min": 0,
+            "max": 10,
+            "includeMin": true,
+            "includeMax": false
+          }
+        },
+        "fields": [
+          "/range/min",
+          "/range/max",
+          "/range/includeMin",
+          "/range/includeMax"
+        ],
+        "array_matching": "ordered"
+      }
+    },
+    {
+      "case_id": "structured-20",
+      "category": "structured",
+      "prompt": "调查有两条回答，顺序为：题号1回答“是”；题号2未作答。输出answers数组，每项含question整数和value，未作答用null。\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。",
+      "reference_answer": "{\"answers\": [{\"question\": 1, \"value\": \"是\"}, {\"question\": 2, \"value\": null}]}",
+      "rules": {
+        "json_schema": {
+          "type": "object",
+          "properties": {
+            "answers": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "question": {
+                      "type": "integer"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "question",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "question": {
+                      "type": "integer"
+                    },
+                    "value": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "question",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "answers"
+          ],
+          "additionalProperties": false
+        },
+        "expected": {
+          "answers": [
+            {
+              "question": 1,
+              "value": "是"
+            },
+            {
+              "question": 2,
+              "value": null
+            }
+          ]
+        },
+        "fields": [
+          "/answers/0/question",
+          "/answers/0/value",
+          "/answers/1/question",
+          "/answers/1/value"
+        ],
+        "array_matching": "ordered"
+      }
+    }
+  ],
+  "task_protocol": "quality",
+  "review_provenance": [
+    {
+      "source_json": "{\n  \"schema_version\": 2,\n  \"bundle_id\": \"zh-core-v2\",\n  \"version\": \"2.0.0-draft.1\",\n  \"language\": \"zh-CN\",\n  \"license_note\": \"本项目原创合成测试题，不引用外部题库；可随项目测评证据公开。\",\n  \"review_records\": [\n    {\n      \"reviewer\": \"Xudong（当前用户，本会话明确确认）\",\n      \"reviewed_at\": \"2026-09-30T05:09:11.422017+00:00\",\n      \"content_sha256\": \"022ebb43192769cfba05ee2dc70322961e1ad8c6e4010b9c237c71facf894f86\",\n      \"conclusion\": \"approved\"\n    }\n  ],\n  \"answer_policy\": {\n    \"instruction_newlines\": \"crlf_to_lf\",\n    \"strip_line_edges\": true,\n    \"ignore_empty_lines\": true,\n    \"unicode_normalization\": \"none\",\n    \"reasoning\": \"separate_channel_excluded_content_unchanged\"\n  },\n  \"cases\": [\n    {\n      \"case_id\": \"instruction-01\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行中文，包含“星光”，不要包含“月亮”。\",\n      \"reference_answer\": \"星光照亮夜空。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"星光\"\n        ],\n        \"literal_forbidden\": [\n          \"月亮\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-02\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行中文，包含“苹果”和“香蕉”，不要包含“梨”。\",\n      \"reference_answer\": \"苹果和香蕉都在桌上。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"苹果\",\n          \"香蕉\"\n        ],\n        \"literal_forbidden\": [\n          \"梨\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-03\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写两行，每行都非空；全文包含“春天”和“秋天”，不要包含“冬天”。\",\n      \"reference_answer\": \"春天花开。\\n秋天叶落。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"春天\",\n          \"秋天\"\n        ],\n        \"literal_forbidden\": [\n          \"冬天\"\n        ],\n        \"nonempty_line_count\": 2\n      }\n    },\n    {\n      \"case_id\": \"instruction-04\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写三行，每行都非空；全文包含“红色”“蓝色”“绿色”。\",\n      \"reference_answer\": \"红色。\\n蓝色。\\n绿色。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"红色\",\n          \"蓝色\",\n          \"绿色\"\n        ],\n        \"literal_forbidden\": [],\n        \"nonempty_line_count\": 3\n      }\n    },\n    {\n      \"case_id\": \"instruction-05\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行，包含字母串“ABC”，不要包含小写字母串“abc”。\",\n      \"reference_answer\": \"ABC\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"ABC\"\n        ],\n        \"literal_forbidden\": [\n          \"abc\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-06\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行，包含数字串“2026”，不要包含“2025”。\",\n      \"reference_answer\": \"年份为2026。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"2026\"\n        ],\n        \"literal_forbidden\": [\n          \"2025\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-07\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写两行非空文本，全文包含“早安”和“晚安”，不要包含“午安”。\",\n      \"reference_answer\": \"早安。\\n晚安。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"早安\",\n          \"晚安\"\n        ],\n        \"literal_forbidden\": [\n          \"午安\"\n        ],\n        \"nonempty_line_count\": 2\n      }\n    },\n    {\n      \"case_id\": \"instruction-08\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行中文，包含“安静”，不要包含“喧闹”和“吵闹”。\",\n      \"reference_answer\": \"这里很安静。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"安静\"\n        ],\n        \"literal_forbidden\": [\n          \"喧闹\",\n          \"吵闹\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-09\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行，包含“北京”和“中国”，不要包含“上海”。\",\n      \"reference_answer\": \"北京位于中国。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"北京\",\n          \"中国\"\n        ],\n        \"literal_forbidden\": [\n          \"上海\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-10\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写两行非空文本，全文包含“阅读”和“写作”。\",\n      \"reference_answer\": \"阅读书籍。\\n练习写作。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"阅读\",\n          \"写作\"\n        ],\n        \"literal_forbidden\": [],\n        \"nonempty_line_count\": 2\n      }\n    },\n    {\n      \"case_id\": \"instruction-11\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行，包含完整短语“保持耐心”，不要包含“放弃”。\",\n      \"reference_answer\": \"请保持耐心。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"保持耐心\"\n        ],\n        \"literal_forbidden\": [\n          \"放弃\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-12\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写三行非空文本，全文包含“一”“二”“三”，不要包含“四”。\",\n      \"reference_answer\": \"一。\\n二。\\n三。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"一\",\n          \"二\",\n          \"三\"\n        ],\n        \"literal_forbidden\": [\n          \"四\"\n        ],\n        \"nonempty_line_count\": 3\n      }\n    },\n    {\n      \"case_id\": \"instruction-13\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行，包含“猫”，不要包含“狗”。\",\n      \"reference_answer\": \"猫正在休息。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"猫\"\n        ],\n        \"literal_forbidden\": [\n          \"狗\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-14\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写两行非空文本，全文包含“开始”和“结束”，不要包含“中断”。\",\n      \"reference_answer\": \"开始工作。\\n结束工作。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"开始\",\n          \"结束\"\n        ],\n        \"literal_forbidden\": [\n          \"中断\"\n        ],\n        \"nonempty_line_count\": 2\n      }\n    },\n    {\n      \"case_id\": \"instruction-15\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行，包含“山”和“海”，不要包含“河”。\",\n      \"reference_answer\": \"山与海相望。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"山\",\n          \"海\"\n        ],\n        \"literal_forbidden\": [\n          \"河\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-16\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行，包含“谢谢”，不要包含“抱歉”。\",\n      \"reference_answer\": \"谢谢你的帮助。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"谢谢\"\n        ],\n        \"literal_forbidden\": [\n          \"抱歉\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-17\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写三行非空文本，全文包含“计划”“执行”“复盘”。\",\n      \"reference_answer\": \"制定计划。\\n认真执行。\\n及时复盘。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"计划\",\n          \"执行\",\n          \"复盘\"\n        ],\n        \"literal_forbidden\": [],\n        \"nonempty_line_count\": 3\n      }\n    },\n    {\n      \"case_id\": \"instruction-18\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行，包含大小写完全一致的“Local AI”，不要包含“Cloud AI”。\",\n      \"reference_answer\": \"Local AI\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"Local AI\"\n        ],\n        \"literal_forbidden\": [\n          \"Cloud AI\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"instruction-19\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写两行非空文本，全文包含“输入”和“输出”，不要包含“错误”。\",\n      \"reference_answer\": \"准备输入。\\n检查输出。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"输入\",\n          \"输出\"\n        ],\n        \"literal_forbidden\": [\n          \"错误\"\n        ],\n        \"nonempty_line_count\": 2\n      }\n    },\n    {\n      \"case_id\": \"instruction-20\",\n      \"category\": \"instruction\",\n      \"prompt\": \"写一行，包含“完成”，不要包含“失败”和“重试”。\",\n      \"reference_answer\": \"任务完成。\",\n      \"rules\": {\n        \"literal_contains\": [\n          \"完成\"\n        ],\n        \"literal_forbidden\": [\n          \"失败\",\n          \"重试\"\n        ],\n        \"nonempty_line_count\": 1\n      }\n    },\n    {\n      \"case_id\": \"extraction-01\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：name、age。类型要求：name为string；age为integer。文本：姓名小明，年龄12岁。\",\n      \"reference_answer\": \"{\\\"name\\\":\\\"小明\\\",\\\"age\\\":12}\",\n      \"rules\": {\n        \"fields\": {\n          \"name\": {\n            \"type\": \"string\",\n            \"value\": \"小明\"\n          },\n          \"age\": {\n            \"type\": \"integer\",\n            \"value\": 12\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-02\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：city、country。类型要求：city为string；country为string。文本：城市北京，国家中国。\",\n      \"reference_answer\": \"{\\\"city\\\":\\\"北京\\\",\\\"country\\\":\\\"中国\\\"}\",\n      \"rules\": {\n        \"fields\": {\n          \"city\": {\n            \"type\": \"string\",\n            \"value\": \"北京\"\n          },\n          \"country\": {\n            \"type\": \"string\",\n            \"value\": \"中国\"\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-03\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：product、quantity。类型要求：product为string；quantity为integer。文本：商品名称铅笔，数量3支。\",\n      \"reference_answer\": \"{\\\"product\\\":\\\"铅笔\\\",\\\"quantity\\\":3}\",\n      \"rules\": {\n        \"fields\": {\n          \"product\": {\n            \"type\": \"string\",\n            \"value\": \"铅笔\"\n          },\n          \"quantity\": {\n            \"type\": \"integer\",\n            \"value\": 3\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-04\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：order_id、paid。类型要求：order_id为string；paid为boolean。文本：订单编号A-102，已经付款。\",\n      \"reference_answer\": \"{\\\"order_id\\\":\\\"A-102\\\",\\\"paid\\\":true}\",\n      \"rules\": {\n        \"fields\": {\n          \"order_id\": {\n            \"type\": \"string\",\n            \"value\": \"A-102\"\n          },\n          \"paid\": {\n            \"type\": \"boolean\",\n            \"value\": true\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-05\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：nickname、email。类型要求：nickname为string；email为null。文本：用户昵称小雨，没有提供电子邮箱。邮箱字段用null。\",\n      \"reference_answer\": \"{\\\"nickname\\\":\\\"小雨\\\",\\\"email\\\":null}\",\n      \"rules\": {\n        \"fields\": {\n          \"nickname\": {\n            \"type\": \"string\",\n            \"value\": \"小雨\"\n          },\n          \"email\": {\n            \"type\": \"null\",\n            \"value\": null\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-06\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：title、pages。类型要求：title为string；pages为integer。文本：书名《春日》，页数128。书名不要包含书名号。\",\n      \"reference_answer\": \"{\\\"title\\\":\\\"春日\\\",\\\"pages\\\":128}\",\n      \"rules\": {\n        \"fields\": {\n          \"title\": {\n            \"type\": \"string\",\n            \"value\": \"春日\"\n          },\n          \"pages\": {\n            \"type\": \"integer\",\n            \"value\": 128\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-07\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：room、occupied。类型要求：room为string；occupied为boolean。文本：房间号B203，当前空闲。occupied字段表示是否已被占用。\",\n      \"reference_answer\": \"{\\\"room\\\":\\\"B203\\\",\\\"occupied\\\":false}\",\n      \"rules\": {\n        \"fields\": {\n          \"room\": {\n            \"type\": \"string\",\n            \"value\": \"B203\"\n          },\n          \"occupied\": {\n            \"type\": \"boolean\",\n            \"value\": false\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-08\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：temperature、location。类型要求：temperature为number；location为string。文本：温度为12.5摄氏度，测量地点为室内。\",\n      \"reference_answer\": \"{\\\"temperature\\\":12.5,\\\"location\\\":\\\"室内\\\"}\",\n      \"rules\": {\n        \"fields\": {\n          \"temperature\": {\n            \"type\": \"number\",\n            \"value\": 12.5\n          },\n          \"location\": {\n            \"type\": \"string\",\n            \"value\": \"室内\"\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-09\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：filename、size_bytes。类型要求：filename为string；size_bytes为integer。文本：文件名notes.txt，文件大小为0字节。\",\n      \"reference_answer\": \"{\\\"filename\\\":\\\"notes.txt\\\",\\\"size_bytes\\\":0}\",\n      \"rules\": {\n        \"fields\": {\n          \"filename\": {\n            \"type\": \"string\",\n            \"value\": \"notes.txt\"\n          },\n          \"size_bytes\": {\n            \"type\": \"integer\",\n            \"value\": 0\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-10\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：date、time。类型要求：date为string；time为string。文本：会议日期2026-09-29，开始时间09:30。\",\n      \"reference_answer\": \"{\\\"date\\\":\\\"2026-09-29\\\",\\\"time\\\":\\\"09:30\\\"}\",\n      \"rules\": {\n        \"fields\": {\n          \"date\": {\n            \"type\": \"string\",\n            \"value\": \"2026-09-29\"\n          },\n          \"time\": {\n            \"type\": \"string\",\n            \"value\": \"09:30\"\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-11\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：recipient、packages、received。类型要求：recipient为string；packages为integer；received为boolean。文本：收件人李华，包裹共2件，尚未签收。\",\n      \"reference_answer\": \"{\\\"recipient\\\":\\\"李华\\\",\\\"packages\\\":2,\\\"received\\\":false}\",\n      \"rules\": {\n        \"fields\": {\n          \"recipient\": {\n            \"type\": \"string\",\n            \"value\": \"李华\"\n          },\n          \"packages\": {\n            \"type\": \"integer\",\n            \"value\": 2\n          },\n          \"received\": {\n            \"type\": \"boolean\",\n            \"value\": false\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-12\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：course、score。类型要求：course为string；score为integer。文本：课程名称数学，成绩95分。\",\n      \"reference_answer\": \"{\\\"course\\\":\\\"数学\\\",\\\"score\\\":95}\",\n      \"rules\": {\n        \"fields\": {\n          \"course\": {\n            \"type\": \"string\",\n            \"value\": \"数学\"\n          },\n          \"score\": {\n            \"type\": \"integer\",\n            \"value\": 95\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-13\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：model、wifi_enabled。类型要求：model为string；wifi_enabled为boolean。文本：设备型号K1，已开启无线网络。\",\n      \"reference_answer\": \"{\\\"model\\\":\\\"K1\\\",\\\"wifi_enabled\\\":true}\",\n      \"rules\": {\n        \"fields\": {\n          \"model\": {\n            \"type\": \"string\",\n            \"value\": \"K1\"\n          },\n          \"wifi_enabled\": {\n            \"type\": \"boolean\",\n            \"value\": true\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-14\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：author、year。类型要求：author为string；year为null。文本：作者名字为林，不知道出版年份。年份字段用null。\",\n      \"reference_answer\": \"{\\\"author\\\":\\\"林\\\",\\\"year\\\":null}\",\n      \"rules\": {\n        \"fields\": {\n          \"author\": {\n            \"type\": \"string\",\n            \"value\": \"林\"\n          },\n          \"year\": {\n            \"type\": \"null\",\n            \"value\": null\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-15\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：price、currency。类型要求：price为number；currency为string。文本：商品价格19.5元，货币代码CNY。\",\n      \"reference_answer\": \"{\\\"price\\\":19.5,\\\"currency\\\":\\\"CNY\\\"}\",\n      \"rules\": {\n        \"fields\": {\n          \"price\": {\n            \"type\": \"number\",\n            \"value\": 19.5\n          },\n          \"currency\": {\n            \"type\": \"string\",\n            \"value\": \"CNY\"\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-16\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：route、destination。类型要求：route为integer；destination为string。文本：路线编号7，终点站公园。\",\n      \"reference_answer\": \"{\\\"route\\\":7,\\\"destination\\\":\\\"公园\\\"}\",\n      \"rules\": {\n        \"fields\": {\n          \"route\": {\n            \"type\": \"integer\",\n            \"value\": 7\n          },\n          \"destination\": {\n            \"type\": \"string\",\n            \"value\": \"公园\"\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-17\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：task_id、status。类型要求：task_id为string；status为string。文本：任务标识task-03，状态为完成。\",\n      \"reference_answer\": \"{\\\"task_id\\\":\\\"task-03\\\",\\\"status\\\":\\\"完成\\\"}\",\n      \"rules\": {\n        \"fields\": {\n          \"task_id\": {\n            \"type\": \"string\",\n            \"value\": \"task-03\"\n          },\n          \"status\": {\n            \"type\": \"string\",\n            \"value\": \"完成\"\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-18\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：name、species、age。类型要求：name为string；species为string；age为integer。文本：宠物名字团子，品种为猫，年龄2岁。\",\n      \"reference_answer\": \"{\\\"name\\\":\\\"团子\\\",\\\"species\\\":\\\"猫\\\",\\\"age\\\":2}\",\n      \"rules\": {\n        \"fields\": {\n          \"name\": {\n            \"type\": \"string\",\n            \"value\": \"团子\"\n          },\n          \"species\": {\n            \"type\": \"string\",\n            \"value\": \"猫\"\n          },\n          \"age\": {\n            \"type\": \"integer\",\n            \"value\": 2\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-19\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：warehouse、stock。类型要求：warehouse为string；stock为integer。文本：仓库代号W2，可用库存为15件。\",\n      \"reference_answer\": \"{\\\"warehouse\\\":\\\"W2\\\",\\\"stock\\\":15}\",\n      \"rules\": {\n        \"fields\": {\n          \"warehouse\": {\n            \"type\": \"string\",\n            \"value\": \"W2\"\n          },\n          \"stock\": {\n            \"type\": \"integer\",\n            \"value\": 15\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"extraction-20\",\n      \"category\": \"extraction\",\n      \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：survey_id、consent、note。类型要求：survey_id为string；consent为boolean；note为null。文本：调查编号S9，同意参与，没有填写备注。备注字段用null。\",\n      \"reference_answer\": \"{\\\"survey_id\\\":\\\"S9\\\",\\\"consent\\\":true,\\\"note\\\":null}\",\n      \"rules\": {\n        \"fields\": {\n          \"survey_id\": {\n            \"type\": \"string\",\n            \"value\": \"S9\"\n          },\n          \"consent\": {\n            \"type\": \"boolean\",\n            \"value\": true\n          },\n          \"note\": {\n            \"type\": \"null\",\n            \"value\": null\n          }\n        },\n        \"allow_extra_fields\": false\n      }\n    },\n    {\n      \"case_id\": \"qa-01\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n青禾站的失物招领处在二层。售票处在一层。失物招领处在哪一层？\",\n      \"reference_answer\": \"二层\",\n      \"rules\": {\n        \"answers\": [\n          \"二层\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-02\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n松果小组周一由林悦值班，周二由周宁值班。周二谁值班？\",\n      \"reference_answer\": \"周宁\",\n      \"rules\": {\n        \"answers\": [\n          \"周宁\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-03\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n小站只在周三和周六接收旧报纸，其余日期不接收。周四是否接收？只答“是”或“否”。\",\n      \"reference_answer\": \"否\",\n      \"rules\": {\n        \"answers\": [\n          \"否\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-04\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n原计划在南门集合；通知改为在西门集合，时间不变。最终在哪个门集合？\",\n      \"reference_answer\": \"西门\",\n      \"rules\": {\n        \"answers\": [\n          \"西门\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-05\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n红盒编号K7，蓝盒编号K9，绿盒编号K3。蓝盒的编号是什么？\",\n      \"reference_answer\": \"K9\",\n      \"rules\": {\n        \"answers\": [\n          \"K9\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-06\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n甲车先到，丙车最后到，乙车在两者之间到达。第二个到达的是哪辆车？\",\n      \"reference_answer\": \"乙车\",\n      \"rules\": {\n        \"answers\": [\n          \"乙车\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-07\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n短桥因维修关闭，行人须绕行长桥。短桥关闭的原因是什么？\",\n      \"reference_answer\": \"维修\",\n      \"rules\": {\n        \"answers\": [\n          \"维修\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-08\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n报名截止于5月12日，作品提交截止于5月19日。报名截止日期是什么？按“5月12日”格式回答。\",\n      \"reference_answer\": \"5月12日\",\n      \"rules\": {\n        \"answers\": [\n          \"5月12日\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-09\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n活动每队4人。蓝队有林、王、赵、陈；赵临时退出，孙替补。最终蓝队是否包含赵？只答“是”或“否”。\",\n      \"reference_answer\": \"否\",\n      \"rules\": {\n        \"answers\": [\n          \"否\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-10\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n东库只存纸箱，西库只存木箱。需要领取木箱，应去哪座库？\",\n      \"reference_answer\": \"西库\",\n      \"rules\": {\n        \"answers\": [\n          \"西库\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-11\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n任务A依赖任务B完成，任务B依赖任务C完成。三个任务中必须最先完成哪个？\",\n      \"reference_answer\": \"任务C\",\n      \"rules\": {\n        \"answers\": [\n          \"任务C\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-12\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n寄件单：收件人韩雪；寄件人杜林；经办人叶青。收件人是谁？\",\n      \"reference_answer\": \"韩雪\",\n      \"rules\": {\n        \"answers\": [\n          \"韩雪\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-13\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n小树在2024年加入小组，翌年转入绘画组。小树哪年转入绘画组？只答四位年份。\",\n      \"reference_answer\": \"2025\",\n      \"rules\": {\n        \"answers\": [\n          \"2025\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-14\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n一号柜钥匙交给了阿青；阿青随后将这把钥匙交给阿宁。按最后一条记录，谁持有一号柜钥匙？\",\n      \"reference_answer\": \"阿宁\",\n      \"rules\": {\n        \"answers\": [\n          \"阿宁\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-15\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n预约记录只有房间号和使用日期，没有填写人数。能否从记录确定人数？只答“能”或“不能”。\",\n      \"reference_answer\": \"不能\",\n      \"rules\": {\n        \"answers\": [\n          \"不能\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-16\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n白卡可进入阅览室，黑卡可进入设备室；两者均不可进入仓库。哪种卡可进入设备室？\",\n      \"reference_answer\": \"黑卡\",\n      \"rules\": {\n        \"answers\": [\n          \"黑卡\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-17\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n雪芽茶每盒30元，山泉水每瓶3元。材料中哪件商品按盒出售？\",\n      \"reference_answer\": \"雪芽茶\",\n      \"rules\": {\n        \"answers\": [\n          \"雪芽茶\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-18\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n灯亮表示机器待机，灯闪表示运行，灯灭表示断电。目前灯闪。机器处于什么状态？\",\n      \"reference_answer\": \"运行\",\n      \"rules\": {\n        \"answers\": [\n          \"运行\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-19\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n会议原定14:00，后推迟30分钟。最终开始时间是什么？用24小时制HH:MM回答。\",\n      \"reference_answer\": \"14:30\",\n      \"rules\": {\n        \"answers\": [\n          \"14:30\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"qa-20\",\n      \"category\": \"qa\",\n      \"prompt\": \"仅根据材料回答，只输出答案，不加解释。\\n名册中小周负责摄影，小吴负责剪辑，小郑负责配音。谁负责剪辑？\",\n      \"reference_answer\": \"小吴\",\n      \"rules\": {\n        \"answers\": [\n          \"小吴\"\n        ],\n        \"normalization\": \"strip\"\n      }\n    },\n    {\n      \"case_id\": \"math-01\",\n      \"category\": \"math\",\n      \"prompt\": \"仓库有17盒彩笔，收到8盒又发出9盒，剩几盒？\\n只输出数值及单位“盒”，不加解释。\",\n      \"reference_answer\": \"16盒\",\n      \"rules\": {\n        \"expected\": 16,\n        \"unit\": \"盒\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-02\",\n      \"category\": \"math\",\n      \"prompt\": \"每袋6颗糖，4袋共几颗？\\n只输出数值及单位“颗”，不加解释。\",\n      \"reference_answer\": \"24颗\",\n      \"rules\": {\n        \"expected\": 24,\n        \"unit\": \"颗\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-03\",\n      \"category\": \"math\",\n      \"prompt\": \"45张卡片平均分给5人，每人几张？\\n只输出数值及单位“张”，不加解释。\",\n      \"reference_answer\": \"9张\",\n      \"rules\": {\n        \"expected\": 9,\n        \"unit\": \"张\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-04\",\n      \"category\": \"math\",\n      \"prompt\": \"一件商品原价80元，按原价的75%出售，售价多少元？\\n只输出数值及单位“元”，不加解释。\",\n      \"reference_answer\": \"60元\",\n      \"rules\": {\n        \"expected\": 60,\n        \"unit\": \"元\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-05\",\n      \"category\": \"math\",\n      \"prompt\": \"走完3千米用了30分钟，平均每分钟多少米？\\n只输出数值及单位“米/分钟”，不加解释。\",\n      \"reference_answer\": \"100米/分钟\",\n      \"rules\": {\n        \"expected\": 100,\n        \"unit\": \"米/分钟\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-06\",\n      \"category\": \"math\",\n      \"prompt\": \"长方形长8厘米、宽5厘米，周长多少厘米？\\n只输出数值及单位“厘米”，不加解释。\",\n      \"reference_answer\": \"26厘米\",\n      \"rules\": {\n        \"expected\": 26,\n        \"unit\": \"厘米\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-07\",\n      \"category\": \"math\",\n      \"prompt\": \"长方形长8厘米、宽5厘米，面积多少平方厘米？\\n只输出数值及单位“平方厘米”，不加解释。\",\n      \"reference_answer\": \"40平方厘米\",\n      \"rules\": {\n        \"expected\": 40,\n        \"unit\": \"平方厘米\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-08\",\n      \"category\": \"math\",\n      \"prompt\": \"温度从零下3度升高8度，最终温度是多少度？\\n只输出数值及单位“度”，不加解释。\",\n      \"reference_answer\": \"5度\",\n      \"rules\": {\n        \"expected\": 5,\n        \"unit\": \"度\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-09\",\n      \"category\": \"math\",\n      \"prompt\": \"2.5升水倒出0.75升，剩余多少升？\\n只输出数值及单位“升”，不加解释。\",\n      \"reference_answer\": \"1.75升\",\n      \"rules\": {\n        \"expected\": 1.75,\n        \"unit\": \"升\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-10\",\n      \"category\": \"math\",\n      \"prompt\": \"三个数4、7、10的平均数是多少？\\n只输出数值，不加单位和解释。\",\n      \"reference_answer\": \"7\",\n      \"rules\": {\n        \"expected\": 7,\n        \"unit\": \"\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-11\",\n      \"category\": \"math\",\n      \"prompt\": \"某等差数列前三项为2、5、8，第六项是多少？\\n只输出数值，不加单位和解释。\",\n      \"reference_answer\": \"17\",\n      \"rules\": {\n        \"expected\": 17,\n        \"unit\": \"\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-12\",\n      \"category\": \"math\",\n      \"prompt\": \"甲比乙多4张票，两人共有20张票，甲有几张票？\\n只输出数值及单位“张”，不加解释。\",\n      \"reference_answer\": \"12张\",\n      \"rules\": {\n        \"expected\": 12,\n        \"unit\": \"张\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-13\",\n      \"category\": \"math\",\n      \"prompt\": \"今天是星期二，10天后是星期几？只用数字1至7表示周一至周日。\\n只输出数值，不加单位和解释。\",\n      \"reference_answer\": \"5\",\n      \"rules\": {\n        \"expected\": 5,\n        \"unit\": \"\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-14\",\n      \"category\": \"math\",\n      \"prompt\": \"时钟从09:40走到11:05，经过多少分钟？\\n只输出数值及单位“分钟”，不加解释。\",\n      \"reference_answer\": \"85分钟\",\n      \"rules\": {\n        \"expected\": 85,\n        \"unit\": \"分钟\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-15\",\n      \"category\": \"math\",\n      \"prompt\": \"有红球3个、蓝球2个，每个球被等概率抽到。抽到蓝球的概率是多少？用0到1的小数回答。\\n只输出数值，不加单位和解释。\",\n      \"reference_answer\": \"0.4\",\n      \"rules\": {\n        \"expected\": 0.4,\n        \"unit\": \"\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-16\",\n      \"category\": \"math\",\n      \"prompt\": \"一个数乘3再加2得到23，这个数是多少？\\n只输出数值，不加单位和解释。\",\n      \"reference_answer\": \"7\",\n      \"rules\": {\n        \"expected\": 7,\n        \"unit\": \"\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-17\",\n      \"category\": \"math\",\n      \"prompt\": \"七个人每两个人握手一次，共握手多少次？\\n只输出数值及单位“次”，不加解释。\",\n      \"reference_answer\": \"21次\",\n      \"rules\": {\n        \"expected\": 21,\n        \"unit\": \"次\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-18\",\n      \"category\": \"math\",\n      \"prompt\": \"17个零件每盒最多装5个，装完至少需要几个盒子？\\n只输出数值及单位“个”，不加解释。\",\n      \"reference_answer\": \"4个\",\n      \"rules\": {\n        \"expected\": 4,\n        \"unit\": \"个\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-19\",\n      \"category\": \"math\",\n      \"prompt\": \"计算10除以3，结果保留两位小数。\\n只输出数值，不加单位和解释。\",\n      \"reference_answer\": \"3.33\",\n      \"rules\": {\n        \"expected\": 3.33,\n        \"unit\": \"\",\n        \"absolute_tolerance\": 0.005,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"math-20\",\n      \"category\": \"math\",\n      \"prompt\": \"数列1、1、2、3、5中，从第三项起每项等于前两项之和。第八项是多少？\\n只输出数值，不加单位和解释。\",\n      \"reference_answer\": \"21\",\n      \"rules\": {\n        \"expected\": 21,\n        \"unit\": \"\",\n        \"absolute_tolerance\": 0,\n        \"relative_tolerance\": 0\n      }\n    },\n    {\n      \"case_id\": \"classification-01\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：包裹三天没有更新运输位置，请查询。\",\n      \"reference_answer\": \"物流\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"物流\"\n      }\n    },\n    {\n      \"case_id\": \"classification-02\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：同一笔订单被扣款两次，请核对。\",\n      \"reference_answer\": \"账务\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"账务\"\n      }\n    },\n    {\n      \"case_id\": \"classification-03\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：应用打开后立即闪退，无法操作。\",\n      \"reference_answer\": \"技术\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"技术\"\n      }\n    },\n    {\n      \"case_id\": \"classification-04\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：你们周末的营业时间是什么？\",\n      \"reference_answer\": \"其他\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"其他\"\n      }\n    },\n    {\n      \"case_id\": \"classification-05\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：快递显示签收，但收件处没有包裹。\",\n      \"reference_answer\": \"物流\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"物流\"\n      }\n    },\n    {\n      \"case_id\": \"classification-06\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：请为这笔已付款订单开具发票。\",\n      \"reference_answer\": \"账务\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"账务\"\n      }\n    },\n    {\n      \"case_id\": \"classification-07\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：点击保存按钮后界面报错。\",\n      \"reference_answer\": \"技术\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"技术\"\n      }\n    },\n    {\n      \"case_id\": \"classification-08\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：我想了解线下门店的位置。\",\n      \"reference_answer\": \"其他\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"其他\"\n      }\n    },\n    {\n      \"case_id\": \"classification-09\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：货物预计什么时候送到？\",\n      \"reference_answer\": \"物流\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"物流\"\n      }\n    },\n    {\n      \"case_id\": \"classification-10\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：退款已申请七天，金额还没有到账。\",\n      \"reference_answer\": \"账务\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"账务\"\n      }\n    },\n    {\n      \"case_id\": \"classification-11\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：网页图片无法加载，刷新也无效。\",\n      \"reference_answer\": \"技术\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"技术\"\n      }\n    },\n    {\n      \"case_id\": \"classification-12\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：感谢客服耐心解答，服务很好。\",\n      \"reference_answer\": \"其他\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"其他\"\n      }\n    },\n    {\n      \"case_id\": \"classification-13\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：寄出的包裹一直停留在分拣中心。\",\n      \"reference_answer\": \"物流\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"物流\"\n      }\n    },\n    {\n      \"case_id\": \"classification-14\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：付款账单上的总金额与订单不一致。\",\n      \"reference_answer\": \"账务\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"账务\"\n      }\n    },\n    {\n      \"case_id\": \"classification-15\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：软件登录后一直白屏。\",\n      \"reference_answer\": \"技术\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"技术\"\n      }\n    },\n    {\n      \"case_id\": \"classification-16\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：请问是否正在招聘客服人员？\",\n      \"reference_answer\": \"其他\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"其他\"\n      }\n    },\n    {\n      \"case_id\": \"classification-17\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：快递员把包裹送到了隔壁楼，请协助找回。\",\n      \"reference_answer\": \"物流\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"物流\"\n      }\n    },\n    {\n      \"case_id\": \"classification-18\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：请修改发票上的购买方抬头。\",\n      \"reference_answer\": \"账务\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"账务\"\n      }\n    },\n    {\n      \"case_id\": \"classification-19\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：新版本安装时提示文件损坏。\",\n      \"reference_answer\": \"技术\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"技术\"\n      }\n    },\n    {\n      \"case_id\": \"classification-20\",\n      \"category\": \"classification\",\n      \"prompt\": \"将以下客服消息归类，只输出一个标签。\\n物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。\\n消息：我希望下次推出绿色款式。\",\n      \"reference_answer\": \"其他\",\n      \"rules\": {\n        \"labels\": [\n          \"物流\",\n          \"账务\",\n          \"技术\",\n          \"其他\"\n        ],\n        \"expected\": \"其他\"\n      }\n    },\n    {\n      \"case_id\": \"structured-01\",\n      \"category\": \"structured\",\n      \"prompt\": \"联系人叫林青，城市为杭州，邮编未知。输出name字符串和address对象；address含city字符串、zip空值。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"name\\\": \\\"林青\\\", \\\"address\\\": {\\\"city\\\": \\\"杭州\\\", \\\"zip\\\": null}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"name\": {\n              \"type\": \"string\"\n            },\n            \"address\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"city\": {\n                  \"type\": \"string\"\n                },\n                \"zip\": {\n                  \"type\": \"null\"\n                }\n              },\n              \"required\": [\n                \"city\",\n                \"zip\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"name\",\n            \"address\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"name\": \"林青\",\n          \"address\": {\n            \"city\": \"杭州\",\n            \"zip\": null\n          }\n        },\n        \"fields\": [\n          \"/name\",\n          \"/address/city\",\n          \"/address/zip\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-02\",\n      \"category\": \"structured\",\n      \"prompt\": \"订单编号A17，已付款，未发货。输出id字符串和status对象；status含paid、shipped两个布尔值。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"id\\\": \\\"A17\\\", \\\"status\\\": {\\\"paid\\\": true, \\\"shipped\\\": false}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"id\": {\n              \"type\": \"string\"\n            },\n            \"status\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"paid\": {\n                  \"type\": \"boolean\"\n                },\n                \"shipped\": {\n                  \"type\": \"boolean\"\n                }\n              },\n              \"required\": [\n                \"paid\",\n                \"shipped\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"id\",\n            \"status\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"id\": \"A17\",\n          \"status\": {\n            \"paid\": true,\n            \"shipped\": false\n          }\n        },\n        \"fields\": [\n          \"/id\",\n          \"/status/paid\",\n          \"/status/shipped\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-03\",\n      \"category\": \"structured\",\n      \"prompt\": \"购物清单按顺序为苹果2个、梨3个。输出items数组，每项含name字符串、count整数。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"items\\\": [{\\\"name\\\": \\\"苹果\\\", \\\"count\\\": 2}, {\\\"name\\\": \\\"梨\\\", \\\"count\\\": 3}]}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"items\": {\n              \"type\": \"array\",\n              \"prefixItems\": [\n                {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"name\": {\n                      \"type\": \"string\"\n                    },\n                    \"count\": {\n                      \"type\": \"integer\"\n                    }\n                  },\n                  \"required\": [\n                    \"name\",\n                    \"count\"\n                  ],\n                  \"additionalProperties\": false\n                },\n                {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"name\": {\n                      \"type\": \"string\"\n                    },\n                    \"count\": {\n                      \"type\": \"integer\"\n                    }\n                  },\n                  \"required\": [\n                    \"name\",\n                    \"count\"\n                  ],\n                  \"additionalProperties\": false\n                }\n              ],\n              \"items\": false,\n              \"minItems\": 2,\n              \"maxItems\": 2\n            }\n          },\n          \"required\": [\n            \"items\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"items\": [\n            {\n              \"name\": \"苹果\",\n              \"count\": 2\n            },\n            {\n              \"name\": \"梨\",\n              \"count\": 3\n            }\n          ]\n        },\n        \"fields\": [\n          \"/items/0/name\",\n          \"/items/0/count\",\n          \"/items/1/name\",\n          \"/items/1/count\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-04\",\n      \"category\": \"structured\",\n      \"prompt\": \"两次温度读数按顺序为零下2度、5度。输出readings数值数组和unit字符串“度”。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"readings\\\": [-2, 5], \\\"unit\\\": \\\"度\\\"}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"readings\": {\n              \"type\": \"array\",\n              \"prefixItems\": [\n                {\n                  \"type\": \"integer\"\n                },\n                {\n                  \"type\": \"integer\"\n                }\n              ],\n              \"items\": false,\n              \"minItems\": 2,\n              \"maxItems\": 2\n            },\n            \"unit\": {\n              \"type\": \"string\"\n            }\n          },\n          \"required\": [\n            \"readings\",\n            \"unit\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"readings\": [\n            -2,\n            5\n          ],\n          \"unit\": \"度\"\n        },\n        \"fields\": [\n          \"/readings/0\",\n          \"/readings/1\",\n          \"/unit\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-05\",\n      \"category\": \"structured\",\n      \"prompt\": \"会议标题为周会，没有参会者。输出meeting对象，含title字符串和attendees空数组。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"meeting\\\": {\\\"title\\\": \\\"周会\\\", \\\"attendees\\\": []}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"meeting\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"title\": {\n                  \"type\": \"string\"\n                },\n                \"attendees\": {\n                  \"type\": \"array\",\n                  \"items\": false,\n                  \"maxItems\": 0\n                }\n              },\n              \"required\": [\n                \"title\",\n                \"attendees\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"meeting\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"meeting\": {\n            \"title\": \"周会\",\n            \"attendees\": []\n          }\n        },\n        \"fields\": [\n          \"/meeting/title\",\n          \"/meeting/attendees\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-06\",\n      \"category\": \"structured\",\n      \"prompt\": \"会员编号U03，有效会员，积分为0。输出user对象，含id字符串、active布尔值、points整数。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"user\\\": {\\\"id\\\": \\\"U03\\\", \\\"active\\\": true, \\\"points\\\": 0}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"user\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"id\": {\n                  \"type\": \"string\"\n                },\n                \"active\": {\n                  \"type\": \"boolean\"\n                },\n                \"points\": {\n                  \"type\": \"integer\"\n                }\n              },\n              \"required\": [\n                \"id\",\n                \"active\",\n                \"points\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"user\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"user\": {\n            \"id\": \"U03\",\n            \"active\": true,\n            \"points\": 0\n          }\n        },\n        \"fields\": [\n          \"/user/id\",\n          \"/user/active\",\n          \"/user/points\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-07\",\n      \"category\": \"structured\",\n      \"prompt\": \"任务名为备份，状态为进行中。输出task对象，含name和state；state使用枚举：待办todo、进行中doing、完成done。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"task\\\": {\\\"name\\\": \\\"备份\\\", \\\"state\\\": \\\"doing\\\"}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"task\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"name\": {\n                  \"type\": \"string\"\n                },\n                \"state\": {\n                  \"type\": \"string\",\n                  \"enum\": [\n                    \"todo\",\n                    \"doing\",\n                    \"done\"\n                  ]\n                }\n              },\n              \"required\": [\n                \"name\",\n                \"state\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"task\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"task\": {\n            \"name\": \"备份\",\n            \"state\": \"doing\"\n          }\n        },\n        \"fields\": [\n          \"/task/name\",\n          \"/task/state\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-08\",\n      \"category\": \"structured\",\n      \"prompt\": \"矩阵第一行为1、2，第二行为3、4。输出matrix，值为按行排列的二维整数数组。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"matrix\\\": [[1, 2], [3, 4]]}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"matrix\": {\n              \"type\": \"array\",\n              \"prefixItems\": [\n                {\n                  \"type\": \"array\",\n                  \"prefixItems\": [\n                    {\n                      \"type\": \"integer\"\n                    },\n                    {\n                      \"type\": \"integer\"\n                    }\n                  ],\n                  \"items\": false,\n                  \"minItems\": 2,\n                  \"maxItems\": 2\n                },\n                {\n                  \"type\": \"array\",\n                  \"prefixItems\": [\n                    {\n                      \"type\": \"integer\"\n                    },\n                    {\n                      \"type\": \"integer\"\n                    }\n                  ],\n                  \"items\": false,\n                  \"minItems\": 2,\n                  \"maxItems\": 2\n                }\n              ],\n              \"items\": false,\n              \"minItems\": 2,\n              \"maxItems\": 2\n            }\n          },\n          \"required\": [\n            \"matrix\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"matrix\": [\n            [\n              1,\n              2\n            ],\n            [\n              3,\n              4\n            ]\n          ]\n        },\n        \"fields\": [\n          \"/matrix/0/0\",\n          \"/matrix/0/1\",\n          \"/matrix/1/0\",\n          \"/matrix/1/1\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-09\",\n      \"category\": \"structured\",\n      \"prompt\": \"两名队员按顺序为林甲、陈乙；林甲是队长，陈乙不是。输出members数组，每项含name字符串和captain布尔值。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"members\\\": [{\\\"name\\\": \\\"林甲\\\", \\\"captain\\\": true}, {\\\"name\\\": \\\"陈乙\\\", \\\"captain\\\": false}]}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"members\": {\n              \"type\": \"array\",\n              \"prefixItems\": [\n                {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"name\": {\n                      \"type\": \"string\"\n                    },\n                    \"captain\": {\n                      \"type\": \"boolean\"\n                    }\n                  },\n                  \"required\": [\n                    \"name\",\n                    \"captain\"\n                  ],\n                  \"additionalProperties\": false\n                },\n                {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"name\": {\n                      \"type\": \"string\"\n                    },\n                    \"captain\": {\n                      \"type\": \"boolean\"\n                    }\n                  },\n                  \"required\": [\n                    \"name\",\n                    \"captain\"\n                  ],\n                  \"additionalProperties\": false\n                }\n              ],\n              \"items\": false,\n              \"minItems\": 2,\n              \"maxItems\": 2\n            }\n          },\n          \"required\": [\n            \"members\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"members\": [\n            {\n              \"name\": \"林甲\",\n              \"captain\": true\n            },\n            {\n              \"name\": \"陈乙\",\n              \"captain\": false\n            }\n          ]\n        },\n        \"fields\": [\n          \"/members/0/name\",\n          \"/members/0/captain\",\n          \"/members/1/name\",\n          \"/members/1/captain\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-10\",\n      \"category\": \"structured\",\n      \"prompt\": \"文件夹名为资料，包含文件a.txt和b.txt，顺序不变。输出folder对象，含name字符串、files字符串数组。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"folder\\\": {\\\"name\\\": \\\"资料\\\", \\\"files\\\": [\\\"a.txt\\\", \\\"b.txt\\\"]}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"folder\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"name\": {\n                  \"type\": \"string\"\n                },\n                \"files\": {\n                  \"type\": \"array\",\n                  \"prefixItems\": [\n                    {\n                      \"type\": \"string\"\n                    },\n                    {\n                      \"type\": \"string\"\n                    }\n                  ],\n                  \"items\": false,\n                  \"minItems\": 2,\n                  \"maxItems\": 2\n                }\n              },\n              \"required\": [\n                \"name\",\n                \"files\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"folder\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"folder\": {\n            \"name\": \"资料\",\n            \"files\": [\n              \"a.txt\",\n              \"b.txt\"\n            ]\n          }\n        },\n        \"fields\": [\n          \"/folder/name\",\n          \"/folder/files/0\",\n          \"/folder/files/1\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-11\",\n      \"category\": \"structured\",\n      \"prompt\": \"坐标横向为1.5，纵向为零下2.5。输出point对象，含x、y两个数值。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"point\\\": {\\\"x\\\": 1.5, \\\"y\\\": -2.5}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"point\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"x\": {\n                  \"type\": \"number\"\n                },\n                \"y\": {\n                  \"type\": \"number\"\n                }\n              },\n              \"required\": [\n                \"x\",\n                \"y\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"point\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"point\": {\n            \"x\": 1.5,\n            \"y\": -2.5\n          }\n        },\n        \"fields\": [\n          \"/point/x\",\n          \"/point/y\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-12\",\n      \"category\": \"structured\",\n      \"prompt\": \"库存中“笔”为12，“本”为0。输出stock对象，其键恰为“笔”和“本”，值为整数。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"stock\\\": {\\\"笔\\\": 12, \\\"本\\\": 0}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"stock\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"笔\": {\n                  \"type\": \"integer\"\n                },\n                \"本\": {\n                  \"type\": \"integer\"\n                }\n              },\n              \"required\": [\n                \"笔\",\n                \"本\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"stock\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"stock\": {\n            \"笔\": 12,\n            \"本\": 0\n          }\n        },\n        \"fields\": [\n          \"/stock/笔\",\n          \"/stock/本\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-13\",\n      \"category\": \"structured\",\n      \"prompt\": \"错误记录：代码E2，信息为超时，可以重试。输出error对象，含code、message两个字符串和retryable布尔值。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"error\\\": {\\\"code\\\": \\\"E2\\\", \\\"message\\\": \\\"超时\\\", \\\"retryable\\\": true}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"error\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"code\": {\n                  \"type\": \"string\"\n                },\n                \"message\": {\n                  \"type\": \"string\"\n                },\n                \"retryable\": {\n                  \"type\": \"boolean\"\n                }\n              },\n              \"required\": [\n                \"code\",\n                \"message\",\n                \"retryable\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"error\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"error\": {\n            \"code\": \"E2\",\n            \"message\": \"超时\",\n            \"retryable\": true\n          }\n        },\n        \"fields\": [\n          \"/error/code\",\n          \"/error/message\",\n          \"/error/retryable\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-14\",\n      \"category\": \"structured\",\n      \"prompt\": \"课程名为绘画，教师未知，教室为B2。输出course对象，含name字符串、teacher空值、room字符串。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"course\\\": {\\\"name\\\": \\\"绘画\\\", \\\"teacher\\\": null, \\\"room\\\": \\\"B2\\\"}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"course\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"name\": {\n                  \"type\": \"string\"\n                },\n                \"teacher\": {\n                  \"type\": \"null\"\n                },\n                \"room\": {\n                  \"type\": \"string\"\n                }\n              },\n              \"required\": [\n                \"name\",\n                \"teacher\",\n                \"room\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"course\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"course\": {\n            \"name\": \"绘画\",\n            \"teacher\": null,\n            \"room\": \"B2\"\n          }\n        },\n        \"fields\": [\n          \"/course/name\",\n          \"/course/teacher\",\n          \"/course/room\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-15\",\n      \"category\": \"structured\",\n      \"prompt\": \"两个标签按原顺序为“重要”“待办”，保留顺序。输出meta对象，含tags字符串数组和archived布尔值false。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"meta\\\": {\\\"tags\\\": [\\\"重要\\\", \\\"待办\\\"], \\\"archived\\\": false}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"meta\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"tags\": {\n                  \"type\": \"array\",\n                  \"prefixItems\": [\n                    {\n                      \"type\": \"string\"\n                    },\n                    {\n                      \"type\": \"string\"\n                    }\n                  ],\n                  \"items\": false,\n                  \"minItems\": 2,\n                  \"maxItems\": 2\n                },\n                \"archived\": {\n                  \"type\": \"boolean\"\n                }\n              },\n              \"required\": [\n                \"tags\",\n                \"archived\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"meta\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"meta\": {\n            \"tags\": [\n              \"重要\",\n              \"待办\"\n            ],\n            \"archived\": false\n          }\n        },\n        \"fields\": [\n          \"/meta/tags/0\",\n          \"/meta/tags/1\",\n          \"/meta/archived\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-16\",\n      \"category\": \"structured\",\n      \"prompt\": \"商品编号P8，价格12.5元，数量2。输出product对象，含id字符串、price数值、quantity整数。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"product\\\": {\\\"id\\\": \\\"P8\\\", \\\"price\\\": 12.5, \\\"quantity\\\": 2}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"product\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"id\": {\n                  \"type\": \"string\"\n                },\n                \"price\": {\n                  \"type\": \"number\"\n                },\n                \"quantity\": {\n                  \"type\": \"integer\"\n                }\n              },\n              \"required\": [\n                \"id\",\n                \"price\",\n                \"quantity\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"product\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"product\": {\n            \"id\": \"P8\",\n            \"price\": 12.5,\n            \"quantity\": 2\n          }\n        },\n        \"fields\": [\n          \"/product/id\",\n          \"/product/price\",\n          \"/product/quantity\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-17\",\n      \"category\": \"structured\",\n      \"prompt\": \"路线依次经过东站、南站、西站。输出route数组，每项含stop字符串和从1开始的order整数。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"route\\\": [{\\\"stop\\\": \\\"东站\\\", \\\"order\\\": 1}, {\\\"stop\\\": \\\"南站\\\", \\\"order\\\": 2}, {\\\"stop\\\": \\\"西站\\\", \\\"order\\\": 3}]}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"route\": {\n              \"type\": \"array\",\n              \"prefixItems\": [\n                {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"stop\": {\n                      \"type\": \"string\"\n                    },\n                    \"order\": {\n                      \"type\": \"integer\"\n                    }\n                  },\n                  \"required\": [\n                    \"stop\",\n                    \"order\"\n                  ],\n                  \"additionalProperties\": false\n                },\n                {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"stop\": {\n                      \"type\": \"string\"\n                    },\n                    \"order\": {\n                      \"type\": \"integer\"\n                    }\n                  },\n                  \"required\": [\n                    \"stop\",\n                    \"order\"\n                  ],\n                  \"additionalProperties\": false\n                },\n                {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"stop\": {\n                      \"type\": \"string\"\n                    },\n                    \"order\": {\n                      \"type\": \"integer\"\n                    }\n                  },\n                  \"required\": [\n                    \"stop\",\n                    \"order\"\n                  ],\n                  \"additionalProperties\": false\n                }\n              ],\n              \"items\": false,\n              \"minItems\": 3,\n              \"maxItems\": 3\n            }\n          },\n          \"required\": [\n            \"route\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"route\": [\n            {\n              \"stop\": \"东站\",\n              \"order\": 1\n            },\n            {\n              \"stop\": \"南站\",\n              \"order\": 2\n            },\n            {\n              \"stop\": \"西站\",\n              \"order\": 3\n            }\n          ]\n        },\n        \"fields\": [\n          \"/route/0/stop\",\n          \"/route/0/order\",\n          \"/route/1/stop\",\n          \"/route/1/order\",\n          \"/route/2/stop\",\n          \"/route/2/order\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-18\",\n      \"category\": \"structured\",\n      \"prompt\": \"原始字段名为a/b，值为启用；原始字段名为x~y，值为false。输出fields对象，保留这两个原始字段名。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"fields\\\": {\\\"a/b\\\": \\\"启用\\\", \\\"x~y\\\": false}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"fields\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"a/b\": {\n                  \"type\": \"string\"\n                },\n                \"x~y\": {\n                  \"type\": \"boolean\"\n                }\n              },\n              \"required\": [\n                \"a/b\",\n                \"x~y\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"fields\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"fields\": {\n            \"a/b\": \"启用\",\n            \"x~y\": false\n          }\n        },\n        \"fields\": [\n          \"/fields/a~1b\",\n          \"/fields/x~0y\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-19\",\n      \"category\": \"structured\",\n      \"prompt\": \"区间下界为0，上界为10；包含下界，不包含上界。输出range对象，含min、max数值和includeMin、includeMax布尔值。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"range\\\": {\\\"min\\\": 0, \\\"max\\\": 10, \\\"includeMin\\\": true, \\\"includeMax\\\": false}}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"range\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"min\": {\n                  \"type\": \"integer\"\n                },\n                \"max\": {\n                  \"type\": \"integer\"\n                },\n                \"includeMin\": {\n                  \"type\": \"boolean\"\n                },\n                \"includeMax\": {\n                  \"type\": \"boolean\"\n                }\n              },\n              \"required\": [\n                \"min\",\n                \"max\",\n                \"includeMin\",\n                \"includeMax\"\n              ],\n              \"additionalProperties\": false\n            }\n          },\n          \"required\": [\n            \"range\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"range\": {\n            \"min\": 0,\n            \"max\": 10,\n            \"includeMin\": true,\n            \"includeMax\": false\n          }\n        },\n        \"fields\": [\n          \"/range/min\",\n          \"/range/max\",\n          \"/range/includeMin\",\n          \"/range/includeMax\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    },\n    {\n      \"case_id\": \"structured-20\",\n      \"category\": \"structured\",\n      \"prompt\": \"调查有两条回答，顺序为：题号1回答“是”；题号2未作答。输出answers数组，每项含question整数和value，未作答用null。\\n只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。\",\n      \"reference_answer\": \"{\\\"answers\\\": [{\\\"question\\\": 1, \\\"value\\\": \\\"是\\\"}, {\\\"question\\\": 2, \\\"value\\\": null}]}\",\n      \"rules\": {\n        \"json_schema\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"answers\": {\n              \"type\": \"array\",\n              \"prefixItems\": [\n                {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"question\": {\n                      \"type\": \"integer\"\n                    },\n                    \"value\": {\n                      \"type\": \"string\"\n                    }\n                  },\n                  \"required\": [\n                    \"question\",\n                    \"value\"\n                  ],\n                  \"additionalProperties\": false\n                },\n                {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"question\": {\n                      \"type\": \"integer\"\n                    },\n                    \"value\": {\n                      \"type\": \"null\"\n                    }\n                  },\n                  \"required\": [\n                    \"question\",\n                    \"value\"\n                  ],\n                  \"additionalProperties\": false\n                }\n              ],\n              \"items\": false,\n              \"minItems\": 2,\n              \"maxItems\": 2\n            }\n          },\n          \"required\": [\n            \"answers\"\n          ],\n          \"additionalProperties\": false\n        },\n        \"expected\": {\n          \"answers\": [\n            {\n              \"question\": 1,\n              \"value\": \"是\"\n            },\n            {\n              \"question\": 2,\n              \"value\": null\n            }\n          ]\n        },\n        \"fields\": [\n          \"/answers/0/question\",\n          \"/answers/0/value\",\n          \"/answers/1/question\",\n          \"/answers/1/value\"\n        ],\n        \"array_matching\": \"ordered\"\n      }\n    }\n  ],\n  \"inherited_bundles\": [\n    {\n      \"schema_version\": 1,\n      \"bundle_id\": \"zh-smoke-v1\",\n      \"version\": \"1.0.0-draft\",\n      \"language\": \"zh-CN\",\n      \"license_note\": \"本项目原创合成测试题，不引用外部题库；可随项目测评证据公开。\",\n      \"review_records\": [\n        {\n          \"reviewer\": \"当前用户（本会话确认）\",\n          \"reviewed_at\": \"2026-09-29T12:00:34.337724+00:00\",\n          \"content_sha256\": \"ca338348af5bee1e77a5be649ee11d7a6d51ddfaf1ae9d95f09d48c22f4ff8fc\",\n          \"conclusion\": \"approved\"\n        }\n      ],\n      \"answer_policy\": {\n        \"instruction_newlines\": \"crlf_to_lf\",\n        \"strip_line_edges\": true,\n        \"ignore_empty_lines\": true,\n        \"unicode_normalization\": \"none\",\n        \"reasoning\": \"separate_channel_excluded_content_unchanged\"\n      },\n      \"cases\": [\n        {\n          \"case_id\": \"instruction-01\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行中文，包含“星光”，不要包含“月亮”。\",\n          \"reference_answer\": \"星光照亮夜空。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"星光\"\n            ],\n            \"literal_forbidden\": [\n              \"月亮\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-02\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行中文，包含“苹果”和“香蕉”，不要包含“梨”。\",\n          \"reference_answer\": \"苹果和香蕉都在桌上。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"苹果\",\n              \"香蕉\"\n            ],\n            \"literal_forbidden\": [\n              \"梨\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-03\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写两行，每行都非空；全文包含“春天”和“秋天”，不要包含“冬天”。\",\n          \"reference_answer\": \"春天花开。\\n秋天叶落。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"春天\",\n              \"秋天\"\n            ],\n            \"literal_forbidden\": [\n              \"冬天\"\n            ],\n            \"nonempty_line_count\": 2\n          }\n        },\n        {\n          \"case_id\": \"instruction-04\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写三行，每行都非空；全文包含“红色”“蓝色”“绿色”。\",\n          \"reference_answer\": \"红色。\\n蓝色。\\n绿色。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"红色\",\n              \"蓝色\",\n              \"绿色\"\n            ],\n            \"literal_forbidden\": [],\n            \"nonempty_line_count\": 3\n          }\n        },\n        {\n          \"case_id\": \"instruction-05\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行，包含字母串“ABC”，不要包含小写字母串“abc”。\",\n          \"reference_answer\": \"ABC\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"ABC\"\n            ],\n            \"literal_forbidden\": [\n              \"abc\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-06\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行，包含数字串“2026”，不要包含“2025”。\",\n          \"reference_answer\": \"年份为2026。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"2026\"\n            ],\n            \"literal_forbidden\": [\n              \"2025\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-07\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写两行非空文本，全文包含“早安”和“晚安”，不要包含“午安”。\",\n          \"reference_answer\": \"早安。\\n晚安。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"早安\",\n              \"晚安\"\n            ],\n            \"literal_forbidden\": [\n              \"午安\"\n            ],\n            \"nonempty_line_count\": 2\n          }\n        },\n        {\n          \"case_id\": \"instruction-08\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行中文，包含“安静”，不要包含“喧闹”和“吵闹”。\",\n          \"reference_answer\": \"这里很安静。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"安静\"\n            ],\n            \"literal_forbidden\": [\n              \"喧闹\",\n              \"吵闹\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-09\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行，包含“北京”和“中国”，不要包含“上海”。\",\n          \"reference_answer\": \"北京位于中国。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"北京\",\n              \"中国\"\n            ],\n            \"literal_forbidden\": [\n              \"上海\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-10\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写两行非空文本，全文包含“阅读”和“写作”。\",\n          \"reference_answer\": \"阅读书籍。\\n练习写作。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"阅读\",\n              \"写作\"\n            ],\n            \"literal_forbidden\": [],\n            \"nonempty_line_count\": 2\n          }\n        },\n        {\n          \"case_id\": \"instruction-11\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行，包含完整短语“保持耐心”，不要包含“放弃”。\",\n          \"reference_answer\": \"请保持耐心。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"保持耐心\"\n            ],\n            \"literal_forbidden\": [\n              \"放弃\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-12\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写三行非空文本，全文包含“一”“二”“三”，不要包含“四”。\",\n          \"reference_answer\": \"一。\\n二。\\n三。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"一\",\n              \"二\",\n              \"三\"\n            ],\n            \"literal_forbidden\": [\n              \"四\"\n            ],\n            \"nonempty_line_count\": 3\n          }\n        },\n        {\n          \"case_id\": \"instruction-13\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行，包含“猫”，不要包含“狗”。\",\n          \"reference_answer\": \"猫正在休息。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"猫\"\n            ],\n            \"literal_forbidden\": [\n              \"狗\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-14\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写两行非空文本，全文包含“开始”和“结束”，不要包含“中断”。\",\n          \"reference_answer\": \"开始工作。\\n结束工作。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"开始\",\n              \"结束\"\n            ],\n            \"literal_forbidden\": [\n              \"中断\"\n            ],\n            \"nonempty_line_count\": 2\n          }\n        },\n        {\n          \"case_id\": \"instruction-15\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行，包含“山”和“海”，不要包含“河”。\",\n          \"reference_answer\": \"山与海相望。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"山\",\n              \"海\"\n            ],\n            \"literal_forbidden\": [\n              \"河\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-16\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行，包含“谢谢”，不要包含“抱歉”。\",\n          \"reference_answer\": \"谢谢你的帮助。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"谢谢\"\n            ],\n            \"literal_forbidden\": [\n              \"抱歉\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-17\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写三行非空文本，全文包含“计划”“执行”“复盘”。\",\n          \"reference_answer\": \"制定计划。\\n认真执行。\\n及时复盘。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"计划\",\n              \"执行\",\n              \"复盘\"\n            ],\n            \"literal_forbidden\": [],\n            \"nonempty_line_count\": 3\n          }\n        },\n        {\n          \"case_id\": \"instruction-18\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行，包含大小写完全一致的“Local AI”，不要包含“Cloud AI”。\",\n          \"reference_answer\": \"Local AI\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"Local AI\"\n            ],\n            \"literal_forbidden\": [\n              \"Cloud AI\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"instruction-19\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写两行非空文本，全文包含“输入”和“输出”，不要包含“错误”。\",\n          \"reference_answer\": \"准备输入。\\n检查输出。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"输入\",\n              \"输出\"\n            ],\n            \"literal_forbidden\": [\n              \"错误\"\n            ],\n            \"nonempty_line_count\": 2\n          }\n        },\n        {\n          \"case_id\": \"instruction-20\",\n          \"category\": \"instruction\",\n          \"prompt\": \"写一行，包含“完成”，不要包含“失败”和“重试”。\",\n          \"reference_answer\": \"任务完成。\",\n          \"rules\": {\n            \"literal_contains\": [\n              \"完成\"\n            ],\n            \"literal_forbidden\": [\n              \"失败\",\n              \"重试\"\n            ],\n            \"nonempty_line_count\": 1\n          }\n        },\n        {\n          \"case_id\": \"extraction-01\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：name、age。类型要求：name为string；age为integer。文本：姓名小明，年龄12岁。\",\n          \"reference_answer\": \"{\\\"name\\\":\\\"小明\\\",\\\"age\\\":12}\",\n          \"rules\": {\n            \"fields\": {\n              \"name\": {\n                \"type\": \"string\",\n                \"value\": \"小明\"\n              },\n              \"age\": {\n                \"type\": \"integer\",\n                \"value\": 12\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-02\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：city、country。类型要求：city为string；country为string。文本：城市北京，国家中国。\",\n          \"reference_answer\": \"{\\\"city\\\":\\\"北京\\\",\\\"country\\\":\\\"中国\\\"}\",\n          \"rules\": {\n            \"fields\": {\n              \"city\": {\n                \"type\": \"string\",\n                \"value\": \"北京\"\n              },\n              \"country\": {\n                \"type\": \"string\",\n                \"value\": \"中国\"\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-03\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：product、quantity。类型要求：product为string；quantity为integer。文本：商品名称铅笔，数量3支。\",\n          \"reference_answer\": \"{\\\"product\\\":\\\"铅笔\\\",\\\"quantity\\\":3}\",\n          \"rules\": {\n            \"fields\": {\n              \"product\": {\n                \"type\": \"string\",\n                \"value\": \"铅笔\"\n              },\n              \"quantity\": {\n                \"type\": \"integer\",\n                \"value\": 3\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-04\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：order_id、paid。类型要求：order_id为string；paid为boolean。文本：订单编号A-102，已经付款。\",\n          \"reference_answer\": \"{\\\"order_id\\\":\\\"A-102\\\",\\\"paid\\\":true}\",\n          \"rules\": {\n            \"fields\": {\n              \"order_id\": {\n                \"type\": \"string\",\n                \"value\": \"A-102\"\n              },\n              \"paid\": {\n                \"type\": \"boolean\",\n                \"value\": true\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-05\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：nickname、email。类型要求：nickname为string；email为null。文本：用户昵称小雨，没有提供电子邮箱。邮箱字段用null。\",\n          \"reference_answer\": \"{\\\"nickname\\\":\\\"小雨\\\",\\\"email\\\":null}\",\n          \"rules\": {\n            \"fields\": {\n              \"nickname\": {\n                \"type\": \"string\",\n                \"value\": \"小雨\"\n              },\n              \"email\": {\n                \"type\": \"null\",\n                \"value\": null\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-06\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：title、pages。类型要求：title为string；pages为integer。文本：书名《春日》，页数128。书名不要包含书名号。\",\n          \"reference_answer\": \"{\\\"title\\\":\\\"春日\\\",\\\"pages\\\":128}\",\n          \"rules\": {\n            \"fields\": {\n              \"title\": {\n                \"type\": \"string\",\n                \"value\": \"春日\"\n              },\n              \"pages\": {\n                \"type\": \"integer\",\n                \"value\": 128\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-07\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：room、occupied。类型要求：room为string；occupied为boolean。文本：房间号B203，当前空闲。occupied字段表示是否已被占用。\",\n          \"reference_answer\": \"{\\\"room\\\":\\\"B203\\\",\\\"occupied\\\":false}\",\n          \"rules\": {\n            \"fields\": {\n              \"room\": {\n                \"type\": \"string\",\n                \"value\": \"B203\"\n              },\n              \"occupied\": {\n                \"type\": \"boolean\",\n                \"value\": false\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-08\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：temperature、location。类型要求：temperature为number；location为string。文本：温度为12.5摄氏度，测量地点为室内。\",\n          \"reference_answer\": \"{\\\"temperature\\\":12.5,\\\"location\\\":\\\"室内\\\"}\",\n          \"rules\": {\n            \"fields\": {\n              \"temperature\": {\n                \"type\": \"number\",\n                \"value\": 12.5\n              },\n              \"location\": {\n                \"type\": \"string\",\n                \"value\": \"室内\"\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-09\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：filename、size_bytes。类型要求：filename为string；size_bytes为integer。文本：文件名notes.txt，文件大小为0字节。\",\n          \"reference_answer\": \"{\\\"filename\\\":\\\"notes.txt\\\",\\\"size_bytes\\\":0}\",\n          \"rules\": {\n            \"fields\": {\n              \"filename\": {\n                \"type\": \"string\",\n                \"value\": \"notes.txt\"\n              },\n              \"size_bytes\": {\n                \"type\": \"integer\",\n                \"value\": 0\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-10\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：date、time。类型要求：date为string；time为string。文本：会议日期2026-09-29，开始时间09:30。\",\n          \"reference_answer\": \"{\\\"date\\\":\\\"2026-09-29\\\",\\\"time\\\":\\\"09:30\\\"}\",\n          \"rules\": {\n            \"fields\": {\n              \"date\": {\n                \"type\": \"string\",\n                \"value\": \"2026-09-29\"\n              },\n              \"time\": {\n                \"type\": \"string\",\n                \"value\": \"09:30\"\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-11\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：recipient、packages、received。类型要求：recipient为string；packages为integer；received为boolean。文本：收件人李华，包裹共2件，尚未签收。\",\n          \"reference_answer\": \"{\\\"recipient\\\":\\\"李华\\\",\\\"packages\\\":2,\\\"received\\\":false}\",\n          \"rules\": {\n            \"fields\": {\n              \"recipient\": {\n                \"type\": \"string\",\n                \"value\": \"李华\"\n              },\n              \"packages\": {\n                \"type\": \"integer\",\n                \"value\": 2\n              },\n              \"received\": {\n                \"type\": \"boolean\",\n                \"value\": false\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-12\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：course、score。类型要求：course为string；score为integer。文本：课程名称数学，成绩95分。\",\n          \"reference_answer\": \"{\\\"course\\\":\\\"数学\\\",\\\"score\\\":95}\",\n          \"rules\": {\n            \"fields\": {\n              \"course\": {\n                \"type\": \"string\",\n                \"value\": \"数学\"\n              },\n              \"score\": {\n                \"type\": \"integer\",\n                \"value\": 95\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-13\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：model、wifi_enabled。类型要求：model为string；wifi_enabled为boolean。文本：设备型号K1，已开启无线网络。\",\n          \"reference_answer\": \"{\\\"model\\\":\\\"K1\\\",\\\"wifi_enabled\\\":true}\",\n          \"rules\": {\n            \"fields\": {\n              \"model\": {\n                \"type\": \"string\",\n                \"value\": \"K1\"\n              },\n              \"wifi_enabled\": {\n                \"type\": \"boolean\",\n                \"value\": true\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-14\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：author、year。类型要求：author为string；year为null。文本：作者名字为林，不知道出版年份。年份字段用null。\",\n          \"reference_answer\": \"{\\\"author\\\":\\\"林\\\",\\\"year\\\":null}\",\n          \"rules\": {\n            \"fields\": {\n              \"author\": {\n                \"type\": \"string\",\n                \"value\": \"林\"\n              },\n              \"year\": {\n                \"type\": \"null\",\n                \"value\": null\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-15\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：price、currency。类型要求：price为number；currency为string。文本：商品价格19.5元，货币代码CNY。\",\n          \"reference_answer\": \"{\\\"price\\\":19.5,\\\"currency\\\":\\\"CNY\\\"}\",\n          \"rules\": {\n            \"fields\": {\n              \"price\": {\n                \"type\": \"number\",\n                \"value\": 19.5\n              },\n              \"currency\": {\n                \"type\": \"string\",\n                \"value\": \"CNY\"\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-16\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：route、destination。类型要求：route为integer；destination为string。文本：路线编号7，终点站公园。\",\n          \"reference_answer\": \"{\\\"route\\\":7,\\\"destination\\\":\\\"公园\\\"}\",\n          \"rules\": {\n            \"fields\": {\n              \"route\": {\n                \"type\": \"integer\",\n                \"value\": 7\n              },\n              \"destination\": {\n                \"type\": \"string\",\n                \"value\": \"公园\"\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-17\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：task_id、status。类型要求：task_id为string；status为string。文本：任务标识task-03，状态为完成。\",\n          \"reference_answer\": \"{\\\"task_id\\\":\\\"task-03\\\",\\\"status\\\":\\\"完成\\\"}\",\n          \"rules\": {\n            \"fields\": {\n              \"task_id\": {\n                \"type\": \"string\",\n                \"value\": \"task-03\"\n              },\n              \"status\": {\n                \"type\": \"string\",\n                \"value\": \"完成\"\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-18\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：name、species、age。类型要求：name为string；species为string；age为integer。文本：宠物名字团子，品种为猫，年龄2岁。\",\n          \"reference_answer\": \"{\\\"name\\\":\\\"团子\\\",\\\"species\\\":\\\"猫\\\",\\\"age\\\":2}\",\n          \"rules\": {\n            \"fields\": {\n              \"name\": {\n                \"type\": \"string\",\n                \"value\": \"团子\"\n              },\n              \"species\": {\n                \"type\": \"string\",\n                \"value\": \"猫\"\n              },\n              \"age\": {\n                \"type\": \"integer\",\n                \"value\": 2\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-19\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：warehouse、stock。类型要求：warehouse为string；stock为integer。文本：仓库代号W2，可用库存为15件。\",\n          \"reference_answer\": \"{\\\"warehouse\\\":\\\"W2\\\",\\\"stock\\\":15}\",\n          \"rules\": {\n            \"fields\": {\n              \"warehouse\": {\n                \"type\": \"string\",\n                \"value\": \"W2\"\n              },\n              \"stock\": {\n                \"type\": \"integer\",\n                \"value\": 15\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        },\n        {\n          \"case_id\": \"extraction-20\",\n          \"category\": \"extraction\",\n          \"prompt\": \"从以下文本提取信息，只返回一个JSON对象，不要代码围栏或解释。必须且仅包含字段：survey_id、consent、note。类型要求：survey_id为string；consent为boolean；note为null。文本：调查编号S9，同意参与，没有填写备注。备注字段用null。\",\n          \"reference_answer\": \"{\\\"survey_id\\\":\\\"S9\\\",\\\"consent\\\":true,\\\"note\\\":null}\",\n          \"rules\": {\n            \"fields\": {\n              \"survey_id\": {\n                \"type\": \"string\",\n                \"value\": \"S9\"\n              },\n              \"consent\": {\n                \"type\": \"boolean\",\n                \"value\": true\n              },\n              \"note\": {\n                \"type\": \"null\",\n                \"value\": null\n              }\n            },\n            \"allow_extra_fields\": false\n          }\n        }\n      ]\n    }\n  ],\n  \"task_protocol\": \"quality\"\n}\n",
+      "source_sha256": "111019a6a52a63ff3a62e5bfc244d1c88f6e065774daad437f4b0aaec757ec8b",
+      "source_content_sha256": "022ebb43192769cfba05ee2dc70322961e1ad8c6e4010b9c237c71facf894f86"
+    }
+  ]
+}

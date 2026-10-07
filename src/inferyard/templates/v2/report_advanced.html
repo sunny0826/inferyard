@@ -1,0 +1,52 @@
+{% if run.summary.cache_observations is defined %}{% set cache = run.summary.cache_observations %}
+<details class="cache-observations"><summary>提示缓存 · 请求策略与实际复用</summary>
+<p>已观测 {{ cache.observed_requests }} 次 · 缺测或未执行 {{ cache.missing_requests }} 次 · 正式计划 {{ cache.planned_formal_requests }} 题。</p>
+<p class="muted">包含探针和预热，不是独立题数。允许复用不保证命中；计数来自引擎，不代表操作系统冷缓存或性能收益。— 表示未知，不是零。</p>
+<div class="scroll"><table><thead><tr><th>顺序 / 阶段</th><th>题目 / 状态</th><th>允许复用</th><th>复用 / 处理 token</th><th>策略一致</th><th>缺测原因</th></tr></thead><tbody>
+{% for row in cache.rows %}<tr><td>{{ row.ordinal if row.ordinal is not none else '—' }} · {{ {'probe':'探针','warmup':'预热','formal':'正式'}.get(row.phase, row.phase) }}</td><td><span class="id">{{ row.case_id or '—' }}</span><br>{{ row.execution_state }}</td><td>{{ '是' if row.requested_reuse else '否' }}</td><td>{{ row.cached_prompt_tokens if row.cached_prompt_tokens is not none else '—' }} / {{ row.processed_prompt_tokens if row.processed_prompt_tokens is not none else '—' }}</td><td>{{ '—' if row.policy_consistent is none else '是' if row.policy_consistent else '矛盾' }}</td><td><span class="id">{{ row.missing_reason or '—' }}</span></td></tr>{% endfor %}
+</tbody></table></div></details>{% endif %}
+{% if run.duration_view is not none %}
+<section class="duration"><h3>持续负载 · 窗口趋势</h3>
+<p>窗口：{{ run.duration_view.window_count }} · {{ '完整结束' if run.duration_view.completed else '未完整结束' }} · {{ run.duration_view.reason or '—' }}</p>
+<p class="muted">按同一题目的发送时间分组，保留跨窗口请求的完整耗时。空白表示缺测；重复探测不算独立题，耗时变化不证明降频。每题独立刻度。</p>
+{% for chart in run.duration_view.cases %}<details open><summary>{{ chart.case_id }} · 窗口中位耗时（ms）</summary>
+<svg role="img" aria-label="{{ chart.case_id }} 窗口中位耗时" viewBox="0 0 1000 120" preserveAspectRatio="none">
+{% for row in chart.rows %}{% if row.latency.value is not none %}<rect x="{{ loop.index0 * 1000 / (chart.rows|length) }}" y="{{ 120 - row.latency.value / chart.latency_max * 110 }}" width="{{ 900 / (chart.rows|length) }}" height="{{ row.latency.value / chart.latency_max * 110 }}"><title>窗口 {{ row.index + 1 }} · {{ row.latency.value }} ms</title></rect>{% endif %}{% endfor %}</svg>
+<div class="scroll"><table><thead><tr><th>窗口 / 秒</th><th>中位耗时 ms</th><th>相对首窗变化</th><th>失败 / 有效执行</th><th>完成跨界数</th><th>缺测原因</th></tr></thead><tbody>
+{% for row in chart.rows %}<tr><td>{{ row.index + 1 }} · {{ row.start_seconds if row.start_seconds is not none else '—' }}–{{ row.end_seconds if row.end_seconds is not none else '—' }}</td><td>{{ row.latency.value if row.latency.value is not none else '—' }}<br>样本 {{ row.latency.sample_count|default('—') }}</td><td>{{ row.drift.value|percent if row.drift.value is not none else '—' }}</td><td>{{ row.failure.numerator if row.failure.numerator is defined and row.failure.numerator is not none else '—' }} / {{ row.failure.denominator if row.failure.denominator is defined and row.failure.denominator is not none else '—' }}</td><td>{{ row.cross_boundary_completed }}</td><td>{{ row.latency.reason or '' }} {{ row.drift.reason or '' }} {{ row.failure.reason or '' }}</td></tr>{% endfor %}
+</tbody></table></div></details>{% endfor %}</section>{% endif %}
+{% if run.scan_view is not none %}<details class="scans"><summary>长度、输出与材料位置观测</summary>
+<p class="muted">仅呈现本轮已观测分组，不合并其他运行。输入长度含模板；目标长度与实际长度分开，输出预算不是实际生成长度。缺测不补零，不据散点外推上下文容量。</p>
+<h3>实际输入 token × 完成请求中位耗时</h3>
+<svg role="img" aria-label="实际输入长度与完成请求中位耗时散点图" viewBox="0 0 1000 120" preserveAspectRatio="none">
+{% for row in run.scan_view.length_bins %}{% if row.point is not none %}<circle cx="{{ row.point.x }}" cy="{{ row.point.y }}" r="3" fill="#23786e"><title>{{ row.category }} · 输入 {{ row.actual_input_tokens }} token · 输出预算 {{ row.output_budget_tokens }} · 完成中位耗时 {{ row.completed_latency_p50_ms }} ms</title></circle>{% endif %}{% endfor %}</svg>
+<p class="muted">横轴 0–{{ run.scan_view.input_axis_max }} token；纵轴 0–{{ run.scan_view.latency_axis_max|round(2) }} ms。各点是一个实际长度/类别分组；仅含完成请求的耗时，失败仍计入下表分母。</p>
+<div class="scroll"><table><thead><tr><th>类别</th><th>实际 / 目标输入</th><th>输出预算</th><th>完成 / 有效执行</th><th>完成率 / 质量率</th><th>排除 / 无法评分</th></tr></thead><tbody>
+{% for row in run.scan_view.length_bins %}<tr><td>{{ row.category }}</td><td>{{ row.actual_input_tokens if row.actual_input_tokens is not none else '—' }} / {{ row.input_target_tokens if row.input_target_tokens is not none else '—' }}</td><td>{{ row.output_budget_tokens }}</td><td>{{ row.completed }} / {{ row.valid_executed }}</td><td>{{ row.completion_rate|percent }} / {{ row.quality_rate|percent }}</td><td>{{ row.excluded }} / {{ row.unscorable_completed }}</td></tr>{% endfor %}</tbody></table></div>
+<details class="length-outcomes"><summary>各输入档计划、失败与未测原因</summary><p class="muted">有效执行分母包括完成和失败；取消、无效及未执行单列。HTTP 状态只说明响应类别，不能据此推断上下文容量；未测档不等于不支持。持续负载没有固定题数计划，显示 —。</p>
+{% for row in run.scan_view.length_bins %}
+{% if row.outcomes is defined %}<details><summary>{{ row.category }} · 实际输入 {{ row.actual_input_tokens if row.actual_input_tokens is not none else '未知' }} / 目标 {{ row.input_target_tokens if row.input_target_tokens is not none else '—' }} token · 输出预算 {{ row.output_budget_tokens }}</summary>
+<div class="scroll"><table><thead><tr><th>计划项</th><th>完成</th><th>失败</th><th>无效</th><th>取消</th><th>未执行</th></tr></thead><tbody><tr>
+<td>{{ row.planned if row.planned is not none else '—' }}</td>{% for state in ['completed','failed','invalid','cancelled','not_executed'] %}<td>{{ row.outcomes.terminal_counts[state] }}</td>{% endfor %}
+</tr></tbody></table></div>
+<p>已观测 HTTP 4xx：{{ row.outcomes.observed_http_4xx_requests }} · 响应状态未知：{{ row.outcomes.http_status_unknown_requests }}。未知不计作零拒绝。</p>
+<dl><dt>HTTP 状态计数（含 5xx）</dt><dd>{% for status, count in row.outcomes.http_status_counts.items() %}{{ status }}：{{ count }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}</dd>
+<dt>失败原因</dt><dd>{% for reason, count in row.outcomes.failure_reasons.items() %}{{ reason }}：{{ count }}{% if not loop.last %} · {% endif %}{% else %}无已记录失败{% endfor %}</dd>
+<dt>无效、取消及未执行原因</dt><dd>{% for item in row.outcomes.excluded_reasons %}{{ item.state }} / {{ item.reason }}：{{ item.count }}{% if not loop.last %} · {% endif %}{% else %}无已记录排除项{% endfor %}</dd></dl>
+</details>{% endif %}{% endfor %}</details>
+<details class="length-resources"><summary>各输入档资源观测</summary><p class="muted">完成及失败请求分别提供资源观测；下表汇总逐请求值，非整档连续峰值。来源分别列示，p50 使用最近秩；缺测不填零。</p>
+{% for row in run.scan_view.length_bins %}
+{% if row.resources is defined %}<details><summary>{{ row.category }} · 输入 {{ row.actual_input_tokens if row.actual_input_tokens is not none else '未知' }} token · 输出预算 {{ row.output_budget_tokens }}</summary>
+{% if row.resources.series %}<div class="scroll"><table><thead><tr><th>指标 / 统计量</th><th>来源</th><th>有效观测 / 有效执行</th><th>最小 / p50 / 最大</th><th>单位</th><th>缺测原因</th></tr></thead><tbody>
+{% for metric in row.resources.series %}<tr><td>{{ metric.metric_id }} / {{ metric.statistic }}</td><td>{{ metric.source }}</td><td>{{ metric.observed_requests }} / {{ metric.valid_executed }}</td><td>{{ metric.min if metric.min is not none else '—' }} / {{ metric.p50 if metric.p50 is not none else '—' }} / {{ metric.max if metric.max is not none else '—' }}</td><td>{{ metric.unit }}</td><td>{{ metric.missing_reasons }}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<p>— {{ row.resources.missing_reason }}</p>{% endif %}</details>{% endif %}
+{% endfor %}</details>
+
+{% if run.scan_view.positions is not none %}<h3>材料位置 · 题族内变体</h3><p class="muted">{{ run.scan_view.positions.family_count }} 个题族、{{ run.scan_view.positions.variant_count }} 个变体。位置按正文字符中点划分，不是 token 位置；多个证据位置分别保留。变体不算独立题，质量率不证明长文理解能力。</p>
+<div class="scroll"><table><thead><tr><th>题族 / 类型</th><th>实际输入</th><th>证据位置</th><th>正确 / 有效执行</th><th>质量率（0–100%）</th><th>排除</th></tr></thead><tbody>
+{% for row in run.scan_view.positions.bins %}<tr><td>{{ row.family_id }}<br>{{ row.task_kind }}</td><td>{{ row.actual_input_tokens if row.actual_input_tokens is not none else '—' }}</td><td>{{ row.positions|join(' / ') }}</td><td>{{ row.correct }} / {{ row.valid_executed }}</td><td>{% if row.value is not none %}<meter min="0" max="1" value="{{ row.value }}" aria-label="{{ row.family_id }} {{ row.positions|join(' / ') }} 质量率"></meter> {{ row.value|percent }}{% else %}—（未完整观测或无法评分）{% endif %}</td><td>{{ row.excluded }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% if run.scan_view.strict_output_targets %}<section class="strict-output"><h3>严格定长输出 · 独立性能轨</h3><p class="muted">目标等于冻结输出预算；按服务端 completion_tokens 计数，不是可见文本重新分词数。仅完整请求恰好达到目标且以 length 结束才计达标；失败保留分母，缺测或不完整不填零。此轨不评价回答质量。</p>
+{% for item in run.scan_view.strict_output_targets %}<p>{{ item.group.category }} · 达标 / 有效执行：{{ item.numerator if item.numerator is not none else '—' }} / {{ item.denominator }} · 达标率：{{ item.value|percent }} · 排除：{{ item.excluded }}{% if item.missing_reason %} · {{ item.missing_reason }}{% endif %}</p>{% endfor %}</section>{% endif %}
+<details><summary>逐请求实际输出、预算与停止原因</summary><p class="muted">{% if run.scan_view.strict_output_targets %}严格定长按实际计数核验目标；提前停止保留原执行状态和未达标结果。{% else %}自然停止或提前 EOS 不自动算执行失败；{% endif %}缺测或未声明的目标显示 —。</p><div class="scroll"><table><thead><tr><th>题目 / 状态</th><th>实际输出 token</th><th>预算 / 目标</th><th>停止原因 / 缺测</th></tr></thead><tbody>
+{% for row in run.scan_view.outputs %}<tr><td>{{ row.case_id }}<br>{{ row.state }}</td><td>{{ row.actual.value if row.actual.value is not none else '—' }}</td><td>{{ row.budget.value if row.budget.value is not none else '—' }} / {{ row.target.value if row.target.value is not none else '—' }}</td><td>{{ row.finish_reason or '—' }}<br>{{ row.error_category or row.actual.reason or '' }}</td></tr>{% endfor %}</tbody></table></div></details></details>
+{% endif %}

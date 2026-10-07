@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:score",
+  "title": "InferYard score v3",
+  "type": "object",
+  "properties": {
+    "scorer_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scorer_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "quality_state": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "unscorable",
+        "not_applicable"
+      ]
+    },
+    "format_ok": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "content_ok": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "rule_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule": {
+            "type": "string",
+            "minLength": 1
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "observed": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule",
+          "passed",
+          "expected",
+          "observed",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "explanation": {
+      "type": "string"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "instruction",
+        "extraction",
+        "qa",
+        "math",
+        "classification",
+        "structured",
+        "performance",
+        "svg"
+      ]
+    },
+    "scorer_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "json_parse_ok": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_ok": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "field_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "passed"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "constraint_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule": {
+            "type": "string",
+            "minLength": 1
+          },
+          "passed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rule",
+          "passed"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "expected_label": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "predicted_label": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "scorer_version",
+    "scorer_sha256",
+    "quality_state",
+    "format_ok",
+    "content_ok",
+    "rule_results",
+    "explanation",
+    "reason",
+    "schema_version",
+    "category",
+    "scorer_id",
+    "json_parse_ok",
+    "schema_ok",
+    "field_results",
+    "constraint_results",
+    "expected_label",
+    "predicted_label"
+  ],
+  "additionalProperties": false
+}

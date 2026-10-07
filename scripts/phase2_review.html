@@ -1,0 +1,20 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>新增80题审核</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:1000px;margin:32px auto;padding:0 20px;background:#fafafa;color:#162132}
+h1{font-size:26px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stats strong{font-size:30px;display:block}.stats div{font-size:14px}
+details{padding:16px;margin:12px 0;background:white;border:1px solid #ddd;border-radius:10px}summary{cursor:pointer;font-weight:600}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.7 system-ui}code{overflow-wrap:anywhere}select{padding:8px}.note{color:#775100}p{line-height:1.6}
+</style><h1>新增80题 · 待人工审核</h1>
+<div class="stats"><div><strong>40</strong>原题不变</div><div><strong>80</strong>新增题目</div><div><strong>120</strong>组合总数</div></div>
+<p>请核对新增题目的题意、答案与评分规则。</p>
+<details><summary>审核范围与组合规则</summary>
+<p class="note">本页是审核材料，不是审批记录。自动校验通过不能代替人工确认。</p>
+<p>来源：本项目原创合成题，可随项目测评证据公开。每类20题；分类标签物流、账务、技术、其他各5题。只用于工具和分项能力验证，不代表全面模型能力。</p>
+<p>审核范围：新增题意、答案、评分规则、边界样例和组合规则。原40题内容及原审核记录完整继承，无需重审。组合采用六类分项统计，不生成综合总分；整题正确需全部规则满足。</p>
+<p>组合包内容 SHA256：<code>@@DIGEST@@</code></p>
+<p>边界样例 SHA256：<code>@@BOUNDARIES@@</code></p>
+<p>问答只去首尾空白；数值按冻结单位与容差；分类严格匹配四个标签；JSON严格解析、Schema和字段分别计分。失败保留分母，重复题不当作新独立题。</p></details>
+<label for="category">筛选题型 </label><select id="category"><option value="all">全部80题</option>@@OPTIONS@@</select>
+@@SECTIONS@@
+<script>document.querySelector('select').addEventListener('change',e=>{document.querySelectorAll('[data-category]').forEach(d=>d.hidden=e.target.value!=='all'&&d.dataset.category!==e.target.value)});</script></html>

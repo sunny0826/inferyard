@@ -1,0 +1,1749 @@
+{
+  "catalogue_version": "phase2.v1",
+  "items": [
+    {
+      "schema_version": 3,
+      "metric_id": "R01",
+      "name": "完成率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "request_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "终态事件；不完整仅作已执行部分观察，不算整包差值",
+      "required_capabilities": [
+        "request_ledger"
+      ],
+      "aggregation": "C/D；并列五终态、P和实际执行数",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "R02",
+      "name": "超时率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "request_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "错误原因与冻结deadline；用户取消不混入超时；工具自动deadline必须算超时",
+      "required_capabilities": [
+        "request_ledger"
+      ],
+      "aggregation": "timeout/D",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "R03",
+      "name": "失败类型率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "request_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "保留原error；按首个有证据的原因分类，不把连锁取消算多次故障",
+      "required_capabilities": [
+        "request_ledger"
+      ],
+      "aggregation": "每个互斥主错误类型数/D；未知单列",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "R04",
+      "name": "输出预算耗尽率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "request_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "原finish reason、输出预算；cancelled/invalid中的耗尽另列诊断不入分子；耗尽不决定答案是否正确",
+      "required_capabilities": [
+        "request_ledger"
+      ],
+      "aggregation": "D中budget_exhausted为真的请求数/D；另列C中的耗尽数",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "Q01",
+      "name": "分类别整题通过率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "versioned_scorer",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "评分器、题包、答案处理版本；失败纳入分母；另给每轮值",
+      "required_capabilities": [
+        "versioned_scorer"
+      ],
+      "aggregation": "各类Q/D；不将六类合成一个总分",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "Q02",
+      "name": "约束通过率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "versioned_scorer",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "单独标识计分约束，内部解析/非空检查不重复算内容约束；失败的约束计不通过",
+      "required_capabilities": [
+        "versioned_scorer"
+      ],
+      "aggregation": "通过的预注册约束数/所有有效尝试应检约束数",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "Q03",
+      "name": "严格JSON解析率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "versioned_scorer",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "NaN/Infinity、重复key、围栏、解释文字按冻结规则；不先修复再解析",
+      "required_capabilities": [
+        "versioned_scorer"
+      ],
+      "aggregation": "通过严格JSON解析的请求数/结构化任务D",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "Q04",
+      "name": "Schema合法率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "versioned_scorer",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "冻结Schema版本及实现；解析失败计不合法；Schema合法不等于语义正确",
+      "required_capabilities": [
+        "versioned_scorer"
+      ],
+      "aggregation": "满足指定Schema的请求数/结构化任务D",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "Q05",
+      "name": "字段准确率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "versioned_scorer",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "固定必需字段和数组匹配策略；解析失败/执行失败全部字段计错；缺字段不删分母，额外字段另影响Schema/整题",
+      "required_capabilities": [
+        "versioned_scorer"
+      ],
+      "aggregation": "正确字段路径数/所有有效尝试应输出字段路径数",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "Q06",
+      "name": "材料问答EM",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "versioned_scorer",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "固定Unicode、空白、标点等规范化，不运行后扩充同义答案；开放式语义评分不混入",
+      "required_capabilities": [
+        "versioned_scorer"
+      ],
+      "aggregation": "规范化后精确命中允许答案数/问答任务D",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "Q07",
+      "name": "数学逻辑正确率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "versioned_scorer",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "明确绝对/相对误差、单位、答案提取规则；NaN与无穷非法；不执行模型代码",
+      "required_capabilities": [
+        "versioned_scorer"
+      ],
+      "aggregation": "正确答案数/数学逻辑任务D",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "Q08",
+      "name": "分类macro-F1",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "versioned_scorer",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "非法标签/执行失败进入预定无效预测列，真类计FN；K类固定，不删除无人预测类别；零分母类按冻结约定并显示support",
+      "required_capabilities": [
+        "versioned_scorer"
+      ],
+      "aggregation": "固定K类各F1平均；F1=2TP/(2TP+FP+FN)",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "L01",
+      "name": "首内容延迟",
+      "definition_version": "phase2.v1",
+      "unit": "ms",
+      "layer": "request",
+      "source": "stream_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "排除元数据、心跳、空内容；块接口称首内容，不声称逐token TTFT",
+      "required_capabilities": [
+        "stream_events"
+      ],
+      "aggregation": "(tc−t0)，ms",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "L02",
+      "name": "首答案延迟",
+      "definition_version": "phase2.v1",
+      "unit": "ms",
+      "layer": "request",
+      "source": "stream_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "能可靠区分答案/reasoning；完整空答案为null/no_answer_event；同时保留质量失败",
+      "required_capabilities": [
+        "stream_events"
+      ],
+      "aggregation": "(ta−t0)，ms",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "L03",
+      "name": "E2E分布",
+      "definition_version": "phase2.v1",
+      "unit": "ms",
+      "layer": "request",
+      "source": "stream_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "仅C且计时有效；并列超时率/预算与排除量；超时不得以deadline补入完成分布",
+      "required_capabilities": [
+        "stream_events"
+      ],
+      "aggregation": "(te−t0)，ms；min/P50/P95/max、样本数",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "L04",
+      "name": "端点输出吞吐",
+      "definition_version": "phase2.v1",
+      "unit": "token/s",
+      "layer": "request",
+      "source": "stream_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "使用同次请求usage，记录范围；非decode速度，不做跨tokenizer排名；缺计数为null",
+      "required_capabilities": [
+        "stream_events"
+      ],
+      "aggregation": "端点输出token数/E2E秒，token/s",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "L05",
+      "name": "内容块间隔",
+      "definition_version": "phase2.v1",
+      "unit": "ms",
+      "layer": "request",
+      "source": "stream_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "接收端在脱敏缓冲前记录到达时间/通道/序号等纯元数据，不保存敏感原文；同请求至少2块；不是ITL，分块策略不同不可比较",
+      "required_capabilities": [
+        "stream_events"
+      ],
+      "aggregation": "相邻非空生成块到达时间差，ms",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "L06",
+      "name": "引擎prefill速度",
+      "definition_version": "phase2.v1",
+      "unit": "token/s",
+      "layer": "engine",
+      "source": "verified_engine_timings",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "需要同请求阶段计时与缓存定义；TTFT不能代替；完整缓存命中且处理量0时不产生速度",
+      "required_capabilities": [
+        "verified_engine_timings"
+      ],
+      "aggregation": "实际未缓存处理输入token数/prefill秒",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/analysis/engine_timing.py",
+          "sha256": "48d21e4e8cc02949d09a63ec76264210791b4318c5ce207df0367406310c1a3c"
+        },
+        {
+          "path": "tests/unit/test_engine_timing.py",
+          "sha256": "20052d7639d3bc255e427f60c9f32984dd07d2e2bab63f446a33ba520565d18a"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "L07",
+      "name": "引擎decode速度",
+      "definition_version": "phase2.v1",
+      "unit": "token/s",
+      "layer": "engine",
+      "source": "verified_engine_timings",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "冻结首token、思考/特殊token范围与计时定义；不能用E2E减首内容反推引擎时长",
+      "required_capabilities": [
+        "verified_engine_timings"
+      ],
+      "aggregation": "引擎定义的生成token数/decode秒",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/analysis/engine_timing.py",
+          "sha256": "48d21e4e8cc02949d09a63ec76264210791b4318c5ce207df0367406310c1a3c"
+        },
+        {
+          "path": "tests/unit/test_engine_timing.py",
+          "sha256": "20052d7639d3bc255e427f60c9f32984dd07d2e2bab63f446a33ba520565d18a"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "C01",
+      "name": "最低系统可用内存",
+      "definition_version": "phase2.v1",
+      "unit": "bytes",
+      "layer": "host",
+      "source": "platform_resource_collector",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "`/proc/meminfo`；缺段给覆盖与限制；不能称模型独占内存",
+      "required_capabilities": [
+        "platform_resource_collector"
+      ],
+      "aggregation": "正式窗口MemAvailable最小值，bytes",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_linux.py",
+          "sha256": "685d2bc878dafec729bd74472def144b7e0107efeb0fe4633089de4f6d733106"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_macos.py",
+          "sha256": "c5058fd6533c100586d0fd9406d250562aa64dc396b75de1710d81a29d2a2c98"
+        },
+        {
+          "path": "src/inferyard/runtime/environment_observer.py",
+          "sha256": "1f9f3ccc34aea4bc7c28f3b0c214e3616f4876e95b22bb45c1ce229463835c5b"
+        },
+        {
+          "path": "src/inferyard/platforms/sensors_linux.py",
+          "sha256": "964465c9c079eda6cbd66936790ceb2f4b322d15ab5b4ea77bd7669ed75010e6"
+        },
+        {
+          "path": "src/inferyard/analysis/sensor_observations.py",
+          "sha256": "e4960db02f4b1c25cf5f074fa3f482b20c55519cdb7a407c6bfe0831d967c413"
+        },
+        {
+          "path": "tests/unit/test_sensors_linux.py",
+          "sha256": "99ac35099676fe87e24742ff0e448d31b3de30af9b48d719e22caec5a7842959"
+        },
+        {
+          "path": "src/inferyard/analysis/resource_metrics.py",
+          "sha256": "7c82c93eda50979e3d0b1e3a089390e6cb11f5774cf16361da92db5e0d5b1190"
+        },
+        {
+          "path": "tests/unit/test_resources.py",
+          "sha256": "4fa4076f8835c387cb8b72703beccf22d1a0de95fd63de3bbb4a60727eff83a1"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_windows.py",
+          "sha256": "39fc80a32a9c616eb14905faa8ff3d9e8e31674b0f1d0a65ea4fe20edfdcb4c5"
+        },
+        {
+          "path": "tests/unit/test_windows_resources.py",
+          "sha256": "bc99214c249e7ede99dcfba2cd6e7e86b4bef2deed64fda73e4aeb87003f5337"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "C02",
+      "name": "服务RSS峰值",
+      "definition_version": "phase2.v1",
+      "unit": "bytes",
+      "layer": "process",
+      "source": "platform_resource_collector",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "不采客户端RSS；子进程范围显式；PID变化停止该来源",
+      "required_capabilities": [
+        "platform_resource_collector"
+      ],
+      "aggregation": "绑定PID/starttime正式窗口RSS最大值，bytes",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_linux.py",
+          "sha256": "685d2bc878dafec729bd74472def144b7e0107efeb0fe4633089de4f6d733106"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_macos.py",
+          "sha256": "c5058fd6533c100586d0fd9406d250562aa64dc396b75de1710d81a29d2a2c98"
+        },
+        {
+          "path": "src/inferyard/runtime/environment_observer.py",
+          "sha256": "1f9f3ccc34aea4bc7c28f3b0c214e3616f4876e95b22bb45c1ce229463835c5b"
+        },
+        {
+          "path": "src/inferyard/platforms/sensors_linux.py",
+          "sha256": "964465c9c079eda6cbd66936790ceb2f4b322d15ab5b4ea77bd7669ed75010e6"
+        },
+        {
+          "path": "src/inferyard/analysis/sensor_observations.py",
+          "sha256": "e4960db02f4b1c25cf5f074fa3f482b20c55519cdb7a407c6bfe0831d967c413"
+        },
+        {
+          "path": "tests/unit/test_sensors_linux.py",
+          "sha256": "99ac35099676fe87e24742ff0e448d31b3de30af9b48d719e22caec5a7842959"
+        },
+        {
+          "path": "src/inferyard/analysis/resource_metrics.py",
+          "sha256": "7c82c93eda50979e3d0b1e3a089390e6cb11f5774cf16361da92db5e0d5b1190"
+        },
+        {
+          "path": "tests/unit/test_resources.py",
+          "sha256": "4fa4076f8835c387cb8b72703beccf22d1a0de95fd63de3bbb4a60727eff83a1"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_windows.py",
+          "sha256": "39fc80a32a9c616eb14905faa8ff3d9e8e31674b0f1d0a65ea4fe20edfdcb4c5"
+        },
+        {
+          "path": "tests/unit/test_windows_resources.py",
+          "sha256": "bc99214c249e7ede99dcfba2cd6e7e86b4bef2deed64fda73e4aeb87003f5337"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "C03",
+      "name": "服务RSS增量",
+      "definition_version": "phase2.v1",
+      "unit": "bytes",
+      "layer": "process",
+      "source": "platform_resource_collector",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "明确基线窗口；可为负不截为0；不是模型权重大小或泄漏量",
+      "required_capabilities": [
+        "platform_resource_collector"
+      ],
+      "aggregation": "正式RSS峰值−预热后空闲基线中位数，bytes",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_linux.py",
+          "sha256": "685d2bc878dafec729bd74472def144b7e0107efeb0fe4633089de4f6d733106"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_macos.py",
+          "sha256": "c5058fd6533c100586d0fd9406d250562aa64dc396b75de1710d81a29d2a2c98"
+        },
+        {
+          "path": "src/inferyard/runtime/environment_observer.py",
+          "sha256": "1f9f3ccc34aea4bc7c28f3b0c214e3616f4876e95b22bb45c1ce229463835c5b"
+        },
+        {
+          "path": "src/inferyard/platforms/sensors_linux.py",
+          "sha256": "964465c9c079eda6cbd66936790ceb2f4b322d15ab5b4ea77bd7669ed75010e6"
+        },
+        {
+          "path": "src/inferyard/analysis/sensor_observations.py",
+          "sha256": "e4960db02f4b1c25cf5f074fa3f482b20c55519cdb7a407c6bfe0831d967c413"
+        },
+        {
+          "path": "tests/unit/test_sensors_linux.py",
+          "sha256": "99ac35099676fe87e24742ff0e448d31b3de30af9b48d719e22caec5a7842959"
+        },
+        {
+          "path": "src/inferyard/analysis/resource_metrics.py",
+          "sha256": "7c82c93eda50979e3d0b1e3a089390e6cb11f5774cf16361da92db5e0d5b1190"
+        },
+        {
+          "path": "tests/unit/test_resources.py",
+          "sha256": "4fa4076f8835c387cb8b72703beccf22d1a0de95fd63de3bbb4a60727eff83a1"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_windows.py",
+          "sha256": "39fc80a32a9c616eb14905faa8ff3d9e8e31674b0f1d0a65ea4fe20edfdcb4c5"
+        },
+        {
+          "path": "tests/unit/test_windows_resources.py",
+          "sha256": "bc99214c249e7ede99dcfba2cd6e7e86b4bef2deed64fda73e4aeb87003f5337"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "C04",
+      "name": "服务CPU时间",
+      "definition_version": "phase2.v1",
+      "unit": "s",
+      "layer": "process",
+      "source": "platform_resource_collector",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "保存实际sampled_start/end与覆盖比例；部分窗口只称观测区间CPU时间；完整请求值须边界证据齐全；计数回退/重启为缺测",
+      "required_capabilities": [
+        "platform_resource_collector"
+      ],
+      "aggregation": "同PID/starttime两累计样本间用户态＋内核态CPU秒差",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_linux.py",
+          "sha256": "685d2bc878dafec729bd74472def144b7e0107efeb0fe4633089de4f6d733106"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_macos.py",
+          "sha256": "c5058fd6533c100586d0fd9406d250562aa64dc396b75de1710d81a29d2a2c98"
+        },
+        {
+          "path": "src/inferyard/runtime/environment_observer.py",
+          "sha256": "1f9f3ccc34aea4bc7c28f3b0c214e3616f4876e95b22bb45c1ce229463835c5b"
+        },
+        {
+          "path": "src/inferyard/platforms/sensors_linux.py",
+          "sha256": "964465c9c079eda6cbd66936790ceb2f4b322d15ab5b4ea77bd7669ed75010e6"
+        },
+        {
+          "path": "src/inferyard/analysis/sensor_observations.py",
+          "sha256": "e4960db02f4b1c25cf5f074fa3f482b20c55519cdb7a407c6bfe0831d967c413"
+        },
+        {
+          "path": "tests/unit/test_sensors_linux.py",
+          "sha256": "99ac35099676fe87e24742ff0e448d31b3de30af9b48d719e22caec5a7842959"
+        },
+        {
+          "path": "src/inferyard/analysis/resource_metrics.py",
+          "sha256": "7c82c93eda50979e3d0b1e3a089390e6cb11f5774cf16361da92db5e0d5b1190"
+        },
+        {
+          "path": "tests/unit/test_resources.py",
+          "sha256": "4fa4076f8835c387cb8b72703beccf22d1a0de95fd63de3bbb4a60727eff83a1"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "C05",
+      "name": "服务CPU利用率",
+      "definition_version": "phase2.v1",
+      "unit": "percent",
+      "layer": "process",
+      "source": "platform_resource_collector",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "不能用部分样本CPU差除整个请求E2E；整机归一化率另名并记录可用CPU数/cpuset",
+      "required_capabilities": [
+        "platform_resource_collector"
+      ],
+      "aggregation": "ΔCPU秒/同一对累计样本的Δ墙钟秒×100%，100%为一个逻辑核",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_linux.py",
+          "sha256": "685d2bc878dafec729bd74472def144b7e0107efeb0fe4633089de4f6d733106"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_macos.py",
+          "sha256": "c5058fd6533c100586d0fd9406d250562aa64dc396b75de1710d81a29d2a2c98"
+        },
+        {
+          "path": "src/inferyard/runtime/environment_observer.py",
+          "sha256": "1f9f3ccc34aea4bc7c28f3b0c214e3616f4876e95b22bb45c1ce229463835c5b"
+        },
+        {
+          "path": "src/inferyard/platforms/sensors_linux.py",
+          "sha256": "964465c9c079eda6cbd66936790ceb2f4b322d15ab5b4ea77bd7669ed75010e6"
+        },
+        {
+          "path": "src/inferyard/analysis/sensor_observations.py",
+          "sha256": "e4960db02f4b1c25cf5f074fa3f482b20c55519cdb7a407c6bfe0831d967c413"
+        },
+        {
+          "path": "tests/unit/test_sensors_linux.py",
+          "sha256": "99ac35099676fe87e24742ff0e448d31b3de30af9b48d719e22caec5a7842959"
+        },
+        {
+          "path": "src/inferyard/analysis/resource_metrics.py",
+          "sha256": "7c82c93eda50979e3d0b1e3a089390e6cb11f5774cf16361da92db5e0d5b1190"
+        },
+        {
+          "path": "tests/unit/test_resources.py",
+          "sha256": "4fa4076f8835c387cb8b72703beccf22d1a0de95fd63de3bbb4a60727eff83a1"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "C06",
+      "name": "换页活动",
+      "definition_version": "phase2.v1",
+      "unit": "pages",
+      "layer": "host",
+      "source": "platform_resource_collector",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "系统层；zram/swap环境注明；不归因到单模型；计数回退不可算负交换量",
+      "required_capabilities": [
+        "platform_resource_collector"
+      ],
+      "aggregation": "pswpin/pswpout累计差，pages与按实测页大小换算bytes",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_linux.py",
+          "sha256": "685d2bc878dafec729bd74472def144b7e0107efeb0fe4633089de4f6d733106"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_macos.py",
+          "sha256": "c5058fd6533c100586d0fd9406d250562aa64dc396b75de1710d81a29d2a2c98"
+        },
+        {
+          "path": "src/inferyard/runtime/environment_observer.py",
+          "sha256": "1f9f3ccc34aea4bc7c28f3b0c214e3616f4876e95b22bb45c1ce229463835c5b"
+        },
+        {
+          "path": "src/inferyard/platforms/sensors_linux.py",
+          "sha256": "964465c9c079eda6cbd66936790ceb2f4b322d15ab5b4ea77bd7669ed75010e6"
+        },
+        {
+          "path": "src/inferyard/analysis/sensor_observations.py",
+          "sha256": "e4960db02f4b1c25cf5f074fa3f482b20c55519cdb7a407c6bfe0831d967c413"
+        },
+        {
+          "path": "tests/unit/test_sensors_linux.py",
+          "sha256": "99ac35099676fe87e24742ff0e448d31b3de30af9b48d719e22caec5a7842959"
+        },
+        {
+          "path": "src/inferyard/analysis/resource_metrics.py",
+          "sha256": "7c82c93eda50979e3d0b1e3a089390e6cb11f5774cf16361da92db5e0d5b1190"
+        },
+        {
+          "path": "tests/unit/test_resources.py",
+          "sha256": "4fa4076f8835c387cb8b72703beccf22d1a0de95fd63de3bbb4a60727eff83a1"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "C07",
+      "name": "温度",
+      "definition_version": "phase2.v1",
+      "unit": "celsius",
+      "layer": "device",
+      "source": "platform_resource_collector",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "只读能力探测；权限/来源不明为null；不能凭升温断言热降频",
+      "required_capabilities": [
+        "platform_resource_collector"
+      ],
+      "aggregation": "对已知sensor/domain报告时间线与观测最高°C",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_linux.py",
+          "sha256": "685d2bc878dafec729bd74472def144b7e0107efeb0fe4633089de4f6d733106"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_macos.py",
+          "sha256": "c5058fd6533c100586d0fd9406d250562aa64dc396b75de1710d81a29d2a2c98"
+        },
+        {
+          "path": "src/inferyard/runtime/environment_observer.py",
+          "sha256": "1f9f3ccc34aea4bc7c28f3b0c214e3616f4876e95b22bb45c1ce229463835c5b"
+        },
+        {
+          "path": "src/inferyard/platforms/sensors_linux.py",
+          "sha256": "964465c9c079eda6cbd66936790ceb2f4b322d15ab5b4ea77bd7669ed75010e6"
+        },
+        {
+          "path": "src/inferyard/analysis/sensor_observations.py",
+          "sha256": "e4960db02f4b1c25cf5f074fa3f482b20c55519cdb7a407c6bfe0831d967c413"
+        },
+        {
+          "path": "tests/unit/test_sensors_linux.py",
+          "sha256": "99ac35099676fe87e24742ff0e448d31b3de30af9b48d719e22caec5a7842959"
+        },
+        {
+          "path": "src/inferyard/analysis/resource_metrics.py",
+          "sha256": "7c82c93eda50979e3d0b1e3a089390e6cb11f5774cf16361da92db5e0d5b1190"
+        },
+        {
+          "path": "tests/unit/test_resources.py",
+          "sha256": "4fa4076f8835c387cb8b72703beccf22d1a0de95fd63de3bbb4a60727eff83a1"
+        },
+        {
+          "path": "tests/unit/test_sensor_observations.py",
+          "sha256": "99151b97ed0d1625ee2ba3e6e12c7b68498f9c2e11cceeda19efb8c19d8c5df4"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "C08",
+      "name": "频率",
+      "definition_version": "phase2.v1",
+      "unit": "Hz",
+      "layer": "device",
+      "source": "platform_resource_collector",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "声明requested/reported/effective；来源语义不同不可混排；不把请求频率当实际执行频率",
+      "required_capabilities": [
+        "platform_resource_collector"
+      ],
+      "aggregation": "按来源报告per-core/policy频率时间线，Hz",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_linux.py",
+          "sha256": "685d2bc878dafec729bd74472def144b7e0107efeb0fe4633089de4f6d733106"
+        },
+        {
+          "path": "src/inferyard/platforms/resources_macos.py",
+          "sha256": "c5058fd6533c100586d0fd9406d250562aa64dc396b75de1710d81a29d2a2c98"
+        },
+        {
+          "path": "src/inferyard/runtime/environment_observer.py",
+          "sha256": "1f9f3ccc34aea4bc7c28f3b0c214e3616f4876e95b22bb45c1ce229463835c5b"
+        },
+        {
+          "path": "src/inferyard/platforms/sensors_linux.py",
+          "sha256": "964465c9c079eda6cbd66936790ceb2f4b322d15ab5b4ea77bd7669ed75010e6"
+        },
+        {
+          "path": "src/inferyard/analysis/sensor_observations.py",
+          "sha256": "e4960db02f4b1c25cf5f074fa3f482b20c55519cdb7a407c6bfe0831d967c413"
+        },
+        {
+          "path": "tests/unit/test_sensors_linux.py",
+          "sha256": "99ac35099676fe87e24742ff0e448d31b3de30af9b48d719e22caec5a7842959"
+        },
+        {
+          "path": "src/inferyard/analysis/resource_metrics.py",
+          "sha256": "7c82c93eda50979e3d0b1e3a089390e6cb11f5774cf16361da92db5e0d5b1190"
+        },
+        {
+          "path": "tests/unit/test_resources.py",
+          "sha256": "4fa4076f8835c387cb8b72703beccf22d1a0de95fd63de3bbb4a60727eff83a1"
+        },
+        {
+          "path": "tests/unit/test_sensor_observations.py",
+          "sha256": "99151b97ed0d1625ee2ba3e6e12c7b68498f9c2e11cceeda19efb8c19d8c5df4"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "X01",
+      "name": "输入长度—接受/完成/质量曲线",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "length_case_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "服务接受长输入不等于理解有效；最末通过档不等于理论极限",
+      "required_capabilities": [
+        "length_case_ledger"
+      ],
+      "aggregation": "每个实际输入档列P、拒绝数、C/D、Q/D、延迟与资源；固定模板计数与输出预算",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "X02",
+      "name": "材料位置/多证据正确率",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "length_case_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "单针命中不代表长文理解；变体不作独立题数量",
+      "required_capabilities": [
+        "length_case_ledger"
+      ],
+      "aggregation": "每个长度×位置×题族的正确数/有效执行数；文本hash与真实token数",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "X03",
+      "name": "输出预算达成与结束分布",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "length_case_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "自然回答提前EOS不是执行失败；未生成到上限不等于不支持输出长度",
+      "required_capabilities": [
+        "length_case_ledger"
+      ],
+      "aggregation": "实际输出量、预定目标、finish reason、预算耗尽；严格定长轨另列达到目标数/D",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "S01",
+      "name": "分窗延迟漂移",
+      "definition_version": "phase2.v1",
+      "unit": "ms",
+      "layer": "experiment",
+      "source": "trial_and_window_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "样本组成必须相同或按case配对；漂移不等于热降频",
+      "required_capabilities": [
+        "trial_and_window_ledger"
+      ],
+      "aggregation": "冻结早/晚窗口或逐窗口L03，报告中位差/比值及样本/失败率",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/analysis/duration_windows.py",
+          "sha256": "c1cb46d09a012d172d69c304e54dc8703b979048157a0493fd66f97d4bf8619f"
+        },
+        {
+          "path": "src/inferyard/analysis/stability_observations.py",
+          "sha256": "a53ada4b574f5a563c9299f107adee01d01b9694145fadd8c6cc468ae161a04a"
+        },
+        {
+          "path": "src/inferyard/analysis/idle_rss.py",
+          "sha256": "27504f6e6204cebd0c888a8cc078e54a027a322c219937aa8e96b36163db56d2"
+        },
+        {
+          "path": "tests/unit/test_stability_observations.py",
+          "sha256": "b2f7945bf0953eedcaa8c1dc221fc5853e721ef2454e78c0c5c66736d1bd4646"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "S02",
+      "name": "空闲点RSS漂移",
+      "definition_version": "phase2.v1",
+      "unit": "bytes",
+      "layer": "process",
+      "source": "trial_and_window_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "缓存与保留池未排除时不能宣称泄漏",
+      "required_capabilities": [
+        "trial_and_window_ledger"
+      ],
+      "aggregation": "相同探针周期结束并确认idle后RSS差/时间序列；重启对照独立",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/analysis/duration_windows.py",
+          "sha256": "c1cb46d09a012d172d69c304e54dc8703b979048157a0493fd66f97d4bf8619f"
+        },
+        {
+          "path": "src/inferyard/analysis/stability_observations.py",
+          "sha256": "a53ada4b574f5a563c9299f107adee01d01b9694145fadd8c6cc468ae161a04a"
+        },
+        {
+          "path": "src/inferyard/analysis/idle_rss.py",
+          "sha256": "27504f6e6204cebd0c888a8cc078e54a027a322c219937aa8e96b36163db56d2"
+        },
+        {
+          "path": "tests/unit/test_stability_observations.py",
+          "sha256": "b2f7945bf0953eedcaa8c1dc221fc5853e721ef2454e78c0c5c66736d1bd4646"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "S03",
+      "name": "重复任务通过一致性",
+      "definition_version": "phase2.v1",
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "trial_and_window_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "例如30题全3轮通过为30/40，不含只跑一轮的新80题；不称修复重试成功率或标准pass@k",
+      "required_capabilities": [
+        "trial_and_window_ledger"
+      ],
+      "aggregation": "每case各轮pass/fail；全k轮通过题数/预定做满k轮的去重case数；未完整k轮则整包值null",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/analysis/repetition_metrics.py",
+          "sha256": "41dc4540a84f7dc7a827fcb6a30cf984d7fa7e84f108d0e0c69e6feb588f82a7"
+        },
+        {
+          "path": "src/inferyard/analysis/repetition_analysis.py",
+          "sha256": "91598cfb4fb9f7e1d22b2283a26b84fc6c977646659d1a50362edda18df8ccb6"
+        },
+        {
+          "path": "tests/unit/test_repetition_metrics.py",
+          "sha256": "e896ed4d121fb91afa8754cf7d1d08abe0c4c21d1e5ade3054be2101466aa079"
+        },
+        {
+          "path": "tests/unit/test_aggregate_observations.py",
+          "sha256": "1a52224e414af3adf9b9141a61a038bcda60e8d2b78950af5b0403efcd68e791"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "S04",
+      "name": "运行间性能波动",
+      "definition_version": "phase2.v1",
+      "unit": "ms",
+      "layer": "experiment",
+      "source": "trial_and_window_ledger",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "三轮只描述已观测变化；不能凭少量相关数据作泛化显著性结论",
+      "required_capabilities": [
+        "trial_and_window_ledger"
+      ],
+      "aggregation": "相同case/负载各完整trial中位数、范围、IQR与配对差",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        },
+        {
+          "path": "src/inferyard/analysis/repetition_metrics.py",
+          "sha256": "41dc4540a84f7dc7a827fcb6a30cf984d7fa7e84f108d0e0c69e6feb588f82a7"
+        },
+        {
+          "path": "src/inferyard/analysis/repetition_analysis.py",
+          "sha256": "91598cfb4fb9f7e1d22b2283a26b84fc6c977646659d1a50362edda18df8ccb6"
+        },
+        {
+          "path": "tests/unit/test_repetition_metrics.py",
+          "sha256": "e896ed4d121fb91afa8754cf7d1d08abe0c4c21d1e5ade3054be2101466aa079"
+        },
+        {
+          "path": "tests/unit/test_aggregate_observations.py",
+          "sha256": "1a52224e414af3adf9b9141a61a038bcda60e8d2b78950af5b0403efcd68e791"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "E01",
+      "name": "GPU内存观测峰值",
+      "definition_version": "phase2.v1",
+      "unit": "bytes",
+      "layer": "device",
+      "source": "verified_sensor_or_instrument",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "按设备/进程/引擎层分别采样bytes；统一内存不能与RSS相加；关联具体设备和进程证据",
+      "required_capabilities": [
+        "verified_sensor_or_instrument"
+      ],
+      "aggregation": "按设备/进程/引擎层分别采样bytes；统一内存不能与RSS相加；关联具体设备和进程证据",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "conditional",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "E02",
+      "name": "GPU利用率",
+      "definition_version": "phase2.v1",
+      "unit": "percent",
+      "layer": "device",
+      "source": "verified_sensor_or_instrument",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "按厂商指标定义/刷新周期记录%；不是算力效率或模型GPU驻留证明",
+      "required_capabilities": [
+        "verified_sensor_or_instrument"
+      ],
+      "aggregation": "按厂商指标定义/刷新周期记录%；不是算力效率或模型GPU驻留证明",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "conditional",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "E03",
+      "name": "功率",
+      "definition_version": "phase2.v1",
+      "unit": "W",
+      "layer": "device",
+      "source": "verified_sensor_or_instrument",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "明确CPU package、GPU board或整机插座，W；硬件计数差推导的是窗口平均，不冒充瞬时读数",
+      "required_capabilities": [
+        "verified_sensor_or_instrument"
+      ],
+      "aggregation": "明确CPU package、GPU board或整机插座，W；硬件计数差推导的是窗口平均，不冒充瞬时读数",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "conditional",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "E04",
+      "name": "能量",
+      "definition_version": "phase2.v1",
+      "unit": "J",
+      "layer": "device",
+      "source": "verified_sensor_or_instrument",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "同域能量计数差处理回绕，或同范围功率时间积分，J；覆盖缺段不静默插值为完整测量",
+      "required_capabilities": [
+        "verified_sensor_or_instrument"
+      ],
+      "aggregation": "同域能量计数差处理回绕，或同范围功率时间积分，J；覆盖缺段不静默插值为完整测量",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "conditional",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "E05",
+      "name": "每成功任务能量",
+      "definition_version": "phase2.v1",
+      "unit": "J/successful_task",
+      "layer": "experiment",
+      "source": "verified_sensor_or_instrument",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "冻结批次所有执行尝试能量/质量成功任务数，J/成功任务；零成功为null；预热/加载是否计入须单独命名",
+      "required_capabilities": [
+        "verified_sensor_or_instrument"
+      ],
+      "aggregation": "冻结批次所有执行尝试能量/质量成功任务数，J/成功任务；零成功为null；预热/加载是否计入须单独命名",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "conditional",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "N01",
+      "name": "请求吞吐",
+      "definition_version": "phase2.v1",
+      "unit": "request/s",
+      "layer": "experiment",
+      "source": "load_and_token_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "固定批次C/(最后终态−首次正式发送)秒；失败/排空留在分母时间；开放/封闭协议分开",
+      "required_capabilities": [
+        "load_and_token_events"
+      ],
+      "aggregation": "固定批次C/(最后终态−首次正式发送)秒；失败/排空留在分母时间；开放/封闭协议分开",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "conditional",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "N02",
+      "name": "达标吞吐goodput",
+      "definition_version": "phase2.v1",
+      "unit": "request/s",
+      "layer": "experiment",
+      "source": "load_and_token_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "同时满足预注册质量和时延要求的请求数/同一批次秒数；阈值运行前冻结",
+      "required_capabilities": [
+        "load_and_token_events"
+      ],
+      "aggregation": "同时满足预注册质量和时延要求的请求数/同一批次秒数；阈值运行前冻结",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "conditional",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "N03",
+      "name": "真实ITL与服务排队",
+      "definition_version": "phase2.v1",
+      "unit": "ms",
+      "layer": "experiment",
+      "source": "load_and_token_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "两个子项分别存：同token序列的逐token事件间隔；同服务端时钟执行开始−入队；缺真实事件则各自null",
+      "required_capabilities": [
+        "load_and_token_events"
+      ],
+      "aggregation": "两个子项分别存：同token序列的逐token事件间隔；同服务端时钟执行开始−入队；缺真实事件则各自null",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "conditional",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "U01",
+      "name": "启动到可用时间",
+      "definition_version": "phase2.v1",
+      "unit": "s",
+      "layer": "experiment",
+      "source": "verified_lifecycle_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "托管或外部可核验的启动事件→就绪→首个有效答案分别记录；热启动/新进程/OS缓存状态分开",
+      "required_capabilities": [
+        "verified_lifecycle_events"
+      ],
+      "aggregation": "托管或外部可核验的启动事件→就绪→首个有效答案分别记录；热启动/新进程/OS缓存状态分开",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "conditional",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+        },
+        {
+          "path": "src/inferyard/analysis/observations.py",
+          "sha256": "2b63953fba49aa1b59001c09a85a282dc947f11d2e2850a7efd463c626915712"
+        },
+        {
+          "path": "tests/unit/test_observations.py",
+          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+/artifacts/
+/validation/
+# Keep machine-bound configurations local; publish only reusable examples.
+/configs/*
+!/configs/README.md
+!/configs/*.example.toml
+__pycache__/
+*.py[cod]
+/.venv/
+/.uv-cache/
+/.pytest_cache/
+/.ruff_cache/
+/.tools/
+/dist/
+/results/
+/reports/
+/.playwright-cli/
+/output/playwright/
+
+# Local credentials, model files and private evidence stay outside the public tree.
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+*.gguf
+*.ninfer
+*.safetensors

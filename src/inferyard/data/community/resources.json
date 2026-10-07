@@ -1,0 +1,11 @@
+{
+  "README.md": "57fd32fd733661829ed28862b274ee518d6351b92c0323221cba7a6aa914f909",
+  "bundles/zh-core.json": "5296dd8c59613e1142a0e9ec887509ab8d7266f49f88a614d343188640fc15c6",
+  "bundles/zh-smoke.json": "cf7dcb52e7383791d37253e2b4df5245c8c87f91ebc5d3836e21c4d8c4790494",
+  "bundles/zh-svg-pelican.json": "c49994a632a23a33f90ccae71e7ebb5c65b54831f9c36d586ccacd49dac105b3",
+  "configs/linux.example.toml": "4a17518c24954d905366388a32d2243f6156b75a64a94f131ceddc28d36fe754",
+  "configs/macos.example.toml": "d02206c698700467a113a84f0ac2b96d03b0bd6665061c9fc046fed4df90f39d",
+  "configs/windows.example.toml": "ab0c74926b94efe9fb365ddf8f8b541d350bf3d4647b1a0a4936106681ede98a",
+  "profile/prism-b10743-adfffbe-win-cpu-x64.json": "af0a49668b4d541704a7c571a5aae9407885c798a7c3484cfb1056aeb86573f4",
+  "profile/prism-b10743-adfffbe-win-cuda-12.4-x64.json": "d5bf1e71709c17f1c7610e0e155e9bd5594feb9cc0c7ddf6ee0a53b1e90a3a8a"
+}

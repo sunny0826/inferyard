@@ -1,0 +1,62 @@
+# macos: UNBOUND placeholders. Copy and fill every REPLACE field; never run this file directly.
+# PID/time 1 are sentinels; config bind replaces them from the external live process.
+schema_version = 3
+[device]
+id = "REPLACE_DEVICE_ID"
+client_position = "same_host_native"
+[model]
+display_name = "REPLACE_MODEL_NAME"
+repo = "local"
+revision = "REPLACE_MODEL_REVISION"
+local_path = "REPLACE_MODEL_PATH"
+sha256 = "REPLACE_MODEL_SHA256"
+packing = "GGUF"
+template_path = "../assets/REPLACE_ASSET_DIR/chat-template.jinja"
+template_sha256 = "REPLACE_TEMPLATE_SHA256"
+[engine]
+adapter = "prism_llama_server_v1"
+release = "prism-b10743-adfffbe"
+backend = "metal"
+binary_path = "REPLACE_ENGINE_PATH"
+binary_sha256 = "REPLACE_ENGINE_SHA256"
+runtime_library_manifest = "../assets/REPLACE_ASSET_DIR/engine-sha256.json"
+# Freeze the exact external-service arguments, including model, threads/context, host/port and cache.
+startup_args = ["REPLACE_EXACT_STARTUP_ARGUMENTS"]
+[endpoint]
+url = "http://127.0.0.1:48857"
+server_pid = 1
+process_start_ticks = 1
+[bundle]
+# Use preparation.json bundle_path and the selected bundle's own version.
+path = "../bundles/REPLACE_SELECTED_BUNDLE.json"
+version = "REPLACE_BUNDLE_VERSION"
+[generation]
+max_tokens = 512
+reasoning_mode = "off"
+seed = 42
+seed_support = "unknown"
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+presence_penalty = 1.5
+repeat_penalty = 1.0
+stop = []
+[conditions]
+context_size = 4096
+threads = 1
+threads_batch = 1
+slots = 1
+cache_policy = "disabled"
+ac_online = true
+profile = "unknown"
+governor = "unknown"
+epp = "unknown"
+allow_unknown_environment = true
+model_loaded = true
+background_load = "REPLACE_ACTUAL_BACKGROUND_LOAD"
+[output]
+root = "../results"
+# Replace these strings with integer byte budgets justified for this device; do not lower stops to pass.
+min_available_memory_bytes = "REPLACE_MEMORY_BUDGET_BYTES"
+min_disk_bytes = "REPLACE_DISK_BUDGET_BYTES"

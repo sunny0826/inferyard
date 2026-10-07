@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>InferYard · 工作流</title>
+<style>
+:root{color-scheme:light;--ink:#17352e;--muted:#53665e;--green:#286a50;--line:#cedbd0;--paper:#f6f6ee;--card:#fffef9}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:system-ui,-apple-system,"PingFang SC",sans-serif;line-height:1.6}main{max-width:1120px;margin:auto;padding:46px 28px 34px}nav{display:flex;gap:22px;flex-wrap:wrap;font-size:14px}a{color:var(--green);text-underline-offset:4px}header{margin:38px 0 34px}small{letter-spacing:.12em;font-weight:700;color:var(--green)}h1{font-size:clamp(30px,4vw,48px);line-height:1.25;letter-spacing:-.04em;margin:12px 0}header p{font-size:18px;color:var(--muted);margin:0}.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.step{position:relative;border-top:4px solid var(--green);border-radius:5px;background:var(--card);padding:22px;box-shadow:0 5px 20px #18352a08}.step:not(:last-child)::after{content:'→';position:absolute;right:-19px;top:50%;font-size:22px;z-index:1;color:var(--green)}.number{font:700 13px ui-monospace,monospace;color:var(--green)}h2{font-size:23px;margin:8px 0 16px}.commands{display:grid;gap:8px}.commands code{display:block;font:14px/1.5 ui-monospace,SFMono-Regular,monospace;background:#edf2e8;border-radius:5px;padding:9px 10px;overflow-wrap:anywhere}.step p{color:var(--muted);font-size:14px;margin:15px 0 0}.platforms{margin-top:24px;border:1px solid var(--line);border-radius:8px;padding:19px 22px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px}.platforms h3{font-size:15px;margin:0 0 6px}.platforms p{font-size:14px;margin:0;color:var(--muted)}code{font-family:ui-monospace,SFMono-Regular,monospace}.boundary{display:flex;align-items:center;gap:18px;margin:27px 0 18px;padding:15px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.boundary strong{white-space:nowrap;font-size:15px}.boundary p{margin:0;font-size:14px;color:var(--muted)}footer{font-size:13px;color:var(--muted)}@media(max-width:720px){main{padding:25px 18px}.flow,.platforms{grid-template-columns:1fr}.step:not(:last-child)::after{content:'↓';right:24px;top:auto;bottom:-25px}.boundary{align-items:flex-start;flex-direction:column;gap:5px}header{margin:28px 0}}@media print{main{padding:10px}.step{box-shadow:none}a{color:inherit}}
+</style>
+</head>
+<body>
+<main>
+<nav aria-label="文档导航"><a href="../README.md">产品说明</a><a href="installation.md">安装指南</a><a href="usage.md">使用指南</a><a href="platforms.md">平台状态</a></nav>
+<header><small>LOCAL AI COMMUNITY BENCHMARK · v0.0.1 本地候选</small><h1>本地运行，离线读证据。</h1><p>先冻结条件，再测量。答案质量、耗时与资源分别展示。</p></header>
+<section class="flow" aria-label="测评工作流">
+<article class="step"><span class="number">01 / 准备</span><h2>安装与绑定</h2><div class="commands"><code>uv tool install / uvx</code><code>init → device-check</code><code>准备资产 → 外部启动服务</code><code>config bind</code></div><p>使用维护者提供的本地 wheel。模型、引擎与服务由操作者准备。</p></article>
+<article class="step"><span class="number">02 / 执行</span><h2>冻结与运行</h2><div class="commands"><code>run --config CONFIG</code><code>或 plan → run --plan PLAN</code><code>身份预检 → 探测 → 正式题目</code><code>排空 → 评分与证据封存</code></div><p>run 含当次普通/流式探测。独立 probe 用于可选排障，会发送请求。</p></article>
+<article class="step"><span class="number">03 / 离线</span><h2>阅读与核验</h2><div class="commands"><code>report / compare</code><code>打开 report.html</code><code>verify --path ARTIFACT</code><code>可直接核验 run / batch / plan</code></div><p>关闭服务后仍可阅读。迁移、重评分和报告重建都写入新目录。</p></article>
+</section>
+<section class="platforms" aria-label="平台准备方式"><div><h3>Linux x64</h3><p><code>config assets</code><br>导出资产，再填写模板。</p></div><div><h3>macOS arm64</h3><p><code>config create --engine</code><br>已有 Prism 引擎，CPU / Metal。</p></div><div><h3>Windows x64</h3><p><code>runtime prepare → config create</code><br>固定归档与回执，CPU / CUDA。</p></div></section>
+<aside class="boundary"><strong>运行边界</strong><p>本机端点 · 资产与进程身份 · 主机锁 / dirty 恢复 · 冻结预算与停止条件 · 取消与排空</p></aside>
+<footer>本页完全离线，无外部脚本或字体。v0.0.1 尚未公开发布；安装验证与原生能力分别见平台状态。</footer>
+</main>
+</body>
+</html>

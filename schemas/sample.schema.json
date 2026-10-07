@@ -1,0 +1,556 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:sample",
+  "title": "InferYard sample v3",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "experiment_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "probe",
+            "warmup",
+            "baseline",
+            "formal",
+            "scoring",
+            "residual",
+            "finalizing"
+          ]
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metric_name": {
+          "type": "string",
+          "enum": [
+            "system_mem_available",
+            "service_rss"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "bytes"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "read_started_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "read_finished_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "server_pid": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "process_start_ticks": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "missing_reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "experiment_id",
+        "trial_id",
+        "run_id",
+        "seq",
+        "clock_id",
+        "utc",
+        "phase",
+        "request_id",
+        "metric_name",
+        "value",
+        "unit",
+        "source",
+        "read_started_ns",
+        "read_finished_ns",
+        "server_pid",
+        "process_start_ticks",
+        "missing_reason"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "experiment_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "probe",
+            "warmup",
+            "baseline",
+            "formal",
+            "scoring",
+            "residual",
+            "finalizing"
+          ]
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metric_name": {
+          "type": "string",
+          "enum": [
+            "service_cpu_ticks",
+            "system_swap_in",
+            "system_swap_out"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "ticks",
+            "pages"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "read_started_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "read_finished_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "server_pid": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "process_start_ticks": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "missing_reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "collector": {
+          "type": "string",
+          "enum": [
+            "linux-resource.v2",
+            "macos-resource.v1"
+          ]
+        },
+        "boot_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "clock_ticks_per_second": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "page_size_bytes": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "raw_cpu": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "user_ticks": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "system_ticks": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "user_ticks",
+                "system_ticks"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capture": {
+          "type": "string",
+          "enum": [
+            "periodic",
+            "request_start",
+            "request_end",
+            "idle"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "experiment_id",
+        "trial_id",
+        "run_id",
+        "seq",
+        "clock_id",
+        "utc",
+        "phase",
+        "request_id",
+        "metric_name",
+        "value",
+        "unit",
+        "source",
+        "read_started_ns",
+        "read_finished_ns",
+        "server_pid",
+        "process_start_ticks",
+        "missing_reason",
+        "collector",
+        "boot_id",
+        "clock_ticks_per_second",
+        "page_size_bytes",
+        "raw_cpu",
+        "capture"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "experiment_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "probe",
+            "warmup",
+            "baseline",
+            "formal",
+            "scoring",
+            "residual",
+            "finalizing"
+          ]
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metric_name": {
+          "type": "string",
+          "enum": [
+            "temperature",
+            "frequency"
+          ]
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "celsius",
+            "Hz"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "read_started_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "read_finished_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "server_pid": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "process_start_ticks": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "missing_reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "collector": {
+          "type": "string",
+          "enum": [
+            "linux-sensors.v2",
+            "macos-smc.v1"
+          ]
+        },
+        "raw_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "semantics": {
+          "type": "string",
+          "enum": [
+            "thermal_zone_reported",
+            "hardware_reported",
+            "requested_or_driver_reported",
+            "smc_key_reported"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "experiment_id",
+        "trial_id",
+        "run_id",
+        "seq",
+        "clock_id",
+        "utc",
+        "phase",
+        "request_id",
+        "metric_name",
+        "value",
+        "unit",
+        "source",
+        "read_started_ns",
+        "read_finished_ns",
+        "server_pid",
+        "process_start_ticks",
+        "missing_reason",
+        "collector",
+        "raw_value",
+        "semantics"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

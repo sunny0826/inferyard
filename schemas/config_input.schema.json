@@ -1,0 +1,695 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:config_input",
+  "title": "InferYard config_input v3",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    },
+    "device": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "client_position": {
+          "type": "string",
+          "enum": [
+            "same_host_native"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "client_position"
+      ],
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "repo": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "local_path": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "packing": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "template_path": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "template_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "gguf",
+            "ninfer"
+          ]
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 500
+        },
+        "component_ledger_path": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "component_ledger_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "display_name",
+        "repo",
+        "revision",
+        "local_path",
+        "sha256",
+        "packing",
+        "template_path",
+        "template_sha256"
+      ],
+      "additionalProperties": false
+    },
+    "engine": {
+      "type": "object",
+      "properties": {
+        "adapter": {
+          "type": "string",
+          "enum": [
+            "prism_llama_server_v1",
+            "llama_cpp_b11146_v1",
+            "kvmem",
+            "ninfer"
+          ]
+        },
+        "release": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "binary_path": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "binary_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "runtime_library_manifest": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "startup_args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "backend": {
+          "type": "string",
+          "enum": [
+            "cpu",
+            "cuda",
+            "metal"
+          ]
+        },
+        "slots_debug": {
+          "type": "boolean",
+          "default": false
+        },
+        "working_directory": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "observation_mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "lab_required"
+          ]
+        },
+        "environment": {
+          "type": "object",
+          "properties": {
+            "CUDA_VISIBLE_DEVICES": {
+              "type": "string",
+              "minLength": 1,
+              "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+            },
+            "CUDA_CACHE_DISABLE": {
+              "type": "string",
+              "minLength": 1,
+              "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "asset_manifest": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "model",
+                  "engine",
+                  "library",
+                  "component_ledger",
+                  "template"
+                ]
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 500
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "role",
+              "bytes",
+              "sha256"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "adapter",
+        "release",
+        "binary_path",
+        "binary_sha256",
+        "runtime_library_manifest",
+        "startup_args",
+        "backend"
+      ],
+      "additionalProperties": false
+    },
+    "endpoint": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "server_pid": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 500
+        },
+        "process_start_ticks": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 500
+        },
+        "api_key_env": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        }
+      },
+      "required": [
+        "url",
+        "server_pid",
+        "process_start_ticks"
+      ],
+      "additionalProperties": false
+    },
+    "bundle": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        }
+      },
+      "required": [
+        "path",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "generation": {
+      "type": "object",
+      "properties": {
+        "temperature": {
+          "type": "number",
+          "minimum": 0
+        },
+        "top_p": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "top_k": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "min_p": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "presence_penalty": {
+          "type": "number"
+        },
+        "repeat_penalty": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "seed_support": {
+          "type": "string",
+          "enum": [
+            "supported",
+            "unsupported",
+            "unknown"
+          ]
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 500
+        },
+        "reasoning_mode": {
+          "type": "string",
+          "enum": [
+            "off",
+            "on"
+          ]
+        },
+        "stop": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "temperature",
+        "top_p",
+        "top_k",
+        "min_p",
+        "presence_penalty",
+        "repeat_penalty",
+        "seed",
+        "seed_support",
+        "max_tokens",
+        "reasoning_mode",
+        "stop"
+      ],
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "properties": {
+        "concurrency": {
+          "type": "integer",
+          "const": 1,
+          "default": 1
+        },
+        "repeats": {
+          "type": "integer",
+          "const": 1,
+          "default": 1
+        },
+        "order": {
+          "type": "string",
+          "enum": [
+            "fixed"
+          ],
+          "default": "fixed"
+        },
+        "timeout_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 180
+        },
+        "warmup_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3,
+          "default": 3
+        },
+        "warmup_prompt": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "probe_prompt": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "idle_wait_seconds": {
+          "type": "number",
+          "const": 5,
+          "default": 5
+        },
+        "require_fresh_process": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "telemetry": {
+      "type": "object",
+      "properties": {
+        "interval_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 500
+        },
+        "baseline_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 5
+        },
+        "system_memory_required": {
+          "type": "boolean",
+          "const": true,
+          "default": true
+        },
+        "service_rss_required": {
+          "type": "boolean",
+          "default": false
+        },
+        "window_definition": {
+          "type": "string",
+          "enum": [
+            "v1"
+          ],
+          "default": "v1"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "conditions": {
+      "type": "object",
+      "properties": {
+        "context_size": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 500
+        },
+        "threads": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 500
+        },
+        "threads_batch": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 500
+        },
+        "slots": {
+          "type": "integer",
+          "const": 1
+        },
+        "cache_policy": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "enabled",
+            "unknown"
+          ]
+        },
+        "ac_online": {
+          "type": "boolean",
+          "default": false
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "governor": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "epp": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "model_loaded": {
+          "type": "boolean",
+          "default": false
+        },
+        "background_load": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "environment_admission": {
+          "type": "object",
+          "properties": {
+            "definition": {
+              "type": "string",
+              "enum": [
+                "environment-admission.v2"
+              ]
+            },
+            "required_fields": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ac_online",
+                  "profile",
+                  "governor",
+                  "epp",
+                  "macos_power_policy"
+                ]
+              }
+            }
+          },
+          "required": [
+            "definition",
+            "required_fields"
+          ],
+          "additionalProperties": false
+        },
+        "require_epp_match": {
+          "type": "boolean",
+          "default": false
+        },
+        "allow_unknown_environment": {
+          "type": "boolean",
+          "default": false
+        },
+        "macos_power_policy": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "enum": [
+                "macos.pmset.power-policy.v1"
+              ]
+            },
+            "ac_online": {
+              "type": "boolean",
+              "default": false
+            },
+            "low_power_mode": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            },
+            "power_mode": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "enum": [
+                0,
+                1,
+                2,
+                "unsupported"
+              ]
+            },
+            "power_mode_supported": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "required": [
+            "source",
+            "ac_online",
+            "low_power_mode",
+            "power_mode",
+            "power_mode_supported"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "context_size",
+        "threads",
+        "threads_batch",
+        "slots",
+        "cache_policy",
+        "ac_online",
+        "profile",
+        "governor",
+        "epp",
+        "model_loaded",
+        "background_load"
+      ],
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "parameter_evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+          },
+          "minItems": 0,
+          "default": []
+        },
+        "service_evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+          },
+          "minItems": 0,
+          "default": []
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+        },
+        "min_disk_bytes": {
+          "type": "integer",
+          "minimum": 5368709120,
+          "default": 5368709120
+        },
+        "min_available_memory_bytes": {
+          "type": "integer",
+          "minimum": 1073741824,
+          "default": 8589934592
+        }
+      },
+      "required": [
+        "root"
+      ],
+      "additionalProperties": false
+    },
+    "quantization_artifact_binding": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "type": "string",
+          "pattern": "^(?:/|[A-Za-z]:[\\\\/]|\\\\\\\\[^\\\\/]+[\\\\/][^\\\\/]+[\\\\/]).*$"
+        },
+        "files": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "default": "请只用中文回答：中国的首都是哪里？只回答城市名。"
+          }
+        }
+      },
+      "required": [
+        "root",
+        "files"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "device",
+    "model",
+    "engine",
+    "endpoint",
+    "bundle",
+    "generation",
+    "conditions",
+    "output"
+  ],
+  "additionalProperties": false
+}

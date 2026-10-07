@@ -1,0 +1,94 @@
+name: Package checks
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v4
+      - run: mise exec -- uv sync --frozen
+      - run: mise exec -- uv run --frozen pytest -q
+      - run: mise exec -- uv run --frozen ruff check src tests scripts
+      - run: mise exec -- uv run --frozen ruff format --check src tests scripts
+      - run: mise exec -- uv run --frozen python scripts/export_schemas.py --check
+      - run: mise exec -- uv run --frozen python scripts/export_catalogue.py --check
+      - run: mise exec -- uv run --frozen python scripts/export_community.py --check
+      - run: mise exec -- uv run --frozen python scripts/build_distribution.py --out dist/package-check
+      - run: mise exec -- uv run --frozen python -m tests.packaging.prepare_inputs --out dist/package-inputs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checked-build
+          path: |
+            dist/package-check
+            dist/package-inputs
+          if-no-files-found: error
+  installed:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v4
+      - run: mise exec -- uv sync --frozen
+      - uses: actions/download-artifact@v5
+        with:
+          name: checked-build
+          path: dist
+      - name: Check downloaded bytes and run isolated installation
+        run: mise exec -- uv run --frozen python tests/packaging/ci_installed.py --artifact dist/package-check --inputs dist/package-inputs --out "${{ runner.temp }}/installed-check"
+        env:
+          LAB_DISPOSABLE_HOST_TEST: "yes"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: installed-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/installed-check/*.json
+            ${{ runner.temp }}/installed-check/*.stdout
+            ${{ runner.temp }}/installed-check/*.stderr
+          if-no-files-found: warn
+          retention-days: 7
+  candidate:
+    needs: installed
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v4
+      - run: mise exec -- uv sync --frozen
+      - uses: actions/download-artifact@v5
+        with:
+          name: checked-build
+          path: dist
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: installed-*
+          path: installed
+      - name: Produce candidate from the original build and completed checks
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: >-
+          mise exec -- uv run --frozen python scripts/prepare_release_candidate.py
+          --manifest dist/package-check/manifest.json
+          --installed installed/installed-ubuntu-24.04/result.json
+          --installed installed/installed-windows-2025/result.json
+          --installed installed/installed-macos-15/result.json
+          --source-commit "$SOURCE_COMMIT"
+          --out dist/release-candidate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          path: dist/release-candidate
+          if-no-files-found: error

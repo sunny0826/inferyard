@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:native_tools",
+  "title": "InferYard native_tools v3",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    },
+    "definition": {
+      "type": "string",
+      "enum": [
+        "native_tools.v1"
+      ]
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_tool": {
+            "type": "string",
+            "enum": [
+              "add",
+              "lookup"
+            ]
+          },
+          "expected_arguments": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "a": {
+                    "type": "integer",
+                    "minimum": -1000000,
+                    "maximum": 1000000
+                  },
+                  "b": {
+                    "type": "integer",
+                    "minimum": -1000000,
+                    "maximum": 1000000
+                  }
+                },
+                "required": [
+                  "a",
+                  "b"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "enum": [
+                      "alpha",
+                      "beta"
+                    ]
+                  }
+                },
+                "required": [
+                  "key"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "expected_final": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "case_id",
+          "prompt",
+          "expected_tool",
+          "expected_arguments",
+          "expected_final"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "timeout_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "max_calls": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_rounds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "track": {
+      "type": "string",
+      "enum": [
+        "capability_diagnostic",
+        "reviewed_formal"
+      ]
+    },
+    "content_review_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "schema_version",
+    "definition",
+    "cases",
+    "timeout_seconds",
+    "max_calls",
+    "max_rounds",
+    "track"
+  ],
+  "additionalProperties": false
+}

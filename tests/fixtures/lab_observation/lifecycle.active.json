@@ -1,0 +1,22 @@
+{
+  "protocol": "lab_observation.v1",
+  "server_instance_id": "11111111111111111111111111111111",
+  "snapshot_seq": 8,
+  "poisoned": false,
+  "active_total": 1,
+  "stages": {
+    "accepted_waiting": 0,
+    "preparing": 0,
+    "prefilling": 0,
+    "decoding": 1,
+    "output_draining": 0,
+    "releasing": 0
+  },
+  "requests": [
+    {
+      "request_id": "22222222222222222222222222222222",
+      "phase": "decoding",
+      "cancel_requested": false
+    }
+  ]
+}

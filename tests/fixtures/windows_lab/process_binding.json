@@ -1,0 +1,9 @@
+{
+  "pid": 42,
+  "creation_filetime": 100,
+  "origin": "http://127.0.0.1:8080",
+  "executable_path": "C:\\engine\\server.exe",
+  "executable_sha256": "4e17d37310243af5edd93af901d103e1522035fc6dd10cbaaf8558dfdf0f8200",
+  "argv_sha256": "92f554a0d239149663349b030b9dd0581edd9355cf1d6d62f7581c2458686efc",
+  "cwd_sha256": "e90c290bf410c2c9303fba8809f1aa1887eae03464b72614f00c78593913ef69"
+}

@@ -1,0 +1,11 @@
+{% if run.get('engine_observation') %}
+<section class="panel" aria-label="引擎观测能力">
+<h3>引擎观测能力：{{ 'lab 全量观测' if run.engine_observation.mode == 'lab' else '原生信号降级' }}</h3>
+<p>生成接口：{{ run.engine_observation.generation }} · 请求 ID 范围：{{ run.engine_observation.request_id_scope }}</p>
+{% if run.engine_observation.mode == 'native' %}<p><strong>引擎内部全服务排空：未观测（null）。</strong>HTTP 完成、slots、CPU 和进程退出均不能证明引擎内排空。取消使用 HTTP 中断；原生取消：{{ run.engine_observation.native_cancel.value|display }}，{{ run.engine_observation.native_cancel.missing_reason }}。</p>{% endif %}
+<p>进程级证据：{{ run.engine_observation.process_evidence }}</p>
+<table><thead><tr><th>探测端点</th><th>可用</th><th>HTTP</th><th>缺失原因</th></tr></thead><tbody>
+{% for path, status in run.engine_observation.endpoints.items() %}<tr><td>{{ path }}</td><td>{{ status.available|display }}</td><td>{{ status.status_code|display }}</td><td>{{ status.missing_reason or '—' }}</td></tr>{% endfor %}
+</tbody></table>
+</section>
+{% endif %}

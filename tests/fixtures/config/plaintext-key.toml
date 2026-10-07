@@ -1,0 +1,64 @@
+# Synthetic T01 fixture. These identities are deliberately not real services/models.
+schema_version = 3
+[device]
+id = "LAB-LOCAL-001"
+client_position = "same_host_native"
+
+[model]
+display_name = "T01 synthetic model"
+repo = "fixture/local"
+revision = "fixture-v1"
+local_path = "fixture.gguf"
+sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+packing = "fixture"
+template_path = "fixture.jinja"
+template_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+
+[engine]
+adapter = "prism_llama_server_v1"
+release = "fixture"
+binary_path = "fixture-server"
+binary_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+runtime_library_manifest = "fixture-libraries.json"
+startup_args = []
+backend = "cpu"
+
+[endpoint]
+api_key = "fixture-secret-7f39"
+url = "http://127.0.0.1:8080"
+server_pid = 12345
+process_start_ticks = 67890
+api_key_env = "LAB_BENCH_FIXTURE_TOKEN"
+
+[bundle]
+path = "../contracts/bundle.valid.json"
+version = "fixture-v1"
+
+[generation]
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+presence_penalty = 1.5
+repeat_penalty = 1.0
+seed = 42
+seed_support = "unknown"
+max_tokens = 512
+reasoning_mode = "off"
+stop = []
+
+[conditions]
+context_size = 4096
+threads = 6
+threads_batch = 6
+slots = 1
+cache_policy = "unknown"
+ac_online = true
+profile = "balanced"
+governor = "powersave"
+epp = "balance_performance"
+model_loaded = false
+background_load = "synthetic fixture; not a hardware observation"
+
+[output]
+root = "../../../results"

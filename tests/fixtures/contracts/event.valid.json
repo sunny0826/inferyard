@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "run_id": "run-fixture",
+  "seq": 1,
+  "phase": "formal",
+  "request_id": "req-1",
+  "monotonic_ns": 1200000000,
+  "clock_id": "clock-fixture",
+  "utc": "2026-09-29T09:00:00Z",
+  "event_type": "request_finished",
+  "data": {
+    "execution_state": "completed",
+    "raw_finish_reason": "stop",
+    "budget_exhausted": false,
+    "error_category": null,
+    "protocol_complete": true,
+    "t_send_ns": 0,
+    "t_first_content_ns": 300000000,
+    "t_first_answer_ns": 300000000,
+    "t_terminal_ns": 1200000000,
+    "content": "北京",
+    "reasoning": "",
+    "completion_tokens": 2,
+    "token_source": "endpoint.usage",
+    "token_scope": "completion_tokens"
+  },
+  "experiment_id": "experiment-fixture",
+  "trial_id": "trial-fixture"
+}

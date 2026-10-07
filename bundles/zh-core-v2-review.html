@@ -1,0 +1,2527 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>新增80题审核</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:1000px;margin:32px auto;padding:0 20px;background:#fafafa;color:#162132}
+h1{font-size:26px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stats strong{font-size:30px;display:block}.stats div{font-size:14px}
+details{padding:16px;margin:12px 0;background:white;border:1px solid #ddd;border-radius:10px}summary{cursor:pointer;font-weight:600}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.7 system-ui}code{overflow-wrap:anywhere}select{padding:8px}.note{color:#775100}p{line-height:1.6}
+</style><h1>新增80题 · 待人工审核</h1>
+<div class="stats"><div><strong>40</strong>原题不变</div><div><strong>80</strong>新增题目</div><div><strong>120</strong>组合总数</div></div>
+<p>请核对新增题目的题意、答案与评分规则。</p>
+<details><summary>审核范围与组合规则</summary>
+<p class="note">本页是审核材料，不是审批记录。自动校验通过不能代替人工确认。</p>
+<p>来源：本项目原创合成题，可随项目测评证据公开。每类20题；分类标签物流、账务、技术、其他各5题。只用于工具和分项能力验证，不代表全面模型能力。</p>
+<p>审核范围：新增题意、答案、评分规则、边界样例和组合规则。原40题内容及原审核记录完整继承，无需重审。组合采用六类分项统计，不生成综合总分；整题正确需全部规则满足。</p>
+<p>组合包内容 SHA256：<code>022ebb43192769cfba05ee2dc70322961e1ad8c6e4010b9c237c71facf894f86</code></p>
+<p>边界样例 SHA256：<code>9b2096cd012b75510cb32a1d7745a3a2f37f2cdd5800f9079d455fafc85a332d</code></p>
+<p>问答只去首尾空白；数值按冻结单位与容差；分类严格匹配四个标签；JSON严格解析、Schema和字段分别计分。失败保留分母，重复题不当作新独立题。</p></details>
+<label for="category">筛选题型 </label><select id="category"><option value="all">全部80题</option><option value="qa">材料问答 · 20题</option><option value="math">数学与逻辑 · 20题</option><option value="classification">文本分类 · 20题</option><option value="structured">嵌套JSON · 20题</option></select>
+<details data-category="qa"><summary>qa-01 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+青禾站的失物招领处在二层。售票处在一层。失物招领处在哪一层？</pre><h3>标准答案</h3><pre>二层</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n二层\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;二层。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;二层&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-02 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+松果小组周一由林悦值班，周二由周宁值班。周二谁值班？</pre><h3>标准答案</h3><pre>周宁</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n周宁\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;周宁。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;周宁&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-03 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+小站只在周三和周六接收旧报纸，其余日期不接收。周四是否接收？只答“是”或“否”。</pre><h3>标准答案</h3><pre>否</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n否\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;否。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;否&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-04 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+原计划在南门集合；通知改为在西门集合，时间不变。最终在哪个门集合？</pre><h3>标准答案</h3><pre>西门</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n西门\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;西门。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;西门&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-05 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+红盒编号K7，蓝盒编号K9，绿盒编号K3。蓝盒的编号是什么？</pre><h3>标准答案</h3><pre>K9</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \nK9\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;K9。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;K9&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-06 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+甲车先到，丙车最后到，乙车在两者之间到达。第二个到达的是哪辆车？</pre><h3>标准答案</h3><pre>乙车</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n乙车\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;乙车。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;乙车&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-07 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+短桥因维修关闭，行人须绕行长桥。短桥关闭的原因是什么？</pre><h3>标准答案</h3><pre>维修</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n维修\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;维修。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;维修&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-08 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+报名截止于5月12日，作品提交截止于5月19日。报名截止日期是什么？按“5月12日”格式回答。</pre><h3>标准答案</h3><pre>5月12日</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n5月12日\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;5月12日。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;5月12日&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-09 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+活动每队4人。蓝队有林、王、赵、陈；赵临时退出，孙替补。最终蓝队是否包含赵？只答“是”或“否”。</pre><h3>标准答案</h3><pre>否</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n否\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;否。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;否&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-10 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+东库只存纸箱，西库只存木箱。需要领取木箱，应去哪座库？</pre><h3>标准答案</h3><pre>西库</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n西库\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;西库。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;西库&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-11 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+任务A依赖任务B完成，任务B依赖任务C完成。三个任务中必须最先完成哪个？</pre><h3>标准答案</h3><pre>任务C</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n任务C\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;任务C。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;任务C&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-12 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+寄件单：收件人韩雪；寄件人杜林；经办人叶青。收件人是谁？</pre><h3>标准答案</h3><pre>韩雪</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n韩雪\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;韩雪。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;韩雪&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-13 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+小树在2024年加入小组，翌年转入绘画组。小树哪年转入绘画组？只答四位年份。</pre><h3>标准答案</h3><pre>2025</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n2025\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;2025。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;2025&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-14 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+一号柜钥匙交给了阿青；阿青随后将这把钥匙交给阿宁。按最后一条记录，谁持有一号柜钥匙？</pre><h3>标准答案</h3><pre>阿宁</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n阿宁\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;阿宁。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;阿宁&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-15 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+预约记录只有房间号和使用日期，没有填写人数。能否从记录确定人数？只答“能”或“不能”。</pre><h3>标准答案</h3><pre>不能</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n不能\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;不能。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;不能&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-16 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+白卡可进入阅览室，黑卡可进入设备室；两者均不可进入仓库。哪种卡可进入设备室？</pre><h3>标准答案</h3><pre>黑卡</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n黑卡\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;黑卡。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;黑卡&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-17 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+雪芽茶每盒30元，山泉水每瓶3元。材料中哪件商品按盒出售？</pre><h3>标准答案</h3><pre>雪芽茶</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n雪芽茶\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;雪芽茶。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;雪芽茶&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-18 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+灯亮表示机器待机，灯闪表示运行，灯灭表示断电。目前灯闪。机器处于什么状态？</pre><h3>标准答案</h3><pre>运行</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n运行\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;运行。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;运行&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-19 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+会议原定14:00，后推迟30分钟。最终开始时间是什么？用24小时制HH:MM回答。</pre><h3>标准答案</h3><pre>14:30</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n14:30\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;14:30。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;14:30&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="qa"><summary>qa-20 · 材料问答</summary><h3>题目</h3><pre>仅根据材料回答，只输出答案，不加解释。
+名册中小周负责摄影，小吴负责剪辑，小郑负责配音。谁负责剪辑？</pre><h3>标准答案</h3><pre>小吴</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n小吴\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;小吴。&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;仅去首尾空白；添加标点不视为精确匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;answers&quot;: [
+    &quot;小吴&quot;
+  ],
+  &quot;normalization&quot;: &quot;strip&quot;
+}
+</pre></details></details><details data-category="math"><summary>math-01 · 数学与逻辑</summary><h3>题目</h3><pre>仓库有17盒彩笔，收到8盒又发出9盒，剩几盒？
+只输出数值及单位“盒”，不加解释。</pre><h3>标准答案</h3><pre>16盒</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n16盒\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;17盒&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 16,
+  &quot;unit&quot;: &quot;盒&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-02 · 数学与逻辑</summary><h3>题目</h3><pre>每袋6颗糖，4袋共几颗？
+只输出数值及单位“颗”，不加解释。</pre><h3>标准答案</h3><pre>24颗</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n24颗\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;25颗&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 24,
+  &quot;unit&quot;: &quot;颗&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-03 · 数学与逻辑</summary><h3>题目</h3><pre>45张卡片平均分给5人，每人几张？
+只输出数值及单位“张”，不加解释。</pre><h3>标准答案</h3><pre>9张</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n9张\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;10张&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 9,
+  &quot;unit&quot;: &quot;张&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-04 · 数学与逻辑</summary><h3>题目</h3><pre>一件商品原价80元，按原价的75%出售，售价多少元？
+只输出数值及单位“元”，不加解释。</pre><h3>标准答案</h3><pre>60元</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n60元\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;61元&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 60,
+  &quot;unit&quot;: &quot;元&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-05 · 数学与逻辑</summary><h3>题目</h3><pre>走完3千米用了30分钟，平均每分钟多少米？
+只输出数值及单位“米/分钟”，不加解释。</pre><h3>标准答案</h3><pre>100米/分钟</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n100米/分钟\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;101米/分钟&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 100,
+  &quot;unit&quot;: &quot;米/分钟&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-06 · 数学与逻辑</summary><h3>题目</h3><pre>长方形长8厘米、宽5厘米，周长多少厘米？
+只输出数值及单位“厘米”，不加解释。</pre><h3>标准答案</h3><pre>26厘米</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n26厘米\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;27厘米&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 26,
+  &quot;unit&quot;: &quot;厘米&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-07 · 数学与逻辑</summary><h3>题目</h3><pre>长方形长8厘米、宽5厘米，面积多少平方厘米？
+只输出数值及单位“平方厘米”，不加解释。</pre><h3>标准答案</h3><pre>40平方厘米</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n40平方厘米\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;41平方厘米&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 40,
+  &quot;unit&quot;: &quot;平方厘米&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-08 · 数学与逻辑</summary><h3>题目</h3><pre>温度从零下3度升高8度，最终温度是多少度？
+只输出数值及单位“度”，不加解释。</pre><h3>标准答案</h3><pre>5度</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n5度\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;6度&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 5,
+  &quot;unit&quot;: &quot;度&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-09 · 数学与逻辑</summary><h3>题目</h3><pre>2.5升水倒出0.75升，剩余多少升？
+只输出数值及单位“升”，不加解释。</pre><h3>标准答案</h3><pre>1.75升</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n1.75升\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;2.75升&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 1.75,
+  &quot;unit&quot;: &quot;升&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-10 · 数学与逻辑</summary><h3>题目</h3><pre>三个数4、7、10的平均数是多少？
+只输出数值，不加单位和解释。</pre><h3>标准答案</h3><pre>7</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n7\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;8&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 7,
+  &quot;unit&quot;: &quot;&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-11 · 数学与逻辑</summary><h3>题目</h3><pre>某等差数列前三项为2、5、8，第六项是多少？
+只输出数值，不加单位和解释。</pre><h3>标准答案</h3><pre>17</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n17\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;18&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 17,
+  &quot;unit&quot;: &quot;&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-12 · 数学与逻辑</summary><h3>题目</h3><pre>甲比乙多4张票，两人共有20张票，甲有几张票？
+只输出数值及单位“张”，不加解释。</pre><h3>标准答案</h3><pre>12张</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n12张\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;13张&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 12,
+  &quot;unit&quot;: &quot;张&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-13 · 数学与逻辑</summary><h3>题目</h3><pre>今天是星期二，10天后是星期几？只用数字1至7表示周一至周日。
+只输出数值，不加单位和解释。</pre><h3>标准答案</h3><pre>5</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n5\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;6&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 5,
+  &quot;unit&quot;: &quot;&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-14 · 数学与逻辑</summary><h3>题目</h3><pre>时钟从09:40走到11:05，经过多少分钟？
+只输出数值及单位“分钟”，不加解释。</pre><h3>标准答案</h3><pre>85分钟</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n85分钟\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;86分钟&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 85,
+  &quot;unit&quot;: &quot;分钟&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-15 · 数学与逻辑</summary><h3>题目</h3><pre>有红球3个、蓝球2个，每个球被等概率抽到。抽到蓝球的概率是多少？用0到1的小数回答。
+只输出数值，不加单位和解释。</pre><h3>标准答案</h3><pre>0.4</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n0.4\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;1.4&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 0.4,
+  &quot;unit&quot;: &quot;&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-16 · 数学与逻辑</summary><h3>题目</h3><pre>一个数乘3再加2得到23，这个数是多少？
+只输出数值，不加单位和解释。</pre><h3>标准答案</h3><pre>7</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n7\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;8&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 7,
+  &quot;unit&quot;: &quot;&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-17 · 数学与逻辑</summary><h3>题目</h3><pre>七个人每两个人握手一次，共握手多少次？
+只输出数值及单位“次”，不加解释。</pre><h3>标准答案</h3><pre>21次</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n21次\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;22次&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 21,
+  &quot;unit&quot;: &quot;次&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-18 · 数学与逻辑</summary><h3>题目</h3><pre>17个零件每盒最多装5个，装完至少需要几个盒子？
+只输出数值及单位“个”，不加解释。</pre><h3>标准答案</h3><pre>4个</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n4个\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;5个&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 4,
+  &quot;unit&quot;: &quot;个&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-19 · 数学与逻辑</summary><h3>题目</h3><pre>计算10除以3，结果保留两位小数。
+只输出数值，不加单位和解释。</pre><h3>标准答案</h3><pre>3.33</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n3.33\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;4.33&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 3.33,
+  &quot;unit&quot;: &quot;&quot;,
+  &quot;absolute_tolerance&quot;: 0.005,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="math"><summary>math-20 · 数学与逻辑</summary><h3>题目</h3><pre>数列1、1、2、3、5中，从第三项起每项等于前两项之和。第八项是多少？
+只输出数值，不加单位和解释。</pre><h3>标准答案</h3><pre>21</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n21\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;22&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;数值超出冻结容差；单位必须完整匹配&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;expected&quot;: 21,
+  &quot;unit&quot;: &quot;&quot;,
+  &quot;absolute_tolerance&quot;: 0,
+  &quot;relative_tolerance&quot;: 0
+}
+</pre></details></details><details data-category="classification"><summary>classification-01 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：包裹三天没有更新运输位置，请查询。</pre><h3>标准答案</h3><pre>物流</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n物流\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：物流&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;物流&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-02 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：同一笔订单被扣款两次，请核对。</pre><h3>标准答案</h3><pre>账务</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n账务\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：账务&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;账务&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-03 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：应用打开后立即闪退，无法操作。</pre><h3>标准答案</h3><pre>技术</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n技术\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：技术&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;技术&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-04 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：你们周末的营业时间是什么？</pre><h3>标准答案</h3><pre>其他</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n其他\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：其他&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;其他&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-05 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：快递显示签收，但收件处没有包裹。</pre><h3>标准答案</h3><pre>物流</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n物流\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：物流&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;物流&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-06 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：请为这笔已付款订单开具发票。</pre><h3>标准答案</h3><pre>账务</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n账务\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：账务&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;账务&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-07 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：点击保存按钮后界面报错。</pre><h3>标准答案</h3><pre>技术</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n技术\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：技术&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;技术&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-08 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：我想了解线下门店的位置。</pre><h3>标准答案</h3><pre>其他</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n其他\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：其他&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;其他&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-09 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：货物预计什么时候送到？</pre><h3>标准答案</h3><pre>物流</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n物流\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：物流&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;物流&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-10 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：退款已申请七天，金额还没有到账。</pre><h3>标准答案</h3><pre>账务</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n账务\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：账务&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;账务&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-11 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：网页图片无法加载，刷新也无效。</pre><h3>标准答案</h3><pre>技术</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n技术\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：技术&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;技术&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-12 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：感谢客服耐心解答，服务很好。</pre><h3>标准答案</h3><pre>其他</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n其他\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：其他&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;其他&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-13 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：寄出的包裹一直停留在分拣中心。</pre><h3>标准答案</h3><pre>物流</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n物流\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：物流&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;物流&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-14 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：付款账单上的总金额与订单不一致。</pre><h3>标准答案</h3><pre>账务</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n账务\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：账务&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;账务&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-15 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：软件登录后一直白屏。</pre><h3>标准答案</h3><pre>技术</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n技术\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：技术&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;技术&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-16 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：请问是否正在招聘客服人员？</pre><h3>标准答案</h3><pre>其他</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n其他\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：其他&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;其他&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-17 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：快递员把包裹送到了隔壁楼，请协助找回。</pre><h3>标准答案</h3><pre>物流</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n物流\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：物流&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;物流&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-18 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：请修改发票上的购买方抬头。</pre><h3>标准答案</h3><pre>账务</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n账务\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：账务&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;账务&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-19 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：新版本安装时提示文件损坏。</pre><h3>标准答案</h3><pre>技术</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n技术\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：技术&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;技术&quot;
+}
+</pre></details></details><details data-category="classification"><summary>classification-20 · 文本分类</summary><h3>题目</h3><pre>将以下客服消息归类，只输出一个标签。
+物流：运输、派送、收货问题；账务：扣款、退款、发票问题；技术：软件故障；其他：不属于前三类的消息。
+消息：我希望下次推出绿色款式。</pre><h3>标准答案</h3><pre>其他</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n其他\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;类别：其他&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;只接受冻结标签；额外前缀属于无效标签&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;labels&quot;: [
+    &quot;物流&quot;,
+    &quot;账务&quot;,
+    &quot;技术&quot;,
+    &quot;其他&quot;
+  ],
+  &quot;expected&quot;: &quot;其他&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-01 · 嵌套JSON</summary><h3>题目</h3><pre>联系人叫林青，城市为杭州，邮编未知。输出name字符串和address对象；address含city字符串、zip空值。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;name&quot;: &quot;林青&quot;, &quot;address&quot;: {&quot;city&quot;: &quot;杭州&quot;, &quot;zip&quot;: null}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;name\&quot;: \&quot;林青\&quot;, \&quot;address\&quot;: {\&quot;city\&quot;: \&quot;杭州\&quot;, \&quot;zip\&quot;: null}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;name\&quot;: \&quot;林青\&quot;, \&quot;address\&quot;: {\&quot;city\&quot;: \&quot;杭州\&quot;, \&quot;zip\&quot;: null}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;name&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      },
+      &quot;address&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;city&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;zip&quot;: {
+            &quot;type&quot;: &quot;null&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;city&quot;,
+          &quot;zip&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;name&quot;,
+      &quot;address&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;name&quot;: &quot;林青&quot;,
+    &quot;address&quot;: {
+      &quot;city&quot;: &quot;杭州&quot;,
+      &quot;zip&quot;: null
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/name&quot;,
+    &quot;/address/city&quot;,
+    &quot;/address/zip&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-02 · 嵌套JSON</summary><h3>题目</h3><pre>订单编号A17，已付款，未发货。输出id字符串和status对象；status含paid、shipped两个布尔值。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;id&quot;: &quot;A17&quot;, &quot;status&quot;: {&quot;paid&quot;: true, &quot;shipped&quot;: false}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;id\&quot;: \&quot;A17\&quot;, \&quot;status\&quot;: {\&quot;paid\&quot;: true, \&quot;shipped\&quot;: false}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;id\&quot;: \&quot;A17\&quot;, \&quot;status\&quot;: {\&quot;paid\&quot;: true, \&quot;shipped\&quot;: false}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;id&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      },
+      &quot;status&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;paid&quot;: {
+            &quot;type&quot;: &quot;boolean&quot;
+          },
+          &quot;shipped&quot;: {
+            &quot;type&quot;: &quot;boolean&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;paid&quot;,
+          &quot;shipped&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;id&quot;,
+      &quot;status&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;id&quot;: &quot;A17&quot;,
+    &quot;status&quot;: {
+      &quot;paid&quot;: true,
+      &quot;shipped&quot;: false
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/id&quot;,
+    &quot;/status/paid&quot;,
+    &quot;/status/shipped&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-03 · 嵌套JSON</summary><h3>题目</h3><pre>购物清单按顺序为苹果2个、梨3个。输出items数组，每项含name字符串、count整数。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;items&quot;: [{&quot;name&quot;: &quot;苹果&quot;, &quot;count&quot;: 2}, {&quot;name&quot;: &quot;梨&quot;, &quot;count&quot;: 3}]}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;items\&quot;: [{\&quot;name\&quot;: \&quot;苹果\&quot;, \&quot;count\&quot;: 2}, {\&quot;name\&quot;: \&quot;梨\&quot;, \&quot;count\&quot;: 3}]}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;items\&quot;: [{\&quot;name\&quot;: \&quot;苹果\&quot;, \&quot;count\&quot;: 2}, {\&quot;name\&quot;: \&quot;梨\&quot;, \&quot;count\&quot;: 3}]}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;items&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;prefixItems&quot;: [
+          {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;properties&quot;: {
+              &quot;name&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;count&quot;: {
+                &quot;type&quot;: &quot;integer&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;name&quot;,
+              &quot;count&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          },
+          {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;properties&quot;: {
+              &quot;name&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;count&quot;: {
+                &quot;type&quot;: &quot;integer&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;name&quot;,
+              &quot;count&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          }
+        ],
+        &quot;items&quot;: false,
+        &quot;minItems&quot;: 2,
+        &quot;maxItems&quot;: 2
+      }
+    },
+    &quot;required&quot;: [
+      &quot;items&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;items&quot;: [
+      {
+        &quot;name&quot;: &quot;苹果&quot;,
+        &quot;count&quot;: 2
+      },
+      {
+        &quot;name&quot;: &quot;梨&quot;,
+        &quot;count&quot;: 3
+      }
+    ]
+  },
+  &quot;fields&quot;: [
+    &quot;/items/0/name&quot;,
+    &quot;/items/0/count&quot;,
+    &quot;/items/1/name&quot;,
+    &quot;/items/1/count&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-04 · 嵌套JSON</summary><h3>题目</h3><pre>两次温度读数按顺序为零下2度、5度。输出readings数值数组和unit字符串“度”。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;readings&quot;: [-2, 5], &quot;unit&quot;: &quot;度&quot;}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;readings\&quot;: [-2, 5], \&quot;unit\&quot;: \&quot;度\&quot;}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;readings\&quot;: [-2, 5], \&quot;unit\&quot;: \&quot;度\&quot;}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;readings&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;prefixItems&quot;: [
+          {
+            &quot;type&quot;: &quot;integer&quot;
+          },
+          {
+            &quot;type&quot;: &quot;integer&quot;
+          }
+        ],
+        &quot;items&quot;: false,
+        &quot;minItems&quot;: 2,
+        &quot;maxItems&quot;: 2
+      },
+      &quot;unit&quot;: {
+        &quot;type&quot;: &quot;string&quot;
+      }
+    },
+    &quot;required&quot;: [
+      &quot;readings&quot;,
+      &quot;unit&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;readings&quot;: [
+      -2,
+      5
+    ],
+    &quot;unit&quot;: &quot;度&quot;
+  },
+  &quot;fields&quot;: [
+    &quot;/readings/0&quot;,
+    &quot;/readings/1&quot;,
+    &quot;/unit&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-05 · 嵌套JSON</summary><h3>题目</h3><pre>会议标题为周会，没有参会者。输出meeting对象，含title字符串和attendees空数组。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;meeting&quot;: {&quot;title&quot;: &quot;周会&quot;, &quot;attendees&quot;: []}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;meeting\&quot;: {\&quot;title\&quot;: \&quot;周会\&quot;, \&quot;attendees\&quot;: []}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;meeting\&quot;: {\&quot;title\&quot;: \&quot;周会\&quot;, \&quot;attendees\&quot;: []}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;meeting&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;title&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;attendees&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;items&quot;: false,
+            &quot;maxItems&quot;: 0
+          }
+        },
+        &quot;required&quot;: [
+          &quot;title&quot;,
+          &quot;attendees&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;meeting&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;meeting&quot;: {
+      &quot;title&quot;: &quot;周会&quot;,
+      &quot;attendees&quot;: []
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/meeting/title&quot;,
+    &quot;/meeting/attendees&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-06 · 嵌套JSON</summary><h3>题目</h3><pre>会员编号U03，有效会员，积分为0。输出user对象，含id字符串、active布尔值、points整数。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;user&quot;: {&quot;id&quot;: &quot;U03&quot;, &quot;active&quot;: true, &quot;points&quot;: 0}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;user\&quot;: {\&quot;id\&quot;: \&quot;U03\&quot;, \&quot;active\&quot;: true, \&quot;points\&quot;: 0}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;user\&quot;: {\&quot;id\&quot;: \&quot;U03\&quot;, \&quot;active\&quot;: true, \&quot;points\&quot;: 0}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;user&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;id&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;active&quot;: {
+            &quot;type&quot;: &quot;boolean&quot;
+          },
+          &quot;points&quot;: {
+            &quot;type&quot;: &quot;integer&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;id&quot;,
+          &quot;active&quot;,
+          &quot;points&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;user&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;user&quot;: {
+      &quot;id&quot;: &quot;U03&quot;,
+      &quot;active&quot;: true,
+      &quot;points&quot;: 0
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/user/id&quot;,
+    &quot;/user/active&quot;,
+    &quot;/user/points&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-07 · 嵌套JSON</summary><h3>题目</h3><pre>任务名为备份，状态为进行中。输出task对象，含name和state；state使用枚举：待办todo、进行中doing、完成done。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;task&quot;: {&quot;name&quot;: &quot;备份&quot;, &quot;state&quot;: &quot;doing&quot;}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;task\&quot;: {\&quot;name\&quot;: \&quot;备份\&quot;, \&quot;state\&quot;: \&quot;doing\&quot;}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;task\&quot;: {\&quot;name\&quot;: \&quot;备份\&quot;, \&quot;state\&quot;: \&quot;doing\&quot;}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;task&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;name&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;state&quot;: {
+            &quot;type&quot;: &quot;string&quot;,
+            &quot;enum&quot;: [
+              &quot;todo&quot;,
+              &quot;doing&quot;,
+              &quot;done&quot;
+            ]
+          }
+        },
+        &quot;required&quot;: [
+          &quot;name&quot;,
+          &quot;state&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;task&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;task&quot;: {
+      &quot;name&quot;: &quot;备份&quot;,
+      &quot;state&quot;: &quot;doing&quot;
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/task/name&quot;,
+    &quot;/task/state&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-08 · 嵌套JSON</summary><h3>题目</h3><pre>矩阵第一行为1、2，第二行为3、4。输出matrix，值为按行排列的二维整数数组。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;matrix&quot;: [[1, 2], [3, 4]]}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;matrix\&quot;: [[1, 2], [3, 4]]}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;matrix\&quot;: [[1, 2], [3, 4]]}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;matrix&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;prefixItems&quot;: [
+          {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;prefixItems&quot;: [
+              {
+                &quot;type&quot;: &quot;integer&quot;
+              },
+              {
+                &quot;type&quot;: &quot;integer&quot;
+              }
+            ],
+            &quot;items&quot;: false,
+            &quot;minItems&quot;: 2,
+            &quot;maxItems&quot;: 2
+          },
+          {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;prefixItems&quot;: [
+              {
+                &quot;type&quot;: &quot;integer&quot;
+              },
+              {
+                &quot;type&quot;: &quot;integer&quot;
+              }
+            ],
+            &quot;items&quot;: false,
+            &quot;minItems&quot;: 2,
+            &quot;maxItems&quot;: 2
+          }
+        ],
+        &quot;items&quot;: false,
+        &quot;minItems&quot;: 2,
+        &quot;maxItems&quot;: 2
+      }
+    },
+    &quot;required&quot;: [
+      &quot;matrix&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;matrix&quot;: [
+      [
+        1,
+        2
+      ],
+      [
+        3,
+        4
+      ]
+    ]
+  },
+  &quot;fields&quot;: [
+    &quot;/matrix/0/0&quot;,
+    &quot;/matrix/0/1&quot;,
+    &quot;/matrix/1/0&quot;,
+    &quot;/matrix/1/1&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-09 · 嵌套JSON</summary><h3>题目</h3><pre>两名队员按顺序为林甲、陈乙；林甲是队长，陈乙不是。输出members数组，每项含name字符串和captain布尔值。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;members&quot;: [{&quot;name&quot;: &quot;林甲&quot;, &quot;captain&quot;: true}, {&quot;name&quot;: &quot;陈乙&quot;, &quot;captain&quot;: false}]}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;members\&quot;: [{\&quot;name\&quot;: \&quot;林甲\&quot;, \&quot;captain\&quot;: true}, {\&quot;name\&quot;: \&quot;陈乙\&quot;, \&quot;captain\&quot;: false}]}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;members\&quot;: [{\&quot;name\&quot;: \&quot;林甲\&quot;, \&quot;captain\&quot;: true}, {\&quot;name\&quot;: \&quot;陈乙\&quot;, \&quot;captain\&quot;: false}]}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;members&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;prefixItems&quot;: [
+          {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;properties&quot;: {
+              &quot;name&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;captain&quot;: {
+                &quot;type&quot;: &quot;boolean&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;name&quot;,
+              &quot;captain&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          },
+          {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;properties&quot;: {
+              &quot;name&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;captain&quot;: {
+                &quot;type&quot;: &quot;boolean&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;name&quot;,
+              &quot;captain&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          }
+        ],
+        &quot;items&quot;: false,
+        &quot;minItems&quot;: 2,
+        &quot;maxItems&quot;: 2
+      }
+    },
+    &quot;required&quot;: [
+      &quot;members&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;members&quot;: [
+      {
+        &quot;name&quot;: &quot;林甲&quot;,
+        &quot;captain&quot;: true
+      },
+      {
+        &quot;name&quot;: &quot;陈乙&quot;,
+        &quot;captain&quot;: false
+      }
+    ]
+  },
+  &quot;fields&quot;: [
+    &quot;/members/0/name&quot;,
+    &quot;/members/0/captain&quot;,
+    &quot;/members/1/name&quot;,
+    &quot;/members/1/captain&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-10 · 嵌套JSON</summary><h3>题目</h3><pre>文件夹名为资料，包含文件a.txt和b.txt，顺序不变。输出folder对象，含name字符串、files字符串数组。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;folder&quot;: {&quot;name&quot;: &quot;资料&quot;, &quot;files&quot;: [&quot;a.txt&quot;, &quot;b.txt&quot;]}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;folder\&quot;: {\&quot;name\&quot;: \&quot;资料\&quot;, \&quot;files\&quot;: [\&quot;a.txt\&quot;, \&quot;b.txt\&quot;]}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;folder\&quot;: {\&quot;name\&quot;: \&quot;资料\&quot;, \&quot;files\&quot;: [\&quot;a.txt\&quot;, \&quot;b.txt\&quot;]}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;folder&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;name&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;files&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;prefixItems&quot;: [
+              {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              {
+                &quot;type&quot;: &quot;string&quot;
+              }
+            ],
+            &quot;items&quot;: false,
+            &quot;minItems&quot;: 2,
+            &quot;maxItems&quot;: 2
+          }
+        },
+        &quot;required&quot;: [
+          &quot;name&quot;,
+          &quot;files&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;folder&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;folder&quot;: {
+      &quot;name&quot;: &quot;资料&quot;,
+      &quot;files&quot;: [
+        &quot;a.txt&quot;,
+        &quot;b.txt&quot;
+      ]
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/folder/name&quot;,
+    &quot;/folder/files/0&quot;,
+    &quot;/folder/files/1&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-11 · 嵌套JSON</summary><h3>题目</h3><pre>坐标横向为1.5，纵向为零下2.5。输出point对象，含x、y两个数值。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;point&quot;: {&quot;x&quot;: 1.5, &quot;y&quot;: -2.5}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;point\&quot;: {\&quot;x\&quot;: 1.5, \&quot;y\&quot;: -2.5}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;point\&quot;: {\&quot;x\&quot;: 1.5, \&quot;y\&quot;: -2.5}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;point&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;x&quot;: {
+            &quot;type&quot;: &quot;number&quot;
+          },
+          &quot;y&quot;: {
+            &quot;type&quot;: &quot;number&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;x&quot;,
+          &quot;y&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;point&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;point&quot;: {
+      &quot;x&quot;: 1.5,
+      &quot;y&quot;: -2.5
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/point/x&quot;,
+    &quot;/point/y&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-12 · 嵌套JSON</summary><h3>题目</h3><pre>库存中“笔”为12，“本”为0。输出stock对象，其键恰为“笔”和“本”，值为整数。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;stock&quot;: {&quot;笔&quot;: 12, &quot;本&quot;: 0}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;stock\&quot;: {\&quot;笔\&quot;: 12, \&quot;本\&quot;: 0}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;stock\&quot;: {\&quot;笔\&quot;: 12, \&quot;本\&quot;: 0}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;stock&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;笔&quot;: {
+            &quot;type&quot;: &quot;integer&quot;
+          },
+          &quot;本&quot;: {
+            &quot;type&quot;: &quot;integer&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;笔&quot;,
+          &quot;本&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;stock&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;stock&quot;: {
+      &quot;笔&quot;: 12,
+      &quot;本&quot;: 0
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/stock/笔&quot;,
+    &quot;/stock/本&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-13 · 嵌套JSON</summary><h3>题目</h3><pre>错误记录：代码E2，信息为超时，可以重试。输出error对象，含code、message两个字符串和retryable布尔值。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;error&quot;: {&quot;code&quot;: &quot;E2&quot;, &quot;message&quot;: &quot;超时&quot;, &quot;retryable&quot;: true}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;error\&quot;: {\&quot;code\&quot;: \&quot;E2\&quot;, \&quot;message\&quot;: \&quot;超时\&quot;, \&quot;retryable\&quot;: true}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;error\&quot;: {\&quot;code\&quot;: \&quot;E2\&quot;, \&quot;message\&quot;: \&quot;超时\&quot;, \&quot;retryable\&quot;: true}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;error&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;code&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;message&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;retryable&quot;: {
+            &quot;type&quot;: &quot;boolean&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;code&quot;,
+          &quot;message&quot;,
+          &quot;retryable&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;error&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;error&quot;: {
+      &quot;code&quot;: &quot;E2&quot;,
+      &quot;message&quot;: &quot;超时&quot;,
+      &quot;retryable&quot;: true
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/error/code&quot;,
+    &quot;/error/message&quot;,
+    &quot;/error/retryable&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-14 · 嵌套JSON</summary><h3>题目</h3><pre>课程名为绘画，教师未知，教室为B2。输出course对象，含name字符串、teacher空值、room字符串。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;course&quot;: {&quot;name&quot;: &quot;绘画&quot;, &quot;teacher&quot;: null, &quot;room&quot;: &quot;B2&quot;}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;course\&quot;: {\&quot;name\&quot;: \&quot;绘画\&quot;, \&quot;teacher\&quot;: null, \&quot;room\&quot;: \&quot;B2\&quot;}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;course\&quot;: {\&quot;name\&quot;: \&quot;绘画\&quot;, \&quot;teacher\&quot;: null, \&quot;room\&quot;: \&quot;B2\&quot;}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;course&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;name&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;teacher&quot;: {
+            &quot;type&quot;: &quot;null&quot;
+          },
+          &quot;room&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;name&quot;,
+          &quot;teacher&quot;,
+          &quot;room&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;course&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;course&quot;: {
+      &quot;name&quot;: &quot;绘画&quot;,
+      &quot;teacher&quot;: null,
+      &quot;room&quot;: &quot;B2&quot;
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/course/name&quot;,
+    &quot;/course/teacher&quot;,
+    &quot;/course/room&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-15 · 嵌套JSON</summary><h3>题目</h3><pre>两个标签按原顺序为“重要”“待办”，保留顺序。输出meta对象，含tags字符串数组和archived布尔值false。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;meta&quot;: {&quot;tags&quot;: [&quot;重要&quot;, &quot;待办&quot;], &quot;archived&quot;: false}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;meta\&quot;: {\&quot;tags\&quot;: [\&quot;重要\&quot;, \&quot;待办\&quot;], \&quot;archived\&quot;: false}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;meta\&quot;: {\&quot;tags\&quot;: [\&quot;重要\&quot;, \&quot;待办\&quot;], \&quot;archived\&quot;: false}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;meta&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;tags&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;prefixItems&quot;: [
+              {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              {
+                &quot;type&quot;: &quot;string&quot;
+              }
+            ],
+            &quot;items&quot;: false,
+            &quot;minItems&quot;: 2,
+            &quot;maxItems&quot;: 2
+          },
+          &quot;archived&quot;: {
+            &quot;type&quot;: &quot;boolean&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;tags&quot;,
+          &quot;archived&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;meta&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;meta&quot;: {
+      &quot;tags&quot;: [
+        &quot;重要&quot;,
+        &quot;待办&quot;
+      ],
+      &quot;archived&quot;: false
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/meta/tags/0&quot;,
+    &quot;/meta/tags/1&quot;,
+    &quot;/meta/archived&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-16 · 嵌套JSON</summary><h3>题目</h3><pre>商品编号P8，价格12.5元，数量2。输出product对象，含id字符串、price数值、quantity整数。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;product&quot;: {&quot;id&quot;: &quot;P8&quot;, &quot;price&quot;: 12.5, &quot;quantity&quot;: 2}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;product\&quot;: {\&quot;id\&quot;: \&quot;P8\&quot;, \&quot;price\&quot;: 12.5, \&quot;quantity\&quot;: 2}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;product\&quot;: {\&quot;id\&quot;: \&quot;P8\&quot;, \&quot;price\&quot;: 12.5, \&quot;quantity\&quot;: 2}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;product&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;id&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;price&quot;: {
+            &quot;type&quot;: &quot;number&quot;
+          },
+          &quot;quantity&quot;: {
+            &quot;type&quot;: &quot;integer&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;id&quot;,
+          &quot;price&quot;,
+          &quot;quantity&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;product&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;product&quot;: {
+      &quot;id&quot;: &quot;P8&quot;,
+      &quot;price&quot;: 12.5,
+      &quot;quantity&quot;: 2
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/product/id&quot;,
+    &quot;/product/price&quot;,
+    &quot;/product/quantity&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-17 · 嵌套JSON</summary><h3>题目</h3><pre>路线依次经过东站、南站、西站。输出route数组，每项含stop字符串和从1开始的order整数。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;route&quot;: [{&quot;stop&quot;: &quot;东站&quot;, &quot;order&quot;: 1}, {&quot;stop&quot;: &quot;南站&quot;, &quot;order&quot;: 2}, {&quot;stop&quot;: &quot;西站&quot;, &quot;order&quot;: 3}]}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;route\&quot;: [{\&quot;stop\&quot;: \&quot;东站\&quot;, \&quot;order\&quot;: 1}, {\&quot;stop\&quot;: \&quot;南站\&quot;, \&quot;order\&quot;: 2}, {\&quot;stop\&quot;: \&quot;西站\&quot;, \&quot;order\&quot;: 3}]}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;route\&quot;: [{\&quot;stop\&quot;: \&quot;东站\&quot;, \&quot;order\&quot;: 1}, {\&quot;stop\&quot;: \&quot;南站\&quot;, \&quot;order\&quot;: 2}, {\&quot;stop\&quot;: \&quot;西站\&quot;, \&quot;order\&quot;: 3}]}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;route&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;prefixItems&quot;: [
+          {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;properties&quot;: {
+              &quot;stop&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;order&quot;: {
+                &quot;type&quot;: &quot;integer&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;stop&quot;,
+              &quot;order&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          },
+          {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;properties&quot;: {
+              &quot;stop&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;order&quot;: {
+                &quot;type&quot;: &quot;integer&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;stop&quot;,
+              &quot;order&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          },
+          {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;properties&quot;: {
+              &quot;stop&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              },
+              &quot;order&quot;: {
+                &quot;type&quot;: &quot;integer&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;stop&quot;,
+              &quot;order&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          }
+        ],
+        &quot;items&quot;: false,
+        &quot;minItems&quot;: 3,
+        &quot;maxItems&quot;: 3
+      }
+    },
+    &quot;required&quot;: [
+      &quot;route&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;route&quot;: [
+      {
+        &quot;stop&quot;: &quot;东站&quot;,
+        &quot;order&quot;: 1
+      },
+      {
+        &quot;stop&quot;: &quot;南站&quot;,
+        &quot;order&quot;: 2
+      },
+      {
+        &quot;stop&quot;: &quot;西站&quot;,
+        &quot;order&quot;: 3
+      }
+    ]
+  },
+  &quot;fields&quot;: [
+    &quot;/route/0/stop&quot;,
+    &quot;/route/0/order&quot;,
+    &quot;/route/1/stop&quot;,
+    &quot;/route/1/order&quot;,
+    &quot;/route/2/stop&quot;,
+    &quot;/route/2/order&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-18 · 嵌套JSON</summary><h3>题目</h3><pre>原始字段名为a/b，值为启用；原始字段名为x~y，值为false。输出fields对象，保留这两个原始字段名。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;fields&quot;: {&quot;a/b&quot;: &quot;启用&quot;, &quot;x~y&quot;: false}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;fields\&quot;: {\&quot;a/b\&quot;: \&quot;启用\&quot;, \&quot;x~y\&quot;: false}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;fields\&quot;: {\&quot;a/b\&quot;: \&quot;启用\&quot;, \&quot;x~y\&quot;: false}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;fields&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;a/b&quot;: {
+            &quot;type&quot;: &quot;string&quot;
+          },
+          &quot;x~y&quot;: {
+            &quot;type&quot;: &quot;boolean&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;a/b&quot;,
+          &quot;x~y&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;fields&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;fields&quot;: {
+      &quot;a/b&quot;: &quot;启用&quot;,
+      &quot;x~y&quot;: false
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/fields/a~1b&quot;,
+    &quot;/fields/x~0y&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-19 · 嵌套JSON</summary><h3>题目</h3><pre>区间下界为0，上界为10；包含下界，不包含上界。输出range对象，含min、max数值和includeMin、includeMax布尔值。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;range&quot;: {&quot;min&quot;: 0, &quot;max&quot;: 10, &quot;includeMin&quot;: true, &quot;includeMax&quot;: false}}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;range\&quot;: {\&quot;min\&quot;: 0, \&quot;max\&quot;: 10, \&quot;includeMin\&quot;: true, \&quot;includeMax\&quot;: false}}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;range\&quot;: {\&quot;min\&quot;: 0, \&quot;max\&quot;: 10, \&quot;includeMin\&quot;: true, \&quot;includeMax\&quot;: false}}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;range&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;min&quot;: {
+            &quot;type&quot;: &quot;integer&quot;
+          },
+          &quot;max&quot;: {
+            &quot;type&quot;: &quot;integer&quot;
+          },
+          &quot;includeMin&quot;: {
+            &quot;type&quot;: &quot;boolean&quot;
+          },
+          &quot;includeMax&quot;: {
+            &quot;type&quot;: &quot;boolean&quot;
+          }
+        },
+        &quot;required&quot;: [
+          &quot;min&quot;,
+          &quot;max&quot;,
+          &quot;includeMin&quot;,
+          &quot;includeMax&quot;
+        ],
+        &quot;additionalProperties&quot;: false
+      }
+    },
+    &quot;required&quot;: [
+      &quot;range&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;range&quot;: {
+      &quot;min&quot;: 0,
+      &quot;max&quot;: 10,
+      &quot;includeMin&quot;: true,
+      &quot;includeMax&quot;: false
+    }
+  },
+  &quot;fields&quot;: [
+    &quot;/range/min&quot;,
+    &quot;/range/max&quot;,
+    &quot;/range/includeMin&quot;,
+    &quot;/range/includeMax&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details><details data-category="structured"><summary>structured-20 · 嵌套JSON</summary><h3>题目</h3><pre>调查有两条回答，顺序为：题号1回答“是”；题号2未作答。输出answers数组，每项含question整数和value，未作答用null。
+只输出合法JSON，不加Markdown或解释；字段不可增删，数组保持规定顺序。</pre><h3>标准答案</h3><pre>{&quot;answers&quot;: [{&quot;question&quot;: 1, &quot;value&quot;: &quot;是&quot;}, {&quot;question&quot;: 2, &quot;value&quot;: null}]}</pre><h3>边界样例</h3><pre>[
+  {
+    &quot;answer&quot;: &quot; \n{\&quot;answers\&quot;: [{\&quot;question\&quot;: 1, \&quot;value\&quot;: \&quot;是\&quot;}, {\&quot;question\&quot;: 2, \&quot;value\&quot;: null}]}\n &quot;,
+    &quot;expected_state&quot;: &quot;pass&quot;,
+    &quot;reason&quot;: &quot;首尾空白允许&quot;
+  },
+  {
+    &quot;answer&quot;: &quot;```json\n{\&quot;answers\&quot;: [{\&quot;question\&quot;: 1, \&quot;value\&quot;: \&quot;是\&quot;}, {\&quot;question\&quot;: 2, \&quot;value\&quot;: null}]}\n```&quot;,
+    &quot;expected_state&quot;: &quot;fail&quot;,
+    &quot;reason&quot;: &quot;Markdown围栏不属于JSON；解析失败时所有字段保留分母&quot;
+  }
+]
+</pre><details><summary>完整评分规则</summary><pre>{
+  &quot;json_schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;answers&quot;: {
+        &quot;type&quot;: &quot;array&quot;,
+        &quot;prefixItems&quot;: [
+          {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;properties&quot;: {
+              &quot;question&quot;: {
+                &quot;type&quot;: &quot;integer&quot;
+              },
+              &quot;value&quot;: {
+                &quot;type&quot;: &quot;string&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;question&quot;,
+              &quot;value&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          },
+          {
+            &quot;type&quot;: &quot;object&quot;,
+            &quot;properties&quot;: {
+              &quot;question&quot;: {
+                &quot;type&quot;: &quot;integer&quot;
+              },
+              &quot;value&quot;: {
+                &quot;type&quot;: &quot;null&quot;
+              }
+            },
+            &quot;required&quot;: [
+              &quot;question&quot;,
+              &quot;value&quot;
+            ],
+            &quot;additionalProperties&quot;: false
+          }
+        ],
+        &quot;items&quot;: false,
+        &quot;minItems&quot;: 2,
+        &quot;maxItems&quot;: 2
+      }
+    },
+    &quot;required&quot;: [
+      &quot;answers&quot;
+    ],
+    &quot;additionalProperties&quot;: false
+  },
+  &quot;expected&quot;: {
+    &quot;answers&quot;: [
+      {
+        &quot;question&quot;: 1,
+        &quot;value&quot;: &quot;是&quot;
+      },
+      {
+        &quot;question&quot;: 2,
+        &quot;value&quot;: null
+      }
+    ]
+  },
+  &quot;fields&quot;: [
+    &quot;/answers/0/question&quot;,
+    &quot;/answers/0/value&quot;,
+    &quot;/answers/1/question&quot;,
+    &quot;/answers/1/value&quot;
+  ],
+  &quot;array_matching&quot;: &quot;ordered&quot;
+}
+</pre></details></details>
+<script>document.querySelector('select').addEventListener('change',e=>{document.querySelectorAll('[data-category]').forEach(d=>d.hidden=e.target.value!=='all'&&d.dataset.category!==e.target.value)});</script></html>

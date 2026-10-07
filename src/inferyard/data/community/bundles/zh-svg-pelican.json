@@ -1,0 +1,32 @@
+{
+  "schema_version": 3,
+  "bundle_id": "zh-svg-pelican",
+  "version": "1.0.0",
+  "language": "zh-CN",
+  "license_note": "题面为英文原文，按 zh-CN 包登记；本题仅展示 SVG 生成结果，不做质量评分。",
+  "review_records": [
+    {
+      "conclusion": "approved",
+      "content_sha256": "b7d09d1a7fa7fcf85fc5be14327fbda3a5b7e3ce804810adc20147f1432bbd0a",
+      "reviewed_at": "2026-10-07T00:56:46.569351+00:00",
+      "reviewer": "当前用户（本会话明确审核通过）"
+    }
+  ],
+  "answer_policy": {
+    "instruction_newlines": "crlf_to_lf",
+    "strip_line_edges": true,
+    "ignore_empty_lines": true,
+    "unicode_normalization": "none",
+    "reasoning": "separate_channel_excluded_content_unchanged"
+  },
+  "task_protocol": "quality",
+  "cases": [
+    {
+      "case_id": "svg-pelican-01",
+      "category": "svg",
+      "prompt": "Generate an animated SVG of a pelican riding a bicycle",
+      "reference_answer": "本题不设标准答案，仅展示模型生成结果，不做评分",
+      "rules": {}
+    }
+  ]
+}

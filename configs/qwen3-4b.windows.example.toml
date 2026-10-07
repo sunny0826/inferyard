@@ -1,0 +1,88 @@
+# Windows MVP candidate. Replace the engine identity and paths before binding.
+# Asset hashes below are placeholders. This is not a frozen real run.
+schema_version = 3
+[bundle]
+path = "../bundles/zh-smoke.json"
+version = "1.0.0-draft"
+
+[conditions]
+ac_online = true
+background_load = "record actual background load before measurement"
+cache_policy = "disabled"
+context_size = 4096
+# Preserve unknown observations and mark performance limited on Windows.
+allow_unknown_environment = true
+epp = "balance_performance"
+governor = "powersave"
+profile = "balanced"
+model_loaded = true
+slots = 1
+threads = 6
+threads_batch = 6
+
+[device]
+id = "LAB-WINDOWS-001"
+client_position = "same_host_native"
+
+[endpoint]
+url = "http://127.0.0.1:48857"
+server_pid = 1
+process_start_ticks = 1
+
+[engine]
+adapter = "prism_llama_server_v1"
+backend = "cpu"
+release = "prism-b10743-adfffbe-windows-build-to-verify"
+binary_path = "D:/inferyard/artifacts/windows/prism-b10743/llama-server.exe"
+binary_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+runtime_library_manifest = "D:/inferyard/artifacts/windows/prism-b10743/engine-sha256.json"
+startup_args = ["-m", "D:/inferyard/artifacts/qwen3-4b/Qwen3-4B-Q4_K_M.gguf", "-ngl", "0", "-t", "6", "-tb", "6", "-c", "4096", "-np", "1", "--host", "127.0.0.1", "--port", "48857", "--no-webui", "--reasoning", "off", "--jinja", "--chat-template-kwargs", "{\"enable_thinking\":false}", "--no-cache-prompt", "--no-cache-idle-slots", "--cache-ram", "0", "--slots"]
+
+[evidence]
+parameter_evidence = []
+service_evidence = []
+
+[execution]
+concurrency = 1
+idle_wait_seconds = 5
+order = "fixed"
+probe_prompt = "请只用中文回答：中国的首都是哪里？只回答城市名。"
+repeats = 1
+timeout_seconds = 180
+warmup_count = 3
+warmup_prompt = "请只回答：准备就绪"
+
+[generation]
+max_tokens = 512
+min_p = 0.0
+presence_penalty = 1.5
+reasoning_mode = "off"
+repeat_penalty = 1.0
+seed = 42
+seed_support = "supported"
+stop = []
+temperature = 0.7
+top_k = 20
+top_p = 0.8
+
+[model]
+display_name = "Qwen3-4B Q4_K_M"
+local_path = "D:/inferyard/artifacts/qwen3-4b/Qwen3-4B-Q4_K_M.gguf"
+packing = "Q4_K_M"
+repo = "Qwen/Qwen3-4B-GGUF"
+revision = "replace-model-revision"
+sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+template_path = "D:/inferyard/artifacts/qwen3-4b/chat-template.jinja"
+template_sha256 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+[output]
+root = "D:/inferyard/results"
+min_available_memory_bytes = 1073741824
+min_disk_bytes = 5368709120
+
+[telemetry]
+baseline_seconds = 5
+interval_ms = 500
+service_rss_required = false
+system_memory_required = true
+window_definition = "v1"

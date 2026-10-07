@@ -1,0 +1,2051 @@
+{
+  "schema_version": 3,
+  "run_id": "run-fixture",
+  "trial_id": "trial-e0484ed6df4a051d44c7b2a7ffebd9ab",
+  "experiment_id": "experiment-fixture",
+  "protocol_kind": "fixed",
+  "completeness": "complete",
+  "scope_complete": true,
+  "evidence_complete": true,
+  "stop_reason": "plan_finished",
+  "execution_parameters": {
+    "request_timeout_seconds": 180,
+    "output_budget_tokens": 512
+  },
+  "counts": {
+    "completed": 4,
+    "failed": 3,
+    "cancelled": 0,
+    "invalid": 0,
+    "not_executed": 0,
+    "planned": 7,
+    "executed": 7,
+    "valid_executed": 7,
+    "budget_exhausted": 2,
+    "budget_exhausted_completed": 2,
+    "budget_exhausted_other_diagnostic": 0
+  },
+  "completion_rate": {
+    "numerator": 4,
+    "denominator": 7,
+    "excluded": 0,
+    "value": 0.5714285714285714,
+    "reason": null
+  },
+  "quality": {
+    "Q01": {
+      "instruction": {
+        "valid": 7,
+        "passed": 2,
+        "unscorable": 0,
+        "excluded": 0,
+        "rate": {
+          "numerator": 2,
+          "denominator": 7,
+          "excluded": 0,
+          "value": 0.2857142857142857,
+          "reason": null
+        }
+      }
+    },
+    "Q02": {
+      "numerator": 8,
+      "denominator": 21,
+      "excluded": 0,
+      "value": 0.38095238095238093,
+      "reason": null
+    },
+    "Q03": {
+      "numerator": 0,
+      "denominator": 0,
+      "excluded": 0,
+      "value": null,
+      "reason": "zero_denominator"
+    },
+    "Q04": {
+      "numerator": 0,
+      "denominator": 0,
+      "excluded": 0,
+      "value": null,
+      "reason": "zero_denominator"
+    },
+    "Q05": {
+      "numerator": 0,
+      "denominator": 0,
+      "excluded": 0,
+      "value": null,
+      "reason": "zero_denominator"
+    },
+    "Q06": {
+      "numerator": 0,
+      "denominator": 0,
+      "excluded": 0,
+      "value": null,
+      "reason": "zero_denominator"
+    },
+    "Q07": {
+      "numerator": 0,
+      "denominator": 0,
+      "excluded": 0,
+      "value": null,
+      "reason": "zero_denominator"
+    },
+    "Q08": {
+      "value": null,
+      "reason": "no_classification_samples",
+      "sample_count": 0,
+      "classes": [],
+      "zero_division": 0,
+      "confusion": []
+    }
+  },
+  "performance": {
+    "instruction": {
+      "metrics": {
+        "L01": {
+          "sample_count": 4,
+          "excluded": 3,
+          "min": 300.0,
+          "p50": 300.0,
+          "p95": null,
+          "max": 300.0,
+          "quantile_method": "nearest_rank.phase2.v1",
+          "p95_reason": "insufficient_samples",
+          "p95_exploratory": false,
+          "unit": "ms",
+          "missing_reasons": {}
+        },
+        "L02": {
+          "sample_count": 4,
+          "excluded": 3,
+          "min": 300.0,
+          "p50": 300.0,
+          "p95": null,
+          "max": 300.0,
+          "quantile_method": "nearest_rank.phase2.v1",
+          "p95_reason": "insufficient_samples",
+          "p95_exploratory": false,
+          "unit": "ms",
+          "missing_reasons": {}
+        },
+        "L03": {
+          "sample_count": 4,
+          "excluded": 3,
+          "min": 1000.0,
+          "p50": 2000.0,
+          "p95": null,
+          "max": 4000.0,
+          "quantile_method": "nearest_rank.phase2.v1",
+          "p95_reason": "insufficient_samples",
+          "p95_exploratory": false,
+          "unit": "ms",
+          "missing_reasons": {}
+        },
+        "L04": {
+          "sample_count": 0,
+          "excluded": 7,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "max": null,
+          "quantile_method": "nearest_rank.phase2.v1",
+          "p95_reason": "insufficient_samples",
+          "p95_exploratory": false,
+          "unit": "token/s",
+          "missing_reasons": {
+            "usage_or_positive_duration_missing": 4
+          }
+        },
+        "L06": {
+          "sample_count": 0,
+          "excluded": 7,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "max": null,
+          "quantile_method": "nearest_rank.phase2.v1",
+          "p95_reason": "insufficient_samples",
+          "p95_exploratory": false,
+          "unit": "token/s",
+          "missing_reasons": {
+            "evidence_missing": 4
+          }
+        },
+        "L07": {
+          "sample_count": 0,
+          "excluded": 7,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "max": null,
+          "quantile_method": "nearest_rank.phase2.v1",
+          "p95_reason": "insufficient_samples",
+          "p95_exploratory": false,
+          "unit": "token/s",
+          "missing_reasons": {
+            "evidence_missing": 4
+          }
+        },
+        "L05": [
+          {
+            "request_id": "req-1",
+            "unit": "ms",
+            "reason": "evidence_missing",
+            "intervals": [],
+            "distribution": {
+              "sample_count": 0,
+              "excluded": 0,
+              "min": null,
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "quantile_method": "nearest_rank.phase2.v1",
+              "p95_reason": "insufficient_samples",
+              "p95_exploratory": false
+            },
+            "source": null
+          },
+          {
+            "request_id": "req-2",
+            "unit": "ms",
+            "reason": "evidence_missing",
+            "intervals": [],
+            "distribution": {
+              "sample_count": 0,
+              "excluded": 0,
+              "min": null,
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "quantile_method": "nearest_rank.phase2.v1",
+              "p95_reason": "insufficient_samples",
+              "p95_exploratory": false
+            },
+            "source": null
+          },
+          {
+            "request_id": "req-3",
+            "unit": "ms",
+            "reason": "evidence_missing",
+            "intervals": [],
+            "distribution": {
+              "sample_count": 0,
+              "excluded": 0,
+              "min": null,
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "quantile_method": "nearest_rank.phase2.v1",
+              "p95_reason": "insufficient_samples",
+              "p95_exploratory": false
+            },
+            "source": null
+          },
+          {
+            "request_id": "req-4",
+            "unit": "ms",
+            "reason": "evidence_missing",
+            "intervals": [],
+            "distribution": {
+              "sample_count": 0,
+              "excluded": 0,
+              "min": null,
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "quantile_method": "nearest_rank.phase2.v1",
+              "p95_reason": "insufficient_samples",
+              "p95_exploratory": false
+            },
+            "source": null
+          }
+        ]
+      },
+      "planned": 7,
+      "completed": 4,
+      "failed": 3,
+      "timeout_count": 3,
+      "failure_categories": {
+        "total_timeout": 3
+      },
+      "failed_first_events": [
+        {
+          "request_id": "req-5",
+          "L01": {
+            "value": null,
+            "unit": "ms",
+            "reason": "no_content_event"
+          },
+          "L02": {
+            "value": null,
+            "unit": "ms",
+            "reason": "no_answer_event"
+          }
+        },
+        {
+          "request_id": "req-6",
+          "L01": {
+            "value": null,
+            "unit": "ms",
+            "reason": "no_content_event"
+          },
+          "L02": {
+            "value": null,
+            "unit": "ms",
+            "reason": "no_answer_event"
+          }
+        },
+        {
+          "request_id": "req-7",
+          "L01": {
+            "value": null,
+            "unit": "ms",
+            "reason": "no_content_event"
+          },
+          "L02": {
+            "value": null,
+            "unit": "ms",
+            "reason": "no_answer_event"
+          }
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "synthetic fixture; not a measured run",
+    "selected_metric_observations_for_contract_fixture"
+  ],
+  "metric_observations": [
+    {
+      "schema_version": 3,
+      "metric_id": "R01",
+      "definition_version": "phase2.v1",
+      "run_id": "run-fixture",
+      "trial_id": "trial-e0484ed6df4a051d44c7b2a7ffebd9ab",
+      "request_id": null,
+      "group": {
+        "workload_id": "single",
+        "category": "instruction",
+        "error_category": null
+      },
+      "statistic": "completion_rate",
+      "value": 0.5714285714285714,
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "request_ledger",
+      "status": "derived",
+      "missing_reason": null,
+      "sample_count": 7,
+      "numerator": 4,
+      "denominator": 7,
+      "excluded": 0,
+      "sampled_start_ns": null,
+      "sampled_end_ns": null,
+      "coverage_ratio": null,
+      "comparison_eligible": true,
+      "limitations": [],
+      "evidence_refs": [
+        {
+          "path": "events.jsonl",
+          "sha256": "cdd534acaa7f88add33eb964f6d43560221eb7c00ff8d71a191564ea63479087"
+        },
+        {
+          "path": "run.json",
+          "sha256": "d151419fb3da15d8e49aff3f4c88660d4cd4a73b6f5d047593bb1c9b91bdc469"
+        },
+        {
+          "path": "plan.json",
+          "sha256": "5e2faa958d7f1433cdb86a25bd801b5040a773dc3eb887f0723ee46a4ef56d11"
+        },
+        {
+          "path": "selection.json",
+          "sha256": "55ad6172fa9ec388090a29f6a87771a2841bebc295c45d592c5b00caa46aa213"
+        },
+        {
+          "path": "bundle.json",
+          "sha256": "8a802a40c4d8cfd3783840dd0beda345ceb7557c013b3e219462f4b7aea4cc2a"
+        },
+        {
+          "path": "config.frozen.json",
+          "sha256": "cd6de2f388cdd1653abf266e1b399f40008706573375bef39a1b3a74d8e70f01"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "R02",
+      "definition_version": "phase2.v1",
+      "run_id": "run-fixture",
+      "trial_id": "trial-e0484ed6df4a051d44c7b2a7ffebd9ab",
+      "request_id": null,
+      "group": {
+        "workload_id": "single",
+        "category": "instruction",
+        "error_category": null
+      },
+      "statistic": "timeout_rate",
+      "value": 0.42857142857142855,
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "request_ledger",
+      "status": "derived",
+      "missing_reason": null,
+      "sample_count": 7,
+      "numerator": 3,
+      "denominator": 7,
+      "excluded": 0,
+      "sampled_start_ns": null,
+      "sampled_end_ns": null,
+      "coverage_ratio": null,
+      "comparison_eligible": true,
+      "limitations": [],
+      "evidence_refs": [
+        {
+          "path": "events.jsonl",
+          "sha256": "cdd534acaa7f88add33eb964f6d43560221eb7c00ff8d71a191564ea63479087"
+        },
+        {
+          "path": "run.json",
+          "sha256": "d151419fb3da15d8e49aff3f4c88660d4cd4a73b6f5d047593bb1c9b91bdc469"
+        },
+        {
+          "path": "plan.json",
+          "sha256": "5e2faa958d7f1433cdb86a25bd801b5040a773dc3eb887f0723ee46a4ef56d11"
+        },
+        {
+          "path": "selection.json",
+          "sha256": "55ad6172fa9ec388090a29f6a87771a2841bebc295c45d592c5b00caa46aa213"
+        },
+        {
+          "path": "bundle.json",
+          "sha256": "8a802a40c4d8cfd3783840dd0beda345ceb7557c013b3e219462f4b7aea4cc2a"
+        },
+        {
+          "path": "config.frozen.json",
+          "sha256": "cd6de2f388cdd1653abf266e1b399f40008706573375bef39a1b3a74d8e70f01"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "R04",
+      "definition_version": "phase2.v1",
+      "run_id": "run-fixture",
+      "trial_id": "trial-e0484ed6df4a051d44c7b2a7ffebd9ab",
+      "request_id": null,
+      "group": {
+        "workload_id": "single",
+        "category": "instruction",
+        "error_category": null
+      },
+      "statistic": "output_budget_exhaustion_rate",
+      "value": 0.2857142857142857,
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "request_ledger",
+      "status": "derived",
+      "missing_reason": null,
+      "sample_count": 7,
+      "numerator": 2,
+      "denominator": 7,
+      "excluded": 0,
+      "sampled_start_ns": null,
+      "sampled_end_ns": null,
+      "coverage_ratio": null,
+      "comparison_eligible": true,
+      "limitations": [],
+      "evidence_refs": [
+        {
+          "path": "events.jsonl",
+          "sha256": "cdd534acaa7f88add33eb964f6d43560221eb7c00ff8d71a191564ea63479087"
+        },
+        {
+          "path": "run.json",
+          "sha256": "d151419fb3da15d8e49aff3f4c88660d4cd4a73b6f5d047593bb1c9b91bdc469"
+        },
+        {
+          "path": "plan.json",
+          "sha256": "5e2faa958d7f1433cdb86a25bd801b5040a773dc3eb887f0723ee46a4ef56d11"
+        },
+        {
+          "path": "selection.json",
+          "sha256": "55ad6172fa9ec388090a29f6a87771a2841bebc295c45d592c5b00caa46aa213"
+        },
+        {
+          "path": "bundle.json",
+          "sha256": "8a802a40c4d8cfd3783840dd0beda345ceb7557c013b3e219462f4b7aea4cc2a"
+        },
+        {
+          "path": "config.frozen.json",
+          "sha256": "cd6de2f388cdd1653abf266e1b399f40008706573375bef39a1b3a74d8e70f01"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "R03",
+      "definition_version": "phase2.v1",
+      "run_id": "run-fixture",
+      "trial_id": "trial-e0484ed6df4a051d44c7b2a7ffebd9ab",
+      "request_id": null,
+      "group": {
+        "workload_id": "single",
+        "category": "instruction",
+        "error_category": "total_timeout"
+      },
+      "statistic": "failure_type_rate",
+      "value": 0.42857142857142855,
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "request_ledger",
+      "status": "derived",
+      "missing_reason": null,
+      "sample_count": 7,
+      "numerator": 3,
+      "denominator": 7,
+      "excluded": 0,
+      "sampled_start_ns": null,
+      "sampled_end_ns": null,
+      "coverage_ratio": null,
+      "comparison_eligible": true,
+      "limitations": [],
+      "evidence_refs": [
+        {
+          "path": "events.jsonl",
+          "sha256": "cdd534acaa7f88add33eb964f6d43560221eb7c00ff8d71a191564ea63479087"
+        },
+        {
+          "path": "run.json",
+          "sha256": "d151419fb3da15d8e49aff3f4c88660d4cd4a73b6f5d047593bb1c9b91bdc469"
+        },
+        {
+          "path": "plan.json",
+          "sha256": "5e2faa958d7f1433cdb86a25bd801b5040a773dc3eb887f0723ee46a4ef56d11"
+        },
+        {
+          "path": "selection.json",
+          "sha256": "55ad6172fa9ec388090a29f6a87771a2841bebc295c45d592c5b00caa46aa213"
+        },
+        {
+          "path": "bundle.json",
+          "sha256": "8a802a40c4d8cfd3783840dd0beda345ceb7557c013b3e219462f4b7aea4cc2a"
+        },
+        {
+          "path": "config.frozen.json",
+          "sha256": "cd6de2f388cdd1653abf266e1b399f40008706573375bef39a1b3a74d8e70f01"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "Q01",
+      "definition_version": "phase2.v1",
+      "run_id": "run-fixture",
+      "trial_id": "trial-e0484ed6df4a051d44c7b2a7ffebd9ab",
+      "request_id": null,
+      "group": {
+        "workload_id": "single",
+        "category": "instruction",
+        "error_category": null
+      },
+      "statistic": "pass_rate",
+      "value": 0.2857142857142857,
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "versioned_scorer",
+      "status": "derived",
+      "missing_reason": null,
+      "sample_count": 7,
+      "numerator": 2,
+      "denominator": 7,
+      "excluded": 0,
+      "sampled_start_ns": null,
+      "sampled_end_ns": null,
+      "coverage_ratio": null,
+      "comparison_eligible": true,
+      "limitations": [],
+      "evidence_refs": [
+        {
+          "path": "events.jsonl",
+          "sha256": "cdd534acaa7f88add33eb964f6d43560221eb7c00ff8d71a191564ea63479087"
+        },
+        {
+          "path": "run.json",
+          "sha256": "d151419fb3da15d8e49aff3f4c88660d4cd4a73b6f5d047593bb1c9b91bdc469"
+        },
+        {
+          "path": "plan.json",
+          "sha256": "5e2faa958d7f1433cdb86a25bd801b5040a773dc3eb887f0723ee46a4ef56d11"
+        },
+        {
+          "path": "selection.json",
+          "sha256": "55ad6172fa9ec388090a29f6a87771a2841bebc295c45d592c5b00caa46aa213"
+        },
+        {
+          "path": "bundle.json",
+          "sha256": "8a802a40c4d8cfd3783840dd0beda345ceb7557c013b3e219462f4b7aea4cc2a"
+        },
+        {
+          "path": "config.frozen.json",
+          "sha256": "cd6de2f388cdd1653abf266e1b399f40008706573375bef39a1b3a74d8e70f01"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "Q02",
+      "definition_version": "phase2.v1",
+      "run_id": "run-fixture",
+      "trial_id": "trial-e0484ed6df4a051d44c7b2a7ffebd9ab",
+      "request_id": null,
+      "group": {
+        "workload_id": "single",
+        "category": "instruction",
+        "error_category": null
+      },
+      "statistic": "pass_rate",
+      "value": 0.38095238095238093,
+      "unit": "ratio",
+      "layer": "experiment",
+      "source": "versioned_scorer",
+      "status": "derived",
+      "missing_reason": null,
+      "sample_count": 7,
+      "numerator": 8,
+      "denominator": 21,
+      "excluded": 0,
+      "sampled_start_ns": null,
+      "sampled_end_ns": null,
+      "coverage_ratio": null,
+      "comparison_eligible": true,
+      "limitations": [
+        "denominator_is_constraints"
+      ],
+      "evidence_refs": [
+        {
+          "path": "events.jsonl",
+          "sha256": "cdd534acaa7f88add33eb964f6d43560221eb7c00ff8d71a191564ea63479087"
+        },
+        {
+          "path": "run.json",
+          "sha256": "d151419fb3da15d8e49aff3f4c88660d4cd4a73b6f5d047593bb1c9b91bdc469"
+        },
+        {
+          "path": "plan.json",
+          "sha256": "5e2faa958d7f1433cdb86a25bd801b5040a773dc3eb887f0723ee46a4ef56d11"
+        },
+        {
+          "path": "selection.json",
+          "sha256": "55ad6172fa9ec388090a29f6a87771a2841bebc295c45d592c5b00caa46aa213"
+        },
+        {
+          "path": "bundle.json",
+          "sha256": "8a802a40c4d8cfd3783840dd0beda345ceb7557c013b3e219462f4b7aea4cc2a"
+        },
+        {
+          "path": "config.frozen.json",
+          "sha256": "cd6de2f388cdd1653abf266e1b399f40008706573375bef39a1b3a74d8e70f01"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "L03",
+      "definition_version": "phase2.v1",
+      "run_id": "run-fixture",
+      "trial_id": "trial-e0484ed6df4a051d44c7b2a7ffebd9ab",
+      "request_id": "req-1",
+      "group": {
+        "workload_id": "single",
+        "category": "instruction",
+        "error_category": null
+      },
+      "statistic": "request_value",
+      "value": 1000.0,
+      "unit": "ms",
+      "layer": "request",
+      "source": "client_monotonic_events",
+      "status": "derived",
+      "missing_reason": null,
+      "sample_count": 1,
+      "numerator": null,
+      "denominator": null,
+      "excluded": 0,
+      "sampled_start_ns": 0,
+      "sampled_end_ns": 1000000000,
+      "coverage_ratio": null,
+      "comparison_eligible": false,
+      "limitations": [
+        "performance_comparison_gate_pending"
+      ],
+      "evidence_refs": [
+        {
+          "path": "events.jsonl",
+          "sha256": "cdd534acaa7f88add33eb964f6d43560221eb7c00ff8d71a191564ea63479087"
+        },
+        {
+          "path": "run.json",
+          "sha256": "d151419fb3da15d8e49aff3f4c88660d4cd4a73b6f5d047593bb1c9b91bdc469"
+        },
+        {
+          "path": "plan.json",
+          "sha256": "5e2faa958d7f1433cdb86a25bd801b5040a773dc3eb887f0723ee46a4ef56d11"
+        },
+        {
+          "path": "selection.json",
+          "sha256": "55ad6172fa9ec388090a29f6a87771a2841bebc295c45d592c5b00caa46aa213"
+        },
+        {
+          "path": "bundle.json",
+          "sha256": "8a802a40c4d8cfd3783840dd0beda345ceb7557c013b3e219462f4b7aea4cc2a"
+        },
+        {
+          "path": "config.frozen.json",
+          "sha256": "cd6de2f388cdd1653abf266e1b399f40008706573375bef39a1b3a74d8e70f01"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "C02",
+      "definition_version": "phase2.v1",
+      "run_id": "run-fixture",
+      "trial_id": "trial-e0484ed6df4a051d44c7b2a7ffebd9ab",
+      "request_id": "req-1",
+      "group": {
+        "workload_id": "single",
+        "category": "instruction",
+        "error_category": null
+      },
+      "statistic": "observed_peak",
+      "value": null,
+      "unit": "bytes",
+      "layer": "process",
+      "source": "linux_collector",
+      "status": "missing",
+      "missing_reason": "no_resource_samples",
+      "sample_count": 0,
+      "numerator": null,
+      "denominator": null,
+      "excluded": 0,
+      "sampled_start_ns": null,
+      "sampled_end_ns": null,
+      "coverage_ratio": null,
+      "comparison_eligible": false,
+      "limitations": [
+        "sampled_extremum_not_instantaneous_peak",
+        "performance_comparison_gate_pending"
+      ],
+      "evidence_refs": [
+        {
+          "path": "events.jsonl",
+          "sha256": "cdd534acaa7f88add33eb964f6d43560221eb7c00ff8d71a191564ea63479087"
+        },
+        {
+          "path": "run.json",
+          "sha256": "d151419fb3da15d8e49aff3f4c88660d4cd4a73b6f5d047593bb1c9b91bdc469"
+        },
+        {
+          "path": "plan.json",
+          "sha256": "5e2faa958d7f1433cdb86a25bd801b5040a773dc3eb887f0723ee46a4ef56d11"
+        },
+        {
+          "path": "selection.json",
+          "sha256": "55ad6172fa9ec388090a29f6a87771a2841bebc295c45d592c5b00caa46aa213"
+        },
+        {
+          "path": "bundle.json",
+          "sha256": "8a802a40c4d8cfd3783840dd0beda345ceb7557c013b3e219462f4b7aea4cc2a"
+        },
+        {
+          "path": "config.frozen.json",
+          "sha256": "cd6de2f388cdd1653abf266e1b399f40008706573375bef39a1b3a74d8e70f01"
+        },
+        {
+          "path": "memory.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    }
+  ],
+  "resources": {
+    "baseline_rss_bytes": null,
+    "requests": [
+      {
+        "request_id": "req-1",
+        "category": "instruction",
+        "metrics": {
+          "C01": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C02": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C03": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C04": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C05": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C06": {
+            "system_swap_in": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            },
+            "system_swap_out": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            }
+          }
+        }
+      },
+      {
+        "request_id": "req-2",
+        "category": "instruction",
+        "metrics": {
+          "C01": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C02": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C03": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C04": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C05": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C06": {
+            "system_swap_in": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            },
+            "system_swap_out": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            }
+          }
+        }
+      },
+      {
+        "request_id": "req-3",
+        "category": "instruction",
+        "metrics": {
+          "C01": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C02": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C03": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C04": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C05": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C06": {
+            "system_swap_in": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            },
+            "system_swap_out": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            }
+          }
+        }
+      },
+      {
+        "request_id": "req-4",
+        "category": "instruction",
+        "metrics": {
+          "C01": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C02": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C03": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C04": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C05": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C06": {
+            "system_swap_in": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            },
+            "system_swap_out": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            }
+          }
+        }
+      },
+      {
+        "request_id": "req-5",
+        "category": "instruction",
+        "metrics": {
+          "C01": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C02": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C03": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C04": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C05": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C06": {
+            "system_swap_in": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            },
+            "system_swap_out": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            }
+          }
+        }
+      },
+      {
+        "request_id": "req-6",
+        "category": "instruction",
+        "metrics": {
+          "C01": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C02": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C03": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C04": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C05": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C06": {
+            "system_swap_in": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            },
+            "system_swap_out": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            }
+          }
+        }
+      },
+      {
+        "request_id": "req-7",
+        "category": "instruction",
+        "metrics": {
+          "C01": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C02": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C03": {
+            "value": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "no_resource_samples",
+            "limitations": [
+              "sampled_extremum_not_instantaneous_peak"
+            ]
+          },
+          "C04": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C05": {
+            "value": null,
+            "interval": null,
+            "coverage": null,
+            "sample_count": 0,
+            "excluded": 0,
+            "reason": "insufficient_counter_samples",
+            "limitations": [
+              "counter_interval_uses_read_midpoints",
+              "coverage_is_endpoint_span"
+            ],
+            "scale": null,
+            "largest_sample_gap_ns": null
+          },
+          "C06": {
+            "system_swap_in": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            },
+            "system_swap_out": {
+              "value": null,
+              "interval": null,
+              "coverage": null,
+              "sample_count": 0,
+              "excluded": 0,
+              "reason": "insufficient_counter_samples",
+              "limitations": [
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span"
+              ],
+              "scale": null,
+              "largest_sample_gap_ns": null
+            }
+          }
+        }
+      }
+    ]
+  },
+  "input_target_check": {
+    "status": "not_requested",
+    "target_tokens": null,
+    "tolerance_tokens": 0,
+    "cases": []
+  },
+  "input_lengths": {
+    "bins": [
+      {
+        "category": "instruction",
+        "actual_input_tokens": null,
+        "input_target_tokens": null,
+        "output_budget_tokens": 512,
+        "planned": 7,
+        "attempts": 7,
+        "valid_executed": 7,
+        "completed": 4,
+        "failed": 3,
+        "excluded": 0,
+        "unscorable_completed": 0,
+        "completion_rate": 0.5714285714285714,
+        "quality_rate": 0.2857142857142857,
+        "completed_latency_p50_ms": 2000.0,
+        "request_ids": [
+          "req-1",
+          "req-2",
+          "req-3",
+          "req-4",
+          "req-5",
+          "req-6",
+          "req-7"
+        ],
+        "case_template_hashes": {
+          "instruction-01": null,
+          "instruction-02": null,
+          "instruction-03": null,
+          "instruction-04": null,
+          "instruction-05": null,
+          "instruction-06": null,
+          "instruction-07": null
+        },
+        "limitations": [
+          "actual_template_token_cohorts_not_theoretical_context_limit",
+          "acceptance_is_not_comprehension",
+          "performance_comparison_pending"
+        ],
+        "resources": {
+          "series": [
+            {
+              "metric_id": "C01",
+              "definition_version": "phase2.v1",
+              "statistic": "observed_min",
+              "unit": "bytes",
+              "layer": "host",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "no_resource_samples": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending",
+                "sampled_extremum_not_instantaneous_peak"
+              ]
+            },
+            {
+              "metric_id": "C02",
+              "definition_version": "phase2.v1",
+              "statistic": "observed_peak",
+              "unit": "bytes",
+              "layer": "process",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "no_resource_samples": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending",
+                "sampled_extremum_not_instantaneous_peak"
+              ]
+            },
+            {
+              "metric_id": "C03",
+              "definition_version": "phase2.v1",
+              "statistic": "peak_minus_idle_baseline",
+              "unit": "bytes",
+              "layer": "process",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "no_resource_samples": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending",
+                "sampled_extremum_not_instantaneous_peak"
+              ]
+            },
+            {
+              "metric_id": "C04",
+              "definition_version": "phase2.v1",
+              "statistic": "full_request_cpu_seconds",
+              "unit": "s",
+              "layer": "process",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "insufficient_counter_samples": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending"
+              ]
+            },
+            {
+              "metric_id": "C04",
+              "definition_version": "phase2.v1",
+              "statistic": "observed_cpu_seconds",
+              "unit": "s",
+              "layer": "process",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "insufficient_counter_samples": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending"
+              ]
+            },
+            {
+              "metric_id": "C05",
+              "definition_version": "phase2.v1",
+              "statistic": "observed_single_core_percent",
+              "unit": "percent",
+              "layer": "process",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "insufficient_counter_samples": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending"
+              ]
+            },
+            {
+              "metric_id": "C06",
+              "definition_version": "phase2.v1",
+              "statistic": "system_swap_in_bytes",
+              "unit": "bytes",
+              "layer": "host",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "insufficient_counter_samples": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending"
+              ]
+            },
+            {
+              "metric_id": "C06",
+              "definition_version": "phase2.v1",
+              "statistic": "system_swap_in_pages",
+              "unit": "pages",
+              "layer": "host",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "insufficient_counter_samples": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending"
+              ]
+            },
+            {
+              "metric_id": "C06",
+              "definition_version": "phase2.v1",
+              "statistic": "system_swap_out_bytes",
+              "unit": "bytes",
+              "layer": "host",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "insufficient_counter_samples": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending"
+              ]
+            },
+            {
+              "metric_id": "C06",
+              "definition_version": "phase2.v1",
+              "statistic": "system_swap_out_pages",
+              "unit": "pages",
+              "layer": "host",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "insufficient_counter_samples": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "counter_interval_uses_read_midpoints",
+                "coverage_is_endpoint_span",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending"
+              ]
+            },
+            {
+              "metric_id": "C07",
+              "definition_version": "phase2.v1",
+              "statistic": "observed_max",
+              "unit": "celsius",
+              "layer": "device",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "sensor_evidence_unavailable": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending"
+              ]
+            },
+            {
+              "metric_id": "C08",
+              "definition_version": "phase2.v1",
+              "statistic": "observed_max",
+              "unit": "Hz",
+              "layer": "device",
+              "source": "linux_collector",
+              "valid_executed": 7,
+              "observed_requests": 0,
+              "missing_requests": 7,
+              "missing_reasons": {
+                "sensor_evidence_unavailable": 7
+              },
+              "min": null,
+              "p50": null,
+              "max": null,
+              "limitations": [
+                "completed_and_failed_requests_included",
+                "distribution_of_per_request_resource_observations",
+                "nearest_rank.phase2.v1",
+                "no_cross_source_pooling",
+                "not_whole_cohort_continuous_resource_measurement",
+                "performance_comparison_gate_pending"
+              ]
+            }
+          ],
+          "status": "available",
+          "missing_reason": null
+        },
+        "outcomes": {
+          "terminal_counts": {
+            "completed": 4,
+            "failed": 3,
+            "invalid": 0,
+            "cancelled": 0,
+            "not_executed": 0
+          },
+          "failure_reasons": {
+            "total_timeout": 3
+          },
+          "excluded_reasons": [],
+          "http_status_counts": {},
+          "http_status_unknown_requests": 7,
+          "observed_http_4xx_requests": 0,
+          "rejected_requests": null,
+          "rejection_missing_reason": "explicit_request_rejection_evidence_unavailable",
+          "rejection_definition": "http_4xx_response_not_context_capacity_rejection",
+          "limitations": [
+            "http_error_timeout_and_transport_failure_do_not_prove_context_rejection",
+            "cancelled_invalid_and_unexecuted_do_not_prove_model_capacity_limit",
+            "completed_request_does_not_prove_long_context_comprehension"
+          ]
+        }
+      }
+    ],
+    "limitations": [
+      "actual_template_token_cohorts_not_theoretical_context_limit",
+      "acceptance_is_not_comprehension",
+      "performance_comparison_pending"
+    ]
+  },
+  "measurement_context": {
+    "environment_qualification": {
+      "definition": "observed_environment_qualification.v1",
+      "eligible": false,
+      "reasons": [
+        "collector_schedule_lateness_unknown_or_excessive",
+        "collector_schedule_missing",
+        "cpu_policy_inventory_missing",
+        "cpu_policy_qualification_failed",
+        "environment_endpoints_missing",
+        "environment_not_stable_and_complete",
+        "environment_request_window_unobserved",
+        "environment_sampling_gap",
+        "environment_timeline_missing",
+        "environment_unknown:ac_online",
+        "environment_unknown:architecture",
+        "environment_unknown:cpu_model",
+        "environment_unknown:epp",
+        "environment_unknown:governor",
+        "environment_unknown:kernel",
+        "environment_unknown:logical_cpus",
+        "environment_unknown:memory_total_bytes",
+        "environment_unknown:profile",
+        "environment_unknown:scaling_driver",
+        "external_load_qualification_failed",
+        "external_load_request_coverage_incomplete",
+        "external_load_tolerance_not_frozen",
+        "frozen_environment_mismatch:ac_online",
+        "frozen_environment_mismatch:epp",
+        "frozen_environment_mismatch:governor",
+        "frozen_environment_mismatch:profile",
+        "swap_counter_unknown:pswpin",
+        "swap_counter_unknown:pswpout",
+        "unsealed_or_missing:environment.end.json",
+        "unsealed_or_missing:environment.start.json"
+      ],
+      "request_count": 7,
+      "limitations": [
+        "sampled_conditions_not_proof_of_continuous_stationarity",
+        "external_load_is_bracketing_interval_average",
+        "environment_prerequisite_not_pair_comparison_authorization",
+        "matching_workload_collector_overhead_evidence_still_required"
+      ]
+    },
+    "external_cpu": {
+      "source": "linux.proc.host_minus_bound_pid.v1",
+      "intervals": [],
+      "sample_count": 0,
+      "valid_intervals": 0,
+      "observed_max_percent": null,
+      "comparison_eligible": false,
+      "limitations": [
+        "host_capacity_percent_not_single_core_percent",
+        "host_busy_minus_bound_pid_includes_collector_kernel_and_other_work",
+        "iowait_excluded_guest_not_double_counted",
+        "service_children_not_subtracted",
+        "sequential_reads_not_atomic_no_negative_clamping",
+        "request_coverage_and_frozen_threshold_assessed_separately"
+      ]
+    },
+    "external_cpu_requests": {
+      "policy": null,
+      "requests": [
+        {
+          "request_id": "req-1",
+          "execution_state": "completed",
+          "covered_ns": 0,
+          "duration_ns": 1000000000,
+          "coverage_ratio": 0.0,
+          "observed_max_percent": null,
+          "observed_intervals": 0,
+          "eligible": false,
+          "reasons": [
+            "external_load_request_coverage_incomplete",
+            "external_load_tolerance_not_frozen"
+          ]
+        },
+        {
+          "request_id": "req-2",
+          "execution_state": "completed",
+          "covered_ns": 0,
+          "duration_ns": 2000000000,
+          "coverage_ratio": 0.0,
+          "observed_max_percent": null,
+          "observed_intervals": 0,
+          "eligible": false,
+          "reasons": [
+            "external_load_request_coverage_incomplete",
+            "external_load_tolerance_not_frozen"
+          ]
+        },
+        {
+          "request_id": "req-3",
+          "execution_state": "completed",
+          "covered_ns": 0,
+          "duration_ns": 3000000000,
+          "coverage_ratio": 0.0,
+          "observed_max_percent": null,
+          "observed_intervals": 0,
+          "eligible": false,
+          "reasons": [
+            "external_load_request_coverage_incomplete",
+            "external_load_tolerance_not_frozen"
+          ]
+        },
+        {
+          "request_id": "req-4",
+          "execution_state": "completed",
+          "covered_ns": 0,
+          "duration_ns": 4000000000,
+          "coverage_ratio": 0.0,
+          "observed_max_percent": null,
+          "observed_intervals": 0,
+          "eligible": false,
+          "reasons": [
+            "external_load_request_coverage_incomplete",
+            "external_load_tolerance_not_frozen"
+          ]
+        },
+        {
+          "request_id": "req-5",
+          "execution_state": "failed",
+          "covered_ns": 0,
+          "duration_ns": 5000000000,
+          "coverage_ratio": 0.0,
+          "observed_max_percent": null,
+          "observed_intervals": 0,
+          "eligible": false,
+          "reasons": [
+            "external_load_request_coverage_incomplete",
+            "external_load_tolerance_not_frozen"
+          ]
+        },
+        {
+          "request_id": "req-6",
+          "execution_state": "failed",
+          "covered_ns": 0,
+          "duration_ns": 5000000000,
+          "coverage_ratio": 0.0,
+          "observed_max_percent": null,
+          "observed_intervals": 0,
+          "eligible": false,
+          "reasons": [
+            "external_load_request_coverage_incomplete",
+            "external_load_tolerance_not_frozen"
+          ]
+        },
+        {
+          "request_id": "req-7",
+          "execution_state": "failed",
+          "covered_ns": 0,
+          "duration_ns": 5000000000,
+          "coverage_ratio": 0.0,
+          "observed_max_percent": null,
+          "observed_intervals": 0,
+          "eligible": false,
+          "reasons": [
+            "external_load_request_coverage_incomplete",
+            "external_load_tolerance_not_frozen"
+          ]
+        }
+      ],
+      "all_requests_eligible": false,
+      "limitations": [
+        "threshold_applies_to_bracketing_interval_averages_not_instantaneous_load",
+        "cross_request_intervals_are_not_independent_observations",
+        "not_full_environment_or_performance_comparison_authorization"
+      ]
+    },
+    "environment": {
+      "cpu_policies": {
+        "complete_and_stable": false,
+        "reasons": [
+          "cpu_policy_inventory_missing"
+        ],
+        "snapshot_count": 2
+      },
+      "stable_observed_environment": false,
+      "reasons": [
+        "cpu_policy_inventory_missing",
+        "environment_endpoints_missing",
+        "environment_request_window_unobserved",
+        "environment_sampling_gap",
+        "environment_timeline_missing",
+        "environment_unknown:ac_online",
+        "environment_unknown:architecture",
+        "environment_unknown:cpu_model",
+        "environment_unknown:epp",
+        "environment_unknown:governor",
+        "environment_unknown:kernel",
+        "environment_unknown:logical_cpus",
+        "environment_unknown:memory_total_bytes",
+        "environment_unknown:profile",
+        "environment_unknown:scaling_driver",
+        "frozen_environment_mismatch:ac_online",
+        "frozen_environment_mismatch:epp",
+        "frozen_environment_mismatch:governor",
+        "frozen_environment_mismatch:profile",
+        "swap_counter_unknown:pswpin",
+        "swap_counter_unknown:pswpout",
+        "unsealed_or_missing:environment.end.json",
+        "unsealed_or_missing:environment.start.json"
+      ],
+      "observation_count": 0,
+      "largest_request_gap_ns": 5000000000,
+      "limitations": [
+        "changes_between_observations_unknown",
+        "cpu_policy_inventory_missing_or_incomplete",
+        "external_load_not_fully_observed"
+      ],
+      "comparison_eligible": false
+    },
+    "collector_schedule": {
+      "periodic_samples": 0,
+      "boundary_samples": 0,
+      "max_work_ns": null,
+      "max_late_ns": null,
+      "work_exceeds_interval_count": 0,
+      "boundary_work_ns": 0,
+      "overhead_gate": "not_verified",
+      "limitations": [
+        "schedule_cost_is_not_workload_perturbation",
+        "frozen_abba_overhead_experiment_required"
+      ]
+    },
+    "evidence_refs": [
+      {
+        "path": "environment.jsonl",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "schedule.jsonl",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "performance_comparison_eligible": false
+  }
+}

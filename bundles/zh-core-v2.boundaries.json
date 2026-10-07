@@ -1,0 +1,962 @@
+{
+  "qa-01": [
+    {
+      "answer": " \n二层\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "二层。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-02": [
+    {
+      "answer": " \n周宁\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "周宁。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-03": [
+    {
+      "answer": " \n否\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "否。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-04": [
+    {
+      "answer": " \n西门\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "西门。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-05": [
+    {
+      "answer": " \nK9\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "K9。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-06": [
+    {
+      "answer": " \n乙车\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "乙车。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-07": [
+    {
+      "answer": " \n维修\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "维修。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-08": [
+    {
+      "answer": " \n5月12日\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "5月12日。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-09": [
+    {
+      "answer": " \n否\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "否。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-10": [
+    {
+      "answer": " \n西库\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "西库。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-11": [
+    {
+      "answer": " \n任务C\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "任务C。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-12": [
+    {
+      "answer": " \n韩雪\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "韩雪。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-13": [
+    {
+      "answer": " \n2025\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "2025。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-14": [
+    {
+      "answer": " \n阿宁\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "阿宁。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-15": [
+    {
+      "answer": " \n不能\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "不能。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-16": [
+    {
+      "answer": " \n黑卡\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "黑卡。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-17": [
+    {
+      "answer": " \n雪芽茶\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "雪芽茶。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-18": [
+    {
+      "answer": " \n运行\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "运行。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-19": [
+    {
+      "answer": " \n14:30\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "14:30。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "qa-20": [
+    {
+      "answer": " \n小吴\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "小吴。",
+      "expected_state": "fail",
+      "reason": "仅去首尾空白；添加标点不视为精确匹配"
+    }
+  ],
+  "math-01": [
+    {
+      "answer": " \n16盒\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "17盒",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-02": [
+    {
+      "answer": " \n24颗\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "25颗",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-03": [
+    {
+      "answer": " \n9张\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "10张",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-04": [
+    {
+      "answer": " \n60元\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "61元",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-05": [
+    {
+      "answer": " \n100米/分钟\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "101米/分钟",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-06": [
+    {
+      "answer": " \n26厘米\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "27厘米",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-07": [
+    {
+      "answer": " \n40平方厘米\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "41平方厘米",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-08": [
+    {
+      "answer": " \n5度\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "6度",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-09": [
+    {
+      "answer": " \n1.75升\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "2.75升",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-10": [
+    {
+      "answer": " \n7\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "8",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-11": [
+    {
+      "answer": " \n17\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "18",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-12": [
+    {
+      "answer": " \n12张\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "13张",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-13": [
+    {
+      "answer": " \n5\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "6",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-14": [
+    {
+      "answer": " \n85分钟\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "86分钟",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-15": [
+    {
+      "answer": " \n0.4\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "1.4",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-16": [
+    {
+      "answer": " \n7\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "8",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-17": [
+    {
+      "answer": " \n21次\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "22次",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-18": [
+    {
+      "answer": " \n4个\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "5个",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-19": [
+    {
+      "answer": " \n3.33\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "4.33",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "math-20": [
+    {
+      "answer": " \n21\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "22",
+      "expected_state": "fail",
+      "reason": "数值超出冻结容差；单位必须完整匹配"
+    }
+  ],
+  "classification-01": [
+    {
+      "answer": " \n物流\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：物流",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-02": [
+    {
+      "answer": " \n账务\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：账务",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-03": [
+    {
+      "answer": " \n技术\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：技术",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-04": [
+    {
+      "answer": " \n其他\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：其他",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-05": [
+    {
+      "answer": " \n物流\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：物流",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-06": [
+    {
+      "answer": " \n账务\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：账务",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-07": [
+    {
+      "answer": " \n技术\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：技术",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-08": [
+    {
+      "answer": " \n其他\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：其他",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-09": [
+    {
+      "answer": " \n物流\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：物流",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-10": [
+    {
+      "answer": " \n账务\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：账务",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-11": [
+    {
+      "answer": " \n技术\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：技术",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-12": [
+    {
+      "answer": " \n其他\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：其他",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-13": [
+    {
+      "answer": " \n物流\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：物流",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-14": [
+    {
+      "answer": " \n账务\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：账务",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-15": [
+    {
+      "answer": " \n技术\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：技术",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-16": [
+    {
+      "answer": " \n其他\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：其他",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-17": [
+    {
+      "answer": " \n物流\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：物流",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-18": [
+    {
+      "answer": " \n账务\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：账务",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-19": [
+    {
+      "answer": " \n技术\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：技术",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "classification-20": [
+    {
+      "answer": " \n其他\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "类别：其他",
+      "expected_state": "fail",
+      "reason": "只接受冻结标签；额外前缀属于无效标签"
+    }
+  ],
+  "structured-01": [
+    {
+      "answer": " \n{\"name\": \"林青\", \"address\": {\"city\": \"杭州\", \"zip\": null}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"name\": \"林青\", \"address\": {\"city\": \"杭州\", \"zip\": null}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-02": [
+    {
+      "answer": " \n{\"id\": \"A17\", \"status\": {\"paid\": true, \"shipped\": false}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"id\": \"A17\", \"status\": {\"paid\": true, \"shipped\": false}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-03": [
+    {
+      "answer": " \n{\"items\": [{\"name\": \"苹果\", \"count\": 2}, {\"name\": \"梨\", \"count\": 3}]}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"items\": [{\"name\": \"苹果\", \"count\": 2}, {\"name\": \"梨\", \"count\": 3}]}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-04": [
+    {
+      "answer": " \n{\"readings\": [-2, 5], \"unit\": \"度\"}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"readings\": [-2, 5], \"unit\": \"度\"}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-05": [
+    {
+      "answer": " \n{\"meeting\": {\"title\": \"周会\", \"attendees\": []}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"meeting\": {\"title\": \"周会\", \"attendees\": []}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-06": [
+    {
+      "answer": " \n{\"user\": {\"id\": \"U03\", \"active\": true, \"points\": 0}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"user\": {\"id\": \"U03\", \"active\": true, \"points\": 0}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-07": [
+    {
+      "answer": " \n{\"task\": {\"name\": \"备份\", \"state\": \"doing\"}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"task\": {\"name\": \"备份\", \"state\": \"doing\"}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-08": [
+    {
+      "answer": " \n{\"matrix\": [[1, 2], [3, 4]]}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"matrix\": [[1, 2], [3, 4]]}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-09": [
+    {
+      "answer": " \n{\"members\": [{\"name\": \"林甲\", \"captain\": true}, {\"name\": \"陈乙\", \"captain\": false}]}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"members\": [{\"name\": \"林甲\", \"captain\": true}, {\"name\": \"陈乙\", \"captain\": false}]}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-10": [
+    {
+      "answer": " \n{\"folder\": {\"name\": \"资料\", \"files\": [\"a.txt\", \"b.txt\"]}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"folder\": {\"name\": \"资料\", \"files\": [\"a.txt\", \"b.txt\"]}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-11": [
+    {
+      "answer": " \n{\"point\": {\"x\": 1.5, \"y\": -2.5}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"point\": {\"x\": 1.5, \"y\": -2.5}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-12": [
+    {
+      "answer": " \n{\"stock\": {\"笔\": 12, \"本\": 0}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"stock\": {\"笔\": 12, \"本\": 0}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-13": [
+    {
+      "answer": " \n{\"error\": {\"code\": \"E2\", \"message\": \"超时\", \"retryable\": true}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"error\": {\"code\": \"E2\", \"message\": \"超时\", \"retryable\": true}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-14": [
+    {
+      "answer": " \n{\"course\": {\"name\": \"绘画\", \"teacher\": null, \"room\": \"B2\"}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"course\": {\"name\": \"绘画\", \"teacher\": null, \"room\": \"B2\"}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-15": [
+    {
+      "answer": " \n{\"meta\": {\"tags\": [\"重要\", \"待办\"], \"archived\": false}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"meta\": {\"tags\": [\"重要\", \"待办\"], \"archived\": false}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-16": [
+    {
+      "answer": " \n{\"product\": {\"id\": \"P8\", \"price\": 12.5, \"quantity\": 2}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"product\": {\"id\": \"P8\", \"price\": 12.5, \"quantity\": 2}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-17": [
+    {
+      "answer": " \n{\"route\": [{\"stop\": \"东站\", \"order\": 1}, {\"stop\": \"南站\", \"order\": 2}, {\"stop\": \"西站\", \"order\": 3}]}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"route\": [{\"stop\": \"东站\", \"order\": 1}, {\"stop\": \"南站\", \"order\": 2}, {\"stop\": \"西站\", \"order\": 3}]}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-18": [
+    {
+      "answer": " \n{\"fields\": {\"a/b\": \"启用\", \"x~y\": false}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"fields\": {\"a/b\": \"启用\", \"x~y\": false}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-19": [
+    {
+      "answer": " \n{\"range\": {\"min\": 0, \"max\": 10, \"includeMin\": true, \"includeMax\": false}}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"range\": {\"min\": 0, \"max\": 10, \"includeMin\": true, \"includeMax\": false}}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ],
+  "structured-20": [
+    {
+      "answer": " \n{\"answers\": [{\"question\": 1, \"value\": \"是\"}, {\"question\": 2, \"value\": null}]}\n ",
+      "expected_state": "pass",
+      "reason": "首尾空白允许"
+    },
+    {
+      "answer": "```json\n{\"answers\": [{\"question\": 1, \"value\": \"是\"}, {\"question\": 2, \"value\": null}]}\n```",
+      "expected_state": "fail",
+      "reason": "Markdown围栏不属于JSON；解析失败时所有字段保留分母"
+    }
+  ]
+}

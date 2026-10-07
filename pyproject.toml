@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "inferyard"
+version = "0.0.1"
+description = "Cross-platform local AI benchmarking CLI"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = "==3.14.*"
+dependencies = [
+  "httpx>=0.28,<0.29",
+  "jinja2>=3.1.6,<3.2",
+  "jsonschema>=4.25,<5",
+  "psutil>=7.2,<8; sys_platform == 'win32'",
+  "psutil==7.2.2; sys_platform == 'darwin'",
+]
+
+[project.urls]
+Repository = "https://github.com/sunny0826/inferyard"
+Issues = "https://github.com/sunny0826/inferyard/issues"
+
+[project.scripts]
+inferyard = "inferyard.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8.4,<10", "jsonschema>=4.25,<5", "ruff>=0.12,<1"]
+
+[tool.uv]
+build-constraint-dependencies = [
+  "hatchling==1.32.4",
+  "packaging==26.3",
+  "pathspec==1.1.1",
+  "pluggy==1.6.0",
+  "tomlkit==0.15.1",
+  "trove-classifiers==2026.9.21.13",
+  "editables==0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/inferyard"]
+include = [
+  "src/inferyard/**/*.py", "src/inferyard/templates/**/*.html",
+  "src/inferyard/data/*.json", "src/inferyard/data/community/resources.json",
+  "src/inferyard/data/community/README.md",
+  "src/inferyard/data/community/configs/*.example.toml",
+  "src/inferyard/data/community/bundles/*.json",
+  "src/inferyard/data/community/profile/*.json",
+]
+exclude = ["**/__pycache__", "**/*.pyc", "**/*.pyo"]
+
+[tool.hatch.build.targets.sdist]
+# Explicit build inputs only; no real device configurations, evidence, caches or model assets.
+only-include = [
+  "pyproject.toml", "uv.lock", "LICENSE", "README.md", "docs/installation.md", ".gitignore",
+  "src/inferyard",
+]
+include = [
+  "/pyproject.toml", "/uv.lock", "/LICENSE", "/README.md", "/docs/installation.md", "/.gitignore",
+  "src/inferyard/**/*.py", "src/inferyard/templates/**/*.html",
+  "src/inferyard/data/*.json", "src/inferyard/data/community/resources.json",
+  "src/inferyard/data/community/README.md",
+  "src/inferyard/data/community/configs/*.example.toml",
+  "src/inferyard/data/community/bundles/*.json",
+  "src/inferyard/data/community/profile/*.json",
+]
+exclude = ["**/__pycache__", "**/*.pyc", "**/*.pyo"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

@@ -1,0 +1,13 @@
+[tools]
+python = "3.14.7"
+uv = "0.12.18"
+go = "1.27.1"
+
+[tasks.test]
+run = "uv run --frozen pytest"
+
+[tasks.lint]
+run = "uv run --frozen ruff check src tests scripts"
+
+[tasks.schemas]
+run = "uv run --frozen python scripts/export_schemas.py --check"

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:metric_definition",
+  "title": "InferYard metric_definition v3",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    },
+    "metric_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "definition_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "unit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "layer": {
+      "type": "string",
+      "enum": [
+        "request",
+        "process",
+        "device",
+        "engine",
+        "host",
+        "experiment"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "window": {
+      "type": "string",
+      "minLength": 1
+    },
+    "applicability": {
+      "type": "string",
+      "minLength": 1
+    },
+    "required_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+      },
+      "minItems": 0
+    },
+    "aggregation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "comparison_policy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "implementation_status": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "implemented",
+        "verified"
+      ]
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "core",
+        "conditional"
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    }
+  },
+  "required": [
+    "schema_version",
+    "metric_id",
+    "name",
+    "definition_version",
+    "unit",
+    "layer",
+    "source",
+    "window",
+    "applicability",
+    "required_capabilities",
+    "aggregation",
+    "comparison_policy",
+    "implementation_status",
+    "scope",
+    "evidence_refs"
+  ],
+  "additionalProperties": false
+}

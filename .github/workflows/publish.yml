@@ -1,0 +1,125 @@
+name: Manually verify or publish a fixed candidate
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful manual package-check run ID in this repository
+        required: true
+        type: string
+      manifest_sha256:
+        description: Reviewed v2 candidate manifest SHA256
+        required: true
+        type: string
+      source_commit:
+        description: Full source SHA (select its matching dispatch ref)
+        required: true
+        type: string
+      destination:
+        description: Explicit external operation; verify-only performs no publication
+        type: choice
+        default: verify-only
+        options: [verify-only, github-release, pypi, both]
+permissions: {}
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_commit }}
+          persist-credentials: false
+      - uses: jdx/mise-action@v4
+      - run: mise exec -- uv sync --frozen
+      - uses: ./.github/actions/check-release
+        with:
+          run-id: ${{ inputs.run_id }}
+          source-commit: ${{ inputs.source_commit }}
+          manifest-sha256: ${{ inputs.manifest_sha256 }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+  github-release:
+    needs: verify
+    if: inputs.destination == 'github-release' || inputs.destination == 'both'
+    runs-on: ubuntu-24.04
+    environment: github-release
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_commit }}
+          persist-credentials: false
+      - uses: jdx/mise-action@v4
+      - run: mise exec -- uv sync --frozen
+      - uses: ./.github/actions/check-release
+        with:
+          run-id: ${{ inputs.run_id }}
+          source-commit: ${{ inputs.source_commit }}
+          manifest-sha256: ${{ inputs.manifest_sha256 }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Refuse a release tag pointing at another source
+        uses: actions/github-script@v8
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        with:
+          script: |
+            let ref;
+            try {
+              ref = (await github.rest.git.getRef({ ...context.repo, ref: 'tags/v0.0.1' })).data;
+            } catch (error) {
+              if (error.status === 404) return;
+              throw error;
+            }
+            let object = ref.object;
+            while (object.type === 'tag') {
+              object = (await github.rest.git.getTag({ ...context.repo, tag_sha: object.sha })).data.object;
+            }
+            if (object.type !== 'commit' || object.sha !== process.env.SOURCE_COMMIT) {
+              throw new Error('Release tag points at another source commit');
+            }
+      - name: Create a draft Release with the verified bytes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          CANDIDATE_SHA: ${{ inputs.manifest_sha256 }}
+          SOURCE_RUN: ${{ inputs.run_id }}
+        run: >-
+          gh release create v0.0.1 approved-files/*
+          --target "$SOURCE_COMMIT" --draft --title 'v0.0.1'
+          --notes "Source $SOURCE_COMMIT; candidate SHA256 $CANDIDATE_SHA; installation evidence in package-check run $SOURCE_RUN. Installation checks do not establish native model or performance qualification."
+  pypi:
+    needs: verify
+    if: inputs.destination == 'pypi' || inputs.destination == 'both'
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/inferyard
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_commit }}
+          persist-credentials: false
+      - uses: jdx/mise-action@v4
+      - run: mise exec -- uv sync --frozen
+      - uses: ./.github/actions/check-release
+        with:
+          run-id: ${{ inputs.run_id }}
+          source-commit: ${{ inputs.source_commit }}
+          manifest-sha256: ${{ inputs.manifest_sha256 }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          packages-only: 'true'
+      # Maintainer setup: reserve project name, configure the pypi environment and Trusted Publisher.
+      # This workflow is preparation only until explicitly dispatched for publication.
+      - name: Publish verified wheel and sdist using Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: approved-files/
+          attestations: true

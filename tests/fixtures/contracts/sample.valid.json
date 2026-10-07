@@ -1,0 +1,20 @@
+{
+  "schema_version": 3,
+  "run_id": "run-fixture",
+  "seq": 1,
+  "clock_id": "clock-fixture",
+  "utc": "2026-09-29T09:00:00Z",
+  "phase": "formal",
+  "request_id": "req-1",
+  "metric_name": "service_rss",
+  "value": 8589934592,
+  "unit": "bytes",
+  "source": "/proc/pid/status:VmRSS",
+  "read_started_ns": 500000000,
+  "read_finished_ns": 501000000,
+  "server_pid": 12345,
+  "process_start_ticks": 67890,
+  "missing_reason": null,
+  "experiment_id": "experiment-fixture",
+  "trial_id": "trial-fixture"
+}

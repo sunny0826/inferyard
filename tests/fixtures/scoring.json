@@ -1,0 +1,20 @@
+[
+  {"kind":"instruction","answer":"北京","contains":["北京"],"forbidden":["上海"],"lines":1,"pass":true},
+  {"kind":"instruction","answer":"上海","contains":["北京"],"forbidden":["上海"],"lines":1,"pass":false},
+  {"kind":"instruction","answer":"  北京  \r\n\r\n中国\r\n","contains":["北京","中国"],"forbidden":[],"lines":2,"pass":true},
+  {"kind":"instruction","answer":"Ａ","contains":["A"],"forbidden":[],"lines":1,"pass":false},
+  {"kind":"instruction","answer":"","contains":[],"forbidden":["上海"],"lines":null,"pass":false},
+  {"kind":"extraction","answer":"{\"age\":12,\"name\":\"小明\"}","pass":true,"format":true},
+  {"kind":"extraction","answer":"{\"age\":true,\"name\":\"小明\"}","pass":false,"format":false},
+  {"kind":"extraction","answer":"{\"age\":12,\"age\":12,\"name\":\"小明\"}","pass":false,"format":false},
+  {"kind":"extraction","answer":"{\"age\":13,\"name\":\"小明\"}","pass":false,"format":true},
+  {"kind":"extraction","answer":"{\"age\":12}","pass":false,"format":false},
+  {"kind":"extraction","answer":"{\"age\":12,\"name\":\"小明\",\"extra\":0}","pass":false,"format":false},
+  {"kind":"extraction","answer":"{\"age\":\"12\",\"name\":\"小明\"}","pass":false,"format":false},
+  {"kind":"extraction","answer":"```json\n{\"age\":12,\"name\":\"小明\"}\n```","pass":false,"format":false},
+  {"kind":"extraction","answer":"答案：{\"age\":12,\"name\":\"小明\"}","pass":false,"format":false},
+  {"kind":"extraction","answer":"{\"age\":NaN,\"name\":\"小明\"}","pass":false,"format":false},
+  {"kind":"extraction","answer":"{\"age\":Infinity,\"name\":\"小明\"}","pass":false,"format":false},
+  {"kind":"extraction","answer":"null","pass":false,"format":false},
+  {"kind":"extraction","answer":"","pass":false,"format":false}
+]

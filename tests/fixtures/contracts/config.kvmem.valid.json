@@ -1,0 +1,125 @@
+{
+  "schema_version": 3,
+  "execution": {
+    "concurrency": 1,
+    "repeats": 1,
+    "order": "fixed",
+    "timeout_seconds": 180,
+    "warmup_count": 3,
+    "warmup_prompt": "请只回答：准备就绪",
+    "probe_prompt": "请只用中文回答：中国的首都是哪里？只回答城市名。",
+    "idle_wait_seconds": 5
+  },
+  "telemetry": {
+    "interval_ms": 500,
+    "baseline_seconds": 5,
+    "system_memory_required": true,
+    "service_rss_required": false,
+    "window_definition": "v1"
+  },
+  "evidence": {
+    "parameter_evidence": [],
+    "service_evidence": []
+  },
+  "output": {
+    "min_disk_bytes": 5368709120,
+    "min_available_memory_bytes": 2446092032,
+    "root": "D:\\lab\\results"
+  },
+  "bundle": {
+    "path": "../bundles/zh-smoke.json",
+    "version": "1.0.0-draft"
+  },
+  "device": {
+    "id": "LAB-WINDOWS-GPU-001",
+    "client_position": "same_host_native"
+  },
+  "endpoint": {
+    "url": "http://127.0.0.1:48858",
+    "server_pid": 1,
+    "process_start_ticks": 1
+  },
+  "engine": {
+    "adapter": "kvmem",
+    "binary_path": "D:\\lab\\engine.exe",
+    "binary_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "backend": "cuda",
+    "release": "replace-with-lab-patched-build-id",
+    "runtime_library_manifest": "D:\\lab\\engine-sha256.json",
+    "startup_args": [
+      "--model",
+      "D:\\lab\\model.gguf",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "48858"
+    ],
+    "working_directory": "D:\\lab",
+    "asset_manifest": [
+      {
+        "path": "D:\\lab\\model.gguf",
+        "role": "model",
+        "bytes": 1,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "path": "D:\\lab\\engine.exe",
+        "role": "engine",
+        "bytes": 1,
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      {
+        "path": "D:\\lab\\template.jinja",
+        "role": "template",
+        "bytes": 1,
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      {
+        "path": "D:\\lab\\engine-runtime.dll",
+        "role": "library",
+        "bytes": 1,
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    ],
+    "observation_mode": "auto"
+  },
+  "model": {
+    "display_name": "local-kvmem-text",
+    "repo": "local",
+    "revision": "replace-model-revision",
+    "local_path": "D:\\lab\\model.gguf",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "packing": "replace-packing",
+    "template_path": "D:\\lab\\template.jinja",
+    "template_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "kind": "gguf",
+    "bytes": 1
+  },
+  "generation": {
+    "max_tokens": 512,
+    "seed": 42,
+    "seed_support": "supported",
+    "reasoning_mode": "off",
+    "repeat_penalty": 1.0,
+    "stop": [],
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": 0.0,
+    "presence_penalty": 0.0
+  },
+  "conditions": {
+    "ac_online": true,
+    "allow_unknown_environment": true,
+    "model_loaded": true,
+    "cache_policy": "disabled",
+    "slots": 1,
+    "epp": "unknown",
+    "governor": "unknown",
+    "profile": "unknown",
+    "threads": 8,
+    "threads_batch": 8,
+    "context_size": 4096,
+    "background_load": "record actual background activity"
+  }
+}

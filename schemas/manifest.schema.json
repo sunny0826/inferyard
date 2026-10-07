@@ -1,0 +1,576 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:manifest",
+  "title": "InferYard manifest v3",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "sealed": {
+      "type": "boolean",
+      "const": true
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "derived": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sha256",
+          "bytes",
+          "derived"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "check",
+        "run"
+      ]
+    },
+    "execution_mode": {
+      "type": "string",
+      "enum": [
+        "single",
+        "experiment"
+      ]
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "measured",
+        "migrated"
+      ]
+    },
+    "experiment_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "trial_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "engine_observation": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "lab",
+            "native"
+          ]
+        },
+        "engine": {
+          "type": "string",
+          "enum": [
+            "kvmem",
+            "ninfer"
+          ]
+        },
+        "generation": {
+          "type": "string",
+          "enum": [
+            "/v1/chat/completions"
+          ]
+        },
+        "endpoints": {
+          "type": "object",
+          "properties": {
+            "/lab/v1/identity": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "enum": [
+                    true,
+                    null
+                  ]
+                },
+                "missing_reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status_code": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "body": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "available",
+                "missing_reason",
+                "status_code",
+                "body"
+              ],
+              "additionalProperties": false
+            },
+            "/lab/v1/lifecycle": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "enum": [
+                    true,
+                    null
+                  ]
+                },
+                "missing_reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status_code": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "body": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "available",
+                "missing_reason",
+                "status_code",
+                "body"
+              ],
+              "additionalProperties": false
+            },
+            "/health": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "enum": [
+                    true,
+                    null
+                  ]
+                },
+                "missing_reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status_code": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "body": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "available",
+                "missing_reason",
+                "status_code",
+                "body"
+              ],
+              "additionalProperties": false
+            },
+            "/v1/models": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "enum": [
+                    true,
+                    null
+                  ]
+                },
+                "missing_reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status_code": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "body": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "available",
+                "missing_reason",
+                "status_code",
+                "body"
+              ],
+              "additionalProperties": false
+            },
+            "/slots": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "enum": [
+                    true,
+                    null
+                  ]
+                },
+                "missing_reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status_code": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "body": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "available",
+                "missing_reason",
+                "status_code",
+                "body"
+              ],
+              "additionalProperties": false
+            },
+            "/metrics": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "enum": [
+                    true,
+                    null
+                  ]
+                },
+                "missing_reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status_code": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "body": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "available",
+                "missing_reason",
+                "status_code",
+                "body"
+              ],
+              "additionalProperties": false
+            },
+            "/props": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "enum": [
+                    true,
+                    null
+                  ]
+                },
+                "missing_reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status_code": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "body": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "available",
+                "missing_reason",
+                "status_code",
+                "body"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "/lab/v1/identity",
+            "/lab/v1/lifecycle",
+            "/health",
+            "/v1/models",
+            "/slots",
+            "/metrics",
+            "/props"
+          ],
+          "additionalProperties": false
+        },
+        "request_id_scope": {
+          "type": "string",
+          "enum": [
+            "engine",
+            "client_only"
+          ]
+        },
+        "engine_internal_drain": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "capability_only"
+              ]
+            },
+            "missing_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "value",
+            "scope",
+            "missing_reason"
+          ],
+          "additionalProperties": false
+        },
+        "native_cancel": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "null"
+            },
+            "missing_reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "value",
+            "missing_reason"
+          ],
+          "additionalProperties": false
+        },
+        "process_evidence": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "mode",
+        "engine",
+        "generation",
+        "endpoints",
+        "request_id_scope",
+        "engine_internal_drain",
+        "native_cancel",
+        "process_evidence"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "sealed",
+    "files"
+  ],
+  "additionalProperties": false
+}
