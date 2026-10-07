@@ -20,7 +20,7 @@ flowchart TD
 ```
 
 这是单 worker 实施 DAG，没有并行源码波次。Reviewer 只读；父会话唯一负责集成及最终接受。
-Reviewer 无缺陷时可直接进入 A；有缺陷则经 F 回审。Windows 边界未裁定不能跳过 P0。
+Reviewer 无缺陷时可直接进入 A；有缺陷则经 F 回审。退休事务、固定旧基线范围和安装 v3 未通过不能跳过 P0。
 本 worker 不创建新 agent/session；T0 提交后停写，后续工作必须取得父会话放行。
 
 ## T0 文件所有权
@@ -50,12 +50,12 @@ Reviewer 无缺陷时可直接进入 A；有缺陷则经 F 回审。Windows 边�
 | `src/inferyard/evidence/` | migration.py、migration_source.py、migration_transform.py 删除；ledger、token_budgets、来源/派生副本拒绝；原日志与封存规则保留 |
 | `src/inferyard/reporting/`、`analysis/` | report/report_assets/sealed_report、comparison_report、public_package、engine_fit 验证器去旧分派；评分 phase2.v1/v2 与当前计算不改义 |
 | `src/inferyard/config/` | bundle/bundle_review 删除升级生成器但保留审核证明；public_plan/public_recipe 去旧策略；engine_fit_assets 去仅历史目录回退 |
-| `src/inferyard/runtime/`、`platforms/` | lock.py 及窄维护模块、windows_host_paths/platform_io；实时入口继续共用锁；不改停止、身份、取消/排空边界 |
+| `src/inferyard/runtime/`、`platforms/` | lock.py 及窄维护模块、windows_host_paths/platform_io；pending/ready、退休标记和不可变原字节凭据；常态只用新锁/state；不改停止、身份、取消/排空边界 |
 | `src/inferyard/templates/` | 删除历史快照与 report_v1.html；根 report*.html 当前模板保留 |
 | `src/inferyard/data/implementation-files.json`、`implementation_identity.py` | 根据删除/新增文件更新职责归属，摘要反映实际源码；不借机改题包、目录数据或身份算法 |
-| `scripts/` 的历史兼容与发行检查 | 删除 migrate_request_snapshots.py、prepare_windows_evidence.py 等仅历史输入工具；observer_stream/analyze_observer 去 v1；构建允许列表按删除项调整；其余有副作用脚本不运行 |
+| `scripts/` 的历史兼容与发行检查 | 删除 migrate_request_snapshots.py、prepare_windows_evidence.py 等仅历史输入工具；observer_stream/analyze_observer 去 v1；release_common 安装结果校验升 v3，prepare/verify_release_candidate 消费链和允许列表同步；其余有副作用脚本不运行 |
 | `observer/` 的协议边界测试 | 保留 Go lab_observer.v2 writer、原生后端与六目标；仅调整关联断言，不重编号 |
-| `tests/` | 旧成功兼容用例替换为拒绝路径；保留最小旧格式负例及当前协议正例；锁、封存、安装检查同步 |
+| `tests/` | 旧成功兼容用例替换为拒绝路径；重点 installed_probe/run_installed/prepare_inputs、test_release_candidate/test_release_fixture，以及固定旧 HostLock 拒绝夹具、事务崩溃与新锁测试 |
 | `AGENTS.md`、README/CONTRIBUTING、`docs/`、`scripts/README.md` | 删除冲突的历史支持承诺，说明 unsupported 和维护入口；原 ADR 保留理由、注明局部取代；平台实现/验收分开 |
 | `pyproject.toml`（仅打包允许列表如确需） | 删除历史模板/工具交付项；不变更 Python、uv、依赖或产品版本 |
 
@@ -72,12 +72,17 @@ Reviewer 无缺陷时可直接进入 A；有缺陷则经 F 回审。Windows 边�
 | 题包证明 | test_bundle_migration 中“生成升级包”用例退役；用现有 v3 小夹具保留证明原哈希、等价性、原批准及逐题审核拒绝测试；仓内及随包题包 SHA 与基线一致 |
 | 格式拒绝 | 已知旧版、未知版、缺版、bool 版本、坏 JSON、坏 seal、来源损坏、版本冲突、混合新旧预算、递归旧来源分别覆盖；不默默升级、默认或重评分 |
 | 当前离线 | 当前 raw run/batch/plan、report7/comparison4/public5/engine-fit manifest2 正常；未封存 partial、坏 seal、source-root 映射、路径逃逸、显式 rerender 保留 |
-| 锁正常与竞争 | 临时根中真实子进程：旧先持锁/新先持锁/两个迁移器竞争；失败方请求计数 0；退出释放全部自有句柄 |
-| 锁故障 | 在每次 dirty/clean/初始化镜像写前后强制终止子进程；残留状态不放行；dirty 旧服务活着、PID 复用、冲突 token、权限/链接/磁盘错误均阻断 |
-| 旧工具再启动 | 用保留旧锁协议的最小子进程模拟器，不调用原项目；验证新崩溃后旧看到 dirty、旧运行后新不忘 dirty、只清一处不能绕过恢复 |
+| 锁正常与竞争 | 临时根中真实子进程：旧先持锁、迁移先持锁、两个迁移器竞争、新工具之间互斥；失败方请求数 0，退出释放全部自有句柄 |
+| 迁移事务故障 | 在原字节凭据、pending、公共退休、D 退休、ready 每次写入前后强制终止；重试只接受原快照或同事务标记；不同 clean/dirty、坏凭据、错误事务 ID、权限/链接/磁盘故障不覆盖 |
+| 首次部署 | 无旧文件也须显式建立退休边界；孤立锁、已有旧状态、pending、缺失新 state 都不能隐式生成 clean；测试凭据发布前崩溃的保守阻断 |
+| 旧工具再启动 | 使用逐字节绑定 2fa125c 的 HostLock 测试夹具，只替换导入适配/注入路径，不能改拒绝逻辑；退休后在新工具空闲/运行/崩溃时都请求数 0，不被 D clean 镜像覆盖；原项目只读，不实际调用它执行 |
+| 新运行故障 | 新 state 的 dirty/clean 均保留 ready envelope；崩溃 dirty 持久化、PID 复用/旧服务存活时拒绝恢复；不再读写旧状态，不绕过取消排空 |
+| 安装探针 | installed_probe 三次运行均验证 report7 成功及 v1–v6 unsupported；不生成旧模板，旧输出/旧 scope 不通过；run_installed 产出 v3，发行消费链拒绝 v2 资格 |
 
 锁测试用生产锁原语和真实进程，不只 monkeypatch `_lock`；所有路径注入到本次临时目录。
-Windows msvcrt/ACL/reparse/FILETIME、多账户及 D 卷变化须原生验收；macOS 模拟不算 Windows 通过。
+Windows msvcrt/ACL/reparse/FILETIME、多账户、无 D/有 D 和后加 D 的固定基线拒绝须原生验收；
+macOS 模拟不算 Windows 通过。管理员删状态/换公共根和任意古老 D-only 程序按契约边界披露，
+不把无法约束的管理员行为扩展成无限兼容测试矩阵。
 本机不运行固定系统路径的 installed_host_state.py / installed_request_chain.py。
 不发真实模型请求，不运行真实迁移；端到端使用合成服务和代表性当前证据。
 
@@ -90,11 +95,12 @@ Windows msvcrt/ACL/reparse/FILETIME、多账户及 D 卷变化须原生验收；
 Gate A 由父会话在最终集成提交执行：全量相关回归、Ruff、导出一致性、职责/导入闭包，
 检查 wheel/sdist 无旧模板/迁移实现而保留当前资源；若触及 observer 执行 Go 测试与构建检查。
 按[贡献指南](../../CONTRIBUTING.md#本地候选构建与安装检查)用新目录构建同批 wheel/sdist、
-sdist 重建、约束文件、源码外安装及候选核验。不上传、不把 T0 或此前候选检查当本次通过。
+sdist 重建、约束文件、源码外安装及候选核验。结果必须为 installed_safe_checks.v3，
+community_distribution.v2 外壳中的安装 v2 不通过新核验；不上传、不把此前候选检查当本次通过。
 
 Gate B 使用同批安装字节，在源码外生成/verify 当前离线报告、比较、公开包和 engine-fit 合成产物；
 实际离线浏览桌面/手机宽度，禁网确认 SVG/CSP、源码折叠与来源信息。
-另执行隔离临时根的真实进程互斥、崩溃与恢复场景；这些是系统行为证据，不是模型测评。
+另执行隔离临时根的迁移事务中断、退休拒绝、新锁互斥与 dirty 恢复；这些不是模型测评。
 至少一个实际平台完成安装闭环；其他平台分别记录未验，不继承原项目成绩。
 Windows 锁迁移能力未有原生证据时保留阻断/未验范围，由父会话决定集成接受范围。
 

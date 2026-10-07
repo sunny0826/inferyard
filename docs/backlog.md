@@ -35,8 +35,10 @@ wheel 为 `3dcd2363c31ff3a34f92bde4dbd114e9a82a94ac06f942a7ef5c6d6cbdafbf0b`。
 
 - 用户已授权只支持当前生产格式、删除旧运行迁移与历史报告兼容；T0 三件套已形成，待独立 Reviewer 与父会话审核，源码/测试未改。
 - 基线 `fe1052a41afbddc1b7ceff852e794d6d872977ce`；[格式矩阵](contracts/inferyard-current-format.md#格式支持矩阵) 保留 engine-fit 当前多版本、评分定义及已审核题包证明，不按 v1/v2 名称清理。
-- [锁提案](contracts/inferyard-current-format.md#锁迁移) 使用新主路径与持续旧锁/dirty 镜像；现有旧状态仅由显式 clean 迁移接管，不在本机执行真实迁移。
-- 父会话须裁定持续旧桥和 Windows D 根动态变化的支持边界；裁定及 T0 审核前保持实施门关闭。
+- [锁提案](contracts/inferyard-current-format.md#锁迁移) 优先评估显式 clean 迁移、固定旧入口退休和新锁/state 独立运行；永久桥接仅为对照，不作为已冻结结论。原字节凭据、pending→ready、中断重试及首次部署边界已列明，未执行真实迁移。
+- 旧 HostLock 固定为源项目 `2fa125ccbe97d7d029fbbea494970f2336829ca2`，与新基线仅包名不同；公共退休 state 能阻断该基线，Windows 后加 D 不独自构成绕过。管理员破坏公共状态和任意古老 D-only 程序单列边界。
+- installed_probe 的历史 report1–6 成功路径拟改为 report7 成功及旧格式拒绝，安装结果升 installed_safe_checks.v3；不继承旧安装资格，候选外壳 community_distribution.v2 保留。
+- Reviewer/root 尚须审核首选退休事务、可证范围与安装结果版本；T0 审核及父会话放行前实施门保持关闭。
 - 后续单 worker 实施、Reviewer 审核与父会话 Gate A/Gate B 见[计划](plans/inferyard-current-format.md)；不继承此前构建或原生验收，Windows 无新原生证据时保持未验。
 
 ## 后续工程工作

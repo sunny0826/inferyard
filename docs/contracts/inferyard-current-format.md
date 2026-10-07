@@ -26,7 +26,7 @@
 | 身份/资产 | implementation-identity.v1、model-assets.v2；plan.v1 当前使用的无 definition 全目录清单 | 仅由历史 plan.v2–v4 触发的无 definition 目录回退；旧比较身份算法 | [IdentityContext](../../src/inferyard/implementation_identity.py)、[assets](../../src/inferyard/config/engine_fit_assets.py)、[model_manifest](../../src/inferyard/platforms/engine_fit.py) |
 | token 预算/原始日志 | token-budgets.v2.json / token-budgets.v2；原始 events、样本与请求前身份检查点 | token-budgets.json 位置数组；旧 requests.jsonl 派生副本专用重建/兼容 | [预算 writer](../../src/inferyard/evidence/token_budgets.py)、[ledger](../../src/inferyard/evidence/ledger.py)、[Journal](../../src/inferyard/evidence/journal.py) |
 | 扩展及开销 | closed_concurrency.v1、native_tools.v1、total_observer_control.v1/v2；extension_event.v1、trial_control_baseline.v1；当前开销、重复和谱系定义 | 不按 v1/v2 扫除；此任务不重编独立实验协议 | [freeze/run](../../src/inferyard/extensions/workflow.py)、[extension journal](../../src/inferyard/extensions/extension_evidence.py)、[baseline](../../src/inferyard/extensions/trial_control_baseline.py) |
-| 准备/发行/锁 | community_init/config_assets/config_candidate/config_binding.v1；installed_safe_checks.v2、community_distribution.v2；LOCK_FORMAT_VERSION=1 | 不因数字小而删除；已拒绝的旧发行回执仍拒绝 | [CLI 字段](../cli-surface.md)、[发行工具](../../scripts/README.md)、[HostLock](../../src/inferyard/runtime/lock.py) |
+| 准备/发行/锁 | community_init/config_assets/config_candidate/config_binding.v1；基线 installed_safe_checks.v2，因 scope 改变拟升 v3；community_distribution.v2；运行 state 版本 1 | 安装旧 v2 不继承新资格；其他编号不因数字小而删除；退休标记见下文 | [CLI 字段](../cli-surface.md)、[发行工具](../../scripts/README.md)、[HostLock](../../src/inferyard/runtime/lock.py) |
 
 保持 `urn:local-ai-bench:`、目录方法/指标 ID、题目 ID、bundle ID 与哈希算法。
 核心 Schema 中 `origin=migrated` 等历史枚举不借本次改变结构定义；应用读取入口明确拒绝其运行包。
@@ -57,85 +57,158 @@ report v7/comparison v4/engine-fit manifest.v2 保持保存字节与显式 `--re
 
 ## 锁迁移
 
-### 路径与安全桥
+以下是首选待审方案，不是已批准实现。对照方案与代价见 [ADR 038](../decisions/038-inferyard-current-format.md#替代方案与风险)。
+目标是退休固定旧工具的实时入口，而不是让新旧工具迁移后继续执行测评。
 
-| 平台 | 新主 lock / state | 持续持有的旧安全桥 |
+### 固定旧基线与退休拒绝证明
+
+只读核对源项目提交 `2fa125ccbe97d7d029fbbea494970f2336829ca2` 的
+`src/local_ai_bench/runtime/lock.py`，与 InferYard 基线的
+[lock.py](../../src/inferyard/runtime/lock.py) 在仅替换包名后逐字节一致。
+旧文件 SHA256 为 `4bfa0a676b5c03a6e348cea180501d1e6a0df33dea260c69cc52807a05d138a1`，
+新基线文件 SHA256 为 `3c969665902d636fb14b994e03601b7cd6e11ad373f987b066c109dba9d739ae`。
+两者 windows_host_paths.py 字节相同；公共根均由原生 Common AppData 查询取得。
+
+退休标记拟采用严格 JSON：`schema_version=2`、`definition="inferyard-host-retired.v1"`、
+`migration_id`、`receipt_sha256` 四键；不含 dirty，不假装普通 clean 状态。
+这是独立主机维护标记，不改变测量 schema 3 或现行运行 state schema 1。
+旧 `_read_state` 要求 `schema_version == LOCK_FORMAT_VERSION == 1`，因此必抛
+`PreflightError("invalid_host_state")`；单加未知 `retired=true` 字段则会被忽略，不能采用。
+
+旧 `__enter__` 先获取所有锁、再读取所有 state，最后才选择 dirty/自动镜像并返回。
+任一退休标记使其在镜像和返回之前失败；即使 D state 为 clean，也不能覆盖公共退休标记。
+单次/probe、batch/resume、engine-fit、live 扩展、overhead/length 的 HostLock 准入均在模型请求之前；
+实施验收须用固定旧实现及这些入口的请求计数确认，而不是只测新实现理解退休标记。
+锁外脚本可能先启动服务或查询健康；本方案只证明受 HostLock 保护的生成请求被阻断，
+不声称阻止操作者手动请求、其他客户端或任意更古老的无同等准入程序。
+
+### 固定路径与常态责任
+
+| 平台 | 新运行 lock / state | 需要退休的旧位置 |
 | --- | --- | --- |
 | Linux、macOS | `/var/tmp/inferyard-host.lock`、`/var/tmp/inferyard-host.state.json` | 同目录 `local-ai-benchmark-host.lock` / `.state.json` |
-| Windows | 原生 Common AppData 下 `inferyard-host.lock`、`inferyard-host.state.json` | Common AppData 下旧名；旧 D 根可用时还包括 `D:/local-ai-benchmark-host.lock` / `.state.json` |
+| Windows | 原生 Common AppData 下 `inferyard-host.lock`、`inferyard-host.state.json` | Common AppData 下旧名始终处理；维护时存在的 D 根旧 lock/state 也核验并退休 |
 
-Common AppData 沿用 [原生 known-folder 查询](../../src/inferyard/platforms/windows_host_paths.py)，
-不用环境变量、用户临时目录、cwd 或失败回退改变互斥域。
-锁/state schema 仍为 1，它不是测量 schema。生产 CLI 不接受任意锁路径覆盖；测试仅注入临时根。
-Windows D 根的可用域尚受下面父会话裁定项限制，不能据此宣布无 D 盘路径已安全迁移。
+同一新根另存只写一次的 `inferyard-host-migration.json` 维护凭据。
+不接受 cwd、环境变量或 CLI 任意锁根，不在路径失败时回退；测试仅注入隔离临时根。
+旧 lock 文件永久保留原 inode，不 unlink/replace/rename；旧 state 可在保存原字节后原子替换为退休标记。
+新工具提交 ready 后只持有新 lock、读写新 state，校验其绑定的本地维护凭据；
+不再获取旧锁、解析旧 dirty 或双写状态。旧 state 的读取/重试只属于维护入口。
 
-每次实时执行、恢复和维护都按固定顺序持锁：Windows D 旧锁（适用时）→公共旧锁→新锁；
-POSIX 公共旧锁→新锁。任一非阻塞获取失败，释放已获得的句柄并退出 2，不等待后偷跑。
-从准入前到排空、必要封存结束始终持有全部锁；每个旧版本至少与新版本共享一个内核锁。
-锁文件不 unlink、不 replace、不改名；只原子替换 state。不能只在迁移时短暂持有旧锁。
+### 维护凭据与提交状态
 
-### 首次建立与显式迁移
-
-“首次”只是已检查的所有固定位置均无 lock/state 的文件系统状态，不声称能识别人为删除的历史。
-记录排他创建结果，并在全部锁获得后重读状态，不能用 `Path.exists()` 吞掉权限错误来判定首次。
-
-| 已锁定后的观察 | 行为 |
+| 对象 | 最小冻结字段与作用 |
 | --- | --- |
-| 所有旧/新位置原先均不存在 | 初始化全部 clean state，新 state 最后持久化；任何失败都停，不发请求 |
-| 新 state 不存在，任一旧 lock/state 已存在 | 普通运行退出 2 / `host_state_migration_required`，不自动接管 |
-| 旧 state 全部存在、合法且 clean | 仅拟新增 `inferyard host-state migrate` 可在全部锁下复制到新位置；无请求、无服务启动/停止、返回 ready_to_run=false |
-| 旧 dirty、旧锁被占、状态缺失或损坏 | 维护入口拒绝；dirty 先走原项目原有 token/旧进程退出/新身份及 idle 恢复；本入口不清理、不接受 force/reset |
-| 新 state 已存在且各桥 state 完整 | 普通运行核验全部状态；任何 dirty 优先于 clean，不能以较新文件或时间戳选择 clean |
-| 新 state 已存在但桥 state 缺失、不同 dirty token/身份并存 | fail-closed；不自动生成 clean 镜像或挑选赢家 |
+| 不可变维护凭据 | `definition=host-state-migration.v1`、migration_id、固定旧/新基线 SHA、mode（fresh/migrate）、固定根及文件身份、旧槽位清单；每槽记录 lock/state 原先是否存在、state 原字节 base64、SHA256、长度；不存在用 null，不伪造 clean 原件 |
+| 新 state 的维护 envelope | schema_version=1、`migration={definition: host-state-migration.v1, id, receipt_sha256, phase: pending或ready}`；仅 ready 后才允许使用原 dirty/token/进程身份字段 |
+| 旧 state 退休标记 | 上述四键；全部绑定同一 migration_id 和凭据摘要；生成字节确定，不读凭据内任意路径来扩大目标 |
 
-维护重复调用只在状态完整、均 clean 时报告已迁移；无成功回执的部分初始化不得当作新安装。
-初始化/迁移途中中断留下的 lock 或缺失 state 阻断普通运行；全锁下可重做已证明 clean 的复制。
-不能证明 clean 的孤立锁、损坏 state 交操作者调查，禁止删锁解阻断。
-状态移交不授予服务就绪：后续请求仍完整核验本机端点、资产、PID/启动时间、有效参数与 idle。
+pending 不表示 clean，也不允许进入普通恢复流程；即便含 `dirty=false` 也必须阻断请求。
+ready 后新 dirty/clean 写入必须保留 migration envelope，不得丢掉提交身份。
+凭据不存新运行历史，不是 run 迁移包；原旧状态字节不改写为“等价 JSON”，摘要校验后才能重试。
+维护入口不提供 force/reset/rollback，也不输出原始 token 或完整状态到诊断日志。
 
-### dirty、崩溃与旧工具再启动
+### 首次部署与显式事务
 
-1. 请求身份检查点先持久化；同一个 dirty token 与绑定身份写入每个旧 state，再写新 state。
-   所有写入和所需 fsync 成功后才允许发送请求；中途失败停止且不清除已有 dirty。
-2. clean 只发生在原有可核验排空或严格恢复之后。先写新 clean，再写各旧 clean；
-   半途失败保留剩余 dirty，下次不按时间戳放行。取消/超时未证实 idle 时全部保留 dirty。
-3. 恢复绑定现有 dirty token、说明、旧服务确已退出、新服务身份与 idle；旧 PID 活着或复用身份不明即阻断。
-   同 token 的 dirty/clean 不一致可在全部锁下保守恢复 dirty，再走原恢复检查；不同 dirty 身份拒绝合并。
-4. 旧工具以后启动仍被旧内核锁挡住。InferYard 崩溃后，旧 state 已在发送前写 dirty，
-   旧工具必须走它自己的恢复；不能把旧路径改成它不认识、可能忽略的迁移标记。
-5. 旧工具串行运行后，旧 dirty 仍必须被新工具读取。若它只清理旧 state 而新 state 仍 dirty，
-   新工具保守阻断/重新核验恢复，不把旧 clean 当作新恢复证明。双方 clean 可保留各自最后身份，无需改写历史。
+统一使用拟新增的 `inferyard host-state migrate` 做首次建立或旧状态迁移；普通实时入口不自行创建 clean。
+无新 ready 时，发现任一旧 lock/state 返回 `host_state_migration_required`；全部旧位置无文件则返回
+`host_state_initialization_required`。pending、孤立凭据、缺失或损坏新 state 都不当作首次。
+只读离线入口不建立主机状态。这样即便从未运行过旧工具，也须先退休旧入口再运行新工具。
 
-该桥只保留固定路径、schema 1 dirty 与内核锁协议，不引入历史 run reader、后台守护进程、
-全盘扫描、兼容数据库或无限迁移链。有限镜像的部分写失败允许多阻断，不能少阻断。
+维护事务只在全部必要锁下执行，顺序为 Windows D 旧锁（根存在时）→公共旧锁→新锁；
+POSIX 公共旧锁→新锁。均为非阻塞锁；竞争失败即退出，释放已获得句柄。
+固定旧实现若已持锁，维护不能接管；若正在竞争，它只能在事务之前完成或在退休后拒绝。
 
-### 失败闭合
+1. 记录排他创建结果和原存在性，获得全部锁后从安全文件句柄重读状态，并核对根/文件身份。
+   每个原有 state 必须严格合法且 `dirty=false`，版本为整数 1（不接受 bool）；原有身份字段按固定 writer 核验。
+   任一 dirty、损坏、不可读均拒绝。
+   某槽原 lock/state 都不存在，可作为 fresh 槽建立退休标记；原 lock 已有而 state 缺失则拒绝，
+   不把不明中断当空白部署。只有 state 的槽须取得对应锁并核验 clean，原始组合记录进凭据。
+2. 排他发布不可变凭据，保存各槽原字节与摘要；持久化成功后发布新 pending state。
+   此前不改任何旧 state；新目录中任何不属于本次事务的已有文件都拒绝覆盖。
+3. **先退休公共旧 state，再退休已纳入的 D state**；每个标记原子发布、flush/fsync 和读回核验。
+   全程持旧锁，旧进程无法在检查与替换之间写状态；中途失败不回写 clean、不撤销已发布标记。
+4. 全部槽位的退休标记、凭据摘要、根/锁身份再次一致，才原子提交新 state 的 `phase=ready`、
+   初始 `dirty=false`。最后释放旧锁与新锁；结果 `ready_to_run=false`，迁移不宣告服务就绪。
+   新运行另行核验本机端点、资产、PID/启动时间、有效参数、idle、预算及停止条件。
 
-| 风险 | 强制行为 |
+迁移原 clean 不等于必须杀掉仍空闲的服务；旧 runner 持锁时不能迁移，旧 dirty 服务则始终拒绝。
+维护不调用旧工具恢复、不杀服务、不清空 dirty。操作者须在退休开始前用原项目已有恢复流程解决旧 dirty。
+
+### 中断与幂等重试
+
+| 持久状态 / 故障点 | 重试与放行规则 |
 | --- | --- |
-| 旧 runner 存活并持锁、多进程迁移竞争 | 同序获取共享内核锁，只有一个进入；失败者无请求，不释放他人锁 |
-| dirty 服务仍活着、PID 复用、身份无法查询 | 不清 dirty；原身份/恢复失败继续阻断 |
-| state 损坏、重复 JSON 键、非整数版本、dirty 非 bool、dirty 必需身份缺失 | `invalid_host_state` / 退出 2；文件保持，不能当首次或降为 clean |
-| 不同 dirty 状态 | `conflicting_host_dirty_states` / 退出 2；不自动协调冲突 |
-| 路径穿越、符号链接、硬链接别名、Windows reparse point、不安全所有者/权限 | 拒绝；固定根和打开句柄核验，POSIX 保持本账户 0600，不通过 chmod/chown 接管 |
-| 打开/读取权限失败、根路径不可查询、锁不可获得 | `host_lock_unavailable` / 退出 2；不回退别处；跨账户不安全时宁可阻断 |
-| 原子写/flush/fsync 失败、磁盘满、迁移中断 | 停止发送，保留状态；持久化工具故障退出 4，取消退出 130；下次缺失/矛盾状态继续阻断 |
-| 释放某个句柄失败 | 尝试释放其余自有句柄，保留首个错误；绝不删除文件或放宽下一次准入 |
+| 仅创建了锁，尚无完整凭据 | 不碰旧 state，不发新请求；无来源证明的 lock-only 状态保守拒绝，需调查，不删锁重置 |
+| 凭据完整，新 pending 尚未成功发布 | 普通运行阻断；维护重取全锁，仅在 state 原字节/原不存在性与凭据一致时发布 pending；已创建 lock 按凭据记录的句柄身份核验，不要求它重新消失 |
+| pending，旧槽未退休或部分退休 | 只接受“与凭据原件完全相同”或“同一事务准确退休标记”；fresh 槽可仍不存在；其他内容包括新 dirty、不同标记、变更 clean 都拒绝 |
+| 旧入口已全部退休，新 ready 未提交 | 新旧实时入口均阻断；维护核验后幂等完成同一 ready 提交，不生成第二份凭据 |
+| ready 已持久化但调用方未收到成功 | 重复维护核验同一凭据/退休标记后返回 already_migrated，不改新 dirty 或回写初始 clean；新 dirty 时维护拒绝并提示新工具恢复 |
+| 新 state/凭据损坏或丢失、摘要错、目标身份变化 | fail-closed，不从旧退休标记反推新 clean，不隐式覆盖异常状态 |
 
-state 读取须绑定已核验文件句柄，防止检查后路径被替换；固定父目录和 inode/文件 ID、
-链接数及 Windows ACL/reparse 核验不能仅靠字符串 resolve。现有实现不足处是实施工作，
-不是本次已验证结论。跨账户已有文件不安全则显式失败，不另开每用户锁域。
+退休首写之前崩溃，旧工具仍可能正常运行；此时新工具还没有 ready，二者不会同时发送。
+旧工具后来改了原 clean 字节，维护重试必须拒绝旧快照，不能按过期凭据覆盖。
+退休首写之后固定旧基线始终拒绝；新工具直到提交 ready 才能执行。
+新运行崩溃后的 dirty 只由新 state 持久化及原有恢复规则处理；旧入口继续退休，不能绕过新 dirty。
+
+文件权限、nofollow、普通文件、链接数/文件身份、Windows reparse/ACL 及固定根边界继续核验。
+路径逃逸、权限失败、锁占用、dirty、输入状态冲突为预检阻断/2；原子写/flush/fsync 工具故障为 4，
+取消为 130；所有分支请求数为零。释放一柄失败仍尝试释放其余自有句柄并保留错误，不删除锁文件。
+Windows 保留 file fsync + MoveFileExW(WRITE_THROUGH) 和 `directory_fsync=false` 的真实范围；
+本事务要求进程崩溃/中断验证，不凭模拟宣称跨文件断电持久性。原生证据缺失时明确未验。
+
+### Windows 可证范围与具体反例
+
+| 情形 | 固定旧基线行为与方案范围 |
+| --- | --- |
+| 无 D 盘部署 | 固定旧 `_paths()` 仍包含 Common AppData；退休公共 state 即阻断该基线，不强制要求 D 盘或全局禁用旧 EXE |
+| 维护时 D 存在 | 先取 D 旧锁，再取公共旧锁；D 原状态也须 clean/合法/可读。即使公共位置 clean，D dirty 也不能跳过 |
+| 迁移后新增 D，或其 state 为 clean | 固定旧基线取得 D 后仍读公共退休 state，在自动镜像前失败；不能用 D clean 覆盖退休标记 |
+| 迁移后 D 上是 dirty、损坏、权限阻断或锁被占 | 旧基线提前拒绝或稍后在公共标记拒绝，均不发请求；已有新 ready 不要求持续镜像或重读 D |
+| 事务期间 D 根消失/换卷 | 已纳入的根/文件身份变化则不提交 ready；已写退休标记不撤销。管理员竞态下不声称能以轮询证明无限热插拔安全 |
+| 管理员替换公共卷、删退休 state/锁，或修改 known-folder 指向 | 具体反例：旧基线看到新空公共根，且有 clean/无 D 状态，可以重新进入；属于破坏共享状态的外部管理操作，本方案与旧系统均不能保证，不能宣称已防护 |
+| 仅用 D 锁、忽略公共根的更古老程序 | 若部署时 D 不存在、后来挂载空 D，该程序可能创建独立锁并运行；不在固定 2fa125c/fe1052a 保证集合，不能将其当作本次必需永久兼容 |
+
+管理员卷操作和状态删除不等于正常并存支持；固定基线在保留公共退休标记的普通部署下可证拒绝。
+不因任意古老程序或管理员破坏场景强制增加永久桥接。未发现该固定基线在标记完整、路径稳定、
+正常 HostLock 准入下的绕过路径；这是静态结论，仍须原生/真实进程验收。
+
+## 安装检查与资格版本
+
+基线 [installed_probe.py](../../tests/packaging/installed_probe.py) 在三次安装探针中生成 report v1–v6，
+并计算 v1–v7 模板摘要；[release_common.py](../../scripts/release_common.py) 的 SCOPE 包含
+`synthetic_historical_reports`，`validate_installation` 要求 installed_safe_checks.v2。
+这不是可原样保留的当前安装资格。
+
+- 探针改用当前 writer 生成 report7、verify 和显式 rerender；只核验当前模板摘要。
+  对 v1–v6 构造最小旧格式负例，通过 CLI 确认退出 2 / unsupported_format；不打包旧 renderer。
+  不以篡改当前 seal 后得到的哈希错误冒充旧版本拒绝。安装/第二环境/回退三个探针都执行新范围。
+- 探针输出改为 `current_report_formats_verified=[7]`、
+  `unsupported_report_formats_rejected=[1,2,3,4,5,6]`、`template_hashes={"7": ...}`；
+  删除 synthetic_historical_reports_verified，逐版失败不能被总 returncode=0 掩盖。
+- 安装结果 **必须升级为 installed_safe_checks.v3**。scope 保留原六项，将
+  synthetic_historical_reports 替换为 `current_format_reports` 和 `unsupported_format_rejection`。
+  既有 probe 命令名可保留，执行语义由结果 v3/scope 绑定；测试结果仍是零模型请求，host_lock_tests=not_run。
+- v3 新增必需 `report_format_checks` 对象，恰含 probe-install-a、probe-install-b、probe-rollback 三键；
+  每项保存对应探针实得的 current_report_formats_verified、unsupported_report_formats_rejected、template_hashes。
+  run_installed 先校验三次 stdout 再汇总；validate_installation 要求三项都完整，模板摘要与已核验 wheel 的当前模板一致，
+  不能仅写新 scope 或只检查探针退出 0。
+- run_installed 与 release_common 的 writer/validator、prepare/verify_release_candidate 消费链及夹具同步；
+  明确拒绝 v1/v2 结果、旧 scope、缺负例、缺当前成功、来源/字节失配。不把旧结果改个 kind 即视作重验。
+- community_distribution.v2 的 build/candidate 外壳和安装结果摘要引用结构不变，故不连带升版；
+  新候选仅接受安装 v3，旧候选中的安装 v2 明确失败。旧核验器也会因不认识安装 v3 而失败，
+  双方不默默继承资格。至少一个平台重新完成同批字节安装，其余保持 not_verified。
+
+这是安装验证语义改变所需的单独升版，不改变产品版本、核心 schema 3 或业务协议编号。
+安装安全探针不操作系统真实锁；迁移证明仍由隔离临时根的进程测试及独立 Windows 原生检查提供。
 
 ## 父会话裁定项
 
-1. **持续旧桥**：建议批准旧名 lock/state 作为有限安全协议持续保留，不设按日期自动移除。
-   只要未修改旧工具仍可启动，完全去掉旧路径就无法证明互斥。若要求完全移除，需另有系统级禁用证据；
-   此次不修改原项目、不安装守护进程，不能以口头停用替代。
-2. **Windows D 根稳定性**：启动时“D 不存在”只证明当时旧 D-only 工具不能取锁。
-   持锁期间新增/重新挂载 D 可建立独立锁域，轮询检测不能消除竞态。
-   建议未能用原生证据保证旧路径域稳定或系统级阻止 D-only 工具时，迁移后的实时入口明确阻断；
-   离线入口继续可用。是否接受此支持范围收窄由父会话决定；裁定前不实施 Windows 迁移放行，
-   不将“保留当前 no-D 行为”写成已证明安全。已有 D 的卷替换也需原生句柄/卷身份验证。
+1. 请 Reviewer/root 审核一次性迁移、退休标记和 pending→ready 事务；不改锁名与持续桥接仅为对照，
+   未通过时维持当前源码，不能自行实施某个备选方案。
+2. 请接受或具体指出固定 2fa125c/fe1052a 范围内的反例。任意古老 D-only 程序、管理员删除状态/
+   更换公共根、断电持久性是明确边界，不再把它们扩大成永久兼容义务；Windows 原生尚未验。
+3. 安装结果 v3 和候选外壳 v2 的组合一并审核；不能继承旧安装资格。
 
 ## 不变的运行边界
 
