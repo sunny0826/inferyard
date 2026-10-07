@@ -87,9 +87,8 @@ Windows 原生 msvcrt/ACL/reparse/多账户/卷路径验证；未发送真实模
   上述四文件与 CI 修复两文件最终 **59 passed**，12.55 秒，
   `/private/tmp/inferyard-p1-parent-regressions-final.log`。未重跑全量，最终全量仍由父会话负责。
 - observations.py 的变化使 metrics.json 内 43 处 evidence SHA 过期；已核验差异仅为该文件哈希，
-  ID/名称/单位/定义不变。该目录文件不在原 ownership，已报告且尚未修改；
-  `export_catalogue.py --check` 仍因该文件过期失败，不能将本批称为全部检查通过。
-  按父会话追加提交后停写的指令，提交已授权范围；目录同步转交父会话，或待明确扩展授权后追加。
+  ID/名称/单位/定义不变。当时该文件不在原 ownership，未修改且 catalogue 检查失败；
+  父会话随后批准扩展所有权，已在下述最终目录同步中用权威生成器修正。
   精确差异：`/private/tmp/inferyard-p1-metrics-preview.diff`；预览数据：`/private/tmp/inferyard-p1-metrics-preview.json`。
 - 最终静态检查：Ruff check/format、Schema/community 导出、28 份保护文件、依赖元数据、
   43 metric/199 method IDs、292 源码 AST/导入、职责路径、本地文档链接和 diff 空白检查通过。
@@ -114,8 +113,8 @@ Windows 原生 msvcrt/ACL/reparse/多账户/卷路径验证；未发送真实模
 - 修复后：6 文件 **106 passed**，4.10 秒；`/private/tmp/inferyard-large-report-targeted.log`。
   Ruff、Schema/community 导出、静态导入/职责/链接、保护基线和 diff 空白检查通过，
   `/private/tmp/inferyard-large-report-checks.log`。未运行全量或构建安装。
-- 上一批 observations.py 引起的 metrics.json 43 处 SHA 过期仍转交父会话，catalogue 检查仍失败；
-  本轮未修改该目录文件，不能将此次定向通过写成全部验收通过。
+- 当时 observations.py 引起的 metrics.json 43 处 SHA 过期仍待父会话授权，catalogue 检查失败；
+  后续已在下述最终目录同步中修正。此处定向通过不等于全量验收通过。
 
 本地追加提交后停写，父会话继续负责最终全量与 Gate 验收。
 
@@ -139,9 +138,35 @@ parent-lineage 摘要放在版本拒绝前，并保留所需容器/字段类型�
 - 最终 6 文件 **145 passed**，6.12 秒；`/private/tmp/inferyard-hash-priority-final.log`。
 - Ruff、Schema/community 导出、静态导入/职责/链接、28 份保护文件、依赖和 ID 基线检查通过；
   `/private/tmp/inferyard-hash-priority-checks.log`。上一批 metrics.json 的 43 处 observations.py SHA
-  仍未同步，catalogue 检查仍失败并由父会话处理；本轮未修改该文件。
+  当时尚未同步，catalogue 检查失败；后续已获授权并在下述最终目录同步中修正。
 
 本地追加提交后停写；未重跑全量、构建安装或实际主机测试，未 push/合并。
+
+
+### P1 最终目录同步与统一交审（基于 c741d38，2026-10-08）
+
+父会话明确批准 metrics.json 所有权扩展，已在[实施计划边界例外](plans/inferyard-current-format.md#边界例外指标目录源码摘要同步)
+登记文件、原因、影响及回退方式。由 `scripts/export_catalogue.py` 权威生成器同步 observations.py 的
+43 处源码摘要，逐项比较证明除此之外的字段完全不变，并与父会话批准的预览字节一致。
+43 个 metric ID、199 个 method ID 保持保护基线，methods.json 原字节不变。
+详细证明：`/private/tmp/inferyard-final-metrics-sync-proof.json`。
+
+本轮已完成的修复及实际检查如下；测试集合存在交叠，不累加为唯一测试总数。
+
+| 修复 | 保留提交 | 验证证据 |
+| --- | --- | --- |
+| CI 导出夹具依赖、一次显式初始化顺序、不可达 migrated 分支；全量发现的 11 项旧测试构造 | `2d043ea91dabed1053c2f40d924006021f01c3be` | 59 passed；`/private/tmp/inferyard-p1-parent-regressions-final.log`，此前其他相关检查见 P1 回审记录 |
+| 撤销两处通用 JSON 全局 16 MiB 限制；当前大型报告 verify/显式 rerender | `1bff404621e72708f0bef89f3b6c9ecf1961b85d` | 106 passed；`/private/tmp/inferyard-large-report-targeted.log` |
+| 冻结 plan 自哈希/声明冲突与 rescore 摘要先于旧版本拒绝 | `c741d381d90dd38379eb8db208ba6545de37c466` | 145 passed；`/private/tmp/inferyard-hash-priority-final.log` |
+| metrics.json 43 处 observations.py 摘要同步 | 本节所在追加提交 | 9 passed；`/private/tmp/inferyard-final-metrics-tests.log`；catalogue `--check` 及保护基线检查通过 |
+
+最终 Ruff check/format、Schema/catalogue/community `--check`、保护字节/依赖/ID、源码 AST/导入、
+资源职责、本地文档链接及 diff 空白检查结果见 `/private/tmp/inferyard-final-repair-checks.log`。
+community 检查未重新验证 ZIP 归档。以上为软件修复和定向验证，不代表最终全量、安装、实际 HTML 或原生 Windows 验收。
+
+源码停写后将最终修复 SHA 交父会话和原 Reviewer。Reviewer 当前仍审 87bc484 冻结副本，
+不能将该审核结论视为接受后续修复；父会话按原计划完成最终全量、构建安装、实际 HTML 和 Gate A/B。
+报告当前模板有变更，需实际浏览验证；未改真实主机状态、未发模型请求、未 push 或合并。
 
 ## 后续工程工作
 

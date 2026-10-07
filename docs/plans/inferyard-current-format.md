@@ -51,6 +51,24 @@ flowchart TD
 `schemas/`、catalogue 及社区资源预期不变；如需改变其字节须先报告原因，不能静默重导出。
 扩展当前协议不是删除目标；若需调整其他目录的导入，仅申请最小文件边界。
 
+
+## 边界例外：指标目录源码摘要同步
+
+父会话于 2026-10-08 核对预览差异并明确批准，将 `src/inferyard/data/metrics.json`
+加入原 worker 的本轮所有权。此例外仅覆盖删除 observations.py 中不可达 migrated 分支后，
+指标目录内 43 处该文件的源码摘要同步；按 AGENTS 要求使用 `scripts/export_catalogue.py` 生成。
+
+- 原因：现行目录绑定源码字节，原摘要已过期，导致 catalogue `--check` 失败。
+- 影响：无指标语义变化；43 个 metric ID、名称、单位、定义及其他字段保持不变，
+  199 个 method ID 和 methods.json 原字节保持不变，不影响其他 ownership 写入者。
+- 范围校验：逐项确认仅 observations.py 引用的 43 处 SHA 更新，执行生成器 `--check`
+  和保护基线核验；不手改摘要，不修改题包、Schema、依赖或指标身份算法。
+- 回退方式：若父会话回退 observations.py 的对应源码变化，同时通过权威生成器重建摘要；
+  不单独恢复过期目录以制造源码与摘要不一致。
+
+此前 CI/旧测试构造、大型当前报告、plan/rescore 哈希优先级修复的分批提交保留。
+最终修复提交另交 Reviewer 复审；其当前针对 87bc484 冻结副本的审核不视为已覆盖后续提交。
+
 ## 集成 Gate A 与 Gate B
 
 Gate A 由父会话在最终集成提交执行：全量相关回归、Ruff、导出一致性、职责/导入闭包，
