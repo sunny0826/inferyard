@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from inferyard import SCHEMA_VERSION
 from inferyard.config.loader import validate_runtime_config
 from inferyard.config.plan_inputs import read_frozen_plan, source_bytes
+from inferyard.config.startup_arguments import replace_arguments
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, read_json
@@ -112,13 +113,9 @@ def bind_service(loaded, endpoint_url=None, server_pid=None, api_key_env=None):
             "--port": str(parsed.port or (443 if parsed.scheme == "https" else 80)),
             "-p": str(parsed.port or 80),
         }
-        args = config["engine"]["startup_args"]
-        for i, value in enumerate(list(args)):
-            if value in replacements and i + 1 < len(args):
-                args[i + 1] = replacements[value]
-            elif "=" in value and value.split("=", 1)[0] in replacements:
-                option = value.split("=", 1)[0]
-                args[i] = option + "=" + replacements[option]
+        config["engine"]["startup_args"] = replace_arguments(
+            config["engine"]["startup_args"], replacements
+        )
     if api_key_env is not None:
         config["endpoint"]["api_key_env"] = api_key_env
     validate_runtime_config(config)

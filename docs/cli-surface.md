@@ -122,7 +122,8 @@ Windows 必填 `--runtime-receipt FILE` 且禁止 `--engine`。两者不能同�
    `ready_to_run=false`；调用 load_config 及 TOML round-trip 校验后才完成准备。
 4. `config bind` 复用原绑定脚本：加载候选、校验本机无凭据 endpoint，读 PID 启动时间及实际 argv，
    再读启动时间以拒绝进程更替；Linux 为 `/proc`、macOS 为原生身份、Windows 为完整 FILETIME。
-   只把候选中已有 `--host` / `--port` 值替换为显式 endpoint，随后将期望 argv 与实际 argv
+   只把候选中已有 `--host` / `--port` 值替换为显式 endpoint，分离值与 `--flag=VALUE`
+   形式均保留原写法；随后将期望 argv 与实际 argv
    按原脱敏规则严格比较；不能用实际 argv 覆盖其余期望参数。写入 endpoint/PID/start ticks，
    保留其余配置和资产声明，递归 TOML 序列化后复核；不触发服务请求或宣称实时预检已通过。
    后续直接 `run`，由 run 完成当次身份、资产和普通/流式探测；独立 `probe` 仍是可选排障。
@@ -199,6 +200,9 @@ CLI/application 只负责参数、分派、结果和错误映射；资源、资�
 
 失败外层仍有 `command`，`completeness="incomplete"`、`run_id=null`、`evidence_dir=null`、
 `details=null`，limitations 为对应原因数组；stderr 只输出脱敏诊断，不泄露凭据或原始进程命令行。
+`config bind` 读取进程身份/argv 时，保留代码定义的 `service_process_unavailable` 和
+`service_identity_unreadable` 两个固定原因；仍退出 2 / blocked，不创建输出目录。
+未知预检异常或包含额外文本的原因继续走原安全映射，不回显异常原文。
 JSON 重复键、NaN/Infinity、bool 冒充整数均拒绝。新准备动作不使用退出 3；
 已有执行、核验及脚本兼容入口的退出语义不改变。
 

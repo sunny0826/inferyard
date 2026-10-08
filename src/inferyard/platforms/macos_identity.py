@@ -4,6 +4,7 @@ import os
 import platform
 from pathlib import Path
 
+from inferyard.config.startup_arguments import model_argument
 from inferyard.contracts.validation import ContractError, strict_json_loads
 from inferyard.platforms.identity import PreflightError, hash_file, sanitized_arguments
 from inferyard.platforms.macos_native import (
@@ -76,15 +77,10 @@ def verify_listener(pid, address, port):
 
 
 def _model_argument(args, process, model):
-    values = []
-    for index, argument in enumerate(args):
-        if argument in ("-m", "--model") and index + 1 < len(args):
-            values.append(args[index + 1])
-        elif argument.startswith(("--model=", "-m=")):
-            values.append(argument.split("=", 1)[1])
-    if len(values) != 1:
+    value = model_argument(args)
+    if value is None:
         raise PreflightError("service_model_mapping_unverified")
-    candidate = Path(values[0])
+    candidate = Path(value)
     if not candidate.is_absolute():
         candidate = Path(process.cwd()) / candidate
     observed = candidate.stat()

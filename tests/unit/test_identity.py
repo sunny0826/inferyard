@@ -123,6 +123,51 @@ def test_unmapped_model_requires_matching_startup_inode(proc_service):
     assert result["model_binding"] == "verified_startup_file_inode"
 
 
+@pytest.mark.parametrize("mapped", [False, True])
+@pytest.mark.parametrize("flag", ["-m", "--model"])
+@pytest.mark.parametrize("inline", [False, True])
+def test_model_argument_forms_keep_mapping_and_inode_checks(proc_service, mapped, flag, inline):
+    proc, config, model, engine = proc_service
+    if not mapped:
+        (proc / "123/maps").write_text("")
+    args = [f"{flag}={model.path}"] if inline else [flag, model.path]
+    config["engine"]["startup_args"] = args
+    (proc / "123/cmdline").write_bytes("\0".join(["server", *args, ""]).encode())
+    result = verify_process(config, model, engine, "127.0.0.1", 8080, proc)
+    assert result["model_binding"] == ("mapped_inode" if mapped else "verified_startup_file_inode")
+    assert result["model_mapping"] == ("verified" if mapped else "not_retained")
+    if not mapped:
+        # Same bytes at the declared path cannot substitute for the bound file identity.
+        path = Path(model.path)
+        path.rename(path.with_suffix(".old"))
+        path.write_bytes(b"synthetic model")
+        with pytest.raises(PreflightError, match="service_model_argument_mismatch"):
+            verify_process(config, model, engine, "127.0.0.1", 8080, proc)
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        [],
+        ["--model"],
+        ["--model="],
+        ["-m="],
+        ["--model", "--other"],
+        ["--model", "MODEL", "-m", "MODEL"],
+        ["--model=MODEL", "-m=MODEL"],
+        ["--model", "MODEL", "-m"],
+    ],
+)
+def test_unmapped_model_rejects_missing_or_ambiguous_argument(proc_service, args):
+    proc, config, model, engine = proc_service
+    args = [value.replace("MODEL", model.path) for value in args]
+    config["engine"]["startup_args"] = args
+    (proc / "123/maps").write_text("")
+    (proc / "123/cmdline").write_bytes("\0".join(["server", *args, ""]).encode())
+    with pytest.raises(PreflightError):
+        verify_process(config, model, engine, "127.0.0.1", 8080, proc)
+
+
 @pytest.mark.parametrize(
     "environment,accepted",
     [

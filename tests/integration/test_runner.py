@@ -197,7 +197,7 @@ def test_f07_full_pipeline_warmups_failed_case_and_no_retries(scenario):
     assert result.details["next_report_command"][:4] == [
         "inferyard",
         "report",
-        "--run",
+        "--runs",
         result.evidence_dir,
     ]
     assert data["run"]["execution_mode"] == "single"

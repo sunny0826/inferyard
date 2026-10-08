@@ -85,7 +85,12 @@ inferyard extension replay --packet FIXTURE_PACKET.json --out FIXTURE_RUNS
 
 ## 取消与 dirty 恢复
 
-请求前取得主机锁，发送前持久化请求身份和 dirty 状态。取消或超时后停止发送并按冻结期限排空；不能确认空闲时保留 dirty。Linux/macOS 锁为 `/var/tmp/local-ai-benchmark-host.lock`，Windows 使用系统公共数据目录中的同名文件；D 盘存在时还同时持有旧 D 盘锁，兼容规则见 [Windows 说明](../WINDOWS.md#锁持久化与离线证据)。同目录的 `local-ai-benchmark-host.state.json` 保存状态。
+请求前取得主机锁，发送前持久化请求身份和 dirty 状态。取消或超时后停止发送并按冻结期限排空；不能确认空闲时保留 dirty。Linux/macOS 锁为 `/var/tmp/inferyard-host.lock`，Windows 使用原生 Common AppData（通常为 `C:\ProgramData`）中的同名文件；同目录的 `inferyard-host.state.json` 保存状态。
+
+首次实时运行前执行 `inferyard host-state migrate`。旧锁只在这次显式维护事务中按顺序获取，
+Windows 还处理维护时存在的 D 盘旧位置；旧 dirty 必须先由原项目恢复，旧锁 inode 保留。
+维护保存原字节凭据并退休固定旧入口后，才提交新 ready 状态。常态运行只使用新锁、新状态和
+不可变维护凭据，不再双持旧锁或镜像旧 dirty。事务与中断规则见[当前格式契约](contracts/inferyard-current-format.md#锁迁移)。
 
 操作者停止旧服务并准备新服务后，使用状态中的 `dirty_token` 及具体恢复说明：
 
@@ -97,24 +102,25 @@ inferyard run --config bench-work/bound/config.toml --recovery-confirm TOKEN --r
 
 CLI stdout 输出 JSON；`device-check` 默认人类摘要，Agent 使用 `--json` / `--format json`，见[设备检测](device-check.md)。诊断走 stderr。退出码：`0` 完成、`2` 配置/预检阻断、`3` 运行不完整、`4` 工具或证据错误、`130` 取消；模型答错不等于 CLI 失败。
 
-## 历史迁移
+## 历史输入边界
 
-```bash
-inferyard migrate --run results/LEGACY_RUN --out results/MIGRATED_RUN
-inferyard report --runs results/MIGRATED_RUN --out reports/MIGRATED_RUN
-```
-
-活动契约为 3，v1/v2 只通过显式迁移读取。输出应为不存在的新目录并与原件分离；迁移先核验旧封存哈希，保留原始字节、旧评分和测量身份、转换凭据及缺项，不补造观测。迁移不发送模型请求，不代表重测或新的性能资格。
+活动契约为 3；InferYard 不读取核心 v1/v2，也不接受 `origin=migrated` 运行。
+旧运行迁移命令已移除，旧证据保留原件并交原项目处理。
+`host-state migrate` 只维护主机锁与状态，不转换运行证据。
+各产物支持集合及拒绝语义见[当前格式契约](contracts/inferyard-current-format.md#格式支持矩阵)，
+不能仅按版本数字判断是否支持。
 
 日常直接使用 `run`，它包含当次普通/流式探测。独立 `probe` 仅用于可选排障；
 probe 只预算探测输入，0 次预热不预算 warmup，run/resume 只预算选中题。
-新预算快照及旧数组兼容见[数据契约](data-contract.md#命令内复用与预算快照)。
+预算仅接受 `token-budgets.v2.json`，旧位置数组拒绝；缺测不补造为 0。
+预算快照与命令内复用见[数据契约](data-contract.md#命令内复用与预算快照)。
 
 
 ## 描述性比较与复用
 
 新离线比较显示口径匹配的本次差值、条件差异和样本范围；受控结论资格另列。
-性能差值仍须对应逐指标证据。当前新报告 v7 与旧 v1–v6 按各自规则离线核验。
+性能差值仍须对应逐指标证据。报告仅接受 v7，比较仅接受 format4 / phase2.v3；
+旧报告 v1–v6 和旧比较 format1–3 返回 `unsupported_format` / 2，不再核验或重建。
 probe/diagnostic 对电源、profile、governor、EPP 缺测或差异只记录；资源安全停止不变。
 正式执行的旧配置/计划仍要求原环境匹配。新配置可在 conditions、新实验可在 experiment
 声明 `environment_admission = {definition = "environment-admission.v2", required_fields = []}`；

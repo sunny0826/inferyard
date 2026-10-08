@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from inferyard.config.loader import validate_endpoint
+from inferyard.config.startup_arguments import model_argument
 from inferyard.contracts.validation import ContractError, strict_json_loads
 from inferyard.platforms.cpu_policy import snapshot as cpu_policy_snapshot
 
@@ -324,16 +325,13 @@ def verify_process(
             ):
                 mapped = True
                 break
-        model_argument = None
-        for i, argument in enumerate(args[:-1]):
-            if argument in ("-m", "--model"):
-                model_argument = args[i + 1]
         # Some CPU builds copy tensors then release file mappings. Require the exact
         # file inode in their verified startup arguments; /props is checked next.
         if not mapped:
-            if not model_argument:
+            model_path = model_argument(args)
+            if model_path is None:
                 raise PreflightError("service_model_mapping_unverified")
-            actual_model = Path(model_argument).stat()
+            actual_model = Path(model_path).stat()
             if (actual_model.st_dev, actual_model.st_ino) != (model.device, model.inode):
                 raise PreflightError("service_model_argument_mismatch")
         inode = verify_listener(pid, address, port, proc_root)
