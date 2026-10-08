@@ -1,7 +1,9 @@
 # 使用 uv 安装与准备测评
 
-目标版本为 `0.0.1`，当前为源码与本地安装候选，尚未发布发行版本或上传 PyPI。项目采用 [MIT 许可证](../LICENSE)。
-安装文件应来自维护者提供的同一候选批次；平台实现与未验项见[平台状态](platforms.md)，接口见 [CLI](cli-surface.md)。
+本页适用于 `0.0.1` 的 GitHub Release 附件安装。发布状态与下载见
+[Releases](https://github.com/sunny0826/inferyard/releases)；草稿公开后才提供下载，尚未上传 PyPI。
+项目采用 [MIT 许可证](../LICENSE)。安装文件必须来自同一发行批次；
+平台实现与未验项见[平台状态](platforms.md)，接口见 [CLI](cli-surface.md)。
 证据与比较结论遵循[证据血缘规则](data-contract.md#证据血缘与比较结论)。
 
 ## 1. 安装 uv 和工具
@@ -11,11 +13,26 @@ PowerShell、macOS 或 Linux 的独立安装器或包管理器。社区使用无
 或克隆源码。安装器完成后重开终端；若 uv 不在 PATH，按安装器提示添加其 bin 目录。
 工具入口不在 PATH 时运行 `uv tool update-shell`，再重开终端；本工具不会自行改 shell 配置。
 
-向维护者取得同一批次的 wheel、`runtime-constraints.txt` 和 SHA256 清单，先核对摘要。
-同时查看该候选的源码外安装结果及已验/未验平台；安装通过不表示原生模型准备或性能实验通过。
-候选至少需要一个平台的实际安装检查；其余平台标为 `not_verified`。维护者从构建、安装结果
-生成候选及核验暂存的完整步骤见[贡献指南](../CONTRIBUTING.md#本地候选构建与安装检查)。
-以下文件名为本地候选，不代表公开发行；路径换成你取得的实际文件：
+在 `v0.0.1` Release 的附件中下载 `inferyard-0.0.1-py3-none-any.whl`、
+`runtime-constraints.txt` 和 `SHA256SUMS`，放到同一目录。核对前两个文件的 SHA-256
+与 `SHA256SUMS` 中的同名记录完全一致：
+
+```bash
+# Linux
+sha256sum inferyard-0.0.1-py3-none-any.whl runtime-constraints.txt
+# macOS
+shasum -a 256 inferyard-0.0.1-py3-none-any.whl runtime-constraints.txt
+```
+
+```powershell
+Get-FileHash -Algorithm SHA256 -Path '.\inferyard-0.0.1-py3-none-any.whl', '.\runtime-constraints.txt'
+```
+
+Release 还附带源码包与依赖约束验证文件；普通安装只需上述 wheel 和约束。
+该批源码提交、候选摘要、Actions 来源及已验平台见 Release 说明。
+安装结果遵循 `installed_safe_checks.v3`，不表示原生模型准备或性能实验通过。
+维护者的[构建与核验步骤](../CONTRIBUTING.md#本地候选构建与安装检查)保持同批字节不变。
+摘要一致后安装：
 
 ```bash
 uv tool install --managed-python --python 3.14.7 --constraints runtime-constraints.txt ./inferyard-0.0.1-py3-none-any.whl
@@ -118,6 +135,7 @@ inferyard config assets --model /path/to/model.gguf --engine /path/to/llama-serv
 
 ## 4. 外部启动、绑定、运行与报告
 
+首次实时操作先完成[主机初始化](#首次主机初始化)。
 操作者按照候选 `engine.binary_path` 和完整 `engine.startup_args` 在外部终端启动服务。
 CLI 不管理该服务的启动、终止或重启。将实际 PID 和本机端点代入：
 
@@ -140,8 +158,8 @@ Windows/PowerShell 可使用相同 CLI 参数，路径加引号，PID 使用实�
 ## 5. 升级、回退和离线
 
 在运行和恢复结束后，取得新版本同批 wheel、约束及摘要，以相同安装命令显式安装。
-回退时使用保留的旧 wheel 和旧约束，不重写用户工作区或旧证据。当前没有已发布版本，
-不能把同版本重装声称为跨版本兼容验收。已安装同版本时可显式 `uv tool install --force ...` 重装。
+回退时使用保留的旧 wheel 和旧约束，不重写用户工作区或旧证据。`0.0.1` 是首个发行版本；
+测试中的合成升级/回退不代表历史正式版本兼容。已安装同版本时可显式 `uv tool install --force ...` 重装。
 
 正式运行优先使用持久安装。直接调用安装后的离线命令不会下载依赖；uvx 冷缓存需要准备环境：
 

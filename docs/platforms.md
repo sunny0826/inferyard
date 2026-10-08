@@ -1,7 +1,8 @@
 # 平台状态
 
-本页区分实现、历史原生覆盖与当前候选验证。v0.0.1 尚未发布；当前候选的安装结果由
-[backlog](backlog.md)跟踪。历史覆盖来自 2026-10-02 至 10-07 的已保存运行，
+本页区分实现、历史原生覆盖与安装验证。`v0.0.1` 发布状态见
+[Releases](https://github.com/sunny0826/inferyard/releases)，安装检查来源由 [backlog](backlog.md)跟踪。
+历史覆盖来自 2026-10-02 至 10-07 的已保存运行，
 不自动转移到新源码或候选 wheel，解释规则见[证据血缘](data-contract.md#证据血缘与比较结论)。
 
 ## 实现范围
@@ -33,8 +34,12 @@ Windows 的 live 开销、实时扩展和 prepare-length 等入口仍有平台�
 
 ## 当前候选验证与未验项
 
-- `0.0.1` 本地候选已完成 macOS arm64 源码外安装，来源与摘要见 [backlog](backlog.md)；这不构成原生模型或性能验收。
-- Linux/Windows 安装 matrix、Windows 原生目录句柄和代码页、无 D 盘/多账户锁及原生准备链尚待当前候选验证。
-- 第二架构、所有模型、长时负载、并发和严格性能资格均不由现有单设备记录推定。
+- [PR #1 的 CI](https://github.com/sunny0826/inferyard/actions/runs/37716506876) 已完成 Linux x64、
+  Windows x64、macOS arm64 的源码外安装检查，包括 uv tool/uvx、中文工作区、离线报告、当前/旧格式边界
+  及合成升级/回退。最终发行批次的来源和摘要以 Release 说明及候选清单为准。
+- 同一 CI 在一次性原生 runner 上验证固定路径的首次初始化、合成请求成功、进程中断后 dirty 持久化及拒绝。
+  没有使用真实模型，也未覆盖旧状态迁移的全部原生场景。
+- Windows 的旧状态迁移、ACL/reparse/多账户/卷变化、无 D 盘环境及原生 runtime prepare/create 仍待专项验证。
+- 第二架构、所有模型、长时负载、并发和严格性能资格均不由现有安装检查推定。
 
 使用入口：[安装](installation.md) · [macOS](../MACOS.md) · [Windows](../WINDOWS.md) · [配置](../configs/README.md)。

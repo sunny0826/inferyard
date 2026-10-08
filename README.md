@@ -3,12 +3,15 @@
 用本地模型完成冻结题目，保存答案、耗时和资源证据，再生成可离线阅读的 HTML 报告。
 质量、等待时间和内存分别展示；比较条件不足时说明原因，不合成一个总分。
 
-**v0.0.1 为源码与本地安装候选，尚未发布发行版本或上传 PyPI。** 项目采用 [MIT 许可证](LICENSE)。
+**v0.0.1 使用 GitHub Release 附件安装；发布状态以 [Releases](https://github.com/sunny0826/inferyard/releases) 为准。**
+项目采用 [MIT 许可证](LICENSE)，尚未上传 PyPI。
 产品为 Python CLI + 自包含 HTML，包名 `inferyard`，命令为 `inferyard`。
 
 ## 安装
 
-向维护者取得同批 wheel、`runtime-constraints.txt` 和 SHA256 清单，核对摘要后安装：
+从 [Releases](https://github.com/sunny0826/inferyard/releases) 中的 `v0.0.1` 下载同批 wheel、
+`runtime-constraints.txt` 和 `SHA256SUMS`，按[安装指南](docs/installation.md#1-安装-uv-和工具)核对摘要后安装。
+草稿公开后才会向用户提供下载。
 
 ```bash
 uv tool install --managed-python --python 3.14.7 --constraints runtime-constraints.txt ./inferyard-0.0.1-py3-none-any.whl
@@ -33,6 +36,7 @@ inferyard init --out bench-work --bundle zh-smoke
 inferyard device-check --model /path/to/model.gguf --out bench-work/preflight --json
 ```
 
+首次实时操作先完成[主机初始化](#首次主机初始化)。
 按[安装指南](docs/installation.md#3-准备候选)生成候选配置，在外部终端启动其中声明的模型服务，
 将实际 PID 和端点代入：
 

@@ -1,17 +1,33 @@
 # 变更记录
 
-## 0.0.1 — 本地候选，未发布
+## 0.0.1
 
-- 以 InferYard 名称开源，Python 包和 CLI 统一为 `inferyard`；保留既有证据协议、主机锁及历史模板兼容。
+首个公开分发版本。Python 包和 CLI 统一为 `inferyard`，许可证为 MIT，活动数据契约保持 `schema_version = 3`。
+实际发布状态与附件见 [GitHub Releases](https://github.com/sunny0826/inferyard/releases)。
 
-首个面向公开分发整理的版本。版本号不改变活动数据契约 `schema_version = 3`。
+### 首次使用与旧数据
 
-- Python CLI 执行冻结题包、保存逐题答案、确定性评分、客户端计时和平台资源证据。
-- 单次与批量计划、取消与恢复、显式重跑；模型服务由操作者外部启动。
-- 自包含离线 HTML 报告、比较、重评分、导出、公开包及原始证据核验。
-- 随包提供题包、平台模板和 Windows 固定 runtime profile；支持 `init`、`config assets/create/bind` 与 `runtime prepare`。
-- 支持从本地 wheel 使用 `uv tool` / `uvx`；清理过期文档、设备配置和历史工具，`validation/` 脱离 Git 工作树。
-- 发行准备采用 `community_distribution.v2`，绑定构建清单与实际源码外安装结果 `installed_safe_checks.v2`；至少验证一个平台，其余标为 `not_verified`，核验后暂存同一份字节。
-- 发布 workflow 仅手动触发，默认 `verify-only`，准备同候选字节的 GitHub Release/PyPI 路径；尚未执行上传。
+- 首次实时操作前运行 `inferyard host-state migrate`，显式初始化新主机状态或退休固定旧入口。
+  已有 dirty 必须按原恢复流程处理；不能通过删除锁或重复迁移清空。
+- 只接受[当前格式集合](docs/contracts/inferyard-current-format.md)。旧运行、旧报告格式及
+  `origin=migrated` 明确拒绝；旧证据留在原项目处理，不在 InferYard 中转换。
+- 安装验证采用 `installed_safe_checks.v3`，包含当前报告生成/核验与旧报告拒绝；旧安装结果不继承资格。
 
-项目采用 [MIT 许可证](LICENSE)。[平台状态](docs/platforms.md)列出实现与验证边界，候选发行物及安装检查由[发布待办](docs/backlog.md)跟踪；本条不表示已上传 PyPI 或完成公开发行。
+### 功能
+
+- 执行冻结题包，保存逐题答案、确定性评分、客户端计时与平台资源证据。
+- 支持单次与批量计划、取消与恢复、显式重跑；模型服务由操作者外部启动。
+- 生成自包含离线 HTML 报告，提供比较、重评分、导出、脱敏公开包及证据核验。
+- 随包提供题包、平台模板及 Windows 固定 runtime profile；支持 `init`、`config assets/create/bind`
+  与 `runtime prepare`。模型、引擎、真实配置和原始运行不随安装包分发。
+- 支持使用同批 wheel 和依赖约束进行 `uv tool` / `uvx` 安装；Windows 方法与指标目录显式按 UTF-8 读取。
+
+### 分发与验证
+
+- GitHub Actions 构建 wheel/sdist、从 sdist 重建并核对资源，执行 Linux x64、Windows x64 和 macOS arm64 安装检查。
+- `community_distribution.v2` 候选绑定源码、构建与安装结果；核验后上传同一份字节并提供 `SHA256SUMS`。
+- 发布 workflow 仅手动触发。`verify-only` 执行发布演练；`github-release` 创建带附件的草稿。
+  PyPI 使用独立 Trusted Publisher 配置，本版本尚未上传 PyPI。
+
+安装检查使用合成输入；当前版本的原生模型准备、完整题包及严格性能资格未由这些检查证明。
+已验证范围与剩余项见[平台状态](docs/platforms.md)和[backlog](docs/backlog.md)。

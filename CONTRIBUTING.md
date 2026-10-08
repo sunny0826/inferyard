@@ -1,7 +1,8 @@
 # 贡献指南
 
 先读[产品说明](README.md)、[架构](docs/architecture.md)和相关[主题契约](docs/contracts/README.md)。
-Agent 的文件边界与安全要求见 [AGENTS.md](AGENTS.md)。项目采用 [MIT 许可证](LICENSE)，v0.0.1 目前仅为本地候选。
+Agent 的文件边界与安全要求见 [AGENTS.md](AGENTS.md)。项目采用 [MIT 许可证](LICENSE)，
+版本发布状态见 [GitHub Releases](https://github.com/sunny0826/inferyard/releases)。
 
 ## 开发环境
 
@@ -85,6 +86,27 @@ mise exec -- uv run --frozen python scripts/verify_release_candidate.py --manife
 `verify-only`，要求指定来源 package-check run、源码提交和候选摘要，详见[脚本说明](scripts/README.md#社区资源与发行检查)。
 当前候选工作和发布前剩余项见 [backlog](docs/backlog.md)。
 提交应说明改动、实际检查和未验范围；完成相关检查后创建本地 commit，不 push。
+
+## 使用 GitHub Actions 准备 Release
+
+1. 先通过 PR 合入发布文档及修复，冻结干净的最终提交和版本。在该提交对应的 `main` 上手动触发
+   [Package checks](https://github.com/sunny0826/inferyard/actions/workflows/package-check.yml)。
+   工作流完成全量回归、构建、三平台安装及候选生成；普通 PR 运行不能作为发布来源。
+2. 下载该次 `release-candidate` artifact，核对 `manifest.json`。记录生成步骤输出的
+   `manifest_sha256`、完整 `source_commit` 和来源 `run_id`，本地可按上节命令核验并暂存。
+3. 触发 [发布 workflow](https://github.com/sunny0826/inferyard/actions/workflows/publish.yml)，
+   选择与 `source_commit` 一致的 dispatch ref，传入这三个值，先使用 `destination=verify-only`。
+   核验器检查手动运行来源、清单、同批构建/安装字节，并生成附件的 `SHA256SUMS`。
+4. 演练通过后，使用同一组输入选择 `destination=github-release`。工作流再次核验并创建
+   `v0.0.1` 草稿，附 wheel、sdist、运行依赖约束、约束验证文件及 `SHA256SUMS`。
+   补充本版本功能、旧数据处理、安装方法、实际平台覆盖、来源与摘要，再单独公开草稿。
+
+公开前重新下载草稿附件，核对其摘要与已核验候选一致。候选准备后不重新构建替换上传文件；
+需要修改打包内容时，重新建立候选及安装结果。Actions 的 artifact 有保留期限，发布记录应保留来源与摘要。
+源码 tag 必须指向候选的完整 `source_commit`；已存在且指向其他提交时发布 workflow 会拒绝。
+
+`pypi` / `both` 会实际上传 PyPI，先配置项目名称及与本仓库 `publish.yml`、`pypi` environment
+匹配的 Trusted Publisher；GitHub 草稿准备不需要这些 PyPI 设置。
 
 ## 逐题人工审核
 

@@ -76,10 +76,13 @@ mise exec -- uv run --frozen python scripts/export_community.py --check --archiv
 Trusted Publisher 留给实际上传准备。核验器要求 `--manifest`、生成器输出的 `--manifest-sha256`、
 同一 `--source-commit` 和新 `--stage` 目录；可加 `--packages-only` 只暂存 wheel/sdist，仍核验完整候选。
 
-发布 workflow 仅手动触发，默认 `destination=verify-only`。必须指定成功的 package-check
-来源 `run_id`、完整 `source_commit`、候选 `manifest_sha256`，dispatch ref 与源码提交一致。
-显式选择 `github-release` 创建草稿 Release；`pypi` 或 `both` 使用相同核验字节上传对应目的地。
-本轮不触发上传，项目采用 [MIT 许可证](../LICENSE)。原生模型准备与性能实验不作为安装检查结果，
+发布 workflow 仅手动触发，默认 `destination=verify-only`。必须指定成功且由 `workflow_dispatch`
+触发的 package-check 来源 `run_id`、完整 `source_commit`、候选 `manifest_sha256`；
+dispatch ref 与源码提交一致。PR 运行不满足发布来源条件。核验后从暂存原字节生成 `SHA256SUMS`。
+显式选择 `github-release` 上传附件并创建草稿 Release，公开草稿是独立操作；
+`pypi` 或 `both` 使用相同核验字节实际上传 PyPI，并要求预先配置 Trusted Publisher。
+完整操作见[Actions 发布步骤](../CONTRIBUTING.md#使用-github-actions-准备-release)。
+项目采用 [MIT 许可证](../LICENSE)。原生模型准备与性能实验不作为安装检查结果，
 具体候选状态见 [backlog](../docs/backlog.md)。
 
 `tests/packaging` 使用合成证据在源码外检查 uv tool/uvx、资源、离线报告与升级/回退。
