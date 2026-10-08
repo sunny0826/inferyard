@@ -165,10 +165,12 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
 
     plan, loaded, deps, output = inputs(scenario)
     config = loaded.config.to_dict()
-    config["telemetry"]["interval_ms"] = 50 if mode == "resources" else 1000
+    config["telemetry"]["interval_ms"] = 250 if mode == "resources" else 1000
     if mode == "resources":
-        config["telemetry"]["baseline_seconds"] = 0.15
-        scenario[3]["stream_delay"] = 0.25
+        # Allow native collection and synchronous evidence writes on shared CI
+        # hosts, with three intervals inside each baseline/request window.
+        config["telemetry"]["baseline_seconds"] = 0.75
+        scenario[3]["stream_delay"] = 0.75
     loaded = replace(loaded, config=Document.parse("config", config))
     definition = plan["experiment"]
     definition["definition_versions"]["measurement"] = "phase2.v1"

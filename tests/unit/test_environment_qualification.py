@@ -9,7 +9,7 @@ from tests.unit.test_environment import state
 from tests.unit.test_external_cpu import ENDPOINT, rows
 
 
-def context(tmp_path, change=None):
+def context(tmp_path, change=None, *, late_ns=0):
     snapshot = state()
     snapshot.update(governor="performance", epp="performance", cpu_policies=inventory())
     ending = deepcopy(snapshot)
@@ -23,8 +23,8 @@ def context(tmp_path, change=None):
     policy = {"max_external_cpu_percent": 25, "max_external_interval_seconds": 1}
     schedule = {
         "scheduled_ns": 0,
-        "actual_ns": 0,
-        "late_ns": 0,
+        "actual_ns": late_ns,
+        "late_ns": late_ns,
         "collector_work_ns": 1000,
         "queue_depth": 0,
     }
@@ -77,4 +77,16 @@ def test_each_incomplete_or_conflicting_prerequisite_blocks_environment(tmp_path
     result = context(tmp_path, change)
     assert not result["environment_qualification"]["eligible"]
     assert result["environment_qualification"]["reasons"]
+    assert not result["performance_comparison_eligible"]
+
+
+@pytest.mark.parametrize("late_ns", [2_000_000_000, 2_000_000_001])
+def test_schedule_lateness_limit_is_two_declared_intervals(tmp_path, late_ns):
+    result = context(tmp_path, late_ns=late_ns)
+    qualification = result["environment_qualification"]
+    assert qualification["eligible"] == (late_ns == 2_000_000_000)
+    assert qualification["reasons"] == (
+        [] if late_ns == 2_000_000_000 else ["collector_schedule_lateness_unknown_or_excessive"]
+    )
+    assert result["collector_schedule"]["max_late_ns"] == late_ns
     assert not result["performance_comparison_eligible"]
