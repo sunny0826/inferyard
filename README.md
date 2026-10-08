@@ -31,6 +31,8 @@ uvx --isolated --managed-python --python 3.14.7 --constraints runtime-constraint
 
 ## 最短工作流
 
+完整 benchmark 默认覆盖 `zh-core` 和 `zh-svg-pelican`，仅在明确声明固定题包时单独运行指定题包，见[默认测评范围](docs/usage.md#默认测评范围)。下面是固定 `zh-smoke` 的快速检查示例。
+
 ```bash
 inferyard init --out bench-work --bundle zh-smoke
 inferyard device-check --model /path/to/model.gguf --out bench-work/preflight --json
