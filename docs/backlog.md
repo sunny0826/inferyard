@@ -7,47 +7,35 @@
 项目名为 **InferYard**，仓库名、Python 包名及 CLI 均为 `inferyard`，版本 `0.0.1`，许可证 MIT。
 源码复制、包和 CLI 更名、当前格式清理已完成；新 Git 历史不导入源仓库历史、原始运行、模型或真实配置。
 公开源码仓库为 [sunny0826/inferyard](https://github.com/sunny0826/inferyard)，默认分支为 `main`。
-尚未发布发行版本或上传 PyPI。
+`v0.0.1` 的公开状态、最终源码提交、候选清单摘要和手动 package-check 来源，以
+[GitHub Release](https://github.com/sunny0826/inferyard/releases) 说明及对应候选清单为准。PyPI 尚未发布。
+文档和校验流程已准备；最终候选需要从集成后的干净提交手动生成，不能把 PR 运行改标为发布来源。
 
-当前候选绑定源码 `2fcb1808411f49d9508070a867a47b79d472450d`，后续验收状态文档不改变该批候选字节。
-候选清单 SHA-256：`4ca08e46436ac620b89fce9ec4ca0b8f0bb66f2951b07695745e006f5d4e516c`。
-wheel SHA-256：`6b81c48ed7e55f1b2bb11c3ccad032a58942a2bea9923e1926358f64199a6b05`。
-本机构建、候选及暂存位于忽略目录 `dist/inferyard-{v0.0.1,candidate-v0.0.1,stage-v0.0.1}-20261008/`；
-验证记录位于 `artifacts/current-format-checks/`，页面截图位于 `output/playwright/current-format-20261008/`。
-这些本机证据不随公开源码分发。
+## 已完成的实现与验证
 
-## 当前格式清理与主机锁迁移
+[ADR 038](decisions/038-inferyard-current-format.md) 对应的当前格式清理与主机状态迁移实现已完成。
+格式集合、旧入口退休及维护事务以[当前格式契约](contracts/inferyard-current-format.md)为准。
+核心 schema、43 个指标 ID、199 个方法 ID、题包和审核证明保持；安装结果已升级为 `installed_safe_checks.v3`。
 
-已按 [ADR 038](decisions/038-inferyard-current-format.md) 完成实现、原 Reviewer 增量复审和集成验收。
-格式范围及维护规则以[当前格式契约](contracts/inferyard-current-format.md)为准。
+本次发布准备的已验集成基线为 [PR #1 / Package checks](https://github.com/sunny0826/inferyard/actions/runs/37716506876)，
+PR 提交 `83def2565f9d057621411e2cc4ab41752e7cb9c5`，已合入 `ce221771e426e11ad6c1af3a2044cc8d845df1f2`。
 
-- 保持核心 `schema_version=3`、Schema URN、题包及审核证明、43 个指标 ID 和 199 个方法 ID。
-  删除历史运行迁移器、旧报告模板及旧格式读取分支；仍由当前入口生产的 engine-fit 和评分版本保留。
-- 旧格式明确拒绝；先核验可解释的封存与自哈希，损坏证据不降格为版本提示。
-  通用 JSON 读取不新增全局大小限制，当前大报告保持可核验。
-- 主机状态采用一次性显式迁移：原字节凭据、pending、旧入口退休、ready。
-  正常运行仅使用新锁/state/凭据；旧锁 inode 保留，dirty 不能通过重复迁移清空。
-- 安装检查升级为 `installed_safe_checks.v3`，包含当前报告成功及旧报告拒绝；旧安装 v2 不继承资格。
-  指标目录仅同步 observations.py 的 43 处源码摘要，指标语义和 methods.json 原字节不变。
-
-| 实际检查 | 结果 |
+| 实际检查 | 结果与范围 |
 | --- | --- |
-| 最终全量 pytest | **4428 passed / 52 skipped**，288.53 秒；跳过项单独保留，不计为通过 |
-| 静态与资源 | Ruff、Schema/catalogue/community 导出、职责与导入闭包、保护文件及依赖检查通过；community 未重验归档 ZIP |
-| 构建与安装 | wheel/sdist、sdist 重建、候选核验及字节暂存通过；macOS arm64 源码外 uv tool/uvx 26 项检查通过 |
-| 安装包离线产物 | report7、comparison4、public-summary5、engine-fit manifest2 生成/核验通过，显式 rerender 通过，来源字节不变 |
-| HTML | 桌面 1440×1000、手机 390×844 断网交互检查通过；SVG 样式可用、源码可折叠，注入脚本被 CSP 阻断 |
-| 主机状态 | macOS 安装包在隔离临时根中，以真实子进程验证中断重试、固定旧入口退休、新锁互斥、dirty 保留与恢复确认 |
+| Linux 全量 pytest | **4438 passed / 47 skipped**；跳过项按平台或显式启用条件保留，不计为通过 |
+| 静态、资源与构建 | Ruff、Schema/catalogue/community 导出、wheel/sdist 与 sdist 重建通过；未重新核验上游 runtime ZIP |
+| 三平台安装 | Linux x64、Windows x64、macOS arm64 均完成源码外 uv tool/uvx 26 项检查，覆盖当前报告、旧报告拒绝及合成升级/回退 |
+| 固定主机状态 | 一次性 GitHub runner 上完成显式初始化、合成请求、crash/dirty 持久化及 dirty 拒绝；没有真实模型请求 |
+| 早期本机验收 | 来源 `2fcb180` 的离线 HTML 桌面/手机渲染与 macOS 隔离根迁移检查已保存；原件保留，不改标为新候选证据 |
 
-软件实现及上述 macOS 范围已接受。测试使用合成输入和模拟传输，未发送真实模型请求，未迁移系统实际主机状态。
-Linux/Windows 当前候选安装、Windows 原生迁移及 ACL/reparse/多账户/卷变化仍未验证；
-本次结果不构成原生模型准备或性能验收。旧候选和源项目历史覆盖不转移为当前资格。
+后续源码或发行物变化必须建立新候选；最终清单与安装结果随 Actions artifact 保留，Release 记录其准确来源。
+Windows 旧状态迁移及 ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能仍未验证。
 
 ## 后续工程工作
 
 | 工作 | 边界 |
 | --- | --- |
-| 原生安装与准备覆盖 | Linux/Windows 源码外安装、Windows 路径句柄/代码页/无 D 盘和多账户锁、原生 runtime prepare/create 按候选字节补验证 |
+| 原生准备与平台边界 | 按候选字节补 Windows 旧状态迁移、ACL/reparse/多账户/卷变化、无 D 盘及原生 runtime prepare/create 专项验证 |
 | Darwin 启动身份 | 评估原生接口替换 psutil 私有接口依赖；替换前保持锁定版本和完整身份核验 |
 | CLI/字段维护 | 评估兼容入口提示及 `ready_to_run` 字段的下一版本语义；现有读写与命令继续兼容 |
 | 方法目录 | 是否缩小机器化目录维护面另行决定；当前 199 个方法 ID 与生成源保留 |

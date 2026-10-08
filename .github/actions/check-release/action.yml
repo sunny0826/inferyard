@@ -63,3 +63,11 @@ runs:
           --manifest-sha256 "$EXPECTED_MANIFEST" \
           --source-commit "$EXPECTED_COMMIT" \
           --stage approved-files "${args[@]}"
+    - name: Create checksums for verified release attachments
+      if: inputs.packages-only != 'true'
+      shell: bash
+      working-directory: approved-files
+      run: |
+        sha256sum -- * > ../SHA256SUMS
+        mv ../SHA256SUMS .
+        sha256sum --check SHA256SUMS
