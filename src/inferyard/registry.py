@@ -14,7 +14,9 @@ def catalogue(kind):
     filename = {"methods": "methods.json", "metrics": "metrics.json"}.get(kind)
     if filename is None:
         raise ContractError("catalogue.kind", "unsupported catalogue")
-    document = strict_json_loads(files("inferyard").joinpath("data", filename).read_text())
+    document = strict_json_loads(
+        files("inferyard").joinpath("data", filename).read_text(encoding="utf-8")
+    )
     if kind == "metrics":
         for item in document["items"]:
             validate_document("metric_definition", item)
