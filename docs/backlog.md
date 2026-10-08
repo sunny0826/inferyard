@@ -6,7 +6,7 @@
 
 项目名为 **InferYard**，仓库名、Python 包名及 CLI 均为 `inferyard`，版本 `0.0.1`，许可证 MIT。
 源码复制、包和 CLI 更名、当前格式清理已完成；新 Git 历史不导入源仓库历史、原始运行、模型或真实配置。
-GitHub 目标为 `sunny0826/inferyard`，创建与上传等待仓库所属账号的明确确认。
+公开源码仓库为 [sunny0826/inferyard](https://github.com/sunny0826/inferyard)，默认分支为 `main`。
 尚未发布发行版本或上传 PyPI。
 
 当前候选绑定源码 `2fcb1808411f49d9508070a867a47b79d472450d`，后续验收状态文档不改变该批候选字节。
