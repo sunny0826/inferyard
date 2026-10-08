@@ -3,29 +3,27 @@
 用本地模型完成冻结题目，保存答案、耗时和资源证据，再生成可离线阅读的 HTML 报告。
 质量、等待时间和内存分别展示；比较条件不足时说明原因，不合成一个总分。
 
-**v0.0.1 使用 GitHub Release 附件安装；发布状态以 [Releases](https://github.com/sunny0826/inferyard/releases) 为准。**
-项目采用 [MIT 许可证](LICENSE)，尚未上传 PyPI。
+**v0.0.1 已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.1/)，支持 uv / uvx 安装运行。**
+项目采用 [MIT 许可证](LICENSE)。
 产品为 Python CLI + 自包含 HTML，包名 `inferyard`，命令为 `inferyard`。
 
 ## 安装
 
-从 [Releases](https://github.com/sunny0826/inferyard/releases) 中的 `v0.0.1` 下载同批 wheel、
-`runtime-constraints.txt` 和 `SHA256SUMS`，按[安装指南](docs/installation.md#1-安装-uv-和工具)核对摘要后安装。
-草稿公开后才会向用户提供下载。
+从 PyPI 安装固定版本：
 
 ```bash
-uv tool install --managed-python --python 3.14.7 --constraints runtime-constraints.txt ./inferyard-0.0.1-py3-none-any.whl
+uv tool install --managed-python --python 3.14.7 inferyard==0.0.1
 inferyard --help
 ```
 
-临时试用同一文件：
+也可直接通过 `uvx` 运行，无须持久安装：
 
 ```bash
-uvx --isolated --managed-python --python 3.14.7 --constraints runtime-constraints.txt --from ./inferyard-0.0.1-py3-none-any.whl inferyard --help
+uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --help
 ```
 
 无需克隆源码或安装 mise。首次准备 Python 和依赖需要联网；模型和引擎由操作者另行准备。
-[安装指南](docs/installation.md)包含 uv 安装、三平台资产准备、服务绑定及离线使用。
+[安装指南](docs/installation.md)包含 uv 安装、Release 附件安装、三平台资产准备、服务绑定及离线使用。
 维护者的[候选构建与安装检查](CONTRIBUTING.md#本地候选构建与安装检查)绑定同一批发行物；
 至少完成一个平台的实际安装检查，其余平台明确标为未验证。每个候选均须完成同批构建与实际安装检查。
 

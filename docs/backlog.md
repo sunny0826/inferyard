@@ -8,8 +8,29 @@
 源码复制、包和 CLI 更名、当前格式清理已完成；新 Git 历史不导入源仓库历史、原始运行、模型或真实配置。
 公开源码仓库为 [sunny0826/inferyard](https://github.com/sunny0826/inferyard)，默认分支为 `main`。
 `v0.0.1` 的公开状态、最终源码提交、候选清单摘要和手动 package-check 来源，以
-[GitHub Release](https://github.com/sunny0826/inferyard/releases) 说明及对应候选清单为准。PyPI 尚未发布。
-文档和校验流程已准备；最终候选需要从集成后的干净提交手动生成，不能把 PR 运行改标为发布来源。
+[GitHub Release](https://github.com/sunny0826/inferyard/releases) 说明及对应候选清单为准。
+[PyPI 0.0.1](https://pypi.org/project/inferyard/0.0.1/) 已发布，wheel SHA-256 为
+`f390507672ff60b191550e14c0da9d687a0448b607a5e1d789787c5cdf8624b8`。
+后续候选仍须从集成后的干净提交手动生成，不能把 PR 运行改标为发布来源。
+
+### PyPI uvx 真机验证
+
+2026-10-08 从 PyPI 使用固定 `inferyard==0.0.1`、Python 3.14.7、uv 0.12.18 验证：
+
+| 平台 | 本次结果 |
+| --- | --- |
+| macOS arm64 / Qwen3-4B / Prism Metal | 新核心运行 120/120 completed，质量通过 94/120；新鹈鹕运行 1/1 completed；两者其余四终态均为 0，原始证据及双运行报告 `verify --rerender` 通过 |
+| Omarchy / Linux x64 | 待本次远程 uvx 真机执行；不将旧 wheel 运行计作此次结果 |
+
+本机已验证 `uvx` 的版本、帮助、两个包内题包导出及缓存齐全后的离线启动。
+汇总报告经本机回环 HTTP 载入后切断浏览器网络，运行筛选与内嵌 SVG 渲染正常，控制台无错误；
+浏览器工具拒绝直接访问 `file://`，因此未验证该入口。
+设备推荐因可用内存不足阻断后，用户明确授权忽略内存和温度限制；本次采用手工候选，
+包内单次执行的 1 GiB 内存下限仍生效，未设置实验温度停止项。
+这不证明自动候选推荐通过。原件保存在本机 `validation/pypi-uvx-20261008/`，
+核心 run `20261008T090738Z-0fb7f9b831cc47c9b06eff64f0d9ebf0`，
+鹈鹕 run `20261008T090902Z-d38a4696669d49f8a40b5d5d69c8431d`。
+不据此推定 Windows、长时负载或跨设备受控性能比较资格。
 
 ## 已完成的实现与验证
 

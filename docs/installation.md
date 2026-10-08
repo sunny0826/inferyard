@@ -1,7 +1,7 @@
 # 使用 uv 安装与准备测评
 
-本页适用于 `0.0.1` 的 GitHub Release 附件安装。发布状态与下载见
-[Releases](https://github.com/sunny0826/inferyard/releases)；草稿公开后才提供下载，尚未上传 PyPI。
+本页适用于已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.1/) 的 `0.0.1`。
+也可使用 [Releases](https://github.com/sunny0826/inferyard/releases) 中的同批附件安装。
 项目采用 [MIT 许可证](../LICENSE)。安装文件必须来自同一发行批次；
 平台实现与未验项见[平台状态](platforms.md)，接口见 [CLI](cli-surface.md)。
 证据与比较结论遵循[证据血缘规则](data-contract.md#证据血缘与比较结论)。
@@ -12,6 +12,31 @@
 PowerShell、macOS 或 Linux 的独立安装器或包管理器。社区使用无须安装 mise、手动安装 Python
 或克隆源码。安装器完成后重开终端；若 uv 不在 PATH，按安装器提示添加其 bin 目录。
 工具入口不在 PATH 时运行 `uv tool update-shell`，再重开终端；本工具不会自行改 shell 配置。
+
+### 从 PyPI 安装或运行
+
+```bash
+uv tool install --managed-python --python 3.14.7 inferyard==0.0.1
+inferyard --versions
+inferyard --help
+```
+
+无需持久安装也可以运行：
+
+```bash
+uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --versions
+uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --help
+```
+
+后文每条 `inferyard ...` 都可替换为
+`uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 ...`，
+包括 init、设备检测、配置准备、run、report 和 verify。完整 benchmark 按
+[默认测评范围](usage.md#默认测评范围)分别运行 120 题核心包和 1 题鹈鹕包，再生成汇总报告。
+`uvx inferyard` 会选择可用版本；正式测评固定版本，并在整个运行和恢复期间保持环境不变。
+首次运行需要联网准备 Python 和依赖；普通索引安装不会读取维护者仓库的 `uv.lock`。
+需要固定发行批次的依赖时，添加该批 `--constraints runtime-constraints.txt`。
+
+### 从 Release 附件安装
 
 在 `v0.0.1` Release 的附件中下载 `inferyard-0.0.1-py3-none-any.whl`、
 `runtime-constraints.txt` 和 `SHA256SUMS`，放到同一目录。核对前两个文件的 SHA-256
@@ -52,9 +77,8 @@ uvx --isolated --managed-python --python 3.14.7 --constraints runtime-constraint
 ```
 
 `uvx` 是 `uv tool run` 的别名，`--from` 指定分发物，最后的 `inferyard` 是命令名。
-不要使用 `uvx inferyard`。`--isolated` 避免复用同名持久工具的不同依赖环境；缓存仍可复用。
+`--isolated` 避免复用同名持久工具的不同依赖环境；缓存仍可复用。
 实际解释器、依赖和评分身份以 `--versions` 及证据为准，普通安装不会读取维护者仓库的 uv.lock。
-公开索引安装命令要等名称归属和真实索引重装验证完成后提供。
 
 ## 2. 创建工作区与选择题包
 
@@ -157,13 +181,17 @@ Windows/PowerShell 可使用相同 CLI 参数，路径加引号，PID 使用实�
 
 ## 5. 升级、回退和离线
 
-在运行和恢复结束后，取得新版本同批 wheel、约束及摘要，以相同安装命令显式安装。
+在运行和恢复结束后，使用 PyPI 的明确版本号安装；使用附件时取得新版本同批 wheel、约束及摘要，
+以相同安装命令显式安装。
 回退时使用保留的旧 wheel 和旧约束，不重写用户工作区或旧证据。`0.0.1` 是首个发行版本；
 测试中的合成升级/回退不代表历史正式版本兼容。已安装同版本时可显式 `uv tool install --force ...` 重装。
 
 正式运行优先使用持久安装。直接调用安装后的离线命令不会下载依赖；uvx 冷缓存需要准备环境：
 
 ```bash
+# 已从 PyPI 准备好相同版本及依赖的缓存
+uvx --offline --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --versions
+# 使用本地 Release 附件及同批约束
 uvx --offline --isolated --managed-python --python 3.14.7 --constraints runtime-constraints.txt --from ./inferyard-0.0.1-py3-none-any.whl inferyard --versions
 ```
 
