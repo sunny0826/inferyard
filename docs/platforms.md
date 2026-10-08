@@ -1,7 +1,8 @@
 # 平台状态
 
-本页区分实现、历史原生覆盖与安装验证。`v0.0.1` 发布状态见
-[Releases](https://github.com/sunny0826/inferyard/releases)，安装检查来源由 [backlog](backlog.md)跟踪。
+本页区分实现、历史原生覆盖与发行物验证。`v0.0.1` 发布状态见
+[PyPI](https://pypi.org/project/inferyard/0.0.1/) 与
+[Releases](https://github.com/sunny0826/inferyard/releases)，安装及本次真机检查由 [backlog](backlog.md)跟踪。
 历史覆盖来自 2026-10-02 至 10-07 的已保存运行，
 不自动转移到新源码或候选 wheel，解释规则见[证据血缘](data-contract.md#证据血缘与比较结论)。
 
@@ -34,6 +35,9 @@ Windows 的 live 开销、实时扩展和 prepare-length 等入口仍有平台�
 
 ## 当前候选验证与未验项
 
+- PyPI `0.0.1` 已在 macOS arm64 与 Omarchy Linux x64 使用 `uvx` 完成新核心 120 题和新鹈鹕 1 题，
+  原始证据核验、双运行报告及重渲染核验通过。实际运行条件、资源门槛与证据定位见
+  [本次 PyPI 验证](backlog.md#pypi-uvx-真机验证)；不由此推定自动候选推荐或严格性能资格。
 - [PR #1 的 CI](https://github.com/sunny0826/inferyard/actions/runs/37716506876) 已完成 Linux x64、
   Windows x64、macOS arm64 的源码外安装检查，包括 uv tool/uvx、中文工作区、离线报告、当前/旧格式边界
   及合成升级/回退。最终发行批次的来源和摘要以 Release 说明及候选清单为准。

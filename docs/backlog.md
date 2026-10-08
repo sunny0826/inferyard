@@ -20,7 +20,7 @@
 | 平台 | 本次结果 |
 | --- | --- |
 | macOS arm64 / Qwen3-4B / Prism Metal | 新核心运行 120/120 completed，质量通过 94/120；新鹈鹕运行 1/1 completed；两者其余四终态均为 0，原始证据及双运行报告 `verify --rerender` 通过 |
-| Omarchy / Linux x64 | 待本次远程 uvx 真机执行；不将旧 wheel 运行计作此次结果 |
+| Omarchy / Linux x64 / Qwen3-4B / Prism CPU | 新核心运行 120/120 completed，质量通过 96/120；新鹈鹕运行 1/1 completed；两者其余四终态均为 0，原始证据及双运行报告重渲染核验通过 |
 
 本机已验证 `uvx` 的版本、帮助、两个包内题包导出及缓存齐全后的离线启动。
 汇总报告经本机回环 HTTP 载入后切断浏览器网络，运行筛选与内嵌 SVG 渲染正常，控制台无错误；
@@ -30,6 +30,13 @@
 这不证明自动候选推荐通过。原件保存在本机 `validation/pypi-uvx-20261008/`，
 核心 run `20261008T090738Z-0fb7f9b831cc47c9b06eff64f0d9ebf0`，
 鹈鹕 run `20261008T090902Z-d38a4696669d49f8a40b5d5d69c8431d`。
+Omarchy 本次原件位于其本机 `validation/inferyard-pypi-uvx-20261008-omarchy/`，
+核心 run `20261008T094946Z-5ec95b54157f4def8942de5f46f6fe4d`，
+鹈鹕 run `20261008T100000Z-cd172e231a8d46a5bb6724fc685a1b50`；
+报告为该目录下 `report/report.html`。远程 Chromium 离线渲染已检查，未检查交互控件和动画时间线。
+Omarchy 同样保留 1 GiB 内存下限，单次运行未配置温停，也未采集温度。
+鹈鹕输出为可解析的静态 SVG，未满足动画要求；保持不评分且未重跑。
+两端模型服务均已退出，最终主机状态均为 clean；原始 run 和历史报告均保留。
 不据此推定 Windows、长时负载或跨设备受控性能比较资格。
 
 ## 已完成的实现与验证
