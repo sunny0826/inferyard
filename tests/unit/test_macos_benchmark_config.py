@@ -31,6 +31,9 @@ def generator(tmp_path, monkeypatch):
         "gpu": {"devices": [{"name": "Apple M4", "metal_supported": True}]},
     }
     monkeypatch.setattr(module, "hardware_snapshot", lambda path: hardware)
+    monkeypatch.setattr(
+        module, "environment_snapshot", lambda: {"platform": "Darwin", "profile": "balanced"}
+    )
     model = gguf(tmp_path / "Mac-chosen-PQ2_0.gguf", "Mac selected model")
     engine = tmp_path / "llama-server"
     engine.write_bytes(b"synthetic engine, never executed")
@@ -55,6 +58,7 @@ def test_create_local_candidate_with_fresh_assets_and_no_requests(generator, tmp
     assert config["engine"]["backend"] == "metal"
     assert config["model"]["local_path"] == str(model.resolve())
     assert config["conditions"]["threads"] == 5
+    assert config["conditions"]["profile"] == "balanced"
     assert config["conditions"]["context_size"] == 4096
     assert config["endpoint"]["server_pid"] == config["endpoint"]["process_start_ticks"] == 1
     assert result["model_requests_sent"] == 0 and result["ready_to_run"] is False

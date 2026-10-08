@@ -132,8 +132,13 @@ def test_identity_change_between_native_observations_is_rejected(windows, change
         elif change == "exe":
             model.with_name("LLAMA-SERVER.exe").write_bytes(b"changed")
         else:
-            model.unlink()
-            model.write_bytes(b"replacement")
+            # Creating before replacing prevents immediate inode reuse on Linux.
+            previous = model.stat()
+            replacement = model.with_name("replacement.gguf")
+            replacement.write_bytes(b"replacement")
+            replacement.replace(model)
+            current = model.stat()
+            assert (current.st_dev, current.st_ino) != (previous.st_dev, previous.st_ino)
 
     box["hook"] = changed
     with pytest.raises(PreflightError):

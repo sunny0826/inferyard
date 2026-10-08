@@ -87,6 +87,10 @@ def test_windows_candidate_references_verified_runtime_and_binding_keeps_recipe(
 
 def test_macos_candidate_preserves_existing_generation_and_exact_template(tmp_path, monkeypatch):
     monkeypatch.setattr(preparation_io, "native_platform", lambda: ("Darwin", "arm64"))
+    monkeypatch.setattr(
+        "inferyard.platforms.identity.environment_snapshot",
+        lambda: {"platform": "Darwin", "profile": "balanced"},
+    )
     model = gguf(tmp_path / "chosen.gguf", "chosen")
     engine = tmp_path / "llama-server"
     engine.write_bytes(b"synthetic, never executed")
@@ -102,6 +106,7 @@ def test_macos_candidate_preserves_existing_generation_and_exact_template(tmp_pa
     assert Path(result["template"]).read_bytes() == b"x\r\ny\r"
     assert config["generation"]["temperature"] == 0.7
     assert config["engine"]["backend"] == "metal"
+    assert config["conditions"]["profile"] == "balanced"
 
 
 @pytest.mark.parametrize(

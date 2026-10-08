@@ -31,10 +31,12 @@ def test_guarded_request_cancels_and_joins_owned_task():
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux fork-based independent guardian")
+@pytest.mark.parametrize("memory", [16 * 1024**3, None])
 def test_independent_guard_is_another_process_and_records_final_boundary(
-    tmp_path, config_path, monkeypatch
+    tmp_path, config_path, monkeypatch, memory
 ):
     import os
+    from types import SimpleNamespace
 
     from inferyard.config.loader import load_config
 
@@ -47,18 +49,32 @@ def test_independent_guard_is_another_process_and_records_final_boundary(
                 "environment": dict.fromkeys(
                     ("platform", "kernel", "cpu_model", "ac_online", "governor", "epp"), "fixture"
                 )
+                | {"mem_available_bytes": memory}
             }
 
     monkeypatch.setattr(independent_guard, "SafetyGuard", Safety)
+    config = load_config(config_path).config.to_dict()
+    config["output"]["root"] = str(tmp_path / "results")
+    monkeypatch.setattr(
+        independent_guard.shutil,
+        "disk_usage",
+        lambda _: SimpleNamespace(free=config["output"]["min_disk_bytes"] + 1),
+    )
     guard = independent_guard.IndependentGuard(
         tmp_path / "guard.jsonl",
-        load_config(config_path).config.to_dict(),
+        config,
         policy={**independent_guard.POLICY, "interval_seconds": 0.01},
     )
     guard.start()
-    assert guard.process.pid != os.getpid() and not guard.stopped()
-    guard.close()
+    try:
+        assert guard.process.pid != os.getpid()
+        assert guard.stopped() is (memory is None)
+    finally:
+        guard.close()
     proof = guard.evidence()
+    assert proof["samples"][0]["reason"] == (
+        "system_memory_unavailable" if memory is None else None
+    )
     assert len(proof["samples"]) >= 2
     assert proof["samples"][0]["monotonic_ns"] < proof["samples"][-1]["monotonic_ns"]
     assert guard.process.exitcode == 0
