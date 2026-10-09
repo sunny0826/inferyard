@@ -10,7 +10,6 @@ from inferyard.platforms.identity import PreflightError, process_start_ticks
 from inferyard.platforms.platform_io import open_nofollow
 from inferyard.runtime.host_files import (
     decode,
-    exists,
     identity,
     publish_state,
     read_bytes,
@@ -18,7 +17,6 @@ from inferyard.runtime.host_files import (
     safe_file,
     validate_state,
 )
-from inferyard.runtime.host_receipt import receipt_path, require_ready
 
 if os.name == "nt":
     from inferyard.platforms.windows_host_paths import common_data_root
@@ -28,7 +26,6 @@ else:
     _HOST_ROOT = Path("/var/tmp")
 LOCK_PATH = _HOST_ROOT / "inferyard-host.lock"
 STATE_PATH = _HOST_ROOT / "inferyard-host.state.json"
-LEGACY_ROOT = Path("D:/") if os.name == "nt" else None
 # Host mutex state is not a measurement document. Keep its persisted format so
 # an upgrade cannot forget an existing dirty service or bypass manual recovery.
 LOCK_FORMAT_VERSION = 1
@@ -95,16 +92,14 @@ class HostLock:
             self._state_paths = [STATE_PATH]
             raw = read_bytes(STATE_PATH)
             if raw is None:
-                if exists(receipt_path()):
-                    raise PreflightError("host_state_migration_pending")
-                from inferyard.runtime.host_migration import old_pairs
-
-                old = any(exists(path) for pair in old_pairs() for path in pair)
-                raise PreflightError(
-                    "host_state_migration_required" if old else "host_state_initialization_required"
+                publish_state(
+                    STATE_PATH,
+                    {"schema_version": LOCK_FORMAT_VERSION, "dirty": False},
+                    overwrite=False,
                 )
+                raw = read_bytes(STATE_PATH)
             state = decode(raw)
-            require_ready(state)
+            state.pop("migration", None)
             self.state = validate_state(state)
             return self
         except BaseException as exc:
@@ -119,12 +114,7 @@ class HostLock:
         if self.fd is None:
             raise PreflightError("host_lock_not_held")
         self._check_locks()
-        # Runtime writes cannot remove or replace the committed transaction.
-        envelope = self.state["migration"]
-        if "migration" in state and state["migration"] != envelope:
-            raise PreflightError("host_state_transaction_conflict")
-        state = validate_state({**state, "migration": envelope})
-        require_ready(state)
+        state = validate_state(state)
         publish_state(STATE_PATH, state, overwrite=True)
         self.state = state
 

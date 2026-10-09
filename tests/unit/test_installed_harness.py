@@ -61,7 +61,7 @@ with pytest.MonkeyPatch.context() as patch:
     assert Path(helper.__file__).is_relative_to(inputs / 'ci-tests')
     assert lock.STATE_PATH.parent == work
     with lock.HostLock() as held:
-        assert held.state['migration']['phase'] == 'ready'
+        assert 'migration' not in held.state
         assert held.state['dirty'] is False
     assert request.command == 'run' and calls == []
 print(json.dumps({'scenario_constructed': True, 'requests_sent': 0}))
@@ -91,12 +91,6 @@ sys.path.insert(0, {str(site)!r})
 import inferyard.runtime.lock as locking
 locking.LOCK_PATH = Path({str(host_root / "inferyard-host.lock")!r})
 locking.STATE_PATH = Path({str(host_root / "inferyard-host.state.json")!r})
-locking.LEGACY_ROOT = None
-if '--initialize' not in sys.argv:
-    import inferyard.runtime.host_migration as migration
-    def forbidden_migration():
-        raise AssertionError('request/crash/dirty phase must never migrate')
-    migration.migrate = forbidden_migration
 """
     out.write_text(shim + source.read_text(encoding="utf-8"), encoding="utf-8")
     return out
@@ -119,32 +113,6 @@ def test_disposable_sequence_initializes_once_then_preserves_crash_dirty(
         monkeypatch.setenv(key, value)
     observed = []
     run = subprocess.run
-    # Missing initialization must fail without publishing ready, even for child hold.
-    for command in (
-        [
-            str(request),
-            "--fixtures",
-            str(out / "inputs/fixtures"),
-            "--mode",
-            "success",
-            "--out",
-            str(out / "not-initialized.json"),
-        ],
-        [str(state), "--child", "hold"],
-    ):
-        refused = run(
-            [sys.executable, "-I", *command],
-            cwd=out / "empty-cwd",
-            env=os.environ.copy(),
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=30,
-        )
-        assert refused.returncode != 0 and "host_state_initialization_required" in refused.stderr
-        assert not (host / "inferyard-host.state.json").exists()
-        assert not (host / "inferyard-host-migration.json").exists()
-    assert not (out / "not-initialized.json").exists()
 
     def record(command, **options):
         result = run(command, **options, capture_output=True, text=True)
@@ -152,8 +120,6 @@ def test_disposable_sequence_initializes_once_then_preserves_crash_dirty(
             (
                 command,
                 (host / "inferyard-host.state.json").read_bytes(),
-                (host / "inferyard-host-migration.json").read_bytes(),
-                (host / "local-ai-benchmark-host.state.json").read_bytes(),
             )
         )
         return result
@@ -169,9 +135,12 @@ def test_disposable_sequence_initializes_once_then_preserves_crash_dirty(
     assert observed[3][0][observed[3][0].index("--mode") + 1] == "dirty"
     assert [json.loads(row[1])["dirty"] for row in observed] == [False, False, True, True]
     assert observed[2][1:] == observed[3][1:]
-    assert len({row[2] for row in observed}) == len({row[3] for row in observed}) == 1
+    assert not (host / "inferyard-host-migration.json").exists()
+    assert not (host / "local-ai-benchmark-host.state.json").exists()
     initialization = json.loads((out / "host-initialization.json").read_bytes())
-    assert initialization["result"]["status"] == "migrated"
+    assert initialization["auto_initialization"] is True
+    assert "explicit_initialization" not in initialization
+    assert initialization["result"]["status"] == "initialized"
     success = json.loads((out / "request-chain-success.json").read_bytes())
     dirty = json.loads((out / "request-chain-dirty.json").read_bytes())
     assert success["code"] == 0 and success["synthetic_requests"] == 8

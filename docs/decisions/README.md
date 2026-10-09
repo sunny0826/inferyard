@@ -32,9 +32,11 @@ Accepted 表示采纳设计，不代表所有平台已验证。
 | [ADR 035：按用途区分描述、执行与审核条件](035-purpose-specific-admission.md) | Accepted |
 | [ADR 036：按职责绑定身份、持久化与校准适用域](036-scoped-measurement-cost.md) | Accepted |
 | [ADR 037：原始证据读取与封存呈现分离](037-offline-evidence-reading.md) | Accepted |
-| [ADR 038：InferYard 当前格式边界与主机状态迁移](038-inferyard-current-format.md) | Proposed；T0 待审核 |
+| [ADR 038：InferYard 当前格式边界与主机状态迁移](038-inferyard-current-format.md) | Accepted；锁迁移部分由 ADR 039 取代 |
+| [ADR 039：移除主机状态迁移与旧入口退休机制](039-remove-host-state-migration.md) | Accepted |
 
-ADR 038 列明拟局部取代的兼容承诺及继续有效的安全规则；用户已授权清理范围，实施仍须通过 T0 门。
-锁方案优先评估一次性迁移与固定旧入口退休，持续桥接仅为对照；安装结果 scope 变化拟独立升版。
+ADR 039 删除 `host-state migrate` 与退休机制：实时入口自动初始化 clean 状态，
+旧工具文件完全忽略，主机互斥只覆盖 InferYard 自身进程。
+ADR 038 的格式矩阵、拒绝语义与安装资格版本条款继续有效。
 
 证据解释统一遵循[血缘规则](../data-contract.md#证据血缘与比较结论)。设备专属实验与失效提案已移出当前文档，原历史仍可由 Git 追溯。

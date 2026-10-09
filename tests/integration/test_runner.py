@@ -30,7 +30,6 @@ from inferyard.runtime.runner import Dependencies, execute_async
 def scenario(tmp_path, monkeypatch, config_path, *, initialize_host=True):
     # Synthetic orchestration must not depend on the developer's free RAM.
     monkeypatch.setattr("inferyard.runtime.trial_runner.memory_available", lambda: 16 * 1024**3)
-    monkeypatch.setattr(locking, "LEGACY_ROOT", None)
     monkeypatch.setattr(locking, "LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr(locking, "STATE_PATH", tmp_path / "host.state.json")
     if initialize_host:

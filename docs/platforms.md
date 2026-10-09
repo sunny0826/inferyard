@@ -41,9 +41,9 @@ Windows 的 live 开销、实时扩展和 prepare-length 等入口仍有平台�
 - [PR #1 的 CI](https://github.com/sunny0826/inferyard/actions/runs/37716506876) 已完成 Linux x64、
   Windows x64、macOS arm64 的源码外安装检查，包括 uv tool/uvx、中文工作区、离线报告、当前/旧格式边界
   及合成升级/回退。最终发行批次的来源和摘要以 Release 说明及候选清单为准。
-- 同一 CI 在一次性原生 runner 上验证固定路径的首次初始化、合成请求成功、进程中断后 dirty 持久化及拒绝。
-  没有使用真实模型，也未覆盖旧状态迁移的全部原生场景。
-- Windows 的旧状态迁移、ACL/reparse/多账户/卷变化、无 D 盘环境及原生 runtime prepare/create 仍待专项验证。
+- 同一 CI 在一次性原生 runner 上验证固定路径的自动初始化、合成请求成功、进程中断后 dirty 持久化及拒绝。
+  没有使用真实模型。
+- Windows 的 ACL/reparse/多账户/卷变化及原生 runtime prepare/create 仍待专项验证。
 - 第二架构、所有模型、长时负载、并发和严格性能资格均不由现有安装检查推定。
 
 使用入口：[安装](installation.md) · [macOS](../MACOS.md) · [Windows](../WINDOWS.md) · [配置](../configs/README.md)。

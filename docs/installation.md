@@ -164,7 +164,7 @@ inferyard config assets --model /path/to/model.gguf --engine /path/to/llama-serv
 
 ## 4. 外部启动、绑定、运行与报告
 
-首次实时操作先完成[主机初始化](#首次主机初始化)。
+首次实时操作自动初始化主机状态，不需要显式初始化步骤。
 操作者按照候选 `engine.binary_path` 和完整 `engine.startup_args` 在外部终端启动服务。
 CLI 不管理该服务的启动、终止或重启。将实际 PID 和本机端点代入：
 
@@ -207,12 +207,3 @@ uvx 缓存可清理，外部长期 MLX 服务使用持久安装提供的脚本�
 
 准备命令 stdout 为 JSON、stderr 为脱敏诊断；0 准备完成、2 输入/身份阻断、4 IO/工具错误、
 130 取消。正式 run 不完整可退出 3，模型答错不等于 CLI 失败。完整语义见 CLI 契约。
-
-## 首次主机初始化
-
-首次实时操作前执行 `inferyard host-state migrate`。它保存旧状态原字节、退休固定旧工具入口，
-然后提交新状态；成功仍为 ready_to_run=false，运行前还要核验服务、资产和预算。
-旧 dirty 先用原项目恢复；旧 lock-only 或凭据发布后来源变化需要调查，不能删锁或清空状态。
-正常运行仅访问 inferyard-host.* 和不可变凭据。离线 verify/report 不建立主机状态。
-历史格式和 origin=migrated 明确返回 unsupported_format/2；旧数据留在原项目处理。
-Windows 原生迁移本次未验。详见[当前格式契约](contracts/inferyard-current-format.md)。

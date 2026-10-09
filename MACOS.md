@@ -39,9 +39,8 @@ inferyard verify --path bench-work/report
 换页属于主机，不直接归因到模型。统一内存不能与 RSS 相加；独立显存、频率、功耗和能耗未采集时为 null。
 电源来自 `pmset`，不填造 Linux governor/EPP；所需策略或传感器缺失时按协议阻断或披露。
 
-首次实时操作前运行 `inferyard host-state migrate`。新锁为 `/var/tmp/inferyard-host.lock`，状态为同目录的 `inferyard-host.state.json`。
-维护入口保存不可变原件凭据并退休旧入口；正常运行只访问新锁、状态和凭据。
-隔离根进程测试不构成真实主机部署验收，迁移演练不会改系统真实状态。
+首次实时入口获得主机锁时自动创建 clean 状态，不需要显式初始化命令。锁为 `/var/tmp/inferyard-host.lock`，状态为同目录的 `inferyard-host.state.json`。
+旧工具文件不读取、不加锁；隔离根进程测试不构成真实主机部署验收。
 取消后若无法确认排空，保留 dirty；不要删除锁/state 绕过恢复。
 
 ## 引擎诊断与开发

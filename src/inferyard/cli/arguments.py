@@ -57,15 +57,11 @@ def parser() -> Parser:
         dest="command",
         title="commands",
         metavar=(
-            "{init,host-state,runtime,config,device-check,catalogue,plan,verify,overhead,probe,run,resume,repeat-summary,"
+            "{init,runtime,config,device-check,catalogue,plan,verify,overhead,probe,run,resume,repeat-summary,"
             "prepare-length,rescore,export,public,report,compare,filter-candidates,"
             "extension,engine-fit}"
         ),
     )
-    maintenance = commands.add_parser("host-state", help="initialize or retire the old host state")
-    maintenance.add_subparsers(dest="maintenance", required=True).add_parser(
-        "migrate", help="explicit one-time host initialization/migration"
-    ).set_defaults(command="host-state migrate")
     community.add_commands(commands)
     discovery.add_commands(commands)
     verification.add_commands(commands)

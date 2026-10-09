@@ -1,5 +1,26 @@
 # 变更记录
 
+## Unreleased
+
+### Removed
+
+- Removed the `inferyard host-state migrate` command and the legacy host-state
+  retirement mechanism (migration transactions, retirement markers and
+  maintenance receipts).
+- Legacy `local-ai-benchmark-host` lock/state files from the old tool are now
+  completely ignored: they are never read, locked or retired, and InferYard no
+  longer provides cross-tool mutual exclusion with the old tool.
+
+### Changed
+
+- Live entry points now create a clean host state automatically when acquiring
+  the host lock for the first time; no explicit initialization step is needed
+  on new machines.
+- v0.0.1 host states carrying a `migration` envelope are accepted and the
+  envelope is ignored; it disappears on the next state write. Leftover
+  `inferyard-host-migration.json` receipt files are treated as unrelated files
+  and left untouched.
+
 ## 0.0.1
 
 首个公开分发版本。Python 包和 CLI 统一为 `inferyard`，许可证为 MIT，活动数据契约保持 `schema_version = 3`。

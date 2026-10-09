@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import sys
@@ -12,7 +13,6 @@ from tests.helpers import python_worker, readline_timeout, symlink_or_skip
 
 @pytest.fixture
 def paths(tmp_path, monkeypatch):
-    monkeypatch.setattr(locking, "LEGACY_ROOT", None)
     monkeypatch.setattr(locking, "LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr(locking, "STATE_PATH", tmp_path / "host.state.json")
     from tests.host_state_helpers import initialize
@@ -97,7 +97,6 @@ def test_sigkill_releases_kernel_lock_but_preserves_dirty(paths):
 import time
 from pathlib import Path
 import inferyard.runtime.lock as locking
-locking.LEGACY_ROOT = None
 locking.LOCK_PATH = Path(__import__('sys').argv[1])
 locking.STATE_PATH = Path(__import__('sys').argv[2])
 with locking.HostLock() as lock:
@@ -137,3 +136,106 @@ with locking.HostLock() as lock:
             child.kill()
             child.wait(timeout=5)
         child.stdout.close()
+
+
+@pytest.mark.parametrize("envelope", [None, {"phase": "ready"}, {"phase": "pending"}])
+def test_first_live_entry_accepts_clean_state(tmp_path, monkeypatch, config_path, envelope):
+    from inferyard.runtime.host_files import publish_state
+    from inferyard.runtime.runner import execute_async
+    from tests.integration.test_runner import scenario
+
+    request, deps, calls, _ = scenario.__wrapped__(
+        tmp_path, monkeypatch, config_path, initialize_host=False
+    )
+    if envelope is not None:
+        publish_state(
+            locking.STATE_PATH,
+            {"schema_version": 1, "dirty": False, "migration": envelope},
+            overwrite=False,
+        )
+    else:
+        assert not locking.STATE_PATH.exists()
+    with HostLock() as lock:
+        assert lock.state == {"schema_version": locking.LOCK_FORMAT_VERSION, "dirty": False}
+    saved = json.loads(locking.STATE_PATH.read_text())
+    if envelope is not None:
+        assert saved["migration"] == envelope  # Reading alone preserves persisted bytes.
+    else:
+        assert saved == {"schema_version": locking.LOCK_FORMAT_VERSION, "dirty": False}
+    code, _ = asyncio.run(execute_async(request, deps))
+    assert code == 0 and len(calls) == 8
+    assert "migration" not in json.loads(locking.STATE_PATH.read_text())
+
+
+def test_legacy_envelope_dirty_blocks_requests_and_requires_recovery(
+    tmp_path, monkeypatch, config_path
+):
+    from inferyard.runtime.host_files import publish_state
+    from inferyard.runtime.runner import execute_async
+    from tests.integration.test_runner import scenario
+
+    request, deps, calls, _ = scenario.__wrapped__(tmp_path, monkeypatch, config_path)
+    with HostLock() as lock:
+        lock.dirty(
+            "legacy-run",
+            {"url": "http://127.0.0.1:1", "server_pid": 99999999, "process_start_ticks": 123},
+            "legacy-request",
+        )
+        state = {**lock.state, "migration": {"phase": "ready"}}
+    publish_state(locking.STATE_PATH, state, overwrite=True)
+    original = locking.STATE_PATH.read_bytes()
+    code, result = asyncio.run(execute_async(request, deps))
+    assert code == 2 and calls == []
+    assert "dirty_service_requires_bound_recovery" in result.limitations
+    assert locking.STATE_PATH.read_bytes() == original
+    with HostLock() as lock:
+        assert lock.state["dirty"] is True and "migration" not in lock.state
+        with pytest.raises(PreflightError, match="invalid_recovery_confirmation"):
+            lock.verify_manual_recovery("wrong", "restarted", {})
+
+        def gone(pid):
+            raise PreflightError("service_process_unavailable")
+
+        monkeypatch.setattr(locking, "process_start_ticks", gone)
+        proof = lock.verify_manual_recovery(
+            state["dirty_token"],
+            "fixture restarted service",
+            {"server_pid": 123, "process_start_ticks": 456},
+        )
+        assert proof["old_process_gone"] is True
+        assert locking.STATE_PATH.read_bytes() == original
+        lock.clean()
+    saved = json.loads(locking.STATE_PATH.read_text())
+    assert saved["dirty"] is False and "migration" not in saved
+
+
+def test_old_tool_files_and_receipt_are_ignored(tmp_path, monkeypatch):
+    monkeypatch.setattr(locking, "LOCK_PATH", tmp_path / "inferyard-host.lock")
+    monkeypatch.setattr(locking, "STATE_PATH", tmp_path / "inferyard-host.state.json")
+    unrelated = [
+        tmp_path / "local-ai-benchmark-host.lock",
+        tmp_path / "local-ai-benchmark-host.state.json",
+        tmp_path / "inferyard-host-migration.json",
+    ]
+    for path in unrelated:
+        path.write_bytes(b"invalid unrelated bytes")
+    with unrelated[0].open("rb+") as old:
+        locking._lock(old.fileno())
+        try:
+            with HostLock() as lock:
+                assert lock.state["dirty"] is False
+                lock.clean()
+        finally:
+            locking._lock(old.fileno(), release=True)
+    assert all(path.read_bytes() == b"invalid unrelated bytes" for path in unrelated)
+
+
+def test_removed_host_command_is_argument_error(capsys):
+    from inferyard.cli import main
+
+    assert main(["host-state", "migrate"]) == 2
+    assert json.loads(capsys.readouterr().out)["limitations"] == ["invalid_input"]
+    with pytest.raises(SystemExit) as exc:
+        main(["--help"])
+    assert exc.value.code == 0
+    assert "host-state" not in capsys.readouterr().out

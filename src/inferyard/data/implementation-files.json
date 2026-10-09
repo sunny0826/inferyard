@@ -152,8 +152,6 @@
     "runtime/environment_schedule.py",
     "runtime/fixed_output.py",
     "runtime/host_files.py",
-    "runtime/host_migration.py",
-    "runtime/host_receipt.py",
     "runtime/lock.py",
     "runtime/request_execution.py",
     "runtime/runner.py",

@@ -41,8 +41,9 @@ Omarchy 同样保留 1 GiB 内存下限，单次运行未配置温停，也未�
 
 ## 已完成的实现与验证
 
-[ADR 038](decisions/038-inferyard-current-format.md) 对应的当前格式清理与主机状态迁移实现已完成。
-格式集合、旧入口退休及维护事务以[当前格式契约](contracts/inferyard-current-format.md)为准。
+[ADR 038](decisions/038-inferyard-current-format.md) 对应的当前格式清理已完成；
+[ADR 039](decisions/039-remove-host-state-migration.md) 移除了主机状态迁移与旧入口机制，
+实时入口首次运行自动初始化主机状态，现行规则以[当前格式契约](contracts/inferyard-current-format.md)为准。
 核心 schema、43 个指标 ID、199 个方法 ID、题包和审核证明保持；安装结果已升级为 `installed_safe_checks.v3`。
 
 本次发布准备的已验集成基线为 [PR #1 / Package checks](https://github.com/sunny0826/inferyard/actions/runs/37716506876)，
@@ -53,17 +54,17 @@ PR 提交 `83def2565f9d057621411e2cc4ab41752e7cb9c5`，已合入 `ce221771e426e1
 | Linux 全量 pytest | **4438 passed / 47 skipped**；跳过项按平台或显式启用条件保留，不计为通过 |
 | 静态、资源与构建 | Ruff、Schema/catalogue/community 导出、wheel/sdist 与 sdist 重建通过；未重新核验上游 runtime ZIP |
 | 三平台安装 | Linux x64、Windows x64、macOS arm64 均完成源码外 uv tool/uvx 26 项检查，覆盖当前报告、旧报告拒绝及合成升级/回退 |
-| 固定主机状态 | 一次性 GitHub runner 上完成显式初始化、合成请求、crash/dirty 持久化及 dirty 拒绝；没有真实模型请求 |
+| 固定主机状态 | 一次性 GitHub runner 上完成自动初始化、合成请求、crash/dirty 持久化及 dirty 拒绝；没有真实模型请求 |
 | 早期本机验收 | 来源 `2fcb180` 的离线 HTML 桌面/手机渲染与 macOS 隔离根迁移检查已保存；原件保留，不改标为新候选证据 |
 
 后续源码或发行物变化必须建立新候选；最终清单与安装结果随 Actions artifact 保留，Release 记录其准确来源。
-Windows 旧状态迁移及 ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能仍未验证。
+Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能仍未验证。
 
 ## 后续工程工作
 
 | 工作 | 边界 |
 | --- | --- |
-| 原生准备与平台边界 | 按候选字节补 Windows 旧状态迁移、ACL/reparse/多账户/卷变化、无 D 盘及原生 runtime prepare/create 专项验证 |
+| 原生准备与平台边界 | 按候选字节补 Windows ACL/reparse/多账户/卷变化及原生 runtime prepare/create 专项验证 |
 | Darwin 启动身份 | 评估原生接口替换 psutil 私有接口依赖；替换前保持锁定版本和完整身份核验 |
 | CLI/字段维护 | 评估兼容入口提示及 `ready_to_run` 字段的下一版本语义；现有读写与命令继续兼容 |
 | 方法目录 | 是否缩小机器化目录维护面另行决定；当前 199 个方法 ID 与生成源保留 |

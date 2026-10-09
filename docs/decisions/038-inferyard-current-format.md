@@ -1,6 +1,6 @@
 # ADR 038：InferYard 当前格式边界与主机状态迁移
 
-状态：Accepted。日期：2026-10-08。
+状态：Accepted（锁迁移方案已被 [ADR 039](039-remove-host-state-migration.md) 局部取代）。日期：2026-10-08。
 软件实现与平台实际验证范围见 [backlog](../backlog.md)。
 核查基线：`fe1052a41afbddc1b7ceff852e794d6d872977ce`。
 
@@ -22,7 +22,8 @@ InferYard 只支持[格式矩阵](../contracts/inferyard-current-format.md#格�
 旧状态原字节及摘要先留存，经 pending 状态完成所有旧入口退休后，才提交新 ready 状态。
 旧锁文件 inode 不删除或替换；常态运行只持有新锁，不再镜像旧 dirty。
 旧项目保留离线读历史数据能力；迁移后不再允许其固定基线实时入口发送请求。
-具体证明、崩溃边界和 Windows 路径分析见[锁迁移](../contracts/inferyard-current-format.md#锁迁移)。
+具体证明、崩溃边界和 Windows 路径分析见原「锁迁移」章节；该方案已被
+[ADR 039](039-remove-host-state-migration.md) 取代，现行规则见[主机状态](../contracts/inferyard-current-format.md#主机状态)。
 
 ## 局部取代范围
 

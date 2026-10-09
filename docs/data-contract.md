@@ -106,7 +106,7 @@ Schema 不扩展 CPU/传感器枚举；正式 Prism 批量分派与缺测证据�
 公开项目、Python 包和 CLI 名称统一为 `inferyard`，独立监测命令为 `inferyard-observer`。
 监测流仅接受 `lab_observer.v2`。核心 Schema 仍为 v3，`urn:local-ai-bench:` 不变；
 题包与审核证明原字节保留。报告仅接受 v7、比较仅接受 format4 / phase2.v3、公开包仅接受 v5。
-新锁使用 inferyard-host.*，一次性显式维护退休旧入口，见[当前格式契约](contracts/inferyard-current-format.md)。
+新锁使用 inferyard-host.*，实时入口首次运行自动初始化，旧工具文件完全忽略，见[当前格式契约](contracts/inferyard-current-format.md)。
 源码与模板变化产生新身份，不继承旧测量、评分或性能资格。
 
 ## 历史输入边界

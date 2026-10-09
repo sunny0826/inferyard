@@ -29,7 +29,6 @@ pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Native macOS r
 def native_service(tmp_path, config_path, monkeypatch):
     import psutil
 
-    monkeypatch.setattr("inferyard.runtime.lock.LEGACY_ROOT", None)
     monkeypatch.setattr("inferyard.runtime.lock.LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr("inferyard.runtime.lock.STATE_PATH", tmp_path / "host.state.json")
     from tests.host_state_helpers import initialize

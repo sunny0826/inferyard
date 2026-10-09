@@ -9,11 +9,6 @@ from inferyard.platforms.identity import PreflightError
 
 
 def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
-    if request.command == "host-state migrate":
-        from inferyard.runtime.host_migration import migrate
-
-        result = migrate()
-        return 0, CommandResult(request.command, result["status"], "complete", details=result)
     if request.command in (
         "init",
         "runtime prepare",

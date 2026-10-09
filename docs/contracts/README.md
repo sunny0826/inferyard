@@ -4,7 +4,7 @@
 
 | 职责 | 契约 |
 | --- | --- |
-| 当前格式清理与锁迁移（P0 已批准） | [格式矩阵、旧入口退休事务与安装资格](inferyard-current-format.md) |
+| 当前格式清理与主机状态 | [格式矩阵、主机状态与安装资格](inferyard-current-format.md) |
 | 执行窗口 | [持续负载发送准入](duration-send-contract.md) |
 | 平台身份与采集 | [macOS](macos-contract.md) · [Windows Prism 批量](windows-prism-batch-contract.md) |
 | 引擎适配 | [engine-fit](engine-fit-contract.md) · [Windows KVMem/NInfer](windows-ninfer-adaptation-contract.md) |

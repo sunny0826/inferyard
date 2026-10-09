@@ -92,10 +92,10 @@ inferyard extension replay --packet FIXTURE_PACKET.json --out FIXTURE_RUNS
 
 请求前取得主机锁，发送前持久化请求身份和 dirty 状态。取消或超时后停止发送并按冻结期限排空；不能确认空闲时保留 dirty。Linux/macOS 锁为 `/var/tmp/inferyard-host.lock`，Windows 使用原生 Common AppData（通常为 `C:\ProgramData`）中的同名文件；同目录的 `inferyard-host.state.json` 保存状态。
 
-首次实时运行前执行 `inferyard host-state migrate`。旧锁只在这次显式维护事务中按顺序获取，
-Windows 还处理维护时存在的 D 盘旧位置；旧 dirty 必须先由原项目恢复，旧锁 inode 保留。
-维护保存原字节凭据并退休固定旧入口后，才提交新 ready 状态。常态运行只使用新锁、新状态和
-不可变维护凭据，不再双持旧锁或镜像旧 dirty。事务与中断规则见[当前格式契约](contracts/inferyard-current-format.md#锁迁移)。
+首次实时入口获得主机锁时，若状态不存在则自动创建 clean 状态，不需要显式初始化命令。
+旧工具的 `local-ai-benchmark-host.*` 文件（含 Windows 旧 D 盘位置）不读取、不加锁；
+v0.0.1 状态中的 `migration` envelope 不再核验，在下一次状态写入时自然消失；
+遗留的 `inferyard-host-migration.json` 凭据文件保持原样。规则见[当前格式契约](contracts/inferyard-current-format.md#主机状态)。
 
 操作者停止旧服务并准备新服务后，使用状态中的 `dirty_token` 及具体恢复说明：
 
@@ -111,7 +111,6 @@ CLI stdout 输出 JSON；`device-check` 默认人类摘要，Agent 使用 `--jso
 
 活动契约为 3；InferYard 不读取核心 v1/v2，也不接受 `origin=migrated` 运行。
 旧运行迁移命令已移除，旧证据保留原件并交原项目处理。
-`host-state migrate` 只维护主机锁与状态，不转换运行证据。
 各产物支持集合及拒绝语义见[当前格式契约](contracts/inferyard-current-format.md#格式支持矩阵)，
 不能仅按版本数字判断是否支持。
 

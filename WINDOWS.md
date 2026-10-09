@@ -52,15 +52,14 @@ KVMem/NInfer 的 `auto` 模式可使用原生 OpenAI 生成信号，但不推断
 
 ## 锁、持久化与离线证据
 
-首次实时操作前运行 `inferyard host-state migrate`。新锁与状态位于原生
+首次实时入口获得主机锁时自动创建 clean 状态，不需要显式初始化命令。锁与状态位于原生
 `CSIDL_COMMON_APPDATA`（通常为 `C:\ProgramData`）中的 `inferyard-host.lock` 与
-`inferyard-host.state.json`，不可变凭据为同目录 `inferyard-host-migration.json`。
-维护时按 D 旧锁（存在时）→公共旧锁→新锁获取，先退休公共旧 state，再退休 D state。
-原旧锁 inode 保留；任一旧 dirty、锁占用、状态冲突或权限错误阻断。无 D 盘不额外禁止部署。
-ready 后正常运行只用新状态与凭据，不再桥接旧状态。固定旧基线在公共退休标记处拒绝。
+`inferyard-host.state.json`。
+旧工具的 `local-ai-benchmark-host.*` 文件（含 D 盘旧位置）不读取、不加锁；
+遗留的 `inferyard-host-migration.json` 凭据文件保持原样。锁占用、状态冲突或权限错误仍阻断。
 文件拒绝 reparse point，保留 file fsync 与 MoveFileExW(WRITE_THROUGH)；目录 fsync 不可用。
-本次 Windows 原生迁移、ACL、卷变化与持久化尚未验，临时目录模拟及 Go 交叉构建不算原生证据。
-完整事务、已知边界和调查指引见[当前格式契约](docs/contracts/inferyard-current-format.md)。
+Windows 原生的 ACL、卷变化与持久化尚未验，临时目录模拟及 Go 交叉构建不算原生证据。
+已知边界见[当前格式契约](docs/contracts/inferyard-current-format.md)。
 
 `report`、`compare`、`verify` 可离线使用；仅接受当前格式，旧证据回原项目处理。
 派生产物写新目录，不能把格式拒绝当成证据完整性通过。

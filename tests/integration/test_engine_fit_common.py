@@ -26,7 +26,6 @@ def common_fit_service(tmp_path, monkeypatch):
     monkeypatch.setattr(identity, "host_identity", lambda: host)
     monkeypatch.setattr(runtime, "host_identity", lambda: host)
     monkeypatch.setattr(runtime.platform, "system", lambda: "Darwin")
-    monkeypatch.setattr(lock, "LEGACY_ROOT", None)
     monkeypatch.setattr(lock, "LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr(lock, "STATE_PATH", tmp_path / "host.state.json")
     from tests.host_state_helpers import initialize

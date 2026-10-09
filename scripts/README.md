@@ -89,10 +89,11 @@ dispatch ref 与源码提交一致。PR 运行不满足发布来源条件。核�
 首次准备解释器和依赖可联网；合成升级不代表历史正式版本兼容。固定主机锁/dirty 的
 `installed_host_state.py` 与 `installed_request_chain.py` 仅用于显式允许的一次性 GitHub-hosted runner，不能在操作者工作机运行。
 `ci_installed.py` 和初始化入口核验 `GITHUB_ACTIONS=true`、`RUNNER_ENVIRONMENT=github-hosted`、
-`LAB_DISPOSABLE_HOST_TEST=yes` 三项；顺序固定为 **显式初始化 → success 请求链 → crash/dirty 持久化 → dirty 拒绝**。
-初始化单独调用 `installed_host_state.py --initialize`，保存 `host-initialization.json`；已有新 state/receipt
-即拒绝，不重复迁移或清空 dirty。其余阶段只使用既有 ready，crash 后的 dirty 保留到 runner 销毁。
-请求链复用导出的 scenario 时关闭临时夹具初始化；导出仍完整包含 helper 和固定旧基线夹具，
+`LAB_DISPOSABLE_HOST_TEST=yes` 三项；顺序固定为 **自动初始化 → success 请求链 → crash/dirty 持久化 → dirty 拒绝**。
+初始化阶段调用 `installed_host_state.py --initialize`，依赖首次 `HostLock` 进入自动建立 clean 状态，
+保存 `host-initialization.json`；已有新 state 即拒绝，不清空 dirty。其余阶段只使用既有 clean
+状态，crash 后的 dirty 保留到 runner 销毁。
+请求链复用导出的 scenario 时关闭临时夹具初始化；导出仍完整包含 helper，
 默认 scenario 可在源码外独立构建。隔离回归使用复制包与临时注入根，不冒充 wheel 安装或 Windows 原生验收。
 
 ## 源码获取宿主库

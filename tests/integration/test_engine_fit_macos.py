@@ -33,7 +33,6 @@ def _readline(process):
 def native_fit(tmp_path, monkeypatch, capsys):
     from inferyard.runtime import lock
 
-    monkeypatch.setattr(lock, "LEGACY_ROOT", None)
     monkeypatch.setattr(lock, "LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr(lock, "STATE_PATH", tmp_path / "host.state.json")
     from tests.host_state_helpers import initialize

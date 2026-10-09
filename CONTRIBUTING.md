@@ -50,6 +50,7 @@ Schema 源在 `src/inferyard/contracts/`，修改后运行导出器（去掉 `--
 
 ## 文档与证据
 
+- README、Git commit 与 PR 使用英文；其余文档暂保持中文。
 - README 是产品入口；操作步骤在安装与使用指南，接口规则在数据/主题契约。
 - ADR 记录长期设计理由；计划只保留未完成工作，当前进度集中到 [backlog](docs/backlog.md)。
 - 不提交会话交接、阶段流水账、真实设备配置、模型、引擎、缓存、凭据或原始运行。

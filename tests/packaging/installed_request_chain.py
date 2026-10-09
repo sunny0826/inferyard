@@ -36,8 +36,7 @@ def main():
     from inferyard.runtime.runner import execute_async
 
     assert "site-packages" in Path(inferyard.__file__).parts
-    fixed = {name: getattr(locking, name) for name in ("LOCK_PATH", "STATE_PATH", "LEGACY_ROOT")}
-    # Initialization belongs to the explicit first CI step, never either request check.
+    fixed = {name: getattr(locking, name) for name in ("LOCK_PATH", "STATE_PATH")}
     with locking.HostLock() as lock:
         assert lock.state["dirty"] is (args.mode == "dirty"), "unexpected runner dirty state"
     sys.path.insert(0, str(args.fixtures / "ci-tests"))

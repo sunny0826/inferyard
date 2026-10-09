@@ -291,16 +291,6 @@ Windows candidate 引用 runtime prepare 目录中的实际引擎和清单，不
 不能只移动候选文件或修改回执来继承原服务身份。单独移动完整 runtime 目录后生成**新候选**时，
 回执相对路径仍须通过包内 profile 和实际文件复核。
 
-## 主机状态初始化与一次性迁移
-
-`inferyard host-state migrate` 在首次实时运行前显式执行，无路径参数、force、reset 或 rollback。
-保存原旧 state 字节及文件身份到不可变凭据，发布 pending，再退休公共旧 state 与可用 D state，最后提交 ready。
-成功 details.status 为 migrated/already_migrated，ready_to_run 固定 false；它不核验或启动模型服务。
-新工具普通检查创建的新 lock-only 不妨碍初始化。旧 lock-only 则阻断：应由原工具既有流程形成
-可核验 clean 状态，或人工调查。旧 dirty 先用原工具恢复；新 ready dirty 用新工具恢复。
-凭据发布后旧 state 改变时必须调查；不会删除凭据、重置或覆盖变更状态。
-退出码：输入/状态/占锁 2，写盘工具故障 4，取消 130。不要删锁或 dirty 绕过准入。
-
 可识别的不支持格式返回 unsupported_format/2，details 含 artifact、saved_version、supported_versions。
 坏 JSON、布尔版本、坏 seal/hash 或当前格式语义冲突为证据错误/4；配置输入错误为 2。
-支持矩阵与主机维护细节见[当前格式契约](contracts/inferyard-current-format.md)。
+支持矩阵与主机状态规则见[当前格式契约](contracts/inferyard-current-format.md)。
