@@ -116,17 +116,21 @@ def build_index(
         comparison_path = comparison_path.resolve()
     if not roots or len(roots) > 100:
         raise EvidenceError("report_requires_1_to_100_trials")
-    loaded = (
+    if loaded is None and (len(roots) == 2 or comparison_path is not None):
+        loaded = [comparison_input(root, bind_unsealed=True) for root in roots]
+    inputs = (
         loaded
         if loaded is not None
-        else [comparison_input(root, bind_unsealed=True) for root in roots]
+        else (comparison_input(root, bind_unsealed=True) for root in roots)
     )
-    ids = [ref["run_id"] for _, ref in loaded]
-    if len(set(ids)) != len(ids):
-        raise EvidenceError("duplicate_report_run")
-    runs = [
-        presentation(data, source, out, format_version=format_version) for data, source in loaded
-    ]
+    runs, ids = [], set()
+    for data, source in inputs:
+        if source["run_id"] in ids:
+            raise EvidenceError("duplicate_report_run")
+        ids.add(source["run_id"])
+        runs.append(presentation(data, source, out, format_version=format_version))
+        # Presentation owns its derived fields; do not retain raw samples across runs.
+        del data, source
     comparison = None
     comparison_source = None
     if comparison_path is not None:
@@ -148,7 +152,7 @@ def build_index(
             "sha256": sha256_file(path),
             "url": evidence_url(path, out),
         }
-    elif len(loaded) == 2:
+    elif loaded is not None and len(loaded) == 2:
         comparison = compare_trials(
             loaded[0][0],
             loaded[1][0],

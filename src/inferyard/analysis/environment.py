@@ -6,13 +6,8 @@ separate frozen ABBA workload overhead gate is deliberately retained.
 
 from inferyard.analysis.environment_identity import LINUX_FIELDS, fields
 from inferyard.config.environment_binding import requires_match
-from inferyard.evidence.storage import (
-    EvidenceError,
-    local_file,
-    read_json,
-    read_jsonl,
-    sha256_file,
-)
+from inferyard.evidence.storage import EvidenceError
+from inferyard.evidence.trial_reads import TrialReads
 from inferyard.platforms.cpu_policy import assess as assess_cpu_policies
 from inferyard.platforms.external_cpu import reduce_external_cpu
 from inferyard.platforms.external_cpu_windows import assess_windows
@@ -163,7 +158,10 @@ def environment_qualification(environment, external_requests, schedule, requests
     }
 
 
-def measurement_context(root, manifest_files, config, requests, *, performance_policy=None):
+def measurement_context(
+    root, manifest_files, config, requests, *, performance_policy=None, reads=None
+):
+    reads = reads if reads is not None else TrialReads(root)
     files = (
         "environment.start.json",
         "environment.end.json",
@@ -176,15 +174,14 @@ def measurement_context(root, manifest_files, config, requests, *, performance_p
             missing.append("unsealed_or_missing:" + name)
             data[name] = [] if name.endswith("jsonl") else {}
             continue
-        path = local_file(root, name)
         if name.endswith("jsonl"):
-            data[name], truncated = read_jsonl(path)
+            data[name], truncated = reads.checked_jsonl(name)
             missing.extend(name + ":" + issue for issue in truncated)
         else:
-            data[name] = read_json(path)
+            data[name] = reads.checked_json(name)
             if type(data[name]) is not dict:
                 raise EvidenceError("invalid_environment_snapshot")
-        evidence.append({"path": name, "sha256": sha256_file(path)})
+        evidence.append({"path": name, "sha256": reads.hashes[name]})
     environment = assess_environment(
         data[files[0]], data[files[1]], data[files[2]], config["conditions"], requests
     )
@@ -192,11 +189,12 @@ def measurement_context(root, manifest_files, config, requests, *, performance_p
     environment["stable_observed_environment"] &= not missing
     external = []
     if "external-cpu.jsonl" in manifest_files:
-        path = local_file(root, "external-cpu.jsonl")
-        external, issues = read_jsonl(path)
+        external, issues = reads.checked_jsonl("external-cpu.jsonl")
         if issues:
             raise EvidenceError("invalid_external_cpu_jsonl")
-        evidence.append({"path": "external-cpu.jsonl", "sha256": sha256_file(path)})
+        evidence.append(
+            {"path": "external-cpu.jsonl", "sha256": reads.hashes["external-cpu.jsonl"]}
+        )
     external = reduce_external_cpu(external, config["endpoint"], config["telemetry"]["interval_ms"])
     external_requests = assess_windows(external, requests, performance_policy)
     schedule = assess_schedule(data[files[3]], config["telemetry"]["interval_ms"])

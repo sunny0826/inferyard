@@ -138,7 +138,7 @@ def test_both_writers_project_each_fresh_read_without_mutating_snapshot(monkeypa
     monkeypatch.setattr(
         module.asyncio, "get_running_loop", lambda: SimpleNamespace(time=lambda: clock[0])
     )
-    monkeypatch.setattr(module.asyncio, "sleep", sleep)
+    monkeypatch.setattr(sampler, "wait", sleep)
     monkeypatch.setattr(module.time, "monotonic_ns", lambda: int(clock[0] * 1e9))
     asyncio.run(sampler.run() if module is telemetry else module.run_sampler(sampler))
     assert reads == [0, 1]

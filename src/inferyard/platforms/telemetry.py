@@ -106,6 +106,33 @@ class Sampler:
         self.stopped = False
         self.failure = None
 
+    @property
+    def stopped(self):
+        return self._stopped
+
+    @stopped.setter
+    def stopped(self, value):
+        self._stopped = value
+        if hasattr(self, "_stop_event"):
+            if value:
+                self._stop_event.set()
+            else:
+                self._stop_event.clear()
+
+    async def wait(self, seconds):
+        """Wake on stop without cancelling a collection already in progress."""
+        if self.stopped:
+            return
+        if seconds <= 0:
+            await asyncio.sleep(0)
+            return
+        if not hasattr(self, "_stop_event"):
+            self._stop_event = asyncio.Event()
+        try:
+            await asyncio.wait_for(self._stop_event.wait(), timeout=seconds)
+        except TimeoutError:
+            pass
+
     def set_phase(self, phase, request_id=None):
         self.phase, self.request_id = phase, request_id
 
@@ -144,7 +171,7 @@ class Sampler:
                 if due < loop.time():
                     # Do not manufacture samples for missed scheduled instants.
                     due += (int((loop.time() - due) // interval) + 1) * interval
-                await asyncio.sleep(max(0, due - loop.time()))
+                await self.wait(max(0, due - loop.time()))
         except Exception as exc:
             self.failure = exc
             raise

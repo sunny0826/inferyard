@@ -258,11 +258,9 @@ def validate_document(kind: str, data: Any) -> None:
 
 def strict_json_loads(text: str) -> Any:
     def pairs(items):
-        result = {}
-        for key, value in items:
-            if key in result:
-                raise ContractError("document", "duplicate JSON key")
-            result[key] = value
+        result = dict(items)
+        if len(result) != len(items):
+            raise ContractError("document", "duplicate JSON key")
         return result
 
     def bad_constant(_):

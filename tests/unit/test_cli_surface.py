@@ -1,6 +1,7 @@
 """Canonical CLI inputs preserve request bindings and compatibility behavior."""
 
 import json
+import os
 import re
 import socket
 import subprocess
@@ -354,6 +355,7 @@ raise SystemExit(main(json.loads(sys.argv[1])))
         capture_output=True,
         text=True,
         check=False,
+        env={**os.environ, "NO_COLOR": "1", "PYTHON_COLORS": "0"},
     )
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert result.stderr == ""

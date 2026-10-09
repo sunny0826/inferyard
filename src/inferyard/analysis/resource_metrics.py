@@ -1,5 +1,6 @@
 """Resource windows never borrow warmup, residual or another process's samples."""
 
+from collections import defaultdict
 from statistics import median
 
 
@@ -98,6 +99,7 @@ def counter_delta(row, samples, metric, endpoint):
 
 def baseline_rss(requests, samples, endpoint):
     starts = [r["t_send_ns"] for r in requests if r.get("t_send_ns") is not None]
+    first_start = min(starts) if starts else None
     clocks = {r["clock_id"] for r in requests if r.get("clock_id")}
     values = [
         s["value"]
@@ -107,7 +109,7 @@ def baseline_rss(requests, samples, endpoint):
         and s["request_id"] is None
         and s["clock_id"] in clocks
         and starts
-        and s["read_finished_ns"] <= min(starts)
+        and s["read_finished_ns"] <= first_start
         and s["value"] is not None
         and all(s[k] == endpoint[k] for k in ("server_pid", "process_start_ticks"))
     ]
@@ -117,6 +119,9 @@ def baseline_rss(requests, samples, endpoint):
 def reduce_resources(requests, samples, config):
     endpoint = config["endpoint"]
     baseline = baseline_rss(requests, samples, endpoint)
+    indexed = defaultdict(list)
+    for sample in samples:
+        indexed[sample["request_id"], sample["metric_name"]].append(sample)
     result = []
     for row in requests:
         if not row.get("request_id"):
@@ -126,7 +131,9 @@ def reduce_resources(requests, samples, config):
             ("system_mem_available", "C01", min),
             ("service_rss", "C02", max),
         ):
-            selected, excluded, reasons = select_samples(row, samples, metric, endpoint)
+            selected, excluded, reasons = select_samples(
+                row, indexed[row["request_id"], metric], metric, endpoint
+            )
             valid = row["execution_state"] in ("completed", "failed")
             values[code] = {
                 "value": operation(s["value"] for s in selected)
@@ -158,7 +165,9 @@ def reduce_resources(requests, samples, config):
             else None,
             "reason": values["C02"]["reason"] or ("baseline_missing" if baseline is None else None),
         }
-        cpu = counter_delta(row, samples, "service_cpu_ticks", endpoint)
+        cpu = counter_delta(
+            row, indexed[row["request_id"], "service_cpu_ticks"], "service_cpu_ticks", endpoint
+        )
         if cpu["value"] is not None:
             cpu["value"] /= cpu["scale"]
         values["C04"] = cpu
@@ -174,7 +183,7 @@ def reduce_resources(requests, samples, config):
             else None,
         }
         values["C06"] = {
-            name: counter_delta(row, samples, name, endpoint)
+            name: counter_delta(row, indexed[row["request_id"], name], name, endpoint)
             for name in ("system_swap_in", "system_swap_out")
         }
         result.append(

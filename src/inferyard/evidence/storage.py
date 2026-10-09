@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import time
 import uuid
 from datetime import UTC, datetime
@@ -25,6 +26,17 @@ class EvidenceError(RuntimeError):
     pass
 
 
+def _copy_clean_containers(value):
+    """Detach containers even without credentials; tuples still become JSON arrays."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_copy_clean_containers(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _copy_clean_containers(item) for key, item in value.items()}
+    return value
+
+
 class Redactor:
     def __init__(self, secrets=()):
         self.secrets = tuple(sorted({value for value in secrets if value}, key=len, reverse=True))
@@ -38,14 +50,19 @@ class Redactor:
         return value
 
     def clean(self, value):
+        if not self.secrets:
+            return _copy_clean_containers(value)
+        return self._clean_with_secrets(value)
+
+    def _clean_with_secrets(self, value):
         if isinstance(value, str):
             return self.text(value)
         if isinstance(value, list):
-            return [self.clean(item) for item in value]
+            return [self._clean_with_secrets(item) for item in value]
         if isinstance(value, tuple):
-            return [self.clean(item) for item in value]
+            return [self._clean_with_secrets(item) for item in value]
         if isinstance(value, dict):
-            return {self.text(key): self.clean(item) for key, item in value.items()}
+            return {self.text(key): self._clean_with_secrets(item) for key, item in value.items()}
         return value
 
     def stream(self):
@@ -60,6 +77,17 @@ class StreamRedactor:
         self.pending = ""
         self.changed = False
         self.max_secret_length = max(map(len, redactor.secrets), default=0)
+        alternatives = "|".join(map(re.escape, redactor.secrets))
+        self._complete = re.compile(f"(?P<secret>{alternatives})") if alternatives else None
+        self._partial = self._complete
+        if self.max_secret_length > 1:
+            starts = re.escape("".join(sorted({secret[0] for secret in redactor.secrets})))
+            # Complete matches come first, including a shorter complete secret when
+            # a longer one is incomplete. Only the bounded tail can be a prefix.
+            self._partial = re.compile(
+                f"(?P<secret>{alternatives})|[{starts}]"
+                rf"(?=[\s\S]{{0,{self.max_secret_length - 2}}}\Z)"
+            )
 
     def feed(self, chunk: str, *, final=False) -> str:
         if not self.redactor.secrets:
@@ -68,30 +96,21 @@ class StreamRedactor:
         self.pending = ""
         result = []
         index = 0
-        while index < len(text):
-            remaining_length = len(text) - index
-            match = next((s for s in self.redactor.secrets if text.startswith(s, index)), None)
-            if match:
+        pattern = self._complete if final else self._partial
+        for match in pattern.finditer(text):
+            start, end = match.span()
+            if match.lastgroup == "secret":
+                result.append(text[index:start])
                 result.append("[REDACTED]")
                 self.changed = self.redactor.changed = True
-                index += len(match)
-            elif (
-                not final
-                and remaining_length < self.max_secret_length
-                and any(
-                    remaining_length < len(secret)
-                    and all(
-                        text[index + offset] == secret[offset] for offset in range(remaining_length)
-                    )
-                    for secret in self.redactor.secrets
-                )
-            ):
-                # Only copy a bounded suffix, never the whole remaining chunk.
-                self.pending = text[index:]
-                break
+                index = end
             else:
-                result.append(text[index])
-                index += 1
+                suffix = text[start:]
+                if any(secret.startswith(suffix) for secret in self.redactor.secrets):
+                    result.append(text[index:start])
+                    self.pending = suffix
+                    return "".join(result)
+        result.append(text[index : len(text)])
         return "".join(result)
 
 

@@ -5,11 +5,12 @@ resource-off arms must not inherit the environment eligibility of an on arm.
 """
 
 from inferyard.analysis.environment_identity import fields as identity_fields
-from inferyard.evidence.storage import local_file, read_json, sha256_file
+from inferyard.evidence.trial_reads import TrialReads
 
 
 def environment_record(root, data, *, require_boundary=False):
-    manifest = read_json(local_file(root, "manifest.json"))
+    reads = TrialReads(root)
+    manifest = reads.checked_json("manifest.json")
     sealed = set(manifest["files"])
     endpoints, evidence, reasons = [], [], []
     for name in ("environment.start.json", "environment.end.json"):
@@ -17,18 +18,17 @@ def environment_record(root, data, *, require_boundary=False):
             reasons.append("environment_endpoint_unsealed_or_missing:" + name)
             endpoints.append({})
             continue
-        path = local_file(root, name)
-        endpoints.append(read_json(path))
-        evidence.append({"path": name, "sha256": sha256_file(path)})
+        endpoints.append(reads.checked_json(name))
+        evidence.append({"path": name, "sha256": reads.hashes[name]})
     qualification = data["summary"]["measurement_context"]["environment_qualification"]
     boundary_only = (
         "collector.json" in sealed
-        and read_json(local_file(root, "collector.json")).get("collector") == "boundary-only.v1"
+        and reads.checked_json("collector.json").get("collector") == "boundary-only.v1"
     )
     if boundary_only or require_boundary:
         from inferyard.analysis.boundary_environment import qualify_boundary_environment
 
-        bracketed = qualify_boundary_environment(root, data, sealed)
+        bracketed = qualify_boundary_environment(root, data, sealed, reads=reads)
         evidence.extend(bracketed["evidence_refs"])
         qualification = (
             bracketed

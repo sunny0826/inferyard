@@ -46,7 +46,7 @@ async def run_sampler(sampler):
                 schedule["collector_work_ns"] = int((loop.time() - actual) * 1e9)
                 sampler.store.observation("schedule.jsonl", schedule)
                 due = advance(due, interval, loop.time())
-            await asyncio.sleep(max(0, min(due, environment_due) - loop.time()))
+            await sampler.wait(max(0, min(due, environment_due) - loop.time()))
     except Exception as exc:
         sampler.failure = exc
         raise

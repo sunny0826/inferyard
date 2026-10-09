@@ -15,7 +15,6 @@ from inferyard.evidence.storage import EvidenceError, json_bytes
 
 def portable_index(index, out, comparison_path=None):
     index = deepcopy(index)
-    index["comparison"] = deepcopy(index["comparison"])
     for run in index["runs"]:
         run["source"] = dict(run["source"])
         run["source"]["path"] = relative_source(run["source"]["path"], out)
@@ -49,13 +48,18 @@ def verify(out, saved, *, options):
             "report.html",
             *(["comparison.json"] if (out / "comparison.json").exists() else []),
         ],
+        retain={"index.json", *(["report.html"] if options.rerender else [])},
     )
     if json_bytes(saved) != json_bytes(strict_json_loads(blobs["index.json"].decode())):
         raise EvidenceError("report_changed_during_read")
     roots = [
         resolve_source(out, run["source"]["path"], options.source_roots) for run in saved["runs"]
     ]
-    loaded = [comparison_input(root, bind_unsealed=True) for root in roots]
+    loaded = (
+        [comparison_input(root, bind_unsealed=True) for root in roots]
+        if len(roots) == 2 or "comparison_source" in saved
+        else None
+    )
     linked, comparison = None, None
     if "comparison_source" in saved:
         linked = resolve_source(out, saved["comparison_source"]["path"], options.source_roots)

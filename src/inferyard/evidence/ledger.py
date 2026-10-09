@@ -127,16 +127,7 @@ def read_trial(root: Path, *, metadata=None):
     ):
         raise EvidenceError("invalid_manifest")
     manifest_files = reads.manifest["files"] if reads.manifest is not None else {}
-    for name in (
-        "identity.json",
-        "environment.start.json",
-        "service.props.json",
-        "collector.json",
-        "token-budgets.json",
-        "token-budgets.v2.json",
-    ):
-        if name in manifest_files:
-            reads.json(name)
+    reads.preload(manifest_files)
     limits = verify_manifest(root, _manifest=reads.manifest, _observed=reads.observed())
     if (root / "requests.jsonl").exists():
         raise UnsupportedFormat("run.source", "requests.jsonl", ("events.jsonl",))
@@ -144,8 +135,7 @@ def read_trial(root: Path, *, metadata=None):
 
     require_current_sources(root, manifest_files)
     documents, limits = _inputs(root, reads, limits)
-    if reads.errors:
-        raise next(iter(reads.errors.values()))
+    reads.check_input_errors()
     run, selection = documents["run"], documents["selection"]
     limits += event_tails
     if metadata is not None:
@@ -429,6 +419,7 @@ def read_trial(root: Path, *, metadata=None):
         documents["config"],
         requests,
         performance_policy=documents["plan"]["experiment"].get("performance_environment"),
+        reads=reads,
     )
     if "cache_protocol" in workload:
         from inferyard.analysis.cache_observations import cache_series

@@ -123,7 +123,9 @@ def read_verified_comparison(root, *, loaded=None, source_roots=()):
         from inferyard.evidence.artifact_seal import read_sealed
         from inferyard.evidence.source_locations import resolve_source
 
-        blobs = read_sealed(root, ["index.json", "report.html", "comparison.json"])
+        blobs = read_sealed(
+            root, ["index.json", "report.html", "comparison.json"], retain={"comparison.json"}
+        )
         if blobs["comparison.json"] != json_bytes(saved):
             raise EvidenceError("comparison_changed_during_read")
         paths = [resolve_source(root, ref["path"], source_roots) for ref in sources]
