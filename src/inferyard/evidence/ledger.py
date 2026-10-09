@@ -393,8 +393,7 @@ def read_trial(root: Path, *, metadata=None):
         reader=reads.json,
     )
     if (engine_verified or lab_verified) and token_name in manifest_files:
-        # Probe-only v2 has no formal measurements; legacy inventories retain their old mapping.
-        if type(budgets) is list or run["kind"] == "run":
+        if run["kind"] == "run":
             token_counts = bind_token_counts(
                 selection["case_ids"],
                 budgets,

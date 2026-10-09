@@ -17,6 +17,7 @@ from inferyard.application.types import CommandResult
 from inferyard.config.bundle import require_review
 from inferyard.config.loader import LoadedConfig
 from inferyard.config.single_plan import compile_single_plan
+from inferyard.config.startup_arguments import replace_arguments
 from inferyard.contracts.validation import ContractError, Document
 from inferyard.evidence.error_reasons import safe_reason
 from inferyard.evidence.formats import UnsupportedFormat
@@ -102,12 +103,14 @@ def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[Lo
     new_start = process_start_ticks(request.server_pid)
     old_url = urlsplit(config["endpoint"]["url"])
     new_url = urlsplit(request.endpoint_url)
-    args = config["engine"]["startup_args"]
-    for i, argument in enumerate(args[:-1]):
-        if argument == "--port":
-            args[i + 1] = str(new_url.port or (443 if new_url.scheme == "https" else 80))
-        if argument == "--host" and args[i + 1] == old_url.hostname:
-            args[i + 1] = new_url.hostname
+    config["engine"]["startup_args"] = replace_arguments(
+        config["engine"]["startup_args"],
+        {
+            "--host": new_url.hostname,
+            "--port": str(new_url.port or (443 if new_url.scheme == "https" else 80)),
+        },
+        expected_values={"--host": old_url.hostname},
+    )
     config["endpoint"].update(
         url=request.endpoint_url, server_pid=request.server_pid, process_start_ticks=new_start
     )
@@ -425,7 +428,7 @@ async def execute_async(request, dependencies: Dependencies | None = None):
             "next_report_command": [
                 "inferyard",
                 "report",
-                "--run",
+                "--runs",
                 str(store.path),
                 "--out",
                 str(store.path.parent / (store.run_id + "-report")),

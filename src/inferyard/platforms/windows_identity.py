@@ -8,6 +8,7 @@ from pathlib import Path
 
 import psutil
 
+from inferyard.config.startup_arguments import model_argument
 from inferyard.platforms.identity import PreflightError, sanitized_arguments
 from inferyard.platforms.platform_io import durability
 from inferyard.platforms.windows_api import process_start
@@ -76,15 +77,10 @@ def verify_process(config, model, engine, address, port):
         if config["engine"].get("slots_debug") is True:
             if process.environ().get("LLAMA_SERVER_SLOTS_DEBUG") != "1":
                 raise PreflightError("service_slots_debug_environment_mismatch")
-        model_args = []
-        for index, argument in enumerate(args):
-            if argument in ("-m", "--model") and index + 1 < len(args):
-                model_args.append(args[index + 1])
-            elif argument.startswith(("--model=", "-m=")):
-                model_args.append(argument.split("=", 1)[1])
-        if len(model_args) != 1:
+        model_path = model_argument(args)
+        if model_path is None:
             raise PreflightError("service_model_mapping_unverified")
-        candidate = Path(model_args[0])
+        candidate = Path(model_path)
         if not candidate.is_absolute():
             candidate = Path(process.cwd()) / candidate
         if not os.path.samefile(candidate, model.path):

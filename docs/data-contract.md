@@ -5,7 +5,7 @@
 ## 唯一入口
 
 - `SCHEMA_VERSION = 3`；`schemas_for()` 返回唯一 kind 注册表，`export_schema(kind)` 不接受版本选择。
-- `Document.parse(kind, data)` / `validate_document(kind, data)` 只接受活动契约；旧格式仅由显式迁移工具读取。
+- `Document.parse(kind, data)` / `validate_document(kind, data)` 只接受活动契约；InferYard 不提供旧运行迁移，旧数据交原项目处理。
 - Schema 按配置、题包/评分、事件/样本、实验、存储/汇总划分模块；不使用旧版本 Schema 继承来拼接新版本。
 
 ## 一种运行包
@@ -61,14 +61,16 @@ rescore-check/递归血缘身份不匹配返回 `rescore_scorer_identity_changed
 顺序为 probe、可选 warmup、选中 formal 题序；辅助 case_id 为 null，formal 为冻结题 ID。
 probe/check 只有 probe；run 的 warmup_count = 0 不含 warmup；resume 只含续测选中题。
 budget 保留适配器原记录；lab 严格六键放在 budget 内，不允许附加键或类型放宽。
-旧 `token-budgets.json` 的 probe/warmup/选中题位置数组仍按原形状读取；
-新旧文件并存、定义不匹配、重复/错序/未选中项均拒绝。预算缺测不能补造为 0。
+旧 `token-budgets.json` 的 probe/warmup/选中题位置数组返回 `unsupported_format` / 2，
+与 v2 并存时也拒绝；v2 定义不匹配、重复/错序/未选中项均拒绝。预算缺测不能补造为 0。
 日常直接 run；独立 probe 是可选排障，不能产生跨命令探测凭证。
 
 同命令复用已核验数据及比较结果；日志哈希和解析消费同一读取的字节。
 首事件日期显式传递，不重新打开 events。不跨命令复用，不把新打开路径的字节视为已核验。
-旧 ledger 的规范 JSON 输出保持等价，旧 comparison/report 仍按原定义重建。
-相关决策见 [ADR 034](decisions/034-command-local-reuse.md)。
+当前 ledger 的规范 JSON 输出保持等价；report 仅接受 v7，comparison 仅接受 format4 / phase2.v3。
+旧 report v1–v6、comparison format1–3 不再读取或重建，返回 `unsupported_format` / 2。
+命令内复用见 [ADR 034](decisions/034-command-local-reuse.md)，旧格式支持已由
+[ADR 038](decisions/038-inferyard-current-format.md) 收窄。
 
 ## 证据血缘与比较结论
 

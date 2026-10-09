@@ -14,8 +14,9 @@ from inferyard.config.preparation_io import (
     new_path,
     require_platform,
 )
+from inferyard.config.startup_arguments import replace_arguments
 from inferyard.config.toml_writer import render
-from inferyard.platforms.identity import process_start_ticks, sanitized_arguments
+from inferyard.platforms.identity import PreflightError, process_start_ticks, sanitized_arguments
 
 
 def arguments(pid):
@@ -36,19 +37,27 @@ def bind(candidate, pid, endpoint, *, ticks=None, argv=None):
         raise PreparationError("invalid_input")
     config = load_config(candidate).config.to_dict()
     read_ticks, read_argv = ticks or process_start_ticks, argv or arguments
-    start = read_ticks(pid)
-    command = read_argv(pid)
-    if read_ticks(pid) != start:
+    try:
+        start = read_ticks(pid)
+        command = read_argv(pid)
+        current_start = read_ticks(pid)
+    except PreflightError as exc:
+        if str(exc) in ("service_process_unavailable", "service_identity_unreadable"):
+            raise PreparationError(str(exc)) from None
+        raise
+    if current_start != start:
         raise PreparationError("service_identity_changed")
-    expected = config["engine"]["startup_args"]
     origin = urlsplit(endpoint)
-    for i, value in enumerate(expected[:-1]):
-        if value == "--port":
-            expected[i + 1] = str(origin.port or (443 if origin.scheme == "https" else 80))
-        elif value == "--host":
-            expected[i + 1] = origin.hostname
+    expected = replace_arguments(
+        config["engine"]["startup_args"],
+        {
+            "--host": origin.hostname,
+            "--port": str(origin.port or (443 if origin.scheme == "https" else 80)),
+        },
+    )
     if sanitized_arguments(command[1:]) != expected:
         raise PreparationError("startup_arguments_mismatch")
+    config["engine"]["startup_args"] = expected
     config["endpoint"].update(url=endpoint, server_pid=pid, process_start_ticks=start)
     return config, start
 

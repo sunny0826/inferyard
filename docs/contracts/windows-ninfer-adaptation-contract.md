@@ -169,7 +169,8 @@ lab 观测接口 identity 的五项 capability 均须为 true；不能据布尔�
 `idle_observed.lab_snapshot` 保存 lifecycle、关联 request 与 cancellation；source 明示
 `/lab/v1/lifecycle`。离线 ledger 按请求快照重放响应、复核用量、实例、状态递进与释放证据，
 并复核 `token-budgets.v2.json` 每个 entry 的 `budget.lab_token_budget` 原响应及两份有效参数快照。
-旧 `token-budgets.json` 位置数组仍可读，六键严格记录形状不变；新旧冲突拒绝。
+旧 `token-budgets.json` 位置数组返回 `unsupported_format` / 2，与 v2 并存时也拒绝。
+v2 的 `budget.lab_token_budget` 仍严格核验六键记录形状。
 预算选择和 definition 见[活动数据契约](../data-contract.md#命令内复用与预算快照)。
 report/verify 不访问服务。Prism timings 定义不套给新引擎。
 
