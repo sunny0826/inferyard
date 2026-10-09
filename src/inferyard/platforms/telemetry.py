@@ -96,26 +96,6 @@ def sample_memory(pid, start_ticks, phase, request_id, proc_root=Path("/proc")) 
     return samples
 
 
-def environment_changes(start: dict, end: dict) -> dict:
-    reasons = []
-    for field in ("ac_online", "profile", "governor", "epp"):
-        if start.get(field) is None or end.get(field) is None:
-            reasons.append("environment_unknown:" + field)
-        elif start[field] != end[field]:
-            reasons.append("environment_changed:" + field)
-    swap = {}
-    for key in ("pswpin", "pswpout"):
-        a, b = start.get("swap_pages", {}).get(key), end.get("swap_pages", {}).get(key)
-        if type(a) is int and type(b) is int and b >= a:
-            swap[key] = b - a
-            if swap[key] > 0:
-                reasons.append("system_swap_activity:" + key)
-        else:
-            swap[key] = None
-            reasons.append("swap_counter_unknown:" + key)
-    return {"swap_delta_pages": swap, "performance_limited": bool(reasons), "reasons": reasons}
-
-
 class Sampler:
     def __init__(self, store, config):
         self.store = store

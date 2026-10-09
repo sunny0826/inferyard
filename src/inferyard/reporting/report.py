@@ -100,10 +100,6 @@ def presentation(data, source, out, *, format_version=7):
     return view
 
 
-def report_input(root):
-    return comparison_input(root)
-
-
 def build_index(
     roots,
     out,

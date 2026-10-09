@@ -13,9 +13,9 @@ from tests.helpers import fixture_run
 
 
 def loaded(tmp_path, **kwargs):
-    from inferyard.reporting.report import report_input
+    from inferyard.reporting.comparison_report import comparison_input
 
-    return report_input(fixture_run(tmp_path, **kwargs))[0]
+    return comparison_input(fixture_run(tmp_path, **kwargs))[0]
 
 
 def test_frozen_profile_does_not_infer_parameter_count_or_inspect_missing_weights(tmp_path):

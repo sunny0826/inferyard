@@ -17,14 +17,31 @@ ENDPOINT = {"server_pid": 77, "process_start_ticks": 55}
 CONFIG = {"endpoint": ENDPOINT, "telemetry": {"interval_ms": 500}}
 
 
+class UnavailableSensors:
+    """No unsupported privileged measurement is replaced with a fabricated zero."""
+
+    sources = ()
+
+    def metadata(self):
+        return {
+            "sources": [],
+            "discovery_issues": [{"reason": "macos_unprivileged_sensors_unavailable"}],
+            "limitations": ["temperature_frequency_energy_not_collected"],
+            "missing_metrics": ["temperature", "frequency"],
+        }
+
+    def collect(self, phase, request_id):
+        return []
+
+
 @pytest.fixture
 def native(monkeypatch):
     """The native API boundary is mocked, not a fabricated /proc on Darwin."""
     monkeypatch.setattr(sys, "platform", "darwin")
     from inferyard.platforms import sensors_macos
 
-    monkeypatch.setattr(resources_macos, "MacSensors", resources_macos.UnavailableSensors)
-    monkeypatch.setattr(sensors_macos, "MacSensors", resources_macos.UnavailableSensors)
+    monkeypatch.setattr(resources_macos, "MacSensors", UnavailableSensors)
+    monkeypatch.setattr(sensors_macos, "MacSensors", UnavailableSensors)
     native = ModuleType("inferyard.platforms.macos_native")
     identity = ModuleType("inferyard.platforms.macos_identity")
     state = SimpleNamespace(

@@ -21,23 +21,6 @@ SOURCES = {
 }
 
 
-class UnavailableSensors:
-    """No unsupported privileged measurement is replaced with a fabricated zero."""
-
-    sources = ()
-
-    def metadata(self):
-        return {
-            "sources": [],
-            "discovery_issues": [{"reason": "macos_unprivileged_sensors_unavailable"}],
-            "limitations": ["temperature_frequency_energy_not_collected"],
-            "missing_metrics": ["temperature", "frequency"],
-        }
-
-    def collect(self, phase, request_id):
-        return []
-
-
 class ResourceSampler(EnvironmentObserver):
     def __init__(
         self,

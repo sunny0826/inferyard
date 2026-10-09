@@ -8,7 +8,7 @@ from inferyard.analysis.comparison import compare_trials
 from inferyard.analysis.environment import assess_environment
 from inferyard.analysis.resource_metrics import reduce_resources, select_samples
 from inferyard.evidence.ledger import read_trial
-from inferyard.platforms.telemetry import environment_changes, read_rss, sample_memory
+from inferyard.platforms.telemetry import read_rss, sample_memory
 from inferyard.reporting.comparison_report import comparison_input
 from tests.helpers import fixture_run
 
@@ -44,10 +44,6 @@ def test_swap_and_power_drift_preserve_quality_but_disqualify_environment(tmp_pa
     end = deepcopy(start)
     end["swap_pages"] = {"pswpin": 103, "pswpout": 207}
     end["ac_online"] = False
-    drift = environment_changes(start, end)
-    assert drift["swap_delta_pages"] == {"pswpin": 3, "pswpout": 7}
-    assert drift["performance_limited"]
-    assert "environment_changed:ac_online" in drift["reasons"]
     assessment = assess_environment(
         start,
         end,
@@ -81,7 +77,10 @@ def test_swap_and_power_drift_preserve_quality_but_disqualify_environment(tmp_pa
     assert all(row["difference"] is None for row in result["performance_analysis"]["differences"])
     assert limited["summary"]["quality"] == data["summary"]["quality"]
     end["swap_pages"] = {}
-    assert environment_changes(start, end)["swap_delta_pages"] == {"pswpin": None, "pswpout": None}
+    assessment = assess_environment(start, end, [], data["config"]["conditions"], [])
+    assert {"swap_counter_unknown:pswpin", "swap_counter_unknown:pswpout"}.issubset(
+        assessment["reasons"]
+    )
 
 
 def test_only_formal_valid_request_windows_count_and_short_requests_stay_missing(tmp_path):

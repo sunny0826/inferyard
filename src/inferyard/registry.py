@@ -27,13 +27,6 @@ def catalogue(kind):
     return document
 
 
-def metric_definition(identifier):
-    for item in catalogue("metrics")["items"]:
-        if item["metric_id"] == identifier:
-            return item
-    raise ContractError("metric_id", "metric is not registered")
-
-
 def components():
     from inferyard.analysis.scoring import CATEGORIES, SCORER_VERSION, scorer_hash
 

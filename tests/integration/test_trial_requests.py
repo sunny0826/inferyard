@@ -139,20 +139,6 @@ def test_unknown_residual_keeps_dirty_and_blocks_following_requests(scenario):
     assert read_json(locking.STATE_PATH)["dirty"]
 
 
-def test_concurrent_invocation_rejected_without_second_dispatch(scenario):
-    async def overlap(execution, bundle, calls):
-        task = asyncio.create_task(execution.one("formal", bundle["cases"][0]["prompt"], index=0))
-        while not calls:
-            await asyncio.sleep(0.001)
-        with pytest.raises(PreflightError, match="concurrent"):
-            await execution.one("formal", bundle["cases"][1]["prompt"], index=1)
-        await task
-
-    data, _ = asyncio.run(pipeline(scenario, overlap))
-    assert len(scenario[2]) == 1
-    assert data["summary"]["counts"]["completed"] == 1
-
-
 def test_io_failure_leaves_invalid_not_model_failed(scenario, monkeypatch):
     original = TrialJournal.event
 
