@@ -71,6 +71,7 @@ rtk proxy mise exec -- uv --version
 
 ## 交付
 
+合并 PR 一律使用仓库所有者本人账号，通过 GitHub 网页 Merge 按钮或本机 `gh` CLI 执行，不使用 Lody GitHub App 的合并入口；合并后用 `git log` 核对提交作者，不允许出现 bot 身份的作者。
 改动 `src/inferyard/data/community/` 下任何文件的角色同时负责本次 `resources.json` 再生成；使用 `scripts/export_community.py`，无固定归档时调用其 `generated(None)` 并将返回内容写回对应包内路径，有归档时用 `--archives`；生成后必须复跑 `scripts/export_community.py --check`；该目录下文件不按纯文档处理。
 行为修复覆盖真实失败路径，契约变化覆盖拒绝路径和旧数据支持边界；纯文档检查本地链接、锚点、命令和 diff，HTML 检查实际离线渲染。
 TCP 模拟需要本地 socket 权限，沙箱阻断、平台跳过与实现失败分开报告。不批量运行可能启动服务或发送请求的 `scripts/verify_*`。
