@@ -37,7 +37,8 @@ class TrialDeadline:
             self.execution.cancellation_reason = self.reason
 
     def check(self):
-        if self.profile.monotonic() - self.started_at >= self.allowed_seconds:
+        clock = self.profile.monotonic if self.profile else time.monotonic
+        if clock() - self.started_at >= self.allowed_seconds:
             self.expire()
             raise asyncio.CancelledError
 
