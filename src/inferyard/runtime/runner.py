@@ -152,7 +152,7 @@ async def execute_async(request, dependencies: Dependencies | None = None):
     if key_name and not secret:
         raise PreflightError("credential_reference_unavailable")
     redactor = Redactor([secret] if secret else [])
-    plan = compile_single_plan(config, bundle)
+    plan = compile_single_plan(loaded.config, loaded.bundle)
     started_at = time.monotonic()
     allowed_seconds = plan["experiment"]["budget"]["max_wall_seconds"]
     store = TrialJournal(
@@ -234,7 +234,7 @@ async def execute_async(request, dependencies: Dependencies | None = None):
 
         snapshot(store, parent, config, lock)
         if request.command == "run" and not request.diagnostic:
-            require_review(bundle)
+            require_review(loaded.bundle)
         from inferyard.config.environment_binding import run_preflight
 
         identity, files = run_preflight(

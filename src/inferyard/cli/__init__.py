@@ -12,6 +12,7 @@ from inferyard.cli.entrypoint import run
 from inferyard.cli.metadata import versions
 from inferyard.cli.request import build_request
 from inferyard.config.loader import LoadedConfig, load_config
+from inferyard.config.review_cache import command_reviews
 
 __all__ = [
     "ArgumentError",
@@ -36,10 +37,11 @@ def _request(args: argparse.Namespace) -> CommandRequest:
 def main(
     argv: Sequence[str] | None = None, *, handlers: Mapping[str, Handler] | None = None
 ) -> int:
-    return run(
-        argv,
-        handlers=handlers,
-        parser_factory=parser,
-        request_factory=_request,
-        backend=default_backend,
-    )
+    with command_reviews():
+        return run(
+            argv,
+            handlers=handlers,
+            parser_factory=parser,
+            request_factory=_request,
+            backend=default_backend,
+        )

@@ -146,7 +146,7 @@ async def run_trial(
         if service_binding is not None:
             store.snapshot("service-binding.json", service_binding)
         if not diagnostic:
-            require_review(bundle)
+            require_review(loaded.bundle)
         from inferyard.config.environment_binding import run_preflight
         from inferyard.runtime.service_reuse import snapshot
 
