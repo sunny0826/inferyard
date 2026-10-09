@@ -6,7 +6,7 @@ import asyncio
 import os
 import time
 from copy import deepcopy
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -18,19 +18,14 @@ from inferyard.config.bundle import require_review
 from inferyard.config.loader import LoadedConfig
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.config.startup_arguments import replace_arguments
-from inferyard.contracts.validation import ContractError, Document
-from inferyard.evidence.error_reasons import safe_reason
-from inferyard.evidence.formats import UnsupportedFormat
+from inferyard.contracts.validation import Document
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import (
-    EvidenceError,
     Redactor,
-    read_json,
     sha256_file,
     verify_manifest,
 )
-from inferyard.evidence.token_budgets import V2, collect_budgets, probe_budget
 from inferyard.implementation_identity import IdentityContext, execution_matches
 from inferyard.platforms.identity import (
     PreflightError,
@@ -44,16 +39,10 @@ from inferyard.platforms.telemetry import Sampler
 from inferyard.provenance import tool_source_hash
 from inferyard.registry import adapter_collector_id, adapter_factory, collector_factory
 from inferyard.runtime.lock import HostLock
-from inferyard.runtime.request_execution import TrialRequests
-from inferyard.runtime.service_observation import (
-    clean_observed,
-    observation_manifest,
-    observe_service,
-)
-from inferyard.runtime.signals import install_termination_handler
 
 
 def _guard(config, files):
+    # TODO(P1): preserve model/engine process rechecks; template/library scope stays unchanged.
     if not all(item.unchanged() for item in files):
         raise PreflightError("identity_file_changed")
     _, address, port = resolve_loopback_origin(config["endpoint"]["url"])
@@ -190,222 +179,31 @@ async def execute_async(request, dependencies: Dependencies | None = None):
                 "events_sha256": parent["events_sha256"],
             },
         )
-    adapter = None
-    sampler = None
-    sampler_task = None
-    execution = None
-    reason = "plan_finished"
-    code = 0
-    identity = {}
-    lock, locked = deps.lock(), False
-    restore_signal = install_termination_handler()
-    current = asyncio.current_task()
-    prior_cancellations = current.cancelling()
-    budget_expired = initial_idle_pending = False
+    from inferyard.runtime.trial_profile import SingleProfile
+    from inferyard.runtime.trial_runner import run_trial
 
-    def expire_budget():
-        nonlocal budget_expired
-        budget_expired = True
-        if execution is not None:
-            execution.cancellation_reason = "single_wall_budget_exhausted"
-
-    def check_budget():
-        if time.monotonic() - started_at >= allowed_seconds:
-            expire_budget()
-            raise asyncio.CancelledError
-
-    async def deadline():
-        await asyncio.sleep(max(0, allowed_seconds - (time.monotonic() - started_at)))
-        # A user cancellation already draining must retain its original reason.
-        if current.cancelling() == prior_cancellations:
-            expire_budget()
-            current.cancel()
-
-    def guard(config, files):
-        check_budget()
-        deps.guard(config, files)
-        check_budget()
-
-    budget_task = asyncio.create_task(deadline())
-    try:
-        lock.__enter__()
-        locked = True
-        from inferyard.runtime.service_reuse import snapshot
-
-        snapshot(store, parent, config, lock)
-        if request.command == "run" and not request.diagnostic:
-            require_review(loaded.bundle)
-        from inferyard.config.environment_binding import run_preflight
-
-        identity, files = run_preflight(
-            deps.preflight,
-            config,
-            diagnostic=request.diagnostic or request.command != "run",
-            policy=plan["experiment"].get("environment_admission"),
-        )
-        identity["files"] = [asdict(file) for file in files]
-        identity["runtime_library_hashes"] = read_json(
-            Path(config["engine"]["runtime_library_manifest"])
-        )
-        store.snapshot("environment.start.json", identity["environment"])
-        if "device_preflight" in identity:
-            store.snapshot("device.preflight.json", identity["device_preflight"])
-        adapter = deps.adapter(identity["origin"], secret=secret)
-        check_budget()
-
-        async def wait_idle(phase="probe", request_id=None):
-            return await observe_service(
-                adapter, config["execution"]["idle_wait_seconds"], store, phase, request_id
-            )
-
-        pre_idle_props = None
-        if config["engine"]["adapter"] in ("kvmem", "ninfer"):
-            pre_idle_props = await adapter.verify_properties(config)
-            store.snapshot("service.props.json", pre_idle_props)
-            store.snapshot("engine-capabilities.json", adapter.capability_evidence)
-        recovery = None
-        if request.recovery_confirm:
-            recovery = lock.verify_manual_recovery(
-                request.recovery_confirm, request.recovery_note, config["endpoint"]
-            )
-        old_state = lock.state
-        if old_state and old_state.get("dirty") and not recovery:
-            if (old_state.get("server_pid"), old_state.get("process_start_ticks")) != (
-                config["endpoint"]["server_pid"],
-                config["endpoint"]["process_start_ticks"],
-            ):
-                raise PreflightError("dirty_service_requires_bound_recovery")
-        initial_idle_pending = True
-        if not await wait_idle():
-            if not old_state or not old_state.get("dirty"):
-                lock.dirty(
-                    store.run_id,
-                    config["endpoint"],
-                    "initial_idle_unknown",
-                    kind=request.command,
-                )
-            raise PreflightError("initial_service_not_idle")
-        clean_observed(lock, adapter, store, recovery=recovery)
-        initial_idle_pending = False
-        if recovery:
-            store.snapshot("recovery.json", recovery)
-        props = pre_idle_props or await adapter.verify_properties(config)
-        if pre_idle_props is None:
-            store.snapshot("service.props.json", props)
-        budgets = await collect_budgets(
-            adapter, config, bundle, store.selected, kind=request.command
-        )
-        check_budget()
-        store.snapshot(V2, budgets)
-        sampler = deps.sampler(store, config)
-        sampler_task = asyncio.create_task(sampler.run())
-
-        execution = TrialRequests(
-            store,
-            config,
-            bundle,
-            adapter,
-            sampler,
-            sampler_task,
-            lock,
-            guard,
-            files,
-            scorer=deps.scorer,
-        )
-        one = execution.one
-
-        for stream in (False, True):
-            response = await one("probe", config["execution"]["probe_prompt"], stream=stream)
-            if response["execution_state"] != "completed":
-                raise PreflightError("protocol_probe_failed")
-            effective = await adapter.verify_effective(
-                config, probe_budget(budgets)["input_tokens"], adapter.last_state
-            )
-            store.snapshot(
-                "effective-stream.json" if stream else "effective-ordinary.json", effective
-            )
-            identity["effective_parameters"] = effective
-            check_budget()
-        store.snapshot("identity.json", identity)
-        if request.command == "run":
-            for _ in range(config["execution"]["warmup_count"]):
-                response = await one("warmup", config["execution"]["warmup_prompt"])
-                if response["execution_state"] != "completed":
-                    raise PreflightError("warmup_failed")
-            sampler.set_phase("baseline")
-            await asyncio.sleep(config["telemetry"]["baseline_seconds"])
-            for index, case in enumerate(bundle["cases"]):
-                await one("formal", case["prompt"], index=index)
-            check_budget()
-            if request.diagnostic:
-                reason = "diagnostic_run_not_formal"
-                code = 3
-        else:
-            reason = "check_only_no_formal_cases"
-    except asyncio.CancelledError:
-        code, reason = (
-            (3, "single_wall_budget_exhausted") if budget_expired else (130, "user_cancelled")
-        )
-        if initial_idle_pending and not (lock.state and lock.state.get("dirty")):
-            try:
-                lock.dirty(
-                    store.run_id, config["endpoint"], "initial_idle_unknown", kind=request.command
-                )
-            except (EvidenceError, OSError) as exc:
-                code, reason = 4, safe_reason(exc, "evidence_io_error")
-    except UnsupportedFormat:
-        raise
-    except (PreflightError, ContractError) as exc:
-        code = 3 if execution and execution.formal_started else 2
-        reason = exc.reason if isinstance(exc, ContractError) else str(exc)
-    except (EvidenceError, OSError) as exc:
-        code, reason = 4, safe_reason(exc, "evidence_io_error")
-    except Exception:
-        code, reason = 4, "tool_internal_error"
-    finally:
-        budget_task.cancel()
-        await asyncio.gather(budget_task, return_exceptions=True)
-        if sampler:
-            sampler.stopped = True
-        if sampler_task and not sampler_task.done():
-            sampler_task.cancel()
-        if sampler_task:
-            results = await asyncio.gather(sampler_task, return_exceptions=True)
-            if any(isinstance(result, Exception) for result in results):
-                code, reason = 4, "sampler_failed"
-        if adapter:
-            try:
-                await adapter.close()
-            except Exception:
-                code, reason = 4, "adapter_cleanup_failed"
-        if not store.sealed:
-            try:
-                if not (store.path / "identity.json").exists():
-                    store.snapshot("identity.json", identity)
-                if not (store.path / "environment.end.json").exists():
-                    store.snapshot("environment.end.json", deps.environment())
-                store.event(
-                    "run_stopped", "finalizing", None, {"reason": reason or "tool_interrupted"}
-                )
-                if extra := observation_manifest(adapter):
-                    store.seal(extra)
-                else:
-                    store.seal()
-            except (EvidenceError, OSError, ContractError) as exc:
-                code, reason = 4, safe_reason(exc, "evidence_io_error")
-        try:
-            store.close()
-        except EvidenceError as exc:
-            code, reason = 4, safe_reason(exc, "evidence_io_error")
-        if locked:
-            lock.__exit__(None, None, None)
-        restore_signal()
-    try:
-        summary = read_trial(store.path)["summary"]
-    except (EvidenceError, ContractError) as exc:
-        code, reason, summary = 4, safe_reason(exc, "evidence_reconstruction_failed"), None
-    if code == 0 and execution and execution.unscorable:
-        code, reason = 3, "unscorable_case"
+    code, outcome, _ = await run_trial(
+        plan,
+        plan["trials"][0]["trial_id"],
+        loaded,
+        Path(config["output"]["root"]),
+        parent=parent,
+        diagnostic=request.diagnostic,
+        recovery_confirm=request.recovery_confirm,
+        recovery_note=request.recovery_note,
+        dependencies=deps,
+        profile=SingleProfile(
+            store=store,
+            kind=request.command,
+            secret=secret,
+            started_at=started_at,
+            allowed_seconds=allowed_seconds,
+            review=require_review,
+            sleep=asyncio.sleep,
+            monotonic=time.monotonic,
+        ),
+    )
+    summary, reason = outcome["summary"], outcome["reason"]
     return code, CommandResult(
         request.command,
         "finished"
@@ -423,7 +221,7 @@ async def execute_async(request, dependencies: Dependencies | None = None):
             + (summary["limitations"] if summary else [])
         ),
         details={
-            **observation_manifest(adapter),
+            **outcome["observation"],
             "evidence_only": True,
             "next_report_command": [
                 "inferyard",

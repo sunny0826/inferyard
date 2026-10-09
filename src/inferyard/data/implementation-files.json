@@ -162,6 +162,9 @@
     "runtime/service_reuse.py",
     "runtime/signals.py",
     "runtime/template_tokens.py",
+    "runtime/trial_finalization.py",
+    "runtime/trial_lifecycle.py",
+    "runtime/trial_profile.py",
     "runtime/trial_runner.py"
   ],
   "scoring": [
@@ -425,6 +428,9 @@
     "runtime/service_reuse.py",
     "runtime/signals.py",
     "runtime/template_tokens.py",
+    "runtime/trial_finalization.py",
+    "runtime/trial_lifecycle.py",
+    "runtime/trial_profile.py",
     "runtime/trial_runner.py",
     "templates/report.html",
     "templates/report_advanced.html",
