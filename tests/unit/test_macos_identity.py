@@ -266,10 +266,11 @@ def test_unknown_opt_in_never_hides_observed_mismatch_or_offline_unknown():
     assert mismatches(conditions, {**environment, "ac_online": False}) == ["ac_online"]
     assert mismatches(conditions, {**environment, "ac_online": None}) == ["ac_online"]
     assert "profile" in mismatches({**conditions, "allow_unknown_environment": False}, environment)
-    assert (
-        "environment_unknown:governor"
-        in telemetry.environment_changes(environment, environment)["reasons"]
-    )
+    from inferyard.analysis.environment import assess_environment
+
+    assessment = assess_environment(environment, environment, [], conditions, [])
+    assert not assessment["stable_observed_environment"]
+    assert "swap_counter_unknown:pswpin" in assessment["reasons"]
 
 
 def test_default_darwin_dispatch_and_custom_proc_root(native, monkeypatch, tmp_path):

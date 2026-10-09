@@ -36,7 +36,6 @@ BINDING_FIELDS = (
     "argv_sha256",
     "cwd_sha256",
 )
-PROCESS_SOURCE = "windows:process_handle.v1"
 _WAIT_OBJECT_0 = 0
 _WAIT_TIMEOUT = 0x102
 
@@ -120,27 +119,6 @@ class ProcessHandle:
         if self._closed or self._handle is None or self._api is None:
             raise PreflightError("lab_windows_process_unknown")
         return self._handle
-
-
-def inspect_process(pid: int, expected_filetime: int, *, deadline: float) -> dict:
-    reject_deadline(deadline)
-    require_pid(pid)
-    positive_int(expected_filetime, "lab_windows_invalid_filetime")
-    with ProcessHandle(pid) as handle:
-        reject_deadline(deadline)
-        actual = handle.creation_filetime()
-        reject_deadline(deadline)
-        if actual != expected_filetime:
-            raise PreflightError("lab_windows_filetime_mismatch")
-        exited = handle.is_exited()
-        reject_deadline(deadline)
-    reject_deadline(deadline)
-    return {
-        "pid": pid,
-        "creation_filetime": actual,
-        "exited": exited,
-        "source": PROCESS_SOURCE,
-    }
 
 
 def verify_process_binding(

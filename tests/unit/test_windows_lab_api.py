@@ -3,7 +3,6 @@
 import ast
 import ctypes
 import sys
-import time
 from pathlib import Path
 
 import pytest
@@ -14,7 +13,7 @@ from inferyard.platforms.windows_lab_api import (
     WindowsLabApi,
     _bounded_open_process,
 )
-from inferyard.platforms.windows_lab_process import inspect_process
+from inferyard.platforms.windows_lab_process import ProcessHandle
 
 ROOT = Path(__file__).parents[2] / "src" / "inferyard" / "platforms"
 
@@ -92,6 +91,6 @@ def test_real_api_refuses_off_windows_before_windll(monkeypatch, method, args):
     with pytest.raises(PreflightError, match="lab_windows_api_unavailable"):
         getattr(WindowsLabApi(), method)(*args)
     assert calls == []
-    with pytest.raises(PreflightError, match="lab_windows_api_unavailable"):
-        inspect_process(4, 100, deadline=time.monotonic() + 30)
+    with pytest.raises(PreflightError, match="lab_windows_api_unavailable"), ProcessHandle(4):
+        pass
     assert calls == []

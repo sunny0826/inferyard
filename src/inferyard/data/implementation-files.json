@@ -329,7 +329,6 @@
     "evidence/storage.py",
     "evidence/token_budgets.py",
     "evidence/total_applicability.py",
-    "evidence/total_control_binding.py",
     "evidence/trial_reads.py",
     "extensions/client_capacity.py",
     "extensions/closed_concurrency.py",

@@ -52,7 +52,6 @@ class HostLock:
         self.state = None
         self._fds = []
         self._locked_fds = set()
-        self._state_paths = []
         self._identities = {}
         self._created_paths = set()
 
@@ -82,14 +81,9 @@ class HostLock:
             ):
                 raise PreflightError("host_state_identity_changed")
 
-    def _read_state(self, path):
-        raw = read_bytes(path)
-        return validate_state(decode(raw)) if raw is not None else None
-
     def __enter__(self):
         try:
             self.fd = self._acquire(LOCK_PATH)
-            self._state_paths = [STATE_PATH]
             raw = read_bytes(STATE_PATH)
             if raw is None:
                 publish_state(
@@ -114,7 +108,6 @@ class HostLock:
         if self.fd is None:
             raise PreflightError("host_lock_not_held")
         self._check_locks()
-        state = validate_state(state)
         publish_state(STATE_PATH, state, overwrite=True)
         self.state = state
 

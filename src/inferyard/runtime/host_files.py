@@ -1,6 +1,5 @@
 """Bounded no-follow host state reads and stable kernel-lock identities."""
 
-import hashlib
 import os
 import stat
 
@@ -97,14 +96,6 @@ def validate_state(value):
     return value
 
 
-def sha(raw):
-    return hashlib.sha256(raw).hexdigest()
-
-
 def publish_state(path, value, *, overwrite):
-    from inferyard.evidence.storage import EvidenceError
-
     raw = json_bytes(value)
     atomic_bytes(path, raw, overwrite=overwrite)
-    if read_bytes(path) != raw:
-        raise EvidenceError("host_state_publication_mismatch")

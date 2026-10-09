@@ -13,9 +13,7 @@ from inferyard.platforms import windows_lab_checks as checks
 from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.windows_lab_api import override_windows_lab_api
 from inferyard.platforms.windows_lab_process import (
-    PROCESS_SOURCE,
     ProcessHandle,
-    inspect_process,
     verify_process_binding,
 )
 
@@ -144,11 +142,11 @@ def test_fixture_hash_matches_strict_utf8_oracle():
 
 def test_invalid_scalars_do_not_open_or_load_api():
     with pytest.raises(PreflightError, match="lab_windows_invalid_pid"):
-        inspect_process(True, 100, deadline=_soon())
+        verify_process_binding({**_expected(Proc()), "pid": True}, deadline=_soon())
     with pytest.raises(PreflightError, match="lab_windows_deadline_invalid"):
-        inspect_process(4, 100, deadline=float("nan"))
+        verify_process_binding(_expected(Proc()), deadline=float("nan"))
     with pytest.raises(PreflightError, match="lab_windows_invalid_filetime"):
-        inspect_process(4, False, deadline=_soon())
+        verify_process_binding({**_expected(Proc()), "creation_filetime": False}, deadline=_soon())
 
 
 def test_open_failure_distinguishes_missing_from_unknown_and_does_not_close():
@@ -156,40 +154,35 @@ def test_open_failure_distinguishes_missing_from_unknown_and_does_not_close():
     missing.fail_open = 87
     unknown = Proc()
     unknown.fail_open = 5
-    assert _raises(missing, lambda: inspect_process(4, 100, deadline=_soon())).args == (
-        "lab_windows_process_missing",
-    )
-    assert _raises(unknown, lambda: inspect_process(4, 100, deadline=_soon())).args == (
-        "lab_windows_process_unknown",
-    )
+    assert _raises(
+        missing, lambda: verify_process_binding(_expected(missing), deadline=_soon())
+    ).args == ("lab_windows_process_missing",)
+    assert _raises(
+        unknown, lambda: verify_process_binding(_expected(unknown), deadline=_soon())
+    ).args == ("lab_windows_process_unknown",)
     assert missing.closed == [] and unknown.closed == []
     assert missing.details == 0 and unknown.details == 0
 
 
 def test_same_handle_times_and_wait_close_once_on_success_and_api_failure():
     proc = Proc()
-    with override_windows_lab_api(proc):
-        observed = inspect_process(4, 100, deadline=_soon())
-    assert observed == {
-        "pid": 4,
-        "creation_filetime": 100,
-        "exited": False,
-        "source": PROCESS_SOURCE,
-    }
+    with override_windows_lab_api(proc), ProcessHandle(4) as handle:
+        assert handle.creation_filetime() == 100
+        assert handle.is_exited() is False
     assert proc.times == [1] and proc.waits == [1] and proc.closed == [1]
 
     failed = Proc()
     failed.time_error = 5
-    assert _raises(failed, lambda: inspect_process(4, 100, deadline=_soon())).args == (
-        "lab_windows_process_unknown",
-    )
+    assert _raises(
+        failed, lambda: verify_process_binding(_expected(failed), deadline=_soon())
+    ).args == ("lab_windows_process_unknown",)
     assert failed.times == [1] and failed.waits == [] and failed.closed == [1]
 
     waiting = Proc()
     waiting.wait_error = 5
-    assert _raises(waiting, lambda: inspect_process(4, 100, deadline=_soon())).args == (
-        "lab_windows_process_unknown",
-    )
+    assert _raises(
+        waiting, lambda: verify_process_binding(_expected(waiting), deadline=_soon())
+    ).args == ("lab_windows_process_unknown",)
     assert waiting.times == [1] and waiting.waits == [1] and waiting.closed == [1]
 
 
@@ -197,7 +190,7 @@ def test_same_handle_times_and_wait_close_once_on_success_and_api_failure():
 def test_non_timeout_wait_is_unknown_not_exited(result):
     proc = Proc()
     proc.wait = result
-    error = _raises(proc, lambda: inspect_process(4, 100, deadline=_soon()))
+    error = _raises(proc, lambda: verify_process_binding(_expected(proc), deadline=_soon()))
     assert error.args == ("lab_windows_process_unknown",)
     assert proc.closed == [1]
 
@@ -205,16 +198,16 @@ def test_non_timeout_wait_is_unknown_not_exited(result):
 def test_filetime_mismatch_is_not_reported_as_missing():
     proc = Proc()
     proc.filetime = 50
-    error = _raises(proc, lambda: inspect_process(4, 100, deadline=_soon()))
+    error = _raises(proc, lambda: verify_process_binding(_expected(proc), deadline=_soon()))
     assert error.args == ("lab_windows_filetime_mismatch",)
     assert proc.closed == [1] and proc.waits == [] and proc.details == 0
 
 
-def test_exited_process_is_visible_to_inspect_and_rejected_by_binding():
+def test_exited_process_is_visible_to_handle_and_rejected_by_binding():
     proc = Proc()
     proc.wait = 0
-    with override_windows_lab_api(proc):
-        assert inspect_process(4, 100, deadline=_soon())["exited"] is True
+    with override_windows_lab_api(proc), ProcessHandle(4) as handle:
+        assert handle.is_exited() is True
     assert proc.closed == [1]
     error = _raises(proc, lambda: verify_process_binding(_expected(proc), deadline=_soon()))
     assert error.args == ("lab_windows_process_exited",)
@@ -346,7 +339,7 @@ def test_ipv6_loopback_listener_uses_existing_source_constants():
 def test_deadline_and_shape_failures(monkeypatch):
     monkeypatch.setattr(checks.time, "monotonic", lambda: 5.0)
     with pytest.raises(PreflightError, match="lab_windows_deadline_exceeded"):
-        inspect_process(4, 100, deadline=5.0)
+        verify_process_binding(_expected(Proc()), deadline=5.0)
     with pytest.raises(PreflightError, match="lab_windows_binding_invalid"):
         verify_process_binding({"pid": 4}, deadline=50.0)
     with pytest.raises(ContractError, match="duplicate JSON key"):
@@ -360,7 +353,7 @@ def test_deadline_and_shape_failures(monkeypatch):
 def test_opened_handle_winerror_87_is_unknown_not_missing(slot, waits):
     proc = Proc()
     setattr(proc, slot, 87)
-    error = _raises(proc, lambda: inspect_process(4, 100, deadline=_soon()))
+    error = _raises(proc, lambda: verify_process_binding(_expected(proc), deadline=_soon()))
     assert error.args == ("lab_windows_process_unknown",)
     assert proc.closed == [1]
     assert proc.waits == waits
@@ -369,10 +362,13 @@ def test_opened_handle_winerror_87_is_unknown_not_missing(slot, waits):
 def test_close_handle_winerror_87_is_unknown_and_closes_once():
     proc = Proc()
     proc.close_error = 87
-    error = _raises(proc, lambda: inspect_process(4, 100, deadline=_soon()))
-    assert error.args == ("lab_windows_process_unknown",)
+    with (
+        override_windows_lab_api(proc),
+        pytest.raises(PreflightError, match="lab_windows_process_unknown"),
+        ProcessHandle(4),
+    ):
+        pass
     assert proc.closed == [1]
-    assert proc.times == [1] and proc.waits == [1]
 
 
 def _hold_clock(monkeypatch):
@@ -383,21 +379,6 @@ def _hold_clock(monkeypatch):
 
     monkeypatch.setattr(checks.time, "monotonic", monotonic)
     return clock
-
-
-def test_inspect_close_past_deadline_does_not_succeed(monkeypatch):
-    proc = Proc()
-    clock = _hold_clock(monkeypatch)
-    original = proc.close_handle
-
-    def close_handle(handle):
-        original(handle)
-        clock["expire"] = True
-
-    proc.close_handle = close_handle
-    error = _raises(proc, lambda: inspect_process(4, 100, deadline=50.0))
-    assert error.args == ("lab_windows_deadline_exceeded",)
-    assert proc.closed == [1]
 
 
 def test_binding_final_close_past_deadline_does_not_succeed(monkeypatch):

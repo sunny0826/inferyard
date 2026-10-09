@@ -44,7 +44,6 @@ class TrialRequests:
         self.cases = {case["case_id"]: case for case in bundle["cases"]}
         self.next_formal = 0
         self.cancellation_reason = "user_cancelled"
-        self._active = asyncio.Lock()
 
     async def idle(self, phase="probe", key=None):
         return await observe_service(
@@ -52,18 +51,6 @@ class TrialRequests:
         )
 
     async def one(self, phase, prompt, *, index=None, stream=True, admission_deadline_ns=None):
-        if self._active.locked():
-            raise PreflightError("concurrent_request_not_allowed")
-        async with self._active:
-            return await self._one(
-                phase,
-                prompt,
-                index=index,
-                stream=stream,
-                admission_deadline_ns=admission_deadline_ns,
-            )
-
-    async def _one(self, phase, prompt, *, index=None, stream=True, admission_deadline_ns=None):
         if self.lock.fd is None:
             raise PreflightError("host_lock_not_held")
         case = None

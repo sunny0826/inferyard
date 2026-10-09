@@ -8,7 +8,7 @@ import pytest
 
 from inferyard.cli import main
 from inferyard.contracts.validation import ContractError
-from inferyard.registry import catalogue, metric_definition
+from inferyard.registry import catalogue
 
 
 def test_all_199_methods_have_distinct_stable_identity_and_source():
@@ -43,17 +43,16 @@ def test_metric_inventory_is_complete_but_does_not_claim_planned_algorithms_exis
         if item["metric_id"] not in implemented
     )
     assert not any(item["implementation_status"] == "verified" for item in data["items"])
-    assert metric_definition("L06")["source"] == "verified_engine_timings"
-    assert metric_definition("C04")["unit"] == "s"
-    with pytest.raises(ContractError):
-        metric_definition("nonexistent")
+    metrics = {item["metric_id"]: item for item in data["items"]}
+    assert metrics["L06"]["source"] == "verified_engine_timings"
+    assert metrics["C04"]["unit"] == "s"
 
 
 def test_catalogue_cli_is_structured_and_detached(capsys):
     assert main(["catalogue", "--kind", "metrics"]) == 0
     payload = json.loads(capsys.readouterr().out)
     payload["details"]["items"][0]["name"] = "changed"
-    assert metric_definition("R01")["name"] != "changed"
+    assert catalogue("metrics")["items"][0]["name"] != "changed"
 
 
 def test_packaged_metric_changes_are_part_of_tool_identity(tmp_path, monkeypatch):

@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import pytest
 
 import inferyard.platforms.identity as identity
+from inferyard.analysis.environment import assess_environment
 from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, local_file
 from inferyard.platforms.identity import (
     PreflightError,
@@ -24,7 +25,7 @@ from inferyard.platforms.identity import (
     verify_process,
 )
 from inferyard.platforms.platform_io import open_nofollow
-from inferyard.platforms.telemetry import environment_changes, read_rss, sample_memory
+from inferyard.platforms.telemetry import read_rss, sample_memory
 from inferyard.runtime.signals import install_termination_handler
 from tests.helpers import readline_timeout
 
@@ -114,7 +115,7 @@ def test_environment_unknowns_do_not_qualify_performance():
     assert state["memory_total_bytes"] > 0 and memory_available() > 0
     assert state["governor"] is None and state["swap_pages"] == {}
     assert state["evidence_durability"]["directory_fsync"] is False
-    assert environment_changes(state, state)["performance_limited"]
+    assert not assess_environment(state, state, [], {}, [])["stable_observed_environment"]
 
 
 def test_declared_cuda_without_a_loaded_cuda_library_is_rejected(service):
@@ -168,7 +169,7 @@ def test_unknown_environment_opt_in_preserves_nulls_and_rejects_known_mismatch(
     if accepted:
         result, _ = static_preflight(config)
         assert result["environment"]["governor"] is None
-        assert environment_changes(state, state)["performance_limited"]
+        assert not assess_environment(state, state, [], {}, [])["stable_observed_environment"]
     else:
         with pytest.raises(PreflightError, match="frozen_environment_mismatch"):
             static_preflight(config)
