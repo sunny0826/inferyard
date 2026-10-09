@@ -109,7 +109,7 @@ def assess_schedule(records, interval_ms):
                 raise EvidenceError("invalid_resource_boundary_schedule")
             boundaries.append(right - left)
             continue
-        keys = ("scheduled_ns", "actual_ns", "late_ns", "collector_work_ns", "queue_depth")
+        keys = ("scheduled_ns", "actual_ns", "late_ns", "collector_work_ns")
         if any(type(row.get(k)) is not int or row[k] < 0 for k in keys):
             raise EvidenceError("invalid_collector_schedule")
         periodic.append(row)

@@ -3,6 +3,7 @@
 import asyncio
 import time
 
+from inferyard.evidence.environment_projection import periodic_environment
 from inferyard.platforms.identity import environment_snapshot
 
 
@@ -36,14 +37,13 @@ async def run_sampler(sampler):
                 observation = {
                     "monotonic_ns": time.monotonic_ns(),
                     "phase": sampler.phase,
-                    "snapshot": environment_snapshot(),
+                    "snapshot": periodic_environment(environment_snapshot()),
                 }
                 sampler.store.observation("environment.jsonl", observation)
                 environment_due = advance(environment_due, 1, loop.time())
             sampler.store.flush_due()
             if resource_due:
                 schedule["collector_work_ns"] = int((loop.time() - actual) * 1e9)
-                schedule["queue_depth"] = 0
                 sampler.store.observation("schedule.jsonl", schedule)
                 due = advance(due, interval, loop.time())
             await asyncio.sleep(max(0, min(due, environment_due) - loop.time()))

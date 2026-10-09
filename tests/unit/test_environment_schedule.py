@@ -57,7 +57,7 @@ def test_independent_cadences_and_missed_deadlines(monkeypatch):
     assert not hasattr(sampler, "environment")
     assert not hasattr(sampler, "schedule")
     assert len(environment) == 5 and len(schedules) == 3
-    assert all(row["queue_depth"] == 0 for row in schedules)
+    assert all("queue_depth" not in row for row in schedules)
 
 
 def test_observer_error_is_preserved(monkeypatch):

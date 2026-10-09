@@ -78,7 +78,7 @@ Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能�
 | 引擎观测 | KVMem/NInfer 的原生信号与 lab 完整观测分开；精确模板预算、有效参数和引擎内部排空缺测仍披露；engine-fit 接入未完成 |
 | 可维护性 | 按实际触及范围整理模块与兼容分支，不以全库重构作为发行前提 |
 | 批次投影摘要去重 | `run_projection.py` 的 `_summary` 与 `ledger.py` 摘要规则为复制逻辑（等价回归已钉住）；后续抽共享函数消除双份维护 |
-| 环境快照瘦身 | 周期 environment/schedule 记录的常量字段（cpu_flags/os_release/kernel 等）改为仅 start/end 写一次、queue_depth 恒 0 字段删除、周期记录不再持久化 mem_available_bytes（运行时 guard/准入消费保留）；受 macos-contract.md 快照字段冻结与身份常量要求约束，需小契约变更（ADR + data-contract + 新旧证据读取策略）后实施 |
+| 环境采集成本 | 周期持久层投影已由 [ADR 041](decisions/041-environment-persistence-slim.md) 定义，身份常量仍保留；Linux 每秒读取成本另行评估，macOS 原生 API 替换仍须单独修订来源契约与验证，不能复用持久层回归作为采集资格 |
 
 ## 可选测评扩展
 

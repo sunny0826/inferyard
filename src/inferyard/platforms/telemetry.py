@@ -8,6 +8,7 @@ import platform
 import time
 from pathlib import Path
 
+from inferyard.evidence.environment_projection import periodic_environment
 from inferyard.platforms.identity import (
     PreflightError,
     environment_snapshot,
@@ -132,13 +133,12 @@ class Sampler:
                     observation = {
                         "monotonic_ns": time.monotonic_ns(),
                         "phase": self.phase,
-                        "snapshot": environment_snapshot(),
+                        "snapshot": periodic_environment(environment_snapshot()),
                     }
                     self.store.observation("environment.jsonl", observation)
                     environment_due = actual + 1
                 self.store.flush_due()
                 schedule["collector_work_ns"] = int((loop.time() - actual) * 1e9)
-                schedule["queue_depth"] = 0  # synchronous bounded writer, no hidden queue
                 self.store.observation("schedule.jsonl", schedule)
                 due += interval
                 if due < loop.time():

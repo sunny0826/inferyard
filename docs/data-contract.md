@@ -109,6 +109,40 @@ manifest 的结构、合法文件路径、原始文件存在性和大小检查�
 及真实事件哈希仍计算。预算文件的 run_id、数值范围与封存成员检查不变。
 多类损坏并存时，投影与全量读取报告的优先错误可能不同，两者都拒绝该 run。
 
+## 周期环境与调度记录
+
+[ADR 041](decisions/041-environment-persistence-slim.md) 修订 v3 周期持久化字段集；
+核心 `schema_version = 3` 与现有格式支持集不变，不新增 Schema kind。
+`environment.jsonl` 的 `snapshot` 在写盘时仅移除 `cpu_flags`、`os_release`、`gpu`、
+`mem_available_bytes`、`page_size_bytes`，其余快照字段原样保留。特别保留：
+
+- 身份字段 `platform`、`kernel`、`architecture`、`cpu_model`、`logical_cpus`、
+  `memory_total_bytes`，覆盖 `LINUX_FIELDS` / `MACOS_FIELDS` 的全部要求。
+- 动态字段 `ac_online`、`profile`、`governor`、`epp`、`scaling_driver`、
+  `cpu_policies`、`macos_power_policy`、`swap_pages`。
+- 已有来源、boot、限制和读取区间字段，以及外层 `monotonic_ns`、`phase` 等观测字段。
+
+`environment.start.json` / `environment.end.json` 保持完整快照。
+运行时 `environment_snapshot()` 的签名、输出和每次新读不变；采样频率不变。
+报告系统版本、GPU 和开始时可用内存来自 start 快照。
+资源换页计算的 `page_size_bytes` 来自 `memory.jsonl` 样本，并与 `collector.json`
+核对；不从周期环境记录补值或推导 scale。
+
+周期 `schedule.jsonl` 不再写入或要求 `queue_depth`，仍要求 `scheduled_ns`、
+`actual_ns`、`late_ns`、`collector_work_ns` 为非负整数（拒绝 bool）。
+`kind=resource_boundary` 仍校验非负整数 `read_started_ns` / `read_finished_ns`，
+且结束不得早于开始。环境观测仍要求非负整数、严格递增的 `monotonic_ns` 和对象 `snapshot`。
+
+旧证据读取政策：旧 v3 全量周期记录、带 `queue_depth` 的调度记录继续按原字节读取，
+不因这些额外字段拒绝，不迁移或改写封存。保留字段用 `.get` 读取；身份缺失仍记录
+`environment_unknown:*` 并阻止资格成立，不使用 start/end 回填周期身份或忽略变化。
+旧/新记录的 `assess_environment`、`assess_schedule` 与环境资格结果必须相同；
+原有严格 JSON、封存哈希、时间和来源校验不变。
+
+合法旧/新样例及非法缺键、bool、负值、错误结构的回归位于
+`tests/unit/test_environment_persistence.py`。周期记录不再独立包含全量环境信息；
+来源变化后的结论仍遵循[证据血缘规则](#证据血缘与比较结论)。
+
 ## 证据血缘与比较结论
 
 结论绑定实际设备、引擎、配置、题包、测量源码和采集来源。历史运行说明当时的测量；模拟、短诊断、迁移、重评分、报告重建与离线核验分别记录自己的来源和范围，不构成当前源码的新实测。派生产物保留原来源与缺项，在新目录生成，原件不覆盖。
