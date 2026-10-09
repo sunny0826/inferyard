@@ -98,7 +98,7 @@ inferyard engine-fit run --plan results/gguf-plan/plan.json --engine llama-cpp \
 ```
 
 llama.cpp 不接受额外模型、LoRA、draft、mmproj、router、RPC、下载或未知加载参数。
-服务环境不得有 `LLAMA_ARG_` 配置覆盖。Windows 仅此引擎可在 engine-fit 实时执行，见[Windows 说明](../WINDOWS.md#windows-engine-fit-诊断)。
+服务环境不得有 `LLAMA_ARG_` 配置覆盖。Windows 仅此引擎可在 engine-fit 实时执行，见[Windows 说明](../WINDOWS.md#windows-engine-fit-diagnostics)。
 
 关闭 llama.cpp 后，在 LM Studio 中加载同一 GGUF，关闭 LM Link，外部启动 API 服务。
 只保留一个本机加载实例，记录其 identifier、模型根和当前监听 PID。只读查询使用显式端口，不传 `--host`：

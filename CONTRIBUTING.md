@@ -1,15 +1,20 @@
-# 贡献指南
+# Contributing
 
-先读[产品说明](README.md)、[架构](docs/architecture.md)和相关[主题契约](docs/contracts/README.md)。
-Agent 的文件边界与安全要求见 [AGENTS.md](AGENTS.md)。项目采用 [MIT 许可证](LICENSE)，
-版本发布状态见 [PyPI](https://pypi.org/project/inferyard/) 和 [GitHub Releases](https://github.com/sunny0826/inferyard/releases)。
+Read the [product README](README.md), the [architecture](docs/architecture.md)
+and the relevant [topic contracts](docs/contracts/README.md) first.
+File boundaries and safety requirements for agents are in [AGENTS.md](AGENTS.md).
+The project uses the [MIT license](LICENSE); release status is on
+[PyPI](https://pypi.org/project/inferyard/) and
+[GitHub Releases](https://github.com/sunny0826/inferyard/releases).
 
-## 开发环境
+## Development environment
 
-版本以 [mise.toml](mise.toml) 为准：Python 3.14.7、uv 0.12.18；Go 用于独立 observer。
-依赖由 uv 管理，不用系统 Python 或全局 pip 替代。
-若继承的 `UV_PYTHON` 指向其他版本，先取消该覆盖或改为 `mise which python` 返回的路径；
-确认实际解释器为 3.14.7 后再同步和运行。
+Versions are pinned by [mise.toml](mise.toml): Python 3.14.7 and uv 0.12.18;
+Go is used for the standalone observer.
+Dependencies are managed by uv; do not substitute system Python or global pip.
+If an inherited `UV_PYTHON` points to another version, remove that override or
+point it at the path returned by `mise which python`; confirm the interpreter
+is actually 3.14.7 before syncing and running.
 
 ```bash
 mise which python
@@ -21,15 +26,21 @@ mise exec -- uv run --frozen inferyard --help
 mise exec -- uv run --frozen inferyard --versions
 ```
 
-首次同步需要网络，缓存齐全时才用 `--offline`。用户安装与源码开发分开：
-[安装指南](docs/installation.md)使用 PyPI / wheel 和 `uv tool` / `uvx`，开发命令使用 `mise exec -- uv run --frozen`。
+The first sync needs network access; use `--offline` only when the cache is
+complete. User installation and source development are separate: the
+[installation guide](docs/installation.md) uses PyPI / wheels and
+`uv tool` / `uvx`, while development commands use `mise exec -- uv run --frozen`.
 
-## 修改与验证
+## Changes and verification
 
-先查看工作区差异并保留已有修改。行为修复增加覆盖真实失败路径的回归；契约变更覆盖拒绝路径与旧数据读取。
-默认使用夹具和模拟服务，真实模型、构建与长时负载另行确定设备、预算和停止条件。
+Inspect the working-tree diff first and preserve existing changes. Behavior
+fixes add regressions covering the real failure path; contract changes cover
+rejection paths and old-data reading.
+Use fixtures and simulated services by default; real models, builds and
+long-running workloads require separately agreed device, budget and stop
+conditions.
 
-按影响范围选择检查，不必每次全部执行：
+Pick the checks that match the impact; not everything has to run every time:
 
 ```bash
 mise exec -- uv run --frozen pytest -q tests/unit/test_RELEVANT.py
@@ -40,29 +51,52 @@ mise exec -- uv run --frozen python scripts/export_catalogue.py --check
 git diff --check
 ```
 
-`test_RELEVANT.py` 替换为相关测试。纯文档只检查链接、命令和 diff；HTML 还检查实际离线渲染。
-全量 pytest 留给影响广泛的代码修改或集成检查。本地 TCP 模拟测试需要 socket 权限，沙箱阻断和实现失败分开报告。
-运行脚本前读[脚本说明](scripts/README.md)并检查副作用，不批量执行 `verify_*`。
+Replace `test_RELEVANT.py` with the relevant tests. Pure-doc changes only
+check links, commands and the diff; HTML changes also check actual offline
+rendering.
+Leave the full pytest run for far-reaching code changes or integration
+checks. Local TCP simulation tests need socket permissions; report sandbox
+blocking and implementation failures separately.
+Read the [scripts README](scripts/README.md) and check side effects before
+running scripts; never batch-execute `verify_*`.
 
-Schema 源在 `src/inferyard/contracts/`，修改后运行导出器（去掉 `--check`）。
-`docs/experiments/metrics.md` 和 `docs/reference/methods-matrix.md` 是 catalogue 生成源，
-修改时同步导出，已有 ID 不因排版变动重分配。题包及其审核资料保留原哈希关系，改题后重新人工审核受影响项。
+Schema sources live in `src/inferyard/contracts/`; run the exporter (without
+`--check`) after changing them.
+`docs/experiments/metrics.md` and `docs/reference/methods-matrix.md` are the
+catalogue generation sources; re-export when they change, and never reassign
+existing IDs for layout reasons. Bundles and their review materials keep the
+original hash relationships; re-run manual review for affected cases after
+changing them.
 
-## 文档与证据
+## Documentation and evidence
 
-- README、Git commit 与 PR 使用英文；其余文档暂保持中文。
-- README 是产品入口；操作步骤在安装与使用指南，接口规则在数据/主题契约。
-- ADR 记录长期设计理由；计划只保留未完成工作，当前进度集中到 [backlog](docs/backlog.md)。
-- 不提交会话交接、阶段流水账、真实设备配置、模型、引擎、缓存、凭据或原始运行。
-- `validation/` 是忽略的本机证据目录，不用于默认测试或构建。需要回归样本时提取最小、可公开的夹具。
-- 不覆盖原始证据；迁移、重评分和报告重建写入新目录，遵循[证据血缘规则](docs/data-contract.md#证据血缘与比较结论)。
+- README, AGENTS.md, CHANGELOG.md, CONTRIBUTING.md, MACOS.md, WINDOWS.md, Git
+  commits and PRs use English; a Chinese README is available at
+  [README.zh-CN.md](README.zh-CN.md). All other docs stay Chinese for now.
+- The README is the product entry point; operational steps live in the
+  installation and usage guides, interface rules in the data/topic contracts.
+- ADRs record long-term design rationale; plans keep only unfinished work,
+  and current progress is centralized in the [backlog](docs/backlog.md).
+- Never commit session handovers, stage logs, real device configurations,
+  models, engines, caches, credentials or original runs.
+- `validation/` is an ignored local evidence directory, not used by default
+  tests or builds. Extract minimal, publishable fixtures when regression
+  samples are needed.
+- Never overwrite original evidence; migration, rescoring and report rebuilds
+  write to new directories, following the
+  [evidence lineage rules](docs/data-contract.md#证据血缘与比较结论).
 
-## 本地候选构建与安装检查
+## Local candidate build and installation checks
 
-确认 LICENSE 与包元数据一致后，在干净的最终集成提交上执行。以下大写项均为占位值：
-`BUILD`、`INPUTS`、`CANDIDATE`、`STAGE` 是新目录；`OUTSIDE_CHECKOUT` 必须是源码检出外的新目录。
-后四种目录的父目录须已存在。`INTEGRATED_SHA` 是构建所用完整提交 SHA，期间不切换源码。
-`BUILD` 选择 Git 忽略目录（如 `dist/...`）或源码外目录，避免生成产物使 clean-source 检查失败。
+Run this on a clean final integration commit, after confirming that LICENSE
+and the package metadata agree. Uppercase items below are placeholders:
+`BUILD`, `INPUTS`, `CANDIDATE` and `STAGE` are new directories;
+`OUTSIDE_CHECKOUT` must be a new directory outside the source checkout.
+The parent directories of the last four must already exist. `INTEGRATED_SHA`
+is the full commit SHA used for the build; do not switch sources in between.
+`BUILD` picks a Git-ignored directory (such as `dist/...`) or a directory
+outside the checkout, so generated artifacts do not fail the clean-source
+check.
 
 ```bash
 mise exec -- uv run --frozen python scripts/build_distribution.py --out BUILD
@@ -72,47 +106,82 @@ mise exec -- uv run --frozen python scripts/prepare_release_candidate.py --manif
 mise exec -- uv run --frozen python scripts/verify_release_candidate.py --manifest CANDIDATE/manifest.json --manifest-sha256 PRODUCER_OUTPUT_SHA --source-commit INTEGRATED_SHA --stage STAGE
 ```
 
-`WHEEL` 使用 `BUILD/packages/inferyard-0.0.1-py3-none-any.whl`，`CONSTRAINTS` 使用
-`BUILD/attachments/runtime-constraints.txt`。构建同时核验 sdist 重建结果和约束校验文件。
-`PRODUCER_OUTPUT_SHA` 取自 `prepare_release_candidate.py` 的 JSON 输出字段 `manifest_sha256`。
-保留构建清单、安装结果及候选原件，不手工编辑 JSON 代替通过检查。
+Use `BUILD/packages/inferyard-0.0.1-py3-none-any.whl` for `WHEEL` and
+`BUILD/attachments/runtime-constraints.txt` for `CONSTRAINTS`. The build also
+verifies the sdist rebuild and the constraint-check file.
+`PRODUCER_OUTPUT_SHA` comes from the `manifest_sha256` field of
+`prepare_release_candidate.py`'s JSON output.
+Keep the build manifest, installation results and candidate originals; never
+hand-edit JSON instead of passing the checks.
 
-安装检查使用合成输入，在独立环境实际检查 uv tool/uvx、核心离线命令、工作区导出及 report/verify，
-输出 `installed_safe_checks.v3`；首次准备 Python 和依赖需要联网，不发送模型请求。
-至少一个平台完成后可生成 `community_distribution.v2` 候选；每个额外实测平台使用重复的
-`--installed RESULT` 参数，未测平台保留 `not_verified`。这不代表原生模型准备或性能验收。
+Installation checks use synthetic inputs and exercise uv tool/uvx, core
+offline commands, workspace export and report/verify in separate
+environments, producing `installed_safe_checks.v3`; preparing Python and
+dependencies the first time needs network access, and no model requests are
+sent.
+A `community_distribution.v2` candidate can be produced once at least one
+platform completes; each additional physically tested platform is added with
+a repeated `--installed RESULT` argument, and untested platforms keep
+`not_verified`. This does not represent native model preparation or
+performance acceptance.
 
-核验绑定源码、版本、许可证、清单及产物摘要，暂存使用已核验的字节快照。`--packages-only`
-只暂存 wheel/sdist，仍执行完整候选核验。上述命令均不上传；手动发布 workflow 的默认模式为
-`verify-only`，要求指定来源 package-check run、源码提交和候选摘要，详见[脚本说明](scripts/README.md#社区资源与发行检查)。
-当前候选工作和发布前剩余项见 [backlog](docs/backlog.md)。
-提交应说明改动、实际检查和未验范围；完成相关检查后创建本地 commit，不 push。
+Verification binds source, version, license, manifest and artifact digests;
+staging uses the verified byte snapshot. `--packages-only` stages only the
+wheel/sdist while still running the full candidate verification. None of the
+commands above upload anything; the manual publish workflow defaults to
+`verify-only` mode and requires the source package-check run, the source
+commit and the candidate digest — see the
+[scripts README](scripts/README.md#社区资源与发行检查).
+See the [backlog](docs/backlog.md) for current candidate work and the
+remaining pre-release items.
+Commits should state the changes, the checks actually run and the unverified
+scope; create a local commit after the relevant checks pass, and do not push.
 
-## 使用 GitHub Actions 准备 Release
+## Preparing a release with GitHub Actions
 
-1. 先通过 PR 合入发布文档及修复，冻结干净的最终提交和版本。在该提交对应的 `main` 上手动触发
-   [Package checks](https://github.com/sunny0826/inferyard/actions/workflows/package-check.yml)。
-   工作流完成全量回归、构建、三平台安装及候选生成；普通 PR 运行不能作为发布来源。
-2. 下载该次 `release-candidate` artifact，核对 `manifest.json`。记录生成步骤输出的
-   `manifest_sha256`、完整 `source_commit` 和来源 `run_id`，本地可按上节命令核验并暂存。
-3. 触发 [发布 workflow](https://github.com/sunny0826/inferyard/actions/workflows/publish.yml)，
-   选择与 `source_commit` 一致的 dispatch ref，传入这三个值，先使用 `destination=verify-only`。
-   核验器检查手动运行来源、清单、同批构建/安装字节，并生成附件的 `SHA256SUMS`。
-4. 演练通过后，使用同一组输入选择 `destination=github-release`。工作流再次核验并创建
-   `v0.0.1` 草稿，附 wheel、sdist、运行依赖约束、约束验证文件及 `SHA256SUMS`。
-   补充本版本功能、旧数据处理、安装方法、实际平台覆盖、来源与摘要，再单独公开草稿。
+1. Merge release docs and fixes through a PR first, freezing a clean final
+   commit and version. Manually trigger
+   [Package checks](https://github.com/sunny0826/inferyard/actions/workflows/package-check.yml)
+   on the `main` commit. The workflow runs the full regressions, build,
+   three-platform installation and candidate generation; a regular PR run
+   cannot serve as a release source.
+2. Download that `release-candidate` artifact and inspect `manifest.json`.
+   Record the `manifest_sha256` from the generation output, the full
+   `source_commit` and the source `run_id`; you can verify and stage locally
+   with the commands from the previous section.
+3. Trigger the
+   [publish workflow](https://github.com/sunny0826/inferyard/actions/workflows/publish.yml)
+   with a dispatch ref matching `source_commit`, passing those three values,
+   first using `destination=verify-only`. The verifier checks the manual-run
+   provenance, the manifest, the same-batch build/installation bytes, and
+   generates the attachment `SHA256SUMS`.
+4. After the rehearsal passes, use the same inputs with
+   `destination=github-release`. The workflow verifies again and creates the
+   `v0.0.1` draft with the wheel, sdist, runtime constraints, the constraint
+   verification file and `SHA256SUMS`. Add the version's features, legacy-data
+   handling, installation methods, actual platform coverage, sources and
+   digests, then publish the draft separately.
 
-公开前重新下载草稿附件，核对其摘要与已核验候选一致。候选准备后不重新构建替换上传文件；
-需要修改打包内容时，重新建立候选及安装结果。Actions 的 artifact 有保留期限，发布记录应保留来源与摘要。
-源码 tag 必须指向候选的完整 `source_commit`；已存在且指向其他提交时发布 workflow 会拒绝。
+Before publishing, re-download the draft attachments and confirm their
+digests match the verified candidate. Do not rebuild and replace uploaded
+files after the candidate is prepared; rebuild the candidate and installation
+results instead when package content must change. Actions artifacts have a
+retention period, so release records should keep the sources and digests.
+The source tag must point at the candidate's full `source_commit`; the
+publish workflow refuses if it already exists and points elsewhere.
 
-`pypi` / `both` 会实际上传 PyPI，先配置项目名称及与本仓库 `publish.yml`、`pypi` environment
-匹配的 Trusted Publisher；GitHub 草稿准备不需要这些 PyPI 设置。
+`pypi` / `both` actually upload to PyPI; configure the project name and a
+Trusted Publisher matching this repository's `publish.yml` and `pypi`
+environment first. The GitHub draft preparation does not need these PyPI
+settings.
 
-## 逐题人工审核
+## Per-case manual review
 
-可选 `case_review_records` 只对已有匹配记录的题免重审。首次采用时需人工核对每题，
-不能将失配旧整包批准自动转为逐题批准。以下命令只输出摘要，不生成批准：
+The optional `case_review_records` field only exempts cases with a matching
+record from re-review. On first adoption every case must be reviewed
+manually; a mismatching old whole-bundle approval cannot be auto-converted
+into per-case approvals. The following command only prints a summary and
+creates no approval:
 
 ```bash
 mise exec -- uv run --frozen python - bundles/example.json <<'PY'
@@ -128,8 +197,10 @@ for case in bundle['cases']:
 PY
 ```
 
-将路径替换为待审题包。人工检查题目、答案、规则、类别、协议与共享答案政策后，
-把实际摘要和审核人填写到该题包的新数组中，例如（占位值必须替换）：
+Replace the path with the bundle under review. After manually checking the
+task, answer, rules, category, protocol and shared-answer policy, fill in the
+actual digests and reviewer in a new array in that bundle, for example
+(placeholder values must be replaced):
 
 ```json
 {
@@ -137,8 +208,8 @@ PY
     {
       "definition": "case-review.v1",
       "case_id": "instruction-01",
-      "content_sha256": "替换为上面输出的64位十六进制摘要",
-      "reviewer": "实际审核人",
+      "content_sha256": "replace with the 64-hex digest printed above",
+      "reviewer": "actual reviewer",
       "reviewed_at": "2026-10-07",
       "conclusion": "approved"
     }
@@ -146,7 +217,11 @@ PY
 }
 ```
 
-这是新增字段片段，不是完整题包。每个未被匹配旧整包审核覆盖的题都需要记录。
-编辑题意后重审受影响题；共享协议/答案政策改变会影响全部题。已有匹配逐题记录时，
-展示版本和许可说明变化无需内容重审。旧整包哈希和历史原件保留；不再适用的旧迁移
-证明不能用于编辑后副本，处理规则见[数据契约](docs/data-contract.md#按用途分派)。
+This is a new-field fragment, not a complete bundle. Every case not covered by
+a matching old whole-bundle review needs a record. Re-review affected cases
+after editing their content; changing a shared protocol or answer policy
+affects all cases. When a matching per-case record exists, presentation-only
+version and license-note changes do not require content re-review. Old
+whole-bundle hashes and original files are preserved; old migration proofs
+that no longer apply cannot be used for edited copies — handling rules are in
+the [data contract](docs/data-contract.md#按用途分派).

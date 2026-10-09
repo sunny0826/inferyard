@@ -63,7 +63,7 @@ mise exec -- uv run --frozen python scripts/export_community.py --check --archiv
 约束导出按目标平台核对 `uv.lock` 的运行依赖闭包；检查器核对 wheel/sdist、资源允许列表、
 元数据和摘要，可比对 sdist 重建 wheel。
 
-完整命令顺序见[候选构建与安装检查](../CONTRIBUTING.md#本地候选构建与安装检查)：
+完整命令顺序见[候选构建与安装检查](../CONTRIBUTING.md#local-candidate-build-and-installation-checks)：
 `build_distribution.py` → `tests.packaging.prepare_inputs` → `tests/packaging/run_installed.py`
 → `prepare_release_candidate.py` → `verify_release_candidate.py`。前两步生成构建和合成输入；
 安装检查必须在源码外新目录实际完成，输出 `installed_safe_checks.v3`。候选生成器接受
@@ -81,7 +81,7 @@ Trusted Publisher 留给实际上传准备。核验器要求 `--manifest`、生�
 dispatch ref 与源码提交一致。PR 运行不满足发布来源条件。核验后从暂存原字节生成 `SHA256SUMS`。
 显式选择 `github-release` 上传附件并创建草稿 Release，公开草稿是独立操作；
 `pypi` 或 `both` 使用相同核验字节实际上传 PyPI，并要求预先配置 Trusted Publisher。
-完整操作见[Actions 发布步骤](../CONTRIBUTING.md#使用-github-actions-准备-release)。
+完整操作见[Actions 发布步骤](../CONTRIBUTING.md#preparing-a-release-with-github-actions)。
 项目采用 [MIT 许可证](../LICENSE)。原生模型准备与性能实验不作为安装检查结果，
 具体候选状态见 [backlog](../docs/backlog.md)。
 

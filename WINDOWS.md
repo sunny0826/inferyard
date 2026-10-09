@@ -1,12 +1,16 @@
-# Windows 使用说明
+# Windows Guide
 
-目标为 Windows x64。正式串行文本入口支持 Prism、KVMem 和 NInfer；
-后两者限固定质量计划。实现与历史原生覆盖分别见[平台状态](docs/platforms.md)。
+The target is Windows x64. The formal serial text entry points support Prism,
+KVMem and NInfer; the latter two are limited to fixed-quality plans.
+Implementation and historical native coverage are tracked in
+[platform status](docs/platforms.md).
 
-## 设备预检与单次运行
+## Device preflight and single runs
 
-安装 uv 与本地 wheel 后，在 PowerShell 使用已安装的 `inferyard`，不依赖仓库脚本或 D 盘。
-完整 CPU/CUDA 归档准备见[安装指南](docs/installation.md#windows-x64先准备固定-runtime)。
+After installing uv and the local wheel, use the installed `inferyard` in
+PowerShell; no repository scripts or D: drive are required.
+Full CPU/CUDA archive preparation is in the
+[installation guide](docs/installation.md#windows-x64先准备固定-runtime).
 
 ```powershell
 inferyard init --out bench-work --bundle zh-smoke
@@ -20,11 +24,15 @@ inferyard config create --preflight 'bench-work\preflight\device-preflight.json'
   --out 'bench-work\candidate'
 ```
 
-示例选择 CPU profile，须与预检推荐的 mode 一致；CUDA 需对应 profile 和 runtime 归档。
-准备命令不下载或启动服务，`runtime prepare` 和 `config create` 会执行已核验引擎的 `--version`。
-候选引用 runtime 目录的 EXE/DLL 与清单，不复制它们；移动资产后重新创建候选。
+The example picks the CPU profile, which must match the mode recommended by
+the preflight; CUDA requires the matching profile and runtime archive.
+The preparation commands do not download or start services; `runtime prepare`
+and `config create` run `--version` of the verified engine.
+The candidate references the EXE/DLL and manifest in the runtime directory
+without copying them; recreate the candidate after moving assets.
 
-在另一个终端按候选的完整 `engine.startup_args` 启动服务，确认实际监听 PID 后绑定：
+Start the service in another terminal with the candidate's full
+`engine.startup_args`, confirm the actually listening PID, then bind:
 
 ```powershell
 inferyard config bind --candidate 'bench-work\candidate\candidate.toml' `
@@ -34,40 +42,66 @@ inferyard report --runs 'bench-work\results\RUN_ID' --out 'bench-work\report'
 inferyard verify --path 'bench-work\report'
 ```
 
-`RUN_ID` 取自运行结果。路径含空格时加引号；`1234` 换成实际 PID，不给 PowerShell 的只读 `$PID` 变量赋值。
-KVMem/NInfer 需按[配置说明](configs/README.md#kvmem--ninfer)准备资产清单及参数，再用同一 `config bind` 入口。
+`RUN_ID` comes from the run output. Quote paths containing spaces; replace
+`1234` with the actual PID and never assign to PowerShell's read-only `$PID`
+variable.
+KVMem/NInfer require the asset manifest and arguments prepared per the
+[configuration README](configs/README.md#kvmem--ninfer), then use the same
+`config bind` entry point.
 
-## 采集与支持边界
+## Sampling and support boundaries
 
-身份核验使用同账户进程、完整创建 FILETIME、EXE/DLL、argv/cwd、模型文件和唯一 loopback listener。
-数字 PID、服务 `/health` 成功或有 GPU 设备均不能代替这些检查。
+Identity verification uses same-account processes, full creation FILETIME,
+EXE/DLL, argv/cwd, model files and a unique loopback listener.
+A numeric PID, a successful service `/health` or the presence of a GPU device
+cannot substitute for these checks.
 
-Prism 的 `windows-resource.v1`、KVMem/NInfer 的 `windows-memory.v1` 采集 RSS 和主机可用内存；温度、频率、功耗、能耗等未采集字段保留 null 和原因。
-不以 WMI `AdapterRAM` 证明大显存容量，不把 ACPI 热区当 CPU 封装温度，不把提交量当换页次数。
-Linux governor/EPP 缺少对应来源时保持未知。
+Prism's `windows-resource.v1` and KVMem/NInfer's `windows-memory.v1` sample
+RSS and host available memory; temperature, frequency, power, energy and
+other unsampled fields keep null plus a reason.
+WMI `AdapterRAM` is never used to prove large VRAM, ACPI thermal zones are
+not CPU package temperature, and commit charge is not paging counts.
+Linux governor/EPP stays unknown without a matching source.
 
-Windows live 开销、实时扩展和 prepare-length 等平台专用入口仍受限制。
-KVMem/NInfer 的 `auto` 模式可使用原生 OpenAI 生成信号，但不推断精确模板预算、有效参数或引擎内部排空。
-显式 `lab_required` 要求完整 lab 协议；详见[适配契约](docs/contracts/windows-ninfer-adaptation-contract.md)。
+Windows-only entry points such as live overhead, live extensions and
+prepare-length remain restricted.
+KVMem/NInfer `auto` mode can use native OpenAI generation signals, but does
+not infer exact template budgets, effective arguments or engine-internal
+draining.
+Explicit `lab_required` demands the full lab protocol; see the
+[adaptation contract](docs/contracts/windows-ninfer-adaptation-contract.md).
 
-## 锁、持久化与离线证据
+## Locks, persistence and offline evidence
 
-首次实时入口获得主机锁时自动创建 clean 状态，不需要显式初始化命令。锁与状态位于原生
-`CSIDL_COMMON_APPDATA`（通常为 `C:\ProgramData`）中的 `inferyard-host.lock` 与
-`inferyard-host.state.json`。
-旧工具的 `local-ai-benchmark-host.*` 文件（含 D 盘旧位置）不读取、不加锁；
-遗留的 `inferyard-host-migration.json` 凭据文件保持原样。锁占用、状态冲突或权限错误仍阻断。
-文件拒绝 reparse point，保留 file fsync 与 MoveFileExW(WRITE_THROUGH)；目录 fsync 不可用。
-Windows 原生的 ACL、卷变化与持久化尚未验，临时目录模拟及 Go 交叉构建不算原生证据。
-已知边界见[当前格式契约](docs/contracts/inferyard-current-format.md)。
+The first live entry creates a clean host state automatically when it
+acquires the host lock; no explicit initialization command is needed. The
+lock and state are `inferyard-host.lock` and `inferyard-host.state.json`
+inside the native `CSIDL_COMMON_APPDATA` (usually `C:\ProgramData`).
+The old tool's `local-ai-benchmark-host.*` files (including the old D-drive
+locations) are neither read nor locked; leftover
+`inferyard-host-migration.json` receipt files are left untouched. Lock
+contention, state conflicts and permission errors still block.
+Files reject reparse points and keep file fsync plus
+MoveFileExW(WRITE_THROUGH); directory fsync is unavailable.
+Windows-native ACL, volume changes and persistence are not yet verified;
+temporary-directory simulations and Go cross-builds do not count as native
+evidence. Known boundaries are in the
+[current format contract](docs/contracts/inferyard-current-format.md).
 
-`report`、`compare`、`verify` 可离线使用；仅接受当前格式，旧证据回原项目处理。
-派生产物写新目录，不能把格式拒绝当成证据完整性通过。
+`report`, `compare` and `verify` work offline; only current formats are
+accepted, and old evidence stays with the original project.
+Derived artifacts are written to new directories; a format rejection must
+not be reported as evidence-integrity success.
 
-## Windows engine-fit 诊断
+## Windows engine-fit diagnostics
 
-`engine-fit run` 仅支持单 GGUF llama.cpp，使用独立 run.v6；其他 Windows 引擎在请求前拒绝。
-计划、外部服务和完整命令见[引擎指南](docs/engine-fit-common.md)。
-它记录原生进程树 working-set/CPU 秒、主机内存及可得 NVIDIA 温度；CPU 温度缺测。
-这些诊断与正式质量 run 分开，契约见[Windows engine-fit](docs/contracts/engine-fit-contract.md#windows-原生来源)。
-源码开发使用[贡献指南](CONTRIBUTING.md)中的 mise/uv 命令。
+`engine-fit run` supports single-GGUF llama.cpp only, using the separate
+run.v6; other Windows engines are rejected before any request.
+Planning, external services and the full commands are in the
+[engine guide](docs/engine-fit-common.md).
+It records the native process-tree working set/CPU seconds, host memory and
+available NVIDIA temperatures; CPU temperature is a missing measurement.
+These diagnostics are separate from formal quality runs; see the
+[Windows engine-fit contract](docs/contracts/engine-fit-contract.md#windows-原生来源).
+Source development uses the mise/uv commands in the
+[contributing guide](CONTRIBUTING.md).

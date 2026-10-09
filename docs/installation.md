@@ -56,7 +56,7 @@ Get-FileHash -Algorithm SHA256 -Path '.\inferyard-0.0.1-py3-none-any.whl', '.\ru
 Release 还附带源码包与依赖约束验证文件；普通安装只需上述 wheel 和约束。
 该批源码提交、候选摘要、Actions 来源及已验平台见 Release 说明。
 安装结果遵循 `installed_safe_checks.v3`，不表示原生模型准备或性能实验通过。
-维护者的[构建与核验步骤](../CONTRIBUTING.md#本地候选构建与安装检查)保持同批字节不变。
+维护者的[构建与核验步骤](../CONTRIBUTING.md#local-candidate-build-and-installation-checks)保持同批字节不变。
 摘要一致后安装：
 
 ```bash

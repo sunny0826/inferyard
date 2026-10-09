@@ -61,7 +61,7 @@ MLX 项含随安装包交付的 `server_script` 路径，不启动引擎。`plan
 run 不接受覆盖开关，旧计划不变。见[内存覆盖用法](engine-fit-common.md#显式临时跳过内存停止)。
 
 Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接受 plan.v2/v3/v4；
-旧定义平台不变，其他 Windows 引擎在请求前拒绝。停止规则由计划冻结，不能在 run 时切换；原生身份和软件/真机边界见 [Windows 诊断](../WINDOWS.md#windows-engine-fit-诊断)。
+旧定义平台不变，其他 Windows 引擎在请求前拒绝。停止规则由计划冻结，不能在 run 时切换；原生身份和软件/真机边界见 [Windows 诊断](../WINDOWS.md#windows-engine-fit-diagnostics)。
 
 ## 社区安装准备接口
 

@@ -1,5 +1,7 @@
 # InferYard
 
+English | [中文](README.zh-CN.md)
+
 Run frozen task sets against local models, keep the answer, latency and resource
 evidence, and generate a self-contained HTML report that can be read offline.
 Quality, latency and memory are reported separately; when comparison
@@ -31,7 +33,7 @@ first run requires network access; models and engines are provided by the
 operator. The [installation guide](docs/installation.md) covers uv installs,
 Release asset installs, per-platform asset preparation, service binding and
 offline use. The maintainer's
-[candidate build and installation checks](CONTRIBUTING.md#%E6%9C%AC%E5%9C%B0%E5%80%99%E9%80%89%E6%9E%84%E5%BB%BA%E4%B8%8E%E5%AE%89%E8%A3%85%E6%A3%80%E6%9F%A5)
+[candidate build and installation checks](CONTRIBUTING.md#local-candidate-build-and-installation-checks)
 bind the same release bytes: at least one platform completes the real
 installation check, and the remaining platforms are explicitly marked as not
 verified.

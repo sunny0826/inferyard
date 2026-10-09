@@ -1,35 +1,35 @@
 # AGENTS.md
 
-适用于本仓库及子目录。默认用中文简洁沟通，保留代码标识符原文；README、Git commit 与 PR 使用英文，其余文档暂保持中文。
+Applies to this repository and its subdirectories. Communicate concisely in Chinese by default and keep code identifiers as-is. README, AGENTS.md, CHANGELOG.md, CONTRIBUTING.md, MACOS.md, WINDOWS.md, Git commits and PRs are written in English; README also ships a Chinese version at [README.zh-CN.md](README.zh-CN.md). All other docs stay Chinese for now.
 
-## 开始工作
+## Getting started
 
-1. 查看工作区差异并保留已有修改；先读 [README](README.md) 确认产品和平台范围。
-2. 按任务阅读 [CLI](docs/cli-surface.md)、[架构](docs/architecture.md)、[数据契约](docs/data-contract.md)、[实验设计](docs/experiments/design.md)及[指标](docs/experiments/metrics.md)。完整入口见[文档导航](docs/README.md)。
-3. 平台工作读 [MACOS.md](MACOS.md) / [WINDOWS.md](WINDOWS.md)；配置、题包工作读对应目录说明。脚本运行前读 [scripts/README.md](scripts/README.md)，核对参数和副作用。
-4. 区分实现、模拟验证与真机证据。文档与源码冲突时指出差异并核实，不静默采用宽松口径。
+1. Inspect the working-tree diff and preserve existing changes. Read the [README](README.md) first to confirm the product and platform scope.
+2. Read the [CLI reference](docs/cli-surface.md), [architecture](docs/architecture.md), [data contract](docs/data-contract.md), [experiment design](docs/experiments/design.md) and [metrics](docs/experiments/metrics.md) as the task requires. The full entry point list is in the [documentation map](docs/README.md).
+3. For platform work read [MACOS.md](MACOS.md) / [WINDOWS.md](WINDOWS.md); for configuration and bundle work read the README of the relevant directory. Read [scripts/README.md](scripts/README.md) before running any script and check its arguments and side effects.
+4. Distinguish implementation, simulated verification and real-device evidence. When docs and source disagree, point out the difference and verify it; never silently adopt the looser reading.
 
-产品为 Python CLI + 自包含离线 HTML。包名 `inferyard`，入口 `inferyard` / `python -m inferyard`；活动契约只有 `schema_version = 3`。
+The product is a Python CLI plus a self-contained offline HTML report. The package name is `inferyard`, the entry points are `inferyard` / `python -m inferyard`; the only active contract is `schema_version = 3`.
 
-## 源码边界
+## Source boundaries
 
-| 目录（位于 `src/inferyard/`） | 职责 |
+| Directory (under `src/inferyard/`) | Responsibility |
 | --- | --- |
-| `cli/`、`application/` | 参数、请求构造、输出、错误映射；共享类型与延迟分派 |
-| `contracts/`、`config/` | 结构和语义校验；配置、题包、冻结计划与声明绑定 |
-| `runtime/`、`adapters/` | 执行、取消、排空和安全控制；引擎传输与解析 |
-| `evidence/` | 日志、封存、账本、来源与当前格式拒绝 |
-| `analysis/`、`reporting/` | 评分、指标、比较、重评分、报告与导出 |
-| `platforms/`、`extensions/` | 设备与进程采集；独立扩展协议 |
-| `data/`、`templates/` | 随安装包交付的目录数据与报告模板 |
+| `cli/`, `application/` | Arguments, request construction, output, error mapping; shared types and lazy dispatch |
+| `contracts/`, `config/` | Structural and semantic validation; configuration, bundles, frozen plans and declaration binding |
+| `runtime/`, `adapters/` | Execution, cancellation, draining and safety controls; engine transport and parsing |
+| `evidence/` | Journals, sealing, ledgers, provenance and current-format rejection |
+| `analysis/`, `reporting/` | Scoring, metrics, comparison, rescoring, reports and exports |
+| `platforms/`, `extensions/` | Device and process sampling; the standalone extension protocol |
+| `data/`, `templates/` | Catalogue data and report templates shipped with the package |
 
-业务模块不依赖 CLI；应用请求/结果类型只定义在 `application/types.py`。帮助、版本、Schema 查询不加载实时后端；安装资源从包内读取，不依赖源码检出目录。
-修改活动源码，不修改本机 `validation/` 中的历史快照。遵循 Ruff 配置（Python 3.14、100 列）；代码文件不宜超过 500 行，新增职责拆入独立模块。
-并行协作先分配文件所有权，只在自己的工作区修改授权文件，不回退其他人的改动；跨界先报告文件和原因。
+Business modules do not depend on the CLI; application request/result types live only in `application/types.py`. Help, version and schema queries must not load the live backend; installed resources are read from the package, not from the source checkout.
+Modify active source code, not the historical snapshots in the local `validation/` directory. Follow the Ruff configuration (Python 3.14, 100 columns); keep code files under ~500 lines and split new responsibilities into separate modules.
+Before parallel collaboration, assign file ownership first. Only modify authorized files in your own workspace and do not revert other people's changes; report the files and the reason before crossing a boundary.
 
-## 环境与检查
+## Environment and checks
 
-版本以 [mise.toml](mise.toml) 为准，依赖以 `pyproject.toml` / `uv.lock` 为准。开发前确认 mise 实际路径和版本；不用系统 Python 或全局 pip 替代。RTK 只包装 Agent 命令，依赖由 uv 管理。源码开发文档使用 `mise exec -- uv run --frozen`，安装用户直接使用 `inferyard`。
+Versions are pinned by [mise.toml](mise.toml); dependencies by `pyproject.toml` / `uv.lock`. Confirm the actual mise paths and versions before developing; do not substitute system Python or global pip. RTK only wraps agent commands; dependencies are managed by uv. Source-development docs use `mise exec -- uv run --frozen`; installed users run `inferyard` directly.
 
 ```bash
 rtk proxy mise which python
@@ -38,41 +38,41 @@ rtk proxy mise exec -- python --version
 rtk proxy mise exec -- uv --version
 ```
 
-源码安装、测试、Ruff 与导出命令见[贡献指南](CONTRIBUTING.md#修改与验证)，Agent 执行时加 RTK 包装。
-正常同步使用 `--frozen`；依赖变更说明原因并同步锁文件，缓存齐全时才用 `--offline`。
-纯文档不要求安装环境或跑全量测试；行为修改先跑相关回归，集成检查按影响范围扩大。
+See the [contributing guide](CONTRIBUTING.md#changes-and-verification) for source installation, tests, Ruff and export commands; agents wrap them with RTK.
+Use `--frozen` for normal syncs; dependency changes require a stated reason and a lockfile update, and `--offline` only when the cache is complete.
+Pure docs do not require an installed environment or the full test suite; behavior changes run the relevant regressions first, and integration checks scale with the impact.
 
-## 文档与契约
+## Documentation and contracts
 
-- README 是产品入口，操作写入安装/使用指南，主题规则在 `docs/contracts/`。ADR 只记录长期理由，计划只保留未完成工作，当前进度集中到 `docs/backlog.md`。
-- 删除过期交接、阶段流水账与已替代计划，先把有效规则归入现行契约、剩余工作归入 backlog；不建立庞大 archive。平台声明对应实际覆盖。
-- 破坏旧证据读取、字段语义或测量口径的变更使用 ADR、契约和实施计划，分别验证软件与受影响原生能力。兼容可选行为只更新现有契约并补回归；放宽停止、身份/哈希/资产核验不按可选行为处理。
-- 证据解释统一引用[血缘规则](docs/data-contract.md#证据血缘与比较结论)，不复制免责段落。发行检查不要求补齐全部历史性能实验。
-- 破坏性字段、枚举、单位或必填条件变化升级契约，同步合法/非法样例和旧证据读取策略。支持集合以 ADR 038 为准；旧格式交原项目处理，InferYard 不转换或接受 migrated 运行。
-- Schema 修改源定义后用 `scripts/export_schemas.py` 生成；不能只手改 JSON。指标/方法生成源或绑定源码变化后运行 `scripts/export_catalogue.py`，已有 ID 不重分配。
-- JSON Schema 只证明结构，跨字段/记录、状态迁移及来源哈希由解析器和运行时验证。
-- 缺测为 `null` 并附原因，不填 0；拒绝非有限数、重复 JSON 键、布尔冒充整数。时间和内存遵循字段单位，展示换算明确。
-- 固定计划五终态守恒，评分失败不缩减分母；持续负载遵循冻结窗口和排空。模型答错不等于 CLI 失败。
-- stdout 为 JSON，`device-check` 默认摘要，Agent 使用 `--json`；诊断走 stderr。退出码为 0 完成、2 输入/预检阻断、3 不完整、4 工具/证据错误、130 取消，专用核验语义见 CLI 契约。
+- The README is the product entry point. Operational steps go into the installation/usage guides; topic rules live in `docs/contracts/`. ADRs record long-term rationale only, plans keep only unfinished work, and current progress is centralized in `docs/backlog.md`.
+- Delete outdated handovers, stage logs and superseded plans, first folding valid rules into the current contracts and remaining work into the backlog; do not build a large archive. Platform claims must match actual coverage.
+- Changes that break old-evidence reading, field semantics or measurement scope require an ADR, a contract and an implementation plan, verifying software and affected native capabilities separately. Compatible optional behavior only updates the existing contract and adds regressions; relaxing stops or identity/hash/asset verification is never treated as optional behavior.
+- Evidence interpretation always cites the [lineage rules](docs/data-contract.md#证据血缘与比较结论) instead of copying disclaimer paragraphs. Release checks do not require completing every historical performance experiment.
+- Breaking changes to fields, enums, units or required conditions upgrade the contract and update the legal/illegal samples plus the old-evidence reading policy. The support set follows ADR 038; old formats are handled by the original project — InferYard neither converts nor accepts migrated runs.
+- Regenerate schemas with `scripts/export_schemas.py` after changing their source definitions; never hand-edit the JSON. After changing the metric/method generation sources or the bound source code, run `scripts/export_catalogue.py`; existing IDs are never reassigned.
+- JSON Schema proves structure only; cross-field/cross-record, state-transition and provenance-hash checks are enforced by parsers and the runtime.
+- Missing measurements are `null` with a reason, never 0; reject non-finite numbers, duplicate JSON keys and booleans posing as integers. Respect field units for time and memory and make display conversions explicit.
+- Frozen plans conserve the five terminal states; scoring failures do not shrink the denominator; sustained workloads follow the frozen window and draining. A wrong model answer is not a CLI failure.
+- stdout is JSON; `device-check` prints a summary by default and agents use `--json`; diagnostics go to stderr. Exit codes: 0 complete, 2 input/preflight blocked, 3 incomplete, 4 tool/evidence error, 130 cancelled; verification-specific semantics are in the CLI contract.
 
-## 执行与证据
+## Execution and evidence
 
-- benchmark 默认同时覆盖 `zh-core` 和 `zh-svg-pelican`；只有用户明确声明固定题包时，才仅使用指定题包。工具或示例的单题包默认值不构成用户的固定题包声明。按[默认测评范围](docs/usage.md#默认测评范围)分别冻结、执行并生成包含两者的新报告；已有完整核心结果时只补缺少的鹈鹕运行，不覆盖原件。
-- 默认使用夹具和模拟服务。真实模型请求、长时负载、转换或构建应属于任务范围，先核对设备、预算和停止条件。
-- 服务由操作者外部启动。CLI 不隐式下载、启动、终止或重启服务；重新核验模型、引擎、模板、参数、PID 和启动时间。测试配置不用于真机。
-- `probe`（兼容 `check`）发送普通/流式请求并创建诊断证据；`verify` 离线核验。正式运行按冻结顺序执行，不隐式重试或看到成绩后调整样本量。
-- 保持本机端点、主机互斥、dirty 恢复、取消和排空。不能删锁文件、绕过身份检查或放宽阈值。凭据只用 `endpoint.api_key_env` 引用，持久化脱敏，不写明文配置、参数、日志或 Git。
-- 原始 run、manifest、模型输出、历史报告与源码快照不覆盖；重跑、重评分、重建和比较写新目录并保留来源。
-- `validation/` 仅存本机原件，不入 Git、发行包或默认测试/构建依赖；源项目旧历史保留在原仓库，本仓库不导入该历史。需要测试样本时提取最小可公开夹具，不改原件字节。题包审核资料与当前根模板仍是有效依赖，不能随历史清理删除；历史模板按 ADR 038 删除。
-- 比较绑定设备、引擎、冻结配置、题包、测量源码和来源；源码变化不继承旧资格，不添加通用强制可比开关。总开销包括采集、校验、写盘、flush/fsync 和封存。
-- 模拟、诊断、冒烟、子集和短时测试明确标识，不扩大到未测平台。硬件停止保留原因、计数、接手条件，不反复重试；软件缺口不能归因于硬件。
-- 人工审核绑定题目、答案与规则哈希，变化后重审受影响项；自动测试和 `--diagnostic` 不替代人工审核。独立操作者签收不是验收门槛。
-- 模型权重、引擎、真实设备配置、环境、缓存与凭据不提交；新增材料检查忽略规则、体积和敏感内容。
+- A benchmark covers both `zh-core` and `zh-svg-pelican` by default; a single bundle runs only when the user explicitly declares a fixed bundle. A single-bundle default in a tool or example is not a user's fixed-bundle declaration. Follow the [default benchmark scope](docs/usage.md#默认测评范围): freeze and run each scope and produce a new report containing both; when complete core results already exist, only add the missing pelican run and never overwrite the originals.
+- Use fixtures and simulated services by default. Real model requests, long-running workloads, conversions or builds must be in task scope, with device, budget and stop conditions checked first.
+- Services are started externally by the operator. The CLI never implicitly downloads, starts, stops or restarts services; re-verify the model, engine, templates, arguments, PID and start time. Test configurations are never used on real devices.
+- `probe` (alias `check`) sends a normal/streaming request and creates diagnostic evidence; `verify` checks offline. Formal runs follow the frozen order with no implicit retries and no sample-size changes after seeing scores.
+- Preserve local endpoints, host mutual exclusion, dirty recovery, cancellation and draining. Never delete lock files, bypass identity checks or relax thresholds. Credentials are referenced only via `endpoint.api_key_env`, redacted in persisted output, and never written to plain-text configs, arguments, logs or Git.
+- Never overwrite original runs, manifests, model outputs, historical reports or source snapshots; reruns, rescoring, rebuilds and comparisons write new directories and keep their provenance.
+- `validation/` holds local originals only — not in Git, the distribution package or default test/build dependencies; the source project's old history stays in the original repository and is not imported here. When test samples are needed, extract minimal public fixtures without touching original bytes. Bundle review materials and the current root templates remain valid dependencies and must not be deleted with historical cleanup; historical templates were removed per ADR 038.
+- Comparisons bind device, engine, frozen configuration, bundle, measurement source and provenance; source changes do not inherit old qualification, and no generic forced-comparability switch is added. Total overhead includes sampling, validation, disk writes, flush/fsync and sealing.
+- Simulations, diagnostics, smoke runs, subsets and short tests are explicitly labeled and never extrapolated to untested platforms. Hardware stops keep their reason, counts and takeover conditions without repeated retries; software gaps are not attributed to hardware.
+- Manual review binds the case, answer and rule hashes; changes re-review the affected cases. Automated tests and `--diagnostic` do not replace manual review, and a separate operator's sign-off is not an acceptance gate.
+- Model weights, engines, real device configurations, environments, caches and credentials are never committed; for new material, check the ignore rules, size and sensitive content.
 
-## 交付
+## Delivery
 
-合并 PR 一律使用仓库所有者本人账号，通过 GitHub 网页 Merge 按钮或本机 `gh` CLI 执行，不使用 Lody GitHub App 的合并入口；合并后用 `git log` 核对提交作者，不允许出现 bot 身份的作者。
-改动 `src/inferyard/data/community/` 下任何文件的角色同时负责本次 `resources.json` 再生成；使用 `scripts/export_community.py`，无固定归档时调用其 `generated(None)` 并将返回内容写回对应包内路径，有归档时用 `--archives`；生成后必须复跑 `scripts/export_community.py --check`；该目录下文件不按纯文档处理。
-行为修复覆盖真实失败路径，契约变化覆盖拒绝路径和旧数据支持边界；纯文档检查本地链接、锚点、命令和 diff，HTML 检查实际离线渲染。
-TCP 模拟需要本地 socket 权限，沙箱阻断、平台跳过与实现失败分开报告。不批量运行可能启动服务或发送请求的 `scripts/verify_*`。
-简要报告改动、实际检查与未验范围。完成相关检查后创建本地 Git commit；不 push。
+PR merges always use the repository owner's own account, via the GitHub web Merge button or the local `gh` CLI — never the Lody GitHub App merge entry. After merging, check the commit authors with `git log`; bot-authored commits are not allowed.
+Any role that changes files under `src/inferyard/data/community/` also owns regenerating `resources.json` this round: use `scripts/export_community.py` — call its `generated(None)` with no fixed archives and write the result back into the bundle path, or pass `--archives` when archives exist — and re-run `scripts/export_community.py --check` afterwards. Files in that directory are not treated as pure docs.
+Behavior fixes cover the real failure path; contract changes cover rejection paths and old-data support boundaries. Pure-doc changes check local links, anchors, commands and the diff; HTML changes check actual offline rendering.
+TCP simulations need local socket permissions; report sandbox blocking, platform skips and implementation failures separately. Do not batch-run `scripts/verify_*` that may start services or send requests.
+Report changes, the checks actually run and the unverified scope briefly. Create a local Git commit after the relevant checks pass; do not push.
