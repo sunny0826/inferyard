@@ -11,8 +11,9 @@ def add_commands(commands):
     init.add_argument(
         "--bundle",
         dest="community_bundle",
-        default="zh-smoke",
+        default=None,
         choices=("zh-smoke", "zh-core", "zh-svg-pelican"),
+        help="one fixed bundle; omit to export zh-core and zh-svg-pelican",
     )
     runtime = commands.add_parser("runtime", help="prepare existing, pinned local engine archives")
     actions = runtime.add_subparsers(required=True)

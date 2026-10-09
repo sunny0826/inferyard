@@ -11,14 +11,19 @@
 | `zh-core` | 120 题，六类各 20 | 冻结规则评分、时间与资源 |
 | `zh-svg-pelican` | 1 道动画 SVG 鹈鹕题 | 生成原文、SVG 画廊、时间与资源；不计质量分 |
 
-这是测评执行范围约定。当前 `init --bundle` 每次导出一个题包，分别建立工作区：
+这是测评执行范围约定。省略 `inferyard init --bundle` 时，同一工作区导出 `zh-core` 和
+`zh-svg-pelican`：
 
 ```bash
-inferyard init --out bench-core --bundle zh-core
-inferyard init --out bench-svg --bundle zh-svg-pelican
+inferyard init --out bench-work
 ```
 
-按[安装指南](installation.md#3-准备候选)为两个题包分别准备候选、绑定外部服务并运行。各自冻结输出预算、上下文、截止时间及服务参数；SVG 长输出不能直接沿用核心示例的 512 token 预算。调整上下文时同步候选声明和实际服务启动参数，在发送请求前通过预算与身份预检。
+显式传入 `--bundle zh-smoke`、`--bundle zh-core` 或 `--bundle zh-svg-pelican` 时，只导出该题包；
+`zh-smoke` 不再是省略参数时的默认题包。
+
+按[安装指南](installation.md#3-准备候选)为两个题包分别准备候选、绑定外部服务并运行，
+候选与绑定产物分别使用新目录。`run --config` 每次只执行配置中的一个题包，CLI 不会自动连续
+运行两个题包。各自冻结输出预算、上下文、截止时间及服务参数；SVG 长输出不能直接沿用核心示例的 512 token 预算。调整上下文时同步候选声明和实际服务启动参数，在发送请求前通过预算与身份预检。
 
 两个 run 都封存后，使用 stdout 返回的实际证据目录生成新报告：
 

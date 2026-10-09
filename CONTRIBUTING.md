@@ -2,7 +2,7 @@
 
 先读[产品说明](README.md)、[架构](docs/architecture.md)和相关[主题契约](docs/contracts/README.md)。
 Agent 的文件边界与安全要求见 [AGENTS.md](AGENTS.md)。项目采用 [MIT 许可证](LICENSE)，
-版本发布状态见 [GitHub Releases](https://github.com/sunny0826/inferyard/releases)。
+版本发布状态见 [PyPI](https://pypi.org/project/inferyard/) 和 [GitHub Releases](https://github.com/sunny0826/inferyard/releases)。
 
 ## 开发环境
 
@@ -22,7 +22,7 @@ mise exec -- uv run --frozen inferyard --versions
 ```
 
 首次同步需要网络，缓存齐全时才用 `--offline`。用户安装与源码开发分开：
-[安装指南](docs/installation.md)使用 wheel 和 `uv tool`，开发命令使用 `mise exec -- uv run --frozen`。
+[安装指南](docs/installation.md)使用 PyPI / wheel 和 `uv tool` / `uvx`，开发命令使用 `mise exec -- uv run --frozen`。
 
 ## 修改与验证
 
