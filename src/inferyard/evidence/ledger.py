@@ -454,6 +454,13 @@ def read_trial(root: Path, *, metadata=None):
     }
 
 
+def read_run_projection(root: Path):
+    """Read batch continuation fields without a full offline measurement verification."""
+    from inferyard.evidence.run_projection import read_run_projection as project
+
+    return project(root)
+
+
 def resume_selection(parent):
     """Never retry a failed, cancelled, or tool-invalid attempt implicitly."""
     selected = [r["case_id"] for r in parent["requests"] if r["execution_state"] == "not_executed"]

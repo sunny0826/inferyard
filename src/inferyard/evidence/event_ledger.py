@@ -5,8 +5,21 @@ from inferyard.contracts.validation import ContractError, validate_document
 from inferyard.evidence.formats import require_core
 from inferyard.evidence.storage import EvidenceError
 
+PROJECTION_EVENTS = frozenset(
+    (
+        "request_started",
+        "request_finished",
+        "score",
+        "duration_started",
+        "duration_closed",
+        "run_stopped",
+        "idle_observed",
+        "native_observed",
+    )
+)
 
-def reduce_events(events, run, selection, cases, *, duration=None):
+
+def reduce_events(events, run, selection, cases, *, duration=None, _projection=False):
     """Only a durable start creates an attempt; no terminal implies tool-invalid."""
     selected = selection["case_ids"]
     starts, terminals, scores, formal, partial = {}, {}, {}, {}, {}
@@ -14,6 +27,10 @@ def reduce_events(events, run, selection, cases, *, duration=None):
     active, clock, stopped = None, None, None
     previous_time = 0
     for index, event in enumerate(events, 1):
+        if _projection and (
+            type(event.get("event_type")) is not str or event["event_type"] not in PROJECTION_EVENTS
+        ):
+            continue
         try:
             require_core(event, "event")
             validate_document("event", event)
@@ -69,61 +86,62 @@ def reduce_events(events, run, selection, cases, *, duration=None):
                 or data["t_send_ns"] < starts[key]["monotonic_ns"]
             ):
                 raise EvidenceError("terminal_binding_mismatch")
-            if any(
-                data[channel] != "".join(partial[key][channel])
-                for channel in ("content", "reasoning")
-            ):
-                raise EvidenceError("terminal_text_differs_from_events")
-            if (
-                data["protocol_complete"] != protocol[key]["ended"]
-                or data["raw_finish_reason"] != protocol[key]["finish"]
-                or any(
-                    not data["t_send_ns"] <= t <= data["t_terminal_ns"]
-                    for t in protocol[key]["timestamps"]
-                )
-            ):
-                raise EvidenceError("terminal_protocol_differs_from_events")
-            response = protocol[key]["http_response"]
-            if response is not None and (
-                (
-                    response["status_code"] != 200
-                    and (
-                        data["execution_state"] != "failed"
-                        or data["error_category"] != "http_error"
+            if not _projection:
+                if any(
+                    data[channel] != "".join(partial[key][channel])
+                    for channel in ("content", "reasoning")
+                ):
+                    raise EvidenceError("terminal_text_differs_from_events")
+                if (
+                    data["protocol_complete"] != protocol[key]["ended"]
+                    or data["raw_finish_reason"] != protocol[key]["finish"]
+                    or any(
+                        not data["t_send_ns"] <= t <= data["t_terminal_ns"]
+                        for t in protocol[key]["timestamps"]
                     )
+                ):
+                    raise EvidenceError("terminal_protocol_differs_from_events")
+                response = protocol[key]["http_response"]
+                if response is not None and (
+                    (
+                        response["status_code"] != 200
+                        and (
+                            data["execution_state"] != "failed"
+                            or data["error_category"] != "http_error"
+                        )
+                    )
+                    or (response["status_code"] == 200 and data["error_category"] == "http_error")
+                ):
+                    raise EvidenceError("http_response_terminal_mismatch")
+                if protocol[key]["capture"] is not None:
+                    arrivals = protocol[key]["arrivals"]
+                    first = arrivals[0]["monotonic_ns"] if arrivals else None
+                    answer = next(
+                        (a["monotonic_ns"] for a in arrivals if a["channel"] == "content"), None
+                    )
+                    if first != data["t_first_content_ns"] or answer != data["t_first_answer_ns"]:
+                        raise EvidenceError("arrival_first_timestamp_mismatch")
+                if any(
+                    record["final"]
+                    and (
+                        protocol[key]["finish_at"] is None
+                        or record["monotonic_ns"] < protocol[key]["finish_at"]
+                    )
+                    for record in protocol[key]["engine_timings"]
+                ):
+                    raise EvidenceError("engine_timings_final_before_finish")
+                usage = protocol[key]["usage"] or {}
+                count = usage.get("completion_tokens")
+                expected_usage = (
+                    count,
+                    usage.get("source") if count is not None else None,
+                    usage.get("scope") if count is not None else None,
                 )
-                or (response["status_code"] == 200 and data["error_category"] == "http_error")
-            ):
-                raise EvidenceError("http_response_terminal_mismatch")
-            if protocol[key]["capture"] is not None:
-                arrivals = protocol[key]["arrivals"]
-                first = arrivals[0]["monotonic_ns"] if arrivals else None
-                answer = next(
-                    (a["monotonic_ns"] for a in arrivals if a["channel"] == "content"), None
-                )
-                if first != data["t_first_content_ns"] or answer != data["t_first_answer_ns"]:
-                    raise EvidenceError("arrival_first_timestamp_mismatch")
-            if any(
-                record["final"]
-                and (
-                    protocol[key]["finish_at"] is None
-                    or record["monotonic_ns"] < protocol[key]["finish_at"]
-                )
-                for record in protocol[key]["engine_timings"]
-            ):
-                raise EvidenceError("engine_timings_final_before_finish")
-            usage = protocol[key]["usage"] or {}
-            count = usage.get("completion_tokens")
-            expected_usage = (
-                count,
-                usage.get("source") if count is not None else None,
-                usage.get("scope") if count is not None else None,
-            )
-            if (
-                tuple(data[k] for k in ("completion_tokens", "token_source", "token_scope"))
-                != expected_usage
-            ):
-                raise EvidenceError("terminal_usage_differs_from_events")
+                if (
+                    tuple(data[k] for k in ("completion_tokens", "token_source", "token_scope"))
+                    != expected_usage
+                ):
+                    raise EvidenceError("terminal_usage_differs_from_events")
             terminals[key], active = data, None
         elif kind == "score":
             if (
@@ -228,10 +246,11 @@ def reduce_events(events, run, selection, cases, *, duration=None):
             score=None,
         )
         if key is not None:
-            row["http_response"] = protocol[key]["http_response"]
-            row["arrival_capture"] = protocol[key]["capture"]
-            row["block_arrivals"] = protocol[key]["arrivals"]
-            row["engine_timings"] = protocol[key]["engine_timings"]
+            if not _projection:
+                row["http_response"] = protocol[key]["http_response"]
+                row["arrival_capture"] = protocol[key]["capture"]
+                row["block_arrivals"] = protocol[key]["arrivals"]
+                row["engine_timings"] = protocol[key]["engine_timings"]
             if key not in terminals:
                 row.update(execution_state="invalid", error_category="tool_interrupted")
                 for channel in ("content", "reasoning"):

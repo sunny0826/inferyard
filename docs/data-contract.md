@@ -78,6 +78,34 @@ budget 保留适配器原记录；lab 严格六键放在 budget 内，不允许�
 命令内复用见 [ADR 034](decisions/034-command-local-reuse.md)，旧格式支持已由
 [ADR 038](decisions/038-inferyard-current-format.md) 收窄。
 
+## 批次历史投影
+
+`run --plan` / `resume` 的 `history()` 使用 `read_run_projection`，只还原后续发送和
+结果摘要实际消费的字段。`verify`（run/batch）、`report`、`repeat-summary` 和
+`repeat-check` 继续使用完整 `read_trial`；用途分离的理由见
+[ADR 040](decisions/040-batch-history-projection.md)。不改变 v3 格式或跨命令保存缓存。
+
+| 消费数据 | 来源与校验 |
+| --- | --- |
+| run / tool 身份、diagnostic、relation、parent_run_id | `run.json`；现有结构、冻结计划绑定与批次身份检查 |
+| config、bundle、selection、plan | 对应冻结文件；结构、语义、选择哈希和绑定检查 |
+| case_id、执行终态、发送/终止时间、category、quality_state、score | 流式 `events.jsonl` 与题包；生命周期及 score 使用原校验器 |
+| stop_reason、counts、completeness、duration | 事件重建；持续窗口用原 reducer；不信任可缺失的 `summary.json` |
+| events_sha256、path、manifest_sealed | 同次事件字节哈希、目录与 manifest；封存标记不等于全量完整性核验 |
+| service_drain | 原 `service_drain`、idle/start 事件、`engine-capabilities.json` 与 manifest 绑定；lab 还核验 `service.props.json` 和请求快照 |
+
+投影每行严格解析完整 JSON 行；重复键、非有限数、中间损坏仍拒绝。未完成的末行沿用
+截断语义。消费事件保留身份、序号、时钟、生命周期、评分与窗口检查；不消费的
+content/reasoning、wire、到达时间、usage 等事件不重放其语义。内存日志只检查文件存在性、
+封存大小和末尾至多一字节，保留截断对完整性的影响；不解析采样。
+不打开 `environment.jsonl`、`schedule.jsonl`。
+
+投影不执行：manifest 全文件字节哈希重验、逐样本/环境/调度校验、响应 chunk 与终态
+内容/协议/用量的交叉重放、资源/性能指标重建、固定输出/缓存执行证明、引擎参数及
+token budget 的离线全量复核。以上仍由完整 `read_trial` 及其被调用模块执行。
+manifest 的结构、合法文件路径、原始文件存在性和大小检查保留；配置/题包选择哈希
+及真实事件哈希仍计算。预算文件的 run_id、数值范围与封存成员检查不变。
+
 ## 证据血缘与比较结论
 
 结论绑定实际设备、引擎、配置、题包、测量源码和采集来源。历史运行说明当时的测量；模拟、短诊断、迁移、重评分、报告重建与离线核验分别记录自己的来源和范围，不构成当前源码的新实测。派生产物保留原来源与缺项，在新目录生成，原件不覆盖。

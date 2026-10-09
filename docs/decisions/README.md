@@ -34,6 +34,7 @@ Accepted 表示采纳设计，不代表所有平台已验证。
 | [ADR 037：原始证据读取与封存呈现分离](037-offline-evidence-reading.md) | Accepted |
 | [ADR 038：InferYard 当前格式边界与主机状态迁移](038-inferyard-current-format.md) | Accepted；锁迁移部分由 ADR 039 取代 |
 | [ADR 039：移除主机状态迁移与旧入口退休机制](039-remove-host-state-migration.md) | Accepted |
+| [ADR 040: Batch history projections and offline verification](040-batch-history-projection.md) | Accepted |
 
 ADR 039 删除 `host-state migrate` 与退休机制：实时入口自动初始化 clean 状态，
 旧工具文件完全忽略，主机互斥只覆盖 InferYard 自身进程。

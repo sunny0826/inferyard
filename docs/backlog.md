@@ -1,6 +1,6 @@
 # Backlog
 
-更新于 2026-10-08。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
+更新于 2026-10-09。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
 
 ## InferYard 首次公开准备
 
@@ -40,6 +40,12 @@ Omarchy 同样保留 1 GiB 内存下限，单次运行未配置温停，也未�
 不据此推定 Windows、长时负载或跨设备受控性能比较资格。
 
 ## 已完成的实现与验证
+
+P0 PR3 的批次历史投影已实现，读取边界见
+[ADR 040](decisions/040-batch-history-projection.md) 与[数据契约](data-contract.md#批次历史投影)。
+2026-10-09 本机软件回归 **4555 passed / 53 skipped**；Ruff、格式、Schema/catalogue
+一致性通过。新增 90 项回归覆盖消费字段等价、恢复链/预算拒绝、损坏证据和 lab/native
+排空边界。只完成本地交付；没有真实模型或提速实测，不继承旧测量资格。
 
 [ADR 038](decisions/038-inferyard-current-format.md) 对应的当前格式清理已完成；
 [ADR 039](decisions/039-remove-host-state-migration.md) 移除了主机状态迁移与旧入口机制，

@@ -14,7 +14,7 @@ from inferyard.evidence.request_snapshots import snapshot_name_for_event
 from inferyard.evidence.storage import EvidenceError, json_bytes, local_file, read_json
 
 
-def verify_lab(root, config, bundle, events, *, reads=None):
+def verify_lab(root, config, bundle, events, *, reads=None, _projection=False):
     engine = config["engine"]["adapter"]
     if engine not in ("kvmem", "ninfer"):
         if any(
@@ -25,6 +25,10 @@ def verify_lab(root, config, bundle, events, *, reads=None):
         return False
     observation = observation_evidence(root, config)
     if observation and observation["mode"] == "native":
+        if _projection:
+            if any(e["event_type"] == "idle_observed" for e in events):
+                raise EvidenceError("native_evidence_cannot_prove_engine_drain")
+            return False
         return verify_native(root, config, bundle, events, observation)
     starts = {e["request_id"]: e for e in events if e["event_type"] == "request_started"}
     props_path = local_file(root, "service.props.json")
@@ -46,12 +50,14 @@ def verify_lab(root, config, bundle, events, *, reads=None):
             or not all(props["capabilities"].values())
         ):
             raise EvidenceError("lab_identity_evidence_mismatch")
-        return _verify(root, config, bundle, events, starts, props, reads=reads)
+        return _verify(
+            root, config, bundle, events, starts, props, reads=reads, _projection=_projection
+        )
     except (LabProtocolError, KeyError, TypeError, ValueError) as exc:
         raise EvidenceError("lab_protocol_evidence_invalid") from exc
 
 
-def _verify(root, config, bundle, events, starts, props, *, reads=None):
+def _verify(root, config, bundle, events, starts, props, *, reads=None, _projection=False):
     instance = props["server_instance_id"]
     tracker = ObservationTracker(instance)
     cases = {case["case_id"]: case for case in bundle["cases"]}
@@ -105,7 +111,11 @@ def _verify(root, config, bundle, events, starts, props, *, reads=None):
                 decoders[key] = None
         elif kind == "lab_usage":
             usage[key] = data
-        elif kind == "request_finished" and data["execution_state"] == "completed":
+        elif (
+            not _projection
+            and kind == "request_finished"
+            and data["execution_state"] == "completed"
+        ):
             decoder = decoders[key]
             if decoder is None:
                 raise EvidenceError("lab_completed_invalid_wire")
@@ -147,5 +157,6 @@ def _verify(root, config, bundle, events, starts, props, *, reads=None):
     )
     if finished and set(starts) != released:
         raise EvidenceError("lab_finished_without_release_evidence")
-    verify_parameters(root, config, props, events, bodies, usage, manifest, reads=reads)
+    if not _projection:
+        verify_parameters(root, config, props, events, bodies, usage, manifest, reads=reads)
     return manifest is not None and "service.props.json" in manifest

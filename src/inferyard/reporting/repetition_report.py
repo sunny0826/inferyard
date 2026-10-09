@@ -27,7 +27,7 @@ def write_repetition_summary(root, out):
         or metadata.get("plan_sha256") != plan["plan_sha256"]
     ):
         raise EvidenceError("batch_plan_identity_mismatch")
-    runs = history(root, plan, loaded, allow_tool_change=True)
+    runs = history(root, plan, loaded, allow_tool_change=True, full_verification=True)
     groups = repetition_metrics(plan, runs)
     sources = [
         {
@@ -101,7 +101,7 @@ def verify_repetition_summary(out):
         or saved["plan_sha256"] != plan["plan_sha256"]
     ):
         raise EvidenceError("repeat_analysis_plan_mismatch")
-    runs = history(root, plan, loaded, allow_tool_change=True)
+    runs = history(root, plan, loaded, allow_tool_change=True, full_verification=True)
     groups = repetition_metrics(plan, runs)
     if groups != saved["groups"]:
         raise EvidenceError("repeat_analysis_groups_changed")

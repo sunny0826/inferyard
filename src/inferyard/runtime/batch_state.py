@@ -10,7 +10,7 @@ from inferyard.config.loader import validate_runtime_config
 from inferyard.config.plan_inputs import read_frozen_plan, source_bytes
 from inferyard.config.startup_arguments import replace_arguments
 from inferyard.contracts.validation import Document
-from inferyard.evidence.ledger import read_trial
+from inferyard.evidence.ledger import read_run_projection, read_trial
 from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, read_json
 from inferyard.implementation_identity import execution_matches
 from inferyard.platforms.identity import PreflightError, process_start_ticks
@@ -148,6 +148,7 @@ def history(
     allow_tool_change=False,
     source_identity=None,
     implementation_identity=None,
+    full_verification=False,
 ):
     metadata = read_json(root / "batch.json")
     expected_tool = (
@@ -160,10 +161,13 @@ def history(
     for path in sorted((root / "runs").iterdir()):
         if not path.is_dir() or path.is_symlink():
             raise EvidenceError("unexpected_batch_entry")
-        trial_metadata = {}
-        data = read_trial(path, metadata=trial_metadata)
-        data["manifest_sealed"] = trial_metadata["manifest"] is not None
-        data["service_drain"] = trial_metadata.get("service_drain")
+        if full_verification:
+            trial_metadata = {}
+            data = read_trial(path, metadata=trial_metadata)
+            data["manifest_sealed"] = trial_metadata["manifest"] is not None
+            data["service_drain"] = trial_metadata.get("service_drain")
+        else:
+            data = read_run_projection(path)
         run = data["run"]
         if (
             run["plan_sha256"] != plan["plan_sha256"]
