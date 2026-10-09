@@ -17,19 +17,20 @@ from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.journal import TrialJournal, trial_for
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, Redactor, read_json
-from inferyard.evidence.token_budgets import V2, collect_budgets, probe_budget
+from inferyard.evidence.token_budgets import V2, collect_budgets
 from inferyard.platforms.identity import PreflightError, memory_available
 from inferyard.platforms.resources import ResourceSampler
 from inferyard.registry import WINDOWS_BATCH_ADAPTERS, adapter_factory
-from inferyard.runtime.duration_driver import run_duration
 from inferyard.runtime.request_execution import TrialRequests
 from inferyard.runtime.runner import Dependencies
 from inferyard.runtime.safety import SafetyGuard, monitor
 from inferyard.runtime.safety_trace import SafetyTrace
-from inferyard.runtime.service_observation import (
-    clean_observed,
-    observation_manifest,
-    observe_service,
+from inferyard.runtime.trial_lifecycle import (
+    prepare_service,
+    probe_service,
+    run_formal,
+    seal_stopped,
+    warmup_and_baseline,
 )
 
 
@@ -188,32 +189,14 @@ async def run_trial(
         store.snapshot("environment.start.json", identity["environment"])
         adapter = deps.adapter(identity["origin"], secret=secret)
         adapter.cache_protocol = store.cache_protocol
-        pre_idle_props = None
-        if config["engine"]["adapter"] in ("kvmem", "ninfer"):
-            pre_idle_props = await adapter.verify_properties(config)
-            store.snapshot("service.props.json", pre_idle_props)
-            store.snapshot("engine-capabilities.json", adapter.capability_evidence)
-        recovery = None
-        if recovery_confirm:
-            recovery = lock.verify_manual_recovery(
-                recovery_confirm, recovery_note, config["endpoint"]
-            )
-        if lock.state and lock.state.get("dirty") and not recovery:
-            if (lock.state.get("server_pid"), lock.state.get("process_start_ticks")) != (
-                config["endpoint"]["server_pid"],
-                config["endpoint"]["process_start_ticks"],
-            ):
-                raise PreflightError("dirty_service_requires_bound_recovery")
-        idle = await observe_service(adapter, config["execution"]["idle_wait_seconds"], store)
-        if not idle:
-            if not lock.state or not lock.state.get("dirty"):
-                lock.dirty(store.run_id, config["endpoint"], "initial_idle_unknown")
-            raise PreflightError("initial_service_not_idle")
-        clean_observed(lock, adapter, store, recovery=recovery)
-        if recovery:
-            store.snapshot("recovery.json", recovery)
-        if pre_idle_props is None:
-            store.snapshot("service.props.json", await adapter.verify_properties(config))
+        await prepare_service(
+            adapter,
+            config,
+            store,
+            lock,
+            recovery_confirm=recovery_confirm,
+            recovery_note=recovery_note,
+        )
         by_id = {c["case_id"]: c for c in bundle["cases"]}
         budgets = await collect_budgets(adapter, config, bundle, store.selected)
         store.snapshot(V2, budgets)
@@ -246,59 +229,23 @@ async def run_trial(
             files,
             scorer=deps.scorer,
         )
-        for stream in (False, True):
-            response = await execution.one(
-                "probe", config["execution"]["probe_prompt"], stream=stream
-            )
-            if response["execution_state"] != "completed":
-                raise PreflightError("protocol_probe_failed")
-            effective = await adapter.verify_effective(
-                config, probe_budget(budgets)["input_tokens"], adapter.last_state
-            )
-            if store.strict_output:
-                from inferyard.runtime.fixed_output import verify_probe
-
-                effective["strict_output"] = verify_probe(
-                    effective, response, workload["output_budget_tokens"]
-                )
-            store.snapshot(
-                "effective-stream.json" if stream else "effective-ordinary.json", effective
-            )
-            identity["effective_parameters"] = effective
-        for _ in range(config["execution"]["warmup_count"]):
-            response = await execution.one("warmup", config["execution"]["warmup_prompt"])
-            if response["execution_state"] != "completed":
-                raise PreflightError("warmup_failed")
-        sampler.set_phase("baseline")
-        await asyncio.sleep(config["telemetry"]["baseline_seconds"])
-        if store.duration_protocol:
-
-            async def request(index, cid, deadline, drain):
-                execution.cancellation_reason = "duration_window_interrupted"
-                return await execution.one(
-                    "formal", by_id[cid]["prompt"], index=index, admission_deadline_ns=deadline
-                )
-
-            def emit(kind, data):
-                store.event(
-                    kind,
-                    "formal",
-                    None,
-                    data,
-                    monotonic_ns=data["start_ns" if kind == "duration_started" else "closed_ns"],
-                )
-
-            window = await run_duration(store.duration_protocol, store.selected, request, emit)
-            if not window["window_completed"]:
-                raise PreflightError(window["reason"])
-        else:
-            for index, cid in enumerate(store.selected):
-                terminal = await execution.one("formal", by_id[cid]["prompt"], index=index)
-                if (
-                    plan["experiment"].get("capacity_stop") == "first_failed_request"
-                    and terminal["execution_state"] == "failed"
-                ):
-                    raise PreflightError("capacity_scan_failed_request")
+        await probe_service(
+            execution,
+            adapter,
+            config,
+            store,
+            budgets,
+            identity,
+            output_budget_tokens=workload["output_budget_tokens"],
+        )
+        await warmup_and_baseline(execution, config, sampler)
+        await run_formal(
+            execution,
+            store,
+            [by_id[cid] for cid in store.selected],
+            duration_protocol=store.duration_protocol,
+            capacity_stop=plan["experiment"].get("capacity_stop"),
+        )
     except asyncio.CancelledError:
         code, reason = (
             (3, safety_reason)
@@ -357,11 +304,7 @@ async def run_trial(
                     "includes": "preflight_through_cleanup_excludes_final_seal",
                 },
             )
-            store.event("run_stopped", "finalizing", None, {"reason": reason})
-            if extra := observation_manifest(adapter):
-                store.seal(extra)
-            else:
-                store.seal()
+            seal_stopped(store, adapter, reason)
         except (EvidenceError, OSError, ContractError) as exc:
             code, reason = 4, safe_reason(exc, "evidence_io_error")
         finally:

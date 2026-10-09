@@ -30,7 +30,7 @@ from inferyard.evidence.storage import (
     sha256_file,
     verify_manifest,
 )
-from inferyard.evidence.token_budgets import V2, collect_budgets, probe_budget
+from inferyard.evidence.token_budgets import V2, collect_budgets
 from inferyard.implementation_identity import IdentityContext, execution_matches
 from inferyard.platforms.identity import (
     PreflightError,
@@ -45,12 +45,16 @@ from inferyard.provenance import tool_source_hash
 from inferyard.registry import adapter_collector_id, adapter_factory, collector_factory
 from inferyard.runtime.lock import HostLock
 from inferyard.runtime.request_execution import TrialRequests
-from inferyard.runtime.service_observation import (
-    clean_observed,
-    observation_manifest,
-    observe_service,
-)
+from inferyard.runtime.service_observation import observation_manifest
 from inferyard.runtime.signals import install_termination_handler
+from inferyard.runtime.trial_lifecycle import (
+    InitialIdle,
+    prepare_service,
+    probe_service,
+    run_formal,
+    seal_stopped,
+    warmup_and_baseline,
+)
 
 
 def _guard(config, files):
@@ -201,7 +205,8 @@ async def execute_async(request, dependencies: Dependencies | None = None):
     restore_signal = install_termination_handler()
     current = asyncio.current_task()
     prior_cancellations = current.cancelling()
-    budget_expired = initial_idle_pending = False
+    budget_expired = False
+    idle_state = InitialIdle()
 
     def expire_budget():
         nonlocal budget_expired
@@ -253,45 +258,16 @@ async def execute_async(request, dependencies: Dependencies | None = None):
         adapter = deps.adapter(identity["origin"], secret=secret)
         check_budget()
 
-        async def wait_idle(phase="probe", request_id=None):
-            return await observe_service(
-                adapter, config["execution"]["idle_wait_seconds"], store, phase, request_id
-            )
-
-        pre_idle_props = None
-        if config["engine"]["adapter"] in ("kvmem", "ninfer"):
-            pre_idle_props = await adapter.verify_properties(config)
-            store.snapshot("service.props.json", pre_idle_props)
-            store.snapshot("engine-capabilities.json", adapter.capability_evidence)
-        recovery = None
-        if request.recovery_confirm:
-            recovery = lock.verify_manual_recovery(
-                request.recovery_confirm, request.recovery_note, config["endpoint"]
-            )
-        old_state = lock.state
-        if old_state and old_state.get("dirty") and not recovery:
-            if (old_state.get("server_pid"), old_state.get("process_start_ticks")) != (
-                config["endpoint"]["server_pid"],
-                config["endpoint"]["process_start_ticks"],
-            ):
-                raise PreflightError("dirty_service_requires_bound_recovery")
-        initial_idle_pending = True
-        if not await wait_idle():
-            if not old_state or not old_state.get("dirty"):
-                lock.dirty(
-                    store.run_id,
-                    config["endpoint"],
-                    "initial_idle_unknown",
-                    kind=request.command,
-                )
-            raise PreflightError("initial_service_not_idle")
-        clean_observed(lock, adapter, store, recovery=recovery)
-        initial_idle_pending = False
-        if recovery:
-            store.snapshot("recovery.json", recovery)
-        props = pre_idle_props or await adapter.verify_properties(config)
-        if pre_idle_props is None:
-            store.snapshot("service.props.json", props)
+        await prepare_service(
+            adapter,
+            config,
+            store,
+            lock,
+            recovery_confirm=request.recovery_confirm,
+            recovery_note=request.recovery_note,
+            single_kind=request.command,
+            idle_state=idle_state,
+        )
         budgets = await collect_budgets(
             adapter, config, bundle, store.selected, kind=request.command
         )
@@ -312,30 +288,13 @@ async def execute_async(request, dependencies: Dependencies | None = None):
             files,
             scorer=deps.scorer,
         )
-        one = execution.one
-
-        for stream in (False, True):
-            response = await one("probe", config["execution"]["probe_prompt"], stream=stream)
-            if response["execution_state"] != "completed":
-                raise PreflightError("protocol_probe_failed")
-            effective = await adapter.verify_effective(
-                config, probe_budget(budgets)["input_tokens"], adapter.last_state
-            )
-            store.snapshot(
-                "effective-stream.json" if stream else "effective-ordinary.json", effective
-            )
-            identity["effective_parameters"] = effective
-            check_budget()
+        await probe_service(
+            execution, adapter, config, store, budgets, identity, check_budget=check_budget
+        )
         store.snapshot("identity.json", identity)
         if request.command == "run":
-            for _ in range(config["execution"]["warmup_count"]):
-                response = await one("warmup", config["execution"]["warmup_prompt"])
-                if response["execution_state"] != "completed":
-                    raise PreflightError("warmup_failed")
-            sampler.set_phase("baseline")
-            await asyncio.sleep(config["telemetry"]["baseline_seconds"])
-            for index, case in enumerate(bundle["cases"]):
-                await one("formal", case["prompt"], index=index)
+            await warmup_and_baseline(execution, config, sampler, sleep=asyncio.sleep)
+            await run_formal(execution, store, bundle["cases"])
             check_budget()
             if request.diagnostic:
                 reason = "diagnostic_run_not_formal"
@@ -346,7 +305,7 @@ async def execute_async(request, dependencies: Dependencies | None = None):
         code, reason = (
             (3, "single_wall_budget_exhausted") if budget_expired else (130, "user_cancelled")
         )
-        if initial_idle_pending and not (lock.state and lock.state.get("dirty")):
+        if idle_state.pending and not (lock.state and lock.state.get("dirty")):
             try:
                 lock.dirty(
                     store.run_id, config["endpoint"], "initial_idle_unknown", kind=request.command
@@ -384,13 +343,7 @@ async def execute_async(request, dependencies: Dependencies | None = None):
                     store.snapshot("identity.json", identity)
                 if not (store.path / "environment.end.json").exists():
                     store.snapshot("environment.end.json", deps.environment())
-                store.event(
-                    "run_stopped", "finalizing", None, {"reason": reason or "tool_interrupted"}
-                )
-                if extra := observation_manifest(adapter):
-                    store.seal(extra)
-                else:
-                    store.seal()
+                seal_stopped(store, adapter, reason or "tool_interrupted")
             except (EvidenceError, OSError, ContractError) as exc:
                 code, reason = 4, safe_reason(exc, "evidence_io_error")
         try:
