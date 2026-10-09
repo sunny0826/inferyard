@@ -21,6 +21,18 @@
 题包生成器依赖 `phase2_review.html`，它是活动模板，保留。
 真实 candidate/bound/frozen 配置和 `validation/` 不作为这些工具的默认回归或发行输入。
 
+## 软件成本对比
+
+[benchmark_cost.py](benchmark_cost.py) 使用公开夹具生成固定合成输入。它不启动服务或发送模型请求。
+`prepare --baseline TREE --out NEW` 创建输入；`measure --baseline TREE --candidate TREE
+--corpus DIR --out NEW --repeats 5` 交替运行两个源码树。所有输出目录必须是 `/tmp` 下的新目录。
+两个源码树使用同一个固定 Python 环境，输入原件保持不变。
+
+脚本保存完整 stdout/stderr、退出码、产物摘要和输入计数。产物比较只允许明确的生成器来源摘要与
+等价目标路径差异；缺行、缺 SVG、其他内容变化或拒绝路径变化使检查失败。
+成本包括操作 wall time、子进程启动至退出的 wall time，以及含夹具准备的进程峰值 RSS。
+RSS 单位换算支持 macOS/Linux；不测磁盘 I/O、真实模型成本或原生平台资格，不清空 OS 缓存。
+
 ## 配置兼容脚本
 
 包内 `config assets/create/bind` 的输出是新目录；旧脚本保留其文件输出与旧回执接口。

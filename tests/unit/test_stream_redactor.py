@@ -62,7 +62,9 @@ def test_secret_matching_never_copies_unbounded_suffixes():
             return self if not other else CheckedText(other + str(self))
 
         def __getitem__(self, key):
-            if isinstance(key, slice):
+            # Safe output spans may be copied as blocks. Only suffix candidates
+            # (open-ended slices) must stay bounded by the credential length.
+            if isinstance(key, slice) and key.stop is None:
                 start, stop, step = key.indices(len(self))
                 assert len(range(start, stop, step)) < len("secret")
             return super().__getitem__(key)

@@ -41,6 +41,33 @@ Omarchy 同样保留 1 GiB 内存下限，单次运行未配置温停，也未�
 
 ## 已完成的实现与验证
 
+执行与报告成本优化已实现：资源归约建立引用索引；旁路日志在命令内同读复用；封存流式哈希；
+普通核验仅保留后续消费的字节；多运行报告逐 run 释放原始样本；移除重复深拷贝；
+无凭据脱敏保留容器复制，流式脱敏保留分块语义；sampler 停止唤醒；CUDA 预检复用同次观测。
+报告 JSON 往返仍保留，以维持键与类型转换语义。cold-start 帮助测试显式关闭颜色。
+
+2026-10-09 本机全量软件回归 **4699 passed / 53 skipped**；最后的递归脱敏调整另有
+31 项相关回归通过。Ruff、格式及 Schema/catalogue/community 一致性通过，community 未重验归档。
+帮助测试在 `FORCE_COLOR=1 PYTHON_COLORS=1` 环境下另有 122 项通过。
+固定合成输入含 3 个 run、30 个输出、1920 个样本和 4 个 SVG；两侧各 5 次交替运行，
+完整产物比较和损坏证据拒绝检查通过。操作耗时如下，归约与脱敏每次测量含 10 次调用：
+
+| 路径 | 基线中位数（范围），ms | 候选中位数（范围），ms |
+| --- | --- | --- |
+| 资源归约 | 49.28（48.58–51.19） | 10.18（10.04–10.41） |
+| 有凭据流式脱敏 | 157.20（151.83–160.46） | 7.47（7.04–7.60） |
+| 无凭据容器脱敏 | 111.30（108.63–113.02） | 76.35（74.02–77.76） |
+| 三运行报告 | 322.06（319.02–337.91） | 315.46（306.83–327.16） |
+
+资源归约和流式脱敏的改善已获本次合成测量支持；报告总耗时、读取、JSON 与带凭据容器脱敏
+差距未超出波动，不宣称提速。独立 profiling 确认扫描/逐字符匹配热点减少，报告主要成本仍是
+证据验证。三运行普通核验的进程峰值 RSS 中位数从 110.31 降至 104.86 MiB，包含准备与序列化。
+复跑方式见[软件成本脚本](../scripts/README.md#软件成本对比)。本次不测磁盘 I/O、真实模型或
+原生 Linux/Windows 资格；不清空 OS 缓存，不据此取得受控模型性能比较资格。
+独立 verifier 重算首轮 120 个测量槽的内容与计数，并检查停止、flush 失败和 CUDA 注入路径。
+一份合成报告在 Chromium 的 `file://` 断网环境下完成桌面/手机尺寸与 4 个 SVG 渲染检查；
+它与最终候选报告仅有生成源码摘要差异。未检查全部报告或交互控件。
+
 P0 PR3 的批次历史投影已实现，读取边界见
 [ADR 040](decisions/040-batch-history-projection.md) 与[数据契约](data-contract.md#批次历史投影)。
 2026-10-09 本机软件回归 **4555 passed / 53 skipped**；Ruff、格式、Schema/catalogue
@@ -81,17 +108,14 @@ Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能�
 | 环境采集成本 | 周期持久层投影已由 [ADR 041](decisions/041-environment-persistence-slim.md) 定义，身份常量仍保留；Linux 每秒读取成本另行评估，macOS 原生 API 替换仍须单独修订来源契约与验证，不能复用持久层回归作为采集资格 |
 | 逐请求身份复查口径 | 单次 guard 仅复查 model/engine，template/运行库只在预检核验（runner.py TODO(P1)），与「re-verify model, engine, templates…」口径不一致；先对齐文档语义，再决定补全复查或 stat 指纹降级，不得静默放宽 |
 | 生命周期等价回归 | 单次/批量合并时的对比脚本未做产物文件内容级 diff（sha256 被归一化）；把内容级等价固化为正式回归 |
-| 资源归约预分组 | `analysis/resource_metrics.py` 每请求为 5 类指标各扫全部 samples；按 `(request_id, metric_name)` 建引用索引，保留顺序、excluded、缺测原因与身份窗口 |
-| 旁路日志同读复用 | environment/schedule 等旁路日志的 manifest 哈希、解析、摘要通常三遍读取；纳入 `TrialReads` 同次字节消费（ADR 034 命令内边界，不跨命令缓存） |
-| 封存与报告内存 | `artifact_seal` 改流式哈希；report 移除重复深拷贝与 JSON 往返，非两两比较路径逐 run 处理并释放原始 samples |
-| sampler 收尾唤醒 | batch sampler 收到停止后可能仍睡满一个采样间隔；共享 stop/wakeup 接口，保留已开始读取、错误传播与排空 |
-| 同次观测读合并 | CUDA preflight 与 advisory 快照各自启动一次 `nvidia-smi`，Linux 两个 swap 指标各读一遍 `/proc/vmstat`；仅同次观测内复用，不跨周期缓存 |
+| 报告 JSON 归一化 | JSON 往返包含键与类型转换语义；只有证明完整等价后才替换，当前保留 |
+| SVG 全文去重 | 输出、画廊、逐题视图和 HTML 存在重复全文；统一内容引用须另立报告格式 ADR、读取边界与实施计划，保持原输出、CSP 和画廊语义，并重新核验浏览器内存与渲染 |
+| 同次 swap 观测合并 | Linux 两个 swap 指标仍各读一遍 `/proc/vmstat`；合并须对齐读区间、来源变化拒绝及独立缺测语义，并补原生证据，不跨周期缓存 |
 | 证据双份存储 | prompt 快照+事件内嵌全文、逐 chunk+终态全文均为双份持久化；终态改内容哈希互证、事件留摘要引用需 ADR 与事件契约变更 |
 | 双轨身份合一 | `tool_source_sha256` 与 `implementation_identity` 并存双路径检查；合并为单一身份需 ADR 与 RUN schema 变更，与 ADR 038 立场对齐 |
 | rerun 身份门禁 | rerun 要求工具版本、scorer hash、source hash、implementation identity 四者一致，任一变化即阻断；降级为记录差异+比较资格标记需 ADR |
 | 兼容命令别名 | 16 个旧命令名兼容层与「拒绝一切旧格式」立场矛盾；一次性 deprecation 后删除，同步 cli-surface.md |
 | 小型清理 | URL 校验在 config 加载与预检重复（adapter 构造处有防 DNS rebinding 理由保留）；`run_preflight` 以身份相等比较分发参数，注入自定义 preflight 时参数被静默丢弃；空字符串凭据与 unset 语义混淆 |
-| help 颜色敏感 | `test_cli_surface` 的 cold-start 测试在 `FORCE_COLOR=1` 环境下因 Python 3.14 argparse 彩色帮助产生假失败；子进程显式设 `NO_COLOR=1` 或解析前剥离 ANSI |
 
 ## 可选测评扩展
 

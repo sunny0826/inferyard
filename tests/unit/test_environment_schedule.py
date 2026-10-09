@@ -45,7 +45,7 @@ def test_independent_cadences_and_missed_deadlines(monkeypatch):
         "get_running_loop",
         lambda: SimpleNamespace(time=lambda: clock[0]),
     )
-    monkeypatch.setattr(environment_schedule.asyncio, "sleep", sleep)
+    monkeypatch.setattr(sampler, "wait", sleep)
     monkeypatch.setattr(environment_schedule.time, "monotonic_ns", lambda: int(clock[0] * 1e9))
     monkeypatch.setattr(environment_schedule, "environment_snapshot", lambda: {"epp": "observed"})
     asyncio.run(EnvironmentObserver.run(sampler))

@@ -89,7 +89,7 @@ def nvidia_snapshot():
         return {"status": "unavailable", "reason": "nvidia_driver_query_failed", "devices": []}
 
 
-def hardware_snapshot(disk_path, environment=None):
+def hardware_snapshot(disk_path, environment=None, *, gpu_observation=None):
     system = platform.system()
     env = environment if environment is not None else host_snapshot(system)
     sources = dict(env.get("sources", {}))
@@ -113,7 +113,11 @@ def hardware_snapshot(disk_path, environment=None):
         "ac_online": env.get("ac_online"),
         "disk_free_bytes": disk_free,
         "disk_path": str(disk_path),
-        "gpu": env.get("apple_gpu") if system == "Darwin" else nvidia_snapshot(),
+        "gpu": env.get("apple_gpu")
+        if system == "Darwin"
+        else gpu_observation
+        if gpu_observation is not None
+        else nvidia_snapshot(),
     }
     if result["gpu"] is None:
         result["gpu"] = {"status": "unavailable", "reason": "not_measured", "devices": []}

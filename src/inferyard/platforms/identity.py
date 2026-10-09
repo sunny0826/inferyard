@@ -404,6 +404,7 @@ def static_preflight(
         from inferyard.platforms.macos_identity import metal_capability
 
         environment.update(metal_capability())
+    gpu = None
     if config["engine"].get("backend", "cpu") == "cuda":
         from inferyard.platforms.device_preflight import nvidia_snapshot
 
@@ -427,7 +428,9 @@ def static_preflight(
         raise PreflightError("identity_file_changed")
     from inferyard.platforms.device_preflight import hardware_snapshot, recommend
 
-    hardware = hardware_snapshot(ancestor, environment)
+    hardware = hardware_snapshot(
+        ancestor, environment, **({"gpu_observation": gpu} if gpu is not None else {})
+    )
     model = {
         "path": config["model"]["local_path"],
         "name": config["model"].get("display_name", "local"),
