@@ -1,6 +1,6 @@
 # Backlog
 
-更新于 2026-10-08。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
+更新于 2026-10-09。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
 
 ## InferYard 首次公开准备
 
@@ -41,6 +41,12 @@ Omarchy 同样保留 1 GiB 内存下限，单次运行未配置温停，也未�
 
 ## 已完成的实现与验证
 
+P0 PR3 的批次历史投影已实现，读取边界见
+[ADR 040](decisions/040-batch-history-projection.md) 与[数据契约](data-contract.md#批次历史投影)。
+2026-10-09 本机软件回归 **4555 passed / 53 skipped**；Ruff、格式、Schema/catalogue
+一致性通过。新增 90 项回归覆盖消费字段等价、恢复链/预算拒绝、损坏证据和 lab/native
+排空边界。只完成本地交付；没有真实模型或提速实测，不继承旧测量资格。
+
 [ADR 038](decisions/038-inferyard-current-format.md) 对应的当前格式清理已完成；
 [ADR 039](decisions/039-remove-host-state-migration.md) 移除了主机状态迁移与旧入口机制，
 实时入口首次运行自动初始化主机状态，现行规则以[当前格式契约](contracts/inferyard-current-format.md)为准。
@@ -71,6 +77,7 @@ Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能�
 | 源码获取宿主 | 库已有实现，真实获取 CLI 尚未接入；仅在确认实际需求后推进，基础测试不等于引擎构建完成 |
 | 引擎观测 | KVMem/NInfer 的原生信号与 lab 完整观测分开；精确模板预算、有效参数和引擎内部排空缺测仍披露；engine-fit 接入未完成 |
 | 可维护性 | 按实际触及范围整理模块与兼容分支，不以全库重构作为发行前提 |
+| 批次投影摘要去重 | `run_projection.py` 的 `_summary` 与 `ledger.py` 摘要规则为复制逻辑（等价回归已钉住）；后续抽共享函数消除双份维护 |
 
 ## 可选测评扩展
 

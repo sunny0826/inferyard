@@ -87,7 +87,7 @@ def execute(request, kind):
         if "implementation_identity" in meta:
             validate_identity(meta["implementation_identity"])
         local_file(root, "runs")
-        runs = history(root, plan, loaded, allow_tool_change=True)
+        runs = history(root, plan, loaded, allow_tool_change=True, full_verification=True)
         trials = [_trial(data, data["manifest_sealed"]) for data in runs]
         complete = bool(trials) and all(t["verified"] for t in trials)
         missing = sorted(
