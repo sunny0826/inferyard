@@ -144,7 +144,6 @@ prompt/completion 同时存在时应等于其和。无 reasoning delta 不能补
 ProcessHandle(pid: int)  # context manager，延迟加载 WinAPI
 handle.creation_filetime() -> int
 handle.is_exited() -> bool
-inspect_process(pid: int, expected_filetime: int, *, deadline: float) -> dict
 verify_process_binding(expected: dict, *, deadline: float) -> dict
 ```
 
@@ -153,8 +152,11 @@ OpenProcess 使用 query limited information + synchronize，无终止/写权限
 ERROR_INVALID_PARAMETER(87) 是对象不存在；access denied、WAIT_FAILED、API 失败是 unknown，
 不能返回“已退出”。禁止依赖 psutil.pid_exists 或浮点 create_time。Mac 导入不能加载
 winreg/WinDLL。
-inspect 返回恰 `pid, creation_filetime, exited, source`，source=`windows:process_handle.v1`；
-FILETIME 不匹配时返回绑定旧对象已不存在的结论不能替代当前进程详情，函数直接拒绝 mismatch。
+verify 返回恰 expected 的绑定字段与 `listener_identity`、`listener_source`、
+`process_start_source`（来源分别为 GetExtendedTcpTable:owner_pid 与
+GetProcessTimes:creation_FILETIME_100ns_since_1601，可选 `details`）；FILETIME
+不匹配时抛 `lab_windows_filetime_mismatch`，不能以绑定旧对象已不存在的结论
+替代当前进程详情。
 
 expected 恰含 `pid, creation_filetime, origin, executable_path, executable_sha256,
 argv_sha256, cwd_sha256`。PID 正整数，FILETIME 正整数；origin 只允许显式 IPv4/IPv6
