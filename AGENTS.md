@@ -71,6 +71,7 @@ rtk proxy mise exec -- uv --version
 
 ## 交付
 
+改动 `src/inferyard/data/community/` 下任何文件的角色同时负责本次 `resources.json` 再生成；使用 `scripts/export_community.py`，无固定归档时调用其 `generated(None)` 并将返回内容写回对应包内路径，有归档时用 `--archives`；生成后必须复跑 `scripts/export_community.py --check`；该目录下文件不按纯文档处理。
 行为修复覆盖真实失败路径，契约变化覆盖拒绝路径和旧数据支持边界；纯文档检查本地链接、锚点、命令和 diff，HTML 检查实际离线渲染。
 TCP 模拟需要本地 socket 权限，沙箱阻断、平台跳过与实现失败分开报告。不批量运行可能启动服务或发送请求的 `scripts/verify_*`。
 简要报告改动、实际检查与未验范围。完成相关检查后创建本地 Git commit；不 push。
