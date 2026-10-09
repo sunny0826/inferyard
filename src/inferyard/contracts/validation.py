@@ -289,15 +289,31 @@ class Document:
     kind: str
     _json: str
 
+    def __post_init__(self):
+        # Direct construction must establish the same trust as parse().
+        validate_document(self.kind, strict_json_loads(self._json))
+
     @classmethod
     def parse(cls, kind: str, data: Any) -> Document:
         validate_document(kind, data)
-        return cls(
-            kind,
+        document = object.__new__(cls)
+        object.__setattr__(document, "kind", kind)
+        object.__setattr__(
+            document,
+            "_json",
             json.dumps(
                 data, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
             ),
         )
+        return document
 
     def to_dict(self) -> dict:
         return json.loads(self._json)
+
+
+def _validated_dict(kind: str, data: Any) -> dict:
+    """Reuse only an immutable same-kind Document, never a mutable dict's history."""
+    if type(data) is Document and data.kind == kind:
+        return data.to_dict()
+    validate_document(kind, data)
+    return data

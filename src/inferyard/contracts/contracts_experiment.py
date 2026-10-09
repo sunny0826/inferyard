@@ -221,9 +221,10 @@ def validate_semantics(kind, data):
         unique(data["case_ids"], "selection.case_ids")
         return
     if kind == "bundle":
-        from inferyard.config.bundle import validate_bundle
+        from inferyard.config.bundle import _validate_bundle_semantics
 
-        validate_bundle(data)
+        # validate_document has already checked this exact bundle's structure.
+        _validate_bundle_semantics(data)
         return
     if kind == "score":
         if data["quality_state"] == "unscorable" and not data["reason"]:

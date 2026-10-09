@@ -9,7 +9,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 
 from inferyard.contracts.schemas_tasks import BUNDLE, CASE
-from inferyard.contracts.validation import ContractError, _bundle_invariants, _validate
+from inferyard.contracts.validation import ContractError, Document, _bundle_invariants, _validate
 
 
 def content_hash(bundle):
@@ -61,6 +61,10 @@ def _json_tree(value, *, schema=False, depth=0):
 
 def validate_case(case):
     _validate(case, CASE, "case")
+    _validate_case_semantics(case)
+
+
+def _validate_case_semantics(case):
     category, rules = case["category"], case["rules"]
     if category == "svg":
         # CASE requires reference_answer and an empty rules object; no quality rules apply.
@@ -97,10 +101,15 @@ def validate_case(case):
 
 def validate_bundle(bundle):
     _validate(bundle, BUNDLE, "bundle")
+    return _validate_bundle_semantics(bundle)
+
+
+def _validate_bundle_semantics(bundle):
     by_id = {}
     label_sets = set()
     for case in bundle["cases"]:
-        validate_case(case)
+        # BUNDLE already validates every CASE; no new data enters this traversal.
+        _validate_case_semantics(case)
         if case["case_id"] in by_id:
             raise ContractError("bundle.cases", "duplicate case_id")
         by_id[case["case_id"]] = case
@@ -117,9 +126,38 @@ def validate_bundle(bundle):
 
 def require_review(bundle):
     """Require an approval of current content or a verified equivalent legacy source."""
-    from inferyard.config.bundle_review import approved
+    from inferyard.config.bundle_review import approved, validate_provenance
+    from inferyard.config.review_cache import review_cache
 
-    inherited = validate_bundle(bundle)
+    cache = review_cache()
+    digest = None
+    if type(bundle) is Document and bundle.kind == "bundle":
+        # The immutable snapshot already passed structure, semantics and proof checks.
+        # Include approval records/proofs, unlike the human-review content_hash().
+        snapshot = bundle._json.encode()
+        if cache is not None:
+            digest = hashlib.sha256(snapshot).hexdigest()
+            if digest in cache:
+                return
+        bundle = bundle.to_dict()
+        inherited = validate_provenance(bundle)
+    else:
+        # Public mutable inputs always receive complete validation.
+        inherited = validate_bundle(bundle)
+        if cache is not None:
+            digest = hashlib.sha256(
+                json.dumps(
+                    bundle,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    allow_nan=False,
+                ).encode()
+            ).hexdigest()
+            if digest in cache:
+                return
     if approved(bundle) or any(inherited):
+        if digest is not None:
+            cache.add(digest)
         return
     raise ContractError("bundle.review_records", "human_corpus_review_required")

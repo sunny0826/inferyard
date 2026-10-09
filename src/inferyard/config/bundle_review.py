@@ -72,9 +72,10 @@ def _legacy_source(source, *, inherited=False):
         raise ContractError(PROOF_PATH, "legacy revision has unsupported task categories")
     if type(ancestors) is not list:
         raise ContractError(PROOF_PATH, "legacy inheritance must be an array")
-    from inferyard.config.bundle import validate_bundle
+    from inferyard.config.bundle import _validate_bundle_semantics
 
-    validate_bundle(current)
+    # The normalized proof passed BUNDLE above and has not changed since.
+    _validate_bundle_semantics(current)
     by_id = {case["case_id"]: case for case in current["cases"]}
     seen = set()
     all_approved = bool(approved(source))

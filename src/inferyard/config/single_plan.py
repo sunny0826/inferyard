@@ -6,14 +6,15 @@ import uuid
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.scoring import SCORER_VERSION
 from inferyard.config.planning import compile_plan
-from inferyard.contracts.validation import validate_document
+from inferyard.contracts.validation import _validated_dict
 from inferyard.evidence.storage import json_bytes
 
 
 def compile_single_plan(config, bundle, *, experiment_id=None):
     """Freeze an in-memory single workload before any service request is sent."""
-    validate_document("config", config)
-    validate_document("bundle", bundle)
+    # Document inputs contain no new information; raw public inputs still validate fully.
+    config = _validated_dict("config", config)
+    bundle = _validated_dict("bundle", bundle)
     count = len(bundle["cases"])
     timeout = config["execution"]["timeout_seconds"]
     auxiliary = 2 + config["execution"]["warmup_count"]

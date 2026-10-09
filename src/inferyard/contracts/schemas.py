@@ -1,6 +1,7 @@
 """One active wire contract, exported as JSON Schema Draft 2020-12."""
 
 from copy import deepcopy
+from functools import cache
 
 from inferyard import SCHEMA_VERSION
 from inferyard.contracts.schemas_common import *  # noqa: F403
@@ -20,6 +21,7 @@ def _wire_spec(protocol):
     )
 
 
+@cache
 def schemas_for():
     """Return the unique current registry; legacy wire revisions need migration."""
     from inferyard.contracts.schemas_events import EVENT, SAMPLE, SELECTION
