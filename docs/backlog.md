@@ -91,6 +91,7 @@ Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能�
 | rerun 身份门禁 | rerun 要求工具版本、scorer hash、source hash、implementation identity 四者一致，任一变化即阻断；降级为记录差异+比较资格标记需 ADR |
 | 兼容命令别名 | 16 个旧命令名兼容层与「拒绝一切旧格式」立场矛盾；一次性 deprecation 后删除，同步 cli-surface.md |
 | 小型清理 | URL 校验在 config 加载与预检重复（adapter 构造处有防 DNS rebinding 理由保留）；`run_preflight` 以身份相等比较分发参数，注入自定义 preflight 时参数被静默丢弃；空字符串凭据与 unset 语义混淆 |
+| help 颜色敏感 | `test_cli_surface` 的 cold-start 测试在 `FORCE_COLOR=1` 环境下因 Python 3.14 argparse 彩色帮助产生假失败；子进程显式设 `NO_COLOR=1` 或解析前剥离 ANSI |
 
 ## 可选测评扩展
 
