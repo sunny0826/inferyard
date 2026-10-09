@@ -35,12 +35,39 @@ def test_init_preserves_authoritative_bytes_and_review(tmp_path, capsys, name):
     source = (ROOT / f"bundles/{name}.json").read_bytes()
     assert (out / f"bundles/{name}.json").read_bytes() == source
     assert result["details"]["bundle_sha256"] == hashlib.sha256(source).hexdigest()
+    assert result["details"]["bundles"] == [
+        {
+            "bundle": name,
+            "bundle_path": result["details"]["bundle_path"],
+            "bundle_sha256": result["details"]["bundle_sha256"],
+        }
+    ]
     assert result["details"]["ready_to_run"] is False
     assert set(result["details"]["configs"]) == {"linux", "macos", "windows"}
     assert not list((out / "results").iterdir())
     code, again = invoke(capsys, ["init", "--out", str(out)])
     assert code == 2 and again["limitations"] == ["output_exists"]
     assert (out / f"bundles/{name}.json").read_bytes() == source
+
+
+def test_omitted_bundle_exports_documented_default_scope(tmp_path, capsys):
+    out = tmp_path / "default"
+    code, result = invoke(capsys, ["init", "--out", str(out)])
+    names = ("zh-core", "zh-svg-pelican")
+    exported = []
+    for name in names:
+        source = (ROOT / f"bundles/{name}.json").read_bytes()
+        assert (out / f"bundles/{name}.json").read_bytes() == source
+        exported.append(
+            {
+                "bundle": name,
+                "bundle_path": str(out / f"bundles/{name}.json"),
+                "bundle_sha256": hashlib.sha256(source).hexdigest(),
+            }
+        )
+    assert code == 0 and result["details"]["bundles"] == exported
+    assert result["details"]["bundle"] == "zh-core"
+    assert not (out / "bundles/zh-smoke.json").exists()
 
 
 @pytest.mark.parametrize("kind", ["file", "directory", "link", "dangling"])

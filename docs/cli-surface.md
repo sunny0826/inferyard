@@ -79,7 +79,7 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 
 | 命令 | 必填参数 | 可选参数及默认值 | 平台和新目录布局 |
 | --- | --- | --- | --- |
-| `init` | `--out NEW` | `--bundle {zh-smoke,zh-core,zh-svg-pelican}`，默认 `zh-smoke` | 三平台；`README.md`、`configs/{linux,macos,windows}.example.toml`、`bundles/NAME.json`、`assets/`、`results/`、`preparation.json` |
+| `init` | `--out NEW` | `--bundle {zh-smoke,zh-core,zh-svg-pelican}`；省略时导出 `zh-core` 和 `zh-svg-pelican` | 三平台；`README.md`、`configs/{linux,macos,windows}.example.toml`、`bundles/NAME.json`、`assets/`、`results/`、`preparation.json` |
 | `runtime prepare` | `--profile NAME --archive FILE --out NEW` | `--runtime-archive FILE`，仅 CUDA 必填，CPU 禁止 | 仅 Windows x64；`engine/`、CUDA 的 `runtime/`、`engine/engine-sha256.json`、`runtime-receipt.json` |
 | `config assets` | `--model FILE --engine FILE --out NEW` | 无 | 仅 Linux x64；`chat-template.jinja`、`engine-sha256.json`、`assets.json` |
 | `config create` | `--preflight FILE --bundle FILE --results DIR --out NEW`；另按平台指定下述参数 | `--port INT` 默认 48857，范围 1..65535；`--model-repo TEXT` 默认 `local`；`--model-revision TEXT` 默认所选模型 SHA256，显式文本须非空 | 仅 macOS arm64 / Windows x64；`candidate.toml`、`chat-template.jinja`、`preparation.json`；macOS 另有 `engine-sha256.json`，Windows 引用回执目录清单 |
@@ -96,10 +96,12 @@ Windows 必填 `--runtime-receipt FILE` 且禁止 `--engine`。两者不能同�
 
 ### 各动作的冻结行为
 
-1. `init` 导出三个平台的去设备化占位示例及一个所选题包。示例明确未绑定且不能直接运行；
+1. `init` 导出三个平台的去设备化占位示例。省略 `--bundle` 时导出 `zh-core` 和
+   `zh-svg-pelican`；显式 `--bundle` 只导出一个固定题包。示例明确未绑定且不能直接运行；
    不带真实 PID、设备标识、历史绝对路径、凭据或预算资格。题包来自
    `data/community/bundles/`，逐字节复制根 `bundles/` 的权威已审版本，保留内嵌审核信息。
    不更改题目或审核哈希，也不自动选修订题包。`assets/` 和 `results/` 初始为空。
+   导出两个题包不触发执行；`run --config` 每次只执行配置中的一个题包，不自动连续运行两包。
 2. `config assets` 只读现有单 GGUF、引擎及引擎同目录的 `*.so` / `*.so.*`，
    使用现有 GGUF 解析器与 SHA256 能力，不执行引擎、`ldd` 或版本命令。
    模板按 `tokenizer.chat_template`、再按 `tokenizer.chat_template.default` 选取；
@@ -139,7 +141,7 @@ stdout 恰好一个 UTF-8 JSON 对象，使用现有 CommandResult 外层。`com
 
 | command | details 的其余必填字段 |
 | --- | --- |
-| `init` | `bundle`（所选名称）、`bundle_path`、`bundle_sha256`、`readme`、`configs`（键 linux/macos/windows 对应绝对路径）、`preparation` |
+| `init` | `bundles`（按导出顺序，每项含 `bundle`、`bundle_path`、`bundle_sha256`）；顶层 `bundle`、`bundle_path`、`bundle_sha256` 仍指向第一个题包；`readme`、`configs`（键 linux/macos/windows 对应绝对路径）、`preparation` |
 | `runtime prepare` | `profile`、`mode`（cpu/cuda）、`engine`、`engine_sha256`、`runtime_library_manifest`、`receipt` |
 | `config assets` | `model`、`engine`、`template`（各为 `{path, bytes, sha256}`）、`runtime_library_manifest`、`libraries`（基名到 SHA256）、`assets` |
 | `config create` | `candidate`、`template`、`runtime_library_manifest`、`device_preflight`、`bundle`、`results`、`model`（路径）、`model_sha256`、`engine_sha256`、`mode`（cpu/cuda/metal）、`preparation` |
@@ -273,7 +275,10 @@ manifest 与离线报告披露观测路径；原生路径不授予引擎内部�
 上述冻结字段名不变。所有绝对文件/目录路径（`out`、`bundle_path`、`readme`、`preparation`、
 `runtime_library_manifest`、`receipt`、`assets`、`candidate`、`config`、`device_preflight`、
 `results`，以及 create 的 `model`/`template`、runtime prepare 的 `engine`）均为非空 string。
-`bundle` 在 init 为所选名称 string，在 create 为题包绝对路径 string；`profile` 为固定名称 string。
+`bundles` 在 init 为非空 array；省略 `--bundle` 时按 `zh-core`、`zh-svg-pelican` 顺序含两项，
+显式选择时含一项。每项为含 `bundle`、`bundle_path`、`bundle_sha256` 的 object，
+字段类型与顶层同名字段一致。顶层 `bundle` 在 init 为第一项的题包名称 string，
+在 create 为题包绝对路径 string；`profile` 为固定名称 string。
 `mode` 为表内枚举 string。`configs` 为恰含 linux/macos/windows 三键的 object，值为绝对路径 string。
 `libraries` 为非空 object，键为文件基名 string、值为 SHA256 string；所有 `*_sha256`
 均为 64 位小写十六进制 string。assets 的 `model`/`engine`/`template` 为恰含

@@ -83,14 +83,19 @@ uvx --isolated --managed-python --python 3.14.7 --constraints runtime-constraint
 ## 2. 创建工作区与选择题包
 
 ```bash
-inferyard init --out bench-work --bundle zh-smoke
+inferyard init --out bench-work
 inferyard device-check --model /path/to/model.gguf --out bench-work/preflight --json
 ```
 
-`--bundle` 可选 `zh-smoke`（默认）、`zh-core` 或 `zh-svg-pelican`。导出题包保留权威原字节和
-内嵌人工审核；SVG 题只展示生成结果、不评分。工作区含三个平台的未绑定示例、一个所选题包、
+省略 `--bundle` 时在同一工作区导出默认范围 `zh-core` 和 `zh-svg-pelican`。明确固定题包时可选
+`zh-smoke`、`zh-core` 或 `zh-svg-pelican`，并只导出该题包。导出题包保留权威原字节和
+内嵌人工审核；SVG 题只展示生成结果、不评分。工作区含三个平台的未绑定示例、所选题包、
 空 `assets/`、`results/` 及入门说明。模板中的 `REPLACE` 项必须填完，不直接 run。
 Windows 用实际盘符路径替换模型路径；所有系统均只读取已有模型，不自动下载。
+
+下文候选示例使用 `zh-core`。完整默认测评还须为 `zh-svg-pelican` 分别准备候选和绑定产物，
+各自使用新目录，并按[默认测评范围](usage.md#默认测评范围)冻结适合 SVG 的预算、运行并汇总报告。
+`run --config` 每次只执行配置中的一个题包，CLI 不会自动连续运行两个题包。
 
 五个准备命令的 `--out` 都是**不存在的新目录**，其父目录必须存在。已有空目录、文件和链接
 一律拒绝，没有 `--force`。失败可能留下本次不完整目录；保留检查并换新目录重试，不覆盖原件。
@@ -122,7 +127,7 @@ inferyard runtime prepare --profile prism-b10743-adfffbe-win-cuda-12.4-x64 `
   --out 'bench-work\assets\cuda-runtime'
 inferyard config create --preflight 'bench-work\preflight\device-preflight.json' `
   --runtime-receipt 'bench-work\assets\cuda-runtime\runtime-receipt.json' `
-  --bundle 'bench-work\bundles\zh-smoke.json' --results 'bench-work\results' `
+  --bundle 'bench-work\bundles\zh-core.json' --results 'bench-work\results' `
   --out 'bench-work\candidate'
 ```
 
@@ -136,7 +141,7 @@ inferyard config create --preflight 'bench-work\preflight\device-preflight.json'
 准备已有、适配版本的 Prism 引擎及同目录动态库：
 
 ```bash
-inferyard config create --preflight bench-work/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-work/bundles/zh-smoke.json --results bench-work/results --out bench-work/candidate
+inferyard config create --preflight bench-work/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-work/bundles/zh-core.json --results bench-work/results --out bench-work/candidate
 ```
 
 候选生成会执行引擎 `--version`（10 秒），重新检查容量、mode 和 AC 电源；Metal 要求相应动态库。
