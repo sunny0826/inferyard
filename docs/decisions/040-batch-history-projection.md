@@ -38,3 +38,9 @@ lab 排空仍检查观测身份、请求快照绑定、生命周期及释放状�
 软件验收以多 run / resume / duration / capacity / lab / native 的字段等价和拒绝路径
 回归证明；不代表真实模型运行或其他平台的原生验收。具体读取范围见
 [数据契约](../data-contract.md#批次历史投影)。
+
+单故障场景下投影与全量读取的错误码一致；同一 run 同时存在多类损坏时，两种读取
+报告的优先错误可能不同（全量核验先做 manifest 哈希，投影先做绑定校验），两种路径
+都会拒绝该 run。投影路径不保留两条仅影响证据语义、不影响发送决策的拒绝：
+native 模式 `engine_internal_drain` 非空、非 lab 引擎出现 `lab_wire`/`lab_usage`
+事件；`verify` / `report` 仍按原规则拒绝。

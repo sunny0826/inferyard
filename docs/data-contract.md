@@ -102,9 +102,12 @@ content/reasoning、wire、到达时间、usage 等事件不重放其语义。�
 
 投影不执行：manifest 全文件字节哈希重验、逐样本/环境/调度校验、响应 chunk 与终态
 内容/协议/用量的交叉重放、资源/性能指标重建、固定输出/缓存执行证明、引擎参数及
-token budget 的离线全量复核。以上仍由完整 `read_trial` 及其被调用模块执行。
+token budget 的离线全量复核、native 引擎内部排空标记与 lab 事件来源一致性的语义
+拒绝（`engine_internal_drain` 非空、非 lab 引擎的 `lab_wire`/`lab_usage`）。以上仍由
+完整 `read_trial` 及其被调用模块执行。
 manifest 的结构、合法文件路径、原始文件存在性和大小检查保留；配置/题包选择哈希
 及真实事件哈希仍计算。预算文件的 run_id、数值范围与封存成员检查不变。
+多类损坏并存时，投影与全量读取报告的优先错误可能不同，两者都拒绝该 run。
 
 ## 证据血缘与比较结论
 
