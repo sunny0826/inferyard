@@ -72,7 +72,8 @@ Pure docs do not require an installed environment or the full test suite; behavi
 ## Delivery
 
 PR merges always use the repository owner's own account, via the GitHub web Merge button or the local `gh` CLI — never the Lody GitHub App merge entry. After merging, check the commit authors with `git log`; bot-authored commits are not allowed.
+Never push, merge or close a PR without the user's explicit approval. Branch first for any deliverable work — never commit it directly on `main` — and keep commits local after the checks pass; pushing, PR creation, merge and close all wait for the user's go-ahead. A user-approved action (for example creating one PR) covers only that action, never an implicit merge or direct push to `main`.
 Any role that changes files under `src/inferyard/data/community/` also owns regenerating `resources.json` this round: use `scripts/export_community.py` — call its `generated(None)` with no fixed archives and write the result back into the bundle path, or pass `--archives` when archives exist — and re-run `scripts/export_community.py --check` afterwards. Files in that directory are not treated as pure docs.
 Behavior fixes cover the real failure path; contract changes cover rejection paths and old-data support boundaries. Pure-doc changes check local links, anchors, commands and the diff; HTML changes check actual offline rendering.
 TCP simulations need local socket permissions; report sandbox blocking, platform skips and implementation failures separately. Do not batch-run `scripts/verify_*` that may start services or send requests.
-Report changes, the checks actually run and the unverified scope briefly. Create a local Git commit after the relevant checks pass; do not push.
+Report changes, the checks actually run and the unverified scope briefly. Create a local Git commit after the relevant checks pass; never push without the user's explicit approval.
