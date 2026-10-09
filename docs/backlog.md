@@ -79,6 +79,18 @@ Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能�
 | 可维护性 | 按实际触及范围整理模块与兼容分支，不以全库重构作为发行前提 |
 | 批次投影摘要去重 | `run_projection.py` 的 `_summary` 与 `ledger.py` 摘要规则为复制逻辑（等价回归已钉住）；后续抽共享函数消除双份维护 |
 | 环境采集成本 | 周期持久层投影已由 [ADR 041](decisions/041-environment-persistence-slim.md) 定义，身份常量仍保留；Linux 每秒读取成本另行评估，macOS 原生 API 替换仍须单独修订来源契约与验证，不能复用持久层回归作为采集资格 |
+| 逐请求身份复查口径 | 单次 guard 仅复查 model/engine，template/运行库只在预检核验（runner.py TODO(P1)），与「re-verify model, engine, templates…」口径不一致；先对齐文档语义，再决定补全复查或 stat 指纹降级，不得静默放宽 |
+| 生命周期等价回归 | 单次/批量合并时的对比脚本未做产物文件内容级 diff（sha256 被归一化）；把内容级等价固化为正式回归 |
+| 资源归约预分组 | `analysis/resource_metrics.py` 每请求为 5 类指标各扫全部 samples；按 `(request_id, metric_name)` 建引用索引，保留顺序、excluded、缺测原因与身份窗口 |
+| 旁路日志同读复用 | environment/schedule 等旁路日志的 manifest 哈希、解析、摘要通常三遍读取；纳入 `TrialReads` 同次字节消费（ADR 034 命令内边界，不跨命令缓存） |
+| 封存与报告内存 | `artifact_seal` 改流式哈希；report 移除重复深拷贝与 JSON 往返，非两两比较路径逐 run 处理并释放原始 samples |
+| sampler 收尾唤醒 | batch sampler 收到停止后可能仍睡满一个采样间隔；共享 stop/wakeup 接口，保留已开始读取、错误传播与排空 |
+| 同次观测读合并 | CUDA preflight 与 advisory 快照各自启动一次 `nvidia-smi`，Linux 两个 swap 指标各读一遍 `/proc/vmstat`；仅同次观测内复用，不跨周期缓存 |
+| 证据双份存储 | prompt 快照+事件内嵌全文、逐 chunk+终态全文均为双份持久化；终态改内容哈希互证、事件留摘要引用需 ADR 与事件契约变更 |
+| 双轨身份合一 | `tool_source_sha256` 与 `implementation_identity` 并存双路径检查；合并为单一身份需 ADR 与 RUN schema 变更，与 ADR 038 立场对齐 |
+| rerun 身份门禁 | rerun 要求工具版本、scorer hash、source hash、implementation identity 四者一致，任一变化即阻断；降级为记录差异+比较资格标记需 ADR |
+| 兼容命令别名 | 16 个旧命令名兼容层与「拒绝一切旧格式」立场矛盾；一次性 deprecation 后删除，同步 cli-surface.md |
+| 小型清理 | URL 校验在 config 加载与预检重复（adapter 构造处有防 DNS rebinding 理由保留）；`run_preflight` 以身份相等比较分发参数，注入自定义 preflight 时参数被静默丢弃；空字符串凭据与 unset 语义混淆 |
 
 ## 可选测评扩展
 
