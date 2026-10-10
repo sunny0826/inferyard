@@ -2,6 +2,12 @@
 
 活动契约唯一版本为 `schema_version = 3`，适用于单次测评和批量实验。结构定义在 `src/inferyard/contracts/`，导出位于 `schemas/`；结构合法仍须通过语义与来源校验。
 
+运行目录的物理布局独立于核心版本。[ADR 048](decisions/048-run-evidence-containers.md)
+定义 `evidence_layout_version=2`；容器字段、成员绑定和严格只读的 layout1 支持见
+[运行原件容器契约](contracts/run-evidence-layout.md)。本轮先迁读取方再切写入方，
+实际实施与验收状态见 [backlog](backlog.md#运行证据文件合并)。独立 frozen-plan、engine-fit
+与 extension 封包不改布局；本文旧快照文件名在 layout2 对应领域成员，不要求双写旧文件。
+
 ## 唯一入口
 
 - `SCHEMA_VERSION = 3`；`schemas_for()` 返回唯一 kind 注册表，`export_schema(kind)` 不接受版本选择。
@@ -168,6 +174,10 @@ ADR 042 改的是新运行怎么采集：新周期身份与开跑快照一致，
 ## 证据血缘与比较结论
 
 结论绑定实际设备、引擎、配置、题包、测量源码和采集来源。历史运行说明当时的测量；模拟、短诊断、迁移、重评分、报告重建与离线核验分别记录自己的来源和范围，不构成当前源码的新实测。派生产物保留原来源与缺项，在新目录生成，原件不覆盖。
+
+容器布局的来源引用分别绑定物理文件和逻辑成员：外层 `path/sha256` 为实际文件及其字节摘要，
+可选 `member` 为冻结输入、观测序号或请求身份及对应内容摘要。所有派生产物使用同一核验接口，
+不得把成员摘要当作旧文件摘要，或创建虚拟旧文件定位。旧 layout1 引用保留原物理含义。
 
 比较是否成立以对应产物的机器字段及原因列表为准，不从文档中的“通过”推导。`engine_fit_*` 中性能结论由 `performance_comparison_qualified` 表达；现行实现固定为 `false`。核心测评的质量、性能和资源比较继续使用各自既有字段，不把 `engine-fit` 字段套到所有格式。
 

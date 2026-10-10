@@ -6,6 +6,11 @@
 `fe1052a41afbddc1b7ceff852e794d6d872977ce`。
 证据解释沿用[血缘规则](../data-contract.md#证据血缘与比较结论)。
 
+运行文件布局由 [ADR 048](../decisions/048-run-evidence-containers.md) 局部修订；
+内层核心仍为 3。新 layout2 的字段与只读 layout1 规则见
+[容器契约](run-evidence-layout.md)。本轮 reader/writer 的分阶段交付状态在 backlog 登记，
+下表的核心版本集合不因物理合并而扩大；独立产物的版本与布局继续原协议。
+
 ## 格式支持矩阵
 
 “当前”指该基线公开生产入口能够新建的格式，不含仅供旧格式重算的 helper 参数。
@@ -15,6 +20,7 @@
 | 产物 | 应保留 | 删除或拒绝 | writer / 依赖证据（相对 src/inferyard） |
 | --- | --- | --- | --- |
 | 核心 config/bundle/experiment/plan/run/selection/event/sample/manifest/summary/analysis | `schema_version=3`；现行 kind、ID、可选字段与定义版本 | 核心 v1/v2 读取与 migrate；`origin=migrated` 运行及 migration.json 递归读取 | [常量](../../src/inferyard/__init__.py)、[planning](../../src/inferyard/config/planning.py)、[Journal](../../src/inferyard/evidence/journal.py) |
+| 运行物理布局 | layout2 容器声明与 core3；现有合法 v3 快照 layout1 严格只读 | 未知布局；新旧权威源混合；inputs/manifest 冲突；原已拒绝来源；不转换、不补写 | [布局字段与接口](run-evidence-layout.md)、[实施状态](../backlog.md#运行证据文件合并) |
 | 题包审核 | 原 review_records、case-review.v1、review_provenance 原字节及验证 | `upgrade_legacy_bundle` 生成入口；旧 bundle 作为活动输入 | [bundle_review](../../src/inferyard/config/bundle_review.py)；[zh-smoke](../../bundles/zh-smoke.json) 内嵌 v1 证明，不可连同迁移器删除 |
 | 核心报告 | `report_format_version=8`、presentation-seal.v1、当前根模板；题面、输出、参考答案各存一次并内部引用 | report v1–v7 分派；templates/v2、v3、v4、v5 与根 report_v1.html | [write_report](../../src/inferyard/reporting/report.py)、[模板映射](../../src/inferyard/reporting/report_assets.py)；根模板应保留 |
 | 核心比较 | `format_version=4`，计算 definition=`phase2.v3` | comparison v1–v3 的重算与投影 | [write_comparison](../../src/inferyard/reporting/comparison_report.py)；plan/run 的 comparison 标记仍为 phase2.v1，不改写 |

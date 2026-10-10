@@ -8,6 +8,10 @@
 
 每个指标定义至少包含：`metric_id / definition_version / unit / layer / source / window / applicability / required_capabilities / aggregation / comparison_policy`。观测/汇总附 `value / status / missing_reason / sample_count / numerator / denominator / excluded / evidence_refs`；不适用的字段可省略，禁止使用含义不明的 0 或空字符串。
 
+`evidence_refs` 的外层绑定真实物理文件字节；layout2 的输入、观测和请求另带成员定位及内容摘要，
+见[运行原件容器契约](../contracts/run-evidence-layout.md#来源引用与外部绑定)。文件合并不改变
+指标 ID、单位、样本范围或比较资格；旧 layout1 引用按保存的原物理含义核验。
+
 层次区分请求、进程、设备、引擎与整机；缺测原因至少覆盖未支持、权限不足、传感器缺失、窗口无样本、边界不可识别、原证据缺失、计数来源改变和样本不足。支持状态、模型能力和本次是否纳入分别记录。
 
 以下基础集合按冻结计划中的一个题型/实验单元计算：

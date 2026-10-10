@@ -38,7 +38,7 @@ observations envelope 固定 `schema_version`、`evidence_layout_version`、`run
 | --- | --- |
 | parent / service_binding / service_reuse / safety_policy | prepare，单例，原功能写入时保留 |
 | environment | start/end，各一个槽；失败缺失保留原因 |
-| service_properties | pre_idle(native) / post_idle(lab)，权威单例 |
+| service_properties | pre_idle(kvmem/ninfer adapter) / post_idle(Prism adapter)，权威单例；不按发现后的 observation mode 改发布时点 |
 | engine_capabilities | pre_idle，native 实际能力单例 |
 | recovery | post_idle，单例，不补造接手依据 |
 | token_budgets / input_target_check | prepare，保持 v2 phase/case 清单及原核验 |
@@ -65,11 +65,13 @@ prepared 没有 started 合法，不能计 executed；started 有消息摘要就
 | configuration_source() | `{media_type, data: bytes, missing_reason}`；缺原文时 data/media_type 为 None；不创建虚拟 Path |
 | observation(kind, stage=None, key=None) | 实际保存 payload 或 None；不取全局最后一条 |
 | has_observation(kind, stage=None, key=None) | 已保存且满足身份/阶段的真实成员存在性 |
+| observation_keys(kind, stage=None) | 实际匹配槽的 key 清单；用于 receipt 库存核验，旧布局也只枚举真实原件，不由事件补造 |
 | observation_reference(kind, stage=None, key=None) | 对实际成员的物理容器及内容绑定 |
 | request_body(event) / request_reference(event) | 按原 event 身份定位唯一 prepared body / 引用 |
 | log_reference(name) | 对真实独立日志的物理引用，不接受旧快照虚拟名 |
 | jsonl(name) / checked_jsonl(name) / observed() | 复用物理日志读取与同次字节摘要 |
 | manifest / layout_version / root / errors / hashes / sizes | 当前物理库存、读取状态与真实物理摘要 |
+| container_tails | 已扫描 observations/prepared 容器的尾截断原因，按实际文件名分组；全量 preload 后 ledger 纳入 partial，不缓存 body 或把截断当成功 |
 | check_input_errors() / preload(manifest_files) | 保留严格错误处理与必要观测预读 |
 | verify_reference(root, ref) | 核验真实容器摘要及可选成员定位/内容摘要 |
 
@@ -103,6 +105,8 @@ prepared 方法 `prepare_request(request_id, phase, ordinal, body)` 返回后原
 identity 权威槽显式查询，原发布时点不变。native receipt 写入耐久后才清 dirty。
 append/flush/fsync 失败停发并保留 dirty；close/seal 纳入两个新增日志且保持目录 fsync。
 BaselineJournal 实现对应领域方法但继续自身 buffer 协议；ExtensionJournal 不增加 run 容器。
+独立 baseline 的低频旁证由 `BaselineEvidence` 读取其现有物理协议，不使用放宽了识别规则的
+TrialEvidence。run 目录仍须严格识别版本及冻结输入；缺 run 的任意旁证目录不成为合法 run。
 
 ## 验证边界
 

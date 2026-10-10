@@ -6,6 +6,11 @@
 ## 原始产物与退出码
 
 verify --path 支持运行目录、batch 目录及冻结 plan 文件/目录，复用已有严格读取器。
+运行目录的新 layout2 以 `inputs.json` 和 manifest 一致声明识别；现有合法 v3 快照
+layout1 只读。容器成员及来源核验见 [运行原件容器契约](run-evidence-layout.md)。
+可识别未知布局为 2；混合权威源、声明冲突、坏成员/物理哈希为 4，不回退另一个布局。
+旧 CLI 依赖 `run.json`，对新目录可能返回 `unsupported_verify_artifact`/4；
+这个前向诊断不等于新 CLI 的未知布局退出语义，也不要求双写旧标记。
 已封存且来源/语义核验通过的 run 返回 0/verified，包括原执行取消或 partial。
 details.sealed、verified、integrity 表示证据状态；execution_completeness、stop_reason
 及结果顶层 completeness 保留原执行状态，不以 code 0 宣称执行完整。

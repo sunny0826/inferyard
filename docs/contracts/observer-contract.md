@@ -49,6 +49,13 @@ Linux CPU HZ 从 `AT_CLKTCK` 读取，无法读取不猜 100；RSS 来自 status
 
 依据 [ADR 010](../decisions/010-observer-benchmark-adaptation.md)，关联不改变独立工具与原件保护边界。
 
+[ADR 048](../decisions/048-run-evidence-containers.md) 增加 layout2 的真实容器绑定。
+layout1 继续绑定 `run_file_sha256/config_file_sha256` 的实际旧文件字节；layout2 从
+`inputs.json` 读取，binding 的 definition 为 `benchmark-inputs-binding.v1`，分别保存
+`inputs_file_sha256/run_member_sha256/config_member_sha256`。外层为容器字节，内层为已核验
+成员内容；不创建旧文件或把成员摘要装入旧 file 字段。Python 离线关联核验相同结构。
+独立流继续 `lab_observer.v2`，原生采样与原资格边界不变，实施与平台验证状态见 backlog。
+
 ### 输入与版本
 
 Go 0.2.0 输出 `schema_version = 3`、`definition = lab_observer.v2`。header 新增必填 `disk_scope`，取值为 `benchmark_run_filesystem` / `observer_cwd_filesystem`；`--bench-run` 以所传 run 目录读取磁盘，直接 PID 以当前目录读取。静态 snapshot 仍以当前目录读取。所有 record definition 在单会话内一致。
