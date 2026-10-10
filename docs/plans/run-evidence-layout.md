@@ -67,7 +67,7 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 
 - [ ] 在 `docs/decisions/` 新增 ADR；更新 `docs/data-contract.md`、`docs/contracts/inferyard-current-format.md` 和相关离线读取/报告引用契约。ADR 编号在执行时分配，不占用已有编号。
 - [ ] 在 `src/inferyard/contracts/` 定义容器/记录 schema；在 `src/inferyard/evidence/` 增加布局识别与领域读取模块，调整 `trial_reads.py`、`ledger.py`、`run_projection.py`、`request_snapshots.py`、预算及 lab/native/cache/fixed-output/length/capability 消费模块。
-- [ ] 修改 `src/inferyard/application/verification.py`、`raw_verification.py` 的产物识别；核对 runtime 的恢复/重跑准备、analysis、reporting、extensions 和 scripts 中读取 run 原件的真实消费方。独立冻结计划或 engine-fit 的同名文件不随本任务误改。
+- [ ] 修改 `src/inferyard/application/verification.py`、`raw_verification.py` 的产物识别；核对 runtime 的恢复/重跑准备、`overhead_runner.py`、analysis、reporting、extensions 和 scripts 中读取 run 原件的真实消费方。独立冻结计划、engine-fit 和 extension 封包的同名文件不随本任务误改。
 - [ ] 增补 `tests/unit/`、`tests/integration/` 的新旧布局夹具与拒绝回归，调整 `tests/packaging/` 的源码外取证；生成受影响 schemas/catalogue，记录绑定源码范围。
 - [ ] 若既有 harness 无法驱动所有回执，在 `scripts/` 新增一个有界合成布局验收工具并更新 `scripts/README.md`；它只能写新隔离目录，不启动真实模型或使用真实主机锁。
 
@@ -76,9 +76,10 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 - [ ] 先完成局部 codec 原型：按 Appendix A 无损装入公开合成原件，读回比较逻辑文档/请求/观测与成员哈希；在录有完整请求原件的合成样本上验证偏移索引与同次字节核验，保留原型 SHA 和结果。
 - [ ] ADR 定案新 `evidence_layout_version=2`，新 inputs 与 manifest 一致绑定；内层既有领域文档仍为 core schema 3，新记录用独立版本声明。更新法定支持矩阵、合法/非法样例与所有入口的旧数据策略。
 - [ ] 建议保留当前合法 v3 快照布局的严格只读支持，不转换、不补写、不迁移原件。只有现有明确旧布局可识别为 layout 1；缺版本不能让任意目录默认成为合法旧布局。原已拒绝格式和迁移源继续拒绝。
+- [ ] ADR 分开记录新 CLI 的旧数据支持与旧 CLI 的前向诊断：基线 `_identify` 依赖 `run.json`，八文件新布局会报 `unsupported_verify_artifact`/4。不能把新 CLI 识别未知布局的退出 2 写成旧 CLI 的保证；不为兼容旧 CLI 双写标记。
 - [ ] 以 `FrozenInputs`、封闭类型的观测及请求原件定义 `TrialEvidence` 领域查询；布局适配仅在 evidence 边界，业务模块不接受万能虚拟旧文件名或虚构旧路径。
 - [ ] 完整扫描 JSONL 并校验每条记录后，在同次读取内建立请求身份到字节范围的内存索引；不新增磁盘索引。索引读回须绑定已核验字节或检测文件变化，不能对未核验的新字节授资格。
-- [ ] 迁移所有读取方、manifest 检查、产物识别和来源引用；报告引用真实容器路径、成员定位及摘要，不能把逻辑 payload 哈希冒充物理文件哈希。现行生产 writer 在 PR1 保持旧布局。
+- [ ] 迁移所有读取方、manifest 检查、产物识别和来源引用；先统一 `metric_observations` 与报告的引用契约，包含真实容器路径、物理文件摘要和成员定位/内容绑定，不能把逻辑 payload 哈希冒充物理文件哈希。现行生产 writer 在 PR1 保持旧布局。
 - [ ] 新旧混合权威源、错误版、缺已引用原件、重复身份/阶段、越序、中间坏行、坏哈希和封存截尾严格失败；缺测与未完成保留 null/原因及既有退出语义。
 - [ ] 更新 measurement/scoring/presentation 绑定清单与生成源；保留旧运行保存的身份，不给新读取实现或新运行继承旧测量资格。
 
@@ -103,7 +104,7 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 - [ ] Lane 5. 分别损坏冻结成员、预算阶段、请求 body/messages hash 和 manifest。Save `PR1/lane-5/rejections.json`。Pass when 四类均严格拒绝，没有用题包重建原件。
 - [ ] Lane 6. 检查未封存完整前缀、末尾半行和中间坏行，以及有 started 却缺原件。Save `PR1/lane-6/rejections.json`。Pass when 仅合法完整前缀为 partial/3；坏行/缺已引用原件为 4，封存截尾也为 4。
 - [ ] Lane 7. 检查 prepare 未发送记录与普通/流式 probe 的独立观测。Save `PR1/lane-7/projection.json`。Pass when prepared 不进入 executed，两个探测槽及环境 start/end 保留，最终身份投影符合冻结契约。
-- [ ] Lane 8. 实际驱动 lab/native、strict fixed output 和 cache 的离线读取入口。Save `PR1/lane-8/receipts.json`。Pass when 来源路径与内容绑定真实存在，关键缺测/坏 receipt 的阻断没有放松。
+- [ ] Lane 8. 实际驱动 lab/native、strict fixed output、cache 与 ABBA overhead 的离线读取入口。Save `PR1/lane-8/receipts.json`。Pass when 来源路径与内容绑定真实存在，关键缺测/坏 receipt 的阻断没有放松；ABBA 的 run 臂可读，独立扩展封包和 baseline 原件未改。
 - [ ] Lane 9. 用新旧布局驱动恢复/重跑输入检查、rescore/export/public 来源链。Save `PR1/lane-9/receipts.json`。Pass when 哈希和父链拒绝一致，只写新目录，不产生布局迁移或隐式重评分。
 - [ ] Lane 10. 浏览器打开新旧样本生成的 v8 HTML，断网检查文字、SVG、筛选与无 JS 回退。Save `PR1/lane-10/receipts.json`。Pass when 报告显示完整、CSP 保留、控制台无错误；回执关联截图和实际 `verify --rerender` 输出。
 
@@ -127,15 +128,16 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 
 **Files.**
 
-- [ ] 修改 `src/inferyard/evidence/storage.py`、`journal.py` 及 PR1 的容器/原件写入模块；删除旧布局生产写入分支，保留严格只读适配器。
+- [ ] 修改 `src/inferyard/evidence/storage.py`、`journal.py` 及 PR1 的容器/原件写入模块；仅删除 run 的旧布局写入调用点，保留严格只读适配器和通用原子 `snapshot`、日志及封存能力。
 - [ ] 修改 `src/inferyard/runtime/runner.py`、`request_execution.py`、`trial_runner.py`、`trial_lifecycle.py`、`trial_finalization.py`、`service_observation.py` 及真实旁证写入方；collector/observer 与高频扩展日志按契约保留来源。
+- [ ] 核对 `ExtensionJournal(EvidenceStore)`、`complete_trial_control.py` 和 `trial_control_baseline.py` 的共享接口；独立 extension 封包与 `baseline-N.json` 不改格式。`overhead_runner.py` 的 run 臂随共享 writer 切换，其 run 读取方已在 PR1 迁移。
 - [ ] 增补 storage、request lifecycle、duration send admission、fixed output、cache、batch/native 及取消/dirty/排空的软件回归；更新合成验收 harness 和 packaging 场景。
 - [ ] 更新相关数据/主题契约、实施后的架构与 usage、plans README、backlog、README 两种语言和 CHANGELOG；绑定源码改变时重新生成 catalogue/schema。社区数据不在本轮所有权内。
 
 **Build.**
 
 - [ ] `TrialJournal` 先原子发布 inputs，再创建日志；每条观测或原件由其唯一拥有者同步写入。不得让多个线程/协程分别写同一 stream，保留现有采样日志的真实归属。
-- [ ] 将六份冻结/元数据纳入 inputs、七类普通 single 观测纳入 observations；将 batch/native 的选用低频旁证映射为已声明类型，不删除 collector、safety、预算或 clean receipt。
+- [ ] 将六份冻结/元数据纳入 inputs，Appendix A 的普通 single 和条件低频观测纳入 observations；标准采集器声明也必须合并，不能视为选用。保留 collector、safety、预算及 clean receipt 的原始 payload、来源和耐久要求。
 - [ ] 替换 `TrialRequests.one()` 的唯一请求快照写入点，覆盖 single、batch fixed 和 duration；准备原件脱敏、校验、append、flush/fsync 完成后才可进入 dirty、started/send。
 - [ ] 保留 prepared 未发送记录，尤其 duration 的 send admission 期限拒发；用事件绑定证明实际开始，不能用 prepare 行数改 executed 或分母。
 - [ ] 保持原快照边界的耐久要求、native idle/clean receipt 先落盘后清 dirty 的顺序、目录 fsync 和最终封存；写入/flush/fsync 失败立即停发，保留已存在的 dirty，不自动重试或恢复。
@@ -159,7 +161,7 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 
 - [ ] Lane 1. Regression lane against trunk：同配方普通 single 合成请求在基线与 head 实际运行到 seal、verify、report。Save `PR2/lane-1/receipts.json`。Pass when 正式计数/请求内容/五终态一致，head 八加三文件，旧布局的基线清单与 SHA 如实保存。
 - [ ] Lane 2. 固定 `zh-core` 120 题与鹈鹕 1 题、各三次 warmup，实际驱动两个 run 和新汇总报告。Save `PR2/lane-2/receipts.json`。Pass when 两 run 逐请求数为 125/6、八文件各自封存、报告三文件，总十九，核心分母 120 且 SVG 不计质量分。
-- [ ] Lane 3. 执行 batch fixed/repeat 的模拟入口，并检查其独立外层控制与来源链。Save `PR2/lane-3/receipts.json`。Pass when 所有请求使用新原件日志，串行准入与冻结次数不变，附加文件清单全部解释，不套 single 总数。
+- [ ] Lane 3. 执行 batch fixed/repeat 与 ABBA overhead 的模拟入口，并检查其独立外层控制与来源链。Save `PR2/lane-3/receipts.json`。Pass when run 臂的所有请求使用新原件日志，串行准入与冻结次数不变，扩展封包和 baseline 保持既有协议；附加文件清单全部解释，不套 single 总数。
 - [ ] Lane 4. 执行 duration 窗口，分别注入 send 前期限到达和执行中取消。Save `PR2/lane-4/receipts.json`。Pass when prepared 未发送不进入 executed，窗口/排空/终态保持冻结语义，没有自动重试。
 - [ ] Lane 5. 在请求原件 append/flush/fsync 失败时执行模拟 CLI。Save `PR2/lane-5/failures.json`。Pass when 服务未收到相应请求，退出失败且不伪造 started/成功封存；已有 dirty 保留。
 - [ ] Lane 6. started 后崩溃、采样失败、close/seal 失败分别检查。Save `PR2/lane-6/failures.json`。Pass when 停发、dirty、完整前缀和 partial/error 符合契约，坏 seal 不回退 partial，不补终态。
@@ -172,7 +174,7 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 
 - [ ] Metric. 基线与 head 的等工作量合成 run 从准备到 seal 的 wall time，另量 verify/report wall time、进程峰值 RSS、文件数和落盘字节；包含采样、验证、写盘、flush/fsync 和封存。
 - [ ] Probe. 用相同公开输入、mock 响应、请求次数和线程设置交错运行，每侧至少五次；固定 mock 耗时后记录计时边界、噪声、计数、原件内容、失败数和全部原始数据。profiling 独立于正式测量。
-- [ ] Baseline. 先保存实际基线清单：普通 single 固定 18 加 N+W+2 请求快照；默认双 scope 且 W=3 时共 170 文件。数值由本次 harness 重算，不能直接把上轮推导当本轮实测。
+- [ ] Baseline. 先保存实际基线清单：标准采集器下，普通完整 lab single 固定 19 加 N+W+2 请求快照；native 固定 20 加相同请求快照，另有逐请求 clean receipt。默认双 scope、lab 且 W=3 的源码推导为 19+125+19+6+3=172 文件。mock 若省略 collector 则单独标注；执行时由 harness 重算，不能把源码推导或上轮 mock 当本轮实测。
 - [ ] Rule. 普通 single 必须恰 8+3=11，默认双 scope 恰 8×2+3=19；每种实际 workload 的计数、内容和拒绝行为完整。等工作量 wall time/RSS 中位数不得超过基线 1.20 倍；超限先核验噪声与漏工作，无法解释则 FAIL。落盘字节不设未经测量的节省比例，不承诺速度提升。
 
 **Review gate.** None. PR2 is not review-gated. 只改变保存布局和对应来源引用，保持页面功能；实际离线渲染仍是必需验证。
@@ -190,8 +192,10 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 ## Appendix A. Prototype evidence
 
 规划基线是 `d8d211f38fdfc9b5c7c0eb291e1a9cf8768f35f1`，开始时工作树干净。
-当前实现的文件数量已由源码核对；此前独立审查曾报告 mock single 为 26=18+8 文件、报告三文件。
-那次模拟不是本计划的新布局原型，也不是主会话重新运行的实测。
+标准采集器构造即写 `collector.json`（[macOS](../../src/inferyard/platforms/resources_macos.py)、[Linux](../../src/inferyard/platforms/resources_linux.py)、[Windows](../../src/inferyard/platforms/resources_windows.py)）。
+普通完整 lab single 的固定证据为 19 份；native 另有能力声明和逐请求清理收据。
+此前独立审查的 mock single 为 26=18+8 文件、报告三文件，仅对应省略 collector 的注入采样器口径。
+那次模拟不是新布局原型；19 和默认总数 172 是源码推导，本轮没有重新执行运行清点。
 本轮只做结构与源码核对；新容器、偏移索引、崩溃行为和十一文件 CLI 尚未实现验证，PR1/PR2 的任务保留这些证明。
 
 ### 文件目标与计数范围
@@ -199,7 +203,7 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 | 目录 | 文件 | 内容 |
 | --- | --- | --- |
 | run | `inputs.json` | run、plan、selection、冻结 config、bundle 与配置原文，共六份逻辑输入 |
-| run | `observations.jsonl` | identity、service props、普通/流式 effective、environment start/end、token budgets；选用低频旁证保留明确类型 |
+| run | `observations.jsonl` | identity、service props、普通/流式 effective、environment start/end、token budgets、标准 collector 声明；native 能力/clean receipt 及其他条件低频旁证按明确类型保存 |
 | run | `request-bodies.jsonl` | 所有 probe/warmup/formal 的完整脱敏 prepared body 与身份/hash |
 | run | `events.jsonl` | 当前事件、回答、终态与评分；不把 prompt 全文再复制进去 |
 | run | `memory.jsonl` | 当前内存/资源样本与来源 |
@@ -243,13 +247,19 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 | service properties | 一份当前实际观测 | native 的 pre-idle 与 lab 的 post-idle 阶段保持不同；不重查替代保存记录 |
 | effective ordinary/stream | 两个独立槽 | 任一 probe 失败可缺其后续观测，保留失败与未完成语义 |
 | token budgets | 明确 phase/case 的 v2 集合 | 按当次选中输入产生；预算准备失败不补 0 或未发送记录 |
-| engine capabilities/native clean receipt | 适配器启用时保留 | 按请求身份和 dirty token 绑定；成功 HTTP 不推定 engine-wide drain |
-| collector/observer/service binding | 相应采集或 batch 启用时保留 | 来源、scale、声明与实际输出全部核验，不能由容器存在代替记录存在 |
+| collector | 标准采集器构造时必需，写入 observations | 保留来源、scale、传感器声明及采样参数；准备失败缺失时保留原因，不冒充完整运行 |
+| engine capabilities | native 启用时写入 observations | 保留能力声明与实际观察模式；lab 不补造 native 能力 |
+| native clean receipt | 合法清理时按请求写入 observations | 绑定请求身份和 dirty token，耐久后才 clean；成功 HTTP 不推定 engine-wide drain |
+| observer/service binding | 相应 observer 或 batch 启用时写入 observations | 来源、scale、声明与实际输出全部核验，不能由容器存在代替记录存在 |
 | safety policy/check、execution budget、recovery、service reuse、input target check | 原功能写入时保留 | 有明确类型、阶段与原始 payload；不删除停止阈值、接手或父链条件 |
 
 PR1 清单核对所有 `store.snapshot`、`text_snapshot` 与 `observation` 写入者；上表不能作为遗漏项可删除的授权。
+`collector.json`、`engine-capabilities.json` 和 `clean_receipt_name(request_id)` 的 run 内低频原件分别映射到
+observations 的 `collector`、`engine_capabilities`、`native_clean_receipt` kind 草案；PR1 定案其 schema、阶段与定位方式。
+原有 payload 完整保留，旧布局只读适配器仍从原文件读取；新布局中三者不再单独成文件，不省略必需记录来凑八文件。
 `external-cpu.jsonl`、`request-environment.jsonl`、`safety-checks.jsonl` 及 extensions 自有高频日志先保持独立，计为选用附加文件。
 外围 collector/observer 输出不能只因 run 内保存声明就删除；独立工具仍拥有其来源原件。
+`ExtensionJournal` 继承的通用快照/日志/封存接口继续保留；本轮不将独立 extension 封包或 baseline 快照装入 run 容器。
 
 原件索引优先保留 byte range 与单次读取的完整性凭据，不常驻全部 body；offset 再读取必须检验同次字节一致。
 offset 元数据仍是 O(N)，不能宣称内存为常数。PR1 原型以固定 120、12000 条公开合成 body 校验读取、峰值 RSS 与文件变化检测；
