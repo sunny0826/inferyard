@@ -22,7 +22,7 @@ engine-fit 最小可读取证文件为 plan.json、checkpoint.json、requests.js
 checkpoint 定义 engine_fit_checkpoint.v1，保存请求前 run 身份、初始实际资源边界及计划
 绑定；请求数组沿用原原子检查点。读者核对初始身份和当前冻结请求顺序/终态/答案结构，
 从当前数组计算计数，并明确 interrupted_checkpoint，不推定服务 clean、结束或资源峰值。
-原 run v1–v6 结构不因该检查点改变，只有新封存 manifest 升级。存在 manifest 时必须
+原 run v1–v6 结构不因该检查点改变，只有新封存 manifest 升级。存在 manifest 时应
 完整核验，缺文件或摘要不符不得使用 checkpoint 降格读取。
 只有 manifest 目录项真正缺失才允许 partial 分派；悬空符号链接、非普通文件或不可读
 状态是证据错误。专用 verify 与直接 read_partial 共享这一 nofollow 判定。
@@ -63,5 +63,5 @@ Prism 的历史能力定义仍绑定已知 build 内容与来源，集中在 Eng
 不是删掉已知定义边界；未知 build 或单独自报 true 不授予 timings/预算/协议资格。
 llama.cpp 与明确 Python module/受控 MLX script 入口不以 executable basename 授权；
 实际二进制摘要、argv、模型路径、监听归属、运行中变化及服务协议检查保留。
-MLX script 内容 hash 必须匹配随包入口。已支持纯日志参数继续允许，未知加载参数不扩白。
+MLX script 内容 hash 应匹配随包入口。已支持纯日志参数继续允许，未知加载参数不扩白。
 LM Studio app/helper 发现路径尚无等价识别证据，保留原限定，未加通用 allow 选项。

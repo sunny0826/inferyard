@@ -8,7 +8,7 @@
 measurement/scoring/presentation 各包含源码清单、摘要、依赖版本与缺测原因。
 measurement 包含实际执行、传输、采集、资产/安全/存储以及所用共享契约与数据；
 scoring 包含评分器、规则、题包解释及结构验证；presentation 包含离线呈现与模板。
-重叠共享文件同时影响相关身份。清单显式保存，不靠目录名前缀作身份判断。
+重叠共享文件同时影响包含它的身份。清单显式保存，不靠目录名前缀作身份判断。
 Python 实现/版本与 httpx/httpcore/anyio/h11/certifi/idna、jsonschema 及其验证依赖、
 平台实际使用的 psutil 按职责记录；jinja2/MarkupSafe 属于呈现，pytest/ruff 仅开发。
 缺依赖版本以 null+原因表达，不将未知与未知判相等，不阻断无关指标的描述读取。
@@ -16,12 +16,12 @@ Python 实现/版本与 httpx/httpcore/anyio/h11/certifi/idna、jsonschema 及�
 
 新运行以 `implementation_identity` 为唯一执行身份门，不再要求 `tool_source_sha256`。
 缺少此字段的旧 schema3 run/batch 仍用全包身份，不补当前摘要。
-measurement/scoring 必须匹配，呈现修改不阻断执行；保存身份不改值。
+measurement/scoring 应匹配，呈现修改不阻断执行；保存身份不改值。
 重跑在工具版本、scorer 或这条身份与父运行不同时仍可启动，比较记下差异且资格不成立。
 当前比较 format4 / phase2.v3 按指标读取对应身份，并包含 `run.tool_version`。
 报告仅接受 v8，隐式比较计算使用 phase2.v3；report v1–v7 和 comparison v1–v3 按 ADR 038 与 ADR 045 拒绝。
 model-assets.v2 目录清单列相对路径与内容哈希；根路径只用于定位，缓存/README 不属于该资产集合。
-当前 engine_fit_plan.v1 保留无 definition 清单及全目录身份算法；plan.v2–v4 的目录清单必须声明
+当前 engine_fit_plan.v1 保留无 definition 清单及全目录身份算法；plan.v2–v4 的目录清单应声明
 model-assets.v2，不再接受历史无 definition 的目录回退。
 
 ## 请求期检查与原始持久化
@@ -88,7 +88,7 @@ engine_fit_plan.v1 的模型清单；plan.v2–v4 的未声明版本目录清单
 {"definition":"total_observer_binding.v1","path":"/absolute/sealed-control-packet","manifest_sha256":"<该包 manifest 的 SHA-256>"}
 ```
 
-来源包必须通过完整封存、live 来源、控制臂原始记录、独立 guardian 和 hardware_qualified
+来源包应通过完整封存、live 来源、控制臂原始记录、独立 guardian 和 hardware_qualified
 核验。phase2.v3 消费核验过程中返回的两个 on 臂，不按路径长期缓存，不重复读取目标 ledger。
 可选 protocol.json/trials.json 仍独立核验；增量失败不代替总开销判断。首事件、引擎速率等
 专项指标仍须其原有目标绑定、环境、同 boot 先后和专项估计通过，不由总开销单独放行。
@@ -101,7 +101,7 @@ engine_fit_plan.v1 的模型清单；plan.v2–v4 的未声明版本目录清单
 环境缺测或任一来源身份不符仍拒绝；冻结显式 SafetyGuard 和 native 串行语义不变。
 
 权重 index 的 `weight_map` 是实际资产声明：即使分片文件名未命中常规命名，也须纳入全量哈希。
-引用必须为目录内规范相对路径且不能落入排除目录；缺失、越界及非法 index 拒绝，不生成只绑定
+引用应为目录内规范相对路径且不能落入排除目录；缺失、越界及非法 index 拒绝，不生成只绑定
 index 而漏掉所引用权重的身份。普通 HF 文件 symlink 仍以最终常规文件字节核验。
 
 报告 v8/comparison v4 的后续封存与定位结构见[离线读取契约](offline-reading-contract.md)，计算语义仍为 phase2.v3。

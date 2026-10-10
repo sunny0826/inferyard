@@ -12,11 +12,11 @@
 同格式旧产物不按日期或旧品牌拒绝；支持格式仍须通过结构、语义、封存与来源校验。
 下表数字属于各自产物命名空间，不能相互替代。删除栏是明确删除集合。
 
-| 产物 | 必须保留 | 删除或拒绝 | writer / 依赖证据（相对 src/inferyard） |
+| 产物 | 应保留 | 删除或拒绝 | writer / 依赖证据（相对 src/inferyard） |
 | --- | --- | --- | --- |
 | 核心 config/bundle/experiment/plan/run/selection/event/sample/manifest/summary/analysis | `schema_version=3`；现行 kind、ID、可选字段与定义版本 | 核心 v1/v2 读取与 migrate；`origin=migrated` 运行及 migration.json 递归读取 | [常量](../../src/inferyard/__init__.py)、[planning](../../src/inferyard/config/planning.py)、[Journal](../../src/inferyard/evidence/journal.py) |
 | 题包审核 | 原 review_records、case-review.v1、review_provenance 原字节及验证 | `upgrade_legacy_bundle` 生成入口；旧 bundle 作为活动输入 | [bundle_review](../../src/inferyard/config/bundle_review.py)；[zh-smoke](../../bundles/zh-smoke.json) 内嵌 v1 证明，不可连同迁移器删除 |
-| 核心报告 | `report_format_version=8`、presentation-seal.v1、当前根模板；题面、输出、参考答案各存一次并内部引用 | report v1–v7 分派；templates/v2、v3、v4、v5 与根 report_v1.html | [write_report](../../src/inferyard/reporting/report.py)、[模板映射](../../src/inferyard/reporting/report_assets.py)；根模板必须保留 |
+| 核心报告 | `report_format_version=8`、presentation-seal.v1、当前根模板；题面、输出、参考答案各存一次并内部引用 | report v1–v7 分派；templates/v2、v3、v4、v5 与根 report_v1.html | [write_report](../../src/inferyard/reporting/report.py)、[模板映射](../../src/inferyard/reporting/report_assets.py)；根模板应保留 |
 | 核心比较 | `format_version=4`，计算 definition=`phase2.v3` | comparison v1–v3 的重算与投影 | [write_comparison](../../src/inferyard/reporting/comparison_report.py)；plan/run 的 comparison 标记仍为 phase2.v1，不改写 |
 | engine-fit plan | engine_fit_plan.v1/v2/v3/v4 全部保留 | 未知定义；不删除 v1 全目录模型清单 | [prepare](../../src/inferyard/config/engine_fit.py)：目录且仅 vLLM/SGLang、无覆盖写 v1；普通新引擎/单 GGUF 写 v2；温度覆盖写 v3；内存覆盖写 v4 |
 | engine-fit run | engine_fit_run.v1–v6 全部保留 | 非法 plan/run/platform 组合及未知定义 | [run writer](../../src/inferyard/runtime/engine_fit.py)：plan.v1 在 Linux 写 run.v1、Darwin 写 run.v2；plan.v2/v3/v4 在非 Windows 写 run.v3/v4/v5；Windows 单 GGUF llama.cpp 写 run.v6 |
@@ -108,7 +108,7 @@ report v7/comparison v4/engine-fit manifest.v2 保持保存字节与显式 `--re
 - 探针输出改为 `current_report_formats_verified=[7]`、
   `unsupported_report_formats_rejected=[1,2,3,4,5,6]`、`template_hashes={"7": ...}`；
   删除 synthetic_historical_reports_verified，逐版失败不能被总 returncode=0 掩盖。
-- 安装结果 **必须升级为 installed_safe_checks.v3**。scope 保留原六项，将
+- 安装结果 **应升级为 installed_safe_checks.v3**。scope 保留原六项，将
   synthetic_historical_reports 替换为 `current_format_reports` 和 `unsupported_format_rejection`。
   既有 probe 命令名可保留，执行语义由结果 v3/scope 绑定；测试结果仍是零模型请求，host_lock_tests=not_run。
 - v3 新增必需 `report_format_checks` 对象，恰含 probe-install-a、probe-install-b、probe-rollback 三键；

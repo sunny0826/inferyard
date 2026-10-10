@@ -2,7 +2,7 @@
 
 本页适用于已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.1/) 的 `0.0.1`。
 也可使用 [Releases](https://github.com/sunny0826/inferyard/releases) 中的同批附件安装。
-项目采用 [MIT 许可证](../LICENSE)。安装文件必须来自同一发行批次；
+项目采用 [MIT 许可证](../LICENSE)。安装文件应来自同一发行批次；
 平台实现与未验项见[平台状态](platforms.md)，接口见 [CLI](cli-surface.md)。
 证据与比较结论遵循[证据血缘规则](data-contract.md#证据血缘与比较结论)。
 
@@ -90,14 +90,14 @@ inferyard device-check --model /path/to/model.gguf --out bench-work/preflight --
 省略 `--bundle` 时在同一工作区导出默认范围 `zh-core` 和 `zh-svg-pelican`。明确固定题包时可选
 `zh-smoke`、`zh-core` 或 `zh-svg-pelican`，并只导出该题包。导出题包保留权威原字节和
 内嵌人工审核；SVG 题只展示生成结果、不评分。工作区含三个平台的未绑定示例、所选题包、
-空 `assets/`、`results/` 及入门说明。模板中的 `REPLACE` 项必须填完，不直接 run。
+空 `assets/`、`results/` 及入门说明。模板中的 `REPLACE` 项应填完，不直接 run。
 Windows 用实际盘符路径替换模型路径；所有系统均只读取已有模型，不自动下载。
 
 下文候选示例使用 `zh-core`。完整默认测评还须为 `zh-svg-pelican` 分别准备候选和绑定产物，
 各自使用新目录，并按[默认测评范围](usage.md#默认测评范围)冻结适合 SVG 的预算、运行并汇总报告。
 `run --config` 每次只执行配置中的一个题包，CLI 不会自动连续运行两个题包。
 
-五个准备命令的 `--out` 都是**不存在的新目录**，其父目录必须存在。已有空目录、文件和链接
+五个准备命令的 `--out` 都是**不存在的新目录**，其父目录应存在。已有空目录、文件和链接
 一律拒绝，没有 `--force`。失败可能留下本次不完整目录；保留检查并换新目录重试，不覆盖原件。
 `device-check` 的无模型检查可以完成，但创建候选需要成功的模型推荐。
 

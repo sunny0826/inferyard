@@ -47,7 +47,7 @@ Omarchy 同样保留 1 GiB 内存下限，单次运行未配置温停，也未�
 报告 JSON 往返仍保留，以维持键与类型转换语义。cold-start 帮助测试显式关闭颜色。
 
 2026-10-09 本机全量软件回归 **4699 passed / 53 skipped**；最后的递归脱敏调整另有
-31 项相关回归通过。Ruff、格式及 Schema/catalogue/community 一致性通过，community 未重验归档。
+涉及改动的 31 项回归通过。Ruff、格式及 Schema/catalogue/community 一致性通过，community 未重验归档。
 帮助测试在 `FORCE_COLOR=1 PYTHON_COLORS=1` 环境下另有 122 项通过。
 固定合成输入含 3 个 run、30 个输出、1920 个样本和 4 个 SVG；两侧各 5 次交替运行，
 完整产物比较和损坏证据拒绝检查通过。操作耗时如下，归约与脱敏每次测量含 10 次调用：
@@ -90,7 +90,7 @@ PR 提交 `83def2565f9d057621411e2cc4ab41752e7cb9c5`，已合入 `ce221771e426e1
 | 固定主机状态 | 一次性 GitHub runner 上完成自动初始化、合成请求、crash/dirty 持久化及 dirty 拒绝；没有真实模型请求 |
 | 早期本机验收 | 来源 `2fcb180` 的离线 HTML 桌面/手机渲染与 macOS 隔离根迁移检查已保存；原件保留，不改标为新候选证据 |
 
-后续源码或发行物变化必须建立新候选；最终清单与安装结果随 Actions artifact 保留，Release 记录其准确来源。
+后续源码或发行物变化应建立新候选；最终清单与安装结果随 Actions artifact 保留，Release 记录其准确来源。
 Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能仍未验证。
 
 ## 本轮：提速、轻量、去冗余、减过度门禁
@@ -114,7 +114,7 @@ Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能�
   [ADR 045](decisions/045-report-content-refs.md) 的报告 v8 内容引用已实现；旧事件可读，旧报告拒绝。
 - [ADR 046](decisions/046-single-implementation-identity.md) 的唯一执行身份门与
   [ADR 047](decisions/047-rerun-recorded-comparability.md) 的重跑/比较分工已实现；
-  rerun 必须更换服务进程，身份差异取消比较资格。
+  rerun 应更换服务进程，身份差异取消比较资格。
 - [CLI 表](cli-surface.md#规范语法与兼容入口)中的旧命令名和参数别名已删除，帮助与回归同步。
 
 最终全量软件回归 **4741 passed / 53 skipped**；跳过项为平台限制或显式启用的原生检查。

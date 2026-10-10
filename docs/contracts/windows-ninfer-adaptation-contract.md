@@ -38,7 +38,7 @@ engine-fit 诊断有独立契约，不通过本适配器扩大平台或引擎范
 | `model.component_ledger_path` / `component_ledger_sha256` | 原生 NInfer 必需，绑定容器 artifact ID、模型 SHA 和组件目录 SHA |
 
 清单中恰一个 model、engine、template；原生还恰一个 component_ledger，其他均为 library。
-库清单必须与 `runtime_library_manifest` 的文件名→SHA 精确一致，声明库须在进程中实际加载，
+库清单应与 `runtime_library_manifest` 的文件名→SHA 精确一致，声明库须在进程中实际加载，
 引擎目录里未绑定的已加载 DLL 拒绝。进程使用 lab 观测接口 同句柄 FILETIME、argv/cwd/exe、
 同账户和唯一 loopback listener 核验；每次请求前重验 native file stamp。未绑定的
 CUDA 环境覆盖与声明不符时拒绝；身份面的白名单只含 `CUDA_VISIBLE_DEVICES`、
@@ -162,7 +162,7 @@ lab 观测接口 identity 的五项 capability 均须为 true；不能据布尔�
   头为 X-Lab-Request-ID/X-Lab-Instance-ID。实例和 ID 在发送前冻结到 request snapshot。
 - 普通响应和每个 SSE JSON 帧使用 lab 观测接口 GenerationDecoder；完整 finish+DONE 后仍读取至 EOF，
   拒绝终态后事件。解析/HTTP/超时异常发送一次请求专属 cancel，不隐式重试生成；
-  取消失败保留 pending ID，排空仍必须读取请求状态和全服务生命周期。正式请求失败后停止余项。
+  取消失败保留 pending ID，排空仍应读取请求状态和全服务生命周期。正式请求失败后停止余项。
 
 `lab_wire` 事件保存经凭据脱敏的 UTF-8 原响应文本及引擎请求/实例 ID；有效 UTF-8 的字节
 可由文本精确重建，原 chunk 边界不作为 token 事件。`lab_usage` 保存四项 usage 和缺测原因。

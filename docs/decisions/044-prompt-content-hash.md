@@ -28,6 +28,6 @@ warmup 和 probe 没有 case prompt，也以各自的快照为准。
 
 ## 后果
 
-只读 `events.jsonl` 看不到 prompt 全文，必须打开对应请求快照。
+只读 `events.jsonl` 看不到 prompt 全文，应打开对应请求快照。
 快照和事件哈希不一致时，核验失败。
 旧运行保持原样。新源码不继承旧事件体积下的测量资格。

@@ -16,7 +16,7 @@ InferYard 只支持[格式矩阵](../contracts/inferyard-current-format.md#格�
 题包嵌入审核证明的验证是当前输入依赖，保留最小验证代码，删除生成旧格式迁移包的入口。
 移除读取支持不授权重评分、重签审核、补造身份或改变性能资格。
 
-锁方案采用已批准的“一次性显式迁移 → 固定旧入口退休 → 新工具独立 lock/state”，
+锁方案采用已批准的「一次性显式迁移 → 固定旧入口退休 → 新工具独立 lock/state」，
 不把永久持有旧锁和 dirty 镜像冻结为结论。迁移仅接受已核验 clean 状态；旧锁占用、dirty、
 损坏或不可读均拒绝，不代替旧工具恢复、不杀服务、不清空 dirty。
 旧状态原字节及摘要先留存，经 pending 状态完成所有旧入口退休后，才提交新 ready 状态。
@@ -34,7 +34,7 @@ InferYard 只支持[格式矩阵](../contracts/inferyard-current-format.md#格�
 | [ADR 035](035-purpose-specific-admission.md) | 旧 comparison/report 按版本重建 | 描述与资格分开、环境准入、评分分母、逐题审核和服务排空 |
 | [ADR 036](036-scoped-measurement-cost.md) | 旧比较/报告重算、旧派生请求副本专用通路、仅为旧资产定义而设的回退 | 职责身份、全源码摘要、总开销适用域、仍由 plan.v1 writer 使用的全目录模型身份 |
 | [ADR 037](037-offline-evidence-reading.md) | report v1–v6、comparison v1–v3、engine-fit manifest.v1 的旧读取/重渲染规则 | 原始产物 verify、请求前 checkpoint、坏 seal 不降格、来源映射及携带包路径边界 |
-| [AGENTS](../../AGENTS.md) 的文档与契约、执行与证据、交付条款 | 必须提供旧证据迁移、必须保留历史报告兼容模板、旧兼容成功路径测试 | 主机互斥、dirty、身份、取消排空、题包审核资料、拒绝路径测试及文件所有权 |
+| [AGENTS](../../AGENTS.md) 的文档与契约、执行与证据、交付条款 | 应提供旧证据迁移、应保留历史报告兼容模板、旧兼容成功路径测试 | 主机互斥、dirty、身份、取消排空、题包审核资料、拒绝路径测试及文件所有权 |
 
 [ADR 009](009-native-observer.md)、[010](010-observer-benchmark-adaptation.md) 的原生观测和只读关联继续有效；
 其主题契约中 observer.v1 的兼容读取由矩阵收窄为 v2。

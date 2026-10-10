@@ -28,7 +28,7 @@
 | 原决策或规则 | 被取代的承诺 | 继续有效 |
 | --- | --- | --- |
 | [ADR 038](038-inferyard-current-format.md) 锁迁移方案 | 显式迁移事务、退休标记、维护凭据、旧锁退休证明、`host-state migrate` 命令 | 格式支持矩阵、拒绝语义、安装结果 v3、主机互斥与 dirty 恢复本身 |
-| [当前格式契约](../contracts/inferyard-current-format.md) 锁迁移章节 | 首次部署必须显式迁移、旧位置退休事务与中断幂等规则 | 新锁固定路径、state schema 1、dirty 恢复规则 |
+| [当前格式契约](../contracts/inferyard-current-format.md) 锁迁移章节 | 首次部署应显式迁移、旧位置退休事务与中断幂等规则 | 新锁固定路径、state schema 1、dirty 恢复规则 |
 
 ## 替代方案与风险
 

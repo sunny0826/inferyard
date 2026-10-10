@@ -83,7 +83,7 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 | `runtime prepare` | `--profile NAME --archive FILE --out NEW` | `--runtime-archive FILE`，仅 CUDA 必填，CPU 禁止 | 仅 Windows x64；`engine/`、CUDA 的 `runtime/`、`engine/engine-sha256.json`、`runtime-receipt.json` |
 | `config assets` | `--model FILE --engine FILE --out NEW` | 无 | 仅 Linux x64；`chat-template.jinja`、`engine-sha256.json`、`assets.json` |
 | `config create` | `--preflight FILE --bundle FILE --results DIR --out NEW`；另按平台指定下述参数 | `--port INT` 默认 48857，范围 1..65535；`--model-repo TEXT` 默认 `local`；`--model-revision TEXT` 默认所选模型 SHA256，显式文本须非空 | 仅 macOS arm64 / Windows x64；`candidate.toml`、`chat-template.jinja`、`preparation.json`；macOS 另有 `engine-sha256.json`，Windows 引用回执目录清单 |
-| `config bind` | `--candidate FILE --pid INT --endpoint URL --out NEW` | 无；PID 必须为正整数 | 三平台及既有可绑定适配器；`config.toml`、`preparation.json` |
+| `config bind` | `--candidate FILE --pid INT --endpoint URL --out NEW` | 无；PID 应为正整数 | 三平台及既有可绑定适配器；`config.toml`、`preparation.json` |
 
 `runtime prepare` 的 NAME 只有 `prism-b10743-adfffbe-win-cpu-x64` 和
 `prism-b10743-adfffbe-win-cuda-12.4-x64`，可信归档、清单和回执字段见
@@ -105,15 +105,15 @@ Windows 必填 `--runtime-receipt FILE` 且禁止 `--engine`。两者不能同�
 2. `config assets` 只读现有单 GGUF、引擎及引擎同目录的 `*.so` / `*.so.*`，
    使用现有 GGUF 解析器与 SHA256 能力，不执行引擎、`ldd` 或版本命令。
    模板按 `tokenizer.chat_template`、再按 `tokenizer.chat_template.default` 选取；
-   必须是非空字符串。写入恰好 `template.encode("utf-8")`，不改换行、不加 BOM 或末尾换行。
-   写后文件 SHA256 必须等于该字节串 SHA256；模型和引擎不复制。
+   应是非空字符串。写入恰好 `template.encode("utf-8")`，不改换行、不加 BOM 或末尾换行。
+   写后文件 SHA256 应等于该字节串 SHA256；模型和引擎不复制。
    清单为 `{文件基名: SHA256}`，包含引擎和所发现的同目录共享库；库链接只允许解析到
    同引擎目录内的普通文件，按原基名记录，拒绝悬空/越界链接和名称冲突。
    清单是本地资产清点，不证明服务实际加载集合；后续 run 的文件/进程核验保持原规则。
    不生成自动预算或完整 Linux 候选，不借用历史模板。
 3. `config create` 接受 `device-check --out` 产生的 `device-preflight.json`，
    或 `device-check --json` 的完整 CommandResult（只从其 `details` 取同一预检对象）。
-   必须是当前本机平台、`recommendation.status = recommended` 且 selected 非空；
+   应是当前本机平台、`recommendation.status = recommended` 且 selected 非空；
    所选模型、mode、线程、上下文、GPU 索引及内存/磁盘阈值由该推荐冻结，不临时降低预算。
    macOS 保留现有实时复查：重新检查模型、资源、mode 和 AC 电源，变化则要求重新 device-check；
    Windows 保留既有推荐生成规则并严格匹配 CPU/CUDA profile，不把估算称为实跑验证。
@@ -187,10 +187,10 @@ CLI/application 只负责参数、分派、结果和错误映射；资源、资�
 ### 新目录、失败与退出码
 
 输入校验通过后排他创建新目录；已存在的文件、空目录、符号链接（包括悬空链接）一律拒绝。
-父目录必须已存在且可写，不悄悄创建多级父目录；输入不能位于本次新输出内部。
+父目录应已存在且可写，不悄悄创建多级父目录；输入不能位于本次新输出内部。
 写文件使用排他创建，拒绝输出树中的链接/Windows reparse point，不覆盖并发创建的对象。
 检查失败不动输入或旧输出；创建目录之后的 IO 失败/取消可保留本次不完整目录，
-不写成功回执，重试必须换新目录。元数据最后写出；完成前复核文件、配置和模板字节。
+不写成功回执，重试应换新目录。元数据最后写出；完成前复核文件、配置和模板字节。
 
 | 退出码 / status | limitations 固定原因与边界 |
 | --- | --- |

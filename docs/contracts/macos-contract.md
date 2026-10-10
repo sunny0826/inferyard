@@ -32,7 +32,7 @@ v3 现有样本原样可读，新 collector 使用同一计量结构但独立来
 
 ## 原生温度与完整开销
 
-文中的“一轮测试”表示完整执行一次冻结任务；四轮对照依次关闭、开启、开启、关闭被比较的采集。ON / OFF 分别表示开启 / 关闭采集，原始协议字段 `arm` 保留。
+文中的「一轮测试」表示完整执行一次冻结任务；四轮对照依次关闭、开启、开启、关闭被比较的采集。ON / OFF 分别表示开启 / 关闭采集，原始协议字段 `arm` 保留。
 
 依据：[ADR 006](../decisions/006-macos-performance-prerequisites.md)。活动契约保持 v3；新增可选结构与独立来源，旧原件不改。
 
@@ -40,7 +40,7 @@ v3 现有样本原样可读，新 collector 使用同一计量结构但独立来
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 原生 SMC | `SMC.keys()` / `info(key)` / `read(key)`；只读 AppleSMC，80 字节 ABI，完整返回状态检查，注册表身份绑定，句柄回收                                           |
 | 温度     | `MacSensors.metadata()` / `collect(phase, request_id)`；`macos-smc.v1`、`smc_key_reported`、摄氏度、原始 float；未知键类型、非有限值、源变化为缺测         |
-| 电源     | `macos_power_policy` 字段不变。新采集 `source=macos.iokit.power-policy.v1`；旧证据和已冻结配置仍接受 `macos.pmset.power-policy.v1`。同一次运行的冻结条件与观测必须是同一个 source。读失败为缺测，不回退 `pmset`，不沿用上一笔 |
+| 电源     | `macos_power_policy` 字段不变。新采集 `source=macos.iokit.power-policy.v1`；旧证据和已冻结配置仍接受 `macos.pmset.power-policy.v1`。同一次运行的冻结条件与观测应是同一个 source。读失败为缺测，不回退 `pmset`，不沿用上一笔 |
 | 环境资格 | 按保存的平台选择身份字段和电源验证；Darwin 应有完整且稳定的原生策略及冻结绑定，Linux CPUFreq 验证不变；缺源不豁免                                          |
 | 正式通路 | 固定单槽直接复用 `run_trial` 的模板/token/有效参数/空闲验证与实际适配器；不扩大并发或原生工具支持                                                          |
 | 性能证据 | 旧比较的总观察 live 包须通过离线封存重算，绑定同源码、配置、题包、case 顺序与同 boot/早于目标；当前总开销分级见职责身份契约                                        |
@@ -108,6 +108,6 @@ macOS 上，开跑快照已有 `cpu_model` 时周期行不读 brand string；已
 
 不改 CLI / 应用共享类型、v3、题包 / 评分、采样间隔、环境边界、SafetyGuard、独立 guardian、身份视图、锁 / dirty、取消 / 排空、flush/fsync 或严格默认阈值。`device-check` 的读取不在这次更换内。Schema 同时接受新旧电源来源和换页来源；变更用生成器同步并保留 ID，不手改生成 JSON。
 
-同一次运行里来源必须相同。已经冻成 `macos.pmset.power-policy.v1` 的条件与新观测对不上，需要重新冻结。不承诺完整开销一定达到冻结阈值。旧证据保持原字节，读取不调用本机后端重新解释它；完整开销、输出工作量和资格另冻验收。
+同一次运行里来源应相同。已经冻成 `macos.pmset.power-policy.v1` 的条件与新观测对不上，需要重新冻结。不承诺完整开销一定达到冻结阈值。旧证据保持原字节，读取不调用本机后端重新解释它；完整开销、输出工作量和资格另冻验收。
 
 当前 comparison v3/v4 的总开销与可选增量诊断、跨目标复用条件见[职责身份契约](scoped-measurement-contract.md)。
