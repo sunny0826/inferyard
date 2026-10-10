@@ -126,7 +126,7 @@ def test_both_writers_project_each_fresh_read_without_mutating_snapshot(monkeypa
     )
     sampler.collect = lambda *args: []
 
-    def read():
+    def read(**_kwargs):
         reads.append(clock[0])
         return {**snapshot, "read_finished_ns": int(clock[0] * 1e9) + 2}
 

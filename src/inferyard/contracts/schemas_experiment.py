@@ -184,7 +184,16 @@ RUN = obj(
     }
 )
 
-RUN["properties"]["implementation_identity"] = IMPLEMENTATION_IDENTITY
+RUN = {
+    "oneOf": [
+        RUN,  # Original schema3 records keep their saved whole-source identity.
+        obj(
+            {**RUN["properties"], "implementation_identity": IMPLEMENTATION_IDENTITY},
+            [key for key in RUN["required"] if key != "tool_source_sha256"]
+            + ["implementation_identity"],
+        ),
+    ]
+}
 
 METRIC_DEFINITION = obj(
     {

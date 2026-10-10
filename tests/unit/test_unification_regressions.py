@@ -57,7 +57,7 @@ def test_report_preserves_escaped_prompt_as_well_as_answer(tmp_path):
     root = fixture_run(tmp_path / "runs")
     out = tmp_path / "report"
     index = write_report([root], out)
-    prompt = index["runs"][0]["requests"][0]["prompt"]
+    prompt = index["contents"][index["runs"][0]["requests"][0]["prompt_ref"]]
     assert "<script>" in prompt
     html = Path(out / "report.html").read_text()
     assert "<script>alert" not in html

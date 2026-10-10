@@ -549,7 +549,8 @@
             "source": {
               "type": "string",
               "enum": [
-                "macos.pmset.power-policy.v1"
+                "macos.pmset.power-policy.v1",
+                "macos.iokit.power-policy.v1"
               ]
             },
             "ac_online": {

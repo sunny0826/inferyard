@@ -1,6 +1,6 @@
 # ADR 008：macOS 环境查询与同次换页读取
 
-状态：Accepted
+状态：Accepted。换页来源和环境每次全量新读由 [ADR 042](042-environment-collection-slim.md) 修订。同次换页共用一个读取窗口、失败不沿用旧值，这两条仍有效。
 
 ## 决策
 

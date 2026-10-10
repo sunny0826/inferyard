@@ -7,7 +7,7 @@ inferyard report --runs results/RUN_ID --out reports/NEW_REPORT
 inferyard verify --path reports/NEW_REPORT
 ```
 
-用浏览器打开 `reports/NEW_REPORT/report.html`。样式、脚本和图表全部内联，单独复制这个 HTML 也可断网阅读和检索；核验与重建仍需要 `index.json` 和原始来源目录，新 v7 还需要 `artifact-manifest.json`。报告包含私有路径、原始输出等本机证据，公开发布使用已有 `public` 命令流程。
+用浏览器打开 `reports/NEW_REPORT/report.html`。样式、脚本和图表全部内联，单独复制这个 HTML 也可断网阅读和检索；核验与重建仍需要 `index.json` 和原始来源目录，当前报告还需要 `artifact-manifest.json`。报告包含私有路径、原始输出等本机证据，公开发布使用已有 `public` 命令流程。
 
 新报告按相对路径引用来源，一起移动目录树后可直接核验。来源单独移动时，使用
 `verify --path REPORT --source-root OLD=NEW` 显式映射；保存文件不变。
@@ -28,4 +28,4 @@ inferyard verify --path reports/NEW_REPORT
 
 ## 报告格式
 
-当前新报告为 `report_format_version = 7`，核心仍为 `schema_version = 3`。仅接受 v7；旧报告 v1–v6 和核心旧 v1/v2 明确拒绝，原字节留在原项目。字段来源及限制见[报告契约](contracts/report-contract.md)，封存与核验见[离线读取契约](contracts/offline-reading-contract.md)，历史设计依据见 [ADR 011](decisions/011-report-dashboard.md)。
+当前新报告为 `report_format_version = 8`，核心仍为 `schema_version = 3`。仅接受 v8；旧报告 v1–v7 和核心旧 v1/v2 明确拒绝，原字节留在原项目。同一段题面、输出或参考答案在报告内只存一次，页面按该份文本显示。字段来源及限制见[报告契约](contracts/report-contract.md)，封存与核验见[离线读取契约](contracts/offline-reading-contract.md)，历史设计依据见 [ADR 011](decisions/011-report-dashboard.md) 与 [ADR 045](decisions/045-report-content-refs.md)。

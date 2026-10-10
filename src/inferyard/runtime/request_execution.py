@@ -7,7 +7,7 @@ from inferyard.adapters.requests import request_body
 from inferyard.adapters.response_state import ResponseState
 from inferyard.analysis.scoring import ScoringContext, score_case
 from inferyard.contracts.validation import validate_document
-from inferyard.evidence.request_snapshots import snapshot_filename
+from inferyard.evidence.request_snapshots import messages_sha256, snapshot_filename
 from inferyard.evidence.storage import EvidenceError
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.service_observation import clean_observed, native, observe_service
@@ -113,7 +113,9 @@ class TrialRequests:
                     "attempt": 1,
                     "body": {
                         "model": body["model"],
-                        "messages": body["messages"],
+                        "messages_sha256": messages_sha256(
+                            self.store.redactor.clean(body["messages"])
+                        ),
                         "stream": stream,
                         "generation": self.config["generation"],
                     },

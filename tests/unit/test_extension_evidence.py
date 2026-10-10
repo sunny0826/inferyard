@@ -22,14 +22,19 @@ def test_sealed_extension_replay_rejects_raw_and_derived_tampering(tmp_path):
 def test_cli_fixture_reports_never_inherit_live_qualification(tmp_path, capsys):
     source = tmp_path / "input.json"
     source.write_text(json.dumps({"spec": spec(), "rows": rows(), "evidence_kind": "fixture"}))
-    assert main(["extension-replay", "--spec", str(source), "--out", str(tmp_path / "out")]) == 0
+    assert (
+        main(["extension", "replay", "--packet", str(source), "--out", str(tmp_path / "out")]) == 0
+    )
     data = json.loads(capsys.readouterr().out)
     assert not data["details"]["hardware_qualified"]
-    assert main(["extension-check", "--run", data["evidence_dir"]]) == 0
+    assert main(["verify", "--path", data["evidence_dir"]]) == 0
     checked = json.loads(capsys.readouterr().out)
-    assert checked["details"] == data["details"]
+    assert checked["details"] == {**data["details"], "artifact_type": "extension"}
     source.write_text(json.dumps({"spec": spec(), "rows": rows(), "evidence_kind": "live"}))
-    assert main(["extension-replay", "--spec", str(source), "--out", str(tmp_path / "forged")]) != 0
+    assert (
+        main(["extension", "replay", "--packet", str(source), "--out", str(tmp_path / "forged")])
+        != 0
+    )
     capsys.readouterr()
     assert not (tmp_path / "forged").exists()
 
@@ -48,7 +53,8 @@ def test_offline_freeze_binds_config_corpus_and_installed_source(tmp_path, confi
     assert (
         main(
             [
-                "extension-freeze",
+                "extension",
+                "freeze",
                 "--spec",
                 str(path),
                 "--config",

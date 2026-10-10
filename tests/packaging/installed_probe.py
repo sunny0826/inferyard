@@ -41,7 +41,7 @@ def main():
     assert verify_report(current)["verified"]
     assert verify_report(current, options=VerificationOptions(rerender=True))["verified"]
     rejected = []
-    for version in range(1, 7):
+    for version in range(1, 8):
         out = args.out / f"unsupported-report-v{version}"
         out.mkdir()
         (out / "index.json").write_text(
@@ -57,7 +57,7 @@ def main():
         assert result.returncode == 2, (version, result.returncode)
         assert "unsupported_format" in json.loads(result.stdout)["limitations"]
         rejected.append(version)
-    templates = {"7": template_hash(7)}
+    templates = {"8": template_hash(8)}
     print(
         json.dumps(
             {
@@ -66,7 +66,7 @@ def main():
                 "tool_source_hash": tool_source_hash(),
                 "scorer_hash": scorer_hash(),
                 "resource_files": len(resources),
-                "current_report_formats_verified": [7],
+                "current_report_formats_verified": [8],
                 "unsupported_report_formats_rejected": rejected,
                 "template_hashes": templates,
             }

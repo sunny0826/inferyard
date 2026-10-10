@@ -69,7 +69,17 @@ def test_offline_command_routes_without_service(tmp_path, monkeypatch, capsys):
             "limitations": ["four_runs_required"],
         },
     )
-    assert main(["overhead-check", "--run", str(tmp_path)]) == 3
+    (tmp_path / "result.json").write_text(
+        json.dumps(
+            {
+                "protocol_sha256": "a" * 64,
+                "status": "incomplete",
+                "passed": False,
+                "limitations": [],
+            }
+        )
+    )
+    assert main(["verify", "--path", str(tmp_path)]) == 3
     result = json.loads(capsys.readouterr().out)
     assert result["completeness"] == "incomplete"
     assert result["details"]["passed"] is False
@@ -88,7 +98,17 @@ def test_engine_rate_refusal_is_not_hidden_by_e2e_pass(tmp_path, monkeypatch):
             "engine_rate_assessments": {"L06": {"passed": True}, "L07": {"passed": False}},
         },
     )
-    assert main(["overhead-check", "--run", str(tmp_path)]) == 3
+    (tmp_path / "result.json").write_text(
+        json.dumps(
+            {
+                "protocol_sha256": "a" * 64,
+                "status": "incomplete",
+                "passed": False,
+                "limitations": [],
+            }
+        )
+    )
+    assert main(["verify", "--path", str(tmp_path)]) == 3
 
 
 def test_block_p95_missing_is_not_hidden_by_other_statistics(tmp_path, monkeypatch):
@@ -107,4 +127,14 @@ def test_block_p95_missing_is_not_hidden_by_other_statistics(tmp_path, monkeypat
             },
         },
     )
-    assert main(["overhead-check", "--run", str(tmp_path)]) == 3
+    (tmp_path / "result.json").write_text(
+        json.dumps(
+            {
+                "protocol_sha256": "a" * 64,
+                "status": "incomplete",
+                "passed": False,
+                "limitations": [],
+            }
+        )
+    )
+    assert main(["verify", "--path", str(tmp_path)]) == 3

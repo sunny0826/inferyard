@@ -1,7 +1,6 @@
 """Small, bounded macOS native queries shared by identity and resource collectors."""
 
 import math
-import re
 import subprocess
 import uuid
 
@@ -95,21 +94,96 @@ def microseconds(value):
     return round(value * 1_000_000)
 
 
+SWAP_IN_SOURCE = "host_statistics64:swapins"
+SWAP_OUT_SOURCE = "host_statistics64:swapouts"
+_HOST_VM_INFO64 = 4
+
+
+def _host_vm_swap():
+    """One host_statistics64 read of Swapins/Swapouts. Pageins are not swap."""
+    import ctypes
+
+    class _VmStatistics64(ctypes.Structure):
+        _fields_ = [
+            ("free_count", ctypes.c_uint),
+            ("active_count", ctypes.c_uint),
+            ("inactive_count", ctypes.c_uint),
+            ("wire_count", ctypes.c_uint),
+            ("zero_fill_count", ctypes.c_uint64),
+            ("reactivations", ctypes.c_uint64),
+            ("pageins", ctypes.c_uint64),
+            ("pageouts", ctypes.c_uint64),
+            ("faults", ctypes.c_uint64),
+            ("cow_faults", ctypes.c_uint64),
+            ("lookups", ctypes.c_uint64),
+            ("hits", ctypes.c_uint64),
+            ("purges", ctypes.c_uint64),
+            ("purgeable_count", ctypes.c_uint),
+            ("speculative_count", ctypes.c_uint),
+            ("decompressions", ctypes.c_uint64),
+            ("compressions", ctypes.c_uint64),
+            ("swapins", ctypes.c_uint64),
+            ("swapouts", ctypes.c_uint64),
+            ("compressor_page_count", ctypes.c_uint),
+            ("throttled_count", ctypes.c_uint),
+            ("external_page_count", ctypes.c_uint),
+            ("internal_page_count", ctypes.c_uint),
+            ("total_uncompressed_pages_in_compressor", ctypes.c_uint64),
+        ]
+
+    libc = ctypes.CDLL(None)
+    host = libc.mach_host_self
+    host.argtypes = []
+    host.restype = ctypes.c_uint
+    stats_call = libc.host_statistics64
+    stats_call.argtypes = [
+        ctypes.c_uint,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_uint),
+    ]
+    stats_call.restype = ctypes.c_int
+    page_call = libc.host_page_size
+    page_call.argtypes = [ctypes.c_uint, ctypes.POINTER(ctypes.c_size_t)]
+    page_call.restype = ctypes.c_int
+    host_port = host()
+    stats = _VmStatistics64()
+    count = ctypes.c_uint(ctypes.sizeof(stats) // ctypes.sizeof(ctypes.c_uint))
+    try:
+        if stats_call(host_port, _HOST_VM_INFO64, ctypes.byref(stats), ctypes.byref(count)) != 0:
+            return None, None, None
+        needed = (_VmStatistics64.swapouts.offset + ctypes.sizeof(ctypes.c_uint64)) // 4
+        if count.value < needed:
+            return None, None, None
+        page = ctypes.c_size_t()
+        if page_call(host_port, ctypes.byref(page)) != 0 or page.value <= 0:
+            return None, None, None
+        return int(page.value), int(stats.swapins), int(stats.swapouts)
+    finally:
+        _release_host_port(libc, host_port)
+
+
+def _release_host_port(libc, host_port):
+    import ctypes
+
+    task = ctypes.c_uint.in_dll(libc, "mach_task_self_").value
+    release = libc.mach_port_deallocate
+    release.argtypes = [ctypes.c_uint, ctypes.c_uint]
+    release.restype = ctypes.c_int
+    release(task, host_port)
+
+
 def swap_snapshot():
-    sources = {
-        "pswpin": "vm_stat:Swapins",
-        "pswpout": "vm_stat:Swapouts",
-    }
+    sources = {"pswpin": SWAP_IN_SOURCE, "pswpout": SWAP_OUT_SOURCE}
     result = {"pswpin": None, "pswpout": None, "page_size_bytes": None, "source": sources}
-    # psutil 7.2 Darwin sin/sout expose pageins/pageouts, including file paging.
-    # Only vm_stat's separate Swapins/Swapouts counters represent actual swap.
-    text = query(["/usr/bin/vm_stat"])
-    header = re.search(r"page size of ([1-9][0-9]*) bytes", text or "")
-    if not header:
+    try:
+        page_size, swapins, swapouts = _host_vm_swap()
+    except AttributeError, OSError, ValueError:
         return result
-    result["page_size_bytes"] = int(header[1])
-    for key, label in (("pswpin", "Swapins"), ("pswpout", "Swapouts")):
-        values = re.findall(rf"^{label}:\s*([0-9]+)\.\s*$", text, re.MULTILINE)
-        if len(values) == 1:
-            result[key] = int(values[0])
+    if type(page_size) is not int or page_size <= 0:
+        return result
+    result["page_size_bytes"] = page_size
+    for key, value in (("pswpin", swapins), ("pswpout", swapouts)):
+        if type(value) is int and value >= 0:
+            result[key] = value
     return result

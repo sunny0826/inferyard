@@ -34,9 +34,7 @@ def add_commands(commands):
         "--kind", dest="catalogue_kind", choices=("methods", "metrics", "components"), required=True
     )
     plan = commands.add_parser("plan", help="preview or freeze an offline experiment plan")
-    experiment = plan.add_mutually_exclusive_group(required=True)
-    experiment.add_argument("--experiment", dest="experiment", type=Path)
-    experiment.add_argument("--config", dest="experiment", type=Path, help="compatibility alias")
+    plan.add_argument("--experiment", type=Path, required=True)
     output = plan.add_mutually_exclusive_group(required=True)
     output.add_argument("--dry-run", action="store_true")
     output.add_argument("--out", type=Path)

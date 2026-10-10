@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
+from markupsafe import Markup, escape
 
 from inferyard.evidence.storage import EvidenceError
 
@@ -37,6 +38,7 @@ def _environment():
         hashlib.sha256(script.encode()).digest()
     ).decode("ascii")
     environment.filters.update(
+        content_text=lambda value: escape(value).replace("\r", Markup("&#13;")),
         pretty=lambda value: json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False),
         percent=lambda value: "—" if value is None else f"{value * 100:.2f}%",
         seconds=lambda value: "—" if value is None else f"{value / 1e9:.4f} 秒",
@@ -63,6 +65,9 @@ def _environment():
 
 def render_report_html(environment, name, index):
     """Render a report with the CSP hash of the script from the same template version."""
+    from inferyard.reporting.report_content import validate_contents
+
+    validate_contents(index)
     prefix = name.rsplit("/", 1)[0] + "/" if "/" in name else ""
     script = environment.get_template(prefix + "report_script.html").render()
     digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode("ascii")

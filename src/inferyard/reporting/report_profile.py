@@ -128,10 +128,18 @@ def profile_view(data):
         "endpoint_identity": {
             key: config["endpoint"].get(key) for key in ("server_pid", "process_start_ticks")
         },
-        "measurement_source_sha256": data["run"]["tool_source_sha256"],
+        "measurement_source_sha256": measurement_source(data["run"]),
         "identity_verification": identity.get("verification", "unknown"),
         "limitations": [
             "frozen_observations_not_current_hardware",
             "model_size_is_file_bytes_not_runtime_memory",
         ],
     }
+
+
+def measurement_source(run):
+    if "implementation_identity" in run:
+        from inferyard.implementation_identity import role_identity
+
+        return role_identity(run["implementation_identity"], "measurement")
+    return run.get("tool_source_sha256")

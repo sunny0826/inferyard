@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-from inferyard.cli.commands import compatibility_parser
-
 
 def add_commands(commands):
     overhead = commands.add_parser(
@@ -28,6 +26,3 @@ def add_commands(commands):
         action="store_true",
         help="use outside-request guards in both arms; disable all in-request sampling in off arms",
     )
-    replay = compatibility_parser(commands, "overhead-check", "recompute a sealed ABBA preflight")
-    replay.add_argument("--run", type=Path, required=True)
-    replay.add_argument("--target-run", type=Path)

@@ -51,7 +51,7 @@ def test_report_probe_preserves_unicode_with_simulated_cp1252_default(tmp_path, 
         assert runs == [fixture]
         out.mkdir()
         (out / "index.json").write_bytes(
-            json.dumps({"report_format_version": 7, "title": "中文🧪"}, ensure_ascii=False).encode()
+            json.dumps({"report_format_version": 8, "title": "中文🧪"}, ensure_ascii=False).encode()
         )
         (out / "report.html").write_bytes("<h1>中文🧪</h1>".encode())
 
@@ -80,9 +80,9 @@ def test_report_probe_preserves_unicode_with_simulated_cp1252_default(tmp_path, 
     report = tmp_path / "out/current-report"
     assert "中文🧪" in (report / "report.html").read_bytes().decode("utf-8")
     index = json.loads((report / "index.json").read_bytes())
-    assert index["report_format_version"] == 7
+    assert index["report_format_version"] == 8
     assert "中文🧪" in json.dumps(index, ensure_ascii=False)
-    for version in range(1, 7):
+    for version in range(1, 8):
         old = tmp_path / f"out/unsupported-report-v{version}"
         assert not (old / "report.html").exists()
         assert json.loads((old / "index.json").read_bytes())["report_format_version"] == version

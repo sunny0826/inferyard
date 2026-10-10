@@ -75,7 +75,7 @@ def test_diagnostic_svg_report_and_offline_verification(scenario, tmp_path, answ
     call_count = len(calls)
     out = tmp_path / "svg-report"
     index = write_report([root], out)
-    assert index["report_format_version"] == 7
+    assert index["report_format_version"] == 8
     assert index["runs"][0]["requests"][0]["svg_view"]["status"] == status
     (item,) = index["runs"][0]["svg_gallery"]
     assert item["case_id"] == "svg-pelican-01"
@@ -90,8 +90,10 @@ def test_diagnostic_svg_report_and_offline_verification(scenario, tmp_path, answ
     assert f"script-src 'sha256-{digest}'" in html
     assert "&lt;svg" in html and "模型原始输出 / SVG 源码" in html
     if status == "ok":
-        assert SVG in html
-        assert html.count(SVG) == 2  # gallery showcase and case detail render the same bytes
+        assert SVG not in html
+        assert html.count("&lt;svg xmlns=") == 1
+        assert html.count("data-svg-ref=") == 2
+        assert index["contents"][item["content_ref"]] == SVG
     else:
         assert '<div class="svg-preview">' not in html
         assert "未能提取可渲染的 SVG" in html
@@ -127,7 +129,7 @@ def test_current_non_svg_gallery_empty_and_old_renderers_unavailable(tmp_path):
     index = write_report([root], out)
     assert index["runs"][0]["svg_gallery"] == []
     assert verify_report(out)["verified"]
-    for version in range(1, 7):
+    for version in range(1, 8):
         with pytest.raises(UnsupportedFormat):
             build_index([root], out, format_version=version)
         with pytest.raises(UnsupportedFormat):

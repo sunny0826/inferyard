@@ -15,7 +15,7 @@ from inferyard.platforms.identity import (
     PreflightError,
     memory_available,
     process_start_ticks,
-    resolve_loopback_origin,
+    service_origin,
     verify_listener,
 )
 
@@ -318,7 +318,7 @@ def bind_service(
     )
 
     try:
-        origin, address, port = resolve_loopback_origin(url)
+        origin, address, port = service_origin(url)
         directory = proc_root / str(pid)
         if directory.stat().st_uid != os.getuid():
             raise PreflightError("engine_fit_service_user_mismatch")

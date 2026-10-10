@@ -105,6 +105,12 @@ class Sampler:
         self.request_id = None
         self.stopped = False
         self.failure = None
+        self.environment_constants = None
+
+    def use_start_environment(self, snapshot):
+        from inferyard.platforms.environment_constants import capture_constants
+
+        self.environment_constants = capture_constants(snapshot)
 
     @property
     def stopped(self):
@@ -160,7 +166,9 @@ class Sampler:
                     observation = {
                         "monotonic_ns": time.monotonic_ns(),
                         "phase": self.phase,
-                        "snapshot": periodic_environment(environment_snapshot()),
+                        "snapshot": periodic_environment(
+                            environment_snapshot(constants=self.environment_constants)
+                        ),
                     }
                     self.store.observation("environment.jsonl", observation)
                     environment_due = actual + 1

@@ -47,7 +47,7 @@ raise SystemExit(main(json.loads(sys.argv[1])))
     assert completed.returncode == 0, (completed.stdout, completed.stderr)
     assert completed.stderr == ""
     if arguments == ["--help"]:
-        assert "extension-run" in completed.stdout
+        assert "extension-run" not in completed.stdout
     else:
         assert isinstance(json.loads(completed.stdout), dict)
 
@@ -223,7 +223,7 @@ def test_public_load_config_hook_reaches_request_construction(monkeypatch, capsy
         return 2, CommandResult(request.command, "blocked")
 
     monkeypatch.setattr(cli, "load_config", load)
-    assert cli.main(["check", "--config", "synthetic-config"], handlers={"check": check}) == 2
+    assert cli.main(["probe", "--config", "synthetic-config"], handlers={"probe": check}) == 2
     assert paths == [Path("synthetic-config")]
     assert calls[0].config is loaded
     assert json.loads(capsys.readouterr().out)["status"] == "blocked"

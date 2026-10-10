@@ -18,6 +18,7 @@ from inferyard.config.plan_inputs import (
 )
 from inferyard.config.plan_math import plan_hash, workload_budget
 from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.contracts.validation_cache import command_validation
 from inferyard.evidence.formats import require_core, require_input
 from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes
 
@@ -164,6 +165,8 @@ def prepare_plan(source: Path):
 
 def write_plan(source: Path, destination: Path):
     plan, artifacts = prepare_plan(source)
+    with command_validation(enabled=False):
+        validate_document("plan", plan)
     if destination.resolve() == source.parent.resolve():
         raise EvidenceError("plan_output_overlaps_inputs")
     destination.mkdir(parents=True, exist_ok=False)

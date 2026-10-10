@@ -32,7 +32,7 @@ probe 仍发送普通和流式请求；正式题序与分母不随预热次数�
 及顶层 completeness 保留原执行状态。未封存为 partial/3、sealed=false、verified=false；
 坏 seal/坏 JSON 为 4，不能降格 partial。batch 逐 run 披露，计划尚未执行完不等于证据损坏。
 engine-fit 中断后以 plan.json、checkpoint.json 和 requests.json 只读取证，不自动续跑。
-新 report v7/comparison v4/engine-fit manifest v2 默认分开核验字节、来源与语义，
+新 report v8/comparison v4/engine-fit manifest v2 默认分开核验字节、来源与语义，
 `verify --rerender` 可选重渲染；`engine-fit verify` 也接受 --rerender。
 新普通报告/比较可用重复的 `--source-root OLD=NEW` 显式映射源根（相对参数按当前目录解析）；
 不修改保存文件、不搜索磁盘。旧 report/comparison 版本按 ADR038 拒绝。详见[离线读取契约](contracts/offline-reading-contract.md)。
@@ -206,7 +206,7 @@ CLI/application 只负责参数、分派、结果和错误映射；资源、资�
 `service_identity_unreadable` 两个固定原因；仍退出 2 / blocked，不创建输出目录。
 未知预检异常或包含额外文本的原因继续走原安全映射，不回显异常原文。
 JSON 重复键、NaN/Infinity、bool 冒充整数均拒绝。新准备动作不使用退出 3；
-已有执行、核验及脚本兼容入口的退出语义不改变。
+已有执行及核验入口的退出语义不改变。
 
 ## KVMem / NInfer 正式文本入口
 
@@ -229,7 +229,7 @@ manifest 与离线报告披露观测路径；原生路径不授予引擎内部�
 
 ## 规范语法与兼容入口
 
-| 规范语法                                              | 兼容语法                                         | 语义                               |
+| 规范语法                                              | 已删除的兼容语法                                 | 语义                               |
 | ----------------------------------------------------- | ------------------------------------------------ | ---------------------------------- |
 | `verify --path DIR`                                   | 八个 `*-check --run DIR`                         | 自动识别产物，调用专用验证器       |
 | `verify --path PUBLIC --config CFG`                   | `public-config-check --run PUBLIC --config CFG`  | 核验公开包与声明配置               |
@@ -245,11 +245,11 @@ manifest 与离线报告披露观测路径；原生路径不授予引擎内部�
 | `extension run --plan FILE --config CFG --out DIR`    | `extension-run --spec FILE`                      | 输入冻结扩展计划                   |
 | `extension replay --packet FILE --out DIR`            | `extension-replay --spec FILE`                   | 离线导入合成 packet                |
 
-同一输入的新旧参数不能同时提供。扩展 run/replay 在新旧命令中均接受规范参数与旧 `--spec`；freeze 使用 `--spec`。`resume --from-run` 只续测未执行部分，与整体重跑不同。
+表中的旧命令名和参数别名已删除，调用返回输入阻断；只接受规范语法。扩展 run/replay 分别使用 `--plan` / `--packet`；freeze 继续使用 `--spec`。`resume --from-run` 只续测未执行部分，与整体重跑不同。
 
 报告、评分、导出、公开包及冻结计划的 `--out` 要求新产物目录；新批量运行使用不存在或为空的 `--output-root`，续测绑定同一批次根目录。扩展 run/replay 的 `--out` 是输出根目录，其下创建新的封存子目录，stdout 的 `evidence_dir` 才是可核验的具体目录。
 
-兼容入口仍可直接查询帮助并调用：`check`、`overhead-check`、`repeat-check`、`rescore-check`、`export-check`、`public-check`、`public-config-check`、`report-check`、`compare-check`、`extension-check`、`public-package`、`public-plan`、`extension-freeze`、`extension-run`、`extension-replay`。结果保留调用入口名及对应语义。
+已删除的命令也不再提供帮助。八个 `*-check` 为 `overhead-check`、`repeat-check`、`rescore-check`、`export-check`、`public-check`、`report-check`、`compare-check`、`extension-check`；`public-config-check` 同样由表中的 `verify` 语法取代。
 
 ## verify 的核验范围
 
@@ -268,7 +268,7 @@ manifest 与离线报告披露观测路径；原生路径不授予引擎内部�
 
 核验只读，不发送模型请求，不授予当前测量或性能比较资格。报告、比较、重评分、导出和两类开销协议有不同输入与来源规则，不能因共享入口而合并语义。
 
-`report` 的[离线 HTML](reports.md)包含模型 / 机器档案、生成参数核验、分类成绩、独立来源资源曲线与逐题检索。新产物使用报告格式 v7，核心 schema 仍为 3；仅接受 v7；v1–v6 返回 unsupported_format/2，旧数据回原项目处理。
+`report` 的[离线 HTML](reports.md)包含模型 / 机器档案、生成参数核验、分类成绩、独立来源资源曲线与逐题检索。新产物使用报告格式 v8，核心 schema 仍为 3；仅接受 v8；v1–v7 返回 unsupported_format/2，旧数据回原项目处理。
 
 ### 社区准备 details 的字段类型补充
 

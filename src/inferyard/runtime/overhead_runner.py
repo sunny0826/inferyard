@@ -221,7 +221,7 @@ def read_overhead(root, *, target=None, target_data=None):
         seen.add(run_id)
         if sha256_file(path / "manifest.json") != entry["manifest_sha256"]:
             raise EvidenceError("overhead_manifest_mismatch")
-        if data["run"]["tool_source_sha256"] != protocol["tool_source_sha256"]:
+        if data["run"].get("tool_source_sha256") != protocol["tool_source_sha256"]:
             raise EvidenceError("overhead_tool_mismatch")
         for name, filename in (("config", "config.frozen.json"), ("bundle", "bundle.json")):
             if sha256_file(path / filename) != protocol[name + "_sha256"]:

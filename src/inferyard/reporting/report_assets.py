@@ -7,7 +7,7 @@ from inferyard.evidence.formats import require_version
 
 
 def template_name(version):
-    require_version({"version": version}, "version", (7,), "report")
+    require_version({"version": version}, "version", (8,), "report")
     return "report.html"
 
 

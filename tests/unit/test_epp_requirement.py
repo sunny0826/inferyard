@@ -42,7 +42,7 @@ def test_preflight_epp_opt_out_is_explicit_and_keeps_observation(
         "inferyard.platforms.device_preflight.nvidia_snapshot",
         lambda: {"status": "unavailable", "devices": []},
     )
-    monkeypatch.setattr(identity, "verify_process", lambda *a: {"verification": "verified"})
+    monkeypatch.setattr(identity, "verify_process", lambda *a, **k: {"verification": "verified"})
     monkeypatch.setattr(identity, "environment_snapshot", lambda: environment)
     monkeypatch.setattr(
         identity.shutil, "disk_usage", lambda *a: SimpleNamespace(free=16 * 1024**3)

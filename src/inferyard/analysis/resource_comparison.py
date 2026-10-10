@@ -23,8 +23,12 @@ MACOS_SOURCES = {
     "system_mem_available": "psutil:virtual_memory:available",
     "service_rss": "psutil:Process.memory_info:rss",
     "service_cpu_ticks": "psutil:Process.cpu_times:user+system",
-    "system_swap_in": "vm_stat:Swapins",
-    "system_swap_out": "vm_stat:Swapouts",
+    "system_swap_in": "host_statistics64:swapins",
+    "system_swap_out": "host_statistics64:swapouts",
+}
+MACOS_SWAP_SOURCES = {
+    "system_swap_in": frozenset({"vm_stat:Swapins", "host_statistics64:swapins"}),
+    "system_swap_out": frozenset({"vm_stat:Swapouts", "host_statistics64:swapouts"}),
 }
 STATISTICS = {
     "C01": {"observed_min"},
@@ -132,8 +136,11 @@ def window(data, row, metric, policy):
     }
     if len(identities) != 1:
         reasons.append("resource_source_or_semantics_changed")
-    elif not sensor and next(iter(identities))[0] != sources[name]:
-        reasons.append("resource_source_unknown")
+    elif not sensor:
+        source = next(iter(identities))[0]
+        allowed = MACOS_SWAP_SOURCES.get(name) if collector_id == "macos-resource.v1" else None
+        if (source not in allowed) if allowed is not None else source != sources[name]:
+            reasons.append("resource_source_unknown")
     identity = list(next(iter(identities))) if len(identities) == 1 else None
     if sensor:
         sensors = collector.get("sensors")

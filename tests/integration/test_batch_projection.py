@@ -194,14 +194,23 @@ def test_resume_graph_rejections_match_full_history(tmp_path, scenario, change, 
     else:
         target = child
     if change == "branch":
+        original_id = read_json(target / "run.json")["run_id"]
         for name in ("run.json", "selection.json", "events.jsonl", "memory.jsonl"):
             path = target / name
             values = [json.loads(line) for line in path.read_bytes().splitlines()]
             for value in values:
                 value["run_id"] = "cloned-child"
+                if value.get("request_id"):
+                    value["request_id"] = value["request_id"].replace(
+                        original_id, "cloned-child", 1
+                    )
             path.write_bytes(b"".join(json_bytes(v) for v in values))
             reseal_file(target, name)
         manifest = read_json(target / "manifest.json")
+        for path in target.glob("*.request.json"):
+            renamed = path.name.replace(original_id, "cloned-child", 1)
+            path.rename(target / renamed)
+            manifest["files"][renamed] = manifest["files"].pop(path.name)
         manifest["run_id"] = "cloned-child"
         (target / "manifest.json").write_bytes(json_bytes(manifest))
     elif change == "disconnected":

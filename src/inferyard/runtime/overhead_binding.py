@@ -32,7 +32,7 @@ def bind_target(root, data, protocol, arm_identity, arm_requests, result, collec
     for kind, filename in (("config", "config.frozen.json"), ("bundle", "bundle.json")):
         if sha256_file(root / filename) != protocol[kind + "_sha256"]:
             reasons.append("target_" + kind + "_mismatch")
-    if data["run"]["tool_source_sha256"] != protocol["tool_source_sha256"]:
+    if data["run"].get("tool_source_sha256") != protocol["tool_source_sha256"]:
         reasons.append("target_tool_mismatch")
     if workload_identity(data) != arm_identity:
         reasons.append("target_workload_mismatch")

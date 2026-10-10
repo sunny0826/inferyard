@@ -1,6 +1,7 @@
 """CPU/swap counter units, identity changes, request windows and coverage examples."""
 
 from copy import deepcopy
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -117,6 +118,45 @@ def test_permission_and_boot_changes_are_missing_not_zero(tmp_path, monkeypatch)
         s["value"] is None and s["missing_reason"] == "source_changed"
         for s in sampler.counters(77, 55)
     )
+
+
+def test_swap_reads_once_per_cycle_with_shared_window(tmp_path, monkeypatch):
+    sampler = collector(tmp_path, clock=iter(range(100)).__next__)
+    original = Path.read_text
+    reads = []
+
+    def read(path, *args, **kwargs):
+        if path == tmp_path / "vmstat":
+            reads.append(path)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read)
+    for values in ((3, 4), (7, 8)):
+        (tmp_path / "vmstat").write_text(f"pswpin {values[0]}\npswpout {values[1]}\n")
+        _, incoming, outgoing = sampler.counters(77, 55)
+        assert (incoming["value"], outgoing["value"]) == values
+        for field in ("read_started_ns", "read_finished_ns"):
+            assert incoming[field] == outgoing[field]
+    assert len(reads) == 2
+
+
+@pytest.mark.parametrize("text", ["pswpin -1\npswpout 4", "pswpin 3\npswpin 3\npswpout 4"])
+def test_invalid_swap_input_does_not_hide_valid_output(tmp_path, text):
+    sampler = collector(tmp_path)
+    (tmp_path / "vmstat").write_text(text)
+    _, incoming, outgoing = sampler.counters(77, 55)
+    assert incoming["value"] is None
+    assert incoming["missing_reason"] == "invalid_counter"
+    assert outgoing["value"] == 4
+
+
+def test_boot_change_during_shared_swap_read_invalidates_both(tmp_path, monkeypatch):
+    sampler = collector(tmp_path)
+    boots = iter(["boot-1", "boot-1", "boot-1", "boot-2"])
+    monkeypatch.setattr(sampler, "read_boot_id", lambda: next(boots))
+    _, incoming, outgoing = sampler.counters(77, 55)
+    assert incoming["missing_reason"] == outgoing["missing_reason"] == "source_changed"
+    assert incoming["value"] is outgoing["value"] is None
 
 
 def test_cpu_uses_observed_wall_interval_not_whole_request():

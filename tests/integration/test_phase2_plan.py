@@ -46,27 +46,29 @@ def test_dry_run_no_network_no_writes_and_freeze_is_content_addressed(
     path = input_package(tmp_path, config_path)
     before = {p.name: p.read_bytes() for p in path.parent.iterdir()}
     monkeypatch.setattr(socket, "socket", forbid_network)
-    assert main(["plan", "--config", str(path), "--dry-run"]) == 0
+    assert main(["plan", "--experiment", str(path), "--dry-run"]) == 0
     preview = json.loads(capsys.readouterr().out)
     assert preview["status"] == "previewed"
     assert preview["evidence_dir"] is None
     assert before == {p.name: p.read_bytes() for p in path.parent.iterdir()}
     output = tmp_path / "frozen"
-    assert main(["plan", "--config", str(path), "--out", str(output)]) == 0
+    assert main(["plan", "--experiment", str(path), "--out", str(output)]) == 0
     frozen = json.loads(capsys.readouterr().out)
     assert frozen["details"] == preview["details"]
     assert json.loads((output / "plan.json").read_text()) == preview["details"]
     # The frozen package remains loadable after its original input directory disappears.
     path.parent.rename(tmp_path / "moved-input")
     assert read_frozen_plan(output / "plan.json")[0] == frozen["details"]
-    assert main(["plan", "--config", str(output / "experiment.json"), "--out", str(output)]) == 4
+    assert (
+        main(["plan", "--experiment", str(output / "experiment.json"), "--out", str(output)]) == 4
+    )
 
 
 def test_tampered_source_rejected_before_snapshot(tmp_path, config_path, capsys):
     path = input_package(tmp_path, config_path)
     (path.parent / "bundle.json").write_text("{}")
     out = tmp_path / "out"
-    assert main(["plan", "--config", str(path), "--out", str(out)]) == 4
+    assert main(["plan", "--experiment", str(path), "--out", str(out)]) == 4
     assert not out.exists()
     assert "evidence_error" in capsys.readouterr().out
 
@@ -93,7 +95,7 @@ def test_plaintext_startup_secret_blocked_without_echo(tmp_path, config_path, ca
     data = json.loads(path.read_text())
     data["workloads"][0]["config"]["sha256"] = hashlib.sha256(raw).hexdigest()
     path.write_text(json.dumps(data))
-    assert main(["plan", "--config", str(path), "--dry-run"]) == 2
+    assert main(["plan", "--experiment", str(path), "--dry-run"]) == 2
     captured = capsys.readouterr()
     assert "sensitive-new-key" not in captured.out + captured.err
 

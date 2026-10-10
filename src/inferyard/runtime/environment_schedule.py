@@ -37,7 +37,11 @@ async def run_sampler(sampler):
                 observation = {
                     "monotonic_ns": time.monotonic_ns(),
                     "phase": sampler.phase,
-                    "snapshot": periodic_environment(environment_snapshot()),
+                    "snapshot": periodic_environment(
+                        environment_snapshot(
+                            constants=getattr(sampler, "environment_constants", None)
+                        )
+                    ),
                 }
                 sampler.store.observation("environment.jsonl", observation)
                 environment_due = advance(environment_due, 1, loop.time())

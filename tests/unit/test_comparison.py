@@ -24,6 +24,7 @@ def trial():
             "definition_versions": {"measurement": "v2", "scoring": "phase2.v1"},
             "run_id": "synthetic",
             "tool_source_sha256": "a",
+            "tool_version": "1",
         },
         "bundle": {"cases": [{"case_id": "case"}], "answer_policy": {}, "task_protocol": "quality"},
         "selection": {"bundle_sha256": "b", "scorer_sha256": "c", "case_ids": ["case"]},

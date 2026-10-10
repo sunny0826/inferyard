@@ -33,21 +33,23 @@ EVENT_BASE = {
     "clock_id": IDENTIFIER,
     "utc": LABEL,
 }
+MESSAGES = array(obj({"role": enum("system", "user", "assistant"), "content": TEXT}), 1)
+REQUEST_BODY_FIELDS = {
+    "model": LABEL,
+    "stream": BOOL,
+    "generation": CONFIG["properties"]["generation"],
+}
 REQUEST = obj(
     {
         "case_id": nullable(IDENTIFIER),
         "plan_index": nullable(NAT),
         "attempt": {"type": "integer", "const": 1},
-        "body": obj(
-            {
-                "model": LABEL,
-                "messages": array(
-                    obj({"role": enum("system", "user", "assistant"), "content": TEXT}), 1
-                ),
-                "stream": BOOL,
-                "generation": CONFIG["properties"]["generation"],
-            }
-        ),
+        "body": {
+            "oneOf": [
+                obj({**REQUEST_BODY_FIELDS, "messages": MESSAGES}),
+                obj({**REQUEST_BODY_FIELDS, "messages_sha256": HASH}),
+            ]
+        },
     }
 )
 TERMINAL = obj(

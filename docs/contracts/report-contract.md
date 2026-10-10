@@ -1,8 +1,9 @@
 # 离线报告展示契约
 
-依据 [ADR 011](../decisions/011-report-dashboard.md)、[ADR 033](../decisions/033-svg-generative-category.md)
-及 [ADR037](../decisions/037-offline-evidence-reading.md)。新建报告 `schema_version = 3`、
-`report_format_version = 7`；仅接受 v7；历史 v1–v6 返回 unsupported_format/2，旧 HTML 交原项目处理。
+依据 [ADR 011](../decisions/011-report-dashboard.md)、[ADR 033](../decisions/033-svg-generative-category.md)、
+[ADR 037](../decisions/037-offline-evidence-reading.md) 与 [ADR 045](../decisions/045-report-content-refs.md)。
+新建报告 `schema_version = 3`、`report_format_version = 8`；仅接受 v8；历史 v1–v7 返回
+unsupported_format/2，旧 HTML 交原项目处理。
 各版本 `template_sha256` 绑定所用模板目录内排序后的文件名与字节，包含样式、脚本和子模板。
 v7 将模板摘要保留为生成溯源，另封存 HTML 字节并核验来源和数据语义；重渲染是显式选项，
 见[离线读取契约](offline-reading-contract.md)。`script-src` 的 SHA-256 按所渲染模板版本的
@@ -15,6 +16,11 @@ v7 将模板摘要保留为生成溯源，另封存 HTML 字节并核验来源�
 六类 Q01 质量率分别展示，不合成总体质量分数。首页仅累计同 run 的已记录通过数 / 有效执行数；任一分类率缺失或不适用时标为未完整观测，并保留原因。完成率使用核心原分母，五种终态分别呈现，不因 UI 筛选改变。耗时 p50/p95 使用最近秩，仅统计 completed 且时间完整的请求，保留样本数与排除数，不把失败耗时混入完成耗时；p95 小样本标为探索性。
 
 资源按原来源与窗口独立展示；同指标存在多个来源时首页峰值为 null 并提示查看分图，不取跨来源最大值。采样峰值不能称连续峰值；缺段不连线。逐题展示题目、参考答案、原始输出、评分规则结果、耗时、token 和停止原因，未知仍为 null / —。用户内容自动转义，唯一例外是 v3 起通过下述检查的 SVG 提取结果。显示筛选只隐藏，不重评分、不缩分母。
+
+## v8 内容引用
+
+题面、模型输出、参考答案在一份报告内各保存一次，以内容哈希标识。逐题行、详情、画廊和 HTML
+引用该标识，引用不出文件。显示、CSP、画廊与评分语义仍按下文；画廊与 `svg_view` 从那一份模型输出现算。
 
 ## v4 SVG 画廊
 
@@ -45,24 +51,24 @@ stdlib XML 解析禁止 DTD，根元素须为 SVG；非法 XML 为 `malformed`�
 
 比较产物的 `schema_version`、`format_version` 必须是整数；离线重建结果按规范 JSON
 逐项核对，嵌套布尔、整数与浮点数不能利用 Python 宽松相等互相冒充。
-`compare-check` 与通用 `verify --path` 共用此核验；通用入口还核验比较报告。
+`verify --path` 核验比较产物时使用此规则，并同时核验比较报告。
 合法旧产物保持可读，证据资格遵循[血缘总规则](../data-contract.md#证据血缘与比较结论)。
 
 
 ## v5 描述性比较
 
 [ADR035](../decisions/035-purpose-specific-admission.md) 新增 comparison format v2 /
-phase2.v2；现由 ADR038 收敛为 comparison4 / phase2.v3 与 report7。旧格式不再重算。
+phase2.v2；现由 ADR 038 与 ADR 045 收敛为 comparison4 / phase2.v3 与 report8。旧格式不再重算。
 执行 plan/run 标记保持 phase2.v1。
 observed_differences 展示同口径完成率/质量观测、逐题记录、条件差异与样本范围。
 质量总体差值要求相同题目内容、答案政策、规则、协议、评分器、分母及完整评分。
 性能先展示匹配定义/来源/单位的双侧值；无开销/环境/逐指标资格时差值仍为 null。
 eligibility 继续表达受控结论资格，不用描述性字段授予因果或性能结论。
 
-## 当前 v7 边界
+## 当前 v8 边界
 
 当前隐式比较采用 comparison4 / phase2.v3，校准适用域见
-[职责身份契约](scoped-measurement-contract.md)。v7 沿用此计算语义，新增呈现封存和来源相对定位；
+[职责身份契约](scoped-measurement-contract.md)。v8 沿用此计算语义及 v7 的呈现封存和来源相对定位；
 comparison v4 同样只改变封存/定位结构。关联比较仅接受 format4。
 
 封存写入可逐文件流式计算摘要。普通核验仍检查全部封存成员的字节摘要，但只保留

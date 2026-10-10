@@ -1,3 +1,15 @@
+function reportText(reference) {
+  return document.getElementById(`text-${reference}`).textContent;
+}
+for (const target of document.querySelectorAll('[data-content-ref]')) {
+  target.textContent = reportText(target.dataset.contentRef);
+}
+for (const target of document.querySelectorAll('[data-svg-ref]')) {
+  const source = Array.from(reportText(target.dataset.svgRef));
+  // The sealed index contains only the checked SVG's bounds, not another copy.
+  target.innerHTML = source.slice(Number(target.dataset.svgStart), Number(target.dataset.svgEnd)).join('');
+}
+document.getElementById('report-content-store').hidden = true;
 const controls = Object.fromEntries(['query','state','bundle','recipe','date-from','date-to','date-state'].map(id => [id, document.getElementById(id)]));
 const cards = [...document.querySelectorAll('article.run')];
 function filterRuns() {

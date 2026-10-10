@@ -239,6 +239,11 @@ def _rate_invariants(rate: dict, path: str) -> None:
 
 
 def validate_document(kind: str, data: Any) -> None:
+    from inferyard.contracts.validation_cache import validation_key
+
+    cache, key = validation_key(kind, data)
+    if cache is not None and key in cache:
+        return
     if (
         type(data) is not dict
         or type(data.get("schema_version")) is not int
@@ -250,10 +255,17 @@ def validate_document(kind: str, data: Any) -> None:
     schemas = schemas_for()
     if kind not in schemas:
         raise ContractError(kind, "unknown document kind")
-    _validate(data, schemas[kind], kind)
+    spec = schemas[kind]
+    if kind == "run":
+        # Identity presence selects the compatible wire variant; keep field-level
+        # errors precise instead of hiding required fields behind a union error.
+        spec = spec["oneOf"][int("implementation_identity" in data)]
+    _validate(data, spec, kind)
     from inferyard.contracts.contracts_experiment import validate_semantics
 
     validate_semantics(kind, data)
+    if cache is not None:
+        cache.add(key)
 
 
 def strict_json_loads(text: str) -> Any:

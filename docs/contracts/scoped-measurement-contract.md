@@ -14,14 +14,22 @@ Python 实现/版本与 httpx/httpcore/anyio/h11/certifi/idna、jsonschema 及�
 缺依赖版本以 null+原因表达，不将未知与未知判相等，不阻断无关指标的描述读取。
 每命令一个上下文计算一次并显式传给 journal、batch、rerun；原评分上下文计数保持。
 
-当前 schema3 run/batch 缺少此字段时保持全包身份条件。新 rerun/batch 按 measurement/scoring
-匹配，呈现修改不阻断执行；保存身份不改值。当前比较 format4 / phase2.v3 按指标读取对应身份。
-报告仅接受 v7，隐式比较计算使用 phase2.v3；report v1–v6 和 comparison v1–v3 按 ADR038 拒绝。
+新运行以 `implementation_identity` 为唯一执行身份门，不再要求 `tool_source_sha256`。
+缺少此字段的旧 schema3 run/batch 仍用全包身份，不补当前摘要。
+measurement/scoring 必须匹配，呈现修改不阻断执行；保存身份不改值。
+重跑在工具版本、scorer 或这条身份与父运行不同时仍可启动，比较记下差异且资格不成立。
+当前比较 format4 / phase2.v3 按指标读取对应身份，并包含 `run.tool_version`。
+报告仅接受 v8，隐式比较计算使用 phase2.v3；report v1–v7 和 comparison v1–v3 按 ADR 038 与 ADR 045 拒绝。
 model-assets.v2 目录清单列相对路径与内容哈希；根路径只用于定位，缓存/README 不属于该资产集合。
 当前 engine_fit_plan.v1 保留无 definition 清单及全目录身份算法；plan.v2–v4 的目录清单必须声明
 model-assets.v2，不再接受历史无 definition 的目录回退。
 
 ## 请求期检查与原始持久化
+
+每次守卫核对 PID、启动时刻、可执行文件、启动参数、监听和已声明的 slots_debug。
+模型绑定只核对启动参数路径的设备号与 inode。Linux 不为此读取 `maps`。
+macOS 仍用一次 `lsof` 视图核对可执行文件、监听和 Metal。Windows 的 CUDA 已加载库核对保持。
+不新增模板或运行库的逐次内容重读。
 
 Windows lab 绑定阶段仍全量哈希。请求期以绑定的原生 stamp 核验引擎文件，模型路径
 映射和原生 stamp 保留；psutil argv/环境/映射详情扫描在持有进程句柄前后活性检查之间。
@@ -96,4 +104,4 @@ engine_fit_plan.v1 的模型清单；plan.v2–v4 的未声明版本目录清单
 引用必须为目录内规范相对路径且不能落入排除目录；缺失、越界及非法 index 拒绝，不生成只绑定
 index 而漏掉所引用权重的身份。普通 HF 文件 symlink 仍以最终常规文件字节核验。
 
-报告 v7/comparison v4 的后续封存与定位结构见[离线读取契约](offline-reading-contract.md)，计算语义仍为 phase2.v3。
+报告 v8/comparison v4 的后续封存与定位结构见[离线读取契约](offline-reading-contract.md)，计算语义仍为 phase2.v3。

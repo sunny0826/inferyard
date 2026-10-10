@@ -43,7 +43,7 @@ def test_cuda_preflight_reuses_observation_but_refreshes_next_call(tmp_path, mon
         },
     }
     monkeypatch.setattr(identity.platform, "system", lambda: "Linux")
-    monkeypatch.setattr(identity, "verify_process", lambda *a: {"process": "fixture"})
+    monkeypatch.setattr(identity, "verify_process", lambda *a, **k: {"process": "fixture"})
     monkeypatch.setattr(
         identity,
         "environment_snapshot",

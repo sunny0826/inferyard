@@ -1,6 +1,6 @@
 # Backlog
 
-更新于 2026-10-09。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
+更新于 2026-10-10。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
 
 ## InferYard 首次公开准备
 
@@ -93,44 +93,38 @@ PR 提交 `83def2565f9d057621411e2cc4ab41752e7cb9c5`，已合入 `ce221771e426e1
 后续源码或发行物变化必须建立新候选；最终清单与安装结果随 Actions artifact 保留，Release 记录其准确来源。
 Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能仍未验证。
 
-## 后续工程工作
+## 本轮：提速、轻量、去冗余、减过度门禁
 
-| 工作 | 边界 |
-| --- | --- |
-| 原生准备与平台边界 | 按候选字节补 Windows ACL/reparse/多账户/卷变化及原生 runtime prepare/create 专项验证 |
-| Darwin 启动身份 | 评估原生接口替换 psutil 私有接口依赖；替换前保持锁定版本和完整身份核验 |
-| CLI/字段维护 | 评估兼容入口提示及 `ready_to_run` 字段的下一版本语义；现有读写与命令继续兼容 |
-| 方法目录 | 是否缩小机器化目录维护面另行决定；当前 199 个方法 ID 与生成源保留 |
-| 源码获取宿主 | 库已有实现，真实获取 CLI 尚未接入；仅在确认实际需求后推进，基础测试不等于引擎构建完成 |
-| 引擎观测 | KVMem/NInfer 的原生信号与 lab 完整观测分开；精确模板预算、有效参数和引擎内部排空缺测仍披露；engine-fit 接入未完成 |
-| 可维护性 | 按实际触及范围整理模块与兼容分支，不以全库重构作为发行前提 |
-| 批次投影摘要去重 | `run_projection.py` 的 `_summary` 与 `ledger.py` 摘要规则为复制逻辑（等价回归已钉住）；后续抽共享函数消除双份维护 |
-| 环境采集成本 | 周期持久层投影已由 [ADR 041](decisions/041-environment-persistence-slim.md) 定义，身份常量仍保留；Linux 每秒读取成本另行评估，macOS 原生 API 替换仍须单独修订来源契约与验证，不能复用持久层回归作为采集资格 |
-| 逐请求身份复查口径 | 单次 guard 仅复查 model/engine，template/运行库只在预检核验（runner.py TODO(P1)），与「re-verify model, engine, templates…」口径不一致；先对齐文档语义，再决定补全复查或 stat 指纹降级，不得静默放宽 |
-| 生命周期等价回归 | 单次/批量合并时的对比脚本未做产物文件内容级 diff（sha256 被归一化）；把内容级等价固化为正式回归 |
-| 报告 JSON 归一化 | JSON 往返包含键与类型转换语义；只有证明完整等价后才替换，当前保留 |
-| SVG 全文去重 | 输出、画廊、逐题视图和 HTML 存在重复全文；统一内容引用须另立报告格式 ADR、读取边界与实施计划，保持原输出、CSP 和画廊语义，并重新核验浏览器内存与渲染 |
-| 同次 swap 观测合并 | Linux 两个 swap 指标仍各读一遍 `/proc/vmstat`；合并须对齐读区间、来源变化拒绝及独立缺测语义，并补原生证据，不跨周期缓存 |
-| 证据双份存储 | prompt 快照+事件内嵌全文、逐 chunk+终态全文均为双份持久化；终态改内容哈希互证、事件留摘要引用需 ADR 与事件契约变更 |
-| 双轨身份合一 | `tool_source_sha256` 与 `implementation_identity` 并存双路径检查；合并为单一身份需 ADR 与 RUN schema 变更，与 ADR 038 立场对齐 |
-| rerun 身份门禁 | rerun 要求工具版本、scorer hash、source hash、implementation identity 四者一致，任一变化即阻断；降级为记录差异+比较资格标记需 ADR |
-| 兼容命令别名 | 16 个旧命令名兼容层与「拒绝一切旧格式」立场矛盾；一次性 deprecation 后删除，同步 cli-surface.md |
-| 小型清理 | URL 校验在 config 加载与预检重复（adapter 构造处有防 DNS rebinding 理由保留）；`run_preflight` 以身份相等比较分发参数，注入自定义 preflight 时参数被静默丢弃；空字符串凭据与 unset 语义混淆 |
+2026-10-10 本轮限定这四类，已完成下列 11 项。扩大测量、平台补证和新产品面不排期。
+已落地且不再列项：`schemas_for` 缓存、单次/批量共用 `run_trial`、批次历史默认轻量投影、资源归约索引、[ADR 041](decisions/041-environment-persistence-slim.md) 的周期落盘瘦身，以及 PR #13 的写路径、同次读取、封存流式哈希和采样收尾。
 
-## 可选测评扩展
+下列保护留在热路径上：请求开始、终态、评分和停止的 fsync；dirty、请求前后空闲和排空；温停与内存停；资产哈希；评分分母。逐 chunk 与终态全文的一致性留到存储 ADR 替换第二份全文，不单独删检查。
 
-以下工作各自冻结模型资产、题包、预算和停止条件后执行，不使用历史授权自动启动。
+### 本轮已完成
 
-| ID | 待办 | 所需证据 |
-| --- | --- | --- |
-| B01 | 扩大第二模型覆盖 | 已有 Qwen3-4B 单设备轮次；继续补目标平台及模型组合 |
-| B02 | 输入长度与材料位置扫描 | 模板后 token、位置和变更题目审核 |
-| B03 | 30/60 分钟持续负载 | 独立冻结窗口、停止和排空 |
-| B04 | 同源 Q4/Q8 量化对照 | 同源 revision、转换工具与配方 |
-| B05 | 1/2/4 并发 | 实际槽位、在途请求与客户端开销 |
-| B06 | 原生工具调用 | 选择、参数、执行、最终答案分开评分 |
-| B07 | GPU、频率与能耗 | 原生来源、权限、单位和窗口 |
-| B08 | 真 token 间隔、排队、启动时间 | 原生事件与时钟，不用网络块替代 |
-| B09 | 当前源码的原生覆盖 | 各平台正常、故障与完整题包；Linux 历史温停/豁免诊断不作为正式通过 |
-| B10 | 严格性能比较 | 完整采集开销与目标绑定，现有历史数据未取得严格资格 |
-| B11 | 电源与身份读取开销 | 保留身份/资产校验，优化后重新测量 |
+2026-10-10，11 项实现与分项回归已完成，保留在本地 `perf/slim-round` 分支，未提交、未推送。
+
+- 命令内复用已通过的 config/bundle/plan 校验，写入边界及公共离线 verify 仍完整校验；
+  DNS rebinding 检查收口到 adapter 构造，并在请求前核对实际固定的监听地址。
+- Linux 两个 swap 指标同次读取 `/proc/vmstat`；完整账本与默认轻量投影共用摘要规则。
+- [ADR 042](decisions/042-environment-collection-slim.md) 的常量复制、IOKit 电源与
+  `host_statistics64` 换页，以及 [ADR 043](decisions/043-per-request-identity-slim.md)
+  的逐请求身份复查减重已实现。`device-check` 未改。
+- [ADR 044](decisions/044-prompt-content-hash.md) 的消息哈希与原快照核验、
+  [ADR 045](decisions/045-report-content-refs.md) 的报告 v8 内容引用已实现；旧事件可读，旧报告拒绝。
+- [ADR 046](decisions/046-single-implementation-identity.md) 的唯一执行身份门与
+  [ADR 047](decisions/047-rerun-recorded-comparability.md) 的重跑/比较分工已实现；
+  rerun 必须更换服务进程，身份差异取消比较资格。
+- [CLI 表](cli-surface.md#规范语法与兼容入口)中的旧命令名和参数别名已删除，帮助与回归同步。
+
+最终全量软件回归 **4741 passed / 53 skipped**；跳过项为平台限制或显式启用的原生检查。
+Ruff、格式、Schema/catalogue 一致性和文档本地链接/锚点检查通过。
+合成 v8 报告已在 Chromium `file://` 离线环境检查文字引用、筛选、SVG、桌面/手机布局
+及无 JavaScript 的文本回退；独立浏览器会话已关闭。
+本轮没有性能对比、真实模型请求、长时负载、发行安装验收或新增平台测量资格；不声称提速。
+
+### 不排期
+
+扩大测量（原 B01–B11）、Windows 原生准备专项、Darwin 启动身份依赖替换、方法目录缩小、源码获取 CLI、engine-fit 接入、报告架。
+报告 JSON 归一化已测过，没有明确提速。生命周期内容级回归是加检查，不排。
+`run_preflight` 丢参和空凭据语义是缺陷，不属于本轮四类，单独另开。

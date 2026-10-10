@@ -11,6 +11,7 @@ from inferyard.cli.device_output import format_result, presentation_context
 from inferyard.cli.metadata import versions
 from inferyard.contracts.schemas import export_schema
 from inferyard.contracts.validation import ContractError
+from inferyard.contracts.validation_cache import command_validation
 from inferyard.evidence.error_reasons import safe_reason
 from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.storage import EvidenceError
@@ -39,9 +40,10 @@ def run(
             return 0
         if args.command is None:
             raise ArgumentError("a command is required; use --help")
-        request = request_factory(args)
-        handler = (handlers or {}).get(request.command, backend)
-        code, result = handler(request)
+        with command_validation(enabled=command in ("run", "resume", "plan", "probe")):
+            request = request_factory(args)
+            handler = (handlers or {}).get(request.command, backend)
+            code, result = handler(request)
         if code not in (0, 2, 3, 4, 130) or result.command != request.command:
             raise RuntimeError("invalid backend result")
     except UnsupportedFormat as exc:

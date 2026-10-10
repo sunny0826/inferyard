@@ -54,7 +54,9 @@ any missing value.
 Paging belongs to the host and is not attributed to the model directly.
 Unified memory must not be added to RSS; discrete VRAM, frequency, power and
 energy are null when not sampled.
-Power comes from `pmset`; Linux governor/EPP values are never fabricated.
+Benchmark power policy comes from IOKit and swap counters from `host_statistics64`.
+Failures remain missing measurements; there is no `pmset`/`vm_stat` fallback.
+`device-check` keeps its existing readers. Linux governor/EPP values are never fabricated.
 Missing policies or sensors block or are disclosed per protocol.
 
 The first live entry creates a clean host state automatically when it

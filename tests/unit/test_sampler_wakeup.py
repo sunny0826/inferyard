@@ -53,7 +53,7 @@ def test_stop_finishes_started_collection_and_writes_schedule(monkeypatch, modul
         yield {"sample": 2}
 
     sampler.collect = collect
-    monkeypatch.setattr(module, "environment_snapshot", lambda: {"platform": "fixture"})
+    monkeypatch.setattr(module, "environment_snapshot", lambda **_kwargs: {"platform": "fixture"})
 
     async def scenario():
         await asyncio.wait_for(

@@ -290,6 +290,7 @@ class FitClient:
         except PreflightError, ValueError, OSError, TypeError, AttributeError:
             raise FitTransportError("invalid_loopback_origin") from None
         self.engine = engine
+        self.origin = resolved
         self.served_model = served_model
         self._observer = observer
         headers = {"Accept-Encoding": "identity"}

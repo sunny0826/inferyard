@@ -1,6 +1,6 @@
 # ADR 038：InferYard 当前格式边界与主机状态迁移
 
-状态：Accepted（锁迁移方案已被 [ADR 039](039-remove-host-state-migration.md) 局部取代）。日期：2026-10-08。
+状态：Accepted（锁迁移方案已被 [ADR 039](039-remove-host-state-migration.md) 局部取代；当前报告格式由 [ADR 045](045-report-content-refs.md) 改为 v8；新运行身份门由 [ADR 046](046-single-implementation-identity.md) 改为只认 implementation_identity）。日期：2026-10-08。
 软件实现与平台实际验证范围见 [backlog](../backlog.md)。
 核查基线：`fe1052a41afbddc1b7ceff852e794d6d872977ce`。
 

@@ -1,10 +1,9 @@
 """Strict offline reduction of a single repetition or explicitly partial resume."""
 
-from collections import Counter
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
-from inferyard.analysis.aggregate import STATES, rate
+from inferyard.analysis.aggregate import rate
 from inferyard.analysis.environment import measurement_context
 from inferyard.analysis.idle_rss import idle_rss_observations
 from inferyard.analysis.input_lengths import (
@@ -35,6 +34,7 @@ from inferyard.evidence.storage import (
 )
 from inferyard.evidence.token_budgets import read_budgets
 from inferyard.evidence.trial_reads import TrialReads
+from inferyard.evidence.trial_summary import trial_summary
 
 CORE = {
     "run.json",
@@ -155,6 +155,9 @@ def read_trial(root: Path, *, metadata=None):
     )
     duration = workload["protocol"] if workload["protocol"]["kind"] == "duration" else None
     requests, clock, stopped = reduce_events(events, run, selection, cases, duration=duration)
+    from inferyard.evidence.request_snapshots import verify_message_snapshots
+
+    verify_message_snapshots(root, events, reads)
     from inferyard.evidence.engine_capabilities import bound_capabilities
 
     capabilities = bound_capabilities(
@@ -208,47 +211,9 @@ def read_trial(root: Path, *, metadata=None):
             or (clock is not None and sample["clock_id"] != clock)
         ):
             raise EvidenceError("sample_trial_identity_mismatch")
-    counts = Counter(r["execution_state"] for r in requests)
-    counts = {s: counts[s] for s in STATES}
-    counts.update(
-        planned=len(requests),
-        executed=len(requests) - counts["not_executed"],
-        valid_executed=counts["completed"] + counts["failed"],
-        budget_exhausted=sum(
-            bool(r.get("budget_exhausted"))
-            for r in requests
-            if r["execution_state"] in ("completed", "failed")
-        ),
-        budget_exhausted_completed=sum(
-            bool(r.get("budget_exhausted")) for r in requests if r["execution_state"] == "completed"
-        ),
-        budget_exhausted_other_diagnostic=sum(
-            bool(r.get("budget_exhausted"))
-            for r in requests
-            if r["execution_state"] not in ("completed", "failed")
-        ),
-    )
-    scope_complete = (
-        stopped == "plan_finished"
-        and counts["valid_executed"] == len(requests)
-        and not any("truncated" in item for item in limits)
-    )
-    if window is not None:
-        scope_complete &= window["window_completed"] and window.get(
-            "probe_coverage_complete", False
-        )
-    quality_ready = all(r["quality_state"] in ("pass", "fail", "not_applicable") for r in requests)
-    evidence_complete = not any(
-        "truncated" in item or "manifest_missing" in item for item in limits
-    )
-    complete = (
-        scope_complete
-        and quality_ready
-        and evidence_complete
-        and run["relation"] != "resume"
-        and not run["diagnostic"]
-        and run["kind"] == "run"
-    )
+    core_summary = trial_summary(run, requests, stopped, limits, window, duration)
+    counts = core_summary["counts"]
+    complete = core_summary["completeness"] == "complete"
     if run["kind"] == "check":
         limits.append("check_only_no_formal_cases")
     if run["relation"] == "resume":
@@ -273,15 +238,11 @@ def read_trial(root: Path, *, metadata=None):
         trial_id=run["trial_id"],
         experiment_id=run["experiment_id"],
         protocol_kind=workload["protocol"]["kind"],
-        completeness="complete" if complete else "incomplete",
-        scope_complete=scope_complete,
-        evidence_complete=evidence_complete,
-        stop_reason=stopped or "run_stop_record_missing",
+        **core_summary,
         execution_parameters={
             "request_timeout_seconds": documents["config"]["execution"]["timeout_seconds"],
             "output_budget_tokens": documents["config"]["generation"]["max_tokens"],
         },
-        counts=counts,
         completion_rate=rate(
             counts["completed"], counts["valid_executed"], len(requests) - counts["valid_executed"]
         ),
@@ -333,8 +294,6 @@ def read_trial(root: Path, *, metadata=None):
                 run, trial["workload_id"], window, cases, evidence, complete=complete
             )
         )
-        summary["counts"]["planned"] = None
-        summary["counts"]["request_limit"] = duration["max_requests"]
     resource_evidence = [
         *evidence,
         {"path": "memory.jsonl", "sha256": reads.hashes["memory.jsonl"]},
