@@ -1,6 +1,6 @@
 # 运行原件容器契约
 
-决策见 [ADR 048](../decisions/048-run-evidence-containers.md)。本契约用于本轮实施；
+决策见 [ADR 048](../decisions/048-run-evidence-containers.md)。本契约定义当前运行原件；
 代码与验收完成状态以 [backlog](../backlog.md#运行证据文件合并) 为准。
 
 ## 权威与结构
@@ -53,7 +53,7 @@ prepared envelope 固定 `schema_version`、`evidence_layout_version`、`run_id`
 取得，按生成顺序追加且严格递增，同 run 请求身份与序号唯一。body 完整保留已有脱敏和 messages_sha256 语义。
 prepared 没有 started 合法，不能计 executed；started 有消息摘要就必须绑定耐久原件。
 
-## 共享读取接口（T0）
+## 共享读取接口
 
 物理读写只在 evidence 边界；业务使用 `TrialEvidence(root, projection=False)`。
 实现可拆私有模块，以下跨 owner 接口更改先由 root 更新契约再通知所有调用方。
@@ -113,6 +113,8 @@ prepared 方法 `prepare_request(request_id, phase, ordinal, body)` 返回后原
 共同写者仍在现有 event loop，同步 append 无 await；不引入 I/O worker 或多写者线程。
 identity 权威槽显式查询，原发布时点不变。native receipt 写入耐久后才清 dirty。
 append/flush/fsync 失败停发并保留 dirty；close/seal 纳入两个新增日志且保持目录 fsync。
+写入失败的 writer 禁止再次 append、重试或 seal；关闭只释放资源，不把失败改成成功。
+失败前已耐久的前缀保留为离线 partial 证据；未封存尾行的读取支持不构成同一 writer 的恢复授权。
 BaselineJournal 实现对应领域方法但继续自身 buffer 协议；ExtensionJournal 不增加 run 容器。
 独立 baseline 的低频旁证由 `BaselineEvidence` 读取其现有物理协议，不使用放宽了识别规则的
 TrialEvidence。run 目录仍须严格识别版本及冻结输入；缺 run 的任意旁证目录不成为合法 run。
