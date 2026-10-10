@@ -5,12 +5,12 @@ from pathlib import Path
 
 from inferyard.contracts.schemas_layout import INPUT_KINDS, OBSERVATION_STAGES
 from inferyard.contracts.validation import ContractError, validate_document
-from inferyard.evidence.formats import require_core
+from inferyard.evidence.formats import UnsupportedFormat, require_core
 from inferyard.evidence.layout import INPUT_FILES, OBSERVATION_FILES, identify
 from inferyard.evidence.observations import Observations, validate_query
 from inferyard.evidence.prepared import PreparedRequests
 from inferyard.evidence.reference import verify_reference as verify_reference
-from inferyard.evidence.storage import EvidenceError
+from inferyard.evidence.storage import EvidenceError, verify_manifest_files
 from inferyard.evidence.trial_reads import TrialReads
 
 
@@ -31,9 +31,15 @@ class TrialEvidence:
             self._reads.sizes,
             self._reads.errors,
         )
-        self.layout_version = identify(self._reads)
+        try:
+            self.layout_version = identify(self._reads)
+            if self.manifest is not None:
+                require_core(self.manifest, "manifest")
+        except UnsupportedFormat:
+            if self.manifest is not None:
+                verify_manifest_files(self.root, self.manifest, observed=self._reads.observed())
+            raise
         if self.manifest is not None:
-            require_core(self.manifest, "manifest")
             try:
                 validate_document("manifest", self.manifest)
             except ContractError as exc:

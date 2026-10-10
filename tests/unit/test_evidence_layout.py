@@ -104,6 +104,28 @@ def test_original_members_requests_and_references_round_trip(originals):
     assert before == {path.name: path.read_bytes() for path in old.iterdir()}
 
 
+def test_reference_context_stays_bound_to_full_read(originals):
+    _, root = originals
+    reads = TrialEvidence(root)
+    reference = reads.observation_reference("environment", "start")
+    verify_reference(root, reference, reads=reads)
+    reference["member"]["sha256"] = "0" * 64
+    with pytest.raises(EvidenceError, match="evidence_reference_member_mismatch"):
+        verify_reference(root, reference, reads=reads)
+    reference = reads.input_reference("config")
+    with pytest.raises(EvidenceError, match="invalid_evidence_reference"):
+        verify_reference(root, reference, reads=TrialEvidence(root, projection=True))
+
+
+def test_inputs_published_before_observations_retains_missing_slot(originals):
+    _, root = originals
+    (root / "manifest.json").unlink()
+    (root / "observations.jsonl").unlink()
+    reads = TrialEvidence(root)
+    assert reads.observation("identity") is None
+    assert reads.observation_keys("environment") == []
+
+
 @pytest.mark.parametrize(
     "damage", ["unknown", "conflict", "mixed", "duplicate_json", "hash", "bool"]
 )
@@ -124,11 +146,22 @@ def test_layout_and_input_corruption_is_not_a_legacy_fallback(originals, damage)
     elif damage == "bool":
         inputs["evidence_layout_version"] = True
     (root / "inputs.json").write_bytes(json_bytes(inputs))
+    if damage == "unknown":
+        manifest["files"]["inputs.json"].update(
+            sha256=sha256_file(root / "inputs.json"),
+            bytes=(root / "inputs.json").stat().st_size,
+        )
+        (root / "manifest.json").write_bytes(json_bytes(manifest))
     if damage == "duplicate_json":
         raw = (root / "inputs.json").read_bytes()
         (root / "inputs.json").write_bytes(b'{"schema_version":3,' + raw[1:])
     with pytest.raises(UnsupportedFormat if damage == "unknown" else EvidenceError):
         TrialEvidence(root)
+    if damage == "unknown":
+        with (root / "observations.jsonl").open("ab") as stream:
+            stream.write(b"broken\n")
+        with pytest.raises(EvidenceError, match="original_evidence_hash_mismatch"):
+            TrialEvidence(root)
 
 
 @pytest.mark.parametrize("damage", ["duplicate", "kind", "stage", "key", "seq", "identity", "hash"])

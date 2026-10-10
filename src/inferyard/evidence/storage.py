@@ -294,12 +294,9 @@ class EvidenceStore:
                 stream.close()
 
 
-def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
+def verify_manifest_files(root: Path, manifest, *, observed=None) -> list[str]:
+    """Check physical originals before interpreting an unsupported declaration."""
     limitations = []
-    manifest_path = local_file(root, "manifest.json")
-    if not manifest_path.exists():
-        return ["manifest_missing_unsealed_run"]
-    manifest = _manifest if _manifest is not None else read_json(manifest_path)
     if (
         not isinstance(manifest, dict)
         or manifest.get("sealed") is not True
@@ -310,8 +307,8 @@ def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
         if name == "manifest.json" or not isinstance(info, dict):
             raise EvidenceError("invalid_manifest_entry")
         path = local_file(root, name)
-        if _observed is not None and name in _observed:
-            size, digest = _observed[name]
+        if observed is not None and name in observed:
+            size, digest = observed[name]
             valid = size == info.get("bytes") and digest == info.get("sha256")
         else:
             valid = path.is_file() and path.stat().st_size == info.get("bytes")
@@ -322,6 +319,15 @@ def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
                 limitations.append(f"derived_evidence_damaged:{name}")
             else:
                 raise EvidenceError("original_evidence_hash_mismatch")
+    return limitations
+
+
+def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
+    manifest_path = local_file(root, "manifest.json")
+    if not manifest_path.exists():
+        return ["manifest_missing_unsealed_run"]
+    manifest = _manifest if _manifest is not None else read_json(manifest_path)
+    limitations = verify_manifest_files(root, manifest, observed=_observed)
     from inferyard.evidence.formats import UnsupportedFormat, require_core
 
     require_core(manifest, "manifest")

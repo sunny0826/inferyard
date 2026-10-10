@@ -14,14 +14,19 @@ from inferyard.evidence.trial_evidence import TrialEvidence
 
 def observation_evidence(root, config, *, reads=None):
     reads = reads if reads is not None else TrialEvidence(root)
-    if not reads.has_observation("engine_capabilities"):
+    try:
+        value = reads.observation("engine_capabilities")
+    except EvidenceError as exc:
+        if str(exc) == "original_evidence_unsealed":
+            raise EvidenceError("engine_observation_manifest_mismatch") from exc
+        raise
+    if value is None:
         if (
             reads.layout_version == 2
             and (reads.manifest or {}).get("engine_observation") is not None
         ):
             raise EvidenceError("engine_observation_manifest_mismatch")
         return None
-    value = reads.observation("engine_capabilities")
     try:
         _validate(value, OBSERVATION, "engine_observation")
     except ContractError as exc:

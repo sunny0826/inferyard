@@ -337,3 +337,8 @@ C2 负责 ledger 的容器尾原因传播及 `error_reasons.py` 中新证据错�
 PR2 在 PR1 精确 head 验收通过后分为共享 Journal/原件 writer、runtime/platform 调用迁移、
 回归与模拟 harness 三条流；执行前记录其确切文件清单，禁止提前切生产 writer。
 每侧至少五次性能测量串行由 root 驱动；浏览器与主机锁由 verifier 独占，不并发复用实例。
+
+PR1 全量回归发现后，已完成交付的 C1/C2 范围由 root 顺次接手修复：storage.py、
+trial_evidence.py 的未知版本与封存错误顺序，engine_capabilities.py/native.py 的领域诊断映射，
+test_cost_reads.py/test_validation_reuse.py 的现行合法夹具。C3 仍独占 report 同次读取复用，
+其余验证 worker 只读源码。修复保留旧错误与资格边界，按原失败检查重验，不修改原始回执。

@@ -50,7 +50,7 @@ observations envelope 固定 `schema_version`、`evidence_layout_version`、`run
 
 prepared envelope 固定 `schema_version`、`evidence_layout_version`、`run_id`、`trial_id`、`request_id`、
 `ordinal`、`phase`、`body`、`body_sha256`。phase 为 probe/warmup/formal；ordinal 从当前请求生成器
-取得，同 run 请求身份与序号唯一。body 完整保留已有脱敏和 messages_sha256 语义。
+取得，按生成顺序追加且严格递增，同 run 请求身份与序号唯一。body 完整保留已有脱敏和 messages_sha256 语义。
 prepared 没有 started 合法，不能计 executed；started 有消息摘要就必须绑定耐久原件。
 
 ## 共享读取接口（T0）
@@ -73,13 +73,16 @@ prepared 没有 started 合法，不能计 executed；started 有消息摘要就
 | manifest / layout_version / root / errors / hashes / sizes | 当前物理库存、读取状态与真实物理摘要 |
 | container_tails | 已扫描 observations/prepared 容器的尾截断原因，按实际文件名分组；全量 preload 后 ledger 纳入 partial，不缓存 body 或把截断当成功 |
 | check_input_errors() / preload(manifest_files) | 保留严格错误处理与必要观测预读 |
-| verify_reference(root, ref) | 核验真实容器摘要及可选成员定位/内容摘要 |
+| verify_reference(root, ref, reads=None) | 核验真实容器摘要及可选成员定位/内容摘要；可复用同命令、相同 resolved root 的完整 TrialEvidence，不接受 projection 或跨命令缓存 |
 
 只读 layout1 adapter 内部允许旧文件名映射；业务模块不得继续用 .json("run.json") 或虚拟 hash key。
 既有 TrialReads 可作为私有物理读取实现，hashes/sizes 永远只含真实文件。
 完整读取校验所有物理原件；projection 保留现行 inventory/size/事件摘要范围，不升级为完整资格。
+`read_trial(..., metadata=...)` 的 metadata.evidence 只供同次命令复用领域读取，不进入 JSON
+产物或持久状态；来源摘要与成员引用继续绑定该次已核验字节。
 
 request-bodies 单次扫描全部完整行并严格校验，缓存身份到 byte range 与该行摘要，不常驻全文。
+observations 同次扫描建立 kind/key/stage 索引；单次领域查询不再遍历全部收据。
 取 body 重读区间后核对已核验行摘要，变化立即拒绝。无磁盘索引、隐式请求上限或跨命令缓存。
 合法未封存尾半行按既有 partial/3；中间坏行、封存截尾及缺 started 原件为 4。
 

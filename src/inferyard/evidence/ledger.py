@@ -157,6 +157,7 @@ def read_trial(root: Path, *, metadata=None):
     )
     if metadata is not None:
         metadata.update(
+            evidence=reads,
             first_event_utc=events[0].get("utc") if events else None,
             manifest=reads.manifest,
             manifest_sha256=reads.hashes.get("manifest.json"),

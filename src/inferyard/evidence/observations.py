@@ -23,10 +23,14 @@ class Observations:
     def __init__(self, evidence):
         self.evidence = evidence
         self.records = None
+        self._index = {}
         self.tails = []
 
     def scan(self):
         if self.records is not None:
+            return
+        if self.evidence.manifest is None and not self.evidence.exists("observations.jsonl"):
+            self.records = []
             return
         rows, self.tails = self.evidence.checked_jsonl("observations.jsonl")
         self.evidence._container_tails["observations.jsonl"] = self.tails
@@ -48,19 +52,17 @@ class Observations:
                 raise EvidenceError("duplicate_observation_slot")
             slots.add(slot)
             records.append(row)
+            self._index.setdefault((kind, key), {})[stage] = row
         self.evidence._check_sealed("observations.jsonl")
         self.records = records
 
     def get(self, kind, stage=None, key=None):
         validate_query(kind, stage, key)
         self.scan()
-        matches = [
-            row
-            for row in self.records
-            if row["kind"] == kind
-            and (stage is None or row["stage"] == stage)
-            and row["key"] == key
-        ]
+        group = self._index.get((kind, key), {})
+        matches = (
+            list(group.values()) if stage is None else [group[stage]] if stage in group else []
+        )
         if len(matches) > 1:
             raise EvidenceError("ambiguous_observation_query")
         if matches and self.evidence.projection:

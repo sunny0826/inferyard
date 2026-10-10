@@ -51,6 +51,11 @@ def run(args):
         bundle = request.config.bundle.to_dict()
         if args.scope != "synthetic":
             bundle = json.loads((args.tree / "bundles" / f"{args.scope}.json").read_text())
+        if args.scope == "zh-svg-pelican":
+            settings["answer"] = (
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+                '<path d="M20 50 Q50 10 80 50 L55 70 Z" fill="orange"/></svg>'
+            )
         service = None
         if args.adapter != "prism":
             config = lab_config(config, args.adapter)
@@ -108,6 +113,7 @@ def run(args):
                 "tree": str(args.tree),
                 "python": sys.executable,
                 "scope": args.scope,
+                "fixed_response": settings.get("answer"),
                 "adapter": args.adapter,
                 "mode": args.mode,
                 "run": str(root),
