@@ -46,10 +46,10 @@ def verify_reference(root, ref, *, reads=None):
         actual = evidence.input_reference(member["name"])
     elif member["kind"] == "observation":
         evidence._observations.scan()
-        rows = [row for row in evidence._observations.records if row["seq"] == member["seq"]]
+        records = evidence._observations.records
+        row = records[member["seq"] - 1] if member["seq"] <= len(records) else None
         actual = None
-        if rows:
-            row = rows[0]
+        if row is not None:
             actual = evidence.observation_reference(row["kind"], row["stage"], row["key"])
     else:
         evidence._prepared.scan()
