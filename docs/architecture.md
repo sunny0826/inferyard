@@ -120,6 +120,12 @@ macOS 原生采集 CPU、RSS、可用内存、主机换页和只读 AppleSMC 温
 
 ## 保存与离线读取
 
+新 run 使用 `evidence_layout_version=2`：Journal 在创建六份日志前原子发布 `inputs.json`，
+低频观测追加到 `observations.jsonl`，完整脱敏请求追加到 `request-bodies.jsonl`。
+请求原件同步 flush/fsync 后才允许 dirty、started 和发送；native clean receipt 同步耐久后才清 dirty。
+各领域通过 `TrialEvidence` 查询已核验成员及真实来源引用。合法 schema-3 快照布局只读，
+通用 EvidenceStore、独立 baseline 与 extension 保持各自协议，详见[容器契约](contracts/run-evidence-layout.md)。
+
 请求身份先落盘，再发送请求；终态与评分分别保存。日志按顺序追加，必要证据写入失败即停发并保留 dirty，不继续产生无证据结果。封存 manifest 记录身份、来源和文件哈希，不哈希自身。
 
 离线读取不发模型请求，不根据证据中的 URL 获取内容。携带包只读取包内允许的相对路径，拒绝路径穿越和越界符号链接。普通报告的外部来源可用相对路径及显式源根映射定位，定位不代替 manifest 身份；见[离线读取契约](contracts/offline-reading-contract.md)。未封存日志可读取完整前缀并报告末尾截断；中间损坏、重复记录或哈希不符不能跳过后发布完整成绩。派生物重建到新目录，原件不覆盖。

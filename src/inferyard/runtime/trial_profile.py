@@ -10,7 +10,7 @@ from inferyard.evidence.journal import TrialJournal
 
 @dataclass(frozen=True)
 class SingleProfile:
-    # The single entry creates its journal and input/rerun snapshots before taking the lock.
+    # The single entry creates its journal and frozen inputs before taking the lock.
     store: TrialJournal
     kind: str
     secret: str | None

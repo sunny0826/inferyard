@@ -13,6 +13,13 @@
 
 ### Changed
 
+- New runs use evidence layout 2: immutable frozen inputs, append-only
+  observations and prepared request bodies, four sampling/event logs, and a
+  manifest. A complete ordinary single run plus its report uses eleven files;
+  the default two-bundle scope plus one report uses nineteen. The core schema
+  remains 3. Existing legal schema-3 snapshot runs are read-only; evidence is
+  never converted or overwritten. Request durability, dirty-state recovery,
+  native clean receipts, stopping rules and score denominators are preserved.
 - `run` preflight no longer builds the unused device recommendation and hardware
   snapshot, no longer spawns `nvidia-smi` on non-CUDA backends, and no longer
   writes `device.preflight.json` or `input-provenance.json`. The identity record

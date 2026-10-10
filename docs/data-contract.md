@@ -4,7 +4,7 @@
 
 运行目录的物理布局独立于核心版本。[ADR 048](decisions/048-run-evidence-containers.md)
 定义 `evidence_layout_version=2`；容器字段、成员绑定和严格只读的 layout1 支持见
-[运行原件容器契约](contracts/run-evidence-layout.md)。本轮先迁读取方再切写入方，
+[运行原件容器契约](contracts/run-evidence-layout.md)。新运行写入 layout2，现有合法 v3 快照布局只读；
 实际实施与验收状态见 [backlog](backlog.md#运行证据文件合并)。独立 frozen-plan、engine-fit
 与 extension 封包不改布局；本文旧快照文件名在 layout2 对应领域成员，不要求双写旧文件。
 
@@ -52,7 +52,7 @@
 
 - 统一评分器 `score_case(case, answer, policy)`、`unscorable(category, reason)`、`scorer_hash()`；instruction/extraction 算法作为类别函数，不先生成旧 score 再包装。
 - 统一题包入口 `content_hash(bundle)`、`require_review(bundle)`、`validate_bundle(bundle)`；迁移审核证明须核验原哈希、原批准及内容等价。
-- 存储 IO 与 Journal envelope 分离；单次及实验均写 plan/run/selection、冻结输入、events、memory 和 manifest。
+- 存储 IO 与 Journal envelope 分离；单次及实验均在 inputs 保存 plan/run/selection 与冻结输入，观测和请求原件同步追加，events、memory 等日志独立封存。
 - `read_trial(root)` 是活动结果重建入口；报告/比较读取已保存事件和评分。显式 rescore 另存新评分分析。
 
 ## 命令内复用与预算快照
@@ -68,7 +68,7 @@ JSON 快照；内部编译可消费同 kind 快照，原始 dict 仍完整校验
 `verify` 的重评分核验在递归血缘身份不匹配时返回 `rescore_scorer_identity_changed`、退出 4，
 不返回 verified，不证明篡改。来源 manifest 和已有血缘哈希应继续核验。
 
-新预算文件 `token-budgets.v2.json` 为
+预算 payload 的 definition 为 `token-budgets.v2`（layout2 为 prepare 阶段的 token_budgets 观测；layout1 为 `token-budgets.v2.json`）：
 `{"definition":"token-budgets.v2","entries":[{"phase":"probe","case_id":null,"budget":{...}}]}`。
 顺序为 probe、可选 warmup、选中 formal 题序；辅助 case_id 为 null，formal 为冻结题 ID。
 probe/check 只有 probe；run 的 warmup_count = 0 不含 warmup；resume 只含续测选中题。
@@ -96,12 +96,12 @@ budget 保留适配器原记录；lab 严格六键放在 budget 内，不允许�
 
 | 消费数据 | 来源与校验 |
 | --- | --- |
-| run / tool 身份、diagnostic、relation、parent_run_id | `run.json`；现有结构、冻结计划绑定与批次身份检查 |
-| config、bundle、selection、plan | 对应冻结文件；结构、语义、选择哈希和绑定检查 |
+| run / tool 身份、diagnostic、relation、parent_run_id | `TrialEvidence.input("run")`；现有结构、冻结计划绑定与批次身份检查 |
+| config、bundle、selection、plan | inputs 冻结成员；旧布局为对应冻结文件；结构、语义、选择哈希和绑定检查 |
 | case_id、执行终态、发送/终止时间、category、quality_state、score | 流式 `events.jsonl` 与题包；生命周期及 score 使用原校验器 |
 | stop_reason、counts、completeness、duration | 事件重建；持续窗口用原 reducer；不信任可缺失的 `summary.json` |
 | events_sha256、path、manifest_sealed | 同次事件字节哈希、目录与 manifest；封存标记不等于全量完整性核验 |
-| service_drain | 原 `service_drain`、idle/start 事件、`engine-capabilities.json` 与 manifest 绑定；lab 还核验 `service.props.json` 和请求快照 |
+| service_drain | 原 `service_drain`、idle/start 事件、engine_capabilities 观测及物理 manifest 绑定；lab 还核验 service_properties 观测和已引用请求原件 |
 
 投影每行严格解析完整 JSON 行；重复键、非有限数、中间损坏仍拒绝。未完成的末行沿用
 截断语义。消费事件保留身份、序号、时钟、生命周期、评分与窗口检查；不消费的

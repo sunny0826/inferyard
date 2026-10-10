@@ -32,6 +32,9 @@ inferyard report --runs CORE_RUN SVG_RUN --out bench-report
 inferyard verify --path bench-report --rerender
 ```
 
+当前源码候选中，完整普通初始 Prism run 各有八份证据，新汇总报告有三份文件，共十九份。
+候选准备、主机状态、batch 外层、父链与可选高频流另计；格式见[容器契约](contracts/run-evidence-layout.md)。
+
 报告分别展示两个 run，核心评分分母仍为 120，鹈鹕不并入质量分母。不同题包、预算或设备的结果不因此获得受控性能比较资格。
 
 补齐同一轮测评时，已有完整核心结果则只补跑缺少的鹈鹕题包，再创建新汇总报告。保留原始 run 和旧报告；SVG 截断、解析失败或未满足动画要求均保留原文，不根据结果自动改预算重试。任一题包未运行或被阻断时，明确标记默认范围尚未完成。

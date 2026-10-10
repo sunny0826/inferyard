@@ -26,7 +26,8 @@
 [benchmark_cost.py](benchmark_cost.py) 使用公开夹具生成固定合成输入。它不启动服务或发送模型请求。
 `prepare --baseline TREE --out NEW` 创建输入；`measure --baseline TREE --candidate TREE
 --corpus DIR --out NEW --repeats 5` 交替运行两个源码树。所有输出目录必须是 `/tmp` 下的新目录。
-两个源码树使用同一个固定 Python 环境，输入原件保持不变。
+两个源码树使用同一个固定 Python 环境，输入原件保持不变。准备使用显式 test-only
+LegacyJournal 生成合法 schema-3 快照样本，仅核验旧读取成本，不切换生产 writer。
 
 脚本保存完整 stdout/stderr、退出码、产物摘要和输入计数。产物比较只允许明确的生成器来源摘要与
 等价目标路径差异；缺行、缺 SVG、其他内容变化或拒绝路径变化使检查失败。
@@ -40,12 +41,24 @@ RSS 单位换算支持 macOS/Linux；不测磁盘 I/O、真实模型成本或原
 它复用公开测试夹具，以真实 CLI 解析/调度及 `httpx.MockTransport` 生成新证据，保存实际收件数、
 正文摘要、终态、临时 host state、文件清单和返回边界耗时。不启动模型或 TCP 服务；预检与身份
 注入明确标为模拟，不能宣称原生资格。输出必须是 `/tmp` 下新目录。
-仅 PR1 的 `--pack-layout2` 会把本次新合成原件装入另一新目录，用于 codec 验证，原目录不改。
+worker 直接核验生产 layout2，逐条比较 prepared body 与实际收件；不转换运行原件。
+`--diagnostic` 保留真实 CLI 退出 3，worker 自身成功退出另计，不能把诊断当正式完成。
 
 [layout_offline_checks.py](layout_offline_checks.py) 接受 `--baseline TREE --candidate TREE
 --source-run FIXTURE_RUN --out NEW`，只接受上述 worker 创建的合成 run。
-通过真实子进程 CLI 保存新旧 verify/report、独立损坏副本的拒绝结果和派生来源链回执。
+基线应为支持 layout2 的读取侧合格源码；另建显式 test-only 旧布局公开夹具。
+通过真实子进程 CLI 保存新旧 verify/report、独立损坏副本的拒绝结果和派生来源链回执，
+实际新 writer 与旧夹具的原始清单和摘要均保持不变。
 它不驱动浏览器、恢复/重跑或全部专业场景，这些范围另行验收；不以回执文件存在代替通过。
+
+[layout_dual_scope.py](layout_dual_scope.py) 接受 `--tree TREE --out NEW`，串行驱动
+125 / 6 次模拟请求、两 run 的 verify、一份汇总报告及 rerender；核对 8×2+3=19
+和逐请求正文、终态、核心分母，保留所有原始输出。没有真实模型或原生资格。
+
+[layout_fault_checks.py](layout_fault_checks.py) 接受 `--tree TREE --out NEW`，有界驱动
+真实 CLI 的请求 write/flush/fsync、started、receipt、采样、close/seal、崩溃和取消检查，
+以及 duration 期限拒发、停止与排空回归。只使用临时 host state 和 MockTransport；
+保存 subprocess stdout/stderr、退出码、服务收件及可读证据前缀，不启动服务或清理原件。
 
 [layout_index_cost.py](layout_index_cost.py) 接受 `--tree TREE --source SYNTHETIC_LAYOUT2 --out NEW`，
 在独立新副本中追加未发送的 prepared 记录，分两子进程检查 120 / 12000 条索引扫描与正文读回。
