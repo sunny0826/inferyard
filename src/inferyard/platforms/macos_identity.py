@@ -89,6 +89,17 @@ def _model_argument(args, process, model):
         raise PreflightError("service_model_argument_mismatch")
 
 
+def _bound_metal_library(bound_files, library):
+    """Find the preflight identity for this library, including a resolved symlink."""
+    for item in bound_files:
+        try:
+            if os.path.samefile(item.path, library):
+                return item
+        except OSError:
+            continue
+    return None
+
+
 def _metal_binding(config, engine, pid, rows, bound_files=None):
     arguments = config["engine"]["startup_args"]
     options = ("-ngl", "--gpu-layers", "--n-gpu-layers")
@@ -110,7 +121,7 @@ def _metal_binding(config, engine, pid, rows, bound_files=None):
                 raise PreflightError("metal_backend_library_not_bound")
             identity = hash_file(library, manifest[library.name])
         else:
-            identity = next((item for item in bound_files if Path(item.path) == library), None)
+            identity = _bound_metal_library(bound_files, library)
             if identity is None:
                 raise PreflightError("metal_backend_library_not_bound")
         if not mapped_file(pid, identity, rows):

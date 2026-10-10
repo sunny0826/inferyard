@@ -388,6 +388,26 @@ def test_metal_library_must_be_manifest_bound_and_actually_mapped(native, monkey
         macos_identity.verify_process(config, model, engine, "127.0.0.1", 8080, bound_files=bound)
 
 
+def test_metal_guard_matches_a_resolved_library_symlink(native, monkeypatch, tmp_path):
+    _, process, config, model, engine = native
+    config = deepcopy(config)
+    config["engine"]["backend"] = "metal"
+    config["engine"]["startup_args"][-1] = "1"
+    process.cmdline = lambda: [engine.path, *config["engine"]["startup_args"]]
+    target = tmp_path / "libggml-metal.0.dylib"
+    target.write_bytes(b"synthetic-metal-library")
+    library = tmp_path / "libggml-metal.dylib"
+    library.symlink_to(target.name)
+    bound = [model, engine, hash_file(library)]
+    assert bound[-1].path != str(library)
+    monkeypatch.setattr(macos_identity, "hash_file", lambda *args: pytest.fail("guard rehashed"))
+    result = macos_identity.verify_process(
+        config, model, engine, "127.0.0.1", 8080, bound_files=bound
+    )
+    assert result["gpu_backend"]["library_sha256"] == bound[-1].sha256
+    assert result["gpu_backend"]["loaded_library"] == bound[-1].path
+
+
 def test_mapping_requires_the_captured_file_identity(native, monkeypatch):
     *_, engine = native
     row = {"p": 321, "f": "txt", "t": "REG", "D": hex(engine.device), "i": str(engine.inode)}
