@@ -6,6 +6,7 @@ from pathlib import Path
 from inferyard.analysis.environment_identity import fields
 from inferyard.evidence.performance_evidence import clock_span
 from inferyard.evidence.storage import EvidenceError, local_file, read_json, sha256_file
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.extensions.extension_evidence import verify_packet
 from inferyard.implementation_identity import role_identity
 from inferyard.runtime.overhead_binding import workload_identity
@@ -141,15 +142,19 @@ def load_total_applicability(overhead, target, *, data, source_roots=()):
         reasons.append("total_control_cross_boot_or_unknown_not_qualified")
     if clock["start_ns"] is None or any(arm["after_close_ns"] >= clock["start_ns"] for arm in arms):
         reasons.append("total_control_not_before_target")
-    target_collector = read_json(local_file(target, "collector.json"))
+    target_collector = TrialEvidence(target).observation("collector") or {}
     if len(verified_trials) != 2:
         reasons.append("total_control_verified_on_arms_required")
     for relative, (control, metadata) in verified_trials.items():
         reasons.extend(domain_reasons(control, data, metadata))
-        collector = read_json(local_file(root / relative, "collector.json"))
-        if any(
-            collector.get(k) != target_collector.get(k)
-            for k in ("collector", "sensors", "interval_ms")
+        collector = TrialEvidence(root / relative).observation("collector") or {}
+        if (
+            not target_collector
+            or not collector
+            or any(
+                collector.get(k) != target_collector.get(k)
+                for k in ("collector", "sensors", "interval_ms")
+            )
         ):
             reasons.append("total_control_target_collector_mismatch")
     return {

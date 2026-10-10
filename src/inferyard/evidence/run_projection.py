@@ -13,12 +13,12 @@ from inferyard.evidence.native import observation_evidence
 from inferyard.evidence.request_snapshots import require_current_sources
 from inferyard.evidence.service_drain import service_drain
 from inferyard.evidence.storage import EvidenceError, local_file
-from inferyard.evidence.trial_reads import TrialReads
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.evidence.trial_summary import trial_summary
 
 
 def _manifest(root, reads):
-    if not reads.exists("manifest.json"):
+    if reads.manifest is None and "manifest.json" not in reads.errors:
         return ["manifest_missing_unsealed_run"]
     if "manifest.json" in reads.errors:
         raise reads.errors["manifest.json"]
@@ -103,12 +103,11 @@ def _memory_tail(root):
 
 
 def read_run_projection(root):
-    from inferyard.evidence.ledger import CORE, _inputs
+    from inferyard.evidence.ledger import _inputs, preload_inputs
 
     root = root.resolve()
-    reads = TrialReads(root)
-    for name in CORE - {"events.jsonl", "memory.jsonl"}:
-        reads.json(name)
+    reads = TrialEvidence(root, projection=True)
+    preload_inputs(reads)
     limits = _manifest(root, reads)
     files = reads.manifest["files"] if reads.manifest is not None else {}
     require_current_sources(root, files)
@@ -138,7 +137,7 @@ def read_run_projection(root):
     verify_lab(
         root, documents["config"], documents["bundle"], retained, reads=reads, _projection=True
     )
-    observation = observation_evidence(root, documents["config"])
+    observation = observation_evidence(root, documents["config"], reads=reads)
     fields = (
         "case_id",
         "execution_state",

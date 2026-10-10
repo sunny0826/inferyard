@@ -22,18 +22,17 @@ from inferyard.config.plan_inputs import validate_workload_inputs
 from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
 from inferyard.evidence.capacity_stop import validate_capacity_stop
 from inferyard.evidence.duration_ledger import duration_summary
+from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.event_ledger import reduce_events
 from inferyard.evidence.formats import UnsupportedFormat, require_core
 from inferyard.evidence.journal import trial_for
 from inferyard.evidence.storage import (
     EvidenceError,
     json_bytes,
-    local_file,
-    read_json,
     verify_manifest,
 )
 from inferyard.evidence.token_budgets import read_budgets
-from inferyard.evidence.trial_reads import TrialReads
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.evidence.trial_summary import trial_summary
 
 CORE = {
@@ -47,18 +46,35 @@ CORE = {
 }
 
 
+CORE_LAYOUT2 = {
+    "inputs.json",
+    "observations.jsonl",
+    "request-bodies.jsonl",
+    "events.jsonl",
+    "memory.jsonl",
+    "environment.jsonl",
+    "schedule.jsonl",
+}
+
+
+def core_files(reads):
+    return CORE_LAYOUT2 if reads.layout_version == 2 else CORE
+
+
+def preload_inputs(reads):
+    for kind in ("run", "plan", "selection", "config", "bundle"):
+        try:
+            reads.input(kind)
+        except EvidenceError as exc:
+            if exc not in reads.errors.values():
+                raise
+            # Defer physical parse failures until the original seal has been checked.
+
+
 def _inputs(root, reads, limits):
     documents = {}
-    for kind, filename in [
-        ("run", "run.json"),
-        ("plan", "plan.json"),
-        ("selection", "selection.json"),
-        ("config", "config.frozen.json"),
-        ("bundle", "bundle.json"),
-    ]:
-        data = reads.json(filename)
-        if filename in reads.errors:
-            raise reads.errors[filename]
+    for kind in ("run", "plan", "selection", "config", "bundle"):
+        data = reads.input(kind)
         require_core(data, kind)
         try:
             validate_document(kind, data)
@@ -100,26 +116,24 @@ def _inputs(root, reads, limits):
     if (run["parent_run_id"] is None) != (selection["parent_events_sha256"] is None):
         raise EvidenceError("parent_evidence_binding_missing")
     for name in ("config", "bundle"):
-        filename = "config.frozen.json" if name == "config" else "bundle.json"
-        if selection[name + "_sha256"] != reads.hashes[filename]:
+        if selection[name + "_sha256"] != reads.input_digest(name):
             raise EvidenceError("trial_input_hash_mismatch")
-    if (root / "manifest.json").exists():
+    if reads.manifest is not None:
         manifest = reads.manifest
         if any(
             manifest.get(k, run[k]) != run[k]
             for k in ("run_id", "experiment_id", "trial_id", "origin", "kind", "execution_mode")
         ):
             raise EvidenceError("manifest_run_identity_mismatch")
-        if manifest["run_id"] != run["run_id"] or not CORE.issubset(manifest["files"]):
+        if manifest["run_id"] != run["run_id"] or not core_files(reads).issubset(manifest["files"]):
             raise EvidenceError("manifest_missing_core_identity")
     return documents, limits, trial, workload
 
 
 def read_trial(root: Path, *, metadata=None):
     root = root.resolve()
-    reads = TrialReads(root)
-    for name in CORE - {"events.jsonl", "memory.jsonl"}:
-        reads.json(name)
+    reads = TrialEvidence(root)
+    preload_inputs(reads)
     events, event_tails = reads.jsonl("events.jsonl")
     samples, sample_tails = reads.jsonl("memory.jsonl")
     if reads.manifest is not None and (
@@ -138,13 +152,16 @@ def read_trial(root: Path, *, metadata=None):
     reads.check_input_errors()
     run, selection = documents["run"], documents["selection"]
     limits += event_tails
+    limits.extend(
+        name + ":" + tail for name, tails in reads.container_tails.items() for tail in tails
+    )
     if metadata is not None:
         metadata.update(
             first_event_utc=events[0].get("utc") if events else None,
             manifest=reads.manifest,
             manifest_sha256=reads.hashes.get("manifest.json"),
-            identity=reads.documents.get("identity.json", {}),
-            environment_start=reads.documents.get("environment.start.json", {}),
+            identity=reads.observation("identity") or {},
+            environment_start=reads.observation("environment", stage="start") or {},
         )
     cases = {c["case_id"]: c for c in documents["bundle"]["cases"]}
     duration = workload["protocol"] if workload["protocol"]["kind"] == "duration" else None
@@ -157,24 +174,36 @@ def read_trial(root: Path, *, metadata=None):
     capabilities = bound_capabilities(
         root,
         manifest_files if reads.manifest is not None else None,
-        reader=lambda path: reads.json(path.name),
+        reads=reads,
     )
     from inferyard.evidence.fixed_output import verify_execution
 
     verify_execution(
-        root, workload, documents["config"], documents["bundle"], events, capabilities=capabilities
+        root,
+        workload,
+        documents["config"],
+        documents["bundle"],
+        events,
+        capabilities=capabilities,
+        reads=reads,
     )
     from inferyard.evidence.cache_execution import verify_execution as verify_cache_execution
 
     verify_cache_execution(
-        root, workload, documents["config"], documents["bundle"], events, capabilities=capabilities
+        root,
+        workload,
+        documents["config"],
+        documents["bundle"],
+        events,
+        capabilities=capabilities,
+        reads=reads,
     )
     from inferyard.evidence.lab import verify_lab
 
     lab_verified = verify_lab(root, documents["config"], documents["bundle"], events, reads=reads)
     from inferyard.evidence.native import observation_evidence
 
-    engine_observation = observation_evidence(root, documents["config"])
+    engine_observation = observation_evidence(root, documents["config"], reads=reads)
     if metadata is not None:
         from inferyard.evidence.service_drain import service_drain
 
@@ -252,20 +281,11 @@ def read_trial(root: Path, *, metadata=None):
         limitations=list(dict.fromkeys(limits)),
     )
     evidence = [
-        {"path": name, "sha256": reads.hashes[name]}
-        for name in (
-            "events.jsonl",
-            "run.json",
-            "plan.json",
-            "selection.json",
-            "bundle.json",
-            "config.frozen.json",
-        )
+        reads.log_reference("events.jsonl"),
+        *(reads.input_reference(kind) for kind in ("run", "plan", "selection", "bundle", "config")),
     ]
     if engine_verified:
-        evidence.append(
-            {"path": "service.props.json", "sha256": reads.hashes["service.props.json"]}
-        )
+        evidence.append(reads.observation_reference("service_properties"))
     summary["metric_observations"] = build_observations(
         run,
         trial["workload_id"],
@@ -289,12 +309,10 @@ def read_trial(root: Path, *, metadata=None):
         )
     resource_evidence = [
         *evidence,
-        {"path": "memory.jsonl", "sha256": reads.hashes["memory.jsonl"]},
+        reads.log_reference("memory.jsonl"),
     ]
-    if "collector.json" in manifest_files:
-        resource_evidence.append(
-            {"path": "collector.json", "sha256": reads.hashes["collector.json"]}
-        )
+    if observation_sealed(reads, "collector", manifest_files):
+        resource_evidence.append(reads.observation_reference("collector"))
     summary["resources"], resource_observations = build_resource_observations(
         run,
         trial["workload_id"],
@@ -332,9 +350,9 @@ def read_trial(root: Path, *, metadata=None):
         selection["case_ids"],
         kind=run["kind"],
         manifest=manifest_files if reads.manifest is not None else None,
-        reader=reads.json,
+        reads=reads,
     )
-    if (engine_verified or lab_verified) and token_name in manifest_files:
+    if (engine_verified or lab_verified) and token_name is not None:
         if run["kind"] == "run":
             token_counts = bind_token_counts(
                 selection["case_ids"],
@@ -342,11 +360,13 @@ def read_trial(root: Path, *, metadata=None):
                 workload["output_budget_tokens"],
                 source=template_source,
             )
-        token_evidence.append({"path": token_name, "sha256": reads.hashes[token_name]})
+        token_evidence.append(reads.observation_reference("token_budgets"))
     target_check = check_input_target(workload, selection["case_ids"], token_counts)
     summary["input_target_check"] = target_check
-    if (engine_verified or lab_verified) and "input-target-check.json" in manifest_files:
-        if read_json(local_file(root, "input-target-check.json")) != target_check:
+    if (engine_verified or lab_verified) and observation_sealed(
+        reads, "input_target_check", manifest_files
+    ):
+        if reads.observation("input_target_check") != target_check:
             raise EvidenceError("input_target_check_recomputation_mismatch")
     summary["input_lengths"], length_observations = input_length_summary(
         run,
@@ -385,9 +405,9 @@ def read_trial(root: Path, *, metadata=None):
     return {
         **documents,
         **(
-            {"resource_collector": reads.json("collector.json")}
+            {"resource_collector": reads.observation("collector")}
             if "resource_comparison" in documents["plan"]["experiment"]
-            and "collector.json" in manifest_files
+            and observation_sealed(reads, "collector", manifest_files)
             else {}
         ),
         "requests": requests,

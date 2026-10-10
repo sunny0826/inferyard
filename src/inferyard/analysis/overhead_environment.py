@@ -5,25 +5,28 @@ resource-off arms must not inherit the environment eligibility of an on arm.
 """
 
 from inferyard.analysis.environment_identity import fields as identity_fields
-from inferyard.evidence.trial_reads import TrialReads
+from inferyard.evidence.engine_capabilities import observation_sealed
+from inferyard.evidence.trial_evidence import TrialEvidence
 
 
 def environment_record(root, data, *, require_boundary=False):
-    reads = TrialReads(root)
-    manifest = reads.checked_json("manifest.json")
+    reads = TrialEvidence(root)
+    manifest = reads.manifest
     sealed = set(manifest["files"])
     endpoints, evidence, reasons = [], [], []
-    for name in ("environment.start.json", "environment.end.json"):
-        if name not in sealed:
-            reasons.append("environment_endpoint_unsealed_or_missing:" + name)
+    for stage in ("start", "end"):
+        if not observation_sealed(reads, "environment", sealed, stage=stage):
+            reasons.append(
+                "environment_endpoint_unsealed_or_missing:environment." + stage + ".json"
+            )
             endpoints.append({})
             continue
-        endpoints.append(reads.checked_json(name))
-        evidence.append({"path": name, "sha256": reads.hashes[name]})
+        endpoints.append(reads.observation("environment", stage=stage))
+        evidence.append(reads.observation_reference("environment", stage=stage))
     qualification = data["summary"]["measurement_context"]["environment_qualification"]
     boundary_only = (
-        "collector.json" in sealed
-        and reads.checked_json("collector.json").get("collector") == "boundary-only.v1"
+        observation_sealed(reads, "collector", sealed)
+        and reads.observation("collector").get("collector") == "boundary-only.v1"
     )
     if boundary_only or require_boundary:
         from inferyard.analysis.boundary_environment import qualify_boundary_environment

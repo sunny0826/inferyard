@@ -3,32 +3,36 @@
 import hashlib
 import re
 
-from inferyard.evidence.storage import EvidenceError, local_file, read_json
+from inferyard.evidence.engine_capabilities import observation_sealed
+from inferyard.evidence.storage import EvidenceError
+from inferyard.evidence.trial_evidence import TrialEvidence
 
 
 def clean_receipt_name(key):
     return "client-http-clean-" + hashlib.sha256(key.encode()).hexdigest() + ".json"
 
 
-def verify_clean_receipts(root, events, client_ids, manifest):
+def verify_clean_receipts(root, events, client_ids, manifest, *, reads=None):
+    reads = reads if reads is not None else TrialEvidence(root)
     completed = {
         event["request_id"]: event
         for event in events
         if event["event_type"] == "request_finished"
         and event["data"]["execution_state"] == "completed"
     }
-    expected_names = {clean_receipt_name(key) for key in completed}
-    actual = {path.name for path in root.glob("client-http-clean-*.json")}
-    sealed = {name for name in manifest or {} if name.startswith("client-http-clean-")}
-    if actual - expected_names or sealed - actual:
+    actual = set(reads.observation_keys("native_clean_receipt", stage="client_complete"))
+    if actual - completed.keys():
         raise EvidenceError("native_clean_receipt_inventory_mismatch")
     for key, event in completed.items():
-        name = clean_receipt_name(key)
-        if name not in actual:
-            continue  # Pre-receipt v3 records retain their reading semantics.
-        if manifest is not None and name not in manifest:
+        if key not in actual:
+            if reads.layout_version == 1:
+                continue  # Pre-receipt v3 records retain their reading semantics.
+            raise EvidenceError("native_clean_receipt_missing")
+        if manifest is not None and not observation_sealed(
+            reads, "native_clean_receipt", manifest, stage="client_complete", key=key
+        ):
             raise EvidenceError("native_clean_receipt_unsealed")
-        receipt = read_json(local_file(root, name))
+        receipt = reads.observation("native_clean_receipt", stage="client_complete", key=key)
         if type(receipt) is not dict:
             raise EvidenceError("native_clean_receipt_binding_mismatch")
         expected = {

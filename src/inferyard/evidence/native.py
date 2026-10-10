@@ -6,16 +6,22 @@ from inferyard.adapters.native_observation import OpenAIGenerationDecoder
 from inferyard.adapters.requests import request_body
 from inferyard.contracts.schemas_observation import OBSERVATION
 from inferyard.contracts.validation import ContractError, _validate
+from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.native_receipts import verify_clean_receipts
-from inferyard.evidence.request_snapshots import snapshot_name_for_event
-from inferyard.evidence.storage import EvidenceError, local_file, read_json
+from inferyard.evidence.storage import EvidenceError
+from inferyard.evidence.trial_evidence import TrialEvidence
 
 
-def observation_evidence(root, config):
-    path = local_file(root, "engine-capabilities.json")
-    if not path.exists():
+def observation_evidence(root, config, *, reads=None):
+    reads = reads if reads is not None else TrialEvidence(root)
+    if not reads.has_observation("engine_capabilities"):
+        if (
+            reads.layout_version == 2
+            and (reads.manifest or {}).get("engine_observation") is not None
+        ):
+            raise EvidenceError("engine_observation_manifest_mismatch")
         return None
-    value = read_json(path)
+    value = reads.observation("engine_capabilities")
     try:
         _validate(value, OBSERVATION, "engine_observation")
     except ContractError as exc:
@@ -25,11 +31,10 @@ def observation_evidence(root, config):
         "native",
     ):
         raise EvidenceError("engine_observation_binding_mismatch")
-    manifest_path = local_file(root, "manifest.json")
-    if manifest_path.exists():
-        manifest = read_json(manifest_path)
+    if reads.manifest is not None:
+        manifest = reads.manifest
         if (
-            "engine-capabilities.json" not in manifest["files"]
+            not observation_sealed(reads, "engine_capabilities", manifest["files"])
             or manifest.get("engine_observation") != value
         ):
             raise EvidenceError("engine_observation_manifest_mismatch")
@@ -60,16 +65,16 @@ def observation_evidence(root, config):
     return value
 
 
-def verify_native(root, config, bundle, events, observation):
+def verify_native(root, config, bundle, events, observation, *, reads=None):
+    reads = reads if reads is not None else TrialEvidence(root)
     cases = {case["case_id"]: case for case in bundle["cases"]}
     decoders, usages, ids = {}, {}, set()
-    manifest_path = local_file(root, "manifest.json")
-    manifest = read_json(manifest_path)["files"] if manifest_path.exists() else None
+    manifest = reads.manifest["files"] if reads.manifest is not None else None
     for event in events:
         key, kind, data = event["request_id"], event["event_type"], event["data"]
         if kind == "request_started":
-            name = snapshot_name_for_event(root, event, manifest)
-            if manifest is not None and name not in manifest:
+            reference = reads.request_reference(event)
+            if manifest is not None and reference["path"] not in manifest:
                 raise EvidenceError("native_request_unsealed")
             prompt = (
                 cases[data["case_id"]]["prompt"]
@@ -77,7 +82,7 @@ def verify_native(root, config, bundle, events, observation):
                 else config["execution"][event["phase"] + "_prompt"]
             )
             expected = request_body(config, prompt, stream=data["body"]["stream"])
-            if not _equal(read_json(local_file(root, name)), expected):
+            if not _equal(reads.request_body(event), expected):
                 raise EvidenceError("native_request_differs_from_plan")
             decoders[key] = OpenAIGenerationDecoder(
                 "0" * 32, "0" * 32, streaming=expected["stream"], t_send_ns=event["monotonic_ns"]
@@ -133,5 +138,5 @@ def verify_native(root, config, bundle, events, observation):
         elif kind == "native_observed":
             if data["engine_internal_drain"] is not None:
                 raise EvidenceError("native_evidence_cannot_prove_engine_drain")
-    verify_clean_receipts(root, events, usages, manifest)
+    verify_clean_receipts(root, events, usages, manifest, reads=reads)
     return False  # Native observations never inherit lab/template/engine-timings qualification.

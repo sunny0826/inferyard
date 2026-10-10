@@ -7,12 +7,15 @@ from inferyard.adapters.lab_parameters import (
     validate_budget,
     validate_parameters,
 )
-from inferyard.evidence.storage import EvidenceError, json_bytes, local_file, read_json
-from inferyard.evidence.token_budgets import V2, probe_budget, read_budgets
+from inferyard.evidence.engine_capabilities import observation_sealed
+from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.evidence.token_budgets import probe_budget, read_budgets
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.identity import PreflightError
 
 
 def verify_parameters(root, config, props, events, bodies, usage, manifest, *, reads=None):
+    reads = reads if reads is not None else TrialEvidence(root)
     successful = any(
         e["event_type"] == "run_stopped"
         and e["data"]["reason"] in ("plan_finished", "check_only_no_formal_cases")
@@ -31,14 +34,16 @@ def verify_parameters(root, config, props, events, bodies, usage, manifest, *, r
             raise EvidenceError("lab_parameter_probes_missing")
         for event in probes:
             body = bodies[event["request_id"]]
-            name = "effective-stream.json" if body["stream"] else "effective-ordinary.json"
-            path = local_file(root, name)
-            if not path.exists():
+            stage = "stream" if body["stream"] else "ordinary"
+            if not reads.has_observation("effective_parameters", stage=stage):
                 if successful:
                     raise EvidenceError("lab_parameter_evidence_missing")
                 continue  # A completed probe can still fail its parameter preflight.
-            _sealed(name, manifest)
-            evidence = read_json(path)
+            if manifest is not None and not observation_sealed(
+                reads, "effective_parameters", manifest, stage=stage
+            ):
+                raise EvidenceError("lab_parameter_evidence_unsealed")
+            evidence = reads.observation("effective_parameters", stage=stage)
             value = response(
                 json_bytes(evidence["lab_parameters"]),
                 props,
@@ -58,28 +63,15 @@ def verify_parameters(root, config, props, events, bodies, usage, manifest, *, r
         raise EvidenceError("lab_parameter_evidence_invalid") from exc
 
 
-def _sealed(name, manifest):
-    if manifest is not None and name not in manifest:
-        raise EvidenceError("lab_parameter_evidence_unsealed")
-
-
 def _budgets(root, config, props, manifest, *, required, reads=None):
-    reader = reads.json if reads is not None else lambda name: read_json(local_file(root, name))
-    selected = reader("selection.json")["case_ids"]
-    kind = reader("run.json")["kind"]
-    name, budgets = read_budgets(
-        root, config, selected, kind=kind, manifest=manifest, reader=reader
-    )
+    selected = reads.input("selection")["case_ids"]
+    kind = reads.input("run")["kind"]
+    _, budgets = read_budgets(root, config, selected, kind=kind, manifest=manifest, reads=reads)
     if budgets is None:
         if required:
             raise EvidenceError("lab_token_budget_evidence_missing")
         return None
-    if name == V2:
-        records = [entry["budget"] for entry in budgets["entries"]]
-    else:
-        if len(budgets) != len(selected) + 2:
-            raise EvidenceError("lab_token_budget_inventory_mismatch")
-        records = budgets
+    records = [entry["budget"] for entry in budgets["entries"]]
     for record in records:
         if type(record) is not dict or set(record) != {
             "input_tokens",

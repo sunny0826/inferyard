@@ -1,11 +1,12 @@
 """Offline proof of the frozen prefix-reuse request sequence."""
 
 from inferyard.config.cache_execution import request_value, validate_inputs
-from inferyard.evidence.request_snapshots import snapshot_name_for_event
-from inferyard.evidence.storage import EvidenceError, local_file, read_json
+from inferyard.evidence.engine_capabilities import observation_sealed
+from inferyard.evidence.storage import EvidenceError
+from inferyard.evidence.trial_evidence import TrialEvidence
 
 
-def verify_execution(root, workload, config, bundle, events, *, capabilities=None):
+def verify_execution(root, workload, config, bundle, events, *, capabilities=None, reads=None):
     if "cache_protocol" not in workload:
         return
     from inferyard.adapters.prism import request_body
@@ -14,15 +15,14 @@ def verify_execution(root, workload, config, bundle, events, *, capabilities=Non
     starts = [e for e in events if e["event_type"] == "request_started"]
     if not starts:
         return
-    manifest = (
-        read_json(root / "manifest.json")["files"] if (root / "manifest.json").exists() else None
-    )
-    if manifest is not None and "service.props.json" not in manifest:
+    reads = reads if reads is not None else TrialEvidence(root)
+    manifest = reads.manifest["files"] if reads.manifest is not None else None
+    if manifest is not None and not observation_sealed(reads, "service_properties", manifest):
         raise EvidenceError("cache_protocol_engine_unsealed")
     if capabilities is None:
         from inferyard.evidence.engine_capabilities import bound_capabilities
 
-        capabilities = bound_capabilities(root, manifest)
+        capabilities = bound_capabilities(root, manifest, reads=reads)
     if not capabilities.prism_definition:
         raise EvidenceError("cache_protocol_engine_unverified")
     first = starts[0]
@@ -47,10 +47,10 @@ def verify_execution(root, workload, config, bundle, events, *, capabilities=Non
             and ends.get(event["request_id"], {}).get("execution_state") != "completed"
         ):
             raise EvidenceError("cache_protocol_continued_after_unsuccessful_request")
-        name = snapshot_name_for_event(root, event, manifest)
-        if manifest is not None and name not in manifest:
+        reference = reads.request_reference(event)
+        if manifest is not None and reference["path"] not in manifest:
             raise EvidenceError("cache_protocol_request_unsealed")
-        body = read_json(local_file(root, name))
+        body = reads.request_body(event)
         if body.get("cache_prompt") is not request_value(config, event["phase"], ordinal):
             raise EvidenceError("cache_protocol_request_policy_mismatch")
         phase = event["phase"]
