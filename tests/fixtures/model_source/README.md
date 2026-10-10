@@ -8,8 +8,9 @@
 - `modelscope.json`：`GET https://modelscope.cn/api/v1/models/ggml-org/models/repo/files?Revision=f68dcd8c87746ccbf4f1f02703b45e393f921ce4&Recursive=False&Root=tinyllamas`。
   SHA256：`151a24bd14a2aadea60f1e61a7cfd42ef67763d2004d58ba01f824d7d446bce4`。
 
-ModelScope 所选 `tinyllamas/stories260K.gguf` 的 `Revision` 与固定请求相同，
-并声明 1185376 字节及 `270cba1bd5109f42d03350f60406024560464db173c0e387d91f0426d3bd256d`。
+ModelScope 所选 `tinyllamas/stories260K.gguf` 声明 1185376 字节及
+`270cba1bd5109f42d03350f60406024560464db173c0e387d91f0426d3bd256d`。
+文件 `Revision` 是该文件最后修改提交，不是请求的目录树提交。
 发现阶段的可变 master 响应未用作固件或端到端证据。此固件只证明解析规则；
 ModelScope 文件传输没有真机端到端覆盖。
 故障注入测试派生的大小、哈希、字段或状态变更均为模拟数据。

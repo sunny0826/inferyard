@@ -60,7 +60,7 @@ def test_metadata_rejects_identity_and_invalid_fields(platform, change):
         files = data["Data"]["Files"]
         chosen = next(f for f in files if f["Path"] == source(platform).path)
         if change == "revision":
-            chosen["Revision"] = "master"
+            data["Success"] = False
         elif change == "path":
             chosen["Path"] = "other.gguf"
         elif change == "size":
@@ -88,6 +88,16 @@ def test_nested_ascii_filename_and_uppercase_revision():
     assert parsed.path == "sub/file a.gguf"
     assert parsed.revision == "a" * 40
     assert parsed.download_url.endswith("/sub/file%20a.gguf")
+
+
+def test_modelscope_accepts_file_last_changed_before_requested_revision():
+    parsed = parse_source(
+        "https://modelscope.cn/ggml-org/models/blob/"
+        f"{REVISIONS['modelscope']}/tinyllamas/stories15M.gguf"
+    )
+    record = parse_metadata(parsed, (FIXTURES / "modelscope.json").read_bytes())
+    assert record["revision"] == REVISIONS["modelscope"]
+    assert record["sha256"] == "61b50d457809a5194818fd22e6724b456cd7bb9a6264c52c8110684c53f3704a"
 
 
 def test_modelscope_root_file_does_not_send_dot_directory():

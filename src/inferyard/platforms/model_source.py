@@ -125,7 +125,7 @@ def _file_metadata(source, data):
         if len(matches) != 1:
             raise ValueError
         entry = matches[0]
-        if entry.get("Revision") != source.revision or entry.get("Type") != "blob":
+        if entry.get("Type") != "blob":
             raise ValueError
         size, digest = entry["Size"], entry["Sha256"]
     if not isinstance(files, list) or type(size) is not int or size <= 0:
