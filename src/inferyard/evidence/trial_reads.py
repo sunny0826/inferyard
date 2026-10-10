@@ -22,6 +22,15 @@ class TrialReads:
     def exists(self, name):
         return local_file(self.root, name).exists()
 
+    def bytes(self, name):
+        try:
+            raw = local_file(self.root, name).read_bytes()
+        except OSError as exc:
+            raise EvidenceError("invalid_original_evidence") from exc
+        self.hashes[name] = hashlib.sha256(raw).hexdigest()
+        self.sizes[name] = len(raw)
+        return raw
+
     def json(self, name):
         if name not in self.documents:
             try:

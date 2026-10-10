@@ -39,9 +39,13 @@ def schemas_for():
         TOTAL_OBSERVER_CONTROL,
         TOTAL_TRIAL_CONTROL,
     )
+    from inferyard.contracts.schemas_layout import INPUTS, OBSERVATION_RECORD, PREPARED_REQUEST
     from inferyard.contracts.schemas_storage import MANIFEST, SUMMARY
 
     return {
+        "inputs": INPUTS,
+        "observation_record": OBSERVATION_RECORD,
+        "prepared_request": PREPARED_REQUEST,
         "config": CONFIG,
         "config_input": CONFIG_INPUT,
         "bundle": BUNDLE,

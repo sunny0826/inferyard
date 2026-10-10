@@ -14,7 +14,8 @@ from inferyard.contracts.schemas_common import (
     nullable,
     obj,
 )
-from inferyard.contracts.schemas_experiment import EXPERIMENT, REFERENCE
+from inferyard.contracts.schemas_evidence_reference import EVIDENCE_REFERENCE
+from inferyard.contracts.schemas_experiment import EXPERIMENT
 from inferyard.contracts.schemas_summary_metrics import FRACTION
 
 ENVIRONMENT = obj(
@@ -106,7 +107,7 @@ MEASUREMENT_CONTEXT = obj(
         "external_cpu_requests": EXTERNAL_REQUESTS,
         "environment": ENVIRONMENT,
         "collector_schedule": SCHEDULE,
-        "evidence_refs": array(REFERENCE),
+        "evidence_refs": array(EVIDENCE_REFERENCE),
         "performance_comparison_eligible": {"type": "boolean", "const": False},
     }
 )

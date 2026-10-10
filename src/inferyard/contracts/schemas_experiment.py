@@ -18,10 +18,12 @@ from inferyard.contracts.schemas_common import (
     obj,
 )
 from inferyard.contracts.schemas_config import ENVIRONMENT_ADMISSION
+from inferyard.contracts.schemas_evidence_reference import EVIDENCE_REFERENCE
 from inferyard.contracts.schemas_identity import IMPLEMENTATION_IDENTITY
 from inferyard.contracts.schemas_lineage import LINEAGE, RECORDS
 
 SECONDS = {"type": "number", "exclusiveMinimum": 0}
+
 REFERENCE = obj({"path": LABEL, "sha256": HASH})
 VERSIONS = obj({"measurement": LABEL, "scoring": LABEL, "comparison": LABEL})
 FIXED_PROTOCOL = obj({"kind": enum("fixed"), "case_ids": array(IDENTIFIER, 1)})
@@ -211,7 +213,7 @@ METRIC_DEFINITION = obj(
         "comparison_policy": LABEL,
         "implementation_status": enum("planned", "implemented", "verified"),
         "scope": enum("core", "conditional"),
-        "evidence_refs": array(REFERENCE),
+        "evidence_refs": array(EVIDENCE_REFERENCE),
     }
 )
 METRIC_OBSERVATION = obj(
@@ -245,7 +247,7 @@ METRIC_OBSERVATION = obj(
         "coverage_ratio": nullable({"type": "number", "minimum": 0, "maximum": 1}),
         "comparison_eligible": BOOL,
         "limitations": STRING_LIST,
-        "evidence_refs": array(REFERENCE),
+        "evidence_refs": array(EVIDENCE_REFERENCE),
     }
 )
 AGGREGATE_OBSERVATION = deepcopy(METRIC_OBSERVATION)

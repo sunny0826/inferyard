@@ -15,27 +15,24 @@ def verify_message_snapshots(root, events, reads):
     """New hash-only events require original snapshots, never reconstructed prompts."""
     from inferyard.contracts.schemas_events import MESSAGES
     from inferyard.contracts.validation import ContractError, _validate
+    from inferyard.evidence.trial_evidence import TrialEvidence
 
-    manifest = reads.manifest["files"] if reads.manifest is not None else None
+    evidence = reads if isinstance(reads, TrialEvidence) else TrialEvidence(root)
     for event in events:
         if event["event_type"] != "request_started":
             continue
         body = event["data"]["body"]
-        if "messages_sha256" not in body:
+        if "messages_sha256" not in body and evidence.layout_version == 1:
             continue  # Old inline events retain their original reading policy.
-        name = snapshot_name_for_event(root, event, manifest)
-        if not reads.exists(name):
-            raise EvidenceError("request_snapshot_missing")
-        if manifest is not None and name not in manifest:
-            raise EvidenceError("request_snapshot_unsealed")
-        snapshot = reads.checked_json(name)
+        snapshot = evidence.request_body(event)
         if type(snapshot) is not dict or "messages" not in snapshot:
             raise EvidenceError("request_snapshot_messages_invalid")
         try:
             _validate(snapshot["messages"], MESSAGES, "request.messages")
         except ContractError as exc:
             raise EvidenceError("request_snapshot_messages_invalid") from exc
-        if messages_sha256(snapshot["messages"]) != body["messages_sha256"]:
+        expected = body.get("messages_sha256") or messages_sha256(body["messages"])
+        if messages_sha256(snapshot["messages"]) != expected:
             raise EvidenceError("request_messages_hash_mismatch")
 
 
