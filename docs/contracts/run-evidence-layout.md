@@ -73,7 +73,7 @@ prepared 没有 started 合法，不能计 executed；started 有消息摘要就
 | manifest / layout_version / root / errors / hashes / sizes | 当前物理库存、读取状态与真实物理摘要 |
 | container_tails | 已扫描 observations/prepared 容器的尾截断原因，按实际文件名分组；全量 preload 后 ledger 纳入 partial，不缓存 body 或把截断当成功 |
 | check_input_errors() / preload(manifest_files) | 保留严格错误处理与必要观测预读 |
-| verify_reference(root, ref, reads=None) | 核验真实容器摘要及可选成员定位/内容摘要；可复用同命令、相同 resolved root 的完整 TrialEvidence，不接受 projection 或跨命令缓存 |
+| verify_reference(root, ref, reads=None, readers=None) | 核验真实容器摘要及可选成员定位/内容摘要；reads 属于同命令相同 resolved root；readers 是同命令按实际子目录保存的完整 reader 字典，原路径先过结构、包含性与 symlink 校验；不接受 projection 或跨命令缓存 |
 
 只读 layout1 adapter 内部允许旧文件名映射；业务模块不得继续用 .json("run.json") 或虚拟 hash key。
 既有 TrialReads 可作为私有物理读取实现，hashes/sizes 永远只含真实文件。
@@ -105,8 +105,11 @@ Go 静态绑定保留 layout1 的 run/config 各 1 MiB 上限；layout2 对 run/
 ## 写入生命周期
 
 TrialJournal 在创建采样日志前原子发布 inputs；通用 EvidenceStore snapshot/日志/seal 不改协议。
-低频观测同步方法 `observe(kind, payload, stage, key=None, sync=True)` 由实际 owner 调用；
+构造器接收 `configuration_source={media_type, data, missing_reason}`；data 为真实原文 bytes，
+默认无原文时记录 not_persisted。脱敏后才计算原文的物理大小与摘要，不重建 parsed config。
+低频观测同步方法 `observe(kind, payload, *, stage, key=None)` 由实际 owner 调用；
 prepared 方法 `prepare_request(request_id, phase, ordinal, body)` 返回后原件已 flush/fsync。
+`has_observation(kind, *, stage=None, key=None)` 只查询已成功耐久的槽；失败 append 不占槽。
 共同写者仍在现有 event loop，同步 append 无 await；不引入 I/O worker 或多写者线程。
 identity 权威槽显式查询，原发布时点不变。native receipt 写入耐久后才清 dirty。
 append/flush/fsync 失败停发并保留 dirty；close/seal 纳入两个新增日志且保持目录 fsync。
