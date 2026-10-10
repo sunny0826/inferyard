@@ -26,5 +26,5 @@
 | [backlog](backlog.md) · [变更记录](../CHANGELOG.md) | 当前剩余工作与候选范围 |
 | [脚本](../scripts/README.md) · [Schema](../schemas/README.md) | 工程工具与生成文件 |
 
-指标和方法文档是 catalogue 生成源，修改时同步导出且保留稳定 ID。
+catalogue 生成源只有 [指标定义](experiments/metrics.md) 和 [方法目录](reference/methods-matrix.md) 两个文件，修改后运行 `scripts/export_catalogue.py` 导出且保留稳定 ID。
 原始运行留在本机，`validation/` 不属于公开工作树；证据规则统一见[数据契约](data-contract.md#证据血缘与比较结论)。
