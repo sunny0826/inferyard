@@ -24,6 +24,12 @@ inferyard --schema memory_check
 重复键、PID/组唯一性、成员关系、原因、保护声明、RSS 归约和覆盖计数。未知 kind/旧版本拒绝，
 不迁移或转换历史诊断。`verify` 不接受本诊断为正式 run 或报告证据。
 
+进程新增可选字段 `parent_identity_missing_reason`，新输出始终包含它；旧 v1 文件缺少该字段仍可读取。
+父关系缺测为 `parent_identity_unavailable` 或 `parent_identity_changed`，此时父启动身份必须为 null，
+自身身份与 RSS 仍有效，原有 `missing_reason` 为 null。自身缺测继续使用原字段并丢弃 RSS。
+`coverage.missing` 按自身或父关系缺测的进程数计数，每个进程只计一次；父关系缺测仍退出 3，
+但不等于 RSS 缺测，组 RSS 总量只依据成员 RSS 是否完整归约。
+
 快照记录以下字段：
 
 | 字段 | 含义 |
@@ -49,8 +55,10 @@ bundle 文件身份；不同安装副本即使同名也分开。同一 bundle �
 
 helper 有可信嵌套 bundle 时按 bundle 归组；无 bundle 时可依据已核验父链归组。
 bundle 与父链冲突时独立列为 unknown；launchd 拉起且两者均无可靠归属的进程也独立展示。
-应用组只代表可核验成员，不保证穷尽所有 helper。启动身份或父身份在采集中变化时丢弃 RSS
-并记录原因，不把两代 PID 合并。采集不是持续监视，使用旧清单执行任何操作前应重新检查。
+应用组只代表可核验成员，不保证穷尽所有 helper。自身启动身份或所有者在采集中变化时丢弃 RSS
+并记录原因，不把两代 PID 合并。父身份不可读、父 PID 或父启动身份变化时，只清空父启动身份，
+保留核验过的自身身份和 RSS，不沿该父关系归组或传播保护。受影响的未保护对象为 unknown，
+不因此降低无关可读应用的 review 状态。采集不是持续监视，使用旧清单操作前应重新检查。
 
 ## 判断与保护
 

@@ -128,3 +128,23 @@ raise SystemExit(main(json.loads(sys.argv[1])))
         env={**os.environ, "NO_COLOR": "1"},
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_parent_failure_partial_cli_preserves_rss_and_saved_readback(
+    macos, monkeypatch, tmp_path, capsys
+):
+    child = observed(11, parent=10)
+    child["parent_start_identity"] = None
+    child["parent_identity_missing_reason"] = "parent_identity_unavailable"
+    data = report([child, observed(20, bundle=app())])
+    monkeypatch.setattr(memory_check, "inspect_memory", lambda _: data)
+    out = tmp_path / "parent-partial"
+    assert cli.main(["memory-check", "--out", str(out)]) == 3
+    value = json.loads(capsys.readouterr().out)
+    assert value["status"] == "partial"
+    saved = read_memory_check(out / "memory-check.json")
+    assert saved == value["details"]
+    rows = {row["pid"]: row for row in saved["processes"]}
+    assert rows[11]["rss"]["value"] == 11 * 1024
+    assert rows[11]["decision"]["status"] == "unknown"
+    assert rows[20]["decision"]["status"] == "review"

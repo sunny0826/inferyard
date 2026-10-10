@@ -35,6 +35,7 @@ def decision(status, code, pid=None):
 def _edge(row, parent):
     return (
         parent is not None
+        and row.get("parent_identity_missing_reason") is None
         and row["start_identity"] is not None
         and parent["start_identity"] is not None
         and row["parent_start_identity"] == parent["start_identity"]
@@ -141,9 +142,17 @@ def project(snapshot, protect_pids, uid):
         gid = "app-" + hashlib.sha256(bundle["key"].encode()).hexdigest()[:24] if bundle else None
         if pid in protected:
             selected = decision("protected", protected[pid], pid)
-        elif row["missing_reason"] or incomplete_classification:
+        elif (
+            row["missing_reason"]
+            or row.get("parent_identity_missing_reason")
+            or incomplete_classification
+        ):
             selected = decision(
-                "unknown", row["missing_reason"] or "incomplete_protection_checks", pid
+                "unknown",
+                row["missing_reason"]
+                or row.get("parent_identity_missing_reason")
+                or "incomplete_protection_checks",
+                pid,
             )
         elif bundle and row["uid"] == uid:
             selected = decision("review", "verified_application_requires_user_review", pid)
@@ -157,6 +166,7 @@ def project(snapshot, protect_pids, uid):
             "identity_source": IDENTITY_SOURCE,
             "parent_pid": row["parent_pid"],
             "parent_start_identity": row["parent_start_identity"],
+            "parent_identity_missing_reason": row.get("parent_identity_missing_reason"),
             "display_name": name,
             "rss": row["rss"],
             "missing_reason": row["missing_reason"],

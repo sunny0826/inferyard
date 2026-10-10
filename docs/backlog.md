@@ -1,8 +1,18 @@
 # Backlog
 
-更新于 2026-10-10。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
+更新于 2026-10-11。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
 
 ## 新功能：应用内存诊断
+
+2026-10-11，PR #19 Bugbot 的父身份查询失败问题已复现并修复：父关系缺测或变化仅清空父边，
+保留核验过的自身身份/RSS；受影响对象 unknown，不降低无关可读应用的 review。
+新增可选 `parent_identity_missing_reason`，旧 v1 文件仍可读取；缺测计数包含父关系失败，仍退出 3。
+注入父查询失败（前/后）与父代际变化的 3 项回归先失败、修后通过；相关软件回归 269 项通过，
+覆盖保存读回/退出 3、坏父边及缺测计数拒绝、旧样例读取；Ruff、Schema/catalogue 一致性通过。
+真实 macOS CLI 枚举 645 PID，无截断，207 项缺测，退出 3，保存读回一致；
+该次未出现父关系缺测，竞态修复由上述注入回归验证，未声称真机复现了竞态。
+原始失败/通过日志在 `/tmp/memory-parent-before.log` / `/tmp/memory-parent-final-tests.log`；
+原生回执位于仓库外 `/var/folders/7r/gjhs3r216gvgl1yq_pr2nvxh0000gn/T/inferyard-parent-review-xe2pilyx/`。
 
 2026-10-10，MC-1a 已在 `feat/memory-check-macos` 实施，基线 `515c599`。
 `inferyard memory-check [--protect-pid PID] [--out NEW_DIR]` 默认输出只读 JSON，

@@ -17,19 +17,22 @@ REASON = obj({"code": LABEL, "pid": nullable(NAT)})
 DECISION = obj(
     {"status": enum("protected", "unknown", "review"), "reasons": array(REASON, minimum=1)}
 )
+PROCESS_FIELDS = {
+    "pid": NAT,
+    "start_identity": nullable(POS),
+    "identity_source": LABEL,
+    "parent_pid": NAT,
+    "parent_start_identity": nullable(POS),
+    "parent_identity_missing_reason": nullable(LABEL),
+    "display_name": LABEL,
+    "rss": READING,
+    "missing_reason": nullable(LABEL),
+    "group_id": nullable(LABEL),
+    "decision": DECISION,
+}
 PROCESS = obj(
-    {
-        "pid": NAT,
-        "start_identity": nullable(POS),
-        "identity_source": LABEL,
-        "parent_pid": NAT,
-        "parent_start_identity": nullable(POS),
-        "display_name": LABEL,
-        "rss": READING,
-        "missing_reason": nullable(LABEL),
-        "group_id": nullable(LABEL),
-        "decision": DECISION,
-    }
+    PROCESS_FIELDS,
+    required=[name for name in PROCESS_FIELDS if name != "parent_identity_missing_reason"],
 )
 GROUP = obj(
     {

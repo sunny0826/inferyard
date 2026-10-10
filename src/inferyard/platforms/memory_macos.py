@@ -46,12 +46,22 @@ def bundle_identity(executable):
         return None
 
 
+def _parent_identity(pid):
+    if not pid:
+        return None, None
+    try:
+        return process_start_ticks(pid), None
+    except PreflightError, OSError, ValueError:
+        return None, "parent_identity_unavailable"
+
+
 def observe(pid, psutil):
     row = {
         "pid": pid,
         "start_identity": None,
         "parent_pid": 0,
         "parent_start_identity": None,
+        "parent_identity_missing_reason": None,
         "name": "unavailable",
         "uid": None,
         "executable": None,
@@ -67,22 +77,29 @@ def observe(pid, psutil):
         row["parent_pid"] = process.ppid()
         row["name"] = process.name() or "unavailable"
         row["executable"] = process.exe() or None
-        if row["parent_pid"]:
-            row["parent_start_identity"] = process_start_ticks(row["parent_pid"])
+        row["parent_start_identity"], row["parent_identity_missing_reason"] = _parent_identity(
+            row["parent_pid"]
+        )
         rss = process.memory_info().rss
         if type(rss) is not int or rss < 0:
             raise ValueError
         row["rss"] = reading(rss, RSS_SOURCE)
         row["bundle"] = bundle_identity(row["executable"])
-        if (
-            row["start_identity"] != process_start_ticks(pid)
-            or row["uid"] != process.uids().real
-            or row["parent_pid"] != process.ppid()
-            or (
-                row["parent_pid"]
-                and row["parent_start_identity"] != process_start_ticks(row["parent_pid"])
+        final_parent_pid = process.ppid()
+        final_parent_start, final_parent_reason = _parent_identity(final_parent_pid)
+        if final_parent_pid != row["parent_pid"]:
+            row["parent_pid"] = final_parent_pid
+            row["parent_start_identity"] = None
+            row["parent_identity_missing_reason"] = "parent_identity_changed"
+        elif row["parent_identity_missing_reason"] or final_parent_reason:
+            row["parent_start_identity"] = None
+            row["parent_identity_missing_reason"] = (
+                row["parent_identity_missing_reason"] or final_parent_reason
             )
-        ):
+        elif row["parent_start_identity"] != final_parent_start:
+            row["parent_start_identity"] = None
+            row["parent_identity_missing_reason"] = "parent_identity_changed"
+        if row["start_identity"] != process_start_ticks(pid) or row["uid"] != process.uids().real:
             row["missing_reason"] = "identity_changed"
     except psutil.AccessDenied, PermissionError:
         row["missing_reason"] = "access_denied"
@@ -96,6 +113,7 @@ def observe(pid, psutil):
         # Inconsistent identity must never establish a parent edge or protection request.
         row["start_identity"] = None
         row["parent_start_identity"] = None
+        row["parent_identity_missing_reason"] = None
     return row
 
 

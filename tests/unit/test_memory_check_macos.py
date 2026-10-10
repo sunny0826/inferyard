@@ -60,8 +60,10 @@ def test_observe_checks_identity_without_sensitive_access(monkeypatch):
 
 def test_observe_discards_rss_on_pid_reuse(monkeypatch):
     monkeypatch.setattr(psutil, "Process", lambda _: FakeProcess())
-    starts = iter([200, 100, 201])
-    monkeypatch.setattr(native, "process_start_ticks", lambda _: next(starts))
+    starts = iter([200, 201])
+    monkeypatch.setattr(
+        native, "process_start_ticks", lambda pid: next(starts) if pid == 2 else 100
+    )
     value = native.observe(2, psutil)
     assert value["missing_reason"] == "identity_changed"
     assert value["rss"]["value"] is None
@@ -153,3 +155,56 @@ def test_owner_change_during_observation_discards_measurement(monkeypatch):
     value = native.observe(2, psutil)
     assert value["missing_reason"] == "identity_changed"
     assert value["rss"]["value"] is None
+
+
+@pytest.mark.parametrize("failure_at", [1, 2])
+def test_parent_identity_failure_keeps_readable_child_and_unrelated_review(monkeypatch, failure_at):
+    from inferyard.application.memory_check import inspect_memory
+    from tests.unit.test_memory_check import app, by_pid, observed, snapshot
+
+    calls = 0
+
+    def start(pid):
+        nonlocal calls
+        if pid == 1:
+            calls += 1
+            if calls == failure_at:
+                raise native.PreflightError("parent_unavailable")
+        return pid * 100
+
+    monkeypatch.setattr(psutil, "Process", lambda _: FakeProcess())
+    monkeypatch.setattr(native, "process_start_ticks", start)
+    child = native.observe(2, psutil)
+    assert child["start_identity"] == 200
+    assert child["rss"]["value"] == 100
+    assert child["missing_reason"] is None
+    assert child["parent_start_identity"] is None
+    assert child["parent_identity_missing_reason"] == "parent_identity_unavailable"
+    data = inspect_memory(
+        collector=lambda **_: snapshot([child, observed(10, bundle=app())]), uid=501
+    )
+    assert data["coverage"]["missing"] == 1
+    assert not data["coverage"]["complete"]
+    assert by_pid(data, 2)["decision"]["status"] == "unknown"
+    assert by_pid(data, 10)["decision"]["status"] == "review"
+
+
+def test_parent_generation_change_keeps_child_but_never_links_reused_parent(monkeypatch):
+    from inferyard.application.memory_check import inspect_memory
+    from tests.unit.test_memory_check import app, by_pid, observed, snapshot
+
+    starts = iter([100, 101])
+    monkeypatch.setattr(psutil, "Process", lambda _: FakeProcess())
+    monkeypatch.setattr(
+        native, "process_start_ticks", lambda pid: next(starts) if pid == 1 else 200
+    )
+    child = native.observe(2, psutil)
+    assert child["rss"]["value"] == 100
+    assert child["parent_start_identity"] is None
+    assert child["parent_identity_missing_reason"] == "parent_identity_changed"
+    parent = observed(1, bundle=app("Parent", "parent"))
+    data = inspect_memory(
+        collector=lambda **_: snapshot([parent, child]), uid=501, protect_pids=[1]
+    )
+    assert by_pid(data, 2)["group_id"] is None
+    assert by_pid(data, 2)["decision"]["status"] == "unknown"

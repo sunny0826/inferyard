@@ -268,3 +268,32 @@ def test_usr_local_tool_is_unknown_instead_of_a_system_process():
     assert (
         by_pid(data, 10)["decision"]["reasons"][0]["code"] == "application_or_dependency_unverified"
     )
+
+
+def test_parent_failure_saved_contract_keeps_readable_measurements_and_rejects_bad_edges():
+    child = observed(11, parent=10, bundle=app("Child", "child"))
+    child["parent_start_identity"] = None
+    child["parent_identity_missing_reason"] = "parent_identity_unavailable"
+    data = report([child, observed(20, bundle=app())])
+    validate_memory_check(data)
+    assert data["coverage"]["missing"] == 1
+    assert by_pid(data, 11)["rss"]["value"] == 11 * 1024
+    assert by_pid(data, 20)["decision"]["status"] == "review"
+    for field, value in (("parent_start_identity", 1000), ("start_identity", None)):
+        corrupt = deepcopy(data)
+        by_pid(corrupt, 11)[field] = value
+        with pytest.raises(ContractError):
+            validate_memory_check(corrupt)
+    corrupt = deepcopy(data)
+    corrupt["coverage"]["missing"] = 0
+    with pytest.raises(ContractError, match="count mismatch"):
+        validate_memory_check(corrupt)
+
+    corrupt = deepcopy(data)
+    child = by_pid(corrupt, 11)
+    child["decision"]["status"] = "review"
+    next(group for group in corrupt["groups"] if group["group_id"] == child["group_id"])[
+        "decision"
+    ]["status"] = "review"
+    with pytest.raises(ContractError, match="missing checks"):
+        validate_memory_check(corrupt)

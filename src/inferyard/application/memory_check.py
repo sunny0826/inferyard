@@ -33,7 +33,10 @@ def inspect_memory(protect_pids=(), *, collector=None, uid=None):
     processes, groups, requests = project(
         snapshot, protect_pids, os.getuid() if uid is None else uid
     )
-    missing = sum(row["missing_reason"] is not None for row in processes)
+    missing = sum(
+        row["missing_reason"] is not None or row.get("parent_identity_missing_reason") is not None
+        for row in processes
+    )
     unobserved = snapshot["total_pids"] - len(processes)
     complete = (
         not missing

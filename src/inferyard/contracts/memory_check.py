@@ -41,7 +41,10 @@ def validate_memory_check(data):
     for reading in (data["memory_total"], data["memory_available"]):
         _reading(reading, "host_memory")
     coverage = data["coverage"]
-    missing = sum(row["missing_reason"] is not None for row in processes.values())
+    missing = sum(
+        row["missing_reason"] is not None or row.get("parent_identity_missing_reason") is not None
+        for row in processes.values()
+    )
     _require(coverage["observed"] == len(processes), "coverage.observed", "count mismatch")
     _require(coverage["missing"] == missing, "coverage.missing", "count mismatch")
     _require(
@@ -127,7 +130,16 @@ def validate_memory_check(data):
             "processes.group_id",
             "unknown group",
         )
-        if row["missing_reason"] is not None:
+        parent_missing = row.get("parent_identity_missing_reason")
+        if parent_missing is not None:
+            _require(
+                row["parent_start_identity"] is None
+                and row["start_identity"] is not None
+                and row["missing_reason"] is None,
+                "processes.parent_identity_missing_reason",
+                "parent failure must not invalidate own identity or retain a parent edge",
+            )
+        if row["missing_reason"] is not None or parent_missing is not None:
             _require(row["decision"]["status"] != "review", "processes.decision", "missing checks")
         if row["decision"]["status"] == "review":
             _require(
