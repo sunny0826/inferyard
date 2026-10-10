@@ -60,7 +60,7 @@ JSON 快照；内部编译可消费同 kind 快照，原始 dict 仍完整校验
 评分身份每命令每版本计算一次；选中 case 的规则准备一次，结构 validator 复用。
 公开评分输入、自定义 scorer 结果与外部证据仍在边界核验。源码修改改变真实评分身份；
 `verify` 的重评分核验在递归血缘身份不匹配时返回 `rescore_scorer_identity_changed`、退出 4，
-不返回 verified，不证明篡改。来源 manifest 和已有血缘哈希必须继续核验。
+不返回 verified，不证明篡改。来源 manifest 和已有血缘哈希应继续核验。
 
 新预算文件 `token-budgets.v2.json` 为
 `{"definition":"token-budgets.v2","entries":[{"phase":"probe","case_id":null,"budget":{...}}]}`。
@@ -223,25 +223,25 @@ CLI stdout 为 JSON，`device-check` 默认人类摘要，Agent 使用 `--json` 
 - comparison.json 的 format_version=4、definition=phase2.v3；旧 format1–3 不支持。
   plan/run 的 definition_versions.comparison 保持 phase2.v1。
   observed_differences 与 eligibility 分开：前者描述当前样本，后者仍为受控结论。
-  总体质量必须同题/同规则/同评分器/同分母且评分完整；性能仍需原逐指标资格。
+  总体质量应同题/同规则/同评分器/同分母且评分完整；性能仍需原逐指标资格。
 - report_format_version=8 使用当前比较定义及根模板；题面、输出、参考答案各存一次。旧报告 1–7 不支持。
 - 可选 environment_admission={definition: environment-admission.v2, required_fields: [...]}
   在配置 conditions 或 experiment 声明；字段限定 ac_online/profile/governor/epp/
   macos_power_policy。未声明保持旧正式执行准入；probe/diagnostic 仅记录差异。
 - 已完成请求的 unscorable 不改变执行终态；无身份/存储/服务异常时继续下一请求。
   评分原因保留，最终 partial/code3；旧停止证据不补造后续请求或分数。
-- 服务复用必须 clean、非冷启动且加载条件/身份一致，当次核验有效配置。
+- 服务复用应 clean、非冷启动且加载条件/身份一致，当次核验有效配置。
   service-reuse.json 记录同进程或替换、缓存未知、当次预热次数。替换需旧进程退出。
 - case_review_records 为可选新审核数组，每项 definition=case-review.v1、case_id、
   content_sha256、reviewer、reviewed_at、conclusion。哈希绑定 prompt/reference_answer/
   rules/category/task_protocol/answer_policy（含 case_id）。旧 review_records 保持旧哈希。
-  未命中新记录的题必须由仍匹配的旧整包签名/迁移证明覆盖，否则要求人工审核。
+  未命中新记录的题应由仍匹配的旧整包签名/迁移证明覆盖，否则要求人工审核。
 
 
 旧整包 content_hash 仍只排除 review_records。新增逐题记录也会改变整包身份；不伪造
 旧哈希，不从失配的旧整包记录或活动内容快照推导逐题批准。旧 v1/v2 迁移证明继续严格
 核验原内容等价。编辑后的新副本若不再满足迁移证明，应移除不适用的 review_provenance，
-保留历史原件及原 review_records；新副本必须有匹配的逐题记录或新的整包人工批准。
+保留历史原件及原 review_records；新副本应有匹配的逐题记录或新的整包人工批准。
 
 逐题摘要生成和人工填写示例见[使用说明](usage.md#逐题人工审核)。摘要计算不是审核。
 

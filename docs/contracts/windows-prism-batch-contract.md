@@ -82,7 +82,7 @@ profile JSON 的必填字段冻结如下；它是新增准备元数据，活动�
 | `engine_release` | 固定 release |
 | `archives` | 按 engine、runtime 顺序的数组，CPU 仅 engine；每项 `{role, name, source_url, bytes, sha256}` |
 | `members` | 每个归档的全部普通文件数组，按 role/path 排序；每项 `{role, path, bytes, sha256}`，path 为归档内规范相对 POSIX 路径 |
-| `engine_binary` | 最终输出树内的相对路径，如 `engine/llama-server.exe`；必须唯一且来自 engine 归档 |
+| `engine_binary` | 最终输出树内的相对路径，如 `engine/llama-server.exe`；应唯一且来自 engine 归档 |
 | `runtime_library_manifest` | 固定为引擎二进制同目录的 `engine-sha256.json` |
 | `libraries` | 最终引擎目录中 `llama-server.exe` 及全部 DLL 的 `{基名: SHA256}`，含 CUDA 合并后的 DLL；不接受回执自报的替代集合 |
 | `version_pattern` / `version_timeout_seconds` | 与现有 macOS 生成器一致的 `\b10743\b.*\badfffbe(?:41)?\b` / 10 |
@@ -97,12 +97,12 @@ profile 原文件 SHA256 供回执引用；config create 从已安装的同名 p
 
 1. 先核验输入归档长度、SHA256、角色数量，再检查 ZIP 全部成员；任何阶段不执行未核验引擎。
    拒绝绝对路径、盘符、UNC、`..`、反斜杠、冒号、NUL、链接/特殊文件、Windows 保留名、
-   尾随点/空格、重复或大小写折叠冲突、文件/目录冲突；解包目标必须留在新目录内。
-   实际成员集合、展开大小和逐文件摘要必须与包内 members 完全一致，不能接纳额外文件。
+   尾随点/空格、重复或大小写折叠冲突、文件/目录冲突；解包目标应留在新目录内。
+   实际成员集合、展开大小和逐文件摘要应与包内 members 完全一致，不能接纳额外文件。
 2. engine 归档保留内部结构解到 `NEW/engine/`，唯一 `llama-server.exe` 的位置由 profile 指定。
    runtime 归档解到 `NEW/runtime/`；其全部 DLL 以基名复制到 server 同目录。
    同名同哈希只保留一份，同名不同哈希或大小写歧义拒绝，不按复制顺序覆盖。
-   CPU 禁止 runtime 归档；CUDA 必须包含固定 runtime，不能借用系统目录 DLL 补缺。
+   CPU 禁止 runtime 归档；CUDA 应包含固定 runtime，不能借用系统目录 DLL 补缺。
 3. 比较最终 server/DLL 集合及哈希与 profile.libraries；安全核验通过后排他写出
    `engine-sha256.json`，内容保持既有 `{基名: SHA256}` 格式。它是分发资产清单，
    不意味着其中所有 DLL 均已加载；运行期按原 Prism 身份规则检查，不改变其他适配器的库规则。
@@ -121,7 +121,7 @@ profile 原文件 SHA256 供回执引用；config create 从已安装的同名 p
 | `platform` / `architecture` / `mode` / `engine_release` | 与包内 profile 完全相同 |
 | `archives` | 与 profile 相同的 `{role, name, source_url, bytes, sha256}` 数组；不保存操作者下载路径 |
 | `engine_binary` / `runtime_library_manifest` | 相对回执父目录的 profile 指定路径；禁止绝对路径、越界和重解析点 |
-| `engine_sha256` / `libraries` | 实际核验结果，必须与包内固定值相等 |
+| `engine_sha256` / `libraries` | 实际核验结果，应与包内固定值相等 |
 | `version` | `{argv: ["--version"], returncode: 0, stdout: string, stderr: string}`；输出为观察值，不作为资产信任根 |
 | `model_requests_sent` / `ready_to_run` | 0 / false；不含模型已验证声明 |
 
@@ -129,19 +129,19 @@ profile 原文件 SHA256 供回执引用；config create 从已安装的同名 p
 
 1. 严格读取回执，检查 kind/schema/字段类型、重复键、非有限数，拒绝 bool 冒充整数；
    从安装资源找 profile，核验 profile 本身及回执的 profile_sha256、release、mode、平台/架构。
-2. 回执 archives 和 libraries 必须与 profile 完全相等，不能只核验回执内部自洽。
-   回执相对路径按其父目录解析，必须匹配 profile 并留在该目录内；移动整目录可用，
+2. 回执 archives 和 libraries 应与 profile 完全相等，不能只核验回执内部自洽。
+   回执相对路径按其父目录解析，应匹配 profile 并留在该目录内；移动整目录可用，
    不通过根映射、磁盘搜索或读取回执中的外部 URL 找资产。
 3. 复核全部解包成员、合并 DLL 和实际 server 字节；单独读取 engine-sha256.json，
    同时与 profile、回执和实际文件比对，拒绝缺失/额外 DLL、任意二进制及清单删项。
    原始 ZIP 可已移走，不要求保留在下载位置；可信值来自包内 profile。
-4. profile.mode 必须等于预检 selected.mode，CUDA 还须有预检选中的 NVIDIA GPU 索引。
+4. profile.mode 应等于预检 selected.mode，CUDA 还须有预检选中的 NVIDIA GPU 索引。
    再执行受限版本查询并复核资产，然后生成候选。不把回执的 version 字符串当成本次版本查询。
 
 新 `config create` 不接受旧 `windows_runtime_assets.v1` / `windows_cuda_runtime_assets.v1`；
 提示按固定归档生成新目录回执。旧脚本仍读取原回执形状及路径，不重写历史回执或证据。
 这种新入口拒绝不改变旧证据读取器，也不赋予任何新增测量资格。
 
-拒绝覆盖必须包括：伪造 profile 摘要、同步篡改回执和清单、替换 server/DLL、删库/增库、
+拒绝覆盖应包括：伪造 profile 摘要、同步篡改回执和清单、替换 server/DLL、删库/增库、
 CPU/CUDA 错配、未批准 release、归档逃逸/重名、已有输出、版本超时/非零、输出 IO 失败。
 模拟夹具只能验证拒绝逻辑；固定资产验证及 Windows 原生门各自记录，不能互相代替。

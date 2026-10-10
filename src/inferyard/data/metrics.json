@@ -14,14 +14,14 @@
       "required_capabilities": [
         "request_ledger"
       ],
-      "aggregation": "C/D；并列五终态、P和实际执行数",
+      "aggregation": "C/D；并列五终态、P 和实际执行数",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -42,7 +42,7 @@
       "layer": "experiment",
       "source": "request_ledger",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "错误原因与冻结deadline；用户取消不混入超时；工具自动deadline必须算超时",
+      "applicability": "错误原因与冻结 deadline；用户取消不混入超时；工具自动 deadline 应算超时",
       "required_capabilities": [
         "request_ledger"
       ],
@@ -53,7 +53,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -74,7 +74,7 @@
       "layer": "experiment",
       "source": "request_ledger",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "保留原error；按首个有证据的原因分类，不把连锁取消算多次故障",
+      "applicability": "保留原 error；按首个有证据的原因分类，不把连锁取消算多次故障",
       "required_capabilities": [
         "request_ledger"
       ],
@@ -85,7 +85,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -106,18 +106,18 @@
       "layer": "experiment",
       "source": "request_ledger",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "原finish reason、输出预算；cancelled/invalid中的耗尽另列诊断不入分子；耗尽不决定答案是否正确",
+      "applicability": "原 finish reason、输出预算；cancelled/invalid 中的耗尽另列诊断不入分子；耗尽不决定答案是否正确",
       "required_capabilities": [
         "request_ledger"
       ],
-      "aggregation": "D中budget_exhausted为真的请求数/D；另列C中的耗尽数",
+      "aggregation": "D 中 budget_exhausted 为真的请求数/D；另列 C 中的耗尽数",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -142,14 +142,14 @@
       "required_capabilities": [
         "versioned_scorer"
       ],
-      "aggregation": "各类Q/D；不将六类合成一个总分",
+      "aggregation": "各类 Q/D；不将六类合成一个总分",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -181,7 +181,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -202,18 +202,18 @@
       "layer": "experiment",
       "source": "versioned_scorer",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "NaN/Infinity、重复key、围栏、解释文字按冻结规则；不先修复再解析",
+      "applicability": "NaN/Infinity、重复 key、围栏、解释文字按冻结规则；不先修复再解析",
       "required_capabilities": [
         "versioned_scorer"
       ],
-      "aggregation": "通过严格JSON解析的请求数/结构化任务D",
+      "aggregation": "通过严格 JSON 解析的请求数/结构化任务 D",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -234,18 +234,18 @@
       "layer": "experiment",
       "source": "versioned_scorer",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "冻结Schema版本及实现；解析失败计不合法；Schema合法不等于语义正确",
+      "applicability": "冻结 Schema 版本及实现；解析失败计不合法；Schema 合法不等于语义正确",
       "required_capabilities": [
         "versioned_scorer"
       ],
-      "aggregation": "满足指定Schema的请求数/结构化任务D",
+      "aggregation": "满足指定 Schema 的请求数/结构化任务 D",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -266,7 +266,7 @@
       "layer": "experiment",
       "source": "versioned_scorer",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "固定必需字段和数组匹配策略；解析失败/执行失败全部字段计错；缺字段不删分母，额外字段另影响Schema/整题",
+      "applicability": "固定必需字段和数组匹配策略；解析失败/执行失败全部字段计错；缺字段不删分母，额外字段另影响 Schema/整题",
       "required_capabilities": [
         "versioned_scorer"
       ],
@@ -277,7 +277,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -298,18 +298,18 @@
       "layer": "experiment",
       "source": "versioned_scorer",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "固定Unicode、空白、标点等规范化，不运行后扩充同义答案；开放式语义评分不混入",
+      "applicability": "固定 Unicode、空白、标点等规范化，不运行后扩充同义答案；开放式语义评分不混入",
       "required_capabilities": [
         "versioned_scorer"
       ],
-      "aggregation": "规范化后精确命中允许答案数/问答任务D",
+      "aggregation": "规范化后精确命中允许答案数/问答任务 D",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -330,18 +330,18 @@
       "layer": "experiment",
       "source": "versioned_scorer",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "明确绝对/相对误差、单位、答案提取规则；NaN与无穷非法；不执行模型代码",
+      "applicability": "明确绝对/相对误差、单位、答案提取规则；NaN 与无穷非法；不执行模型代码",
       "required_capabilities": [
         "versioned_scorer"
       ],
-      "aggregation": "正确答案数/数学逻辑任务D",
+      "aggregation": "正确答案数/数学逻辑任务 D",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -362,18 +362,18 @@
       "layer": "experiment",
       "source": "versioned_scorer",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "非法标签/执行失败进入预定无效预测列，真类计FN；K类固定，不删除无人预测类别；零分母类按冻结约定并显示support",
+      "applicability": "非法标签/执行失败进入预定无效预测列，真类计 FN；K 类固定，不删除无人预测类别；零分母类按冻结约定并显示 support",
       "required_capabilities": [
         "versioned_scorer"
       ],
-      "aggregation": "固定K类各F1平均；F1=2TP/(2TP+FP+FN)",
+      "aggregation": "固定 K 类各 F1 平均；F1=2TP/(2TP+FP+FN)",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -394,7 +394,7 @@
       "layer": "request",
       "source": "stream_events",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "排除元数据、心跳、空内容；块接口称首内容，不声称逐token TTFT",
+      "applicability": "排除元数据、心跳、空内容；块接口称首内容，不声称逐 token TTFT",
       "required_capabilities": [
         "stream_events"
       ],
@@ -405,7 +405,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -426,7 +426,7 @@
       "layer": "request",
       "source": "stream_events",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "能可靠区分答案/reasoning；完整空答案为null/no_answer_event；同时保留质量失败",
+      "applicability": "能可靠区分答案/reasoning；完整空答案为 null/no_answer_event；同时保留质量失败",
       "required_capabilities": [
         "stream_events"
       ],
@@ -437,7 +437,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -458,7 +458,7 @@
       "layer": "request",
       "source": "stream_events",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "仅C且计时有效；并列超时率/预算与排除量；超时不得以deadline补入完成分布",
+      "applicability": "仅 C 且计时有效；并列超时率/预算与排除量；超时不得以 deadline 补入完成分布",
       "required_capabilities": [
         "stream_events"
       ],
@@ -469,7 +469,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -490,18 +490,18 @@
       "layer": "request",
       "source": "stream_events",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "使用同次请求usage，记录范围；非decode速度，不做跨tokenizer排名；缺计数为null",
+      "applicability": "使用同次请求 usage，记录范围；非 decode 速度，不做跨 tokenizer 排名；缺计数为 null",
       "required_capabilities": [
         "stream_events"
       ],
-      "aggregation": "端点输出token数/E2E秒，token/s",
+      "aggregation": "端点输出 token 数/E2E 秒，token/s",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -522,7 +522,7 @@
       "layer": "request",
       "source": "stream_events",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "接收端在脱敏缓冲前记录到达时间/通道/序号等纯元数据，不保存敏感原文；同请求至少2块；不是ITL，分块策略不同不可比较",
+      "applicability": "接收端在脱敏缓冲前记录到达时间/通道/序号等纯元数据，不保存敏感原文；同请求至少 2 块；不是 ITL，分块策略不同不可比较",
       "required_capabilities": [
         "stream_events"
       ],
@@ -533,7 +533,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -554,18 +554,18 @@
       "layer": "engine",
       "source": "verified_engine_timings",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "需要同请求阶段计时与缓存定义；TTFT不能代替；完整缓存命中且处理量0时不产生速度",
+      "applicability": "需要同请求阶段计时与缓存定义；TTFT 不能代替；完整缓存命中且处理量 0 时不产生速度",
       "required_capabilities": [
         "verified_engine_timings"
       ],
-      "aggregation": "实际未缓存处理输入token数/prefill秒",
+      "aggregation": "实际未缓存处理输入 token 数/prefill 秒",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -594,18 +594,18 @@
       "layer": "engine",
       "source": "verified_engine_timings",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "冻结首token、思考/特殊token范围与计时定义；不能用E2E减首内容反推引擎时长",
+      "applicability": "冻结首 token、思考/特殊 token 范围与计时定义；不能用 E2E 减首内容反推引擎时长",
       "required_capabilities": [
         "verified_engine_timings"
       ],
-      "aggregation": "引擎定义的生成token数/decode秒",
+      "aggregation": "引擎定义的生成 token 数/decode 秒",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -638,14 +638,14 @@
       "required_capabilities": [
         "platform_resource_collector"
       ],
-      "aggregation": "正式窗口MemAvailable最小值，bytes",
+      "aggregation": "正式窗口 MemAvailable 最小值，bytes",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -706,18 +706,18 @@
       "layer": "process",
       "source": "platform_resource_collector",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "不采客户端RSS；子进程范围显式；PID变化停止该来源",
+      "applicability": "不采客户端 RSS；子进程范围显式；PID 变化停止该来源",
       "required_capabilities": [
         "platform_resource_collector"
       ],
-      "aggregation": "绑定PID/starttime正式窗口RSS最大值，bytes",
+      "aggregation": "绑定 PID/starttime 正式窗口 RSS 最大值，bytes",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -778,18 +778,18 @@
       "layer": "process",
       "source": "platform_resource_collector",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "明确基线窗口；可为负不截为0；不是模型权重大小或泄漏量",
+      "applicability": "明确基线窗口；可为负不截为 0；不是模型权重大小或泄漏量",
       "required_capabilities": [
         "platform_resource_collector"
       ],
-      "aggregation": "正式RSS峰值−预热后空闲基线中位数，bytes",
+      "aggregation": "正式 RSS 峰值−预热后空闲基线中位数，bytes",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -850,18 +850,18 @@
       "layer": "process",
       "source": "platform_resource_collector",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "保存实际sampled_start/end与覆盖比例；部分窗口只称观测区间CPU时间；完整请求值须边界证据齐全；计数回退/重启为缺测",
+      "applicability": "保存实际 sampled_start/end 与覆盖比例；部分窗口只称观测区间 CPU 时间；完整请求值须边界证据齐全；计数回退/重启为缺测",
       "required_capabilities": [
         "platform_resource_collector"
       ],
-      "aggregation": "同PID/starttime两累计样本间用户态＋内核态CPU秒差",
+      "aggregation": "同 PID/starttime 两累计样本间用户态＋内核态 CPU 秒差",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -914,18 +914,18 @@
       "layer": "process",
       "source": "platform_resource_collector",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "不能用部分样本CPU差除整个请求E2E；整机归一化率另名并记录可用CPU数/cpuset",
+      "applicability": "不能用部分样本 CPU 差除整个请求 E2E；整机归一化率另名并记录可用 CPU 数/cpuset",
       "required_capabilities": [
         "platform_resource_collector"
       ],
-      "aggregation": "ΔCPU秒/同一对累计样本的Δ墙钟秒×100%，100%为一个逻辑核",
+      "aggregation": "ΔCPU 秒/同一对累计样本的Δ墙钟秒×100%，100%为一个逻辑核",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -978,18 +978,18 @@
       "layer": "host",
       "source": "platform_resource_collector",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "系统层；zram/swap环境注明；不归因到单模型；计数回退不可算负交换量",
+      "applicability": "系统层；zram/swap 环境注明；不归因到单模型；计数回退不可算负交换量",
       "required_capabilities": [
         "platform_resource_collector"
       ],
-      "aggregation": "pswpin/pswpout累计差，pages与按实测页大小换算bytes",
+      "aggregation": "pswpin/pswpout 累计差，pages 与按实测页大小换算 bytes",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1042,18 +1042,18 @@
       "layer": "device",
       "source": "platform_resource_collector",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "只读能力探测；权限/来源不明为null；不能凭升温断言热降频",
+      "applicability": "只读能力探测；权限/来源不明为 null；不能凭升温断言热降频",
       "required_capabilities": [
         "platform_resource_collector"
       ],
-      "aggregation": "对已知sensor/domain报告时间线与观测最高°C",
+      "aggregation": "对已知 sensor/domain 报告时间线与观测最高°C",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1110,18 +1110,18 @@
       "layer": "device",
       "source": "platform_resource_collector",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "声明requested/reported/effective；来源语义不同不可混排；不把请求频率当实际执行频率",
+      "applicability": "声明 requested/reported/effective；来源语义不同不可混排；不把请求频率当实际执行频率",
       "required_capabilities": [
         "platform_resource_collector"
       ],
-      "aggregation": "按来源报告per-core/policy频率时间线，Hz",
+      "aggregation": "按来源报告 per-core/policy 频率时间线，Hz",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1182,14 +1182,14 @@
       "required_capabilities": [
         "length_case_ledger"
       ],
-      "aggregation": "每个实际输入档列P、拒绝数、C/D、Q/D、延迟与资源；固定模板计数与输出预算",
+      "aggregation": "每个实际输入档列 P、拒绝数、C/D、Q/D、延迟与资源；固定模板计数与输出预算",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1214,14 +1214,14 @@
       "required_capabilities": [
         "length_case_ledger"
       ],
-      "aggregation": "每个长度×位置×题族的正确数/有效执行数；文本hash与真实token数",
+      "aggregation": "每个长度×位置×题族的正确数/有效执行数；文本 hash 与真实 token 数",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1242,7 +1242,7 @@
       "layer": "experiment",
       "source": "length_case_ledger",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "自然回答提前EOS不是执行失败；未生成到上限不等于不支持输出长度",
+      "applicability": "自然回答提前 EOS 不是执行失败；未生成到上限不等于不支持输出长度",
       "required_capabilities": [
         "length_case_ledger"
       ],
@@ -1253,7 +1253,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1274,18 +1274,18 @@
       "layer": "experiment",
       "source": "trial_and_window_ledger",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "样本组成必须相同或按case配对；漂移不等于热降频",
+      "applicability": "样本组成应相同或按 case 配对；漂移不等于热降频",
       "required_capabilities": [
         "trial_and_window_ledger"
       ],
-      "aggregation": "冻结早/晚窗口或逐窗口L03，报告中位差/比值及样本/失败率",
+      "aggregation": "冻结早/晚窗口或逐窗口 L03，报告中位差/比值及样本/失败率",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1326,14 +1326,14 @@
       "required_capabilities": [
         "trial_and_window_ledger"
       ],
-      "aggregation": "相同探针周期结束并确认idle后RSS差/时间序列；重启对照独立",
+      "aggregation": "相同探针周期结束并确认 idle 后 RSS 差/时间序列；重启对照独立",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1370,18 +1370,18 @@
       "layer": "experiment",
       "source": "trial_and_window_ledger",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "例如30题全3轮通过为30/40，不含只跑一轮的新80题；不称修复重试成功率或标准pass@k",
+      "applicability": "例如 30 题全 3 轮通过为 30/40，不含只跑一轮的新 80 题；不称修复重试成功率或标准 pass@k",
       "required_capabilities": [
         "trial_and_window_ledger"
       ],
-      "aggregation": "每case各轮pass/fail；全k轮通过题数/预定做满k轮的去重case数；未完整k轮则整包值null",
+      "aggregation": "每 case 各轮 pass/fail；全 k 轮通过题数/预定做满 k 轮的去重 case 数；未完整 k 轮则整包值 null",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1422,14 +1422,14 @@
       "required_capabilities": [
         "trial_and_window_ledger"
       ],
-      "aggregation": "相同case/负载各完整trial中位数、范围、IQR与配对差",
+      "aggregation": "相同 case/负载各完整 trial 中位数、范围、IQR 与配对差",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1466,18 +1466,18 @@
       "layer": "device",
       "source": "verified_sensor_or_instrument",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "按设备/进程/引擎层分别采样bytes；统一内存不能与RSS相加；关联具体设备和进程证据",
+      "applicability": "按设备/进程/引擎层分别采样 bytes；统一内存不能与 RSS 相加；关联具体设备和进程证据",
       "required_capabilities": [
         "verified_sensor_or_instrument"
       ],
-      "aggregation": "按设备/进程/引擎层分别采样bytes；统一内存不能与RSS相加；关联具体设备和进程证据",
+      "aggregation": "按设备/进程/引擎层分别采样 bytes；统一内存不能与 RSS 相加；关联具体设备和进程证据",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1498,18 +1498,18 @@
       "layer": "device",
       "source": "verified_sensor_or_instrument",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "按厂商指标定义/刷新周期记录%；不是算力效率或模型GPU驻留证明",
+      "applicability": "按厂商指标定义/刷新周期记录%；不是算力效率或模型 GPU 驻留证明",
       "required_capabilities": [
         "verified_sensor_or_instrument"
       ],
-      "aggregation": "按厂商指标定义/刷新周期记录%；不是算力效率或模型GPU驻留证明",
+      "aggregation": "按厂商指标定义/刷新周期记录%；不是算力效率或模型 GPU 驻留证明",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1530,18 +1530,18 @@
       "layer": "device",
       "source": "verified_sensor_or_instrument",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "明确CPU package、GPU board或整机插座，W；硬件计数差推导的是窗口平均，不冒充瞬时读数",
+      "applicability": "明确 CPU package、GPU board 或整机插座，W；硬件计数差推导的是窗口平均，不冒充瞬时读数",
       "required_capabilities": [
         "verified_sensor_or_instrument"
       ],
-      "aggregation": "明确CPU package、GPU board或整机插座，W；硬件计数差推导的是窗口平均，不冒充瞬时读数",
+      "aggregation": "明确 CPU package、GPU board 或整机插座，W；硬件计数差推导的是窗口平均，不冒充瞬时读数",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1573,7 +1573,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1594,18 +1594,18 @@
       "layer": "experiment",
       "source": "verified_sensor_or_instrument",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "冻结批次所有执行尝试能量/质量成功任务数，J/成功任务；零成功为null；预热/加载是否计入须单独命名",
+      "applicability": "冻结批次所有执行尝试能量/质量成功任务数，J/成功任务；零成功为 null；预热/加载是否计入须单独命名",
       "required_capabilities": [
         "verified_sensor_or_instrument"
       ],
-      "aggregation": "冻结批次所有执行尝试能量/质量成功任务数，J/成功任务；零成功为null；预热/加载是否计入须单独命名",
+      "aggregation": "冻结批次所有执行尝试能量/质量成功任务数，J/成功任务；零成功为 null；预热/加载是否计入须单独命名",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1626,18 +1626,18 @@
       "layer": "experiment",
       "source": "load_and_token_events",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "固定批次C/(最后终态−首次正式发送)秒；失败/排空留在分母时间；开放/封闭协议分开",
+      "applicability": "固定批次 `C/(最后终态−首次正式发送)` 秒；失败/排空留在分母时间；开放/封闭协议分开",
       "required_capabilities": [
         "load_and_token_events"
       ],
-      "aggregation": "固定批次C/(最后终态−首次正式发送)秒；失败/排空留在分母时间；开放/封闭协议分开",
+      "aggregation": "固定批次 `C/(最后终态−首次正式发送)` 秒；失败/排空留在分母时间；开放/封闭协议分开",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1669,7 +1669,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1690,18 +1690,18 @@
       "layer": "experiment",
       "source": "load_and_token_events",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "两个子项分别存：同token序列的逐token事件间隔；同服务端时钟执行开始−入队；缺真实事件则各自null",
+      "applicability": "两个子项分别存：同 token 序列的逐 token 事件间隔；同服务端时钟执行开始−入队；缺真实事件则各自 null",
       "required_capabilities": [
         "load_and_token_events"
       ],
-      "aggregation": "两个子项分别存：同token序列的逐token事件间隔；同服务端时钟执行开始−入队；缺真实事件则各自null",
+      "aggregation": "两个子项分别存：同 token 序列的逐 token 事件间隔；同服务端时钟执行开始−入队；缺真实事件则各自 null",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1722,18 +1722,18 @@
       "layer": "experiment",
       "source": "verified_lifecycle_events",
       "window": "frozen_protocol_and_declared_statistic",
-      "applicability": "托管或外部可核验的启动事件→就绪→首个有效答案分别记录；热启动/新进程/OS缓存状态分开",
+      "applicability": "托管或外部可核验的启动事件→就绪→首个有效答案分别记录；热启动/新进程/OS 缓存状态分开",
       "required_capabilities": [
         "verified_lifecycle_events"
       ],
-      "aggregation": "托管或外部可核验的启动事件→就绪→首个有效答案分别记录；热启动/新进程/OS缓存状态分开",
+      "aggregation": "托管或外部可核验的启动事件→就绪→首个有效答案分别记录；热启动/新进程/OS 缓存状态分开",
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "35ac62ef047b2e63d8c2f61f78bd0dc456277edeaf91829df9a0db8ac4fbf8a2"
+          "sha256": "474ea14f64720cd12851eee8432a718c961a2f3af8c7a70c1fffab21d984aa0f"
         },
         {
           "path": "src/inferyard/analysis/observations.py",

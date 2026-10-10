@@ -49,7 +49,7 @@ stdlib XML 解析禁止 DTD，根元素须为 SVG；非法 XML 为 `malformed`�
 
 报告完整性、诊断和比较资格继续分别展示；单次资源读数不授予严格比较资格。报告使用已封存数据，来源源码与报告生成源码分别记录。原始 trial 仍由 manifest / `read_trial` 核验，派生报告通过 `inferyard verify --path REPORT`。
 
-比较产物的 `schema_version`、`format_version` 必须是整数；离线重建结果按规范 JSON
+比较产物的 `schema_version`、`format_version` 应是整数；离线重建结果按规范 JSON
 逐项核对，嵌套布尔、整数与浮点数不能利用 Python 宽松相等互相冒充。
 `verify --path` 核验比较产物时使用此规则，并同时核验比较报告。
 合法旧产物保持可读，证据资格遵循[血缘总规则](../data-contract.md#证据血缘与比较结论)。

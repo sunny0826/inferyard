@@ -14,9 +14,9 @@
 
 ## 决策
 
-新运行必须写入 `implementation_identity`，不再把 `tool_source_sha256` 当作第二道身份门。
+新运行应写入 `implementation_identity`，不再把 `tool_source_sha256` 当作第二道身份门。
 新 RUN 记录不再要求 `tool_source_sha256`。
-执行核对仍是 `execution_matches`：measurement 与 scoring 都必须存在且相等。presentation 不参与这道核对。
+执行核对仍是 `execution_matches`：measurement 与 scoring 都应存在且相等。presentation 不参与这道核对。
 角色身份不符时，仍在今天会拒绝的入口拒绝。重跑入口是否还拒绝，由 [ADR 047](047-rerun-recorded-comparability.md) 单独决定；本决定不放宽它。
 
 旧运行没有 `implementation_identity` 时，继续用它保存的 `tool_source_sha256` 核对，不补造当前摘要。

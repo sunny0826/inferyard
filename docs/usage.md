@@ -132,7 +132,7 @@ probe/diagnostic 对电源、profile、governor、EPP 缺测或差异只记录�
 显式冻结的 `safety.check_environment` 仍会检查原 conditions 并可能停止诊断运行。
 空数组表示这些环境字段仅作为性能观测。操作者可把 `"ac_online"` 等列入 required_fields。
 
-rerun 必须绑定新的服务进程，旧进程须退出；clean 同配置服务只允许适用 handoff 复用，仍做当次普通/流式探测和预热。
+rerun 应绑定新的服务进程，旧进程须退出；clean 同配置服务只允许适用 handoff 复用，仍做当次普通/流式探测和预热。
 冷启动实验设置 `execution.require_fresh_process = true`；更换服务时操作者须先退出旧进程。
 工具不替用户关闭服务。孤立评分失败仍收集后续答案，含 unscorable 的结果保持 partial/code3。
 

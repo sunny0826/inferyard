@@ -39,7 +39,7 @@ macOS 新采集的换页来源是 `host_statistics64:swapins` 与 `host_statisti
 
 本决定修订 [ADR 008](008-macos-environment-reads.md) 里「换页共用一次 `vm_stat`」和「环境每次全量新读」。同次换页共用一个读取窗口、失败不沿用旧值，这两条仍有效。也修订 [ADR 041](041-environment-persistence-slim.md) 里「`environment_snapshot()` 每次新读」。ADR 041 的周期落盘字段集仍有效。 [ADR 006](006-macos-performance-prerequisites.md) 的电源来源改为本决定的 IOKit 来源；温度与完整开销的其余条款仍有效。
 
-核心 `schema_version = 3` 和 ADR 038 支持集不变。配置里的电源 `source` 同时接受 `macos.pmset.power-policy.v1` 与 `macos.iokit.power-policy.v1`。资源样本同时接受 `vm_stat:Swapins` / `vm_stat:Swapouts` 与 `host_statistics64:swapins` / `host_statistics64:swapouts`。同一次运行里的冻结条件、周期观测和换页样本必须是同一个来源；来源不同是变化，不是相等。
+核心 `schema_version = 3` 和 ADR 038 支持集不变。配置里的电源 `source` 同时接受 `macos.pmset.power-policy.v1` 与 `macos.iokit.power-policy.v1`。资源样本同时接受 `vm_stat:Swapins` / `vm_stat:Swapouts` 与 `host_statistics64:swapins` / `host_statistics64:swapouts`。同一次运行里的冻结条件、周期观测和换页样本应是同一个来源；来源不同是变化，不是相等。
 
 旧证据按原字节读取，不迁移，不重新解释。读侧不用 start/end 回填周期缺字段，也不抹掉旧记录里已经写下的中途变化。新源码不继承旧采集开销资格，遵循[证据血缘规则](../data-contract.md#证据血缘与比较结论)。
 
