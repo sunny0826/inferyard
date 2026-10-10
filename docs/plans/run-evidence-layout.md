@@ -22,24 +22,16 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 
 ## Program checklist
 
-### Arm the program
-
-- [ ] 在执行开始时记录明确执行授权、最新基线 SHA、干净 diff 和本计划版本；只有规划授权时停止在文档交付。
-- [ ] 用 `git show BASE:AGENTS.md` 读取实际基线约定；重新核对 README、数据契约、格式矩阵、scripts README 和 rigor 执行流程。BASE 在执行时解析，不固定猜测 main 的 SHA。
-- [ ] 核对 `mise which python`、`mise which uv` 及实际版本，使用 `mise exec -- uv run --frozen`；Agent 命令加 RTK。
-- [ ] 将 audit tick 设为单元开始、子任务终态和验证回执到达时的审计；每次核对真实活动句柄与文件所有权，出现已追踪变化才发 status message。本任务不建立长期 scheduler，也不宣称已有持续唤醒。
-- [ ] 执行开始时重验模型、浏览器和本地 socket 能力；缺条件的 lane 保持未通过，不把 skip 或 sandbox 阻断计为 PASS。
-
 ### Spawn owners
 
-- [ ] PR1 按 Appendix E 的独立文件归属在隔离 worktree 并行实现，root 串行集成；PR2 基于已通过的 PR1 精确 head，重新划分写入与回归归属。不在同一 worktree 并行修改共同的 evidence/contracts 文件。
+- [ ] PR2 按 Appendix E 的独立文件归属在隔离 worktree 并行实现，root 串行集成。不在同一 worktree 并行修改共同的 evidence/contracts 文件。
 - [ ] reviewer/verifier 只读独立 checkout 或使用各自隔离产物目录；若实际容量是四个会话，十个 live lane 分批执行，不同时驱动同一浏览器或主机状态。
 - [ ] root 拥有集成拓扑、共享接口契约、ADR、计划、backlog 与生成绑定清单；代码 owner 只修改 Appendix E 范围，跨界前报告文件和原因。
 - [ ] 本轮没有交互变更的用户 review gate；两个单元均保留仓库规定的 push、PR 创建和 merge 授权关口。
 
 ### PR mechanics, for every PR
 
-- [ ] 保留实际主分支 SHA；PR1 从该基线分支，PR2 从 PR1 通过的精确 head 分支，所有源码变更在分支内完成。
+- [ ] 保留已通过的读取侧精确 head；PR2 所有源码变更在其派生分支内完成。
 - [ ] 分项回归通过后再跑 Ruff、相关生成物一致性和 diff 检查；不要批量运行会启动真实服务的 `scripts/verify_*`。
 - [ ] 每个单元移除被替代的内部文件路径读取和死写入，检查注释与 workaround；旧布局严格只读适配器是明确兼容职责，不重新增加旧 writer。
 - [ ] 有相应授权时才向实际 GitHub 仓库 push 或创建 PR；回复外部 review 同样先核对发送授权。单纯本地检查通过不自动触发这些动作。
@@ -58,69 +50,6 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 - [ ] 测试 owner 单独启动并回收其拥有的 mock 服务，执行真实 `inferyard run`、`verify`、`report` 等入口，分别保存 stdout、stderr、退出码和原始证据目录。
 - [ ] 浏览器 lane 用真实浏览器打开生成的 `report.html` 并断网检查；优先 `file://`，若宿主阻断则明确记录入口限制，回环 HTTP 断网验证不能冒称 file 入口通过。
 - [ ] 回执写入源码外 `ARTIFACT_ROOT/PR1/lane-N/` 或 `ARTIFACT_ROOT/PR2/lane-N/`；ARTIFACT_ROOT 是执行时新建并记录的绝对路径。下文 Save 路径相对该根。
-
-## 先迁移全部读取方并固定布局契约 (PR1)
-
-**Depends on.** None.
-
-**Files.**
-
-- [ ] 在 `docs/decisions/` 新增 ADR；更新 `docs/data-contract.md`、`docs/contracts/inferyard-current-format.md` 和相关离线读取/报告引用契约。ADR 编号在执行时分配，不占用已有编号。
-- [ ] 在 `src/inferyard/contracts/` 定义容器/记录 schema；在 `src/inferyard/evidence/` 增加布局识别与领域读取模块，调整 `trial_reads.py`、`ledger.py`、`run_projection.py`、`request_snapshots.py`、预算及 lab/native/cache/fixed-output/length/capability 消费模块。
-- [ ] 修改 `src/inferyard/application/verification.py`、`raw_verification.py` 的产物识别；核对 runtime 的恢复/重跑准备、`overhead_runner.py`、analysis、reporting、extensions 和 scripts 中读取 run 原件的真实消费方。独立冻结计划、engine-fit 和 extension 封包的同名文件不随本任务误改。
-- [ ] 增补 `tests/unit/`、`tests/integration/` 的新旧布局夹具与拒绝回归，调整 `tests/packaging/` 的源码外取证；生成受影响 schemas/catalogue，记录绑定源码范围。
-- [ ] 若既有 harness 无法驱动所有回执，在 `scripts/` 新增一个有界合成布局验收工具并更新 `scripts/README.md`；它只能写新隔离目录，不启动真实模型或使用真实主机锁。
-
-**Build.**
-
-- [ ] 先完成局部 codec 原型：按 Appendix A 无损装入公开合成原件，读回比较逻辑文档/请求/观测与成员哈希；在录有完整请求原件的合成样本上验证偏移索引与同次字节核验，保留原型 SHA 和结果。
-- [ ] ADR 定案新 `evidence_layout_version=2`，新 inputs 与 manifest 一致绑定；内层既有领域文档仍为 core schema 3，新记录用独立版本声明。更新法定支持矩阵、合法/非法样例与所有入口的旧数据策略。
-- [ ] 建议保留当前合法 v3 快照布局的严格只读支持，不转换、不补写、不迁移原件。只有现有明确旧布局可识别为 layout 1；缺版本不能让任意目录默认成为合法旧布局。原已拒绝格式和迁移源继续拒绝。
-- [ ] ADR 分开记录新 CLI 的旧数据支持与旧 CLI 的前向诊断：基线 `_identify` 依赖 `run.json`，八文件新布局会报 `unsupported_verify_artifact`/4。不能把新 CLI 识别未知布局的退出 2 写成旧 CLI 的保证；不为兼容旧 CLI 双写标记。
-- [ ] 以 `FrozenInputs`、封闭类型的观测及请求原件定义 `TrialEvidence` 领域查询；布局适配仅在 evidence 边界，业务模块不接受万能虚拟旧文件名或虚构旧路径。
-- [ ] 完整扫描 JSONL 并校验每条记录后，在同次读取内建立请求身份到字节范围的内存索引；不新增磁盘索引。索引读回须绑定已核验字节或检测文件变化，不能对未核验的新字节授资格。
-- [ ] 迁移所有读取方、manifest 检查、产物识别和来源引用；先统一 `metric_observations` 与报告的引用契约，包含真实容器路径、物理文件摘要和成员定位/内容绑定，不能把逻辑 payload 哈希冒充物理文件哈希。现行生产 writer 在 PR1 保持旧布局。
-- [ ] 新旧混合权威源、错误版、缺已引用原件、重复身份/阶段、越序、中间坏行、坏哈希和封存截尾严格失败；缺测与未完成保留 null/原因及既有退出语义。
-- [ ] 更新 measurement/scoring/presentation 绑定清单与生成源；保留旧运行保存的身份，不给新读取实现或新运行继承旧测量资格。
-
-**You see.**
-
-- [ ] 旧 v3 run 在最新 CLI 下仍能严格核验并生成新 v8 报告，原文件目录清单与所有字节摘要不变。
-- [ ] 合成八文件 run 可由实际 `verify`、`report`、`rescore`、`export` 和相关比较/恢复读取入口消费；它明确标记为模拟证据，不冒充模型运行。
-- [ ] PR1 期间普通真实运行写入方式未切换；不能用 codec 夹具的八文件宣称生产 run 已达目标。
-
-**Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
-
-- [ ] 增加布局识别、成员绑定、观测阶段和请求索引回归；扩展现有 `test_request_snapshots.py`、`test_ledger.py`、`test_run_projection.py` 与报告/预算/native 回归，断言实际摘要与拒绝结果。
-- [ ] 用 `rtk proxy mise exec -- uv run --frozen pytest -q tests/unit tests/integration` 运行软件回归；平台跳过与失败分开登记，不执行显式开启的原生场景。
-- [ ] 运行 CONTRIBUTING 规定的 Ruff/format、`export_schemas.py` 和 `export_catalogue.py` 导出及 `--check`；核对版本查询和 schema 查询不加载 live backend。
-
-**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `gpt-6.1-sol (Lody worker role revision 3)` at the PR head. 这是当前已核对的配置，执行时记录真实返回的模型身份；不可用时沿用用户选择重新派发，不伪造 lane。
-
-- [ ] Lane 1. Regression lane against trunk：同一旧布局合成 run 分别用实际基线与 head 执行 verify/report。Save `PR1/lane-1/receipts.json`。Pass when 退出语义、五终态和资格一致，来源原字节未改；仅明确列出的生成器/布局引用差异可不同。
-- [ ] Lane 2. 用新布局合成样本执行 CLI verify/report。Save `PR1/lane-2/receipts.json`。Pass when 八文件证据通过、报告恰三文件、语义与既有同事实样本一致；基线不支持新布局的结果如实记录。
-- [ ] Lane 3. 将重复键、bool 整数、非有限值和非法 phase 分别注入独立副本。Save `PR1/lane-3/rejections.json`。Pass when 四类均返回证据错误且没有成功报告或修改输入。
-- [ ] Lane 4. 注入未知版本、新旧权威源混合、inputs/manifest 版本冲突。Save `PR1/lane-4/rejections.json`。Pass when 可识别未知格式为 2，损坏/冲突为 4，不回退另一个布局。
-- [ ] Lane 5. 分别损坏冻结成员、预算阶段、请求 body/messages hash 和 manifest。Save `PR1/lane-5/rejections.json`。Pass when 四类均严格拒绝，没有用题包重建原件。
-- [ ] Lane 6. 检查未封存完整前缀、末尾半行和中间坏行，以及有 started 却缺原件。Save `PR1/lane-6/rejections.json`。Pass when 仅合法完整前缀为 partial/3；坏行/缺已引用原件为 4，封存截尾也为 4。
-- [ ] Lane 7. 检查 prepare 未发送记录与普通/流式 probe 的独立观测。Save `PR1/lane-7/projection.json`。Pass when prepared 不进入 executed，两个探测槽及环境 start/end 保留，最终身份投影符合冻结契约。
-- [ ] Lane 8. 实际驱动 lab/native、strict fixed output、cache 与 ABBA overhead 的离线读取入口。Save `PR1/lane-8/receipts.json`。Pass when 来源路径与内容绑定真实存在，关键缺测/坏 receipt 的阻断没有放松；ABBA 的 run 臂可读，独立扩展封包和 baseline 原件未改。
-- [ ] Lane 9. 用新旧布局驱动恢复/重跑输入检查、rescore/export/public 来源链。Save `PR1/lane-9/receipts.json`。Pass when 哈希和父链拒绝一致，只写新目录，不产生布局迁移或隐式重评分。
-- [ ] Lane 10. 浏览器打开新旧样本生成的 v8 HTML，断网检查文字、SVG、筛选与无 JS 回退。Save `PR1/lane-10/receipts.json`。Pass when 报告显示完整、CSP 保留、控制台无错误；回执关联截图和实际 `verify --rerender` 输出。
-
-**Verify, perf.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
-
-- [ ] Metric. 两侧相同旧布局合成输入上的 `read_trial`、报告写出和 verify wall time，完整路径进程峰值 RSS；另量化新布局索引的扫描次数、内存及完整读取耗时，不拿不同布局直接比较文件哈希。
-- [ ] Probe. 扩展并复用 `scripts/benchmark_cost.py` 的固定公开输入和交错测量规则；先 profiling 定位，正式测量不带 profiler；每侧至少五次，保存工作量、内容校验、失败计数、次数、中位数和范围。
-- [ ] Baseline. 先记录实际基线旧布局结果；新布局在基线不存在时明确记不支持，新增读取工作与终态单独记数值，不虚构基线支持。
-- [ ] Rule. 同一旧布局/同一工作量的 head wall time 与 RSS 中位数均不得超过基线的 1.20 倍；超限调查噪声和真实工作差异后重新裁决，不能静默调阈值。新原件索引每次归约恰扫描一次、不得按请求重扫，长样本 body 内存不得随全文总量常驻；无正确结果或完整错误计数即 FAIL。20% 是建议回归预算，不是已经测出的性能收益。
-
-**Review gate.** None. PR1 is not review-gated. 页面与交互未改；本地检查后的外部操作授权仍适用。
-
-**Merge.**
-
-- [ ] root 复核 PR1 精确 head 的完整回执和两个源码 audit；旧生产 writer 与全部读取方仍可共同工作，再将 PR2 基于该 head。
-- [ ] 相关检查通过后创建本地英文提交，保留检查与未验证范围；未获明确授权时停在本地，不创建 PR 或 merge。
 
 ## 切换全部共享写入方并达到八加三 (PR2)
 
@@ -157,7 +86,7 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 - [ ] 运行相关 unit/integration 回归后执行 `rtk proxy mise exec -- uv run --frozen pytest -q`；记录各平台/显式原生跳过，禁止通过开启真实设备 workload 来补齐软件 PASS。
 - [ ] 运行 Ruff/format、相关 schema/catalogue 导出与一致性、文档链接/命令/diff 检查；源码外安装检查使用合成输入，构建与安装按另行覆盖的预算执行，不继承旧发行物资格。
 
-**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes on `gpt-6.1-sol (Lody worker role revision 3)` at the PR head. 按实际容量分批；每个 lane 保存其独立原件，不与另一 lane 共用 mutable HostLock 或输出目录。
+**Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes at the PR head. 记录宿主实际返回的 Agent / 模型身份，不把同模型多会话称为跨模型验收。按实际容量分批；每个 lane 保存其独立原件，不与另一 lane 共用 mutable HostLock 或输出目录。
 
 - [ ] Lane 1. Regression lane against trunk：同配方普通 single 合成请求在基线与 head 实际运行到 seal、verify、report。Save `PR2/lane-1/receipts.json`。Pass when 正式计数/请求内容/五终态一致，head 八加三文件，旧布局的基线清单与 SHA 如实保存。
 - [ ] Lane 2. 固定 `zh-core` 120 题与鹈鹕 1 题、各三次 warmup，实际驱动两个 run 和新汇总报告。Save `PR2/lane-2/receipts.json`。Pass when 两 run 逐请求数为 125/6、八文件各自封存、报告三文件，总十九，核心分母 120 且 SVG 不计质量分。
@@ -196,7 +125,7 @@ ResourceSampler 构造写 `collector.json`（[macOS](../../src/inferyard/platfor
 但 [registry](../../src/inferyard/registry.py) 为普通 single 默认选择内存 Sampler，不写此声明；不能将 ResourceSampler 推导当默认 single 基线。
 完整 lab single 的默认固定证据为 18 份，native 另有能力声明和实际清理收据；此前 mock single 的 26=18+8 不是新布局原型。
 170/172 分别对应默认内存/显式资源采集器的源码推导；执行验收必须分别实测，合并不改变现有测量范围。
-本轮只做结构与源码核对；新容器、偏移索引、崩溃行为和十一文件 CLI 尚未实现验证，PR1/PR2 的任务保留这些证明。
+读取侧软件与模拟验收已经完成，当前剩余任务是生产 writer 切换及其完整验收；已完成结果见 backlog。
 
 ### 文件目标与计数范围
 
@@ -313,35 +242,9 @@ offset 元数据仍是 O(N)，不能宣称内存为常数。PR1 原型以固定 
 
 ## Appendix E. 并行实施归属与依赖
 
-本次执行分支 `feat/run-evidence-layout`；共享接口冻结在
-[容器契约](../contracts/run-evidence-layout.md)，决策为 [ADR 048](../decisions/048-run-evidence-containers.md)。
-执行产物根由 root 实际创建 `/tmp/inferyard-layout-20261010-dn3gno`，不提交原始回执。
-T0 先提交契约与归属，三个 owner 才可改代码；仅 root 修改 Git 集成拓扑及公共文档。
-
-| 任务 / ownership | 独占文件 | 依赖、验证与集成 |
-| --- | --- | --- |
-| C1 容器与领域读取 | contracts/ 全部 schema/语义定义；evidence 的 trial_reads.py、request_snapshots.py、storage.py 及新 trial_evidence/layout/inputs/observation/prepared/reference 模块；新容器 unit tests；schemas/ 导出 | T0 后实现；先交付接口与局部回归，root 首先集成 |
-| C2 证据消费迁移 | evidence/ 其余现有模块，排除 journal.py 和 C1 文件；analysis/environment.py、boundary_environment.py、overhead_environment.py；对应既有 evidence unit tests | T0 后可编辑；C1 已验证 head 到位后执行消费回归；root 第二个集成 |
-| C3 外部消费迁移 | application/verification.py、raw_verification.py；reporting/ 核心报告/派生模块，排除 engine-fit；runtime/runner.py、batch_state.py、overhead_runner.py、overhead_binding.py；config/loader.py；extensions/trial_control_evidence.py；observer/ 的绑定生产与测试；相关 Python observer/导入脚本及应用、报告、observer、packaging tests | T0 后可编辑；C1/C2 到位后做全入口局部验收；root 第三个集成 |
-| root 集成与验证 | docs/、实施相关 README/CHANGELOG、data/implementation-files.json、metrics/methods 生成绑定及目录、合成验收 harness；未分配回归测试 | 顺次集成、完整 PR1 验证、更新实际 head；新布局来源绑定全量核验后才启动 PR2 |
-
-三个代码 owner 分别使用产物根下 `worktrees/codec`、`worktrees/consumers`、`worktrees/surfaces`，
-分支分别 `feat/layout-codec`、`feat/layout-consumers`、`feat/layout-surfaces`。相邻 worktree 不写入。
-边界例外只能由 root 先登记路径、理由、原 owner 影响和回滚方式；没有例外不得越界。
-遇依赖未合入只能记录未验证，不改他人模块或测试绕过。
-
-C2 的 `evidence/baseline_reads.py` 中 `BaselineEvidence` 只负责独立 baseline 的现行旁证读取，
-归属不与 C1 的 run 布局模块重叠；不能藉此放宽 run 识别。C1 负责 `observation_keys` 与旧布局日志尾语义，
-C2 负责 ledger 的容器尾原因传播及 `error_reasons.py` 中新证据错误的稳定诊断。
-
-PR2 在 PR1 精确 head 验收通过后分为共享 Journal/原件 writer、runtime/platform 调用迁移、
-回归与模拟 harness 三条流；执行前记录其确切文件清单，禁止提前切生产 writer。
-每侧至少五次性能测量串行由 root 驱动；浏览器与主机锁由 verifier 独占，不并发复用实例。
-
-PR1 全量回归发现后，已完成交付的 C1/C2 范围由 root 顺次接手修复：storage.py、
-trial_evidence.py 的未知版本与封存错误顺序，engine_capabilities.py/native.py 的领域诊断映射，
-test_cost_reads.py/test_validation_reuse.py 的现行合法夹具。C3 仍独占 report 同次读取复用，
-其余验证 worker 只读源码。修复保留旧错误与资格边界，按原失败检查重验，不修改原始回执。
+共享接口冻结在 [容器契约](../contracts/run-evidence-layout.md)，决策为
+[ADR 048](../decisions/048-run-evidence-containers.md)。仅 root 修改 Git 集成拓扑及公共文档。
+性能测量串行驱动；浏览器和主机锁由 verifier 独占。
 
 ### PR2 写入归属
 
@@ -354,7 +257,7 @@ writer、runtime、regressions 使用产物根下同名的新 worktree，root �
 | --- | --- | --- |
 | W1 共享 writer | evidence/journal.py、storage.py、新 run 写入模块；extensions/trial_control_baseline.py、extension_evidence.py；新增 tests/unit/test_run_writer.py | `TrialJournal(..., configuration_source=...)` 原子发布 inputs 后创建六份日志；`observe(kind, payload, *, stage, key=None)`、`prepare_request(request_id, phase, ordinal, body)` 同步耐久；通用 EvidenceStore 和独立 baseline/extension 格式保留 |
 | W2 调用迁移 | runtime/runner.py、request_execution.py、trial_runner.py、trial_lifecycle.py、trial_finalization.py、service_observation.py、service_reuse.py、overhead_runner.py、boundary_observer.py、environment_observer.py；platforms/resources_linux.py、resources_macos.py、resources_windows.py；config/plan_inputs.py | 移除 run 旧快照调用，使用 W1 的领域写入；真实配置原文在 Journal 构造前取得；请求耐久早于 dirty/started/send，native receipt 耐久早于 clean；不得增删测量 |
-| W3 回归和模拟 | tests/ 相关既有夹具与回归，排除 W1 新 writer test；scripts/layout_fixture_worker.py、layout_offline_checks.py、layout_index_cost.py；新增有界故障 harness | 显式 test-only 旧布局 fixture 保持合法旧数据只读覆盖；实际运行集成使用新 writer 并核对真实文件/正文/锁状态；故障通过服务实际收件与证据前缀裁定 |
+| W3 回归和模拟 | tests/ 相关既有夹具与回归，排除 W1 新 writer test；scripts/layout_fixture_worker.py、layout_offline_checks.py、layout_index_cost.py；新增有界故障与默认双 scope harness | 显式 test-only 旧布局 fixture 保持合法旧数据只读覆盖；实际运行集成使用新 writer 并核对真实文件/正文/锁状态；故障通过服务实际收件与证据前缀裁定 |
 | root | docs/、README 两种语言、CHANGELOG、implementation-files/catalogue/schema 绑定与生成；scripts/benchmark_cost.py、benchmark_cost_worker.py、benchmark_cost_compare.py；Git 集成 | 顺次集成，端到端、性能、只读 review；新模块纳入绑定清单，不继承旧实现资格 |
 
 W1 先交付可消费接口与局部回归，W2/W3 可在各自隔离树编辑，但等待该提交后验证。
