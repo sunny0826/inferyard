@@ -17,10 +17,14 @@ def verify_reference(root, ref, *, reads=None):
     except ContractError as exc:
         raise EvidenceError("invalid_evidence_reference") from exc
     path = local_file(Path(root).resolve(), ref["path"])
+    if reads is not None and (reads.root != Path(root).resolve() or reads.projection):
+        raise EvidenceError("invalid_evidence_reference")
     member = ref.get("member")
     if member is None:
         try:
-            digest = sha256_file(path)
+            name = path.relative_to(reads.root).as_posix() if reads is not None else None
+            digest = reads.hashes.get(name) if reads is not None else None
+            digest = digest if digest is not None else sha256_file(path)
         except OSError as exc:
             raise EvidenceError("evidence_reference_missing") from exc
         if digest != ref["sha256"]:
