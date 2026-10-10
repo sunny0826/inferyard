@@ -33,6 +33,25 @@
 成本包括操作 wall time、子进程启动至退出的 wall time，以及含夹具准备的进程峰值 RSS。
 RSS 单位换算支持 macOS/Linux；不测磁盘 I/O、真实模型成本或原生平台资格，不清空 OS 缓存。
 
+## 合成运行布局验收
+
+[layout_fixture_worker.py](layout_fixture_worker.py) 接受 `--tree TREE --out NEW`，可显式选择
+`--scope synthetic|zh-core|zh-svg-pelican`、`--adapter prism|kvmem|ninfer` 和 lab/native 模拟模式。
+它复用公开测试夹具，以真实 CLI 解析/调度及 `httpx.MockTransport` 生成新证据，保存实际收件数、
+正文摘要、终态、临时 host state、文件清单和返回边界耗时。不启动模型或 TCP 服务；预检与身份
+注入明确标为模拟，不能宣称原生资格。输出必须是 `/tmp` 下新目录。
+仅 PR1 的 `--pack-layout2` 会把本次新合成原件装入另一新目录，用于 codec 验证，原目录不改。
+
+[layout_offline_checks.py](layout_offline_checks.py) 接受 `--baseline TREE --candidate TREE
+--source-run FIXTURE_RUN --out NEW`，只接受上述 worker 创建的合成 run。
+通过真实子进程 CLI 保存新旧 verify/report、独立损坏副本的拒绝结果和派生来源链回执。
+它不驱动浏览器、恢复/重跑或全部专业场景，这些范围另行验收；不以回执文件存在代替通过。
+
+[layout_index_cost.py](layout_index_cost.py) 接受 `--tree TREE --source SYNTHETIC_LAYOUT2 --out NEW`，
+在独立新副本中追加未发送的 prepared 记录，分两子进程检查 120 / 12000 条索引扫描与正文读回。
+正文为有界合成文本，不执行负载；回执保存实际扫描字节、次数、索引条目、内容摘要、wall time
+和进程峰值 RSS。扫描计数有插桩，RSS 含准备，不能冒充正式运行成本或原生性能资格。
+
 ## 配置兼容脚本
 
 包内 `config assets/create/bind` 的输出是新目录；旧脚本保留其文件输出与旧回执接口。

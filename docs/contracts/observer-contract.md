@@ -55,6 +55,9 @@ layout1 继续绑定 `run_file_sha256/config_file_sha256` 的实际旧文件字�
 `inputs_file_sha256/run_member_sha256/config_member_sha256`。外层为容器字节，内层为已核验
 成员内容；不创建旧文件或把成员摘要装入旧 file 字段。Python 离线关联核验相同结构。
 独立流继续 `lab_observer.v2`，原生采样与原资格边界不变，实施与平台验证状态见 backlog。
+静态绑定的 layout1 run/config 文件各限 1 MiB；layout2 run/config canonical 成员各限
+1 MiB，inputs.json 容器独立限 64 MiB，JSON 深度仍限 128。容器预算不放宽离线流及每行预算；
+超限返回绑定拒绝，不忽略成员或哈希核验。64 MiB 读取的原生内存成本尚需单独验证。
 
 ### 输入与版本
 

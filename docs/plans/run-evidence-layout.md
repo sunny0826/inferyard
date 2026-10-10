@@ -330,8 +330,8 @@ T0 先提交契约与归属，三个 owner 才可改代码；仅 root 修改 Git
 边界例外只能由 root 先登记路径、理由、原 owner 影响和回滚方式；没有例外不得越界。
 遇依赖未合入只能记录未验证，不改他人模块或测试绕过。
 
-C2 新增 `evidence/baseline_reads.py` 只负责独立 baseline 的现行旁证读取，归属不与 C1 的
-run 布局模块重叠；不能藉此放宽 run 识别。C1 负责 `observation_keys` 与旧布局日志尾语义，
+C2 的 `evidence/baseline_reads.py` 中 `BaselineEvidence` 只负责独立 baseline 的现行旁证读取，
+归属不与 C1 的 run 布局模块重叠；不能藉此放宽 run 识别。C1 负责 `observation_keys` 与旧布局日志尾语义，
 C2 负责 ledger 的容器尾原因传播及 `error_reasons.py` 中新证据错误的稳定诊断。
 
 PR2 在 PR1 精确 head 验收通过后分为共享 Journal/原件 writer、runtime/platform 调用迁移、

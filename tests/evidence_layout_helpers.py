@@ -12,13 +12,16 @@ def digest(value):
     return hashlib.sha256(json_bytes(value)).hexdigest()
 
 
-def seal_layout(root, run):
+def seal_layout(root, run, original_manifest=None):
     files = {
         path.name: {"sha256": sha256_file(path), "bytes": path.stat().st_size, "derived": False}
         for path in root.iterdir()
         if path.is_file() and path.name != "manifest.json"
     }
+    if original_manifest is None and (root / "manifest.json").exists():
+        original_manifest = read_json(root / "manifest.json")
     manifest = {
+        **(original_manifest or {}),
         "schema_version": 3,
         "evidence_layout_version": 2,
         "run_id": run["run_id"],
@@ -163,7 +166,7 @@ def pack_layout2(source, destination):
     for name in ("events.jsonl", "memory.jsonl", "environment.jsonl", "schedule.jsonl"):
         (destination / name).write_bytes((source / name).read_bytes())
     if (source / "manifest.json").exists():
-        seal_layout(destination, run)
+        seal_layout(destination, run, read_json(source / "manifest.json"))
     return destination
 
 

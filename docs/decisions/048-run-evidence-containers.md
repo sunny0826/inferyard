@@ -36,6 +36,9 @@ manifest 八文件。四份采样/事件日志不合并，选用高频扩展流�
 ExtensionJournal 使用；独立封包与 baseline 格式不随 run 布局改变。
 prepared append/flush/fsync 必须先于 dirty/started/send，native receipt 耐久先于 clean。
 request-bodies 扫描一次，索引只保留 O(N) 元数据；再次取 body 时核对已验证的记录字节。
+Go observer 静态绑定的 1 MiB 预算继续约束 run/config 各自内容；新 inputs 容器另限
+64 MiB，以容纳 bundle、plan、selection 及实际配置原文。该有限预算独立于 observer
+日志预算；哈希、严格 JSON 和深度校验不变，容器原生内存成本单独登记。
 
 软件验收要求旧证据原字节不变、新旧语义一致、容器/成员篡改与生命周期故障严格拒绝，
 普通初始 single 八加三、默认双 scope 十六加三实际清点，全部派生/恢复/来源入口可用。

@@ -45,7 +45,7 @@ observations envelope 固定 `schema_version`、`evidence_layout_version`、`run
 | collector / observer / boundary_observer | prepare，实际采集器/观察器存在时单例 |
 | effective_parameters | ordinary/stream，各一个槽 |
 | identity | post_probe/finalizing，两路径合计一个权威单例，禁止最后写入覆盖 |
-| native_clean_receipt | client_complete，key=request_id，各请求最多一次且同步耐久 |
+| native_clean_receipt | client_complete，key=request_id，各请求最多一次且同步耐久；layout2 native 已完成请求必有，layout1 保留 pre-receipt v3 的原支持边界 |
 | safety_check / execution_budget | finalizing，原功能写入时保留 |
 
 prepared envelope 固定 `schema_version`、`evidence_layout_version`、`run_id`、`trial_id`、`request_id`、
@@ -95,6 +95,9 @@ observer 的 layout1 binding 继续 run_file_sha256/config_file_sha256 的真实
 layout2 使用 `definition=benchmark-inputs-binding.v1` 和 `inputs_file_sha256`、`run_member_sha256`、
 `config_member_sha256`，其余 run/PID/标签字段不变；Go 与 Python 消费方同时更新。
 独立 observer 流版本和原生采样不变；实时绑定并不授测量比较资格。
+Go 静态绑定保留 layout1 的 run/config 各 1 MiB 上限；layout2 对 run/config 的 canonical
+成员字节各保留 1 MiB，上层 inputs.json 独立限 64 MiB。容器预算包含其它冻结成员及原文，
+不改变 observer 流、单行或核心配置的原有预算；超限明确拒绝，不裁剪成员。
 
 ## 写入生命周期
 
