@@ -29,6 +29,7 @@ class Observations:
         if self.records is not None:
             return
         rows, self.tails = self.evidence.checked_jsonl("observations.jsonl")
+        self.evidence.container_tails["observations.jsonl"] = self.tails
         slots, records = set(), []
         for seq, row in enumerate(rows, 1):
             try:

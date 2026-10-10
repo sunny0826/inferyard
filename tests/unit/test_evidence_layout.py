@@ -255,3 +255,97 @@ def test_projection_does_not_scan_unused_prepared_or_observation_payloads(origin
     assert evidence.input("run")["run_id"] == "synthetic-layout"
     assert "request-bodies.jsonl" not in evidence.hashes
     assert "observations.jsonl" not in evidence.hashes
+
+
+def test_fixture_generator_preserves_real_sent_body_and_complete_counts(tmp_path):
+    from inferyard.evidence.ledger import read_trial
+    from tests.evidence_layout_helpers import build_current_original
+
+    original = build_current_original(tmp_path / "generated-originals")
+    before = {path.name: path.read_bytes() for path in original.iterdir()}
+    packed = pack_layout2(original, tmp_path / "generated-layout2")
+    result = read_trial(original)
+    assert result["summary"]["completeness"] == "complete"
+    evidence = TrialEvidence(packed)
+    evidence.preload(evidence.manifest["files"])
+    events, _ = read_jsonl(original / "events.jsonl")
+    verify_message_snapshots(packed, events, evidence)
+    assert len(evidence._prepared.entries) == result["summary"]["counts"]["executed"] + 2
+    assert before == {path.name: path.read_bytes() for path in original.iterdir()}
+
+
+def test_fixture_packing_cannot_invent_originals_from_old_inline_events(tmp_path):
+    from tests.helpers import fixture_run
+
+    original = fixture_run(tmp_path / "inline-original")
+    destination = tmp_path / "unsupported-packed"
+    with pytest.raises(ValueError, match="original sent request bodies"):
+        pack_layout2(original, destination)
+    assert not destination.exists()
+
+
+def test_native_receipt_query_binds_actual_request_key(originals):
+    _, root = originals
+    evidence = TrialEvidence(root)
+    rows, _ = read_jsonl(root / "observations.jsonl")
+    run = evidence.input("run")
+    key = "synthetic-layout-probe-1"
+    payload = {"run_id": run["run_id"], "request_id": key, "value": "original-receipt"}
+    rows.append(
+        {
+            **rows[0],
+            "seq": len(rows) + 1,
+            "kind": "native_clean_receipt",
+            "stage": "client_complete",
+            "key": key,
+            "payload": payload,
+            "payload_sha256": digest(payload),
+        }
+    )
+    write_rows(root, "observations.jsonl", rows)
+    evidence = TrialEvidence(root)
+    assert evidence.observation("native_clean_receipt", key=key) == payload
+    assert not evidence.has_observation("native_clean_receipt", key="different")
+    verify_reference(root, evidence.observation_reference("native_clean_receipt", key=key))
+    rows[-1]["key"] = "different"
+    write_rows(root, "observations.jsonl", rows)
+    with pytest.raises(EvidenceError):
+        TrialEvidence(root).observation("native_clean_receipt", key=key)
+
+
+@pytest.mark.parametrize("name", ["observations.jsonl", "request-bodies.jsonl"])
+def test_scanned_container_tails_are_public_without_projection_scans(originals, name):
+    _, root = originals
+    (root / "manifest.json").unlink()
+    with (root / name).open("ab") as stream:
+        stream.write(b'{"schema_version":')
+    projected = TrialEvidence(root, projection=True)
+    projected.preload({})
+    assert projected.container_tails == {}
+    evidence = TrialEvidence(root)
+    evidence.preload({})
+    assert evidence.container_tails[name]
+
+
+@pytest.mark.parametrize(
+    "name", ["migration.json", "requests.jsonl", "token-budgets.json", "request-files"]
+)
+def test_rejected_historical_sources_cannot_hide_inside_current_layout(originals, name):
+    _, root = originals
+    if name == "request-files":
+        (root / name).mkdir()
+    else:
+        (root / name).write_bytes(json_bytes({"schema_version": 3}))
+    with pytest.raises(UnsupportedFormat):
+        TrialEvidence(root)
+
+
+def test_layout2_inline_started_still_requires_physical_original(originals):
+    _, root = originals
+    rows, _ = read_jsonl(root / "request-bodies.jsonl")
+    events, _ = read_jsonl(root / "events.jsonl")
+    events[0]["data"]["body"].pop("messages_sha256")
+    events[0]["data"]["body"]["messages"] = rows[0]["body"]["messages"]
+    write_rows(root, "request-bodies.jsonl", rows[1:])
+    with pytest.raises(EvidenceError, match="request_snapshot_missing"):
+        verify_message_snapshots(root, events, TrialEvidence(root))

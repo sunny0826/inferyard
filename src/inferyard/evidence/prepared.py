@@ -43,6 +43,7 @@ class PreparedRequests:
                     size += length
         except (OSError, UnicodeError, ContractError) as exc:
             raise EvidenceError("invalid_prepared_request") from exc
+        self.evidence.container_tails["request-bodies.jsonl"] = self.tails
         self.evidence.hashes["request-bodies.jsonl"] = digest.hexdigest()
         self.evidence.sizes["request-bodies.jsonl"] = size
         if self.tails and self.evidence.manifest is not None:

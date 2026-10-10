@@ -40,6 +40,7 @@ class TrialEvidence:
             for member in self._inputs["documents"].values():
                 require_core(member["payload"], "run.input")
             self._check_sealed("inputs.json")
+        self.container_tails = {}
         self._observations = Observations(self)
         self._prepared = PreparedRequests(self)
 
@@ -103,8 +104,17 @@ class TrialEvidence:
             return clean_receipt_name(key)
         if stage is None and len(OBSERVATION_STAGES[kind]) == 1:
             stage = OBSERVATION_STAGES[kind][0]
-        if kind in ("identity", "service_properties"):
-            stage = None  # Legacy snapshots have one authoritative slot without stage metadata.
+        if kind == "service_properties":
+            actual = (
+                "pre_idle"
+                if self.input("config")["engine"]["adapter"] in ("kvmem", "ninfer")
+                else "post_idle"
+            )
+            if stage is not None and stage != actual:
+                return None
+            stage = None
+        elif kind == "identity":
+            stage = None  # Legacy identity has one authoritative slot without stage metadata.
         name = OBSERVATION_FILES.get((kind, stage))
         if name is None:
             raise EvidenceError("ambiguous_observation_query")
@@ -115,7 +125,7 @@ class TrialEvidence:
             record = self._observations.get(kind, stage, key)
             return record["payload"] if record else None
         name = self._legacy_observation_name(kind, stage, key)
-        if not self.exists(name):
+        if name is None or not self.exists(name):
             return None
         payload = self._reads.checked_json(name)
         self._check_sealed(name)
