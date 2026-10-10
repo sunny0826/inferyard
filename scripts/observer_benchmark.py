@@ -7,7 +7,7 @@ from pathlib import Path
 
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import local_file, sha256_file, verify_manifest
-from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
+from inferyard.evidence.trial_evidence import verify_reference
 
 if __package__:
     from .observer_stream import benchmark_binding, require
@@ -39,12 +39,13 @@ def link_benchmark(summary: dict, root: Path) -> dict:
     require(manifest_path.is_file(), "observer_benchmark_not_sealed")
     before = sha256_file(manifest_path)
     require(not verify_manifest(root), "observer_benchmark_manifest_incomplete")
-    trial = read_trial(root)
+    metadata = {}
+    trial = read_trial(root, metadata=metadata)
     run, config = trial["run"], trial["config"]
     require(run["origin"] == "measured", "observer_benchmark_origin_not_measured")
-    evidence = TrialEvidence(root)
+    evidence = metadata["evidence"]
     for kind in ("run", "config"):
-        verify_reference(root, evidence.input_reference(kind))
+        verify_reference(root, evidence.input_reference(kind), reads=evidence)
     if evidence.layout_version == 2:
         expected = {
             "definition": "benchmark-inputs-binding.v1",

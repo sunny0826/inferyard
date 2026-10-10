@@ -10,7 +10,7 @@ def sealed_observation(evidence, kind, *, stage="prepare"):
     ref = evidence.observation_reference(kind, stage=stage) if value is not None else None
     if ref is None or evidence.manifest is None or ref["path"] not in evidence.manifest["files"]:
         raise EvidenceError("overhead_" + kind + "_unsealed")
-    verify_reference(evidence.root, ref)
+    verify_reference(evidence.root, ref, reads=evidence)
     return value
 
 
@@ -32,16 +32,18 @@ def workload_identity(data):
     return result
 
 
-def bind_target(root, data, protocol, arm_identity, arm_requests, result, collector):
+def bind_target(root, data, protocol, arm_identity, arm_requests, result, collector, *, reads=None):
     """Caller supplies independently replayed target and ABBA evidence."""
     from inferyard.runtime.overhead_runner import request_projection
 
-    evidence = TrialEvidence(root)
+    evidence = reads if reads is not None else TrialEvidence(root)
+    if evidence.root != root.resolve() or evidence.projection:
+        raise EvidenceError("invalid_evidence_reference")
     reasons = []
     if not result["passed"]:
         reasons.append("overhead_preflight_not_passed")
     for kind in ("config", "bundle"):
-        verify_reference(root, evidence.input_reference(kind))
+        verify_reference(root, evidence.input_reference(kind), reads=evidence)
         if evidence.input_digest(kind) != protocol[kind + "_sha256"]:
             reasons.append("target_" + kind + "_mismatch")
     if data["run"].get("tool_source_sha256") != protocol["tool_source_sha256"]:

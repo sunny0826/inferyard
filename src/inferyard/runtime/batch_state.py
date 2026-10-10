@@ -194,7 +194,11 @@ def history(
             raise EvidenceError("batch_run_tool_changed")
         if run["diagnostic"] != metadata["diagnostic"]:
             raise EvidenceError("batch_diagnostic_mode_changed")
-        evidence = TrialEvidence(path, projection=not full_verification)
+        evidence = (
+            trial_metadata["evidence"]
+            if full_verification
+            else TrialEvidence(path, projection=True)
+        )
         binding = evidence.observation("service_binding", stage="prepare")
         if binding is not None:
             if binding.get("effective_endpoint") != data["config"]["endpoint"]:
@@ -203,7 +207,7 @@ def history(
             if evidence.manifest is not None:
                 if ref["path"] not in evidence.manifest["files"]:
                     raise EvidenceError("service_binding_not_sealed")
-                verify_reference(path, ref)
+                verify_reference(path, ref, reads=evidence if full_verification else None)
         elif data["summary"]["counts"]["executed"] or evidence.manifest is not None:
             raise EvidenceError("service_binding_missing")
         trial = next(t for t in plan["trials"] if t["trial_id"] == run["trial_id"])

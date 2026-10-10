@@ -207,8 +207,9 @@ def read_overhead(root, *, target=None, target_data=None):
     environments = []
     for entry in index:
         path = local_file(root, entry["path"])
-        data = read_trial(path)
-        evidence = TrialEvidence(path)
+        metadata = {}
+        data = read_trial(path, metadata=metadata)
+        evidence = metadata["evidence"]
         if target is not None:
             environments.append(
                 environment_record(
@@ -230,7 +231,7 @@ def read_overhead(root, *, target=None, target_data=None):
         if data["run"].get("tool_source_sha256") != protocol["tool_source_sha256"]:
             raise EvidenceError("overhead_tool_mismatch")
         for name in ("config", "bundle"):
-            verify_reference(path, evidence.input_reference(name))
+            verify_reference(path, evidence.input_reference(name), reads=evidence)
             if evidence.input_digest(name) != protocol[name + "_sha256"]:
                 raise EvidenceError("overhead_frozen_input_mismatch")
         collector = sealed_observation(evidence, "collector")
@@ -275,7 +276,9 @@ def read_overhead(root, *, target=None, target_data=None):
     result = assess_overhead(protocol, trials)
     result["performance_comparison_eligible"] = False
     if target is not None:
-        data = target_data if target_data is not None else read_trial(target)
+        metadata = {}
+        data = target_data if target_data is not None else read_trial(target, metadata=metadata)
+        evidence = metadata["evidence"] if metadata else TrialEvidence(target)
         result["target_binding"] = bind_target(
             target,
             data,
@@ -283,7 +286,8 @@ def read_overhead(root, *, target=None, target_data=None):
             arm_identity,
             trials[0]["requests"] if trials else [],
             result,
-            sealed_observation(TrialEvidence(target), "collector"),
+            sealed_observation(evidence, "collector"),
+            reads=evidence,
         )
         result["environment_binding"] = assess_environments(
             environments,

@@ -55,8 +55,16 @@ def verify(out, saved, *, options):
     roots = [
         resolve_source(out, run["source"]["path"], options.source_roots) for run in saved["runs"]
     ]
+    source_metadata = {}
     loaded = (
-        [comparison_input(root, bind_unsealed=True) for root in roots]
+        [
+            comparison_input(
+                root,
+                bind_unsealed=True,
+                metadata=source_metadata.setdefault(root.resolve(), {}),
+            )
+            for root in roots
+        ]
         if len(roots) == 2 or "comparison_source" in saved
         else None
     )
@@ -74,6 +82,7 @@ def verify(out, saved, *, options):
         format_version=8,
         loaded=loaded,
         verified_comparison=comparison,
+        source_metadata=source_metadata,
     )
     for key in ("generator_source_sha256", "template_sha256"):
         value = saved[key]

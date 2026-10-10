@@ -127,8 +127,8 @@ def test_manifest_changed_while_reducing_is_rejected(bridge, tmp_path, monkeypat
     summary = bridge.analyze(bound_log(tmp_path, root))
     original = bridge.link_benchmark.__globals__["read_trial"]
 
-    def changed(path):
-        result = original(path)
+    def changed(path, **kwargs):
+        result = original(path, **kwargs)
         with (path / "manifest.json").open("ab") as stream:
             stream.write(b"\n")
         return result

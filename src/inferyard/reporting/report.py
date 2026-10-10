@@ -33,9 +33,11 @@ from inferyard.reporting.report_resources import resource_view
 from inferyard.reporting.report_scans import scan_view
 
 
-def presentation(data, source, out, *, contents, format_version=8):
+def presentation(data, source, out, *, contents, format_version=8, reads=None):
     summary = data["summary"]
-    evidence = TrialEvidence(Path(source["path"]))
+    evidence = reads if reads is not None else TrialEvidence(Path(source["path"]))
+    if evidence.root != Path(source["path"]).resolve() or evidence.projection:
+        raise EvidenceError("invalid_evidence_reference")
     names = dict.fromkeys(
         [
             "manifest.json",
@@ -98,7 +100,7 @@ def presentation(data, source, out, *, contents, format_version=8):
         "environment.start.json" if evidence.layout_version == 1 else "not_recorded"
     )
     if environment_ref is not None:
-        verify_reference(evidence.root, environment_ref)
+        verify_reference(evidence.root, environment_ref, reads=evidence)
         environment_source = environment_ref["path"]
         if "member" in environment_ref:
             environment_source += ":seq=" + str(environment_ref["member"]["seq"])
@@ -130,6 +132,7 @@ def build_index(
     format_version=8,
     loaded=None,
     verified_comparison=None,
+    source_metadata=None,
 ):
     require_version({"version": format_version}, "version", (8,), "report")
     out = out.resolve()
@@ -137,13 +140,18 @@ def build_index(
         comparison_path = comparison_path.resolve()
     if not roots or len(roots) > 100:
         raise EvidenceError("report_requires_1_to_100_trials")
+    source_metadata = {} if source_metadata is None else dict(source_metadata)
+
+    def read(root):
+        return comparison_input(
+            root,
+            bind_unsealed=True,
+            metadata=source_metadata.setdefault(root.resolve(), {}),
+        )
+
     if loaded is None and (len(roots) == 2 or comparison_path is not None):
-        loaded = [comparison_input(root, bind_unsealed=True) for root in roots]
-    inputs = (
-        loaded
-        if loaded is not None
-        else (comparison_input(root, bind_unsealed=True) for root in roots)
-    )
+        loaded = [read(root) for root in roots]
+    inputs = loaded if loaded is not None else (read(root) for root in roots)
     runs, ids = [], set()
     contents = {}
     for data, source in inputs:
@@ -151,7 +159,14 @@ def build_index(
             raise EvidenceError("duplicate_report_run")
         ids.add(source["run_id"])
         runs.append(
-            presentation(data, source, out, contents=contents, format_version=format_version)
+            presentation(
+                data,
+                source,
+                out,
+                contents=contents,
+                format_version=format_version,
+                reads=source_metadata.pop(Path(source["path"]), {}).get("evidence"),
+            )
         )
         # Presentation owns its derived fields; do not retain raw samples across runs.
         del data, source
