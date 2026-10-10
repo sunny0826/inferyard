@@ -7,7 +7,8 @@ from dataclasses import asdict
 import pytest
 
 from inferyard.config.single_plan import compile_single_plan
-from inferyard.evidence.storage import EvidenceError, Redactor, json_bytes, read_json, sha256_file
+from inferyard.evidence.storage import EvidenceError, Redactor, json_bytes, read_json
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.extensions.complete_trial_control import execute_complete, read_trial_plan
 from inferyard.extensions.extension_evidence import ExtensionJournal
 from inferyard.extensions.independent_guard import POLICY
@@ -16,15 +17,13 @@ from inferyard.extensions.workflow import digest
 from inferyard.platforms.external_cpu import read_boot_id
 from inferyard.provenance import tool_source_hash
 from inferyard.runtime.trial_runner import TrialDependencies
-from tests.evidence_layout_helpers import pack_layout2
 from tests.integration.test_runner import scenario as runner_scenario
 
 scenario = runner_scenario
 
 
-@pytest.mark.parametrize("layout", [1, 2])
 def test_complete_control_uses_real_trial_seals_and_deferred_baselines(
-    scenario, tmp_path, monkeypatch, layout
+    scenario, tmp_path, monkeypatch
 ):
     loaded, deps = scenario[0].config, scenario[1]
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
@@ -67,16 +66,13 @@ def test_complete_control_uses_real_trial_seals_and_deferred_baselines(
     assert len(scenario[2]) == 32  # each arm: two probes, three warmups, three cases
     assert all(a["finalized"] and a["measurement_path"] == "run_trial.v1" for a in arms)
     original_bytes = {}
-    if layout == 2:
-        for index, arm in enumerate(arms):
-            if arm["mode"] == "on":
-                source = store.path / arm["trial_path"]
-                original_bytes[source] = {
-                    p.name: p.read_bytes() for p in source.iterdir() if p.is_file()
-                }
-                container = pack_layout2(source, store.path / f"container-{index}")
-                arm["trial_path"] = str(container.relative_to(store.path))
-                arm["trial_manifest_sha256"] = sha256_file(container / "manifest.json")
+    for arm in arms:
+        if arm["mode"] == "on":
+            source = store.path / arm["trial_path"]
+            assert TrialEvidence(source).layout_version == 2
+            original_bytes[source] = {
+                p.name: p.read_bytes() for p in source.iterdir() if p.is_file()
+            }
     children = [
         {"path": a["trial_path"], "manifest_sha256": a["trial_manifest_sha256"]}
         for a in arms

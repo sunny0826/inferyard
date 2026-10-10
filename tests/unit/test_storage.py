@@ -79,6 +79,12 @@ def test_tail_is_recoverable_but_middle_corruption_is_not(tmp_path):
 
 def test_request_started_is_fsynced_before_return(tmp_path, monkeypatch):
     store = make_journal(tmp_path)
+    store.prepare_request(
+        "r1",
+        "formal",
+        1,
+        {"model": "fixture", "messages": [{"role": "user", "content": "hello"}], "stream": True},
+    )
     seen = []
     original = store.flush
 

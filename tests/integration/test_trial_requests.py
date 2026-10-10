@@ -10,7 +10,7 @@ from inferyard.analysis.scoring import score_case
 from inferyard.config.planning import compile_plan
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, Redactor, read_json
+from inferyard.evidence.storage import EvidenceError, Redactor, json_bytes, read_json, read_jsonl
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.request_execution import TrialRequests
 from tests.integration.test_runner import scenario as runner_scenario
@@ -179,20 +179,22 @@ def test_redacted_answer_never_scored_and_secret_absent_from_artifacts(scenario)
     assert all(secret.encode() not in p.read_bytes() for p in root.iterdir())
 
 
-@pytest.mark.parametrize("delay_stage", ["snapshot", "observation"])
-def test_duration_admission_rechecks_deadline_after_durable_preparation(scenario, delay_stage):
+@pytest.mark.parametrize("delay_stage", ["prepared", "observation"])
+def test_duration_admission_rechecks_deadline_after_durable_preparation(
+    scenario, delay_stage, tmp_path
+):
     import time
 
     async def crosses_deadline(execution, bundle, calls):
-        original = execution.store.snapshot
+        original = execution.store.prepare_request
 
-        def slow_snapshot(name, value):
-            result = original(name, value)
-            if name.endswith(".request.json") and delay_stage == "snapshot":
+        def slow_prepare(*args):
+            result = original(*args)
+            if delay_stage == "prepared":
                 time.sleep(0.03)
             return result
 
-        execution.store.snapshot = slow_snapshot
+        execution.store.prepare_request = slow_prepare
         if delay_stage == "observation":
             execution.sampler.before_request = lambda: time.sleep(0.03)
         terminal = await execution.one(
@@ -207,3 +209,23 @@ def test_duration_admission_rechecks_deadline_after_durable_preparation(scenario
 
     data, _ = asyncio.run(pipeline(scenario, crosses_deadline))
     assert all(r["execution_state"] == "not_executed" for r in data["requests"])
+    root = Path(scenario[0].config.config.to_dict()["output"]["root"]) / data["run"]["run_id"]
+    prepared, body_tails = read_jsonl(root / "request-bodies.jsonl")
+    events, event_tails = read_jsonl(root / "events.jsonl")
+    assert len(prepared) == 1 and not body_tails and not event_tails
+    assert not any(e["event_type"] == "request_started" for e in events)
+    (tmp_path / "runtime-receipt.json").write_bytes(
+        json_bytes(
+            {
+                "synthetic": True,
+                "transport": "httpx.MockTransport; no TCP/model",
+                "entry": "TrialRequests.one actual runtime admission; no CLI mapping",
+                "delay_stage": delay_stage,
+                "received": scenario[2],
+                "prepared": prepared,
+                "events": events,
+                "host_state": read_json(locking.STATE_PATH),
+                "counts": data["summary"]["counts"],
+            }
+        )
+    )

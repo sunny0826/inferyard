@@ -44,12 +44,11 @@ def hold():
     time.sleep(30)
 
 if point == 'bundle':
-    original = TrialJournal.snapshot
-    def snapshot(self, name, value):
-        result = original(self, name, value)
-        if name == 'bundle.json': hold()
-        return result
-    TrialJournal.snapshot = snapshot
+    original = TrialJournal.__init__
+    def initialized(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        hold()
+    TrialJournal.__init__ = initialized
 elif point in ('request_started', 'request_finished', 'score'):
     original = TrialJournal.event
     def event(self, kind, phase, key, data, **kwargs):

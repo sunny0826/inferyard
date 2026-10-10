@@ -10,6 +10,7 @@ import inferyard.runtime.lock as locking
 from inferyard.analysis.scoring import score_case
 from inferyard.config.planning import compile_plan
 from inferyard.evidence.storage import read_json, sha256_file
+from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.unit.test_phase2_contracts import experiment
@@ -38,7 +39,7 @@ def test_resource_collector_records_boundaries_and_rebuilds_metrics(scenario):
     schedule, _ = read_jsonl(root / "schedule.jsonl")
     boundaries = [s for s in schedule if s.get("kind") == "resource_boundary"]
     assert all(b["read_finished_ns"] >= b["read_started_ns"] for b in boundaries)
-    assert read_json(root / "collector.json")["collector"] == "linux-resource.v2"
+    assert TrialEvidence(root).observation("collector")["collector"] == "linux-resource.v2"
     values = [
         m
         for m in data["summary"]["metric_observations"]
@@ -59,13 +60,13 @@ def test_resource_collector_records_boundaries_and_rebuilds_metrics(scenario):
     assert context["collector_schedule"]["boundary_samples"] == len(boundaries)
     assert context["collector_schedule"]["overhead_gate"] == "not_verified"
     assert {ref["path"] for ref in context["evidence_refs"]} == {
-        "environment.start.json",
-        "environment.end.json",
+        "observations.jsonl",
         "environment.jsonl",
         "schedule.jsonl",
         "external-cpu.jsonl",
     }
-    assert all(sha256_file(root / ref["path"]) == ref["sha256"] for ref in context["evidence_refs"])
+    for ref in context["evidence_refs"]:
+        verify_reference(root, ref)
     assert data["summary"] == read_trial(root)["summary"]
 
 
@@ -106,8 +107,8 @@ def test_engine_timings_rebuild_offline_with_bound_build_and_unchanged_evidence(
         )
         assert item["sampled_start_ns"] is None  # engine phase clock is not client wall clock
         for ref in item["evidence_refs"]:
-            assert sha256_file(root / ref["path"]) == ref["sha256"]
-    assert "service.props.json" in read_json(root / "manifest.json")["files"]
+            verify_reference(root, ref)
+    assert TrialEvidence(root).has_observation("service_properties")
     assert "fixture-secret-not-to-persist" not in (root / "events.jsonl").read_text()
 
 
@@ -137,8 +138,8 @@ def test_full_diagnostic_trial_probes_warmups_and_formal_are_distinct(scenario):
     assert data["summary"]["scope_complete"]
     assert data["summary"]["completeness"] == "incomplete"
     assert data["summary"]["evidence_complete"]
-    assert (root / "identity.json").exists()
-    assert (root / "effective-stream.json").exists()
+    assert TrialEvidence(root).has_observation("identity")
+    assert TrialEvidence(root).has_observation("effective_parameters", "stream")
     assert not read_json(locking.STATE_PATH)["dirty"]
 
 
@@ -345,7 +346,7 @@ def test_input_target_checked_before_generation_and_rebuilt_offline(scenario, ta
         )
     )
     assert data["summary"]["input_target_check"]["status"] == expected
-    assert read_json(root / "input-target-check.json")["status"] == expected
+    assert TrialEvidence(root).observation("input_target_check")["status"] == expected
     assert read_trial(root)["summary"] == data["summary"]
     if expected == "mismatch":
         assert code == 2

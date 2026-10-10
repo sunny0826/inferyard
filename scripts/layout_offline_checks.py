@@ -134,14 +134,18 @@ def run(args):
     from inferyard.evidence.ledger import read_trial
     from inferyard.evidence.run_projection import read_run_projection
     from inferyard.evidence.trial_evidence import TrialEvidence
-    from tests.evidence_layout_helpers import pack_layout2
+    from tests.evidence_layout_helpers import build_current_original
 
     original = args.source_run
     declaration = json.loads((original.parent.parent / "receipt.json").read_text())
     if declaration.get("synthetic") is not True or Path(declaration["run"]).resolve() != original:
         raise ValueError("source_must_be_fresh_layout_fixture_worker_output")
     original_before = inventory(original)
-    packed = pack_layout2(original, args.out / "synthetic-layout2")
+    if TrialEvidence(original).layout_version != 2:
+        raise ValueError("PR2_source_must_be_production_layout2")
+    packed = original
+    original = build_current_original(args.out / "test-only-legacy-originals")
+    old_before = inventory(original)
     if len(inventory(packed)) != 8:
         raise ValueError("unexpected_layout_file_count")
     lane1 = args.out / "lane-1"
@@ -154,7 +158,7 @@ def run(args):
     lane2 = args.out / "lane-2"
     lane2.mkdir()
     invoke(args.candidate, ["verify", "--path", packed], lane2 / "verify")
-    invoke(args.baseline, ["verify", "--path", packed], lane2 / "baseline-forward", 4)
+    invoke(args.baseline, ["verify", "--path", packed], lane2 / "baseline-new-reader")
     report = lane2 / "report"
     invoke(args.candidate, ["report", "--runs", packed, "--out", report], lane2 / "write")
     invoke(args.candidate, ["verify", "--path", report, "--rerender"], lane2 / "rerender")
@@ -321,13 +325,16 @@ def run(args):
                 lane9 / f"{label}-{command}-write",
             )
             invoke(args.candidate, ["verify", "--path", out], lane9 / f"{label}-{command}-verify")
-    if inventory(original) != original_before:
+    if inventory(original) != old_before or inventory(packed) != original_before:
         raise ValueError("original_source_changed")
     dump(
         args.out / "receipt.json",
         {
             "synthetic": True,
-            "old_files": original_before,
+            "old_files": old_before,
+            "old_files_after": inventory(original),
+            "production_files_before": original_before,
+            "production_files_after": inventory(packed),
             "new_files": inventory(packed),
             "not_covered": ["lane8_specialized_consumers", "lane9_rerun_resume", "lane10_browser"],
         },

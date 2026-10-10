@@ -16,10 +16,12 @@ from inferyard.config.single_plan import compile_single_plan
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, read_json
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.registry import adapter_factory
 from inferyard.runtime.runner import execute_async
 from tests.integration.test_runner import scenario  # noqa: F401, F811
 from tests.lab_service import LabService, lab_config
+from tests.layout_mutations import change_observation
 
 
 def toml_value(value):
@@ -200,6 +202,7 @@ def test_frozen_plan_run_uses_shared_lab_lifecycle(lab_scenario, tmp_path, monke
     root = Path(result["details"]["runs"][0])
     data = read_trial(root)
     assert data["run"]["execution_mode"] == "experiment"
+    assert TrialEvidence(root).configuration_source()["data"] == config_path.read_bytes()
     assert data["summary"]["counts"]["completed"] == len(command.config.bundle.to_dict()["cases"])
     assert len(service.requests) == 5 + len(command.config.bundle.to_dict()["cases"])
 
@@ -213,17 +216,16 @@ def test_offline_rechecks_lab_parameter_binding(lab_scenario, artifact):
     assert code == 0
     root = Path(result.evidence_dir)
     (root / "manifest.json").unlink()
-    name = "token-budgets.v2.json" if "budget" in artifact else "effective-ordinary.json"
-    path = root / name
-    if artifact.startswith("missing-"):
-        path.unlink()
-    else:
-        value = read_json(path)
+    kind = "token_budgets" if "budget" in artifact else "effective_parameters"
+    stage = None if "budget" in artifact else "ordinary"
+
+    def mutate(value):
         if artifact == "budget":
             value["entries"][0]["budget"]["lab_token_budget"]["server_instance_id"] = "2" * 32
         else:
             value["lab_parameters"]["generation"]["seed"] += 1
-        path.write_text(json.dumps(value), encoding="utf-8")
+
+    change_observation(root, kind, mutate, stage=stage, remove=artifact.startswith("missing-"))
     with pytest.raises(EvidenceError, match="lab_.*evidence_(invalid|missing)"):
         read_trial(root)
 

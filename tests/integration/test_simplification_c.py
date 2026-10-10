@@ -1,6 +1,7 @@
 """C scoped identities and raw durability using the existing simulated service."""
 
 import asyncio
+import shutil
 from collections import Counter
 from copy import deepcopy
 from dataclasses import replace
@@ -17,6 +18,7 @@ from inferyard.evidence.storage import json_bytes, read_json, read_jsonl
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime import runner
 from tests.integration.test_runner import scenario as runner_scenario
+from tests.layout_mutations import change_input
 
 scenario = runner_scenario
 
@@ -108,16 +110,15 @@ def test_new_and_legacy_rerun_accept_identity_changes_with_new_service(scenario,
     value["sha256"] = digest({k: v for k, v in value.items() if k != "sha256"})
     context.value["presentation"] = value
     runner.load_rerun(rerun, identity_context=context)
-    # A new directory containing a valid legacy envelope exercises legacy dispatch.
-    meta = read_json(root / "run.json")
-    meta.pop("implementation_identity")
-    (root / "run.json").write_bytes(json_bytes(meta))
-    manifest = read_json(root / "manifest.json")
-    manifest["files"]["run.json"].update(
-        sha256=storage.sha256_file(root / "run.json"), bytes=(root / "run.json").stat().st_size
+    # Legacy implementation identity dispatch stays independent of evidence layout.
+    before = {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
+    identity_legacy = root.parent / "legacy-identity-fixture"
+    shutil.copytree(root, identity_legacy)
+    change_input(
+        identity_legacy, "run", lambda meta: meta.pop("implementation_identity"), sealed=True
     )
-    (root / "manifest.json").write_bytes(json_bytes(manifest))
-    runner.load_rerun(rerun, identity_context=context)
+    runner.load_rerun(replace(rerun, from_run=identity_legacy), identity_context=context)
+    assert before == {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
 
 
 def test_batch_continuation_dispatches_scoped_and_legacy_identity(scenario, tmp_path, monkeypatch):

@@ -11,7 +11,7 @@ from inferyard.analysis.scoring import score_case
 from inferyard.config.loader import load_config
 from inferyard.config.plan_math import plan_hash
 from inferyard.config.single_plan import compile_single_plan
-from inferyard.evidence.journal import TrialJournal
+from tests.legacy_journal import LegacyJournal
 
 
 def python_worker(script, *arguments):
@@ -89,7 +89,7 @@ def fixture_run(
     if comparison_mode != "side-by-side":
         plan["experiment"]["comparison"] = {"mode": comparison_mode, "factor": None}
         plan["plan_sha256"] = plan_hash(plan)
-    store = TrialJournal(
+    store = LegacyJournal(
         root, plan, plan["trials"][0]["trial_id"], config, bundle, execution_mode="single"
     )
     env = {

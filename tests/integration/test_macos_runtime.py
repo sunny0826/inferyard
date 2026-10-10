@@ -15,6 +15,7 @@ from inferyard.config.planning import write_plan
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import json_bytes, sha256_file, verify_manifest
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.identity import environment_snapshot, process_start_ticks
 from inferyard.reporting.report import verify_report, write_report
 from inferyard.runtime.batch_runner import execute_async as batch_execute
@@ -119,14 +120,14 @@ def assert_native_evidence(path, *, experiment):
     assert data["run"]["diagnostic"] is True
     assert data["summary"]["counts"]["completed"] == 2
     assert data["summary"]["counts"]["not_executed"] == 0
-    identity = json.loads((path / "identity.json").read_text())
+    identity = TrialEvidence(path).observation("identity")
     assert identity["process"]["endpoint"] == "verified"
     assert identity["environment"]["platform"] == "Darwin"
     rss = [s for s in data["samples"] if s["metric_name"] == "service_rss"]
     assert rss and all(s["value"] > 0 for s in rss)
     assert {s["source"] for s in rss} == {"psutil:Process.memory_info:rss"}
     if experiment:
-        collector = json.loads((path / "collector.json").read_text())
+        collector = TrialEvidence(path).observation("collector", stage="prepare")
         assert collector["collector"] == "macos-resource.v1"
         cpu = [s for s in data["samples"] if s["metric_name"] == "service_cpu_ticks"]
         assert cpu and all(s["clock_ticks_per_second"] == 1_000_000 for s in cpu)

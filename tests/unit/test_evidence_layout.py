@@ -8,7 +8,6 @@ from inferyard.adapters.requests import request_body
 from inferyard.config.loader import load_config
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.evidence.formats import UnsupportedFormat
-from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.request_snapshots import (
     messages_sha256,
     snapshot_filename,
@@ -17,6 +16,7 @@ from inferyard.evidence.request_snapshots import (
 from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from tests.evidence_layout_helpers import digest, pack_layout2, seal_layout
+from tests.legacy_journal import LegacyJournal
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def originals(tmp_path, config_path):
     loaded = load_config(config_path)
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
     plan = compile_single_plan(config, bundle)
-    store = TrialJournal(
+    store = LegacyJournal(
         tmp_path / "old",
         plan,
         plan["trials"][0]["trial_id"],

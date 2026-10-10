@@ -11,9 +11,9 @@ from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.plan_math import plan_hash
 from inferyard.config.planning import prepare_plan, write_plan
 from inferyard.contracts.validation import ContractError
-from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
 from tests.integration.test_phase2_plan import input_package
+from tests.legacy_journal import LegacyJournal
 from tests.unit.test_model_lineage import lineage
 
 
@@ -67,7 +67,7 @@ def test_receipts_survive_relocation_and_trial_offline_replay(tmp_path, config_p
     plan, configs = read_frozen_plan(frozen / "plan.json")
     assert plan == expected
     loaded = configs["w1"]
-    store = TrialJournal(
+    store = LegacyJournal(
         tmp_path / "runs",
         plan,
         plan["trials"][0]["trial_id"],

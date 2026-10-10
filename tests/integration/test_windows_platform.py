@@ -237,7 +237,9 @@ def test_native_windows_batch_collector_memory_and_filetime_identity(service):
     process, _, config, _, _ = service
     config["telemetry"] = {"interval_ms": 1000}
     snapshots = {}
-    store = SimpleNamespace(snapshot=lambda name, value: snapshots.__setitem__(name, value))
+    store = SimpleNamespace(
+        observe=lambda kind, value, *, stage, key=None: snapshots.__setitem__((kind, stage), value)
+    )
     assert resource_collector_id() == "windows-resource.v1"
     sampler = ResourceSampler(store, config)
     assert isinstance(sampler, collector_factory("windows-resource.v1"))
@@ -247,4 +249,6 @@ def test_native_windows_batch_collector_memory_and_filetime_identity(service):
     assert samples[1]["source"] == "psutil:Process.memory_info:rss"
     assert sampler.collect(process.pid, ticks + 1)[1]["missing_reason"] == "source_changed"
     assert sampler.collect(process.pid, ticks)[1]["value"] is None
-    assert snapshots["collector.json"]["process_start_source"].startswith("GetProcessTimes:")
+    assert snapshots[("collector", "prepare")]["process_start_source"].startswith(
+        "GetProcessTimes:"
+    )

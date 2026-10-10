@@ -1,4 +1,4 @@
-"""Actual simulated reruns persist embedded source bytes through the legacy writer."""
+"""Actual simulated reruns persist embedded source bytes through the production layout2 writer."""
 
 import asyncio
 import os
@@ -10,11 +10,10 @@ import pytest
 from inferyard.application.types import CommandRequest
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import json_bytes, read_json
+from inferyard.evidence.storage import json_bytes
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime import runner
-from tests.evidence_layout_helpers import pack_layout2
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.unit.test_layout_surfaces import tree_bytes
 
@@ -59,7 +58,8 @@ def test_container_rerun_writes_actual_source_or_preserves_missing(
     code, original = asyncio.run(runner.execute_async(request, deps))
     assert code == 0, original
     old = Path(original.evidence_dir)
-    container = pack_layout2(old, tmp_path / "container")
+    container = old
+    assert TrialEvidence(container).layout_version == 2
     before = {p: tree_bytes(p) for p in (old, container)}
     ticks = request.config.config.to_dict()["endpoint"]["process_start_ticks"]
     # Synthetic process replacement only; real process qualification is separate.
@@ -79,7 +79,7 @@ def test_container_rerun_writes_actual_source_or_preserves_missing(
     assert data["summary"]["counts"]["planned"] == len(data["selection"]["case_ids"])
     assert len(calls) == 16
     assert result.run_id != original.run_id
-    assert read_json(out / "parent.json")["path"] == str(container)
+    assert TrialEvidence(out).observation("parent")["path"] == str(container)
     if expected is None:
         assert not (out / "config.input.toml").exists()
         assert not (out / "config.input.json").exists()
@@ -89,7 +89,7 @@ def test_container_rerun_writes_actual_source_or_preserves_missing(
             "missing_reason": "not_persisted",
         }
     else:
-        assert (out / name).read_bytes() == expected
+        assert TrialEvidence(out).configuration_source()["data"] == expected
         assert TrialEvidence(out).configuration_source()["media_type"] == media
     assert before == {p: tree_bytes(p) for p in (old, container)}
 
@@ -135,7 +135,9 @@ def test_memory_source_uses_existing_text_snapshot_redaction(scenario, monkeypat
     code, result = asyncio.run(runner.execute_async(replace(request, config=loaded), deps))
     assert code == 0, result
     out = Path(result.evidence_dir)
-    assert (out / "config.input.toml").read_bytes() == raw.replace(secret.encode(), b"[REDACTED]")
-    assert secret.encode() not in (out / "config.input.toml").read_bytes()
+    assert TrialEvidence(out).configuration_source()["data"] == raw.replace(
+        secret.encode(), b"[REDACTED]"
+    )
+    assert secret.encode() not in TrialEvidence(out).configuration_source()["data"]
     assert len(calls) == 8
     assert read_trial(out)["summary"]["counts"]["planned"] == 3

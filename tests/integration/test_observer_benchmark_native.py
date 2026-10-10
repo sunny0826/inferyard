@@ -80,11 +80,7 @@ async def parallel_run(loaded, binary, log):
     try:
         while time.monotonic() < deadline:
             candidates = set(output_root.iterdir()) - old
-            ready = [
-                p
-                for p in candidates
-                if (p / "run.json").is_file() and (p / "config.frozen.json").is_file()
-            ]
+            ready = [p for p in candidates if (p / "inputs.json").is_file()]
             if ready:
                 assert len(ready) == 1
                 observer = start_observer(binary, ready[0], log)

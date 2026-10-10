@@ -1,7 +1,6 @@
 """Real batch/resume orchestration consumes the same fields through a light read."""
 
 import asyncio
-import json
 import shutil
 from pathlib import Path
 
@@ -10,7 +9,8 @@ import pytest
 from inferyard.application.types import CommandRequest
 from inferyard.application.verification import execute as verify
 from inferyard.config.plan_inputs import read_frozen_plan
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
+from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.reporting.repetition_report import (
     verify_repetition_summary,
     write_repetition_summary,
@@ -20,6 +20,7 @@ from inferyard.runtime import batch_state
 from inferyard.runtime.batch_runner import _next, _result, execute_async
 from tests.integration.test_batch_runner import batch
 from tests.integration.test_batch_runner import scenario as batch_scenario
+from tests.layout_mutations import change_input, change_observation, digest, reseal
 from tests.unit.test_run_projection import assert_projection, reseal_file
 
 scenario = batch_scenario
@@ -138,7 +139,7 @@ def test_skipped_timeline_validation_remains_in_verify_and_report(
         ("diagnostic", "batch_diagnostic_mode_changed"),
         ("tool", "batch_run_tool_changed"),
         ("budget", "invalid_execution_budget_evidence"),
-        ("budget_seal", "budget_evidence_not_sealed"),
+        ("observations_seal", "incomplete_layout_manifest"),
     ],
 )
 def test_batch_rejections_remain(tmp_path, scenario, change, reason):
@@ -147,22 +148,21 @@ def test_batch_rejections_remain(tmp_path, scenario, change, reason):
     root = request.output_root
     run_root = Path(result.details["runs"][0])
     if change in ("diagnostic", "tool"):
-        data = read_json(run_root / "run.json")
-        if change == "diagnostic":
-            data["diagnostic"] = not data["diagnostic"]
-        else:
-            # Removing the optional scoped identity leaves a structurally valid run.
-            data.pop("implementation_identity")
-        (run_root / "run.json").write_bytes(json_bytes(data))
-        reseal_file(run_root, "run.json")
+
+        def mutate(data):
+            if change == "diagnostic":
+                data["diagnostic"] = not data["diagnostic"]
+            else:
+                data.pop("implementation_identity")
+
+        change_input(run_root, "run", mutate, sealed=True)
     elif change == "budget":
-        data = read_json(run_root / "execution-budget.json")
-        data["elapsed_seconds"] = -1
-        (run_root / "execution-budget.json").write_bytes(json_bytes(data))
-        reseal_file(run_root, "execution-budget.json")
+        change_observation(
+            run_root, "execution_budget", lambda data: data.update(elapsed_seconds=-1), sealed=True
+        )
     else:
         data = read_json(run_root / "manifest.json")
-        del data["files"]["execution-budget.json"]
+        del data["files"]["observations.jsonl"]
         (run_root / "manifest.json").write_bytes(json_bytes(data))
     plan, loaded = read_frozen_plan(root / "frozen-plan/plan.json")
     for full in (False, True):
@@ -194,30 +194,39 @@ def test_resume_graph_rejections_match_full_history(tmp_path, scenario, change, 
     else:
         target = child
     if change == "branch":
-        original_id = read_json(target / "run.json")["run_id"]
-        for name in ("run.json", "selection.json", "events.jsonl", "memory.jsonl"):
-            path = target / name
-            values = [json.loads(line) for line in path.read_bytes().splitlines()]
+        original_id = TrialEvidence(target).input("run")["run_id"]
+        envelope = read_json(target / "inputs.json")
+        envelope["run_id"] = "cloned-child"
+        for kind in ("run", "selection"):
+            member = envelope["documents"][kind]
+            member["payload"]["run_id"] = "cloned-child"
+            member["sha256"] = digest(member["payload"])
+        (target / "inputs.json").write_bytes(json_bytes(envelope))
+        for name in ("observations.jsonl", "request-bodies.jsonl", "events.jsonl", "memory.jsonl"):
+            values, tails = read_jsonl(target / name)
+            assert not tails
             for value in values:
                 value["run_id"] = "cloned-child"
                 if value.get("request_id"):
                     value["request_id"] = value["request_id"].replace(
                         original_id, "cloned-child", 1
                     )
-            path.write_bytes(b"".join(json_bytes(v) for v in values))
-            reseal_file(target, name)
+            (target / name).write_bytes(b"".join(json_bytes(value) for value in values))
         manifest = read_json(target / "manifest.json")
-        for path in target.glob("*.request.json"):
-            renamed = path.name.replace(original_id, "cloned-child", 1)
-            path.rename(target / renamed)
-            manifest["files"][renamed] = manifest["files"].pop(path.name)
         manifest["run_id"] = "cloned-child"
         (target / "manifest.json").write_bytes(json_bytes(manifest))
+        reseal(
+            target,
+            "inputs.json",
+            "observations.jsonl",
+            "request-bodies.jsonl",
+            "events.jsonl",
+            "memory.jsonl",
+        )
     elif change == "disconnected":
-        data = read_json(target / "run.json")
-        data["parent_run_id"] = "missing-parent"
-        (target / "run.json").write_bytes(json_bytes(data))
-        reseal_file(target, "run.json")
+        change_input(
+            target, "run", lambda data: data.update(parent_run_id="missing-parent"), sealed=True
+        )
     plan, loaded = read_frozen_plan(request.output_root / "frozen-plan/plan.json")
     for full in (False, True):
         with pytest.raises(EvidenceError, match=reason):

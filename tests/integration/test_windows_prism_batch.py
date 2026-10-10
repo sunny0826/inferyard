@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import read_json, sha256_file
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms import resources, resources_windows
 from inferyard.registry import collector_factory
 from inferyard.runtime import batch_runner, trial_runner
@@ -45,9 +46,11 @@ def test_windows_prism_batch_reaches_collector_and_seals_mock_requests(
         data = read_trial(Path(path))
         assert data["summary"]["counts"]["completed"] == 3
         root = Path(path)
-        assert read_json(root / "collector.json")["collector"] == "windows-resource.v1"
+        assert TrialEvidence(root).observation("collector")["collector"] == "windows-resource.v1"
         manifest = read_json(root / "manifest.json")
-        assert manifest["files"]["collector.json"]["sha256"] == sha256_file(root / "collector.json")
+        assert manifest["files"]["observations.jsonl"]["sha256"] == sha256_file(
+            root / "observations.jsonl"
+        )
         assert data["samples"]
         assert all(s["unit"] == "bytes" for s in data["samples"])
         assert {s["source"] for s in data["samples"]} == {

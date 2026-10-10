@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime.runner import execute_async
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_runner import scenario as runner_scenario
@@ -47,13 +48,13 @@ def test_profile_admission_order_and_artifact_boundaries(scenario, monkeypatch, 
 
     request, deps, _, _ = scenario
     order = []
-    original = reuse.snapshot
+    original = reuse.record_reuse
 
     def snapshot(*args, **kwargs):
         order.append("reuse")
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(reuse, "snapshot", snapshot)
+    monkeypatch.setattr(reuse, "record_reuse", snapshot)
     monkeypatch.setattr(runner, "require_review", lambda _: order.append("review"))
     monkeypatch.setattr(trials, "require_review", lambda _: order.append("review"))
     if single:
@@ -68,9 +69,10 @@ def test_profile_admission_order_and_artifact_boundaries(scenario, monkeypatch, 
     assert order == (["reuse", "review"] if single else ["review", "reuse"])
     files = {p.name for p in root.iterdir()}
     assert "input-provenance.json" not in files
-    assert ("config.input.toml" in files) is single
-    assert ("input-target-check.json" in files) is not single
-    assert ("execution-budget.json" in files) is not single
+    evidence = TrialEvidence(root)
+    assert evidence.configuration_source()["data"] is not None
+    assert evidence.has_observation("input_target_check") is not single
+    assert evidence.has_observation("execution_budget") is not single
 
 
 @pytest.mark.parametrize("single", [True, False])
@@ -84,7 +86,8 @@ def test_finalization_preserves_existing_identity_and_sampler_shutdown(tmp_path,
         path=tmp_path,
         sealed=False,
         run_id="fixture",
-        snapshot=lambda name, value: snapshots.append(name),
+        observe=lambda kind, value, **options: snapshots.append(kind),
+        has_observation=lambda kind, **options: kind == "identity",
         event=lambda *args: None,
         seal=lambda: None,
         close=lambda: None,
@@ -123,7 +126,7 @@ def test_finalization_preserves_existing_identity_and_sampler_shutdown(tmp_path,
 
     assert asyncio.run(run()) == (0, "plan_finished")
     assert identity.read_text() == '{"preserved":true}'
-    assert "identity.json" not in snapshots
+    assert "identity" not in snapshots
     assert phases == ([] if single else ["finalizing"])
     assert stopped == (["cancelled"] if single else ["returned"])
 
@@ -150,7 +153,8 @@ def test_finalization_error_mapping_and_lock_release(tmp_path, single, failure):
         path=tmp_path,
         sealed=False,
         run_id="fixture",
-        snapshot=lambda *args: None,
+        observe=lambda *args, **kwargs: None,
+        has_observation=lambda *args, **kwargs: False,
         event=lambda *args: None,
         seal=seal,
         close=close,

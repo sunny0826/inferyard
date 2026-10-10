@@ -93,7 +93,7 @@ def native(monkeypatch):
 def sampler():
     snapshots, samples, observations = {}, [], []
     store = SimpleNamespace(
-        snapshot=lambda name, value: snapshots.__setitem__(name, value),
+        observe=lambda kind, value, *, stage, key=None: snapshots.__setitem__((kind, stage), value),
         sample=samples.append,
         observation=lambda *row: observations.append(row),
     )
@@ -111,10 +111,13 @@ def test_factory_and_native_counter_units(native):
     assert rows[0]["clock_ticks_per_second"] == 1_000_000
     assert [row["page_size_bytes"] for row in rows[1:]] == [16384, 16384]
     assert all(row["boot_id"] == "boot-mac" for row in rows)
-    assert snapshots["collector.json"]["collector"] == "macos-resource.v1"
-    assert snapshots["collector.json"]["sensors"]["missing_metrics"] == ["temperature", "frequency"]
-    assert snapshots["observer.json"]["kind"] == "macos-environment-observer.v1"
-    assert snapshots["boundary-observer.json"]["collector"] == "macos-resource.v1"
+    assert snapshots[("collector", "prepare")]["collector"] == "macos-resource.v1"
+    assert snapshots[("collector", "prepare")]["sensors"]["missing_metrics"] == [
+        "temperature",
+        "frequency",
+    ]
+    assert snapshots[("observer", "prepare")]["kind"] == "macos-environment-observer.v1"
+    assert snapshots[("boundary_observer", "prepare")]["collector"] == "macos-resource.v1"
 
 
 def test_explicit_proc_root_retains_linux_factory(native, tmp_path):
@@ -122,7 +125,7 @@ def test_explicit_proc_root_retains_linux_factory(native, tmp_path):
     from tests.unit.test_resources import proc
 
     proc(tmp_path)
-    store = SimpleNamespace(snapshot=lambda *args: None)
+    store = SimpleNamespace(observe=lambda *args, **kwargs: None)
     value = resources.ResourceSampler(store, CONFIG, proc_root=tmp_path, ticks_per_second=100)
     assert isinstance(value, ResourceSampler)
     assert value.counters(77, 55)[0]["value"] == 30

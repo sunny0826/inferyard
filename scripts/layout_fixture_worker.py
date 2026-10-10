@@ -35,6 +35,8 @@ def run(args):
     from inferyard.analysis.scoring import score_case
     from inferyard.contracts.validation import Document
     from inferyard.evidence.ledger import read_trial
+    from inferyard.evidence.storage import json_bytes, read_jsonl
+    from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
     from inferyard.registry import adapter_factory
     from tests.integration.test_lab_cli import write_config
     from tests.integration.test_runner import scenario
@@ -82,11 +84,14 @@ def run(args):
         write_config(request, path)
         patch.setattr(running, "Dependencies", lambda **options: deps)
         start = time.perf_counter_ns()
-        code = cli.main(["run", "--config", str(path)])
+        code = cli.main(
+            ["run", "--config", str(path), *(["--diagnostic"] if args.diagnostic else [])]
+        )
         elapsed = (time.perf_counter_ns() - start) / 1e9
         dump(args.out / "cli-exit.json", {"exit_code": code, "run_wall_seconds": elapsed})
-        if code != 0:
-            raise ValueError(f"synthetic_cli_failed:{code}")
+        expected_exit = 3 if args.diagnostic else 0
+        if code != expected_exit:
+            raise ValueError(f"synthetic_cli_failed:{code}:{expected_exit}")
         roots = sorted((args.out / "runs").iterdir())
         if len(roots) != 1:
             raise ValueError("fixture_run_count_mismatch")
@@ -94,16 +99,42 @@ def run(args):
         data = read_trial(root)
         sent = service.requests if service is not None else calls
         expected = len(bundle["cases"]) + config["execution"].get("warmup_count", 3) + 2
-        if code != 0 or len(sent) != expected:
+        if code != expected_exit or len(sent) != expected:
             raise ValueError(f"synthetic_run_failed:{code}:{len(sent)}:{expected}")
+        evidence = TrialEvidence(root)
+        if evidence.layout_version != 2:
+            raise ValueError("producer_did_not_write_layout2")
+        prepared, tails = read_jsonl(root / "request-bodies.jsonl")
+        if tails or [row["body"] for row in prepared] != list(sent):
+            raise ValueError("received_body_differs_from_durable_prepared")
+        starts = [
+            event
+            for event in read_jsonl(root / "events.jsonl")[0]
+            if event["event_type"] == "request_started"
+        ]
+        if [row["request_id"] for row in prepared] != [event["request_id"] for event in starts]:
+            raise ValueError("prepared_started_identity_mismatch")
+        expected_phases = (
+            ["probe"] * 2
+            + ["warmup"] * config["execution"]["warmup_count"]
+            + ["formal"] * len(bundle["cases"])
+        )
+        if [row["phase"] for row in prepared] != expected_phases:
+            raise ValueError("received_request_phase_order_mismatch")
+        if [row["case_id"] for row in data["requests"]] != [
+            case["case_id"] for case in bundle["cases"]
+        ]:
+            raise ValueError("formal_case_order_mismatch")
+        if data["summary"]["counts"]["planned"] != len(bundle["cases"]):
+            raise ValueError("formal_denominator_changed")
+        if args.diagnostic and "diagnostic_run_not_formal" not in data["summary"]["limitations"]:
+            raise ValueError("diagnostic_reason_missing")
+        for event in starts:
+            verify_reference(root, evidence.request_reference(event), reads=evidence)
         before = inventory(root)
+        if args.adapter == "prism" and len(before) != 8:
+            raise ValueError("ordinary_single_inventory_not_eight")
         packed = None
-        if args.pack_layout2:
-            from tests.evidence_layout_helpers import pack_layout2
-
-            packed = pack_layout2(root, args.out / "layout2")
-            if inventory(root) != before:
-                raise ValueError("fixture_source_changed")
         dump(
             args.out / "receipt.json",
             {
@@ -122,12 +153,18 @@ def run(args):
                 "requests_received": len(sent),
                 "expected_requests": expected,
                 "request_body_hashes": [
-                    hashlib.sha256(
-                        json.dumps(body, ensure_ascii=False, sort_keys=True).encode()
-                    ).hexdigest()
-                    for body in sent
+                    hashlib.sha256(json_bytes(body)).hexdigest() for body in sent
                 ],
                 "counts": data["summary"]["counts"],
+                "layout_version": evidence.layout_version,
+                "diagnostic": args.diagnostic,
+                "limitations": data["summary"]["limitations"],
+                "prepared_phases": [row["phase"] for row in prepared],
+                "formal_cases": [row["case_id"] for row in data["requests"]],
+                "terminal_states": [row["execution_state"] for row in data["requests"]],
+                "configuration_source_sha256": hashlib.sha256(
+                    evidence.configuration_source()["data"]
+                ).hexdigest(),
                 "host_state": json.loads(locking.STATE_PATH.read_text()),
                 "files": before,
                 "packed_files": inventory(packed) if packed else None,
@@ -138,7 +175,7 @@ def run(args):
                 "rss_scope": "whole worker including fixture setup and readback",
             },
         )
-    return code
+    return 0  # Worker success is separate from the retained diagnostic CLI exit.
 
 
 def main():
@@ -150,7 +187,7 @@ def main():
     )
     parser.add_argument("--adapter", choices=("prism", "kvmem", "ninfer"), default="prism")
     parser.add_argument("--mode", choices=("lab", "native"), default="lab")
-    parser.add_argument("--pack-layout2", action="store_true")
+    parser.add_argument("--diagnostic", action="store_true")
     args = parser.parse_args()
     args.tree, args.out = args.tree.resolve(), args.out.resolve()
     if not args.out.is_relative_to(Path("/tmp").resolve()):

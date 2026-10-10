@@ -17,6 +17,7 @@ from inferyard.evidence.event_ledger import reduce_events
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, read_json, read_jsonl
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.request_execution import TrialRequests
 from tests.unit.test_phase2_contracts import experiment
@@ -390,8 +391,8 @@ def test_missing_terminal_is_tool_failure_not_silent_decline(pipeline, monkeypat
             ctx.store.seal()
             rows, _, _ = reduce_events(
                 read_jsonl(ctx.store.path / "events.jsonl")[0],
-                read_json(ctx.store.path / "run.json"),
-                read_json(ctx.store.path / "selection.json"),
+                TrialEvidence(ctx.store.path).input("run"),
+                TrialEvidence(ctx.store.path).input("selection"),
                 ctx.requests.cases,
                 duration=ctx.store.duration_protocol,
             )

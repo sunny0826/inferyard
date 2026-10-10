@@ -17,6 +17,7 @@ from inferyard.config.planning import write_plan
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, sha256_file
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.batch_runner import execute_async
 from tests.integration.test_runner import scenario as runner_scenario
@@ -93,7 +94,7 @@ def test_three_repetitions_new_runs_then_no_implicit_rerun(tmp_path, scenario):
     assert [d["run"]["relation"] for d in data] == ["initial", "repeat", "repeat"]
     assert data[0]["summary"]["counts"]["failed"] == 1
     assert data[1]["run"]["parent_run_id"] == data[0]["run"]["run_id"]
-    assert all((p / "execution-budget.json").exists() for p in paths)
+    assert all(TrialEvidence(p).has_observation("execution_budget") for p in paths)
     code, result = asyncio.run(execute_async(request, deps))
     assert code == 0 and len(scenario[2]) == 24
 
@@ -192,7 +193,7 @@ def test_workload_handoff_cold_policy_requires_binding_and_new_process(
     monkeypatch.setattr(state, "process_start_ticks", ticks)
     code, final = asyncio.run(execute_async(replace(same, server_pid=new_pid), deps))
     assert code == 0 and len(scenario[2]) == 16
-    binding = json.loads((Path(final.details["runs"][-1]) / "service-binding.json").read_text())
+    binding = TrialEvidence(Path(final.details["runs"][-1])).observation("service_binding")
     assert binding["effective_endpoint"]["server_pid"] == new_pid
 
 

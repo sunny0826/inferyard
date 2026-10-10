@@ -6,9 +6,11 @@ import pytest
 from inferyard.config.planning import compile_plan
 from inferyard.contracts.validation import ContractError, Document
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, sha256_file
+from inferyard.evidence.storage import EvidenceError, sha256_file
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_trial_runner import inputs, scenario
+from tests.layout_mutations import change_observation, change_request
 
 __all__ = ["scenario"]
 
@@ -37,16 +39,18 @@ def test_frozen_prefix_reuse_trial_and_offline_replay(scenario, policy):
     assert calls[0]["cache_prompt"] is False
     assert all(c["cache_prompt"] is (policy == "enabled") for c in calls[1:])
     assert read_trial(root)["summary"] == data["summary"]
-    assert read_json(root / "effective-stream.json")["cache"]["value"] == policy
+    assert (
+        TrialEvidence(root).observation("effective_parameters", "stream")["cache"]["value"]
+        == policy
+    )
     assert data["summary"]["counts"]["completed"] == 3
     # Rehash the sealed request too: raw policy still must match the frozen protocol.
-    path = sorted(root.glob("*.request.json"))[0]
-    body = read_json(path)
-    body["cache_prompt"] = not body["cache_prompt"]
-    path.write_bytes(json_bytes(body))
-    manifest = read_json(root / "manifest.json")
-    manifest["files"][path.name].update(sha256=sha256_file(path), bytes=path.stat().st_size)
-    (root / "manifest.json").write_bytes(json_bytes(manifest))
+    change_request(
+        root,
+        lambda body: body.update(cache_prompt=not body["cache_prompt"]),
+        ordinal=1,
+        sealed=True,
+    )
     with pytest.raises(EvidenceError, match="cache_protocol_request_policy_mismatch"):
         read_trial(root)
 
@@ -110,9 +114,7 @@ def test_prefix_reuse_refuses_unsealed_engine_evidence(scenario):
         )
     )
     assert code == 0
-    manifest = read_json(root / "manifest.json")
-    del manifest["files"]["service.props.json"]
-    (root / "manifest.json").write_bytes(json_bytes(manifest))
+    change_observation(root, "service_properties", remove=True, sealed=True)
     with pytest.raises(EvidenceError, match="cache_protocol_engine_unsealed"):
         read_trial(root)
 

@@ -130,7 +130,6 @@ def test_new_journal_with_role_identity_does_not_require_or_compute_whole_hash(
     from inferyard.config.loader import load_config
     from inferyard.config.single_plan import compile_single_plan
     from inferyard.evidence.journal import TrialJournal
-    from inferyard.evidence.storage import read_json
     from inferyard.reporting.report_profile import measurement_source
 
     loaded = load_config(Path("tests/fixtures/config/valid.toml"))
@@ -148,7 +147,9 @@ def test_new_journal_with_role_identity_does_not_require_or_compute_whole_hash(
         implementation_identity=current,
     )
     try:
-        run = read_json(journal.path / "run.json")
+        from inferyard.evidence.trial_evidence import TrialEvidence
+
+        run = TrialEvidence(journal.path).input("run")
         assert "tool_source_sha256" not in run
         assert run["implementation_identity"] == current
         assert measurement_source(run) == current["measurement"]["sha256"]

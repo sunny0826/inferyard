@@ -178,8 +178,8 @@ def build_current_original(root, config_path=None, *, diagnostic=False):
     from inferyard.analysis.scoring import score_case
     from inferyard.config.loader import load_config
     from inferyard.config.single_plan import compile_single_plan
-    from inferyard.evidence.journal import TrialJournal
     from inferyard.evidence.request_snapshots import messages_sha256, snapshot_filename
+    from tests.legacy_journal import LegacyJournal
 
     loaded = load_config(config_path or Path(__file__).parent / "fixtures/config/valid.toml")
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
@@ -187,8 +187,12 @@ def build_current_original(root, config_path=None, *, diagnostic=False):
     config["execution"]["warmup_count"] = 0
     config["conditions"].update(cache_policy="disabled", model_loaded=True)
     config["generation"]["seed_support"] = "supported"
+    # This public old-v3 fixture binds its startup model, as public recipes require.
+    startup = config["engine"]["startup_args"]
+    if not any(arg.partition("=")[0] in ("-m", "--model") for arg in startup):
+        startup += ["-m", config["model"]["local_path"]]
     plan = compile_single_plan(config, bundle)
-    store = TrialJournal(
+    store = LegacyJournal(
         root,
         plan,
         plan["trials"][0]["trial_id"],

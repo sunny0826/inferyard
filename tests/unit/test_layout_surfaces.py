@@ -234,6 +234,21 @@ def test_remaining_budget_reads_saved_member_and_reserves_unknown_crash(sources,
     assert remaining_budget(plan, [data]) == max(0, budget - reserved)
 
 
+def test_legacy_budget_file_outside_manifest_is_rejected(sources, tmp_path):
+    old, _ = sources
+    copied = tmp_path / "legacy-unsealed-budget"
+    shutil.copytree(old, copied)
+    evidence = TrialEvidence(copied)
+    run, plan = evidence.input("run"), evidence.input("plan")
+    (copied / "execution-budget.json").write_bytes(
+        json_bytes({"run_id": run["run_id"], "elapsed_seconds": 2.5})
+    )
+    before = tree_bytes(copied)
+    with pytest.raises(EvidenceError, match="budget_evidence_not_sealed"):
+        remaining_budget(plan, [{"path": copied, "run": run}])
+    assert tree_bytes(copied) == before
+
+
 def test_optional_observation_is_never_inferred_from_container_existence(sources):
     _, packed = sources
     evidence = TrialEvidence(packed)
