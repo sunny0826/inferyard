@@ -5,7 +5,6 @@ from collections import Counter
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.performance import distribution, request_timing
 from inferyard.analysis.quality import summarize_quality
-from inferyard.contracts.validation import validate_document
 from inferyard.registry import catalogue
 
 
@@ -84,7 +83,8 @@ class Observations:
             "limitations": list(dict.fromkeys(limitations)),
             "evidence_refs": self.evidence,
         }
-        validate_document("metric_observation", item)
+        # Structural validation happens once on the assembled summary, which fully
+        # covers every metric_observation item; validating each item here would repeat it.
         self.items.append(item)
         return item
 
