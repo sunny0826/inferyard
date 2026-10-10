@@ -306,6 +306,8 @@ def verify_manifest_files(root: Path, manifest, *, observed=None) -> list[str]:
     for name, info in manifest["files"].items():
         if name == "manifest.json" or not isinstance(info, dict):
             raise EvidenceError("invalid_manifest_entry")
+        if type(info.get("bytes")) is not int or info["bytes"] < 0:
+            raise EvidenceError("invalid_manifest_entry")
         path = local_file(root, name)
         if observed is not None and name in observed:
             size, digest = observed[name]
