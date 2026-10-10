@@ -142,12 +142,16 @@ def load_total_applicability(overhead, target, *, data, source_roots=()):
         reasons.append("total_control_cross_boot_or_unknown_not_qualified")
     if clock["start_ns"] is None or any(arm["after_close_ns"] >= clock["start_ns"] for arm in arms):
         reasons.append("total_control_not_before_target")
-    target_collector = TrialEvidence(target).observation("collector") or {}
+    target_collector = TrialEvidence(target).observation("collector")
+    if target_collector is None:
+        raise EvidenceError("total_control_target_collector_missing")
     if len(verified_trials) != 2:
         reasons.append("total_control_verified_on_arms_required")
     for relative, (control, metadata) in verified_trials.items():
         reasons.extend(domain_reasons(control, data, metadata))
-        collector = TrialEvidence(root / relative).observation("collector") or {}
+        collector = TrialEvidence(root / relative).observation("collector")
+        if collector is None:
+            raise EvidenceError("total_control_arm_collector_missing")
         if (
             not target_collector
             or not collector

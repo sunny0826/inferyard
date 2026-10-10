@@ -213,7 +213,10 @@ def read_overhead(root, *, target=None, target_data=None):
         if target is not None:
             environments.append(
                 environment_record(
-                    path, data, require_boundary=protocol["kind"] == "collector_overhead_abba.v3"
+                    path,
+                    data,
+                    require_boundary=protocol["kind"] == "collector_overhead_abba.v3",
+                    reads=evidence,
                 )
             )
         identity = workload_identity(data)
@@ -292,7 +295,10 @@ def read_overhead(root, *, target=None, target_data=None):
         result["environment_binding"] = assess_environments(
             environments,
             environment_record(
-                target, data, require_boundary=protocol["kind"] == "collector_overhead_abba.v3"
+                target,
+                data,
+                require_boundary=protocol["kind"] == "collector_overhead_abba.v3",
+                reads=evidence,
             ),
         )
     return result

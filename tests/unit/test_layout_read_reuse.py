@@ -40,7 +40,16 @@ def count_source_reads(monkeypatch, roots):
 @pytest.mark.parametrize("layout", [1, 2])
 @pytest.mark.parametrize(
     "surface",
-    ["report", "report-check", "compare", "compare-report-check", "export", "rescore", "public"],
+    [
+        "verify",
+        "report",
+        "report-check",
+        "compare",
+        "compare-report-check",
+        "export",
+        "rescore",
+        "public",
+    ],
 )
 def test_external_commands_read_each_original_once(sources, tmp_path, monkeypatch, layout, surface):
     old, new = sources
@@ -56,7 +65,11 @@ def test_external_commands_read_each_original_once(sources, tmp_path, monkeypatc
     elif surface == "report-check":
         write_report(roots, out)
     counts = count_source_reads(monkeypatch, roots)
-    if surface.endswith("check"):
+    if surface == "verify":
+        from inferyard.application.raw_verification import execute
+
+        assert execute(CommandRequest("verify", run=root), "run")[0] == 0
+    elif surface.endswith("check"):
         assert verify_report(out)["verified"]
     elif surface == "report":
         write_report(roots, out)
@@ -121,3 +134,18 @@ def test_standalone_member_references_share_one_source_reader(sources, monkeypat
     refs[1]["member"]["sha256"] = "0" * 64
     with pytest.raises(EvidenceError, match="evidence_reference_member_mismatch"):
         verify_metric_references(root, [{"evidence_refs": refs}])
+
+
+def test_nested_member_references_share_reader_without_rewriting_paths(sources, monkeypatch):
+    _, root = sources
+    evidence = TrialEvidence(root)
+    refs = [evidence.observation_reference("environment", stage=s) for s in ("start", "end")]
+    for ref in refs:
+        ref["path"] = root.name + "/" + ref["path"]
+    counts = count_source_reads(monkeypatch, [root])
+    verify_metric_references(root.parent, [{"evidence_refs": refs}])
+    assert counts[root, "inputs.json"] == counts[root, "observations.jsonl"] == 1
+    invalid = deepcopy(refs[0])
+    invalid["path"] = root.name + "/../" + invalid["path"]
+    with pytest.raises(EvidenceError, match="invalid_evidence_reference"):
+        verify_metric_references(root.parent, [{"evidence_refs": [invalid]}])

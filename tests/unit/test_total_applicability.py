@@ -94,6 +94,18 @@ def test_total_only_reuses_verified_arms_and_ignores_execution_locators(tmp_path
     assert data["run"]["implementation_identity"] == control["run"]["implementation_identity"]
 
 
+@pytest.mark.parametrize("source", ["target", "control/1", "control/2"])
+def test_total_control_requires_each_bound_collector(tmp_path, monkeypatch, source):
+    overhead, target, data, ref, _, _, _ = setup_control(tmp_path, monkeypatch)
+    root = target if source == "target" else tmp_path / source
+    (root / "collector.json").unlink()
+    manifest = read_json(root / "manifest.json")
+    del manifest["files"]["collector.json"]
+    (root / "manifest.json").write_bytes(json_bytes(manifest))
+    with pytest.raises(EvidenceError, match="collector_missing"):
+        binding.load_performance_evidence_v3(overhead, target, data=data, reference=ref)
+
+
 def test_explicit_control_root_mapping_keeps_binding_bytes_and_checks_manifest(
     tmp_path, monkeypatch
 ):

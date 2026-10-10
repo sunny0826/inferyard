@@ -6,12 +6,15 @@ resource-off arms must not inherit the environment eligibility of an on arm.
 
 from inferyard.analysis.environment_identity import fields as identity_fields
 from inferyard.evidence.engine_capabilities import observation_sealed
+from inferyard.evidence.storage import EvidenceError
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 
-def environment_record(root, data, *, require_boundary=False):
-    reads = TrialEvidence(root)
+def environment_record(root, data, *, require_boundary=False, reads=None):
+    reads = reads if reads is not None else TrialEvidence(root)
     manifest = reads.manifest
+    if manifest is None:
+        raise EvidenceError("invalid_json_evidence")
     sealed = set(manifest["files"])
     endpoints, evidence, reasons = [], [], []
     for stage in ("start", "end"):

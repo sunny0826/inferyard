@@ -117,6 +117,21 @@ func TestInputsBindingRejectsCorruptionWithoutLegacyFallback(t *testing.T) {
 	}
 }
 
+func TestInputsBindingRejectsHistoricalSources(t *testing.T) {
+	for _, name := range []string{"requests.jsonl", "migration.json", "token-budgets.json"} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			writeBindingInputs(t, root, bindingInputs(t))
+			if err := os.WriteFile(filepath.Join(root, name), []byte("{}\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := ReadBinding(root); err == nil {
+				t.Fatal("accepted historical source", name)
+			}
+		})
+	}
+}
+
 func TestInputsBindingChecksSealedPhysicalContainer(t *testing.T) {
 	root := t.TempDir()
 	raw := writeBindingInputs(t, root, bindingInputs(t))

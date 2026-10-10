@@ -272,6 +272,8 @@ SAFE_REASONS = frozenset(
         "token_budget_inventory_mismatch",
         "total_control_binding_manifest_mismatch",
         "total_control_binding_reference_invalid",
+        "total_control_arm_collector_missing",
+        "total_control_target_collector_missing",
         "trial_input_hash_mismatch",
         "trial_not_in_plan",
         "trial_plan_binding_mismatch",

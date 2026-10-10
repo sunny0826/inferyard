@@ -59,6 +59,10 @@ def verify_parameters(root, config, props, events, bodies, usage, manifest, *, r
                 != probe_budget(budgets)["input_tokens"]
             ):
                 raise EvidenceError("lab_template_usage_mismatch")
+    except EvidenceError as exc:
+        if str(exc) == "original_evidence_unsealed":
+            raise EvidenceError("lab_parameter_evidence_unsealed") from exc
+        raise
     except (PreflightError, KeyError, TypeError, ValueError) as exc:
         raise EvidenceError("lab_parameter_evidence_invalid") from exc
 

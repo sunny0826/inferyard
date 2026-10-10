@@ -49,9 +49,6 @@ def execute(request, kind):
             details={"integrity": "frozen_document", "semantic_validation": True, "plan": identity},
         )
     if kind == "run":
-        from inferyard.evidence.trial_evidence import TrialEvidence
-
-        TrialEvidence(root).check_input_errors()
         metadata = {}
         data = read_trial(root, metadata=metadata)
         details = _trial(data, metadata["manifest"] is not None)

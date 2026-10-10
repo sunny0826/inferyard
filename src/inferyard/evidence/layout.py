@@ -57,7 +57,7 @@ def identify(reads):
         if reads.manifest is not None and (type(declared) is not int or declared != version):
             raise EvidenceError("evidence_layout_conflict")
         if version != 2:
-            raise UnsupportedFormat("run.evidence_layout_version", version, (1, 2))
+            raise UnsupportedFormat("run.evidence_layout_version", version, (2,))
         legacy = set(INPUT_FILES.values()) | set(OBSERVATION_FILES.values())
         if names & legacy or any(name.endswith(".request.json") for name in names):
             raise EvidenceError("mixed_evidence_layout")
@@ -72,7 +72,7 @@ def identify(reads):
         if type(declared) is not int:
             raise EvidenceError("invalid_evidence_layout")
         if declared != 2:
-            raise UnsupportedFormat("run.evidence_layout_version", declared, (1, 2))
+            raise UnsupportedFormat("run.evidence_layout_version", declared, (2,))
         raise EvidenceError("evidence_layout_conflict")
     if names & {"observations.jsonl", "request-bodies.jsonl"}:
         raise EvidenceError("mixed_evidence_layout")

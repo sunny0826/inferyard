@@ -12,7 +12,7 @@ from inferyard.evidence.storage import (
     local_file,
     read_json,
 )
-from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
+from inferyard.evidence.trial_evidence import verify_reference
 
 
 def verify_metric_references(root, metrics, *, reads=None):
@@ -22,12 +22,7 @@ def verify_metric_references(root, metrics, *, reads=None):
         for ref in metric["evidence_refs"]:
             identity = json_bytes(ref)
             if identity not in checked:
-                if reads is None and "member" in ref and "/" not in ref["path"]:
-                    if root not in member_reads:
-                        member_reads[root] = TrialEvidence(root)
-                    verify_reference(root, ref, reads=member_reads[root])
-                else:
-                    verify_reference(root, ref, reads=reads)
+                verify_reference(root, ref, reads=reads, readers=member_reads)
                 checked.add(identity)
 
 

@@ -7,7 +7,7 @@ from inferyard.contracts.validation import ContractError, _validate
 from inferyard.evidence.storage import EvidenceError, local_file, sha256_file
 
 
-def verify_reference(root, ref, *, reads=None):
+def verify_reference(root, ref, *, reads=None, readers=None):
     from inferyard.contracts.contracts_experiment import _reference
     from inferyard.evidence.trial_evidence import TrialEvidence
 
@@ -39,7 +39,16 @@ def verify_reference(root, ref, *, reads=None):
         raise EvidenceError("evidence_reference_member_container_mismatch")
     if reads is not None and (reads.root != path.parent or reads.projection):
         raise EvidenceError("invalid_evidence_reference")
-    evidence = reads if reads is not None else TrialEvidence(path.parent)
+    evidence = reads
+    if evidence is None:
+        if readers is None:
+            evidence = TrialEvidence(path.parent)
+        else:
+            if path.parent not in readers:
+                readers[path.parent] = TrialEvidence(path.parent)
+            evidence = readers[path.parent]
+    if evidence.root != path.parent or evidence.projection:
+        raise EvidenceError("invalid_evidence_reference")
     if evidence.layout_version != 2:
         raise EvidenceError("evidence_reference_member_container_mismatch")
     if member["kind"] == "input":

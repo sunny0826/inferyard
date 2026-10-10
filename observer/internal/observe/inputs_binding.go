@@ -59,7 +59,7 @@ func readInputsBinding(root string) (Binding, Target, error) {
 		"engine-capabilities.json", "recovery.json", "token-budgets.v2.json",
 		"input-target-check.json", "collector.json", "observer.json", "boundary-observer.json",
 		"effective-ordinary.json", "effective-stream.json", "identity.json", "safety-check.json",
-		"execution-budget.json"} {
+		"execution-budget.json", "requests.jsonl", "migration.json", "token-budgets.json"} {
 		if _, err := os.Lstat(filepath.Join(root, name)); !errors.Is(err, os.ErrNotExist) {
 			return binding, target, fail
 		}

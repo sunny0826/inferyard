@@ -71,7 +71,13 @@ def validate_inventory(value, config, selected, *, kind="run"):
 
 def read_budgets(root, config, selected, *, kind="run", manifest=None, reads=None):
     reads = reads if reads is not None else TrialEvidence(root)
-    if not reads.has_observation("token_budgets"):
+    try:
+        exists = reads.has_observation("token_budgets")
+    except EvidenceError as exc:
+        if str(exc) == "original_evidence_unsealed":
+            raise EvidenceError("token_budget_evidence_unsealed") from exc
+        raise
+    if not exists:
         return None, None
     if manifest is not None and not observation_sealed(reads, "token_budgets", manifest):
         raise EvidenceError("token_budget_evidence_unsealed")
