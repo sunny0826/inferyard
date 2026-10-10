@@ -1,7 +1,6 @@
 """Separate sealed extension packets and offline reports; never forge serial trials."""
 
 import html
-import os
 import time
 from datetime import UTC, datetime
 
@@ -11,7 +10,6 @@ from inferyard.contracts.validation import _validate, validate_document
 from inferyard.evidence.storage import (
     EvidenceError,
     EvidenceStore,
-    fsync_directory,
     json_bytes,
     read_json,
     verify_manifest,
@@ -19,7 +17,6 @@ from inferyard.evidence.storage import (
 from inferyard.extensions.closed_concurrency import reduce_closed
 from inferyard.extensions.native_tools import reduce_tools
 from inferyard.extensions.total_observer_control import assess_total
-from inferyard.platforms.platform_io import open_nofollow
 from inferyard.provenance import tool_source_hash
 
 
@@ -64,13 +61,9 @@ class ExtensionJournal(EvidenceStore):
 
     def observation(self, name, value):
         if name in ("external-cpu.jsonl", "request-environment.jsonl", "safety-checks.jsonl"):
-            if self.sealed:
-                raise EvidenceError("sealed_run")
+            self._ensure_writable()
             if name not in self._logs:
-                fd = open_nofollow(self.path / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
-                self._logs[name] = os.fdopen(fd, "wb")
-                self._pending_sync.add(name)
-                fsync_directory(self.path)
+                self._open_logs((name,))
             self._append(name, value)
         else:
             super().observation(name, value)

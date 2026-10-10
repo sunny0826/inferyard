@@ -1,7 +1,6 @@
 """Append-only trial evidence; never reopen or mutate a prior run."""
 
 import hashlib
-import os
 import time
 from datetime import UTC, datetime
 
@@ -10,13 +9,14 @@ from inferyard.analysis.scoring import ScoringContext
 from inferyard.config.plan_inputs import validate_workload_inputs
 from inferyard.contracts.validation import validate_document
 from inferyard.contracts.validation_cache import command_validation
+from inferyard.evidence.run_inputs import frozen_inputs
+from inferyard.evidence.run_records import RunRecords
 from inferyard.evidence.storage import (
     EvidenceError,
     EvidenceStore,
-    fsync_directory,
+    atomic_bytes,
     json_bytes,
 )
-from inferyard.platforms.platform_io import open_nofollow
 from inferyard.provenance import tool_source_hash
 
 
@@ -28,16 +28,12 @@ def trial_for(plan, trial_id):
     raise EvidenceError("trial_not_in_plan")
 
 
-class TrialJournal(EvidenceStore):
+class TrialJournal(RunRecords, EvidenceStore):
     def observation(self, name, value):
         if name in ("external-cpu.jsonl", "request-environment.jsonl", "safety-checks.jsonl"):
-            if self.sealed:
-                raise EvidenceError("sealed_run")
+            self._ensure_writable()
             if name not in self._logs:
-                fd = open_nofollow(self.path / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
-                self._logs[name] = os.fdopen(fd, "wb")
-                self._pending_sync.add(name)
-                fsync_directory(self.path)
+                self._open_logs((name,))
             self._append(name, value)
         else:
             super().observation(name, value)
@@ -61,6 +57,7 @@ class TrialJournal(EvidenceStore):
         scoring_context=None,
         source_identity=None,
         implementation_identity=None,
+        configuration_source=None,
     ):
         if implementation_identity is None:
             from inferyard.implementation_identity import IdentityContext
@@ -116,7 +113,8 @@ class TrialJournal(EvidenceStore):
         self.scoring_context = scoring_context or ScoringContext()
         self.experiment_id = plan["experiment"]["experiment_id"]
         self.trial_id = trial_id
-        super().__init__(root, redactor, run_id=run_id)
+        self._initialize(root, redactor, run_id=run_id)
+        self._initialize_records(config)
         ancestor = parent or rerun_parent
         self.kind, self.execution_mode = kind, execution_mode
         run = dict(
@@ -158,21 +156,58 @@ class TrialJournal(EvidenceStore):
         try:
             validate_document("run", run)
             validate_document("selection", selection)
-            for name, value in [
-                ("run", run),
-                ("plan", plan),
-                ("selection", selection),
-                ("config.frozen", config),
-                ("bundle", bundle),
-            ]:
-                self.snapshot(name + ".json", value)
+            inputs = frozen_inputs(
+                self.run_id,
+                {
+                    "run": run,
+                    "plan": plan,
+                    "selection": selection,
+                    "config": config,
+                    "bundle": bundle,
+                },
+                configuration_source,
+                self.redactor,
+            )
+            atomic_bytes(self.path / "inputs.json", json_bytes(inputs))
+            self._open_logs(
+                (
+                    "observations.jsonl",
+                    "request-bodies.jsonl",
+                    "events.jsonl",
+                    "memory.jsonl",
+                    "environment.jsonl",
+                    "schedule.jsonl",
+                )
+            )
         except BaseException:
-            self.close()
+            for stream in self._logs.values():
+                stream.close()
             raise
         self.selected = selected
         self.scorer_sha256 = selection["scorer_sha256"]
 
+    def _publish_observation(self, row):
+        self._append_encoded("observations.jsonl", json_bytes(row), sync=True)
+
+    def _publish_prepared(self, row):
+        self._append_encoded("request-bodies.jsonl", json_bytes(row), sync=True)
+
+    def snapshot(self, name, value):
+        if name != "manifest.json":
+            raise EvidenceError("invalid_observation_record")
+        try:
+            super().snapshot(name, value)
+        except EvidenceError as exc:
+            self._write_error = exc
+            raise
+
+    def text_snapshot(self, name, value):
+        raise EvidenceError("invalid_observation_record")
+
     def event(self, event_type, phase, request_id, data, *, monotonic_ns=None):
+        self._ensure_writable()
+        if event_type == "request_started":
+            self._check_prepared_start(phase, request_id, data["body"])
         seq = self._seq["events.jsonl"] + 1
         event = dict(
             schema_version=SCHEMA_VERSION,
@@ -214,13 +249,23 @@ class TrialJournal(EvidenceStore):
         self._seq["memory.jsonl"] = seq
 
     def seal(self, extra=None):
-        super().seal(
-            {
-                **(extra or {}),
-                "experiment_id": self.experiment_id,
-                "trial_id": self.trial_id,
-                "kind": self.kind,
-                "execution_mode": self.execution_mode,
-                "origin": "measured",
-            }
-        )
+        try:
+            super().seal(
+                {
+                    **(extra or {}),
+                    "experiment_id": self.experiment_id,
+                    "trial_id": self.trial_id,
+                    "kind": self.kind,
+                    "execution_mode": self.execution_mode,
+                    "origin": "measured",
+                    "evidence_layout_version": 2,
+                }
+            )
+        except BaseException as exc:
+            if not self.sealed:
+                self._write_error = (
+                    exc
+                    if isinstance(exc, EvidenceError)
+                    else EvidenceError("evidence_flush_failed")
+                )
+            raise
