@@ -1,4 +1,7 @@
-"""Optional native client-completion receipts; these never establish engine-wide drain."""
+"""Native client-completion receipts; only legacy layouts may omit them.
+
+Client HTTP completion never establishes engine-wide drain.
+"""
 
 import hashlib
 import re
