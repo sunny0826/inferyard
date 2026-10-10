@@ -54,8 +54,8 @@ class ResourceSampler(EnvironmentObserver):
         )
         self.sensors = LinuxSensors(sys_root, clock=clock)
         self.process_lost = False
-        store.snapshot(
-            "collector.json",
+        store.observe(
+            "collector",
             {
                 "schema_version": SCHEMA_VERSION,
                 "sensors": self.sensors.metadata(),
@@ -69,6 +69,7 @@ class ResourceSampler(EnvironmentObserver):
                 "counter_timestamp": "read_interval_midpoint",
                 "boundary_samples": "not_interpolated",
             },
+            stage="prepare",
         )
 
     def counters(self, pid, ticks, *, capture="periodic"):

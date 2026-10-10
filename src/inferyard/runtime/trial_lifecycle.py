@@ -32,8 +32,8 @@ async def prepare_service(
     pre_idle_props = None
     if config["engine"]["adapter"] in ("kvmem", "ninfer"):
         pre_idle_props = await adapter.verify_properties(config)
-        store.snapshot("service.props.json", pre_idle_props)
-        store.snapshot("engine-capabilities.json", adapter.capability_evidence)
+        store.observe("service_properties", pre_idle_props, stage="pre_idle")
+        store.observe("engine_capabilities", adapter.capability_evidence, stage="pre_idle")
     recovery = None
     if recovery_confirm:
         recovery = lock.verify_manual_recovery(recovery_confirm, recovery_note, config["endpoint"])
@@ -55,14 +55,16 @@ async def prepare_service(
     if idle_state is not None:
         idle_state.pending = False
     if recovery:
-        store.snapshot("recovery.json", recovery)
+        store.observe("recovery", recovery, stage="post_idle")
     # Single historically re-queries falsey native properties; batch only re-queries None.
     if single_kind is not None:
         props = pre_idle_props or await adapter.verify_properties(config)
         if pre_idle_props is None:
-            store.snapshot("service.props.json", props)
+            store.observe("service_properties", props, stage="post_idle")
     elif pre_idle_props is None:
-        store.snapshot("service.props.json", await adapter.verify_properties(config))
+        store.observe(
+            "service_properties", await adapter.verify_properties(config), stage="post_idle"
+        )
 
 
 async def probe_service(
@@ -87,7 +89,7 @@ async def probe_service(
             from inferyard.runtime.fixed_output import verify_probe
 
             effective["strict_output"] = verify_probe(effective, response, output_budget_tokens)
-        store.snapshot("effective-stream.json" if stream else "effective-ordinary.json", effective)
+        store.observe("effective_parameters", effective, stage="stream" if stream else "ordinary")
         identity["effective_parameters"] = effective
         if check_budget is not None:
             check_budget()

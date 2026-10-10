@@ -56,9 +56,10 @@ class EnvironmentObserver(Sampler):
         except OSError, ValueError:
             self.boot_id = None
         collector = resource_collector_id(proc_root=proc_root)
-        store.snapshot(
-            "observer.json",
+        store.observe(
+            "observer",
             observer_contract(config["telemetry"]["interval_ms"], collector=collector),
+            stage="prepare",
         )
         self.boundary_guard = BoundaryGuard(store, config, proc_root=proc_root)
 
@@ -111,11 +112,12 @@ class EnvironmentOnlySampler(EnvironmentObserver):
 
     def __init__(self, store, config, **kwargs):
         super().__init__(store, config, **kwargs)
-        store.snapshot(
-            "collector.json",
+        store.observe(
+            "collector",
             {
                 "schema_version": SCHEMA_VERSION,
                 "collector": "environment-only.v1",
                 "scope": "resource_metrics_disabled_common_environment_observer_enabled",
             },
+            stage="prepare",
         )

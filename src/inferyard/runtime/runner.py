@@ -74,6 +74,18 @@ class Dependencies:
     environment: object = environment_snapshot
 
 
+def read_configuration_source(loaded):
+    source = loaded.configuration_source()
+    if source["data"] is not None:
+        if source["media_type"] not in ("application/toml", "application/json"):
+            raise PreflightError("configuration_source_media_type_invalid")
+        try:
+            source["data"].decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise PreflightError("configuration_source_utf8_invalid") from exc
+    return source
+
+
 def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[LoadedConfig, dict]:
     root = request.from_run
     limitations = verify_manifest(root)
@@ -149,18 +161,7 @@ async def execute_async(request, dependencies: Dependencies | None = None):
     plan = compile_single_plan(loaded.config, loaded.bundle)
     started_at = time.monotonic()
     allowed_seconds = plan["experiment"]["budget"]["max_wall_seconds"]
-    source_text = None
-    if loaded.source is None and loaded.source_data is not None:
-        source_name = {
-            "application/toml": "config.input.toml",
-            "application/json": "config.input.json",
-        }.get(loaded.source_media_type)
-        if source_name is None:
-            raise PreflightError("configuration_source_media_type_invalid")
-        try:
-            source_text = loaded.source_data.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise PreflightError("configuration_source_utf8_invalid") from exc
+    configuration_source = read_configuration_source(loaded)
     store = TrialJournal(
         Path(config["output"]["root"]),
         plan,
@@ -175,23 +176,18 @@ async def execute_async(request, dependencies: Dependencies | None = None):
         scoring_context=scoring_context,
         source_identity=identity_context.source,
         implementation_identity=identity_context.value,
+        configuration_source=configuration_source,
     )
-    if loaded.source is not None:
-        source_name = (
-            "config.input.toml" if loaded.source.suffix == ".toml" else "config.input.json"
-        )
-        store.text_snapshot(source_name, loaded.source.read_text())
-    elif source_text is not None:
-        store.text_snapshot(source_name, source_text)
     if parent:
-        store.snapshot(
-            "parent.json",
+        store.observe(
+            "parent",
             {
                 "run_id": parent["run"]["run_id"],
                 "path": str(request.from_run),
                 "manifest_sha256": sha256_file(request.from_run / "manifest.json"),
                 "events_sha256": parent["events_sha256"],
             },
+            stage="prepare",
         )
     from inferyard.runtime.trial_profile import SingleProfile
     from inferyard.runtime.trial_runner import run_trial

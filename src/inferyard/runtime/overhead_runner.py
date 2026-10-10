@@ -23,13 +23,14 @@ class ResourceOffSampler(Sampler):
 
     def __init__(self, store, config):
         super().__init__(store, config)
-        store.snapshot(
-            "collector.json",
+        store.observe(
+            "collector",
             {
                 "schema_version": SCHEMA_VERSION,
                 "collector": "resource_off",
                 "scope": "periodic_and_boundary_collection_disabled",
             },
+            stage="prepare",
         )
 
     def collect(self, pid, ticks):

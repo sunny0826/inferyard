@@ -192,5 +192,9 @@ def read_frozen_plan(path):
             root / binding["config"]["path"],
             Document.parse("config", config),
             Document.parse("bundle", bundle),
+            source_data=raw,
+            source_media_type="application/toml"
+            if workload["config"]["path"].endswith(".toml")
+            else "application/json",
         )
     return plan, loaded

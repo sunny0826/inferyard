@@ -16,12 +16,12 @@ from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.journal import TrialJournal, trial_for
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, Redactor, read_json
-from inferyard.evidence.token_budgets import V2, collect_budgets
+from inferyard.evidence.token_budgets import collect_budgets
 from inferyard.platforms.identity import PreflightError, memory_available
 from inferyard.platforms.resources import ResourceSampler
 from inferyard.registry import WINDOWS_BATCH_ADAPTERS, adapter_factory
 from inferyard.runtime.request_execution import TrialRequests
-from inferyard.runtime.runner import Dependencies, transport_config
+from inferyard.runtime.runner import Dependencies, read_configuration_source, transport_config
 from inferyard.runtime.safety import SafetyGuard, monitor
 from inferyard.runtime.safety_trace import SafetyTrace
 from inferyard.runtime.service_observation import observation_manifest
@@ -97,6 +97,7 @@ async def run_trial(
         secret = os.environ.get(secret_name) if secret_name else None
         if secret_name and not secret:
             raise PreflightError("credential_reference_unavailable")
+        configuration_source = read_configuration_source(loaded)
         store = getattr(deps, "journal", TrialJournal)(
             output_root,
             plan,
@@ -110,6 +111,7 @@ async def run_trial(
             scoring_context=scoring_context,
             source_identity=source_identity,
             implementation_identity=implementation_identity,
+            configuration_source=configuration_source,
         )
     lock, locked = host_lock or deps.lock(), False
     adapter = sampler = sampler_task = execution = None
@@ -159,19 +161,19 @@ async def run_trial(
         elif lock.fd is None:
             raise PreflightError("host_lock_not_held")
         from inferyard.config.environment_binding import run_preflight
-        from inferyard.runtime.service_reuse import snapshot
+        from inferyard.runtime.service_reuse import record_reuse
 
         if single:
-            snapshot(store, parent, config, lock)
+            record_reuse(store, parent, config, lock)
             if profile.kind == "run" and not diagnostic:
                 profile.review(loaded.bundle)
         else:
             if service_binding is not None:
-                store.snapshot("service-binding.json", service_binding)
+                store.observe("service_binding", service_binding, stage="prepare")
             if not diagnostic:
                 require_review(loaded.bundle)
             # Journal has verified this frozen workload's repeat/resume parent.
-            snapshot(store, parent, config, lock, serial_continuation=True)
+            record_reuse(store, parent, config, lock, serial_continuation=True)
             if (
                 service_binding
                 and parent is None
@@ -190,7 +192,7 @@ async def run_trial(
         if policy is not None:
             safety = deps.safety(policy, config, deps.environment)
             safety_trace = SafetyTrace(store, policy["interval_seconds"])
-            store.snapshot("safety-policy.json", safety.metadata())
+            store.observe("safety_policy", safety.metadata(), stage="prepare")
         if not single:
             guard(config, files)
         if policy is not None:
@@ -205,7 +207,7 @@ async def run_trial(
         identity["runtime_library_hashes"] = read_json(
             Path(config["engine"]["runtime_library_manifest"])
         )
-        store.snapshot("environment.start.json", identity["environment"])
+        store.observe("environment", identity["environment"], stage="start")
         adapter = deps.adapter(identity["origin"], secret=secret)
         guard(config, files)
         if single:
@@ -232,7 +234,7 @@ async def run_trial(
         )
         if single:
             deadline.check()
-        store.snapshot(V2, budgets)
+        store.observe("token_budgets", budgets, stage="prepare")
         workload = None
         if not single:
             workload = next(
@@ -249,7 +251,7 @@ async def run_trial(
                 else "apply-template+tokenize:add_special,parse_special",
             )
             target_check = check_input_target(workload, store.selected, counts)
-            store.snapshot("input-target-check.json", target_check)
+            store.observe("input_target_check", target_check, stage="prepare")
             if target_check["status"] not in ("not_requested", "matched"):
                 raise PreflightError("input_length_target_" + target_check["status"])
         sampler = deps.sampler(store, config)
@@ -278,8 +280,8 @@ async def run_trial(
             output_budget_tokens=workload["output_budget_tokens"] if workload else None,
             check_budget=deadline.check if single else None,
         )
-        if single and not (store.path / "identity.json").exists():
-            store.snapshot("identity.json", identity)
+        if single and not store.has_observation("identity"):
+            store.observe("identity", identity, stage="post_probe")
         if not single or profile.kind == "run":
             await warmup_and_baseline(
                 execution, config, sampler, sleep=profile.sleep if single else asyncio.sleep

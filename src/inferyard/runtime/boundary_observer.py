@@ -39,9 +39,10 @@ class BoundaryGuard:
             self.boot = read_boot_id(proc_root)
         except OSError, ValueError:
             self.boot = None
-        store.snapshot(
-            "boundary-observer.json",
+        store.observe(
+            "boundary_observer",
             boundary_contract(collector=resource_collector_id(proc_root=proc_root)),
+            stage="prepare",
         )
 
     def observe(self, phase, request_id, boundary):
@@ -78,13 +79,14 @@ class BoundaryOnlySampler(Sampler):
     def __init__(self, store, config):
         super().__init__(store, config)
         self.guard = BoundaryGuard(store, config)
-        store.snapshot(
-            "collector.json",
+        store.observe(
+            "collector",
             {
                 "schema_version": SCHEMA_VERSION,
                 "collector": "boundary-only.v1",
                 "scope": "outside_request_guards_only_no_periodic_collection",
             },
+            stage="prepare",
         )
 
     def before_request(self):
