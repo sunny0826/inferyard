@@ -47,6 +47,11 @@ class Observations:
             if row["seq"] != seq:
                 raise EvidenceError("observation_sequence_mismatch")
             kind, stage, key = row["kind"], row["stage"], row["key"]
+            if kind == "service_properties":
+                adapter = self.evidence.input("config")["engine"]["adapter"]
+                expected_stage = "pre_idle" if adapter in ("kvmem", "ninfer") else "post_idle"
+                if stage != expected_stage:
+                    raise EvidenceError("service_properties_stage_mismatch")
             slot = (kind, stage if kind in MULTI_STAGE else None, key)
             if slot in slots:
                 raise EvidenceError("duplicate_observation_slot")

@@ -8,6 +8,7 @@ import pytest
 from inferyard.adapters.prism import BUILD
 from inferyard.adapters.requests import request_body
 from inferyard.analysis.overhead_environment import environment_record
+from inferyard.config.plan_math import plan_hash
 from inferyard.evidence.fixed_output import verify_execution
 from inferyard.evidence.ledger import read_run_projection, read_trial
 from inferyard.evidence.request_snapshots import messages_sha256, snapshot_filename
@@ -16,6 +17,23 @@ from inferyard.evidence.token_budgets import DEFINITION, planned_inputs, read_bu
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from tests.evidence_layout_helpers import digest, pack_layout2, seal_layout
 from tests.helpers import fixture_run
+from tests.lab_service import lab_config
+
+
+def bind_frozen_config(root, config):
+    inputs = read_json(root / "inputs.json")
+    documents = inputs["documents"]
+    documents["config"]["payload"] = config
+    config_hash = digest(config)
+    documents["selection"]["payload"]["config_sha256"] = config_hash
+    plan = documents["plan"]["payload"]
+    plan["experiment"]["workloads"][0]["config"]["sha256"] = config_hash
+    plan["plan_sha256"] = plan_hash(plan)
+    documents["run"]["payload"]["plan_sha256"] = plan["plan_sha256"]
+    for member in documents.values():
+        member["sha256"] = digest(member["payload"])
+    (root / "inputs.json").write_bytes(json_bytes(inputs))
+    seal_layout(root, documents["run"]["payload"])
 
 
 def reseal_legacy(root):
@@ -285,8 +303,7 @@ def test_protocol_consumers_read_complete_body_and_reject_hidden_mutation(tmp_pa
         body = request_body(config, config["execution"]["probe_prompt"], stream=False)
         body.update(cache_prompt=False, n_cache_reuse=0)
     else:
-        config["engine"]["adapter"] = "kvmem"
-        config["model"].update(kind="gguf", bytes=1, sha256="c" * 64, template_sha256="d" * 64)
+        config = lab_config(config, "kvmem")
         props = {
             "protocol": "lab_observation.v1",
             "server_instance_id": "a" * 32,
@@ -309,7 +326,11 @@ def test_protocol_consumers_read_complete_body_and_reject_hidden_mutation(tmp_pa
         body.update(lab_request_id="b" * 32, lab_server_instance_id="a" * 32)
     rows[0]["body"], rows[0]["body_sha256"] = body, digest(body)
     (new / "request-bodies.jsonl").write_bytes(b"".join(map(json_bytes, rows)))
-    append_observation(new, "service_properties", "post_idle", props)
+    bind_frozen_config(new, config)
+    append_observation(
+        new, "service_properties", "pre_idle" if consumer == "lab" else "post_idle", props
+    )
+    assert TrialEvidence(new).input("config") == config
 
     def check():
         if consumer == "cache":

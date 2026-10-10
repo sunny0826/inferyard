@@ -255,6 +255,7 @@ SAFE_REASONS = frozenset(
         "selection_changes_frozen_order",
         "sensitive_frozen_input",
         "service_not_idle",
+        "service_properties_stage_mismatch",
         "service_stop_unconfirmed",
         "single_execution_requires_one_fixed_trial",
         "single_plan_input_hash_mismatch",
