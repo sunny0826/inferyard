@@ -25,6 +25,7 @@ from inferyard.evidence.storage import (
     sha256_file,
     verify_manifest,
 )
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.implementation_identity import IdentityContext
 from inferyard.platforms.identity import (
     PreflightError,
@@ -107,11 +108,23 @@ def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[Lo
         config["output"]["root"] = str(request.output_root.resolve())
     if getattr(request, "api_key_env", None):
         config["endpoint"]["api_key_env"] = request.api_key_env
-    source = root / "config.input.toml"
-    if not source.exists():
-        source = root / "config.frozen.json"
+    evidence = TrialEvidence(root)
+    original = evidence.configuration_source()
+    source = None
+    if evidence.layout_version == 1:
+        # These are actual legacy source bytes, never a virtual container member path.
+        source = root / "config.input.toml"
+        if not source.exists():
+            source = root / "config.input.json"
+        if not source.exists():
+            source = root / "config.frozen.json"
     return LoadedConfig(
-        source, Document.parse("config", config), Document.parse("bundle", bundle)
+        source,
+        Document.parse("config", config),
+        Document.parse("bundle", bundle),
+        source_data=original["data"],
+        source_media_type=original["media_type"],
+        source_missing_reason=original["missing_reason"],
     ), parent
 
 

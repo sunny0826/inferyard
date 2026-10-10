@@ -14,6 +14,7 @@ from inferyard.evidence.storage import (
     read_json,
     sha256_file,
 )
+from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input, read_verified_comparison
 from inferyard.reporting.report_assets import template_hash
@@ -34,6 +35,14 @@ from inferyard.reporting.report_scans import scan_view
 
 def presentation(data, source, out, *, contents, format_version=8):
     summary = data["summary"]
+    evidence = TrialEvidence(Path(source["path"]))
+    names = dict.fromkeys(
+        [
+            "manifest.json",
+            "events.jsonl",
+            *(evidence.input_reference(k)["path"] for k in ("config", "plan")),
+        ]
+    )
     cases = {case["case_id"]: case for case in data["bundle"]["cases"]}
     rows = []
     for ordinal, request in enumerate(data["requests"], 1):
@@ -80,14 +89,20 @@ def presentation(data, source, out, *, contents, format_version=8):
         "diagnostic": data["run"]["diagnostic"],
         "requests": rows,
         "latency_max": max(values, default=0) or 1,
-        "evidence": {
-            name: evidence_url(Path(source["path"]) / name, out)
-            for name in ("manifest.json", "events.jsonl", "config.frozen.json", "plan.json")
-        },
+        "evidence": {name: evidence_url(Path(source["path"]) / name, out) for name in names},
     }
     if summary.get("engine_observation") is not None:
         view["engine_observation"] = summary["engine_observation"]
-    view["profile"] = profile_view(data)
+    environment_ref = evidence.observation_reference("environment", stage="start")
+    environment_source = (
+        "environment.start.json" if evidence.layout_version == 1 else "not_recorded"
+    )
+    if environment_ref is not None:
+        verify_reference(evidence.root, environment_ref)
+        environment_source = environment_ref["path"]
+        if "member" in environment_ref:
+            environment_source += ":seq=" + str(environment_ref["member"]["seq"])
+    view["profile"] = profile_view(data, environment_source=environment_source)
     view["dashboard"] = dashboard_view(data, view["resource_view"])
     view["svg_gallery"] = [
         {

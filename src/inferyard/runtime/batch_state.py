@@ -12,6 +12,7 @@ from inferyard.config.startup_arguments import replace_arguments
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_run_projection, read_trial
 from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, read_json
+from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.implementation_identity import execution_matches
 from inferyard.platforms.identity import PreflightError, process_start_ticks
 from inferyard.provenance import tool_source_hash
@@ -193,16 +194,17 @@ def history(
             raise EvidenceError("batch_run_tool_changed")
         if run["diagnostic"] != metadata["diagnostic"]:
             raise EvidenceError("batch_diagnostic_mode_changed")
-        binding_path = path / "service-binding.json"
-        if binding_path.exists():
-            binding = read_json(binding_path)
+        evidence = TrialEvidence(path, projection=not full_verification)
+        binding = evidence.observation("service_binding", stage="prepare")
+        if binding is not None:
             if binding.get("effective_endpoint") != data["config"]["endpoint"]:
                 raise EvidenceError("service_binding_differs_from_execution")
-            if (path / "manifest.json").exists() and "service-binding.json" not in read_json(
-                path / "manifest.json"
-            )["files"]:
-                raise EvidenceError("service_binding_not_sealed")
-        elif data["summary"]["counts"]["executed"] or (path / "manifest.json").exists():
+            ref = evidence.observation_reference("service_binding", stage="prepare")
+            if evidence.manifest is not None:
+                if ref["path"] not in evidence.manifest["files"]:
+                    raise EvidenceError("service_binding_not_sealed")
+                verify_reference(path, ref)
+        elif data["summary"]["counts"]["executed"] or evidence.manifest is not None:
             raise EvidenceError("service_binding_missing")
         trial = next(t for t in plan["trials"] if t["trial_id"] == run["trial_id"])
         base = loaded[trial["workload_id"]]
@@ -258,13 +260,16 @@ def history(
 def remaining_budget(plan, runs):
     spent = 0
     for data in runs:
-        path = data["path"] / "execution-budget.json"
+        evidence = TrialEvidence(data["path"], projection=True)
         trial = next(t for t in plan["trials"] if t["trial_id"] == data["run"]["trial_id"])
-        if not path.exists() or not (data["path"] / "manifest.json").exists():
+        if evidence.manifest is None:
+            spent += trial["total_budget_seconds"]
+            continue
+        value = evidence.observation("execution_budget", stage="finalizing")
+        if value is None:
             # Crash elapsed time is unknown: reserve its whole declared allocation.
             spent += trial["total_budget_seconds"]
             continue
-        value = read_json(path)
         seconds = value.get("elapsed_seconds")
         if (
             value.get("run_id") != data["run"]["run_id"]
@@ -273,8 +278,9 @@ def remaining_budget(plan, runs):
             or seconds < 0
         ):
             raise EvidenceError("invalid_execution_budget_evidence")
-        manifest = read_json(data["path"] / "manifest.json")
-        if "execution-budget.json" not in manifest["files"]:
+        ref = evidence.observation_reference("execution_budget", stage="finalizing")
+        if ref["path"] not in evidence.manifest["files"]:
             raise EvidenceError("budget_evidence_not_sealed")
+        verify_reference(data["path"], ref)
         spent += seconds
     return max(0, plan["experiment"]["budget"]["max_wall_seconds"] - spent)

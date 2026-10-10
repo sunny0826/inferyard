@@ -70,11 +70,15 @@ type RawProcess struct {
 }
 
 type Binding struct {
-	RunID        string `json:"run_id"`
-	RunSHA256    string `json:"run_file_sha256"`
-	ConfigSHA256 string `json:"config_file_sha256"`
-	ModelLabel   string `json:"model_label_declared"`
-	Backend      string `json:"backend_declared"`
+	Definition         string `json:"definition,omitempty"`
+	InputsSHA256       string `json:"inputs_file_sha256,omitempty"`
+	RunMemberSHA256    string `json:"run_member_sha256,omitempty"`
+	ConfigMemberSHA256 string `json:"config_member_sha256,omitempty"`
+	RunID              string `json:"run_id"`
+	RunSHA256          string `json:"run_file_sha256,omitempty"`
+	ConfigSHA256       string `json:"config_file_sha256,omitempty"`
+	ModelLabel         string `json:"model_label_declared"`
+	Backend            string `json:"backend_declared"`
 }
 
 type Snapshot struct {

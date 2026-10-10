@@ -12,11 +12,24 @@ from inferyard.evidence.storage import (
     local_file,
     read_json,
 )
+from inferyard.evidence.trial_evidence import verify_reference
+
+
+def verify_metric_references(root, metrics):
+    """Bind each distinct physical/member reference once within this source read."""
+    checked = set()
+    for metric in metrics:
+        for ref in metric["evidence_refs"]:
+            identity = json_bytes(ref)
+            if identity not in checked:
+                verify_reference(root, ref)
+                checked.add(identity)
 
 
 def comparison_input(root, *, bind_unsealed=False):
     metadata = {}
     data = read_trial(root, metadata=metadata)
+    verify_metric_references(root, data["summary"]["metric_observations"])
     data.update(
         {key: metadata[key] for key in ("identity", "environment_start", "first_event_utc")}
     )

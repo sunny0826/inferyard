@@ -20,7 +20,7 @@ from inferyard.evidence.storage import (
     sha256_file,
 )
 from inferyard.provenance import tool_source_hash
-from inferyard.reporting.comparison_report import comparison_input
+from inferyard.reporting.comparison_report import comparison_input, verify_metric_references
 from inferyard.reporting.report_common import _new_output
 
 
@@ -61,10 +61,7 @@ def existing_analysis(path):
 
     require_core(analysis, "analysis")
     validate_document("analysis", analysis)
-    for metric in analysis["metrics"]:
-        for ref in metric["evidence_refs"]:
-            if sha256_file(local_file(path.parent, ref["path"])) != ref["sha256"]:
-                raise EvidenceError("analysis_evidence_hash_mismatch")
+    verify_metric_references(path.parent, analysis["metrics"])
     return analysis, {"kind": "analysis", "path": str(path.resolve()), "sha256": sha256_file(path)}
 
 

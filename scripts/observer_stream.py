@@ -130,21 +130,25 @@ def header(item: dict) -> None:
         == ("benchmark_run_filesystem" if binding is not None else "observer_cwd_filesystem")
     )
     if binding is not None:
-        fields(
-            binding,
-            {
-                "run_id",
-                "run_file_sha256",
-                "config_file_sha256",
-                "model_label_declared",
-                "backend_declared",
-            },
-        )
-        text(binding["run_id"])
-        for key in ("run_file_sha256", "config_file_sha256"):
-            require(type(binding[key]) is str and SHA.fullmatch(binding[key]) is not None)
-        for key in ("model_label_declared", "backend_declared"):
-            require(type(binding[key]) is str)
+        benchmark_binding(binding)
+
+
+def benchmark_binding(binding: object) -> dict:
+    require(type(binding) is dict)
+    common = {"run_id", "model_label_declared", "backend_declared"}
+    if "definition" in binding:
+        hashes = {"inputs_file_sha256", "run_member_sha256", "config_member_sha256"}
+        fields(binding, common | hashes | {"definition"})
+        require(binding["definition"] == "benchmark-inputs-binding.v1")
+    else:
+        hashes = {"run_file_sha256", "config_file_sha256"}
+        fields(binding, common | hashes)
+    text(binding["run_id"])
+    for key in hashes:
+        require(type(binding[key]) is str and SHA.fullmatch(binding[key]) is not None)
+    for key in ("model_label_declared", "backend_declared"):
+        require(type(binding[key]) is str)
+    return binding
 
 
 class Series:
