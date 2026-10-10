@@ -342,3 +342,21 @@ PR1 全量回归发现后，已完成交付的 C1/C2 范围由 root 顺次接手
 trial_evidence.py 的未知版本与封存错误顺序，engine_capabilities.py/native.py 的领域诊断映射，
 test_cost_reads.py/test_validation_reuse.py 的现行合法夹具。C3 仍独占 report 同次读取复用，
 其余验证 worker 只读源码。修复保留旧错误与资格边界，按原失败检查重验，不修改原始回执。
+
+### PR2 写入归属（等待 PR1 验收后启动）
+
+以下是启动前的文件边界；尚未切换生产 writer。root 将在 PR1 验收通过后记录精确基线。
+
+| owner | 独占修改范围 | 交付接口与检查 |
+| --- | --- | --- |
+| W1 共享 writer | evidence/journal.py、storage.py、新 run 写入模块；extensions/trial_control_baseline.py、extension_evidence.py；新增 tests/unit/test_run_writer.py | `TrialJournal(..., configuration_source=...)` 原子发布 inputs 后创建六份日志；`observe(kind, payload, *, stage, key=None)`、`prepare_request(request_id, phase, ordinal, body)` 同步耐久；通用 EvidenceStore 和独立 baseline/extension 格式保留 |
+| W2 调用迁移 | runtime/runner.py、request_execution.py、trial_runner.py、trial_lifecycle.py、trial_finalization.py、service_observation.py、service_reuse.py、overhead_runner.py、boundary_observer.py、environment_observer.py；platforms/resources_linux.py、resources_macos.py、resources_windows.py | 移除 run 旧快照调用，使用 W1 的领域写入；真实配置原文在 Journal 构造前取得；请求耐久早于 dirty/started/send，native receipt 耐久早于 clean；不得增删测量 |
+| W3 回归和模拟 | tests/ 相关既有夹具与回归，排除 W1 新 writer test；scripts/layout_fixture_worker.py、layout_offline_checks.py、layout_index_cost.py；新增有界故障 harness | 显式 test-only 旧布局 fixture 保持合法旧数据只读覆盖；实际运行集成使用新 writer 并核对真实文件/正文/锁状态；故障通过服务实际收件与证据前缀裁定 |
+| root | docs/、README 两种语言、CHANGELOG、implementation-files/catalogue/schema 绑定与生成；scripts/benchmark_cost.py、benchmark_cost_worker.py、benchmark_cost_compare.py；Git 集成 | 顺次集成，端到端、性能、只读 review；新模块纳入绑定清单，不继承旧实现资格 |
+
+W1 先交付可消费接口与局部回归，W2/W3 可在各自隔离树编辑，但等待该提交后验证。
+writer schema 沿用 PR1 已冻结的声明；若需要改变合法状态，先报 root，不自行放宽读取校验。
+共享采样器使用领域声明接口时，通用 EvidenceStore 只保留其独立产物需要的声明映射；
+BaselineJournal 在自己的 `trial_control_baseline.v1` buffer 中保留原字段与快照键，不能变成 layout 2 run。
+任何旧 run 构造仅限测试公开合成 fixture，不导入历史 validation 数据、不新增生产旧 writer。
+新增文件默认归上述责任范围；跨界仍需 root 先登记路径、理由与对原 owner 的影响。
