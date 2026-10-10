@@ -85,7 +85,13 @@ def create(request):
         system == "Windows" and (request.runtime_receipt is None or request.engine_path is not None)
     ):
         raise PreparationError("invalid_input")
-    inputs = (request.preflight, request.bundle_path, request.engine_path, request.runtime_receipt)
+    inputs = (
+        request.preflight,
+        request.bundle_path,
+        request.engine_path,
+        request.runtime_receipt,
+        request.model_source_record,
+    )
     out = new_path(request.out, inputs)
     results = request.output_root.resolve()
     if results.is_relative_to(out) or results.is_relative_to(Path(__file__).resolve().parents[1]):
@@ -119,7 +125,12 @@ def create(request):
     new_path(request.out, (*inputs, model.path))
     metadata, template_raw = model_template(model.path)
     template_path = out / "chat-template.jinja"
-    shared = dict(repo=request.model_repo, revision=request.model_revision, port=request.port)
+    from inferyard.platforms.model_source import source_declaration
+
+    repo, revision = source_declaration(
+        request.model_source_record, model, repo=request.model_repo, revision=request.model_revision
+    )
+    shared = dict(repo=repo, revision=revision, port=request.port)
     if system == "Darwin":
         from inferyard.config.community_candidates_macos import build_config
         from inferyard.platforms.identity import environment_snapshot

@@ -79,6 +79,9 @@ class CommandRequest:
     model_repo: str | None = None
     model_revision: str | None = None
     port: int | None = None
+    model_source_url: str | None = None
+    model_token_env: str | None = None
+    model_source_record: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)

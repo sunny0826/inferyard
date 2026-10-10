@@ -125,6 +125,9 @@ def test_cli_reexports_the_single_application_type_definitions():
         "model_repo",
         "model_revision",
         "port",
+        "model_source_url",
+        "model_token_env",
+        "model_source_record",
     )
     assert tuple(field.name for field in fields(CommandResult)) == (
         "command",

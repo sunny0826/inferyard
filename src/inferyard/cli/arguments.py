@@ -13,6 +13,7 @@ from inferyard.cli.commands import (
     exports,
     extensions,
     length,
+    model,
     overhead,
     public,
     repetition,
@@ -57,7 +58,7 @@ def parser() -> Parser:
         metavar=(
             "{init,runtime,config,device-check,catalogue,plan,verify,overhead,probe,run,resume,repeat-summary,"
             "prepare-length,rescore,export,public,report,compare,filter-candidates,"
-            "extension,engine-fit}"
+            "extension,engine-fit,model}"
         ),
     )
     community.add_commands(commands)
@@ -75,4 +76,5 @@ def parser() -> Parser:
     candidates.add_commands(commands)
     extensions.add_commands(commands)
     engine_fit.add_commands(commands)
+    model.add_commands(commands)
     return result
