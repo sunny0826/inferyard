@@ -6,8 +6,8 @@ separate frozen ABBA workload overhead gate is deliberately retained.
 
 from inferyard.analysis.environment_identity import LINUX_FIELDS, fields
 from inferyard.config.environment_binding import requires_match
+from inferyard.evidence.baseline_reads import environment_reads
 from inferyard.evidence.engine_capabilities import observation_sealed
-from inferyard.evidence.environment_projection import environment_reads
 from inferyard.evidence.storage import EvidenceError
 from inferyard.platforms.cpu_policy import assess as assess_cpu_policies
 from inferyard.platforms.external_cpu import reduce_external_cpu

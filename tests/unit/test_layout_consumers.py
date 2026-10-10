@@ -420,7 +420,7 @@ def test_native_receipts_bind_inventory_and_never_prove_engine_drain(tmp_path, d
 
 
 def test_missing_run_inputs_cannot_fall_back_to_independent_environment_sidecars(tmp_path):
-    from inferyard.evidence.environment_projection import environment_reads
+    from inferyard.evidence.baseline_reads import environment_reads
 
     (tmp_path / "environment.start.json").write_bytes(json_bytes({"platform": "Linux"}))
     (tmp_path / "events.jsonl").write_bytes(b"")
