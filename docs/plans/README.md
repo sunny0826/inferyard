@@ -1,7 +1,7 @@
 # Current plans
 
-- [Application memory inspection](memory-check.md): Linux and Windows follow-ups to the implemented macOS command; each platform is verified independently.
+- [应用内存诊断后续平台](memory-check.md)：macOS 已实施；Linux、Windows 各自独立实施和验收。
+- [远程模型链接获取](remote-model-link-design.md)：保留现有设计与后续工作。
 
-Current status and remaining work live in the [backlog](../backlog.md).
-Long-term rationale lives in [ADRs](../decisions/README.md), and interface rules in
-[contracts](../contracts/README.md).
+当前进度及未完成工作见 [backlog](../backlog.md)。
+长期设计理由见 [ADR](../decisions/README.md)，接口规则见[主题契约](../contracts/README.md)。

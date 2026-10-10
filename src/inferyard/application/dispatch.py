@@ -13,6 +13,10 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         from inferyard.application.memory_check import execute
 
         return execute(request)
+    if request.command == "model acquire":
+        from inferyard.application.model_source import execute
+
+        return execute(request)
     if request.command in (
         "init",
         "runtime prepare",
