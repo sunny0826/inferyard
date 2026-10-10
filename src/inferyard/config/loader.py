@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import ipaddress
 import tomllib
 from copy import deepcopy
@@ -71,9 +70,6 @@ class LoadedConfig:
     source: Path
     config: Document
     bundle: Document
-    input_sha256: str
-    bundle_sha256: str
-    defaulted_fields: tuple[str, ...]
 
 
 def validate_runtime_config(config: dict) -> None:
@@ -107,13 +103,11 @@ def load_config(path: str | Path) -> LoadedConfig:
     require_input(incoming, "config")
     validate_document("config_input", incoming)
     normalized = deepcopy(incoming)
-    defaulted = []
     for section, defaults in CONFIG_DEFAULTS.items():
         target = normalized.setdefault(section, {})
         for key, value in defaults.items():
             if key not in target:
                 target[key] = deepcopy(value)
-                defaulted.append(f"{section}.{key}")
     validate_runtime_config(normalized)
     if normalized["engine"]["adapter"] in ("kvmem", "ninfer"):
         import os
@@ -153,11 +147,4 @@ def load_config(path: str | Path) -> LoadedConfig:
     bundle = Document.parse("bundle", bundle_data)
     if bundle_data["version"] != normalized["bundle"]["version"]:
         raise ContractError("config.bundle.version", "does not match corpus version")
-    return LoadedConfig(
-        source,
-        Document.parse("config", normalized),
-        bundle,
-        hashlib.sha256(raw).hexdigest(),
-        hashlib.sha256(bundle_raw).hexdigest(),
-        tuple(defaulted),
-    )
+    return LoadedConfig(source, Document.parse("config", normalized), bundle)

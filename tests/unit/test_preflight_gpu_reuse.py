@@ -1,4 +1,4 @@
-"""CUDA admission and advice use one observation within each preflight."""
+"""Preflight observes the GPU only when CUDA admission needs it, once per call."""
 
 import hashlib
 import json
@@ -8,7 +8,7 @@ import pytest
 from inferyard.platforms import device_preflight, identity
 
 
-def test_cuda_preflight_reuses_observation_but_refreshes_next_call(tmp_path, monkeypatch):
+def test_cuda_preflight_observes_once_per_call_and_cpu_never(tmp_path, monkeypatch):
     model, engine, template, library = [
         tmp_path / name for name in ("model", "engine", "tpl", "lib")
     ]
@@ -65,7 +65,7 @@ def test_cuda_preflight_reuses_observation_but_refreshes_next_call(tmp_path, mon
         result, _ = identity.static_preflight(config)
         assert len(calls) == expected + 1
         assert result["environment"]["gpu"]["devices"] == calls[-1]["devices"]
-        assert result["device_preflight"]["hardware"]["gpu"] == calls[-1]
+        assert set(result["device_preflight"]["hardware"]) == {"disk_free_bytes"}
     monkeypatch.setattr(
         device_preflight,
         "nvidia_snapshot",
@@ -73,6 +73,12 @@ def test_cuda_preflight_reuses_observation_but_refreshes_next_call(tmp_path, mon
     )
     with pytest.raises(identity.PreflightError, match="cuda_device_unavailable"):
         identity.static_preflight(config)
+    config["engine"]["backend"] = "cpu"
+    monkeypatch.setattr(device_preflight, "nvidia_snapshot", gpu)
+    count = len(calls)
+    result, _ = identity.static_preflight(config)
+    assert len(calls) == count
+    assert "gpu" not in result["environment"]
 
 
 def test_advice_preserves_unavailable_injected_observation(tmp_path, monkeypatch):

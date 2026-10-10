@@ -22,7 +22,7 @@ def test_single_and_frozen_toml_use_same_relative_ledger_origin(tmp_path, config
     path = tmp_path / "config.toml"
     path.write_text(text)
     single = load_config(path).config.to_dict()
-    frozen, _ = normalized_config(text.encode(), path.name, path.parent, bundle)
+    frozen = normalized_config(text.encode(), path.name, path.parent, bundle)
     assert frozen == single
     assert frozen["model"]["component_ledger_path"] == str(tmp_path / "lineage.json")
 
@@ -31,9 +31,7 @@ def test_single_and_frozen_toml_use_same_relative_ledger_origin(tmp_path, config
 def test_windows_native_asset_paths_keep_existing_adapter_semantics(config_path, adapter):
     config = lab_config(load_config(config_path).config.to_dict(), adapter)
     config["model"]["component_ledger_path"] = r"D:\lab\components.json"
-    frozen, _ = normalized_config(
-        json_bytes(config), "config.json", "/removed/source", "bundle.json"
-    )
+    frozen = normalized_config(json_bytes(config), "config.json", "/removed/source", "bundle.json")
     for field in ("local_path", "template_path", "component_ledger_path"):
         assert frozen["model"][field] == config["model"][field]
 

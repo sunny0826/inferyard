@@ -35,8 +35,7 @@ def test_paths_are_relative_to_config_not_working_directory(config_path, tmp_pat
     assert data["execution"]["concurrency"] == 1
     assert data["execution"]["warmup_count"] == 3
     assert data["telemetry"]["interval_ms"] == 500
-    assert "execution.timeout_seconds" in loaded.defaulted_fields
-    assert len(loaded.input_sha256) == len(loaded.bundle_sha256) == 64
+    assert data["execution"]["timeout_seconds"] > 0
 
 
 @pytest.mark.parametrize(
