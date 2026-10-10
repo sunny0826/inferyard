@@ -128,3 +128,22 @@ Ruff、格式、Schema/catalogue 一致性和文档本地链接/锚点检查通�
 扩大测量（原 B01–B11）、Windows 原生准备专项、Darwin 启动身份依赖替换、方法目录缩小、源码获取 CLI、engine-fit 接入、报告架。
 报告 JSON 归一化已测过，没有明确提速。生命周期内容级回归是加检查，不排。
 `run_preflight` 丢参和空凭据语义是缺陷，不属于本轮四类，单独另开。
+
+### 2026-10-10 追加：校验热路径预编译与重复校验消除
+
+分支 `perf/validator-slim`（本地未推送）完成两项，仍属本轮四类：
+
+- `validate_document` 的 oneOf 判别分支预编译、schema 节点预编译与字段路径后缀缓存；
+  `_reference` 改为等价字符串检查（`validation.py`、`contracts_experiment.py`）。
+  `export_schemas.py --check` 通过，schema 导出逐字节不变；独立审查对 9196 组新旧
+  结构输入与 52 组路径边界做差分，判定与错误 path/reason 一致。
+- `read_trial` 内三处 `trial_for` 重复校验消除（`_inputs` 直接返回 trial/workload，
+  `run_projection` 同步复用）；`Observations.add` 移除逐条
+  `validate_document("metric_observation")`，summary 与 analysis 的
+  `array(METRIC_OBSERVATION)` 终校验完整覆盖同一批对象，错误时机移至容器校验。
+
+全量软件回归 **4742 passed / 53 skipped**；Ruff、格式通过。合成 fixture
+（120 请求 × 200 chunk，交替运行、无 profiler）`read_trial` 中位数 702 → 371 ms（约
+1.9×）；不据此宣称真机报告提速。写路径与采样未改动。
+审查遗留一条非阻塞建议：扩展协议（NATIVE_TOOLS 等）本地 spec 每次调用重新编译，
+主热路径不受影响，留后续轮次。
