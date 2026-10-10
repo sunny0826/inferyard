@@ -149,6 +149,18 @@ async def execute_async(request, dependencies: Dependencies | None = None):
     plan = compile_single_plan(loaded.config, loaded.bundle)
     started_at = time.monotonic()
     allowed_seconds = plan["experiment"]["budget"]["max_wall_seconds"]
+    source_text = None
+    if loaded.source is None and loaded.source_data is not None:
+        source_name = {
+            "application/toml": "config.input.toml",
+            "application/json": "config.input.json",
+        }.get(loaded.source_media_type)
+        if source_name is None:
+            raise PreflightError("configuration_source_media_type_invalid")
+        try:
+            source_text = loaded.source_data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise PreflightError("configuration_source_utf8_invalid") from exc
     store = TrialJournal(
         Path(config["output"]["root"]),
         plan,
@@ -164,8 +176,13 @@ async def execute_async(request, dependencies: Dependencies | None = None):
         source_identity=identity_context.source,
         implementation_identity=identity_context.value,
     )
-    source_name = "config.input.toml" if loaded.source.suffix == ".toml" else "config.input.json"
-    store.text_snapshot(source_name, loaded.source.read_text())
+    if loaded.source is not None:
+        source_name = (
+            "config.input.toml" if loaded.source.suffix == ".toml" else "config.input.json"
+        )
+        store.text_snapshot(source_name, loaded.source.read_text())
+    elif source_text is not None:
+        store.text_snapshot(source_name, source_text)
     if parent:
         store.snapshot(
             "parent.json",

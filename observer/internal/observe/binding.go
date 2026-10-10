@@ -9,7 +9,14 @@ import (
 	"path/filepath"
 )
 
+const bindingFileLimit = 1 << 20
+const inputsFileLimit = 64 << 20
+
 func boundedFile(path string) ([]byte, error) {
+	return boundedFileLimit(path, bindingFileLimit)
+}
+
+func boundedFileLimit(path string, limit int64) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, errors.New("binding_file_unreadable")
@@ -19,8 +26,11 @@ func boundedFile(path string) ([]byte, error) {
 	if err != nil || !info.Mode().IsRegular() {
 		return nil, errors.New("binding_not_regular_file")
 	}
-	data, err := io.ReadAll(io.LimitReader(f, 1024*1024+1))
-	if err != nil || len(data) > 1024*1024 {
+	if info.Size() > limit {
+		return nil, errors.New("binding_file_too_large")
+	}
+	data, err := io.ReadAll(io.LimitReader(f, limit+1))
+	if err != nil || int64(len(data)) > limit {
 		return nil, errors.New("binding_file_too_large")
 	}
 	return data, nil

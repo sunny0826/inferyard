@@ -41,7 +41,7 @@ func readInputsBinding(root string) (Binding, Target, error) {
 	var binding Binding
 	var target Target
 	fail := errors.New("benchmark_binding_invalid")
-	raw, err := boundedFile(filepath.Join(root, "inputs.json"))
+	raw, err := boundedFileLimit(filepath.Join(root, "inputs.json"), inputsFileLimit)
 	if err != nil {
 		return binding, target, err
 	}
@@ -85,6 +85,9 @@ func readInputsBinding(root string) (Binding, Target, error) {
 		canonical, err := memberBytes(member.Payload)
 		if err != nil || digest(canonical) != member.SHA256 {
 			return binding, target, fail
+		}
+		if (name == "run" || name == "config") && len(canonical) > bindingFileLimit {
+			return binding, target, errors.New("binding_member_too_large")
 		}
 		var core struct {
 			Schema int `json:"schema_version"`
