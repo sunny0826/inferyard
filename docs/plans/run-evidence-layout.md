@@ -343,9 +343,12 @@ trial_evidence.py 的未知版本与封存错误顺序，engine_capabilities.py/
 test_cost_reads.py/test_validation_reuse.py 的现行合法夹具。C3 仍独占 report 同次读取复用，
 其余验证 worker 只读源码。修复保留旧错误与资格边界，按原失败检查重验，不修改原始回执。
 
-### PR2 写入归属（等待 PR1 验收后启动）
+### PR2 写入归属
 
-以下是启动前的文件边界；尚未切换生产 writer。root 将在 PR1 验收通过后记录精确基线。
+PR1 验收基线为 `e9d71a5e3c7b2be6ad07bfaeef8db1d542a7175a`；以下三个 owner 已并行实施，
+writer、runtime、regressions 使用产物根下同名的新 worktree，root 分支为 `feat/run-evidence-writer`。
+宿主拒绝继续创建新 Agent 线程，本轮复用已完成会话并显式给出新任务、隔离树和归属；
+不把会话延续视为新的独立初审。未指定模型继续宿主继承配置，未更改模型选择。
 
 | owner | 独占修改范围 | 交付接口与检查 |
 | --- | --- | --- |
