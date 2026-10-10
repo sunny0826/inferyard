@@ -1,7 +1,7 @@
 # 单 run 十一个文件 plan
 
 将一个完整初始 single run 的证据收敛到八个文件，生成的报告仍占三个文件。
-用户要求的是规划；本页不授权产品实施、真实模型请求、push、创建 PR 或 merge。
+用户已授权拆分任务、并行产品实施和完成后的 review；真实模型请求、push、创建 PR 或 merge 仍未授权。
 实施单元依次为 PR1「契约与全部读取方」、PR2「共享写入方切换与完整验收」。
 这里的 PR1/PR2 是任务标识，不是已经创建的 GitHub PR。
 默认 benchmark 仍分别运行两个题包，最终为两个 run 加一份报告，共十九个文件。
@@ -10,9 +10,9 @@
 ## How to read this
 
 One box is one unit of work. Every box names the evidence that checks it.
-Check a box only when its evidence exists. 框内内容是未来实施任务，本轮不勾选。
+Check a box only when its evidence exists. 仅按实际源码与回执勾选，尚未验证的实施任务保留未完成。
 执行采用 rigor 的 `playbooks/autopilot-stack.md`，并以本仓库的授权规则约束外部操作。
-用户明确要求执行后才启动；每个单元通过后建立本地提交，push、PR 创建和 merge 分别等待明确授权。
+执行授权已收到；每个单元通过后建立本地提交，push、PR 创建和 merge 分别等待明确授权。
 merge 只能由仓库所有者账号执行，不使用 Lody GitHub App；完成后检查提交作者。
 
 Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
@@ -32,9 +32,9 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 
 ### Spawn owners
 
-- [ ] PR1 由一名代码 owner 串行承担，PR2 基于已通过的 PR1 精确 head；在同一 worktree 中不并行修改共同的 evidence/contracts 文件。
+- [ ] PR1 按 Appendix E 的独立文件归属在隔离 worktree 并行实现，root 串行集成；PR2 基于已通过的 PR1 精确 head，重新划分写入与回归归属。不在同一 worktree 并行修改共同的 evidence/contracts 文件。
 - [ ] reviewer/verifier 只读独立 checkout 或使用各自隔离产物目录；若实际容量是四个会话，十个 live lane 分批执行，不同时驱动同一浏览器或主机状态。
-- [ ] root 只拥有集成拓扑、计划和 backlog；代码 owner 只修改下列 Files 范围，跨界前报告文件和原因。当前文档轮只修改本计划、plans README 和 backlog。
+- [ ] root 拥有集成拓扑、共享接口契约、ADR、计划、backlog 与生成绑定清单；代码 owner 只修改 Appendix E 范围，跨界前报告文件和原因。
 - [ ] 本轮没有交互变更的用户 review gate；两个单元均保留仓库规定的 push、PR 创建和 merge 授权关口。
 
 ### PR mechanics, for every PR
@@ -174,7 +174,7 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 
 - [ ] Metric. 基线与 head 的等工作量合成 run 从准备到 seal 的 wall time，另量 verify/report wall time、进程峰值 RSS、文件数和落盘字节；包含采样、验证、写盘、flush/fsync 和封存。
 - [ ] Probe. 用相同公开输入、mock 响应、请求次数和线程设置交错运行，每侧至少五次；固定 mock 耗时后记录计时边界、噪声、计数、原件内容、失败数和全部原始数据。profiling 独立于正式测量。
-- [ ] Baseline. 先保存实际基线清单：标准采集器下，普通完整 lab single 固定 19 加 N+W+2 请求快照；native 固定 20 加相同请求快照，另有逐请求 clean receipt。默认双 scope、lab 且 W=3 的源码推导为 19+125+19+6+3=172 文件。mock 若省略 collector 则单独标注；执行时由 harness 重算，不能把源码推导或上轮 mock 当本轮实测。
+- [ ] Baseline. 先保存实际基线清单：普通 single 默认内存 Sampler 下，完整 lab single 固定 18 加 N+W+2 请求快照，native 固定 19 再加实际 clean receipt。ResourceSampler 才额外写 collector。默认双 scope、lab 且 W=3 的源码推导为 18+125+18+6+3=170 文件；相同输入显式使用 ResourceSampler 才为 172。执行时核对实际 factory 和清单，不能把构造器或上轮 mock 推导当本轮实测。
 - [ ] Rule. 普通 single 必须恰 8+3=11，默认双 scope 恰 8×2+3=19；每种实际 workload 的计数、内容和拒绝行为完整。等工作量 wall time/RSS 中位数不得超过基线 1.20 倍；超限先核验噪声与漏工作，无法解释则 FAIL。落盘字节不设未经测量的节省比例，不承诺速度提升。
 
 **Review gate.** None. PR2 is not review-gated. 只改变保存布局和对应来源引用，保持页面功能；实际离线渲染仍是必需验证。
@@ -192,10 +192,10 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 ## Appendix A. Prototype evidence
 
 规划基线是 `d8d211f38fdfc9b5c7c0eb291e1a9cf8768f35f1`，开始时工作树干净。
-标准采集器构造即写 `collector.json`（[macOS](../../src/inferyard/platforms/resources_macos.py)、[Linux](../../src/inferyard/platforms/resources_linux.py)、[Windows](../../src/inferyard/platforms/resources_windows.py)）。
-普通完整 lab single 的固定证据为 19 份；native 另有能力声明和逐请求清理收据。
-此前独立审查的 mock single 为 26=18+8 文件、报告三文件，仅对应省略 collector 的注入采样器口径。
-那次模拟不是新布局原型；19 和默认总数 172 是源码推导，本轮没有重新执行运行清点。
+ResourceSampler 构造写 `collector.json`（[macOS](../../src/inferyard/platforms/resources_macos.py)、[Linux](../../src/inferyard/platforms/resources_linux.py)、[Windows](../../src/inferyard/platforms/resources_windows.py)）。
+但 [registry](../../src/inferyard/registry.py) 为普通 single 默认选择内存 Sampler，不写此声明；不能将 ResourceSampler 推导当默认 single 基线。
+完整 lab single 的默认固定证据为 18 份，native 另有能力声明和实际清理收据；此前 mock single 的 26=18+8 不是新布局原型。
+170/172 分别对应默认内存/显式资源采集器的源码推导；执行验收必须分别实测，合并不改变现有测量范围。
 本轮只做结构与源码核对；新容器、偏移索引、崩溃行为和十一文件 CLI 尚未实现验证，PR1/PR2 的任务保留这些证明。
 
 ### 文件目标与计数范围
@@ -203,7 +203,7 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 | 目录 | 文件 | 内容 |
 | --- | --- | --- |
 | run | `inputs.json` | run、plan、selection、冻结 config、bundle 与配置原文，共六份逻辑输入 |
-| run | `observations.jsonl` | identity、service props、普通/流式 effective、environment start/end、token budgets、标准 collector 声明；native 能力/clean receipt 及其他条件低频旁证按明确类型保存 |
+| run | `observations.jsonl` | identity、service props、普通/流式 effective、environment start/end、token budgets；实际 collector 声明、native 能力/clean receipt 与条件低频旁证按明确类型保存 |
 | run | `request-bodies.jsonl` | 所有 probe/warmup/formal 的完整脱敏 prepared body 与身份/hash |
 | run | `events.jsonl` | 当前事件、回答、终态与评分；不把 prompt 全文再复制进去 |
 | run | `memory.jsonl` | 当前内存/资源样本与来源 |
@@ -247,7 +247,7 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 | service properties | 一份当前实际观测 | native 的 pre-idle 与 lab 的 post-idle 阶段保持不同；不重查替代保存记录 |
 | effective ordinary/stream | 两个独立槽 | 任一 probe 失败可缺其后续观测，保留失败与未完成语义 |
 | token budgets | 明确 phase/case 的 v2 集合 | 按当次选中输入产生；预算准备失败不补 0 或未发送记录 |
-| collector | 标准采集器构造时必需，写入 observations | 保留来源、scale、传感器声明及采样参数；准备失败缺失时保留原因，不冒充完整运行 |
+| collector | ResourceSampler 等实际构造声明时写入 observations | 内存 Sampler 不补造声明；保留来源、scale、传感器与采样参数，不扩大测量 |
 | engine capabilities | native 启用时写入 observations | 保留能力声明与实际观察模式；lab 不补造 native 能力 |
 | native clean receipt | 合法清理时按请求写入 observations | 绑定请求身份和 dirty token，耐久后才 clean；成功 HTTP 不推定 engine-wide drain |
 | observer/service binding | 相应 observer 或 batch 启用时写入 observations | 来源、scale、声明与实际输出全部核验，不能由容器存在代替记录存在 |
@@ -256,7 +256,7 @@ live 指实际 CLI 和浏览器表面的模拟验收，不等于真实模型或�
 PR1 清单核对所有 `store.snapshot`、`text_snapshot` 与 `observation` 写入者；上表不能作为遗漏项可删除的授权。
 `collector.json`、`engine-capabilities.json` 和 `clean_receipt_name(request_id)` 的 run 内低频原件分别映射到
 observations 的 `collector`、`engine_capabilities`、`native_clean_receipt` kind 草案；PR1 定案其 schema、阶段与定位方式。
-原有 payload 完整保留，旧布局只读适配器仍从原文件读取；新布局中三者不再单独成文件，不省略必需记录来凑八文件。
+原有 payload 完整保留，旧布局只读适配器仍从原文件读取；新布局中三者出现时不再单独成文件，不省略必需记录或补造未采集声明来凑八文件。
 `external-cpu.jsonl`、`request-environment.jsonl`、`safety-checks.jsonl` 及 extensions 自有高频日志先保持独立，计为选用附加文件。
 外围 collector/observer 输出不能只因 run 内保存声明就删除；独立工具仍拥有其来源原件。
 `ExtensionJournal` 继承的通用快照/日志/封存接口继续保留；本轮不将独立 extension 封包或 baseline 快照装入 run 容器。
@@ -310,3 +310,26 @@ offset 元数据仍是 O(N)，不能宣称内存为常数。PR1 原型以固定 
 - [贡献指南](../../CONTRIBUTING.md#changes-and-verification)、[scripts README](../../scripts/README.md#软件成本对比)、[plans 索引](README.md)。
 - PR1/PR2 实施前用 how 追踪真实入口与状态归属；audit 执行前读取 rigor code-review/no-comments，具体跨模型审核按实际可用配置与授权执行。
   判断轨迹与回执保存在源码外验收目录，backlog 记录当前进度；不往仓库提交会话交接日志或真实证据。
+
+## Appendix E. 并行实施归属与依赖
+
+本次执行分支 `feat/run-evidence-layout`；共享接口冻结在
+[容器契约](../contracts/run-evidence-layout.md)，决策为 [ADR 048](../decisions/048-run-evidence-containers.md)。
+执行产物根由 root 实际创建 `/tmp/inferyard-layout-20261010-dn3gno`，不提交原始回执。
+T0 先提交契约与归属，三个 owner 才可改代码；仅 root 修改 Git 集成拓扑及公共文档。
+
+| 任务 / ownership | 独占文件 | 依赖、验证与集成 |
+| --- | --- | --- |
+| C1 容器与领域读取 | contracts/ 全部 schema/语义定义；evidence 的 trial_reads.py、request_snapshots.py、storage.py 及新 trial_evidence/layout/inputs/observation/prepared/reference 模块；新容器 unit tests；schemas/ 导出 | T0 后实现；先交付接口与局部回归，root 首先集成 |
+| C2 证据消费迁移 | evidence/ 其余现有模块，排除 journal.py 和 C1 文件；analysis/environment.py、boundary_environment.py、overhead_environment.py；对应既有 evidence unit tests | T0 后可编辑；C1 已验证 head 到位后执行消费回归；root 第二个集成 |
+| C3 外部消费迁移 | application/verification.py、raw_verification.py；reporting/ 核心报告/派生模块，排除 engine-fit；runtime/runner.py、batch_state.py、overhead_runner.py、overhead_binding.py；config/loader.py；extensions/trial_control_evidence.py；observer/ 的绑定生产与测试；相关 Python observer/导入脚本及应用、报告、observer、packaging tests | T0 后可编辑；C1/C2 到位后做全入口局部验收；root 第三个集成 |
+| root 集成与验证 | docs/、实施相关 README/CHANGELOG、data/implementation-files.json、metrics/methods 生成绑定及目录、合成验收 harness；未分配回归测试 | 顺次集成、完整 PR1 验证、更新实际 head；新布局来源绑定全量核验后才启动 PR2 |
+
+三个代码 owner 分别使用产物根下 `worktrees/codec`、`worktrees/consumers`、`worktrees/surfaces`，
+分支分别 `feat/layout-codec`、`feat/layout-consumers`、`feat/layout-surfaces`。相邻 worktree 不写入。
+边界例外只能由 root 先登记路径、理由、原 owner 影响和回滚方式；没有例外不得越界。
+遇依赖未合入只能记录未验证，不改他人模块或测试绕过。
+
+PR2 在 PR1 精确 head 验收通过后分为共享 Journal/原件 writer、runtime/platform 调用迁移、
+回归与模拟 harness 三条流；执行前记录其确切文件清单，禁止提前切生产 writer。
+每侧至少五次性能测量串行由 root 驱动；浏览器与主机锁由 verifier 独占，不并发复用实例。

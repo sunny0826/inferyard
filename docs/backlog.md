@@ -41,14 +41,16 @@ Omarchy 同样保留 1 GiB 内存下限，单次运行未配置温停，也未�
 
 ## 运行证据文件合并
 
-2026-10-10 已按独立审查修正规划，尚未授权产品实施；基线为 `d8d211f`。详见[单 run 十一个文件计划](plans/run-evidence-layout.md)。
-修订纠正标准采集器下旧布局的文件计数，限定旧 writer 删除范围，并补清必需旁证映射及 ABBA 开销路径验收。
+2026-10-10 用户已授权并行产品实施与完成后的 review；执行基线为 `9be73c8`。
+T0 已完成源码盘点、[ADR 048](decisions/048-run-evidence-containers.md)、[共享接口契约](contracts/run-evidence-layout.md)与[隔离文件归属](plans/run-evidence-layout.md#appendix-e-并行实施归属与依赖)，实现与验收进行中。
+实际 single factory 使用内存 Sampler，无 collector 原件；此前 19/172 的统一计数误把 ResourceSampler 当默认。
+现按实际采集器分别清点，保持原测量范围；旧 writer 删除边界、旁证映射及 ABBA 路径继续保留。
 
 - [ ] PR1：固定布局版本与旧 v3 原件严格只读策略，建立容器/记录契约，迁移全部读取方和真实来源引用；生产 writer 暂不切换。
 - [ ] PR2：一起切换 single、batch fixed/duration 的共享 writer，完成发送前持久化、dirty/排空、故障与新旧证据回归，实证普通完整 single 八个证据加三个报告文件。
 
 默认两题包仍各自生成一个 run，再生成一份汇总报告，目标十九文件；准备、主机状态、batch 外层、父链和选用扩展产物另计。
-本轮只交付计划；新布局、性能收益和原生能力均未验证，不继承旧运行资格。
+新布局实现、模拟 CLI/浏览器与性能验收尚未完成；原生能力不继承旧运行资格。
 
 ## 已完成的实现与验证
 
