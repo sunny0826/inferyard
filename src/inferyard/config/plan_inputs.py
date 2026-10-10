@@ -32,7 +32,6 @@ def normalized_config(raw, filename, source_directory, bundle_path):
         )
     except (UnicodeError, tomllib.TOMLDecodeError) as exc:
         raise ContractError("plan.config", "invalid source encoding or TOML") from exc
-    defaulted = []
     if filename.endswith(".toml"):
         require_input(config, "config")
         validate_document("config_input", config)
@@ -41,7 +40,6 @@ def normalized_config(raw, filename, source_directory, bundle_path):
             for key, value in defaults.items():
                 if key not in target:
                     target[key] = deepcopy(value)
-                    defaulted.append(f"{section}.{key}")
     validate_runtime_config(config)
     origin = Path(source_directory)
     for section, key in PATH_FIELDS:
@@ -63,11 +61,11 @@ def normalized_config(raw, filename, source_directory, bundle_path):
             str((origin / value).resolve()) for value in config["evidence"][key]
         ]
     config["bundle"]["path"] = bundle_path
-    return config, tuple(defaulted)
+    return config
 
 
 def runtime_snapshot(workload, raw, source_directory):
-    config, _ = normalized_config(
+    config = normalized_config(
         raw, workload["config"]["path"], source_directory, workload["bundle"]["path"]
     )
     content = json_bytes(config)
@@ -169,7 +167,7 @@ def read_frozen_plan(path):
         validate_document("bundle", bundle)
         _, snapshot_raw = source_bytes(root, binding["config"])
         snapshot = strict_json_loads(snapshot_raw.decode())
-        expected, defaulted = normalized_config(
+        expected = normalized_config(
             raw, workload["config"]["path"], binding["source_directory"], workload["bundle"]["path"]
         )
         if json_bytes(snapshot) != json_bytes(expected):
@@ -194,8 +192,5 @@ def read_frozen_plan(path):
             root / binding["config"]["path"],
             Document.parse("config", config),
             Document.parse("bundle", bundle),
-            binding["config"]["sha256"],
-            workload["bundle"]["sha256"],
-            defaulted,
         )
     return plan, loaded

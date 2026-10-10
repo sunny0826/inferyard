@@ -133,9 +133,6 @@ def test_public_configuration_verification_keeps_match_and_mismatch_semantics(
         Path("synthetic.toml"),
         Document.parse("config", data["config"]),
         Document.parse("bundle", data["bundle"]),
-        "a" * 64,
-        "b" * 64,
-        (),
     )
     monkeypatch.setattr(cli, "load_config", lambda path: loaded)
     matched = invoke(capsys, ["verify", "--path", public, "--config", "synthetic.toml"])

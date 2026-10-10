@@ -111,12 +111,7 @@ def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[Lo
     if not source.exists():
         source = root / "config.frozen.json"
     return LoadedConfig(
-        source,
-        Document.parse("config", config),
-        Document.parse("bundle", bundle),
-        sha256_file(source),
-        sha256_file(root / "bundle.json"),
-        (),
+        source, Document.parse("config", config), Document.parse("bundle", bundle)
     ), parent
 
 
@@ -158,14 +153,6 @@ async def execute_async(request, dependencies: Dependencies | None = None):
     )
     source_name = "config.input.toml" if loaded.source.suffix == ".toml" else "config.input.json"
     store.text_snapshot(source_name, loaded.source.read_text())
-    store.snapshot(
-        "input-provenance.json",
-        {
-            "input_config_sha256": loaded.input_sha256,
-            "input_bundle_sha256": loaded.bundle_sha256,
-            "defaulted_fields": list(loaded.defaulted_fields),
-        },
-    )
     if parent:
         store.snapshot(
             "parent.json",

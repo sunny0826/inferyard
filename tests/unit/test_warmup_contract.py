@@ -40,7 +40,6 @@ def test_warmup_default_stays_three_and_choice_changes_plan_binding(config_path)
     loaded = load_config(config_path)
     config = loaded.config.to_dict()
     assert config["execution"]["warmup_count"] == 3
-    assert "execution.warmup_count" in loaded.defaulted_fields
     old = compile_single_plan(config, loaded.bundle.to_dict(), experiment_id="warmup-binding")
     changed = deepcopy(config)
     changed["execution"]["warmup_count"] = 0

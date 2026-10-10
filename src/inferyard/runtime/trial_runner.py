@@ -206,8 +206,6 @@ async def run_trial(
             Path(config["engine"]["runtime_library_manifest"])
         )
         store.snapshot("environment.start.json", identity["environment"])
-        if single and "device_preflight" in identity:
-            store.snapshot("device.preflight.json", identity["device_preflight"])
         adapter = deps.adapter(identity["origin"], secret=secret)
         guard(config, files)
         if single:

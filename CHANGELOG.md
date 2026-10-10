@@ -13,6 +13,11 @@
 
 ### Changed
 
+- `run` preflight no longer builds the unused device recommendation and hardware
+  snapshot, no longer spawns `nvidia-smi` on non-CUDA backends, and no longer
+  writes `device.preflight.json` or `input-provenance.json`. The identity record
+  keeps only the preflight free-disk figure the report reads. Existing evidence
+  is read unchanged.
 - Live entry points now create a clean host state automatically when acquiring
   the host lock for the first time; no explicit initialization step is needed
   on new machines.

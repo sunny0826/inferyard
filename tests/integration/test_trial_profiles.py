@@ -67,7 +67,7 @@ def test_profile_admission_order_and_artifact_boundaries(scenario, monkeypatch, 
     assert code == 0
     assert order == (["reuse", "review"] if single else ["review", "reuse"])
     files = {p.name for p in root.iterdir()}
-    assert ("input-provenance.json" in files) is single
+    assert "input-provenance.json" not in files
     assert ("config.input.toml" in files) is single
     assert ("input-target-check.json" in files) is not single
     assert ("execution-budget.json" in files) is not single

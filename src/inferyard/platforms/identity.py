@@ -453,7 +453,8 @@ def static_preflight(
     ancestor = root
     while not ancestor.exists():
         ancestor = ancestor.parent
-    check_resources(config, environment["mem_available_bytes"], shutil.disk_usage(ancestor).free)
+    disk_free = shutil.disk_usage(ancestor).free
+    check_resources(config, environment["mem_available_bytes"], disk_free)
     from inferyard.config.environment_binding import admission
 
     environment_admission = admission(
@@ -463,29 +464,11 @@ def static_preflight(
         raise PreflightError("frozen_environment_mismatch")
     if not all(item.unchanged() for item in identities):
         raise PreflightError("identity_file_changed")
-    from inferyard.platforms.device_preflight import hardware_snapshot, recommend
-
-    hardware = hardware_snapshot(
-        ancestor, environment, **({"gpu_observation": gpu} if gpu is not None else {})
-    )
-    model = {
-        "path": config["model"]["local_path"],
-        "name": config["model"].get("display_name", "local"),
-        "size_bytes": identities[0].size,
-        "status": "available",
-        "context_length": config["conditions"].get("context_size", 4096),
-    }
-    device_preflight = {
-        "hardware": hardware,
-        "recommendation": recommend(hardware, [model], model_loaded=True),
-        "requested_backend": config["engine"].get("backend", "cpu"),
-    }
     return {
         "origin": origin,
         "process": process,
         "environment": environment,
         "verification": "verified",
-        "hashing_affects_page_cache": True,
         "environment_admission": environment_admission,
-        "device_preflight": device_preflight,
+        "device_preflight": {"hardware": {"disk_free_bytes": disk_free}},
     }, identities
