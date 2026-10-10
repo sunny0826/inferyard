@@ -20,6 +20,8 @@ class TrialEvidence:
         self.projection = projection
         self._reads = TrialReads(self.root)
         self.manifest = self._reads.manifest
+        if "manifest.json" in self._reads.errors:
+            raise self._reads.errors["manifest.json"]
         if self.manifest is not None and (
             type(self.manifest) is not dict or type(self.manifest.get("files")) is not dict
         ):
@@ -30,6 +32,12 @@ class TrialEvidence:
             self._reads.errors,
         )
         self.layout_version = identify(self._reads)
+        if self.manifest is not None:
+            require_core(self.manifest, "manifest")
+            try:
+                validate_document("manifest", self.manifest)
+            except ContractError as exc:
+                raise EvidenceError("invalid_manifest") from exc
         self._inputs = None
         if self.layout_version == 2:
             self._inputs = self._reads.checked_json("inputs.json")
@@ -40,9 +48,13 @@ class TrialEvidence:
             for member in self._inputs["documents"].values():
                 require_core(member["payload"], "run.input")
             self._check_sealed("inputs.json")
-        self.container_tails = {}
+        self._container_tails = {}
         self._observations = Observations(self)
         self._prepared = PreparedRequests(self)
+
+    @property
+    def container_tails(self):
+        return {name: list(tails) for name, tails in self._container_tails.items()}
 
     def exists(self, name):
         """Physical inventory query; logical members use has_observation/input."""
@@ -134,6 +146,41 @@ class TrialEvidence:
     def has_observation(self, kind, stage=None, key=None):
         return self.observation(kind, stage, key) is not None
 
+    def observation_keys(self, kind, stage=None):
+        validate_query(kind, stage, "query" if kind == "native_clean_receipt" else None)
+        if self.layout_version == 2:
+            self._observations.scan()
+            return [
+                row["key"]
+                for row in self._observations.records
+                if row["kind"] == kind and (stage is None or row["stage"] == stage)
+            ]
+        if kind != "native_clean_receipt":
+            stages = (stage,) if stage is not None else OBSERVATION_STAGES[kind]
+            if kind in ("identity", "service_properties"):
+                stages = (stage,)
+            return [None for candidate in stages if self.has_observation(kind, candidate)]
+        from inferyard.evidence.native_receipts import clean_receipt_name
+
+        names = {path.name for path in self.root.glob("client-http-clean-*.json")}
+        if self.manifest is not None:
+            sealed = {
+                name for name in self.manifest["files"] if name.startswith("client-http-clean-")
+            }
+            if sealed != names:
+                raise EvidenceError("native_clean_receipt_inventory_mismatch")
+        keys = []
+        for name in sorted(names):
+            receipt = self._reads.checked_json(name)
+            key = receipt.get("request_id") if type(receipt) is dict else None
+            if not isinstance(key, str) or not key or clean_receipt_name(key) != name:
+                raise EvidenceError("native_clean_receipt_binding_mismatch")
+            if receipt.get("run_id") != self.input("run")["run_id"]:
+                raise EvidenceError("native_clean_receipt_binding_mismatch")
+            self._check_sealed(name)
+            keys.append(key)
+        return keys
+
     def observation_reference(self, kind, stage=None, key=None):
         if self.layout_version == 2:
             row = self._observations.get(kind, stage, key)
@@ -222,7 +269,7 @@ class TrialEvidence:
         if name == "request-bodies.jsonl" and self.layout_version == 2:
             raise EvidenceError("prepared_requests_require_identity_query")
         records, tails = self._reads.checked_jsonl(name)
-        if tails and self.manifest is not None:
+        if tails and self.manifest is not None and self.layout_version == 2:
             raise EvidenceError("sealed_jsonl_truncated")
         return records, tails
 

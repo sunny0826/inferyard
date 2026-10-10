@@ -1,7 +1,7 @@
 """Closed observation slots and strict run/trial/sequence binding."""
 
-from inferyard.contracts.schemas_layout import OBSERVATION_STAGES
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.schemas_layout import OBSERVATION_RECORD, OBSERVATION_STAGES
+from inferyard.contracts.validation import ContractError, _validate, validate_document
 from inferyard.evidence.storage import EvidenceError
 
 MULTI_STAGE = {"environment", "effective_parameters"}
@@ -29,11 +29,14 @@ class Observations:
         if self.records is not None:
             return
         rows, self.tails = self.evidence.checked_jsonl("observations.jsonl")
-        self.evidence.container_tails["observations.jsonl"] = self.tails
+        self.evidence._container_tails["observations.jsonl"] = self.tails
         slots, records = set(), []
         for seq, row in enumerate(rows, 1):
             try:
-                validate_document("observation_record", row)
+                if self.evidence.projection:
+                    _validate(row, OBSERVATION_RECORD, "observation_record")
+                else:
+                    validate_document("observation_record", row)
             except ContractError as exc:
                 raise EvidenceError("invalid_observation_record") from exc
             self.evidence._check_identity(row)
@@ -60,4 +63,9 @@ class Observations:
         ]
         if len(matches) > 1:
             raise EvidenceError("ambiguous_observation_query")
+        if matches and self.evidence.projection:
+            try:
+                validate_document("observation_record", matches[0])
+            except ContractError as exc:
+                raise EvidenceError("invalid_observation_record") from exc
         return matches[0] if matches else None

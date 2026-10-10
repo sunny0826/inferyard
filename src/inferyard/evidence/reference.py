@@ -1,5 +1,7 @@
 """Verify real physical bytes and optional container member bindings."""
 
+from pathlib import Path
+
 from inferyard.contracts.schemas_evidence_reference import EVIDENCE_REFERENCE
 from inferyard.contracts.validation import ContractError, _validate
 from inferyard.evidence.storage import EvidenceError, local_file, sha256_file
@@ -14,7 +16,7 @@ def verify_reference(root, ref):
         _reference(ref, "evidence_reference.path")
     except ContractError as exc:
         raise EvidenceError("invalid_evidence_reference") from exc
-    path = local_file(root, ref["path"])
+    path = local_file(Path(root).resolve(), ref["path"])
     member = ref.get("member")
     if member is None:
         try:
