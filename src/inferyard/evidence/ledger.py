@@ -112,7 +112,7 @@ def _inputs(root, reads, limits):
             raise EvidenceError("manifest_run_identity_mismatch")
         if manifest["run_id"] != run["run_id"] or not CORE.issubset(manifest["files"]):
             raise EvidenceError("manifest_missing_core_identity")
-    return documents, limits
+    return documents, limits, trial, workload
 
 
 def read_trial(root: Path, *, metadata=None):
@@ -134,7 +134,7 @@ def read_trial(root: Path, *, metadata=None):
     from inferyard.evidence.request_snapshots import require_current_sources
 
     require_current_sources(root, manifest_files)
-    documents, limits = _inputs(root, reads, limits)
+    documents, limits, trial, workload = _inputs(root, reads, limits)
     reads.check_input_errors()
     run, selection = documents["run"], documents["selection"]
     limits += event_tails
@@ -147,12 +147,6 @@ def read_trial(root: Path, *, metadata=None):
             environment_start=reads.documents.get("environment.start.json", {}),
         )
     cases = {c["case_id"]: c for c in documents["bundle"]["cases"]}
-    trial = trial_for(documents["plan"], run["trial_id"])
-    workload = next(
-        w
-        for w in documents["plan"]["experiment"]["workloads"]
-        if w["workload_id"] == trial["workload_id"]
-    )
     duration = workload["protocol"] if workload["protocol"]["kind"] == "duration" else None
     requests, clock, stopped = reduce_events(events, run, selection, cases, duration=duration)
     from inferyard.evidence.request_snapshots import verify_message_snapshots
@@ -268,7 +262,6 @@ def read_trial(root: Path, *, metadata=None):
             "config.frozen.json",
         )
     ]
-    trial = trial_for(documents["plan"], run["trial_id"])
     if engine_verified:
         evidence.append(
             {"path": "service.props.json", "sha256": reads.hashes["service.props.json"]}

@@ -8,7 +8,6 @@ from inferyard.evidence.capacity_stop import validate_capacity_stop
 from inferyard.evidence.duration_ledger import duration_summary
 from inferyard.evidence.event_ledger import PROJECTION_EVENTS, reduce_events
 from inferyard.evidence.formats import UnsupportedFormat, require_core
-from inferyard.evidence.journal import trial_for
 from inferyard.evidence.lab import verify_lab
 from inferyard.evidence.native import observation_evidence
 from inferyard.evidence.request_snapshots import require_current_sources
@@ -113,16 +112,10 @@ def read_run_projection(root):
     limits = _manifest(root, reads)
     files = reads.manifest["files"] if reads.manifest is not None else {}
     require_current_sources(root, files)
-    documents, limits = _inputs(root, reads, limits)
+    documents, limits, trial, workload = _inputs(root, reads, limits)
     if reads.errors:
         raise next(iter(reads.errors.values()))
     run, selection = documents["run"], documents["selection"]
-    trial = trial_for(documents["plan"], run["trial_id"])
-    workload = next(
-        w
-        for w in documents["plan"]["experiment"]["workloads"]
-        if w["workload_id"] == trial["workload_id"]
-    )
     duration = workload["protocol"] if workload["protocol"]["kind"] == "duration" else None
     retained, tails = [], []
     requests, _, stopped = reduce_events(

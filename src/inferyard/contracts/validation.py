@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import math
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import cache, lru_cache
 from typing import Any
 
 from inferyard import SCHEMA_VERSION
@@ -47,11 +49,14 @@ class QualityState(StrEnum):
     NOT_SCORED = "not_scored"
 
 
-def _field(path: str, key: str) -> str:
+@lru_cache(maxsize=1024)
+def _field_suffix(key: str) -> str:
     # Unknown keys can themselves contain untrusted text. Keep diagnostics bounded.
-    if not _FIELD_NAME.fullmatch(key):
-        return f"{path}.<unknown-field>"
-    return f"{path}.{key}"
+    return "." + key if _FIELD_NAME.fullmatch(key) else ".<unknown-field>"
+
+
+def _field(path: str, key: str) -> str:
+    return path + _field_suffix(key)
 
 
 def _is_type(value: Any, kind: str) -> bool:
@@ -61,89 +66,164 @@ def _is_type(value: Any, kind: str) -> bool:
     return value_type is _JSON_TYPES[kind]
 
 
-def _validate(value: Any, spec: dict, path: str) -> None:
-    value_type = type(value)
+def _compile(spec: dict, nodes: dict):
+    """Compile schema lookups only; validation and first-error order stay unchanged."""
+    identity = id(spec)
+    if identity in nodes:
+        return nodes[identity]
     alternatives = spec.get("oneOf", spec.get("anyOf"))
     if alternatives is not None:
-        # Select a known discriminator to keep nested errors precise.
-        if value_type is dict:
-            for discriminator in ("event_type", "category"):
+        validate = _compile_union(spec, alternatives, nodes)
+    else:
+        validate = _compile_node(spec, nodes)
+    nodes[identity] = validate
+    return validate
+
+
+def _compile_union(spec, alternatives, nodes):
+    branches = tuple(_compile(branch, nodes) for branch in alternatives)
+    discriminators = []
+    for discriminator in ("event_type", "category"):
+        enums = tuple(
+            branch.get("properties", {}).get(discriminator, {}).get("enum", [])
+            for branch in alternatives
+        )
+        dispatch = {}
+        # Only string enums use hashing; other values retain Python membership semantics.
+        if all(type(item) is str for values in enums for item in values):
+            for values, branch in zip(enums, branches, strict=True):
+                for item in dict.fromkeys(values):
+                    dispatch.setdefault(item, []).append(branch)
+        else:
+            dispatch = None
+        discriminators.append((discriminator, enums, dispatch))
+    one_of = "oneOf" in spec
+
+    def validate(value, path):
+        if type(value) is dict:
+            for discriminator, enums, dispatch in discriminators:
                 if discriminator not in value:
                     continue
-                matches = [
-                    branch
-                    for branch in alternatives
-                    if value[discriminator]
-                    in branch.get("properties", {}).get(discriminator, {}).get("enum", [])
-                ]
+                selected = value[discriminator]
+                if dispatch is not None and type(selected) is str:
+                    matches = dispatch.get(selected, ())
+                else:
+                    matches = [
+                        branch
+                        for values, branch in zip(enums, branches, strict=True)
+                        if selected in values
+                    ]
                 if len(matches) == 1:
                     _validate(value, matches[0], path)
                     return
                 if not matches:
                     raise ContractError(_field(path, discriminator), "unsupported enum value")
         successes = 0
-        for branch in alternatives:
+        for branch in branches:
             try:
                 _validate(value, branch, path)
                 successes += 1
             except ContractError:
                 pass
-        if not successes or ("oneOf" in spec and successes != 1):
+        if not successes or (one_of and successes != 1):
             raise ContractError(path, "does not match the allowed types or variants")
-        return
+
+    return validate
+
+
+def _compile_node(spec, nodes):
     kinds = spec["type"]
-    if isinstance(kinds, str):
-        matches_type = _is_type(value, kinds)
-    else:
-        matches_type = any(_is_type(value, kind) for kind in kinds)
-    if not matches_type:
-        raise ContractError(path, "invalid type or non-finite number")
-    if "const" in spec and value != spec["const"]:
-        raise ContractError(path, "must equal the fixed contract value")
-    if "enum" in spec and value not in spec["enum"]:
-        raise ContractError(path, "unsupported enum value")
-    if value_type in (int, float):
-        # Keep the original check order and inclusive/exclusive comparisons.
-        if "minimum" in spec and not value >= spec["minimum"]:
-            raise ContractError(path, "violates minimum")
-        if "maximum" in spec and not value <= spec["maximum"]:
-            raise ContractError(path, "violates maximum")
-        if "exclusiveMinimum" in spec and not value > spec["exclusiveMinimum"]:
-            raise ContractError(path, "violates exclusiveMinimum")
-        if "exclusiveMaximum" in spec and not value < spec["exclusiveMaximum"]:
-            raise ContractError(path, "violates exclusiveMaximum")
-    if value_type is str:
-        if len(value) < spec.get("minLength", 0):
-            raise ContractError(path, "must not be empty")
-        if len(value) > spec.get("maxLength", len(value)):
-            raise ContractError(path, "string exceeds maximum length")
-        if "pattern" in spec and re.fullmatch(spec["pattern"], value) is None:
-            raise ContractError(path, "invalid format")
-    if value_type is list:
-        if len(value) < spec.get("minItems", 0):
-            raise ContractError(path, "too few items")
-        if len(value) > spec.get("maxItems", len(value)):
-            raise ContractError(path, "too many items")
-        if "items" in spec:
-            for index, item in enumerate(value):
-                _validate(item, spec["items"], f"{path}[{index}]")
-    if value_type is dict:
-        if len(value) < spec.get("minProperties", 0):
-            raise ContractError(path, "too few fields")
-        properties = spec.get("properties", {})
-        for key in spec.get("required", []):
-            if key not in value:
-                raise ContractError(_field(path, key), "required field missing")
-        for key, item in value.items():
-            if type(key) is not str:
-                raise ContractError(path, "field names must be strings")
-            field_path = _field(path, key)
-            if key in properties:
-                _validate(item, properties[key], field_path)
-            elif spec.get("additionalProperties") is False:
-                raise ContractError(field_path, "unknown field")
-            elif isinstance(spec.get("additionalProperties"), dict):
-                _validate(item, spec["additionalProperties"], field_path)
+    kinds = (kinds,) if isinstance(kinds, str) else kinds
+    types = tuple(
+        t for kind in kinds for t in ((int, float) if kind == "number" else (_JSON_TYPES[kind],))
+    )
+    has_const, const = "const" in spec, spec.get("const")
+    has_enum, enum = "enum" in spec, spec.get("enum")
+    minimum, maximum = spec.get("minimum"), spec.get("maximum")
+    exclusive_min, exclusive_max = spec.get("exclusiveMinimum"), spec.get("exclusiveMaximum")
+    min_length, max_length = spec.get("minLength", 0), spec.get("maxLength")
+    pattern = re.compile(spec["pattern"]) if "pattern" in spec else None
+    min_items, max_items = spec.get("minItems", 0), spec.get("maxItems")
+    items = _compile(spec["items"], nodes) if "items" in spec else None
+    min_properties = spec.get("minProperties", 0)
+    properties = {
+        key: (_compile(child, nodes), _field_suffix(key))
+        for key, child in spec.get("properties", {}).items()
+    }
+    required = tuple((key, _field_suffix(key)) for key in spec.get("required", []))
+    additional = spec.get("additionalProperties")
+    if isinstance(additional, dict):
+        additional = _compile(additional, nodes)
+
+    def validate(value, path):
+        value_type = type(value)
+        if value_type not in types or (value_type is float and not math.isfinite(value)):
+            raise ContractError(path, "invalid type or non-finite number")
+        if has_const and value != const:
+            raise ContractError(path, "must equal the fixed contract value")
+        if has_enum and value not in enum:
+            raise ContractError(path, "unsupported enum value")
+        if value_type in (int, float):
+            if minimum is not None and not value >= minimum:
+                raise ContractError(path, "violates minimum")
+            if maximum is not None and not value <= maximum:
+                raise ContractError(path, "violates maximum")
+            if exclusive_min is not None and not value > exclusive_min:
+                raise ContractError(path, "violates exclusiveMinimum")
+            if exclusive_max is not None and not value < exclusive_max:
+                raise ContractError(path, "violates exclusiveMaximum")
+        if value_type is str:
+            if len(value) < min_length:
+                raise ContractError(path, "must not be empty")
+            if max_length is not None and len(value) > max_length:
+                raise ContractError(path, "string exceeds maximum length")
+            if pattern is not None and pattern.fullmatch(value) is None:
+                raise ContractError(path, "invalid format")
+        if value_type is list:
+            if len(value) < min_items:
+                raise ContractError(path, "too few items")
+            if max_items is not None and len(value) > max_items:
+                raise ContractError(path, "too many items")
+            if items is not None:
+                for index, item in enumerate(value):
+                    _validate(item, items, f"{path}[{index}]")
+        if value_type is dict:
+            if len(value) < min_properties:
+                raise ContractError(path, "too few fields")
+            for key, suffix in required:
+                if key not in value:
+                    raise ContractError(path + suffix, "required field missing")
+            for key, item in value.items():
+                if type(key) is not str:
+                    raise ContractError(path, "field names must be strings")
+                child = properties.get(key)
+                if child is not None:
+                    _validate(item, child[0], path + child[1])
+                elif additional is False:
+                    raise ContractError(_field(path, key), "unknown field")
+                elif callable(additional):
+                    _validate(item, additional, _field(path, key))
+
+    return validate
+
+
+@cache
+def _compiled_nodes():
+    # Keep runtime acceleration separate from the exported schema dictionaries.
+    nodes = {}
+    for spec in schemas_for().values():
+        _compile(spec, nodes)
+    return nodes
+
+
+def _validate(value: Any, spec: dict | Callable, path: str) -> None:
+    if callable(spec):
+        spec(value, path)
+        return
+    validate = _compiled_nodes().get(id(spec))
+    if validate is None:
+        validate = _compile(spec, {})
+    validate(value, path)
 
 
 def _bundle_invariants(data: dict) -> None:
