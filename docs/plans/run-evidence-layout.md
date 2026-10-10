@@ -356,6 +356,8 @@ test_cost_reads.py/test_validation_reuse.py 的现行合法夹具。C3 仍独占
 
 W1 先交付可消费接口与局部回归，W2/W3 可在各自隔离树编辑，但等待该提交后验证。
 writer schema 沿用 PR1 已冻结的声明；若需要改变合法状态，先报 root，不自行放宽读取校验。
+`has_observation(kind, *, stage=None, key=None)` 查询 writer 已成功耐久的槽，替代身份与环境
+发布时的旧 `path.exists()` 判断；它不得将失败或尚未同步的 append 计为已有记录。
 共享采样器使用领域声明接口时，通用 EvidenceStore 只保留其独立产物需要的声明映射；
 BaselineJournal 在自己的 `trial_control_baseline.v1` buffer 中保留原字段与快照键，不能变成 layout 2 run。
 任何旧 run 构造仅限测试公开合成 fixture，不导入历史 validation 数据、不新增生产旧 writer。

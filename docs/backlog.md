@@ -45,7 +45,8 @@ Omarchy 同样保留 1 GiB 内存下限，单次运行未配置温停，也未�
 T0 已完成源码盘点、[ADR 048](decisions/048-run-evidence-containers.md)、[共享接口契约](contracts/run-evidence-layout.md)与[隔离文件归属](plans/run-evidence-layout.md#appendix-e-并行实施归属与依赖)，实现与验收进行中。
 PR1 reader、证据消费方及外部入口已本地集成；全量软件回归首轮为 4,839 通过、13 失败、
 53 平台或显式原生跳过。封存错误顺序、领域诊断及夹具问题已修复，173 项相关回归通过；
-报告同次读取、重跑原文、observer 分层预算仍在验证，PR1 尚未验收完成。
+重跑原文与 observer 分层预算的 C3 回归已通过并本地提交；报告同次读取仍在修复，
+最终全量回归、live 和性能回执待复核，PR1 尚未验收完成。PR2 文件归属已冻结，尚未启动写入切换。
 初步合成 CLI 已验证旧新来源与损坏拒绝；离线浏览器使用回环 HTTP 后断网，宿主拒绝
 file 入口。两者不代表设备、真实模型或发行验证，最终性能和独立 review 仍待完成。
 实际 single factory 使用内存 Sampler，无 collector 原件；此前 19/172 的统一计数误把 ResourceSampler 当默认。
