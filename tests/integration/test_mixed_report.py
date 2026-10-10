@@ -18,15 +18,15 @@ def test_single_and_experiment_report_share_contract_preserve_denominators_and_b
 ):
     code, result = asyncio.run(execute_async(scenario[0], scenario[1]))
     assert code == 0
-    legacy = Path(result.evidence_dir)
+    single = Path(result.evidence_dir)
     plan, loaded, deps, output = inputs(scenario)
-    code, _, modern = asyncio.run(
+    code, _, experiment = asyncio.run(
         run_trial(
             plan, plan["trials"][0]["trial_id"], loaded, output, diagnostic=True, dependencies=deps
         )
     )
     assert code == 0
-    roots = [legacy, modern]
+    roots = [single, experiment]
     before = {str(p): sha256_file(p) for root in roots for p in root.iterdir() if p.is_file()}
     calls = len(scenario[2])
     out = tmp_path / "mixed"
@@ -36,7 +36,10 @@ def test_single_and_experiment_report_share_contract_preserve_denominators_and_b
     assert not any(index["comparison"]["eligibility"].values())
     assert index["comparison"]["completion_rate_difference"] is None
     assert index["runs"][0]["scan_view"]["length_bins"]
-    assert "plan.json" in index["runs"][0]["evidence"]
+    for run, root in zip(index["runs"], roots, strict=True):
+        assert set(run["evidence"]) == {"inputs.json", "events.jsonl", "manifest.json"}
+        assert all((out / ref).resolve().is_file() for ref in run["evidence"].values())
+        assert (out / run["evidence"]["inputs.json"]).resolve() == root / "inputs.json"
     assert "metric_observations" in index["runs"][0]["summary"]
     html = (out / "report.html").read_text()
     assert "单次" in html and "实验" in html

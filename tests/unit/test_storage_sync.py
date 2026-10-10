@@ -36,7 +36,7 @@ def test_buffer_flush_keeps_pending_fsync_and_only_changed_log_syncs(tmp_path, m
     store.close()
 
 
-def test_failed_fsync_keeps_dirty_state_for_recovery(tmp_path, monkeypatch):
+def test_failed_fsync_preserves_prefix_and_blocks_same_writer_retry(tmp_path, monkeypatch):
     store = storage.EvidenceStore(tmp_path)
     store.flush(sync=True)
     store.observation("environment.jsonl", {"sample": 1})
@@ -49,9 +49,19 @@ def test_failed_fsync_keeps_dirty_state_for_recovery(tmp_path, monkeypatch):
         with pytest.raises(storage.EvidenceError, match="evidence_flush_failed"):
             store.flush(sync=True)
     assert "environment.jsonl" in store._pending_sync
-    store.flush(sync=True)
-    assert not store._pending_sync
+    prefix = (store.path / "environment.jsonl").read_bytes()
+    assert b'"sample":1' in prefix
+    for operation in (
+        lambda: store.flush(sync=True),
+        lambda: store.observation("environment.jsonl", {"sample": 2}),
+        store.seal,
+    ):
+        with pytest.raises(storage.EvidenceError, match="evidence_flush_failed"):
+            operation()
+    assert "environment.jsonl" in store._pending_sync
     store.close()
+    assert (store.path / "environment.jsonl").read_bytes() == prefix
+    assert not (store.path / "manifest.json").exists()
 
 
 @pytest.mark.parametrize("boundary", ["event", "flush_due", "seal"])
