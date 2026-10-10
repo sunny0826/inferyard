@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 
-from inferyard.adapters.prism import BUILD
 from inferyard.evidence.storage import EvidenceError
 from inferyard.evidence.trial_evidence import TrialEvidence
 
@@ -18,6 +17,8 @@ class EngineCapabilities:
 
 
 def bound_capabilities(root, manifest, *, reads=None):
+    from inferyard.adapters.prism import BUILD
+
     own_reads = reads is None
     reads = reads if reads is not None else TrialEvidence(root)
     try:
