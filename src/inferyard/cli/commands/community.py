@@ -49,8 +49,16 @@ def add_commands(commands):
     engine.add_argument("--runtime-receipt", type=Path)
     create.add_argument("--out", type=Path, required=True)
     create.add_argument("--port", type=int, default=48857)
-    create.add_argument("--model-repo", default="local")
+    create.add_argument(
+        "--model-repo", help="repository declaration (default: local, or source record)"
+    )
     create.add_argument("--model-revision")
+    create.add_argument(
+        "--model-source",
+        dest="model_source_record",
+        type=Path,
+        help="explicit source.json; checked against the selected local file",
+    )
     bind = actions.add_parser(
         "bind", help="bind an already running external service without requests"
     )

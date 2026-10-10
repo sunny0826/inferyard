@@ -67,7 +67,8 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 
 本节定义安装包的准备入口，操作示例见[安装指南](installation.md)。
 首批为 Linux x64、Windows x64、macOS arm64；帮助、版本和资源查询仍延迟加载后端。
-这些动作不发送 HTTP 或模型请求，不操作主机锁/dirty，不启动、终止或重启模型服务。
+除下述 `model acquire` 的远程清单和文件获取外，这些动作不发送 HTTP 或模型请求。
+所有准备动作均不操作主机锁/dirty，不启动、终止或重启模型服务。
 `runtime prepare` 和 `config create` 的引擎 `--version` 子进程是明确的例外副作用：
 只查询版本，固定 10 秒超时，不传模型参数；失败不输出成功回执。
 
@@ -75,14 +76,15 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 
 下表是完整的新命令参数集；所有 `--out NEW` 都是**不存在的新目录**，不是 TOML 文件名。
 各路径参数按调用 cwd 解析，写出的配置和 stdout 路径为绝对路径；安装资源用包资源 API 读取，
-不查找仓库根。所有命令支持 `--help`，不提供 `--force`、下载、启动或跳过核验开关。
+不查找仓库根。所有命令支持 `--help`，不提供 `--force`、启动或跳过核验开关。
 
 | 命令 | 必填参数 | 可选参数及默认值 | 平台和新目录布局 |
 | --- | --- | --- | --- |
+| `model acquire` | `--source URL --out NEW` | `--token-env NAME`：只接受环境变量名 | 三平台；单 GGUF 文件的基名和 `source.json`，失败目录保留 |
 | `init` | `--out NEW` | `--bundle {zh-smoke,zh-core,zh-svg-pelican}`；省略时导出 `zh-core` 和 `zh-svg-pelican` | 三平台；`README.md`、`configs/{linux,macos,windows}.example.toml`、`bundles/NAME.json`、`assets/`、`results/`、`preparation.json` |
 | `runtime prepare` | `--profile NAME --archive FILE --out NEW` | `--runtime-archive FILE`，仅 CUDA 必填，CPU 禁止 | 仅 Windows x64；`engine/`、CUDA 的 `runtime/`、`engine/engine-sha256.json`、`runtime-receipt.json` |
 | `config assets` | `--model FILE --engine FILE --out NEW` | 无 | 仅 Linux x64；`chat-template.jinja`、`engine-sha256.json`、`assets.json` |
-| `config create` | `--preflight FILE --bundle FILE --results DIR --out NEW`；另按平台指定下述参数 | `--port INT` 默认 48857，范围 1..65535；`--model-repo TEXT` 默认 `local`；`--model-revision TEXT` 默认所选模型 SHA256，显式文本须非空 | 仅 macOS arm64 / Windows x64；`candidate.toml`、`chat-template.jinja`、`preparation.json`；macOS 另有 `engine-sha256.json`，Windows 引用回执目录清单 |
+| `config create` | `--preflight FILE --bundle FILE --results DIR --out NEW`；另按平台指定下述参数 | `--port INT` 默认 48857，范围 1..65535；`--model-source FILE` 显式来源记录；无记录时 `--model-repo TEXT` 默认 `local`、`--model-revision TEXT` 默认所选模型 SHA256，显式文本须非空 | 仅 macOS arm64 / Windows x64；`candidate.toml`、`chat-template.jinja`、`preparation.json`；macOS 另有 `engine-sha256.json`，Windows 引用回执目录清单 |
 | `config bind` | `--candidate FILE --pid INT --endpoint URL --out NEW` | 无；PID 应为正整数 | 三平台及既有可绑定适配器；`config.toml`、`preparation.json` |
 
 `runtime prepare` 的 NAME 只有 `prism-b10743-adfffbe-win-cpu-x64` 和
@@ -91,10 +93,42 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 `config create` 在 macOS 必填 `--engine FILE` 且禁止 `--runtime-receipt`；
 Windows 必填 `--runtime-receipt FILE` 且禁止 `--engine`。两者不能同时提供。
 不提供跨平台模拟生成参数；Linux 使用 `config assets` 和示例手工冻结配置。
+`--model-source` 只读取显式传入的 `remote_model_source.v1` 记录，不按目录查找旧记录。
+记录的大小和 SHA256 必须等于当次所选文件；候选生成复用当次文件哈希，不重复扫描模型。
+省略 repo/revision 声明时使用记录中的 repository/revision，显式声明冲突则返回
+`model_source_metadata_mismatch` / 2。缺少转换和量化证据时不生成 `model_lineage`；
+普通比较仍遵循[证据血缘规则](data-contract.md#证据血缘与比较结论)。
 `--results` 只冻结结果根并检查所在卷，不创建运行或覆盖结果；它可为现有目录，
 每次实际运行仍按原规则创建新的 run。它不能位于安装包目录或本次 `--out` 内。
 
 ### 各动作的冻结行为
+
+`model acquire` 只接受 `https://huggingface.co/OWNER/REPO/blob/REVISION/PATH`
+或 `https://modelscope.cn/OWNER/REPO/blob/REVISION/PATH`，revision 必须是 40 位十六进制。
+PATH 可包含子目录，但只能是一个 `.gguf` 文件；输出使用其文件基名。
+可变 main/master、凭据、query、fragment、非 ASCII 和路径穿越均拒绝。
+`--token-env` 引用的值只在获取子进程中读取；token、请求头和原始响应正文不输出或持久化。
+元数据重定向只允许原平台主机；文件最多一次重定向，只允许原主机或对应的
+`*.hf.co` / `*.modelscope.cn`。CDN 仅保留受限的签名 query，不转发 Authorization。
+获取先核对远程清单，再流式计数和计算 SHA256；flush/fsync 和关闭完成后才原子改名。
+一般期限为总 1800 秒、网络读取 180 秒、失败收尾 60 秒；声明大小加临时开销须满足
+可用空间，文件上限 20 GiB。下载和写盘在可取消的直接子进程执行，子进程不创建后代。
+`source.json` 保存 `remote_model_source.v1`、parser、metadata_sha256、bytes、sha256
+及平台、仓库、固定 revision、仓库内路径和获取时间，不保存原始清单。
+成功为 `prepared` / `complete` / 0，details 含 `ready_to_run=false`。
+失败原因固定为 `invalid_model_source`、`model_source_metadata_mismatch`、
+`model_acquire_incomplete`、`output_exists`（退出 2）、`io_error`（退出 4）、
+`cancelled`（退出 130）。取消和失败停止自有子进程，已开始的失败目录保留，不能重用。
+模型文件与清单一致不证明可加载、服务就绪或测评完成。`run` 仍不接收模型 URL。
+
+```bash
+inferyard model acquire --source 'https://huggingface.co/OWNER/REPO/blob/COMMIT40/sub/model.gguf' --out bench-work/models/new
+inferyard device-check --model bench-work/models/new/model.gguf --out bench-work/preflight --json
+inferyard config create --preflight bench-work/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-work/bundles/zh-smoke.json --results bench-work/results --out bench-work/candidate --model-source bench-work/models/new/source.json
+```
+
+`COMMIT40` 是占位符，必须替换为实际固定 revision；示例候选命令适用于 macOS，
+Windows 改用 `--runtime-receipt FILE`，Linux 继续手工配置。服务由操作者另外启动。
 
 1. `init` 导出三个平台的去设备化占位示例。省略 `--bundle` 时导出 `zh-core` 和
    `zh-svg-pelican`；显式 `--bundle` 只导出一个固定题包。示例明确未绑定且不能直接运行；

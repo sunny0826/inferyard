@@ -69,7 +69,9 @@ def build_request(
         for key in CommandRequest.__dataclass_fields__
         if key not in ("command", "config") and key in values
     }
-    preserve_links = community or args.command.startswith("engine-fit ")
+    preserve_links = (
+        community or args.command == "model acquire" or args.command.startswith("engine-fit ")
+    )
     for key, value in options.items():
         if isinstance(value, Path):
             options[key] = value.absolute() if preserve_links else value.resolve()
