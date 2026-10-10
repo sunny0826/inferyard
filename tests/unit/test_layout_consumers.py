@@ -426,3 +426,28 @@ def test_missing_run_inputs_cannot_fall_back_to_independent_environment_sidecars
     (tmp_path / "events.jsonl").write_bytes(b"")
     with pytest.raises(EvidenceError, match="run_evidence_missing"):
         environment_reads(tmp_path)
+
+
+@pytest.mark.parametrize("filename", ["observations.jsonl", "request-bodies.jsonl"])
+@pytest.mark.parametrize("sealed", [False, True])
+def test_container_tail_retains_denominator_and_rejects_sealed_run(tmp_path, filename, sealed):
+    _, new = synthetic_pair(tmp_path)
+    before = read_trial(new)
+    path = new / filename
+    tail_offset = path.stat().st_size
+    with path.open("ab") as stream:
+        stream.write(b'{"unfinished":')
+    if sealed:
+        seal_layout(new, before["run"])
+        with pytest.raises(EvidenceError, match="sealed_jsonl_truncated"):
+            read_trial(new)
+    else:
+        (new / "manifest.json").unlink()
+        result = read_trial(new)
+        assert result["summary"]["counts"] == before["summary"]["counts"]
+        assert result["summary"]["completeness"] == "incomplete"
+        assert result["summary"]["scope_complete"] is False
+        assert result["summary"]["evidence_complete"] is False
+        assert (
+            f"{filename}:truncated_tail_at_byte:{tail_offset}" in result["summary"]["limitations"]
+        )
