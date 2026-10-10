@@ -9,6 +9,10 @@
 项目采用 [MIT 许可证](LICENSE)。
 产品为 Python CLI + 自包含 HTML，包名 `inferyard`，命令为 `inferyard`。
 
+当前源码另含 macOS [应用内存诊断](docs/contracts/memory-check-contract.md)：
+`inferyard memory-check` 输出应用/进程 RSS 与判断依据，供用户确认用途；
+不会关闭应用，也不保证退出后释放多少内存。已发布的 PyPI 0.0.1 构建尚不含此命令。
+
 ## 安装
 
 从 PyPI 安装固定版本：

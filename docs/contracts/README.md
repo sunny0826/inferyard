@@ -7,6 +7,7 @@
 | 当前格式清理与主机状态 | [格式矩阵、主机状态与安装资格](inferyard-current-format.md) |
 | 执行窗口 | [持续负载发送准入](duration-send-contract.md) |
 | 平台身份与采集 | [macOS](macos-contract.md) · [Windows Prism 批量](windows-prism-batch-contract.md) |
+| 应用内存诊断 | [memory-check](memory-check-contract.md) |
 | 引擎适配 | [engine-fit](engine-fit-contract.md) · [Windows KVMem/NInfer](windows-ninfer-adaptation-contract.md) |
 | 观测与原生接口 | [lab 解析与 Windows 身份](windows-ninfer-adaptation-t0.md) · [独立 observer](observer-contract.md) |
 | 分析与呈现 | [职责身份与校准](scoped-measurement-contract.md) · [报告](report-contract.md) · [离线读取与定位](offline-reading-contract.md) |

@@ -125,6 +125,7 @@ def test_cli_reexports_the_single_application_type_definitions():
         "model_repo",
         "model_revision",
         "port",
+        "protect_pids",
     )
     assert tuple(field.name for field in fields(CommandResult)) == (
         "command",
@@ -149,6 +150,7 @@ def test_cli_reexports_the_single_application_type_definitions():
         ("run", "inferyard.runtime.batch_runner", True),
         ("resume", "inferyard.runtime.batch_runner", False),
         ("device-check", "inferyard.platforms.device_preflight", False),
+        ("memory-check", "inferyard.application.memory_check", False),
         ("extension-freeze", "inferyard.extensions.workflow", False),
         ("extension-run", "inferyard.extensions.workflow", False),
         ("extension-replay", "inferyard.extensions.workflow", False),

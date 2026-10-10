@@ -2,6 +2,9 @@
 
 `device-check` 在 macOS、Linux、Windows 读取本机 CPU、内存、磁盘和可观测 GPU；可扫描已有 GGUF 元数据并估算 CPU/CUDA/Metal 容量。不下载模型、不加载张量、不发送模型请求、不管理服务。
 
+macOS 上需要排查其他应用占用时运行 `inferyard memory-check`；它提供应用/进程 RSS 和保护原因，
+由用户决定是否手动退出，退出后重新检查。见[应用内存诊断契约](contracts/memory-check-contract.md)。
+
 ```bash
 inferyard device-check
 inferyard device-check --json

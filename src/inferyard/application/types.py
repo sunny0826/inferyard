@@ -79,6 +79,7 @@ class CommandRequest:
     model_repo: str | None = None
     model_revision: str | None = None
     port: int | None = None
+    protect_pids: list[int] | None = None
 
 
 @dataclass(frozen=True, slots=True)

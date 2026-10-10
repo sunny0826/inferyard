@@ -7,7 +7,7 @@
 | 用途 | 命令 | 请求范围 |
 | --- | --- | --- |
 | 安装与配置 | `init`、`runtime prepare`、`config assets/create/bind` | 本地准备；prepare/create 有界查询引擎版本，无模型请求 |
-| 设备与目录 | `device-check`、`catalogue` | 本地设备、文件或已安装目录数据 |
+| 设备与目录 | `device-check`、`memory-check`、`catalogue` | 本地设备、进程、文件或已安装目录数据 |
 | 实验准备 | `plan` | 离线预览或冻结实验 |
 | 服务诊断与执行 | `probe`、`overhead`、`prepare-length`、`run`、`resume` | 连接已有模型服务；诊断和准备也可能发送请求 |
 | 派生分析 | `repeat-summary`、`rescore`、`export`、`filter-candidates` | 离线读取已有证据或分析 |
@@ -38,6 +38,11 @@ engine-fit 中断后以 plan.json、checkpoint.json 和 requests.json 只读取�
 不修改保存文件、不搜索磁盘。旧 report/comparison 版本按 ADR038 拒绝。详见[离线读取契约](contracts/offline-reading-contract.md)。
 
 `device-check` 在 macOS/Linux/Windows 只读检测；不指定模型且没有发现模型时返回 `inspected` / 0，显式模型或资源条件不满足仍退出 2。`--out` 要求新目录，保存 JSON，包括模型建议阻断的结果。格式、来源和实时平台边界见[设备检测](device-check.md)。
+
+`memory-check [--protect-pid PID] [--out NEW_DIR]` 在 macOS 只读枚举应用/进程 RSS，默认 JSON，
+保护 PID 可重复；Linux/Windows 当前退出 2。权限/身份/截断等部分结果退出 3，输出写入失败退出 4。
+`--schema memory_check` 导出新诊断结构；它不是正式 run 证据，也不自动关闭进程。
+判断、缺测与来源规则见[应用内存诊断契约](contracts/memory-check-contract.md)。
 
 `engine-fit engines` 返回引擎 ID、平台、资产类型、空闲观察来源和执行前提，
 MLX 项含随安装包交付的 `server_script` 路径，不启动引擎。`plan --model` 接受目录或单 GGUF；
