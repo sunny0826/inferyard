@@ -13,15 +13,15 @@ def unique(values, path):
 
 
 def _reference(ref, path):
-    name = PurePosixPath(ref["path"])
-    if (
-        name.is_absolute()
-        or PureWindowsPath(ref["path"]).drive
-        or ".." in name.parts
-        or any(character in ref["path"] for character in "\\:")
-    ):
+    name = ref["path"]
+    # PurePosixPath.parts discards empty segments and standalone '.', not '..'.
+    parts = tuple(part for part in name.split("/") if part and part != ".")
+    # POSIX absolute paths start with '/'. Every Windows drive/UNC spelling
+    # contains ':' or '\\', or starts with '/', so these checks cover .drive too.
+    if name.startswith("/") or ".." in parts or "\\" in name or ":" in name:
         raise ContractError(path, "requires a relative contained artifact path")
-    if not name.parts or any(part.startswith(".") for part in name.parts):
+    # Match the normalized empty-parts and dot-prefixed-segment checks in order.
+    if not parts or any(part.startswith(".") for part in parts):
         raise ContractError(path, "invalid artifact path")
 
 
