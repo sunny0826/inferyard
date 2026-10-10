@@ -10,9 +10,9 @@ Accepted 表示采纳设计，不代表所有平台已验证。
 | [ADR 003：统一核验与命令分组](003-cli-surface.md) | Accepted |
 | [ADR 004：设备检测的呈现与平台边界](004-device-check.md) | Accepted |
 | [ADR 005：macOS 原生执行](005-macos-runtime.md) | Accepted |
-| [ADR 006：macOS 原生来源与完整采集开销](006-macos-performance-prerequisites.md) | Accepted |
+| [ADR 006：macOS 原生来源与完整采集开销](006-macos-performance-prerequisites.md) | Accepted；电源来源由 ADR 042 修订 |
 | [ADR 007：同次 macOS 身份核验共用新鲜进程文件视图](007-macos-process-view.md) | Accepted |
-| [ADR 008：macOS 环境查询与同次换页读取](008-macos-environment-reads.md) | Accepted |
+| [ADR 008：macOS 环境查询与同次换页读取](008-macos-environment-reads.md) | Accepted；换页来源与全量新读由 ADR 042 修订 |
 | [ADR 009：独立单文件系统与进程监测器](009-native-observer.md) | Accepted |
 | [ADR 010：监测器与测评结果只读适配](010-observer-benchmark-adaptation.md) | Accepted |
 | [ADR 011：自包含离线测评报告](011-report-dashboard.md) | Accepted |
@@ -32,13 +32,19 @@ Accepted 表示采纳设计，不代表所有平台已验证。
 | [ADR 035：按用途区分描述、执行与审核条件](035-purpose-specific-admission.md) | Accepted |
 | [ADR 036：按职责绑定身份、持久化与校准适用域](036-scoped-measurement-cost.md) | Accepted |
 | [ADR 037：原始证据读取与封存呈现分离](037-offline-evidence-reading.md) | Accepted |
-| [ADR 038：InferYard 当前格式边界与主机状态迁移](038-inferyard-current-format.md) | Accepted；锁迁移部分由 ADR 039 取代 |
+| [ADR 038：InferYard 当前格式边界与主机状态迁移](038-inferyard-current-format.md) | Accepted；锁迁移由 ADR 039 取代；报告格式由 ADR 045 修订；新运行身份门由 ADR 046 修订 |
 | [ADR 039：移除主机状态迁移与旧入口退休机制](039-remove-host-state-migration.md) | Accepted |
 | [ADR 040：批次历史投影与离线全量核验分离](040-batch-history-projection.md) | Accepted |
-| [ADR 041：周期环境与调度记录的持久层瘦身](041-environment-persistence-slim.md) | Accepted |
+| [ADR 041：周期环境与调度记录的持久层瘦身](041-environment-persistence-slim.md) | Accepted；每次新读由 ADR 042 修订，落盘字段集仍有效 |
+| [ADR 042：环境采集只复制本轮常量，macOS 电源与换页改原生来源](042-environment-collection-slim.md) | Accepted |
+| [ADR 043：逐次身份复查不再扫描模型地址空间](043-per-request-identity-slim.md) | Accepted |
+| [ADR 044：请求事件不再内嵌第二份 prompt 全文](044-prompt-content-hash.md) | Accepted |
+| [ADR 045：报告里的重复全文改为同一份内容引用](045-report-content-refs.md) | Accepted |
+| [ADR 046：运行身份只保留 implementation_identity 这一条核对](046-single-implementation-identity.md) | Accepted |
+| [ADR 047：重跑不再因工具身份差异拒绝启动](047-rerun-recorded-comparability.md) | Accepted |
 
 ADR 039 删除 `host-state migrate` 与退休机制：实时入口自动初始化 clean 状态，
 旧工具文件完全忽略，主机互斥只覆盖 InferYard 自身进程。
-ADR 038 的格式矩阵、拒绝语义与安装资格版本条款继续有效。
+ADR 038 的格式矩阵、拒绝语义与安装资格版本条款继续有效。当前报告格式与新运行身份门分别改按 ADR 045、ADR 046。
 
 证据解释统一遵循[血缘规则](../data-contract.md#证据血缘与比较结论)。设备专属实验与失效提案已移出当前文档，原历史仍可由 Git 追溯。

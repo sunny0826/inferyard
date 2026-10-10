@@ -16,6 +16,23 @@ from inferyard.platforms.identity import (
 )
 
 
+def test_adapter_rechecks_dns_after_listener_resolution(monkeypatch):
+    from inferyard.adapters.prism import PrismAdapter
+    from inferyard.platforms import identity
+
+    calls = iter(("127.0.0.1", "192.0.2.1"))
+    monkeypatch.setattr(
+        identity.socket,
+        "getaddrinfo",
+        lambda *a, **k: [(None, None, None, None, (next(calls), 80))],
+    )
+    origin, address, _ = identity.service_origin("http://localhost")
+    assert origin == "http://localhost"
+    assert address == "127.0.0.1"
+    with pytest.raises(identity.PreflightError, match="localhost_resolved_outside_loopback"):
+        PrismAdapter(origin)
+
+
 def test_hash_change_and_replacement_are_detected(tmp_path):
     path = tmp_path / "model"
     path.write_bytes(b"model-v1")
@@ -57,8 +74,11 @@ def proc_service(tmp_path):
     )
     config = {
         "endpoint": {"server_pid": 123, "process_start_ticks": 67890},
-        "engine": {"startup_args": ["-ngl", "0"]},
+        "engine": {"startup_args": ["-ngl", "0", "-m", str(model)]},
     }
+    (directory / "cmdline").write_bytes(
+        "\0".join(["server", *config["engine"]["startup_args"], ""]).encode()
+    )
     return proc, config, hash_file(model), hash_file(binary)
 
 
@@ -66,7 +86,8 @@ def test_endpoint_pid_binary_and_model_are_jointly_checked(proc_service):
     proc, config, model, engine = proc_service
     assert process_start_ticks(123, proc) == 67890
     identity = verify_process(config, model, engine, "127.0.0.1", 8080, proc)
-    assert identity["endpoint"] == identity["model_mapping"] == "verified"
+    assert identity["endpoint"] == "verified"
+    assert identity["model_mapping"] == "not_observed"
     with pytest.raises(PreflightError, match="endpoint_pid_mismatch"):
         verify_listener(123, "127.0.0.1", 8081, proc)
     config["endpoint"]["process_start_ticks"] = 67891
@@ -80,7 +101,7 @@ def test_wrong_identity_components_block(proc_service, change):
     if change == "binary":
         engine = model
     elif change == "mapping":
-        (proc / "123/maps").write_text("")
+        Path(model.path).rename(Path(model.path).with_suffix(".old"))
     elif change == "arguments":
         config["engine"]["startup_args"] = []
     else:
@@ -111,7 +132,9 @@ def test_real_proc_start_ticks_can_be_read():
 def test_unmapped_model_requires_matching_startup_inode(proc_service):
     proc, config, model, engine = proc_service
     directory = proc / "123"
-    (directory / "maps").write_text("")
+    (directory / "maps").unlink()
+    config["engine"]["startup_args"] = ["-ngl", "0"]
+    (directory / "cmdline").write_bytes("\0".join(["server", "-ngl", "0", ""]).encode())
     with pytest.raises(PreflightError, match="mapping_unverified"):
         verify_process(config, model, engine, "127.0.0.1", 8080, proc)
     config["engine"]["startup_args"] += ["-m", model.path]
@@ -119,7 +142,7 @@ def test_unmapped_model_requires_matching_startup_inode(proc_service):
         b"\0".join(s.encode() for s in ["server", *config["engine"]["startup_args"], ""])
     )
     result = verify_process(config, model, engine, "127.0.0.1", 8080, proc)
-    assert result["model_mapping"] == "not_retained"
+    assert result["model_mapping"] == "not_observed"
     assert result["model_binding"] == "verified_startup_file_inode"
 
 
@@ -134,15 +157,14 @@ def test_model_argument_forms_keep_mapping_and_inode_checks(proc_service, mapped
     config["engine"]["startup_args"] = args
     (proc / "123/cmdline").write_bytes("\0".join(["server", *args, ""]).encode())
     result = verify_process(config, model, engine, "127.0.0.1", 8080, proc)
-    assert result["model_binding"] == ("mapped_inode" if mapped else "verified_startup_file_inode")
-    assert result["model_mapping"] == ("verified" if mapped else "not_retained")
-    if not mapped:
-        # Same bytes at the declared path cannot substitute for the bound file identity.
-        path = Path(model.path)
-        path.rename(path.with_suffix(".old"))
-        path.write_bytes(b"synthetic model")
-        with pytest.raises(PreflightError, match="service_model_argument_mismatch"):
-            verify_process(config, model, engine, "127.0.0.1", 8080, proc)
+    assert result["model_binding"] == "verified_startup_file_inode"
+    assert result["model_mapping"] == "not_observed"
+    # Same bytes at the declared path cannot substitute for the bound file identity.
+    path = Path(model.path)
+    path.rename(path.with_suffix(".old"))
+    path.write_bytes(b"synthetic model")
+    with pytest.raises(PreflightError, match="service_model_argument_mismatch"):
+        verify_process(config, model, engine, "127.0.0.1", 8080, proc)
 
 
 @pytest.mark.parametrize(

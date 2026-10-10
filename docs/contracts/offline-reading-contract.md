@@ -32,7 +32,7 @@ checkpoint.json 是在途辅助文件，最终封存后固定保留但忽略，�
 
 ## 新呈现封存与定位
 
-report v7 的 artifact-manifest.json 封存 index.json/report.html（比较时另含 comparison.json）。
+report v8 的 artifact-manifest.json 封存 index.json/report.html（比较时另含 comparison.json）。
 comparison v4 保留 phase2.v3 计算语义，使用相对来源定位；旧 v1–v3 不支持。
 engine-fit manifest v2 继续封存原四文件和携带来源；旧 manifest1 返回 unsupported_format/2。
 新验证分别报告 bytes_verified、sources_verified、semantic_verified、render_checked。

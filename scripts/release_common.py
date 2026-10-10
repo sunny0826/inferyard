@@ -221,7 +221,7 @@ def report_format_check(wheel_raw):
             digest.update(name[len(prefix) :].encode() + b"\0")
             digest.update(hashlib.sha256(archive.read(name)).digest())
     return {
-        "current_report_formats_verified": [7],
-        "unsupported_report_formats_rejected": [1, 2, 3, 4, 5, 6],
-        "template_hashes": {"7": digest.hexdigest()},
+        "current_report_formats_verified": [8],
+        "unsupported_report_formats_rejected": [1, 2, 3, 4, 5, 6, 7],
+        "template_hashes": {"8": digest.hexdigest()},
     }

@@ -63,7 +63,7 @@ def test_wrong_artifact_binding_rejected():
 
 def test_public_source_check_is_offline_cli_without_endpoint_or_pid():
     request = _request(
-        parser().parse_args(["public-check", "--run", "/public", "--from-run", "/source"])
+        parser().parse_args(["verify", "--path", "/public", "--source-run", "/source"])
     )
-    assert request.command == "public-check"
+    assert request.command == "verify"
     assert request.endpoint_url is None and request.server_pid is None

@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-from inferyard.cli.commands import compatibility_parser
-
 
 def add_commands(commands):
     export = commands.add_parser("export", help="export analysis as JSON, CSV and Markdown")
@@ -11,7 +9,3 @@ def add_commands(commands):
     source.add_argument("--run", type=Path)
     source.add_argument("--analysis", dest="analysis_path", type=Path)
     export.add_argument("--out", type=Path, required=True)
-    export_check = compatibility_parser(
-        commands, "export-check", "recompute analysis export formats"
-    )
-    export_check.add_argument("--run", type=Path, required=True)

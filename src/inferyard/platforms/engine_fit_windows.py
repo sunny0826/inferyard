@@ -13,7 +13,7 @@ from inferyard.config.engine_fit_native_sources import (
     WINDOWS_START_SOURCE,
 )
 from inferyard.contracts.validation import ContractError
-from inferyard.platforms.identity import PreflightError, resolve_loopback_origin
+from inferyard.platforms.identity import PreflightError, service_origin
 
 
 def _remaining(deadline):
@@ -101,7 +101,7 @@ def bind_service(
         raise PreflightError("engine_fit_lms_options_wrong_engine")
     deadline = time.monotonic() + 10.0
     try:
-        origin, address, port = resolve_loopback_origin(url)
+        origin, address, port = service_origin(url)
         state = _state(pid, deadline)
         start, arguments, raw, executable, cwd, _owner = state
         _environment(pid)

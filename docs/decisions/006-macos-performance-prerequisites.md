@@ -1,6 +1,6 @@
 # ADR 006：macOS 原生来源与完整采集开销
 
-状态：Accepted
+状态：Accepted。电源来源由 [ADR 042](042-environment-collection-slim.md) 改为 IOKit。温度与完整开销的其余条款仍有效。
 
 ## 决策
 

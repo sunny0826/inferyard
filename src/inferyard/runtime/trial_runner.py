@@ -21,7 +21,7 @@ from inferyard.platforms.identity import PreflightError, memory_available
 from inferyard.platforms.resources import ResourceSampler
 from inferyard.registry import WINDOWS_BATCH_ADAPTERS, adapter_factory
 from inferyard.runtime.request_execution import TrialRequests
-from inferyard.runtime.runner import Dependencies
+from inferyard.runtime.runner import Dependencies, transport_config
 from inferyard.runtime.safety import SafetyGuard, monitor
 from inferyard.runtime.safety_trace import SafetyTrace
 from inferyard.runtime.service_observation import observation_manifest
@@ -121,6 +121,7 @@ async def run_trial(
     idle_state = InitialIdle() if single else None
 
     def check_guard(config, files, *, periodic=False):
+        config = transport_config(config, adapter)
         if single:
             # P1: single guard keeps its existing identity scope; no disk/memory safety gate.
             deadline.check()
@@ -208,6 +209,7 @@ async def run_trial(
         if single and "device_preflight" in identity:
             store.snapshot("device.preflight.json", identity["device_preflight"])
         adapter = deps.adapter(identity["origin"], secret=secret)
+        guard(config, files)
         if single:
             deadline.check()
         else:
@@ -253,6 +255,7 @@ async def run_trial(
             if target_check["status"] not in ("not_requested", "matched"):
                 raise PreflightError("input_length_target_" + target_check["status"])
         sampler = deps.sampler(store, config)
+        sampler.use_start_environment(identity["environment"])
         sampler_task = asyncio.create_task(sampler.run())
         execution = TrialRequests(
             store,

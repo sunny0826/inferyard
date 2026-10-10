@@ -28,6 +28,10 @@ class ArgumentError(ValueError):
 
 
 class Parser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("allow_abbrev", False)
+        super().__init__(*args, **kwargs)
+
     def error(self, message):
         # argparse's default diagnostics echo raw arguments, potentially credentials.
         raise ArgumentError("invalid CLI arguments; use --help")
@@ -37,13 +41,7 @@ def parser() -> Parser:
     result = Parser(
         prog="inferyard",
         description="Cross-platform local AI benchmark CLI (in development)",
-        epilog=(
-            "Compatibility entries remain available with their own --help: check, "
-            "overhead-check, repeat-check, rescore-check, export-check, public-check, "
-            "public-config-check, report-check, compare-check, extension-check, "
-            "public-package, public-plan, extension-freeze, extension-run, extension-replay. "
-            "Historical formats must be handled in the original project."
-        ),
+        epilog="Historical formats must be handled in the original project.",
     )
     metadata = result.add_mutually_exclusive_group()
     metadata.add_argument("--version", action="version", version=f"inferyard {__version__}")

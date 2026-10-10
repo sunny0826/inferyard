@@ -31,7 +31,7 @@ def test_valid_comparison_passes_both_entry_points(comparison, capsys):
     path = comparison / "comparison.json"
     saved = read_json(path)
     assert read_verified_comparison(comparison) == saved
-    for command, flag in (("compare-check", "--run"), ("verify", "--path")):
+    for command, flag in (("verify", "--path"),):
         assert main([command, flag, str(comparison)]) == 0
         assert json.loads(capsys.readouterr().out)["status"] == "verified"
     # Whitespace/order do not affect canonical comparison equality; the report
@@ -69,6 +69,6 @@ def test_tampered_bool_and_number_rejected_by_dedicated_and_generic_verify(
         match="comparison_(format_invalid|recomputation_mismatch)|presentation_bytes_changed",
     ):
         read_verified_comparison(comparison)
-    for command, flag in (("compare-check", "--run"), ("verify", "--path")):
+    for command, flag in (("verify", "--path"),):
         assert main([command, flag, str(comparison)]) == 4
         assert json.loads(capsys.readouterr().out)["status"] == "error"

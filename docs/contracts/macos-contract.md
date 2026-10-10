@@ -40,7 +40,7 @@ v3 现有样本原样可读，新 collector 使用同一计量结构但独立来
 | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 原生 SMC | `SMC.keys()` / `info(key)` / `read(key)`；只读 AppleSMC，80 字节 ABI，完整返回状态检查，注册表身份绑定，句柄回收                                           |
 | 温度     | `MacSensors.metadata()` / `collect(phase, request_id)`；`macos-smc.v1`、`smc_key_reported`、摄氏度、原始 float；未知键类型、非有限值、源变化为缺测         |
-| 电源     | `macos_power_policy`：`source=macos.pmset.power-policy.v1`、活动电源、lowpowermode、powermode 及支持标记；`conditions.macos_power_policy` 可选冻结同一对象 |
+| 电源     | `macos_power_policy` 字段不变。新采集 `source=macos.iokit.power-policy.v1`；旧证据和已冻结配置仍接受 `macos.pmset.power-policy.v1`。同一次运行的冻结条件与观测必须是同一个 source。读失败为缺测，不回退 `pmset`，不沿用上一笔 |
 | 环境资格 | 按保存的平台选择身份字段和电源验证；Darwin 应有完整且稳定的原生策略及冻结绑定，Linux CPUFreq 验证不变；缺源不豁免                                          |
 | 正式通路 | 固定单槽直接复用 `run_trial` 的模板/token/有效参数/空闲验证与实际适配器；不扩大并发或原生工具支持                                                          |
 | 性能证据 | 旧比较的总观察 live 包须通过离线封存重算，绑定同源码、配置、题包、case 顺序与同 boot/早于目标；当前总开销分级见职责身份契约                                        |
@@ -80,26 +80,34 @@ v3 现有样本原样可读，新 collector 使用同一计量结构但独立来
 
 ## 环境与换页读取
 
-依据 [ADR 008](../decisions/008-macos-environment-reads.md)。
+依据 [ADR 008](../decisions/008-macos-environment-reads.md) 与 [ADR 042](../decisions/042-environment-collection-slim.md)。跨平台的抄写字段和落盘投影见[数据契约](../data-contract.md#周期环境与调度记录)。
 
 ### 接口与观测权威
 
-| 接口                                                | 冻结语义                                                                                                                                 |
-| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `macos_native.sysctl_string(key)`                   | 每次只读原生字符串键；有界 4096 字节，成功长度及尾 NUL / UTF-8 校验，返回裁剪后的字符串或 `None`；不缓存值，不用于整数键                 |
-| `macos_identity.environment_snapshot()`             | 签名和输出字段不变，CPU 型号改用同键原生读取；每次 `pmset:batt`、`pmset:custom`、内存、boot、swap 仍新读，原生失败为缺测                 |
-| `macos_native.sysctl_text(key)` / `boot_id()`       | 保留现有独立读取和 UUID 校验；其他设备能力查询不切换                                                                                     |
-| `ResourceSampler.counters(pid, ticks, capture=...)` | 签名与 CPU / 换入 / 换出三行顺序不变；CPU 自身读出保留，两个 swap 值同次共用一个 `vm_stat` 快照及同一读取起止时间，每次调用重新读取      |
-| 换页共同身份                                        | boot 在原生读取前 / 后核对；页大小与冻结 scale 相符，系统换页不归因于模型、不把 pageins/pageouts 当 swap                                 |
-| 换页单字段                                          | 来源精确匹配，值为非负整数且拒绝 bool；某字段失败为对应行 `null` 与原因，共同身份失败则两行均缺测                                        |
-| 保存与读取                                          | 保留 `macos-resource.v1`、`vm_stat:Swapins` / `Swapouts`、pages、页大小、主机范围、读取区间 / 中点口径及旧包保存来源；新源码与旧资格分开 |
+| 接口                                                | 冻结语义                                                                                                                 |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `macos_native.sysctl_string(key)`                   | 每次只读原生字符串键；有界 4096 字节，成功长度及尾 NUL / UTF-8 校验，返回裁剪后的字符串或 `None`；不缓存值，不用于整数键 |
+| `macos_identity.environment_snapshot()`             | 可选的本轮常量默认不传。未传时整份新读。传入后按下方「本轮常量」抄写。电源与换页每次新读，失败为缺测                     |
+| `macos_native.sysctl_text(key)` / `boot_id()`       | 保留现有独立读取和 UUID 校验；其他设备能力查询不切换。周期行已有 `boot_id` 时，该行不再读 boot                           |
+| `ResourceSampler.counters(pid, ticks, capture=...)` | 签名与 CPU / 换入 / 换出三行顺序不变；CPU 自身读出保留。两个 swap 值同次共用一次 `host_statistics64` 及同一读取起止时间，每次调用重新读取 |
+| 换页共同身份                                        | boot 在原生读取前 / 后核对；页大小与冻结 scale 相符，系统换页不归因于模型、不把 pageins/pageouts 当 swap                 |
+| 换页单字段                                          | 来源精确匹配，值为非负整数且拒绝 bool；某字段失败为对应行 `null` 与原因，共同身份失败则两行均缺测                        |
+| 保存与读取                                          | 保留 `macos-resource.v1`、pages、页大小、主机范围、读取区间 / 中点口径。新采集来源是 `host_statistics64:swapins` / `swapouts`。旧证据里的 `vm_stat:Swapins` / `Swapouts` 按原字节读取，不重新解释 |
+
+### 本轮常量
+
+只在 `environment.start.json` 已经写入、并且这次调用拿到了那份开跑快照时，周期行才抄常量。结束快照、预检、`device-check`、请求边界，以及没写开跑快照的采样，整份新读。
+
+macOS 上，开跑快照已有 `cpu_model` 时周期行不读 brand string；已有 `boot_id` 时不读 boot；已有 `os_release` 时不读系统版本。可用内存仍每秒读。`memory_total_bytes` 已抄到时，快照总量用抄到的值。
+
+电源每次从 IOKit 新读，来源 `macos.iokit.power-policy.v1`，`ac_sources` 的键是 `iokit:providing-power`。供电源只认 `AC Power` 与 `Battery Power`。活动区的 `LowPowerMode` 只接受 0 或 1；电源模式先看 `powermode`，没有再看 `PowerMode`，都没有则为 `unsupported`。换页每次从 `host_statistics64` 新读 Swapins / Swapouts。两处失败都是缺测，不回退 `pmset` 或 `vm_stat`，不沿用上一笔。
 
 ### 边界与风险
 
-所有观测为调用局部变量，不作为跨请求、周期、进程的共享缓存。CPU 计数与 swap 两行可来自不同原生区间，swap 两行共享区间；不能把这种组织误写为整个资源包是原子快照。字节上限不足或格式异常不使用截断字符串，不启动备用命令，也不沿用旧值。
+动态电源、可用内存和换页不跨请求、周期或进程缓存。本轮常量只在同一轮的周期采样里复用开跑那一次，不跨进程。CPU 计数与 swap 两行可来自不同原生区间，swap 两行共享区间；不能把这种组织误写为整个资源包是原子快照。字节上限不足或格式异常不使用截断字符串，不启动备用命令，也不沿用旧值。
 
-不改 CLI / 应用共享类型、v3、题包 / 评分、采样间隔、环境边界、SafetyGuard、独立 guardian、身份视图、锁 / dirty、取消 / 排空、flush/fsync 或严格默认阈值。环境的电源 API 与来源不换。Schema / catalogue 若存在绑定变更使用生成器同步并保留 ID，不手改生成 JSON。
+不改 CLI / 应用共享类型、v3、题包 / 评分、采样间隔、环境边界、SafetyGuard、独立 guardian、身份视图、锁 / dirty、取消 / 排空、flush/fsync 或严格默认阈值。`device-check` 的读取不在这次更换内。Schema 同时接受新旧电源来源和换页来源；变更用生成器同步并保留 ID，不手改生成 JSON。
 
-替代方案是维持重复读取，或另做电源来源变更；后者不属于此接口。当前只消除有验证基础的原生查询成本，不承诺完整开销一定达到冻结阈值。旧证据保持原字节，读取不调用本机后端重新解释它；完整开销、输出工作量和资格另冻验收。
+同一次运行里来源必须相同。已经冻成 `macos.pmset.power-policy.v1` 的条件与新观测对不上，需要重新冻结。不承诺完整开销一定达到冻结阈值。旧证据保持原字节，读取不调用本机后端重新解释它；完整开销、输出工作量和资格另冻验收。
 
 当前 comparison v3/v4 的总开销与可选增量诊断、跨目标复用条件见[职责身份契约](scoped-measurement-contract.md)。

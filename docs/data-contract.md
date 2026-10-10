@@ -10,7 +10,7 @@
 
 ## 一种运行包
 
-统一沿用实验/轮次身份：`experiment_id`、`trial_id`、`run_id`、`request_id` 和计划哈希。`run --config` 在请求前编译为一个 workload、一个 trial；`run --plan` 执行显式冻结实验。`probe`（兼容入口 `check`）只探测，不产生正式成绩。
+统一沿用实验/轮次身份：`experiment_id`、`trial_id`、`run_id`、`request_id` 和计划哈希。`run --config` 在请求前编译为一个 workload、一个 trial；`run --plan` 执行显式冻结实验。`probe` 只探测，不产生正式成绩。
 
 运行包的 wire 枚举仍为 `kind = check | run`（`probe` 写入 `check`）、`execution_mode = single | experiment`、`origin = measured | migrated`（Schema 枚举保留，但应用拒绝 migrated）。两种执行方式使用同一 Journal 和 ledger。Windows 单次及受支持的批量入口保留原生身份与内存采样；macOS 通过平台工厂使用原生采集器，不调用 Linux 专用采集。
 
@@ -59,7 +59,7 @@ JSON 快照；内部编译可消费同 kind 快照，原始 dict 仍完整校验
 
 评分身份每命令每版本计算一次；选中 case 的规则准备一次，结构 validator 复用。
 公开评分输入、自定义 scorer 结果与外部证据仍在边界核验。源码修改改变真实评分身份；
-rescore-check/递归血缘身份不匹配返回 `rescore_scorer_identity_changed`、退出 4，
+`verify` 的重评分核验在递归血缘身份不匹配时返回 `rescore_scorer_identity_changed`、退出 4，
 不返回 verified，不证明篡改。来源 manifest 和已有血缘哈希必须继续核验。
 
 新预算文件 `token-budgets.v2.json` 为
@@ -76,16 +76,16 @@ budget 保留适配器原记录；lab 严格六键放在 budget 内，不允许�
 `TrialReads` 在一次归约内复用环境起止快照、周期环境、调度和外部 CPU 日志的
 解析结果与原字节摘要。manifest 核验和环境归约消费同一读取，不跳过坏哈希、
 严格 JSON 或末尾截断检查。下一次归约重新读取，不能继承前次成功。
-当前 ledger 的规范 JSON 输出保持等价；report 仅接受 v7，comparison 仅接受 format4 / phase2.v3。
-旧 report v1–v6、comparison format1–3 不再读取或重建，返回 `unsupported_format` / 2。
+当前 ledger 的规范 JSON 输出保持等价；report 仅接受 v8，comparison 仅接受 format4 / phase2.v3。
+旧 report v1–v7、comparison format1–3 不再读取或重建，返回 `unsupported_format` / 2。
 命令内复用见 [ADR 034](decisions/034-command-local-reuse.md)，旧格式支持已由
 [ADR 038](decisions/038-inferyard-current-format.md) 收窄。
 
 ## 批次历史投影
 
 `run --plan` / `resume` 的 `history()` 使用 `read_run_projection`，只还原后续发送和
-结果摘要实际消费的字段。`verify`（run/batch）、`report`、`repeat-summary` 和
-`repeat-check` 继续使用完整 `read_trial`；用途分离的理由见
+结果摘要实际消费的字段。`verify`（run/batch，以及重复摘要核验）、`report` 和 `repeat-summary`
+继续使用完整 `read_trial`；用途分离的理由见
 [ADR 040](decisions/040-batch-history-projection.md)。不改变 v3 格式或跨命令保存缓存。
 
 | 消费数据 | 来源与校验 |
@@ -114,7 +114,8 @@ manifest 的结构、合法文件路径、原始文件存在性和大小检查�
 
 ## 周期环境与调度记录
 
-[ADR 041](decisions/041-environment-persistence-slim.md) 修订 v3 周期持久化字段集；
+[ADR 041](decisions/041-environment-persistence-slim.md) 修订 v3 周期持久化字段集，
+[ADR 042](decisions/042-environment-collection-slim.md) 修订本轮常量的采集次数和 macOS 电源、换页来源；
 核心 `schema_version = 3` 与现有格式支持集不变，不新增 Schema kind。
 `environment.jsonl` 的 `snapshot` 在写盘时仅移除 `cpu_flags`、`os_release`、`gpu`、
 `mem_available_bytes`、`page_size_bytes`，其余快照字段原样保留。特别保留：
@@ -126,7 +127,23 @@ manifest 的结构、合法文件路径、原始文件存在性和大小检查�
 - 已有来源、boot、限制和读取区间字段，以及外层 `monotonic_ns`、`phase` 等观测字段。
 
 `environment.start.json` / `environment.end.json` 保持完整快照。
-运行时 `environment_snapshot()` 的签名、输出和每次新读不变；采样频率不变。
+结束快照、预检、`device-check` 和请求边界观测每次都是新读。采样频率不变。
+
+同一轮在 `environment.start.json` 写入之后，周期采集把开跑快照里已经出现的下列字段抄进后续周期快照，包括当时的空值；开跑快照没有的键不补造：
+`platform`、`kernel`、`architecture`、`cpu_model`、`logical_cpus`、
+`memory_total_bytes`、`os_release`、`cpu_flags`、`boot_id`、`page_size_bytes`、
+`gpu`、`evidence_durability`。
+抄写发生在上面的写盘投影之前，所以被投影去掉的五项不会因为抄写而重新出现在 `environment.jsonl`。
+已抄到的字段不再为周期行重读后覆盖，具体停读范围见 [ADR 042](decisions/042-environment-collection-slim.md)。
+
+下列字段每秒新读，不抄：
+`ac_online`、`ac_sources`、`profile`、`governor`、`epp`、`scaling_driver`、
+`cpu_policies`、`macos_power_policy`、`swap_pages`、`mem_available_bytes`。
+没有开跑快照的采样整份新读。
+
+因此周期记录看不到这些常量中途变化又在结束前恢复的情况。
+`logical_cpus` 与 `memory_total_bytes` 的热插拔也只出现在结束快照。
+变化若保持到结束，结束快照的新读仍能发现。
 报告系统版本、GPU 和开始时可用内存来自 start 快照。
 资源换页计算的 `page_size_bytes` 来自 `memory.jsonl` 样本，并与 `collector.json`
 核对；不从周期环境记录补值或推导 scale。
@@ -138,8 +155,10 @@ manifest 的结构、合法文件路径、原始文件存在性和大小检查�
 
 旧证据读取政策：旧 v3 全量周期记录、带 `queue_depth` 的调度记录继续按原字节读取，
 不因这些额外字段拒绝，不迁移或改写封存。保留字段用 `.get` 读取；身份缺失仍记录
-`environment_unknown:*` 并阻止资格成立，不使用 start/end 回填周期身份或忽略变化。
-旧/新记录的 `assess_environment`、`assess_schedule` 与环境资格结果必须相同；
+`environment_unknown:*` 并阻止资格成立。读侧不使用 start/end 回填周期身份，
+也不抹掉旧记录里已经写下的中途变化。
+ADR 041 的落盘投影不改变同一份快照的 `assess_environment`、`assess_schedule` 与环境资格。
+ADR 042 改的是新运行怎么采集：新周期身份与开跑快照一致，只有结束快照能发现保持到结束的身份变化。
 原有严格 JSON、封存哈希、时间和来源校验不变。
 
 合法旧/新样例及非法缺键、bool、负值、错误结构的回归位于
@@ -179,7 +198,7 @@ Schema 不扩展 CPU/传感器枚举；正式 Prism 批量分派与缺测证据�
 
 公开项目、Python 包和 CLI 名称统一为 `inferyard`，独立监测命令为 `inferyard-observer`。
 监测流仅接受 `lab_observer.v2`。核心 Schema 仍为 v3，`urn:local-ai-bench:` 不变；
-题包与审核证明原字节保留。报告仅接受 v7、比较仅接受 format4 / phase2.v3、公开包仅接受 v5。
+题包与审核证明原字节保留。报告仅接受 v8、比较仅接受 format4 / phase2.v3、公开包仅接受 v5。
 新锁使用 inferyard-host.*，实时入口首次运行自动初始化，旧工具文件完全忽略，见[当前格式契约](contracts/inferyard-current-format.md)。
 源码与模板变化产生新身份，不继承旧测量、评分或性能资格。
 
@@ -205,7 +224,7 @@ CLI stdout 为 JSON，`device-check` 默认人类摘要，Agent 使用 `--json` 
   plan/run 的 definition_versions.comparison 保持 phase2.v1。
   observed_differences 与 eligibility 分开：前者描述当前样本，后者仍为受控结论。
   总体质量必须同题/同规则/同评分器/同分母且评分完整；性能仍需原逐指标资格。
-- report_format_version=7 使用当前比较定义及根模板；旧报告1–6不支持。
+- report_format_version=8 使用当前比较定义及根模板；题面、输出、参考答案各存一次。旧报告 1–7 不支持。
 - 可选 environment_admission={definition: environment-admission.v2, required_fields: [...]}
   在配置 conditions 或 experiment 声明；字段限定 ac_online/profile/governor/epp/
   macos_power_policy。未声明保持旧正式执行准入；probe/diagnostic 仅记录差异。
@@ -231,8 +250,10 @@ CLI stdout 为 JSON，`device-check` 默认人类摘要，Agent 使用 `--json` 
 和应用后的 blockers。诊断仅豁免预检，显式 safety.check_environment 仍按冻结 conditions
 触发运行期停止，不受 required_fields 或 diagnostic 覆盖。
 
-新增 rerun/跨 workload handoff 的同进程复用需主机非 dirty、旧 run 封存事件中的最后请求排空证明及当次 idle/身份/有效
-配置核验。评分失败或 partial 本身不是 dirty；缺证明返回 service_reuse_drain_evidence_missing。
+跨 workload handoff 的同进程复用需主机非 dirty、旧 run 封存事件中的最后请求排空证明及当次 idle/身份/有效
+配置核验。重跑不因工具版本、scorer 或运行身份与父运行不同而拒绝启动；比较记下这些差异，资格不成立。
+未封存、不是单次运行、沿用同一服务进程，以及资产哈希、dirty、空闲、排空、温停和内存停，仍然拒绝。
+评分失败或 partial 本身不是 dirty；缺证明返回 service_reuse_drain_evidence_missing。
 排空摘要只随同次读取显式传递，不改变历史 read_trial 输出，也不缓存日志原始字节。
 native HTTP 收据仅证明客户端完成，无法证明引擎排空，因此不能用于此复用路径。
 同一冻结 workload 的串行 repeat/resume 沿用既有准入，不新增 engine_idle 要求。
@@ -248,8 +269,14 @@ native client_http 完成只允许原串行流程继续；不确定响应、dirt
 ## 身份与测量资格分派
 
 [ADR036](decisions/036-scoped-measurement-cost.md) 和[职责身份契约](contracts/scoped-measurement-contract.md)
-定义新 run/batch 的可选 implementation_identity、目录资产 model-assets.v2，以及
-comparison format4 / phase2.v3、report7。历史重算已由 ADR038 取消，
-plan/run 的 comparison 标记仍为 phase2.v1。总源码摘要继续保存溯源；新执行身份只比较
-measurement/scoring，未知依赖不能作相等证明。新运行只持久化原始请求事件，不写 requests.jsonl；
+定义新 run/batch 的 implementation_identity、目录资产 model-assets.v2，以及
+comparison format4 / phase2.v3、report8。历史重算已由 ADR038 取消，
+plan/run 的 comparison 标记仍为 phase2.v1。新运行不再把 `tool_source_sha256` 当作第二道身份门；
+执行身份只比较 measurement/scoring，未知依赖不能作相等证明。
+没有 `implementation_identity` 的旧运行仍用其 `tool_source_sha256`。
+新 `request_started` 不内嵌 `messages` 全文，保存 `messages_sha256`，须与请求快照一致；
+旧事件里的全文按原字节读取。回答 chunk 与终态全文的双份核对不在此项。
+每次身份守卫核对 PID、启动时刻、可执行文件、启动参数、监听和已声明的 slots_debug。
+模型绑定只核对启动参数路径的设备号与 inode；Linux 不为此读 `maps`。
+新运行只持久化原始请求事件，不写 requests.jsonl；
 混入旧副本的来源明确拒绝。校准总开销与增量诊断分开，适用域及未覆盖条件见主题契约。

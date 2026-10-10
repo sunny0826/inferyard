@@ -19,7 +19,7 @@ def test_large_current_report_verifies_and_explicitly_rerenders(tmp_path):
     before = {p.name: sha256_file(p) for p in source.iterdir() if p.is_file()}
     out = tmp_path / "report"
     index = write_report([source], out)
-    assert index["report_format_version"] == 7
+    assert index["report_format_version"] == 8
     path = out / "index.json"
     assert path.stat().st_size > 16 * 1024**2
     saved = {p.name: sha256_file(p) for p in out.iterdir() if p.is_file()}

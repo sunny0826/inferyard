@@ -69,7 +69,7 @@ def test_identity_and_storage_errors_stop_independently(scenario, damage):
 
 
 @pytest.mark.parametrize("dirty,fresh", [(False, False), (True, False), (False, True)])
-def test_rerun_same_service_clean_or_refused(scenario, monkeypatch, dirty, fresh):
+def test_rerun_same_service_is_always_refused(scenario, monkeypatch, dirty, fresh):
     import inferyard.runtime.lock as locking
 
     request, deps, calls, _ = scenario
@@ -92,17 +92,9 @@ def test_rerun_same_service_clean_or_refused(scenario, monkeypatch, dirty, fresh
     rerun = CommandRequest(
         "run", from_run=root, server_pid=endpoint["server_pid"], endpoint_url=endpoint["url"]
     )
-    if fresh:
-        with pytest.raises(PreflightError, match="rerun_requires_new_service"):
-            asyncio.run(execute_async(rerun, deps))
-    else:
-        code, result = asyncio.run(execute_async(rerun, deps))
-        assert code == (2 if dirty else 0)
-        if not dirty:
-            proof = read_json(Path(result.evidence_dir) / "service-reuse.json")
-            assert proof["transition"] == "same_process"
-            assert proof["cache_state"] == "unknown"
-            assert len(calls) == 16  # Includes this command's ordinary/streaming probes.
+    with pytest.raises(PreflightError, match="rerun_requires_new_service"):
+        asyncio.run(execute_async(rerun, deps))
+    assert len(calls) == 8
     assert original_bytes == {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
 
 
@@ -203,7 +195,7 @@ def test_applicable_handoff_reuses_clean_service(tmp_path, scenario, monkeypatch
     assert binding["cache_state"] == "unknown"
 
 
-def test_partial_after_scoring_storage_error_can_reuse_proven_clean_service(scenario):
+def test_partial_after_scoring_storage_error_still_requires_new_rerun_service(scenario):
     request, deps, calls, _ = scenario
 
     def fail(*_):
@@ -224,11 +216,9 @@ def test_partial_after_scoring_storage_error_can_reuse_proven_clean_service(scen
     rerun = CommandRequest(
         "run", from_run=root, server_pid=endpoint["server_pid"], endpoint_url=endpoint["url"]
     )
-    code, result = asyncio.run(execute_async(rerun, deps))
-    assert code == 0
-    proof = read_json(Path(result.evidence_dir) / "service-reuse.json")
-    assert proof["previous_drain"] == metadata["service_drain"]
-    assert len(calls) == 14  # Stopped first run plus complete rerun including new probes.
+    with pytest.raises(PreflightError, match="rerun_requires_new_service"):
+        asyncio.run(execute_async(rerun, deps))
+    assert len(calls) == 6
 
 
 @pytest.mark.parametrize("check_environment", [False, True])

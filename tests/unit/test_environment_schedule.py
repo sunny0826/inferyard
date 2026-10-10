@@ -47,7 +47,9 @@ def test_independent_cadences_and_missed_deadlines(monkeypatch):
     )
     monkeypatch.setattr(sampler, "wait", sleep)
     monkeypatch.setattr(environment_schedule.time, "monotonic_ns", lambda: int(clock[0] * 1e9))
-    monkeypatch.setattr(environment_schedule, "environment_snapshot", lambda: {"epp": "observed"})
+    monkeypatch.setattr(
+        environment_schedule, "environment_snapshot", lambda **_kwargs: {"epp": "observed"}
+    )
     asyncio.run(EnvironmentObserver.run(sampler))
     assert resources == [0, 2, 6]
     assert [r["monotonic_ns"] / 1e9 for r in environment] == [0, 1, 5.5, 6, 7]
@@ -68,7 +70,7 @@ def test_observer_error_is_preserved(monkeypatch):
     sampler.collect = lambda *a: []
     failure = OSError("injected sensor failure")
 
-    def fail():
+    def fail(**_kwargs):
         raise failure
 
     monkeypatch.setattr(environment_schedule, "environment_snapshot", fail)

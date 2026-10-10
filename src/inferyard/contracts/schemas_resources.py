@@ -29,11 +29,11 @@ def validate_resource_sample(data):
     cpu = data["metric_name"] == "service_cpu_ticks"
     if data["collector"] == "macos-resource.v1":
         sources = {
-            "service_cpu_ticks": "psutil:Process.cpu_times:user+system",
-            "system_swap_in": "vm_stat:Swapins",
-            "system_swap_out": "vm_stat:Swapouts",
+            "service_cpu_ticks": {"psutil:Process.cpu_times:user+system"},
+            "system_swap_in": {"vm_stat:Swapins", "host_statistics64:swapins"},
+            "system_swap_out": {"vm_stat:Swapouts", "host_statistics64:swapouts"},
         }
-        if data["source"] != sources[data["metric_name"]]:
+        if data["source"] not in sources[data["metric_name"]]:
             raise ContractError("sample.source", "macOS collector source mismatch")
         if cpu and data["clock_ticks_per_second"] not in (None, 1_000_000):
             raise ContractError("sample.clock_ticks_per_second", "macOS CPU uses microsecond ticks")

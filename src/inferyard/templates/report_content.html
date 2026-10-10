@@ -1,0 +1,6 @@
+{% macro text(ref) -%}
+{% if ref is not none %}<span data-content-ref="{{ ref }}"><a href="#text-{{ ref }}">查看原始文本 ↓</a></span>{% else %}—{% endif %}
+{%- endmacro %}
+{% macro svg(view, class_name) -%}
+<div class="{{ class_name }}" data-svg-ref="{{ view.content_ref }}" data-svg-start="{{ view.start }}" data-svg-end="{{ view.end }}"><a href="#text-{{ view.content_ref }}">查看 SVG 原始输出 ↓</a></div>
+{%- endmacro %}

@@ -1,6 +1,6 @@
 # ADR 041：周期环境与调度记录的持久层瘦身
 
-状态：Accepted
+状态：Accepted。`environment_snapshot()` 每次新读由 [ADR 042](042-environment-collection-slim.md) 修订。本决定的周期落盘字段集仍有效。
 
 ## 背景
 

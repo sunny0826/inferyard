@@ -35,7 +35,7 @@ def verify_control_rows(root, packet, *, verified_trials=None):
             data = read_trial(path, metadata=metadata)
             if (
                 data["plan"] != trial_plan
-                or data["run"]["tool_source_sha256"] != spec["tool_source_sha256"]
+                or data["run"].get("tool_source_sha256") != spec["tool_source_sha256"]
             ):
                 raise EvidenceError("total_control_trial_source_or_plan_mismatch")
             if verified_trials is not None:

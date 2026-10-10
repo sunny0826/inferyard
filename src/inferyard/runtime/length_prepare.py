@@ -18,7 +18,7 @@ from inferyard.registry import adapter_factory
 from inferyard.reporting.report_common import _new_output
 from inferyard.runtime.batch_state import bind_service
 from inferyard.runtime.length_builder import fit_length, validate_spec
-from inferyard.runtime.runner import Dependencies
+from inferyard.runtime.runner import Dependencies, transport_config
 from inferyard.runtime.template_tokens import count_template
 
 
@@ -43,6 +43,8 @@ async def prepare(request, dependencies=None):
         identity, files = deps.preflight(config)
         adapter = deps.adapter(identity["origin"], secret=secret)
         try:
+            guard_config = transport_config(config, adapter)
+            deps.guard(guard_config, files)
             if adapter.redactor.clean(spec) != spec:
                 raise EvidenceError("length_spec_contains_redacted_input")
             props = await adapter.verify_properties(config)
@@ -60,9 +62,9 @@ async def prepare(request, dependencies=None):
             trace = []
 
             async def count(prompt):
-                deps.guard(config, files)
+                deps.guard(guard_config, files)
                 measurement = await count_template(adapter, config, prompt)
-                deps.guard(config, files)
+                deps.guard(guard_config, files)
                 return measurement
 
             def observe(record):

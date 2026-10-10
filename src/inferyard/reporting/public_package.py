@@ -38,7 +38,7 @@ LIMITS = [
 README = """# Public candidate summary
 
 This package is generated locally. No upload or publication is performed.
-Verify with: inferyard public-check --run PACKAGE_DIRECTORY
+Verify with: inferyard verify --path PACKAGE_DIRECTORY
 
 Match model, engine, template, bundle and scorer hashes in candidate.json before
 reproduction. Obtain those artifacts separately; the package contains no model,
@@ -149,7 +149,7 @@ def payloads(candidate):
     )
     instructions += (
         "\n## Local binding check\n\n"
-        "Run: inferyard public-config-check --run PACKAGE_DIRECTORY --config LOCAL_CONFIG\n\n"
+        "Run: inferyard verify --path PACKAGE_DIRECTORY --config LOCAL_CONFIG\n\n"
         "Model/template paths and loopback host/port can change. The portable startup "
         "fingerprint retains all other arguments and their order; duplicate local "
         "bindings are rejected. Artifact hashes remain bound separately. This checks "
@@ -158,7 +158,7 @@ def payloads(candidate):
     )
     instructions += (
         "\n## Freeze the reproduced workload\n\n"
-        "Run: inferyard public-plan --run PACKAGE_DIRECTORY --config LOCAL_CONFIG "
+        "Run: inferyard public plan --run PACKAGE_DIRECTORY --config LOCAL_CONFIG "
         "--out NEW_PRIVATE_DIRECTORY\n\n"
         "This creates a private input snapshot and frozen/plan.json, with all repeats "
         "and exact per-repeat case orders for the selected workload. Other workloads "

@@ -119,32 +119,58 @@ def _read_optional(path: Path):
         return None
 
 
-def environment_snapshot(proc_root: Path = Path("/proc"), sys_root: Path = Path("/sys")) -> dict:
+def environment_snapshot(
+    proc_root: Path = Path("/proc"),
+    sys_root: Path = Path("/sys"),
+    constants=None,
+) -> dict:
+    from inferyard.platforms.environment_constants import apply_constants, constant_value
+
     if platform.system() == "Darwin" and proc_root == Path("/proc") and sys_root == Path("/sys"):
         from inferyard.platforms.macos_identity import (
             environment_snapshot as macos_environment,
         )
 
-        return macos_environment()
+        return macos_environment(constants=constants)
     if os.name == "nt" and proc_root == Path("/proc") and sys_root == Path("/sys"):
         from inferyard.platforms.windows_identity import (
             environment_snapshot as windows_environment,
         )
 
-        return windows_environment()
-    cpu = _read_optional(proc_root / "cpuinfo") or ""
-    model = next(
-        (
-            line.split(":", 1)[1].strip()
-            for line in cpu.splitlines()
-            if line.startswith("model name")
-        ),
-        None,
-    )
+        return windows_environment(constants=constants)
+    captured = constants or {}
+    if constants is not None:
+        model, flags = captured.get("cpu_model"), captured.get("cpu_flags")
+    else:
+        cpu = _read_optional(proc_root / "cpuinfo") or ""
+        model = next(
+            (
+                line.split(":", 1)[1].strip()
+                for line in cpu.splitlines()
+                if line.startswith("model name")
+            ),
+            None,
+        )
+        flags = next(
+            (
+                line.split(":", 1)[1].split()
+                for line in cpu.splitlines()
+                if line.startswith("flags")
+            ),
+            None,
+        )
     mem = _read_optional(proc_root / "meminfo") or ""
-    total = next(
-        (int(line.split()[1]) * 1024 for line in mem.splitlines() if line.startswith("MemTotal:")),
-        None,
+    total = (
+        captured.get("memory_total_bytes")
+        if constants is not None
+        else next(
+            (
+                int(line.split()[1]) * 1024
+                for line in mem.splitlines()
+                if line.startswith("MemTotal:")
+            ),
+            None,
+        )
     )
     vmstat = _read_optional(proc_root / "vmstat") or ""
     swap = {
@@ -158,32 +184,31 @@ def environment_snapshot(proc_root: Path = Path("/proc"), sys_root: Path = Path(
         if _read_optional(entry / "type") in ("Mains", "USB", "USB_C"):
             power[entry.name] = _read_optional(entry / "online")
     cpufreq = sys_root / "devices/system/cpu/cpu0/cpufreq"
-    try:
-        release = platform.freedesktop_os_release()
-        os_release = {
-            key: release[key] for key in ("ID", "VERSION_ID", "BUILD_ID") if release.get(key)
-        }
-    except OSError:
-        os_release = None
-    flags = next(
-        (line.split(":", 1)[1].split() for line in cpu.splitlines() if line.startswith("flags")),
-        None,
-    )
+    if constants is not None:
+        os_release = captured.get("os_release")
+    else:
+        try:
+            release = platform.freedesktop_os_release()
+            os_release = {
+                key: release[key] for key in ("ID", "VERSION_ID", "BUILD_ID") if release.get(key)
+            }
+        except OSError:
+            os_release = None
     try:
         available = memory_available(proc_root)
     except PreflightError:
         available = None
-    return {
-        "platform": platform.system(),
-        "architecture": platform.machine(),
-        "kernel": platform.release(),
+    result = {
+        "platform": constant_value(constants, "platform", platform.system),
+        "architecture": constant_value(constants, "architecture", platform.machine),
+        "kernel": constant_value(constants, "kernel", platform.release),
         "os_release": os_release,
         "cpu_flags": flags,
         "scaling_driver": _read_optional(cpufreq / "scaling_driver"),
         "cpu_policies": cpu_policy_snapshot(sys_root),
         "cpu_model": model,
         "memory_total_bytes": total,
-        "logical_cpus": os.cpu_count(),
+        "logical_cpus": constant_value(constants, "logical_cpus", os.cpu_count),
         "mem_available_bytes": available,
         "ac_sources": power,
         "ac_online": any(v == "1" for v in power.values()) if power else None,
@@ -191,21 +216,40 @@ def environment_snapshot(proc_root: Path = Path("/proc"), sys_root: Path = Path(
         "governor": _read_optional(cpufreq / "scaling_governor"),
         "epp": _read_optional(cpufreq / "energy_performance_preference"),
         "swap_pages": swap,
-        "page_size_bytes": os.sysconf("SC_PAGE_SIZE") if hasattr(os, "sysconf") else None,
+        "page_size_bytes": (
+            captured.get("page_size_bytes")
+            if constants is not None
+            else os.sysconf("SC_PAGE_SIZE")
+            if hasattr(os, "sysconf")
+            else None
+        ),
         "gpu": {"backend": "not_used", "reason": "cpu_only_scope"},
     }
+    return apply_constants(result, constants)
 
 
 def resolve_loopback_origin(url: str) -> tuple[str, str, int]:
     """Resolve once and return a numeric origin to prevent DNS rebinding later."""
     validate_endpoint(url)
+    return _resolve_origin(url, check=True)
+
+
+def service_origin(url: str) -> tuple[str, str, int]:
+    """Locate a listener; leave transport validation and pinning to its adapter."""
+    _, address, port = _resolve_origin(url, check=False)
+    return url, address, port
+
+
+def _resolve_origin(url, *, check):
     parsed = urlsplit(url)
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     if parsed.hostname == "localhost":
         addresses = {
             item[4][0] for item in socket.getaddrinfo("localhost", port, type=socket.SOCK_STREAM)
         }
-        if not addresses or any(not ipaddress.ip_address(a).is_loopback for a in addresses):
+        if not addresses or (
+            check and any(not ipaddress.ip_address(a).is_loopback for a in addresses)
+        ):
             raise PreflightError("localhost_resolved_outside_loopback")
         address = "127.0.0.1" if "127.0.0.1" in addresses else sorted(addresses)[0]
     else:
@@ -278,6 +322,8 @@ def verify_process(
     address: str,
     port: int,
     proc_root: Path = Path("/proc"),
+    *,
+    bound_files=None,
 ) -> dict:
     if config["engine"].get("adapter") in ("kvmem", "ninfer"):
         if platform.system() != "Windows":
@@ -288,7 +334,7 @@ def verify_process(
     if platform.system() == "Darwin" and proc_root == Path("/proc"):
         from inferyard.platforms.macos_identity import verify_process as macos_process
 
-        return macos_process(config, model, engine, address, port)
+        return macos_process(config, model, engine, address, port, bound_files=bound_files)
     if os.name == "nt" and proc_root == Path("/proc"):
         from inferyard.platforms.windows_identity import verify_process as windows_process
 
@@ -314,26 +360,15 @@ def verify_process(
             ]
             if values != [b"1"]:
                 raise PreflightError("service_slots_debug_environment_mismatch")
-        mapped = False
-        for line in (directory / "maps").read_text().splitlines():
-            fields = line.split(maxsplit=5)
-            major, minor = (int(part, 16) for part in fields[3].split(":"))
-            if (int(fields[4]), major, minor) == (
-                model.inode,
-                os.major(model.device),
-                os.minor(model.device),
-            ):
-                mapped = True
-                break
-        # Some CPU builds copy tensors then release file mappings. Require the exact
-        # file inode in their verified startup arguments; /props is checked next.
-        if not mapped:
-            model_path = model_argument(args)
-            if model_path is None:
-                raise PreflightError("service_model_mapping_unverified")
-            actual_model = Path(model_path).stat()
-            if (actual_model.st_dev, actual_model.st_ino) != (model.device, model.inode):
-                raise PreflightError("service_model_argument_mismatch")
+        model_path = model_argument(args)
+        if model_path is None:
+            raise PreflightError("service_model_mapping_unverified")
+        candidate = Path(model_path)
+        if not candidate.is_absolute():
+            candidate = directory / "cwd" / candidate
+        actual_model = candidate.stat()
+        if (actual_model.st_dev, actual_model.st_ino) != (model.device, model.inode):
+            raise PreflightError("service_model_argument_mismatch")
         inode = verify_listener(pid, address, port, proc_root)
         if process_start_ticks(pid, proc_root) != expected_start:
             raise PreflightError("service_process_identity_changed")
@@ -342,8 +377,8 @@ def verify_process(
             "start_ticks": expected_start,
             "listener_inode": inode,
             "binary": "verified",
-            "model_mapping": "verified" if mapped else "not_retained",
-            "model_binding": "mapped_inode" if mapped else "verified_startup_file_inode",
+            "model_mapping": "not_observed",
+            "model_binding": "verified_startup_file_inode",
             "endpoint": "verified",
             "startup_args": sanitized_arguments(args),
         }
@@ -368,7 +403,7 @@ def static_preflight(
         raise PreflightError("unsupported_platform")
     if (backend == "metal" and system != "Darwin") or (backend == "cuda" and system == "Darwin"):
         raise PreflightError("unsupported_backend_platform")
-    origin, address, port = resolve_loopback_origin(config["endpoint"]["url"])
+    origin, address, port = service_origin(config["endpoint"]["url"])
     if config["engine"].get("adapter") in ("kvmem", "ninfer"):
         if system != "Windows":
             raise PreflightError("lab_adapter_requires_windows")
@@ -398,7 +433,9 @@ def static_preflight(
                 )
         except (OSError, ContractError) as exc:
             raise PreflightError("library_manifest_unreadable") from exc
-    process = verify_process(config, identities[0], identities[1], address, port)
+    process = verify_process(
+        config, identities[0], identities[1], address, port, bound_files=identities
+    )
     environment = environment_snapshot()
     if backend == "metal":
         from inferyard.platforms.macos_identity import metal_capability

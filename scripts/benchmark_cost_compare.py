@@ -140,7 +140,11 @@ def counts(root):
             "rows": sum(len(d["requests"]) for d in result["runs"]),
             "svg_gallery": sum(len(d["svg_gallery"]) for d in result["runs"]),
             "answer_utf8_bytes": sum(
-                len(r["content"].encode()) for d in result["runs"] for r in d["requests"]
+                len(result["contents"][r["content_ref"]].encode())
+                if "content_ref" in r
+                else len(r["content"].encode())
+                for d in result["runs"]
+                for r in d["requests"]
             ),
         }
     return {"result_bytes": (root / "result.json").stat().st_size}
@@ -158,7 +162,16 @@ def check_expected(root, corpus, operation):
     if len(set(ids)) != len(ids):
         raise ValueError("duplicate_run_id")
     answers = [
-        [hashlib.sha256(row.get("content", "").encode()).hexdigest() for row in run["requests"]]
+        [
+            hashlib.sha256(
+                (
+                    result["contents"][row["content_ref"]]
+                    if operation == "report" and "content_ref" in row
+                    else row.get("content", "")
+                ).encode()
+            ).hexdigest()
+            for row in run["requests"]
+        ]
         for run in runs
     ]
     require_equal(expected["answer_sha256"], answers, "fixture_answer_completeness")

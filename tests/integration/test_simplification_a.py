@@ -178,7 +178,7 @@ def test_safe_entrypoint_reasons(error, reason, code, capsys):
     def handler(_):
         raise error
 
-    assert main(["rescore-check", "--run", "/unused"], handlers={"rescore-check": handler}) == code
+    assert main(["verify", "--path", "/unused"], handlers={"verify": handler}) == code
     captured = capsys.readouterr()
     assert json.loads(captured.out)["limitations"] == [reason]
     assert "secret_credential_value" not in captured.out + captured.err
@@ -193,7 +193,7 @@ def test_changed_scorer_cli_and_lineage_hash_check(tmp_path, monkeypatch, capsys
         root, second, scorer_id="phase2.v2", reason="second", parent_path=first / "analysis.json"
     )
     monkeypatch.setattr(scoring, "scorer_hash", lambda: "f" * 64)
-    assert main(["rescore-check", "--run", str(second)]) == 4
+    assert main(["verify", "--path", str(second)]) == 4
     assert json.loads(capsys.readouterr().out)["limitations"] == ["rescore_scorer_identity_changed"]
     value = read_json(second / "parent-lineage.json")
     value["rescore.json"]["reason"] += " tampered"

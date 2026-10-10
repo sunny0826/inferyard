@@ -129,7 +129,9 @@ def test_new_detail_fields_are_escaped_and_requested_values_do_not_become_effect
     poison = '<img src=x onerror="window.pwned=true">'
     run["profile"]["title"] = poison
     run["profile"]["model_rows"][0]["value"] = poison
-    run["requests"][0]["reference_answer"] = poison
+    from inferyard.reporting.report_content import text_ref
+
+    run["requests"][0]["reference_answer_ref"] = text_ref(index["contents"], poison)
     run["requests"][0]["rule_results"] = [
         {"rule": poison, "expected": poison, "observed": poison, "passed": None, "reason": poison}
     ]
@@ -149,12 +151,12 @@ def test_current_template_identity_binds_all_partial_assets(tmp_path, monkeypatc
     style = templates / "report_styles.html"
     style.write_text("first")
     monkeypatch.setattr(report_assets, "files", lambda _: resources)
-    original = report_assets.template_hash(7)
+    original = report_assets.template_hash(8)
     style.write_text("tampered")
-    assert report_assets.template_hash(7) != original
+    assert report_assets.template_hash(8) != original
 
 
-@pytest.mark.parametrize("version", [True, False, 0, 8, "2", None])
+@pytest.mark.parametrize("version", [True, False, 0, 7, 9, "2", None])
 def test_unknown_report_format_is_rejected_before_loading_sources(tmp_path, version):
     from inferyard.evidence.formats import UnsupportedFormat
 

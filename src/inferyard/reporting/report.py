@@ -23,6 +23,7 @@ from inferyard.reporting.report_common import (
     evidence_url,
     render_report_html,
 )
+from inferyard.reporting.report_content import text_ref
 from inferyard.reporting.report_dashboard import dashboard_view, request_details
 from inferyard.reporting.report_duration import duration_view
 from inferyard.reporting.report_facets import facet_options, run_facets
@@ -31,7 +32,7 @@ from inferyard.reporting.report_resources import resource_view
 from inferyard.reporting.report_scans import scan_view
 
 
-def presentation(data, source, out, *, format_version=7):
+def presentation(data, source, out, *, contents, format_version=8):
     summary = data["summary"]
     cases = {case["case_id"]: case for case in data["bundle"]["cases"]}
     rows = []
@@ -40,19 +41,23 @@ def presentation(data, source, out, *, format_version=7):
         rows.append(
             {
                 "case_id": request["case_id"],
-                "prompt": cases[request["case_id"]]["prompt"],
+                "prompt_ref": text_ref(contents, cases[request["case_id"]]["prompt"]),
                 "state": request["execution_state"],
                 "latency_ms": (end - start) / 1e6
                 if start is not None and end is not None
                 else None,
                 "quality": (request.get("score") or {}).get("quality_state"),
-                "content": request.get("content", ""),
+                "content_ref": text_ref(contents, request.get("content", "")),
                 "error": request.get("error_category"),
             }
         )
         rows[-1].update(
             request_details(
-                request, cases[request["case_id"]], ordinal, format_version=format_version
+                request,
+                cases[request["case_id"]],
+                ordinal,
+                contents=contents,
+                format_version=format_version,
             )
         )
     values = [row["latency_ms"] for row in rows if row["latency_ms"] is not None]
@@ -88,7 +93,8 @@ def presentation(data, source, out, *, format_version=7):
         {
             "ordinal": row["ordinal"],
             "case_id": row["case_id"],
-            "prompt": row["prompt"],
+            "prompt_ref": row["prompt_ref"],
+            "content_ref": row["content_ref"],
             "latency_ms": row["latency_ms"],
             "completion_tokens": row.get("completion_tokens"),
             "finish_reason": row.get("finish_reason"),
@@ -106,11 +112,11 @@ def build_index(
     *,
     producer=None,
     comparison_path=None,
-    format_version=7,
+    format_version=8,
     loaded=None,
     verified_comparison=None,
 ):
-    require_version({"version": format_version}, "version", (7,), "report")
+    require_version({"version": format_version}, "version", (8,), "report")
     out = out.resolve()
     if comparison_path is not None:
         comparison_path = comparison_path.resolve()
@@ -124,11 +130,14 @@ def build_index(
         else (comparison_input(root, bind_unsealed=True) for root in roots)
     )
     runs, ids = [], set()
+    contents = {}
     for data, source in inputs:
         if source["run_id"] in ids:
             raise EvidenceError("duplicate_report_run")
         ids.add(source["run_id"])
-        runs.append(presentation(data, source, out, format_version=format_version))
+        runs.append(
+            presentation(data, source, out, contents=contents, format_version=format_version)
+        )
         # Presentation owns its derived fields; do not retain raw samples across runs.
         del data, source
     comparison = None
@@ -165,6 +174,7 @@ def build_index(
         "filter_options": facet_options(runs),
         "template_sha256": template_hash(format_version),
         "runs": runs,
+        "contents": contents,
         "comparison": comparison,
         "limitations": [
             "runs_are_not_pooled",
@@ -181,7 +191,7 @@ def write_report(roots, out, *, comparison_path=None):
     from inferyard.contracts.validation import strict_json_loads
     from inferyard.reporting.sealed_report import portable_index, seal_report
 
-    index = build_index(roots, out, comparison_path=comparison_path, format_version=7)
+    index = build_index(roots, out, comparison_path=comparison_path, format_version=8)
     index = portable_index(index, out, comparison_path)
     index = strict_json_loads(json_bytes(index).decode())
     html = render_report_html(_environment(), "report.html", index)
@@ -206,11 +216,11 @@ def verify_report(out, *, options=None):
         or type(saved.get("schema_version")) is not int
         or type(saved.get("report_format_version")) is not int
         or saved.get("schema_version") != 3
-        or saved.get("report_format_version") != 7
+        or saved.get("report_format_version") != 8
     ):
         check_presentation_seal(out)
     require_core(saved, "report")
-    require_version(saved, "report_format_version", (7,), "report")
+    require_version(saved, "report_format_version", (8,), "report")
     from inferyard.reporting.sealed_report import verify
 
     return verify(out, saved, options=options or VerificationOptions())

@@ -24,8 +24,7 @@ def read_cpu(pid, ticks, proc_root):
     return {"user_ticks": user, "system_ticks": system}
 
 
-def read_swap(proc_root, key):
-    entries = [line.split() for line in (proc_root / "vmstat").read_text().splitlines()]
+def read_swap(entries, key):
     values = [int(parts[1]) for parts in entries if len(parts) == 2 and parts[0] == key]
     if len(values) != 1 or values[0] < 0:
         raise ValueError("invalid swap counter")
@@ -74,32 +73,29 @@ class ResourceSampler(EnvironmentObserver):
 
     def counters(self, pid, ticks, *, capture="periodic"):
         samples = []
+        swap = None
         for metric, source in (
             ("service_cpu_ticks", "/proc/<pid>/stat:utime+stime"),
             ("system_swap_in", "/proc/vmstat:pswpin"),
             ("system_swap_out", "/proc/vmstat:pswpout"),
         ):
             cpu = metric == "service_cpu_ticks"
-            start = self.clock()
+            start = self.clock() if cpu or swap is None else swap[0]
             value = raw_cpu = reason = None
+            if not cpu and swap is not None:
+                start, finished, entries, shared_reason = swap
+            else:
+                entries = None
+                shared_reason = None
             try:
-                if self.boot_id is None:
-                    raise PreflightError("boot_identity_unavailable")
-                if (self.tick_rate if cpu else self.page_size) is None:
-                    raise PreflightError("counter_scale_unavailable")
-                if self.read_boot_id() != self.boot_id:
-                    raise PreflightError("source_changed")
-                if cpu:
-                    if self.process_lost:
-                        raise PreflightError("source_changed")
-                    raw_cpu = read_cpu(pid, ticks, self.proc_root)
-                    value = sum(raw_cpu.values())
+                if not cpu and swap is not None:
+                    if shared_reason:
+                        raise PreflightError(shared_reason)
+                    value = read_swap(entries, "pswpout")
                 else:
-                    value = read_swap(
-                        self.proc_root, "pswpin" if metric == "system_swap_in" else "pswpout"
-                    )
-                if self.read_boot_id() != self.boot_id:
-                    raise PreflightError("source_changed")
+                    value, raw_cpu, entries = self._read_counter(cpu, pid, ticks)
+                    if not cpu:
+                        value = read_swap(entries, "pswpin")
             except PermissionError:
                 reason = "permission_denied"
             except PreflightError as exc:
@@ -109,30 +105,62 @@ class ResourceSampler(EnvironmentObserver):
                 reason = "source_unavailable"
             except ValueError, IndexError:
                 reason = "invalid_counter"
+            if cpu or swap is None:
+                finished = self.clock()
+            if not cpu and swap is None:
+                swap = (start, finished, entries, reason if entries is None else None)
             if reason:
                 value = raw_cpu = None
             samples.append(
-                {
-                    "phase": self.phase,
-                    "request_id": self.request_id,
-                    "metric_name": metric,
-                    "value": value,
-                    "unit": "ticks" if cpu else "pages",
-                    "source": source,
-                    "read_started_ns": start,
-                    "read_finished_ns": self.clock(),
-                    "server_pid": pid if cpu else None,
-                    "process_start_ticks": ticks if cpu else None,
-                    "missing_reason": reason,
-                    "collector": "linux-resource.v2",
-                    "boot_id": self.boot_id,
-                    "clock_ticks_per_second": self.tick_rate if cpu else None,
-                    "page_size_bytes": None if cpu else self.page_size,
-                    "raw_cpu": raw_cpu,
-                    "capture": capture,
-                }
+                self._sample(
+                    metric, source, pid, ticks, capture, start, finished, value, raw_cpu, reason
+                )
             )
         return samples
+
+    def _read_counter(self, cpu, pid, ticks):
+        if self.boot_id is None:
+            raise PreflightError("boot_identity_unavailable")
+        if (self.tick_rate if cpu else self.page_size) is None:
+            raise PreflightError("counter_scale_unavailable")
+        if self.read_boot_id() != self.boot_id:
+            raise PreflightError("source_changed")
+        raw_cpu = entries = None
+        if cpu:
+            if self.process_lost:
+                raise PreflightError("source_changed")
+            raw_cpu = read_cpu(pid, ticks, self.proc_root)
+            value = sum(raw_cpu.values())
+        else:
+            entries = [
+                line.split() for line in (self.proc_root / "vmstat").read_text().splitlines()
+            ]
+            value = None
+        if self.read_boot_id() != self.boot_id:
+            raise PreflightError("source_changed")
+        return value, raw_cpu, entries
+
+    def _sample(self, metric, source, pid, ticks, capture, start, finished, value, raw_cpu, reason):
+        cpu = metric == "service_cpu_ticks"
+        return {
+            "phase": self.phase,
+            "request_id": self.request_id,
+            "metric_name": metric,
+            "value": value,
+            "unit": "ticks" if cpu else "pages",
+            "source": source,
+            "read_started_ns": start,
+            "read_finished_ns": finished,
+            "server_pid": pid if cpu else None,
+            "process_start_ticks": ticks if cpu else None,
+            "missing_reason": reason,
+            "collector": "linux-resource.v2",
+            "boot_id": self.boot_id,
+            "clock_ticks_per_second": self.tick_rate if cpu else None,
+            "page_size_bytes": None if cpu else self.page_size,
+            "raw_cpu": raw_cpu,
+            "capture": capture,
+        }
 
     def collect(self, pid, ticks):
         self.external(pid, ticks)

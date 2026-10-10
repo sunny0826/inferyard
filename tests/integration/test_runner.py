@@ -451,7 +451,9 @@ def test_real_cli_dispatch_serial_run_emits_only_one_json(scenario, monkeypatch,
 
 
 @pytest.mark.parametrize("changed_source", [False, True])
-def test_rerun_rejects_old_service_or_changed_implementation(scenario, monkeypatch, changed_source):
+def test_rerun_rejects_old_service_even_with_changed_implementation(
+    scenario, monkeypatch, changed_source
+):
     request, deps, calls, settings = scenario
     code, result = asyncio.run(execute_async(request, deps))
     assert code == 0
@@ -470,10 +472,7 @@ def test_rerun_rejects_old_service_or_changed_implementation(scenario, monkeypat
         server_pid=os.getpid(),
         endpoint_url="http://127.0.0.1:9090",
     )
-    expected = (
-        "rerun_tool_source_changed_or_unknown" if changed_source else "rerun_requires_new_service"
-    )
-    with pytest.raises(PreflightError, match=expected):
+    with pytest.raises(PreflightError, match="rerun_requires_new_service"):
         running.load_rerun(rerun)
     assert len(calls) == 8
 
@@ -489,6 +488,27 @@ def test_check_uses_shared_trial_envelope_without_formal_grades(scenario):
     assert data["summary"]["counts"]["not_executed"] == 3
     assert data["summary"]["completeness"] == "incomplete"
     assert all(row["score"] is None for row in data["requests"])
+
+
+def test_guard_binds_adapter_transport_before_first_request(scenario):
+    request, deps, calls, _ = scenario
+    previous = deps.preflight
+    seen = []
+
+    def preflight(config):
+        identity, files = previous(config)
+        identity["origin"] = "http://127.0.0.2:8080"
+        return identity, files
+
+    def guard(config, files):
+        seen.append(config["endpoint"]["url"])
+        raise PreflightError("service_listener_not_owned")
+
+    deps.preflight, deps.guard = preflight, guard
+    code, result = asyncio.run(execute_async(request, deps))
+    assert code == 2 and not calls
+    assert seen == ["http://127.0.0.2:8080"]
+    assert request.config.config.to_dict()["endpoint"]["url"] != seen[0]
 
 
 def test_rerun_rejects_check_evidence_before_process_query(scenario, monkeypatch):

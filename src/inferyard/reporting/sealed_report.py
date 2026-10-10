@@ -1,4 +1,4 @@
-"""Version seven verifies saved bytes and source semantics without invoking a renderer."""
+"""Version eight verifies saved bytes and source semantics without invoking a renderer."""
 
 from copy import deepcopy
 
@@ -71,7 +71,7 @@ def verify(out, saved, *, options):
         out,
         producer=saved["generator_source_sha256"],
         comparison_path=linked,
-        format_version=7,
+        format_version=8,
         loaded=loaded,
         verified_comparison=comparison,
     )

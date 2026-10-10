@@ -32,7 +32,7 @@ def test_legacy_comparison_mapping_rejected_by_both_entrypoints(tmp_path, versio
     (out / "index.json").write_bytes(json_bytes({"schema_version": 3, "report_format_version": 6}))
     assert_unsupported(
         out,
-        (("compare-check", "--run"), ("verify", "--path")),
+        (("verify", "--path"),),
         f"{tmp_path / 'source'}={tmp_path / 'absent'}",
         version,
         4,
@@ -49,10 +49,10 @@ def test_legacy_report_mapping_rejected_by_both_entrypoints(tmp_path, version, c
     )
     assert_unsupported(
         out,
-        (("report-check", "--run"), ("verify", "--path")),
+        (("verify", "--path"),),
         f"{tmp_path / 'source'}={tmp_path / 'absent'}",
         version,
-        7,
+        8,
         capsys,
     )
 
@@ -68,7 +68,7 @@ def test_modern_comparison_mapping_is_applied_and_bad_source_is_evidence_error(
     destination = tmp_path / "relocated"
     if present:
         shutil.move(left, destination)
-    for command, flag in (("compare-check", "--run"), ("verify", "--path")):
+    for command, flag in (("verify", "--path"),):
         assert main([command, flag, str(out), "--source-root", f"{left}={destination}"]) == (
             0 if present else 4
         )

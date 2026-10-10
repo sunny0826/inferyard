@@ -1,4 +1,4 @@
-"""Canonical CLI inputs preserve request bindings and compatibility behavior."""
+"""Canonical CLI bindings and explicit rejection of removed compatibility inputs."""
 
 import json
 import os
@@ -16,10 +16,27 @@ from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.cli.request import build_request
 
 CONFIG = object()
-LEGACY_INPUTS = [
+REMOVED_COMMANDS = {
+    "check",
+    "overhead-check",
+    "repeat-check",
+    "rescore-check",
+    "export-check",
+    "public-check",
+    "public-config-check",
+    "report-check",
+    "compare-check",
+    "extension-check",
+    "public-package",
+    "public-plan",
+    "extension-freeze",
+    "extension-run",
+    "extension-replay",
+}
+INPUTS = [
     ["device-check", "--model", "model.gguf", "--models-root", "models", "--out", "out", "--json"],
     ["catalogue", "--kind", "methods"],
-    ["plan", "--config", "experiment.json", "--dry-run"],
+    ["plan", "--experiment", "experiment.json", "--dry-run"],
     ["check", "--config", "config.toml"],
     ["run", "--config", "config.toml"],
     ["resume", "--from-run", "source"],
@@ -34,7 +51,7 @@ LEGACY_INPUTS = [
     ["public-check", "--run", "source", "--from-run", "parent"],
     ["public-config-check", "--run", "source", "--config", "config.toml"],
     ["public-plan", "--run", "source", "--config", "config.toml", "--out", "out"],
-    ["report", "--run", "source", "--out", "out", "--comparison", "comparison"],
+    ["report", "--runs", "source", "--out", "out", "--comparison", "comparison"],
     ["report-check", "--run", "source"],
     ["compare", "--left", "a", "--right", "b", "--out", "out", "--left-overhead", "oh"],
     ["compare-check", "--run", "source"],
@@ -59,19 +76,21 @@ LEGACY_INPUTS = [
     ["extension-check", "--run", "source"],
 ]
 
+INPUTS = [args for args in INPUTS if args[0] not in REMOVED_COMMANDS]
+
 
 def request(arguments):
     return build_request(cli.parser().parse_args(arguments), config_loader=lambda _: CONFIG)
 
 
-@pytest.mark.parametrize("arguments", LEGACY_INPUTS, ids=lambda arguments: arguments[0])
-def test_all_legacy_entries_preserve_the_called_command_and_result(arguments, monkeypatch, capsys):
+@pytest.mark.parametrize("arguments", INPUTS, ids=lambda arguments: arguments[0])
+def test_retained_entries_preserve_the_called_command_and_result(arguments, monkeypatch, capsys):
     seen = []
     monkeypatch.setattr(cli, "load_config", lambda _: CONFIG)
 
     def handler(value):
         seen.append(value)
-        return 0, CommandResult(value.command, "tested", "complete", details={"legacy": True})
+        return 0, CommandResult(value.command, "tested", "complete", details={"tested": True})
 
     assert cli.main(arguments, handlers={arguments[0]: handler}) == 0
     output = capsys.readouterr()
@@ -83,7 +102,7 @@ def test_all_legacy_entries_preserve_the_called_command_and_result(arguments, mo
         "run_id": None,
         "evidence_dir": None,
         "limitations": [],
-        "details": {"legacy": True},
+        "details": {"tested": True},
     }
     assert len(seen) == 1
     for field in fields(CommandRequest):
@@ -166,20 +185,13 @@ def test_canonical_entries_dispatch_with_the_full_entry_name(
             ["--config", "cfg", "--out", "out"],
             "extension_spec",
         ),
-        (
-            ["extension-run"],
-            "--plan",
-            "--spec",
-            ["--config", "cfg", "--out", "out"],
-            "extension_spec",
-        ),
         (["extension", "replay"], "--packet", "--spec", ["--out", "out"], "extension_spec"),
-        (["extension-replay"], "--packet", "--spec", ["--out", "out"], "extension_spec"),
     ],
 )
-def test_parameter_aliases_produce_identical_requests(prefix, canonical, legacy, suffix, field):
+def test_removed_parameter_aliases_are_rejected(prefix, canonical, legacy, suffix, field):
     canonical_request = request([*prefix, canonical, "source", *suffix])
-    assert canonical_request == request([*prefix, legacy, "source", *suffix])
+    with pytest.raises(cli.ArgumentError):
+        request([*prefix, legacy, "source", *suffix])
     assert getattr(canonical_request, field) == Path("source").resolve()
 
 
@@ -209,14 +221,13 @@ def test_conflicting_aliases_are_rejected_without_echoing_values(arguments, reve
     assert json.loads(output.out)["limitations"] == ["invalid_input"]
 
 
-def test_report_runs_accepts_one_or_more_paths_and_legacy_single_binding():
+def test_report_runs_accepts_one_or_more_paths_and_rejects_old_flag():
     single = request(["report", "--runs", "a", "--out", "out"])
     multiple = request(["report", "--runs", "a", "b", "--out", "out"])
-    legacy = request(["report", "--run", "a", "--out", "out"])
+    with pytest.raises(cli.ArgumentError):
+        request(["report", "--run", "a", "--out", "out"])
     assert single.report_runs == [Path("a").resolve()]
     assert multiple.report_runs == [Path("a").resolve(), Path("b").resolve()]
-    assert legacy.run == single.report_runs[0]
-    assert legacy.report_runs is None
 
 
 @pytest.mark.parametrize("command", [["public"], ["extension"]])
@@ -331,7 +342,7 @@ def test_live_binding_rejections_still_block_dispatch(arguments, monkeypatch, ca
         ["config", "assets", "--help"],
         ["config", "create", "--help"],
         ["config", "bind", "--help"],
-        *[[value[0], "--help"] for value in LEGACY_INPUTS],
+        *[[value[0], "--help"] for value in INPUTS],
     ],
 )
 def test_all_help_and_metadata_are_cold_starts(arguments):
@@ -364,6 +375,15 @@ raise SystemExit(main(json.loads(sys.argv[1])))
         assert len(primary) == 21
         assert {"verify", "probe", "public", "extension", "engine-fit"} <= set(primary)
         assert "check" not in primary and "extension-run" not in primary
-        assert "Compatibility" in result.stdout and "extension-run" in result.stdout
+        assert "Compatibility" not in result.stdout and "extension-run" not in result.stdout
     elif "--help" not in arguments:
         assert isinstance(json.loads(result.stdout), dict)
+
+
+@pytest.mark.parametrize("command", sorted(REMOVED_COMMANDS))
+@pytest.mark.parametrize("suffix", [["--help"], ["--run", "fixture-secret-7f39"]])
+def test_removed_commands_reject_before_dispatch(command, suffix, capsys):
+    assert cli.main([command, *suffix]) == 2
+    output = capsys.readouterr()
+    assert "fixture-secret-7f39" not in output.out + output.err
+    assert json.loads(output.out)["limitations"] == ["invalid_input"]

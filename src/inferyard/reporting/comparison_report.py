@@ -205,7 +205,7 @@ def execute(request, *, options=None):
         comparison_path=request.out,
         loaded=loaded,
         verified_comparison=stored,
-        format_version=7,
+        format_version=8,
     )
     index = portable_index(index, request.out, request.out)
     from inferyard.contracts.validation import strict_json_loads

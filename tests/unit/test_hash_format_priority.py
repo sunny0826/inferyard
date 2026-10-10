@@ -70,7 +70,7 @@ def test_rescore_hashes_precede_deleted_analysis_versions(tmp_path, capsys, dama
     source_before = digest_tree(root)
     out = tmp_path / "rescore"
     write_rescore(root, out, scorer_id="phase2.v2", reason="synthetic revision")
-    for command in ("rescore-check", "verify"):
+    for command in ("verify",):
         check_unchanged(
             out, [command, "--run" if command == "rescore-check" else "--path", str(out)], 0, capsys
         )
@@ -89,7 +89,7 @@ def test_rescore_hashes_precede_deleted_analysis_versions(tmp_path, capsys, dama
             record = read_json(record_path)
             record["reason"] = "changed without updating stored self-hash"
             record_path.write_bytes(json_bytes(record))
-    for command in ("rescore-check", "verify"):
+    for command in ("verify",):
         check_unchanged(
             out,
             [command, "--run" if command == "rescore-check" else "--path", str(out)],

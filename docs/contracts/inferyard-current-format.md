@@ -16,7 +16,7 @@
 | --- | --- | --- | --- |
 | 核心 config/bundle/experiment/plan/run/selection/event/sample/manifest/summary/analysis | `schema_version=3`；现行 kind、ID、可选字段与定义版本 | 核心 v1/v2 读取与 migrate；`origin=migrated` 运行及 migration.json 递归读取 | [常量](../../src/inferyard/__init__.py)、[planning](../../src/inferyard/config/planning.py)、[Journal](../../src/inferyard/evidence/journal.py) |
 | 题包审核 | 原 review_records、case-review.v1、review_provenance 原字节及验证 | `upgrade_legacy_bundle` 生成入口；旧 bundle 作为活动输入 | [bundle_review](../../src/inferyard/config/bundle_review.py)；[zh-smoke](../../bundles/zh-smoke.json) 内嵌 v1 证明，不可连同迁移器删除 |
-| 核心报告 | `report_format_version=7`、presentation-seal.v1、当前根模板 | report v1–v6 分派；templates/v2、v3、v4、v5 与根 report_v1.html | [write_report](../../src/inferyard/reporting/report.py)、[模板映射](../../src/inferyard/reporting/report_assets.py)；v6/v7 共用根模板，根模板必须保留 |
+| 核心报告 | `report_format_version=8`、presentation-seal.v1、当前根模板；题面、输出、参考答案各存一次并内部引用 | report v1–v7 分派；templates/v2、v3、v4、v5 与根 report_v1.html | [write_report](../../src/inferyard/reporting/report.py)、[模板映射](../../src/inferyard/reporting/report_assets.py)；根模板必须保留 |
 | 核心比较 | `format_version=4`，计算 definition=`phase2.v3` | comparison v1–v3 的重算与投影 | [write_comparison](../../src/inferyard/reporting/comparison_report.py)；plan/run 的 comparison 标记仍为 phase2.v1，不改写 |
 | engine-fit plan | engine_fit_plan.v1/v2/v3/v4 全部保留 | 未知定义；不删除 v1 全目录模型清单 | [prepare](../../src/inferyard/config/engine_fit.py)：目录且仅 vLLM/SGLang、无覆盖写 v1；普通新引擎/单 GGUF 写 v2；温度覆盖写 v3；内存覆盖写 v4 |
 | engine-fit run | engine_fit_run.v1–v6 全部保留 | 非法 plan/run/platform 组合及未知定义 | [run writer](../../src/inferyard/runtime/engine_fit.py)：plan.v1 在 Linux 写 run.v1、Darwin 写 run.v2；plan.v2/v3/v4 在非 Windows 写 run.v3/v4/v5；Windows 单 GGUF llama.cpp 写 run.v6 |
@@ -34,8 +34,10 @@
 删除 migrator 不删除审核证明解析：后者只验证嵌入原字节、原批准及内容等价，不接受旧 run，
 不生成新审核。题包、随包副本、审核 HTML 与 `phase2_review.html` 不改字节。
 
-当前 Schema 允许缺省的字段仍按现行语义处理。缺少 implementation_identity 不补当前摘要，
-未知身份不授比较资格；缺预算的未发送/中断证据不补 0。不能以“当前格式”为由新增全局必填字段。
+当前 Schema 允许缺省的字段仍按现行语义处理。新运行写入 `implementation_identity`，
+不再要求 `tool_source_sha256`。缺少 `implementation_identity` 的旧运行不补当前摘要，
+仍用其 `tool_source_sha256`；未知身份不授比较资格。缺预算的未发送/中断证据不补 0。
+不能以“当前格式”为由把旧运行改成缺字段即拒绝。
 同一产物混入旧预算、迁移回执或旧派生请求声明时显式拒绝，不忽略后继续出成绩。
 冻结计划、来源链、重评分、公开复现等入口递归应用相同支持集合，不允许从派生产物绕过。
 

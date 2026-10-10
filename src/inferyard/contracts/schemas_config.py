@@ -136,7 +136,7 @@ CONFIG["properties"]["conditions"]["properties"]["require_epp_match"] = BOOL
 CONFIG["properties"]["conditions"]["properties"]["allow_unknown_environment"] = BOOL
 CONFIG["properties"]["conditions"]["properties"]["macos_power_policy"] = obj(
     {
-        "source": enum("macos.pmset.power-policy.v1"),
+        "source": enum("macos.pmset.power-policy.v1", "macos.iokit.power-policy.v1"),
         "ac_online": BOOL,
         "low_power_mode": {"type": "integer", "enum": [0, 1]},
         "power_mode": {"type": ["integer", "string"], "enum": [0, 1, 2, "unsupported"]},

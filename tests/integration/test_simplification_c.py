@@ -78,7 +78,7 @@ def test_score_append_failure_preserves_durable_completed_terminal(scenario, mon
     assert not (Path(result.evidence_dir) / "requests.jsonl").exists()
 
 
-def test_new_rerun_ignores_presentation_hash_legacy_keeps_full_hash_gate(scenario, monkeypatch):
+def test_new_and_legacy_rerun_accept_identity_changes_with_new_service(scenario, monkeypatch):
     request, deps, _, _ = scenario
     config = request.config.config.to_dict()
     config["execution"]["require_fresh_process"] = False
@@ -90,8 +90,15 @@ def test_new_rerun_ignores_presentation_hash_legacy_keeps_full_hash_gate(scenari
     root = Path(result.evidence_dir)
     endpoint = config["endpoint"]
     rerun = CommandRequest(
-        "run", from_run=root, server_pid=endpoint["server_pid"], endpoint_url=endpoint["url"]
+        "run", from_run=root, server_pid=endpoint["server_pid"] + 1, endpoint_url=endpoint["url"]
     )
+
+    def ticks(pid):
+        if pid == endpoint["server_pid"]:
+            raise PreflightError("service_process_unavailable")
+        return 98765
+
+    monkeypatch.setattr(runner, "process_start_ticks", ticks)
     from inferyard.implementation_identity import IdentityContext, digest
 
     context = IdentityContext()
@@ -110,8 +117,7 @@ def test_new_rerun_ignores_presentation_hash_legacy_keeps_full_hash_gate(scenari
         sha256=storage.sha256_file(root / "run.json"), bytes=(root / "run.json").stat().st_size
     )
     (root / "manifest.json").write_bytes(json_bytes(manifest))
-    with pytest.raises(PreflightError, match="rerun_tool_source_changed_or_unknown"):
-        runner.load_rerun(rerun, identity_context=context)
+    runner.load_rerun(rerun, identity_context=context)
 
 
 def test_batch_continuation_dispatches_scoped_and_legacy_identity(scenario, tmp_path, monkeypatch):

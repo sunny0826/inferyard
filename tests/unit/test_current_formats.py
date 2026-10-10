@@ -16,17 +16,17 @@ from inferyard.reporting.report import write_report
 from tests.unit.test_verification import source_fixture as fixture_run
 
 
-@pytest.mark.parametrize("version", [1, 2, 3, 4, 5, 6, 8])
+@pytest.mark.parametrize("version", [1, 2, 3, 4, 5, 6, 7, 9])
 def test_report_unsupported_is_code_two_in_both_entries(tmp_path, capsys, version):
     (tmp_path / "index.json").write_bytes(
         json_bytes({"schema_version": 3, "report_format_version": version})
     )
-    for args in (["report-check", "--run"], ["verify", "--path"]):
+    for args in (["verify", "--path"],):
         assert main([*args, str(tmp_path)]) == 2
         result = json.loads(capsys.readouterr().out)
         assert result["limitations"] == ["unsupported_format"]
         assert result["details"]["saved_version"] == version
-        assert result["details"]["supported_versions"] == [7]
+        assert result["details"]["supported_versions"] == [8]
     assert {p.name for p in tmp_path.iterdir()} == {"index.json"}
 
 
@@ -113,7 +113,7 @@ def test_public_old_policy_rejected_after_hash_checks(tmp_path, version, capsys)
 
     def check_cli(code, reason):
         before = digest_tree(out)
-        for command, flag in (("public-check", "--run"), ("verify", "--path")):
+        for command, flag in (("verify", "--path"),):
             assert main([command, flag, str(out)]) == code
             result = json.loads(capsys.readouterr().out)
             if reason is not None:

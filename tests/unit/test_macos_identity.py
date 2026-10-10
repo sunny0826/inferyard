@@ -244,12 +244,40 @@ def test_environment_is_lightweight_and_keeps_linux_fields_unknown(native, monke
     )
     monkeypatch.setattr(macos_identity, "sysctl_string", lambda key: "Apple M4")
     monkeypatch.setattr(macos_identity, "boot_id", lambda: "native-boot")
+    monkeypatch.setattr(
+        macos_identity,
+        "read_native",
+        lambda: (
+            True,
+            {
+                "source": "macos.iokit.power-policy.v1",
+                "ac_online": True,
+                "low_power_mode": 0,
+                "power_mode": "unsupported",
+                "power_mode_supported": False,
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        macos_identity,
+        "swap_snapshot",
+        lambda: {
+            "pswpin": 2,
+            "pswpout": 3,
+            "page_size_bytes": 16384,
+            "source": {
+                "pswpin": "host_statistics64:swapins",
+                "pswpout": "host_statistics64:swapouts",
+            },
+        },
+    )
     snapshot = macos_identity.environment_snapshot()
     assert snapshot["platform"] == "Darwin" and snapshot["ac_online"] is True
     assert snapshot["swap_pages"] == {"pswpin": 2, "pswpout": 3}
-    assert snapshot["profile"] is snapshot["governor"] is snapshot["epp"] is None
+    assert snapshot["profile"] == "macos-low-power:0"
+    assert snapshot["governor"] is snapshot["epp"] is None
     assert snapshot["memory_source"] == "psutil:virtual_memory:available"
-    assert all("system_profiler" not in part for command in commands for part in command)
+    assert commands == []
 
 
 def test_unknown_opt_in_never_hides_observed_mismatch_or_offline_unknown():
@@ -290,22 +318,19 @@ def test_default_darwin_dispatch_and_custom_proc_root(native, monkeypatch, tmp_p
     assert samples[1]["value"] == 12345
 
 
-def test_swap_uses_only_actual_swap_pages_and_errors_remain_unknown(native, monkeypatch):
+def test_swap_uses_host_counters_and_rejects_a_failed_read(native, monkeypatch):
+    monkeypatch.setattr(macos_native, "_host_vm_swap", lambda: (16384, 2, 3))
     observed = macos_native.swap_snapshot()
     assert observed["pswpin"] == 2 and observed["pswpout"] == 3
     assert observed["page_size_bytes"] == 16384
-    monkeypatch.setattr(
-        macos_native,
-        "query",
-        lambda args: (
-            "Mach Virtual Memory Statistics: (page size of 16384 bytes)\n"
-            "Pageins: 999.\nPageouts: 888.\nSwapins: 1.\nSwapins: 2.\nSwapouts: -1.\n"
-        ),
-    )
+    assert observed["source"] == {
+        "pswpin": "host_statistics64:swapins",
+        "pswpout": "host_statistics64:swapouts",
+    }
+    monkeypatch.setattr(macos_native, "_host_vm_swap", lambda: (16384, None, 3))
     assert macos_native.swap_snapshot()["pswpin"] is None
+    monkeypatch.setattr(macos_native, "_host_vm_swap", lambda: (None, None, None))
     assert macos_native.swap_snapshot()["pswpout"] is None
-    monkeypatch.setattr(macos_native, "query", lambda args: None)
-    assert macos_native.swap_snapshot()["pswpin"] is None
 
 
 def test_metal_requires_native_apple_capability(monkeypatch):
@@ -351,6 +376,16 @@ def test_metal_library_must_be_manifest_bound_and_actually_mapped(native, monkey
     result = macos_identity.verify_process(config, model, engine, "127.0.0.1", 8080)
     assert result["gpu_backend"]["source"] == "lsof:txt:file_identity"
     assert result["gpu_backend"]["gpu_residency"] == "not_observed"
+    bound = [model, engine, hash_file(library)]
+    monkeypatch.setattr(macos_identity, "hash_file", lambda *args: pytest.fail("guard rehashed"))
+    manifest.unlink()
+    result = macos_identity.verify_process(
+        config, model, engine, "127.0.0.1", 8080, bound_files=bound
+    )
+    assert result["gpu_backend"]["library_sha256"] == bound[-1].sha256
+    library.write_bytes(b"changed")
+    with pytest.raises(PreflightError, match="identity_file_changed"):
+        macos_identity.verify_process(config, model, engine, "127.0.0.1", 8080, bound_files=bound)
 
 
 def test_mapping_requires_the_captured_file_identity(native, monkeypatch):

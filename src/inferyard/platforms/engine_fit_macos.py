@@ -8,7 +8,7 @@ from pathlib import Path
 
 from inferyard.contracts.validation import ContractError
 from inferyard.platforms.engine_fit_macos_listener import unique_listener
-from inferyard.platforms.identity import FileIdentity, PreflightError, resolve_loopback_origin
+from inferyard.platforms.identity import FileIdentity, PreflightError, service_origin
 from inferyard.platforms.macos_identity import (
     _listener_identity,
     memory_available,
@@ -73,7 +73,7 @@ def bind_service(
     psutil = psutil_module()
     deadline = time.monotonic() + 10.0
     try:
-        origin, address, port = resolve_loopback_origin(url)
+        origin, address, port = service_origin(url)
         state = _state(pid, psutil)
         start, arguments, raw, executable, cwd = state
         if engine == "llama-cpp":

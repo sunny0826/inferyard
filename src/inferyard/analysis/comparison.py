@@ -39,7 +39,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     conditions = []
 
     def check(field, a, b, *, allowed=False, impact="common"):
-        if field in ("run.definition_versions.scoring", "selection.scorer_sha256"):
+        if field == "run.definition_versions.scoring":
             impact = "quality"
         elif field == "run.definition_versions.measurement":
             impact = "performance"
@@ -104,6 +104,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     if any(p is not None for p in resource_policies):
         check("resource_window_policy", *resource_policies, impact="performance")
     for path in (
+        "run.tool_version",
         "run.definition_versions",
         "run.tool_source_sha256",
         "selection.bundle_sha256",
@@ -128,12 +129,22 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
             identities = [
                 role_identities(d["run"].get("implementation_identity")) for d in (left, right)
             ]
-            # New identities are never inferred from legacy full-package hashes.
-            for role, impact in (("measurement", "performance"), ("scoring", "quality")):
+            # Different identity schemes are a difference, not a missing measurement.
+            if not all("implementation_identity" in d["run"] for d in (left, right)):
+                check(
+                    "run.identity_scheme",
+                    *[
+                        "implementation_identity"
+                        if "implementation_identity" in d["run"]
+                        else "tool_source_sha256"
+                        for d in (left, right)
+                    ],
+                )
+                continue
+            for role in ("measurement", "scoring"):
                 check(
                     "run.implementation_identity." + role,
                     *[identity[role] for identity in identities],
-                    impact=impact,
                 )
         elif path == "run.definition_versions":
             for component in ("measurement", "scoring"):

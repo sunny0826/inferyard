@@ -97,7 +97,10 @@ def test_environment_uses_new_native_value_on_every_call(monkeypatch):
             "pswpin": None,
             "pswpout": None,
             "page_size_bytes": None,
-            "source": {"pswpin": "vm_stat:Swapins", "pswpout": "vm_stat:Swapouts"},
+            "source": {
+                "pswpin": "host_statistics64:swapins",
+                "pswpout": "host_statistics64:swapouts",
+            },
         },
     )
     monkeypatch.setattr(macos_identity, "boot_id", lambda: None)

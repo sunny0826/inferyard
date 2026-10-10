@@ -8,6 +8,7 @@ import shutil
 import time
 import uuid
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from inferyard.adapters.engine_fit import FitClient, FitTransportError
 from inferyard.application.types import CommandResult
@@ -192,6 +193,12 @@ async def _run(request, plan, key, lock):
     async with FitClient(
         request.fit_engine, binding["origin"], request.fit_served_model, key, **client_options
     ) as client:
+        pinned_origin = getattr(client, "origin", None)
+        if (
+            isinstance(pinned_origin, str)
+            and urlsplit(pinned_origin).hostname != binding["address"]
+        ):
+            raise PreflightError("engine_fit_service_identity_changed")
         try:
             service = await client.inspect()
             idle = await client.idle()

@@ -18,6 +18,7 @@ from inferyard.platforms.macos_native import (
 )
 from inferyard.platforms.macos_process import lsof_records, mapped_file, matching_listener
 from inferyard.platforms.platform_io import durability
+from inferyard.platforms.power_macos import read_native
 
 
 def process_start_ticks(pid):
@@ -88,7 +89,7 @@ def _model_argument(args, process, model):
         raise PreflightError("service_model_argument_mismatch")
 
 
-def _metal_binding(config, engine, pid, rows):
+def _metal_binding(config, engine, pid, rows, bound_files=None):
     arguments = config["engine"]["startup_args"]
     options = ("-ngl", "--gpu-layers", "--n-gpu-layers")
     values = []
@@ -101,10 +102,17 @@ def _metal_binding(config, engine, pid, rows):
         raise PreflightError("metal_offload_configuration_unverified")
     library = Path(engine.path).parent / "libggml-metal.dylib"
     try:
-        manifest = strict_json_loads(Path(config["engine"]["runtime_library_manifest"]).read_text())
-        if not isinstance(manifest, dict) or library.name not in manifest:
-            raise PreflightError("metal_backend_library_not_bound")
-        identity = hash_file(library, manifest[library.name])
+        if bound_files is None:
+            manifest = strict_json_loads(
+                Path(config["engine"]["runtime_library_manifest"]).read_text()
+            )
+            if not isinstance(manifest, dict) or library.name not in manifest:
+                raise PreflightError("metal_backend_library_not_bound")
+            identity = hash_file(library, manifest[library.name])
+        else:
+            identity = next((item for item in bound_files if Path(item.path) == library), None)
+            if identity is None:
+                raise PreflightError("metal_backend_library_not_bound")
         if not mapped_file(pid, identity, rows):
             raise PreflightError("metal_backend_library_not_loaded")
         if not identity.unchanged():
@@ -147,7 +155,7 @@ def metal_capability():
     return {"apple_silicon": True, "apple_gpu": gpu, "gpu": {"backend": "metal", **gpu}}
 
 
-def verify_process(config, model, engine, address, port):
+def verify_process(config, model, engine, address, port, *, bound_files=None):
     psutil = psutil_module()
     endpoint = config["endpoint"]
     pid, expected = endpoint["server_pid"], endpoint["process_start_ticks"]
@@ -173,7 +181,7 @@ def verify_process(config, model, engine, address, port):
         _model_argument(args, process, model)
         listener = _listener_identity(pid, address, port, rows)
         metal = (
-            _metal_binding(config, engine, pid, rows)
+            _metal_binding(config, engine, pid, rows, bound_files)
             if config["engine"].get("backend") == "metal"
             else None
         )
@@ -200,7 +208,10 @@ def verify_process(config, model, engine, address, port):
         raise PreflightError("service_identity_unreadable") from exc
 
 
-def environment_snapshot():
+def environment_snapshot(constants=None):
+    from inferyard.platforms.environment_constants import apply_constants, constant_value
+
+    captured = constants or {}
     psutil = psutil_module()
     total = available = None
     try:
@@ -208,42 +219,45 @@ def environment_snapshot():
         total, available = memory.total, memory.available
     except OSError, psutil.Error:
         pass
-    power = query(["/usr/bin/pmset", "-g", "batt"])
-    ac = (
-        True
-        if power and "'AC Power'" in power
-        else False
-        if power and "'Battery Power'" in power
-        else None
-    )
+    ac, power_policy = read_native()
     swap = swap_snapshot()
-    from inferyard.platforms.power_macos import parse
-
-    power_policy = parse(query(["/usr/bin/pmset", "-g", "custom"]), ac)
-    return {
-        "platform": "Darwin",
-        "architecture": platform.machine(),
-        "kernel": platform.release(),
-        "os_release": {"ID": "macOS", "VERSION_ID": platform.mac_ver()[0]},
-        "boot_id": boot_id(),
-        "cpu_flags": None,
-        "scaling_driver": None,
-        "cpu_policies": {"policies": [], "status": "unavailable"},
-        "cpu_model": sysctl_string("machdep.cpu.brand_string"),
-        "memory_total_bytes": total,
-        "logical_cpus": os.cpu_count(),
-        "mem_available_bytes": available,
-        "memory_source": "psutil:virtual_memory:available",
-        "ac_sources": {"pmset:batt": "1" if ac else "0"} if ac is not None else {},
-        "ac_online": ac,
-        "profile": f"macos-low-power:{power_policy['low_power_mode']}" if power_policy else None,
-        "macos_power_policy": power_policy,
-        "governor": None,
-        "epp": None,
-        "swap_pages": {key: swap[key] for key in ("pswpin", "pswpout")},
-        "swap_source": swap["source"],
-        "page_size_bytes": swap["page_size_bytes"],
-        "gpu": {"backend": "not_observed", "reason": "backend_requires_service_binding"},
-        "evidence_durability": durability(),
-        "limitations": ["linux_cpufreq_not_applicable", "power_policy_is_sampled_not_atomic"],
-    }
+    if constants is not None:
+        os_release = captured.get("os_release")
+    else:
+        os_release = {"ID": "macOS", "VERSION_ID": platform.mac_ver()[0]}
+    return apply_constants(
+        {
+            "platform": "Darwin",
+            "architecture": constant_value(constants, "architecture", platform.machine),
+            "kernel": constant_value(constants, "kernel", platform.release),
+            "os_release": os_release,
+            "boot_id": constant_value(constants, "boot_id", boot_id),
+            "cpu_flags": None,
+            "scaling_driver": None,
+            "cpu_policies": {"policies": [], "status": "unavailable"},
+            "cpu_model": (
+                captured.get("cpu_model")
+                if constants is not None
+                else sysctl_string("machdep.cpu.brand_string")
+            ),
+            "memory_total_bytes": total,
+            "logical_cpus": constant_value(constants, "logical_cpus", os.cpu_count),
+            "mem_available_bytes": available,
+            "memory_source": "psutil:virtual_memory:available",
+            "ac_sources": {"iokit:providing-power": "1" if ac else "0"} if ac is not None else {},
+            "ac_online": ac,
+            "profile": (
+                f"macos-low-power:{power_policy['low_power_mode']}" if power_policy else None
+            ),
+            "macos_power_policy": power_policy,
+            "governor": None,
+            "epp": None,
+            "swap_pages": {key: swap[key] for key in ("pswpin", "pswpout")},
+            "swap_source": swap["source"],
+            "page_size_bytes": swap["page_size_bytes"],
+            "gpu": {"backend": "not_observed", "reason": "backend_requires_service_binding"},
+            "evidence_durability": constant_value(constants, "evidence_durability", durability),
+            "limitations": ["linux_cpufreq_not_applicable", "power_policy_is_sampled_not_atomic"],
+        },
+        constants,
+    )

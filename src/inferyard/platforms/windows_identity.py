@@ -83,7 +83,8 @@ def verify_process(config, model, engine, address, port):
         candidate = Path(model_path)
         if not candidate.is_absolute():
             candidate = Path(process.cwd()) / candidate
-        if not os.path.samefile(candidate, model.path):
+        observed = candidate.stat()
+        if (observed.st_dev, observed.st_ino) != (model.device, model.inode):
             raise PreflightError("service_model_argument_mismatch")
         listener = verify_listener(pid, address, port)
         if process_start_ticks(pid) != expected:
@@ -130,30 +131,38 @@ def _cpu_model():
         return None
 
 
-def environment_snapshot():
+def environment_snapshot(constants=None):
+    from inferyard.platforms.environment_constants import apply_constants, constant_value
+
+    captured = constants or {}
     memory = psutil.virtual_memory()
     battery = psutil.sensors_battery()
-    return {
-        "platform": "Windows",
-        "architecture": platform.machine(),
-        "kernel": platform.release(),
-        "os_release": {"ID": "Windows", "VERSION_ID": platform.version()},
-        "cpu_flags": None,
-        "scaling_driver": None,
-        "cpu_policies": {"policies": [], "status": "unavailable"},
-        "cpu_model": _cpu_model(),
-        "memory_total_bytes": memory.total,
-        "logical_cpus": os.cpu_count(),
-        "mem_available_bytes": memory.available,
-        "memory_source": "GlobalMemoryStatusEx:ullAvailPhys",
-        "ac_sources": {},
-        "ac_online": battery.power_plugged if battery is not None else None,
-        "profile": None,
-        "governor": None,
-        "epp": None,
-        "swap_pages": {},
-        "page_size_bytes": None,
-        "gpu": {"backend": "not_observed", "reason": "backend_requires_service_binding"},
-        "evidence_durability": durability(),
-        "limitations": ["windows_thermal_power_policy_and_swap_counters_unavailable"],
-    }
+    return apply_constants(
+        {
+            "platform": "Windows",
+            "architecture": constant_value(constants, "architecture", platform.machine),
+            "kernel": constant_value(constants, "kernel", platform.release),
+            "os_release": constant_value(
+                constants, "os_release", lambda: {"ID": "Windows", "VERSION_ID": platform.version()}
+            ),
+            "cpu_flags": None,
+            "scaling_driver": None,
+            "cpu_policies": {"policies": [], "status": "unavailable"},
+            "cpu_model": captured.get("cpu_model") if constants is not None else _cpu_model(),
+            "memory_total_bytes": memory.total,
+            "logical_cpus": constant_value(constants, "logical_cpus", os.cpu_count),
+            "mem_available_bytes": memory.available,
+            "memory_source": "GlobalMemoryStatusEx:ullAvailPhys",
+            "ac_sources": {},
+            "ac_online": battery.power_plugged if battery is not None else None,
+            "profile": None,
+            "governor": None,
+            "epp": None,
+            "swap_pages": {},
+            "page_size_bytes": None,
+            "gpu": {"backend": "not_observed", "reason": "backend_requires_service_binding"},
+            "evidence_durability": constant_value(constants, "evidence_durability", durability),
+            "limitations": ["windows_thermal_power_policy_and_swap_counters_unavailable"],
+        },
+        constants,
+    )

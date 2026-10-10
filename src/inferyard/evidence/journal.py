@@ -9,6 +9,7 @@ from inferyard import SCHEMA_VERSION, __version__
 from inferyard.analysis.scoring import ScoringContext
 from inferyard.config.plan_inputs import validate_workload_inputs
 from inferyard.contracts.validation import validate_document
+from inferyard.contracts.validation_cache import command_validation
 from inferyard.evidence.storage import (
     EvidenceError,
     EvidenceStore,
@@ -61,15 +62,18 @@ class TrialJournal(EvidenceStore):
         source_identity=None,
         implementation_identity=None,
     ):
-        if source_identity is None and implementation_identity is None:
+        if implementation_identity is None:
             from inferyard.implementation_identity import IdentityContext
 
             identity_context = IdentityContext(source_hash=tool_source_hash)
-            source_identity = identity_context.source
+            source_identity = source_identity or identity_context.source
             implementation_identity = identity_context.value
         if rerun_parent and (parent or resume_case_ids):
             raise EvidenceError("rerun_parent_conflicts_with_trial_parent")
-        trial = trial_for(plan, trial_id)
+        with command_validation(enabled=False):
+            trial = trial_for(plan, trial_id)
+            validate_document("config", config)
+            validate_document("bundle", bundle)
         workload = next(
             w for w in plan["experiment"]["workloads"] if w["workload_id"] == trial["workload_id"]
         )
@@ -80,8 +84,6 @@ class TrialJournal(EvidenceStore):
         self.cache_protocol = workload.get("cache_protocol")
         if self.duration_protocol and resume_case_ids:
             raise EvidenceError("duration_resume_requires_new_window")
-        validate_document("config", config)
-        validate_document("bundle", bundle)
         validate_workload_inputs(workload, config, bundle)
         selected = list(resume_case_ids) if resume_case_ids else list(trial["case_order"])
         if not selected or len(set(selected)) != len(selected):
@@ -135,13 +137,13 @@ class TrialJournal(EvidenceStore):
             if parent
             else "initial",
             tool_version=__version__,
-            tool_source_sha256=source_identity or tool_source_hash(),
             definition_versions=plan["experiment"]["definition_versions"],
             resumed_case_ids=list(resume_case_ids),
             diagnostic=diagnostic,
         )
-        if implementation_identity is not None:
-            run["implementation_identity"] = implementation_identity
+        run["implementation_identity"] = implementation_identity
+        if source_identity is not None:
+            run["tool_source_sha256"] = source_identity
         config_bytes, bundle_bytes = json_bytes(config), json_bytes(bundle)
         selection = dict(
             schema_version=SCHEMA_VERSION,

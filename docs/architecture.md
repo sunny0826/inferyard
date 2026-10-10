@@ -54,7 +54,7 @@ flowchart LR
 - `CommandRequest`、`CommandResult`、`Handler` 只定义在 `application/types.py`；业务模块不依赖 CLI，CLI 重导出同一对象。
 - `--help`、`--versions` 和 `--schema` 只注册参数及读取元数据，不加载实时后端。Schema 注册表只依赖契约包与版本常量；语义验证在解析时调用。
 - 应用分派显式覆盖注册命令，未知请求拒绝。`run --plan` 和 `resume` 进入批量路径，单次运行与专项命令进入各自处理器。
-- 规范命令和兼容入口适配到已有业务动作，结果保留调用入口名。`application/verification.py` 识别产物并延迟调用专用验证器；CLI 不复制其验证逻辑。
+- 规范命令适配到已有业务动作。旧命令名和参数别名已删除。`application/verification.py` 识别产物并延迟调用专用验证器；CLI 不复制其验证逻辑。
 - 入口统一映射输入、预检、证据、IO、内部异常与取消；退出码保持 0/2/3/4/130，stderr 不回显凭据。
 
 安装包包含所有领域包、`data/` 和 `templates/`；模板和 catalogue 从包内资源读取，不能依赖源码检出目录。完整包摘要保留来源；新运行另按 measurement/scoring/presentation 清单记录职责身份，旧证据按保存版本解释。具体清单与依赖边界见[职责身份契约](contracts/scoped-measurement-contract.md)。

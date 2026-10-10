@@ -101,7 +101,7 @@ def test_canonical_artifact_workflow_is_offline_and_checks_comparison_html(
         verified = invoke(capsys, ["verify", "--path", root])
         assert verified["command"] == "verify"
         assert verified["details"]["artifact_type"] == kind
-        assert invoke(capsys, [legacy, "--run", root])["command"] == legacy
+        assert invoke(capsys, [legacy, "--run", root], 2)["limitations"] == ["invalid_input"]
         assert files(root) == derived_before
     public = invoke(capsys, ["verify", "--path", tmp_path / "public", "--source-run", left])
     assert public["details"]["source_projection_verified"]
@@ -143,10 +143,7 @@ def test_public_configuration_verification_keeps_match_and_mismatch_semantics(
     assert matched["completeness"] == "incomplete"
     assert matched["details"]["declared_configuration_matches"]
     assert not matched["details"]["ready_to_run"]
-    legacy = invoke(capsys, ["public-config-check", "--run", public, "--config", "synthetic.toml"])
-    assert legacy["details"] == {
-        key: value for key, value in matched["details"].items() if key != "artifact_type"
-    }
+    invoke(capsys, ["public-config-check", "--run", public, "--config", "synthetic.toml"], 2)
     changed = loaded.config.to_dict()
     changed["conditions"]["threads"] += 1
     loaded = replace(loaded, config=Document.parse("config", changed))

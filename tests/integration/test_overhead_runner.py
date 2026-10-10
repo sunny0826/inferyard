@@ -202,7 +202,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         },
         [],
     )
-    deps.environment = lambda: deepcopy(snapshot)
+    deps.environment = lambda **kwargs: deepcopy(snapshot)
     monkeypatch.setattr("inferyard.platforms.telemetry.environment_snapshot", deps.environment)
     monkeypatch.setattr(
         "inferyard.runtime.environment_schedule.environment_snapshot", deps.environment
@@ -368,7 +368,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
 
         report = output / "linked-performance-report"
         index = write_report(targets, report, comparison_path=out)
-        assert index["report_format_version"] == 7
+        assert index["report_format_version"] == 8
         assert index["comparison"]["eligibility"]["performance"]
         assert verify_report(report)["verified"]
         html = (report / "report.html").read_text()

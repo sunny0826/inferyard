@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from inferyard import __version__
 from inferyard.adapters.prism import PrismAdapter
 from inferyard.analysis.scoring import ScoringContext, score_case
 from inferyard.application.types import CommandResult
@@ -26,12 +25,12 @@ from inferyard.evidence.storage import (
     sha256_file,
     verify_manifest,
 )
-from inferyard.implementation_identity import IdentityContext, execution_matches
+from inferyard.implementation_identity import IdentityContext
 from inferyard.platforms.identity import (
     PreflightError,
     environment_snapshot,
     process_start_ticks,
-    resolve_loopback_origin,
+    service_origin,
     static_preflight,
     verify_process,
 )
@@ -42,17 +41,25 @@ from inferyard.runtime.lock import HostLock
 
 
 def _guard(config, files):
-    # TODO(P1): preserve model/engine process rechecks; template/library scope stays unchanged.
     if not all(item.unchanged() for item in files):
         raise PreflightError("identity_file_changed")
-    _, address, port = resolve_loopback_origin(config["endpoint"]["url"])
+    _, address, port = service_origin(config["endpoint"]["url"])
     verify_process(
         config,
         files[0],
         files[1],
         address,
         port,
+        bound_files=files,
     )
+
+
+def transport_config(config, adapter):
+    """Check the listener actually pinned by the adapter without changing frozen inputs."""
+    origin = getattr(adapter, "origin", None)
+    if not isinstance(origin, str):
+        return config
+    return {**config, "endpoint": {**config["endpoint"], "url": origin}}
 
 
 @dataclass
@@ -67,8 +74,6 @@ class Dependencies:
 
 
 def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[LoadedConfig, dict]:
-    scoring_context = scoring_context or ScoringContext()
-    identity_context = identity_context or IdentityContext(source_hash=tool_source_hash)
     root = request.from_run
     limitations = verify_manifest(root)
     if any("manifest_missing" in reason for reason in limitations):
@@ -79,16 +84,6 @@ def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[Lo
     config, bundle, meta = (deepcopy(parent[k]) for k in ("config", "bundle", "run"))
     if meta["execution_mode"] != "single" or meta["kind"] != "run":
         raise PreflightError("rerun_requires_single_run_source")
-    if (
-        parent["selection"]["scorer_sha256"] != scoring_context.identity()
-        or meta["tool_version"] != __version__
-    ):
-        raise PreflightError("rerun_tool_or_scorer_changed")
-    if "implementation_identity" in meta:
-        if not execution_matches(meta["implementation_identity"], identity_context.value):
-            raise PreflightError("rerun_tool_source_changed_or_unknown")
-    elif meta.get("tool_source_sha256") != identity_context.source:
-        raise PreflightError("rerun_tool_source_changed_or_unknown")
     new_start = process_start_ticks(request.server_pid)
     old_url = urlsplit(config["endpoint"]["url"])
     new_url = urlsplit(request.endpoint_url)
@@ -103,8 +98,10 @@ def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[Lo
     config["endpoint"].update(
         url=request.endpoint_url, server_pid=request.server_pid, process_start_ticks=new_start
     )
-    from inferyard.runtime.service_reuse import require_transition
+    from inferyard.runtime.service_reuse import require_transition, same_process
 
+    if same_process(parent["config"]["endpoint"], config["endpoint"]):
+        raise PreflightError("rerun_requires_new_service")
     require_transition(parent, config, process_start_ticks, reason="rerun_requires_new_service")
     if getattr(request, "output_root", None):
         config["output"]["root"] = str(request.output_root.resolve())

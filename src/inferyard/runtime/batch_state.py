@@ -18,6 +18,12 @@ from inferyard.provenance import tool_source_hash
 
 
 def open_batch(root, source, diagnostic, *, source_identity=None, implementation_identity=None):
+    if implementation_identity is None:
+        from inferyard.implementation_identity import IdentityContext
+
+        context = IdentityContext(source_hash=tool_source_hash)
+        implementation_identity = context.value
+        source_identity = source_identity or context.source
     source_identity = source_identity or tool_source_hash()
     if (root / "batch.json").exists():
         meta = read_json(root / "batch.json")
@@ -152,7 +158,7 @@ def history(
 ):
     metadata = read_json(root / "batch.json")
     expected_tool = (
-        metadata["tool_source_sha256"]
+        metadata.get("tool_source_sha256")
         if allow_tool_change
         else source_identity or tool_source_hash()
     )
@@ -183,7 +189,7 @@ def history(
             )
             if not execution_matches(run.get("implementation_identity"), expected_identity):
                 raise EvidenceError("batch_run_tool_changed")
-        elif run["tool_source_sha256"] != expected_tool:
+        elif run.get("tool_source_sha256") != expected_tool:
             raise EvidenceError("batch_run_tool_changed")
         if run["diagnostic"] != metadata["diagnostic"]:
             raise EvidenceError("batch_diagnostic_mode_changed")

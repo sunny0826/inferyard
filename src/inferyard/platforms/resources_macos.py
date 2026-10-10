@@ -16,8 +16,8 @@ SOURCES = {
     "system_mem_available": "psutil:virtual_memory:available",
     "service_rss": "psutil:Process.memory_info:rss",
     "service_cpu_ticks": "psutil:Process.cpu_times:user+system",
-    "system_swap_in": "vm_stat:Swapins",
-    "system_swap_out": "vm_stat:Swapouts",
+    "system_swap_in": "host_statistics64:swapins",
+    "system_swap_out": "host_statistics64:swapouts",
 }
 
 
@@ -182,7 +182,7 @@ class ResourceSampler(EnvironmentObserver):
         ]
 
     def counters(self, pid, ticks, *, capture="periodic"):
-        # The two swap values come from one fresh vm_stat invocation and share
+        # The two swap values come from one fresh host_statistics64 read and share
         # its actual read/validation interval; no snapshot survives this call.
         return [self._cpu_counter(pid, ticks, capture), *self._swap_counters(capture)]
 

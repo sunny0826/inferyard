@@ -13,6 +13,37 @@ from inferyard.config.single_plan import compile_single_plan
 from inferyard.contracts import validation
 from inferyard.contracts.schemas import export_schema, schemas_for
 from inferyard.contracts.validation import ContractError, Document, validate_document
+from inferyard.contracts.validation_cache import command_validation
+
+
+def test_command_validation_is_content_bound_and_boundary_is_full(monkeypatch, wire_fixture):
+    original = validation._validate
+    calls = []
+
+    def count(value, spec, path):
+        if path == "bundle":
+            calls.append(path)
+        return original(value, spec, path)
+
+    monkeypatch.setattr(validation, "_validate", count)
+    bundle = wire_fixture("bundle")
+    with command_validation():
+        validate_document("bundle", bundle)
+        validate_document("bundle", deepcopy(bundle))
+        assert len(calls) == 1
+        with command_validation(enabled=False):
+            validate_document("bundle", bundle)
+        assert len(calls) == 2
+        bundle["cases"][0]["unexpected"] = True
+        with pytest.raises(ContractError):
+            validate_document("bundle", bundle)
+        del bundle["cases"][0]["unexpected"]
+        bundle["schema_version"] = True
+        with pytest.raises(ContractError):
+            validate_document("bundle", bundle)
+    bundle["schema_version"] = 3
+    validate_document("bundle", bundle)
+    assert len(calls) == 4
 
 
 def reviewed_bundle(wire_fixture):

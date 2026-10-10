@@ -119,7 +119,7 @@ def test_report_moves_with_sources_and_does_not_render_during_verify(tmp_path, m
     root = fixture_run(original)
     out = original / "report"
     saved = write_report([root], out)
-    assert saved["report_format_version"] == 7
+    assert saved["report_format_version"] == 8
     assert not Path(saved["runs"][0]["source"]["path"]).is_absolute()
     before = (out / "report.html").read_bytes()
     moved = tmp_path / "moved"

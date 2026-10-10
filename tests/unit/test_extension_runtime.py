@@ -96,6 +96,9 @@ def test_total_runtime_uses_same_workload_and_seals_full_observer_arms(
             self.store = store
             self.stopped = False
 
+        def use_start_environment(self, snapshot):
+            assert snapshot == read_json(self.store.path / "environment.start.json")
+
         async def run(self):
             while True:
                 self.store.observation("schedule.jsonl", {"fixture_periodic": True})

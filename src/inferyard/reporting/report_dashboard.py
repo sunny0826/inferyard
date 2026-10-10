@@ -1,7 +1,7 @@
 """Single-run display reductions; raw quality denominators and sample scopes stay intact."""
 
 from inferyard.analysis.performance import distribution, request_timing
-from inferyard.reporting.svg_render import check_svg, extract_svg
+from inferyard.reporting.report_content import svg_reference, text_ref
 
 CATEGORIES = {
     "instruction": "指令遵循",
@@ -13,23 +13,24 @@ CATEGORIES = {
 }
 
 
-def request_details(request, case, ordinal, *, format_version=7):
+def request_details(request, case, ordinal, *, contents, format_version=8):
     timing = request_timing(request)
     details = {
         "ordinal": ordinal,
         "category": request["category"],
         "category_label": CATEGORIES.get(request["category"], request["category"]),
-        "reference_answer": case.get("reference_answer"),
+        "reference_answer_ref": text_ref(contents, case.get("reference_answer")),
         "rules": case["rules"],
         "rule_results": (request.get("score") or {}).get("rule_results", []),
         "first_answer_ms": timing["L02"]["value"],
         "completion_tokens": request.get("completion_tokens"),
         "token_source": request.get("token_source"),
         "finish_reason": request.get("finish_reason"),
-        "reasoning": request.get("reasoning", ""),
+        "reasoning_ref": text_ref(contents, request.get("reasoning", "")),
     }
     if case["category"] == "svg":
-        details["svg_view"] = check_svg(extract_svg(request.get("content", "")))
+        content = request.get("content", "")
+        details["svg_view"] = svg_reference(content, text_ref(contents, content))
     return details
 
 

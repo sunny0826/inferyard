@@ -1,4 +1,5 @@
 <!doctype html>
+{% from "report_content.html" import text, svg %}
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,5 +28,6 @@
 <div class="section-head" id="evidence-{{ n }}"><div><div class="eyebrow">07 / provenance</div><h2>数据来源与运行边界</h2></div><span>可离线重建</span></div><section class="panel"><div class="source-block"><div class="eyebrow">run / experiment</div><code>{{ run.source.run_id }}<br>{{ run.experiment_id }}</code></div><div class="source-block"><div class="eyebrow">measurement source sha-256</div><code>{{ run.profile.measurement_source_sha256 }}</code></div><div class="source-block"><div class="eyebrow">sealed manifest sha-256</div><code>{{ run.source.manifest_sha256|display }}</code></div><p class="panel-note">停止原因：{{ run.summary.stop_reason }} · 来源：{{ run.origin }}。{% if run.parent_run_id %}父运行：{{ run.parent_run_id }} · {{ run.relation }}。{% endif %}</p>{% if run.summary.limitations %}<details><summary>运行范围与限制</summary><pre>{{ run.summary.limitations|join('
 ') }}</pre></details>{% endif %}<div class="evidence-links">{% for name, url in run.evidence.items() %}<a href="{{ url }}">{{ name }} ↗</a>{% endfor %}</div><p class="panel-note">本页自包含，阅读不需要这些外部文件；核验和重建仍需要原始证据。包含本地路径及原始答案，属于私有报告。</p></section>
 </article>{% endfor %}
+<details class="panel" open id="report-content-store"><summary>原始文本 · 题目、参考答案与模型输出</summary>{% for ref, value in index.contents.items() %}<section><pre><span id="text-{{ ref }}">{{ value|content_text }}</span></pre></section>{% endfor %}</details>
 <footer class="footer"><p>InferYard · InferYard<br>不同运行不合并题数与分母，显示筛选不改变成绩。报告格式 v{{ index.report_format_version }} · <a href="index.json">可重建索引 ↗</a></p><p class="id">报告生成源码<br>{{ index.generator_source_sha256 }}</p></footer>
 </main></div><script>{% include "report_script.html" %}</script></body></html>

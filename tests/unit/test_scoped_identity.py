@@ -105,3 +105,52 @@ def test_comparison_v3_scope_dispatch_and_legacy_full_hash(tmp_path):
     assert not compare_trials(left, right, definition="phase2.v3")["eligibility"]["quality"]
     right["run"]["tool_source_sha256"] = left["run"]["tool_source_sha256"]
     assert compare_trials(left, right, definition="phase2.v3")["eligibility"]["quality"]
+
+
+def test_run_requires_one_saved_identity_and_new_role_record_needs_no_whole_hash(tmp_path):
+    from inferyard.contracts.validation import validate_document
+    from inferyard.evidence.storage import read_json
+    from tests.helpers import fixture_run
+
+    run = read_json(fixture_run(tmp_path) / "run.json")
+    run.pop("implementation_identity")
+    validate_document("run", run)  # Legacy source identity remains accepted.
+    run.pop("tool_source_sha256")
+    with pytest.raises(ContractError):
+        validate_document("run", run)
+    run["implementation_identity"] = identity.IdentityContext().value
+    validate_document("run", run)
+    run["tool_source_sha256"] = "0" * 64
+    validate_document("run", run)
+
+
+def test_new_journal_with_role_identity_does_not_require_or_compute_whole_hash(
+    tmp_path, monkeypatch
+):
+    from inferyard.config.loader import load_config
+    from inferyard.config.single_plan import compile_single_plan
+    from inferyard.evidence.journal import TrialJournal
+    from inferyard.evidence.storage import read_json
+    from inferyard.reporting.report_profile import measurement_source
+
+    loaded = load_config(Path("tests/fixtures/config/valid.toml"))
+    plan = compile_single_plan(loaded.config, loaded.bundle)
+    current = identity.IdentityContext().value
+    monkeypatch.setattr(
+        "inferyard.evidence.journal.tool_source_hash", lambda: pytest.fail("second identity gate")
+    )
+    journal = TrialJournal(
+        tmp_path,
+        plan,
+        plan["trials"][0]["trial_id"],
+        loaded.config.to_dict(),
+        loaded.bundle.to_dict(),
+        implementation_identity=current,
+    )
+    try:
+        run = read_json(journal.path / "run.json")
+        assert "tool_source_sha256" not in run
+        assert run["implementation_identity"] == current
+        assert measurement_source(run) == current["measurement"]["sha256"]
+    finally:
+        journal.close()
