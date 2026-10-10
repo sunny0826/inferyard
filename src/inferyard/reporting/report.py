@@ -1,17 +1,18 @@
 """Rebuildable local run index and self-contained, escaped multi-run report."""
 
+from hashlib import sha256
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandResult, VerificationOptions
+from inferyard.contracts.validation import ContractError, strict_json_loads
 from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
 from inferyard.evidence.storage import (
     EvidenceError,
     atomic_bytes,
     json_bytes,
     local_file,
-    read_json,
     sha256_file,
 )
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
@@ -218,12 +219,14 @@ def build_index(
 
 
 def write_report(roots, out, *, comparison_path=None):
-    from inferyard.contracts.validation import strict_json_loads
     from inferyard.reporting.sealed_report import portable_index, seal_report
 
     index = build_index(roots, out, comparison_path=comparison_path, format_version=8)
     index = portable_index(index, out, comparison_path)
-    index = strict_json_loads(json_bytes(index).decode())
+    raw = json_bytes(index)
+    del index
+    index = strict_json_loads(raw.decode())
+    del raw
     html = render_report_html(_environment(), "report.html", index)
     protected = list(roots)
     if comparison_path is not None:
@@ -240,7 +243,15 @@ def write_report(roots, out, *, comparison_path=None):
 
 
 def verify_report(out, *, options=None):
-    saved = read_json(local_file(out, "index.json"))
+    path = local_file(out, "index.json")
+    try:
+        with path.open("rb") as handle:
+            raw = handle.read()
+        saved = strict_json_loads(raw.decode("utf-8"))
+    except (OSError, UnicodeError, ContractError) as exc:
+        raise EvidenceError("invalid_json_evidence") from exc
+    index_sha256 = sha256(raw).hexdigest()
+    del raw
     if (
         type(saved) is not dict
         or type(saved.get("schema_version")) is not int
@@ -253,7 +264,7 @@ def verify_report(out, *, options=None):
     require_version(saved, "report_format_version", (8,), "report")
     from inferyard.reporting.sealed_report import verify
 
-    return verify(out, saved, options=options or VerificationOptions())
+    return verify(out, saved, options=options or VerificationOptions(), index_sha256=index_sha256)
 
 
 def execute(request, *, options=None):

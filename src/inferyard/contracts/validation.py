@@ -80,8 +80,28 @@ def _compile(spec: dict, nodes: dict):
     return validate
 
 
+def _compile_kind_dispatch(alternatives, branches):
+    dispatch = {}
+    for alternative, branch in zip(alternatives, branches, strict=True):
+        field = alternative.get("properties", {}).get("kind", {})
+        values = field.get("enum", ())
+        if (
+            alternative.get("type") != "object"
+            or "kind" not in alternative.get("required", ())
+            or field.get("type") != "string"
+            or not values
+        ):
+            return None
+        for value in values:
+            if type(value) is not str or value in dispatch:
+                return None
+            dispatch[value] = branch
+    return dispatch
+
+
 def _compile_union(spec, alternatives, nodes):
     branches = tuple(_compile(branch, nodes) for branch in alternatives)
+    kind_dispatch = _compile_kind_dispatch(alternatives, branches)
     discriminators = []
     for discriminator in ("event_type", "category"):
         enums = tuple(
@@ -118,6 +138,16 @@ def _compile_union(spec, alternatives, nodes):
                     return
                 if not matches:
                     raise ContractError(_field(path, discriminator), "unsupported enum value")
+            selected_kind = value.get("kind")
+            if kind_dispatch is not None and type(selected_kind) is str:
+                selected_branch = kind_dispatch.get(selected_kind)
+                if selected_branch is not None:
+                    try:
+                        _validate(value, selected_branch, path)
+                    except ContractError:
+                        pass  # Preserve the original union diagnostic for rejected variants.
+                    else:
+                        return
         successes = 0
         for branch in branches:
             try:

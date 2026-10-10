@@ -76,10 +76,12 @@ def _inputs(root, reads, limits):
     for kind in ("run", "plan", "selection", "config", "bundle"):
         data = reads.input(kind)
         require_core(data, kind)
-        try:
-            validate_document(kind, data)
-        except ContractError as exc:
-            raise EvidenceError("invalid_trial_input") from exc
+        # TrialEvidence validates every layout 2 document in the inputs envelope.
+        if reads.layout_version == 1:
+            try:
+                validate_document(kind, data)
+            except ContractError as exc:
+                raise EvidenceError("invalid_trial_input") from exc
         documents[kind] = data
     run, plan, selection = (documents[k] for k in ("run", "plan", "selection"))
     if (root / "migration.json").exists():

@@ -1,6 +1,7 @@
 """Version eight verifies saved bytes and source semantics without invoking a renderer."""
 
 from copy import deepcopy
+from hashlib import sha256
 
 from inferyard.contracts.validation import strict_json_loads
 from inferyard.evidence.artifact_seal import read_sealed, seal
@@ -14,12 +15,17 @@ from inferyard.evidence.storage import EvidenceError, json_bytes
 
 
 def portable_index(index, out, comparison_path=None):
-    index = deepcopy(index)
-    for run in index["runs"]:
-        run["source"] = dict(run["source"])
-        run["source"]["path"] = relative_source(run["source"]["path"], out)
+    index = dict(index)
+    index["runs"] = [
+        {**run, "source": {**run["source"], "path": relative_source(run["source"]["path"], out)}}
+        for run in index["runs"]
+    ]
+    index["comparison"] = deepcopy(index["comparison"])
     if "comparison_source" in index:
-        index["comparison_source"]["path"] = relative_source(comparison_path, out)
+        index["comparison_source"] = {
+            **index["comparison_source"],
+            "path": relative_source(comparison_path, out),
+        }
     if index["comparison"] and index["comparison"].get("source_runs"):
         from inferyard.evidence.source_locations import comparison_locations
 
@@ -34,7 +40,7 @@ def seal_report(out, *, comparison=False):
     seal(out, ["index.json", "report.html", *(["comparison.json"] if comparison else [])])
 
 
-def verify(out, saved, *, options):
+def verify(out, saved, *, options, index_sha256=None):
     from inferyard.reporting.comparison_report import (
         comparison_input,
         read_verified_comparison,
@@ -50,8 +56,13 @@ def verify(out, saved, *, options):
         ],
         retain={"index.json", *(["report.html"] if options.rerender else [])},
     )
-    if json_bytes(saved) != json_bytes(strict_json_loads(blobs["index.json"].decode())):
+    raw = blobs.pop("index.json")
+    # Equivalent JSON rewrites retain the existing semantic read-change policy.
+    if sha256(raw).hexdigest() != index_sha256 and json_bytes(saved) != json_bytes(
+        strict_json_loads(raw.decode())
+    ):
         raise EvidenceError("report_changed_during_read")
+    del raw
     roots = [
         resolve_source(out, run["source"]["path"], options.source_roots) for run in saved["runs"]
     ]
