@@ -96,7 +96,11 @@ accounts, auto-submission, multi-host scheduling and multimodal executors are
 out of scope.
 
 The source development version stores a complete ordinary single run in eight
-evidence files and its report in three. Existing schema-3 snapshot runs remain
+evidence files and its report in three; these are formal output counts —
+preparation checks, operator scripts and logs add more files to the workspace.
+For handoff, copy the sealed runs and the shared report into a separate
+delivery directory; see the [usage guide](docs/usage.md#交付目录组织).
+Existing schema-3 snapshot runs remain
 readable; see the [evidence layout contract](docs/contracts/run-evidence-layout.md).
 
 ## Read more
