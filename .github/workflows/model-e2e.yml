@@ -16,10 +16,20 @@ jobs:
   e2e:
     name: e2e (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    # The cloud ubuntu runner has no cpufreq sysfs (governor/profile/ac_online
+    # all absent), which the strict Linux environment admission deliberately
+    # blocks; the leg stays non-blocking so the signal is visible without
+    # failing the PR. Linux is verified on a physical machine instead - a
+    # self-hosted runner can flip nonblocking back to false.
+    continue-on-error: ${{ matrix.nonblocking }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-2025, macos-15]
+        os: [windows-2025, macos-15]
+        nonblocking: [false]
+        include:
+          - os: ubuntu-24.04
+            nonblocking: true
     steps:
       - uses: actions/checkout@v6
         with:

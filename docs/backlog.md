@@ -400,6 +400,13 @@ HTTP 500（/completion 端点同字节 200；seed 1/7/123/2024 均 200；macOS/W
 同 seed 正常），e2e 改用 seed 1，引擎容错待上游 PrismML-Eng 处理。macOS 首次
 执行签名的引擎二进制链需约 13 秒（超出 CLI 10 秒版本查询预算），脚本在解压后
 做一次 180 秒预算的 --version 预热。已知前提：云 Linux runner 无 cpufreq sysfs
-时（governor 为缺测）严格环境准入会以明确错误阻断 run，Linux CI 段可能需要
-自托管物理 runner；按用户决定，资产不做字节校验（Windows 引擎归档的固定
+时（governor 为缺测）严格环境准入会以明确错误阻断 run；按用户决策，ubuntu leg
+以 continue-on-error 非阻断保留（信号可见、不红叉），Linux 以本机物理机验证为准，
+自托管 runner 可改回阻断；按用户决定，资产不做字节校验（Windows 引擎归档的固定
 SHA 仍由 runtime prepare 内置校验）。Windows/omarchy 会话各轮现场全部保留。
+
+2026-10-11 首次真实 CI 运行（PR #32）另暴露并修复一个 macOS 候选生成缺陷：
+无电源 profile 的机器（macos-15 runner）把 None 写入 conditions.profile 导致
+契约拒绝、无法生成候选——生成器改为实测 None 时保留既有 "unknown" 兜底
+（macOS 准入本就豁免实测 None 的 unknown 字段，严格性不变），带单测回归
+（b69f487）。

@@ -20,8 +20,13 @@
   peg-native chat parser rejecting seed-42 output with an invalid UTF-8 byte
   on the Linux CPU path is worked around with seed 1 and recorded as an
   upstream concern. On a cloud Linux runner without cpufreq sysfs the strict
-  Linux environment admission is expected to block the run with an explicit
-  message; the Linux leg may require a self-hosted physical runner.
+  Linux environment admission deliberately blocks the run with an explicit
+  message, so the ubuntu leg runs non-blocking (continue-on-error) while Linux
+  is verified on a physical machine; a self-hosted runner can restore a
+  blocking Linux leg. The first CI run also exposed and fixed a macOS candidate
+  defect: machines reporting no power profile wrote null into
+  `conditions.profile` and failed contract validation - the generator now keeps
+  the existing "unknown" fallback for None observations.
 
 - The offline report now shows an informational animation-element statistic for SVG
   cases, so operators can see the animation makeup without opening a browser: counts
