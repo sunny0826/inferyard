@@ -411,3 +411,17 @@ SHA 仍由 runtime prepare 内置校验）。Windows/omarchy 会话各轮现场�
 契约拒绝、无法生成候选——生成器改为实测 None 时保留既有 "unknown" 兜底
 （macOS 准入本就豁免实测 None 的 unknown 字段，严格性不变），带单测回归
 （b69f487）。
+
+2026-10-11 e2e 补齐真实评分链路（分支 ci/e2e-zh-smoke）：原 e2e 仅跑
+zh-svg-pelican（SVG 类不计质量分），真实模型输出的评分从未被执行。改造后
+同一外部 llama-server 依次跑 zh-smoke（40 道 instruction/extraction 真实
+评分题）与 zh-svg-pelican，`report --runs SMOKE SVG` 生成双 run 合并报告
+（side-by-side comparison 仅 bundle 相关字段 different，80 项 same），并新增
+内容级断言：40 题 quality_state 全为 pass/fail、dashboard 分母 40 且
+numerator 与 pass 数一致、SVG 题 not_applicable、报告含「答案通过数」与
+「动画元素统计」、工作区 19 文件（8+8+3，即正式输出计数）、删除两个
+bench-ops 目录后 verify 仍退出 0。操作目录改为 bench-ops-smoke /
+bench-ops-svg，Linux 候选的 bundle 版本改为从题包文件读取。macOS arm64
+（Metal）本机实跑全绿：SmolLM2-135M 得 1/40（小模型预期低分，验证的是
+评分链路而非模型质量），总耗时约 3 分钟。Windows/Linux 两条腿尚未以新
+流程实跑（CI 将覆盖 Windows；Linux 仍需本机 omarchy 复跑确认）。
