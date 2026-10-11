@@ -130,6 +130,25 @@ def fill_linux_template(template, out_dir, *, model, engine, assets, results, bu
         "0",
         "--slots",
     ]
+    # The Linux environment admission is strict by design: "unknown" literals
+    # never pass (the allowed-unknown exemption covers Windows and Darwin only)
+    # and missing sysfs values are blockers, so freeze the observed values the
+    # same way the CLI's own snapshot does.
+    from inferyard.platforms.identity import environment_snapshot
+
+    observed = environment_snapshot()
+    required = {
+        "profile": observed.get("profile"),
+        "governor": observed.get("governor"),
+        "ac_online": observed.get("ac_online"),
+    }
+    unavailable = sorted(key for key, value in required.items() if value is None)
+    if unavailable:
+        raise SystemExit(
+            f"linux environment fields unavailable: {unavailable}; "
+            "this machine does not satisfy the strict Linux environment admission"
+        )
+    epp = observed.get("epp")
     replacements = {
         "REPLACE_DEVICE_ID": "ci-linux-x64",
         "REPLACE_MODEL_NAME": "SmolLM2 135M Instruct",
@@ -149,6 +168,12 @@ def fill_linux_template(template, out_dir, *, model, engine, assets, results, bu
         '"../results"': json.dumps(str(results)),
         '"REPLACE_MEMORY_BUDGET_BYTES"': "1073741824",
         '"REPLACE_DISK_BUDGET_BYTES"': "5368709120",
+        'profile = "unknown"': f'profile = "{required["profile"]}"',
+        'governor = "unknown"': f'governor = "{required["governor"]}"',
+        'epp = "unknown"': (
+            f'epp = "{epp}"' if epp is not None else "epp = null\nrequire_epp_match = false"
+        ),
+        "\nac_online = true": f"\nac_online = {str(required['ac_online']).lower()}",
     }
     text = template.read_text(encoding="utf-8")
     for old, new in replacements.items():
