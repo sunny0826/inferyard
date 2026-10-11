@@ -380,3 +380,26 @@ macOS 与 Windows 同一源码的定向回归各 **222 passed**，Windows 测试
 20 个补丁文件哈希匹配；覆盖合成回环 HTTP、子进程回收与原生文件发布。
 独立源码审查通过；Ruff、格式、Schema/catalogue 一致性和文档链接检查通过。
 Windows 验证没有真实下载；真实 CDN 性能与原 TUN/Fake-IP 故障仍未验证。
+
+## 模型 e2e 三平台接入
+
+2026-10-11 新增 `tests/packaging/ci_model_e2e.py` 与 `model-e2e` workflow（分支
+ci/model-e2e，基于 #31 分支）：以 SmolLM2-135M-Instruct Q4_K_M（105MB）+ Prism
+b10743 归档驱动真实模型全链路——init（zh-svg-pelican 单题包，用户显式固定）→
+device-check → 平台准备（macOS 自动候选 / Windows runtime prepare 按预检推荐
+CPU 或 CUDA / Linux config assets + 手工模板填实测环境值）→ 外部启动 llama-server
+→ bind → run（真实推理）→ report → verify --rerender → 断言工作区 11 文件
+（run 8 + report 3）、SVG 统计行、删除整个 bench-ops 后 verify 仍退出 0。
+
+三平台本机实测全绿：macOS arm64（Metal）、Windows x64（CUDA 12.4，San3an-win）、
+Linux x86_64（CPU，omarchy 物理机）。Linux 经六轮迭代修复三处脚本结构性问题
+（TOML 引号丢失、模板 environment "unknown" 透传而 Linux 准入无豁免、
+seed_support 未声明 "supported"），另规避一个引擎侧问题：Prism chat handler 的
+peg-native 解析对 seed=42 在 Linux CPU 量化路径生成的无效 UTF-8 字节返回
+HTTP 500（/completion 端点同字节 200；seed 1/7/123/2024 均 200；macOS/Windows
+同 seed 正常），e2e 改用 seed 1，引擎容错待上游 PrismML-Eng 处理。macOS 首次
+执行签名的引擎二进制链需约 13 秒（超出 CLI 10 秒版本查询预算），脚本在解压后
+做一次 180 秒预算的 --version 预热。已知前提：云 Linux runner 无 cpufreq sysfs
+时（governor 为缺测）严格环境准入会以明确错误阻断 run，Linux CI 段可能需要
+自托管物理 runner；按用户决定，资产不做字节校验（Windows 引擎归档的固定
+SHA 仍由 runtime prepare 内置校验）。Windows/omarchy 会话各轮现场全部保留。

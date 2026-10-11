@@ -1,0 +1,77 @@
+name: Model e2e
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/inferyard/**"
+      - "tests/packaging/ci_model_e2e.py"
+      - ".github/workflows/model-e2e.yml"
+      - "configs/**"
+permissions:
+  contents: read
+env:
+  MODEL_URL: https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
+  ENGINE_BASE: https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10743-adfffbe
+jobs:
+  e2e:
+    name: e2e (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v4
+      - run: mise exec -- uv sync --frozen
+      - name: Select engine archive
+        shell: bash
+        run: |
+          case "${{ matrix.os }}" in
+            ubuntu-24.04) name=llama-prism-b10743-adfffbe-bin-ubuntu-x64.tar.gz ;;
+            windows-2025) name=llama-prism-b10743-adfffbe-bin-win-cpu-x64.zip ;;
+            macos-15) name=llama-prism-b10743-adfffbe-bin-macos-arm64.tar.gz ;;
+          esac
+          echo "ENGINE_NAME=$name" >> "$GITHUB_ENV"
+          echo "ENGINE_EXT=${name##*.}" >> "$GITHUB_ENV"
+      - name: Cache downloaded assets
+        uses: actions/cache@v4
+        with:
+          path: e2e-assets
+          key: model-e2e-${{ matrix.os }}-${{ env.ENGINE_NAME }}-${{ env.MODEL_URL }}
+      - name: Download assets
+        shell: bash
+        run: |
+          mkdir -p e2e-assets
+          if [ ! -f "e2e-assets/model.gguf" ]; then
+            curl -sSL --fail -o e2e-assets/model.gguf "$MODEL_URL"
+          fi
+          if [ ! -f "e2e-assets/engine.$ENGINE_EXT" ]; then
+            curl -sSL --fail -o "e2e-assets/engine.$ENGINE_EXT" "$ENGINE_BASE/$ENGINE_NAME"
+          fi
+      - name: Run model e2e
+        shell: bash
+        run: |
+          mise exec -- uv run --frozen python tests/packaging/ci_model_e2e.py \
+            --model e2e-assets/model.gguf \
+            --engine-archive "e2e-assets/engine.$ENGINE_EXT" \
+            --out "$RUNNER_TEMP/inferyard-e2e"
+      - name: Collect e2e output
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p e2e-output
+          if [ -d "$RUNNER_TEMP/inferyard-e2e/bench-work/report" ]; then
+            cp -r "$RUNNER_TEMP/inferyard-e2e/bench-work/report" e2e-output/report
+          fi
+          if [ -f "$RUNNER_TEMP/inferyard-e2e/server.log" ]; then
+            cp "$RUNNER_TEMP/inferyard-e2e/server.log" e2e-output/
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: model-e2e-${{ matrix.os }}
+          path: e2e-output
+          if-no-files-found: warn
