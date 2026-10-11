@@ -91,8 +91,10 @@ inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight --j
 `zh-smoke`、`zh-core` 或 `zh-svg-pelican`，并只导出该题包。导出题包保留权威原字节和
 内嵌人工审核；SVG 题只展示生成结果、不评分。`init` 导出的目录作为操作目录，
 含三个平台的未绑定示例、所选题包、空 `assets/`、`results/` 及入门说明；
-准备与操作产物都留在操作目录。benchmark 工作区（如 `bench-work/`）只存放
-run/batch 与报告，由 `run` 和 `report` 自动创建，
+准备与操作产物都留在操作目录。骨架中的空 `results/` 在双目录布局下不使用，
+`config create --results` 应指向 benchmark 工作区（如 `bench-work/results`）。
+benchmark 工作区（如 `bench-work/`）只存放
+run/batch 与报告，由 `run`、`batch` 和 `report` 自动创建，
 见[工作区与交付目录组织](usage.md#工作区与交付目录组织)。模板中的 `REPLACE`
 项应填完，不直接 run。
 Windows 用实际盘符路径替换模型路径；所有系统均只读取已有模型，不自动下载。

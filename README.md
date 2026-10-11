@@ -62,7 +62,8 @@ start the declared model service yourself in a separate terminal — the CLI
 never starts, stops or restarts services — then bind the actual PID and
 endpoint. Preparation, operator files and logs live in the operations
 directory (`bench-ops/`); the benchmark workspace (`bench-work/`) holds only
-runs, batches and reports:
+runs, batches and reports, created automatically by `run`, `batch` and
+`report`:
 
 ```bash
 inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound

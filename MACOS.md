@@ -8,12 +8,14 @@ tracked in [platform status](docs/platforms.md).
 ## Candidate preparation and external services
 
 Install following the [installation guide](docs/installation.md), then export
-a workspace and detect an existing model:
+an operations directory and detect an existing model; preparation stays in
+`bench-ops/` while the benchmark workspace `bench-work/` holds only runs,
+batches and reports:
 
 ```bash
-inferyard init --out bench-work --bundle zh-smoke
-inferyard device-check --model /path/to/model.gguf --out bench-work/preflight --json
-inferyard config create --preflight bench-work/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-work/bundles/zh-smoke.json --results bench-work/results --out bench-work/candidate
+inferyard init --out bench-ops --bundle zh-smoke
+inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight --json
+inferyard config create --preflight bench-ops/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-smoke.json --results bench-work/results --out bench-ops/candidate
 ```
 
 Candidate generation currently requires Prism `prism-b10743-adfffbe`, with the
@@ -29,8 +31,8 @@ full `engine.startup_args` from `candidate.toml`.
 Do not reuse historical PIDs; bind with the actual PID and endpoint:
 
 ```bash
-inferyard config bind --candidate bench-work/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-work/bound
-inferyard run --config bench-work/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
+inferyard run --config bench-ops/bound/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 inferyard verify --path bench-work/report
 ```
