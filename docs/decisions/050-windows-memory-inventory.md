@@ -1,4 +1,4 @@
-# ADR 049：Windows 内存诊断使用独立 kind
+# ADR 050：Windows 内存诊断使用独立 kind
 
 状态：Accepted。
 

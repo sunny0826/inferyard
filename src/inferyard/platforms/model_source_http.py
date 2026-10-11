@@ -8,6 +8,7 @@ from urllib.parse import parse_qsl, urljoin, urlsplit
 import httpx
 
 from inferyard.config.preparation_io import PreparationError
+from inferyard.platforms.model_source_progress import Progress
 
 INCOMPLETE = "model_acquire_incomplete"
 METADATA_LIMIT = 16 * 1024 * 1024
@@ -95,20 +96,29 @@ def redirect_url(source, current, location, *, metadata=False):
         raise PreparationError(INCOMPLETE) from None
 
 
-def remaining(deadline):
+def remaining(deadline, progress=None):
     result = deadline - time.monotonic()
     if result <= 0:
+        if progress is not None:
+            raise progress.failure(reason=INCOMPLETE, exception_class="total_timeout")
         raise PreparationError(INCOMPLETE)
     return result
 
 
 @contextmanager
-def response(client, source, url, token, budget, deadline, *, metadata=False):
+def response(client, source, url, token, budget, deadline, *, metadata=False, progress=None):
     """Build fresh requests so neither Authorization nor cookies can cross to a CDN."""
     opened = None
+    progress = Progress() if progress is None else progress
     try:
         for hop in range(2):
-            timeout = min(budget.read_seconds, remaining(deadline))
+            stage = "redirect" if hop else "metadata" if metadata else "download-open"
+            progress.update(stage, "network")
+            timeout = min(budget.read_seconds, remaining(deadline, progress))
+            # Large operator budgets may exceed native socket ranges; the parent still
+            # enforces the declared read/total deadlines independently of this socket.
+            if timeout > 86400:
+                timeout = None
             headers = {"Accept-Encoding": "identity"}
             if token is not None and urlsplit(url).netloc.lower() == source.host:
                 headers["Authorization"] = f"Bearer {token}"
@@ -122,37 +132,57 @@ def response(client, source, url, token, budget, deadline, *, metadata=False):
             )
             opened = client.send(request, stream=True, follow_redirects=False)
             if opened.status_code in (301, 302, 303, 307, 308):
+                progress.update("redirect", "local")
                 if hop:
-                    raise PreparationError(INCOMPLETE)
-                next_url = redirect_url(
-                    source, url, opened.headers.get("location"), metadata=metadata
-                )
+                    raise progress.failure(reason=INCOMPLETE, exception_class="redirect_rejected")
+                try:
+                    next_url = redirect_url(
+                        source, url, opened.headers.get("location"), metadata=metadata
+                    )
+                except PreparationError:
+                    raise progress.failure(
+                        reason=INCOMPLETE, exception_class="redirect_rejected"
+                    ) from None
+                opened.close()
                 opened = None
                 url = next_url
                 continue
-            if (
-                opened.status_code != 200
-                or opened.headers.get("content-encoding", "identity") != "identity"
-            ):
-                raise PreparationError(INCOMPLETE)
+            if opened.status_code != 200:
+                raise progress.failure(reason=INCOMPLETE, exception_class="http_status")
+            if opened.headers.get("content-encoding", "identity") != "identity":
+                raise progress.failure(reason=INCOMPLETE, exception_class="encoding_rejected")
+            progress.update("metadata" if metadata else "download-body", "local")
             yield opened
             return
         raise PreparationError(INCOMPLETE)
-    except httpx.HTTPError:
-        raise PreparationError(INCOMPLETE) from None
+    except httpx.HTTPError as exc:
+        raise progress.failure(exc) from None
     finally:
         if opened is not None:
+            progress.update(progress.stage, "local")
             opened.close()
 
 
-def metadata_bytes(client, source, token, budget, deadline):
+def metadata_bytes(client, source, token, budget, deadline, *, progress=None):
+    progress = Progress() if progress is None else progress
     raw = bytearray()
     with response(
-        client, source, source.metadata_url, token, budget, deadline, metadata=True
+        client,
+        source,
+        source.metadata_url,
+        token,
+        budget,
+        deadline,
+        metadata=True,
+        progress=progress,
     ) as opened:
-        for chunk in opened.iter_raw(chunk_size=64 * 1024):
-            remaining(deadline)
+        progress.update("metadata", "network")
+        for chunk in opened.iter_raw():
+            progress.update("metadata", "local", received=len(chunk))
+            remaining(deadline, progress)
             if len(raw) + len(chunk) > METADATA_LIMIT:
                 raise PreparationError(INCOMPLETE)
             raw.extend(chunk)
+            progress.update("metadata", "network")
+        progress.update("metadata", "local")
     return bytes(raw)

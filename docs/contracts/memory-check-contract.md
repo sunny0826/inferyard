@@ -111,7 +111,7 @@ deadline 含采集子进程启动，结束时可增加最多约 0.5 秒的有界
 Windows 使用 `schema_version = 3`、`kind = memory_check.windows.v1`；
 `--schema memory_check` 是两个独立 kind 的联合。旧 macOS v1 的字段、枚举、必需条件和读取
 支持不变，不迁移原件。混用平台/kind、伪造汇总、缺测计数或 review 均拒绝。
-设计选择见 [ADR 049](../decisions/049-windows-memory-inventory.md)。
+设计选择见 [ADR 050](../decisions/050-windows-memory-inventory.md)。
 
 固定采集预算为 5 秒、4096 PID，期限含独立 Python worker 启动；超时/取消仅回收自有 worker，
 最多另等 0.5 秒。Windows 使用 `communicate(timeout=...)`，不依赖 POSIX 管道 selector。

@@ -37,14 +37,14 @@ while True:
         children.append(process)
         if cancel:
 
-            def communicate(*a, **k):
+            def interrupt(*a, **k):
                 deadline = time.monotonic() + 3
                 while not (out / "file.gguf.part").exists():
                     assert time.monotonic() < deadline
                     time.sleep(0.01)
                 raise KeyboardInterrupt
 
-            process.communicate = communicate
+            monkeypatch.setattr(host, "wait_tick", interrupt)
         return process
 
     monkeypatch.setattr(host.subprocess, "Popen", create)
@@ -60,6 +60,18 @@ def test_total_deadline_kills_hung_io_child_and_preserves_failed_directory(tmp_p
     assert children[0].poll() is not None
     assert (out / "file.gguf.part").read_bytes() == b"partial synthetic data"
     assert not (out / "source.json").exists()
+
+
+def test_parent_enforces_read_inactivity_for_inert_child(tmp_path, monkeypatch):
+    out, children = hanging_child(monkeypatch, tmp_path)
+    started = time.monotonic()
+    with pytest.raises(PreparationError, match="^model_acquire_incomplete$") as caught:
+        host.acquire(
+            SOURCE, out, budget=host.Budget(total_seconds=2, read_seconds=0.3, cleanup_seconds=0.5)
+        )
+    assert time.monotonic() - started < 1.5
+    assert children[0].poll() is not None
+    assert caught.value.diagnostics["exception_class"] == "read_timeout"
 
 
 def test_cancellation_stops_child_and_maps_to_130(tmp_path, monkeypatch, capsys):
@@ -106,20 +118,22 @@ def test_real_worker_rejects_unset_token_without_network(tmp_path, monkeypatch, 
         dict(max_bytes=True),
         dict(max_bytes=21 * 1024**3),
         dict(total_seconds=float("nan")),
-        dict(read_seconds=181),
-        dict(cleanup_seconds=61),
+        dict(read_seconds=True),
+        dict(cleanup_seconds=0),
     ],
 )
-def test_budget_cannot_expand_general_limits(fields):
+def test_budget_rejects_invalid_values_and_oversized_files(fields):
     with pytest.raises(PreparationError, match="invalid_model_source"):
         host.Budget(**fields)
 
 
 def test_failed_stop_does_not_restart_cleanup_deadline(tmp_path, monkeypatch):
+    import io
+
     class Unreapable:
         returncode = None
-        stdin = None
-        stdout = None
+        stdin = io.BytesIO()
+        stdout = io.BytesIO()
         stops = 0
 
         def communicate(self, *a, **k):
@@ -140,5 +154,7 @@ def test_failed_stop_does_not_restart_cleanup_deadline(tmp_path, monkeypatch):
     process = Unreapable()
     monkeypatch.setattr(host.subprocess, "Popen", lambda *a, **k: process)
     with pytest.raises(PreparationError, match="io_error"):
-        host.acquire(SOURCE, tmp_path / "new", budget=host.Budget(cleanup_seconds=0.01))
+        host.acquire(
+            SOURCE, tmp_path / "new", budget=host.Budget(total_seconds=0.01, cleanup_seconds=0.01)
+        )
     assert process.stops == 1

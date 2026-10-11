@@ -127,6 +127,9 @@ def test_cli_reexports_the_single_application_type_definitions():
         "port",
         "model_source_url",
         "model_token_env",
+        "model_timeout_seconds",
+        "model_read_timeout_seconds",
+        "model_cleanup_timeout_seconds",
         "model_source_record",
         "protect_pids",
     )
