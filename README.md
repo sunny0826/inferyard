@@ -52,19 +52,21 @@ bundle only runs when you explicitly pin it, see the
 The example below uses the pinned `zh-smoke` bundle for a quick check.
 
 ```bash
-inferyard init --out bench-work --bundle zh-smoke
-inferyard device-check --model /path/to/model.gguf --out bench-work/preflight --json
+inferyard init --out bench-ops --bundle zh-smoke
+inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight --json
 ```
 
 Prepare a candidate per the
 [installation guide](docs/installation.md#3-%E5%87%86%E5%A4%87%E5%80%99%E9%80%89),
 start the declared model service yourself in a separate terminal — the CLI
 never starts, stops or restarts services — then bind the actual PID and
-endpoint:
+endpoint. Preparation, operator files and logs live in the operations
+directory (`bench-ops/`); the benchmark workspace (`bench-work/`) holds only
+runs, batches and reports:
 
 ```bash
-inferyard config bind --candidate bench-work/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-work/bound
-inferyard run --config bench-work/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
+inferyard run --config bench-ops/bound/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 inferyard verify --path bench-work/report
 ```
@@ -96,10 +98,11 @@ accounts, auto-submission, multi-host scheduling and multimodal executors are
 out of scope.
 
 The source development version stores a complete ordinary single run in eight
-evidence files and its report in three; these are formal output counts —
-preparation checks, operator scripts and logs add more files to the workspace.
-For handoff, copy the sealed runs and the shared report into a separate
-delivery directory; see the [usage guide](docs/usage.md#交付目录组织).
+evidence files and its report in three; these are formal output counts.
+Preparation checks, operator scripts and logs live outside the benchmark
+workspace in an operations directory. For handoff, copy the sealed runs and
+the shared report into a separate delivery directory; see the
+[usage guide](docs/usage.md#工作区与交付目录组织).
 Existing schema-3 snapshot runs remain
 readable; see the [evidence layout contract](docs/contracts/run-evidence-layout.md).
 

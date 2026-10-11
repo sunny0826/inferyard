@@ -282,7 +282,7 @@ Ruff、格式、Schema/catalogue 一致性和文档本地链接/锚点检查通�
 2026-10-11 修复 [#28](https://github.com/sunny0826/inferyard/issues/28)：
 Windows Bonsai 真机测评的完整工作区含 1,287 个文件，正式产物与初始化检查、
 操作员脚本、服务日志、截图和 4 个 Chrome profile 混放，端到端交接只核验了
-正式 run 与报告，未核验完整交付目录清单。[使用指南](usage.md#交付目录组织)
+正式 run 与报告，未核验完整交付目录清单。[使用指南](usage.md#工作区与交付目录组织)
 新增交付组织规则：11/19 为正式输出计数，与工作区总文件数分开表述，不宣称
 "每次测评只新增 N 个文件"；交付目录只复制封存 run 与共享报告并保持相对布局，
 交接清点完整交付目录；浏览器 profile 放交付树外的专用临时目录，检查后只回收
@@ -293,7 +293,7 @@ README、README.zh-CN、CHANGELOG 同步计数限定。纯文档改动，本地�
 确认 benchmark 执行与评分从不使用浏览器——`zh-svg-pelican` 题 `rules` 为空、
 不做质量评分，CLI 仅做 SVG XML 语法与大小检查，动画效果无自动判定；上轮的
 "profile 放交付树外临时目录"规则仍默认要创建隔离 profile，为操作员脚本留下
-口子。[使用指南](usage.md#交付目录组织)改为：人工检查用日常浏览器直接打开
+口子。[使用指南](usage.md#工作区与交付目录组织)改为：人工检查用日常浏览器直接打开
 report.html，不创建隔离 profile、不编写浏览器检查脚本，任何情况下（含
 `--user-data-dir` 指向工作区内部目录的浏览器调用）都不在 benchmark 工作区内
 创建或存放浏览器用户数据；确需隔离环境时用户数据放系统临时目录。工作区
@@ -308,6 +308,22 @@ report.html，不创建隔离 profile、不编写浏览器检查脚本，任何�
 可选新增；"确需隔离"出口限定为访客/隐身窗口或一次性系统临时目录
 `--user-data-dir`，同样不编写自定义检查脚本；CHANGELOG 英文措辞同步消除
 "isolation profiles 一律禁止"的歧义。
+
+2026-10-11 三次修订（用户决策：准备与操作员辅助产物移出 benchmark 工作区）：
+核实准备链路后确认候选/绑定等准备目录可整体外置——全部准备命令 `--out`
+接受任意新目录，`config create --results` 不允许位于候选目录内
+（community_candidates.py:97），run 目录自含冻结输入，verify/report 不依赖
+工作区外的准备目录，`report --out` 自动创建父目录
+（report_common.py:81）。[使用指南](usage.md#工作区与交付目录组织)定义双目录
+布局：操作目录（如 `bench-ops/`）承载 init 导出、模型、preflight、候选、绑定、
+操作脚本、日志、截图、导出与传输准备；benchmark 工作区（如 `bench-work/`）
+只存放 run/batch 与报告，由 `run` 和 `report` 自动创建。操作目录中的证据与
+日志原样保留，不为凑数删除（issue #28 验收要求）。README、README.zh-CN、
+installation、cli-surface 的示例路径同步改为 `bench-ops/` 准备 + `bench-work/`
+正式产物；节名由"交付目录组织"改为"工作区与交付目录组织"并同步全部锚点
+引用。此布局为文档约定，CLI 不强制；历史工作区（含 Windows 1,287 文件原工作
+区）不迁移不改写。约 131 个非 profile 辅助文件的逐文件归属清单因 San3an-win
+掉线暂未枚举，类别层面结论不依赖该清单，待机器恢复后可另行核对。
 
 真机重组由 San3an-win 独立会话（Codex auto-review）完成：原工作区
 `D:\bench-work\bonsai-597367d-after-release-20261011-112436` 未改动，重组前后

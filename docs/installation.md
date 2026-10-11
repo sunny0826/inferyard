@@ -80,17 +80,21 @@ uvx --isolated --managed-python --python 3.14.7 --constraints runtime-constraint
 `--isolated` 避免复用同名持久工具的不同依赖环境；缓存仍可复用。
 实际解释器、依赖和评分身份以 `--versions` 及证据为准，普通安装不会读取维护者仓库的 uv.lock。
 
-## 2. 创建工作区与选择题包
+## 2. 创建操作目录与选择题包
 
 ```bash
-inferyard init --out bench-work
-inferyard device-check --model /path/to/model.gguf --out bench-work/preflight --json
+inferyard init --out bench-ops
+inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight --json
 ```
 
-省略 `--bundle` 时在同一工作区导出默认范围 `zh-core` 和 `zh-svg-pelican`。明确固定题包时可选
+省略 `--bundle` 时导出默认范围 `zh-core` 和 `zh-svg-pelican`。明确固定题包时可选
 `zh-smoke`、`zh-core` 或 `zh-svg-pelican`，并只导出该题包。导出题包保留权威原字节和
-内嵌人工审核；SVG 题只展示生成结果、不评分。工作区含三个平台的未绑定示例、所选题包、
-空 `assets/`、`results/` 及入门说明。模板中的 `REPLACE` 项应填完，不直接 run。
+内嵌人工审核；SVG 题只展示生成结果、不评分。`init` 导出的目录作为操作目录，
+含三个平台的未绑定示例、所选题包、空 `assets/`、`results/` 及入门说明；
+准备与操作产物都留在操作目录。benchmark 工作区（如 `bench-work/`）只存放
+run/batch 与报告，由 `run` 和 `report` 自动创建，
+见[工作区与交付目录组织](usage.md#工作区与交付目录组织)。模板中的 `REPLACE`
+项应填完，不直接 run。
 Windows 用实际盘符路径替换模型路径；所有系统均只读取已有模型，不自动下载。
 
 下文候选示例使用 `zh-core`。完整默认测评还须为 `zh-svg-pelican` 分别准备候选和绑定产物，
@@ -115,7 +119,7 @@ CPU：
 ```powershell
 inferyard runtime prepare --profile prism-b10743-adfffbe-win-cpu-x64 `
   --archive 'C:\Downloads\llama-prism-b10743-adfffbe-bin-win-cpu-x64.zip' `
-  --out 'bench-work\assets\cpu-runtime'
+  --out 'bench-ops\assets\cpu-runtime'
 ```
 
 CUDA 12.4：
@@ -124,11 +128,11 @@ CUDA 12.4：
 inferyard runtime prepare --profile prism-b10743-adfffbe-win-cuda-12.4-x64 `
   --archive 'C:\Downloads\llama-prism-b10743-adfffbe-bin-win-cuda-12.4-x64.zip' `
   --runtime-archive 'C:\Downloads\cudart-llama-bin-win-cuda-12.4-x64.zip' `
-  --out 'bench-work\assets\cuda-runtime'
-inferyard config create --preflight 'bench-work\preflight\device-preflight.json' `
-  --runtime-receipt 'bench-work\assets\cuda-runtime\runtime-receipt.json' `
-  --bundle 'bench-work\bundles\zh-core.json' --results 'bench-work\results' `
-  --out 'bench-work\candidate'
+  --out 'bench-ops\assets\cuda-runtime'
+inferyard config create --preflight 'bench-ops\preflight\device-preflight.json' `
+  --runtime-receipt 'bench-ops\assets\cuda-runtime\runtime-receipt.json' `
+  --bundle 'bench-ops\bundles\zh-core.json' --results 'bench-work\results' `
+  --out 'bench-ops\candidate'
 ```
 
 按预检推荐的 mode 选择 CPU/CUDA；不匹配会阻断。CPU 禁止 `--runtime-archive`，CUDA 必填。
@@ -141,7 +145,7 @@ inferyard config create --preflight 'bench-work\preflight\device-preflight.json'
 准备已有、适配版本的 Prism 引擎及同目录动态库：
 
 ```bash
-inferyard config create --preflight bench-work/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-work/bundles/zh-core.json --results bench-work/results --out bench-work/candidate
+inferyard config create --preflight bench-ops/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-core.json --results bench-work/results --out bench-ops/candidate
 ```
 
 候选生成会执行引擎 `--version`（10 秒），重新检查容量、mode 和 AC 电源；Metal 要求相应动态库。
@@ -151,13 +155,13 @@ inferyard config create --preflight bench-work/preflight/device-preflight.json -
 ### Linux x64
 
 ```bash
-inferyard config assets --model /path/to/model.gguf --engine /path/to/llama-server --out bench-work/assets/local-model
+inferyard config assets --model /path/to/model.gguf --engine /path/to/llama-server --out bench-ops/assets/local-model
 ```
 
 此动作不执行引擎。它从 GGUF 导出原 UTF-8 模板字节，写出模型/引擎哈希和同目录共享库清单。
 模板缺失时阻断，不使用其他模型或历史运行的模板。库链接只能指向引擎同目录内的普通文件。
 
-复制 `bench-work/configs/linux.example.toml` 到新候选文件，按 `assets.json` 填入模型、引擎、
+复制 `bench-ops/configs/linux.example.toml` 到新候选文件，按 `assets.json` 填入模型、引擎、
 模板和清单路径/哈希；按实际设备和所选题包填写版本、线程、上下文、生成参数、环境与字节预算。
 填写与外部服务完全一致的 `engine.startup_args`。保留未绑定哨兵 PID/start_ticks=1，随后由 bind
 替换；这不是运行授权。Linux 首版不提供自动候选算法，禁止为了通过而降低停止条件。
@@ -169,8 +173,8 @@ inferyard config assets --model /path/to/model.gguf --engine /path/to/llama-serv
 CLI 不管理该服务的启动、终止或重启。将实际 PID 和本机端点代入：
 
 ```bash
-inferyard config bind --candidate bench-work/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-work/bound
-inferyard run --config bench-work/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
+inferyard run --config bench-ops/bound/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 inferyard verify --path bench-work/report
 ```
