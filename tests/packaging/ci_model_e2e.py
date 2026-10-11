@@ -171,7 +171,8 @@ def fill_linux_template(template, out_dir, *, model, engine, assets, results, bu
         'profile = "unknown"': f'profile = "{required["profile"]}"',
         'governor = "unknown"': f'governor = "{required["governor"]}"',
         'epp = "unknown"': (
-            f'epp = "{epp}"' if epp is not None else "epp = null\nrequire_epp_match = false"
+            # TOML has no null literal; keep the string and skip the match.
+            f'epp = "{epp}"' if epp is not None else 'epp = "unknown"\nrequire_epp_match = false'
         ),
         "\nac_online = true": f"\nac_online = {str(required['ac_online']).lower()}",
         # seed 42 makes this model's CPU-quantized Linux path emit output with
