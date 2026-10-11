@@ -25,6 +25,7 @@ from inferyard.evidence.storage import (
     sha256_file,
     verify_manifest,
 )
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.implementation_identity import IdentityContext
 from inferyard.platforms.identity import (
     PreflightError,
@@ -73,6 +74,18 @@ class Dependencies:
     environment: object = environment_snapshot
 
 
+def read_configuration_source(loaded):
+    source = loaded.configuration_source()
+    if source["data"] is not None:
+        if source["media_type"] not in ("application/toml", "application/json"):
+            raise PreflightError("configuration_source_media_type_invalid")
+        try:
+            source["data"].decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise PreflightError("configuration_source_utf8_invalid") from exc
+    return source
+
+
 def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[LoadedConfig, dict]:
     root = request.from_run
     limitations = verify_manifest(root)
@@ -107,11 +120,23 @@ def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[Lo
         config["output"]["root"] = str(request.output_root.resolve())
     if getattr(request, "api_key_env", None):
         config["endpoint"]["api_key_env"] = request.api_key_env
-    source = root / "config.input.toml"
-    if not source.exists():
-        source = root / "config.frozen.json"
+    evidence = TrialEvidence(root)
+    original = evidence.configuration_source()
+    source = None
+    if evidence.layout_version == 1:
+        # These are actual legacy source bytes, never a virtual container member path.
+        source = root / "config.input.toml"
+        if not source.exists():
+            source = root / "config.input.json"
+        if not source.exists():
+            source = root / "config.frozen.json"
     return LoadedConfig(
-        source, Document.parse("config", config), Document.parse("bundle", bundle)
+        source,
+        Document.parse("config", config),
+        Document.parse("bundle", bundle),
+        source_data=original["data"],
+        source_media_type=original["media_type"],
+        source_missing_reason=original["missing_reason"],
     ), parent
 
 
@@ -136,6 +161,7 @@ async def execute_async(request, dependencies: Dependencies | None = None):
     plan = compile_single_plan(loaded.config, loaded.bundle)
     started_at = time.monotonic()
     allowed_seconds = plan["experiment"]["budget"]["max_wall_seconds"]
+    configuration_source = read_configuration_source(loaded)
     store = TrialJournal(
         Path(config["output"]["root"]),
         plan,
@@ -150,18 +176,18 @@ async def execute_async(request, dependencies: Dependencies | None = None):
         scoring_context=scoring_context,
         source_identity=identity_context.source,
         implementation_identity=identity_context.value,
+        configuration_source=configuration_source,
     )
-    source_name = "config.input.toml" if loaded.source.suffix == ".toml" else "config.input.json"
-    store.text_snapshot(source_name, loaded.source.read_text())
     if parent:
-        store.snapshot(
-            "parent.json",
+        store.observe(
+            "parent",
             {
                 "run_id": parent["run"]["run_id"],
                 "path": str(request.from_run),
                 "manifest_sha256": sha256_file(request.from_run / "manifest.json"),
                 "events_sha256": parent["events_sha256"],
             },
+            stage="prepare",
         )
     from inferyard.runtime.trial_profile import SingleProfile
     from inferyard.runtime.trial_runner import run_trial

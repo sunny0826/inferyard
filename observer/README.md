@@ -14,7 +14,7 @@ inferyard-observer watch --bench-run reports/EXISTING_RUN --duration 30s --out a
 
 CPU 按单核百分比展示，多线程可超过 100%；首条需要建立基线而为 null。内存为 bytes，未知值附原因和来源。进程运行、端点可达、模型已加载、正在生成分别看待；本工具只直接证明前两项。GPU 设备列表不证明后端可用；GPU 动态占用、温度、能耗、token 和队列未采集。
 
-`--bench-run` 只读 v3 的 `run.json` / `config.frozen.json`，核验当前 PID / 启动身份，记录文件 hash 和已声明的模型 / 后端标签。可在 benchmark 已创建这两个文件后开始观察；磁盘可用量读取 run 所在文件系统，直接 PID 模式读取当前目录。`--out` 应在 run 目录外。端点不会从配置自动启用。不替代本项目安全、身份、主机锁和正式指标，也不授予严格性能比较资格。旧运行的服务已退出时会拒绝新的实时绑定。
+`--bench-run` 仅支持 layout1 快照布局，不支持新 layout2 容器；新布局可显式传 `--pid` 做独立诊断。它只读 v3 的 `run.json` / `config.frozen.json`，核验当前 PID / 启动身份，记录文件 hash 和已声明的模型 / 后端标签。可在 benchmark 已创建这两个文件后开始观察；磁盘可用量读取 run 所在文件系统，直接 PID 模式读取当前目录。`--out` 应在 run 目录外。端点不会从配置自动启用。不替代本项目安全、身份、主机锁和正式指标，也不授予严格性能比较资格。旧运行的服务已退出时会拒绝新的实时绑定。
 
 ## 构建与离线读取
 

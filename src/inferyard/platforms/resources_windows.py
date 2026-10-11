@@ -38,8 +38,8 @@ class ResourceSampler(Sampler):
         super().__init__(store, config)
         self.clock = clock
         self.process_lost = False
-        store.snapshot(
-            "collector.json",
+        store.observe(
+            "collector",
             {
                 "schema_version": SCHEMA_VERSION,
                 "collector": COLLECTOR,
@@ -65,6 +65,7 @@ class ResourceSampler(Sampler):
                     "strict_performance_comparison_not_qualified",
                 ],
             },
+            stage="prepare",
         )
 
     async def run(self):

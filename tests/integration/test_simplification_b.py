@@ -11,6 +11,7 @@ from inferyard.application.types import CommandRequest
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, read_json
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.runner import execute_async
 from tests.integration.test_runner import scenario as runner_scenario
@@ -125,7 +126,7 @@ def test_preflight_diagnostic_flag_is_forwarded(scenario, monkeypatch):
         )
         assert code == expected
         if expected != 2:
-            observed = read_json(Path(result.evidence_dir) / "identity.json")
+            observed = TrialEvidence(Path(result.evidence_dir)).observation("identity")
             assert "ac_online" in observed["environment_admission"]["differences"]
     assert flags == [False, True, True]
 
@@ -190,7 +191,7 @@ def test_applicable_handoff_reuses_clean_service(tmp_path, scenario, monkeypatch
     code, result = asyncio.run(batch_runner.execute_async(handoff, deps))
     assert code == 0
     assert len(scenario[2]) == 16
-    binding = read_json(Path(result.details["runs"][-1]) / "service-binding.json")
+    binding = TrialEvidence(Path(result.details["runs"][-1])).observation("service_binding")
     assert binding["transition"] == "same_process"
     assert binding["cache_state"] == "unknown"
 

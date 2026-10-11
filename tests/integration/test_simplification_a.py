@@ -14,7 +14,8 @@ from inferyard.contracts.validation import Document
 from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
-from inferyard.evidence.token_budgets import V1, V2
+from inferyard.evidence.token_budgets import V1
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.identity import PreflightError
 from inferyard.reporting.rescore import verify_rescore, write_rescore
 from inferyard.runtime.runner import execute_async
@@ -23,6 +24,7 @@ from tests.helpers import fixture_run
 from tests.integration.test_lab_cli import lab_scenario as lab_fixture
 from tests.integration.test_runner import scenario as runner_fixture
 from tests.integration.test_trial_runner import inputs
+from tests.layout_mutations import change_observation
 
 scenario = runner_fixture
 lab_scenario = lab_fixture
@@ -72,7 +74,7 @@ def test_budget_only_inputs_that_will_be_sent(scenario, monkeypatch, kind, warmu
     assert budget_calls == expected
     root = Path(result.evidence_dir)
     assert not (root / V1).exists()
-    snapshot = read_json(root / V2)
+    snapshot = TrialEvidence(root).observation("token_budgets")
     assert len(snapshot["entries"]) == len(expected)
     assert len(calls) == (2 if kind == "check" else 2 + warmups + len(expected) - 1 - bool(warmups))
     assert read_trial(root)["summary"]["counts"]["planned"] == len(
@@ -112,7 +114,7 @@ def test_trial_and_resume_budget_follow_selected_cases(scenario):
         )
     )
     assert code == 0
-    entries = read_json(root / V2)["entries"]
+    entries = TrialEvidence(root).observation("token_budgets")["entries"]
     assert [e["case_id"] for e in entries if e["phase"] == "formal"] == selected
 
 
@@ -125,7 +127,7 @@ def test_lab_budget_v2_rejects_bad_shape_and_inventory(lab_scenario, damage):
     assert code == 0
     root = Path(result.evidence_dir)
     (root / "manifest.json").unlink()
-    value = read_json(root / V2)
+    value = TrialEvidence(root).observation("token_budgets")
     if damage == "order":
         value["entries"].reverse()
     elif damage == "formal-null":
@@ -140,7 +142,7 @@ def test_lab_budget_v2_rejects_bad_shape_and_inventory(lab_scenario, damage):
         value["entries"][-1]["case_id"] = "not-selected"
     else:
         (root / V1).write_bytes(json_bytes([]))
-    (root / V2).write_bytes(json_bytes(value))
+    change_observation(root, "token_budgets", lambda payload: payload.update(value))
     before = {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
     expected = UnsupportedFormat if damage == "conflict" else EvidenceError
     with pytest.raises(expected):
@@ -154,8 +156,8 @@ def test_lab_budget_v1_is_unsupported_without_rewriting(lab_scenario):
     assert code == 0
     root = Path(result.evidence_dir)
     (root / "manifest.json").unlink()
-    entries = read_json(root / V2)["entries"]
-    (root / V2).unlink()
+    entries = TrialEvidence(root).observation("token_budgets")["entries"]
+    change_observation(root, "token_budgets", remove=True)
     (root / V1).write_bytes(json_bytes([e["budget"] for e in entries]))
     before = {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
     with pytest.raises(UnsupportedFormat, match="unsupported_format") as error:

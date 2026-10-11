@@ -172,6 +172,11 @@ def _observation(data):
 
 
 def validate_semantics(kind, data):
+    if kind in ("inputs", "observation_record", "prepared_request"):
+        from inferyard.contracts.contracts_layout import validate_layout
+
+        validate_layout(kind, data)
+        return
     if kind in ("config", "config_input"):
         from inferyard.contracts.lab import validate_config
 

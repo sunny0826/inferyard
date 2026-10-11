@@ -50,6 +50,10 @@ def _identify(root: Path) -> set[str]:
     if "manifest.json" in names:
         manifest = _object(root, "manifest.json")
         fit |= str(manifest.get("definition", "")).startswith("engine_fit_manifest.")
+        if "evidence_layout_version" in manifest:
+            found.add("run")
+    if "inputs.json" in names:
+        found.add("run")
     if "run.json" in names:
         run = _object(root, "run.json")
         if run.get("kind") == "extension_packet.v1":

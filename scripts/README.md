@@ -26,7 +26,8 @@
 [benchmark_cost.py](benchmark_cost.py) 使用公开夹具生成固定合成输入。它不启动服务或发送模型请求。
 `prepare --baseline TREE --out NEW` 创建输入；`measure --baseline TREE --candidate TREE
 --corpus DIR --out NEW --repeats 5` 交替运行两个源码树。所有输出目录必须是 `/tmp` 下的新目录。
-两个源码树使用同一个固定 Python 环境，输入原件保持不变。
+两个源码树使用同一个固定 Python 环境，输入原件保持不变。准备使用显式 test-only
+LegacyJournal 生成合法 schema-3 快照样本，仅核验旧读取成本，不切换生产 writer。
 
 脚本保存完整 stdout/stderr、退出码、产物摘要和输入计数。产物比较只允许明确的生成器来源摘要与
 等价目标路径差异；缺行、缺 SVG、其他内容变化或拒绝路径变化使检查失败。

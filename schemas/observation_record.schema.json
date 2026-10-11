@@ -1,0 +1,1362 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:observation_record",
+  "title": "InferYard observation_record v3",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "parent"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "prepare"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "service_binding"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "prepare"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "service_reuse"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "prepare"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "safety_policy"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "prepare"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "token_budgets"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "prepare"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "input_target_check"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "prepare"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "collector"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "prepare"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "observer"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "prepare"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "boundary_observer"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "prepare"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "environment"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "start",
+            "end"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "service_properties"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "pre_idle",
+            "post_idle"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "engine_capabilities"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "pre_idle"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "recovery"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "post_idle"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "effective_parameters"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "ordinary",
+            "stream"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "identity"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "post_probe",
+            "finalizing"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "native_clean_receipt"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "client_complete"
+          ]
+        },
+        "key": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "safety_check"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "finalizing"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "evidence_layout_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "trial_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "execution_budget"
+          ]
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "finalizing"
+          ]
+        },
+        "key": {
+          "type": "null"
+        },
+        "clock_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "monotonic_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "utc": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "payload_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_layout_version",
+        "run_id",
+        "trial_id",
+        "seq",
+        "kind",
+        "stage",
+        "key",
+        "clock_id",
+        "monotonic_ns",
+        "utc",
+        "payload",
+        "payload_sha256"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

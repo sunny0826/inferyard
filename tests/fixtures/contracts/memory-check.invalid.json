@@ -41,7 +41,7 @@
         "missing_reason": null
       },
       "missing_reason": null,
-      "group_id": "app-a7937b64b8caa58f03721bb6",
+      "group_id": "fixture-browser",
       "decision": {
         "status": "review",
         "reasons": [
@@ -89,7 +89,7 @@
         "missing_reason": null
       },
       "missing_reason": null,
-      "group_id": "app-9b2bbce6c72dd9bbd9c7a997",
+      "group_id": "fixture-cursor",
       "decision": {
         "status": "protected",
         "reasons": [
@@ -103,7 +103,7 @@
   ],
   "groups": [
     {
-      "group_id": "app-9b2bbce6c72dd9bbd9c7a997",
+      "group_id": "fixture-cursor",
       "display_name": "Cursor",
       "member_pids": [
         12
@@ -126,7 +126,7 @@
       }
     },
     {
-      "group_id": "app-a7937b64b8caa58f03721bb6",
+      "group_id": "fixture-browser",
       "display_name": "Browser",
       "member_pids": [
         10

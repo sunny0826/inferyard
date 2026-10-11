@@ -33,6 +33,7 @@ def link_benchmark(summary: dict, root: Path) -> dict:
     binding = summary["benchmark_binding"]
     require(binding is not None, "observer_benchmark_binding_missing")
     root = root.resolve(strict=True)
+    require(not (root / "inputs.json").exists(), "observer_benchmark_layout_unsupported")
     manifest_path = local_file(root, "manifest.json")
     require(manifest_path.is_file(), "observer_benchmark_not_sealed")
     before = sha256_file(manifest_path)

@@ -45,8 +45,8 @@ class ResourceSampler(EnvironmentObserver):
             self.page_size = None
         self.process_lost = False
         self.sensors = MacSensors()
-        store.snapshot(
-            "collector.json",
+        store.observe(
+            "collector",
             {
                 "schema_version": SCHEMA_VERSION,
                 "collector": COLLECTOR,
@@ -62,6 +62,7 @@ class ResourceSampler(EnvironmentObserver):
                 "counter_timestamp": "read_interval_midpoint",
                 "boundary_samples": "not_interpolated",
             },
+            stage="prepare",
         )
 
     def _counter_row(

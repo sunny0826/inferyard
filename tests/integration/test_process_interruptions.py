@@ -31,12 +31,11 @@ def hold():
     time.sleep(30)
 
 if point == 'plan':
-    original = EvidenceStore.snapshot
-    def snapshot(self, name, data):
-        result = original(self, name, data)
-        if name == 'bundle.json': hold()
-        return result
-    EvidenceStore.snapshot = snapshot
+    original = EvidenceStore.__init__
+    def initialized(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        hold()
+    EvidenceStore.__init__ = initialized
 elif point in ('request_started','request_finished','score'):
     original = EvidenceStore.event
     def event(self, kind, phase, key, data, **kwargs):

@@ -8,6 +8,7 @@ import pytest
 
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.evidence.storage import EvidenceError, Redactor, json_bytes, read_json
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.extensions.complete_trial_control import execute_complete, read_trial_plan
 from inferyard.extensions.extension_evidence import ExtensionJournal
 from inferyard.extensions.independent_guard import POLICY
@@ -64,6 +65,14 @@ def test_complete_control_uses_real_trial_seals_and_deferred_baselines(
     assert [a["mode"] for a in arms] == ["off", "on", "on", "off"]
     assert len(scenario[2]) == 32  # each arm: two probes, three warmups, three cases
     assert all(a["finalized"] and a["measurement_path"] == "run_trial.v1" for a in arms)
+    original_bytes = {}
+    for arm in arms:
+        if arm["mode"] == "on":
+            source = store.path / arm["trial_path"]
+            assert TrialEvidence(source).layout_version == 2
+            original_bytes[source] = {
+                p.name: p.read_bytes() for p in source.iterdir() if p.is_file()
+            }
     children = [
         {"path": a["trial_path"], "manifest_sha256": a["trial_manifest_sha256"]}
         for a in arms
@@ -81,6 +90,8 @@ def test_complete_control_uses_real_trial_seals_and_deferred_baselines(
         "guard": {"clock_id": guard.clock_id, "pid": os.getpid() + 1, "samples": samples},
     }
     verify_control_rows(store.path, packet)
+    for source, expected in original_bytes.items():
+        assert expected == {p.name: p.read_bytes() for p in source.iterdir() if p.is_file()}
     baseline_path = store.path / arms[0]["baseline_path"]
     baseline = read_json(baseline_path)
     assert baseline["preservation"] == "memory_during_arm_file_after_measured_close"

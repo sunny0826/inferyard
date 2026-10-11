@@ -96,20 +96,21 @@ def seal_trial(
 ):
     if not single or not store.sealed:
         if safety is not None:
-            store.snapshot(
-                "safety-check.json",
+            store.observe(
+                "safety_check",
                 {
                     "stop_reason": reason if reason != "plan_finished" else None,
                     "last": safety.last,
                 },
+                stage="finalizing",
             )
-        if not (store.path / "identity.json").exists():
-            store.snapshot("identity.json", identity)
-        if not single or not (store.path / "environment.end.json").exists():
-            store.snapshot("environment.end.json", environment())
+        if not store.has_observation("identity"):
+            store.observe("identity", identity, stage="finalizing")
+        if not single or not store.has_observation("environment", stage="end"):
+            store.observe("environment", environment(), stage="end")
         if not single:
-            store.snapshot(
-                "execution-budget.json",
+            store.observe(
+                "execution_budget",
                 {
                     "schema_version": SCHEMA_VERSION,
                     "run_id": store.run_id,
@@ -117,5 +118,6 @@ def seal_trial(
                     "elapsed_seconds": time.monotonic() - started_at,
                     "includes": "preflight_through_cleanup_excludes_final_seal",
                 },
+                stage="finalizing",
             )
         seal_stopped(store, adapter, (reason or "tool_interrupted") if single else reason)

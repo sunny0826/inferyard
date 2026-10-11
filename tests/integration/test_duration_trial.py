@@ -1,13 +1,20 @@
 import asyncio
 
+import pytest
+
 from inferyard.config.plan_math import plan_hash
 from inferyard.config.planning import compile_plan
+from inferyard.contracts.validation import ContractError
 from inferyard.evidence.ledger import read_trial
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime.trial_runner import run_trial
+from tests.integration.test_lab_cli import lab_scenario  # noqa: F401
+from tests.integration.test_native_cli import native_scenario as native_fixture
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.integration.test_trial_runner import inputs
 
 scenario = runner_scenario
+native_scenario = native_fixture
 
 
 def duration_inputs(scenario, limit=100):
@@ -68,6 +75,24 @@ def test_duration_request_limit_is_incomplete(scenario):
     assert len(data["requests"]) == 1
     assert data["summary"]["duration"]["reason"] == "request_limit_reached"
     assert not data["summary"]["scope_complete"]
+
+
+def test_native_duration_is_rejected_before_request_admission(native_scenario):
+    command, deps, service = native_scenario
+    plan, loaded, deps, output = duration_inputs((command, deps, service.requests, service.options))
+    with pytest.raises(ContractError, match="currently support fixed serial quality text"):
+        asyncio.run(
+            run_trial(
+                plan,
+                plan["trials"][0]["trial_id"],
+                loaded,
+                output,
+                diagnostic=True,
+                dependencies=deps,
+            )
+        )
+    assert not service.requests and not service.calls
+    assert not output.exists()
 
 
 def test_cancel_duration_retains_interrupted_window(scenario):
@@ -164,7 +189,7 @@ def test_runtime_safety_cancels_inflight_and_preserves_incomplete_window(scenari
     assert data["requests"][0]["error_category"] == "temperature_safety_threshold_reached"
     assert not data["summary"]["duration"]["window_completed"]
     assert len(scenario[2]) == 6
-    assert read_json(root / "safety-check.json") == {
+    assert TrialEvidence(root).observation("safety_check", stage="finalizing") == {
         "stop_reason": "temperature_safety_threshold_reached",
         "last": {"temperature": 90},
     }
@@ -180,7 +205,6 @@ def test_runtime_safety_cancels_inflight_and_preserves_incomplete_window(scenari
 
 
 def test_frozen_turbo_change_stops_real_safety_guard_inflight(scenario, tmp_path):
-    from inferyard.evidence.storage import read_json
     from inferyard.runtime.safety import SafetyGuard
     from tests.unit.test_safety import Sensors
 
@@ -223,5 +247,10 @@ def test_frozen_turbo_change_stops_real_safety_guard_inflight(scenario, tmp_path
     assert data["summary"]["counts"]["cancelled"] == 1
     assert len(scenario[2]) == 6
     assert not data["summary"]["duration"]["window_completed"]
-    assert read_json(root / "safety-check.json")["last"]["intel_pstate_no_turbo"]["value"] == 0
+    assert (
+        TrialEvidence(root).observation("safety_check", stage="finalizing")["last"][
+            "intel_pstate_no_turbo"
+        ]["value"]
+        == 0
+    )
     assert data["summary"] == read_trial(root)["summary"]

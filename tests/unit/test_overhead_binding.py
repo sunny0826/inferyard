@@ -14,8 +14,9 @@ def evidence(tmp_path, monkeypatch):
         "inferyard.runtime.overhead_binding.trial_for",
         lambda plan, trial_id: next(t for t in plan["trials"] if t["trial_id"] == trial_id),
     )
-    for name in ("manifest.json", "config.frozen.json", "bundle.json"):
-        (tmp_path / name).write_text("{}")
+    from tests.helpers import fixture_run
+
+    tmp_path = fixture_run(tmp_path / "original")
     data = {
         "run": {"trial_id": "t1", "run_id": "r1", "tool_source_sha256": "a" * 64},
         "plan": {

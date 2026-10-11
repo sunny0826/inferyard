@@ -42,7 +42,7 @@ def proc(tmp_path, user=10, system=20, ticks=55):
 def collector(tmp_path, **kwargs):
     proc(tmp_path)
     return ResourceSampler(
-        SimpleNamespace(snapshot=lambda *args: None),
+        SimpleNamespace(observe=lambda *args, **kwargs: None),
         CONFIG,
         proc_root=tmp_path,
         ticks_per_second=100,

@@ -14,6 +14,7 @@ from inferyard.config.planning import write_plan
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, read_json, sha256_file
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime.batch_runner import execute_async
 from inferyard.runtime.trial_runner import TrialDependencies
 from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401
@@ -64,7 +65,7 @@ def test_native_two_repeats_keep_client_http_scope(native_batch):
     for root in roots:
         data = assert_client_only(root)
         assert data["summary"]["counts"]["completed"] == 3
-    proof = read_json(roots[1] / "service-reuse.json")
+    proof = TrialEvidence(roots[1]).observation("service_reuse", stage="prepare")
     assert proof["serial_continuation"] is True
     assert proof["previous_drain"] is None
     assert read_json(locking.STATE_PATH)["completion_scope"] == "client_http"

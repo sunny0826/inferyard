@@ -1,7 +1,17 @@
 """Exact observed-workload applicability; never authorizes performance comparisons."""
 
 from inferyard.evidence.journal import trial_for
-from inferyard.evidence.storage import local_file, read_json, sha256_file
+from inferyard.evidence.storage import EvidenceError, sha256_file
+from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
+
+
+def sealed_observation(evidence, kind, *, stage="prepare"):
+    value = evidence.observation(kind, stage=stage)
+    ref = evidence.observation_reference(kind, stage=stage) if value is not None else None
+    if ref is None or evidence.manifest is None or ref["path"] not in evidence.manifest["files"]:
+        raise EvidenceError("overhead_" + kind + "_unsealed")
+    verify_reference(evidence.root, ref, reads=evidence)
+    return value
 
 
 def workload_identity(data):
@@ -22,15 +32,19 @@ def workload_identity(data):
     return result
 
 
-def bind_target(root, data, protocol, arm_identity, arm_requests, result, collector):
+def bind_target(root, data, protocol, arm_identity, arm_requests, result, collector, *, reads=None):
     """Caller supplies independently replayed target and ABBA evidence."""
     from inferyard.runtime.overhead_runner import request_projection
 
+    evidence = reads if reads is not None else TrialEvidence(root)
+    if evidence.root != root.resolve() or evidence.projection:
+        raise EvidenceError("invalid_evidence_reference")
     reasons = []
     if not result["passed"]:
         reasons.append("overhead_preflight_not_passed")
-    for kind, filename in (("config", "config.frozen.json"), ("bundle", "bundle.json")):
-        if sha256_file(root / filename) != protocol[kind + "_sha256"]:
+    for kind in ("config", "bundle"):
+        verify_reference(root, evidence.input_reference(kind), reads=evidence)
+        if evidence.input_digest(kind) != protocol[kind + "_sha256"]:
             reasons.append("target_" + kind + "_mismatch")
     if data["run"].get("tool_source_sha256") != protocol["tool_source_sha256"]:
         reasons.append("target_tool_mismatch")
@@ -47,18 +61,15 @@ def bind_target(root, data, protocol, arm_identity, arm_requests, result, collec
         reasons.append("target_output_work_differs")
     if collector.get("collector") != protocol.get("resource_collector", "linux-resource.v2"):
         reasons.append("target_collector_mismatch")
-    if protocol.get("kind") == "collector_overhead_abba.v2":
-        sealed = read_json(local_file(root, "manifest.json"))["files"]
-        if "observer.json" not in sealed or (
-            read_json(local_file(root, "observer.json")) != protocol["observer"]
-        ):
-            reasons.append("target_common_observer_mismatch")
-    if protocol.get("kind") == "collector_overhead_abba.v3":
-        sealed = read_json(local_file(root, "manifest.json"))["files"]
-        if "boundary-observer.json" not in sealed or (
-            read_json(local_file(root, "boundary-observer.json")) != protocol["boundary_observer"]
-        ):
-            reasons.append("target_boundary_observer_mismatch")
+    for protocol_kind, kind, reason in (
+        ("collector_overhead_abba.v2", "observer", "target_common_observer_mismatch"),
+        ("collector_overhead_abba.v3", "boundary_observer", "target_boundary_observer_mismatch"),
+    ):
+        if protocol.get("kind") == protocol_kind:
+            if not evidence.has_observation(kind, stage="prepare"):
+                reasons.append(reason)
+            elif sealed_observation(evidence, kind) != protocol[kind]:
+                reasons.append(reason)
     return {
         "definition": "exact_observed_workload_overhead_binding.v1",
         "applicable": not reasons,

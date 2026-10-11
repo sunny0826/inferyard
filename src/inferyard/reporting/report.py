@@ -1,19 +1,21 @@
 """Rebuildable local run index and self-contained, escaped multi-run report."""
 
+from hashlib import sha256
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandResult, VerificationOptions
+from inferyard.contracts.validation import ContractError, strict_json_loads
 from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
 from inferyard.evidence.storage import (
     EvidenceError,
     atomic_bytes,
     json_bytes,
     local_file,
-    read_json,
     sha256_file,
 )
+from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input, read_verified_comparison
 from inferyard.reporting.report_assets import template_hash
@@ -32,8 +34,18 @@ from inferyard.reporting.report_resources import resource_view
 from inferyard.reporting.report_scans import scan_view
 
 
-def presentation(data, source, out, *, contents, format_version=8):
+def presentation(data, source, out, *, contents, format_version=8, reads=None):
     summary = data["summary"]
+    evidence = reads if reads is not None else TrialEvidence(Path(source["path"]))
+    if evidence.root != Path(source["path"]).resolve() or evidence.projection:
+        raise EvidenceError("invalid_evidence_reference")
+    names = dict.fromkeys(
+        [
+            "manifest.json",
+            "events.jsonl",
+            *(evidence.input_reference(k)["path"] for k in ("config", "plan")),
+        ]
+    )
     cases = {case["case_id"]: case for case in data["bundle"]["cases"]}
     rows = []
     for ordinal, request in enumerate(data["requests"], 1):
@@ -80,14 +92,20 @@ def presentation(data, source, out, *, contents, format_version=8):
         "diagnostic": data["run"]["diagnostic"],
         "requests": rows,
         "latency_max": max(values, default=0) or 1,
-        "evidence": {
-            name: evidence_url(Path(source["path"]) / name, out)
-            for name in ("manifest.json", "events.jsonl", "config.frozen.json", "plan.json")
-        },
+        "evidence": {name: evidence_url(Path(source["path"]) / name, out) for name in names},
     }
     if summary.get("engine_observation") is not None:
         view["engine_observation"] = summary["engine_observation"]
-    view["profile"] = profile_view(data)
+    environment_ref = evidence.observation_reference("environment", stage="start")
+    environment_source = (
+        "environment.start.json" if evidence.layout_version == 1 else "not_recorded"
+    )
+    if environment_ref is not None:
+        verify_reference(evidence.root, environment_ref, reads=evidence)
+        environment_source = environment_ref["path"]
+        if "member" in environment_ref:
+            environment_source += ":seq=" + str(environment_ref["member"]["seq"])
+    view["profile"] = profile_view(data, environment_source=environment_source)
     view["dashboard"] = dashboard_view(data, view["resource_view"])
     view["svg_gallery"] = [
         {
@@ -115,6 +133,7 @@ def build_index(
     format_version=8,
     loaded=None,
     verified_comparison=None,
+    source_metadata=None,
 ):
     require_version({"version": format_version}, "version", (8,), "report")
     out = out.resolve()
@@ -122,13 +141,18 @@ def build_index(
         comparison_path = comparison_path.resolve()
     if not roots or len(roots) > 100:
         raise EvidenceError("report_requires_1_to_100_trials")
+    source_metadata = {} if source_metadata is None else dict(source_metadata)
+
+    def read(root):
+        return comparison_input(
+            root,
+            bind_unsealed=True,
+            metadata=source_metadata.setdefault(root.resolve(), {}),
+        )
+
     if loaded is None and (len(roots) == 2 or comparison_path is not None):
-        loaded = [comparison_input(root, bind_unsealed=True) for root in roots]
-    inputs = (
-        loaded
-        if loaded is not None
-        else (comparison_input(root, bind_unsealed=True) for root in roots)
-    )
+        loaded = [read(root) for root in roots]
+    inputs = loaded if loaded is not None else (read(root) for root in roots)
     runs, ids = [], set()
     contents = {}
     for data, source in inputs:
@@ -136,7 +160,14 @@ def build_index(
             raise EvidenceError("duplicate_report_run")
         ids.add(source["run_id"])
         runs.append(
-            presentation(data, source, out, contents=contents, format_version=format_version)
+            presentation(
+                data,
+                source,
+                out,
+                contents=contents,
+                format_version=format_version,
+                reads=source_metadata.pop(Path(source["path"]), {}).get("evidence"),
+            )
         )
         # Presentation owns its derived fields; do not retain raw samples across runs.
         del data, source
@@ -188,12 +219,14 @@ def build_index(
 
 
 def write_report(roots, out, *, comparison_path=None):
-    from inferyard.contracts.validation import strict_json_loads
     from inferyard.reporting.sealed_report import portable_index, seal_report
 
     index = build_index(roots, out, comparison_path=comparison_path, format_version=8)
     index = portable_index(index, out, comparison_path)
-    index = strict_json_loads(json_bytes(index).decode())
+    raw = json_bytes(index)
+    del index
+    index = strict_json_loads(raw.decode())
+    del raw
     html = render_report_html(_environment(), "report.html", index)
     protected = list(roots)
     if comparison_path is not None:
@@ -210,7 +243,15 @@ def write_report(roots, out, *, comparison_path=None):
 
 
 def verify_report(out, *, options=None):
-    saved = read_json(local_file(out, "index.json"))
+    path = local_file(out, "index.json")
+    try:
+        with path.open("rb") as handle:
+            raw = handle.read()
+        saved = strict_json_loads(raw.decode("utf-8"))
+    except (OSError, UnicodeError, ContractError) as exc:
+        raise EvidenceError("invalid_json_evidence") from exc
+    index_sha256 = sha256(raw).hexdigest()
+    del raw
     if (
         type(saved) is not dict
         or type(saved.get("schema_version")) is not int
@@ -223,7 +264,7 @@ def verify_report(out, *, options=None):
     require_version(saved, "report_format_version", (8,), "report")
     from inferyard.reporting.sealed_report import verify
 
-    return verify(out, saved, options=options or VerificationOptions())
+    return verify(out, saved, options=options or VerificationOptions(), index_sha256=index_sha256)
 
 
 def execute(request, *, options=None):

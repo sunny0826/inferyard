@@ -49,6 +49,10 @@ Linux CPU HZ 从 `AT_CLKTCK` 读取，无法读取不猜 100；RSS 来自 status
 
 依据 [ADR 010](../decisions/010-observer-benchmark-adaptation.md)，关联不改变独立工具与原件保护边界。
 
+独立 observer 的 `--bench-run` 与 Python 离线关联仅支持 layout1 的实际
+`run.json/config.frozen.json`；[ADR 048](../decisions/048-run-evidence-containers.md) 的
+layout2 容器不在支持范围。新布局可显式使用 `--pid` 生成独立诊断流，不关联 run。
+
 ### 输入与版本
 
 Go 0.2.0 输出 `schema_version = 3`、`definition = lab_observer.v2`。header 新增必填 `disk_scope`，取值为 `benchmark_run_filesystem` / `observer_cwd_filesystem`；`--bench-run` 以所传 run 目录读取磁盘，直接 PID 以当前目录读取。静态 snapshot 仍以当前目录读取。所有 record definition 在单会话内一致。

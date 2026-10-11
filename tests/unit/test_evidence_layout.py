@@ -1,0 +1,453 @@
+"""Public domain reads and strict physical/member bindings on synthetic originals."""
+
+import copy
+
+import pytest
+
+from inferyard.adapters.requests import request_body
+from inferyard.config.loader import load_config
+from inferyard.config.single_plan import compile_single_plan
+from inferyard.evidence.formats import UnsupportedFormat
+from inferyard.evidence.request_snapshots import (
+    messages_sha256,
+    snapshot_filename,
+    verify_message_snapshots,
+)
+from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl, sha256_file
+from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
+from tests.evidence_layout_helpers import digest, pack_layout2, seal_layout
+from tests.legacy_journal import LegacyJournal
+
+
+@pytest.fixture
+def originals(tmp_path, config_path):
+    loaded = load_config(config_path)
+    config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
+    plan = compile_single_plan(config, bundle)
+    store = LegacyJournal(
+        tmp_path / "old",
+        plan,
+        plan["trials"][0]["trial_id"],
+        config,
+        bundle,
+        run_id="synthetic-layout",
+        diagnostic=True,
+    )
+    store.text_snapshot("config.input.toml", "# 原字节\nschema_version = 3\n")
+    for phase, ordinal, stream in (("probe", 1, False), ("probe", 2, True), ("formal", 3, True)):
+        body = request_body(config, "synthetic original", stream=stream)
+        key = f"{store.run_id}-{phase}-{ordinal}"
+        store.snapshot(snapshot_filename(store.run_id, phase, ordinal), body)
+        store.event(
+            "request_started",
+            phase,
+            key,
+            {
+                "case_id": bundle["cases"][0]["case_id"] if phase == "formal" else None,
+                "plan_index": 0 if phase == "formal" else None,
+                "attempt": 1,
+                "body": {
+                    "model": body["model"],
+                    "messages_sha256": messages_sha256(body["messages"]),
+                    "stream": stream,
+                    "generation": config["generation"],
+                },
+            },
+        )
+    store.snapshot("environment.start.json", {"value": "original-start"})
+    store.snapshot("environment.end.json", {"value": "original-end"})
+    store.snapshot("effective-ordinary.json", {"value": "ordinary"})
+    store.snapshot("effective-stream.json", {"value": "stream"})
+    store.snapshot("identity.json", {"value": "authoritative"})
+    store.snapshot(snapshot_filename(store.run_id, "formal", 4), body)  # Prepared, never sent.
+    store.seal()
+    store.close()
+    new = pack_layout2(store.path, tmp_path / "new")
+    return store.path, new
+
+
+def write_rows(root, name, rows):
+    (root / name).write_bytes(b"".join(map(json_bytes, rows)))
+    seal_layout(root, read_json(root / "inputs.json")["documents"]["run"]["payload"])
+
+
+def test_original_members_requests_and_references_round_trip(originals):
+    old, new = originals
+    before = {path.name: path.read_bytes() for path in old.iterdir()}
+    legacy, packed = TrialEvidence(old), TrialEvidence(new)
+    assert legacy.layout_version == 1 and packed.layout_version == 2
+    assert len(list(new.iterdir())) == 8
+    for kind in ("run", "plan", "selection", "config", "bundle"):
+        assert legacy.input(kind) == packed.input(kind)
+        assert legacy.input_digest(kind) == packed.input_digest(kind)
+        verify_reference(new, packed.input_reference(kind))
+        verify_reference(old, legacy.input_reference(kind))
+    assert legacy.configuration_source() == packed.configuration_source()
+    for kind, stage in (
+        ("environment", "start"),
+        ("environment", "end"),
+        ("effective_parameters", "ordinary"),
+        ("effective_parameters", "stream"),
+    ):
+        assert legacy.observation(kind, stage) == packed.observation(kind, stage)
+        verify_reference(new, packed.observation_reference(kind, stage))
+    events, _ = read_jsonl(old / "events.jsonl")
+    for event in events:
+        assert legacy.request_body(event) == packed.request_body(event)
+        verify_reference(new, packed.request_reference(event))
+        verify_reference(old, legacy.request_reference(event))
+    verify_message_snapshots(new, events, packed)
+    packed.preload(packed.manifest["files"])
+    assert set(packed.hashes) <= {path.name for path in new.iterdir()}
+    assert packed.hashes["inputs.json"] == sha256_file(new / "inputs.json")
+    assert packed.input_digest("config") != packed.hashes["inputs.json"]
+    assert before == {path.name: path.read_bytes() for path in old.iterdir()}
+
+
+def test_reference_context_stays_bound_to_full_read(originals):
+    _, root = originals
+    reads = TrialEvidence(root)
+    reference = reads.observation_reference("environment", "start")
+    verify_reference(root, reference, reads=reads)
+    reference["member"]["sha256"] = "0" * 64
+    with pytest.raises(EvidenceError, match="evidence_reference_member_mismatch"):
+        verify_reference(root, reference, reads=reads)
+    reference = reads.input_reference("config")
+    with pytest.raises(EvidenceError, match="invalid_evidence_reference"):
+        verify_reference(root, reference, reads=TrialEvidence(root, projection=True))
+
+
+def test_inputs_published_before_observations_retains_missing_slot(originals):
+    _, root = originals
+    (root / "manifest.json").unlink()
+    (root / "observations.jsonl").unlink()
+    reads = TrialEvidence(root)
+    assert reads.observation("identity") is None
+    assert reads.observation_keys("environment") == []
+
+
+@pytest.mark.parametrize(
+    "damage", ["unknown", "conflict", "mixed", "duplicate_json", "hash", "bool"]
+)
+def test_layout_and_input_corruption_is_not_a_legacy_fallback(originals, damage):
+    _, root = originals
+    inputs = read_json(root / "inputs.json")
+    if damage == "unknown":
+        inputs["evidence_layout_version"] = 99
+        manifest = read_json(root / "manifest.json")
+        manifest["evidence_layout_version"] = 99
+        (root / "manifest.json").write_bytes(json_bytes(manifest))
+    elif damage == "conflict":
+        inputs["evidence_layout_version"] = 99
+    elif damage == "mixed":
+        (root / "run.json").write_bytes(json_bytes(inputs["documents"]["run"]["payload"]))
+    elif damage == "hash":
+        inputs["documents"]["config"]["sha256"] = "0" * 64
+    elif damage == "bool":
+        inputs["evidence_layout_version"] = True
+    (root / "inputs.json").write_bytes(json_bytes(inputs))
+    if damage == "unknown":
+        manifest["files"]["inputs.json"].update(
+            sha256=sha256_file(root / "inputs.json"),
+            bytes=(root / "inputs.json").stat().st_size,
+        )
+        (root / "manifest.json").write_bytes(json_bytes(manifest))
+    if damage == "duplicate_json":
+        raw = (root / "inputs.json").read_bytes()
+        (root / "inputs.json").write_bytes(b'{"schema_version":3,' + raw[1:])
+    with pytest.raises(UnsupportedFormat if damage == "unknown" else EvidenceError):
+        TrialEvidence(root)
+    if damage == "unknown":
+        with (root / "observations.jsonl").open("ab") as stream:
+            stream.write(b"broken\n")
+        with pytest.raises(EvidenceError, match="original_evidence_hash_mismatch"):
+            TrialEvidence(root)
+
+
+@pytest.mark.parametrize("damage", ["duplicate", "kind", "stage", "key", "seq", "identity", "hash"])
+def test_observation_slots_and_records_are_closed(originals, damage):
+    _, root = originals
+    rows, _ = read_jsonl(root / "observations.jsonl")
+    if damage == "duplicate":
+        rows.append({**rows[0], "seq": len(rows) + 1})
+    elif damage == "identity":
+        rows.append({**rows[-1], "seq": len(rows) + 1, "stage": "finalizing"})
+    else:
+        field = {
+            "kind": "kind",
+            "stage": "stage",
+            "key": "key",
+            "seq": "seq",
+            "hash": "payload_sha256",
+        }[damage]
+        rows[0][field] = {
+            "kind": "unknown",
+            "stage": "finalizing",
+            "key": "bad-key",
+            "seq": True,
+            "hash": "0" * 64,
+        }[damage]
+    write_rows(root, "observations.jsonl", rows)
+    with pytest.raises(EvidenceError):
+        TrialEvidence(root).observation("environment", "start")
+
+
+@pytest.mark.parametrize(
+    "damage", ["duplicate", "ordinal", "phase", "identity", "bodyhash", "messages"]
+)
+def test_prepared_records_are_indexed_and_validated_before_any_body_read(originals, damage):
+    _, root = originals
+    rows, _ = read_jsonl(root / "request-bodies.jsonl")
+    if damage == "duplicate":
+        rows.append(rows[0])
+    elif damage == "ordinal":
+        rows[1]["ordinal"] = rows[0]["ordinal"]
+    elif damage == "phase":
+        rows[-1]["phase"] = "baseline"
+    elif damage == "identity":
+        rows[-1]["trial_id"] = "other"
+    elif damage == "bodyhash":
+        rows[-1]["body_sha256"] = "0" * 64
+    else:
+        del rows[-1]["body"]["messages"]
+        rows[-1]["body_sha256"] = digest(rows[-1]["body"])
+    write_rows(root, "request-bodies.jsonl", rows)
+    events, _ = read_jsonl(root / "events.jsonl")
+    with pytest.raises(EvidenceError):
+        TrialEvidence(root).request_body(events[0])
+
+
+def test_request_messages_digest_is_bound_to_original_body(originals):
+    _, root = originals
+    events, _ = read_jsonl(root / "events.jsonl")
+    events[0]["data"]["body"]["messages_sha256"] = "0" * 64
+    with pytest.raises(EvidenceError, match="request_messages_hash_mismatch"):
+        verify_message_snapshots(root, events, TrialEvidence(root))
+
+
+def test_missing_started_original_and_prepared_unsent_are_distinct(originals):
+    _, root = originals
+    rows, _ = read_jsonl(root / "request-bodies.jsonl")
+    assert len(rows) == 4
+    write_rows(root, "request-bodies.jsonl", rows[1:])
+    events, _ = read_jsonl(root / "events.jsonl")
+    with pytest.raises(EvidenceError, match="request_snapshot_missing"):
+        TrialEvidence(root).request_body(events[0])
+
+
+def test_byte_range_reread_rejects_changed_original(originals):
+    _, root = originals
+    evidence = TrialEvidence(root)
+    events, _ = read_jsonl(root / "events.jsonl")
+    assert evidence.request_body(events[0])
+    raw = (root / "request-bodies.jsonl").read_bytes()
+    (root / "request-bodies.jsonl").write_bytes(
+        raw.replace(b"synthetic original", b"synthetic tampered")
+    )
+    with pytest.raises(EvidenceError, match="request_body_changed"):
+        evidence.request_body(events[0])
+
+
+@pytest.mark.parametrize("sealed", [False, True])
+def test_only_unsealed_tail_retains_partial_state(originals, sealed):
+    _, root = originals
+    if not sealed:
+        (root / "manifest.json").unlink()
+    with (root / "request-bodies.jsonl").open("ab") as stream:
+        stream.write(b'{"schema_version":')
+    evidence = TrialEvidence(root)
+    events, _ = read_jsonl(root / "events.jsonl")
+    if sealed:
+        with pytest.raises(EvidenceError):
+            evidence.request_body(events[0])
+    else:
+        assert evidence.request_body(events[0])
+        assert evidence._prepared.tails
+
+
+def test_member_reference_never_substitutes_member_hash_for_file_hash(originals):
+    _, root = originals
+    evidence = TrialEvidence(root)
+    ref = evidence.input_reference("config")
+    damaged = copy.deepcopy(ref)
+    damaged["sha256"] = ref["member"]["sha256"]
+    with pytest.raises(EvidenceError):
+        verify_reference(root, damaged)
+    damaged = copy.deepcopy(ref)
+    damaged["member"]["sha256"] = "0" * 64
+    with pytest.raises(EvidenceError):
+        verify_reference(root, damaged)
+
+
+def test_projection_does_not_scan_unused_prepared_or_observation_payloads(originals):
+    _, root = originals
+    (root / "request-bodies.jsonl").write_bytes(b"broken\n")
+    (root / "observations.jsonl").write_bytes(b"broken\n")
+    evidence = TrialEvidence(root, projection=True)
+    evidence.preload(evidence.manifest["files"])
+    assert evidence.input("run")["run_id"] == "synthetic-layout"
+    assert "request-bodies.jsonl" not in evidence.hashes
+    assert "observations.jsonl" not in evidence.hashes
+
+
+def test_fixture_generator_preserves_real_sent_body_and_complete_counts(tmp_path):
+    from inferyard.evidence.ledger import read_trial
+    from tests.evidence_layout_helpers import build_current_original
+
+    original = build_current_original(tmp_path / "generated-originals")
+    before = {path.name: path.read_bytes() for path in original.iterdir()}
+    packed = pack_layout2(original, tmp_path / "generated-layout2")
+    result = read_trial(original)
+    assert result["summary"]["completeness"] == "complete"
+    evidence = TrialEvidence(packed)
+    evidence.preload(evidence.manifest["files"])
+    events, _ = read_jsonl(original / "events.jsonl")
+    verify_message_snapshots(packed, events, evidence)
+    assert len(evidence._prepared.entries) == result["summary"]["counts"]["executed"] + 2
+    assert before == {path.name: path.read_bytes() for path in original.iterdir()}
+
+
+def test_fixture_packing_cannot_invent_originals_from_old_inline_events(tmp_path):
+    from tests.helpers import fixture_run
+
+    original = fixture_run(tmp_path / "inline-original")
+    destination = tmp_path / "unsupported-packed"
+    with pytest.raises(ValueError, match="original sent request bodies"):
+        pack_layout2(original, destination)
+    assert not destination.exists()
+
+
+def test_native_receipt_query_binds_actual_request_key(originals):
+    _, root = originals
+    evidence = TrialEvidence(root)
+    rows, _ = read_jsonl(root / "observations.jsonl")
+    run = evidence.input("run")
+    key = "synthetic-layout-probe-1"
+    payload = {"run_id": run["run_id"], "request_id": key, "value": "original-receipt"}
+    rows.append(
+        {
+            **rows[0],
+            "seq": len(rows) + 1,
+            "kind": "native_clean_receipt",
+            "stage": "client_complete",
+            "key": key,
+            "payload": payload,
+            "payload_sha256": digest(payload),
+        }
+    )
+    write_rows(root, "observations.jsonl", rows)
+    evidence = TrialEvidence(root)
+    assert evidence.observation("native_clean_receipt", key=key) == payload
+    assert not evidence.has_observation("native_clean_receipt", key="different")
+    verify_reference(root, evidence.observation_reference("native_clean_receipt", key=key))
+    rows[-1]["key"] = "different"
+    write_rows(root, "observations.jsonl", rows)
+    with pytest.raises(EvidenceError):
+        TrialEvidence(root).observation("native_clean_receipt", key=key)
+
+
+@pytest.mark.parametrize("name", ["observations.jsonl", "request-bodies.jsonl"])
+def test_scanned_container_tails_are_public_without_projection_scans(originals, name):
+    _, root = originals
+    (root / "manifest.json").unlink()
+    with (root / name).open("ab") as stream:
+        stream.write(b'{"schema_version":')
+    projected = TrialEvidence(root, projection=True)
+    projected.preload({})
+    assert projected.container_tails == {}
+    evidence = TrialEvidence(root)
+    evidence.preload({})
+    assert evidence.container_tails[name]
+
+
+@pytest.mark.parametrize(
+    "name", ["migration.json", "requests.jsonl", "token-budgets.json", "request-files"]
+)
+def test_rejected_historical_sources_cannot_hide_inside_current_layout(originals, name):
+    _, root = originals
+    if name == "request-files":
+        (root / name).mkdir()
+    else:
+        (root / name).write_bytes(json_bytes({"schema_version": 3}))
+    with pytest.raises(UnsupportedFormat):
+        TrialEvidence(root)
+
+
+def test_layout2_inline_started_still_requires_physical_original(originals):
+    _, root = originals
+    rows, _ = read_jsonl(root / "request-bodies.jsonl")
+    events, _ = read_jsonl(root / "events.jsonl")
+    events[0]["data"]["body"].pop("messages_sha256")
+    events[0]["data"]["body"]["messages"] = rows[0]["body"]["messages"]
+    write_rows(root, "request-bodies.jsonl", rows[1:])
+    with pytest.raises(EvidenceError, match="request_snapshot_missing"):
+        verify_message_snapshots(root, events, TrialEvidence(root))
+
+
+def test_projection_checks_only_consumed_observation_payload_hashes(originals):
+    _, root = originals
+    rows, _ = read_jsonl(root / "observations.jsonl")
+    rows[-1]["payload_sha256"] = "0" * 64
+    write_rows(root, "observations.jsonl", rows)
+    projected = TrialEvidence(root, projection=True)
+    assert projected.observation("environment", "start") == {"value": "original-start"}
+    with pytest.raises(EvidenceError, match="invalid_observation_record"):
+        projected.observation("identity")
+    with pytest.raises(EvidenceError, match="invalid_observation_record"):
+        TrialEvidence(root).observation("environment", "start")
+
+
+@pytest.mark.parametrize("damage", ["json", "type", "schema", "sealed"])
+def test_manifest_damage_is_rejected_at_domain_construction(originals, damage):
+    _, root = originals
+    manifest = read_json(root / "manifest.json")
+    if damage == "schema":
+        manifest["schema_version"] = True
+    elif damage == "sealed":
+        manifest["sealed"] = False
+    elif damage == "type":
+        manifest["files"]["events.jsonl"] = "not-a-file-entry"
+    (root / "manifest.json").write_bytes(b"broken" if damage == "json" else json_bytes(manifest))
+    with pytest.raises(EvidenceError):
+        TrialEvidence(root)
+
+
+def test_native_receipt_keys_are_actual_members_and_legacy_physical_files(originals, tmp_path):
+    from inferyard.evidence.native_receipts import clean_receipt_name
+
+    old, _ = originals
+    source = tmp_path / "original-with-receipt"
+    source.mkdir()
+    for path in old.iterdir():
+        (source / path.name).write_bytes(path.read_bytes())
+    key = "synthetic-layout-formal-3"
+    payload = {"run_id": "synthetic-layout", "request_id": key, "value": "original-receipt"}
+    name = clean_receipt_name(key)
+    (source / name).write_bytes(json_bytes(payload))
+    manifest = read_json(source / "manifest.json")
+    manifest["files"][name] = {
+        "sha256": sha256_file(source / name),
+        "bytes": len(json_bytes(payload)),
+        "derived": False,
+    }
+    (source / "manifest.json").write_bytes(json_bytes(manifest))
+    packed = pack_layout2(source, tmp_path / "packed-receipt")
+    for root in (source, packed):
+        evidence = TrialEvidence(root)
+        assert evidence.observation_keys("native_clean_receipt") == [key]
+        assert evidence.observation("native_clean_receipt", key=key) == payload
+    (source / name).unlink()
+    with pytest.raises(EvidenceError, match="native_clean_receipt_inventory_mismatch"):
+        TrialEvidence(source).observation_keys("native_clean_receipt")
+
+
+def test_scanned_tail_state_is_read_only_to_consumers(originals):
+    _, root = originals
+    (root / "manifest.json").unlink()
+    with (root / "request-bodies.jsonl").open("ab") as stream:
+        stream.write(b'{"schema_version":')
+    evidence = TrialEvidence(root)
+    evidence.preload({})
+    snapshot = evidence.container_tails
+    snapshot["request-bodies.jsonl"].clear()
+    assert evidence.container_tails["request-bodies.jsonl"]

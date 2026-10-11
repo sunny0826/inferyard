@@ -41,7 +41,9 @@ def sampler(monkeypatch):
         psutil, "virtual_memory", lambda: SimpleNamespace(available=16384), raising=False
     )
     snapshots = {}
-    store = SimpleNamespace(snapshot=lambda name, value: snapshots.__setitem__(name, value))
+    store = SimpleNamespace(
+        observe=lambda kind, value, *, stage, key=None: snapshots.__setitem__((kind, stage), value)
+    )
     value = resources_windows.ResourceSampler(store, CONFIG)
     value.set_phase("formal", "request-1")
     return value, snapshots
@@ -73,7 +75,7 @@ def test_unknown_platform_remains_closed(monkeypatch):
 def test_windows_factory_and_catalogue(sampler, monkeypatch):
     monkeypatch.setattr(resources, "sys", SimpleNamespace(platform="win32"))
     assert collector_factory("windows-resource.v1") is resources_windows.ResourceSampler
-    store = SimpleNamespace(snapshot=lambda *args: None)
+    store = SimpleNamespace(observe=lambda *args, **kwargs: None)
     assert isinstance(resources.ResourceSampler(store, CONFIG), resources_windows.ResourceSampler)
     entry = next(i for i in components()["items"] if i["component_id"] == "windows-resource.v1")
     assert entry["live_verification_required"] is True
@@ -92,7 +94,7 @@ def test_memory_sources_units_identity_and_missing_metadata(sampler):
         assert row["unit"] == "bytes" and row["missing_reason"] is None
         assert row["read_finished_ns"] >= row["read_started_ns"]
         validate_document("sample", envelope(row))
-    metadata = snapshots["collector.json"]
+    metadata = snapshots[("collector", "prepare")]
     assert metadata["collector"] == "windows-resource.v1"
     assert metadata["sensors"]["sources"] == []
     assert all(

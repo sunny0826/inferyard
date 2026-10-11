@@ -1,7 +1,6 @@
 """Separate native serial-client admission from verified engine-wide release."""
 
 from inferyard.adapters.requests import idle_evidence
-from inferyard.evidence.native_receipts import clean_receipt_name
 from inferyard.platforms.identity import PreflightError
 
 
@@ -50,8 +49,8 @@ def clean_observed(lock, adapter, store, *, run_id=None, key=None, recovery=None
         and not adapter.native_uncertain
     ):
         # This receipt finishes only the owned, validated HTTP roundtrip.
-        store.snapshot(
-            clean_receipt_name(key),
+        store.observe(
+            "native_clean_receipt",
             {
                 "run_id": run_id,
                 "request_id": key,
@@ -63,6 +62,8 @@ def clean_observed(lock, adapter, store, *, run_id=None, key=None, recovery=None
                 "engine_internal_drain": None,
                 "missing_reason": "native_lifecycle_unavailable",
             },
+            stage="client_complete",
+            key=key,
         )
         lock.write(
             {

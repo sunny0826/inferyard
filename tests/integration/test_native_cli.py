@@ -13,8 +13,8 @@ import inferyard.runtime.runner as running
 from inferyard.cli import main
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.native_receipts import clean_receipt_name
 from inferyard.evidence.storage import EvidenceError, read_json, read_jsonl
+from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.registry import adapter_factory
 from inferyard.runtime.runner import execute_async
 from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401
@@ -22,6 +22,7 @@ from tests.integration.test_lab_cli import (
     test_frozen_plan_run_uses_shared_lab_lifecycle as frozen_plan_flow,
 )
 from tests.integration.test_runner import scenario  # noqa: F401
+from tests.layout_mutations import change_observation
 from tests.native_service import NativeService
 
 
@@ -99,10 +100,9 @@ def test_native_offline_rejects_invented_drain(native_scenario):
     assert code == 0
     root = Path(result.evidence_dir)
     (root / "manifest.json").unlink()
-    path = root / "engine-capabilities.json"
-    value = read_json(path)
-    value["engine_internal_drain"]["value"] = True
-    path.write_text(json.dumps(value))
+    change_observation(
+        root, "engine_capabilities", lambda value: value["engine_internal_drain"].update(value=True)
+    )
     with pytest.raises(EvidenceError, match="cannot_prove_engine_drain"):
         read_trial(root)
 
@@ -142,13 +142,17 @@ def test_native_clean_basis_is_sealed_and_bound_to_completed_requests(native_sce
     assert code == 0
     root = Path(result.evidence_dir)
     events, _ = read_jsonl(root / "events.jsonl")
-    manifest = read_json(root / "manifest.json")
+    evidence = TrialEvidence(root)
     finished = [e for e in events if e["event_type"] == "request_finished"]
-    assert len(list(root.glob("client-http-clean-*.json"))) == len(finished)
+    assert len(evidence.observation_keys("native_clean_receipt")) == len(finished)
+    assert not list(root.glob("client-http-clean-*.json"))
     for event in finished:
-        name = clean_receipt_name(event["request_id"])
-        assert name in manifest["files"]
-        receipt = read_json(root / name)
+        receipt = evidence.observation("native_clean_receipt", key=event["request_id"])
+        verify_reference(
+            root,
+            evidence.observation_reference("native_clean_receipt", key=event["request_id"]),
+            reads=evidence,
+        )
         assert receipt["run_id"] == event["run_id"]
         assert receipt["request_id"] == event["request_id"]
         assert receipt["completion_scope"] == "client_http"
@@ -156,45 +160,46 @@ def test_native_clean_basis_is_sealed_and_bound_to_completed_requests(native_sce
     read_trial(root)
 
 
-@pytest.mark.parametrize("change", ["scope", "client_id", "legacy", "sealed_missing"])
+@pytest.mark.parametrize("change", ["scope", "client_id", "missing", "sealed_missing"])
 def test_native_clean_receipt_offline_rejection_and_legacy_reading(native_scenario, change):
     command, deps, _ = native_scenario
     code, result = asyncio.run(execute_async(command, deps))
     assert code == 0
     root = Path(result.evidence_dir)
     if change == "sealed_missing":
-        next(root.glob("client-http-clean-*.json")).unlink()
+        # Keep the seal stale: the physical container hash must reject first.
+        change_observation(root, "native_clean_receipt", remove=True)
         with pytest.raises(EvidenceError, match="original_evidence_hash_mismatch"):
             read_trial(root)
         return
     (root / "manifest.json").unlink()
-    if change == "legacy":
-        for path in root.glob("client-http-clean-*.json"):
-            path.unlink()
-        assert read_trial(root)["summary"]["counts"]["completed"] > 0
-        return
-    path = next(root.glob("client-http-clean-*.json"))
-    receipt = read_json(path)
-    receipt["completion_scope" if change == "scope" else "client_request_id"] = "invented"
-    path.write_text(json.dumps(receipt))
-    with pytest.raises(EvidenceError, match="native_clean_receipt_binding_mismatch"):
+    if change == "missing":
+        change_observation(root, "native_clean_receipt", remove=True)
+    else:
+        field = "completion_scope" if change == "scope" else "client_request_id"
+        change_observation(
+            root, "native_clean_receipt", lambda receipt: receipt.update({field: "invented"})
+        )
+    with pytest.raises(
+        EvidenceError, match="native_clean_receipt_binding_mismatch|native_clean_receipt_missing"
+    ):
         read_trial(root)
 
 
 def test_native_receipt_io_failure_keeps_dirty(native_scenario, monkeypatch):
     command, deps, _ = native_scenario
-    original = running.TrialJournal.snapshot
+    original = running.TrialJournal.observe
 
-    def snapshot(self, name, value):
-        if name.startswith("client-http-clean-"):
+    def observe(self, kind, value, **options):
+        if kind == "native_clean_receipt":
             raise EvidenceError("fixture_receipt_write_failed")
-        return original(self, name, value)
+        return original(self, kind, value, **options)
 
-    monkeypatch.setattr(running.TrialJournal, "snapshot", snapshot)
+    monkeypatch.setattr(running.TrialJournal, "observe", observe)
     code, result = asyncio.run(execute_async(command, deps))
-    assert code == 4 and "evidence_io_error" in result.limitations
+    assert code == 4 and "native_clean_receipt_missing" in result.limitations
     assert read_json(locking.STATE_PATH)["dirty"] is True
-    assert list(Path(result.evidence_dir).glob("client-http-clean-*.json")) == []
+    assert TrialEvidence(Path(result.evidence_dir)).observation_keys("native_clean_receipt") == []
 
 
 @pytest.mark.parametrize("phase", ["probe", "formal"])

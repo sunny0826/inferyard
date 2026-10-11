@@ -19,7 +19,7 @@ def item(label, value, *, source, reason="not_recorded", unit=None):
     }
 
 
-def profile_view(data):
+def profile_view(data, *, environment_source="environment.start.json"):
     config, identity = data["config"], data.get("identity", {})
     model, engine = config["model"], config["engine"]
     environment = data.get("environment_start", {})
@@ -53,7 +53,7 @@ def profile_view(data):
     ]
     os_release = environment.get("os_release") or {}
     hardware = identity.get("device_preflight", {}).get("hardware", {})
-    env_source = "environment.start.json"
+    env_source = environment_source
     machine_rows = [
         item("设备编号", config["device"]["id"], source="config.device.id"),
         item("系统", environment.get("platform"), source=env_source),

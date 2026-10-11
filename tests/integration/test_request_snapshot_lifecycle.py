@@ -1,4 +1,4 @@
-"""Both live writers seal portable filenames that offline replay and reports can read."""
+"""Live writers persist indexed bodies before sending; replay checks their original bytes."""
 
 import asyncio
 from pathlib import Path
@@ -6,18 +6,14 @@ from pathlib import Path
 import pytest
 
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.request_snapshots import messages_sha256, snapshot_filename
-from inferyard.evidence.storage import (
-    EvidenceError,
-    json_bytes,
-    read_json,
-    read_jsonl,
-    verify_manifest,
-)
+from inferyard.evidence.request_snapshots import messages_sha256
+from inferyard.evidence.storage import EvidenceError, json_bytes, read_jsonl, verify_manifest
+from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.runtime.runner import execute_async
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_runner import scenario
 from tests.integration.test_trial_runner import inputs
+from tests.layout_mutations import change_request
 
 __all__ = ["scenario"]
 
@@ -42,22 +38,22 @@ def test_writers_seal_body_snapshots_in_send_order(scenario, mode):
         )
         assert read_trial(root)["summary"]["counts"]["completed"] == 3
     assert code == 0 and verify_manifest(root) == []
+    evidence = TrialEvidence(root)
+    assert evidence.layout_version == 2
     starts = [
         event
         for event in read_jsonl(root / "events.jsonl")[0]
         if event["event_type"] == "request_started"
     ]
-    expected = [
-        snapshot_filename(event["run_id"], event["phase"], ordinal)
-        for ordinal, event in enumerate(starts, 1)
-    ]
-    actual = sorted(path.name for path in root.glob("*.request.json"))
-    assert actual == expected and len(actual) == len(calls)
-    manifest = read_json(root / "manifest.json")["files"]
-    for name, body in zip(actual, calls, strict=True):
-        assert ":" not in name and name in manifest
-        assert read_json(root / name) == body
-    for event, body in zip(starts, calls, strict=True):
+    prepared, tails = read_jsonl(root / "request-bodies.jsonl")
+    assert not tails and len(prepared) == len(calls) == len(starts)
+    assert [row["ordinal"] for row in prepared] == list(range(1, len(calls) + 1))
+    assert [row["request_id"] for row in prepared] == [event["request_id"] for event in starts]
+    assert not list(root.glob("*.request.json"))
+    for event, row, body in zip(starts, prepared, calls, strict=True):
+        assert evidence.request_body(event) == row["body"] == body
+        assert row["phase"] == event["phase"]
+        verify_reference(root, evidence.request_reference(event), reads=evidence)
         assert "messages" not in event["data"]["body"]
         assert event["data"]["body"]["messages_sha256"] == messages_sha256(body["messages"])
 
@@ -68,19 +64,20 @@ def test_new_event_requires_matching_original_snapshot(scenario, change):
     code, result = asyncio.run(execute_async(request, dependencies))
     assert code == 0
     root = Path(result.evidence_dir)
-    (root / "manifest.json").unlink()  # Exercise the binding, independently of seal rejection.
+    (root / "manifest.json").unlink()
     events = read_jsonl(root / "events.jsonl")[0]
-    start = next(e for e in events if e["event_type"] == "request_started")
-    snapshot = root / snapshot_filename(start["run_id"], start["phase"], 1)
+    start = next(event for event in events if event["event_type"] == "request_started")
     if change == "missing":
-        snapshot.unlink()
+        change_request(root, request_id=start["request_id"], remove=True)
     elif change == "messages":
-        body = read_json(snapshot)
-        body["messages"][0]["content"] = "different original body"
-        snapshot.write_bytes(json_bytes(body))
+        change_request(
+            root,
+            lambda body: body["messages"][0].update(content="different original"),
+            request_id=start["request_id"],
+        )
     else:
         start["data"]["body"]["messages_sha256"] = "0" * 64
-        (root / "events.jsonl").write_bytes(b"".join(json_bytes(e) for e in events))
+        (root / "events.jsonl").write_bytes(b"".join(json_bytes(event) for event in events))
     with pytest.raises(
         EvidenceError, match="request_snapshot_missing|request_messages_hash_mismatch"
     ):

@@ -1,7 +1,9 @@
 """Versioned, explicit token-budget inventory; current inventory only."""
 
-from inferyard.evidence.formats import UnsupportedFormat, require_version
-from inferyard.evidence.storage import EvidenceError, local_file, read_json
+from inferyard.evidence.engine_capabilities import observation_sealed
+from inferyard.evidence.formats import require_version
+from inferyard.evidence.storage import EvidenceError
+from inferyard.evidence.trial_evidence import TrialEvidence
 
 V1 = "token-budgets.json"
 V2 = "token-budgets.v2.json"
@@ -67,18 +69,21 @@ def validate_inventory(value, config, selected, *, kind="run"):
     return entries
 
 
-def read_budgets(root, config, selected, *, kind="run", manifest=None, reader=None):
-    present = [name for name in (V1, V2) if local_file(root, name).exists()]
-    if V1 in present:
-        raise UnsupportedFormat("token-budget", "positional.v1", (DEFINITION,))
-    if not present:
+def read_budgets(root, config, selected, *, kind="run", manifest=None, reads=None):
+    reads = reads if reads is not None else TrialEvidence(root)
+    try:
+        exists = reads.has_observation("token_budgets")
+    except EvidenceError as exc:
+        if str(exc) == "original_evidence_unsealed":
+            raise EvidenceError("token_budget_evidence_unsealed") from exc
+        raise
+    if not exists:
         return None, None
-    name = present[0]
-    if manifest is not None and name not in manifest:
+    if manifest is not None and not observation_sealed(reads, "token_budgets", manifest):
         raise EvidenceError("token_budget_evidence_unsealed")
-    value = reader(name) if reader is not None else read_json(local_file(root, name))
+    value = reads.observation("token_budgets")
     validate_inventory(value, config, selected, kind=kind)
-    return name, value
+    return "token_budgets", value
 
 
 def probe_budget(value):

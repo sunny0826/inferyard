@@ -1,11 +1,12 @@
 """Applicability decisions with a mocked packet verifier, never hardware qualification."""
 
 from copy import deepcopy
+from shutil import copytree
 
 import pytest
 
 from inferyard.evidence import total_applicability as binding
-from inferyard.evidence.storage import EvidenceError, json_bytes, sha256_file
+from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, sha256_file
 from inferyard.reporting.comparison_report import comparison_input
 from inferyard.runtime.overhead_runner import request_projection
 from tests.helpers import fixture_run
@@ -13,6 +14,15 @@ from tests.helpers import fixture_run
 
 def setup_control(tmp_path, monkeypatch):
     target = fixture_run(tmp_path / "target", states=["completed"] * 3)
+    collector = {"collector": "fixture", "sensors": [], "interval_ms": 500}
+    (target / "collector.json").write_bytes(json_bytes(collector))
+    manifest = read_json(target / "manifest.json")
+    manifest["files"]["collector.json"] = {
+        "sha256": sha256_file(target / "collector.json"),
+        "bytes": (target / "collector.json").stat().st_size,
+        "derived": False,
+    }
+    (target / "manifest.json").write_bytes(json_bytes(manifest))
     data, reference = comparison_input(target)
     data["environment_start"]["cpu_policies"] = [{"policy": "fixture"}]
     data["summary"]["measurement_context"]["environment_qualification"]["eligible"] = True
@@ -20,6 +30,8 @@ def setup_control(tmp_path, monkeypatch):
     metadata = {"environment_start": control["environment_start"], "identity": control["identity"]}
     root = tmp_path / "control"
     root.mkdir()
+    for index in (1, 2):
+        copytree(target, root / str(index))
     (root / "manifest.json").write_bytes(b"mocked verifier manifest")
     overhead = tmp_path / "overhead"
     overhead.mkdir()
@@ -58,13 +70,7 @@ def setup_control(tmp_path, monkeypatch):
     monkeypatch.setattr(
         binding,
         "read_json",
-        lambda path: (
-            packet
-            if path.name == "packet.json"
-            else {"collector": "fixture", "sensors": [], "interval_ms": 500}
-            if path.name == "collector.json"
-            else original(path)
-        ),
+        lambda path: packet if path.name == "packet.json" else original(path),
     )
     monkeypatch.setattr(
         binding, "clock_span", lambda path: {"boot_id": "boot", "start_ns": 20, "end_ns": 30}
@@ -86,6 +92,18 @@ def test_total_only_reuses_verified_arms_and_ignores_execution_locators(tmp_path
     assert len(calls) == 1
     assert result["incremental_diagnostic"] == {"status": "not_supplied"}
     assert data["run"]["implementation_identity"] == control["run"]["implementation_identity"]
+
+
+@pytest.mark.parametrize("source", ["target", "control/1", "control/2"])
+def test_total_control_requires_each_bound_collector(tmp_path, monkeypatch, source):
+    overhead, target, data, ref, _, _, _ = setup_control(tmp_path, monkeypatch)
+    root = target if source == "target" else tmp_path / source
+    (root / "collector.json").unlink()
+    manifest = read_json(root / "manifest.json")
+    del manifest["files"]["collector.json"]
+    (root / "manifest.json").write_bytes(json_bytes(manifest))
+    with pytest.raises(EvidenceError, match="collector_missing"):
+        binding.load_performance_evidence_v3(overhead, target, data=data, reference=ref)
 
 
 def test_explicit_control_root_mapping_keeps_binding_bytes_and_checks_manifest(

@@ -3,6 +3,7 @@ import asyncio
 import pytest
 
 from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
+from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.resources import resource_collector_id
 from inferyard.runtime.overhead_runner import read_overhead, run_overhead
 from tests.integration.test_runner import scenario as runner_scenario
@@ -49,16 +50,16 @@ def test_abba_runs_real_lifecycle_and_preserves_frozen_protocol(scenario):
     assert "target_collector_mismatch" in off_binding["reasons"]
     for row in trials:
         run = root / row["path"]
-        collector = read_json(run / "collector.json")
+        collector = TrialEvidence(run).observation("collector")
         assert collector["collector"] == (
             "environment-only.v1" if row["mode"] == "off" else resource_collector_id()
         )
         assert bool((run / "memory.jsonl").read_text()) == (row["mode"] == "on")
-        assert (run / "environment.start.json").exists()
-        assert (run / "environment.end.json").exists()
+        assert TrialEvidence(run).has_observation("environment", "start")
+        assert TrialEvidence(run).has_observation("environment", "end")
         assert (run / "environment.jsonl").read_text()
         assert (run / "external-cpu.jsonl").read_text()
-        assert read_json(run / "observer.json") == protocol["observer"]
+        assert TrialEvidence(run).observation("observer") == protocol["observer"]
     with pytest.raises(FileExistsError):
         asyncio.run(
             run_overhead(

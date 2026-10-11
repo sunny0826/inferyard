@@ -6,8 +6,9 @@ separate frozen ABBA workload overhead gate is deliberately retained.
 
 from inferyard.analysis.environment_identity import LINUX_FIELDS, fields
 from inferyard.config.environment_binding import requires_match
+from inferyard.evidence.baseline_reads import environment_reads
+from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.storage import EvidenceError
-from inferyard.evidence.trial_reads import TrialReads
 from inferyard.platforms.cpu_policy import assess as assess_cpu_policies
 from inferyard.platforms.external_cpu import reduce_external_cpu
 from inferyard.platforms.external_cpu_windows import assess_windows
@@ -161,27 +162,30 @@ def environment_qualification(environment, external_requests, schedule, requests
 def measurement_context(
     root, manifest_files, config, requests, *, performance_policy=None, reads=None
 ):
-    reads = reads if reads is not None else TrialReads(root)
-    files = (
-        "environment.start.json",
-        "environment.end.json",
-        "environment.jsonl",
-        "schedule.jsonl",
-    )
+    reads = reads if reads is not None else environment_reads(root)
+    files = ("start", "end", "environment.jsonl", "schedule.jsonl")
     evidence, missing, data = [], [], {}
     for name in files:
-        if name not in manifest_files:
-            missing.append("unsealed_or_missing:" + name)
-            data[name] = [] if name.endswith("jsonl") else {}
+        endpoint = name in ("start", "end")
+        sealed = (
+            observation_sealed(reads, "environment", manifest_files, stage=name)
+            if endpoint
+            else name in manifest_files
+        )
+        if not sealed:
+            label = "environment." + name + ".json" if endpoint else name
+            missing.append("unsealed_or_missing:" + label)
+            data[name] = {} if endpoint else []
             continue
-        if name.endswith("jsonl"):
-            data[name], truncated = reads.checked_jsonl(name)
-            missing.extend(name + ":" + issue for issue in truncated)
-        else:
-            data[name] = reads.checked_json(name)
+        if endpoint:
+            data[name] = reads.observation("environment", stage=name)
             if type(data[name]) is not dict:
                 raise EvidenceError("invalid_environment_snapshot")
-        evidence.append({"path": name, "sha256": reads.hashes[name]})
+            evidence.append(reads.observation_reference("environment", stage=name))
+        else:
+            data[name], truncated = reads.checked_jsonl(name)
+            missing.extend(name + ":" + issue for issue in truncated)
+            evidence.append(reads.log_reference(name))
     environment = assess_environment(
         data[files[0]], data[files[1]], data[files[2]], config["conditions"], requests
     )
@@ -192,9 +196,7 @@ def measurement_context(
         external, issues = reads.checked_jsonl("external-cpu.jsonl")
         if issues:
             raise EvidenceError("invalid_external_cpu_jsonl")
-        evidence.append(
-            {"path": "external-cpu.jsonl", "sha256": reads.hashes["external-cpu.jsonl"]}
-        )
+        evidence.append(reads.log_reference("external-cpu.jsonl"))
     external = reduce_external_cpu(external, config["endpoint"], config["telemetry"]["interval_ms"])
     external_requests = assess_windows(external, requests, performance_policy)
     schedule = assess_schedule(data[files[3]], config["telemetry"]["interval_ms"])

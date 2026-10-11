@@ -32,6 +32,7 @@ from inferyard.contracts.schemas_summary_metrics import (
 MANIFEST = obj(
     {
         "schema_version": VERSION,
+        "evidence_layout_version": {"type": "integer", "const": 2},
         "run_id": IDENTIFIER,
         "sealed": {"type": "boolean", "const": True},
         "files": {

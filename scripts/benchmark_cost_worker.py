@@ -17,8 +17,8 @@ def prepare(out, cases=24, samples=32, svg_chars=65536, svg_cases=4):
     from types import SimpleNamespace
     from unittest.mock import patch
 
-    from inferyard.evidence.journal import TrialJournal
     from tests import helpers
+    from tests.legacy_journal import LegacyJournal
 
     original = helpers.load_config(Path(helpers.__file__).parent / "fixtures/config/valid.toml")
     bundle = original.bundle.to_dict()
@@ -28,7 +28,7 @@ def prepare(out, cases=24, samples=32, svg_chars=65536, svg_cases=4):
         reference_answer="<svg><text>" + "鹈" * svg_chars + "</text></svg>",
     )
 
-    class DenseJournal(TrialJournal):
+    class DenseJournal(LegacyJournal):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs, diagnostic=True)
 
@@ -45,7 +45,7 @@ def prepare(out, cases=24, samples=32, svg_chars=65536, svg_cases=4):
     runs = []
     fixed_reference = original.bundle.to_dict()["cases"][0]["reference_answer"]
     extra_cases = 2
-    with patch.object(helpers, "TrialJournal", DenseJournal):
+    with patch.object(helpers, "LegacyJournal", DenseJournal):
         runs.append(helpers.fixture_run(out / "fixed", states=["completed"] * cases))
         loaded = SimpleNamespace(
             config=original.config, bundle=SimpleNamespace(to_dict=lambda: bundle)

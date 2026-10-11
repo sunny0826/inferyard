@@ -40,7 +40,7 @@ def require_transition(previous, config, process_start, *, reason, serial_contin
     return "replaced_process"
 
 
-def snapshot(store, previous, config, lock, *, serial_continuation=False):
+def record_reuse(store, previous, config, lock, *, serial_continuation=False):
     if previous is None:
         return
     reused = same_process(previous["config"]["endpoint"], config["endpoint"])
@@ -48,8 +48,8 @@ def snapshot(store, previous, config, lock, *, serial_continuation=False):
         raise PreflightError("dirty_service_requires_bound_recovery")
     if reused and not serial_continuation and not previous.get("service_drain"):
         raise PreflightError("service_reuse_drain_evidence_missing")
-    store.snapshot(
-        "service-reuse.json",
+    store.observe(
+        "service_reuse",
         {
             "definition": "service-reuse.v1",
             "previous_run_id": previous["run"]["run_id"],
@@ -60,4 +60,5 @@ def snapshot(store, previous, config, lock, *, serial_continuation=False):
             "fresh_probe_required": True,
             "previous_drain": previous.get("service_drain") if reused else None,
         },
+        stage="prepare",
     )

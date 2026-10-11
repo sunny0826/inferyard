@@ -11,6 +11,7 @@ from inferyard.runtime.runner import execute_async
 from tests.integration.test_lab_cli import lab_scenario  # noqa: F401
 from tests.integration.test_native_cli import native_scenario  # noqa: F401
 from tests.integration.test_runner import scenario  # noqa: F401
+from tests.layout_mutations import change_observation, change_request
 from tests.unit.test_run_projection import assert_projection, reseal_file, same_error
 
 
@@ -41,17 +42,16 @@ def test_lab_drain_keeps_consumed_proof_validation(lab_scenario, damage):  # noq
         last_idle = next(e for e in reversed(events) if e["event_type"] == "idle_observed")
         last_idle["data"]["lab_snapshot"] = {}
         path.write_bytes(b"".join(json_bytes(e) for e in events))
+        reseal_file(root, path.name)
     elif damage == "identity":
-        path = root / "service.props.json"
-        value = json.loads(path.read_bytes())
-        value["build_id"] = "wrong-build"
-        path.write_bytes(json_bytes(value))
+        change_observation(
+            root,
+            "service_properties",
+            lambda value: value.update(build_id="wrong-build"),
+            sealed=True,
+        )
     else:
-        path = next(root.glob("*__formal.request.json"))
-        value = json.loads(path.read_bytes())
-        value["lab_server_instance_id"] = "0" * 32
-        path.write_bytes(json_bytes(value))
-    reseal_file(root, path.name)
+        change_request(root, lambda body: body.update(lab_server_instance_id="0" * 32), sealed=True)
     same_error(root)
 
 
@@ -62,7 +62,7 @@ def test_native_capability_manifest_binding_is_preserved(native_scenario):  # no
     root = Path(result.evidence_dir)
     path = root / "manifest.json"
     value = json.loads(path.read_bytes())
-    del value["files"]["engine-capabilities.json"]
+    value["engine_observation"]["mode"] = "lab"
     path.write_bytes(json_bytes(value))
     assert same_error(root) == "engine_observation_manifest_mismatch"
 

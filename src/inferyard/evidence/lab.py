@@ -8,13 +8,15 @@ from inferyard.adapters.lab_observation import (
 )
 from inferyard.adapters.lab_parameters import _equal
 from inferyard.adapters.requests import request_body
+from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.lab_parameters import verify_parameters
 from inferyard.evidence.native import observation_evidence, verify_native
-from inferyard.evidence.request_snapshots import snapshot_name_for_event
-from inferyard.evidence.storage import EvidenceError, json_bytes, local_file, read_json
+from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.evidence.trial_evidence import TrialEvidence
 
 
 def verify_lab(root, config, bundle, events, *, reads=None, _projection=False):
+    reads = reads if reads is not None else TrialEvidence(root, projection=_projection)
     engine = config["engine"]["adapter"]
     if engine not in ("kvmem", "ninfer"):
         if any(
@@ -23,21 +25,22 @@ def verify_lab(root, config, bundle, events, *, reads=None, _projection=False):
         ):
             raise EvidenceError("lab_evidence_requires_lab_engine")
         return False
-    observation = observation_evidence(root, config)
+    observation = observation_evidence(root, config, reads=reads)
     if observation and observation["mode"] == "native":
         if _projection:
             if any(e["event_type"] == "idle_observed" for e in events):
                 raise EvidenceError("native_evidence_cannot_prove_engine_drain")
             return False
-        return verify_native(root, config, bundle, events, observation)
+        return verify_native(root, config, bundle, events, observation, reads=reads)
     starts = {e["request_id"]: e for e in events if e["event_type"] == "request_started"}
-    props_path = local_file(root, "service.props.json")
-    if not props_path.exists():
+    if not reads.has_observation("service_properties"):
         if starts:
             raise EvidenceError("lab_identity_evidence_missing")
         return False
     try:
-        props = parse_identity(json_bytes(read_json(props_path)), expected_engine=engine)
+        props = parse_identity(
+            json_bytes(reads.observation("service_properties")), expected_engine=engine
+        )
         if (
             props["build_id"] != config["engine"]["release"]
             or props["model"]
@@ -61,16 +64,15 @@ def _verify(root, config, bundle, events, starts, props, *, reads=None, _project
     instance = props["server_instance_id"]
     tracker = ObservationTracker(instance)
     cases = {case["case_id"]: case for case in bundle["cases"]}
-    manifest_path = local_file(root, "manifest.json")
-    manifest = read_json(manifest_path)["files"] if manifest_path.exists() else None
+    manifest = reads.manifest["files"] if reads.manifest is not None else None
     decoders, bodies, usage, released, ids = {}, {}, {}, set(), set()
     for event in events:
         key, kind, data = event["request_id"], event["event_type"], event["data"]
         if kind == "request_started":
-            name = snapshot_name_for_event(root, event, manifest)
-            if manifest is not None and name not in manifest:
+            reference = reads.request_reference(event)
+            if manifest is not None and reference["path"] not in manifest:
                 raise EvidenceError("lab_request_unsealed")
-            body = read_json(local_file(root, name))
+            body = reads.request_body(event)
             request_id = body.get("lab_request_id")
             if request_id in ids or body.get("lab_server_instance_id") != instance:
                 raise EvidenceError("lab_request_binding_mismatch")
@@ -159,4 +161,4 @@ def _verify(root, config, bundle, events, starts, props, *, reads=None, _project
         raise EvidenceError("lab_finished_without_release_evidence")
     if not _projection:
         verify_parameters(root, config, props, events, bodies, usage, manifest, reads=reads)
-    return manifest is not None and "service.props.json" in manifest
+    return observation_sealed(reads, "service_properties", manifest)

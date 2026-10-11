@@ -6,17 +6,15 @@ import pytest
 from inferyard.config.planning import compile_plan
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.request_snapshots import snapshot_name_for_event
 from inferyard.evidence.storage import (
     EvidenceError,
-    json_bytes,
-    read_json,
     read_jsonl,
     sha256_file,
 )
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_runner import scenario
 from tests.integration.test_trial_runner import inputs
+from tests.layout_mutations import change_observation, change_request
 
 __all__ = ["scenario"]
 
@@ -81,9 +79,7 @@ def test_strict_diagnostic_replays_requests_parameters_and_missing_formal_accept
         assert before == {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
         return
     if tamper == "unsealed_engine":
-        manifest = read_json(root / "manifest.json")
-        del manifest["files"]["service.props.json"]
-        (root / "manifest.json").write_bytes(json_bytes(manifest))
+        change_observation(root, "service_properties", remove=True, sealed=True)
         with pytest.raises(EvidenceError, match="strict_output_engine_evidence_unsealed"):
             read_trial(root)
         return
@@ -93,20 +89,21 @@ def test_strict_diagnostic_replays_requests_parameters_and_missing_formal_accept
         for event in read_jsonl(root / "events.jsonl")[0]
         if event["event_type"] == "request_started"
     )
-    p = root / (
-        "effective-stream.json"
-        if tamper == "parameters"
-        else snapshot_name_for_event(root, first_start)
-    )
-    effective = read_json(p)
     if tamper == "parameters":
-        effective["slots"][0]["params"]["ignore_eos"] = False
+        change_observation(
+            root,
+            "effective_parameters",
+            lambda value: value["slots"][0]["params"].update(ignore_eos=False),
+            stage="stream",
+            sealed=True,
+        )
     else:
-        effective["ignore_eos"] = False
-    p.write_bytes(json_bytes(effective))
-    manifest = read_json(root / "manifest.json")
-    manifest["files"][p.name].update(sha256=sha256_file(p), bytes=p.stat().st_size)
-    (root / "manifest.json").write_bytes(json_bytes(manifest))
+        change_request(
+            root,
+            lambda body: body.update(ignore_eos=False),
+            request_id=first_start["request_id"],
+            sealed=True,
+        )
     with pytest.raises(EvidenceError, match="strict_output_"):
         read_trial(root)
 

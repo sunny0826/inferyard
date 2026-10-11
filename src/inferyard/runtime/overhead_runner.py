@@ -23,13 +23,14 @@ class ResourceOffSampler(Sampler):
 
     def __init__(self, store, config):
         super().__init__(store, config)
-        store.snapshot(
-            "collector.json",
+        store.observe(
+            "collector",
             {
                 "schema_version": SCHEMA_VERSION,
                 "collector": "resource_off",
                 "scope": "periodic_and_boundary_collection_disabled",
             },
+            stage="prepare",
         )
 
     def collect(self, pid, ticks):
@@ -191,8 +192,13 @@ def read_overhead(root, *, target=None, target_data=None):
     from inferyard.analysis.overhead_environment import assess_environments, environment_record
     from inferyard.evidence.ledger import read_trial
     from inferyard.evidence.storage import EvidenceError, local_file, read_json
+    from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
     from inferyard.runtime.collector_overhead import validate_protocol
-    from inferyard.runtime.overhead_binding import bind_target, workload_identity
+    from inferyard.runtime.overhead_binding import (
+        bind_target,
+        sealed_observation,
+        workload_identity,
+    )
 
     protocol = read_json(local_file(root, "protocol.json"))
     validate_protocol(protocol)
@@ -202,11 +208,16 @@ def read_overhead(root, *, target=None, target_data=None):
     environments = []
     for entry in index:
         path = local_file(root, entry["path"])
-        data = read_trial(path)
+        metadata = {}
+        data = read_trial(path, metadata=metadata)
+        evidence = metadata["evidence"]
         if target is not None:
             environments.append(
                 environment_record(
-                    path, data, require_boundary=protocol["kind"] == "collector_overhead_abba.v3"
+                    path,
+                    data,
+                    require_boundary=protocol["kind"] == "collector_overhead_abba.v3",
+                    reads=evidence,
                 )
             )
         identity = workload_identity(data)
@@ -223,13 +234,11 @@ def read_overhead(root, *, target=None, target_data=None):
             raise EvidenceError("overhead_manifest_mismatch")
         if data["run"].get("tool_source_sha256") != protocol["tool_source_sha256"]:
             raise EvidenceError("overhead_tool_mismatch")
-        for name, filename in (("config", "config.frozen.json"), ("bundle", "bundle.json")):
-            if sha256_file(path / filename) != protocol[name + "_sha256"]:
+        for name in ("config", "bundle"):
+            verify_reference(path, evidence.input_reference(name), reads=evidence)
+            if evidence.input_digest(name) != protocol[name + "_sha256"]:
                 raise EvidenceError("overhead_frozen_input_mismatch")
-        sealed = read_json(path / "manifest.json")["files"]
-        if "collector.json" not in sealed:
-            raise EvidenceError("overhead_collector_unsealed")
-        collector = read_json(local_file(path, "collector.json"))
+        collector = sealed_observation(evidence, "collector")
         off_collector = (
             "environment-only.v1"
             if protocol["kind"] == "collector_overhead_abba.v2"
@@ -237,15 +246,10 @@ def read_overhead(root, *, target=None, target_data=None):
         )
         if protocol["kind"] == "collector_overhead_abba.v3":
             off_collector = "boundary-only.v1"
-            if "boundary-observer.json" not in sealed or (
-                read_json(local_file(path, "boundary-observer.json"))
-                != protocol["boundary_observer"]
-            ):
+            if sealed_observation(evidence, "boundary_observer") != protocol["boundary_observer"]:
                 raise EvidenceError("overhead_boundary_observer_mismatch")
         if protocol["kind"] == "collector_overhead_abba.v2":
-            if "observer.json" not in sealed or (
-                read_json(local_file(path, "observer.json")) != protocol["observer"]
-            ):
+            if sealed_observation(evidence, "observer") != protocol["observer"]:
                 raise EvidenceError("overhead_observer_mismatch")
         mode = "off" if collector["collector"] == off_collector else "on"
         if (
@@ -276,7 +280,9 @@ def read_overhead(root, *, target=None, target_data=None):
     result = assess_overhead(protocol, trials)
     result["performance_comparison_eligible"] = False
     if target is not None:
-        data = target_data if target_data is not None else read_trial(target)
+        metadata = {}
+        data = target_data if target_data is not None else read_trial(target, metadata=metadata)
+        evidence = metadata["evidence"] if metadata else TrialEvidence(target)
         result["target_binding"] = bind_target(
             target,
             data,
@@ -284,12 +290,16 @@ def read_overhead(root, *, target=None, target_data=None):
             arm_identity,
             trials[0]["requests"] if trials else [],
             result,
-            read_json(local_file(target, "collector.json")),
+            sealed_observation(evidence, "collector"),
+            reads=evidence,
         )
         result["environment_binding"] = assess_environments(
             environments,
             environment_record(
-                target, data, require_boundary=protocol["kind"] == "collector_overhead_abba.v3"
+                target,
+                data,
+                require_boundary=protocol["kind"] == "collector_overhead_abba.v3",
+                reads=evidence,
             ),
         )
     return result

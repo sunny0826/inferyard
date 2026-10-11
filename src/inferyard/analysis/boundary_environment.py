@@ -1,24 +1,27 @@
 """Rebuild the bounded, outside-request baseline environment qualification."""
 
 from inferyard.analysis.environment import assess_environment
+from inferyard.evidence.baseline_reads import environment_reads
+from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.storage import EvidenceError
-from inferyard.evidence.trial_reads import TrialReads
 from inferyard.platforms.external_cpu import reduce_external_cpu
 from inferyard.platforms.external_cpu_windows import assess_windows
 from inferyard.runtime.boundary_observer import boundary_contract
 
 
 def qualify_boundary_environment(root, data, sealed, *, reads=None):
-    reads = reads if reads is not None else TrialReads(root)
+    reads = reads if reads is not None else environment_reads(root)
     reasons, evidence = set(), []
-    required = {"boundary-observer.json", "request-environment.jsonl"}
-    if not required <= set(sealed):
+    if not (
+        observation_sealed(reads, "boundary_observer", sealed)
+        and "request-environment.jsonl" in sealed
+    ):
         return {
             "eligible": False,
             "reasons": ["boundary_environment_evidence_missing"],
             "evidence_refs": [],
         }
-    observed_contract = reads.checked_json("boundary-observer.json")
+    observed_contract = reads.observation("boundary_observer")
     collector = observed_contract.get("collector", "linux-resource.v2")
     if collector not in ("linux-resource.v2", "macos-resource.v1") or (
         observed_contract != boundary_contract(collector=collector)
@@ -27,8 +30,12 @@ def qualify_boundary_environment(root, data, sealed, *, reads=None):
     records, issues = reads.checked_jsonl("request-environment.jsonl")
     if issues:
         raise EvidenceError("invalid_boundary_environment_log")
-    for name in sorted(required):
-        evidence.append({"path": name, "sha256": reads.hashes[name]})
+    evidence.extend(
+        [
+            reads.observation_reference("boundary_observer"),
+            reads.log_reference("request-environment.jsonl"),
+        ]
+    )
     by_request = {}
     last = -1
     for record in records:
@@ -99,8 +106,12 @@ def qualify_boundary_environment(root, data, sealed, *, reads=None):
             if not window["eligible"]:
                 reasons.update(key + ":" + reason for reason in window["reasons"])
     environment = assess_environment(
-        reads.checked_json("environment.start.json") if "environment.start.json" in sealed else {},
-        reads.checked_json("environment.end.json") if "environment.end.json" in sealed else {},
+        reads.observation("environment", stage="start")
+        if observation_sealed(reads, "environment", sealed, stage="start")
+        else {},
+        reads.observation("environment", stage="end")
+        if observation_sealed(reads, "environment", sealed, stage="end")
+        else {},
         observations,
         data["config"]["conditions"],
         [],

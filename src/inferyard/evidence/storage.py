@@ -196,6 +196,14 @@ def read_jsonl(path: Path) -> tuple[list[dict], list[str]]:
 
 class EvidenceStore:
     def __init__(self, root: Path, redactor: Redactor | None = None, *, run_id: str | None = None):
+        self._initialize(root, redactor, run_id=run_id)
+        try:
+            self._open_logs(("events.jsonl", "memory.jsonl", "environment.jsonl", "schedule.jsonl"))
+        except BaseException:
+            self.close()
+            raise
+
+    def _initialize(self, root, redactor=None, *, run_id=None):
         self.redactor = redactor or Redactor()
         self.run_id = run_id or datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-") + uuid.uuid4().hex
         if Path(self.run_id).name != self.run_id or self.run_id in ("", ".", ".."):
@@ -210,39 +218,66 @@ class EvidenceStore:
         self._pending_sync = set()
         self._last_flush = time.monotonic()
         self.sealed = False
-        for filename in (
-            "events.jsonl",
-            "memory.jsonl",
-            "environment.jsonl",
-            "schedule.jsonl",
-        ):
-            fd = open_nofollow(self.path / filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
-            self._logs[filename] = os.fdopen(fd, "wb")
-            self._pending_sync.add(filename)
-        fsync_directory(self.path)
+        self._write_error = None
 
-    def snapshot(self, name: str, value) -> None:
+    def _ensure_writable(self):
         if self.sealed:
             raise EvidenceError("sealed_run")
+        if self._write_error is not None:
+            raise self._write_error
+
+    def _open_logs(self, filenames):
+        self._ensure_writable()
+        try:
+            for filename in filenames:
+                fd = open_nofollow(self.path / filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+                self._logs[filename] = os.fdopen(fd, "wb")
+                self._pending_sync.add(filename)
+            fsync_directory(self.path)
+        except OSError as exc:
+            self._write_error = EvidenceError("evidence_append_failed")
+            raise self._write_error from exc
+
+    def snapshot(self, name: str, value) -> None:
+        self._ensure_writable()
         atomic_bytes(local_file(self.path, name), json_bytes(self.redactor.clean(value)))
 
     def text_snapshot(self, name: str, value: str) -> None:
-        if self.sealed:
-            raise EvidenceError("sealed_run")
+        self._ensure_writable()
         atomic_bytes(local_file(self.path, name), self.redactor.text(value).encode("utf-8"))
 
+    def observe(self, kind, payload, *, stage, key=None):
+        declarations = {
+            "collector": "collector.json",
+            "observer": "observer.json",
+            "boundary_observer": "boundary-observer.json",
+        }
+        if kind not in declarations or stage != "prepare" or key is not None:
+            raise EvidenceError("invalid_observation_record")
+        self.snapshot(declarations[kind], payload)
+
     def _append(self, name: str, value, *, sync=False):
-        if self.sealed:
-            raise EvidenceError("sealed_run")
+        self._ensure_writable()
         try:
-            self._logs[name].write(json_bytes(self.redactor.clean(value)))
+            content = json_bytes(self.redactor.clean(value))
+        except ValueError as exc:
+            self._write_error = EvidenceError("evidence_append_failed")
+            raise self._write_error from exc
+        self._append_encoded(name, content, sync=sync)
+
+    def _append_encoded(self, name, content, *, sync=False):
+        self._ensure_writable()
+        try:
+            if self._logs[name].write(content) != len(content):
+                raise OSError("short evidence append")
             self._pending_sync.add(name)
             if sync:
                 self.flush(sync=True)
             else:
                 self.flush_due()
         except (OSError, ValueError) as exc:
-            raise EvidenceError("evidence_append_failed") from exc
+            self._write_error = EvidenceError("evidence_append_failed")
+            raise self._write_error from exc
 
     def observation(self, name: str, value: dict):
         if name not in ("environment.jsonl", "schedule.jsonl"):
@@ -254,6 +289,7 @@ class EvidenceStore:
             self.flush(sync=True)
 
     def flush(self, *, sync=False):
+        self._ensure_writable()
         try:
             for name, stream in self._logs.items():
                 if name in self._pending_sync and not stream.closed:
@@ -262,8 +298,9 @@ class EvidenceStore:
                         os.fsync(stream.fileno())
                         self._pending_sync.remove(name)
             self._last_flush = time.monotonic()
-        except OSError as exc:
-            raise EvidenceError("evidence_flush_failed") from exc
+        except (OSError, ValueError) as exc:
+            self._write_error = EvidenceError("evidence_flush_failed")
+            raise self._write_error from exc
 
     def seal(self, extra: dict | None = None):
         self.flush(sync=True)
@@ -287,19 +324,25 @@ class EvidenceStore:
         self.sealed = True
 
     def close(self):
+        failed = self._write_error is not None
         try:
-            self.flush(sync=True)
+            if not failed and not self.sealed:
+                self.flush(sync=True)
         finally:
+            first_error = None
             for stream in self._logs.values():
-                stream.close()
+                try:
+                    stream.close()
+                except (OSError, ValueError) as exc:
+                    first_error = first_error or exc
+            if first_error is not None and not failed:
+                self._write_error = EvidenceError("evidence_flush_failed")
+                raise self._write_error from first_error
 
 
-def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
+def verify_manifest_files(root: Path, manifest, *, observed=None) -> list[str]:
+    """Check physical originals before interpreting an unsupported declaration."""
     limitations = []
-    manifest_path = local_file(root, "manifest.json")
-    if not manifest_path.exists():
-        return ["manifest_missing_unsealed_run"]
-    manifest = _manifest if _manifest is not None else read_json(manifest_path)
     if (
         not isinstance(manifest, dict)
         or manifest.get("sealed") is not True
@@ -309,9 +352,11 @@ def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
     for name, info in manifest["files"].items():
         if name == "manifest.json" or not isinstance(info, dict):
             raise EvidenceError("invalid_manifest_entry")
+        if type(info.get("bytes")) is not int or info["bytes"] < 0:
+            raise EvidenceError("invalid_manifest_entry")
         path = local_file(root, name)
-        if _observed is not None and name in _observed:
-            size, digest = _observed[name]
+        if observed is not None and name in observed:
+            size, digest = observed[name]
             valid = size == info.get("bytes") and digest == info.get("sha256")
         else:
             valid = path.is_file() and path.stat().st_size == info.get("bytes")
@@ -322,6 +367,15 @@ def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
                 limitations.append(f"derived_evidence_damaged:{name}")
             else:
                 raise EvidenceError("original_evidence_hash_mismatch")
+    return limitations
+
+
+def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
+    manifest_path = local_file(root, "manifest.json")
+    if not manifest_path.exists():
+        return ["manifest_missing_unsealed_run"]
+    manifest = _manifest if _manifest is not None else read_json(manifest_path)
+    limitations = verify_manifest_files(root, manifest, observed=_observed)
     from inferyard.evidence.formats import UnsupportedFormat, require_core
 
     require_core(manifest, "manifest")

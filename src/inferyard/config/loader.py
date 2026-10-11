@@ -67,9 +67,35 @@ def validate_endpoint(url: str) -> None:
 
 @dataclass(frozen=True, slots=True)
 class LoadedConfig:
-    source: Path
+    source: Path | None
     config: Document
     bundle: Document
+    source_data: bytes | None = None
+    source_media_type: str | None = None
+    source_missing_reason: str | None = None
+
+    def configuration_source(self) -> dict:
+        if self.source_data is not None:
+            return {
+                "media_type": self.source_media_type,
+                "data": self.source_data,
+                "missing_reason": None,
+            }
+        if self.source_missing_reason is not None:
+            return {"media_type": None, "data": None, "missing_reason": self.source_missing_reason}
+        if self.source is not None:
+            return {
+                "media_type": "application/toml"
+                if self.source.suffix == ".toml"
+                else "application/json",
+                "data": read_document(self.source),
+                "missing_reason": None,
+            }
+        return {
+            "media_type": None,
+            "data": None,
+            "missing_reason": self.source_missing_reason or "configuration_source_unavailable",
+        }
 
 
 def validate_runtime_config(config: dict) -> None:
@@ -147,4 +173,6 @@ def load_config(path: str | Path) -> LoadedConfig:
     bundle = Document.parse("bundle", bundle_data)
     if bundle_data["version"] != normalized["bundle"]["version"]:
         raise ContractError("config.bundle.version", "does not match corpus version")
-    return LoadedConfig(source, Document.parse("config", normalized), bundle)
+    return LoadedConfig(
+        source, Document.parse("config", normalized), bundle, raw, "application/toml"
+    )

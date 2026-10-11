@@ -17,6 +17,7 @@ from inferyard.config.single_plan import compile_single_plan
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, read_json, read_jsonl, sha256_file
+from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401
 from tests.integration.test_native_cli import native_scenario as _native_scenario
 from tests.integration.test_runner import scenario  # noqa: F401
@@ -33,10 +34,10 @@ def with_warmups(command, count):
 def assert_frozen_evidence(root, count, *, probe=False):
     data = read_trial(root)
     assert data["config"]["execution"]["warmup_count"] == count
-    manifest = read_json(root / "manifest.json")
-    digest = sha256_file(root / "config.frozen.json")
-    assert manifest["files"]["config.frozen.json"]["sha256"] == digest
-    assert read_json(root / "selection.json")["config_sha256"] == digest
+    evidence = TrialEvidence(root)
+    digest = evidence.input_digest("config")
+    verify_reference(root, evidence.input_reference("config"), reads=evidence)
+    assert evidence.input("selection")["config_sha256"] == digest
     plan = data["plan"]
     if not plan["runtime_bindings"]:
         assert plan["experiment"]["workloads"][0]["config"]["sha256"] == digest

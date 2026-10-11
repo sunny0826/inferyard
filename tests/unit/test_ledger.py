@@ -9,7 +9,6 @@ from inferyard.adapters.prism import ResponseState, request_body
 from inferyard.analysis.scoring import score_case
 from inferyard.config.loader import load_config
 from inferyard.config.planning import compile_plan
-from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import (
     plan_progress,
     read_trial,
@@ -17,6 +16,7 @@ from inferyard.evidence.ledger import (
     resume_selection,
 )
 from inferyard.evidence.storage import EvidenceError, read_jsonl, sha256_file
+from tests.legacy_journal import LegacyJournal
 from tests.unit.test_phase2_contracts import experiment
 
 
@@ -38,7 +38,7 @@ def setup(config_path):
 
 def journal(tmp_path, setup, **kwargs):
     config, bundle, plan = setup
-    return TrialJournal(tmp_path, plan, plan["trials"][0]["trial_id"], config, bundle, **kwargs)
+    return LegacyJournal(tmp_path, plan, plan["trials"][0]["trial_id"], config, bundle, **kwargs)
 
 
 @pytest.mark.parametrize("corrupt", [None, "count", "source", "missing_event"])
@@ -237,7 +237,7 @@ def test_repetitions_are_new_runs_and_failed_model_requests_are_valid(tmp_path, 
     first = finish(parent)
     assert first["summary"]["completeness"] == "complete"
     assert first["summary"]["counts"]["budget_exhausted"] == 4
-    second = TrialJournal(
+    second = LegacyJournal(
         tmp_path, plan, plan["trials"][1]["trial_id"], config, bundle, parent=first
     )
     for i in range(5):

@@ -7,7 +7,7 @@ from inferyard.adapters.requests import request_body
 from inferyard.adapters.response_state import ResponseState
 from inferyard.analysis.scoring import ScoringContext, score_case
 from inferyard.contracts.validation import validate_document
-from inferyard.evidence.request_snapshots import messages_sha256, snapshot_filename
+from inferyard.evidence.request_snapshots import messages_sha256
 from inferyard.evidence.storage import EvidenceError
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.service_observation import clean_observed, native, observe_service
@@ -90,7 +90,7 @@ class TrialRequests:
             body["ignore_eos"] = True
         if hasattr(self.adapter, "prepare_request"):
             body = self.adapter.prepare_request(body)
-        self.store.snapshot(snapshot_filename(self.store.run_id, phase, self.ordinal), body)
+        self.store.prepare_request(key, phase, self.ordinal, body)
         self.lock.dirty(self.store.run_id, self.config["endpoint"], key, kind=self.store.kind)
         self.sampler.set_phase(phase, key)
         if hasattr(self.sampler, "before_request"):

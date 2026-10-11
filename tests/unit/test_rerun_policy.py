@@ -6,12 +6,12 @@ import pytest
 
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandRequest
-from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime import runner
 from tests.helpers import fixture_run
+from tests.legacy_journal import LegacyJournal
 
 
 @pytest.mark.parametrize("field", ["tool_version", "scorer", "measurement", "scoring", "legacy"])
@@ -51,7 +51,7 @@ def test_rerun_accepts_identity_difference_but_comparison_rejects(tmp_path, monk
         "run", from_run=root, server_pid=old_pid + 1, endpoint_url="http://127.0.0.1:9090"
     )
     loaded, ancestor = runner.load_rerun(request)
-    journal = TrialJournal(
+    journal = LegacyJournal(
         tmp_path / "child",
         parent["plan"],
         parent["run"]["trial_id"],

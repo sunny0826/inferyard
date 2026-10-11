@@ -10,10 +10,12 @@ from copy import deepcopy
 
 from inferyard.analysis.scoring import ScoringContext
 from inferyard.evidence.journal import trial_for
+from inferyard.evidence.run_records import RunRecords
+from inferyard.evidence.storage import EvidenceError
 from inferyard.platforms.external_cpu import read_boot_id
 
 
-class BaselineJournal:
+class BaselineJournal(RunRecords):
     def __init__(self, root, plan, trial_id, config, bundle, *, redactor, **kwargs):
         trial = trial_for(plan, trial_id)
         self.path, self.run_id = root, "baseline-" + uuid.uuid4().hex
@@ -25,9 +27,33 @@ class BaselineJournal:
         self.strict_output, self.sealed = False, False
         self.bundle, self.config = bundle, config
         self.events, self.snapshots, self.observations = [], {}, []
+        self.trial_id = trial_id
+        self._initialize_records(config)
         self.snapshot("plan.json", plan)
         self.snapshot("config.frozen.json", config)
         self.snapshot("bundle.json", bundle)
+
+    def _ensure_writable(self):
+        if self.sealed:
+            raise EvidenceError("sealed_run")
+
+    def _publish_observation(self, row):
+        from inferyard.evidence.layout import OBSERVATION_FILES
+        from inferyard.evidence.native_receipts import clean_receipt_name
+
+        kind, stage, key = row["kind"], row["stage"], row["key"]
+        if kind == "native_clean_receipt":
+            name = clean_receipt_name(key)
+        else:
+            name = OBSERVATION_FILES[
+                (kind, None if kind in ("identity", "service_properties") else stage)
+            ]
+        self.snapshot(name, row["payload"])
+
+    def _publish_prepared(self, row):
+        from inferyard.evidence.request_snapshots import snapshot_filename
+
+        self.snapshot(snapshot_filename(self.run_id, row["phase"], row["ordinal"]), row["body"])
 
     def snapshot(self, name, data):
         self.snapshots[name] = deepcopy(self.redactor.clean(data))

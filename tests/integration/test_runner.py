@@ -357,7 +357,7 @@ def test_rerun_new_id_parent_and_original_bytes_unchanged(scenario, monkeypatch)
     code, second = asyncio.run(execute_async(rerun, deps))
     assert code == 0, second
     assert second.run_id != original.run_id
-    meta = json.loads((Path(second.evidence_dir) / "run.json").read_text())
+    meta = rebuild(Path(second.evidence_dir))["run"]
     assert meta["parent_run_id"] == original.run_id
     assert before == {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
     assert len(calls) == 16

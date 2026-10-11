@@ -10,6 +10,7 @@ import inferyard.runtime.lock as locking
 import inferyard.runtime.runner as running
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import read_json, read_jsonl
+from inferyard.evidence.trial_evidence import TrialEvidence
 from tests.integration.test_runner import scenario as runner_scenario
 
 scenario = runner_scenario
@@ -81,7 +82,7 @@ def test_overall_budget_stops_waits_and_requests_and_releases_resources(
 
         deps.adapter = adapter
         code, result = await asyncio.wait_for(running.execute_async(request, deps), 5)
-        frozen = read_json(Path(result.evidence_dir) / "plan.json")["experiment"]["budget"]
+        frozen = TrialEvidence(Path(result.evidence_dir)).input("plan")["experiment"]["budget"]
         assert 0 < clock.deadline_seconds <= frozen["max_wall_seconds"]
         assert not [
             t

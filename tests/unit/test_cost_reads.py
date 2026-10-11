@@ -1,6 +1,7 @@
 """Same-byte sidecar hashing preserves strict parsing and manifest verification."""
 
 import hashlib
+import shutil
 from collections import Counter
 from pathlib import Path
 
@@ -113,14 +114,19 @@ def boundary_record_fixture(root, monkeypatch):
     with monkeypatch.context() as patch:
         patch.setattr("tests.unit.test_boundary_environment.qualify_boundary_environment", capture)
         fixture(root)
+    boundary_files = {path.name: path.read_bytes() for path in root.iterdir() if path.is_file()}
+    original_run = fixture_run(root / "seed")
+    for path in original_run.iterdir():
+        if path.is_file():
+            shutil.copyfile(path, root / path.name)
+    for name, raw in boundary_files.items():
+        reseal(root, name, raw)
     captured.update(
-        run={"run_id": "r"},
+        run=read_json(root / "run.json"),
         summary={
             "measurement_context": {"environment_qualification": {"eligible": True, "reasons": []}}
         },
     )
-    files = [path.name for path in root.iterdir()]
-    (root / "manifest.json").write_bytes(json_bytes({"files": dict.fromkeys(files, {})}))
     return captured, environment_record
 
 
@@ -156,7 +162,7 @@ def test_overhead_boundary_shares_local_reads_and_stays_json(tmp_path, monkeypat
 def test_overhead_preserves_endpoint_before_boundary_error(tmp_path, monkeypatch):
     data, environment_record = boundary_record_fixture(tmp_path, monkeypatch)
     (tmp_path / "environment.end.json").write_bytes(b"broken")
-    (tmp_path / "boundary-observer.json").write_bytes(json_bytes({"collector": "unknown"}))
+    reseal(tmp_path, "boundary-observer.json", json_bytes({"collector": "unknown"}))
     with pytest.raises(EvidenceError, match="invalid_json_evidence"):
         environment_record(tmp_path, data, require_boundary=True)
     (tmp_path / "environment.end.json").write_bytes(
