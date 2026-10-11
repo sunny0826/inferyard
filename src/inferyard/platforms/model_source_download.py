@@ -58,10 +58,14 @@ def _download(client, source, out, token):
     name = source.path.rsplit("/", 1)[-1]
     temporary = name + ".part"
     digest, size = hashlib.sha256(), 0
-    headers = {"Authorization": f"Bearer {token}"} if token is not None else {}
+    headers = {"Accept-Encoding": "identity"}
+    if token is not None:
+        headers["Authorization"] = f"Bearer {token}"
     try:
         with client.stream("GET", source.download_url, headers=headers) as opened:
             if opened.status_code != 200:
+                raise PreparationError(INCOMPLETE)
+            if opened.headers.get("content-encoding", "identity").lower() != "identity":
                 raise PreparationError(INCOMPLETE)
             with output.stream(temporary) as stream:
                 for chunk in opened.iter_raw():

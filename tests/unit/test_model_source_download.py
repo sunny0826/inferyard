@@ -1,5 +1,6 @@
 """In-process acquisition against a real loopback HTTP server."""
 
+import gzip
 import hashlib
 import json
 import threading
@@ -26,12 +27,29 @@ def body_server(mode="ok"):
             pass
 
         def do_GET(self):
-            requests.append((self.path, self.headers.get("Authorization")))
+            requests.append(
+                (
+                    self.path,
+                    self.headers.get("Authorization"),
+                    self.headers.get("Accept-Encoding"),
+                )
+            )
             if mode == "redirect" and self.path == f"/{FILENAME}":
                 self.send_response(302)
                 self.send_header("Location", f"/cdn/{FILENAME}")
                 self.send_header("Content-Length", "0")
                 self.end_headers()
+                return
+            if mode == "compressed" and self.path == f"/{FILENAME}":
+                body = gzip.compress(PAYLOAD)
+                self.send_response(200)
+                self.send_header("Content-Encoding", "gzip")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                try:
+                    self.wfile.write(body)
+                except OSError:
+                    pass
                 return
             if mode == "missing" or self.path not in (f"/{FILENAME}", f"/cdn/{FILENAME}"):
                 self.send_response(404)
@@ -81,7 +99,17 @@ def test_download_streams_bytes_and_records_identity(tmp_path, monkeypatch):
     assert record["bytes"] == len(PAYLOAD)
     assert record["sha256"] == details["sha256"]
     assert "metadata_sha256" not in record and "acquisition_budget" not in record
-    assert len(requests) == 1 and requests[0][1] is None
+    assert len(requests) == 1 and requests[0][1] is None and requests[0][2] == "identity"
+
+
+def test_compressed_response_is_rejected_instead_of_published(tmp_path, monkeypatch):
+    with body_server("compressed") as (server, requests):
+        loopback(monkeypatch, server.server_port)
+        with pytest.raises(PreparationError, match="^model_acquire_incomplete$"):
+            acquire(SOURCE, tmp_path / "new")
+    assert requests[0][2] == "identity"
+    assert not (tmp_path / "new" / FILENAME).exists()
+    assert not (tmp_path / "new" / "source.json").exists()
 
 
 def test_redirect_is_followed_without_extra_configuration(tmp_path, monkeypatch):
@@ -89,7 +117,7 @@ def test_redirect_is_followed_without_extra_configuration(tmp_path, monkeypatch)
         loopback(monkeypatch, server.server_port)
         details = acquire(SOURCE, tmp_path / "new")
     assert details["bytes"] == len(PAYLOAD)
-    assert [path for path, _ in requests] == [f"/{FILENAME}", f"/cdn/{FILENAME}"]
+    assert [path for path, *_ in requests] == [f"/{FILENAME}", f"/cdn/{FILENAME}"]
 
 
 def test_token_env_value_goes_to_the_request_header(tmp_path, monkeypatch):

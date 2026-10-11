@@ -34,7 +34,7 @@ def test_acquire_redirect_then_publish(tmp_path, monkeypatch, capsys):
     assert record["definition"] == "remote_model_source.v3"
     assert record["sha256"] == details["sha256"]
     assert record["bytes"] == len(PAYLOAD)
-    assert [path for path, _ in requests] == [f"/{FILENAME}", f"/cdn/{FILENAME}"]
+    assert [path for path, *_ in requests] == [f"/{FILENAME}", f"/cdn/{FILENAME}"]
 
 
 def test_acquire_http_failure_maps_to_blocked(tmp_path, monkeypatch, capsys):

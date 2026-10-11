@@ -23,7 +23,8 @@ stderr 只输出固定原因，不输出 URL、请求头、响应正文或凭据
 `Authorization` 头中，跨 origin 重定向时由 httpx 自动剥离，不转发给 CDN。
 token、请求头和响应正文不输出或持久化。
 
-响应状态非 200 拒绝。正文流式写入 `文件名.part`，flush/fsync 后普通 rename 发布；
+请求声明 `Accept-Encoding: identity`；响应状态非 200 或内容编码非 identity 均拒绝。
+正文流式写入 `文件名.part`，flush/fsync 后普通 rename 发布；
 `source.json` 以同样方式先写 `.part` 再发布。失败清理 `.part`，保留目录。
 
 ## 来源记录
