@@ -1,41 +1,23 @@
 """Strict old/new source-record consumption against the actual local file identity."""
 
-import hashlib
 import json
-from dataclasses import asdict
 
 import pytest
 
 from inferyard.config.preparation_io import PreparationError
 from inferyard.platforms.identity import hash_file
-from inferyard.platforms.model_source import parse_metadata, source_declaration
-from inferyard.platforms.model_source_budget import Budget
-from tests.unit.test_model_source import FIXTURES, source
+from inferyard.platforms.model_source import source_declaration
+from tests.unit.test_model_source import record_for, source
 
 
 def record_and_model(tmp_path, version):
     model = tmp_path / "model.gguf"
     model.write_bytes(b"synthetic model identity")
-    record = parse_metadata(source("huggingface"), (FIXTURES / "huggingface.json").read_bytes())
-    record.update(
-        definition=f"remote_model_source.v{version}",
-        bytes=model.stat().st_size,
-        sha256=hashlib.sha256(model.read_bytes()).hexdigest(),
-    )
-    if version == 2:
-        record["acquisition_budget"] = asdict(
-            Budget(
-                total_seconds=14400,
-                read_seconds=360,
-                cleanup_seconds=120,
-                max_bytes=100,
-            )
-        )
-    return record, hash_file(model)
+    return record_for(model, version), hash_file(model)
 
 
-@pytest.mark.parametrize("version", [1, 2])
-def test_original_v1_and_budget_v2_bind_without_rewriting(tmp_path, version):
+@pytest.mark.parametrize("version", [1, 2, 3])
+def test_original_and_current_records_bind_without_rewriting(tmp_path, version):
     record, model = record_and_model(tmp_path, version)
     path = tmp_path / "source.json"
     original = json.dumps(record).encode()
@@ -45,6 +27,8 @@ def test_original_v1_and_budget_v2_bind_without_rewriting(tmp_path, version):
         source("huggingface").revision,
     )
     assert path.read_bytes() == original
+    if version < 3:
+        assert "metadata_sha256" in json.loads(path.read_bytes())
     if version == 1:
         assert "acquisition_budget" not in json.loads(path.read_bytes())
 
@@ -97,27 +81,29 @@ def test_record_timeouts_reject_invalid_numbers(tmp_path, field, value):
         source_declaration(path, model)
 
 
-def test_large_finite_cleanup_budget_does_not_overflow_thread_wait(tmp_path):
-    from inferyard.platforms.model_source_host import acquire
-    from tests.unit.test_model_acquire_cli import SOURCE
+@pytest.mark.parametrize(
+    "change", ["missing_metadata_sha256", "bad_metadata_sha256", "v3_with_metadata_sha256"]
+)
+def test_legacy_metadata_hash_field_stays_strict(tmp_path, change):
+    version = 1 if change != "v3_with_metadata_sha256" else 3
+    record, model = record_and_model(tmp_path, version)
+    if change == "missing_metadata_sha256":
+        del record["metadata_sha256"]
+    elif change == "bad_metadata_sha256":
+        record["metadata_sha256"] = "not-a-hash"
+    else:
+        record["metadata_sha256"] = "0" * 64
+    path = tmp_path / "source.json"
+    path.write_text(json.dumps(record))
+    with pytest.raises(PreparationError, match="^model_source_metadata_mismatch$"):
+        source_declaration(path, model)
 
-    out = tmp_path / "existing"
-    out.mkdir()
-    with pytest.raises(PreparationError, match="^output_exists$"):
-        acquire(SOURCE, out, budget=Budget(total_seconds=5, read_seconds=5, cleanup_seconds=1e308))
 
-
-def test_large_finite_network_budgets_work_with_local_http(tmp_path, monkeypatch):
-    from inferyard.platforms.model_source_host import acquire
-    from tests.unit.test_model_acquire_cli import SOURCE
-    from tests.unit.test_model_source_download import PAYLOAD
-    from tests.unit.test_model_source_loopback import body_server, loopback_worker
-
-    with body_server("trickle") as (port, _):
-        loopback_worker(monkeypatch, port)
-        details = acquire(
-            SOURCE,
-            tmp_path / "new",
-            budget=Budget(total_seconds=1e308, read_seconds=1e308, cleanup_seconds=1),
-        )
-    assert details["bytes"] == len(PAYLOAD)
+@pytest.mark.parametrize("definition", ["remote_model_source.v0", "remote_model_source.v4"])
+def test_unknown_definitions_are_rejected(tmp_path, definition):
+    record, model = record_and_model(tmp_path, 3)
+    record["definition"] = definition
+    path = tmp_path / "source.json"
+    path.write_text(json.dumps(record))
+    with pytest.raises(PreparationError, match="^model_source_metadata_mismatch$"):
+        source_declaration(path, model)

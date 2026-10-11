@@ -1,69 +1,44 @@
 # 模型获取契约
 
 `model acquire` 是显式准备命令，接收一个固定 revision 的单 GGUF 链接，
-核对远程清单、字节数与 SHA256，写入一个新目录。
-参数、URL/重定向规则和退出码见 [CLI 参考](../cli-surface.md#各动作的冻结行为)，
-预算与诊断的理由见 [ADR 049](../decisions/049-model-acquisition-budgets.md)。
+像 `curl -O` 一样流式写入一个新目录，并记录实测字节数与 SHA256。
+参数、URL 规则和退出码见 [CLI 参考](../cli-surface.md#各动作的冻结行为)，
+简化决定的理由见 [ADR 051](../decisions/051-simplified-model-acquisition.md)。
 
-## 预算与进度
+## 超时与失败
 
-默认总期限 1800 秒、网络读取期限 180 秒、失败收尾期限 60 秒。
-操作者可用 `--timeout-seconds`、`--read-timeout-seconds`、`--cleanup-timeout-seconds`
-分别修改；必须为正有限数，不以默认值封顶。布尔值、零、负数、NaN 和 Infinity 拒绝。
-文件大小上限仍为 20 GiB，声明大小加临时开销必须满足所在卷可用空间。
+默认 `--timeout-seconds 1800`，作用于各网络操作（连接、读取、写入）；
+必须为正有限数，布尔值、零、负数、NaN 和 Infinity 拒绝。
+没有总期限、读取监督或收尾期限；失败后不自动重试或续传，失败目录保留且不能复用。
+取消保留退出 130。
 
-总期限不因新数据续期。读取期限基于实际网络进展，不基于 `.part` 可见大小或空闲心跳；
-持续收到小块数据不等于读取停滞。父进程可独立停止卡住的子进程，并在收尾期限内回收。
-本地写入与发布受总期限约束。取消保留退出 130，回收失败为工具错误。
-父进程信任随包 worker 报告的网络/本地阶段切换；它不是任意第三方 worker 的监管协议。
-随包 worker 不发送空闲心跳，重复进度通知不能延长读取期限。
+失败原因固定为 `invalid_model_source`、`model_acquire_incomplete`、
+`output_exists`（退出 2）、`io_error`（退出 4）、`cancelled`（退出 130）。
+stderr 只输出固定原因，不输出 URL、请求头、响应正文或凭据。
 
-失败进度区分已写入模型字节、经过秒数和平均写入速度，速度单位为 bytes/s。
-写入计数不代表已经 fsync、完整发布或可用于测评；失败目录不能复用。
-父进程强制停止时使用最后收到的写入计数，不能保证包含尚未报告的写入。
-失败 `details.diagnostics` 与 stderr 提供 `stage`、`exception_class`、`bytes_written`、
-`elapsed_seconds`、`average_bytes_per_second` 和 `progress_reason`。
-未收到子进程进度时，字节数和速度为 `null`，原因为 `worker_progress_unavailable`；
-已知进度的 `progress_reason` 为 `null`。阶段仅为 `preflight`、`metadata`、`redirect`、
-`download-open`、`download-body`、`publish`；异常分类来自固定允许列表。
-公开诊断只含固定阶段、分类和有界数值，
-不包含 URL、原始异常文本、请求头、响应正文或凭据。
+## 下载与发布
+
+获取客户端使用 `trust_env=False`，忽略 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`
+等环境代理，也不读取系统代理。跟随重定向；`--token-env` 的值只放在初始请求的
+`Authorization` 头中，跨 origin 重定向时由 httpx 自动剥离，不转发给 CDN。
+token、请求头和响应正文不输出或持久化。
+
+请求声明 `Accept-Encoding: identity`；响应状态非 200 或内容编码非 identity 均拒绝。
+正文流式写入 `文件名.part`，flush/fsync 后普通 rename 发布；
+`source.json` 以同样方式先写 `.part` 再发布。失败清理 `.part`，保留目录。
 
 ## 来源记录
 
-新 `source.json` 使用 `definition="remote_model_source.v2"`，保留 v1 的全部来源字段：
+新 `source.json` 使用 `definition="remote_model_source.v3"`：
 `parser`、`platform`、`repository`、`revision`、`path`、`bytes`、`sha256`、
-`metadata_sha256`、`retrieved_at`。parser 保持 `remote-model-source-parser.v1`。
-新增必需对象 `acquisition_budget`，恰含 `total_seconds`、`read_seconds`、
-`cleanup_seconds`、`max_bytes`，值为本次实际使用的预算。
+`retrieved_at`。parser 保持 `remote-model-source-parser.v1`。
+`bytes` 与 `sha256` 从实际下载的字节流计算，不再请求远程元数据清单，
+也不再保存 `metadata_sha256` 与 `acquisition_budget`。
 
-例如一次显式增加总时限的预算为：
-
-```json
-{
-  "total_seconds": 14400,
-  "read_seconds": 180,
-  "cleanup_seconds": 60,
-  "max_bytes": 21474836480
-}
-```
-
-这是预算对象示例，不是独立完整来源记录。
-缺任一预算键、多余键、非正或非有限秒数、布尔数值、非整数或超上限 `max_bytes`
-均拒绝；v2 缺预算不能退回 v1。完整合法/非法记录由来源读取回归覆盖。
-
-旧 v1 仅接受原字段集合，预算未知，不补写、不转换；未知定义和额外字段拒绝。
+旧 v1/v2 记录严格只读：v1 保留 `metadata_sha256`，v2 另含 `acquisition_budget`
+（恰含 `total_seconds`、`read_seconds`、`cleanup_seconds`、`max_bytes`）；
+缺键、多键、非法值均拒绝，不补写、不转换。未知定义拒绝。
 候选生成只读取显式 `--model-source` 指定的记录，核验当次模型字节数和 SHA256，
 并拒绝与显式 repo/revision 的冲突。来源记录错误保持
 `model_source_metadata_mismatch` / 2。支持集合见[格式矩阵](inferyard-current-format.md#格式支持矩阵)。
 模型获取成功不证明可加载、服务就绪或完整量化血缘；解释遵循[血缘规则](../data-contract.md#证据血缘与比较结论)。
-
-## 网络路由
-
-获取客户端使用 `trust_env=False`，忽略 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`
-等环境代理，也不读取 Windows 系统代理。仅打开系统代理不足以改变这条连接。
-若网络必须经过本机代理，需由操作者预先配置能接管直接连接的 TUN/全局路由，
-并验证仓库及 CDN 都可达；InferYard 不配置网络，也不能保证具体 TUN/Fake-IP 实现的行为。
-
-当前不提供显式代理参数，原因见 ADR 049。`Authorization` 只发送给声明的仓库主机，
-不转发给 CDN；任何路由方式都不能放宽现有重定向与哈希检查。

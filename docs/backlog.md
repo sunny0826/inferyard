@@ -367,19 +367,14 @@ bench-ops；清理为操作员显式手动操作，CLI 不自动删除，补跑�
 San3an-win 已恢复在线，131 文件逐文件清单核对仍未执行，与 PR 无关可后续进行。
 
 
-## 模型获取诊断与超时
+## 模型获取简化
 
 `model acquire` 已实现固定 Hugging Face/ModelScope 单 GGUF 获取、来源核验和候选绑定。
-原“尚未实施”的设计状态已过时，现行规则见 [CLI 参考](cli-surface.md#各动作的冻结行为)
-和[模型获取契约](contracts/model-acquisition.md)。正式 run 仍只使用本地已绑定服务。
-
-2026-10-11 已完成 [#21–#24](https://github.com/sunny0826/inferyard/issues) 的本地修复：
-固定失败诊断、读取监督、可配置超时、预算来源记录和代理说明。
-停止规则变更依据 [ADR 049](decisions/049-model-acquisition-budgets.md)。
-macOS 与 Windows 同一源码的定向回归各 **222 passed**，Windows 测试前后
-20 个补丁文件哈希匹配；覆盖合成回环 HTTP、子进程回收与原生文件发布。
-独立源码审查通过；Ruff、格式、Schema/catalogue 一致性和文档链接检查通过。
-Windows 验证没有真实下载；真实 CDN 性能与原 TUN/Fake-IP 故障仍未验证。
+2026-10-12 按操作者决定简化为 curl 级进程内下载：移除子进程 worker、IPC 进度协议、
+远程元数据预核验、手工重定向白名单、三段预算与排他原子改名；新记录为
+`remote_model_source.v3`，v1/v2 严格只读。依据 [ADR 051](decisions/051-simplified-model-acquisition.md)。
+现行规则见 [CLI 参考](cli-surface.md#各动作的冻结行为)和[模型获取契约](contracts/model-acquisition.md)。
+正式 run 仍只使用本地已绑定服务。真实 CDN 性能仍未验证。
 
 ## 模型 e2e 三平台接入
 

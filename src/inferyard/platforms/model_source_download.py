@@ -1,63 +1,27 @@
-"""Child-owned streaming transfer, durability and exclusive atomic publication."""
+"""In-process streaming acquisition: one pinned URL, one new directory, one rename."""
 
-import ctypes
-import errno
 import hashlib
+import math
 import os
-import shutil
-import sys
-import time
-from dataclasses import asdict
-from pathlib import Path
+from datetime import UTC, datetime
 
 import httpx
 
 from inferyard.config.preparation_io import NewDirectory, PreparationError, new_path
-from inferyard.platforms.model_source import MISMATCH, parse_metadata, validate_token_env
-from inferyard.platforms.model_source_http import INCOMPLETE, metadata_bytes, remaining, response
-from inferyard.platforms.model_source_progress import Progress
+from inferyard.platforms.model_source import DEFINITION_V3, PARSER, parse_source, validate_token_env
 from inferyard.platforms.platform_io import sync_directory
 
-DISK_OVERHEAD = 1024 * 1024
+INCOMPLETE = "model_acquire_incomplete"
 
 
-def publish(output, temporary, final):
-    """Rename without replacement, using held directory handles on POSIX."""
-    with output.parent(Path()) as (_, handle):
-        if os.name == "nt":
-            from inferyard.platforms.windows_api import move_file
-
-            move_file(output.path / temporary, output.path / final, False)
-        else:
-            library = ctypes.CDLL(None, use_errno=True)
-            name, flag = ("renameatx_np", 4) if sys.platform == "darwin" else ("renameat2", 1)
-            rename = getattr(library, name, None)
-            if rename is None:
-                raise OSError(errno.ENOSYS, "exclusive rename unavailable")
-            rename.argtypes = [
-                ctypes.c_int,
-                ctypes.c_char_p,
-                ctypes.c_int,
-                ctypes.c_char_p,
-                ctypes.c_uint,
-            ]
-            rename.restype = ctypes.c_int
-            if rename(handle, os.fsencode(temporary), handle, os.fsencode(final), flag):
-                code = ctypes.get_errno()
-                raise OSError(code, "exclusive rename failed")
-            os.fsync(handle)
-    sync_directory(output.path)
-
-
-def _remove(output, name):
-    with output.parent(Path()) as (_, handle):
-        try:
-            if os.name == "nt":
-                (output.path / name).unlink()
-            else:
-                os.unlink(name, dir_fd=handle)
-        except FileNotFoundError:
-            pass
+def _timeout(seconds):
+    try:
+        valid = type(seconds) in (int, float) and math.isfinite(seconds) and seconds > 0
+    except OverflowError:
+        valid = False
+    if not valid:
+        raise PreparationError("invalid_model_source")
+    return httpx.Timeout(seconds)
 
 
 def _token(name):
@@ -70,55 +34,54 @@ def _token(name):
     return value
 
 
-def _transfer(client, source, out, token, budget, deadline, progress):
-    record = parse_metadata(
-        source, metadata_bytes(client, source, token, budget, deadline, progress=progress)
-    )
-    record.update(definition="remote_model_source.v2", acquisition_budget=asdict(budget))
-    if record["bytes"] > budget.max_bytes:
-        raise progress.failure(reason=INCOMPLETE, exception_class="size_limit")
-    if record["bytes"] + DISK_OVERHEAD > shutil.disk_usage(out.parent).free:
-        raise OSError(errno.ENOSPC, "insufficient model storage")
-    remaining(deadline, progress)
+def _record(source, size, digest):
+    return {
+        "definition": DEFINITION_V3,
+        "parser": PARSER,
+        "platform": source.platform,
+        "repository": source.repository,
+        "revision": source.revision,
+        "path": source.path,
+        "bytes": size,
+        "sha256": digest,
+        "retrieved_at": datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    }
+
+
+def _publish(output, temporary, final):
+    os.rename(output.path / temporary, output.path / final)
+    sync_directory(output.path)
+
+
+def _download(client, source, out, token):
     output = NewDirectory(out)
     name = source.path.rsplit("/", 1)[-1]
     temporary = name + ".part"
     digest, size = hashlib.sha256(), 0
+    headers = {"Accept-Encoding": "identity"}
+    if token is not None:
+        headers["Authorization"] = f"Bearer {token}"
     try:
-        with response(
-            client, source, source.download_url, token, budget, deadline, progress=progress
-        ) as opened:
-            length = opened.headers.get("content-length")
-            if length is not None and (not length.isdecimal() or int(length) != record["bytes"]):
-                raise PreparationError(MISMATCH)
+        with client.stream("GET", source.download_url, headers=headers) as opened:
+            if opened.status_code != 200:
+                raise PreparationError(INCOMPLETE)
+            if opened.headers.get("content-encoding", "identity").lower() != "identity":
+                raise PreparationError(INCOMPLETE)
             with output.stream(temporary) as stream:
-                progress.update("download-body", "network")
                 for chunk in opened.iter_raw():
-                    progress.update("download-body", "local", received=len(chunk))
-                    remaining(deadline, progress)
-                    size += len(chunk)
-                    if size > record["bytes"] or size > budget.max_bytes:
-                        raise PreparationError(MISMATCH)
-                    written = stream.write(chunk)
-                    progress.update("download-body", "local", written=written)
-                    if written != len(chunk):
-                        raise OSError(errno.EIO, "short model write")
+                    stream.write(chunk)
                     digest.update(chunk)
-                    progress.update("download-body", "network")
-                progress.update("download-body", "local")
-                if size != record["bytes"] or digest.hexdigest() != record["sha256"]:
-                    raise PreparationError(MISMATCH)
-        progress.update("publish", "local")
-        remaining(deadline, progress)
-        publish(output, temporary, name)
-        output.json("source.json.part", record)
-        remaining(deadline, progress)
-        publish(output, "source.json.part", "source.json")
-    except BaseException as exc:
-        failure = progress.failure(exc)
-        _remove(output, temporary)
-        _remove(output, "source.json.part")
-        raise failure from None
+                    size += len(chunk)
+        _publish(output, temporary, name)
+        output.json("source.json.part", _record(source, size, digest.hexdigest()))
+        _publish(output, "source.json.part", "source.json")
+    except BaseException:
+        for part in (temporary, "source.json.part"):
+            try:
+                (output.path / part).unlink()
+            except OSError:
+                pass
+        raise
     return {
         "out": str(output.path),
         "model": str(output.path / name),
@@ -130,17 +93,20 @@ def _transfer(client, source, out, token, budget, deadline, progress):
     }
 
 
-def transfer(source, out, token_env, budget, *, client=None, progress=None):
-    """Production callers execute this only in the owned direct child."""
-    deadline = time.monotonic() + budget.total_seconds
-    progress = Progress() if progress is None else progress
+def acquire(url, out, token_env=None, *, timeout_seconds=1800, client=None):
+    source = parse_source(url)
+    token = _token(token_env)
+    out = new_path(out)
     try:
-        progress.update("preflight", "local")
-        out = new_path(out)
-        token = _token(token_env)
         if client is not None:
-            return _transfer(client, source, out, token, budget, deadline, progress)
-        with httpx.Client(trust_env=False, follow_redirects=False) as owned:
-            return _transfer(owned, source, out, token, budget, deadline, progress)
-    except BaseException as exc:
-        raise progress.failure(exc) from None
+            return _download(client, source, out, token)
+        with httpx.Client(
+            trust_env=False, follow_redirects=True, timeout=_timeout(timeout_seconds)
+        ) as owned:
+            return _download(owned, source, out, token)
+    except PreparationError:
+        raise
+    except httpx.HTTPError:
+        raise PreparationError(INCOMPLETE) from None
+    except OSError:
+        raise PreparationError("io_error", 4) from None

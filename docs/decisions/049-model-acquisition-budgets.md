@@ -1,7 +1,7 @@
 # ADR 049：模型获取预算与失败诊断
 
-状态：Accepted。日期：2026-10-11。基线：`597367d`。
-实施与平台验证状态见 [backlog](../backlog.md#模型获取诊断与超时)。
+状态：Superseded，被 [ADR 051](051-simplified-model-acquisition.md) 取代。日期：2026-10-11。基线：`597367d`。
+实施与平台验证状态见 [backlog](../backlog.md#模型获取简化)。
 
 ## 问题与决定
 
