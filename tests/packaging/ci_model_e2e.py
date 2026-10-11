@@ -121,6 +121,10 @@ def prepare_runtime(root, preflight, engine_archive, runtime_archive):
             )
     else:
         raise SystemExit(f"unsupported recommended runtime mode: {recommended}")
+    assets = root / "assets"
+    # The preparation contract requires an existing, writable parent directory;
+    # unlike the other platforms nothing else creates root/assets on Windows.
+    assets.mkdir(parents=True, exist_ok=True)
     prepare_args = [
         "runtime",
         "prepare",
@@ -129,12 +133,12 @@ def prepare_runtime(root, preflight, engine_archive, runtime_archive):
         "--archive",
         str(engine_archive.resolve()),
         "--out",
-        str(root / "assets" / "runtime"),
+        str(assets / "runtime"),
     ]
     if recommended == "cuda":
         prepare_args += ["--runtime-archive", str(runtime_archive.resolve())]
     cli(prepare_args)
-    return root / "assets" / "runtime" / "runtime-receipt.json"
+    return assets / "runtime" / "runtime-receipt.json"
 
 
 def fill_linux_template(template, out_dir, *, bundle, assets, results):
