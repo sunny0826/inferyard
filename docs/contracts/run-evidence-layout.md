@@ -85,6 +85,9 @@ request-bodies 单次扫描全部完整行并严格校验，缓存身份到 byte
 observations 同次扫描建立 kind/key/stage 索引；单次领域查询不再遍历全部收据。
 取 body 重读区间后核对已核验行摘要，变化立即拒绝。无磁盘索引、隐式请求上限或跨命令缓存。
 合法未封存尾半行按既有 partial/3；中间坏行、封存截尾及缺 started 原件为 4。
+inputs 已发布而日志尚未创建的未封存前缀可读取为 partial/3：没有事件时保留
+not_executed 分母，缺失日志不产生物理摘要或来源引用。已封存文件缺失、
+request_started 对应的 prepared 原件缺失仍拒绝为 4。
 
 ## 来源引用与外部绑定
 

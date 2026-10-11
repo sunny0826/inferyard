@@ -15,6 +15,9 @@ class PreparedRequests:
     def scan(self):
         if self.entries is not None:
             return
+        if self.evidence.manifest is None and not self.evidence.exists("request-bodies.jsonl"):
+            self.entries = {}
+            return
         entries, ordinals = {}, set()
         digest, size, previous = hashlib.sha256(), 0, 0
         try:

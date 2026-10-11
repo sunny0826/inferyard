@@ -1,14 +1,20 @@
 import asyncio
 
+import pytest
+
 from inferyard.config.plan_math import plan_hash
 from inferyard.config.planning import compile_plan
+from inferyard.contracts.validation import ContractError
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime.trial_runner import run_trial
+from tests.integration.test_lab_cli import lab_scenario  # noqa: F401
+from tests.integration.test_native_cli import native_scenario as native_fixture
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.integration.test_trial_runner import inputs
 
 scenario = runner_scenario
+native_scenario = native_fixture
 
 
 def duration_inputs(scenario, limit=100):
@@ -69,6 +75,24 @@ def test_duration_request_limit_is_incomplete(scenario):
     assert len(data["requests"]) == 1
     assert data["summary"]["duration"]["reason"] == "request_limit_reached"
     assert not data["summary"]["scope_complete"]
+
+
+def test_native_duration_is_rejected_before_request_admission(native_scenario):
+    command, deps, service = native_scenario
+    plan, loaded, deps, output = duration_inputs((command, deps, service.requests, service.options))
+    with pytest.raises(ContractError, match="currently support fixed serial quality text"):
+        asyncio.run(
+            run_trial(
+                plan,
+                plan["trials"][0]["trial_id"],
+                loaded,
+                output,
+                diagnostic=True,
+                dependencies=deps,
+            )
+        )
+    assert not service.requests and not service.calls
+    assert not output.exists()
 
 
 def test_cancel_duration_retains_interrupted_window(scenario):

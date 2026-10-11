@@ -284,7 +284,7 @@ def read_trial(root: Path, *, metadata=None):
         limitations=list(dict.fromkeys(limits)),
     )
     evidence = [
-        reads.log_reference("events.jsonl"),
+        *([reads.log_reference("events.jsonl")] if reads.exists("events.jsonl") else []),
         *(reads.input_reference(kind) for kind in ("run", "plan", "selection", "bundle", "config")),
     ]
     if engine_verified:
@@ -312,7 +312,7 @@ def read_trial(root: Path, *, metadata=None):
         )
     resource_evidence = [
         *evidence,
-        reads.log_reference("memory.jsonl"),
+        *([reads.log_reference("memory.jsonl")] if reads.exists("memory.jsonl") else []),
     ]
     if observation_sealed(reads, "collector", manifest_files):
         resource_evidence.append(reads.observation_reference("collector"))
@@ -416,7 +416,7 @@ def read_trial(root: Path, *, metadata=None):
         "requests": requests,
         "samples": samples,
         "summary": summary,
-        "events_sha256": reads.hashes["events.jsonl"],
+        "events_sha256": reads.hashes.get("events.jsonl"),
     }
 
 

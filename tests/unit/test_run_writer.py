@@ -1,6 +1,7 @@
 """Real temporary-file checks for the production layout 2 durability boundary."""
 
 import hashlib
+import json
 
 import pytest
 
@@ -78,6 +79,66 @@ def test_inputs_publish_before_all_six_logs_and_seal_eight_files(make_store, mon
     evidence.preload(evidence.manifest["files"])
     with pytest.raises(EvidenceError, match="sealed_run"):
         store.seal()
+
+
+@pytest.mark.parametrize("opened", [0, 3, 5])
+def test_interrupted_log_creation_reads_only_real_partial_evidence(
+    make_store, tmp_path, monkeypatch, capsys, opened
+):
+    from inferyard.cli import main
+    from inferyard.evidence.ledger import read_trial
+
+    make, _, bundle = make_store
+    open_logs = EvidenceStore._open_logs
+
+    def interrupt(store, names):
+        open_logs(store, names[:opened])
+        store.close()
+        raise EvidenceError("fixture_log_creation_interrupted")
+
+    monkeypatch.setattr(EvidenceStore, "_open_logs", interrupt)
+    with pytest.raises(EvidenceError, match="fixture_log_creation_interrupted"):
+        make()
+    root = next(tmp_path.iterdir())
+    before = {path.name: path.read_bytes() for path in root.iterdir()}
+    data = read_trial(root)
+    summary = data["summary"]
+    assert summary["counts"]["planned"] == len(bundle["cases"])
+    assert summary["counts"]["not_executed"] == len(bundle["cases"])
+    assert summary["counts"]["executed"] == 0
+    assert not summary["evidence_complete"] and not summary["scope_complete"]
+    assert "manifest_missing_unsealed_run" in summary["limitations"]
+    if "events.jsonl" not in before:
+        assert data["events_sha256"] is None
+    else:
+        assert data["events_sha256"] == hashlib.sha256(before["events.jsonl"]).hexdigest()
+    assert all(
+        ref["path"] in before
+        for metric in summary["metric_observations"]
+        for ref in metric["evidence_refs"]
+    )
+    assert main(["verify", "--path", str(root)]) == 3
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "partial" and result["details"]["integrity"] == "unsealed"
+    assert before == {path.name: path.read_bytes() for path in root.iterdir()}
+
+
+@pytest.mark.parametrize("sealed", [False, True])
+def test_missing_prepared_file_never_authorizes_started_requests(make_store, sealed):
+    from inferyard.evidence.ledger import read_trial
+
+    make, config, bundle = make_store
+    store = make()
+    body = request_body(config, bundle["cases"][0]["prompt"])
+    store.prepare_request("prepared-1", "formal", 1, body)
+    start(store, config, bundle, body)
+    if sealed:
+        store.seal()
+    store.close()
+    (store.path / "request-bodies.jsonl").unlink()
+    reason = "invalid_prepared_request" if sealed else "request_snapshot_missing"
+    with pytest.raises(EvidenceError, match=reason):
+        read_trial(store.path)
 
 
 def test_configuration_source_binds_redacted_raw_utf8_and_crlf(make_store):

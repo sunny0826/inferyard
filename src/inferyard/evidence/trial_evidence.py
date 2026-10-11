@@ -269,6 +269,8 @@ class TrialEvidence:
     def jsonl(self, name):
         if name == "request-bodies.jsonl" and self.layout_version == 2:
             raise EvidenceError("prepared_requests_require_identity_query")
+        if self.layout_version == 2 and self.manifest is None and not self.exists(name):
+            return [], []
         return self._reads.jsonl(name)
 
     def checked_jsonl(self, name):
