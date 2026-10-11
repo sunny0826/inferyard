@@ -21,6 +21,15 @@
 
 ### Changed
 
+- The usage guide now forbids browser user data inside the benchmark workspace:
+  scoring never uses a browser (the SVG case is unscored syntax-checked display),
+  so manual report review opens `report.html` in the operator's regular browser;
+  isolation profiles and browser check scripts are dropped, `--user-data-dir`
+  must never target the workspace or the delivery tree, and if isolation is
+  truly required, user data goes to the system temp directory (prefer the
+  browser's guest/incognito window). This tightens the #28 delivery rules after
+  operator-written browser scripts placed four Chrome profiles (1,137 files) in
+  a benchmark root.
 - `model acquire` accepts explicit total, read and cleanup timeouts, retaining
   1800/180/60 seconds as defaults. New `remote_model_source.v2` records preserve
   the actual acquisition budget; existing v1 records remain read-only.
