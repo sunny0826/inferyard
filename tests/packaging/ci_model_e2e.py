@@ -162,7 +162,7 @@ def fill_linux_template(template, out_dir, *, model, engine, assets, results, bu
     return path
 
 
-def prepare_candidate(root, bench_ops, *, model, engine_binary, engine_archive):
+def prepare_candidate(root, bench_ops, *, model, engine_binary, engine_archive, runtime_archive):
     preflight = bench_ops / "preflight" / "device-preflight.json"
     bundle_path = bench_ops / "bundles" / f"{BUNDLE}.json"
     results = root / "bench-work" / "results"
@@ -187,19 +187,36 @@ def prepare_candidate(root, bench_ops, *, model, engine_binary, engine_archive):
         )
         return out / "candidate.toml"
     if system == "Windows":
+        # The CLI requires the runtime profile to match the preflight's
+        # recommended mode; a CUDA machine must not fall back to CPU.
+        recommended = json.loads(preflight.read_text(encoding="utf-8"))["recommendation"][
+            "selected"
+        ]["mode"]
+        if recommended == "cpu":
+            profile = "prism-b10743-adfffbe-win-cpu-x64"
+        elif recommended == "cuda":
+            profile = "prism-b10743-adfffbe-win-cuda-12.4-x64"
+            if runtime_archive is None:
+                raise SystemExit(
+                    "preflight recommends cuda; pass --runtime-archive with the "
+                    "cudart-llama-bin-win-cuda-12.4-x64.zip archive"
+                )
+        else:
+            raise SystemExit(f"unsupported recommended runtime mode: {recommended}")
+        prepare_args = [
+            "runtime",
+            "prepare",
+            "--profile",
+            profile,
+            "--archive",
+            str(engine_archive.resolve()),
+            "--out",
+            str(bench_ops / "assets" / "runtime"),
+        ]
+        if recommended == "cuda":
+            prepare_args += ["--runtime-archive", str(runtime_archive.resolve())]
+        cli(prepare_args)
         runtime = bench_ops / "assets" / "runtime"
-        cli(
-            [
-                "runtime",
-                "prepare",
-                "--profile",
-                "prism-b10743-adfffbe-win-cpu-x64",
-                "--archive",
-                str(engine_archive.resolve()),
-                "--out",
-                str(runtime),
-            ]
-        )
         out = bench_ops / "candidate"
         cli(
             [
@@ -266,6 +283,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--engine-archive", type=Path, required=True)
+    parser.add_argument(
+        "--runtime-archive",
+        type=Path,
+        help="cudart archive required when the Windows preflight recommends cuda",
+    )
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
 
@@ -301,6 +323,7 @@ def main():
         model=args.model,
         engine_binary=engine_binary,
         engine_archive=args.engine_archive,
+        runtime_archive=args.runtime_archive,
     )
     binary, startup_args, url = read_candidate(candidate)
 
