@@ -10,10 +10,28 @@ from inferyard.analysis.scoring import score_case, unscorable
 from inferyard.config.bundle import require_review, validate_case
 from inferyard.contracts.validation import ContractError, Document
 from inferyard.evidence.storage import read_json
-from inferyard.reporting.svg_render import MAX_SVG_CHARACTERS, check_svg, extract_svg
+from inferyard.reporting.svg_render import (
+    MAX_SVG_CHARACTERS,
+    animation_stats,
+    check_svg,
+    extract_svg,
+)
 
 BUNDLE = read_json(Path("bundles/zh-svg-pelican.json"))
 SVG = '<svg xmlns="http://www.w3.org/2000/svg"><text>鹈鹕</text></svg>'
+ANIMATED = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">'
+    "<style>@keyframes pedal{to{transform:rotate(360deg)}}"
+    "@keyframes bump{50%{transform:translateY(-4px)}}"
+    ".wheel{animation:pedal 2s linear infinite;animation-name:pedal}"
+    ".frame{-my-animation:none;transition:1s}</style>"
+    '<circle class="wheel" cx="100" cy="120" r="50">'
+    '<animate attributeName="r" values="50;60;50" dur="2s"/>'
+    '<animateTransform attributeName="transform" type="rotate"/>'
+    '<animateMotion path="M0 0 L10 0"/>'
+    '<set attributeName="fill" to="red"/></circle>'
+    "</svg>"
+)
 
 
 @pytest.mark.parametrize(
@@ -75,6 +93,70 @@ def test_raw_styles_scripts_and_attributes_are_never_sanitized():
         "</svg>"
     )
     assert check_svg(extract_svg(text))["svg"] == text
+
+
+def test_animation_stats_counts_smil_elements_and_css_declarations_statically():
+    stats = animation_stats(ANIMATED)
+    assert stats == {
+        "status": "ok",
+        "reason": None,
+        "smil_elements": 4,
+        "keyframes_rules": 2,
+        "animation_declarations": 1,
+    }
+    assert animation_stats(ANIMATED) == stats
+    fenced = f"before\n```svg\n{ANIMATED}\n```\nafter"
+    assert animation_stats(fenced) == stats
+
+
+def test_animation_stats_matches_namespaced_and_bare_smil_local_names():
+    bare = "<svg><g><animate/><set/></g></svg>"
+    assert animation_stats(bare)["smil_elements"] == 2
+    namespaced = '<svg xmlns="http://www.w3.org/2000/svg"><animateMotion/></svg>'
+    assert animation_stats(namespaced)["smil_elements"] == 1
+
+
+def test_animation_stats_zero_is_a_real_measurement_for_svg_without_animation():
+    assert animation_stats(SVG) == {
+        "status": "ok",
+        "reason": None,
+        "smil_elements": 0,
+        "keyframes_rules": 0,
+        "animation_declarations": 0,
+    }
+
+
+def test_animation_stats_counts_only_style_element_text_not_inline_styles():
+    inline = '<svg><circle style="animation:pedal 1s" class="wheel"/></svg>'
+    stats = animation_stats(inline)
+    assert stats["status"] == "ok"
+    assert stats["smil_elements"] == 0
+    assert stats["animation_declarations"] == 0
+
+
+def test_animation_stats_missing_measurements_are_null_with_reason_never_zero():
+    missing = {"smil_elements": None, "keyframes_rules": None, "animation_declarations": None}
+    assert animation_stats(None) == {
+        "status": "not_found",
+        "reason": "svg_not_extracted",
+        **missing,
+    }
+    assert animation_stats("nothing here") == {
+        "status": "not_found",
+        "reason": "svg_not_extracted",
+        **missing,
+    }
+    assert animation_stats("<svg><g></svg>") == {
+        "status": "malformed",
+        "reason": "svg_malformed",
+        **missing,
+    }
+    huge = "<svg>" + "鹈" * MAX_SVG_CHARACTERS + "</svg>"
+    assert animation_stats(huge) == {
+        "status": "too_large",
+        "reason": "svg_too_large",
+        **missing,
+    }
 
 
 def test_pelican_bundle_is_valid_and_human_reviewed():

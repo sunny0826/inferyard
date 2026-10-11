@@ -34,6 +34,14 @@ v4 在运行概览 KPI 之后新增 `svg_gallery` 与「SVG 生成展示 · 不�
 不渲染该区段。画廊与逐题 `svg_view` 同源自 request 的 `content` 现算，渲染规则与安全
 约束同下节；当前非 SVG 行保留既有语义。
 
+报告渲染时另对同一份模型输出现算信息性动画元素统计，展示于画廊与逐题详情：SMIL 动画
+元素（`animate`/`animateTransform`/`animateMotion`/`set`，含 SVG namespace 形式）计数，
+以及 `<style>` 元素文本中 `@keyframes` 规则与 `animation` 属性声明的静态文本匹配计数
+（不做完整 CSS 解析）。统计仅在渲染 report.html 时计算并标注为信息性观察，不构成动画
+判定、质量评分或资格结论；不写入 index.json、不进入封存证据，不改变
+report_format_version 与 schema_version，同输入下结果确定。SVG 未提取、超限或
+malformed 时计数为 null 并附原因，不以 0 冒充；解析通过而无动画时 0 为真实计数值。
+
 ## v3 SVG 展示与 CSP
 
 只对 `category = svg` 行新增 `svg_view`，从 request 的 `content` 现算，非 SVG 行零字段变化。

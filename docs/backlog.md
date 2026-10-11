@@ -338,6 +338,21 @@ installation、cli-surface 的示例路径同步改为 `bench-ops/` 准备 + `be
 `PYTHONUTF8=1` 后三次全部通过；该控制台编码问题与证据无关，另行开 issue 跟踪。
 未启动模型服务、发送模型请求或联网下载。
 
+2026-10-11 候选增强实施（信息性动画元素统计）：report.html 渲染期对 SVG 题的模型
+输出（报告内唯一一份 `contents` 文本）现算静态动画元素统计——SMIL 动画元素
+（animate / animateTransform / animateMotion / set，含 SVG namespace 形式）计数与
+`<style>` 文本中 `@keyframes` 规则、`animation` 属性声明的静态文本匹配计数（不做完整
+CSS 解析）——在 SVG 画廊与逐题详情各显示一行，措辞明确标注信息性、不构成动画判定、
+质量评分或资格结论。统计仅在渲染时计算：不写入 index.json、不进入封存证据、不改变
+report_format_version=8 与 schema_version=3，同输入结果确定；SVG not_found / too_large /
+malformed 时计数为 null 并附原因（svg_not_extracted / svg_too_large / svg_malformed），
+不以 0 冒充。实现位于 reporting 层（`svg_render.animation_stats` + 渲染环境 Jinja 过滤器
++ 模板宏），无 CLI、参数、退出码或契约字段变化。usage.md"动画效果没有自动判定"结论
+不变；模板字节变化由 `template_sha256` 随生成自然反映，旧报告不受影响。单测覆盖
+SMIL（含 namespace/裸名）、@keyframes、animation 简写与长名排除、无动画真实 0、三类
+缺测 null+原因；集成测试断言统计不进 index.json、HTML 展示正确且 `--rerender` 通过。
+
+
 ## 模型获取诊断与超时
 
 `model acquire` 已实现固定 Hugging Face/ModelScope 单 GGUF 获取、来源核验和候选绑定。

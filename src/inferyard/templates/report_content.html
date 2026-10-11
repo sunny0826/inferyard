@@ -4,3 +4,9 @@
 {% macro svg(view, class_name) -%}
 <div class="{{ class_name }}" data-svg-ref="{{ view.content_ref }}" data-svg-start="{{ view.start }}" data-svg-end="{{ view.end }}"><a href="#text-{{ view.content_ref }}">查看 SVG 原始输出 ↓</a></div>
 {%- endmacro %}
+{% macro svg_stats(ref, contents) -%}
+{% if ref is not none %}{% set stats = contents[ref]|svg_animation_stats %}
+{% if stats.status == "ok" %}<p class="svg-observation">动画元素统计（信息性，不构成动画判定、质量评分或资格结论）：{{ stats.smil_elements }} 个 SMIL 动画元素 · {{ stats.keyframes_rules }} 个 @keyframes 规则 · {{ stats.animation_declarations }} 个 animation 属性声明</p>
+{% else %}<p class="svg-observation">动画元素统计：缺测（{{ stats.status }} · {{ stats.reason }}），不构成动画判定、质量评分或资格结论。</p>{% endif %}
+{% endif %}
+{%- endmacro %}

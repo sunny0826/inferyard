@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.application.types import CommandRequest
+from inferyard.application.types import CommandRequest, VerificationOptions
 from inferyard.application.verification import execute
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_trial
@@ -94,10 +94,18 @@ def test_diagnostic_svg_report_and_offline_verification(scenario, tmp_path, answ
         assert html.count("&lt;svg xmlns=") == 1
         assert html.count("data-svg-ref=") == 2
         assert index["contents"][item["content_ref"]] == SVG
+        assert "动画元素统计（信息性，不构成动画判定、质量评分或资格结论）" in html
+        assert "0 个 SMIL 动画元素 · 1 个 @keyframes 规则 · 1 个 animation 属性声明" in html
     else:
         assert '<div class="svg-preview">' not in html
         assert "未能提取可渲染的 SVG" in html
+        assert "动画元素统计：缺测（not_found · svg_not_extracted）" in html
+    # Animation stats are render-time display only: never persisted into the sealed index.
+    index_json = (out / "index.json").read_text(encoding="utf-8")
+    assert "smil_elements" not in index_json
+    assert "animation_declarations" not in index_json
     assert verify_report(out)["verified"]
+    assert verify_report(out, options=VerificationOptions(rerender=True))["render_checked"]
     assert verify_artifact(out)["verified"]
     assert len(calls) == call_count
     assert before == {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}

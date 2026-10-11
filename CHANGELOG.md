@@ -4,6 +4,17 @@
 
 ### Added
 
+- The offline report now shows an informational animation-element statistic for SVG
+  cases, so operators can see the animation makeup without opening a browser: counts
+  of SMIL animation elements (`animate`, `animateTransform`, `animateMotion`, `set`,
+  including SVG-namespaced forms) and static text matches of `@keyframes` rules and
+  `animation` declarations inside `<style>` text. The counts are computed at report
+  rendering time from the single stored model output and displayed in the SVG gallery
+  and case details with an explicit informational-only label; they never constitute an
+  animation verdict, quality score or eligibility conclusion, and they are never
+  written to `index.json` or sealed evidence, leaving `report_format_version` and
+  `schema_version` unchanged. When the SVG is not extracted, too large or malformed,
+  the counts stay null with a reason instead of masquerading as 0.
 - Read-only Windows `memory-check`: bounded process inventory, physical memory
   availability, separate working set/private commit, executable groups and
   conservative system/security/service/agent protection. Unknown ownership never
