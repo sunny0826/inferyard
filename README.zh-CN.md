@@ -75,7 +75,8 @@ inferyard verify --path bench-work/report
 
 源码开发版将一个完整普通 single run 保存为八份证据，报告仍为三份文件；
 这是正式输出计数。准备检查、操作员脚本与日志存放在 benchmark 工作区外的
-操作目录。对外交付时，把封存 run 与共享报告复制到独立交付目录，
+操作目录；本轮 run 全部封存且汇总报告核验通过后，操作目录可整体清理。
+对外交付时，把封存 run 与共享报告复制到独立交付目录，
 见[使用指南](docs/usage.md#工作区与交付目录组织)。
 现有合法 schema-3 快照运行保持只读支持，见[运行原件容器契约](docs/contracts/run-evidence-layout.md)。
 

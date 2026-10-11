@@ -46,13 +46,20 @@
   models, preflight, candidates, bound configs, runtime assets), operator
   scripts, logs, screenshots, exports and transfer files live in the
   operations directory from the start, while the workspace holds only runs,
-  batches and reports, created automatically by `run` and `report`. All
-  preparation commands accept arbitrary `--out` paths, run directories embed
-  their frozen inputs, and verify/report never depend on preparation
+  batches and reports, created automatically by `run`, `batch` and `report`.
+  Every preparation command writes to a fresh `--out` directory whose parent
+  must already exist, run directories embed their frozen inputs, and
+  verify/report never depend on preparation
   directories, so the layout changes no verification semantics. README,
-  README.zh-CN, installation and CLI-reference examples follow the new layout.
-  This is a documentation convention only; existing workspaces are not
-  migrated or rewritten.
+  README.zh-CN, MACOS, WINDOWS, configs/README, installation and CLI-reference
+  examples follow the new layout. The operations directory is per-run
+  scaffolding: once every run is sealed and the shared report verifies
+  cleanly (exit 0), the operator may delete that round's bench-ops content
+  entirely — sealed evidence embeds its frozen inputs and nothing reads
+  bench-ops afterwards; reruns simply redo preparation, which PID changes
+  require anyway. Cleanup is explicit and manual; the CLI never deletes
+  files. This is a documentation convention only; existing workspaces are
+  not migrated or rewritten.
 - `model acquire` accepts explicit total, read and cleanup timeouts, retaining
   1800/180/60 seconds as defaults. New `remote_model_source.v2` records preserve
   the actual acquisition budget; existing v1 records remain read-only.

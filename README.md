@@ -101,8 +101,10 @@ out of scope.
 The source development version stores a complete ordinary single run in eight
 evidence files and its report in three; these are formal output counts.
 Preparation checks, operator scripts and logs live outside the benchmark
-workspace in an operations directory. For handoff, copy the sealed runs and
-the shared report into a separate delivery directory; see the
+workspace in an operations directory, which the operator may delete entirely
+once every run is sealed and the shared report verifies cleanly. For
+handoff, copy the sealed runs and the shared report into a separate delivery
+directory; see the
 [usage guide](docs/usage.md#工作区与交付目录组织).
 Existing schema-3 snapshot runs remain
 readable; see the [evidence layout contract](docs/contracts/run-evidence-layout.md).

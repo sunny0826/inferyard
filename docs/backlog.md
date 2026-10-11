@@ -352,6 +352,20 @@ malformed 时计数为 null 并附原因（svg_not_extracted / svg_too_large / s
 SMIL（含 namespace/裸名）、@keyframes、animation 简写与长名排除、无动画真实 0、三类
 缺测 null+原因；集成测试断言统计不进 index.json、HTML 展示正确且 `--rerender` 通过。
 
+2026-10-11 四次修订（用户决策：操作目录全清理 + 双目录同步补全）：独立挑刺审查
+b0f8b1b 后修复两处阻断——MACOS.md、WINDOWS.md（issue #28 的平台指南）、
+configs/README.md 补同步双目录布局；usage.md 浏览器禁令收回为"benchmark 工作区或
+操作目录"（原"任何目录树"单方面扩大了 3df4ac6 定案范围且与系统临时目录例外
+自相矛盾）。init 导出的入门说明（data/community/README.md）改称操作目录，
+`resources.json` 经 `scripts/export_community.py`（`generated(None)`）再生且
+`--check` 通过。按用户决策新增清理规则：本轮全部 run 封存、汇总报告 verify 退出 0
+后，操作目录本轮内容可整体清理——封存证据自含冻结输入，verify/report 此后不读
+bench-ops；清理为操作员显式手动操作，CLI 不自动删除，补跑重走准备流程（PID 变化
+后本须重新绑定）。审查建议同步落实：安装指南说明骨架空 `results/` 不使用、
+`--results` 指向工作区；README 与安装指南的自动创建措辞补 `batch`；文档地图不再
+称安装指南含"工作区"；CHANGELOG"任意 --out 路径"修正为"父目录须已存在的新目录"。
+San3an-win 已恢复在线，131 文件逐文件清单核对仍未执行，与 PR 无关可后续进行。
+
 
 ## 模型获取诊断与超时
 
