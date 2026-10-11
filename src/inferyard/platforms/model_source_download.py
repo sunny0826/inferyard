@@ -7,6 +7,7 @@ import os
 import shutil
 import sys
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 import httpx
@@ -14,10 +15,10 @@ import httpx
 from inferyard.config.preparation_io import NewDirectory, PreparationError, new_path
 from inferyard.platforms.model_source import MISMATCH, parse_metadata, validate_token_env
 from inferyard.platforms.model_source_http import INCOMPLETE, metadata_bytes, remaining, response
+from inferyard.platforms.model_source_progress import Progress
 from inferyard.platforms.platform_io import sync_directory
 
 DISK_OVERHEAD = 1024 * 1024
-CHUNK_SIZE = 1024 * 1024
 
 
 def publish(output, temporary, final):
@@ -69,42 +70,55 @@ def _token(name):
     return value
 
 
-def _transfer(client, source, out, token, budget, deadline):
-    record = parse_metadata(source, metadata_bytes(client, source, token, budget, deadline))
+def _transfer(client, source, out, token, budget, deadline, progress):
+    record = parse_metadata(
+        source, metadata_bytes(client, source, token, budget, deadline, progress=progress)
+    )
+    record.update(definition="remote_model_source.v2", acquisition_budget=asdict(budget))
     if record["bytes"] > budget.max_bytes:
-        raise PreparationError(INCOMPLETE)
+        raise progress.failure(reason=INCOMPLETE, exception_class="size_limit")
     if record["bytes"] + DISK_OVERHEAD > shutil.disk_usage(out.parent).free:
         raise OSError(errno.ENOSPC, "insufficient model storage")
-    remaining(deadline)
+    remaining(deadline, progress)
     output = NewDirectory(out)
     name = source.path.rsplit("/", 1)[-1]
     temporary = name + ".part"
     digest, size = hashlib.sha256(), 0
     try:
-        with response(client, source, source.download_url, token, budget, deadline) as opened:
+        with response(
+            client, source, source.download_url, token, budget, deadline, progress=progress
+        ) as opened:
             length = opened.headers.get("content-length")
             if length is not None and (not length.isdecimal() or int(length) != record["bytes"]):
                 raise PreparationError(MISMATCH)
             with output.stream(temporary) as stream:
-                for chunk in opened.iter_raw(chunk_size=CHUNK_SIZE):
-                    remaining(deadline)
+                progress.update("download-body", "network")
+                for chunk in opened.iter_raw():
+                    progress.update("download-body", "local", received=len(chunk))
+                    remaining(deadline, progress)
                     size += len(chunk)
                     if size > record["bytes"] or size > budget.max_bytes:
                         raise PreparationError(MISMATCH)
-                    if stream.write(chunk) != len(chunk):
+                    written = stream.write(chunk)
+                    progress.update("download-body", "local", written=written)
+                    if written != len(chunk):
                         raise OSError(errno.EIO, "short model write")
                     digest.update(chunk)
+                    progress.update("download-body", "network")
+                progress.update("download-body", "local")
                 if size != record["bytes"] or digest.hexdigest() != record["sha256"]:
                     raise PreparationError(MISMATCH)
-        remaining(deadline)
+        progress.update("publish", "local")
+        remaining(deadline, progress)
         publish(output, temporary, name)
         output.json("source.json.part", record)
-        remaining(deadline)
+        remaining(deadline, progress)
         publish(output, "source.json.part", "source.json")
-    except BaseException:
+    except BaseException as exc:
+        failure = progress.failure(exc)
         _remove(output, temporary)
         _remove(output, "source.json.part")
-        raise
+        raise failure from None
     return {
         "out": str(output.path),
         "model": str(output.path / name),
@@ -116,15 +130,17 @@ def _transfer(client, source, out, token, budget, deadline):
     }
 
 
-def transfer(source, out, token_env, budget, *, client=None):
+def transfer(source, out, token_env, budget, *, client=None, progress=None):
     """Production callers execute this only in the owned direct child."""
     deadline = time.monotonic() + budget.total_seconds
+    progress = Progress() if progress is None else progress
     try:
+        progress.update("preflight", "local")
         out = new_path(out)
         token = _token(token_env)
         if client is not None:
-            return _transfer(client, source, out, token, budget, deadline)
+            return _transfer(client, source, out, token, budget, deadline, progress)
         with httpx.Client(trust_env=False, follow_redirects=False) as owned:
-            return _transfer(owned, source, out, token, budget, deadline)
-    except OSError:
-        raise PreparationError("io_error", 4) from None
+            return _transfer(owned, source, out, token, budget, deadline, progress)
+    except BaseException as exc:
+        raise progress.failure(exc) from None

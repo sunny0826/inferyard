@@ -261,9 +261,43 @@ def test_remote_response_interruption_is_sanitized(tmp_path):
         return original(request, **kwargs)
 
     client.send = send
-    with pytest.raises(PreparationError, match="^model_acquire_incomplete$"):
+    with pytest.raises(PreparationError, match="^model_acquire_incomplete$") as caught:
         download(tmp_path, client)
+    assert caught.value.diagnostics["stage"] == "download-body"
+    assert caught.value.diagnostics["exception_class"] == "read_error"
+    assert caught.value.diagnostics["bytes_written"] == 8
+    assert caught.value.diagnostics["elapsed_seconds"] > 0
+    assert caught.value.diagnostics["average_bytes_per_second"] > 0
+    assert "SECRET" not in json.dumps(caught.value.diagnostics)
     assert not (tmp_path / "new/source.json").exists()
+
+
+def test_streaming_redirect_is_closed_before_next_request():
+    import time
+
+    from inferyard.platforms.model_source_host import Budget
+    from inferyard.platforms.model_source_http import response
+
+    redirected = Chunks([b"must not consume redirect body"])
+
+    def respond(request):
+        if request.url.host == "huggingface.co":
+            return httpx.Response(
+                302, headers={"location": "https://cdn.hf.co/file"}, stream=redirected
+            )
+        assert getattr(redirected, "closed", False)
+        return httpx.Response(200, stream=Chunks([PAYLOAD]))
+
+    with httpx.Client(transport=httpx.MockTransport(respond), trust_env=False) as client:
+        with response(
+            client,
+            source("huggingface"),
+            source("huggingface").download_url,
+            None,
+            Budget(),
+            time.monotonic() + 5,
+        ) as opened:
+            assert b"".join(opened.iter_raw()) == PAYLOAD
 
 
 def test_existing_final_file_is_never_replaced(tmp_path, monkeypatch):

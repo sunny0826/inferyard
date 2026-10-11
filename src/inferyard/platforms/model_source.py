@@ -8,6 +8,7 @@ from urllib.parse import quote, unquote, urlencode, urlsplit
 
 from inferyard.config.preparation_io import PreparationError, read_json
 from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.platforms.model_source_budget import Budget
 
 DEFINITION = "remote_model_source.v1"
 PARSER = "remote-model-source-parser.v1"
@@ -161,7 +162,7 @@ def source_declaration(record_path, model, *, repo=None, revision=None):
         return repo if repo is not None else "local", revision
     record = read_json(record_path, MISMATCH)
     try:
-        if set(record) != {
+        expected = {
             "definition",
             "parser",
             "platform",
@@ -172,9 +173,18 @@ def source_declaration(record_path, model, *, repo=None, revision=None):
             "sha256",
             "metadata_sha256",
             "retrieved_at",
-        }:
+        }
+        if record["definition"] == "remote_model_source.v2":
+            expected.add("acquisition_budget")
+            budget = record["acquisition_budget"]
+            if not isinstance(budget, dict) or set(budget) != set(Budget.__dataclass_fields__):
+                raise ValueError
+            declared = Budget(**budget)
+            if type(record["bytes"]) is not int or record["bytes"] > declared.max_bytes:
+                raise ValueError
+        elif record["definition"] != DEFINITION:
             raise ValueError
-        if record["definition"] != DEFINITION or record["parser"] != PARSER:
+        if set(record) != expected or record["parser"] != PARSER:
             raise ValueError
         host = {v: k for k, v in PLATFORMS.items()}[record["platform"]]
         source = parse_source(

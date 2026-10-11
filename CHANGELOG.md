@@ -13,6 +13,12 @@
 
 ### Changed
 
+- `model acquire` accepts explicit total, read and cleanup timeouts, retaining
+  1800/180/60 seconds as defaults. New `remote_model_source.v2` records preserve
+  the actual acquisition budget; existing v1 records remain read-only.
+- Acquisition failures report sanitized stages and transfer progress. The parent
+  supervises network inactivity as well as the total deadline. Acquisition's
+  direct connection and proxy limitations are now documented.
 - New runs use evidence layout 2: immutable frozen inputs, append-only
   observations and prepared request bodies, four sampling/event logs, and a
   manifest. A complete ordinary single run plus its report uses eleven files;
