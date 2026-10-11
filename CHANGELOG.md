@@ -4,6 +4,17 @@
 
 ### Added
 
+- The offline report now shows an informational animation-element statistic for SVG
+  cases, so operators can see the animation makeup without opening a browser: counts
+  of SMIL animation elements (`animate`, `animateTransform`, `animateMotion`, `set`,
+  including SVG-namespaced forms) and static text matches of `@keyframes` rules and
+  `animation` declarations inside `<style>` text. The counts are computed at report
+  rendering time from the single stored model output and displayed in the SVG gallery
+  and case details with an explicit informational-only label; they never constitute an
+  animation verdict, quality score or eligibility conclusion, and they are never
+  written to `index.json` or sealed evidence, leaving `report_format_version` and
+  `schema_version` unchanged. When the SVG is not extracted, too large or malformed,
+  the counts stay null with a reason instead of masquerading as 0.
 - Read-only Windows `memory-check`: bounded process inventory, physical memory
   availability, separate working set/private commit, executable groups and
   conservative system/security/service/agent protection. Unknown ownership never
@@ -21,6 +32,34 @@
 
 ### Changed
 
+- The usage guide now forbids browser user data inside the benchmark workspace:
+  scoring never uses a browser (the SVG case is unscored syntax-checked display),
+  so manual report review opens `report.html` in the operator's regular browser;
+  isolation profiles and browser check scripts are dropped, `--user-data-dir`
+  must never target the workspace or the delivery tree, and if isolation is
+  truly required, user data goes to the system temp directory (prefer the
+  browser's guest/incognito window). This tightens the #28 delivery rules after
+  operator-written browser scripts placed four Chrome profiles (1,137 files) in
+  a benchmark root.
+- The usage guide now separates an operations directory (`bench-ops/`) from the
+  benchmark workspace (`bench-work/`): preparation outputs (init exports,
+  models, preflight, candidates, bound configs, runtime assets), operator
+  scripts, logs, screenshots, exports and transfer files live in the
+  operations directory from the start, while the workspace holds only runs,
+  batches and reports, created automatically by `run`, `batch` and `report`.
+  Every preparation command writes to a fresh `--out` directory whose parent
+  must already exist, run directories embed their frozen inputs, and
+  verify/report never depend on preparation
+  directories, so the layout changes no verification semantics. README,
+  README.zh-CN, MACOS, WINDOWS, configs/README, installation and CLI-reference
+  examples follow the new layout. The operations directory is per-run
+  scaffolding: once every run is sealed and the shared report verifies
+  cleanly (exit 0), the operator may delete that round's bench-ops content
+  entirely — sealed evidence embeds its frozen inputs and nothing reads
+  bench-ops afterwards; reruns simply redo preparation, which PID changes
+  require anyway. Cleanup is explicit and manual; the CLI never deletes
+  files. This is a documentation convention only; existing workspaces are
+  not migrated or rewritten.
 - `model acquire` accepts explicit total, read and cleanup timeouts, retaining
   1800/180/60 seconds as defaults. New `remote_model_source.v2` records preserve
   the actual acquisition budget; existing v1 records remain read-only.

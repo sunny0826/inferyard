@@ -11,6 +11,7 @@ from jinja2 import Environment, PackageLoader, StrictUndefined
 from markupsafe import Markup, escape
 
 from inferyard.evidence.storage import EvidenceError
+from inferyard.reporting.svg_render import animation_stats
 
 
 def evidence_url(source: Path, out: Path) -> str:
@@ -48,6 +49,7 @@ def _environment():
         ),
         decimal=lambda value: "—" if value is None else f"{value:+.2f}",
         milliseconds=lambda value: "—" if value is None else f"{value / 1000:.2f}",
+        svg_animation_stats=animation_stats,
         display=lambda value: (
             "—"
             if value is None

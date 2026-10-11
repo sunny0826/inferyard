@@ -16,8 +16,8 @@
 操作者按 `engine.binary_path` 和完整 `engine.startup_args` 在外部终端启动服务，然后绑定实际 PID：
 
 ```bash
-inferyard config bind --candidate bench-work/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-work/bound
-inferyard run --config bench-work/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
+inferyard run --config bench-ops/bound/config.toml
 ```
 
 绑定读取进程身份和 argv，不发送模型请求。`run` 执行当次身份预检及普通/流式探测；

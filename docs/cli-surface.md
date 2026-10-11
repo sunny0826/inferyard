@@ -140,9 +140,9 @@ PATH 可包含子目录，但只能是一个 `.gguf` 文件；输出使用其文
 仅校验代理 URL 不能保证凭据边界，见 [ADR 049](decisions/049-model-acquisition-budgets.md)。
 
 ```bash
-inferyard model acquire --source 'https://huggingface.co/OWNER/REPO/blob/COMMIT40/sub/model.gguf' --out bench-work/models/new
-inferyard device-check --model bench-work/models/new/model.gguf --out bench-work/preflight --json
-inferyard config create --preflight bench-work/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-work/bundles/zh-smoke.json --results bench-work/results --out bench-work/candidate --model-source bench-work/models/new/source.json
+inferyard model acquire --source 'https://huggingface.co/OWNER/REPO/blob/COMMIT40/sub/model.gguf' --out bench-ops/models/new
+inferyard device-check --model bench-ops/models/new/model.gguf --out bench-ops/preflight --json
+inferyard config create --preflight bench-ops/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-smoke.json --results bench-work/results --out bench-ops/candidate --model-source bench-ops/models/new/source.json
 ```
 
 `COMMIT40` 是占位符，必须替换为实际固定 revision；示例候选命令适用于 macOS，

@@ -5,7 +5,7 @@
 | 入口 | 内容 |
 | --- | --- |
 | [项目说明](../README.md) | 产品、安装和最短工作流 |
-| [安装指南](installation.md) | uv tool/uvx、工作区、资产准备、外部服务和绑定 |
+| [安装指南](installation.md) | uv tool/uvx、操作目录、资产准备、外部服务和绑定 |
 | [使用指南](usage.md) · [CLI 参考](cli-surface.md) | 计划、运行、恢复、比较、迁移及参数 |
 | [平台状态](platforms.md) · [macOS](../MACOS.md) · [Windows](../WINDOWS.md) | 已实现范围、原生覆盖与操作限制 |
 | [配置说明](../configs/README.md) · [设备检测](device-check.md) | 配置字段、容量推荐与身份 |

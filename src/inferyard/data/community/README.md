@@ -1,9 +1,11 @@
-# 离线测评工作区
+# 离线测评操作目录
 
 此目录是准备材料，不是已验证配置或测评结果。题包原字节及内嵌人工审核信息保留。
 `preparation.json` 的 `bundles` 列出本次导出的全部题包；省略 `inferyard init --bundle` 时，
-同一工作区导出 `zh-core` 和 `zh-svg-pelican`；显式指定时只导出该题包。
+导出 `zh-core` 和 `zh-svg-pelican`；显式指定时只导出该题包。
 `zh-smoke` 仅在显式选择时导出。`bundle_path` 仍指向第一个题包，不代表只导出了一个。
+准备与操作产物统一留在本操作目录（示例名 `bench-ops/`）；benchmark 工作区（示例名
+`bench-work/`）只存放 run/batch 与报告，由 `run` 和 `report` 自动创建。
 模板中的 REPLACE 项都需要填写；
 PID/start_ticks 的 1 是未绑定哨兵，不是真实进程身份。不要直接 run 示例。
 

@@ -40,22 +40,23 @@ uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --help
 见[默认测评范围](docs/usage.md#默认测评范围)。下面是固定 `zh-smoke` 的快速检查示例。
 
 ```bash
-inferyard init --out bench-work --bundle zh-smoke
-inferyard device-check --model /path/to/model.gguf --out bench-work/preflight --json
+inferyard init --out bench-ops --bundle zh-smoke
+inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight --json
 ```
 
 按[安装指南](docs/installation.md#3-准备候选)生成候选配置，在独立终端自行启动其中声明的模型服务——
-CLI 从不启动、停止或重启服务——然后将实际 PID 和端点代入：
+CLI 从不启动、停止或重启服务——然后将实际 PID 和端点代入。准备、操作员文件与日志
+放在操作目录（`bench-ops/`），benchmark 工作区（`bench-work/`）只存放 run、batch 与报告：
 
 ```bash
-inferyard config bind --candidate bench-work/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-work/bound
-inferyard run --config bench-work/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
+inferyard run --config bench-ops/bound/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 inferyard verify --path bench-work/report
 ```
 
 `RUN_ID` 取自运行结果。用浏览器打开 `bench-work/report/report.html`；
-服务关闭后仍可阅读和核验。CLI 连接操作者启动的本机服务；`run` 包含当次普通/流式探测，
+服务关闭后仍可阅读和核验；SVG 画廊附信息性动画元素统计，人工浏览器检查为可选。CLI 连接操作者启动的本机服务；`run` 包含当次普通/流式探测，
 独立 `probe` 用于可选排障。主机状态在首次实时运行时自动创建，不需要显式初始化步骤。
 
 ## 平台与能力
@@ -73,9 +74,10 @@ inferyard verify --path bench-work/report
 评分采用冻结规则，不调用模型裁判。社区账号、自动投稿、多机调度与多模态执行器不在范围内。
 
 源码开发版将一个完整普通 single run 保存为八份证据，报告仍为三份文件；
-这是正式输出计数，准备检查、操作脚本与日志会为工作区增加更多文件。
+这是正式输出计数。准备检查、操作员脚本与日志存放在 benchmark 工作区外的
+操作目录；本轮 run 全部封存且汇总报告核验通过后，操作目录可整体清理。
 对外交付时，把封存 run 与共享报告复制到独立交付目录，
-见[使用指南](docs/usage.md#交付目录组织)。
+见[使用指南](docs/usage.md#工作区与交付目录组织)。
 现有合法 schema-3 快照运行保持只读支持，见[运行原件容器契约](docs/contracts/run-evidence-layout.md)。
 
 ## 继续阅读
