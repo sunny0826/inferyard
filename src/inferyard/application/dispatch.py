@@ -9,6 +9,14 @@ from inferyard.platforms.identity import PreflightError
 
 
 def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
+    if request.command == "memory-check":
+        from inferyard.application.memory_check import execute
+
+        return execute(request)
+    if request.command == "model acquire":
+        from inferyard.application.model_source import execute
+
+        return execute(request)
     if request.command in (
         "init",
         "runtime prepare",

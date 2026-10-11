@@ -9,6 +9,7 @@
 | [使用指南](usage.md) · [CLI 参考](cli-surface.md) | 计划、运行、恢复、比较、迁移及参数 |
 | [平台状态](platforms.md) · [macOS](../MACOS.md) · [Windows](../WINDOWS.md) | 已实现范围、原生覆盖与操作限制 |
 | [配置说明](../configs/README.md) · [设备检测](device-check.md) | 配置字段、容量推荐与身份 |
+| [应用内存诊断](contracts/memory-check-contract.md) | macOS 只读应用/进程清单与保护判断 |
 | [报告](reports.md) · [引擎诊断](engine-fit-common.md) | 离线阅读与同机 engine-fit |
 | [流程图](show-me-system-flow.html) | 安装、准备、执行与离线证据通路 |
 | [inferyard-observer](../observer/README.md) | 独立进程监测器 |
