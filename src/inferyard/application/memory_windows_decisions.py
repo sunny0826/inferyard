@@ -3,6 +3,7 @@
 import hashlib
 from pathlib import PureWindowsPath
 
+from inferyard.contracts.memory_check import windows_parent_verified
 from inferyard.platforms.memory_windows import IDENTITY_SOURCE
 
 PROTECTED_NAMES = {
@@ -116,7 +117,17 @@ def missing(row):
 
 
 def project(snapshot, protect_pids):
-    rows = {row["pid"]: row for row in snapshot["rows"]}
+    rows = {row["pid"]: row.copy() for row in snapshot["rows"]}
+    for row in rows.values():
+        parent = rows.get(row["parent_pid"])
+        if (
+            row["parent_start_identity"] is not None
+            and parent is not None
+            and parent["start_identity"] is not None
+            and row["parent_start_identity"] != parent["start_identity"]
+        ):
+            row["parent_start_identity"] = None
+            row["parent_identity_missing_reason"] = "parent_identity_changed"
     protected = {}
     for caller in (snapshot["caller_pid"], snapshot["collector_pid"]):
         for pid in _ancestors(caller, rows):
@@ -210,7 +221,12 @@ def project(snapshot, protect_pids):
             "group_id": gid,
             "display_name": members[0]["display_name"],
             "member_pids": sorted(pids),
-            "root_pids": sorted(m["pid"] for m in members if m["parent_pid"] not in pids),
+            "root_pids": sorted(
+                m["pid"]
+                for m in members
+                if m["parent_pid"] not in pids
+                or not windows_parent_verified(m, rows.get(m["parent_pid"]))
+            ),
             "grouping_source": "verified_executable_owner_session",
             "decision": {
                 "status": status,

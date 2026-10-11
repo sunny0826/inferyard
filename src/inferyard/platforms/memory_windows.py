@@ -98,7 +98,7 @@ def observe(pid, psutil):
         if final_parent != row["parent_pid"] or (
             final_start is not None
             and row["parent_start_identity"] is not None
-            and final_start != row["parent_start_identity"]
+            and (final_start != row["parent_start_identity"] or final_start > row["start_identity"])
         ):
             row["parent_pid"] = final_parent
             row["parent_start_identity"] = None
