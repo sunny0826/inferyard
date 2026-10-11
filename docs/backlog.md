@@ -259,6 +259,31 @@ Ruff、格式、Schema/catalogue 一致性和文档本地链接/锚点检查通�
 审查遗留一条非阻塞建议：扩展协议（NATIVE_TOOLS 等）本地 spec 每次调用重新编译，
 主热路径不受影响，留后续轮次。
 
+## 交付目录组织（#28）
+
+2026-10-11 修复 [#28](https://github.com/sunny0826/inferyard/issues/28)：
+Windows Bonsai 真机测评的完整工作区含 1,287 个文件，正式产物与初始化检查、
+操作员脚本、服务日志、截图和 4 个 Chrome profile 混放，端到端交接只核验了
+正式 run 与报告，未核验完整交付目录清单。[使用指南](usage.md#交付目录组织)
+新增交付组织规则：11/19 为正式输出计数，与工作区总文件数分开表述，不宣称
+"每次测评只新增 N 个文件"；交付目录只复制封存 run 与共享报告并保持相对布局，
+交接清点完整交付目录；浏览器 profile 放交付树外的专用临时目录，检查后只回收
+任务自建临时数据；准备与操作员证据留在原工作区分开存放。
+README、README.zh-CN、CHANGELOG 同步计数限定。纯文档改动，本地链接/锚点检查通过。
+
+真机重组由 San3an-win 独立会话（Codex auto-review）完成：原工作区
+`D:\bench-work\bonsai-597367d-after-release-20261011-112436` 未改动，重组前后
+递归 1,287 文件、全部文件大小与 SHA-256 一致；两个封存 run 与共享报告以
+`shutil.copy2` 复制到 `D:\inferyard\deliveries\bonsai-597367d\`，恰好 19 文件
+（2×8 证据 + 3 报告）且与原件逐字节一致。报告的 `../work/results/...` 相对
+来源引用保持有效，未使用 `--source-root`；入口为源码 venv 的 inferyard 0.0.1
+（Python 3.14.7）。报告、core run、SVG run 三次 `verify` 均退出 0
+（bytes/sources/semantic verified，两 run sealed，120/120 与 1/1）。
+本次未重渲染 HTML（`render_checked=false`）。首次 SVG 核验因 Windows GBK
+控制台无法输出自行车 emoji 退出 1，设置 `PYTHONIOENCODING=utf-8` 与
+`PYTHONUTF8=1` 后三次全部通过；该控制台编码问题与证据无关，另行开 issue 跟踪。
+未启动模型服务、发送模型请求或联网下载。
+
 ## 模型获取诊断与超时
 
 `model acquire` 已实现固定 Hugging Face/ModelScope 单 GGUF 获取、来源核验和候选绑定。

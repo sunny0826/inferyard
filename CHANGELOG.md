@@ -22,7 +22,9 @@
 - New runs use evidence layout 2: immutable frozen inputs, append-only
   observations and prepared request bodies, four sampling/event logs, and a
   manifest. A complete ordinary single run plus its report uses eleven files;
-  the default two-bundle scope plus one report uses nineteen. The core schema
+  the default two-bundle scope plus one report uses nineteen. These counts cover
+  formal run and report outputs only; preparation checks, operator scripts,
+  logs and other workspace artifacts are additional. The core schema
   remains 3. Existing legal schema-3 snapshot runs are read-only; evidence is
   never converted or overwritten. Request durability, dirty-state recovery,
   native clean receipts, stopping rules and score denominators are preserved.
