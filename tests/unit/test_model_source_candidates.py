@@ -15,17 +15,15 @@ from inferyard.platforms import windows_runtime_prepare
 from tests.unit.test_community_candidates import candidate_request
 from tests.unit.test_community_runtime import synthetic_runtime as runtime_fixture
 from tests.unit.test_device_preflight import gguf
-from tests.unit.test_model_source import FIXTURES, source
+from tests.unit.test_model_source import source
 
 synthetic_runtime = runtime_fixture
 
 
 def record_for(model, path):
-    from inferyard.platforms.model_source import parse_metadata
+    from tests.unit.test_model_source import record_for as build
 
-    record = parse_metadata(source("huggingface"), (FIXTURES / "huggingface.json").read_bytes())
-    record.update(bytes=model.stat().st_size, sha256=hashlib.sha256(model.read_bytes()).hexdigest())
-    path.write_text(json.dumps(record))
+    path.write_text(json.dumps(build(model)))
     return path
 
 

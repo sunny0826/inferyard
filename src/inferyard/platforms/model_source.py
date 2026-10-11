@@ -1,22 +1,23 @@
-"""Frozen single-file source parsing and remote metadata validation."""
+"""Frozen single-file source URL parsing and source-record validation."""
 
-import hashlib
+import math
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from urllib.parse import quote, unquote, urlencode, urlsplit
 
 from inferyard.config.preparation_io import PreparationError, read_json
-from inferyard.contracts.validation import ContractError, strict_json_loads
-from inferyard.platforms.model_source_budget import Budget
 
 DEFINITION = "remote_model_source.v1"
+DEFINITION_V2 = "remote_model_source.v2"
+DEFINITION_V3 = "remote_model_source.v3"
 PARSER = "remote-model-source-parser.v1"
 REVISION = re.compile(r"[0-9a-fA-F]{40}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 ENVIRONMENT_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 PLATFORMS = {"huggingface.co": "huggingface", "modelscope.cn": "modelscope"}
 MISMATCH = "model_source_metadata_mismatch"
+BUDGET_KEYS = frozenset({"total_seconds", "read_seconds", "cleanup_seconds", "max_bytes"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,20 +30,6 @@ class ModelSource:
     @property
     def host(self):
         return "huggingface.co" if self.platform == "huggingface" else "modelscope.cn"
-
-    @property
-    def metadata_url(self):
-        if self.platform == "huggingface":
-            return (
-                f"https://{self.host}/api/models/{self.repository}/revision/"
-                f"{self.revision}?blobs=true"
-            )
-        parameters = {"Revision": self.revision, "Recursive": "False"}
-        parent, separator, _ = self.path.rpartition("/")
-        if separator:
-            parameters["Root"] = parent
-        query = urlencode(parameters)
-        return f"https://{self.host}/api/v1/models/{self.repository}/repo/files?{query}"
 
     @property
     def download_url(self):
@@ -102,58 +89,21 @@ def validate_token_env(name):
         raise PreparationError("invalid_model_source")
 
 
-def _file_metadata(source, data):
-    if source.platform == "huggingface":
-        if data.get("id") != source.repository or data.get("sha") != source.revision:
-            raise ValueError
-        files = data["siblings"]
-        matches = [f for f in files if isinstance(f, dict) and f.get("rfilename") == source.path]
-        if len(matches) != 1:
-            raise ValueError
-        entry = matches[0]
-        size, digest = entry["size"], entry["lfs"]["sha256"]
-        if type(entry["lfs"]["size"]) is not int or entry["lfs"]["size"] != size:
-            raise ValueError
-    else:
-        if (
-            type(data.get("Code")) is not int
-            or data["Code"] != 200
-            or data.get("Success") is not True
-        ):
-            raise ValueError
-        files = data["Data"]["Files"]
-        matches = [f for f in files if isinstance(f, dict) and f.get("Path") == source.path]
-        if len(matches) != 1:
-            raise ValueError
-        entry = matches[0]
-        if entry.get("Type") != "blob":
-            raise ValueError
-        size, digest = entry["Size"], entry["Sha256"]
-    if not isinstance(files, list) or type(size) is not int or size <= 0:
+def _legacy_budget(value):
+    """Validate the v2 record's frozen acquisition budget without constructing it."""
+    if not isinstance(value, dict) or set(value) != BUDGET_KEYS:
         raise ValueError
-    if not isinstance(digest, str) or not SHA256.fullmatch(digest):
+    for key in ("total_seconds", "read_seconds", "cleanup_seconds"):
+        seconds = value[key]
+        try:
+            valid = type(seconds) in (int, float) and math.isfinite(seconds) and seconds > 0
+        except OverflowError:
+            valid = False
+        if not valid:
+            raise ValueError
+    if type(value["max_bytes"]) is not int or not 0 < value["max_bytes"] <= 20 * 1024**3:
         raise ValueError
-    return size, digest
-
-
-def parse_metadata(source, raw):
-    try:
-        data = strict_json_loads(raw.decode("utf-8"))
-        size, digest = _file_metadata(source, data)
-    except ContractError, ValueError, UnicodeError, KeyError, TypeError, AttributeError:
-        raise PreparationError(MISMATCH) from None
-    return {
-        "definition": DEFINITION,
-        "parser": PARSER,
-        "platform": source.platform,
-        "repository": source.repository,
-        "revision": source.revision,
-        "path": source.path,
-        "bytes": size,
-        "sha256": digest,
-        "metadata_sha256": hashlib.sha256(raw).hexdigest(),
-        "retrieved_at": datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
-    }
+    return value["max_bytes"]
 
 
 def source_declaration(record_path, model, *, repo=None, revision=None):
@@ -171,18 +121,20 @@ def source_declaration(record_path, model, *, repo=None, revision=None):
             "path",
             "bytes",
             "sha256",
-            "metadata_sha256",
             "retrieved_at",
         }
-        if record["definition"] == "remote_model_source.v2":
-            expected.add("acquisition_budget")
-            budget = record["acquisition_budget"]
-            if not isinstance(budget, dict) or set(budget) != set(Budget.__dataclass_fields__):
-                raise ValueError
-            declared = Budget(**budget)
-            if type(record["bytes"]) is not int or record["bytes"] > declared.max_bytes:
-                raise ValueError
-        elif record["definition"] != DEFINITION:
+        definition = record["definition"]
+        if definition == DEFINITION_V3:
+            pass
+        elif definition in (DEFINITION, DEFINITION_V2):
+            expected.add("metadata_sha256")
+            if definition == DEFINITION_V2:
+                expected.add("acquisition_budget")
+                if type(record["bytes"]) is not int or record["bytes"] > _legacy_budget(
+                    record["acquisition_budget"]
+                ):
+                    raise ValueError
+        else:
             raise ValueError
         if set(record) != expected or record["parser"] != PARSER:
             raise ValueError
@@ -191,7 +143,9 @@ def source_declaration(record_path, model, *, repo=None, revision=None):
             f"https://{host}/{record['repository']}/blob/"
             f"{record['revision']}/{quote(record['path'], safe='/')}"
         )
-        if source.revision != record["revision"] or not SHA256.fullmatch(record["metadata_sha256"]):
+        if source.revision != record["revision"]:
+            raise ValueError
+        if definition != DEFINITION_V3 and not SHA256.fullmatch(record["metadata_sha256"]):
             raise ValueError
         if type(record["bytes"]) is not int or record["bytes"] != model.size:
             raise ValueError
