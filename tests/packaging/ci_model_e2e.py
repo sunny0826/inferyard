@@ -5,9 +5,13 @@ The script is the single entry used by both local pre-flight and CI: it never
 downloads anything itself (assets arrive as arguments), starts the service the
 way the operator guide prescribes (external process, exact frozen arguments),
 then drives init -> device-check -> platform preparation -> bind -> run ->
-report -> verify, asserts the two-directory layout (bench-ops preparation,
-bench-work holding only the run and report), verifies the SVG animation
-statistics line, and finally re-verifies the report after deleting bench-ops.
+report -> verify for two bundles against the same service: zh-smoke (40
+quality-scored instruction/extraction cases) and zh-svg-pelican (the SVG
+gallery case). It asserts the two-directory layout (bench-ops preparation,
+bench-work holding only the runs and report), verifies the SVG animation
+statistics line, verifies the real scoring pipeline end to end (pass/fail
+quality states and the dashboard denominator), and finally re-verifies the
+report after deleting both bench-ops directories.
 """
 
 import argparse
@@ -23,7 +27,9 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-BUNDLE = "zh-svg-pelican"
+SMOKE_BUNDLE = "zh-smoke"
+SVG_BUNDLE = "zh-svg-pelican"
+SMOKE_CASES = 40
 RUN_FILES = (
     "environment.jsonl",
     "events.jsonl",
@@ -35,7 +41,7 @@ RUN_FILES = (
     "schedule.jsonl",
 )
 REPORT_FILES = ("artifact-manifest.json", "index.json", "report.html")
-EXPECTED_WORKSPACE_FILES = len(RUN_FILES) + len(REPORT_FILES)
+EXPECTED_WORKSPACE_FILES = 2 * len(RUN_FILES) + len(REPORT_FILES)
 
 
 def cli(args, *, check=True):
@@ -99,7 +105,39 @@ def read_candidate(path):
     return data["engine"]["binary_path"], data["engine"]["startup_args"], data["endpoint"]["url"]
 
 
-def fill_linux_template(template, out_dir, *, model, engine, assets, results, bundle_path):
+def prepare_runtime(root, preflight, engine_archive, runtime_archive):
+    """Windows only: prepare the frozen runtime once, shared by both candidates."""
+    recommended = json.loads(preflight.read_text(encoding="utf-8"))["recommendation"]["selected"][
+        "mode"
+    ]
+    if recommended == "cpu":
+        profile = "prism-b10743-adfffbe-win-cpu-x64"
+    elif recommended == "cuda":
+        profile = "prism-b10743-adfffbe-win-cuda-12.4-x64"
+        if runtime_archive is None:
+            raise SystemExit(
+                "preflight recommends cuda; pass --runtime-archive with the "
+                "cudart-llama-bin-win-cuda-12.4-x64.zip archive"
+            )
+    else:
+        raise SystemExit(f"unsupported recommended runtime mode: {recommended}")
+    prepare_args = [
+        "runtime",
+        "prepare",
+        "--profile",
+        profile,
+        "--archive",
+        str(engine_archive.resolve()),
+        "--out",
+        str(root / "assets" / "runtime"),
+    ]
+    if recommended == "cuda":
+        prepare_args += ["--runtime-archive", str(runtime_archive.resolve())]
+    cli(prepare_args)
+    return root / "assets" / "runtime" / "runtime-receipt.json"
+
+
+def fill_linux_template(template, out_dir, *, bundle, assets, results):
     details = json.loads((assets / "assets.json").read_text(encoding="utf-8"))
     startup_args = [
         "-m",
@@ -160,8 +198,10 @@ def fill_linux_template(template, out_dir, *, model, engine, assets, results, bu
         "REPLACE_ENGINE_PATH": str(details["engine"]["path"]),
         "REPLACE_ENGINE_SHA256": details["engine"]["sha256"],
         '"REPLACE_EXACT_STARTUP_ARGUMENTS"': ", ".join(json.dumps(item) for item in startup_args),
-        "REPLACE_SELECTED_BUNDLE": BUNDLE,
-        "REPLACE_BUNDLE_VERSION": "1.0.0",
+        "REPLACE_SELECTED_BUNDLE": bundle,
+        "REPLACE_BUNDLE_VERSION": json.loads(
+            (out_dir / "bundles" / f"{bundle}.json").read_text(encoding="utf-8")
+        )["version"],
         "REPLACE_ACTUAL_BACKGROUND_LOAD": "ci disposable runner",
         "\nthreads = 1": "\nthreads = 4",
         "\nthreads_batch = 1": "\nthreads_batch = 4",
@@ -195,13 +235,12 @@ def fill_linux_template(template, out_dir, *, model, engine, assets, results, bu
     return path
 
 
-def prepare_candidate(root, bench_ops, *, model, engine_binary, engine_archive, runtime_archive):
-    preflight = bench_ops / "preflight" / "device-preflight.json"
-    bundle_path = bench_ops / "bundles" / f"{BUNDLE}.json"
+def prepare_candidate(root, bench_ops, bundle, *, preflight, model, engine_binary):
+    bundle_path = bench_ops / "bundles" / f"{bundle}.json"
     results = root / "bench-work" / "results"
     system = platform.system()
+    out = bench_ops / "candidate"
     if system == "Darwin":
-        out = bench_ops / "candidate"
         cli(
             [
                 "config",
@@ -222,35 +261,6 @@ def prepare_candidate(root, bench_ops, *, model, engine_binary, engine_archive, 
     if system == "Windows":
         # The CLI requires the runtime profile to match the preflight's
         # recommended mode; a CUDA machine must not fall back to CPU.
-        recommended = json.loads(preflight.read_text(encoding="utf-8"))["recommendation"][
-            "selected"
-        ]["mode"]
-        if recommended == "cpu":
-            profile = "prism-b10743-adfffbe-win-cpu-x64"
-        elif recommended == "cuda":
-            profile = "prism-b10743-adfffbe-win-cuda-12.4-x64"
-            if runtime_archive is None:
-                raise SystemExit(
-                    "preflight recommends cuda; pass --runtime-archive with the "
-                    "cudart-llama-bin-win-cuda-12.4-x64.zip archive"
-                )
-        else:
-            raise SystemExit(f"unsupported recommended runtime mode: {recommended}")
-        prepare_args = [
-            "runtime",
-            "prepare",
-            "--profile",
-            profile,
-            "--archive",
-            str(engine_archive.resolve()),
-            "--out",
-            str(bench_ops / "assets" / "runtime"),
-        ]
-        if recommended == "cuda":
-            prepare_args += ["--runtime-archive", str(runtime_archive.resolve())]
-        cli(prepare_args)
-        runtime = bench_ops / "assets" / "runtime"
-        out = bench_ops / "candidate"
         cli(
             [
                 "config",
@@ -258,7 +268,7 @@ def prepare_candidate(root, bench_ops, *, model, engine_binary, engine_archive, 
                 "--preflight",
                 str(preflight),
                 "--runtime-receipt",
-                str(runtime / "runtime-receipt.json"),
+                str(root / "assets" / "runtime" / "runtime-receipt.json"),
                 "--bundle",
                 str(bundle_path),
                 "--results",
@@ -285,21 +295,19 @@ def prepare_candidate(root, bench_ops, *, model, engine_binary, engine_archive, 
         return fill_linux_template(
             bench_ops / "configs" / "linux.example.toml",
             bench_ops,
-            model=model,
-            engine=engine_binary,
+            bundle=bundle,
             assets=assets,
             results=results,
-            bundle_path=bundle_path,
         )
     raise SystemExit(f"unsupported platform {system}")
 
 
-def assert_workspace(bench_work, run_dir):
+def assert_workspace(bench_work, run_dirs):
     files = sorted(
         path.relative_to(bench_work).as_posix() for path in bench_work.rglob("*") if path.is_file()
     )
     expected = sorted(
-        [f"results/{run_dir.name}/{name}" for name in RUN_FILES]
+        [f"results/{run_dir.name}/{name}" for run_dir in run_dirs for name in RUN_FILES]
         + [f"report/{name}" for name in REPORT_FILES]
     )
     if files != expected:
@@ -307,9 +315,62 @@ def assert_workspace(bench_work, run_dir):
             "workspace layout mismatch\n"
             f"expected {EXPECTED_WORKSPACE_FILES} files: {expected}\nfound: {files}"
         )
-    html = (bench_work / "report" / "report.html").read_text(encoding="utf-8")
-    if "动画元素统计" not in html:
-        raise SystemExit("report.html is missing the SVG animation statistics line")
+
+
+def assert_scoring(report):
+    """Prove the real scoring pipeline ran on real model output, not just wiring."""
+    index = json.loads((report / "index.json").read_text(encoding="utf-8"))
+    smoke = next(run for run in index["runs"] if len(run["requests"]) == SMOKE_CASES)
+    svg = next(run for run in index["runs"] if len(run["requests"]) == 1)
+    quality = smoke["dashboard"]["quality"]
+    if quality["denominator"] != SMOKE_CASES or quality["complete"] is not True:
+        raise SystemExit(f"smoke quality denominator incomplete: {quality}")
+    states = [row["quality"] for row in smoke["requests"]]
+    if any(state not in ("pass", "fail") for state in states):
+        raise SystemExit(f"smoke cases were not quality-scored: {sorted(set(states))}")
+    if any(row["state"] != "completed" for row in smoke["requests"]):
+        raise SystemExit("smoke run contains requests that did not complete")
+    if quality["numerator"] != states.count("pass"):
+        raise SystemExit(
+            f"dashboard numerator {quality['numerator']} != pass count {states.count('pass')}"
+        )
+    if svg["requests"][0]["quality"] != "not_applicable" or len(svg["svg_gallery"]) != 1:
+        raise SystemExit("svg run lost its not_applicable score or gallery entry")
+    if index.get("comparison") is None:
+        raise SystemExit("two-run report is missing the side-by-side comparison")
+    html = (report / "report.html").read_text(encoding="utf-8")
+    for marker in ("答案通过数", "动画元素统计"):
+        if marker not in html:
+            raise SystemExit(f"report.html is missing the {marker} line")
+    return {
+        "pass": states.count("pass"),
+        "fail": states.count("fail"),
+        "denominator": quality["denominator"],
+    }
+
+
+def run_leg(bench_ops, candidate, *, pid, url):
+    """Bind the shared live service and execute one bundle end to end."""
+    _, bound = cli(
+        [
+            "config",
+            "bind",
+            "--candidate",
+            str(candidate),
+            "--pid",
+            str(pid),
+            "--endpoint",
+            url,
+            "--out",
+            str(bench_ops / "bound"),
+        ]
+    )
+    if bound["status"] != "prepared":
+        raise SystemExit(f"bind failed: {bound['status']}")
+    _, run = cli(["run", "--config", str(bench_ops / "bound" / "config.toml")])
+    if run["status"] != "finished" or run["completeness"] != "complete":
+        raise SystemExit(f"run failed: {run['status']} / {run['completeness']}")
+    return Path(run["evidence_dir"])
 
 
 def main():
@@ -328,38 +389,54 @@ def main():
     if root.exists():
         raise SystemExit(f"--out must not exist: {root}")
     root.mkdir(parents=True)
-    bench_ops = root / "bench-ops"
+    bench_ops_smoke = root / "bench-ops-smoke"
+    bench_ops_svg = root / "bench-ops-svg"
     bench_work = root / "bench-work"
 
-    _, init = cli(["init", "--out", str(bench_ops), "--bundle", BUNDLE])
+    _, smoke_init = cli(["init", "--out", str(bench_ops_smoke), "--bundle", SMOKE_BUNDLE])
+    _, _ = cli(["init", "--out", str(bench_ops_svg), "--bundle", SVG_BUNDLE])
+    preflight = bench_ops_smoke / "preflight" / "device-preflight.json"
     _, _ = cli(
         [
             "device-check",
             "--model",
             str(args.model),
             "--out",
-            str(bench_ops / "preflight"),
+            str(bench_ops_smoke / "preflight"),
             "--json",
         ]
     )
-    if init["status"] != "prepared":
-        raise SystemExit(f"init failed: {init['status']}")
+    if smoke_init["status"] != "prepared":
+        raise SystemExit(f"init failed: {smoke_init['status']}")
 
     engine_binary = (
         extract_engine(args.engine_archive, root / "assets" / "engine")
         if platform.system() != "Windows"
         else None
     )
-    candidate = prepare_candidate(
+    if platform.system() == "Windows":
+        prepare_runtime(root, preflight, args.engine_archive, args.runtime_archive)
+    smoke_candidate = prepare_candidate(
         root,
-        bench_ops,
+        bench_ops_smoke,
+        SMOKE_BUNDLE,
+        preflight=preflight,
         model=args.model,
         engine_binary=engine_binary,
-        engine_archive=args.engine_archive,
-        runtime_archive=args.runtime_archive,
     )
-    binary, startup_args, url = read_candidate(candidate)
+    svg_candidate = prepare_candidate(
+        root,
+        bench_ops_svg,
+        SVG_BUNDLE,
+        preflight=preflight,
+        model=args.model,
+        engine_binary=engine_binary,
+    )
+    identity = read_candidate(smoke_candidate)
+    if identity != read_candidate(svg_candidate):
+        raise SystemExit("candidates disagree on the frozen service identity")
 
+    binary, startup_args, url = identity
     server_log = (root / "server.log").open("w", encoding="utf-8")
     try:
         service = subprocess.Popen(
@@ -367,31 +444,23 @@ def main():
         )
         try:
             wait_health(url)
-            _, bound = cli(
+            smoke_dir = run_leg(bench_ops_smoke, smoke_candidate, pid=service.pid, url=url)
+            svg_dir = run_leg(bench_ops_svg, svg_candidate, pid=service.pid, url=url)
+            cli(
                 [
-                    "config",
-                    "bind",
-                    "--candidate",
-                    str(candidate),
-                    "--pid",
-                    str(service.pid),
-                    "--endpoint",
-                    url,
+                    "report",
+                    "--runs",
+                    str(smoke_dir),
+                    str(svg_dir),
                     "--out",
-                    str(bench_ops / "bound"),
+                    str(bench_work / "report"),
                 ]
             )
-            if bound["status"] != "prepared":
-                raise SystemExit(f"bind failed: {bound['status']}")
-            _, run = cli(["run", "--config", str(bench_ops / "bound" / "config.toml")])
-            if run["status"] != "finished":
-                raise SystemExit(f"run failed: {run['status']}")
-            run_dir = Path(run["evidence_dir"])
-            cli(["report", "--runs", str(run_dir), "--out", str(bench_work / "report")])
             _, verified = cli(["verify", "--path", str(bench_work / "report"), "--rerender"])
             if verified["details"].get("verified") is not True:
                 raise SystemExit(f"verify failed: {verified}")
-            assert_workspace(bench_work, run_dir)
+            assert_workspace(bench_work, [smoke_dir, svg_dir])
+            quality = assert_scoring(bench_work / "report")
         finally:
             service.terminate()
             try:
@@ -401,14 +470,17 @@ def main():
     finally:
         server_log.close()
 
-    shutil.rmtree(bench_ops)
+    shutil.rmtree(bench_ops_smoke)
+    shutil.rmtree(bench_ops_svg)
     code, after = cli(["verify", "--path", str(bench_work / "report")], check=False)
     if code != 0 or after["details"].get("verified") is not True:
         raise SystemExit(f"verify after bench-ops cleanup failed: {after}")
 
     summary = {
         "platform": f"{platform.system()}-{platform.machine()}",
-        "run_dir": run_dir.name,
+        "smoke_run_dir": smoke_dir.name,
+        "svg_run_dir": svg_dir.name,
+        "smoke_quality": quality,
         "workspace_files": EXPECTED_WORKSPACE_FILES,
         "verified_before_cleanup": True,
         "verified_after_cleanup": True,
