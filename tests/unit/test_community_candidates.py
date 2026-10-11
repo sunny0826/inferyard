@@ -109,6 +109,27 @@ def test_macos_candidate_preserves_existing_generation_and_exact_template(tmp_pa
     assert config["conditions"]["profile"] == "balanced"
 
 
+def test_macos_candidate_keeps_unknown_profile_when_environment_has_none(tmp_path, monkeypatch):
+    monkeypatch.setattr(preparation_io, "native_platform", lambda: ("Darwin", "arm64"))
+    monkeypatch.setattr(
+        "inferyard.platforms.identity.environment_snapshot",
+        lambda: {"platform": "Darwin", "profile": None},
+    )
+    model = gguf(tmp_path / "chosen.gguf", "chosen")
+    engine = tmp_path / "llama-server"
+    engine.write_bytes(b"synthetic, never executed")
+    (tmp_path / "libggml-metal.dylib").write_bytes(b"library")
+    request = candidate_request(tmp_path, model, engine=engine, system="Darwin")
+    monkeypatch.setattr(community_candidates, "fresh_macos", lambda selected, _: selected)
+    monkeypatch.setattr(community_candidates, "query_version", lambda *a, **k: {})
+    monkeypatch.setattr(
+        community_candidates, "model_template", lambda _: ({"general.name": "chosen"}, b"x\r\ny\r")
+    )
+    result = community_candidates.create(request)
+    config = load_config(result["candidate"]).config.to_dict()
+    assert config["conditions"]["profile"] == "unknown"
+
+
 @pytest.mark.parametrize(
     "change",
     ["bool_threads", "wrong_platform", "blocked", "wrong_mode", "bad_gpu", "results_inside"],

@@ -83,7 +83,10 @@ def build_config(
         },
     )
     config["telemetry"]["service_rss_required"] = True
-    config["conditions"]["profile"] = environment["profile"]
+    # Keep the "unknown" fallback when the machine reports no power profile;
+    # the macOS admission exempts unknown fields whose observed value is None.
+    if environment["profile"] is not None:
+        config["conditions"]["profile"] = environment["profile"]
     if environment.get("macos_power_policy") is not None:
         config["conditions"]["macos_power_policy"] = environment["macos_power_policy"]
     config["engine"]["startup_args"] = [
