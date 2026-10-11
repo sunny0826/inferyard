@@ -82,3 +82,38 @@ MEMORY_CHECK = obj(
         "limitations": array(LABEL),
     }
 )
+
+# Keep the complete macOS v1 branch byte-for-byte compatible. Windows has its own
+# kind because ownership and completeness add measurement requirements.
+WINDOWS_PROCESS = obj(
+    {
+        **PROCESS_FIELDS,
+        "private_commit": READING,
+        "ownership": obj(
+            {
+                "relation": enum("same_account", "other_account", "unknown"),
+                "session_id": nullable(NAT),
+                "missing_reason": nullable(LABEL),
+            }
+        ),
+    }
+)
+WINDOWS_GROUP = obj(
+    {
+        **GROUP["properties"],
+        "grouping_source": enum("verified_executable_owner_session"),
+        "private_commit_known_bytes": NAT,
+        "private_commit_total_bytes": nullable(NAT),
+        "private_commit_complete": BOOL,
+    }
+)
+WINDOWS_MEMORY_CHECK = obj(
+    {
+        **MEMORY_CHECK["properties"],
+        "kind": enum("memory_check.windows.v1"),
+        "platform": enum("Windows"),
+        "processes": array(WINDOWS_PROCESS),
+        "groups": array(WINDOWS_GROUP),
+    }
+)
+MEMORY_CHECK = {"anyOf": [MEMORY_CHECK, WINDOWS_MEMORY_CHECK]}

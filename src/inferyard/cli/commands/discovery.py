@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 def add_commands(commands):
-    memory = commands.add_parser("memory-check", help="inspect macOS applications and process RSS")
+    memory = commands.add_parser("memory-check", help="inspect macOS/Windows process memory")
     memory.add_argument("--protect-pid", type=int, action="append", dest="protect_pids")
     memory.add_argument("--out", type=Path, help="save diagnostic JSON to a new directory")
     device = commands.add_parser(

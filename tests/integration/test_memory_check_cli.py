@@ -54,7 +54,7 @@ def test_output_does_not_leak_internal_paths_or_sentinels_or_signal_user_process
     row["environment"] = {"SENTINEL": sentinel}
     monkeypatch.setenv("MEMORY_DIAGNOSTIC_SENTINEL", sentinel)
     monkeypatch.setattr(memory_macos, "collect", lambda **_: snapshot([row]))
-    monkeypatch.setattr(memory_check.os, "getuid", lambda: 501)
+    monkeypatch.setattr(memory_check.os, "getuid", lambda: 501, raising=False)
 
     def forbidden(*args, **kwargs):
         raise AssertionError("read-only command performed external operation")
@@ -114,6 +114,7 @@ class Reject(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
         blocked = (
             "psutil", "inferyard.platforms.memory_macos", "inferyard.application.memory_check",
+            "inferyard.platforms.memory_windows", "inferyard.platforms.memory_windows_api",
         )
         if fullname in blocked:
             raise AssertionError(fullname)

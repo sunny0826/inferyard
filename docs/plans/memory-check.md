@@ -1,14 +1,14 @@
 # 应用内存诊断后续平台计划
 
-macOS MC-1a 已实施；规则见[诊断契约](../contracts/memory-check-contract.md)，当前验证见
+macOS MC-1a 与 Windows MC-1c 的采集/CLI 已实施；规则见[诊断契约](../contracts/memory-check-contract.md)，当前验证见
 [backlog](../backlog.md#新功能应用内存诊断)。本页仅保留未完成工作，不将 macOS 覆盖外推到其他平台。
 
 | 单元 | 依赖 | 范围 | 完成条件 |
 | --- | --- | --- | --- |
 | MC-1b | 已有 macOS 契约与 CLI | Linux 采集、分派、相关契约和文档 | 软件回归与 Linux 原生场景各自有回执 |
-| MC-1c | 已有 macOS 契约与 CLI | Windows 采集、分派、相关契约和文档 | 软件回归与 Windows 原生场景各自有回执 |
+| MC-1c 剩余验证 | Windows 采集与 CLI | 额外原生场景与源码外安装 | 各场景独立回执，不外推当前清单覆盖 |
 
-两个单元独立，不互相阻塞；没有原生机器时只标对应平台未验证。当前 Linux/Windows
+两个单元独立，不互相阻塞；没有原生机器时只标对应平台未验证。当前 Linux
 `memory-check` 返回不支持平台/退出 2，不能用空清单或模拟结果代替原生成功。
 
 ## MC-1b：Linux
@@ -22,14 +22,14 @@ macOS MC-1a 已实施；规则见[诊断契约](../contracts/memory-check-contra
 - [ ] Linux 原生验证身份/权限/进程退出、显式保护、期限/进程上限、新目录保存及源码外安装，
   记录来源与缺测；观察成本后冻结该平台预算。
 
-## MC-1c：Windows
+## MC-1c：Windows 剩余原生验证
 
-- [ ] 启动时核对 checkout、工具链，读取 [Windows](../../WINDOWS.md) 与诊断契约。
-- [ ] 新增 `platforms/memory_windows.py` 及测试；复用已有 psutil，注明 working set 口径，
-  不用 private bytes 冒充 RSS。
-- [ ] 为真实可得应用/父身份设计归组依据；冲突与未识别对象保留 unknown，不按显示名猜归属。
-- [ ] 同步契约、样例、生成 Schema、平台分派和文档；原生验证权限、多账户、身份变化、
-  保护、取消/期限/上限、持久化与源码外安装，观察并冻结平台预算。
+软件回归及当前 Windows 只读 CLI 清单已记录于 backlog，5 秒/4096 PID 是采集限制，非性能承诺。
+以下场景未由本次清单覆盖，不使用软件注入替代其原生资格：
+
+- [ ] 专门控制多账户/多 session、权限变化、PID 复用与第三方安全软件进程树的原生场景。
+- [ ] 原生 Ctrl+C 交互取消、实际大进程表上限和慢查询期限；已有自有子进程/模拟边界回归。
+- [ ] 新候选 wheel 在源码外安装后的 Windows memory-check 验证。
 
 ## 共同边界
 

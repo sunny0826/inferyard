@@ -2,293 +2,201 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:local-ai-bench:schema:v3:memory_check",
   "title": "InferYard memory_check v3",
-  "type": "object",
-  "properties": {
-    "schema_version": {
-      "type": "integer",
-      "const": 3
-    },
-    "kind": {
-      "type": "string",
-      "enum": [
-        "memory_check.v1"
-      ]
-    },
-    "platform": {
-      "type": "string",
-      "enum": [
-        "Darwin"
-      ]
-    },
-    "captured_at": {
-      "type": "string",
-      "minLength": 1
-    },
-    "collection_ns": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "memory_total": {
+  "anyOf": [
+    {
       "type": "object",
       "properties": {
-        "value": {
-          "anyOf": [
-            {
-              "type": "integer",
-              "minimum": 0
-            },
-            {
-              "type": "null"
-            }
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "memory_check.v1"
           ]
         },
-        "source": {
+        "platform": {
+          "type": "string",
+          "enum": [
+            "Darwin"
+          ]
+        },
+        "captured_at": {
           "type": "string",
           "minLength": 1
         },
-        "missing_reason": {
-          "anyOf": [
-            {
-              "type": "string",
-              "minLength": 1
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "required": [
-        "value",
-        "source",
-        "missing_reason"
-      ],
-      "additionalProperties": false
-    },
-    "memory_available": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "anyOf": [
-            {
-              "type": "integer",
-              "minimum": 0
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "source": {
-          "type": "string",
-          "minLength": 1
-        },
-        "missing_reason": {
-          "anyOf": [
-            {
-              "type": "string",
-              "minLength": 1
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      },
-      "required": [
-        "value",
-        "source",
-        "missing_reason"
-      ],
-      "additionalProperties": false
-    },
-    "coverage": {
-      "type": "object",
-      "properties": {
-        "total_pids": {
+        "collection_ns": {
           "type": "integer",
           "minimum": 0
         },
-        "observed": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "missing": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "unobserved": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "complete": {
-          "type": "boolean"
-        },
-        "truncation_reason": {
-          "anyOf": [
-            {
-              "type": "string",
-              "enum": [
-                "deadline",
-                "process_limit"
+        "memory_total": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
-            {
-              "type": "null"
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "missing_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
-          ]
-        }
-      },
-      "required": [
-        "total_pids",
-        "observed",
-        "missing",
-        "unobserved",
-        "complete",
-        "truncation_reason"
-      ],
-      "additionalProperties": false
-    },
-    "budget": {
-      "type": "object",
-      "properties": {
-        "deadline_seconds": {
-          "type": "integer",
-          "minimum": 1
+          },
+          "required": [
+            "value",
+            "source",
+            "missing_reason"
+          ],
+          "additionalProperties": false
         },
-        "max_processes": {
-          "type": "integer",
-          "minimum": 1
-        }
-      },
-      "required": [
-        "deadline_seconds",
-        "max_processes"
-      ],
-      "additionalProperties": false
-    },
-    "protected_requests": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "pid": {
-            "type": "integer",
-            "minimum": 1
+        "memory_available": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "missing_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
           },
-          "start_identity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "verified",
-              "unavailable"
-            ]
-          },
-          "reason": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
+          "required": [
+            "value",
+            "source",
+            "missing_reason"
+          ],
+          "additionalProperties": false
         },
-        "required": [
-          "pid",
-          "start_identity",
-          "status",
-          "reason"
-        ],
-        "additionalProperties": false
-      },
-      "minItems": 0
-    },
-    "processes": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "pid": {
-            "type": "integer",
-            "minimum": 0
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "total_pids": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "observed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "missing": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unobserved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "complete": {
+              "type": "boolean"
+            },
+            "truncation_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "deadline",
+                    "process_limit"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
           },
-          "start_identity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "required": [
+            "total_pids",
+            "observed",
+            "missing",
+            "unobserved",
+            "complete",
+            "truncation_reason"
+          ],
+          "additionalProperties": false
+        },
+        "budget": {
+          "type": "object",
+          "properties": {
+            "deadline_seconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_processes": {
+              "type": "integer",
+              "minimum": 1
+            }
           },
-          "identity_source": {
-            "type": "string",
-            "minLength": 1
-          },
-          "parent_pid": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "parent_start_identity": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "parent_identity_missing_reason": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "display_name": {
-            "type": "string",
-            "minLength": 1
-          },
-          "rss": {
+          "required": [
+            "deadline_seconds",
+            "max_processes"
+          ],
+          "additionalProperties": false
+        },
+        "protected_requests": {
+          "type": "array",
+          "items": {
             "type": "object",
             "properties": {
-              "value": {
+              "pid": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "start_identity": {
                 "anyOf": [
                   {
                     "type": "integer",
-                    "minimum": 0
+                    "minimum": 1
                   },
                   {
                     "type": "null"
                   }
                 ]
               },
-              "source": {
+              "status": {
                 "type": "string",
-                "minLength": 1
+                "enum": [
+                  "verified",
+                  "unavailable"
+                ]
               },
-              "missing_reason": {
+              "reason": {
                 "anyOf": [
                   {
                     "type": "string",
@@ -301,238 +209,970 @@
               }
             },
             "required": [
-              "value",
-              "source",
-              "missing_reason"
+              "pid",
+              "start_identity",
+              "status",
+              "reason"
             ],
             "additionalProperties": false
           },
-          "missing_reason": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "group_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "decision": {
+          "minItems": 0
+        },
+        "processes": {
+          "type": "array",
+          "items": {
             "type": "object",
             "properties": {
-              "status": {
-                "type": "string",
-                "enum": [
-                  "protected",
-                  "unknown",
-                  "review"
-                ]
-              },
-              "reasons": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "pid": {
-                      "anyOf": [
-                        {
-                          "type": "integer",
-                          "minimum": 0
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
-                  },
-                  "required": [
-                    "code",
-                    "pid"
-                  ],
-                  "additionalProperties": false
-                },
-                "minItems": 1
-              }
-            },
-            "required": [
-              "status",
-              "reasons"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "required": [
-          "pid",
-          "start_identity",
-          "identity_source",
-          "parent_pid",
-          "parent_start_identity",
-          "display_name",
-          "rss",
-          "missing_reason",
-          "group_id",
-          "decision"
-        ],
-        "additionalProperties": false
-      },
-      "minItems": 0
-    },
-    "groups": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "group_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "display_name": {
-            "type": "string",
-            "minLength": 1
-          },
-          "member_pids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "minItems": 1
-          },
-          "root_pids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "minimum": 0
-            },
-            "minItems": 0
-          },
-          "grouping_source": {
-            "type": "string",
-            "enum": [
-              "verified_bundle",
-              "verified_bundle_and_parent"
-            ]
-          },
-          "rss_known_bytes": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "rss_total_bytes": {
-            "anyOf": [
-              {
+              "pid": {
                 "type": "integer",
                 "minimum": 0
               },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "rss_complete": {
-            "type": "boolean"
-          },
-          "decision": {
-            "type": "object",
-            "properties": {
-              "status": {
-                "type": "string",
-                "enum": [
-                  "protected",
-                  "unknown",
-                  "review"
+              "start_identity": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
-              "reasons": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "pid": {
-                      "anyOf": [
-                        {
-                          "type": "integer",
-                          "minimum": 0
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    }
+              "identity_source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "parent_pid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "parent_start_identity": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
                   },
-                  "required": [
-                    "code",
-                    "pid"
-                  ],
-                  "additionalProperties": false
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parent_identity_missing_reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rss": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "missing_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
                 },
-                "minItems": 1
+                "required": [
+                  "value",
+                  "source",
+                  "missing_reason"
+                ],
+                "additionalProperties": false
+              },
+              "missing_reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "group_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "decision": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "protected",
+                      "unknown",
+                      "review"
+                    ]
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "pid": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "pid"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "status",
+                  "reasons"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
-              "status",
-              "reasons"
+              "pid",
+              "start_identity",
+              "identity_source",
+              "parent_pid",
+              "parent_start_identity",
+              "display_name",
+              "rss",
+              "missing_reason",
+              "group_id",
+              "decision"
             ],
             "additionalProperties": false
-          }
+          },
+          "minItems": 0
         },
-        "required": [
-          "group_id",
-          "display_name",
-          "member_pids",
-          "root_pids",
-          "grouping_source",
-          "rss_known_bytes",
-          "rss_total_bytes",
-          "rss_complete",
-          "decision"
-        ],
-        "additionalProperties": false
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "group_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "member_pids": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 1
+              },
+              "root_pids": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 0
+              },
+              "grouping_source": {
+                "type": "string",
+                "enum": [
+                  "verified_bundle",
+                  "verified_bundle_and_parent"
+                ]
+              },
+              "rss_known_bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "rss_total_bytes": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "rss_complete": {
+                "type": "boolean"
+              },
+              "decision": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "protected",
+                      "unknown",
+                      "review"
+                    ]
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "pid": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "pid"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "status",
+                  "reasons"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "group_id",
+              "display_name",
+              "member_pids",
+              "root_pids",
+              "grouping_source",
+              "rss_known_bytes",
+              "rss_total_bytes",
+              "rss_complete",
+              "decision"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
       },
-      "minItems": 0
+      "required": [
+        "schema_version",
+        "kind",
+        "platform",
+        "captured_at",
+        "collection_ns",
+        "memory_total",
+        "memory_available",
+        "coverage",
+        "budget",
+        "protected_requests",
+        "processes",
+        "groups",
+        "limitations"
+      ],
+      "additionalProperties": false
     },
-    "limitations": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "memory_check.windows.v1"
+          ]
+        },
+        "platform": {
+          "type": "string",
+          "enum": [
+            "Windows"
+          ]
+        },
+        "captured_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "collection_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "memory_total": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "missing_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "value",
+            "source",
+            "missing_reason"
+          ],
+          "additionalProperties": false
+        },
+        "memory_available": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "missing_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "value",
+            "source",
+            "missing_reason"
+          ],
+          "additionalProperties": false
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "total_pids": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "observed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "missing": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unobserved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "complete": {
+              "type": "boolean"
+            },
+            "truncation_reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "deadline",
+                    "process_limit"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "total_pids",
+            "observed",
+            "missing",
+            "unobserved",
+            "complete",
+            "truncation_reason"
+          ],
+          "additionalProperties": false
+        },
+        "budget": {
+          "type": "object",
+          "properties": {
+            "deadline_seconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_processes": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "deadline_seconds",
+            "max_processes"
+          ],
+          "additionalProperties": false
+        },
+        "protected_requests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pid": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "start_identity": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "verified",
+                  "unavailable"
+                ]
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "pid",
+              "start_identity",
+              "status",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "processes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "start_identity": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "identity_source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "parent_pid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "parent_start_identity": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parent_identity_missing_reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "rss": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "missing_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "value",
+                  "source",
+                  "missing_reason"
+                ],
+                "additionalProperties": false
+              },
+              "missing_reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "group_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "decision": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "protected",
+                      "unknown",
+                      "review"
+                    ]
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "pid": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "pid"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "status",
+                  "reasons"
+                ],
+                "additionalProperties": false
+              },
+              "private_commit": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "missing_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "value",
+                  "source",
+                  "missing_reason"
+                ],
+                "additionalProperties": false
+              },
+              "ownership": {
+                "type": "object",
+                "properties": {
+                  "relation": {
+                    "type": "string",
+                    "enum": [
+                      "same_account",
+                      "other_account",
+                      "unknown"
+                    ]
+                  },
+                  "session_id": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "missing_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "relation",
+                  "session_id",
+                  "missing_reason"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "pid",
+              "start_identity",
+              "identity_source",
+              "parent_pid",
+              "parent_start_identity",
+              "parent_identity_missing_reason",
+              "display_name",
+              "rss",
+              "missing_reason",
+              "group_id",
+              "decision",
+              "private_commit",
+              "ownership"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "group_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "member_pids": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 1
+              },
+              "root_pids": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "minItems": 0
+              },
+              "grouping_source": {
+                "type": "string",
+                "enum": [
+                  "verified_executable_owner_session"
+                ]
+              },
+              "rss_known_bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "rss_total_bytes": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "rss_complete": {
+                "type": "boolean"
+              },
+              "decision": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "protected",
+                      "unknown",
+                      "review"
+                    ]
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "pid": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "pid"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "status",
+                  "reasons"
+                ],
+                "additionalProperties": false
+              },
+              "private_commit_known_bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "private_commit_total_bytes": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "private_commit_complete": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "group_id",
+              "display_name",
+              "member_pids",
+              "root_pids",
+              "grouping_source",
+              "rss_known_bytes",
+              "rss_total_bytes",
+              "rss_complete",
+              "decision",
+              "private_commit_known_bytes",
+              "private_commit_total_bytes",
+              "private_commit_complete"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
       },
-      "minItems": 0
+      "required": [
+        "schema_version",
+        "kind",
+        "platform",
+        "captured_at",
+        "collection_ns",
+        "memory_total",
+        "memory_available",
+        "coverage",
+        "budget",
+        "protected_requests",
+        "processes",
+        "groups",
+        "limitations"
+      ],
+      "additionalProperties": false
     }
-  },
-  "required": [
-    "schema_version",
-    "kind",
-    "platform",
-    "captured_at",
-    "collection_ns",
-    "memory_total",
-    "memory_available",
-    "coverage",
-    "budget",
-    "protected_requests",
-    "processes",
-    "groups",
-    "limitations"
-  ],
-  "additionalProperties": false
+  ]
 }

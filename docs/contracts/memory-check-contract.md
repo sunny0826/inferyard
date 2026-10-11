@@ -1,8 +1,10 @@
 # 应用内存诊断契约
 
-`memory-check` 是 macOS 的只读诊断，供 agent 和用户判断是否手动退出应用。
+`memory-check` 是 macOS/Windows 的只读诊断，供 agent 和用户查看应用或进程内存。
 它不进入正式采样、不管理服务、不关闭用户进程，也不提供安全关闭或可释放内存的承诺。
-Linux/Windows 当前退出 2（`unsupported_platform`）；后续平台独立实施和验收。
+Linux 当前退出 2（`unsupported_platform`）。Windows 是 issue #25 的新增能力，
+基线 `597367d` 上的 Windows 拒绝是当时 macOS-only 契约的预期行为。
+下文原有 bundle/review 规则属于 macOS；Windows 的独立范围见本页末节。
 
 ## 命令与保存
 
@@ -19,7 +21,7 @@ inferyard --schema memory_check
 
 ## 输出与读取支持
 
-新诊断为 `schema_version = 3`、`kind = memory_check.v1`，与 run/sample/device_preflight 独立。
+macOS 诊断为 `schema_version = 3`、`kind = memory_check.v1`，与 run/sample/device_preflight 独立。
 `--schema memory_check` 输出结构 Schema；`contracts.memory_check.read_memory_check` 还核验
 重复键、PID/组唯一性、成员关系、原因、保护声明、RSS 归约和覆盖计数。未知 kind/旧版本拒绝，
 不迁移或转换历史诊断。`verify` 不接受本诊断为正式 run 或报告证据。
@@ -103,3 +105,49 @@ deadline 含采集子进程启动，结束时可增加最多约 0.5 秒的有界
 
 用户手动退出应用后重新调用，比较同来源主机可用内存的观测变化；不据此推断因果收益。
 准备模型运行仍使用原有实时 preflight，证据结论遵循[血缘规则](../data-contract.md#证据血缘与比较结论)。
+
+## Windows：独立来源与保守分组
+
+Windows 使用 `schema_version = 3`、`kind = memory_check.windows.v1`；
+`--schema memory_check` 是两个独立 kind 的联合。旧 macOS v1 的字段、枚举、必需条件和读取
+支持不变，不迁移原件。混用平台/kind、伪造汇总、缺测计数或 review 均拒绝。
+设计选择见 [ADR 049](../decisions/049-windows-memory-inventory.md)。
+
+固定采集预算为 5 秒、4096 PID，期限含独立 Python worker 启动；超时/取消仅回收自有 worker，
+最多另等 0.5 秒。Windows 使用 `communicate(timeout=...)`，不依赖 POSIX 管道 selector。
+直接启动当前虚拟环境的基础解释器并继承模块搜索路径，避免 Windows venv 启动器另起
+解释器后仅回收启动器、遗留真实 worker；回归核对 Popen 句柄 PID 与 worker 实际 PID。
+到期保留已完整接收的 JSON 行；未完成枚举/未读主机数值保留缺测，不伪造完整空清单。
+主进程校验、归组、序列化和启动 uv 等时间另计。
+
+| 观测 | 来源和单位 |
+| --- | --- |
+| `start_identity` | `GetProcessTimes` 的完整 creation FILETIME，1601 年起的整数 100ns；不是浮点 create_time |
+| `rss` | psutil Windows `WorkingSetSize`，bytes；可能包含共享页 |
+| `private_commit` | psutil `memory_info().private` / `PrivateUsage`，bytes；私有提交，可能不驻留物理内存 |
+| `memory_total` / `memory_available` | `GlobalMemoryStatusEx` 的 `ullTotalPhys` / `ullAvailPhys`，bytes |
+| `ownership` | TokenUser SID 和 session 前后复查；公开仅账户关系、session_id、缺测原因，不输出 SID/用户名 |
+
+来源说明参见 [psutil 7.2.2](https://psutil.readthedocs.io/stable/index.html#psutil.Process.memory_info)
+和 [Windows 进程枚举](https://learn.microsoft.com/en-us/windows/win32/procthread/process-enumeration)。
+working set 的跨进程总和可能重复计算共享页；private commit 不是 working set，也不是可释放 RAM。
+两者独立归约 known/total/complete，缺测为 null 加原因，不能互相填补。
+
+自身 FILETIME、所有者或 session 变化会丢弃两项内存、启动身份与分组。
+所有者/session 不可读仍可保留已核验自身身份的内存，但 ownership 明确 unknown。
+父身份缺测/变化只清空父边；父启动晚于子启动的关系不传播保护。显式保护绑定本次启动身份。
+`coverage.missing` 每个进程计一次，涵盖自身、父关系、所有者/session 或 private commit 缺测；
+必需主机读数/保护/枚举也须完整才退出 0。未知应用用途本身不导致退出 3。
+
+内部按规范 EXE 路径、文件身份、已知所有者和 session 归组，以摘要输出 group_id；不同路径、
+账户或 session 不合组，同名不能作为归属证据。文件身份是该路径当次文件观测，不证明装载映像
+字节未被替换。不同 EXE 的 helper 不猜测归属，不读取窗口标题/命令行/进程环境。
+未识别的 EXE/安装副本和缺测对象仍逐进程列出；分组不证明 GUI 应用或完整 helper 集合。
+因此 Windows 仅输出 protected/unknown，unknown 绝不建议终止。显示名只作标签。
+
+保护 PID 0/4、系统目录、session 0 服务、跨账户/跨 session、调用者与采集器祖先，
+并保守匹配已知安全软件、Agent、终端、模型服务与连接工具名称和 `.lody/.codex/.claude` 路径。
+显式保护、Agent/安全软件/服务/跨账户保护经已核验父链传至后代；调用祖先和系统路径不向所有
+兄弟进程扩散。组内 protected 优先；父边不可信时不传播，剩余对象仍 unknown。
+规则不声称识别所有安全产品、伪装 Agent 或每个服务；没有自动关闭动作。
+软件模拟与当前原生清单分别记录于 [backlog](../backlog.md#新功能应用内存诊断)。

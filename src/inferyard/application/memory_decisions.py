@@ -1,7 +1,7 @@
 """Application grouping and conservative decisions from observed process identities."""
 
 import hashlib
-from pathlib import Path
+from pathlib import PurePosixPath
 
 from inferyard.platforms.memory_macos import IDENTITY_SOURCE
 
@@ -61,7 +61,7 @@ def _protected_reason(row, uid):
         return "other_account"
     executable = row["executable"]
     if executable:
-        path = Path(executable)
+        path = PurePosixPath(executable)
         if str(path).startswith(
             ("/System/", "/usr/bin/", "/usr/sbin/", "/usr/libexec/", "/sbin/", "/bin/")
         ):

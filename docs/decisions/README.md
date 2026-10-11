@@ -43,6 +43,7 @@ Accepted 表示采纳设计，不代表所有平台已验证。
 | [ADR 046：运行身份只保留 implementation_identity 这一条核对](046-single-implementation-identity.md) | Accepted |
 | [ADR 047：重跑不再因工具身份差异拒绝启动](047-rerun-recorded-comparability.md) | Accepted |
 | [ADR 048：运行原件容器与领域读取](048-run-evidence-containers.md) | Accepted；实施与验证进行中 |
+| [ADR 049：Windows 内存诊断使用独立 kind](049-windows-memory-inventory.md) | Accepted |
 
 ADR 039 删除 `host-state migrate` 与退休机制：实时入口自动初始化 clean 状态，
 旧工具文件完全忽略，主机互斥只覆盖 InferYard 自身进程。

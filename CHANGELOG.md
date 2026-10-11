@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- Read-only Windows `memory-check`: bounded process inventory, physical memory
+  availability, separate working set/private commit, executable groups and
+  conservative system/security/service/agent protection. Unknown ownership never
+  recommends termination. The Windows diagnostic has its own kind; existing macOS
+  diagnostics remain readable with unchanged field semantics.
+
 ### Removed
 
 - Removed the `inferyard host-state migrate` command and the legacy host-state

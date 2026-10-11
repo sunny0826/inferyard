@@ -4,6 +4,24 @@
 
 ## 新功能：应用内存诊断
 
+2026-10-11，issue #25 Windows 能力基于 `597367d` 实施。原基线 Windows 的退出 2 是
+预期平台限制。新增独立 `memory_check.windows.v1`，保留 macOS v1 字段与读取支持。
+Windows 清单分开报告 working set/private commit、TokenUser 账户关系/session 缺测；
+EXE 文件/账户/session 分组仅作观察，protected/unknown，不给出终止建议。
+首次原生公开 CLI 枚举 246 PID；最终源码再次枚举 250 PID，无截断，186 项必需检查缺测
+（150 项所有者/session 不可得，148 项 working set/private commit 缺测，38 项父关系缺测，
+这些计数有重叠），退出 3；69 protected、181 unknown、0 review，采集约 0.518 秒。
+显式保护已核验，保存读回相等，重复目录退出 4 且原件哈希不变，无效 PID 退出 2。
+相关软件回归 356 passed / 3 skipped；跳过两项 POSIX 管道测试及 macOS 原生诊断。
+超时测试复现 Windows venv 启动器 PID 与实际解释器 PID 不一致，改为直接持有基础解释器
+进程句柄并继承模块路径；实际 worker PID/自有进程退出断言通过，不再只回收启动器。
+macOS 归组/旧格式读回/拒绝路径模拟通过；Windows TokenUser/session/FILETIME 本机读取通过。
+Ruff check/format、Schema/catalogue 一致性通过。中文 Windows 测试使用 `PYTHONUTF8=1`，
+避免旧共享夹具默认 GBK 解码；不改其业务源码。
+这不是历史 fallback 的复用，也不构成 benchmark/安装包或 macOS 原生资格。
+原始 JSON、退出码/耗时、版本和软件回归日志保存在本机独立临时目录，交付报告提供定位。
+多账户、实际 PID 复用、原生交互取消与源码外安装等未验证项见[剩余计划](plans/memory-check.md)。
+
 2026-10-11，PR #19 Bugbot 的父身份查询失败问题已复现并修复：父关系缺测或变化仅清空父边，
 保留核验过的自身身份/RSS；受影响对象 unknown，不降低无关可读应用的 review。
 新增可选 `parent_identity_missing_reason`，旧 v1 文件仍可读取；缺测计数包含父关系失败，仍退出 3。
@@ -18,8 +36,8 @@
 `inferyard memory-check [--protect-pid PID] [--out NEW_DIR]` 默认输出只读 JSON，
 按可信 bundle/稳定父身份聚合应用，输出 protected/unknown/review 及原因；
 不自动退出应用、不读取完整命令行或环境、不提供 safe_to_kill 或释放量保证。
-规则见[诊断契约](contracts/memory-check-contract.md)；Linux MC-1b、Windows MC-1c
-继续见[后续计划](plans/memory-check.md)，目前均返回不支持平台/退出 2。
+规则见[诊断契约](contracts/memory-check-contract.md)；Linux MC-1b 与 Windows 剩余原生验证
+继续见[后续计划](plans/memory-check.md)，Linux 仍返回不支持平台/退出 2。
 
 采集冻结为 5 秒 deadline、4096 PID 上限，在独立模块子进程读取，超时/取消只回收自有采集器。
 最终 macOS 五次扫描均观察全部 624–627 PID，其中 223–226 项缺测，退出 3；无截断，

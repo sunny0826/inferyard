@@ -12,6 +12,7 @@ def _require(condition, path, reason):
 
 def validate_memory_check(data):
     validate_document("memory_check", data)
+    windows = data["kind"] == "memory_check.windows.v1"
     processes = {row["pid"]: row for row in data["processes"]}
     _require(len(processes) == len(data["processes"]), "processes", "duplicate PID")
     groups = {row["group_id"]: row for row in data["groups"]}
@@ -42,7 +43,15 @@ def validate_memory_check(data):
         _reading(reading, "host_memory")
     coverage = data["coverage"]
     missing = sum(
-        row["missing_reason"] is not None or row.get("parent_identity_missing_reason") is not None
+        row["missing_reason"] is not None
+        or row.get("parent_identity_missing_reason") is not None
+        or (
+            windows
+            and (
+                row["ownership"]["missing_reason"] is not None
+                or row["private_commit"]["missing_reason"] is not None
+            )
+        )
         for row in processes.values()
     )
     _require(coverage["observed"] == len(processes), "coverage.observed", "count mismatch")
@@ -82,6 +91,18 @@ def validate_memory_check(data):
             "groups.rss_total_bytes",
             "inconsistent total",
         )
+        if windows:
+            values = [row["private_commit"]["value"] for row in rows]
+            known_private = sum(v for v in values if v is not None)
+            private_complete = all(v is not None for v in values)
+            _require(
+                group["private_commit_known_bytes"] == known_private
+                and group["private_commit_complete"] == private_complete
+                and group["private_commit_total_bytes"]
+                == (known_private if private_complete else None),
+                "groups.private_commit",
+                "inconsistent total",
+            )
         statuses = {row["decision"]["status"] for row in rows}
         expected = (
             "protected"
@@ -105,6 +126,8 @@ def validate_memory_check(data):
         )
     for row in processes.values():
         _reading(row["rss"], "processes.rss")
+        if windows:
+            _windows_process(row)
         _require(
             row["start_identity"] is not None or row["missing_reason"] is not None,
             "processes.start_identity",
@@ -154,6 +177,41 @@ def _reading(reading, path):
         (reading["value"] is None) == (reading["missing_reason"] is not None),
         path,
         "missing value requires reason; observed value must not have reason",
+    )
+
+
+def _windows_process(row):
+    _reading(row["private_commit"], "processes.private_commit")
+    _require(
+        row["decision"]["status"] != "review",
+        "processes.decision",
+        "executable identity does not prove application ownership",
+    )
+    _require(
+        row["missing_reason"] is None or row["private_commit"]["value"] is None,
+        "processes.private_commit",
+        "failed identity must discard measurement",
+    )
+    owner = row["ownership"]
+    _require(
+        (owner["relation"] == "unknown") == (owner["missing_reason"] is not None),
+        "processes.ownership",
+        "unknown ownership requires reason",
+    )
+    _require(
+        owner["relation"] == "unknown" or owner["session_id"] is not None,
+        "processes.ownership",
+        "known owner requires session",
+    )
+    _require(
+        row["group_id"] is None or owner["relation"] != "unknown",
+        "processes.group_id",
+        "unknown ownership must not establish executable group",
+    )
+    _require(
+        row["identity_source"] == "GetProcessTimes:creation_FILETIME_100ns_since_1601",
+        "processes.identity_source",
+        "wrong Windows identity source",
     )
 
 
