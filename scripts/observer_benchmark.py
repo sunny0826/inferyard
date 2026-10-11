@@ -7,12 +7,11 @@ from pathlib import Path
 
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import local_file, sha256_file, verify_manifest
-from inferyard.evidence.trial_evidence import verify_reference
 
 if __package__:
-    from .observer_stream import benchmark_binding, require
+    from .observer_stream import require
 else:
-    from observer_stream import benchmark_binding, require
+    from observer_stream import require
 
 
 def analysis_source_hash() -> str:
@@ -33,35 +32,19 @@ def output_outside_run(root: Path, output: Path) -> None:
 def link_benchmark(summary: dict, root: Path) -> dict:
     binding = summary["benchmark_binding"]
     require(binding is not None, "observer_benchmark_binding_missing")
-    benchmark_binding(binding)
     root = root.resolve(strict=True)
+    require(not (root / "inputs.json").exists(), "observer_benchmark_layout_unsupported")
     manifest_path = local_file(root, "manifest.json")
     require(manifest_path.is_file(), "observer_benchmark_not_sealed")
     before = sha256_file(manifest_path)
     require(not verify_manifest(root), "observer_benchmark_manifest_incomplete")
-    metadata = {}
-    trial = read_trial(root, metadata=metadata)
+    trial = read_trial(root)
     run, config = trial["run"], trial["config"]
     require(run["origin"] == "measured", "observer_benchmark_origin_not_measured")
-    evidence = metadata["evidence"]
-    for kind in ("run", "config"):
-        verify_reference(root, evidence.input_reference(kind), reads=evidence)
-    if evidence.layout_version == 2:
-        expected = {
-            "definition": "benchmark-inputs-binding.v1",
-            "inputs_file_sha256": evidence.input_reference("run")["sha256"],
-            "run_member_sha256": evidence.input_digest("run"),
-            "config_member_sha256": evidence.input_digest("config"),
-        }
-    else:
-        expected = {
-            "run_file_sha256": evidence.input_reference("run")["sha256"],
-            "config_file_sha256": evidence.input_reference("config")["sha256"],
-        }
     require(
         binding["run_id"] == run["run_id"]
-        and {key: binding.get(key) for key in expected} == expected
-        and ("definition" in binding) == (evidence.layout_version == 2),
+        and binding["run_file_sha256"] == sha256_file(local_file(root, "run.json"))
+        and binding["config_file_sha256"] == sha256_file(local_file(root, "config.frozen.json")),
         "observer_benchmark_binding_mismatch",
     )
     endpoint = config["endpoint"]

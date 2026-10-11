@@ -5,11 +5,26 @@ import json
 import pytest
 
 from inferyard.evidence.storage import EvidenceError, sha256_file
+from tests.evidence_layout_helpers import build_current_original, pack_layout2
 from tests.helpers import fixture_run
 from tests.unit.test_observer_analysis import bridge as observer_bridge
 from tests.unit.test_observer_analysis import records, save
 
 bridge = observer_bridge
+
+
+def test_layout2_association_is_rejected_without_output_or_source_changes(bridge, tmp_path):
+    original = build_current_original(tmp_path / "original")
+    log = bound_log(tmp_path, original)
+    root = pack_layout2(original, tmp_path / "container")
+    before = {p.name: p.read_bytes() for p in root.iterdir()}
+    summary = bridge.analyze(log)
+    with pytest.raises(bridge.ObserverError, match="observer_benchmark_layout_unsupported"):
+        bridge.link_benchmark(summary, root)
+    out = tmp_path / "linked.json"
+    assert bridge.main(["--log", str(log), "--bench-run", str(root), "--out", str(out)]) == 4
+    assert not out.exists()
+    assert before == {p.name: p.read_bytes() for p in root.iterdir()}
 
 
 def bound_log(tmp_path, root):
@@ -127,8 +142,8 @@ def test_manifest_changed_while_reducing_is_rejected(bridge, tmp_path, monkeypat
     summary = bridge.analyze(bound_log(tmp_path, root))
     original = bridge.link_benchmark.__globals__["read_trial"]
 
-    def changed(path, **kwargs):
-        result = original(path, **kwargs)
+    def changed(path):
+        result = original(path)
         with (path / "manifest.json").open("ab") as stream:
             stream.write(b"\n")
         return result

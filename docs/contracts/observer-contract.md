@@ -49,15 +49,9 @@ Linux CPU HZ 从 `AT_CLKTCK` 读取，无法读取不猜 100；RSS 来自 status
 
 依据 [ADR 010](../decisions/010-observer-benchmark-adaptation.md)，关联不改变独立工具与原件保护边界。
 
-[ADR 048](../decisions/048-run-evidence-containers.md) 增加 layout2 的真实容器绑定。
-layout1 继续绑定 `run_file_sha256/config_file_sha256` 的实际旧文件字节；layout2 从
-`inputs.json` 读取，binding 的 definition 为 `benchmark-inputs-binding.v1`，分别保存
-`inputs_file_sha256/run_member_sha256/config_member_sha256`。外层为容器字节，内层为已核验
-成员内容；不创建旧文件或把成员摘要装入旧 file 字段。Python 离线关联核验相同结构。
-独立流继续 `lab_observer.v2`，原生采样与原资格边界不变，实施与平台验证状态见 backlog。
-静态绑定的 layout1 run/config 文件各限 1 MiB；layout2 run/config canonical 成员各限
-1 MiB，inputs.json 容器独立限 64 MiB，JSON 深度仍限 128。容器预算不放宽离线流及每行预算；
-超限返回绑定拒绝，不忽略成员或哈希核验。64 MiB 读取的原生内存成本尚需单独验证。
+独立 observer 的 `--bench-run` 与 Python 离线关联仅支持 layout1 的实际
+`run.json/config.frozen.json`；[ADR 048](../decisions/048-run-evidence-containers.md) 的
+layout2 容器不在支持范围。新布局可显式使用 `--pid` 生成独立诊断流，不关联 run。
 
 ### 输入与版本
 

@@ -94,13 +94,8 @@ observations 同次扫描建立 kind/key/stage 索引；单次领域查询不再
 `{kind:request, request_id, sha256}`。member sha256 为成员内容，外层 sha256 为物理文件字节。
 metric_observations、report/export/rescore/public、来源搬移均消费同一核验接口；不虚构旧文件。
 
-observer 的 layout1 binding 继续 run_file_sha256/config_file_sha256 的真实旧文件含义。
-layout2 使用 `definition=benchmark-inputs-binding.v1` 和 `inputs_file_sha256`、`run_member_sha256`、
-`config_member_sha256`，其余 run/PID/标签字段不变；Go 与 Python 消费方同时更新。
-独立 observer 流版本和原生采样不变；实时绑定并不授测量比较资格。
-Go 静态绑定保留 layout1 的 run/config 各 1 MiB 上限；layout2 对 run/config 的 canonical
-成员字节各保留 1 MiB，上层 inputs.json 独立限 64 MiB。容器预算包含其它冻结成员及原文，
-不改变 observer 流、单行或核心配置的原有预算；超限明确拒绝，不裁剪成员。
+独立 Go observer 不属于本轮迁移；其旧布局绑定与独立流继续遵循
+[observer 契约](observer-contract.md)，不支持 layout2 run 绑定。
 
 ## 写入生命周期
 
