@@ -82,6 +82,7 @@ class CommandRequest:
     model_source_url: str | None = None
     model_token_env: str | None = None
     model_source_record: Path | None = None
+    protect_pids: list[int] | None = None
 
 
 @dataclass(frozen=True, slots=True)

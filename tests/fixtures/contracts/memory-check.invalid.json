@@ -1,0 +1,159 @@
+{
+  "schema_version": 3,
+  "kind": "memory_check.v1",
+  "platform": "Darwin",
+  "captured_at": "2026-10-10T14:23:59.782780+00:00",
+  "collection_ns": 123,
+  "memory_total": {
+    "value": 16000,
+    "source": "fixture:total",
+    "missing_reason": null
+  },
+  "memory_available": {
+    "value": 5000,
+    "source": "fixture:available",
+    "missing_reason": null
+  },
+  "coverage": {
+    "total_pids": 3,
+    "observed": 4,
+    "missing": 0,
+    "unobserved": 0,
+    "complete": true,
+    "truncation_reason": null
+  },
+  "budget": {
+    "deadline_seconds": 5,
+    "max_processes": 4096
+  },
+  "protected_requests": [],
+  "processes": [
+    {
+      "pid": 10,
+      "start_identity": 1000,
+      "identity_source": "psutil:macos:raw_kernel_starttime:microseconds",
+      "parent_pid": 0,
+      "parent_start_identity": null,
+      "display_name": "Browser",
+      "rss": {
+        "value": 10240,
+        "source": "fixture:rss",
+        "missing_reason": null
+      },
+      "missing_reason": null,
+      "group_id": "app-a7937b64b8caa58f03721bb6",
+      "decision": {
+        "status": "review",
+        "reasons": [
+          {
+            "code": "verified_application_requires_user_review",
+            "pid": 10
+          }
+        ]
+      }
+    },
+    {
+      "pid": 11,
+      "start_identity": 1100,
+      "identity_source": "psutil:macos:raw_kernel_starttime:microseconds",
+      "parent_pid": 0,
+      "parent_start_identity": null,
+      "display_name": "worker",
+      "rss": {
+        "value": 11264,
+        "source": "fixture:rss",
+        "missing_reason": null
+      },
+      "missing_reason": null,
+      "group_id": null,
+      "decision": {
+        "status": "unknown",
+        "reasons": [
+          {
+            "code": "application_or_dependency_unverified",
+            "pid": 11
+          }
+        ]
+      }
+    },
+    {
+      "pid": 12,
+      "start_identity": 1200,
+      "identity_source": "psutil:macos:raw_kernel_starttime:microseconds",
+      "parent_pid": 0,
+      "parent_start_identity": null,
+      "display_name": "Cursor",
+      "rss": {
+        "value": 12288,
+        "source": "fixture:rss",
+        "missing_reason": null
+      },
+      "missing_reason": null,
+      "group_id": "app-9b2bbce6c72dd9bbd9c7a997",
+      "decision": {
+        "status": "protected",
+        "reasons": [
+          {
+            "code": "agent_service_or_connection_application",
+            "pid": 12
+          }
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "group_id": "app-9b2bbce6c72dd9bbd9c7a997",
+      "display_name": "Cursor",
+      "member_pids": [
+        12
+      ],
+      "root_pids": [
+        12
+      ],
+      "grouping_source": "verified_bundle",
+      "rss_known_bytes": 12288,
+      "rss_total_bytes": 12288,
+      "rss_complete": true,
+      "decision": {
+        "status": "protected",
+        "reasons": [
+          {
+            "code": "agent_service_or_connection_application",
+            "pid": 12
+          }
+        ]
+      }
+    },
+    {
+      "group_id": "app-a7937b64b8caa58f03721bb6",
+      "display_name": "Browser",
+      "member_pids": [
+        10
+      ],
+      "root_pids": [
+        10
+      ],
+      "grouping_source": "verified_bundle",
+      "rss_known_bytes": 10240,
+      "rss_total_bytes": 10240,
+      "rss_complete": true,
+      "decision": {
+        "status": "review",
+        "reasons": [
+          {
+            "code": "verified_application_requires_user_review",
+            "pid": 10
+          }
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "rss_sum_is_not_releasable_memory",
+    "application_membership_may_be_incomplete",
+    "embedded_or_unrecognized_agents_cannot_be_identified",
+    "review_requires_user_check_of_work_tasks_and_connections",
+    "snapshot_is_not_atomic_or_authorization_to_close"
+  ]
+}

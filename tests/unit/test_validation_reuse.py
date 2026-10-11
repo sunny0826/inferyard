@@ -62,7 +62,7 @@ def reviewed_bundle(wire_fixture):
 def test_registry_and_wire_specs_are_reused_but_exports_are_detached():
     registry = schemas_for()
     assert schemas_for() is registry
-    assert len(registry) == 18
+    assert len(registry) == 19
     for kind in registry:
         exported = export_schema(kind)
         original = deepcopy(exported)

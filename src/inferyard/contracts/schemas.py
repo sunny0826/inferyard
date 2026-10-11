@@ -39,10 +39,12 @@ def schemas_for():
         TOTAL_OBSERVER_CONTROL,
         TOTAL_TRIAL_CONTROL,
     )
+    from inferyard.contracts.schemas_memory_check import MEMORY_CHECK
     from inferyard.contracts.schemas_storage import MANIFEST, SUMMARY
 
     return {
         "config": CONFIG,
+        "memory_check": MEMORY_CHECK,
         "config_input": CONFIG_INPUT,
         "bundle": BUNDLE,
         "score": SCORE,

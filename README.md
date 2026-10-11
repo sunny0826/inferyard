@@ -13,6 +13,11 @@ The project is licensed under [MIT](LICENSE).
 The product is a Python CLI plus a self-contained offline HTML report; the
 package and the command are both named `inferyard`.
 
+The source checkout also includes the macOS-only [memory diagnostic](docs/contracts/memory-check-contract.md):
+`inferyard memory-check` lists application/process RSS and reasons for user review.
+It never closes applications or promises how much memory an exit will release.
+This command is not included in the published PyPI 0.0.1 build.
+
 ## Installation
 
 Install the pinned version from PyPI:

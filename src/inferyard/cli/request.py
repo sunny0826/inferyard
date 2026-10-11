@@ -14,6 +14,8 @@ def build_request(
     args: argparse.Namespace, *, config_loader: Callable[[Path], LoadedConfig] = load_config
 ) -> CommandRequest:
     values = vars(args)
+    if any(pid <= 0 for pid in values.get("protect_pids") or ()):
+        raise ArgumentError("protected PID must be positive")
     from_run = values.get("from_run")
     community = args.command in (
         "init",
