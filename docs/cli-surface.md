@@ -39,8 +39,9 @@ engine-fit 中断后以 plan.json、checkpoint.json 和 requests.json 只读取�
 
 `device-check` 在 macOS/Linux/Windows 只读检测；不指定模型且没有发现模型时返回 `inspected` / 0，显式模型或资源条件不满足仍退出 2。`--out` 要求新目录，保存 JSON，包括模型建议阻断的结果。格式、来源和实时平台边界见[设备检测](device-check.md)。
 
-`memory-check [--protect-pid PID] [--out NEW_DIR]` 在 macOS 只读枚举应用/进程 RSS，默认 JSON，
-保护 PID 可重复；Linux/Windows 当前退出 2。权限/身份/截断等部分结果退出 3，输出写入失败退出 4。
+`memory-check [--protect-pid PID] [--out NEW_DIR]` 在 macOS/Windows 只读枚举进程内存，默认 JSON，
+Windows 分开输出 working set/private commit、账户关系及 session 缺测；EXE 分组不证明应用归属。
+保护 PID 可重复；Linux 当前退出 2。权限/身份/截断等部分结果退出 3，输出写入失败退出 4。
 `--schema memory_check` 导出新诊断结构；它不是正式 run 证据，也不自动关闭进程。
 判断、缺测与来源规则见[应用内存诊断契约](contracts/memory-check-contract.md)。
 

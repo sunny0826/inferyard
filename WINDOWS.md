@@ -51,6 +51,20 @@ KVMem/NInfer require the asset manifest and arguments prepared per the
 
 ## Sampling and support boundaries
 
+The source checkout supports `inferyard memory-check [--protect-pid PID] [--out NEW_DIR]`.
+It inventories at most 4096 processes with a 5-second collection deadline and reports
+current physical memory availability. RSS means working set; `private_commit` means
+private committed bytes, including nonresident pages. Neither sum predicts reclaimable RAM.
+Creation FILETIME, token ownership and session checks support conservative protection.
+Verified executable/owner/session groups do not prove complete GUI application ownership:
+their decisions remain protected or unknown, never a termination recommendation.
+No applications or services are closed. Only the diagnostic's own worker is reclaimed
+on timeout/cancellation. Missing values retain reasons and normally produce exit 3.
+Use a new output directory; existing evidence is refused. This capability is not in
+the published 0.0.1 build. Native scope and remaining cases are recorded in
+[backlog](docs/backlog.md#新功能应用内存诊断); the full
+[memory contract](docs/contracts/memory-check-contract.md) defines the output.
+
 Identity verification uses same-account processes, full creation FILETIME,
 EXE/DLL, argv/cwd, model files and a unique loopback listener.
 A numeric PID, a successful service `/health` or the presence of a GPU device

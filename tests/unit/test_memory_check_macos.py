@@ -87,6 +87,7 @@ def test_observe_records_query_failures(monkeypatch, error, reason):
     assert value["rss"]["missing_reason"] == reason
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX pipe selector transport")
 def test_deadline_reaps_only_owned_collector(tmp_path):
     marker = tmp_path / "pid.txt"
     script = (
@@ -102,6 +103,7 @@ def test_deadline_reaps_only_owned_collector(tmp_path):
     assert not psutil.pid_exists(int(marker.read_text()))
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX pipe selector transport")
 def test_process_limit_reports_unobserved_records():
     host = {
         "total_pids": 3,

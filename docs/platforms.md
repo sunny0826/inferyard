@@ -15,7 +15,7 @@
 | 单次及批量 | 已实现，按协议预检 | 已实现，按协议预检 | Prism/KVMem/NInfer；后两者限固定质量串行文本 |
 | 基础采集 | CPU、RSS、可用内存及可得传感器 | CPU、RSS、可用内存、主机换页、只读 AppleSMC 温度 | Prism：windows-resource.v1；KVMem/NInfer：windows-memory.v1；RSS/可用内存，其他指标缺测 |
 | engine-fit | vLLM/SGLang/llama.cpp，逐引擎能力约束 | llama.cpp/MLX-LM/LM Studio，逐资产约束 | 单 GGUF llama.cpp 诊断 |
-| 应用内存诊断 | 未实现，退出 2 | 已实现，只读应用/进程清单；权限缺测保留 partial | 未实现，退出 2 |
+| 应用内存诊断 | 未实现，退出 2 | 已实现，只读应用/进程清单；权限缺测保留 partial | 已实现，working set/private commit、EXE 分组与保守保护；权限缺测保留 partial |
 | 离线报告与核验 | 已实现 | 已实现 | 已实现 |
 
 Ollama 缺少可核验的全服务空闲来源，engine-fit 执行仍阻断。

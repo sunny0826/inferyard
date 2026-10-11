@@ -1,0 +1,112 @@
+{
+  "schema_version": 3,
+  "kind": "memory_check.windows.v1",
+  "platform": "Windows",
+  "captured_at": "2026-10-11T00:00:00+00:00",
+  "collection_ns": 1234,
+  "memory_total": {
+    "value": 10000,
+    "source": "fixture:total",
+    "missing_reason": null
+  },
+  "memory_available": {
+    "value": 5000,
+    "source": "fixture:available",
+    "missing_reason": null
+  },
+  "coverage": {
+    "total_pids": 1,
+    "observed": 1,
+    "missing": 0,
+    "unobserved": 0,
+    "complete": true,
+    "truncation_reason": null
+  },
+  "budget": {
+    "deadline_seconds": 5,
+    "max_processes": 4096
+  },
+  "protected_requests": [
+    {
+      "pid": 10,
+      "start_identity": 1000,
+      "status": "verified",
+      "reason": null
+    }
+  ],
+  "processes": [
+    {
+      "pid": 10,
+      "start_identity": 1000,
+      "identity_source": "GetProcessTimes:creation_FILETIME_100ns_since_1601",
+      "parent_pid": 0,
+      "parent_start_identity": null,
+      "parent_identity_missing_reason": null,
+      "display_name": "editor.exe",
+      "rss": {
+        "value": 100,
+        "source": "psutil:Windows:WorkingSetSize:bytes",
+        "missing_reason": null
+      },
+      "private_commit": {
+        "value": 300,
+        "source": "psutil:Windows:PrivateUsage:bytes",
+        "missing_reason": null
+      },
+      "ownership": {
+        "relation": "same_account",
+        "session_id": 1,
+        "missing_reason": null
+      },
+      "missing_reason": null,
+      "group_id": "exe-55b12d578cb6ef0fd4c4eed9",
+      "decision": {
+        "status": "protected",
+        "reasons": [
+          {
+            "code": "declared_protection",
+            "pid": 10
+          }
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "group_id": "exe-55b12d578cb6ef0fd4c4eed9",
+      "display_name": "editor.exe",
+      "member_pids": [
+        10
+      ],
+      "root_pids": [
+        10
+      ],
+      "grouping_source": "verified_executable_owner_session",
+      "decision": {
+        "status": "protected",
+        "reasons": [
+          {
+            "code": "declared_protection",
+            "pid": 10
+          }
+        ]
+      },
+      "rss_known_bytes": 100,
+      "rss_total_bytes": 100,
+      "rss_complete": true,
+      "private_commit_known_bytes": 300,
+      "private_commit_total_bytes": 100,
+      "private_commit_complete": true
+    }
+  ],
+  "limitations": [
+    "rss_sum_is_not_releasable_memory",
+    "application_membership_may_be_incomplete",
+    "embedded_or_unrecognized_agents_cannot_be_identified",
+    "review_requires_user_check_of_work_tasks_and_connections",
+    "snapshot_is_not_atomic_or_authorization_to_close",
+    "private_commit_is_not_resident_or_reclaimable_memory",
+    "executable_groups_do_not_prove_application_ownership",
+    "windows_unknown_groups_never_recommend_termination"
+  ]
+}
