@@ -4,6 +4,29 @@
 
 ### Added
 
+- A three-platform real-model e2e check (`tests/packaging/ci_model_e2e.py` plus
+  the `model-e2e` workflow) drives the full CLI chain — init, device-check,
+  platform-specific preparation, an externally started Prism llama-server,
+  bind, run, report and verify with `--rerender` — against the 105 MB
+  SmolLM2-135M-Instruct Q4_K_M model, then asserts the workspace layout
+  contract: eleven files (eight run evidence files under `results/` plus three
+  report files), the SVG animation statistics line, and a clean verify exit
+  after deleting the whole `bench-ops` operations directory. Preparation
+  follows each platform's real path: automatic candidates on macOS, runtime
+  prepare plus a runtime receipt on Windows (matching the preflight's
+  recommended CPU or CUDA profile), and the manual Linux template with the
+  observed environment values frozen. Verified end to end on macOS arm64,
+  Windows x64 (CUDA) and Linux x64 physical machines; the engine's
+  peg-native chat parser rejecting seed-42 output with an invalid UTF-8 byte
+  on the Linux CPU path is worked around with seed 1 and recorded as an
+  upstream concern. Linux is not part of the CI matrix: cloud runners have no
+  cpufreq sysfs, which the strict Linux environment admission deliberately
+  blocks, so Linux is verified on a physical machine (the same e2e script runs
+  on any eligible host). The first CI run also exposed and fixed a macOS
+  candidate defect: machines reporting no power profile wrote null into
+  `conditions.profile` and failed contract validation - the generator now keeps
+  the existing "unknown" fallback for None observations.
+
 - The offline report now shows an informational animation-element statistic for SVG
   cases, so operators can see the animation makeup without opening a browser: counts
   of SMIL animation elements (`animate`, `animateTransform`, `animateMotion`, `set`,
