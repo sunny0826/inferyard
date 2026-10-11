@@ -39,7 +39,9 @@ v4 在运行概览 KPI 之后新增 `svg_gallery` 与「SVG 生成展示 · 不�
 以及 `<style>` 元素文本中 `@keyframes` 规则与 `animation` 属性声明的静态文本匹配计数
 （不做完整 CSS 解析）。统计仅在渲染 report.html 时计算并标注为信息性观察，不构成动画
 判定、质量评分或资格结论；不写入 index.json、不进入封存证据，不改变
-report_format_version 与 schema_version，同输入下结果确定。SVG 未提取、超限或
+report_format_version 与 schema_version，同输入下结果确定。静态文本匹配有已知
+边界：CSS 注释中的 `@keyframes` 或 `animation:` 会被计入，带 vendor 前缀的声明
+（如 `-webkit-animation:`）不计入，可能低估实际声明数。SVG 未提取、超限或
 malformed 时计数为 null 并附原因，不以 0 冒充；解析通过而无动画时 0 为真实计数值。
 
 ## v3 SVG 展示与 CSP

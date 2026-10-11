@@ -73,7 +73,9 @@ inferyard verify --path bench-work/report
 ```
 
 `RUN_ID` comes from the run output. Open `bench-work/report/report.html` in a
-browser; it stays readable and verifiable after the service is shut down.
+browser; it stays readable and verifiable after the service is shut down, and
+the SVG gallery shows an informational animation-element count, so a manual
+browser check is optional.
 The CLI connects to a local service started by the operator. `run` includes
 the current normal/streaming probes; a standalone `probe` is optional
 troubleshooting. Host state is created automatically on the first live run —
