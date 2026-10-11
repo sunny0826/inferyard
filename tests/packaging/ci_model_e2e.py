@@ -178,6 +178,9 @@ def fill_linux_template(template, out_dir, *, model, engine, assets, results, bu
         # an invalid UTF-8 byte that the engine's peg-native chat parser
         # rejects with HTTP 500; verified seeds 1/7/123/2024 all return 200.
         "\nseed = 42": "\nseed = 1",
+        # The lab contract freezes seed only when the config declares
+        # supported; macOS/Windows candidates write this explicitly.
+        'seed_support = "unknown"': 'seed_support = "supported"',
     }
     text = template.read_text(encoding="utf-8")
     for old, new in replacements.items():
