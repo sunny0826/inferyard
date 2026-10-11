@@ -259,8 +259,16 @@ Ruff、格式、Schema/catalogue 一致性和文档本地链接/锚点检查通�
 审查遗留一条非阻塞建议：扩展协议（NATIVE_TOOLS 等）本地 spec 每次调用重新编译，
 主热路径不受影响，留后续轮次。
 
-## 设计中：远程模型链接获取
+## 模型获取诊断与超时
 
-[设计文档](plans/remote-model-link-design.md) 定义了独立的单 GGUF 获取命令。
-它接收固定的 Hugging Face 或 ModelScope 文件链接，核对远程清单后写入新的本地目录。
-正式 `run` 仍不接收 URL，也不启动模型服务。设计尚未实施，不改变当前命令行为。
+`model acquire` 已实现固定 Hugging Face/ModelScope 单 GGUF 获取、来源核验和候选绑定。
+原“尚未实施”的设计状态已过时，现行规则见 [CLI 参考](cli-surface.md#各动作的冻结行为)
+和[模型获取契约](contracts/model-acquisition.md)。正式 run 仍只使用本地已绑定服务。
+
+2026-10-11 已完成 [#21–#24](https://github.com/sunny0826/inferyard/issues) 的本地修复：
+固定失败诊断、读取监督、可配置超时、预算来源记录和代理说明。
+停止规则变更依据 [ADR 049](decisions/049-model-acquisition-budgets.md)。
+macOS 与 Windows 同一源码的定向回归各 **222 passed**，Windows 测试前后
+20 个补丁文件哈希匹配；覆盖合成回环 HTTP、子进程回收与原生文件发布。
+独立源码审查通过；Ruff、格式、Schema/catalogue 一致性和文档链接检查通过。
+Windows 验证没有真实下载；真实 CDN 性能与原 TUN/Fake-IP 故障仍未验证。

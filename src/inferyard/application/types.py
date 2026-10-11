@@ -81,6 +81,9 @@ class CommandRequest:
     port: int | None = None
     model_source_url: str | None = None
     model_token_env: str | None = None
+    model_timeout_seconds: float = 1800
+    model_read_timeout_seconds: float = 180
+    model_cleanup_timeout_seconds: float = 60
     model_source_record: Path | None = None
     protect_pids: list[int] | None = None
 

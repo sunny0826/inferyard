@@ -85,7 +85,7 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 
 | 命令 | 必填参数 | 可选参数及默认值 | 平台和新目录布局 |
 | --- | --- | --- | --- |
-| `model acquire` | `--source URL --out NEW` | `--token-env NAME`：只接受环境变量名 | 三平台；单 GGUF 文件的基名和 `source.json`，失败目录保留 |
+| `model acquire` | `--source URL --out NEW` | `--token-env NAME`：只接受环境变量名；`--timeout-seconds 1800`、`--read-timeout-seconds 180`、`--cleanup-timeout-seconds 60` | 三平台；单 GGUF 文件的基名和 `source.json`，失败目录保留 |
 | `init` | `--out NEW` | `--bundle {zh-smoke,zh-core,zh-svg-pelican}`；省略时导出 `zh-core` 和 `zh-svg-pelican` | 三平台；`README.md`、`configs/{linux,macos,windows}.example.toml`、`bundles/NAME.json`、`assets/`、`results/`、`preparation.json` |
 | `runtime prepare` | `--profile NAME --archive FILE --out NEW` | `--runtime-archive FILE`，仅 CUDA 必填，CPU 禁止 | 仅 Windows x64；`engine/`、CUDA 的 `runtime/`、`engine/engine-sha256.json`、`runtime-receipt.json` |
 | `config assets` | `--model FILE --engine FILE --out NEW` | 无 | 仅 Linux x64；`chat-template.jinja`、`engine-sha256.json`、`assets.json` |
@@ -98,7 +98,7 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 `config create` 在 macOS 必填 `--engine FILE` 且禁止 `--runtime-receipt`；
 Windows 必填 `--runtime-receipt FILE` 且禁止 `--engine`。两者不能同时提供。
 不提供跨平台模拟生成参数；Linux 使用 `config assets` 和示例手工冻结配置。
-`--model-source` 只读取显式传入的 `remote_model_source.v1` 记录，不按目录查找旧记录。
+`--model-source` 只读取显式传入的 `remote_model_source.v1/v2` 记录，不按目录查找旧记录。
 记录的大小和 SHA256 必须等于当次所选文件；候选生成复用当次文件哈希，不重复扫描模型。
 省略 repo/revision 声明时使用记录中的 repository/revision，显式声明冲突则返回
 `model_source_metadata_mismatch` / 2。缺少转换和量化证据时不生成 `model_lineage`；
@@ -116,15 +116,27 @@ PATH 可包含子目录，但只能是一个 `.gguf` 文件；输出使用其文
 元数据重定向只允许原平台主机；文件最多一次重定向，只允许原主机或对应的
 `*.hf.co` / `*.modelscope.cn`。CDN 仅保留受限的签名 query，不转发 Authorization。
 获取先核对远程清单，再流式计数和计算 SHA256；flush/fsync 和关闭完成后才原子改名。
-一般期限为总 1800 秒、网络读取 180 秒、失败收尾 60 秒；声明大小加临时开销须满足
-可用空间，文件上限 20 GiB。下载和写盘在可取消的直接子进程执行，子进程不创建后代。
-`source.json` 保存 `remote_model_source.v1`、parser、metadata_sha256、bytes、sha256
-及平台、仓库、固定 revision、仓库内路径和获取时间，不保存原始清单。
+默认期限为总 1800 秒、网络读取 180 秒、失败收尾 60 秒，可用上表三个秒数参数分别修改。
+参数必须为正有限数，默认值不是上限。总期限不因进展续期；父进程按实际网络进展
+监督读取期限。声明大小加临时开销须满足可用空间，文件上限 20 GiB。
+下载和写盘在可取消的直接子进程执行，子进程不创建后代。
+`source.json` 保存 `remote_model_source.v2`、parser、metadata_sha256、bytes、sha256
+及平台、仓库、固定 revision、仓库内路径、获取时间和实际 `acquisition_budget`，
+不保存原始清单。v1 记录仍严格只读，缺失的预算保持未知；字段见[模型获取契约](contracts/model-acquisition.md)。
 成功为 `prepared` / `complete` / 0，details 含 `ready_to_run=false`。
 失败原因固定为 `invalid_model_source`、`model_source_metadata_mismatch`、
 `model_acquire_incomplete`、`output_exists`（退出 2）、`io_error`（退出 4）、
 `cancelled`（退出 130）。取消和失败停止自有子进程，已开始的失败目录保留，不能重用。
+失败诊断提供固定阶段、异常分类和已知传输进度，不输出原始异常或签名 URL。
+默认总期限下，平均有效速度至少须达到文件大小 / 1800 秒，还要留出元数据、核验和写盘时间；
+慢链路应在开始前显式增加总期限，失败后不自动重试或续传。
 模型文件与清单一致不证明可加载、服务就绪或测评完成。`run` 仍不接收模型 URL。
+
+获取客户端使用 `trust_env=False`，不使用 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`
+或 Windows 系统代理。依赖本机代理的网络需要能接管直接连接的 TUN/全局路由，
+仅开启系统代理不足以让获取经过代理。操作者须确认仓库和 CDN 均可达。
+当前没有 `--proxy-origin`：代理鉴权、CONNECT 和 TLS 信任需要独立约定，
+仅校验代理 URL 不能保证凭据边界，见 [ADR 049](decisions/049-model-acquisition-budgets.md)。
 
 ```bash
 inferyard model acquire --source 'https://huggingface.co/OWNER/REPO/blob/COMMIT40/sub/model.gguf' --out bench-work/models/new
@@ -134,6 +146,7 @@ inferyard config create --preflight bench-work/preflight/device-preflight.json -
 
 `COMMIT40` 是占位符，必须替换为实际固定 revision；示例候选命令适用于 macOS，
 Windows 改用 `--runtime-receipt FILE`，Linux 继续手工配置。服务由操作者另外启动。
+慢链路可在获取命令后追加 `--timeout-seconds 14400`；这不会增加默认读取空闲期限。
 
 1. `init` 导出三个平台的去设备化占位示例。省略 `--bundle` 时导出 `zh-core` 和
    `zh-svg-pelican`；显式 `--bundle` 只导出一个固定题包。示例明确未绑定且不能直接运行；

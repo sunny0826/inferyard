@@ -15,3 +15,15 @@ def add_commands(commands):
     acquire.add_argument(
         "--token-env", dest="model_token_env", help="environment variable name only"
     )
+    for option, field, default in (
+        ("timeout", "model_timeout_seconds", 1800),
+        ("read-timeout", "model_read_timeout_seconds", 180),
+        ("cleanup-timeout", "model_cleanup_timeout_seconds", 60),
+    ):
+        acquire.add_argument(
+            f"--{option}-seconds",
+            dest=field,
+            type=float,
+            default=default,
+            help=f"positive finite seconds (default: {default})",
+        )
