@@ -129,6 +129,8 @@ def test_cli_reexports_the_single_application_type_definitions():
         "model_token_env",
         "model_timeout_seconds",
         "model_source_record",
+        "engine_source_url",
+        "engine_timeout_seconds",
         "protect_pids",
     )
     assert tuple(field.name for field in fields(CommandResult)) == (

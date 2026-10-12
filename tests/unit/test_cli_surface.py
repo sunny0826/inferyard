@@ -372,8 +372,8 @@ raise SystemExit(main(json.loads(sys.argv[1])))
     assert result.stderr == ""
     if arguments == ["--help"]:
         primary = re.findall(r"^    ([a-z][a-z-]+)\s+", result.stdout, flags=re.MULTILINE)
-        assert len(primary) == 23
-        assert {"verify", "probe", "public", "extension", "engine-fit"} <= set(primary)
+        assert len(primary) == 24
+        assert {"verify", "probe", "public", "extension", "engine", "engine-fit"} <= set(primary)
         assert "check" not in primary and "extension-run" not in primary
         assert "Compatibility" not in result.stdout and "extension-run" not in result.stdout
     elif "--help" not in arguments:

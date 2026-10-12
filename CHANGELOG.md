@@ -4,6 +4,20 @@
 
 ### Added
 
+- A new `engine acquire` command downloads a single engine file from a
+  caller-supplied HTTPS URL into a fresh output directory (`engine acquire
+  --source URL --out NEW`), streaming bytes to a `.part` file and publishing
+  the file plus an `engine-source.json` receipt (`remote_engine_source.v1`)
+  with the measured byte size and SHA-256. The command follows the same
+  curl-level philosophy as `model acquire`: no host or extension allowlist, no
+  credentials, no extraction, assembly or service start — identity freezing
+  and Windows archive handling stay with `runtime prepare` and `config create`.
+  Failures map to five fixed reasons and never echo the URL. The opt-in
+  closed-loop e2e test (`tests/integration/test_closed_loop_download_e2e.py`,
+  enabled with `LAB_E2E_CLOSED_LOOP=1`) drives both `model acquire` and
+  `engine acquire` real downloads and then the full benchmark chain with
+  `--model-source` lineage binding; verified once on macOS arm64.
+
 - A three-platform real-model e2e check (`tests/packaging/ci_model_e2e.py` plus
   the `model-e2e` workflow) drives the full CLI chain — init, device-check,
   platform-specific preparation, an externally started Prism llama-server,
