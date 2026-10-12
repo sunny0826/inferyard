@@ -1,0 +1,9 @@
+web/dist absent during verification: true
+Vite dev server: not started
+working directory: build/
+binary: build/darwin-arm64/inferyard-studio
+GET /?token=<redacted>: HTTP 200; app root present
+GET /assets/index-GhlFK0eD.js: HTTP 200; 1874 bytes
+GET /assets/index-BKSixtwk.css: HTTP 200; 591 bytes
+GET / without token: HTTP 401
+headless process exit=0

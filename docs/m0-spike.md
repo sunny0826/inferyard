@@ -29,10 +29,10 @@
 
 | 条件 | 结果 | 证据 |
 | --- | --- | --- |
-| 1. 桌面窗口加载本地 HTTP 页面 | 通过 | [desktop.log](evidence/desktop.log)：端口 62938，`desktop page loaded`；[桌面截图](evidence/desktop.png) |
-| 2. 浏览器/curl 同地址同端口可达 | 通过 | [http.log](evidence/http.log)：HTTP 200、curl 退出 0；[browser.txt](evidence/browser.txt)：Chrome 同端口可见页面 |
-| 3. SSE 双端到达 | 通过 | [sse.log](evidence/sse.log)：31→32→33；desktop.log 中 DOM 2→4；browser.txt 中页面 53→63；三客户端在同一桌面进程存活期间连接 |
-| 4. embed 单二进制服务前端 | 通过 | [embed.log](evidence/embed.log)：临时移走 web/dist，在 build/ 中启动二进制，首页、JS、CSS 均 200；全程未启动 Vite dev server |
+| 1. 桌面窗口加载本地 HTTP 页面 | 通过 | [desktop.log](evidence/implementer-a/desktop.log)：端口 62938，`desktop page loaded`；[桌面截图](evidence/desktop.png) |
+| 2. 浏览器/curl 同地址同端口可达 | 通过 | [http.log](evidence/implementer-a/http.log)：HTTP 200、curl 退出 0；[browser.txt](evidence/implementer-a/browser.txt)：Chrome 同端口可见页面 |
+| 3. SSE 双端到达 | 通过 | [sse.log](evidence/implementer-a/sse.log)：31→32→33；desktop.log 中 DOM 2→4；browser.txt 中页面 53→63；三客户端在同一桌面进程存活期间连接 |
+| 4. embed 单二进制服务前端 | 通过 | [embed.log](evidence/implementer-a/embed.log)：临时移走 web/dist，在 build/ 中启动二进制，首页、JS、CSS 均 200；全程未启动 Vite dev server |
 | 5. 三平台 go build 退出 0 | 通过 | [build.log](evidence/build.log)：darwin/arm64、windows/amd64、linux/amd64 全部退出 0 |
 | 6. 完整记录 | 通过 | 本文件包含版本、命令、下载方式、逐项证据、问题与未验证项 |
 
@@ -91,3 +91,7 @@ env -u GOROOT PATH=/Users/guoxudong/.local/share/mise/installs/go/1.27.1/bin:$PA
 - 不包含签名、dmg、installer、发布、热更新和真实 inferyard CLI 集成。
 - M0 粗粒度鉴权已验证，不代表后续完整 API 安全验收。
 - 当前无阻塞项。测试桌面进程和浏览器标签页已关闭。
+
+## 共享工作区证据归属
+
+提交期间其他执行者持续写入 docs/evidence 下的复核日志。本文采用 implementer-a/ 中本次验证的独立快照；desktop.log 根据本会话已返回的原始输出转录。其他执行者的日志及未提交改动保留原状，不作为本执行者新增验证的声明。
