@@ -1,6 +1,6 @@
 # 使用 uv 安装与准备测评
 
-本页适用于已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.1/) 的 `0.0.1`。
+本页适用于已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.2/) 的 `0.0.2`。
 也可使用 [Releases](https://github.com/sunny0826/inferyard/releases) 中的同批附件安装。
 项目采用 [MIT 许可证](../LICENSE)。安装文件应来自同一发行批次；
 平台实现与未验项见[平台状态](platforms.md)，接口见 [CLI](cli-surface.md)。
@@ -16,7 +16,7 @@ PowerShell、macOS 或 Linux 的独立安装器或包管理器。社区使用无
 ### 从 PyPI 安装或运行
 
 ```bash
-uv tool install --managed-python --python 3.14.7 inferyard==0.0.1
+uv tool install --managed-python --python 3.14.7 inferyard==0.0.2
 inferyard --versions
 inferyard --help
 ```
@@ -24,12 +24,12 @@ inferyard --help
 无需持久安装也可以运行：
 
 ```bash
-uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --versions
-uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --help
+uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.2 --versions
+uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.2 --help
 ```
 
 后文每条 `inferyard ...` 都可替换为
-`uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 ...`，
+`uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.2 ...`，
 包括 init、设备检测、配置准备、run、report 和 verify。完整 benchmark 按
 [默认测评范围](usage.md#默认测评范围)分别运行 120 题核心包和 1 题鹈鹕包，再生成汇总报告。
 `uvx inferyard` 会选择可用版本；正式测评固定版本，并在整个运行和恢复期间保持环境不变。
@@ -38,19 +38,19 @@ uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --help
 
 ### 从 Release 附件安装
 
-在 `v0.0.1` Release 的附件中下载 `inferyard-0.0.1-py3-none-any.whl`、
+在 `v0.0.2` Release 的附件中下载 `inferyard-0.0.2-py3-none-any.whl`、
 `runtime-constraints.txt` 和 `SHA256SUMS`，放到同一目录。核对前两个文件的 SHA-256
 与 `SHA256SUMS` 中的同名记录完全一致：
 
 ```bash
 # Linux
-sha256sum inferyard-0.0.1-py3-none-any.whl runtime-constraints.txt
+sha256sum inferyard-0.0.2-py3-none-any.whl runtime-constraints.txt
 # macOS
-shasum -a 256 inferyard-0.0.1-py3-none-any.whl runtime-constraints.txt
+shasum -a 256 inferyard-0.0.2-py3-none-any.whl runtime-constraints.txt
 ```
 
 ```powershell
-Get-FileHash -Algorithm SHA256 -Path '.\inferyard-0.0.1-py3-none-any.whl', '.\runtime-constraints.txt'
+Get-FileHash -Algorithm SHA256 -Path '.\inferyard-0.0.2-py3-none-any.whl', '.\runtime-constraints.txt'
 ```
 
 Release 还附带源码包与依赖约束验证文件；普通安装只需上述 wheel 和约束。
@@ -60,12 +60,12 @@ Release 还附带源码包与依赖约束验证文件；普通安装只需上述
 摘要一致后安装：
 
 ```bash
-uv tool install --managed-python --python 3.14.7 --constraints runtime-constraints.txt ./inferyard-0.0.1-py3-none-any.whl
+uv tool install --managed-python --python 3.14.7 --constraints runtime-constraints.txt ./inferyard-0.0.2-py3-none-any.whl
 inferyard --versions
 inferyard --help
 ```
 
-PowerShell 将 `./...whl` 换为 `'.\inferyard-0.0.1-py3-none-any.whl'`；路径含空格或中文
+PowerShell 将 `./...whl` 换为 `'.\inferyard-0.0.2-py3-none-any.whl'`；路径含空格或中文
 时加引号。uv 管理 Python 和工具环境，缺解释器时首次安装需联网。首批目标为 Linux x64、
 Windows x64、macOS arm64；纯 Python wheel 标签不证明所有平台的原生采集和引擎能力已验收。
 当前验证基线为 Python 3.14.7 / uv 0.12.18，不宣称 uv 最低支持版本。
@@ -73,7 +73,7 @@ Windows x64、macOS arm64；纯 Python wheel 标签不证明所有平台的原�
 临时试用同一 wheel：
 
 ```bash
-uvx --isolated --managed-python --python 3.14.7 --constraints runtime-constraints.txt --from ./inferyard-0.0.1-py3-none-any.whl inferyard --help
+uvx --isolated --managed-python --python 3.14.7 --constraints runtime-constraints.txt --from ./inferyard-0.0.2-py3-none-any.whl inferyard --help
 ```
 
 `uvx` 是 `uv tool run` 的别名，`--from` 指定分发物，最后的 `inferyard` 是命令名。
@@ -201,9 +201,9 @@ Windows/PowerShell 可使用相同 CLI 参数，路径加引号，PID 使用实�
 
 ```bash
 # 已从 PyPI 准备好相同版本及依赖的缓存
-uvx --offline --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --versions
+uvx --offline --isolated --managed-python --python 3.14.7 inferyard==0.0.2 --versions
 # 使用本地 Release 附件及同批约束
-uvx --offline --isolated --managed-python --python 3.14.7 --constraints runtime-constraints.txt --from ./inferyard-0.0.1-py3-none-any.whl inferyard --versions
+uvx --offline --isolated --managed-python --python 3.14.7 --constraints runtime-constraints.txt --from ./inferyard-0.0.2-py3-none-any.whl inferyard --versions
 ```
 
 `--offline` 要求解释器、wheel 和依赖均已在所选缓存中，冷缓存明确失败，不隐藏首次联网需求。

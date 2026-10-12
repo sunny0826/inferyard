@@ -1,7 +1,7 @@
 # 平台状态
 
-本页区分实现、历史原生覆盖与发行物验证。`v0.0.1` 发布状态见
-[PyPI](https://pypi.org/project/inferyard/0.0.1/) 与
+本页区分实现、历史原生覆盖与发行物验证。`v0.0.2` 发布状态见
+[PyPI](https://pypi.org/project/inferyard/0.0.2/) 与
 [Releases](https://github.com/sunny0826/inferyard/releases)，安装及本次真机检查由 [backlog](backlog.md)跟踪。
 历史覆盖来自 2026-10-02 至 10-07 的已保存运行，
 不自动转移到新源码或候选 wheel，解释规则见[证据血缘](data-contract.md#证据血缘与比较结论)。
@@ -42,6 +42,9 @@ Windows 的 live 开销、实时扩展和 prepare-length 等入口仍有平台�
 - [PR #1 的 CI](https://github.com/sunny0826/inferyard/actions/runs/37716506876) 已完成 Linux x64、
   Windows x64、macOS arm64 的源码外安装检查，包括 uv tool/uvx、中文工作区、离线报告、当前/旧格式边界
   及合成升级/回退。最终发行批次的来源和摘要以 Release 说明及候选清单为准。
+- `0.0.2` 的手动 [package-check 运行](https://github.com/sunny0826/inferyard/actions/runs/38215582766)
+  完成三平台安装检查并生成候选；publish workflow 核验同一字节后发布。安装检查仍不构成原生模型
+  准备或性能资格。
 - 同一 CI 在一次性原生 runner 上验证固定路径的自动初始化、合成请求成功、进程中断后 dirty 持久化及拒绝。
   没有使用真实模型。
 - Windows 的 ACL/reparse/多账户/卷变化及原生 runtime prepare/create 仍待专项验证。

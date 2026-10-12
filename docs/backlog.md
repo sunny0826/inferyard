@@ -77,6 +77,19 @@ SIGINT 落在 Popen 返回与进入 try 之间时，自有采集器可能短暂�
 `f390507672ff60b191550e14c0da9d687a0448b607a5e1d789787c5cdf8624b8`。
 后续候选仍须从集成后的干净提交手动生成，不能把 PR 运行改标为发布来源。
 
+### v0.0.2 发布记录
+
+2026-10-12 发布 `v0.0.2`。版本冻结 PR #37（源提交 `d3761bb`，冻结版本校验、publish workflow
+tag 与测试 fixture 同步升级）。本地候选五步在干净 worktree 完成（macOS arm64
+`installed_safe_checks.v3` passed，26 命令）；手动 package-check run
+`38215582766` 三平台安装检查全绿并生成候选 manifest
+（SHA-256 `eeebd6b2…3067`，wheel `bf05cf35…` 与本地构建字节一致）。publish workflow
+`38216763800` verify-only 演练通过后，`38217556374` 以 `destination=both` 发布：PyPI
+`0.0.2`（wheel+sdist+attestations）与 GitHub Release `v0.0.2`（五附件经 SHA256SUMS
+本机复验）。发布后 README/README.zh-CN/installation/platforms 更新版本引用。
+安装检查不构成原生模型准备或严格性能资格；`test_observer_benchmark_native` 在
+main 既有失败（observer 不支持 layout2 run 绑定，见 run-evidence-layout 契约），与发布无关。
+
 ### PyPI uvx 真机验证
 
 2026-10-08 从 PyPI 使用固定 `inferyard==0.0.1`、Python 3.14.7、uv 0.12.18 验证：
