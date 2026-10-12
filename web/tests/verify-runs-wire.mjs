@@ -50,10 +50,22 @@ export async function verifyRunsWire(browser, vite, errors) {
     await expect(page.getByRole('alert')).toContainText('invalid_state');
     await expect(page.getByTestId('task-state')).toContainText('running');
     const update = { ...detail.progress, done: 1, last_seq: 2 };
-    emit('run.progress', { task_id: 'wire', run_id: 'wire-run', progress: update });
+    emit('run.progress', { task_id: 'wire', run_id: null, progress: update });
     emit('run.resources', { task_id: 'wire', points: [{ ...point, utc: '2026-10-12T00:00:02Z', service_cpu_percent: 30 }] });
     await expect(page.getByTestId('progress')).toContainText('1 / 2');
     await expect(page.getByTestId('sample-count')).toHaveText('采样点：2');
+    const schemaChecks = await page.evaluate(async () => {
+      const { resourceSchema, progressEventSchema } = await import('/src/api/run-schema.ts');
+      const sample = { utc: '', mem_available_bytes: null, service_rss_bytes: null, service_cpu_percent: null, temperature_celsius: null };
+      return {
+        emptyUtc: resourceSchema.safeParse(sample).success,
+        plainUtc: resourceSchema.safeParse({ ...sample, utc: 'fixture' }).success,
+        nullUtc: resourceSchema.safeParse({ ...sample, utc: null }).success,
+        absentUtc: resourceSchema.safeParse({ ...sample, utc: undefined }).success,
+        progress: progressEventSchema.safeParse({ task_id: 'wire', run_id: null, progress: { phase: null, done: -0.5, total: -1.5, current_case_id: null, last_seq: -2.5, cases: [] } }).success,
+      };
+    });
+    assert.deepEqual(schemaChecks, { emptyUtc: true, plainUtc: true, nullUtc: false, absentUtc: false, progress: true });
     hold = true;
     await page.getByRole('button', { name: '刷新详情', exact: true }).click();
     await expect.poll(() => Boolean(heldResponse)).toBe(true);
@@ -65,13 +77,22 @@ export async function verifyRunsWire(browser, vite, errors) {
     heldResponse.res.end(heldResponse.body); hold = false;
     await expect(page.getByTestId('progress')).toContainText('2 / 2');
     await expect(page.getByTestId('sample-count')).toHaveText('采样点：2');
-    detail = { task: { ...task, state: 'done', finished_at: '2026-10-12T00:00:09Z', exit: { exit_code: 3, cli_status: 'duration_requires_new_window', completeness: 'incomplete', stop_reason: 'duration_requires_new_window', limitations: ['raw_limit'] } }, progress: { ...update, done: 1, total: 1, last_seq: 10 }, resources: [{ ...point, service_cpu_percent: 88 }] };
+    detail = { task: { ...task, state: 'done', finished_at: '2026-10-12T00:00:09Z', exit: { exit_code: 3, cli_status: 'duration_requires_new_window', completeness: 'incomplete', stop_reason: 'duration_window_interrupted', limitations: ['raw_limit'] } }, progress: { ...update, done: 1, total: 1, last_seq: 10 }, resources: [{ ...point, service_cpu_percent: 88 }] };
     const reads = { detailReads, historyReads, taskReads };
     emit('sync.reset', { reason: 'buffer_gap' });
     await expect(page.getByTestId('task-state')).toContainText('运行不完整');
     await expect(page.getByTestId('progress')).toContainText('1 / 1');
     await expect(page.getByTestId('sample-count')).toHaveText('采样点：1');
     assert.ok(detailReads > reads.detailReads && historyReads > reads.historyReads && taskReads > reads.taskReads);
+    for (const stopReason of ['duration_window_interrupted', 'single_wall_budget_exhausted', 'trial_wall_budget_exhausted']) {
+      emit('run.state', { task: { ...detail.task, exit: { ...detail.task.exit, stop_reason: stopReason } } });
+      await expect(page.locator('main')).toContainText(stopReason);
+      await expect(page.getByTestId('task-state')).toContainText('运行不完整');
+      await expect(page.getByTestId('task-state')).not.toContainText('cancelled');
+    }
+    emit('run.state', { task: { ...detail.task, state: 'cancelled', exit: { ...detail.task.exit, exit_code: 130, cli_status: 'interrupted', stop_reason: 'user_cancelled' } } });
+    await expect(page.getByTestId('task-state')).toContainText('已取消 · cancelled');
+    await expect(page.locator('main')).toContainText('user_cancelled');
     emit('run.state', { task: { ...detail.task, state: 'failed', exit: { ...detail.task.exit, exit_code: 4 }, error: { code: 'cli_error', message: 'SSE evidence error', limitations: ['raw_evidence_limit'], details: null } } });
     await expect(page.getByTestId('task-state')).toContainText('工具 / 证据错误');
     await expect(page.getByRole('alert').last()).toContainText('raw_evidence_limit');
@@ -108,7 +129,7 @@ export async function verifyRunsWire(browser, vite, errors) {
     assert.ok(requests.every(request => request.authorization === 'Bearer wire-token'));
     await page.goto(`http://127.0.0.1:${server.address().port}/?token=wire-token#/runs/missing`);
     await expect(page.getByRole('alert')).toContainText('Task not found fixture');
-    console.log('PASS T5 wire fixture: POST exact bodies; 400/409 errors; native run SSE; in-flight REST/event merge; sync.reset history/tasks/detail/resources rebuild; unknown task');
+    console.log('PASS T5 wire fixture: POST exact bodies; 400/409 errors; native run SSE with nullable run_id; S4 schema parity; real cancellation/time-window/budget reasons; in-flight REST/event merge; sync.reset history/tasks/detail/resources rebuild; unknown task');
   } finally {
     await page.close(); for (const connection of connections) connection.end();
     server.closeAllConnections(); await new Promise(resolve => server.close(resolve));

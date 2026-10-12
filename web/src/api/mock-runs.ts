@@ -7,7 +7,7 @@ function reject(reason: string, status: 'conflict' | 'invalid_request' = 'confli
   throw new ApiFailure({ code: status, message: status === 'conflict' ? '运行请求与当前状态冲突（mock）。' : '运行请求参数无效（mock）。', limitations: [], details: { reason } });
 }
 function summary(id: string, status: RunHistoryStatus, batch: string | null): RunSummary {
-  return { run_id: id, path: batch ? `/mock/results/${batch}/runs/${id}` : `/mock/results/${id}`, batch_id: batch, status, sealed: status === 'complete', completeness: status === 'complete' ? 'complete' : 'incomplete', stop_reason: status === 'cancelled' ? 'interrupted' : status === 'dirty' ? 'engine_not_drained' : null,
+  return { run_id: id, path: batch ? `/mock/results/${batch}/runs/${id}` : `/mock/results/${id}`, batch_id: batch, status, sealed: status === 'complete', completeness: status === 'complete' ? 'complete' : 'incomplete', stop_reason: status === 'cancelled' ? 'user_cancelled' : status === 'dirty' || status === 'partial' ? 'duration_window_interrupted' : null,
     model_name: 'Demo GGUF', model_path: '/mock/models/demo.gguf', engine: 'mock', bundle: 'zh-core', score: status === 'complete' ? { passed: 2, valid: 2, rate: 1 } : null, relation: 'initial', parent_run_id: null, started_at: '2026-10-12T10:00:00Z', finished_at: '2026-10-12T10:01:00Z', resumable: batch !== null && status !== 'complete' };
 }
 export function createMockRuns(listeners: Set<EventHandlers>): Pick<StudioApi, 'getRuns' | 'getTasks' | 'getTask' | 'startRuns' | 'resumeRun' | 'cancelTask'> {
@@ -45,7 +45,7 @@ export function createMockRuns(listeners: Set<EventHandlers>): Pick<StudioApi, '
     const task = detail.task;
     task.state = code === 130 ? 'cancelled' : code === 2 || code === 4 ? 'failed' : 'done'; task.finished_at = now();
     const limitation = code === 2 ? 'device_preflight_blocked' : code === 4 ? 'evidence_invalid' : code === 3 ? (scenarios.get(task.task_id) === 'dirty' ? 'engine_not_drained' : 'duration_requires_new_window') : null;
-    task.exit = { exit_code: code, cli_status: code === 3 ? 'duration_requires_new_window' : code === 130 ? 'interrupted' : code === 0 ? 'complete' : 'error', completeness: code === 0 ? 'complete' : 'incomplete', stop_reason: limitation ?? (code === 130 ? 'interrupted' : null), limitations: limitation ? [limitation] : [] };
+    task.exit = { exit_code: code, cli_status: code === 3 ? 'duration_requires_new_window' : code === 130 ? 'interrupted' : code === 0 ? 'complete' : 'error', completeness: code === 0 ? 'complete' : 'incomplete', stop_reason: code === 130 ? 'user_cancelled' : code === 3 ? 'duration_window_interrupted' : code === 4 ? 'tool_interrupted' : null, limitations: limitation ? [limitation] : [] };
     if (code === 2 || code === 4) task.error = { code: code === 2 ? 'cli_blocked' : 'cli_error', message: code === 2 ? '输入或预检阻断（mock）。' : '工具或证据错误（mock）。', limitations: limitation ? [limitation] : [], details: null };
     record(detail, code); publish(task); pump();
   }

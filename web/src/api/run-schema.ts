@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { errorSchema } from './schema';
-import type { RunHistoryResponse, RunTask, RunProgress, ResourceSample, StartRunsRequest, ResumeRunRequest } from './types';
+import type { RunProgressEvent, RunHistoryResponse, RunTask, RunProgress, ResourceSample, StartRunsRequest, ResumeRunRequest } from './types';
 const text = z.string().nullable();
 const number = z.number().nullable();
 const completeness = z.enum(['complete', 'incomplete']).nullable();
@@ -23,7 +23,7 @@ export const taskSchema: z.ZodType<RunTask> = z.object({
 });
 export const progressSchema: z.ZodType<RunProgress> = z.object({
   phase: z.enum(['probe', 'warmup', 'baseline', 'formal', 'scoring', 'residual', 'finalizing']).nullable(),
-  done: z.number().int().nonnegative(), total: z.number().int().nonnegative().nullable(), current_case_id: text, last_seq: z.number().int().nonnegative(),
+  done: z.number(), total: number, current_case_id: text, last_seq: z.number(),
   cases: z.array(z.object({ case_id: z.string(), plan_index: number,
     state: z.enum(['pending', 'running', 'completed', 'failed', 'cancelled', 'invalid']),
     category: z.enum(['instruction', 'extraction', 'qa', 'math', 'classification', 'structured', 'performance', 'svg']).nullable(),
@@ -32,12 +32,12 @@ export const progressSchema: z.ZodType<RunProgress> = z.object({
   })),
 });
 export const resourceSchema: z.ZodType<ResourceSample> = z.object({
-  utc: z.string().datetime({ offset: true }), mem_available_bytes: number, service_rss_bytes: number, service_cpu_percent: number, temperature_celsius: number,
+  utc: z.string(), mem_available_bytes: number, service_rss_bytes: number, service_cpu_percent: number, temperature_celsius: number,
 });
 export const taskListSchema = z.object({ tasks: z.array(taskSchema) });
 export const taskResponseSchema = z.object({ task: taskSchema });
 export const detailSchema = z.object({ task: taskSchema, progress: progressSchema.nullable(), resources: z.array(resourceSchema) });
-export const progressEventSchema = z.object({ task_id: z.string(), run_id: z.string(), progress: progressSchema });
+export const progressEventSchema: z.ZodType<RunProgressEvent> = z.object({ task_id: z.string(), run_id: text, progress: progressSchema });
 export const resourcesEventSchema = z.object({ task_id: z.string(), points: z.array(resourceSchema) });
 const absolutePath = z.string().min(1).regex(/^(\/|[A-Za-z]:[\\/]|\\\\)/, '配置必须是绝对路径');
 export const startRequestSchema: z.ZodType<StartRunsRequest> = z.object({ config_paths: z.array(absolutePath).min(1).max(2), allow_single_bundle: z.boolean().optional() })

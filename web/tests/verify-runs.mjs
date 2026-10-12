@@ -74,7 +74,7 @@ export async function verifyRuns(browser, origin, errors) {
   await page.getByRole('button', { name: '启动运行', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('output_root_outside_results');
   for (const [scenario, id, label, limitation, historyStatus] of [
-    ['slow', 4, 'cancelled', 'interrupted', 'cancelled'],
+    ['slow', 4, 'cancelled', 'user_cancelled', 'cancelled'],
     ['blocked', 5, '输入 / 预检阻断', 'device_preflight_blocked', 'partial'],
     ['error', 6, '工具 / 证据错误', 'evidence_invalid', 'partial'],
     ['partial', 7, '运行不完整', 'duration_requires_new_window', 'partial'],
@@ -94,6 +94,10 @@ export async function verifyRuns(browser, origin, errors) {
     await expect(page.getByTestId('task-state')).toContainText(label, { timeout: 10000 });
     await expect(page.locator('main')).toContainText(limitation);
     if (scenario === 'partial' || scenario === 'dirty' || scenario === 'slow') await expect(page.getByRole('alert')).toHaveCount(0);
+    if (scenario === 'partial' || scenario === 'dirty') {
+      await expect(page.getByTestId('task-state')).not.toContainText('cancelled');
+      await expect(page.locator('main')).toContainText('duration_window_interrupted');
+    }
     if (scenario === 'blocked') await expect(page.getByRole('cell', { name: '无效 · invalid', exact: true })).toBeVisible();
     if (scenario === 'error') await expect(page.getByRole('cell', { name: '失败 · failed', exact: true })).toBeVisible();
     await page.getByRole('link', { name: '← 返回 Runs' }).click();
