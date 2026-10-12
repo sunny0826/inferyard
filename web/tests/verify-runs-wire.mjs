@@ -34,6 +34,8 @@ export async function verifyRunsWire(browser, vite, errors) {
     } else if (path === '/api/device') res.end(JSON.stringify({ snapshot: null, captured_at: null, refreshing: false, last_error: null }));
     else if (path === '/api/settings') res.end(JSON.stringify(settings));
     else if (path === '/api/runs') { historyReads++; res.end(JSON.stringify(history)); }
+    else if (path === '/api/reports') res.end(JSON.stringify({ reports_root: null, reports: [] }));
+    else if (path === '/api/downloads') res.end(JSON.stringify({ tasks: [] }));
     else if (path === '/api/run-tasks') { taskReads++; res.end(JSON.stringify({ tasks: [detail.task] })); }
     else if (path === '/api/run-tasks/wire') { detailReads++; if (hold) heldResponse = { res, body: JSON.stringify(detail) }; else res.end(JSON.stringify(detail)); }
     else { res.statusCode = 404; res.end(JSON.stringify({ error: { code: 'not_found', message: 'Task not found fixture', limitations: [], details: null } })); }

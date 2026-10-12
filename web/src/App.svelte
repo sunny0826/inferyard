@@ -3,6 +3,10 @@
   import { api, mockMode } from './api';
   import { failure } from './api/client';
   import type { ApiError, DeviceResponse, SettingsResponse } from './api/types';
+  import Reports from './pages/Reports.svelte';
+  import Models from './pages/Models.svelte';
+  import { AssetsStore } from './assets-state/store.svelte';
+  const assets = new AssetsStore();
   import Runs from './pages/Runs.svelte';
   import RunDetail from './pages/RunDetail.svelte';
   import { RunsStore } from './runs/store.svelte';
@@ -22,7 +26,7 @@
     error = null;
     const dv = ++deviceVersion; const sv = ++settingsVersion;
     await Promise.all([
-      runs.rebuild(),
+      runs.rebuild(), assets.rebuild(),
       api.getDevice().then(value => { if (dv === deviceVersion) device = value; }).catch(cause => { error = failure(cause); }),
       api.getSettings().then(value => { if (sv === settingsVersion) settings = value; }).catch(cause => { error = failure(cause); }),
     ]);
@@ -39,6 +43,8 @@
     const close = api.subscribe({
       deviceUpdated(event) { deviceVersion++; device = { snapshot: event.snapshot, captured_at: event.captured_at, last_error: event.error, refreshing: false }; },
       runState(event) { runs.state(event.task); }, runProgress(event) { runs.progress(event); }, runResources(event) { runs.resources(event); },
+      reportCreated() { void assets.refreshReports(); },
+      downloadState(event) { assets.state(event.task); }, downloadProgress(event) { assets.progress(event); },
       reset() { void rebuild(); }, connection(state) { connection = state; }, error(value) { error = value; },
     });
     void rebuild();
@@ -50,6 +56,8 @@
 {#if route === 'device'}<Device {device} {refresh} {pending} />
 {:else if route === 'dashboard' || route === 'runs'}<Runs store={runs} dashboard={route === 'dashboard'} />
 {:else if route.startsWith('runs/')} {#key route}<RunDetail store={runs} />{/key}
+{:else if route === 'reports'}<Reports store={assets} {runs} />
+{:else if route === 'models'}<Models store={assets} />
 {:else if route === 'settings'}<Settings data={settings} saved={value => { settingsVersion++; settings = value; }} />
 {:else}<header><h1>{routes.includes(route) ? route : '页面不存在'}</h1></header><section class="empty"><p>此页面尚未实现。</p><a href="#/device">查看本机设备</a></section>{/if}
 </main></div>
