@@ -34,7 +34,7 @@ func TestIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	index := Index(root)
-	if len(index.Runs) != 2 || len(index.Batches) != 1 || index.Skipped != 2 {
+	if len(index.Runs) != 2 || len(index.Batches) != 1 || index.Skipped != 2 || index.Error != nil {
 		t.Fatalf("%+v", index)
 	}
 	if index.Batches[0].Runs[0].State != Partial || index.Batches[0].Runs[0].BatchPath != filepath.Join(root, "batch") {

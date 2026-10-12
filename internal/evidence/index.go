@@ -37,7 +37,8 @@ type ResultIndex struct {
 
 // Index recognizes layout2 runs and batch.json/runs containers, including when
 // root itself is a run or batch. Sealed is a declaration, not hash verification.
-// Missing roots and unreadable/malformed entries are counted, not fatal.
+// Missing roots and malformed runs/batches are skipped and counted.
+// Filesystem traversal failures are counted and also reported in Error.
 func Index(root string) ResultIndex {
 	index := ResultIndex{}
 	var walk func(string, string)
@@ -54,9 +55,6 @@ func Index(root string) ResultIndex {
 			run, err := readRun(dir, batch)
 			if err != nil {
 				index.Skipped++
-				if index.Error == nil {
-					index.Error = err
-				}
 				return
 			}
 			index.Runs = append(index.Runs, run)
@@ -66,9 +64,6 @@ func Index(root string) ResultIndex {
 			raw, err := readObject(filepath.Join(dir, "batch.json"))
 			if err != nil {
 				index.Skipped++
-				if index.Error == nil {
-					index.Error = err
-				}
 				return
 			}
 			start := len(index.Runs)

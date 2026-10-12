@@ -349,11 +349,11 @@ func (s *Service) executeRun(t *runEntry) {
 		mc = c
 		points := a.resources(rows)
 		if len(points) > 0 {
-			t.Resources = append(t.Resources, points...)
+			t.Resources = appendResources(t.Resources, points)
 			if len(t.Resources) > 600 {
 				t.Resources = append([]ResourceSample{}, t.Resources[len(t.Resources)-600:]...)
 			}
-			resourcePending = append(resourcePending, points...)
+			resourcePending = appendResources(resourcePending, points)
 		}
 		if len(resourcePending) > 0 && time.Since(lastResources) >= time.Second {
 			s.Bus.Publish("run.resources", map[string]any{"task_id": t.Task.TaskId, "points": resourcePending})

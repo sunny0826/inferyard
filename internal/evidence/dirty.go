@@ -25,7 +25,10 @@ func DirtyRun(path, runID string) (bool, error) {
 	if err = json.Unmarshal(raw, &state); err != nil {
 		return false, err
 	}
-	if state.Schema != 1 || state.Dirty == nil || (*state.Dirty && (state.RunID == "" || state.Kind == "")) {
+	if state.Schema > 1 {
+		return false, nil
+	}
+	if state.Schema < 1 || state.Dirty == nil || (*state.Dirty && (state.RunID == "" || state.Kind == "")) {
 		return false, errors.New("invalid host marker")
 	}
 	return *state.Dirty && state.RunID == runID && state.Kind == "run", nil
@@ -33,7 +36,7 @@ func DirtyRun(path, runID string) (bool, error) {
 
 // RunStatus preserves the contract's precedence; sealing alone is not completion.
 func RunStatus(sealed bool, completeness, stopReason string, dirty bool) string {
-	if stopReason == "interrupted" || stopReason == "cancelled" {
+	if stopReason == "user_cancelled" {
 		return "cancelled"
 	}
 	if dirty {

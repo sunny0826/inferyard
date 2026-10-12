@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"inferyard-studio/internal/inferyard"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,9 @@ import (
 	"sync"
 	"time"
 )
+
+// Version is set from the embedded desktop configuration before serving requests.
+var Version = "dev"
 
 type Executor func(context.Context, string, ...string) (inferyard.Execution, error)
 type Options struct {
@@ -57,7 +61,8 @@ func New(ctx context.Context, o Options) (*Service, error) {
 	raw, err := os.ReadFile(o.SettingsPath)
 	if err == nil {
 		if err = json.Unmarshal(raw, &s.settings); err != nil {
-			return nil, err
+			s.settings = UserSettings{}
+			log.Print("settings: invalid JSON or field types; using defaults")
 		}
 	} else if !os.IsNotExist(err) {
 		return nil, err
@@ -186,6 +191,9 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 	if err := os.MkdirAll(filepath.Dir(s.settingsPath), 0700); err != nil {
 		return SettingsResponse{}, Err("internal_error")
 	}
+	if err := os.Chmod(filepath.Dir(s.settingsPath), 0700); err != nil {
+		return SettingsResponse{}, Err("internal_error")
+	}
 	data, _ := json.Marshal(u)
 	f, err := os.CreateTemp(filepath.Dir(s.settingsPath), "settings-*.json")
 	if err != nil {
@@ -225,7 +233,7 @@ func (s *Service) Status() StatusResponse {
 	p := s.probe(s.userSettings())
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	r := StatusResponse{Status: "ok", Version: "0.1.0", Inferyard: p}
+	r := StatusResponse{Status: "ok", Version: Version, Inferyard: p}
 	for _, t := range s.runs {
 		if !terminal(t.Task.State) {
 			r.ActiveRunTasks++

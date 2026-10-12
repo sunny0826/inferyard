@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -10,14 +11,24 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/egoist/mygo"
+	"inferyard-studio/internal/core"
 	"inferyard-studio/internal/server"
 	"inferyard-studio/web"
 )
 
+//go:embed mygo.config.ts
+var desktopConfig string
+
 func main() {
+	version := regexp.MustCompile(`(?m)^\s*version:\s*['"]([^'"]+)['"],?\s*$`).FindAllStringSubmatch(desktopConfig, -1)
+	if len(version) != 1 {
+		log.Fatal("desktop configuration must contain one version")
+	}
+	core.Version = version[0][1]
 	sessionFD := flag.Int("session-fd", -1, "write the session URL once to an inherited private pipe (never to logs)")
 	headless := flag.Bool("headless", false, "serve the embedded frontend without a desktop window")
 	evidence := flag.String("spike-evidence", "", "write M0 desktop screenshot to this directory")

@@ -78,11 +78,11 @@ All commands use command-scoped `GOTOOLCHAIN=go1.27.2`,
 
 The embed harness temporarily renames web/dist and restores it in `finally`. The
 binary runs in an empty temporary working directory without Vite. Entry HTML is
-200, embedded JS is 142953 bytes, CSS is 2929 bytes, unauthenticated entry is 401.
+200, embedded JS is 230232 bytes, CSS is 5813 bytes, unauthenticated entry is 401.
 The session travels through an anonymous pipe. The harness verifies that the
 token is absent from captured logs and the headless process exits 0. It writes no
 artifacts under web/ or docs/. A compiled standalone test binary also checks
-`web.Assets` (`TestEmbeddedArtifact`, HTML 403 bytes).
+`web.Assets` (`TestEmbeddedArtifact`, HTML 439 bytes).
 
 ## Q5 fixture measurements
 

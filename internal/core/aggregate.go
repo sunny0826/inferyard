@@ -3,9 +3,11 @@ package core
 import (
 	"encoding/json"
 	"inferyard-studio/internal/evidence"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 )
 
 type object map[string]any
@@ -43,6 +45,11 @@ type aggregate struct {
 	stop              *string
 	started, finished *string
 	previous          object
+	resource          ResourceSample
+	resourceStart     time.Time
+	resourceClock     string
+	resourcePhase     string
+	resourceMetrics   map[string]bool
 }
 
 func newAggregate(raw []byte) *aggregate {
@@ -137,7 +144,24 @@ func (a *aggregate) resources(records []evidence.Record) []ResourceSample {
 		if m["missing_reason"] != nil {
 			v = nil
 		}
-		p := ResourceSample{Utc: str(text(m["utc"]))}
+		if metric != "system_mem_available" && metric != "service_rss" && metric != "temperature" && metric != "service_cpu_ticks" {
+			continue
+		}
+		if metric == "service_cpu_ticks" && m["capture"] != "periodic" {
+			continue
+		}
+		utc := str(text(m["utc"]))
+		stamp, err := time.Parse(time.RFC3339Nano, utc)
+		clock, phase := str(text(m["clock_id"])), str(text(m["phase"]))
+		// Anchor a half-second window at the first metric, including across reads.
+		// A repeated metric starts a new cycle; values never carry into that cycle.
+		if a.resourceMetrics == nil || a.resourceMetrics[metric] || err != nil || a.resourceStart.IsZero() || stamp.Before(a.resourceStart) || stamp.Sub(a.resourceStart) >= 500*time.Millisecond || clock != a.resourceClock || phase != a.resourcePhase {
+			a.resource = ResourceSample{Utc: utc}
+			a.resourceStart, a.resourceClock, a.resourcePhase = stamp, clock, phase
+			a.resourceMetrics = map[string]bool{}
+		}
+		a.resourceMetrics[metric] = true
+		p := &a.resource
 		switch metric {
 		case "system_mem_available":
 			if v != nil {
@@ -168,9 +192,21 @@ func (a *aggregate) resources(records []evidence.Record) []ResourceSample {
 		default:
 			continue
 		}
-		points = append(points, p)
+		points = appendResources(points, []ResourceSample{*p})
 	}
 	return points
+}
+
+// appendResources replaces revisions of a sampling point with its merged value.
+func appendResources(dst, points []ResourceSample) []ResourceSample {
+	for _, p := range points {
+		if len(dst) > 0 && dst[len(dst)-1].Utc == p.Utc {
+			dst[len(dst)-1] = p
+		} else {
+			dst = append(dst, p)
+		}
+	}
+	return dst
 }
 func summarize(r evidence.Run, host string) (RunSummary, *aggregate, error) {
 	a := newAggregate(r.Inputs)
@@ -241,6 +277,12 @@ func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 	if index.Error != nil {
 		return h, Err("internal_error")
 	}
+	skipped := index.Skipped
+	defer func() {
+		if skipped > 0 {
+			log.Printf("history scan: skipped %d entries", skipped)
+		}
+	}()
 	host := s.hostStatePath
 	if host == "" {
 		var e error
@@ -249,11 +291,15 @@ func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 			return h, Err("internal_error")
 		}
 	}
+	if _, err := evidence.DirtyRun(host, ""); err != nil {
+		return h, Err("internal_error")
+	}
 	summaries := map[string]RunSummary{}
 	for _, r := range index.Runs {
 		v, _, e := summarize(r, host)
 		if e != nil {
-			return h, Err("internal_error")
+			skipped++
+			continue
 		}
 		summaries[r.Path] = v
 		if r.BatchPath == "" {
@@ -262,10 +308,14 @@ func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 	}
 	for _, b := range index.Batches {
 		bs := BatchSummary{BatchId: filepath.Base(b.Path), Path: b.Path, Runs: []RunSummary{}}
+		validRuns := []evidence.Run{}
 		for _, r := range b.Runs {
-			bs.Runs = append(bs.Runs, summaries[r.Path])
+			if summary, ok := summaries[r.Path]; ok {
+				bs.Runs = append(bs.Runs, summary)
+				validRuns = append(validRuns, r)
+			}
 		}
-		markResumable(bs.Runs, b.Runs)
+		markResumable(bs.Runs, validRuns)
 		sort.SliceStable(bs.Runs, func(i, j int) bool { return str(bs.Runs[i].StartedAt) > str(bs.Runs[j].StartedAt) })
 		h.Batches = append(h.Batches, bs)
 	}

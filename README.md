@@ -1,33 +1,92 @@
 # InferYard Studio
 
-M0：MyGo 桌面窗口与浏览器共用一个本地 HTTP 服务，展示每两秒递增的 SSE 计数。
+InferYard 的本地桌面界面：设备检查、运行队列与取消、历史证据、资源曲线、报告和模型下载。
+Go 服务调用本机 `inferyard` CLI，MyGo 窗口加载随机 `127.0.0.1` 端口上的嵌入式前端。
+在设置页配置 CLI 路径、结果目录和模型目录；未配置 CLI 时可以启动界面。
 
-需要 Go ≥ 1.27.1、Bun。Go 的 PATH 与 GOROOT 必须指向同一工具链。
+## 构建与运行
+
+需要 Go（本项目验收使用 `go1.27.2`）、Bun；桌面运行还需要系统 WebView。
+先构建前端，再构建 Go 二进制，产物内含 `web/dist`：
 
 ```sh
-bun install --registry https://registry.npmmirror.com
-GOPROXY=https://goproxy.cn,direct bun run build
+bun install
+bun run build:web
+env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -o build/inferyard-studio .
 ./build/inferyard-studio
 ```
 
-浏览器打开日志中的完整 `STUDIO_URL`（包含本次会话 token）。关闭桌面窗口会退出服务。
-只启动 Web 服务：`./build/inferyard-studio -headless`，按 Ctrl+C 退出。
+开发启动：`env GOPROXY=https://goproxy.cn,direct bun run dev`，先构建前端再运行 Go。
+`bun run dev:mock` 使用前端模拟数据，不连接真实 CLI。
+三平台二进制构建：`env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct bun run build:all`。
+产物位于 `build/{darwin-arm64,windows-amd64,linux-amd64}/`，不含安装包。
+
+版本号唯一来源为 `mygo.config.ts` 的 `version`。`main.go` 通过 `go:embed` 将配置嵌入二进制，
+启动时设置后端 `/api/status` 的版本；普通 `go build` 也生效，无须生成或传入 ldflags。
+修改版本后重新构建。单独使用 core 包时版本为 `dev`。
+
+## Headless 与会话鉴权
+
+`-headless` 只启动本地服务，按 Ctrl+C 退出。日志只含监听地址，**token 和完整会话 URL 永不落日志**。
+外部启动器须创建私密管道，将写端文件描述符（≥3）传入 `-session-fd`；服务写一次 URL 后关闭写端。
+例如 macOS/Linux 上通过匿名管道取得 URL 并直接打开浏览器：
 
 ```sh
-GOPROXY=https://goproxy.cn,direct bun run dev
-GOPROXY=https://goproxy.cn,direct bun run build:all
-GOPROXY=https://goproxy.cn,direct go test -race ./...
-python3 scripts/verify-embed.py
+python3 - <<'PY'
+import os
+import signal
+import subprocess
+import webbrowser
+
+reader, writer = os.pipe()
+process = subprocess.Popen(
+    ['./build/inferyard-studio', '-headless', '-session-fd', str(writer)],
+    pass_fds=(writer,), start_new_session=True,
+)
+os.close(writer)
+try:
+    with os.fdopen(reader) as pipe:
+        url = pipe.readline().strip()
+    if not url:
+        raise RuntimeError('Server did not publish a session URL')
+    webbrowser.open(url)
+    process.wait()
+except KeyboardInterrupt:
+    pass
+finally:
+    if process.poll() is None:
+        process.send_signal(signal.SIGINT)
+        process.wait()
+PY
 ```
 
-`dev` 先构建前端，再运行 Go；M0 不启动 Vite dev server，也不提供热更新。
-`build:all` 只生成三平台二进制，不生成安装包。运行时需要操作系统的 WebView。
+REST API 使用 `Authorization: Bearer <token>`。入口页、报告页和 `/api/events`（EventSource）
+也接受 `?token=<token>`；其他 REST 路由不接受 query token。静态 `/assets/` 无需鉴权。
+SSE 推送运行、进度、资源、下载、设备及报告事件；`sync.reset` 后客户端通过 REST 重建状态。
 
-- `main.go`：随机本地端口、生命周期、MyGo 窗口。
-- `internal/server/`：token 校验、静态文件、SSE 广播。
-- `web/`：Vite + TypeScript、Go embed；构建前须生成 `web/dist`。
-- `scripts/`：交叉构建与独立二进制验证。
-- [M0 验证记录](docs/m0-spike.md)：命令、退出码、证据和限制。
+设置保存在系统用户配置目录的 `InferYard Studio/settings.json`，目录权限 0700、文件权限 0600
+（POSIX）。损坏 JSON 或字段类型错误时使用默认设置并记录提示；用户保存后才替换文件。
+历史扫描跳过损坏 run，并在服务端日志记录跳过数量。
 
-首页使用 query token，`/api/events` 使用 query token，`/api/status` 使用
-`Authorization: <token>`。静态 `/assets/` 文件公开，不包含会话数据。
+## 验证
+
+以下环境变量仅作用于对应命令，不修改全局配置：
+
+```sh
+env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
+env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
+env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -race ./...
+env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o /tmp/inferyard-studio-windows.exe .
+env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /tmp/inferyard-studio-linux .
+python3 scripts/verify-embed.py --binary build/inferyard-studio
+```
+
+嵌入验证会临时移走 `web/dist` 并自动恢复，请勿与前端构建并行执行。
+它从空目录运行二进制，检查页面与资产、鉴权、token 不落日志及正常退出。
+交叉编译不等于 Windows/Linux 上的运行验证，fixture 测试也不等于真实模型验收。
+
+- `internal/core/`：任务、设置、报告和证据聚合。
+- `internal/evidence/`：只读索引和 JSONL 增量读取。
+- `internal/inferyard/`：CLI 子进程和结构化结果解析。
+- `internal/server/`：HTTP、鉴权和 SSE；[端点与验证说明](internal/server/README.md)。
+- `web/`：Svelte 前端与嵌入资产。
