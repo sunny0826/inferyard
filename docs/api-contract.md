@@ -1,6 +1,7 @@
 # InferYard Studio API 契约
 
 版本：v0 已冻结（T1 产出；2026-10-12 冻结审查修订 + reviewer 复核 diff 通过；冻结后变更须 coordinator 仲裁 + reviewer 重审）。
+补丁 2026-10-12：Q4 dirty 判据落地（§4.4）、Q5 实测结论记录（§9）；无字段/语义变更，reviewer 复核见 T8。
 权威级别：前后端唯一契约。前端 `web/src/api/types.ts` 与 Go struct 的 json tag 均以
 [`docs/api-types.ts`](api-types.ts) 的字段名为准。
 
@@ -190,10 +191,16 @@
 | `started_at` / `finished_at` | string \| null | 首/末事件 utc |
 | `resumable` | boolean | 服务端预判（仅供 UI 置灰）：批次内 run 未完成且为其批次**计划序**最新未完成轮次时为 `true`；standalone run（`batch_id=null`，`run --config` 产物）恒为 `false`。最终以 CLI 裁决为准（§4.5） |
 
-`status` 派生（实现属 evidence 层（T4 扩展），契约只固定枚举与呈现语义）：
-`cancelled`（停止原因为取消/退出 130）＞ `dirty`（存在未排空 dirty 标记）＞
+`status` 派生（实现属 evidence 层，契约固定枚举、判据与呈现语义）：
+`cancelled`（停止原因为取消/退出 130）＞ `dirty`（判据见下）＞
 `partial`（未封存或执行不完整）＞ `complete`（封存且完整）。UI 如实呈现，不合并、不粉饰。
-`dirty` 的精确判据留待 T4 落地，届时以契约修订补丁回写、走变更重审（Q4 裁决）。
+
+`dirty` 判据（T4 落地，实现 `internal/evidence/dirty.go`；Q4 裁决补丁回写）：读取时主机
+持久状态 `inferyard-host.state.json` 满足 `schema_version=1`、`dirty=true`、`kind="run"` 且
+`run_id` 与该 run 匹配。Unix 状态目录为 `/var/tmp`，Windows 为系统 Common AppData 已知目录。
+状态文件缺失表示当前无可匹配标记（不 dirty）；状态不可读或格式非法返回 `internal_error`，
+不推断为 clean。标记经 clean 或被后续任务替换后，历史 run 不再因该标记呈现 dirty；这不证明
+其历史 drain 已核验，也不代表证据完整。`cancelled` 优先级仍高于 `dirty`。
 
 ### 4.5 运行任务（启动 / 队列 / 详情 / 取消 / resume）
 
@@ -345,8 +352,8 @@ data: {"task":{...}}
 - `id`：uint64 十进制，**每进程单调递增**；计数器以启动种子初始化（进程启动时派生，避免重启后
   id 从 0 回退、旧 `Last-Event-ID` 落入新缓冲被误补发）；`event` 为事件类型；`data` 为单行 JSON。
 - 心跳：15s 无事件则发注释行 `: hb\n\n`。
-- 断线重连：客户端带 `Last-Event-ID`。服务端保留有界回放缓冲（≥2048 条；初始值，稳态事件率约
-  ≤5 ev/s，T4 实测后复核——Q5 裁决）：`last_id` 在缓冲范围内 → 补发缺失后继续实时；
+- 断线重连：客户端带 `Last-Event-ID`。服务端保留有界回放缓冲（≥2048 条；初始值经 T4 实测
+  复核维持不变，Q5 实测结论见 §9；稳态事件率约 ≤5 ev/s）：`last_id` 在缓冲范围内 → 补发缺失后继续实时；
   **小于缓冲最旧值、或大于当前最新值** → 先发 `sync.reset`，客户端收到后必须经 REST 全量重建状态。
 - 事件语义：`*` `.state` 为全量替换（携带完整任务对象），`run.progress` 为全量替换，
   `run.resources` / `download.progress` 为增量追加。替换语义保证断线后幂等收敛。
@@ -410,8 +417,11 @@ M0 的演示事件 `count` 删除（见 §8）。
   普遍超时，按冻结变更流程演进。
 - **Q3 双 bundle 任务模型**：接受「每 config 一任务、按数组顺序串行」粒度 → §4.5；T5 进度视图
   按同次 `POST /api/runs` 返回的 `tasks` 数组客户端成组，无服务端聚合实体。
-- **Q4 `dirty` 判据推迟**：接受。契约只固定枚举与呈现语义 → §4.4；T4 落地判据时以契约修订
-  补丁回写（走变更重审）。
-- **Q5 SSE 回放缓冲 2048 条 / 心跳 15s**：接受为初始值 → §5.1；保留「T4 实测后复核」钩子。
+- **Q4 `dirty` 判据**：已落地（2026-10-12 补丁）。确切判据已回写 §4.4，实现
+  `internal/evidence/dirty.go`（补丁措辞与该实现逐项核对一致）；reviewer 复核见 T8。
+- **Q5 SSE 回放缓冲 2048 条 / 心跳 15s**：接受为初始值 → §5.1。T4 实测复核完成
+  （2026-10-12，数据见 `internal/server/README.md` Q5 节）：progress 最短间隔约 500ms、
+  空闲心跳约 15s、2048 条回放缓冲写入 10,000 条保留 2,048 条、越界重连触发 `sync.reset`；
+  结论维持初始值 2048 条 / 15s / 2Hz，无参数与语义变更。
 - **Q6 query token**：接受 P0 模型；`Referrer-Policy: no-referrer` 与「服务端访问日志不落
   query 串/URL」升格为正式条款 → §2、§4.6；LAN 开关（P2）实现时必须重审鉴权模型，保持 §2 声明。
