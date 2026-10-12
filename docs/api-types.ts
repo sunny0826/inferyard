@@ -1,5 +1,6 @@
 /**
  * InferYard Studio API 契约 — TypeScript 类型镜像（docs/api-contract.md 的权威镜像）。
+ * 版本：v0 修订待复核（2026-10-12 冻结审查修订）。
  * 冻结后：前端复制为 web/src/api/types.ts；Go 侧 struct 的 json tag 必须与这里的
  * 字段名逐一一致。全部字段 snake_case；时间为 UTC ISO 8601 字符串；字节为整数 bytes；
  * 缺测/未知一律 null。
@@ -19,13 +20,14 @@ export type ApiErrorCode =
 
 export type ConflictReason =
   | "queue_duplicate" | "invalid_state" | "output_exists"
-  | "not_resumable" | "refresh_in_progress" | "settings_incomplete";
+  | "not_resumable" | "refresh_in_progress" | "settings_incomplete"
+  | "output_root_outside_results"; // config 冻结 output.root 不在 results_root 之内
 
 export interface ApiError {
   code: ApiErrorCode;
   /** 服务端固定文案，不回显原始异常/stderr */
   message: string;
-  /** inferyard limitations 固定原因原样透传；非 CLI 错误为 [] */
+  /** inferyard limitations 固定原因数组原样透传；非 CLI 错误为 [] */
   limitations: string[];
   details: Record<string, unknown> | null;
 }
@@ -76,7 +78,11 @@ export interface SettingsResponse {
   effective: EffectiveSettings;
 }
 
-/** PUT /api/settings：三字段均可选，仅更新出现字段；路径须为非空绝对路径 */
+/**
+ * PUT /api/settings：三字段均可选，仅更新出现字段；路径须为非空绝对路径。
+ * results_root/models_root 只能改值、不能清空（不接受 null，空串同样非法）；
+ * 仅 inferyard_path 可置 null（恢复自动探测 PATH）。
+ */
 export interface UpdateSettingsRequest {
   inferyard_path?: string | null;
   results_root?: string;
@@ -196,9 +202,14 @@ export interface DeviceResponse {
   last_error: ApiError | null;
 }
 
+/** POST /api/device/refresh 的 202 响应 */
+export interface DeviceRefreshResponse {
+  refreshing: boolean;
+}
+
 // ----- 4.4 运行历史 -----------------------------------------------------------
 
-/** 呈现语义：cancelled > dirty > partial > complete（派生实现属 evidence 层） */
+/** 呈现语义：cancelled > dirty > partial > complete（派生实现属 evidence 层，T4 扩展） */
 export type RunHistoryStatus = "complete" | "partial" | "cancelled" | "dirty";
 export type RunRelation = "initial" | "repeat" | "resume" | "rerun" | "derived";
 
@@ -227,6 +238,11 @@ export interface RunSummary {
   parent_run_id: string | null;
   started_at: string | null;
   finished_at: string | null;
+  /**
+   * 服务端预判，仅供 UI 置灰：批次内 run 未完成且为其批次计划序最新未完成轮次时
+   * 为 true；standalone run（batch_id=null，run --config 产物）恒为 false。
+   * 最终以 CLI 裁决为准。
+   */
   resumable: boolean;
 }
 
@@ -268,16 +284,22 @@ export interface RunTask {
   config_path: string | null;
   resume_from: string | null;
   bundle: string | null;
-  /** tailer 侦测到新 run 目录后填入 */
+  /** tailer 侦测到新 run 目录后填入（侦测根为 config 冻结的 output.root） */
   run_id: string | null;
   run_path: string | null;
+  /** 创建即生成，非空 */
   created_at: string;
   started_at: string | null;
+  /** 排队中取消时落取消时刻 */
   finished_at: string | null;
+  /** 终态时填；排队中取消无退出码，为 null */
   exit: RunExit | null;
   error: ApiError | null;
 }
 
+/**
+ * pending/running 为 app 聚合态；证据终态仅 completed/failed/cancelled/invalid 四值
+ */
 export type CaseState = "pending" | "running" | "completed" | "failed" | "cancelled" | "invalid";
 export type QualityState = "pass" | "fail" | "unscorable" | "not_applicable";
 export type ScoreCategory =
@@ -305,7 +327,10 @@ export interface CaseProgress {
 export interface RunProgress {
   phase: RunPhase | null;
   done: number;
-  /** 取自 inputs.json 冻结分母；未读到时 null（不猜） */
+  /**
+   * 取自该 run inputs.json 冻结的选中题集合分母；resume run 以 resume_case_ids
+   * 冻结的续测子集为分母（非全 plan case_order）；未读到时 null（不猜）
+   */
   total: number | null;
   current_case_id: string | null;
   /** 已消费 events.jsonl 的最大 seq */
@@ -334,7 +359,11 @@ export interface StartRunsResponse {
 }
 
 export interface ResumeRunRequest {
-  /** 绝对路径或相对 results_root；必须解析在结果根之内 */
+  /**
+   * 来源 run：绝对路径或相对 results_root；必须解析在结果根之内（越界 400）。
+   * 仅接受批次内 run（位于 <批次根>/runs/ 下且为计划序最新未完成轮次，CLI 最终裁决）；
+   * standalone run（batch_id=null）不可 resume → 409 not_resumable。
+   */
   from_run: string;
   /** 与 server_pid 必须同时提供或同时省略 */
   endpoint_url?: string;
@@ -363,12 +392,17 @@ export interface CancelTaskResponse {
 // ----- 4.6 报告 ---------------------------------------------------------------
 
 export interface ReportSummary {
-  /** 报告目录名 */
+  /** 报告目录名：report-YYYYMMDDTHHMMSSZ（UTC，无冒号；同秒碰撞追加序号后缀） */
   report_id: string;
   path: string;
+  /** 报告目录 mtime（index.json 无生成时间戳、跨平台 birthtime 不可靠）；取不到时 null */
   created_at: string | null;
   run_ids: string[];
-  run_paths: string[];
+  /**
+   * index.json 内报告→run 相对来源链接解析出的绝对路径；报告搬移或来源删除后
+   * 链接失效，对应项为 null（UI 呈现「来源不可达」占位，不报错）
+   */
+  run_paths: (string | null)[];
   /** 相对路径，如 /reports/<report_id>/report.html；前端拼接 ?token= 顶层打开，不 iframe */
   html_url: string;
 }
@@ -379,7 +413,10 @@ export interface ReportListResponse {
 }
 
 export interface CreateReportRequest {
-  /** 1..N 个 run 绝对路径，须在 results_root 之内 */
+  /**
+   * 1..100 个 run 绝对路径（对齐 CLI 上限），须在 results_root 之内；
+   * 数量越界/重复 run/路径越界或形态非法 → 服务端 400 预校验
+   */
   run_paths: string[];
 }
 
@@ -417,7 +454,7 @@ export interface DownloadTask {
 export interface CreateDownloadRequest {
   /** HF/ModelScope blob URL，40 位十六进制 revision，单个 .gguf */
   source_url: string;
-  /** 单路径分段 ^[A-Za-z0-9._-]+$，落盘 <models_root>/<out_name> */
+  /** 单路径分段 ^(?!\.+$)[A-Za-z0-9._-]+$（显式禁止 `.`/`..` 等纯点分段），落盘 <models_root>/<out_name> */
   out_name: string;
 }
 
@@ -433,7 +470,7 @@ export interface CancelDownloadResponse {
   task: DownloadTask;
 }
 
-// ----- 5. SSE 事件（GET /api/events；id 单调递增，支持 Last-Event-ID 重放） ---
+// ----- 5. SSE 事件（GET /api/events；id 单调递增、以启动种子初始化，支持 Last-Event-ID 重放） ---
 
 export type SseEventType =
   | "run.state" | "run.progress" | "run.resources"
@@ -478,7 +515,7 @@ export interface DeviceUpdatedEvent {
   error: ApiError | null;
 }
 
-/** report.created：报告生成成功广播（供非发起客户端刷新列表） */
+/** report.created：报告生成成功广播（含断连后完成；供非发起客户端刷新列表） */
 export interface ReportCreatedEvent {
   report: ReportSummary;
 }

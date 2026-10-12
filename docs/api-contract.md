@@ -1,6 +1,6 @@
 # InferYard Studio API 契约
 
-版本：v0 草案（T1 产出，reviewer 通过后冻结；冻结后变更须 coordinator 仲裁 + reviewer 重审）。
+版本：v0 修订待复核（T1 产出；2026-10-12 按冻结审查修订，reviewer 复核 diff 通过后冻结；冻结后变更须 coordinator 仲裁 + reviewer 重审）。
 权威级别：前后端唯一契约。前端 `web/src/api/types.ts` 与 Go struct 的 json tag 均以
 [`docs/api-types.ts`](api-types.ts) 的字段名为准。
 
@@ -26,8 +26,10 @@
   - `GET /api/events`（浏览器 `EventSource`；服务端同时接受 Authorization 头，供非浏览器客户端）；
   - `GET /reports/**`（报告顶层导航）；
   - `GET /` 与 `GET /index.html`（前端入口页；`/assets/**` 静态资源不校验，对齐 M0 行为）。
+- query token 泄露面收敛（Q6 裁决升格为正式条款）：全部响应携带
+  `Referrer-Policy: no-referrer`；服务端访问日志不记录 query 串/URL（token 永不落日志）。
 - 失败统一 `401` + 错误体（§3），`code="unauthorized"`。token 只绑定本机回环；
-  LAN 暴露为 P2 显式开关，本契约不覆盖其鉴权模型。
+  LAN 暴露为 P2 显式开关，本契约不覆盖其鉴权模型（LAN 开关实现时必须重审鉴权模型，保持本节声明）。
 
 ## 3. 错误模型
 
@@ -57,10 +59,10 @@
 
 | HTTP | code | 触发场景 |
 | --- | --- | --- |
-| 400 | `invalid_request` | 请求体/参数校验失败（未调用 CLI 前）：缺字段、类型错、`out_name` 非法、resume 只传了 `endpoint_url`/`server_pid` 之一等 |
+| 400 | `invalid_request` | 请求体/参数校验失败（未调用 CLI 前）：缺字段、类型错、`out_name` 非法、resume 只传了 `endpoint_url`/`server_pid` 之一、路径 containment 越界/形态非法（`from_run`、`run_paths`、`/reports/**` 静态路径等）等 |
 | 401 | `unauthorized` | token 缺失或不匹配 |
-| 404 | `not_found` | 路由不存在；task_id / report_id / run 路径在索引中不存在 |
-| 409 | `conflict` | 状态冲突：`details.reason` 细分——`queue_duplicate`（同 config 已在队列）、`invalid_state`（对已终态任务取消）、`output_exists`（下载目录名已占用，含失败保留目录）、`not_resumable`（来源非最新未完成轮次等）、`refresh_in_progress`（device 刷新进行中）、`settings_incomplete`（必要设置未配置） |
+| 404 | `not_found` | 路由不存在；task_id / report_id / run 路径在索引中不存在；静态文件不存在 |
+| 409 | `conflict` | 状态冲突：`details.reason` 细分——`queue_duplicate`（同 config 已在队列）、`invalid_state`（对已终态任务取消）、`output_exists`（下载目录名已占用，含失败保留目录）、`not_resumable`（来源非批次内 run、非最新未完成轮次等）、`refresh_in_progress`（device 刷新进行中）、`settings_incomplete`（必要设置未配置）、`output_root_outside_results`（config 冻结 `output.root` 不在 `results_root` 之内） |
 | 422 | `cli_blocked` | inferyard 退出码 2（输入/预检阻断）；`limitations` 原样透传 |
 | 500 | `internal_error` | app 自身故障（索引扫描失败、事件总线异常等） |
 | 500 | `cli_error` | inferyard 退出码 4（工具/证据错误）；`limitations` 原样透传 |
@@ -78,6 +80,9 @@
 | 3 | incomplete | 运行不完整 | run 任务 `done` 且 `exit.completeness="incomplete"`；历史状态 `partial`；UI 如实呈现 partial/dirty，不当作失败弹错 |
 | 4 | error | 工具/证据错误 | 同步接口 500 `cli_error`；任务 `failed`，error.code=`cli_error`；只展示固定原因 |
 | 130 | interrupted | 已取消 | 任务 `cancelled`；历史状态 `cancelled`；不报错 |
+
+注：「CLI status」列为**示例**（report 成功为 `rendered`，批量另有 `finished`/`resumed_subset`
+等），**映射以退出码为准**。
 
 其他规则：stderr 诊断不进 `message`（只可落服务端日志）；下载无总量，任何位置不得伪造百分比。
 
@@ -120,8 +125,9 @@
 
 ### 4.2 设置
 
-`GET /api/settings` → `SettingsResponse`；`PUT /api/settings` 接收 `UpdateSettingsRequest`
-（三个字段均可选，仅更新出现字段），响应同 GET（更新后重探测生效值）。
+`GET /api/settings` → `SettingsResponse = { settings: UserSettings, effective: EffectiveSettings }`；
+`PUT /api/settings` 接收 `UpdateSettingsRequest`（三个字段均可选，仅更新出现字段），响应同 GET
+（更新后重探测生效值）。
 
 `UserSettings`（持久化在 well-known dir 的单个 JSON，重启保留）：
 
@@ -134,20 +140,23 @@
 `EffectiveSettings`（每次请求现算，不持久化）：`inferyard_path`/`inferyard_version`/
 `inferyard_status`（同 §4.1）、`results_root`、`models_root`、`reports_root`。
 `reports_root` 派生为 `dirname(results_root) + "/reports"`，`results_root` 未配置时为 `null`
-（见 §9-Q1）。
+（Q1 裁决：接受派生而非第四项设置，见 §9）。
 
-校验：提供的路径须为非空绝对路径；`results_root`/`models_root` 不接受 `null` 以外的空串。
-非法 → 400 `invalid_request`。设置变更后：结果根变化触发历史索引重建；模型根变化使
-device 缓存失效（下次刷新更新）。
+校验：提供的路径须为非空绝对路径；`results_root`/`models_root` **只能改值、不能清空**——
+不接受 `null`，空串同样非法；仅 `inferyard_path` 可置 `null`（恢复自动探测 PATH）。
+非法 → 400 `invalid_request`。设置变更后：结果根变化触发历史索引重建（重建期间
+`GET /api/runs` 继续服务旧索引，完成后**原子替换内存索引**）；模型根变化使 device 缓存失效
+（下次刷新更新）。设置变更不广播 SSE 事件（P0 已接受限制）：桌面+浏览器双开时，另一端的
+设置/历史视图需手动刷新。
 
 ### 4.3 设备
 
 - `GET /api/device` → `DeviceResponse`：`{ snapshot, captured_at, refreshing, last_error }`。
   `snapshot` 为 `device-check --json` 的 `details` 对象（`device_preflight.v1`）**原样透传**，
   字段见 `api-types.ts` 的 `DevicePreflight`；从未刷新时为 `null`。启动时服务端自动刷新一次。
-- `POST /api/device/refresh` → 202 `{ "refreshing": true }`；进行中重复调用 → 409
-  `refresh_in_progress`。完成（含失败）经 SSE `device.updated` 推送；快照含硬件、本地 GGUF
-  列表（大小/SHA256 来源记录/chat_template 可用性）、推荐配置与阻断原因，分区展示由前端负责。
+- `POST /api/device/refresh` → 202 `DeviceRefreshResponse = { "refreshing": true }`；进行中重复
+  调用 → 409 `refresh_in_progress`。完成（含失败）经 SSE `device.updated` 推送；快照含硬件、
+  本地 GGUF 列表（大小/SHA256 来源记录/chat_template 可用性）、推荐配置与阻断原因，分区展示由前端负责。
 - 刷新命令：`inferyard device-check --json --models-root <models_root>`；`models_root`
   未配置 → 409 `settings_incomplete`。退出 2（如显式模型阻断）不算错误：`snapshot` 照常更新，
   `recommendation.status="blocked"` 与原因由 UI 展示；退出 4 → `device.updated` 携带 `error`。
@@ -156,8 +165,8 @@ device 缓存失效（下次刷新更新）。
 
 扫描 `results_root` 重建（内存索引重启即丢，证据目录为唯一事实源）：
 
-- run 目录 = 含 `inputs.json` 的目录；batch 目录 = 含 `runs/` 子目录（其内为 run 目录）的目录。
-  单个 `run --config` 产物直接位于结果根下；`run --plan --output-root` 产物为 batch。
+- run 目录 = 含 `inputs.json` 的目录；batch 目录 = 含 `batch.json` 且 `runs/` 子目录内为
+  run 目录的目录。单个 `run --config` 产物直接位于结果根下；`run --plan --output-root` 产物为 batch。
 - 响应 `RunHistoryResponse`：`{ results_root, scanned_at, batches, standalone_runs }`；
   `BatchSummary = { batch_id, path, runs }`，按开始时间倒序。
 - `results_root` 未配置 → 200 且各列表为空、`results_root=null`（首页可用，不算错误）。
@@ -179,11 +188,12 @@ device 缓存失效（下次刷新更新）。
 | `relation` | string \| null | `initial`/`repeat`/`resume`/`rerun`/`derived` |
 | `parent_run_id` | string \| null | resume/rerun 来源 |
 | `started_at` / `finished_at` | string \| null | 首/末事件 utc |
-| `resumable` | boolean | 服务端判定：未完成且为其批次根下最新未完成轮次（对齐 CLI resume 前提） |
+| `resumable` | boolean | 服务端预判（仅供 UI 置灰）：批次内 run 未完成且为其批次**计划序**最新未完成轮次时为 `true`；standalone run（`batch_id=null`，`run --config` 产物）恒为 `false`。最终以 CLI 裁决为准（§4.5） |
 
-`status` 派生（实现属 T2 evidence 层，契约只固定枚举与呈现语义）：
+`status` 派生（实现属 evidence 层（T4 扩展），契约只固定枚举与呈现语义）：
 `cancelled`（停止原因为取消/退出 130）＞ `dirty`（存在未排空 dirty 标记）＞
 `partial`（未封存或执行不完整）＞ `complete`（封存且完整）。UI 如实呈现，不合并、不粉饰。
+`dirty` 的精确判据留待 T4 落地，届时以契约修订补丁回写、走变更重审（Q4 裁决）。
 
 ### 4.5 运行任务（启动 / 队列 / 详情 / 取消 / resume）
 
@@ -196,22 +206,32 @@ app 内存任务表（重启即丢）；单槽队列串行执行（inferyard 主
 | `config_paths` | string[] | 1–2 个**已绑定** config（`config bind` 产物目录或其 `config.toml`）绝对路径 |
 | `allow_single_bundle` | boolean（可选，默认 false） | 单 config 时必须显式 `true`（对齐「默认双 bundle，单 bundle 须显式选择」） |
 
-规则：两个 config 须绑定不同题包（服务端经 config 解析校验）；UI 默认选择 `zh-core` +
+规则：`results_root` 未配置 → 409 `settings_incomplete`。服务端解析 config 得冻结的
+`output.root`，作为该任务 run 目录的**侦测根**（`run --config` 产物落在
+`<output.root>/<run_id>`，不接受 `--output-root` 覆盖）；预校验 `output.root` 必须位于
+`results_root` 之内，否则 409 `output_root_outside_results`（落在界外的 run，侦测与历史索引
+均不可见）。两个 config 须绑定不同题包（服务端经 config 解析校验）；UI 默认选择 `zh-core` +
 `zh-svg-pelican`。每个 config 生成一个任务，按数组顺序入队串行执行（CLI 不自动连跑两包，
-双 bundle 由队列表达）。响应 202 `StartRunsResponse = { tasks: RunTask[] }`。
+双 bundle 由队列表达）；同次响应的 `tasks` 数组即双包成组依据，T5 进度视图按它客户端成组，
+无服务端聚合实体（Q3 裁决）。响应 202 `StartRunsResponse = { tasks: RunTask[] }`。
 同 config 已有未终态任务 → 409 `queue_duplicate`。
 
 **POST /api/runs/resume** — 请求 `ResumeRunRequest`：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `from_run` | string | 来源 run：绝对路径，或相对 `results_root` 的路径；必须解析在结果根之内 |
+| `from_run` | string | 来源 run：绝对路径，或相对 `results_root` 的路径；必须解析在结果根之内（越界 → 400） |
 | `endpoint_url` | string（可选） | 服务 endpoint 覆盖；与 `server_pid` **必须同时提供或同时省略**（CLI 规则） |
 | `server_pid` | integer（可选） | 服务 PID 覆盖，正整数 |
 
-校验来源为未完成且为其批次根最新未完成轮次，否则 409 `not_resumable`。
-响应 202 `{ task: RunTask }`（`kind="resume"`，新 run 目录出现在同一批次根下，复用同一
-tail 通路）。固定时窗负载不可 resume 的情形由 CLI 退出 2 → 任务 `failed` 如实呈现。
+校验：`results_root` 未配置 → 409 `settings_incomplete`。resume 仅接受**批次内 run**——来源
+必须位于 `<批次根>/runs/` 下且未完成；standalone run（`run --config` 产物，`batch_id=null`）
+不构成批次结构，`resumable=false`，一律 409 `not_resumable`。来源还须为该批次**计划序**上
+最新未完成轮次（`resume_requires_latest_unfinished_run`）：**以 CLI 为最终裁决**，服务端预判
+（§4.4 `resumable`）仅供 UI 置灰。响应 202 `{ task: RunTask }`（`kind="resume"`，新 run 目录
+出现在同一批次根下，复用同一 tail 通路）。固定时窗负载不可 resume 的情形不在预校验范围：
+CLI 返回 status=`duration_requires_new_window`、退出码 3，按 §3.3 映射任务 `done` 且
+`exit.completeness="incomplete"`，如实呈现原因（不是 `failed`，也不是 409）。
 
 **GET /api/run-tasks** → `{ tasks: RunTask[] }`（排队中 + 进行中 + 最近终态；创建时间倒序）。
 
@@ -219,9 +239,9 @@ tail 通路）。固定时窗负载不可 resume 的情形由 CLI 退出 2 → �
 `progress` 见 `RunProgress`（starting 早期可为 `null`）；`resources` 为内存环形缓冲的最近
 采样点（`ResourceSample[]`，建议 ≥600 点），断线补数据用 SSE 重连 + 本路由重建。
 
-**POST /api/run-tasks/{task_id}/cancel** → 202 `{ task }`：排队中直接 `cancelled`；
-running 向子进程发 SIGINT → `cancelling`，待退出 130 落 `cancelled`；已终态 → 409
-`invalid_state`。取消不产生错误提示，证据按 partial/dirty 如实呈现。
+**POST /api/run-tasks/{task_id}/cancel** → 202 `{ task }`：排队中直接 `cancelled`（无退出码，
+`exit=null`，`finished_at` 落取消时刻）；running 向子进程发 SIGINT → `cancelling`，待退出 130
+落 `cancelled`；已终态 → 409 `invalid_state`。取消不产生错误提示，证据按 partial/dirty 如实呈现。
 
 `RunTask` 字段：
 
@@ -234,16 +254,20 @@ running 向子进程发 SIGINT → `cancelling`，待退出 130 落 `cancelled`�
 | `config_path` | string \| null | `kind=run` 的 config 路径 |
 | `resume_from` | string \| null | `kind=resume` 的来源 run 绝对路径 |
 | `bundle` | string \| null | 题包名（解析 config 后填入） |
-| `run_id` / `run_path` | string \| null | tailer 侦测到新 run 目录后填入 |
-| `created_at` / `started_at` / `finished_at` | string \| null | 任务级时间 |
-| `exit` | object \| null | 终态时填：`{ exit_code, cli_status, completeness, stop_reason, limitations }`；退出 3 时 `completeness="incomplete"` |
+| `run_id` / `run_path` | string \| null | tailer 侦测到新 run 目录后填入（侦测根为 config 冻结的 `output.root`，见上） |
+| `created_at` | string | 创建即生成，非空 |
+| `started_at` / `finished_at` | string \| null | 任务级时间；排队中取消时 `finished_at` 落取消时刻 |
+| `exit` | object \| null | 终态时填（排队中取消无退出码，为 `null`）：`{ exit_code, cli_status, completeness, stop_reason, limitations }`；退出 3 时 `completeness="incomplete"` |
 | `error` | ApiError \| null | `failed` 时填（`cli_blocked`/`cli_error`/`cli_unavailable`/`internal_error`） |
 
 `RunProgress`：`{ phase, done, total, current_case_id, last_seq, cases }`。
-`total` 取自 `inputs.json` 冻结计划分母，未读到时为 `null`（不猜）；`done` 为已终态题数；
-`last_seq` 为已消费 `events.jsonl` 的最大 seq（tail 健康观测）。`CaseProgress`：
+`total` 取自该 run `inputs.json` 冻结的选中题集合分母——resume run 的 Journal 以
+`resume_case_ids` 冻结续测子集，分母天然是续测子集而非全 plan `case_order`；未读到时为 `null`
+（不猜）；`done` 为已终态题数；`last_seq` 为已消费 `events.jsonl` 的最大 seq（tail 健康观测）。
+`CaseProgress`：
 `{ case_id, plan_index, state, category, quality_state, started_at, finished_at, duration_ms, error_category }`，
-`state` ∈ `pending`/`running`/`completed`/`failed`/`cancelled`/`invalid`（对齐证据终态枚举），
+`state` ∈ `pending`/`running`/`completed`/`failed`/`cancelled`/`invalid`（`pending`/`running`
+为 app 聚合态；证据终态仅 `completed`/`failed`/`cancelled`/`invalid` 四值），
 `quality_state` ∈ `pass`/`fail`/`unscorable`/`not_applicable`/`null`，缺测为 `null`。
 
 `ResourceSample`（来自 `memory.jsonl` 每秒采样，服务端聚合为 UI 就绪点）：
@@ -254,17 +278,28 @@ running 向子进程发 SIGINT → `cancelling`，待退出 130 落 `cancelled`�
 
 - `GET /api/reports` → `ReportListResponse = { reports_root, reports }`；扫描 `reports_root`
   下含 `report.html` 的目录。`ReportSummary = { report_id, path, created_at, run_ids, run_paths, html_url }`；
-  `report_id` = 目录名；`html_url` = `/reports/{report_id}/report.html`（相对路径，前端拼接 token）。
-- `POST /api/reports` — 请求 `CreateReportRequest = { run_paths: string[] }`（1..N，须解析在
-  `results_root` 之内）。服务端在 `reports_root` 下生成唯一新目录名（`report-<utc 时间戳>`，
-  `--out` 必须新目录），**同步**执行 `inferyard report --runs ... --out NEW`：
+  `report_id` = 目录名；`created_at` 取报告**目录 mtime**（index.json 与封存均无生成时间戳，
+  跨平台 birthtime 不可靠），取不到时为 `null`；`run_paths` 为 index.json 内报告→run 相对来源
+  链接解析出的绝对路径——报告搬移或来源 run 删除后链接失效，对应项为 `null`，UI 呈现
+  「来源不可达」占位（不报错、不影响打开报告）；`html_url` =
+  `/reports/{report_id}/report.html`（相对路径，前端拼接 token）。
+- `POST /api/reports` — 请求 `CreateReportRequest = { run_paths: string[] }`（**1..100 个**，
+  对齐 CLI 上限；须解析在 `results_root` 之内）。服务端预校验：数量越界、含重复 run、路径
+  越界/形态非法 → 400 `invalid_request`（避免 CLI `duplicate_report_run` 等落入 500）。服务端
+  先创建 `reports_root` 父目录（CLI `--out` 要求父目录已存在），再在 `reports_root` 下生成唯一
+  新目录：**`report-YYYYMMDDTHHMMSSZ`**（UTC，文件系统安全、无冒号；同秒碰撞追加序号后缀
+  唯一化，如 `report-20261012T092841Z-2`），**同步**执行
+  `inferyard report --runs ... --out NEW`：
   成功 201 `CreateReportResponse = { report }` 并广播 `report.created`；
   退出 2 → 422 `cli_blocked`（如 `unsupported_format`），退出 4 → 500 `cli_error`。
-  报告生成为离线操作但可达数十秒，前端该请求的超时不得低于 120s（见 §9-Q2）。
+  客户端断连/超时**不中断**生成，完成后仍广播 `report.created`（其他客户端经列表刷新可见）。
+  报告生成为离线操作但可达数十秒，前端该请求的超时不得低于 120s（Q2 裁决：接受同步 +
+  前端长超时；若 T7 实测普遍超时，按冻结变更流程演进）。
 - 打开报告：`GET /reports/{report_id}/report.html`（`?token=`）顶层导航打开（webview 新窗口
-  或浏览器新标签），**禁止 iframe 嵌入**（报告 CSP 严格）。`/reports/{report_id}/` 下其余文件
-  同路径静态服务；路径必须 containment 校验，越界 → 404。报告含本机私有路径，LAN 暴露（P2）
-  前不得开放。
+  或浏览器新标签），**禁止 iframe 嵌入**（报告 CSP 严格）；报告响应携带
+  `Referrer-Policy: no-referrer`（§2 条款）。`/reports/{report_id}/` 下其余文件同路径静态服务；
+  路径必须 containment 校验：越界/形态非法 → 400 `invalid_request`，文件不存在 → 404（§3.2）。
+  报告含本机私有路径，LAN 暴露（P2）前不得开放。
 
 ### 4.7 下载
 
@@ -273,7 +308,7 @@ running 向子进程发 SIGINT → `cancelling`，待退出 130 落 `cancelled`�
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `source_url` | string | HF/ModelScope `blob` URL，固定 40 位十六进制 revision，单个 `.gguf`（CLI 硬约束，服务端预校验） |
-| `out_name` | string | 输出目录名：**单个路径分段**，`^[A-Za-z0-9._-]+$`，落盘为 `<models_root>/<out_name>` |
+| `out_name` | string | 输出目录名：**单个路径分段**，`^(?!\.+$)[A-Za-z0-9._-]+$`（显式禁止 `.`/`..` 等纯点分段），落盘为 `<models_root>/<out_name>` |
 
 `models_root` 未配置 → 409 `settings_incomplete`；目录已存在（含失败保留目录）→ 409
 `output_exists`，message 提示更换目录名（失败目录不能复用）。执行
@@ -281,6 +316,9 @@ running 向子进程发 SIGINT → `cancelling`，待退出 130 落 `cancelled`�
 
 `GET /api/downloads` → `{ tasks: DownloadTask[] }`（进行中/完成/失败；进程内存表，重启即丢——
 已完成模型经 device 刷新后在本机模型列表可见）。
+
+并发模型：`model acquire` 不取 inferyard 主机锁，多个下载任务**允许并行**，与 run 单槽队列
+互不阻塞。
 
 `POST /api/downloads/{task_id}/cancel` → 202 `{ task }`：SIGINT 子进程（退出 130 →
 `cancelled`）；已终态 → 409 `invalid_state`。失败/取消目录保留，不自动删除。
@@ -304,11 +342,12 @@ data: {"task":{...}}
 
 ```
 
-- `id`：uint64 十进制，**每进程单调递增**；`event` 为事件类型；`data` 为单行 JSON。
+- `id`：uint64 十进制，**每进程单调递增**；计数器以启动种子初始化（进程启动时派生，避免重启后
+  id 从 0 回退、旧 `Last-Event-ID` 落入新缓冲被误补发）；`event` 为事件类型；`data` 为单行 JSON。
 - 心跳：15s 无事件则发注释行 `: hb\n\n`。
-- 断线重连：客户端带 `Last-Event-ID`。服务端保留有界回放缓冲（≥2048 条）：
-  `last_id` 在缓冲范围内 → 补发缺失后继续实时；**小于缓冲最旧值、或大于当前最新值**
-  （如服务端重启 id 归零）→ 先发 `sync.reset`，客户端收到后必须经 REST 全量重建状态。
+- 断线重连：客户端带 `Last-Event-ID`。服务端保留有界回放缓冲（≥2048 条；初始值，稳态事件率约
+  ≤5 ev/s，T4 实测后复核——Q5 裁决）：`last_id` 在缓冲范围内 → 补发缺失后继续实时；
+  **小于缓冲最旧值、或大于当前最新值** → 先发 `sync.reset`，客户端收到后必须经 REST 全量重建状态。
 - 事件语义：`*` `.state` 为全量替换（携带完整任务对象），`run.progress` 为全量替换，
   `run.resources` / `download.progress` 为增量追加。替换语义保证断线后幂等收敛。
 
@@ -360,19 +399,19 @@ M0 的演示事件 `count` 删除（见 §8）。
 | Authorization 裸 token 比对 | 升级为 `Bearer <token>` scheme（T4 实现；前端同源注入随之更新） |
 | `/`、`/index.html`、`/assets/**` 鉴权分工 | 沿用 |
 
-## 9. 未决问题（提交 reviewer）
+## 9. 裁决记录（2026-10-12 冻结审查）
 
-- **Q1 reports_root 派生**：P0 设置仅三项（binary/results/models），本契约将报告根派生为
-  `dirname(results_root)/reports`（对齐 inferyard 工作区惯例 `results/` 与 `reports/` 平级）。
-  是否接受派生而非第四项设置？
-- **Q2 报告生成同步化**：`POST /api/reports` 同步阻塞至 CLI 退出（离线操作、通常秒级），
-  而非任务化 + `report.failed` 事件。大 run 集下可能数十秒——接受同步 + 前端长超时，
-  还是改为异步任务？
-- **Q3 双 bundle 任务模型**：一次「启动」携带 1–2 个 config，每 config 一个任务、队列串行；
-  未建模「一次双包」的聚合任务。reviewer 是否认可该粒度（影响 T5 进度视图聚合方式）？
-- **Q4 `dirty` 判定来源**：run 级 dirty 的精确判据（主机 state 文件 vs run 目录标记）留待
-  T2 evidence 层实现确认，契约先固定枚举与呈现语义。是否需要在本契约补判据？
-- **Q5 SSE 回放缓冲下限 2048 条 / 心跳 15s**：是否够用；`run.resources` 高频事件是否挤占
-  缓冲需 T4 实测后复核。
-- **Q6 query token 出现在 URL/日志**：仅绑 127.0.0.1 + `Referrer-Policy: no-referrer` 缓解；
-  LAN 开关（P2）需重审该模型。
+原未决问题 Q1–Q6 已经 coordinator 裁决并落实于正文，本节留档：
+
+- **Q1 reports_root 派生**：接受派生（`dirname(results_root)/reports`），不设第四项设置 → §4.2；
+  `reports_root` 父目录由服务端创建 → §4.6。
+- **Q2 报告生成同步化**：接受同步 + 前端 ≥120s 超时 → §4.6；客户端断连/超时不中断生成、
+  完成仍广播 `report.created`、`run_paths` 上限 100 服务端预校验，均已写入正文。若 T7 实测
+  普遍超时，按冻结变更流程演进。
+- **Q3 双 bundle 任务模型**：接受「每 config 一任务、按数组顺序串行」粒度 → §4.5；T5 进度视图
+  按同次 `POST /api/runs` 返回的 `tasks` 数组客户端成组，无服务端聚合实体。
+- **Q4 `dirty` 判据推迟**：接受。契约只固定枚举与呈现语义 → §4.4；T4 落地判据时以契约修订
+  补丁回写（走变更重审）。
+- **Q5 SSE 回放缓冲 2048 条 / 心跳 15s**：接受为初始值 → §5.1；保留「T4 实测后复核」钩子。
+- **Q6 query token**：接受 P0 模型；`Referrer-Policy: no-referrer` 与「服务端访问日志不落
+  query 串/URL」升格为正式条款 → §2、§4.6；LAN 开关（P2）实现时必须重审鉴权模型，保持 §2 声明。
