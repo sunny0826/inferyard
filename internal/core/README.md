@@ -43,7 +43,9 @@ resource publication batches approximately once per second, with a final flush.
 Resume follows plan trial order and each trial's parent/resume chain, not directory
 mtime or lexical run ID. The CLI remains the final authority. History never
 reads summary.json. Missing or malformed evidence cannot establish completion;
-index corruption and unreadable host state return a fixed internal error.
+malformed run/batch entries are skipped individually and counted in the index.
+Filesystem traversal failures and unreadable or malformed host state return a
+fixed internal error.
 
 ## Q4: implemented dirty criterion and proposed contract patch
 

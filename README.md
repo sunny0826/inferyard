@@ -10,7 +10,7 @@ Go 服务调用本机 `inferyard` CLI，MyGo 窗口加载随机 `127.0.0.1` 端�
 先构建前端，再构建 Go 二进制，产物内含 `web/dist`：
 
 ```sh
-bun install
+bun install --registry=https://registry.npmmirror.com
 bun run build:web
 env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -o build/inferyard-studio .
 ./build/inferyard-studio
@@ -19,7 +19,15 @@ env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go buil
 开发启动：`env GOPROXY=https://goproxy.cn,direct bun run dev`，先构建前端再运行 Go。
 `bun run dev:mock` 使用前端模拟数据，不连接真实 CLI。
 三平台二进制构建：`env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct bun run build:all`。
-产物位于 `build/{darwin-arm64,windows-amd64,linux-amd64}/`，不含安装包。
+二进制位于 `build/{darwin-arm64,windows-amd64,linux-amd64}/`；分发目录位于
+`dist/inferyard-studio-v0.1.0-<os>-<arch>/`，包含二进制和运行说明。
+macOS 另含 `InferYard Studio.app`，通过 `open "InferYard Studio.app"` 启动以使用系统通知。
+未执行签名、notarization 或发布。
+
+桌面模式订阅 EventBus，在运行和下载进入 done/failed/cancelled、报告生成完成时通知。
+通知仅含固定标题和一句正文，不含任务路径。首次使用可能请求系统通知权限；
+拒绝权限或通知失败仅记录日志，不影响任务。Headless 不订阅通知。
+MyGo API 参考：https://mygo.egoist.dev/docs/native#notifications 。
 
 版本号唯一来源为 `mygo.config.ts` 的 `version`。`main.go` 通过 `go:embed` 将配置嵌入二进制，
 启动时设置后端 `/api/status` 的版本；普通 `go build` 也生效，无须生成或传入 ldflags。

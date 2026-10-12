@@ -1,4 +1,8 @@
 // Package inferyard implements the CLI boundary without interpreting benchmark results.
+// Locate and Client.DeviceCheck are retained as tested standalone CLI adapters.
+// Studio performs probing and device refresh through core's injectable executor
+// to coordinate settings and cached snapshots; standalone callers can use these
+// convenience adapters without the service lifecycle.
 package inferyard
 
 import (

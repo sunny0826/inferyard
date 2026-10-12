@@ -69,8 +69,8 @@ All commands use command-scoped `GOTOOLCHAIN=go1.27.2`,
 | 3. Fixture run → SSE | `go test ./internal/server -run TestFixtureRunSSE -v`: POST runs, evidence directory creation, tail, state/progress/resources and done observed over a real HTTP connection | 0 |
 | 4. Report static | `go test ./internal/server -run TestReport -v`: HTML 200, missing 404, traversal 400, client-disconnect completion | 0 |
 | 5. Vet | `go vet ./...` | 0 |
-| 5. Tests | `go test ./...`: 48 passed | 0 |
-| 5. Race | `go test -race ./...` with CGO_ENABLED=0 on this cached toolchain: 48 passed | 0 |
+| 5. Tests | `go test ./...`: 81 passed | 0 |
+| 5. Race | `go test -race ./...` with CGO_ENABLED=0 on this cached toolchain: 81 passed | 0 |
 | 5. Windows build | `GOOS=windows GOARCH=amd64 go build -o /tmp/inferyard-studio-t4-windows.exe .` | 0 |
 | 5. Linux build | `GOOS=linux GOARCH=amd64 go build -o /tmp/inferyard-studio-t4-linux .` | 0 |
 | 6. Single binary | `go build -o /tmp/inferyard-studio-t4-darwin .` then `python3 scripts/verify-embed.py --binary /tmp/inferyard-studio-t4-darwin` | 0 |

@@ -9,3 +9,4 @@ for target in darwin/arm64 windows/amd64 linux/amd64; do
   CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -o "$output" .
   printf '%s: go build exit=0\n' "$target"
 done
+python3 scripts/package.py

@@ -16,6 +16,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"inferyard-studio/internal/core"
+	"inferyard-studio/internal/desktop"
 	"inferyard-studio/internal/server"
 	"inferyard-studio/web"
 )
@@ -73,6 +74,9 @@ func main() {
 		return
 	}
 	mygo.App.WhenReady(func() {
+		desktop.Subscribe(ctx, app.Core.Bus, *headless, func(message desktop.Message) error {
+			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
+		}, log.Printf)
 		win := mygo.NewWindow(mygo.WindowOptions{Title: "InferYard Studio", Width: 960, Height: 640})
 		win.Page().OnDidFinishLoad(func() {
 			log.Print("desktop page loaded from local HTTP")
