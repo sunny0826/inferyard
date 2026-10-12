@@ -27,7 +27,7 @@
 {#each history as run (run.path)}<label class="check path"><input type="checkbox" value={run.path} bind:group={selected} disabled={selected.length >= 100 && !selected.includes(run.path)} />{run.run_id} · {run.path}</label>{/each}
 {#if !history.length}<p>暂无运行记录。</p>{/if}</fieldset>
 <p>已选 {selected.length} / 100</p><button disabled={pending || !selected.length || selected.length > 100}>{pending ? '生成中…' : '生成报告'}</button>
-{#if pending}<p role="status">报告正在生成，请稍候。</p>{/if}{#if message}<p role="status">{message}</p>{/if}
+<p role="status">{pending ? '报告正在生成，请稍候。' : message}</p>
 </form></section>
 <section aria-label="报告列表"><h2>报告列表</h2><ErrorNotice error={store.reportError} />
 {#if !store.reports}<p>正在读取报告…</p>{:else if !store.reports.reports.length}<p>暂无报告。</p>{/if}

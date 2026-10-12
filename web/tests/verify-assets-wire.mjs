@@ -3,7 +3,8 @@ import { expect } from '@playwright/test';
 import assert from 'node:assert/strict';
 export async function verifyAssetsWire(browser, vite, errors) {
   const connections = new Set(); const requests = []; let seq = 0; let reportReads = 0; let downloadReads = 0;
-  let heldReport; let holdDownloads = false; let heldDownloads;
+  let heldReport; let holdReportRefresh = false; let heldReportRefresh;
+  let holdDownloads = false; let heldDownloads;
   const run = { run_id: 'source', path: '/results/source', batch_id: null, status: 'complete', sealed: true, completeness: 'complete', stop_reason: null, model_name: null, model_path: null, engine: null, bundle: 'zh-core', score: null, relation: null, parent_run_id: null, started_at: null, finished_at: null, resumable: false };
   const history = { results_root: '/results', scanned_at: 'fixture', batches: [], standalone_runs: Array.from({ length: 101 }, (_, i) => ({ ...run, run_id: `source-${i}`, path: `/results/source-${i}` })) };
   const report = { report_id: 'report-20261012T100000Z', path: '/reports/report-20261012T100000Z', created_at: null, run_ids: ['source', 'removed'], run_paths: ['/results/source', null], html_url: '/reports/report-20261012T100000Z/report.html' };
@@ -38,7 +39,11 @@ export async function verifyAssetsWire(browser, vite, errors) {
     else if (path === '/api/settings') res.end(JSON.stringify(settings));
     else if (path === '/api/runs') res.end(JSON.stringify(history));
     else if (path === '/api/run-tasks') res.end(JSON.stringify({ tasks: [] }));
-    else if (path === '/api/reports') { reportReads++; res.end(JSON.stringify({ reports_root: '/reports', reports })); }
+    else if (path === '/api/reports') {
+      reportReads++;
+      const body = JSON.stringify({ reports_root: '/reports', reports });
+      if (holdReportRefresh) heldReportRefresh = { res, body }; else res.end(body);
+    }
     else if (path === '/api/downloads') { downloadReads++; const body = JSON.stringify({ tasks: downloads }); if (holdDownloads) heldDownloads = { res, body }; else res.end(body); }
     else { res.statusCode = 404; res.end('{}'); }
   });
@@ -61,8 +66,15 @@ export async function verifyAssetsWire(browser, vite, errors) {
     await expect.poll(() => Boolean(heldReport)).toBe(true);
     assert.deepEqual(requests.at(-1).body, { run_paths: ['/results/source-0', '/results/source-1'] });
     assert.ok((await page.evaluate(() => window.requestTimeouts)).includes(180000));
+    holdReportRefresh = true;
     heldReport.statusCode = 201; heldReport.end(JSON.stringify({ report }));
+    await expect.poll(() => Boolean(heldReportRefresh)).toBe(true);
+    await expect(page.getByRole('status')).toHaveCount(1);
+    await expect(page.getByRole('status')).toHaveText('报告正在生成，请稍候。');
+    await expect(page.getByRole('button', { name: '生成中…' })).toBeDisabled();
+    heldReportRefresh.res.end(heldReportRefresh.body); holdReportRefresh = false;
     await expect(page.getByRole('status')).toContainText('已生成');
+    await expect(page.getByRole('status')).toHaveCount(1);
     await boxes.nth(2).check(); await page.getByRole('button', { name: '生成报告', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText('cli_blocked'); await expect(page.getByRole('alert')).toContainText('wire_limit');
     const priorReads = reportReads;
@@ -95,7 +107,7 @@ export async function verifyAssetsWire(browser, vite, errors) {
     await page.getByRole('link', { name: 'Reports', exact: true }).click(); await expect(page.getByText('暂无报告。', { exact: true })).toBeVisible();
     assert.ok(reportReads > counts.reportReads && downloadReads > counts.downloadReads);
     assert.ok(requests.every(request => request.authorization === 'Bearer wire-token'));
-    console.log('PASS T6 wire: report 1..100 and exact POST, 180s timeout, 201 pending, 422, SSE list refresh, authenticated top-level report; download POST/cancel, 409 body, native SSE and in-flight merge, POST/SSE race; sync.reset replaces reports/downloads');
+    console.log('PASS T6 wire: report 1..100 and exact POST, 180s timeout, 201 pending, single status during held list refresh, 422, SSE list refresh, authenticated top-level report; download POST/cancel, 409 body, native SSE and in-flight merge, POST/SSE race; sync.reset replaces reports/downloads');
   } finally {
     await page.close(); for (const res of connections) res.end(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
   }
