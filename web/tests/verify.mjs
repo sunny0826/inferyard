@@ -1,3 +1,5 @@
+import { verifyRunsWire } from './verify-runs-wire.mjs';
+import { verifyRuns } from './verify-runs.mjs';
 import { chromium, expect } from '@playwright/test';
 import { createServer as createVite } from 'vite';
 import { createServer } from 'node:http';
@@ -34,7 +36,7 @@ try {
   await page.getByLabel('inferyard_path', { exact: true }).fill('');
   await page.getByRole('button', { name: '保存设置' }).click();
   await expect(page.getByText('设置已保存', { exact: true })).toBeVisible();
-  for (const name of ['Dashboard', 'Runs', 'Reports', 'Models']) {
+  for (const name of ['Reports', 'Models']) {
     await page.getByRole('link', { name, exact: true }).click();
     await expect(page.getByText('此页面尚未实现。', { exact: true })).toBeVisible();
   }
@@ -45,6 +47,7 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   console.log('PASS: mock empty state, refresh event, device sections, settings save/error, routes, memory persistence, mobile layout');
   await page.close();
+  await verifyRuns(browser, `http://127.0.0.1:${port}`, errors);
   await vite.close();
 
   process.env.VITE_API_MODE = 'real';
@@ -72,6 +75,8 @@ try {
       res.setHeader('Content-Type', 'application/json');
       if (req.url === '/api/device') { deviceReads++; res.end(JSON.stringify({ snapshot: null, captured_at: eventConnections > 1 ? 'REST rebuilt' : null, refreshing: false, last_error: null })); }
       else if (req.url === '/api/settings') { settingsReads++; res.end(JSON.stringify(settings)); }
+      else if (req.url === '/api/runs') res.end(JSON.stringify({ results_root: null, scanned_at: 'fixture', batches: [], standalone_runs: [] }));
+      else if (req.url === '/api/run-tasks') res.end(JSON.stringify({ tasks: [] }));
       else { res.statusCode = 422; res.end(JSON.stringify({ error: { code: 'cli_blocked', message: 'Fixture refresh blocked', limitations: ['fixture_limit'], details: null } })); }
     } else vite.middlewares(req, res);
   });
@@ -89,6 +94,7 @@ try {
   await expect(real.getByRole('alert')).toContainText('fixture_limit');
   assert.equal(await real.evaluate(() => localStorage.length), 0);
   await real.close();
+  await verifyRunsWire(browser, vite, errors);
   assert.deepEqual(errors, []);
   console.log('PASS: REST Bearer, SSE query token, native Last-Event-ID reconnect, sync.reset REST rebuild, API error body, no console exceptions');
 } finally {

@@ -55,3 +55,22 @@ header{align-items:flex-start}
 section{padding:18px}
 dl div{grid-template-columns:1fr;gap:4px}
 }
+.run-stack{display:grid;gap:20px;min-width:0}
+.row,.actions,.task-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.row h2,.row h3{margin:0}
+.task-row{padding:16px 0;overflow-wrap:anywhere}
+.task-row a{min-width:0;overflow-wrap:anywhere}
+.task-group,.batch{margin-top:18px;padding:16px;background:#111a25}
+.history-run{padding:20px 0;min-width:0}
+.actions{justify-content:flex-start;margin-top:16px}
+.check{display:flex;align-items:center;gap:10px}.check input{width:auto}
+.secondary{margin-top:15px;background:#33445a;color:#e3edfa}
+button:disabled{cursor:not-allowed}
+.table-scroll{overflow-x:auto;max-width:100%;margin-top:18px}
+table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+th,td{padding:12px;border-bottom:1px solid #334155;white-space:nowrap}
+.plot{width:100%;min-width:0}.resource-chart{min-width:0;overflow:hidden}
+.uplot{color:#b6c8de}.u-legend{font-size:11px}.u-legend th,.u-legend td{padding:3px;white-space:normal}
+details{margin-top:16px}summary{cursor:pointer}
+@media(max-width:560px){.row{align-items:flex-start}.row h2{overflow-wrap:anywhere}.batch{padding:12px}.u-legend{display:flex;flex-wrap:wrap;justify-content:center}header{flex-wrap:wrap}}
+.run-stack>*{min-width:0}

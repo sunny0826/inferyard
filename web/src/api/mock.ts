@@ -1,3 +1,4 @@
+import { createMockRuns } from './mock-runs';
 import { ApiFailure, type StudioApi, type EventHandlers } from './client';
 import type { DevicePreflight, DeviceResponse, SettingsResponse } from './types';
 const GiB = 1024 ** 3;
@@ -13,6 +14,7 @@ export function createMockApi(): StudioApi {
   let device: DeviceResponse = { snapshot: null, captured_at: null, refreshing: false, last_error: null };
   const listeners = new Set<EventHandlers>();
   return {
+    ...createMockRuns(listeners),
     async getDevice() { return structuredClone(device); },
     async getSettings() { return structuredClone(settings); },
     async updateSettings(patch) {
