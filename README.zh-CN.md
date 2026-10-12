@@ -5,28 +5,28 @@
 用本地模型完成冻结题目，保存答案、耗时和资源证据，再生成可离线阅读的 HTML 报告。
 质量、等待时间和内存分别展示；比较条件不足时说明原因，不合成一个总分。
 
-**v0.0.1 已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.1/)，支持 uv / uvx 安装运行。**
+**v0.0.2 已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.2/)，支持 uv / uvx 安装运行。**
 项目采用 [MIT 许可证](LICENSE)。
 产品为 Python CLI + 自包含 HTML，包名 `inferyard`，命令为 `inferyard`。
 
 当前源码另含 macOS/Windows [应用内存诊断](docs/contracts/memory-check-contract.md)：
 `inferyard memory-check` 输出进程内存与判断依据；Windows 区分 working set 与 private commit，
 可执行文件分组保持保守 unknown，供用户确认用途；
-不会关闭应用，也不保证退出后释放多少内存。已发布的 PyPI 0.0.1 构建尚不含此命令。
+不会关闭应用，也不保证退出后释放多少内存。该命令自 PyPI 0.0.2 构建起包含（0.0.1 构建不含）。
 
 ## 安装
 
 从 PyPI 安装固定版本：
 
 ```bash
-uv tool install --managed-python --python 3.14.7 inferyard==0.0.1
+uv tool install --managed-python --python 3.14.7 inferyard==0.0.2
 inferyard --help
 ```
 
 也可直接通过 `uvx` 运行，无须持久安装：
 
 ```bash
-uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --help
+uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.2 --help
 ```
 
 无需克隆源码或安装 mise。首次准备 Python 和依赖需要联网；模型和引擎由操作者另行准备。

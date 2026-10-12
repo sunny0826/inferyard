@@ -8,7 +8,7 @@ Quality, latency and memory are reported separately; when comparison
 preconditions are not met, the tool explains why instead of producing a single
 composite score.
 
-**v0.0.1 is published on [PyPI](https://pypi.org/project/inferyard/0.0.1/) and runs with uv / uvx.**
+**v0.0.2 is published on [PyPI](https://pypi.org/project/inferyard/0.0.2/) and runs with uv / uvx.**
 The project is licensed under [MIT](LICENSE).
 The product is a Python CLI plus a self-contained offline HTML report; the
 package and the command are both named `inferyard`.
@@ -17,21 +17,21 @@ The source checkout also includes a macOS/Windows [memory diagnostic](docs/contr
 `inferyard memory-check` lists process memory and reasons for user review.
 Windows separates working set from private commit and keeps executable groups conservative.
 It never closes applications or promises how much memory an exit will release.
-This command is not included in the published PyPI 0.0.1 build.
+Included since the 0.0.2 PyPI build (the 0.0.1 build did not ship it).
 
 ## Installation
 
 Install the pinned version from PyPI:
 
 ```bash
-uv tool install --managed-python --python 3.14.7 inferyard==0.0.1
+uv tool install --managed-python --python 3.14.7 inferyard==0.0.2
 inferyard --help
 ```
 
 Or run it directly with `uvx`, without a persistent install:
 
 ```bash
-uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.1 --help
+uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.2 --help
 ```
 
 No source checkout or mise is needed. Preparing Python and dependencies on the
