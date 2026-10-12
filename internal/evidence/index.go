@@ -32,6 +32,7 @@ type ResultIndex struct {
 	Runs    []Run
 	Batches []Batch
 	Skipped int
+	Error   error
 }
 
 // Index recognizes layout2 runs and batch.json/runs containers, including when
@@ -44,12 +45,18 @@ func Index(root string) ResultIndex {
 		info, err := os.Lstat(dir)
 		if err != nil || !info.IsDir() {
 			index.Skipped++
+			if err != nil && !os.IsNotExist(err) && index.Error == nil {
+				index.Error = err
+			}
 			return
 		}
 		if exists(filepath.Join(dir, "inputs.json")) {
 			run, err := readRun(dir, batch)
 			if err != nil {
 				index.Skipped++
+				if index.Error == nil {
+					index.Error = err
+				}
 				return
 			}
 			index.Runs = append(index.Runs, run)
@@ -59,6 +66,9 @@ func Index(root string) ResultIndex {
 			raw, err := readObject(filepath.Join(dir, "batch.json"))
 			if err != nil {
 				index.Skipped++
+				if index.Error == nil {
+					index.Error = err
+				}
 				return
 			}
 			start := len(index.Runs)
@@ -70,6 +80,9 @@ func Index(root string) ResultIndex {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			index.Skipped++
+			if err != nil && !os.IsNotExist(err) && index.Error == nil {
+				index.Error = err
+			}
 			return
 		}
 		children := 0
