@@ -1,0 +1,17 @@
+[0m[2m[35m$[0m [2m[1mbun run build:web && sh scripts/build-all.sh[0m
+[0m[2m[35m$[0m [2m[1mtsc --noEmit -p web/tsconfig.json && vite build[0m
+(node:79304) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+vite v8.3.4 building client environment for production...
+transforming...
+[32m✓[0m 5 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mweb/dist/[0m[32mindex.html                 [0m[1;2m0.40 kB[0m[2m │ gzip: 0.27 kB[0m
+[2mweb/dist/[0m[2massets/[0m[35mindex-BKSixtwk.css  [0m[1;2m0.59 kB[0m[2m │ gzip: 0.37 kB[0m
+[2mweb/dist/[0m[2massets/[0m[36mindex-GhlFK0eD.js   [0m[1;2m1.87 kB[0m[2m │ gzip: 1.14 kB[0m
+
+✓ built in 33ms
+darwin/arm64: go build exit=0
+windows/amd64: go build exit=0
+linux/amd64: go build exit=0

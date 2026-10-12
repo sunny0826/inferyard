@@ -95,3 +95,25 @@ env -u GOROOT PATH=/Users/guoxudong/.local/share/mise/installs/go/1.27.1/bin:$PA
 ## 共享工作区证据归属
 
 提交期间其他执行者持续写入 docs/evidence 下的复核日志。本文采用 implementer-a/ 中本次验证的独立快照；desktop.log 根据本会话已返回的原始输出转录。其他执行者的日志及未提交改动保留原状，不作为本执行者新增验证的声明。
+
+## Go 1.27.2 补充复验
+
+本轮读取时已有 T0 未提交产物，执行期间原会话完成提交 `9c45a12`。
+沿用原实现，未修改产品代码；原始验收证据保留，补充证据使用独立文件。
+
+- 实测 `GOTOOLCHAIN=go1.27.2 go version`：go1.27.2 darwin/arm64，退出 0。
+- `GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct go run github.com/egoist/mygo/cmd/mygo@v0.4.5 version`：mygo 0.4.5，退出 0。
+- `bun install --registry https://registry.npmmirror.com`：退出 0，复用已安装依赖，[install.log](evidence/install.log)。
+- 使用命令级 `GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct` 运行 `bun run build:all`：退出 0，[build-recheck.log](evidence/build-recheck.log)。三个目标各退出 0。
+- 同一环境下 `CGO_ENABLED=0 go test ./...`：退出 0，[tests-recheck.log](evidence/tests-recheck.log)。
+- 新桌面会话使用端口 49963，页面加载成功，DOM 计数 2→4：[desktop-recheck.log](evidence/desktop-recheck.log)。
+- Chrome 同地址显示已连接，计数 14→25：[browser.log](evidence/browser.log)。curl 同端口首页 HTTP 200、退出 0；SSE 23→24→25→26，主动限时退出 28：[sse-recheck.log](evidence/sse-recheck.log)。
+- 临时移走 web/dist，从 build/ 目录启动新的 headless 二进制，HTML 与 JavaScript 的 curl 均退出 0，JS 包含 EventSource；随后恢复目录：[embed-recheck.log](evidence/embed-recheck.log)。未启动 Vite dev server。
+- 六项条件复验结果仍为通过；平台运行、签名与安装包的未验证边界不变。
+
+补验的下载方式仍为 Go/npm 镜像配置，继承本机 127.0.0.1:7897 代理。
+最初未指定 GOTOOLCHAIN 的 go list 曾触发 Go 1.27.1 获取且最终成功；后续显式选择已缓存 1.27.2。
+浏览器扩展接口报 request-header policy 错误，改用 Chrome 原生辅助功能树成功验证。
+另在仓库内 `.mygo/template-proof` 重跑固定版本官方 init，以核对模板；Go 模块步骤成功，
+Bun 依赖解析等待期间发现原会话已完成官方初始化与提交，停止了重复初始化（SIGTERM），
+未重试、未将该次尝试计作成功，见 [scaffold.log](evidence/scaffold.log)。原脚手架成功证据见前表。
