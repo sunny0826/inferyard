@@ -53,8 +53,11 @@ def cli(args, *, check=True):
         check=False,
     )
     if check and completed.returncode != 0:
+        # stdout carries the result JSON whose limitations hold the stop reason
+        # of a legitimate hardware stop; stderr alone drops it.
         raise SystemExit(
             f"inferyard {' '.join(args)} failed with {completed.returncode}\n"
+            f"stdout: {completed.stdout.strip()}\n"
             f"stderr: {completed.stderr.strip()}"
         )
     payload = json.loads(completed.stdout) if completed.stdout.strip() else None
@@ -392,7 +395,10 @@ def main():
     parser.add_argument(
         "--model-source",
         type=Path,
-        help="remote_model_source record from `model acquire`; passed to config create",
+        help=(
+            "remote_model_source record from `model acquire`; passed to config create "
+            "(macOS and Windows legs only; the Linux leg uses config assets without lineage)"
+        ),
     )
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()

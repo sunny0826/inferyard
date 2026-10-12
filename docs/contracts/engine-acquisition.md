@@ -35,7 +35,9 @@ stderr 只输出固定原因，不输出 URL、请求头或响应正文。
 需要 TUN/全局路由接管直连。跟随重定向。请求声明 `Accept-Encoding: identity`；
 响应状态非 200 或内容编码非 identity 均拒绝。正文流式写入 `文件名.part`，
 flush/fsync 后普通 rename 发布；`engine-source.json` 以同样方式先写 `.part`
-再发布。失败清理 `.part`，保留目录。
+再发布。失败清理 `.part`，保留目录。stdout 的 `details` 含 `out`、`engine`、
+`source_record`、`bytes`、`sha256`、`ready_to_run`（false）与
+`model_requests_sent`（0，与模型获取的准备动作惯例一致）。
 
 ## 来源记录
 

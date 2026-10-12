@@ -35,6 +35,7 @@
 | 扩展及开销 | closed_concurrency.v1、native_tools.v1、total_observer_control.v1/v2；extension_event.v1、trial_control_baseline.v1；当前开销、重复和谱系定义 | 不按 v1/v2 扫除；此任务不重编独立实验协议 | [freeze/run](../../src/inferyard/extensions/workflow.py)、[extension journal](../../src/inferyard/extensions/extension_evidence.py)、[baseline](../../src/inferyard/extensions/trial_control_baseline.py) |
 | 准备/发行/锁 | community_init/config_assets/config_candidate/config_binding.v1；installed_safe_checks.v3；community_distribution.v2；运行 state 版本 1 | 安装旧 v2 不继承新资格；其他编号不因数字小而删除 | [CLI 字段](../cli-surface.md)、[发行工具](../../scripts/README.md)、[HostLock](../../src/inferyard/runtime/lock.py) |
 | 模型来源记录 | `remote_model_source.v3` 新生产，bytes/sha256 为实测值；原 v1/v2 严格只读，不补写不转换 | 未知定义；v2 缺预算；非法预算和额外字段 | [获取契约](model-acquisition.md)、[ADR 051](../decisions/051-simplified-model-acquisition.md)、[来源读取](../../src/inferyard/platforms/model_source.py) |
+| 引擎来源记录 | `remote_engine_source.v1` 新生产，bytes/sha256 为实测值 | 未知定义；非法 URL 与额外字段 | [获取契约](engine-acquisition.md)、[来源解析](../../src/inferyard/platforms/engine_source.py) |
 
 保持 `urn:local-ai-bench:`、目录方法/指标 ID、题目 ID、bundle ID 与哈希算法。
 核心 Schema 中 `origin=migrated` 等历史枚举不借本次改变结构定义；应用读取入口明确拒绝其运行包。

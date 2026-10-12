@@ -74,6 +74,7 @@ def _download(client, source, out):
         "bytes": size,
         "sha256": digest.hexdigest(),
         "ready_to_run": False,
+        "model_requests_sent": 0,
     }
 
 

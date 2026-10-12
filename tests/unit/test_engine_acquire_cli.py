@@ -81,6 +81,7 @@ def test_acquire_success_publishes_files_and_status(tmp_path, monkeypatch, capsy
     assert details["sha256"] == hashlib.sha256(PAYLOAD).hexdigest()
     assert details["bytes"] == len(PAYLOAD)
     assert details["ready_to_run"] is False
+    assert details["model_requests_sent"] == 0
     record = json.loads((out / "engine-source.json").read_text())
     assert record["definition"] == "remote_engine_source.v1"
     assert record["sha256"] == details["sha256"]

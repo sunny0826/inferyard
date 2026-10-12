@@ -89,6 +89,7 @@ def test_download_streams_bytes_and_records_identity(tmp_path, monkeypatch):
     assert details["bytes"] == len(PAYLOAD)
     assert details["sha256"] == hashlib.sha256(PAYLOAD).hexdigest()
     assert details["ready_to_run"] is False
+    assert details["model_requests_sent"] == 0
     assert details["engine"] == str(out / FILENAME)
     assert details["source_record"] == str(out / "engine-source.json")
     record = json.loads((out / "engine-source.json").read_text())
