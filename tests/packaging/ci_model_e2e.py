@@ -239,11 +239,12 @@ def fill_linux_template(template, out_dir, *, bundle, assets, results):
     return path
 
 
-def prepare_candidate(root, bench_ops, bundle, *, preflight, model, engine_binary):
+def prepare_candidate(root, bench_ops, bundle, *, preflight, model, engine_binary, model_source):
     bundle_path = bench_ops / "bundles" / f"{bundle}.json"
     results = root / "bench-work" / "results"
     system = platform.system()
     out = bench_ops / "candidate"
+    source_args = ["--model-source", str(model_source)] if model_source else []
     if system == "Darwin":
         cli(
             [
@@ -259,6 +260,7 @@ def prepare_candidate(root, bench_ops, bundle, *, preflight, model, engine_binar
                 str(results),
                 "--out",
                 str(out),
+                *source_args,
             ]
         )
         return out / "candidate.toml"
@@ -279,6 +281,7 @@ def prepare_candidate(root, bench_ops, bundle, *, preflight, model, engine_binar
                 str(results),
                 "--out",
                 str(out),
+                *source_args,
             ]
         )
         return out / "candidate.toml"
@@ -386,6 +389,11 @@ def main():
         type=Path,
         help="cudart archive required when the Windows preflight recommends cuda",
     )
+    parser.add_argument(
+        "--model-source",
+        type=Path,
+        help="remote_model_source record from `model acquire`; passed to config create",
+    )
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
 
@@ -427,6 +435,7 @@ def main():
         preflight=preflight,
         model=args.model,
         engine_binary=engine_binary,
+        model_source=args.model_source,
     )
     svg_candidate = prepare_candidate(
         root,
@@ -435,6 +444,7 @@ def main():
         preflight=preflight,
         model=args.model,
         engine_binary=engine_binary,
+        model_source=args.model_source,
     )
     identity = read_candidate(smoke_candidate)
     if identity != read_candidate(svg_candidate):

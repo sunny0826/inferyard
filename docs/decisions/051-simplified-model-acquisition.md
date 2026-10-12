@@ -38,5 +38,8 @@ v1/v2 记录严格只读，不补写、不转换；v2 预算键值仍按原规�
 ## 验证边界
 
 软件验证覆盖 URL 拒绝、token 边界、回环 HTTP 成功/重定向/404/已存在目录、
-v1/v2/v3 记录读取和 CLI 全链路 e2e。回环覆盖不授予真实 CDN 性能资格；
+v1/v2/v3 记录读取和 CLI 全链路 e2e。2026-10-12 已有一次 macOS arm64 真机
+闭环回执：HF 固定 revision 真实下载驱动 device-check、`config create
+--model-source`、双题包运行与离线 verify（见本地 `validation/` 目录，
+不外推其他平台或 CDN 性能）；回环测试保留软件回归定位。
 `config create --model-source` 的血缘绑定语义不变。

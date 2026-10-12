@@ -72,7 +72,10 @@ def build_request(
         if key not in ("command", "config") and key in values
     }
     preserve_links = (
-        community or args.command == "model acquire" or args.command.startswith("engine-fit ")
+        community
+        or args.command == "model acquire"
+        or args.command == "engine acquire"
+        or args.command.startswith("engine-fit ")
     )
     for key, value in options.items():
         if isinstance(value, Path):

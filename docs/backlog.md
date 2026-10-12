@@ -376,6 +376,24 @@ San3an-win 已恢复在线，131 文件逐文件清单核对仍未执行，与 P
 现行规则见 [CLI 参考](cli-surface.md#各动作的冻结行为)和[模型获取契约](contracts/model-acquisition.md)。
 正式 run 仍只使用本地已绑定服务。真实 CDN 性能仍未验证。
 
+## 引擎获取与闭环下载 e2e
+
+2026-10-12 新增 `engine acquire`（用户授权的 curl 级命令）：单 HTTPS 链接流式
+下载引擎归档/二进制到新目录，实测 bytes/SHA256 写 `remote_engine_source.v1`
+记录；不限 host 与扩展名、无 token、不解压不装配不启动，Windows 归档仍经
+`runtime prepare --archive` 固定身份核验，引擎身份由 `config create` 层冻结。
+规则见[引擎获取契约](contracts/engine-acquisition.md)，取舍对齐
+[ADR 051](decisions/051-simplified-model-acquisition.md)。
+
+同日新增 opt-in 闭环 e2e（`tests/integration/test_closed_loop_download_e2e.py`，
+env `LAB_E2E_CLOSED_LOOP=1` + 两个来源 URL）：`model acquire` + `engine acquire`
+真实下载后驱动 `ci_model_e2e.py` 全链（装配、`config create --model-source`
+血缘绑定、双题包运行、report、verify）。macOS arm64 真机全绿（约 9 分钟），
+回执归档本地 `validation/closed-loop-e2e-20261012/`；zh-smoke 40/40 complete、
+pass 1（135M 模型低分非 CLI 失败）。硬件安全停止保留为 incomplete 证据不重试。
+未验证范围：Windows/Linux 闭环、其他来源、真实 CDN 性能与正式双题包资格。
+`ci_model_e2e.py` 增加可选 `--model-source` 透传候选血缘（默认行为不变）。
+
 ## 模型 e2e 三平台接入
 
 2026-10-11 新增 `tests/packaging/ci_model_e2e.py` 与 `model-e2e` workflow（分支

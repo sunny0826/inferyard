@@ -83,6 +83,8 @@ class CommandRequest:
     model_token_env: str | None = None
     model_timeout_seconds: float = 1800
     model_source_record: Path | None = None
+    engine_source_url: str | None = None
+    engine_timeout_seconds: float = 1800
     protect_pids: list[int] | None = None
 
 

@@ -73,7 +73,7 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 
 本节定义安装包的准备入口，操作示例见[安装指南](installation.md)。
 首批为 Linux x64、Windows x64、macOS arm64；帮助、版本和资源查询仍延迟加载后端。
-除下述 `model acquire` 的文件获取外，这些动作不发送 HTTP 或模型请求。
+除下述 `model acquire` 与 `engine acquire` 的文件获取外，这些动作不发送 HTTP 或模型请求。
 所有准备动作均不操作主机锁/dirty，不启动、终止或重启模型服务。
 `runtime prepare` 和 `config create` 的引擎 `--version` 子进程是明确的例外副作用：
 只查询版本，固定 10 秒超时，不传模型参数；失败不输出成功回执。
@@ -87,6 +87,7 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 | 命令 | 必填参数 | 可选参数及默认值 | 平台和新目录布局 |
 | --- | --- | --- | --- |
 | `model acquire` | `--source URL --out NEW` | `--token-env NAME`：只接受环境变量名；`--timeout-seconds 1800` | 三平台；单 GGUF 文件的基名和 `source.json`，失败目录保留 |
+| `engine acquire` | `--source URL --out NEW` | `--timeout-seconds 1800` | 三平台；单引擎文件的基名和 `engine-source.json`，失败目录保留 |
 | `init` | `--out NEW` | `--bundle {zh-smoke,zh-core,zh-svg-pelican}`；省略时导出 `zh-core` 和 `zh-svg-pelican` | 三平台；`README.md`、`configs/{linux,macos,windows}.example.toml`、`bundles/NAME.json`、`assets/`、`results/`、`preparation.json` |
 | `runtime prepare` | `--profile NAME --archive FILE --out NEW` | `--runtime-archive FILE`，仅 CUDA 必填，CPU 禁止 | 仅 Windows x64；`engine/`、CUDA 的 `runtime/`、`engine/engine-sha256.json`、`runtime-receipt.json` |
 | `config assets` | `--model FILE --engine FILE --out NEW` | 无 | 仅 Linux x64；`chat-template.jinja`、`engine-sha256.json`、`assets.json` |
@@ -132,6 +133,19 @@ stderr 只输出固定原因，不输出原始异常或签名 URL。
 获取客户端使用 `trust_env=False`，不使用 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`
 或系统代理。依赖本机代理的网络需要能接管直接连接的 TUN/全局路由，
 仅开启系统代理不足以让获取经过代理。操作者须确认仓库和 CDN 均可达。
+
+`engine acquire` 接受任何 `https://HOST/PATH` 链接（无 query、fragment、
+userinfo 或端口，路径分段无穿越），基名即输出文件名；不限 host 与扩展名，
+没有 token 选项。下载语义与 `model acquire` 相同：进程内流式 GET、
+`Accept-Encoding: identity`、`.part` 后 rename 发布、失败保留目录。
+产物为文件基名与 `engine-source.json`（`remote_engine_source.v1`：
+parser、source_url、bytes、sha256、retrieved_at，bytes/sha256 为实测值）。
+命令不解压、不装配、不启动服务、不核验 profile；引擎身份仍由
+`config create` 的 `binary_sha256` 与 `runtime_library_manifest` 冻结，
+Windows 归档继续经 `runtime prepare --archive` 核验。失败原因固定为
+`invalid_engine_source`、`engine_acquire_incomplete`、`output_exists`
+（退出 2）、`io_error`（退出 4）、`cancelled`（退出 130）；规则细节见
+[引擎获取契约](contracts/engine-acquisition.md)。
 
 ```bash
 inferyard model acquire --source 'https://huggingface.co/OWNER/REPO/blob/COMMIT40/sub/model.gguf' --out bench-ops/models/new
