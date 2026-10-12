@@ -45,7 +45,7 @@ export function createMockRuns(listeners: Set<EventHandlers>): Pick<StudioApi, '
     const task = detail.task;
     task.state = code === 130 ? 'cancelled' : code === 2 || code === 4 ? 'failed' : 'done'; task.finished_at = now();
     const limitation = code === 2 ? 'device_preflight_blocked' : code === 4 ? 'evidence_invalid' : code === 3 ? (scenarios.get(task.task_id) === 'dirty' ? 'engine_not_drained' : 'duration_requires_new_window') : null;
-    task.exit = { exit_code: code, cli_status: code === 3 ? 'duration_requires_new_window' : code === 130 ? 'interrupted' : code === 0 ? 'complete' : 'error', completeness: code === 0 ? 'complete' : 'incomplete', stop_reason: code === 130 ? 'user_cancelled' : code === 3 ? 'duration_window_interrupted' : code === 4 ? 'tool_interrupted' : null, limitations: limitation ? [limitation] : [] };
+    task.exit = { exit_code: code, cli_status: code === 3 ? 'duration_requires_new_window' : code === 130 ? 'interrupted' : code === 0 ? 'finished' : code === 2 ? 'blocked' : 'error', completeness: code === 0 ? 'complete' : 'incomplete', stop_reason: code === 130 ? 'user_cancelled' : code === 3 ? 'duration_window_interrupted' : code === 4 ? 'tool_interrupted' : null, limitations: limitation ? [limitation] : [] };
     if (code === 2 || code === 4) task.error = { code: code === 2 ? 'cli_blocked' : 'cli_error', message: code === 2 ? '输入或预检阻断（mock）。' : '工具或证据错误（mock）。', limitations: limitation ? [limitation] : [], details: null };
     record(detail, code); publish(task); pump();
   }

@@ -27,6 +27,7 @@ export async function verifyRuns(browser, origin, errors) {
   await expect(page.getByTestId('sample-count')).not.toHaveText('采样点：0');
   await expect(page.locator('.uplot canvas')).toBeVisible();
   await expect(page.getByTestId('task-state')).toContainText('成功', { timeout: 10000 });
+  await expect(page.locator('dl > div').filter({ has: page.getByText('CLI 状态', { exact: true }) }).locator('dd')).toHaveText('finished');
   await expect(page.getByTestId('progress')).toContainText('2 / 2');
   await expect(page.getByTestId('sample-count')).toHaveText('采样点：8');
   await page.getByText('采样数值', { exact: true }).click();
@@ -73,12 +74,12 @@ export async function verifyRuns(browser, origin, errors) {
   await page.getByLabel('zh-core 已绑定配置路径').fill('/mock/outside');
   await page.getByRole('button', { name: '启动运行', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('output_root_outside_results');
-  for (const [scenario, id, label, limitation, historyStatus] of [
-    ['slow', 4, 'cancelled', 'user_cancelled', 'cancelled'],
-    ['blocked', 5, '输入 / 预检阻断', 'device_preflight_blocked', 'partial'],
-    ['error', 6, '工具 / 证据错误', 'evidence_invalid', 'partial'],
-    ['partial', 7, '运行不完整', 'duration_requires_new_window', 'partial'],
-    ['dirty', 8, '运行不完整', 'engine_not_drained', 'dirty'],
+  for (const [scenario, id, label, limitation, historyStatus, cliStatus] of [
+    ['slow', 4, 'cancelled', 'user_cancelled', 'cancelled', 'interrupted'],
+    ['blocked', 5, '输入 / 预检阻断', 'device_preflight_blocked', 'partial', 'blocked'],
+    ['error', 6, '工具 / 证据错误', 'evidence_invalid', 'partial', 'error'],
+    ['partial', 7, '运行不完整', 'duration_requires_new_window', 'partial', 'duration_requires_new_window'],
+    ['dirty', 8, '运行不完整', 'engine_not_drained', 'dirty', 'duration_requires_new_window'],
   ]) {
     await page.getByLabel('仅运行单 bundle').check();
     await page.getByLabel('我确认只运行一个 bundle').check();
@@ -92,6 +93,7 @@ export async function verifyRuns(browser, origin, errors) {
       await expect(page.getByTestId('task-state')).toContainText('取消中');
     }
     await expect(page.getByTestId('task-state')).toContainText(label, { timeout: 10000 });
+    await expect(page.locator('dl > div').filter({ has: page.getByText('CLI 状态', { exact: true }) }).locator('dd')).toHaveText(cliStatus);
     await expect(page.locator('main')).toContainText(limitation);
     if (scenario === 'partial' || scenario === 'dirty' || scenario === 'slow') await expect(page.getByRole('alert')).toHaveCount(0);
     if (scenario === 'partial' || scenario === 'dirty') {
