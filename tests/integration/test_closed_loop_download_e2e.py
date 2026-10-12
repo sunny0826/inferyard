@@ -29,8 +29,7 @@ pytestmark = pytest.mark.skipif(
     or not os.environ.get(MODEL_ENV)
     or not os.environ.get(ENGINE_ENV),
     reason=(
-        "opt-in real-download closed loop: LAB_E2E_CLOSED_LOOP=1"
-        f" with {MODEL_ENV} and {ENGINE_ENV}"
+        f"opt-in real-download closed loop: LAB_E2E_CLOSED_LOOP=1 with {MODEL_ENV} and {ENGINE_ENV}"
     ),
 )
 

@@ -8,9 +8,7 @@ def add_commands(commands):
         "engine", help="acquire one pinned engine archive into a new directory"
     )
     actions = engine.add_subparsers(required=True)
-    acquire = actions.add_parser(
-        "acquire", help="download one engine file like curl -O"
-    )
+    acquire = actions.add_parser("acquire", help="download one engine file like curl -O")
     acquire.set_defaults(command="engine acquire")
     acquire.add_argument("--source", dest="engine_source_url", required=True)
     acquire.add_argument("--out", type=Path, required=True)
