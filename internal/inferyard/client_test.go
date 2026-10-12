@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -55,11 +56,18 @@ func TestCancellation(t *testing.T) {
 	for _, ignore := range []bool{false, true} {
 		t.Run(fmt.Sprint(ignore), func(t *testing.T) {
 			ready := filepath.Join(t.TempDir(), "ready")
-			trap := "trap 'echo interrupted; exit 130' INT"
-			if ignore {
-				trap = "trap '' INT"
+			if runtime.GOOS == "windows" {
+				t.Skip("SIGINT cancellation requires Unix")
 			}
-			path := script(t, trap+"\nprintf ready > \"$1\"\nwhile :; do sleep 30; done")
+			path, err := os.Executable()
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Readiness follows signal registration, with no shell/child startup race.
+			grace := time.Duration(0)
+			if ignore {
+				grace = 100 * time.Millisecond
+			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			type response struct {
@@ -68,7 +76,7 @@ func TestCancellation(t *testing.T) {
 			}
 			done := make(chan response, 1)
 			go func() {
-				out, err := (Client{Path: path, GracePeriod: 100 * time.Millisecond}).Exec(ctx, ready)
+				out, err := (Client{Path: path, GracePeriod: grace}).Exec(ctx, "-test.run=^TestCancellationProcess$", "--", ready, fmt.Sprint(ignore))
 				done <- response{out, err}
 			}()
 			deadline := time.After(3 * time.Second)
@@ -82,6 +90,7 @@ func TestCancellation(t *testing.T) {
 				case <-time.After(time.Millisecond):
 				}
 			}
+			started := time.Now()
 			cancel()
 			select {
 			case got := <-done:
@@ -91,8 +100,8 @@ func TestCancellation(t *testing.T) {
 				if !ignore && (got.out.ExitCode != 130 || !strings.Contains(string(got.out.Stdout), "interrupted")) {
 					t.Fatalf("SIGINT handler did not run: %+v", got)
 				}
-				if ignore && got.out.ExitCode != -1 {
-					t.Fatalf("expected forced signal exit: %+v", got)
+				if ignore && (got.out.ExitCode != -1 || time.Since(started) < grace) {
+					t.Fatalf("expected forced signal exit after grace period: %+v", got)
 				}
 			case <-time.After(3 * time.Second):
 				t.Fatal("cancellation hung")
@@ -100,6 +109,31 @@ func TestCancellation(t *testing.T) {
 		})
 	}
 }
+
+// TestCancellationProcess runs only when explicitly selected as a subprocess.
+func TestCancellationProcess(t *testing.T) {
+	args := os.Args
+	if len(args) < 4 || args[len(args)-3] != "--" {
+		return
+	}
+	interrupts := make(chan os.Signal, 1)
+	if args[len(args)-1] == "true" {
+		signal.Ignore(os.Interrupt)
+	} else {
+		signal.Notify(interrupts, os.Interrupt)
+	}
+	if err := os.WriteFile(args[len(args)-2], []byte("ready"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-interrupts:
+	case <-time.After(time.Minute):
+		os.Exit(1)
+	}
+	fmt.Println("interrupted")
+	os.Exit(130)
+}
+
 func TestExecArgumentsAndFailures(t *testing.T) {
 	out, err := (Client{Path: script(t, "printf '%s' \"$1\"")}).Exec(context.Background(), "a b; $(false)")
 	if err != nil || string(out.Stdout) != "a b; $(false)" {
