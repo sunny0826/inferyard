@@ -92,7 +92,7 @@ export interface UpdateSettingsRequest {
 // ----- 4.3 设备（device_preflight.v1 透传；CLI 新增字段两端必须容忍） ---------
 
 export interface DeviceGpuDevice {
-  index: number;
+  index?: number;
   name?: string | null;
   memory_total_bytes?: number | null;
   memory_free_bytes?: number | null;

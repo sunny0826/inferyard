@@ -2,6 +2,7 @@
 
 版本：v0 已冻结（T1 产出；2026-10-12 冻结审查修订 + reviewer 复核 diff 通过；冻结后变更须 coordinator 仲裁 + reviewer 重审）。
 补丁 2026-10-12：Q4 dirty 判据落地（§4.4）、Q5 实测结论记录（§9）；无字段/语义变更，reviewer 复核见 T8。
+补丁 2026-10-13：DeviceGpuDevice.index 改可选（Darwin 无此字段，L2 真实证据）、§4.6 理由句勘误（S10）、§4.7 .part 生命周期澄清（L2-3）；均为放宽/澄清，无破坏性变更。
 权威级别：前后端唯一契约。前端 `web/src/api/types.ts` 与 Go struct 的 json tag 均以
 [`docs/api-types.ts`](api-types.ts) 的字段名为准。
 
@@ -293,7 +294,9 @@ CLI 返回 status=`duration_requires_new_window`、退出码 3，按 §3.3 映�
 - `POST /api/reports` — 请求 `CreateReportRequest = { run_paths: string[] }`（**1..100 个**，
   对齐 CLI 上限；须解析在 `results_root` 之内）。服务端预校验：数量越界、含重复 run、路径
   越界/形态非法 → 400 `invalid_request`（避免 CLI `duplicate_report_run` 等落入 500）。服务端
-  先创建 `reports_root` 父目录（CLI `--out` 要求父目录已存在），再在 `reports_root` 下生成唯一
+  先创建 `reports_root` 父目录（理由勘误：CLI 实际会自动创建父目录——report_common.py:83
+  `out.parent.mkdir(parents=True, exist_ok=True)`；服务端主动保证目录存在，不依赖 CLI 该行为，
+  S10 挂账），再在 `reports_root` 下生成唯一
   新目录：**`report-YYYYMMDDTHHMMSSZ`**（UTC，文件系统安全、无冒号；同秒碰撞追加序号后缀
   唯一化，如 `report-20261012T092841Z-2`），**同步**执行
   `inferyard report --runs ... --out NEW`：
@@ -328,7 +331,9 @@ CLI 返回 status=`duration_requires_new_window`、退出码 3，按 §3.3 映�
 互不阻塞。
 
 `POST /api/downloads/{task_id}/cancel` → 202 `{ task }`：SIGINT 子进程（退出 130 →
-`cancelled`）；已终态 → 409 `invalid_state`。失败/取消目录保留，不自动删除。
+`cancelled`）；已终态 → 409 `invalid_state`。失败/取消目录保留，不自动删除。`.part` 临时文件
+生命周期归 CLI：inferyard 在中断（含取消）时主动清理 `.part`（model_source_download.py:78-83）；
+契约承诺的是目录保留占名（同名 409 `output_exists`），不含 `.part` 留存（T9-L2 实测确认）。
 
 `DownloadTask`：`{ task_id, state, source_url, out_name, out_dir, file_name, downloaded_bytes,
 bytes_per_second, started_at, finished_at, result, error }`。
