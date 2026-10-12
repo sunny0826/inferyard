@@ -1,0 +1,17 @@
+{
+  "name": "inferyard-studio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run build:web && go run .",
+    "build": "bun run build:web && go build -o build/inferyard-studio .",
+    "build:web": "tsc --noEmit -p web/tsconfig.json && vite build",
+    "build:all": "bun run build:web && sh scripts/build-all.sh",
+    "typecheck": "tsc --noEmit -p web/tsconfig.json"
+  },
+  "devDependencies": {
+    "mygo-cli": "^0.4.5",
+    "typescript": "^7",
+    "vite": "^8"
+  }
+}
