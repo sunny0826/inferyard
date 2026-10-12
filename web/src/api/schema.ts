@@ -16,7 +16,7 @@ const snapshot = z.looseObject({
   kind: z.literal('device_preflight.v1'),
   hardware: z.looseObject({
     platform: text.optional(), architecture: text.optional(), cpu_model: text.optional(), logical_cpus: number.optional(), memory_total_bytes: number.optional(), memory_available_bytes: number.optional(), memory_available_is_estimate: z.boolean().optional(), disk_free_bytes: number.optional(), disk_path: text.optional(),
-    gpu: z.looseObject({ status: z.enum(['observed', 'unavailable']), source: text.optional(), reason: text.optional(), devices: z.array(z.looseObject({ index: z.number(), name: text.optional(), memory_total_bytes: number.optional(), memory_free_bytes: number.optional() })) }).nullable().optional(),
+    gpu: z.looseObject({ status: z.enum(['observed', 'unavailable']), source: text.optional(), reason: text.optional(), devices: z.array(z.looseObject({ index: z.number().optional(), name: text.optional(), memory_total_bytes: number.optional(), memory_free_bytes: number.optional() })) }).nullable().optional(),
     sources: z.record(z.string(), text).optional(), missing: z.record(z.string(), z.string()).optional(),
   }),
   models: z.array(z.discriminatedUnion('status', [
