@@ -1,6 +1,6 @@
 /**
  * InferYard Studio API 契约 — TypeScript 类型镜像（docs/api-contract.md 的权威镜像）。
- * 版本：v0 修订待复核（2026-10-12 冻结审查修订）。
+ * 版本：v0 已冻结（2026-10-12 冻结审查修订 + reviewer 复核通过）。
  * 冻结后：前端复制为 web/src/api/types.ts；Go 侧 struct 的 json tag 必须与这里的
  * 字段名逐一一致。全部字段 snake_case；时间为 UTC ISO 8601 字符串；字节为整数 bytes；
  * 缺测/未知一律 null。

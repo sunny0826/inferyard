@@ -1,6 +1,6 @@
 # InferYard Studio API 契约
 
-版本：v0 修订待复核（T1 产出；2026-10-12 按冻结审查修订，reviewer 复核 diff 通过后冻结；冻结后变更须 coordinator 仲裁 + reviewer 重审）。
+版本：v0 已冻结（T1 产出；2026-10-12 冻结审查修订 + reviewer 复核 diff 通过；冻结后变更须 coordinator 仲裁 + reviewer 重审）。
 权威级别：前后端唯一契约。前端 `web/src/api/types.ts` 与 Go struct 的 json tag 均以
 [`docs/api-types.ts`](api-types.ts) 的字段名为准。
 
