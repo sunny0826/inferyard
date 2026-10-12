@@ -68,7 +68,7 @@ jobs:
           script: |
             let ref;
             try {
-              ref = (await github.rest.git.getRef({ ...context.repo, ref: 'tags/v0.0.1' })).data;
+              ref = (await github.rest.git.getRef({ ...context.repo, ref: 'tags/v0.0.2' })).data;
             } catch (error) {
               if (error.status === 404) return;
               throw error;
@@ -88,8 +88,8 @@ jobs:
           CANDIDATE_SHA: ${{ inputs.manifest_sha256 }}
           SOURCE_RUN: ${{ inputs.run_id }}
         run: >-
-          gh release create v0.0.1 approved-files/*
-          --target "$SOURCE_COMMIT" --draft --title 'v0.0.1'
+          gh release create v0.0.2 approved-files/*
+          --target "$SOURCE_COMMIT" --draft --title 'v0.0.2'
           --notes "Source $SOURCE_COMMIT; candidate SHA256 $CANDIDATE_SHA; installation evidence in package-check run $SOURCE_RUN. Installation checks do not establish native model or performance qualification."
   pypi:
     needs: verify

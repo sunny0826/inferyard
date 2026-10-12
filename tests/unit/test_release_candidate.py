@@ -58,7 +58,7 @@ def test_build_refusal(tmp_path, change):
     if change == "dirty":
         data["source_dirty"] = True
     elif change == "dev":
-        data["version"] = "0.0.1.dev0"
+        data["version"] = "0.0.2.dev0"
     elif change == "commit":
         data["source_commit"] = "b" * 40
     elif change == "old":
@@ -173,10 +173,10 @@ def test_synthetic_upgrade_is_next_development_version(tmp_path):
     manifest, build, _, _ = build_fixture(tmp_path / "original")
     wheel = next(r for r in build["artifacts"] if r["role"] == "wheel")
     upgraded = make_upgrade_fixture(manifest.parent / wheel["path"], tmp_path)
-    assert upgraded.name == "inferyard-0.0.2.dev0-py3-none-any.whl"
+    assert upgraded.name == "inferyard-0.0.3.dev0-py3-none-any.whl"
     with zipfile.ZipFile(upgraded) as archive:
-        assert b'__version__ = "0.0.2.dev0"' in archive.read("inferyard/__init__.py")
-        assert b"Version: 0.0.2.dev0" in archive.read("inferyard-0.0.2.dev0.dist-info/METADATA")
+        assert b'__version__ = "0.0.3.dev0"' in archive.read("inferyard/__init__.py")
+        assert b"Version: 0.0.3.dev0" in archive.read("inferyard-0.0.3.dev0.dist-info/METADATA")
 
 
 def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch):
@@ -194,7 +194,7 @@ def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch
     monkeypatch.setattr(run_installed.platform, "machine", lambda: "arm64")
     pinned = {
         "python": "3.14.7",
-        "tool_version": "0.0.1",
+        "tool_version": "0.0.2",
         "dependencies": {"pytest": None, "ruff": None, "idna": "3.20"},
     }
     calls = []
@@ -214,7 +214,7 @@ def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch
         if name == "different-versions" or name == "persistent-tool-unchanged":
             result = {**pinned, "dependencies": {**pinned["dependencies"], "idna": "3.10"}}
         elif name == "synthetic-upgrade-versions":
-            result = {**pinned, "tool_version": "0.0.2.dev0"}
+            result = {**pinned, "tool_version": "0.0.3.dev0"}
         else:
             result = pinned
         return subprocess.CompletedProcess(
@@ -255,7 +255,7 @@ def test_wheel_metadata_and_license_drift_are_rejected(tmp_path, change):
             elif name.endswith("/METADATA") and change == "license_metadata":
                 raw = raw.replace(b"License-Expression: MIT", b"License-Expression: Apache-2.0")
             elif name.endswith("/METADATA") and change == "version_metadata":
-                raw = raw.replace(b"Version: 0.0.1", b"Version: 0.0.2")
+                raw = raw.replace(b"Version: 0.0.2", b"Version: 0.0.3")
             elif name.endswith("/entry_points.txt") and change == "entrypoint":
                 raw = raw.replace(b"inferyard =", b"wrong-command =")
             target.writestr(name, raw)
@@ -289,7 +289,7 @@ def test_check_distribution_cli_produces_bound_v2_build(tmp_path, monkeypatch, c
     sdist = next(r for r in data["artifacts"] if r["role"] == "sdist")
     with tarfile.open(manifest.parent / sdist["path"]) as archive:
         archive.extractall(checkout, filter="data")
-    monkeypatch.setattr(check_distribution, "ROOT", checkout / "inferyard-0.0.1")
+    monkeypatch.setattr(check_distribution, "ROOT", checkout / "inferyard-0.0.2")
     monkeypatch.setattr(
         check_distribution.subprocess,
         "check_output",
