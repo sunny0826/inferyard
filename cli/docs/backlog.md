@@ -477,3 +477,19 @@ report+verify，`default_scope_complete: true`，两 run 封存、报告 verifie
 （runtime_verification.query_version），Windows `runtime prepare` 维持冻结
 profile 的 10 秒不动（改 profile 需固定归档重生成资源）；契约文档同步，新增
 回归断言预算 ≥30 秒且超时仍映射 engine_version_query_failed。
+
+2026-10-13 向导改为 MyGo 原生 UI 窗口（阶段二，分支 feat/first-run-onboarding）：
+用户手动验收结论 web 向导交互差（裸命令 textarea、阶段枚举直出、无整体进度
+感），方向确认为原生 UI。新增 `studio/internal/wizard`（Manager + viewState
+直调 core，六站步骤轨：准备/设备检查/候选/启动与绑定/运行/报告核验；命令仅
+在服务启动步出现且只读可复制；阶段全部人话；失败给重试不自动重试；token 只
+接受环境变量名）；main.go 在 readiness 未完成或 CLI 未安装时自动开向导窗口，
+`mygo.Bind(WizardBridge)` + `mygo generate` 产出 TS client（bindings 路径
+web/src/mygo.ts，新增 mygo-runtime 依赖）；web 向导页降级为入口卡（进度人话
+摘要 + 打开向导按钮，mock 模式不打包 mygo 代码），移除命令/进程/endpoint 表
+单。协调者修正：Go 侧不再改写 progress next_command 的 --out（CLI new_output
+已保证新目录，改写破坏 stem-N 产物命名），Bind 移至 App.Run 前顶层（generate
+模式不执行 WhenReady）。验证：go vet/test（含 ui.NewTester 五状态 view 测试）、
+build:web、verify.mjs（mock 与 wire 全过）、mock 产物无 mygo 代码、首跑/配置后
+两态桌面冒烟进程稳定。未验证（留给用户手动验收）：原生窗口视觉呈现、入口卡
+点击聚焦向导、完整真机向导流程重跑。

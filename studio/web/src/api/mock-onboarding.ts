@@ -5,16 +5,21 @@ import { quote } from '../onboarding/commands';
 import type { EventHandlers } from './client';
 
 type RunApi = Pick<StudioApi, 'getTasks' | 'startRuns' | 'resumeRun'>;
-export function createMockOnboarding(getSettings: () => SettingsResponse, save: (settings: SettingsResponse) => void, runs: RunApi, listeners: Set<EventHandlers>): Pick<StudioApi, 'getReadiness' | 'provision' | 'getProgress' | 'executeWizard' | 'getStartup' | 'getProcesses'> {
-  let initialized = false; let provisioned = false; let preflight = false;
+export function createMockOnboarding(getSettings: () => SettingsResponse, save: (settings: SettingsResponse) => void, runs: RunApi, listeners: Set<EventHandlers>): Pick<StudioApi, 'openWizard' | 'getReadiness' | 'provision' | 'getProgress' | 'executeWizard' | 'getStartup' | 'getProcesses'> {
+  const scenario = new URLSearchParams(window.location.search).get('onboarding');
+  let initialized = scenario === 'progress' || scenario === 'complete';
+  let provisioned = false; let preflight = initialized;
   const phases = new Map<string, 'candidate_missing' | 'bound_missing' | 'run_missing'>([['zh-core', 'candidate_missing'], ['zh-svg-pelican', 'candidate_missing']]);
-  let report: 'missing' | 'verified' = 'missing';
+  let report: 'missing' | 'verified' = scenario === 'complete' ? 'verified' : 'missing';
+  if (scenario === 'progress') phases.set('zh-svg-pelican', 'bound_missing');
   const workspace = () => getSettings().effective.workspace_root ?? '/mock/workspace';
   const reset = () => { for (const listener of listeners) listener.reset(); };
   async function progress(): Promise<WorkspaceProgress> {
     const w = workspace(); const tasks = (await runs.getTasks()).tasks;
     const bundles = ['zh-core', 'zh-svg-pelican'].map(bundle => {
-      const complete = tasks.find(task => task.bundle === bundle && task.exit?.exit_code === 0);
+      const demoComplete = scenario === 'complete' || (scenario === 'progress' && bundle === 'zh-core');
+      const complete = tasks.find(task => task.bundle === bundle && task.exit?.exit_code === 0)
+        ?? (demoComplete ? { run_path: `${w}/results/${bundle}/mock-run` } : undefined);
       const phase = complete ? 'run_complete' : !preflight ? 'preflight_missing' : phases.get(bundle) ?? 'candidate_missing';
       const action = phase === 'run_complete' ? 'none' : phase === 'preflight_missing' ? 'device_check' : phase === 'candidate_missing' ? 'prepare_candidate' : phase === 'bound_missing' ? 'bind' : 'run';
       const command = action === 'none' ? null : action === 'device_check' ? `inferyard device-check --models-root '/mock/models' --out ${quote(`${w}/preflight/check-1`)}` : action === 'prepare_candidate' ? `inferyard config create --workspace ${quote(w)} --bundle ${bundle} --engine '/mock/engine' --out ${quote(`${w}/candidates/${bundle}-1`)}` : action === 'bind' ? `inferyard config bind --candidate ${quote(`${w}/candidates/${bundle}-1/candidate.toml`)} --pid 123 --endpoint 'http://127.0.0.1:48857' --out ${quote(`${w}/bound/${bundle}-1`)}` : `inferyard run --config ${quote(`${w}/bound/${bundle}-1/config.toml`)}`;
@@ -26,9 +31,10 @@ export function createMockOnboarding(getSettings: () => SettingsResponse, save: 
       next_action: first?.next_action ?? (report === 'verified' ? 'done' : 'report'), next_command: first?.next_command ?? (report === 'verified' ? null : `inferyard report --runs ${bundles.flatMap(bundle => bundle.runs.map(run => quote(run.path))).join(' ')} --out ${quote(`${w}/reports/summary-1`)}`), default_scope_complete: !first && report === 'verified' });
   }
   return {
+    async openWizard() {},
     async getReadiness() {
       const s = getSettings(); const dir = (path: string | null, exists: boolean) => ({ path, configured: path !== null, exists, initialized: false });
-      return { cli: { path: s.effective.inferyard_path, version: s.effective.inferyard_version, status: s.effective.inferyard_status }, workspace: { ...dir(workspace(), provisioned || initialized), configured: s.settings.workspace_root !== null, initialized }, results: dir(s.settings.results_root, s.settings.results_root !== null), models: dir(s.settings.models_root, s.settings.models_root !== null), first_run: !initialized && !provisioned };
+      return { cli: scenario === 'cli-missing' ? { path: null, version: null, status: 'not_found' } : { path: s.effective.inferyard_path, version: s.effective.inferyard_version, status: s.effective.inferyard_status }, workspace: { ...dir(workspace(), provisioned || initialized), configured: s.settings.workspace_root !== null, initialized }, results: dir(s.settings.results_root, s.settings.results_root !== null), models: dir(s.settings.models_root, s.settings.models_root !== null), first_run: !initialized && !provisioned };
     },
     async provision() { const s = getSettings(); s.settings.workspace_root = workspace(); s.effective.workspace_root = workspace(); provisioned = true; save(s); reset(); return s; },
     async getProgress() { return { status: initialized ? 'complete' : 'blocked', exit_code: initialized ? 0 : 2, progress: initialized ? await progress() : null }; },

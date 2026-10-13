@@ -24,6 +24,7 @@
     "zod": "^4.6.6"
   },
   "dependencies": {
+    "mygo-runtime": "^0.4.8",
     "uplot": "^1.6.32"
   }
 }

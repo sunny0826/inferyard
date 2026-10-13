@@ -1,5 +1,5 @@
-import { verifyOnboardingWire } from './verify-onboarding-wire.mjs';
-import { verifyOnboarding } from './verify-onboarding.mjs';
+import { verifyOnboardingEntryWire } from './verify-onboarding-wire.mjs';
+import { verifyOnboardingEntry } from './verify-onboarding.mjs';
 import { verifyAssets } from './verify-assets.mjs';
 import { verifyAssetsWire } from './verify-assets-wire.mjs';
 import { verifyRunsWire } from './verify-runs-wire.mjs';
@@ -53,7 +53,7 @@ try {
   await page.close();
   await verifyRuns(browser, `http://127.0.0.1:${port}`, errors);
   await verifyAssets(browser, `http://127.0.0.1:${port}`, errors);
-  await verifyOnboarding(browser, `http://127.0.0.1:${port}`, errors);
+  await verifyOnboardingEntry(browser, `http://127.0.0.1:${port}`, errors);
   await vite.close();
 
   process.env.VITE_API_MODE = 'real';
@@ -104,7 +104,7 @@ try {
   await real.close();
   await verifyRunsWire(browser, vite, errors);
   await verifyAssetsWire(browser, vite, errors);
-  await verifyOnboardingWire(browser, vite, errors);
+  await verifyOnboardingEntryWire(browser, vite, errors);
   assert.deepEqual(errors, []);
   console.log('PASS: REST Bearer, SSE query token, native Last-Event-ID reconnect, sync.reset REST rebuild, API error body, no console exceptions');
 } finally {

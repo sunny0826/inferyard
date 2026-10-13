@@ -18,6 +18,7 @@ import (
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/desktop"
 	"inferyard/studio/internal/server"
+	"inferyard/studio/internal/wizard"
 	"inferyard/studio/web"
 )
 
@@ -52,6 +53,9 @@ func main() {
 	defer httpServer.Close()
 	url := "http://" + listener.Addr().String() + "/?token=" + app.Token()
 	log.Printf("Studio listening on %s", listener.Addr())
+	// The bridge must be bound before App.Run so `mygo generate` sees the service.
+	guide := wizard.New(ctx, app.Core)
+	mygo.Bind(wizard.NewBridge(guide))
 	if *sessionFD >= 3 {
 		pipe := os.NewFile(uintptr(*sessionFD), "session-pipe")
 		if pipe == nil {
@@ -78,6 +82,8 @@ func main() {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
 		}, log.Printf)
 		win := mygo.NewWindow(mygo.WindowOptions{Title: "InferYard Studio", Width: 960, Height: 640})
+		guide.SetMain(win)
+		guide.OpenIfNeeded()
 		win.Page().OnDidFinishLoad(func() {
 			log.Print("desktop page loaded from local HTTP")
 			if *evidence != "" {

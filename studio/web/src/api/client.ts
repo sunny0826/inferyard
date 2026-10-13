@@ -14,6 +14,24 @@ export class ApiFailure extends Error {
 export function failure(error: unknown): ApiError {
   return error instanceof ApiFailure ? error.error : { code: 'internal_error', message: '无法读取服务响应，请重试。', limitations: [], details: null };
 }
+interface WizardBindings {
+  WizardBridge: { open(): Promise<void> };
+}
+export async function openWizard(): Promise<void> {
+  if (import.meta.env.VITE_API_MODE === 'mock') return;
+  // Vite emits a dynamic import only when the generated client exists at build time.
+  const bindings = import.meta.glob<WizardBindings>('../mygo.ts');
+  const load = bindings['../mygo.ts'];
+  if (!load) throw new ApiFailure({
+    code: 'internal_error', message: '此版本暂未包含原生向导，请使用完整的 Studio 桌面版。',
+    limitations: [], details: null,
+  });
+  try { await (await load()).WizardBridge.open(); }
+  catch { throw new ApiFailure({
+    code: 'internal_error', message: '无法打开向导，请在 Studio 桌面版中重试。',
+    limitations: [], details: null,
+  }); }
+}
 export interface EventHandlers {
   reportCreated?: (event: ReportCreatedEvent) => void;
   downloadState?: (event: DownloadStateEvent) => void;
@@ -27,6 +45,7 @@ export interface EventHandlers {
   error: (error: ApiError) => void;
 }
 export interface StudioApi {
+  openWizard(): Promise<void>;
   getReadiness(): Promise<Readiness>;
   provision(): Promise<SettingsResponse>;
   getProgress(): Promise<WorkspaceProgressResponse>;
@@ -64,6 +83,7 @@ export function reportLink(id: string): string {
   return `/reports/${encodeURIComponent(id)}/report.html?token=${encodeURIComponent(token)}`;
 }
 export const realApi: StudioApi = {
+  openWizard,
   getReadiness: () => request('readiness', readinessSchema),
   provision: () => request('settings/provision', settingsSchema, 'POST'),
   getProgress: () => request('progress', workspaceProgressResponseSchema),
