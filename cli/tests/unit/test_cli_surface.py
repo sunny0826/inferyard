@@ -342,6 +342,7 @@ def test_live_binding_rejections_still_block_dispatch(arguments, monkeypatch, ca
         ["config", "assets", "--help"],
         ["config", "create", "--help"],
         ["config", "bind", "--help"],
+        ["progress", "--help"],
         *[[value[0], "--help"] for value in INPUTS],
     ],
 )
@@ -372,7 +373,7 @@ raise SystemExit(main(json.loads(sys.argv[1])))
     assert result.stderr == ""
     if arguments == ["--help"]:
         primary = re.findall(r"^    ([a-z][a-z-]+)\s+", result.stdout, flags=re.MULTILINE)
-        assert len(primary) == 24
+        assert len(primary) == 25
         assert {"verify", "probe", "public", "extension", "engine", "engine-fit"} <= set(primary)
         assert "check" not in primary and "extension-run" not in primary
         assert "Compatibility" not in result.stdout and "extension-run" not in result.stdout

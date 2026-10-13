@@ -14,6 +14,9 @@ def build_request(
     args: argparse.Namespace, *, config_loader: Callable[[Path], LoadedConfig] = load_config
 ) -> CommandRequest:
     values = vars(args)
+    if args.command == "config create" and values.get("workspace") is None:
+        if values.get("preflight") is None or values.get("output_root") is None:
+            raise ArgumentError("--preflight and --results are required without --workspace")
     if any(pid <= 0 for pid in values.get("protect_pids") or ()):
         raise ArgumentError("protected PID must be positive")
     from_run = values.get("from_run")
@@ -77,6 +80,10 @@ def build_request(
         or args.command == "engine acquire"
         or args.command.startswith("engine-fit ")
     )
+    if args.command == "config create" and options.get("workspace") is not None:
+        bundle = options["bundle_path"]
+        if not bundle.is_absolute() and bundle.parent == Path(".") and not bundle.suffix:
+            options["bundle_path"] = options["workspace"] / "bundles" / (bundle.name + ".json")
     for key, value in options.items():
         if isinstance(value, Path):
             options[key] = value.absolute() if preserve_links else value.resolve()

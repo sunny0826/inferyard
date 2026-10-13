@@ -84,13 +84,13 @@ uvx --isolated --managed-python --python 3.14.7 --constraints runtime-constraint
 
 ```bash
 inferyard init --out bench-ops
-inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight --json
+inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/device-1 --json
 ```
 
 省略 `--bundle` 时导出默认范围 `zh-core` 和 `zh-svg-pelican`。明确固定题包时可选
 `zh-smoke`、`zh-core` 或 `zh-svg-pelican`，并只导出该题包。导出题包保留权威原字节和
 内嵌人工审核；SVG 题只展示生成结果、不评分。`init` 导出的目录作为操作目录，
-含三个平台的未绑定示例、所选题包、空 `assets/`、`results/` 及入门说明；
+含三个平台的未绑定示例、所选题包、空 `assets/`、`results/`、`preflight/`、`candidates/`、`bound/`、`reports/` 及含绝对路径的路线图；
 准备与操作产物都留在操作目录。骨架中的空 `results/` 在双目录布局下不使用，
 `config create --results` 应指向 benchmark 工作区（如 `bench-work/results`）。
 benchmark 工作区（如 `bench-work/`）只存放
@@ -106,6 +106,24 @@ Windows 用实际盘符路径替换模型路径；所有系统均只读取已有
 五个准备命令的 `--out` 都是**不存在的新目录**，其父目录应存在。已有空目录、文件和链接
 一律拒绝，没有 `--force`。失败可能留下本次不完整目录；保留检查并换新目录重试，不覆盖原件。
 `device-check` 的无模型检查可以完成，但创建候选需要成功的模型推荐。
+
+### 当前源码的首次上手模式
+
+本节新增 progress/workspace 模式以当前源码为准，已发布 0.0.2 不保证包含这些新增入口。
+init 导出的目录也可直接作为 onboarding 工作区，results/ 保存运行，reports/ 保存报告。
+preflight/ 已由 init 创建，device-check 的 --out 使用新子目录。
+
+```bash
+inferyard progress --workspace bench-ops
+inferyard config create --workspace bench-ops --bundle zh-core --engine /path/to/llama-server --out bench-ops/candidates/zh-core-1
+```
+
+Windows 用 --runtime-receipt FILE 替代 --engine FILE；Linux 仍手工准备候选。
+workspace 模式默认选择 preflight/ 下最新 device-preflight.json，并冻结 bench-ops/results；
+显式 --preflight、完整 --bundle 路径和 --results 优先。--out 始终必填且不能已存在。
+随后由操作者外部启动服务，绑定到 bound/ 的新子目录，执行两个题包并生成汇总报告。
+随时运行 progress 断点续接；字段和退出码见[进度契约](cli-surface.md#首次上手进度契约)，
+例子见[首次上手与断点续接](usage.md#首次上手与断点续接)。原有显式参数和双目录布局仍可使用。
 
 ## 3. 准备候选
 
@@ -131,7 +149,7 @@ inferyard runtime prepare --profile prism-b10743-adfffbe-win-cuda-12.4-x64 `
   --archive 'C:\Downloads\llama-prism-b10743-adfffbe-bin-win-cuda-12.4-x64.zip' `
   --runtime-archive 'C:\Downloads\cudart-llama-bin-win-cuda-12.4-x64.zip' `
   --out 'bench-ops\assets\cuda-runtime'
-inferyard config create --preflight 'bench-ops\preflight\device-preflight.json' `
+inferyard config create --preflight 'bench-ops\preflight\device-1\device-preflight.json' `
   --runtime-receipt 'bench-ops\assets\cuda-runtime\runtime-receipt.json' `
   --bundle 'bench-ops\bundles\zh-core.json' --results 'bench-work\results' `
   --out 'bench-ops\candidate'
@@ -147,10 +165,11 @@ inferyard config create --preflight 'bench-ops\preflight\device-preflight.json' 
 准备已有、适配版本的 Prism 引擎及同目录动态库：
 
 ```bash
-inferyard config create --preflight bench-ops/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-core.json --results bench-work/results --out bench-ops/candidate
+inferyard config create --preflight bench-ops/preflight/device-1/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-core.json --results bench-work/results --out bench-ops/candidate
 ```
 
-候选生成会执行引擎 `--version`（10 秒），重新检查容量、mode 和 AC 电源；Metal 要求相应动态库。
+候选生成会执行引擎 `--version`（30 秒超时；macOS 新解压引擎的执行期签名校验偶发超过 10 秒），
+重新检查容量、mode 和 AC 电源；Metal 要求相应动态库。
 `--model-repo` 默认为 local，`--model-revision` 默认为模型文件 SHA256，`--port` 默认为 48857。
 本地 SHA256 不冒充上游模型 revision。macOS 不接受 Windows 回执。
 
@@ -175,8 +194,8 @@ inferyard config assets --model /path/to/model.gguf --engine /path/to/llama-serv
 CLI 不管理该服务的启动、终止或重启。将实际 PID 和本机端点代入：
 
 ```bash
-inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
-inferyard run --config bench-ops/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
+inferyard run --config bench-ops/bound/service-1/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 inferyard verify --path bench-work/report
 ```

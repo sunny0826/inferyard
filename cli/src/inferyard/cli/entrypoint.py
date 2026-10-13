@@ -91,11 +91,14 @@ def run(
         # Do not dump exception repr/traceback, which may include response credentials.
         print("internal tool error", file=sys.stderr)
         code, result = 4, CommandResult(command, "error", limitations=("internal_error",))
+    if command == "progress" and code not in (0, 130):
+        # progress never reports execution outcomes; cancellation keeps its global meaning.
+        code = 2
     try:
         output = format_result(result, output_format)
     except Exception:
         print("internal tool error", file=sys.stderr)
-        code = 4
+        code = 2 if command == "progress" else 4
         output = format_result(
             CommandResult(command, "error", limitations=("internal_error",)), output_format
         )

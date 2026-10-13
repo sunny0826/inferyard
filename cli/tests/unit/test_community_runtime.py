@@ -191,6 +191,20 @@ def test_cuda_conflicting_library_hashes_are_rejected():
     assert output_files(members)[2]["cuda.dll"] == "b" * 64
 
 
+def test_version_query_budget_covers_macos_signature_validation_stalls(monkeypatch):
+    seen = {}
+
+    def run(argv, **kwargs):
+        seen.update(kwargs)
+        raise subprocess.TimeoutExpired(argv, kwargs.get("timeout"))
+
+    monkeypatch.setattr(runtime_verification.subprocess, "run", run)
+    with pytest.raises(PreparationError) as raised:
+        runtime_verification.query_version(Path("/engines/llama-server"), r"prism")
+    assert seen["timeout"] >= 30
+    assert raised.value.args[0] == "engine_version_query_failed"
+
+
 @pytest.mark.parametrize("failure", ["timeout", "nonzero", "version", "cancel"])
 def test_version_failure_never_creates_success_receipt(synthetic_runtime, monkeypatch, failure):
     request, _ = synthetic_runtime

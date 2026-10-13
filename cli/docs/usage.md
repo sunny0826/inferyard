@@ -2,6 +2,27 @@
 
 先按[安装指南](installation.md)安装并准备候选，确认[平台范围](platforms.md)。以下直接调用已安装的 CLI；大写名称、模型路径和端点是待替换值。正式运行前核对设备、预算与停止条件。
 
+## 首次上手与断点续接
+
+onboarding 工作区把准备和执行产物放入各自子目录；下文的双目录 benchmark 布局仍可使用。
+CLI 不选择隐式默认目录。先显式初始化，再随时查询下一步：
+
+```bash
+inferyard init --out onboarding
+inferyard progress --workspace onboarding
+inferyard device-check --model /path/to/model.gguf --json --out onboarding/preflight/device-1
+inferyard config create --workspace onboarding --bundle zh-core --engine /path/to/llama-server --out onboarding/candidates/zh-core-1
+inferyard progress --workspace onboarding
+```
+
+按导出的 README 路线图由操作者启动服务，使用真实 PID/endpoint 绑定，再 run。
+核心包完成后同样准备并运行 zh-svg-pelican，两个 run 均封存后在 reports/ 的新子目录
+生成汇总并 verify。已有完整核心结果时只补跑缺少的鹈鹕；保留原件。
+progress 只读输出进度，退出 0 不表示测评完成；查看 default_scope_complete 与 blocked_reason。
+未完成 run 显示 resume；单次运行或固定时窗不支持续测时明确阻断，按既有规则创建新运行。
+progress 不发送请求，也不启动服务；执行其 run/resume 命令前仍核对设备、预算与停止条件。
+完整字段与退出码见[进度契约](cli-surface.md#首次上手进度契约)。
+
 ## 默认测评范围
 
 未明确声明固定题包的 benchmark，默认同时覆盖以下两个题包。只有用户明确声明固定题包时，才仅运行指定题包；示例配置或工具的单题包默认值不构成该声明。
@@ -93,8 +114,8 @@ benchmark 执行与评分不使用浏览器：SVG 题不做质量评分，CLI �
 模型服务由操作者外部启动。按[配置说明](../configs/README.md)准备候选配置，核对模型、引擎、模板、启动参数和凭据引用，再绑定当前进程：
 
 ```bash
-inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
-inferyard run --config bench-ops/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
+inferyard run --config bench-ops/bound/service-1/config.toml
 ```
 
 候选配置须为当前机器准备；历史 PID、路径和启动时间不能复用，测试夹具不能用于真机。`probe` 发送普通与流式诊断请求，`run` 重新预检并冻结正式输入。凭据仅通过 `endpoint.api_key_env` 引用。
@@ -152,7 +173,7 @@ v0.0.1 状态中的 `migration` envelope 不再核验，在下一次状态写入
 操作者停止旧服务并准备新服务后，使用状态中的 `dirty_token` 及具体恢复说明：
 
 ```bash
-inferyard run --config bench-ops/bound/config.toml --recovery-confirm TOKEN --recovery-note "已停止旧服务并核验新进程与端点"
+inferyard run --config bench-ops/bound/service-1/config.toml --recovery-confirm TOKEN --recovery-note "已停止旧服务并核验新进程与端点"
 ```
 
 程序仍核验旧进程消失、新服务身份及空闲；不要删除锁文件或绕过检查。达到冻结的硬件或温度停止条件后保留原因和计数，不反复重试同一负载。

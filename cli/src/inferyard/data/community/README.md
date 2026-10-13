@@ -1,26 +1,80 @@
-# 离线测评操作目录
+# InferYard 首次上手路线图
 
-此目录是准备材料，不是已验证配置或测评结果。题包原字节及内嵌人工审核信息保留。
-`preparation.json` 的 `bundles` 列出本次导出的全部题包；省略 `inferyard init --bundle` 时，
-导出 `zh-core` 和 `zh-svg-pelican`；显式指定时只导出该题包。
-`zh-smoke` 仅在显式选择时导出。`bundle_path` 仍指向第一个题包，不代表只导出了一个。
-准备与操作产物统一留在本操作目录（示例名 `bench-ops/`）；benchmark 工作区（示例名
-`bench-work/`）只存放 run/batch 与报告，由 `run` 和 `report` 自动创建。
-模板中的 REPLACE 项都需要填写；
-PID/start_ticks 的 1 是未绑定哨兵，不是真实进程身份。不要直接 run 示例。
+本工作区是 `{{WORKSPACE}}`。请使用本地已有的模型与引擎文件；如需获取请另行下载。
+任何命令都不会启动或停止模型服务。保留原始产物，每次准备或报告都使用新目录。
 
-1. `inferyard device-check --model MODEL --out NEW_PREFLIGHT --json`。
-2. Windows 先从固定归档 `runtime prepare`，再 `config create`；macOS 直接 `config create`。
-   Linux 用 `config assets` 导出模板和身份，再手工填写 configs/linux.example.toml 的副本。
-3. 操作者外部启动模型服务，用 `config bind --candidate FILE --pid PID --endpoint URL --out NEW`。
-4. `run --config NEW/config.toml` 每次只执行配置中的一个题包，不自动连续运行两个题包。
-   它自带当次普通/流式探测；独立 probe 仅作可选排障。
-5. `report --runs RUN --out NEW_REPORT`，再 `verify --path NEW_REPORT`；HTML 可离线打开。
+随时可用以下命令查看当前进度并续接：
 
-默认测评须为两个题包分别准备候选、绑定并运行，候选和绑定产物各用新目录，分别冻结预算。
-两次运行封存后，用 `report --runs CORE_RUN SVG_RUN --out NEW_REPORT` 生成汇总报告。
+```bash
+inferyard progress --workspace "{{WORKSPACE}}"
+```
 
-所有新准备入口的 --out 都是不存在的新目录；父目录须存在，失败后换新目录重试。
-不下载模型、不隐式启动服务。模板和哈希不替代资产、身份、预算与停止条件核验。
-Windows 候选引用 runtime prepare 目录的资产及清单。不要移动/删除它；移动/删除后须重新准备
-候选并绑定，CLI 不自动复制资产改变路径语义。完整命令见项目 docs/installation.md 的随发行指南。
+`progress` 只读取、不写入文件。JSON 会给出每个题包的阶段、阻断原因和下一步命令。
+退出 0 只代表工作区可读，不代表测评完成。需要引擎、运行时回执、PID 或端点的命令
+使用显式 shell 变量占位；执行前把它们设置为真实本地资产和已由你启动的服务。
+
+## 1. 检查设备与已有模型
+
+```bash
+inferyard device-check --model /path/to/model.gguf --json --out "{{WORKSPACE}}/preflight/device-1"
+```
+
+preflight 目录已存在；在其中使用新的子目录。不带模型的检查可以成功，
+但准备候选需要一条模型推荐结果。
+
+## 2. 准备核心题包候选
+
+macOS arm64：
+
+```bash
+inferyard config create --workspace "{{WORKSPACE}}" --bundle zh-core --engine /path/to/llama-server --out "{{WORKSPACE}}/candidates/zh-core-1"
+```
+
+Windows x64 需先单独准备固定运行时，并把 `--engine FILE` 换成 `--runtime-receipt FILE`。
+Linux x64 使用 `config assets` 和导出的 Linux 示例手工准备候选；不支持 `config create`。
+`--workspace` 会选取最新的 preflight 产物，并把结果根默认为 `{{WORKSPACE}}/results`；
+显式传入的 `--preflight` 与 `--results` 优先。
+
+## 3. 外部启动服务后绑定
+
+阅读 candidate.toml 中的 `engine.binary_path` 和全部冻结的 `engine.startup_args`，
+在另一个终端自行启动该服务，确认其 PID 与本地端点。CLI 绝不隐式下载、启动、停止或重启服务。
+
+```bash
+inferyard config bind --candidate "{{WORKSPACE}}/candidates/zh-core-1/candidate.toml" --pid 1234 --endpoint http://127.0.0.1:48857 --out "{{WORKSPACE}}/bound/zh-core-1"
+```
+
+把 1234 替换为真实 PID。凭据只能通过 `endpoint.api_key_env` 引用；
+不要把密钥明文写进命令或配置。
+
+## 4. 运行核心题包
+
+发送模型请求前核对设备、预算与停止条件。
+
+```bash
+inferyard run --config "{{WORKSPACE}}/bound/zh-core-1/config.toml"
+inferyard progress --workspace "{{WORKSPACE}}"
+```
+
+## 5. 为第二个题包重复准备、外部启动、绑定与运行
+
+```bash
+inferyard config create --workspace "{{WORKSPACE}}" --bundle zh-svg-pelican --engine /path/to/llama-server --out "{{WORKSPACE}}/candidates/zh-svg-pelican-1"
+```
+
+绑定前先冻结适合 SVG 长输出的预算与上下文；不要沿用核心题包的短输出预算。
+在外部启动或更换服务，绑定到 `{{WORKSPACE}}/bound/zh-svg-pelican-1`，再运行其 config.toml。
+默认测评覆盖两个题包；仅当用户显式声明固定题包时可只运行该题包，
+`init --bundle NAME` 导出该范围。
+
+## 6. 汇总与核验
+
+使用 run 或 progress 返回的实际封存 run 路径：
+
+```bash
+inferyard report --runs CORE_RUN SVG_RUN --out "{{WORKSPACE}}/reports/summary-1"
+inferyard verify --path "{{WORKSPACE}}/reports/summary-1"
+inferyard progress --workspace "{{WORKSPACE}}"
+```
+
+报告保留来源血缘。封存的不完整 run 不等于完整测评。保留原始 run 与历史报告，永不覆盖。

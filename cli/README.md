@@ -53,7 +53,7 @@ The example below uses the pinned `zh-smoke` bundle for a quick check.
 
 ```bash
 inferyard init --out bench-ops --bundle zh-smoke
-inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight --json
+inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/device-1 --json
 ```
 
 Prepare a candidate per the
@@ -66,8 +66,8 @@ runs, batches and reports, created automatically by `run`, `batch` and
 `report`:
 
 ```bash
-inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
-inferyard run --config bench-ops/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
+inferyard run --config bench-ops/bound/service-1/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 inferyard verify --path bench-work/report
 ```

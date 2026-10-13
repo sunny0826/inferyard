@@ -36,13 +36,16 @@ def initialize(request):
         p: resource_bytes(f"configs/{p}.example.toml") for p in ("linux", "macos", "windows")
     }
     output = NewDirectory(request.out)
-    output.write("README.md", resource_bytes("README.md"))
+    roadmap = resource_bytes("README.md").decode().replace("{{WORKSPACE}}", str(output.path))
+    output.write("README.md", roadmap.encode())
     for name, raw in bundles.items():
         output.write(f"bundles/{name}.json", raw)
     for system, raw in templates.items():
         output.write(f"configs/{system}.example.toml", raw)
     output.directory("assets")
     output.directory("results")
+    for name in ("preflight", "candidates", "bound", "reports"):
+        output.directory(name)
     selected = next(iter(bundles))
     details = {
         **base_details(output.path),

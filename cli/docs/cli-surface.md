@@ -7,7 +7,7 @@
 | 用途 | 命令 | 请求范围 |
 | --- | --- | --- |
 | 安装与配置 | `init`、`runtime prepare`、`config assets/create/bind` | 本地准备；prepare/create 有界查询引擎版本，无模型请求 |
-| 设备与目录 | `device-check`、`memory-check`、`catalogue` | 本地设备、进程、文件或已安装目录数据 |
+| 设备与目录 | `progress`、`device-check`、`memory-check`、`catalogue` | 本地设备、进程、文件或已安装目录数据 |
 | 实验准备 | `plan` | 离线预览或冻结实验 |
 | 服务诊断与执行 | `probe`、`overhead`、`prepare-length`、`run`、`resume` | 连接已有模型服务；诊断和准备也可能发送请求 |
 | 派生分析 | `repeat-summary`、`rescore`、`export`、`filter-candidates` | 离线读取已有证据或分析 |
@@ -69,6 +69,70 @@ run 不接受覆盖开关，旧计划不变。见[内存覆盖用法](engine-fit
 Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接受 plan.v2/v3/v4；
 旧定义平台不变，其他 Windows 引擎在请求前拒绝。停止规则由计划冻结，不能在 run 时切换；原生身份和软件/真机边界见 [Windows 诊断](../WINDOWS.md#windows-engine-fit-diagnostics)。
 
+## 首次上手进度契约
+
+`inferyard progress --workspace DIR` 只读扫描显式工作区，不创建文件、不发送模型请求，
+不查询现场硬件或服务。stdout 直接输出 `progress.v1`（不套普通 CommandResult envelope），
+诊断走 stderr；有效且可读时退出 0，无论进度；工作区不存在、缺少 preparation.json、
+产物不可读或核验失败时退出 2，绝不返回 3/4。失败输出沿用 blocked 错误 envelope。
+
+`init --out DIR` 创建 onboarding 工作区：preparation.json 为 `community_init.v1`，
+另含 README.md、bundles/、configs/、assets/、results/，以及空的 preflight/、candidates/、
+bound/、reports/。包内 README 的 `{{WORKSPACE}}` 在导出时替换为本次绝对路径。
+`device-check --out`、create/bind/report 的输出仍须为新目录，应使用这些目录下的新子目录。
+
+`config create --workspace W --bundle zh-core --engine FILE --out W/candidates/core-1`
+将裸名解析为 W/bundles/zh-core.json；完整题包路径仍接受。省略 --preflight 时选择
+W/preflight/ 递归发现的 device-preflight.json 中修改时间最新者（同时间按路径排序）；
+省略 --results 时冻结 W/results。显式参数优先，--out 仍必填。不提供 --workspace 时
+--preflight、--results 仍必填，既有平台、互斥、硬件复核、身份和哈希校验保持原规则。
+
+成功 JSON 字段固定如下：
+
+```json
+{
+  "kind": "progress",
+  "progress_version": 1,
+  "workspace": "/absolute/workspace",
+  "device_preflight": {"status": "missing", "path": null},
+  "bundles": [{
+    "bundle": "zh-core",
+    "phase": "preflight_missing",
+    "candidate_path": null,
+    "bound_path": null,
+    "runs": [],
+    "next_action": "device_check",
+    "next_command": "inferyard device-check --json --out /absolute/workspace/preflight/device-1",
+    "blocked_reason": null
+  }],
+  "report": {"status": "missing", "path": null, "runs": []},
+  "next_action": "device_check",
+  "next_command": "inferyard device-check --json --out /absolute/workspace/preflight/device-1",
+  "default_scope_complete": false
+}
+```
+
+上例省略第二题包条目。bundles 按初始化范围列出，zh-core 优先；每包 phase 依次为
+preflight_missing / candidate_missing / bound_missing / run_missing / run_incomplete /
+run_complete，动作对应 device_check / prepare_candidate / bind / run / resume / none。
+候选识别 candidates/*/preparation.json 的 config_candidate.v1，绑定识别
+bound/*/preparation.json 的 config_binding.v1，并按候选路径关联。runs 从 results/ 的
+run 或 batch/runs/run 读取，包含绝对 path、complete 和 sealed；完成与封存分别复用
+现有证据语义，不把诊断 run 算入完成。单次运行和固定时窗不能 resume，仍报告 resume
+阶段并给 blocked_reason，操作者按既有规则新建运行，不自动重试。
+
+顶层 next_action 按 device_check → 各题包 prepare_candidate/bind/run → report → verify → done
+排序；未完成 run 的顶层动作是 run，包内动作是 resume。report.status 为 missing / present /
+verified，path 为报告目录绝对路径或 null，runs 为其来源绝对路径列表；verified 必须通过现有
+报告字节、来源和语义核验。所有导出题包的 run_complete 且汇总报告 verified 时，
+default_scope_complete 为 true；固定题包只表示其显式范围完成。
+
+next_command 是包含绝对工作区路径的 shell 命令，路径按 shell 引号转义；
+准备和绑定时尚未知的本地资产或进程参数使用必须显式设置的 INFERYARD_ENGINE /
+INFERYARD_RUNTIME_RECEIPT / INFERYARD_SERVER_PID / INFERYARD_ENDPOINT 环境变量。
+这些变量只传路径、PID 与端点，凭据仍仅由 endpoint.api_key_env 引用。progress 不取得
+服务启动权限。重复准备时命令选择尚不存在的输出子目录，不覆盖旧产物。
+
 ## 社区安装准备接口
 
 本节定义安装包的准备入口，操作示例见[安装指南](installation.md)。
@@ -76,7 +140,9 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 除下述 `model acquire` 与 `engine acquire` 的文件获取外，这些动作不发送 HTTP 或模型请求。
 所有准备动作均不操作主机锁/dirty，不启动、终止或重启模型服务。
 `runtime prepare` 和 `config create` 的引擎 `--version` 子进程是明确的例外副作用：
-只查询版本，固定 10 秒超时，不传模型参数；失败不输出成功回执。
+只查询版本，不传模型参数；失败不输出成功回执。`config create` 固定 30 秒超时
+（macOS 新解压 ad-hoc 签名二进制的执行期校验偶发超过 10 秒）；`runtime prepare`
+使用冻结 profile 的 `version_timeout_seconds`（当前 10 秒）。
 
 ### 参数、平台和产物
 
@@ -88,10 +154,10 @@ Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接�
 | --- | --- | --- | --- |
 | `model acquire` | `--source URL --out NEW` | `--token-env NAME`：只接受环境变量名；`--timeout-seconds 1800` | 三平台；单 GGUF 文件的基名和 `source.json`，失败目录保留 |
 | `engine acquire` | `--source URL --out NEW` | `--timeout-seconds 1800` | 三平台；单引擎文件的基名和 `engine-source.json`，失败目录保留 |
-| `init` | `--out NEW` | `--bundle {zh-smoke,zh-core,zh-svg-pelican}`；省略时导出 `zh-core` 和 `zh-svg-pelican` | 三平台；`README.md`、`configs/{linux,macos,windows}.example.toml`、`bundles/NAME.json`、`assets/`、`results/`、`preparation.json` |
+| `init` | `--out NEW` | `--bundle {zh-smoke,zh-core,zh-svg-pelican}`；省略时导出 `zh-core` 和 `zh-svg-pelican` | 三平台；`README.md`、`configs/{linux,macos,windows}.example.toml`、`bundles/NAME.json`、`assets/`、`results/`、`preflight/`、`candidates/`、`bound/`、`reports/`、`preparation.json` |
 | `runtime prepare` | `--profile NAME --archive FILE --out NEW` | `--runtime-archive FILE`，仅 CUDA 必填，CPU 禁止 | 仅 Windows x64；`engine/`、CUDA 的 `runtime/`、`engine/engine-sha256.json`、`runtime-receipt.json` |
 | `config assets` | `--model FILE --engine FILE --out NEW` | 无 | 仅 Linux x64；`chat-template.jinja`、`engine-sha256.json`、`assets.json` |
-| `config create` | `--preflight FILE --bundle FILE --results DIR --out NEW`；另按平台指定下述参数 | `--port INT` 默认 48857，范围 1..65535；`--model-source FILE` 显式来源记录；无记录时 `--model-repo TEXT` 默认 `local`、`--model-revision TEXT` 默认所选模型 SHA256，显式文本须非空 | 仅 macOS arm64 / Windows x64；`candidate.toml`、`chat-template.jinja`、`preparation.json`；macOS 另有 `engine-sha256.json`，Windows 引用回执目录清单 |
+| `config create` | `--bundle FILE_OR_NAME --out NEW`；无 workspace 时另必填 `--preflight FILE --results DIR`；另按平台指定下述参数 | `--workspace DIR` 推导题包、preflight 和 results；`--port INT` 默认 48857，范围 1..65535；`--model-source FILE` 显式来源记录；无记录时 `--model-repo TEXT` 默认 `local`、`--model-revision TEXT` 默认所选模型 SHA256，显式文本须非空 | 仅 macOS arm64 / Windows x64；`candidate.toml`、`chat-template.jinja`、`preparation.json`；macOS 另有 `engine-sha256.json`，Windows 引用回执目录清单 |
 | `config bind` | `--candidate FILE --pid INT --endpoint URL --out NEW` | 无；PID 应为正整数 | 三平台及既有可绑定适配器；`config.toml`、`preparation.json` |
 
 `runtime prepare` 的 NAME 只有 `prism-b10743-adfffbe-win-cpu-x64` 和
@@ -149,8 +215,8 @@ Windows 归档继续经 `runtime prepare --archive` 核验。失败原因固定�
 
 ```bash
 inferyard model acquire --source 'https://huggingface.co/OWNER/REPO/blob/COMMIT40/sub/model.gguf' --out bench-ops/models/new
-inferyard device-check --model bench-ops/models/new/model.gguf --out bench-ops/preflight --json
-inferyard config create --preflight bench-ops/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-smoke.json --results bench-work/results --out bench-ops/candidate --model-source bench-ops/models/new/source.json
+inferyard device-check --model bench-ops/models/new/model.gguf --out bench-ops/preflight/device-1 --json
+inferyard config create --preflight bench-ops/preflight/device-1/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-smoke.json --results bench-work/results --out bench-ops/candidate --model-source bench-ops/models/new/source.json
 ```
 
 `COMMIT40` 是占位符，必须替换为实际固定 revision；示例候选命令适用于 macOS，
@@ -238,7 +304,7 @@ stdout 恰好一个 UTF-8 JSON 对象，使用现有 CommandResult 外层。`com
 ```
 
 请求仍用 `application/types.py` 的 CommandRequest，结果仍为 CommandResult，不另建 CLI DTO。
-新增可空字段冻结为：`community_bundle: str`、`runtime_profile: str`、`archive: Path`、
+新增可空字段含 `workspace: Path`，其余字段冻结为：`community_bundle: str`、`runtime_profile: str`、`archive: Path`、
 `runtime_archive: Path`、`engine_path: Path`、`runtime_receipt: Path`、`preflight: Path`、
 `bundle_path: Path`、`candidate: Path`、`model_repo: str`、`model_revision: str`、`port: int`。
 复用 `out`、`model_path`、`output_root`（--results）、`server_pid`（--pid）、

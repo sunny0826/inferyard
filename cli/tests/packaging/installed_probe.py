@@ -33,7 +33,7 @@ def main():
     assert resources == expected["resources"], "installed resource bytes differ"
     assert tool_source_hash() == expected["tool_source_hash"], "installed tool identity differs"
     assert scorer_hash() == expected["scorer_hash"], "installed scoring identity differs"
-    assert __version__ == "0.0.2"
+    assert __version__ == "0.0.3"
     args.out.mkdir()
     run = args.fixtures / expected["fixture_relative"]
     current = args.out / "current-report"

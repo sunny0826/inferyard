@@ -457,3 +457,39 @@ bench-ops-svg，Linux 候选的 bundle 版本改为从题包文件读取。macOS
 （Metal）本机实跑全绿：SmolLM2-135M 得 1/40（小模型预期低分，验证的是
 评分链路而非模型质量），总耗时约 3 分钟。Windows/Linux 两条腿尚未以新
 流程实跑（CI 将覆盖 Windows；Linux 仍需本机 omarchy 复跑确认）。
+
+2026-10-13 首次上手引导落地（分支 feat/first-run-onboarding，commit 1ea41cd）：
+新增只读 `progress --workspace`（progress.v1，退出码仅 0/2）、`config create
+--workspace` 推导模式（显式参数优先，旧入口不变）、init 工作区新增
+preflight/candidates/bound/reports 目录与中文路线图 README（`{{WORKSPACE}}`
+导出替换）；Studio 新增工作区设置（默认 `~/.inferyard`）、readiness/provision
+软门槛、progress 适配层与首页向导。真实真机验收通过：SmolLM2-135M（e2e 同款）
+经 Studio 向导接口完整走 acquire → device-check → 双题包候选/绑定/运行 →
+report+verify，`default_scope_complete: true`，两 run 封存、报告 verified
+（zh-core 120 题约 3 分钟）。遗留：macOS 上引擎 `--version` 查询偶发 12 秒
+签名校验卡顿，超过固定 10 秒超时导致 `config create` 暂态失败（重试即过）；
+向导或文档宜提示预热/重试，是否放宽超时另行决策。
+
+2026-10-13 版本查询超时问题已处理：两次主动复现（服务空闲 + 生成负载下各
+8-12 次 --version）均未复现 12 秒卡顿；结合 e2e 既有记载（新解压 ad-hoc
+签名二进制执行期校验可超 10 秒，CI 在超时预算外预热），定性为 macOS 执行期
+签名/扫描延迟的偶发表现。修复：`config create` 的版本查询默认超时 10→30 秒
+（runtime_verification.query_version），Windows `runtime prepare` 维持冻结
+profile 的 10 秒不动（改 profile 需固定归档重生成资源）；契约文档同步，新增
+回归断言预算 ≥30 秒且超时仍映射 engine_version_query_failed。
+
+2026-10-13 向导改为 MyGo 原生 UI 窗口（阶段二，分支 feat/first-run-onboarding）：
+用户手动验收结论 web 向导交互差（裸命令 textarea、阶段枚举直出、无整体进度
+感），方向确认为原生 UI。新增 `studio/internal/wizard`（Manager + viewState
+直调 core，六站步骤轨：准备/设备检查/候选/启动与绑定/运行/报告核验；命令仅
+在服务启动步出现且只读可复制；阶段全部人话；失败给重试不自动重试；token 只
+接受环境变量名）；main.go 在 readiness 未完成或 CLI 未安装时自动开向导窗口，
+`mygo.Bind(WizardBridge)` + `mygo generate` 产出 TS client（bindings 路径
+web/src/mygo.ts，新增 mygo-runtime 依赖）；web 向导页降级为入口卡（进度人话
+摘要 + 打开向导按钮，mock 模式不打包 mygo 代码），移除命令/进程/endpoint 表
+单。协调者修正：Go 侧不再改写 progress next_command 的 --out（CLI new_output
+已保证新目录，改写破坏 stem-N 产物命名），Bind 移至 App.Run 前顶层（generate
+模式不执行 WhenReady）。验证：go vet/test（含 ui.NewTester 五状态 view 测试）、
+build:web、verify.mjs（mock 与 wire 全过）、mock 产物无 mygo 代码、首跑/配置后
+两态桌面冒烟进程稳定。未验证（留给用户手动验收）：原生窗口视觉呈现、入口卡
+点击聚焦向导、完整真机向导流程重跑。

@@ -59,3 +59,8 @@ removed parts, cancellation and already published targets.
 The four-file testdata run is a hand-built indexing/tailing fixture, not a fully
 verified eight-file benchmark evidence bundle. Windows/Linux runtime cancellation,
 real benchmark runs and real downloads were not exercised. No blocking items.
+
+`progress.go` 解析独立的 `progress.v1` 对象，不使用通用 CommandResult 外壳，也不推导分数或
+证据完成状态。`Client.Progress` 是可单测的 CLI 边界；Studio 服务使用相同解析器和 core
+注入式 executor。`testdata/progress.v1.json` 与测试中的各阶段变体提供模拟契约证据。
+`command.go` 只切分向导命令的引号与参数，不调用 shell、不执行变量替换。

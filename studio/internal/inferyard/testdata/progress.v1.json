@@ -1,0 +1,32 @@
+{
+  "kind": "progress",
+  "progress_version": 1,
+  "workspace": "/work/ws",
+  "device_preflight": {"status": "ok", "path": "/work/ws/preflight/device-preflight.json"},
+  "bundles": [
+    {
+      "bundle": "zh-core",
+      "phase": "bound_missing",
+      "candidate_path": "/work/ws/candidates/zh-core-1",
+      "bound_path": null,
+      "runs": [{"path": "/work/ws/results/run-a", "complete": true, "sealed": true}],
+      "next_action": "bind",
+      "next_command": "inferyard config bind --candidate /work/ws/candidates/zh-core-1/candidate.toml --pid 123 --endpoint http://127.0.0.1:48857 --out /work/ws/bound/zh-core-1",
+      "blocked_reason": null
+    },
+    {
+      "bundle": "zh-svg-pelican",
+      "phase": "preflight_missing",
+      "candidate_path": null,
+      "bound_path": null,
+      "runs": [],
+      "next_action": "device_check",
+      "next_command": null,
+      "blocked_reason": null
+    }
+  ],
+  "report": {"status": "missing", "path": null, "runs": []},
+  "next_action": "bind",
+  "next_command": "inferyard config bind --candidate /work/ws/candidates/zh-core-1/candidate.toml",
+  "default_scope_complete": false
+}

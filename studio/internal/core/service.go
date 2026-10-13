@@ -165,14 +165,14 @@ func reportsRoot(u UserSettings) *string {
 func (s *Service) Settings() SettingsResponse {
 	u := s.userSettings()
 	p := s.probe(u)
-	return SettingsResponse{u, EffectiveSettings{p.Path, p.Version, p.Status, u.ResultsRoot, u.ModelsRoot, reportsRoot(u)}}
+	return SettingsResponse{u, EffectiveSettings{workspaceRoot(u), p.Path, p.Version, p.Status, u.ResultsRoot, u.ModelsRoot, reportsRoot(u)}}
 }
 func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResponse, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
 	u := s.userSettings()
 	for k, v := range patch {
-		if k != "inferyard_path" && k != "results_root" && k != "models_root" {
+		if k != "inferyard_path" && k != "results_root" && k != "models_root" && k != "workspace_root" {
 			return SettingsResponse{}, Err("invalid_request")
 		}
 		var p *string
@@ -180,6 +180,8 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 			return SettingsResponse{}, Err("invalid_request")
 		}
 		switch k {
+		case "workspace_root":
+			u.WorkspaceRoot = p
 		case "inferyard_path":
 			u.InferyardPath = p
 		case "results_root":
@@ -188,6 +190,9 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 			u.ModelsRoot = p
 		}
 	}
+	return s.saveSettings(u)
+}
+func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 	if err := os.MkdirAll(filepath.Dir(s.settingsPath), 0700); err != nil {
 		return SettingsResponse{}, Err("internal_error")
 	}

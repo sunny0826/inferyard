@@ -57,7 +57,7 @@ def parser() -> Parser:
         dest="command",
         title="commands",
         metavar=(
-            "{init,runtime,config,device-check,memory-check,catalogue,plan,verify,overhead,probe,run,resume,repeat-summary,"
+            "{init,runtime,config,progress,device-check,memory-check,catalogue,plan,verify,overhead,probe,run,resume,repeat-summary,"
             "prepare-length,rescore,export,public,report,compare,filter-candidates,"
             "extension,engine-fit,model,engine}"
         ),

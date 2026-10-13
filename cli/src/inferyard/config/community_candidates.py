@@ -78,6 +78,9 @@ def fresh_macos(selected, results):
 
 
 def create(request):
+    from inferyard.config.workspace_inputs import resolve_candidate_inputs
+
+    request = resolve_candidate_inputs(request)
     system, _ = require_platform(("Darwin", "arm64"), ("Windows", "x64"))
     if (
         system == "Darwin" and (request.engine_path is None or request.runtime_receipt is not None)

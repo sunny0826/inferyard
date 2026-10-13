@@ -24,12 +24,14 @@ type StatusResponse struct {
 }
 
 type UserSettings struct {
+	WorkspaceRoot *string `json:"workspace_root"`
 	InferyardPath *string `json:"inferyard_path"`
 	ResultsRoot   *string `json:"results_root"`
 	ModelsRoot    *string `json:"models_root"`
 }
 
 type EffectiveSettings struct {
+	WorkspaceRoot    *string `json:"workspace_root"`
 	InferyardPath    *string `json:"inferyard_path"`
 	InferyardVersion *string `json:"inferyard_version"`
 	InferyardStatus  string  `json:"inferyard_status"`
