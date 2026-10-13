@@ -10,6 +10,7 @@ import (
 
 func (s *viewState) runsView(c *ui.Context) {
 	s.header(c, "运行")
+	s.runGuide(c)
 	errorView(c, s.historyError)
 	card(c, "启动测评", func() {
 		field(c, "zh-core 已绑定配置路径", &s.firstConfig)

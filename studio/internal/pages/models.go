@@ -36,14 +36,17 @@ func (s *viewState) modelsView(c *ui.Context) {
 		field(c, "凭据环境变量名（可选）", &s.tokenEnv)
 		ui.Text(c, "仅填写环境变量名。凭据由启动 Studio 的环境提供。目录名仅允许字母、数字、点、下划线与连字符，不能全为点。")
 		if ui.PrimaryButton(c, "下载模型").Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
-			s.acquire("model", s.modelURL, s.modelName, s.tokenEnv)
+			s.acquireModel()
 		}
 	})
-	card(c, "下载引擎（macOS）", func() {
+	card(c, "下载引擎", func() {
 		field(c, "引擎 URL", &s.engineURL)
 		field(c, "引擎新目录名", &s.engineName)
-		if ui.Button(c, "下载引擎").Disabled(s.busy || !validName(s.engineName) || s.engineURL == "").Clicked() {
-			s.acquire("engine", s.engineURL, s.engineName, "")
+		if s.installStatus != "" {
+			ui.Text(c, s.installStatus)
+		}
+		if ui.Button(c, "下载引擎").Disabled(s.busy || !validName(s.engineName) || s.engineURL == "" || emptyText(s.settings.Effective.WorkspaceRoot) == "").Clicked() {
+			s.fetchEngine()
 		}
 	})
 	card(c, "下载队列", func() {
@@ -75,33 +78,26 @@ func (s *viewState) modelsView(c *ui.Context) {
 		}
 	})
 }
-func (s *viewState) acquire(kind, source, name, env string) {
+func (s *viewState) acquireModel() {
+	source, name, env := s.modelURL, s.modelName, s.tokenEnv
 	if env != "" && !environmentName.MatchString(env) {
 		s.failure = &core.ApiError{Code: "invalid_request", Message: "只接受环境变量名，请勿输入明文 token。"}
 		return
 	}
 	root := emptyText(s.settings.Effective.ModelsRoot)
-	if kind == "engine" {
-		workspace := emptyText(s.settings.Effective.WorkspaceRoot)
-		if workspace == "" {
-			root = ""
-		} else {
-			root = filepath.Join(workspace, "engines")
-		}
-	}
 	if root == "" {
 		s.failure = core.Conflict("settings_incomplete")
 		return
 	}
 	source = strings.TrimSpace(source)
-	if kind == "model" && env == "" {
+	if env == "" {
 		s.work(func() (string, *core.ApiError) {
 			_, e := s.service.CreateDownload(core.CreateDownloadRequest{SourceUrl: source, OutName: name})
 			return "已加入下载队列。", e
 		})
 		return
 	}
-	command := "inferyard " + kind + " acquire --source " + quote(source) + " --out " + quote(filepath.Join(root, name))
+	command := "inferyard model acquire --source " + quote(source) + " --out " + quote(filepath.Join(root, name))
 	if env != "" {
 		command += " --token-env " + quote(env)
 	}
@@ -111,5 +107,20 @@ func (s *viewState) acquire(kind, source, name, env string) {
 			e = &core.ApiError{Code: string(r.Status), Message: "下载未完成，输出目录保留；请检查来源并更换新目录。"}
 		}
 		return "下载完成。", e
+	})
+}
+
+func (s *viewState) fetchEngine() {
+	source := s.engineURL
+	out := filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines", s.engineName)
+	s.guideWork(func() (string, *core.ApiError) {
+		path, e := s.service.FetchEngine(s.ctx, source, out, func(status string) {
+			s.win.Update(func() { s.installStatus = status })
+		})
+		if e != nil {
+			return "", e
+		}
+		s.win.Update(func() { s.engine = path; s.enginePreset = true })
+		return "引擎已就绪：" + path, nil
 	})
 }

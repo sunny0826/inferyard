@@ -8,32 +8,6 @@ import (
 	"strings"
 )
 
-func (s *viewState) wizardView(c *ui.Context) {
-	s.header(c, "首次上手")
-	card(c, "工作区进度", func() {
-		ui.Text(c, "按向导完成设备检查、候选绑定、两题包运行与报告核验。")
-		if s.progress != nil {
-			for _, b := range s.progress.Bundles {
-				ui.Text(c, b.Bundle+" · "+stateLabel(b.Phase))
-				if b.BlockedReason != nil {
-					ui.Text(c, *b.BlockedReason).TextColor(c.Theme().Danger)
-				}
-			}
-			if s.progress.DefaultScopeComplete {
-				ui.Badge(c, "两题包报告已核验")
-			} else {
-				ui.Text(c, "下一步："+stateLabel(s.progress.NextAction))
-			}
-		} else {
-			ui.Text(c, "尚无工作区进度，请打开向导准备。")
-		}
-		errorView(c, s.progressError)
-		if ui.PrimaryButton(c, "打开向导").Clicked() && s.openWizard != nil {
-			s.openWizard()
-		}
-	})
-	s.readinessView(c)
-}
 func (s *viewState) readinessView(c *ui.Context) {
 	card(c, "环境准备", func() {
 		cli := "请安装 CLI 或在设置中配置路径"
@@ -82,7 +56,7 @@ func (s *viewState) provision() {
 		if e == nil {
 			s.win.Update(func() { s.loadSettings(v) })
 		}
-		return "目录已准备，工作区初始化请使用向导。", e
+		return "目录已准备，请在设置页初始化工作区。", e
 	})
 }
 func (s *viewState) settingsView(c *ui.Context) {
@@ -113,11 +87,20 @@ func (s *viewState) settingsView(c *ui.Context) {
 			})
 		}
 	})
+	s.setupGuide(c)
 	s.readinessView(c)
 	card(c, "生效值与探测状态", func() { fields(c, s.settings.Effective) })
 }
 func (s *viewState) deviceView(c *ui.Context) {
 	s.header(c, "设备")
+	if s.progress != nil && s.progress.NextAction == "device_check" {
+		card(c, "检查设备", func() {
+			ui.Text(c, "模型与引擎可在「模型与下载」页准备。")
+			if ui.PrimaryButton(c, "检查设备").Disabled(s.busy).Clicked() {
+				s.execute(s.nextCommand(), false)
+			}
+		})
+	}
 	if ui.PrimaryButton(c, "刷新设备").Disabled(s.busy || s.device.Refreshing).Clicked() {
 		s.work(func() (string, *core.ApiError) { return "正在采集设备信息…", s.service.RefreshDevice() })
 	}

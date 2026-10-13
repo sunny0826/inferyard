@@ -38,15 +38,14 @@ func TestSixPagesRender(t *testing.T) {
 }
 func TestSidebarAndWizardEntry(t *testing.T) {
 	s := testState()
-	opened := 0
-	s.openWizard = func() { opened++ }
 	tt := ui.NewTester(s.view, 1120, 800)
-	if err := tt.Click("打开向导"); err != nil {
+	if err := tt.Click("下一步：在运行页启动与绑定服务"); err != nil {
 		t.Fatal(err)
 	}
-	if opened != 1 {
-		t.Fatal("wizard entry did not open")
+	if s.selected != "runs" {
+		t.Fatal("overview navigation failed")
 	}
+
 	if err := tt.Click("设置"); err != nil {
 		t.Fatal(err)
 	}

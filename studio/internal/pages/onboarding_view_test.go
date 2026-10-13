@@ -1,4 +1,4 @@
-package wizard
+package pages
 
 import (
 	"github.com/egoist/mygo/ui"
@@ -11,7 +11,7 @@ import (
 
 func strptr(s string) *string { return &s }
 
-func TestViews(t *testing.T) {
+func TestOnboardingViews(t *testing.T) {
 	version := core.Version
 	core.Version = "0.0.2"
 	t.Cleanup(func() { core.Version = version })
@@ -27,25 +27,27 @@ func TestViews(t *testing.T) {
 		{"managed engine", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", NextCommand: strptr("inferyard bind --config /tmp/c --pid 1 --endpoint http://x")}, engineState: core.EngineState{State: "running", Pid: 4242, Endpoint: "http://127.0.0.1:48857"}}, "绑定服务"},
 		{"running", viewState{loaded: true, tasks: []core.RunTask{{State: "running"}}, runProgress: &core.RunProgress{Done: 86, Total: &total}}, "86 / 120 题"},
 		{"verified", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{DefaultScopeComplete: true}}, "已核验 verified"},
-		{"device defaults", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "device_check", Workspace: "/tmp/ws"}, modelURL: core.DefaultModelURL, engineURL: core.DefaultEngineURL()}, "已内置可拉取的测试模型与引擎地址"},
+		{"device defaults", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "device_check", Workspace: "/tmp/ws"}, modelURL: core.DefaultModelURL, engineURL: core.DefaultEngineURL()}, "引擎 URL"},
 		{"initialized outdated CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Path: strptr("/tmp/ws"), Exists: true, Initialized: true}}}, "工作区已初始化"},
 	}
 	for i := range cases {
 		tc := &cases[i]
 		t.Run(tc.name, func(t *testing.T) {
-			tt := ui.NewTester(tc.state.view, 1000, 740)
+			switch tc.name {
+			case "CLI unavailable", "initialize", "initialized outdated CLI":
+				tc.state.selected = "settings"
+			case "verified":
+				tc.state.selected = "reports"
+			case "device defaults":
+				tc.state.selected = "models"
+			default:
+				tc.state.selected = "runs"
+			}
+			tt := ui.NewTester(tc.state.view, 1120, 2400)
 			if !tt.HasText(tc.want) {
 				t.Fatalf("missing %q: %v", tc.want, tt.Texts())
 			}
-			for _, label := range []string{"准备", "设备检查", "候选", "启动与绑定", "运行", "报告核验"} {
-				if !tt.HasText(label) {
-					t.Fatalf("missing rail %s", label)
-				}
-			}
 			if tc.name == "initialized outdated CLI" {
-				if !tt.HasText("无法读取工作区进度——CLI 版本过旧，缺少 progress 命令，请升级 CLI 后点「刷新进度」。") {
-					t.Fatalf("missing outdated notice: %v", tt.Texts())
-				}
 				if tt.HasText("初始化工作区") && tt.HasText("新工作区目录") {
 					t.Fatal("init form must not be shown for an initialized workspace")
 				}
@@ -59,7 +61,7 @@ func TestViews(t *testing.T) {
 				if !tt.HasText("自动安装 CLI 0.0.2") {
 					t.Fatalf("missing auto-install action: %v", tt.Texts())
 				}
-				if !tt.HasText("手动指定路径") {
+				if !tt.HasText("CLI 绝对路径（留空使用 PATH）") {
 					t.Fatal("missing manual path action")
 				}
 			}
@@ -94,9 +96,9 @@ func TestViews(t *testing.T) {
 	}
 }
 func TestSecondBundleAndIncompleteRun(t *testing.T) {
-	w := viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete"}, {Bundle: "zh-svg-pelican", Phase: "candidate_missing"}}}}
+	w := viewState{selected: "runs", loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete"}, {Bundle: "zh-svg-pelican", Phase: "candidate_missing"}}}}
 	tt := ui.NewTester(w.view, 1000, 740)
-	if w.active().Bundle != "zh-svg-pelican" || !tt.HasText("zh-core · 已封存") || !tt.HasText("zh-svg-pelican") {
+	if w.active().Bundle != "zh-svg-pelican" || !tt.HasText("zh-core 已封存") || !tt.HasText("zh-svg-pelican") {
 		t.Fatal(tt.Texts())
 	}
 	w.progress.NextAction = "run"
@@ -113,7 +115,7 @@ func TestCommandArguments(t *testing.T) {
 	if err != nil || !slices.Equal(parsed, args) {
 		t.Fatalf("roundtrip: %v %v", parsed, err)
 	}
-	if envName.MatchString("token with spaces") || envName.MatchString("hf-secret-token") {
+	if environmentName.MatchString("token with spaces") || environmentName.MatchString("hf-secret-token") {
 		t.Fatal("invalid env name accepted")
 	}
 }

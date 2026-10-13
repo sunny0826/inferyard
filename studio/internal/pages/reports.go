@@ -62,6 +62,7 @@ func (r *Reports) Open(id string) (*mygo.Window, *core.ApiError) {
 }
 func (s *viewState) reportsView(c *ui.Context) {
 	s.header(c, "报告")
+	s.reportGuide(c)
 	card(c, "生成报告", func() {
 		errorView(c, s.historyError)
 		ui.Text(c, "选择来源 run（1–100 个）")
