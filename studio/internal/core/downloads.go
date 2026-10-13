@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"inferyard-studio/internal/inferyard"
+	"inferyard/studio/internal/inferyard"
 	"net/url"
 	"os"
 	"path/filepath"

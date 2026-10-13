@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"inferyard-studio/internal/core"
+	"inferyard/studio/internal/core"
 	"log"
 	"net/http/httptest"
 	"os"

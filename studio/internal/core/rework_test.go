@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"inferyard-studio/internal/evidence"
+	"inferyard/studio/internal/evidence"
 	"log"
 	"os"
 	"path/filepath"

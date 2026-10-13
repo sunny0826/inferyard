@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
-	"inferyard-studio/internal/core"
-	"inferyard-studio/internal/desktop"
-	"inferyard-studio/internal/server"
-	"inferyard-studio/web"
+	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/desktop"
+	"inferyard/studio/internal/server"
+	"inferyard/studio/web"
 )
 
 //go:embed mygo.config.ts

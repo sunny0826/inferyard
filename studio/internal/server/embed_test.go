@@ -1,7 +1,7 @@
 package server
 
 import (
-	"inferyard-studio/web"
+	"inferyard/studio/web"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"

@@ -2,7 +2,7 @@ package core
 
 import (
 	"encoding/json"
-	"inferyard-studio/internal/evidence"
+	"inferyard/studio/internal/evidence"
 	"log"
 	"os"
 	"path/filepath"

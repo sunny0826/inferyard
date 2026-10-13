@@ -2,7 +2,7 @@ package core
 
 import (
 	"fmt"
-	"inferyard-studio/internal/inferyard"
+	"inferyard/studio/internal/inferyard"
 	"os"
 	"path/filepath"
 	"sort"

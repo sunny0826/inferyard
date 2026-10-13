@@ -3,8 +3,8 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"inferyard-studio/internal/evidence"
-	"inferyard-studio/internal/inferyard"
+	"inferyard/studio/internal/evidence"
+	"inferyard/studio/internal/inferyard"
 	"net/url"
 	"os"
 	"path/filepath"

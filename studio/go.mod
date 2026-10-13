@@ -1,4 +1,4 @@
-module inferyard-studio
+module inferyard/studio
 
 go 1.27.1
 

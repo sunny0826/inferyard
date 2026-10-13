@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"inferyard-studio/internal/core"
+	"inferyard/studio/internal/core"
 	"strings"
 	"testing"
 	"time"

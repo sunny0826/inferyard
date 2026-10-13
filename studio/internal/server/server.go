@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"inferyard-studio/internal/core"
+	"inferyard/studio/internal/core"
 	"io"
 	"io/fs"
 	"net"

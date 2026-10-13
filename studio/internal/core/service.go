@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"inferyard-studio/internal/inferyard"
+	"inferyard/studio/internal/inferyard"
 	"log"
 	"os"
 	"os/exec"

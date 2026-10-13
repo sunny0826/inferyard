@@ -4,7 +4,7 @@ package desktop
 import (
 	"context"
 	"encoding/json"
-	"inferyard-studio/internal/core"
+	"inferyard/studio/internal/core"
 )
 
 type Message struct{ Title, Body string }
