@@ -1,12 +1,9 @@
 package pages
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
-	"sort"
-	"strings"
 )
 
 func errorView(c *ui.Context, e *core.ApiError) {
@@ -22,57 +19,7 @@ func errorView(c *ui.Context, e *core.ApiError) {
 		ui.Text(c, v)
 	}
 	if len(e.Details) > 0 {
-		fields(c, e.Details)
-	}
-}
-func fields(c *ui.Context, value any) {
-	raw, err := json.Marshal(value)
-	if err != nil {
-		return
-	}
-	var data any
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
-	decoder.UseNumber()
-	if decoder.Decode(&data) != nil {
-		return
-	}
-	renderFields(c, "", data)
-}
-func renderFields(c *ui.Context, prefix string, v any) {
-	switch value := v.(type) {
-	case map[string]any:
-		keys := make([]string, 0, len(value))
-		for key := range value {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			label := key
-			if prefix != "" {
-				label = prefix + " / " + key
-			}
-			renderFields(c, label, value[key])
-		}
-	case []any:
-		if len(value) == 0 {
-			label := "无"
-			if prefix != "" {
-				label = prefix + "：无"
-			}
-			ui.Text(c, label)
-		}
-		for i, item := range value {
-			renderFields(c, fmt.Sprintf("%s [%d]", prefix, i+1), item)
-		}
-	default:
-		label := "缺测"
-		if value != nil {
-			label = fmt.Sprint(value)
-		}
-		if prefix != "" {
-			label = prefix + "：" + label
-		}
-		ui.Text(c, label).Selectable()
+		kvview(c, e.Details)
 	}
 }
 func taskLabel(t core.RunTask) string {
