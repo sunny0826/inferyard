@@ -4,7 +4,7 @@
 # Preserve model outputs and sealed validation files byte for byte.
 validation/** -text -whitespace
 # Sealed migration packets and protocol captures must survive Windows checkout unchanged.
-tests/fixtures/legacy/** -text -whitespace
-tests/fixtures/prism/** -text -whitespace
-tests/fixtures/legacy/README.md text eol=lf
-tests/fixtures/prism/README.md text eol=lf
+cli/tests/fixtures/legacy/** -text -whitespace
+cli/tests/fixtures/prism/** -text -whitespace
+cli/tests/fixtures/legacy/README.md text eol=lf
+cli/tests/fixtures/prism/README.md text eol=lf

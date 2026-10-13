@@ -1,0 +1,9 @@
+2026-10-12, Google Chrome, native accessibility observation via cua_repl
+URL: http://127.0.0.1:62938/?token=<same session token>
+Title: InferYard Studio
+Status: ● 已连接
+First observed counter: 53
+Second observed counter: 63
+Desktop process remained running during both observations.
+Browser extension inventory failed to load request-header policy; native app accessibility succeeded.
+Test tab closed after verification.

@@ -1,0 +1,8 @@
+2026/10/12 17:18:06 STUDIO_URL=http://127.0.0.1:49963/?token=<redacted>
+2026/10/12 17:18:08 SSE connected user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+2026/10/12 17:18:08 desktop page loaded from local HTTP
+2026/10/12 17:18:11 desktop DOM sample=1 count=2 error=<nil>
+2026/10/12 17:18:14 desktop DOM sample=2 count=4 error=<nil>
+2026/10/12 17:18:14 desktop screenshot error=<nil>
+2026/10/12 17:18:33 SSE connected user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36"
+2026/10/12 17:18:51 SSE connected user_agent="curl/8.7.1"

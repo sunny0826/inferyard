@@ -1,21 +1,19 @@
+# Repository-level local data and caches; subprojects carry their own .gitignore.
 /artifacts/
 /validation/
-# Keep machine-bound configurations local; publish only reusable examples.
-/configs/*
-!/configs/README.md
-!/configs/*.example.toml
-__pycache__/
-*.py[cod]
+/dist/
+/results/
+/reports/
 /.venv/
 /.uv-cache/
 /.pytest_cache/
 /.ruff_cache/
 /.tools/
-/dist/
-/results/
-/reports/
 /.playwright-cli/
 /output/playwright/
+.agent-conductor/
+__pycache__/
+*.py[cod]
 
 # Local credentials, model files and private evidence stay outside the public tree.
 .env

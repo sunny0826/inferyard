@@ -1,0 +1,4 @@
+web/dist temporarily absent; cwd=build; no Vite server started
+Fresh standalone binary -headless
+HTML curl exit=0
+embedded JavaScript curl exit=0; EventSource present

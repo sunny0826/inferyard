@@ -3,15 +3,18 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "src/inferyard/**"
-      - "tests/packaging/ci_model_e2e.py"
+      - "cli/src/inferyard/**"
+      - "cli/tests/packaging/ci_model_e2e.py"
       - ".github/workflows/model-e2e.yml"
-      - "configs/**"
+      - "cli/configs/**"
 permissions:
   contents: read
 env:
   MODEL_URL: https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf
   ENGINE_BASE: https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10743-adfffbe
+defaults:
+  run:
+    working-directory: cli
 jobs:
   e2e:
     name: e2e (${{ matrix.os }})
@@ -38,7 +41,7 @@ jobs:
       - name: Cache downloaded assets
         uses: actions/cache@v4
         with:
-          path: e2e-assets
+          path: cli/e2e-assets
           key: model-e2e-${{ matrix.os }}-${{ env.ENGINE_NAME }}-${{ env.MODEL_URL }}
       - name: Download assets
         shell: bash
@@ -72,5 +75,5 @@ jobs:
         if: always()
         with:
           name: model-e2e-${{ matrix.os }}
-          path: e2e-output
+          path: cli/e2e-output
           if-no-files-found: warn

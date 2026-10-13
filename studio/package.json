@@ -1,0 +1,29 @@
+{
+  "name": "inferyard-studio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run build:web && go run .",
+    "build": "bun run build:web",
+    "build:web": "bun run typecheck && vite build",
+    "build:all": "bun run build:web && sh scripts/build-all.sh",
+    "typecheck": "tsc --noEmit --strict -p web/tsconfig.json && svelte-check --tsconfig web/tsconfig.json",
+    "dev:web": "vite",
+    "dev:mock": "VITE_API_MODE=mock vite",
+    "build:desktop": "bun run build:web && go build -o build/inferyard-studio .",
+    "test:web": "node web/tests/verify.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "mygo-cli": "^0.4.5",
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.6",
+    "typescript": "~6",
+    "vite": "^8",
+    "zod": "^4.6.6"
+  },
+  "dependencies": {
+    "uplot": "^1.6.32"
+  }
+}

@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+defaults:
+  run:
+    working-directory: cli
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -25,8 +28,8 @@ jobs:
         with:
           name: checked-build
           path: |
-            dist/package-check
-            dist/package-inputs
+            cli/dist/package-check
+            cli/dist/package-inputs
           if-no-files-found: error
   installed:
     needs: build
@@ -44,7 +47,7 @@ jobs:
       - uses: actions/download-artifact@v5
         with:
           name: checked-build
-          path: dist
+          path: cli/dist
       - name: Check downloaded bytes and run isolated installation
         run: mise exec -- uv run --frozen python tests/packaging/ci_installed.py --artifact dist/package-check --inputs dist/package-inputs --out "${{ runner.temp }}/installed-check"
         env:
@@ -71,11 +74,11 @@ jobs:
       - uses: actions/download-artifact@v5
         with:
           name: checked-build
-          path: dist
+          path: cli/dist
       - uses: actions/download-artifact@v5
         with:
           pattern: installed-*
-          path: installed
+          path: cli/installed
       - name: Produce candidate from the original build and completed checks
         env:
           SOURCE_COMMIT: ${{ github.sha }}
@@ -90,5 +93,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: release-candidate
-          path: dist/release-candidate
+          path: cli/dist/release-candidate
           if-no-files-found: error
