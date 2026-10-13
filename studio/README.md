@@ -37,6 +37,12 @@ arguments for copying; the operator starts the model service in their own termin
 Studio never starts, stops, or restarts model services. Model credentials are referenced
 only by an environment-variable name.
 
+The device step prefills built-in test assets: a tiny SmolLM2-135M GGUF (pinned Hugging
+Face revision) and the pinned Prism engine archive for the current platform. Engine
+archives are downloaded and unpacked by the Studio side — preserving the sibling shared
+libraries and recreating only in-archive relative symlinks — into a fresh directory that
+never overwrites existing files.
+
 The initial effective workspace is `~/.inferyard`. Preparing directories is an explicit,
 idempotent action; saving settings alone does not create them. CLI `init` requires a new
 directory. For an existing uninitialized workspace, choose a new child directory; Studio

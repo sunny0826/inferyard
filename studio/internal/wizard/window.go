@@ -76,7 +76,7 @@ func (m *Manager) Open() {
 			return
 		}
 		ctx, cancel := context.WithCancel(m.ctx)
-		w := &viewState{ctx: ctx, service: m.service, endpoint: "http://127.0.0.1:48857", openMain: m.openMain}
+		w := &viewState{ctx: ctx, service: m.service, endpoint: "http://127.0.0.1:48857", openMain: m.openMain, modelURL: core.DefaultModelURL, engineURL: core.DefaultEngineURL()}
 		win := mygo.NewWindow(mygo.WindowOptions{Title: "InferYard · 首次上手", Width: 1000, Height: 740, Content: ui.View(w.view)})
 		w.win = win
 		m.window = win
@@ -285,6 +285,21 @@ func (w *viewState) installCLI() {
 	})
 }
 
+func (w *viewState) fetchEngine() {
+	source := w.engineURL
+	out := fresh(w.progress.Workspace+"/engines", "engine")
+	w.work(func() (string, *core.ApiError) {
+		path, e := w.service.FetchEngine(w.ctx, source, out, func(status string) {
+			w.win.Update(func() { w.installStatus = status })
+		})
+		if e != nil {
+			return "", e
+		}
+		w.win.Update(func() { w.engine = path })
+		return "引擎已就绪：" + path, nil
+	})
+}
+
 func (w *viewState) execute(command string, report bool) {
 	w.work(func() (string, *core.ApiError) {
 		r, e := w.service.WizardExecute(w.ctx, core.WizardRequest{Command: command, ReportVerify: report})
@@ -362,8 +377,8 @@ func human(code string) string {
 		return "CLI 尚未就绪，请在主窗口设置路径。"
 	case "install_unsupported":
 		return "当前平台没有可用的自动安装包，请按安装指南手动安装。"
-	case "install_download_failed":
-		return "工具下载失败，请检查网络后重试。"
+	case "download_failed":
+		return "下载失败，请检查网络后重试。"
 	case "install_checksum_failed":
 		return "下载内容未通过校验，已中止安装，请重试。"
 	case "install_unpack_failed":
@@ -372,6 +387,10 @@ func human(code string) string {
 		return "CLI 自动安装失败，可重试或改用「手动指定路径」。"
 	case "install_version_unknown":
 		return "无法确定要安装的 CLI 版本，请按安装指南手动安装。"
+	case "engine_unpack_failed":
+		return "引擎归档解包失败，请检查来源后重试。"
+	case "engine_binary_missing":
+		return "引擎归档内未找到 llama-server，请检查引擎来源。"
 	case "invalid_request":
 		return "输入不符合要求，请检查路径、URL 和环境变量名。"
 	default:

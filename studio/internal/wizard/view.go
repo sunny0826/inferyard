@@ -133,19 +133,22 @@ func (w *viewState) prepare(c *ui.Context) {
 }
 func (w *viewState) device(c *ui.Context) {
 	ui.Text(c, "准备模型与引擎，检查设备").Bold().FontSize(22)
-	ui.Text(c, "已有本地文件可直接检查设备。下载写入新目录，不覆盖现有产物。")
+	ui.Text(c, "已内置可拉取的测试模型与引擎地址，可直接下载；已有本地文件可直接检查设备。下载写入新目录，不覆盖现有产物。")
 	ui.Form(c, func() {
 		field(c, "模型 URL（固定 revision 的 GGUF）", &w.modelURL)
 		field(c, "凭据环境变量名（可留空，禁止明文 token）", &w.tokenEnv)
 		if ui.Button(c, "下载模型").Disabled(w.busy || w.modelURL == "").Clicked() {
 			w.acquireModel()
 		}
-		field(c, "引擎 URL", &w.engineURL)
-		if ui.Button(c, "下载引擎").Disabled(w.busy || w.engineURL == "").Clicked() {
-			w.execute("inferyard engine acquire --source "+quote(w.engineURL)+" --out "+quote(fresh(w.progress.Workspace+"/engines", "engine")), false)
+		field(c, "引擎 URL（Prism 归档或单文件）", &w.engineURL)
+		if ui.Button(c, "下载引擎").Disabled(w.busy || w.engineURL == "" || w.progress == nil || w.progress.Workspace == "").Clicked() {
+			w.fetchEngine()
 		}
 		field(c, "本地引擎文件绝对路径", &w.engine)
 	})
+	if w.installStatus != "" {
+		ui.Text(c, w.installStatus)
+	}
 	for _, d := range w.downloads {
 		ui.Text(c, fmt.Sprintf("%s · 已下载 %.1f MiB", d.OutName, float64(d.DownloadedBytes)/(1024*1024)))
 		if d.State == "downloading" {

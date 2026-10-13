@@ -131,15 +131,15 @@ func fetchURL(ctx context.Context, url string) ([]byte, *ApiError) {
 	}
 	resp, err := installHTTPDo(req)
 	if err != nil {
-		return nil, &ApiError{Code: "install_download_failed", Message: "下载失败，请检查网络后重试。", Details: map[string]any{"url": url, "error": err.Error()}}
+		return nil, &ApiError{Code: "download_failed", Message: "下载失败，请检查网络后重试。", Details: map[string]any{"url": url, "error": err.Error()}}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, &ApiError{Code: "install_download_failed", Message: "下载失败，请检查网络后重试。", Details: map[string]any{"url": url, "status": resp.StatusCode}}
+		return nil, &ApiError{Code: "download_failed", Message: "下载失败，请检查网络后重试。", Details: map[string]any{"url": url, "status": resp.StatusCode}}
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
 	if err != nil {
-		return nil, &ApiError{Code: "install_download_failed", Message: "下载中断，请重试。", Details: map[string]any{"url": url}}
+		return nil, &ApiError{Code: "download_failed", Message: "下载中断，请重试。", Details: map[string]any{"url": url}}
 	}
 	return body, nil
 }

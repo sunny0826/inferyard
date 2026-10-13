@@ -23,6 +23,7 @@ func TestViews(t *testing.T) {
 		{"external service", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind"}, startup: core.Startup{Path: "/engine/llama-server", Args: []string{"--port", "48857"}}}, "复制启动命令"},
 		{"running", viewState{loaded: true, tasks: []core.RunTask{{State: "running"}}, runProgress: &core.RunProgress{Done: 86, Total: &total}}, "86 / 120 题"},
 		{"verified", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{DefaultScopeComplete: true}}, "已核验 verified"},
+		{"device defaults", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "device_check", Workspace: "/tmp/ws"}, modelURL: core.DefaultModelURL, engineURL: core.DefaultEngineURL()}, "已内置可拉取的测试模型与引擎地址"},
 	}
 	for i := range cases {
 		tc := &cases[i]
@@ -34,6 +35,11 @@ func TestViews(t *testing.T) {
 			for _, label := range []string{"准备", "设备检查", "候选", "启动与绑定", "运行", "报告核验"} {
 				if !tt.HasText(label) {
 					t.Fatalf("missing rail %s", label)
+				}
+			}
+			if tc.name == "device defaults" {
+				if tc.state.modelURL != core.DefaultModelURL || tc.state.engineURL != core.DefaultEngineURL() {
+					t.Fatal("built-in asset URLs must be prefilled")
 				}
 			}
 			if tc.name == "CLI unavailable" {

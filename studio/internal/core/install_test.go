@@ -32,6 +32,10 @@ func stubInstall(t *testing.T) {
 	t.Cleanup(func() {
 		installLookPath, installStat, installHTTPDo, installCommandOutput = look, stat, httpDo, cmdOut
 	})
+	// Isolate per-user fallback probing from the developer machine state.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 }
 
 func installService(t *testing.T) *Service {
