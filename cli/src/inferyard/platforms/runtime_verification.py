@@ -50,7 +50,11 @@ def verify_files(root, profile, *, metadata=False):
             raise PreparationError("runtime_asset_mismatch")
 
 
-def query_version(engine, pattern, *, timeout=10):
+def query_version(engine, pattern, *, timeout=30):
+    # macOS exec-time validation of freshly extracted ad-hoc-signed binaries and
+    # their dylib chain stalls past 10s (observed ~12s in onboarding acceptance);
+    # keep the budget bounded but above that. Windows runtime prepare passes the
+    # timeout frozen in its profile instead of this default.
     try:
         result = subprocess.run(
             [str(engine), "--version"],

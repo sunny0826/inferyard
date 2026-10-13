@@ -140,7 +140,9 @@ INFERYARD_RUNTIME_RECEIPT / INFERYARD_SERVER_PID / INFERYARD_ENDPOINT 环境变�
 除下述 `model acquire` 与 `engine acquire` 的文件获取外，这些动作不发送 HTTP 或模型请求。
 所有准备动作均不操作主机锁/dirty，不启动、终止或重启模型服务。
 `runtime prepare` 和 `config create` 的引擎 `--version` 子进程是明确的例外副作用：
-只查询版本，固定 10 秒超时，不传模型参数；失败不输出成功回执。
+只查询版本，不传模型参数；失败不输出成功回执。`config create` 固定 30 秒超时
+（macOS 新解压 ad-hoc 签名二进制的执行期校验偶发超过 10 秒）；`runtime prepare`
+使用冻结 profile 的 `version_timeout_seconds`（当前 10 秒）。
 
 ### 参数、平台和产物
 

@@ -168,7 +168,8 @@ inferyard config create --preflight 'bench-ops\preflight\device-1\device-preflig
 inferyard config create --preflight bench-ops/preflight/device-1/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-core.json --results bench-work/results --out bench-ops/candidate
 ```
 
-候选生成会执行引擎 `--version`（10 秒），重新检查容量、mode 和 AC 电源；Metal 要求相应动态库。
+候选生成会执行引擎 `--version`（30 秒超时；macOS 新解压引擎的执行期签名校验偶发超过 10 秒），
+重新检查容量、mode 和 AC 电源；Metal 要求相应动态库。
 `--model-repo` 默认为 local，`--model-revision` 默认为模型文件 SHA256，`--port` 默认为 48857。
 本地 SHA256 不冒充上游模型 revision。macOS 不接受 Windows 回执。
 

@@ -469,3 +469,11 @@ report+verify，`default_scope_complete: true`，两 run 封存、报告 verifie
 （zh-core 120 题约 3 分钟）。遗留：macOS 上引擎 `--version` 查询偶发 12 秒
 签名校验卡顿，超过固定 10 秒超时导致 `config create` 暂态失败（重试即过）；
 向导或文档宜提示预热/重试，是否放宽超时另行决策。
+
+2026-10-13 版本查询超时问题已处理：两次主动复现（服务空闲 + 生成负载下各
+8-12 次 --version）均未复现 12 秒卡顿；结合 e2e 既有记载（新解压 ad-hoc
+签名二进制执行期校验可超 10 秒，CI 在超时预算外预热），定性为 macOS 执行期
+签名/扫描延迟的偶发表现。修复：`config create` 的版本查询默认超时 10→30 秒
+（runtime_verification.query_version），Windows `runtime prepare` 维持冻结
+profile 的 10 秒不动（改 profile 需固定归档重生成资源）；契约文档同步，新增
+回归断言预算 ≥30 秒且超时仍映射 engine_version_query_failed。
