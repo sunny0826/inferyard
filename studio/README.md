@@ -1,118 +1,150 @@
 # InferYard Studio
 
-InferYard 的本地桌面界面：设备检查、运行队列与取消、历史证据、资源曲线、报告和模型下载。
-Go 服务调用本机 `inferyard` CLI，MyGo 窗口加载随机 `127.0.0.1` 端口上的嵌入式前端。
-在设置页配置 CLI 路径、结果目录和模型目录；未配置 CLI 时可以启动界面。
+InferYard Studio is a desktop application for local model evaluation. Its MyGo v0.4.5
+native UI is written in Go and calls `core.Service` directly. In-process events refresh
+the windows. Studio has no browser dashboard, headless mode, REST/SSE server, or generated
+JavaScript bindings. The separately installed [InferYard CLI](../cli/README.md) executes
+operations and owns the evidence contract.
 
-## 构建与运行
+## Pages and first launch
 
-需要 Go（本项目验收使用 `go1.27.2`）、Bun；桌面运行还需要系统 WebView。
-先构建前端，再构建 Go 二进制，产物内含 `web/dist`：
+The main window has six pages:
+
+| Page | Purpose |
+| --- | --- |
+| Wizard | View setup progress and reopen the native onboarding window. |
+| Device | Check hardware, local models, recommendations, and blocking reasons. |
+| Models and downloads | Acquire models, inspect download progress, and cancel downloads. |
+| Runs | Queue or cancel evaluations, inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
+| Reports | Generate reports and open each offline HTML report in its own in-app WebView window. |
+| Settings | Configure the CLI path, workspace, results directory, and model directory. |
+
+When onboarding is needed, launch opens only the native wizard. Opening Settings or
+Reports from it creates the main window if needed and selects that page. Reopening the
+wizard restores progress from workspace evidence through `progress.v1`. A missing CLI or
+incomplete configuration does not prevent opening the UI.
+
+The wizard guides workspace initialization, model and engine preparation, device checks,
+service binding, evaluations, and report generation/verification. It shows frozen service
+arguments for copying; the operator starts the model service in their own terminal.
+Studio never starts, stops, or restarts model services. Model credentials are referenced
+only by an environment-variable name.
+
+The initial effective workspace is `~/.inferyard`. Preparing directories is an explicit,
+idempotent action; saving settings alone does not create them. CLI `init` requires a new
+directory. For an existing uninitialized workspace, choose a new child directory; Studio
+switches settings to it only after initialization succeeds and retains existing files.
+
+## Build and run
+
+Use the repository's mise-managed Go 1.27.2. Run these commands from `studio/`:
 
 ```sh
-bun install --registry=https://registry.npmmirror.com
-bun run build:web
-env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -o build/inferyard-studio .
+mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -o build/inferyard-studio .
 ./build/inferyard-studio
 ```
 
-开发启动：`env GOPROXY=https://goproxy.cn,direct bun run dev`，先构建前端再运行 Go。
-`bun run dev:mock` 使用前端模拟数据，不连接真实 CLI。
-三平台二进制构建：`env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct bun run build:all`。
-二进制位于 `build/{darwin-arm64,windows-amd64,linux-amd64}/`；分发目录位于
-`dist/inferyard-studio-v0.1.0-<os>-<arch>/`，包含二进制和运行说明。
-macOS 另含 `InferYard Studio.app`，通过 `open "InferYard Studio.app"` 启动以使用系统通知。
-未执行签名、notarization 或发布。
+On Windows, build with `-o build/inferyard-studio.exe` and launch that executable.
+Development also works with `mise exec -- go run .`. The app uses a plain Go build;
+there is no frontend installation or build step. Environment overrides above apply only
+to the command, not to global configuration.
 
-桌面模式订阅 EventBus，在运行和下载进入 done/failed/cancelled、报告生成完成时通知。
-通知仅含固定标题和一句正文，不含任务路径。首次使用可能请求系统通知权限；
-拒绝权限或通知失败仅记录日志，不影响任务。Headless 不订阅通知。
-MyGo API 参考：https://mygo.egoist.dev/docs/native#notifications 。
-
-版本号唯一来源为 `mygo.config.ts` 的 `version`。`main.go` 通过 `go:embed` 将配置嵌入二进制，
-启动时设置后端 `/api/status` 的版本；普通 `go build` 也生效，无须生成或传入 ldflags。
-修改版本后重新构建。单独使用 core 包时版本为 `dev`。
-
-## Headless 与会话鉴权
-
-`-headless` 只启动本地服务，按 Ctrl+C 退出。日志只含监听地址，**token 和完整会话 URL 永不落日志**。
-外部启动器须创建私密管道，将写端文件描述符（≥3）传入 `-session-fd`；服务写一次 URL 后关闭写端。
-例如 macOS/Linux 上通过匿名管道取得 URL 并直接打开浏览器：
+To cross-build macOS arm64, Windows amd64, and Linux amd64 and assemble unsigned distributions:
 
 ```sh
-python3 - <<'PY'
-import os
-import signal
-import subprocess
-import webbrowser
-
-reader, writer = os.pipe()
-process = subprocess.Popen(
-    ['./build/inferyard-studio', '-headless', '-session-fd', str(writer)],
-    pass_fds=(writer,), start_new_session=True,
-)
-os.close(writer)
-try:
-    with os.fdopen(reader) as pipe:
-        url = pipe.readline().strip()
-    if not url:
-        raise RuntimeError('Server did not publish a session URL')
-    webbrowser.open(url)
-    process.wait()
-except KeyboardInterrupt:
-    pass
-finally:
-    if process.poll() is None:
-        process.send_signal(signal.SIGINT)
-        process.wait()
-PY
+mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct sh scripts/build-all.sh
 ```
 
-REST API 使用 `Authorization: Bearer <token>`。入口页、报告页和 `/api/events`（EventSource）
-也接受 `?token=<token>`；其他 REST 路由不接受 query token。静态 `/assets/` 无需鉴权。
-SSE 推送运行、进度、资源、下载、设备及报告事件；`sync.reset` 后客户端通过 REST 重建状态。
+[build-all.sh](scripts/build-all.sh) compiles the three binaries into `build/<os>-<arch>/`
+and invokes [package.py](scripts/package.py), using mise-managed Python, to assemble
+`dist/inferyard-studio-v<version>-<os>-<arch>/`. Packaging copies binaries and writes launch
+instructions; it does not sign, notarize, or publish. On macOS, launch the packaged app with
+`open "InferYard Studio.app"` to use desktop notifications.
 
-设置保存在系统用户配置目录的 `InferYard Studio/settings.json`，目录权限 0700、文件权限 0600
-（POSIX）。损坏 JSON 或字段类型错误时使用默认设置并记录提示；用户保存后才替换文件。
-历史扫描跳过损坏 run，并在服务端日志记录跳过数量。
+The version's single source is [mygo.config.ts](mygo.config.ts). Go embeds the configuration,
+so an ordinary rebuild picks up version changes without generated files or linker flags.
+The packaging script reads the same version.
 
-## 验证
+## Platform dependencies
 
-以下环境变量仅作用于对应命令，不修改全局配置：
+| Platform | Native windows | Offline report windows |
+| --- | --- | --- |
+| macOS 12+ | Metal | System WKWebView |
+| Windows 10/11 | Direct3D 11 (WARP fallback) | Microsoft WebView2 Runtime; included with Windows 11, install on Windows 10 if absent |
+| Linux | GTK 3 and OpenGL; MyGo can fall back to CPU rendering | WebKitGTK 4.1 (4.0 fallback) |
+
+Native controls do not use WebView2 or WebKitGTK. Studio still needs the system WebView
+for HTML reports, including WebKitGTK on Linux. Debian/Ubuntu provide it as
+`libwebkit2gtk-4.1-0`. These requirements follow the pinned MyGo v0.4.5
+[getting-started guide](https://github.com/egoist/mygo/blob/v0.4.5/docs/getting-started.md),
+[rendering guide](https://github.com/egoist/mygo/blob/v0.4.5/docs/ui/rendering.md), and
+[architecture](https://github.com/egoist/mygo/blob/v0.4.5/docs/architecture.md).
+
+## Safety and operation rules
+
+Model endpoints remain local loopback endpoints. Reports and evidence can contain private
+local paths and must not be exposed on the LAN. Tokens, credentials, signed URLs, and full
+session URLs must never enter logs, persisted settings, or user-facing errors. Show fixed
+error summaries and structured CLI limitation reasons rather than raw stderr.
+
+Settings are stored in the system user configuration directory under
+`InferYard Studio/settings.json` (POSIX directory mode 0700, file mode 0600). Invalid JSON
+or field types fall back to defaults with a diagnostic; the file is replaced only when
+the user saves. Historical scans skip damaged runs and log the skipped count. Evidence
+directories remain the source of truth; in-memory task lists do not survive app restart.
+
+Runs execute serially and retain CLI host locking, identity checks, cancellation, and
+draining. The default benchmark includes both `zh-core` and `zh-svg-pelican`; a single
+bundle requires an explicit choice. Bound configuration output roots must stay inside the
+configured results root; duplicate queued configurations are rejected.
+
+| CLI exit | Studio meaning |
+| --- | --- |
+| 0 | Completed task. |
+| 2 | Blocked/failed task with the CLI's limitation reasons. |
+| 3 | Finished task with incomplete evidence; display partial status, not an execution error. |
+| 4 | Tool/evidence failure. |
+| 130 | Cancelled task. |
+
+Cancelling a queued task requires no child process or exit code. Cancelling an active task
+requests interruption and waits for exit. Terminal states are final. History preserves the
+priority `cancelled` > `dirty` > `partial` > `complete`; sealing alone is not verification.
+An unreadable host-state marker must not be treated as clean. Resume is limited to eligible
+unfinished batch runs, with the CLI making the final decision; standalone runs cannot resume.
+Endpoint and PID overrides must be provided together. Fixed-window workloads may require a
+new window instead of resume. Progress uses the frozen selected-case denominator, including
+the frozen resume subset when applicable.
+
+Unknown measurements remain `null` with a reason, never zero or fabricated percentages.
+Memory is stored in bytes and rates in bytes/s; display conversions are explicit. Resource
+curves retain missing samples. Downloads without a known total do not show a percentage.
+Downloads may run concurrently with the serial run queue. Failed or cancelled download
+directories remain occupied; CLI owns cleanup of temporary `.part` files.
+
+Report generation validates 1–100 distinct run paths within the results root and writes a
+new uniquely named directory under the derived sibling `reports` directory. Original runs
+and reports are never overwritten. Report paths must remain within that report directory;
+missing source runs are shown as unavailable without preventing the report from opening.
+Evidence interpretation follows the CLI's
+[lineage rules](../cli/docs/data-contract.md#证据血缘与比较结论).
+
+Desktop notifications announce terminal run/download states and completed reports with
+fixed text and no task paths. Denied notification permission or delivery failures do not
+change task outcomes.
+
+## Verification boundaries
+
+From `studio/`, the code checks are:
 
 ```sh
-env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
-env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
-env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -race ./...
-env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o /tmp/inferyard-studio-windows.exe .
-env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /tmp/inferyard-studio-linux .
-python3 scripts/verify-embed.py --binary build/inferyard-studio
+mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
+mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
 ```
 
-嵌入验证会临时移走 `web/dist` 并自动恢复，请勿与前端构建并行执行。
-它从空目录运行二进制，检查页面与资产、鉴权、token 不落日志及正常退出。
-交叉编译不等于 Windows/Linux 上的运行验证，fixture 测试也不等于真实模型验收。
-
-- `internal/core/`：任务、设置、报告和证据聚合。
-- `internal/evidence/`：只读索引和 JSONL 增量读取。
-- `internal/inferyard/`：CLI 子进程和结构化结果解析。
-- `internal/server/`：HTTP、鉴权和 SSE；[端点与验证说明](internal/server/README.md)。
-- `web/`：Svelte 前端与嵌入资产。
-
-## First-run onboarding
-
-Dashboard includes a non-blocking readiness card and a workspace-driven wizard. Settings adds a
-workspace directory, with `~/.inferyard` as its initial effective value. Preparing directories is an
-explicit, idempotent action; saving settings alone does not create them.
-
-The wizard accepts model and engine URLs, follows `progress.v1` through both default bundles, shows
-frozen service arguments for the operator to copy, and lists local process IDs for binding. Model
-credentials are supplied only by an environment-variable name. Studio never starts or stops the
-model service. Runs use the existing queue, cancellation and notification behavior. The final action
-creates a report and verifies it.
-
-`init` requires a new directory. If the selected workspace already exists without initialization,
-the wizard suggests an editable new child directory and switches to it after successful initialization.
-Existing files are retained. This directory handoff and the real CLI workflow still require integration
-verification. `bun run dev:mock` demonstrates the workflow without downloads or model requests;
-`bun web/tests/verify.mjs` covers both the mock walkthrough and HTTP/SSE fixtures.
+Native view tests and fixtures do not establish real-device acceptance. Verify all six
+pages, wizard navigation and restored progress, resource curves, and an offline report
+WebView on actual desktop windows. Cross-compilation is not Windows/Linux runtime evidence.
+The native UI migration requires fresh acceptance; historical Web UI checks do not qualify
+it. Original diagnostic artifacts under `docs/evidence/` are retained as historical evidence,
+not as current build instructions. Signing, notarization, publication, and the full real
+model workflow require separate verification.
