@@ -99,7 +99,7 @@ type viewState struct {
 	message                                                                          string
 	failure                                                                          *core.ApiError
 	workspace, cliPath, results, models                                              string
-	firstConfig, secondConfig                                                        string
+	firstBundle, secondBundle                                                        string
 	single, confirmed                                                                bool
 	groups                                                                           [][]string
 	resumeSource                                                                     *core.RunSummary
