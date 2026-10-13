@@ -1,5 +1,7 @@
 # InferYard Studio（暂名）：桌面/Web 双端面板
 
+当前 monorepo 复跑目录：CLI 的 `mise exec -- uv run --frozen ...` 在 `cli/` 内执行，Studio 的前端与 Go 检查在 `studio/` 内执行。下文历史记录中的仓库根指迁移前位置。
+
 2026-10-12 与用户讨论定稿。独立新仓库（建议名 `inferyard-studio`，与本仓库同级），
 以 inferyard CLI 为唯一执行引擎与事实来源，自身不实现测评逻辑。本文档记录功能范围、
 backlog 与架构设计；**尚未开始开发**，开发前需用户另行授权。

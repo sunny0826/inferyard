@@ -2,6 +2,7 @@
 
 安装用户使用 `inferyard`，准备流程见[安装指南](../docs/installation.md)。本目录用于源码维护与专项操作，
 运行前检查参数、默认路径和副作用；名称为 `verify` 或 `prepare` 不表示只读。不要批量执行 `verify_*`。
+以下 CLI 脚本命令均在仓库的 `cli/` 目录内执行（从仓库根先 `cd cli`）。
 开发环境见[贡献指南](../CONTRIBUTING.md)，命令使用 `mise exec -- uv run --frozen python scripts/NAME.py`。
 
 ## 常用工具

@@ -1,19 +1,27 @@
 # AGENTS.md
 
-Applies to this repository and its subdirectories. Communicate concisely in Chinese by default and keep code identifiers as-is. README, AGENTS.md, CHANGELOG.md, CONTRIBUTING.md, MACOS.md, WINDOWS.md, Git commits and PRs are written in English; README also ships a Chinese version at [README.zh-CN.md](README.zh-CN.md). All other docs stay Chinese for now.
+Applies to this repository and its subdirectories. Communicate concisely in Chinese by default and keep code identifiers as-is. README, CHANGELOG.md, CONTRIBUTING.md, MACOS.md, WINDOWS.md, Git commits and PRs are written in English; README also ships a Chinese version at [README.zh-CN.md](README.zh-CN.md). AGENTS.md 与其他文档暂用中文。
 
 ## Getting started
 
 1. Inspect the working-tree diff and preserve existing changes. Read the [README](README.md) first to confirm the product and platform scope.
-2. Read the [CLI reference](docs/cli-surface.md), [architecture](docs/architecture.md), [data contract](docs/data-contract.md), [experiment design](docs/experiments/design.md) and [metrics](docs/experiments/metrics.md) as the task requires. The full entry point list is in the [documentation map](docs/README.md).
-3. For platform work read [MACOS.md](MACOS.md) / [WINDOWS.md](WINDOWS.md); for configuration and bundle work read the README of the relevant directory. Read [scripts/README.md](scripts/README.md) before running any script and check its arguments and side effects.
+2. Read the [CLI reference](cli/docs/cli-surface.md), [architecture](cli/docs/architecture.md), [data contract](cli/docs/data-contract.md), [experiment design](cli/docs/experiments/design.md) and [metrics](cli/docs/experiments/metrics.md) as the task requires. The full entry point list is in the [documentation map](cli/docs/README.md).
+3. For platform work read [MACOS.md](cli/MACOS.md) / [WINDOWS.md](cli/WINDOWS.md); for configuration and bundle work read the README of the relevant directory. Read [scripts/README.md](cli/scripts/README.md) before running any script and check its arguments and side effects.
 4. Distinguish implementation, simulated verification and real-device evidence. When docs and source disagree, point out the difference and verify it; never silently adopt the looser reading.
 
-The product is a Python CLI plus a self-contained offline HTML report. The package name is `inferyard`, the entry points are `inferyard` / `python -m inferyard`; the only active contract is `schema_version = 3`.
+本仓库为 monorepo：`cli/` 是 Python CLI 主产品（含独立离线 HTML 报告），`studio/` 是桌面/Web 面板，`observer/` 是独立进程监测器。 The package name is `inferyard`, the entry points are `inferyard` / `python -m inferyard`; the only active contract is `schema_version = 3`.
 
 ## Source boundaries
 
-| Directory (under `src/inferyard/` unless noted) | Responsibility |
+| 仓库根目录 | 职责 |
+| --- | --- |
+| `cli/` | Python CLI 与离线 HTML 报告 |
+| `studio/` | Go 后端 + `web/` 前端，独立 module `inferyard/studio` |
+| `observer/` | 独立进程监测器 |
+
+下表为 CLI 内部源码边界：
+
+| Directory (under `cli/src/inferyard/` unless noted) | Responsibility |
 | --- | --- |
 | `cli/`, `application/` | Arguments, request construction, output, error mapping; shared types and lazy dispatch |
 | `contracts/`, `config/` | Structural and semantic validation; configuration, bundles, frozen plans and declaration binding |
@@ -22,15 +30,16 @@ The product is a Python CLI plus a self-contained offline HTML report. The packa
 | `analysis/`, `reporting/` | Scoring, metrics, comparison, rescoring, reports and exports |
 | `platforms/`, `extensions/` | Device and process sampling; the standalone extension protocol |
 | `data/`, `templates/` | Catalogue data and report templates shipped with the package |
-| 仓库根目录下的 `studio/` | Go 后端 + `web/` 前端，独立 module `inferyard/studio` |
 
 Business modules do not depend on the CLI; application request/result types live only in `application/types.py`. Help, version and schema queries must not load the live backend; installed resources are read from the package, not from the source checkout.
-Modify active source code, not the historical snapshots in the local `validation/` directory. Follow the Ruff configuration (Python 3.14, 100 columns); keep code files under ~500 lines and split new responsibilities into separate modules.
+Modify active source code, not the historical snapshots in the local repository-root `validation/` directory. Follow the Ruff configuration (Python 3.14, 100 columns); keep code files under ~500 lines and split new responsibilities into separate modules.
 Before parallel collaboration, assign file ownership first. Only modify authorized files in your own workspace and do not revert other people's changes; report the files and the reason before crossing a boundary.
 
 ## Environment and checks
 
-Versions are pinned by [mise.toml](mise.toml); dependencies by `pyproject.toml` / `uv.lock`. Confirm the actual mise paths and versions before developing; do not substitute system Python or global pip. RTK only wraps agent commands; dependencies are managed by uv. Source-development docs use `mise exec -- uv run --frozen`; installed users run `inferyard` directly.
+Versions are pinned by [mise.toml](mise.toml); CLI dependencies by `cli/pyproject.toml` / `cli/uv.lock`. Confirm the actual mise paths and versions before developing; do not substitute system Python or global pip. RTK only wraps agent commands; dependencies are managed by uv. Source-development docs use `mise exec -- uv run --frozen`; installed users run `inferyard` directly.
+
+CLI 命令在仓库的 `cli/` 目录内执行（从仓库根先 `cd cli`）；根级 mise tasks 已内置 `cd cli`。下文 CLI 源码、脚本与资源的相对路径均以 `cli/` 为基准；`validation/` 始终位于仓库根。
 
 ```bash
 rtk proxy mise which python
@@ -39,7 +48,7 @@ rtk proxy mise exec -- python --version
 rtk proxy mise exec -- uv --version
 ```
 
-See the [contributing guide](CONTRIBUTING.md#changes-and-verification) for source installation, tests, Ruff and export commands; agents wrap them with RTK.
+See the [contributing guide](cli/CONTRIBUTING.md#changes-and-verification) for source installation, tests, Ruff and export commands; agents wrap them with RTK.
 Use `--frozen` for normal syncs; dependency changes require a stated reason and a lockfile update, and `--offline` only when the cache is complete.
 Pure docs do not require an installed environment or the full test suite; behavior changes run the relevant regressions first, and integration checks scale with the impact.
 
@@ -58,10 +67,10 @@ rtk proxy mise exec -- bun web/tests/verify.mjs
 
 ## Documentation and contracts
 
-- The README is the product entry point. Operational steps go into the installation/usage guides; topic rules live in `docs/contracts/`. ADRs record long-term rationale only, plans keep only unfinished work, and current progress is centralized in `docs/backlog.md`.
+- The README is the product entry point. Operational steps go into the installation/usage guides; topic rules live in `cli/docs/contracts/`. ADRs record long-term rationale only, plans keep only unfinished work, and current progress is centralized in `cli/docs/backlog.md`.
 - Delete outdated handovers, stage logs and superseded plans, first folding valid rules into the current contracts and remaining work into the backlog; do not build a large archive. Platform claims must match actual coverage.
 - Changes that break old-evidence reading, field semantics or measurement scope require an ADR, a contract and an implementation plan, verifying software and affected native capabilities separately. Compatible optional behavior only updates the existing contract and adds regressions; relaxing stops or identity/hash/asset verification is never treated as optional behavior.
-- Evidence interpretation always cites the [lineage rules](docs/data-contract.md#证据血缘与比较结论) instead of copying disclaimer paragraphs. Release checks do not require completing every historical performance experiment.
+- Evidence interpretation always cites the [lineage rules](cli/docs/data-contract.md#证据血缘与比较结论) instead of copying disclaimer paragraphs. Release checks do not require completing every historical performance experiment.
 - Breaking changes to fields, enums, units or required conditions upgrade the contract and update the legal/illegal samples plus the old-evidence reading policy. The support set follows ADR 038; old formats are handled by the original project — InferYard neither converts nor accepts migrated runs.
 - Regenerate schemas with `scripts/export_schemas.py` after changing their source definitions; never hand-edit the JSON. After changing the metric/method generation sources or the bound source code, run `scripts/export_catalogue.py`; existing IDs are never reassigned.
 - JSON Schema proves structure only; cross-field/cross-record, state-transition and provenance-hash checks are enforced by parsers and the runtime.
@@ -71,7 +80,7 @@ rtk proxy mise exec -- bun web/tests/verify.mjs
 
 ## Execution and evidence
 
-- A benchmark covers both `zh-core` and `zh-svg-pelican` by default; a single bundle runs only when the user explicitly declares a fixed bundle. A single-bundle default in a tool or example is not a user's fixed-bundle declaration. Follow the [default benchmark scope](docs/usage.md#默认测评范围): freeze and run each scope and produce a new report containing both; when complete core results already exist, only add the missing pelican run and never overwrite the originals.
+- A benchmark covers both `zh-core` and `zh-svg-pelican` by default; a single bundle runs only when the user explicitly declares a fixed bundle. A single-bundle default in a tool or example is not a user's fixed-bundle declaration. Follow the [default benchmark scope](cli/docs/usage.md#默认测评范围): freeze and run each scope and produce a new report containing both; when complete core results already exist, only add the missing pelican run and never overwrite the originals.
 - Use fixtures and simulated services by default. Real model requests, long-running workloads, conversions or builds must be in task scope, with device, budget and stop conditions checked first.
 - Services are started externally by the operator. The CLI never implicitly downloads, starts, stops or restarts services; re-verify the model, engine, templates, arguments, PID and start time. Test configurations are never used on real devices.
 - `probe` (alias `check`) sends a normal/streaming request and creates diagnostic evidence; `verify` checks offline. Formal runs follow the frozen order with no implicit retries and no sample-size changes after seeing scores.

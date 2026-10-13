@@ -14,4 +14,4 @@
 进程存活、端点可达、模型加载和生成分别解释。
 
 六目标可交叉编译，原生运行覆盖需分别记录。接口见[observer 契约](../contracts/observer-contract.md)，
-使用与覆盖见[observer 说明](../../observer/README.md)，与 benchmark 的关联由 [ADR 010](010-observer-benchmark-adaptation.md)定义。
+使用与覆盖见[observer 说明](../../../observer/README.md)，与 benchmark 的关联由 [ADR 010](010-observer-benchmark-adaptation.md)定义。

@@ -82,13 +82,15 @@ inferyard verify --path bench-work/report
 
 ## InferYard Studio
 
-[InferYard Studio](studio/README.md) 是基于 MyGo + Go + Svelte 的本地 benchmark 桌面/Web 双端面板。
+[InferYard Studio](../studio/README.md) 是基于 MyGo + Go + Svelte 的本地 benchmark 桌面/Web 双端面板。
 
 ## 继续阅读
 
 [使用指南](docs/usage.md) · [CLI 参考](docs/cli-surface.md) ·
 [报告](docs/reports.md) · [文档导航](docs/README.md) ·
 [贡献指南](CONTRIBUTING.md) · [变更记录](CHANGELOG.md)
+
+CLI 开发命令在本仓库的 `cli/` 目录内执行；根级 mise tasks 已内置切换目录。
 
 本仓库以 InferYard 当前源码建立全新 Git 历史；原始运行、模型资产与源项目历史不随仓库或安装包分发。
 公开证据可通过 `public package` 生成脱敏包，结论范围见

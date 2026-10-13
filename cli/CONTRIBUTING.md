@@ -2,20 +2,23 @@
 
 Read the [product README](README.md), the [architecture](docs/architecture.md)
 and the relevant [topic contracts](docs/contracts/README.md) first.
-File boundaries and safety requirements for agents are in [AGENTS.md](AGENTS.md).
+File boundaries and safety requirements for agents are in [AGENTS.md](../AGENTS.md).
 The project uses the [MIT license](LICENSE); release status is on
 [PyPI](https://pypi.org/project/inferyard/) and
 [GitHub Releases](https://github.com/sunny0826/inferyard/releases).
 
 ## Development environment
 
-Versions are pinned by [mise.toml](mise.toml): Python 3.14.7 and uv 0.12.18;
+Versions are pinned by [mise.toml](../mise.toml): Python 3.14.7 and uv 0.12.18;
 Go is used for the standalone observer and Studio subprojects;
-Bun is used for the Studio frontend. See [Studio](studio/README.md) for its checks.
+Bun is used for the Studio frontend. See [Studio](../studio/README.md) for its checks.
 Dependencies are managed by uv; do not substitute system Python or global pip.
 If an inherited `UV_PYTHON` points to another version, remove that override or
 point it at the path returned by `mise which python`; confirm the interpreter
 is actually 3.14.7 before syncing and running.
+
+Run all CLI development commands below from the monorepo's `cli/` directory
+(`cd cli` from the repository root). Root mise tasks already enter `cli/`.
 
 ```bash
 mise which python

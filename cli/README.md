@@ -113,7 +113,7 @@ readable; see the [evidence layout contract](docs/contracts/run-evidence-layout.
 
 ## InferYard Studio
 
-[InferYard Studio](studio/README.md) is a desktop/Web dashboard for local benchmarks,
+[InferYard Studio](../studio/README.md) is a desktop/Web dashboard for local benchmarks,
 built with MyGo, Go and Svelte.
 
 ## Read more
@@ -121,6 +121,9 @@ built with MyGo, Go and Svelte.
 [Usage guide](docs/usage.md) · [CLI reference](docs/cli-surface.md) ·
 [Reports](docs/reports.md) · [Documentation map](docs/README.md) ·
 [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
+
+Run CLI development commands from `cli/` in this monorepo; root mise tasks
+already enter that directory.
 
 This repository starts a fresh Git history from the current InferYard source;
 original runs, model assets and the source project's history are not

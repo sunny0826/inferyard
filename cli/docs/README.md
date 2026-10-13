@@ -12,14 +12,14 @@
 | [应用内存诊断](contracts/memory-check-contract.md) | macOS 只读应用/进程清单与保护判断 |
 | [报告](reports.md) · [引擎诊断](engine-fit-common.md) | 离线阅读与同机 engine-fit |
 | [流程图](show-me-system-flow.html) | 安装、准备、执行与离线证据通路 |
-| [inferyard-observer](../observer/README.md) | 独立进程监测器 |
-| [InferYard Studio](../studio/README.md) | 本地 benchmark 桌面/Web 双端面板 |
+| [inferyard-observer](../../observer/README.md) | 独立进程监测器 |
+| [InferYard Studio](../../studio/README.md) | 本地 benchmark 桌面/Web 双端面板 |
 
 ## 修改项目
 
 | 入口 | 内容 |
 | --- | --- |
-| [贡献指南](../CONTRIBUTING.md) · [Agent 约定](../AGENTS.md) | 工具链、检查、文件边界与提交 |
+| [贡献指南](../CONTRIBUTING.md) · [Agent 约定](../../AGENTS.md) | 工具链、检查、文件边界与提交 |
 | [架构](architecture.md) | 模块职责与运行设计 |
 | [数据契约](data-contract.md) · [主题契约](contracts/README.md) | 活动格式、来源和功能接口 |
 | [实验设计](experiments/design.md) · [指标](experiments/metrics.md) | 冻结协议、分母和计量定义 |
@@ -28,5 +28,7 @@
 | [backlog](backlog.md) · [变更记录](../CHANGELOG.md) | 当前剩余工作与候选范围 |
 | [脚本](../scripts/README.md) · [Schema](../schemas/README.md) | 工程工具与生成文件 |
 
+CLI 开发命令和 `scripts/` 工具在仓库的 `cli/` 目录内执行（从仓库根先 `cd cli`）；根级 mise tasks 已内置切换目录。安装用户的 `inferyard ...` 命令不受影响。
+
 catalogue 生成源只有 [指标定义](experiments/metrics.md) 和 [方法目录](reference/methods-matrix.md) 两个文件，修改后运行 `scripts/export_catalogue.py` 导出且保留稳定 ID。
-原始运行留在本机，`validation/` 不属于公开工作树；证据规则统一见[数据契约](data-contract.md#证据血缘与比较结论)。
+原始运行留在本机，仓库根的 `validation/` 不属于公开工作树；证据规则统一见[数据契约](data-contract.md#证据血缘与比较结论)。

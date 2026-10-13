@@ -23,7 +23,7 @@ CPU 按单核百分比展示，多线程可超过 100%；首条需要建立基�
 ```bash
 mise which go
 mise exec -- go version
-mise exec -- uv run --frozen python scripts/build_observer.py --out dist/observer
+mise exec -- uv run --project cli --frozen python cli/scripts/build_observer.py --out dist/observer
 mise exec -- go -C observer test -race ./...
 mise exec -- go -C observer vet ./...
 ```
@@ -33,15 +33,15 @@ mise exec -- go -C observer vet ./...
 离线摘要工具是项目可选辅助，监测器本身不调用 Python：
 
 ```bash
-mise exec -- uv run --frozen python scripts/analyze_observer.py \
+mise exec -- uv run --project cli --frozen python cli/scripts/analyze_observer.py \
   --log monitor-new.jsonl --out summary-new.json
 
 # benchmark 完成并封存后，可关联原始来源；服务退出后仍可离线核验
-mise exec -- uv run --frozen python scripts/analyze_observer.py \
+mise exec -- uv run --project cli --frozen python cli/scripts/analyze_observer.py \
   --log attached-new.jsonl --bench-run reports/SEALED_RUN --out linked-new.json
 
 # 保留取消、目标退出或缺结束记录的完整采样前缀，摘要退出码为 3
-mise exec -- uv run --frozen python scripts/analyze_observer.py \
+mise exec -- uv run --project cli --frozen python cli/scripts/analyze_observer.py \
   --log interrupted.jsonl --allow-incomplete --out partial-new.json
 ```
 
@@ -51,6 +51,6 @@ mise exec -- uv run --frozen python scripts/analyze_observer.py \
 
 ## 历史验证范围
 
-源项目的六个目标已编译；macOS arm64 已做原生进程、退出 / 取消、只读绑定、模拟健康端点及 30 秒资源测试。它还与真实 TCP 合成服务的 benchmark 并行执行、离线关联及报告核验。合成服务不加载推理权重，不能代替实际模型验收。这些记录不构成 InferYard 当前源码的原生验证；Linux / Windows 和 macOS amd64 尚无上述原生运行证据。重命名后的软件检查见 [backlog](../docs/backlog.md)，不把交叉编译写成全平台验收。
+源项目的六个目标已编译；macOS arm64 已做原生进程、退出 / 取消、只读绑定、模拟健康端点及 30 秒资源测试。它还与真实 TCP 合成服务的 benchmark 并行执行、离线关联及报告核验。合成服务不加载推理权重，不能代替实际模型验收。这些记录不构成 InferYard 当前源码的原生验证；Linux / Windows 和 macOS amd64 尚无上述原生运行证据。重命名后的软件检查见 [backlog](../cli/docs/backlog.md)，不把交叉编译写成全平台验收。
 
-接口见[observer 契约](../docs/contracts/observer-contract.md)，平台覆盖统一见[平台状态](../docs/platforms.md)。
+接口见[observer 契约](../cli/docs/contracts/observer-contract.md)，平台覆盖统一见[平台状态](../cli/docs/platforms.md)。
