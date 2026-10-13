@@ -28,16 +28,11 @@ func (m *Manager) Capture() ([]byte, error) {
 	return win.CapturePage()
 }
 
-type WizardBridge struct{ manager *Manager }
-
-func NewBridge(m *Manager) *WizardBridge { return &WizardBridge{manager: m} }
-func (b *WizardBridge) Open()            { b.manager.Open() }
-
 type Manager struct {
 	ctx         context.Context
 	service     *core.Service
 	main        *mygo.Window
-	mainFactory func(route string)
+	mainFactory func(page string)
 	mu          sync.Mutex
 	window      *mygo.Window
 }
@@ -46,18 +41,17 @@ func New(ctx context.Context, s *core.Service) *Manager {
 	return &Manager{ctx: ctx, service: s}
 }
 
-// SetMain records the main window once it exists at app-ready time; the bridge
-// itself must be bound at the top level so `mygo generate` sees the service.
+// SetMain records the native main window when it is created.
 func (m *Manager) SetMain(main *mygo.Window) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.main = main
 }
 
-// SetMainFactory records how to (re)create the main web window at a route. The
+// SetMainFactory records how to create or focus the native main window at a page. The
 // wizard is the only window during onboarding; the main window is created on
 // demand when the user asks for it and after the wizard closes.
-func (m *Manager) SetMainFactory(fn func(route string)) {
+func (m *Manager) SetMainFactory(fn func(page string)) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.mainFactory = fn
@@ -114,24 +108,16 @@ func (m *Manager) Open() {
 	})
 }
 
-// openMain focuses the main window and navigates it to a hash route, creating
-// it first when it does not exist yet (onboarding startup or user-closed).
-func (m *Manager) openMain(route string) {
+// openMain delegates creation, focus and Sidebar selection to the native factory.
+func (m *Manager) openMain(page string) {
 	m.mu.Lock()
-	main, factory := m.main, m.mainFactory
+	factory := m.mainFactory
 	m.mu.Unlock()
-	if main == nil || main.IsDestroyed() {
-		if factory == nil {
-			log.Printf("wizard: main window unavailable and no factory installed")
-			return
-		}
-		factory(route)
+	if factory == nil {
+		log.Print("wizard: main window factory unavailable")
 		return
 	}
-	main.Focus()
-	if _, err := main.Page().Eval("location.hash = '" + route + "'"); err != nil {
-		log.Printf("wizard: main window navigation to %s failed: %v", route, err)
-	}
+	factory(strings.TrimPrefix(page, "/"))
 }
 
 type viewState struct {
