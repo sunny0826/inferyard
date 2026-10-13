@@ -1,0 +1,15 @@
+/artifacts/
+# Keep machine-bound configurations local; publish only reusable examples.
+/configs/*
+!/configs/README.md
+!/configs/*.example.toml
+/.venv/
+/.uv-cache/
+/.pytest_cache/
+/.ruff_cache/
+/.tools/
+/dist/
+/results/
+/reports/
+/.playwright-cli/
+/output/playwright/

@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 GO_VERSION = "1.27.2"
 TOOL_VERSION = "0.2.0"
 TARGETS = tuple(
@@ -45,7 +45,7 @@ def build(out: Path, targets: list[str]) -> dict:
         "tool_version": TOOL_VERSION,
         "go_version": version,
         "source_sha256": source_hash,
-        "source_scope": "observer/**/*.go + observer/go.mod + scripts/build_observer.py",
+        "source_scope": "observer/**/*.go + observer/go.mod + cli/scripts/build_observer.py",
         "artifacts": [],
         "completed": False,
         "native_validation_granted": False,
