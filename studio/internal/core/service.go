@@ -24,6 +24,9 @@ type Options struct {
 	SettingsPath  string
 	Execute       Executor
 	HostStatePath string
+	// EngineStartTimeout bounds the managed engine's health wait; tests set a
+	// short value, zero means ten minutes.
+	EngineStartTimeout time.Duration
 }
 type Service struct {
 	ctx              context.Context
@@ -40,6 +43,8 @@ type Service struct {
 	rebuilding       bool
 	runs             []*runEntry
 	downloads        []*downloadEntry
+	engine           *engineEntry
+	engineTimeout    time.Duration
 	wake             chan struct{}
 	hostStatePath    string
 }
@@ -57,7 +62,7 @@ func New(ctx context.Context, o Options) (*Service, error) {
 			return (inferyard.Client{Path: path}).Exec(ctx, args...)
 		}
 	}
-	s := &Service{ctx: ctx, settingsPath: o.SettingsPath, exec: o.Execute, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath}
+	s := &Service{ctx: ctx, settingsPath: o.SettingsPath, exec: o.Execute, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout}
 	raw, err := os.ReadFile(o.SettingsPath)
 	if err == nil {
 		if err = json.Unmarshal(raw, &s.settings); err != nil {

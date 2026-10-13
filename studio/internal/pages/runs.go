@@ -4,31 +4,58 @@ import (
 	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
 
 func (s *viewState) runsView(c *ui.Context) {
 	s.header(c, "运行")
+	s.runGuide(c)
 	errorView(c, s.historyError)
 	card(c, "启动测评", func() {
-		field(c, "zh-core 已绑定配置路径", &s.firstConfig)
+		options := s.boundConfigs()
+		if len(options) == 0 {
+			ui.Text(c, "尚无已绑定的题包。请先按上方引导完成候选与绑定。")
+			return
+		}
+		names := []string{}
+		for _, o := range options {
+			names = append(names, o.bundle)
+		}
+		s.firstBundle = defaultBundle(s.firstBundle, names, "")
+		twoBound := len(names) >= 2
+		if s.single || !twoBound {
+			ui.Field(c, "题包", func() { ui.Select(c, &s.firstBundle, names) })
+			ui.Text(c, configOf(options, s.firstBundle)).Selectable()
+		} else {
+			s.secondBundle = defaultBundle(s.secondBundle, names, s.firstBundle)
+			ui.Field(c, "第一题包", func() { ui.Select(c, &s.firstBundle, names) })
+			ui.Text(c, configOf(options, s.firstBundle)).Selectable()
+			ui.Field(c, "第二题包", func() { ui.Select(c, &s.secondBundle, names) })
+			ui.Text(c, configOf(options, s.secondBundle)).Selectable()
+		}
 		if ui.Checkbox(c, &s.single, "仅运行一个题包").Changed() {
 			s.confirmed = false
 		}
 		if s.single {
 			ui.Checkbox(c, &s.confirmed, "我确认只运行一个题包")
-		} else {
-			field(c, "zh-svg-pelican 已绑定配置路径", &s.secondConfig)
 		}
 		ui.Text(c, "默认双题包，按配置顺序串行运行。运行前请核对设备、预算与停止条件。")
-		if ui.PrimaryButton(c, "启动运行").Disabled(s.busy || strings.TrimSpace(s.firstConfig) == "" || (!s.single && strings.TrimSpace(s.secondConfig) == "") || (s.single && !s.confirmed)).Clicked() {
-			req := core.StartRunsRequest{ConfigPaths: []string{strings.TrimSpace(s.firstConfig)}}
+		if !twoBound && !s.single {
+			ui.Text(c, "第二题包尚未绑定，双题包运行不可用。")
+		}
+		duplicate := s.firstBundle == s.secondBundle
+		if !s.single && twoBound && duplicate {
+			ui.Text(c, "两个题包不能相同。").TextColor(c.Theme().Danger)
+		}
+		if ui.PrimaryButton(c, "启动运行").Disabled(s.busy || (!s.single && (!twoBound || duplicate)) || (s.single && !s.confirmed)).Clicked() {
+			req := core.StartRunsRequest{ConfigPaths: []string{configOf(options, s.firstBundle)}}
 			if s.single {
 				confirmed := true
 				req.AllowSingleBundle = &confirmed
 			} else {
-				req.ConfigPaths = append(req.ConfigPaths, strings.TrimSpace(s.secondConfig))
+				req.ConfigPaths = append(req.ConfigPaths, configOf(options, s.secondBundle))
 			}
 			s.work(func() (string, *core.ApiError) {
 				tasks, e := s.service.StartRuns(req)
@@ -95,6 +122,47 @@ func (s *viewState) runsView(c *ui.Context) {
 		}
 	})
 }
+// boundOption maps a bound bundle to the frozen config written by `config bind`.
+type boundOption struct{ bundle, config string }
+
+func (s *viewState) boundConfigs() []boundOption {
+	options := []boundOption{}
+	if s.progress == nil {
+		return options
+	}
+	for _, b := range s.progress.Bundles {
+		if b.BoundPath != nil {
+			options = append(options, boundOption{bundle: b.Bundle, config: filepath.Join(*b.BoundPath, "config.toml")})
+		}
+	}
+	return options
+}
+
+// defaultBundle keeps the current selection when still valid, otherwise picks
+// the first option that is not exclude.
+func defaultBundle(current string, names []string, exclude string) string {
+	for _, n := range names {
+		if n == current {
+			return current
+		}
+	}
+	for _, n := range names {
+		if n != exclude {
+			return n
+		}
+	}
+	return names[0]
+}
+
+func configOf(options []boundOption, bundle string) string {
+	for _, o := range options {
+		if o.bundle == bundle {
+			return o.config
+		}
+	}
+	return ""
+}
+
 func aggregateStatus(runs []core.RunSummary) string {
 	priority := map[string]int{"complete": 1, "partial": 2, "dirty": 3, "cancelled": 4}
 	state := ""

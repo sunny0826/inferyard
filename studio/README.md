@@ -12,32 +12,37 @@ The main window has six pages:
 
 | Page | Purpose |
 | --- | --- |
-| Wizard | View setup progress and reopen the native onboarding window. |
+| Wizard | View the six setup stages, bundle status, and the next page to visit. |
 | Device | Check hardware, local models, recommendations, and blocking reasons. |
 | Models and downloads | Acquire models, inspect download progress, and cancel downloads. |
 | Runs | Queue or cancel evaluations, inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
 | Reports | Generate reports and open each offline HTML report in its own in-app WebView window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory. |
 
-When onboarding is needed, launch opens only the native wizard. Opening Settings or
-Reports from it creates the main window if needed and selects that page. Reopening the
-wizard restores progress from workspace evidence through `progress.v1`. A missing CLI or
-incomplete configuration does not prevent opening the UI.
+The main window always opens, with guidance embedded across its six pages. Wizard is a
+read-only progress overview with navigation to the next step. Settings handles CLI
+installation and workspace initialization; Models and downloads prepares assets; Device
+runs the device check; Runs creates candidates, manages and binds services, and runs or
+resumes evaluations; Reports generates and verifies the combined report. Existing manual
+controls remain available. Reopening Studio restores progress from workspace evidence
+through `progress.v1`. A missing CLI or incomplete configuration does not prevent opening
+any page.
 
-When no CLI is configured, the wizard offers one-tap installation: it reuses an existing
+When no CLI is configured, Settings offers one-tap installation: it reuses an existing
 `inferyard`/`uv` when found (including Homebrew locations outside the GUI PATH), downloads
 a pinned standalone `uv` into the Studio tools directory when none exists — verified
 against the release checksum, without touching shell configuration — and installs
 `inferyard` matching the Studio version from PyPI via `uv tool install`. Manual path
 configuration in Settings remains available.
 
-The wizard guides workspace initialization, model and engine preparation, device checks,
-service binding, evaluations, and report generation/verification. It shows frozen service
-arguments for copying; the operator starts the model service in their own terminal.
-Studio never starts, stops, or restarts model services. Model credentials are referenced
+The embedded guidance follows the CLI-generated next command. Studio starts the frozen
+engine as a managed child process, waits for its health endpoint, and stops it when Studio
+exits — it owns the processes it starts and never restarts them automatically; services
+the operator started themselves can still be bound from the process list. Binding always
+goes through the CLI's PID and start-time checks. Model credentials are referenced
 only by an environment-variable name.
 
-The device step prefills built-in test assets: a tiny SmolLM2-135M GGUF (pinned Hugging
+Models and downloads prefills built-in test assets: a tiny SmolLM2-135M GGUF (pinned Hugging
 Face revision) and the pinned Prism engine archive for the current platform. Engine
 archives are downloaded and unpacked by the Studio side — preserving the sibling shared
 libraries and recreating only in-archive relative symlinks — into a fresh directory that

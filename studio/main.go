@@ -7,7 +7,6 @@ import (
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/desktop"
 	"inferyard/studio/internal/pages"
-	"inferyard/studio/internal/wizard"
 	"log"
 	"os"
 	"os/signal"
@@ -29,28 +28,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	guide := wizard.New(ctx, service)
 	mygo.App.WhenReady(func() {
 		desktop.Subscribe(ctx, service.Bus, false, func(message desktop.Message) error {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
 		}, log.Printf)
-		var mainWindow *pages.Window
 		reports := pages.NewReports(service)
-		createMain := func(page string) {
-			if mainWindow != nil && !mainWindow.Win.IsDestroyed() {
-				mainWindow.Navigate(page)
-				return
-			}
-			mainWindow = pages.New(ctx, service, page, guide.Open, reports)
-			guide.SetMain(mainWindow.Win)
-		}
-		guide.SetMainFactory(createMain)
-		if service.NeedsOnboarding() {
-			guide.Open()
-			return
-		}
-		createMain("")
-		guide.OpenIfNeeded()
+		pages.New(ctx, service, "", reports)
 	})
 	go func() { <-ctx.Done(); mygo.App.Quit() }()
 	if err := mygo.App.Run(); err != nil {

@@ -13,10 +13,10 @@ import (
 
 func ptr[T any](v T) *T { return &v }
 func testState() viewState {
-	return viewState{selected: "wizard", loaded: true, settingsLoaded: true, reportSelection: map[string]bool{}, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete"}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
+	return viewState{selected: "wizard", loaded: true, settingsLoaded: true, reportSelection: map[string]bool{}, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
 }
 func TestSixPagesRender(t *testing.T) {
-	for _, tc := range []struct{ page, want string }{{"wizard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "凭据环境变量名"}, {"runs", "zh-svg-pelican 已绑定配置路径"}, {"reports", "选择来源 run（1–100 个）"}, {"settings", "CLI 绝对路径（留空使用 PATH）"}} {
+	for _, tc := range []struct{ page, want string }{{"wizard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "凭据环境变量名"}, {"runs", "/w/bound/zh-core-1/config.toml"}, {"reports", "选择来源 run（1–100 个）"}, {"settings", "CLI 绝对路径（留空使用 PATH）"}} {
 		t.Run(tc.page, func(t *testing.T) {
 			s := testState()
 			s.selected = tc.page
@@ -38,15 +38,14 @@ func TestSixPagesRender(t *testing.T) {
 }
 func TestSidebarAndWizardEntry(t *testing.T) {
 	s := testState()
-	opened := 0
-	s.openWizard = func() { opened++ }
 	tt := ui.NewTester(s.view, 1120, 800)
-	if err := tt.Click("打开向导"); err != nil {
+	if err := tt.Click("下一步：在运行页启动与绑定服务"); err != nil {
 		t.Fatal(err)
 	}
-	if opened != 1 {
-		t.Fatal("wizard entry did not open")
+	if s.selected != "runs" {
+		t.Fatal("overview navigation failed")
 	}
+
 	if err := tt.Click("设置"); err != nil {
 		t.Fatal(err)
 	}
@@ -64,10 +63,13 @@ func TestExplicitSingleBundleConfirmation(t *testing.T) {
 	s := testState()
 	s.selected = "runs"
 	tt := ui.NewTester(s.view, 1120, 1000)
+	if !tt.HasText("第二题包尚未绑定，双题包运行不可用。") || tt.HasText("我确认只运行一个题包") {
+		t.Fatal(tt.Texts())
+	}
 	if err := tt.Click("仅运行一个题包"); err != nil {
 		t.Fatal(err)
 	}
-	if !s.single || s.confirmed || !tt.HasText("我确认只运行一个题包") || tt.HasText("zh-svg-pelican 已绑定配置路径") {
+	if !s.single || s.confirmed || !tt.HasText("我确认只运行一个题包") || tt.HasText("第二题包尚未绑定") {
 		t.Fatal(tt.Texts())
 	}
 	if err := tt.Click("我确认只运行一个题包"); err != nil {
@@ -79,8 +81,44 @@ func TestExplicitSingleBundleConfirmation(t *testing.T) {
 	if err := tt.Click("仅运行一个题包"); err != nil {
 		t.Fatal(err)
 	}
-	if s.single || s.confirmed || !tt.HasText("zh-svg-pelican 已绑定配置路径") {
+	if s.single || s.confirmed || !tt.HasText("第二题包尚未绑定") {
 		t.Fatal("single-bundle authorization was not cleared")
+	}
+}
+func TestBoundBundleSelectsAndDuplicateGuard(t *testing.T) {
+	s := testState()
+	s.selected = "runs"
+	s.progress.Bundles[1].BoundPath = ptr("/w/bound/zh-svg-pelican-1")
+	tt := ui.NewTester(s.view, 1120, 1000)
+	if s.firstBundle != "zh-core" || s.secondBundle != "zh-svg-pelican" {
+		t.Fatalf("bound defaults: %q %q", s.firstBundle, s.secondBundle)
+	}
+	for _, want := range []string{"第一题包", "第二题包", "/w/bound/zh-core-1/config.toml", "/w/bound/zh-svg-pelican-1/config.toml"} {
+		if !tt.HasText(want) {
+			t.Fatalf("missing %q: %v", want, tt.Texts())
+		}
+	}
+	if tt.HasText("两个题包不能相同。") {
+		t.Fatal("false duplicate warning")
+	}
+	s.firstBundle = "zh-svg-pelican"
+	tt.Frame()
+	if s.secondBundle != "zh-svg-pelican" || !tt.HasText("两个题包不能相同。") {
+		t.Fatal("duplicate selection not flagged", tt.Texts())
+	}
+}
+func TestBundleHelpers(t *testing.T) {
+	s := viewState{}
+	if len(s.boundConfigs()) != 0 {
+		t.Fatal("nil progress yielded options")
+	}
+	names := []string{"a", "b"}
+	if defaultBundle("", names, "") != "a" || defaultBundle("a", names, "a") != "a" || defaultBundle("x", names, "a") != "b" {
+		t.Fatal("defaultBundle mismatch")
+	}
+	options := []boundOption{{bundle: "a", config: "/w/a/config.toml"}}
+	if configOf(options, "a") != "/w/a/config.toml" || configOf(options, "b") != "" {
+		t.Fatal("configOf mismatch")
 	}
 }
 func TestDeviceSnapshotAndMissingMeasurements(t *testing.T) {
