@@ -69,7 +69,7 @@ func (s *viewState) wizardView(c *ui.Context) {
 		case 6:
 			page, label = "reports", "已完成：在报告页查看已核验报告"
 		}
-		if ui.PrimaryButton(c, label).Clicked() {
+		if ui.PrimaryButton(c, label).AlignSelf(ui.Start).Clicked() {
 			s.selected = page
 			s.detailID = ""
 			go s.refresh(true)
@@ -83,7 +83,7 @@ func (s *viewState) setupGuide(c *ui.Context) {
 			if s.cliInstallStatus != "" {
 				ui.Text(c, s.cliInstallStatus)
 			}
-			if ui.PrimaryButton(c, "自动安装 CLI "+core.Version).Disabled(s.busy).Clicked() {
+			if ui.PrimaryButton(c, "自动安装 CLI "+core.Version).AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
 				s.installCLI()
 			}
 		})
@@ -95,7 +95,7 @@ func (s *viewState) setupGuide(c *ui.Context) {
 		}
 		ui.Text(c, "初始化目标必须是新目录；成功后自动切换工作区。")
 		field(c, "新工作区目录", &s.initDir)
-		if ui.PrimaryButton(c, "初始化工作区").Disabled(s.busy || s.initDir == "" || s.ready.CLI.Status != "ok").Clicked() {
+		if ui.PrimaryButton(c, "初始化工作区").AlignSelf(ui.Start).Disabled(s.busy || s.initDir == "" || s.ready.CLI.Status != "ok").Clicked() {
 			s.execute("inferyard init --out "+quote(s.initDir), false)
 		}
 	})

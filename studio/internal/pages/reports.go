@@ -104,7 +104,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 			ui.Text(c, "请选择 1–100 个来源 run。")
 		}
 		ui.Text(c, fmt.Sprintf("已选 %d / 100", count))
-		if ui.PrimaryButton(c, "生成报告").Disabled(s.busy || count < 1 || count > 100).Clicked() {
+		if ui.PrimaryButton(c, "生成报告").AlignSelf(ui.Start).Disabled(s.busy || count < 1 || count > 100).Clicked() {
 			paths := []string{}
 			for _, r := range runs {
 				if s.reportSelection[r.Path] {

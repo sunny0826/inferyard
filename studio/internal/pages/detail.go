@@ -9,7 +9,7 @@ import (
 
 func (s *viewState) detailView(c *ui.Context) {
 	s.header(c, "运行详情")
-	if ui.Button(c, "返回运行").Clicked() {
+	if ui.Button(c, "返回运行").AlignSelf(ui.Start).Clicked() {
 		s.detailID = ""
 		s.detailMu.Lock()
 		s.requestedDetail = ""
@@ -27,7 +27,7 @@ func (s *viewState) detailView(c *ui.Context) {
 		ui.Text(c, "运行目录："+text(t.RunPath)).Selectable()
 		ui.Text(c, "任务类型："+t.Kind+" · 运行 ID："+text(t.RunId))
 		errorView(c, t.Error)
-		if ui.Button(c, "取消任务").Disabled(s.busy || terminal(t.State) || t.State == "cancelling").Clicked() {
+		if ui.Button(c, "取消任务").AlignSelf(ui.Start).Disabled(s.busy || terminal(t.State) || t.State == "cancelling").Clicked() {
 			id := t.TaskId
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.service.CancelRun(id)

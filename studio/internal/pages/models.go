@@ -34,7 +34,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 		field(c, "新目录名", &s.modelName)
 		field(c, "凭据环境变量名（可选）", &s.tokenEnv)
 		ui.Text(c, "仅填写环境变量名。凭据由启动 Studio 的环境提供。目录名仅允许字母、数字、点、下划线与连字符，不能全为点。")
-		if ui.PrimaryButton(c, "下载模型").Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
+		if ui.PrimaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
 			s.acquireModel()
 		}
 	})
@@ -44,7 +44,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 		if s.engineDownloadStatus != "" {
 			ui.Text(c, s.engineDownloadStatus)
 		}
-		if ui.Button(c, "下载引擎").Disabled(s.busy || !validName(s.engineName) || s.engineURL == "" || emptyText(s.settings.Effective.WorkspaceRoot) == "").Clicked() {
+		if ui.Button(c, "下载引擎").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.engineName) || s.engineURL == "" || emptyText(s.settings.Effective.WorkspaceRoot) == "").Clicked() {
 			s.fetchEngine()
 		}
 	})

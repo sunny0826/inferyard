@@ -33,7 +33,7 @@ func (s *viewState) downloadsView(c *ui.Context) {
 		ui.Text(c, "输出目录保留；再次下载请更换目录名。")
 	}
 	if task.State == "downloading" {
-		ui.Button(c, "取消下载").Disabled(s.busy).OnClick(func() {
+		ui.Button(c, "取消下载").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.service.CancelDownload(task.TaskId)
 				return "已请求取消下载。", e

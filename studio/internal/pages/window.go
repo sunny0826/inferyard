@@ -84,7 +84,7 @@ type viewState struct {
 	detail                                                                                                    *core.RunTaskDetail
 	historyError, reportsError, detailError                                                                   *core.ApiError
 	loaded, busy, settingsLoaded                                                                              bool
-	message                                                                                                   string
+	pendingToast                                                                                              string
 	failure                                                                                                   *core.ApiError
 	workspace, cliPath, results, models                                                                       string
 	manualFirst, manualSecond                                                                                 string
@@ -189,22 +189,23 @@ func (s *viewState) work(fn func() (string, *core.ApiError)) {
 	}
 	s.busy = true
 	s.failure = nil
-	s.message = ""
+	s.pendingToast = ""
 	go func() {
 		message, e := fn()
 		if s.ctx.Err() != nil {
 			return
 		}
-		s.win.Update(func() {
-			s.busy = false
-			s.message = message
-			s.failure = e
-			if e != nil {
-				s.message = ""
-			}
-		})
+		s.win.Update(func() { s.finishWork(message, e) })
 		s.refresh(true)
 	}()
+}
+func (s *viewState) finishWork(message string, e *core.ApiError) {
+	s.busy = false
+	s.failure = e
+	s.pendingToast = ""
+	if e == nil {
+		s.pendingToast = message
+	}
 }
 func (s *viewState) selectTask(id string) {
 	s.detailID = id
@@ -216,6 +217,13 @@ func (s *viewState) selectTask(id string) {
 	go s.refresh(false)
 }
 func (s *viewState) view(c *ui.Context) {
+	if s.pendingToast != "" {
+		message := s.pendingToast
+		s.pendingToast = ""
+		c.Toast(message)
+	}
+	c.OnShortcut(ui.Cmd, ui.KeyR, s.refreshAction)
+
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
 		ui.Sidebar(c, &s.selected, func() {
 			ui.Text(c, "InferYard Studio").Bold().Margin(12)
@@ -223,50 +231,57 @@ func (s *viewState) view(c *ui.Context) {
 				ui.SidebarItem(c, n.id, nil, n.label)
 			}
 		}).Width(205)
-		ui.Scroll(c).Grow(1).Key(s.selected).TrackScroll(s.pageScroll()).Padding(24).Children(func() {
-			ui.Column(c).Gap(16).Children(func() {
-				s.feedback(c)
-				if s.message != "" {
-					ui.Text(c, s.message).TextColor(c.Theme().Success)
-				}
-				if s.busy {
-					ui.Text(c, "正在执行，请稍候…")
-				}
-				switch s.selected {
-				case "device":
-					s.deviceView(c)
-				case "models":
-					s.modelsView(c)
-				case "runs":
-					if s.detailID != "" {
-						s.detailView(c)
-					} else {
-						s.runsView(c)
+		ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+			s.toolbar(c)
+			ui.Scroll(c).Grow(1).Key(s.selected).TrackScroll(s.pageScroll()).Padding(24).Children(func() {
+				ui.Column(c).Gap(16).Children(func() {
+					s.feedback(c)
+					switch s.selected {
+					case "device":
+						s.deviceView(c)
+					case "models":
+						s.modelsView(c)
+					case "runs":
+						if s.detailID != "" {
+							s.detailView(c)
+						} else {
+							s.runsView(c)
+						}
+					case "reports":
+						s.reportsView(c)
+					case "settings":
+						s.settingsView(c)
+					default:
+						s.wizardView(c)
 					}
-				case "reports":
-					s.reportsView(c)
-				case "settings":
-					s.settingsView(c)
-				default:
-					s.wizardView(c)
-				}
+				})
 			})
 		})
 	})
 }
-func (s *viewState) header(c *ui.Context, title string) {
-	ui.Row(c).Gap(16).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, title).Bold().FontSize(24).Grow(1)
-		if ui.Button(c, "刷新").Disabled(s.busy).Clicked() {
-			go s.refresh(true)
+
+func (s *viewState) refreshAction() {
+	if !s.busy {
+		go s.refresh(true)
+	}
+}
+func (s *viewState) toolbar(c *ui.Context) {
+	ui.Toolbar(c, func() {
+		ui.Button(c, "刷新").Disabled(s.busy).OnClick(s.refreshAction)
+		if s.busy {
+			ui.Spinner(c)
+			ui.Text(c, "执行中…")
 		}
 	})
+}
+func (s *viewState) header(c *ui.Context, title string) {
+	ui.Text(c, title).Bold().FontSize(24)
 }
 func card(c *ui.Context, title string, fn func()) {
 	ui.Column(c).Gap(10).Padding(18).Background(c.Theme().Surface).Radius(12).Children(func() { ui.Text(c, title).Bold().FontSize(18); fn() })
 }
 func field(c *ui.Context, label string, value *string) {
-	ui.Field(c, label, func() { ui.TextInput(c, value).Width(540) })
+	ui.Field(c, label, func() { ui.TextInput(c, value) })
 }
 func text(p *string) string {
 	if p == nil {

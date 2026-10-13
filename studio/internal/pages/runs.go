@@ -62,7 +62,7 @@ func (s *viewState) runsView(c *ui.Context) {
 		if !s.single && twoBound && duplicate {
 			ui.Text(c, "两个题包不能相同。").TextColor(c.Theme().Danger)
 		}
-		if ui.PrimaryButton(c, "启动运行").Disabled(s.busy || first == "" || (!s.single && (!twoBound || duplicate)) || (s.single && !s.confirmed)).Clicked() {
+		if ui.PrimaryButton(c, "启动运行").AlignSelf(ui.Start).Disabled(s.busy || first == "" || (!s.single && (!twoBound || duplicate)) || (s.single && !s.confirmed)).Clicked() {
 			req := core.StartRunsRequest{ConfigPaths: []string{first}}
 			if s.single {
 				confirmed := true
@@ -151,22 +151,26 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 		ui.Text(c, fmt.Sprintf("封存：%t · 完整度：%s · 停止原因：%s", r.Sealed, text(r.Completeness), text(r.StopReason)))
 		ui.Text(c, "得分："+runScore(r))
 		ui.Text(c, "关系："+text(r.Relation)+" · 来源："+text(r.ParentRunId)+" · 开始："+text(r.StartedAt)+" · 结束："+text(r.FinishedAt))
-		if ui.Button(c, "续测").Disabled(s.busy || r.BatchId == nil || !r.Resumable || s.denied[r.Path]).Clicked() {
-			source := r
-			s.resumeSource = &source
-			s.endpoint = ""
-			s.pid = ""
-		}
+		ui.Row(c).Gap(10).Children(func() {
+			if ui.Button(c, "续测").AlignSelf(ui.Start).Disabled(s.busy || r.BatchId == nil || !r.Resumable || s.denied[r.Path]).Clicked() {
+				source := r
+				s.resumeSource = &source
+				s.endpoint = ""
+				s.pid = ""
+			}
+			for _, task := range s.tasks {
+				if emptyText(task.RunPath) == r.Path && ui.Button(c, "实时详情").AlignSelf(ui.Start).Clicked() {
+					s.selectTask(task.TaskId)
+				}
+			}
+		})
+
 		if r.BatchId == nil {
 			ui.Text(c, "独立运行不支持续测。")
 		} else if !r.Resumable || s.denied[r.Path] {
 			ui.Text(c, "当前来源不可续测（not_resumable）。")
 		}
-		for _, task := range s.tasks {
-			if emptyText(task.RunPath) == r.Path && ui.Button(c, "实时详情").Clicked() {
-				s.selectTask(task.TaskId)
-			}
-		}
+
 	})
 }
 func (s *viewState) resumeView(c *ui.Context) {
@@ -175,12 +179,15 @@ func (s *viewState) resumeView(c *ui.Context) {
 		field(c, "endpoint_url（可选）", &s.endpoint)
 		field(c, "server_pid（与 endpoint 同给同省）", &s.pid)
 		ui.Text(c, "不填写时沿用来源配置；来源是否可续测由 CLI 最终裁决。")
-		if ui.PrimaryButton(c, "确认续测").Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
-			s.resume()
-		}
-		if ui.Button(c, "关闭续测设置").Clicked() {
-			s.resumeSource = nil
-		}
+		ui.Row(c).Gap(10).Children(func() {
+			if ui.PrimaryButton(c, "确认续测").AlignSelf(ui.Start).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
+				s.resume()
+			}
+			if ui.Button(c, "关闭续测设置").AlignSelf(ui.Start).Clicked() {
+				s.resumeSource = nil
+			}
+		})
+
 	})
 }
 func (s *viewState) resume() {

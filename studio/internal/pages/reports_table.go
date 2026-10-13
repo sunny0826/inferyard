@@ -28,7 +28,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 			ui.Text(c, id+" · "+path).Selectable()
 		}
 	}
-	ui.Button(c, "打开报告").Disabled(index < 0).OnClick(func() {
+	ui.Button(c, "打开报告").AlignSelf(ui.Start).Disabled(index < 0).OnClick(func() {
 		_, s.failure = s.reportWindows.Open(s.reports[index].ReportId)
 	})
 }

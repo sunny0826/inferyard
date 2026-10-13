@@ -44,7 +44,7 @@ func (s *viewState) tasksView(c *ui.Context) {
 			}
 		}
 	}
-	ui.Button(c, "查看详情").Disabled(index < 0).OnClick(func() { s.selectTask(s.tasks[index].TaskId) })
+	ui.Button(c, "查看详情").AlignSelf(ui.Start).Disabled(index < 0).OnClick(func() { s.selectTask(s.tasks[index].TaskId) })
 	if submitted && index >= 0 {
 		s.selectTask(s.tasks[index].TaskId)
 	}
