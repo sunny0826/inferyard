@@ -109,8 +109,8 @@ func field(c *ui.Context, label string, value *string) {
 func (w *viewState) prepare(c *ui.Context) {
 	if w.ready.CLI.Status != "ok" {
 		ui.Text(c, "安装 InferYard CLI").Bold().FontSize(22)
-		ui.Text(c, "CLI 尚未安装或路径未配置。主窗口仍可查看设备页。")
-		ui.Text(c, "按 CLI 安装指南安装，然后在 Settings 指定 inferyard 路径。")
+		ui.Text(c, "CLI 尚未安装或路径未配置。")
+		ui.Text(c, "按 CLI 安装指南安装，然后在设置里指定 inferyard 路径。")
 		ui.Link(c, "打开安装指南", "https://github.com/Sunny0826/inferyard/blob/main/cli/docs/installation.md")
 		if ui.Button(c, "打开设置").Clicked() {
 			w.openMain("/settings")

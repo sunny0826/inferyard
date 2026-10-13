@@ -81,20 +81,34 @@ func main() {
 		desktop.Subscribe(ctx, app.Core.Bus, *headless, func(message desktop.Message) error {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
 		}, log.Printf)
-		win := mygo.NewWindow(mygo.WindowOptions{Title: "InferYard Studio", Width: 960, Height: 640})
-		guide.SetMain(win)
-		guide.OpenIfNeeded()
-		win.Page().OnDidFinishLoad(func() {
-			log.Print("desktop page loaded from local HTTP")
-			if *evidence != "" {
-				go recordDesktop(win, *evidence)
+		createMain := func(route string) {
+			target := url
+			if route != "" {
+				target += "#" + route
 			}
-		})
-		win.Page().OnDidFailLoad(func(err *mygo.LoadError) { log.Print("desktop load failed") })
-		if err := win.Page().LoadURL(url); err != nil {
-			log.Print("desktop navigation failed")
-			mygo.App.Quit()
+			win := mygo.NewWindow(mygo.WindowOptions{Title: "InferYard Studio", Width: 960, Height: 640})
+			guide.SetMain(win)
+			win.Page().OnDidFinishLoad(func() {
+				log.Print("desktop page loaded from local HTTP")
+				if *evidence != "" {
+					go recordDesktop(win, *evidence)
+				}
+			})
+			win.Page().OnDidFailLoad(func(err *mygo.LoadError) { log.Print("desktop load failed") })
+			if err := win.Page().LoadURL(target); err != nil {
+				log.Print("desktop navigation failed")
+				mygo.App.Quit()
+			}
 		}
+		guide.SetMainFactory(createMain)
+		if app.Core.NeedsOnboarding() {
+			// First run: the wizard is the only window; the main window is
+			// created on demand when the user asks for it.
+			guide.Open()
+			return
+		}
+		createMain("")
+		guide.OpenIfNeeded()
 	})
 	go func() { <-ctx.Done(); mygo.App.Quit() }()
 	if err := mygo.App.Run(); err != nil {

@@ -4,6 +4,7 @@ package wizard
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"path/filepath"
 	"strings"
@@ -16,17 +17,29 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
+// Capture returns a screenshot of the wizard window, for verification runs.
+func (m *Manager) Capture() ([]byte, error) {
+	m.mu.Lock()
+	win := m.window
+	m.mu.Unlock()
+	if win == nil {
+		return nil, fmt.Errorf("wizard window not open")
+	}
+	return win.CapturePage()
+}
+
 type WizardBridge struct{ manager *Manager }
 
 func NewBridge(m *Manager) *WizardBridge { return &WizardBridge{manager: m} }
 func (b *WizardBridge) Open()            { b.manager.Open() }
 
 type Manager struct {
-	ctx     context.Context
-	service *core.Service
-	main    *mygo.Window
-	mu      sync.Mutex
-	window  *mygo.Window
+	ctx         context.Context
+	service     *core.Service
+	main        *mygo.Window
+	mainFactory func(route string)
+	mu          sync.Mutex
+	window      *mygo.Window
 }
 
 func New(ctx context.Context, s *core.Service) *Manager {
@@ -40,6 +53,15 @@ func (m *Manager) SetMain(main *mygo.Window) {
 	defer m.mu.Unlock()
 	m.main = main
 }
+
+// SetMainFactory records how to (re)create the main web window at a route. The
+// wizard is the only window during onboarding; the main window is created on
+// demand when the user asks for it and after the wizard closes.
+func (m *Manager) SetMainFactory(fn func(route string)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.mainFactory = fn
+}
 func (m *Manager) OpenIfNeeded() {
 	go func() {
 		r := m.service.Readiness()
@@ -50,8 +72,9 @@ func (m *Manager) OpenIfNeeded() {
 	}()
 }
 func (m *Manager) Open() {
-	// Update dispatches even when called from a binding/background goroutine.
-	m.main.Update(func() {
+	// RunOnMain works with or without an existing main window; the wizard can
+	// be the app's only window during onboarding.
+	mygo.RunOnMain(func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 		if m.window != nil {
@@ -59,14 +82,22 @@ func (m *Manager) Open() {
 			return
 		}
 		ctx, cancel := context.WithCancel(m.ctx)
-		w := &viewState{ctx: ctx, service: m.service, endpoint: "http://127.0.0.1:48857", openMain: func(route string) {
-			m.main.Focus()
-			_, _ = m.main.Page().Eval("location.hash = '" + route + "'")
-		}}
+		w := &viewState{ctx: ctx, service: m.service, endpoint: "http://127.0.0.1:48857", openMain: m.openMain}
 		win := mygo.NewWindow(mygo.WindowOptions{Title: "InferYard · 首次上手", Width: 1000, Height: 740, Content: ui.View(w.view)})
 		w.win = win
 		m.window = win
-		win.OnClosed(func() { cancel(); m.mu.Lock(); m.window = nil; m.mu.Unlock() })
+		win.OnClosed(func() {
+			cancel()
+			m.mu.Lock()
+			m.window = nil
+			main, factory := m.main, m.mainFactory
+			m.mu.Unlock()
+			// Keep one window alive: recreate the main window when the wizard
+			// was the only one.
+			if (main == nil || main.IsDestroyed()) && factory != nil {
+				factory("")
+			}
+		})
 		wake, off, _ := m.service.Bus.Subscribe()
 		go func() {
 			defer off()
@@ -81,6 +112,26 @@ func (m *Manager) Open() {
 			}
 		}()
 	})
+}
+
+// openMain focuses the main window and navigates it to a hash route, creating
+// it first when it does not exist yet (onboarding startup or user-closed).
+func (m *Manager) openMain(route string) {
+	m.mu.Lock()
+	main, factory := m.main, m.mainFactory
+	m.mu.Unlock()
+	if main == nil || main.IsDestroyed() {
+		if factory == nil {
+			log.Printf("wizard: main window unavailable and no factory installed")
+			return
+		}
+		factory(route)
+		return
+	}
+	main.Focus()
+	if _, err := main.Page().Eval("location.hash = '" + route + "'"); err != nil {
+		log.Printf("wizard: main window navigation to %s failed: %v", route, err)
+	}
 }
 
 type viewState struct {
