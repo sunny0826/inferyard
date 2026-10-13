@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.0.3
+
+### Added
+
+- A new read-only `progress --workspace DIR` command emits a `progress.v1`
+  onboarding snapshot (exit 0/2 only): which first-run steps are done for a
+  workspace — configuration, bound engine and model, runs and reports — so a
+  desktop wizard or operator script can resume setup without parsing
+  preparation directories. It never starts services or sends model requests.
+- `config create --workspace DIR` derives preflight, results and bundle paths
+  from the workspace layout instead of requiring each path explicitly;
+  explicit arguments keep precedence and legacy behavior is unchanged.
+- `init` now extends the exported workspace layout with `preflight/`,
+  `candidates/`, `bound/` and `reports/` directories plus a roadmap README
+  that substitutes `{{WORKSPACE}}` at export time.
+- The repository now ships InferYard Studio (`studio/`), a Go desktop panel
+  with a native first-run wizard driving the CLI onboarding chain (workspace
+  readiness and provisioning, one-tap CLI installation, built-in test model
+  and engine assets, acquire, device-check, candidate, bind, run and
+  report/verify steps). Studio is a separate module and is not part of the
+  Python package.
+
+### Changed
+
+- The repository is now a monorepo: the Python CLI moved under `cli/`,
+  alongside `studio/` and `observer/`; CI workflows and documentation paths
+  follow the new layout. The distributed package name, entry points and the
+  active data contract (`schema_version = 3`) are unchanged.
+- `config create` now allows a bounded 30-second default for the engine
+  version query: macOS exec-time validation of freshly extracted
+  ad-hoc-signed binaries and their dylib chain can stall past the previous
+  fixed 10-second budget (observed ~12s during onboarding acceptance,
+  matching the known e2e first-exec behavior). The frozen runtime-prepare
+  profile keeps its 10-second budget, and failures still map to
+  `engine_version_query_failed`.
+
 ## 0.0.2
 
 ### Added

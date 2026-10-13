@@ -18,7 +18,7 @@ from scripts.release_common import (
 )
 
 COMMIT = "a" * 40
-VERSION = "0.0.2"
+VERSION = "0.0.3"
 
 
 def build_fixture(root):
@@ -27,7 +27,7 @@ def build_fixture(root):
     root.mkdir(exist_ok=True)
     project_text = """[project]
 name = "inferyard"
-version = "0.0.2"
+version = "0.0.3"
 requires-python = "==3.14.*"
 dependencies = []
 license = "MIT"
@@ -36,7 +36,7 @@ license-files = ["LICENSE"]
 inferyard = "inferyard.cli:main"
 [project.urls]
 """ + "\n".join(f'{k} = "{v}"' for k, v in URLS.items())
-    lock_text = '[[package]]\nname = "inferyard"\nversion = "0.0.2"\ndependencies = []\n'
+    lock_text = '[[package]]\nname = "inferyard"\nversion = "0.0.3"\ndependencies = []\n'
     project = tomllib.loads(project_text)["project"]
     lock = tomllib.loads(lock_text)
     license_raw = b"Synthetic license bytes for tests only, not a license grant.\n"
@@ -45,7 +45,7 @@ inferyard = "inferyard.cli:main"
         "License-Expression: MIT\nLicense-File: LICENSE\n"
         + "".join(f"Project-URL: {k}, {v}\n" for k, v in URLS.items())
     ).encode()
-    init = b'__version__ = "0.0.2"\n'
+    init = b'__version__ = "0.0.3"\n'
     template = b"synthetic current template"
     resources = {"__init__.py": sha(init), "templates/report.html": sha(template)}
     wheel = io.BytesIO()
