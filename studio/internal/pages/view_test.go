@@ -138,7 +138,7 @@ func TestDetailTableAndResourcesRender(t *testing.T) {
 	s.detailID = "fixture"
 	s.detail = &core.RunTaskDetail{Task: core.RunTask{TaskId: "fixture", Kind: "resume", State: "done", Exit: &core.RunExit{ExitCode: 3}}, Progress: &core.RunProgress{Done: 1, Total: ptr(int64(2)), Phase: ptr("formal"), Cases: []core.CaseProgress{{CaseId: "case-pelican", State: "failed", ErrorCategory: ptr("fixture-failure")}}}, Resources: []core.ResourceSample{{Utc: "2026-10-13T06:00:00Z", MemAvailableBytes: ptr(int64(1073741824)), ServiceCpuPercent: ptr(12.5)}}}
 	tt := ui.NewTester(s.view, 1120, 1800)
-	for _, want := range []string{"运行不完整 · done · partial", "1 / 2", "分母为冻结续测子集", "case-pelican", "fixture-failure", "采样点：1", "1073741824", "缺测"} {
+	for _, want := range []string{"运行不完整", "原始状态：done", "1 / 2", "分母为冻结续测子集", "case-pelican", "fixture-failure", "采样点：1", "1073741824", "缺测"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}

@@ -34,13 +34,14 @@ func (s *viewState) wizardView(c *ui.Context) {
 	card(c, "工作区进度", func() {
 		step := s.step()
 		for i, label := range []string{"准备", "设备检查", "候选", "启动与绑定", "运行", "报告核验"} {
-			mark := "○"
-			if i < step {
-				mark = "✓"
-			} else if i == step {
-				mark = "●"
+			switch {
+			case i < step:
+				ui.Text(c, "✓  "+label).TextColor(c.Theme().Success)
+			case i == step:
+				ui.Badge(c, label).TextColor(c.Theme().Accent)
+			default:
+				ui.Text(c, label).TextColor(c.Theme().TextMuted)
 			}
-			ui.Text(c, mark+"  "+label)
 		}
 		ui.Progress(c, float64(step)/6)
 		if s.progress != nil {

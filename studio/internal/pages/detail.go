@@ -24,6 +24,7 @@ func (s *viewState) detailView(c *ui.Context) {
 	t := d.Task
 	card(c, text(t.Bundle)+" · "+t.TaskId, func() {
 		ui.Badge(c, taskLabel(t))
+		ui.Text(c, "原始状态："+t.State).TextColor(c.Theme().TextMuted).Selectable()
 		ui.Text(c, "运行目录："+text(t.RunPath)).Selectable()
 		ui.Text(c, "任务类型："+t.Kind+" · 运行 ID："+text(t.RunId))
 		errorView(c, t.Error)

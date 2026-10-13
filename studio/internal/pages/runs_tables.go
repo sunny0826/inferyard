@@ -29,7 +29,14 @@ func (s *viewState) tasksView(c *ui.Context) {
 	c.Key("tasks-table")
 	table := ui.Table(c, &s.tasksTable, []ui.TableColumn{{Title: "题包", Width: 200}, {Title: "状态", Width: 300}, {Title: "类型", Width: 100}}, len(s.tasks), func(row, col int) {
 		task := s.tasks[row]
-		ui.Text(c, []string{text(task.Bundle), taskLabel(task), task.Kind}[col])
+		switch col {
+		case 0:
+			ui.Text(c, text(task.Bundle))
+		case 1:
+			ui.Badge(c, taskLabel(task))
+		case 2:
+			ui.Text(c, task.Kind)
+		}
 	}).Height(200)
 	submitted := table.Submitted()
 	index := selectedRow(&s.tasksTable, len(s.tasks))

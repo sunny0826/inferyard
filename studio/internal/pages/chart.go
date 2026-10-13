@@ -84,7 +84,8 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 			value := low + (high-low)*float64(i)/4
 			ticks = append(ticks, chart.Tick{At: x.At(value), Label: time.Unix(int64(value), 0).UTC().Format("15:04:05")})
 		}
-		colors := []ui.Color{ui.Hex("#8bbfff"), ui.Hex("#b8a2ff"), ui.Hex("#f0c479"), ui.Hex("#ed96a3")}
+		theme := c.Theme()
+		colors := []ui.Color{theme.Accent, theme.Success, theme.Warning, theme.Danger}
 		scales := []chart.Linear{memory, memory, cpu, temperature}
 		xs := make([]float32, len(points))
 		for i, p := range points {
