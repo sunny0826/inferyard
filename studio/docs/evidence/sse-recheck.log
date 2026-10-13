@@ -1,0 +1,20 @@
+: connected
+
+event: count
+id: 23
+data: 23
+
+event: count
+id: 24
+data: 24
+
+event: count
+id: 25
+data: 25
+
+event: count
+id: 26
+data: 26
+
+curl: (28) Operation timed out after 7027 milliseconds with 133 bytes received
+curl SSE exit=28 (28 expected: bounded live stream)

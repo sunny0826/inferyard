@@ -1,0 +1,13 @@
+import { z } from 'zod';
+import { errorSchema } from './schema';
+import type { ReportSummary, DownloadTask, DownloadProgressEvent } from './types';
+export const outNameSchema = z.string().regex(/^(?!\.+$)[A-Za-z0-9._-]+$/);
+export const reportRequestSchema = z.object({ run_paths: z.array(z.string().min(1)).min(1).max(100).refine(paths => new Set(paths).size === paths.length) });
+export const downloadRequestSchema = z.object({ source_url: z.string().min(1), out_name: outNameSchema });
+export const reportSchema: z.ZodType<ReportSummary> = z.object({ report_id: z.string(), path: z.string(), created_at: z.string().nullable(), run_ids: z.array(z.string()), run_paths: z.array(z.string().nullable()), html_url: z.string() });
+export const reportListSchema = z.object({ reports_root: z.string().nullable(), reports: z.array(reportSchema) });
+export const reportResponseSchema = z.object({ report: reportSchema });
+export const downloadSchema: z.ZodType<DownloadTask> = z.object({ task_id: z.string(), state: z.enum(['downloading', 'done', 'failed', 'cancelled']), source_url: z.string(), out_name: z.string(), out_dir: z.string(), file_name: z.string().nullable(), downloaded_bytes: z.number().nonnegative(), bytes_per_second: z.number().nonnegative().nullable(), started_at: z.string(), finished_at: z.string().nullable(), result: z.object({ bytes: z.number(), sha256: z.string() }).nullable(), error: errorSchema.nullable() });
+export const downloadListSchema = z.object({ tasks: z.array(downloadSchema) });
+export const downloadResponseSchema = z.object({ task: downloadSchema });
+export const downloadProgressSchema: z.ZodType<DownloadProgressEvent> = z.object({ task_id: z.string(), downloaded_bytes: z.number().nonnegative(), bytes_per_second: z.number().nonnegative().nullable(), utc: z.string() });

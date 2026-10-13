@@ -1,0 +1,10 @@
+Evidence transcribed from implementer-A tool outputs before concurrent log replacement.
+2026/10/12 17:13:56 STUDIO_URL=http://127.0.0.1:62938/?token=<redacted>
+2026/10/12 17:13:58 SSE connected user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+2026/10/12 17:13:58 desktop page loaded from local HTTP
+2026/10/12 17:14:01 desktop DOM sample=1 count=2 error=<nil>
+2026/10/12 17:14:04 desktop DOM sample=2 count=4 error=<nil>
+2026/10/12 17:14:04 desktop screenshot error=<nil>
+2026/10/12 17:14:57 SSE connected user_agent="curl/8.7.1"
+2026/10/12 17:14:58 SSE connected user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36"
+desktop process exit=0 (SIGINT after verification)

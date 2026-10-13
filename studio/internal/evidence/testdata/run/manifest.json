@@ -1,0 +1,23 @@
+{
+  "schema_version": 3,
+  "evidence_layout_version": 2,
+  "run_id": "fixture-run",
+  "sealed": true,
+  "files": {
+    "inputs.json": {
+      "sha256": "3609d7508f6c774168d2be924b70a20df9793cdd4d8a5e33082fc835f644ad40",
+      "bytes": 862,
+      "derived": false
+    },
+    "events.jsonl": {
+      "sha256": "eca7c7882112aca96521cc1b3805d946952f85f9a27c95953bfbe2db7f6ec830",
+      "bytes": 606,
+      "derived": false
+    },
+    "memory.jsonl": {
+      "sha256": "f74cfa2bf9a82471973667e9491b2059a7cf1bfdb54e254e1443373d71770718",
+      "bytes": 866,
+      "derived": false
+    }
+  }
+}
