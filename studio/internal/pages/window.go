@@ -98,6 +98,8 @@ type viewState struct {
 	denied                                                                                                    map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                                      string
 	reportSelection                                                                                           map[string]bool
+	tasksTable, historyTable, reportsTable, downloadsTable, reportSources                                     ui.ListState
+	reportChoices                                                                                             ui.Selection[string]
 	scrolls                                                                                                   map[string]*ui.ScrollState
 	casesTable, samplesTable                                                                                  ui.ListState
 	chartIndex                                                                                                int

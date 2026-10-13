@@ -2,7 +2,6 @@ package pages
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"path/filepath"
@@ -49,34 +48,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 			s.fetchEngine()
 		}
 	})
-	card(c, "下载队列", func() {
-		ui.Text(c, "1 MiB = 1,048,576 bytes；速率为 bytes/s，总量未知。")
-		if len(s.downloads) == 0 {
-			ui.Text(c, "暂无下载任务。")
-		}
-		for _, task := range s.downloads {
-			ui.Column(c).Gap(6).Key(task.TaskId).Children(func() {
-				ui.Text(c, task.OutName+" · "+stateLabel(task.State)).Bold()
-				ui.Text(c, "输出目录："+task.OutDir).Selectable()
-				ui.Text(c, "文件："+text(task.FileName))
-				ui.Text(c, fmt.Sprintf("已下载 %.2f MiB（%d bytes） · 速率 %s bytes/s", float64(task.DownloadedBytes)/1048576, task.DownloadedBytes, number(task.BytesPerSecond)))
-				if task.Result != nil {
-					ui.Text(c, fmt.Sprintf("实测大小：%d bytes · SHA-256：%s", task.Result.Bytes, task.Result.Sha256)).Selectable()
-				}
-				errorView(c, task.Error)
-				if task.State == "failed" || task.State == "cancelled" {
-					ui.Text(c, "输出目录保留；再次下载请更换目录名。")
-				}
-				if task.State == "downloading" && ui.Button(c, "取消下载 "+task.OutName).Disabled(s.busy).Clicked() {
-					id := task.TaskId
-					s.work(func() (string, *core.ApiError) {
-						_, e := s.service.CancelDownload(id)
-						return "已请求取消下载。", e
-					})
-				}
-			})
-		}
-	})
+	card(c, "下载队列", func() { s.downloadsView(c) })
 }
 func (s *viewState) acquireModel() {
 	source, name, env := s.modelURL, s.modelName, s.tokenEnv

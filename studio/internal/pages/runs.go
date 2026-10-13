@@ -86,54 +86,10 @@ func (s *viewState) runsView(c *ui.Context) {
 	if s.resumeSource != nil {
 		s.resumeView(c)
 	}
-	card(c, "任务队列", func() {
-		if len(s.tasks) == 0 {
-			ui.Text(c, "暂无任务。")
-		}
-		grouped := map[string]bool{}
-		for i, group := range s.groups {
-			ui.Text(c, fmt.Sprintf("启动组 %d · %d 个任务", i+1, len(group))).Bold()
-			for _, id := range group {
-				grouped[id] = true
-				found := false
-				for _, task := range s.tasks {
-					if task.TaskId == id {
-						s.taskRow(c, task)
-						found = true
-						break
-					}
-				}
-				if !found {
-					ui.Text(c, id+" · 任务已不在内存表中")
-				}
-			}
-		}
-		for _, task := range s.tasks {
-			if !grouped[task.TaskId] {
-				s.taskRow(c, task)
-			}
-		}
-	})
-	card(c, "运行历史", func() {
-		ui.Text(c, "结果目录："+text(s.history.ResultsRoot))
-		ui.Text(c, "扫描时间："+s.history.ScannedAt)
-		if len(s.history.Batches) == 0 && len(s.history.StandaloneRuns) == 0 {
-			ui.Text(c, "暂无运行记录。")
-		}
-		for _, batch := range s.history.Batches {
-			ui.Text(c, "批次 "+batch.BatchId+" · "+aggregateStatus(batch.Runs)).Bold()
-			ui.Text(c, batch.Path).Selectable()
-			for _, run := range batch.Runs {
-				s.historyRow(c, run)
-			}
-		}
-		if len(s.history.StandaloneRuns) > 0 {
-			ui.Text(c, "独立运行").Bold()
-			for _, run := range s.history.StandaloneRuns {
-				s.historyRow(c, run)
-			}
-		}
-	})
+	c.Key("tasks-card")
+	card(c, "任务队列", func() { s.tasksView(c) })
+	c.Key("history-card")
+	card(c, "运行历史", func() { s.historyView(c) })
 }
 
 // boundOption maps a bound bundle to the frozen config written by `config bind`.
@@ -187,31 +143,15 @@ func aggregateStatus(runs []core.RunSummary) string {
 	}
 	return stateLabel(state)
 }
-func (s *viewState) taskRow(c *ui.Context, t core.RunTask) {
-	ui.Row(c).Key(t.TaskId).Gap(12).Children(func() {
-		ui.Text(c, text(t.Bundle)+" · "+taskLabel(t)).Grow(1)
-		if ui.Button(c, "查看任务 "+t.TaskId).Clicked() {
-			s.selectTask(t.TaskId)
-		}
-	})
-}
 func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 	ui.Column(c).Key(r.Path).Gap(6).Padding(10).Children(func() {
 		ui.Text(c, r.RunId+" · "+stateLabel(r.Status)).Bold()
 		ui.Text(c, text(r.ModelName)+" · "+text(r.Bundle)+" · "+text(r.Engine))
 		ui.Text(c, r.Path).Selectable()
 		ui.Text(c, fmt.Sprintf("封存：%t · 完整度：%s · 停止原因：%s", r.Sealed, text(r.Completeness), text(r.StopReason)))
-		score := "证据不足"
-		if r.Score != nil {
-			rate := "无有效题"
-			if r.Score.Rate != nil {
-				rate = fmt.Sprintf("%.1f%%", *r.Score.Rate*100)
-			}
-			score = fmt.Sprintf("%d/%d · %s", r.Score.Passed, r.Score.Valid, rate)
-		}
-		ui.Text(c, "得分："+score)
+		ui.Text(c, "得分："+runScore(r))
 		ui.Text(c, "关系："+text(r.Relation)+" · 来源："+text(r.ParentRunId)+" · 开始："+text(r.StartedAt)+" · 结束："+text(r.FinishedAt))
-		if ui.Button(c, "续测 "+r.RunId).Disabled(s.busy || r.BatchId == nil || !r.Resumable || s.denied[r.Path]).Clicked() {
+		if ui.Button(c, "续测").Disabled(s.busy || r.BatchId == nil || !r.Resumable || s.denied[r.Path]).Clicked() {
 			source := r
 			s.resumeSource = &source
 			s.endpoint = ""
@@ -223,7 +163,7 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 			ui.Text(c, "当前来源不可续测（not_resumable）。")
 		}
 		for _, task := range s.tasks {
-			if emptyText(task.RunPath) == r.Path && ui.Button(c, "实时详情 "+task.TaskId).Clicked() {
+			if emptyText(task.RunPath) == r.Path && ui.Button(c, "实时详情").Clicked() {
 				s.selectTask(task.TaskId)
 			}
 		}
