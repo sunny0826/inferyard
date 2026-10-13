@@ -13,6 +13,7 @@
 | [报告](reports.md) · [引擎诊断](engine-fit-common.md) | 离线阅读与同机 engine-fit |
 | [流程图](show-me-system-flow.html) | 安装、准备、执行与离线证据通路 |
 | [inferyard-observer](../observer/README.md) | 独立进程监测器 |
+| [InferYard Studio](../studio/README.md) | 本地 benchmark 桌面/Web 双端面板 |
 
 ## 修改项目
 

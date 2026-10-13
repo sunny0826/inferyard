@@ -13,7 +13,7 @@ The product is a Python CLI plus a self-contained offline HTML report. The packa
 
 ## Source boundaries
 
-| Directory (under `src/inferyard/`) | Responsibility |
+| Directory (under `src/inferyard/` unless noted) | Responsibility |
 | --- | --- |
 | `cli/`, `application/` | Arguments, request construction, output, error mapping; shared types and lazy dispatch |
 | `contracts/`, `config/` | Structural and semantic validation; configuration, bundles, frozen plans and declaration binding |
@@ -22,6 +22,7 @@ The product is a Python CLI plus a self-contained offline HTML report. The packa
 | `analysis/`, `reporting/` | Scoring, metrics, comparison, rescoring, reports and exports |
 | `platforms/`, `extensions/` | Device and process sampling; the standalone extension protocol |
 | `data/`, `templates/` | Catalogue data and report templates shipped with the package |
+| 仓库根目录下的 `studio/` | Go 后端 + `web/` 前端，独立 module `inferyard/studio` |
 
 Business modules do not depend on the CLI; application request/result types live only in `application/types.py`. Help, version and schema queries must not load the live backend; installed resources are read from the package, not from the source checkout.
 Modify active source code, not the historical snapshots in the local `validation/` directory. Follow the Ruff configuration (Python 3.14, 100 columns); keep code files under ~500 lines and split new responsibilities into separate modules.
@@ -41,6 +42,19 @@ rtk proxy mise exec -- uv --version
 See the [contributing guide](CONTRIBUTING.md#changes-and-verification) for source installation, tests, Ruff and export commands; agents wrap them with RTK.
 Use `--frozen` for normal syncs; dependency changes require a stated reason and a lockfile update, and `--offline` only when the cache is complete.
 Pure docs do not require an installed environment or the full test suite; behavior changes run the relevant regressions first, and integration checks scale with the impact.
+
+Studio 检查在仓库的 `studio/` 目录内执行；以下环境变量仅作用于对应命令：
+`GOTOOLCHAIN` 固定 Go 版本，`GOPROXY` 指定模块代理，`CGO_ENABLED=0` 禁用 CGO。
+前端依赖准备与构建说明见 [Studio README](studio/README.md)。
+
+```bash
+rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
+rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
+rtk proxy mise exec -- bun run build:web
+rtk proxy mise exec -- bun web/tests/verify.mjs
+```
+
+`build:web` 包含 TypeScript/Svelte 检查和前端构建；`bun web/tests/verify.mjs` 执行前端模拟验收。
 
 ## Documentation and contracts
 

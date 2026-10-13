@@ -467,3 +467,8 @@ T1 API 契约 (writer) ─草案先行──┼─ T3 前端骨架+Device/Settin
   npm/bun 用 `https://registry.npmmirror.com`；镜像取不到的用本机代理 `127.0.0.1:7897`。
   均以命令级环境变量或项目级配置使用，不写用户全局配置。
 - 报告要求：每个任务回传改动清单、实际运行的检查与退出状态、未验证项。
+
+
+### 2026-10-13 状态说明
+
+经与用户确认，Studio 作为独立子项目并入本仓库 `studio/` 目录（Go module `inferyard/studio`）；GitHub 独立仓库 `sunny0826/inferyard-studio` 将在验证通过后删除。文档其余内容保留为历史记录。

@@ -80,6 +80,10 @@ inferyard verify --path bench-work/report
 见[使用指南](docs/usage.md#工作区与交付目录组织)。
 现有合法 schema-3 快照运行保持只读支持，见[运行原件容器契约](docs/contracts/run-evidence-layout.md)。
 
+## InferYard Studio
+
+[InferYard Studio](studio/README.md) 是基于 MyGo + Go + Svelte 的本地 benchmark 桌面/Web 双端面板。
+
 ## 继续阅读
 
 [使用指南](docs/usage.md) · [CLI 参考](docs/cli-surface.md) ·

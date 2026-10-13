@@ -111,6 +111,11 @@ directory; see the
 Existing schema-3 snapshot runs remain
 readable; see the [evidence layout contract](docs/contracts/run-evidence-layout.md).
 
+## InferYard Studio
+
+[InferYard Studio](studio/README.md) is a desktop/Web dashboard for local benchmarks,
+built with MyGo, Go and Svelte.
+
 ## Read more
 
 [Usage guide](docs/usage.md) · [CLI reference](docs/cli-surface.md) ·
