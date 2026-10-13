@@ -138,6 +138,7 @@ type viewState struct {
 	message                                                           string
 	failure                                                           string
 	initDir, engine, modelURL, engineURL, tokenEnv, process, endpoint string
+	enginePreset                                                      bool
 	binding                                                           bool
 	candidate                                                         string
 	installStatus                                                     string
@@ -223,6 +224,17 @@ func (w *viewState) refresh() {
 		}
 		if w.initDir == "" {
 			w.initDir = suggestInitDir(text(r.Workspace.Path), r.Workspace.Exists, r.Workspace.Initialized)
+		}
+		// Preset the engine path once from an already-fetched engine so the
+		// device and candidate steps never start with a blank field; a later
+		// manual edit or a fresh fetch still wins.
+		if w.engine == "" && !w.enginePreset {
+			w.enginePreset = true
+			workspace := ""
+			if w.progress != nil {
+				workspace = w.progress.Workspace
+			}
+			w.engine = core.FindEngineBinary(core.EngineRoots(workspace)...)
 		}
 		if candidate != w.candidate {
 			w.binding = false

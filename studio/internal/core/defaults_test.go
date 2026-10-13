@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func engineTarGz(t *testing.T, entries map[string]string) []byte {
@@ -211,3 +212,56 @@ func TestFetchEngineOutputExists(t *testing.T) {
 	}
 }
 
+
+func writeEngineBinary(t *testing.T, dir string, mode os.FileMode, modTime time.Time) string {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "llama-server")
+	if err := os.WriteFile(path, []byte("bin"), mode); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, modTime, modTime); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestFindEngineBinaryPicksNewest(t *testing.T) {
+	root := t.TempDir()
+	old := writeEngineBinary(t, filepath.Join(root, "engine-1", "inner"), 0o755, time.Unix(1000, 0))
+	_ = old
+	newest := writeEngineBinary(t, filepath.Join(root, "engine-2", "inner"), 0o755, time.Unix(2000, 0))
+	// Not executable: ignored.
+	writeEngineBinary(t, filepath.Join(root, "engine-3"), 0o644, time.Unix(3000, 0))
+	if got := FindEngineBinary(root, filepath.Join(root, "missing")); got != newest {
+		t.Fatalf("got %q, want %q", got, newest)
+	}
+}
+
+func TestFindEngineBinarySkipsDeepTrees(t *testing.T) {
+	root := t.TempDir()
+	deep := filepath.Join(root, "a", "b", "c", "d", "e", "f")
+	writeEngineBinary(t, deep, 0o755, time.Unix(1000, 0))
+	if got := FindEngineBinary(root); got != "" {
+		t.Fatalf("deep binary must be ignored, got %q", got)
+	}
+	if got := FindEngineBinary(filepath.Join(root, "missing")); got != "" {
+		t.Fatalf("missing root must yield %q, got %q", "", got)
+	}
+}
+
+func TestEngineRootsOrder(t *testing.T) {
+	roots := EngineRoots("/tmp/ws")
+	if len(roots) != 2 || roots[0] != "/tmp/ws/engines" {
+		t.Fatalf("%v", roots)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || roots[1] != filepath.Join(home, ".inferyard", "engine") {
+		t.Fatalf("%v %v", roots, err)
+	}
+	if roots := EngineRoots(""); len(roots) != 1 {
+		t.Fatalf("empty workspace must drop the workspace root: %v", roots)
+	}
+}
