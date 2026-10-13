@@ -18,7 +18,7 @@ CPU 按单核百分比展示，多线程可超过 100%；首条需要建立基�
 
 ## 构建与离线读取
 
-仓库开发环境由 mise 固定 Go 1.27.1、Python 3.14.7、uv 0.12.18。先按[贡献指南](../CONTRIBUTING.md)准备环境，再运行：
+仓库开发环境由 mise 固定 Go 1.27.2、Python 3.14.7、uv 0.12.18。先按[贡献指南](../CONTRIBUTING.md)准备环境，再运行：
 
 ```bash
 mise which go

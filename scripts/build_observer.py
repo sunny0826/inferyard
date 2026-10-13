@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-GO_VERSION = "1.27.1"
+GO_VERSION = "1.27.2"
 TOOL_VERSION = "0.2.0"
 TARGETS = tuple(
     f"{os_name}/{arch}" for os_name in ("darwin", "linux", "windows") for arch in ("arm64", "amd64")
