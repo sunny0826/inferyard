@@ -9,6 +9,9 @@ import (
 )
 
 func TestViews(t *testing.T) {
+	version := core.Version
+	core.Version = "0.0.2"
+	t.Cleanup(func() { core.Version = version })
 	total := int64(120)
 	cases := []struct {
 		name  string
@@ -31,6 +34,14 @@ func TestViews(t *testing.T) {
 			for _, label := range []string{"准备", "设备检查", "候选", "启动与绑定", "运行", "报告核验"} {
 				if !tt.HasText(label) {
 					t.Fatalf("missing rail %s", label)
+				}
+			}
+			if tc.name == "CLI unavailable" {
+				if !tt.HasText("自动安装 CLI 0.0.2") {
+					t.Fatalf("missing auto-install action: %v", tt.Texts())
+				}
+				if !tt.HasText("手动指定路径") {
+					t.Fatal("missing manual path action")
 				}
 			}
 			if tc.name == "external service" {

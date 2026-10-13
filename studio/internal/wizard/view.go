@@ -109,10 +109,14 @@ func field(c *ui.Context, label string, value *string) {
 func (w *viewState) prepare(c *ui.Context) {
 	if w.ready.CLI.Status != "ok" {
 		ui.Text(c, "安装 InferYard CLI").Bold().FontSize(22)
-		ui.Text(c, "CLI 尚未安装或路径未配置。")
-		ui.Text(c, "按 CLI 安装指南安装，然后在设置里指定 inferyard 路径。")
-		ui.Link(c, "打开安装指南", "https://github.com/Sunny0826/inferyard/blob/main/cli/docs/installation.md")
-		if ui.Button(c, "打开设置").Clicked() {
+		ui.Text(c, "CLI 尚未安装。自动安装经 uv 从 PyPI 安装，需要网络；未找到 uv 时会下载官方独立工具到 Studio 目录，不修改终端配置。")
+		if w.installStatus != "" {
+			ui.Text(c, w.installStatus)
+		}
+		if ui.PrimaryButton(c, "自动安装 CLI "+core.Version).Disabled(w.busy).Clicked() {
+			w.installCLI()
+		}
+		if ui.Button(c, "手动指定路径").Disabled(w.busy).Clicked() {
 			w.openMain("/settings")
 		}
 		return

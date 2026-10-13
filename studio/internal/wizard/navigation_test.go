@@ -13,7 +13,7 @@ func TestOpenMainUsesNativePageFactory(t *testing.T) {
 	m.SetMainFactory(func(value string) { page = value; calls++ })
 	w := viewState{loaded: true, openMain: m.openMain}
 	tt := ui.NewTester(w.view, 1000, 740)
-	if e := tt.Click("打开设置"); e != nil {
+	if e := tt.Click("手动指定路径"); e != nil {
 		t.Fatal(e)
 	}
 	if page != "settings" || calls != 1 {

@@ -140,6 +140,7 @@ type viewState struct {
 	initDir, engine, modelURL, engineURL, tokenEnv, process, endpoint string
 	binding                                                           bool
 	candidate                                                         string
+	installStatus                                                     string
 }
 
 func text(p *string) string {
@@ -272,6 +273,18 @@ func (w *viewState) work(fn func() (string, *core.ApiError)) {
 		w.refresh()
 	}()
 }
+func (w *viewState) installCLI() {
+	w.work(func() (string, *core.ApiError) {
+		path, e := w.service.InstallCLI(w.ctx, func(status string) {
+			w.win.Update(func() { w.installStatus = status })
+		})
+		if e != nil {
+			return "", e
+		}
+		return "CLI 安装完成：" + path, nil
+	})
+}
+
 func (w *viewState) execute(command string, report bool) {
 	w.work(func() (string, *core.ApiError) {
 		r, e := w.service.WizardExecute(w.ctx, core.WizardRequest{Command: command, ReportVerify: report})
@@ -347,6 +360,18 @@ func human(code string) string {
 		return "目录配置缺项，请先配置目录。"
 	case "cli_unavailable":
 		return "CLI 尚未就绪，请在主窗口设置路径。"
+	case "install_unsupported":
+		return "当前平台没有可用的自动安装包，请按安装指南手动安装。"
+	case "install_download_failed":
+		return "工具下载失败，请检查网络后重试。"
+	case "install_checksum_failed":
+		return "下载内容未通过校验，已中止安装，请重试。"
+	case "install_unpack_failed":
+		return "安装包解包失败，请重试或按安装指南手动安装。"
+	case "install_failed":
+		return "CLI 自动安装失败，可重试或改用「手动指定路径」。"
+	case "install_version_unknown":
+		return "无法确定要安装的 CLI 版本，请按安装指南手动安装。"
 	case "invalid_request":
 		return "输入不符合要求，请检查路径、URL 和环境变量名。"
 	default:

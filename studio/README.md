@@ -24,6 +24,13 @@ Reports from it creates the main window if needed and selects that page. Reopeni
 wizard restores progress from workspace evidence through `progress.v1`. A missing CLI or
 incomplete configuration does not prevent opening the UI.
 
+When no CLI is configured, the wizard offers one-tap installation: it reuses an existing
+`inferyard`/`uv` when found (including Homebrew locations outside the GUI PATH), downloads
+a pinned standalone `uv` into the Studio tools directory when none exists — verified
+against the release checksum, without touching shell configuration — and installs
+`inferyard` matching the Studio version from PyPI via `uv tool install`. Manual path
+configuration in Settings remains available.
+
 The wizard guides workspace initialization, model and engine preparation, device checks,
 service binding, evaluations, and report generation/verification. It shows frozen service
 arguments for copying; the operator starts the model service in their own terminal.
