@@ -457,3 +457,15 @@ bench-ops-svg，Linux 候选的 bundle 版本改为从题包文件读取。macOS
 （Metal）本机实跑全绿：SmolLM2-135M 得 1/40（小模型预期低分，验证的是
 评分链路而非模型质量），总耗时约 3 分钟。Windows/Linux 两条腿尚未以新
 流程实跑（CI 将覆盖 Windows；Linux 仍需本机 omarchy 复跑确认）。
+
+2026-10-13 首次上手引导落地（分支 feat/first-run-onboarding，commit 1ea41cd）：
+新增只读 `progress --workspace`（progress.v1，退出码仅 0/2）、`config create
+--workspace` 推导模式（显式参数优先，旧入口不变）、init 工作区新增
+preflight/candidates/bound/reports 目录与中文路线图 README（`{{WORKSPACE}}`
+导出替换）；Studio 新增工作区设置（默认 `~/.inferyard`）、readiness/provision
+软门槛、progress 适配层与首页向导。真实真机验收通过：SmolLM2-135M（e2e 同款）
+经 Studio 向导接口完整走 acquire → device-check → 双题包候选/绑定/运行 →
+report+verify，`default_scope_complete: true`，两 run 封存、报告 verified
+（zh-core 120 题约 3 分钟）。遗留：macOS 上引擎 `--version` 查询偶发 12 秒
+签名校验卡顿，超过固定 10 秒超时导致 `config create` 暂态失败（重试即过）；
+向导或文档宜提示预热/重试，是否放宽超时另行决策。
