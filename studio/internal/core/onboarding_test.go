@@ -88,7 +88,7 @@ func TestProgressUsesInjectedExecutor(t *testing.T) {
 		if len(args) != 3 || args[0] != "progress" || args[1] != "--workspace" {
 			t.Fatal(args)
 		}
-		return inferyard.Execution{ExitCode: 2}, nil
+		return inferyard.Execution{ExitCode: 2, Stdout: []byte("{\"command\": \"progress\", \"status\": \"blocked\"}")}, nil
 	})
 	result, err := s.Progress(context.Background())
 	if err != nil || result.Status != inferyard.Blocked || result.Progress != nil {

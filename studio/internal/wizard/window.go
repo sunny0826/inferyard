@@ -222,10 +222,7 @@ func (w *viewState) refresh() {
 			w.failure = human(e.Code)
 		}
 		if w.initDir == "" {
-			w.initDir = text(r.Workspace.Path)
-			if r.Workspace.Exists {
-				w.initDir = fresh(w.initDir, "workspace")
-			}
+			w.initDir = suggestInitDir(text(r.Workspace.Path), r.Workspace.Exists, r.Workspace.Initialized)
 		}
 		if candidate != w.candidate {
 			w.binding = false
@@ -273,6 +270,16 @@ func (w *viewState) work(fn func() (string, *core.ApiError)) {
 		w.refresh()
 	}()
 }
+// suggestInitDir proposes the init target. A fresh child is suggested only
+// for an existing directory that is not already an initialized workspace;
+// nesting workspaces is never the right next step.
+func suggestInitDir(path string, exists, initialized bool) string {
+	if exists && !initialized && path != "" {
+		return fresh(path, "workspace")
+	}
+	return path
+}
+
 func (w *viewState) installCLI() {
 	w.work(func() (string, *core.ApiError) {
 		path, e := w.service.InstallCLI(w.ctx, func(status string) {
@@ -391,6 +398,10 @@ func human(code string) string {
 		return "引擎归档解包失败，请检查来源后重试。"
 	case "engine_binary_missing":
 		return "引擎归档内未找到 llama-server，请检查引擎来源。"
+	case "cli_outdated":
+		return "CLI 版本过旧，缺少 progress 命令。请升级 CLI 后重试。"
+	case "cli_error":
+		return "CLI 执行失败，请检查主窗口诊断后重试。"
 	case "invalid_request":
 		return "输入不符合要求，请检查路径、URL 和环境变量名。"
 	default:

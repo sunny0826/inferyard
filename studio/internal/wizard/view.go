@@ -122,6 +122,13 @@ func (w *viewState) prepare(c *ui.Context) {
 		return
 	}
 	ui.Text(c, "初始化工作区").Bold().FontSize(22)
+	if w.ready.Workspace.Initialized {
+		ui.Text(c, "工作区已初始化："+text(w.ready.Workspace.Path)).TextColor(c.Theme().Success)
+		if w.progress == nil {
+			ui.Text(c, "无法读取工作区进度——CLI 版本过旧，缺少 progress 命令，请升级 CLI 后点「刷新进度」。").TextColor(c.Theme().Danger)
+		}
+		return
+	}
 	ui.Text(c, "初始化目标必须是新目录；成功后自动切换工作区。")
 	field(c, "新工作区目录", &w.initDir)
 	if ui.Button(c, "一键配置目录").Disabled(w.busy).Clicked() {
