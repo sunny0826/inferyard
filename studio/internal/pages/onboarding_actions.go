@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -44,8 +45,9 @@ func suggestInitDir(path string, exists, initialized bool) string {
 
 func (w *viewState) installCLI() {
 	w.guideWork(func() (string, *core.ApiError) {
+		defer w.win.Update(func() { w.cliInstallStatus = "" })
 		path, e := w.service.InstallCLI(w.ctx, func(status string) {
-			w.win.Update(func() { w.installStatus = status })
+			w.win.Update(func() { w.cliInstallStatus = status })
 		})
 		if e != nil {
 			return "", e
@@ -114,14 +116,57 @@ func (w *viewState) nextCommand() string {
 // managedBindCommand binds the Studio-managed engine: PID and endpoint come
 // from the supervised process, not from a manual process pick.
 func (w *viewState) managedBindCommand() string {
-	args := w.baseCommand()
-	if args == nil || w.engineState.State != "running" {
+	if w.engineState.State != "running" {
 		return ""
 	}
-	args = setArg(args, "--pid", strconv.FormatInt(w.engineState.Pid, 10))
-	args = setArg(args, "--endpoint", w.engineState.Endpoint)
+	return w.bindCommand(strconv.FormatInt(w.engineState.Pid, 10), w.engineState.Endpoint)
+}
+
+func (w *viewState) bindCommand(pid, endpoint string) string {
+	b := w.active()
+	if b == nil || w.progress == nil {
+		return ""
+	}
+	var args []string
+	if b.Phase == "bound_missing" {
+		var err error
+		args, err = inferyard.SplitCommand(emptyText(b.NextCommand))
+		if err != nil {
+			args = w.baseCommand()
+		}
+	} else {
+		out, err := newBoundOutput(w.progress.Workspace, b.Bundle)
+		if err != nil {
+			return ""
+		}
+		candidate := w.candidate
+		if st, err := os.Stat(candidate); err == nil && st.IsDir() {
+			candidate = filepath.Join(candidate, "candidate.toml")
+		}
+		args = []string{"config", "bind", "--candidate", candidate, "--out", out}
+	}
+	if len(args) < 2 || args[0] != "config" || args[1] != "bind" {
+		return ""
+	}
+	args = setArg(args, "--pid", pid)
+	args = setArg(args, "--endpoint", endpoint)
 	return commandOf(args)
 }
+
+func newBoundOutput(workspace, bundle string) (string, error) {
+	if !validName(bundle) {
+		return "", os.ErrInvalid
+	}
+	for n := 1; ; n++ {
+		path := filepath.Join(workspace, "bound", fmt.Sprintf("%s-%d", bundle, n))
+		if _, err := os.Lstat(path); os.IsNotExist(err) {
+			return path, nil
+		} else if err != nil {
+			return "", err
+		}
+	}
+}
+
 func (w *viewState) startEngine() {
 	candidate := w.candidate
 	w.guideWork(func() (string, *core.ApiError) {

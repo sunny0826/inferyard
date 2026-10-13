@@ -5,6 +5,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"math"
+	"strings"
 )
 
 func (w *viewState) candidateView(c *ui.Context) {
@@ -27,6 +28,9 @@ func (w *viewState) candidateView(c *ui.Context) {
 }
 func (w *viewState) serviceView(c *ui.Context) {
 	ui.Text(c, "启动模型服务并绑定").Bold().FontSize(22)
+	if w.bindingStale {
+		ui.Text(c, "旧绑定已失效，请重启服务并重新绑定").TextColor(c.Theme().Danger)
+	}
 	ui.Text(c, "Studio 启动冻结候选中的引擎并管理其生命周期；退出 Studio 时自动停止。绑定时 CLI 校验 PID、启动时间与实际参数。")
 	command := commandOf(append([]string{w.startup.Path}, w.startup.Args...))
 	// Engine commands have no inferyard prefix; the display is selectable, never editable.
@@ -54,7 +58,11 @@ func (w *viewState) serviceView(c *ui.Context) {
 		w.startEngine()
 	}
 	if w.engineState.State == "running" {
-		if ui.PrimaryButton(c, "绑定服务").Disabled(w.busy).Clicked() {
+		label := "绑定服务"
+		if b := w.active(); b != nil && b.BoundPath != nil {
+			label = "重新绑定"
+		}
+		if ui.PrimaryButton(c, label).Disabled(w.busy || w.running() != nil).Clicked() {
 			w.execute(w.managedBindCommand(), false)
 		}
 	}
@@ -70,8 +78,9 @@ func (w *viewState) serviceView(c *ui.Context) {
 	}
 	ui.Field(c, "已启动的本机进程", func() { ui.Select(c, &w.process, options) })
 	field(c, "endpoint", &w.bindEndpoint)
-	if ui.PrimaryButton(c, "绑定进程").Disabled(w.busy || w.process == "" || w.bindEndpoint == "").Clicked() {
-		w.execute(w.nextCommand(), false)
+	if ui.PrimaryButton(c, "绑定进程").Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
+		pid, _, _ := strings.Cut(w.process, " · ")
+		w.execute(w.bindCommand(pid, w.bindEndpoint), false)
 	}
 }
 func (w *viewState) runView(c *ui.Context) {

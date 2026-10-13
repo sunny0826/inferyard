@@ -81,6 +81,9 @@ func (s *Service) CreateDownload(req CreateDownloadRequest) (DownloadTask, *ApiE
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.closing {
+		return DownloadTask{}, Err("service_closing")
+	}
 	if _, e = os.Lstat(dir); !os.IsNotExist(e) {
 		if e != nil {
 			return DownloadTask{}, Err("internal_error")

@@ -15,8 +15,7 @@ import (
 var navigation = []struct{ id, label string }{{"wizard", "向导"}, {"device", "设备"}, {"models", "模型与下载"}, {"runs", "运行"}, {"reports", "报告"}, {"settings", "设置"}}
 
 type Window struct {
-	Win   *mygo.Window
-	state *viewState
+	Win *mygo.Window
 }
 
 func New(ctx context.Context, service *core.Service, page string, reports *Reports) *Window {
@@ -47,7 +46,7 @@ func New(ctx context.Context, service *core.Service, page string, reports *Repor
 			}
 		}
 	}()
-	return &Window{Win: w, state: s}
+	return &Window{Win: w}
 }
 func pageID(page string) string {
 	page = strings.TrimPrefix(page, "/")
@@ -58,64 +57,56 @@ func pageID(page string) string {
 	}
 	return "wizard"
 }
-func (w *Window) Navigate(page string) {
-	w.Win.Update(func() {
-		w.state.selected = pageID(page)
-		w.state.detailID = ""
-		w.state.detailMu.Lock()
-		w.state.requestedDetail = ""
-		w.state.detailMu.Unlock()
-	})
-	w.Win.Focus()
-	go w.state.refresh(true)
-}
 
 type viewState struct {
-	initDir, engine, process, bindEndpoint, candidate, installStatus, refreshFailure string
-	enginePreset, assetsPreset                                                       bool
-	engineState                                                                      core.EngineState
-	startup                                                                          core.Startup
-	processes                                                                        []core.ProcessCandidate
-	runProgress                                                                      *core.RunProgress
-	ctx                                                                              context.Context
-	service                                                                          *core.Service
-	win                                                                              *mygo.Window
-	reportWindows                                                                    *Reports
-	refreshMu                                                                        sync.Mutex
-	detailMu                                                                         sync.Mutex
-	requestedDetail                                                                  string
-	selected, detailID                                                               string
-	settings                                                                         core.SettingsResponse
-	ready                                                                            core.Readiness
-	progress                                                                         *inferyard.WorkspaceProgress
-	device                                                                           core.DeviceResponse
-	history                                                                          core.RunHistoryResponse
-	tasks                                                                            []core.RunTask
-	downloads                                                                        []core.DownloadTask
-	reports                                                                          []core.ReportSummary
-	detail                                                                           *core.RunTaskDetail
-	historyError, reportsError, progressError, detailError                           *core.ApiError
-	loaded, busy, settingsLoaded                                                     bool
-	message                                                                          string
-	failure                                                                          *core.ApiError
-	workspace, cliPath, results, models                                              string
-	firstBundle, secondBundle                                                        string
-	single, confirmed                                                                bool
-	groups                                                                           [][]string
-	resumeSource                                                                     *core.RunSummary
-	endpoint, pid                                                                    string
-	denied                                                                           map[string]bool
-	modelURL, modelName, tokenEnv, engineURL, engineName                             string
-	reportSelection                                                                  map[string]bool
-	scrolls                                                                          map[string]*ui.ScrollState
-	casesTable, samplesTable                                                         ui.ListState
-	chartIndex                                                                       int
+	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, engineDownloadStatus, refreshFailure string
+	enginePreset, assetsPreset                                                                                bool
+	engineState                                                                                               core.EngineState
+	startup                                                                                                   core.Startup
+	processes                                                                                                 []core.ProcessCandidate
+	runProgress                                                                                               *core.RunProgress
+	ctx                                                                                                       context.Context
+	service                                                                                                   *core.Service
+	win                                                                                                       *mygo.Window
+	reportWindows                                                                                             *Reports
+	refreshMu                                                                                                 sync.Mutex
+	detailMu                                                                                                  sync.Mutex
+	requestedDetail                                                                                           string
+	selected, detailID                                                                                        string
+	settings                                                                                                  core.SettingsResponse
+	ready                                                                                                     core.Readiness
+	progress                                                                                                  *inferyard.WorkspaceProgress
+	device                                                                                                    core.DeviceResponse
+	history                                                                                                   core.RunHistoryResponse
+	tasks                                                                                                     []core.RunTask
+	downloads                                                                                                 []core.DownloadTask
+	reports                                                                                                   []core.ReportSummary
+	detail                                                                                                    *core.RunTaskDetail
+	historyError, reportsError, detailError                                                                   *core.ApiError
+	loaded, busy, settingsLoaded                                                                              bool
+	message                                                                                                   string
+	failure                                                                                                   *core.ApiError
+	workspace, cliPath, results, models                                                                       string
+	manualFirst, manualSecond                                                                                 string
+	manualConfig                                                                                              bool
+	bindingStale                                                                                              bool
+	firstBundle, secondBundle                                                                                 string
+	single, confirmed                                                                                         bool
+	groups                                                                                                    [][]string
+	resumeSource                                                                                              *core.RunSummary
+	endpoint, pid                                                                                             string
+	denied                                                                                                    map[string]bool
+	modelURL, modelName, tokenEnv, engineURL, engineName                                                      string
+	reportSelection                                                                                           map[string]bool
+	scrolls                                                                                                   map[string]*ui.ScrollState
+	casesTable, samplesTable                                                                                  ui.ListState
+	chartIndex                                                                                                int
 }
 
 func (s *viewState) refresh(full bool) {
 	s.refreshMu.Lock()
 	defer s.refreshMu.Unlock()
-	if s.ctx.Err() != nil {
+	if s.ctx == nil || s.ctx.Err() != nil {
 		return
 	}
 	device, tasks, downloads := s.service.Device(), s.service.RunTasks(), s.service.Downloads()
@@ -138,7 +129,6 @@ func (s *viewState) refresh(full bool) {
 	var reports []core.ReportSummary
 	var he, re, pe *core.ApiError
 	var onboarding onboardingSnapshot
-	engineState := s.service.Engine()
 	var runProgress *core.RunProgress
 	for _, task := range tasks {
 		if !terminal(task.State) {
@@ -148,16 +138,17 @@ func (s *viewState) refresh(full bool) {
 			break
 		}
 	}
+	settings = s.service.Settings()
 	if full {
-		settings = s.service.Settings()
-		ready = s.service.Readiness()
 		history, he = s.service.History()
 		_, reports, re = s.service.Reports()
-		if ready.CLI.Status == "ok" {
-			progress, pe = s.service.Progress(s.ctx)
-		}
-		onboarding = s.readOnboarding(progress.Progress)
 	}
+	ready = s.service.Readiness()
+	if ready.CLI.Status == "ok" {
+		progress, pe = s.service.Progress(s.ctx)
+	}
+	onboarding = s.readOnboarding(progress.Progress)
+	engineState := s.service.Engine()
 	if s.ctx.Err() != nil {
 		return
 	}
@@ -166,16 +157,14 @@ func (s *viewState) refresh(full bool) {
 			return
 		}
 		s.device, s.tasks, s.downloads = device, tasks, downloads
-		s.engineState, s.runProgress = engineState, runProgress
+		s.runProgress = runProgress
 		if s.detailID == id {
 			s.detail, s.detailError = detail, de
 		}
+		s.applySettings(settings)
 		if full {
-			s.applySettings(settings)
-			s.ready, s.progress = ready, progress.Progress
-			s.applyOnboarding(onboarding, pe)
 			s.history, s.reports = history, reports
-			s.historyError, s.reportsError, s.progressError = he, re, pe
+			s.historyError, s.reportsError = he, re
 			known := map[string]bool{}
 			for _, r := range s.historyRuns() {
 				known[r.Path] = true
@@ -186,6 +175,9 @@ func (s *viewState) refresh(full bool) {
 				}
 			}
 		}
+		s.ready, s.progress = ready, progress.Progress
+		s.applyOnboarding(onboarding, pe)
+		s.engineState = engineState
 		s.loaded = true
 	})
 }

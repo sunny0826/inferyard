@@ -143,23 +143,3 @@ func TestWizardInitHandoff(t *testing.T) {
 		t.Fatalf("%+v", settings)
 	}
 }
-
-func TestNeedsOnboardingWithoutCLIPath(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-	empty := filepath.Join(t.TempDir(), "settings.json")
-	if err := os.WriteFile(empty, []byte("{}"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	firstRun, err := New(ctx, Options{SettingsPath: empty})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !firstRun.NeedsOnboarding() {
-		t.Fatal("settings without a CLI path must need onboarding")
-	}
-	configured := wizardService(t, nil)
-	if configured.NeedsOnboarding() {
-		t.Fatal("settings with a CLI path must not need onboarding")
-	}
-}

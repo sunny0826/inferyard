@@ -87,6 +87,8 @@ func readConfig(path string) (string, string, string, error) {
 	return path, root, frozenBundle.ID, nil
 }
 func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
+	s.settingsMu.Lock()
+	defer s.settingsMu.Unlock()
 	if len(req.ConfigPaths) < 1 || len(req.ConfigPaths) > 2 || (len(req.ConfigPaths) == 1 && (req.AllowSingleBundle == nil || !*req.AllowSingleBundle)) {
 		return nil, Err("invalid_request")
 	}
@@ -118,6 +120,9 @@ func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if e := s.admitRunLocked(); e != nil {
+		return nil, e
+	}
 	for _, t := range s.runs {
 		if !terminal(t.Task.State) && seen[str(t.Task.ConfigPath)] {
 			return nil, Conflict("queue_duplicate")
@@ -133,6 +138,8 @@ func (s *Service) StartRuns(req StartRunsRequest) ([]RunTask, *ApiError) {
 	return out, nil
 }
 func (s *Service) Resume(req ResumeRunRequest) (RunTask, *ApiError) {
+	s.settingsMu.Lock()
+	defer s.settingsMu.Unlock()
 	if req.FromRun == "" || (req.EndpointUrl == nil) != (req.ServerPid == nil) || (req.ServerPid != nil && *req.ServerPid <= 0) {
 		return RunTask{}, Err("invalid_request")
 	}
@@ -184,6 +191,9 @@ func (s *Service) Resume(req ResumeRunRequest) (RunTask, *ApiError) {
 	t := &runEntry{Task: RunTask{TaskId: uuid(), Kind: "resume", State: "starting", Queued: true, ResumeFrom: &path, Bundle: found.Bundle, CreatedAt: now()}, root: filepath.Dir(path), binary: *p.Path, args: args, Resources: []ResourceSample{}}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if e := s.admitRunLocked(); e != nil {
+		return RunTask{}, e
+	}
 	for _, old := range s.runs {
 		if !terminal(old.Task.State) && str(old.Task.ResumeFrom) == path {
 			return RunTask{}, Conflict("queue_duplicate")
@@ -246,6 +256,7 @@ func (s *Service) CancelRun(id string) (RunTask, *ApiError) {
 	return RunTask{}, Err("not_found")
 }
 func (s *Service) runQueue() {
+	defer close(s.queueDone)
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -254,6 +265,10 @@ func (s *Service) runQueue() {
 		}
 		for {
 			s.mu.Lock()
+			if s.closing {
+				s.mu.Unlock()
+				return
+			}
 			var next *runEntry
 			for _, t := range s.runs {
 				if t.Task.Queued {

@@ -50,13 +50,6 @@ func (s *Service) Readiness() Readiness {
 	}
 	return Readiness{CLI: s.probe(u), Workspace: w, Results: directoryReadiness(u.ResultsRoot, u.ResultsRoot != nil), Models: directoryReadiness(u.ModelsRoot, u.ModelsRoot != nil), FirstRun: u.WorkspaceRoot == nil && u.ResultsRoot == nil && u.ModelsRoot == nil}
 }
-// NeedsOnboarding reports a first-run startup without touching the CLI binary:
-// settings with no configured CLI path open the wizard window only, so the app
-// does not start with two windows at once.
-func (s *Service) NeedsOnboarding() bool {
-	u := s.userSettings()
-	return str(u.InferyardPath) == ""
-}
 func (s *Service) Provision() (SettingsResponse, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()

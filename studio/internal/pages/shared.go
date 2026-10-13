@@ -15,7 +15,7 @@ func errorView(c *ui.Context, e *core.ApiError) {
 	}
 	message := e.Message
 	if message == "" {
-		message = "操作未完成，请检查准备条件与证据。"
+		message = human(e.Code)
 	}
 	ui.Text(c, message+" · "+e.Code).TextColor(c.Theme().Danger)
 	for _, v := range e.Limitations {
