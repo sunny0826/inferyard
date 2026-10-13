@@ -8,8 +8,8 @@ export const errorSchema: z.ZodType<ApiError> = z.object({
   message: z.string(), limitations: z.array(z.string()), details: z.record(z.string(), z.unknown()).nullable(),
 });
 export const settingsSchema: z.ZodType<SettingsResponse> = z.object({
-  settings: z.object({ inferyard_path: text, results_root: text, models_root: text }),
-  effective: z.object({ inferyard_path: text, inferyard_version: text, inferyard_status: probe, results_root: text, models_root: text, reports_root: text }),
+  settings: z.object({ workspace_root: text.default(null), inferyard_path: text, results_root: text, models_root: text }),
+  effective: z.object({ workspace_root: text.default(null), inferyard_path: text, inferyard_version: text, inferyard_status: probe, results_root: text, models_root: text, reports_root: text }),
 });
 const candidate = z.looseObject({ model_path: z.string(), model_name: z.string(), mode: z.enum(['cpu', 'cuda', 'metal', 'blocked']), gpu_index: number, estimated_gpu_memory_bytes: number, min_available_memory_bytes: z.number(), min_disk_bytes: z.number(), context_size: z.number(), threads: z.number(), reason: z.string() });
 const snapshot = z.looseObject({
@@ -29,5 +29,5 @@ const snapshot = z.looseObject({
 }).nullable();
 export const deviceSchema: z.ZodType<DeviceResponse> = z.object({ snapshot, captured_at: text, refreshing: z.boolean(), last_error: errorSchema.nullable() });
 export const deviceEventSchema: z.ZodType<DeviceUpdatedEvent> = z.object({ snapshot, captured_at: text, error: errorSchema.nullable() });
-export const resetSchema = z.object({ reason: z.literal('buffer_gap') });
+export const resetSchema = z.object({ reason: z.enum(['buffer_gap', 'settings_changed', 'workspace_changed']) });
 export const refreshSchema = z.object({ refreshing: z.literal(true) });

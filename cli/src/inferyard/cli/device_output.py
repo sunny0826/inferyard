@@ -114,6 +114,8 @@ def _human(result):
 
 
 def format_result(result, output_format):
+    if result.command == "progress" and result.status == "inspected":
+        return json.dumps(result.details, ensure_ascii=False, allow_nan=False)
     if result.command == "device-check" and output_format == "human":
         return _human(result)
     return json.dumps(asdict(result), ensure_ascii=False, allow_nan=False)

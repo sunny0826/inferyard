@@ -41,9 +41,10 @@ def add_commands(commands):
         "create", help="macOS/Windows: create an unbound candidate; runs engine --version (10s)"
     )
     create.set_defaults(command="config create")
-    create.add_argument("--preflight", type=Path, required=True)
+    create.add_argument("--workspace", type=Path)
+    create.add_argument("--preflight", type=Path)
     create.add_argument("--bundle", dest="bundle_path", type=Path, required=True)
-    create.add_argument("--results", dest="output_root", type=Path, required=True)
+    create.add_argument("--results", dest="output_root", type=Path)
     engine = create.add_mutually_exclusive_group(required=True)
     engine.add_argument("--engine", dest="engine_path", type=Path)
     engine.add_argument("--runtime-receipt", type=Path)

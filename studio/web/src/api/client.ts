@@ -1,3 +1,4 @@
+import { readinessSchema, workspaceProgressResponseSchema, wizardResultSchema, startupSchema, processesSchema, type Readiness, type WorkspaceProgressResponse, type WizardResult, type Startup, type ProcessCandidate } from './onboarding-schema';
 import type { ReportListResponse, CreateReportRequest, CreateReportResponse, DownloadListResponse, CreateDownloadRequest, CreateDownloadResponse, CancelDownloadResponse, ReportCreatedEvent, DownloadStateEvent, DownloadProgressEvent } from './types';
 import { reportListSchema, reportResponseSchema, reportRequestSchema, downloadListSchema, downloadResponseSchema, downloadRequestSchema, downloadProgressSchema } from './assets-schema';
 import { z } from 'zod';
@@ -26,6 +27,12 @@ export interface EventHandlers {
   error: (error: ApiError) => void;
 }
 export interface StudioApi {
+  getReadiness(): Promise<Readiness>;
+  provision(): Promise<SettingsResponse>;
+  getProgress(): Promise<WorkspaceProgressResponse>;
+  executeWizard(command: string, reportVerify?: boolean): Promise<WizardResult>;
+  getStartup(candidate: string): Promise<Startup>;
+  getProcesses(): Promise<ProcessCandidate[]>;
   getReports(): Promise<ReportListResponse>;
   createReport(body: CreateReportRequest): Promise<CreateReportResponse>;
   getDownloads(): Promise<DownloadListResponse>;
@@ -43,7 +50,7 @@ export interface StudioApi {
   updateSettings(settings: UpdateSettingsRequest): Promise<SettingsResponse>;
   subscribe(handlers: EventHandlers): () => void;
 }
-async function request<T>(path: string, schema: z.ZodType<T>, method = 'GET', body?: UpdateSettingsRequest | StartRunsRequest | ResumeRunRequest | CreateReportRequest | CreateDownloadRequest, timeoutMs?: number): Promise<T> {
+async function request<T>(path: string, schema: z.ZodType<T>, method = 'GET', body?: unknown, timeoutMs?: number): Promise<T> {
   const response = await fetch(`/api/${path}`, {
     signal: timeoutMs === undefined ? undefined : AbortSignal.timeout(timeoutMs),
     method, headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
@@ -57,6 +64,12 @@ export function reportLink(id: string): string {
   return `/reports/${encodeURIComponent(id)}/report.html?token=${encodeURIComponent(token)}`;
 }
 export const realApi: StudioApi = {
+  getReadiness: () => request('readiness', readinessSchema),
+  provision: () => request('settings/provision', settingsSchema, 'POST'),
+  getProgress: () => request('progress', workspaceProgressResponseSchema),
+  executeWizard: (command, reportVerify = false) => request('onboarding/execute', wizardResultSchema, 'POST', { command, report_verify: reportVerify }),
+  getStartup: candidate => request(`onboarding/startup?candidate=${encodeURIComponent(candidate)}`, startupSchema),
+  getProcesses: () => request('onboarding/processes', processesSchema),
   getReports: () => request('reports', reportListSchema),
   createReport: body => request('reports', reportResponseSchema, 'POST', reportRequestSchema.parse(body), 180000),
   getDownloads: () => request('downloads', downloadListSchema),

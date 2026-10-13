@@ -98,3 +98,21 @@ python3 scripts/verify-embed.py --binary build/inferyard-studio
 - `internal/inferyard/`：CLI 子进程和结构化结果解析。
 - `internal/server/`：HTTP、鉴权和 SSE；[端点与验证说明](internal/server/README.md)。
 - `web/`：Svelte 前端与嵌入资产。
+
+## First-run onboarding
+
+Dashboard includes a non-blocking readiness card and a workspace-driven wizard. Settings adds a
+workspace directory, with `~/.inferyard` as its initial effective value. Preparing directories is an
+explicit, idempotent action; saving settings alone does not create them.
+
+The wizard accepts model and engine URLs, follows `progress.v1` through both default bundles, shows
+frozen service arguments for the operator to copy, and lists local process IDs for binding. Model
+credentials are supplied only by an environment-variable name. Studio never starts or stops the
+model service. Runs use the existing queue, cancellation and notification behavior. The final action
+creates a report and verifies it.
+
+`init` requires a new directory. If the selected workspace already exists without initialization,
+the wizard suggests an editable new child directory and switches to it after successful initialization.
+Existing files are retained. This directory handoff and the real CLI workflow still require integration
+verification. `bun run dev:mock` demonstrates the workflow without downloads or model requests;
+`bun web/tests/verify.mjs` covers both the mock walkthrough and HTTP/SSE fixtures.

@@ -2,6 +2,27 @@
 
 先按[安装指南](installation.md)安装并准备候选，确认[平台范围](platforms.md)。以下直接调用已安装的 CLI；大写名称、模型路径和端点是待替换值。正式运行前核对设备、预算与停止条件。
 
+## 首次上手与断点续接
+
+onboarding 工作区把准备和执行产物放入各自子目录；下文的双目录 benchmark 布局仍可使用。
+CLI 不选择隐式默认目录。先显式初始化，再随时查询下一步：
+
+```bash
+inferyard init --out onboarding
+inferyard progress --workspace onboarding
+inferyard device-check --model /path/to/model.gguf --json --out onboarding/preflight/device-1
+inferyard config create --workspace onboarding --bundle zh-core --engine /path/to/llama-server --out onboarding/candidates/zh-core-1
+inferyard progress --workspace onboarding
+```
+
+按导出的 README 路线图由操作者启动服务，使用真实 PID/endpoint 绑定，再 run。
+核心包完成后同样准备并运行 zh-svg-pelican，两个 run 均封存后在 reports/ 的新子目录
+生成汇总并 verify。已有完整核心结果时只补跑缺少的鹈鹕；保留原件。
+progress 只读输出进度，退出 0 不表示测评完成；查看 default_scope_complete 与 blocked_reason。
+未完成 run 显示 resume；单次运行或固定时窗不支持续测时明确阻断，按既有规则创建新运行。
+progress 不发送请求，也不启动服务；执行其 run/resume 命令前仍核对设备、预算与停止条件。
+完整字段与退出码见[进度契约](cli-surface.md#首次上手进度契约)。
+
 ## 默认测评范围
 
 未明确声明固定题包的 benchmark，默认同时覆盖以下两个题包。只有用户明确声明固定题包时，才仅运行指定题包；示例配置或工具的单题包默认值不构成该声明。

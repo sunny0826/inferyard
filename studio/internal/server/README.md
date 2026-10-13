@@ -115,3 +115,26 @@ and the process exited 0 after SIGINT. Screenshot: `/tmp/inferyard-studio-t4-gui
 (temporary local evidence; no frontend files changed).
 Cross-compilation does not prove Windows/Linux process runtime behavior. Existing
 `docs/reviews/` untracked files belong to other work and are not included.
+
+## 首次上手 API
+
+- `GET /api/readiness` 返回 `cli`（安装探测、版本）、`workspace`、`results`、`models`
+  和 `first_run`。目录状态包含 `path/configured/exists/initialized`；仅工作区检查
+  `preparation.json` 的 `community_init.v1` 标记。缺项不限制其他页面和只读 API。
+- Settings 新增 `workspace_root`，未设置时生效值为 `~/.inferyard`。
+  `PUT /api/settings` 仍只验证并保存路径，不创建目录。
+  `POST /api/settings/provision` 保留已有路径、补齐默认路径，幂等创建目录并发布 `sync.reset`。
+- `GET /api/progress` 经注入式 executor 调用 `progress --workspace DIR`，返回
+  `{status, exit_code, progress}`；退出 2 返回 `blocked` 与 `progress: null`，
+  不将工作区缺失当作页面访问失败。progress.v1 必填字段和枚举受校验，兼容未知附加字段。
+- `GET /api/onboarding/startup?candidate=...` 只读取工作区内候选的 `engine.binary_path`
+  和冻结 `startup_args`；`GET /api/onboarding/processes` 只列 PID 与可执行文件名，不暴露 argv。
+- `POST /api/onboarding/execute` 接收 `{command, report_verify}`。
+  命令经过限定命令/参数解析，以 argv 执行，不使用 shell，不展开环境变量表达式。
+  模型凭据只允许 `--token-env NAME`，URL 不允许凭据/query/fragment；不返回原始 stdout/stderr。
+  `run/resume` 复用运行队列、取消、EventBus 和既有通知；`report_verify: true` 在报告命令
+  退出 0 后调用 `verify --path`，返回最后一次退出状态。不会启动、停止或重启模型服务。
+
+CLI `init` 要求全新输出目录，而 provision 会创建目录。因此未初始化的已有目录会在向导中
+建议一个可编辑的新子目录；用户执行 init 成功后，该新目录及其 results 成为当前设置。
+不会删除或覆盖原目录。此衔接行为仍需协调者在真实 CLI 集成阶段确认。

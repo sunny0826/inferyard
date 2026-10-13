@@ -1,3 +1,4 @@
+import { createMockOnboarding } from './mock-onboarding';
 import { createMockAssets } from './mock-assets';
 import { createMockRuns } from './mock-runs';
 import { ApiFailure, type StudioApi, type EventHandlers } from './client';
@@ -11,11 +12,13 @@ const fixture: DevicePreflight = {
   model_requests_sent: 0, platform_capabilities: { device_inspection: true, live_single_run: true, live_experiments: false, metal_backend_verified: false }, ready_to_run: false, next_steps: [{ action: 'configure_engine', reason: 'engine_not_configured' }],
 };
 export function createMockApi(): StudioApi {
-  let settings: SettingsResponse = { settings: { inferyard_path: null, results_root: '/mock/results', models_root: '/mock/models' }, effective: { inferyard_path: '/mock/bin/inferyard', inferyard_version: 'mock-1.0', inferyard_status: 'ok', results_root: '/mock/results', models_root: '/mock/models', reports_root: '/mock/reports' } };
+  let settings: SettingsResponse = { settings: { workspace_root: null, inferyard_path: null, results_root: '/mock/results', models_root: '/mock/models' }, effective: { workspace_root: '/mock/workspace', inferyard_path: '/mock/bin/inferyard', inferyard_version: 'mock-1.0', inferyard_status: 'ok', results_root: '/mock/results', models_root: '/mock/models', reports_root: '/mock/reports' } };
   let device: DeviceResponse = { snapshot: null, captured_at: null, refreshing: false, last_error: null };
   const listeners = new Set<EventHandlers>();
+  const runs = createMockRuns(listeners);
   return {
-    ...createMockRuns(listeners),
+    ...runs,
+    ...createMockOnboarding(() => structuredClone(settings), value => { settings = value; }, runs, listeners),
     ...createMockAssets(listeners),
     async getDevice() { return structuredClone(device); },
     async getSettings() { return structuredClone(settings); },

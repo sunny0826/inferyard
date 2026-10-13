@@ -86,6 +86,7 @@ class CommandRequest:
     engine_source_url: str | None = None
     engine_timeout_seconds: float = 1800
     protect_pids: list[int] | None = None
+    workspace: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)

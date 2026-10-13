@@ -4,6 +4,10 @@ from pathlib import Path
 
 
 def add_commands(commands):
+    progress = commands.add_parser(
+        "progress", help="read onboarding progress without writing files"
+    )
+    progress.add_argument("--workspace", type=Path, required=True)
     memory = commands.add_parser("memory-check", help="inspect macOS/Windows process memory")
     memory.add_argument("--protect-pid", type=int, action="append", dest="protect_pids")
     memory.add_argument("--out", type=Path, help="save diagnostic JSON to a new directory")

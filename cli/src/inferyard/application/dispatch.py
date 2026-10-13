@@ -9,6 +9,10 @@ from inferyard.platforms.identity import PreflightError
 
 
 def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
+    if request.command == "progress":
+        from inferyard.application.progress import execute
+
+        return execute(request)
     if request.command == "memory-check":
         from inferyard.application.memory_check import execute
 

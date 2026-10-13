@@ -132,6 +132,7 @@ def test_cli_reexports_the_single_application_type_definitions():
         "engine_source_url",
         "engine_timeout_seconds",
         "protect_pids",
+        "workspace",
     )
     assert tuple(field.name for field in fields(CommandResult)) == (
         "command",

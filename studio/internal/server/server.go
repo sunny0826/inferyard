@@ -130,6 +130,23 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	switch r.Method + " " + p {
 	case "GET /api/status":
 		value = s.Core.Status()
+	case "GET /api/readiness":
+		value = s.Core.Readiness()
+	case "POST /api/settings/provision":
+		value, e = s.Core.Provision()
+	case "GET /api/progress":
+		value, e = s.Core.Progress(r.Context())
+	case "GET /api/onboarding/startup":
+		value, e = s.Core.Startup(r.URL.Query().Get("candidate"))
+	case "GET /api/onboarding/processes":
+		value, e = s.Core.Processes(r.Context())
+	case "POST /api/onboarding/execute":
+		var q core.WizardRequest
+		if !decode(r, &q) {
+			e = core.Err("invalid_request")
+		} else {
+			value, e = s.Core.WizardExecute(r.Context(), q)
+		}
 	case "GET /api/settings":
 		value = s.Core.Settings()
 	case "PUT /api/settings":

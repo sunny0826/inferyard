@@ -57,6 +57,7 @@ export interface StatusResponse {
 // ----- 4.2 设置 ---------------------------------------------------------------
 
 export interface UserSettings {
+  workspace_root: string | null;
   /** null = 自动探测 PATH */
   inferyard_path: string | null;
   results_root: string | null;
@@ -64,6 +65,7 @@ export interface UserSettings {
 }
 
 export interface EffectiveSettings {
+  workspace_root: string | null;
   inferyard_path: string | null;
   inferyard_version: string | null;
   inferyard_status: InferyardStatus;
@@ -84,6 +86,7 @@ export interface SettingsResponse {
  * 仅 inferyard_path 可置 null（恢复自动探测 PATH）。
  */
 export interface UpdateSettingsRequest {
+  workspace_root?: string;
   inferyard_path?: string | null;
   results_root?: string;
   models_root?: string;
@@ -522,7 +525,7 @@ export interface ReportCreatedEvent {
 
 /** sync.reset：回放缓冲缺口/服务端重启；客户端须 REST 全量重建 */
 export interface SyncResetEvent {
-  reason: "buffer_gap";
+  reason: "buffer_gap" | "settings_changed" | "workspace_changed";
 }
 
 export interface ServerEventMap {

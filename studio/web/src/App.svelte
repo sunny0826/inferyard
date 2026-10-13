@@ -13,6 +13,7 @@
   const runs = new RunsStore();
   import Device from './pages/Device.svelte';
   import Settings from './pages/Settings.svelte';
+  import Onboarding from './pages/Onboarding.svelte';
   import ErrorNotice from './components/ErrorNotice.svelte';
   const routes = ['dashboard', 'runs', 'reports', 'models', 'device', 'settings'];
   let route = $state(location.hash.slice(2) || 'dashboard');
@@ -54,7 +55,7 @@
 <div class="shell"><aside><a class="brand" href="#/dashboard">InferYard <span>Studio</span></a><nav aria-label="主导航">{#each routes as name}<a href={`#/${name}`} class:active={route === name || (name === 'runs' && route.startsWith('runs/'))} aria-current={route === name ? 'page' : undefined}>{name[0]?.toUpperCase()}{name.slice(1)}</a>{/each}</nav><div class="connection">{mockMode ? 'Mock · 内存数据' : '本地会话'}<br />{connection === 'connected' ? '事件已连接' : '事件连接中 / 正在重连'}</div></aside>
 <main><ErrorNotice {error} />{#if error}<button class="retry" onclick={rebuild}>重新读取</button>{/if}
 {#if route === 'device'}<Device {device} {refresh} {pending} />
-{:else if route === 'dashboard' || route === 'runs'}<Runs store={runs} dashboard={route === 'dashboard'} />
+{:else if route === 'dashboard' || route === 'runs'}{#if route === 'dashboard'}<Onboarding store={runs} />{/if}<Runs store={runs} dashboard={route === 'dashboard'} />
 {:else if route.startsWith('runs/')} {#key route}<RunDetail store={runs} />{/key}
 {:else if route === 'reports'}<Reports store={assets} {runs} />
 {:else if route === 'models'}<Models store={assets} />
