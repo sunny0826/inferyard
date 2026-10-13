@@ -58,7 +58,7 @@ runs:
       run: |
         args=()
         if [ "$PACKAGES_ONLY" = true ]; then args+=(--packages-only); fi
-        mise exec -- uv run --frozen python scripts/verify_release_candidate.py \
+        mise exec -- uv run --project cli --frozen python "$GITHUB_WORKSPACE/cli/scripts/verify_release_candidate.py" \
           --manifest candidate/manifest.json \
           --manifest-sha256 "$EXPECTED_MANIFEST" \
           --source-commit "$EXPECTED_COMMIT" \
