@@ -14,8 +14,8 @@ batches and reports:
 
 ```bash
 inferyard init --out bench-ops --bundle zh-smoke
-inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight --json
-inferyard config create --preflight bench-ops/preflight/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-smoke.json --results bench-work/results --out bench-ops/candidate
+inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/device-1 --json
+inferyard config create --preflight bench-ops/preflight/device-1/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-smoke.json --results bench-work/results --out bench-ops/candidate
 ```
 
 Candidate generation currently requires Prism `prism-b10743-adfffbe`, with the
@@ -31,8 +31,8 @@ full `engine.startup_args` from `candidate.toml`.
 Do not reuse historical PIDs; bind with the actual PID and endpoint:
 
 ```bash
-inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
-inferyard run --config bench-ops/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
+inferyard run --config bench-ops/bound/service-1/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 inferyard verify --path bench-work/report
 ```

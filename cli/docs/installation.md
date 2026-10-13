@@ -194,8 +194,8 @@ inferyard config assets --model /path/to/model.gguf --engine /path/to/llama-serv
 CLI 不管理该服务的启动、终止或重启。将实际 PID 和本机端点代入：
 
 ```bash
-inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
-inferyard run --config bench-ops/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
+inferyard run --config bench-ops/bound/service-1/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 inferyard verify --path bench-work/report
 ```

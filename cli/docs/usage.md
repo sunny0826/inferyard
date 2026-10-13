@@ -114,8 +114,8 @@ benchmark 执行与评分不使用浏览器：SVG 题不做质量评分，CLI �
 模型服务由操作者外部启动。按[配置说明](../configs/README.md)准备候选配置，核对模型、引擎、模板、启动参数和凭据引用，再绑定当前进程：
 
 ```bash
-inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
-inferyard run --config bench-ops/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
+inferyard run --config bench-ops/bound/service-1/config.toml
 ```
 
 候选配置须为当前机器准备；历史 PID、路径和启动时间不能复用，测试夹具不能用于真机。`probe` 发送普通与流式诊断请求，`run` 重新预检并冻结正式输入。凭据仅通过 `endpoint.api_key_env` 引用。
@@ -173,7 +173,7 @@ v0.0.1 状态中的 `migration` envelope 不再核验，在下一次状态写入
 操作者停止旧服务并准备新服务后，使用状态中的 `dirty_token` 及具体恢复说明：
 
 ```bash
-inferyard run --config bench-ops/bound/config.toml --recovery-confirm TOKEN --recovery-note "已停止旧服务并核验新进程与端点"
+inferyard run --config bench-ops/bound/service-1/config.toml --recovery-confirm TOKEN --recovery-note "已停止旧服务并核验新进程与端点"
 ```
 
 程序仍核验旧进程消失、新服务身份及空闲；不要删除锁文件或绕过检查。达到冻结的硬件或温度停止条件后保留原因和计数，不反复重试同一负载。

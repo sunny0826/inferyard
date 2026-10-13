@@ -14,11 +14,11 @@ Full CPU/CUDA archive preparation is in the
 
 ```powershell
 inferyard init --out bench-ops --bundle zh-smoke
-inferyard device-check --model 'C:\Models\model.gguf' --out 'bench-ops\preflight' --json
+inferyard device-check --model 'C:\Models\model.gguf' --out 'bench-ops\preflight\device-1' --json
 inferyard runtime prepare --profile prism-b10743-adfffbe-win-cpu-x64 `
   --archive 'C:\Downloads\llama-prism-b10743-adfffbe-bin-win-cpu-x64.zip' `
   --out 'bench-ops\assets\runtime'
-inferyard config create --preflight 'bench-ops\preflight\device-preflight.json' `
+inferyard config create --preflight 'bench-ops\preflight\device-1\device-preflight.json' `
   --runtime-receipt 'bench-ops\assets\runtime\runtime-receipt.json' `
   --bundle 'bench-ops\bundles\zh-smoke.json' --results 'bench-work\results' `
   --out 'bench-ops\candidate'
@@ -36,8 +36,8 @@ Start the service in another terminal with the candidate's full
 
 ```powershell
 inferyard config bind --candidate 'bench-ops\candidate\candidate.toml' `
-  --pid 1234 --endpoint http://127.0.0.1:48857 --out 'bench-ops\bound'
-inferyard run --config 'bench-ops\bound\config.toml'
+  --pid 1234 --endpoint http://127.0.0.1:48857 --out 'bench-ops\bound\service-1'
+inferyard run --config 'bench-ops\bound\service-1\config.toml'
 inferyard report --runs 'bench-work\results\RUN_ID' --out 'bench-work\report'
 inferyard verify --path 'bench-work\report'
 ```

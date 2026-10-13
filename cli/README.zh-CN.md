@@ -41,7 +41,7 @@ uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.2 --help
 
 ```bash
 inferyard init --out bench-ops --bundle zh-smoke
-inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight --json
+inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/device-1 --json
 ```
 
 按[安装指南](docs/installation.md#3-准备候选)生成候选配置，在独立终端自行启动其中声明的模型服务——
@@ -49,8 +49,8 @@ CLI 从不启动、停止或重启服务——然后将实际 PID 和端点代�
 放在操作目录（`bench-ops/`），benchmark 工作区（`bench-work/`）只存放 run、batch 与报告：
 
 ```bash
-inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound
-inferyard run --config bench-ops/bound/config.toml
+inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
+inferyard run --config bench-ops/bound/service-1/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 inferyard verify --path bench-work/report
 ```

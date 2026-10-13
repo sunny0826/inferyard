@@ -372,12 +372,12 @@ def run_leg(bench_ops, candidate, *, pid, url):
             "--endpoint",
             url,
             "--out",
-            str(bench_ops / "bound"),
+            str(bench_ops / "bound" / "service-1"),
         ]
     )
     if bound["status"] != "prepared":
         raise SystemExit(f"bind failed: {bound['status']}")
-    _, run = cli(["run", "--config", str(bench_ops / "bound" / "config.toml")])
+    _, run = cli(["run", "--config", str(bench_ops / "bound" / "service-1" / "config.toml")])
     if run["status"] != "finished" or run["completeness"] != "complete":
         raise SystemExit(f"run failed: {run['status']} / {run['completeness']}")
     return Path(run["evidence_dir"])
@@ -413,14 +413,14 @@ def main():
 
     _, smoke_init = cli(["init", "--out", str(bench_ops_smoke), "--bundle", SMOKE_BUNDLE])
     _, _ = cli(["init", "--out", str(bench_ops_svg), "--bundle", SVG_BUNDLE])
-    preflight = bench_ops_smoke / "preflight" / "device-preflight.json"
+    preflight = bench_ops_smoke / "preflight" / "device-1" / "device-preflight.json"
     _, _ = cli(
         [
             "device-check",
             "--model",
             str(args.model),
             "--out",
-            str(bench_ops_smoke / "preflight"),
+            str(preflight.parent),
             "--json",
         ]
     )
