@@ -36,7 +36,7 @@ func (s *viewState) detailView(c *ui.Context) {
 			})
 		}
 		if t.Exit != nil {
-			kvview(c, t.Exit)
+			kvview(c, "kv-exit", t.Exit)
 		}
 	})
 	card(c, "实时进度", func() {

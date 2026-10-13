@@ -94,7 +94,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 	})
 	s.setupGuide(c)
 	s.readinessView(c)
-	card(c, "生效值与探测状态", func() { kvview(c, s.settings.Effective) })
+	card(c, "生效值与探测状态", func() { kvview(c, "kv-effective", s.settings.Effective) })
 }
 func (s *viewState) deviceView(c *ui.Context) {
 	s.header(c, "设备")
@@ -124,7 +124,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 		return
 	}
 	for _, section := range []struct{ key, title string }{{"hardware", "硬件、GPU、缺测与来源"}, {"recommendation", "推荐配置"}, {"models", "本地 GGUF 模型"}, {"platform_capabilities", "平台能力"}, {"next_steps", "下一步"}} {
-		card(c, section.title, func() { kvview(c, snapshot[section.key]) })
+		card(c, section.title, func() { kvview(c, "kv-"+section.key, snapshot[section.key]) })
 	}
 	ui.Text(c, fmt.Sprintf("可运行：%s · 模型请求数：%s", rawValue(snapshot["ready_to_run"]), rawValue(snapshot["model_requests_sent"])))
 }

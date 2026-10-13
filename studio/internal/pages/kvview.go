@@ -10,7 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-func kvview(c *ui.Context, value any) {
+func kvview(c *ui.Context, key string, value any) {
 	raw, err := json.Marshal(value)
 	if err != nil {
 		return
@@ -21,6 +21,7 @@ func kvview(c *ui.Context, value any) {
 	if decoder.Decode(&data) != nil {
 		return
 	}
+	c.Key(key)
 	container := ui.Column(c)
 	open := ui.Local(container, "expanded", func() map[string]*bool { return map[string]*bool{} })
 	container.Children(func() {

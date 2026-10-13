@@ -24,7 +24,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 		}
 		_ = json.Unmarshal(s.device.Snapshot, &snap)
 		if snap.Models != nil {
-			kvview(c, snap.Models)
+			kvview(c, "kv-models", snap.Models)
 		} else {
 			ui.Text(c, "尚无资产快照，请到设备页刷新。")
 		}

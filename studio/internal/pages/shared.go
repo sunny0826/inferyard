@@ -19,7 +19,7 @@ func errorView(c *ui.Context, e *core.ApiError) {
 		ui.Text(c, v)
 	}
 	if len(e.Details) > 0 {
-		kvview(c, e.Details)
+		kvview(c, "kv-error-details", e.Details)
 	}
 }
 func taskLabel(t core.RunTask) string {

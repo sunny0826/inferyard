@@ -6,8 +6,13 @@ func formatBytes(value *int64) string {
 	if value == nil {
 		return "缺测"
 	}
-	if *value >= 1073741824 || *value <= -1073741824 {
-		return fmt.Sprintf("%.2f GiB（1 GiB = 1,073,741,824 bytes）", float64(*value)/1073741824)
+	v := *value
+	switch {
+	case v >= 1073741824 || v <= -1073741824:
+		return fmt.Sprintf("%.2f GiB（%d bytes）", float64(v)/1073741824, v)
+	case v >= 1048576 || v <= -1048576:
+		return fmt.Sprintf("%.2f MiB（%d bytes）", float64(v)/1048576, v)
+	default:
+		return fmt.Sprintf("%d bytes", v)
 	}
-	return fmt.Sprintf("%.2f MiB（1 MiB = 1,048,576 bytes）", float64(*value)/1048576)
 }
