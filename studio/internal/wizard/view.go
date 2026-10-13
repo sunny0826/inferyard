@@ -64,8 +64,12 @@ func (w *viewState) view(c *ui.Context) {
 					ui.Text(c, "正在读取工作区进度…")
 					return
 				}
-				if w.failure != "" {
-					ui.Text(c, w.failure).TextColor(t.Danger)
+				failure := w.failure
+				if failure == "" {
+					failure = w.refreshFailure
+				}
+				if failure != "" {
+					ui.Text(c, failure).TextColor(t.Danger)
 					if ui.Button(c, "重新检查").Disabled(w.busy).Clicked() {
 						go w.refresh()
 					}
@@ -204,6 +208,14 @@ func (w *viewState) acquireModel() {
 }
 func (w *viewState) candidateView(c *ui.Context) {
 	ui.Text(c, "创建当前题包候选").Bold().FontSize(22)
+	if w.progress != nil {
+		for _, b := range w.progress.Bundles {
+			if b.Phase == "run_complete" {
+				ui.Text(c, b.Bundle+" 已封存。剩余题包按同样流程进行：候选 → 启动与绑定 → 运行。").TextColor(c.Theme().Success)
+				break
+			}
+		}
+	}
 	if b := w.active(); b != nil {
 		ui.Text(c, b.Bundle+" · 将冻结模型、引擎与运行预算。")
 	}
@@ -281,7 +293,7 @@ func (w *viewState) runView(c *ui.Context) {
 		}
 		return
 	}
-	ui.Text(c, "运行前请核对设备、预算与停止条件。完成封存后自动进入下一题包。")
+	ui.Text(c, "运行前请核对设备、预算与停止条件。完成封存后进入下一步；有剩余题包时需同样创建候选并绑定。")
 	for _, task := range w.tasks {
 		if task.State == "failed" || task.State == "cancelled" {
 			ui.Text(c, "上次运行未完成，请检查停止原因后重试。")

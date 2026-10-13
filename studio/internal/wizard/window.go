@@ -141,6 +141,7 @@ type viewState struct {
 	initDir, engine, modelURL, engineURL, tokenEnv, process, endpoint string
 	enginePreset                                                      bool
 	engineState                                                       core.EngineState
+	refreshFailure                                                    string
 	candidate                                                         string
 	installStatus                                                     string
 }
@@ -193,9 +194,13 @@ func (w *viewState) refresh() {
 		for _, b := range p.Progress.Bundles {
 			if b.Phase == "bound_missing" {
 				candidate = text(b.CandidatePath)
-				startup, e = w.service.Startup(candidate)
+				var se *core.ApiError
+				startup, se = w.service.Startup(candidate)
+				if se == nil {
+					processes, se = w.service.Processes(w.ctx)
+				}
 				if e == nil {
-					processes, e = w.service.Processes(w.ctx)
+					e = se
 				}
 				break
 			}
@@ -220,8 +225,12 @@ func (w *viewState) refresh() {
 		w.downloads = downloads
 		w.runProgress = rp
 		w.loaded = true
+		// Refresh errors are recomputed every cycle so a transient failure
+		// (e.g. polling while a run holds the workspace) clears itself;
+		// w.failure stays reserved for explicit operation results.
+		w.refreshFailure = ""
 		if e != nil {
-			w.failure = human(e.Code)
+			w.refreshFailure = human(e.Code)
 		}
 		if w.initDir == "" {
 			w.initDir = suggestInitDir(text(r.Workspace.Path), r.Workspace.Exists, r.Workspace.Initialized)
@@ -329,8 +338,17 @@ func (w *viewState) execute(command string, report bool) {
 		if r.ExitCode != 0 {
 			return "", core.Err(string(r.Status))
 		}
-		return "操作完成，已更新工作区进度。", nil
+		return executeMessage(r), nil
 	})
+}
+
+// executeMessage separates queued runs (work has just started) from commands
+// that are already done when they return.
+func executeMessage(r core.WizardResult) string {
+	if len(r.Tasks) > 0 {
+		return "运行已开始，封存后进入下一步。"
+	}
+	return "操作完成，已更新工作区进度。"
 }
 func (w *viewState) baseCommand() []string {
 	if w.progress == nil {
@@ -449,6 +467,16 @@ func human(code string) string {
 		return "CLI 执行失败，请检查主窗口诊断后重试。"
 	case "invalid_request":
 		return "输入不符合要求，请检查路径、URL 和环境变量名。"
+	case "not_found":
+		return "所需文件或记录不存在，请检查工作区状态后重试。"
+	case "conflict":
+		return "操作与当前状态冲突，请刷新进度后重试。"
+	case "internal_error":
+		return "Studio 内部错误，请查看主窗口诊断后重试。"
+	case "error":
+		return "CLI 报告工具或证据错误，请检查主窗口诊断与工作区证据后重试。"
+	case "unknown":
+		return "CLI 异常退出，请检查主窗口诊断后重试。"
 	default:
 		return "当前步骤未能完成，请检查主窗口诊断与工作区证据后重试。"
 	}
