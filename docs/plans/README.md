@@ -1,6 +1,7 @@
 # Current plans
 
 - [应用内存诊断后续平台](memory-check.md)：macOS 已实施；Linux、Windows 各自独立实施和验收。
+- [InferYard Studio 桌面/Web 面板](studio-app.md)：功能范围与架构已定稿，未开始开发。
 
 运行证据文件合并的软件实施与验收已完成，规则保留在
 [容器契约](../contracts/run-evidence-layout.md)。

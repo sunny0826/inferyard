@@ -16,6 +16,7 @@ __pycache__/
 /reports/
 /.playwright-cli/
 /output/playwright/
+.agent-conductor/
 
 # Local credentials, model files and private evidence stay outside the public tree.
 .env
