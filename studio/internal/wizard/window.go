@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -139,7 +140,7 @@ type viewState struct {
 	failure                                                           string
 	initDir, engine, modelURL, engineURL, tokenEnv, process, endpoint string
 	enginePreset                                                      bool
-	binding                                                           bool
+	engineState                                                       core.EngineState
 	candidate                                                         string
 	installStatus                                                     string
 }
@@ -237,7 +238,6 @@ func (w *viewState) refresh() {
 			w.engine = core.FindEngineBinary(core.EngineRoots(workspace)...)
 		}
 		if candidate != w.candidate {
-			w.binding = false
 			w.process = ""
 			w.candidate = candidate
 			host, port := "", ""
@@ -257,6 +257,7 @@ func (w *viewState) refresh() {
 		}
 		w.startup = startup
 		w.processes = processes
+		w.engineState = w.service.Engine()
 	})
 }
 func (w *viewState) work(fn func() (string, *core.ApiError)) {
@@ -331,9 +332,9 @@ func (w *viewState) execute(command string, report bool) {
 		return "操作完成，已更新工作区进度。", nil
 	})
 }
-func (w *viewState) nextCommand() string {
+func (w *viewState) baseCommand() []string {
 	if w.progress == nil {
-		return ""
+		return nil
 	}
 	b := w.active()
 	command := text(w.progress.NextCommand)
@@ -342,7 +343,7 @@ func (w *viewState) nextCommand() string {
 	}
 	args, e := inferyard.SplitCommand(command)
 	if e != nil {
-		return ""
+		return nil
 	}
 	// progress is the single source of truth: its next_command already picks a
 	// fresh, non-existing --out via the CLI's new_output(); never rewrite it.
@@ -352,12 +353,44 @@ func (w *viewState) nextCommand() string {
 	if w.progress.NextAction == "device_check" && w.ready.Models.Path != nil {
 		args = setArg(args, "--models-root", *w.ready.Models.Path)
 	}
+	return args
+}
+func (w *viewState) nextCommand() string {
+	args := w.baseCommand()
+	if args == nil {
+		return ""
+	}
 	if w.progress.NextAction == "bind" {
 		pid, _, _ := strings.Cut(w.process, " · ")
 		args = setArg(args, "--pid", pid)
 		args = setArg(args, "--endpoint", w.endpoint)
 	}
 	return commandOf(args)
+}
+
+// managedBindCommand binds the Studio-managed engine: PID and endpoint come
+// from the supervised process, not from a manual process pick.
+func (w *viewState) managedBindCommand() string {
+	args := w.baseCommand()
+	if args == nil || w.engineState.State != "running" {
+		return ""
+	}
+	args = setArg(args, "--pid", strconv.FormatInt(w.engineState.Pid, 10))
+	args = setArg(args, "--endpoint", w.engineState.Endpoint)
+	return commandOf(args)
+}
+func (w *viewState) startEngine() {
+	candidate := w.candidate
+	w.work(func() (string, *core.ApiError) {
+		_, e := w.service.StartEngine(candidate)
+		return "服务启动中，等待健康检查。", e
+	})
+}
+func (w *viewState) stopEngine() {
+	w.work(func() (string, *core.ApiError) {
+		_, e := w.service.StopEngine()
+		return "已请求停止服务。", e
+	})
 }
 func setArg(args []string, flag, value string) []string {
 	for i, a := range args {

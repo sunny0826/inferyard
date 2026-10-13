@@ -213,30 +213,50 @@ func (w *viewState) candidateView(c *ui.Context) {
 	}
 }
 func (w *viewState) serviceView(c *ui.Context) {
-	ui.Text(c, "在外部终端启动模型服务").Bold().FontSize(22)
-	ui.Text(c, "以下命令来自冻结候选。请由操作者启动；Studio 不代启、不代停。")
+	ui.Text(c, "启动模型服务并绑定").Bold().FontSize(22)
+	ui.Text(c, "Studio 启动冻结候选中的引擎并管理其生命周期；退出 Studio 时自动停止。绑定时 CLI 校验 PID、启动时间与实际参数。")
 	command := commandOf(append([]string{w.startup.Path}, w.startup.Args...))
 	// Engine commands have no inferyard prefix; the display is selectable, never editable.
 	command = command[len("inferyard "):]
 	ui.Text(c, command).Font("monospace").Selectable()
 	if ui.Button(c, "复制启动命令").Disabled(w.startup.Path == "").Clicked() {
 		c.WriteClipboard(command)
-		c.Toast("已复制，请在外部终端执行。")
+		c.Toast("已复制。")
 	}
-	if !w.binding {
-		if ui.PrimaryButton(c, "我已启动，继续绑定").Clicked() {
-			w.binding = true
-			go w.refresh()
+	switch w.engineState.State {
+	case "starting":
+		ui.Text(c, fmt.Sprintf("正在启动（PID %d）——模型加载可能需要几分钟…", w.engineState.Pid))
+		ui.Progress(c, math.NaN())
+	case "running":
+		ui.Text(c, fmt.Sprintf("运行中 · PID %d · %s", w.engineState.Pid, w.engineState.Endpoint)).TextColor(c.Theme().Success)
+	case "stopping":
+		ui.Text(c, "正在停止服务…")
+	case "failed":
+		if w.engineState.Error != nil {
+			ui.Text(c, w.engineState.Error.Message).TextColor(c.Theme().Danger)
 		}
-		return
 	}
+	startable := w.engineState.State == "" || w.engineState.State == "stopped" || w.engineState.State == "failed"
+	if ui.PrimaryButton(c, "启动服务").Disabled(w.busy || w.candidate == "" || !startable).Clicked() {
+		w.startEngine()
+	}
+	if w.engineState.State == "running" {
+		if ui.PrimaryButton(c, "绑定服务").Disabled(w.busy).Clicked() {
+			w.execute(w.managedBindCommand(), false)
+		}
+	}
+	if w.engineState.State == "starting" || w.engineState.State == "running" {
+		if ui.Button(c, "停止服务").Disabled(w.busy || w.running() != nil).Clicked() {
+			w.stopEngine()
+		}
+	}
+	ui.Text(c, "已有自己启动的服务？从进程列表绑定：")
 	options := []string{}
 	for _, p := range w.processes {
 		options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
 	}
 	ui.Field(c, "已启动的本机进程", func() { ui.Select(c, &w.process, options) })
 	field(c, "endpoint", &w.endpoint)
-	ui.Text(c, "绑定时 CLI 校验 PID、启动时间与实际参数。")
 	if ui.PrimaryButton(c, "绑定进程").Disabled(w.busy || w.process == "" || w.endpoint == "").Clicked() {
 		w.execute(w.nextCommand(), false)
 	}

@@ -32,9 +32,11 @@ against the release checksum, without touching shell configuration — and insta
 configuration in Settings remains available.
 
 The wizard guides workspace initialization, model and engine preparation, device checks,
-service binding, evaluations, and report generation/verification. It shows frozen service
-arguments for copying; the operator starts the model service in their own terminal.
-Studio never starts, stops, or restarts model services. Model credentials are referenced
+service binding, evaluations, and report generation/verification. Studio starts the frozen
+engine as a managed child process, waits for its health endpoint, and stops it when Studio
+exits — it owns the processes it starts and never restarts them automatically; services
+the operator started themselves can still be bound from the process list. Binding always
+goes through the CLI's PID and start-time checks. Model credentials are referenced
 only by an environment-variable name.
 
 The device step prefills built-in test assets: a tiny SmolLM2-135M GGUF (pinned Hugging
