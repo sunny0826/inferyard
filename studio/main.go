@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"syscall"
+	"time"
 )
 
 //go:embed mygo.config.ts
@@ -22,12 +24,19 @@ func main() {
 		log.Fatal("desktop configuration must contain one version")
 	}
 	core.Version = version[0][1]
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	service, err := core.New(ctx, core.Options{})
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		shutdownCtx, stop := context.WithTimeout(context.Background(), 30*time.Second)
+		defer stop()
+		if err := service.Shutdown(shutdownCtx); err != nil {
+			log.Printf("Studio shutdown: %v", err)
+		}
+	}()
 	mygo.App.WhenReady(func() {
 		desktop.Subscribe(ctx, service.Bus, false, func(message desktop.Message) error {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
@@ -37,6 +46,6 @@ func main() {
 	})
 	go func() { <-ctx.Done(); mygo.App.Quit() }()
 	if err := mygo.App.Run(); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 }

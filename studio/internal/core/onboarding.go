@@ -104,6 +104,12 @@ func value(flags map[string][]string, name string) string {
 }
 func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardResult, *ApiError) {
 	result := WizardResult{Tasks: []RunTask{}}
+	s.mu.Lock()
+	closing := s.closing
+	s.mu.Unlock()
+	if closing {
+		return result, Err("service_closing")
+	}
 	args, flags, e := wizardArgs(q.Command)
 	if e != nil {
 		return result, e

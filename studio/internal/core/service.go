@@ -30,6 +30,11 @@ type Options struct {
 }
 type Service struct {
 	ctx              context.Context
+	cancel           context.CancelFunc
+	closing          bool
+	shutdownOnce     sync.Once
+	shutdownDone     chan struct{}
+	queueDone        chan struct{}
 	mu               sync.Mutex
 	settingsMu       sync.Mutex
 	reportMu         sync.Mutex
@@ -62,7 +67,8 @@ func New(ctx context.Context, o Options) (*Service, error) {
 			return (inferyard.Client{Path: path}).Exec(ctx, args...)
 		}
 	}
-	s := &Service{ctx: ctx, settingsPath: o.SettingsPath, exec: o.Execute, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout}
+	serviceCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	s := &Service{ctx: serviceCtx, cancel: cancel, shutdownDone: make(chan struct{}), queueDone: make(chan struct{}), settingsPath: o.SettingsPath, exec: o.Execute, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout}
 	raw, err := os.ReadFile(o.SettingsPath)
 	if err == nil {
 		if err = json.Unmarshal(raw, &s.settings); err != nil {
@@ -74,6 +80,13 @@ func New(ctx context.Context, o Options) (*Service, error) {
 	}
 	s.history = RunHistoryResponse{ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}
 	go s.runQueue()
+	go func() {
+		select {
+		case <-ctx.Done():
+			s.beginShutdown()
+		case <-s.shutdownDone:
+		}
+	}()
 	if s.settings.ModelsRoot != nil {
 		s.RefreshDevice()
 	}
@@ -198,6 +211,13 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 	return s.saveSettings(u)
 }
 func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
+	s.mu.Lock()
+	workspaceChanged := str(workspaceRoot(u)) != str(workspaceRoot(s.settings))
+	if workspaceChanged && (s.runsActiveLocked() || (s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping"))) {
+		s.mu.Unlock()
+		return SettingsResponse{}, Err("workspace_busy")
+	}
+	s.mu.Unlock()
 	if err := os.MkdirAll(filepath.Dir(s.settingsPath), 0700); err != nil {
 		return SettingsResponse{}, Err("internal_error")
 	}
@@ -228,6 +248,9 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 		s.device.Snapshot = nil
 		s.device.CapturedAt = nil
 		s.device.LastError = nil
+	}
+	if workspaceChanged {
+		s.engine = nil
 	}
 	s.settings = u
 	if changed {

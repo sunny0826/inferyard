@@ -23,8 +23,8 @@ func TestOnboardingViews(t *testing.T) {
 	}{
 		{"CLI unavailable", viewState{loaded: true}, "安装 InferYard CLI"},
 		{"initialize", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}}}, "新工作区目录"},
-		{"external service", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind"}, startup: core.Startup{Path: "/engine/llama-server", Args: []string{"--port", "48857"}}}, "复制启动命令"},
-		{"managed engine", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", NextCommand: strptr("inferyard bind --config /tmp/c --pid 1 --endpoint http://x")}, engineState: core.EngineState{State: "running", Pid: 4242, Endpoint: "http://127.0.0.1:48857"}}, "绑定服务"},
+		{"external service", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Phase: "bound_missing", CandidatePath: strptr("/tmp/c")}}}, startup: core.Startup{Path: "/engine/llama-server", Args: []string{"--port", "48857"}}}, "复制启动命令"},
+		{"managed engine", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Phase: "bound_missing", CandidatePath: strptr("/tmp/c")}}, NextCommand: strptr("inferyard config bind --candidate /tmp/c --pid 1 --endpoint http://x --out /tmp/new")}, engineState: core.EngineState{State: "running", Pid: 4242, Endpoint: "http://127.0.0.1:48857"}}, "绑定服务"},
 		{"running", viewState{loaded: true, tasks: []core.RunTask{{State: "running"}}, runProgress: &core.RunProgress{Done: 86, Total: &total}}, "86 / 120 题"},
 		{"verified", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{DefaultScopeComplete: true}}, "已核验 verified"},
 		{"device defaults", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "device_check", Workspace: "/tmp/ws"}, modelURL: core.DefaultModelURL, engineURL: core.DefaultEngineURL()}, "引擎 URL"},

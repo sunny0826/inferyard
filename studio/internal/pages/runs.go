@@ -17,24 +17,37 @@ func (s *viewState) runsView(c *ui.Context) {
 		options := s.boundConfigs()
 		if len(options) == 0 {
 			ui.Text(c, "尚无已绑定的题包。请先按上方引导完成候选与绑定。")
-			return
 		}
 		names := []string{}
 		for _, o := range options {
 			names = append(names, o.bundle)
 		}
-		s.firstBundle = defaultBundle(s.firstBundle, names, "")
-		twoBound := len(names) >= 2
-		if s.single || !twoBound {
-			ui.Field(c, "题包", func() { ui.Select(c, &s.firstBundle, names) })
-			ui.Text(c, configOf(options, s.firstBundle)).Selectable()
-		} else {
-			s.secondBundle = defaultBundle(s.secondBundle, names, s.firstBundle)
-			ui.Field(c, "第一题包", func() { ui.Select(c, &s.firstBundle, names) })
-			ui.Text(c, configOf(options, s.firstBundle)).Selectable()
-			ui.Field(c, "第二题包", func() { ui.Select(c, &s.secondBundle, names) })
-			ui.Text(c, configOf(options, s.secondBundle)).Selectable()
+		if len(names) > 0 {
+			s.firstBundle = defaultBundle(s.firstBundle, names, "")
+			twoBound := len(names) >= 2
+			if s.single || !twoBound {
+				ui.Field(c, "题包", func() { ui.Select(c, &s.firstBundle, names) })
+				ui.Text(c, configOf(options, s.firstBundle)).Selectable()
+			} else {
+				s.secondBundle = defaultBundle(s.secondBundle, names, s.firstBundle)
+				ui.Field(c, "第一题包", func() { ui.Select(c, &s.firstBundle, names) })
+				ui.Text(c, configOf(options, s.firstBundle)).Selectable()
+				ui.Field(c, "第二题包", func() { ui.Select(c, &s.secondBundle, names) })
+				ui.Text(c, configOf(options, s.secondBundle)).Selectable()
+			}
 		}
+		ui.Checkbox(c, &s.manualConfig, "高级：手动配置路径")
+		if s.manualConfig {
+			field(c, "第一配置绝对路径", &s.manualFirst)
+			if !s.single {
+				field(c, "第二配置绝对路径", &s.manualSecond)
+			}
+		}
+		first, second := configOf(options, s.firstBundle), configOf(options, s.secondBundle)
+		if s.manualConfig {
+			first, second = strings.TrimSpace(s.manualFirst), strings.TrimSpace(s.manualSecond)
+		}
+		twoBound := first != "" && second != ""
 		if ui.Checkbox(c, &s.single, "仅运行一个题包").Changed() {
 			s.confirmed = false
 		}
@@ -45,17 +58,17 @@ func (s *viewState) runsView(c *ui.Context) {
 		if !twoBound && !s.single {
 			ui.Text(c, "第二题包尚未绑定，双题包运行不可用。")
 		}
-		duplicate := s.firstBundle == s.secondBundle
+		duplicate := first == second
 		if !s.single && twoBound && duplicate {
 			ui.Text(c, "两个题包不能相同。").TextColor(c.Theme().Danger)
 		}
-		if ui.PrimaryButton(c, "启动运行").Disabled(s.busy || (!s.single && (!twoBound || duplicate)) || (s.single && !s.confirmed)).Clicked() {
-			req := core.StartRunsRequest{ConfigPaths: []string{configOf(options, s.firstBundle)}}
+		if ui.PrimaryButton(c, "启动运行").Disabled(s.busy || first == "" || (!s.single && (!twoBound || duplicate)) || (s.single && !s.confirmed)).Clicked() {
+			req := core.StartRunsRequest{ConfigPaths: []string{first}}
 			if s.single {
 				confirmed := true
 				req.AllowSingleBundle = &confirmed
 			} else {
-				req.ConfigPaths = append(req.ConfigPaths, configOf(options, s.secondBundle))
+				req.ConfigPaths = append(req.ConfigPaths, second)
 			}
 			s.work(func() (string, *core.ApiError) {
 				tasks, e := s.service.StartRuns(req)
@@ -122,6 +135,7 @@ func (s *viewState) runsView(c *ui.Context) {
 		}
 	})
 }
+
 // boundOption maps a bound bundle to the frozen config written by `config bind`.
 type boundOption struct{ bundle, config string }
 

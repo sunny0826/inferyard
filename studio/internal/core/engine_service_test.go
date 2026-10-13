@@ -18,6 +18,10 @@ import (
 // ENGINE_HELPER_EXIT is set.
 func TestMain(m *testing.M) {
 	if os.Getenv("ENGINE_HELPER") == "1" {
+		if len(os.Args) > 1 && os.Args[1] == "run" {
+			runDrainingHelper()
+			return
+		}
 		runEngineHelper(os.Args[1:])
 		return
 	}
@@ -25,6 +29,7 @@ func TestMain(m *testing.M) {
 }
 
 func runEngineHelper(args []string) {
+	ignoreHelperTermination()
 	if os.Getenv("ENGINE_HELPER_EXIT") == "1" {
 		os.Exit(3)
 	}
@@ -80,6 +85,13 @@ func engineServiceCtx(t *testing.T, ctx context.Context, workspace string) *Serv
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := s.Shutdown(ctx); err != nil {
+			t.Error(err)
+		}
+	})
 	return s
 }
 

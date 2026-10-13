@@ -51,7 +51,7 @@ func (s *viewState) loadSettings(v core.SettingsResponse) {
 	s.models = emptyText(v.Settings.ModelsRoot)
 }
 func (s *viewState) provision() {
-	s.work(func() (string, *core.ApiError) {
+	s.guideWork(func() (string, *core.ApiError) {
 		v, e := s.service.Provision()
 		if e == nil {
 			s.win.Update(func() { s.loadSettings(v) })
@@ -133,6 +133,9 @@ func (s *viewState) settingsEdited() bool {
 
 func (s *viewState) applySettings(value core.SettingsResponse) {
 	updateForm := !s.settingsLoaded || !s.settingsEdited()
+	if emptyText(s.settings.Effective.WorkspaceRoot) != emptyText(value.Effective.WorkspaceRoot) {
+		s.resetWorkspace()
+	}
 	s.settings = value
 	if updateForm {
 		s.loadSettings(value)

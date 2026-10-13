@@ -7,6 +7,22 @@ import (
 
 func human(code string) string {
 	switch code {
+	case "service_closing":
+		return "Studio 正在关闭，无法接收新任务。"
+	case "run_active":
+		return "测评正在进行，请先取消并等待收尾，再停止引擎。"
+	case "engine_stopping":
+		return "引擎正在停止，请等待回收后再运行。"
+	case "workspace_busy":
+		return "当前工作区仍有运行或托管引擎，请先结束任务并停止引擎。"
+	case "engine_host_not_loopback":
+		return "引擎监听地址必须是 127.0.0.1、::1 或 localhost。"
+	case "engine_credentials_forbidden":
+		return "启动参数含凭据，只接受凭据环境变量引用，请重新创建候选。"
+	case "engine_not_executable":
+		return "引擎文件不存在或不可执行，请检查引擎路径和权限。"
+	case "service_identity_unreadable":
+		return "无法读取绑定进程身份，请检查进程权限后刷新。"
 	case "unsupported_platform":
 		return "当前平台不支持此候选流程，请检查平台支持范围。"
 	case "device_preflight_blocked":
@@ -68,7 +84,9 @@ func (s *viewState) guideWork(fn func() (string, *core.ApiError)) {
 		message, e := fn()
 		if e != nil {
 			mapped := *e
-			mapped.Message = human(e.Code)
+			if mapped.Message == "" {
+				mapped.Message = human(e.Code)
+			}
 			return "", &mapped
 		}
 		return message, nil

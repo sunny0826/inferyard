@@ -5,10 +5,12 @@ import (
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 	"net"
+	"path/filepath"
 )
 
 type onboardingSnapshot struct {
 	candidate string
+	stale     bool
 	startup   core.Startup
 	processes []core.ProcessCandidate
 	failure   *core.ApiError
@@ -20,13 +22,23 @@ func (s *viewState) readOnboarding(p *inferyard.WorkspaceProgress) onboardingSna
 		return result
 	}
 	for _, b := range p.Bundles {
-		if b.Phase != "bound_missing" {
+		if b.Phase == "run_complete" {
 			continue
 		}
 		result.candidate = emptyText(b.CandidatePath)
+		if result.candidate == "" && b.BoundPath != nil {
+			result.candidate = filepath.Join(*b.BoundPath, "config.toml")
+		}
+		if result.candidate == "" {
+			break
+		}
 		result.startup, result.failure = s.service.Startup(result.candidate)
 		if result.failure == nil {
 			result.processes, result.failure = s.service.Processes(s.ctx)
+		}
+		if b.BoundPath != nil && result.failure == nil {
+			alive, e := s.service.BindingAlive(*b.BoundPath)
+			result.stale, result.failure = !alive && e == nil, e
 		}
 		break
 	}
@@ -89,5 +101,5 @@ func (s *viewState) applyOnboarding(v onboardingSnapshot, e *core.ApiError) {
 			s.bindEndpoint = "http://" + net.JoinHostPort(host, port)
 		}
 	}
-	s.startup, s.processes = v.startup, v.processes
+	s.startup, s.processes, s.bindingStale = v.startup, v.processes, v.stale
 }

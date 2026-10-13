@@ -39,7 +39,8 @@ The embedded guidance follows the CLI-generated next command. Studio starts the 
 engine as a managed child process, waits for its health endpoint, and stops it when Studio
 exits — it owns the processes it starts and never restarts them automatically; services
 the operator started themselves can still be bound from the process list. Binding always
-goes through the CLI's PID and start-time checks. Model credentials are referenced
+goes through the CLI's PID and start-time checks. If Studio exits abnormally and leaves
+an engine process running, stop it manually and rebind on the Runs page. Model credentials are referenced
 only by an environment-variable name.
 
 Models and downloads prefills built-in test assets: a tiny SmolLM2-135M GGUF (pinned Hugging

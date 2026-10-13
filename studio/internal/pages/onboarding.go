@@ -72,6 +72,7 @@ func (s *viewState) wizardView(c *ui.Context) {
 		if ui.PrimaryButton(c, label).Clicked() {
 			s.selected = page
 			s.detailID = ""
+			go s.refresh(true)
 		}
 	})
 }
@@ -79,8 +80,8 @@ func (s *viewState) setupGuide(c *ui.Context) {
 	if s.ready.CLI.Status != "ok" {
 		card(c, "安装 InferYard CLI", func() {
 			ui.Text(c, "自动安装通过 uv 安装匹配版本的 CLI；缺少 uv 时下载官方独立工具，不修改终端配置。也可在路径设置中手动指定路径。")
-			if s.installStatus != "" {
-				ui.Text(c, s.installStatus)
+			if s.cliInstallStatus != "" {
+				ui.Text(c, s.cliInstallStatus)
 			}
 			if ui.PrimaryButton(c, "自动安装 CLI "+core.Version).Disabled(s.busy).Clicked() {
 				s.installCLI()
@@ -94,15 +95,15 @@ func (s *viewState) setupGuide(c *ui.Context) {
 		}
 		ui.Text(c, "初始化目标必须是新目录；成功后自动切换工作区。")
 		field(c, "新工作区目录", &s.initDir)
-		if ui.Button(c, "一键配置目录").Disabled(s.busy).Clicked() {
-			s.guideWork(func() (string, *core.ApiError) { _, e := s.service.Provision(); return "目录已配置。", e })
-		}
 		if ui.PrimaryButton(c, "初始化工作区").Disabled(s.busy || s.initDir == "" || s.ready.CLI.Status != "ok").Clicked() {
 			s.execute("inferyard init --out "+quote(s.initDir), false)
 		}
 	})
 }
 func (s *viewState) runGuide(c *ui.Context) {
+	if b := s.active(); b != nil && (b.CandidatePath != nil || b.BoundPath != nil) {
+		card(c, "模型服务", func() { s.serviceView(c) })
+	}
 	if s.running() != nil {
 		card(c, "进度引导", func() { s.runView(c) })
 		return
@@ -118,7 +119,7 @@ func (s *viewState) runGuide(c *ui.Context) {
 		case "prepare_candidate":
 			s.candidateView(c)
 		case "bind":
-			s.serviceView(c)
+			ui.Text(c, "请在模型服务卡中启动并绑定服务。")
 		case "run":
 			s.runView(c)
 		default:

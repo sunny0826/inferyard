@@ -42,8 +42,8 @@ func (s *viewState) modelsView(c *ui.Context) {
 	card(c, "下载引擎", func() {
 		field(c, "引擎 URL", &s.engineURL)
 		field(c, "引擎新目录名", &s.engineName)
-		if s.installStatus != "" {
-			ui.Text(c, s.installStatus)
+		if s.engineDownloadStatus != "" {
+			ui.Text(c, s.engineDownloadStatus)
 		}
 		if ui.Button(c, "下载引擎").Disabled(s.busy || !validName(s.engineName) || s.engineURL == "" || emptyText(s.settings.Effective.WorkspaceRoot) == "").Clicked() {
 			s.fetchEngine()
@@ -112,10 +112,11 @@ func (s *viewState) acquireModel() {
 
 func (s *viewState) fetchEngine() {
 	source := s.engineURL
-	out := filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines", s.engineName)
+	out := fresh(filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines"), s.engineName)
 	s.guideWork(func() (string, *core.ApiError) {
+		defer s.win.Update(func() { s.engineDownloadStatus = "" })
 		path, e := s.service.FetchEngine(s.ctx, source, out, func(status string) {
-			s.win.Update(func() { s.installStatus = status })
+			s.win.Update(func() { s.engineDownloadStatus = status })
 		})
 		if e != nil {
 			return "", e
