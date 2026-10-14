@@ -62,22 +62,49 @@ func (s *viewState) adoptDownloadedEngine() {
 func (s *viewState) modelEngineServiceView(c *ui.Context) {
 	card(c, "引擎服务", func() {
 		state := s.engineState
-		label := map[string]string{"": "已停止", "stopped": "已停止", "starting": "启动中", "running": "运行中", "stopping": "停止中", "failed": "失败"}[state.State]
-		ui.Text(c, "服务状态："+label)
+		presentations := map[string][2]string{
+			"stopped":  {"已停止", "启动前检查冻结配置的端口，启动后等待健康端点就绪。"},
+			"starting": {"正在加载模型", "每秒探测 /health，收到 2xx 后进入运行中；默认最多等待 10 分钟。"},
+			"running":  {"服务已就绪", "健康端点已响应，可以到运行页绑定服务。"},
+			"stopping": {"正在停止服务", "先发送 SIGTERM，10 秒未退出则 kill；等待进程退出后变为 stopped。"},
+			"failed":   {"服务异常退出", "不会自动重启。检查日志后手动启动，并重新绑定。"},
+		}
+		code := state.State
+		if code == "" {
+			code = "stopped"
+		}
+		presentation := presentations[code]
+		color := c.Theme().TextMuted
+		if code == "running" {
+			color = c.Theme().Success
+		} else if code == "failed" {
+			color = c.Theme().Danger
+			if state.Error != nil {
+				code += " · " + state.Error.Code
+			}
+		}
+		statusPanel(c, code, presentation[0], presentation[1], color)
 		pid := "null · 无活动引擎进程"
 		if state.Pid != 0 {
 			pid = fmt.Sprintf("%d", state.Pid)
 		}
-		ui.Text(c, "PID："+pid)
 		endpoint := "null · 无本地服务地址"
 		if u, err := url.Parse(state.Endpoint); err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.User == nil && u.RawQuery == "" && u.Fragment == "" {
 			if host := u.Hostname(); host == "localhost" || net.ParseIP(host).IsLoopback() {
 				endpoint = state.Endpoint
 			}
 		}
-		ui.Text(c, "Endpoint（仅 loopback）："+endpoint).Selectable()
-		ui.Text(c, "Candidate："+state.Candidate).Selectable()
-		ui.Text(c, "LogPath："+state.LogPath).Selectable()
+		kvGrid(c, [][2]string{
+			{"冻结配置", "Candidate：" + state.Candidate},
+			{"本地地址", "Endpoint（仅 loopback）：" + endpoint},
+			{"进程", "PID：" + pid},
+			{"内存", "null · 此页无内存采样"},
+		})
+		componentFold(c, "查看启动行（安全展示）", func() {
+			deviceMono(c, "LogPath："+state.LogPath)
+			deviceMono(c, "Candidate："+state.Candidate)
+			ui.Text(c, "从冻结 candidate.toml 的 [engine] 读取；凭据参数与完整进程 argv 不展示。")
+		})
 		errorView(c, state.Error)
 		ui.Text(c, "不会自动重启；Studio 只管理自己启动的进程。")
 		if s.candidate == "" {
@@ -103,6 +130,11 @@ func (s *viewState) modelEngineServiceView(c *ui.Context) {
 				return "已请求停止服务。", e
 			})
 		})
+		current := state.State
+		if current == "" {
+			current = "stopped"
+		}
+		stepsRow(c, []string{"stopped", "starting", "running", "stopping", "stopped"}, current, c.Theme().Accent)
 	})
 }
 
@@ -119,7 +151,11 @@ func (s *viewState) modelBindingView(c *ui.Context) {
 				label = "存活提示匹配"
 			}
 		}
-		ui.Text(c, label)
+		ui.Row(c).Gap(13).AlignItems(ui.Stretch).Children(func() {
+			ui.Box(c).Width(3).Background(c.Theme().Accent).Radius(2)
+			ui.Column(c).Grow(1).Children(func() { ui.Text(c, label).Bold() })
+		})
 		ui.Text(c, "存活提示只比对 server_pid / process_start_ticks；身份核验始终由 CLI 在 bind / run 时完成；服务运行中不代表绑定有效。")
+		ui.Button(c, "到运行页绑定").AlignSelf(ui.Start).OnClick(func() { s.selected = "runs" })
 	})
 }

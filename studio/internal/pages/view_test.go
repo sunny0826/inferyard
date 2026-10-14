@@ -16,7 +16,7 @@ func testState() viewState {
 	return viewState{selected: "wizard", loaded: true, settingsLoaded: true, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
 }
 func TestSixPagesRender(t *testing.T) {
-	for _, tc := range []struct{ page, want string }{{"wizard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "凭据环境变量名"}, {"runs", "/w/bound/zh-core-1/config.toml"}, {"reports", "选择来源 run（1–100 个）"}, {"settings", "CLI 绝对路径（留空使用 PATH）"}} {
+	for _, tc := range []struct{ page, want string }{{"wizard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "下载预置模型"}, {"runs", "/w/bound/zh-core-1/config.toml"}, {"reports", "选择来源 run（1–100 个）"}, {"settings", "CLI 绝对路径（留空使用 PATH）"}} {
 		t.Run(tc.page, func(t *testing.T) {
 			s := testState()
 			s.selected = tc.page

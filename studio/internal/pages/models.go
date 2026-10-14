@@ -16,18 +16,38 @@ var environmentName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 func validName(s string) bool { return directoryName.MatchString(s) && strings.Trim(s, ".") != "" }
 func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 func (s *viewState) modelsView(c *ui.Context) {
+	ui.Text(c, "工作区 / 资产与服务").FontSize(11).TextColor(c.Theme().TextMuted)
 	s.header(c, "模型与下载")
 	s.adoptDownloadedEngine()
-	card(c, "模型", func() { s.modelAssetsView(c) })
-	card(c, "下载", func() {
-		s.downloadsView(c)
-		s.engineDownloadView(c)
+	ui.Row(c).Gap(20).AlignItems(ui.Start).Children(func() {
+		ui.Column(c.Key("models-left")).Width(0).Grow(1.2).Gap(20).Children(func() {
+			card(c, "模型", func() { s.modelAssetsView(c) })
+			card(c, "下载", func() {
+				s.downloadsView(c)
+				card(c, "引擎下载", func() { s.engineDownloadView(c) })
+			})
+		})
+		ui.Column(c.Key("models-right")).Width(0).Grow(1).MinWidth(310).Gap(20).Children(func() {
+			s.modelEngineServiceView(c)
+			s.modelBindingView(c)
+		})
 	})
-	s.modelEngineServiceView(c)
-	s.modelBindingView(c)
 }
 
 func (s *viewState) modelAssetsView(c *ui.Context) {
+	ui.Column(c).Gap(8).Padding(16).Radius(10).Border(1, c.Theme().Accent.Alpha(0.20)).Gradient(c.Theme().Accent.Mix(c.Theme().Surface, 0.92), c.Theme().Surface, 120).Children(func() {
+		statusBadge(c, "预置测试模型", c.Theme().Accent)
+		ui.Text(c, "SmolLM2-135M").Bold().FontSize(20)
+		ui.Text(c, "Instruct · Q4_K_M · 固定版本 GGUF").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "适合走通首次使用流程").FontSize(12).TextColor(c.Theme().TextMuted)
+		ui.PrimaryButton(c, "下载预置模型").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
+			name := fmt.Sprintf("model-%d", uniqueID())
+			s.work(func() (string, *core.ApiError) {
+				_, e := s.service.CreateDownload(core.CreateDownloadRequest{SourceUrl: core.DefaultModelURL, OutName: name})
+				return "已加入下载队列。", e
+			})
+		})
+	})
 	snapshot, err := parseDeviceSnapshot(s.device.Snapshot)
 	switch {
 	case err != nil:
@@ -39,15 +59,9 @@ func (s *viewState) modelAssetsView(c *ui.Context) {
 		ui.Text(c, "尚无设备快照，请到设备页刷新。")
 	}
 	ui.Text(c, "模型目录："+text(s.settings.Effective.ModelsRoot))
-	ui.Text(c, "SmolLM2-135M · Instruct · Q4_K_M · 固定版本 GGUF")
-	ui.Button(c, "下载预置模型").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
-		name := fmt.Sprintf("model-%d", uniqueID())
-		s.work(func() (string, *core.ApiError) {
-			_, e := s.service.CreateDownload(core.CreateDownloadRequest{SourceUrl: core.DefaultModelURL, OutName: name})
-			return "已加入下载队列。", e
-		})
-	})
-	card(c, "创建模型下载", func() {
+
+	componentFold(c, "添加其他模型", func() {
+		ui.Text(c, "创建模型下载").Bold()
 		field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL)
 		field(c, "新目录名", &s.modelName)
 		field(c, "凭据环境变量名（可选）", &s.tokenEnv)

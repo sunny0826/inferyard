@@ -167,20 +167,23 @@ func TestReportTableSelection(t *testing.T) {
 	}
 }
 
-func TestDownloadTableDetailsAndSelectionIdentity(t *testing.T) {
+func TestDownloadTaskCardsAndDetails(t *testing.T) {
 	s := testState()
 	a := core.DownloadTask{TaskId: "a", OutName: "model-a", State: "downloading", OutDir: "/out/a"}
 	b := core.DownloadTask{TaskId: "b", OutName: "model-b", State: "failed", OutDir: "/out/b", FileName: ptr("model.gguf"), DownloadedBytes: 1048576, Result: &core.DownloadResult{Bytes: 1048576, Sha256: "fixture-sha"}, Error: &core.ApiError{Code: "fixture", Message: "下载失败"}}
 	s.downloads = []core.DownloadTask{a, b}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 700)
-	if tt.HasText("取消下载") {
-		t.Fatal("no selection has cancel")
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 900)
+	if !tt.HasText("取消下载") {
+		t.Fatal("downloading task lacks cancel", tt.Texts())
 	}
-	click(t, tt, "model-a")
-	if !tt.HasText("取消下载") || !tt.HasText("/out/a") {
-		t.Fatal(tt.Texts())
+	for _, hidden := range []string{"/out/b", "fixture-sha", "下载失败"} {
+		if tt.HasText(hidden) {
+			t.Fatal("details expanded by default", hidden)
+		}
 	}
-	click(t, tt, "model-b")
+	s.downloads = []core.DownloadTask{b}
+	tt.Frame()
+	click(t, tt, "观测依据与输出")
 	for _, text := range []string{"/out/b", "model.gguf", "1048576", "fixture-sha", "下载失败", "输出目录保留"} {
 		if !tt.HasText(text) {
 			t.Fatal("missing", text, tt.Texts())
@@ -189,20 +192,7 @@ func TestDownloadTableDetailsAndSelectionIdentity(t *testing.T) {
 	if tt.HasText("取消下载") {
 		t.Fatal("failed download has cancel")
 	}
-	s.downloads = []core.DownloadTask{b, a}
-	tt.Frame()
-	tt.Frame()
-	if !tt.HasText("fixture-sha") {
-		t.Fatal("selection changed after reorder")
-	}
-	s.downloads = []core.DownloadTask{a}
-	tt.Frame()
-	tt.Frame()
-	if tt.HasText("fixture-sha") || tt.HasText("取消下载") {
-		t.Fatal("removed selection targeted another task")
-	}
 	if dir := os.Getenv("STUDIO_UI_PREVIEW_DIR"); dir != "" {
-		click(t, tt, "model-a")
 		f, err := os.Create(filepath.Join(dir, "downloads.png"))
 		if err != nil {
 			t.Fatal(err)

@@ -98,7 +98,7 @@ type viewState struct {
 	endpoint, pid                                                                                             string
 	denied                                                                                                    map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                                      string
-	tasksTable, historyTable, reportsTable, downloadsTable, reportSources                                     ui.ListState
+	tasksTable, historyTable, reportsTable, reportSources                                                    ui.ListState
 	reportChoices                                                                                             ui.Selection[string]
 	scrolls                                                                                                   map[string]*ui.ScrollState
 	casesTable, samplesTable                                                                                  ui.ListState
