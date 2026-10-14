@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -82,11 +80,6 @@ func (s *viewState) deviceRefreshButton(c *ui.Context, label string) {
 		s.refreshDevice()
 	}
 }
-func (s *viewState) deviceRunsButton(c *ui.Context) {
-	if ui.PrimaryButton(c, "前往运行页").Clicked() {
-		s.selected = "runs"
-	}
-}
 func parseDeviceSnapshot(raw json.RawMessage) (deviceObject, error) {
 	var snapshot deviceObject
 	raw = bytes.TrimSpace(raw)
@@ -104,7 +97,13 @@ func parseDeviceSnapshot(raw json.RawMessage) (deviceObject, error) {
 }
 
 func (s *viewState) deviceView(c *ui.Context) {
-	s.header(c, "设备")
+	ui.Row(c).Children(func() {
+		ui.Text(c, "设备").Bold().FontSize(24).Grow(1)
+		if s.device.Refreshing {
+			ui.Text(c, "正在采集设备信息…").TextColor(c.Theme().TextMuted)
+		}
+		s.deviceRefreshButton(c, "刷新设备")
+	})
 	if s.progress != nil && s.progress.NextAction == "device_check" {
 		card(c, "检查设备", func() {
 			ui.Text(c, "模型与引擎可在「模型与下载」页准备。")
@@ -116,7 +115,6 @@ func (s *viewState) deviceView(c *ui.Context) {
 	snapshot, parseError := parseDeviceSnapshot(s.device.Snapshot)
 	if snapshot != nil && parseError == nil {
 		deviceHardware(c, snapshot.object("hardware"))
-		s.deviceConclusion(c, snapshot)
 	}
 	errorView(c, s.device.LastError)
 	if s.device.LastError != nil {
@@ -131,133 +129,15 @@ func (s *viewState) deviceView(c *ui.Context) {
 		ui.Text(c, "设备快照无法读取。").TextColor(c.Theme().Danger)
 		return
 	}
-	if snapshot == nil {
-		if s.device.LastError == nil {
-			ui.Column(c).AlignItems(ui.Center).Gap(12).Padding(40).Background(c.Theme().Surface).Radius(12).Children(func() {
-				ui.Text(c, "尚无设备快照").Bold().FontSize(18)
-				ui.Text(c, "设备检查会采集硬件、GPU 与本地模型信息，不会向模型发送请求。")
-				if s.device.Refreshing {
-					ui.Text(c, "正在采集设备信息…").TextColor(c.Theme().TextMuted)
-				}
-				ui.Row(c).Gap(10).Children(func() {
-					s.deviceRefreshButton(c, "刷新设备")
-					if ui.Button(c, "前往设置配置模型目录").Clicked() {
-						s.selected = "settings"
-					}
-				})
-			})
-		}
-		return
-	}
-	s.deviceNextSteps(c, snapshot)
-}
-func (s *viewState) deviceConclusion(c *ui.Context, snapshot deviceObject) {
-	ui.Column(c).Gap(12).Padding(18).Background(c.Theme().Surface).Radius(12).Children(func() {
-		if snapshot.flag("ready_to_run") {
-			ui.Badge(c, "✓ 可运行").AlignSelf(ui.Start).TextColor(c.Theme().Success)
-		} else {
-			ui.Badge(c, "✕ 暂不可运行").AlignSelf(ui.Start).TextColor(c.Theme().Danger)
-		}
-		rec := snapshot.object("recommendation")
-		if !snapshot.flag("ready_to_run") {
-			var reasons []string
-			seen := map[string]bool{}
-			add := func(reason string) {
-				if !seen[reason] {
-					seen[reason] = true
-					reasons = append(reasons, reason)
-				}
-			}
-			if rec["reason"] != nil {
-				add(rec.label("reason"))
-			}
-			for _, reason := range rec.list("limitations") {
-				add(deviceLabel(fmt.Sprint(reason)))
-			}
-			for _, step := range snapshot.list("next_steps") {
-				if v := deviceItem(step); v["reason"] != nil {
-					add(v.label("reason"))
-				}
-			}
-			if len(reasons) > 0 {
-				ui.Text(c, "原因："+strings.Join(reasons, "、")).TextColor(c.Theme().Warning)
-			}
-		}
-		ui.Row(c).Gap(12).Children(func() {
-			captured := text(s.device.CapturedAt)
-			if t, err := time.Parse(time.RFC3339, captured); err == nil {
-				captured = t.Local().Format("2006-01-02 15:04:05")
-			}
-			requests := "模型请求数：" + snapshot.value("model_requests_sent")
-			if snapshot.value("model_requests_sent") == "0" {
-				requests = "本次检查未发送模型请求"
-			}
-			meta := "快照 " + captured + " · " + requests
-			if s.device.Refreshing {
-				meta = "正在采集设备信息…"
-			}
-			ui.Text(c, meta).Grow(1).TextColor(c.Theme().TextMuted)
-			s.deviceRefreshButton(c, "刷新设备")
-		})
-	})
-}
-func (s *viewState) deviceNextSteps(c *ui.Context, snapshot deviceObject) {
-	if s.deviceGuideDismissed {
-		return
-	}
-	ui.Row(c).Gap(12).Padding(10).Background(c.Theme().Surface).Radius(8).Children(func() {
-		ui.Badge(c, "下一步").TextColor(c.Theme().Accent)
-		ui.Column(c).Grow(1).MinWidth(0).Gap(8).Children(func() {
-			if snapshot.flag("ready_to_run") {
-				ui.Row(c).Gap(12).Children(func() {
-					ui.Text(c, "设备检查已通过，前往运行页创建候选并运行题包").Grow(1)
-					s.deviceRunsButton(c)
-				})
-				return
-			}
-			for i, item := range snapshot.list("next_steps") {
-				step := deviceItem(item)
-				ui.Column(c.Key(fmt.Sprint(i))).Gap(6).Children(func() {
-					ui.Row(c).Gap(12).Children(func() {
-						ui.Text(c, fmt.Sprintf("%d.", i+1))
-						switch step.value("action") {
-						case "configure_and_bind_existing_service":
-							ui.Text(c, "绑定已有的模型服务（需要先完成实时预检）").Grow(1)
-							s.deviceRunsButton(c)
-						case "provide_local_gguf":
-							ui.Text(c, step.label("action")+"（"+step.label("reason")+"）").Grow(1)
-							if ui.PrimaryButton(c, "前往模型与下载页").Clicked() {
-								s.selected = "models"
-							}
-						case "probe":
-							if command := step.list("command"); len(command) > 0 {
-								ui.Text(c, "或先用探测验证候选配置：")
-								parts := make([]string, len(command))
-								for i, part := range command {
-									parts[i] = fmt.Sprint(part)
-								}
-								line := strings.Join(parts, " ")
-								ui.Text(c, line).Font("monospace").SingleLine().Grow(1).Selectable()
-								if ui.Button(c, "复制").Clicked() {
-									c.WriteClipboard(line)
-								}
-							} else {
-								ui.Text(c, step.value("action")+" · "+step.label("reason"))
-							}
-						default:
-							ui.Text(c, step.label("action")+" · "+step.label("reason"))
-						}
-					})
-					if step.value("action") == "probe" && len(step.list("command")) > 0 {
-						ui.Text(c, "CONFIG.toml 为占位符，请替换为真实配置路径。").TextColor(c.Theme().TextMuted)
-					}
-				})
+	if snapshot == nil && s.device.LastError == nil {
+		ui.Column(c).AlignItems(ui.Center).Gap(12).Padding(40).Background(c.Theme().Surface).Radius(12).Children(func() {
+			ui.Text(c, "尚无设备快照").Bold().FontSize(18)
+			ui.Text(c, "设备检查会采集硬件、GPU 与本地模型信息，不会向模型发送请求。")
+			if ui.Button(c, "前往设置配置模型目录").Clicked() {
+				s.selected = "settings"
 			}
 		})
-		if ui.Button(c, "✕").Clicked() {
-			s.deviceGuideDismissed = true
-		}
-	})
+	}
 }
 func deviceHardware(c *ui.Context, hw deviceObject) {
 	card(c, "硬件", func() {

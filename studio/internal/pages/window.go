@@ -59,7 +59,6 @@ func pageID(page string) string {
 }
 
 type viewState struct {
-	deviceGuideDismissed                                                                                      bool
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, engineDownloadStatus, refreshFailure string
 	enginePreset, assetsPreset                                                                                bool
 	engineState                                                                                               core.EngineState
