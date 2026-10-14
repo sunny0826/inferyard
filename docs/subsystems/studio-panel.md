@@ -24,7 +24,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 | CLI 安装与预置资产 | 复用已有 `inferyard`/uv（含 Homebrew 路径），或下载固定版本独立 uv（sha256 校验）后 `uv tool install inferyard==Version`；内置 SmolLM2-135M 模型 URL 与按平台固定的 Prism 引擎归档下载/解包 | `InstallCLI`、`FindCLI`、`FindUV` 在 [`studio/internal/core/install.go`](../../studio/internal/core/install.go)；`DefaultModelURL`、`DefaultEngineURL`、`FetchEngine` 在 [`studio/internal/core/defaults.go`](../../studio/internal/core/defaults.go) |
 | 就绪度与目录供给 | CLI/工作区/结果/模型四就绪度；workspace 初始化标志为 `preparation.json` 的 `community_init.v1`；`Provision` 显式幂等建目录 | `Readiness`、`Provision`、`workspaceRoot` 在 [`studio/internal/core/readiness.go`](../../studio/internal/core/readiness.go) |
 | 引擎服务生命周期 | 解析冻结配置 `candidate.toml` 的 `[engine]` 启动行、端口占用预检、子进程拉起、健康端点等待、停止与终止 | `StartEngine`、`StopEngine`、`monitorEngine`、`terminateEngine` 在 [`studio/internal/core/engine_service.go`](../../studio/internal/core/engine_service.go)；`Startup`、`Processes` 在 [`studio/internal/core/startup.go`](../../studio/internal/core/startup.go) |
-| 绑定存活提示 | 只读比对绑定配置里的 `server_pid`/`process_start_ticks` 与进程实际启动 tick，仅作 UI 提示 | `BindingAlive` 在 [`studio/internal/core/binding.go`](../../studio/internal/core/binding.go) |
+| 绑定存活提示 | 只读比对绑定配置里的 `server_pid`/`process_start_ticks` 与进程实际启动 tick，仅作 UI 提示；比对失败显示「无法确认」，不据此判定绑定有效 | `BindingAlive` 在 [`studio/internal/core/binding.go`](../../studio/internal/core/binding.go) |
 | 运行队列 | 绑定配置准入（含结果根包含、去重）、串行 worker、取消、resume 准入（历史索引 + CLI 终审） | `StartRuns`、`Resume`、`CancelRun`、`runQueue` 在 [`studio/internal/core/runs.go`](../../studio/internal/core/runs.go) |
 | 下载任务 | 与运行队列并发的模型/引擎获取，共用同一任务列表；模型任务 `.part` 尺寸轮询与正式文件发布观测；引擎任务复用 `FetchEngine` 传输与解包、取消贯穿全程、字节与速率缺测为带 `progress_reason` 的 `null`、成功写 `engine_path` | `CreateDownload`、`CreateEngineDownload`、`CancelDownload` 在 [`studio/internal/core/downloads.go`](../../studio/internal/core/downloads.go)；`FetchEngine` 在 [`studio/internal/core/defaults.go`](../../studio/internal/core/defaults.go)；`PollDownload` 在 [`studio/internal/evidence/download.go`](../../studio/internal/evidence/download.go) |
 | 报告 | 1–100 个来源 run 校验、唯一命名新目录生成、索引与静态路径包含解析；离线 HTML 在独立 WebView 窗口以 `file://` 打开 | `CreateReport`、`Reports`、`ReportFile` 在 [`studio/internal/core/reports.go`](../../studio/internal/core/reports.go)；`Reports.Open`、`reportURL` 在 [`studio/internal/pages/reports.go`](../../studio/internal/pages/reports.go) |
@@ -78,10 +78,9 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
    与片段的 `https` 来源；轮询观测 `.part` 尺寸并以 5 读数窗口估算速率，正式发布文件出现后完成
    任务并按实测字节收尾。引擎获取（预置或自定义来源）经 `CreateEngineDownload` 进入同一列表，
    复用 `FetchEngine` 传输与解包：归档解包保留同级共享库、仅重建归档内相对
-   符号链接（`safeLinkTarget` 拒绝越界链接），输出目录已存在或被在途任务占用即拒绝
-   （`output_exists`），取消贯穿传输与解包；该传输接口不提供字节读数，引擎任务的
-   `downloaded_bytes`/`bytes_per_second` 恒为 `null` 并带 `progress_reason`，成功收尾写
-   `engine_path`。
+   符号链接（`safeLinkTarget` 拒绝越界链接），输出目录已存在或已被历史任务记录占用即拒绝
+   （`output_exists`），取消贯穿传输与解包；该传输接口不提供字节读数，引擎任务的   `downloaded_bytes`/`bytes_per_second` 恒为 `null` 并带 `progress_reason`，成功收尾写
+   `engine_path`。所有 `fetchURL` 传输超过 64 MiB 拒绝（`download_too_large`），不静默截断。
 9. **关停**：`Shutdown` 立即关闭准入，未终态队列任务标 cancelled、活动任务标 cancelling 并
    取消上下文，待 runQueue 排空后停止自启动引擎再置 `shutdownDone`；调用方超时（main 为 30
    秒）不抛弃清理、不改变顺序。
@@ -112,8 +111,8 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 ### 下载任务（`DownloadTask`）
 
 - `CreateDownload`（模型，`Kind="model"`）与 `CreateEngineDownload`（引擎，`Kind="engine"`）
-  共用同一任务列表与 `downloading → done/failed/cancelled` 转换；输出目录已存在或被在途任务
-  占用返回 `output_exists`，来源或目录名非法返回 `invalid_request`，服务关停中返回
+  共用同一任务列表与 `downloading → done/failed/cancelled` 转换；输出目录已存在或被历史任务
+  记录（含终态）占用返回 `output_exists`，来源或目录名非法返回 `invalid_request`，服务关停中返回
   `service_closing`。
 - 模型任务轮询 `.part` 尺寸、以 5 读数窗口估算速率，正式文件发布后按实测字节收尾（结果
   `{bytes, sha256}`）；引擎任务复用 `FetchEngine` 传输与解包，取消贯穿全程，

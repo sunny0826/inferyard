@@ -4,7 +4,7 @@ import "inferyard/studio/internal/core"
 
 func (s *viewState) resetWorkspace() {
 	s.initDir, s.engine, s.process, s.bindEndpoint, s.candidate = "", "", "", "", ""
-	s.enginePreset, s.assetsPreset, s.bindingStale = false, false, false
+	s.enginePreset, s.assetsPreset, s.bindingStale, s.bindingUnknown = false, false, false, false
 	s.engineState, s.startup, s.processes = core.EngineState{}, core.Startup{}, nil
 	s.cliInstallStatus, s.refreshFailure = "", ""
 	s.runProgress, s.progress, s.resumeSource, s.detail = nil, nil, nil, nil

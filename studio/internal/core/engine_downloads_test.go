@@ -273,3 +273,55 @@ func TestModelDownloadJSONKeepsMeasuredBytes(t *testing.T) {
 		t.Fatalf("model JSON: %s", raw)
 	}
 }
+
+func TestEngineDownloadJSONDropsCounters(t *testing.T) {
+	rate := 1.5
+	raw, err := json.Marshal(DownloadTask{Kind: "engine", DownloadedBytes: 99, BytesPerSecond: &rate})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var obj map[string]any
+	json.Unmarshal(raw, &obj)
+	for _, key := range []string{"downloaded_bytes", "bytes_per_second"} {
+		if value, exists := obj[key]; !exists || value != nil {
+			t.Fatalf("%s = %v, JSON: %s", key, value, raw)
+		}
+	}
+}
+
+func TestFetchURLRejectsOversized(t *testing.T) {
+	stubInstall(t)
+	installHTTPDo = func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, ContentLength: maxFetchBytes + 1, Body: io.NopCloser(bytes.NewReader(nil))}, nil
+	}
+	if _, e := fetchURL(context.Background(), "https://example.test/big"); e == nil || e.Code != "download_too_large" {
+		t.Fatalf("content-length: %v", e)
+	}
+	installHTTPDo = func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, ContentLength: -1, Body: io.NopCloser(bytes.NewReader(make([]byte, maxFetchBytes+1)))}, nil
+	}
+	if _, e := fetchURL(context.Background(), "https://example.test/big"); e == nil || e.Code != "download_too_large" {
+		t.Fatalf("chunked body: %v", e)
+	}
+}
+
+func TestEngineDownloadShutdownConverges(t *testing.T) {
+	s := engineDownloadService(t)
+	started := make(chan struct{})
+	installHTTPDo = func(req *http.Request) (*http.Response, error) {
+		close(started)
+		<-req.Context().Done()
+		return nil, req.Context().Err()
+	}
+	if _, e := s.CreateEngineDownload(engineSource, "shutdown"); e != nil {
+		t.Fatal(e)
+	}
+	<-started
+	s.Shutdown(context.Background())
+	wait(t, func() bool { return s.Downloads()[0].State == "cancelled" })
+	task := s.Downloads()[0]
+	assertEngineNullProgress(t, task)
+	if task.EnginePath != nil || task.FinishedAt == nil {
+		t.Fatalf("shutdown: %+v", task)
+	}
+}

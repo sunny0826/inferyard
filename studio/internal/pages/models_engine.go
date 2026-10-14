@@ -14,7 +14,7 @@ import (
 
 func (s *viewState) engineDownloadView(c *ui.Context) {
 	ui.Text(c, "引擎目录："+filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines"))
-	ui.Button(c, "下载预置引擎").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
+	ui.Button(c, "下载预置引擎").AlignSelf(ui.Start).Disabled(s.busy || core.DefaultEngineURL() == "").OnClick(func() {
 		s.acquireEngine(core.DefaultEngineURL(), fmt.Sprintf("engine-%d", uniqueID()))
 	})
 	field(c, "引擎 URL", &s.engineURL)
@@ -35,11 +35,18 @@ func (s *viewState) adoptDownloadedEngine() {
 	if s.engine != "" {
 		return
 	}
+	enginesRoot := filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines")
+	if emptyText(s.settings.Effective.WorkspaceRoot) == "" {
+		return
+	}
 	var latest *core.DownloadTask
 	var latestTime time.Time
 	for i := range s.downloads {
 		task := &s.downloads[i]
 		if task.Kind != "engine" || task.State != "done" || emptyText(task.EnginePath) == "" {
+			continue
+		}
+		if rel, err := filepath.Rel(enginesRoot, task.OutDir); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			continue
 		}
 		finished, _ := time.Parse(time.RFC3339Nano, emptyText(task.FinishedAt))
@@ -103,9 +110,13 @@ func (s *viewState) modelBindingView(c *ui.Context) {
 	card(c, "绑定存活提示", func() {
 		label := "尚未绑定服务"
 		if b := s.active(); b != nil && emptyText(b.BoundPath) != "" {
-			label = "存活提示匹配"
-			if s.bindingStale {
+			switch {
+			case s.bindingUnknown:
+				label = "无法确认存活，不据此判定绑定有效"
+			case s.bindingStale:
 				label = "原绑定可能已失效，请到运行页重新绑定"
+			default:
+				label = "存活提示匹配"
 			}
 		}
 		ui.Text(c, label)

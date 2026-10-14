@@ -124,6 +124,8 @@ func uvAsset() (string, *ApiError) {
 	return name, nil
 }
 
+const maxFetchBytes = 64 << 20
+
 func fetchURL(ctx context.Context, url string) ([]byte, *ApiError) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -137,9 +139,15 @@ func fetchURL(ctx context.Context, url string) ([]byte, *ApiError) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, &ApiError{Code: "download_failed", Message: "下载失败，请检查网络后重试。", Details: map[string]any{"url": url, "status": resp.StatusCode}}
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
+	if resp.ContentLength > maxFetchBytes {
+		return nil, &ApiError{Code: "download_too_large", Message: "下载超出 64 MiB 上限，请检查来源。", Details: map[string]any{"url": url, "content_length": resp.ContentLength}}
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxFetchBytes+1))
 	if err != nil {
 		return nil, &ApiError{Code: "download_failed", Message: "下载中断，请重试。", Details: map[string]any{"url": url}}
+	}
+	if len(body) > maxFetchBytes {
+		return nil, &ApiError{Code: "download_too_large", Message: "下载超出 64 MiB 上限，请检查来源。", Details: map[string]any{"url": url}}
 	}
 	return body, nil
 }

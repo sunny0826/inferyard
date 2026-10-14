@@ -60,7 +60,7 @@
 </div>
 </div>
 <footer class="footer">原型以 docs/subsystems/studio-panel.md 为行为依据。进程内事件驱动局部刷新；本页按钮模拟事件快照，无计时器伪造进度。CLI 安装仍在设置页：复用已有安装，或校验固定 uv 后安装匹配版本。</footer>
-<details class="footer"><summary>设计依据与实现差异</summary><p>依据「职责与事实源」的引擎生命周期、下载任务、CLI 安装与预置资产、绑定存活提示；「运行路径」2 / 5 / 6 / 8 / 9；引擎状态机及「约束与失败行为」。统一任务区与引擎服务区是本次布局提案，不代表原生页面已实现。</p><p>当前 models.go 把模型下载队列与 FetchEngine 状态分开；FetchEngine 无逐任务取消与 .part 字节进度接口。本原型按设计参考展示模型/引擎统一任务与取消，未观测的引擎字节和速率保留 null。当前模型下载完成由 CLI 结果或 source.json 收尾；本原型按参考表达正式文件发布后按实测字节收尾。</p><p>根 README 的 desktop/Web 描述与子系统参考不一致，此处采用 MyGo 原生产品定位。HTML 仅用于设计评审，不构成原生 UI、真实下载、模型运行或跨平台验收证据。</p></details>
+<details class="footer"><summary>设计依据与实现差异</summary><p>依据「职责与事实源」的引擎生命周期、下载任务、CLI 安装与预置资产、绑定存活提示；「运行路径」2 / 5 / 6 / 8 / 9；引擎状态机及「约束与失败行为」。原生页面已按本原型实现四区（models.go / models_table.go / models_engine.go）：引擎下载经 CreateEngineDownload 进入统一任务列表，取消复用 CancelDownload。</p><p>引擎传输接口仍不提供字节读数，引擎任务的字节与速率保持 null 并带 progress_reason；模型下载完成由 CLI 结果或 source.json 收尾，正式文件发布后按实测字节收尾。</p><p>根 README 的 desktop/Web 描述与子系统参考不一致，此处采用 MyGo 原生产品定位。HTML 仅用于设计评审，不构成原生 UI、真实下载、模型运行或跨平台验收证据。</p></details>
 </main></div>
 <div id="feedback" role="status" aria-live="polite"></div>
 <script>

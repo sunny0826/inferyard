@@ -90,6 +90,7 @@ type viewState struct {
 	manualFirst, manualSecond                                                                                 string
 	manualConfig                                                                                              bool
 	bindingStale                                                                                              bool
+	bindingUnknown                                                                                            bool
 	firstBundle, secondBundle                                                                                 string
 	single, confirmed                                                                                         bool
 	groups                                                                                                    [][]string

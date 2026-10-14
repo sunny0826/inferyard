@@ -73,10 +73,12 @@ func TestModelsAdoptCompletedEngine(t *testing.T) {
 	for _, initial := range []string{"", "/existing/llama-server"} {
 		s := testState()
 		s.selected, s.engine = "models", initial
+		s.settings.Effective.WorkspaceRoot = ptr("/ws")
 		s.downloads = []core.DownloadTask{
-			{TaskId: "old", Kind: "engine", OutName: "old-engine", State: "done", EnginePath: ptr("/old/llama-server"), FinishedAt: ptr("2026-10-14T01:00:00Z")},
-			{TaskId: "new", Kind: "engine", OutName: "new-engine", State: "done", EnginePath: ptr("/new/llama-server"), FinishedAt: ptr("2026-10-14T02:00:00Z")},
-			{TaskId: "pending", Kind: "engine", State: "downloading"},
+			{TaskId: "old", Kind: "engine", OutName: "old-engine", OutDir: "/ws/engines/old-engine", State: "done", EnginePath: ptr("/old/llama-server"), FinishedAt: ptr("2026-10-14T01:00:00Z")},
+			{TaskId: "new", Kind: "engine", OutName: "new-engine", OutDir: "/ws/engines/new-engine", State: "done", EnginePath: ptr("/new/llama-server"), FinishedAt: ptr("2026-10-14T02:00:00Z")},
+			{TaskId: "pending", Kind: "engine", OutDir: "/ws/engines/pending", State: "downloading"},
+			{TaskId: "foreign", Kind: "engine", OutName: "foreign-engine", OutDir: "/other/engines/foreign", State: "done", EnginePath: ptr("/foreign/llama-server"), FinishedAt: ptr("2026-10-14T03:00:00Z")},
 		}
 		tt := ui.NewTester(s.view, 1120, 2600)
 		click(t, tt, "new-engine")
@@ -135,21 +137,25 @@ func TestModelsEngineServiceStates(t *testing.T) {
 
 func TestModelsBindingStates(t *testing.T) {
 	for _, tc := range []struct {
-		bound *string
-		stale bool
-		want  string
+		bound         *string
+		stale, unknown bool
+		want          string
 	}{
-		{nil, false, "尚未绑定服务"}, {nil, true, "尚未绑定服务"},
-		{ptr("/bound"), false, "存活提示匹配"}, {ptr("/bound"), true, "原绑定可能已失效，请到运行页重新绑定"},
+		{nil, false, false, "尚未绑定服务"}, {nil, true, false, "尚未绑定服务"},
+		{ptr("/bound"), false, false, "存活提示匹配"}, {ptr("/bound"), true, false, "原绑定可能已失效，请到运行页重新绑定"},
+		{ptr("/bound"), false, true, "无法确认存活，不据此判定绑定有效"},
 	} {
 		s := testState()
 		s.progress = &inferyard.WorkspaceProgress{Bundles: []inferyard.BundleProgress{{Phase: "run_missing", BoundPath: tc.bound}}}
-		s.bindingStale = tc.stale
+		s.bindingStale, s.bindingUnknown = tc.stale, tc.unknown
 		tt := ui.NewTester(func(c *ui.Context) { s.modelBindingView(c) }, 1000, 500)
 		for _, want := range []string{tc.want, "server_pid / process_start_ticks", "CLI 在 bind / run 时完成", "服务运行中不代表绑定有效"} {
 			if !tt.HasText(want) {
 				t.Fatal(want, tt.Texts())
 			}
+		}
+		if tc.want != "存活提示匹配" && tt.HasText("存活提示匹配") {
+			t.Fatal("false liveness match", tc, tt.Texts())
 		}
 	}
 }

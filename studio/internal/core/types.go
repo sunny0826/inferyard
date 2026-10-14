@@ -203,16 +203,19 @@ type CreateDownloadRequest struct {
 	OutName   string `json:"out_name"`
 }
 
-// MarshalJSON preserves the native model counter while representing unobserved
+// MarshalJSON preserves the native model counters while representing unobserved
 // engine transfer measurements as null on the event and JSON boundary.
 func (t DownloadTask) MarshalJSON() ([]byte, error) {
 	type task DownloadTask
 	var downloaded *int64
+	var rate *float64
 	if t.Kind != "engine" {
 		downloaded = &t.DownloadedBytes
+		rate = t.BytesPerSecond
 	}
 	return json.Marshal(struct {
 		task
-		DownloadedBytes *int64 `json:"downloaded_bytes"`
-	}{task(t), downloaded})
+		DownloadedBytes *int64   `json:"downloaded_bytes"`
+		BytesPerSecond  *float64 `json:"bytes_per_second"`
+	}{task(t), downloaded, rate})
 }
