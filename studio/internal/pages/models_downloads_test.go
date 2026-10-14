@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -70,16 +71,24 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 			}
 			activity, ok := tt.Find("下载任务活动")
 			if !ok || activity.H != 4 {
-				t.Fatal("missing activity stripe", activity)
+				t.Fatal("missing activity progress", activity)
 			}
-			colors := map[[4]uint8]bool{}
-			for x := int(activity.X) + 4; x < int(activity.X+activity.W)-4; x++ {
-				p := tt.Image().RGBAAt(x, int(activity.Y+2))
-				colors[[4]uint8{p.R, p.G, p.B, p.A}] = true
+			nodes := modelUINodes(tt, "label", "下载任务活动")
+			if len(nodes) != 1 || nodes[0].FieldByName("role").Uint() != uint64(ui.RoleProgress) ||
+				!nodes[0].FieldByName("hasRange").Bool() || !(nodes[0].FieldByName("accRange").Index(2).Float() < 0) {
+				t.Fatal("activity must be an indeterminate native progress component")
 			}
-			if len(colors) < 2 {
-				t.Fatal("activity bar is not striped")
+			spinners := modelUINodes(tt, "widget", "Spinner")
+			if len(spinners) != 1 {
+				t.Fatal("downloading task must show a native spinner")
 			}
+			for label, reason := range map[string]string{"总量": "总量未知", "下载中": "任务正在下载，总量未知。"} {
+				nodes := modelUINodes(tt, "description", reason)
+				if len(nodes) != 1 {
+					t.Fatal("missing accessible tooltip", label)
+				}
+			}
+
 			if tt.HasText("输出目录：") {
 				t.Fatal("details start open")
 			}
@@ -112,7 +121,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				s.downloads[0].State = state
 				tt.Frame()
 				if _, ok := tt.Find("下载任务活动"); ok {
-					t.Fatal("terminal activity stripe")
+					t.Fatal("terminal activity progress")
 				}
 				if tt.HasText("取消下载") {
 					t.Fatal("terminal cancel")
@@ -168,8 +177,8 @@ func TestModelsEngineServiceStates(t *testing.T) {
 			t.Fatal("startup detail starts open")
 		}
 		click(t, tt, "查看启动行（安全展示）")
-		for _, want := range []string{tc.label, "null · 此页无内存采样", "凭据参数与完整进程 argv 不展示", "PID：42", "http://127.0.0.1:8080", "/candidate.toml", "/engine.log", "请先到向导页准备冻结配置。", "不会自动重启；Studio 只管理自己启动的进程。"} {
-			if !tt.HasText(want) {
+		for _, want := range []string{tc.label, "null · 此页无内存采样", "凭据参数与完整进程 argv 不展示", "PID：42", "Endpoint（仅 loopback）：http://127.0.0.1:8080", "/candidate.toml", "/engine.log", "请先到向导页准备冻结配置。", "不会自动重启；Studio 只管理自己启动的进程。"} {
+			if !tt.HasText(want) && len(modelUINodes(tt, "text", want)) == 0 {
 				t.Fatal(want, tt.Texts())
 			}
 		}
@@ -201,7 +210,7 @@ func TestModelsEngineServiceStates(t *testing.T) {
 		}
 		s.engineState.Endpoint = "http://192.168.1.5:8080"
 		tt.Frame()
-		if tt.HasText("192.168.1.5") {
+		if tt.HasText("192.168.1.5") || len(modelUINodes(tt, "text", "Endpoint（仅 loopback）：http://192.168.1.5:8080")) != 0 {
 			t.Fatal("non-loopback endpoint displayed")
 		}
 	}
@@ -232,6 +241,50 @@ func TestModelsBindingStates(t *testing.T) {
 		}
 		if tc.want != "存活提示匹配" && tt.HasText("存活提示匹配") {
 			t.Fatal("false liveness match", tc, tt.Texts())
+		}
+	}
+}
+
+func modelUINodes(tt *ui.Tester, field, value string) []reflect.Value {
+	root := reflect.ValueOf(tt).Elem().FieldByName("rt").Elem().FieldByName("c").FieldByName("root")
+	var matches []reflect.Value
+	var visit func(reflect.Value)
+	visit = func(node reflect.Value) {
+		if node.IsNil() {
+			return
+		}
+		n := node.Elem()
+		if n.FieldByName(field).String() == value {
+			matches = append(matches, n)
+		}
+		for child := n.FieldByName("first"); !child.IsNil(); child = child.Elem().FieldByName("next") {
+			visit(child)
+		}
+	}
+	visit(root)
+	return matches
+}
+
+func TestModelsStepsHighlightOneIndex(t *testing.T) {
+	for _, current := range []int{0, 1, 2, 3, 4, -1} {
+		tt := ui.NewTester(func(c *ui.Context) {
+			stepsRow(c, []string{"stopped", "starting", "running", "stopping", "stopped"}, current, c.Theme().Accent)
+		}, 700, 100)
+		if _, ok := tt.Find("引擎服务状态流转"); !ok {
+			t.Fatal("missing steps label")
+		}
+		row := modelUINodes(tt, "label", "引擎服务状态流转")[0]
+		index := 0
+		for child := row.FieldByName("first"); !child.IsNil(); child = child.Elem().FieldByName("next") {
+			n := child.Elem()
+			if n.FieldByName("text").String() == "→" {
+				continue
+			}
+			bold := n.FieldByName("ts").FieldByName("weight").Int() >= 700
+			if bold != (index == current) {
+				t.Fatalf("index %d, current %d: bold=%v", index, current, bold)
+			}
+			index++
 		}
 	}
 }

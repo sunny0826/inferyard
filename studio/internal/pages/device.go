@@ -63,9 +63,7 @@ func deviceRow(c *ui.Context, label, value string) {
 	})
 }
 func deviceFold(c *ui.Context, title string, fn func()) {
-	container := ui.Column(c.Key(title))
-	open := ui.Local(container, "open", func() bool { return false })
-	container.Children(func() { ui.SidebarSection(c, title, open, fn) })
+	componentFold(c, title, fn)
 }
 func deviceMono(c *ui.Context, value string) {
 	ui.Text(c, value).Font("monospace").TextColor(c.Theme().TextMuted).Selectable()

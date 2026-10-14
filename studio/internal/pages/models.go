@@ -20,14 +20,14 @@ func (s *viewState) modelsView(c *ui.Context) {
 	s.header(c, "模型与下载")
 	s.adoptDownloadedEngine()
 	ui.Row(c).Gap(20).AlignItems(ui.Start).Children(func() {
-		ui.Column(c.Key("models-left")).Width(0).Grow(1.2).Gap(20).Children(func() {
+		ui.Column(c).Width(0).Grow(1.2).Gap(20).Children(func() {
 			card(c, "模型", func() { s.modelAssetsView(c) })
 			card(c, "下载", func() {
 				s.downloadsView(c)
 				card(c, "引擎下载", func() { s.engineDownloadView(c) })
 			})
 		})
-		ui.Column(c.Key("models-right")).Width(0).Grow(1).MinWidth(310).Gap(20).Children(func() {
+		ui.Column(c).Width(0).Grow(1).MinWidth(310).Gap(20).Children(func() {
 			s.modelEngineServiceView(c)
 			s.modelBindingView(c)
 		})
@@ -135,9 +135,9 @@ func deviceRecommendation(c *ui.Context, rec deviceObject) {
 
 func deviceModels(c *ui.Context, models []any) {
 	card(c, fmt.Sprintf("本地模型 %d 个 GGUF", len(models)), func() {
-		for i, item := range models {
+		for _, item := range models {
 			model := deviceItem(item)
-			ui.Column(c.Key(fmt.Sprint(i))).Gap(6).Children(func() {
+			ui.Column(c).Gap(6).Children(func() {
 				ui.Row(c).Gap(10).Children(func() {
 					name := model.value("name")
 					if model["name"] == nil {
@@ -146,9 +146,9 @@ func deviceModels(c *ui.Context, models []any) {
 					ui.Text(c, name).Bold()
 					if model.value("status") == "available" {
 						ui.Text(c, deviceBytes(model["size_bytes"])+" · "+model.value("architecture")+" · 上下文 "+model.value("context_length")).TextColor(c.Theme().TextMuted)
-						ui.Badge(c, "可用").TextColor(c.Theme().Success)
+						statusBadge(c, "可用", c.Theme().Success)
 					} else {
-						ui.Badge(c, model.label("status")).TextColor(c.Theme().Warning)
+						statusBadge(c, model.label("status"), c.Theme().Warning)
 					}
 				})
 				if model["reason"] != nil {

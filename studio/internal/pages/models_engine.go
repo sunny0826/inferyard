@@ -99,7 +99,7 @@ func (s *viewState) modelEngineServiceView(c *ui.Context) {
 			{"本地地址", "Endpoint（仅 loopback）：" + endpoint},
 			{"进程", "PID：" + pid},
 			{"内存", "null · 此页无内存采样"},
-		})
+		}, map[string]string{"内存": "此页不采样引擎进程内存，null 表示缺测。"})
 		componentFold(c, "查看启动行（安全展示）", func() {
 			deviceMono(c, "LogPath："+state.LogPath)
 			deviceMono(c, "Candidate："+state.Candidate)
@@ -130,9 +130,16 @@ func (s *viewState) modelEngineServiceView(c *ui.Context) {
 				return "已请求停止服务。", e
 			})
 		})
-		current := state.State
-		if current == "" {
-			current = "stopped"
+		current := -1
+		switch state.State {
+		case "", "stopped":
+			current = 0
+		case "starting":
+			current = 1
+		case "running":
+			current = 2
+		case "stopping":
+			current = 3
 		}
 		stepsRow(c, []string{"stopped", "starting", "running", "stopping", "stopped"}, current, c.Theme().Accent)
 	})

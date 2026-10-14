@@ -5,6 +5,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -173,6 +174,7 @@ func TestDownloadTaskCardsAndDetails(t *testing.T) {
 	b := core.DownloadTask{TaskId: "b", OutName: "model-b", State: "failed", OutDir: "/out/b", FileName: ptr("model.gguf"), DownloadedBytes: 1048576, Result: &core.DownloadResult{Bytes: 1048576, Sha256: "fixture-sha"}, Error: &core.ApiError{Code: "fixture", Message: "下载失败"}}
 	s.downloads = []core.DownloadTask{a, b}
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 900)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	if !tt.HasText("取消下载") {
 		t.Fatal("downloading task lacks cancel", tt.Texts())
 	}
@@ -194,6 +196,48 @@ func TestDownloadTaskCardsAndDetails(t *testing.T) {
 	}
 	if dir := os.Getenv("STUDIO_UI_PREVIEW_DIR"); dir != "" {
 		f, err := os.Create(filepath.Join(dir, "downloads.png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		if err := png.Encode(f, tt.Image()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestDownloadTaskCardsDetailsFollowTaskOnReorder(t *testing.T) {
+	s := testState()
+	a := core.DownloadTask{TaskId: "a", OutName: "model-a", State: "downloading", OutDir: "/out/a"}
+	b := core.DownloadTask{TaskId: "b", OutName: "model-b", State: "failed", OutDir: "/out/b"}
+	s.downloads = []core.DownloadTask{a, b}
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 900)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	labels := reflect.ValueOf(tt).Elem().FieldByName("rt").Elem().FieldByName("labels")
+	seen := 0
+	for i := 0; i < labels.Len(); i++ {
+		label := labels.Index(i)
+		if label.FieldByName("text").String() != "观测依据与输出" {
+			continue
+		}
+		seen++
+		if seen == 2 {
+			r := label.FieldByName("r")
+			tt.ClickAt(float32(r.FieldByName("X").Float()+r.FieldByName("W").Float()/2),
+				float32(r.FieldByName("Y").Float()+r.FieldByName("H").Float()/2))
+			break
+		}
+	}
+	if seen != 2 || !tt.HasText("输出目录：/out/b") || tt.HasText("输出目录：/out/a") {
+		t.Fatal("only b details should be open", tt.Texts())
+	}
+	s.downloads = []core.DownloadTask{b, a}
+	tt.Frame()
+	if !tt.HasText("输出目录：/out/b") || tt.HasText("输出目录：/out/a") {
+		t.Fatal("details did not follow task b", tt.Texts())
+	}
+	if dir := os.Getenv("STUDIO_UI_PREVIEW_DIR"); dir != "" {
+		f, err := os.Create(filepath.Join(dir, "downloads-reordered.png"))
 		if err != nil {
 			t.Fatal(err)
 		}

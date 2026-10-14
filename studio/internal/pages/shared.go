@@ -74,3 +74,13 @@ func number[T ~int64 | ~float64](v *T) string {
 	}
 	return fmt.Sprint(*v)
 }
+
+func componentFold(c *ui.Context, title string, fn func()) {
+	container := ui.Column(c.Key(title))
+	open := ui.Local(container, "open", func() bool { return false })
+	container.Children(func() { ui.Collapsible(c, title, open, fn) })
+}
+
+func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {
+	return ui.Badge(c, label).TextColor(color).Background(color.Alpha(0.10)).AlignSelf(ui.Start)
+}
