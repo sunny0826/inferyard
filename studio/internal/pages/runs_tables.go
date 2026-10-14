@@ -33,16 +33,21 @@ func (s *viewState) tasksView(c *ui.Context) {
 		case 0:
 			ui.Text(c, text(task.Bundle))
 		case 1:
-			ui.Badge(c, taskLabel(task))
+			statusBadge(c, taskLabel(task), runColor(c, task))
 		case 2:
 			ui.Text(c, task.Kind)
 		}
-	}).Height(200)
+	}).Height(200).Label("运行任务队列")
+	if s.returnToTasks {
+		s.tasksTable.Focus(c)
+		s.returnToTasks = false
+	}
 	submitted := table.Submitted()
 	index := selectedRow(&s.tasksTable, len(s.tasks))
 	if index >= 0 {
 		task := s.tasks[index]
 		ui.Text(c, task.TaskId).Selectable()
+		errorView(c, task.Error)
 		for i, group := range s.groups {
 			for _, id := range group {
 				if id == task.TaskId {
@@ -51,7 +56,7 @@ func (s *viewState) tasksView(c *ui.Context) {
 			}
 		}
 	}
-	ui.Button(c, "查看详情").AlignSelf(ui.Start).Disabled(index < 0).OnClick(func() { s.selectTask(s.tasks[index].TaskId) })
+	button(c, "查看详情").AlignSelf(ui.Start).Disabled(index < 0).OnClick(func() { s.selectTask(s.tasks[index].TaskId) })
 	if submitted && index >= 0 {
 		s.selectTask(s.tasks[index].TaskId)
 	}
@@ -86,7 +91,7 @@ func (s *viewState) historyView(c *ui.Context) {
 	ui.Text(c, "结果目录："+text(s.history.ResultsRoot))
 	ui.Text(c, "扫描时间："+s.history.ScannedAt)
 	runs := s.historyRuns()
-	if len(runs) == 0 {
+	if len(runs) == 0 && s.historyError == nil && s.loaded {
 		ui.Text(c, "暂无运行记录。")
 	}
 	selectableTable(&s.historyTable, func(i int) any { return runs[i].Path }, func(i int) string { return runs[i].RunId })
@@ -98,7 +103,7 @@ func (s *viewState) historyView(c *ui.Context) {
 			batch = *r.BatchId
 		}
 		ui.Text(c, []string{r.RunId, text(r.ModelName), text(r.Bundle), stateLabel(r.Status), runScore(r), text(r.StartedAt), batch}[col])
-	}).Height(240)
+	}).Height(240).Label("运行历史表")
 	if i := selectedRow(&s.historyTable, len(runs)); i >= 0 {
 		r := runs[i]
 		for _, batch := range s.history.Batches {

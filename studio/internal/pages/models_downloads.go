@@ -20,7 +20,7 @@ func (s *viewState) downloadsView(c *ui.Context) {
 		}
 		reason := ""
 		if task.Kind == "engine" {
-			kind, amount, rate = "引擎任务", "null", "null"
+			kind, amount, rate = "引擎任务", "缺测", "缺测"
 			reason = "归档获取接口未提供字节读数"
 		}
 		rateReason := reason
@@ -41,10 +41,10 @@ func (s *viewState) downloadsView(c *ui.Context) {
 				kind: kind, name: task.OutName, state: stateLabel(task.State), color: color,
 				active: task.State == "downloading",
 				metrics: []taskMetric{
-					{"已观测", amount, reason}, {"速率", rate, rateReason}, {"总量", "null", "总量未知"},
+					{"已观测", amount, reason}, {"速率", rate, rateReason}, {"总量", "总量未知", "总量未知"},
 				}, actions: func() {
 					if task.State == "downloading" {
-						ui.Button(c, "取消下载").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
+						button(c, "取消下载").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
 							s.work(func() (string, *core.ApiError) {
 								_, e := s.service.CancelDownload(task.TaskId)
 								return "已请求取消下载。", e
@@ -55,7 +55,7 @@ func (s *viewState) downloadsView(c *ui.Context) {
 					ui.Text(c, "输出目录："+task.OutDir).Selectable()
 					ui.Text(c, "文件："+text(task.FileName))
 					if task.Kind == "engine" {
-						ui.Text(c, "已下载 null · 速率 null · 归档获取接口未提供字节读数")
+						ui.Text(c, "已下载 缺测 · 速率 缺测 · 归档获取接口未提供字节读数")
 						if task.State == "done" && task.EnginePath != nil {
 							ui.Text(c, "引擎路径："+*task.EnginePath).Selectable()
 						}

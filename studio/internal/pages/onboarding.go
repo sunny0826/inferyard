@@ -43,12 +43,12 @@ func (s *viewState) wizardView(c *ui.Context) {
 				ui.Text(c, label).TextColor(c.Theme().TextMuted)
 			}
 		}
-		ui.Progress(c, float64(step)/6)
+		progressBar(c, float64(step)/6, "工作区六阶段准备进度").Description("六个准备阶段，不表示样本完成率。")
 		if s.progress != nil {
 			for _, b := range s.progress.Bundles {
 				ui.Text(c, b.Bundle+" · "+stateLabel(b.Phase))
 				if b.BlockedReason != nil {
-					ui.Text(c, *b.BlockedReason).TextColor(c.Theme().Danger)
+					ui.Text(c, human(*b.BlockedReason)).TextColor(c.Theme().Danger)
 				}
 			}
 		}
@@ -70,7 +70,7 @@ func (s *viewState) wizardView(c *ui.Context) {
 		case 6:
 			page, label = "reports", "已完成：在报告页查看已核验报告"
 		}
-		if ui.PrimaryButton(c, label).AlignSelf(ui.Start).Clicked() {
+		if primaryButton(c, label).AlignSelf(ui.Start).Clicked() {
 			s.selected = page
 			s.detailID = ""
 			go s.refresh(true)
@@ -84,7 +84,7 @@ func (s *viewState) setupGuide(c *ui.Context) {
 			if s.cliInstallStatus != "" {
 				ui.Text(c, s.cliInstallStatus)
 			}
-			if ui.PrimaryButton(c, "自动安装 CLI "+core.Version).AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
+			if primaryButton(c, "自动安装 CLI "+core.Version).AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
 				s.installCLI()
 			}
 		})
@@ -95,8 +95,15 @@ func (s *viewState) setupGuide(c *ui.Context) {
 			return
 		}
 		ui.Text(c, "初始化目标必须是新目录；成功后自动切换工作区。")
-		field(c, "新工作区目录", &s.initDir)
-		if ui.PrimaryButton(c, "初始化工作区").AlignSelf(ui.Start).Disabled(s.busy || s.initDir == "" || s.ready.CLI.Status != "ok").Clicked() {
+		if s.ready.CLI.Status != "ok" {
+			ui.Text(c, "请先安装 CLI，才能初始化工作区。")
+		}
+		field(c, "新工作区目录", &s.initDir).Description("必填绝对路径；目标必须为新目录。").Error(pathError(s.initDir))
+		if primaryButton(c, "初始化工作区").AlignSelf(ui.Start).Disabled(s.busy || s.initDir == "" || s.ready.CLI.Status != "ok").Clicked() {
+			if message := pathError(s.initDir); message != "" {
+				s.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
+				return
+			}
 			s.execute("inferyard init --out "+quote(s.initDir), false)
 		}
 	})

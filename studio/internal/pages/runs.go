@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"path/filepath"
@@ -38,9 +37,9 @@ func (s *viewState) runsView(c *ui.Context) {
 		}
 		ui.Checkbox(c, &s.manualConfig, "高级：手动配置路径")
 		if s.manualConfig {
-			field(c, "第一配置绝对路径", &s.manualFirst)
+			field(c, "第一配置绝对路径", &s.manualFirst).Description("已绑定的配置文件绝对路径。").Error(pathError(s.manualFirst))
 			if !s.single {
-				field(c, "第二配置绝对路径", &s.manualSecond)
+				field(c, "第二配置绝对路径", &s.manualSecond).Description("默认双题包需要不同的第二份绑定配置。").Error(pathError(s.manualSecond))
 			}
 		}
 		first, second := configOf(options, s.firstBundle), configOf(options, s.secondBundle)
@@ -62,7 +61,7 @@ func (s *viewState) runsView(c *ui.Context) {
 		if !s.single && twoBound && duplicate {
 			ui.Text(c, "两个题包不能相同。").TextColor(c.Theme().Danger)
 		}
-		if ui.PrimaryButton(c, "启动运行").AlignSelf(ui.Start).Disabled(s.busy || first == "" || (!s.single && (!twoBound || duplicate)) || (s.single && !s.confirmed)).Clicked() {
+		if primaryButton(c, "启动运行").AlignSelf(ui.Start).Disabled(s.busy || first == "" || (!s.single && (!twoBound || duplicate)) || (s.single && !s.confirmed)).Clicked() {
 			req := core.StartRunsRequest{ConfigPaths: []string{first}}
 			if s.single {
 				confirmed := true
@@ -148,18 +147,27 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 		ui.Text(c, r.RunId+" · "+stateLabel(r.Status)).Bold()
 		ui.Text(c, text(r.ModelName)+" · "+text(r.Bundle)+" · "+text(r.Engine))
 		ui.Text(c, r.Path).Selectable()
-		ui.Text(c, fmt.Sprintf("封存：%t · 完整度：%s · 停止原因：%s", r.Sealed, text(r.Completeness), text(r.StopReason)))
+		sealed := "未封存"
+		if r.Sealed {
+			sealed = "已封存（不代表已核验）"
+		}
+		ui.Text(c, sealed+" · 完整度："+stateLabel(text(r.Completeness)))
+		if r.StopReason != nil {
+			ui.Text(c, "停止原因："+human(*r.StopReason)+" · "+*r.StopReason)
+		}
 		ui.Text(c, "得分："+runScore(r))
-		ui.Text(c, "关系："+text(r.Relation)+" · 来源："+text(r.ParentRunId)+" · 开始："+text(r.StartedAt)+" · 结束："+text(r.FinishedAt))
-		ui.Row(c).Gap(10).Children(func() {
-			if ui.Button(c, "续测").AlignSelf(ui.Start).Disabled(s.busy || r.BatchId == nil || !r.Resumable || s.denied[r.Path]).Clicked() {
+		componentFold(c, "运行原始详情", func() {
+			ui.Text(c, "关系："+text(r.Relation)+" · 来源："+text(r.ParentRunId)+" · 开始："+text(r.StartedAt)+" · 结束："+text(r.FinishedAt)).Selectable()
+		})
+		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
+			if button(c, "续测").AlignSelf(ui.Start).Disabled(s.busy || r.BatchId == nil || !r.Resumable || s.denied[r.Path]).Clicked() {
 				source := r
 				s.resumeSource = &source
 				s.endpoint = ""
 				s.pid = ""
 			}
 			for _, task := range s.tasks {
-				if emptyText(task.RunPath) == r.Path && ui.Button(c, "实时详情").AlignSelf(ui.Start).Clicked() {
+				if emptyText(task.RunPath) == r.Path && button(c, "实时详情").AlignSelf(ui.Start).Clicked() {
 					s.selectTask(task.TaskId)
 				}
 			}
@@ -176,14 +184,15 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 func (s *viewState) resumeView(c *ui.Context) {
 	card(c, "续测 "+s.resumeSource.RunId, func() {
 		ui.Text(c, s.resumeSource.Path).Selectable()
-		field(c, "endpoint_url（可选）", &s.endpoint)
-		field(c, "server_pid（与 endpoint 同给同省）", &s.pid)
+		endpointError, pidError := resumeErrors(s.endpoint, s.pid)
+		field(c, "endpoint_url（可选）", &s.endpoint).Description("本机服务 URL；与 PID 同时填写或同时省略。").Error(endpointError)
+		field(c, "server_pid（与 endpoint 同给同省）", &s.pid).Description("正整数；不填写时沿用来源配置。").Error(pidError)
 		ui.Text(c, "不填写时沿用来源配置；来源是否可续测由 CLI 最终裁决。")
-		ui.Row(c).Gap(10).Children(func() {
-			if ui.PrimaryButton(c, "确认续测").AlignSelf(ui.Start).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
+		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
+			if primaryButton(c, "确认续测").AlignSelf(ui.Start).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
 				s.resume()
 			}
-			if ui.Button(c, "关闭续测设置").AlignSelf(ui.Start).Clicked() {
+			if button(c, "关闭续测设置").AlignSelf(ui.Start).Clicked() {
 				s.resumeSource = nil
 			}
 		})
@@ -191,18 +200,19 @@ func (s *viewState) resumeView(c *ui.Context) {
 	})
 }
 func (s *viewState) resume() {
-	req := core.ResumeRunRequest{FromRun: s.resumeSource.Path}
-	endpoint, pid := strings.TrimSpace(s.endpoint), strings.TrimSpace(s.pid)
-	if (endpoint == "") != (pid == "") {
-		s.failure = &core.ApiError{Code: "invalid_request", Message: "endpoint 与 PID 必须同给同省。"}
+	ee, pe := resumeErrors(s.endpoint, s.pid)
+	if ee != "" || pe != "" {
+		message := ee
+		if pe != "" {
+			message = pe
+		}
+		s.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
 		return
 	}
+	req := core.ResumeRunRequest{FromRun: s.resumeSource.Path}
+	endpoint, pid := strings.TrimSpace(s.endpoint), strings.TrimSpace(s.pid)
 	if pid != "" {
-		value, e := strconv.ParseInt(pid, 10, 64)
-		if e != nil || value <= 0 {
-			s.failure = &core.ApiError{Code: "invalid_request", Message: "PID 必须为正整数。"}
-			return
-		}
+		value, _ := strconv.ParseInt(pid, 10, 64)
 		req.EndpointUrl = &endpoint
 		req.ServerPid = &value
 	}

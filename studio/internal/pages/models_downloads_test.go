@@ -2,6 +2,7 @@ package pages
 
 import (
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -58,7 +59,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 			s := testState()
 			s.downloads = []core.DownloadTask{task}
 			tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 1200)
-			for _, want := range []string{task.OutName, "已观测", "速率", "总量", "null", "总量未知", "取消下载"} {
+			for _, want := range []string{task.OutName, "已观测", "速率", "总量", "总量未知", "取消下载"} {
 				if !tt.HasText(want) {
 					t.Fatal(want, tt.Texts())
 				}
@@ -70,7 +71,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				t.Fatal("metrics are not three columns")
 			}
 			activity, ok := tt.Find("下载任务活动")
-			if !ok || activity.H != 4 {
+			if !ok || math.Abs(float64(activity.H-4)) > .001 {
 				t.Fatal("missing activity progress", activity)
 			}
 			nodes := modelUINodes(tt, "label", "下载任务活动")
@@ -95,7 +96,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				}
 			}
 			if task.Kind == "engine" {
-				if !tt.HasText("已下载 null · 速率 null · 归档获取接口未提供字节读数") || tt.HasText("已下载 0 bytes") {
+				if !tt.HasText("已下载 缺测 · 速率 缺测 · 归档获取接口未提供字节读数") || tt.HasText("已下载 0 bytes") {
 					t.Fatal(tt.Texts())
 				}
 			} else if !tt.HasText("1.50 MiB") || !tt.HasText("2.0 KiB/s") || !tt.HasText("速率 2,048 bytes/s") || !tt.HasText("已下载 1572864 bytes") {
@@ -167,18 +168,18 @@ func TestModelsEngineServiceStates(t *testing.T) {
 		s := testState()
 		s.engineState = core.EngineState{State: tc.state, Pid: 42, Endpoint: "http://127.0.0.1:8080", Candidate: "/candidate.toml", LogPath: "/engine.log"}
 		tt := ui.NewTester(func(c *ui.Context) { s.modelEngineServiceView(c) }, 1000, 900)
-		for _, want := range []string{tc.label, "null · 此页无内存采样", "凭据参数与完整进程 argv 不展示", "PID：42", "Endpoint（仅 loopback）：http://127.0.0.1:8080", "/candidate.toml", "/engine.log", "请先到向导页准备冻结配置。", "不会自动重启；Studio 只管理自己启动的进程。"} {
+		for _, want := range []string{tc.label, "缺测 · 此页无内存采样", "凭据参数与完整进程 argv 不展示", "PID：42", "本地地址：http://127.0.0.1:8080", "/candidate.toml", "/engine.log", "请先到运行页准备冻结配置。", "不会自动重启；Studio 只管理自己启动的进程。"} {
 			if !tt.HasText(want) && len(modelUINodes(tt, "text", want)) == 0 {
 				t.Fatal(want, tt.Texts())
 			}
 		}
 		steps := []string{}
 		for _, value := range tt.Texts() {
-			if slices.Contains([]string{"stopped", "starting", "running", "stopping"}, value) {
+			if slices.Contains([]string{"已停止", "启动中", "服务就绪", "停止中"}, value) {
 				steps = append(steps, value)
 			}
 		}
-		if len(steps) < 5 || !slices.Equal(steps[len(steps)-5:], []string{"stopped", "starting", "running", "stopping", "stopped"}) {
+		if len(steps) < 5 || !slices.Equal(steps[len(steps)-5:], []string{"已停止", "启动中", "服务就绪", "停止中", "已停止"}) {
 			t.Fatal("steps", steps)
 		}
 		click(t, tt, "启动服务")
@@ -258,7 +259,7 @@ func modelUINodes(tt *ui.Tester, field, value string) []reflect.Value {
 func TestModelsStepsHighlightOneIndex(t *testing.T) {
 	for _, current := range []int{0, 1, 2, 3, 4, -1} {
 		tt := ui.NewTester(func(c *ui.Context) {
-			stepsRow(c, []string{"stopped", "starting", "running", "stopping", "stopped"}, current, c.Theme().Accent)
+			stepsRow(c, []string{"已停止", "启动中", "服务就绪", "停止中", "已停止"}, current, c.Theme().Accent)
 		}, 700, 100)
 		if _, ok := tt.Find("引擎服务状态流转"); !ok {
 			t.Fatal("missing steps label")

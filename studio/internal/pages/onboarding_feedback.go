@@ -72,7 +72,7 @@ func human(code string) string {
 	case "unknown":
 		return "CLI 异常退出，请检查主窗口诊断后重试。"
 	default:
-		return "当前步骤未能完成，请检查主窗口诊断与工作区证据后重试。"
+		return "尚未识别的原因码：" + code + "。请检查诊断与工作区证据后重试。"
 	}
 }
 

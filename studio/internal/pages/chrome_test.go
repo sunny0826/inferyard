@@ -28,17 +28,13 @@ func TestChromeRefreshActions(t *testing.T) {
 	entered := make(chan struct{}, 10)
 	s.ctx = refreshContext{context.Background(), entered}
 	tt := ui.NewTester(s.view, 1120, 800)
-	for _, action := range []string{"button", "shortcut", "focused input"} {
+	for _, action := range []string{"shortcut", "focused input"} {
 		if action == "focused input" {
 			s.selected = "settings"
 			tt.Frame()
 			click(t, tt, "CLI 绝对路径（留空使用 PATH）")
 		}
-		if action == "button" {
-			click(t, tt, "刷新")
-		} else {
-			tt.Key(ui.Cmd, ui.KeyR)
-		}
+		tt.Key(ui.Cmd, ui.KeyR)
 		select {
 		case <-entered:
 		case <-time.After(time.Second):
@@ -47,7 +43,9 @@ func TestChromeRefreshActions(t *testing.T) {
 	}
 	s.busy = true
 	tt.Frame()
-	click(t, tt, "刷新")
+	if _, ok := tt.Find("刷新"); ok {
+		t.Fatal("global refresh button remains visible")
+	}
 	tt.Key(ui.Cmd, ui.KeyR)
 	select {
 	case <-entered:
@@ -122,7 +120,7 @@ func TestChromeLayoutAcrossPages(t *testing.T) {
 					count++
 				}
 			}
-			if count != 1 {
+			if count != 0 {
 				t.Fatalf("refresh count = %d", count)
 			}
 			for _, label := range labels[page] {
@@ -132,12 +130,19 @@ func TestChromeLayoutAcrossPages(t *testing.T) {
 				}
 			}
 			tt.SetSize(1120, 800)
-			before, _ := tt.Find("刷新")
+			s.busy = true
+			tt.Frame()
+			before, ok := tt.Find("执行中…")
+			if !ok {
+				t.Fatal("missing busy status")
+			}
 			tt.Scroll(700, 500, 0, 600)
-			after, _ := tt.Find("刷新")
-			if before != after {
+			after, ok := tt.Find("执行中…")
+			if !ok || before != after {
 				t.Fatal("toolbar scrolled with content")
 			}
+			s.busy = false
+			tt.Frame()
 			if page == "settings" || page == "models" || page == "reports" {
 				tt.Scroll(700, 500, 0, -1000)
 				if dir := os.Getenv("STUDIO_UI_PREVIEW_DIR"); dir != "" {

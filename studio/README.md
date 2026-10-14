@@ -13,8 +13,8 @@ The main window has six pages:
 | Page | Purpose |
 | --- | --- |
 | Wizard | View the six setup stages, bundle status, and the next page to visit. |
-| Device | Check hardware, local models, recommendations, and blocking reasons. |
-| Models and downloads | Acquire models, inspect download progress, and cancel downloads. |
+| Device | Inspect hardware, measurement availability, collection sources, and device-check results. |
+| Models and downloads | Prepare model and engine assets, inspect and cancel downloads, manage the engine service, and check binding hints. |
 | Runs | Queue or cancel evaluations, inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
 | Reports | Generate reports and open each offline HTML report in its own in-app WebView window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory. |
@@ -53,6 +53,14 @@ The initial effective workspace is `~/.inferyard`. Preparing directories is an e
 idempotent action; saving settings alone does not create them. CLI `init` requires a new
 directory. For an existing uninitialized workspace, choose a new child directory; Studio
 switches settings to it only after initialization succeeds and retains existing files.
+
+## Design and page review
+
+The [Studio Design System](docs/design-system.md) defines shared layout, theme, typography,
+components, feedback, accessibility, and verification rules against MyGo v0.4.5.
+The [page audit](docs/design-system-audit.md) records implementation gaps across all six
+pages, run details, and the offline report window. These documents define the target and
+review scope; they do not establish native desktop acceptance.
 
 ## Build and run
 

@@ -70,7 +70,8 @@ func TestHistoryTableResumeAndDetails(t *testing.T) {
 		t.Fatal(tt.Texts())
 	}
 	click(t, tt, "eligible")
-	for _, text := range []string{"/eligible", "/batch", "partial", "stop", "parent", "start", "finish", "实时详情"} {
+	click(t, tt, "运行原始详情")
+	for _, text := range []string{"/eligible", "/batch", "不完整", "stop", "parent", "start", "finish", "实时详情"} {
 		if !tt.HasText(text) {
 			t.Fatal("missing", text, tt.Texts())
 		}
