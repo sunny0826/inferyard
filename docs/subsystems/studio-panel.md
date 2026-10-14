@@ -162,8 +162,9 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 
 模型与下载页按 [`studio/docs/prototypes/models-downloads-page.html`](../../studio/docs/prototypes/models-downloads-page.html)
 原型实现，视觉组件在 [`studio/internal/pages/components.go`](../../studio/internal/pages/components.go)，
-通用助手 `componentFold`（`ui.Collapsible` 统一折叠，`deviceFold` 亦委托它）与 `statusBadge` 在
-[`studio/internal/pages/shared.go`](../../studio/internal/pages/shared.go)（当前仅该页使用这些组件，其他页面保持既有惯例）：
+速率换算 `formatRate`/`groupedInt` 与 `statusBadge` 在
+[`studio/internal/pages/shared.go`](../../studio/internal/pages/shared.go)（当前仅该页使用这些组件，其他页面保持既有惯例；
+`componentFold`/`deviceFold` 仅设备页使用，本页不用折叠）：
 
 - **布局**：页眉 eyebrow 小字 + 标题；主体为约 1.2:1 双栏（左：模型、下载；右：引擎服务、
   绑定存活提示），右栏最小宽 310。无字距 API，eyebrow 不模拟 letter-spacing。
@@ -177,9 +178,12 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 - **活动与反馈**：下载中任务卡头显示 `ui.Spinner`，底部为 `ui.Progress` 不定态（负值入参，
   仅表示活动，不表示进度），不显示百分比与剩余时间；缺测指标、状态徽章与「内存」行挂
   `Tooltip` 解释原因。
-- **默认折叠**：自定义模型来源（「添加其他模型」）、任务详情（「观测依据与输出」）、
-  测量单位说明、启动行（安全展示）；折叠不隐藏错误的存在性，仅收纳详情；折叠状态经
-  `ui.Local` 与 `c.Key(task.TaskId)` 跟随任务身份，重排不串扰。
+- **详情内联**：本页不用折叠框。自定义模型来源表单、任务详情（「观测依据与输出」）、
+  测量单位说明、启动行（安全展示）与「模型文件与原始参数」均内联平铺，以小字 muted
+  标题分区；错误详情与路径始终可见。
+- **速率展示**：模型任务速率按量级显式换算（`formatRate`：≥ 1 MiB/s 显示 `%.2f MiB/s`，
+  ≥ 1 KiB/s 显示 `%.1f KiB/s`，否则整数 `bytes/s`），任务详情附千分位原始 `bytes/s`；
+  不输出浮点科学计数法。
 - **缺测展示**：引擎任务的已观测/速率/总量恒 `null` 并带原因。
 - **降级项**：不追求像素级一致；字体度量、字距与原型 CSS 的差异不视为缺陷。
 

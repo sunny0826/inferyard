@@ -60,16 +60,14 @@ func (s *viewState) modelAssetsView(c *ui.Context) {
 	}
 	ui.Text(c, "模型目录："+text(s.settings.Effective.ModelsRoot))
 
-	componentFold(c, "添加其他模型", func() {
-		ui.Text(c, "创建模型下载").Bold()
-		field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL)
-		field(c, "新目录名", &s.modelName)
-		field(c, "凭据环境变量名（可选）", &s.tokenEnv)
-		ui.Text(c, "仅填写环境变量名。凭据由启动 Studio 的环境提供。目录名仅允许字母、数字、点、下划线与连字符，不能全为点。")
-		if ui.PrimaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
-			s.acquireModel()
-		}
-	})
+	ui.Text(c, "创建模型下载").Bold()
+	field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL)
+	field(c, "新目录名", &s.modelName)
+	field(c, "凭据环境变量名（可选）", &s.tokenEnv)
+	ui.Text(c, "仅填写环境变量名。凭据由启动 Studio 的环境提供。目录名仅允许字母、数字、点、下划线与连字符，不能全为点。")
+	if ui.PrimaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
+		s.acquireModel()
+	}
 }
 func (s *viewState) acquireModel() {
 	source, name, env := s.modelURL, s.modelName, s.tokenEnv
@@ -121,15 +119,14 @@ func deviceRecommendation(c *ui.Context, rec deviceObject) {
 		for _, reason := range rec.list("limitations") {
 			ui.Text(c, "⚠ "+deviceLabel(fmt.Sprint(reason))).TextColor(c.Theme().Warning)
 		}
-		deviceFold(c, "模型文件与原始参数", func() {
-			deviceMono(c, selected.value("model_path"))
-			for _, candidate := range rec.list("candidates") {
-				other := deviceItem(candidate)
-				if !reflect.DeepEqual(other, selected) {
-					ui.Text(c, other.value("model_name")+" · "+other.label("mode"))
-				}
+		ui.Text(c, "模型文件与原始参数").FontSize(12).TextColor(c.Theme().TextMuted)
+		deviceMono(c, selected.value("model_path"))
+		for _, candidate := range rec.list("candidates") {
+			other := deviceItem(candidate)
+			if !reflect.DeepEqual(other, selected) {
+				ui.Text(c, other.value("model_name")+" · "+other.label("mode"))
 			}
-		})
+		}
 	})
 }
 

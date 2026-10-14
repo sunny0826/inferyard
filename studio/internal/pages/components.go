@@ -82,6 +82,7 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 			ui.Progress(c, -1).Label("下载任务活动").Height(4)
 		}
 		options.actions()
-		componentFold(c, "观测依据与输出", options.details)
+		ui.Text(c, "观测依据与输出").FontSize(12).TextColor(c.Theme().TextMuted)
+		options.details()
 	})
 }

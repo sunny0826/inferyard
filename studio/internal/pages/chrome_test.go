@@ -125,9 +125,6 @@ func TestChromeLayoutAcrossPages(t *testing.T) {
 			if count != 1 {
 				t.Fatalf("refresh count = %d", count)
 			}
-			if page == "models" {
-				click(t, tt, "添加其他模型")
-			}
 			for _, label := range labels[page] {
 				bounds, ok := tt.Find(label)
 				if !ok || bounds.W >= 600 {

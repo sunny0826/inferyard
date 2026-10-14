@@ -111,10 +111,6 @@ func TestInstallAndDownloadFeedbackStayOnTheirPages(t *testing.T) {
 	s.ready.CLI.Status = "not_found"
 	s.selected = "models"
 	tt := ui.NewTester(s.view, 1120, 1800)
-	if tt.HasText("引擎专属进度") {
-		t.Fatal("error details expanded by default", tt.Texts())
-	}
-	click(t, tt, "观测依据与输出")
 	if !tt.HasText("引擎专属进度") || tt.HasText("CLI 专属进度") {
 		t.Fatal(tt.Texts())
 	}

@@ -58,13 +58,13 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 			s := testState()
 			s.downloads = []core.DownloadTask{task}
 			tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 1200)
-			for _, want := range []string{task.OutName, "已观测", "速率 bytes/s", "总量", "null", "总量未知", "取消下载"} {
+			for _, want := range []string{task.OutName, "已观测", "速率", "总量", "null", "总量未知", "取消下载"} {
 				if !tt.HasText(want) {
 					t.Fatal(want, tt.Texts())
 				}
 			}
 			amount, _ := tt.Find("已观测")
-			rate, _ := tt.Find("速率 bytes/s")
+			rate, _ := tt.Find("速率")
 			total, _ := tt.Find("总量")
 			if amount.Y != rate.Y || rate.Y != total.Y || amount.X >= rate.X || rate.X >= total.X {
 				t.Fatal("metrics are not three columns")
@@ -89,11 +89,6 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				}
 			}
 
-			if tt.HasText("输出目录：") {
-				t.Fatal("details start open")
-			}
-			click(t, tt, "观测依据与输出")
-			click(t, tt, "测量单位")
 			for _, want := range []string{"输出目录：", "文件：", "1 MiB = 1,048,576 bytes", "1 GiB = 1,073,741,824 bytes", "总量未知不显示百分比"} {
 				if !tt.HasText(want) {
 					t.Fatal(want, tt.Texts())
@@ -103,7 +98,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				if !tt.HasText("已下载 null · 速率 null · 归档获取接口未提供字节读数") || tt.HasText("已下载 0 bytes") {
 					t.Fatal(tt.Texts())
 				}
-			} else if !tt.HasText("1.50 MiB") || !tt.HasText("2048") || !tt.HasText("已下载 1572864 bytes") {
+			} else if !tt.HasText("1.50 MiB") || !tt.HasText("2.0 KiB/s") || !tt.HasText("速率 2,048 bytes/s") || !tt.HasText("已下载 1572864 bytes") {
 				t.Fatal(tt.Texts())
 			}
 			enabled := false
@@ -149,7 +144,6 @@ func TestModelsAdoptCompletedEngine(t *testing.T) {
 		details := testState()
 		details.downloads = []core.DownloadTask{s.downloads[1]}
 		dt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { details.downloadsView(c) }) }, 1000, 1000)
-		click(t, dt, "观测依据与输出")
 		if !dt.HasText("引擎路径：/new/llama-server") {
 			t.Fatal(dt.Texts())
 		}
@@ -173,10 +167,6 @@ func TestModelsEngineServiceStates(t *testing.T) {
 		s := testState()
 		s.engineState = core.EngineState{State: tc.state, Pid: 42, Endpoint: "http://127.0.0.1:8080", Candidate: "/candidate.toml", LogPath: "/engine.log"}
 		tt := ui.NewTester(func(c *ui.Context) { s.modelEngineServiceView(c) }, 1000, 900)
-		if tt.HasText("/engine.log") {
-			t.Fatal("startup detail starts open")
-		}
-		click(t, tt, "查看启动行（安全展示）")
 		for _, want := range []string{tc.label, "null · 此页无内存采样", "凭据参数与完整进程 argv 不展示", "PID：42", "Endpoint（仅 loopback）：http://127.0.0.1:8080", "/candidate.toml", "/engine.log", "请先到向导页准备冻结配置。", "不会自动重启；Studio 只管理自己启动的进程。"} {
 			if !tt.HasText(want) && len(modelUINodes(tt, "text", want)) == 0 {
 				t.Fatal(want, tt.Texts())

@@ -100,11 +100,10 @@ func (s *viewState) modelEngineServiceView(c *ui.Context) {
 			{"进程", "PID：" + pid},
 			{"内存", "null · 此页无内存采样"},
 		}, map[string]string{"内存": "此页不采样引擎进程内存，null 表示缺测。"})
-		componentFold(c, "查看启动行（安全展示）", func() {
-			deviceMono(c, "LogPath："+state.LogPath)
-			deviceMono(c, "Candidate："+state.Candidate)
-			ui.Text(c, "从冻结 candidate.toml 的 [engine] 读取；凭据参数与完整进程 argv 不展示。")
-		})
+		ui.Text(c, "启动行（安全展示）").FontSize(12).TextColor(c.Theme().TextMuted)
+		deviceMono(c, "LogPath："+state.LogPath)
+		deviceMono(c, "Candidate："+state.Candidate)
+		ui.Text(c, "从冻结 candidate.toml 的 [engine] 读取；凭据参数与完整进程 argv 不展示。")
 		errorView(c, state.Error)
 		ui.Text(c, "不会自动重启；Studio 只管理自己启动的进程。")
 		if s.candidate == "" {

@@ -7,15 +7,17 @@ import (
 )
 
 func (s *viewState) downloadsView(c *ui.Context) {
-	componentFold(c, "测量单位", func() {
-		ui.Text(c, "1 MiB = 1,048,576 bytes；速率为 bytes/s，总量未知。")
-		ui.Text(c, "内存、文件大小以 bytes 存储，速率以 bytes/s 存储。展示换算：1 GiB = 1,073,741,824 bytes。总量未知不显示百分比或剩余时间；条纹仅表示任务活动。")
-	})
+	ui.Text(c, "测量单位").Bold()
+	ui.Text(c, "1 MiB = 1,048,576 bytes；速率为 bytes/s，总量未知。")
+	ui.Text(c, "内存、文件大小以 bytes 存储，速率以 bytes/s 存储。展示换算：1 GiB = 1,073,741,824 bytes。总量未知不显示百分比或剩余时间；活动条仅表示任务活动。")
 	if len(s.downloads) == 0 {
 		ui.Text(c, "暂无下载任务。")
 	}
 	for _, task := range s.downloads {
-		kind, amount, rate := "模型任务", fmt.Sprintf("%.2f MiB", float64(task.DownloadedBytes)/1048576), number(task.BytesPerSecond)
+		kind, amount, rate := "模型任务", fmt.Sprintf("%.2f MiB", float64(task.DownloadedBytes)/1048576), "缺测"
+		if task.BytesPerSecond != nil {
+			rate = formatRate(*task.BytesPerSecond)
+		}
 		reason := ""
 		if task.Kind == "engine" {
 			kind, amount, rate = "引擎任务", "null", "null"
@@ -39,7 +41,7 @@ func (s *viewState) downloadsView(c *ui.Context) {
 				kind: kind, name: task.OutName, state: stateLabel(task.State), color: color,
 				active: task.State == "downloading",
 				metrics: []taskMetric{
-					{"已观测", amount, reason}, {"速率 bytes/s", rate, rateReason}, {"总量", "null", "总量未知"},
+					{"已观测", amount, reason}, {"速率", rate, rateReason}, {"总量", "null", "总量未知"},
 				}, actions: func() {
 					if task.State == "downloading" {
 						ui.Button(c, "取消下载").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
@@ -59,6 +61,9 @@ func (s *viewState) downloadsView(c *ui.Context) {
 						}
 					} else {
 						ui.Text(c, fmt.Sprintf("已下载 %d bytes", task.DownloadedBytes))
+						if task.BytesPerSecond != nil {
+							ui.Text(c, fmt.Sprintf("速率 %s bytes/s", groupedInt(int64(*task.BytesPerSecond))))
+						}
 					}
 					if task.Result != nil {
 						ui.Text(c, fmt.Sprintf("实测大小：%d bytes · SHA-256：%s", task.Result.Bytes, task.Result.Sha256)).Selectable()

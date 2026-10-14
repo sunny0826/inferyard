@@ -5,7 +5,6 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -178,14 +177,8 @@ func TestDownloadTaskCardsAndDetails(t *testing.T) {
 	if !tt.HasText("取消下载") {
 		t.Fatal("downloading task lacks cancel", tt.Texts())
 	}
-	for _, hidden := range []string{"/out/b", "fixture-sha", "下载失败"} {
-		if tt.HasText(hidden) {
-			t.Fatal("details expanded by default", hidden)
-		}
-	}
 	s.downloads = []core.DownloadTask{b}
 	tt.Frame()
-	click(t, tt, "观测依据与输出")
 	for _, text := range []string{"/out/b", "model.gguf", "1048576", "fixture-sha", "下载失败", "输出目录保留"} {
 		if !tt.HasText(text) {
 			t.Fatal("missing", text, tt.Texts())
@@ -206,35 +199,34 @@ func TestDownloadTaskCardsAndDetails(t *testing.T) {
 	}
 }
 
-func TestDownloadTaskCardsDetailsFollowTaskOnReorder(t *testing.T) {
+func TestDownloadTaskCardsRenderOnReorder(t *testing.T) {
 	s := testState()
 	a := core.DownloadTask{TaskId: "a", OutName: "model-a", State: "downloading", OutDir: "/out/a"}
 	b := core.DownloadTask{TaskId: "b", OutName: "model-b", State: "failed", OutDir: "/out/b"}
 	s.downloads = []core.DownloadTask{a, b}
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 900)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
-	labels := reflect.ValueOf(tt).Elem().FieldByName("rt").Elem().FieldByName("labels")
-	seen := 0
-	for i := 0; i < labels.Len(); i++ {
-		label := labels.Index(i)
-		if label.FieldByName("text").String() != "观测依据与输出" {
-			continue
-		}
-		seen++
-		if seen == 2 {
-			r := label.FieldByName("r")
-			tt.ClickAt(float32(r.FieldByName("X").Float()+r.FieldByName("W").Float()/2),
-				float32(r.FieldByName("Y").Float()+r.FieldByName("H").Float()/2))
-			break
+	for _, want := range []string{"输出目录：/out/a", "输出目录：/out/b"} {
+		if !tt.HasText(want) {
+			t.Fatal("missing", want, tt.Texts())
 		}
 	}
-	if seen != 2 || !tt.HasText("输出目录：/out/b") || tt.HasText("输出目录：/out/a") {
-		t.Fatal("only b details should be open", tt.Texts())
+	first, _ := tt.Find("model-a")
+	second, _ := tt.Find("model-b")
+	if first.Y >= second.Y {
+		t.Fatal("order", first, second)
 	}
 	s.downloads = []core.DownloadTask{b, a}
 	tt.Frame()
-	if !tt.HasText("输出目录：/out/b") || tt.HasText("输出目录：/out/a") {
-		t.Fatal("details did not follow task b", tt.Texts())
+	for _, want := range []string{"输出目录：/out/a", "输出目录：/out/b"} {
+		if !tt.HasText(want) {
+			t.Fatal("missing after reorder", want, tt.Texts())
+		}
+	}
+	first, _ = tt.Find("model-b")
+	second, _ = tt.Find("model-a")
+	if first.Y >= second.Y {
+		t.Fatal("reordered", first, second)
 	}
 	if dir := os.Getenv("STUDIO_UI_PREVIEW_DIR"); dir != "" {
 		f, err := os.Create(filepath.Join(dir, "downloads-reordered.png"))
