@@ -63,7 +63,8 @@ func TestDeviceLocalizedSnapshot(t *testing.T) {
 		"GPU 显存", "缺测 — 与主机共享内存，不单独计量", "≥ 2.83 GiB", "≥ 5.00 GiB",
 		"16.00 GiB（当前可用约 4.00 GiB，估算）", "已接通", "arm64（Apple 芯片）",
 		"本地模型 1 个 GGUF", "100.57 MiB · llama · 上下文 8192", "可用",
-		"绑定服务后验证", "本次检查未发送模型请求", "刷新设备", "前往运行页", "复制",
+		"或先用探测验证候选配置：", "支持", "未验证", "绑定服务后验证",
+		"本次检查未发送模型请求", "刷新设备", "前往运行页", "复制",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
@@ -142,7 +143,7 @@ func TestDeviceEmptyAndError(t *testing.T) {
 			s := deviceTestState()
 			s.device.Snapshot = json.RawMessage(raw)
 			tt := ui.NewTester(s.view, 1120, 800)
-			for _, want := range []string{"尚无设备快照", "检查设备", "前往设置配置模型目录"} {
+			for _, want := range []string{"尚无设备快照", "刷新设备", "前往设置配置模型目录"} {
 				if !tt.HasText(want) {
 					t.Fatalf("missing %q: %v", want, tt.Texts())
 				}
@@ -214,6 +215,82 @@ func TestDeviceInvalidSnapshot(t *testing.T) {
 		tt := ui.NewTester(s.view, 1120, 800)
 		if !tt.HasText("设备快照无法读取。") || tt.HasText("推荐配置") {
 			t.Fatal(tt.Texts())
+		}
+	}
+}
+
+func TestDeviceBlockedDeduplicatesReasons(t *testing.T) {
+	s := deviceTestState()
+	s.device.Snapshot = json.RawMessage(`{
+	 "ready_to_run":false,"model_requests_sent":0,
+	 "hardware":{"cpu_model":"Fixture CPU"},
+	 "recommendation":{"status":"blocked","reason":"insufficient_output_disk","selected":null},
+	 "platform_capabilities":{"device_inspection":true,"live_single_run":false,
+	  "live_experiments":false,"metal_backend_verified":true},
+	 "next_steps":[{"action":"resolve_blocker","reason":"insufficient_output_disk"},
+	  {"action":"provide_local_gguf","reason":"no_local_model"}]
+	}`)
+	tt := ui.NewTester(s.view, 1120, 2600)
+	for _, want := range []string{
+		"原因：输出位置可用磁盘不足 5 GiB、未发现本地 GGUF 模型",
+		"解决阻断项 · 输出位置可用磁盘不足 5 GiB",
+		"提供本地 GGUF 模型（未发现本地 GGUF 模型）",
+		"前往模型与下载页", "已验证", "不支持", "缺测",
+	} {
+		if !tt.HasText(want) {
+			t.Fatalf("missing %q: %v", want, tt.Texts())
+		}
+	}
+	for _, unwanted := range []string{"insufficient_output_disk", "no_local_model", "缺测 — 缺测"} {
+		if tt.HasText(unwanted) {
+			t.Fatalf("unexpected %q", unwanted)
+		}
+	}
+	if err := tt.Click("前往模型与下载页"); err != nil {
+		t.Fatal(err)
+	}
+	if s.selected != "models" {
+		t.Fatal("models navigation failed")
+	}
+}
+
+func TestDeviceUnavailableModel(t *testing.T) {
+	s := deviceTestState()
+	s.device.Snapshot = json.RawMessage(`{
+	 "ready_to_run":false,"model_requests_sent":0,
+	 "hardware":{"cpu_model":"Fixture CPU"},
+	 "recommendation":{"status":"blocked","reason":"invalid_or_unreadable_gguf","selected":null},
+	 "models":[{"path":"/fixture/broken.gguf","status":"unavailable","reason":"invalid_or_unreadable_gguf"}],
+	 "next_steps":[{"action":"provide_local_gguf","reason":"invalid_or_unreadable_gguf"}]
+	}`)
+	tt := ui.NewTester(s.view, 1120, 1800)
+	for _, want := range []string{"broken.gguf", "不可用", "/fixture/broken.gguf", "模型不存在、不可读或 GGUF 元数据无效"} {
+		if !tt.HasText(want) {
+			t.Fatalf("missing %q: %v", want, tt.Texts())
+		}
+	}
+	for _, unwanted := range []string{"上下文 缺测", "invalid_or_unreadable_gguf", "unavailable"} {
+		if tt.HasText(unwanted) {
+			t.Fatalf("unexpected %q", unwanted)
+		}
+	}
+}
+
+func TestDeviceMultipleGPUs(t *testing.T) {
+	s := deviceTestState()
+	s.device.Snapshot = json.RawMessage(`{
+	 "ready_to_run":false,"model_requests_sent":0,
+	 "hardware":{"cpu_model":"Fixture CPU",
+	  "gpu":{"devices":[
+	   {"name":"GPU Alpha","memory_total_bytes":17179869184},
+	   {"name":"GPU Beta","memory_total_bytes":8589934592}]}},
+	 "recommendation":{"status":"blocked","reason":"no_local_model","selected":null},
+	 "next_steps":[{"action":"provide_local_gguf","reason":"no_local_model"}]
+	}`)
+	tt := ui.NewTester(s.view, 1120, 1800)
+	for _, want := range []string{"GPU 1", "GPU 2", "GPU 1 显存", "GPU 2 显存", "GPU Alpha", "GPU Beta", "16.00 GiB", "8.00 GiB"} {
+		if !tt.HasText(want) {
+			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -74,7 +75,9 @@ func deviceMono(c *ui.Context, value string) {
 	ui.Text(c, value).Font("monospace").TextColor(c.Theme().TextMuted).Selectable()
 }
 func (s *viewState) refreshDevice() {
-	s.work(func() (string, *core.ApiError) { return "设备快照已更新。", s.service.RefreshDevice() })
+	// RefreshDevice 异步执行：同步返回 nil 仅表示采集已开始，成败经 LastError 呈现，
+	// 因此这里用中性提示，不能承诺"已更新"。
+	s.work(func() (string, *core.ApiError) { return "正在采集设备信息…", s.service.RefreshDevice() })
 }
 func (s *viewState) deviceRefreshButton(c *ui.Context, label string) {
 	if ui.PrimaryButton(c, label).AlignSelf(ui.Start).Disabled(s.busy || s.device.Refreshing).Clicked() {
@@ -133,7 +136,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 					ui.Text(c, "正在采集设备信息…").TextColor(c.Theme().TextMuted)
 				}
 				ui.Row(c).Gap(10).Children(func() {
-					s.deviceRefreshButton(c, "检查设备")
+					s.deviceRefreshButton(c, "刷新设备")
 					if ui.Button(c, "前往设置配置模型目录").Clicked() {
 						s.selected = "settings"
 					}
@@ -161,15 +164,22 @@ func (s *viewState) deviceConclusion(c *ui.Context, snapshot deviceObject) {
 		}
 		if !snapshot.flag("ready_to_run") {
 			var reasons []string
+			seen := map[string]bool{}
+			add := func(reason string) {
+				if !seen[reason] {
+					seen[reason] = true
+					reasons = append(reasons, reason)
+				}
+			}
 			if rec["reason"] != nil {
-				reasons = append(reasons, rec.label("reason"))
+				add(rec.label("reason"))
 			}
 			for _, reason := range rec.list("limitations") {
-				reasons = append(reasons, deviceLabel(fmt.Sprint(reason)))
+				add(deviceLabel(fmt.Sprint(reason)))
 			}
 			for _, step := range snapshot.list("next_steps") {
 				if v := deviceItem(step); v["reason"] != nil {
-					reasons = append(reasons, v.label("reason"))
+					add(v.label("reason"))
 				}
 			}
 			if len(reasons) > 0 {
@@ -212,14 +222,20 @@ func (s *viewState) deviceNextSteps(c *ui.Context, snapshot deviceObject) {
 					case "configure_and_bind_existing_service":
 						ui.Text(c, "绑定已有的模型服务（需要先完成实时预检）").Grow(1)
 						s.deviceRunsButton(c)
+					case "provide_local_gguf":
+						ui.Text(c, step.label("action")+"（"+step.label("reason")+"）").Grow(1)
+						if ui.PrimaryButton(c, "前往模型与下载页").Clicked() {
+							s.selected = "models"
+						}
 					case "probe":
 						if command := step.list("command"); len(command) > 0 {
+							ui.Text(c, "或先用探测验证候选配置：")
 							parts := make([]string, len(command))
 							for i, part := range command {
 								parts[i] = fmt.Sprint(part)
 							}
 							line := strings.Join(parts, " ")
-							ui.Text(c, line).Font("monospace").SingleLine().Selectable()
+							ui.Text(c, line).Font("monospace").SingleLine().Grow(1).Selectable()
 							if ui.Button(c, "复制").Clicked() {
 								c.WriteClipboard(line)
 							}
@@ -227,7 +243,7 @@ func (s *viewState) deviceNextSteps(c *ui.Context, snapshot deviceObject) {
 							ui.Text(c, step.value("action")+" · "+step.label("reason"))
 						}
 					default:
-						ui.Text(c, step.value("action")+" · "+step.label("reason"))
+						ui.Text(c, step.label("action")+" · "+step.label("reason"))
 					}
 				})
 				if step.value("action") == "probe" && len(step.list("command")) > 0 {
@@ -275,7 +291,8 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 		}
 		deviceRow(c, "内存", memory+"）")
 		gpu := hw.object("gpu")
-		for _, item := range gpu.list("devices") {
+		devices := gpu.list("devices")
+		for i, item := range devices {
 			v := deviceItem(item)
 			name := v.value("name")
 			if v["cores"] != nil {
@@ -284,11 +301,15 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 			if v.flag("metal_supported") {
 				name += " · 支持 Metal"
 			}
-			deviceRow(c, "GPU", name)
-			deviceRow(c, "GPU 显存", deviceMeasurement(v, "memory_total_bytes", true))
+			label := "GPU"
+			if len(devices) > 1 {
+				label = fmt.Sprintf("GPU %d", i+1)
+			}
+			deviceRow(c, label, name)
+			deviceRow(c, label+" 显存", deviceMeasurement(v, "memory_total_bytes", true))
 		}
-		if len(gpu.list("devices")) == 0 {
-			deviceRow(c, "GPU", "缺测 — "+gpu.label("reason"))
+		if len(devices) == 0 {
+			deviceRow(c, "GPU", "缺测")
 		}
 		deviceRow(c, "磁盘可用", deviceMeasurement(hw, "disk_free_bytes", true))
 		power := deviceMeasurement(hw, "ac_online", false)
@@ -310,7 +331,7 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 				deviceMono(c, key+" ← "+sources.value(key))
 			}
 			deviceMissing(c, "", hw.object("missing"))
-			for i, item := range gpu.list("devices") {
+			for i, item := range devices {
 				deviceMissing(c, fmt.Sprintf("GPU %d · ", i+1), deviceItem(item).object("missing"))
 			}
 			deviceMono(c, "检测位置："+hw.value("disk_path"))
@@ -336,14 +357,21 @@ func deviceModels(c *ui.Context, models []any) {
 			model := deviceItem(item)
 			ui.Column(c.Key(fmt.Sprint(i))).Gap(6).Children(func() {
 				ui.Row(c).Gap(10).Children(func() {
-					ui.Text(c, model.value("name")).Bold()
-					ui.Text(c, deviceBytes(model["size_bytes"])+" · "+model.value("architecture")+" · 上下文 "+model.value("context_length")).TextColor(c.Theme().TextMuted)
+					name := model.value("name")
+					if model["name"] == nil {
+						name = filepath.Base(model.value("path"))
+					}
+					ui.Text(c, name).Bold()
 					if model.value("status") == "available" {
+						ui.Text(c, deviceBytes(model["size_bytes"])+" · "+model.value("architecture")+" · 上下文 "+model.value("context_length")).TextColor(c.Theme().TextMuted)
 						ui.Badge(c, "可用").TextColor(c.Theme().Success)
 					} else {
-						ui.Badge(c, model.value("status"))
+						ui.Badge(c, model.label("status")).TextColor(c.Theme().Warning)
 					}
 				})
+				if model["reason"] != nil {
+					ui.Text(c, model.label("reason")).TextColor(c.Theme().Warning)
+				}
 				deviceMono(c, model.value("path"))
 			})
 		}
@@ -357,13 +385,17 @@ func deviceCapabilities(c *ui.Context, capabilities deviceObject) {
 				for _, item := range items[i : i+2] {
 					ui.Row(c).Grow(1).Basis(0).Gap(8).Children(func() {
 						ui.Text(c, item[1])
-						if capabilities.flag(item[0]) {
-							ui.Badge(c, "支持").TextColor(c.Theme().Success)
-						} else {
-							ui.Badge(c, "未验证").TextColor(c.Theme().TextMuted)
-							if item[0] == "metal_backend_verified" {
+						if item[0] == "metal_backend_verified" {
+							if capabilities.flag(item[0]) {
+								ui.Badge(c, "已验证").TextColor(c.Theme().Success)
+							} else {
+								ui.Badge(c, "未验证").TextColor(c.Theme().TextMuted)
 								ui.Text(c, "绑定服务后验证").TextColor(c.Theme().TextMuted)
 							}
+						} else if capabilities.flag(item[0]) {
+							ui.Badge(c, "支持").TextColor(c.Theme().Success)
+						} else {
+							ui.Badge(c, "不支持").TextColor(c.Theme().TextMuted)
 						}
 					})
 				}
