@@ -96,7 +96,7 @@ func (s *Service) CreateDownload(req CreateDownloadRequest) (DownloadTask, *ApiE
 		}
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
-	d := &downloadEntry{Task: DownloadTask{TaskId: uuid(), State: "downloading", SourceUrl: req.SourceUrl, OutName: req.OutName, OutDir: dir, StartedAt: now()}, cancel: cancel}
+	d := &downloadEntry{Task: DownloadTask{Kind: "model", TaskId: uuid(), State: "downloading", SourceUrl: req.SourceUrl, OutName: req.OutName, OutDir: dir, StartedAt: now()}, cancel: cancel}
 	s.downloads = append(s.downloads, d)
 	s.Bus.Publish("download.state", map[string]any{"task": d.Task})
 	go s.download(ctx, *p.Path, d)
@@ -222,6 +222,74 @@ loop:
 			d.Task.Result = &result
 			d.Task.DownloadedBytes = result.Bytes
 		}
+	}
+	s.Bus.Publish("download.state", map[string]any{"task": d.Task})
+}
+
+func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *ApiError) {
+	if !validEngineSource(source) || !outputName.MatchString(outName) || strings.Trim(outName, ".") == "" {
+		return DownloadTask{}, Err("invalid_request")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closing {
+		return DownloadTask{}, Err("service_closing")
+	}
+	workspace := str(s.settings.WorkspaceRoot)
+	if workspace == "" {
+		return DownloadTask{}, Conflict("settings_incomplete")
+	}
+	root, err := Resolve(workspace, "engines")
+	if err != nil {
+		return DownloadTask{}, Err("invalid_request")
+	}
+	dir, err := Resolve(root, outName)
+	if err != nil {
+		return DownloadTask{}, Err("invalid_request")
+	}
+	if _, err = os.Lstat(dir); !os.IsNotExist(err) {
+		if err != nil {
+			return DownloadTask{}, Err("internal_error")
+		}
+		return DownloadTask{}, Conflict("output_exists")
+	}
+	for _, d := range s.downloads {
+		if d.Task.OutDir == dir {
+			return DownloadTask{}, Conflict("output_exists")
+		}
+	}
+	ctx, cancel := context.WithCancel(s.ctx)
+	d := &downloadEntry{Task: DownloadTask{
+		Kind: "engine", TaskId: uuid(), State: "downloading", SourceUrl: source,
+		OutName: outName, OutDir: dir, StartedAt: now(),
+		ProgressReason: ptr("engine_transfer_progress_unavailable"),
+	}, cancel: cancel}
+	s.downloads = append(s.downloads, d)
+	s.Bus.Publish("download.state", map[string]any{"task": d.Task})
+	go s.downloadEngine(ctx, d)
+	return clone(d.Task), nil
+}
+
+func (s *Service) downloadEngine(ctx context.Context, d *downloadEntry) {
+	defer d.cancel()
+	path, failure := s.FetchEngine(ctx, d.Task.SourceUrl, d.Task.OutDir, func(string) {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.Bus.Publish("download.progress", map[string]any{
+			"task_id": d.Task.TaskId, "downloaded_bytes": nil, "bytes_per_second": nil,
+			"progress_reason": d.Task.ProgressReason, "utc": now(),
+		})
+	})
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	d.Task.FinishedAt = ptr(now())
+	switch {
+	case ctx.Err() != nil:
+		d.Task.State = "cancelled"
+	case failure != nil:
+		d.Task.State, d.Task.Error = "failed", failure
+	default:
+		d.Task.State, d.Task.EnginePath = "done", &path
 	}
 	s.Bus.Publish("download.state", map[string]any{"task": d.Task})
 }

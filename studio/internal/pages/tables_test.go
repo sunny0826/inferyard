@@ -167,20 +167,18 @@ func TestReportTableSelection(t *testing.T) {
 	}
 }
 
-func TestDownloadTableDetailsAndSelectionIdentity(t *testing.T) {
+func TestDownloadTaskCardsAndDetails(t *testing.T) {
 	s := testState()
 	a := core.DownloadTask{TaskId: "a", OutName: "model-a", State: "downloading", OutDir: "/out/a"}
 	b := core.DownloadTask{TaskId: "b", OutName: "model-b", State: "failed", OutDir: "/out/b", FileName: ptr("model.gguf"), DownloadedBytes: 1048576, Result: &core.DownloadResult{Bytes: 1048576, Sha256: "fixture-sha"}, Error: &core.ApiError{Code: "fixture", Message: "下载失败"}}
 	s.downloads = []core.DownloadTask{a, b}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 700)
-	if tt.HasText("取消下载") {
-		t.Fatal("no selection has cancel")
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 900)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	if !tt.HasText("取消下载") {
+		t.Fatal("downloading task lacks cancel", tt.Texts())
 	}
-	click(t, tt, "model-a")
-	if !tt.HasText("取消下载") || !tt.HasText("/out/a") {
-		t.Fatal(tt.Texts())
-	}
-	click(t, tt, "model-b")
+	s.downloads = []core.DownloadTask{b}
+	tt.Frame()
 	for _, text := range []string{"/out/b", "model.gguf", "1048576", "fixture-sha", "下载失败", "输出目录保留"} {
 		if !tt.HasText(text) {
 			t.Fatal("missing", text, tt.Texts())
@@ -189,21 +187,49 @@ func TestDownloadTableDetailsAndSelectionIdentity(t *testing.T) {
 	if tt.HasText("取消下载") {
 		t.Fatal("failed download has cancel")
 	}
+	if dir := os.Getenv("STUDIO_UI_PREVIEW_DIR"); dir != "" {
+		f, err := os.Create(filepath.Join(dir, "downloads.png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		if err := png.Encode(f, tt.Image()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestDownloadTaskCardsRenderOnReorder(t *testing.T) {
+	s := testState()
+	a := core.DownloadTask{TaskId: "a", OutName: "model-a", State: "downloading", OutDir: "/out/a"}
+	b := core.DownloadTask{TaskId: "b", OutName: "model-b", State: "failed", OutDir: "/out/b"}
+	s.downloads = []core.DownloadTask{a, b}
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 900)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	for _, want := range []string{"输出目录：/out/a", "输出目录：/out/b"} {
+		if !tt.HasText(want) {
+			t.Fatal("missing", want, tt.Texts())
+		}
+	}
+	first, _ := tt.Find("model-a")
+	second, _ := tt.Find("model-b")
+	if first.Y >= second.Y {
+		t.Fatal("order", first, second)
+	}
 	s.downloads = []core.DownloadTask{b, a}
 	tt.Frame()
-	tt.Frame()
-	if !tt.HasText("fixture-sha") {
-		t.Fatal("selection changed after reorder")
+	for _, want := range []string{"输出目录：/out/a", "输出目录：/out/b"} {
+		if !tt.HasText(want) {
+			t.Fatal("missing after reorder", want, tt.Texts())
+		}
 	}
-	s.downloads = []core.DownloadTask{a}
-	tt.Frame()
-	tt.Frame()
-	if tt.HasText("fixture-sha") || tt.HasText("取消下载") {
-		t.Fatal("removed selection targeted another task")
+	first, _ = tt.Find("model-b")
+	second, _ = tt.Find("model-a")
+	if first.Y >= second.Y {
+		t.Fatal("reordered", first, second)
 	}
 	if dir := os.Getenv("STUDIO_UI_PREVIEW_DIR"); dir != "" {
-		click(t, tt, "model-a")
-		f, err := os.Create(filepath.Join(dir, "downloads.png"))
+		f, err := os.Create(filepath.Join(dir, "downloads-reordered.png"))
 		if err != nil {
 			t.Fatal(err)
 		}

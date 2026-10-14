@@ -20,6 +20,7 @@
 | 入口 | 内容 |
 | --- | --- |
 | [贡献指南](../CONTRIBUTING.md) · [Agent 约定](../../AGENTS.md) | 工具链、检查、文件边界与提交 |
+| [子系统参考](../../docs/subsystems/README.md) | 跨包子系统的职责、运行路径、状态、约束与验证命令 |
 | [架构](architecture.md) | 模块职责与运行设计 |
 | [数据契约](data-contract.md) · [主题契约](contracts/README.md) | 活动格式、来源和功能接口 |
 | [实验设计](experiments/design.md) · [指标](experiments/metrics.md) | 冻结协议、分母和计量定义 |

@@ -16,7 +16,38 @@ var environmentName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 func validName(s string) bool { return directoryName.MatchString(s) && strings.Trim(s, ".") != "" }
 func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 func (s *viewState) modelsView(c *ui.Context) {
+	ui.Text(c, "工作区 / 资产与服务").FontSize(11).TextColor(c.Theme().TextMuted)
 	s.header(c, "模型与下载")
+	s.adoptDownloadedEngine()
+	ui.Row(c).Gap(20).AlignItems(ui.Start).Children(func() {
+		ui.Column(c).Width(0).Grow(1.2).Gap(20).Children(func() {
+			card(c, "模型", func() { s.modelAssetsView(c) })
+			card(c, "下载", func() {
+				s.downloadsView(c)
+				card(c, "引擎下载", func() { s.engineDownloadView(c) })
+			})
+		})
+		ui.Column(c).Width(0).Grow(1).MinWidth(310).Gap(20).Children(func() {
+			s.modelEngineServiceView(c)
+			s.modelBindingView(c)
+		})
+	})
+}
+
+func (s *viewState) modelAssetsView(c *ui.Context) {
+	ui.Column(c).Gap(8).Padding(16).Radius(10).Border(1, c.Theme().Accent.Alpha(0.20)).Gradient(c.Theme().Accent.Mix(c.Theme().Surface, 0.92), c.Theme().Surface, 120).Children(func() {
+		statusBadge(c, "预置测试模型", c.Theme().Accent)
+		ui.Text(c, "SmolLM2-135M").Bold().FontSize(20)
+		ui.Text(c, "Instruct · Q4_K_M · 固定版本 GGUF").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "适合走通首次使用流程").FontSize(12).TextColor(c.Theme().TextMuted)
+		ui.PrimaryButton(c, "下载预置模型").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
+			name := fmt.Sprintf("model-%d", uniqueID())
+			s.work(func() (string, *core.ApiError) {
+				_, e := s.service.CreateDownload(core.CreateDownloadRequest{SourceUrl: core.DefaultModelURL, OutName: name})
+				return "已加入下载队列。", e
+			})
+		})
+	})
 	snapshot, err := parseDeviceSnapshot(s.device.Snapshot)
 	switch {
 	case err != nil:
@@ -27,30 +58,16 @@ func (s *viewState) modelsView(c *ui.Context) {
 	default:
 		ui.Text(c, "尚无设备快照，请到设备页刷新。")
 	}
-	card(c, "本地资产", func() {
-		ui.Text(c, "模型目录："+text(s.settings.Effective.ModelsRoot))
-		ui.Text(c, "引擎目录："+filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines"))
-	})
-	card(c, "创建模型下载", func() {
-		field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL)
-		field(c, "新目录名", &s.modelName)
-		field(c, "凭据环境变量名（可选）", &s.tokenEnv)
-		ui.Text(c, "仅填写环境变量名。凭据由启动 Studio 的环境提供。目录名仅允许字母、数字、点、下划线与连字符，不能全为点。")
-		if ui.PrimaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
-			s.acquireModel()
-		}
-	})
-	card(c, "下载引擎", func() {
-		field(c, "引擎 URL", &s.engineURL)
-		field(c, "引擎新目录名", &s.engineName)
-		if s.engineDownloadStatus != "" {
-			ui.Text(c, s.engineDownloadStatus)
-		}
-		if ui.Button(c, "下载引擎").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.engineName) || s.engineURL == "" || emptyText(s.settings.Effective.WorkspaceRoot) == "").Clicked() {
-			s.fetchEngine()
-		}
-	})
-	card(c, "下载队列", func() { s.downloadsView(c) })
+	ui.Text(c, "模型目录："+text(s.settings.Effective.ModelsRoot))
+
+	ui.Text(c, "创建模型下载").Bold()
+	field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL)
+	field(c, "新目录名", &s.modelName)
+	field(c, "凭据环境变量名（可选）", &s.tokenEnv)
+	ui.Text(c, "仅填写环境变量名。凭据由启动 Studio 的环境提供。目录名仅允许字母、数字、点、下划线与连字符，不能全为点。")
+	if ui.PrimaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
+		s.acquireModel()
+	}
 }
 func (s *viewState) acquireModel() {
 	source, name, env := s.modelURL, s.modelName, s.tokenEnv
@@ -84,22 +101,6 @@ func (s *viewState) acquireModel() {
 	})
 }
 
-func (s *viewState) fetchEngine() {
-	source := s.engineURL
-	out := fresh(filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines"), s.engineName)
-	s.guideWork(func() (string, *core.ApiError) {
-		defer s.win.Update(func() { s.engineDownloadStatus = "" })
-		path, e := s.service.FetchEngine(s.ctx, source, out, func(status string) {
-			s.win.Update(func() { s.engineDownloadStatus = status })
-		})
-		if e != nil {
-			return "", e
-		}
-		s.win.Update(func() { s.engine = path; s.enginePreset = true })
-		return "引擎已就绪：" + path, nil
-	})
-}
-
 func deviceRecommendation(c *ui.Context, rec deviceObject) {
 	card(c, "推荐配置", func() {
 		selected := rec.object("selected")
@@ -118,23 +119,22 @@ func deviceRecommendation(c *ui.Context, rec deviceObject) {
 		for _, reason := range rec.list("limitations") {
 			ui.Text(c, "⚠ "+deviceLabel(fmt.Sprint(reason))).TextColor(c.Theme().Warning)
 		}
-		deviceFold(c, "模型文件与原始参数", func() {
-			deviceMono(c, selected.value("model_path"))
-			for _, candidate := range rec.list("candidates") {
-				other := deviceItem(candidate)
-				if !reflect.DeepEqual(other, selected) {
-					ui.Text(c, other.value("model_name")+" · "+other.label("mode"))
-				}
+		ui.Text(c, "模型文件与原始参数").FontSize(12).TextColor(c.Theme().TextMuted)
+		deviceMono(c, selected.value("model_path"))
+		for _, candidate := range rec.list("candidates") {
+			other := deviceItem(candidate)
+			if !reflect.DeepEqual(other, selected) {
+				ui.Text(c, other.value("model_name")+" · "+other.label("mode"))
 			}
-		})
+		}
 	})
 }
 
 func deviceModels(c *ui.Context, models []any) {
 	card(c, fmt.Sprintf("本地模型 %d 个 GGUF", len(models)), func() {
-		for i, item := range models {
+		for _, item := range models {
 			model := deviceItem(item)
-			ui.Column(c.Key(fmt.Sprint(i))).Gap(6).Children(func() {
+			ui.Column(c).Gap(6).Children(func() {
 				ui.Row(c).Gap(10).Children(func() {
 					name := model.value("name")
 					if model["name"] == nil {
@@ -143,9 +143,9 @@ func deviceModels(c *ui.Context, models []any) {
 					ui.Text(c, name).Bold()
 					if model.value("status") == "available" {
 						ui.Text(c, deviceBytes(model["size_bytes"])+" · "+model.value("architecture")+" · 上下文 "+model.value("context_length")).TextColor(c.Theme().TextMuted)
-						ui.Badge(c, "可用").TextColor(c.Theme().Success)
+						statusBadge(c, "可用", c.Theme().Success)
 					} else {
-						ui.Badge(c, model.label("status")).TextColor(c.Theme().Warning)
+						statusBadge(c, model.label("status"), c.Theme().Warning)
 					}
 				})
 				if model["reason"] != nil {

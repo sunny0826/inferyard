@@ -11,6 +11,7 @@ import (
 type onboardingSnapshot struct {
 	candidate string
 	stale     bool
+	unknown   bool
 	startup   core.Startup
 	processes []core.ProcessCandidate
 	failure   *core.ApiError
@@ -38,7 +39,7 @@ func (s *viewState) readOnboarding(p *inferyard.WorkspaceProgress) onboardingSna
 		}
 		if b.BoundPath != nil && result.failure == nil {
 			alive, e := s.service.BindingAlive(*b.BoundPath)
-			result.stale, result.failure = !alive && e == nil, e
+			result.stale, result.unknown, result.failure = !alive && e == nil, e != nil, e
 		}
 		break
 	}
@@ -101,5 +102,5 @@ func (s *viewState) applyOnboarding(v onboardingSnapshot, e *core.ApiError) {
 			s.bindEndpoint = "http://" + net.JoinHostPort(host, port)
 		}
 	}
-	s.startup, s.processes, s.bindingStale = v.startup, v.processes, v.stale
+	s.startup, s.processes, s.bindingStale, s.bindingUnknown = v.startup, v.processes, v.stale, v.unknown
 }

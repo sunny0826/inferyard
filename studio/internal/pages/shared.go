@@ -2,6 +2,8 @@ package pages
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 )
@@ -73,4 +75,40 @@ func number[T ~int64 | ~float64](v *T) string {
 		return "缺测"
 	}
 	return fmt.Sprint(*v)
+}
+
+func formatRate(v float64) string {
+	switch {
+	case v >= 1048576:
+		return fmt.Sprintf("%.2f MiB/s", v/1048576)
+	case v >= 1024:
+		return fmt.Sprintf("%.1f KiB/s", v/1024)
+	default:
+		return fmt.Sprintf("%d bytes/s", int64(v))
+	}
+}
+
+func groupedInt(v int64) string {
+	s := fmt.Sprintf("%d", v)
+	if len(s) <= 3 {
+		return s
+	}
+	var b strings.Builder
+	for i := range len(s) {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
+func componentFold(c *ui.Context, title string, fn func()) {
+	container := ui.Column(c.Key(title))
+	open := ui.Local(container, "open", func() bool { return false })
+	container.Children(func() { ui.Collapsible(c, title, open, fn) })
+}
+
+func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {
+	return ui.Badge(c, label).TextColor(color).Background(color.Alpha(0.10)).AlignSelf(ui.Start)
 }

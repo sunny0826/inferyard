@@ -59,7 +59,7 @@ func pageID(page string) string {
 }
 
 type viewState struct {
-	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, engineDownloadStatus, refreshFailure string
+	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
 	enginePreset, assetsPreset                                                                                bool
 	engineState                                                                                               core.EngineState
 	startup                                                                                                   core.Startup
@@ -90,6 +90,7 @@ type viewState struct {
 	manualFirst, manualSecond                                                                                 string
 	manualConfig                                                                                              bool
 	bindingStale                                                                                              bool
+	bindingUnknown                                                                                            bool
 	firstBundle, secondBundle                                                                                 string
 	single, confirmed                                                                                         bool
 	groups                                                                                                    [][]string
@@ -97,7 +98,7 @@ type viewState struct {
 	endpoint, pid                                                                                             string
 	denied                                                                                                    map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                                      string
-	tasksTable, historyTable, reportsTable, downloadsTable, reportSources                                     ui.ListState
+	tasksTable, historyTable, reportsTable, reportSources                                                    ui.ListState
 	reportChoices                                                                                             ui.Selection[string]
 	scrolls                                                                                                   map[string]*ui.ScrollState
 	casesTable, samplesTable                                                                                  ui.ListState

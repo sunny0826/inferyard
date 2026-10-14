@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
+<title>模型与下载 · InferYard Studio 交互原型</title>
+<style>
+:root{color-scheme:light;--bg:#f4f5f7;--paper:#fff;--ink:#202733;--muted:#657180;--line:#e2e6eb;--accent:#245cdb;--blue:#edf3ff;--green:#187451;--red:#b83d3d;--amber:#956114}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}button,input,select{font:inherit}button{cursor:pointer;border:1px solid var(--line);border-radius:8px;background:white;padding:7px 13px;color:var(--ink)}button:hover{border-color:var(--accent);color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8badfa;outline-offset:3px}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.primary:hover{background:#1849b9;color:white}a{color:var(--accent);text-decoration:none}h1,h2,h3,p{margin:0}h1{font-size:28px;letter-spacing:-1px}h2{font-size:17px}h3{font-size:14px}.muted,small{color:var(--muted)}small{font-size:12px}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;overflow-wrap:anywhere}.app{display:grid;grid-template-columns:192px 1fr;min-height:100vh}.sidebar{padding:25px 16px;border-right:1px solid var(--line);background:#f9fafb}.brand{font-weight:750;font-size:18px;padding:0 12px 27px}.brand span{color:var(--accent)}.navitem{display:block;margin:5px 0;padding:10px 14px;border-radius:8px;color:var(--muted)}.navitem.current{background:#e9eef9;color:var(--accent);font-weight:650}.sidebar .foot{margin:40px 12px 0;font-size:12px;color:var(--muted)}main{max-width:1270px;width:100%;padding:28px 34px 36px;margin:auto}.top,.section-head,.row{display:flex;align-items:center;justify-content:space-between;gap:16px}.top{margin-bottom:22px}.eyebrow{font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:4px}.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;border-radius:20px;padding:3px 10px;background:#eef1f5;color:var(--muted);white-space:nowrap}.pill.good{background:#e9f5ee;color:var(--green)}.pill.blue{background:var(--blue);color:var(--accent)}.pill.bad{background:#fff0ef;color:var(--red)}.pill.warn{background:#fff5e5;color:var(--amber)}.dot{width:6px;height:6px;background:currentColor;border-radius:50%}.preview{background:#eaf0fb;border:1px solid #d8e2f5;border-radius:10px;padding:12px 16px;margin-bottom:22px}.preview small{display:block;margin-top:3px}.grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(310px,1fr);gap:20px;align-items:start}.stack{display:grid;gap:20px}.card{background:var(--paper);border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:0 2px 4px #17234203}.section-head{padding:18px 20px;border-bottom:1px solid var(--line)}.section-head h2 span{font-weight:400;color:var(--muted);font-size:12px;margin-left:7px}.body{padding:18px 20px}.asset{padding:16px;border:1px solid #d6e2fc;background:linear-gradient(120deg,#f0f5ff,#fff);border-radius:10px}.asset h3{font-size:18px;margin:8px 0 2px}.asset .row{margin-top:12px}.model{padding:15px 0;border-bottom:1px solid var(--line)}.model:last-child{border-bottom:0}.model .mono{display:block;color:var(--muted);margin-top:5px}.icon{width:35px;height:35px;border-radius:9px;background:#eef2f8;color:var(--accent);display:grid;place-items:center;font-size:17px;flex-shrink:0}.name{display:flex;gap:12px;align-items:center}.subhead{margin-top:20px;font-size:12px;color:var(--muted)}.tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px}.tabs button{padding:4px 9px;font-size:12px}.tabs button[aria-pressed=true]{background:var(--blue);border-color:#8dacf0;color:var(--accent)}.status-panel{padding:16px;border-radius:10px;background:#f7f9fc;margin-bottom:16px}.status-panel h3{font-size:19px;margin:6px 0}.status-panel p{color:var(--muted);font-size:13px}.status-panel.bad{background:#fff5f3}.status-panel.good{background:#f0f8f3}.kv{display:grid;grid-template-columns:100px 1fr;gap:8px;font-size:13px;margin:14px 0}.kv dt{color:var(--muted)}.kv dd{margin:0}.command{display:block;padding:12px;background:#f5f6f8;border:1px solid var(--line);border-radius:8px;white-space:pre-wrap;margin:8px 0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.notice{font-size:12px;padding:11px 13px;background:#f7f8fa;border-radius:8px;margin-top:14px;color:var(--muted)}.notice.warning{background:#fff6e8;color:#865917}.steps{display:flex;gap:5px;align-items:center;font-size:10px;color:var(--muted);margin-top:14px;flex-wrap:wrap}.steps b{padding:3px 6px;border-radius:5px;font-weight:400;background:#f0f2f5}.steps b.active{background:#dce8ff;color:var(--accent)}.task{border:1px solid var(--line);border-radius:10px;padding:15px;margin-top:12px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 10px}.metrics strong{display:block;font-size:19px;font-weight:600}.metrics small{display:block}.activity{height:4px;background:repeating-linear-gradient(100deg,#b3c9f7 0px,#b3c9f7 18px,#e9f0ff 18px,#e9f0ff 32px);border-radius:4px;margin:12px 0}.task-note{font-size:12px;color:var(--muted)}details{margin-top:14px;font-size:12px;color:var(--muted)}summary{cursor:pointer;color:var(--accent)}label{display:block;font-size:12px;color:var(--muted);margin-top:12px}input,select{border:1px solid #cbd2dc;border-radius:7px;padding:8px;width:100%;background:white;color:var(--ink)}.binding{border-left:3px solid #91a9d4;padding-left:13px;margin-top:15px}.binding strong{display:block}.binding small{display:block}.footer{margin-top:20px;font-size:12px;color:var(--muted)}#feedback{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#24324b;color:white;padding:12px 22px;border-radius:10px;max-width:90vw;box-shadow:0 6px 25px #0002;z-index:3}#feedback:empty{display:none}.check{display:flex;gap:8px;align-items:center}.check input{width:auto}.tiny{font-size:11px} [hidden]{display:none!important}@media(max-width:1050px){.app{grid-template-columns:150px 1fr}main{padding:24px 20px}.grid{grid-template-columns:1fr}.sidebar{padding:22px 10px}}@media(max-width:600px){.app{display:block}.sidebar{display:none}main{padding:20px 12px}.top{align-items:flex-start}.top>.pill{display:none}.section-head,.body{padding:16px}.metrics strong{font-size:16px}.row{flex-wrap:wrap}h1{font-size:25px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" aria-label="应用位置示意">
+<div class="brand">Infer<span>Yard</span><small style="display:block;font-weight:400">STUDIO</small></div>
+<span class="navitem">◈　向导</span><span class="navitem">▣　设备</span><span class="navitem current" aria-current="page">▧　模型与下载</span><span class="navitem">▷　运行</span><span class="navitem">▤　报告</span><span class="navitem">⚙　设置</span>
+<div class="foot">本地工作区<br><code>~/.inferyard</code><br><br>MyGo 原生界面设计稿<br>导航仅作位置示意</div>
+</aside>
+<main>
+<header class="top"><div><div class="eyebrow">工作区 / 资产与服务</div><h1>模型与下载</h1><p class="muted">准备模型，查看下载，让本地服务就绪。</p></div><span class="pill good"><span class="dot"></span>CLI 已就绪 · 示例</span></header>
+<div class="preview"><strong>交互原型 · 所有数据均为示例</strong><small>点击各区状态按钮查看不同情境。操作仅更新本页，不下载文件、不启动服务、不访问网络。</small></div>
+<div class="grid">
+<div class="stack">
+<section class="card" id="models" aria-labelledby="models-title">
+<div class="section-head"><h2 id="models-title">模型 <span>先准备资产</span></h2><span class="pill">本机发现 2 个</span></div>
+<div class="body">
+<div class="asset"><span class="pill blue">预置测试模型</span><h3>SmolLM2-135M</h3><p class="muted">Instruct · Q4_K_M · 固定版本 GGUF</p><div class="row"><small>适合走通首次使用流程</small><button class="primary" id="preset">下载预置模型</button></div></div>
+<p class="subhead">本机 GGUF · 来自设备快照（示例）</p>
+<div class="model"><div class="row"><div class="name"><span class="icon">◇</span><div><h3>Qwen2.5-0.5B-Instruct</h3><small>Q4_K_M · 384 MiB · 可用</small></div></div><span class="pill good">已发现</span></div><code class="mono">~/.inferyard/models/qwen/model.gguf</code></div>
+<div class="model"><div class="row"><div class="name"><span class="icon">◇</span><div><h3>local-model.gguf</h3><small>文件大小：null · 文件信息读取失败</small></div></div><span class="pill warn">待检查</span></div><code class="mono">~/.inferyard/models/local/model.gguf</code></div>
+<details><summary>添加其他模型</summary><form id="source-form"><label for="source">模型来源（HTTPS）</label><input id="source" type="password" autocomplete="off" spellcheck="false" placeholder="粘贴固定 revision 的 GGUF 来源" aria-describedby="source-rule"><p id="source-rule">只接受无用户信息、query、fragment 的 HTTPS 来源。模型使用 Hugging Face / ModelScope 的固定 40 位 revision blob 路径。输入内容遮蔽，错误不回显来源。</p><label for="out-name">新目录名</label><input id="out-name" autocomplete="off" value="custom-model"><button type="submit" style="margin-top:12px">检查并创建示例任务</button><p id="source-result" role="status"></p></form></details>
+</div></section>
+<section class="card" aria-labelledby="downloads-title">
+<div class="section-head"><h2 id="downloads-title">下载 <span>与运行队列互不占位</span></h2><span class="pill blue">独立任务</span></div>
+<div class="body">
+<div class="tabs" id="download-tabs" aria-label="下载情境"><button data-download="downloading" aria-pressed="true">进行中</button><button data-download="waiting" aria-pressed="false">等待读数</button><button data-download="done" aria-pressed="false">完成</button><button data-download="failed" aria-pressed="false">失败</button><button data-download="cancelled" aria-pressed="false">已取消</button></div>
+<div class="task" aria-live="polite"><div class="row"><div><small>模型任务</small><h3 id="download-name">SmolLM2-135M · Q4_K_M</h3></div><span id="download-badge" class="pill blue">下载中</span></div><div class="metrics"><div><small id="bytes-label">已观测</small><strong id="bytes">48 MiB</strong></div><div><small>速率</small><strong id="rate">4 MiB/s</strong></div><div><small>总量</small><strong id="total">null</strong></div></div><div class="activity" id="download-activity" aria-hidden="true"></div><p id="download-note" class="task-note"></p><div class="actions"><button id="cancel-download">取消下载</button></div><details><summary>观测依据与输出</summary><p>轮询 .part 文件大小，以最近 5 个读数窗口估算速率；读数不足时速率为 null。正式发布文件出现后，以实测字节数收尾。</p><p id="raw-bytes"></p><code id="download-dir">~/.inferyard/models/smollm2-demo</code></details></div>
+<div class="task"><div class="row"><div><small>预置引擎 · 当前平台示例：macOS arm64</small><h3>Prism <span class="muted">b10743-adfffbe</span></h3></div><span id="engine-download-badge" class="pill">未下载</span></div><p id="engine-download-note" class="task-note" style="margin-top:9px">固定版本归档；下载后解包到新目录，保留同级共享库。</p><div class="actions"><button id="engine-download">下载预置引擎</button><button id="engine-download-cancel" hidden>取消下载</button></div><details><summary>引擎任务状态预览</summary><div class="actions"><button data-engine-download="downloading">进行中</button><button data-engine-download="done">完成</button><button data-engine-download="failed">失败</button></div><p>只重建归档内相对符号链接，拒绝越界链接；输出目录已存在则拒绝，不覆盖资产。</p></details></div>
+<div class="notice">下载可以与评测同时进行。失败或取消后目录保留，再次下载需换新目录；临时文件清理由 CLI 负责。</div>
+<details><summary>测量单位</summary><p>内存、文件大小以 bytes 存储，速率以 bytes/s 存储。展示换算：1 MiB = 1,048,576 bytes；1 GiB = 1,073,741,824 bytes。总量未知不显示百分比或剩余时间；条纹仅表示任务活动。</p></details>
+</div></section>
+</div>
+<div class="stack">
+<section class="card" aria-labelledby="engine-title">
+<div class="section-head"><h2 id="engine-title">引擎服务</h2><span class="pill">Studio 管理</span></div>
+<div class="body">
+<div class="tabs" id="engine-tabs" aria-label="引擎状态预览"><button data-state="stopped">已停止</button><button data-state="starting">启动中</button><button data-state="running">运行中</button><button data-state="stopping">停止中</button><button data-state="failed">失败</button></div>
+<div id="engine-panel" class="status-panel" aria-live="polite"><span id="engine-code" class="pill">stopped</span><h3 id="engine-heading"></h3><p id="engine-description"></p></div>
+<label for="failure" id="failure-label" hidden>异常原因预览</label><select id="failure" hidden><option value="engine_exited">进程自行退出 · engine_exited</option><option value="engine_start_timeout">健康等待超时 · engine_start_timeout</option></select>
+<dl class="kv"><dt>冻结配置</dt><dd><code>candidates/demo/candidate.toml</code></dd><dt>本地地址</dt><dd><code>127.0.0.1:8080</code> · 仅 loopback</dd><dt>进程</dt><dd id="engine-pid"></dd><dt>内存</dt><dd>null · 此页无内存采样</dd></dl>
+<details><summary>查看启动行（安全展示）</summary><code class="command">llama-server -m models/qwen/model.gguf
+--host 127.0.0.1 --port 8080</code><p>从冻结 candidate.toml 的 [engine] 读取；此处为示例安全字段，凭据参数与完整进程 argv 不展示。</p></details>
+<div class="actions"><button id="start" class="primary">启动服务</button><button id="stop">停止服务</button></div>
+<div class="steps" aria-label="引擎正常状态转换"><b data-step="stopped">stopped</b>→<b data-step="starting">starting</b>→<b data-step="running">running</b>→<b data-step="stopping">stopping</b>→ stopped</div>
+<div class="notice" id="engine-notice"></div>
+<details><summary>预览操作限制</summary><label class="check"><input type="checkbox" id="active-run">有活动运行（停止返回 run_active）</label><label class="check"><input type="checkbox" id="port-busy">端口已占用（启动返回 engine_port_in_use）</label><label class="check"><input type="checkbox" id="closing">Studio 正在关停（准入返回 service_closing）</label><p>停止中拒绝新运行：engine_stopping。Studio 关停时先排空运行队列，再停止自己启动的引擎。外部进程不由 Studio 停止。</p></details>
+</div></section>
+<section class="card" aria-labelledby="binding-title"><div class="section-head"><h2 id="binding-title">绑定存活提示</h2><span class="pill">只读</span></div><div class="body"><label for="binding-state" style="margin-top:0">预览绑定状态</label><select id="binding-state"><option value="none">尚未绑定</option><option value="alive">存活提示匹配</option><option value="stale">进程已变更</option><option value="unknown">无法确认</option></select><div class="binding" aria-live="polite"><strong id="binding-heading">尚未绑定服务</strong><small id="binding-note">服务就绪后，到运行页完成绑定。</small></div><p class="notice">存活提示只比对 server_pid / process_start_ticks。身份核验始终由 CLI 在 bind / run 时完成；服务运行中不代表绑定有效。</p><button id="binding-action" style="margin-top:14px">查看绑定下一步</button></div></section>
+</div>
+</div>
+<footer class="footer">原型以 docs/subsystems/studio-panel.md 为行为依据。进程内事件驱动局部刷新；本页按钮模拟事件快照，无计时器伪造进度。CLI 安装仍在设置页：复用已有安装，或校验固定 uv 后安装匹配版本。</footer>
+<details class="footer"><summary>设计依据与实现差异</summary><p>依据「职责与事实源」的引擎生命周期、下载任务、CLI 安装与预置资产、绑定存活提示；「运行路径」2 / 5 / 6 / 8 / 9；引擎状态机及「约束与失败行为」。原生页面已按本原型实现四区（models.go / models_table.go / models_engine.go）：引擎下载经 CreateEngineDownload 进入统一任务列表，取消复用 CancelDownload。</p><p>引擎传输接口仍不提供字节读数，引擎任务的字节与速率保持 null 并带 progress_reason；模型下载完成由 CLI 结果或 source.json 收尾，正式文件发布后按实测字节收尾。</p><p>根 README 的 desktop/Web 描述与子系统参考不一致，此处采用 MyGo 原生产品定位。HTML 仅用于设计评审，不构成原生 UI、真实下载、模型运行或跨平台验收证据。</p></details>
+</main></div>
+<div id="feedback" role="status" aria-live="polite"></div>
+<script>
+const $=id=>document.getElementById(id);
+let engine='stopped', download='downloading';
+const tell=message=>{$('feedback').textContent=message;};
+const engineStates={
+ stopped:['服务尚未启动','启动前检查冻结配置的端口，启动后等待健康端点就绪。','未运行；Studio 只管理自己启动的进程。'],
+ starting:['正在加载模型','每秒探测 /health，收到 2xx 后进入运行中；默认最多等待 10 分钟。','重复启动返回当前 starting 状态，不创建第二个进程。'],
+ running:['服务已就绪','健康端点已响应，可以到运行页绑定服务。','重复启动返回当前 running 状态，不创建第二个进程。'],
+ stopping:['正在停止服务','先发送 SIGTERM，10 秒未退出则 kill；等待进程退出后变为 stopped。','停止中拒绝新运行（engine_stopping）；重复启动返回当前状态。'],
+ failed:['服务异常退出','不会自动重启。检查日志后手动启动，并重新绑定。','日志位置：workspace/logs/engine-*.log。异常遗留进程需到运行页手动停止后重新绑定。']
+};
+function renderEngine(state){
+ engine=state; const v=engineStates[state];
+ $('engine-code').textContent=state;$('engine-heading').textContent=v[0];$('engine-description').textContent=v[1];$('engine-notice').textContent=v[2];
+ $('engine-panel').className='status-panel '+(state==='failed'?'bad':state==='running'?'good':'');
+ $('engine-pid').textContent=['starting','running','stopping'].includes(state)?'llama-server · PID 48216（示例）':'null · 无活动引擎进程';
+ $('start').textContent=['starting','running','stopping'].includes(state)?'再次启动（幂等）':state==='failed'?'手动重新启动':'启动服务';
+ $('stop').disabled=!['starting','running'].includes(state);
+ $('failure').hidden=$('failure-label').hidden=state!=='failed';
+ if(state==='failed'){$('engine-code').textContent='failed · '+$('failure').value;if($('failure').value==='engine_start_timeout'){$('engine-heading').textContent='启动等待超时';$('engine-description').textContent='健康等待超过默认 10 分钟，进程终止后进入 failed；不会自动重启。';}}
+ document.querySelectorAll('[data-state]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.state===state));
+ document.querySelectorAll('[data-step]').forEach(b=>b.classList.toggle('active',b.dataset.step===state));
+}
+const downloads={
+ downloading:['下载中','48 MiB','4 MiB/s','null','总量未知，未提供总字节数。已观测 .part 文件；不推算百分比。','50,331,648 bytes；4,194,304 bytes/s（5 读数窗口估算）'],
+ waiting:['等待读数','null','null','null','已下载量：尚未观测到 .part；速率：读数不足；总量：来源未提供。','downloaded_bytes = null；bytes_per_second = null；total_bytes = null'],
+ done:['已完成','100 MiB','null','100 MiB','正式文件已发布，按实测 104,857,600 bytes 收尾。速率为 null：任务已结束。','104,857,600 bytes（示例实测收尾值）'],
+ failed:['下载失败','48 MiB','null','null','下载未完成（cli_error）。速率无新读数，总量未提供；目录保留，请检查来源并使用新目录。','最后观测：50,331,648 bytes；bytes_per_second = null'],
+ cancelled:['已取消','48 MiB','null','null','取消已完成。速率无新读数，总量未提供；输出目录保留，再次下载请使用新目录。','最后观测：50,331,648 bytes；bytes_per_second = null']
+};
+function renderDownload(state){
+ download=state;const v=downloads[state];['download-badge','bytes','rate','total','download-note','raw-bytes'].forEach((id,i)=>$(id).textContent=v[i]);
+ $('bytes-label').textContent=state==='done'?'实测文件大小':'已观测';
+ $('download-badge').className='pill '+(state==='done'?'good':state==='failed'?'bad':'blue');
+ $('cancel-download').hidden=!['downloading','waiting'].includes(state);$('download-activity').hidden=!['downloading','waiting'].includes(state);
+ document.querySelectorAll('[data-download]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.download===state));
+}
+function renderEngineDownload(state){
+ const values={downloading:['下载中','已下载 null · 速率 null · 总量 null；原因：归档获取接口未提供字节读数。'],done:['已完成','正式文件已发布并解包，共享库保留。大小 null：此接口未提供实测字节；不以估算值填充。'],failed:['失败','归档解包失败（engine_unpack_failed）。输出目录保留；检查来源并选择新目录。'],cancelled:['已取消','取消已完成（模拟）。输出目录保留，再次下载需使用新目录。']};
+ $('engine-download-badge').textContent=values[state][0];$('engine-download-note').textContent=values[state][1];$('engine-download-cancel').hidden=state!=='downloading';$('engine-download').disabled=state==='downloading';$('engine-download').textContent=state==='downloading'?'下载中':'下载到新目录（示例）';
+}
+document.querySelectorAll('[data-state]').forEach(b=>b.onclick=()=>renderEngine(b.dataset.state));
+document.querySelectorAll('[data-download]').forEach(b=>b.onclick=()=>renderDownload(b.dataset.download));
+document.querySelectorAll('[data-engine-download]').forEach(b=>b.onclick=()=>renderEngineDownload(b.dataset.engineDownload));
+$('failure').onchange=()=>renderEngine('failed');
+$('start').onclick=()=>{if($('closing').checked)return tell('service_closing：Studio 正在关停，不接受启动。');if(['starting','running','stopping'].includes(engine))return tell('返回当前 '+engine+' 状态，未创建新进程。');if($('port-busy').checked)return tell('engine_port_in_use：端口 8080 已占用。请处理原服务或到运行页绑定已有进程，不自动换端口。');renderEngine('starting');tell('模拟启动。用「运行中」或「失败」按钮预览健康检查结果。');};
+$('stop').onclick=()=>{if($('active-run').checked)return tell('run_active：有活动运行，拒绝停止，服务状态保持不变。');renderEngine('stopping');tell('模拟停止。用「已停止」按钮预览进程退出事件。');};
+$('preset').onclick=()=>{if($('closing').checked)return tell('service_closing：不接受新下载。');$('download-name').textContent='SmolLM2-135M · Q4_K_M';$('download-dir').textContent='~/.inferyard/models/smollm2-demo';renderDownload('waiting');tell('已创建预置模型示例任务；实际未下载。');};
+$('cancel-download').onclick=()=>{renderDownload('cancelled');tell('已模拟取消完成事件，运行队列不受影响。');};
+$('engine-download').onclick=()=>{if($('closing').checked)return tell('service_closing：不接受新下载。');renderEngineDownload('downloading');};
+$('engine-download-cancel').onclick=()=>renderEngineDownload('cancelled');
+$('source-form').onsubmit=e=>{e.preventDefault();let valid=false;try{const raw=$('source').value;const u=new URL(raw);valid=u.protocol==='https:'&&!u.username&&!u.password&&!raw.includes('?')&&!raw.includes('#')&&['huggingface.co','modelscope.cn'].includes(u.host)&&/^\/[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*\/blob\/[a-fA-F0-9]{40}\/.+\.gguf$/.test(u.pathname)&&!raw.includes('@');}catch{}$('source').value='';if(!valid){$('source-result').textContent='来源不符合要求。请使用固定 revision 的 HTTPS GGUF 地址；输入已清除，内容不回显。';return;}const name=$('out-name').value;if(!/^[A-Za-z0-9._-]+$/.test(name)||!name.replace(/\./g,'')){$('source-result').textContent='目录名仅允许字母、数字、点、下划线和连字符，不能全为点。';return;}if($('closing').checked){$('source-result').textContent='service_closing：不接受新下载。';return;}$('download-name').textContent='自定义模型 · '+name;$('download-dir').textContent='~/.inferyard/models/'+name;renderDownload('waiting');$('source-result').textContent='已创建示例任务；来源已清除。实际准入与目录存在性由服务和 CLI 检查。';};
+const binding={none:['尚未绑定服务','服务就绪后，到运行页完成绑定。'],alive:['绑定进程存活提示匹配','示例：llama-server · PID 48216，启动 tick 与绑定记录匹配；仍需 CLI 核验。'],stale:['原绑定可能已失效','PID 或启动 tick 不匹配；请到运行页重新绑定。'],unknown:['无法确认存活','null · 无法读取进程启动 tick；不能据此判定绑定有效。']};
+$('binding-state').onchange=()=>{const v=binding[$('binding-state').value];$('binding-heading').textContent=v[0];$('binding-note').textContent=v[1];};
+$('binding-action').onclick=()=>tell('原型下一步：运行页 → 绑定已有进程。仅展示 PID 与可执行名，由 CLI 核验身份。');
+renderEngine('stopped');renderDownload('downloading');
+</script>
+</body>
+</html>
