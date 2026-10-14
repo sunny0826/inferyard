@@ -109,7 +109,7 @@ func (s *viewState) resume() {
 	})
 }
 
-func selectableTable(state *ui.ListState, key func(int) any, label func(int) string) {
+func selectableTable(state *pageTableState, key func(int) any, label func(int) string) {
 	if state.Selected == nil {
 		index := -1
 		state.Selected = &index
@@ -117,7 +117,7 @@ func selectableTable(state *ui.ListState, key func(int) any, label func(int) str
 	state.Key, state.Label = key, label
 }
 
-func selectedRow(state *ui.ListState, count int) int {
+func selectedRow(state *pageTableState, count int) int {
 	if state.Selected == nil || *state.Selected < 0 || *state.Selected >= count {
 		return -1
 	}
@@ -130,7 +130,7 @@ func (s *viewState) tasksView(c *ui.Context) {
 	}
 	selectableTable(&s.tasksTable, func(i int) any { return s.tasks[i].TaskId }, func(i int) string { return text(s.tasks[i].Bundle) })
 	c.Key("tasks-table")
-	table := ui.Table(c, &s.tasksTable, []ui.TableColumn{{Title: "题包", Width: 200}, {Title: "状态", Width: 300}, {Title: "类型", Width: 100}}, len(s.tasks), func(row, col int) {
+	pageTable(c, &s.tasksTable, "运行任务队列", []ui.TableColumn{{Title: "题包", Width: 200}, {Title: "状态", Width: 300}, {Title: "类型", Width: 100}}, len(s.tasks), func(row, col int) {
 		task := s.tasks[row]
 		switch col {
 		case 0:
@@ -145,7 +145,7 @@ func (s *viewState) tasksView(c *ui.Context) {
 		s.tasksTable.Focus(c)
 		s.returnToTasks = false
 	}
-	submitted := table.Submitted()
+	submitted := s.tasksTable.submitted
 	index := selectedRow(&s.tasksTable, len(s.tasks))
 	if index >= 0 {
 		task := s.tasks[index]
@@ -202,7 +202,7 @@ func (s *viewState) historyView(c *ui.Context) {
 	}
 	selectableTable(&s.historyTable, func(i int) any { return runs[i].Path }, func(i int) string { return runs[i].RunId })
 	c.Key("history-table")
-	ui.Table(c, &s.historyTable, []ui.TableColumn{{Title: "RunId", Width: 230}, {Title: "模型", Width: 180}, {Title: "题包", Width: 160}, {Title: "状态", Width: 100}, {Title: "得分", Width: 160}, {Title: "开始时间", Width: 220}, {Title: "批次", Width: 200}}, len(runs), func(row, col int) {
+	pageTable(c, &s.historyTable, "运行历史表", []ui.TableColumn{{Title: "RunId", Width: 230}, {Title: "模型", Width: 180}, {Title: "题包", Width: 160}, {Title: "状态", Width: 100}, {Title: "得分", Width: 160}, {Title: "开始时间", Width: 220}, {Title: "批次", Width: 200}}, len(runs), func(row, col int) {
 		r := runs[row]
 		batch := "独立运行"
 		if r.BatchId != nil {

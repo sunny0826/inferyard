@@ -97,7 +97,7 @@ func TestResourceLegendThemeColors(t *testing.T) {
 	for _, dark := range []bool{false, true} {
 		tt.SetDark(dark)
 		colors := []ui.Color{theme.Accent, theme.Success, theme.Warning, theme.Danger}
-		for i, label := range []string{"可用内存 GiB（左轴）", "服务 RSS GiB（左轴）", "服务 CPU %（右轴）", "温度 °C（独立刻度）"} {
+		for i, label := range []string{"可用内存 GiB（内存图）", "服务 RSS GiB（内存图）", "服务 CPU %（CPU 图）", "温度 °C（独立刻度）"} {
 			assertTextColor(t, tt, label, colors[i])
 			for j := 0; j < i; j++ {
 				if colors[i] == colors[j] {

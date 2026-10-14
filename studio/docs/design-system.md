@@ -1,7 +1,7 @@
 # Studio Design System
 
 本规范面向 Studio 页面设计、开发与验收。适用五个主页面、运行详情和离线报告窗口的原生外壳。
-以 MyGo v0.4.5 为组件基线；CLI 生成的报告正文继续遵守
+以 onevra v0.2026.9 为组件基线，它构建在 MyGo v0.4.8 之上；CLI 生成的报告正文继续遵守
 [报告契约](../../cli/docs/contracts/report-contract.md)。
 
 本次将模型与下载页已有视觉规格扩展为全局规则。本文是目标规范，不代表现有页面已经全部满足；
@@ -13,23 +13,24 @@
 | 来源 | 规定什么 |
 | --- | --- |
 | [Studio 子系统参考](../../docs/subsystems/studio-panel.md)与 CLI 契约 | 数据含义、状态、操作边界及失败行为；视觉设计不得改变它们 |
-| MyGo v0.4.5 官方文档与源码 | API、布局、主题、键盘和辅助技术行为 |
+| [onevra v0.2026.9](https://github.com/oneo-me/onevra) 组件契约（`components/doc.go`）与 `theme` 包文档 | 组件句柄生命周期、控件语义、主题调色板与外壳行为 |
+| MyGo v0.4.8 官方文档与源码 | API、布局、主题、键盘和辅助技术行为 |
 | 本文 | Studio 的信息层级、组件用法、文案、尺寸策略和验收要求 |
 | [模型与下载原型](prototypes/models-downloads-page.html) | 已有页面设计输入；CSS、浏览器截图不作为原生验收结果 |
 
-MyGo 提供原生 UI 工具包，并没有替 Studio 定义整套产品设计语言。下文中的双栏比例、
-卡片尺寸、主操作层级、中文文案与验收窗口均为项目规则。
+onevra 在 MyGo 之上提供产品中立的常用控件与侧栏外壳，但没有替 Studio 定义整套产品设计语言。
+下文中的双栏比例、卡片尺寸、主操作层级、中文文案与验收窗口均为项目规则。
 
-官方参考固定到实际依赖版本，升级 MyGo 时一起复核：
+官方参考固定到实际依赖版本，升级 MyGo 或 onevra 时一起复核：
 
-- [Styling and themes](https://github.com/egoist/mygo/blob/v0.4.5/docs/ui/styling.md)：语义颜色、`Space`、`Rem`、系统偏好。
-- [Layout](https://github.com/egoist/mygo/blob/v0.4.5/docs/ui/layout.md)：DIP、伸缩、约束与滚动。
-- [Text](https://github.com/egoist/mygo/blob/v0.4.5/docs/ui/text.md)：文字显示与选择。
-- [Form](https://github.com/egoist/mygo/blob/v0.4.5/docs/ui/form.md)：标签、说明与错误关联。
-- [Accessibility](https://github.com/egoist/mygo/blob/v0.4.5/docs/ui/accessibility.md)：名称、标题层级、状态、公告。
-- [Table](https://github.com/egoist/mygo/blob/v0.4.5/docs/ui/table.md)：列宽、横向滚动、选择和键盘提交。
-- [Progress](https://github.com/egoist/mygo/blob/v0.4.5/docs/ui/progress.md)：确定进度与不定活动。
-- [Testing](https://github.com/egoist/mygo/blob/v0.4.5/docs/ui/testing.md)：内存渲染与交互测试。
+- [Styling and themes](https://github.com/egoist/mygo/blob/v0.4.8/docs/ui/styling.md)：语义颜色、`Space`、`Rem`、系统偏好。
+- [Layout](https://github.com/egoist/mygo/blob/v0.4.8/docs/ui/layout.md)：DIP、伸缩、约束与滚动。
+- [Text](https://github.com/egoist/mygo/blob/v0.4.8/docs/ui/text.md)：文字显示与选择。
+- [Form](https://github.com/egoist/mygo/blob/v0.4.8/docs/ui/form.md)：标签、说明与错误关联。
+- [Accessibility](https://github.com/egoist/mygo/blob/v0.4.8/docs/ui/accessibility.md)：名称、标题层级、状态、公告。
+- [Table](https://github.com/egoist/mygo/blob/v0.4.8/docs/ui/table.md)：列宽、横向滚动、选择和键盘提交。
+- [Progress](https://github.com/egoist/mygo/blob/v0.4.8/docs/ui/progress.md)：确定进度与不定活动。
+- [Testing](https://github.com/egoist/mygo/blob/v0.4.8/docs/ui/testing.md)：内存渲染与交互测试。
 
 ## 页面结构
 
@@ -37,8 +38,11 @@ MyGo 提供原生 UI 工具包，并没有替 Studio 定义整套产品设计语
 每页有一个一级标题，卡片标题为二级标题，卡片内部独立分区为三级标题。
 标题除了字号和字重，还须设置 `Role(ui.RoleHeading).Level(...)`。
 
-主窗口沿用侧栏、状态工具栏、内容区。顶部不提供通用“刷新”按钮；状态工具栏仅在刷新或执行操作时显示。
-侧栏保持 Dashboard、设备、模型与下载、报告、设置的顺序；
+主窗口使用 onevra `shells/sidebar.Shell`：可折叠、可拖拽调宽的侧栏，配浮动 header 与内容区；
+侧栏默认 205 DIP 宽，折叠与宽度选择在会话内保持（跨折叠与页面切换）；窗口几何经 StateKey 跨会话恢复。顶部不提供通用“刷新”按钮；
+状态工具栏仅在刷新或执行操作时显示。
+侧栏保持 Dashboard、设备、模型与下载、报告、设置的顺序，用 onevra `components.Sidebar`/
+`components.SidebarItem` 配 lucide 图标；
 缺 CLI、目录或模型时仍能进入每一页。运行详情属于 Dashboard，提供明确返回入口。
 每页和详情分别保存滚动位置，刷新不把用户带回顶部；表单草稿不被后台刷新覆盖。
 
@@ -65,7 +69,7 @@ MyGo 布局使用 DIP。以下数值来自现有主窗口与模型页，作为�
 | 项目 | 基线与用途 |
 | --- | --- |
 | 初始主窗口 | 1120 × 800；这是初始尺寸，不是已验证的最小窗口 |
-| 侧栏 | 205 宽；缩放时保证标签和键盘焦点可见 |
+| 侧栏 | onevra Shell 侧栏默认 205 宽，可折叠、可拖拽调宽；缩放时保证标签和键盘焦点可见 |
 | 内容外边距 | 24，约 `t.Space(6)` |
 | 主要区块间距 | 16；模型页列间与卡片间可用 20 |
 | 卡片 | 内边距 18，圆角 12；普通内容间距 10 |
@@ -86,9 +90,10 @@ MyGo 布局使用 DIP。以下数值来自现有主窗口与模型页，作为�
 
 ## 颜色与字体
 
-颜色取自 `c.Theme()`，随系统深浅色、强调色和高对比度变化。背景使用 `Background`，
-卡片使用 `Surface`，主文字使用 `Text`，次要说明使用 `TextMuted`，分隔线使用 `Border`。
-正文和交互区域不硬编码浅色背景或黑色文字。
+颜色取自 `theme.Onevra` 调色板（暖中性色配 terracotta 强调色），由 `shells/sidebar` 在
+`ShellOptions.Theme` 安装，浅色/深色跟随 `mygo.Theme.SetSource` 并随系统高对比度变化。
+背景使用 `Background`，卡片使用 `Surface`，主文字使用 `Text`，次要说明使用 `TextMuted`，
+分隔线使用 `Border`。正文和交互区域不硬编码浅色背景或黑色文字。
 
 | 语义 | 主题颜色 | 使用条件 |
 | --- | --- | --- |
@@ -127,12 +132,44 @@ MyGo 布局使用 DIP。以下数值来自现有主窗口与模型页，作为�
 | 表格和列表 | 容器有 `Label`；稳定行 key；选择后操作可通过键盘到达 |
 | 通知 | 成功可用 Toast；错误保留在操作附近或页内，不能只显示瞬时消息 |
 
-优先使用 MyGo 的 `Button`、`PrimaryButton`、`Field`、`Select`、`Table`、`List` 等控件。
+优先使用 onevra `components` 包的控件，并保留 MyGo 布局原语与 `ui.Field`。
 不以可点击普通文本替代标准按钮。共享组件的现状见
 [components.go](../internal/pages/components.go)与[通用辅助函数](../internal/pages/shared.go)；
 标题、活动进度、按钮换行与公告集中在
 [design_system.go](../internal/pages/design_system.go)，字段校验提示集中在
 [form_validation.go](../internal/pages/form_validation.go)。软件回归与原生验收范围分别记录在页面审查中。
+
+### onevra 组件映射
+
+已实现的控件映射（onevra v0.2026.9）：
+
+| Studio 用法 | onevra 组件 |
+| --- | --- |
+| `button` | `components.Button(ButtonSecondary)` |
+| `primaryButton` | `components.Button(ButtonPrimary)` |
+| `statusBadge` | `components.Badge` |
+| `activitySpinner` | `components.Spinner(SpinnerRing)` |
+| `progressBar` | `components.Progress` |
+| 复选框 | `components.Checkbox` |
+| 下拉选择 | `components.NativeSelect` |
+| 文本输入 | `components.TextBox` |
+| 表格 | `components.Table`，封装见 [table.go](../internal/pages/table.go) |
+| 资源曲线 | `components.chart.Line`（见“测量、进度与图表”） |
+| 侧栏导航 | `components.Sidebar` / `components.SidebarItem` 配 lucide 图标 |
+
+下列保留 MyGo 原生实现，理由是 onevra 没有等价能力：
+
+| 保留项 | 原因 |
+| --- | --- |
+| 标题：`ui.Text` 配 `Role(ui.RoleHeading).Level(...)` | onevra `Text` 不提供标题角色与层级无障碍语义 |
+| 表单标签与错误关联：`ui.Field` | onevra 不提供等价的标签/错误关联外壳 |
+| 布局原语：`ui.Row`、`ui.Column`、`ui.Scroll` 等 | 页面外层布局仍由 MyGo 布局原语承载 |
+
+下列控件在 onevra 有对应组件（`components.List`、`components.Collapsible`、`components.Toast`），
+本轮未迁移，继续使用 MyGo 实现：`ui.List`（报告来源列表）、`ui.Collapsible`（诊断折叠）、
+`ui.Toolbar`/`ui.Grid`（无 onevra 等价的布局骨架）、`c.Toast` 通知。迁移与否按后续页面审查评估。
+
+依赖许可：onevra 为 MIT；其适配自 MyGo 的部分保留上游 MIT 声明，lucide 图标为 ISC/Feather MIT。
 
 ## 表单与操作
 
@@ -180,12 +217,15 @@ MyGo 布局使用 DIP。以下数值来自现有主窗口与模型页，作为�
 正文避免科学计数法和无意义的小数长串。
 
 确定进度只使用可信分母和有限的 0–1 值，并说明分母，例如冻结选中题集合、续测子集或六个准备阶段。
-总量未知使用 `ui.Progress(c, -1)` 或 Spinner，不传 `NaN`，不推算百分比或剩余时间。
+总量未知使用 `components.Progress(c, -1)` 或 Spinner，不传 `NaN`，不推算百分比或剩余时间。
 活动条、进度条和无文字 Spinner 均有 `Label`。阶段进度不得被解释为样本完成率。
 
+资源曲线用三个 `components.chart.Line` 图呈现：内存（可用内存与服务 RSS，共用 GiB 刻度）、
+服务 CPU %、温度 °C，各自独立刻度。横轴是等距样本分类轴——按 UTC 采样顺序排列，实际时间见采样值——
+不是按真实时间间隔的比例轴。缺测以 `NaN` 保留断点，不补零。
 曲线保留缺失采样断点；轴、图例、单位、时间基准和独立尺度直接可见。
-颜色之外提供名称、可选样本描述或数据表。不同尺度的曲线不比较绝对高度。
-无样本时给等待或缺测原因，不能画零值来填空。
+颜色之外提供名称、样本描述与原始采样（UTC 与 bytes）数据表，并保留悬停与键盘选择样本。
+不同尺度的曲线不比较绝对高度。无样本时给等待或缺测原因，不能画零值来填空。
 
 ## 无障碍与原生体验
 
@@ -205,6 +245,8 @@ Tooltip 只补充信息，必要条件和缺测原因同时有可见文字。
 
 窗口标题包含报告身份，同一报告复用已有窗口并聚焦。载入失败在主窗口给出可恢复错误。
 报告以本地文件打开，保持离线使用；关闭子窗口后主窗口仍可操作。
+报告窗口沿用 MyGo 默认窗口与主题，不经过 onevra Shell，也不安装 `theme.Onevra`；
+本规范的主题与组件规则不适用于报告窗口外壳。
 
 HTML 内容的样式、图表、数据与核验语义由 CLI 报告契约管理。不得为了匹配原生主题改写历史
 报告文件；新报告样式变化需要单独检查真实离线渲染。原生外壳合规不等于报告正文合规。

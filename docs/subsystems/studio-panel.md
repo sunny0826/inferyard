@@ -1,6 +1,7 @@
 # Studio 面板
 
-InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生窗口 UI（Go）直接调用进程内
+InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.9（构建在 MyGo v0.4.8 之上）
+原生窗口 UI（Go）直接调用进程内
 `core.Service`，CLI 仍是操作的执行者与证据契约的所有者。Studio 作为操作者代理可以启动并管理
 模型服务进程（拥有自启动进程、Studio 关停时停止、从不自动重启），但运行评测、生成报告等一切
 证据操作都派生 CLI 子进程完成；绑定既有服务仍走 CLI 的 PID 与启动时间身份核验。边界与通用层
@@ -16,7 +17,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 
 | 部分 | 责任 | 事实源 |
 | --- | --- | --- |
-| 进程入口与装配 | 嵌入 `mygo.config.ts` 解析 version 写入 `core.Version`；signal context、`core.New`、`mygo.App.WhenReady` 装配窗口与桌面通知；退出时 30 秒超时的 `Service.Shutdown` | `main` 在 [`studio/main.go`](../../studio/main.go) |
+| 进程入口与装配 | 嵌入 `mygo.config.ts` 解析 version 写入 `core.Version`；signal context、`core.New`、`mygo.App.WhenReady` 装配 onevra `shells/sidebar` 主窗口与桌面通知；退出时 30 秒超时的 `Service.Shutdown` | `main` 在 [`studio/main.go`](../../studio/main.go) |
 | 服务核心 | 设置持久化与探测、设备快照、运行队列、下载、报告、引擎条目的单一持有者；路径包含校验（含符号链接与 macOS `/var` 规范化） | `Service`、`New`、`UpdateSettings`、`saveSettings`、`probe`、`Resolve`、`canonical` 在 [`studio/internal/core/service.go`](../../studio/internal/core/service.go) |
 | 请求/响应类型 | 页面与服务间的 JSON 类型镜像（`UserSettings`、`RunTask`、`EngineState`、`ApiError` 等） | [`studio/internal/core/types.go`](../../studio/internal/core/types.go) |
 | CLI 进程客户端 | 可执行定位、`--version` 解析、argv 直通执行、退出码映射、取消（SIGINT 后两秒 SIGKILL 兜底）、`progress.v1` 解析 | `Client.Exec`、`Locate`、`MapExitCode`、`ParseProgress`、`SplitCommand` 在 [`studio/internal/inferyard/client.go`](../../studio/internal/inferyard/client.go)、[`studio/internal/inferyard/progress.go`](../../studio/internal/inferyard/progress.go)、[`studio/internal/inferyard/command.go`](../../studio/internal/inferyard/command.go) |
@@ -31,7 +32,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 | 进程内事件 | 2048 条回放环 + 唤醒订阅；慢消费者按游标重建而非丢事件 | `EventBus`、`Publish`、`Subscribe`、`After`、`ReplayCapacity` 在 [`studio/internal/core/events.go`](../../studio/internal/core/events.go) |
 | 证据索引与读取 | 结果根扫描（损坏条目跳过并计数）、JSONL 增量 tail、host dirty 标记判读、状态优先级 | `Index` 在 [`studio/internal/evidence/index.go`](../../studio/internal/evidence/index.go)；`Tail`、`Cursor` 在 [`studio/internal/evidence/tail.go`](../../studio/internal/evidence/tail.go)；`DirtyRun`、`RunStatus` 在 [`studio/internal/evidence/dirty.go`](../../studio/internal/evidence/dirty.go) |
 | 历史聚合 | evidence 记录 → run 汇总/进度/资源投影；resume 资格标记；原子重建历史索引 | `summarize`、`scan`、`markResumable`、`History`、`rebuild` 在 [`studio/internal/core/aggregate.go`](../../studio/internal/core/aggregate.go) |
-| 页面 | 单主窗口五个页内页面（Dashboard/设备/模型与下载/报告/设置）、事件驱动刷新、Dashboard 下一步命令推导；模型与下载页按模型/下载/引擎服务/绑定存活提示四区组织，done 引擎任务的路径在向导引擎路径为空时由页面幂等采纳 | `New`、`navigation`、`viewState` 在 [`studio/internal/pages/window.go`](../../studio/internal/pages/window.go)、[`studio/internal/pages/dashboard_actions.go`](../../studio/internal/pages/dashboard_actions.go)；四区在 [`studio/internal/pages/models.go`](../../studio/internal/pages/models.go)、[`studio/internal/pages/models_downloads.go`](../../studio/internal/pages/models_downloads.go)、[`studio/internal/pages/models_engine.go`](../../studio/internal/pages/models_engine.go)；视觉组件在 [`studio/internal/pages/components.go`](../../studio/internal/pages/components.go)（统一规范见 [Studio Design System](../../studio/docs/design-system.md)） |
+| 页面 | 单主窗口五个页内页面（Dashboard/设备/模型与下载/报告/设置）、事件驱动刷新、Dashboard 下一步命令推导；模型与下载页按模型/下载/引擎服务/绑定存活提示四区组织，done 引擎任务的路径在向导引擎路径为空时由页面幂等采纳 | `New`、`navigation`、`viewState` 在 [`studio/internal/pages/window.go`](../../studio/internal/pages/window.go)、[`studio/internal/pages/dashboard_actions.go`](../../studio/internal/pages/dashboard_actions.go)；四区在 [`studio/internal/pages/models.go`](../../studio/internal/pages/models.go)、[`studio/internal/pages/models_downloads.go`](../../studio/internal/pages/models_downloads.go)、[`studio/internal/pages/models_engine.go`](../../studio/internal/pages/models_engine.go)；视觉控件取自 onevra `components`（窗口外壳为 `shells/sidebar`），共享封装在 [`studio/internal/pages/components.go`](../../studio/internal/pages/components.go) 与表格 [`studio/internal/pages/table.go`](../../studio/internal/pages/table.go)；保留 MyGo 标题/`ui.Field`/布局原语；统一规范与组件映射见 [Studio Design System](../../studio/docs/design-system.md)） |
 | 桌面通知 | 终态 run/download 与 `report.created` 的固定文案通知；投递失败不影响任务结果 | `Subscribe`、`messageFor` 在 [`studio/internal/desktop/notifications.go`](../../studio/internal/desktop/notifications.go) |
 
 关键状态的事实源：设置持久化在 `os.UserConfigDir()/InferYard Studio/settings.json`（目录 0700、
@@ -169,6 +170,11 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 覆盖五个主页面、运行详情及报告窗口外壳。该规范吸收模型页原有四区布局、主题状态色、
 内联详情和测量展示约定，并补齐表单、无障碍、缩放和验收要求。
 
+组件与窗口基线为 onevra v0.2026.9（构建在 MyGo v0.4.8 之上）：主窗口用 `shells/sidebar.NewShell`
+（可折叠可调宽侧栏、浮动 header、macOS titlebar 材质与 Windows Mica），主题用 `theme.Onevra`；
+组件映射与保留例外见
+[组件用法](../../studio/docs/design-system.md#onevra-组件映射)。
+
 Dashboard 按 [`studio/docs/prototypes/dashboard-page.html`](../../studio/docs/prototypes/dashboard-page.html)
 原型实施：结论卡置顶（六阶段步骤条 + 当前阶段徽标 + 阻断原因），阶段动作区使用步骤轨道组件
 （编号圆点 + 纵向连接线，内容铺在页面背景上不用卡片，只渲染当前阶段），其后依次为快速运行、
@@ -204,5 +210,5 @@ mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct sh scrip
   `bun run ... web/tests/verify.mjs` 与 `python3 scripts/verify-embed.py`；当前工作树无 `web/`
   目录，`studio/scripts/` 仅有 `build-all.sh` 与 `package.py`，两条命令均不存在。
 - `studio/docs/evidence/` 下的 `browser.*`、`sse.*`、`frontend-build.log` 等是旧 Web UI 阶段的
-  诊断产物；根 README 明确其为历史证据、非当前构建说明。当前为 MyGo v0.4.5 原生 UI，无前端
+  诊断产物；根 README 明确其为历史证据、非当前构建说明。当前为 MyGo v0.4.8 上的 onevra 原生 UI，无前端
   构建步骤。

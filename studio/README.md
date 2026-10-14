@@ -1,7 +1,8 @@
 # InferYard Studio
 
-InferYard Studio is a desktop application for local model evaluation. Its MyGo v0.4.5
-native UI is written in Go and calls `core.Service` directly. In-process events refresh
+InferYard Studio is a desktop application for local model evaluation. Its native UI is
+written in Go on the [onevra](https://github.com/oneo-me/onevra) component library (MIT),
+which is built on MyGo v0.4.8, and calls `core.Service` directly. In-process events refresh
 the windows. Studio has no browser dashboard, headless mode, REST/SSE server, or generated
 JavaScript bindings. The separately installed [InferYard CLI](../cli/README.md) executes
 operations and owns the evidence contract.
@@ -56,7 +57,9 @@ switches settings to it only after initialization succeeds and retains existing 
 ## Design and page review
 
 The [Studio Design System](docs/design-system.md) defines shared layout, theme, typography,
-components, feedback, accessibility, and verification rules against MyGo v0.4.5.
+components, feedback, accessibility, and verification rules against the onevra v0.2026.9
+component library on MyGo v0.4.8, including its collapsible, resizable sidebar shell and
+component mapping.
 The [page audit](docs/design-system-audit.md) records implementation gaps across all five
 pages, the run detail view, and the offline report window. These documents define the target and
 review scope; they do not establish native desktop acceptance.
@@ -101,10 +104,10 @@ The packaging script reads the same version.
 
 Native controls do not use WebView2 or WebKitGTK. Studio still needs the system WebView
 for HTML reports, including WebKitGTK on Linux. Debian/Ubuntu provide it as
-`libwebkit2gtk-4.1-0`. These requirements follow the pinned MyGo v0.4.5
-[getting-started guide](https://github.com/egoist/mygo/blob/v0.4.5/docs/getting-started.md),
-[rendering guide](https://github.com/egoist/mygo/blob/v0.4.5/docs/ui/rendering.md), and
-[architecture](https://github.com/egoist/mygo/blob/v0.4.5/docs/architecture.md).
+`libwebkit2gtk-4.1-0`. These requirements follow the pinned MyGo v0.4.8
+[getting-started guide](https://github.com/egoist/mygo/blob/v0.4.8/docs/getting-started.md),
+[rendering guide](https://github.com/egoist/mygo/blob/v0.4.8/docs/ui/rendering.md), and
+[architecture](https://github.com/egoist/mygo/blob/v0.4.8/docs/architecture.md).
 
 ## Safety and operation rules
 

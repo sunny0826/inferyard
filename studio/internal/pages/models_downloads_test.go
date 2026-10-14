@@ -79,9 +79,9 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				!nodes[0].FieldByName("hasRange").Bool() || !(nodes[0].FieldByName("accRange").Index(2).Float() < 0) {
 				t.Fatal("activity must be an indeterminate native progress component")
 			}
-			spinners := modelUINodes(tt, "widget", "Spinner")
-			if len(spinners) != 1 {
-				t.Fatal("downloading task must show a native spinner")
+			spinners := modelUINodes(tt, "label", "下载中")
+			if len(spinners) != 1 || spinners[0].FieldByName("role").Uint() != uint64(ui.RoleProgress) || !spinners[0].FieldByName("hasRange").Bool() || spinners[0].FieldByName("accRange").Index(2).Float() >= 0 {
+				t.Fatal("downloading task must show an indeterminate activity indicator")
 			}
 			for label, reason := range map[string]string{"总量": "总量未知", "下载中": "任务正在下载，总量未知。"} {
 				nodes := modelUINodes(tt, "description", reason)

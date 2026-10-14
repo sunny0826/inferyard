@@ -17,7 +17,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 	}
 	selectableTable(&s.reportsTable, func(i int) any { return s.reports[i].Path }, func(i int) string { return s.reports[i].ReportId })
 	c.Key("reports-table")
-	table := ui.Table(c, &s.reportsTable, []ui.TableColumn{{Title: "ReportId", Width: 280}, {Title: "修改时间", Width: 240}, {Title: "来源数", Width: 100}}, len(s.reports), func(row, col int) {
+	pageTable(c, &s.reportsTable, "报告列表", []ui.TableColumn{{Title: "ReportId", Width: 280}, {Title: "修改时间", Width: 240}, {Title: "来源数", Width: 100}}, len(s.reports), func(row, col int) {
 		report := s.reports[row]
 		ui.Text(c, []string{report.ReportId, text(report.CreatedAt), fmt.Sprint(len(report.RunIds))}[col])
 	}).Height(220).Label("报告列表")
@@ -33,7 +33,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 			ui.Text(c, id+" · "+path).Selectable()
 		}
 	}
-	if table.Submitted() && index >= 0 {
+	if s.reportsTable.submitted && index >= 0 {
 		_, s.failure = s.reportWindows.Open(s.reports[index].ReportId)
 	}
 	button(c, "打开报告").AlignSelf(ui.Start).Disabled(index < 0).OnClick(func() {

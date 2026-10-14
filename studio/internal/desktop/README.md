@@ -8,7 +8,7 @@ not register a subscriber; main starts desktop delivery only in MyGo WhenReady.
 Delivery errors are logged and do not propagate to the event publisher. A replay
 overrun is logged; desktop notifications are best-effort, not a durable queue.
 
-MyGo v0.4.5 provides `NewNotification(NotificationOptions).Show()`.
+MyGo v0.4.8 provides `NewNotification(NotificationOptions).Show()`.
 The API was checked against the pinned source and
 https://mygo.egoist.dev/docs/native#notifications . macOS requires an app bundle;
 `scripts/package.py` produces one without running signing or notarization tools.
