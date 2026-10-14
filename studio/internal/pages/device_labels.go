@@ -31,6 +31,7 @@ var deviceLabels = map[string]string{
 	// 缺测原因
 	"shared_host_memory": "与主机共享内存，不单独计量",
 	"not_measured":       "未测量",
+	"not_reported":       "未报告",
 	// 下一步
 	"live_preflight_required":             "需先完成实时预检",
 	"macos_live_not_supported":            "当前平台不支持真实运行",

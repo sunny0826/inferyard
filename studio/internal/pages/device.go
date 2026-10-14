@@ -309,7 +309,11 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 			deviceRow(c, label+" 显存", deviceMeasurement(v, "memory_total_bytes", true))
 		}
 		if len(devices) == 0 {
-			deviceRow(c, "GPU", "缺测")
+			value := "缺测"
+			if gpu["reason"] != nil {
+				value += " — " + gpu.label("reason")
+			}
+			deviceRow(c, "GPU", value)
 		}
 		deviceRow(c, "磁盘可用", deviceMeasurement(hw, "disk_free_bytes", true))
 		power := deviceMeasurement(hw, "ac_online", false)

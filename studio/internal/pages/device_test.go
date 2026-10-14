@@ -294,3 +294,18 @@ func TestDeviceMultipleGPUs(t *testing.T) {
 		}
 	}
 }
+
+func TestDeviceGPUUnavailableReason(t *testing.T) {
+	s := deviceTestState()
+	s.device.Snapshot = json.RawMessage(`{
+	 "ready_to_run":false,"model_requests_sent":0,
+	 "hardware":{"cpu_model":"Fixture CPU",
+	  "gpu":{"status":"unavailable","reason":"nvidia_smi_not_found"}},
+	 "recommendation":{"status":"blocked","reason":"no_local_model","selected":null},
+	 "next_steps":[{"action":"provide_local_gguf","reason":"no_local_model"}]
+	}`)
+	tt := ui.NewTester(s.view, 1120, 1800)
+	if !tt.HasText("缺测 — 未发现 nvidia-smi；NVIDIA GPU 未观测") {
+		t.Fatal(tt.Texts())
+	}
+}
