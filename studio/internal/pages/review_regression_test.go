@@ -106,7 +106,9 @@ func TestWorkspaceSwitchClearsEngineSession(t *testing.T) {
 
 func TestInstallAndDownloadFeedbackStayOnTheirPages(t *testing.T) {
 	s := testState()
-	s.cliInstallStatus, s.engineDownloadStatus = "CLI 专属进度", "引擎专属进度"
+	s.cliInstallStatus = "CLI 专属进度"
+	s.downloads = []core.DownloadTask{{Kind: "engine", TaskId: "fixture", OutName: "fixture-engine", State: "failed", Error: &core.ApiError{Code: "engine_unpack_failed", Message: "引擎专属进度"}}}
+	s.downloadsTable.Selected = ptr(0)
 	s.ready.CLI.Status = "not_found"
 	s.selected = "models"
 	tt := ui.NewTester(s.view, 1120, 1800)

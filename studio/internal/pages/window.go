@@ -59,7 +59,7 @@ func pageID(page string) string {
 }
 
 type viewState struct {
-	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, engineDownloadStatus, refreshFailure string
+	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
 	enginePreset, assetsPreset                                                                                bool
 	engineState                                                                                               core.EngineState
 	startup                                                                                                   core.Startup

@@ -181,6 +181,9 @@ type DownloadResult struct {
 }
 
 type DownloadTask struct {
+	Kind            string          `json:"kind"`
+	ProgressReason  *string         `json:"progress_reason"`
+	EnginePath      *string         `json:"engine_path"`
 	TaskId          string          `json:"task_id"`
 	State           string          `json:"state"`
 	SourceUrl       string          `json:"source_url"`
@@ -198,4 +201,18 @@ type DownloadTask struct {
 type CreateDownloadRequest struct {
 	SourceUrl string `json:"source_url"`
 	OutName   string `json:"out_name"`
+}
+
+// MarshalJSON preserves the native model counter while representing unobserved
+// engine transfer measurements as null on the event and JSON boundary.
+func (t DownloadTask) MarshalJSON() ([]byte, error) {
+	type task DownloadTask
+	var downloaded *int64
+	if t.Kind != "engine" {
+		downloaded = &t.DownloadedBytes
+	}
+	return json.Marshal(struct {
+		task
+		DownloadedBytes *int64 `json:"downloaded_bytes"`
+	}{task(t), downloaded})
 }

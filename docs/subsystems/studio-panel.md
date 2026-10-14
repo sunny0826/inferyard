@@ -26,12 +26,12 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 | 引擎服务生命周期 | 解析冻结配置 `candidate.toml` 的 `[engine]` 启动行、端口占用预检、子进程拉起、健康端点等待、停止与终止 | `StartEngine`、`StopEngine`、`monitorEngine`、`terminateEngine` 在 [`studio/internal/core/engine_service.go`](../../studio/internal/core/engine_service.go)；`Startup`、`Processes` 在 [`studio/internal/core/startup.go`](../../studio/internal/core/startup.go) |
 | 绑定存活提示 | 只读比对绑定配置里的 `server_pid`/`process_start_ticks` 与进程实际启动 tick，仅作 UI 提示 | `BindingAlive` 在 [`studio/internal/core/binding.go`](../../studio/internal/core/binding.go) |
 | 运行队列 | 绑定配置准入（含结果根包含、去重）、串行 worker、取消、resume 准入（历史索引 + CLI 终审） | `StartRuns`、`Resume`、`CancelRun`、`runQueue` 在 [`studio/internal/core/runs.go`](../../studio/internal/core/runs.go) |
-| 下载任务 | 与运行队列并发的模型/引擎获取；`.part` 尺寸轮询与正式文件发布观测 | `CreateDownload`、`CancelDownload` 在 [`studio/internal/core/downloads.go`](../../studio/internal/core/downloads.go)；`PollDownload` 在 [`studio/internal/evidence/download.go`](../../studio/internal/evidence/download.go) |
+| 下载任务 | 与运行队列并发的模型/引擎获取，共用同一任务列表；模型任务 `.part` 尺寸轮询与正式文件发布观测；引擎任务复用 `FetchEngine` 传输与解包、取消贯穿全程、字节与速率缺测为带 `progress_reason` 的 `null`、成功写 `engine_path` | `CreateDownload`、`CreateEngineDownload`、`CancelDownload` 在 [`studio/internal/core/downloads.go`](../../studio/internal/core/downloads.go)；`FetchEngine` 在 [`studio/internal/core/defaults.go`](../../studio/internal/core/defaults.go)；`PollDownload` 在 [`studio/internal/evidence/download.go`](../../studio/internal/evidence/download.go) |
 | 报告 | 1–100 个来源 run 校验、唯一命名新目录生成、索引与静态路径包含解析；离线 HTML 在独立 WebView 窗口以 `file://` 打开 | `CreateReport`、`Reports`、`ReportFile` 在 [`studio/internal/core/reports.go`](../../studio/internal/core/reports.go)；`Reports.Open`、`reportURL` 在 [`studio/internal/pages/reports.go`](../../studio/internal/pages/reports.go) |
 | 进程内事件 | 2048 条回放环 + 唤醒订阅；慢消费者按游标重建而非丢事件 | `EventBus`、`Publish`、`Subscribe`、`After`、`ReplayCapacity` 在 [`studio/internal/core/events.go`](../../studio/internal/core/events.go) |
 | 证据索引与读取 | 结果根扫描（损坏条目跳过并计数）、JSONL 增量 tail、host dirty 标记判读、状态优先级 | `Index` 在 [`studio/internal/evidence/index.go`](../../studio/internal/evidence/index.go)；`Tail`、`Cursor` 在 [`studio/internal/evidence/tail.go`](../../studio/internal/evidence/tail.go)；`DirtyRun`、`RunStatus` 在 [`studio/internal/evidence/dirty.go`](../../studio/internal/evidence/dirty.go) |
 | 历史聚合 | evidence 记录 → run 汇总/进度/资源投影；resume 资格标记；原子重建历史索引 | `summarize`、`scan`、`markResumable`、`History`、`rebuild` 在 [`studio/internal/core/aggregate.go`](../../studio/internal/core/aggregate.go) |
-| 页面 | 单主窗口六个页内页面（向导/设备/模型与下载/运行/报告/设置）、事件驱动刷新、向导下一步命令推导 | `New`、`navigation`、`viewState` 在 [`studio/internal/pages/window.go`](../../studio/internal/pages/window.go)、[`studio/internal/pages/onboarding_actions.go`](../../studio/internal/pages/onboarding_actions.go) |
+| 页面 | 单主窗口六个页内页面（向导/设备/模型与下载/运行/报告/设置）、事件驱动刷新、向导下一步命令推导；模型与下载页按模型/下载/引擎服务/绑定存活提示四区组织，done 引擎任务的路径在向导引擎路径为空时由页面幂等采纳 | `New`、`navigation`、`viewState` 在 [`studio/internal/pages/window.go`](../../studio/internal/pages/window.go)、[`studio/internal/pages/onboarding_actions.go`](../../studio/internal/pages/onboarding_actions.go)；四区在 [`studio/internal/pages/models.go`](../../studio/internal/pages/models.go)、[`studio/internal/pages/models_table.go`](../../studio/internal/pages/models_table.go)、[`studio/internal/pages/models_engine.go`](../../studio/internal/pages/models_engine.go) |
 | 桌面通知 | 终态 run/download 与 `report.created` 的固定文案通知；投递失败不影响任务结果 | `Subscribe`、`messageFor` 在 [`studio/internal/desktop/notifications.go`](../../studio/internal/desktop/notifications.go) |
 
 关键状态的事实源：设置持久化在 `os.UserConfigDir()/InferYard Studio/settings.json`（目录 0700、
@@ -73,10 +73,15 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
    `report-YYYYMMDDTHHMMSSZ[-N]`，命名冲突追加序号。报告与导出契约
    见 [评分、比较与报告](scoring-reporting.md) 与
    [report-contract](../../cli/docs/contracts/report-contract.md)。
-8. **下载**：模型/引擎获取与运行队列并发、互不占位。`CreateDownload` 只接受无用户信息、查询
+8. **下载**：模型/引擎获取与运行队列并发、互不占位，共用 `downloading → done/failed/cancelled`
+   任务列表与 `CancelDownload`。`CreateDownload` 只接受无用户信息、查询
    与片段的 `https` 来源；轮询观测 `.part` 尺寸并以 5 读数窗口估算速率，正式发布文件出现后完成
-   任务并按实测字节收尾。预置引擎走 `FetchEngine`：归档解包保留同级共享库、仅重建归档内相对
-   符号链接（`safeLinkTarget` 拒绝越界链接），输出目录已存在即拒绝。
+   任务并按实测字节收尾。引擎获取（预置或自定义来源）经 `CreateEngineDownload` 进入同一列表，
+   复用 `FetchEngine` 传输与解包：归档解包保留同级共享库、仅重建归档内相对
+   符号链接（`safeLinkTarget` 拒绝越界链接），输出目录已存在或被在途任务占用即拒绝
+   （`output_exists`），取消贯穿传输与解包；该传输接口不提供字节读数，引擎任务的
+   `downloaded_bytes`/`bytes_per_second` 恒为 `null` 并带 `progress_reason`，成功收尾写
+   `engine_path`。
 9. **关停**：`Shutdown` 立即关闭准入，未终态队列任务标 cancelled、活动任务标 cancelling 并
    取消上下文，待 runQueue 排空后停止自启动引擎再置 `shutdownDone`；调用方超时（main 为 30
    秒）不抛弃清理、不改变顺序。
@@ -103,6 +108,18 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
   后由 CLI 退出码映射终态；终态后取消返回 `invalid_state`。
 - 终态 `done`/`failed`/`cancelled` 不可变；`Shutdown` 对队列任务直接 `cancelled`、对活动任务
   置 `cancelling`。
+
+### 下载任务（`DownloadTask`）
+
+- `CreateDownload`（模型，`Kind="model"`）与 `CreateEngineDownload`（引擎，`Kind="engine"`）
+  共用同一任务列表与 `downloading → done/failed/cancelled` 转换；输出目录已存在或被在途任务
+  占用返回 `output_exists`，来源或目录名非法返回 `invalid_request`，服务关停中返回
+  `service_closing`。
+- 模型任务轮询 `.part` 尺寸、以 5 读数窗口估算速率，正式文件发布后按实测字节收尾（结果
+  `{bytes, sha256}`）；引擎任务复用 `FetchEngine` 传输与解包，取消贯穿全程，
+  `downloaded_bytes`/`bytes_per_second` 恒为带 `progress_reason` 的 `null`，成功写
+  `engine_path`。
+- `CancelDownload` 取消 `downloading` 任务；终态后取消返回 `invalid_state`。
 
 ### 历史 run 状态（投影，非新状态机）
 
@@ -167,6 +184,3 @@ mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct sh scrip
 - `studio/docs/evidence/` 下的 `browser.*`、`sse.*`、`frontend-build.log` 等是旧 Web UI 阶段的
   诊断产物；根 README 明确其为历史证据、非当前构建说明。当前为 MyGo v0.4.5 原生 UI，无前端
   构建步骤。
-- 仓库根 [`AGENTS.md`](../../AGENTS.md) 环境一节仍列有 `bun run build:web` 与
-  `bun web/tests/verify.mjs`；当前 `studio/` 无 web 前端，[`mise.toml`](../../mise.toml) 也无对应
-  task，Studio 的有效代码检查仅为上面的 Go 命令。

@@ -78,15 +78,30 @@ func (s *Service) FetchEngine(ctx context.Context, source, outDir string, onStat
 	if !filepath.IsAbs(outDir) || strings.ContainsRune(outDir, 0) {
 		return "", &ApiError{Code: "invalid_request", Message: "引擎输出目录不符合要求。"}
 	}
+	if ctx.Err() != nil {
+		return "", Err("cancelled")
+	}
+	if _, err := os.Lstat(outDir); !os.IsNotExist(err) {
+		if err != nil {
+			return "", Err("internal_error")
+		}
+		return "", &ApiError{Code: "output_exists", Message: "输出目录已存在，请选择新目录。"}
+	}
 	onStatus("正在下载引擎…")
 	archive, e := fetchURL(ctx, source)
 	if e != nil {
 		return "", e
 	}
-	if st, err := os.Stat(outDir); err == nil && st.IsDir() {
-		return "", &ApiError{Code: "output_exists", Message: "输出目录已存在，请选择新目录。"}
+	if ctx.Err() != nil {
+		return "", Err("cancelled")
 	}
-	if err := os.MkdirAll(outDir, 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outDir), 0755); err != nil {
+		return "", Err("internal_error")
+	}
+	if err := os.Mkdir(outDir, 0755); err != nil {
+		if os.IsExist(err) {
+			return "", &ApiError{Code: "output_exists", Message: "输出目录已存在，请选择新目录。"}
+		}
 		return "", Err("internal_error")
 	}
 	base := filepath.Base(source)
@@ -94,18 +109,21 @@ func (s *Service) FetchEngine(ctx context.Context, source, outDir string, onStat
 	switch {
 	case strings.HasSuffix(base, ".tar.gz") || strings.HasSuffix(base, ".tgz"):
 		onStatus("正在解压引擎…")
-		enginePath, e = unpackEngineTarGz(archive, outDir)
+		enginePath, e = unpackEngineTarGz(ctx, archive, outDir)
 	case strings.HasSuffix(base, ".zip"):
 		onStatus("正在解压引擎…")
-		enginePath, e = unpackEngineZip(archive, outDir)
+		enginePath, e = unpackEngineZip(ctx, archive, outDir)
 	default:
 		target := filepath.Join(outDir, base)
-		if e = writeBinary(bytes.NewReader(archive), target); e == nil {
+		if e = writeBinary(engineContextReader{ctx, bytes.NewReader(archive)}, target); e == nil {
 			enginePath = target
 		}
 	}
 	if e != nil {
 		return "", e
+	}
+	if ctx.Err() != nil {
+		return "", Err("cancelled")
 	}
 	if enginePath == "" {
 		return "", &ApiError{Code: "engine_binary_missing", Message: "归档内未找到 llama-server，请检查引擎来源。"}
@@ -184,8 +202,8 @@ func safeLinkTarget(target string) bool {
 	return target != "" && !filepath.IsAbs(target) && !strings.Contains(target, "..") && !strings.ContainsRune(target, 0)
 }
 
-func unpackEngineTarGz(archive []byte, destDir string) (string, *ApiError) {
-	zr, err := gzip.NewReader(bytes.NewReader(archive))
+func unpackEngineTarGz(ctx context.Context, archive []byte, destDir string) (string, *ApiError) {
+	zr, err := gzip.NewReader(engineContextReader{ctx, bytes.NewReader(archive)})
 	if err != nil {
 		return "", &ApiError{Code: "engine_unpack_failed", Message: "引擎归档损坏，请检查来源后重试。"}
 	}
@@ -193,6 +211,9 @@ func unpackEngineTarGz(archive []byte, destDir string) (string, *ApiError) {
 	tr := tar.NewReader(zr)
 	enginePath := ""
 	for {
+		if ctx.Err() != nil {
+			return "", Err("cancelled")
+		}
 		h, err := tr.Next()
 		if err == io.EOF {
 			break
@@ -231,7 +252,7 @@ func unpackEngineTarGz(archive []byte, destDir string) (string, *ApiError) {
 			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
 				return "", Err("internal_error")
 			}
-			if e := writeBinary(tr, target); e != nil {
+			if e := writeBinary(engineContextReader{ctx, tr}, target); e != nil {
 				return "", e
 			}
 			if filepath.Base(name) == engineBinaryName() {
@@ -244,13 +265,16 @@ func unpackEngineTarGz(archive []byte, destDir string) (string, *ApiError) {
 	return enginePath, nil
 }
 
-func unpackEngineZip(archive []byte, destDir string) (string, *ApiError) {
+func unpackEngineZip(ctx context.Context, archive []byte, destDir string) (string, *ApiError) {
 	zr, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
 	if err != nil {
 		return "", &ApiError{Code: "engine_unpack_failed", Message: "引擎归档损坏，请检查来源后重试。"}
 	}
 	enginePath := ""
 	for _, f := range zr.File {
+		if ctx.Err() != nil {
+			return "", Err("cancelled")
+		}
 		name, skip, ok := cleanEntryName(f.Name)
 		if !ok {
 			return "", &ApiError{Code: "engine_unpack_failed", Message: "引擎归档包含非法路径，已中止。"}
@@ -272,7 +296,7 @@ func unpackEngineZip(archive []byte, destDir string) (string, *ApiError) {
 		if err != nil {
 			return "", &ApiError{Code: "engine_unpack_failed", Message: "引擎归档损坏，请检查来源后重试。"}
 		}
-		e := writeBinary(rc, target)
+		e := writeBinary(engineContextReader{ctx, rc}, target)
 		rc.Close()
 		if e != nil {
 			return "", e
@@ -282,4 +306,16 @@ func unpackEngineZip(archive []byte, destDir string) (string, *ApiError) {
 		}
 	}
 	return enginePath, nil
+}
+
+type engineContextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r engineContextReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(p)
 }

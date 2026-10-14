@@ -35,7 +35,7 @@ func TestModelsSnapshot(t *testing.T) {
 	s := deviceTestState()
 	s.selected = "models"
 	tt := ui.NewTester(s.view, 1120, 2600)
-	for _, want := range []string{"推荐配置", "本地模型 1 个 GGUF", "100.57 MiB · llama · 上下文 8192", "可用", "≥ 2.83 GiB", "≥ 5.00 GiB", "统一内存容量估算可容纳", "模型目录：", "引擎目录：", "创建模型下载", "下载引擎", "下载队列"} {
+	for _, want := range []string{"推荐配置", "本地模型 1 个 GGUF", "100.57 MiB · llama · 上下文 8192", "可用", "≥ 2.83 GiB", "≥ 5.00 GiB", "统一内存容量估算可容纳", "模型目录：", "引擎目录：", "创建模型下载", "下载预置模型", "下载预置引擎", "引擎服务", "绑定存活提示"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
@@ -46,7 +46,7 @@ func TestModelsSnapshot(t *testing.T) {
 		}
 	}
 	texts := tt.Texts()
-	if slices.Index(texts, "推荐配置") >= slices.Index(texts, "本地模型 1 个 GGUF") || slices.Index(texts, "本地模型 1 个 GGUF") >= slices.Index(texts, "本地资产") {
+	if slices.Index(texts, "推荐配置") >= slices.Index(texts, "本地模型 1 个 GGUF") || slices.Index(texts, "本地模型 1 个 GGUF") >= slices.Index(texts, "创建模型下载") {
 		t.Fatal("model card order", texts)
 	}
 	if err := tt.Click("模型文件与原始参数"); err != nil {
@@ -67,7 +67,7 @@ func TestModelsWithoutSnapshot(t *testing.T) {
 			if !tt.HasText("尚无设备快照，请到设备页刷新。") || tt.HasText("推荐配置") || tt.HasText("本地模型") {
 				t.Fatal(tt.Texts())
 			}
-			if !tt.HasText("创建模型下载") || !tt.HasText("下载引擎") || !tt.HasText("下载队列") {
+			if !tt.HasText("创建模型下载") || !tt.HasText("下载引擎") || !tt.HasText("绑定存活提示") {
 				t.Fatal(tt.Texts())
 			}
 		})
@@ -81,7 +81,7 @@ func TestModelsWithoutSnapshot(t *testing.T) {
 			if !tt.HasText("设备快照无法读取。") || tt.HasText("推荐配置") || tt.HasText("本地模型") {
 				t.Fatal(tt.Texts())
 			}
-			if !tt.HasText("创建模型下载") || !tt.HasText("下载引擎") || !tt.HasText("下载队列") {
+			if !tt.HasText("创建模型下载") || !tt.HasText("下载引擎") || !tt.HasText("绑定存活提示") {
 				t.Fatal(tt.Texts())
 			}
 		})

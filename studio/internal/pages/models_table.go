@@ -13,9 +13,13 @@ func (s *viewState) downloadsView(c *ui.Context) {
 	}
 	selectableTable(&s.downloadsTable, func(i int) any { return s.downloads[i].TaskId }, func(i int) string { return s.downloads[i].OutName })
 	c.Key("downloads-table")
-	ui.Table(c, &s.downloadsTable, []ui.TableColumn{{Title: "名称", Width: 240}, {Title: "状态", Width: 120}, {Title: "已下载 MiB", Width: 160}, {Title: "速率 bytes/s", Width: 180}}, len(s.downloads), func(row, col int) {
+	ui.Table(c, &s.downloadsTable, []ui.TableColumn{{Title: "名称", Width: 190}, {Title: "种类", Width: 70}, {Title: "状态", Width: 100}, {Title: "已下载 MiB", Width: 130}, {Title: "速率 bytes/s", Width: 140}}, len(s.downloads), func(row, col int) {
 		task := s.downloads[row]
-		ui.Text(c, []string{task.OutName, stateLabel(task.State), fmt.Sprintf("%.2f", float64(task.DownloadedBytes)/1048576), number(task.BytesPerSecond)}[col])
+		kind, amount, rate := "模型", fmt.Sprintf("%.2f", float64(task.DownloadedBytes)/1048576), number(task.BytesPerSecond)
+		if task.Kind == "engine" {
+			kind, amount, rate = "引擎", "null", "null"
+		}
+		ui.Text(c, []string{task.OutName, kind, stateLabel(task.State), amount, rate}[col])
 	}).Height(220)
 	index := selectedRow(&s.downloadsTable, len(s.downloads))
 	if index < 0 {
@@ -24,7 +28,14 @@ func (s *viewState) downloadsView(c *ui.Context) {
 	task := s.downloads[index]
 	ui.Text(c, "输出目录："+task.OutDir).Selectable()
 	ui.Text(c, "文件："+text(task.FileName))
-	ui.Text(c, fmt.Sprintf("已下载 %d bytes", task.DownloadedBytes))
+	if task.Kind == "engine" {
+		ui.Text(c, "已下载 null · 速率 null · 归档获取接口未提供字节读数")
+		if task.State == "done" && task.EnginePath != nil {
+			ui.Text(c, "引擎路径："+*task.EnginePath).Selectable()
+		}
+	} else {
+		ui.Text(c, fmt.Sprintf("已下载 %d bytes", task.DownloadedBytes))
+	}
 	if task.Result != nil {
 		ui.Text(c, fmt.Sprintf("实测大小：%d bytes · SHA-256：%s", task.Result.Bytes, task.Result.Sha256)).Selectable()
 	}

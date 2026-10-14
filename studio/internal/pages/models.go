@@ -17,6 +17,17 @@ func validName(s string) bool { return directoryName.MatchString(s) && strings.T
 func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 func (s *viewState) modelsView(c *ui.Context) {
 	s.header(c, "模型与下载")
+	s.adoptDownloadedEngine()
+	card(c, "模型", func() { s.modelAssetsView(c) })
+	card(c, "下载", func() {
+		s.downloadsView(c)
+		s.engineDownloadView(c)
+	})
+	s.modelEngineServiceView(c)
+	s.modelBindingView(c)
+}
+
+func (s *viewState) modelAssetsView(c *ui.Context) {
 	snapshot, err := parseDeviceSnapshot(s.device.Snapshot)
 	switch {
 	case err != nil:
@@ -27,9 +38,14 @@ func (s *viewState) modelsView(c *ui.Context) {
 	default:
 		ui.Text(c, "尚无设备快照，请到设备页刷新。")
 	}
-	card(c, "本地资产", func() {
-		ui.Text(c, "模型目录："+text(s.settings.Effective.ModelsRoot))
-		ui.Text(c, "引擎目录："+filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines"))
+	ui.Text(c, "模型目录："+text(s.settings.Effective.ModelsRoot))
+	ui.Text(c, "SmolLM2-135M · Instruct · Q4_K_M · 固定版本 GGUF")
+	ui.Button(c, "下载预置模型").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
+		name := fmt.Sprintf("model-%d", uniqueID())
+		s.work(func() (string, *core.ApiError) {
+			_, e := s.service.CreateDownload(core.CreateDownloadRequest{SourceUrl: core.DefaultModelURL, OutName: name})
+			return "已加入下载队列。", e
+		})
 	})
 	card(c, "创建模型下载", func() {
 		field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL)
@@ -40,17 +56,6 @@ func (s *viewState) modelsView(c *ui.Context) {
 			s.acquireModel()
 		}
 	})
-	card(c, "下载引擎", func() {
-		field(c, "引擎 URL", &s.engineURL)
-		field(c, "引擎新目录名", &s.engineName)
-		if s.engineDownloadStatus != "" {
-			ui.Text(c, s.engineDownloadStatus)
-		}
-		if ui.Button(c, "下载引擎").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.engineName) || s.engineURL == "" || emptyText(s.settings.Effective.WorkspaceRoot) == "").Clicked() {
-			s.fetchEngine()
-		}
-	})
-	card(c, "下载队列", func() { s.downloadsView(c) })
 }
 func (s *viewState) acquireModel() {
 	source, name, env := s.modelURL, s.modelName, s.tokenEnv
@@ -81,22 +86,6 @@ func (s *viewState) acquireModel() {
 			e = &core.ApiError{Code: string(r.Status), Message: "下载未完成，输出目录保留；请检查来源并更换新目录。"}
 		}
 		return "下载完成。", e
-	})
-}
-
-func (s *viewState) fetchEngine() {
-	source := s.engineURL
-	out := fresh(filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines"), s.engineName)
-	s.guideWork(func() (string, *core.ApiError) {
-		defer s.win.Update(func() { s.engineDownloadStatus = "" })
-		path, e := s.service.FetchEngine(s.ctx, source, out, func(status string) {
-			s.win.Update(func() { s.engineDownloadStatus = status })
-		})
-		if e != nil {
-			return "", e
-		}
-		s.win.Update(func() { s.engine = path; s.enginePreset = true })
-		return "引擎已就绪：" + path, nil
 	})
 }
 
