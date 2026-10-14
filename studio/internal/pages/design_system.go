@@ -80,12 +80,12 @@ func (s *viewState) submissionFailed(e *core.ApiError) {
 
 func (s *viewState) announceChanges(c *ui.Context) {
 	page := s.selected
-	if page == "runs" && s.detailID != "" {
+	if page == "dashboard" && s.detailID != "" {
 		page += "/" + s.detailID
 	}
 	if page != s.announcedPage {
 		title := "运行详情"
-		if s.detailID == "" || s.selected != "runs" {
+		if s.detailID == "" || s.selected != "dashboard" {
 			for _, n := range navigation {
 				if n.id == s.selected {
 					title = n.label
@@ -116,7 +116,7 @@ func (s *viewState) announceChanges(c *ui.Context) {
 		for _, d := range s.downloads {
 			add(d.Error)
 		}
-	case "runs":
+	case "dashboard":
 		if s.detailID != "" {
 			add(s.detailError)
 			if s.detail != nil {
@@ -132,7 +132,7 @@ func (s *viewState) announceChanges(c *ui.Context) {
 		add(s.historyError)
 		add(s.reportsError)
 	}
-	if s.progress != nil && (s.selected == "wizard" || (s.selected == "runs" && s.detailID == "")) {
+	if s.progress != nil && (s.selected == "dashboard" && s.detailID == "") {
 		for _, bundle := range s.progress.Bundles {
 			if bundle.BlockedReason != nil {
 				errors = append(errors, bundle.Bundle+"："+human(*bundle.BlockedReason))

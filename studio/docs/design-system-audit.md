@@ -2,7 +2,7 @@
 
 更新于 2026-10-14。初始审查基线为 `b92c41f`，MyGo v0.4.5；本页记录其后按
 [Studio Design System](design-system.md)实施的页面改动和实际验证范围。
-范围包含六个主页面、运行详情及离线报告窗口外壳。未完成事项集中在
+范围包含五个主页面、运行详情及离线报告窗口外壳。未完成事项集中在
 [backlog](../../cli/docs/backlog.md#inferyard-studio-后续工作)。
 
 ## 当前结果
@@ -17,7 +17,7 @@ DS-01 至 DS-09 已有对应实现和软件回归；原生窗口与辅助技术�
 | DS-03 | 主指标按语义显示缺测、总量未知、无活动进程、未配置；数据层 null 和单位不变 | 下载卡与测量既有回归 |
 | DS-04 | 共享 Rem/Space，窄窗或文字放大后模型页单列，按钮与图例换行，设备键值纵排 | `TestDesignLayoutMatrix`、`TestDesignModelsStackAndLongPath` |
 | DS-05 | 详情读取失败不再同时显示加载；增加重试、返回及空态下一步；刷新失败保留已有内容 | `TestDesignDetailFailureIsNotLoading`、`TestDesignDetailRetryAndLoading`、`TestDesignPageLoadingErrorEmpty` |
-| DS-06 | 冻结配置准备直接指向运行页；服务步骤中文化，颜色区分活动、就绪、失败和停止 | `TestDesignEngineSemanticColors` 与既有步骤、绑定回归 |
+| DS-06 | 冻结配置准备直接指向 Dashboard；服务步骤中文化，颜色区分活动、就绪、失败和停止 | `TestDesignEngineSemanticColors` 与既有步骤、绑定回归 |
 | DS-07 | 页面变化与当前页新错误一次性公告，主动重复提交重新公告对应错误，重渲染去重，刷新保留输入焦点 | `TestDesignAnnouncementsOnce`、`TestDesignHiddenDetailErrorIsNotAnnounced`、`TestFormFailureAnnouncedOnEverySubmission` |
 | DS-08 | 输入关联 Description/Error；提交保留草稿，后端仍校验 | `TestDesignInvalidFieldsPreserveEdits` 与既有设置、续测回归 |
 | DS-09 | 设置先展示生效工作区，低频原始字段折叠；历史封存中文化并区分核验；服务诊断位于操作之后 | 历史展开、设置切换与页面布局回归 |
@@ -31,10 +31,9 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 | 页面 | 本轮落实 | 源码 |
 | --- | --- | --- |
 | 公共外壳 | 主题标题、命名控件、首次加载、刷新状态、一次性公告 | [window.go](../internal/pages/window.go)、[design_system.go](../internal/pages/design_system.go) |
-| 向导 | 阶段进度名称、中文阻断原因、当前下一步 | [onboarding.go](../internal/pages/onboarding.go) |
+| Dashboard | 阶段进度名称、中文阻断原因、当前下一步；准备与绑定字段说明、有限进度、历史层级、续测字段错误 | [dashboard.go](../internal/pages/dashboard.go)、[dashboard_run.go](../internal/pages/dashboard_run.go)、[dashboard_tasks.go](../internal/pages/dashboard_tasks.go) |
 | 设备 | 标题、紧凑键值排版、解析失败恢复入口 | [device.go](../internal/pages/device.go) |
-| 模型与下载 | 四区响应布局、缺测语义、状态色和运行页入口 | [models.go](../internal/pages/models.go)、[models_engine.go](../internal/pages/models_engine.go) |
-| 运行 | 准备与绑定字段说明、有限进度、历史层级、续测字段错误 | [runs.go](../internal/pages/runs.go)、[onboarding_run.go](../internal/pages/onboarding_run.go) |
+| 模型与下载 | 四区响应布局、缺测语义、状态色和 Dashboard 入口 | [models.go](../internal/pages/models.go)、[models_engine.go](../internal/pages/models_engine.go) |
 | 运行详情 | 失败与加载分离、重试和返回、表格名称、换行图例 | [detail.go](../internal/pages/detail.go)、[chart.go](../internal/pages/chart.go) |
 | 报告 | 来源列表名称及完整路径描述、空态下一步、键盘打开 | [reports.go](../internal/pages/reports.go)、[reports_table.go](../internal/pages/reports_table.go) |
 | 设置 | 字段关联、生效工作区与折叠诊断 | [preparation.go](../internal/pages/preparation.go)、[form_validation.go](../internal/pages/form_validation.go) |

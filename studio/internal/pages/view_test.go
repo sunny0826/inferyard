@@ -13,10 +13,10 @@ import (
 
 func ptr[T any](v T) *T { return &v }
 func testState() viewState {
-	return viewState{selected: "wizard", loaded: true, settingsLoaded: true, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
+	return viewState{selected: "dashboard", loaded: true, settingsLoaded: true, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
 }
-func TestSixPagesRender(t *testing.T) {
-	for _, tc := range []struct{ page, want string }{{"wizard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "下载预置模型"}, {"runs", "/w/bound/zh-core-1/config.toml"}, {"reports", "选择来源 run（1–100 个）"}, {"settings", "CLI 绝对路径（留空使用 PATH）"}} {
+func TestFivePagesRender(t *testing.T) {
+	for _, tc := range []struct{ page, want string }{{"dashboard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "下载预置模型"}, {"reports", "选择来源 run（1–100 个）"}, {"settings", "CLI 绝对路径（留空使用 PATH）"}} {
 		t.Run(tc.page, func(t *testing.T) {
 			s := testState()
 			s.selected = tc.page
@@ -36,33 +36,28 @@ func TestSixPagesRender(t *testing.T) {
 		})
 	}
 }
-func TestSidebarAndWizardEntry(t *testing.T) {
+func TestSidebarDashboardEntry(t *testing.T) {
 	s := testState()
-	tt := ui.NewTester(s.view, 1120, 800)
-	if err := tt.Click("下一步：在运行页启动与绑定服务"); err != nil {
-		t.Fatal(err)
-	}
-	if s.selected != "runs" {
-		t.Fatal("overview navigation failed")
-	}
-
-	if err := tt.Click("设置"); err != nil {
-		t.Fatal(err)
-	}
+	tt := ui.NewTester(s.view, 1120, 2400)
+	click(t, tt, "设置")
 	if s.selected != "settings" || !tt.HasText("路径设置") {
 		t.Fatal(tt.Texts())
 	}
-	if err := tt.Click("运行"); err != nil {
-		t.Fatal(err)
+	if tt.HasText("环境准备") || tt.HasText("初始化工作区") {
+		t.Fatal("setup remains in settings")
 	}
-	if s.selected != "runs" || !tt.HasText("启动测评") {
+	click(t, tt, "Dashboard")
+	if s.selected != "dashboard" || !tt.HasText("启动测评") {
 		t.Fatal(tt.Texts())
+	}
+	if len(navigation) != 5 || navigation[0].id != "dashboard" || pageID("") != "dashboard" {
+		t.Fatal(navigation)
 	}
 }
 func TestExplicitSingleBundleConfirmation(t *testing.T) {
 	s := testState()
-	s.selected = "runs"
-	tt := ui.NewTester(s.view, 1120, 1000)
+	s.selected = "dashboard"
+	tt := ui.NewTester(s.quickRunView, 1120, 1000)
 	if !tt.HasText("第二题包尚未绑定，双题包运行不可用。") || tt.HasText("我确认只运行一个题包") {
 		t.Fatal(tt.Texts())
 	}
@@ -87,9 +82,9 @@ func TestExplicitSingleBundleConfirmation(t *testing.T) {
 }
 func TestBoundBundleSelectsAndDuplicateGuard(t *testing.T) {
 	s := testState()
-	s.selected = "runs"
+	s.selected = "dashboard"
 	s.progress.Bundles[1].BoundPath = ptr("/w/bound/zh-svg-pelican-1")
-	tt := ui.NewTester(s.view, 1120, 1000)
+	tt := ui.NewTester(s.quickRunView, 1120, 1000)
 	if s.firstBundle != "zh-core" || s.secondBundle != "zh-svg-pelican" {
 		t.Fatalf("bound defaults: %q %q", s.firstBundle, s.secondBundle)
 	}
@@ -123,7 +118,7 @@ func TestBundleHelpers(t *testing.T) {
 }
 func TestDetailTableAndResourcesRender(t *testing.T) {
 	s := testState()
-	s.selected = "runs"
+	s.selected = "dashboard"
 	s.detailID = "fixture"
 	s.detail = &core.RunTaskDetail{Task: core.RunTask{TaskId: "fixture", Kind: "resume", State: "done", Exit: &core.RunExit{ExitCode: 3}}, Progress: &core.RunProgress{Done: 1, Total: ptr(int64(2)), Phase: ptr("formal"), Cases: []core.CaseProgress{{CaseId: "case-pelican", State: "failed", ErrorCategory: ptr("fixture-failure")}}}, Resources: []core.ResourceSample{{Utc: "2026-10-13T06:00:00Z", MemAvailableBytes: ptr(int64(1073741824)), ServiceCpuPercent: ptr(12.5)}}}
 	tt := ui.NewTester(s.view, 1120, 1800)
@@ -132,7 +127,7 @@ func TestDetailTableAndResourcesRender(t *testing.T) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
 	}
-	if err := tt.Click("返回运行"); err != nil {
+	if err := tt.Click("返回 Dashboard"); err != nil {
 		t.Fatal(err)
 	}
 	if s.detailID != "" || !tt.HasText("启动测评") {

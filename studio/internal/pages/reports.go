@@ -91,7 +91,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 			ui.Text(c, "正在读取报告来源…")
 		} else if len(runs) == 0 {
 			ui.Text(c, "暂无运行记录，请先完成测评，再选择来源。")
-			button(c, "到运行页启动测评").AlignSelf(ui.Start).OnClick(func() { s.selected = "runs" })
+			button(c, "到 Dashboard 启动测评").AlignSelf(ui.Start).OnClick(func() { s.selected = "dashboard" })
 		}
 		known := map[string]bool{}
 		for _, r := range runs {

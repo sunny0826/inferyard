@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"path/filepath"
 	"strings"
 )
 
@@ -34,6 +35,9 @@ func (w *viewState) serviceView(c *ui.Context) {
 	command := commandOf(append([]string{w.startup.Path}, w.startup.Args...))
 	// Engine commands have no inferyard prefix; the display is selectable, never editable.
 	command = command[len("inferyard "):]
+	if w.startup.Path == "" {
+		command = "未配置：请先创建候选。"
+	}
 	ui.Text(c, command).Font("monospace").Selectable()
 	if button(c, "复制启动命令").AlignSelf(ui.Start).Disabled(w.startup.Path == "").Clicked() {
 		c.WriteClipboard(command)
@@ -51,6 +55,12 @@ func (w *viewState) serviceView(c *ui.Context) {
 		if w.engineState.Error != nil {
 			ui.Text(c, w.engineState.Error.Message).TextColor(c.Theme().Danger)
 		}
+	}
+	if w.candidate == "" {
+		ui.Text(c, "请先创建候选，再启动服务。")
+	}
+	if w.running() != nil {
+		ui.Text(c, "测评运行期间不能停止或重新绑定服务。")
 	}
 	startable := w.engineState.State == "" || w.engineState.State == "stopped" || w.engineState.State == "failed"
 	ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
@@ -84,7 +94,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 	}
 	ui.Field(c, "已启动的本机进程", func() { ui.Select(c, &w.process, options) }).Description("请选择已启动的服务进程；绑定仍会核验身份。")
 	field(c, "endpoint", &w.bindEndpoint).Description("必填；本机服务的 http 或 https URL。").Error(urlError(w.bindEndpoint))
-	if primaryButton(c, "绑定进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
+	if button(c, "绑定进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
 		if message := urlError(w.bindEndpoint); message != "" {
 			w.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
 			return
@@ -109,6 +119,7 @@ func (w *viewState) runView(c *ui.Context) {
 		}
 		ui.Text(c, label)
 		id := task.TaskId
+		button(c, "查看实时详情").AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) })
 		if button(c, "取消运行").AlignSelf(ui.Start).Disabled(w.busy || task.State == "cancelling").Clicked() {
 			w.guideWork(func() (string, *core.ApiError) {
 				_, e := w.service.CancelRun(id)
@@ -138,4 +149,124 @@ func (w *viewState) reportView(c *ui.Context) {
 	if primaryButton(c, "生成报告并核验").AlignSelf(ui.Start).Disabled(w.busy).Clicked() {
 		w.execute(w.nextCommand(), true)
 	}
+}
+
+func (s *viewState) quickRunView(c *ui.Context) {
+	card(c, "启动测评", func() {
+		options := s.boundConfigs()
+		if len(options) == 0 {
+			ui.Text(c, "暂无已绑定题包；可在下方高级选项手动指定配置路径")
+		}
+		names := []string{}
+		for _, o := range options {
+			names = append(names, o.bundle)
+		}
+		if len(names) > 0 {
+			s.firstBundle = defaultBundle(s.firstBundle, names, "")
+			twoBound := len(names) >= 2
+			if s.single || !twoBound {
+				ui.Field(c, "题包", func() { ui.Select(c, &s.firstBundle, names) })
+				ui.Text(c, configOf(options, s.firstBundle)).Selectable()
+			} else {
+				s.secondBundle = defaultBundle(s.secondBundle, names, s.firstBundle)
+				ui.Field(c, "第一题包", func() { ui.Select(c, &s.firstBundle, names) })
+				ui.Text(c, configOf(options, s.firstBundle)).Selectable()
+				ui.Field(c, "第二题包", func() { ui.Select(c, &s.secondBundle, names) })
+				ui.Text(c, configOf(options, s.secondBundle)).Selectable()
+			}
+		}
+		ui.Checkbox(c, &s.manualConfig, "高级：手动配置路径")
+		if s.manualConfig {
+			field(c, "第一配置绝对路径", &s.manualFirst).Description("已绑定的配置文件绝对路径。").Error(pathError(s.manualFirst))
+			if !s.single {
+				field(c, "第二配置绝对路径", &s.manualSecond).Description("默认双题包需要不同的第二份绑定配置。").Error(pathError(s.manualSecond))
+			}
+		}
+		first, second := configOf(options, s.firstBundle), configOf(options, s.secondBundle)
+		if s.manualConfig {
+			first, second = strings.TrimSpace(s.manualFirst), strings.TrimSpace(s.manualSecond)
+		}
+		twoBound := first != "" && second != ""
+		if ui.Checkbox(c, &s.single, "仅运行一个题包").Changed() {
+			s.confirmed = false
+		}
+		if s.single {
+			ui.Checkbox(c, &s.confirmed, "我确认只运行一个题包")
+		}
+		ui.Text(c, "默认双题包，按配置顺序串行运行。运行前请核对设备、预算与停止条件。")
+		if !twoBound && !s.single {
+			ui.Text(c, "第二题包尚未绑定，双题包运行不可用。")
+		}
+		if s.running() != nil {
+			ui.Text(c, "当前运行结束后可启动新的测评。")
+		}
+		if s.single && !s.confirmed {
+			ui.Text(c, "请显式确认只运行一个题包。")
+		}
+		duplicate := first == second
+		if !s.single && twoBound && duplicate {
+			ui.Text(c, "两个题包不能相同。").TextColor(c.Theme().Danger)
+		}
+		if primaryButton(c, "启动运行").AlignSelf(ui.Start).Disabled(s.busy || s.running() != nil || first == "" || (!s.single && (!twoBound || duplicate)) || (s.single && !s.confirmed)).Clicked() {
+			req := core.StartRunsRequest{ConfigPaths: []string{first}}
+			if s.single {
+				confirmed := true
+				req.AllowSingleBundle = &confirmed
+			} else {
+				req.ConfigPaths = append(req.ConfigPaths, second)
+			}
+			s.work(func() (string, *core.ApiError) {
+				tasks, e := s.service.StartRuns(req)
+				if e == nil {
+					ids := []string{}
+					for _, t := range tasks {
+						ids = append(ids, t.TaskId)
+					}
+					s.win.Update(func() { s.groups = append(s.groups, ids) })
+				}
+				return "运行已加入队列。", e
+			})
+		}
+	})
+}
+
+// boundOption maps a bound bundle to the frozen config written by `config bind`.
+type boundOption struct{ bundle, config string }
+
+func (s *viewState) boundConfigs() []boundOption {
+	options := []boundOption{}
+	if s.progress == nil {
+		return options
+	}
+	for _, b := range s.progress.Bundles {
+		if b.BoundPath != nil {
+			options = append(options, boundOption{bundle: b.Bundle, config: filepath.Join(*b.BoundPath, "config.toml")})
+		}
+	}
+	return options
+}
+
+// defaultBundle keeps the current selection when still valid, otherwise picks
+// the first option that is not exclude.
+func defaultBundle(current string, names []string, exclude string) string {
+	for _, n := range names {
+		if n == current {
+			return current
+		}
+	}
+	for _, n := range names {
+		if n != exclude {
+			return n
+		}
+	}
+	return names[0]
+}
+
+func configOf(options []boundOption, bundle string) string {
+	for _, o := range options {
+		if o.bundle == bundle {
+			return o.config
+		}
+	}
+	return ""
 }

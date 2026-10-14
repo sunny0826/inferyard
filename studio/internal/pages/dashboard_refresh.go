@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-type onboardingSnapshot struct {
+type dashboardSnapshot struct {
 	candidate string
 	stale     bool
 	unknown   bool
@@ -17,8 +17,8 @@ type onboardingSnapshot struct {
 	failure   *core.ApiError
 }
 
-func (s *viewState) readOnboarding(p *inferyard.WorkspaceProgress) onboardingSnapshot {
-	var result onboardingSnapshot
+func (s *viewState) readDashboard(p *inferyard.WorkspaceProgress) dashboardSnapshot {
+	var result dashboardSnapshot
 	if p == nil {
 		return result
 	}
@@ -46,7 +46,7 @@ func (s *viewState) readOnboarding(p *inferyard.WorkspaceProgress) onboardingSna
 	return result
 }
 
-func (s *viewState) applyOnboarding(v onboardingSnapshot, e *core.ApiError) {
+func (s *viewState) applyDashboard(v dashboardSnapshot, e *core.ApiError) {
 	s.refreshFailure = ""
 	if e == nil {
 		e = v.failure

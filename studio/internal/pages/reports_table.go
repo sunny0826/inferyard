@@ -13,7 +13,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		ui.Text(c, "正在读取报告列表…")
 	} else if len(s.reports) == 0 {
 		ui.Text(c, "暂无报告。请在上方选择来源并生成新报告。")
-		button(c, "前往运行页").AlignSelf(ui.Start).OnClick(func() { s.selected = "runs" })
+		button(c, "前往 Dashboard").AlignSelf(ui.Start).OnClick(func() { s.selected = "dashboard" })
 	}
 	selectableTable(&s.reportsTable, func(i int) any { return s.reports[i].Path }, func(i int) string { return s.reports[i].ReportId })
 	c.Key("reports-table")

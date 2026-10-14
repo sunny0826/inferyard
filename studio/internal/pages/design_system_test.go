@@ -55,7 +55,7 @@ func TestDesignProgressRanges(t *testing.T) {
 
 func TestDesignDetailFailureIsNotLoading(t *testing.T) {
 	s := testState()
-	s.selected, s.detailID = "runs", "missing"
+	s.selected, s.detailID = "dashboard", "missing"
 	s.detailError = &core.ApiError{Code: "not_found", Message: "任务详情读取失败"}
 	tt := ui.NewTester(s.view, 1120, 800)
 	if tt.HasText("正在读取任务详情") {
@@ -64,7 +64,7 @@ func TestDesignDetailFailureIsNotLoading(t *testing.T) {
 	if _, ok := tt.Find("重试读取详情"); !ok {
 		t.Fatal("missing retry")
 	}
-	click(t, tt, "返回运行")
+	click(t, tt, "返回 Dashboard")
 	if s.detailID != "" {
 		t.Fatal("return failed")
 	}

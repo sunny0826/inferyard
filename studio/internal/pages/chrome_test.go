@@ -23,43 +23,26 @@ func (c refreshContext) Err() error {
 	return context.Canceled
 }
 
-func TestChromeRefreshActions(t *testing.T) {
+func TestChromeRefreshShortcutRemoved(t *testing.T) {
 	s := testState()
 	entered := make(chan struct{}, 10)
 	s.ctx = refreshContext{context.Background(), entered}
 	tt := ui.NewTester(s.view, 1120, 800)
-	for _, action := range []string{"shortcut", "focused input"} {
-		if action == "focused input" {
-			s.selected = "settings"
-			tt.Frame()
+	for _, page := range []string{"dashboard", "settings"} {
+		s.selected = page
+		tt.Frame()
+		if page == "settings" {
 			click(t, tt, "CLI 绝对路径（留空使用 PATH）")
 		}
 		tt.Key(ui.Cmd, ui.KeyR)
 		select {
 		case <-entered:
-		case <-time.After(time.Second):
-			t.Fatalf("%s did not request refresh", action)
+			t.Fatal("Cmd+R still refreshes")
+		case <-time.After(30 * time.Millisecond):
 		}
-	}
-	s.busy = true
-	tt.Frame()
-	if _, ok := tt.Find("刷新"); ok {
-		t.Fatal("global refresh button remains visible")
-	}
-	tt.Key(ui.Cmd, ui.KeyR)
-	select {
-	case <-entered:
-		t.Fatal("busy refresh was not disabled")
-	case <-time.After(30 * time.Millisecond):
-	}
-	if !tt.HasText("执行中…") || tt.HasText("正在执行，请稍候…") {
-		t.Fatal(tt.Texts())
-	}
-	s.busy = false
-	tt.Frame()
-	tt.Frame()
-	if tt.HasText("执行中…") {
-		t.Fatal("busy indicator remained")
+		if _, ok := tt.Find("刷新"); ok {
+			t.Fatal("global refresh button remains")
+		}
 	}
 }
 
@@ -99,18 +82,18 @@ func TestCompletionToastAndInlineError(t *testing.T) {
 }
 
 func TestChromeLayoutAcrossPages(t *testing.T) {
-	for _, page := range []string{"settings", "runs", "models", "reports", "wizard", "detail"} {
+	for _, page := range []string{"settings", "dashboard", "models", "reports", "detail"} {
 		t.Run(page, func(t *testing.T) {
 			s := testState()
 			s.selected = page
 			labels := map[string][]string{
-				"settings": {"保存设置", "准备目录", "修改设置"},
-				"runs":     {"启动运行"}, "models": {"下载模型"},
-				"reports": {"打开报告"}, "wizard": {"下一步：在运行页启动与绑定服务"},
-				"detail": {"返回运行", "取消任务"},
+				"settings":  {"保存设置"},
+				"dashboard": {"启动运行"}, "models": {"下载模型"},
+				"reports": {"打开报告"},
+				"detail":  {"返回 Dashboard", "取消任务"},
 			}
 			if page == "detail" {
-				s.selected, s.detailID = "runs", "fixture"
+				s.selected, s.detailID = "dashboard", "fixture"
 				s.detail = &core.RunTaskDetail{Task: core.RunTask{TaskId: "fixture", State: "running"}}
 			}
 			tt := ui.NewTester(s.view, 1120, 2400)

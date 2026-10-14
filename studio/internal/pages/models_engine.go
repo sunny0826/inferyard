@@ -69,7 +69,7 @@ func (s *viewState) modelEngineServiceView(c *ui.Context) {
 		presentations := map[string][2]string{
 			"stopped":  {"已停止", "启动前检查冻结配置的端口，启动后等待健康端点就绪。"},
 			"starting": {"正在加载模型", "正在等待健康检查通过，加载期间请稍候。"},
-			"running":  {"服务已就绪", "健康端点已响应，可以到运行页绑定服务。"},
+			"running":  {"服务已就绪", "健康端点已响应，可以到 Dashboard 绑定服务。"},
 			"stopping": {"正在停止服务", "已请求停止，等待进程安全退出。"},
 			"failed":   {"服务异常退出", "不会自动重启。检查日志后手动启动，并重新绑定。"},
 		}
@@ -114,8 +114,8 @@ func (s *viewState) modelEngineServiceView(c *ui.Context) {
 		errorView(c, state.Error)
 		ui.Text(c, "不会自动重启；Studio 只管理自己启动的进程。")
 		if s.candidate == "" {
-			ui.Text(c, "请先到运行页准备冻结配置。")
-			button(c, "到运行页准备配置").AlignSelf(ui.Start).OnClick(func() { s.selected = "runs" })
+			ui.Text(c, "请先到 Dashboard 准备冻结配置。")
+			button(c, "到 Dashboard 准备配置").AlignSelf(ui.Start).OnClick(func() { s.selected = "dashboard" })
 		}
 		if state.State == "starting" || state.State == "running" || state.State == "stopping" {
 			ui.Text(c, "重复启动返回当前状态，未创建新进程。")
@@ -165,7 +165,7 @@ func (s *viewState) modelBindingView(c *ui.Context) {
 			case s.bindingUnknown:
 				label = "无法确认存活，不据此判定绑定有效"
 			case s.bindingStale:
-				label = "原绑定可能已失效，请到运行页重新绑定"
+				label = "原绑定可能已失效，请到 Dashboard 重新绑定"
 			default:
 				label = "存活提示匹配"
 			}
@@ -175,6 +175,6 @@ func (s *viewState) modelBindingView(c *ui.Context) {
 			ui.Column(c).Grow(1).Children(func() { ui.Text(c, label).Bold() })
 		})
 		ui.Text(c, "存活提示只比对 server_pid / process_start_ticks；身份核验始终由 CLI 在 bind / run 时完成；服务运行中不代表绑定有效。")
-		button(c, "到运行页绑定").AlignSelf(ui.Start).OnClick(func() { s.selected = "runs" })
+		button(c, "到 Dashboard 绑定").AlignSelf(ui.Start).OnClick(func() { s.selected = "dashboard" })
 	})
 }

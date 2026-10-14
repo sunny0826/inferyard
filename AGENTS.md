@@ -64,7 +64,7 @@ rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direc
 ## Documentation and contracts
 
 - The README is the product entry point. Operational steps go into the installation/usage guides; topic rules live in `cli/docs/contracts/`. ADRs record long-term rationale only, plans keep only unfinished work, and current progress is centralized in `cli/docs/backlog.md`.
-- 跨包子系统的当前职责、运行路径、状态、约束与验证命令记录在 [docs/subsystems/](docs/subsystems/README.md)；变更改变已记录的职责、接口、状态转换、运行路径、兼容规则或失败行为时，在同一 PR 更新所属参考，事实只留一处并互相链接。
+- 跨包子系统的当前职责、运行路径、状态、约束与验证命令记录在 [docs/subsystems/](docs/subsystems/README.md)；变更改变已记录的职责、接口、状态转换、运行路径、兼容规则或失败行为时，在同一 PR 更新所属参考，事实只留一处并互相链接。页面、目录或概念的改名与合并须在同一 PR 内全局检索（`grep -rn 旧名`）清扫 README、docs、契约与原型中的残留引用，不能只定点更新已知位置。
 - Delete outdated handovers, stage logs and superseded plans, first folding valid rules into the current contracts and remaining work into the backlog; do not build a large archive. Platform claims must match actual coverage.
 - Changes that break old-evidence reading, field semantics or measurement scope require an ADR, a contract and an implementation plan, verifying software and affected native capabilities separately. Compatible optional behavior only updates the existing contract and adds regressions; relaxing stops or identity/hash/asset verification is never treated as optional behavior.
 - Evidence interpretation always cites the [lineage rules](cli/docs/data-contract.md#证据血缘与比较结论) instead of copying disclaimer paragraphs. Release checks do not require completing every historical performance experiment.

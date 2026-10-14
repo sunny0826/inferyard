@@ -6,42 +6,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-func (s *viewState) readinessView(c *ui.Context) {
-	card(c, "环境准备", func() {
-		cli := "请安装 CLI 或在设置中配置路径"
-		if s.ready.CLI.Status == "ok" {
-			cli = "已就绪 · " + text(s.ready.CLI.Version)
-		}
-		ui.Text(c, "CLI："+cli)
-		for _, entry := range []struct {
-			label string
-			dir   core.DirectoryReadiness
-		}{{"工作区", s.ready.Workspace}, {"结果目录", s.ready.Results}, {"模型目录", s.ready.Models}} {
-			state := "待配置"
-			if entry.dir.Exists {
-				state = "目录可用"
-			} else if entry.dir.Configured {
-				state = "待创建"
-			}
-			if entry.label == "工作区" && entry.dir.Exists {
-				state = "待初始化"
-				if entry.dir.Initialized {
-					state = "已初始化"
-				}
-			}
-			ui.Text(c, entry.label+"："+text(entry.dir.Path)+" · "+state)
-		}
-		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
-			if button(c, "准备目录").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
-				s.provision()
-			}
-			if button(c, "修改设置").AlignSelf(ui.Start).Clicked() {
-				s.selected = "settings"
-			}
-		})
-
-	})
-}
 func (s *viewState) loadSettings(v core.SettingsResponse) {
 	s.cliPath = emptyText(v.Settings.InferyardPath)
 	s.workspace = emptyText(v.Settings.WorkspaceRoot)
@@ -50,15 +14,6 @@ func (s *viewState) loadSettings(v core.SettingsResponse) {
 	}
 	s.results = emptyText(v.Settings.ResultsRoot)
 	s.models = emptyText(v.Settings.ModelsRoot)
-}
-func (s *viewState) provision() {
-	s.guideWork(func() (string, *core.ApiError) {
-		v, e := s.service.Provision()
-		if e == nil {
-			s.win.Update(func() { s.loadSettings(v) })
-		}
-		return "目录已准备，请在设置页初始化工作区。", e
-	})
 }
 func (s *viewState) settingsView(c *ui.Context) {
 	s.header(c, "设置")
@@ -98,8 +53,6 @@ func (s *viewState) settingsView(c *ui.Context) {
 			})
 		}
 	})
-	s.setupGuide(c)
-	s.readinessView(c)
 	card(c, "生效值与探测状态", func() {
 		ui.Text(c, "当前生效工作区："+text(s.settings.Effective.WorkspaceRoot)).Selectable()
 		componentFold(c, "原始生效值", func() { kvview(c, "kv-effective", s.settings.Effective) })

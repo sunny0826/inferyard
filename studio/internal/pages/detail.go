@@ -8,7 +8,7 @@ import (
 
 func (s *viewState) detailView(c *ui.Context) {
 	s.header(c, "运行详情")
-	if button(c, "返回运行").AlignSelf(ui.Start).Clicked() {
+	if button(c, "返回 Dashboard").AlignSelf(ui.Start).Clicked() {
 		s.detailID = ""
 		s.returnToTasks = true
 		s.detailMu.Lock()
