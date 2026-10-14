@@ -157,7 +157,7 @@ func TestDesignNamedControlsAndHeadingLevels(t *testing.T) {
 					t.Errorf("%s unnamed progress", page)
 				}
 			}
-			if widget := n.FieldByName("widget").String(); widget == "Table" {
+			if role == ui.RoleTable {
 				if n.FieldByName("label").String() == "" {
 					t.Errorf("%s unnamed table", page)
 				}
@@ -269,7 +269,7 @@ func TestDesignKeyboardDetailsReturnAndHorizontalTable(t *testing.T) {
 		t.Fatal("keyboard did not open selected task", s.detailID)
 	}
 	click(t, tt, "返回 Dashboard")
-	if !tt.Focused("运行任务队列") {
+	if !tt.Focused("zh-svg-pelican") {
 		t.Fatal("return did not restore table focus")
 	}
 	tt.Key(0, ui.KeyUp)

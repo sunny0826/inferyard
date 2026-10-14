@@ -62,8 +62,8 @@ func TestDashboardOverviewStageMarkers(t *testing.T) {
 				if !tt.HasText(want) || (i >= tc.step && tt.HasText("✓  "+label)) {
 					t.Fatalf("stage %d: %v", tc.step, tt.Texts())
 				}
-				for _, n := range modelUINodes(tt, "widget", "Badge") {
-					if n.FieldByName("first").Elem().FieldByName("text").String() == label {
+				for _, n := range modelUINodes(tt, "description", "当前阶段："+label) {
+					if n.FieldByName("text").String() == label {
 						current++
 						if i != tc.step {
 							t.Fatalf("wrong current stage %s", label)

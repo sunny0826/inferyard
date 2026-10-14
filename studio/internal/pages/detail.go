@@ -60,7 +60,7 @@ func (s *viewState) detailView(c *ui.Context) {
 		ui.Text(c, fmt.Sprintf("%s；未读取时不猜测。当前题：%s · last_seq：%d", denominator, text(p.CurrentCaseId), p.LastSeq))
 		columns := []ui.TableColumn{{Title: "题目", Width: 180}, {Title: "状态", Width: 160}, {Title: "类别", Width: 100}, {Title: "质量", Width: 100}, {Title: "耗时 ms", Width: 100}, {Title: "错误类别", Width: 160}}
 		s.casesTable.Key = func(i int) any { return p.Cases[i].CaseId }
-		ui.Table(c, &s.casesTable, columns, len(p.Cases), func(row, col int) {
+		pageTable(c, &s.casesTable, "题目进度表", columns, len(p.Cases), func(row, col int) {
 			item := p.Cases[row]
 			values := []string{item.CaseId, stateLabel(item.State) + " · " + item.State, text(item.Category), text(item.QualityState), number(item.DurationMs), text(item.ErrorCategory)}
 			ui.Text(c, values[col]).Selectable()

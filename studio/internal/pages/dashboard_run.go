@@ -3,6 +3,7 @@ package pages
 import (
 	"fmt"
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"path/filepath"
 	"strings"
@@ -92,7 +93,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 	for _, p := range w.processes {
 		options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
 	}
-	ui.Field(c, "已启动的本机进程", func() { ui.Select(c, &w.process, options) }).Description("请选择已启动的服务进程；绑定仍会核验身份。")
+	ui.Field(c, "已启动的本机进程", func() { components.NativeSelect(c, &w.process, nativeOptions(options)) }).Description("请选择已启动的服务进程；绑定仍会核验身份。")
 	field(c, "endpoint", &w.bindEndpoint).Description("必填；本机服务的 http 或 https URL。").Error(urlError(w.bindEndpoint))
 	if button(c, "绑定进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
 		if message := urlError(w.bindEndpoint); message != "" {
@@ -165,17 +166,17 @@ func (s *viewState) quickRunView(c *ui.Context) {
 			s.firstBundle = defaultBundle(s.firstBundle, names, "")
 			twoBound := len(names) >= 2
 			if s.single || !twoBound {
-				ui.Field(c, "题包", func() { ui.Select(c, &s.firstBundle, names) })
+				ui.Field(c, "题包", func() { components.NativeSelect(c, &s.firstBundle, nativeOptions(names)) })
 				ui.Text(c, configOf(options, s.firstBundle)).Selectable()
 			} else {
 				s.secondBundle = defaultBundle(s.secondBundle, names, s.firstBundle)
-				ui.Field(c, "第一题包", func() { ui.Select(c, &s.firstBundle, names) })
+				ui.Field(c, "第一题包", func() { components.NativeSelect(c, &s.firstBundle, nativeOptions(names)) })
 				ui.Text(c, configOf(options, s.firstBundle)).Selectable()
-				ui.Field(c, "第二题包", func() { ui.Select(c, &s.secondBundle, names) })
+				ui.Field(c, "第二题包", func() { components.NativeSelect(c, &s.secondBundle, nativeOptions(names)) })
 				ui.Text(c, configOf(options, s.secondBundle)).Selectable()
 			}
 		}
-		ui.Checkbox(c, &s.manualConfig, "高级：手动配置路径")
+		components.Checkbox(c, &s.manualConfig, "高级：手动配置路径")
 		if s.manualConfig {
 			field(c, "第一配置绝对路径", &s.manualFirst).Description("已绑定的配置文件绝对路径。").Error(pathError(s.manualFirst))
 			if !s.single {
@@ -187,11 +188,11 @@ func (s *viewState) quickRunView(c *ui.Context) {
 			first, second = strings.TrimSpace(s.manualFirst), strings.TrimSpace(s.manualSecond)
 		}
 		twoBound := first != "" && second != ""
-		if ui.Checkbox(c, &s.single, "仅运行一个题包").Changed() {
+		if components.Checkbox(c, &s.single, "仅运行一个题包").Changed() {
 			s.confirmed = false
 		}
 		if s.single {
-			ui.Checkbox(c, &s.confirmed, "我确认只运行一个题包")
+			components.Checkbox(c, &s.confirmed, "我确认只运行一个题包")
 		}
 		ui.Text(c, "默认双题包，按配置顺序串行运行。运行前请核对设备、预算与停止条件。")
 		if !twoBound && !s.single {
@@ -269,4 +270,12 @@ func configOf(options []boundOption, bundle string) string {
 		}
 	}
 	return ""
+}
+
+func nativeOptions(values []string) []components.NativeSelectOption[string] {
+	options := make([]components.NativeSelectOption[string], len(values))
+	for i, value := range values {
+		options[i] = components.NativeSelectOption[string]{Value: value, Label: value}
+	}
+	return options
 }

@@ -20,8 +20,8 @@ func designNodes(tt *ui.Tester, visit func(reflect.Value, bool)) {
 			return
 		}
 		n := p.Elem()
+		table = table || n.FieldByName("role").Uint() == uint64(ui.RoleTable)
 		visit(n, table)
-		table = table || n.FieldByName("widget").String() == "Table"
 		for child := n.FieldByName("first"); !child.IsNil(); child = child.Elem().FieldByName("next") {
 			walk(child, table)
 		}

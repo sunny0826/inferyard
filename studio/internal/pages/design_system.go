@@ -3,6 +3,7 @@ package pages
 import (
 	"fmt"
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"math"
 )
@@ -29,18 +30,15 @@ func configuredValue(value string) string {
 }
 
 func button(c *ui.Context, label string) ui.Element {
-	return ui.Button(c, "").Key(label).MaxWidthPercent(100).Children(func() { ui.Text(c, label) })
+	return components.Button(c, label, components.ButtonSecondary).MaxWidthPercent(100)
 }
 
 func primaryButton(c *ui.Context, label string) ui.Element {
-	return ui.PrimaryButton(c, "").Key(label).MaxWidthPercent(100).Children(func() { ui.Text(c, label) })
+	return components.Button(c, label, components.ButtonPrimary).MaxWidthPercent(100)
 }
 
 func activitySpinner(c *ui.Context, label string) ui.Element {
-	if c.Preferences().ReduceMotion {
-		return ui.Text(c, "处理中").Label(label).Role(ui.RoleProgress).Range(0, 1, -1)
-	}
-	return ui.Spinner(c).Label(label)
+	return components.Spinner(c, components.SpinnerRing).Label(label)
 }
 
 func compactLayout(c *ui.Context) bool {
@@ -59,14 +57,7 @@ func progressBar(c *ui.Context, value float64, label string) ui.Element {
 	if math.IsNaN(value) || math.IsInf(value, 0) || value > 1 {
 		value = -1
 	}
-	if value < 0 && c.Preferences().ReduceMotion {
-		t := c.Theme()
-		return ui.Box(c).Height(t.Space(1.5)).Background(t.Border).Radius(t.Space(.75)).
-			Role(ui.RoleProgress).Range(0, 1, -1).Label(label).Draw(func(p *ui.Painter, r ui.Rect) {
-			p.Fill(ui.Rect{X: r.X + r.W*.35, Y: r.Y, W: r.W * .3, H: r.H}, t.Accent, t.Space(.75))
-		})
-	}
-	return ui.Progress(c, value).Label(label)
+	return components.Progress(c, value).Label(label)
 }
 
 func errorAnnouncement(e *core.ApiError) string {

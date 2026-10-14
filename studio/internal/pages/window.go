@@ -8,20 +8,52 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/components/chart"
+	"github.com/oneo-me/onevra/source/icons/lucide"
+	"github.com/oneo-me/onevra/source/shells/sidebar"
+	"github.com/oneo-me/onevra/source/theme"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
 
-var navigation = []struct{ id, label string }{{"dashboard", "Dashboard"}, {"device", "设备"}, {"models", "模型与下载"}, {"reports", "报告"}, {"settings", "设置"}}
-
-type Window struct {
-	Win *mygo.Window
+var navigation = []struct {
+	id, label string
+	icon      func() *ui.SVG
+}{
+	{"dashboard", "Dashboard", lucide.LayoutDashboard},
+	{"device", "设备", lucide.Cpu},
+	{"models", "模型与下载", lucide.Download},
+	{"reports", "报告", lucide.FileText},
+	{"settings", "设置", lucide.Settings},
 }
 
-func New(ctx context.Context, service *core.Service, page string, reports *Reports) *Window {
+// New opens the main window on the Onevra sidebar shell: a collapsible,
+// resizable navigation sidebar, a floating window header and the Onevra theme.
+// The navigation and content builders are shared with the in-memory test view.
+func New(ctx context.Context, service *core.Service, page string, reports *Reports) {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &viewState{ctx: ctx, service: service, selected: pageID(page), denied: map[string]bool{}, chartIndex: -1}
-	w := mygo.NewWindow(mygo.WindowOptions{Title: "InferYard Studio", Width: 1120, Height: 800, Content: ui.View(s.view)})
+	shell := sidebar.NewShell(sidebar.ShellOptions{
+		Title:           "InferYard Studio",
+		Width:           1120,
+		Height:          800,
+		MinWidth:        800,
+		MinHeight:       600,
+		StateKey:        "inferyard-studio-main",
+		LeftWidth:       205,
+		Left:            s.leftNav,
+		Content:         s.contentView,
+		Theme:           theme.Onevra,
+		LeftToggleLabel: "切换侧栏",
+		LeftResizeLabel: "调整侧栏宽度",
+		MinimizeLabel:   "最小化",
+		MaximizeLabel:   "最大化",
+		RestoreLabel:    "还原",
+		CloseLabel:      "关闭",
+		CloseToastLabel: "关闭通知",
+	})
+	w := shell.Window()
 	s.win = w
 	s.reportWindows = reports
 	if reports != nil {
@@ -49,7 +81,6 @@ func New(ctx context.Context, service *core.Service, page string, reports *Repor
 			}
 		}
 	}()
-	return &Window{Win: w}
 }
 func pageID(page string) string {
 	page = strings.TrimPrefix(page, "/")
@@ -105,10 +136,12 @@ type viewState struct {
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                string
-	tasksTable, historyTable, reportsTable, reportSources                               ui.ListState
+	tasksTable, historyTable, reportsTable                                              pageTableState
+	reportSources                                                                       ui.ListState
 	reportChoices                                                                       ui.Selection[string]
 	scrolls                                                                             map[string]*ui.ScrollState
-	casesTable, samplesTable                                                            ui.ListState
+	casesTable, samplesTable                                                            pageTableState
+	resourceCharts                                                                      [3]chart.State
 	chartIndex                                                                          int
 }
 
@@ -233,52 +266,70 @@ func (s *viewState) view(c *ui.Context) {
 	s.announceChanges(c)
 
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
-		ui.Sidebar(c, &s.selected, func() {
-			ui.Text(c, "InferYard Studio").Bold().Margin(12)
+		ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
+		s.contentView(c)
+	})
+}
+
+// leftNav builds the navigation column used both by the shell's left region
+// and by the in-memory test view. It clears the shell's floating header.
+func (s *viewState) leftNav(c *ui.Context) {
+	t := c.Theme()
+	ui.Column(c).FillWidth().MinWidth(0).Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
+		components.Sidebar(c).Children(func() {
+			components.Text(c, "InferYard Studio").Bold().FontSize(t.Rem(1)).
+				Padding(t.Space(2), t.Space(2), t.Space(1), t.Space(2)).SingleLine()
 			for _, n := range navigation {
-				ui.SidebarItem(c, n.id, nil, n.label)
+				if components.SidebarItem(c, n.label, n.icon(), s.selected == n.id).Clicked() {
+					s.selected = n.id
+				}
 			}
-		}).Width(max(c.Theme().Space(51.25), c.Theme().Rem(11)))
-		ui.Column(c).Grow(1).MinWidth(0).Children(func() {
-			s.activityStatus(c)
-			ui.Scroll(c).Grow(1).Key(s.selected).TrackScroll(s.pageScroll()).Padding(c.Theme().Space(6)).Children(func() {
-				ui.Column(c).Gap(c.Theme().Space(4)).Children(func() {
-					s.feedback(c)
-					if !s.loaded {
-						title := "首次上手"
-						for _, n := range navigation {
-							if n.id == s.selected {
-								title = n.label
-							}
+		})
+	})
+}
+
+// contentView builds the page area below the shell's floating header: the
+// activity toolbar stays fixed while page content scrolls beneath it.
+func (s *viewState) contentView(c *ui.Context) {
+	ui.Column(c).Grow(1).MinWidth(0).Fill().Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
+		s.activityStatus(c)
+		ui.Scroll(c).Grow(1).Key(s.selected).TrackScroll(s.pageScroll()).Padding(c.Theme().Space(6)).Children(func() {
+			ui.Column(c).Gap(c.Theme().Space(4)).Children(func() {
+				s.feedback(c)
+				if !s.loaded {
+					title := "首次上手"
+					for _, n := range navigation {
+						if n.id == s.selected {
+							title = n.label
 						}
-						s.header(c, title)
-						if s.failure != nil || s.refreshFailure != "" {
-							button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
-						} else {
-							ui.Text(c, "正在读取页面数据…")
-							progressBar(c, -1, "页面数据加载进度")
-						}
-						return
 					}
-					switch s.selected {
-					case "device":
-						s.deviceView(c)
-					case "models":
-						s.modelsView(c)
-					case "dashboard":
-						if s.detailID != "" {
-							s.detailView(c)
-						} else {
-							s.dashboardView(c)
-						}
-					case "reports":
-						s.reportsView(c)
-					case "settings":
-						s.settingsView(c)
-					default:
+					s.header(c, title)
+					if s.failure != nil || s.refreshFailure != "" {
+						button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
+					} else {
+						ui.Text(c, "正在读取页面数据…")
+						progressBar(c, -1, "页面数据加载进度")
+					}
+					return
+				}
+				switch s.selected {
+				case "device":
+					s.deviceView(c)
+				case "models":
+					s.modelsView(c)
+				case "dashboard":
+					if s.detailID != "" {
+						s.detailView(c)
+					} else {
 						s.dashboardView(c)
 					}
-				})
+				case "reports":
+					s.reportsView(c)
+				case "settings":
+					s.settingsView(c)
+				default:
+					s.dashboardView(c)
+				}
 			})
 		})
 	})
@@ -311,7 +362,7 @@ func card(c *ui.Context, title string, fn func()) {
 	ui.Column(c).MinWidth(0).Gap(c.Theme().Space(2.5)).Padding(c.Theme().Space(4.5)).Background(c.Theme().Surface).Radius(c.Theme().Space(3)).Children(func() { heading(c, title, 2); fn() })
 }
 func field(c *ui.Context, label string, value *string) ui.Element {
-	return ui.Field(c, label, func() { ui.TextInput(c, value) })
+	return ui.Field(c, label, func() { components.TextBox(c, value, components.TextBoxOptions{}) })
 }
 func text(p *string) string {
 	if p == nil {

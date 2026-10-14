@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 )
 
@@ -110,7 +111,7 @@ func componentFold(c *ui.Context, title string, fn func()) {
 }
 
 func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {
-	badge := ui.Badge(c, label).TextColor(color).Background(color.Alpha(0.10)).AlignSelf(ui.Start)
+	badge := components.Badge(c, label).TextColor(color).Background(color.Alpha(0.10))
 	if c.Preferences().HighContrast {
 		badge.Background(c.Theme().Surface).Border(1, color)
 	}

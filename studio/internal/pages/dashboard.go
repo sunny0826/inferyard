@@ -64,7 +64,7 @@ func (s *viewState) conclusionView(c *ui.Context) {
 				case i < step:
 					ui.Text(c, "✓  "+label).TextColor(c.Theme().Success)
 				case i == step:
-					statusBadge(c, label, c.Theme().Accent)
+					statusBadge(c, label, c.Theme().Accent).Description("当前阶段：" + label)
 				default:
 					ui.Text(c, label).TextColor(c.Theme().TextMuted)
 				}
@@ -117,7 +117,7 @@ func (s *viewState) reportGuide(c *ui.Context) {
 		return
 	}
 	if s.progress.DefaultScopeComplete {
-		ui.Badge(c, "已核验 verified")
+		statusBadge(c, "已核验 verified", c.Theme().Success)
 		return
 	}
 	if len(s.progress.Bundles) == 0 {
