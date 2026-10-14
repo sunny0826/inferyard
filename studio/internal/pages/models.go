@@ -2,7 +2,6 @@ package pages
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"path/filepath"
@@ -25,7 +24,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 		}
 		_ = json.Unmarshal(s.device.Snapshot, &snap)
 		if snap.Models != nil {
-			fields(c, snap.Models)
+			kvview(c, "kv-models", snap.Models)
 		} else {
 			ui.Text(c, "尚无资产快照，请到设备页刷新。")
 		}
@@ -35,7 +34,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 		field(c, "新目录名", &s.modelName)
 		field(c, "凭据环境变量名（可选）", &s.tokenEnv)
 		ui.Text(c, "仅填写环境变量名。凭据由启动 Studio 的环境提供。目录名仅允许字母、数字、点、下划线与连字符，不能全为点。")
-		if ui.PrimaryButton(c, "下载模型").Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
+		if ui.PrimaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
 			s.acquireModel()
 		}
 	})
@@ -45,38 +44,11 @@ func (s *viewState) modelsView(c *ui.Context) {
 		if s.engineDownloadStatus != "" {
 			ui.Text(c, s.engineDownloadStatus)
 		}
-		if ui.Button(c, "下载引擎").Disabled(s.busy || !validName(s.engineName) || s.engineURL == "" || emptyText(s.settings.Effective.WorkspaceRoot) == "").Clicked() {
+		if ui.Button(c, "下载引擎").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.engineName) || s.engineURL == "" || emptyText(s.settings.Effective.WorkspaceRoot) == "").Clicked() {
 			s.fetchEngine()
 		}
 	})
-	card(c, "下载队列", func() {
-		ui.Text(c, "1 MiB = 1,048,576 bytes；速率为 bytes/s，总量未知。")
-		if len(s.downloads) == 0 {
-			ui.Text(c, "暂无下载任务。")
-		}
-		for _, task := range s.downloads {
-			ui.Column(c).Gap(6).Key(task.TaskId).Children(func() {
-				ui.Text(c, task.OutName+" · "+stateLabel(task.State)).Bold()
-				ui.Text(c, "输出目录："+task.OutDir).Selectable()
-				ui.Text(c, "文件："+text(task.FileName))
-				ui.Text(c, fmt.Sprintf("已下载 %.2f MiB（%d bytes） · 速率 %s bytes/s", float64(task.DownloadedBytes)/1048576, task.DownloadedBytes, number(task.BytesPerSecond)))
-				if task.Result != nil {
-					ui.Text(c, fmt.Sprintf("实测大小：%d bytes · SHA-256：%s", task.Result.Bytes, task.Result.Sha256)).Selectable()
-				}
-				errorView(c, task.Error)
-				if task.State == "failed" || task.State == "cancelled" {
-					ui.Text(c, "输出目录保留；再次下载请更换目录名。")
-				}
-				if task.State == "downloading" && ui.Button(c, "取消下载 "+task.OutName).Disabled(s.busy).Clicked() {
-					id := task.TaskId
-					s.work(func() (string, *core.ApiError) {
-						_, e := s.service.CancelDownload(id)
-						return "已请求取消下载。", e
-					})
-				}
-			})
-		}
-	})
+	card(c, "下载队列", func() { s.downloadsView(c) })
 }
 func (s *viewState) acquireModel() {
 	source, name, env := s.modelURL, s.modelName, s.tokenEnv

@@ -34,13 +34,11 @@ func TestOverviewStagesAndNavigation(t *testing.T) {
 				t.Fatalf("step: %d", s.step())
 			}
 			for i, label := range []string{"准备", "设备检查", "候选", "启动与绑定", "运行", "报告核验"} {
-				mark := "○"
+				mark := ""
 				if i < tc.step {
-					mark = "✓"
-				} else if i == tc.step {
-					mark = "●"
+					mark = "✓  "
 				}
-				if !tt.HasText(mark + "  " + label) {
+				if !slices.Contains(tt.Texts(), mark+label) {
 					t.Fatal(tt.Texts())
 				}
 			}

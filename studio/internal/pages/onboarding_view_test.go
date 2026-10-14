@@ -104,7 +104,7 @@ func TestSecondBundleAndIncompleteRun(t *testing.T) {
 	w.progress.NextAction = "run"
 	w.progress.Bundles[1].NextAction = "resume"
 	w.progress.Bundles[1].Phase = "run_incomplete"
-	tt = ui.NewTester(w.view, 1000, 740)
+	tt.Frame()
 	if !tt.HasText("继续未完成的运行") || slices.Contains(tt.Texts(), "run_incomplete") {
 		t.Fatal(tt.Texts())
 	}

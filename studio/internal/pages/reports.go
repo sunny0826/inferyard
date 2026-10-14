@@ -70,19 +70,34 @@ func (s *viewState) reportsView(c *ui.Context) {
 		if len(runs) == 0 {
 			ui.Text(c, "暂无运行记录。")
 		}
-		count := s.selectedReports()
-		for _, run := range runs {
-			checked := s.reportSelection[run.Path]
-			if ui.Checkbox(c, &checked, run.RunId+" · "+run.Path).Disabled(s.busy || (count >= 100 && !checked)).Changed() {
-				s.reportSelection[run.Path] = checked
+		known := map[string]bool{}
+		for _, r := range runs {
+			known[r.Path] = true
+		}
+		for path := range s.reportChoices.All() {
+			if !known[path] {
+				s.reportChoices.Remove(path)
 			}
 		}
-		count = s.selectedReports()
+		s.reportSources.Label = func(i int) string { return runs[i].RunId }
+		c.Key("report-sources")
+		ui.List(c, &s.reportSources, len(runs)).Height(220).
+			ItemKey(func(i int) any { return runs[i].Path }).
+			Selection(&s.reportChoices).Disabled(s.busy).Rows(func(row ui.ListRow) {
+			ui.Column(row.Context).Padding(6).Gap(2).Children(func() {
+				ui.Text(row.Context, runs[row.Index].RunId)
+				ui.Text(row.Context, runs[row.Index].Path).FontSize(12)
+			})
+		})
+		count := s.reportChoices.Len()
+		if count < 1 || count > 100 {
+			ui.Text(c, "请选择 1–100 个来源 run。")
+		}
 		ui.Text(c, fmt.Sprintf("已选 %d / 100", count))
-		if ui.PrimaryButton(c, "生成报告").Disabled(s.busy || count < 1 || count > 100).Clicked() {
+		if ui.PrimaryButton(c, "生成报告").AlignSelf(ui.Start).Disabled(s.busy || count < 1 || count > 100).Clicked() {
 			paths := []string{}
 			for _, r := range runs {
-				if s.reportSelection[r.Path] {
+				if s.reportChoices.Has(r.Path) {
 					paths = append(paths, r.Path)
 				}
 			}
@@ -92,36 +107,5 @@ func (s *viewState) reportsView(c *ui.Context) {
 			})
 		}
 	})
-	card(c, "报告列表", func() {
-		errorView(c, s.reportsError)
-		if len(s.reports) == 0 {
-			ui.Text(c, "暂无报告。")
-		}
-		for _, report := range s.reports {
-			ui.Column(c).Gap(8).Key(report.Path).Children(func() {
-				ui.Text(c, report.ReportId).Bold()
-				ui.Text(c, "目录修改时间："+text(report.CreatedAt))
-				ui.Text(c, report.Path).Selectable()
-				for i, id := range report.RunIds {
-					path := "来源不可达"
-					if i < len(report.RunPaths) && report.RunPaths[i] != nil {
-						path = *report.RunPaths[i]
-					}
-					ui.Text(c, id+" · "+path).Selectable()
-				}
-				if ui.Button(c, "打开报告 "+report.ReportId).Clicked() {
-					_, s.failure = s.reportWindows.Open(report.ReportId)
-				}
-			})
-		}
-	})
-}
-func (s *viewState) selectedReports() int {
-	count := 0
-	for _, selected := range s.reportSelection {
-		if selected {
-			count++
-		}
-	}
-	return count
+	card(c, "报告列表", func() { s.reportsTableView(c) })
 }

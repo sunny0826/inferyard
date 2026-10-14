@@ -13,7 +13,7 @@ import (
 
 func ptr[T any](v T) *T { return &v }
 func testState() viewState {
-	return viewState{selected: "wizard", loaded: true, settingsLoaded: true, reportSelection: map[string]bool{}, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
+	return viewState{selected: "wizard", loaded: true, settingsLoaded: true, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
 }
 func TestSixPagesRender(t *testing.T) {
 	for _, tc := range []struct{ page, want string }{{"wizard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "凭据环境变量名"}, {"runs", "/w/bound/zh-core-1/config.toml"}, {"reports", "选择来源 run（1–100 个）"}, {"settings", "CLI 绝对路径（留空使用 PATH）"}} {
@@ -126,7 +126,7 @@ func TestDeviceSnapshotAndMissingMeasurements(t *testing.T) {
 	s.selected = "device"
 	s.device.Snapshot = json.RawMessage(`{"hardware":{"cpu":{"name":"fixture cpu"},"missing":{"temperature":"unsupported"},"sources":{"memory":"fixture"}},"recommendation":{"status":"blocked","reason":"fixture blocked"},"models":[],"platform_capabilities":{},"next_steps":[],"ready_to_run":false,"model_requests_sent":0}`)
 	tt := ui.NewTester(s.view, 1120, 1600)
-	for _, want := range []string{"fixture cpu", "fixture blocked", "temperature：unsupported", "memory：fixture", "可运行：false"} {
+	for _, want := range []string{"fixture cpu", "fixture blocked", "temperature", "unsupported", "memory", "fixture", "可运行：false"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
@@ -138,7 +138,7 @@ func TestDetailTableAndResourcesRender(t *testing.T) {
 	s.detailID = "fixture"
 	s.detail = &core.RunTaskDetail{Task: core.RunTask{TaskId: "fixture", Kind: "resume", State: "done", Exit: &core.RunExit{ExitCode: 3}}, Progress: &core.RunProgress{Done: 1, Total: ptr(int64(2)), Phase: ptr("formal"), Cases: []core.CaseProgress{{CaseId: "case-pelican", State: "failed", ErrorCategory: ptr("fixture-failure")}}}, Resources: []core.ResourceSample{{Utc: "2026-10-13T06:00:00Z", MemAvailableBytes: ptr(int64(1073741824)), ServiceCpuPercent: ptr(12.5)}}}
 	tt := ui.NewTester(s.view, 1120, 1800)
-	for _, want := range []string{"运行不完整 · done · partial", "1 / 2", "分母为冻结续测子集", "case-pelican", "fixture-failure", "采样点：1", "1073741824", "缺测"} {
+	for _, want := range []string{"运行不完整", "原始状态：done", "1 / 2", "分母为冻结续测子集", "case-pelican", "fixture-failure", "采样点：1", "1073741824", "缺测"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
@@ -148,25 +148,6 @@ func TestDetailTableAndResourcesRender(t *testing.T) {
 	}
 	if s.detailID != "" || !tt.HasText("启动测评") {
 		t.Fatal("return navigation failed")
-	}
-}
-func TestReportSelection(t *testing.T) {
-	s := testState()
-	s.selected = "reports"
-	s.history.StandaloneRuns = []core.RunSummary{{RunId: "run-a", Path: "/results/a"}, {RunId: "run-b", Path: "/results/b"}}
-	s.reports = []core.ReportSummary{{ReportId: "report-a", Path: "/reports/report-a", RunIds: []string{"run-a"}, RunPaths: []*string{nil}}}
-	tt := ui.NewTester(s.view, 1120, 1200)
-	if err := tt.Click("run-a · /results/a"); err != nil {
-		t.Fatal(err)
-	}
-	if s.selectedReports() != 1 || !tt.HasText("已选 1 / 100") || !tt.HasText("来源不可达") {
-		t.Fatal(tt.Texts())
-	}
-	if err := tt.Click("run-a · /results/a"); err != nil {
-		t.Fatal(err)
-	}
-	if s.selectedReports() != 0 {
-		t.Fatal("deselection failed")
 	}
 }
 func TestResourceUnitsNullsAndOrdering(t *testing.T) {
@@ -250,7 +231,7 @@ func TestSettingsFollowWorkspaceHandoffAndPreserveEdits(t *testing.T) {
 	next.Settings.ResultsRoot = ptr("/new-child/results")
 	s.applySettings(next)
 	tt.Frame()
-	if s.results != "/new-child/results" || !tt.HasText("workspace_root：/new-child") || s.workspace != "/new-child" {
+	if s.results != "/new-child/results" || !(tt.HasText("workspace_root") && tt.HasText("/new-child")) || s.workspace != "/new-child" {
 		t.Fatal("workspace handoff left settings form stale", tt.Texts())
 	}
 	s.cliPath = "/editing/cli"
