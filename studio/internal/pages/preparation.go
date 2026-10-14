@@ -2,10 +2,8 @@ package pages
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
-	"strings"
 )
 
 func (s *viewState) readinessView(c *ui.Context) {
@@ -96,38 +94,6 @@ func (s *viewState) settingsView(c *ui.Context) {
 	s.readinessView(c)
 	card(c, "生效值与探测状态", func() { kvview(c, "kv-effective", s.settings.Effective) })
 }
-func (s *viewState) deviceView(c *ui.Context) {
-	s.header(c, "设备")
-	if s.progress != nil && s.progress.NextAction == "device_check" {
-		card(c, "检查设备", func() {
-			ui.Text(c, "模型与引擎可在「模型与下载」页准备。")
-			if ui.PrimaryButton(c, "检查设备").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
-				s.execute(s.nextCommand(), false)
-			}
-		})
-	}
-	if ui.PrimaryButton(c, "刷新设备").AlignSelf(ui.Start).Disabled(s.busy || s.device.Refreshing).Clicked() {
-		s.work(func() (string, *core.ApiError) { return "正在采集设备信息…", s.service.RefreshDevice() })
-	}
-	errorView(c, s.device.LastError)
-	ui.Text(c, "设备快照 · "+text(s.device.CapturedAt))
-	if s.device.Refreshing {
-		ui.Text(c, "正在采集设备信息…")
-	}
-	var snapshot map[string]json.RawMessage
-	if len(s.device.Snapshot) == 0 || strings.TrimSpace(string(s.device.Snapshot)) == "null" {
-		card(c, "尚无设备快照", func() { ui.Text(c, "请先在设置中配置模型目录，然后刷新设备。") })
-		return
-	}
-	if e := json.Unmarshal(s.device.Snapshot, &snapshot); e != nil {
-		ui.Text(c, "设备快照无法读取。").TextColor(c.Theme().Danger)
-		return
-	}
-	for _, section := range []struct{ key, title string }{{"hardware", "硬件、GPU、缺测与来源"}, {"recommendation", "推荐配置"}, {"models", "本地 GGUF 模型"}, {"platform_capabilities", "平台能力"}, {"next_steps", "下一步"}} {
-		card(c, section.title, func() { kvview(c, "kv-"+section.key, snapshot[section.key]) })
-	}
-	ui.Text(c, fmt.Sprintf("可运行：%s · 模型请求数：%s", rawValue(snapshot["ready_to_run"]), rawValue(snapshot["model_requests_sent"])))
-}
 
 func (s *viewState) settingsEdited() bool {
 	return s.cliPath != emptyText(s.settings.Settings.InferyardPath) ||
@@ -146,12 +112,4 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 		s.loadSettings(value)
 		s.settingsLoaded = true
 	}
-}
-
-func rawValue(value json.RawMessage) string {
-	text := strings.TrimSpace(string(value))
-	if text == "" || text == "null" {
-		return "缺测"
-	}
-	return text
 }
