@@ -17,10 +17,14 @@ func validName(s string) bool { return directoryName.MatchString(s) && strings.T
 func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 func (s *viewState) modelsView(c *ui.Context) {
 	s.header(c, "模型与下载")
-	if snapshot, err := parseDeviceSnapshot(s.device.Snapshot); err == nil && snapshot != nil {
+	snapshot, err := parseDeviceSnapshot(s.device.Snapshot)
+	switch {
+	case err != nil:
+		ui.Text(c, "设备快照无法读取。").TextColor(c.Theme().Danger)
+	case snapshot != nil:
 		deviceRecommendation(c, snapshot.object("recommendation"))
 		deviceModels(c, snapshot.list("models"))
-	} else {
+	default:
 		ui.Text(c, "尚无设备快照，请到设备页刷新。")
 	}
 	card(c, "本地资产", func() {
@@ -104,7 +108,6 @@ func deviceRecommendation(c *ui.Context, rec deviceObject) {
 			ui.Text(c, "原因："+rec.label("reason")).TextColor(c.Theme().Warning)
 			return
 		}
-		ui.Text(c, fmt.Sprintf("推荐方案：%s · %s · 上下文 %s · %s 线程", selected.value("model_name"), selected.label("mode"), selected.value("context_size"), selected.value("threads")))
 		mode := selected.label("mode")
 		if selected["gpu_name"] != nil {
 			mode += "（" + selected.value("gpu_name") + "）"

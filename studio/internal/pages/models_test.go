@@ -35,7 +35,7 @@ func TestModelsSnapshot(t *testing.T) {
 	s := deviceTestState()
 	s.selected = "models"
 	tt := ui.NewTester(s.view, 1120, 2600)
-	for _, want := range []string{"推荐配置", "推荐方案：Fixture Model · Metal 加速 · 上下文 4096 · 5 线程", "本地模型 1 个 GGUF", "100.57 MiB · llama · 上下文 8192", "可用", "≥ 2.83 GiB", "≥ 5.00 GiB", "统一内存容量估算可容纳", "模型目录：", "引擎目录：", "创建模型下载", "下载引擎", "下载队列"} {
+	for _, want := range []string{"推荐配置", "本地模型 1 个 GGUF", "100.57 MiB · llama · 上下文 8192", "可用", "≥ 2.83 GiB", "≥ 5.00 GiB", "统一内存容量估算可容纳", "模型目录：", "引擎目录：", "创建模型下载", "下载引擎", "下载队列"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
@@ -58,13 +58,27 @@ func TestModelsSnapshot(t *testing.T) {
 }
 
 func TestModelsWithoutSnapshot(t *testing.T) {
-	for _, raw := range []string{"", "null", "{", "[]", `{"hardware":{}} trailing`} {
-		t.Run(raw, func(t *testing.T) {
+	for _, raw := range []string{"", "null"} {
+		t.Run("empty "+raw, func(t *testing.T) {
 			s := deviceTestState()
 			s.selected = "models"
 			s.device.Snapshot = json.RawMessage(raw)
 			tt := ui.NewTester(s.view, 1120, 1600)
 			if !tt.HasText("尚无设备快照，请到设备页刷新。") || tt.HasText("推荐配置") || tt.HasText("本地模型") {
+				t.Fatal(tt.Texts())
+			}
+			if !tt.HasText("创建模型下载") || !tt.HasText("下载引擎") || !tt.HasText("下载队列") {
+				t.Fatal(tt.Texts())
+			}
+		})
+	}
+	for _, raw := range []string{"{", "[]", `{"hardware":{}} trailing`} {
+		t.Run("invalid "+raw, func(t *testing.T) {
+			s := deviceTestState()
+			s.selected = "models"
+			s.device.Snapshot = json.RawMessage(raw)
+			tt := ui.NewTester(s.view, 1120, 1600)
+			if !tt.HasText("设备快照无法读取。") || tt.HasText("推荐配置") || tt.HasText("本地模型") {
 				t.Fatal(tt.Texts())
 			}
 			if !tt.HasText("创建模型下载") || !tt.HasText("下载引擎") || !tt.HasText("下载队列") {
