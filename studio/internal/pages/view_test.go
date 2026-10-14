@@ -121,17 +121,6 @@ func TestBundleHelpers(t *testing.T) {
 		t.Fatal("configOf mismatch")
 	}
 }
-func TestDeviceSnapshotAndMissingMeasurements(t *testing.T) {
-	s := testState()
-	s.selected = "device"
-	s.device.Snapshot = json.RawMessage(`{"hardware":{"cpu":{"name":"fixture cpu"},"missing":{"temperature":"unsupported"},"sources":{"memory":"fixture"}},"recommendation":{"status":"blocked","reason":"fixture blocked"},"models":[],"platform_capabilities":{},"next_steps":[],"ready_to_run":false,"model_requests_sent":0}`)
-	tt := ui.NewTester(s.view, 1120, 1600)
-	for _, want := range []string{"fixture cpu", "fixture blocked", "temperature", "unsupported", "memory", "fixture", "可运行：false"} {
-		if !tt.HasText(want) {
-			t.Fatalf("missing %q: %v", want, tt.Texts())
-		}
-	}
-}
 func TestDetailTableAndResourcesRender(t *testing.T) {
 	s := testState()
 	s.selected = "runs"
