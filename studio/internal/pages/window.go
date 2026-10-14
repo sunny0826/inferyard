@@ -20,7 +20,7 @@ type Window struct {
 
 func New(ctx context.Context, service *core.Service, page string, reports *Reports) *Window {
 	ctx, cancel := context.WithCancel(ctx)
-	s := &viewState{ctx: ctx, service: service, selected: pageID(page), reportSelection: map[string]bool{}, denied: map[string]bool{}, chartIndex: -1}
+	s := &viewState{ctx: ctx, service: service, selected: pageID(page), denied: map[string]bool{}, chartIndex: -1}
 	w := mygo.NewWindow(mygo.WindowOptions{Title: "InferYard Studio", Width: 1120, Height: 800, Content: ui.View(s.view)})
 	s.win = w
 	s.reportWindows = reports
@@ -97,7 +97,6 @@ type viewState struct {
 	endpoint, pid                                                                                             string
 	denied                                                                                                    map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                                      string
-	reportSelection                                                                                           map[string]bool
 	tasksTable, historyTable, reportsTable, downloadsTable, reportSources                                     ui.ListState
 	reportChoices                                                                                             ui.Selection[string]
 	scrolls                                                                                                   map[string]*ui.ScrollState
@@ -167,15 +166,6 @@ func (s *viewState) refresh(full bool) {
 		if full {
 			s.history, s.reports = history, reports
 			s.historyError, s.reportsError = he, re
-			known := map[string]bool{}
-			for _, r := range s.historyRuns() {
-				known[r.Path] = true
-			}
-			for path := range s.reportSelection {
-				if !known[path] {
-					delete(s.reportSelection, path)
-				}
-			}
 		}
 		s.ready, s.progress = ready, progress.Progress
 		s.applyOnboarding(onboarding, pe)

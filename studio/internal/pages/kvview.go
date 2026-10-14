@@ -10,22 +10,33 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
+// kvDecoded caches the decode of one kvview's JSON input between frames:
+// re-renders from scrolling or hovering reuse it while the bytes are unchanged.
+type kvDecoded struct {
+	raw  []byte
+	data any
+}
+
 func kvview(c *ui.Context, key string, value any) {
 	raw, err := json.Marshal(value)
 	if err != nil {
 		return
 	}
-	var data any
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
-	if decoder.Decode(&data) != nil {
-		return
-	}
 	c.Key(key)
 	container := ui.Column(c)
+	cache := ui.Local(container, "decoded", func() kvDecoded { return kvDecoded{} })
+	if !bytes.Equal(cache.raw, raw) {
+		var data any
+		decoder := json.NewDecoder(bytes.NewReader(raw))
+		decoder.UseNumber()
+		if decoder.Decode(&data) != nil {
+			return
+		}
+		cache.raw, cache.data = raw, data
+	}
 	open := ui.Local(container, "expanded", func() map[string]*bool { return map[string]*bool{} })
 	container.Children(func() {
-		if values, ok := data.(map[string]any); ok && stringMap(values) {
+		if values, ok := cache.data.(map[string]any); ok && stringMap(values) {
 			ui.Form(c, func() {
 				for _, key := range kvKeys(values) {
 					ui.Field(c.Key(key), key, func() { ui.Text(c, kvValue(key, values[key])).Selectable() })
@@ -33,7 +44,7 @@ func kvview(c *ui.Context, key string, value any) {
 			})
 			return
 		}
-		ui.Tree(c, func() { kvChildren(c, data, "", *open) })
+		ui.Tree(c, func() { kvChildren(c, cache.data, "", *open) })
 	})
 }
 

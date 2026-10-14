@@ -70,19 +70,18 @@ func (s *viewState) reportsView(c *ui.Context) {
 		if len(runs) == 0 {
 			ui.Text(c, "暂无运行记录。")
 		}
-		for path := range s.reportChoices.All() {
-			if !s.reportSelection[path] {
-				s.reportChoices.Remove(path)
-			}
+		known := map[string]bool{}
+		for _, r := range runs {
+			known[r.Path] = true
 		}
-		for path, selected := range s.reportSelection {
-			if selected {
-				s.reportChoices.Add(path)
+		for path := range s.reportChoices.All() {
+			if !known[path] {
+				s.reportChoices.Remove(path)
 			}
 		}
 		s.reportSources.Label = func(i int) string { return runs[i].RunId }
 		c.Key("report-sources")
-		list := ui.List(c, &s.reportSources, len(runs)).Height(220).
+		ui.List(c, &s.reportSources, len(runs)).Height(220).
 			ItemKey(func(i int) any { return runs[i].Path }).
 			Selection(&s.reportChoices).Disabled(s.busy).Rows(func(row ui.ListRow) {
 			ui.Column(row.Context).Padding(6).Gap(2).Children(func() {
@@ -90,16 +89,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 				ui.Text(row.Context, runs[row.Index].Path).FontSize(12)
 			})
 		})
-		if list.Changed() {
-			clear(s.reportSelection)
-			if s.reportSelection == nil {
-				s.reportSelection = map[string]bool{}
-			}
-			for path := range s.reportChoices.All() {
-				s.reportSelection[path] = true
-			}
-		}
-		count := s.selectedReports()
+		count := s.reportChoices.Len()
 		if count < 1 || count > 100 {
 			ui.Text(c, "请选择 1–100 个来源 run。")
 		}
@@ -107,7 +97,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 		if ui.PrimaryButton(c, "生成报告").AlignSelf(ui.Start).Disabled(s.busy || count < 1 || count > 100).Clicked() {
 			paths := []string{}
 			for _, r := range runs {
-				if s.reportSelection[r.Path] {
+				if s.reportChoices.Has(r.Path) {
 					paths = append(paths, r.Path)
 				}
 			}
@@ -118,13 +108,4 @@ func (s *viewState) reportsView(c *ui.Context) {
 		}
 	})
 	card(c, "报告列表", func() { s.reportsTableView(c) })
-}
-func (s *viewState) selectedReports() int {
-	count := 0
-	for _, selected := range s.reportSelection {
-		if selected {
-			count++
-		}
-	}
-	return count
 }

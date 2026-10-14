@@ -122,8 +122,7 @@ func TestReportMultiSelectionAndLimit(t *testing.T) {
 	if s.busy {
 		t.Fatal("over limit admitted")
 	}
-	// A refresh removes unavailable paths from the persistent selection.
-	delete(s.reportSelection, "/runs/100")
+	// Runs gone from history drop out of the persistent selection.
 	s.history.StandaloneRuns = s.history.StandaloneRuns[:100]
 	tt.Frame()
 	if !tt.HasText("已选 100 / 100") {
