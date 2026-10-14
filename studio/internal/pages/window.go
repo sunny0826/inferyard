@@ -24,6 +24,9 @@ func New(ctx context.Context, service *core.Service, page string, reports *Repor
 	w := mygo.NewWindow(mygo.WindowOptions{Title: "InferYard Studio", Width: 1120, Height: 800, Content: ui.View(s.view)})
 	s.win = w
 	s.reportWindows = reports
+	if reports != nil {
+		reports.onFailure = func(e *core.ApiError) { w.Update(func() { s.failure = e }) }
+	}
 	w.OnClosed(cancel)
 	wake, off, cursor := service.Bus.Subscribe()
 	go func() {
@@ -59,50 +62,54 @@ func pageID(page string) string {
 }
 
 type viewState struct {
+	announcedPage                                                                       string
+	announcedErrors                                                                     map[string]bool
+	returnToTasks                                                                       bool
+	refreshing                                                                          bool
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
-	enginePreset, assetsPreset                                                                                bool
-	engineState                                                                                               core.EngineState
-	startup                                                                                                   core.Startup
-	processes                                                                                                 []core.ProcessCandidate
-	runProgress                                                                                               *core.RunProgress
-	ctx                                                                                                       context.Context
-	service                                                                                                   *core.Service
-	win                                                                                                       *mygo.Window
-	reportWindows                                                                                             *Reports
-	refreshMu                                                                                                 sync.Mutex
-	detailMu                                                                                                  sync.Mutex
-	requestedDetail                                                                                           string
-	selected, detailID                                                                                        string
-	settings                                                                                                  core.SettingsResponse
-	ready                                                                                                     core.Readiness
-	progress                                                                                                  *inferyard.WorkspaceProgress
-	device                                                                                                    core.DeviceResponse
-	history                                                                                                   core.RunHistoryResponse
-	tasks                                                                                                     []core.RunTask
-	downloads                                                                                                 []core.DownloadTask
-	reports                                                                                                   []core.ReportSummary
-	detail                                                                                                    *core.RunTaskDetail
-	historyError, reportsError, detailError                                                                   *core.ApiError
-	loaded, busy, settingsLoaded                                                                              bool
-	pendingToast                                                                                              string
-	failure                                                                                                   *core.ApiError
-	workspace, cliPath, results, models                                                                       string
-	manualFirst, manualSecond                                                                                 string
-	manualConfig                                                                                              bool
-	bindingStale                                                                                              bool
-	bindingUnknown                                                                                            bool
-	firstBundle, secondBundle                                                                                 string
-	single, confirmed                                                                                         bool
-	groups                                                                                                    [][]string
-	resumeSource                                                                                              *core.RunSummary
-	endpoint, pid                                                                                             string
-	denied                                                                                                    map[string]bool
-	modelURL, modelName, tokenEnv, engineURL, engineName                                                      string
-	tasksTable, historyTable, reportsTable, reportSources                                                    ui.ListState
-	reportChoices                                                                                             ui.Selection[string]
-	scrolls                                                                                                   map[string]*ui.ScrollState
-	casesTable, samplesTable                                                                                  ui.ListState
-	chartIndex                                                                                                int
+	enginePreset, assetsPreset                                                          bool
+	engineState                                                                         core.EngineState
+	startup                                                                             core.Startup
+	processes                                                                           []core.ProcessCandidate
+	runProgress                                                                         *core.RunProgress
+	ctx                                                                                 context.Context
+	service                                                                             *core.Service
+	win                                                                                 *mygo.Window
+	reportWindows                                                                       *Reports
+	refreshMu                                                                           sync.Mutex
+	detailMu                                                                            sync.Mutex
+	requestedDetail                                                                     string
+	selected, detailID                                                                  string
+	settings                                                                            core.SettingsResponse
+	ready                                                                               core.Readiness
+	progress                                                                            *inferyard.WorkspaceProgress
+	device                                                                              core.DeviceResponse
+	history                                                                             core.RunHistoryResponse
+	tasks                                                                               []core.RunTask
+	downloads                                                                           []core.DownloadTask
+	reports                                                                             []core.ReportSummary
+	detail                                                                              *core.RunTaskDetail
+	historyError, reportsError, detailError                                             *core.ApiError
+	loaded, busy, settingsLoaded                                                        bool
+	pendingToast                                                                        string
+	failure                                                                             *core.ApiError
+	workspace, cliPath, results, models                                                 string
+	manualFirst, manualSecond                                                           string
+	manualConfig                                                                        bool
+	bindingStale                                                                        bool
+	bindingUnknown                                                                      bool
+	firstBundle, secondBundle                                                           string
+	single, confirmed                                                                   bool
+	groups                                                                              [][]string
+	resumeSource                                                                        *core.RunSummary
+	endpoint, pid                                                                       string
+	denied                                                                              map[string]bool
+	modelURL, modelName, tokenEnv, engineURL, engineName                                string
+	tasksTable, historyTable, reportsTable, reportSources                               ui.ListState
+	reportChoices                                                                       ui.Selection[string]
+	scrolls                                                                             map[string]*ui.ScrollState
+	casesTable, samplesTable                                                            ui.ListState
+	chartIndex                                                                          int
 }
 
 func (s *viewState) refresh(full bool) {
@@ -111,6 +118,7 @@ func (s *viewState) refresh(full bool) {
 	if s.ctx == nil || s.ctx.Err() != nil {
 		return
 	}
+	s.win.Update(func() { s.refreshing = true })
 	device, tasks, downloads := s.service.Device(), s.service.RunTasks(), s.service.Downloads()
 	s.detailMu.Lock()
 	id := s.requestedDetail
@@ -158,14 +166,23 @@ func (s *viewState) refresh(full bool) {
 		if s.ctx.Err() != nil {
 			return
 		}
+		s.refreshing = false
 		s.device, s.tasks, s.downloads = device, tasks, downloads
 		s.runProgress = runProgress
 		if s.detailID == id {
-			s.detail, s.detailError = detail, de
+			if de == nil {
+				s.detail = detail
+			}
+			s.detailError = de
 		}
 		s.applySettings(settings)
 		if full {
-			s.history, s.reports = history, reports
+			if he == nil {
+				s.history = history
+			}
+			if re == nil {
+				s.reports = reports
+			}
 			s.historyError, s.reportsError = he, re
 		}
 		s.ready, s.progress = ready, progress.Progress
@@ -213,6 +230,7 @@ func (s *viewState) view(c *ui.Context) {
 		s.pendingToast = ""
 		c.Toast(message)
 	}
+	s.announceChanges(c)
 	c.OnShortcut(ui.Cmd, ui.KeyR, s.refreshAction)
 
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
@@ -221,12 +239,28 @@ func (s *viewState) view(c *ui.Context) {
 			for _, n := range navigation {
 				ui.SidebarItem(c, n.id, nil, n.label)
 			}
-		}).Width(205)
+		}).Width(max(c.Theme().Space(51.25), c.Theme().Rem(11)))
 		ui.Column(c).Grow(1).MinWidth(0).Children(func() {
 			s.toolbar(c)
-			ui.Scroll(c).Grow(1).Key(s.selected).TrackScroll(s.pageScroll()).Padding(24).Children(func() {
-				ui.Column(c).Gap(16).Children(func() {
+			ui.Scroll(c).Grow(1).Key(s.selected).TrackScroll(s.pageScroll()).Padding(c.Theme().Space(6)).Children(func() {
+				ui.Column(c).Gap(c.Theme().Space(4)).Children(func() {
 					s.feedback(c)
+					if !s.loaded {
+						title := "首次上手"
+						for _, n := range navigation {
+							if n.id == s.selected {
+								title = n.label
+							}
+						}
+						s.header(c, title)
+						if s.failure != nil || s.refreshFailure != "" {
+							button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
+						} else {
+							ui.Text(c, "正在读取页面数据…")
+							progressBar(c, -1, "页面数据加载进度")
+						}
+						return
+					}
 					switch s.selected {
 					case "device":
 						s.deviceView(c)
@@ -257,22 +291,28 @@ func (s *viewState) refreshAction() {
 	}
 }
 func (s *viewState) toolbar(c *ui.Context) {
+	if !s.busy && !s.refreshing {
+		return
+	}
 	ui.Toolbar(c, func() {
-		ui.Button(c, "刷新").Disabled(s.busy).OnClick(s.refreshAction)
+		if s.refreshing && !s.busy {
+			activitySpinner(c, "正在刷新页面")
+			ui.Text(c, "正在刷新…")
+		}
 		if s.busy {
-			ui.Spinner(c)
+			activitySpinner(c, "正在执行操作")
 			ui.Text(c, "执行中…")
 		}
 	})
 }
 func (s *viewState) header(c *ui.Context, title string) {
-	ui.Text(c, title).Bold().FontSize(24)
+	heading(c, title, 1)
 }
 func card(c *ui.Context, title string, fn func()) {
-	ui.Column(c).Gap(10).Padding(18).Background(c.Theme().Surface).Radius(12).Children(func() { ui.Text(c, title).Bold().FontSize(18); fn() })
+	ui.Column(c).MinWidth(0).Gap(c.Theme().Space(2.5)).Padding(c.Theme().Space(4.5)).Background(c.Theme().Surface).Radius(c.Theme().Space(3)).Children(func() { heading(c, title, 2); fn() })
 }
-func field(c *ui.Context, label string, value *string) {
-	ui.Field(c, label, func() { ui.TextInput(c, value) })
+func field(c *ui.Context, label string, value *string) ui.Element {
+	return ui.Field(c, label, func() { ui.TextInput(c, value) })
 }
 func text(p *string) string {
 	if p == nil {

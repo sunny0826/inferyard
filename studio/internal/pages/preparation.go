@@ -31,11 +31,11 @@ func (s *viewState) readinessView(c *ui.Context) {
 			}
 			ui.Text(c, entry.label+"："+text(entry.dir.Path)+" · "+state)
 		}
-		ui.Row(c).Gap(10).Children(func() {
-			if ui.Button(c, "准备目录").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
+		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
+			if button(c, "准备目录").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
 				s.provision()
 			}
-			if ui.Button(c, "修改设置").AlignSelf(ui.Start).Clicked() {
+			if button(c, "修改设置").AlignSelf(ui.Start).Clicked() {
 				s.selected = "settings"
 			}
 		})
@@ -63,14 +63,22 @@ func (s *viewState) provision() {
 func (s *viewState) settingsView(c *ui.Context) {
 	s.header(c, "设置")
 	card(c, "路径设置", func() {
-		ui.Form(c, func() {
-			field(c, "CLI 绝对路径（留空使用 PATH）", &s.cliPath)
-			field(c, "工作区目录", &s.workspace)
-			field(c, "结果目录", &s.results)
-			field(c, "模型目录", &s.models)
-		})
+		fields := func() {
+			field(c, "CLI 绝对路径（留空使用 PATH）", &s.cliPath).Description("可留空，使用 PATH 中的 inferyard。").Error(pathError(s.cliPath))
+			field(c, "工作区目录", &s.workspace).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)))
+			field(c, "结果目录", &s.results).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot)))
+			field(c, "模型目录", &s.models).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot)))
+		}
+		if compactLayout(c) {
+			fields()
+		} else {
+			ui.Form(c, fields)
+		}
 		ui.Text(c, "保存设置不创建目录。目录缺失仍可浏览所有页面。")
-		if ui.PrimaryButton(c, "保存设置").AlignSelf(ui.Start).Disabled(s.busy || !s.settingsLoaded).Clicked() {
+		if primaryButton(c, "保存设置").AlignSelf(ui.Start).Disabled(s.busy || !s.settingsLoaded).Clicked() {
+			if !s.validateSettings() {
+				return
+			}
 			patch := map[string]json.RawMessage{}
 			for _, entry := range []struct{ key, value, previous string }{{"inferyard_path", s.cliPath, emptyText(s.settings.Settings.InferyardPath)}, {"workspace_root", s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)}, {"results_root", s.results, emptyText(s.settings.Settings.ResultsRoot)}, {"models_root", s.models, emptyText(s.settings.Settings.ModelsRoot)}} {
 				if entry.value != entry.previous {
@@ -92,7 +100,10 @@ func (s *viewState) settingsView(c *ui.Context) {
 	})
 	s.setupGuide(c)
 	s.readinessView(c)
-	card(c, "生效值与探测状态", func() { kvview(c, "kv-effective", s.settings.Effective) })
+	card(c, "生效值与探测状态", func() {
+		ui.Text(c, "当前生效工作区："+text(s.settings.Effective.WorkspaceRoot)).Selectable()
+		componentFold(c, "原始生效值", func() { kvview(c, "kv-effective", s.settings.Effective) })
+	})
 }
 
 func (s *viewState) settingsEdited() bool {

@@ -16,18 +16,33 @@ var environmentName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 func validName(s string) bool { return directoryName.MatchString(s) && strings.Trim(s, ".") != "" }
 func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 func (s *viewState) modelsView(c *ui.Context) {
-	ui.Text(c, "工作区 / 资产与服务").FontSize(11).TextColor(c.Theme().TextMuted)
+	ui.Text(c, "工作区 / 资产与服务").FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
 	s.header(c, "模型与下载")
 	s.adoptDownloadedEngine()
-	ui.Row(c).Gap(20).AlignItems(ui.Start).Children(func() {
-		ui.Column(c).Width(0).Grow(1.2).Gap(20).Children(func() {
+	var layout ui.Element
+	if compactLayout(c) {
+		layout = ui.Column(c).Gap(c.Theme().Space(5))
+	} else {
+		layout = ui.Row(c).Gap(c.Theme().Space(5)).AlignItems(ui.Start)
+	}
+	layout.Children(func() {
+		left := ui.Column(c).MinWidth(0).Gap(c.Theme().Space(5))
+		if !compactLayout(c) {
+			left.Width(0).Grow(1.2)
+		}
+		left.Children(func() {
 			card(c, "模型", func() { s.modelAssetsView(c) })
 			card(c, "下载", func() {
 				s.downloadsView(c)
-				card(c, "引擎下载", func() { s.engineDownloadView(c) })
+				heading(c, "引擎下载", 3)
+				s.engineDownloadView(c)
 			})
 		})
-		ui.Column(c).Width(0).Grow(1).MinWidth(310).Gap(20).Children(func() {
+		right := ui.Column(c).MinWidth(0).Gap(c.Theme().Space(5))
+		if !compactLayout(c) {
+			right.Width(0).Grow(1).MinWidth(310)
+		}
+		right.Children(func() {
 			s.modelEngineServiceView(c)
 			s.modelBindingView(c)
 		})
@@ -35,12 +50,18 @@ func (s *viewState) modelsView(c *ui.Context) {
 }
 
 func (s *viewState) modelAssetsView(c *ui.Context) {
-	ui.Column(c).Gap(8).Padding(16).Radius(10).Border(1, c.Theme().Accent.Alpha(0.20)).Gradient(c.Theme().Accent.Mix(c.Theme().Surface, 0.92), c.Theme().Surface, 120).Children(func() {
+	panel := ui.Column(c).Gap(c.Theme().Space(2)).Padding(c.Theme().Space(4)).Radius(c.Theme().Space(3)).Border(1, c.Theme().Accent.Alpha(0.20))
+	if c.Preferences().HighContrast {
+		panel.Background(c.Theme().Surface).Border(1, c.Theme().Border)
+	} else {
+		panel.Gradient(c.Theme().Accent.Mix(c.Theme().Surface, 0.92), c.Theme().Surface, 120)
+	}
+	panel.Children(func() {
 		statusBadge(c, "预置测试模型", c.Theme().Accent)
-		ui.Text(c, "SmolLM2-135M").Bold().FontSize(20)
+		heading(c, "SmolLM2-135M", 3).FontSize(c.Theme().Rem(1.4))
 		ui.Text(c, "Instruct · Q4_K_M · 固定版本 GGUF").TextColor(c.Theme().TextMuted)
-		ui.Text(c, "适合走通首次使用流程").FontSize(12).TextColor(c.Theme().TextMuted)
-		ui.PrimaryButton(c, "下载预置模型").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
+		ui.Text(c, "适合走通首次使用流程").FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
+		primaryButton(c, "下载预置模型").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
 			name := fmt.Sprintf("model-%d", uniqueID())
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.service.CreateDownload(core.CreateDownloadRequest{SourceUrl: core.DefaultModelURL, OutName: name})
@@ -58,26 +79,30 @@ func (s *viewState) modelAssetsView(c *ui.Context) {
 	default:
 		ui.Text(c, "尚无设备快照，请到设备页刷新。")
 	}
-	ui.Text(c, "模型目录："+text(s.settings.Effective.ModelsRoot))
+	deviceMono(c, "模型目录："+configuredValue(emptyText(s.settings.Effective.ModelsRoot)))
 
-	ui.Text(c, "创建模型下载").Bold()
-	field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL)
-	field(c, "新目录名", &s.modelName)
-	field(c, "凭据环境变量名（可选）", &s.tokenEnv)
+	heading(c, "创建模型下载", 3)
+	field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL).Description("必填；使用固定 revision 的 GGUF 下载地址。").Error(urlError(s.modelURL))
+	field(c, "新目录名", &s.modelName).Description("必填；使用尚不存在的新目录名。").Error(nameError(s.modelName))
+	field(c, "凭据环境变量名（可选）", &s.tokenEnv).Description("仅填写变量名称，不填写凭据值。").Error(tokenNameError(s.tokenEnv))
 	ui.Text(c, "仅填写环境变量名。凭据由启动 Studio 的环境提供。目录名仅允许字母、数字、点、下划线与连字符，不能全为点。")
-	if ui.PrimaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
+	if primaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || !validName(s.modelName) || strings.TrimSpace(s.modelURL) == "").Clicked() {
 		s.acquireModel()
 	}
 }
 func (s *viewState) acquireModel() {
 	source, name, env := s.modelURL, s.modelName, s.tokenEnv
+	if message := urlError(source); message != "" {
+		s.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
+		return
+	}
 	if env != "" && !environmentName.MatchString(env) {
-		s.failure = &core.ApiError{Code: "invalid_request", Message: "只接受环境变量名，请勿输入明文 token。"}
+		s.submissionFailed(&core.ApiError{Code: "invalid_request", Message: "只接受环境变量名，请勿输入明文 token。"})
 		return
 	}
 	root := emptyText(s.settings.Effective.ModelsRoot)
 	if root == "" {
-		s.failure = core.Conflict("settings_incomplete")
+		s.submissionFailed(core.Conflict("settings_incomplete"))
 		return
 	}
 	source = strings.TrimSpace(source)
@@ -102,7 +127,7 @@ func (s *viewState) acquireModel() {
 }
 
 func deviceRecommendation(c *ui.Context, rec deviceObject) {
-	card(c, "推荐配置", func() {
+	section(c, "推荐配置", func() {
 		selected := rec.object("selected")
 		if rec.value("status") == "blocked" || selected == nil {
 			ui.Text(c, "状态："+rec.label("status"))
@@ -119,7 +144,7 @@ func deviceRecommendation(c *ui.Context, rec deviceObject) {
 		for _, reason := range rec.list("limitations") {
 			ui.Text(c, "⚠ "+deviceLabel(fmt.Sprint(reason))).TextColor(c.Theme().Warning)
 		}
-		ui.Text(c, "模型文件与原始参数").FontSize(12).TextColor(c.Theme().TextMuted)
+		ui.Text(c, "模型文件与原始参数").FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
 		deviceMono(c, selected.value("model_path"))
 		for _, candidate := range rec.list("candidates") {
 			other := deviceItem(candidate)
@@ -131,11 +156,11 @@ func deviceRecommendation(c *ui.Context, rec deviceObject) {
 }
 
 func deviceModels(c *ui.Context, models []any) {
-	card(c, fmt.Sprintf("本地模型 %d 个 GGUF", len(models)), func() {
+	section(c, fmt.Sprintf("本地模型 %d 个 GGUF", len(models)), func() {
 		for _, item := range models {
 			model := deviceItem(item)
 			ui.Column(c).Gap(6).Children(func() {
-				ui.Row(c).Gap(10).Children(func() {
+				ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
 					name := model.value("name")
 					if model["name"] == nil {
 						name = filepath.Base(model.value("path"))

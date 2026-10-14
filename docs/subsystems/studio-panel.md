@@ -31,7 +31,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 | 进程内事件 | 2048 条回放环 + 唤醒订阅；慢消费者按游标重建而非丢事件 | `EventBus`、`Publish`、`Subscribe`、`After`、`ReplayCapacity` 在 [`studio/internal/core/events.go`](../../studio/internal/core/events.go) |
 | 证据索引与读取 | 结果根扫描（损坏条目跳过并计数）、JSONL 增量 tail、host dirty 标记判读、状态优先级 | `Index` 在 [`studio/internal/evidence/index.go`](../../studio/internal/evidence/index.go)；`Tail`、`Cursor` 在 [`studio/internal/evidence/tail.go`](../../studio/internal/evidence/tail.go)；`DirtyRun`、`RunStatus` 在 [`studio/internal/evidence/dirty.go`](../../studio/internal/evidence/dirty.go) |
 | 历史聚合 | evidence 记录 → run 汇总/进度/资源投影；resume 资格标记；原子重建历史索引 | `summarize`、`scan`、`markResumable`、`History`、`rebuild` 在 [`studio/internal/core/aggregate.go`](../../studio/internal/core/aggregate.go) |
-| 页面 | 单主窗口六个页内页面（向导/设备/模型与下载/运行/报告/设置）、事件驱动刷新、向导下一步命令推导；模型与下载页按模型/下载/引擎服务/绑定存活提示四区组织，done 引擎任务的路径在向导引擎路径为空时由页面幂等采纳 | `New`、`navigation`、`viewState` 在 [`studio/internal/pages/window.go`](../../studio/internal/pages/window.go)、[`studio/internal/pages/onboarding_actions.go`](../../studio/internal/pages/onboarding_actions.go)；四区在 [`studio/internal/pages/models.go`](../../studio/internal/pages/models.go)、[`studio/internal/pages/models_downloads.go`](../../studio/internal/pages/models_downloads.go)、[`studio/internal/pages/models_engine.go`](../../studio/internal/pages/models_engine.go)；视觉组件在 [`studio/internal/pages/components.go`](../../studio/internal/pages/components.go)（见视觉规格一节） |
+| 页面 | 单主窗口六个页内页面（向导/设备/模型与下载/运行/报告/设置）、事件驱动刷新、向导下一步命令推导；模型与下载页按模型/下载/引擎服务/绑定存活提示四区组织，done 引擎任务的路径在向导引擎路径为空时由页面幂等采纳 | `New`、`navigation`、`viewState` 在 [`studio/internal/pages/window.go`](../../studio/internal/pages/window.go)、[`studio/internal/pages/onboarding_actions.go`](../../studio/internal/pages/onboarding_actions.go)；四区在 [`studio/internal/pages/models.go`](../../studio/internal/pages/models.go)、[`studio/internal/pages/models_downloads.go`](../../studio/internal/pages/models_downloads.go)、[`studio/internal/pages/models_engine.go`](../../studio/internal/pages/models_engine.go)；视觉组件在 [`studio/internal/pages/components.go`](../../studio/internal/pages/components.go)（统一规范见 [Studio Design System](../../studio/docs/design-system.md)） |
 | 桌面通知 | 终态 run/download 与 `report.created` 的固定文案通知；投递失败不影响任务结果 | `Subscribe`、`messageFor` 在 [`studio/internal/desktop/notifications.go`](../../studio/internal/desktop/notifications.go) |
 
 关键状态的事实源：设置持久化在 `os.UserConfigDir()/InferYard Studio/settings.json`（目录 0700、
@@ -149,7 +149,11 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
   lineage 结论引用 [数据契约](../../cli/docs/data-contract.md#证据血缘与比较结论)，证据布局见
   [run-evidence-layout](../../cli/docs/contracts/run-evidence-layout.md)。
 - **报告**：1–100 个不同来源 run；新目录唯一命名、原始 run 与历史报告永不覆写；报告路径必须
-  留在报告目录内；缺失来源 run 显示为不可用但不阻止打开。
+  留在报告目录内；缺失来源 run 显示为不可用但不阻止打开。报告窗口注册加载失败与渲染进程退出
+  回调后再加载，失败向主窗口回传固定错误并在子窗口提供重试/关闭；重试重新执行 `ReportFile`
+  路径校验，不展示原始 WebView 错误描述。实现见
+  [reports.go](../../studio/internal/pages/reports.go) 与
+  [report_window.go](../../studio/internal/pages/report_window.go)，系统 WebView 回调仍待真机验证。
 - **安全**：模型端点仅本地 loopback；token/凭据/完整 session URL 不进日志、设置或用户可见错误；
   向导执行不回传 stdout/stderr；设置文件 0700/0600 且仅在用户保存时替换。CLI 退出码语义
   （0/2/3/4/130）与呈现映射见 [CLI 与应用分发](cli-dispatch.md)。
@@ -160,32 +164,16 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 
 ## 视觉规格
 
-模型与下载页按 [`studio/docs/prototypes/models-downloads-page.html`](../../studio/docs/prototypes/models-downloads-page.html)
-原型实现，视觉组件在 [`studio/internal/pages/components.go`](../../studio/internal/pages/components.go)，
-速率换算 `formatRate`/`groupedInt` 与 `statusBadge` 在
-[`studio/internal/pages/shared.go`](../../studio/internal/pages/shared.go)（当前仅该页使用这些组件，其他页面保持既有惯例；
-`componentFold`/`deviceFold` 仅设备页使用，本页不用折叠）：
+全局视觉与交互规则统一维护在 [Studio Design System](../../studio/docs/design-system.md)，
+覆盖六个主页面、运行详情及报告窗口外壳。该规范吸收模型页原有四区布局、主题状态色、
+内联详情和测量展示约定，并补齐表单、无障碍、缩放和验收要求。
 
-- **布局**：页眉 eyebrow 小字 + 标题；主体为约 1.2:1 双栏（左：模型、下载；右：引擎服务、
-  绑定存活提示），右栏最小宽 310。无字距 API，eyebrow 不模拟 letter-spacing。
-- **组件**：`statusPanel`（按态着色的状态面板）、`kvGrid`（两列信息网格，value 以 `Label`
-  关联 label）、`stepsRow`（状态步骤条，按索引单节点高亮 + 行级 `Label`）、`taskCard`/
-  `taskCardOptions`/`taskMetric`（下载任务卡与三格指标）；面板圆角/内边距统一为
-  `panelRadius`/`panelPadding` 常量。
-- **色彩语义**：状态色取主题 `Accent/Success/Danger/TextMuted`（进行中/完成/失败/其余），
-  面板底色为状态色与 `Surface` 的混合，徽章底为状态色 10% 透明；深浅色主题均成立
-  （深色下色偏弱，待真机目检调校）。
-- **活动与反馈**：下载中任务卡头显示 `ui.Spinner`，底部为 `ui.Progress` 不定态（负值入参，
-  仅表示活动，不表示进度），不显示百分比与剩余时间；缺测指标、状态徽章与「内存」行挂
-  `Tooltip` 解释原因。
-- **详情内联**：本页不用折叠框。自定义模型来源表单、任务详情（「观测依据与输出」）、
-  测量单位说明、启动行（安全展示）与「模型文件与原始参数」均内联平铺，以小字 muted
-  标题分区；错误详情与路径始终可见。
-- **速率展示**：模型任务速率按量级显式换算（`formatRate`：≥ 1 MiB/s 显示 `%.2f MiB/s`，
-  ≥ 1 KiB/s 显示 `%.1f KiB/s`，否则整数 `bytes/s`），任务详情附千分位原始 `bytes/s`；
-  不输出浮点科学计数法。
-- **缺测展示**：引擎任务的已观测/速率/总量恒 `null` 并带原因。
-- **降级项**：不追求像素级一致；字体度量、字距与原型 CSS 的差异不视为缺陷。
+共享标题、活动进度、换行按钮和一次性公告由 `pages/design_system.go` 承载；
+字段提示由 `pages/form_validation.go` 承载。页面首次加载、刷新与失败分别呈现，刷新失败保留已有数据。
+已实施项、回归入口与本轮验证边界见
+[页面审查](../../studio/docs/design-system-audit.md)。当前整改进度见
+[backlog](../../cli/docs/backlog.md#inferyard-studio-后续工作)。数据层 `null` 及原因保持原契约，
+UI 文案按全局规范区分缺测、未知与未配置。
 
 ## 验证
 

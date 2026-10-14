@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
-	"math"
 	"strings"
 )
 
 func (w *viewState) candidateView(c *ui.Context) {
-	ui.Text(c, "创建当前题包候选").Bold().FontSize(22)
+	heading(c, "创建当前题包候选", 3)
 	if w.progress != nil {
 		for _, b := range w.progress.Bundles {
 			if b.Phase == "run_complete" {
@@ -21,13 +20,13 @@ func (w *viewState) candidateView(c *ui.Context) {
 	if b := w.active(); b != nil {
 		ui.Text(c, b.Bundle+" · 将冻结模型、引擎与运行预算。")
 	}
-	field(c, "引擎文件绝对路径", &w.engine)
-	if ui.PrimaryButton(c, "创建候选").AlignSelf(ui.Start).Disabled(w.busy || w.engine == "").Clicked() {
+	field(c, "引擎文件绝对路径", &w.engine).Description("必填；从模型与下载页获取引擎后自动填入。").Error(pathError(w.engine))
+	if primaryButton(c, "创建候选").AlignSelf(ui.Start).Disabled(w.busy || w.engine == "").Clicked() {
 		w.execute(w.nextCommand(), false)
 	}
 }
 func (w *viewState) serviceView(c *ui.Context) {
-	ui.Text(c, "启动模型服务并绑定").Bold().FontSize(22)
+	heading(c, "启动模型服务并绑定", 3)
 	if w.bindingStale {
 		ui.Text(c, "旧绑定已失效，请重启服务并重新绑定").TextColor(c.Theme().Danger)
 	}
@@ -36,14 +35,14 @@ func (w *viewState) serviceView(c *ui.Context) {
 	// Engine commands have no inferyard prefix; the display is selectable, never editable.
 	command = command[len("inferyard "):]
 	ui.Text(c, command).Font("monospace").Selectable()
-	if ui.Button(c, "复制启动命令").AlignSelf(ui.Start).Disabled(w.startup.Path == "").Clicked() {
+	if button(c, "复制启动命令").AlignSelf(ui.Start).Disabled(w.startup.Path == "").Clicked() {
 		c.WriteClipboard(command)
 		c.Toast("已复制。")
 	}
 	switch w.engineState.State {
 	case "starting":
 		ui.Text(c, fmt.Sprintf("正在启动（PID %d）——模型加载可能需要几分钟…", w.engineState.Pid))
-		ui.Progress(c, math.NaN())
+		progressBar(c, -1, "模型服务启动进度")
 	case "running":
 		ui.Text(c, fmt.Sprintf("运行中 · PID %d · %s", w.engineState.Pid, w.engineState.Endpoint)).TextColor(c.Theme().Success)
 	case "stopping":
@@ -54,8 +53,12 @@ func (w *viewState) serviceView(c *ui.Context) {
 		}
 	}
 	startable := w.engineState.State == "" || w.engineState.State == "stopped" || w.engineState.State == "failed"
-	ui.Row(c).Gap(10).Children(func() {
-		if ui.PrimaryButton(c, "启动服务").AlignSelf(ui.Start).Disabled(w.busy || w.candidate == "" || !startable).Clicked() {
+	ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
+		startButton := button
+		if startable {
+			startButton = primaryButton
+		}
+		if startButton(c, "启动服务").AlignSelf(ui.Start).Disabled(w.busy || w.candidate == "" || !startable).Clicked() {
 			w.startEngine()
 		}
 		if w.engineState.State == "running" {
@@ -63,42 +66,50 @@ func (w *viewState) serviceView(c *ui.Context) {
 			if b := w.active(); b != nil && b.BoundPath != nil {
 				label = "重新绑定"
 			}
-			if ui.PrimaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil).Clicked() {
+			if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil).Clicked() {
 				w.execute(w.managedBindCommand(), false)
 			}
 		}
 		if w.engineState.State == "starting" || w.engineState.State == "running" {
-			if ui.Button(c, "停止服务").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil).Clicked() {
+			if button(c, "停止服务").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil).Clicked() {
 				w.stopEngine()
 			}
 		}
 	})
 
-	ui.Text(c, "绑定已有进程")
+	heading(c, "绑定已有进程", 3)
 	options := []string{}
 	for _, p := range w.processes {
 		options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
 	}
-	ui.Field(c, "已启动的本机进程", func() { ui.Select(c, &w.process, options) })
-	field(c, "endpoint", &w.bindEndpoint)
-	if ui.PrimaryButton(c, "绑定进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
+	ui.Field(c, "已启动的本机进程", func() { ui.Select(c, &w.process, options) }).Description("请选择已启动的服务进程；绑定仍会核验身份。")
+	field(c, "endpoint", &w.bindEndpoint).Description("必填；本机服务的 http 或 https URL。").Error(urlError(w.bindEndpoint))
+	if primaryButton(c, "绑定进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
+		if message := urlError(w.bindEndpoint); message != "" {
+			w.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
+			return
+		}
 		pid, _, _ := strings.Cut(w.process, " · ")
 		w.execute(w.bindCommand(pid, w.bindEndpoint), false)
 	}
 }
 func (w *viewState) runView(c *ui.Context) {
-	ui.Text(c, "运行当前题包").Bold().FontSize(22)
+	heading(c, "运行当前题包", 3)
 	if task := w.running(); task != nil {
-		value := math.NaN()
-		label := "正在运行，等待进度…"
+		value := -1.0
+		label := "正在运行，等待进度…（总量未知）"
 		if p := w.runProgress; p != nil && p.Total != nil && *p.Total > 0 {
-			value = float64(p.Done) / float64(*p.Total)
+			value = progressValue(p.Done, p.Total)
 			label = fmt.Sprintf("%d / %d 题", p.Done, *p.Total)
 		}
-		ui.Progress(c, value)
+		progressBar(c, value, "当前题包运行进度")
+		ui.Text(c, "分母为冻结选中题集合；续测时为冻结续测子集。")
+		if task.State == "cancelling" {
+			ui.Text(c, "取消中／等待安全收尾。")
+		}
 		ui.Text(c, label)
 		id := task.TaskId
-		if ui.Button(c, "取消运行").AlignSelf(ui.Start).Disabled(w.busy || task.State == "cancelling").Clicked() {
+		if button(c, "取消运行").AlignSelf(ui.Start).Disabled(w.busy || task.State == "cancelling").Clicked() {
 			w.guideWork(func() (string, *core.ApiError) {
 				_, e := w.service.CancelRun(id)
 				return "已请求取消，等待安全收尾。", e
@@ -117,14 +128,14 @@ func (w *viewState) runView(c *ui.Context) {
 	if b := w.active(); b != nil && b.NextAction == "resume" {
 		label = "继续未完成的运行"
 	}
-	if ui.PrimaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy).Clicked() {
+	if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy).Clicked() {
 		w.execute(w.nextCommand(), false)
 	}
 }
 func (w *viewState) reportView(c *ui.Context) {
-	ui.Text(c, "生成并核验两题包报告").Bold().FontSize(22)
+	heading(c, "生成并核验两题包报告", 3)
 	ui.Text(c, "汇总已封存的运行，核验报告字节、来源与语义。")
-	if ui.PrimaryButton(c, "生成报告并核验").AlignSelf(ui.Start).Disabled(w.busy).Clicked() {
+	if primaryButton(c, "生成报告并核验").AlignSelf(ui.Start).Disabled(w.busy).Clicked() {
 		w.execute(w.nextCommand(), true)
 	}
 }

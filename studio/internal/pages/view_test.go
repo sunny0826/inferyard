@@ -220,7 +220,7 @@ func TestSettingsFollowWorkspaceHandoffAndPreserveEdits(t *testing.T) {
 	next.Settings.ResultsRoot = ptr("/new-child/results")
 	s.applySettings(next)
 	tt.Frame()
-	if s.results != "/new-child/results" || !(tt.HasText("workspace_root") && tt.HasText("/new-child")) || s.workspace != "/new-child" {
+	if s.results != "/new-child/results" || !tt.HasText("当前生效工作区：/new-child") || s.workspace != "/new-child" {
 		t.Fatal("workspace handoff left settings form stale", tt.Texts())
 	}
 	s.cliPath = "/editing/cli"

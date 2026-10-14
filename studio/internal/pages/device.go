@@ -57,9 +57,16 @@ func deviceMeasurement(v deviceObject, key string, capacity bool) string {
 	return value
 }
 func deviceRow(c *ui.Context, label, value string) {
-	ui.Row(c).Gap(16).Children(func() {
-		ui.Text(c, label).Width(150).TextColor(c.Theme().TextMuted)
-		ui.Text(c, value).Grow(1).MinWidth(0).Selectable()
+	if compactLayout(c) {
+		ui.Column(c).Gap(c.Theme().Space(1)).Children(func() {
+			ui.Text(c, label).TextColor(c.Theme().TextMuted)
+			ui.Text(c, value).Selectable().Label(label + "：" + value)
+		})
+		return
+	}
+	ui.Row(c).Gap(c.Theme().Space(4)).Children(func() {
+		ui.Text(c, label).Width(c.Theme().Rem(10)).TextColor(c.Theme().TextMuted)
+		ui.Text(c, value).Grow(1).MinWidth(0).Selectable().Label(label + "：" + value)
 	})
 }
 func deviceFold(c *ui.Context, title string, fn func()) {
@@ -74,7 +81,7 @@ func (s *viewState) refreshDevice() {
 	s.work(func() (string, *core.ApiError) { return "正在采集设备信息…", s.service.RefreshDevice() })
 }
 func (s *viewState) deviceRefreshButton(c *ui.Context, label string) {
-	if ui.PrimaryButton(c, label).AlignSelf(ui.Start).Disabled(s.busy || s.device.Refreshing).Clicked() {
+	if primaryButton(c, label).AlignSelf(ui.Start).Disabled(s.busy || s.device.Refreshing).Clicked() {
 		s.refreshDevice()
 	}
 }
@@ -95,8 +102,8 @@ func parseDeviceSnapshot(raw json.RawMessage) (deviceObject, error) {
 }
 
 func (s *viewState) deviceView(c *ui.Context) {
-	ui.Row(c).Children(func() {
-		ui.Text(c, "设备").Bold().FontSize(24).Grow(1)
+	ui.Row(c).Wrap().Children(func() {
+		heading(c, "设备", 1).Grow(1)
 		if s.device.Refreshing {
 			ui.Text(c, "正在采集设备信息…").TextColor(c.Theme().TextMuted)
 		}
@@ -105,7 +112,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 	if s.progress != nil && s.progress.NextAction == "device_check" {
 		card(c, "检查设备", func() {
 			ui.Text(c, "模型与引擎可在「模型与下载」页准备。")
-			if ui.PrimaryButton(c, "检查设备").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
+			if primaryButton(c, "检查设备").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
 				s.execute(s.nextCommand(), false)
 			}
 		})
@@ -116,22 +123,24 @@ func (s *viewState) deviceView(c *ui.Context) {
 	}
 	errorView(c, s.device.LastError)
 	if s.device.LastError != nil {
-		ui.Row(c).Gap(10).Children(func() {
+		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
 			s.deviceRefreshButton(c, "重试")
-			if ui.Button(c, "前往设置").Clicked() {
+			if button(c, "前往设置").Clicked() {
 				s.selected = "settings"
 			}
 		})
 	}
 	if parseError != nil {
-		ui.Text(c, "设备快照无法读取。").TextColor(c.Theme().Danger)
+		ui.Text(c, "设备快照无法读取。请重新采集；仍然失败时检查设置。").TextColor(c.Theme().Danger)
+		s.deviceRefreshButton(c, "重新采集设备")
+		button(c, "检查设备设置").AlignSelf(ui.Start).OnClick(func() { s.selected = "settings" })
 		return
 	}
-	if snapshot == nil && s.device.LastError == nil {
-		ui.Column(c).AlignItems(ui.Center).Gap(12).Padding(40).Background(c.Theme().Surface).Radius(12).Children(func() {
-			ui.Text(c, "尚无设备快照").Bold().FontSize(18)
+	if snapshot == nil && s.device.LastError == nil && !s.device.Refreshing {
+		ui.Column(c).AlignItems(ui.Center).Gap(c.Theme().Space(3)).Padding(40).Background(c.Theme().Surface).Radius(12).Children(func() {
+			heading(c, "尚无设备快照", 2)
 			ui.Text(c, "设备检查会采集硬件、GPU 与本地模型信息，不会向模型发送请求。")
-			if ui.Button(c, "前往设置配置模型目录").Clicked() {
+			if button(c, "前往设置配置模型目录").Clicked() {
 				s.selected = "settings"
 			}
 		})

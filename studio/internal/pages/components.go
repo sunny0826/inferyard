@@ -2,35 +2,38 @@ package pages
 
 import "github.com/egoist/mygo/ui"
 
-const (
-	panelRadius  = 12
-	panelPadding = 18
-)
-
 func statusPanel(c *ui.Context, code, title, description string, color ui.Color) {
-	ui.Column(c).Gap(8).Padding(panelPadding).Radius(panelRadius).Background(color.Mix(c.Theme().Surface, 0.93)).Children(func() {
+	panel := ui.Column(c).Gap(c.Theme().Space(2)).Padding(c.Theme().Space(4.5)).Radius(c.Theme().Space(3)).Background(color.Mix(c.Theme().Surface, 0.93))
+	if c.Preferences().HighContrast {
+		panel.Background(c.Theme().Surface).Border(1, color)
+	}
+	panel.Children(func() {
 		statusBadge(c, code, color)
-		ui.Text(c, title).Bold().FontSize(20)
+		heading(c, title, 3).FontSize(c.Theme().Rem(1.4))
 		ui.Text(c, description).TextColor(c.Theme().TextMuted)
 	})
 }
 
 func kvGrid(c *ui.Context, rows [][2]string, tooltips map[string]string) {
-	ui.Grid(c).Columns(2).Gap(10).Children(func() {
+	columns := 2
+	if compactLayout(c) {
+		columns = 1
+	}
+	ui.Grid(c).Columns(columns).Gap(c.Theme().Space(2.5)).Children(func() {
 		for _, row := range rows {
 			ui.Text(c, row[0]).TextColor(c.Theme().TextMuted).Tooltip(tooltips[row[0]])
-			ui.Text(c, row[1]).Selectable().Label(row[0])
+			ui.Text(c, row[1]).Selectable().Label(row[0] + "：" + row[1])
 		}
 	})
 }
 
 func stepsRow(c *ui.Context, steps []string, current int, color ui.Color) {
-	ui.Row(c).Wrap().Gap(4).Label("引擎服务状态流转").Children(func() {
+	ui.Row(c).Wrap().Gap(c.Theme().Space(1)).Label("引擎服务状态流转").Children(func() {
 		for i, step := range steps {
 			if i > 0 {
-				ui.Text(c, "→").TextColor(c.Theme().TextMuted).FontSize(10)
+				ui.Text(c, "→").TextColor(c.Theme().TextMuted).FontSize(max(12, c.Theme().Rem(.85)))
 			}
-			e := ui.Text(c, step).FontSize(10).TextColor(c.Theme().TextMuted)
+			e := ui.Text(c, step).FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
 			if i == current {
 				e.Bold().TextColor(color)
 			}
@@ -51,14 +54,14 @@ type taskCardOptions struct {
 }
 
 func taskCard(c *ui.Context, options taskCardOptions) {
-	ui.Column(c).Gap(12).Padding(panelPadding).Radius(panelRadius).Border(1, c.Theme().Border).Children(func() {
-		ui.Row(c).Gap(10).Children(func() {
-			ui.Column(c).Grow(1).Gap(4).Children(func() {
-				ui.Text(c, options.kind).FontSize(12).TextColor(c.Theme().TextMuted)
-				ui.Text(c, options.name).Bold().FontSize(16)
+	ui.Column(c).Gap(c.Theme().Space(3)).Padding(c.Theme().Space(4.5)).Radius(c.Theme().Space(3)).Border(1, c.Theme().Border).Children(func() {
+		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
+			ui.Column(c).Grow(1).Gap(c.Theme().Space(1)).Children(func() {
+				ui.Text(c, options.kind).FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
+				ui.Text(c, options.name).Bold().FontSize(c.Theme().Rem(1.1))
 			})
 			if options.active {
-				ui.Spinner(c).Label("下载中")
+				activitySpinner(c, "下载中")
 			}
 			statusBadge(c, options.state, options.color).Tooltip(map[string]string{
 				"下载中": "任务正在下载，总量未知。",
@@ -67,22 +70,27 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 				"已取消": "下载任务已取消，输出目录保留。",
 			}[options.state])
 		})
-		ui.Grid(c).Columns(3).Gap(12).Children(func() {
+		columns := 3
+		width, _ := c.Size()
+		if width < 900 || c.Preferences().TextScale > 1 {
+			columns = 1
+		}
+		ui.Grid(c).Columns(columns).Gap(c.Theme().Space(3)).Children(func() {
 			for _, metric := range options.metrics {
-				ui.Column(c).Gap(4).Children(func() {
-					ui.Text(c, metric.label).FontSize(12).TextColor(c.Theme().TextMuted).Tooltip(metric.reason)
-					ui.Text(c, metric.value).Bold().FontSize(19)
+				ui.Column(c).Gap(c.Theme().Space(1)).Children(func() {
+					ui.Text(c, metric.label).FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted).Tooltip(metric.reason)
+					ui.Text(c, metric.value).Bold().FontSize(c.Theme().Rem(1.35))
 					if metric.reason != "" {
-						ui.Text(c, metric.reason).FontSize(12).TextColor(c.Theme().TextMuted)
+						ui.Text(c, metric.reason).FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
 					}
 				})
 			}
 		})
 		if options.active {
-			ui.Progress(c, -1).Label("下载任务活动").Height(4)
+			progressBar(c, -1, "下载任务活动").Height(4)
 		}
 		options.actions()
-		ui.Text(c, "观测依据与输出").FontSize(12).TextColor(c.Theme().TextMuted)
+		ui.Text(c, "观测依据与输出").FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
 		options.details()
 	})
 }

@@ -120,8 +120,8 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 			if s.chartIndex >= 0 && s.chartIndex < len(xs) {
 				chart.RuleX(c, xs[s.chartIndex], 1).Background(c.Theme().TextMuted)
 			}
-		}).Height(260).Gap(8).Label("资源曲线").Description("左轴内存 GiB，右轴 CPU 百分比；温度独立刻度，缺测保留断点。")
-		ui.Row(c).Gap(16).Children(func() {
+		}).Height(260).Gap(c.Theme().Space(2)).Label("资源曲线").Description("左轴内存 GiB，右轴 CPU 百分比；温度独立刻度，缺测保留断点。")
+		ui.Row(c).Wrap().Gap(c.Theme().Space(4)).Children(func() {
 			for i, label := range []string{"可用内存 GiB（左轴）", "服务 RSS GiB（左轴）", "服务 CPU %（右轴）", "温度 °C（独立刻度）"} {
 				ui.Text(c, label).TextColor(colors[i])
 			}
@@ -130,12 +130,13 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		if s.chartIndex >= 0 && s.chartIndex < len(points) {
 			ui.Text(c, describe(s.chartIndex)).Selectable()
 		}
-		ui.Text(c, "采样数值（内存原始单位 bytes）").Bold()
+		heading(c, "采样数值（内存原始单位 bytes）", 3)
 		cols := []ui.TableColumn{{Title: "UTC", Width: 220}, {Title: "可用内存 bytes", Width: 150}, {Title: "RSS bytes", Width: 130}, {Title: "CPU %", Width: 100}, {Title: "温度 °C", Width: 100}}
+		s.samplesTable.Key = func(i int) any { return points[i].utc }
 		ui.Table(c, &s.samplesTable, cols, len(points), func(row, col int) {
 			p := points[row].sample
 			values := []string{p.Utc, number(p.MemAvailableBytes), number(p.ServiceRssBytes), number(p.ServiceCpuPercent), number(p.TemperatureCelsius)}
 			ui.Text(c, values[col]).Selectable()
-		}).Height(180)
+		}).Height(180).Label("资源采样数值表")
 	})
 }
