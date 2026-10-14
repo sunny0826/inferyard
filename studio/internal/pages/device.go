@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -89,18 +87,9 @@ func (s *viewState) deviceRunsButton(c *ui.Context) {
 		s.selected = "runs"
 	}
 }
-func (s *viewState) deviceView(c *ui.Context) {
-	s.header(c, "设备")
-	if s.progress != nil && s.progress.NextAction == "device_check" {
-		card(c, "检查设备", func() {
-			ui.Text(c, "模型与引擎可在「模型与下载」页准备。")
-			if ui.PrimaryButton(c, "检查设备").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
-				s.execute(s.nextCommand(), false)
-			}
-		})
-	}
+func parseDeviceSnapshot(raw json.RawMessage) (deviceObject, error) {
 	var snapshot deviceObject
-	raw := bytes.TrimSpace(s.device.Snapshot)
+	raw = bytes.TrimSpace(raw)
 	var parseError error
 	if len(raw) > 0 && string(raw) != "null" {
 		if !json.Valid(raw) {
@@ -111,7 +100,22 @@ func (s *viewState) deviceView(c *ui.Context) {
 			parseError = decoder.Decode(&snapshot)
 		}
 	}
+	return snapshot, parseError
+}
+
+func (s *viewState) deviceView(c *ui.Context) {
+	s.header(c, "设备")
+	if s.progress != nil && s.progress.NextAction == "device_check" {
+		card(c, "检查设备", func() {
+			ui.Text(c, "模型与引擎可在「模型与下载」页准备。")
+			if ui.PrimaryButton(c, "检查设备").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
+				s.execute(s.nextCommand(), false)
+			}
+		})
+	}
+	snapshot, parseError := parseDeviceSnapshot(s.device.Snapshot)
 	if snapshot != nil && parseError == nil {
+		deviceHardware(c, snapshot.object("hardware"))
 		s.deviceConclusion(c, snapshot)
 	}
 	errorView(c, s.device.LastError)
@@ -146,10 +150,6 @@ func (s *viewState) deviceView(c *ui.Context) {
 		return
 	}
 	s.deviceNextSteps(c, snapshot)
-	deviceRecommendation(c, snapshot.object("recommendation"))
-	deviceHardware(c, snapshot.object("hardware"))
-	deviceModels(c, snapshot.list("models"))
-	deviceCapabilities(c, snapshot.object("platform_capabilities"))
 }
 func (s *viewState) deviceConclusion(c *ui.Context, snapshot deviceObject) {
 	ui.Column(c).Gap(12).Padding(18).Background(c.Theme().Surface).Radius(12).Children(func() {
@@ -159,9 +159,6 @@ func (s *viewState) deviceConclusion(c *ui.Context, snapshot deviceObject) {
 			ui.Badge(c, "✕ 暂不可运行").AlignSelf(ui.Start).TextColor(c.Theme().Danger)
 		}
 		rec := snapshot.object("recommendation")
-		if selected := rec.object("selected"); selected != nil && rec.value("status") != "blocked" {
-			ui.Text(c, fmt.Sprintf("推荐方案：%s · %s · 上下文 %s · %s 线程", selected.value("model_name"), selected.label("mode"), selected.value("context_size"), selected.value("threads")))
-		}
 		if !snapshot.flag("ready_to_run") {
 			var reasons []string
 			seen := map[string]bool{}
@@ -205,81 +202,61 @@ func (s *viewState) deviceConclusion(c *ui.Context, snapshot deviceObject) {
 	})
 }
 func (s *viewState) deviceNextSteps(c *ui.Context, snapshot deviceObject) {
-	card(c, "下一步", func() {
-		if snapshot.flag("ready_to_run") {
-			ui.Row(c).Gap(12).Children(func() {
-				ui.Text(c, "设备检查已通过，前往运行页创建候选并运行题包").Grow(1)
-				s.deviceRunsButton(c)
-			})
-			return
-		}
-		for i, item := range snapshot.list("next_steps") {
-			step := deviceItem(item)
-			ui.Column(c.Key(fmt.Sprint(i))).Gap(6).Children(func() {
+	if s.deviceGuideDismissed {
+		return
+	}
+	ui.Row(c).Gap(12).Padding(10).Background(c.Theme().Surface).Radius(8).Children(func() {
+		ui.Badge(c, "下一步").TextColor(c.Theme().Accent)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(8).Children(func() {
+			if snapshot.flag("ready_to_run") {
 				ui.Row(c).Gap(12).Children(func() {
-					ui.Text(c, fmt.Sprintf("%d.", i+1))
-					switch step.value("action") {
-					case "configure_and_bind_existing_service":
-						ui.Text(c, "绑定已有的模型服务（需要先完成实时预检）").Grow(1)
-						s.deviceRunsButton(c)
-					case "provide_local_gguf":
-						ui.Text(c, step.label("action")+"（"+step.label("reason")+"）").Grow(1)
-						if ui.PrimaryButton(c, "前往模型与下载页").Clicked() {
-							s.selected = "models"
-						}
-					case "probe":
-						if command := step.list("command"); len(command) > 0 {
-							ui.Text(c, "或先用探测验证候选配置：")
-							parts := make([]string, len(command))
-							for i, part := range command {
-								parts[i] = fmt.Sprint(part)
+					ui.Text(c, "设备检查已通过，前往运行页创建候选并运行题包").Grow(1)
+					s.deviceRunsButton(c)
+				})
+				return
+			}
+			for i, item := range snapshot.list("next_steps") {
+				step := deviceItem(item)
+				ui.Column(c.Key(fmt.Sprint(i))).Gap(6).Children(func() {
+					ui.Row(c).Gap(12).Children(func() {
+						ui.Text(c, fmt.Sprintf("%d.", i+1))
+						switch step.value("action") {
+						case "configure_and_bind_existing_service":
+							ui.Text(c, "绑定已有的模型服务（需要先完成实时预检）").Grow(1)
+							s.deviceRunsButton(c)
+						case "provide_local_gguf":
+							ui.Text(c, step.label("action")+"（"+step.label("reason")+"）").Grow(1)
+							if ui.PrimaryButton(c, "前往模型与下载页").Clicked() {
+								s.selected = "models"
 							}
-							line := strings.Join(parts, " ")
-							ui.Text(c, line).Font("monospace").SingleLine().Grow(1).Selectable()
-							if ui.Button(c, "复制").Clicked() {
-								c.WriteClipboard(line)
+						case "probe":
+							if command := step.list("command"); len(command) > 0 {
+								ui.Text(c, "或先用探测验证候选配置：")
+								parts := make([]string, len(command))
+								for i, part := range command {
+									parts[i] = fmt.Sprint(part)
+								}
+								line := strings.Join(parts, " ")
+								ui.Text(c, line).Font("monospace").SingleLine().Grow(1).Selectable()
+								if ui.Button(c, "复制").Clicked() {
+									c.WriteClipboard(line)
+								}
+							} else {
+								ui.Text(c, step.value("action")+" · "+step.label("reason"))
 							}
-						} else {
-							ui.Text(c, step.value("action")+" · "+step.label("reason"))
+						default:
+							ui.Text(c, step.label("action")+" · "+step.label("reason"))
 						}
-					default:
-						ui.Text(c, step.label("action")+" · "+step.label("reason"))
+					})
+					if step.value("action") == "probe" && len(step.list("command")) > 0 {
+						ui.Text(c, "CONFIG.toml 为占位符，请替换为真实配置路径。").TextColor(c.Theme().TextMuted)
 					}
 				})
-				if step.value("action") == "probe" && len(step.list("command")) > 0 {
-					ui.Text(c, "CONFIG.toml 为占位符，请替换为真实配置路径。").TextColor(c.Theme().TextMuted)
-				}
-			})
-		}
-	})
-}
-func deviceRecommendation(c *ui.Context, rec deviceObject) {
-	card(c, "推荐配置", func() {
-		selected := rec.object("selected")
-		if rec.value("status") == "blocked" || selected == nil {
-			ui.Text(c, "状态："+rec.label("status"))
-			ui.Text(c, "原因："+rec.label("reason")).TextColor(c.Theme().Warning)
-			return
-		}
-		mode := selected.label("mode")
-		if selected["gpu_name"] != nil {
-			mode += "（" + selected.value("gpu_name") + "）"
-		}
-		for _, row := range [][2]string{{"模型", selected.value("model_name")}, {"加速方式", mode}, {"上下文长度", selected.value("context_size")}, {"线程数", selected.value("threads")}, {"所需可用内存", "≥ " + deviceBytes(selected["min_available_memory_bytes"])}, {"所需磁盘空间", "≥ " + deviceBytes(selected["min_disk_bytes"])}, {"推荐依据", selected.label("reason")}} {
-			deviceRow(c, row[0], row[1])
-		}
-		for _, reason := range rec.list("limitations") {
-			ui.Text(c, "⚠ "+deviceLabel(fmt.Sprint(reason))).TextColor(c.Theme().Warning)
-		}
-		deviceFold(c, "模型文件与原始参数", func() {
-			deviceMono(c, selected.value("model_path"))
-			for _, candidate := range rec.list("candidates") {
-				other := deviceItem(candidate)
-				if !reflect.DeepEqual(other, selected) {
-					ui.Text(c, other.value("model_name")+" · "+other.label("mode"))
-				}
 			}
 		})
+		if ui.Button(c, "✕").Clicked() {
+			s.deviceGuideDismissed = true
+		}
 	})
 }
 func deviceHardware(c *ui.Context, hw deviceObject) {
@@ -354,56 +331,4 @@ func deviceMissing(c *ui.Context, prefix string, missing deviceObject) {
 	for _, key := range deviceKeys(missing) {
 		deviceMono(c, prefix+key+"：缺测 — "+missing.label(key))
 	}
-}
-func deviceModels(c *ui.Context, models []any) {
-	card(c, fmt.Sprintf("本地模型 %d 个 GGUF", len(models)), func() {
-		for i, item := range models {
-			model := deviceItem(item)
-			ui.Column(c.Key(fmt.Sprint(i))).Gap(6).Children(func() {
-				ui.Row(c).Gap(10).Children(func() {
-					name := model.value("name")
-					if model["name"] == nil {
-						name = filepath.Base(model.value("path"))
-					}
-					ui.Text(c, name).Bold()
-					if model.value("status") == "available" {
-						ui.Text(c, deviceBytes(model["size_bytes"])+" · "+model.value("architecture")+" · 上下文 "+model.value("context_length")).TextColor(c.Theme().TextMuted)
-						ui.Badge(c, "可用").TextColor(c.Theme().Success)
-					} else {
-						ui.Badge(c, model.label("status")).TextColor(c.Theme().Warning)
-					}
-				})
-				if model["reason"] != nil {
-					ui.Text(c, model.label("reason")).TextColor(c.Theme().Warning)
-				}
-				deviceMono(c, model.value("path"))
-			})
-		}
-	})
-}
-func deviceCapabilities(c *ui.Context, capabilities deviceObject) {
-	card(c, "平台能力", func() {
-		items := [][2]string{{"device_inspection", "设备检查"}, {"live_single_run", "单次真实运行"}, {"live_experiments", "真实实验"}, {"metal_backend_verified", "Metal 后端"}}
-		for i := 0; i < len(items); i += 2 {
-			ui.Row(c).Gap(24).Children(func() {
-				for _, item := range items[i : i+2] {
-					ui.Row(c).Grow(1).Basis(0).Gap(8).Children(func() {
-						ui.Text(c, item[1])
-						if item[0] == "metal_backend_verified" {
-							if capabilities.flag(item[0]) {
-								ui.Badge(c, "已验证").TextColor(c.Theme().Success)
-							} else {
-								ui.Badge(c, "未验证").TextColor(c.Theme().TextMuted)
-								ui.Text(c, "绑定服务后验证").TextColor(c.Theme().TextMuted)
-							}
-						} else if capabilities.flag(item[0]) {
-							ui.Badge(c, "支持").TextColor(c.Theme().Success)
-						} else {
-							ui.Badge(c, "不支持").TextColor(c.Theme().TextMuted)
-						}
-					})
-				}
-			})
-		}
-	})
 }

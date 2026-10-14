@@ -58,23 +58,25 @@ func TestDeviceLocalizedSnapshot(t *testing.T) {
 	s := deviceTestState()
 	tt := ui.NewTester(s.view, 1120, 2600)
 	for _, want := range []string{
-		"✕ 暂不可运行", "推荐方案：Fixture Model · Metal 加速 · 上下文 4096 · 5 线程",
-		"处理器", "Fixture CPU · 10 核", "统一内存容量估算可容纳", "需先完成实时预检",
-		"GPU 显存", "缺测 — 与主机共享内存，不单独计量", "≥ 2.83 GiB", "≥ 5.00 GiB",
+		"✕ 暂不可运行", "下一步",
+		"处理器", "Fixture CPU · 10 核", "需先完成实时预检",
+		"GPU 显存", "缺测 — 与主机共享内存，不单独计量",
 		"16.00 GiB（当前可用约 4.00 GiB，估算）", "已接通", "arm64（Apple 芯片）",
-		"本地模型 1 个 GGUF", "100.57 MiB · llama · 上下文 8192", "可用",
-		"或先用探测验证候选配置：", "支持", "未验证", "绑定服务后验证",
+		"或先用探测验证候选配置：",
 		"本次检查未发送模型请求", "刷新设备", "前往运行页", "复制",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
 	}
+	if hardware, conclusion := slices.Index(tt.Texts(), "硬件"), slices.Index(tt.Texts(), "✕ 暂不可运行"); hardware < 0 || hardware >= conclusion {
+		t.Fatal("hardware must precede conclusion", tt.Texts())
+	}
 	captured, _ := time.Parse(time.RFC3339, *s.device.CapturedAt)
 	if !tt.HasText("快照 " + captured.Local().Format("2006-01-02 15:04:05")) {
 		t.Fatal(tt.Texts())
 	}
-	for _, unwanted := range []string{"ready_to_run", "unified_memory_fit_estimate", "可运行：false", " bytes", "Other Model"} {
+	for _, unwanted := range []string{"ready_to_run", "unified_memory_fit_estimate", "可运行：false", " bytes", "本地模型", "平台能力", "推荐配置", "推荐方案"} {
 		if tt.HasText(unwanted) {
 			t.Fatalf("unexpected %q", unwanted)
 		}
@@ -84,12 +86,6 @@ func TestDeviceLocalizedSnapshot(t *testing.T) {
 	}
 	if tt.Clipboard() != "inferyard probe --config CONFIG.toml" {
 		t.Fatal(tt.Clipboard())
-	}
-	if err := tt.Click("模型文件与原始参数"); err != nil {
-		t.Fatal(err)
-	}
-	if !tt.HasText("Other Model · CPU") || slices.Contains(tt.Texts(), "Fixture Model · Metal 加速") {
-		t.Fatal("candidate deduplication", tt.Texts())
 	}
 	if err := tt.Click("数据来源与缺测明细"); err != nil {
 		t.Fatal(err)
@@ -189,7 +185,7 @@ func TestDeviceBlockedAndUnknownFallback(t *testing.T) {
 		if tt.HasText("推荐方案") || tt.HasText("上下文长度") || tt.HasText("模型文件与原始参数") || tt.HasText("Hidden model") {
 			t.Fatal(tt.Texts())
 		}
-		if !tt.HasText("状态：") || !tt.HasText("future_action · future_reason") {
+		if !tt.HasText("future_action · future_reason") {
 			t.Fatal(tt.Texts())
 		}
 		want := "fixture blocked"
@@ -235,7 +231,7 @@ func TestDeviceBlockedDeduplicatesReasons(t *testing.T) {
 		"原因：输出位置可用磁盘不足 5 GiB、未发现本地 GGUF 模型",
 		"解决阻断项 · 输出位置可用磁盘不足 5 GiB",
 		"提供本地 GGUF 模型（未发现本地 GGUF 模型）",
-		"前往模型与下载页", "已验证", "不支持", "缺测",
+		"前往模型与下载页", "缺测",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
@@ -251,28 +247,6 @@ func TestDeviceBlockedDeduplicatesReasons(t *testing.T) {
 	}
 	if s.selected != "models" {
 		t.Fatal("models navigation failed")
-	}
-}
-
-func TestDeviceUnavailableModel(t *testing.T) {
-	s := deviceTestState()
-	s.device.Snapshot = json.RawMessage(`{
-	 "ready_to_run":false,"model_requests_sent":0,
-	 "hardware":{"cpu_model":"Fixture CPU"},
-	 "recommendation":{"status":"blocked","reason":"invalid_or_unreadable_gguf","selected":null},
-	 "models":[{"path":"/fixture/broken.gguf","status":"unavailable","reason":"invalid_or_unreadable_gguf"}],
-	 "next_steps":[{"action":"provide_local_gguf","reason":"invalid_or_unreadable_gguf"}]
-	}`)
-	tt := ui.NewTester(s.view, 1120, 1800)
-	for _, want := range []string{"broken.gguf", "不可用", "/fixture/broken.gguf", "模型不存在、不可读或 GGUF 元数据无效"} {
-		if !tt.HasText(want) {
-			t.Fatalf("missing %q: %v", want, tt.Texts())
-		}
-	}
-	for _, unwanted := range []string{"上下文 缺测", "invalid_or_unreadable_gguf", "unavailable"} {
-		if tt.HasText(unwanted) {
-			t.Fatalf("unexpected %q", unwanted)
-		}
 	}
 }
 
@@ -307,5 +281,44 @@ func TestDeviceGPUUnavailableReason(t *testing.T) {
 	tt := ui.NewTester(s.view, 1120, 1800)
 	if !tt.HasText("缺测 — 未发现 nvidia-smi；NVIDIA GPU 未观测") {
 		t.Fatal(tt.Texts())
+	}
+}
+
+func TestDeviceGuideDismissal(t *testing.T) {
+	for _, ready := range []bool{false, true} {
+		s := deviceTestState()
+		if ready {
+			s.device.Snapshot = json.RawMessage(strings.Replace(deviceFixture, `"ready_to_run":false`, `"ready_to_run":true`, 1))
+		}
+		tt := ui.NewTester(s.view, 1120, 1800)
+		if !slices.Contains(tt.Texts(), "下一步") || !slices.Contains(tt.Texts(), "✕") {
+			t.Fatal(tt.Texts())
+		}
+		if ready && !tt.HasText("设备检查已通过，前往运行页创建候选并运行题包") {
+			t.Fatal(tt.Texts())
+		}
+		if err := tt.Click("✕"); err != nil {
+			t.Fatal(err)
+		}
+		if !s.deviceGuideDismissed || slices.Contains(tt.Texts(), "下一步") || tt.HasText("复制") || tt.HasText("前往运行页") {
+			t.Fatal("guide not dismissed", tt.Texts())
+		}
+		s.device.Refreshing = true
+		tt.Frame()
+		s.device.Snapshot = json.RawMessage(strings.Replace(deviceFixture, `"threads":5`, `"threads":6`, -1))
+		s.device.Refreshing = false
+		s.device.CapturedAt = ptr("2026-10-14T03:22:22Z")
+		tt.Frame()
+		s.selected = "models"
+		tt.Frame()
+		s.selected = "device"
+		tt.Frame()
+		if slices.Contains(tt.Texts(), "下一步") || !tt.HasText("硬件") || !tt.HasText("刷新设备") {
+			t.Fatal("refresh or navigation reset dismissal", tt.Texts())
+		}
+	}
+	fresh := deviceTestState()
+	if tt := ui.NewTester(fresh.view, 1120, 1800); !slices.Contains(tt.Texts(), "下一步") {
+		t.Fatal("new session must show guide", tt.Texts())
 	}
 }

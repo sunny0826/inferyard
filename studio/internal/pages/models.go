@@ -1,10 +1,11 @@
 package pages
 
 import (
-	"encoding/json"
+	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 )
@@ -16,18 +17,15 @@ func validName(s string) bool { return directoryName.MatchString(s) && strings.T
 func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 func (s *viewState) modelsView(c *ui.Context) {
 	s.header(c, "模型与下载")
+	if snapshot, err := parseDeviceSnapshot(s.device.Snapshot); err == nil && snapshot != nil {
+		deviceRecommendation(c, snapshot.object("recommendation"))
+		deviceModels(c, snapshot.list("models"))
+	} else {
+		ui.Text(c, "尚无设备快照，请到设备页刷新。")
+	}
 	card(c, "本地资产", func() {
 		ui.Text(c, "模型目录："+text(s.settings.Effective.ModelsRoot))
 		ui.Text(c, "引擎目录："+filepath.Join(emptyText(s.settings.Effective.WorkspaceRoot), "engines"))
-		var snap struct {
-			Models any `json:"models"`
-		}
-		_ = json.Unmarshal(s.device.Snapshot, &snap)
-		if snap.Models != nil {
-			kvview(c, "kv-models", snap.Models)
-		} else {
-			ui.Text(c, "尚无资产快照，请到设备页刷新。")
-		}
 	})
 	card(c, "创建模型下载", func() {
 		field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL)
@@ -95,5 +93,63 @@ func (s *viewState) fetchEngine() {
 		}
 		s.win.Update(func() { s.engine = path; s.enginePreset = true })
 		return "引擎已就绪：" + path, nil
+	})
+}
+
+func deviceRecommendation(c *ui.Context, rec deviceObject) {
+	card(c, "推荐配置", func() {
+		selected := rec.object("selected")
+		if rec.value("status") == "blocked" || selected == nil {
+			ui.Text(c, "状态："+rec.label("status"))
+			ui.Text(c, "原因："+rec.label("reason")).TextColor(c.Theme().Warning)
+			return
+		}
+		ui.Text(c, fmt.Sprintf("推荐方案：%s · %s · 上下文 %s · %s 线程", selected.value("model_name"), selected.label("mode"), selected.value("context_size"), selected.value("threads")))
+		mode := selected.label("mode")
+		if selected["gpu_name"] != nil {
+			mode += "（" + selected.value("gpu_name") + "）"
+		}
+		for _, row := range [][2]string{{"模型", selected.value("model_name")}, {"加速方式", mode}, {"上下文长度", selected.value("context_size")}, {"线程数", selected.value("threads")}, {"所需可用内存", "≥ " + deviceBytes(selected["min_available_memory_bytes"])}, {"所需磁盘空间", "≥ " + deviceBytes(selected["min_disk_bytes"])}, {"推荐依据", selected.label("reason")}} {
+			deviceRow(c, row[0], row[1])
+		}
+		for _, reason := range rec.list("limitations") {
+			ui.Text(c, "⚠ "+deviceLabel(fmt.Sprint(reason))).TextColor(c.Theme().Warning)
+		}
+		deviceFold(c, "模型文件与原始参数", func() {
+			deviceMono(c, selected.value("model_path"))
+			for _, candidate := range rec.list("candidates") {
+				other := deviceItem(candidate)
+				if !reflect.DeepEqual(other, selected) {
+					ui.Text(c, other.value("model_name")+" · "+other.label("mode"))
+				}
+			}
+		})
+	})
+}
+
+func deviceModels(c *ui.Context, models []any) {
+	card(c, fmt.Sprintf("本地模型 %d 个 GGUF", len(models)), func() {
+		for i, item := range models {
+			model := deviceItem(item)
+			ui.Column(c.Key(fmt.Sprint(i))).Gap(6).Children(func() {
+				ui.Row(c).Gap(10).Children(func() {
+					name := model.value("name")
+					if model["name"] == nil {
+						name = filepath.Base(model.value("path"))
+					}
+					ui.Text(c, name).Bold()
+					if model.value("status") == "available" {
+						ui.Text(c, deviceBytes(model["size_bytes"])+" · "+model.value("architecture")+" · 上下文 "+model.value("context_length")).TextColor(c.Theme().TextMuted)
+						ui.Badge(c, "可用").TextColor(c.Theme().Success)
+					} else {
+						ui.Badge(c, model.label("status")).TextColor(c.Theme().Warning)
+					}
+				})
+				if model["reason"] != nil {
+					ui.Text(c, model.label("reason")).TextColor(c.Theme().Warning)
+				}
+				deviceMono(c, model.value("path"))
+			})
+		}
 	})
 }
