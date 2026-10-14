@@ -65,7 +65,7 @@ func TestDeviceLocalizedSnapshot(t *testing.T) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
 	}
-	for _, unwanted := range []string{"ready_to_run", "unified_memory_fit_estimate", "可运行：false", "✓ 可运行", "暂不可运行", "下一步", "快照 2026", "本次检查未发送模型请求", "前往运行页", "复制", " bytes", "本地模型", "平台能力", "推荐配置", "推荐方案"} {
+	for _, unwanted := range []string{"ready_to_run", "unified_memory_fit_estimate", "可运行：false", "✓ 可运行", "暂不可运行", "下一步", "快照 2026", "本次检查未发送模型请求", "前往 Dashboard", "复制", " bytes", "本地模型", "平台能力", "推荐配置", "推荐方案"} {
 		if tt.HasText(unwanted) {
 			t.Fatalf("unexpected %q", unwanted)
 		}

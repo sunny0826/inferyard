@@ -20,7 +20,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 | 服务核心 | 设置持久化与探测、设备快照、运行队列、下载、报告、引擎条目的单一持有者；路径包含校验（含符号链接与 macOS `/var` 规范化） | `Service`、`New`、`UpdateSettings`、`saveSettings`、`probe`、`Resolve`、`canonical` 在 [`studio/internal/core/service.go`](../../studio/internal/core/service.go) |
 | 请求/响应类型 | 页面与服务间的 JSON 类型镜像（`UserSettings`、`RunTask`、`EngineState`、`ApiError` 等） | [`studio/internal/core/types.go`](../../studio/internal/core/types.go) |
 | CLI 进程客户端 | 可执行定位、`--version` 解析、argv 直通执行、退出码映射、取消（SIGINT 后两秒 SIGKILL 兜底）、`progress.v1` 解析 | `Client.Exec`、`Locate`、`MapExitCode`、`ParseProgress`、`SplitCommand` 在 [`studio/internal/inferyard/client.go`](../../studio/internal/inferyard/client.go)、[`studio/internal/inferyard/progress.go`](../../studio/internal/inferyard/progress.go)、[`studio/internal/inferyard/command.go`](../../studio/internal/inferyard/command.go) |
-| 向导命令执行 | 预置向导命令的白名单参数校验（仅允许 `init`/`model acquire`/`engine acquire`/`device-check`/`config create`/`config bind`/`run`/`resume`/`report`/`verify` 及列名旗标）、`--out` 不存在性预检、执行后状态回写 | `WizardExecute`、`wizardArgs` 在 [`studio/internal/core/onboarding.go`](../../studio/internal/core/onboarding.go) |
+| Dashboard 命令执行 | 预置向导命令的白名单参数校验（仅允许 `init`/`model acquire`/`engine acquire`/`device-check`/`config create`/`config bind`/`run`/`resume`/`report`/`verify` 及列名旗标）、`--out` 不存在性预检、执行后状态回写 | `WizardExecute`、`wizardArgs` 在 [`studio/internal/core/onboarding.go`](../../studio/internal/core/onboarding.go) |
 | CLI 安装与预置资产 | 复用已有 `inferyard`/uv（含 Homebrew 路径），或下载固定版本独立 uv（sha256 校验）后 `uv tool install inferyard==Version`；内置 SmolLM2-135M 模型 URL 与按平台固定的 Prism 引擎归档下载/解包 | `InstallCLI`、`FindCLI`、`FindUV` 在 [`studio/internal/core/install.go`](../../studio/internal/core/install.go)；`DefaultModelURL`、`DefaultEngineURL`、`FetchEngine` 在 [`studio/internal/core/defaults.go`](../../studio/internal/core/defaults.go) |
 | 就绪度与目录供给 | CLI/工作区/结果/模型四就绪度；workspace 初始化标志为 `preparation.json` 的 `community_init.v1`；`Provision` 显式幂等建目录 | `Readiness`、`Provision`、`workspaceRoot` 在 [`studio/internal/core/readiness.go`](../../studio/internal/core/readiness.go) |
 | 引擎服务生命周期 | 解析冻结配置 `candidate.toml` 的 `[engine]` 启动行、端口占用预检、子进程拉起、健康端点等待、停止与终止 | `StartEngine`、`StopEngine`、`monitorEngine`、`terminateEngine` 在 [`studio/internal/core/engine_service.go`](../../studio/internal/core/engine_service.go)；`Startup`、`Processes` 在 [`studio/internal/core/startup.go`](../../studio/internal/core/startup.go) |
@@ -31,7 +31,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 | 进程内事件 | 2048 条回放环 + 唤醒订阅；慢消费者按游标重建而非丢事件 | `EventBus`、`Publish`、`Subscribe`、`After`、`ReplayCapacity` 在 [`studio/internal/core/events.go`](../../studio/internal/core/events.go) |
 | 证据索引与读取 | 结果根扫描（损坏条目跳过并计数）、JSONL 增量 tail、host dirty 标记判读、状态优先级 | `Index` 在 [`studio/internal/evidence/index.go`](../../studio/internal/evidence/index.go)；`Tail`、`Cursor` 在 [`studio/internal/evidence/tail.go`](../../studio/internal/evidence/tail.go)；`DirtyRun`、`RunStatus` 在 [`studio/internal/evidence/dirty.go`](../../studio/internal/evidence/dirty.go) |
 | 历史聚合 | evidence 记录 → run 汇总/进度/资源投影；resume 资格标记；原子重建历史索引 | `summarize`、`scan`、`markResumable`、`History`、`rebuild` 在 [`studio/internal/core/aggregate.go`](../../studio/internal/core/aggregate.go) |
-| 页面 | 单主窗口六个页内页面（向导/设备/模型与下载/运行/报告/设置）、事件驱动刷新、向导下一步命令推导；模型与下载页按模型/下载/引擎服务/绑定存活提示四区组织，done 引擎任务的路径在向导引擎路径为空时由页面幂等采纳 | `New`、`navigation`、`viewState` 在 [`studio/internal/pages/window.go`](../../studio/internal/pages/window.go)、[`studio/internal/pages/onboarding_actions.go`](../../studio/internal/pages/onboarding_actions.go)；四区在 [`studio/internal/pages/models.go`](../../studio/internal/pages/models.go)、[`studio/internal/pages/models_downloads.go`](../../studio/internal/pages/models_downloads.go)、[`studio/internal/pages/models_engine.go`](../../studio/internal/pages/models_engine.go)；视觉组件在 [`studio/internal/pages/components.go`](../../studio/internal/pages/components.go)（统一规范见 [Studio Design System](../../studio/docs/design-system.md)） |
+| 页面 | 单主窗口五个页内页面（Dashboard/设备/模型与下载/报告/设置）、事件驱动刷新、Dashboard 下一步命令推导；模型与下载页按模型/下载/引擎服务/绑定存活提示四区组织，done 引擎任务的路径在向导引擎路径为空时由页面幂等采纳 | `New`、`navigation`、`viewState` 在 [`studio/internal/pages/window.go`](../../studio/internal/pages/window.go)、[`studio/internal/pages/dashboard_actions.go`](../../studio/internal/pages/dashboard_actions.go)；四区在 [`studio/internal/pages/models.go`](../../studio/internal/pages/models.go)、[`studio/internal/pages/models_downloads.go`](../../studio/internal/pages/models_downloads.go)、[`studio/internal/pages/models_engine.go`](../../studio/internal/pages/models_engine.go)；视觉组件在 [`studio/internal/pages/components.go`](../../studio/internal/pages/components.go)（统一规范见 [Studio Design System](../../studio/docs/design-system.md)） |
 | 桌面通知 | 终态 run/download 与 `report.created` 的固定文案通知；投递失败不影响任务结果 | `Subscribe`、`messageFor` 在 [`studio/internal/desktop/notifications.go`](../../studio/internal/desktop/notifications.go) |
 
 关键状态的事实源：设置持久化在 `os.UserConfigDir()/InferYard Studio/settings.json`（目录 0700、
@@ -48,19 +48,20 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
    `core.New` 创建服务（读设置、启动串行 runQueue、按需 `RefreshDevice`），随后 `mygo.App.Run`
    进入 WhenReady：注册桌面通知订阅、创建 `pages.Reports` 与主窗口 `pages.New`。SIGINT/SIGTERM
    触发 `mygo.App.Quit` 与 `Service.Shutdown`。
-2. **页面刷新**：主窗口的六页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
+2. **页面刷新**：主窗口的五页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
    取增量事件，`sync.reset`/`report.created`/`run.state` 触发全量刷新，其余做局部更新。
-3. **向导执行**：向导页按就绪度推导下一条 CLI 命令（`nextCommand`/`baseCommand`），交给
+3. **Dashboard 阶段执行**：Dashboard 按就绪度与 `progress.v1` 推导下一条 CLI 命令
+   （`nextCommand`/`baseCommand`），交给
    `WizardExecute`：`wizardArgs` 白名单校验 → `run`/`resume` 转入运行队列 → 其余命令探测 CLI
    后执行，`--out` 必须先不存在；`init` 成功后回写 workspace/results 设置，`report` 成功发布
    `report.created` 并可追加 `verify`。
 4. **运行**：`StartRuns` 逐配置读取 bundle 与输出根并做包含/去重准入 → 入队由 `runQueue` 串行
    `executeRun` 派生 `inferyard run --config`（取消为 SIGINT + 两秒兜底）；执行循环每
    `ProgressInterval`（500ms）对比运行前后证据索引、tail `events.jsonl` 投影 case 进度与分数、
-   聚合资源采样；终态经 `run.state` 事件发布。向导页另经 `Service.Progress` 派生
+   聚合资源采样；终态经 `run.state` 事件发布。Dashboard 另经 `Service.Progress` 派生
    `inferyard progress --workspace` 解析 `progress.v1` 恢复工作区进度。运行实现与取消语义见
    [运行时执行与引擎适配](runtime-execution.md)。
-5. **引擎服务**：向导/运行页 `StartEngine` → `Startup` 从冻结配置目录取 `[engine]` 启动行 →
+5. **引擎服务**：Dashboard（绑定或运行阶段）/模型与下载页 `StartEngine` → `Startup` 从冻结配置目录取 `[engine]` 启动行 →
    监听端口预检 → 拉起引擎子进程（stdout/stderr 写入 workspace `logs/engine-*.log`）→
    `monitorEngine` 每秒探测 `{endpoint}/health`，2xx 转 `running`；启动默认超时 10 分钟。
    `StopEngine` 仅在无活动运行时允许，SIGTERM 后 10 秒未退出则 kill。
@@ -132,7 +133,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 - **引擎状态机与所有权**：`stopped → starting → running → stopping → stopped`；进程在
   `starting`/`running` 期自行退出判 `failed`（`engine_exited`），启动超时判 `failed`
   （`engine_start_timeout`），均不自动重启——Studio 只拥有并停止自己拉起的进程，异常遗留的
-  引擎需在运行页手动停止后重新绑定。端口占用返回 `engine_port_in_use`；有活动运行时
+  引擎需在 Dashboard 手动停止后重新绑定。端口占用返回 `engine_port_in_use`；有活动运行时
   `StopEngine` 返回 `run_active`；引擎 `stopping` 期间拒绝新运行（`engine_stopping`）；
   服务关停中一切准入返回 `service_closing`。
 - **模拟不授予真机资格**：测试用注入式 fixture executor，不启动真实模型服务或网络下载；
@@ -165,8 +166,13 @@ InferYard Studio 是面向本地模型评测的桌面应用：MyGo v0.4.5 原生
 ## 视觉规格
 
 全局视觉与交互规则统一维护在 [Studio Design System](../../studio/docs/design-system.md)，
-覆盖六个主页面、运行详情及报告窗口外壳。该规范吸收模型页原有四区布局、主题状态色、
+覆盖五个主页面、运行详情及报告窗口外壳。该规范吸收模型页原有四区布局、主题状态色、
 内联详情和测量展示约定，并补齐表单、无障碍、缩放和验收要求。
+
+Dashboard 按 [`studio/docs/prototypes/dashboard-page.html`](../../studio/docs/prototypes/dashboard-page.html)
+原型实施：结论卡置顶（六阶段步骤条 + 当前阶段徽标 + 阻断原因），阶段动作区使用步骤轨道组件
+（编号圆点 + 纵向连接线，内容铺在页面背景上不用卡片，只渲染当前阶段），其后依次为快速运行、
+任务队列与运行历史卡；运行详情为页内子视图。
 
 共享标题、活动进度、换行按钮和一次性公告由 `pages/design_system.go` 承载；
 字段提示由 `pages/form_validation.go` 承载。页面首次加载、刷新与失败分别呈现，刷新失败保留已有数据。

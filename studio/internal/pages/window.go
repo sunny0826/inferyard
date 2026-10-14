@@ -12,7 +12,7 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-var navigation = []struct{ id, label string }{{"wizard", "向导"}, {"device", "设备"}, {"models", "模型与下载"}, {"runs", "运行"}, {"reports", "报告"}, {"settings", "设置"}}
+var navigation = []struct{ id, label string }{{"dashboard", "Dashboard"}, {"device", "设备"}, {"models", "模型与下载"}, {"reports", "报告"}, {"settings", "设置"}}
 
 type Window struct {
 	Win *mygo.Window
@@ -58,7 +58,7 @@ func pageID(page string) string {
 			return page
 		}
 	}
-	return "wizard"
+	return "dashboard"
 }
 
 type viewState struct {
@@ -138,7 +138,7 @@ func (s *viewState) refresh(full bool) {
 	var history core.RunHistoryResponse
 	var reports []core.ReportSummary
 	var he, re, pe *core.ApiError
-	var onboarding onboardingSnapshot
+	var dashboard dashboardSnapshot
 	var runProgress *core.RunProgress
 	for _, task := range tasks {
 		if !terminal(task.State) {
@@ -157,7 +157,7 @@ func (s *viewState) refresh(full bool) {
 	if ready.CLI.Status == "ok" {
 		progress, pe = s.service.Progress(s.ctx)
 	}
-	onboarding = s.readOnboarding(progress.Progress)
+	dashboard = s.readDashboard(progress.Progress)
 	engineState := s.service.Engine()
 	if s.ctx.Err() != nil {
 		return
@@ -186,7 +186,7 @@ func (s *viewState) refresh(full bool) {
 			s.historyError, s.reportsError = he, re
 		}
 		s.ready, s.progress = ready, progress.Progress
-		s.applyOnboarding(onboarding, pe)
+		s.applyDashboard(dashboard, pe)
 		s.engineState = engineState
 		s.loaded = true
 	})
@@ -231,7 +231,6 @@ func (s *viewState) view(c *ui.Context) {
 		c.Toast(message)
 	}
 	s.announceChanges(c)
-	c.OnShortcut(ui.Cmd, ui.KeyR, s.refreshAction)
 
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
 		ui.Sidebar(c, &s.selected, func() {
@@ -241,7 +240,7 @@ func (s *viewState) view(c *ui.Context) {
 			}
 		}).Width(max(c.Theme().Space(51.25), c.Theme().Rem(11)))
 		ui.Column(c).Grow(1).MinWidth(0).Children(func() {
-			s.toolbar(c)
+			s.activityStatus(c)
 			ui.Scroll(c).Grow(1).Key(s.selected).TrackScroll(s.pageScroll()).Padding(c.Theme().Space(6)).Children(func() {
 				ui.Column(c).Gap(c.Theme().Space(4)).Children(func() {
 					s.feedback(c)
@@ -266,18 +265,18 @@ func (s *viewState) view(c *ui.Context) {
 						s.deviceView(c)
 					case "models":
 						s.modelsView(c)
-					case "runs":
+					case "dashboard":
 						if s.detailID != "" {
 							s.detailView(c)
 						} else {
-							s.runsView(c)
+							s.dashboardView(c)
 						}
 					case "reports":
 						s.reportsView(c)
 					case "settings":
 						s.settingsView(c)
 					default:
-						s.wizardView(c)
+						s.dashboardView(c)
 					}
 				})
 			})
@@ -290,7 +289,7 @@ func (s *viewState) refreshAction() {
 		go s.refresh(true)
 	}
 }
-func (s *viewState) toolbar(c *ui.Context) {
+func (s *viewState) activityStatus(c *ui.Context) {
 	if !s.busy && !s.refreshing {
 		return
 	}
@@ -333,7 +332,7 @@ func (s *viewState) pageScroll() *ui.ScrollState {
 		s.scrolls = map[string]*ui.ScrollState{}
 	}
 	key := s.selected
-	if key == "runs" && s.detailID != "" {
+	if key == "dashboard" && s.detailID != "" {
 		key = "detail"
 	}
 	if s.scrolls[key] == nil {

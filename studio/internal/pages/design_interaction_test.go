@@ -14,7 +14,7 @@ import (
 func TestDesignAnnouncementsOnce(t *testing.T) {
 	s := testState()
 	tt := ui.NewTester(s.view, 1120, 800)
-	if got := tt.Announcements(); len(got) != 1 || got[0] != "向导" {
+	if got := tt.Announcements(); len(got) != 1 || got[0] != "Dashboard" {
 		t.Fatal(got)
 	}
 	for range 3 {
@@ -59,7 +59,7 @@ func TestDesignAnnouncementsOnce(t *testing.T) {
 
 func TestDesignHiddenDetailErrorIsNotAnnounced(t *testing.T) {
 	s := testState()
-	s.selected = "runs"
+	s.selected = "dashboard"
 	s.detailError = &core.ApiError{Code: "not_found", Message: "hidden detail"}
 	tt := ui.NewTester(s.view, 1120, 800)
 	for _, message := range tt.Announcements() {
@@ -106,7 +106,7 @@ func TestDesignInvalidFieldsPreserveEdits(t *testing.T) {
 		}
 	}
 
-	s.selected = "runs"
+	s.selected = "dashboard"
 	s.resumeSource = &core.RunSummary{RunId: "resume", Path: "/results/run"}
 	s.endpoint = "http://127.0.0.1:8080"
 	s.pid = ""
@@ -141,7 +141,7 @@ func TestDesignInvalidFieldsPreserveEdits(t *testing.T) {
 }
 
 func TestDesignNamedControlsAndHeadingLevels(t *testing.T) {
-	for _, page := range []string{"wizard", "device", "models", "runs", "reports", "settings", "detail"} {
+	for _, page := range []string{"dashboard", "device", "models", "reports", "settings", "detail"} {
 		s := designFixture(page)
 		tt := ui.NewTester(s.view, 1120, 800)
 		designNodes(tt, func(n reflect.Value, _ bool) {
@@ -185,7 +185,7 @@ func TestDesignReducedMotionIsStatic(t *testing.T) {
 
 func TestDesignDetailRetryAndLoading(t *testing.T) {
 	s := testState()
-	s.selected, s.detailID = "runs", "missing"
+	s.selected, s.detailID = "dashboard", "missing"
 	entered := make(chan struct{}, 10)
 	s.ctx = refreshContext{context.Background(), entered}
 	tt := ui.NewTester(s.view, 1120, 800)
@@ -217,7 +217,7 @@ func designFieldInputs(tt *ui.Tester, label string) []reflect.Value {
 }
 
 func TestDesignPageLoadingErrorEmpty(t *testing.T) {
-	for _, page := range []string{"wizard", "device", "models", "runs", "reports", "settings"} {
+	for _, page := range []string{"dashboard", "device", "models", "reports", "settings"} {
 		s := testState()
 		s.selected = page
 		s.loaded = false
@@ -237,8 +237,8 @@ func TestDesignPageLoadingErrorEmpty(t *testing.T) {
 	s := testState()
 	s.selected = "reports"
 	tt := ui.NewTester(s.view, 1120, 1200)
-	click(t, tt, "到运行页启动测评")
-	if s.selected != "runs" {
+	click(t, tt, "到 Dashboard 启动测评")
+	if s.selected != "dashboard" {
 		t.Fatal("empty sources navigation failed")
 	}
 	s.selected = "reports"
@@ -268,7 +268,7 @@ func TestDesignKeyboardDetailsReturnAndHorizontalTable(t *testing.T) {
 	if s.detailID != "two" {
 		t.Fatal("keyboard did not open selected task", s.detailID)
 	}
-	click(t, tt, "返回运行")
+	click(t, tt, "返回 Dashboard")
 	if !tt.Focused("运行任务队列") {
 		t.Fatal("return did not restore table focus")
 	}

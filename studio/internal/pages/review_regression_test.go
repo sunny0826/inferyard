@@ -11,17 +11,67 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-func TestRecoveryCardSurvivesRunPhase(t *testing.T) {
+func TestBindingRecoveryInBindStage(t *testing.T) {
 	for _, phase := range []string{"run_missing", "run_incomplete", "bound_missing"} {
 		s := testState()
-		s.selected = "runs"
-		s.progress = &inferyard.WorkspaceProgress{NextAction: "run", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: phase, CandidatePath: ptr("/candidate"), BoundPath: ptr("/bound")}}}
+		s.selected = "dashboard"
+		s.progress = &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: phase, CandidatePath: ptr("/candidate"), BoundPath: ptr("/bound")}}}
 		s.bindingStale = true
 		s.engineState = core.EngineState{State: "running", Pid: 42}
 		tt := ui.NewTester(s.view, 1120, 2400)
 		for _, label := range []string{"启动服务", "停止服务", "重新绑定", "旧绑定已失效，请重启服务并重新绑定"} {
 			if !tt.HasText(label) {
 				t.Fatalf("%s lacks %s", phase, label)
+			}
+		}
+	}
+}
+
+func TestRecoveryCardSurvivesRunPhase(t *testing.T) {
+	for _, action := range []string{"run", "resume"} {
+		for _, path := range []string{"candidate", "bound", "none"} {
+			for _, running := range []bool{false, true} {
+				s := testState()
+				b := inferyard.BundleProgress{Bundle: "zh-core", Phase: "run_missing", NextAction: action}
+				if path == "candidate" {
+					b.CandidatePath = ptr("/candidate")
+				} else if path == "bound" {
+					b.BoundPath = ptr("/bound")
+				}
+				s.progress = &inferyard.WorkspaceProgress{NextAction: action, Bundles: []inferyard.BundleProgress{b}}
+				s.bindingStale = true
+				s.engineState = core.EngineState{State: "running", Pid: 42}
+				if running {
+					s.tasks = []core.RunTask{{State: "running"}}
+				}
+				tt := ui.NewTester(s.stageView, 1120, 2400)
+				if path == "none" {
+					if tt.HasText("模型服务") {
+						t.Fatal("service card without candidate or binding")
+					}
+					continue
+				}
+				for _, label := range []string{"模型服务", "停止服务", "旧绑定已失效，请重启服务并重新绑定"} {
+					if !tt.HasText(label) {
+						t.Fatalf("%s/%s running=%v lacks %s", action, path, running, label)
+					}
+				}
+				service, _ := tt.Find("模型服务")
+				run, _ := tt.Find("运行当前题包")
+				if service.Y >= run.Y {
+					t.Fatal("service card must precede run content")
+				}
+				if running {
+					click(t, tt, "停止服务")
+					if path == "bound" {
+						click(t, tt, "重新绑定")
+					}
+					if s.busy {
+						t.Fatal("service mutation admitted while running")
+					}
+				} else if path == "bound" && !tt.HasText("重新绑定") {
+					t.Fatal("bound run lacks recovery action")
+				}
 			}
 		}
 	}
@@ -72,21 +122,32 @@ func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 	}
 }
 
-func TestManualConfigAvailableWithoutBindings(t *testing.T) {
+func TestQuickRunManualRecoveryWithoutProgress(t *testing.T) {
 	s := testState()
-	s.selected, s.progress = "runs", nil
+	s.selected, s.progress = "dashboard", nil
 	tt := ui.NewTester(s.view, 1120, 1600)
-	if err := tt.Click("高级：手动配置路径"); err != nil {
-		t.Fatal(err)
+	if !tt.HasText("启动测评") || !tt.HasText("暂无已绑定题包；可在下方高级选项手动指定配置路径") {
+		t.Fatal(tt.Texts())
 	}
+	click(t, tt, "高级：手动配置路径")
 	if !tt.HasText("第一配置绝对路径") || !tt.HasText("第二配置绝对路径") {
 		t.Fatal(tt.Texts())
 	}
-	// Empty manual paths cannot invoke the deliberately absent service.
 	_ = tt.Click("启动运行")
 	if s.busy {
 		t.Fatal("empty manual paths admitted")
 	}
+	s.progress = &inferyard.WorkspaceProgress{NextAction: "prepare_candidate"}
+	tt.Frame()
+	if tt.HasText("启动测评") {
+		t.Fatal("quick run shown for known progress without bindings")
+	}
+	s.progress.Bundles = []inferyard.BundleProgress{{Bundle: "zh-core", BoundPath: ptr("/bound")}}
+	tt.Frame()
+	if !tt.HasText("启动测评") {
+		t.Fatal("quick run hidden with a bound bundle")
+	}
+
 }
 
 func TestWorkspaceSwitchClearsEngineSession(t *testing.T) {
@@ -114,7 +175,7 @@ func TestInstallAndDownloadFeedbackStayOnTheirPages(t *testing.T) {
 	if !tt.HasText("引擎专属进度") || tt.HasText("CLI 专属进度") {
 		t.Fatal(tt.Texts())
 	}
-	s.selected = "settings"
+	s.selected = "dashboard"
 	tt.Frame()
 	if !tt.HasText("CLI 专属进度") || tt.HasText("引擎专属进度") || tt.HasText("一键配置目录") {
 		t.Fatal(tt.Texts())

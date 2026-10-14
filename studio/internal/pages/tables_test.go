@@ -243,7 +243,7 @@ func TestDownloadTaskCardsRenderOnReorder(t *testing.T) {
 
 func TestHistoryResumePanelKeepsTableSelection(t *testing.T) {
 	s := testState()
-	s.selected = "runs"
+	s.selected = "dashboard"
 	s.history.Batches = []core.BatchSummary{{BatchId: "batch", Path: "/batch", Runs: []core.RunSummary{{RunId: "selected-run", Path: "/selected", BatchId: ptr("batch"), Resumable: true}}}}
 	tt := ui.NewTester(s.view, 1600, 2600)
 	click(t, tt, "selected-run")
@@ -252,6 +252,7 @@ func TestHistoryResumePanelKeepsTableSelection(t *testing.T) {
 	if !tt.HasText("确认续测") {
 		t.Fatal(tt.Texts())
 	}
+	tt.Scroll(1000, 1800, 0, 800)
 	click(t, tt, "关闭续测设置")
 	tt.Frame()
 	if !tt.HasText("/selected") || tt.HasText("确认续测") {
@@ -259,7 +260,7 @@ func TestHistoryResumePanelKeepsTableSelection(t *testing.T) {
 	}
 	s.selected = "models"
 	tt.Frame()
-	s.selected = "runs"
+	s.selected = "dashboard"
 	tt.Frame()
 	if !tt.HasText("/selected") {
 		t.Fatal("table selection lost after page change")

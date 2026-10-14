@@ -14,7 +14,7 @@
 <div class="app">
 <aside class="sidebar" aria-label="应用位置示意">
 <div class="brand">Infer<span>Yard</span><small style="display:block;font-weight:400">STUDIO</small></div>
-<span class="navitem">◈　向导</span><span class="navitem">▣　设备</span><span class="navitem current" aria-current="page">▧　模型与下载</span><span class="navitem">▷　运行</span><span class="navitem">▤　报告</span><span class="navitem">⚙　设置</span>
+<span class="navitem">◈　Dashboard</span><span class="navitem">▣　设备</span><span class="navitem current" aria-current="page">▧　模型与下载</span><span class="navitem">▤　报告</span><span class="navitem">⚙　设置</span>
 <div class="foot">本地工作区<br><code>~/.inferyard</code><br><br>MyGo 原生界面设计稿<br>导航仅作位置示意</div>
 </aside>
 <main>
@@ -56,10 +56,10 @@
 <div class="notice" id="engine-notice"></div>
 <details><summary>预览操作限制</summary><label class="check"><input type="checkbox" id="active-run">有活动运行（停止返回 run_active）</label><label class="check"><input type="checkbox" id="port-busy">端口已占用（启动返回 engine_port_in_use）</label><label class="check"><input type="checkbox" id="closing">Studio 正在关停（准入返回 service_closing）</label><p>停止中拒绝新运行：engine_stopping。Studio 关停时先排空运行队列，再停止自己启动的引擎。外部进程不由 Studio 停止。</p></details>
 </div></section>
-<section class="card" aria-labelledby="binding-title"><div class="section-head"><h2 id="binding-title">绑定存活提示</h2><span class="pill">只读</span></div><div class="body"><label for="binding-state" style="margin-top:0">预览绑定状态</label><select id="binding-state"><option value="none">尚未绑定</option><option value="alive">存活提示匹配</option><option value="stale">进程已变更</option><option value="unknown">无法确认</option></select><div class="binding" aria-live="polite"><strong id="binding-heading">尚未绑定服务</strong><small id="binding-note">服务就绪后，到运行页完成绑定。</small></div><p class="notice">存活提示只比对 server_pid / process_start_ticks。身份核验始终由 CLI 在 bind / run 时完成；服务运行中不代表绑定有效。</p><button id="binding-action" style="margin-top:14px">查看绑定下一步</button></div></section>
+<section class="card" aria-labelledby="binding-title"><div class="section-head"><h2 id="binding-title">绑定存活提示</h2><span class="pill">只读</span></div><div class="body"><label for="binding-state" style="margin-top:0">预览绑定状态</label><select id="binding-state"><option value="none">尚未绑定</option><option value="alive">存活提示匹配</option><option value="stale">进程已变更</option><option value="unknown">无法确认</option></select><div class="binding" aria-live="polite"><strong id="binding-heading">尚未绑定服务</strong><small id="binding-note">服务就绪后，到 Dashboard 完成绑定。</small></div><p class="notice">存活提示只比对 server_pid / process_start_ticks。身份核验始终由 CLI 在 bind / run 时完成；服务运行中不代表绑定有效。</p><button id="binding-action" style="margin-top:14px">查看绑定下一步</button></div></section>
 </div>
 </div>
-<footer class="footer">原型以 docs/subsystems/studio-panel.md 为行为依据。进程内事件驱动局部刷新；本页按钮模拟事件快照，无计时器伪造进度。CLI 安装仍在设置页：复用已有安装，或校验固定 uv 后安装匹配版本。</footer>
+<footer class="footer">原型以 docs/subsystems/studio-panel.md 为行为依据。进程内事件驱动局部刷新；本页按钮模拟事件快照，无计时器伪造进度。CLI 安装在 Dashboard：复用已有安装，或校验固定 uv 后安装匹配版本。</footer>
 <details class="footer"><summary>设计依据与实现差异</summary><p>依据「职责与事实源」的引擎生命周期、下载任务、CLI 安装与预置资产、绑定存活提示；「运行路径」2 / 5 / 6 / 8 / 9；引擎状态机及「约束与失败行为」。原生页面已按本原型实现四区（models.go / models_table.go / models_engine.go）：引擎下载经 CreateEngineDownload 进入统一任务列表，取消复用 CancelDownload。</p><p>引擎传输接口仍不提供字节读数，引擎任务的字节与速率保持 null 并带 progress_reason；模型下载完成由 CLI 结果或 source.json 收尾，正式文件发布后按实测字节收尾。</p><p>根 README 的 desktop/Web 描述与子系统参考不一致，此处采用 MyGo 原生产品定位。HTML 仅用于设计评审，不构成原生 UI、真实下载、模型运行或跨平台验收证据。</p></details>
 </main></div>
 <div id="feedback" role="status" aria-live="polite"></div>
@@ -70,9 +70,9 @@ const tell=message=>{$('feedback').textContent=message;};
 const engineStates={
  stopped:['服务尚未启动','启动前检查冻结配置的端口，启动后等待健康端点就绪。','未运行；Studio 只管理自己启动的进程。'],
  starting:['正在加载模型','每秒探测 /health，收到 2xx 后进入运行中；默认最多等待 10 分钟。','重复启动返回当前 starting 状态，不创建第二个进程。'],
- running:['服务已就绪','健康端点已响应，可以到运行页绑定服务。','重复启动返回当前 running 状态，不创建第二个进程。'],
+ running:['服务已就绪','健康端点已响应，可以到 Dashboard 绑定服务。','重复启动返回当前 running 状态，不创建第二个进程。'],
  stopping:['正在停止服务','先发送 SIGTERM，10 秒未退出则 kill；等待进程退出后变为 stopped。','停止中拒绝新运行（engine_stopping）；重复启动返回当前状态。'],
- failed:['服务异常退出','不会自动重启。检查日志后手动启动，并重新绑定。','日志位置：workspace/logs/engine-*.log。异常遗留进程需到运行页手动停止后重新绑定。']
+ failed:['服务异常退出','不会自动重启。检查日志后手动启动，并重新绑定。','日志位置：workspace/logs/engine-*.log。异常遗留进程需到 Dashboard 手动停止后重新绑定。']
 };
 function renderEngine(state){
  engine=state; const v=engineStates[state];
@@ -108,16 +108,16 @@ document.querySelectorAll('[data-state]').forEach(b=>b.onclick=()=>renderEngine(
 document.querySelectorAll('[data-download]').forEach(b=>b.onclick=()=>renderDownload(b.dataset.download));
 document.querySelectorAll('[data-engine-download]').forEach(b=>b.onclick=()=>renderEngineDownload(b.dataset.engineDownload));
 $('failure').onchange=()=>renderEngine('failed');
-$('start').onclick=()=>{if($('closing').checked)return tell('service_closing：Studio 正在关停，不接受启动。');if(['starting','running','stopping'].includes(engine))return tell('返回当前 '+engine+' 状态，未创建新进程。');if($('port-busy').checked)return tell('engine_port_in_use：端口 8080 已占用。请处理原服务或到运行页绑定已有进程，不自动换端口。');renderEngine('starting');tell('模拟启动。用「运行中」或「失败」按钮预览健康检查结果。');};
+$('start').onclick=()=>{if($('closing').checked)return tell('service_closing：Studio 正在关停，不接受启动。');if(['starting','running','stopping'].includes(engine))return tell('返回当前 '+engine+' 状态，未创建新进程。');if($('port-busy').checked)return tell('engine_port_in_use：端口 8080 已占用。请处理原服务或到 Dashboard 绑定已有进程，不自动换端口。');renderEngine('starting');tell('模拟启动。用「运行中」或「失败」按钮预览健康检查结果。');};
 $('stop').onclick=()=>{if($('active-run').checked)return tell('run_active：有活动运行，拒绝停止，服务状态保持不变。');renderEngine('stopping');tell('模拟停止。用「已停止」按钮预览进程退出事件。');};
 $('preset').onclick=()=>{if($('closing').checked)return tell('service_closing：不接受新下载。');$('download-name').textContent='SmolLM2-135M · Q4_K_M';$('download-dir').textContent='~/.inferyard/models/smollm2-demo';renderDownload('waiting');tell('已创建预置模型示例任务；实际未下载。');};
 $('cancel-download').onclick=()=>{renderDownload('cancelled');tell('已模拟取消完成事件，运行队列不受影响。');};
 $('engine-download').onclick=()=>{if($('closing').checked)return tell('service_closing：不接受新下载。');renderEngineDownload('downloading');};
 $('engine-download-cancel').onclick=()=>renderEngineDownload('cancelled');
 $('source-form').onsubmit=e=>{e.preventDefault();let valid=false;try{const raw=$('source').value;const u=new URL(raw);valid=u.protocol==='https:'&&!u.username&&!u.password&&!raw.includes('?')&&!raw.includes('#')&&['huggingface.co','modelscope.cn'].includes(u.host)&&/^\/[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*\/blob\/[a-fA-F0-9]{40}\/.+\.gguf$/.test(u.pathname)&&!raw.includes('@');}catch{}$('source').value='';if(!valid){$('source-result').textContent='来源不符合要求。请使用固定 revision 的 HTTPS GGUF 地址；输入已清除，内容不回显。';return;}const name=$('out-name').value;if(!/^[A-Za-z0-9._-]+$/.test(name)||!name.replace(/\./g,'')){$('source-result').textContent='目录名仅允许字母、数字、点、下划线和连字符，不能全为点。';return;}if($('closing').checked){$('source-result').textContent='service_closing：不接受新下载。';return;}$('download-name').textContent='自定义模型 · '+name;$('download-dir').textContent='~/.inferyard/models/'+name;renderDownload('waiting');$('source-result').textContent='已创建示例任务；来源已清除。实际准入与目录存在性由服务和 CLI 检查。';};
-const binding={none:['尚未绑定服务','服务就绪后，到运行页完成绑定。'],alive:['绑定进程存活提示匹配','示例：llama-server · PID 48216，启动 tick 与绑定记录匹配；仍需 CLI 核验。'],stale:['原绑定可能已失效','PID 或启动 tick 不匹配；请到运行页重新绑定。'],unknown:['无法确认存活','null · 无法读取进程启动 tick；不能据此判定绑定有效。']};
+const binding={none:['尚未绑定服务','服务就绪后，到 Dashboard 完成绑定。'],alive:['绑定进程存活提示匹配','示例：llama-server · PID 48216，启动 tick 与绑定记录匹配；仍需 CLI 核验。'],stale:['原绑定可能已失效','PID 或启动 tick 不匹配；请到 Dashboard 重新绑定。'],unknown:['无法确认存活','null · 无法读取进程启动 tick；不能据此判定绑定有效。']};
 $('binding-state').onchange=()=>{const v=binding[$('binding-state').value];$('binding-heading').textContent=v[0];$('binding-note').textContent=v[1];};
-$('binding-action').onclick=()=>tell('原型下一步：运行页 → 绑定已有进程。仅展示 PID 与可执行名，由 CLI 核验身份。');
+$('binding-action').onclick=()=>tell('原型下一步：Dashboard → 绑定已有进程。仅展示 PID 与可执行名，由 CLI 核验身份。');
 renderEngine('stopped');renderDownload('downloading');
 </script>
 </body>

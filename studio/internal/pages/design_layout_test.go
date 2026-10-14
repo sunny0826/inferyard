@@ -42,14 +42,14 @@ func designFixture(page string) *viewState {
 	}
 	s.reports = []core.ReportSummary{{ReportId: "report-fixture", Path: long + "report", RunIds: []string{"run-001"}}}
 	if page == "detail" {
-		s.selected, s.detailID = "runs", "active"
+		s.selected, s.detailID = "dashboard", "active"
 		s.detail = &core.RunTaskDetail{Task: s.tasks[0], Progress: &core.RunProgress{Done: 1, Total: ptr(int64(4)), Cases: []core.CaseProgress{{CaseId: "case-fixture", State: "completed"}}}, Resources: []core.ResourceSample{{Utc: "2026-10-14T01:00:00Z", ServiceCpuPercent: ptr(10.0)}}}
 	}
 	return s
 }
 
 func TestDesignLayoutMatrix(t *testing.T) {
-	for _, page := range []string{"wizard", "device", "models", "runs", "reports", "settings", "detail"} {
+	for _, page := range []string{"dashboard", "device", "models", "reports", "settings", "detail"} {
 		for _, width := range []int{1120, 800, 1440} {
 			for _, scale := range []float32{1, 1.5, 2} {
 				for _, dark := range []bool{false, true} {

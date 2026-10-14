@@ -11,7 +11,7 @@ import (
 
 func strptr(s string) *string { return &s }
 
-func TestOnboardingViews(t *testing.T) {
+func TestDashboardViews(t *testing.T) {
 	version := core.Version
 	core.Version = "0.0.2"
 	t.Cleanup(func() { core.Version = version })
@@ -28,20 +28,20 @@ func TestOnboardingViews(t *testing.T) {
 		{"running", viewState{loaded: true, tasks: []core.RunTask{{State: "running"}}, runProgress: &core.RunProgress{Done: 86, Total: &total}}, "86 / 120 题"},
 		{"verified", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{DefaultScopeComplete: true}}, "已核验 verified"},
 		{"device defaults", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "device_check", Workspace: "/tmp/ws"}, modelURL: core.DefaultModelURL, engineURL: core.DefaultEngineURL()}, "引擎 URL"},
-		{"initialized outdated CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Path: strptr("/tmp/ws"), Exists: true, Initialized: true}}}, "工作区已初始化"},
+		{"initialized outdated CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Path: strptr("/tmp/ws"), Exists: true, Initialized: true}}}, "已初始化"},
 	}
 	for i := range cases {
 		tc := &cases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			switch tc.name {
 			case "CLI unavailable", "initialize", "initialized outdated CLI":
-				tc.state.selected = "settings"
+				tc.state.selected = "dashboard"
 			case "verified":
 				tc.state.selected = "reports"
 			case "device defaults":
 				tc.state.selected = "models"
 			default:
-				tc.state.selected = "runs"
+				tc.state.selected = "dashboard"
 			}
 			tt := ui.NewTester(tc.state.view, 1120, 2400)
 			if !tt.HasText(tc.want) {
@@ -61,7 +61,7 @@ func TestOnboardingViews(t *testing.T) {
 				if !tt.HasText("自动安装 CLI 0.0.2") {
 					t.Fatalf("missing auto-install action: %v", tt.Texts())
 				}
-				if !tt.HasText("CLI 绝对路径（留空使用 PATH）") {
+				if !tt.HasText("路径在设置页修改") {
 					t.Fatal("missing manual path action")
 				}
 			}
@@ -96,7 +96,7 @@ func TestOnboardingViews(t *testing.T) {
 	}
 }
 func TestSecondBundleAndIncompleteRun(t *testing.T) {
-	w := viewState{selected: "runs", loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete"}, {Bundle: "zh-svg-pelican", Phase: "candidate_missing"}}}}
+	w := viewState{selected: "dashboard", loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete"}, {Bundle: "zh-svg-pelican", Phase: "candidate_missing"}}}}
 	tt := ui.NewTester(w.view, 1000, 740)
 	if w.active().Bundle != "zh-svg-pelican" || !tt.HasText("zh-core 已封存") || !tt.HasText("zh-svg-pelican") {
 		t.Fatal(tt.Texts())

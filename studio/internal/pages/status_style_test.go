@@ -33,10 +33,10 @@ func absDiff(a, b uint8) int {
 	return d
 }
 
-func TestWizardStepStyles(t *testing.T) {
+func TestDashboardStepStyles(t *testing.T) {
 	s := testState()
 	var theme *ui.Theme
-	tt := ui.NewTester(func(c *ui.Context) { theme = c.Theme(); ui.Column(c).Children(func() { s.wizardView(c) }) }, 1120, 1600)
+	tt := ui.NewTester(func(c *ui.Context) { theme = c.Theme(); ui.Column(c).Children(func() { s.conclusionView(c) }) }, 1120, 1600)
 	for _, dark := range []bool{false, true} {
 		tt.SetDark(dark)
 		assertTextColor(t, tt, "✓  准备", theme.Success)

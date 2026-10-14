@@ -168,7 +168,7 @@ func TestModelsEngineServiceStates(t *testing.T) {
 		s := testState()
 		s.engineState = core.EngineState{State: tc.state, Pid: 42, Endpoint: "http://127.0.0.1:8080", Candidate: "/candidate.toml", LogPath: "/engine.log"}
 		tt := ui.NewTester(func(c *ui.Context) { s.modelEngineServiceView(c) }, 1000, 900)
-		for _, want := range []string{tc.label, "缺测 · 此页无内存采样", "凭据参数与完整进程 argv 不展示", "PID：42", "本地地址：http://127.0.0.1:8080", "/candidate.toml", "/engine.log", "请先到运行页准备冻结配置。", "不会自动重启；Studio 只管理自己启动的进程。"} {
+		for _, want := range []string{tc.label, "缺测 · 此页无内存采样", "凭据参数与完整进程 argv 不展示", "PID：42", "本地地址：http://127.0.0.1:8080", "/candidate.toml", "/engine.log", "请先到 Dashboard 准备冻结配置。", "不会自动重启；Studio 只管理自己启动的进程。"} {
 			if !tt.HasText(want) && len(modelUINodes(tt, "text", want)) == 0 {
 				t.Fatal(want, tt.Texts())
 			}
@@ -214,7 +214,7 @@ func TestModelsBindingStates(t *testing.T) {
 		want           string
 	}{
 		{nil, false, false, "尚未绑定服务"}, {nil, true, false, "尚未绑定服务"},
-		{ptr("/bound"), false, false, "存活提示匹配"}, {ptr("/bound"), true, false, "原绑定可能已失效，请到运行页重新绑定"},
+		{ptr("/bound"), false, false, "存活提示匹配"}, {ptr("/bound"), true, false, "原绑定可能已失效，请到 Dashboard 重新绑定"},
 		{ptr("/bound"), false, true, "无法确认存活，不据此判定绑定有效"},
 	} {
 		s := testState()
@@ -226,8 +226,8 @@ func TestModelsBindingStates(t *testing.T) {
 				t.Fatal(want, tt.Texts())
 			}
 		}
-		click(t, tt, "到运行页绑定")
-		if s.selected != "runs" {
+		click(t, tt, "到 Dashboard 绑定")
+		if s.selected != "dashboard" {
 			t.Fatal("binding navigation", s.selected)
 		}
 		if tc.want != "存活提示匹配" && tt.HasText("存活提示匹配") {

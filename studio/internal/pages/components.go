@@ -94,3 +94,20 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 		options.details()
 	})
 }
+
+// stepTrack places a numbered rail beside content on the page background.
+func stepTrack(c *ui.Context, number, title string, fn func()) {
+	t := c.Theme()
+	ui.Row(c).AlignItems(ui.Stretch).Gap(t.Space(4)).Label("阶段步骤 " + number).Children(func() {
+		ui.Column(c).Width(t.Space(7)).AlignItems(ui.Center).Gap(t.Space(1)).Children(func() {
+			ui.Box(c).Width(t.Space(7)).Height(t.Space(7)).Radius(t.Space(3.5)).Background(t.Accent).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+				ui.Text(c, number).Bold().TextColor(t.Surface)
+			})
+			ui.Box(c).Width(t.Space(.5)).Grow(1).Background(t.Border)
+		})
+		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Space(2.5)).Children(func() {
+			heading(c, title, 2)
+			fn()
+		})
+	})
+}

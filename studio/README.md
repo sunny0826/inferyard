@@ -8,40 +8,39 @@ operations and owns the evidence contract.
 
 ## Pages and first launch
 
-The main window has six pages:
+The main window has five pages:
 
 | Page | Purpose |
 | --- | --- |
-| Wizard | View the six setup stages, bundle status, and the next page to visit. |
+| Dashboard | Prepare the environment (CLI installation, directory provisioning, workspace initialization), work through the current benchmark stage (device check, candidate, service startup and binding, run, report verification), queue or cancel evaluations, inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
 | Device | Inspect hardware, measurement availability, collection sources, and device-check results. |
 | Models and downloads | Prepare model and engine assets, inspect and cancel downloads, manage the engine service, and check binding hints. |
-| Runs | Queue or cancel evaluations, inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
 | Reports | Generate reports and open each offline HTML report in its own in-app WebView window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory. |
 
-The main window always opens, with guidance embedded across its six pages. Wizard is a
-read-only progress overview with navigation to the next step. Settings handles CLI
-installation and workspace initialization; Models and downloads prepares assets; Device
-runs the device check; Runs creates candidates, manages and binds services, and runs or
-resumes evaluations; Reports generates and verifies the combined report. Existing manual
-controls remain available. Reopening Studio restores progress from workspace evidence
-through `progress.v1`. A missing CLI or incomplete configuration does not prevent opening
-any page.
+The main window always opens on the Dashboard, which drives the full benchmark flow from
+the CLI-generated `progress.v1` workspace state: it shows the current stage with its
+blocking reason, offers the matching action inline, and hosts quick re-runs, the task
+queue, run history, resume, and the in-page run detail view. Models and downloads
+prepares assets; Device runs the device check and shows its details; Reports generates
+and verifies the combined report; Settings edits paths. Reopening Studio restores
+progress from workspace evidence through `progress.v1`. A missing CLI or incomplete
+configuration does not prevent opening any page.
 
-When no CLI is configured, Settings offers one-tap installation: it reuses an existing
+When no CLI is configured, the Dashboard offers one-tap installation: it reuses an existing
 `inferyard`/`uv` when found (including Homebrew locations outside the GUI PATH), downloads
 a pinned standalone `uv` into the Studio tools directory when none exists — verified
 against the release checksum, without touching shell configuration — and installs
 `inferyard` matching the Studio version from PyPI via `uv tool install`. Manual path
 configuration in Settings remains available.
 
-The embedded guidance follows the CLI-generated next command. Studio starts the frozen
+The Dashboard's stage actions follow the CLI-generated next command. Studio starts the frozen
 engine as a managed child process, waits for its health endpoint, and stops it when Studio
 exits — it owns the processes it starts and never restarts them automatically; services
 the operator started themselves can still be bound from the process list. Binding always
 goes through the CLI's PID and start-time checks. If Studio exits abnormally and leaves
-an engine process running, stop it manually and rebind on the Runs page. Model credentials are referenced
-only by an environment-variable name.
+an engine process running, stop it manually and rebind on the Dashboard. Model credentials
+are referenced only by an environment-variable name.
 
 Models and downloads prefills built-in test assets: a tiny SmolLM2-135M GGUF (pinned Hugging
 Face revision) and the pinned Prism engine archive for the current platform. Engine
@@ -58,8 +57,8 @@ switches settings to it only after initialization succeeds and retains existing 
 
 The [Studio Design System](docs/design-system.md) defines shared layout, theme, typography,
 components, feedback, accessibility, and verification rules against MyGo v0.4.5.
-The [page audit](docs/design-system-audit.md) records implementation gaps across all six
-pages, run details, and the offline report window. These documents define the target and
+The [page audit](docs/design-system-audit.md) records implementation gaps across all five
+pages, the run detail view, and the offline report window. These documents define the target and
 review scope; they do not establish native desktop acceptance.
 
 ## Build and run
@@ -168,9 +167,9 @@ mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENAB
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
 ```
 
-Native view tests and fixtures do not establish real-device acceptance. Verify all six
-pages, wizard navigation and restored progress, resource curves, and an offline report
-WebView on actual desktop windows. Cross-compilation is not Windows/Linux runtime evidence.
+Native view tests and fixtures do not establish real-device acceptance. Verify all five
+pages, the Dashboard's stage navigation and restored progress, resource curves, and an
+offline report WebView on actual desktop windows. Cross-compilation is not Windows/Linux runtime evidence.
 The native UI migration requires fresh acceptance; historical Web UI checks do not qualify
 it. Original diagnostic artifacts under `docs/evidence/` are retained as historical evidence,
 not as current build instructions. Signing, notarization, publication, and the full real
