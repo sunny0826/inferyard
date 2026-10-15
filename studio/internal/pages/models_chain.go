@@ -21,9 +21,7 @@ func (s *viewState) startCombination() {
 	model, engine := s.model, s.engine
 	s.autoBind = bindingArm{}
 	s.guideWork(func() (string, *core.ApiError) {
-		result, e := runStartChain(s.ctx, model, engine,
-			s.service.Progress, s.service.WizardExecute,
-			s.service.PreflightMatchesModel, s.service.CandidateMatchesCombination)
+		result, e := prepareCombination(s.ctx, s.service, model, engine)
 		if e != nil {
 			return "", e
 		}
@@ -141,7 +139,7 @@ func runStartChain(ctx context.Context, modelName, engineName string,
 		if ctx.Err() != nil {
 			return startChainResult{}, core.Err("cancelled")
 		}
-		r, e := execute(ctx, core.WizardRequest{Command: command, EngineName: engineName})
+		r, e := execute(ctx, core.WizardRequest{Command: command, EngineName: engineName, PreflightPath: *p.DevicePreflight.Path})
 		if e != nil {
 			return startChainResult{}, e
 		}

@@ -103,7 +103,7 @@ func (w *viewState) candidateView(c *ui.Context) {
 		createDisabled = true
 	}
 	if primaryButton(c, "创建候选").AlignSelf(ui.Start).Disabled(createDisabled).Clicked() {
-		w.execute(w.nextCommand(), false)
+		w.prepareCandidates()
 	}
 }
 func (w *viewState) serviceView(c *ui.Context) {

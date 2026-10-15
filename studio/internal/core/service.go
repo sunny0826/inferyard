@@ -65,6 +65,7 @@ type Service struct {
 	checkInflight     map[string]bool
 	checkNames        []engineCheckTarget
 	checkCLI          string
+	checkGeneration   uint64
 	checkSupported    bool
 	checkSem          chan struct{}
 	checkRetry        time.Duration

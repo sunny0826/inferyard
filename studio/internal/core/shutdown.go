@@ -59,7 +59,8 @@ func (s *Service) admitRunLocked() *ApiError {
 	if s.closing {
 		return Err("service_closing")
 	}
-	if s.engine != nil && s.engine.state.State == "stopping" {
+	if (s.engine != nil && s.engine.state.State == "stopping") ||
+		(s.orphan != nil && s.orphan.state.State == "stopping") {
 		return Err("engine_stopping")
 	}
 	return nil

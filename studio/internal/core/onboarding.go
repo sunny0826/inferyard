@@ -8,15 +8,17 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 )
 
 type WizardRequest struct {
-	ModelName    string `json:"model_name,omitempty"`
-	EngineName   string `json:"engine_name,omitempty"`
-	Command      string `json:"command"`
-	ReportVerify bool   `json:"report_verify"`
+	PreflightPath string `json:"preflight_path,omitempty"`
+	ModelName     string `json:"model_name,omitempty"`
+	EngineName    string `json:"engine_name,omitempty"`
+	Command       string `json:"command"`
+	ReportVerify  bool   `json:"report_verify"`
 }
 type WizardResult struct {
 	Limitations []string             `json:"limitations,omitempty"`
@@ -126,13 +128,16 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 		flags["--model"] = []string{path}
 	}
 	if len(args) > 1 && args[0] == "config" && args[1] == "create" && q.EngineName != "" {
-		path, err := s.resourcePath(q.EngineName, true)
+		var err *ApiError
+		args, err = s.candidateEngineArgs(args, q.EngineName, runtime.GOOS)
 		if err != nil {
 			return result, err
 		}
-		args = resourceArg(args, "--engine", path)
-		flags["--engine"] = []string{path}
 	}
+	if len(args) > 1 && args[0] == "config" && args[1] == "create" && q.PreflightPath != "" {
+		args = resourceArg(args, "--preflight", q.PreflightPath)
+	}
+
 	if q.ReportVerify && args[0] != "report" && args[0] != "verify" {
 		return result, Err("invalid_request")
 	}

@@ -18,6 +18,7 @@ type chainCall struct {
 type chainHarness struct {
 	progress       *inferyard.WorkspaceProgress
 	preflightMatch bool
+	preflightModel string
 	matched        map[string]bool
 	keepMismatch   string
 	calls          []chainCall
@@ -54,16 +55,37 @@ func (h *chainHarness) run(t *testing.T, model, engine string) (startChainResult
 		if len(h.calls)-1 == h.failAt {
 			return h.failResult, nil
 		}
-		if strings.Contains(q.Command, "device-check") {
+		args, err := inferyard.SplitCommand(q.Command)
+		if err != nil {
+			return core.WizardResult{}, core.Err("invalid_request")
+		}
+		flags := map[string]string{}
+		for i := 1; i+1 < len(args); i++ {
+			if strings.HasPrefix(args[i], "--") && args[i] != "--json" {
+				flags[args[i]] = args[i+1]
+			}
+		}
+		if args[0] == "device-check" {
+			if q.ModelName == "" || flags["--out"] == "" {
+				return core.WizardResult{ExitCode: 2}, nil
+			}
+			h.preflightModel = q.ModelName
 			h.preflightMatch = true
+			path := flags["--out"] + "/device-preflight.json"
+			h.progress.DevicePreflight.Path = &path
 			return core.WizardResult{}, nil
+		}
+		if len(args) < 2 || args[0] != "config" || args[1] != "create" ||
+			q.EngineName == "" || flags["--out"] == "" || flags["--bundle"] == "" ||
+			!h.preflightMatch || q.PreflightPath != *h.progress.DevicePreflight.Path {
+			return core.WizardResult{ExitCode: 2}, nil
 		}
 		// A successful config create freezes the selected combination at its --out.
 		for _, b := range []string{"zh-core", "zh-svg-pelican"} {
 			if strings.Contains(q.Command, "--bundle '"+b+"'") || strings.Contains(q.Command, "--bundle "+b+" ") {
 				for i := range h.progress.Bundles {
 					if h.progress.Bundles[i].Bundle == b {
-						out := "/" + strings.Split(strings.Split(q.Command, "--out '/")[1], "'")[0]
+						out := flags["--out"]
 						h.progress.Bundles[i].CandidatePath = &out
 						h.progress.Bundles[i].Phase = "bound_missing"
 						if out != h.keepMismatch {
@@ -76,7 +98,7 @@ func (h *chainHarness) run(t *testing.T, model, engine string) (startChainResult
 		return core.WizardResult{}, nil
 	}
 	preflight := func(preflightPath, modelName string) (bool, *core.ApiError) {
-		return h.preflightMatch, nil
+		return h.preflightMatch && (h.preflightModel == "" || h.preflightModel == modelName), nil
 	}
 	candidate := func(candidatePath, modelName, engineName string) (bool, bool) {
 		match, known := h.matched[candidatePath]

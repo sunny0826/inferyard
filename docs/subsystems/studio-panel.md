@@ -27,7 +27,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.9�
 | 引擎服务生命周期 | 解析冻结配置 `candidate.toml` 的 `[engine]` 启动行、端口占用预检、子进程拉起、健康端点等待、停止与终止；拉起成功即向 workspace `logs/engine-owner.json` 持久化所有权记录（PID + start ticks + endpoint + 日志/候选基名，不含 argv），正常停止时按记录身份原子移除 | `StartEngine`、`StopEngine`、`monitorEngine`、`terminateEngine` 在 [`studio/internal/core/engine_service.go`](../../studio/internal/core/engine_service.go)；所有权读写与启动核验在 [`studio/internal/core/engine_owner.go`](../../studio/internal/core/engine_owner.go)；`Startup`、`Processes` 在 [`studio/internal/core/startup.go`](../../studio/internal/core/startup.go) |
 | 遗留引擎核验与清理 | 启动时读 `engine-owner.json`：记录损坏/非法或身份无法核验时提供「仅删除记录（不终止进程）」入口，删除前重读记录，身份匹配则拒绝并要求停止；PID 已退出或 start ticks 不匹配（PID 复用）只移除记录；身份匹配时提供显式「停止遗留服务」按钮，停止前与停止中逐次重核身份，SIGTERM 超时升级 kill，任何一步不确定都不发信号 | `DiscardOrphanRecord` 在 [`studio/internal/core/engine_owner_recovery.go`](../../studio/internal/core/engine_owner_recovery.go)；`detectEngineOwner`、`StopOrphanEngine`、`orphanIdentity`、`stopOrphan` 在 [`studio/internal/core/engine_owner.go`](../../studio/internal/core/engine_owner.go)、[`studio/internal/core/engine_orphan.go`](../../studio/internal/core/engine_orphan.go) |
 | 本机服务发现 | 调用 CLI `service discover` 并解析（枚举与探测全部在 CLI 侧，Studio 不新增端口/进程枚举代码）；CLI 缺失或过旧返回 `cli_outdated`；外部服务一键绑定显式传 discover 返回的 PID 与 endpoint，仍走 CLI 绑定核验 | `Discover` 在 [`studio/internal/core/discovery.go`](../../studio/internal/core/discovery.go)；解析在 [`studio/internal/inferyard/discovery.go`](../../studio/internal/inferyard/discovery.go)；契约见 [CLI 接口](../../cli/docs/cli-surface.md#本机服务发现契约) |
-| 引擎核验 | 调用 CLI `engine check`（macOS 传 `--engine`，Windows 传 `--runtime-receipt`）核验清单引擎；缓存键含路径 + mtime + 同目录 dylib 集合指纹（及 receipt）；有界并发与超时；瞬态失败 60s 退避；CLI 过旧降级为「未核验」且不禁选；触发时机为事件驱动刷新（页面可见时）与「模型」页导航点击进入 | `CheckEngine`、`VerifyEngines` 在 [`studio/internal/core/engine_check.go`](../../studio/internal/core/engine_check.go)；解析在 [`studio/internal/inferyard/engine_check.go`](../../studio/internal/inferyard/engine_check.go)；契约见 [CLI 接口](../../cli/docs/cli-surface.md#引擎核验契约) |
+| 引擎核验 | 调用 CLI `engine check`（macOS 传 `--engine`，Windows 传 `--runtime-receipt`，回执按 CLI 产物布局在引擎二进制同目录或其上级目录查找）核验清单引擎；缓存键含路径 + mtime + 同目录 dylib 集合指纹（含符号链接条目与目标状态）+ receipt 大小与修改时间；核验任务绑定发起时的 CLI 路径与 generation，CLI 切换后过期结果不写回；有界并发与超时；瞬态失败 60s 退避；CLI 过旧降级为「未核验」且不禁选；触发时机为事件驱动刷新（页面可见时）与「模型」页导航点击进入 | `CheckEngine`、`VerifyEngines` 在 [`studio/internal/core/engine_check.go`](../../studio/internal/core/engine_check.go)；解析在 [`studio/internal/inferyard/engine_check.go`](../../studio/internal/inferyard/engine_check.go)，契约黄金样本（合法/非法）在 [`studio/internal/inferyard/testdata/engine_check_contract.json`](../../studio/internal/inferyard/testdata/engine_check_contract.json)，CLI 侧 schema 校验同一组样本；契约见 [CLI 接口](../../cli/docs/cli-surface.md#引擎核验契约) |
 | 清单注册表 | 聚合模型清单（设备快照 + 模型下载任务）与引擎清单（`EngineRoots` 双根遍历，嵌套深度 ≤4、可执行位 + 引擎下载任务含 plain-file 记录）；只输出名称与展示信息，同名附加来源标记、再冲突加路径哈希前缀；路径留在 core 内部按名称映射回真实路径 | `Registry`、`resourcePath`、`scanEngineBinaries` 在 [`studio/internal/core/registry.go`](../../studio/internal/core/registry.go) |
 | 绑定存活提示 | 只读比对绑定配置里的 `server_pid`/`process_start_ticks` 与进程实际启动 tick，仅作 UI 提示；比对失败显示「无法确认」，不据此判定绑定有效 | `BindingAlive` 在 [`studio/internal/core/binding.go`](../../studio/internal/core/binding.go) |
 | 运行队列 | 绑定配置准入（含结果根包含、去重）、串行 worker、取消、resume 准入（历史索引 + CLI 终审） | `StartRuns`、`Resume`、`CancelRun`、`runQueue` 在 [`studio/internal/core/runs.go`](../../studio/internal/core/runs.go) |
@@ -73,11 +73,14 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.9�
    持久化 `engine-owner.json` 所有权记录（写失败即中止启动）→
    `monitorEngine` 每秒探测 `{endpoint}/health`，2xx 转 `running`；启动默认超时 10 分钟。
    `StopEngine` 仅在无活动运行时允许，SIGTERM 后 10 秒未退出则 kill，停止成功按记录身份移除所有权记录。
-6. **模型页启动链**：运行区「启动」在所选模型 ≠ 最新 preflight 推荐时先重跑
+6. **候选准备链（模型页与 Dashboard 共用）**：模型页运行区「启动」与 Dashboard 候选阶段的
+   「创建候选」复用同一条准备编排（`prepareCombination`）：所选模型 ≠ 最新 preflight 推荐时先重跑
    `device-check --model`（blocked 即停并呈现固定原因）→ 逐题包读冻结 `candidate.toml` 的
    `[model] local_path`/`[engine] binary_path` 做 canonical 比对，仅为不匹配的题包各执行一次
    `config create`（题包处于 `prepare_candidate` 且有 next_command 时复用该命令，否则按
-   `config create` 的参数面组装 `--workspace`/`--bundle`/`--out`；始终不拼引擎 argv）→ 复验全部待测题包
+   `config create` 的参数面组装 `--workspace`/`--bundle`/`--out`；引擎参数按平台注入 registry
+   条目的同一资源：非 Windows `--engine` 二进制路径，Windows `--runtime-receipt` 回执路径，
+   不拼引擎 argv）→ 复验全部待测题包
    候选匹配（不匹配报 `candidate_mismatch`）→ `StartEngine` → 武装绑定链。已封存
    （run_complete）题包不重建候选、不要求匹配新组合；全部题包已封存时回退用封存候选启动，
    但该候选必须匹配所选组合，否则报 `candidate_mismatch` 拒绝启动；任一步失败即停，不自动重试。
@@ -165,8 +168,10 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.9�
   复用）只移除记录、绝不发信号；身份匹配时提供显式停止按钮，停止的每一步都重核
   身份。损坏记录、身份无法核验或清理失败也保持 `orphaned`；显式「仅删除记录（不终止进程）」
   重新读取 `logs/engine-owner.json`，有效且身份匹配时拒绝删除，其他可恢复情形只删记录，成功后解除启动阻塞。
-  正常引擎退出后的记录删除失败同样进入此恢复入口；启动前再次检查残留记录。端口占用返回 `engine_port_in_use`；有活动运行时
-  `StopEngine` 返回 `run_active`；引擎 `stopping` 期间拒绝新运行（`engine_stopping`）；
+  正常引擎退出后的记录删除失败同样进入此恢复入口；启动前再次检查残留记录。owner 记录的写入与
+  两类删除都在跨进程文件锁（`engine-owner.json.lock`，Unix flock / Windows LockFileEx）内执行，
+  锁文件 inode 永久保留，防多实例并发覆盖对方的记录。端口占用返回 `engine_port_in_use`；有活动运行时
+  `StopEngine` 返回 `run_active`；引擎或遗留服务 `stopping` 期间拒绝新运行（`engine_stopping`）；
   服务关停中一切准入返回 `service_closing`。
 - **服务发现**：发现完全由 CLI `service discover` 执行（loopback 监听枚举 + 只读探测），Studio
   只解析结果并保留 limitations；CLI 缺失/过旧映射 `cli_outdated`，输出非法映射

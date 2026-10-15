@@ -42,6 +42,15 @@ func (s *Service) persistEngineOwner(e *engineEntry, workspace string) *ApiError
 }
 
 func removeEngineOwner(path string, expected engineOwner) error {
+	unlock, err := lockEngineOwner(path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return removeEngineOwnerLocked(path, expected)
+}
+
+func removeEngineOwnerLocked(path string, expected engineOwner) error {
 	raw, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return nil
@@ -64,6 +73,11 @@ func removeEngineOwner(path string, expected engineOwner) error {
 }
 
 func writeEngineOwner(path string, owner engineOwner) error {
+	unlock, err := lockEngineOwner(path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}

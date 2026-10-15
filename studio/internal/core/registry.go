@@ -90,19 +90,20 @@ func scanEngineBinaries(roots ...string) []registryEntry {
 	return entries
 }
 
-// engineReceipt returns the sibling runtime receipt a Windows `engine check`
-// requires, or "" when the directory is not a prepared runtime.
+// engineReceipt supports both Studio sibling and CLI ROOT/engine layouts.
 func engineReceipt(enginePath string) string {
-	receipt := filepath.Join(filepath.Dir(enginePath), "runtime-receipt.json")
-	info, err := os.Stat(receipt)
-	if err != nil || !info.Mode().IsRegular() {
-		return ""
+	dir := filepath.Dir(enginePath)
+	for _, root := range []string{dir, filepath.Dir(dir)} {
+		receipt := filepath.Join(root, "runtime-receipt.json")
+		info, err := os.Stat(receipt)
+		if err != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		if resolved, err := canonical(receipt); err == nil {
+			return resolved
+		}
 	}
-	resolved, err := canonical(receipt)
-	if err != nil {
-		return ""
-	}
-	return resolved
+	return ""
 }
 
 func (s *Service) registry() registryData {

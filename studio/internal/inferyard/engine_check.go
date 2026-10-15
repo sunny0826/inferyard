@@ -118,6 +118,28 @@ func ParseEngineCheck(raw []byte, exitCode int) (EngineCheck, error) {
 	if err := json.Unmarshal(r.Details, &details); err != nil {
 		return result, invalid
 	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(r.Details, &fields) != nil {
+		return result, invalid
+	}
+	if !bytes.Equal(fields["eligible"], []byte("true")) && !bytes.Equal(fields["eligible"], []byte("false")) {
+		return result, invalid
+	}
+	if details.Modes != nil {
+		if !discoveryFields(fields["modes"], "cpu", "metal") {
+			return result, invalid
+		}
+		var modes map[string]json.RawMessage
+		if json.Unmarshal(fields["modes"], &modes) != nil {
+			return result, invalid
+		}
+		for _, key := range []string{"cpu", "metal"} {
+			raw := bytes.TrimSpace(modes[key])
+			if !bytes.Equal(raw, []byte("true")) && !bytes.Equal(raw, []byte("false")) {
+				return result, invalid
+			}
+		}
+	}
 	if details.ExpectedRelease == "" {
 		return result, invalid
 	}

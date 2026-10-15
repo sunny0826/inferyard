@@ -1,0 +1,251 @@
+[
+  {
+    "name": "macos_dual",
+    "valid": true,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": true,
+        "reason": null,
+        "reported_version": "prism-b10743-adfffbe",
+        "expected_release": "prism-b10743-adfffbe",
+        "modes": {
+          "cpu": true,
+          "metal": true
+        },
+        "mode": null
+      }
+    }
+  },
+  {
+    "name": "macos_false_boolean",
+    "valid": true,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": true,
+        "reason": null,
+        "reported_version": "prism-b10743-adfffbe",
+        "expected_release": "prism-b10743-adfffbe",
+        "modes": {
+          "cpu": true,
+          "metal": false
+        },
+        "mode": null
+      }
+    }
+  },
+  {
+    "name": "windows_single",
+    "valid": true,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": true,
+        "reason": null,
+        "reported_version": "prism-b10743-adfffbe",
+        "expected_release": "prism-b10743-adfffbe",
+        "modes": null,
+        "mode": "cuda"
+      }
+    }
+  },
+  {
+    "name": "ineligible_null_measurements",
+    "valid": true,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": false,
+        "reason": "invalid_library_manifest",
+        "reported_version": null,
+        "expected_release": "prism-b10743-adfffbe",
+        "modes": null,
+        "mode": null
+      }
+    }
+  },
+  {
+    "name": "empty_modes",
+    "valid": false,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": true,
+        "reason": null,
+        "reported_version": "prism-b10743-adfffbe",
+        "expected_release": "prism-b10743-adfffbe",
+        "modes": {},
+        "mode": null
+      }
+    }
+  },
+  {
+    "name": "null_cpu",
+    "valid": false,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": true,
+        "reason": null,
+        "reported_version": "prism-b10743-adfffbe",
+        "expected_release": "prism-b10743-adfffbe",
+        "modes": {
+          "cpu": null,
+          "metal": true
+        },
+        "mode": null
+      }
+    }
+  },
+  {
+    "name": "null_metal",
+    "valid": false,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": true,
+        "reason": null,
+        "reported_version": "prism-b10743-adfffbe",
+        "expected_release": "prism-b10743-adfffbe",
+        "modes": {
+          "cpu": true,
+          "metal": null
+        },
+        "mode": null
+      }
+    }
+  },
+  {
+    "name": "missing_cpu",
+    "valid": false,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": true,
+        "reason": null,
+        "reported_version": "prism-b10743-adfffbe",
+        "expected_release": "prism-b10743-adfffbe",
+        "modes": {
+          "metal": true
+        },
+        "mode": null
+      }
+    }
+  },
+  {
+    "name": "missing_metal",
+    "valid": false,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": true,
+        "reason": null,
+        "reported_version": "prism-b10743-adfffbe",
+        "expected_release": "prism-b10743-adfffbe",
+        "modes": {
+          "cpu": true
+        },
+        "mode": null
+      }
+    }
+  },
+  {
+    "name": "missing_modes",
+    "valid": false,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": true,
+        "reason": null,
+        "reported_version": "prism-b10743-adfffbe",
+        "expected_release": "prism-b10743-adfffbe",
+        "mode": null
+      }
+    }
+  },
+  {
+    "name": "string_boolean",
+    "valid": false,
+    "exit_code": 0,
+    "response": {
+      "command": "engine check",
+      "status": "checked",
+      "completeness": "complete",
+      "run_id": null,
+      "evidence_dir": null,
+      "limitations": [],
+      "details": {
+        "eligible": true,
+        "reason": null,
+        "reported_version": "prism-b10743-adfffbe",
+        "expected_release": "prism-b10743-adfffbe",
+        "modes": {
+          "cpu": "true",
+          "metal": true
+        },
+        "mode": null
+      }
+    }
+  }
+]

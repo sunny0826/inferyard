@@ -55,6 +55,8 @@ type engineCheckEntry struct {
 
 type engineCheckTarget struct {
 	name, path, receipt, key string
+	cliPath                  string
+	generation               uint64
 }
 
 // engineCheckArgs builds the CLI-C invocation for the platform: macOS checks
@@ -97,6 +99,18 @@ func libraryFingerprint(enginePath string) string {
 		} else if !strings.HasSuffix(strings.ToLower(name), extension) {
 			continue
 		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			path := filepath.Join(filepath.Dir(enginePath), name)
+			target, err := os.Readlink(path)
+			record := fmt.Sprintf("%s|link|%s|%v", name, target, err)
+			if info, err := os.Stat(path); err == nil {
+				record += fmt.Sprintf("|%d|%d", info.Size(), info.ModTime().UnixNano())
+			} else {
+				record += "|dangling"
+			}
+			records = append(records, record)
+			continue
+		}
 		info, err := entry.Info()
 		if err != nil || !info.Mode().IsRegular() {
 			continue
@@ -113,7 +127,11 @@ func libraryFingerprint(enginePath string) string {
 }
 
 func engineCheckKey(path, receipt string, modified time.Time) string {
-	return fmt.Sprintf("%d|%s|%s", modified.UnixNano(), libraryFingerprint(path), receipt)
+	stamp := "missing"
+	if info, err := os.Stat(receipt); err == nil {
+		stamp = fmt.Sprintf("%d|%d", info.ModTime().UnixNano(), info.Size())
+	}
+	return fmt.Sprintf("%d|%s|%s|%s", modified.UnixNano(), libraryFingerprint(path), receipt, stamp)
 }
 
 // CheckEngine runs one CLI `engine check`, following the same cli_outdated
@@ -123,7 +141,11 @@ func (s *Service) CheckEngine(ctx context.Context, path, receipt string) (infery
 	if p.Status != "ok" {
 		return inferyard.EngineCheck{}, Err("cli_outdated")
 	}
-	out, err := s.exec(ctx, *p.Path, engineCheckArgs(path, receipt)...)
+	return s.checkEngineWithCLI(ctx, *p.Path, path, receipt)
+}
+
+func (s *Service) checkEngineWithCLI(ctx context.Context, cliPath, path, receipt string) (inferyard.EngineCheck, *ApiError) {
+	out, err := s.exec(ctx, cliPath, engineCheckArgs(path, receipt)...)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) || errors.Is(err, exec.ErrNotFound) {
 			return inferyard.EngineCheck{}, Err("cli_outdated")
@@ -172,6 +194,7 @@ func (s *Service) VerifyEngines() {
 	s.checkMu.Lock()
 	if cliKey != s.checkCLI {
 		s.checkCLI = cliKey
+		s.checkGeneration++
 		s.checks = map[string]engineCheckEntry{}
 		s.checkInflight = map[string]bool{}
 		s.checkSupported = true
@@ -180,6 +203,7 @@ func (s *Service) VerifyEngines() {
 	for _, e := range data.engines {
 		targets = append(targets, engineCheckTarget{
 			name: e.engine.Name, path: e.path, receipt: e.receipt,
+			cliPath: str(p.Path), generation: s.checkGeneration,
 			key: engineCheckKey(e.path, e.receipt, e.modified),
 		})
 	}
@@ -215,6 +239,10 @@ func (s *Service) runEngineCheck(t engineCheckTarget) {
 	s.checkSem <- struct{}{}
 	defer func() { <-s.checkSem }()
 	s.checkMu.Lock()
+	if t.generation != s.checkGeneration {
+		s.checkMu.Unlock()
+		return
+	}
 	if !s.checkSupported {
 		delete(s.checkInflight, t.path)
 		s.checkMu.Unlock()
@@ -229,7 +257,7 @@ func (s *Service) runEngineCheck(t engineCheckTarget) {
 		eligibility.Reason = "runtime_receipt_missing"
 	} else {
 		ctx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
-		result, e := s.CheckEngine(ctx, t.path, t.receipt)
+		result, e := s.checkEngineWithCLI(ctx, t.cliPath, t.path, t.receipt)
 		cancel()
 		switch {
 		case e == nil && result.Eligible:
@@ -249,13 +277,15 @@ func (s *Service) runEngineCheck(t engineCheckTarget) {
 				eligibility.Reason = e.Limitations[0]
 			}
 		}
-		s.checkMu.Lock()
-		if e != nil && e.Code == "cli_outdated" {
-			s.checkSupported = false
-		}
-		s.checkMu.Unlock()
 	}
 	s.checkMu.Lock()
+	if t.generation != s.checkGeneration {
+		s.checkMu.Unlock()
+		return
+	}
+	if eligibility.Reason == "cli_outdated" {
+		s.checkSupported = false
+	}
 	delete(s.checkInflight, t.path)
 	// A binary or sibling library replaced during the check changes the key on
 	// the next scan, which schedules a fresh verification.

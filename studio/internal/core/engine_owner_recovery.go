@@ -23,6 +23,11 @@ func (s *Service) DiscardOrphanRecord() (EngineState, *ApiError) {
 	if e.state.State == "stopping" {
 		return clone(e.state), Err("engine_stopping")
 	}
+	unlock, err := lockEngineOwner(e.path)
+	if err != nil {
+		return clone(e.state), ownerRemovalError()
+	}
+	defer unlock()
 	raw, err := os.ReadFile(e.path)
 	if err != nil && !os.IsNotExist(err) {
 		return clone(e.state), ownerRemovalError()
@@ -36,12 +41,11 @@ func (s *Service) DiscardOrphanRecord() (EngineState, *ApiError) {
 		}
 		// Compare-and-delete: a concurrent Studio instance may have written a
 		// fresh record after our read; only remove the exact record we checked.
-		if err := removeEngineOwner(e.path, owner); err != nil {
+		if err := removeEngineOwnerLocked(e.path, owner); err != nil {
 			return clone(e.state), ownerRemovalError()
 		}
 	} else if err == nil {
-		// Corrupt or unreadable record: nothing to compare against; remove it
-		// directly. This path never signals a process either way.
+		// The cross-process lock protects the corrupt-record read and deletion.
 		if err := os.Remove(e.path); err != nil && !os.IsNotExist(err) {
 			return clone(e.state), ownerRemovalError()
 		}
