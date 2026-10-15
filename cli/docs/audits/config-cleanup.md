@@ -130,6 +130,25 @@ CPU 范围分别为 215.592–257.799 ms、214.692–222.105 ms，区间重叠�
 - Ruff check/format、Schema/catalogue/community 一致性通过；community 检查未重新核验归档。
 - 文档本地链接与锚点检查 390 项通过；`git diff --check` 通过。
 
-没有真实模型测评、生产 CPU 遥测、原生 Windows/Linux 执行或系统通知到达的新证据。
+以上为本机检查。代码提交 `d6c195c9e14f6c0ebc5aa781d12b866ad9e9f370` 的
+CI 随后全部通过，补充证据如下；本节只增加文档记录，没有继续修改应用源码。
+
+- [Package checks](https://github.com/sunny0826/inferyard/actions/runs/38761265227)：
+  Linux 全量测试 5331 passed、49 skipped；构建、三平台源码外安装和候选生成均通过。
+  已下载并核对 macOS/Linux/Windows 的 `installed_safe_checks.v3` 回执：
+  `status=passed`、`completed=true`，均绑定同一构建清单；当前报告 v8 接受、v1–v7 拒绝。
+- [Studio checks](https://github.com/sunny0826/inferyard/actions/runs/38761265601)：
+  macOS/Windows 的 vet 与假引擎边界 e2e 通过；内部包单测只在 macOS 执行，Windows 跳过。
+- [Model e2e](https://github.com/sunny0826/inferyard/actions/runs/38761265365)：
+  macOS arm64 与 Windows AMD64 的真实 SmolLM2/Prism 双题包链路均通过。
+  两侧均产出 19 个工作区文件，40 道 smoke 题全部评分，SVG 统计存在，
+  操作目录清理前后报告均 verified。评分分别为 1/40、3/40，不影响 CLI 成功语义。
+
+安装回执的 `source_commit=2499d71586ca54a67262e34360de21f9dde09f66` 是 GitHub
+为 PR 生成的测试合并提交；已核对它的两个 parent 分别为基线 `99a0400` 与代码提交 `d6c195c`。
+这不是 PR 已合并或版本已发布的证据。
+
+这些 CI 数据补充了对应平台的安装与 e2e 覆盖，不是生产 CPU 遥测，也不是正式默认题包
+benchmark 资格。系统通知到达、浏览器视觉和生产 CPU 仍未验证。
 测试跳过不能计为通过；源码变化不继承旧资格。证据解释统一遵循
 [血缘规则](../data-contract.md#证据血缘与比较结论)。
