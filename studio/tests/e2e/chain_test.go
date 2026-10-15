@@ -95,7 +95,7 @@ func TestChainBindRunReport(t *testing.T) {
 			}
 		case "run":
 			runWizard(t, service, ctx, *progress.NextCommand, false, env.Recorder)
-			waitTasksTerminal(t, service, 10*time.Minute)
+			waitTasksTerminal(t, service, 10*time.Minute, env.Recorder)
 		case "report":
 			runWizard(t, service, ctx, *progress.NextCommand, true, env.Recorder)
 		case "verify":
@@ -126,10 +126,10 @@ func runWizard(t *testing.T, service *core.Service, ctx context.Context, command
 	t.Helper()
 	result, apiErr := service.WizardExecute(ctx, core.WizardRequest{Command: command, ReportVerify: verify})
 	if apiErr != nil {
-		t.Fatalf("wizard %q: %+v", command, apiErr)
+		t.Fatalf("wizard %q: %+v [%s]", command, apiErr, analyzeFailure(recorder))
 	}
 	if result.ExitCode != 0 {
-		t.Fatalf("wizard %q exit %d limitations %v: %s", command, result.ExitCode, result.Limitations, lastStderr(recorder))
+		t.Fatalf("wizard %q exit %d limitations %v [%s]", command, result.ExitCode, result.Limitations, analyzeFailure(recorder))
 	}
 }
 
@@ -219,7 +219,7 @@ func waitEngineRunning(t *testing.T, service *core.Service, timeout time.Duratio
 	t.Fatal("engine did not reach running")
 }
 
-func waitTasksTerminal(t *testing.T, service *core.Service, timeout time.Duration) {
+func waitTasksTerminal(t *testing.T, service *core.Service, timeout time.Duration, recorder *Recorder) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
@@ -235,14 +235,14 @@ func waitTasksTerminal(t *testing.T, service *core.Service, timeout time.Duratio
 			if terminalCount == len(tasks) {
 				last := tasks[len(tasks)-1]
 				if last.State != "done" || last.Exit == nil || last.Exit.ExitCode != 0 {
-					t.Fatalf("run task state %s exit %+v", last.State, last.Exit)
+					t.Fatalf("run task state %s exit %+v [%s]", last.State, last.Exit, analyzeFailure(recorder))
 				}
 				return
 			}
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	t.Fatal("run tasks did not reach terminal state")
+	t.Fatalf("run tasks did not reach terminal state [%s]", analyzeFailure(recorder))
 }
 
 func assertGoldenTranscript(t *testing.T, recorder *Recorder) {
