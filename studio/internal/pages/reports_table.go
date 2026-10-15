@@ -24,13 +24,13 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 	index := selectedRow(&s.reportsTable, len(s.reports))
 	if index >= 0 {
 		report := s.reports[index]
-		ui.Text(c, report.Path).Selectable()
+		ui.Text(c, displayName(report.Path)).Selectable()
 		for i, id := range report.RunIds {
 			path := "来源不可达"
 			if i < len(report.RunPaths) && report.RunPaths[i] != nil {
 				path = *report.RunPaths[i]
 			}
-			ui.Text(c, id+" · "+path).Selectable()
+			ui.Text(c, id+" · "+displayName(path)).Selectable()
 		}
 	}
 	if s.reportsTable.submitted && index >= 0 {

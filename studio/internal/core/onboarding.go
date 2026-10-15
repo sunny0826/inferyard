@@ -13,13 +13,16 @@ import (
 )
 
 type WizardRequest struct {
+	ModelName    string `json:"model_name,omitempty"`
+	EngineName   string `json:"engine_name,omitempty"`
 	Command      string `json:"command"`
 	ReportVerify bool   `json:"report_verify"`
 }
 type WizardResult struct {
-	Status   inferyard.ExitStatus `json:"status"`
-	ExitCode int                  `json:"exit_code"`
-	Tasks    []RunTask            `json:"tasks"`
+	Limitations []string             `json:"limitations,omitempty"`
+	Status      inferyard.ExitStatus `json:"status"`
+	ExitCode    int                  `json:"exit_code"`
+	Tasks       []RunTask            `json:"tasks"`
 }
 
 var envName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
@@ -114,6 +117,22 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 	if e != nil {
 		return result, e
 	}
+	if args[0] == "device-check" && q.ModelName != "" {
+		path, err := s.resourcePath(q.ModelName, false)
+		if err != nil {
+			return result, err
+		}
+		args = resourceArg(args, "--model", path)
+		flags["--model"] = []string{path}
+	}
+	if len(args) > 1 && args[0] == "config" && args[1] == "create" && q.EngineName != "" {
+		path, err := s.resourcePath(q.EngineName, true)
+		if err != nil {
+			return result, err
+		}
+		args = resourceArg(args, "--engine", path)
+		flags["--engine"] = []string{path}
+	}
 	if q.ReportVerify && args[0] != "report" && args[0] != "verify" {
 		return result, Err("invalid_request")
 	}
@@ -175,6 +194,13 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 	result.ExitCode = out.ExitCode
 	// Never return stdout/stderr: they may contain credential-bearing diagnostics.
 	if out.ExitCode != 0 {
+		if parsed, err := inferyard.Parse(out.Stdout); err == nil {
+			for _, reason := range parsed.Limitations {
+				if fixedReason.MatchString(reason) {
+					result.Limitations = append(result.Limitations, reason)
+				}
+			}
+		}
 		return result, nil
 	}
 	if args[0] == "init" {
@@ -204,4 +230,16 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 	}
 	s.Bus.Publish("sync.reset", map[string]string{"reason": "workspace_changed"})
 	return result, nil
+}
+
+var fixedReason = regexp.MustCompile(`^[a-z][a-z0-9_]{0,127}$`)
+
+func resourceArg(args []string, flag, value string) []string {
+	for i, a := range args {
+		if a == flag && i+1 < len(args) {
+			args[i+1] = value
+			return args
+		}
+	}
+	return append(args, flag, value)
 }

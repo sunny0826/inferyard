@@ -131,8 +131,8 @@ func TestDesignInvalidFieldsPreserveEdits(t *testing.T) {
 	s.selected = "models"
 	s.modelURL = "bad url"
 	s.modelName = "../bad"
-	tt = ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.modelAssetsView(c) }) }, 800, 1200)
-	for _, label := range []string{"模型 URL（固定 40 位 revision 的 GGUF）", "新目录名"} {
+	tt = ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.modelDownloadForm(c) }) }, 800, 1200)
+	for _, label := range []string{"模型 URL（固定 40 位 revision 的 GGUF）"} {
 		nodes := designFieldInputs(tt, label)
 		if len(nodes) == 0 || !nodes[0].FieldByName("invalid").Bool() {
 			t.Fatal("missing download field error", label)
@@ -141,7 +141,7 @@ func TestDesignInvalidFieldsPreserveEdits(t *testing.T) {
 }
 
 func TestDesignNamedControlsAndHeadingLevels(t *testing.T) {
-	for _, page := range []string{"dashboard", "device", "models", "reports", "settings", "detail"} {
+	for _, page := range []string{"dashboard", "device", "models", "downloads", "reports", "settings", "detail"} {
 		s := designFixture(page)
 		tt := ui.NewTester(s.view, 1120, 800)
 		designNodes(tt, func(n reflect.Value, _ bool) {
@@ -217,7 +217,7 @@ func designFieldInputs(tt *ui.Tester, label string) []reflect.Value {
 }
 
 func TestDesignPageLoadingErrorEmpty(t *testing.T) {
-	for _, page := range []string{"dashboard", "device", "models", "reports", "settings"} {
+	for _, page := range []string{"dashboard", "device", "models", "downloads", "reports", "settings"} {
 		s := testState()
 		s.selected = page
 		s.loaded = false
@@ -314,13 +314,23 @@ func TestDesignReportKeyboardOpenFailure(t *testing.T) {
 }
 
 func TestDesignEngineSemanticColors(t *testing.T) {
+	badges := map[string]string{
+		"starting": "启动中…",
+		"running":  "运行中 · PID 42 · http://127.0.0.1:8080",
+		"stopping": "停止中…",
+		"failed":   "失败：engine_exited · 模型服务启动后退出",
+		"stopped":  "已停止",
+	}
 	for _, dark := range []bool{false, true} {
 		for _, contrast := range []bool{false, true} {
 			for _, state := range []string{"starting", "running", "stopping", "failed", "stopped"} {
-				s := testState()
-				s.engineState.State = state
+				s := runStateFixture()
+				s.engineState = core.EngineState{State: state, Pid: 42, Endpoint: "http://127.0.0.1:8080", Candidate: "/w/candidates/zh-core-1"}
+				if state == "failed" {
+					s.engineState.Error = &core.ApiError{Code: "engine_exited"}
+				}
 				var theme *ui.Theme
-				tt := ui.NewTester(func(c *ui.Context) { theme = c.Theme(); s.modelEngineServiceView(c) }, 1000, 1400)
+				tt := ui.NewTester(func(c *ui.Context) { theme = c.Theme(); s.runPanelView(c) }, 1000, 1400)
 				tt.SetDark(dark)
 				tt.SetPreferences(ui.Preferences{HighContrast: contrast, TextScale: 1, ReduceMotion: true})
 				want := theme.TextMuted
@@ -332,7 +342,7 @@ func TestDesignEngineSemanticColors(t *testing.T) {
 				case "failed":
 					want = theme.Danger
 				}
-				assertTextColor(t, tt, stateLabel(state), want)
+				assertTextColor(t, tt, badges[state], want)
 			}
 		}
 	}

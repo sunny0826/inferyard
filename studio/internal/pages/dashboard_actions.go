@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"errors"
 	"fmt"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
@@ -52,18 +53,20 @@ func (w *viewState) installCLI() {
 		if e != nil {
 			return "", e
 		}
-		return "CLI 安装完成：" + path, nil
+		return "CLI 安装完成：" + displayName(path), nil
 	})
 }
 
 func (w *viewState) execute(command string, report bool) {
+	w.autoBind = bindingArm{}
+	model, engine := w.model, w.engine
 	w.guideWork(func() (string, *core.ApiError) {
-		r, e := w.service.WizardExecute(w.ctx, core.WizardRequest{Command: command, ReportVerify: report})
+		r, e := w.service.WizardExecute(w.ctx, core.WizardRequest{Command: command, ReportVerify: report, ModelName: model, EngineName: engine})
 		if e != nil {
 			return "", e
 		}
 		if r.ExitCode != 0 {
-			return "", core.Err(string(r.Status))
+			return "", wizardFailure(r)
 		}
 		return executeMessage(r), nil
 	})
@@ -115,17 +118,17 @@ func (w *viewState) nextCommand() string {
 
 // managedBindCommand binds the Studio-managed engine: PID and endpoint come
 // from the supervised process, not from a manual process pick.
-func (w *viewState) managedBindCommand() string {
+func (w *viewState) managedBindCommand() (string, *core.ApiError) {
 	if w.engineState.State != "running" {
-		return ""
+		return "", core.Err("invalid_request")
 	}
 	return w.bindCommand(strconv.FormatInt(w.engineState.Pid, 10), w.engineState.Endpoint)
 }
 
-func (w *viewState) bindCommand(pid, endpoint string) string {
+func (w *viewState) bindCommand(pid, endpoint string) (string, *core.ApiError) {
 	b := w.active()
 	if b == nil || w.progress == nil {
-		return ""
+		return "", core.Err("invalid_request")
 	}
 	var args []string
 	if b.Phase == "bound_missing" {
@@ -137,7 +140,11 @@ func (w *viewState) bindCommand(pid, endpoint string) string {
 	} else {
 		out, err := newBoundOutput(w.progress.Workspace, b.Bundle)
 		if err != nil {
-			return ""
+			var api *core.ApiError
+			if errors.As(err, &api) {
+				return "", api
+			}
+			return "", core.Err("internal_error")
 		}
 		candidate := w.candidate
 		if st, err := os.Stat(candidate); err == nil && st.IsDir() {
@@ -146,18 +153,18 @@ func (w *viewState) bindCommand(pid, endpoint string) string {
 		args = []string{"config", "bind", "--candidate", candidate, "--out", out}
 	}
 	if len(args) < 2 || args[0] != "config" || args[1] != "bind" {
-		return ""
+		return "", core.Err("invalid_request")
 	}
 	args = setArg(args, "--pid", pid)
 	args = setArg(args, "--endpoint", endpoint)
-	return commandOf(args)
+	return commandOf(args), nil
 }
 
 func newBoundOutput(workspace, bundle string) (string, error) {
 	if !validName(bundle) {
 		return "", os.ErrInvalid
 	}
-	for n := 1; ; n++ {
+	for n := 1; n <= 1000; n++ {
 		path := filepath.Join(workspace, "bound", fmt.Sprintf("%s-%d", bundle, n))
 		if _, err := os.Lstat(path); os.IsNotExist(err) {
 			return path, nil
@@ -165,16 +172,35 @@ func newBoundOutput(workspace, bundle string) (string, error) {
 			return "", err
 		}
 	}
+	return "", core.Err("output_name_exhausted")
 }
 
 func (w *viewState) startEngine() {
+	if w.busy || w.running() != nil || w.candidate == "" {
+		return
+	}
 	candidate := w.candidate
+	w.autoBind = bindingArm{}
+	message := "服务启动中，等待健康检查。"
+	if w.bindingPhase() {
+		w.autoBind = bindingArm{armed: true, candidate: candidate, workspace: w.progress.Workspace}
+		message = "服务启动中，健康通过后依次绑定全部待绑题包。"
+	}
 	w.guideWork(func() (string, *core.ApiError) {
-		_, e := w.service.StartEngine(candidate)
-		return "服务启动中，等待健康检查。", e
+		state, e := w.service.StartEngine(candidate)
+		w.win.Update(func() {
+			if e != nil {
+				w.autoBind = bindingArm{}
+			} else {
+				w.autoBind.pid = state.Pid
+				w.engineState = state
+			}
+		})
+		return message, e
 	})
 }
 func (w *viewState) stopEngine() {
+	w.autoBind = bindingArm{}
 	w.guideWork(func() (string, *core.ApiError) {
 		_, e := w.service.StopEngine()
 		return "已请求停止服务。", e
@@ -198,3 +224,11 @@ func commandOf(args []string) string {
 }
 
 func uniqueID() int64 { return time.Now().UnixNano() }
+
+func (w *viewState) executeBinding(command string, e *core.ApiError) {
+	if e != nil {
+		w.submissionFailed(e)
+		return
+	}
+	w.execute(command, false)
+}

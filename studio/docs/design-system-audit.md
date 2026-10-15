@@ -4,7 +4,7 @@
 onevra v0.2026.9（构建在 MyGo v0.4.8 之上），映射见
 [组件用法](design-system.md#onevra-组件映射)。本页记录其后按
 [Studio Design System](design-system.md)实施的页面改动和实际验证范围。
-范围包含五个主页面、运行详情及离线报告窗口外壳。未完成事项集中在
+范围包含六个主页面、运行详情及离线报告窗口外壳。未完成事项集中在
 [backlog](../../cli/docs/backlog.md#inferyard-studio-后续工作)。
 
 ## 当前结果
@@ -36,7 +36,8 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 - 窗口外壳改用 `shells/sidebar.NewShell`：可折叠、可调宽侧栏，浮动 header，macOS titlebar
   材质与 Windows Mica；标题 1120 × 800、最小 800 × 600，侧栏状态键 `inferyard-studio-main`。
 - 主题改用 `theme.Onevra`（暖中性色 + terracotta），经 `ShellOptions.Theme` 安装。
-- 导航改用 `components.Sidebar` / `components.SidebarItem` 配 lucide 图标，五页不变。
+- 导航改用 `components.Sidebar` / `components.SidebarItem` 配 lucide 图标；后随模型服务流
+  改造增至六页（新增「下载」页）。
 - 按钮、徽章、Spinner、进度、复选框、选择、文本框、表格与资源曲线映射到 onevra 组件；
   标题、`ui.Field` 与布局原语保留 MyGo 原生实现。
 - 测试视图与真实窗口共享 `leftNav` / `contentView` 构建函数。
@@ -52,9 +53,10 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 | 公共外壳 | onevra Shell 侧栏与主题、命名控件、首次加载、刷新状态、一次性公告 | [window.go](../internal/pages/window.go)、[design_system.go](../internal/pages/design_system.go) |
 | Dashboard | 阶段进度名称、中文阻断原因、当前下一步；准备与绑定字段说明、有限进度、历史层级、续测字段错误 | [dashboard.go](../internal/pages/dashboard.go)、[dashboard_run.go](../internal/pages/dashboard_run.go)、[dashboard_tasks.go](../internal/pages/dashboard_tasks.go) |
 | 设备 | 标题、紧凑键值排版、解析失败恢复入口 | [device.go](../internal/pages/device.go) |
-| 模型与下载 | 四区响应布局、缺测语义、状态色和 Dashboard 入口 | [models.go](../internal/pages/models.go)、[models_engine.go](../internal/pages/models_engine.go) |
+| 模型 | 选择区双向联动标注、运行区状态与归因、只读服务卡、缺测语义 | [models.go](../internal/pages/models.go)、[models_picker.go](../internal/pages/models_picker.go)、[models_run.go](../internal/pages/models_run.go) |
+| 下载 | 任务清单、取消/重试、实际目录名展示与新建表单 | [downloads.go](../internal/pages/downloads.go)、[models_downloads.go](../internal/pages/models_downloads.go) |
 | 运行详情 | 失败与加载分离、重试和返回、表格名称、换行图例 | [detail.go](../internal/pages/detail.go)、[chart.go](../internal/pages/chart.go) |
-| 报告 | 来源列表名称及完整路径描述、空态下一步、键盘打开 | [reports.go](../internal/pages/reports.go)、[reports_table.go](../internal/pages/reports_table.go) |
+| 报告 | 来源列表名称化展示、空态下一步、键盘打开 | [reports.go](../internal/pages/reports.go)、[reports_table.go](../internal/pages/reports_table.go) |
 | 设置 | 字段关联、生效工作区与折叠诊断 | [preparation.go](../internal/pages/preparation.go)、[form_validation.go](../internal/pages/form_validation.go) |
 | 报告窗口 | 固定身份标题、加载失败回传、窗口内重试与关闭 | [report_window.go](../internal/pages/report_window.go) |
 

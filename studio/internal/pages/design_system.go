@@ -125,7 +125,9 @@ func (s *viewState) announceChanges(c *ui.Context) {
 	}
 	if s.progress != nil && (s.selected == "dashboard" && s.detailID == "") {
 		for _, bundle := range s.progress.Bundles {
-			if bundle.BlockedReason != nil {
+			// Guidance reasons (why resume is not offered on an unfinished
+			// run) are not announced as errors; see the dashboard banner.
+			if bundle.BlockedReason != nil && bundle.Phase != "run_incomplete" {
 				errors = append(errors, bundle.Bundle+"："+human(*bundle.BlockedReason))
 			}
 		}

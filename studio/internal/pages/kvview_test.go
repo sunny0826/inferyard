@@ -66,7 +66,7 @@ func TestKVFormAndJSONNumbers(t *testing.T) {
 	for _, value := range []any{map[string]string{"path": "/workspace"}, json.RawMessage(`{"exact":9007199254740993,"disk_free_bytes":1073741824,"null":null,"flag":false}`)} {
 		tt := ui.NewTester(func(c *ui.Context) { kvview(c, "kv-test", value) }, 1000, 700)
 		if _, ok := value.(map[string]string); ok {
-			if !tt.HasText("path") || !tt.HasText("/workspace") {
+			if !tt.HasText("path") || !tt.HasText("workspace") {
 				t.Fatal(tt.Texts())
 			}
 		} else {

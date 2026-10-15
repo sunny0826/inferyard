@@ -10,7 +10,7 @@ import (
 )
 
 func (w *viewState) candidateView(c *ui.Context) {
-	heading(c, "创建当前题包候选", 3)
+	heading(c, "创建候选", 3)
 	if w.progress != nil {
 		for _, b := range w.progress.Bundles {
 			if b.Phase == "run_complete" {
@@ -22,8 +22,87 @@ func (w *viewState) candidateView(c *ui.Context) {
 	if b := w.active(); b != nil {
 		ui.Text(c, b.Bundle+" · 将冻结模型、引擎与运行预算。")
 	}
-	field(c, "引擎文件绝对路径", &w.engine).Description("必填；从模型与下载页获取引擎后自动填入。").Error(pathError(w.engine))
-	if primaryButton(c, "创建候选").AlignSelf(ui.Start).Disabled(w.busy || w.engine == "").Clicked() {
+	w.adoptDownloadedEngine()
+
+	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: "使用 CLI 推荐模型"}}
+	for _, m := range w.registry.Models {
+		if m.Available {
+			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: m.Name})
+		}
+	}
+	ui.Field(c, "测评模型", func() { components.NativeSelect(c, &w.model, modelOptions) }).Description("与模型页的选择框是同一选择。")
+
+	// The engine dropdown lists verified engines only; while the CLI is too
+	// old to verify, every engine stays listed and config create is the final
+	// gate. A selected engine revoked by re-verification stays visible as a
+	// disabled option next to the warning.
+	eligible := []string{}
+	for _, e := range w.registry.Engines {
+		el := w.eligibility(e.Name)
+		if el.State == core.EngineCheckEligible || (!w.checks.Supported && el.State != core.EngineCheckIneligible) {
+			eligible = append(eligible, e.Name)
+		}
+	}
+	engineOptions := []components.NativeSelectOption[string]{}
+	listed := false
+	for _, name := range eligible {
+		engineOptions = append(engineOptions, components.NativeSelectOption[string]{Value: name, Label: name})
+		if name == w.engine {
+			listed = true
+		}
+	}
+	revoked := false
+	if w.engine != "" && !listed {
+		el := w.eligibility(w.engine)
+		suffix := " · 核验中…"
+		if el.State == core.EngineCheckIneligible {
+			suffix = " · 不可用，请重新选择"
+			revoked = true
+		}
+		engineOptions = append(engineOptions, components.NativeSelectOption[string]{Value: w.engine, Label: w.engine + suffix, Disabled: true})
+	}
+	ui.Field(c, "候选引擎", func() { components.NativeSelect(c, &w.engine, engineOptions) }).Description("仅列出核验可用的引擎；默认选中其中最新下载的引擎。")
+	if w.checks.Checking > 0 {
+		ui.Text(c, fmt.Sprintf("正在核验 %d 个引擎…", w.checks.Checking)).TextColor(c.Theme().TextMuted)
+	}
+
+	summary := "测评模型：" + configuredModel(w.model)
+	for _, m := range w.registry.Models {
+		if m.Name != w.model {
+			continue
+		}
+		parts := []string{}
+		if m.Architecture != "" {
+			parts = append(parts, "架构 "+m.Architecture)
+		}
+		if m.SizeBytes != nil {
+			parts = append(parts, fmt.Sprintf("约 %.1f GiB", float64(*m.SizeBytes)/(1<<30)))
+		}
+		if len(parts) > 0 {
+			summary += "（" + strings.Join(parts, " · ") + "）"
+		}
+	}
+	ui.Text(c, summary)
+	ui.Text(c, "引擎版本已核验；模型架构与引擎的适配在启动时验证。").TextColor(c.Theme().TextMuted)
+
+	createDisabled := w.busy || w.engine == "" || revoked
+	if revoked {
+		el := w.eligibility(w.engine)
+		ui.Row(c).Wrap().Gap(c.Theme().Space(2)).Children(func() {
+			statusBadge(c, "当前选择不可用", c.Theme().Warning)
+			ui.Text(c, w.engine+" · "+human(el.Reason)+"。请重新选择可用引擎。")
+		})
+		button(c, "到模型页重选").AlignSelf(ui.Start).OnClick(func() { w.selected = "models" })
+		createDisabled = true
+	} else if len(eligible) == 0 {
+		// 核验完成前不误报无可用引擎；创建保持禁用。
+		if w.checks.Checking == 0 {
+			ui.Text(c, "没有可用的引擎，请到下载页下载推荐引擎。")
+			button(c, "到下载页").AlignSelf(ui.Start).OnClick(func() { w.selected = "downloads" })
+		}
+		createDisabled = true
+	}
+	if primaryButton(c, "创建候选").AlignSelf(ui.Start).Disabled(createDisabled).Clicked() {
 		w.execute(w.nextCommand(), false)
 	}
 }
@@ -33,18 +112,11 @@ func (w *viewState) serviceView(c *ui.Context) {
 		ui.Text(c, "旧绑定已失效，请重启服务并重新绑定").TextColor(c.Theme().Danger)
 	}
 	ui.Text(c, "Studio 启动冻结候选中的引擎并管理其生命周期；退出 Studio 时自动停止。绑定时 CLI 校验 PID、启动时间与实际参数。")
-	command := commandOf(append([]string{w.startup.Path}, w.startup.Args...))
-	// Engine commands have no inferyard prefix; the display is selectable, never editable.
-	command = command[len("inferyard "):]
-	if w.startup.Path == "" {
-		command = "未配置：请先创建候选。"
-	}
-	ui.Text(c, command).Font("monospace").Selectable()
-	if button(c, "复制启动命令").AlignSelf(ui.Start).Disabled(w.startup.Path == "").Clicked() {
-		c.WriteClipboard(command)
-		c.Toast("已复制。")
-	}
 	switch w.engineState.State {
+	case "orphaned":
+		ui.Text(c, "遗留引擎：请先处理上次 Studio 留下的服务或无效记录。").TextColor(c.Theme().Warning)
+		errorView(c, w.engineState.Error)
+		w.stopOrphanButton(c)
 	case "starting":
 		ui.Text(c, fmt.Sprintf("正在启动（PID %d）——模型加载可能需要几分钟…", w.engineState.Pid))
 		progressBar(c, -1, "模型服务启动进度")
@@ -69,7 +141,11 @@ func (w *viewState) serviceView(c *ui.Context) {
 		if startable {
 			startButton = primaryButton
 		}
-		if startButton(c, "启动服务").AlignSelf(ui.Start).Disabled(w.busy || w.candidate == "" || !startable).Clicked() {
+		label := "启动并绑定"
+		if !w.bindingPhase() && w.active() != nil && w.active().BoundPath != nil {
+			label = "启动服务"
+		}
+		if startButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.candidate == "" || !startable || w.running() != nil).Clicked() {
 			w.startEngine()
 		}
 		if w.engineState.State == "running" {
@@ -78,7 +154,11 @@ func (w *viewState) serviceView(c *ui.Context) {
 				label = "重新绑定"
 			}
 			if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil).Clicked() {
-				w.execute(w.managedBindCommand(), false)
+				if w.bindingPhase() {
+					w.bindDiscovered(w.engineState.Pid, w.engineState.Endpoint)
+				} else {
+					w.executeBinding(w.managedBindCommand())
+				}
 			}
 		}
 		if w.engineState.State == "starting" || w.engineState.State == "running" {
@@ -88,21 +168,28 @@ func (w *viewState) serviceView(c *ui.Context) {
 		}
 	})
 
-	heading(c, "绑定已有进程", 3)
-	options := []string{}
-	for _, p := range w.processes {
-		options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
+	ui.Text(c, "健康检查通过后按顺序绑定全部待绑题包。任一失败即停止，不自动重试。")
+	if w.binding {
+		ui.Text(c, displayName(w.bindingBundle)+" · 绑定中…")
 	}
-	ui.Field(c, "已启动的本机进程", func() { components.NativeSelect(c, &w.process, nativeOptions(options)) }).Description("请选择已启动的服务进程；绑定仍会核验身份。")
-	field(c, "endpoint", &w.bindEndpoint).Description("必填；本机服务的 http 或 https URL。").Error(urlError(w.bindEndpoint))
-	if button(c, "绑定进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
-		if message := urlError(w.bindEndpoint); message != "" {
-			w.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
-			return
+	w.discoveryView(c, true)
+	componentFold(c, "高级：手动绑定", func() {
+		heading(c, "绑定已有进程", 3)
+		options := []string{}
+		for _, p := range w.processes {
+			options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
 		}
-		pid, _, _ := strings.Cut(w.process, " · ")
-		w.execute(w.bindCommand(pid, w.bindEndpoint), false)
-	}
+		ui.Field(c, "已启动的本机进程", func() { components.NativeSelect(c, &w.process, nativeOptions(options)) }).Description("请选择已启动的服务进程；绑定仍会核验身份。")
+		field(c, "endpoint", &w.bindEndpoint).Description("必填；本机服务的 http 或 https URL。").Error(urlError(w.bindEndpoint))
+		if button(c, "绑定进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
+			if message := urlError(w.bindEndpoint); message != "" {
+				w.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
+				return
+			}
+			pid, _, _ := strings.Cut(w.process, " · ")
+			w.executeBinding(w.bindCommand(pid, w.bindEndpoint))
+		}
+	})
 }
 func (w *viewState) runView(c *ui.Context) {
 	heading(c, "运行当前题包", 3)
@@ -167,20 +254,20 @@ func (s *viewState) quickRunView(c *ui.Context) {
 			twoBound := len(names) >= 2
 			if s.single || !twoBound {
 				ui.Field(c, "题包", func() { components.NativeSelect(c, &s.firstBundle, nativeOptions(names)) })
-				ui.Text(c, configOf(options, s.firstBundle)).Selectable()
+				ui.Text(c, displayName(configOf(options, s.firstBundle))).Selectable()
 			} else {
 				s.secondBundle = defaultBundle(s.secondBundle, names, s.firstBundle)
 				ui.Field(c, "第一题包", func() { components.NativeSelect(c, &s.firstBundle, nativeOptions(names)) })
-				ui.Text(c, configOf(options, s.firstBundle)).Selectable()
+				ui.Text(c, displayName(configOf(options, s.firstBundle))).Selectable()
 				ui.Field(c, "第二题包", func() { components.NativeSelect(c, &s.secondBundle, nativeOptions(names)) })
-				ui.Text(c, configOf(options, s.secondBundle)).Selectable()
+				ui.Text(c, displayName(configOf(options, s.secondBundle))).Selectable()
 			}
 		}
 		components.Checkbox(c, &s.manualConfig, "高级：手动配置路径")
 		if s.manualConfig {
-			field(c, "第一配置绝对路径", &s.manualFirst).Description("已绑定的配置文件绝对路径。").Error(pathError(s.manualFirst))
+			privatePathField(c, "第一配置绝对路径", &s.manualFirst).Description("已绑定的配置文件绝对路径。").Error(pathError(s.manualFirst))
 			if !s.single {
-				field(c, "第二配置绝对路径", &s.manualSecond).Description("默认双题包需要不同的第二份绑定配置。").Error(pathError(s.manualSecond))
+				privatePathField(c, "第二配置绝对路径", &s.manualSecond).Description("默认双题包需要不同的第二份绑定配置。").Error(pathError(s.manualSecond))
 			}
 		}
 		first, second := configOf(options, s.firstBundle), configOf(options, s.secondBundle)
@@ -278,4 +365,11 @@ func nativeOptions(values []string) []components.NativeSelectOption[string] {
 		options[i] = components.NativeSelectOption[string]{Value: value, Label: value}
 	}
 	return options
+}
+
+func configuredModel(name string) string {
+	if name == "" {
+		return "使用 CLI 推荐模型"
+	}
+	return name
 }

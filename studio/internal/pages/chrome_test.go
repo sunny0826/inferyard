@@ -82,13 +82,13 @@ func TestCompletionToastAndInlineError(t *testing.T) {
 }
 
 func TestChromeLayoutAcrossPages(t *testing.T) {
-	for _, page := range []string{"settings", "dashboard", "models", "reports", "detail"} {
+	for _, page := range []string{"settings", "dashboard", "models", "downloads", "reports", "detail"} {
 		t.Run(page, func(t *testing.T) {
 			s := testState()
 			s.selected = page
 			labels := map[string][]string{
 				"settings":  {"保存设置"},
-				"dashboard": {"启动运行"}, "models": {"下载模型"},
+				"dashboard": {"启动运行"}, "models": {"到下载页"}, "downloads": {"下载预置模型"},
 				"reports": {"打开报告"},
 				"detail":  {"返回 Dashboard", "取消任务"},
 			}

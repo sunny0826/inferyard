@@ -5,6 +5,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -23,7 +24,8 @@ var navigation = []struct {
 }{
 	{"dashboard", "Dashboard", lucide.LayoutDashboard},
 	{"device", "设备", lucide.Cpu},
-	{"models", "模型与下载", lucide.Download},
+	{"models", "模型", lucide.Layers},
+	{"downloads", "下载", lucide.Download},
 	{"reports", "报告", lucide.FileText},
 	{"settings", "设置", lucide.Settings},
 }
@@ -71,13 +73,7 @@ func New(ctx context.Context, service *core.Service, page string, reports *Repor
 			case <-wake:
 				events, reset, next := service.Bus.After(cursor)
 				cursor = next
-				full := reset
-				for _, e := range events {
-					if e.Type == "sync.reset" || e.Type == "report.created" || e.Type == "run.state" {
-						full = true
-					}
-				}
-				s.refresh(full)
+				s.refresh(fullRefresh(events, reset))
 			}
 		}
 	}()
@@ -93,12 +89,28 @@ func pageID(page string) string {
 }
 
 type viewState struct {
+	lastEngineVerification                                                              time.Time
+	discoveryCLI                                                                        string
+	autoBind                                                                            bindingArm
+	binding                                                                             bool
+	bindingBundle                                                                       string
+	discovery                                                                           inferyard.ServiceDiscovery
+	discoveryError                                                                      *core.ApiError
+	discovering, discoveryLoaded                                                        bool
+	registry                                                                            core.Registry
+	checks                                                                              core.EngineCheckOverview
+	attributionKey                                                                      string
+	attributionMatch, attributionKnown                                                  bool
+	candidateMatches                                                                    func(candidate, model, engine string) (bool, bool)
+	model                                                                               string
+	modelQuery, engineQuery                                                             string
+	modelList, engineList                                                               components.ListState
 	announcedPage                                                                       string
 	announcedErrors                                                                     map[string]bool
 	returnToTasks                                                                       bool
 	refreshing                                                                          bool
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
-	enginePreset, assetsPreset                                                          bool
+	assetsPreset                                                                        bool
 	engineState                                                                         core.EngineState
 	startup                                                                             core.Startup
 	processes                                                                           []core.ProcessCandidate
@@ -137,8 +149,8 @@ type viewState struct {
 	denied                                                                              map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                string
 	tasksTable, historyTable, reportsTable                                              pageTableState
-	reportSources                                                                       ui.ListState
-	reportChoices                                                                       ui.Selection[string]
+	reportSources                                                                       components.ListState
+	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState
 	casesTable, samplesTable                                                            pageTableState
 	resourceCharts                                                                      [3]chart.State
@@ -191,10 +203,14 @@ func (s *viewState) refresh(full bool) {
 		progress, pe = s.service.Progress(s.ctx)
 	}
 	dashboard = s.readDashboard(progress.Progress)
-	engineState := s.service.Engine()
+	var registry core.Registry
+	if full {
+		registry = s.service.Registry()
+	}
 	if s.ctx.Err() != nil {
 		return
 	}
+	verifyVisible := false
 	s.win.Update(func() {
 		if s.ctx.Err() != nil {
 			return
@@ -220,9 +236,31 @@ func (s *viewState) refresh(full bool) {
 		}
 		s.ready, s.progress = ready, progress.Progress
 		s.applyDashboard(dashboard, pe)
-		s.engineState = engineState
+		// engine.state wakes this refresh; read the latest state after slow scans
+		// so an older snapshot cannot disarm a just-started binding chain.
+		s.engineState = s.service.Engine()
+		if full {
+			s.registry = registry
+		}
+		s.checks = s.service.EngineChecks()
+		s.adoptDownloadedEngine()
 		s.loaded = true
+		s.continueAutoBind()
+		// Engine verification runs only while the models page or the Dashboard
+		// candidate stage is visible.
+		verifyVisible = s.selected == "models" ||
+			(s.selected == "dashboard" && s.progress != nil && !s.progress.DefaultScopeComplete && s.progress.NextAction == "prepare_candidate")
+		cliKey := emptyText(ready.CLI.Path) + "|" + emptyText(ready.CLI.Version) + "|" + ready.CLI.Status
+		if cliKey != s.discoveryCLI {
+			s.discoveryCLI, s.discoveryLoaded = cliKey, false
+		}
+		if !s.discoveryLoaded && !s.discovering {
+			s.refreshDiscovery()
+		}
 	})
+	if s.shouldVerifyEngines(full, verifyVisible, time.Now()) {
+		s.service.VerifyEngines()
+	}
 }
 func (s *viewState) work(fn func() (string, *core.ApiError)) {
 	if s.busy {
@@ -261,7 +299,7 @@ func (s *viewState) view(c *ui.Context) {
 	if s.pendingToast != "" {
 		message := s.pendingToast
 		s.pendingToast = ""
-		c.Toast(message)
+		c.AddToast(ui.Toast{ID: message, Title: message})
 	}
 	s.announceChanges(c)
 
@@ -269,6 +307,26 @@ func (s *viewState) view(c *ui.Context) {
 		ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
 		s.contentView(c)
 	})
+}
+
+// selectPage switches the visible page. Opening the models page kicks engine
+// verification directly: it otherwise runs only inside the event-driven
+// refresh loop, and on a quiet workspace no bus event arrives after the page
+// opens, leaving engines stuck at "unverified" (and unselectable) forever.
+func (s *viewState) selectPage(id string) {
+	if s.selected == id {
+		return
+	}
+	s.selected = id
+	if id != "models" || s.service == nil {
+		return
+	}
+	go func() {
+		s.service.VerifyEngines()
+		if s.win != nil {
+			s.win.Update(func() { s.checks = s.service.EngineChecks() })
+		}
+	}()
 }
 
 // leftNav builds the navigation column used both by the shell's left region
@@ -281,7 +339,7 @@ func (s *viewState) leftNav(c *ui.Context) {
 				Padding(t.Space(2), t.Space(2), t.Space(1), t.Space(2)).SingleLine()
 			for _, n := range navigation {
 				if components.SidebarItem(c, n.label, n.icon(), s.selected == n.id).Clicked() {
-					s.selected = n.id
+					s.selectPage(n.id)
 				}
 			}
 		})
@@ -317,6 +375,8 @@ func (s *viewState) contentView(c *ui.Context) {
 					s.deviceView(c)
 				case "models":
 					s.modelsView(c)
+				case "downloads":
+					s.downloadsPageView(c)
 				case "dashboard":
 					if s.detailID != "" {
 						s.detailView(c)
@@ -390,4 +450,13 @@ func (s *viewState) pageScroll() *ui.ScrollState {
 		s.scrolls[key] = &ui.ScrollState{}
 	}
 	return s.scrolls[key]
+}
+
+// Called under refreshMu; progress ticks reuse the current verification targets.
+func (s *viewState) shouldVerifyEngines(full, visible bool, now time.Time) bool {
+	if !visible || (!full && !s.lastEngineVerification.IsZero() && now.Sub(s.lastEngineVerification) < 5*time.Second) {
+		return false
+	}
+	s.lastEngineVerification = now
+	return true
 }

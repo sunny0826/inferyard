@@ -65,6 +65,12 @@ main{max-width:1300px;margin:0 auto;padding:24px;min-width:0}
 .badge.good:before{content:'●';color:var(--success)}
 .badge.warn{color:var(--warning);background:color-mix(in srgb,var(--surface),var(--warning) 7%)}
 .badge.bad,.error{color:var(--danger)}
+.badge.checking{color:var(--muted);background:var(--surface)}
+.badge.eligible{color:var(--text);background:#79bea1}
+.badge.ineligible{color:#ffffff;background:var(--danger)}
+.badge.invalid-choice{color:#ffffff;background:var(--warning)}
+.selection-warning{margin-top:8px}
+.preview button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 .error{margin-top:8px;font-size:14px}
 .notice{border-left:3px solid var(--accent);padding:10px 14px;background:color-mix(in srgb,var(--surface),var(--accent) 4%);margin:12px 0}
 .notice.bad{border-color:var(--danger)}
@@ -156,6 +162,12 @@ main{padding:16px}
 <path d="m12 3 9 5-9 5-9-5 9-5Zm-9 5v9l9 5 9-5V8M12 13v9"/>
 </svg>
 <span class="navtext">模型</span>
+</a>
+<a class="navitem" aria-label="下载" href="downloads-page.html">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/>
+</svg>
+<span class="navtext">下载</span>
 </a>
 <button class="navitem" aria-label="报告（本次未绘制）" data-note="报告页不在本次三个原型范围内。">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -254,28 +266,39 @@ main{padding:16px}
 <button id="device" class="primary">执行设备检查</button>
 </section>
 <section id="candidate-panel" class="track" data-step="3">
+<div class="preview">
+<strong>候选选择演示</strong>
+<div class="actions" aria-label="候选选择演示">
+<button data-candidate-scene="ready" aria-pressed="true">正常可用</button>
+<button data-candidate-scene="empty" aria-pressed="false">无可用引擎</button>
+<button data-candidate-scene="revoked" aria-pressed="false">当前选择重验不可用</button>
+<label class="check"><input id="checking-demo" type="checkbox" checked>显示核验中</label>
+</div>
+</div>
 <h2>创建候选</h2>
 <p>使用已选模型与引擎，为两个默认题包分别创建候选配置。</p>
 <div class="twocol">
 <div class="field">
 <label for="engine">候选引擎</label>
-<select id="engine" aria-describedby="engine-help">
+<select id="engine" aria-describedby="engine-help engine-checking candidate-warning">
 <option>llama-server b6800 · 最新下载</option>
-<option>llama-server b6700 · 工作区</option>
 <option>inference-engine · 用户引擎</option>
 </select>
-<small id="engine-help">默认选中最新完成下载的引擎。</small>
+<small id="engine-help">仅列出核验可用的引擎；默认选中其中最新下载的引擎。</small>
+<small id="engine-checking" role="status">正在核验 1 个引擎…</small>
 </div>
 <div class="field">
 <label for="model">测评模型</label>
 <select id="model">
-<option>Qwen3-8B-Q4_K_M.gguf</option>
-<option>使用 CLI 推荐模型</option>
+<option value="Llama-3.2-3B-Q4_K_M.gguf">Llama-3.2-3B-Q4_K_M.gguf</option>
+<option value="Qwen3-8B-Q4_K_M.gguf">Qwen3-8B-Q4_K_M.gguf</option>
 </select>
 </div>
 </div>
+<p class="muted" style="margin-top:12px"><span id="model-summary">测评模型：Llama-3.2-3B-Q4_K_M.gguf（架构 llama · 约 2.1 GiB）</span> <span>引擎版本已核验；模型架构与引擎的适配在启动时验证。</span></p>
+<div id="candidate-warning" class="selection-warning" role="status" hidden></div>
 <p class="notice">默认范围：zh-core + zh-svg-pelican；各自冻结并运行，最终生成包含两者的新报告。</p>
-<button id="candidate" class="primary">创建双题包候选</button>
+<button id="candidate" class="primary" aria-describedby="candidate-warning">创建双题包候选</button>
 </section>
 <section id="bind-panel" class="track" data-step="4" hidden>
 <h2>启动与绑定</h2>
@@ -409,6 +432,28 @@ main{padding:16px}
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div><script>const $=id=>document.getElementById(id);let toastTimer;function toast(message){$('toast').textContent=message;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').textContent='',4500)}document.querySelectorAll('[data-note]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.note)));$('collapse').onclick=()=>{const collapsed=$('app').classList.toggle('collapsed');$('collapse').setAttribute('aria-expanded',String(!collapsed));$('collapse').setAttribute('aria-label',collapsed?'展开侧栏':'折叠侧栏')};
 
+let candidateScene='ready';
+const availableEngines=['llama-server b6800 · 最新下载','inference-engine · 用户引擎'];
+function candidateState(scene){
+ candidateScene=scene;
+ document.querySelectorAll('[data-candidate-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.candidateScene===scene)));
+ const names=scene==='empty'?[]:scene==='revoked'?[availableEngines[1]]:availableEngines;
+ $('engine').replaceChildren(...names.map(name=>new Option(name,name)));
+ $('engine').disabled=scene==='empty';$('engine').selectedIndex=scene==='ready'?0:-1;
+ $('candidate').disabled=scene!=='ready';
+ const warning=$('candidate-warning');warning.hidden=scene==='ready';warning.replaceChildren();
+ if(scene==='empty')warning.append('没有可用的引擎，请到模型页下载推荐引擎');
+ if(scene==='revoked'){
+  const badge=document.createElement('span');badge.className='badge invalid-choice';badge.textContent='当前选择不可用';warning.append(badge);
+  const reason=document.createElement('p');reason.textContent='llama-server b6800 · 引擎运行库不完整。请重新选择可用引擎。';warning.append(reason);
+ }
+ if(scene!=='ready'){const link=document.createElement('a');link.href='models-page.html';link.textContent='到模型页'+(scene==='empty'?'下载推荐引擎':'重选');warning.append(' ',link)}
+}
+document.querySelectorAll('[data-candidate-scene]').forEach(b=>b.onclick=()=>candidateState(b.dataset.candidateScene));
+$('checking-demo').onchange=()=>{$('engine-checking').hidden=!$('checking-demo').checked};
+$('engine').onchange=()=>{if($('engine').value){$('candidate').disabled=false;$('candidate-warning').hidden=true}};
+$('model').onchange=()=>{$('model-summary').textContent='测评模型：'+$('model').value+($('model').selectedIndex===0?'（架构 llama · 约 2.1 GiB）':'（架构 Qwen3 · 约 4.9 GiB）')};
+candidateState('ready');
 let generation=0,busy=false;const phases=['准备','设备检查','候选','启动与绑定','运行','报告核验'];
 function stage(scene){generation++;busy=false;$('scene').value=scene;const index=['prepare','device','candidate','bind','run','report'].indexOf(scene);$('environment').hidden=scene!=='prepare';['device','candidate','bind','run','report'].forEach(s=>$(s+'-panel').hidden=s!==scene);document.querySelectorAll('.steps li').forEach((e,i)=>{e.removeAttribute('aria-current');if(i===index)e.setAttribute('aria-current','step')});$('phase').textContent='当前：'+phases[index];$('stage-progress').value=index;$('stage-description').textContent='已完成 '+index+' / 6 个阶段，不表示样本完成率。';$('bind-error').hidden=true;document.querySelectorAll('#bind-panel button,#bind-panel input,#bind-panel select').forEach(b=>b.disabled=false);$('service-status').textContent='已停止 · 等待启动';flow(0);$('core').textContent='zh-core · '+(index<3?'待创建候选':index===3?'待绑定':'已绑定');$('pelican').textContent='zh-svg-pelican · '+(index<3?'待创建候选':index===3?'待绑定':'已绑定');$('cancel').hidden=true;$('run').disabled=false;$('scene').disabled=false;$('queue').textContent='尚无排队任务。完成绑定后可启动默认双题包测评。';$('queue-badge').textContent='无活动任务'}
 function flow(n){document.querySelectorAll('[data-flow]').forEach(e=>{e.removeAttribute('aria-current');if(Number(e.dataset.flow)===n)e.setAttribute('aria-current','step')})}

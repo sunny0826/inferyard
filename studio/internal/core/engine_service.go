@@ -23,16 +23,21 @@ type EngineState struct {
 }
 
 type engineEntry struct {
-	cmd     *exec.Cmd
-	logFile *os.File
-	state   EngineState
-	stop    chan struct{}
-	done    chan struct{}
+	ownerPath string
+	owner     engineOwner
+	cmd       *exec.Cmd
+	logFile   *os.File
+	state     EngineState
+	stop      chan struct{}
+	done      chan struct{}
 }
 
 func (s *Service) Engine() EngineState {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.orphan != nil {
+		return clone(s.orphan.state)
+	}
 	if s.engine == nil {
 		return EngineState{State: "stopped"}
 	}
@@ -59,8 +64,15 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 	if s.closing {
 		return EngineState{}, Err("service_closing")
 	}
+	if s.orphan != nil {
+		return clone(s.orphan.state), &ApiError{Code: "engine_orphaned", Message: "请先处理工作区 logs/engine-owner.json 对应的遗留服务或无效记录，再启动引擎。"}
+	}
 	if s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping") {
 		return clone(s.engine.state), nil
+	}
+	s.detectEngineOwnerLocked()
+	if s.orphan != nil {
+		return clone(s.orphan.state), Err("engine_orphaned")
 	}
 	endpoint := "http://" + net.JoinHostPort(host, strconv.Itoa(port))
 	listen, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
@@ -84,6 +96,12 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 		return EngineState{}, &ApiError{Code: "engine_start_failed", Message: "引擎进程启动失败，请检查文件权限与运行环境。"}
 	}
 	entry := &engineEntry{cmd: cmd, logFile: logFile, stop: make(chan struct{}), done: make(chan struct{}), state: EngineState{State: "starting", Pid: int64(cmd.Process.Pid), Endpoint: endpoint, LogPath: logPath, Candidate: candidate}}
+	if failure := s.persistEngineOwner(entry, *w); failure != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		_ = logFile.Close()
+		return EngineState{}, failure
+	}
 	s.engine = entry
 	s.publishEngineLocked(entry)
 	go s.monitorEngine(entry, endpoint)
@@ -130,6 +148,10 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 	finish := func(state string, err *ApiError) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
+		if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
+			state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: "引擎已退出，但工作区 logs/engine-owner.json 未能清除；可仅删除记录（不终止进程）。"}
+			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Error: err}}
+		}
 		e.state.State, e.state.Error = state, err
 		s.publishEngineLocked(e)
 	}

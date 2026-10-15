@@ -71,7 +71,7 @@ func TestHistoryTableResumeAndDetails(t *testing.T) {
 	}
 	click(t, tt, "eligible")
 	click(t, tt, "运行原始详情")
-	for _, text := range []string{"/eligible", "/batch", "不完整", "stop", "parent", "start", "finish", "实时详情"} {
+	for _, text := range []string{"eligible", "batch", "不完整", "stop", "parent", "start", "finish", "实时详情"} {
 		if !tt.HasText(text) {
 			t.Fatal("missing", text, tt.Texts())
 		}
@@ -159,7 +159,7 @@ func TestReportTableSelection(t *testing.T) {
 		t.Fatal(tt.Texts())
 	}
 	click(t, tt, "report-b")
-	if !tt.HasText("source-b · /runs/b") || tt.HasText("来源不可达") {
+	if !tt.HasText("source-b · b") || tt.HasText("来源不可达") {
 		t.Fatal(tt.Texts())
 	}
 	click(t, tt, "打开报告")
@@ -180,7 +180,7 @@ func TestDownloadTaskCardsAndDetails(t *testing.T) {
 	}
 	s.downloads = []core.DownloadTask{b}
 	tt.Frame()
-	for _, text := range []string{"/out/b", "model.gguf", "1048576", "fixture-sha", "下载失败", "输出目录保留"} {
+	for _, text := range []string{"实际目录名：model-b", "model.gguf", "1048576", "fixture-sha", "下载失败", "输出目录保留"} {
 		if !tt.HasText(text) {
 			t.Fatal("missing", text, tt.Texts())
 		}
@@ -207,7 +207,7 @@ func TestDownloadTaskCardsRenderOnReorder(t *testing.T) {
 	s.downloads = []core.DownloadTask{a, b}
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 900)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
-	for _, want := range []string{"输出目录：/out/a", "输出目录：/out/b"} {
+	for _, want := range []string{"实际目录名：model-a", "实际目录名：model-b"} {
 		if !tt.HasText(want) {
 			t.Fatal("missing", want, tt.Texts())
 		}
@@ -219,7 +219,7 @@ func TestDownloadTaskCardsRenderOnReorder(t *testing.T) {
 	}
 	s.downloads = []core.DownloadTask{b, a}
 	tt.Frame()
-	for _, want := range []string{"输出目录：/out/a", "输出目录：/out/b"} {
+	for _, want := range []string{"实际目录名：model-a", "实际目录名：model-b"} {
 		if !tt.HasText(want) {
 			t.Fatal("missing after reorder", want, tt.Texts())
 		}
@@ -255,14 +255,14 @@ func TestHistoryResumePanelKeepsTableSelection(t *testing.T) {
 	tt.Scroll(1000, 1800, 0, 800)
 	click(t, tt, "关闭续测设置")
 	tt.Frame()
-	if !tt.HasText("/selected") || tt.HasText("确认续测") {
+	if !tt.HasText("selected") || tt.HasText("确认续测") {
 		t.Fatal("table selection lost when panel disappeared", tt.Texts())
 	}
 	s.selected = "models"
 	tt.Frame()
 	s.selected = "dashboard"
 	tt.Frame()
-	if !tt.HasText("/selected") {
+	if !tt.HasText("selected") {
 		t.Fatal("table selection lost after page change")
 	}
 }

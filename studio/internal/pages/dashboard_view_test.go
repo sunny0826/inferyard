@@ -23,7 +23,7 @@ func TestDashboardViews(t *testing.T) {
 	}{
 		{"CLI unavailable", viewState{loaded: true}, "安装 InferYard CLI"},
 		{"initialize", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}}}, "新工作区目录"},
-		{"external service", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Phase: "bound_missing", CandidatePath: strptr("/tmp/c")}}}, startup: core.Startup{Path: "/engine/llama-server", Args: []string{"--port", "48857"}}}, "复制启动命令"},
+		{"external service", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Phase: "bound_missing", CandidatePath: strptr("/tmp/c")}}}, startup: core.Startup{Path: "/engine/llama-server", Args: []string{"--port", "48857"}}}, "高级：手动绑定"},
 		{"managed engine", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Phase: "bound_missing", CandidatePath: strptr("/tmp/c")}}, NextCommand: strptr("inferyard config bind --candidate /tmp/c --pid 1 --endpoint http://x --out /tmp/new")}, engineState: core.EngineState{State: "running", Pid: 4242, Endpoint: "http://127.0.0.1:48857"}}, "绑定服务"},
 		{"running", viewState{loaded: true, tasks: []core.RunTask{{State: "running"}}, runProgress: &core.RunProgress{Done: 86, Total: &total}}, "86 / 120 题"},
 		{"verified", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{DefaultScopeComplete: true}}, "已核验 verified"},
@@ -39,11 +39,14 @@ func TestDashboardViews(t *testing.T) {
 			case "verified":
 				tc.state.selected = "reports"
 			case "device defaults":
-				tc.state.selected = "models"
+				tc.state.selected = "downloads"
 			default:
 				tc.state.selected = "dashboard"
 			}
 			tt := ui.NewTester(tc.state.view, 1120, 2400)
+			if tc.name == "device defaults" {
+				click(t, tt, "引擎下载")
+			}
 			if !tt.HasText(tc.want) {
 				t.Fatalf("missing %q: %v", tc.want, tt.Texts())
 			}
@@ -66,16 +69,14 @@ func TestDashboardViews(t *testing.T) {
 				}
 			}
 			if tc.name == "external service" {
-				for _, label := range []string{"启动服务", "绑定进程", "已启动的本机进程"} {
+				click(t, tt, "高级：手动绑定")
+				for _, label := range []string{"启动并绑定", "绑定进程", "已启动的本机进程"} {
 					if !tt.HasText(label) {
 						t.Fatalf("missing %q: %v", label, tt.Texts())
 					}
 				}
-				if err := tt.Click("复制启动命令"); err != nil {
-					t.Fatal(err)
-				}
-				if tt.Clipboard() != "'/engine/llama-server' '--port' '48857'" {
-					t.Fatalf("clipboard %q", tt.Clipboard())
+				if tt.HasText("复制启动命令") || tt.HasText("/engine/llama-server") {
+					t.Fatal("startup path exposed")
 				}
 				if tt.HasText("由操作者启动") {
 					t.Fatal("external-start instruction must be gone")
@@ -87,7 +88,10 @@ func TestDashboardViews(t *testing.T) {
 						t.Fatalf("missing %q: %v", label, tt.Texts())
 					}
 				}
-				cmd := tc.state.managedBindCommand()
+				cmd, e := tc.state.managedBindCommand()
+				if e != nil {
+					t.Fatal(e)
+				}
 				if !strings.Contains(cmd, "'--pid' '4242'") || !strings.Contains(cmd, "'--endpoint' 'http://127.0.0.1:48857'") {
 					t.Fatalf("managed bind command %q", cmd)
 				}
@@ -106,6 +110,19 @@ func TestSecondBundleAndIncompleteRun(t *testing.T) {
 	w.progress.Bundles[1].Phase = "run_incomplete"
 	tt.Frame()
 	if !tt.HasText("继续未完成的运行") || slices.Contains(tt.Texts(), "run_incomplete") {
+		t.Fatal(tt.Texts())
+	}
+}
+
+// A blocked reason on an in-flight single-mode run is flow guidance (why
+// resume is not offered), not a failure: during benchmark execution the
+// banner must show translated guidance instead of the raw-code fallback.
+func TestIncompleteRunBlockedReasonShowsGuidance(t *testing.T) {
+	w := viewState{selected: "dashboard", loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "run", Bundles: []inferyard.BundleProgress{{
+		Bundle: "zh-core", Phase: "run_incomplete", NextAction: "run", BlockedReason: ptr("single_run_resume_not_supported"),
+	}}}}
+	tt := ui.NewTester(w.view, 1000, 740)
+	if !tt.HasText("单次运行不支持断点续跑") || tt.HasText("尚未识别的原因码") || tt.HasText("single_run_resume_not_supported") {
 		t.Fatal(tt.Texts())
 	}
 }

@@ -22,9 +22,9 @@ button,input,select{font:inherit;color:inherit}
 button,.button{border:1px solid var(--border);border-radius:8px;padding:7px 14px;background:color-mix(in srgb,var(--bg),var(--text) 8%);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px}
 button:hover,.button:hover{background:var(--hover)}
 button:active{background:var(--pressed)}
-.primary{background:var(--accent);border-color:var(--accent);color:white}
-.primary:hover{background:var(--accent);filter:brightness(.94)}
-button:disabled{opacity:.5;cursor:default}
+.primary{background:var(--accent);border-color:var(--accent);color:#ffffff}
+.primary:hover{background:var(--accent);filter:none}
+button:disabled{color:var(--muted);background:var(--surface);border-color:var(--border);cursor:default}
 a{color:var(--accent)}
 :focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 input,select{min-width:0;width:100%;border:1px solid var(--border);background:var(--surface);padding:8px 10px;border-radius:8px}
@@ -43,7 +43,7 @@ p,li,dd,h3,strong{overflow-wrap:anywhere}
 .brand small{display:block;font-size:11px;letter-spacing:2px;font-weight:500}
 .navitem{display:flex;width:100%;justify-content:flex-start;gap:10px;padding:10px;margin:4px 0;text-decoration:none;color:var(--text);border:0;background:transparent;border-radius:8px}
 .navitem:hover{background:transparent}
-.navitem[aria-current]{background:rgba(51,51,47,.1);font-weight:600}
+.navitem[aria-current]{background:var(--hover);font-weight:600}
 .navitem svg{width:18px;height:18px;color:var(--accent);flex-shrink:0}
 .sidefoot{margin:36px 10px;color:var(--muted);font-size:12px}
 .shellhead{display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
@@ -65,6 +65,12 @@ main{max-width:1300px;margin:0 auto;padding:24px;min-width:0}
 .badge.good:before{content:'●';color:var(--success)}
 .badge.warn{color:var(--warning);background:color-mix(in srgb,var(--surface),var(--warning) 7%)}
 .badge.bad,.error{color:var(--danger)}
+.badge.checking{color:var(--muted);background:var(--surface)}
+.badge.eligible{color:var(--text);background:#79bea1}
+.badge.ineligible{color:#ffffff;background:var(--danger)}
+.badge.invalid-choice{color:#ffffff;background:var(--warning)}
+.selection-warning{margin-top:8px}
+.preview button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 .error{margin-top:8px;font-size:14px}
 .notice{border-left:3px solid var(--accent);padding:10px 14px;background:color-mix(in srgb,var(--surface),var(--accent) 4%);margin:12px 0}
 .notice.bad{border-color:var(--danger)}
@@ -95,7 +101,7 @@ progress::-webkit-progress-value{background:var(--accent)}
 .steps b{display:block;font-size:14px;font-weight:500;margin-bottom:4px}
 .steps [aria-current]{color:var(--accent);font-weight:650}
 .track{position:relative;padding:6px 0 12px 44px;margin:20px 0}
-.track:before{content:attr(data-step);position:absolute;left:0;top:5px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:white}
+.track:before{content:attr(data-step);position:absolute;left:0;top:5px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#ffffff}
 .track:after{content:'';position:absolute;left:13px;top:43px;bottom:0;width:1px;background:var(--border)}
 .track h2{margin-bottom:12px}
 .flow{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
@@ -126,6 +132,24 @@ main{padding:16px}
 :focus-visible{outline:3px solid Highlight}
 }
 
+
+.twocol{grid-template-columns:repeat(2,minmax(0,1fr))}
+.field{min-width:0}
+.picker{border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:6px}
+.picker summary{overflow-wrap:anywhere;min-height:26px}
+.picker input[type=search]{margin:10px 0}
+.options{max-height:220px;overflow-y:auto;overscroll-behavior:contain}
+.option{display:flex;align-items:flex-start;gap:8px;padding:10px 4px;border-top:1px solid var(--border);font-weight:400;margin:0;overflow-wrap:anywhere}
+.option input{width:16px;height:16px;flex:none;margin:5px 0;accent-color:var(--accent)}
+.option span{min-width:0}.option small{display:block}.option:has(input:checked){background:var(--hover)}
+.option:has(input:disabled){color:var(--muted)}
+.option:has(input:checked) small{color:var(--text)}
+.preview button[aria-pressed=true]{background:var(--surface)}
+input::placeholder{color:var(--muted);opacity:1}
+.primary:disabled:hover{background:var(--surface);color:var(--muted)}
+.badge.active,.badge.warn{background:var(--surface)}
+.run-actions{margin:12px 0}.task-metrics{margin-top:8px}
+@media(max-width:700px){.twocol{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -157,6 +181,12 @@ main{padding:16px}
 </svg>
 <span class="navtext">模型</span>
 </a>
+<a class="navitem" aria-label="下载" href="downloads-page.html">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/>
+</svg>
+<span class="navtext">下载</span>
+</a>
 <button class="navitem" aria-label="报告（本次未绘制）" data-note="报告页不在本次三个原型范围内。">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z M14 2v6h6M8 13h8M8 17h6"/>
@@ -185,192 +215,74 @@ main{padding:16px}
 <small>本地测评工作台</small>
 </div>
 <main>
-<header class="pagehead">
-<div>
-<h1>模型</h1>
-<p>选择本地模型与引擎，管理下载及本机服务。</p>
-</div>
-<span class="badge">交互原型</span>
-</header>
-<div class="preview">
-<strong>示例数据 · 离线交互演示</strong>
-<p class="muted">操作只改变当前页面，不下载、不启动服务、不发送请求；刷新后恢复初始状态。</p>
-</div>
-<div class="grid">
-<section class="card">
-<h2>本地模型清单</h2>
-<ul class="list" aria-label="本地模型清单">
-<li class="selected">
-<div class="row">
-<h3>Qwen3-8B-Q4_K_M.gguf</h3>
-<span class="badge active" id="model-selected">当前测评模型</span>
-</div>
-<div class="meta">
-<span>大小 4.9 GiB</span>
-<span>架构 Qwen3</span>
-<span>上下文 32,768 tokens</span>
-</div>
-<div class="actions">
-<button data-model="Qwen3-8B-Q4_K_M.gguf" aria-pressed="true">选为测评模型</button>
-</div>
-</li>
-<li>
-<h3>DeepSeek-R1-Distill-Qwen-7B.gguf</h3>
-<div class="meta">
-<span>大小 4.4 GiB</span>
-<span>架构 Qwen2</span>
-<span>上下文缺测：尚未读取模型元数据</span>
-</div>
-<div class="actions">
-<button data-model="DeepSeek-R1-Distill-Qwen-7B.gguf" aria-pressed="false">选为测评模型</button>
-</div>
-</li>
-</ul>
-<p class="notice" id="model-choice">已选 Qwen3-8B-Q4_K_M.gguf；下一次设备检查使用该模型。</p>
-<small>1 GiB = 1,073,741,824 bytes。示例大小已转换为 GiB。</small>
-</section>
-<section class="card">
-<h2>引擎清单</h2>
-<ul class="list" aria-label="引擎清单">
-<li class="selected">
-<div class="row">
-<h3>llama-server b6800</h3>
-<span class="badge active">最新下载 · 默认选中</span>
-</div>
-<p class="meta">来源：引擎下载 · engine-2</p>
-<div class="actions">
-<button data-engine="llama-server b6800" aria-pressed="true">选为候选引擎</button>
-</div>
-</li>
-<li>
-<h3>llama-server b6700 · 工作区</h3>
-<p class="meta">来源：工作区引擎目录</p>
-<div class="actions">
-<button data-engine="llama-server b6700 · 工作区" aria-pressed="false">选为候选引擎</button>
-</div>
-</li>
-<li>
-<h3>inference-engine · 用户引擎</h3>
-<p class="meta">来源：用户引擎目录 · 单文件下载</p>
-<div class="actions">
-<button data-engine="inference-engine · 用户引擎" aria-pressed="false">选为候选引擎</button>
-</div>
-</li>
-</ul>
-<p class="notice" id="engine-choice">候选引擎：llama-server b6800。选择后用于下一次创建候选。</p>
-</section>
-<section class="card">
-<h2>下载任务</h2>
-<form id="download-form">
-<div class="twocol">
-<div class="field">
-<label for="download-kind">下载类型</label>
-<select id="download-kind">
-<option value="model">模型</option>
-<option value="engine">引擎</option>
-</select>
-</div>
-<div class="field">
-<label for="asset">下载资源</label>
-<select id="asset">
-<option>Qwen3-8B-Q4_K_M.gguf</option>
-<option>DeepSeek-R1-Distill-Qwen-7B.gguf</option>
-</select>
-</div>
-</div>
-<p class="muted" style="margin:12px 0">目录名来自<a href="settings-page.html">设置</a>：模型 model、引擎 engine。占用时自动追加 -2、-3；实际名称见任务详情。</p>
-<button class="primary" type="submit">创建下载任务</button>
-</form>
-<ul class="list" aria-label="下载任务列表" style="margin-top:16px" id="downloads">
-<li>
-<div class="row">
-<h3>Qwen3-8B-Q4_K_M.gguf</h3>
-<span class="badge active">下载中 · 示例</span>
-</div>
-<p>
-<span class="spinner" role="img" aria-label="下载活动">
-</span> 总量未知：来源未提供文件总字节数</p>
-<p class="muted">下载速率缺测：尚无连续采样。剩余时间缺测：总量未知。</p>
-<details>
-<summary>任务详情 · download-02</summary>
-<dl>
-<dt>实际目录名</dt>
-<dd>model-2</dd>
-<dt>命名原因</dt>
-<dd>model 已占用，自动追加序号</dd>
-</dl>
-</details>
-</li>
-<li>
-<div class="row">
-<h3>llama-server b6700</h3>
-<span class="badge bad">下载失败</span>
-</div>
-<p class="error">连接中断。失败目录 engine-3 保留，不自动删除。</p>
-<small>重新下载创建新目录，不覆盖失败目录中的文件。</small>
-<details>
-<summary>任务详情 · download-01</summary>
-<p>实际目录名：engine-3；日志：download-01.log</p>
-</details>
-<div class="actions">
-<button id="retry">重新创建下载任务</button>
-</div>
-</li>
-</ul>
-</section>
-<section class="card">
-<h2>引擎服务与本机运行的服务</h2>
-<h3>Studio 管理的引擎服务</h3>
-<p class="meta">llama-server b6800 · Qwen3-8B</p>
-<p id="owned-state" style="margin:10px 0">
-<span class="badge">已停止 · 无活动进程</span>
-</p>
-<a class="button" href="dashboard-page.html">到 Dashboard 启动并绑定</a>
-<p class="muted" style="margin-top:10px">由 Studio 启动的服务随 Studio 退出关闭；外部服务不受退出操作影响。</p>
-<details>
-<summary>演示异常退出后的遗留服务</summary>
-<p>示例 PID 8421 的启动标识与所有权记录一致；可停止遗留服务，不自动重启或绑定。</p>
-<button id="stop-owned">停止遗留服务</button>
-<p id="owned-result" role="status">
-</p>
-<small>若 PID 已复用或进程已退出，仅清除记录，不终止不确定进程。</small>
-</details>
-<h3 style="margin-top:20px">本机运行的服务</h3>
-<p class="muted">来自 discover；健康检查不代表已绑定。</p>
+<header class="pagehead"><div><h1>模型</h1><p>选择模型与引擎，查看运行状态及本机服务。</p></div><span class="badge">交互原型</span></header>
+<div class="preview"><strong>示例数据 · 离线交互演示</strong><p class="muted">操作只改变当前页面，不下载、不启动服务、不发送请求；刷新后恢复初始状态。</p>
+<div class="actions" aria-label="选择演示">
+<button data-scene="empty" aria-pressed="true">未选择</button><button data-scene="ready" aria-pressed="false">组合已选</button><button data-scene="checking" aria-pressed="false">核验中</button>
+</div><div class="field"><label for="run-demo">运行状态演示（自动选定组合）</label>
+<select id="run-demo"><option value="idle">未启动</option><option value="starting">启动中…</option><option value="running">运行中</option><option value="stopping">停止中…</option><option value="stopped">已停止</option><option value="failed">失败</option><option value="gate">设备检查未通过（门禁）</option><option value="active">测评运行中（停止锁定）</option><option value="other">另一组合运行中（归因）</option></select></div></div>
+<div class="stack">
+<section class="card"><h2>选择模型与引擎</h2><div class="twocol">
+<div class="field"><label id="model-label">模型</label><details class="picker" id="model-picker"><summary id="model-summary">请选择模型</summary>
+<label for="model-search">搜索模型</label><input id="model-search" type="search" placeholder="输入模型名称" aria-controls="model-options">
+<div id="model-options" class="options" role="group" aria-labelledby="model-label"></div><p id="no-model" class="muted" hidden>没有匹配的模型，请修改搜索词。</p></details><small id="model-fit" role="status">请选择模型；当前清单均为 GGUF 格式。</small></div>
+<div class="field"><label id="engine-label">引擎</label><details class="picker" id="engine-picker"><summary id="engine-summary">请选择引擎</summary>
+<label for="engine-search">搜索引擎</label><input id="engine-search" type="search" placeholder="输入引擎名称" aria-controls="engine-options">
+<div id="engine-options" class="options" role="group" aria-labelledby="engine-label"></div><p id="no-engine" class="muted" hidden>没有匹配的引擎，请修改搜索词。</p></details><small id="engine-fit" role="status">2 个可用 · 1 个不可用；展开查看原因。</small></div>
+</div><p class="muted" style="margin-top:12px">适配性按引擎版本核验与模型格式判断；模型架构与引擎的适配在启动时验证。</p></section>
+<section class="card" id="run-panel" hidden><h2>运行</h2><p id="combination"></p><p style="margin-top:12px" role="status"><span class="badge" id="run-status">未启动</span></p>
+<div class="actions run-actions"><button id="start" class="primary">启动</button><button id="stop" disabled>停止</button></div>
+<p id="run-hint" class="selection-warning" role="status" hidden></p>
+<p class="muted">启动使用冻结候选的启动参数；该组合还没有候选时，将先自动创建候选并完成绑定。</p>
+<p class="muted">Studio 启动的服务随 Studio 退出关闭，不会自动重启。</p></section>
+<section class="card"><h2>本机运行的服务</h2><p class="muted">discover 发现结果，只读；健康检查不代表已绑定。</p><p>绑定操作在 Dashboard 进行</p>
 <ul class="list" aria-label="发现的本机运行服务">
-<li>
-<div class="row">
-<div>
-<h3>Qwen3-8B · llama-server</h3>
-<span class="badge good">健康检查通过 · 尚未绑定</span>
-</div>
-<button class="external" data-pid="6124">绑定</button>
-</div>
-<p class="meta">PID 6124 · http://127.0.0.1:8080 · 操作者启动</p>
-</li>
-<li>
-<div class="row">
-<div>
-<h3>Qwen3-8B · inference-engine</h3>
-<span class="badge">已发现 · 尚未绑定</span>
-</div>
-<button class="external" data-pid="7310">绑定</button>
-</div>
-<p class="meta">PID 7310 · http://127.0.0.1:8081 · 操作者启动</p>
-<small>示例：启动参数与当前候选不一致，绑定时将显示固定失败原因。</small>
-</li>
-</ul>
-<p id="external-result" role="status" class="notice" hidden>
-</p>
-</section>
-</div>
+<li><h3>llama-server</h3><span class="badge good">健康检查通过</span><dl><dt>PID</dt><dd>6124</dd><dt>endpoint</dt><dd class="mono">http://127.0.0.1:8080</dd><dt>health</dt><dd>健康</dd><dt>模型 id</dt><dd>Qwen3-8B</dd><dt>歧义标记</dt><dd>无</dd><dt>reason</dt><dd>无（null）</dd></dl></li>
+<li><h3>inference-engine</h3><span class="badge warn">归属有歧义 · 健康状态未知</span><dl><dt>PID</dt><dd>7310</dd><dt>endpoint</dt><dd class="mono">http://127.0.0.1:8081</dd><dt>health</dt><dd>缺测：探测超时</dd><dt>模型 id</dt><dd>缺测（null）：未取得模型列表</dd><dt>歧义标记</dt><dd>同端点存在多个监听进程，不能确认唯一归属</dd><dt>reason</dt><dd>探测超时</dd></dl></li>
+</ul></section></div>
 <p class="footer">HTML 设计基准 · 原生组件效果、系统主题及辅助技术需另行验收。</p>
-</main>
-</div>
-</div>
-<div id="toast" class="toast" role="status" aria-live="polite"></div><script>const $=id=>document.getElementById(id);let toastTimer;function toast(message){$('toast').textContent=message;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').textContent='',4500)}document.querySelectorAll('[data-note]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.note)));$('collapse').onclick=()=>{const collapsed=$('app').classList.toggle('collapsed');$('collapse').setAttribute('aria-expanded',String(!collapsed));$('collapse').setAttribute('aria-label',collapsed?'展开侧栏':'折叠侧栏')};
+</main></div></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>const $=id=>document.getElementById(id);let toastTimer;function toast(message){$('toast').textContent=message;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').textContent='',4500)}document.querySelectorAll('[data-note]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.note)));$('collapse').onclick=()=>{const collapsed=$('app').classList.toggle('collapsed');$('collapse').setAttribute('aria-expanded',String(!collapsed));$('collapse').setAttribute('aria-label',collapsed?'展开侧栏':'折叠侧栏')};
 
-for(const kind of ['model','engine'])document.querySelectorAll('[data-'+kind+']').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-'+kind+']').forEach(other=>{other.setAttribute('aria-pressed',String(other===b));other.closest('li').classList.toggle('selected',other===b);const badge=other.closest('li').querySelector('.badge');if(badge)badge.hidden=other!==b});$(kind+'-choice').textContent=(kind==='model'?'测评模型：':'候选引擎：')+b.dataset[kind]+'。将在下一次'+(kind==='model'?'设备检查':'创建候选')+'时使用。';toast('已选择 '+b.dataset[kind])});
-$('download-kind').onchange=()=>{const names=$('download-kind').value==='model'?['Qwen3-8B-Q4_K_M.gguf','DeepSeek-R1-Distill-Qwen-7B.gguf']:['llama-server b6800','inference-engine'];$('asset').replaceChildren(...names.map(n=>new Option(n,n)))};
-const counts={model:2,engine:3};function addDownload(name,kind){const li=document.createElement('li');const h=document.createElement('h3');h.textContent=name;li.append(h);const p=document.createElement('p');p.textContent='排队中 · 实际目录名：'+kind+'-'+(++counts[kind])+'。总量未知：尚未开始下载。';li.append(p);$('downloads').prepend(li);toast('已创建示例下载任务。')}$('download-form').onsubmit=e=>{e.preventDefault();addDownload($('asset').value,$('download-kind').value)};$('retry').onclick=()=>addDownload('llama-server b6700','engine');$('stop-owned').onclick=async()=>{$('stop-owned').disabled=true;$('owned-result').textContent='停止中／等待收尾';await new Promise(r=>setTimeout(r,900));$('owned-result').textContent='已停止 · 已清除所有权记录';toast('示例遗留服务已停止。')};document.querySelectorAll('.external').forEach(b=>b.onclick=async()=>{document.querySelectorAll('.external').forEach(x=>x.disabled=true);$('external-result').hidden=false;$('external-result').className='notice';$('external-result').textContent='绑定中 · 正在核验 PID '+b.dataset.pid+' 与候选参数';await new Promise(r=>setTimeout(r,900));if(b.dataset.pid==='7310'){$('external-result').className='notice bad';$('external-result').textContent='绑定失败：startup_arguments_mismatch。启动参数与候选不一致；请核对候选与引擎配置后重新绑定。未自动重试。';document.querySelectorAll('.external').forEach(x=>x.disabled=false)}else{$('external-result').textContent='zh-core 已绑定，正在绑定 zh-svg-pelican…';await new Promise(r=>setTimeout(r,900));$('external-result').textContent='zh-core 与 zh-svg-pelican 均已绑定。可到 Dashboard 运行。';toast('示例双题包绑定完成。')}});
+
+const models=['Llama-3.2-3B-Q4_K_M.gguf','DeepSeek-R1-Distill-Qwen-7B.gguf','Qwen3-8B-Q4_K_M.gguf'];
+const engines=['llama-server b6800','inference-engine · 用户引擎','llama-server b6700 · 工作区'];
+let model=null,engine=null,checking=false,state='idle',transition;
+const statuses={idle:'未启动',starting:'启动中…',running:'运行中 · PID 12345 · 127.0.0.1:48857',stopping:'停止中…',stopped:'已停止',failed:'失败：engine_exited · 模型服务启动后退出；查看日志后可重新启动。',active:'运行中 · PID 12345 · 127.0.0.1:48857',other:'运行中 · 另一个组合的服务（候选 core-1）'};
+function choices(kind){
+ const names=kind==='model'?models:engines,selected=kind==='model'?model:engine;
+ const query=$(kind+'-search').value.trim().toLowerCase();
+ const nodes=names.map((name,i)=>{
+  const label=document.createElement('label');label.className='option';label.hidden=!name.toLowerCase().includes(query);
+  const input=document.createElement('input');input.type='radio';input.name=kind;input.value=String(i);input.checked=selected===i;
+  input.disabled=['starting','running','stopping'].includes(state)||(kind==='engine'&&(checking||i===2));
+  const span=document.createElement('span');span.textContent=name;const small=document.createElement('small');
+  small.textContent=kind==='model'?(engine!==null?'格式匹配 · GGUF':'GGUF'):checking?'核验中…':i===2?'不可用 · 版本与评测要求不符':'可用 · 版本已核验'+(model!==null?' · GGUF 格式匹配':'');
+  span.append(small);label.append(input,span);input.onchange=()=>{document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed','false'));if(kind==='model')model=i;else engine=i;state='idle';render();$(kind+'-picker').open=false;$(kind+'-summary').focus();toast('已选择 '+name)};return label;
+ });
+ $(kind+'-options').replaceChildren(...nodes);$('no-'+kind).hidden=nodes.some(n=>!n.hidden);
+}
+function render(){
+ choices('model');choices('engine');
+ $('model-summary').textContent=model===null?'请选择模型':models[model];$('engine-summary').textContent=engine===null?'请选择引擎':engines[engine];
+ $('model-fit').textContent=engine===null?'当前清单均为 GGUF 格式。':'全部模型格式匹配 · GGUF；架构适配在启动时验证。';
+ $('engine-fit').textContent=checking?'核验中… 核验完成前不可选择引擎。':'2 个可用 · 1 个不可用；标注为版本核验与格式结果，与所选模型无关。';
+ $('run-panel').hidden=model===null||engine===null;
+ $('combination').textContent=model!==null&&engine!==null?models[model]+' × '+engines[engine]:'';
+ $('run-status').textContent=statuses[state]||statuses.idle;$('run-status').className='badge '+(state==='failed'?'bad':['running','other','active'].includes(state)?'good':['starting','stopping'].includes(state)?'active':'');
+ const hints={gate:'设备检查未通过：请先到 Dashboard 完成设备检查，再启动服务。',active:'测评运行期间不能停止或重新启动服务。',other:'当前选定组合没有运行中的服务；停止将终止另一个组合正在运行的服务。'};
+ $('run-hint').hidden=!hints[state];$('run-hint').textContent=hints[state]||'';
+ $('start').disabled=!['idle','stopped','failed'].includes(state);$('stop').disabled=!['running','other'].includes(state);$('run-demo').value=state;
+}
+function setState(next){clearTimeout(transition);state=next;render()}
+$('start').onclick=()=>{setState('starting');transition=setTimeout(()=>setState('running'),1200)};
+$('stop').onclick=()=>{setState('stopping');transition=setTimeout(()=>setState('stopped'),1200)};
+$('run-demo').onchange=()=>{model=0;engine=0;checking=false;setState($('run-demo').value);document.querySelectorAll('[data-scene]').forEach(b=>b.setAttribute('aria-pressed','false'))};
+document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>{
+ checking=b.dataset.scene==='checking';model=b.dataset.scene==='empty'?null:0;engine=b.dataset.scene==='ready'?0:null;
+ document.querySelectorAll('[data-scene]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));setState('idle');
+ if(checking)$('engine-picker').open=true;
+});
+for(const kind of ['model','engine'])$(kind+'-search').oninput=()=>choices(kind);
+render();
 </script></body></html>

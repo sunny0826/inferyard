@@ -118,5 +118,5 @@ func kvValue(key string, value any) string {
 			}
 		}
 	}
-	return fmt.Sprint(value)
+	return displayValue(fmt.Sprint(value))
 }

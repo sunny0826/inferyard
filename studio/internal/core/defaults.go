@@ -7,13 +7,11 @@ import (
 	"compress/gzip"
 	"context"
 	"io"
-	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 )
 
 // DefaultModelURL is the built-in tiny test model (SmolLM2-135M Q4_K_M, about
@@ -152,36 +150,11 @@ func EngineRoots(workspace string) []string {
 // roots, or "" when none exists. Missing roots are skipped and the walk depth
 // is limited so a stray large tree cannot stall the wizard.
 func FindEngineBinary(roots ...string) string {
-	best := ""
-	var bestTime time.Time
-	for _, root := range roots {
-		if root == "" {
-			continue
-		}
-		_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return nil
-			}
-			if rel, e := filepath.Rel(root, path); e == nil && strings.Count(rel, string(filepath.Separator)) > 4 {
-				if d.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			if d.IsDir() || d.Name() != "llama-server" {
-				return nil
-			}
-			info, e := d.Info()
-			if e != nil || !info.Mode().IsRegular() || info.Mode()&0o111 == 0 {
-				return nil
-			}
-			if info.ModTime().After(bestTime) {
-				best, bestTime = path, info.ModTime()
-			}
-			return nil
-		})
+	entries := scanEngineBinaries(roots...)
+	if len(entries) == 0 {
+		return ""
 	}
-	return best
+	return entries[0].path
 }
 
 // cleanEntryName rejects absolute paths and traversal in archive entries. The

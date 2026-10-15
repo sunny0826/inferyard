@@ -22,7 +22,7 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 	ui.Column(c).Key(r.Path).Gap(6).Padding(10).Children(func() {
 		ui.Text(c, r.RunId+" · "+stateLabel(r.Status)).Bold()
 		ui.Text(c, text(r.ModelName)+" · "+text(r.Bundle)+" · "+text(r.Engine))
-		ui.Text(c, r.Path).Selectable()
+		ui.Text(c, displayName(r.Path)).Selectable()
 		sealed := "未封存"
 		if r.Sealed {
 			sealed = "已封存（不代表已核验）"
@@ -59,7 +59,7 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 }
 func (s *viewState) resumeView(c *ui.Context) {
 	card(c, "续测 "+s.resumeSource.RunId, func() {
-		ui.Text(c, s.resumeSource.Path).Selectable()
+		ui.Text(c, displayName(s.resumeSource.Path)).Selectable()
 		endpointError, pidError := resumeErrors(s.endpoint, s.pid)
 		field(c, "endpoint_url（可选）", &s.endpoint).Description("本机服务 URL；与 PID 同时填写或同时省略。").Error(endpointError)
 		field(c, "server_pid（与 endpoint 同给同省）", &s.pid).Description("正整数；不填写时沿用来源配置。").Error(pidError)
@@ -194,7 +194,7 @@ func runScore(r core.RunSummary) string {
 }
 
 func (s *viewState) historyView(c *ui.Context) {
-	ui.Text(c, "结果目录："+configuredValue(emptyText(s.history.ResultsRoot)))
+	ui.Text(c, "结果目录："+configuredValue(displayName(emptyText(s.history.ResultsRoot))))
 	ui.Text(c, "扫描时间："+configuredValue(s.history.ScannedAt))
 	runs := s.historyRuns()
 	if len(runs) == 0 && s.historyError == nil && s.loaded {
@@ -216,7 +216,7 @@ func (s *viewState) historyView(c *ui.Context) {
 			for _, run := range batch.Runs {
 				if run.Path == r.Path {
 					ui.Text(c, "批次 "+batch.BatchId+" · "+aggregateStatus(batch.Runs))
-					ui.Text(c, batch.Path).Selectable()
+					ui.Text(c, displayName(batch.Path)).Selectable()
 					break
 				}
 			}

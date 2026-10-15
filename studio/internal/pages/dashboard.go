@@ -9,6 +9,9 @@ func (w *viewState) step() int {
 	if w.running() != nil {
 		return 4
 	}
+	if w.binding || w.autoBind.armed || w.bindingPhase() {
+		return 3
+	}
 	if w.progress == nil {
 		return 0
 	}
@@ -75,7 +78,15 @@ func (s *viewState) conclusionView(c *ui.Context) {
 			for _, b := range s.progress.Bundles {
 				ui.Text(c, b.Bundle+" · "+stateLabel(b.Phase))
 				if b.BlockedReason != nil {
-					ui.Text(c, human(*b.BlockedReason)).TextColor(c.Theme().Danger)
+					// An in-flight single-mode run legitimately reports
+					// "resume not supported" while it is still executing; the
+					// reason is flow guidance, not a failure, so it is not
+					// styled (or announced) as an error.
+					color := c.Theme().Danger
+					if b.Phase == "run_incomplete" {
+						color = c.Theme().Warning
+					}
+					ui.Text(c, human(*b.BlockedReason)).TextColor(color)
 				}
 			}
 		}
@@ -102,7 +113,7 @@ func (s *viewState) setupGuide(c *ui.Context) {
 		if s.ready.CLI.Status != "ok" {
 			ui.Text(c, "请先安装 CLI，才能初始化工作区。")
 		}
-		field(c, "新工作区目录", &s.initDir).Description("必填绝对路径；目标必须为新目录。").Error(pathError(s.initDir))
+		privatePathField(c, "新工作区目录", &s.initDir).Description("必填绝对路径；目标必须为新目录。").Error(pathError(s.initDir))
 		if primaryButton(c, "初始化工作区").AlignSelf(ui.Start).Disabled(s.busy || s.initDir == "" || s.ready.CLI.Status != "ok").Clicked() {
 			if message := pathError(s.initDir); message != "" {
 				s.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
@@ -154,7 +165,7 @@ func (s *viewState) readinessView(c *ui.Context) {
 					state = "已初始化"
 				}
 			}
-			ui.Text(c, entry.label+"："+configuredValue(emptyText(entry.dir.Path))+" · "+state)
+			ui.Text(c, entry.label+"："+configuredValue(displayName(emptyText(entry.dir.Path)))+" · "+state)
 		}
 		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
 			if button(c, "准备目录").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
@@ -186,17 +197,21 @@ func (s *viewState) stageView(c *ui.Context) {
 	if s.running() != nil {
 		action = "run"
 	}
+	if s.binding || s.autoBind.armed || s.bindingPhase() {
+		action = "bind"
+	}
 	switch action {
 	case "device_check":
 		stepTrack(c, "2", "设备检查", func() {
 			ui.Text(c, "检查硬件、本机模型与推荐方案，写入工作区预检证据；不发送模型请求。")
+			ui.Text(c, "测评模型："+configuredModel(s.model))
 			if s.ready.CLI.Status != "ok" {
 				ui.Text(c, "请先安装 CLI，再运行设备检查。")
 			}
 			if primaryButton(c, "运行设备检查").AlignSelf(ui.Start).Disabled(s.busy || s.ready.CLI.Status != "ok").Clicked() {
 				s.execute(s.nextCommand(), false)
 			}
-			ui.Text(c, "检查完成后，可在设备页查看明细；需要下载模型或引擎时，前往模型与下载页。")
+			ui.Text(c, "检查完成后，可在设备页查看明细；需要下载模型或引擎时，前往模型页。")
 			button(c, "查看设备页明细").AlignSelf(ui.Start).OnClick(func() { s.selected = "device" })
 		})
 	case "prepare_candidate":

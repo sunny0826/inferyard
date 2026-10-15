@@ -73,7 +73,7 @@ func TestDeviceLocalizedSnapshot(t *testing.T) {
 	if err := tt.Click("数据来源与缺测明细"); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"temperature：缺测 — unsupported", "cpu_model ← fixture:cpu", "检测位置：/fixture/workspace", "memory_free_bytes：缺测 — 未测量"} {
+	for _, want := range []string{"temperature：缺测 — unsupported", "cpu_model ← fixture:cpu", "检测位置：workspace", "memory_free_bytes：缺测 — 未测量"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing inline detail %q: %v", want, tt.Texts())
 		}

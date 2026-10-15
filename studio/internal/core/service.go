@@ -21,37 +21,53 @@ var Version = "dev"
 
 type Executor func(context.Context, string, ...string) (inferyard.Execution, error)
 type Options struct {
-	SettingsPath  string
-	Execute       Executor
-	HostStatePath string
+	ProcessStartTicks func(int64) (int64, error)
+	SignalProcess     func(int64, os.Signal) error
+	OrphanStopTimeout time.Duration
+	SettingsPath      string
+	Execute           Executor
+	HostStatePath     string
 	// EngineStartTimeout bounds the managed engine's health wait; tests set a
 	// short value, zero means ten minutes.
 	EngineStartTimeout time.Duration
 }
 type Service struct {
-	ctx              context.Context
-	cancel           context.CancelFunc
-	closing          bool
-	shutdownOnce     sync.Once
-	shutdownDone     chan struct{}
-	queueDone        chan struct{}
-	mu               sync.Mutex
-	settingsMu       sync.Mutex
-	reportMu         sync.Mutex
-	settings         UserSettings
-	settingsPath     string
-	exec             Executor
-	Bus              *EventBus
-	device           DeviceResponse
-	deviceGeneration uint64
-	history          RunHistoryResponse
-	rebuilding       bool
-	runs             []*runEntry
-	downloads        []*downloadEntry
-	engine           *engineEntry
-	engineTimeout    time.Duration
-	wake             chan struct{}
-	hostStatePath    string
+	orphan            *orphanEngine
+	identityReader    func(int64) (int64, error)
+	processSignal     func(int64, os.Signal) error
+	orphanStopTimeout time.Duration
+	registryRoots     func(string) []string
+	ctx               context.Context
+	cancel            context.CancelFunc
+	closing           bool
+	shutdownOnce      sync.Once
+	shutdownDone      chan struct{}
+	queueDone         chan struct{}
+	mu                sync.Mutex
+	settingsMu        sync.Mutex
+	reportMu          sync.Mutex
+	settings          UserSettings
+	settingsPath      string
+	exec              Executor
+	Bus               *EventBus
+	device            DeviceResponse
+	deviceGeneration  uint64
+	history           RunHistoryResponse
+	rebuilding        bool
+	runs              []*runEntry
+	downloads         []*downloadEntry
+	engine            *engineEntry
+	engineTimeout     time.Duration
+	wake              chan struct{}
+	hostStatePath     string
+	checkMu           sync.Mutex
+	checks            map[string]engineCheckEntry
+	checkInflight     map[string]bool
+	checkNames        []engineCheckTarget
+	checkCLI          string
+	checkSupported    bool
+	checkSem          chan struct{}
+	checkRetry        time.Duration
 }
 
 func New(ctx context.Context, o Options) (*Service, error) {
@@ -68,7 +84,7 @@ func New(ctx context.Context, o Options) (*Service, error) {
 		}
 	}
 	serviceCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
-	s := &Service{ctx: serviceCtx, cancel: cancel, shutdownDone: make(chan struct{}), queueDone: make(chan struct{}), settingsPath: o.SettingsPath, exec: o.Execute, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout}
+	s := &Service{ctx: serviceCtx, cancel: cancel, shutdownDone: make(chan struct{}), queueDone: make(chan struct{}), settingsPath: o.SettingsPath, exec: o.Execute, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout, checks: map[string]engineCheckEntry{}, checkInflight: map[string]bool{}, checkSupported: true, checkSem: make(chan struct{}, 2), checkRetry: time.Minute}
 	raw, err := os.ReadFile(o.SettingsPath)
 	if err == nil {
 		if err = json.Unmarshal(raw, &s.settings); err != nil {
@@ -78,6 +94,9 @@ func New(ctx context.Context, o Options) (*Service, error) {
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
+	s.settings = downloadNameDefaults(s.settings)
+	s.identityReader, s.processSignal, s.orphanStopTimeout = o.ProcessStartTicks, o.SignalProcess, o.OrphanStopTimeout
+	s.detectEngineOwner()
 	s.history = RunHistoryResponse{ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}
 	go s.runQueue()
 	go func() {
@@ -111,6 +130,9 @@ func uuid() string {
 }
 func clone[T any](v T) T { raw, _ := json.Marshal(v); var c T; _ = json.Unmarshal(raw, &c); return c }
 func Err(code string) *ApiError {
+	if code == "output_name_exhausted" {
+		return &ApiError{Code: code, Message: "前 1000 个目录名均已占用，请更换目录名或工作区。"}
+	}
 	messages := map[string]string{"invalid_request": "请求参数无效", "unauthorized": "会话验证失败", "not_found": "未找到资源", "conflict": "操作与当前状态冲突", "cli_blocked": "inferyard 拒绝执行", "internal_error": "服务内部错误", "cli_error": "inferyard 工具或证据错误", "cli_unavailable": "inferyard 不可用"}
 	return &ApiError{Code: code, Message: messages[code], Limitations: []string{}}
 }
@@ -190,6 +212,18 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 	defer s.settingsMu.Unlock()
 	u := s.userSettings()
 	for k, v := range patch {
+		if k == "model_download_name" || k == "engine_download_name" {
+			var name string
+			if json.Unmarshal(v, &name) != nil || !ValidDownloadName(name) {
+				return SettingsResponse{}, Err("invalid_request")
+			}
+			if k == "model_download_name" {
+				u.ModelDownloadName = name
+			} else {
+				u.EngineDownloadName = name
+			}
+			continue
+		}
 		if k != "inferyard_path" && k != "results_root" && k != "models_root" && k != "workspace_root" {
 			return SettingsResponse{}, Err("invalid_request")
 		}
@@ -213,7 +247,7 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 	s.mu.Lock()
 	workspaceChanged := str(workspaceRoot(u)) != str(workspaceRoot(s.settings))
-	if workspaceChanged && (s.runsActiveLocked() || (s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping"))) {
+	if workspaceChanged && (s.orphan != nil || s.runsActiveLocked() || (s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping"))) {
 		s.mu.Unlock()
 		return SettingsResponse{}, Err("workspace_busy")
 	}
@@ -257,6 +291,9 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 		s.rebuilding = true
 	}
 	s.mu.Unlock()
+	if workspaceChanged {
+		s.detectEngineOwner()
+	}
 	if changed {
 		go s.rebuild(u)
 	}
