@@ -9,22 +9,24 @@ operations and owns the evidence contract.
 
 ## Pages and first launch
 
-The main window has five pages:
+The main window has six pages:
 
 | Page | Purpose |
 | --- | --- |
 | Dashboard | Prepare the environment (CLI installation, directory provisioning, workspace initialization), work through the current benchmark stage (device check, candidate, service startup and binding, run, report verification), queue or cancel evaluations, inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
 | Device | Inspect hardware, measurement availability, collection sources, and device-check results. |
-| Models and downloads | Prepare model and engine assets, inspect and cancel downloads, manage the engine service, and check binding hints. |
+| Models | Pick a model and an engine in two linked pickers (each annotates the other's compatibility: engine verification status, model format match), start/stop the engine service for the selected combination and see its status, and inspect read-only discovered local services (binding stays on the Dashboard). No absolute paths. |
+| Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. |
 | Reports | Generate reports and open each offline HTML report in its own in-app WebView window. |
-| Settings | Configure the CLI path, workspace, results directory, and model directory. |
+| Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names. |
 
 The main window always opens on the Dashboard, which drives the full benchmark flow from
 the CLI-generated `progress.v1` workspace state: it shows the current stage with its
 blocking reason, offers the matching action inline, and hosts quick re-runs, the task
-queue, run history, resume, and the in-page run detail view. Models and downloads
+queue, run history, resume, and the in-page run detail view. The Models page
+selects the model/engine combination and runs the engine service; the Downloads page
 prepares assets; Device runs the device check and shows its details; Reports generates
-and verifies the combined report; Settings edits paths. Reopening Studio restores
+and verifies the combined report; Settings edits paths and download directory names. Reopening Studio restores
 progress from workspace evidence through `progress.v1`. A missing CLI or incomplete
 configuration does not prevent opening any page.
 
@@ -35,16 +37,34 @@ against the release checksum, without touching shell configuration — and insta
 `inferyard` matching the Studio version from PyPI via `uv tool install`. Manual path
 configuration in Settings remains available.
 
-The Dashboard's stage actions follow the CLI-generated next command. Studio starts the frozen
-engine as a managed child process, waits for its health endpoint, and stops it when Studio
-exits — it owns the processes it starts and never restarts them automatically; services
-the operator started themselves can still be bound from the process list. Binding always
-goes through the CLI's PID and start-time checks. If Studio exits abnormally and leaves
-an engine process running, stop it manually and rebind on the Dashboard. Model credentials
+The Dashboard's stage actions follow the CLI-generated next command. One click starts the
+frozen engine, waits for its health endpoint, and binds every `bound_missing` bundle in
+progress order using the same explicit PID and endpoint. The chain triggers once and stops
+on the first failure without retrying; the run stage becomes available after all pending
+bindings succeed. Studio stops its managed engine on exit and never restarts it automatically.
+Dashboard and Models show the CLI's `service discover` results, including partial
+scan limitations, endpoint health, model names, and ambiguous listeners. One-click external
+binding uses the discovered PID and endpoint through the same CLI binding checks. Discovery
+does not establish bind eligibility: rejection reasons such as `startup_arguments_mismatch`
+remain visible. The collapsed advanced manual binding controls remain available. See the
+[service discovery contract](../cli/docs/cli-surface.md#本机服务发现契约) for the read-only probe scope.
+Binding always goes through the CLI's PID and start-time checks. Studio persists an
+ownership record (PID + start ticks) for each engine it starts. If Studio exits
+abnormally and the record survives, the next launch re-verifies the process start ticks
+before offering an explicit "stop leftover engine" action; a PID whose identity no
+longer matches is never signalled — only the stale record is removed. Invalid records,
+unverifiable identities, and failed cleanup expose a "delete record only (do not terminate
+process)" action for workspace `logs/engine-owner.json`. It re-reads the record and refuses
+deletion when the process identity still matches; that process must use the stop action.
+Successful deletion clears the orphaned state and allows a new startup. Model credentials
 are referenced only by an environment-variable name.
 
-Models and downloads prefills built-in test assets: a tiny SmolLM2-135M GGUF (pinned Hugging
-Face revision) and the pinned Prism engine archive for the current platform. Engine
+The Models page prefills built-in test assets: a tiny SmolLM2-135M GGUF (pinned Hugging
+Face revision) and the pinned Prism engine archive for the current platform. Download
+directory names come from Settings (defaults `model` / `engine`); an occupied name
+automatically gains a `-2`/`-3` suffix instead of prompting per download, and the task
+detail shows the actual directory. Name allocation stops after 1,000 occupied candidates
+with `output_name_exhausted`; new binding directories use the same limit. Engine
 archives are downloaded and unpacked by the Studio side — preserving the sibling shared
 libraries and recreating only in-archive relative symlinks — into a fresh directory that
 never overwrites existing files.

@@ -9,6 +9,10 @@ from inferyard.platforms.identity import PreflightError
 
 
 def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
+    if request.command == "service discover":
+        from inferyard.application.service_discovery import execute
+
+        return execute(request)
     if request.command == "progress":
         from inferyard.application.progress import execute
 
@@ -23,6 +27,10 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         return execute(request)
     if request.command == "engine acquire":
         from inferyard.application.engine_source import execute
+
+        return execute(request)
+    if request.command == "engine check":
+        from inferyard.application.engine_check import execute
 
         return execute(request)
     if request.command in (

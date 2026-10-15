@@ -19,7 +19,11 @@ func TestBindingRecoveryInBindStage(t *testing.T) {
 		s.bindingStale = true
 		s.engineState = core.EngineState{State: "running", Pid: 42}
 		tt := ui.NewTester(s.view, 1120, 2400)
-		for _, label := range []string{"启动服务", "停止服务", "重新绑定", "旧绑定已失效，请重启服务并重新绑定"} {
+		start := "启动服务"
+		if phase == "bound_missing" {
+			start = "启动并绑定"
+		}
+		for _, label := range []string{start, "停止服务", "重新绑定", "旧绑定已失效，请重启服务并重新绑定"} {
 			if !tt.HasText(label) {
 				t.Fatalf("%s lacks %s", phase, label)
 			}
@@ -93,7 +97,11 @@ func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 	s.candidate = candidate
 	s.progress = &inferyard.WorkspaceProgress{Workspace: root, NextAction: "run", NextCommand: ptr("inferyard run --config old"), Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_missing", CandidatePath: &candidate, BoundPath: &old}}}
 	s.engineState = core.EngineState{State: "running", Pid: 123, Endpoint: "http://127.0.0.1:48857"}
-	args, err := inferyard.SplitCommand(s.managedBindCommand())
+	command, e := s.managedBindCommand()
+	if e != nil {
+		t.Fatal(e)
+	}
+	args, err := inferyard.SplitCommand(command)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +110,11 @@ func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 		t.Fatalf("%v", args)
 	}
 	os.MkdirAll(filepath.Join(root, "bound", "zh-core-2"), 0700)
-	args, _ = inferyard.SplitCommand(s.bindCommand("456", "http://localhost:48857"))
+	command, e = s.bindCommand("456", "http://localhost:48857")
+	if e != nil {
+		t.Fatal(e)
+	}
+	args, _ = inferyard.SplitCommand(command)
 	if !slices.Contains(args, filepath.Join(root, "bound", "zh-core-3")) || !slices.Contains(args, "456") {
 		t.Fatal(args)
 	}
@@ -116,7 +128,11 @@ func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 	s.progress.NextAction = "bind"
 	s.progress.Bundles[0].Phase = "bound_missing"
 	s.progress.Bundles[0].NextCommand = ptr("inferyard config bind --candidate '/frozen/candidate.toml' --pid 1 --endpoint http://localhost --out '/frozen/output'")
-	args, _ = inferyard.SplitCommand(s.managedBindCommand())
+	command, e = s.managedBindCommand()
+	if e != nil {
+		t.Fatal(e)
+	}
+	args, _ = inferyard.SplitCommand(command)
 	if !slices.Contains(args, "/frozen/output") {
 		t.Fatal("rewrote CLI --out", args)
 	}
@@ -157,10 +173,11 @@ func TestWorkspaceSwitchClearsEngineSession(t *testing.T) {
 	s.startup = core.Startup{Path: "old"}
 	s.processes = []core.ProcessCandidate{{PID: 42}}
 	s.engineState = core.EngineState{State: "running", Pid: 42}
-	s.enginePreset, s.bindingStale = true, true
+	s.registry = modelRegistryFixture()
+	s.model, s.bindingStale = "old.gguf", true
 	s.manualFirst, s.manualSecond, s.firstBundle, s.detailID = "old", "old", "old", "old"
 	s.applySettings(core.SettingsResponse{Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/new")}})
-	if s.candidate != "" || s.engine != "" || s.process != "" || s.bindEndpoint != "" || s.startup.Path != "" || len(s.processes) != 0 || s.engineState.Pid != 0 || s.enginePreset || s.bindingStale || s.detailID != "" || s.manualFirst != "" {
+	if s.candidate != "" || s.engine != "" || s.process != "" || s.bindEndpoint != "" || s.startup.Path != "" || len(s.processes) != 0 || s.engineState.Pid != 0 || len(s.registry.Engines) != 0 || s.model != "" || s.bindingStale || s.detailID != "" || s.manualFirst != "" {
 		t.Fatal("workspace retained old session")
 	}
 }
@@ -172,6 +189,11 @@ func TestInstallAndDownloadFeedbackStayOnTheirPages(t *testing.T) {
 	s.ready.CLI.Status = "not_found"
 	s.selected = "models"
 	tt := ui.NewTester(s.view, 1120, 1800)
+	if tt.HasText("引擎专属进度") || tt.HasText("CLI 专属进度") {
+		t.Fatal(tt.Texts())
+	}
+	s.selected = "downloads"
+	tt.Frame()
 	if !tt.HasText("引擎专属进度") || tt.HasText("CLI 专属进度") {
 		t.Fatal(tt.Texts())
 	}

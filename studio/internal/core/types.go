@@ -24,10 +24,12 @@ type StatusResponse struct {
 }
 
 type UserSettings struct {
-	WorkspaceRoot *string `json:"workspace_root"`
-	InferyardPath *string `json:"inferyard_path"`
-	ResultsRoot   *string `json:"results_root"`
-	ModelsRoot    *string `json:"models_root"`
+	ModelDownloadName  string  `json:"model_download_name"`
+	EngineDownloadName string  `json:"engine_download_name"`
+	WorkspaceRoot      *string `json:"workspace_root"`
+	InferyardPath      *string `json:"inferyard_path"`
+	ResultsRoot        *string `json:"results_root"`
+	ModelsRoot         *string `json:"models_root"`
 }
 
 type EffectiveSettings struct {

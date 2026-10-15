@@ -36,12 +36,19 @@ func (s *Service) beginShutdown() {
 			<-s.queueDone
 			s.mu.Lock()
 			e := s.engine
+			var orphanDone <-chan struct{}
+			if s.orphan != nil && s.orphan.state.State == "stopping" {
+				orphanDone = s.orphan.done
+			}
 			if e != nil {
 				s.stopEngineLocked(e)
 			}
 			s.mu.Unlock()
 			if e != nil {
 				<-e.done
+			}
+			if orphanDone != nil {
+				<-orphanDone
 			}
 			close(s.shutdownDone)
 		}()
@@ -52,7 +59,8 @@ func (s *Service) admitRunLocked() *ApiError {
 	if s.closing {
 		return Err("service_closing")
 	}
-	if s.engine != nil && s.engine.state.State == "stopping" {
+	if (s.engine != nil && s.engine.state.State == "stopping") ||
+		(s.orphan != nil && s.orphan.state.State == "stopping") {
 		return Err("engine_stopping")
 	}
 	return nil

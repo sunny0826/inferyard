@@ -49,7 +49,7 @@ func designFixture(page string) *viewState {
 }
 
 func TestDesignLayoutMatrix(t *testing.T) {
-	for _, page := range []string{"dashboard", "device", "models", "reports", "settings", "detail"} {
+	for _, page := range []string{"dashboard", "device", "models", "downloads", "reports", "settings", "detail"} {
 		for _, width := range []int{1120, 800, 1440} {
 			for _, scale := range []float32{1, 1.5, 2} {
 				for _, dark := range []bool{false, true} {
@@ -123,27 +123,21 @@ func TestDesignLayoutMatrix(t *testing.T) {
 
 func TestDesignModelsStackAndLongPath(t *testing.T) {
 	s := designFixture("models")
-	tt := ui.NewTester(s.view, 1120, 800)
-	left, _ := tt.Find("模型")
-	right, _ := tt.Find("引擎服务")
-	if left.Y != right.Y || right.X <= left.X {
-		t.Fatal("wide columns", left, right)
+	s.registry = core.Registry{
+		Models:  []core.ModelAsset{{Name: strings.Repeat("长模型名称", 12) + ".gguf", Available: true}},
+		Engines: []core.EngineAsset{{Name: strings.Repeat("long-engine-name/", 8), Source: "用户引擎目录"}},
 	}
+	s.model, s.engine = s.registry.Models[0].Name, s.registry.Engines[0].Name
 	for _, scale := range []float32{1, 1.5, 2} {
-		tt.SetSize(800, 600)
-		tt.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
-		var modelY, downloadY, engineY, bindingY float64
-		for _, n := range modelUINodes(tt, "text", "模型") {
-			if n.FieldByName("role").Uint() == uint64(ui.RoleHeading) {
-				modelY = n.FieldByName("y").Float()
-				break
+		for _, width := range [][2]int{{1120, 800}, {800, 600}} {
+			tt := ui.NewTester(s.view, width[0], width[1])
+			tt.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
+			selectionY := modelUINodes(tt, "text", "选择模型与引擎")[0].FieldByName("y").Float()
+			runY := modelUINodes(tt, "text", "运行")[0].FieldByName("y").Float()
+			servicesY := modelUINodes(tt, "text", "本机运行的服务")[0].FieldByName("y").Float()
+			if !(selectionY < runY && runY < servicesY) {
+				t.Fatal("single-column section order", selectionY, runY, servicesY)
 			}
-		}
-		downloadY = modelUINodes(tt, "text", "下载")[0].FieldByName("y").Float()
-		engineY = modelUINodes(tt, "text", "引擎服务")[0].FieldByName("y").Float()
-		bindingY = modelUINodes(tt, "text", "绑定存活提示")[0].FieldByName("y").Float()
-		if !(modelY < downloadY && downloadY < engineY && engineY < bindingY) {
-			t.Fatal("single-column section order", modelY, downloadY, engineY, bindingY)
 		}
 	}
 }

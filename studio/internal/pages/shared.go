@@ -46,7 +46,7 @@ func taskLabel(t core.RunTask) string {
 	return stateLabel(t.State)
 }
 func stateLabel(v string) string {
-	labels := map[string]string{"": "未知状态", "stopped": "已停止", "stopping": "停止中", "starting": "启动中", "running": "运行中", "cancelling": "取消中", "done": "已结束", "failed": "失败", "cancelled": "已取消", "downloading": "下载中", "complete": "完整", "partial": "不完整", "dirty": "未排空", "pending": "待执行（聚合态）", "completed": "已完成", "invalid": "无效", "probe": "探测", "warmup": "预热", "baseline": "基线", "formal": "正式运行", "scoring": "评分", "residual": "残留检测", "finalizing": "收尾", "candidate_missing": "待创建候选", "bound_missing": "待绑定服务", "run_missing": "待运行", "run_incomplete": "运行未完成", "run_complete": "已封存", "preflight_missing": "待检查设备"}
+	labels := map[string]string{"orphaned": "遗留引擎", "": "未知状态", "stopped": "已停止", "stopping": "停止中", "starting": "启动中", "running": "运行中", "cancelling": "取消中", "done": "已结束", "failed": "失败", "cancelled": "已取消", "downloading": "下载中", "complete": "完整", "partial": "不完整", "dirty": "未排空", "pending": "待执行（聚合态）", "completed": "已完成", "invalid": "无效", "probe": "探测", "warmup": "预热", "baseline": "基线", "formal": "正式运行", "scoring": "评分", "residual": "残留检测", "finalizing": "收尾", "candidate_missing": "待创建候选", "bound_missing": "待绑定服务", "run_missing": "待运行", "run_incomplete": "运行未完成", "run_complete": "已封存", "preflight_missing": "待检查设备"}
 	if label, ok := labels[v]; ok {
 		return label
 	}
@@ -107,7 +107,7 @@ func groupedInt(v int64) string {
 func componentFold(c *ui.Context, title string, fn func()) {
 	container := ui.Column(c.Key(title))
 	open := ui.Local(container, "open", func() bool { return false })
-	container.Children(func() { ui.Collapsible(c, title, open, fn) })
+	container.Children(func() { components.Collapsible(c, title, open, components.CollapsibleOptions{}, fn) })
 }
 
 func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {

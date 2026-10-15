@@ -11,9 +11,15 @@ CLI 不选择隐式默认目录。先显式初始化，再随时查询下一步�
 inferyard init --out onboarding
 inferyard progress --workspace onboarding
 inferyard device-check --model /path/to/model.gguf --json --out onboarding/preflight/device-1
+inferyard engine check --engine /path/to/llama-server
 inferyard config create --workspace onboarding --bundle zh-core --engine /path/to/llama-server --out onboarding/candidates/zh-core-1
 inferyard progress --workspace onboarding
 ```
+
+`engine check` 是可选的只读预核验：Windows 改用 `--runtime-receipt FILE`；
+`details.eligible=false` 时按固定 reason 先行排除不合格引擎；macOS 合格时按
+`details.modes` 查看 cpu/metal 各自可用性，Windows 看 `details.mode`。核验通过
+不构成候选资格，`config create` 仍终审；字段与退出码见[引擎核验契约](cli-surface.md#引擎核验契约)。
 
 按导出的 README 路线图由操作者启动服务，使用真实 PID/endpoint 绑定，再 run。
 核心包完成后同样准备并运行 zh-svg-pelican，两个 run 均封存后在 reports/ 的新子目录
@@ -110,6 +116,20 @@ benchmark 执行与评分不使用浏览器：SVG 题不做质量评分，CLI �
 自定义检查脚本。
 
 ## 配置与服务绑定
+
+已有本机服务时，可先发现监听进程与模型 ID：
+
+```bash
+inferyard service discover
+inferyard --schema service_discovery
+```
+
+命令对所有发现的 loopback 监听端点发送 `/health` 和 `/v1/models` 只读 GET，
+不按进程名过滤、不启动服务、不发送模型生成请求。查看 `details.services`，
+将选中条目的 `pid` 和 `endpoints[].url` 用于下面的显式绑定。
+同端口多进程会全部列出并标记 `ambiguous_listener`；发现结果不代表绑定可行，
+bind 仍核验当前身份与候选启动参数。空列表退出 0；枚举不全退出 3 并带 limitations。
+字段、固定原因及平台边界见[服务发现契约](cli-surface.md#本机服务发现契约)。
 
 模型服务由操作者外部启动。按[配置说明](../configs/README.md)准备候选配置，核对模型、引擎、模板、启动参数和凭据引用，再绑定当前进程：
 

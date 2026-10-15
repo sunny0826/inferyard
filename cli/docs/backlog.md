@@ -4,6 +4,9 @@
 
 ## InferYard Studio 后续工作
 
+- 遗留引擎停止的 PID 复用 TOCTOU 窗口可收紧（Windows OpenProcess 句柄钉住 / Linux pidfd）；
+  当前由停止全程 25ms 身份重核收窄，本轮不实施。
+
 - 2026-10-14：[Studio Design System](../../studio/docs/design-system.md) 已用于六页、详情和报告窗口外壳。
   DS-01 至 DS-09 均有实现与软件回归，全量 Go 测试、vet 和三平台编译通过；
   独立审查及修复增量复核均无阻塞发现，六条表单路径的重复提交公告缺口已修复并通过回归。

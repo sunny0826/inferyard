@@ -24,7 +24,7 @@ func TestFormFailureAnnouncedOnEverySubmission(t *testing.T) {
 				render, submit = s.resumeView, "确认续测"
 			case "model":
 				s.modelURL, s.modelName = "invalid", "model"
-				render, submit = s.modelAssetsView, "下载模型"
+				render, submit = s.modelDownloadForm, "下载模型"
 			case "engine":
 				s.engineURL, s.engineName = "invalid", "engine"
 				render, submit = s.engineDownloadView, "下载引擎"
@@ -41,6 +41,10 @@ func TestFormFailureAnnouncedOnEverySubmission(t *testing.T) {
 				s.announceChanges(c)
 				ui.Column(c).Children(func() { render(c) })
 			}, 1120, 2400)
+			if name == "binding" {
+				tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+				click(t, tt, "高级：手动绑定")
+			}
 			tt.Announcements()
 			for attempt := 1; attempt <= 2; attempt++ {
 				if name == "initialize" {

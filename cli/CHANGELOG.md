@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- A new read-only `service discover` command enumerates TCP loopback listeners
+  and probes each endpoint with `GET /health` and `GET /v1/models` (2s timeout),
+  reporting the owning process PID, executable name and start ticks per listener
+  without filtering by process name. It never sends model requests, records only
+  status-code classes and model id lists, marks ports owned by multiple
+  processes as ambiguous instead of picking one, and exits 3 with limitations
+  when enumeration is partial. Discovery does not establish bind eligibility:
+  `config bind` still requires an explicit `--pid` and performs the full
+  identity and argv checks. Output schema is registered as
+  `--schema service_discovery`; it covers all four result shapes, including
+  the cancellation shape (exit 130, `status=interrupted`, details null).
+- A new read-only `engine check` command re-verifies a local engine with the
+  same checks as `config create`: the bounded `--version` subprocess query
+  against the frozen version pattern (30s timeout; macOS exec-time validation
+  of freshly extracted ad-hoc-signed binaries can reach ~12s), the macOS dylib
+  manifest rules and the Windows runtime receipt verification. It never
+  creates directories, writes files, starts services or sends model requests.
+  The input surface is platform-asymmetric: macOS requires `--engine FILE`
+  and Windows requires `--runtime-receipt FILE`; mismatched or conflicting
+  arguments exit 2. Eligible and ineligible outcomes both exit 0 — an explicit
+  deviation from the device-check family's blocked→2 semantics, because this
+  query blocks nothing and `config create` remains the final authority — with
+  ineligibility reported as one fixed reason from the contract table; tool
+  errors exit 4 with redacted diagnostics. On macOS, where no device preflight
+  selects a mode, details report per-mode results `modes: {cpu, metal}` (metal
+  requires the metal dylib in the manifest); Windows reports the verified
+  receipt profile `mode` (`cpu`/`cuda`). `reported_version` carries the
+  engine's own measured version line while `expected_release` is honestly
+  labeled as the expected constant. Receipt paths are handed to the shared
+  verifier unresolved, so a symlinked receipt is rejected exactly like
+  `config create`. A passing check never confers candidate
+  eligibility. Output schema is registered as `--schema engine_check`.
+
 ## 0.0.3
 
 ### Added

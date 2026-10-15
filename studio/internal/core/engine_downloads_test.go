@@ -180,7 +180,7 @@ func TestEngineDownloadFailures(t *testing.T) {
 
 func TestEngineDownloadAdmission(t *testing.T) {
 	s := engineDownloadService(t)
-	for _, name := range []string{"", ".", "..", "...", "../escape", "a/b", "a b"} {
+	for _, name := range []string{".", "..", "...", "../escape", "a/b", "a b"} {
 		if _, e := s.CreateEngineDownload(engineSource, name); e == nil || e.Code != "invalid_request" {
 			t.Fatalf("name %q: %v", name, e)
 		}

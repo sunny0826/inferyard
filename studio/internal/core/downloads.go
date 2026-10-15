@@ -13,8 +13,9 @@ import (
 )
 
 type downloadEntry struct {
-	Task   DownloadTask
-	cancel context.CancelFunc
+	Task     DownloadTask
+	cancel   context.CancelFunc
+	tokenEnv string
 }
 
 var outputName = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
@@ -61,10 +62,14 @@ func validSource(source string) bool {
 	return true
 }
 func (s *Service) CreateDownload(req CreateDownloadRequest) (DownloadTask, *ApiError) {
-	if !outputName.MatchString(req.OutName) || strings.Trim(req.OutName, ".") == "" || !validSource(req.SourceUrl) {
+	return s.CreateModelDownload(req, "")
+}
+
+func (s *Service) CreateModelDownload(req CreateDownloadRequest, tokenEnv string) (DownloadTask, *ApiError) {
+	if (req.OutName != "" && !ValidDownloadName(req.OutName)) || !validSource(req.SourceUrl) || (tokenEnv != "" && !envName.MatchString(tokenEnv)) {
 		return DownloadTask{}, Err("invalid_request")
 	}
-	u := s.userSettings()
+	u := downloadNameDefaults(s.userSettings())
 	if u.ModelsRoot == nil {
 		return DownloadTask{}, Conflict("settings_incomplete")
 	}
@@ -72,11 +77,7 @@ func (s *Service) CreateDownload(req CreateDownloadRequest) (DownloadTask, *ApiE
 	if p.Status != "ok" {
 		return DownloadTask{}, Err("cli_unavailable")
 	}
-	dir, e := Resolve(*u.ModelsRoot, req.OutName)
-	if e != nil {
-		return DownloadTask{}, Err("invalid_request")
-	}
-	if e = os.MkdirAll(*u.ModelsRoot, 0700); e != nil {
+	if e := os.MkdirAll(*u.ModelsRoot, 0700); e != nil {
 		return DownloadTask{}, Err("internal_error")
 	}
 	s.mu.Lock()
@@ -84,19 +85,12 @@ func (s *Service) CreateDownload(req CreateDownloadRequest) (DownloadTask, *ApiE
 	if s.closing {
 		return DownloadTask{}, Err("service_closing")
 	}
-	if _, e = os.Lstat(dir); !os.IsNotExist(e) {
-		if e != nil {
-			return DownloadTask{}, Err("internal_error")
-		}
-		return DownloadTask{}, Conflict("output_exists")
-	}
-	for _, d := range s.downloads {
-		if d.Task.OutDir == dir {
-			return DownloadTask{}, Conflict("output_exists")
-		}
+	name, dir, failure := s.downloadOutputLocked(*u.ModelsRoot, req.OutName, u.ModelDownloadName)
+	if failure != nil {
+		return DownloadTask{}, failure
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
-	d := &downloadEntry{Task: DownloadTask{Kind: "model", TaskId: uuid(), State: "downloading", SourceUrl: req.SourceUrl, OutName: req.OutName, OutDir: dir, StartedAt: now()}, cancel: cancel}
+	d := &downloadEntry{Task: DownloadTask{Kind: "model", TaskId: uuid(), State: "downloading", SourceUrl: req.SourceUrl, OutName: name, OutDir: dir, StartedAt: now()}, cancel: cancel, tokenEnv: tokenEnv}
 	s.downloads = append(s.downloads, d)
 	s.Bus.Publish("download.state", map[string]any{"task": d.Task})
 	go s.download(ctx, *p.Path, d)
@@ -133,7 +127,11 @@ func (s *Service) download(ctx context.Context, binary string, d *downloadEntry)
 	}
 	done := make(chan result, 1)
 	go func() {
-		o, e := s.exec(ctx, binary, "model", "acquire", "--source", d.Task.SourceUrl, "--out", d.Task.OutDir)
+		args := []string{"model", "acquire", "--source", d.Task.SourceUrl, "--out", d.Task.OutDir}
+		if d.tokenEnv != "" {
+			args = append(args, "--token-env", d.tokenEnv)
+		}
+		o, e := s.exec(ctx, binary, args...)
 		done <- result{o, e}
 	}()
 	ticker := time.NewTicker(time.Second)
@@ -227,7 +225,7 @@ loop:
 }
 
 func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *ApiError) {
-	if !validEngineSource(source) || !outputName.MatchString(outName) || strings.Trim(outName, ".") == "" {
+	if !validEngineSource(source) || (outName != "" && !ValidDownloadName(outName)) {
 		return DownloadTask{}, Err("invalid_request")
 	}
 	s.mu.Lock()
@@ -243,20 +241,9 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 	if err != nil {
 		return DownloadTask{}, Err("invalid_request")
 	}
-	dir, err := Resolve(root, outName)
-	if err != nil {
-		return DownloadTask{}, Err("invalid_request")
-	}
-	if _, err = os.Lstat(dir); !os.IsNotExist(err) {
-		if err != nil {
-			return DownloadTask{}, Err("internal_error")
-		}
-		return DownloadTask{}, Conflict("output_exists")
-	}
-	for _, d := range s.downloads {
-		if d.Task.OutDir == dir {
-			return DownloadTask{}, Conflict("output_exists")
-		}
+	outName, dir, failure := s.downloadOutputLocked(root, outName, downloadNameDefaults(s.settings).EngineDownloadName)
+	if failure != nil {
+		return DownloadTask{}, failure
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	d := &downloadEntry{Task: DownloadTask{

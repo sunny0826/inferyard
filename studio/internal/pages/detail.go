@@ -31,7 +31,7 @@ func (s *viewState) detailView(c *ui.Context) {
 	card(c, text(t.Bundle)+" · "+t.TaskId, func() {
 		statusBadge(c, taskLabel(t), runColor(c, t))
 		ui.Text(c, "原始状态："+t.State).TextColor(c.Theme().TextMuted).Selectable()
-		ui.Text(c, "运行目录："+text(t.RunPath)).Selectable()
+		ui.Text(c, "运行目录："+displayName(text(t.RunPath))).Selectable()
 		ui.Text(c, "任务类型："+t.Kind+" · 运行 ID："+text(t.RunId))
 		errorView(c, t.Error)
 		if button(c, "取消任务").AlignSelf(ui.Start).Disabled(s.busy || terminal(t.State) || t.State == "cancelling").Clicked() {

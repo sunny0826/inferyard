@@ -107,7 +107,7 @@ func TestCorruptSettingsUseDefaults(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := s.userSettings(); !reflect.DeepEqual(got, UserSettings{}) {
+			if got := s.userSettings(); !reflect.DeepEqual(got, downloadNameDefaults(UserSettings{})) {
 				t.Fatalf("partial settings survived: %+v", got)
 			}
 			if !strings.Contains(logs.String(), "using defaults") || strings.Contains(logs.String(), raw) {

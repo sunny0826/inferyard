@@ -127,6 +127,9 @@ func TestStartEngineHealthyStopAndIdempotent(t *testing.T) {
 	if e != nil || first.State != "starting" || first.Pid <= 0 {
 		t.Fatalf("%+v %v", first, e)
 	}
+	if _, err := os.Stat(ownerPath(workspace)); err != nil {
+		t.Fatal("owner record missing", err)
+	}
 	again, e := s.StartEngine(candidate)
 	if e != nil || again.Pid != first.Pid {
 		t.Fatalf("start while starting must be a no-op: %+v %v", again, e)
@@ -146,6 +149,7 @@ func TestStartEngineHealthyStopAndIdempotent(t *testing.T) {
 		t.Fatalf("%+v", stopped)
 	}
 	pollEngine(t, s, "stopped")
+	assertOwnerGone(t, ownerPath(workspace))
 }
 
 func TestStartEnginePortInUse(t *testing.T) {

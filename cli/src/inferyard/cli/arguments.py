@@ -20,6 +20,7 @@ from inferyard.cli.commands import (
     repetition,
     reporting,
     scoring,
+    service,
     verification,
 )
 from inferyard.contracts.schemas import schemas_for
@@ -59,7 +60,7 @@ def parser() -> Parser:
         metavar=(
             "{init,runtime,config,progress,device-check,memory-check,catalogue,plan,verify,overhead,probe,run,resume,repeat-summary,"
             "prepare-length,rescore,export,public,report,compare,filter-candidates,"
-            "extension,engine-fit,model,engine}"
+            "extension,engine-fit,model,engine,service}"
         ),
     )
     community.add_commands(commands)
@@ -79,4 +80,5 @@ def parser() -> Parser:
     engine_fit.add_commands(commands)
     model.add_commands(commands)
     engine.add_commands(commands)
+    service.add_commands(commands)
     return result

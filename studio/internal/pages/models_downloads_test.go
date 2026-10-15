@@ -1,53 +1,49 @@
 package pages
 
 import (
-	"image/png"
 	"math"
-	"os"
-	"path/filepath"
 	"reflect"
-	"slices"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
-	"inferyard/studio/internal/inferyard"
 )
 
-func TestModelsTwoColumns(t *testing.T) {
-	s := deviceTestState()
+func TestDownloadsPageMigration(t *testing.T) {
+	s := testState()
+	s.selected = "downloads"
 	s.downloads = []core.DownloadTask{
 		{TaskId: "model", Kind: "model", OutName: "model-fixture", State: "downloading", DownloadedBytes: 1572864, BytesPerSecond: ptr(2048.0)},
-		{TaskId: "engine", Kind: "engine", OutName: "engine-fixture", State: "done", EnginePath: ptr("/fixture/llama-server")},
+		{TaskId: "engine", Kind: "engine", OutName: "engine-fixture", State: "failed", SourceUrl: "https://huggingface.co/owner/repo/blob/0123456789abcdef0123456789abcdef01234567/file.tar.gz", Error: core.Err("download_failed")},
 	}
-	s.selected = "models"
 	tt := ui.NewTester(s.view, 1120, 2600)
-	texts := tt.Texts()
-	previous := -1
-	for _, title := range []string{"模型", "下载", "引擎服务", "绑定存活提示"} {
-		index := slices.Index(texts, title)
-		if index <= previous {
-			t.Fatalf("section order: %v", texts)
-		}
-		previous = index
-	}
-	left, lok := tt.Find("模型")
-	right, rok := tt.Find("引擎服务")
-	if !lok || !rok || left.X >= right.X || left.Y != right.Y {
-		t.Fatal("expected two aligned columns", left, right)
-	}
-
-	if dir := os.Getenv("STUDIO_UI_PREVIEW_DIR"); dir != "" {
-		f, err := os.Create(filepath.Join(dir, "models-downloads.png"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer f.Close()
-		if err := png.Encode(f, tt.Image()); err != nil {
-			t.Fatal(err)
+	for _, want := range []string{"下载任务", "新建下载任务", "model-fixture", "engine-fixture", "重新创建下载任务", "下载预置模型", "目录名取自设置，占用自动加序号；实际目录名见任务详情。", "打开设置"} {
+		if !tt.HasText(want) {
+			t.Fatal(want, tt.Texts())
 		}
 	}
-
+	click(t, tt, "引擎下载")
+	if !tt.HasText("下载预置引擎") {
+		t.Fatal(tt.Texts())
+	}
+	click(t, tt, "自定义模型下载")
+	if !tt.HasText("凭据环境变量名") {
+		t.Fatal(tt.Texts())
+	}
+	if len(designFieldInputs(tt, "新目录名")) != 0 {
+		t.Fatal("per-task name input remains")
+	}
+	// The models page no longer carries any download UI.
+	s.selected = "models"
+	tt.Frame()
+	if tt.HasText("新建下载任务") || tt.HasText("取消下载") || tt.HasText("下载预置模型") {
+		t.Fatal("download UI still on models page", tt.Texts())
+	}
+	for _, n := range modelUINodes(tt, "text", "下载任务") {
+		if n.FieldByName("role").Uint() == uint64(ui.RoleHeading) {
+			t.Fatal("download task card still on models page", tt.Texts())
+		}
+	}
 }
 
 func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
@@ -90,7 +86,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				}
 			}
 
-			for _, want := range []string{"输出目录：", "文件：", "1 MiB = 1,048,576 bytes", "1 GiB = 1,073,741,824 bytes", "总量未知不显示百分比"} {
+			for _, want := range []string{"实际目录名：", "文件：", "1 MiB = 1,048,576 bytes", "1 GiB = 1,073,741,824 bytes", "总量未知不显示百分比"} {
 				if !tt.HasText(want) {
 					t.Fatal(want, tt.Texts())
 				}
@@ -122,7 +118,13 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				if tt.HasText("取消下载") {
 					t.Fatal("terminal cancel")
 				}
-				if state != "done" && !tt.HasText("输出目录保留；再次下载请更换目录名。") {
+				if state == "failed" && !tt.HasText("重新创建下载任务") {
+					t.Fatal("failed task must offer recreate", tt.Texts())
+				}
+				if state != "failed" && tt.HasText("重新创建下载任务") {
+					t.Fatal("recreate is only for failed tasks", tt.Texts())
+				}
+				if state != "done" && !tt.HasText("输出目录保留；再次下载自动使用新目录名。") {
 					t.Fatal(tt.Texts())
 				}
 			}
@@ -131,108 +133,41 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 }
 
 func TestModelsAdoptCompletedEngine(t *testing.T) {
-	for _, initial := range []string{"", "/existing/llama-server"} {
+	for _, initial := range []string{"", "existing · llama-server"} {
 		s := testState()
-		s.selected, s.engine = "models", initial
-		s.settings.Effective.WorkspaceRoot = ptr("/ws")
-		s.downloads = []core.DownloadTask{
-			{TaskId: "old", Kind: "engine", OutName: "old-engine", OutDir: "/ws/engines/old-engine", State: "done", EnginePath: ptr("/old/llama-server"), FinishedAt: ptr("2026-10-14T01:00:00Z")},
-			{TaskId: "new", Kind: "engine", OutName: "new-engine", OutDir: "/ws/engines/new-engine", State: "done", EnginePath: ptr("/new/llama-server"), FinishedAt: ptr("2026-10-14T02:00:00Z")},
-			{TaskId: "pending", Kind: "engine", OutDir: "/ws/engines/pending", State: "downloading"},
-			{TaskId: "foreign", Kind: "engine", OutName: "foreign-engine", OutDir: "/other/engines/foreign", State: "done", EnginePath: ptr("/foreign/llama-server"), FinishedAt: ptr("2026-10-14T03:00:00Z")},
-		}
-		tt := ui.NewTester(s.view, 1120, 2600)
-		details := testState()
-		details.downloads = []core.DownloadTask{s.downloads[1]}
-		dt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { details.downloadsView(c) }) }, 1000, 1000)
-		if !dt.HasText("引擎路径：/new/llama-server") {
-			t.Fatal(dt.Texts())
-		}
+		s.engine, s.registry = initial, modelRegistryFixture()
+		s.checks = eligibleChecks()
+		s.adoptDownloadedEngine()
 		want := initial
 		if want == "" {
-			want = "/new/llama-server"
+			want = "engine-2 · llama-server"
 		}
 		if s.engine != want {
-			t.Fatal("adopted", s.engine, "want", want)
-		}
-		s.downloads[1].EnginePath = ptr("/later/llama-server")
-		tt.Frame()
-		if s.engine != want {
-			t.Fatal("overwrote adopted path")
+			t.Fatal(s.engine, want)
 		}
 	}
-}
-
-func TestModelsEngineServiceStates(t *testing.T) {
-	for _, tc := range []struct{ state, label string }{{"stopped", "已停止"}, {"starting", "正在加载模型"}, {"running", "服务已就绪"}, {"stopping", "正在停止服务"}, {"failed", "服务异常退出"}} {
-		s := testState()
-		s.engineState = core.EngineState{State: tc.state, Pid: 42, Endpoint: "http://127.0.0.1:8080", Candidate: "/candidate.toml", LogPath: "/engine.log"}
-		tt := ui.NewTester(func(c *ui.Context) { s.modelEngineServiceView(c) }, 1000, 900)
-		for _, want := range []string{tc.label, "缺测 · 此页无内存采样", "凭据参数与完整进程 argv 不展示", "PID：42", "本地地址：http://127.0.0.1:8080", "/candidate.toml", "/engine.log", "请先到 Dashboard 准备冻结配置。", "不会自动重启；Studio 只管理自己启动的进程。"} {
-			if !tt.HasText(want) && len(modelUINodes(tt, "text", want)) == 0 {
-				t.Fatal(want, tt.Texts())
-			}
-		}
-		steps := []string{}
-		for _, value := range tt.Texts() {
-			if slices.Contains([]string{"已停止", "启动中", "服务就绪", "停止中"}, value) {
-				steps = append(steps, value)
-			}
-		}
-		if len(steps) < 5 || !slices.Equal(steps[len(steps)-5:], []string{"已停止", "启动中", "服务就绪", "停止中", "已停止"}) {
-			t.Fatal("steps", steps)
-		}
-		click(t, tt, "启动服务")
-		if s.busy {
-			t.Fatal("empty candidate admitted")
-		}
-		if tc.state == "starting" || tc.state == "running" || tc.state == "stopping" {
-			if !tt.HasText("重复启动返回当前状态，未创建新进程。") {
-				t.Fatal(tt.Texts())
-			}
-		}
-		for _, code := range []string{"engine_exited", "engine_start_timeout"} {
-			s.engineState.State = "failed"
-			s.engineState.Error = &core.ApiError{Code: code}
-			tt.Frame()
-			if !tt.HasText(code) || !tt.HasText("/engine.log") {
-				t.Fatal(tt.Texts())
-			}
-		}
-		s.engineState.Endpoint = "http://192.168.1.5:8080"
-		tt.Frame()
-		if tt.HasText("192.168.1.5") || len(modelUINodes(tt, "text", "Endpoint（仅 loopback）：http://192.168.1.5:8080")) != 0 {
-			t.Fatal("non-loopback endpoint displayed")
-		}
+	// Without a verdict nothing is auto-selected while the CLI can verify.
+	s := testState()
+	s.registry = modelRegistryFixture()
+	s.checks = core.EngineCheckOverview{Supported: true, Engines: map[string]core.EngineEligibility{
+		"engine-2 · llama-server": {State: core.EngineCheckChecking},
+	}}
+	s.adoptDownloadedEngine()
+	if s.engine != "" {
+		t.Fatal("adopted an unverified engine", s.engine)
 	}
-}
-
-func TestModelsBindingStates(t *testing.T) {
-	for _, tc := range []struct {
-		bound          *string
-		stale, unknown bool
-		want           string
-	}{
-		{nil, false, false, "尚未绑定服务"}, {nil, true, false, "尚未绑定服务"},
-		{ptr("/bound"), false, false, "存活提示匹配"}, {ptr("/bound"), true, false, "原绑定可能已失效，请到 Dashboard 重新绑定"},
-		{ptr("/bound"), false, true, "无法确认存活，不据此判定绑定有效"},
-	} {
-		s := testState()
-		s.progress = &inferyard.WorkspaceProgress{Bundles: []inferyard.BundleProgress{{Phase: "run_missing", BoundPath: tc.bound}}}
-		s.bindingStale, s.bindingUnknown = tc.stale, tc.unknown
-		tt := ui.NewTester(func(c *ui.Context) { s.modelBindingView(c) }, 1000, 500)
-		for _, want := range []string{tc.want, "server_pid / process_start_ticks", "CLI 在 bind / run 时完成", "服务运行中不代表绑定有效"} {
-			if !tt.HasText(want) {
-				t.Fatal(want, tt.Texts())
-			}
-		}
-		click(t, tt, "到 Dashboard 绑定")
-		if s.selected != "dashboard" {
-			t.Fatal("binding navigation", s.selected)
-		}
-		if tc.want != "存活提示匹配" && tt.HasText("存活提示匹配") {
-			t.Fatal("false liveness match", tc, tt.Texts())
-		}
+	// An outdated CLI degrades to the registry default (config create decides).
+	s.checks = core.EngineCheckOverview{Supported: false}
+	s.adoptDownloadedEngine()
+	if s.engine != s.registry.DefaultEngine {
+		t.Fatal(s.engine)
+	}
+	// Adoption never overwrites an explicit selection.
+	s.engine = "release · inference-engine"
+	s.checks = eligibleChecks()
+	s.adoptDownloadedEngine()
+	if s.engine != "release · inference-engine" {
+		t.Fatal("overwrote selection")
 	}
 }
 
@@ -254,28 +189,4 @@ func modelUINodes(tt *ui.Tester, field, value string) []reflect.Value {
 	}
 	visit(root)
 	return matches
-}
-
-func TestModelsStepsHighlightOneIndex(t *testing.T) {
-	for _, current := range []int{0, 1, 2, 3, 4, -1} {
-		tt := ui.NewTester(func(c *ui.Context) {
-			stepsRow(c, []string{"已停止", "启动中", "服务就绪", "停止中", "已停止"}, current, c.Theme().Accent)
-		}, 700, 100)
-		if _, ok := tt.Find("引擎服务状态流转"); !ok {
-			t.Fatal("missing steps label")
-		}
-		row := modelUINodes(tt, "label", "引擎服务状态流转")[0]
-		index := 0
-		for child := row.FieldByName("first"); !child.IsNil(); child = child.Elem().FieldByName("next") {
-			n := child.Elem()
-			if n.FieldByName("text").String() == "→" {
-				continue
-			}
-			bold := n.FieldByName("ts").FieldByName("weight").Int() >= 700
-			if bold != (index == current) {
-				t.Fatalf("index %d, current %d: bold=%v", index, current, bold)
-			}
-			index++
-		}
-	}
 }

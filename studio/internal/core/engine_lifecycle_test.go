@@ -141,8 +141,8 @@ func TestBindingRecoveryAcrossRestartAndCrash(t *testing.T) {
 		t.Fatal(err)
 	}
 	reopened := engineService(t, workspace)
-	if reopened.Engine().State != "stopped" {
-		t.Fatal("claimed another session's process")
+	if reopened.Engine().State != "orphaned" || reopened.engine != nil {
+		t.Fatal("ownership hint must not adopt a managed child")
 	}
 	if alive, e := reopened.BindingAlive(bound); e != nil || !alive {
 		t.Fatalf("live binding: %v %v", alive, e)
@@ -163,6 +163,9 @@ func TestBindingRecoveryAcrossRestartAndCrash(t *testing.T) {
 	pollEngine(t, s, "failed")
 	if alive, e := reopened.BindingAlive(bound); e != nil || alive {
 		t.Fatalf("dead binding: %v %v", alive, e)
+	}
+	if _, e := reopened.StopOrphanEngine(); e != nil {
+		t.Fatal(e)
 	}
 	if _, e := reopened.StartEngine(candidate); e != nil {
 		t.Fatal(e)

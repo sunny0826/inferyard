@@ -111,7 +111,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 	})
 	if s.progress != nil && s.progress.NextAction == "device_check" {
 		card(c, "检查设备", func() {
-			ui.Text(c, "模型与引擎可在「模型与下载」页准备。")
+			ui.Text(c, "模型与引擎可在「模型」页准备。")
 			if primaryButton(c, "检查设备").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
 				s.execute(s.nextCommand(), false)
 			}
@@ -202,7 +202,7 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 			for i, item := range devices {
 				deviceMissing(c, fmt.Sprintf("GPU %d · ", i+1), deviceItem(item).object("missing"))
 			}
-			deviceMono(c, "检测位置："+hw.value("disk_path"))
+			deviceMono(c, "检测位置："+displayName(hw.value("disk_path")))
 		})
 	})
 }

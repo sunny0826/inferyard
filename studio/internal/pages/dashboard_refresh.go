@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"fmt"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 	"net"
@@ -59,27 +58,11 @@ func (s *viewState) applyDashboard(v dashboardSnapshot, e *core.ApiError) {
 	}
 	if !s.assetsPreset {
 		s.assetsPreset = true
-		if s.modelName == "" {
-			s.modelName = fmt.Sprintf("model-%d", uniqueID())
-		}
-		if s.engineName == "" {
-			s.engineName = fmt.Sprintf("engine-%d", uniqueID())
-		}
 		if s.modelURL == "" {
 			s.modelURL = core.DefaultModelURL
 		}
 		if s.engineURL == "" {
 			s.engineURL = core.DefaultEngineURL()
-		}
-	}
-	if !s.enginePreset {
-		s.enginePreset = true
-		workspace := emptyText(s.ready.Workspace.Path)
-		if s.progress != nil {
-			workspace = s.progress.Workspace
-		}
-		if s.engine == "" {
-			s.engine = core.FindEngineBinary(core.EngineRoots(workspace)...)
 		}
 	}
 	if v.candidate != s.candidate {

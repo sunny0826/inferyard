@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"net/url"
 	"path/filepath"
@@ -93,7 +94,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 			ui.Text(c, "暂无运行记录，请先完成测评，再选择来源。")
 			button(c, "到 Dashboard 启动测评").AlignSelf(ui.Start).OnClick(func() { s.selected = "dashboard" })
 		}
-		known := map[string]bool{}
+		known := map[any]bool{}
 		for _, r := range runs {
 			known[r.Path] = true
 		}
@@ -102,16 +103,16 @@ func (s *viewState) reportsView(c *ui.Context) {
 				s.reportChoices.Remove(path)
 			}
 		}
-		s.reportSources.Label = func(i int) string { return runs[i].RunId + " · " + runs[i].Path }
+		s.reportSources.Label = func(i int) string { return runs[i].RunId + " · " + displayName(runs[i].Path) }
 		c.Key("report-sources")
-		ui.List(c, &s.reportSources, len(runs)).Label("报告来源运行列表").Height(220).
-			ItemKey(func(i int) any { return runs[i].Path }).
-			Selection(&s.reportChoices).Disabled(s.busy).Rows(func(row ui.ListRow) {
-			ui.Column(row.Context).Padding(6).Gap(2).Children(func() {
-				ui.Text(row.Context, runs[row.Index].RunId)
-				ui.Text(row.Context, runs[row.Index].Path).FontSize(max(12, c.Theme().Rem(.85))).MaxLines(2).Description(runs[row.Index].Path)
+		s.reportSources.Key = func(i int) any { return runs[i].Path }
+		s.reportSources.Selection = &s.reportChoices
+		components.List(c, &s.reportSources, len(runs), func(i int) {
+			ui.Column(c).Padding(6).Gap(2).Children(func() {
+				ui.Text(c, runs[i].RunId)
+				ui.Text(c, displayName(runs[i].Path)).FontSize(max(12, c.Theme().Rem(.85)))
 			})
-		})
+		}).Label("报告来源运行列表").Height(220).Disabled(s.busy)
 		count := s.reportChoices.Len()
 		if count < 1 || count > 100 {
 			ui.Text(c, "请选择 1–100 个来源 run。")

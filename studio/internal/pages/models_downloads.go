@@ -51,13 +51,26 @@ func (s *viewState) downloadsView(c *ui.Context) {
 							})
 						})
 					}
+					if task.State == "failed" {
+						button(c, "重新创建下载任务").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
+							s.work(func() (string, *core.ApiError) {
+								var e *core.ApiError
+								if task.Kind == "engine" {
+									_, e = s.service.CreateEngineDownload(task.SourceUrl, "")
+								} else {
+									_, e = s.service.CreateModelDownload(core.CreateDownloadRequest{SourceUrl: task.SourceUrl}, "")
+								}
+								return "已重新创建下载任务，使用新目录名。", e
+							})
+						})
+					}
 				}, details: func() {
-					ui.Text(c, "输出目录："+task.OutDir).Selectable()
-					ui.Text(c, "文件："+text(task.FileName))
+					ui.Text(c, "实际目录名："+task.OutName).Selectable()
+					ui.Text(c, "文件："+displayName(text(task.FileName)))
 					if task.Kind == "engine" {
 						ui.Text(c, "已下载 缺测 · 速率 缺测 · 归档获取接口未提供字节读数")
 						if task.State == "done" && task.EnginePath != nil {
-							ui.Text(c, "引擎路径："+*task.EnginePath).Selectable()
+							ui.Text(c, "引擎："+displayName(*task.EnginePath)).Selectable()
 						}
 					} else {
 						ui.Text(c, fmt.Sprintf("已下载 %d bytes", task.DownloadedBytes))
@@ -70,7 +83,7 @@ func (s *viewState) downloadsView(c *ui.Context) {
 					}
 					errorView(c, task.Error)
 					if task.State == "failed" || task.State == "cancelled" {
-						ui.Text(c, "输出目录保留；再次下载请更换目录名。")
+						ui.Text(c, "输出目录保留；再次下载自动使用新目录名。")
 					}
 				},
 			})

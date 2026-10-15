@@ -27,20 +27,6 @@ func kvGrid(c *ui.Context, rows [][2]string, tooltips map[string]string) {
 	})
 }
 
-func stepsRow(c *ui.Context, steps []string, current int, color ui.Color) {
-	ui.Row(c).Wrap().Gap(c.Theme().Space(1)).Label("引擎服务状态流转").Children(func() {
-		for i, step := range steps {
-			if i > 0 {
-				ui.Text(c, "→").TextColor(c.Theme().TextMuted).FontSize(max(12, c.Theme().Rem(.85)))
-			}
-			e := ui.Text(c, step).FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
-			if i == current {
-				e.Bold().TextColor(color)
-			}
-		}
-	})
-}
-
 type taskMetric struct {
 	label, value, reason string
 }
