@@ -3,7 +3,6 @@
 import asyncio
 import shutil
 from collections import Counter
-from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 
@@ -80,7 +79,7 @@ def test_score_append_failure_preserves_durable_completed_terminal(scenario, mon
     assert not (Path(result.evidence_dir) / "requests.jsonl").exists()
 
 
-def test_new_and_legacy_rerun_accept_identity_changes_with_new_service(scenario, monkeypatch):
+def test_scoped_and_legacy_rerun_accept_new_service(scenario, monkeypatch):
     request, deps, _, _ = scenario
     config = request.config.config.to_dict()
     config["execution"]["require_fresh_process"] = False
@@ -101,15 +100,7 @@ def test_new_and_legacy_rerun_accept_identity_changes_with_new_service(scenario,
         return 98765
 
     monkeypatch.setattr(runner, "process_start_ticks", ticks)
-    from inferyard.implementation_identity import IdentityContext, digest
-
-    context = IdentityContext()
-    context.source = "b" * 64
-    value = deepcopy(context.value["presentation"])
-    value["files"][0]["sha256"] = "c" * 64
-    value["sha256"] = digest({k: v for k, v in value.items() if k != "sha256"})
-    context.value["presentation"] = value
-    runner.load_rerun(rerun, identity_context=context)
+    runner.load_rerun(rerun)
     # Legacy implementation identity dispatch stays independent of evidence layout.
     before = {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
     identity_legacy = root.parent / "legacy-identity-fixture"
@@ -117,7 +108,7 @@ def test_new_and_legacy_rerun_accept_identity_changes_with_new_service(scenario,
     change_input(
         identity_legacy, "run", lambda meta: meta.pop("implementation_identity"), sealed=True
     )
-    runner.load_rerun(replace(rerun, from_run=identity_legacy), identity_context=context)
+    runner.load_rerun(replace(rerun, from_run=identity_legacy))
     assert before == {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
 
 

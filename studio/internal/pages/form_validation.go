@@ -26,13 +26,6 @@ func urlError(value string) string {
 	return ""
 }
 
-func nameError(value string) string {
-	if value != "" && !validName(value) {
-		return "目录名只允许字母、数字、点、下划线与连字符，不能全为点。"
-	}
-	return ""
-}
-
 func tokenNameError(value string) string {
 	if value != "" && !environmentName.MatchString(value) {
 		return "只接受环境变量名，请勿输入明文 token。"

@@ -14,7 +14,6 @@
 | 独立扩展协议与受控工作流 | [扩展协议与受控工作流](extensions-protocol.md) |
 | catalogue/schema 生成源、导出脚本与生成物核对 | [Catalogue 与 Schema 生成](catalogue-generation.md) |
 | MyGo 原生桌面面板与模型服务进程所有权 | [Studio 面板](studio-panel.md) |
-| 独立进程监测器 | [Observer 监测器](observer-monitor.md) |
 
 一个子系统可以跨多个包或仓库目录。参考描述这些部分共同提供的行为，不需要罗列每个函数。
 

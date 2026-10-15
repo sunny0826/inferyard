@@ -1,10 +1,6 @@
 package inferyard
 
 import (
-	"context"
-	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -148,27 +144,4 @@ func stringContains(haystack, needle string) bool {
 		}
 	}
 	return false
-}
-
-// Client.Progress runs the read-only command with the workspace flag; exit 2
-// stays data (Blocked) and exit 0 parses progress.v1 from stdout.
-func TestClientProgress(t *testing.T) {
-	fixture := filepath.Join(t.TempDir(), "progress.json")
-	if err := os.WriteFile(fixture, []byte(fullProgress), 0600); err != nil {
-		t.Fatal(err)
-	}
-	c := Client{Path: script(t, fmt.Sprintf(`if [ "$3" = "/work/ws" ]; then cat %q; exit 0; fi
-echo 'workspace unusable' >&2
-exit 2`, fixture))}
-	p, out, err := c.Progress(context.Background(), "/work/ws")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if out.ExitCode != 0 || out.Status != Complete || p.Workspace != "/work/ws" || p.Bundles[0].Bundle != "zh-core" {
-		t.Fatalf("%+v %+v", out, p)
-	}
-	p, out, err = c.Progress(context.Background(), "/other")
-	if err != nil || out.ExitCode != 2 || out.Status != Blocked || p.Workspace != "" {
-		t.Fatalf("%+v %+v %v", out, p, err)
-	}
 }

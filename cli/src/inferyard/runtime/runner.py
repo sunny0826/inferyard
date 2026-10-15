@@ -86,7 +86,7 @@ def read_configuration_source(loaded):
     return source
 
 
-def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[LoadedConfig, dict]:
+def load_rerun(request) -> tuple[LoadedConfig, dict]:
     root = request.from_run
     limitations = verify_manifest(root)
     if any("manifest_missing" in reason for reason in limitations):
@@ -143,11 +143,7 @@ def load_rerun(request, scoring_context=None, identity_context=None) -> tuple[Lo
 async def execute_async(request, dependencies: Dependencies | None = None):
     scoring_context = ScoringContext()
     identity_context = IdentityContext(source_hash=tool_source_hash)
-    loaded, parent = (
-        load_rerun(request, scoring_context, identity_context)
-        if request.from_run
-        else (request.config, None)
-    )
+    loaded, parent = load_rerun(request) if request.from_run else (request.config, None)
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
     deps = dependencies or Dependencies(
         adapter=adapter_factory(config["engine"]["adapter"]),

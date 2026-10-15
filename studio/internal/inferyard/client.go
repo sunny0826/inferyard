@@ -1,17 +1,11 @@
 // Package inferyard implements the CLI boundary without interpreting benchmark results.
-// Locate and Client.DeviceCheck are retained as tested standalone CLI adapters.
-// Studio performs probing and device refresh through core's injectable executor
-// to coordinate settings and cached snapshots; standalone callers can use these
-// convenience adapters without the service lifecycle.
 package inferyard
 
 import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -44,33 +38,6 @@ func MapExitCode(code int) ExitStatus {
 	}
 }
 
-type Binary struct {
-	Path    string
-	Version string
-}
-
-func Locate(ctx context.Context, override string) (Binary, error) {
-	if override == "" {
-		override = "inferyard"
-	}
-	path, err := exec.LookPath(override)
-	if err != nil {
-		return Binary{}, err
-	}
-	path, err = filepath.Abs(path)
-	if err != nil {
-		return Binary{}, err
-	}
-	out, err := (Client{Path: path}).Exec(ctx, "--version")
-	if err != nil {
-		return Binary{}, err
-	}
-	if out.Status != Complete {
-		return Binary{}, fmt.Errorf("version query exited %d", out.ExitCode)
-	}
-	version, err := ParseVersion(out.Stdout)
-	return Binary{Path: path, Version: version}, err
-}
 func ParseVersion(data []byte) (string, error) {
 	fields := strings.Fields(string(data))
 	if len(fields) != 2 || fields[0] != "inferyard" {

@@ -1,7 +1,4 @@
 // Package evidence reads evidence without modifying or certifying its contents.
-// PollDownload is retained as a tested standalone CLI-boundary observation helper.
-// Studio uses its core download sampler to combine task state and transfer rates;
-// PollDownload remains available for consumers needing only part-file progress.
 package evidence
 
 import (

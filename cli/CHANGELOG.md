@@ -37,6 +37,17 @@
   `config create`. A passing check never confers candidate
   eligibility. Output schema is registered as `--schema engine_check`.
 
+### Removed
+
+- Retired the standalone `inferyard-observer` project, its build and offline
+  analysis scripts, and its dedicated tests. Existing monitoring logs remain
+  untouched; current source no longer reads or writes the standalone format.
+  CLI resource sampling, safety checks, overhead experiments, and Studio
+  retain their existing behavior.
+- Removed unused Studio headless configuration, Vite setup, CLI wrappers, and
+  obsolete Web-era helpers. Removed ignored internal CLI report-version,
+  Windows binding, and rerun-context arguments without changing validation.
+
 ## 0.0.3
 
 ### Added

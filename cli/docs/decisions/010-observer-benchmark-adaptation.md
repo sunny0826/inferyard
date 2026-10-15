@@ -1,6 +1,6 @@
 # ADR 010：监测器与测评结果只读适配
 
-状态：Accepted
+状态：Superseded，由 [ADR 052](052-retire-standalone-observer.md) 退役。以下记录原设计理由。
 
 ## 决策
 
@@ -13,4 +13,5 @@ observer 可用 `--bench-run` 读取 v3 运行的配置/PID 身份，将模型�
 时间相近不能证明请求归属，两个程序的单调时钟不可直接相减；因此不自动合并逐题指标或写回原 run。
 保留独立证据与哈希需要额外摘要，但避免把观察关联误当作完整测评覆盖或全流程开销。
 
-接口见[适配契约](../contracts/observer-contract.md#测评来源关联)，基本时钟与资源规则见[observer 契约](../contracts/observer-contract.md)。
+原接口与实现通过 Git 历史追溯；当前数据支持范围见
+[格式支持矩阵](../contracts/inferyard-current-format.md#格式支持矩阵)。

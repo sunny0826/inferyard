@@ -11,11 +11,7 @@ type Message struct{ Title, Body string }
 
 // Subscribe registers synchronously so events published after it returns are
 // observed. Delivery runs separately from publishers, including permission UI.
-// Headless callers create neither a subscription nor a delivery goroutine.
-func Subscribe(ctx context.Context, bus *core.EventBus, headless bool, show func(Message) error, logf func(string, ...any)) {
-	if headless {
-		return
-	}
+func Subscribe(ctx context.Context, bus *core.EventBus, show func(Message) error, logf func(string, ...any)) {
 	wake, unsubscribe, cursor := bus.Subscribe()
 	go func() {
 		defer unsubscribe()

@@ -2,7 +2,6 @@ package inferyard
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -160,16 +159,4 @@ func uniqueJSON(d *json.Decoder) error {
 	}
 	_, err = d.Token()
 	return err
-}
-
-func (c Client) Progress(ctx context.Context, workspace string) (WorkspaceProgress, Execution, error) {
-	out, err := c.Exec(ctx, "progress", "--workspace", workspace)
-	if err != nil || out.ExitCode == 2 {
-		return WorkspaceProgress{}, out, err
-	}
-	if out.ExitCode != 0 {
-		return WorkspaceProgress{}, out, errors.New("unexpected progress exit code")
-	}
-	result, err := ParseProgress(out.Stdout)
-	return result, out, err
 }

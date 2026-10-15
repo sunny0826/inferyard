@@ -2,31 +2,6 @@ package pages
 
 import "github.com/egoist/mygo/ui"
 
-func statusPanel(c *ui.Context, code, title, description string, color ui.Color) {
-	panel := ui.Column(c).Gap(c.Theme().Space(2)).Padding(c.Theme().Space(4.5)).Radius(c.Theme().Space(3)).Background(color.Mix(c.Theme().Surface, 0.93))
-	if c.Preferences().HighContrast {
-		panel.Background(c.Theme().Surface).Border(1, color)
-	}
-	panel.Children(func() {
-		statusBadge(c, code, color)
-		heading(c, title, 3).FontSize(c.Theme().Rem(1.4))
-		ui.Text(c, description).TextColor(c.Theme().TextMuted)
-	})
-}
-
-func kvGrid(c *ui.Context, rows [][2]string, tooltips map[string]string) {
-	columns := 2
-	if compactLayout(c) {
-		columns = 1
-	}
-	ui.Grid(c).Columns(columns).Gap(c.Theme().Space(2.5)).Children(func() {
-		for _, row := range rows {
-			ui.Text(c, row[0]).TextColor(c.Theme().TextMuted).Tooltip(tooltips[row[0]])
-			ui.Text(c, row[1]).Selectable().Label(row[0] + "：" + row[1])
-		}
-	})
-}
-
 type taskMetric struct {
 	label, value, reason string
 }

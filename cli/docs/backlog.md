@@ -1,6 +1,6 @@
 # Backlog
 
-更新于 2026-10-14。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
+更新于 2026-10-15。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
 
 ## InferYard Studio 后续工作
 
@@ -16,7 +16,9 @@
 - 按规范补三平台原生窗口、键盘、系统偏好、辅助技术及离线报告验收；
   252 个内存布局场景和 PNG 目检不替代真窗口证据。
 
-- CI：是否为 `studio/` 增加构建/验收 job 待决策，本轮未实施。
+- Studio CI 已有 `studio-check.yml`，macOS/Windows 执行 vet 与模拟引擎边界 e2e；
+  单测暂仅在 macOS 执行，Windows 单测的路径、权限位和时序假设仍待清理。
+  原生窗口、系统通知及正式分发签名/公证仍需分别验收。
 - macOS 系统通知权限：T10 验收唯一未通过项为通知实际到达；系统拦截通知权限弹窗，
   非产品缺陷。随仓库迁移继续挂账，待系统设置授权或后续签名后复验。
 
@@ -105,8 +107,7 @@ tag 与测试 fixture 同步升级）。本地候选五步在干净 worktree 完
 `38216763800` verify-only 演练通过后，`38217556374` 以 `destination=both` 发布：PyPI
 `0.0.2`（wheel+sdist+attestations）与 GitHub Release `v0.0.2`（五附件经 SHA256SUMS
 本机复验）。发布后 README/README.zh-CN/installation/platforms 更新版本引用。
-安装检查不构成原生模型准备或严格性能资格；`test_observer_benchmark_native` 在
-main 既有失败（observer 不支持 layout2 run 绑定，见 run-evidence-layout 契约），与发布无关。
+安装检查不构成原生模型准备或严格性能资格。
 
 ### PyPI uvx 真机验证
 

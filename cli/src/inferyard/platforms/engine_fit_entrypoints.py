@@ -142,7 +142,7 @@ def _mlx_script(arguments, cwd):
     return model, {"entrypoint_sha256": digest}
 
 
-def startup_binding(engine, arguments, executable, cwd, *, windows=False):
+def startup_binding(engine, arguments, executable, cwd):
     """Return the declared model, binding source and extra immutable fields."""
     from inferyard.platforms.engine_fit import _startup_model
 

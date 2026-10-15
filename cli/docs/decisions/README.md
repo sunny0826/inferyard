@@ -13,8 +13,8 @@ Accepted 表示采纳设计，不代表所有平台已验证。
 | [ADR 006：macOS 原生来源与完整采集开销](006-macos-performance-prerequisites.md) | Accepted；电源来源由 ADR 042 修订 |
 | [ADR 007：同次 macOS 身份核验共用新鲜进程文件视图](007-macos-process-view.md) | Accepted |
 | [ADR 008：macOS 环境查询与同次换页读取](008-macos-environment-reads.md) | Accepted；换页来源与全量新读由 ADR 042 修订 |
-| [ADR 009：独立单文件系统与进程监测器](009-native-observer.md) | Accepted |
-| [ADR 010：监测器与测评结果只读适配](010-observer-benchmark-adaptation.md) | Accepted |
+| [ADR 009：独立单文件系统与进程监测器](009-native-observer.md) | Superseded，由 ADR 052 退役 |
+| [ADR 010：监测器与测评结果只读适配](010-observer-benchmark-adaptation.md) | Superseded，由 ADR 052 退役 |
 | [ADR 011：自包含离线测评报告](011-report-dashboard.md) | Accepted |
 | [ADR 012：同机同模型引擎适配诊断](012-engine-fit.md) | Accepted |
 | [ADR 013：macOS 原生 engine-fit](013-engine-fit-macos.md) | Accepted |
@@ -46,6 +46,7 @@ Accepted 表示采纳设计，不代表所有平台已验证。
 | [ADR 049：模型获取预算与失败诊断](049-model-acquisition-budgets.md) | Superseded，被 ADR 051 取代 |
 | [ADR 050：Windows 内存诊断使用独立 kind](050-windows-memory-inventory.md) | Accepted |
 | [ADR 051：模型获取简化为 curl 级下载](051-simplified-model-acquisition.md) | Accepted |
+| [ADR 052：退役独立 Observer 项目](052-retire-standalone-observer.md) | Accepted |
 
 ADR 039 删除 `host-state migrate` 与退休机制：实时入口自动初始化 clean 状态，
 旧工具文件完全忽略，主机互斥只覆盖 InferYard 自身进程。

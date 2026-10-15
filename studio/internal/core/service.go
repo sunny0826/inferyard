@@ -134,7 +134,7 @@ func Err(code string) *ApiError {
 	if code == "output_name_exhausted" {
 		return &ApiError{Code: code, Message: "前 1000 个目录名均已占用，请更换目录名或工作区。"}
 	}
-	messages := map[string]string{"invalid_request": "请求参数无效", "unauthorized": "会话验证失败", "not_found": "未找到资源", "conflict": "操作与当前状态冲突", "cli_blocked": "inferyard 拒绝执行", "internal_error": "服务内部错误", "cli_error": "inferyard 工具或证据错误", "cli_unavailable": "inferyard 不可用"}
+	messages := map[string]string{"invalid_request": "请求参数无效", "not_found": "未找到资源", "conflict": "操作与当前状态冲突", "cli_blocked": "inferyard 拒绝执行", "internal_error": "服务内部错误", "cli_error": "inferyard 工具或证据错误", "cli_unavailable": "inferyard 不可用"}
 	return &ApiError{Code: code, Message: messages[code], Limitations: []string{}}
 }
 func Conflict(reason string) *ApiError {
@@ -146,9 +146,6 @@ func Conflict(reason string) *ApiError {
 	return e
 }
 func (e *ApiError) Error() string { return e.Message }
-func (e *ApiError) HTTPStatus() int {
-	return map[string]int{"invalid_request": 400, "unauthorized": 401, "not_found": 404, "conflict": 409, "cli_blocked": 422, "internal_error": 500, "cli_error": 500, "cli_unavailable": 503}[e.Code]
-}
 func exitError(out inferyard.Execution, err error) *ApiError {
 	if err != nil {
 		return Err("internal_error")

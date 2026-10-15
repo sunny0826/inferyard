@@ -20,7 +20,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.9�
 | 进程入口与装配 | 嵌入 `mygo.config.ts` 解析 version 写入 `core.Version`；signal context、`core.New`、`mygo.App.WhenReady` 装配 onevra `shells/sidebar` 主窗口与桌面通知；退出时 30 秒超时的 `Service.Shutdown` | `main` 在 [`studio/main.go`](../../studio/main.go) |
 | 服务核心 | 设置持久化与探测、设备快照、运行队列、下载、报告、引擎条目的单一持有者；路径包含校验（含符号链接与 macOS `/var` 规范化） | `Service`、`New`、`UpdateSettings`、`saveSettings`、`probe`、`Resolve`、`canonical` 在 [`studio/internal/core/service.go`](../../studio/internal/core/service.go) |
 | 请求/响应类型 | 页面与服务间的 JSON 类型镜像（`UserSettings`、`RunTask`、`EngineState`、`ApiError` 等） | [`studio/internal/core/types.go`](../../studio/internal/core/types.go) |
-| CLI 进程客户端 | 可执行定位、`--version` 解析、argv 直通执行、退出码映射、取消（SIGINT 后两秒 SIGKILL 兜底）、`progress.v1` 解析 | `Client.Exec`、`Locate`、`MapExitCode`、`ParseProgress`、`SplitCommand` 在 [`studio/internal/inferyard/client.go`](../../studio/internal/inferyard/client.go)、[`studio/internal/inferyard/progress.go`](../../studio/internal/inferyard/progress.go)、[`studio/internal/inferyard/command.go`](../../studio/internal/inferyard/command.go) |
+| CLI 进程客户端 | `--version` 解析、argv 直通执行、退出码映射、取消（SIGINT 后两秒 SIGKILL 兜底）、`progress.v1` 解析 | `Client.Exec`、`ParseVersion`、`MapExitCode`、`ParseProgress`、`SplitCommand` 在 [`studio/internal/inferyard/client.go`](../../studio/internal/inferyard/client.go)、[`studio/internal/inferyard/progress.go`](../../studio/internal/inferyard/progress.go)、[`studio/internal/inferyard/command.go`](../../studio/internal/inferyard/command.go) |
 | Dashboard 命令执行 | 预置向导命令的白名单参数校验（仅允许 `init`/`model acquire`/`engine acquire`/`device-check`/`config create`/`config bind`/`run`/`resume`/`report`/`verify` 及列名旗标）、`--out` 不存在性预检、执行后状态回写 | `WizardExecute`、`wizardArgs` 在 [`studio/internal/core/onboarding.go`](../../studio/internal/core/onboarding.go) |
 | CLI 安装与预置资产 | 复用已有 `inferyard`/uv（含 Homebrew 路径），或下载固定版本独立 uv（sha256 校验）后 `uv tool install inferyard==Version`；内置 SmolLM2-135M 模型 URL 与按平台固定的 Prism 引擎归档下载/解包 | `InstallCLI`、`FindCLI`、`FindUV` 在 [`studio/internal/core/install.go`](../../studio/internal/core/install.go)；`DefaultModelURL`、`DefaultEngineURL`、`FetchEngine` 在 [`studio/internal/core/defaults.go`](../../studio/internal/core/defaults.go) |
 | 就绪度与目录供给 | CLI/工作区/结果/模型四就绪度；workspace 初始化标志为 `preparation.json` 的 `community_init.v1`；`Provision` 显式幂等建目录 | `Readiness`、`Provision`、`workspaceRoot` 在 [`studio/internal/core/readiness.go`](../../studio/internal/core/readiness.go) |
@@ -31,7 +31,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.9�
 | 清单注册表 | 聚合模型清单（设备快照 + 模型下载任务）与引擎清单（`EngineRoots` 双根遍历，嵌套深度 ≤4、可执行位 + 引擎下载任务含 plain-file 记录）；只输出名称与展示信息，同名附加来源标记、再冲突加路径哈希前缀；路径留在 core 内部按名称映射回真实路径 | `Registry`、`resourcePath`、`scanEngineBinaries` 在 [`studio/internal/core/registry.go`](../../studio/internal/core/registry.go) |
 | 绑定存活提示 | 只读比对绑定配置里的 `server_pid`/`process_start_ticks` 与进程实际启动 tick，仅作 UI 提示；比对失败显示「无法确认」，不据此判定绑定有效 | `BindingAlive` 在 [`studio/internal/core/binding.go`](../../studio/internal/core/binding.go) |
 | 运行队列 | 绑定配置准入（含结果根包含、去重）、串行 worker、取消、resume 准入（历史索引 + CLI 终审） | `StartRuns`、`Resume`、`CancelRun`、`runQueue` 在 [`studio/internal/core/runs.go`](../../studio/internal/core/runs.go) |
-| 下载任务 | 与运行队列并发的模型/引擎获取，共用同一任务列表；输出目录名取自设置的 `model_download_name`/`engine_download_name`（默认 `model`/`engine`，仅允许字母数字点下划线连字符且不能全为点），占用时自动追加 `-2`/`-3` 序号，任务详情展示实际目录名；模型任务 `.part` 尺寸轮询与正式文件发布观测；引擎任务复用 `FetchEngine` 传输与解包、取消贯穿全程、字节与速率缺测为带 `progress_reason` 的 `null`、成功写 `engine_path` | `CreateDownload`、`CreateEngineDownload`、`CancelDownload` 在 [`studio/internal/core/downloads.go`](../../studio/internal/core/downloads.go)；目录名解析在 [`studio/internal/core/download_names.go`](../../studio/internal/core/download_names.go)；`FetchEngine` 在 [`studio/internal/core/defaults.go`](../../studio/internal/core/defaults.go)；`PollDownload` 在 [`studio/internal/evidence/download.go`](../../studio/internal/evidence/download.go) |
+| 下载任务 | 与运行队列并发的模型/引擎获取，共用同一任务列表；输出目录名取自设置的 `model_download_name`/`engine_download_name`（默认 `model`/`engine`，仅允许字母数字点下划线连字符且不能全为点），占用时自动追加 `-2`/`-3` 序号，任务详情展示实际目录名；模型任务 `.part` 尺寸轮询与正式文件发布观测；引擎任务复用 `FetchEngine` 传输与解包、取消贯穿全程、字节与速率缺测为带 `progress_reason` 的 `null`、成功写 `engine_path` | `CreateDownload`、`CreateEngineDownload`、`CancelDownload` 在 [`studio/internal/core/downloads.go`](../../studio/internal/core/downloads.go)；目录名解析在 [`studio/internal/core/download_names.go`](../../studio/internal/core/download_names.go)；`FetchEngine` 在 [`studio/internal/core/defaults.go`](../../studio/internal/core/defaults.go)；模型下载采样在 `Service.download` 中与任务生命周期合并 |
 | 报告 | 1–100 个来源 run 校验、唯一命名新目录生成、索引与静态路径包含解析；离线 HTML 在独立 WebView 窗口以 `file://` 打开 | `CreateReport`、`Reports`、`ReportFile` 在 [`studio/internal/core/reports.go`](../../studio/internal/core/reports.go)；`Reports.Open`、`reportURL` 在 [`studio/internal/pages/reports.go`](../../studio/internal/pages/reports.go) |
 | 进程内事件 | 2048 条回放环 + 唤醒订阅；慢消费者按游标重建而非丢事件 | `EventBus`、`Publish`、`Subscribe`、`After`、`ReplayCapacity` 在 [`studio/internal/core/events.go`](../../studio/internal/core/events.go) |
 | 证据索引与读取 | 结果根扫描（损坏条目跳过并计数）、JSONL 增量 tail、host dirty 标记判读、状态优先级 | `Index` 在 [`studio/internal/evidence/index.go`](../../studio/internal/evidence/index.go)；`Tail`、`Cursor` 在 [`studio/internal/evidence/tail.go`](../../studio/internal/evidence/tail.go)；`DirtyRun`、`RunStatus` 在 [`studio/internal/evidence/dirty.go`](../../studio/internal/evidence/dirty.go) |
@@ -250,17 +250,11 @@ transcript。判责规则：CLI 非零退出或 stdout 非法归 CLI；应答合
 跨平台可移植，观测差异仍全部落证据。运行旋钮：`INFERYARD_E2E_CLI` 指定 CLI、
 `INFERYARD_E2E_ROOT` 保留现场。套件清单与布局见
 [studio/tests/e2e/README.md](../../studio/tests/e2e/README.md)。CI 由
-`.github/workflows/studio-check.yml` 在 macos-15 与 windows-2025 执行 vet、单测与该套件。
+`.github/workflows/studio-check.yml` 在 macos-15 与 windows-2025 执行 vet 与该套件；
+内部包单测暂仅在 macos-15 执行，Windows 单测的路径、权限位与时序假设仍待清理。
 
-## 与既有文档的差异
+## 历史验证材料
 
-- [`studio/internal/core/README.md`](../../studio/internal/core/README.md) 仍按旧 Web 后端描述
-  "Slow clients rebuild from REST" 并引用 `../server/README.md`；`internal/server` 目录已不存在，
-  当前 UI 直接订阅进程内 `EventBus`（`core/events.go`），无 REST/SSE。该 README 其余职责划分
-  与当前源码一致。
-- [`studio/internal/desktop/README.md`](../../studio/internal/desktop/README.md) 的历史验证表引用
-  `bun run ... web/tests/verify.mjs` 与 `python3 scripts/verify-embed.py`；当前工作树无 `web/`
-  目录，`studio/scripts/` 仅有 `build-all.sh` 与 `package.py`，两条命令均不存在。
-- `studio/docs/evidence/` 下的 `browser.*`、`sse.*`、`frontend-build.log` 等是旧 Web UI 阶段的
-  诊断产物；根 README 明确其为历史证据、非当前构建说明。当前为 MyGo v0.4.8 上的 onevra 原生 UI，无前端
-  构建步骤。
+`studio/docs/evidence/` 下的 `browser.*`、`sse.*`、`frontend-build.log` 等保留为旧 Web UI
+阶段的原始诊断证据，不是当前构建说明，也不能证明当前原生 UI 已验收。
+当前构建与验证以 [Studio README](../../studio/README.md) 为准。
