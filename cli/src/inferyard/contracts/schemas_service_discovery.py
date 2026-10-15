@@ -22,6 +22,7 @@ LIMITATIONS = (
     "listener_enumeration_failed",
     "service_discovery_unsupported_platform",
     "service_discovery_error",
+    "cancelled",
 )
 ENDPOINT = obj(
     {
@@ -42,25 +43,40 @@ ENDPOINT["allOf"] = [
 SERVICE_DISCOVERY = obj(
     {
         "command": enum("service discover"),
-        "status": enum("discovered", "partial", "error"),
+        # "interrupted" is the Ctrl-C path: details null, completeness incomplete.
+        # Error keeps the partially collected details.
+        "status": enum("discovered", "partial", "error", "interrupted"),
         "completeness": enum("complete", "incomplete"),
         "run_id": {"type": "null"},
         "evidence_dir": {"type": "null"},
         "limitations": array(enum(*LIMITATIONS)),
-        "details": obj(
-            {
-                "model_requests_sent": {"type": "integer", "const": 0},
-                "services": array(
-                    obj(
-                        {
-                            "pid": POS,
-                            "process_name": LABEL,
-                            "process_start_ticks": POS,
-                            "endpoints": array(ENDPOINT, minimum=1),
-                        }
-                    )
-                ),
-            }
+        "details": nullable(
+            obj(
+                {
+                    "model_requests_sent": {"type": "integer", "const": 0},
+                    "services": array(
+                        obj(
+                            {
+                                "pid": POS,
+                                "process_name": LABEL,
+                                "process_start_ticks": POS,
+                                "endpoints": array(ENDPOINT, minimum=1),
+                            }
+                        )
+                    ),
+                }
+            )
         ),
     }
 )
+SERVICE_DISCOVERY["allOf"] = [
+    {
+        "if": {"properties": {"status": {"const": "interrupted"}}},
+        "then": {
+            "properties": {
+                "completeness": {"const": "incomplete"},
+                "details": {"type": "null"},
+            }
+        },
+    }
+]

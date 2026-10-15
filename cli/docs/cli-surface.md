@@ -125,7 +125,9 @@ bind 仍重新检查身份、资产和候选 argv，可能返回 `startup_argume
 
 枚举完整时退出 0、`status=discovered`、`completeness=complete`，包括 services 为空
 或所有端点均无模型列表。部分枚举失败退出 3、`status=partial`、`completeness=incomplete`，
-保留可用条目。工具错误退出 4、`status=error`、`completeness=incomplete`。
+保留可用条目。工具错误退出 4、`status=error`、`completeness=incomplete`，保留已收集的
+details。取消退出 130、`status=interrupted`、`completeness=incomplete`、details=null、
+limitations=`cancelled`。
 
 | limitations 固定值 | 含义 |
 | --- | --- |
@@ -135,6 +137,7 @@ bind 仍重新检查身份、资产和候选 argv，可能返回 `startup_argume
 | `listener_enumeration_failed` | 无法读取连接表或枚举进程（退出 4） |
 | `service_discovery_unsupported_platform` | 平台不支持（退出 4） |
 | `service_discovery_error` | 其他工具错误，不输出原始异常（退出 4） |
+| `cancelled` | Ctrl-C 取消（退出 130） |
 
 `inferyard --schema service_discovery` 导出此 CommandResult 结构；不改变核心证据契约版本。
 回归使用模拟进程表和 HTTP 响应；Linux/macOS/Windows 真机权限、连接表覆盖及模型服务
@@ -183,7 +186,7 @@ profile 自带（`cpu`/`cuda`），与候选 mode 的匹配同样留给 `config 
 | `invalid_library_manifest` | macOS 引擎没有同目录 dylib、库链接悬空/越界或名称冲突 |
 | `unsupported_engine_build_requires_adapter_validation` | 版本输出不匹配冻结版本模式 |
 | `unsupported_runtime_profile` | Windows 回执声明未知 profile 名 |
-| `runtime_receipt_invalid` | 回执结构、字段或版本记录不合法 |
+| `runtime_receipt_invalid` | 回执为符号链接，或结构、字段、版本记录不合法 |
 | `runtime_profile_mismatch` | 回执常量字段与包内可信 profile 不符 |
 | `runtime_asset_mismatch` | 实际文件或清单与可信 profile 的哈希/大小不符 |
 

@@ -13,7 +13,8 @@
   when enumeration is partial. Discovery does not establish bind eligibility:
   `config bind` still requires an explicit `--pid` and performs the full
   identity and argv checks. Output schema is registered as
-  `--schema service_discovery`.
+  `--schema service_discovery`; it covers all four result shapes, including
+  the cancellation shape (exit 130, `status=interrupted`, details null).
 - A new read-only `engine check` command re-verifies a local engine with the
   same checks as `config create`: the bounded `--version` subprocess query
   against the frozen version pattern (30s timeout; macOS exec-time validation
@@ -31,7 +32,9 @@
   requires the metal dylib in the manifest); Windows reports the verified
   receipt profile `mode` (`cpu`/`cuda`). `reported_version` carries the
   engine's own measured version line while `expected_release` is honestly
-  labeled as the expected constant. A passing check never confers candidate
+  labeled as the expected constant. Receipt paths are handed to the shared
+  verifier unresolved, so a symlinked receipt is rejected exactly like
+  `config create`. A passing check never confers candidate
   eligibility. Output schema is registered as `--schema engine_check`.
 
 ## 0.0.3

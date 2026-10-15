@@ -18,14 +18,18 @@ def _reported(version):
     return None
 
 
-def _input_file(path):
+def _input_file(path, *, resolve):
+    # The engine path is resolved exactly like config create resolves it; the
+    # receipt path is handed to the shared verifier unresolved so the symlink
+    # policy (runtime_verification.linked) stays in one place instead of being
+    # silently bypassed by a pre-resolved path.
     try:
         resolved = path.resolve(strict=True)
         if not stat.S_ISREG(resolved.stat().st_mode):
             raise PreparationError("invalid_input")
     except (FileNotFoundError, NotADirectoryError, IsADirectoryError) as exc:
         raise PreparationError("invalid_input") from exc
-    return resolved
+    return resolved if resolve else path
 
 
 def _verify(request):
@@ -42,13 +46,13 @@ def _verify(request):
         raise PreparationError("invalid_input")
     modes, mode = None, None
     if system == "Darwin":
-        engine_path = _input_file(request.engine_path)
+        engine_path = _input_file(request.engine_path, resolve=True)
         library_map = libraries(engine_path, ("*.dylib",))
         if len(library_map) == 1:
             raise PreparationError("invalid_library_manifest")
     else:
         profile, engine_path, _ = runtime_verification.verify_receipt(
-            _input_file(request.runtime_receipt)
+            _input_file(request.runtime_receipt, resolve=False)
         )
         mode = profile["mode"]
     version = runtime_verification.query_version(engine_path, VERSION_PATTERN)

@@ -156,6 +156,25 @@ def test_windows_tampered_manifest_is_ineligible(synthetic_runtime, monkeypatch,
     assert result["details"]["mode"] is None
 
 
+def test_windows_symlinked_receipt_is_ineligible_like_config_create(
+    synthetic_runtime, tmp_path, monkeypatch, capsys
+):
+    # config create hands the original receipt path to the shared verifier,
+    # which rejects symlinks; engine check must keep the same source of truth
+    # instead of pre-resolving the path and silently accepting the link.
+    request, _ = synthetic_runtime
+    prepared = windows_runtime_prepare.prepare(request)
+    linked_receipt = tmp_path / "linked-receipt.json"
+    linked_receipt.symlink_to(prepared["receipt"])
+    monkeypatch.setattr(runtime_verification, "query_version", lambda *a, **k: dict(VERSION_OK))
+    code = cli.main(["engine", "check", "--runtime-receipt", str(linked_receipt)])
+    result = json.loads(capsys.readouterr().out)
+    jsonschema.validate(result, export_schema("engine_check"))
+    assert code == 0
+    assert result["details"]["eligible"] is False
+    assert result["details"]["reason"] == "runtime_receipt_invalid"
+
+
 def test_windows_unknown_profile_is_ineligible(synthetic_runtime, monkeypatch, capsys):
     request, _ = synthetic_runtime
     prepared = windows_runtime_prepare.prepare(request)
@@ -274,3 +293,24 @@ def test_package_resource_failure_is_tool_error(synthetic_runtime, monkeypatch, 
     jsonschema.validate(result, export_schema("engine_check"))
     assert code == 4
     assert result["limitations"] == ["package_resource_invalid"]
+
+
+def test_contract_golden_samples_match_the_schema():
+    # The same physical samples drive the Studio parser test
+    # (studio/internal/inferyard/engine_check_golden_test.go): every sample
+    # marked valid must satisfy the CLI's exported schema, so neither side
+    # drifts from the shared contract.
+    samples = json.loads(
+        (
+            Path(__file__).resolve().parents[3]
+            / "studio"
+            / "internal"
+            / "inferyard"
+            / "testdata"
+            / "engine_check_contract.json"
+        ).read_text()
+    )
+    assert samples
+    for sample in samples:
+        if sample["valid"]:
+            jsonschema.validate(sample["response"], export_schema("engine_check"))

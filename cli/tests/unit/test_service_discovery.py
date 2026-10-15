@@ -269,3 +269,20 @@ def test_changed_identity_is_not_attributed(monkeypatch):
 )
 def test_only_loopback_probe_targets(address, expected):
     assert platform.loopback_host(address) == expected
+
+
+def test_cancellation_result_matches_the_contract(monkeypatch, capsys):
+    # Ctrl-C goes through the unified entrypoint: status interrupted, details
+    # null, limitations cancelled. The schema must describe that real shape.
+    def interrupted():
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(application, "collect_listeners", interrupted)
+    code = cli.main(["service", "discover"])
+    result = json.loads(capsys.readouterr().out)
+    assert code == 130
+    assert result["status"] == "interrupted"
+    assert result["completeness"] == "incomplete"
+    assert result["details"] is None
+    assert result["limitations"] == ["cancelled"]
+    jsonschema.validate(result, export_schema("service_discovery"))
