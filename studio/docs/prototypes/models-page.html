@@ -4,207 +4,373 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
-<title>模型 · InferYard Studio 交互原型</title>
+<title>模型 · InferYard Studio 原型</title>
 <style>
-:root{color-scheme:light;--bg:#f4f5f7;--paper:#fff;--ink:#202733;--muted:#657180;--line:#e2e6eb;--accent:#245cdb;--blue:#edf3ff;--green:#187451;--red:#b83d3d;--amber:#956114}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}button,input,select{font:inherit}button{cursor:pointer;border:1px solid var(--line);border-radius:8px;background:white;padding:7px 13px;color:var(--ink)}button:hover{border-color:var(--accent);color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8badfa;outline-offset:3px}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.primary:hover{background:#1849b9;color:white}a{color:var(--accent);text-decoration:none}h1,h2,h3,p{margin:0}h1{font-size:28px;letter-spacing:-1px}h2{font-size:17px}h3{font-size:14px}.muted,small{color:var(--muted)}small{font-size:12px}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;overflow-wrap:anywhere}.app{display:grid;grid-template-columns:192px 1fr;min-height:100vh}.sidebar{padding:25px 16px;border-right:1px solid var(--line);background:#f9fafb}.brand{font-weight:750;font-size:18px;padding:0 12px 27px}.brand span{color:var(--accent)}.navitem{display:block;margin:5px 0;padding:10px 14px;border-radius:8px;color:var(--muted)}.navitem.current{background:#e9eef9;color:var(--accent);font-weight:650}.sidebar .foot{margin:40px 12px 0;font-size:12px;color:var(--muted)}main{max-width:1270px;width:100%;padding:28px 34px 36px;margin:auto}.top,.section-head,.row{display:flex;align-items:center;justify-content:space-between;gap:16px}.top{margin-bottom:22px}.eyebrow{font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:4px}.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;border-radius:20px;padding:3px 10px;background:#eef1f5;color:var(--muted);white-space:nowrap}.pill.good{background:#e9f5ee;color:var(--green)}.pill.blue{background:var(--blue);color:var(--accent)}.pill.bad{background:#fff0ef;color:var(--red)}.pill.warn{background:#fff5e5;color:var(--amber)}.dot{width:6px;height:6px;background:currentColor;border-radius:50%}.preview{background:#eaf0fb;border:1px solid #d8e2f5;border-radius:10px;padding:12px 16px;margin-bottom:22px}.preview small{display:block;margin-top:3px}.grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(310px,1fr);gap:20px;align-items:start}.stack{display:grid;gap:20px}.card{background:var(--paper);border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:0 2px 4px #17234203}.section-head{padding:18px 20px;border-bottom:1px solid var(--line)}.section-head h2 span{font-weight:400;color:var(--muted);font-size:12px;margin-left:7px}.body{padding:18px 20px}.asset{padding:16px;border:1px solid #d6e2fc;background:linear-gradient(120deg,#f0f5ff,#fff);border-radius:10px}.asset h3{font-size:18px;margin:8px 0 2px}.asset .row{margin-top:12px}.model{padding:15px 0;border-bottom:1px solid var(--line)}.model:last-child{border-bottom:0}.model .mono{display:block;color:var(--muted);margin-top:5px}.icon{width:35px;height:35px;border-radius:9px;background:#eef2f8;color:var(--accent);display:grid;place-items:center;font-size:17px;flex-shrink:0}.name{display:flex;gap:12px;align-items:center}.subhead{margin-top:20px;font-size:12px;color:var(--muted)}.tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px}.tabs button{padding:4px 9px;font-size:12px}.tabs button[aria-pressed=true]{background:var(--blue);border-color:#8dacf0;color:var(--accent)}.status-panel{padding:16px;border-radius:10px;background:#f7f9fc;margin-bottom:16px}.status-panel h3{font-size:19px;margin:6px 0}.status-panel p{color:var(--muted);font-size:13px}.status-panel.bad{background:#fff5f3}.status-panel.good{background:#f0f8f3}.kv{display:grid;grid-template-columns:100px 1fr;gap:8px;font-size:13px;margin:14px 0}.kv dt{color:var(--muted)}.kv dd{margin:0}.command{display:block;padding:12px;background:#f5f6f8;border:1px solid var(--line);border-radius:8px;white-space:pre-wrap;margin:8px 0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.notice{font-size:12px;padding:11px 13px;background:#f7f8fa;border-radius:8px;margin-top:14px;color:var(--muted)}.notice.warning{background:#fff6e8;color:#865917}.steps{display:flex;gap:5px;align-items:center;font-size:10px;color:var(--muted);margin-top:14px;flex-wrap:wrap}.steps b{padding:3px 6px;border-radius:5px;font-weight:400;background:#f0f2f5}.steps b.active{background:#dce8ff;color:var(--accent)}.task{border:1px solid var(--line);border-radius:10px;padding:15px;margin-top:12px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 10px}.metrics strong{display:block;font-size:19px;font-weight:600}.metrics small{display:block}.activity{height:4px;background:repeating-linear-gradient(100deg,#b3c9f7 0px,#b3c9f7 18px,#e9f0ff 18px,#e9f0ff 32px);border-radius:4px;margin:12px 0}.task-note{font-size:12px;color:var(--muted)}details{margin-top:14px;font-size:12px;color:var(--muted)}summary{cursor:pointer;color:var(--accent)}label{display:block;font-size:12px;color:var(--muted);margin-top:12px}input,select{border:1px solid #cbd2dc;border-radius:7px;padding:8px;width:100%;background:white;color:var(--ink)}.binding{border-left:3px solid #91a9d4;padding-left:13px;margin-top:15px}.binding strong{display:block}.binding small{display:block}.footer{margin-top:20px;font-size:12px;color:var(--muted)}#feedback{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#24324b;color:white;padding:12px 22px;border-radius:10px;max-width:90vw;box-shadow:0 6px 25px #0002;z-index:3}#feedback:empty{display:none}.check{display:flex;gap:8px;align-items:center}.check input{width:auto}.tiny{font-size:11px} [hidden]{display:none!important}@media(max-width:1050px){.app{grid-template-columns:150px 1fr}main{padding:24px 20px}.grid{grid-template-columns:1fr}.sidebar{padding:22px 10px}}@media(max-width:600px){.app{display:block}.sidebar{display:none}main{padding:20px 12px}.top{align-items:flex-start}.top>.pill{display:none}.section-head,.body{padding:16px}.metrics strong{font-size:16px}.row{flex-wrap:wrap}h1{font-size:25px}}
+:root{color-scheme:light;--bg:#fcfbf9;--surface:#fefefd;--hover:#eceae4;--pressed:#d9d7d2;--border:#deded5;--text:#33332f;--muted:#72726a;--accent:#bd481b;--success:#059669;--warning:#b45309;--danger:#b4444c;--focus:rgba(185,71,22,.55);--radius:8px}
 
-main{min-width:0;margin:0 auto}.row,.section-head,.top{flex-wrap:wrap}.body,.name,.row>div{min-width:0}h3,p,dd{overflow-wrap:anywhere}.steps{font-size:12px}.notice.danger{background:#fff0ef;color:var(--red)}.field{margin-top:12px}.field small{display:block}.step{position:relative;padding-left:44px;margin:24px 0}.step:before{content:attr(data-num);position:absolute;left:0;top:0;background:var(--accent);color:white;border-radius:50%;width:28px;height:28px;text-align:center}.step:after{content:'';position:absolute;left:13px;top:34px;bottom:0;width:2px;background:var(--line)}.step h2{margin-bottom:12px}.grid>.card{height:100%}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline-color:var(--accent)}.sidebar{width:auto}.pill{white-space:normal}.kv{grid-template-columns:90px minmax(0,1fr)}
-@media(max-width:600px){.sidebar{display:block}.sidebar .foot{display:none}.brand{padding-bottom:8px}.navitem{display:inline-block;padding:6px}.app{display:block}}
-button[aria-pressed=true]{background:var(--blue);border-color:var(--accent);color:var(--accent)}</style>
+/* onevra v0.2026.9 LightPalette. Dark reference: Background #211f1c,
+Surface #2b2925, Text #eeeae2, TextMuted #bdb6aa, Accent #ed986e, AccentText #291b14.
+HTML represents component semantics, not native MyGo rendering or acceptance. */
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.65 system-ui,-apple-system,"PingFang SC",sans-serif}
+h1,h2,h3,p{margin:0}
+h1{font-size:24px;line-height:1.4}
+h2{font-size:18px;line-height:1.5}
+h3{font-size:15px}
+p+ p{margin-top:8px}
+button,input,select{font:inherit;color:inherit}
+button,.button{border:1px solid var(--border);border-radius:8px;padding:7px 14px;background:color-mix(in srgb,var(--bg),var(--text) 8%);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px}
+button:hover,.button:hover{background:var(--hover)}
+button:active{background:var(--pressed)}
+.primary{background:var(--accent);border-color:var(--accent);color:white}
+.primary:hover{background:var(--accent);filter:brightness(.94)}
+button:disabled{opacity:.5;cursor:default}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+input,select{min-width:0;width:100%;border:1px solid var(--border);background:var(--surface);padding:8px 10px;border-radius:8px}
+input[aria-invalid=true]{border-color:var(--danger)}
+label{display:block;font-weight:550;margin-bottom:6px}
+.field{margin-top:12px}
+.field small{display:block;margin-top:4px}
+small,.muted{color:var(--muted)}
+small{font-size:12px}
+code,.mono{font:12px/1.7 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}
+p,li,dd,h3,strong{overflow-wrap:anywhere}
+.app{display:grid;grid-template-columns:205px minmax(0,1fr);min-height:100vh}
+.sidebar{padding:24px 12px;border-right:1px solid var(--border)}
+.brand{padding:0 10px 28px;font-size:20px;font-weight:700;letter-spacing:-.7px}
+.brand em{font-style:normal;color:var(--accent)}
+.brand small{display:block;font-size:11px;letter-spacing:2px;font-weight:500}
+.navitem{display:flex;width:100%;justify-content:flex-start;gap:10px;padding:10px;margin:4px 0;text-decoration:none;color:var(--text);border:0;background:transparent;border-radius:8px}
+.navitem:hover{background:transparent}
+.navitem[aria-current]{background:rgba(51,51,47,.1);font-weight:600}
+.navitem svg{width:18px;height:18px;color:var(--accent);flex-shrink:0}
+.sidefoot{margin:36px 10px;color:var(--muted);font-size:12px}
+.shellhead{display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
+.shellhead small{margin-left:auto}
+.shellhead button{padding:3px 10px;min-height:30px}
+main{max-width:1300px;margin:0 auto;padding:24px;min-width:0}
+.pagehead{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:20px}
+.pagehead p{margin-top:6px;color:var(--muted)}
+.preview{border:1px dashed var(--border);border-radius:8px;padding:12px 16px;margin-bottom:20px}
+.preview .actions{margin-top:8px}
+.actions,.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row{justify-content:space-between}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;min-width:0}
+.card h2{margin-bottom:12px}
+.stack{display:grid;gap:16px}
+.grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(310px,1fr);gap:20px;align-items:start}
+.badge{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--surface),var(--muted) 9%);padding:2px 8px;border-radius:8px;font-size:12px}
+.badge.active{color:var(--accent);background:color-mix(in srgb,var(--surface),var(--accent) 9%)}
+.badge.good:before{content:'●';color:var(--success)}
+.badge.warn{color:var(--warning);background:color-mix(in srgb,var(--surface),var(--warning) 7%)}
+.badge.bad,.error{color:var(--danger)}
+.error{margin-top:8px;font-size:14px}
+.notice{border-left:3px solid var(--accent);padding:10px 14px;background:color-mix(in srgb,var(--surface),var(--accent) 4%);margin:12px 0}
+.notice.bad{border-color:var(--danger)}
+ul.list{list-style:none;margin:0;padding:0}
+.list>li{padding:16px 0;border-top:1px solid var(--border)}
+.list>li:first-child{border-top:0;padding-top:4px}
+.list>li:last-child{padding-bottom:0}
+.list h3{margin-bottom:6px}
+.list .actions{margin-top:12px}
+.meta{display:flex;gap:8px 18px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:6px}
+.selected{border-left:3px solid var(--accent);padding-left:12px!important}
+dl{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;margin:12px 0}
+dt{color:var(--muted)}
+dd{margin:0}
+details{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+summary{cursor:pointer;font-weight:550}
+details>p{margin-top:10px}
+.check{display:flex;align-items:center;gap:8px;font-weight:400}
+.check input{width:16px;height:16px;accent-color:var(--accent)}
+progress{display:block;width:100%;height:6px;border:0;border-radius:8px;overflow:hidden;accent-color:var(--accent);background:var(--hover);margin:12px 0}
+progress::-webkit-progress-bar{background:var(--hover)}
+progress::-webkit-progress-value{background:var(--accent)}
+.spinner{width:16px;height:16px;display:inline-block;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}
+}
+.steps{list-style:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:0;margin:16px 0}
+.steps li{font-size:12px;color:var(--muted)}
+.steps b{display:block;font-size:14px;font-weight:500;margin-bottom:4px}
+.steps [aria-current]{color:var(--accent);font-weight:650}
+.track{position:relative;padding:6px 0 12px 44px;margin:20px 0}
+.track:before{content:attr(data-step);position:absolute;left:0;top:5px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:white}
+.track:after{content:'';position:absolute;left:13px;top:43px;bottom:0;width:1px;background:var(--border)}
+.track h2{margin-bottom:12px}
+.flow{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.flow span{font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:8px}
+.flow [aria-current]{color:var(--accent);border-color:var(--accent)}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.toast{position:fixed;bottom:20px;right:24px;max-width:min(430px,90vw);background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);padding:12px 18px;border-radius:8px;z-index:5}
+.toast:empty{display:none}
+.footer{font-size:12px;color:var(--muted);margin-top:20px}
+.collapsed{grid-template-columns:72px minmax(0,1fr)}
+.collapsed .navtext,.collapsed .brand,.collapsed .sidefoot{display:none}
+.collapsed .navitem{justify-content:center}
+.collapsed .sidebar{padding-top:24px}
+[hidden]{display:none!important}
+@media(max-width:1050px){.grid{grid-template-columns:1fr}
+.steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:700px){.app{grid-template-columns:72px minmax(0,1fr)}
+.navtext,.brand,.sidefoot{display:none}
+main{padding:16px}
+.shellhead{padding:12px 16px}
+.twocol{grid-template-columns:1fr}
+.pagehead{align-items:flex-start;flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){.spinner{animation:none}
+}
+@media(forced-colors:active){button,.badge,input,select{border:1px solid ButtonText}
+:focus-visible{outline:3px solid Highlight}
+}
+
+</style>
 </head>
 <body>
-<div class="app">
-<aside class="sidebar" aria-label="主导航">
-<div class="brand">Infer<span>Yard</span>
-<small style="display:block">STUDIO</small>
+<div class="app" id="app">
+<aside class="sidebar">
+<div class="brand">Infer<em>Yard</em>
+<small>STUDIO</small>
 </div>
-<a class="navitem "  href="dashboard-service-flow.html">Dashboard</a>
-<span class="navitem">设备</span>
-<a class="navitem current" aria-current="page" href="models-page.html">模型</a>
-<span class="navitem">报告</span>
-<a class="navitem "  href="settings-download-names.html">设置</a>
-<div class="foot">本地工作区<br>
+<nav aria-label="主导航">
+<a class="navitem" aria-label="Dashboard" href="dashboard-page.html">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<rect x="3" y="3" width="7" height="7" rx="1"/>
+<rect x="14" y="3" width="7" height="7" rx="1"/>
+<rect x="3" y="14" width="7" height="7" rx="1"/>
+<rect x="14" y="14" width="7" height="7" rx="1"/>
+</svg>
+<span class="navtext">Dashboard</span>
+</a>
+<button class="navitem" aria-label="设备（本次未绘制）" data-note="设备页不在本次三个原型范围内。">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<rect x="3" y="4" width="18" height="13" rx="2"/>
+<path d="M8 21h8M12 17v4"/>
+</svg>
+<span class="navtext">设备</span>
+</button>
+<a class="navitem" aria-label="模型" href="models-page.html" aria-current="page">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="m12 3 9 5-9 5-9-5 9-5Zm-9 5v9l9 5 9-5V8M12 13v9"/>
+</svg>
+<span class="navtext">模型</span>
+</a>
+<button class="navitem" aria-label="报告（本次未绘制）" data-note="报告页不在本次三个原型范围内。">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z M14 2v6h6M8 13h8M8 17h6"/>
+</svg>
+<span class="navtext">报告</span>
+</button>
+<a class="navitem" aria-label="设置" href="settings-page.html">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="M4 6h16M4 12h16M4 18h16"/>
+<circle cx="8" cy="6" r="2"/>
+<circle cx="16" cy="12" r="2"/>
+<circle cx="10" cy="18" r="2"/>
+</svg>
+<span class="navtext">设置</span>
+</a>
+</nav>
+<div class="sidefoot">本地工作区<br>
 <code>workspace-demo</code>
-<br>交互原型 · 示例数据<br>设备与报告仅作位置示意</div>
+<br>
+<br>onevra v0.2026.9<br>浅色设计稿</div>
 </aside>
+<div>
+<div class="shellhead">
+<button id="collapse" aria-label="折叠侧栏" aria-expanded="true">☰</button>
+<span>workspace-demo</span>
+<small>本地测评工作台</small>
+</div>
 <main>
-<header class="top">
+<header class="pagehead">
 <div>
 <h1>模型</h1>
-<p class="muted">选择本地模型与引擎，准备测评服务。</p>
+<p>选择本地模型与引擎，管理下载及本机服务。</p>
 </div>
-<span class="pill good">CLI 已就绪 · 示例</span>
+<span class="badge">交互原型</span>
 </header>
 <div class="preview">
-<strong>交互原型 · 所有数据均为示例</strong>
-<small>仅在本页演示，不下载、不启动真实服务、不访问网络。状态按钮用于注入事件快照。</small>
+<strong>示例数据 · 离线交互演示</strong>
+<p class="muted">操作只改变当前页面，不下载、不启动服务、不发送请求；刷新后恢复初始状态。</p>
 </div>
 <div class="grid">
-<section class="card" aria-labelledby="models-title">
-<div class="section-head">
-<h2 id="models-title">本地模型清单</h2>
-<span class="pill">2 个模型</span>
-</div>
-<div class="body">
-<p class="muted">来自设备快照与已完成下载；未选择时使用 CLI 推荐。</p>
-<div class="model">
-<h3>Qwen2.5-0.5B-Instruct</h3>
-<dl class="kv">
-<dt>大小</dt>
-<dd>384 MiB</dd>
-<dt>架构</dt>
-<dd>qwen2</dd>
-<dt>上下文</dt>
-<dd>32768 tokens</dd>
-</dl>
-<button data-model="Qwen2.5-0.5B-Instruct" aria-pressed="false">选为测评模型</button>
-</div>
-<div class="model">
-<h3>local-model.gguf</h3>
-<div class="notice">大小、架构、上下文缺测：文件元数据读取失败；选择后需重新设备检查。</div>
-<div class="actions">
-<button data-model="local-model.gguf" aria-pressed="false">选为测评模型</button>
-</div>
-</div>
-<p id="model-choice" role="status" class="notice">当前：CLI 推荐。选择模型后，在 Dashboard 重新设备检查并创建候选。</p>
-</div>
-</section>
-<section class="card" aria-labelledby="engines-title">
-<div class="section-head">
-<h2 id="engines-title">引擎清单</h2>
-<span class="pill">最新下载优先</span>
-</div>
-<div class="body">
-<div class="model">
-<h3>Prism b10743</h3>
-<p class="muted">来源：引擎下载 · 最新完成 · 目录 engine-2</p>
-<div class="actions">
-<button data-engine="Prism b10743" aria-pressed="true">已选为候选引擎</button>
-</div>
-</div>
-<div class="model">
-<h3>custom-server <span class="pill">用户引擎库</span>
-</h3>
-<p class="muted">来源：本地扫描 · 单文件引擎</p>
-<div class="actions">
-<button data-engine="custom-server（用户引擎库）" aria-pressed="false">选为候选引擎</button>
-</div>
-</div>
-<div class="model">
-<h3>custom-server <span class="pill">工作区</span>
-</h3>
-<p class="muted">来源：工作区扫描 · 同名以来源区分</p>
-<div class="actions">
-<button data-engine="custom-server（工作区）" aria-pressed="false">选为候选引擎</button>
-</div>
-</div>
-<p id="engine-choice" class="notice" role="status">当前：Prism b10743。用于下一次创建候选，已冻结候选不变。</p>
-<a href="dashboard-service-flow.html">前往 Dashboard 创建候选 →</a>
-</div>
-</section>
-<section class="card" aria-labelledby="downloads-title">
-<div class="section-head">
-<h2 id="downloads-title">下载任务</h2>
-<span class="pill blue">独立任务</span>
-</div>
-<div class="body">
-<div class="actions">
-<button id="download-model" class="primary">下载预置模型</button>
-<button id="download-engine">下载预置引擎</button>
-</div>
-<p class="notice">目录名来自<a href="settings-download-names.html">设置</a>：模型 model，引擎 engine。占用自动追加 -2、-3，不覆盖已有目录。</p>
-<div class="task">
+<section class="card">
+<h2>本地模型清单</h2>
+<ul class="list" aria-label="本地模型清单">
+<li class="selected">
 <div class="row">
-<h3 id="task-name">SmolLM2-135M</h3>
-<span id="task-state" class="pill blue">下载中</span>
+<h3>Qwen3-8B-Q4_K_M.gguf</h3>
+<span class="badge active" id="model-selected">当前测评模型</span>
 </div>
-<div id="task-notice" class="notice">已下载量、速率缺测：尚未收到读数。总量未知：来源未提供；不显示百分比。</div>
-<details>
-<summary>下载任务详情</summary>
-<p>实际目录名：<code id="task-dir">model-2</code>
-</p>
-<p>基础名已占用，已自动追加序号。1 MiB = 1,048,576 bytes。</p>
-</details>
+<div class="meta">
+<span>大小 4.9 GiB</span>
+<span>架构 Qwen3</span>
+<span>上下文 32,768 tokens</span>
+</div>
 <div class="actions">
-<button id="cancel">取消下载</button>
+<button data-model="Qwen3-8B-Q4_K_M.gguf" aria-pressed="true">选为测评模型</button>
 </div>
+</li>
+<li>
+<h3>DeepSeek-R1-Distill-Qwen-7B.gguf</h3>
+<div class="meta">
+<span>大小 4.4 GiB</span>
+<span>架构 Qwen2</span>
+<span>上下文缺测：尚未读取模型元数据</span>
 </div>
-<details>
-<summary>演示下载事件</summary>
 <div class="actions">
-<button data-download="已完成">完成</button>
-<button data-download="下载失败">失败</button>
-<button data-download="已取消">取消完成</button>
+<button data-model="DeepSeek-R1-Distill-Qwen-7B.gguf" aria-pressed="false">选为测评模型</button>
 </div>
-</details>
-</div>
+</li>
+</ul>
+<p class="notice" id="model-choice">已选 Qwen3-8B-Q4_K_M.gguf；下一次设备检查使用该模型。</p>
+<small>1 GiB = 1,073,741,824 bytes。示例大小已转换为 GiB。</small>
 </section>
-<section class="card" aria-labelledby="service-title">
-<div class="section-head">
-<h2 id="service-title">引擎服务</h2>
-<span class="pill">Studio 管理</span>
-</div>
-<div class="body">
-<div class="status-panel">
-<span class="pill">stopped · 已停止</span>
-<h3>Prism b10743</h3>
-<p>暂无活动进程。退出 Studio 时关闭 Studio 启动的服务。</p>
-</div>
-<a href="dashboard-service-flow.html#bind">前往 Dashboard 启动并绑定 →</a>
-<div class="notice">内存缺测：此页未采样。日志文件：<code>engine-demo.log</code>
-</div>
-<div style="margin-top:20px">
-<h3>本机运行的服务</h3>
-<p class="muted">发现仅表示端点可探测；绑定仍核验进程身份与启动参数。</p>
-<div class="model">
+<section class="card">
+<h2>引擎清单</h2>
+<ul class="list" aria-label="引擎清单">
+<li class="selected">
 <div class="row">
-<div>
-<h3>Qwen2.5-0.5B-Instruct</h3>
-<small>custom-server · PID 50177 · 外部服务</small>
-<p>
-<code>http://127.0.0.1:8081</code> · 健康检查通过</p>
+<h3>llama-server b6800</h3>
+<span class="badge active">最新下载 · 默认选中</span>
 </div>
-<button data-bind="50177">绑定</button>
+<p class="meta">来源：引擎下载 · engine-2</p>
+<div class="actions">
+<button data-engine="llama-server b6800" aria-pressed="true">选为候选引擎</button>
 </div>
+</li>
+<li>
+<h3>llama-server b6700 · 工作区</h3>
+<p class="meta">来源：工作区引擎目录</p>
+<div class="actions">
+<button data-engine="llama-server b6700 · 工作区" aria-pressed="false">选为候选引擎</button>
 </div>
-<div class="model">
-<div class="row">
-<div>
-<h3>模型名称缺测</h3>
-<small>原因：端点未返回模型列表</small>
-<p>llama-server · PID 50178 · 外部服务</p>
-<code>http://127.0.0.1:8082</code>
+</li>
+<li>
+<h3>inference-engine · 用户引擎</h3>
+<p class="meta">来源：用户引擎目录 · 单文件下载</p>
+<div class="actions">
+<button data-engine="inference-engine · 用户引擎" aria-pressed="false">选为候选引擎</button>
 </div>
-<button data-bind="50178">绑定</button>
-</div>
-</div>
-<div class="notice">外部服务由操作者管理，退出 Studio 时不会停止。绑定显式使用此项 PID 与 endpoint，不静默换绑。</div>
-</div>
-<div id="bind-result" class="notice" role="status" hidden>
-</div>
-<details>
-<summary>演示绑定结果</summary>
-<label for="bind-outcome">CLI 返回结果</label>
-<select id="bind-outcome">
-<option value="ok">双题包绑定成功</option>
-<option value="fail">启动参数不匹配</option>
+</li>
+</ul>
+<p class="notice" id="engine-choice">候选引擎：llama-server b6800。选择后用于下一次创建候选。</p>
+</section>
+<section class="card">
+<h2>下载任务</h2>
+<form id="download-form">
+<div class="twocol">
+<div class="field">
+<label for="download-kind">下载类型</label>
+<select id="download-kind">
+<option value="model">模型</option>
+<option value="engine">引擎</option>
 </select>
-</details>
 </div>
+<div class="field">
+<label for="asset">下载资源</label>
+<select id="asset">
+<option>Qwen3-8B-Q4_K_M.gguf</option>
+<option>DeepSeek-R1-Distill-Qwen-7B.gguf</option>
+</select>
+</div>
+</div>
+<p class="muted" style="margin:12px 0">目录名来自<a href="settings-page.html">设置</a>：模型 model、引擎 engine。占用时自动追加 -2、-3；实际名称见任务详情。</p>
+<button class="primary" type="submit">创建下载任务</button>
+</form>
+<ul class="list" aria-label="下载任务列表" style="margin-top:16px" id="downloads">
+<li>
+<div class="row">
+<h3>Qwen3-8B-Q4_K_M.gguf</h3>
+<span class="badge active">下载中 · 示例</span>
+</div>
+<p>
+<span class="spinner" role="img" aria-label="下载活动">
+</span> 总量未知：来源未提供文件总字节数</p>
+<p class="muted">下载速率缺测：尚无连续采样。剩余时间缺测：总量未知。</p>
+<details>
+<summary>任务详情 · download-02</summary>
+<dl>
+<dt>实际目录名</dt>
+<dd>model-2</dd>
+<dt>命名原因</dt>
+<dd>model 已占用，自动追加序号</dd>
+</dl>
+</details>
+</li>
+<li>
+<div class="row">
+<h3>llama-server b6700</h3>
+<span class="badge bad">下载失败</span>
+</div>
+<p class="error">连接中断。失败目录 engine-3 保留，不自动删除。</p>
+<small>重新下载创建新目录，不覆盖失败目录中的文件。</small>
+<details>
+<summary>任务详情 · download-01</summary>
+<p>实际目录名：engine-3；日志：download-01.log</p>
+</details>
+<div class="actions">
+<button id="retry">重新创建下载任务</button>
+</div>
+</li>
+</ul>
+</section>
+<section class="card">
+<h2>引擎服务与本机运行的服务</h2>
+<h3>Studio 管理的引擎服务</h3>
+<p class="meta">llama-server b6800 · Qwen3-8B</p>
+<p id="owned-state" style="margin:10px 0">
+<span class="badge">已停止 · 无活动进程</span>
+</p>
+<a class="button" href="dashboard-page.html">到 Dashboard 启动并绑定</a>
+<p class="muted" style="margin-top:10px">由 Studio 启动的服务随 Studio 退出关闭；外部服务不受退出操作影响。</p>
+<details>
+<summary>演示异常退出后的遗留服务</summary>
+<p>示例 PID 8421 的启动标识与所有权记录一致；可停止遗留服务，不自动重启或绑定。</p>
+<button id="stop-owned">停止遗留服务</button>
+<p id="owned-result" role="status">
+</p>
+<small>若 PID 已复用或进程已退出，仅清除记录，不终止不确定进程。</small>
+</details>
+<h3 style="margin-top:20px">本机运行的服务</h3>
+<p class="muted">来自 discover；健康检查不代表已绑定。</p>
+<ul class="list" aria-label="发现的本机运行服务">
+<li>
+<div class="row">
+<div>
+<h3>Qwen3-8B · llama-server</h3>
+<span class="badge good">健康检查通过 · 尚未绑定</span>
+</div>
+<button class="external" data-pid="6124">绑定</button>
+</div>
+<p class="meta">PID 6124 · http://127.0.0.1:8080 · 操作者启动</p>
+</li>
+<li>
+<div class="row">
+<div>
+<h3>Qwen3-8B · inference-engine</h3>
+<span class="badge">已发现 · 尚未绑定</span>
+</div>
+<button class="external" data-pid="7310">绑定</button>
+</div>
+<p class="meta">PID 7310 · http://127.0.0.1:8081 · 操作者启动</p>
+<small>示例：启动参数与当前候选不一致，绑定时将显示固定失败原因。</small>
+</li>
+</ul>
+<p id="external-result" role="status" class="notice" hidden>
+</p>
 </section>
 </div>
-<footer class="footer">最终方案 v2 · HTML 设计评审稿；不代表原生实现或真机验收。完整路径仅在设置页的路径设置卡展示。</footer>
+<p class="footer">HTML 设计基准 · 原生组件效果、系统主题及辅助技术需另行验收。</p>
 </main>
 </div>
-<div id="feedback" role="status" aria-live="polite">
 </div>
-<script>const $=id=>document.getElementById(id);const tell=m=>{$('feedback').textContent=m;};
-document.querySelectorAll('[data-model]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-model]').forEach(x=>x.setAttribute('aria-pressed',x===b));$('model-choice').textContent='当前：'+b.dataset.model+'。下一步：Dashboard 重新设备检查，生成新 preflight 与候选。';});
-document.querySelectorAll('[data-engine]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-engine]').forEach(x=>{x.setAttribute('aria-pressed',x===b);x.textContent=x===b?'已选为候选引擎':'选为候选引擎';});$('engine-choice').textContent='当前：'+b.dataset.engine+'。用于下一次创建候选，已冻结候选不变。';});
-let counts={model:2,engine:2};function download(kind){$('task-name').textContent=kind==='model'?'SmolLM2-135M':'Prism b10743';$('task-dir').textContent=kind+'-'+counts[kind]++;$('task-state').textContent='下载中';$('task-notice').textContent='已下载量、速率缺测：尚未收到读数。总量未知：来源未提供。';$('cancel').disabled=false;tell('已创建示例任务，目录占用时自动追加序号。');}
-$('download-model').onclick=()=>download('model');$('download-engine').onclick=()=>download('engine');$('cancel').onclick=()=>{$('task-state').textContent='取消中';$('task-notice').textContent='等待下载进程收尾；可用演示入口注入取消完成事件。';$('cancel').disabled=true;};
-document.querySelectorAll('[data-download]').forEach(b=>b.onclick=()=>{$('task-state').textContent=b.dataset.download;$('task-notice').textContent=b.dataset.download==='下载失败'?'下载失败（cli_error）。检查来源后重新下载；目录保留，新任务自动追加序号。':b.dataset.download==='已完成'?'文件已发布。大小缺测：本示例未提供实测字节；速率不适用：任务已结束。':'取消已完成，目录保留。速率缺测：没有新读数。';$('cancel').disabled=true;});
-document.querySelectorAll('[data-bind]').forEach(b=>b.onclick=()=>{const fail=$('bind-outcome').value==='fail';$('bind-result').hidden=false;$('bind-result').className='notice '+(fail?'danger':'');$('bind-result').textContent=fail?'绑定失败：启动参数与候选不匹配（startup_arguments_mismatch）。已停止绑定链，不自动重试。请核对候选与服务参数。':'模拟：PID '+b.dataset.bind+'，按顺序绑定 zh-core → zh-svg-pelican，均已绑定。前往 Dashboard 运行阶段。';});</script>
-</body>
-</html>
+<div id="toast" class="toast" role="status" aria-live="polite"></div><script>const $=id=>document.getElementById(id);let toastTimer;function toast(message){$('toast').textContent=message;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').textContent='',4500)}document.querySelectorAll('[data-note]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.note)));$('collapse').onclick=()=>{const collapsed=$('app').classList.toggle('collapsed');$('collapse').setAttribute('aria-expanded',String(!collapsed));$('collapse').setAttribute('aria-label',collapsed?'展开侧栏':'折叠侧栏')};
+
+for(const kind of ['model','engine'])document.querySelectorAll('[data-'+kind+']').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-'+kind+']').forEach(other=>{other.setAttribute('aria-pressed',String(other===b));other.closest('li').classList.toggle('selected',other===b);const badge=other.closest('li').querySelector('.badge');if(badge)badge.hidden=other!==b});$(kind+'-choice').textContent=(kind==='model'?'测评模型：':'候选引擎：')+b.dataset[kind]+'。将在下一次'+(kind==='model'?'设备检查':'创建候选')+'时使用。';toast('已选择 '+b.dataset[kind])});
+$('download-kind').onchange=()=>{const names=$('download-kind').value==='model'?['Qwen3-8B-Q4_K_M.gguf','DeepSeek-R1-Distill-Qwen-7B.gguf']:['llama-server b6800','inference-engine'];$('asset').replaceChildren(...names.map(n=>new Option(n,n)))};
+const counts={model:2,engine:3};function addDownload(name,kind){const li=document.createElement('li');const h=document.createElement('h3');h.textContent=name;li.append(h);const p=document.createElement('p');p.textContent='排队中 · 实际目录名：'+kind+'-'+(++counts[kind])+'。总量未知：尚未开始下载。';li.append(p);$('downloads').prepend(li);toast('已创建示例下载任务。')}$('download-form').onsubmit=e=>{e.preventDefault();addDownload($('asset').value,$('download-kind').value)};$('retry').onclick=()=>addDownload('llama-server b6700','engine');$('stop-owned').onclick=async()=>{$('stop-owned').disabled=true;$('owned-result').textContent='停止中／等待收尾';await new Promise(r=>setTimeout(r,900));$('owned-result').textContent='已停止 · 已清除所有权记录';toast('示例遗留服务已停止。')};document.querySelectorAll('.external').forEach(b=>b.onclick=async()=>{document.querySelectorAll('.external').forEach(x=>x.disabled=true);$('external-result').hidden=false;$('external-result').className='notice';$('external-result').textContent='绑定中 · 正在核验 PID '+b.dataset.pid+' 与候选参数';await new Promise(r=>setTimeout(r,900));if(b.dataset.pid==='7310'){$('external-result').className='notice bad';$('external-result').textContent='绑定失败：startup_arguments_mismatch。启动参数与候选不一致；请核对候选与引擎配置后重新绑定。未自动重试。';document.querySelectorAll('.external').forEach(x=>x.disabled=false)}else{$('external-result').textContent='zh-core 已绑定，正在绑定 zh-svg-pelican…';await new Promise(r=>setTimeout(r,900));$('external-result').textContent='zh-core 与 zh-svg-pelican 均已绑定。可到 Dashboard 运行。';toast('示例双题包绑定完成。')}});
+</script></body></html>

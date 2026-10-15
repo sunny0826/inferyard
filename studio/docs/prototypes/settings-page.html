@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
+<title>设置 · InferYard Studio 原型</title>
+<style>
+:root{color-scheme:light;--bg:#fcfbf9;--surface:#fefefd;--hover:#eceae4;--pressed:#d9d7d2;--border:#deded5;--text:#33332f;--muted:#72726a;--accent:#bd481b;--success:#059669;--warning:#b45309;--danger:#b4444c;--focus:rgba(185,71,22,.55);--radius:8px}
+
+/* onevra v0.2026.9 LightPalette. Dark reference: Background #211f1c,
+Surface #2b2925, Text #eeeae2, TextMuted #bdb6aa, Accent #ed986e, AccentText #291b14.
+HTML represents component semantics, not native MyGo rendering or acceptance. */
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.65 system-ui,-apple-system,"PingFang SC",sans-serif}
+h1,h2,h3,p{margin:0}
+h1{font-size:24px;line-height:1.4}
+h2{font-size:18px;line-height:1.5}
+h3{font-size:15px}
+p+ p{margin-top:8px}
+button,input,select{font:inherit;color:inherit}
+button,.button{border:1px solid var(--border);border-radius:8px;padding:7px 14px;background:color-mix(in srgb,var(--bg),var(--text) 8%);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px}
+button:hover,.button:hover{background:var(--hover)}
+button:active{background:var(--pressed)}
+.primary{background:var(--accent);border-color:var(--accent);color:white}
+.primary:hover{background:var(--accent);filter:brightness(.94)}
+button:disabled{opacity:.5;cursor:default}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+input,select{min-width:0;width:100%;border:1px solid var(--border);background:var(--surface);padding:8px 10px;border-radius:8px}
+input[aria-invalid=true]{border-color:var(--danger)}
+label{display:block;font-weight:550;margin-bottom:6px}
+.field{margin-top:12px}
+.field small{display:block;margin-top:4px}
+small,.muted{color:var(--muted)}
+small{font-size:12px}
+code,.mono{font:12px/1.7 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}
+p,li,dd,h3,strong{overflow-wrap:anywhere}
+.app{display:grid;grid-template-columns:205px minmax(0,1fr);min-height:100vh}
+.sidebar{padding:24px 12px;border-right:1px solid var(--border)}
+.brand{padding:0 10px 28px;font-size:20px;font-weight:700;letter-spacing:-.7px}
+.brand em{font-style:normal;color:var(--accent)}
+.brand small{display:block;font-size:11px;letter-spacing:2px;font-weight:500}
+.navitem{display:flex;width:100%;justify-content:flex-start;gap:10px;padding:10px;margin:4px 0;text-decoration:none;color:var(--text);border:0;background:transparent;border-radius:8px}
+.navitem:hover{background:transparent}
+.navitem[aria-current]{background:rgba(51,51,47,.1);font-weight:600}
+.navitem svg{width:18px;height:18px;color:var(--accent);flex-shrink:0}
+.sidefoot{margin:36px 10px;color:var(--muted);font-size:12px}
+.shellhead{display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
+.shellhead small{margin-left:auto}
+.shellhead button{padding:3px 10px;min-height:30px}
+main{max-width:1300px;margin:0 auto;padding:24px;min-width:0}
+.pagehead{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:20px}
+.pagehead p{margin-top:6px;color:var(--muted)}
+.preview{border:1px dashed var(--border);border-radius:8px;padding:12px 16px;margin-bottom:20px}
+.preview .actions{margin-top:8px}
+.actions,.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row{justify-content:space-between}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;min-width:0}
+.card h2{margin-bottom:12px}
+.stack{display:grid;gap:16px}
+.grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(310px,1fr);gap:20px;align-items:start}
+.badge{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--surface),var(--muted) 9%);padding:2px 8px;border-radius:8px;font-size:12px}
+.badge.active{color:var(--accent);background:color-mix(in srgb,var(--surface),var(--accent) 9%)}
+.badge.good:before{content:'●';color:var(--success)}
+.badge.warn{color:var(--warning);background:color-mix(in srgb,var(--surface),var(--warning) 7%)}
+.badge.bad,.error{color:var(--danger)}
+.error{margin-top:8px;font-size:14px}
+.notice{border-left:3px solid var(--accent);padding:10px 14px;background:color-mix(in srgb,var(--surface),var(--accent) 4%);margin:12px 0}
+.notice.bad{border-color:var(--danger)}
+ul.list{list-style:none;margin:0;padding:0}
+.list>li{padding:16px 0;border-top:1px solid var(--border)}
+.list>li:first-child{border-top:0;padding-top:4px}
+.list>li:last-child{padding-bottom:0}
+.list h3{margin-bottom:6px}
+.list .actions{margin-top:12px}
+.meta{display:flex;gap:8px 18px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:6px}
+.selected{border-left:3px solid var(--accent);padding-left:12px!important}
+dl{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;margin:12px 0}
+dt{color:var(--muted)}
+dd{margin:0}
+details{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+summary{cursor:pointer;font-weight:550}
+details>p{margin-top:10px}
+.check{display:flex;align-items:center;gap:8px;font-weight:400}
+.check input{width:16px;height:16px;accent-color:var(--accent)}
+progress{display:block;width:100%;height:6px;border:0;border-radius:8px;overflow:hidden;accent-color:var(--accent);background:var(--hover);margin:12px 0}
+progress::-webkit-progress-bar{background:var(--hover)}
+progress::-webkit-progress-value{background:var(--accent)}
+.spinner{width:16px;height:16px;display:inline-block;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}
+}
+.steps{list-style:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:0;margin:16px 0}
+.steps li{font-size:12px;color:var(--muted)}
+.steps b{display:block;font-size:14px;font-weight:500;margin-bottom:4px}
+.steps [aria-current]{color:var(--accent);font-weight:650}
+.track{position:relative;padding:6px 0 12px 44px;margin:20px 0}
+.track:before{content:attr(data-step);position:absolute;left:0;top:5px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:white}
+.track:after{content:'';position:absolute;left:13px;top:43px;bottom:0;width:1px;background:var(--border)}
+.track h2{margin-bottom:12px}
+.flow{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.flow span{font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:8px}
+.flow [aria-current]{color:var(--accent);border-color:var(--accent)}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.toast{position:fixed;bottom:20px;right:24px;max-width:min(430px,90vw);background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);padding:12px 18px;border-radius:8px;z-index:5}
+.toast:empty{display:none}
+.footer{font-size:12px;color:var(--muted);margin-top:20px}
+.collapsed{grid-template-columns:72px minmax(0,1fr)}
+.collapsed .navtext,.collapsed .brand,.collapsed .sidefoot{display:none}
+.collapsed .navitem{justify-content:center}
+.collapsed .sidebar{padding-top:24px}
+[hidden]{display:none!important}
+@media(max-width:1050px){.grid{grid-template-columns:1fr}
+.steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:700px){.app{grid-template-columns:72px minmax(0,1fr)}
+.navtext,.brand,.sidefoot{display:none}
+main{padding:16px}
+.shellhead{padding:12px 16px}
+.twocol{grid-template-columns:1fr}
+.pagehead{align-items:flex-start;flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){.spinner{animation:none}
+}
+@media(forced-colors:active){button,.badge,input,select{border:1px solid ButtonText}
+:focus-visible{outline:3px solid Highlight}
+}
+
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<aside class="sidebar">
+<div class="brand">Infer<em>Yard</em>
+<small>STUDIO</small>
+</div>
+<nav aria-label="主导航">
+<a class="navitem" aria-label="Dashboard" href="dashboard-page.html">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<rect x="3" y="3" width="7" height="7" rx="1"/>
+<rect x="14" y="3" width="7" height="7" rx="1"/>
+<rect x="3" y="14" width="7" height="7" rx="1"/>
+<rect x="14" y="14" width="7" height="7" rx="1"/>
+</svg>
+<span class="navtext">Dashboard</span>
+</a>
+<button class="navitem" aria-label="设备（本次未绘制）" data-note="设备页不在本次三个原型范围内。">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<rect x="3" y="4" width="18" height="13" rx="2"/>
+<path d="M8 21h8M12 17v4"/>
+</svg>
+<span class="navtext">设备</span>
+</button>
+<a class="navitem" aria-label="模型" href="models-page.html">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="m12 3 9 5-9 5-9-5 9-5Zm-9 5v9l9 5 9-5V8M12 13v9"/>
+</svg>
+<span class="navtext">模型</span>
+</a>
+<button class="navitem" aria-label="报告（本次未绘制）" data-note="报告页不在本次三个原型范围内。">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z M14 2v6h6M8 13h8M8 17h6"/>
+</svg>
+<span class="navtext">报告</span>
+</button>
+<a class="navitem" aria-label="设置" href="settings-page.html" aria-current="page">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="M4 6h16M4 12h16M4 18h16"/>
+<circle cx="8" cy="6" r="2"/>
+<circle cx="16" cy="12" r="2"/>
+<circle cx="10" cy="18" r="2"/>
+</svg>
+<span class="navtext">设置</span>
+</a>
+</nav>
+<div class="sidefoot">本地工作区<br>
+<code>workspace-demo</code>
+<br>
+<br>onevra v0.2026.9<br>浅色设计稿</div>
+</aside>
+<div>
+<div class="shellhead">
+<button id="collapse" aria-label="折叠侧栏" aria-expanded="true">☰</button>
+<span>workspace-demo</span>
+<small>本地测评工作台</small>
+</div>
+<main>
+<header class="pagehead">
+<div>
+<h1>设置</h1>
+<p>管理本地路径、下载目录命名与配置探测。</p>
+</div>
+<span class="badge">交互原型</span>
+</header>
+<div class="preview">
+<strong>示例数据 · 离线交互演示</strong>
+<p class="muted">操作只改变当前页面，不下载、不启动服务、不发送请求；刷新后恢复初始状态。</p>
+</div>
+<div class="stack">
+<section class="card">
+<h2>路径设置</h2>
+<p class="muted">完整路径仅在此卡展示。保存路径不会自动安装 CLI、创建目录或启动模型服务。</p>
+<form id="paths">
+<div class="twocol">
+<div class="field">
+<label for="workspace_root">工作区</label>
+<input id="workspace_root" value="/Users/demo/InferYard/workspace-demo" aria-describedby="workspace_root-help workspace_root-error">
+<small id="workspace_root-help">新的工作区需在 Dashboard 初始化。</small>
+<p id="workspace_root-error" class="error" hidden>
+</p>
+</div>
+<div class="field">
+<label for="inferyard_path">InferYard CLI</label>
+<input id="inferyard_path" value="/Users/demo/.local/bin/inferyard" aria-describedby="inferyard_path-help inferyard_path-error">
+<small id="inferyard_path-help">使用本机已安装的 CLI 可执行文件。</small>
+<p id="inferyard_path-error" class="error" hidden>
+</p>
+</div>
+<div class="field">
+<label for="results_root">结果目录</label>
+<input id="results_root" value="/Users/demo/InferYard/results" aria-describedby="results_root-help results_root-error">
+<small id="results_root-help">缺失目录在 Dashboard 环境准备中处理。</small>
+<p id="results_root-error" class="error" hidden>
+</p>
+</div>
+<div class="field">
+<label for="models_root">模型目录</label>
+<input id="models_root" value="/Users/demo/InferYard/models" aria-describedby="models_root-help models_root-error">
+<small id="models_root-help">缺失目录在 Dashboard 环境准备中处理。</small>
+<p id="models_root-error" class="error" hidden>
+</p>
+</div>
+</div>
+<div class="actions" style="margin-top:16px">
+<button type="submit">保存路径设置</button>
+</div>
+<p id="path-status" role="status">
+</p>
+</form>
+</section>
+<section class="card">
+<h2>下载目录名</h2>
+<p class="muted">设置后，新下载任务自动使用基础名，无需每次填写。</p>
+<form id="names" novalidate>
+<div class="twocol">
+<div class="field">
+<label for="model_download_name">模型下载目录名</label>
+<input id="model_download_name" name="model_download_name" value="model" aria-describedby="name-help model-name-error">
+<p class="error" id="model-name-error" hidden>
+</p>
+</div>
+<div class="field">
+<label for="engine_download_name">引擎下载目录名</label>
+<input id="engine_download_name" name="engine_download_name" value="engine" aria-describedby="name-help engine-name-error">
+<p class="error" id="engine-name-error" hidden>
+</p>
+</div>
+</div>
+<p id="name-help" class="muted" style="margin-top:12px">仅允许字母、数字、点、下划线、连字符；不能为空，也不能全为点。默认值为 model / engine。</p>
+<p class="notice">名称被占用时自动追加序号，如 model-2、model-3；不覆盖已有目录。实际名称显示在下载任务详情中。</p>
+<div class="actions">
+<button class="primary" type="submit">保存下载目录名</button>
+<button type="button" id="defaults">恢复默认值</button>
+<button type="button" id="invalid">演示非法名称</button>
+</div>
+<p id="name-status" role="status" style="margin-top:10px">
+</p>
+</form>
+</section>
+<section class="card">
+<h2>生效值与探测状态</h2>
+<p class="muted">此处仅显示名称与目录基名；以下探测结果为示例，不读取本机文件。</p>
+<dl id="effective">
+<dt>工作区</dt>
+<dd id="effective-workspace_root">workspace-demo · 已初始化</dd>
+<dt>InferYard CLI</dt>
+<dd id="effective-inferyard_path">inferyard · 可用</dd>
+<dt>结果目录</dt>
+<dd id="effective-results_root">results · 目录存在</dd>
+<dt>模型目录</dt>
+<dd id="effective-models_root">models · 目录存在</dd>
+<dt>模型下载目录名</dt>
+<dd id="effective-model">model</dd>
+<dt>引擎下载目录名</dt>
+<dd id="effective-engine">engine</dd>
+</dl>
+<p id="probe-status" role="status">
+<span class="badge good">示例探测完成</span>
+</p>
+<div class="actions" style="margin-top:12px">
+<button id="probe">重新探测</button>
+<label class="check">
+<input id="probe-fail" type="checkbox">演示 CLI 不可用</label>
+</div>
+<p id="probe-error" class="error" role="alert" hidden>
+</p>
+</section>
+</div>
+<p class="footer">HTML 设计基准 · 原生组件效果、系统主题及辅助技术需另行验收。</p>
+</main>
+</div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div><script>const $=id=>document.getElementById(id);let toastTimer;function toast(message){$('toast').textContent=message;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').textContent='',4500)}document.querySelectorAll('[data-note]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.note)));$('collapse').onclick=()=>{const collapsed=$('app').classList.toggle('collapsed');$('collapse').setAttribute('aria-expanded',String(!collapsed));$('collapse').setAttribute('aria-label',collapsed?'展开侧栏':'折叠侧栏')};
+
+const pairs=[['model_download_name','model-name-error','effective-model'],['engine_download_name','engine-name-error','effective-engine']];function validate(){let first=null;for(const [id,error]of pairs){const value=$(id).value;const valid=/^[A-Za-z0-9._-]+$/.test(value)&&!/^\.+$/.test(value);$(id).setAttribute('aria-invalid',String(!valid));$(error).hidden=valid;$(error).textContent=valid?'':'请输入字母、数字、点、下划线或连字符，不能为空或全为点。';if(!valid&&!first)first=$(id)}return first}
+$('names').onsubmit=e=>{e.preventDefault();const first=validate();if(first){$('name-status').textContent='保存失败，请修正标记的目录名。';first.focus();return}pairs.forEach(([id,,effective])=>$(effective).textContent=$(id).value);$('name-status').textContent='下载目录名已保存，仅用于新建下载任务。';toast('下载目录名已保存。')};pairs.forEach(([id])=>$(id).oninput=()=>{validate();$('name-status').textContent='有未保存的修改。'});$('defaults').onclick=()=>{$('model_download_name').value='model';$('engine_download_name').value='engine';validate();$('name-status').textContent='已恢复默认输入，请保存以生效。'};$('invalid').onclick=()=>{$('model_download_name').value='...';$('engine_download_name').value='engine/test';validate();$('name-status').textContent='示例：非法名称未保存，生效值保持不变。';$('model_download_name').focus()};
+const savedPaths=Object.fromEntries(['workspace_root','inferyard_path','results_root','models_root'].map(id=>[id,$(id).value]));$('paths').onsubmit=e=>{e.preventDefault();let invalid=null;for(const id of ['workspace_root','inferyard_path','results_root','models_root']){const value=$(id).value.trim(),ok=value.startsWith('/')&&value.length>1;$(id).setAttribute('aria-invalid',String(!ok));$(id+'-error').hidden=ok;$(id+'-error').textContent=ok?'':'请输入有效的绝对路径（本页为 macOS 示例）。';if(!ok&&!invalid)invalid=$(id)}if(invalid){$('path-status').textContent='路径未保存，请修正标记字段。';invalid.focus();return}for(const id of ['workspace_root','inferyard_path','results_root','models_root'])$('effective-'+id).textContent=(savedPaths[id]=$(id).value.trim()).replace(/\/+$/,'').split('/').pop()+' · 待探测';$('path-status').textContent='路径设置已保存，待探测；未创建目录。';$('probe-status').textContent='待探测：路径已更新';$('probe-error').hidden=true;toast('示例路径设置已保存。')};$('probe').onclick=async()=>{$('probe').disabled=true;$('probe-fail').disabled=true;const fail=$('probe-fail').checked;$('probe-error').hidden=true;$('probe-status').innerHTML='<span class="spinner" aria-hidden="true"></span> 正在探测配置';await new Promise(r=>setTimeout(r,900));$('probe').disabled=false;$('probe-fail').disabled=false;$('probe-status').textContent=fail?'探测未通过':'示例探测完成';$('probe-error').hidden=!fail;if(fail){$('probe-error').textContent='CLI 不可用：指定文件未找到。请在路径设置修正 CLI 位置后重新探测。';$('effective-inferyard_path').textContent=savedPaths.inferyard_path.split('/').pop()+' · 不可用'}else{for(const id of ['workspace_root','inferyard_path','results_root','models_root'])$('effective-'+id).textContent=$(id).value.trim().replace(/\/+$/,'').split('/').pop()+' · '+(id==='inferyard_path'?'可用':id==='workspace_root'?'已初始化':'目录存在');toast('示例探测完成。')}};
+</script></body></html>

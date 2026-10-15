@@ -16,7 +16,7 @@
 | [onevra v0.2026.9](https://github.com/oneo-me/onevra) 组件契约（`components/doc.go`）与 `theme` 包文档 | 组件句柄生命周期、控件语义、主题调色板与外壳行为 |
 | MyGo v0.4.8 官方文档与源码 | API、布局、主题、键盘和辅助技术行为 |
 | 本文 | Studio 的信息层级、组件用法、文案、尺寸策略和验收要求 |
-| [模型与下载原型](prototypes/models-downloads-page.html) | 已有页面设计输入；CSS、浏览器截图不作为原生验收结果 |
+| [页面原型](prototypes/) | 页面设计基准（Dashboard、模型、设置）；CSS、浏览器截图不作为原生验收结果 |
 
 onevra 在 MyGo 之上提供产品中立的常用控件与侧栏外壳，但没有替 Studio 定义整套产品设计语言。
 下文中的双栏比例、卡片尺寸、主操作层级、中文文案与验收窗口均为项目规则。
@@ -41,7 +41,7 @@ onevra 在 MyGo 之上提供产品中立的常用控件与侧栏外壳，但没�
 主窗口使用 onevra `shells/sidebar.Shell`：可折叠、可拖拽调宽的侧栏，配浮动 header 与内容区；
 侧栏默认 205 DIP 宽，折叠与宽度选择在会话内保持（跨折叠与页面切换）；窗口几何经 StateKey 跨会话恢复。顶部不提供通用“刷新”按钮；
 状态工具栏仅在刷新或执行操作时显示。
-侧栏保持 Dashboard、设备、模型与下载、报告、设置的顺序，用 onevra `components.Sidebar`/
+侧栏保持 Dashboard、设备、模型、报告、设置的顺序，用 onevra `components.Sidebar`/
 `components.SidebarItem` 配 lucide 图标；
 缺 CLI、目录或模型时仍能进入每一页。运行详情属于 Dashboard，提供明确返回入口。
 每页和详情分别保存滚动位置，刷新不把用户带回顶部；表单草稿不被后台刷新覆盖。
@@ -50,7 +50,7 @@ onevra 在 MyGo 之上提供产品中立的常用控件与侧栏外壳，但没�
 | --- | --- |
 | Dashboard | 当前阶段、阻断原因与下一步；环境准备、启动、取消、续测；队列与历史随后展示 |
 | 设备 | 硬件与采集状态；执行设备检查或解决阻断；推荐信息标明其所在页面 |
-| 模型与下载 | 模型资产、下载任务、引擎状态、绑定提示；就近操作对应资源 |
+| 模型 | 本地模型与引擎清单、下载任务、引擎服务与运行中服务；就近选择对应资源 |
 | 运行详情 | 任务身份、状态、冻结分母下的进度、题目与资源；返回和取消 |
 | 报告 | 来源选择、生成条件、报告列表；生成、核验和打开分别命名 |
 | 设置 | 路径编辑与保存；各路径的副作用在 Dashboard 的环境准备区说明 |
@@ -58,7 +58,7 @@ onevra 在 MyGo 之上提供产品中立的常用控件与侧栏外壳，但没�
 Dashboard 按 `progress.v1` 阶段驱动：环境准备区只在有缺项时出现；阶段动作区只渲染
 当前阶段一个；就绪后依次展示快速运行、任务队列与运行历史。
 
-模型与下载页保留四区及内联详情。其他页面可以折叠低频诊断信息，但当前阻断原因、
+模型页保留四卡及内联详情。其他页面可以折叠低频诊断信息，但当前阻断原因、
 失败恢复动作、必要输入和关键缺测原因必须直接可见。原始字段树只用于诊断或原始参数。
 
 ## 布局与尺寸
@@ -72,7 +72,7 @@ MyGo 布局使用 DIP。以下数值来自现有主窗口与模型页，作为�
 | 侧栏 | onevra Shell 侧栏默认 205 宽，可折叠、可拖拽调宽；缩放时保证标签和键盘焦点可见 |
 | 内容外边距 | 24，约 `t.Space(6)` |
 | 主要区块间距 | 16；模型页列间与卡片间可用 20 |
-| 卡片 | 内边距 18，圆角 12；普通内容间距 10 |
+| 卡片 | 内边距 18，圆角 8（跟随 `theme.Onevra` 的 `Radius`）；普通内容间距 10 |
 | 紧密内容 | 4、8；表单或操作组 10、12；不按单个页面随意新增刻度 |
 | 边框 | 1，使用 `t.Border` |
 | 模型页宽布局 | 左右约 1.2:1，右栏最小宽 310 |
@@ -94,6 +94,25 @@ MyGo 布局使用 DIP。以下数值来自现有主窗口与模型页，作为�
 `ShellOptions.Theme` 安装，浅色/深色跟随 `mygo.Theme.SetSource` 并随系统高对比度变化。
 背景使用 `Background`，卡片使用 `Surface`，主文字使用 `Text`，次要说明使用 `TextMuted`，
 分隔线使用 `Border`。正文和交互区域不硬编码浅色背景或黑色文字。
+
+HTML 原型与样式对照使用调色板实际值（来源：onevra `theme/theme.go` 的
+`LightPalette`/`DarkPalette`，升级 onevra 时复核）：
+
+| 语义 | 浅色 | 深色 |
+| --- | --- | --- |
+| `Background` | `#fcfbf9` | `#211f1c` |
+| `Surface` | `#fefefd` | `#2b2925` |
+| `SurfaceHover` / `SurfacePressed` | `#eceae4` / `#d9d7d2` | `#36332e` / `#403c36` |
+| `Border` | `#deded5` | `#504b43` |
+| `Text` | `#33332f` | `#eeeae2` |
+| `TextMuted` | `#72726a` | `#bdb6aa` |
+| `Accent`（terracotta） | `#bd481b` | `#ed986e` |
+| `AccentText` | `#ffffff` | `#291b14` |
+| `Success` | `#059669` | `#79bea1` |
+| `Warning` | `#b45309` | `#e6b567` |
+| `Danger` | `#b4444c` | `#e58f95` |
+| `Selection` / `Focus` | `rgba(230,101,43,.22)` / `rgba(185,71,22,.55)` | `Accent` 24% / 80% 透明度 |
+| 圆角 `Radius` | 8 | 8 |
 
 | 语义 | 主题颜色 | 使用条件 |
 | --- | --- | --- |
@@ -156,6 +175,13 @@ MyGo 布局使用 DIP。以下数值来自现有主窗口与模型页，作为�
 | 表格 | `components.Table`，封装见 [table.go](../internal/pages/table.go) |
 | 资源曲线 | `components.chart.Line`（见“测量、进度与图表”） |
 | 侧栏导航 | `components.Sidebar` / `components.SidebarItem` 配 lucide 图标 |
+| 列表 | `components.List`（模型/引擎/服务清单与报告来源列表） |
+| 折叠分区 | `components.Collapsible`（高级选项与低频诊断折叠） |
+| 通知 | `components.Toast`（成功与状态提示；错误仍保留在操作附近） |
+| 滚动容器 | `components.ScrollView` |
+
+全面切换约定：onevra 有等价组件的一律使用 onevra，不再新增 MyGo 自带控件实现。
+源码残留（`ui.List`、`ui.Collapsible`、`c.Toast`）随本批页面改造迁移到上表组件。
 
 下列保留 MyGo 原生实现，理由是 onevra 没有等价能力：
 
@@ -163,11 +189,7 @@ MyGo 布局使用 DIP。以下数值来自现有主窗口与模型页，作为�
 | --- | --- |
 | 标题：`ui.Text` 配 `Role(ui.RoleHeading).Level(...)` | onevra `Text` 不提供标题角色与层级无障碍语义 |
 | 表单标签与错误关联：`ui.Field` | onevra 不提供等价的标签/错误关联外壳 |
-| 布局原语：`ui.Row`、`ui.Column`、`ui.Scroll` 等 | 页面外层布局仍由 MyGo 布局原语承载 |
-
-下列控件在 onevra 有对应组件（`components.List`、`components.Collapsible`、`components.Toast`），
-本轮未迁移，继续使用 MyGo 实现：`ui.List`（报告来源列表）、`ui.Collapsible`（诊断折叠）、
-`ui.Toolbar`/`ui.Grid`（无 onevra 等价的布局骨架）、`c.Toast` 通知。迁移与否按后续页面审查评估。
+| 布局原语：`ui.Row`、`ui.Column`、`ui.Scroll`、`ui.Toolbar`、`ui.Grid` 等 | 页面外层布局骨架仍由 MyGo 布局原语承载 |
 
 依赖许可：onevra 为 MIT；其适配自 MyGo 的部分保留上游 MIT 声明，lucide 图标为 ISC/Feather MIT。
 

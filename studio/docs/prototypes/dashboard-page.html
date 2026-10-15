@@ -1,770 +1,421 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
-<title>Dashboard 原型 · InferYard Studio</title>
+<title>Dashboard · InferYard Studio 原型</title>
 <style>
-  :root {
-    --bg: #f2f2f4;
-    --sidebar: #ebebef;
-    --card: #ffffff;
-    --border: #e2e2e6;
-    --text: #1d1d1f;
-    --muted: #6e6e73;
-    --accent: #0a7aff;
-    --accent-soft: #e5f0ff;
-    --success: #248a3d;
-    --success-soft: #e6f4ea;
-    --danger: #d70015;
-    --danger-soft: #fdecec;
-    --warning: #b25000;
-    --warning-soft: #fff4e5;
-    --radius: 12px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
-    background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5;
-  }
-  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+:root{color-scheme:light;--bg:#fcfbf9;--surface:#fefefd;--hover:#eceae4;--pressed:#d9d7d2;--border:#deded5;--text:#33332f;--muted:#72726a;--accent:#bd481b;--success:#059669;--warning:#b45309;--danger:#b4444c;--focus:rgba(185,71,22,.55);--radius:8px}
 
-  .window { display: flex; min-height: 100vh; }
-  aside {
-    width: 205px; flex: none; background: var(--sidebar);
-    padding: 12px 10px; border-right: 1px solid var(--border);
-  }
-  aside .brand { font-weight: 700; margin: 6px 8px 14px; }
-  aside .nav-item { padding: 6px 10px; border-radius: 6px; color: #4b4b50; margin-bottom: 2px; }
-  aside .nav-item.active { background: #dcdce2; font-weight: 600; color: var(--text); }
-  aside .foot { margin: 28px 8px 0; font-size: 11px; color: var(--muted); }
+/* onevra v0.2026.9 LightPalette. Dark reference: Background #211f1c,
+Surface #2b2925, Text #eeeae2, TextMuted #bdb6aa, Accent #ed986e, AccentText #291b14.
+HTML represents component semantics, not native MyGo rendering or acceptance. */
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.65 system-ui,-apple-system,"PingFang SC",sans-serif}
+h1,h2,h3,p{margin:0}
+h1{font-size:24px;line-height:1.4}
+h2{font-size:18px;line-height:1.5}
+h3{font-size:15px}
+p+ p{margin-top:8px}
+button,input,select{font:inherit;color:inherit}
+button,.button{border:1px solid var(--border);border-radius:8px;padding:7px 14px;background:color-mix(in srgb,var(--bg),var(--text) 8%);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px}
+button:hover,.button:hover{background:var(--hover)}
+button:active{background:var(--pressed)}
+.primary{background:var(--accent);border-color:var(--accent);color:white}
+.primary:hover{background:var(--accent);filter:brightness(.94)}
+button:disabled{opacity:.5;cursor:default}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+input,select{min-width:0;width:100%;border:1px solid var(--border);background:var(--surface);padding:8px 10px;border-radius:8px}
+input[aria-invalid=true]{border-color:var(--danger)}
+label{display:block;font-weight:550;margin-bottom:6px}
+.field{margin-top:12px}
+.field small{display:block;margin-top:4px}
+small,.muted{color:var(--muted)}
+small{font-size:12px}
+code,.mono{font:12px/1.7 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}
+p,li,dd,h3,strong{overflow-wrap:anywhere}
+.app{display:grid;grid-template-columns:205px minmax(0,1fr);min-height:100vh}
+.sidebar{padding:24px 12px;border-right:1px solid var(--border)}
+.brand{padding:0 10px 28px;font-size:20px;font-weight:700;letter-spacing:-.7px}
+.brand em{font-style:normal;color:var(--accent)}
+.brand small{display:block;font-size:11px;letter-spacing:2px;font-weight:500}
+.navitem{display:flex;width:100%;justify-content:flex-start;gap:10px;padding:10px;margin:4px 0;text-decoration:none;color:var(--text);border:0;background:transparent;border-radius:8px}
+.navitem:hover{background:transparent}
+.navitem[aria-current]{background:rgba(51,51,47,.1);font-weight:600}
+.navitem svg{width:18px;height:18px;color:var(--accent);flex-shrink:0}
+.sidefoot{margin:36px 10px;color:var(--muted);font-size:12px}
+.shellhead{display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
+.shellhead small{margin-left:auto}
+.shellhead button{padding:3px 10px;min-height:30px}
+main{max-width:1300px;margin:0 auto;padding:24px;min-width:0}
+.pagehead{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:20px}
+.pagehead p{margin-top:6px;color:var(--muted)}
+.preview{border:1px dashed var(--border);border-radius:8px;padding:12px 16px;margin-bottom:20px}
+.preview .actions{margin-top:8px}
+.actions,.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row{justify-content:space-between}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;min-width:0}
+.card h2{margin-bottom:12px}
+.stack{display:grid;gap:16px}
+.grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(310px,1fr);gap:20px;align-items:start}
+.badge{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--surface),var(--muted) 9%);padding:2px 8px;border-radius:8px;font-size:12px}
+.badge.active{color:var(--accent);background:color-mix(in srgb,var(--surface),var(--accent) 9%)}
+.badge.good:before{content:'●';color:var(--success)}
+.badge.warn{color:var(--warning);background:color-mix(in srgb,var(--surface),var(--warning) 7%)}
+.badge.bad,.error{color:var(--danger)}
+.error{margin-top:8px;font-size:14px}
+.notice{border-left:3px solid var(--accent);padding:10px 14px;background:color-mix(in srgb,var(--surface),var(--accent) 4%);margin:12px 0}
+.notice.bad{border-color:var(--danger)}
+ul.list{list-style:none;margin:0;padding:0}
+.list>li{padding:16px 0;border-top:1px solid var(--border)}
+.list>li:first-child{border-top:0;padding-top:4px}
+.list>li:last-child{padding-bottom:0}
+.list h3{margin-bottom:6px}
+.list .actions{margin-top:12px}
+.meta{display:flex;gap:8px 18px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:6px}
+.selected{border-left:3px solid var(--accent);padding-left:12px!important}
+dl{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;margin:12px 0}
+dt{color:var(--muted)}
+dd{margin:0}
+details{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+summary{cursor:pointer;font-weight:550}
+details>p{margin-top:10px}
+.check{display:flex;align-items:center;gap:8px;font-weight:400}
+.check input{width:16px;height:16px;accent-color:var(--accent)}
+progress{display:block;width:100%;height:6px;border:0;border-radius:8px;overflow:hidden;accent-color:var(--accent);background:var(--hover);margin:12px 0}
+progress::-webkit-progress-bar{background:var(--hover)}
+progress::-webkit-progress-value{background:var(--accent)}
+.spinner{width:16px;height:16px;display:inline-block;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}
+}
+.steps{list-style:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:0;margin:16px 0}
+.steps li{font-size:12px;color:var(--muted)}
+.steps b{display:block;font-size:14px;font-weight:500;margin-bottom:4px}
+.steps [aria-current]{color:var(--accent);font-weight:650}
+.track{position:relative;padding:6px 0 12px 44px;margin:20px 0}
+.track:before{content:attr(data-step);position:absolute;left:0;top:5px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:white}
+.track:after{content:'';position:absolute;left:13px;top:43px;bottom:0;width:1px;background:var(--border)}
+.track h2{margin-bottom:12px}
+.flow{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.flow span{font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:8px}
+.flow [aria-current]{color:var(--accent);border-color:var(--accent)}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.toast{position:fixed;bottom:20px;right:24px;max-width:min(430px,90vw);background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);padding:12px 18px;border-radius:8px;z-index:5}
+.toast:empty{display:none}
+.footer{font-size:12px;color:var(--muted);margin-top:20px}
+.collapsed{grid-template-columns:72px minmax(0,1fr)}
+.collapsed .navtext,.collapsed .brand,.collapsed .sidefoot{display:none}
+.collapsed .navitem{justify-content:center}
+.collapsed .sidebar{padding-top:24px}
+[hidden]{display:none!important}
+@media(max-width:1050px){.grid{grid-template-columns:1fr}
+.steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:700px){.app{grid-template-columns:72px minmax(0,1fr)}
+.navtext,.brand,.sidefoot{display:none}
+main{padding:16px}
+.shellhead{padding:12px 16px}
+.twocol{grid-template-columns:1fr}
+.pagehead{align-items:flex-start;flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){.spinner{animation:none}
+}
+@media(forced-colors:active){button,.badge,input,select{border:1px solid ButtonText}
+:focus-visible{outline:3px solid Highlight}
+}
 
-  main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  .content { flex: 1; padding: 24px; }
-  .content > * { max-width: 900px; }
-  h1 { font-size: 24px; margin-bottom: 4px; }
-  h1 + .sub { margin-bottom: 16px; }
-
-  .card {
-    background: var(--card); border-radius: var(--radius); padding: 18px;
-    margin-bottom: 16px; border: 1px solid var(--border);
-  }
-  /* ===== 阶段步骤：编号轨道（非卡片） ===== */
-  .stage .step, .step-panel {
-    position: relative; padding-left: 44px; margin-bottom: 26px;
-  }
-  .stage .step::before, .step-panel::before {
-    content: attr(data-num); position: absolute; left: 0; top: -2px;
-    width: 26px; height: 26px; border-radius: 50%;
-    background: var(--accent); color: #fff; font-weight: 700; font-size: 13px;
-    display: grid; place-items: center;
-  }
-  .stage .step::after, .step-panel::after {
-    content: ""; position: absolute; left: 12px; top: 30px; bottom: 10px;
-    width: 2px; background: var(--border);
-  }
-  .stage .step > h2, .step-panel > h2 { font-size: 17px; margin-bottom: 8px; }
-  .stage .step > h2 .tag, .step-panel > h2 .tag {
-    font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 8px;
-  }
-
-  .card > h2 { font-size: 17px; margin-bottom: 12px; }
-  .card > h2 .tag { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 8px; }
-  .sub { color: var(--muted); font-size: 12px; }
-
-  button, .btn {
-    font: inherit; font-weight: 600; border-radius: 8px; border: 1px solid var(--border);
-    background: #fff; color: var(--text); padding: 5px 14px; cursor: pointer;
-  }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.small { padding: 2px 10px; font-size: 12px; font-weight: 500; }
-  .btn:disabled { opacity: .45; cursor: not-allowed; }
-  .btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-  .btn.primary:hover:not(:disabled) { color: #fff; filter: brightness(.92); }
-
-  .badge {
-    display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
-    padding: 3px 12px; font-weight: 700; font-size: 13px; white-space: nowrap;
-  }
-  .badge.ok { background: var(--success-soft); color: var(--success); }
-  .badge.bad { background: var(--danger-soft); color: var(--danger); }
-  .badge.warn { background: var(--warning-soft); color: var(--warning); }
-  .badge.info { background: var(--accent-soft); color: var(--accent); }
-  .badge.neutral { background: #ececf0; color: var(--muted); }
-  .badge.small { font-size: 12px; padding: 1px 9px; font-weight: 600; }
-
-  /* ===== 结论卡 ===== */
-  .conclusion .row1 { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .conclusion .badge { font-size: 15px; padding: 5px 15px; }
-  .conclusion .summary { font-size: 14px; }
-  .conclusion .reason { color: var(--danger); font-size: 12px; margin-top: 8px; }
-  .conclusion .reason.warn { color: var(--warning); }
-  .conclusion .meta {
-    display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px;
-    border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; flex-wrap: wrap;
-  }
-  .steps-strip { display: flex; gap: 4px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
-  .steps-strip b {
-    padding: 3px 8px; border-radius: 6px; font-weight: 500; font-size: 12px;
-    background: #f0f0f3; color: var(--muted);
-  }
-  .steps-strip b.done { background: var(--success-soft); color: var(--success); }
-  .steps-strip b.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
-  .steps-strip i { color: #c7c7cc; font-style: normal; font-size: 11px; }
-
-  /* ===== 就绪度 ===== */
-  table.kv { width: 100%; border-collapse: collapse; }
-  table.kv td { padding: 5px 0; vertical-align: top; }
-  table.kv td.k { width: 130px; color: var(--muted); white-space: nowrap; padding-right: 16px; }
-  table.kv tr + tr td { border-top: 1px solid #f0f0f3; }
-
-  .status-panel { padding: 14px 16px; border-radius: 10px; background: #f7f9fc; margin-bottom: 12px; }
-  .status-panel h3 { font-size: 15px; margin: 6px 0 2px; }
-  .status-panel p { color: var(--muted); font-size: 12px; }
-  .status-panel.bad { background: #fff5f3; }
-  .status-panel.good { background: #f0f8f3; }
-  .status-panel.warn { background: #fff9f0; }
-
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
-  .notice {
-    font-size: 12px; padding: 10px 13px; background: #f7f8fa; border-radius: 8px;
-    margin-top: 12px; color: var(--muted);
-  }
-  .notice.warning { background: var(--warning-soft); color: var(--warning); }
-  .notice.danger { background: var(--danger-soft); color: var(--danger); }
-
-  label.f { display: block; font-size: 12px; color: var(--muted); margin-top: 12px; }
-  input[type=text], select {
-    font: inherit; border: 1px solid #cbd2dc; border-radius: 7px; padding: 7px 9px;
-    width: 100%; background: #fff; color: var(--ink, var(--text)); margin-top: 4px;
-  }
-  .check { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 13px; }
-  .check input { width: auto; }
-
-  .cmdline {
-    display: flex; align-items: center; gap: 8px; background: #f6f6f8;
-    border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; margin-top: 8px;
-  }
-  .cmdline code { flex: 1; white-space: pre-wrap; word-break: break-all; }
-
-  .progress { height: 6px; border-radius: 4px; background: #ececf0; overflow: hidden; margin: 10px 0 6px; }
-  .progress > i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
-  .progress.indeterminate > i {
-    width: 30%; background: var(--accent);
-    animation: slide 1.4s ease-in-out infinite alternate;
-  }
-  @keyframes slide { from { margin-left: 0; } to { margin-left: 70%; } }
-
-  /* ===== 表格 ===== */
-  table.list { width: 100%; border-collapse: collapse; font-size: 12px; }
-  table.list th {
-    text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  table.list td { padding: 7px 8px; border-bottom: 1px solid #f0f0f3; vertical-align: middle; }
-  table.list tr.sel td { background: var(--accent-soft); }
-  table.list tr.clickable { cursor: pointer; }
-  .rowdetail {
-    border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
-    margin-top: 12px; font-size: 12px;
-  }
-  .rowdetail .path { color: var(--muted); word-break: break-all; }
-
-  /* ===== 详情子视图 ===== */
-  .svgbox { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #fbfbfc; }
-  .svgbox .cap { font-size: 11px; color: var(--muted); margin-top: 6px; }
-
-  details { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 12px; }
-  details summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 600; }
-
-  .preview-bar {
-    background: #eaf0fb; border: 1px solid #d8e2f5; border-radius: 10px;
-    padding: 10px 16px; margin-bottom: 16px; font-size: 12px;
-  }
-  .preview-bar small { display: block; color: var(--muted); margin-top: 2px; }
-
-  /* ===== 原型切换器 ===== */
-  #switcher {
-    position: fixed; right: 12px; bottom: 12px; z-index: 99;
-    background: rgba(20,20,25,.9); color: #fff; border-radius: 10px;
-    padding: 10px 12px; font-size: 12px; display: flex; flex-direction: column; gap: 6px;
-    max-width: 240px;
-  }
-  #switcher .row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
-  #switcher button {
-    background: #34343c; color: #cfd0d6; border: 0; border-radius: 6px;
-    padding: 3px 9px; font-size: 12px; font-weight: 500;
-  }
-  #switcher button.on { background: var(--accent); color: #fff; }
-  #switcher .lbl { color: #9a9aa2; }
-
-  #toast {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    background: #24324b; color: #fff; padding: 10px 20px; border-radius: 10px;
-    max-width: 90vw; box-shadow: 0 6px 25px #0002; z-index: 100; font-size: 13px;
-  }
-  #toast:empty { display: none; }
-
-  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
-
-<div class="window">
-  <aside>
-    <div class="brand">InferYard Studio</div>
-    <div class="nav-item active">Dashboard</div>
-    <div class="nav-item">设备</div>
-    <div class="nav-item">模型与下载</div>
-    <div class="nav-item">报告</div>
-    <div class="nav-item">设置</div>
-    <div class="foot">
-      交互原型 · MyGo 原生界面设计稿<br>
-      导航为 5 页：向导页与运行页已并入 Dashboard<br><br>
-      用右下角切换器预览各阶段
-    </div>
-  </aside>
-
-  <main>
-    <div class="content">
-      <!-- ================= 主视图 ================= -->
-      <div id="main-view">
-        <h1>Dashboard</h1>
-        <p class="sub">配置、运行与跟踪本地模型测评。</p>
-
-        <div class="preview-bar">
-          <strong>交互原型 · 所有数据均为示例</strong>
-          <small>右下角切换器预览九个阶段；按钮只更新本页，不安装、不下载、不启动服务、不访问网络。</small>
-        </div>
-
-        <!-- ========== 环境准备区（仅未就绪时显示） ========== -->
-        <section id="env-section" data-sc="fresh">
-          <div class="step-panel" data-num="1">
-            <h2>环境准备 <span class="tag">首次使用一次性完成</span></h2>
-            <div class="status-panel warn">
-              <span class="badge warn small">CLI 未安装</span>
-              <h3>安装 InferYard CLI</h3>
-              <p>自动安装通过 uv 安装匹配版本的 CLI；缺少 uv 时下载官方独立工具并校验，不修改终端配置。也可在设置页手动指定路径。</p>
-            </div>
-            <table class="kv">
-              <tr><td class="k">CLI</td><td>未就绪 · 请安装或在设置页配置路径</td></tr>
-              <tr><td class="k">工作区</td><td><code>~/.inferyard</code> · 待初始化</td></tr>
-              <tr><td class="k">结果目录</td><td><code>~/.inferyard/results</code> · 待创建</td></tr>
-              <tr><td class="k">模型目录</td><td><code>~/.inferyard/models</code> · 待创建</td></tr>
-            </table>
-            <div class="actions">
-              <button class="btn primary" onclick="toast('模拟：复用/下载固定版本 uv 并校验后安装 inferyard==0.4.5。')">自动安装 CLI 0.4.5</button>
-              <button class="btn" onclick="toast('模拟：目录已准备（幂等，不覆盖已有文件）。')">准备目录</button>
-            </div>
-            <label class="f" for="init-dir">初始化工作区（目标必须是新目录，成功后自动切换）</label>
-            <input type="text" id="init-dir" value="/Users/guoxudong/.inferyard/workspace-1736900000">
-            <div class="actions">
-              <button class="btn" onclick="toast('模拟：inferyard init --out … 成功，设置已切换到新工作区。')">初始化工作区</button>
-            </div>
-            <div class="notice">保存设置不创建目录；路径修改在设置页进行。CLI 未就绪时下方各阶段只读展示。</div>
-          </div>
-        </section>
-
-        <!-- ========== 结论卡 ========== -->
-        <section>
-          <div class="card conclusion">
-            <div class="row1">
-              <span class="badge" id="c-badge">—</span>
-              <span class="summary" id="c-summary">—</span>
-            </div>
-            <div class="reason" id="c-reason" hidden>—</div>
-            <div class="steps-strip" id="c-steps" aria-label="六阶段进度"></div>
-            <div class="meta">
-              <span id="c-bundles">—</span>
-              <span style="flex:1"></span>
-              <span>工作区 <code>~/.inferyard</code></span>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========== 阶段动作卡：设备检查 ========== -->
-        <section class="stage" data-stage="device_check">
-          <div class="step" data-num="2">
-            <h2>设备检查 <span class="tag">inferyard device-check</span></h2>
-            <p>检查硬件、本机模型与推荐方案，写入工作区预检证据。检查不发送模型请求。</p>
-            <div class="actions">
-              <button class="btn primary" onclick="toast('模拟：device-check 完成，预检通过。')">运行设备检查</button>
-              <button class="btn" onclick="toast('设备明细、推荐配置与缺测原因在「设备」页查看。')">查看设备页明细</button>
-            </div>
-            <div class="notice">需要下载模型或引擎时，先前往「模型与下载」页。</div>
-          </div>
-        </section>
-
-        <!-- ========== 阶段动作卡：创建候选 ========== -->
-        <section class="stage" data-stage="prepare_candidate" hidden>
-          <div class="step" data-num="3">
-            <h2>创建候选 <span class="tag">zh-core · 冻结模型、引擎与运行预算</span></h2>
-            <p>当前题包 <b>zh-core</b>。候选冻结后不可修改，修改需创建新候选。</p>
-            <label class="f" for="engine-path">引擎文件绝对路径</label>
-            <input type="text" id="engine-path" value="/Users/guoxudong/.inferyard/engines/prism-b10743/bin/llama-server">
-            <div class="actions">
-              <button class="btn primary" onclick="toast('模拟：config create 完成，候选已冻结。')">创建候选</button>
-            </div>
-            <div class="notice">引擎归档在「模型与下载」页获取；内置预置 Prism 引擎（按平台固定版本）。</div>
-          </div>
-        </section>
-
-        <!-- ========== 阶段动作卡：启动与绑定 ========== -->
-        <section class="stage" data-stage="bind" hidden>
-          <div class="step" data-num="4">
-            <h2>启动模型服务并绑定 <span class="tag">zh-core</span></h2>
-            <div class="notice danger" id="bind-stale" hidden>旧绑定已失效（PID 或启动 tick 不匹配），请重启服务并重新绑定。</div>
-            <p class="sub">Studio 启动冻结候选中的引擎并管理其生命周期；退出 Studio 时自动停止。绑定时 CLI 校验 PID、启动时间与实际参数。</p>
-            <div class="cmdline">
-              <code>llama-server -m models/smollm2/model.gguf --host 127.0.0.1 --port 8080</code>
-              <button class="btn small" onclick="toast('已复制启动命令。')">复制</button>
-            </div>
-            <div class="status-panel" id="engine-panel" style="margin-top:12px">
-              <span class="badge neutral small" id="engine-badge">stopped</span>
-              <h3 id="engine-heading">服务尚未启动</h3>
-              <p id="engine-desc">启动后每秒探测 /health，2xx 转运行中；默认最多等待 10 分钟。</p>
-            </div>
-            <div class="actions">
-              <button class="btn primary" id="engine-start" onclick="engineStart()">启动服务</button>
-              <button class="btn primary" id="engine-bind" disabled onclick="toast('模拟：config bind 完成，CLI 已核验进程身份。')">绑定服务</button>
-              <button class="btn" id="engine-stop" disabled onclick="engineStop()">停止服务</button>
-            </div>
-            <details>
-              <summary>绑定已有进程（操作者自启动的服务）</summary>
-              <label class="f" for="proc">已启动的本机进程（只显示 PID 与可执行名）</label>
-              <select id="proc"><option>48216 · llama-server</option><option>50177 · llama-server</option></select>
-              <label class="f" for="ep">endpoint</label>
-              <input type="text" id="ep" value="http://127.0.0.1:8080">
-              <div class="actions">
-                <button class="btn" onclick="toast('模拟：已绑定既有进程；身份核验由 CLI 完成。')">绑定进程</button>
-              </div>
-            </details>
-            <div class="notice">启动参数含凭据的候选会被拒绝（engine_credentials_forbidden）；凭据只接受环境变量引用。</div>
-          </div>
-        </section>
-
-        <!-- ========== 阶段动作卡：运行（空闲） ========== -->
-        <section class="stage" data-stage="run" hidden>
-          <div class="step" data-num="5">
-            <h2>运行当前题包 <span class="tag">zh-core</span></h2>
-            <p>运行前请核对设备、预算与停止条件。完成封存后进入下一题包或报告核验。</p>
-            <div class="notice warning" id="run-retry" hidden>上次运行未完成（user_cancelled），请检查停止原因后重试。</div>
-            <div class="actions">
-              <button class="btn primary" onclick="goto('running')">开始运行</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========== 阶段动作卡：运行中 ========== -->
-        <section class="stage" data-stage="running" hidden>
-          <div class="step" data-num="5">
-            <h2>正在运行 <span class="tag">zh-core · task-0001</span></h2>
-            <div class="progress"><i style="width:30%"></i></div>
-            <p><b>12 / 40 题</b> · 分母为冻结选中题集合；未读取时不猜测。当前题：case-013</p>
-            <div class="actions">
-              <button class="btn" onclick="goto('detail')">查看实时详情</button>
-              <button class="btn" onclick="toast('已请求取消，等待安全收尾（SIGINT，两秒兜底）。'); goto('run')">取消运行</button>
-            </div>
-            <div class="notice">运行串行执行；取消后证据保留，符合资格时可从运行历史续测。</div>
-          </div>
-        </section>
-
-        <!-- ========== 阶段动作卡：报告核验 ========== -->
-        <section class="stage" data-stage="report" hidden>
-          <div class="step" data-num="6">
-            <h2>生成并核验两题包报告 <span class="tag">zh-core + zh-svg-pelican</span></h2>
-            <p>汇总已封存的运行，核验报告字节、来源与语义。报告写入结果根同级 reports/ 新目录，原始 run 永不覆写。</p>
-            <div class="actions">
-              <button class="btn primary" onclick="toast('模拟：report + verify 完成，报告已核验。'); goto('done')">生成报告并核验</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========== 阶段动作卡：完成态 ========== -->
-        <section class="stage" data-stage="done" hidden>
-          <div class="step" data-num="✓">
-            <h2>默认范围已完成 <span class="tag">zh-core + zh-svg-pelican</span></h2>
-            <p><span class="badge ok small">已核验 verified</span></p>
-            <p style="margin-top:8px">合并报告 <code>reports/report-20261014T103000Z/report.html</code></p>
-            <div class="actions">
-              <button class="btn primary" onclick="toast('跳转「报告」页，在独立 WebView 窗口打开离线 HTML。')">查看报告</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========== 快速运行卡 ========== -->
-        <section id="quick-card" hidden>
-          <div class="card">
-            <h2>快速运行 <span class="tag">已绑定题包可直接再跑</span></h2>
-            <label class="f" for="b1">第一题包</label>
-            <select id="b1"><option>zh-core</option><option>zh-svg-pelican</option></select>
-            <code class="mono sub" style="display:block;margin-top:2px">~/.inferyard/bound/zh-core-1/config.toml</code>
-            <label class="f" for="b2" id="b2-label">第二题包</label>
-            <select id="b2"><option>zh-svg-pelican</option><option>zh-core</option></select>
-            <code class="mono sub" id="b2-path" style="display:block;margin-top:2px">~/.inferyard/bound/zh-svg-pelican-1/config.toml</code>
-            <label class="check"><input type="checkbox" id="single"> 仅运行一个题包</label>
-            <label class="check" id="single-confirm-wrap" hidden><input type="checkbox" id="single-confirm"> 我确认只运行一个题包（偏离默认双题包范围）</label>
-            <details>
-              <summary>高级：手动配置路径</summary>
-              <label class="f" for="m1">第一配置绝对路径</label>
-              <input type="text" id="m1" placeholder="/abs/path/config.toml">
-              <label class="f" for="m2">第二配置绝对路径</label>
-              <input type="text" id="m2" placeholder="/abs/path/config.toml">
-            </details>
-            <div class="actions">
-              <button class="btn primary" id="quick-start" onclick="toast('模拟：运行已加入队列（串行）。')">启动运行</button>
-              <span class="sub">默认双题包，按配置顺序串行运行；输出根必须在结果目录内，重复配置会被拒绝。</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========== 任务队列卡 ========== -->
-        <section id="queue-card" hidden>
-          <div class="card">
-            <h2>任务队列 <span class="tag">串行执行</span></h2>
-            <table class="list" id="queue-table">
-              <thead><tr><th style="width:180px">题包</th><th style="width:140px">状态</th><th>类型</th></tr></thead>
-              <tbody id="queue-body"></tbody>
-            </table>
-            <div class="actions">
-              <button class="btn small" id="queue-detail" onclick="goto('detail')">查看详情</button>
-              <button class="btn small" onclick="toast('已请求取消，等待安全收尾。')">取消任务</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- ========== 运行历史卡 ========== -->
-        <section id="history-card" hidden>
-          <div class="card">
-            <h2>运行历史 <span class="tag">证据目录为唯一事实源</span></h2>
-            <table class="list">
-              <thead><tr><th>RunId</th><th>题包</th><th>状态</th><th>得分</th><th>开始时间</th></tr></thead>
-              <tbody>
-                <tr class="clickable sel" id="hrow1" onclick="selectHistory(1)">
-                  <td class="mono">run-20261014-01</td><td>zh-core</td>
-                  <td><span class="badge ok small">已完成</span></td>
-                  <td>38/40 · 95.0%</td><td>2026-10-14 09:12</td>
-                </tr>
-                <tr class="clickable" id="hrow2" onclick="selectHistory(2)">
-                  <td class="mono">run-20261013-02</td><td>zh-svg-pelican</td>
-                  <td><span class="badge warn small">部分完成</span></td>
-                  <td>21/30 · 70.0%</td><td>2026-10-13 21:40</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div class="rowdetail" id="hd1">
-              <b>run-20261014-01</b> · <span class="sub">批次 batch-20261014-a</span>
-              <div class="path mono">~/.inferyard/results/2026-10-14/run-20261014-01</div>
-              <p style="margin-top:6px">封存：true · 完整度：complete · 停止原因：不适用 · 关系：原始运行</p>
-              <div class="actions">
-                <button class="btn small" onclick="toast('该运行已完成，无需续测。')">续测</button>
-                <button class="btn small" onclick="goto('detail')">实时详情</button>
-              </div>
-            </div>
-            <div class="rowdetail" id="hd2" hidden>
-              <b>run-20261013-02</b> · <span class="sub">独立运行</span>
-              <div class="path mono">~/.inferyard/results/2026-10-13/run-20261013-02</div>
-              <p style="margin-top:6px">封存：false · 完整度：partial · 停止原因：user_cancelled</p>
-              <p class="sub" style="margin-top:4px">独立运行不支持续测（not_resumable）。批量运行的续测资格由 CLI 终审。</p>
-              <div class="actions">
-                <button class="btn small" disabled>续测</button>
-              </div>
-            </div>
-
-            <details id="resume-form-wrap">
-              <summary>续测设置示例（批量运行 · 符合资格时）</summary>
-              <label class="f" for="rs-ep">endpoint_url（可选）</label>
-              <input type="text" id="rs-ep" placeholder="留空沿用来源配置">
-              <label class="f" for="rs-pid">server_pid（与 endpoint 同给同省）</label>
-              <input type="text" id="rs-pid" placeholder="留空沿用来源配置">
-              <div class="actions">
-                <button class="btn primary small" onclick="toast('模拟：续测已加入队列；来源是否可续测由 CLI 最终裁决。')">确认续测</button>
-              </div>
-            </details>
-            <div class="notice">状态优先级：cancelled &gt; dirty &gt; partial &gt; complete；封存本身不是完成证明。历史索引重启后从证据目录重建。</div>
-          </div>
-        </section>
-      </div>
-
-      <!-- ================= 运行详情子视图 ================= -->
-      <div id="detail-view" hidden>
-        <div class="actions" style="margin:0 0 16px">
-          <button class="btn" onclick="goto(backTo)">← 返回 Dashboard</button>
-        </div>
-        <h1>运行详情</h1>
-        <p class="sub">task-0001 · zh-core</p>
-
-        <div class="card">
-          <h2>zh-core · task-0001</h2>
-          <p><span class="badge info small">运行中</span></p>
-          <table class="kv" style="margin-top:10px">
-            <tr><td class="k">运行目录</td><td class="mono">~/.inferyard/results/2026-10-14/run-20261014-02</td></tr>
-            <tr><td class="k">任务类型</td><td>run · 运行 ID run-20261014-02</td></tr>
-          </table>
-          <div class="actions">
-            <button class="btn" onclick="toast('已请求取消，等待安全收尾。')">取消任务</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>实时进度 <span class="tag">每 500ms 轮询证据投影</span></h2>
-          <p><b>运行中 · 12 / 40 题</b> · 当前题 case-013 · last_seq 12</p>
-          <div class="progress"><i style="width:30%"></i></div>
-          <p class="sub">分母为冻结选中题集合；未读取时不猜测。</p>
-          <table class="list" style="margin-top:12px">
-            <thead><tr><th>题目</th><th>状态</th><th>类别</th><th>质量</th><th>耗时 ms</th><th>错误类别</th></tr></thead>
-            <tbody>
-              <tr><td class="mono">case-011</td><td><span class="badge ok small">通过</span></td><td>翻译</td><td>good</td><td>1820</td><td>不适用</td></tr>
-              <tr><td class="mono">case-012</td><td><span class="badge bad small">未通过</span></td><td>翻译</td><td>good</td><td>2340</td><td>wrong_answer</td></tr>
-              <tr><td class="mono">case-013</td><td><span class="badge info small">进行中</span></td><td>摘要</td><td>缺测</td><td>缺测</td><td>不适用</td></tr>
-            </tbody>
-          </table>
-          <div class="notice">答错不是 CLI 失败；缺测字段为带原因的 null，不补零。</div>
-        </div>
-
-        <div class="card">
-          <h2>资源曲线 <span class="tag">保留 600 个采样点</span></h2>
-          <div class="svgbox">
-            <svg viewBox="0 0 640 120" width="100%" height="120" role="img" aria-label="CPU 与内存采样曲线（示例）">
-              <polyline points="0,90 40,70 80,75 120,50 160,55 200,40 240,60 280,45 320,65 360,50 400,55 440,42 480,58 520,48 560,52 600,46"
-                fill="none" stroke="#0a7aff" stroke-width="2"/>
-              <polyline points="0,100 40,98 80,99 120,95 160,96 200,94 240,95 280,92 320,93 360,91 400,92 440,90 480,91 520,89 560,90 600,88"
-                fill="none" stroke="#248a3d" stroke-width="2" stroke-dasharray="4 3"/>
-              <line x1="330" y1="0" x2="330" y2="120" stroke="#d70015" stroke-width="1" stroke-dasharray="3 3"/>
-            </svg>
-            <div class="cap">示意图：实线 CPU% · 虚线内存（GiB 换算后展示，存储为 bytes）· 红虚线处为缺测采样点（该点为 null）。实现沿用运行详情既有 chart 组件：独立尺度分图、轴/图例/单位/时间基准直接可见，不同尺度不比较绝对高度。</div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </main>
+<div class="app" id="app">
+<aside class="sidebar">
+<div class="brand">Infer<em>Yard</em>
+<small>STUDIO</small>
 </div>
-
-<!-- ================= 原型切换器 ================= -->
-<div id="switcher">
-  <span class="lbl">阶段预览</span>
-  <div class="row">
-    <button data-sc="fresh" class="on">环境准备</button>
-    <button data-sc="device_check">设备检查</button>
-    <button data-sc="prepare_candidate">候选</button>
-    <button data-sc="bind">绑定</button>
-    <button data-sc="run">待运行</button>
-    <button data-sc="running">运行中</button>
-    <button data-sc="report">报告核验</button>
-    <button data-sc="done">已完成</button>
-    <button data-sc="detail">详情子视图</button>
-  </div>
-  <div class="row">
-    <span class="lbl">变体</span>
-    <button id="v-stale">绑定失效</button>
-    <button id="v-retry">上次失败</button>
-  </div>
+<nav aria-label="主导航">
+<a class="navitem" aria-label="Dashboard" href="dashboard-page.html" aria-current="page">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<rect x="3" y="3" width="7" height="7" rx="1"/>
+<rect x="14" y="3" width="7" height="7" rx="1"/>
+<rect x="3" y="14" width="7" height="7" rx="1"/>
+<rect x="14" y="14" width="7" height="7" rx="1"/>
+</svg>
+<span class="navtext">Dashboard</span>
+</a>
+<button class="navitem" aria-label="设备（本次未绘制）" data-note="设备页不在本次三个原型范围内。">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<rect x="3" y="4" width="18" height="13" rx="2"/>
+<path d="M8 21h8M12 17v4"/>
+</svg>
+<span class="navtext">设备</span>
+</button>
+<a class="navitem" aria-label="模型" href="models-page.html">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="m12 3 9 5-9 5-9-5 9-5Zm-9 5v9l9 5 9-5V8M12 13v9"/>
+</svg>
+<span class="navtext">模型</span>
+</a>
+<button class="navitem" aria-label="报告（本次未绘制）" data-note="报告页不在本次三个原型范围内。">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z M14 2v6h6M8 13h8M8 17h6"/>
+</svg>
+<span class="navtext">报告</span>
+</button>
+<a class="navitem" aria-label="设置" href="settings-page.html">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<path d="M4 6h16M4 12h16M4 18h16"/>
+<circle cx="8" cy="6" r="2"/>
+<circle cx="16" cy="12" r="2"/>
+<circle cx="10" cy="18" r="2"/>
+</svg>
+<span class="navtext">设置</span>
+</a>
+</nav>
+<div class="sidefoot">本地工作区<br>
+<code>workspace-demo</code>
+<br>
+<br>onevra v0.2026.9<br>浅色设计稿</div>
+</aside>
+<div>
+<div class="shellhead">
+<button id="collapse" aria-label="折叠侧栏" aria-expanded="true">☰</button>
+<span>workspace-demo</span>
+<small>本地测评工作台</small>
 </div>
-<div id="toast" role="status"></div>
+<main>
+<header class="pagehead">
+<div>
+<h1>Dashboard</h1>
+<p>从环境准备到报告核验，跟踪本次双题包测评。</p>
+</div>
+<span class="badge">交互原型</span>
+</header>
+<div class="preview">
+<strong>示例数据 · 离线交互演示</strong>
+<p class="muted">操作只改变当前页面，不下载、不启动服务、不发送请求；刷新后恢复初始状态。</p>
+</div>
+<div class="preview">
+<label for="scene">原型情境</label>
+<select id="scene">
+<option value="candidate">候选阶段</option>
+<option value="prepare">环境缺项</option>
+<option value="device">设备检查</option>
+<option value="bind">启动与绑定</option>
+<option value="run">运行就绪</option>
+<option value="report">报告核验</option>
+</select>
+</div>
+<section class="card" id="environment" hidden>
+<h2>环境准备</h2>
+<p class="notice">工作区尚未初始化。初始化目标必须是新目录；成功后切换到新工作区。</p>
+<dl>
+<dt>InferYard CLI</dt>
+<dd>已就绪</dd>
+<dt>工作区</dt>
+<dd>workspace-demo · 未初始化</dd>
+<dt>模型与结果目录</dt>
+<dd>models / results · 已存在</dd>
+</dl>
+<button class="primary" id="prepare">初始化工作区</button> <a href="settings-page.html">编辑路径设置</a>
+</section>
+<section class="card" style="margin-top:16px" aria-labelledby="progress-title">
+<div class="row">
+<h2 id="progress-title">工作区进度</h2>
+<span class="badge active" id="phase">当前：候选</span>
+</div>
+<ol class="steps" aria-label="六阶段进度">
+<li>
+<b>01</b>准备</li>
+<li>
+<b>02</b>设备检查</li>
+<li>
+<b>03</b>候选</li>
+<li>
+<b>04</b>启动与绑定</li>
+<li>
+<b>05</b>运行</li>
+<li>
+<b>06</b>报告核验</li>
+</ol>
+<progress id="stage-progress" max="6" value="2" aria-label="六个准备阶段进度">
+</progress>
+<small id="stage-description">已完成 2 / 6 个阶段，不表示样本完成率。</small>
+<div class="meta">
+<span id="core">zh-core · 待创建候选</span>
+<span id="pelican">zh-svg-pelican · 待创建候选</span>
+</div>
+</section>
+<section id="device-panel" class="track" data-step="2" hidden>
+<h2>检查设备</h2>
+<p>测评模型：Qwen3-8B-Q4_K_M.gguf</p>
+<p class="muted">检查本机能力与模型适配，生成新的设备检查结果。</p>
+<button id="device" class="primary">执行设备检查</button>
+</section>
+<section id="candidate-panel" class="track" data-step="3">
+<h2>创建候选</h2>
+<p>使用已选模型与引擎，为两个默认题包分别创建候选配置。</p>
+<div class="twocol">
+<div class="field">
+<label for="engine">候选引擎</label>
+<select id="engine" aria-describedby="engine-help">
+<option>llama-server b6800 · 最新下载</option>
+<option>llama-server b6700 · 工作区</option>
+<option>inference-engine · 用户引擎</option>
+</select>
+<small id="engine-help">默认选中最新完成下载的引擎。</small>
+</div>
+<div class="field">
+<label for="model">测评模型</label>
+<select id="model">
+<option>Qwen3-8B-Q4_K_M.gguf</option>
+<option>使用 CLI 推荐模型</option>
+</select>
+</div>
+</div>
+<p class="notice">默认范围：zh-core + zh-svg-pelican；各自冻结并运行，最终生成包含两者的新报告。</p>
+<button id="candidate" class="primary">创建双题包候选</button>
+</section>
+<section id="bind-panel" class="track" data-step="4" hidden>
+<h2>启动与绑定</h2>
+<p>
+<strong id="chosen-engine">llama-server b6800</strong> · <span id="chosen-model">Qwen3-8B-Q4_K_M.gguf</span>
+</p>
+<p class="muted">Studio 启动的服务由 Studio 管理，退出时关闭；不会自动重启。</p>
+<div class="flow" aria-label="服务与绑定状态流">
+<span data-flow="0">stopped</span>
+<span aria-hidden="true">→</span>
+<span data-flow="1">starting</span>
+<span aria-hidden="true">→</span>
+<span data-flow="2">running</span>
+<span aria-hidden="true">→</span>
+<span data-flow="3">绑定中</span>
+<span aria-hidden="true">→</span>
+<span data-flow="4">已绑定</span>
+</div>
+<p id="service-status" role="status" aria-live="polite">已停止 · 等待启动</p>
+<div class="actions" style="margin-top:12px">
+<button id="start" class="primary">启动并绑定</button>
+<label class="check">
+<input type="checkbox" id="fail">演示第二个题包绑定失败</label>
+</div>
+<div id="bind-error" class="notice bad" role="alert" hidden>
+</div>
+<p class="muted" style="margin-top:10px">健康检查通过后按顺序绑定全部待绑题包。任一失败即停止，不自动重试。</p>
+<h3 style="margin-top:24px">本机运行的服务</h3>
+<p class="muted">discover 发现结果；发现不等于可绑定。绑定使用该项的 PID 与 endpoint。</p>
+<ul class="list" aria-label="发现的本机运行服务">
+<li>
+<div class="row">
+<div>
+<h3>Qwen3-8B · llama-server</h3>
+<span class="badge good">健康检查通过 · 尚未绑定</span>
+</div>
+<button class="external" data-pid="6124">绑定</button>
+</div>
+<p class="meta">PID 6124 · http://127.0.0.1:8080 · 操作者启动</p>
+</li>
+<li>
+<div class="row">
+<div>
+<h3>Qwen3-8B · inference-engine</h3>
+<span class="badge">已发现 · 尚未绑定</span>
+</div>
+<button class="external" data-pid="7310">绑定</button>
+</div>
+<p class="meta">PID 7310 · http://127.0.0.1:8081 · 操作者启动</p>
+<small>示例：启动参数与当前候选不一致，绑定时将显示固定失败原因。</small>
+</li>
+</ul>
+<details>
+<summary>高级：手动绑定</summary>
+<div class="twocol">
+<div class="field">
+<label for="process">进程</label>
+<select id="process">
+<option value="6124">llama-server · PID 6124</option>
+<option value="7310">inference-engine · PID 7310</option>
+</select>
+</div>
+<div class="field">
+<label for="endpoint">endpoint</label>
+<input id="endpoint" type="url" value="http://127.0.0.1:8080" aria-describedby="endpoint-help endpoint-error">
+<small id="endpoint-help">仅绑定已有本机服务，不启动进程。</small>
+<p id="endpoint-error" class="error" hidden>
+</p>
+</div>
+</div>
+<button id="manual" style="margin-top:12px">绑定所选进程</button>
+</details>
+</section>
+<section id="run-panel" class="track" data-step="5" hidden>
+<h2>启动测评</h2>
+<p>两个题包已绑定。按冻结顺序依次运行，生成新结果目录。</p>
+<div class="actions" style="margin-top:12px">
+<button id="run" class="primary">运行默认双题包</button>
+<button id="cancel" hidden>请求取消</button>
+</div>
+</section>
+<section id="report-panel" class="track" data-step="6" hidden>
+<h2>报告核验</h2>
+<p>来源：zh-core + zh-svg-pelican · 各自运行已完成。</p>
+<p class="muted">在新目录生成包含两个题包的报告，保留原始运行和历史报告。</p>
+<button id="report" class="primary">生成并核验新报告</button>
+<p id="report-status" role="status">
+</p>
+</section>
+<div class="stack">
+<section class="card">
+<div class="row">
+<h2>任务队列</h2>
+<span class="badge" id="queue-badge">无活动任务</span>
+</div>
+<ul class="list" aria-label="任务队列">
+<li id="queue" role="status">尚无排队任务。完成绑定后可启动默认双题包测评。</li>
+</ul>
+</section>
+<section class="card">
+<h2>运行历史</h2>
+<ul class="list" aria-label="运行历史">
+<li>
+<div class="row">
+<h3>Qwen3-8B · 双题包</h3>
+<span class="badge">运行结束 · 示例</span>
+</div>
+<p class="meta">run-20261014-01 · zh-core + zh-svg-pelican</p>
+<p>证据已封存 · 报告尚未核验</p>
+<details>
+<summary>查看运行详情</summary>
+<dl>
+<dt>模型</dt>
+<dd>Qwen3-8B-Q4_K_M.gguf</dd>
+<dt>服务内存</dt>
+<dd>缺测：该次运行未启用进程采样</dd>
+<dt>结果目录</dt>
+<dd>
+<code>run-20261014-01</code>
+</dd>
+</dl>
+<p>历史结果保持原样；新运行、新报告使用新目录。</p>
+</details>
+</li>
+</ul>
+</section>
+</div>
+<p class="footer">HTML 设计基准 · 原生组件效果、系统主题及辅助技术需另行验收。</p>
+</main>
+</div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div><script>const $=id=>document.getElementById(id);let toastTimer;function toast(message){$('toast').textContent=message;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').textContent='',4500)}document.querySelectorAll('[data-note]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.note)));$('collapse').onclick=()=>{const collapsed=$('app').classList.toggle('collapsed');$('collapse').setAttribute('aria-expanded',String(!collapsed));$('collapse').setAttribute('aria-label',collapsed?'展开侧栏':'折叠侧栏')};
 
-<script>
-const $ = id => document.getElementById(id);
-const STAGES = ['准备', '设备检查', '候选', '启动与绑定', '运行', '报告核验'];
-let backTo = 'running';
-let toastTimer = null;
-
-function toast(msg) {
-  $('toast').textContent = msg;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { $('toast').textContent = ''; }, 4000);
-}
-
-// 每个情境：结论卡内容 + 阶段卡 + 附属卡可见性
-const SC = {
-  fresh: {
-    step: 0, badge: ['neutral', '第 1 步 · 准备'],
-    summary: '先完成环境准备：安装 CLI、准备目录、初始化工作区。',
-    reason: null,
-    bundles: 'zh-core 待开始 · zh-svg-pelican 待开始',
-    stage: null, env: true, quick: false, queue: false, history: false,
-  },
-  device_check: {
-    step: 1, badge: ['info', '第 2 步 · 设备检查'],
-    summary: '环境已就绪。检查硬件与本机模型，获得可运行推荐。',
-    reason: null,
-    bundles: 'zh-core 待预检 · zh-svg-pelican 待预检',
-    stage: 'device_check', env: false, quick: false, queue: false, history: false,
-  },
-  prepare_candidate: {
-    step: 2, badge: ['info', '第 3 步 · 创建候选'],
-    summary: '预检通过，推荐 SmolLM2-135M · Metal · 上下文 4096。为 zh-core 冻结候选。',
-    reason: null,
-    bundles: 'zh-core 待候选 · zh-svg-pelican 待候选',
-    stage: 'prepare_candidate', env: false, quick: false, queue: false, history: false,
-  },
-  bind: {
-    step: 3, badge: ['info', '第 4 步 · 启动与绑定'],
-    summary: 'zh-core 候选已冻结。启动服务并完成绑定，CLI 核验进程身份。',
-    reason: null,
-    bundles: 'zh-core 待绑定 · zh-svg-pelican 待候选',
-    stage: 'bind', env: false, quick: false, queue: false, history: false,
-  },
-  run: {
-    step: 4, badge: ['info', '第 5 步 · 运行'],
-    summary: 'zh-core 已绑定，可以开始运行。',
-    reason: null,
-    bundles: 'zh-core 待运行 · zh-svg-pelican 待候选',
-    stage: 'run', env: false, quick: true, queue: true, history: true,
-  },
-  running: {
-    step: 4, badge: ['info', '运行中'],
-    summary: 'zh-core 正在运行，12 / 40 题。',
-    reason: null,
-    bundles: 'zh-core 运行中 · zh-svg-pelican 待候选',
-    stage: 'running', env: false, quick: true, queue: true, history: true,
-  },
-  report: {
-    step: 5, badge: ['info', '第 6 步 · 报告核验'],
-    summary: '两题包已封存。生成合并报告并核验字节、来源与语义。',
-    reason: null,
-    bundles: 'zh-core ✓ 已封存 · zh-svg-pelican ✓ 已封存',
-    stage: 'report', env: false, quick: true, queue: true, history: true,
-  },
-  done: {
-    step: 6, badge: ['ok', '✓ 已核验 verified'],
-    summary: '默认范围（zh-core + zh-svg-pelican）已完成。',
-    reason: null,
-    bundles: 'zh-core ✓ 已核验 · zh-svg-pelican ✓ 已核验',
-    stage: 'done', env: false, quick: true, queue: true, history: true,
-  },
-  detail: null,
-};
-
-function renderSteps(active) {
-  $('c-steps').innerHTML = STAGES.map((label, i) => {
-    const cls = i < active ? 'done' : i === active ? 'active' : '';
-    const mark = i < active ? '✓ ' : '';
-    return `<b class="${cls}">${mark}${label}</b>` + (i < STAGES.length - 1 ? '<i>→</i>' : '');
-  }).join('');
-}
-
-function renderQueue(sc) {
-  const rows = {
-    running: [
-      ['zh-core', '<span class="badge info small">运行中</span>', 'run'],
-      ['zh-svg-pelican', '<span class="badge neutral small">队列中</span>', 'run'],
-    ],
-    report: [['zh-svg-pelican', '<span class="badge ok small">已完成</span>', 'run']],
-    done: [],
-  }[sc] || [];
-  $('queue-body').innerHTML = rows.length
-    ? rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')
-    : '<tr><td colspan="3" class="sub">暂无任务。在上方快速运行卡启动测评。</td></tr>';
-}
-
-function goto(sc) {
-  if (sc === 'detail') backTo = SC._current === 'detail' ? backTo : SC._current;
-  SC._current = sc;
-  document.querySelectorAll('#switcher [data-sc]').forEach(b =>
-    b.classList.toggle('on', b.dataset.sc === sc));
-
-  const isDetail = sc === 'detail';
-  $('main-view').hidden = isDetail;
-  $('detail-view').hidden = !isDetail;
-  if (isDetail) return;
-
-  const v = SC[sc];
-  $('env-section').hidden = !v.env;
-  $('c-badge').className = 'badge ' + v.badge[0];
-  $('c-badge').textContent = v.badge[1];
-  $('c-summary').textContent = v.summary;
-  $('c-reason').hidden = !v.reason;
-  if (v.reason) { $('c-reason').textContent = v.reason[1]; $('c-reason').className = 'reason' + (v.reason[0] === 'warn' ? ' warn' : ''); }
-  renderSteps(v.step);
-  $('c-bundles').textContent = v.bundles;
-
-  document.querySelectorAll('.stage').forEach(el => {
-    el.hidden = el.dataset.stage !== v.stage;
-  });
-  $('quick-card').hidden = !v.quick;
-  $('queue-card').hidden = !v.queue;
-  $('history-card').hidden = !v.history;
-  renderQueue(sc);
-  updateQuickStart();
-}
-
-// 引擎服务状态演示（绑定阶段卡内）
-let engineState = 'stopped';
-const ENGINE = {
-  stopped: ['neutral', 'stopped', '服务尚未启动', '启动后每秒探测 /health，2xx 转运行中；默认最多等待 10 分钟。'],
-  starting: ['info', 'starting', '正在加载模型', '模型加载可能需要几分钟；重复启动返回当前状态，不创建第二个进程。'],
-  running: ['ok', 'running · PID 48216 · http://127.0.0.1:8080', '服务已就绪', '健康端点已响应，可以绑定服务。'],
-  stopping: ['warn', 'stopping', '正在停止服务', '先 SIGTERM，10 秒未退出则 kill；停止中拒绝新运行。'],
-  failed: ['bad', 'failed · engine_exited', '服务异常退出', '不会自动重启；检查 workspace/logs/engine-*.log 后手动启动并重新绑定。'],
-};
-function renderEngine() {
-  const v = ENGINE[engineState];
-  $('engine-badge').className = 'badge small ' + v[0];
-  $('engine-badge').textContent = v[1];
-  $('engine-heading').textContent = v[2];
-  $('engine-desc').textContent = v[3];
-  $('engine-panel').className = 'status-panel' + (engineState === 'failed' ? ' bad' : engineState === 'running' ? ' good' : '');
-  $('engine-start').textContent = engineState === 'failed' ? '手动重新启动' : '启动服务';
-  $('engine-start').disabled = ['starting', 'running', 'stopping'].includes(engineState);
-  $('engine-bind').disabled = engineState !== 'running';
-  $('engine-stop').disabled = !['starting', 'running'].includes(engineState);
-}
-function engineStart() {
-  engineState = 'starting'; renderEngine();
-  toast('模拟：启动中（健康等待默认最长 10 分钟）；再次点击演示转为运行中。');
-  $('engine-start').disabled = true;
-  setTimeout(() => { engineState = 'running'; renderEngine(); }, 1500);
-}
-function engineStop() {
-  engineState = 'stopping'; renderEngine();
-  setTimeout(() => { engineState = 'stopped'; renderEngine(); }, 1200);
-}
-
-// 快速运行：单题包确认门禁
-function updateQuickStart() {
-  const single = $('single').checked;
-  $('b2').disabled = single;
-  $('b2-label').style.opacity = single ? .45 : 1;
-  $('b2-path').style.opacity = single ? .45 : 1;
-  $('single-confirm-wrap').hidden = !single;
-  $('quick-start').disabled = single && !$('single-confirm').checked;
-}
-$('single').onchange = () => { $('single-confirm').checked = false; updateQuickStart(); };
-$('single-confirm').onchange = updateQuickStart;
-
-// 历史行选择
-function selectHistory(n) {
-  $('hrow1').classList.toggle('sel', n === 1);
-  $('hrow2').classList.toggle('sel', n === 2);
-  $('hd1').hidden = n !== 1;
-  $('hd2').hidden = n !== 2;
-}
-
-// 变体：绑定失效 / 上次失败
-$('v-stale').onclick = () => {
-  goto('bind');
-  $('bind-stale').hidden = false;
-  $('c-reason').hidden = false;
-  $('c-reason').textContent = 'zh-core：绑定已失效（bound_missing），需要重新绑定。';
-  toast('变体：旧绑定失效提示。');
-};
-$('v-retry').onclick = () => {
-  goto('run');
-  $('run-retry').hidden = false;
-  toast('变体：上次运行未完成，可检查后重试。');
-};
-
-document.querySelectorAll('#switcher [data-sc]').forEach(b => b.onclick = () => {
-  $('bind-stale').hidden = true;
-  $('run-retry').hidden = true;
-  goto(b.dataset.sc);
-});
-
-renderEngine();
-const initial = new URLSearchParams(location.search).get('sc');
-goto(initial && (SC[initial] || initial === 'detail') ? initial : 'fresh');
-</script>
-</body>
-</html>
+let generation=0,busy=false;const phases=['准备','设备检查','候选','启动与绑定','运行','报告核验'];
+function stage(scene){generation++;busy=false;$('scene').value=scene;const index=['prepare','device','candidate','bind','run','report'].indexOf(scene);$('environment').hidden=scene!=='prepare';['device','candidate','bind','run','report'].forEach(s=>$(s+'-panel').hidden=s!==scene);document.querySelectorAll('.steps li').forEach((e,i)=>{e.removeAttribute('aria-current');if(i===index)e.setAttribute('aria-current','step')});$('phase').textContent='当前：'+phases[index];$('stage-progress').value=index;$('stage-description').textContent='已完成 '+index+' / 6 个阶段，不表示样本完成率。';$('bind-error').hidden=true;document.querySelectorAll('#bind-panel button,#bind-panel input,#bind-panel select').forEach(b=>b.disabled=false);$('service-status').textContent='已停止 · 等待启动';flow(0);$('core').textContent='zh-core · '+(index<3?'待创建候选':index===3?'待绑定':'已绑定');$('pelican').textContent='zh-svg-pelican · '+(index<3?'待创建候选':index===3?'待绑定':'已绑定');$('cancel').hidden=true;$('run').disabled=false;$('scene').disabled=false;$('queue').textContent='尚无排队任务。完成绑定后可启动默认双题包测评。';$('queue-badge').textContent='无活动任务'}
+function flow(n){document.querySelectorAll('[data-flow]').forEach(e=>{e.removeAttribute('aria-current');if(Number(e.dataset.flow)===n)e.setAttribute('aria-current','step')})}
+function status(text,n,active){$('service-status').replaceChildren();if(active){const s=document.createElement('span');s.className='spinner';s.setAttribute('aria-hidden','true');$('service-status').append(s,' ')}$('service-status').append(text);flow(n)}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function bind(external=false,mismatch=false,pid=''){if(busy)return;busy=true;const token=++generation;const fail=mismatch||$('fail').checked;$('bind-error').hidden=true;document.querySelectorAll('#bind-panel button,#bind-panel input,#bind-panel select').forEach(b=>b.disabled=true);if(!external){status('starting · 正在启动引擎',1,true);await wait(900);if(token!==generation)return;status('running · 健康检查通过，尚未绑定',2,false);await wait(900)}else{status('running · 正在核验 PID '+pid+' 的服务身份',2,true);await wait(900)}if(token!==generation)return;status('绑定中 · zh-core',3,true);await wait(900);if(token!==generation)return;if(mismatch){failure('zh-core');return}$('core').textContent='zh-core · 已绑定';status('绑定中 · zh-svg-pelican',3,true);await wait(900);if(token!==generation)return;if(fail){failure('zh-svg-pelican');return}$('pelican').textContent='zh-svg-pelican · 已绑定';status('已绑定 · 两个题包均已完成绑定',4,false);toast('双题包绑定完成，可启动测评。');await wait(1200);if(token!==generation)return;stage('run');toast('两个题包已绑定，已进入运行阶段。')}
+function failure(bundle){busy=false;status('running · 服务仍在运行，绑定已停止',2,false);$(bundle==='zh-core'?'core':'pelican').textContent=bundle+' · 绑定失败';$('bind-error').hidden=false;$('bind-error').textContent=bundle+' 绑定失败：启动参数与候选不一致（startup_arguments_mismatch）。请核对引擎与候选配置后重新发起绑定；不会自动重试。';document.querySelectorAll('#bind-panel button,#bind-panel input,#bind-panel select').forEach(b=>b.disabled=false);$('start').disabled=true;}
+$('scene').onchange=e=>stage(e.target.value);$('prepare').onclick=()=>{stage('device');toast('示例工作区已初始化。')};$('device').onclick=()=>{stage('candidate');toast('示例设备检查已完成。')};$('candidate').onclick=()=>{$('chosen-engine').textContent=$('engine').value;$('chosen-model').textContent=$('model').value;stage('bind')};$('start').onclick=()=>bind();document.querySelectorAll('.external').forEach(b=>b.onclick=()=>bind(true,b.dataset.pid==='7310',b.dataset.pid));$('manual').onclick=()=>{let valid;try{const u=new URL($('endpoint').value);valid=['127.0.0.1','localhost','[::1]'].includes(u.hostname)&&u.protocol==='http:'}catch{valid=false}$('endpoint').setAttribute('aria-invalid',String(!valid));$('endpoint-error').hidden=valid;if(!valid){$('endpoint-error').textContent='请输入有效的本机 HTTP endpoint，例如 http://127.0.0.1:8080。';$('endpoint').focus();return}bind(true,$('process').value==='7310',$('process').value)};
+$('run').onclick=()=>{$('run').disabled=true;$('scene').disabled=true;$('cancel').hidden=false;$('queue-badge').textContent='运行中 · 示例';$('queue').innerHTML='<span class="spinner" aria-hidden="true"></span> zh-core · 运行中；zh-svg-pelican · 等待前项结束。<p class="muted">样本进度缺测：尚未收到冻结题集合计数。服务内存缺测：等待首个采样。</p>'};$('cancel').onclick=async()=>{$('cancel').disabled=true;$('queue').textContent='取消中／等待收尾 · 保留已产生的证据。';await wait(900);$('queue').textContent='已取消 · 当前运行已收尾；后续题包未启动。';$('queue-badge').textContent='已取消';$('cancel').hidden=true;$('cancel').disabled=false;$('scene').disabled=false;$('run').disabled=false};$('report').onclick=()=>{$('report-status').textContent='示例：新报告 report-20261015-02 已生成，离线核验通过。';toast('新报告已生成并核验。')};stage('candidate');
+</script></body></html>
