@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
+<title>模型 · InferYard Studio 交互原型</title>
+<style>
+:root{color-scheme:light;--bg:#f4f5f7;--paper:#fff;--ink:#202733;--muted:#657180;--line:#e2e6eb;--accent:#245cdb;--blue:#edf3ff;--green:#187451;--red:#b83d3d;--amber:#956114}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}button,input,select{font:inherit}button{cursor:pointer;border:1px solid var(--line);border-radius:8px;background:white;padding:7px 13px;color:var(--ink)}button:hover{border-color:var(--accent);color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8badfa;outline-offset:3px}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.primary:hover{background:#1849b9;color:white}a{color:var(--accent);text-decoration:none}h1,h2,h3,p{margin:0}h1{font-size:28px;letter-spacing:-1px}h2{font-size:17px}h3{font-size:14px}.muted,small{color:var(--muted)}small{font-size:12px}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;overflow-wrap:anywhere}.app{display:grid;grid-template-columns:192px 1fr;min-height:100vh}.sidebar{padding:25px 16px;border-right:1px solid var(--line);background:#f9fafb}.brand{font-weight:750;font-size:18px;padding:0 12px 27px}.brand span{color:var(--accent)}.navitem{display:block;margin:5px 0;padding:10px 14px;border-radius:8px;color:var(--muted)}.navitem.current{background:#e9eef9;color:var(--accent);font-weight:650}.sidebar .foot{margin:40px 12px 0;font-size:12px;color:var(--muted)}main{max-width:1270px;width:100%;padding:28px 34px 36px;margin:auto}.top,.section-head,.row{display:flex;align-items:center;justify-content:space-between;gap:16px}.top{margin-bottom:22px}.eyebrow{font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:4px}.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;border-radius:20px;padding:3px 10px;background:#eef1f5;color:var(--muted);white-space:nowrap}.pill.good{background:#e9f5ee;color:var(--green)}.pill.blue{background:var(--blue);color:var(--accent)}.pill.bad{background:#fff0ef;color:var(--red)}.pill.warn{background:#fff5e5;color:var(--amber)}.dot{width:6px;height:6px;background:currentColor;border-radius:50%}.preview{background:#eaf0fb;border:1px solid #d8e2f5;border-radius:10px;padding:12px 16px;margin-bottom:22px}.preview small{display:block;margin-top:3px}.grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(310px,1fr);gap:20px;align-items:start}.stack{display:grid;gap:20px}.card{background:var(--paper);border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:0 2px 4px #17234203}.section-head{padding:18px 20px;border-bottom:1px solid var(--line)}.section-head h2 span{font-weight:400;color:var(--muted);font-size:12px;margin-left:7px}.body{padding:18px 20px}.asset{padding:16px;border:1px solid #d6e2fc;background:linear-gradient(120deg,#f0f5ff,#fff);border-radius:10px}.asset h3{font-size:18px;margin:8px 0 2px}.asset .row{margin-top:12px}.model{padding:15px 0;border-bottom:1px solid var(--line)}.model:last-child{border-bottom:0}.model .mono{display:block;color:var(--muted);margin-top:5px}.icon{width:35px;height:35px;border-radius:9px;background:#eef2f8;color:var(--accent);display:grid;place-items:center;font-size:17px;flex-shrink:0}.name{display:flex;gap:12px;align-items:center}.subhead{margin-top:20px;font-size:12px;color:var(--muted)}.tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px}.tabs button{padding:4px 9px;font-size:12px}.tabs button[aria-pressed=true]{background:var(--blue);border-color:#8dacf0;color:var(--accent)}.status-panel{padding:16px;border-radius:10px;background:#f7f9fc;margin-bottom:16px}.status-panel h3{font-size:19px;margin:6px 0}.status-panel p{color:var(--muted);font-size:13px}.status-panel.bad{background:#fff5f3}.status-panel.good{background:#f0f8f3}.kv{display:grid;grid-template-columns:100px 1fr;gap:8px;font-size:13px;margin:14px 0}.kv dt{color:var(--muted)}.kv dd{margin:0}.command{display:block;padding:12px;background:#f5f6f8;border:1px solid var(--line);border-radius:8px;white-space:pre-wrap;margin:8px 0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.notice{font-size:12px;padding:11px 13px;background:#f7f8fa;border-radius:8px;margin-top:14px;color:var(--muted)}.notice.warning{background:#fff6e8;color:#865917}.steps{display:flex;gap:5px;align-items:center;font-size:10px;color:var(--muted);margin-top:14px;flex-wrap:wrap}.steps b{padding:3px 6px;border-radius:5px;font-weight:400;background:#f0f2f5}.steps b.active{background:#dce8ff;color:var(--accent)}.task{border:1px solid var(--line);border-radius:10px;padding:15px;margin-top:12px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 10px}.metrics strong{display:block;font-size:19px;font-weight:600}.metrics small{display:block}.activity{height:4px;background:repeating-linear-gradient(100deg,#b3c9f7 0px,#b3c9f7 18px,#e9f0ff 18px,#e9f0ff 32px);border-radius:4px;margin:12px 0}.task-note{font-size:12px;color:var(--muted)}details{margin-top:14px;font-size:12px;color:var(--muted)}summary{cursor:pointer;color:var(--accent)}label{display:block;font-size:12px;color:var(--muted);margin-top:12px}input,select{border:1px solid #cbd2dc;border-radius:7px;padding:8px;width:100%;background:white;color:var(--ink)}.binding{border-left:3px solid #91a9d4;padding-left:13px;margin-top:15px}.binding strong{display:block}.binding small{display:block}.footer{margin-top:20px;font-size:12px;color:var(--muted)}#feedback{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#24324b;color:white;padding:12px 22px;border-radius:10px;max-width:90vw;box-shadow:0 6px 25px #0002;z-index:3}#feedback:empty{display:none}.check{display:flex;gap:8px;align-items:center}.check input{width:auto}.tiny{font-size:11px} [hidden]{display:none!important}@media(max-width:1050px){.app{grid-template-columns:150px 1fr}main{padding:24px 20px}.grid{grid-template-columns:1fr}.sidebar{padding:22px 10px}}@media(max-width:600px){.app{display:block}.sidebar{display:none}main{padding:20px 12px}.top{align-items:flex-start}.top>.pill{display:none}.section-head,.body{padding:16px}.metrics strong{font-size:16px}.row{flex-wrap:wrap}h1{font-size:25px}}
+
+main{min-width:0;margin:0 auto}.row,.section-head,.top{flex-wrap:wrap}.body,.name,.row>div{min-width:0}h3,p,dd{overflow-wrap:anywhere}.steps{font-size:12px}.notice.danger{background:#fff0ef;color:var(--red)}.field{margin-top:12px}.field small{display:block}.step{position:relative;padding-left:44px;margin:24px 0}.step:before{content:attr(data-num);position:absolute;left:0;top:0;background:var(--accent);color:white;border-radius:50%;width:28px;height:28px;text-align:center}.step:after{content:'';position:absolute;left:13px;top:34px;bottom:0;width:2px;background:var(--line)}.step h2{margin-bottom:12px}.grid>.card{height:100%}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline-color:var(--accent)}.sidebar{width:auto}.pill{white-space:normal}.kv{grid-template-columns:90px minmax(0,1fr)}
+@media(max-width:600px){.sidebar{display:block}.sidebar .foot{display:none}.brand{padding-bottom:8px}.navitem{display:inline-block;padding:6px}.app{display:block}}
+button[aria-pressed=true]{background:var(--blue);border-color:var(--accent);color:var(--accent)}</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" aria-label="主导航">
+<div class="brand">Infer<span>Yard</span>
+<small style="display:block">STUDIO</small>
+</div>
+<a class="navitem "  href="dashboard-service-flow.html">Dashboard</a>
+<span class="navitem">设备</span>
+<a class="navitem current" aria-current="page" href="models-page.html">模型</a>
+<span class="navitem">报告</span>
+<a class="navitem "  href="settings-download-names.html">设置</a>
+<div class="foot">本地工作区<br>
+<code>workspace-demo</code>
+<br>交互原型 · 示例数据<br>设备与报告仅作位置示意</div>
+</aside>
+<main>
+<header class="top">
+<div>
+<h1>模型</h1>
+<p class="muted">选择本地模型与引擎，准备测评服务。</p>
+</div>
+<span class="pill good">CLI 已就绪 · 示例</span>
+</header>
+<div class="preview">
+<strong>交互原型 · 所有数据均为示例</strong>
+<small>仅在本页演示，不下载、不启动真实服务、不访问网络。状态按钮用于注入事件快照。</small>
+</div>
+<div class="grid">
+<section class="card" aria-labelledby="models-title">
+<div class="section-head">
+<h2 id="models-title">本地模型清单</h2>
+<span class="pill">2 个模型</span>
+</div>
+<div class="body">
+<p class="muted">来自设备快照与已完成下载；未选择时使用 CLI 推荐。</p>
+<div class="model">
+<h3>Qwen2.5-0.5B-Instruct</h3>
+<dl class="kv">
+<dt>大小</dt>
+<dd>384 MiB</dd>
+<dt>架构</dt>
+<dd>qwen2</dd>
+<dt>上下文</dt>
+<dd>32768 tokens</dd>
+</dl>
+<button data-model="Qwen2.5-0.5B-Instruct" aria-pressed="false">选为测评模型</button>
+</div>
+<div class="model">
+<h3>local-model.gguf</h3>
+<div class="notice">大小、架构、上下文缺测：文件元数据读取失败；选择后需重新设备检查。</div>
+<div class="actions">
+<button data-model="local-model.gguf" aria-pressed="false">选为测评模型</button>
+</div>
+</div>
+<p id="model-choice" role="status" class="notice">当前：CLI 推荐。选择模型后，在 Dashboard 重新设备检查并创建候选。</p>
+</div>
+</section>
+<section class="card" aria-labelledby="engines-title">
+<div class="section-head">
+<h2 id="engines-title">引擎清单</h2>
+<span class="pill">最新下载优先</span>
+</div>
+<div class="body">
+<div class="model">
+<h3>Prism b10743</h3>
+<p class="muted">来源：引擎下载 · 最新完成 · 目录 engine-2</p>
+<div class="actions">
+<button data-engine="Prism b10743" aria-pressed="true">已选为候选引擎</button>
+</div>
+</div>
+<div class="model">
+<h3>custom-server <span class="pill">用户引擎库</span>
+</h3>
+<p class="muted">来源：本地扫描 · 单文件引擎</p>
+<div class="actions">
+<button data-engine="custom-server（用户引擎库）" aria-pressed="false">选为候选引擎</button>
+</div>
+</div>
+<div class="model">
+<h3>custom-server <span class="pill">工作区</span>
+</h3>
+<p class="muted">来源：工作区扫描 · 同名以来源区分</p>
+<div class="actions">
+<button data-engine="custom-server（工作区）" aria-pressed="false">选为候选引擎</button>
+</div>
+</div>
+<p id="engine-choice" class="notice" role="status">当前：Prism b10743。用于下一次创建候选，已冻结候选不变。</p>
+<a href="dashboard-service-flow.html">前往 Dashboard 创建候选 →</a>
+</div>
+</section>
+<section class="card" aria-labelledby="downloads-title">
+<div class="section-head">
+<h2 id="downloads-title">下载任务</h2>
+<span class="pill blue">独立任务</span>
+</div>
+<div class="body">
+<div class="actions">
+<button id="download-model" class="primary">下载预置模型</button>
+<button id="download-engine">下载预置引擎</button>
+</div>
+<p class="notice">目录名来自<a href="settings-download-names.html">设置</a>：模型 model，引擎 engine。占用自动追加 -2、-3，不覆盖已有目录。</p>
+<div class="task">
+<div class="row">
+<h3 id="task-name">SmolLM2-135M</h3>
+<span id="task-state" class="pill blue">下载中</span>
+</div>
+<div id="task-notice" class="notice">已下载量、速率缺测：尚未收到读数。总量未知：来源未提供；不显示百分比。</div>
+<details>
+<summary>下载任务详情</summary>
+<p>实际目录名：<code id="task-dir">model-2</code>
+</p>
+<p>基础名已占用，已自动追加序号。1 MiB = 1,048,576 bytes。</p>
+</details>
+<div class="actions">
+<button id="cancel">取消下载</button>
+</div>
+</div>
+<details>
+<summary>演示下载事件</summary>
+<div class="actions">
+<button data-download="已完成">完成</button>
+<button data-download="下载失败">失败</button>
+<button data-download="已取消">取消完成</button>
+</div>
+</details>
+</div>
+</section>
+<section class="card" aria-labelledby="service-title">
+<div class="section-head">
+<h2 id="service-title">引擎服务</h2>
+<span class="pill">Studio 管理</span>
+</div>
+<div class="body">
+<div class="status-panel">
+<span class="pill">stopped · 已停止</span>
+<h3>Prism b10743</h3>
+<p>暂无活动进程。退出 Studio 时关闭 Studio 启动的服务。</p>
+</div>
+<a href="dashboard-service-flow.html#bind">前往 Dashboard 启动并绑定 →</a>
+<div class="notice">内存缺测：此页未采样。日志文件：<code>engine-demo.log</code>
+</div>
+<div style="margin-top:20px">
+<h3>本机运行的服务</h3>
+<p class="muted">发现仅表示端点可探测；绑定仍核验进程身份与启动参数。</p>
+<div class="model">
+<div class="row">
+<div>
+<h3>Qwen2.5-0.5B-Instruct</h3>
+<small>custom-server · PID 50177 · 外部服务</small>
+<p>
+<code>http://127.0.0.1:8081</code> · 健康检查通过</p>
+</div>
+<button data-bind="50177">绑定</button>
+</div>
+</div>
+<div class="model">
+<div class="row">
+<div>
+<h3>模型名称缺测</h3>
+<small>原因：端点未返回模型列表</small>
+<p>llama-server · PID 50178 · 外部服务</p>
+<code>http://127.0.0.1:8082</code>
+</div>
+<button data-bind="50178">绑定</button>
+</div>
+</div>
+<div class="notice">外部服务由操作者管理，退出 Studio 时不会停止。绑定显式使用此项 PID 与 endpoint，不静默换绑。</div>
+</div>
+<div id="bind-result" class="notice" role="status" hidden>
+</div>
+<details>
+<summary>演示绑定结果</summary>
+<label for="bind-outcome">CLI 返回结果</label>
+<select id="bind-outcome">
+<option value="ok">双题包绑定成功</option>
+<option value="fail">启动参数不匹配</option>
+</select>
+</details>
+</div>
+</section>
+</div>
+<footer class="footer">最终方案 v2 · HTML 设计评审稿；不代表原生实现或真机验收。完整路径仅在设置页的路径设置卡展示。</footer>
+</main>
+</div>
+<div id="feedback" role="status" aria-live="polite">
+</div>
+<script>const $=id=>document.getElementById(id);const tell=m=>{$('feedback').textContent=m;};
+document.querySelectorAll('[data-model]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-model]').forEach(x=>x.setAttribute('aria-pressed',x===b));$('model-choice').textContent='当前：'+b.dataset.model+'。下一步：Dashboard 重新设备检查，生成新 preflight 与候选。';});
+document.querySelectorAll('[data-engine]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-engine]').forEach(x=>{x.setAttribute('aria-pressed',x===b);x.textContent=x===b?'已选为候选引擎':'选为候选引擎';});$('engine-choice').textContent='当前：'+b.dataset.engine+'。用于下一次创建候选，已冻结候选不变。';});
+let counts={model:2,engine:2};function download(kind){$('task-name').textContent=kind==='model'?'SmolLM2-135M':'Prism b10743';$('task-dir').textContent=kind+'-'+counts[kind]++;$('task-state').textContent='下载中';$('task-notice').textContent='已下载量、速率缺测：尚未收到读数。总量未知：来源未提供。';$('cancel').disabled=false;tell('已创建示例任务，目录占用时自动追加序号。');}
+$('download-model').onclick=()=>download('model');$('download-engine').onclick=()=>download('engine');$('cancel').onclick=()=>{$('task-state').textContent='取消中';$('task-notice').textContent='等待下载进程收尾；可用演示入口注入取消完成事件。';$('cancel').disabled=true;};
+document.querySelectorAll('[data-download]').forEach(b=>b.onclick=()=>{$('task-state').textContent=b.dataset.download;$('task-notice').textContent=b.dataset.download==='下载失败'?'下载失败（cli_error）。检查来源后重新下载；目录保留，新任务自动追加序号。':b.dataset.download==='已完成'?'文件已发布。大小缺测：本示例未提供实测字节；速率不适用：任务已结束。':'取消已完成，目录保留。速率缺测：没有新读数。';$('cancel').disabled=true;});
+document.querySelectorAll('[data-bind]').forEach(b=>b.onclick=()=>{const fail=$('bind-outcome').value==='fail';$('bind-result').hidden=false;$('bind-result').className='notice '+(fail?'danger':'');$('bind-result').textContent=fail?'绑定失败：启动参数与候选不匹配（startup_arguments_mismatch）。已停止绑定链，不自动重试。请核对候选与服务参数。':'模拟：PID '+b.dataset.bind+'，按顺序绑定 zh-core → zh-svg-pelican，均已绑定。前往 Dashboard 运行阶段。';});</script>
+</body>
+</html>

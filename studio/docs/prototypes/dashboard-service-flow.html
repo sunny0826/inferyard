@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Dashboard · InferYard Studio 交互原型</title>
+<style>
+:root{color-scheme:light;--bg:#f4f5f7;--paper:#fff;--ink:#202733;--muted:#657180;--line:#e2e6eb;--accent:#245cdb;--blue:#edf3ff;--green:#187451;--red:#b83d3d;--amber:#956114}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}button,input,select{font:inherit}button{cursor:pointer;border:1px solid var(--line);border-radius:8px;background:white;padding:7px 13px;color:var(--ink)}button:hover{border-color:var(--accent);color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8badfa;outline-offset:3px}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.primary:hover{background:#1849b9;color:white}a{color:var(--accent);text-decoration:none}h1,h2,h3,p{margin:0}h1{font-size:28px;letter-spacing:-1px}h2{font-size:17px}h3{font-size:14px}.muted,small{color:var(--muted)}small{font-size:12px}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;overflow-wrap:anywhere}.app{display:grid;grid-template-columns:192px 1fr;min-height:100vh}.sidebar{padding:25px 16px;border-right:1px solid var(--line);background:#f9fafb}.brand{font-weight:750;font-size:18px;padding:0 12px 27px}.brand span{color:var(--accent)}.navitem{display:block;margin:5px 0;padding:10px 14px;border-radius:8px;color:var(--muted)}.navitem.current{background:#e9eef9;color:var(--accent);font-weight:650}.sidebar .foot{margin:40px 12px 0;font-size:12px;color:var(--muted)}main{max-width:1270px;width:100%;padding:28px 34px 36px;margin:auto}.top,.section-head,.row{display:flex;align-items:center;justify-content:space-between;gap:16px}.top{margin-bottom:22px}.eyebrow{font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:4px}.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;border-radius:20px;padding:3px 10px;background:#eef1f5;color:var(--muted);white-space:nowrap}.pill.good{background:#e9f5ee;color:var(--green)}.pill.blue{background:var(--blue);color:var(--accent)}.pill.bad{background:#fff0ef;color:var(--red)}.pill.warn{background:#fff5e5;color:var(--amber)}.dot{width:6px;height:6px;background:currentColor;border-radius:50%}.preview{background:#eaf0fb;border:1px solid #d8e2f5;border-radius:10px;padding:12px 16px;margin-bottom:22px}.preview small{display:block;margin-top:3px}.grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(310px,1fr);gap:20px;align-items:start}.stack{display:grid;gap:20px}.card{background:var(--paper);border:1px solid var(--line);border-radius:13px;overflow:hidden;box-shadow:0 2px 4px #17234203}.section-head{padding:18px 20px;border-bottom:1px solid var(--line)}.section-head h2 span{font-weight:400;color:var(--muted);font-size:12px;margin-left:7px}.body{padding:18px 20px}.asset{padding:16px;border:1px solid #d6e2fc;background:linear-gradient(120deg,#f0f5ff,#fff);border-radius:10px}.asset h3{font-size:18px;margin:8px 0 2px}.asset .row{margin-top:12px}.model{padding:15px 0;border-bottom:1px solid var(--line)}.model:last-child{border-bottom:0}.model .mono{display:block;color:var(--muted);margin-top:5px}.icon{width:35px;height:35px;border-radius:9px;background:#eef2f8;color:var(--accent);display:grid;place-items:center;font-size:17px;flex-shrink:0}.name{display:flex;gap:12px;align-items:center}.subhead{margin-top:20px;font-size:12px;color:var(--muted)}.tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px}.tabs button{padding:4px 9px;font-size:12px}.tabs button[aria-pressed=true]{background:var(--blue);border-color:#8dacf0;color:var(--accent)}.status-panel{padding:16px;border-radius:10px;background:#f7f9fc;margin-bottom:16px}.status-panel h3{font-size:19px;margin:6px 0}.status-panel p{color:var(--muted);font-size:13px}.status-panel.bad{background:#fff5f3}.status-panel.good{background:#f0f8f3}.kv{display:grid;grid-template-columns:100px 1fr;gap:8px;font-size:13px;margin:14px 0}.kv dt{color:var(--muted)}.kv dd{margin:0}.command{display:block;padding:12px;background:#f5f6f8;border:1px solid var(--line);border-radius:8px;white-space:pre-wrap;margin:8px 0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.notice{font-size:12px;padding:11px 13px;background:#f7f8fa;border-radius:8px;margin-top:14px;color:var(--muted)}.notice.warning{background:#fff6e8;color:#865917}.steps{display:flex;gap:5px;align-items:center;font-size:10px;color:var(--muted);margin-top:14px;flex-wrap:wrap}.steps b{padding:3px 6px;border-radius:5px;font-weight:400;background:#f0f2f5}.steps b.active{background:#dce8ff;color:var(--accent)}.task{border:1px solid var(--line);border-radius:10px;padding:15px;margin-top:12px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 10px}.metrics strong{display:block;font-size:19px;font-weight:600}.metrics small{display:block}.activity{height:4px;background:repeating-linear-gradient(100deg,#b3c9f7 0px,#b3c9f7 18px,#e9f0ff 18px,#e9f0ff 32px);border-radius:4px;margin:12px 0}.task-note{font-size:12px;color:var(--muted)}details{margin-top:14px;font-size:12px;color:var(--muted)}summary{cursor:pointer;color:var(--accent)}label{display:block;font-size:12px;color:var(--muted);margin-top:12px}input,select{border:1px solid #cbd2dc;border-radius:7px;padding:8px;width:100%;background:white;color:var(--ink)}.binding{border-left:3px solid #91a9d4;padding-left:13px;margin-top:15px}.binding strong{display:block}.binding small{display:block}.footer{margin-top:20px;font-size:12px;color:var(--muted)}#feedback{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#24324b;color:white;padding:12px 22px;border-radius:10px;max-width:90vw;box-shadow:0 6px 25px #0002;z-index:3}#feedback:empty{display:none}.check{display:flex;gap:8px;align-items:center}.check input{width:auto}.tiny{font-size:11px} [hidden]{display:none!important}@media(max-width:1050px){.app{grid-template-columns:150px 1fr}main{padding:24px 20px}.grid{grid-template-columns:1fr}.sidebar{padding:22px 10px}}@media(max-width:600px){.app{display:block}.sidebar{display:none}main{padding:20px 12px}.top{align-items:flex-start}.top>.pill{display:none}.section-head,.body{padding:16px}.metrics strong{font-size:16px}.row{flex-wrap:wrap}h1{font-size:25px}}
+
+main{min-width:0;margin:0 auto}.row,.section-head,.top{flex-wrap:wrap}.body,.name,.row>div{min-width:0}h3,p,dd{overflow-wrap:anywhere}.steps{font-size:12px}.notice.danger{background:#fff0ef;color:var(--red)}.field{margin-top:12px}.field small{display:block}.step{position:relative;padding-left:44px;margin:24px 0}.step:before{content:attr(data-num);position:absolute;left:0;top:0;background:var(--accent);color:white;border-radius:50%;width:28px;height:28px;text-align:center}.step:after{content:'';position:absolute;left:13px;top:34px;bottom:0;width:2px;background:var(--line)}.step h2{margin-bottom:12px}.grid>.card{height:100%}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline-color:var(--accent)}.sidebar{width:auto}.pill{white-space:normal}.kv{grid-template-columns:90px minmax(0,1fr)}
+@media(max-width:600px){.sidebar{display:block}.sidebar .foot{display:none}.brand{padding-bottom:8px}.navitem{display:inline-block;padding:6px}.app{display:block}}
+button[aria-pressed=true]{background:var(--blue);border-color:var(--accent);color:var(--accent)}</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" aria-label="主导航">
+<div class="brand">Infer<span>Yard</span>
+<small style="display:block">STUDIO</small>
+</div>
+<a class="navitem current" aria-current="page" href="dashboard-service-flow.html">Dashboard</a>
+<span class="navitem">设备</span>
+<a class="navitem "  href="models-page.html">模型</a>
+<span class="navitem">报告</span>
+<a class="navitem "  href="settings-download-names.html">设置</a>
+<div class="foot">本地工作区<br>
+<code>workspace-demo</code>
+<br>交互原型 · 示例数据<br>设备与报告仅作位置示意</div>
+</aside>
+<main>
+<header class="top">
+<div>
+<h1>Dashboard</h1>
+<p class="muted">选择候选引擎，启动并绑定默认双题包。</p>
+</div>
+<span class="pill good">CLI 已就绪 · 示例</span>
+</header>
+<div class="preview">
+<strong>交互原型 · 所有数据均为示例</strong>
+<small>仅在本页演示，不下载、不启动真实服务、不访问网络。状态按钮用于注入事件快照。</small>
+</div>
+<div class="preview">
+<strong>情境预览</strong>
+<div class="actions">
+<button id="show-candidate">候选阶段</button>
+<button id="show-bind">启动与绑定阶段</button>
+<button id="show-fail">绑定失败</button>
+</div>
+</div>
+<section class="card">
+<div class="body">
+<span id="phase" class="pill blue">第 3 步 · 候选</span>
+<p id="summary">预检通过；选择引擎，为默认双题包创建候选。</p>
+<p class="notice">默认范围：zh-core + zh-svg-pelican · 模型 Qwen2.5-0.5B-Instruct</p>
+</div>
+</section>
+<section id="candidate" class="step" data-num="3">
+<h2>创建候选</h2>
+<div class="field">
+<label for="engine">候选引擎</label>
+<select id="engine" aria-describedby="engine-help">
+<option>Prism b10743</option>
+<option>custom-server（用户引擎库）</option>
+<option>custom-server（工作区）</option>
+</select>
+<small id="engine-help">默认选择最新完成下载的引擎。名称映射到本地文件；冻结后不可修改。</small>
+</div>
+<div class="actions">
+<button id="create" class="primary">创建双题包候选</button>
+<a href="models-page.html">管理模型与引擎</a>
+</div>
+</section>
+<section id="binding" class="step" data-num="4" hidden>
+<h2>启动与绑定</h2>
+<p>候选引擎：<strong id="chosen">Prism b10743</strong> · 模型 Qwen2.5-0.5B-Instruct</p>
+<div class="status-panel" style="margin-top:14px" role="status" aria-live="polite">
+<span id="state" class="pill">stopped · 已停止</span>
+<h3 id="state-title">服务尚未启动</h3>
+<p id="state-note">一键启动后等待健康检查，按顺序绑定全部待绑题包。</p>
+</div>
+<div class="steps" aria-label="服务与绑定流程">
+<b data-step="0">stopped</b>→<b data-step="1">starting</b>→<b data-step="2">running</b>→<b data-step="3">绑定中</b>→<b data-step="5">已绑定</b>
+</div>
+<dl class="kv">
+<dt>本地地址</dt>
+<dd id="endpoint">http://127.0.0.1:8080</dd>
+<dt>进程</dt>
+<dd id="pid">未启动 · 无活动进程</dd>
+<dt>日志文件</dt>
+<dd>
+<code>engine-demo.log</code>
+</dd>
+<dt>zh-core</dt>
+<dd id="core">待绑定</dd>
+<dt>zh-svg-pelican</dt>
+<dd id="pelican">待绑定</dd>
+</dl>
+<div id="failure" class="notice danger" role="alert" hidden>zh-svg-pelican 绑定失败：启动参数与候选不匹配（startup_arguments_mismatch）。zh-core 已绑定并保留。绑定链已停止，不自动重试；核对候选与服务参数后再操作。</div>
+<div class="actions">
+<button id="start" class="primary">启动并绑定</button>
+</div>
+<p class="notice">Studio 退出时关闭自己启动的服务；不自动重启。服务 running 仅表示健康就绪，不代表已绑定。</p>
+<details open>
+<summary>原型事件控制（不属于产品操作）</summary>
+<div class="actions">
+<button id="next">下一状态事件</button>
+<button id="reset">重置演示</button>
+</div>
+<p>逐次注入 starting → running → 绑定 zh-core → 绑定 zh-svg-pelican → 已绑定。实际产品一次启动后自动推进，无须逐步点击。</p>
+</details>
+<div style="margin-top:20px">
+<h3>本机运行的服务</h3>
+<p class="muted">发现仅表示端点可探测；绑定仍核验进程身份与启动参数。</p>
+<div class="model">
+<div class="row">
+<div>
+<h3>Qwen2.5-0.5B-Instruct</h3>
+<small>custom-server · PID 50177 · 外部服务</small>
+<p>
+<code>http://127.0.0.1:8081</code> · 健康检查通过</p>
+</div>
+<button data-bind="50177">绑定</button>
+</div>
+</div>
+<div class="model">
+<div class="row">
+<div>
+<h3>模型名称缺测</h3>
+<small>原因：端点未返回模型列表</small>
+<p>llama-server · PID 50178 · 外部服务</p>
+<code>http://127.0.0.1:8082</code>
+</div>
+<button data-bind="50178">绑定</button>
+</div>
+</div>
+<div class="notice">外部服务由操作者管理，退出 Studio 时不会停止。绑定显式使用此项 PID 与 endpoint，不静默换绑。</div>
+</div>
+<details>
+<summary>高级：手动绑定</summary>
+<div class="field">
+<label for="process">本机进程</label>
+<select id="process">
+<option value="50177">50177 · custom-server</option>
+<option value="50178">50178 · llama-server</option>
+</select>
+</div>
+<div class="field">
+<label for="manual-endpoint">endpoint</label>
+<input id="manual-endpoint" value="http://127.0.0.1:8081" aria-describedby="endpoint-help manual-error">
+<small id="endpoint-help">填写本机 loopback 地址；显式使用所选进程，仍经 CLI 身份与参数核验。</small>
+</div>
+<div class="actions">
+<button id="manual-bind">绑定所选进程</button>
+</div>
+<p id="manual-error" class="notice danger" role="alert" hidden>请输入有效的本机 loopback HTTP endpoint，不含凭据、查询或片段。</p>
+</details>
+</section>
+<section id="run" class="step" data-num="5" hidden>
+<h2>运行</h2>
+<p>zh-core 与 zh-svg-pelican 均已绑定同一服务。下一步：核对预算与停止条件，再按顺序运行。</p>
+<p class="notice">本设计稿止于运行入口，未执行测评、生成或覆盖证据。</p>
+</section>
+<footer class="footer">最终方案 v2 · HTML 设计评审稿；不代表原生实现或真机验收。完整路径仅在设置页的路径设置卡展示。</footer>
+</main>
+</div>
+<div id="feedback" role="status" aria-live="polite">
+</div>
+<script>const $=id=>document.getElementById(id);const tell=m=>{$('feedback').textContent=m;};
+let step=0,external=false;const labels=['stopped · 已停止','starting · 启动中','running · 服务就绪','绑定中 · zh-core','绑定中 · zh-svg-pelican','已绑定'];const notes=['一键启动后等待健康检查，按顺序绑定全部待绑题包。','正在加载模型，等待健康检查；不重复创建进程。','健康检查通过，即将自动绑定全部待绑题包。','正在核验并绑定 zh-core，zh-svg-pelican 等待。','zh-core 已绑定，继续核验并绑定 zh-svg-pelican。','两个题包已绑定，进入运行阶段。'];
+function phase(bind){$('candidate').hidden=bind;$('binding').hidden=!bind;$('run').hidden=true;$('phase').textContent=bind?'第 4 步 · 启动与绑定':'第 3 步 · 候选';$('summary').textContent=bind?'候选已冻结；启动服务或选择本机运行的服务。':'预检通过；选择引擎，为默认双题包创建候选。';}
+function render(){ $('state').className='pill '+(step===5?'good':step>0?'blue':'');$('state').textContent=labels[step];$('state-title').textContent=step===0?'服务尚未启动':step===5?'默认双题包已就绪':external?'绑定已有服务':'启动并自动绑定';$('state-note').textContent=notes[step];$('core').textContent=step>=4?'已绑定':step===3?'绑定中':'待绑定';$('pelican').textContent=step===5?'已绑定':step===4?'绑定中':'待绑定';$('pid').textContent=step===0?'未启动 · 无活动进程':external?$('pid').textContent:$('chosen').textContent+' · PID 48216';$('start').disabled=step>0;$('next').disabled=step===5;document.querySelectorAll('[data-bind],#manual-bind').forEach(b=>b.disabled=step>0);document.querySelectorAll('[data-step]').forEach(b=>{const active=Number(b.dataset.step)===(step===4?3:step);b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});if(step===5){$('binding').hidden=true;$('run').hidden=false;$('phase').textContent='第 5 步 · 运行';$('summary').textContent='已绑定：zh-core + zh-svg-pelican，同一引擎与 endpoint。';$('show-bind').focus();} }
+function reset(){step=0;external=false;phase(true);$('failure').hidden=true;$('endpoint').textContent='http://127.0.0.1:8080';render();}
+$('create').onclick=()=>{$('chosen').textContent=$('engine').value;reset();$('start').focus();};$('show-candidate').onclick=()=>{reset();phase(false);};$('show-bind').onclick=reset;$('reset').onclick=reset;$('start').onclick=()=>{step=1;render();$('next').focus();};$('next').onclick=()=>{if(step<5){step++;render();}};
+$('show-fail').onclick=()=>{reset();step=4;render();$('state').textContent='绑定失败';$('state').className='pill bad';document.querySelectorAll('[data-step]').forEach(b=>{b.classList.remove('active');b.removeAttribute('aria-current');});$('state-title').textContent='绑定链已停止';$('state-note').textContent='服务仍在运行；不会自动重试绑定。';$('pelican').textContent='绑定失败';$('failure').hidden=false;$('next').disabled=true;};
+function bind(pid,endpoint){reset();external=true;step=3;$('pid').textContent='外部服务 · PID '+pid;$('endpoint').textContent=endpoint;render();tell('使用所选 PID 与 endpoint，按顺序绑定全部待绑题包。');}
+document.querySelectorAll('[data-bind]').forEach(b=>b.onclick=()=>bind(b.dataset.bind,b.dataset.bind==='50177'?'http://127.0.0.1:8081':'http://127.0.0.1:8082'));
+$('manual-bind').onclick=()=>{let ok=false;try{const u=new URL($('manual-endpoint').value);ok=['http:','https:'].includes(u.protocol)&&['localhost','127.0.0.1','[::1]'].includes(u.hostname)&&!u.username&&!u.password&&!u.search&&!u.hash;}catch{}$('manual-error').hidden=ok;$('manual-endpoint').setAttribute('aria-invalid',String(!ok));if(ok)bind($('process').value,$('manual-endpoint').value);};
+render();phase(location.hash==='#bind');</script>
+</body>
+</html>
