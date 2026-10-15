@@ -119,6 +119,7 @@ func TestChainBindRunReport(t *testing.T) {
 	}
 	assertGoldenTranscript(t, env.Recorder)
 	assertReportExists(t, final.Progress.Workspace)
+	assertEvidenceContracts(t, final.Progress.Workspace)
 }
 
 func runWizard(t *testing.T, service *core.Service, ctx context.Context, command string, verify bool, recorder *Recorder) {

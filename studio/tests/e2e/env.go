@@ -29,6 +29,11 @@ type Env struct {
 func NewEnv(t *testing.T, cliPath string) *Env {
 	t.Helper()
 	root := t.TempDir()
+	// INFERYARD_E2E_ROOT swaps the throwaway root for a caller-managed one so
+	// the workspace and blame transcript survive for post-mortem inspection.
+	if keep := os.Getenv("INFERYARD_E2E_ROOT"); keep != "" {
+		root = keep
+	}
 	// The CLI resolves config paths with Path.resolve(); keep every fixture path
 	// symlink-free so model_path comparisons see identical strings on macOS
 	// (/var/folders is a symlink to /private/var/folders).
