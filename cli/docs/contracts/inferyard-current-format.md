@@ -27,7 +27,7 @@
 | engine-fit plan | engine_fit_plan.v1/v2/v3/v4 全部保留 | 未知定义；不删除 v1 全目录模型清单 | [prepare](../../src/inferyard/config/engine_fit.py)：目录且仅 vLLM/SGLang、无覆盖写 v1；普通新引擎/单 GGUF 写 v2；温度覆盖写 v3；内存覆盖写 v4 |
 | engine-fit run | engine_fit_run.v1–v6 全部保留 | 非法 plan/run/platform 组合及未知定义 | [run writer](../../src/inferyard/runtime/engine_fit.py)：plan.v1 在 Linux 写 run.v1、Darwin 写 run.v2；plan.v2/v3/v4 在非 Windows 写 run.v3/v4/v5；Windows 单 GGUF llama.cpp 写 run.v6 |
 | engine-fit 封存/比较/中断 | engine_fit_manifest.v2、engine_fit_comparison.v1、engine_fit_checkpoint.v1 | manifest.v1 重渲染兼容；坏 seal 不可回退 checkpoint | [seal/compare](../../src/inferyard/reporting/engine_fit.py)、[checkpoint](../../src/inferyard/evidence/engine_fit_checkpoint.py) |
-| observer | schema 3、lab_observer.v2、lab_observer_summary.v2 | lab_observer.v1 的流解析/缺字段回退 | [Go writer](../../../observer/internal/observe/types.go)、[summary writer](../../scripts/analyze_observer.py)、[流校验](../../scripts/observer_stream.py) |
+| 已退役的独立 observer | 无活动 writer 或 reader；既有原件保持不变 | 独立命令、构建器、流解析与摘要关联全部移除；lab_observer.v1/v2、lab_observer_summary.v2 不再支持 | [ADR 052](../decisions/052-retire-standalone-observer.md) |
 | 公开包/复现 | public-summary.v5 / format 5、public-metrics.v1、核心 v3 复现计划 | public-summary.v1–v4 的投影、核验及 public-plan 回退 | [package](../../src/inferyard/reporting/public_package.py)、[metrics](../../src/inferyard/analysis/public_metrics.py)、[public_plan](../../src/inferyard/config/public_plan.py) |
 | 评分/重评分/导出 | 实时 scorer phase2.v1；显式 rescore 可选 phase2.v1/v2；rescore/export format 1 | 旧格式评分转换；任何隐式重评分 | [scoring](../../src/inferyard/analysis/scoring.py)、[revision](../../src/inferyard/analysis/scoring_revision.py)、[rescore](../../src/inferyard/reporting/rescore.py)、[export](../../src/inferyard/reporting/export.py) |
 | 身份/资产 | implementation-identity.v1、model-assets.v2；plan.v1 当前使用的无 definition 全目录清单 | 仅由历史 plan.v2–v4 触发的无 definition 目录回退；旧比较身份算法 | [IdentityContext](../../src/inferyard/implementation_identity.py)、[assets](../../src/inferyard/config/engine_fit_assets.py)、[model_manifest](../../src/inferyard/platforms/engine_fit.py) |
@@ -61,7 +61,7 @@
 | 当前格式且验证通过 | 保持既有 0/3/130 及产物专用语义，证据完整不等于执行完整或可比 |
 
 先按各产物既有结构与已声明的大小限制，做严格 JSON、类型及可用封存完整性检查，再确定版本拒绝。
-通用证据 JSON 读取不新增全局 16 MiB 上限；配置、observer、host state 各自已有或明确冻结的限制保持不变。
+通用证据 JSON 读取不新增全局 16 MiB 上限；配置与 host state 各自已有或明确冻结的限制保持不变。
 当前报告可由合法输入聚合超过单份配置大小，普通核验及显式 rerender 均应接受；不为核验旧格式而恢复旧评分器/模板。
 可识别旧封存的哈希损坏仍为 4；无从解释的未知格式只报告 unsupported，不声称其内容完整。
 冻结 plan 的可解释 `plan_sha256`、rescore 的既有自哈希与来源摘要先于版本拒绝核验；

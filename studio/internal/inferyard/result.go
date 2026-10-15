@@ -2,7 +2,6 @@ package inferyard
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -64,16 +63,4 @@ func ParseDeviceCheck(result CommandResult) (DevicePreflight, error) {
 		}
 	}
 	return device, nil
-}
-func (c Client) DeviceCheck(ctx context.Context) (DevicePreflight, Execution, error) {
-	out, err := c.Exec(ctx, "device-check", "--json")
-	if err != nil {
-		return DevicePreflight{}, out, err
-	}
-	result, err := Parse(out.Stdout)
-	if err != nil {
-		return DevicePreflight{}, out, err
-	}
-	device, err := ParseDeviceCheck(result)
-	return device, out, err
 }

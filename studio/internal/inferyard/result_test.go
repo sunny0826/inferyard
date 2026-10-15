@@ -1,7 +1,6 @@
 package inferyard
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 )
@@ -25,12 +24,5 @@ func TestParse(t *testing.T) {
 	result.Details = json.RawMessage(`{"kind":"device_preflight.v2"}`)
 	if _, err := ParseDeviceCheck(result); err == nil {
 		t.Fatal("unsupported kind accepted")
-	}
-}
-func TestDeviceCheck(t *testing.T) {
-	path := script(t, "[ \"$1\" = device-check ] && [ \"$2\" = --json ] || exit 4\nprintf '%s' '"+validResult+"'")
-	device, out, err := (Client{Path: path}).DeviceCheck(context.Background())
-	if err != nil || device.Kind != "device_preflight.v1" || out.Status != Complete {
-		t.Fatalf("%+v %+v %v", device, out, err)
 	}
 }

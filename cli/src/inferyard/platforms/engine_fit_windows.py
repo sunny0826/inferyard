@@ -105,7 +105,7 @@ def bind_service(
         state = _state(pid, deadline)
         start, arguments, raw, executable, cwd, _owner = state
         _environment(pid)
-        startup, source, extras = startup_binding(engine, arguments, executable, cwd, windows=True)
+        startup, source, extras = startup_binding(engine, arguments, executable, cwd)
         model = validate_model(startup, model_path, source)
         model_stat, executable_stat = model.stat(), executable.stat()
         digest, _size = _file_hash(executable)

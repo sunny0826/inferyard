@@ -9,7 +9,7 @@ Applies to this repository and its subdirectories. Communicate concisely in Chin
 3. For platform work read [MACOS.md](cli/MACOS.md) / [WINDOWS.md](cli/WINDOWS.md); for configuration and bundle work read the README of the relevant directory. Read [scripts/README.md](cli/scripts/README.md) before running any script and check its arguments and side effects.
 4. Distinguish implementation, simulated verification and real-device evidence. When docs and source disagree, point out the difference and verify it; never silently adopt the looser reading.
 
-本仓库为 monorepo：`cli/` 是 Python CLI 主产品（含独立离线 HTML 报告），`studio/` 是 MyGo 原生桌面面板，`observer/` 是独立进程监测器。 The package name is `inferyard`, the entry points are `inferyard` / `python -m inferyard`; the only active contract is `schema_version = 3`.
+本仓库为 monorepo：`cli/` 是 Python CLI 主产品（含独立离线 HTML 报告），`studio/` 是 MyGo 原生桌面面板。 The package name is `inferyard`, the entry points are `inferyard` / `python -m inferyard`; the only active contract is `schema_version = 3`.
 
 ## Source boundaries
 
@@ -17,7 +17,6 @@ Applies to this repository and its subdirectories. Communicate concisely in Chin
 | --- | --- |
 | `cli/` | Python CLI 与离线 HTML 报告 |
 | `studio/` | MyGo 原生桌面应用（Go，独立 module `inferyard/studio`） |
-| `observer/` | 独立进程监测器 |
 
 下表为 CLI 内部源码边界：
 

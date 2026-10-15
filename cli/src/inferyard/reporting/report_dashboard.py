@@ -13,7 +13,7 @@ CATEGORIES = {
 }
 
 
-def request_details(request, case, ordinal, *, contents, format_version=8):
+def request_details(request, case, ordinal, *, contents):
     timing = request_timing(request)
     details = {
         "ordinal": ordinal,

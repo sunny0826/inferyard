@@ -223,8 +223,6 @@ func commandOf(args []string) string {
 	return "inferyard " + strings.Join(out, " ")
 }
 
-func uniqueID() int64 { return time.Now().UnixNano() }
-
 func (w *viewState) executeBinding(command string, e *core.ApiError) {
 	if e != nil {
 		w.submissionFailed(e)

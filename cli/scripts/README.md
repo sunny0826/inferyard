@@ -16,7 +16,6 @@
 | 题包 | [build_phase2_bundle.py](build_phase2_bundle.py)、[build_position_bundle.py](build_position_bundle.py)、[build_structured_clarity_bundle.py](build_structured_clarity_bundle.py)、[build_structured_fields_bundle.py](build_structured_fields_bundle.py) | 创建题包与审核材料；改内容后仍须人工审核 |
 | 扫描准备 | [prepare_length_scan.py](prepare_length_scan.py)、[prepare_position_scan.py](prepare_position_scan.py) | 从准备证据生成新实验定义，检查各脚本要求 |
 | 原生采集 | [collect_windows_machine.py](collect_windows_machine.py)、[collect_thermal_diagnostic.py](collect_thermal_diagnostic.py) | 读取设备/温度与来源，写诊断，不等于模型测评 |
-| 观察器 | [build_observer.py](build_observer.py)、[analyze_observer.py](analyze_observer.py) | 构建独立 Go 二进制，或只读 JSONL/封存 run 写新摘要 |
 | 来源核对 | [verify_lineage_files.py](verify_lineage_files.py)、[import_external_measurements.py](import_external_measurements.py) | 核对谱系、导入有来源观测；历史迁移工具已移除，旧数据回原项目处理 |
 
 题包生成器依赖 `phase2_review.html`，它是活动模板，保留。

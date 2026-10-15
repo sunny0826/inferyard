@@ -38,7 +38,7 @@ func main() {
 		}
 	}()
 	mygo.App.WhenReady(func() {
-		desktop.Subscribe(ctx, service.Bus, false, func(message desktop.Message) error {
+		desktop.Subscribe(ctx, service.Bus, func(message desktop.Message) error {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
 		}, log.Printf)
 		reports := pages.NewReports(service)

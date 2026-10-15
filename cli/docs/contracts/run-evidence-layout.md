@@ -97,9 +97,6 @@ request_started 对应的 prepared 原件缺失仍拒绝为 4。
 `{kind:request, request_id, sha256}`。member sha256 为成员内容，外层 sha256 为物理文件字节。
 metric_observations、report/export/rescore/public、来源搬移均消费同一核验接口；不虚构旧文件。
 
-独立 Go observer 不属于本轮迁移；其旧布局绑定与独立流继续遵循
-[observer 契约](observer-contract.md)，不支持 layout2 run 绑定。
-
 ## 写入生命周期
 
 TrialJournal 在创建采样日志前原子发布 inputs；通用 EvidenceStore snapshot/日志/seal 不改协议。

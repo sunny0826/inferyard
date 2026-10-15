@@ -36,17 +36,10 @@ func TestExitCodes(t *testing.T) {
 		})
 	}
 }
-func TestLocate(t *testing.T) {
-	path := script(t, "printf 'inferyard 1.2.3\\n'")
-	for _, override := range []string{path, ""} {
-		t.Setenv("PATH", filepath.Dir(path))
-		b, err := Locate(context.Background(), override)
-		if err != nil || b.Path != path || b.Version != "1.2.3" {
-			t.Fatalf("%+v %v", b, err)
-		}
-	}
-	if _, err := Locate(context.Background(), path+"-missing"); err == nil {
-		t.Fatal("missing executable accepted")
+func TestParseVersion(t *testing.T) {
+	version, err := ParseVersion([]byte("inferyard 1.2.3\n"))
+	if err != nil || version != "1.2.3" {
+		t.Fatalf("%q %v", version, err)
 	}
 	if _, err := ParseVersion([]byte("unexpected output")); err == nil {
 		t.Fatal("invalid version accepted")

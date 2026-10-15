@@ -12,8 +12,7 @@
 | [应用内存诊断](contracts/memory-check-contract.md) | macOS 只读应用/进程清单与保护判断 |
 | [报告](reports.md) · [引擎诊断](engine-fit-common.md) | 离线阅读与同机 engine-fit |
 | [流程图](show-me-system-flow.html) | 安装、准备、执行与离线证据通路 |
-| [inferyard-observer](../../observer/README.md) | 独立进程监测器 |
-| [InferYard Studio](../../studio/README.md) | 本地 benchmark 桌面/Web 双端面板 |
+| [InferYard Studio](../../studio/README.md) | 本地 benchmark 原生桌面面板 |
 
 ## 修改项目
 
@@ -27,6 +26,7 @@
 | [方法目录](reference/methods-matrix.md) · [执行说明](reference/methods-guide.md) · [术语](reference/glossary.md) | 方法适用前提与解释 |
 | [ADR](decisions/README.md) | 长期设计理由 |
 | [backlog](backlog.md) · [变更记录](../CHANGELOG.md) | 当前剩余工作与候选范围 |
+| [配置清理审计](audits/config-cleanup.md) | 独立 Observer 退役、无效参数与旧 Studio 接口的证据和 CPU 测量 |
 | [脚本](../scripts/README.md) · [Schema](../schemas/README.md) | 工程工具与生成文件 |
 
 CLI 开发命令和 `scripts/` 工具在仓库的 `cli/` 目录内执行（从仓库根先 `cd cli`）；根级 mise tasks 已内置切换目录。安装用户的 `inferyard ...` 命令不受影响。

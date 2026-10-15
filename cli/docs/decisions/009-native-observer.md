@@ -1,6 +1,6 @@
 # ADR 009：独立单文件系统与进程监测器
 
-状态：Accepted
+状态：Superseded，由 [ADR 052](052-retire-standalone-observer.md) 退役。以下记录原设计理由。
 
 ## 决策
 
@@ -13,5 +13,5 @@
 代价是分平台维护进程时间、内存与退出语义。CPU 按单核百分比，首样本缺基线为 null，
 进程存活、端点可达、模型加载和生成分别解释。
 
-六目标可交叉编译，原生运行覆盖需分别记录。接口见[observer 契约](../contracts/observer-contract.md)，
-使用与覆盖见[observer 说明](../../../observer/README.md)，与 benchmark 的关联由 [ADR 010](010-observer-benchmark-adaptation.md)定义。
+原设计分别记录交叉编译与原生运行覆盖，与 benchmark 的关联由
+[ADR 010](010-observer-benchmark-adaptation.md) 定义。原接口与实现通过 Git 历史追溯。

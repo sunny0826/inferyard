@@ -34,7 +34,7 @@ from inferyard.reporting.report_resources import resource_view
 from inferyard.reporting.report_scans import scan_view
 
 
-def presentation(data, source, out, *, contents, format_version=8, reads=None):
+def presentation(data, source, out, *, contents, reads=None):
     summary = data["summary"]
     evidence = reads if reads is not None else TrialEvidence(Path(source["path"]))
     if evidence.root != Path(source["path"]).resolve() or evidence.projection:
@@ -69,7 +69,6 @@ def presentation(data, source, out, *, contents, format_version=8, reads=None):
                 cases[request["case_id"]],
                 ordinal,
                 contents=contents,
-                format_version=format_version,
             )
         )
     values = [row["latency_ms"] for row in rows if row["latency_ms"] is not None]
@@ -165,7 +164,6 @@ def build_index(
                 source,
                 out,
                 contents=contents,
-                format_version=format_version,
                 reads=source_metadata.pop(Path(source["path"]), {}).get("evidence"),
             )
         )

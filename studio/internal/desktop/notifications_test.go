@@ -16,7 +16,7 @@ func TestEventNotifications(t *testing.T) {
 	bus := core.NewEventBus()
 	messages := make(chan Message, 10)
 	logs := make(chan string, 10)
-	Subscribe(ctx, bus, false, func(m Message) error { messages <- m; return errors.New("notification permission denied") }, func(f string, a ...any) { logs <- fmt.Sprintf(f, a...) })
+	Subscribe(ctx, bus, func(m Message) error { messages <- m; return errors.New("notification permission denied") }, func(f string, a ...any) { logs <- fmt.Sprintf(f, a...) })
 	for _, kind := range []string{"run.state", "download.state"} {
 		for _, state := range []string{"done", "failed", "cancelled"} {
 			bus.Publish(kind, map[string]any{"task": map[string]string{"state": state, "out_dir": "/private/secret"}})
@@ -56,10 +56,4 @@ func TestEventNotifications(t *testing.T) {
 	case <-time.After(50 * time.Millisecond):
 	}
 	cancel()
-}
-
-func TestHeadlessNotifications(t *testing.T) {
-	bus := core.NewEventBus()
-	Subscribe(context.Background(), bus, true, func(Message) error { t.Error("headless delivery"); return nil }, t.Logf)
-	bus.Publish("report.created", map[string]any{})
 }
