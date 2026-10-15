@@ -40,6 +40,21 @@ ENDPOINT["allOf"] = [
         "else": {"properties": {"reason": nullable(enum(*PROBE_REASONS[-2:]))}},
     }
 ]
+DETAILS = obj(
+    {
+        "model_requests_sent": {"type": "integer", "const": 0},
+        "services": array(
+            obj(
+                {
+                    "pid": POS,
+                    "process_name": LABEL,
+                    "process_start_ticks": POS,
+                    "endpoints": array(ENDPOINT, minimum=1),
+                }
+            )
+        ),
+    }
+)
 SERVICE_DISCOVERY = obj(
     {
         "command": enum("service discover"),
@@ -50,23 +65,7 @@ SERVICE_DISCOVERY = obj(
         "run_id": {"type": "null"},
         "evidence_dir": {"type": "null"},
         "limitations": array(enum(*LIMITATIONS)),
-        "details": nullable(
-            obj(
-                {
-                    "model_requests_sent": {"type": "integer", "const": 0},
-                    "services": array(
-                        obj(
-                            {
-                                "pid": POS,
-                                "process_name": LABEL,
-                                "process_start_ticks": POS,
-                                "endpoints": array(ENDPOINT, minimum=1),
-                            }
-                        )
-                    ),
-                }
-            )
-        ),
+        "details": nullable(DETAILS),
     }
 )
 SERVICE_DISCOVERY["allOf"] = [
@@ -78,5 +77,9 @@ SERVICE_DISCOVERY["allOf"] = [
                 "details": {"type": "null"},
             }
         },
+        # Non-cancelled results always carry the details object; only Ctrl-C
+        # nulls it, so a discovered/partial/error shell without details is
+        # rejected instead of sliding through the nullable details.
+        "else": {"properties": {"details": DETAILS}},
     }
 ]

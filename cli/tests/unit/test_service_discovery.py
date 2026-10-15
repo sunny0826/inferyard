@@ -286,3 +286,19 @@ def test_cancellation_result_matches_the_contract(monkeypatch, capsys):
     assert result["details"] is None
     assert result["limitations"] == ["cancelled"]
     jsonschema.validate(result, export_schema("service_discovery"))
+
+
+def test_non_cancelled_result_without_details_is_rejected():
+    # Only the Ctrl-C path nulls details; a discovered/partial/error shell
+    # without the details object must not slide through the schema.
+    shell = {
+        "command": "service discover",
+        "status": "discovered",
+        "completeness": "complete",
+        "run_id": None,
+        "evidence_dir": None,
+        "limitations": [],
+        "details": None,
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(shell, export_schema("service_discovery"))

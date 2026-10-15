@@ -297,9 +297,9 @@ def test_package_resource_failure_is_tool_error(synthetic_runtime, monkeypatch, 
 
 def test_contract_golden_samples_match_the_schema():
     # The same physical samples drive the Studio parser test
-    # (studio/internal/inferyard/engine_check_golden_test.go): every sample
-    # marked valid must satisfy the CLI's exported schema, so neither side
-    # drifts from the shared contract.
+    # (studio/internal/inferyard/engine_check_golden_test.go): the CLI schema
+    # must accept exactly the valid samples and reject every invalid one, so
+    # neither side drifts from the shared contract.
     samples = json.loads(
         (
             Path(__file__).resolve().parents[3]
@@ -314,3 +314,6 @@ def test_contract_golden_samples_match_the_schema():
     for sample in samples:
         if sample["valid"]:
             jsonschema.validate(sample["response"], export_schema("engine_check"))
+        else:
+            with pytest.raises(jsonschema.ValidationError):
+                jsonschema.validate(sample["response"], export_schema("engine_check"))
