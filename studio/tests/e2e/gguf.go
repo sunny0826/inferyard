@@ -17,10 +17,10 @@ func fakeGGUF() []byte {
 	_ = binary.Write(&buf, binary.LittleEndian, uint32(3)) // version
 	_ = binary.Write(&buf, binary.LittleEndian, uint64(1)) // tensor_count (must be nonzero)
 	kvs := []struct {
-		key   string
-		kind  uint32 // 4 = uint32, 8 = string
-		str   string
-		num   uint32
+		key  string
+		kind uint32 // 4 = uint32, 8 = string
+		str  string
+		num  uint32
 	}{
 		{"general.name", 8, DisplayName, 0},
 		{"general.architecture", 8, "llama", 0},

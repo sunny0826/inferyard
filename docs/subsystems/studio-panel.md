@@ -178,9 +178,10 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.9�
   `service_discovery_invalid_response`，退出 4 映射 `service_discovery_error`；命令匹配的退出 2
   映射 `cli_blocked` 并保留 limitations，退出 130 映射 `cancelled`。发现结果不构成绑定资格，
   绑定终审始终在 CLI；同端口多监听进程标记 `ambiguous_listener`，不判唯一归属。
-- **模拟不授予真机资格**：测试用注入式 fixture executor，不启动真实模型服务或网络下载；
-  Go 单测与跨平台交叉编译不构成 Windows/Linux 真机验收，原生 UI 迁移需新的真机验收证据
-  （见 [studio/README.md](../../studio/README.md) 的 Verification boundaries）。
+- **模拟不授予真机资格**：单元/页面测试用注入式 fixture executor，不启动真实模型服务或网络下载；
+  `studio/tests/e2e` 边界套件驱动真实 CLI 与假引擎（见下文「验证」），证明的是边界与状态机行为，
+  同样不构成真机验收；Go 单测与跨平台交叉编译不构成 Windows/Linux 真机验收，原生 UI 迁移需新的
+  真机验收证据（见 [studio/README.md](../../studio/README.md) 的 Verification boundaries）。
 - **运行队列**：串行执行；1–2 个配置且同 bundle 去重、输出根必须解析到结果根内
   （否则 `output_root_outside_results`）；非终态重复配置返回 `queue_duplicate`；单 bundle 运行
   需要显式声明（向导路径显式允许；UI 直建单 bundle 需用户确认后才置 `AllowSingleBundle`）。resume
@@ -240,6 +241,16 @@ mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENAB
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -o build/inferyard-studio .
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct sh scripts/build-all.sh
 ```
+
+`go test ./...` 包含 `tests/e2e` 边界套件：真实 CLI 执行全部操作（init/device-check/bind/run/
+report/verify），引擎为假引擎（测试二进制自身以 `--params-file` 再入），CLI 调用逐条记录为
+transcript。判责规则：CLI 非零退出或 stdout 非法归 CLI；应答合法而 Studio 行为错误归 Studio；
+工作区证据逐文档对照 `cli/schemas/` 校验，违规恒归 CLI（Studio 不写证据文件）。候选生产
+（`config create`）是刻意的夹具边界；候选声明 `environment-admission.v2` 空 required_fields 以
+跨平台可移植，观测差异仍全部落证据。运行旋钮：`INFERYARD_E2E_CLI` 指定 CLI、
+`INFERYARD_E2E_ROOT` 保留现场。套件清单与布局见
+[studio/tests/e2e/README.md](../../studio/tests/e2e/README.md)。CI 由
+`.github/workflows/studio-check.yml` 在 macos-15 与 windows-2025 执行 vet、单测与该套件。
 
 ## 与既有文档的差异
 

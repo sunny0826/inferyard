@@ -60,8 +60,8 @@ func (r *Recorder) Exec(ctx context.Context, path string, args ...string) (infer
 	record := Record{
 		Seq: r.seq, Argv: append([]string{path}, args...),
 		ExitCode: out.ExitCode, Status: string(out.Status),
-		DurationMS:   time.Since(started).Milliseconds(),
-		StdoutFile:   stdoutFile, StderrFile: stderrFile,
+		DurationMS: time.Since(started).Milliseconds(),
+		StdoutFile: stdoutFile, StderrFile: stderrFile,
 		StdoutSHA256: hexSHA256(out.Stdout), StderrSHA256: hexSHA256(out.Stderr),
 	}
 	line, _ := json.Marshal(record)

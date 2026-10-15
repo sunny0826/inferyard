@@ -190,7 +190,15 @@ mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENAB
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
 ```
 
-Native view tests and fixtures do not establish real-device acceptance. Verify all five
+`go test ./...` includes the boundary e2e suite under `tests/e2e`: the real CLI executes
+every operation against a fake engine (the test binary re-executing itself), each CLI call
+is recorded to a blame transcript, and workspace evidence is validated against the exported
+schemas in `cli/schemas/`. The suite attributes every failure to the CLI side or the Studio
+side; see [tests/e2e/README.md](tests/e2e/README.md) for the layout, fixture boundaries, and
+the `INFERYARD_E2E_CLI` / `INFERYARD_E2E_ROOT` knobs. CI runs it on macOS and Windows via
+`.github/workflows/studio-check.yml`.
+
+Native view tests, the e2e suite, and fixtures do not establish real-device acceptance. Verify all five
 pages, the Dashboard's stage navigation and restored progress, resource curves, and an
 offline report WebView on actual desktop windows. Cross-compilation is not Windows/Linux runtime evidence.
 The native UI migration requires fresh acceptance; historical Web UI checks do not qualify
