@@ -7,9 +7,9 @@
 | 用途 | 命令 | 请求范围 |
 | --- | --- | --- |
 | 安装与配置 | `init`、`runtime prepare`、`config assets/create/bind` | 本地准备；prepare/create 有界查询引擎版本，无模型请求 |
-| 设备与目录 | `progress`、`device-check`、`memory-check`、`catalogue` | 本地设备、进程、文件或已安装目录数据 |
+| 设备与目录 | `progress`、`device-check`、`memory-check`、`catalogue`、`engine check` | 本地设备、进程、文件或已安装目录数据；engine check 另有有界引擎版本查询子进程，无网络请求 |
 | 实验准备 | `plan` | 离线预览或冻结实验 |
-| 服务诊断与执行 | `probe`、`overhead`、`prepare-length`、`run`、`resume` | 连接已有模型服务；诊断和准备也可能发送请求 |
+| 服务诊断与执行 | `service discover`、`probe`、`overhead`、`prepare-length`、`run`、`resume` | discover 对 loopback 监听端点发送只读 GET；其他诊断和执行可能发送模型请求 |
 | 派生分析 | `repeat-summary`、`rescore`、`export`、`filter-candidates` | 离线读取已有证据或分析 |
 | 报告与证据 | `report`、`compare`、`verify` | 离线生成新产物、核验 |
 | 公开包 | `public package`、`public plan` | 本地打包和冻结复现计划 |
@@ -68,6 +68,137 @@ run 不接受覆盖开关，旧计划不变。见[内存覆盖用法](engine-fit
 
 Windows `engine-fit run` 仅接入单 GGUF llama.cpp，使用独立 run.v6 接受 plan.v2/v3/v4；
 旧定义平台不变，其他 Windows 引擎在请求前拒绝。停止规则由计划冻结，不能在 run 时切换；原生身份和软件/真机边界见 [Windows 诊断](../WINDOWS.md#windows-engine-fit-diagnostics)。
+
+## 本机服务发现契约
+
+`inferyard service discover` 不接受进程名过滤参数，枚举 TCP loopback 监听端口，
+反查监听 PID、可执行文件基名及 `process_start_ticks`。Linux 读取 `/proc`，
+macOS/Windows 使用已声明依赖 psutil 逐进程读取连接表；权限不足、进程消失或身份变化
+记入 limitations，不把不完整扫描当作没有服务。身份时间读取复用 bind 的 identity 层。
+
+探测范围是所有发现的 loopback 监听端点，**不限模型服务**。通配监听地址
+`0.0.0.0`/`::` 分别通过 `127.0.0.1`/`::1` 探测；其他非 loopback 地址不探测。
+每个不同 HTTP origin 依次发送 `GET /health` 与 `GET /v1/models`，HTTP 超时 2 秒，
+不重试、不跟随重定向、不使用环境代理、不发送认证或 Cookie。
+只输出状态码类别和模型 ID，不保存响应头、凭据、原始响应或进程 argv。
+模型列表响应上限 1 MiB，重复 JSON 键、非有限数、非法 ID 列表均拒绝。
+CLI 不启动、停止或绑定服务；`model_requests_sent` 恒为 0。
+
+输出为 CommandResult，`command="service discover"`；`run_id`/`evidence_dir` 为 null。
+`details={"services": [...], "model_requests_sent": 0}`，services 每项为：
+
+| 字段 | 类型与含义 |
+| --- | --- |
+| `pid` | 正整数，监听进程 PID |
+| `process_name` | 非空 string，可执行文件基名，仅作展示，不作过滤 |
+| `process_start_ticks` | 正整数，与当前平台 bind identity 层同源的启动身份 |
+| `endpoints` | 非空 array，每项含下表字段 |
+
+| 端点字段 | 类型与含义 |
+| --- | --- |
+| `url` | 数字 loopback HTTP origin；IPv6 带方括号 |
+| `health` | `/health` 的 `1xx`/`2xx`/`3xx`/`4xx`/`5xx`，传输失败为 null |
+| `models` | 非空模型 ID string array（去重保序），失败或无模型为 null |
+| `reason` | 下表固定值；两项探测均无缺测时为 null |
+| `ambiguous_listener` | boolean；同端口观察到多个 PID 时为 true，跨 IPv4/IPv6 也不猜唯一归属 |
+
+同一端口的所有可读监听进程全部列出，同 origin 的探测结果复用。
+枚举与探测不是原子快照，不推断 IPv6 是否同时接受 IPv4；歧义标记 false 也不证明唯一性。
+可将发现 PID 和 endpoint 显式传给 `config bind`，但 discover 不预判 bind 可行性；
+bind 仍重新检查身份、资产和候选 argv，可能返回 `startup_arguments_mismatch` 等拒绝。
+
+固定端点 reason（模型列表失败优先于 health 传输失败）：
+
+| reason | 含义 |
+| --- | --- |
+| `models_timeout` | `/v1/models` 超时 |
+| `models_unreachable` | `/v1/models` 连接、传输或 HTTP 协议失败 |
+| `models_http_1xx` | `/v1/models` 返回 1xx |
+| `models_http_3xx` | `/v1/models` 返回 3xx，不跟随重定向 |
+| `models_http_4xx` | `/v1/models` 返回 4xx，包括需要认证 |
+| `models_http_5xx` | `/v1/models` 返回 5xx |
+| `models_invalid_response` | 非合法 JSON、缺少 data array 或有空白/非 string ID |
+| `models_empty` | data 为空 array，没有可列出的模型 |
+| `models_response_too_large` | 模型列表响应超过 1 MiB |
+| `health_timeout` | 模型列表可用，但 `/health` 超时 |
+| `health_unreachable` | 模型列表可用，但 `/health` 连接、传输或协议失败 |
+
+枚举完整时退出 0、`status=discovered`、`completeness=complete`，包括 services 为空
+或所有端点均无模型列表。部分枚举失败退出 3、`status=partial`、`completeness=incomplete`，
+保留可用条目。工具错误退出 4、`status=error`、`completeness=incomplete`。
+
+| limitations 固定值 | 含义 |
+| --- | --- |
+| `listener_table_incomplete` | 部分 Linux 连接表不可读或含坏行 |
+| `listener_ownership_incomplete` | 权限、进程消失或未找到监听 socket 的可读属主 |
+| `process_identity_unavailable` | 监听进程可执行名缺失或读取期间启动身份变化 |
+| `listener_enumeration_failed` | 无法读取连接表或枚举进程（退出 4） |
+| `service_discovery_unsupported_platform` | 平台不支持（退出 4） |
+| `service_discovery_error` | 其他工具错误，不输出原始异常（退出 4） |
+
+`inferyard --schema service_discovery` 导出此 CommandResult 结构；不改变核心证据契约版本。
+回归使用模拟进程表和 HTTP 响应；Linux/macOS/Windows 真机权限、连接表覆盖及模型服务
+发现效果须单独验证，模拟通过不代表原生平台验收。
+
+## 引擎核验契约
+
+`inferyard engine check` 对本地引擎做只读核验，**输入面按平台不对称**：macOS arm64
+必填 `--engine FILE`，Windows x64 必填 `--runtime-receipt FILE`（`runtime prepare`
+目录中的回执）；两参数互斥，平台错配（Darwin 给回执 / Windows 给引擎）、路径不存在
+或不是文件等无效输入返回输入阻断（退出 2）。核验与 `config create` 同源：macOS 核验
+引擎同目录 `*.dylib` 清单规则，Windows 按包内可信 profile 重验回执、清单与全部实际
+文件。命令不创建目录、不写文件、不启动服务、不发送模型请求。
+
+**执行面披露**：核验会以子进程执行引擎二进制 `ENGINE --version`（固定 30 秒超时，
+匹配同一冻结版本模式，当前 `prism-b10743-adfffbe`）；macOS 新提取的 ad-hoc 签名
+二进制首次 exec 校验可达约 12 秒，超时预算高于该值。除此版本查询外不执行引擎。
+
+macOS 没有 device preflight 时不存在选定 mode（device-check 推荐可随模型大小在
+metal/cpu 间翻转），因此不输出单一 mode，而输出**双 mode 各自结果** `modes`：
+`cpu` 为版本与清单规则均通过，`metal` 为 cpu 通过且清单含 `libggml-metal.dylib`；
+metal 最终是否采用仍由 `config create` 按 preflight 终审。Windows 的 mode 由回执
+profile 自带（`cpu`/`cuda`），与候选 mode 的匹配同样留给 `config create`。**核验
+通过不构成候选资格**：preflight、题包审核、模板、mode 匹配与写后复核仍由
+`config create` 终审。
+
+输出为 CommandResult，`command="engine check"`；`run_id`/`evidence_dir` 为 null。
+核验完成（含不合格结论）退出 0、`status=checked`、`completeness=complete`，details 为：
+
+| 字段 | 类型与含义 |
+| --- | --- |
+| `eligible` | boolean；通过同源核验为 true |
+| `reason` | 下表固定值；eligible 为 true 时是 null |
+| `reported_version` | 版本查询通过时引擎自报的首行输出（实测值）；版本不匹配或未执行查询时为 null |
+| `expected_release` | 期望的冻结发布名常量 string（当前 `prism-b10743-adfffbe`），与实测无关，恒存在 |
+| `modes` | macOS 合格时为 `{cpu: bool, metal: bool}` 双 mode 结果；Windows 或不合格为 null |
+| `mode` | Windows 合格时为已验 profile 的 `cpu`/`cuda`；macOS 或不合格为 null |
+
+`expected_release` 如实标注为期望常量，只有 `reported_version` 是引擎实测；
+不使用 `engine_release`，避免常量冒充实测。
+
+不合格 reason 固定值（均为退出 0 的核验结论）：
+
+| reason | 含义 |
+| --- | --- |
+| `invalid_library_manifest` | macOS 引擎没有同目录 dylib、库链接悬空/越界或名称冲突 |
+| `unsupported_engine_build_requires_adapter_validation` | 版本输出不匹配冻结版本模式 |
+| `unsupported_runtime_profile` | Windows 回执声明未知 profile 名 |
+| `runtime_receipt_invalid` | 回执结构、字段或版本记录不合法 |
+| `runtime_profile_mismatch` | 回执常量字段与包内可信 profile 不符 |
+| `runtime_asset_mismatch` | 实际文件或清单与可信 profile 的哈希/大小不符 |
+
+**退出码偏离声明**：eligible 与 ineligible 都是核验成功，均退出 0——这是对
+device-check 家族「blocked→退出 2」语义的明示偏离，理由是本命令为查询式核验、
+不阻断任何后续操作，终审在 `config create`；不合格结论只以 details.reason 呈现。
+输入或平台错配退出 2、`status=blocked`、details=null，limitations 为
+`invalid_input` 或 `unsupported_platform`。工具错误退出 4、`status=error`，
+limitations 为 `engine_version_query_failed`（版本查询非零或超时）、
+`package_resource_invalid`、`io_error` 或 `internal_error`，stderr 只输出脱敏诊断，
+不输出原始异常或引擎输出原文；取消退出 130（`cancelled`）。
+
+`inferyard --schema engine_check` 导出此 CommandResult 结构；不改变核心证据契约版本。
+回归使用夹具文件与模拟版本输出；macOS 真机签名链校验耗时与 Windows 真实归档
+核验效果须单独验证，模拟通过不代表原生平台验收。
 
 ## 首次上手进度契约
 

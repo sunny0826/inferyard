@@ -117,6 +117,7 @@ def test_retained_entries_preserve_the_called_command_and_result(arguments, monk
     ("arguments", "command", "path_field"),
     [
         (["probe", "--config", "config.toml"], "probe", None),
+        (["engine", "check", "--engine", "engine.bin"], "engine check", "engine_path"),
         (["verify", "--path", "artifact"], "verify", "run"),
         (["public", "package", "--run", "source", "--out", "out"], "public package", "run"),
         (
@@ -342,6 +343,11 @@ def test_live_binding_rejections_still_block_dispatch(arguments, monkeypatch, ca
         ["config", "assets", "--help"],
         ["config", "create", "--help"],
         ["config", "bind", "--help"],
+        ["service", "--help"],
+        ["service", "discover", "--help"],
+        ["--schema", "service_discovery"],
+        ["engine", "check", "--help"],
+        ["--schema", "engine_check"],
         ["progress", "--help"],
         *[[value[0], "--help"] for value in INPUTS],
     ],
@@ -373,7 +379,7 @@ raise SystemExit(main(json.loads(sys.argv[1])))
     assert result.stderr == ""
     if arguments == ["--help"]:
         primary = re.findall(r"^    ([a-z][a-z-]+)\s+", result.stdout, flags=re.MULTILINE)
-        assert len(primary) == 25
+        assert len(primary) == 26
         assert {"verify", "probe", "public", "extension", "engine", "engine-fit"} <= set(primary)
         assert "check" not in primary and "extension-run" not in primary
         assert "Compatibility" not in result.stdout and "extension-run" not in result.stdout

@@ -78,6 +78,7 @@ def build_request(
         community
         or args.command == "model acquire"
         or args.command == "engine acquire"
+        or args.command == "engine check"
         or args.command.startswith("engine-fit ")
     )
     if args.command == "config create" and options.get("workspace") is not None:

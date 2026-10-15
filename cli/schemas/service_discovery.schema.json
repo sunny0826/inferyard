@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:service_discovery",
+  "title": "InferYard service_discovery v3",
+  "type": "object",
+  "properties": {
+    "command": {
+      "type": "string",
+      "enum": [
+        "service discover"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "discovered",
+        "partial",
+        "error"
+      ]
+    },
+    "completeness": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "incomplete"
+      ]
+    },
+    "run_id": {
+      "type": "null"
+    },
+    "evidence_dir": {
+      "type": "null"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "listener_table_incomplete",
+          "listener_ownership_incomplete",
+          "process_identity_unavailable",
+          "listener_enumeration_failed",
+          "service_discovery_unsupported_platform",
+          "service_discovery_error"
+        ]
+      },
+      "minItems": 0
+    },
+    "details": {
+      "type": "object",
+      "properties": {
+        "model_requests_sent": {
+          "type": "integer",
+          "const": 0
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pid": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "process_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "process_start_ticks": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "endpoints": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "health": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "1xx",
+                            "2xx",
+                            "3xx",
+                            "4xx",
+                            "5xx"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "models": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "minItems": 1
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "models_timeout",
+                            "models_unreachable",
+                            "models_http_1xx",
+                            "models_http_3xx",
+                            "models_http_4xx",
+                            "models_http_5xx",
+                            "models_invalid_response",
+                            "models_empty",
+                            "models_response_too_large",
+                            "health_timeout",
+                            "health_unreachable"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "ambiguous_listener": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "health",
+                    "models",
+                    "reason",
+                    "ambiguous_listener"
+                  ],
+                  "additionalProperties": false,
+                  "allOf": [
+                    {
+                      "if": {
+                        "properties": {
+                          "models": {
+                            "type": "null"
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "models_timeout",
+                              "models_unreachable",
+                              "models_http_1xx",
+                              "models_http_3xx",
+                              "models_http_4xx",
+                              "models_http_5xx",
+                              "models_invalid_response",
+                              "models_empty",
+                              "models_response_too_large"
+                            ]
+                          }
+                        }
+                      },
+                      "else": {
+                        "properties": {
+                          "reason": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "health_timeout",
+                                  "health_unreachable"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "pid",
+              "process_name",
+              "process_start_ticks",
+              "endpoints"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "model_requests_sent",
+        "services"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "command",
+    "status",
+    "completeness",
+    "run_id",
+    "evidence_dir",
+    "limitations",
+    "details"
+  ],
+  "additionalProperties": false
+}

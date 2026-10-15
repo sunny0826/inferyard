@@ -24,6 +24,7 @@ def _wire_spec(protocol):
 @cache
 def schemas_for():
     """Return the unique current registry; legacy wire revisions need migration."""
+    from inferyard.contracts.schemas_engine_check import ENGINE_CHECK
     from inferyard.contracts.schemas_events import EVENT, SAMPLE, SELECTION
     from inferyard.contracts.schemas_experiment import (
         ANALYSIS,
@@ -41,6 +42,7 @@ def schemas_for():
     )
     from inferyard.contracts.schemas_layout import INPUTS, OBSERVATION_RECORD, PREPARED_REQUEST
     from inferyard.contracts.schemas_memory_check import MEMORY_CHECK
+    from inferyard.contracts.schemas_service_discovery import SERVICE_DISCOVERY
     from inferyard.contracts.schemas_storage import MANIFEST, SUMMARY
 
     return {
@@ -49,6 +51,8 @@ def schemas_for():
         "prepared_request": PREPARED_REQUEST,
         "config": CONFIG,
         "memory_check": MEMORY_CHECK,
+        "service_discovery": SERVICE_DISCOVERY,
+        "engine_check": ENGINE_CHECK,
         "config_input": CONFIG_INPUT,
         "bundle": BUNDLE,
         "score": SCORE,
