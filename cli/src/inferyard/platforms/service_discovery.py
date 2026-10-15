@@ -50,12 +50,12 @@ def linux_listeners(proc_root=Path("/proc")):
                         raise ValueError
                     if host is not None:
                         sockets[fields[9]] = (host, port)
-                except (ValueError, IndexError):
+                except ValueError, IndexError:
                     limitations.add("listener_table_incomplete")
         except FileNotFoundError:
             if not ipv6:
                 limitations.add("listener_table_incomplete")
-        except (OSError, UnicodeError):
+        except OSError, UnicodeError:
             limitations.add("listener_table_incomplete")
     if not readable:
         raise DiscoveryError("listener_enumeration_failed")
@@ -88,7 +88,7 @@ def linux_listeners(proc_root=Path("/proc")):
                 continue
             processes.append(_process(pid, name, ticks, [sockets[i] for i in matched]))
             owned.update(matched)
-        except (OSError, UnicodeError, identity.PreflightError):
+        except OSError, UnicodeError, identity.PreflightError:
             limitations.add("listener_ownership_incomplete")
     if sockets.keys() - owned:
         limitations.add("listener_ownership_incomplete")
@@ -123,7 +123,7 @@ def psutil_listeners():
                 limitations.add("process_identity_unavailable")
                 continue
             processes.append(_process(pid, name, ticks, listeners))
-        except (OSError, psutil.Error, identity.PreflightError):
+        except OSError, psutil.Error, identity.PreflightError:
             limitations.add("listener_ownership_incomplete")
     return processes, limitations
 

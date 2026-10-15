@@ -64,8 +64,10 @@ def test_models_and_multiple_owners_including_dual_stack(monkeypatch, capsys):
         )
 
     code, result = run(
-        monkeypatch, capsys,
-        [process(), process(43, [("::1", 8888), ("127.0.0.1", 8888)])], handler,
+        monkeypatch,
+        capsys,
+        [process(), process(43, [("::1", 8888), ("127.0.0.1", 8888)])],
+        handler,
     )
     assert code == 0
     services = result["details"]["services"]
@@ -134,7 +136,9 @@ def test_health_failure_does_not_prevent_models_probe(monkeypatch, capsys):
 
 def test_partial_collection_preserves_services(monkeypatch, capsys):
     code, result = run(
-        monkeypatch, capsys, [process()],
+        monkeypatch,
+        capsys,
+        [process()],
         lambda _: httpx.Response(200, json={"data": [{"id": "model"}]}),
         ["listener_ownership_incomplete"],
     )
@@ -146,8 +150,10 @@ def test_partial_collection_preserves_services(monkeypatch, capsys):
 
 @pytest.mark.parametrize(
     "error, reason",
-    [(platform.DiscoveryError("listener_enumeration_failed"), "listener_enumeration_failed"),
-     (RuntimeError("secret"), "service_discovery_error")],
+    [
+        (platform.DiscoveryError("listener_enumeration_failed"), "listener_enumeration_failed"),
+        (RuntimeError("secret"), "service_discovery_error"),
+    ],
 )
 def test_tool_failure_is_code_four(monkeypatch, capsys, error, reason):
     def collect():
@@ -216,9 +222,11 @@ def test_psutil_permissions_and_identity_reuse(monkeypatch, system):
             raise psutil.AccessDenied(pid)
         return SimpleNamespace(
             exe=lambda: "/fixture/arbitrary-engine-name",
-            net_connections=lambda kind: [SimpleNamespace(
-                status=psutil.CONN_LISTEN, laddr=SimpleNamespace(ip="127.0.0.1", port=8888)
-            )],
+            net_connections=lambda kind: [
+                SimpleNamespace(
+                    status=psutil.CONN_LISTEN, laddr=SimpleNamespace(ip="127.0.0.1", port=8888)
+                )
+            ],
         )
 
     monkeypatch.setattr(psutil, "Process", get_process)
@@ -233,20 +241,31 @@ def test_changed_identity_is_not_attributed(monkeypatch):
     monkeypatch.setattr(psutil, "pids", lambda: [42])
     ticks = iter([12345, 12346])
     monkeypatch.setattr(platform.identity, "process_start_ticks", lambda _: next(ticks))
-    monkeypatch.setattr(psutil, "Process", lambda _: SimpleNamespace(
-        exe=lambda: "/fixture/engine",
-        net_connections=lambda kind: [SimpleNamespace(
-            status=psutil.CONN_LISTEN, laddr=SimpleNamespace(ip="::", port=8888)
-        )],
-    ))
+    monkeypatch.setattr(
+        psutil,
+        "Process",
+        lambda _: SimpleNamespace(
+            exe=lambda: "/fixture/engine",
+            net_connections=lambda kind: [
+                SimpleNamespace(
+                    status=psutil.CONN_LISTEN, laddr=SimpleNamespace(ip="::", port=8888)
+                )
+            ],
+        ),
+    )
     assert platform.psutil_listeners() == ([], {"process_identity_unavailable"})
 
 
 @pytest.mark.parametrize(
     "address, expected",
-    [("0.0.0.0", "127.0.0.1"), ("::", "::1"), ("::1", "::1"),
-     ("127.0.0.2", "127.0.0.2"), ("::ffff:127.0.0.1", "::ffff:127.0.0.1"),
-     ("192.168.1.1", None)],
+    [
+        ("0.0.0.0", "127.0.0.1"),
+        ("::", "::1"),
+        ("::1", "::1"),
+        ("127.0.0.2", "127.0.0.2"),
+        ("::ffff:127.0.0.1", "::ffff:127.0.0.1"),
+        ("192.168.1.1", None),
+    ],
 )
 def test_only_loopback_probe_targets(address, expected):
     assert platform.loopback_host(address) == expected

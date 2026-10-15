@@ -23,7 +23,7 @@ def _get(client, url, *, models=False):
                     return category, None, "models_response_too_large"
             try:
                 value = strict_json_loads(payload.decode("utf-8"))
-            except (ContractError, ValueError, UnicodeError):
+            except ContractError, ValueError, UnicodeError:
                 return category, None, "models_invalid_response"
             if not isinstance(value, dict) or not isinstance(value.get("data"), list):
                 return category, None, "models_invalid_response"
@@ -83,9 +83,7 @@ def execute(request):
             details=details,
         )
     except DiscoveryError as exc:
-        return 4, CommandResult(
-            request.command, "error", limitations=(str(exc),), details=details
-        )
+        return 4, CommandResult(request.command, "error", limitations=(str(exc),), details=details)
     except Exception:
         return 4, CommandResult(
             request.command,
