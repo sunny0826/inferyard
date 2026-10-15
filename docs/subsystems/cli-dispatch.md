@@ -13,7 +13,7 @@ CLI 与应用分发层负责把命令行参数转成应用请求、把应用结�
 | 共享类型 | `CommandRequest`/`CommandResult`/`Handler`/`VerificationOptions` 唯一定义处 | [`cli/src/inferyard/application/types.py`](../../cli/src/inferyard/application/types.py) |
 | 命令分派 | 显式命令到执行模块的映射；执行模块只在分派时导入 | `default_backend` 在 [`cli/src/inferyard/application/dispatch.py`](../../cli/src/inferyard/application/dispatch.py) |
 | 产物识别与核验路由 | 按标记文件识别派生产物，保留各专用验证器权威 | `execute`、`_identify`、`_HANDLERS` 在 [`cli/src/inferyard/application/verification.py`](../../cli/src/inferyard/application/verification.py)；原始 run/batch/plan 核验在 [`cli/src/inferyard/application/raw_verification.py`](../../cli/src/inferyard/application/raw_verification.py) |
-| 应用侧聚合执行器 | 社区准备、engine-fit 五个动作、memory-check、model/engine acquire、overhead、progress 的应用层入口 | [`cli/src/inferyard/application/community.py`](../../cli/src/inferyard/application/community.py)、[`engine_fit.py`](../../cli/src/inferyard/application/engine_fit.py)、[`memory_check.py`](../../cli/src/inferyard/application/memory_check.py)、[`model_source.py`](../../cli/src/inferyard/application/model_source.py)、[`engine_source.py`](../../cli/src/inferyard/application/engine_source.py)、[`overhead.py`](../../cli/src/inferyard/application/overhead.py)、[`progress.py`](../../cli/src/inferyard/application/progress.py) |
+| 应用侧聚合执行器 | 社区准备、engine-fit 五个动作、memory-check、model/engine acquire、overhead、progress、service discover 的应用层入口 | [`cli/src/inferyard/application/community.py`](../../cli/src/inferyard/application/community.py)、[`engine_fit.py`](../../cli/src/inferyard/application/engine_fit.py)、[`memory_check.py`](../../cli/src/inferyard/application/memory_check.py)、[`model_source.py`](../../cli/src/inferyard/application/model_source.py)、[`engine_source.py`](../../cli/src/inferyard/application/engine_source.py)、[`overhead.py`](../../cli/src/inferyard/application/overhead.py)、[`progress.py`](../../cli/src/inferyard/application/progress.py)、[`service_discovery.py`](../../cli/src/inferyard/application/service_discovery.py) |
 | 输出呈现 | CommandResult 到 stdout 文本的转换；device-check 人类摘要 | `format_result`、`presentation_context`、`_human` 在 [`cli/src/inferyard/cli/device_output.py`](../../cli/src/inferyard/cli/device_output.py) |
 | 错误映射与退出码 | 统一异常到退出码/limitation 的映射，结果完整性校验 | `run` 在 [`cli/src/inferyard/cli/entrypoint.py`](../../cli/src/inferyard/cli/entrypoint.py) |
 | 失败原因措辞 | 异常到固定 limitation 字符串的脱敏转换（白名单回退） | `safe_reason` 在 [`cli/src/inferyard/evidence/error_reasons.py`](../../cli/src/inferyard/evidence/error_reasons.py)；旧格式拒绝的 `UnsupportedFormat` 在 [`cli/src/inferyard/evidence/formats.py`](../../cli/src/inferyard/evidence/formats.py) |
@@ -53,6 +53,8 @@ CLI 与应用分发层负责把命令行参数转成应用请求、把应用结�
 | `engine-fit engines/plan/run/compare/verify` | `engine_fit.py` | `application/engine_fit.py` |
 | `model acquire` | `model.py` | `application/model_source.py` |
 | `engine acquire` | `engine.py` | `application/engine_source.py` |
+| `engine check` | `engine.py` | `application/engine_check.py` |
+| `service discover` | `service.py` | `application/service_discovery.py`（枚举与探测在 `platforms/service_discovery.py`） |
 
 注册模块只描述参数形状（类型、必填、互斥组），分派目标模块统一暴露 `execute(request) -> (code, CommandResult)` 约定；`application/` 下的聚合执行器是该约定的薄适配层，业务规则仍在领域包内，`application/types.py` 是两侧共享的唯一类型来源。
 
