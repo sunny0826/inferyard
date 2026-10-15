@@ -39,7 +39,10 @@ background_load = "e2e chain test"
 cache_policy = "disabled"
 context_size = 4096
 allow_unknown_environment = true
-environment_admission = { definition = "environment-admission.v2", required_fields = ["ac_online"] }
+# Portable across CI hosts: ac_online/profile/governor/epp observability
+# differs per platform (Windows runners report None), so the fixture admits
+# any environment while the CLI still records all observed differences.
+environment_admission = { definition = "environment-admission.v2", required_fields = [] }
 epp = "balance_performance"
 governor = "powersave"
 profile = "balanced"

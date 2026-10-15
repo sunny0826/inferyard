@@ -71,8 +71,9 @@ func repoRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
 }
 
-// ResolveCLI finds a usable inferyard CLI: explicit override, PATH, then a
-// uv wrapper against the in-repo cli/ project. Tests skip when none works.
+// ResolveCLI finds a usable inferyard CLI: explicit override, PATH, the
+// in-repo uv environment created by `uv sync`, then a uv wrapper. Tests skip
+// when none works.
 func ResolveCLI(t *testing.T) string {
 	t.Helper()
 	if override := os.Getenv("INFERYARD_E2E_CLI"); override != "" {
@@ -85,11 +86,22 @@ func ResolveCLI(t *testing.T) string {
 	if path, err := resolvePath("inferyard"); err == nil {
 		return path
 	}
-	uv, err := resolvePath("uv")
-	if err != nil {
-		t.Skip("inferyard CLI not available (set INFERYARD_E2E_CLI)")
-	}
 	project := filepath.Join(repoRoot(t), "cli")
+	// The synced project environment carries a native entry point on every
+	// platform, including Windows where a shell wrapper cannot execute.
+	for _, rel := range []string{
+		filepath.Join(".venv", "bin", "inferyard"),
+		filepath.Join(".venv", "Scripts", "inferyard.exe"),
+	} {
+		candidate := filepath.Join(project, rel)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	uv, err := resolvePath("uv")
+	if err != nil || runtime.GOOS == "windows" {
+		t.Skip("inferyard CLI not available (set INFERYARD_E2E_CLI or uv sync cli/)")
+	}
 	if _, err := os.Stat(filepath.Join(project, "pyproject.toml")); err != nil {
 		t.Skip("in-repo cli project not found")
 	}
