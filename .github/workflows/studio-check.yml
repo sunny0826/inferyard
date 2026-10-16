@@ -23,10 +23,10 @@ jobs:
       matrix:
         os: [macos-15, windows-2025]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
       - name: Sync CLI dependencies (e2e drives the real CLI)
         working-directory: cli
         run: mise exec -- uv sync --frozen
