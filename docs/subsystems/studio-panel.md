@@ -178,6 +178,15 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
   `service_discovery_invalid_response`，退出 4 映射 `service_discovery_error`；命令匹配的退出 2
   映射 `cli_blocked` 并保留 limitations，退出 130 映射 `cancelled`。发现结果不构成绑定资格，
   绑定终审始终在 CLI；同端口多监听进程标记 `ambiguous_listener`，不判唯一归属。
+  Dashboard 与模型页从 `EngineState` 独立展示 Studio 启动的 `starting`/`running`/`stopping`
+  服务，扫描失败、未完成或 `models` 缺测均不影响该条目；候选名称取状态中的基名，不使用当前选择
+  冒充运行模型。`orphaned` 显示为「遗留服务记录（状态未确认）」，`failed`/`stopped` 不列为活动服务。
+  `engine.state` 事件沿用页面刷新路径；显式刷新服务列表也重读 `Service.Engine()`。
+  其他 `models != null` 端点放入默认折叠的「待确认的兼容接口」，提示可能是代理、目录不证明本机
+  已加载模型，模型目录另行折叠。只有 Dashboard 提供显式绑定，模型页只读。
+  展示去重要求活动生命周期、相同正 PID、完全相同 endpoint 且无监听歧义；仅隐藏重复条目，
+  不为发现端点授予受管身份。未知端点、终态及遗留记录不参与去重。
+  展示实现在 [`service_discovery.go`](../../studio/internal/pages/service_discovery.go)。
 - **模拟不授予真机资格**：单元/页面测试用注入式 fixture executor，不启动真实模型服务或网络下载；
   `studio/tests/e2e` 边界套件驱动真实 CLI 与假引擎（见下文「验证」），证明的是边界与状态机行为，
   同样不构成真机验收；Go 单测与跨平台交叉编译不构成 Windows/Linux 真机验收，原生 UI 迁移需新的
