@@ -240,7 +240,7 @@ func TestDesignPageLoadingErrorEmpty(t *testing.T) {
 	s := testState()
 	s.selected = "reports"
 	tt := ui.NewTester(s.view, 1120, 1200)
-	click(t, tt, "到 Dashboard 启动测评")
+	click(t, tt, "新任务")
 	if s.selected != "dashboard" {
 		t.Fatal("empty sources navigation failed")
 	}
@@ -255,30 +255,11 @@ func TestDesignPageLoadingErrorEmpty(t *testing.T) {
 
 func TestDesignKeyboardDetailsReturnAndHorizontalTable(t *testing.T) {
 	s := testState()
-	s.tasks = []core.RunTask{{TaskId: "one", Bundle: ptr("zh-core"), State: "running"}, {TaskId: "two", Bundle: ptr("zh-svg-pelican"), State: "done"}}
-	tt := ui.NewTester(func(c *ui.Context) {
-		ui.Column(c).Children(func() {
-			if s.detailID != "" {
-				s.detailView(c)
-			} else {
-				s.tasksView(c)
-			}
-		})
-	}, 800, 600)
-	click(t, tt, "zh-core")
-	tt.Key(0, ui.KeyDown)
-	tt.Key(0, ui.KeyEnter)
-	if s.detailID != "two" {
-		t.Fatal("keyboard did not open selected task", s.detailID)
-	}
+	s.detailID = "two"
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.detailView(c) }) }, 800, 600)
 	click(t, tt, "返回运行")
-	if !tt.Focused("zh-svg-pelican") {
-		t.Fatal("return did not restore table focus")
-	}
-	tt.Key(0, ui.KeyUp)
-	tt.Key(0, ui.KeyEnter)
-	if s.detailID != "one" {
-		t.Fatal("return lost keyboard selection")
+	if s.detailID != "" {
+		t.Fatal("return retained detail")
 	}
 
 	s = testState()

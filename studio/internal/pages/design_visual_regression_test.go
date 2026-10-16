@@ -13,7 +13,8 @@ func TestReportSourcesDoNotPaintOverFooter(t *testing.T) {
 	for _, dark := range []bool{false, true} {
 		t.Run(fmt.Sprint(dark), func(t *testing.T) {
 			s := designFixture("reports")
-			tt := ui.NewTester(s.view, 800, 600)
+			tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportSourcesView(c) }) }, 800, 600)
+			click(t, tt, "从历史运行另做报告")
 			tt.SetDark(dark)
 			tt.SetPreferences(ui.Preferences{TextScale: 2, HighContrast: true, ReduceMotion: true})
 			tt.Frame()

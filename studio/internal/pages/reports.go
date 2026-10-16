@@ -81,8 +81,24 @@ func (r *Reports) Open(id string) (*mygo.Window, *core.ApiError) {
 }
 func (s *viewState) reportsView(c *ui.Context) {
 	s.header(c, "报告")
-	s.reportGuide(c)
-	card(c, "生成报告", func() {
+	card(c, "历史任务", func() { errorView(c, s.historyError); s.historyView(c) })
+	card(c, "报告列表", func() {
+		s.reportsTableView(c)
+		if s.progress != nil {
+			if s.progress.Report.Status == "verified" {
+				statusBadge(c, "已核验", c.Theme().Success)
+			} else if s.progress.NextAction == "verify" {
+				if button(c, "核验").Disabled(s.busy).Clicked() {
+					s.execute(s.nextCommand(), true)
+				}
+			}
+		}
+	})
+	s.reportSourcesView(c)
+}
+
+func (s *viewState) reportSourcesView(c *ui.Context) {
+	componentFold(c, "从历史运行另做报告", func() {
 		errorView(c, s.historyError)
 		ui.Text(c, "选择来源 run（1–100 个）")
 		runs := s.historyRuns()
@@ -92,7 +108,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 			ui.Text(c, "正在读取报告来源…")
 		} else if len(runs) == 0 {
 			ui.Text(c, "暂无运行记录，请先完成测评，再选择来源。")
-			button(c, "到 Dashboard 启动测评").AlignSelf(ui.Start).OnClick(func() { s.selected = "dashboard" })
+			button(c, "新任务").AlignSelf(ui.Start).OnClick(s.newBenchmark)
 		}
 		known := map[any]bool{}
 		for _, r := range runs {
@@ -118,7 +134,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 			ui.Text(c, "请选择 1–100 个来源 run。")
 		}
 		ui.Text(c, fmt.Sprintf("已选 %d / 100", count))
-		if primaryButton(c, "生成报告").AlignSelf(ui.Start).Disabled(s.busy || count < 1 || count > 100).Clicked() {
+		if button(c, "生成报告").AlignSelf(ui.Start).Disabled(s.busy || count < 1 || count > 100).Clicked() {
 			paths := []string{}
 			for _, r := range runs {
 				if s.reportChoices.Has(r.Path) {
@@ -131,5 +147,4 @@ func (s *viewState) reportsView(c *ui.Context) {
 			})
 		}
 	})
-	card(c, "报告列表", func() { s.reportsTableView(c) })
 }

@@ -111,7 +111,6 @@ type viewState struct {
 	modelList, engineList                                                               components.ListState
 	announcedPage                                                                       string
 	announcedErrors                                                                     map[string]bool
-	returnToTasks                                                                       bool
 	refreshing                                                                          bool
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
 	assetsPreset                                                                        bool
@@ -143,7 +142,6 @@ type viewState struct {
 	workspace, cliPath, results, models                                                 string
 	bindingStale                                                                        bool
 	bindingUnknown                                                                      bool
-	groups                                                                              [][]string
 	task                                                                                benchmarkTask
 	selectedBundles                                                                     map[string]bool
 	focusedRun                                                                          string
@@ -154,7 +152,7 @@ type viewState struct {
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                string
-	tasksTable, historyTable, reportsTable                                              pageTableState
+	historyTable, reportsTable                                                          pageTableState
 	reportSources                                                                       components.ListState
 	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState

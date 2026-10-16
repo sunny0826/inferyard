@@ -45,7 +45,7 @@ func TestDashboardStages(t *testing.T) {
 					t.Fatalf("unexpected stage: %s", other)
 				}
 			}
-			if tt.HasText("任务队列") || !tt.HasText("运行历史") {
+			if tt.HasText("任务队列") || tt.HasText("运行历史") {
 				t.Fatal(tt.Texts())
 			}
 		})
@@ -141,18 +141,27 @@ func TestReportGuidanceRequiresAllBundlesSealed(t *testing.T) {
 	s := testState()
 	s.selected = "reports"
 	tt := ui.NewTester(s.view, 1120, 1600)
-	if tt.HasText("生成报告并核验") {
-		t.Fatal("premature report guide")
+	if _, ok := tt.Find("核验"); ok {
+		t.Fatal("premature verify")
 	}
-	s.progress.Bundles[1].Phase = "run_complete"
+	s.progress.NextAction = "verify"
 	tt.Frame()
-	if !tt.HasText("生成报告并核验") || !tt.HasText("选择来源 run（1–100 个）") {
+	if _, ok := tt.Find("核验"); !ok {
 		t.Fatal(tt.Texts())
 	}
-	s.progress.DefaultScopeComplete = true
+	s.progress.Report.Status = "verified"
 	tt.Frame()
-	if !tt.HasText("已核验 verified") || tt.HasText("生成报告并核验") {
+	if !tt.HasText("已核验") {
 		t.Fatal(tt.Texts())
+	}
+	if _, ok := tt.Find("核验"); ok {
+		t.Fatal("verified report offers verify")
+	}
+	s.progress.Report.Status = "generated"
+	s.progress.NextAction = "report"
+	tt.Frame()
+	if _, ok := tt.Find("核验"); ok {
+		t.Fatal("report action offers verify")
 	}
 }
 

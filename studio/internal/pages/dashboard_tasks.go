@@ -36,7 +36,15 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 			ui.Text(c, "关系："+text(r.Relation)+" · 来源："+text(r.ParentRunId)+" · 开始："+text(r.StartedAt)+" · 结束："+text(r.FinishedAt)).Selectable()
 		})
 		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
+			button(c, "进入任务").OnClick(func() {
+				s.detailID = ""
+				s.resumeSource = nil
+				s.focusedRun = r.Path
+				s.selected = "dashboard"
+			})
 			if button(c, "续测").AlignSelf(ui.Start).Disabled(s.busy || r.BatchId == nil || !r.Resumable || s.denied[r.Path]).Clicked() {
+				s.detailID = ""
+				s.selected = "dashboard"
 				source := r
 				s.resumeSource = &source
 				s.endpoint = ""
@@ -45,6 +53,7 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 			for _, task := range s.tasks {
 				if emptyText(task.RunPath) == r.Path && button(c, "实时详情").AlignSelf(ui.Start).Clicked() {
 					s.selectTask(task.TaskId)
+					s.selected = "dashboard"
 				}
 			}
 		})
@@ -101,7 +110,6 @@ func (s *viewState) resume() {
 				}
 				return
 			}
-			s.groups = append(s.groups, []string{task.TaskId})
 			s.resumeSource = nil
 			s.selectTask(task.TaskId)
 		})
@@ -122,64 +130,6 @@ func selectedRow(state *pageTableState, count int) int {
 		return -1
 	}
 	return *state.Selected
-}
-
-func (s *viewState) tasksView(c *ui.Context) {
-	if len(s.tasks) == 0 {
-		ui.Text(c, "暂无任务。")
-	}
-	selectableTable(&s.tasksTable, func(i int) any { return s.tasks[i].TaskId }, func(i int) string { return text(s.tasks[i].Bundle) })
-	c.Key("tasks-table")
-	pageTable(c, &s.tasksTable, "运行任务队列", []ui.TableColumn{{Title: "题包", Width: 200}, {Title: "状态", Width: 300}, {Title: "类型", Width: 100}}, len(s.tasks), func(row, col int) {
-		task := s.tasks[row]
-		switch col {
-		case 0:
-			ui.Text(c, text(task.Bundle))
-		case 1:
-			statusBadge(c, taskLabel(task), runColor(c, task))
-		case 2:
-			ui.Text(c, task.Kind)
-		}
-	}).Height(200).Label("运行任务队列")
-	if s.returnToTasks {
-		s.tasksTable.Focus(c)
-		s.returnToTasks = false
-	}
-	submitted := s.tasksTable.submitted
-	index := selectedRow(&s.tasksTable, len(s.tasks))
-	if index >= 0 {
-		task := s.tasks[index]
-		ui.Text(c, task.TaskId).Selectable()
-		errorView(c, task.Error)
-		for i, group := range s.groups {
-			for _, id := range group {
-				if id == task.TaskId {
-					ui.Text(c, fmt.Sprintf("启动组 %d · %d 个任务", i+1, len(group)))
-				}
-			}
-		}
-	}
-	if index < 0 {
-		ui.Text(c, "选择一个任务后查看详情。")
-	}
-	button(c, "查看详情").AlignSelf(ui.Start).Disabled(index < 0).OnClick(func() { s.selectTask(s.tasks[index].TaskId) })
-	if submitted && index >= 0 {
-		s.selectTask(s.tasks[index].TaskId)
-	}
-	for _, group := range s.groups {
-		for _, id := range group {
-			found := false
-			for _, task := range s.tasks {
-				if task.TaskId == id {
-					found = true
-					break
-				}
-			}
-			if !found {
-				ui.Text(c, id+" · 任务已不在内存表中")
-			}
-		}
-	}
 }
 
 func runScore(r core.RunSummary) string {

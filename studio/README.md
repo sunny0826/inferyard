@@ -15,18 +15,21 @@ selected while Dashboard is open. The six page bodies are:
 
 | Page | Purpose |
 | --- | --- |
-| Dashboard | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
+| Dashboard | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Inspect service status without start, stop, binding, or orphan recovery actions; orphaned engines show a warning and hide the new-task action. No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. |
-| Reports | Generate reports and open each offline HTML report in its own in-app WebView window. |
+| Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and open each offline HTML report in its own in-app WebView window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names. |
 
 Dashboard keeps the active task's selected bundles and new run paths in memory. New task
 cancels binding and all non-terminal runs, waits for them to finish, and returns to the
 shared engine/model selection without cancelling downloads or deleting evidence. The form
 lists only workspace bundles and checks `zh-core` when present. An unchecked bundle does
-not block the task. The old quick-run form and queue card are removed; run history remains.
+not block the task. The old quick-run form, queue card, and run history card are removed from Dashboard.
+Reports starts with task history, followed by the report list. Creating another report from
+1–100 historical runs is available in a collapsed section. Verification appears only when
+workspace `next_action` is `verify`; a `verified` report shows its verified status instead.
 Without an active task, the page restores workspace progress from `progress.v1`.
 
 Prepare environment rechecks readiness after installing the CLI, provisioning missing

@@ -92,7 +92,7 @@ type benchmarkBackend interface {
 
 func (s *viewState) runBenchmark(ctx context.Context, result startChainResult, names []string, announce func(string)) *core.ApiError {
 	return runBenchmarkFlow(ctx, s.service, result, names, s.task.bindings, announce,
-		func(ids []string) { s.win.Update(func() { s.groups = append(s.groups, ids) }) },
+		func([]string) {},
 		func(paths []string, out string) {
 			s.win.Update(func() { s.task.runs = paths; s.task.report = out; s.task.stage = "done" })
 		})
