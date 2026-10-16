@@ -24,56 +24,32 @@ func runStateFixture() *viewState {
 	return &s
 }
 
-func TestRunPanelStartStopEnableMatrix(t *testing.T) {
+func TestRunPanelNewTaskPreservesPair(t *testing.T) {
 	s := runStateFixture()
-	s.engineState = core.EngineState{State: "stopped"}
-	if !s.startEnabled(false, false, false, false, false) || s.stopEnabled(false, false) {
-		t.Fatal("idle combination must be startable")
+	s.selected = "models"
+	s.progress = &inferyard.WorkspaceProgress{NextAction: "device_check"}
+	s.detailID = "old-run"
+	s.task.stage = "report"
+	tt := ui.NewTester(s.runPanelView, 1120, 900)
+	assertModelsReadOnly(t, tt)
+	if tt.HasText("请先到 Dashboard 完成设备检查") {
+		t.Fatal(tt.Texts())
 	}
-	for name, mutate := range map[string]func(*viewState){
-		"gated":     func(s *viewState) {},
-		"runActive": func(s *viewState) {},
-		"busy":      func(s *viewState) { s.busy = true },
-		"cli":       func(s *viewState) { s.ready.CLI.Status = "not_found" },
-		"orphan":    func(s *viewState) { s.engineState.State = "orphaned" },
-	} {
-		t.Run(name, func(t *testing.T) {
-			s := runStateFixture()
-			s.engineState = core.EngineState{State: "stopped"}
-			mutate(s)
-			gated := name == "gated"
-			runActive := name == "runActive"
-			if s.startEnabled(gated, false, false, false, runActive) {
-				t.Fatal("start must be disabled")
-			}
-		})
+	click(t, tt, "用这个组合新开任务")
+	if s.selected != "dashboard" || s.task.stage != "prepare_candidate" || s.detailID != "" {
+		t.Fatal("new task entry did not reset task", s.selected, s.task.stage, s.detailID)
 	}
-	s = runStateFixture()
-	s.engineState = core.EngineState{State: "running"}
-	if !s.stopEnabled(true, false) {
-		t.Fatal("active engine must be stoppable")
-	}
-	if s.stopEnabled(true, true) || s.stopEnabled(false, false) {
-		t.Fatal("stop lock matrix")
+	if s.model != "model.gguf" || s.engine != "engine-2 · llama-server" || s.busy {
+		t.Fatal("selection changed or service started", s.model, s.engine, s.busy)
 	}
 }
 
-func TestRunPanelGateDisablesStart(t *testing.T) {
-	s := runStateFixture()
-	s.progress = &inferyard.WorkspaceProgress{NextAction: "device_check"}
-	tt := ui.NewTester(s.runPanelView, 1120, 900)
-	for _, want := range []string{"设备检查未通过：请先到 Dashboard 完成设备检查，再启动服务。", "到 Dashboard 完成设备检查"} {
-		if !tt.HasText(want) {
-			t.Fatal(want, tt.Texts())
+func assertModelsReadOnly(t *testing.T, tt *ui.Tester) {
+	t.Helper()
+	for _, label := range []string{"启动", "停止", "绑定", "停止遗留服务", "仅删除记录（不终止进程）", "到 Dashboard 完成设备检查"} {
+		if len(modelUINodes(tt, "text", label)) != 0 {
+			t.Fatal("models page exposes action", label, tt.Texts())
 		}
-	}
-	click(t, tt, "启动")
-	if s.busy {
-		t.Fatal("gated start reached the chain")
-	}
-	click(t, tt, "到 Dashboard 完成设备检查")
-	if s.selected != "dashboard" {
-		t.Fatal(s.selected)
 	}
 }
 
@@ -84,8 +60,8 @@ func TestRunPanelAttributionStates(t *testing.T) {
 		badge, hint  string
 	}{
 		{"own", true, true, "运行中 · PID 42 · http://127.0.0.1:8080", ""},
-		{"other", false, true, "运行中 · 另一个组合的服务（候选 zh-core-1）", "当前选定组合没有运行中的服务；停止将终止另一个组合正在运行的服务。"},
-		{"unknown", false, false, "运行中 · 无法确认属于当前组合（候选 zh-core-1）", "无法确认运行中服务属于当前选定组合；停止将终止正在运行的服务。"},
+		{"other", false, true, "运行中 · 另一个组合的服务（候选 zh-core-1）", ""},
+		{"unknown", false, false, "运行中 · 无法确认属于当前组合（候选 zh-core-1）", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := runStateFixture()
@@ -101,7 +77,7 @@ func TestRunPanelAttributionStates(t *testing.T) {
 			if tc.name == "own" && (tt.HasText("另一个组合") || tt.HasText("无法确认")) {
 				t.Fatal(tt.Texts())
 			}
-			click(t, tt, "启动")
+			assertModelsReadOnly(t, tt)
 			if s.busy {
 				t.Fatal("start must stay disabled while a service is active")
 			}
@@ -109,17 +85,23 @@ func TestRunPanelAttributionStates(t *testing.T) {
 	}
 }
 
-func TestRunPanelRunActiveLocksStop(t *testing.T) {
-	s := runStateFixture()
-	s.engineState = core.EngineState{State: "running", Pid: 42, Endpoint: "http://127.0.0.1:8080", Candidate: "/w/candidates/zh-core-1"}
-	s.tasks = []core.RunTask{{State: "running"}}
-	tt := ui.NewTester(s.runPanelView, 1120, 900)
-	if !tt.HasText("测评运行期间不能停止或重新启动服务。") {
-		t.Fatal(tt.Texts())
-	}
-	click(t, tt, "停止")
-	if s.busy {
-		t.Fatal("stop reached the service during a run")
+func TestRunPanelRunActiveLocksSelection(t *testing.T) {
+	for _, state := range []string{"queued", "running", "cancelling"} {
+		t.Run(state, func(t *testing.T) {
+			s := runStateFixture()
+			s.selected = "models"
+			s.tasks = []core.RunTask{{State: state}}
+			tt := ui.NewTester(s.view, 1120, 2400)
+			assertModelsReadOnly(t, tt)
+			for _, want := range []string{"引擎：engine-2 · llama-server", "模型：model.gguf"} {
+				if !tt.HasText(want) {
+					t.Fatal(want, tt.Texts())
+				}
+			}
+			if len(designFieldInputs(tt, "模型")) != 0 || len(designFieldInputs(tt, "引擎")) != 0 || len(modelUINodes(tt, "text", s.model)) != 0 || len(modelUINodes(tt, "text", s.engine)) != 0 {
+				t.Fatal("active run renders pickers", tt.Texts())
+			}
+		})
 	}
 }
 
@@ -132,7 +114,7 @@ func TestRunPanelFailureShowsFixedReason(t *testing.T) {
 		s := runStateFixture()
 		s.engineState = core.EngineState{State: "failed", Error: &core.ApiError{Code: tc.code}}
 		tt := ui.NewTester(s.runPanelView, 1120, 900)
-		if !tt.HasText(tc.badge) || !tt.HasText("查看日志后可重新启动。") {
+		if !tt.HasText(tc.badge) || !tt.HasText("请到任务页查看并处理服务失败。") {
 			t.Fatal(tc.code, tt.Texts())
 		}
 	}
@@ -148,14 +130,9 @@ func TestRunPanelOrphan(t *testing.T) {
 	s := runStateFixture()
 	s.engineState = core.EngineState{State: "orphaned", Error: core.Err("engine_owner_invalid")}
 	tt := ui.NewTester(s.runPanelView, 1120, 1200)
-	for _, want := range []string{"遗留引擎", "停止遗留服务", "仅删除记录（不终止进程）"} {
-		if !tt.HasText(want) {
-			t.Fatal(want, tt.Texts())
-		}
-	}
-	click(t, tt, "启动")
-	if s.busy {
-		t.Fatal("orphan allowed a new startup")
+	assertModelsReadOnly(t, tt)
+	if !tt.HasText("遗留引擎") || !tt.HasText("请到任务页处理遗留服务") || tt.HasText("用这个组合新开任务") {
+		t.Fatal(tt.Texts())
 	}
 }
 
@@ -171,20 +148,12 @@ func TestRunPanelHidesNonLoopbackEndpoint(t *testing.T) {
 	}
 }
 
-func TestRunPanelEngineVerdictControlsStart(t *testing.T) {
-	for _, state := range []string{core.EngineCheckEligible, core.EngineCheckChecking, core.EngineCheckUnknown, core.EngineCheckIneligible} {
-		t.Run(state, func(t *testing.T) {
-			s := runStateFixture()
-			s.checks.Engines[s.engine] = core.EngineEligibility{State: state, Reason: "invalid_library_manifest"}
-			if s.startEnabled(false, false, false, false, false) != (state != core.EngineCheckIneligible) {
-				t.Fatal("incorrect start gate", state)
-			}
-			if state == core.EngineCheckIneligible {
-				tt := ui.NewTester(s.runPanelView, 1120, 900)
-				if !tt.HasText(s.engine + " · " + human("invalid_library_manifest") + "。请重新选择。") {
-					t.Fatal(tt.Texts())
-				}
-			}
-		})
+func TestRunPanelEngineVerdictWarning(t *testing.T) {
+	s := runStateFixture()
+	s.checks.Engines[s.engine] = core.EngineEligibility{State: core.EngineCheckIneligible, Reason: "invalid_library_manifest"}
+	tt := ui.NewTester(s.runPanelView, 1120, 900)
+	assertModelsReadOnly(t, tt)
+	if !tt.HasText(s.engine + " · " + human("invalid_library_manifest") + "。请重新选择。") {
+		t.Fatal(tt.Texts())
 	}
 }
