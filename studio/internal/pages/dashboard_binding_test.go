@@ -217,6 +217,7 @@ func TestWizardFailureFallback(t *testing.T) {
 }
 
 type taskBackendFixture struct {
+	failBind   bool
 	p          *inferyard.WorkspaceProgress
 	requests   []core.WizardRequest
 	runRequest core.StartRunsRequest
@@ -234,6 +235,10 @@ func (f *taskBackendFixture) Progress(context.Context) (core.ProgressResponse, *
 }
 func (f *taskBackendFixture) WizardExecute(_ context.Context, q core.WizardRequest) (core.WizardResult, *core.ApiError) {
 	f.requests = append(f.requests, q)
+	if f.failBind && strings.Contains(q.Command, "zh-svg-pelican") {
+		f.failBind = false
+		return core.WizardResult{}, core.Err("cli_error")
+	}
 	return core.WizardResult{}, nil
 }
 func (f *taskBackendFixture) StartRuns(q core.StartRunsRequest) ([]core.RunTask, *core.ApiError) {
@@ -251,7 +256,7 @@ func TestDashboardSelectedRunReportIgnoresUnfinishedPelican(t *testing.T) {
 	}}, tasks: []core.RunTask{{TaskId: "new", State: "done", RunPath: &run}}}
 	s := testState()
 	s.task.stage = "bind"
-	e := runBenchmarkFlow(context.Background(), f, startChainResult{workspace: root, candidate: root + "/candidate"}, []string{"zh-core"}, func(stage string) { s.task.stage = stage }, func([]string) {}, func(paths []string, out string) { s.task.runs = paths; s.task.report = out; s.task.stage = "done" })
+	e := runBenchmarkFlow(context.Background(), f, startChainResult{workspace: root, candidate: root + "/candidate"}, []string{"zh-core"}, nil, func(stage string) { s.task.stage = stage }, func([]string) {}, func(paths []string, out string) { s.task.runs = paths; s.task.report = out; s.task.stage = "done" })
 	if e != nil || len(f.requests) != 2 || len(f.runRequest.ConfigPaths) != 1 || f.runRequest.AllowSingleBundle == nil || !*f.runRequest.AllowSingleBundle {
 		t.Fatal(e, f.requests, f.runRequest)
 	}
@@ -269,7 +274,7 @@ func TestDashboardSelectedRunReportIgnoresUnfinishedPelican(t *testing.T) {
 	}
 	f.p.Bundles[0].Runs[0].Sealed = false
 	f.requests = nil
-	e = runBenchmarkFlow(context.Background(), f, startChainResult{workspace: root}, []string{"zh-core"}, func(string) {}, func([]string) {}, func([]string, string) { t.Fatal("unsealed report") })
+	e = runBenchmarkFlow(context.Background(), f, startChainResult{workspace: root}, []string{"zh-core"}, nil, func(string) {}, func([]string) {}, func([]string, string) { t.Fatal("unsealed report") })
 	if e == nil || e.Code != "run_incomplete" || len(f.requests) != 1 {
 		t.Fatal(e, f.requests)
 	}
@@ -300,5 +305,40 @@ func TestBindingExistingRunRebindsButResumeDoesNot(t *testing.T) {
 				t.Fatal(requests)
 			}
 		}
+	}
+}
+
+func TestBindingRetryKeepsSuccessfulBundleUntilPIDChanges(t *testing.T) {
+	root := t.TempDir()
+	coreRun, pelicanRun := root+"/core", root+"/pelican"
+	f := &taskBackendFixture{failBind: true, p: &inferyard.WorkspaceProgress{Workspace: root, Bundles: []inferyard.BundleProgress{
+		{Bundle: "zh-core", CandidatePath: ptr(root + "/candidate-core"), Runs: []inferyard.ProgressRun{{Path: coreRun, Sealed: true}}},
+		{Bundle: "zh-svg-pelican", CandidatePath: ptr(root + "/candidate-pelican"), Runs: []inferyard.ProgressRun{{Path: pelicanRun, Sealed: true}}},
+	}}, tasks: []core.RunTask{{TaskId: "core", State: "done", RunPath: &coreRun}, {TaskId: "pelican", State: "done", RunPath: &pelicanRun}}}
+	bindings := &benchmarkBindings{}
+	run := func() *core.ApiError {
+		return runBenchmarkFlow(context.Background(), f, startChainResult{workspace: root}, []string{"zh-core", "zh-svg-pelican"}, bindings, func(string) {}, func([]string) {}, func([]string, string) {})
+	}
+	if e := run(); e == nil || e.Code != "cli_error" {
+		t.Fatal(e)
+	}
+	if e := run(); e != nil {
+		t.Fatal(e)
+	}
+	counts := func() int {
+		n := 0
+		for _, q := range f.requests {
+			if strings.Contains(q.Command, "'config' 'bind'") && strings.Contains(q.Command, "zh-core") {
+				n++
+			}
+		}
+		return n
+	}
+	if counts() != 1 {
+		t.Fatal(f.requests)
+	}
+	bindings.pid = 19
+	if e := run(); e != nil || counts() != 2 {
+		t.Fatal(e, f.requests)
 	}
 }

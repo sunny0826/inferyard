@@ -26,12 +26,13 @@ func (s *viewState) resetWorkspace() {
 }
 
 type benchmarkTask struct {
-	stage   string
-	start   startChainResult
-	bundles []string
-	runs    []string
-	report  string
-	failure *core.ApiError
+	stage    string
+	bindings *benchmarkBindings
+	start    startChainResult
+	bundles  []string
+	runs     []string
+	report   string
+	failure  *core.ApiError
 }
 
 func (s *viewState) clearBenchmark() {

@@ -59,7 +59,7 @@ func (s *viewState) startBenchmark() {
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	s.taskCancel = cancel
-	s.task = benchmarkTask{stage: "prepare_candidate", bundles: names}
+	s.task = benchmarkTask{stage: "prepare_candidate", bundles: names, bindings: &benchmarkBindings{}}
 	model, engine := s.model, s.engine
 	s.autoBind = bindingArm{}
 	s.guideWork(func() (string, *core.ApiError) {
@@ -75,6 +75,12 @@ func (s *viewState) startBenchmark() {
 	})
 }
 
+type benchmarkBindings struct {
+	pid        int64
+	configs    map[string]string
+	candidates map[string]string
+}
+
 type benchmarkBackend interface {
 	StartEngine(string) (core.EngineState, *core.ApiError)
 	Engine() core.EngineState
@@ -85,14 +91,14 @@ type benchmarkBackend interface {
 }
 
 func (s *viewState) runBenchmark(ctx context.Context, result startChainResult, names []string, announce func(string)) *core.ApiError {
-	return runBenchmarkFlow(ctx, s.service, result, names, announce,
+	return runBenchmarkFlow(ctx, s.service, result, names, s.task.bindings, announce,
 		func(ids []string) { s.win.Update(func() { s.groups = append(s.groups, ids) }) },
 		func(paths []string, out string) {
 			s.win.Update(func() { s.task.runs = paths; s.task.report = out; s.task.stage = "done" })
 		})
 }
 
-func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result startChainResult, names []string, announce func(string), queued func([]string), report func([]string, string)) *core.ApiError {
+func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result startChainResult, names []string, bindings *benchmarkBindings, announce func(string), queued func([]string), report func([]string, string)) *core.ApiError {
 	if ctx.Err() != nil {
 		return core.Err("cancelled")
 	}
@@ -127,10 +133,22 @@ func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result star
 	if p == nil || len(p.Bundles) != len(names) {
 		return core.Err("binding_progress_changed")
 	}
+	if bindings == nil {
+		bindings = &benchmarkBindings{}
+	}
+	if bindings.pid != state.Pid {
+		bindings.pid = state.Pid
+		bindings.configs = map[string]string{}
+		bindings.candidates = map[string]string{}
+	}
 	var configs []string
 	for _, b := range p.Bundles {
 		if ctx.Err() != nil {
 			return core.Err("cancelled")
+		}
+		if config := bindings.configs[b.Bundle]; config != "" && bindings.candidates[b.Bundle] == emptyText(b.CandidatePath) {
+			configs = append(configs, config)
+			continue
 		}
 		command, out, e := benchmarkBindCommand(p.Workspace, b, state)
 		if e != nil {
@@ -143,7 +161,9 @@ func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result star
 		if r.ExitCode != 0 {
 			return wizardFailure(r)
 		}
-		configs = append(configs, filepath.Join(out, "config.toml"))
+		bindings.configs[b.Bundle] = filepath.Join(out, "config.toml")
+		bindings.candidates[b.Bundle] = emptyText(b.CandidatePath)
+		configs = append(configs, bindings.configs[b.Bundle])
 	}
 	if ctx.Err() != nil {
 		return core.Err("cancelled")
