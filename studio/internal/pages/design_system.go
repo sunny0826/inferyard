@@ -82,6 +82,9 @@ func (s *viewState) announceChanges(c *ui.Context) {
 					title = n.label
 				}
 			}
+			if s.selected == "dashboard" && s.detailID == "" {
+				title = "Dashboard"
+			}
 		}
 		c.Announce(title)
 		s.announcedPage = page
