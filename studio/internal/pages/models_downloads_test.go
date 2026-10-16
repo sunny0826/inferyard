@@ -17,16 +17,20 @@ func TestDownloadsPageMigration(t *testing.T) {
 		{TaskId: "engine", Kind: "engine", OutName: "engine-fixture", State: "failed", SourceUrl: "https://huggingface.co/owner/repo/blob/0123456789abcdef0123456789abcdef01234567/file.tar.gz", Error: core.Err("download_failed")},
 	}
 	tt := ui.NewTester(s.view, 1120, 2600)
-	for _, want := range []string{"下载任务", "新建下载任务", "model-fixture", "engine-fixture", "重新创建下载任务", "下载预置模型", "目录名取自设置，占用自动加序号；实际目录名见任务详情。", "打开设置"} {
+	for _, want := range []string{"下载任务", "新建下载任务", "model-fixture", "engine-fixture", "重新创建下载任务", "下载模型", "目录名取自设置，占用自动加序号；实际目录名见任务详情。", "打开设置"} {
 		if !tt.HasText(want) {
 			t.Fatal(want, tt.Texts())
 		}
 	}
-	click(t, tt, "引擎下载")
-	if !tt.HasText("下载预置引擎") {
-		t.Fatal(tt.Texts())
+	engine, _ := tt.Find("engine-fixture")
+	model, _ := tt.Find("model-fixture")
+	if engine.Y >= model.Y {
+		t.Fatal("engine task must precede model task")
 	}
-	click(t, tt, "自定义模型下载")
+	if s.downloads[0].TaskId != "model" {
+		t.Fatal("render reordered source tasks")
+	}
+	click(t, tt, "需要凭证时")
 	if !tt.HasText("凭据环境变量名") {
 		t.Fatal(tt.Texts())
 	}
@@ -36,13 +40,60 @@ func TestDownloadsPageMigration(t *testing.T) {
 	// The models page no longer carries any download UI.
 	s.selected = "models"
 	tt.Frame()
-	if tt.HasText("新建下载任务") || tt.HasText("取消下载") || tt.HasText("下载预置模型") {
+	if tt.HasText("新建下载任务") || tt.HasText("取消下载") || tt.HasText("下载模型") {
 		t.Fatal("download UI still on models page", tt.Texts())
 	}
 	for _, n := range modelUINodes(tt, "text", "下载任务") {
 		if n.FieldByName("role").Uint() == uint64(ui.RoleHeading) {
 			t.Fatal("download task card still on models page", tt.Texts())
 		}
+	}
+}
+
+func TestDownloadsPageMigrationEmptyAndValidation(t *testing.T) {
+	s := testState()
+	s.selected = "downloads"
+	tt := ui.NewTester(s.view, 1120, 2400)
+	if len(modelUINodes(tt, "text", "下载任务")) != 0 || tt.HasText("凭据环境变量名") {
+		t.Fatal(tt.Texts())
+	}
+	if s.engineURL != core.DefaultEngineURL() || s.modelURL != core.DefaultModelURL {
+		t.Fatal("missing defaults")
+	}
+	engine, engineOK := tt.Find("下载引擎")
+	model, modelOK := tt.Find("下载模型")
+	if !engineOK || !modelOK || engine.Y >= model.Y {
+		t.Fatal("engine form must precede model form")
+	}
+	for _, kind := range []string{"model", "engine"} {
+		t.Run(kind, func(t *testing.T) {
+			source := "http://example.com/model.gguf"
+			label := "下载模型"
+			if kind == "model" {
+				s.modelURL = source
+			} else {
+				s.engineURL = source
+				label = "下载引擎"
+			}
+			tt.Frame()
+			click(t, tt, label)
+			tt.Frame()
+			if s.failure == nil || s.busy || s.selected != "downloads" || len(s.downloads) != 0 || !tt.HasText("请输入完整的 https URL。") {
+				t.Fatal("non-https submission did not stay on page", tt.Texts())
+			}
+			if kind == "model" && s.modelURL != source || kind == "engine" && s.engineURL != source {
+				t.Fatal("edited URL lost")
+			}
+		})
+	}
+	s.modelURL = core.DefaultModelURL
+	s.tokenEnv = "secret-value"
+	tt.Frame()
+	click(t, tt, "需要凭证时")
+	click(t, tt, "下载模型")
+	tt.Frame()
+	if s.failure == nil || s.failure.Message != "只接受环境变量名，请勿输入明文 token。" || s.busy || len(s.downloads) != 0 {
+		t.Fatal("credential value accepted")
 	}
 }
 

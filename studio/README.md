@@ -77,8 +77,10 @@ deletion when the process identity still matches; that process must use the stop
 Successful deletion clears the orphaned state and allows a new startup. Model credentials
 are referenced only by an environment-variable name.
 
-The Models page prefills built-in test assets: a tiny SmolLM2-135M GGUF (pinned Hugging
-Face revision) and the pinned Prism engine archive for the current platform. Download
+The Downloads page presents one form card: the recommended llama-server engine first,
+then SmolLM2-135M-Instruct-Q4_K_M. Both HTTPS URLs are prefilled and editable; model
+credentials accept only an environment-variable name under “需要凭证时”. Empty pages omit
+the task card; existing tasks list engines before models. Download
 directory names come from Settings (defaults `model` / `engine`); an occupied name
 automatically gains a `-2`/`-3` suffix instead of prompting per download, and the task
 detail shows the actual directory. Name allocation stops after 1,000 occupied candidates
