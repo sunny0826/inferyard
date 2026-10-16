@@ -133,7 +133,7 @@ func TestDesignModelsStackAndLongPath(t *testing.T) {
 			tt := ui.NewTester(s.view, width[0], width[1])
 			tt.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
 			selectionY := modelUINodes(tt, "text", "选择模型与引擎")[0].FieldByName("y").Float()
-			runY := modelUINodes(tt, "text", "运行")[0].FieldByName("y").Float()
+			runY := modelUINodes(tt, "text", "组合状态")[0].FieldByName("y").Float()
 			servicesY := modelUINodes(tt, "text", "本机运行的服务")[0].FieldByName("y").Float()
 			if !(selectionY < runY && runY < servicesY) {
 				t.Fatal("single-column section order", selectionY, runY, servicesY)

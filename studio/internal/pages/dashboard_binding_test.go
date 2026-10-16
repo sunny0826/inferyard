@@ -173,6 +173,10 @@ func TestDiscoveryRenderedOnBothPages(t *testing.T) {
 		}
 		if modelPage {
 			render = s.modelsView
+			s.registry = core.Registry{
+				Models:  []core.ModelAsset{{Name: "model.gguf", Available: true}},
+				Engines: []core.EngineAsset{{Name: "listed-engine", Source: "用户引擎目录"}},
+			}
 		}
 		tt := ui.NewTester(render, 1100, 2400)
 		tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
