@@ -40,8 +40,10 @@ onevra 在 MyGo 之上提供产品中立的常用控件与侧栏外壳，但没�
 
 主窗口使用 onevra `shells/sidebar.Shell`：可折叠、可拖拽调宽的侧栏，配浮动 header 与内容区；
 侧栏默认 205 DIP 宽，折叠与宽度选择在会话内保持（跨折叠与页面切换）；窗口几何经 StateKey 跨会话恢复。顶部不提供通用“刷新”按钮；
-状态工具栏仅在刷新或执行操作时显示。
-侧栏保持 Dashboard、设备、模型、报告、设置的顺序，用 onevra `components.Sidebar`/
+固定右上角状态行空闲时显示「引擎 已停止 · 队列 空」，刷新或执行操作（包括保存、下载）时显示「执行中」。
+有非终态运行或 busy 时隐藏「停止」；引擎 starting/running 且无非终态运行、无 busy 时提供停止。
+侧栏上方「新任务」打开 Dashboard，此时无导航项选中；默认打开报告。
+侧栏保持报告、模型、下载、设备、设置的顺序，用 onevra `components.Sidebar`/
 `components.SidebarItem` 配 lucide 图标；
 缺 CLI、目录或模型时仍能进入每一页。运行详情属于 Dashboard，提供明确返回入口。
 每页和详情分别保存滚动位置，刷新不把用户带回顶部；表单草稿不被后台刷新覆盖。

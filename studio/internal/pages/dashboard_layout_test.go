@@ -117,19 +117,29 @@ func TestActivityStatusToolbar(t *testing.T) {
 	s := testState()
 	for _, state := range []struct{ busy, refreshing bool }{{false, false}, {true, false}, {false, true}, {true, true}} {
 		s.busy, s.refreshing = state.busy, state.refreshing
-		tt := ui.NewTester(s.activityStatus, 800, 600)
-		toolbars := 0
-		designNodes(tt, func(n reflect.Value, _ bool) {
-			if n.FieldByName("role").Uint() == uint64(ui.RoleToolbar) {
-				toolbars++
-			}
-		})
-		want := 0
-		if state.busy || state.refreshing {
-			want = 1
+		tt := ui.NewTester(s.cornerStatus, 800, 600)
+		if tt.HasText("执行中") != (state.busy || state.refreshing) || tt.HasText("执行中…") || tt.HasText("正在刷新…") {
+			t.Fatalf("state %+v texts=%v", state, tt.Texts())
 		}
-		if toolbars != want || tt.HasText("执行中…") != state.busy || tt.HasText("正在刷新…") != (state.refreshing && !state.busy) {
-			t.Fatalf("state %+v toolbars=%d texts=%v", state, toolbars, tt.Texts())
+		if !state.busy && !state.refreshing && !tt.HasText("引擎 已停止 · 队列 空") {
+			t.Fatal(tt.Texts())
+		}
+	}
+	s.busy, s.refreshing = false, false
+	s.engineState.State = "running"
+	for _, state := range []string{"queued", "running", "cancelling", "done", "failed", "cancelled"} {
+		s.tasks = []core.RunTask{{State: state}}
+		tt := ui.NewTester(s.cornerStatus, 800, 600)
+		if tt.HasText("停止") != terminal(state) {
+			t.Fatalf("run %s: %v", state, tt.Texts())
+		}
+	}
+	s.tasks = nil
+	for _, busy := range []bool{false, true} {
+		s.busy = busy
+		tt := ui.NewTester(s.cornerStatus, 800, 600)
+		if tt.HasText("停止") == busy {
+			t.Fatal(tt.Texts())
 		}
 	}
 }

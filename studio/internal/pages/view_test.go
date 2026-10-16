@@ -46,12 +46,17 @@ func TestSidebarDashboardEntry(t *testing.T) {
 	if tt.HasText("环境准备") || tt.HasText("初始化工作区") {
 		t.Fatal("setup remains in settings")
 	}
-	click(t, tt, "Dashboard")
+	click(t, tt, "新任务")
 	if s.selected != "dashboard" || !tt.HasText("启动测评") {
 		t.Fatal(tt.Texts())
 	}
-	if len(navigation) != 6 || navigation[0].id != "dashboard" || navigation[3].id != "downloads" || pageID("") != "dashboard" {
+	if len(navigation) != 5 || pageID("") != "reports" || pageID("dashboard") != "dashboard" || pageID("missing") != "reports" {
 		t.Fatal(navigation)
+	}
+	for i, want := range []struct{ id, label string }{{"reports", "报告"}, {"models", "模型"}, {"downloads", "下载"}, {"device", "设备"}, {"settings", "设置"}} {
+		if navigation[i].id != want.id || navigation[i].label != want.label {
+			t.Fatal(navigation)
+		}
 	}
 }
 func TestExplicitSingleBundleConfirmation(t *testing.T) {

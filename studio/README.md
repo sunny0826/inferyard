@@ -9,7 +9,9 @@ operations and owns the evidence contract.
 
 ## Pages and first launch
 
-The main window has six pages:
+The sidebar opens on Reports and lists Reports, Models, Downloads, Device, and Settings.
+A “新任务” (New task) button above the navigation opens Dashboard; no sidebar item is
+selected while Dashboard is open. The six page bodies are:
 
 | Page | Purpose |
 | --- | --- |
@@ -20,7 +22,7 @@ The main window has six pages:
 | Reports | Generate reports and open each offline HTML report in its own in-app WebView window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names. |
 
-The main window always opens on the Dashboard, which drives the full benchmark flow from
+Dashboard drives the full benchmark flow from
 the CLI-generated `progress.v1` workspace state: it shows the current stage with its
 blocking reason, offers the matching action inline, and hosts quick re-runs, the task
 queue, run history, resume, and the in-page run detail view. The Models page
@@ -29,6 +31,11 @@ prepares assets; Device runs the device check and shows its details; Reports gen
 and verifies the combined report; Settings edits paths and download directory names. Reopening Studio restores
 progress from workspace evidence through `progress.v1`. A missing CLI or incomplete
 configuration does not prevent opening any page.
+
+A fixed top-right status row shows engine and queue state; its idle text is
+“引擎 已停止 · 队列 空”. Background refresh and busy operations, including saves and
+download actions, show “执行中”. Stop is available for a starting or running engine
+when no non-terminal run exists and Studio is not busy.
 
 When no CLI is configured, the Dashboard offers one-tap installation: it reuses an existing
 `inferyard`/`uv` when found (including Homebrew locations outside the GUI PATH), downloads

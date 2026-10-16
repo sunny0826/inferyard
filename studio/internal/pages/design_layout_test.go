@@ -89,12 +89,12 @@ func TestDesignLayoutMatrix(t *testing.T) {
 							}
 							s.refreshing = true
 							tt.Frame()
-							before, ok := tt.Find("正在刷新…")
+							before, ok := tt.Find("执行中")
 							if !ok {
 								t.Fatal("missing refresh status")
 							}
 							tt.Scroll(float32(width-80), 400, 0, 600)
-							after, ok := tt.Find("正在刷新…")
+							after, ok := tt.Find("执行中")
 							if !ok || before != after {
 								t.Fatal("toolbar moved during content scroll")
 							}

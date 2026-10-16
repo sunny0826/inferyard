@@ -24,11 +24,10 @@ var navigation = []struct {
 	id, label string
 	icon      func() *ui.SVG
 }{
-	{"dashboard", "Dashboard", lucide.LayoutDashboard},
-	{"device", "设备", lucide.Cpu},
+	{"reports", "报告", lucide.FileText},
 	{"models", "模型", lucide.Layers},
 	{"downloads", "下载", lucide.Download},
-	{"reports", "报告", lucide.FileText},
+	{"device", "设备", lucide.Cpu},
 	{"settings", "设置", lucide.Settings},
 }
 
@@ -87,7 +86,10 @@ func pageID(page string) string {
 			return page
 		}
 	}
-	return "dashboard"
+	if page == "dashboard" {
+		return page
+	}
+	return "reports"
 }
 
 type viewState struct {
@@ -351,8 +353,7 @@ func (s *viewState) leftNav(c *ui.Context) {
 		components.Sidebar(c).Children(func() {
 			components.Text(c, "InferYard Studio").Bold().FontSize(t.Rem(1)).
 				Padding(t.Space(2), t.Space(2), t.Space(1), t.Space(2)).SingleLine()
-			components.Text(c, studioOrigin()).FontSize(t.Rem(0.75)).TextColor(t.TextMuted).
-				Padding(0, t.Space(2), t.Space(1), t.Space(2))
+			button(c, "新任务").OnClick(func() { s.selectPage("dashboard") })
 			for _, n := range navigation {
 				if components.SidebarItem(c, n.label, n.icon(), s.selected == n.id).Clicked() {
 					s.selectPage(n.id)
@@ -363,10 +364,10 @@ func (s *viewState) leftNav(c *ui.Context) {
 }
 
 // contentView builds the page area below the shell's floating header: the
-// activity toolbar stays fixed while page content scrolls beneath it.
+// corner status stays fixed while page content scrolls beneath it.
 func (s *viewState) contentView(c *ui.Context) {
 	ui.Column(c).Grow(1).MinWidth(0).Fill().Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
-		s.activityStatus(c)
+		s.cornerStatus(c)
 		ui.Scroll(c).Grow(1).Key(s.selected).TrackScroll(s.pageScroll()).Padding(c.Theme().Space(6)).Children(func() {
 			ui.Column(c).Gap(c.Theme().Space(4)).Children(func() {
 				s.feedback(c)
@@ -416,18 +417,30 @@ func (s *viewState) refreshAction() {
 		go s.refresh(true)
 	}
 }
-func (s *viewState) activityStatus(c *ui.Context) {
-	if !s.busy && !s.refreshing {
-		return
+func (s *viewState) cornerStatus(c *ui.Context) {
+	engine := "已停止"
+	if s.engineState.State != "" {
+		engine = stateLabel(s.engineState.State)
 	}
-	ui.Toolbar(c, func() {
-		if s.refreshing && !s.busy {
-			activitySpinner(c, "正在刷新页面")
-			ui.Text(c, "正在刷新…")
+	runActive := false
+	for _, task := range s.tasks {
+		if !terminal(task.State) {
+			runActive = true
+			break
 		}
-		if s.busy {
-			activitySpinner(c, "正在执行操作")
-			ui.Text(c, "执行中…")
+	}
+	queue := "空"
+	if runActive {
+		queue = "执行中"
+	}
+	ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(c.Theme().Space(2)).Padding(0, c.Theme().Space(6)).Children(func() {
+		if s.busy || s.refreshing {
+			ui.Text(c, "执行中")
+		} else {
+			ui.Text(c, "引擎 "+engine+" · 队列 "+queue)
+		}
+		if s.stopEnabled(true, runActive) {
+			button(c, "停止").OnClick(s.stopEngine)
 		}
 	})
 }
