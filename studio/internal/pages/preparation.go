@@ -26,7 +26,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 	s.header(c, "设置")
 	card(c, "路径设置", func() {
 		fields := func() {
-			field(c, "CLI 绝对路径（留空使用 PATH）", &s.cliPath).Description("可留空，使用 PATH 中的 inferyard。").Error(pathError(s.cliPath))
+			field(c, "CLI", &s.cliPath).Description("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。").Error(pathError(s.cliPath))
 			field(c, "工作区目录", &s.workspace).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)))
 			field(c, "结果目录", &s.results).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot)))
 			field(c, "模型目录", &s.models).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot)))
@@ -37,7 +37,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 			ui.Form(c, fields)
 		}
 		ui.Text(c, "保存设置不创建目录。目录缺失仍可浏览所有页面。")
-		if primaryButton(c, "保存设置").AlignSelf(ui.Start).Disabled(s.busy || !s.settingsLoaded).Clicked() {
+		if primaryButton(c, "保存").AlignSelf(ui.Start).Disabled(s.busy || !s.settingsLoaded).Clicked() {
 			if !s.validateSettings() {
 				return
 			}
@@ -61,10 +61,6 @@ func (s *viewState) settingsView(c *ui.Context) {
 		}
 	})
 	s.downloadNamesView(c)
-	card(c, "生效值与探测状态", func() {
-		ui.Text(c, "当前生效工作区："+text(s.settings.Effective.WorkspaceRoot)).Selectable()
-		componentFold(c, "原始生效值", func() { kvview(c, "kv-effective", s.settings.Effective) })
-	})
 }
 
 func (s *viewState) settingsEdited() bool {
@@ -94,7 +90,7 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 		field(c, "引擎下载目录名", &s.engineName).Error(downloadNameError(s.engineName))
 		ui.Text(c, "仅允许字母、数字、点、下划线、连字符；不能为空，也不能全为点。默认 model / engine。")
 		ui.Text(c, "名称被占用时自动追加 -2、-3；实际名称显示在下载任务详情中。")
-		primaryButton(c, "保存下载目录名").Disabled(s.busy || !validName(s.modelName) || !validName(s.engineName)).OnClick(func() {
+		button(c, "保存下载目录名").Disabled(s.busy || !validName(s.modelName) || !validName(s.engineName)).OnClick(func() {
 			patch := map[string]json.RawMessage{}
 			patch["model_download_name"], _ = json.Marshal(s.modelName)
 			patch["engine_download_name"], _ = json.Marshal(s.engineName)

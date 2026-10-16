@@ -16,13 +16,26 @@ func testState() viewState {
 	return viewState{selected: "dashboard", loaded: true, settingsLoaded: true, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
 }
 func TestSixPagesRender(t *testing.T) {
-	for _, tc := range []struct{ page, want string }{{"dashboard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "选择模型与引擎"}, {"downloads", "下载引擎"}, {"reports", "选择来源 run（1–100 个）"}, {"settings", "CLI 绝对路径（留空使用 PATH）"}} {
+	for _, tc := range []struct{ page, want string }{{"dashboard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "选择模型与引擎"}, {"downloads", "下载引擎"}, {"reports", "选择来源 run（1–100 个）"}, {"settings", "CLI"}} {
 		t.Run(tc.page, func(t *testing.T) {
 			s := testState()
 			s.selected = tc.page
 			tester := ui.NewTester(s.view, 1120, 800)
 			if !tester.HasText(tc.want) {
 				t.Fatalf("missing %q: %v", tc.want, tester.Texts())
+			}
+			if tc.page == "settings" {
+				if tester.HasText("生效值与探测状态") || !tester.HasText("保存") {
+					t.Fatal("settings retained obsolete content", tester.Texts())
+				}
+				for _, label := range tester.Texts() {
+					if label == "保存设置" {
+						t.Fatal("obsolete settings save button")
+					}
+				}
+				if !tester.HasText("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。") {
+					t.Fatal("missing CLI discovery help", tester.Texts())
+				}
 			}
 			for _, n := range navigation {
 				if !tester.HasText(n.label) {
@@ -187,13 +200,13 @@ func TestLongPageStartsAtTopAndScrolls(t *testing.T) {
 	if !ok || title.Y < 0 || title.Y > 100 {
 		t.Fatalf("Sidebar was vertically centered: %+v", title)
 	}
-	field, ok := tt.Find("CLI 绝对路径（留空使用 PATH）")
+	field, ok := tt.Find("CLI")
 	if !ok || field.Y < 0 || field.Y > 250 {
 		t.Fatalf("first settings field clipped: %+v", field)
 	}
 	tt.Scroll(700, 500, 0, 600)
-	if !tt.HasText("生效值与探测状态") {
-		t.Fatal("long page cannot scroll to effective settings")
+	if bounds, ok := tt.Find("恢复默认值"); !ok || bounds.Y < 0 || bounds.Y+bounds.H > 800 {
+		t.Fatal("long page cannot scroll to download name actions")
 	}
 }
 
@@ -220,7 +233,7 @@ func TestSettingsFollowWorkspaceHandoffAndPreserveEdits(t *testing.T) {
 	next.Settings.ResultsRoot = ptr("/new-child/results")
 	s.applySettings(next)
 	tt.Frame()
-	if s.results != "/new-child/results" || !tt.HasText("当前生效工作区：/new-child") || s.workspace != "/new-child" {
+	if s.results != "/new-child/results" || s.workspace != "/new-child" {
 		t.Fatal("workspace handoff left settings form stale", tt.Texts())
 	}
 	s.cliPath = "/editing/cli"

@@ -22,7 +22,7 @@ DS-01 至 DS-09 已有对应实现和软件回归；原生窗口与辅助技术�
 | DS-06 | 冻结配置准备直接指向 Dashboard；服务步骤中文化，颜色区分活动、就绪、失败和停止 | `TestDesignEngineSemanticColors` 与既有步骤、绑定回归 |
 | DS-07 | 页面变化与当前页新错误一次性公告，主动重复提交重新公告对应错误，重渲染去重，刷新保留输入焦点 | `TestDesignAnnouncementsOnce`、`TestDesignHiddenDetailErrorIsNotAnnounced`、`TestFormFailureAnnouncedOnEverySubmission` |
 | DS-08 | 输入关联 Description/Error；提交保留草稿，后端仍校验 | `TestDesignInvalidFieldsPreserveEdits` 与既有设置、续测回归 |
-| DS-09 | 设置先展示生效工作区，低频原始字段折叠；历史封存中文化并区分核验；服务诊断位于操作之后 | 历史展开、设置切换与页面布局回归 |
+| DS-09 | 设置仅展示路径与下载目录名表单；历史封存中文化并区分核验；服务诊断位于操作之后 | 历史展开、设置切换与页面布局回归 |
 
 初始 NaN 和详情错误/加载重叠已用真实视图回归复现，再以同一回归验证修复。
 NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃，不将它们描述为已复现后果。
@@ -57,7 +57,7 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 | 下载 | 任务清单、取消/重试、实际目录名展示与新建表单 | [downloads.go](../internal/pages/downloads.go)、[models_downloads.go](../internal/pages/models_downloads.go) |
 | 运行详情 | 失败与加载分离、重试和返回、表格名称、换行图例 | [detail.go](../internal/pages/detail.go)、[chart.go](../internal/pages/chart.go) |
 | 报告 | 来源列表名称化展示、空态下一步、键盘打开 | [reports.go](../internal/pages/reports.go)、[reports_table.go](../internal/pages/reports_table.go) |
-| 设置 | 字段关联、生效工作区与折叠诊断 | [preparation.go](../internal/pages/preparation.go)、[form_validation.go](../internal/pages/form_validation.go) |
+| 设置 | 字段关联、路径保存与下载目录名 | [preparation.go](../internal/pages/preparation.go)、[form_validation.go](../internal/pages/form_validation.go) |
 | 报告窗口 | 固定身份标题、加载失败回传、窗口内重试与关闭 | [report_window.go](../internal/pages/report_window.go) |
 
 设备页展示硬件快照；模型列表与推荐在模型页。未将历史 HTML 原型当成已经实现的原生页面。

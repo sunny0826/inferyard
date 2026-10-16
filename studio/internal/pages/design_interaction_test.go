@@ -39,10 +39,10 @@ func TestDesignAnnouncementsOnce(t *testing.T) {
 	if got := tt.Announcements(); len(got) != 0 {
 		t.Fatal("refresh repeats same error", got)
 	}
-	click(t, tt, "CLI 绝对路径（留空使用 PATH）")
+	click(t, tt, "CLI")
 	s.failure = &core.ApiError{Code: "output_exists"}
 	tt.Frame()
-	if !tt.Focused("CLI 绝对路径（留空使用 PATH）") {
+	if !tt.Focused("CLI") {
 		t.Fatal("async error stole input focus")
 	}
 	if got := tt.Announcements(); len(got) != 1 {
@@ -81,7 +81,7 @@ func TestDesignInvalidFieldsPreserveEdits(t *testing.T) {
 	s.workspace = "relative/workspace"
 	s.cliPath = "/keep/cli"
 	tt := ui.NewTester(s.view, 1120, 1200)
-	click(t, tt, "保存设置")
+	click(t, tt, "保存")
 	if s.failure == nil || s.busy || s.workspace != "relative/workspace" || s.cliPath != "/keep/cli" {
 		t.Fatal("invalid settings submitted or edited values lost")
 	}
