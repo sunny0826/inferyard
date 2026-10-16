@@ -38,12 +38,22 @@ func MapExitCode(code int) ExitStatus {
 	}
 }
 
-func ParseVersion(data []byte) (string, error) {
+func ParseVersion(data []byte) (string, string, error) {
 	fields := strings.Fields(string(data))
-	if len(fields) != 2 || fields[0] != "inferyard" {
-		return "", errors.New("invalid inferyard version output")
+	if len(fields) < 2 || len(fields) > 3 || fields[0] != "inferyard" {
+		return "", "", errors.New("invalid inferyard version output")
 	}
-	return fields[1], nil
+	if len(fields) == 2 {
+		return fields[1], "", nil
+	}
+	if !strings.HasPrefix(fields[2], "source=") {
+		return "", "", errors.New("invalid inferyard version output")
+	}
+	source := strings.TrimPrefix(fields[2], "source=")
+	if source != "checkout" && source != "release" {
+		return "", "", errors.New("invalid inferyard version output")
+	}
+	return fields[1], source, nil
 }
 
 type Client struct {

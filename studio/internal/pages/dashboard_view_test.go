@@ -4,6 +4,8 @@ import (
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -29,12 +31,14 @@ func TestDashboardViews(t *testing.T) {
 		{"verified", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{DefaultScopeComplete: true}}, "已核验 verified"},
 		{"device defaults", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "device_check", Workspace: "/tmp/ws"}, modelURL: core.DefaultModelURL, engineURL: core.DefaultEngineURL()}, "引擎 URL"},
 		{"initialized outdated CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Path: strptr("/tmp/ws"), Exists: true, Initialized: true}}}, "已初始化"},
+		{"checkout CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: strptr("0.0.3"), Source: "checkout", Path: strptr("/src/inferyard")}}}, "CLI 源码树 · 0.0.3 · /src/inferyard"},
+		{"release CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: strptr("0.0.3"), Source: "release", Path: strptr("/usr/bin/inferyard")}}}, "CLI 发行安装 · 0.0.3 · /usr/bin/inferyard"},
 	}
 	for i := range cases {
 		tc := &cases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			switch tc.name {
-			case "CLI unavailable", "initialize", "initialized outdated CLI":
+			case "CLI unavailable", "initialize", "initialized outdated CLI", "checkout CLI", "release CLI":
 				tc.state.selected = "dashboard"
 			case "verified":
 				tc.state.selected = "reports"
@@ -134,5 +138,20 @@ func TestCommandArguments(t *testing.T) {
 	}
 	if environmentName.MatchString("token with spaces") || environmentName.MatchString("hf-secret-token") {
 		t.Fatal("invalid env name accepted")
+	}
+}
+
+func TestStudioOriginNamesPackagedBuild(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := studioOrigin()
+	want := "Studio 发行包 · " + exe
+	if strings.Contains(filepath.ToSlash(exe), "/go-build") {
+		want = "Studio 源码运行 · " + exe
+	}
+	if got != want {
+		t.Fatalf("studioOrigin = %q, want %q", got, want)
 	}
 }

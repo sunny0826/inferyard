@@ -3,6 +3,8 @@ package pages
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -329,6 +331,18 @@ func (s *viewState) selectPage(id string) {
 	}()
 }
 
+// studioOrigin reports a go run or go test process as source, and a built binary as packaged.
+func studioOrigin() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return "Studio 来源未知"
+	}
+	if strings.Contains(filepath.ToSlash(exe), "/go-build") {
+		return "Studio 源码运行 · " + exe
+	}
+	return "Studio 发行包 · " + exe
+}
+
 // leftNav builds the navigation column used both by the shell's left region
 // and by the in-memory test view. It clears the shell's floating header.
 func (s *viewState) leftNav(c *ui.Context) {
@@ -337,6 +351,8 @@ func (s *viewState) leftNav(c *ui.Context) {
 		components.Sidebar(c).Children(func() {
 			components.Text(c, "InferYard Studio").Bold().FontSize(t.Rem(1)).
 				Padding(t.Space(2), t.Space(2), t.Space(1), t.Space(2)).SingleLine()
+			components.Text(c, studioOrigin()).FontSize(t.Rem(0.75)).TextColor(t.TextMuted).
+				Padding(0, t.Space(2), t.Space(1), t.Space(2))
 			for _, n := range navigation {
 				if components.SidebarItem(c, n.label, n.icon(), s.selected == n.id).Clicked() {
 					s.selectPage(n.id)

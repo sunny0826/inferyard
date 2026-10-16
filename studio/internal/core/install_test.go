@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -76,12 +77,12 @@ func TestFindCLIFallsBackToLocalBin(t *testing.T) {
 
 type fakeInfo struct{}
 
-func (fakeInfo) Name() string      { return "fake" }
-func (fakeInfo) Size() int64       { return 1 }
-func (fakeInfo) Mode() os.FileMode { return 0755 }
+func (fakeInfo) Name() string       { return "fake" }
+func (fakeInfo) Size() int64        { return 1 }
+func (fakeInfo) Mode() os.FileMode  { return 0755 }
 func (fakeInfo) ModTime() time.Time { return time.Unix(0, 0) }
-func (fakeInfo) IsDir() bool       { return false }
-func (fakeInfo) Sys() interface{}  { return nil }
+func (fakeInfo) IsDir() bool        { return false }
+func (fakeInfo) Sys() interface{}   { return nil }
 
 func TestInstallCLIReusesExisting(t *testing.T) {
 	stubInstall(t)
@@ -100,6 +101,51 @@ func TestInstallCLIReusesExisting(t *testing.T) {
 	}
 	if len(statuses) == 0 || !strings.Contains(statuses[len(statuses)-1], "已就绪") {
 		t.Fatalf("statuses = %v", statuses)
+	}
+}
+
+func TestInstallCLIKeepsConfiguredPath(t *testing.T) {
+	stubInstall(t)
+	installLookPath = func(string) (string, error) { return "/usr/local/bin/inferyard", nil }
+	s := installService(t)
+	configured := filepath.Join(t.TempDir(), "inferyard")
+	if err := os.WriteFile(configured, []byte("#!/bin/sh\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(configured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, e := s.UpdateSettings(map[string]json.RawMessage{"inferyard_path": raw}); e != nil {
+		t.Fatal(e)
+	}
+	path, e := s.InstallCLI(context.Background(), func(string) {})
+	if e != nil {
+		t.Fatalf("InstallCLI: %+v", e)
+	}
+	if path != configured {
+		t.Fatalf("path = %q, want configured %q", path, configured)
+	}
+}
+
+func TestInstallCLIIgnoresMissingConfiguredPath(t *testing.T) {
+	stubInstall(t)
+	installLookPath = func(string) (string, error) { return "", errors.New("not found") }
+	s := installService(t)
+	raw, err := json.Marshal("/missing/inferyard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, e := s.UpdateSettings(map[string]json.RawMessage{"inferyard_path": raw}); e != nil {
+		t.Fatal(e)
+	}
+	installLookPath = func(string) (string, error) { return "/usr/local/bin/inferyard", nil }
+	path, e := s.InstallCLI(context.Background(), func(string) {})
+	if e != nil {
+		t.Fatalf("InstallCLI: %+v", e)
+	}
+	if path != "/usr/local/bin/inferyard" {
+		t.Fatalf("path = %q", path)
 	}
 }
 

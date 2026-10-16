@@ -96,7 +96,7 @@ CLI 与应用分发层负责把命令行参数转成应用请求、把应用结�
 
 ### 元数据查询
 
-`--version` 是 argparse `version` action，在解析阶段直接打印 `inferyard <版本>` 并退出；`--versions` 返回 `versions()` 的 JSON，含 `tool_version`、`schema_version`、`supported_schema_versions`、Python 版本与实现名，以及一组固定依赖的版本（未安装的依赖填 `null`）；`--schema KIND` 返回 `export_schema(KIND)` 的 Draft 2020-12 JSON Schema，KIND 可选值来自 `schemas_for()`，choices 在构造解析器时从注册表排序生成。两者都只读取包内元数据与契约注册表，不触碰执行后端。`--help` 同理：由 argparse 在解析阶段处理并退出，不构造请求。
+`--version` 是 argparse `version` action，在解析阶段直接打印 `inferyard <版本> source=<checkout|release>` 并退出。`source` 只区分安装方式：PEP 660 editable 为 `checkout`，其余为 `release`，不读取 git。`--versions` 返回 `versions()` 的 JSON，含 `tool_version`、`source`、`schema_version`、`supported_schema_versions`、Python 版本与实现名，以及一组固定依赖的版本（未安装的依赖填 `null`）；`--schema KIND` 返回 `export_schema(KIND)` 的 Draft 2020-12 JSON Schema，KIND 可选值来自 `schemas_for()`，choices 在构造解析器时从注册表排序生成。两者都只读取包内元数据与契约注册表，不触碰执行后端。`--help` 同理：由 argparse 在解析阶段处理并退出，不构造请求。
 
 ### 分派内联命令
 

@@ -61,7 +61,7 @@ func TestDashboardPreparationFreezesSelectedModel(t *testing.T) {
 			execute := func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 				switch args[0] {
 				case "--version":
-					return inferyard.Execution{Stdout: []byte("inferyard fixture")}, nil
+					return inferyard.Execution{Stdout: []byte("inferyard fixture source=release")}, nil
 				case "progress":
 					raw, _ := json.Marshal(progress)
 					return inferyard.Execution{Stdout: raw}, nil

@@ -124,6 +124,7 @@ def test_dependency_versions_export_is_json(capsys):
     assert main(["--versions"]) == 0
     data = json.loads(capsys.readouterr().out)
     assert data["schema_version"] == 3
+    assert data["source"] == "checkout"
     assert data["python"] == "3.14.7"
     assert data["dependencies"]["httpx"]
     assert "environment" not in data

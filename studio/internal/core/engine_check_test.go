@@ -30,7 +30,7 @@ func engineCheckService(t *testing.T, exitCode int, stdout string) (*Service, *[
 	calls := &[][]string{}
 	s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 		if args[0] == "--version" {
-			return inferyard.Execution{Stdout: []byte("inferyard fixture")}, nil
+			return inferyard.Execution{Stdout: []byte("inferyard fixture source=release")}, nil
 		}
 		*calls = append(*calls, append([]string{}, args...))
 		return inferyard.Execution{ExitCode: exitCode, Stdout: []byte(stdout)}, nil

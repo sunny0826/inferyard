@@ -37,12 +37,22 @@ func TestExitCodes(t *testing.T) {
 	}
 }
 func TestParseVersion(t *testing.T) {
-	version, err := ParseVersion([]byte("inferyard 1.2.3\n"))
-	if err != nil || version != "1.2.3" {
-		t.Fatalf("%q %v", version, err)
+	version, source, err := ParseVersion([]byte("inferyard 1.2.3 source=release\n"))
+	if err != nil || version != "1.2.3" || source != "release" {
+		t.Fatalf("%q %q %v", version, source, err)
 	}
-	if _, err := ParseVersion([]byte("unexpected output")); err == nil {
-		t.Fatal("invalid version accepted")
+	version, source, err = ParseVersion([]byte("inferyard 0.0.3 source=checkout\n"))
+	if err != nil || version != "0.0.3" || source != "checkout" {
+		t.Fatalf("%q %q %v", version, source, err)
+	}
+	version, source, err = ParseVersion([]byte("inferyard 0.0.3\n"))
+	if err != nil || version != "0.0.3" || source != "" {
+		t.Fatalf("legacy line: %q %q %v", version, source, err)
+	}
+	for _, raw := range []string{"unexpected output", "inferyard 1.2.3 source=git\n", "inferyard 1.2.3 extra\n"} {
+		if _, _, err := ParseVersion([]byte(raw)); err == nil {
+			t.Fatalf("accepted %q", raw)
+		}
 	}
 }
 func TestCancellation(t *testing.T) {
@@ -157,7 +167,7 @@ func TestRealCLI(t *testing.T) {
 			t.Fatalf("CLI %v failed: %v", args, err)
 		}
 		if args[0] == "--version" {
-			v, err := ParseVersion(raw)
+			v, _, err := ParseVersion(raw)
 			if err != nil {
 				t.Fatal(err)
 			}
