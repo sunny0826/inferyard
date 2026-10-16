@@ -87,13 +87,26 @@ func TestDownloadsPageMigrationEmptyAndValidation(t *testing.T) {
 		})
 	}
 	s.modelURL = core.DefaultModelURL
-	s.tokenEnv = "secret-value"
+	s.failure = nil
 	tt.Frame()
 	click(t, tt, "需要凭据时")
+	tt.Frame()
+	click(t, tt, "凭据环境变量名（可选）")
+	tt.Frame()
+	tt.Key(ui.Cmd, ui.KeyA)
+	tt.Type("secret-value")
+	tt.Frame()
+	if s.tokenEnv != "secret-value" {
+		t.Fatalf("credential field = %q model=%q engine=%q", s.tokenEnv, s.modelURL, s.engineURL)
+	}
 	click(t, tt, "下载模型")
 	tt.Frame()
 	if s.failure == nil || s.failure.Message != "只接受环境变量名，请勿输入明文 token。" || s.busy || len(s.downloads) != 0 {
-		t.Fatal("credential value accepted")
+		message := ""
+		if s.failure != nil {
+			message = s.failure.Message
+		}
+		t.Fatalf("credential value accepted: message=%q busy=%v downloads=%d", message, s.busy, len(s.downloads))
 	}
 }
 
