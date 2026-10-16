@@ -57,7 +57,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 2. **页面刷新**：主窗口的六页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
    取增量事件，六类事件触发全量刷新（`sync.reset`/`report.created`/`run.state`/`engine.state`/
    `download.state`/`device.updated`，见 [`studio/internal/pages/registry_refresh.go`](../../studio/internal/pages/registry_refresh.go)），其余做局部更新。
-3. **Dashboard 任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。新任务复用模型/引擎选择，默认勾选存在的 zh-core，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`，`ReportVerify=false`，显示成功路径而不显示已核验；核验留在报告页。没有活动任务时从 `progress.v1` 恢复。所有命令仍经 `WizardExecute` 原白名单和身份检查。
+3. **Dashboard 任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。新任务复用模型/引擎选择，默认勾选存在的 zh-core，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`，`ReportVerify=false`，完成区域仅显示「查看报告」，直接打开本次输出目录对应的报告；不展示路径、生成成功文字或已核验状态，核验留在报告页。没有活动任务时从 `progress.v1` 恢复。所有命令仍经 `WizardExecute` 原白名单和身份检查。
 4. **运行**：`StartRuns` 逐配置读取 bundle 与输出根并做包含/去重准入 → 入队由 `runQueue` 串行
    `executeRun` 派生 `inferyard run --config`（取消为 SIGINT + 两秒兜底）；执行循环每
    `ProgressInterval`（500ms）对比运行前后证据索引、tail `events.jsonl` 投影 case 进度与分数、
@@ -90,7 +90,10 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
    `startup_arguments_mismatch` 等拒绝原因如实呈现；`BindingAlive` 仅提供存活提示。
 8. **报告**：页面先展示「历史任务」，再展示「报告列表」。进入任务清除详情与续测来源并聚焦所选运行；续测清除详情并设置来源；实时详情打开对应任务，三者都进入 Dashboard。打开报告为主操作；1–100 个来源的生成入口折叠在「从历史运行另做报告」。仅工作区 `next_action=verify` 且报告未核验时显示「核验」，沿用向导并设置 `ReportVerify=true`；`verified` 显示「已核验」。
    `CreateReport` 校验 1–100 个位于结果根内的不同 run → 派生 `inferyard report`
-   写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面在主窗口内容区读取 `index.json`，呈现 `runs[].dashboard` 与 `runs[].requests`。报告 ID 为 UTC
+   写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面在主窗口内容区读取 `index.json`，呈现当前所选运行的指标卡、分类表、模型与机器、逐题答案及数据来源。
+   指标取自 `runs[].dashboard` 与 `summary.completion_rate`；模型、引擎和机器取自 `profile`、`threads`，题包取自 `facets.bundle_label`，运行 ID 取自 `source.run_id`，逐题行取自 `requests`。
+   多运行索引用选择器分别显示，不合并指标。质量和完成率保留分母与排除数；缺测显示 — 并保留已有采样原因。延迟从 ms 转为 s，内存从 bytes 转为 GiB；诊断运行标注「诊断运行」。
+   `ReportIndex` 接受列表 ID 或本次报告绝对目录；绝对目录先规范化并验证位于配置的 reports 根目录内，再经 `ReportFile` 校验索引，越界路径不能按同名目录打开。报告 ID 为 UTC
    `report-YYYYMMDDTHHMMSSZ[-N]`，命名冲突追加序号。报告与导出契约
    见 [评分、比较与报告](scoring-reporting.md) 与
    [report-contract](../../cli/docs/contracts/report-contract.md)。
@@ -202,7 +205,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
   留在报告目录内；缺失来源 run 显示为不可用但不阻止打开。单项索引不可读不影响其他报告，
   列表标记无法读取，打开后可重新读取或返回列表。质量与类别分母直接取自索引，不重算分数；
   空延迟显示 —。CLI 仍生成 `report.html`，Studio 没有加载 HTML 的控件。实现见
-  [report_view.go](../../studio/internal/pages/report_view.go)，原生交互仍待真机验证。
+  [report_view.go](../../studio/internal/pages/report_view.go)、[report_metrics.go](../../studio/internal/pages/report_metrics.go) 与 [report_tables.go](../../studio/internal/pages/report_tables.go)。macOS 模拟数据的直达、布局与滚动已检查；其他平台和真实测评数据未在本轮验证。
 - **安全**：模型端点仅本地 loopback；token/凭据/完整 session URL 不进日志、设置或用户可见错误；
   向导执行不回传 stdout/stderr；设置文件 0700/0600 且仅在用户保存时替换。CLI 退出码语义
   （0/2/3/4/130）与呈现映射见 [CLI 与应用分发](cli-dispatch.md)。

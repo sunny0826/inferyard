@@ -37,8 +37,8 @@ model/results directories, and initializing a new workspace. Existing initialize
 skip `init`; new workspaces omit `--bundle`. The first workspace device check runs once
 with `--models-root` and no `--model`. A later model-specific check still supplies `--model`.
 The task generates `report --runs` for its own sealed runs with verification disabled, displays
-the successful output path, and leaves verification on Reports. Duration and unfinished
-batch plans display their blocking reason without an execution button.
+only a “查看报告” button that opens that exact report, and leaves verification on Reports.
+Duration and unfinished batch plans display their blocking reason without an execution button.
 
 A fixed top-right status row shows engine and queue state; its idle text is
 “引擎 已停止 · 队列 空”. Active runs and non-stopped engine states stay visible during
@@ -155,8 +155,12 @@ The packaging script reads the same version.
 
 Reports use native controls inside the main window and do not create a WebView.
 The CLI still generates offline HTML, but Studio reads `index.json`: the existing
-`runs[].dashboard` quality, category denominators and latency, plus `runs[].requests`.
-Studio does not rescore results. Null latency displays as —. An unreadable index is
+`runs[].dashboard` metrics, `summary.completion_rate`, model/machine `profile`,
+`facets.bundle_label`, `source.run_id`, and `requests`. The detail view has four metric
+cards, category results, model/machine details, per-case answers, and data sources.
+Multiple runs have a selector and remain separate. Studio does not rescore results.
+Missing measurements display as —, with available sampling reasons; milliseconds and
+bytes are displayed as seconds and GiB. An unreadable index is
 marked in the list without hiding other reports; opening it offers retry and return.
 
 ## Safety and operation rules

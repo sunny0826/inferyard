@@ -141,7 +141,7 @@ func TestReportTableSelection(t *testing.T) {
 		t.Fatal(tt.Texts())
 	}
 	click(t, tt, "打开报告")
-	if s.openedReport == nil || s.openedReport.id != "report-b" || s.openedReport.failure == nil {
+	if s.openedReport == nil || s.openedReport.reference != "report-b" || s.openedReport.failure == nil {
 		t.Fatal("selected open not invoked")
 	}
 }

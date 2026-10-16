@@ -2,67 +2,121 @@ package pages
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
-	"strconv"
 )
 
 type reportViewState struct {
-	id      string
-	index   *core.ReportIndex
-	failure *core.ApiError
+	reference            string
+	index                *core.ReportIndex
+	failure              *core.ApiError
+	run                  int
+	categories, requests pageTableState
 }
 
-func (s *viewState) readReport(id string) (*core.ReportIndex, *core.ApiError) {
+func (s *viewState) readReport(reference string) (*core.ReportIndex, *core.ApiError) {
 	if s.service == nil {
 		return nil, core.Err("not_found")
 	}
-	return s.service.ReportIndex(id)
+	return s.service.ReportIndex(reference)
 }
-func (s *viewState) openReport(id string) {
-	index, e := s.readReport(id)
-	s.openedReport = &reportViewState{id: id, index: index, failure: e}
+
+func (s *viewState) openReport(reference string) {
+	index, e := s.readReport(reference)
+	s.openedReport = &reportViewState{reference: reference, index: index, failure: e}
+	s.selected = "reports"
 }
-func reportNumber(value *float64) string {
-	if value == nil {
-		return "—"
-	}
-	return strconv.FormatFloat(*value, 'f', -1, 64)
-}
-func reportRate(rate core.ReportRate) string {
-	return reportNumber(rate.Numerator) + " / " + reportNumber(rate.Denominator)
-}
+
 func (s *viewState) reportView(c *ui.Context) {
 	report := s.openedReport
-	s.header(c, "报告 "+report.id)
-	button(c, "返回报告列表").AlignSelf(ui.Start).OnClick(func() { s.openedReport = nil })
+	id := displayName(report.reference)
 	if report.failure != nil {
-		ui.Text(c, "无法读取")
-		button(c, "重新读取报告").AlignSelf(ui.Start).OnClick(func() { s.openReport(report.id) })
+		s.header(c, "报告 "+id)
+		button(c, "返回报告列表").AlignSelf(ui.Start).OnClick(func() { s.openedReport = nil })
+		ui.Text(c, "无法读取").TextColor(c.Theme().Danger)
+		button(c, "重新读取报告").AlignSelf(ui.Start).OnClick(func() { s.openReport(report.reference) })
 		return
 	}
-	for _, run := range report.index.Runs {
-		card(c, run.RunID, func() {
-			if run.Dashboard == nil {
-				ui.Text(c, "无法读取 dashboard")
-				return
-			}
-			d := run.Dashboard
-			heading(c, "质量 "+reportRate(d.Quality), 2)
-			ui.Text(c, "各类别不构成综合评分")
-			ui.Text(c, "质量排除数 "+reportNumber(d.Quality.Excluded))
-			for _, category := range d.Categories {
-				label := category.Label
-				if label == "" {
-					label = category.ID
-				}
-				ui.Text(c, label+" · "+reportRate(category.Rate)+" · 排除 "+reportNumber(category.Rate.Excluded))
-			}
-			ui.Text(c, fmt.Sprintf("延迟 (ms) · 最小 %s · P50 %s · P95 %s · 最大 %s", reportNumber(d.Latency.Min), reportNumber(d.Latency.P50), reportNumber(d.Latency.P95), reportNumber(d.Latency.Max)))
-			ui.Text(c, "延迟样本 "+reportNumber(d.Latency.SampleCount)+" · 排除 "+reportNumber(d.Latency.Excluded))
-			for _, request := range run.Requests {
-				ui.Text(c, request.CaseID+" · "+request.CategoryLabel+" · "+request.State+" · "+text(request.Quality)+" · 延迟 (ms) "+reportNumber(request.LatencyMS)).Selectable()
+	if len(report.index.Runs) == 0 {
+		s.header(c, "报告 "+id)
+		button(c, "返回报告列表").AlignSelf(ui.Start).OnClick(func() { s.openedReport = nil })
+		ui.Text(c, "报告中暂无运行数据。")
+		return
+	}
+	run := report.index.Runs[report.run]
+	s.header(c, reportModel(run))
+	ui.Text(c, id+" · "+reportText(run.Facets.BundleLabel)).TextColor(c.Theme().TextMuted)
+	button(c, "返回报告列表").AlignSelf(ui.Start).OnClick(func() { s.openedReport = nil })
+	if len(report.index.Runs) > 1 {
+		report.runPicker(c)
+		run = report.index.Runs[report.run]
+	}
+	if run.Diagnostic {
+		statusBadge(c, "诊断运行", c.Theme().Warning)
+	}
+	if run.Dashboard == nil {
+		ui.Text(c, "无法读取 dashboard").TextColor(c.Theme().Danger)
+	} else {
+		reportMetrics(c, run)
+		report.categoryView(c, run)
+	}
+	reportProfileView(c, run)
+	report.requestView(c, run)
+	card(c, "数据来源", func() {
+		deviceRow(c, "运行", reportText(run.Source.RunID))
+		deviceRow(c, "索引", "index.json")
+		deviceRow(c, "停止原因", reportText(run.Summary.StopReason))
+	})
+}
+
+func (r *reportViewState) runPicker(c *ui.Context) {
+	ui.Field(c, "选择运行", func() {
+		selectRun := components.Select(c, &r.run)
+		selectRun.Trigger.Label("选择运行").Children(func() {
+			ui.Text(c, reportRunLabel(r.index.Runs[r.run])).SingleLine()
+		})
+		selectRun.Popup(func(panel ui.Element) {
+			for i, run := range r.index.Runs {
+				selectRun.Item(i).Label(reportRunLabel(run)).Children(func() {
+					ui.Text(c, reportRunLabel(run)).SingleLine()
+				})
 			}
 		})
+		if selectRun.Trigger.Changed() {
+			r.categories, r.requests = pageTableState{}, pageTableState{}
+		}
+	})
+	ui.Text(c, "各次运行分别展示，不合并成绩。").TextColor(c.Theme().TextMuted)
+}
+
+func reportRunLabel(run core.ReportRun) string {
+	return reportText(run.Facets.BundleLabel) + " · " + reportText(run.Source.RunID)
+}
+
+func reportModel(run core.ReportRun) string {
+	if run.Profile.Title != "" {
+		return displayValue(run.Profile.Title)
 	}
+	return reportText(run.Model)
+}
+
+func reportProfileView(c *ui.Context, run core.ReportRun) {
+	card(c, "模型与机器", func() {
+		deviceRow(c, "模型", reportModel(run))
+		engine := displayName(run.Profile.Engine.BinaryPath)
+		if engine == "" {
+			engine = run.Profile.Engine.Adapter
+		}
+		backend := strings.ToUpper(run.Profile.Engine.Backend)
+		if backend == "METAL" {
+			backend = "Metal"
+		}
+		deviceRow(c, "引擎", fmt.Sprintf("%s · %s · %s 线程", reportText(engine), reportText(backend), reportNumber(run.Threads)))
+		machine := run.Profile.Machine
+		deviceRow(c, "机器", fmt.Sprintf("%s · %s 核 · %s", reportText(machine.CPU), reportNumber(machine.LogicalCPUs), reportScaled(machine.MemoryTotalBytes, 1<<30, "GiB")))
+		deviceRow(c, "题包", reportText(run.Facets.BundleLabel))
+	})
 }
