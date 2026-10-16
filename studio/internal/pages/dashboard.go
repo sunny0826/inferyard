@@ -146,9 +146,13 @@ func (s *viewState) readinessView(c *ui.Context) {
 	card(c, "环境准备", func() {
 		cli := "请安装 CLI 或在设置中配置路径"
 		if s.ready.CLI.Status == "ok" {
-			cli = "已就绪 · " + text(s.ready.CLI.Version)
+			origin := "CLI 发行安装"
+			if s.ready.CLI.Source == "checkout" {
+				origin = "CLI 源码树"
+			}
+			cli = origin + " · " + text(s.ready.CLI.Version) + " · " + text(s.ready.CLI.Path)
 		}
-		ui.Text(c, "CLI："+cli)
+		ui.Text(c, "CLI："+cli).Selectable()
 		for _, entry := range []struct {
 			label string
 			dir   core.DirectoryReadiness

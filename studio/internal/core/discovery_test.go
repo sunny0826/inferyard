@@ -16,7 +16,7 @@ const discoveryFixture = `{"command":"service discover","status":"discovered","c
 func TestDiscoverUsesCLIAndPreservesAmbiguity(t *testing.T) {
 	s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 		if args[0] == "--version" {
-			return inferyard.Execution{Stdout: []byte("inferyard fixture")}, nil
+			return inferyard.Execution{Stdout: []byte("inferyard fixture source=release")}, nil
 		}
 		if !reflect.DeepEqual(args, []string{"service", "discover"}) {
 			t.Fatalf("unexpected invocation %v", args)

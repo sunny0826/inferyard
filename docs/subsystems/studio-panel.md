@@ -20,7 +20,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 | 进程入口与装配 | 嵌入 `mygo.config.ts` 解析 version 写入 `core.Version`；signal context、`core.New`、`mygo.App.WhenReady` 装配 onevra `shells/sidebar` 主窗口与桌面通知；退出时 30 秒超时的 `Service.Shutdown` | `main` 在 [`studio/main.go`](../../studio/main.go) |
 | 服务核心 | 设置持久化与探测、设备快照、运行队列、下载、报告、引擎条目的单一持有者；路径包含校验（含符号链接与 macOS `/var` 规范化） | `Service`、`New`、`UpdateSettings`、`saveSettings`、`probe`、`Resolve`、`canonical` 在 [`studio/internal/core/service.go`](../../studio/internal/core/service.go) |
 | 请求/响应类型 | 页面与服务间的 JSON 类型镜像（`UserSettings`、`RunTask`、`EngineState`、`ApiError` 等） | [`studio/internal/core/types.go`](../../studio/internal/core/types.go) |
-| CLI 进程客户端 | `--version` 解析、argv 直通执行、退出码映射、取消（SIGINT 后两秒 SIGKILL 兜底）、`progress.v1` 解析 | `Client.Exec`、`ParseVersion`、`MapExitCode`、`ParseProgress`、`SplitCommand` 在 [`studio/internal/inferyard/client.go`](../../studio/internal/inferyard/client.go)、[`studio/internal/inferyard/progress.go`](../../studio/internal/inferyard/progress.go)、[`studio/internal/inferyard/command.go`](../../studio/internal/inferyard/command.go) |
+| CLI 进程客户端 | `--version` 解析（版本与 `source=checkout\|release`）、argv 直通执行、退出码映射、取消（SIGINT 后两秒 SIGKILL 兜底）、`progress.v1` 解析 | `Client.Exec`、`ParseVersion`、`MapExitCode`、`ParseProgress`、`SplitCommand` 在 [`studio/internal/inferyard/client.go`](../../studio/internal/inferyard/client.go)、[`studio/internal/inferyard/progress.go`](../../studio/internal/inferyard/progress.go)、[`studio/internal/inferyard/command.go`](../../studio/internal/inferyard/command.go) |
 | Dashboard 命令执行 | 预置向导命令的白名单参数校验（仅允许 `init`/`model acquire`/`engine acquire`/`device-check`/`config create`/`config bind`/`run`/`resume`/`report`/`verify` 及列名旗标）、`--out` 不存在性预检、执行后状态回写 | `WizardExecute`、`wizardArgs` 在 [`studio/internal/core/onboarding.go`](../../studio/internal/core/onboarding.go) |
 | CLI 安装与预置资产 | 复用已有 `inferyard`/uv（含 Homebrew 路径），或下载固定版本独立 uv（sha256 校验）后 `uv tool install inferyard==Version`；内置 SmolLM2-135M 模型 URL 与按平台固定的 Prism 引擎归档下载/解包 | `InstallCLI`、`FindCLI`、`FindUV` 在 [`studio/internal/core/install.go`](../../studio/internal/core/install.go)；`DefaultModelURL`、`DefaultEngineURL`、`FetchEngine` 在 [`studio/internal/core/defaults.go`](../../studio/internal/core/defaults.go) |
 | 就绪度与目录供给 | CLI/工作区/结果/模型四就绪度；workspace 初始化标志为 `preparation.json` 的 `community_init.v1`；`Provision` 显式幂等建目录 | `Readiness`、`Provision`、`workspaceRoot` 在 [`studio/internal/core/readiness.go`](../../studio/internal/core/readiness.go) |
@@ -43,8 +43,8 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 文件 0600、原子替换；含四个路径与 `model_download_name`/`engine_download_name` 下载目录名，
 非法目录名读取时回退默认值），损坏 JSON 整体回退默认值并记诊断；引擎状态机由 `engine_service.go` 独占
 （`stopped`/`starting`/`running`/`stopping`/`failed`，另有启动核验期与遗留场景的 `orphaned` 展示态）；运行队列与历史索引常驻 `Service` 内存，
-证据目录才是完成性的唯一事实源，内存任务表不随重启存活。版本唯一来源是
-[`studio/mygo.config.ts`](../../studio/mygo.config.ts)，由 `main` 经 `go:embed` 读取。
+证据目录才是完成性的唯一事实源，内存任务表不随重启存活。版本号唯一来源是
+[`studio/mygo.config.ts`](../../studio/mygo.config.ts)，由 `main` 经 `go:embed` 读取。侧栏另显示本进程来源：可执行文件路径含 `go-build`（`go run` 与 `go test`）为「Studio 源码运行」，`go build` 产物为「Studio 发行包」，并附 `os.Executable()` 路径。环境卡的 CLI 行显示 `checkout`（源码树）、`release`（发行安装）或未标明来源的旧 CLI、包版本和探测到的 CLI 路径；`source` 只说明安装方式，不包含 git 提交。自动安装保留已配置且存在的 CLI，缺失时才查找或安装。
 `InstallCLI` 固定的 Python（`installPython = "3.14.7"`）与独立 uv（`uvRelease`）版本必须与
 [cli/docs/installation.md](../../cli/docs/installation.md) 保持同步（源码注释的维护义务）。
 

@@ -32,7 +32,7 @@ func TestModelsPageSelectionTriggersEngineVerification(t *testing.T) {
 		SettingsPath: writeNavSettings(t, root),
 		Execute: func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 			if args[0] == "--version" {
-				return inferyard.Execution{Stdout: []byte("inferyard 0.0.3")}, nil
+				return inferyard.Execution{Stdout: []byte("inferyard 0.0.3 source=release")}, nil
 			}
 			return inferyard.Execution{
 				ExitCode: 2,
@@ -82,4 +82,4 @@ func writeNavSettings(t *testing.T, workspace string) string {
 		t.Fatal(err)
 	}
 	return settings
-} 
+}

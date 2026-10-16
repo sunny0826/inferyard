@@ -64,9 +64,9 @@ func TestVerifyEnginesDiscardsOldCLIAfterNewResult(t *testing.T) {
 		v := cliVersion.Load()
 		if args[0] == "--version" {
 			if v == 1 {
-				return inferyard.Execution{Stdout: []byte("inferyard old")}, nil
+				return inferyard.Execution{Stdout: []byte("inferyard old source=release")}, nil
 			}
-			return inferyard.Execution{Stdout: []byte("inferyard new")}, nil
+			return inferyard.Execution{Stdout: []byte("inferyard new source=release")}, nil
 		}
 		if v == 1 {
 			close(oldStarted)

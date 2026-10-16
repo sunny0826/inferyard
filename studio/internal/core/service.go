@@ -188,11 +188,11 @@ func (s *Service) probe(u UserSettings) InferyardProbe {
 	if e != nil || out.ExitCode != 0 {
 		return InferyardProbe{Path: &p, Status: "version_failed"}
 	}
-	v, e := inferyard.ParseVersion(out.Stdout)
+	v, source, e := inferyard.ParseVersion(out.Stdout)
 	if e != nil {
 		return InferyardProbe{Path: &p, Status: "version_failed"}
 	}
-	return InferyardProbe{Path: &p, Version: &v, Status: "ok"}
+	return InferyardProbe{Path: &p, Version: &v, Source: source, Status: "ok"}
 }
 func reportsRoot(u UserSettings) *string {
 	if u.ResultsRoot == nil {

@@ -2,7 +2,6 @@
 
 import argparse
 
-from inferyard import __version__
 from inferyard.cli.commands import (
     candidates,
     community,
@@ -23,6 +22,7 @@ from inferyard.cli.commands import (
     service,
     verification,
 )
+from inferyard.cli.metadata import version_line
 from inferyard.contracts.schemas import schemas_for
 
 
@@ -47,7 +47,7 @@ def parser() -> Parser:
         epilog="Historical formats must be handled in the original project.",
     )
     metadata = result.add_mutually_exclusive_group()
-    metadata.add_argument("--version", action="version", version=f"inferyard {__version__}")
+    metadata.add_argument("--version", action="version", version=version_line())
     metadata.add_argument("--versions", action="store_true", help="export runtime/dependency JSON")
     metadata.add_argument(
         "--schema",

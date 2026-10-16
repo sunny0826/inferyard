@@ -12,6 +12,7 @@ type ApiError struct {
 type InferyardProbe struct {
 	Path    *string `json:"path"`
 	Version *string `json:"version"`
+	Source  string  `json:"source"`
 	Status  string  `json:"status"`
 }
 

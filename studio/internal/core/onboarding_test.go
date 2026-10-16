@@ -35,7 +35,7 @@ func TestWizardExitMappingAndReportVerify(t *testing.T) {
 		var calls [][]string
 		s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 			if args[0] == "--version" {
-				return inferyard.Execution{Stdout: []byte("inferyard fixture")}, nil
+				return inferyard.Execution{Stdout: []byte("inferyard fixture source=release")}, nil
 			}
 			calls = append(calls, append([]string{}, args...))
 			return inferyard.Execution{ExitCode: code, Stdout: []byte("secret stdout"), Stderr: []byte("secret stderr")}, nil
@@ -62,7 +62,7 @@ func TestWizardKeepsOriginalOutputsAndFrozenStartup(t *testing.T) {
 		if args[0] != "--version" {
 			t.Fatal("executed despite existing output")
 		}
-		return inferyard.Execution{Stdout: []byte("inferyard fixture")}, nil
+		return inferyard.Execution{Stdout: []byte("inferyard fixture source=release")}, nil
 	})
 	root := *workspaceRoot(s.userSettings())
 	_, err := s.WizardExecute(context.Background(), WizardRequest{Command: "inferyard init --out '" + root + "'"})
@@ -83,7 +83,7 @@ func TestWizardKeepsOriginalOutputsAndFrozenStartup(t *testing.T) {
 func TestProgressUsesInjectedExecutor(t *testing.T) {
 	s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 		if args[0] == "--version" {
-			return inferyard.Execution{Stdout: []byte("inferyard fixture")}, nil
+			return inferyard.Execution{Stdout: []byte("inferyard fixture source=release")}, nil
 		}
 		if len(args) != 3 || args[0] != "progress" || args[1] != "--workspace" {
 			t.Fatal(args)
@@ -100,7 +100,7 @@ func TestWizardDeviceCommandUsesConfiguredModelRoot(t *testing.T) {
 	var executed []string
 	s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 		if args[0] == "--version" {
-			return inferyard.Execution{Stdout: []byte("inferyard fixture")}, nil
+			return inferyard.Execution{Stdout: []byte("inferyard fixture source=release")}, nil
 		}
 		executed = append([]string{}, args...)
 		return inferyard.Execution{}, nil
@@ -121,7 +121,7 @@ func TestWizardInitHandoff(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "new-workspace")
 	s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 		if args[0] == "--version" {
-			return inferyard.Execution{Stdout: []byte("inferyard fixture")}, nil
+			return inferyard.Execution{Stdout: []byte("inferyard fixture source=release")}, nil
 		}
 		if !reflect.DeepEqual(args, []string{"init", "--out", root}) {
 			t.Fatal(args)

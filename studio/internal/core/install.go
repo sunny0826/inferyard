@@ -256,13 +256,23 @@ func writeBinary(src io.Reader, target string) *ApiError {
 }
 
 // InstallCLI installs inferyard==Version through uv and records the installed
-// path in the settings. An existing installation is reused. When uv is missing
+// path in the settings. A configured executable is kept; otherwise an existing
+// installation is reused. When uv is missing
 // a pinned standalone build is downloaded into the Studio tools directory;
 // user shell configuration is never modified. onStatus receives progress lines
 // for the wizard UI.
 func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string, *ApiError) {
 	toolsDir := filepath.Join(filepath.Dir(s.settingsPath), "tools")
-	if existing := FindCLI(); existing != "" {
+	existing := strings.TrimSpace(str(s.userSettings().InferyardPath))
+	if existing != "" {
+		if st, err := installStat(existing); err != nil || st.IsDir() {
+			existing = ""
+		}
+	}
+	if existing == "" {
+		existing = FindCLI()
+	}
+	if existing != "" {
 		abs, err := filepath.Abs(existing)
 		if err != nil {
 			return "", Err("internal_error")

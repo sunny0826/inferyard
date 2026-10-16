@@ -26,7 +26,7 @@ func testService(t *testing.T, execute Executor) *Service {
 }
 func version(args []string) (inferyard.Execution, bool) {
 	if args[0] == "--version" {
-		return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 1.0\n")}, true
+		return inferyard.Execution{ExitCode: 0, Stdout: []byte("inferyard 1.0 source=release\n")}, true
 	}
 	return inferyard.Execution{}, false
 }
