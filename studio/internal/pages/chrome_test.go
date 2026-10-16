@@ -32,7 +32,7 @@ func TestChromeRefreshShortcutRemoved(t *testing.T) {
 		s.selected = page
 		tt.Frame()
 		if page == "settings" {
-			click(t, tt, "CLI 绝对路径（留空使用 PATH）")
+			click(t, tt, "CLI")
 		}
 		tt.Key(ui.Cmd, ui.KeyR)
 		select {

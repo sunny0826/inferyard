@@ -39,10 +39,10 @@ func TestDesignAnnouncementsOnce(t *testing.T) {
 	if got := tt.Announcements(); len(got) != 0 {
 		t.Fatal("refresh repeats same error", got)
 	}
-	click(t, tt, "CLI 绝对路径（留空使用 PATH）")
+	click(t, tt, "CLI")
 	s.failure = &core.ApiError{Code: "output_exists"}
 	tt.Frame()
-	if !tt.Focused("CLI 绝对路径（留空使用 PATH）") {
+	if !tt.Focused("CLI") {
 		t.Fatal("async error stole input focus")
 	}
 	if got := tt.Announcements(); len(got) != 1 {
