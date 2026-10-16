@@ -41,14 +41,14 @@ func TestDashboardStepStyles(t *testing.T) {
 		tt.SetDark(dark)
 		assertTextColor(t, tt, "✓  准备", theme.Success)
 		assertTextColor(t, tt, "启动与绑定", theme.Accent)
-		assertTextColor(t, tt, "报告核验", theme.TextMuted)
+		assertTextColor(t, tt, "报告", theme.TextMuted)
 		if tt.HasText("○") || tt.HasText("●") {
 			t.Fatal(tt.Texts())
 		}
 	}
 	s.progress.DefaultScopeComplete = true
 	tt.Frame()
-	assertTextColor(t, tt, "✓  报告核验", theme.Success)
+	assertTextColor(t, tt, "✓  报告", theme.Success)
 	s.progress = nil
 	tt.Frame()
 	assertTextColor(t, tt, "准备", theme.Accent)

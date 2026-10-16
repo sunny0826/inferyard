@@ -23,19 +23,22 @@ func TestDashboardViews(t *testing.T) {
 		state viewState
 		want  string
 	}{
-		{"CLI unavailable", viewState{loaded: true}, "安装 InferYard CLI"},
-		{"initialize", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}}}, "新工作区目录"},
+		{"CLI unavailable", viewState{loaded: true}, "准备环境"},
+		{"initialize", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}}}, "准备环境"},
 		{"external service", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Phase: "bound_missing", CandidatePath: strptr("/tmp/c")}}}, startup: core.Startup{Path: "/engine/llama-server", Args: []string{"--port", "48857"}}}, "高级：手动绑定"},
-		{"managed engine", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Phase: "bound_missing", CandidatePath: strptr("/tmp/c")}}, NextCommand: strptr("inferyard config bind --candidate /tmp/c --pid 1 --endpoint http://x --out /tmp/new")}, engineState: core.EngineState{State: "running", Pid: 4242, Endpoint: "http://127.0.0.1:48857"}}, "绑定服务"},
+		{"managed engine", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Phase: "bound_missing", CandidatePath: strptr("/tmp/c")}}, NextCommand: strptr("inferyard config bind --candidate /tmp/c --pid 1 --endpoint http://x --out /tmp/new")}, engineState: core.EngineState{State: "running", Pid: 4242, Endpoint: "http://127.0.0.1:48857"}}, "重新绑定失败的题包"},
 		{"running", viewState{loaded: true, tasks: []core.RunTask{{State: "running"}}, runProgress: &core.RunProgress{Done: 86, Total: &total}}, "86 / 120 题"},
 		{"verified", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{DefaultScopeComplete: true}}, "已核验 verified"},
 		{"device defaults", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "device_check", Workspace: "/tmp/ws"}, modelURL: core.DefaultModelURL, engineURL: core.DefaultEngineURL()}, "引擎 URL"},
 		{"initialized outdated CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Path: strptr("/tmp/ws"), Exists: true, Initialized: true}}}, "已初始化"},
-		{"checkout CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: strptr("0.0.3"), Source: "checkout", Path: strptr("/src/inferyard")}}}, "CLI 源码树 · 0.0.3 · /src/inferyard"},
-		{"release CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: strptr("0.0.3"), Source: "release", Path: strptr("/usr/bin/inferyard")}}}, "CLI 发行安装 · 0.0.3 · /usr/bin/inferyard"},
+		{"checkout CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: strptr("0.0.3"), Source: "checkout", Path: strptr("/src/inferyard")}}}, "准备环境"},
+		{"release CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: strptr("0.0.3"), Source: "release", Path: strptr("/usr/bin/inferyard")}}}, "准备环境"},
 	}
 	for i := range cases {
 		tc := &cases[i]
+		if tc.name == "external service" || tc.name == "managed engine" {
+			tc.state.failure = core.Err("cli_error")
+		}
 		t.Run(tc.name, func(t *testing.T) {
 			switch tc.name {
 			case "CLI unavailable", "initialize", "initialized outdated CLI", "checkout CLI", "release CLI":
@@ -62,7 +65,7 @@ func TestDashboardViews(t *testing.T) {
 				}
 			}
 			if tc.name == "CLI unavailable" {
-				if !tt.HasText("自动安装 CLI 0.0.2") {
+				if !tt.HasText("准备环境") {
 					t.Fatalf("missing auto-install action: %v", tt.Texts())
 				}
 				if !tt.HasText("路径在设置页修改") {
@@ -71,7 +74,7 @@ func TestDashboardViews(t *testing.T) {
 			}
 			if tc.name == "external service" {
 				click(t, tt, "高级：手动绑定")
-				for _, label := range []string{"启动并绑定", "绑定进程", "已启动的本机进程"} {
+				for _, label := range []string{"启动服务", "绑定进程", "已启动的本机进程"} {
 					if !tt.HasText(label) {
 						t.Fatalf("missing %q: %v", label, tt.Texts())
 					}
@@ -84,7 +87,7 @@ func TestDashboardViews(t *testing.T) {
 				}
 			}
 			if tc.name == "managed engine" {
-				for _, label := range []string{"运行中 · PID 4242 · http://127.0.0.1:48857", "绑定服务", "停止服务"} {
+				for _, label := range []string{"运行中 · PID 4242 · http://127.0.0.1:48857", "重新绑定失败的题包", "停止服务"} {
 					if !tt.HasText(label) {
 						t.Fatalf("missing %q: %v", label, tt.Texts())
 					}
@@ -103,7 +106,7 @@ func TestDashboardViews(t *testing.T) {
 func TestSecondBundleAndIncompleteRun(t *testing.T) {
 	w := viewState{selected: "dashboard", loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete"}, {Bundle: "zh-svg-pelican", Phase: "candidate_missing"}}}}
 	tt := ui.NewTester(w.view, 1000, 740)
-	if w.active().Bundle != "zh-svg-pelican" || !tt.HasText("zh-core 已封存") || !tt.HasText("zh-svg-pelican") {
+	if w.active().Bundle != "zh-svg-pelican" || !tt.HasText("zh-core · 已封存") || !tt.HasText("zh-svg-pelican") {
 		t.Fatal(tt.Texts())
 	}
 	w.progress.NextAction = "run"

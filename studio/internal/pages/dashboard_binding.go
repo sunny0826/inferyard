@@ -25,7 +25,7 @@ func (s *viewState) bindingPhase() bool {
 	if s.progress.NextAction != "bind" && s.progress.NextAction != "run" {
 		return false
 	}
-	return len(bindingJobs(s.progress)) > 0
+	return len(bindingJobs(selectedProgressForTask(s))) > 0
 }
 
 func bindingJobs(p *inferyard.WorkspaceProgress) []bindingJob {
@@ -70,10 +70,13 @@ func (s *viewState) bindDiscovered(pid int64, endpoint string) {
 		return
 	}
 	s.autoBind = bindingArm{}
-	workspace, jobs := s.progress.Workspace, bindingJobs(s.progress)
+	workspace, jobs := s.progress.Workspace, bindingJobs(selectedProgressForTask(s))
 	s.binding = true
+	ctx, cancel := context.WithCancel(s.ctx)
+	s.taskCancel = cancel
 	s.guideWork(func() (string, *core.ApiError) {
-		e := runBindingChain(s.ctx, workspace, jobs, pid, endpoint, s.service.Progress, s.service.WizardExecute,
+		defer cancel()
+		e := runBindingChain(ctx, workspace, jobs, pid, endpoint, s.service.Progress, s.service.WizardExecute,
 			func(bundle string) { s.win.Update(func() { s.bindingBundle = bundle }) })
 		s.win.Update(func() { s.binding, s.bindingBundle = false, "" })
 		if e != nil {
@@ -142,4 +145,11 @@ func wizardFailure(r core.WizardResult) *core.ApiError {
 		message = human(r.Limitations[0])
 	}
 	return &core.ApiError{Code: string(r.Status), Message: message, Limitations: r.Limitations}
+}
+
+func selectedProgressForTask(s *viewState) *inferyard.WorkspaceProgress {
+	if len(s.task.bundles) > 0 {
+		return selectedProgress(s.progress, s.task.bundles)
+	}
+	return s.progress
 }

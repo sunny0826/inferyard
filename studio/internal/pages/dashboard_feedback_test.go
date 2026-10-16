@@ -43,8 +43,8 @@ func TestRefreshFailureRendersAndClears(t *testing.T) {
 
 func TestCandidateViewExplainsRemainingBundles(t *testing.T) {
 	w := viewState{selected: "dashboard", loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete"}, {Bundle: "zh-svg-pelican", Phase: "candidate_missing"}}}}
-	tt := ui.NewTester(w.view, 1000, 740)
-	if !tt.HasText("zh-core 已封存。剩余题包按同样流程进行：候选 → 启动与绑定 → 运行。") {
+	tt := ui.NewTester(w.candidateView, 1000, 1400)
+	if !tt.HasText("运行 benchmark") || !w.selectedBundles["zh-core"] || w.selectedBundles["zh-svg-pelican"] {
 		t.Fatalf("missing remaining-bundle guidance: %v", tt.Texts())
 	}
 }

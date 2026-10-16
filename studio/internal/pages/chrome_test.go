@@ -30,6 +30,9 @@ func TestChromeRefreshShortcutRemoved(t *testing.T) {
 	tt := ui.NewTester(s.view, 1120, 800)
 	for _, page := range []string{"dashboard", "settings"} {
 		s.selected = page
+		if page == "dashboard" {
+			s.task.stage = "prepare_candidate"
+		}
 		tt.Frame()
 		if page == "settings" {
 			click(t, tt, "CLI")
@@ -86,11 +89,14 @@ func TestChromeLayoutAcrossPages(t *testing.T) {
 		t.Run(page, func(t *testing.T) {
 			s := testState()
 			s.selected = page
+			if page == "dashboard" {
+				s.task.stage = "prepare_candidate"
+			}
 			labels := map[string][]string{
 				"settings":  {"保存"},
-				"dashboard": {"启动运行"}, "models": {"到下载页"}, "downloads": {"下载引擎"},
+				"dashboard": {"运行 benchmark"}, "models": {"到下载页"}, "downloads": {"下载引擎"},
 				"reports": {"打开报告"},
-				"detail":  {"返回 Dashboard", "取消任务"},
+				"detail":  {"返回运行", "取消任务"},
 			}
 			if page == "detail" {
 				s.selected, s.detailID = "dashboard", "fixture"

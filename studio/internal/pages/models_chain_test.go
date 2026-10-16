@@ -291,3 +291,56 @@ func TestStartChainAllCompletedReusesMatchingCombination(t *testing.T) {
 		})
 	}
 }
+
+func TestStartChainBlockedRecommendationIsAMiss(t *testing.T) {
+	p := &inferyard.WorkspaceProgress{Workspace: t.TempDir(), DevicePreflight: inferyard.ProgressPreflight{Status: "ok", Path: ptr("preflight")}, Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "bound_missing", CandidatePath: ptr("candidate")}}}
+	matches, calls := 0, 0
+	_, e := runStartChain(context.Background(), "chosen.gguf", "engine",
+		func(context.Context) (core.ProgressResponse, *core.ApiError) {
+			return core.ProgressResponse{Progress: p}, nil
+		},
+		func(_ context.Context, q core.WizardRequest) (core.WizardResult, *core.ApiError) {
+			calls++
+			if !strings.Contains(q.Command, "device-check") || q.ModelName != "chosen.gguf" {
+				t.Fatal(q)
+			}
+			return core.WizardResult{}, nil
+		}, func(string, string) (bool, *core.ApiError) {
+			matches++
+			if matches == 1 {
+				return false, core.Err("device_preflight_blocked")
+			}
+			return true, nil
+		},
+		func(string, string, string) (bool, bool) { return true, true })
+	if e != nil || calls != 1 || matches != 2 {
+		t.Fatal(e, calls, matches)
+	}
+}
+
+func TestStartChainFreshTaskRecreatesSealedSelection(t *testing.T) {
+	root := t.TempDir()
+	p := &inferyard.WorkspaceProgress{Workspace: root, DevicePreflight: inferyard.ProgressPreflight{Status: "ok", Path: ptr("preflight")}, Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", CandidatePath: ptr("old")}, {Bundle: "zh-svg-pelican", Phase: "candidate_missing"}}}
+	calls := 0
+	result, e := runStartChain(context.Background(), "chosen", "engine",
+		func(context.Context) (core.ProgressResponse, *core.ApiError) {
+			return core.ProgressResponse{Progress: selectedProgress(p, []string{"zh-core"})}, nil
+		},
+		func(_ context.Context, q core.WizardRequest) (core.WizardResult, *core.ApiError) {
+			calls++
+			args, _ := inferyard.SplitCommand(q.Command)
+			if !strings.Contains(q.Command, "zh-core") || strings.Contains(q.Command, "zh-svg-pelican") {
+				t.Fatal(q)
+			}
+			for i, a := range args {
+				if a == "--out" {
+					p.Bundles[0].CandidatePath = &args[i+1]
+				}
+			}
+			p.Bundles[0].Phase = "bound_missing"
+			return core.WizardResult{}, nil
+		}, func(string, string) (bool, *core.ApiError) { return true, nil }, func(string, string, string) (bool, bool) { return true, true }, true)
+	if e != nil || calls != 1 || result.candidate == "old" || p.Bundles[1].Phase != "candidate_missing" {
+		t.Fatal(result, e, calls)
+	}
+}

@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"context"
 	"slices"
 	"strings"
 	"testing"
@@ -15,14 +16,14 @@ func TestDashboardStages(t *testing.T) {
 		action, want string
 		step         int
 	}{
-		{"device_check", "运行设备检查", 1},
+		{"device_check", "正在准备设备检查", 1},
 		{"prepare_candidate", "候选引擎", 2},
-		{"bind", "高级：手动绑定", 3},
+		{"bind", "启动服务", 3},
 		{"run", "开始运行", 4},
 		{"resume", "继续未完成的运行", 4},
-		{"report", "生成报告并核验", 5},
-		{"verify", "报告已生成，尚未核验", 5},
-		{"done", "已核验 verified", 6},
+		{"report", "在报告页生成报告。", 5},
+		{"verify", "请在报告页核验报告。", 5},
+		{"done", "运行已完成", 6},
 	} {
 		t.Run(tc.action, func(t *testing.T) {
 			s := testState()
@@ -32,8 +33,8 @@ func TestDashboardStages(t *testing.T) {
 				t.Fatal(s.step(), tt.Texts())
 			}
 			if tc.action == "verify" {
-				if !tt.HasText("核验报告") {
-					t.Fatal("verify action missing")
+				if _, found := tt.Find("核验报告"); found {
+					t.Fatal("task page must not execute verify")
 				}
 				if _, ok := tt.Find("阶段步骤 6"); !ok {
 					t.Fatal("verify track must be stage six")
@@ -44,7 +45,7 @@ func TestDashboardStages(t *testing.T) {
 					t.Fatalf("unexpected stage: %s", other)
 				}
 			}
-			if !tt.HasText("任务队列") || !tt.HasText("运行历史") {
+			if tt.HasText("任务队列") || !tt.HasText("运行历史") {
 				t.Fatal(tt.Texts())
 			}
 		})
@@ -193,5 +194,135 @@ func TestHumanAllKnownCodes(t *testing.T) {
 		if human(code) == generic || human(code) == "" || strings.Contains(human(code), "尚未识别的原因码") {
 			t.Fatalf("unmapped code %s", code)
 		}
+	}
+}
+
+func TestDashboardPrepareSkipsInitializedWorkspace(t *testing.T) {
+	for _, initialized := range []bool{true, false} {
+		r := core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Path: ptr(t.TempDir()), Exists: true, Initialized: initialized}}
+		installs, provisions, inits := 0, 0, 0
+		e := prepareEnvironmentSteps(context.Background(), func() core.Readiness { return r }, func(context.Context) (string, *core.ApiError) { installs++; return "", nil }, func() *core.ApiError { provisions++; r.Results.Exists = true; r.Models.Exists = true; return nil }, func(_ context.Context, q core.WizardRequest) (core.WizardResult, *core.ApiError) {
+			inits++
+			args, _ := inferyard.SplitCommand(q.Command)
+			if len(args) != 3 || args[0] != "init" || args[1] != "--out" || args[2] == *r.Workspace.Path {
+				t.Fatal(args)
+			}
+			r.Workspace.Initialized = true
+			return core.WizardResult{}, nil
+		})
+		want := 0
+		if !initialized {
+			want = 1
+		}
+		if e != nil || installs != 0 || provisions != 1 || inits != want {
+			t.Fatal(e, installs, provisions, inits)
+		}
+	}
+}
+
+func TestDashboardNewTaskClearsDetailKeepsSelection(t *testing.T) {
+	s := testState()
+	s.model, s.engine = "model", "engine"
+	s.detailID = "old"
+	s.resumeSource = &core.RunSummary{Path: "old"}
+	s.task.report = "old-report"
+	ctx, cancel := context.WithCancel(context.Background())
+	s.taskCancel = cancel
+	s.newBenchmark()
+	if ctx.Err() == nil || s.detailID != "" || s.resumeSource != nil || s.task.report != "" || s.model != "model" || s.engine != "engine" {
+		t.Fatal(s.task)
+	}
+	tt := ui.NewTester(s.dashboardView, 1120, 1800)
+	if !tt.HasText("运行 benchmark") || !s.selectedBundles["zh-core"] {
+		t.Fatal(tt.Texts())
+	}
+}
+
+func TestDashboardCancelWaitsForRunningAndQueued(t *testing.T) {
+	tasks := []core.RunTask{{TaskId: "running", State: "running"}, {TaskId: "queued", State: "queued"}}
+	called := map[string]bool{}
+	reads := 0
+	e := cancelBenchmarkRuns(context.Background(), func() []core.RunTask {
+		reads++
+		if reads > 2 {
+			tasks[0].State = "cancelled"
+		}
+		return tasks
+	}, func(id string) (core.RunTask, *core.ApiError) {
+		called[id] = true
+		if id == "running" {
+			tasks[0].State = "cancelling"
+		} else {
+			tasks[1].State = "cancelled"
+		}
+		return core.RunTask{}, nil
+	})
+	if e != nil || !called["running"] || !called["queued"] || reads < 3 {
+		t.Fatal(e, called, reads)
+	}
+}
+
+func TestDashboardPlanOnlyShowsBlocker(t *testing.T) {
+	for _, reason := range []string{"duration_resume_requires_new_window", "batch_plan_not_finished"} {
+		s := testState()
+		s.progress.Bundles = []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_incomplete", NextAction: "run", NextCommand: ptr("inferyard run --plan /plan"), BlockedReason: &reason}}
+		tt := ui.NewTester(s.runView, 1000, 800)
+		if !tt.HasText(human(reason)) {
+			t.Fatal(tt.Texts())
+		}
+		if _, found := tt.Find("开始运行"); found {
+			t.Fatal("plan execution offered")
+		}
+	}
+}
+
+func TestDashboardFirstDeviceCheckHasNoModelAndRunsOnce(t *testing.T) {
+	s := testState()
+	s.model = "chosen.gguf"
+	s.ready.Models.Path = ptr("/models")
+	s.progress = &inferyard.WorkspaceProgress{Workspace: "/workspace", NextAction: "device_check", NextCommand: ptr("inferyard device-check --json --out /preflight"), DevicePreflight: inferyard.ProgressPreflight{Status: "missing"}}
+	q, ok := s.takeWorkspaceDeviceRequest()
+	args, _ := inferyard.SplitCommand(q.Command)
+	if !ok || q.ModelName != "" || !slices.Contains(args, "--models-root") || !slices.Contains(args, "/models") || slices.Contains(args, "--model") {
+		t.Fatal(q, args)
+	}
+	if _, ok = s.takeWorkspaceDeviceRequest(); ok {
+		t.Fatal("repeated workspace check")
+	}
+	s.deviceChecked = ""
+	s.progress.DevicePreflight.Status = "ok"
+	if _, ok = s.takeWorkspaceDeviceRequest(); ok {
+		t.Fatal("checked an existing preflight")
+	}
+}
+
+func TestDashboardCancelTerminalRaceStillCancelsRemaining(t *testing.T) {
+	tasks := []core.RunTask{{TaskId: "finishing", State: "running"}, {TaskId: "queued", State: "starting"}}
+	calls := []string{}
+	e := cancelBenchmarkRuns(context.Background(), func() []core.RunTask { return append([]core.RunTask(nil), tasks...) }, func(id string) (core.RunTask, *core.ApiError) {
+		calls = append(calls, id)
+		if id == "finishing" {
+			tasks[0].State = "done"
+			return core.RunTask{}, core.Conflict("invalid_state")
+		}
+		tasks[1].State = "cancelled"
+		return tasks[1], nil
+	})
+	if e != nil || !slices.Equal(calls, []string{"finishing", "queued"}) || tasks[1].State != "cancelled" {
+		t.Fatal(e, calls, tasks)
+	}
+}
+
+func TestDashboardNewTaskWaitsForLastEnqueuedRun(t *testing.T) {
+	if benchmarkResetReady(true, nil) {
+		t.Fatal("reset while producer is still active")
+	}
+	late := []core.RunTask{{TaskId: "late", State: "starting"}}
+	if benchmarkResetReady(false, late) {
+		t.Fatal("reset missed the last enqueued run")
+	}
+	late[0].State = "cancelled"
+	if !benchmarkResetReady(false, late) {
+		t.Fatal("terminal runs blocked reset")
 	}
 }

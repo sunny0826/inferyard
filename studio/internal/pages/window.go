@@ -141,13 +141,15 @@ type viewState struct {
 	pendingToast                                                                        string
 	failure                                                                             *core.ApiError
 	workspace, cliPath, results, models                                                 string
-	manualFirst, manualSecond                                                           string
-	manualConfig                                                                        bool
 	bindingStale                                                                        bool
 	bindingUnknown                                                                      bool
-	firstBundle, secondBundle                                                           string
-	single, confirmed                                                                   bool
 	groups                                                                              [][]string
+	task                                                                                benchmarkTask
+	selectedBundles                                                                     map[string]bool
+	focusedRun                                                                          string
+	taskCancel                                                                          context.CancelFunc
+	deviceChecked                                                                       string
+	newTaskPending                                                                      bool
 	resumeSource                                                                        *core.RunSummary
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
@@ -353,7 +355,7 @@ func (s *viewState) leftNav(c *ui.Context) {
 		components.Sidebar(c).Children(func() {
 			components.Text(c, "InferYard Studio").Bold().FontSize(t.Rem(1)).
 				Padding(t.Space(2), t.Space(2), t.Space(1), t.Space(2)).SingleLine()
-			button(c, "新任务").OnClick(func() { s.selectPage("dashboard") })
+			button(c, "新任务").OnClick(func() { s.newBenchmark() })
 			for _, n := range navigation {
 				if components.SidebarItem(c, n.label, n.icon(), s.selected == n.id).Clicked() {
 					s.selectPage(n.id)

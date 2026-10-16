@@ -64,6 +64,7 @@ func runStartChain(ctx context.Context, modelName, engineName string,
 	execute func(context.Context, core.WizardRequest) (core.WizardResult, *core.ApiError),
 	preflightMatch func(preflightPath, modelName string) (bool, *core.ApiError),
 	candidateMatch func(candidatePath, modelName, engineName string) (bool, bool),
+	freshTask ...bool,
 ) (startChainResult, *core.ApiError) {
 	current, e := progress(ctx)
 	if e != nil {
@@ -76,8 +77,11 @@ func runStartChain(ctx context.Context, modelName, engineName string,
 	// Step 1: a selected model that is not the latest preflight recommendation
 	// requires a fresh device-check before anything is frozen.
 	match, e := preflightMatch(*p.DevicePreflight.Path, modelName)
-	if e != nil {
+	if e != nil && e.Code != "device_preflight_blocked" {
 		return startChainResult{}, e
+	}
+	if e != nil {
+		match = false
 	}
 	if !match {
 		out, e := newNumberedOutput(p.Workspace, "preflight", "device")
@@ -113,18 +117,19 @@ func runStartChain(ctx context.Context, modelName, engineName string,
 	// Step 2: a bundle "has a candidate for this combination" only when its
 	// frozen candidate.toml names the selected model and engine; every unfinished
 	// bundle in the default scope must match. Sealed runs keep their candidates.
+	force := len(freshTask) > 0 && freshTask[0]
 	creates := []string{}
 	for _, b := range p.Bundles {
-		if b.Phase == "run_complete" {
+		if b.Phase == "run_complete" && !force {
 			continue
 		}
-		if b.CandidatePath != nil {
+		if b.CandidatePath != nil && !force {
 			if match, known := candidateMatch(*b.CandidatePath, modelName, engineName); known && match {
 				continue
 			}
 		}
 		command := emptyText(b.NextCommand)
-		if b.NextAction != "prepare_candidate" || command == "" {
+		if force || b.NextAction != "prepare_candidate" || command == "" {
 			out, e := newNumberedOutput(p.Workspace, "candidates", b.Bundle)
 			if e != nil {
 				return startChainResult{}, e

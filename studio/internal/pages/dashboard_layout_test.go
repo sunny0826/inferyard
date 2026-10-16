@@ -15,7 +15,7 @@ func TestDashboardEnvironmentVisibilityAndOrder(t *testing.T) {
 	s := testState()
 	s.ready.CLI.Status = "not_found"
 	tt := ui.NewTester(s.view, 1120, 3200)
-	labels := []string{"安装 InferYard CLI", "环境准备", "初始化目标必须是新目录；成功后自动切换工作区。", "工作区进度", "阶段步骤 4", "启动测评", "任务队列", "运行历史"}
+	labels := []string{"环境准备", "工作区进度", "阶段步骤 4", "运行历史"}
 	previous := float32(-1)
 	for _, label := range labels {
 		bounds, ok := tt.Find(label)
@@ -54,7 +54,7 @@ func TestDashboardOverviewStageMarkers(t *testing.T) {
 			}
 			tt := ui.NewTester(s.conclusionView, 1120, 800)
 			current := 0
-			for i, label := range []string{"准备", "设备检查", "候选", "启动与绑定", "运行", "报告核验"} {
+			for i, label := range []string{"准备", "设备检查", "benchmark", "启动与绑定", "运行", "报告"} {
 				want := label
 				if i < tc.step {
 					want = "✓  " + label
@@ -146,43 +146,43 @@ func TestActivityStatusToolbar(t *testing.T) {
 
 func TestDashboardRunningDisablesQuickRunAndOpensDetail(t *testing.T) {
 	s := testState()
-	s.single, s.confirmed = true, true
+	s.task.stage = "run"
 	s.tasks = []core.RunTask{{TaskId: "active", State: "running"}}
 	s.runProgress = &core.RunProgress{Done: 2, Total: ptr(int64(8))}
 	s.ctx = context.Background()
 	entered := make(chan struct{}, 10)
 	s.ctx = refreshContext{s.ctx, entered}
 	tt := ui.NewTester(s.view, 1120, 3200)
-	if !tt.HasText("2 / 8 题") || !tt.HasText("当前运行结束后可启动新的测评。") {
+	if !tt.HasText("2 / 8 题") || tt.HasText("运行 benchmark") {
 		t.Fatal(tt.Texts())
 	}
-	click(t, tt, "启动运行")
+	_ = tt.Click("运行 benchmark")
 	if s.busy {
 		t.Fatal("quick run started during an active task")
 	}
 	tt.Announcements()
 	click(t, tt, "查看实时详情")
-	if s.detailID != "active" || tt.HasText("任务队列") || !tt.HasText("返回 Dashboard") {
+	if s.detailID != "active" || tt.HasText("任务队列") || !tt.HasText("返回运行") {
 		t.Fatal(tt.Texts())
 	}
 	if got := tt.Announcements(); len(got) != 1 || got[0] != "运行详情" {
 		t.Fatal(got)
 	}
-	click(t, tt, "返回 Dashboard")
-	if s.detailID != "" || !tt.HasText("任务队列") {
+	click(t, tt, "返回运行")
+	if s.detailID != "" || !tt.HasText("运行历史") {
 		t.Fatal(tt.Texts())
 	}
-	if got := tt.Announcements(); len(got) != 1 || got[0] != "Dashboard" {
+	if got := tt.Announcements(); len(got) != 1 || got[0] != "运行" {
 		t.Fatal(got)
 	}
 }
 
 func TestDashboardSingleBundleStillNeedsExplicitConfirmation(t *testing.T) {
 	s := testState()
-	s.single = true
-	tt := ui.NewTester(s.quickRunView, 1000, 800)
-	click(t, tt, "启动运行")
-	if s.busy || s.confirmed || !tt.HasText("请显式确认只运行一个题包。") {
+	s.selectedBundles = map[string]bool{}
+	tt := ui.NewTester(s.candidateView, 1000, 800)
+	click(t, tt, "运行 benchmark")
+	if s.busy || !tt.HasText("至少选择一个题包。") {
 		t.Fatal(tt.Texts())
 	}
 }

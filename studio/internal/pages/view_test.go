@@ -60,7 +60,7 @@ func TestSidebarDashboardEntry(t *testing.T) {
 		t.Fatal("setup remains in settings")
 	}
 	click(t, tt, "新任务")
-	if s.selected != "dashboard" || !tt.HasText("启动测评") {
+	if s.selected != "dashboard" || !tt.HasText("运行 benchmark") {
 		t.Fatal(tt.Texts())
 	}
 	if len(navigation) != 5 || pageID("") != "reports" || pageID("dashboard") != "dashboard" || pageID("missing") != "reports" {
@@ -74,50 +74,32 @@ func TestSidebarDashboardEntry(t *testing.T) {
 }
 func TestExplicitSingleBundleConfirmation(t *testing.T) {
 	s := testState()
-	s.selected = "dashboard"
-	tt := ui.NewTester(s.quickRunView, 1120, 1000)
-	if !tt.HasText("第二题包尚未绑定，双题包运行不可用。") || tt.HasText("我确认只运行一个题包") {
+	tt := ui.NewTester(s.candidateView, 1120, 1400)
+	if got := s.checkedBundles(); len(got) != 1 || got[0] != "zh-core" {
+		t.Fatal(got)
+	}
+	click(t, tt, "zh-core")
+	if len(s.checkedBundles()) != 0 || !tt.HasText("至少选择一个题包。") {
 		t.Fatal(tt.Texts())
 	}
-	if err := tt.Click("仅运行一个题包"); err != nil {
-		t.Fatal(err)
-	}
-	if !s.single || s.confirmed || !tt.HasText("我确认只运行一个题包") || tt.HasText("第二题包尚未绑定") {
-		t.Fatal(tt.Texts())
-	}
-	if err := tt.Click("我确认只运行一个题包"); err != nil {
-		t.Fatal(err)
-	}
-	if !s.confirmed {
-		t.Fatal("confirmation missing")
-	}
-	if err := tt.Click("仅运行一个题包"); err != nil {
-		t.Fatal(err)
-	}
-	if s.single || s.confirmed || !tt.HasText("第二题包尚未绑定") {
-		t.Fatal("single-bundle authorization was not cleared")
+	click(t, tt, "运行 benchmark")
+	if s.busy {
+		t.Fatal("empty scope started")
 	}
 }
 func TestBoundBundleSelectsAndDuplicateGuard(t *testing.T) {
 	s := testState()
-	s.selected = "dashboard"
-	s.progress.Bundles[1].BoundPath = ptr("/w/bound/zh-svg-pelican-1")
-	tt := ui.NewTester(s.quickRunView, 1120, 1000)
-	if s.firstBundle != "zh-core" || s.secondBundle != "zh-svg-pelican" {
-		t.Fatalf("bound defaults: %q %q", s.firstBundle, s.secondBundle)
+	tt := ui.NewTester(s.candidateView, 1120, 1400)
+	if tt.HasText("zh-smoke") {
+		t.Fatal(tt.Texts())
 	}
-	for _, want := range []string{"第一题包", "第二题包", "config.toml"} {
-		if !tt.HasText(want) {
-			t.Fatalf("missing %q: %v", want, tt.Texts())
-		}
+	click(t, tt, "zh-svg-pelican")
+	if len(s.checkedBundles()) != 2 {
+		t.Fatal(s.checkedBundles())
 	}
-	if tt.HasText("两个题包不能相同。") {
-		t.Fatal("false duplicate warning")
-	}
-	s.firstBundle = "zh-svg-pelican"
-	tt.Frame()
-	if s.secondBundle != "zh-svg-pelican" || !tt.HasText("两个题包不能相同。") {
-		t.Fatal("duplicate selection not flagged", tt.Texts())
+	click(t, tt, "zh-core")
+	if got := s.checkedBundles(); len(got) != 1 || got[0] != "zh-svg-pelican" {
+		t.Fatal(got)
 	}
 }
 func TestBundleHelpers(t *testing.T) {
@@ -145,10 +127,10 @@ func TestDetailTableAndResourcesRender(t *testing.T) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
 	}
-	if err := tt.Click("返回 Dashboard"); err != nil {
+	if err := tt.Click("返回运行"); err != nil {
 		t.Fatal(err)
 	}
-	if s.detailID != "" || !tt.HasText("启动测评") {
+	if s.detailID != "" || !tt.HasText("运行历史") {
 		t.Fatal("return navigation failed")
 	}
 }
