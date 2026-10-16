@@ -373,6 +373,12 @@ func (s *viewState) contentView(c *ui.Context) {
 				s.feedback(c)
 				if !s.loaded {
 					title := "首次上手"
+					if s.selected == "dashboard" {
+						title = "Dashboard"
+						if s.detailID != "" {
+							title = "运行详情"
+						}
+					}
 					for _, n := range navigation {
 						if n.id == s.selected {
 							title = n.label

@@ -225,6 +225,9 @@ func TestDesignPageLoadingErrorEmpty(t *testing.T) {
 		if !tt.HasText("正在读取页面数据") || tt.HasText("暂无报告") || tt.HasText("尚无设备快照") {
 			t.Fatal(page, tt.Texts())
 		}
+		if page == "dashboard" && (!tt.HasText("Dashboard") || tt.HasText("首次上手")) {
+			t.Fatal("incorrect dashboard loading title", tt.Texts())
+		}
 		s.refreshFailure = "读取失败，请重试。"
 		tt.Frame()
 		if tt.HasText("正在读取页面数据") {
