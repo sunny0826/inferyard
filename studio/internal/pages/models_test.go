@@ -73,7 +73,7 @@ func TestModelsEmptyRegistryGuidance(t *testing.T) {
 		t.Fatal(s.selected)
 	}
 	tt.Frame()
-	if !tt.HasText("新建下载任务") || !tt.HasText("下载预置模型") {
+	if !tt.HasText("新建下载任务") || !tt.HasText("下载引擎") {
 		t.Fatal(tt.Texts())
 	}
 }

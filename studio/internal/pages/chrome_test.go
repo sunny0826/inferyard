@@ -88,7 +88,7 @@ func TestChromeLayoutAcrossPages(t *testing.T) {
 			s.selected = page
 			labels := map[string][]string{
 				"settings":  {"保存设置"},
-				"dashboard": {"启动运行"}, "models": {"到下载页"}, "downloads": {"下载预置模型"},
+				"dashboard": {"启动运行"}, "models": {"到下载页"}, "downloads": {"下载引擎"},
 				"reports": {"打开报告"},
 				"detail":  {"返回 Dashboard", "取消任务"},
 			}

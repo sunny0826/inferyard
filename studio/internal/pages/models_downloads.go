@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
+	"slices"
 )
 
 func (s *viewState) downloadsView(c *ui.Context) {
@@ -13,7 +14,17 @@ func (s *viewState) downloadsView(c *ui.Context) {
 	if len(s.downloads) == 0 {
 		ui.Text(c, "暂无下载任务。")
 	}
-	for _, task := range s.downloads {
+	tasks := slices.Clone(s.downloads)
+	slices.SortStableFunc(tasks, func(a, b core.DownloadTask) int {
+		if a.Kind == "engine" && b.Kind != "engine" {
+			return -1
+		}
+		if a.Kind != "engine" && b.Kind == "engine" {
+			return 1
+		}
+		return 0
+	})
+	for _, task := range tasks {
 		kind, amount, rate := "模型任务", fmt.Sprintf("%.2f MiB", float64(task.DownloadedBytes)/1048576), "缺测"
 		if task.BytesPerSecond != nil {
 			rate = formatRate(*task.BytesPerSecond)

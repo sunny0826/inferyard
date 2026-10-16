@@ -48,9 +48,6 @@ func TestDashboardViews(t *testing.T) {
 				tc.state.selected = "dashboard"
 			}
 			tt := ui.NewTester(tc.state.view, 1120, 2400)
-			if tc.name == "device defaults" {
-				click(t, tt, "引擎下载")
-			}
 			if !tt.HasText(tc.want) {
 				t.Fatalf("missing %q: %v", tc.want, tt.Texts())
 			}
