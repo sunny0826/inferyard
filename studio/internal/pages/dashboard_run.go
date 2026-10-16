@@ -9,9 +9,11 @@ import (
 	"inferyard/studio/internal/inferyard"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func (w *viewState) candidateView(c *ui.Context) {
+	w.verifyTaskEngines()
 	heading(c, "benchmark", 3)
 	w.adoptDownloadedEngine()
 
@@ -348,4 +350,22 @@ func blockedPlan(b inferyard.BundleProgress) bool {
 		}
 	}
 	return false
+}
+
+func (s *viewState) verifyTaskEngines() {
+	if s.service == nil || s.task.stage != "prepare_candidate" || s.busy || s.refreshing {
+		return
+	}
+	now := time.Now()
+	if !s.task.lastVerify.IsZero() && now.Sub(s.task.lastVerify) < 5*time.Second {
+		return
+	}
+	s.task.lastVerify = now
+	go func() {
+		s.service.VerifyEngines()
+		if s.ctx.Err() != nil {
+			return
+		}
+		s.win.Update(func() { s.checks = s.service.EngineChecks(); s.adoptDownloadedEngine() })
+	}()
 }

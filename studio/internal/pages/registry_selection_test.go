@@ -157,7 +157,7 @@ func TestOrphanServiceViews(t *testing.T) {
 			}
 		}
 		if page == "dashboard" {
-			click(t, tt, "启动并绑定")
+			click(t, tt, "启动服务")
 		} else {
 			click(t, tt, "启动")
 		}

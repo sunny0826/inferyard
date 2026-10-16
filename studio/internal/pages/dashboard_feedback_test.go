@@ -29,7 +29,7 @@ func TestHumanCoversFormerDefaults(t *testing.T) {
 func TestRefreshFailureRendersAndClears(t *testing.T) {
 	// A refresh-sourced failure renders like an operation failure...
 	w := viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}}, refreshFailure: "CLI 执行失败，请检查主窗口诊断后重试。"}
-	tt := ui.NewTester(w.candidateView, 1000, 1400)
+	tt := ui.NewTester(w.view, 1000, 740)
 	if !tt.HasText("CLI 执行失败，请检查主窗口诊断后重试。") {
 		t.Fatalf("missing refresh failure: %v", tt.Texts())
 	}

@@ -26,13 +26,14 @@ func (s *viewState) resetWorkspace() {
 }
 
 type benchmarkTask struct {
-	stage    string
-	bindings *benchmarkBindings
-	start    startChainResult
-	bundles  []string
-	runs     []string
-	report   string
-	failure  *core.ApiError
+	lastVerify time.Time
+	stage      string
+	bindings   *benchmarkBindings
+	start      startChainResult
+	bundles    []string
+	runs       []string
+	report     string
+	failure    *core.ApiError
 }
 
 func (s *viewState) clearBenchmark() {
@@ -104,7 +105,7 @@ func (s *viewState) newBenchmark() {
 					done = true
 					return
 				}
-				if !s.busy {
+				if benchmarkResetReady(s.busy, s.service.RunTasks()) {
 					finish()
 					done = true
 				}
@@ -128,7 +129,16 @@ func cancelBenchmarkRuns(ctx context.Context, tasks func() []core.RunTask, cance
 			pending = true
 			if !cancelled[task.TaskId] {
 				if _, e := cancel(task.TaskId); e != nil {
-					return e
+					ended := false
+					for _, latest := range tasks() {
+						if latest.TaskId == task.TaskId && terminal(latest.State) {
+							ended = true
+							break
+						}
+					}
+					if !ended {
+						return e
+					}
 				}
 				cancelled[task.TaskId] = true
 			}
@@ -150,4 +160,16 @@ func taskWait(ctx context.Context) bool {
 	case <-time.After(100 * time.Millisecond):
 		return true
 	}
+}
+
+func benchmarkResetReady(busy bool, tasks []core.RunTask) bool {
+	if busy {
+		return false
+	}
+	for _, task := range tasks {
+		if !terminal(task.State) {
+			return false
+		}
+	}
+	return true
 }

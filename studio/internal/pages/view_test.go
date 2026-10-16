@@ -130,7 +130,7 @@ func TestDetailTableAndResourcesRender(t *testing.T) {
 	if err := tt.Click("返回运行"); err != nil {
 		t.Fatal(err)
 	}
-	if s.detailID != "" || !tt.HasText("运行 benchmark") {
+	if s.detailID != "" || !tt.HasText("运行历史") {
 		t.Fatal("return navigation failed")
 	}
 }

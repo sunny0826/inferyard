@@ -168,6 +168,9 @@ func TestDiscoveryRenderedOnBothPages(t *testing.T) {
 			}},
 		}}
 		render := s.serviceView
+		if !modelPage {
+			s.failure = core.Err("cli_error")
+		}
 		if modelPage {
 			render = s.modelsView
 		}
