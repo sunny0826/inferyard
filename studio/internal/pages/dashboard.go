@@ -160,8 +160,10 @@ func (s *viewState) stageView(c *ui.Context) {
 	case "bind":
 		stepTrack(c, "4", "启动与绑定", func() { s.serviceView(c) })
 	case "run", "resume":
-		if b := s.active(); b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil) {
-			card(c, "模型服务", func() { s.serviceView(c) })
+		if s.running() == nil && (s.task.stage == "" || s.task.failure != nil) {
+			if b := s.active(); b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil) {
+				card(c, "模型服务", func() { s.serviceView(c) })
+			}
 		}
 		stepTrack(c, "5", "运行", func() { s.runView(c) })
 	case "report":

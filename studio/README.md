@@ -41,8 +41,11 @@ the successful output path, and leaves verification on Reports. Duration and unf
 batch plans display their blocking reason without an execution button.
 
 A fixed top-right status row shows engine and queue state; its idle text is
-“引擎 已停止 · 队列 空”. Background refresh and busy operations, including saves and
-download actions, show “执行中”. Stop is available for a starting or running engine
+“引擎 已停止 · 队列 空”. Active runs and non-stopped engine states stay visible during
+background refresh and busy operations. Otherwise, refresh and operations show “执行中”.
+During a run, the model-service card collapses into this row, including between bundles
+in an active task. Once execution ends, service recovery controls remain available in
+the run/resume stage. Stop is available for a starting or running engine
 when no non-terminal run exists and Studio is not busy, except on Models.
 
 When no CLI is configured, the Dashboard’s Prepare environment action installs the CLI: it reuses an existing

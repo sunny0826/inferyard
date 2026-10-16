@@ -64,6 +64,9 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
    聚合资源采样；终态经 `run.state` 事件发布。Dashboard 另经 `Service.Progress` 派生
    `inferyard progress --workspace` 解析 `progress.v1` 恢复工作区进度。运行实现与取消语义见
    [运行时执行与引擎适配](runtime-execution.md)。
+   `stageView` 在有非终态运行或活动任务处于未失败的 `run` 阶段时收起正文模型服务卡，
+   题包间隙不重新展开；`cornerStatus` 保留引擎与队列状态，不受后台刷新或 busy 覆盖。
+   无非终态运行且任务失败或回到工作区进度时，run/resume 阶段恢复服务操作；绑定阶段仍显示启动与绑定操作。
 5. **引擎服务**：Dashboard（绑定或运行阶段）`StartEngine` → `Startup` 从冻结配置目录取 `[engine]` 启动行 →
    监听端口预检 → 拉起引擎子进程（stdout/stderr 写入 workspace `logs/engine-*.log`）→
    持久化 `engine-owner.json` 所有权记录（写失败即中止启动）→

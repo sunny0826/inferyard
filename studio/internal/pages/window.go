@@ -436,7 +436,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		queue = "执行中"
 	}
 	ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(c.Theme().Space(2)).Padding(0, c.Theme().Space(6)).Children(func() {
-		if s.busy || s.refreshing {
+		if (s.busy || s.refreshing) && !runActive && (s.engineState.State == "" || s.engineState.State == "stopped") {
 			ui.Text(c, "执行中")
 		} else {
 			ui.Text(c, "引擎 "+engine+" · 队列 "+queue)
