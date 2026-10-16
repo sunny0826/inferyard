@@ -15,7 +15,8 @@ func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''")
 
 // modelsView is the S8 models page: a selection zone (two searchable
 // pickers), a run zone for the selected combination and a read-only services
-// card. Downloads live on their own page; no binding UI appears here.
+// card separating managed lifecycle from unconfirmed compatible interfaces.
+// Downloads live on their own page; no binding UI appears here.
 func (s *viewState) modelsView(c *ui.Context) {
 	s.header(c, "模型")
 	card(c, "选择模型与引擎", func() { s.selectionView(c) })

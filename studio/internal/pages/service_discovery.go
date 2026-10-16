@@ -2,7 +2,6 @@ package pages
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/inferyard"
@@ -12,6 +11,7 @@ func (s *viewState) refreshDiscovery() {
 	if s.discovering {
 		return
 	}
+	s.engineState = s.service.Engine()
 	s.discovering = true
 	cliKey := s.discoveryCLI
 	go func() {
@@ -31,25 +31,51 @@ func (s *viewState) refreshDiscovery() {
 	}()
 }
 
-// modelEndpoints returns the endpoints that identified themselves as model
-// services: the CLI only reports a model list for OpenAI-compatible
-// endpoints, so every other loopback listener (chat apps, proxies, dev
-// servers) is noise for the binding list.
-func modelEndpoints(service inferyard.DiscoveredService) []inferyard.DiscoveredEndpoint {
-	endpoints := []inferyard.DiscoveredEndpoint{}
-	for _, endpoint := range service.Endpoints {
-		if endpoint.Models != nil {
-			endpoints = append(endpoints, endpoint)
-		}
+func (s *viewState) managedServiceActive() bool {
+	switch s.engineState.State {
+	case "starting", "running", "stopping":
+		return true
+	default:
+		return false
 	}
-	return endpoints
 }
 
-// discoveryView renders the discovered model services. bindable shows
-// per-service bind actions (Dashboard only); the models page renders the same
-// list read-only.
+// Only suppress a duplicate display; discovery never grants process ownership.
+func (s *viewState) managedEndpoint(service inferyard.DiscoveredService, endpoint inferyard.DiscoveredEndpoint) bool {
+	return s.managedServiceActive() && s.engineState.Pid > 0 && service.PID == s.engineState.Pid &&
+		s.engineState.Endpoint != "" && endpoint.URL == s.engineState.Endpoint && !endpoint.AmbiguousListener
+}
+
+func (s *viewState) managedServiceView(c *ui.Context) {
+	state := s.engineState
+	switch {
+	case s.managedServiceActive():
+		heading(c, "Studio 启动的服务", 3)
+		ui.Text(c, "状态："+stateLabel(state.State))
+	case state.State == "orphaned":
+		heading(c, "遗留服务记录（状态未确认）", 3)
+		ui.Text(c, "上次 Studio 留下的服务或记录，尚不能确认运行状态。").TextColor(c.Theme().Warning)
+	default:
+		ui.Text(c, "暂无 Studio 启动的活动服务。")
+		return
+	}
+	if state.Candidate != "" {
+		ui.Text(c, "候选："+displayName(state.Candidate))
+	}
+	if state.Pid > 0 {
+		ui.Text(c, fmt.Sprintf("PID %d", state.Pid))
+	}
+	if state.Endpoint != "" {
+		ui.Text(c, loopbackEndpoint(state.Endpoint))
+	}
+}
+
+// The Models card supplies its own title. Only Dashboard exposes binding.
 func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
-	heading(c, "本机运行的服务", 3)
+	if bindable {
+		heading(c, "本机运行的服务", 3)
+	}
+	s.managedServiceView(c)
 	button(c, "刷新服务列表").Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
 	if s.discovering {
 		ui.Text(c, "正在发现本机服务…")
@@ -60,58 +86,74 @@ func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
 			ui.Text(c, human(code)+" · "+code).TextColor(c.Theme().Warning)
 		}
 	}
-	modelServices, other := 0, 0
+	compatible, other := 0, 0
 	for _, service := range s.discovery.Services {
-		if len(modelEndpoints(service)) > 0 {
-			modelServices++
-		} else {
+		listed := false
+		for _, endpoint := range service.Endpoints {
+			if endpoint.Models != nil || s.managedEndpoint(service, endpoint) {
+				listed = true
+			}
+			if endpoint.Models != nil && !s.managedEndpoint(service, endpoint) {
+				compatible++
+			}
+		}
+		if !listed {
 			other++
 		}
 	}
-	if modelServices == 0 && s.discoveryError == nil && !s.discovering {
+	if compatible > 0 {
+		componentFold(c, "待确认的兼容接口", func() {
+			ui.Text(c, "这些接口可能是代理；模型目录不证明本机已加载模型。")
+			for _, service := range s.discovery.Services {
+				for _, endpoint := range service.Endpoints {
+					if endpoint.Models != nil && !s.managedEndpoint(service, endpoint) {
+						s.compatibleEndpointView(c, service, endpoint, bindable)
+					}
+				}
+			}
+		})
+	} else if s.discoveryError == nil && !s.discovering {
 		message := "尚未读取本机服务。"
 		if s.discoveryLoaded {
-			message = "未发现本机模型服务。"
-			if len(s.discovery.Limitations) > 0 {
-				message = "扫描不完整，未发现本机模型服务。"
+			message = "未发现提供模型目录的兼容接口。"
+			if s.managedServiceActive() {
+				message = "未发现其他提供模型目录的兼容接口。"
+			}
+			if s.discovery.Status == "partial" || len(s.discovery.Limitations) > 0 {
+				message = "扫描不完整，兼容接口列表可能有遗漏。"
 			}
 		}
 		ui.Text(c, message)
 	}
-	for _, service := range s.discovery.Services {
-		for _, endpoint := range modelEndpoints(service) {
-			ui.Column(c.Key(fmt.Sprintf("service-%d-%s", service.PID, endpoint.URL))).Gap(c.Theme().Space(2)).Children(func() {
-				models := []string{}
-				for _, model := range endpoint.Models {
-					models = append(models, displayName(model))
-				}
-				name := displayName(service.ProcessName)
-				if len(models) > 0 {
-					name = strings.Join(models, "、") + " · " + name
-				}
-				heading(c, name, 3)
-				ui.Text(c, fmt.Sprintf("PID %d · %s", service.PID, endpoint.URL))
-				if endpoint.Health == nil {
-					ui.Text(c, "健康检查：缺测")
-				} else {
-					ui.Text(c, "健康检查："+*endpoint.Health)
-				}
-				if endpoint.AmbiguousListener {
-					ui.Text(c, "多个进程监听同一端口，归属存在歧义 · ambiguous_listener").TextColor(c.Theme().Warning)
-				}
-				if endpoint.Reason != nil {
-					ui.Text(c, human(*endpoint.Reason)+" · "+*endpoint.Reason)
-				}
-				// Discovery results never decide whether CLI bind will accept a service.
-				if bindable {
-					button(c, "绑定").Disabled(s.busy || s.discovering || !s.bindingPhase()).OnClick(func() {
-						s.bindDiscovered(service.PID, endpoint.URL)
-					})
-				}
+	if other > 0 && s.discoveryError == nil {
+		ui.Text(c, fmt.Sprintf("另有 %d 个未提供模型目录的进程未列出。", other)).TextColor(c.Theme().TextMuted)
+	}
+}
+
+func (s *viewState) compatibleEndpointView(c *ui.Context, service inferyard.DiscoveredService, endpoint inferyard.DiscoveredEndpoint, bindable bool) {
+	ui.Column(c.Key(fmt.Sprintf("service-%d-%s", service.PID, endpoint.URL))).Gap(c.Theme().Space(2)).Children(func() {
+		heading(c, displayName(service.ProcessName), 3)
+		ui.Text(c, fmt.Sprintf("PID %d · %s", service.PID, endpoint.URL))
+		if endpoint.Health == nil {
+			ui.Text(c, "健康检查：缺测")
+		} else {
+			ui.Text(c, "健康检查："+*endpoint.Health)
+		}
+		if endpoint.AmbiguousListener {
+			ui.Text(c, "多个进程监听同一端口，归属存在歧义 · ambiguous_listener").TextColor(c.Theme().Warning)
+		}
+		if endpoint.Reason != nil {
+			ui.Text(c, human(*endpoint.Reason)+" · "+*endpoint.Reason)
+		}
+		componentFold(c, fmt.Sprintf("模型目录（%d）", len(endpoint.Models)), func() {
+			for _, model := range endpoint.Models {
+				ui.Text(c, displayName(model))
+			}
+		})
+		if bindable {
+			button(c, "绑定").Disabled(s.busy || s.discovering || !s.bindingPhase()).OnClick(func() {
+				s.bindDiscovered(service.PID, endpoint.URL)
 			})
 		}
-	}
-	if other > 0 && s.discoveryError == nil {
-		ui.Text(c, fmt.Sprintf("另有 %d 个未识别为模型服务的进程未列出。", other)).TextColor(c.Theme().TextMuted)
-	}
+	})
 }

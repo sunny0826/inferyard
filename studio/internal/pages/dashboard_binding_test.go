@@ -159,12 +159,11 @@ func TestDiscoveryRenderedOnBothPages(t *testing.T) {
 		s.discoveryLoaded = true
 		s.discovery = inferyard.ServiceDiscovery{Status: "partial", Limitations: []string{"listener_table_incomplete"}, Services: []inferyard.DiscoveredService{
 			{PID: 6124, ProcessName: "/private/bin/inference-engine", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:8081", Health: ptr("2xx"), Models: []string{"/private/models/Qwen.gguf"}, AmbiguousListener: true, Reason: ptr("health_timeout")}}},
-			// Chat apps and dev servers without a model list are noise: they
-			// must not appear in the binding list.
+			// Listeners without a model directory do not appear in the compatible list.
 			{PID: 667, ProcessName: "WeChat", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:14013", Health: nil, Models: nil, Reason: ptr("models_unreachable")}}},
 			{PID: 39779, ProcessName: "python3.14", Endpoints: []inferyard.DiscoveredEndpoint{
 				{URL: "http://127.0.0.1:8769", Health: nil, Models: nil, Reason: ptr("models_unreachable")},
-				// A model endpoint on the same service still counts.
+				// Process names do not determine compatibility or ownership.
 				{URL: "http://127.0.0.1:8770", Health: ptr("2xx"), Models: []string{"/private/models/Llama.gguf"}},
 			}},
 		}}
@@ -173,12 +172,18 @@ func TestDiscoveryRenderedOnBothPages(t *testing.T) {
 			render = s.modelsView
 		}
 		tt := ui.NewTester(render, 1100, 2400)
-		for _, want := range []string{"本机运行的服务", "Qwen.gguf · inference-engine", "PID 6124 · http://127.0.0.1:8081", "健康检查：2xx", "ambiguous_listener", "health_timeout", "listener_table_incomplete", "Llama.gguf · python3.14", "PID 39779 · http://127.0.0.1:8770", "另有 1 个未识别为模型服务的进程未列出。"} {
+		tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+		if tt.HasText("PID 6124") || tt.HasText("Qwen.gguf") || tt.HasText("Llama.gguf") {
+			t.Fatal("external interfaces must start collapsed", tt.Texts())
+		}
+		click(t, tt, "待确认的兼容接口")
+		tt.Frame()
+		for _, want := range []string{"本机运行的服务", "inference-engine", "PID 6124 · http://127.0.0.1:8081", "健康检查：2xx", "ambiguous_listener", "health_timeout", "listener_table_incomplete", "python3.14", "PID 39779 · http://127.0.0.1:8770", "另有 1 个未提供模型目录的进程未列出。"} {
 			if !tt.HasText(want) {
 				t.Fatal(want, tt.Texts())
 			}
 		}
-		for _, gone := range []string{"WeChat", "http://127.0.0.1:14013", "http://127.0.0.1:8769", "模型列表：缺测", "来自 discover"} {
+		for _, gone := range []string{"WeChat", "http://127.0.0.1:14013", "http://127.0.0.1:8769", "模型列表：缺测", "来自 discover", "Qwen.gguf", "Llama.gguf"} {
 			if tt.HasText(gone) {
 				t.Fatal("non-model noise rendered: "+gone, tt.Texts())
 			}
