@@ -57,11 +57,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 2. **页面刷新**：主窗口的六页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
    取增量事件，六类事件触发全量刷新（`sync.reset`/`report.created`/`run.state`/`engine.state`/
    `download.state`/`device.updated`，见 [`studio/internal/pages/registry_refresh.go`](../../studio/internal/pages/registry_refresh.go)），其余做局部更新。
-3. **Dashboard 阶段执行**：Dashboard 按就绪度与 `progress.v1` 推导下一条 CLI 命令
-   （`nextCommand`/`baseCommand`），交给
-   `WizardExecute`：`wizardArgs` 白名单校验 → `run`/`resume` 转入运行队列 → 其余命令探测 CLI
-   后执行，`--out` 必须先不存在；`init` 成功后回写 workspace/results 设置，`report` 成功发布
-   `report.created` 并可追加 `verify`。
+3. **Dashboard 任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。新任务复用模型/引擎选择，默认勾选存在的 zh-core，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`，`ReportVerify=false`，显示成功路径而不显示已核验；核验留在报告页。没有活动任务时从 `progress.v1` 恢复。所有命令仍经 `WizardExecute` 原白名单和身份检查。
 4. **运行**：`StartRuns` 逐配置读取 bundle 与输出根并做包含/去重准入 → 入队由 `runQueue` 串行
    `executeRun` 派生 `inferyard run --config`（取消为 SIGINT + 两秒兜底）；执行循环每
    `ProgressInterval`（500ms）对比运行前后证据索引、tail `events.jsonl` 投影 case 进度与分数、
@@ -74,21 +70,22 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
    `monitorEngine` 每秒探测 `{endpoint}/health`，2xx 转 `running`；启动默认超时 10 分钟。
    `StopEngine` 仅在无活动运行时允许，SIGTERM 后 10 秒未退出则 kill，停止成功按记录身份移除所有权记录。
 6. **候选准备链（模型页与 Dashboard 共用）**：模型页运行区「启动」与 Dashboard 候选阶段的
-   「创建候选」复用同一条准备编排（`prepareCombination`）：所选模型 ≠ 最新 preflight 推荐时先重跑
+   「运行 benchmark」复用同一条准备编排（`prepareCombination`）：所选模型 ≠ 最新 preflight 推荐时先重跑
    `device-check --model`（blocked 即停并呈现固定原因）→ 逐题包读冻结 `candidate.toml` 的
    `[model] local_path`/`[engine] binary_path` 做 canonical 比对，仅为不匹配的题包各执行一次
    `config create`（题包处于 `prepare_candidate` 且有 next_command 时复用该命令，否则按
    `config create` 的参数面组装 `--workspace`/`--bundle`/`--out`；引擎参数按平台注入 registry
    条目的同一资源：非 Windows `--engine` 二进制路径，Windows `--runtime-receipt` 回执路径，
    不拼引擎 argv）→ 复验全部待测题包
-   候选匹配（不匹配报 `candidate_mismatch`）→ `StartEngine` → 武装绑定链。已封存
-   （run_complete）题包不重建候选、不要求匹配新组合；全部题包已封存时回退用封存候选启动，
+   候选匹配（不匹配报 `candidate_mismatch`）→ `StartEngine` → 武装绑定链。新任务强制为所选题包重建候选；模型页的既有启动流程对已封存
+   （run_complete）题包不重建候选；全部题包已封存时回退用封存候选启动，
    但该候选必须匹配所选组合，否则报 `candidate_mismatch` 拒绝启动；任一步失败即停，不自动重试。
-7. **绑定**：一键「启动并绑定」健康通过后由自动绑定链单次触发（armed 单次 + 校验进度阶段防竞态），
-   按 progress 顺序对全部 `bound_missing` 题包依次执行 `config bind`（同引擎同 endpoint、显式 PID），
+7. **绑定**：任务在健康通过后自动绑定所选题包；既有模型页启动链仍由 armed 单次触发，
+   按 progress 顺序对目标 `bound_missing` 题包依次执行 `config bind`（同引擎同 endpoint、显式 PID），
    全部成功才进 run 阶段，任一失败即停、显示 CLI 固定原因、不自动重试；外部服务从
-   `service discover` 清单一键绑定（显式传发现的 PID 与 endpoint），折叠的「高级：手动绑定」保留
+   `service discover` 清单一键绑定（显式传发现的 PID 与 endpoint），绑定失败后折叠的「高级：手动绑定」保留
    `Processes` 进程枚举 + endpoint 手输兜底（`Processes` 只暴露 PID 与可执行名，argv 可能带凭据）。
+   `run_missing` 与 single 的 `run --config` 在新 PID 下重新绑定；`resume --from-run` 直接传 PID 与 endpoint，不要求预绑定。duration 与未完成 batch 的 `run --plan` 仅显示阻断原因，不放宽执行白名单。
    一切绑定都生成绑定配置并经 CLI 的 PID 与启动时间身份核验；discover 不预判 bind 可行性，
    `startup_arguments_mismatch` 等拒绝原因如实呈现；`BindingAlive` 仅提供存活提示。
 8. **报告**：`CreateReport` 校验 1–100 个位于结果根内的不同 run → 派生 `inferyard report`
@@ -228,8 +225,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 
 Dashboard 按 [`studio/docs/prototypes/dashboard-page.html`](../../studio/docs/prototypes/dashboard-page.html)
 原型实施：结论卡置顶（六阶段步骤条 + 当前阶段徽标 + 阻断原因），阶段动作区使用步骤轨道组件
-（编号圆点 + 纵向连接线，内容铺在页面背景上不用卡片，只渲染当前阶段），其后依次为快速运行、
-任务队列与运行历史卡；运行详情为页内子视图。
+（编号圆点 + 纵向连接线，内容铺在页面背景上不用卡片，只渲染当前阶段），其后保留运行历史卡，移除快速运行与任务队列卡；运行详情为页内子视图，通过「返回运行」回到任务。
 
 共享标题、活动进度、换行按钮和一次性公告由 `pages/design_system.go` 承载；
 字段提示由 `pages/form_validation.go` 承载。页面首次加载、刷新与失败分别呈现，刷新失败保留已有数据。

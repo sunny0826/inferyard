@@ -271,7 +271,7 @@ func TestDesignKeyboardDetailsReturnAndHorizontalTable(t *testing.T) {
 	if s.detailID != "two" {
 		t.Fatal("keyboard did not open selected task", s.detailID)
 	}
-	click(t, tt, "返回 Dashboard")
+	click(t, tt, "返回运行")
 	if !tt.Focused("zh-svg-pelican") {
 		t.Fatal("return did not restore table focus")
 	}

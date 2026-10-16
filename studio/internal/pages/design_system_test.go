@@ -64,7 +64,7 @@ func TestDesignDetailFailureIsNotLoading(t *testing.T) {
 	if _, ok := tt.Find("重试读取详情"); !ok {
 		t.Fatal("missing retry")
 	}
-	click(t, tt, "返回 Dashboard")
+	click(t, tt, "返回运行")
 	if s.detailID != "" {
 		t.Fatal("return failed")
 	}

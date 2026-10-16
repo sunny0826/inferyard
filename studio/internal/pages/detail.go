@@ -8,8 +8,10 @@ import (
 
 func (s *viewState) detailView(c *ui.Context) {
 	s.header(c, "运行详情")
-	if button(c, "返回 Dashboard").AlignSelf(ui.Start).Clicked() {
+	if button(c, "返回运行").AlignSelf(ui.Start).Clicked() {
 		s.detailID = ""
+		s.announcedPage = "dashboard"
+		c.Announce("运行")
 		s.returnToTasks = true
 		s.detailMu.Lock()
 		s.requestedDetail = ""
@@ -34,7 +36,11 @@ func (s *viewState) detailView(c *ui.Context) {
 		ui.Text(c, "运行目录："+displayName(text(t.RunPath))).Selectable()
 		ui.Text(c, "任务类型："+t.Kind+" · 运行 ID："+text(t.RunId))
 		errorView(c, t.Error)
-		if button(c, "取消任务").AlignSelf(ui.Start).Disabled(s.busy || terminal(t.State) || t.State == "cancelling").Clicked() {
+		if button(c, "取消任务").AlignSelf(ui.Start).Disabled((s.busy && s.task.stage == "") || terminal(t.State) || t.State == "cancelling").Clicked() {
+			if s.task.stage != "" {
+				s.newBenchmark()
+				return
+			}
 			id := t.TaskId
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.service.CancelRun(id)

@@ -17,11 +17,12 @@ func TestBindingRecoveryInBindStage(t *testing.T) {
 		s.selected = "dashboard"
 		s.progress = &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: phase, CandidatePath: ptr("/candidate"), BoundPath: ptr("/bound")}}}
 		s.bindingStale = true
+		s.failure = core.Err("cli_error")
 		s.engineState = core.EngineState{State: "running", Pid: 42}
 		tt := ui.NewTester(s.view, 1120, 2400)
 		start := "启动服务"
 		if phase == "bound_missing" {
-			start = "启动并绑定"
+			start = "启动服务"
 		}
 		for _, label := range []string{start, "停止服务", "重新绑定", "旧绑定已失效，请重启服务并重新绑定"} {
 			if !tt.HasText(label) {
@@ -44,6 +45,7 @@ func TestRecoveryCardSurvivesRunPhase(t *testing.T) {
 				}
 				s.progress = &inferyard.WorkspaceProgress{NextAction: action, Bundles: []inferyard.BundleProgress{b}}
 				s.bindingStale = true
+				s.failure = core.Err("cli_error")
 				s.engineState = core.EngineState{State: "running", Pid: 42}
 				if running {
 					s.tasks = []core.RunTask{{State: "running"}}
@@ -140,30 +142,16 @@ func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 
 func TestQuickRunManualRecoveryWithoutProgress(t *testing.T) {
 	s := testState()
-	s.selected, s.progress = "dashboard", nil
-	tt := ui.NewTester(s.view, 1120, 1600)
-	if !tt.HasText("启动测评") || !tt.HasText("暂无已绑定题包；可在下方高级选项手动指定配置路径") {
+	s.progress = nil
+	tt := ui.NewTester(s.dashboardView, 1120, 1600)
+	if tt.HasText("启动测评") || !tt.HasText("无法读取工作区进度，请刷新重试") {
 		t.Fatal(tt.Texts())
 	}
-	click(t, tt, "高级：手动配置路径")
-	if !tt.HasText("第一配置绝对路径") || !tt.HasText("第二配置绝对路径") {
+	s.progress = &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core"}}}
+	tt.Frame()
+	if !tt.HasText("运行 benchmark") || tt.HasText("高级：手动配置路径") {
 		t.Fatal(tt.Texts())
 	}
-	_ = tt.Click("启动运行")
-	if s.busy {
-		t.Fatal("empty manual paths admitted")
-	}
-	s.progress = &inferyard.WorkspaceProgress{NextAction: "prepare_candidate"}
-	tt.Frame()
-	if tt.HasText("启动测评") {
-		t.Fatal("quick run shown for known progress without bindings")
-	}
-	s.progress.Bundles = []inferyard.BundleProgress{{Bundle: "zh-core", BoundPath: ptr("/bound")}}
-	tt.Frame()
-	if !tt.HasText("启动测评") {
-		t.Fatal("quick run hidden with a bound bundle")
-	}
-
 }
 
 func TestWorkspaceSwitchClearsEngineSession(t *testing.T) {
@@ -175,9 +163,9 @@ func TestWorkspaceSwitchClearsEngineSession(t *testing.T) {
 	s.engineState = core.EngineState{State: "running", Pid: 42}
 	s.registry = modelRegistryFixture()
 	s.model, s.bindingStale = "old.gguf", true
-	s.manualFirst, s.manualSecond, s.firstBundle, s.detailID = "old", "old", "old", "old"
+	s.selectedBundles, s.detailID = map[string]bool{"old": true}, "old"
 	s.applySettings(core.SettingsResponse{Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/new")}})
-	if s.candidate != "" || s.engine != "" || s.process != "" || s.bindEndpoint != "" || s.startup.Path != "" || len(s.processes) != 0 || s.engineState.Pid != 0 || len(s.registry.Engines) != 0 || s.model != "" || s.bindingStale || s.detailID != "" || s.manualFirst != "" {
+	if s.candidate != "" || s.engine != "" || s.process != "" || s.bindEndpoint != "" || s.startup.Path != "" || len(s.processes) != 0 || s.engineState.Pid != 0 || len(s.registry.Engines) != 0 || s.model != "" || s.bindingStale || s.detailID != "" || s.selectedBundles != nil {
 		t.Fatal("workspace retained old session")
 	}
 }

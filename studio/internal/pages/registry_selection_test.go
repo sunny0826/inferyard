@@ -68,7 +68,7 @@ func TestCandidateEngineDropdownThreeStates(t *testing.T) {
 	if !tt.HasText("没有可用的引擎，请到下载页下载推荐引擎。") {
 		t.Fatal(tt.Texts())
 	}
-	click(t, tt, "创建候选")
+	click(t, tt, "运行 benchmark")
 	if s.busy {
 		t.Fatal("create reached the CLI without a usable engine")
 	}
@@ -88,7 +88,7 @@ func TestCandidateEngineDropdownThreeStates(t *testing.T) {
 			t.Fatal(want, tt.Texts())
 		}
 	}
-	click(t, tt, "创建候选")
+	click(t, tt, "运行 benchmark")
 	if s.busy {
 		t.Fatal("create reached the CLI with a revoked engine")
 	}
@@ -117,10 +117,10 @@ func TestCandidateModelSelectSharesSelection(t *testing.T) {
 
 func TestRunAndServiceViewsHidePaths(t *testing.T) {
 	s := testState()
-	s.manualConfig = true
-	s.manualFirst, s.manualSecond = "/private/first/config.toml", "/private/second/config.toml"
+	s.failure = core.Err("cli_error")
+
 	s.startup = core.Startup{Path: "/private/llama-server", Args: []string{"--model", "/private/model.gguf"}}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.quickRunView(c); s.serviceView(c) }) }, 1120, 1800)
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.candidateView(c); s.serviceView(c) }) }, 1120, 1800)
 	if tt.HasText("复制启动命令") {
 		t.Fatal("startup command remains")
 	}
@@ -131,8 +131,8 @@ func TestRunAndServiceViewsHidePaths(t *testing.T) {
 	}
 	for _, label := range []string{"第一配置绝对路径", "第二配置绝对路径"} {
 		inputs := designFieldInputs(tt, label)
-		if len(inputs) == 0 {
-			t.Fatal("manual input missing", label)
+		if len(inputs) != 0 {
+			t.Fatal("removed quick-run input remains", label)
 		}
 	}
 	click(t, tt, "高级：手动绑定")

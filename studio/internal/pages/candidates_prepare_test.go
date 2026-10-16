@@ -50,6 +50,7 @@ func TestDashboardPreparationFreezesSelectedModel(t *testing.T) {
 				DevicePreflight: inferyard.ProgressPreflight{Status: "ok", Path: &preflight}, Report: inferyard.ProgressReport{Status: "missing", Runs: []string{}},
 				Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "candidate_missing", NextAction: "prepare_candidate", NextCommand: &command, Runs: []inferyard.ProgressRun{}}}}
 			var checkedModel, frozenModel, usedPreflight string
+			firstCheck := false
 			flag := func(args []string, name string) string {
 				for i := 0; i+1 < len(args); i++ {
 					if args[i] == name {
@@ -66,10 +67,19 @@ func TestDashboardPreparationFreezesSelectedModel(t *testing.T) {
 					raw, _ := json.Marshal(progress)
 					return inferyard.Execution{Stdout: raw}, nil
 				case "device-check":
+					if flag(args, "--models-root") != filepath.Dir(a) {
+						return inferyard.Execution{}, fmt.Errorf("missing models root: %v", args)
+					}
 					out := flag(args, "--out")
 					if out == "" {
 						raw := []byte(fmt.Sprintf(`{"command":"device-check","status":"inspected","completeness":"complete","limitations":[],"details":{"kind":"device_preflight.v1","hardware":{},"platform_capabilities":{},"recommendation":{"status":"recommended"},"models":[{"path":%q,"status":"available"},{"path":%q,"status":"available"}]}}`, a, b))
 						return inferyard.Execution{Stdout: raw}, nil
+					}
+					if flag(args, "--model") == "" {
+						firstCheck = true
+						preflight = filepath.Join(out, "device-preflight.json")
+						write(preflight, report(a))
+						return inferyard.Execution{}, nil
 					}
 					checkedModel = flag(args, "--model")
 					if checkedModel != b {
@@ -135,6 +145,10 @@ func TestDashboardPreparationFreezesSelectedModel(t *testing.T) {
 			}
 			if engineName == "" {
 				t.Fatal(service.Registry())
+			}
+			initial, e := service.WizardExecute(ctx, core.WizardRequest{Command: commandOf([]string{"device-check", "--json", "--out", filepath.Join(root, "preflight", "initial")}), ModelName: ""})
+			if e != nil || initial.ExitCode != 0 || !firstCheck {
+				t.Fatal(initial, e, firstCheck)
 			}
 			result, e := prepareCombination(ctx, service, selected, engineName)
 			if e != nil || result.candidate == "" {

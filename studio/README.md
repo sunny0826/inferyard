@@ -15,40 +15,45 @@ selected while Dashboard is open. The six page bodies are:
 
 | Page | Purpose |
 | --- | --- |
-| Dashboard | Prepare the environment (CLI installation, directory provisioning, workspace initialization), work through the current benchmark stage (device check, candidate, service startup and binding, run, report verification), queue or cancel evaluations, inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
+| Dashboard | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
 | Device | Inspect hardware, measurement availability, collection sources, and device-check results. |
 | Models | Pick a model and an engine in two linked pickers (each annotates the other's compatibility: engine verification status, model format match), start/stop the engine service for the selected combination and see its status, and inspect Studio-managed services plus a collapsed list of unconfirmed compatible interfaces (binding stays on the Dashboard). No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. |
 | Reports | Generate reports and open each offline HTML report in its own in-app WebView window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names. |
 
-Dashboard drives the full benchmark flow from
-the CLI-generated `progress.v1` workspace state: it shows the current stage with its
-blocking reason, offers the matching action inline, and hosts quick re-runs, the task
-queue, run history, resume, and the in-page run detail view. The Models page
-selects the model/engine combination and runs the engine service; the Downloads page
-prepares assets; Device runs the device check and shows its details; Reports generates
-and verifies the combined report; Settings edits paths and download directory names. Reopening Studio restores
-progress from workspace evidence through `progress.v1`. A missing CLI or incomplete
-configuration does not prevent opening any page.
+Dashboard keeps the active task's selected bundles and new run paths in memory. New task
+cancels binding and all non-terminal runs, waits for them to finish, and returns to the
+shared engine/model selection without cancelling downloads or deleting evidence. The form
+lists only workspace bundles and checks `zh-core` when present. An unchecked bundle does
+not block the task. The old quick-run form and queue card are removed; run history remains.
+Without an active task, the page restores workspace progress from `progress.v1`.
+
+Prepare environment rechecks readiness after installing the CLI, provisioning missing
+model/results directories, and initializing a new workspace. Existing initialized workspaces
+skip `init`; new workspaces omit `--bundle`. The first workspace device check runs once
+with `--models-root` and no `--model`. A later model-specific check still supplies `--model`.
+The task generates `report --runs` for its own sealed runs with verification disabled, displays
+the successful output path, and leaves verification on Reports. Duration and unfinished
+batch plans display their blocking reason without an execution button.
 
 A fixed top-right status row shows engine and queue state; its idle text is
 “引擎 已停止 · 队列 空”. Background refresh and busy operations, including saves and
 download actions, show “执行中”. Stop is available for a starting or running engine
 when no non-terminal run exists and Studio is not busy.
 
-When no CLI is configured, the Dashboard offers one-tap installation: it reuses an existing
+When no CLI is configured, the Dashboard’s Prepare environment action installs the CLI: it reuses an existing
 `inferyard`/`uv` when found (including Homebrew locations outside the GUI PATH), downloads
 a pinned standalone `uv` into the Studio tools directory when none exists — verified
 against the release checksum, without touching shell configuration — and installs
 `inferyard` matching the Studio version from PyPI via `uv tool install`. Manual path
 configuration in Settings remains available.
 
-The Dashboard's stage actions follow the CLI-generated next command. One click starts the
-frozen engine, waits for its health endpoint, and binds every `bound_missing` bundle in
-progress order using the same explicit PID and endpoint. The chain triggers once and stops
-on the first failure without retrying; the run stage becomes available after all pending
-bindings succeed. Studio stops its managed engine on exit and never restarts it automatically.
+Run benchmark creates fresh candidates for the checked bundles and starts and binds the
+service automatically. Binding has its own cancellation context; a failure offers a retry
+and the advanced manual binding fold. Existing single-config runs rebind the new PID before
+running; eligible resumes pass the started engine's PID and endpoint directly to `resume`.
+Studio stops its managed engine on exit and never restarts it automatically.
 Dashboard and Models show Studio-started services from `EngineState`, independently of
 service discovery. Starting, running, and stopping services remain visible when scanning
 fails or the model directory is unavailable. Leftover records are labelled unconfirmed;
@@ -59,7 +64,7 @@ Other endpoints with model directories appear under the collapsed “待确认�
 (Unconfirmed compatible interfaces) section. They may be proxies: a model directory does
 not prove a model is loaded locally. Expanding an interface shows endpoint health and
 ambiguous-listener warnings; its model directory remains separately collapsed. Partial
-scan limitations remain visible. Only Dashboard offers explicit external binding with the
+scan limitations remain visible. Only Dashboard offers explicit external binding after a binding failure, with the
 discovered PID and endpoint, through the existing CLI checks; Models remains read-only.
 Discovery does not establish bind eligibility: rejection reasons such as
 `startup_arguments_mismatch` remain visible. The collapsed advanced manual binding controls

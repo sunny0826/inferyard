@@ -29,13 +29,14 @@ func TestFormFailureAnnouncedOnEverySubmission(t *testing.T) {
 				s.engineURL, s.engineName = "invalid", "engine"
 				render, submit = s.engineDownloadView, "下载引擎"
 			case "binding":
+				s.failure = core.Err("cli_error")
 				s.process, s.bindEndpoint = "42 · fixture", "invalid"
 				render, submit = s.serviceView, "绑定进程"
 			case "initialize":
-				s.initDir = "relative/workspace"
+				s.ready.Workspace.Path = ptr("relative/workspace")
 				s.ready.CLI.Status = "ok"
 				s.ready.Workspace.Initialized = false
-				render, submit = s.setupGuide, "初始化工作区"
+				render, submit = s.setupGuide, "准备环境"
 			}
 			tt := ui.NewTester(func(c *ui.Context) {
 				s.announceChanges(c)
