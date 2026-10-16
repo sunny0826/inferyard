@@ -40,7 +40,7 @@ func (s *viewState) modelAssetsView(c *ui.Context) {
 
 func (s *viewState) modelDownloadForm(c *ui.Context) {
 	field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL).Description("必填；使用固定 revision 的 GGUF 下载地址。").Error(downloadURLError(s.modelURL))
-	componentFold(c, "需要凭证时", func() {
+	componentFold(c, "需要凭据时", func() {
 		field(c, "凭据环境变量名（可选）", &s.tokenEnv).Description("仅填写变量名称，不填写凭据值。").Error(tokenNameError(s.tokenEnv))
 		ui.Text(c, "凭据由启动 Studio 的环境提供。")
 	})

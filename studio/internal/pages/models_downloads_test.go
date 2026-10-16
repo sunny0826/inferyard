@@ -30,7 +30,7 @@ func TestDownloadsPageMigration(t *testing.T) {
 	if s.downloads[0].TaskId != "model" {
 		t.Fatal("render reordered source tasks")
 	}
-	click(t, tt, "需要凭证时")
+	click(t, tt, "需要凭据时")
 	if !tt.HasText("凭据环境变量名") {
 		t.Fatal(tt.Texts())
 	}
@@ -89,7 +89,7 @@ func TestDownloadsPageMigrationEmptyAndValidation(t *testing.T) {
 	s.modelURL = core.DefaultModelURL
 	s.tokenEnv = "secret-value"
 	tt.Frame()
-	click(t, tt, "需要凭证时")
+	click(t, tt, "需要凭据时")
 	click(t, tt, "下载模型")
 	tt.Frame()
 	if s.failure == nil || s.failure.Message != "只接受环境变量名，请勿输入明文 token。" || s.busy || len(s.downloads) != 0 {
