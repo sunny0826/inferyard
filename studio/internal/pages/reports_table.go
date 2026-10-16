@@ -17,9 +17,15 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 	}
 	selectableTable(&s.reportsTable, func(i int) any { return s.reports[i].Path }, func(i int) string { return s.reports[i].ReportId })
 	c.Key("reports-table")
-	pageTable(c, &s.reportsTable, "报告列表", []ui.TableColumn{{Title: "ReportId", Width: 280}, {Title: "修改时间", Width: 240}, {Title: "来源数", Width: 100}}, len(s.reports), func(row, col int) {
+	pageTable(c, &s.reportsTable, "报告列表", []ui.TableColumn{{Title: "ReportId", Width: 280}, {Title: "修改时间", Width: 240}, {Title: "来源数", Width: 100}, {Title: "索引", Width: 160}}, len(s.reports), func(row, col int) {
 		report := s.reports[row]
-		ui.Text(c, []string{report.ReportId, text(report.CreatedAt), fmt.Sprint(len(report.RunIds))}[col])
+		status := "可读取"
+		if col == 3 {
+			if _, e := s.readReport(report.ReportId); e != nil {
+				status = "无法读取"
+			}
+		}
+		ui.Text(c, []string{report.ReportId, text(report.CreatedAt), fmt.Sprint(len(report.RunIds)), status}[col])
 	}).Height(220).Label("报告列表")
 	index := selectedRow(&s.reportsTable, len(s.reports))
 	if index >= 0 {
@@ -34,9 +40,9 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		}
 	}
 	if s.reportsTable.submitted && index >= 0 {
-		_, s.failure = s.reportWindows.Open(s.reports[index].ReportId)
+		s.openReport(s.reports[index].ReportId)
 	}
 	primaryButton(c, "打开报告").AlignSelf(ui.Start).Disabled(index < 0).OnClick(func() {
-		_, s.failure = s.reportWindows.Open(s.reports[index].ReportId)
+		s.openReport(s.reports[index].ReportId)
 	})
 }

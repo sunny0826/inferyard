@@ -32,7 +32,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 | 绑定存活提示 | 只读比对绑定配置里的 `server_pid`/`process_start_ticks` 与进程实际启动 tick，仅作 UI 提示；比对失败显示「无法确认」，不据此判定绑定有效 | `BindingAlive` 在 [`studio/internal/core/binding.go`](../../studio/internal/core/binding.go) |
 | 运行队列 | 绑定配置准入（含结果根包含、去重）、串行 worker、取消、resume 准入（历史索引 + CLI 终审） | `StartRuns`、`Resume`、`CancelRun`、`runQueue` 在 [`studio/internal/core/runs.go`](../../studio/internal/core/runs.go) |
 | 下载任务 | 与运行队列并发的模型/引擎获取，共用同一任务列表；输出目录名取自设置的 `model_download_name`/`engine_download_name`（默认 `model`/`engine`，仅允许字母数字点下划线连字符且不能全为点），占用时自动追加 `-2`/`-3` 序号，任务详情展示实际目录名；模型任务 `.part` 尺寸轮询与正式文件发布观测；引擎任务复用 `FetchEngine` 传输与解包、取消贯穿全程、字节与速率缺测为带 `progress_reason` 的 `null`、成功写 `engine_path` | `CreateDownload`、`CreateEngineDownload`、`CancelDownload` 在 [`studio/internal/core/downloads.go`](../../studio/internal/core/downloads.go)；目录名解析在 [`studio/internal/core/download_names.go`](../../studio/internal/core/download_names.go)；`FetchEngine` 在 [`studio/internal/core/defaults.go`](../../studio/internal/core/defaults.go)；模型下载采样在 `Service.download` 中与任务生命周期合并 |
-| 报告 | 1–100 个来源 run 校验、唯一命名新目录生成、索引与静态路径包含解析；离线 HTML 在独立 WebView 窗口以 `file://` 打开 | `CreateReport`、`Reports`、`ReportFile` 在 [`studio/internal/core/reports.go`](../../studio/internal/core/reports.go)；`Reports.Open`、`reportURL` 在 [`studio/internal/pages/reports.go`](../../studio/internal/pages/reports.go) |
+| 报告 | 1–100 个来源 run 校验、唯一命名新目录生成、索引与静态路径包含解析；主窗口内呈现索引中的 dashboard 与请求行 | `CreateReport`、`Reports`、`ReportFile` 在 [`studio/internal/core/reports.go`](../../studio/internal/core/reports.go)；`reportView` 在 [`studio/internal/pages/report_view.go`](../../studio/internal/pages/report_view.go) |
 | 进程内事件 | 2048 条回放环 + 唤醒订阅；慢消费者按游标重建而非丢事件 | `EventBus`、`Publish`、`Subscribe`、`After`、`ReplayCapacity` 在 [`studio/internal/core/events.go`](../../studio/internal/core/events.go) |
 | 证据索引与读取 | 结果根扫描（损坏条目跳过并计数）、JSONL 增量 tail、host dirty 标记判读、状态优先级 | `Index` 在 [`studio/internal/evidence/index.go`](../../studio/internal/evidence/index.go)；`Tail`、`Cursor` 在 [`studio/internal/evidence/tail.go`](../../studio/internal/evidence/tail.go)；`DirtyRun`、`RunStatus` 在 [`studio/internal/evidence/dirty.go`](../../studio/internal/evidence/dirty.go) |
 | 历史聚合 | evidence 记录 → run 汇总/进度/资源投影；resume 资格标记；原子重建历史索引 | `summarize`、`scan`、`markResumable`、`History`、`rebuild` 在 [`studio/internal/core/aggregate.go`](../../studio/internal/core/aggregate.go) |
@@ -87,8 +87,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
    `startup_arguments_mismatch` 等拒绝原因如实呈现；`BindingAlive` 仅提供存活提示。
 8. **报告**：页面先展示「历史任务」，再展示「报告列表」。进入任务清除详情与续测来源并聚焦所选运行；续测清除详情并设置来源；实时详情打开对应任务，三者都进入 Dashboard。打开报告为主操作；1–100 个来源的生成入口折叠在「从历史运行另做报告」。仅工作区 `next_action=verify` 且报告未核验时显示「核验」，沿用向导并设置 `ReportVerify=true`；`verified` 显示「已核验」。
    `CreateReport` 校验 1–100 个位于结果根内的不同 run → 派生 `inferyard report`
-   写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面 `Reports.Open` 以
-   每报告一个原生 WebView 窗口打开 `report.html`（`file://`，同路径复用聚焦）。报告 ID 为 UTC
+   写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面在主窗口内容区读取 `index.json`，呈现 `runs[].dashboard` 与 `runs[].requests`。报告 ID 为 UTC
    `report-YYYYMMDDTHHMMSSZ[-N]`，命名冲突追加序号。报告与导出契约
    见 [评分、比较与报告](scoring-reporting.md) 与
    [report-contract](../../cli/docs/contracts/report-contract.md)。
@@ -197,11 +196,10 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
   lineage 结论引用 [数据契约](../../cli/docs/data-contract.md#证据血缘与比较结论)，证据布局见
   [run-evidence-layout](../../cli/docs/contracts/run-evidence-layout.md)。
 - **报告**：1–100 个不同来源 run；新目录唯一命名、原始 run 与历史报告永不覆写；报告路径必须
-  留在报告目录内；缺失来源 run 显示为不可用但不阻止打开。报告窗口注册加载失败与渲染进程退出
-  回调后再加载，失败向主窗口回传固定错误并在子窗口提供重试/关闭；重试重新执行 `ReportFile`
-  路径校验，不展示原始 WebView 错误描述。实现见
-  [reports.go](../../studio/internal/pages/reports.go) 与
-  [report_window.go](../../studio/internal/pages/report_window.go)，系统 WebView 回调仍待真机验证。
+  留在报告目录内；缺失来源 run 显示为不可用但不阻止打开。单项索引不可读不影响其他报告，
+  列表标记无法读取，打开后可重新读取或返回列表。质量与类别分母直接取自索引，不重算分数；
+  空延迟显示 —。CLI 仍生成 `report.html`，Studio 没有加载 HTML 的控件。实现见
+  [report_view.go](../../studio/internal/pages/report_view.go)，原生交互仍待真机验证。
 - **安全**：模型端点仅本地 loopback；token/凭据/完整 session URL 不进日志、设置或用户可见错误；
   向导执行不回传 stdout/stderr；设置文件 0700/0600 且仅在用户保存时替换。CLI 退出码语义
   （0/2/3/4/130）与呈现映射见 [CLI 与应用分发](cli-dispatch.md)。
@@ -213,7 +211,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 ## 视觉规格
 
 全局视觉与交互规则统一维护在 [Studio Design System](../../studio/docs/design-system.md)，
-覆盖六个主页面、运行详情及报告窗口外壳。该规范吸收模型页的三区布局（选择/组合状态/只读服务）、主题状态色、
+覆盖六个主页面、运行详情及报告视图。该规范吸收模型页的三区布局（选择/组合状态/只读服务）、主题状态色、
 内联详情和测量展示约定，并补齐表单、无障碍、缩放和验收要求。
 
 组件与窗口基线为 onevra v0.2026.10（构建在 MyGo v0.5.4 之上）：主窗口用 `shells/sidebar.NewShell`

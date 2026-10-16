@@ -19,7 +19,7 @@ selected while Dashboard is open. The six page bodies are:
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Inspect service status without start, stop, binding, or orphan recovery actions; orphaned engines show a warning and hide the new-task action. No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. |
-| Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and open each offline HTML report in its own in-app WebView window. |
+| Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and read each report index inside the main window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names. |
 
 Dashboard keeps the active task's selected bundles and new run paths in memory. New task
@@ -109,7 +109,7 @@ components, feedback, accessibility, and verification rules against the onevra v
 component library on MyGo v0.5.4, including its collapsible, resizable sidebar shell and
 component mapping.
 The [page audit](docs/design-system-audit.md) records implementation gaps across all five
-pages, the run detail view, and the offline report window. These documents define the target and
+pages, the run detail view, and the report view. These documents define the target and
 review scope; they do not establish native desktop acceptance.
 
 ## Build and run
@@ -144,18 +144,17 @@ The packaging script reads the same version.
 
 ## Platform dependencies
 
-| Platform | Native windows | Offline report windows |
-| --- | --- | --- |
-| macOS 12+ | Metal | System WKWebView |
-| Windows 10/11 | Direct3D 11 (WARP fallback) | Microsoft WebView2 Runtime; included with Windows 11, install on Windows 10 if absent |
-| Linux | GTK 3 and OpenGL; MyGo can fall back to CPU rendering | WebKitGTK 4.1 (4.0 fallback) |
+| Platform | Native windows |
+| --- | --- |
+| macOS 12+ | Metal |
+| Windows 10/11 | Direct3D 11 (WARP fallback) |
+| Linux | GTK 3 and OpenGL; MyGo can fall back to CPU rendering |
 
-Native controls do not use WebView2 or WebKitGTK. Studio still needs the system WebView
-for HTML reports, including WebKitGTK on Linux. Debian/Ubuntu provide it as
-`libwebkit2gtk-4.1-0`. These requirements follow the pinned MyGo v0.5.4
-[getting-started guide](https://github.com/egoist/mygo/blob/v0.5.4/docs/getting-started.md),
-[rendering guide](https://github.com/egoist/mygo/blob/v0.5.4/docs/ui/rendering.md), and
-[architecture](https://github.com/egoist/mygo/blob/v0.5.4/docs/architecture.md).
+Reports use native controls inside the main window and do not create a WebView.
+The CLI still generates offline HTML, but Studio reads `index.json`: the existing
+`runs[].dashboard` quality, category denominators and latency, plus `runs[].requests`.
+Studio does not rescore results. Null latency displays as —. An unreadable index is
+marked in the list without hiding other reports; opening it offers retry and return.
 
 ## Safety and operation rules
 
@@ -227,8 +226,8 @@ the `INFERYARD_E2E_CLI` / `INFERYARD_E2E_ROOT` knobs. CI runs it on macOS and Wi
 `.github/workflows/studio-check.yml`.
 
 Native view tests, the e2e suite, and fixtures do not establish real-device acceptance. Verify all five
-pages, the Dashboard's stage navigation and restored progress, resource curves, and an
-offline report WebView on actual desktop windows. Cross-compilation is not Windows/Linux runtime evidence.
+pages, the Dashboard's stage navigation and restored progress, resource curves, and the
+report index view on actual desktop windows. Cross-compilation is not Windows/Linux runtime evidence.
 The native UI migration requires fresh acceptance; historical Web UI checks do not qualify
 it. Original diagnostic artifacts under `docs/evidence/` are retained as historical evidence,
 not as current build instructions. Signing, notarization, publication, and the full real

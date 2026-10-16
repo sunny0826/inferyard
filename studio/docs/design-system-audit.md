@@ -4,7 +4,7 @@
 onevra v0.2026.9（构建在 MyGo v0.4.8 之上），映射见
 [组件用法](design-system.md#onevra-组件映射)。本页记录其后按
 [Studio Design System](design-system.md)实施的页面改动和实际验证范围。
-范围包含六个主页面、运行详情及离线报告窗口外壳。未完成事项集中在
+范围包含六个主页面、运行详情及主窗口内报告视图。未完成事项集中在
 [backlog](../../cli/docs/backlog.md#inferyard-studio-后续工作)。
 
 ## 当前结果
@@ -58,11 +58,11 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 | 运行详情 | 失败与加载分离、重试和返回、表格名称、换行图例 | [detail.go](../internal/pages/detail.go)、[chart.go](../internal/pages/chart.go) |
 | 报告 | 来源列表名称化展示、空态下一步、键盘打开 | [reports.go](../internal/pages/reports.go)、[reports_table.go](../internal/pages/reports_table.go) |
 | 设置 | 字段关联、路径保存与下载目录名 | [preparation.go](../internal/pages/preparation.go)、[form_validation.go](../internal/pages/form_validation.go) |
-| 报告窗口 | 固定身份标题、加载失败回传、窗口内重试与关闭 | [report_window.go](../internal/pages/report_window.go) |
+| 报告视图 | 主窗口内呈现索引、无法读取状态、重读与返回列表 | [report_view.go](../internal/pages/report_view.go) |
 
 设备页展示硬件快照；模型列表与推荐在模型页。未将历史 HTML 原型当成已经实现的原生页面。
-报告窗口仍以本地文件加载，按路径复用窗口；重试重新执行 `ReportFile` 路径校验。
-错误使用固定文案，不展示系统 WebView 的原始 URL 或错误描述，不修改历史 HTML。
+报告视图读取本地 `index.json`，呈现 `runs[].dashboard` 与请求行；重读重新执行路径校验。
+索引损坏只在该列表项及打开后的视图显示无法读取，不影响其他报告，不修改历史 HTML。
 
 ## 软件验证
 
@@ -83,8 +83,8 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
   当前依赖为 MyGo v0.5.4 与 onevra v0.2026.10；2026-10-16 升级后在 macOS arm64
   重跑 `go vet ./...` 与 `go test ./... -count=1 -timeout 900s` 均通过，包含页面布局、交互与真实 CLI / 假引擎 e2e。
   本次未重做原生窗口目检，历史图片不作为新依赖的视觉验收证据。
-- [报告窗口回归](../internal/pages/report_window_test.go)使用临时 HTML 和禁止 CLI 执行的 fixture，
-  检查加载失败恢复视图、重新校验路径、原 HTML 字节不变；它没有触发系统 WebView 的真实事件。
+- [报告视图回归](../internal/pages/report_view_test.go)使用临时索引和禁止 CLI 执行的 fixture，
+  检查主窗口打开、质量与类别分母、空延迟、单项读取失败、重新读取及原 HTML 字节不变；不替代原生验收。
 - 既有双题包、单题包显式确认、1–100 来源限制、续测拒绝、冻结分母、缺测断点和取消回归继续通过。
 
 实现者导出了 34 张 MyGo 内存渲染 PNG，并根据目检调整设备键值与报告长路径。
@@ -114,11 +114,11 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 
 1. 真窗口压力尺寸、滚动、文字缩放、高对比度、焦点环及减少动态效果。
 2. 键盘导航、列表选择、详情返回、字段纠错、取消后的焦点和真实读屏公告。
-3. 报告 WebView 的本地加载、加载后失败、离线交互、重复打开聚焦、关闭后主窗口操作。
+3. 主窗口报告视图的打开、返回列表、空延迟、损坏索引与重新读取，以及离线滚动和焦点。
 4. macOS VoiceOver、Windows Narrator、Linux Orca 各自的证据。
 
 用户要求手动验收后，macOS 当前分支应用已用既有设置启动，两次均正常退出。
 根据用户的设置页截图反馈，已移除全部页面顶部的通用“刷新”按钮，空闲状态不再占用工具栏；
 自动更新、错误重试与 Cmd+R 保留。该调整后全模块测试、vet 与 macOS 构建通过。
-这次窗口启动与单页反馈不构成完整原生验收；上列交互、读屏和系统 WebView 检查仍未完成。
+这次窗口启动与单页反馈不构成完整原生验收；上列交互、读屏和报告视图检查仍未完成。
 MyGo 内存渲染、PNG 目检和软件回归不替代以上验收，也不外推到其他平台。

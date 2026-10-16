@@ -6,8 +6,6 @@ import (
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 	"math"
-	"net/url"
-	"strings"
 	"testing"
 )
 
@@ -145,11 +143,6 @@ func TestResourceUnitsNullsAndOrdering(t *testing.T) {
 	}
 }
 func TestReportFileURLAndInputNames(t *testing.T) {
-	value := reportURL("/tmp/report space/#测试/report.html")
-	parsed, e := url.Parse(value)
-	if e != nil || parsed.Scheme != "file" || parsed.Path != "/tmp/report space/#测试/report.html" || parsed.Fragment != "" || !strings.Contains(value, "%23") {
-		t.Fatalf("unsafe file URL %s", value)
-	}
 	for _, v := range []string{"..", "...", "../outside", "bad name", "/tmp"} {
 		if validName(v) {
 			t.Fatalf("accepted unsafe directory %s", v)

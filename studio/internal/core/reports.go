@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"inferyard/studio/internal/inferyard"
 	"os"
@@ -18,13 +19,14 @@ func reportSummary(path string) (ReportSummary, error) {
 	}
 	r.CreatedAt = ptr(info.ModTime().UTC().Format(time.RFC3339Nano))
 	raw, e := os.ReadFile(filepath.Join(path, "index.json"))
-	if os.IsNotExist(e) {
-		return r, nil
-	}
 	if e != nil {
 		return r, e
 	}
-	rows, _ := document(raw)["runs"].([]any)
+	var index map[string]any
+	if e := json.Unmarshal(raw, &index); e != nil {
+		return r, e
+	}
+	rows, _ := index["runs"].([]any)
 	for _, row := range rows {
 		m := obj(row)
 		id := text(m["run_id"])
@@ -69,10 +71,7 @@ func (s *Service) Reports() (*string, []ReportSummary, *ApiError) {
 		if _, e := os.Stat(filepath.Join(path, "report.html")); e != nil {
 			continue
 		}
-		r, e := reportSummary(path)
-		if e != nil {
-			return root, nil, Err("internal_error")
-		}
+		r, _ := reportSummary(path)
 		out = append(out, r)
 	}
 	sort.Slice(out, func(i, j int) bool { return str(out[i].CreatedAt) > str(out[j].CreatedAt) })
@@ -190,4 +189,55 @@ func (s *Service) ReportFile(relative string) (string, *ApiError) {
 		return "", Err("not_found")
 	}
 	return path, nil
+}
+
+// ReportIndex contains the CLI's presentation values; Studio never rescores them.
+type ReportIndex struct {
+	Runs []ReportRun `json:"runs"`
+}
+type ReportRun struct {
+	RunID     string           `json:"run_id"`
+	Dashboard *ReportDashboard `json:"dashboard"`
+	Requests  []ReportRequest  `json:"requests"`
+}
+type ReportRate struct {
+	Numerator   *float64 `json:"numerator"`
+	Denominator *float64 `json:"denominator"`
+	Excluded    *float64 `json:"excluded"`
+}
+type ReportDashboard struct {
+	Quality    ReportRate `json:"quality"`
+	Categories []struct {
+		ID    string     `json:"id"`
+		Label string     `json:"label"`
+		Rate  ReportRate `json:"rate"`
+	} `json:"categories"`
+	Latency struct {
+		Min         *float64 `json:"min"`
+		P50         *float64 `json:"p50"`
+		P95         *float64 `json:"p95"`
+		Max         *float64 `json:"max"`
+		SampleCount *float64 `json:"sample_count"`
+		Excluded    *float64 `json:"excluded"`
+	} `json:"latency"`
+}
+type ReportRequest struct {
+	CaseID        string   `json:"case_id"`
+	CategoryLabel string   `json:"category_label"`
+	State         string   `json:"state"`
+	Quality       *string  `json:"quality"`
+	LatencyMS     *float64 `json:"latency_ms"`
+}
+
+func (s *Service) ReportIndex(id string) (*ReportIndex, *ApiError) {
+	path, e := s.ReportFile(id + "/index.json")
+	if e != nil {
+		return nil, e
+	}
+	raw, err := os.ReadFile(path)
+	var index ReportIndex
+	if err != nil || json.Unmarshal(raw, &index) != nil || index.Runs == nil {
+		return nil, &ApiError{Code: "report_unreadable", Message: "无法读取"}
+	}
+	return &index, nil
 }

@@ -280,21 +280,19 @@ func TestDesignKeyboardDetailsReturnAndHorizontalTable(t *testing.T) {
 func TestDesignReportKeyboardOpenFailure(t *testing.T) {
 	s := testState()
 	s.selected = "reports"
-	s.reportWindows = NewReports(&core.Service{})
 	s.reports = []core.ReportSummary{{ReportId: "missing-report", Path: "/missing-report"}}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.feedback(c); s.reportsTableView(c) }) }, 800, 600)
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportsView(c) }) }, 800, 900)
 	click(t, tt, "missing-report")
 	tt.Key(0, ui.KeyEnter)
-	if s.failure == nil {
-		t.Fatal("keyboard submit did not reach report open validation")
-	}
 	tt.Frame()
-	if !tt.HasText(s.failure.Code) {
-		t.Fatal("report failure disappeared")
+	if s.openedReport == nil || !tt.HasText("无法读取") {
+		t.Fatal("keyboard open did not show unreadable report", tt.Texts())
 	}
-	if len(s.reportWindows.windows) != 0 {
-		t.Fatal("failed report created window entry")
+	click(t, tt, "返回报告列表")
+	if s.openedReport != nil {
+		t.Fatal("return did not close report view")
 	}
+
 }
 
 func TestDesignEngineSemanticColors(t *testing.T) {
