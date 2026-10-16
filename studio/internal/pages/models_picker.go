@@ -75,27 +75,28 @@ func (s *viewState) selectionView(c *ui.Context) {
 	if s.registry.Refreshing {
 		ui.Text(c, "正在刷新模型清单…")
 	}
+	if s.running() != nil || engineLocked(s.engineState.State) {
+		ui.Text(c, "引擎："+displayName(s.engine))
+		ui.Text(c, "模型："+displayName(s.model))
+		return
+	}
+	if len(s.registry.Models) == 0 || len(s.registry.Engines) == 0 {
+		ui.Text(c, "暂无可选组合；到下载页下载引擎与模型。")
+		button(c, "到下载页").AlignSelf(ui.Start).OnClick(func() { s.selected = "downloads" })
+		return
+	}
 	fields := func() {
-		ui.Field(c, "模型", func() {
-			pickerSelect(c, "模型", "请选择模型", &s.model, &s.modelQuery, s.modelOptions(), "没有匹配的模型，请修改搜索词。")
-		})
 		ui.Field(c, "引擎", func() {
 			pickerSelect(c, "引擎", "请选择引擎", &s.engine, &s.engineQuery, s.engineOptions(), "没有匹配的引擎，请修改搜索词。")
 		}).Description(s.engineFit())
+		ui.Field(c, "模型", func() {
+			pickerSelect(c, "模型", "请选择模型", &s.model, &s.modelQuery, s.modelOptions(), "没有匹配的模型，请修改搜索词。")
+		})
 	}
 	if compactLayout(c) {
 		fields()
 	} else {
 		ui.Form(c, fields)
-	}
-	if len(s.registry.Models) == 0 && s.registry.ModelError == nil && !s.registry.Refreshing {
-		ui.Text(c, "暂无本地模型；到下载页创建下载任务。")
-	}
-	if len(s.registry.Engines) == 0 {
-		ui.Text(c, "暂无引擎；到下载页创建下载任务。")
-	}
-	if len(s.registry.Models) == 0 || len(s.registry.Engines) == 0 {
-		button(c, "到下载页").AlignSelf(ui.Start).OnClick(func() { s.selected = "downloads" })
 	}
 	if el := s.eligibility(s.engine); s.engine != "" && el.State == core.EngineCheckIneligible {
 		ui.Row(c).Wrap().Gap(c.Theme().Space(2)).Children(func() {
@@ -103,9 +104,7 @@ func (s *viewState) selectionView(c *ui.Context) {
 			ui.Text(c, s.engine+" · "+human(el.Reason)+"。请重新选择。")
 		})
 	}
-	if s.model != "" {
-		button(c, "改用 CLI 推荐模型").AlignSelf(ui.Start).Disabled(engineLocked(s.engineState.State)).OnClick(func() { s.model = "" })
-	}
+
 }
 
 func (s *viewState) engineFit() string {

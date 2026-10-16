@@ -17,7 +17,7 @@ selected while Dashboard is open. The six page bodies are:
 | --- | --- |
 | Dashboard | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
-| Models | Pick a model and an engine in two linked pickers (each annotates the other's compatibility: engine verification status, model format match), start/stop the engine service for the selected combination and see its status, and inspect Studio-managed services plus a collapsed list of unconfirmed compatible interfaces (binding stays on the Dashboard). No absolute paths. |
+| Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Inspect service status without start, stop, binding, or orphan recovery actions; orphaned engines show a warning and hide the new-task action. No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. |
 | Reports | Generate reports and open each offline HTML report in its own in-app WebView window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names. |
@@ -40,7 +40,7 @@ batch plans display their blocking reason without an execution button.
 A fixed top-right status row shows engine and queue state; its idle text is
 “引擎 已停止 · 队列 空”. Background refresh and busy operations, including saves and
 download actions, show “执行中”. Stop is available for a starting or running engine
-when no non-terminal run exists and Studio is not busy.
+when no non-terminal run exists and Studio is not busy, except on Models.
 
 When no CLI is configured, the Dashboard’s Prepare environment action installs the CLI: it reuses an existing
 `inferyard`/`uv` when found (including Homebrew locations outside the GUI PATH), downloads
@@ -74,7 +74,7 @@ for display deduplication rules.
 Binding always goes through the CLI's PID and start-time checks. Studio persists an
 ownership record (PID + start ticks) for each engine it starts. If Studio exits
 abnormally and the record survives, the next launch re-verifies the process start ticks
-before offering an explicit "stop leftover engine" action; a PID whose identity no
+before offering an explicit "stop leftover engine" action on Dashboard; a PID whose identity no
 longer matches is never signalled — only the stale record is removed. Invalid records,
 unverifiable identities, and failed cleanup expose a "delete record only (do not terminate
 process)" action for workspace `logs/engine-owner.json`. It re-reads the record and refuses

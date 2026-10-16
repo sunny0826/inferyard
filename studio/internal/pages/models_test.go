@@ -35,7 +35,7 @@ func TestModelsPageZonesAndNoDownloadCards(t *testing.T) {
 	s.model, s.engine = "model.gguf", "engine-2 · llama-server"
 	tt := ui.NewTester(s.view, 1120, 2400)
 	for _, want := range []string{
-		"选择模型与引擎", "运行", "本机运行的服务",
+		"选择模型与引擎", "组合状态", "用这个组合新开任务", "本机运行的服务",
 		"model.gguf × engine-2 · llama-server",
 		"Studio 启动的服务随 Studio 退出关闭，不会自动重启。",
 	} {
@@ -54,6 +54,7 @@ func TestModelsPageZonesAndNoDownloadCards(t *testing.T) {
 			t.Fatal("models page keeps download/registry UI: "+gone, tt.Texts())
 		}
 	}
+	assertModelsReadOnly(t, tt)
 	if len(modelUINodes(tt, "text", "绑定")) != 0 {
 		t.Fatal("models page must not offer binding", tt.Texts())
 	}
@@ -63,10 +64,14 @@ func TestModelsEmptyRegistryGuidance(t *testing.T) {
 	s := testState()
 	s.selected = "models"
 	tt := ui.NewTester(s.view, 1120, 2000)
-	for _, want := range []string{"暂无本地模型；到下载页创建下载任务。", "暂无引擎；到下载页创建下载任务。", "尚未读取本机服务。"} {
+	for _, want := range []string{"暂无可选组合；到下载页下载引擎与模型。"} {
 		if !tt.HasText(want) {
 			t.Fatal(want, tt.Texts())
 		}
+	}
+	assertModelsReadOnly(t, tt)
+	if tt.HasText("请选择模型") || tt.HasText("请选择引擎") || tt.HasText("刷新服务列表") || tt.HasText("用这个组合新开任务") {
+		t.Fatal(tt.Texts())
 	}
 	click(t, tt, "到下载页")
 	if s.selected != "downloads" {
@@ -209,6 +214,7 @@ func TestModelsPageHidesPaths(t *testing.T) {
 			t.Fatal("path leaked", v)
 		}
 	}
+	assertModelsReadOnly(t, tt)
 	if !tt.HasText("运行中 · 另一个组合的服务（候选 zh-core-1）") {
 		t.Fatal(tt.Texts())
 	}

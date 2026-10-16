@@ -151,6 +151,13 @@ func TestOrphanServiceViews(t *testing.T) {
 			render = s.serviceView
 		}
 		tt := ui.NewTester(render, 1000, 1200)
+		if page == "models" {
+			assertModelsReadOnly(t, tt)
+			if !tt.HasText("遗留引擎") || tt.HasText("用这个组合新开任务") {
+				t.Fatal(tt.Texts())
+			}
+			continue
+		}
 		for _, want := range []string{"遗留引擎", "停止遗留服务"} {
 			if !tt.HasText(want) {
 				t.Fatal(page, want, tt.Texts())
@@ -181,6 +188,13 @@ func TestOrphanRecoveryButtonOnBothPages(t *testing.T) {
 				render = s.serviceView
 			}
 			tt := ui.NewTester(render, 1000, 1800)
+			if page == "models" {
+				assertModelsReadOnly(t, tt)
+				if !tt.HasText("遗留引擎") || tt.HasText("用这个组合新开任务") {
+					t.Fatal(tt.Texts())
+				}
+				continue
+			}
 			if tt.HasText("仅删除记录（不终止进程）") != (code != "") {
 				t.Fatal(page, code, tt.Texts())
 			}
