@@ -78,7 +78,7 @@ func TestTaskTableChineseBadgeText(t *testing.T) {
 		t.Run(tc.want, func(t *testing.T) {
 			s := testState()
 			s.tasks = []core.RunTask{{TaskId: "task", State: tc.state, Queued: tc.queued, Exit: tc.exit}}
-			tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.tasksView(c) }) }, 1000, 600)
+			tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.dashboardView(c) }) }, 1000, 600)
 			if _, ok := tt.Find(tc.want); !ok {
 				t.Fatal(tt.Texts())
 			}

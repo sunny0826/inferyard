@@ -15,7 +15,7 @@ func TestDashboardEnvironmentVisibilityAndOrder(t *testing.T) {
 	s := testState()
 	s.ready.CLI.Status = "not_found"
 	tt := ui.NewTester(s.view, 1120, 3200)
-	labels := []string{"环境准备", "工作区进度", "阶段步骤 4", "运行历史"}
+	labels := []string{"环境准备", "工作区进度", "阶段步骤 4"}
 	previous := float32(-1)
 	for _, label := range labels {
 		bounds, ok := tt.Find(label)
@@ -169,10 +169,10 @@ func TestDashboardRunningDisablesQuickRunAndOpensDetail(t *testing.T) {
 		t.Fatal(got)
 	}
 	click(t, tt, "返回运行")
-	if s.detailID != "" || !tt.HasText("运行历史") {
+	if s.detailID != "" || !tt.HasText("运行当前题包") {
 		t.Fatal(tt.Texts())
 	}
-	if got := tt.Announcements(); len(got) != 1 || got[0] != "运行" {
+	if got := tt.Announcements(); len(got) != 1 || got[0] != "Dashboard" {
 		t.Fatal(got)
 	}
 }

@@ -259,13 +259,6 @@ func (w *viewState) runView(c *ui.Context) {
 	}
 
 }
-func (w *viewState) reportView(c *ui.Context) {
-	heading(c, "生成并核验两题包报告", 3)
-	ui.Text(c, "汇总已封存的运行，核验报告字节、来源与语义。")
-	if primaryButton(c, "生成报告并核验").AlignSelf(ui.Start).Disabled(w.busy).Clicked() {
-		w.execute(w.nextCommand(), true)
-	}
-}
 
 // boundOption maps a bound bundle to the frozen config written by `config bind`.
 type boundOption struct{ bundle, config string }

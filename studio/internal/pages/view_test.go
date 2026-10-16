@@ -16,7 +16,7 @@ func testState() viewState {
 	return viewState{selected: "dashboard", loaded: true, settingsLoaded: true, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
 }
 func TestSixPagesRender(t *testing.T) {
-	for _, tc := range []struct{ page, want string }{{"dashboard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "选择模型与引擎"}, {"downloads", "下载引擎"}, {"reports", "选择来源 run（1–100 个）"}, {"settings", "CLI"}} {
+	for _, tc := range []struct{ page, want string }{{"dashboard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "选择模型与引擎"}, {"downloads", "下载引擎"}, {"reports", "从历史运行另做报告"}, {"settings", "CLI"}} {
 		t.Run(tc.page, func(t *testing.T) {
 			s := testState()
 			s.selected = tc.page
@@ -130,7 +130,7 @@ func TestDetailTableAndResourcesRender(t *testing.T) {
 	if err := tt.Click("返回运行"); err != nil {
 		t.Fatal(err)
 	}
-	if s.detailID != "" || !tt.HasText("运行历史") {
+	if s.detailID != "" || !tt.HasText("配置、运行与跟踪本地模型测评。") {
 		t.Fatal("return navigation failed")
 	}
 }

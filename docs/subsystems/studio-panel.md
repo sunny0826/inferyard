@@ -85,7 +85,8 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
    `run_missing` 与 single 的 `run --config` 在新 PID 下重新绑定；`resume --from-run` 直接传 PID 与 endpoint，不要求预绑定。duration 与未完成 batch 的 `run --plan` 仅显示阻断原因，不放宽执行白名单。
    一切绑定都生成绑定配置并经 CLI 的 PID 与启动时间身份核验；discover 不预判 bind 可行性，
    `startup_arguments_mismatch` 等拒绝原因如实呈现；`BindingAlive` 仅提供存活提示。
-8. **报告**：`CreateReport` 校验 1–100 个位于结果根内的不同 run → 派生 `inferyard report`
+8. **报告**：页面先展示「历史任务」，再展示「报告列表」。进入任务清除详情与续测来源并聚焦所选运行；续测清除详情并设置来源；实时详情打开对应任务，三者都进入 Dashboard。打开报告为主操作；1–100 个来源的生成入口折叠在「从历史运行另做报告」。仅工作区 `next_action=verify` 且报告未核验时显示「核验」，沿用向导并设置 `ReportVerify=true`；`verified` 显示「已核验」。
+   `CreateReport` 校验 1–100 个位于结果根内的不同 run → 派生 `inferyard report`
    写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面 `Reports.Open` 以
    每报告一个原生 WebView 窗口打开 `report.html`（`file://`，同路径复用聚焦）。报告 ID 为 UTC
    `report-YYYYMMDDTHHMMSSZ[-N]`，命名冲突追加序号。报告与导出契约
@@ -222,7 +223,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 
 Dashboard 按 [`studio/docs/prototypes/dashboard-page.html`](../../studio/docs/prototypes/dashboard-page.html)
 原型实施：结论卡置顶（六阶段步骤条 + 当前阶段徽标 + 阻断原因），阶段动作区使用步骤轨道组件
-（编号圆点 + 纵向连接线，内容铺在页面背景上不用卡片，只渲染当前阶段），其后保留运行历史卡，移除快速运行与任务队列卡；运行详情为页内子视图，通过「返回运行」回到任务。
+（编号圆点 + 纵向连接线，内容铺在页面背景上不用卡片，只渲染当前阶段），移除运行历史、快速运行与任务队列卡；运行详情为页内子视图，通过「返回运行」回到任务。
 
 共享标题、活动进度、换行按钮和一次性公告由 `pages/design_system.go` 承载；
 字段提示由 `pages/form_validation.go` 承载。页面首次加载、刷新与失败分别呈现，刷新失败保留已有数据。

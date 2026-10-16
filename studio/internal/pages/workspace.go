@@ -20,7 +20,6 @@ func (s *viewState) resetWorkspace() {
 	s.detailMu.Lock()
 	s.requestedDetail = ""
 	s.detailMu.Unlock()
-	s.groups = nil
 	s.reportChoices.Clear()
 	s.denied = map[string]bool{}
 }

@@ -12,8 +12,8 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 	} else if !s.loaded {
 		ui.Text(c, "正在读取报告列表…")
 	} else if len(s.reports) == 0 {
-		ui.Text(c, "暂无报告。请在上方选择来源并生成新报告。")
-		button(c, "前往 Dashboard").AlignSelf(ui.Start).OnClick(func() { s.selected = "dashboard" })
+		ui.Text(c, "暂无报告。请新建任务，或从历史运行另做报告。")
+		button(c, "新任务").AlignSelf(ui.Start).OnClick(s.newBenchmark)
 	}
 	selectableTable(&s.reportsTable, func(i int) any { return s.reports[i].Path }, func(i int) string { return s.reports[i].ReportId })
 	c.Key("reports-table")
@@ -36,7 +36,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 	if s.reportsTable.submitted && index >= 0 {
 		_, s.failure = s.reportWindows.Open(s.reports[index].ReportId)
 	}
-	button(c, "打开报告").AlignSelf(ui.Start).Disabled(index < 0).OnClick(func() {
+	primaryButton(c, "打开报告").AlignSelf(ui.Start).Disabled(index < 0).OnClick(func() {
 		_, s.failure = s.reportWindows.Open(s.reports[index].ReportId)
 	})
 }

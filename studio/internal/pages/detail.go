@@ -10,12 +10,6 @@ func (s *viewState) detailView(c *ui.Context) {
 	s.header(c, "运行详情")
 	if button(c, "返回运行").AlignSelf(ui.Start).Clicked() {
 		s.detailID = ""
-		s.announcedPage = "dashboard"
-		c.Announce("运行")
-		s.returnToTasks = true
-		s.detailMu.Lock()
-		s.requestedDetail = ""
-		s.detailMu.Unlock()
 	}
 	errorView(c, s.detailError)
 	if s.detailError != nil {

@@ -19,42 +19,15 @@ func click(t *testing.T, tt *ui.Tester, label string) {
 }
 
 func TestTaskTableActions(t *testing.T) {
-	for _, action := range []string{"button", "double", "enter"} {
-		t.Run(action, func(t *testing.T) {
-			s := testState()
-			s.tasks = []core.RunTask{{TaskId: "task-a", Bundle: ptr("bundle-a")}, {TaskId: "task-b", Bundle: ptr("bundle-b")}}
-			tt := ui.NewTester(func(c *ui.Context) {
-				ui.Column(c).Children(func() {
-					if s.detailID != "" {
-						ui.Text(c, "详情："+s.detailID)
-					} else {
-						s.tasksView(c)
-					}
-				})
-			}, 1000, 600)
-			click(t, tt, "查看详情")
-			if s.detailID != "" {
-				t.Fatal("unselected action activated")
-			}
-			click(t, tt, "bundle-b")
-			switch action {
-			case "button":
-				click(t, tt, "查看详情")
-			case "double":
-				click(t, tt, "bundle-b")
-			case "enter":
-				tt.Key(0, ui.KeyEnter)
-			}
-			if !tt.HasText("详情：task-b") {
-				t.Fatal(tt.Texts())
-			}
-			s.detailID = ""
-			tt.Frame()
-			tt.Frame()
-			if !tt.HasText("task-b") {
-				t.Fatal("selection lost after returning", tt.Texts())
-			}
-		})
+	s := testState()
+	s.selected = "reports"
+	s.detailID = "old-detail"
+	s.resumeSource = &core.RunSummary{Path: "/old"}
+	r := core.RunSummary{RunId: "new-run", Path: "/new"}
+	tt := ui.NewTester(func(c *ui.Context) { s.historyRow(c, r) }, 1000, 600)
+	click(t, tt, "进入任务")
+	if s.selected != "dashboard" || s.detailID != "" || s.resumeSource != nil || s.focusedRun != "/new" {
+		t.Fatal("enter task retained previous detail or resume state")
 	}
 }
 
@@ -76,12 +49,15 @@ func TestHistoryTableResumeAndDetails(t *testing.T) {
 			t.Fatal("missing", text, tt.Texts())
 		}
 	}
+	s.detailID = "old-detail"
+	s.selected = "reports"
 	click(t, tt, "续测")
-	if s.resumeSource == nil || s.resumeSource.Path != "/eligible" {
+	if s.resumeSource == nil || s.resumeSource.Path != "/eligible" || s.detailID != "" || s.selected != "dashboard" {
 		t.Fatal("wrong resume source")
 	}
+	s.selected = "reports"
 	click(t, tt, "实时详情")
-	if s.detailID != "live" {
+	if s.detailID != "live" || s.selected != "dashboard" {
 		t.Fatal("wrong live task")
 	}
 	s.resumeSource = nil
@@ -100,16 +76,19 @@ func TestReportMultiSelectionAndLimit(t *testing.T) {
 	for i := 0; i < 101; i++ {
 		s.history.StandaloneRuns = append(s.history.StandaloneRuns, core.RunSummary{RunId: fmt.Sprintf("run-%03d", i), Path: fmt.Sprintf("/runs/%03d", i)})
 	}
-	tt := ui.NewTester(s.view, 1120, 1200)
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportSourcesView(c) }) }, 1120, 2400)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	click(t, tt, "从历史运行另做报告")
+	tt.Frame()
 	click(t, tt, "生成报告")
 	if s.busy {
 		t.Fatal("empty selection admitted")
 	}
-	click(t, tt, "run-000")
+	click(t, tt, "run-000 · 000")
 	if !tt.HasText("已选 1 / 100") {
 		t.Fatal(tt.Texts())
 	}
-	if err := tt.ClickWith(ui.Cmd, "run-001"); err != nil {
+	if err := tt.ClickWith(ui.Cmd, "run-001 · 001"); err != nil {
 		t.Fatal(err)
 	}
 	if !tt.HasText("已选 2 / 100") {
@@ -136,8 +115,8 @@ func TestReportMultiSelectionAndLimit(t *testing.T) {
 	if !tt.HasText("已选 100 / 100") {
 		t.Fatal("page switch lost choices")
 	}
-	click(t, tt, "run-000")
-	if err := tt.ClickWith(ui.Cmd, "run-000"); err != nil {
+	click(t, tt, "run-000 · 000")
+	if err := tt.ClickWith(ui.Cmd, "run-000 · 000"); err != nil {
 		t.Fatal(err)
 	}
 	if !tt.HasText("已选 0 / 100") {
@@ -243,7 +222,7 @@ func TestDownloadTaskCardsRenderOnReorder(t *testing.T) {
 
 func TestHistoryResumePanelKeepsTableSelection(t *testing.T) {
 	s := testState()
-	s.selected = "dashboard"
+	s.selected = "reports"
 	s.history.Batches = []core.BatchSummary{{BatchId: "batch", Path: "/batch", Runs: []core.RunSummary{{RunId: "selected-run", Path: "/selected", BatchId: ptr("batch"), Resumable: true}}}}
 	tt := ui.NewTester(s.view, 1600, 2600)
 	click(t, tt, "selected-run")
@@ -254,13 +233,14 @@ func TestHistoryResumePanelKeepsTableSelection(t *testing.T) {
 	}
 	tt.Scroll(1000, 1800, 0, 800)
 	click(t, tt, "关闭续测设置")
+	s.selected = "reports"
 	tt.Frame()
 	if !tt.HasText("selected") || tt.HasText("确认续测") {
 		t.Fatal("table selection lost when panel disappeared", tt.Texts())
 	}
 	s.selected = "models"
 	tt.Frame()
-	s.selected = "dashboard"
+	s.selected = "reports"
 	tt.Frame()
 	if !tt.HasText("selected") {
 		t.Fatal("table selection lost after page change")

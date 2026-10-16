@@ -72,11 +72,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 			errorView(c, task.Error)
 		}
 	}
-	c.Key("history-card")
-	card(c, "运行历史", func() { errorView(c, s.historyError); s.historyView(c) })
-	if s.resumeSource != nil {
-		s.resumeView(c)
-	}
+
 }
 
 func (s *viewState) environmentMissing() bool {
@@ -132,25 +128,6 @@ func (s *viewState) setupGuide(c *ui.Context) {
 		}
 	})
 }
-func (s *viewState) reportGuide(c *ui.Context) {
-	if s.progress == nil {
-		return
-	}
-	if s.progress.DefaultScopeComplete {
-		statusBadge(c, "已核验 verified", c.Theme().Success)
-		return
-	}
-	if len(s.progress.Bundles) == 0 {
-		return
-	}
-	for _, b := range s.progress.Bundles {
-		if b.Phase != "run_complete" {
-			return
-		}
-	}
-	card(c, "生成报告并核验", func() { s.reportView(c) })
-}
-
 func (s *viewState) stageView(c *ui.Context) {
 	action := ""
 	if s.progress != nil {
