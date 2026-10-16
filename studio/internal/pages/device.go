@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"sort"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -69,12 +68,6 @@ func deviceRow(c *ui.Context, label, value string) {
 		ui.Text(c, value).Grow(1).MinWidth(0).Selectable().Label(label + "：" + value)
 	})
 }
-func deviceFold(c *ui.Context, title string, fn func()) {
-	componentFold(c, title, fn)
-}
-func deviceMono(c *ui.Context, value string) {
-	ui.Text(c, value).Font("monospace").TextColor(c.Theme().TextMuted).Selectable()
-}
 func (s *viewState) refreshDevice() {
 	// RefreshDevice 异步执行：同步返回 nil 仅表示采集已开始，成败经 LastError 呈现，
 	// 因此这里用中性提示，不能承诺"已更新"。
@@ -109,14 +102,6 @@ func (s *viewState) deviceView(c *ui.Context) {
 		}
 		s.deviceRefreshButton(c, "刷新设备")
 	})
-	if s.progress != nil && s.progress.NextAction == "device_check" {
-		card(c, "检查设备", func() {
-			ui.Text(c, "模型与引擎可在「模型」页准备。")
-			if primaryButton(c, "检查设备").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
-				s.execute(s.nextCommand(), false)
-			}
-		})
-	}
 	snapshot, parseError := parseDeviceSnapshot(s.device.Snapshot)
 	if snapshot != nil && parseError == nil {
 		deviceHardware(c, snapshot.object("hardware"))
@@ -193,29 +178,5 @@ func deviceHardware(c *ui.Context, hw deviceObject) {
 			architecture += "（Apple 芯片）"
 		}
 		deviceRow(c, "架构", architecture)
-		deviceFold(c, "数据来源与缺测明细", func() {
-			sources := hw.object("sources")
-			for _, key := range deviceKeys(sources) {
-				deviceMono(c, key+" ← "+sources.value(key))
-			}
-			deviceMissing(c, "", hw.object("missing"))
-			for i, item := range devices {
-				deviceMissing(c, fmt.Sprintf("GPU %d · ", i+1), deviceItem(item).object("missing"))
-			}
-			deviceMono(c, "检测位置："+displayName(hw.value("disk_path")))
-		})
 	})
-}
-func deviceKeys(v deviceObject) []string {
-	keys := make([]string, 0, len(v))
-	for key := range v {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
-}
-func deviceMissing(c *ui.Context, prefix string, missing deviceObject) {
-	for _, key := range deviceKeys(missing) {
-		deviceMono(c, prefix+key+"：缺测 — "+missing.label(key))
-	}
 }
