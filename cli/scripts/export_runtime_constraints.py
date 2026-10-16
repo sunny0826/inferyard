@@ -128,6 +128,8 @@ def main():
             [
                 "uv",
                 "export",
+                "--color",
+                "never",
                 "--frozen",
                 "--no-dev",
                 "--no-emit-project",

@@ -2,6 +2,9 @@
 
 import hashlib
 import json
+import os
+import subprocess
+import sys
 import tomllib
 import zipfile
 from pathlib import Path
@@ -24,6 +27,27 @@ def test_constraint_export_rejects_missing_transitive_and_marker_overlaps():
         validate("httpx==0.28.1\nhttpx==0.28.1; sys_platform == 'linux'", lock, project)
     with pytest.raises(ValueError, match="exact_registry"):
         validate("httpx @ https://example.test/httpx.whl", lock, project)
+
+
+def test_constraint_export_is_plain_text_with_forced_color(tmp_path):
+    output = tmp_path / "runtime-constraints.txt"
+    env = {**os.environ, "FORCE_COLOR": "1"}
+    env.pop("NO_COLOR", None)
+    command = [
+        sys.executable,
+        str(ROOT / "scripts/export_runtime_constraints.py"),
+        "--out",
+        str(output),
+    ]
+    result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert "\x1b" not in output.read_text()
+    proof = json.loads(output.with_suffix(".txt.validation.json").read_text())
+    assert set(proof) == {"linux-x64", "windows-x64", "macos-arm64"}
+    checked = subprocess.run(
+        [*command, "--check"], cwd=ROOT, env=env, capture_output=True, text=True
+    )
+    assert checked.returncode == 0, checked.stderr
 
 
 def test_wheel_cannot_hide_machine_files_in_dist_info(tmp_path):

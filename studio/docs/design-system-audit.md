@@ -80,7 +80,9 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 - [交互回归](../internal/pages/design_interaction_test.go)与
   [语义回归](../internal/pages/design_system_test.go)检查字段纠错、公告、焦点、恢复动作及进度。
   部分语义断言读取固定 MyGo 版本的内部视图节点，升级依赖时需要复核这些测试适配；
-  当前依赖为 MyGo v0.4.8 与 onevra v0.2026.9。
+  当前依赖为 MyGo v0.5.4 与 onevra v0.2026.10；2026-10-16 升级后在 macOS arm64
+  重跑 `go vet ./...` 与 `go test ./... -count=1 -timeout 900s` 均通过，包含页面布局、交互与真实 CLI / 假引擎 e2e。
+  本次未重做原生窗口目检，历史图片不作为新依赖的视觉验收证据。
 - [报告窗口回归](../internal/pages/report_window_test.go)使用临时 HTML 和禁止 CLI 执行的 fixture，
   检查加载失败恢复视图、重新校验路径、原 HTML 字节不变；它没有触发系统 WebView 的真实事件。
 - 既有双题包、单题包显式确认、1–100 来源限制、续测拒绝、冻结分母、缺测断点和取消回归继续通过。

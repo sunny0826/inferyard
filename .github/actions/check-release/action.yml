@@ -20,7 +20,7 @@ runs:
   using: composite
   steps:
     - name: Bind download to the requested source and trusted workflow
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         SOURCE_RUN: ${{ inputs.run-id }}
         SOURCE_COMMIT: ${{ inputs.source-commit }}
@@ -42,7 +42,7 @@ runs:
               || run.head_repository.full_name !== `${context.repo.owner}/${context.repo.repo}`) {
             throw new Error('Candidate run origin does not match the reviewed source');
           }
-    - uses: actions/download-artifact@v5
+    - uses: actions/download-artifact@v8
       with:
         name: release-candidate
         run-id: ${{ inputs.run-id }}

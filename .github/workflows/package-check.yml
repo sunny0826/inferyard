@@ -11,10 +11,10 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
       - run: mise exec -- uv sync --frozen
       - run: mise exec -- uv run --frozen pytest -q
       - run: mise exec -- uv run --frozen ruff check src tests scripts
@@ -24,7 +24,7 @@ jobs:
       - run: mise exec -- uv run --frozen python scripts/export_community.py --check
       - run: mise exec -- uv run --frozen python scripts/build_distribution.py --out dist/package-check
       - run: mise exec -- uv run --frozen python -m tests.packaging.prepare_inputs --out dist/package-inputs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: checked-build
           path: |
@@ -39,12 +39,12 @@ jobs:
         os: [ubuntu-24.04, windows-2025, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
       - run: mise exec -- uv sync --frozen
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: checked-build
           path: cli/dist
@@ -52,7 +52,7 @@ jobs:
         run: mise exec -- uv run --frozen python tests/packaging/ci_installed.py --artifact dist/package-check --inputs dist/package-inputs --out "${{ runner.temp }}/installed-check"
         env:
           LAB_DISPOSABLE_HOST_TEST: "yes"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: installed-${{ matrix.os }}
@@ -66,16 +66,16 @@ jobs:
     needs: installed
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
       - run: mise exec -- uv sync --frozen
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: checked-build
           path: cli/dist
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: installed-*
           path: cli/installed
@@ -90,7 +90,7 @@ jobs:
           --installed installed/installed-macos-15/result.json
           --source-commit "$SOURCE_COMMIT"
           --out dist/release-candidate
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-candidate
           path: cli/dist/release-candidate

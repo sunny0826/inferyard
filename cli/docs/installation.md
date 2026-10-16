@@ -68,7 +68,8 @@ inferyard --help
 PowerShell 将 `./...whl` 换为 `'.\inferyard-0.0.2-py3-none-any.whl'`；路径含空格或中文
 时加引号。uv 管理 Python 和工具环境，缺解释器时首次安装需联网。首批目标为 Linux x64、
 Windows x64、macOS arm64；纯 Python wheel 标签不证明所有平台的原生采集和引擎能力已验收。
-当前验证基线为 Python 3.14.7 / uv 0.12.18，不宣称 uv 最低支持版本。
+当前开发与安装工具基线为 Python 3.14.7 / uv 0.13.1，不宣称 uv 最低支持版本。
+发行候选仍须完成下方独立安装检查；工具升级不继承历史候选的验收结果。
 
 临时试用同一 wheel：
 

@@ -4,9 +4,9 @@ go 1.27.1
 
 require (
 	github.com/ebitengine/purego v0.11.1
-	github.com/egoist/mygo v0.4.8
-	github.com/oneo-me/onevra/source v0.2026.9
-	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1
+	github.com/egoist/mygo v0.5.4
+	github.com/oneo-me/onevra/source v0.2026.10
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 )
 
 require (
