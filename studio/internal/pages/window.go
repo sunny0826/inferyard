@@ -34,7 +34,7 @@ var navigation = []struct {
 // New opens the main window on the Onevra sidebar shell: a collapsible,
 // resizable navigation sidebar, a floating window header and the Onevra theme.
 // The navigation and content builders are shared with the in-memory test view.
-func New(ctx context.Context, service *core.Service, page string, reports *Reports) {
+func New(ctx context.Context, service *core.Service, page string) {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &viewState{ctx: ctx, service: service, selected: pageID(page), denied: map[string]bool{}, chartIndex: -1}
 	shell := sidebar.NewShell(sidebar.ShellOptions{
@@ -58,10 +58,6 @@ func New(ctx context.Context, service *core.Service, page string, reports *Repor
 	})
 	w := shell.Window()
 	s.win = w
-	s.reportWindows = reports
-	if reports != nil {
-		reports.onFailure = func(e *core.ApiError) { w.Update(func() { s.failure = e }) }
-	}
 	w.OnClosed(cancel)
 	wake, off, cursor := service.Bus.Subscribe()
 	go func() {
@@ -121,7 +117,7 @@ type viewState struct {
 	ctx                                                                                 context.Context
 	service                                                                             *core.Service
 	win                                                                                 *mygo.Window
-	reportWindows                                                                       *Reports
+	openedReport                                                                        *reportViewState
 	refreshMu                                                                           sync.Mutex
 	detailMu                                                                            sync.Mutex
 	requestedDetail                                                                     string

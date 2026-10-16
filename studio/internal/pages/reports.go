@@ -2,84 +2,16 @@ package pages
 
 import (
 	"fmt"
-	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
-	"net/url"
-	"path/filepath"
 )
 
-// Reports owns one native WebView window per report and never serves HTTP.
-type reportWindow struct {
-	win  *mygo.Window
-	view *mygo.WebView
-}
-
-type Reports struct {
-	service   *core.Service
-	windows   map[string]reportWindow
-	onFailure func(*core.ApiError)
-}
-
-func NewReports(service *core.Service) *Reports {
-	return &Reports{service: service, windows: map[string]reportWindow{}}
-}
-func reportURL(path string) string {
-	value := filepath.ToSlash(path)
-	if filepath.VolumeName(path) != "" {
-		value = "/" + value
-	}
-	return (&url.URL{Scheme: "file", Path: value}).String()
-}
-
-// Open must be called on the UI thread, like mygo.NewWindow.
-func (r *Reports) Open(id string) (*mygo.Window, *core.ApiError) {
-	path, e := r.service.ReportFile(id + "/report.html")
-	if e != nil {
-		return nil, e
-	}
-	if existing, ok := r.windows[path]; ok && !existing.win.IsDestroyed() {
-		existing.win.Focus()
-		return existing.win, nil
-	}
-	content := &reportContent{id: id}
-	w := mygo.NewWindow(mygo.WindowOptions{Title: "InferYard · 报告 " + id, Width: 1120, Height: 800, Content: ui.View(content.view)})
-	v, err := w.NewWebView(mygo.WebViewOptions{})
-	if err != nil {
-		w.Close()
-		return nil, reportLoadError()
-	}
-	content.web = v
-	v.Page().OnPageTitleUpdated(func(e *mygo.TitleEvent) { e.PreventDefault() })
-	fail := func(e *core.ApiError) {
-		if w.IsDestroyed() {
-			return
-		}
-		w.Update(func() { content.failure = e })
-		if r.onFailure != nil {
-			r.onFailure(e)
-		}
-	}
-	v.Page().OnDidFailLoad(func(_ *mygo.LoadError) { fail(reportLoadError()) })
-	v.Page().OnRenderProcessGone(func(_ string) { fail(reportLoadError()) })
-	content.retry = func() {
-		content.failure = nil
-		if e := r.loadReport(id, v.Page().LoadURL); e != nil {
-			fail(e)
-		}
-	}
-	content.close = w.Close
-	r.windows[path] = reportWindow{win: w, view: v}
-	w.OnClosed(func() { delete(r.windows, path) })
-	if e := r.loadReport(id, v.Page().LoadURL); e != nil {
-		w.Close()
-		return nil, e
-	}
-	w.Update(func() {})
-	return w, nil
-}
 func (s *viewState) reportsView(c *ui.Context) {
+	if s.openedReport != nil {
+		s.reportView(c)
+		return
+	}
 	s.header(c, "报告")
 	card(c, "历史任务", func() { errorView(c, s.historyError); s.historyView(c) })
 	card(c, "报告列表", func() {

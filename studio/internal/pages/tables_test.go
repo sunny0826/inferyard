@@ -126,7 +126,6 @@ func TestReportMultiSelectionAndLimit(t *testing.T) {
 
 func TestReportTableSelection(t *testing.T) {
 	s := testState()
-	s.reportWindows = NewReports(&core.Service{})
 	s.reports = []core.ReportSummary{{ReportId: "report-a", Path: "/reports/a", RunIds: []string{"source-a"}, RunPaths: []*string{nil}}, {ReportId: "report-b", Path: "/reports/b", RunIds: []string{"source-b"}, RunPaths: []*string{ptr("/runs/b")}}}
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportsTableView(c) }) }, 1000, 700)
 	click(t, tt, "打开报告")
@@ -142,7 +141,7 @@ func TestReportTableSelection(t *testing.T) {
 		t.Fatal(tt.Texts())
 	}
 	click(t, tt, "打开报告")
-	if s.failure == nil || s.failure.Code != "not_found" {
+	if s.openedReport == nil || s.openedReport.id != "report-b" || s.openedReport.failure == nil {
 		t.Fatal("selected open not invoked")
 	}
 }

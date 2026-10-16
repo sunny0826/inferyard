@@ -41,8 +41,7 @@ func main() {
 		desktop.Subscribe(ctx, service.Bus, func(message desktop.Message) error {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
 		}, log.Printf)
-		reports := pages.NewReports(service)
-		pages.New(ctx, service, "", reports)
+		pages.New(ctx, service, "")
 	})
 	go func() { <-ctx.Done(); mygo.App.Quit() }()
 	if err := mygo.App.Run(); err != nil {
