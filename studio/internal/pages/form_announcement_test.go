@@ -17,7 +17,7 @@ func TestFormFailureAnnouncedOnEverySubmission(t *testing.T) {
 			switch name {
 			case "settings":
 				s.workspace = "relative/workspace"
-				render, submit = s.settingsView, "保存设置"
+				render, submit = s.settingsView, "保存"
 			case "resume":
 				s.resumeSource = &core.RunSummary{Path: "/results/run"}
 				s.endpoint = "http://127.0.0.1:8080"

@@ -81,7 +81,7 @@ func TestDesignInvalidFieldsPreserveEdits(t *testing.T) {
 	s.workspace = "relative/workspace"
 	s.cliPath = "/keep/cli"
 	tt := ui.NewTester(s.view, 1120, 1200)
-	click(t, tt, "保存设置")
+	click(t, tt, "保存")
 	if s.failure == nil || s.busy || s.workspace != "relative/workspace" || s.cliPath != "/keep/cli" {
 		t.Fatal("invalid settings submitted or edited values lost")
 	}
