@@ -161,7 +161,8 @@ func TestDeviceGuidancePreservesSnapshot(t *testing.T) {
 	s.selected = "device"
 	s.progress.NextAction = "device_check"
 	tt := ui.NewTester(s.view, 1120, 1600)
-	if !tt.HasText("检查设备") || !tt.HasText("尚无设备快照") {
+	if slices.Contains(tt.Texts(), "检查设备") || !tt.HasText("尚无设备快照") ||
+		!slices.Contains(tt.Texts(), "刷新设备") {
 		t.Fatal(tt.Texts())
 	}
 }

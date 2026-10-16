@@ -2,6 +2,7 @@ package pages
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -70,12 +71,9 @@ func TestDeviceLocalizedSnapshot(t *testing.T) {
 			t.Fatalf("unexpected %q", unwanted)
 		}
 	}
-	if err := tt.Click("数据来源与缺测明细"); err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"temperature：缺测 — unsupported", "cpu_model ← fixture:cpu", "检测位置：workspace", "memory_free_bytes：缺测 — 未测量"} {
-		if !tt.HasText(want) {
-			t.Fatalf("missing inline detail %q: %v", want, tt.Texts())
+	for _, unwanted := range []string{"检查设备", "数据来源与缺测明细", "temperature：缺测 — unsupported", "cpu_model ← fixture:cpu", "检测位置：workspace", "memory_free_bytes：缺测 — 未测量"} {
+		if slices.Contains(tt.Texts(), unwanted) {
+			t.Fatalf("unexpected detail %q: %v", unwanted, tt.Texts())
 		}
 	}
 	tt.SetDark(true)
@@ -159,10 +157,7 @@ func TestDeviceBlockedAndUnknownFallback(t *testing.T) {
 			t.Fatalf("unexpected %q", unwanted)
 		}
 	}
-	if err := tt.Click("数据来源与缺测明细"); err != nil {
-		t.Fatal(err)
-	}
-	if !tt.HasText("temperature：缺测 — unsupported") {
+	if slices.Contains(tt.Texts(), "数据来源与缺测明细") {
 		t.Fatal(tt.Texts())
 	}
 }
@@ -172,7 +167,9 @@ func TestDeviceInvalidSnapshot(t *testing.T) {
 		s := deviceTestState()
 		s.device.Snapshot = json.RawMessage(raw)
 		tt := ui.NewTester(s.view, 1120, 800)
-		if !tt.HasText("设备快照无法读取。") || tt.HasText("推荐配置") {
+		if !tt.HasText("设备快照无法读取。") || tt.HasText("推荐配置") ||
+			!slices.Contains(tt.Texts(), "检查设备设置") || !slices.Contains(tt.Texts(), "刷新设备") ||
+			slices.Contains(tt.Texts(), "检查设备") {
 			t.Fatal(tt.Texts())
 		}
 	}

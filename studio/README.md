@@ -16,7 +16,7 @@ selected while Dashboard is open. The six page bodies are:
 | Page | Purpose |
 | --- | --- |
 | Dashboard | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect history and case progress, view CPU/memory curves, and resume eligible runs. |
-| Device | Inspect hardware, measurement availability, collection sources, and device-check results. |
+| Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Models | Pick a model and an engine in two linked pickers (each annotates the other's compatibility: engine verification status, model format match), start/stop the engine service for the selected combination and see its status, and inspect Studio-managed services plus a collapsed list of unconfirmed compatible interfaces (binding stays on the Dashboard). No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. |
 | Reports | Generate reports and open each offline HTML report in its own in-app WebView window. |
