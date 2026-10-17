@@ -23,18 +23,22 @@ def duration_inputs(scenario, limit=100):
     workload = source["workloads"][0]
     workload["purpose"] = "stability"
     workload["repeats"] = 1
+    # A request-cap scenario must leave time for a full request before the window closes.
+    duration_seconds = 2 * workload["timeout_seconds"] if limit == 1 else 0.5
     workload["protocol"].update(
         kind="duration",
-        duration_seconds=0.5,
+        duration_seconds=duration_seconds,
         max_requests=limit,
-        window_seconds=0.5,
+        window_seconds=duration_seconds,
         min_completed_per_case_per_window=1,
         drain_timeout_seconds=workload["timeout_seconds"],
     )
     return compile_plan(source), loaded, deps, output
 
 
-def test_duration_cycles_requests_and_rebuilds_window(scenario, monkeypatch):
+@pytest.mark.parametrize("stream_delay", [0.03, 0.6])
+def test_duration_cycles_requests_and_rebuilds_window(scenario, monkeypatch, stream_delay):
+    scenario[3]["stream_delay"] = stream_delay
     plan, loaded, deps, output = duration_inputs(scenario)
     from inferyard.platforms.resources_linux import ResourceSampler
 
@@ -47,22 +51,35 @@ def test_duration_cycles_requests_and_rebuilds_window(scenario, monkeypatch):
         )
     )
     assert code == 0, data["summary"]["stop_reason"]
-    assert len(data["requests"]) > 3
+    assert data["requests"]
+    order = data["selection"]["case_ids"]
+    assert [r["case_id"] for r in data["requests"]] == [
+        order[index % len(order)] for index in range(len(data["requests"]))
+    ]
+    assert all(r["execution_state"] == "completed" for r in data["requests"])
     assert len({r["request_id"] for r in data["requests"]}) == len(data["requests"])
-    assert len({r["case_id"] for r in data["requests"]}) == 3
     assert [r["plan_index"] for r in data["requests"]] == list(range(len(data["requests"])))
     assert data["summary"]["duration"]["window_completed"]
-    assert any(
-        item["value"] is not None
-        for item in data["summary"]["metric_observations"]
-        if item["metric_id"] == "S02"
+    assert data["summary"]["duration"]["probe_coverage_complete"] == (
+        len(data["requests"]) >= len(order)
     )
+    rss = [item for item in data["summary"]["metric_observations"] if item["metric_id"] == "S02"]
+    assert rss
+    if len(data["requests"]) >= len(order):
+        assert any(item["value"] is not None for item in rss)
+    else:
+        assert all(
+            item["value"] is None and item["missing_reason"] == "no_complete_probe_cycle"
+            for item in rss
+        )
     assert data["summary"]["counts"]["planned"] is None
     assert data["summary"]["quality"]["status"] == "repeated_probe_observations_only"
     assert data["summary"] == read_trial(root)["summary"]
 
 
-def test_duration_request_limit_is_incomplete(scenario):
+@pytest.mark.parametrize("stream_delay", [0.03, 0.6])
+def test_duration_request_limit_is_incomplete(scenario, stream_delay):
+    scenario[3]["stream_delay"] = stream_delay
     plan, loaded, deps, output = duration_inputs(scenario, limit=1)
     # Plan budget always remains canonical after the fixture changes.
     assert plan["plan_sha256"] == plan_hash(plan)

@@ -20,22 +20,27 @@ def protocol(**kwargs):
 def test_cycles_cases_and_allows_request_to_drain_after_window():
     now = 100
     calls, events = [], []
+    order = ["a", "b", "c"]
 
     async def request(index, case, admission, drain):
         nonlocal now
         assert now < admission < drain
         calls.append((index, case))
-        now += 400_000_000
+        now += 150_000_000
         return {"execution_state": "completed"}
 
     result = asyncio.run(
         run_duration(
-            protocol(), ["a", "b"], request, lambda *args: events.append(args), clock=lambda: now
+            protocol(case_ids=order),
+            order,
+            request,
+            lambda *args: events.append(args),
+            clock=lambda: now,
         )
     )
-    assert calls == [(0, "a"), (1, "b"), (2, "a")]
+    assert calls == [(0, "a"), (1, "b"), (2, "c"), (3, "a"), (4, "b"), (5, "c"), (6, "a")]
     assert result["window_completed"]
-    assert result["completed_requests"] == 3
+    assert result["completed_requests"] == 7
     assert events[0][0] == "duration_started" and events[-1][0] == "duration_closed"
 
 
