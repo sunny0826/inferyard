@@ -1,3 +1,5 @@
+//go:build ui_debug && !release
+
 package pages
 
 import (

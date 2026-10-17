@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"flag"
-	"strings"
 	"testing"
 )
 
@@ -14,8 +13,6 @@ func TestStartupOptions(t *testing.T) {
 		debug, failure bool
 	}{
 		{nil, false, false},
-		{[]string{"--debug-ui"}, true, false},
-		{[]string{"--debug-ui=false"}, false, false},
 		{[]string{"--debug-unknown"}, false, true},
 		{[]string{"workspace"}, false, true},
 	} {
@@ -26,7 +23,7 @@ func TestStartupOptions(t *testing.T) {
 		}
 	}
 	var help bytes.Buffer
-	if _, err := parseOptions([]string{"--help"}, &help); !errors.Is(err, flag.ErrHelp) || !strings.Contains(help.String(), "debug-ui") {
-		t.Fatal("preview switch absent from help", help.String(), err)
+	if _, err := parseOptions([]string{"--help"}, &help); !errors.Is(err, flag.ErrHelp) {
+		t.Fatal(help.String(), err)
 	}
 }

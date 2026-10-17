@@ -39,7 +39,15 @@ jobs:
       - name: Unit tests
         if: matrix.os == 'macos-15'
         working-directory: studio
-        run: mise exec -- go test ./internal/... -count=1
+        run: mise exec -- go test . ./internal/... -count=1
+      - name: UI preview and release boundary
+        if: matrix.os == 'macos-15'
+        working-directory: studio
+        run: |
+          mise exec -- go vet -tags ui_debug ./...
+          mise exec -- go test -tags ui_debug . ./internal/pages -count=1
+          mise exec -- go test -tags ui_debug,release . -count=1
+          mise exec -- python -m unittest discover -s scripts -p test_package.py
       - name: e2e (fake engine, recorded CLI boundary)
         working-directory: studio
         run: mise exec -- go test ./tests/e2e/ -count=1 -timeout 900s -v

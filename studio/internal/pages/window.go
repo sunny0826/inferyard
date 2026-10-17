@@ -70,7 +70,7 @@ func pageID(page string) string {
 }
 
 type viewState struct {
-	preview                                                                             *previewSession
+	preview                                                                             previewMode
 	lastEngineVerification                                                              time.Time
 	discoveryCLI                                                                        string
 	autoBind                                                                            bindingArm
@@ -276,7 +276,7 @@ func (s *viewState) finishWork(message string, e *core.ApiError) {
 }
 func (s *viewState) selectTask(id string) {
 	if s.preview != nil {
-		s.detailID, s.detail, s.detailError = id, previewDetail(id), nil
+		s.detailID, s.detail, s.detailError = id, s.preview.detail(id), nil
 		return
 	}
 	s.detailID = id

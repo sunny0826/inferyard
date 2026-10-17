@@ -147,14 +147,19 @@ The packaging script reads the same version.
 
 ## UI debug preview
 
-From `studio/`, open the native pages with simulated data:
+UI preview is available only in an explicitly tagged development/test build. From
+`studio/`, open the native pages with simulated data:
 
 ```sh
-mise exec -- go run . --debug-ui
+mise exec -- go run -tags ui_debug . --debug-ui
 ```
 
-An existing build also accepts `./build/inferyard-studio --debug-ui`. The sidebar's
-“模拟场景” selector provides 14 scenes: task preparation, running, completion and failure;
+Normal builds and packaged releases omit the switch, preview UI and embedded fixtures.
+Their help does not list `--debug-ui`, and passing it is an input error. The `release` tag
+disables preview even when combined with `ui_debug`; `build-all.sh` always sets `release`,
+and packaging rejects binaries without that tag before writing distributions.
+
+The sidebar's “模拟场景” selector provides 14 scenes: task preparation, running, completion and failure;
 live run details; report list, details, long tables and read errors; empty data; models;
 downloads; device measurements; and settings. Pages use the same components as normal
 Studio. “重置场景” restores fixture data, form values, table selection and collapsed sections.
@@ -244,6 +249,14 @@ From `studio/`, the code checks are:
 ```sh
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
+```
+
+Also check the development preview and the release override:
+
+```sh
+mise exec -- go test -tags ui_debug . ./internal/pages
+mise exec -- go test -tags ui_debug,release .
+mise exec -- python -m unittest discover -s scripts -p test_package.py
 ```
 
 `go test ./...` includes the boundary e2e suite under `tests/e2e`: the real CLI executes

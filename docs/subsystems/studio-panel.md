@@ -50,8 +50,9 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 
 ## 运行路径
 
-1. **启动**：`main` 先解析启动参数；`--help` 输出说明并退出，非法参数退出 2；`--debug-ui`
-   进入下述独立预览路径。普通启动解析嵌入配置设置 `core.Version`，用 `signal.NotifyContext` 建应用上下文并
+1. **启动**：`main` 先解析启动参数；`--help` 输出说明并退出，非法参数退出 2。只有开发标签
+   `ui_debug` 且无 `release` 时注册 `--debug-ui` 并允许进入下述独立预览路径。
+   普通启动解析嵌入配置设置 `core.Version`，用 `signal.NotifyContext` 建应用上下文并
    `core.New` 创建服务（读设置、启动串行 runQueue、按需 `RefreshDevice`），随后 `mygo.App.Run`
    进入 WhenReady：注册桌面通知订阅、创建 `pages.Reports` 与主窗口 `pages.New`。SIGINT/SIGTERM
    触发 `mygo.App.Quit` 与 `Service.Shutdown`。
@@ -114,8 +115,14 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 
 ## UI 调试预览
 
+预览源文件、嵌入 fixture 与对应测试使用 `ui_debug && !release` 构建约束。普通构建
+不注册 `--debug-ui`，帮助不列出它，显式传入时退出 2。`build-all.sh` 固定 `-tags release`，
+覆盖环境传入的标签；`package.py` 在写入分发目录前读取全部二进制的 Go build info，
+拒绝缺少 `release` 标签的产物。`release` 与 `ui_debug` 同时存在时仍排除预览。
+
 `--debug-ui` 在 `core.New` 之前分流至 `pages.NewPreview`，只创建原生窗口及内存
 `previewSession`，不创建服务、队列、事件订阅或桌面通知，不读取用户设置与工作区证据。
+页面通过未导出的 `previewMode` 接口访问预览；实现仅存在于开发构建，正式模式保持空值。
 普通模式与预览共用 `pageShellOptions` 和真实页面构建器；预览窗口的 `StateKey` 为空，
 不保存窗口和侧栏布局。标题与侧栏持续标注模拟数据。
 

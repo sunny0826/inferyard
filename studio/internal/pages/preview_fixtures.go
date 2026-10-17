@@ -1,3 +1,5 @@
+//go:build ui_debug && !release
+
 package pages
 
 import (
@@ -106,7 +108,7 @@ func previewEmpty(s *viewState) {
 	s.ready = core.Readiness{CLI: core.InferyardProbe{Status: "not_found"}}
 }
 
-func previewReport(reference string) (*core.ReportIndex, *core.ApiError) {
+func (*previewSession) report(reference string) (*core.ReportIndex, *core.ApiError) {
 	if reference == "broken-report" {
 		return nil, &core.ApiError{Code: "report_unreadable", Message: "无法读取"}
 	}
@@ -126,7 +128,7 @@ func previewReport(reference string) (*core.ReportIndex, *core.ApiError) {
 	return &index, nil
 }
 
-func previewDetail(id string) *core.RunTaskDetail {
+func (*previewSession) detail(id string) *core.RunTaskDetail {
 	return &core.RunTaskDetail{
 		Task: core.RunTask{TaskId: id, Kind: "run", State: "running", Bundle: previewValue("zh-core"), RunId: previewValue("preview-run"), RunPath: previewValue("/preview/results/preview-run")},
 		Progress: &core.RunProgress{Done: 42, Total: previewValue(int64(120)), Phase: previewValue("formal"), CurrentCaseId: previewValue("preview-case-043"), Cases: []core.CaseProgress{

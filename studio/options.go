@@ -14,7 +14,7 @@ func parseOptions(args []string, output io.Writer) (startupOptions, error) {
 	var options startupOptions
 	flags := flag.NewFlagSet("inferyard-studio", flag.ContinueOnError)
 	flags.SetOutput(output)
-	flags.BoolVar(&options.debugUI, "debug-ui", false, "Open native UI previews with simulated data; no model, download, or settings operations")
+	registerDebugUI(flags, &options)
 	if err := flags.Parse(args); err != nil {
 		return options, err
 	}

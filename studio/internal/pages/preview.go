@@ -1,3 +1,5 @@
+//go:build ui_debug && !release
+
 package pages
 
 import (
@@ -81,10 +83,11 @@ func (p *previewSession) content(c *ui.Context) {
 	ui.Column(c.Key(p.generation)).Fill().Children(func() { p.state.contentView(c) })
 }
 
-func (s *viewState) previewAction() bool {
-	if s.preview == nil {
-		return false
+func (p *previewSession) showNotice() { p.notice = previewNotice }
+
+func (p *previewSession) resetTask(model, engine string) {
+	p.loadScene(0)
+	if model != "" && engine != "" {
+		p.state.model, p.state.engine = model, engine
 	}
-	s.preview.notice = previewNotice
-	return true
 }

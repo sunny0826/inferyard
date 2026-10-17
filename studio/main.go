@@ -36,8 +36,7 @@ func main() {
 	core.Version = version[0][1]
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	if options.debugUI {
-		runApp(ctx, func() { pages.NewPreview(ctx) })
+	if runDebugUI(ctx, options) {
 		return
 	}
 	service, err := core.New(ctx, core.Options{})
