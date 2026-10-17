@@ -154,6 +154,12 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 失败重试、并行下载、设置生效和过期事件。macOS 原生窗口已用页面按钮完成准备环境、
 模拟下载并选择模型、双题包运行、动态详情与打开本次报告。模拟检查不证明真实模型流程或 Windows/Linux 原生行为。
 
+[`tests/ui`](../../studio/tests/ui/README.md) 使用 XCUITest 构建实际 Go 入口并启动独立
+`--debug-ui` macOS 窗口。测试只按可访问控件操作和断言，不读取 `viewState`、推进测试时钟或用
+场景下拉完成流程；由真实窗口 ticker 推进模拟任务。每个用例重新启动模拟应用，结果写入新的
+`build/ui-e2e/run-*`，失败保留截图与辅助功能树。根级 `mise run test:studio-ui` 和 macOS CI
+调用同一入口；此层与 `ui.NewTester` 内存回归、真实 CLI／假引擎边界测试分别报告。
+
 ## 关键状态转换
 
 ### 引擎条目（`EngineState.State`）

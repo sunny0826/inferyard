@@ -11,3 +11,7 @@ run = "cd cli && uv run --frozen ruff check src tests scripts"
 
 [tasks.schemas]
 run = "cd cli && uv run --frozen python scripts/export_schemas.py --check"
+
+[tasks."test:studio-ui"]
+description = "Run macOS native UI e2e with the simulated Studio backend"
+run = "cd studio && python tests/ui/run.py"
