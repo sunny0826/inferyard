@@ -56,6 +56,9 @@ func (s *viewState) downloadsView(c *ui.Context) {
 				}, actions: func() {
 					if task.State == "downloading" {
 						button(c, "取消下载").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
+							if s.simulate(previewCancelDownload{id: task.TaskId}) {
+								return
+							}
 							s.work(func() (string, *core.ApiError) {
 								_, e := s.service.CancelDownload(task.TaskId)
 								return "已请求取消下载。", e
@@ -64,6 +67,9 @@ func (s *viewState) downloadsView(c *ui.Context) {
 					}
 					if task.State == "failed" {
 						button(c, "重新创建下载任务").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
+							if s.simulate(previewRetryDownload{id: task.TaskId}) {
+								return
+							}
 							s.work(func() (string, *core.ApiError) {
 								var e *core.ApiError
 								if task.Kind == "engine" {

@@ -218,6 +218,9 @@ func (w *viewState) runView(c *ui.Context) {
 				w.newBenchmark()
 				return
 			}
+			if w.simulate(previewCancelRun{id: id}) {
+				return
+			}
 			w.guideWork(func() (string, *core.ApiError) {
 				_, e := w.service.CancelRun(id)
 				return "已请求取消，等待安全收尾。", e
@@ -247,7 +250,7 @@ func (w *viewState) runView(c *ui.Context) {
 		label = "继续未完成的运行"
 	}
 	if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.engineState.State != "running").Clicked() {
-		if w.previewAction() {
+		if w.simulate(previewStartRun{bundle: b.Bundle}) {
 			return
 		}
 		bundle := *b

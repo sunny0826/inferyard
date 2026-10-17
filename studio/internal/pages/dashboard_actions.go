@@ -50,6 +50,16 @@ func suggestInitDir(path string, exists, initialized bool) string {
 }
 
 func (w *viewState) execute(command string, report bool) {
+	if w.preview != nil {
+		if report {
+			w.simulate(previewVerifyReport)
+		} else if w.progress != nil && w.progress.NextAction == "device_check" {
+			w.simulate(previewCheckDevice)
+		} else {
+			w.preview.showNotice()
+		}
+		return
+	}
 	w.autoBind = bindingArm{}
 	model, engine := w.model, w.engine
 	w.guideWork(func() (string, *core.ApiError) {
@@ -171,7 +181,7 @@ func newBoundOutput(workspace, bundle string) (string, error) {
 }
 
 func (w *viewState) startEngine() {
-	if w.previewAction() {
+	if w.simulate(previewStartEngine) {
 		return
 	}
 	if w.task.stage == "bind" && w.task.start.candidate != "" {
@@ -229,6 +239,9 @@ func (w *viewState) startEngine() {
 	})
 }
 func (w *viewState) stopEngine() {
+	if w.simulate(previewStopEngine) {
+		return
+	}
 	w.autoBind = bindingArm{}
 	w.guideWork(func() (string, *core.ApiError) {
 		_, e := w.service.StopEngine()
@@ -253,7 +266,7 @@ func commandOf(args []string) string {
 }
 
 func (w *viewState) executeBinding(command string, e *core.ApiError) {
-	if w.previewAction() {
+	if w.simulate(previewBind) {
 		return
 	}
 	if e != nil {
@@ -357,6 +370,9 @@ func (s *viewState) prepareEnvironment() {
 		s.submissionFailed(core.Err("invalid_request"))
 		return
 	}
+	if s.simulate(previewPrepareEnvironment) {
+		return
+	}
 	s.guideWork(func() (string, *core.ApiError) {
 		e := prepareEnvironmentSteps(s.ctx, s.service.Readiness, func(ctx context.Context) (string, *core.ApiError) {
 			return s.service.InstallCLI(ctx, func(message string) { s.win.Update(func() { s.cliInstallStatus = message }) })
@@ -365,7 +381,10 @@ func (s *viewState) prepareEnvironment() {
 	})
 }
 func (s *viewState) checkWorkspaceDevice() {
-	if s.progress == nil || s.progress.DevicePreflight.Status != "missing" || s.busy || s.service == nil || s.ready.CLI.Status != "ok" {
+	if s.progress == nil || s.progress.DevicePreflight.Status != "missing" || s.busy || s.ready.CLI.Status != "ok" {
+		return
+	}
+	if s.simulate(previewCheckDevice) || s.service == nil {
 		return
 	}
 	request, ok := s.takeWorkspaceDeviceRequest()

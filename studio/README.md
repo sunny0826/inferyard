@@ -154,6 +154,13 @@ UI preview is available only in an explicitly tagged development/test build. Fro
 mise exec -- go run -tags ui_debug . --debug-ui
 ```
 
+To build first and launch the local executable:
+
+```sh
+mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -tags ui_debug -o build/inferyard-studio .
+./build/inferyard-studio --debug-ui
+```
+
 Normal builds and packaged releases omit the switch, preview UI and embedded fixtures.
 Their help does not list `--debug-ui`, and passing it is an input error. The `release` tag
 disables preview even when combined with `ui_debug`; `build-all.sh` always sets `release`,
@@ -162,12 +169,20 @@ and packaging rejects binaries without that tag before writing distributions.
 The sidebar's “模拟场景” selector provides 14 scenes: task preparation, running, completion and failure;
 live run details; report list, details, long tables and read errors; empty data; models;
 downloads; device measurements; and settings. Pages use the same components as normal
-Studio. “重置场景” restores fixture data, form values, table selection and collapsed sections.
+Studio. The selector is a shortcut; normal page buttons drive the workflow. Start with
+“准备环境”, select the model and bundles, and click “运行 benchmark”. Simulated startup,
+per-bundle progress and report generation advance automatically. Open live details or
+switch pages while work continues; “查看报告” opens that task's model and run results.
+
+Downloads can complete, be cancelled, or fail and be retried; completed assets appear in
+Models. Settings are saved in memory and download directory names affect later tasks.
+“下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务” cancels the current
+task while retaining settings, downloads and results. “重置场景” restores all fixture data,
+form values, table selection and collapsed sections, and discards pending simulation steps.
 
 The window remains labelled “UI 调试 · 模拟数据”. It does not create `core.Service`, read
 user settings or workspace evidence, persist window layout, execute the CLI, start models,
-download files, or save settings. Action buttons show a preview notice; navigation and
-local form interactions remain available. Progress is fixed fixture data, not a live run.
+download files, or save settings to disk. Progress, resource samples and results are simulated.
 Restart the command after changing source code; there is no hot reload. Previewing a native
 window verifies its presentation, not the real model workflow. Implementation boundaries
 are described in the [subsystem reference](../docs/subsystems/studio-panel.md#ui-调试预览).

@@ -66,7 +66,7 @@ func (s *viewState) continueAutoBind() {
 }
 
 func (s *viewState) bindDiscovered(pid int64, endpoint string) {
-	if s.previewAction() {
+	if s.simulate(previewBind) {
 		return
 	}
 	if s.busy || !s.bindingPhase() || pid <= 0 || endpoint == "" {

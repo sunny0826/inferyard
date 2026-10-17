@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -34,13 +35,13 @@ func previewSceneIndex(t *testing.T, label string) int {
 }
 
 func TestPreviewScenesAndNavigation(t *testing.T) {
-	wants := []string{"运行 benchmark", "42 / 120 题", "查看报告", "模型服务", "题目进度表", "历史任务", "各类任务表现", "preview-case-039", "重新读取报告", "暂无运行记录。", "选择模型与引擎", "下载失败", "Preview CPU", "路径设置"}
+	wants := []string{"准备环境", "42 / 120 题", "查看报告", "模型服务", "题目进度表", "历史任务", "各类任务表现", "preview-case-039", "重新读取报告", "暂无运行记录。", "选择模型与引擎", "下载失败", "Preview CPU", "路径设置"}
 	for i, scene := range previewScenes {
 		t.Run(scene.label, func(t *testing.T) {
 			p := newPreviewSession(context.Background())
 			p.loadScene(i)
 			tt := previewTester(p, 1120, 2400)
-			if !tt.HasText(wants[i]) || !tt.HasText("全部为模拟数据，不运行模型或保存设置。") {
+			if !tt.HasText(wants[i]) || !tt.HasText("全部为模拟数据；操作仅改变本窗口，不运行模型或写入文件。") {
 				t.Fatal("scene not rendered", tt.Texts())
 			}
 			if p.state.service != nil || p.shellOptions().StateKey != "" {
@@ -49,6 +50,7 @@ func TestPreviewScenesAndNavigation(t *testing.T) {
 			for _, label := range []string{"设备", "模型", "下载", "设置", "报告", "新任务"} {
 				click(t, tt, label)
 			}
+			p.advance(time.Second)
 			if p.state.service != nil || p.state.selected != "dashboard" {
 				t.Fatal("preview navigation escaped fixtures")
 			}
@@ -110,9 +112,9 @@ func TestPreviewResetClearsFormAndWidgetState(t *testing.T) {
 	}
 }
 
-func TestPreviewActionsDoNotExecute(t *testing.T) {
+func TestPreviewActionButtonsStayInMemory(t *testing.T) {
 	for _, tc := range []struct{ scene, action string }{
-		{"任务 · 准备", "运行 benchmark"},
+		{"任务 · 准备", "准备环境"},
 		{"任务 · 失败", "启动服务"},
 		{"模型 · 可用组合", "刷新服务列表"},
 		{"下载 · 进行中与失败", "下载引擎"},
@@ -128,9 +130,10 @@ func TestPreviewActionsDoNotExecute(t *testing.T) {
 			p.loadScene(previewSceneIndex(t, tc.scene))
 			tt := previewTester(p, 1120, 2400)
 			click(t, tt, tc.action)
+			p.advance(20 * time.Second)
 			tt.Frame()
-			if !tt.HasText(previewNotice) || p.state.busy || p.state.taskCancel != nil || p.state.service != nil {
-				t.Fatal("action escaped preview or left pending work", tt.Texts())
+			if tt.HasText(previewNotice) || p.state.busy || p.state.taskCancel != nil || p.state.service != nil {
+				t.Fatal("action was not simulated or escaped preview", tt.Texts())
 			}
 		})
 	}
@@ -138,22 +141,34 @@ func TestPreviewActionsDoNotExecute(t *testing.T) {
 
 func TestPreviewRunAndStopActions(t *testing.T) {
 	p := newPreviewSession(context.Background())
+	p.loadScene(1)
 	s := p.state
 	s.task.stage, s.tasks = "", nil
+	s.busy = false
+	p.cancelEvents("task")
 	s.progress.Bundles[0].NextCommand = previewValue("inferyard run --config /preview/config.toml")
 	tt := previewTester(p, 1120, 2000)
 	click(t, tt, "开始运行")
-	if p.notice != previewNotice || s.taskCancel != nil || s.busy {
-		t.Fatal("run action created background work")
+	if !s.busy || s.taskCancel != nil {
+		t.Fatal("run action did not schedule memory-only work")
 	}
-	p.notice = ""
+	p.advance(20 * time.Second)
+	tt.Frame()
 	click(t, tt, "停止")
-	if p.notice != previewNotice || s.engineState.State != "running" {
-		t.Fatal("stop action escaped preview")
+	if s.engineState.State != "stopping" {
+		t.Fatal("stop action did not transition")
+	}
+	p.advance(time.Second)
+	if s.engineState.State != "stopped" {
+		t.Fatal("stop did not complete")
 	}
 	p.loadScene(1)
 	tt.Frame()
 	click(t, tt, "取消运行")
+	if !p.state.newTaskPending {
+		t.Fatal("cancel did not enter draining")
+	}
+	p.advance(time.Second)
 	if p.state.running() != nil || p.state.service != nil || p.state.task.stage != "prepare_candidate" {
 		t.Fatal("cancel did not return to a fresh fixture")
 	}
@@ -169,6 +184,7 @@ func TestPreviewOutOfBandActionsStayInMemory(t *testing.T) {
 	s.retryBenchmark()
 	s.refresh(true)
 	s.refreshAction()
+	p.advance(20 * time.Second)
 	if command, err := s.bindCommand("42", "http://127.0.0.1:48857"); command != "" || err != nil {
 		t.Fatal(command, err)
 	}
@@ -183,6 +199,7 @@ func TestPreviewLayout(t *testing.T) {
 			for _, dark := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%d/%.0f/%t", width, scale, dark), func(t *testing.T) {
 					p := newPreviewSession(context.Background())
+					p.loadScene(1)
 					tt := previewTester(p, width, 600)
 					tt.SetDark(dark)
 					tt.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})

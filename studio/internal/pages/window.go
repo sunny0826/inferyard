@@ -407,7 +407,7 @@ func (s *viewState) contentView(c *ui.Context) {
 }
 
 func (s *viewState) refreshAction() {
-	if s.previewAction() {
+	if s.simulate(previewReload) {
 		return
 	}
 	if !s.busy {

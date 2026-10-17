@@ -296,7 +296,7 @@ mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENAB
 ```
 
 人工调整样式时使用 [UI debug preview](../README.md#ui-debug-preview)：
-`mise exec -- go run -tags ui_debug . --debug-ui` 打开同一套原生页面，侧栏切换模拟场景并重置交互状态。
+`mise exec -- go run -tags ui_debug . --debug-ui` 打开同一套原生页面。用页面按钮连续完成准备环境、下载、运行、取消、重试和打开报告；进度自动推进。侧栏场景用于设置检查起点，「重置场景」清空本次模拟改动。
 调试场景检查用 `mise exec -- go test -tags ui_debug ./internal/pages`；普通构建与正式包不包含预览入口。
 固定 fixture 覆盖常用任务、报告、空态、错误与缺测，不等于上述验收矩阵已全部覆盖；
 实际操作隔离规则见[子系统参考](../../docs/subsystems/studio-panel.md#ui-调试预览)。

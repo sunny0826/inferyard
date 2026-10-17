@@ -59,6 +59,9 @@ func (s *viewState) acquireModel() {
 		s.submissionFailed(&core.ApiError{Code: "invalid_request", Message: "只接受环境变量名，请勿输入明文 token。"})
 		return
 	}
+	if s.simulate(previewDownload{kind: "model", source: source}) {
+		return
+	}
 	s.work(func() (string, *core.ApiError) {
 		_, e := s.service.CreateModelDownload(core.CreateDownloadRequest{SourceUrl: source}, env)
 		return "已加入下载队列。", e
@@ -76,6 +79,9 @@ func (s *viewState) engineDownloadView(c *ui.Context) {
 func (s *viewState) acquireEngine(source, name string) {
 	if message := downloadURLError(source); message != "" {
 		s.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
+		return
+	}
+	if s.simulate(previewDownload{kind: "engine", source: source, name: name}) {
 		return
 	}
 	s.work(func() (string, *core.ApiError) {

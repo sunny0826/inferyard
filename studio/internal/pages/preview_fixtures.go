@@ -21,7 +21,12 @@ var previewScenes = []struct {
 	label string
 	apply func(*viewState)
 }{
-	{"任务 · 准备", func(s *viewState) { s.task.stage = "prepare_candidate" }},
+	{"任务 · 准备", func(s *viewState) {
+		s.progress = nil
+		s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
+		s.ready.CLI.Status = "not_found"
+		s.ready.Workspace.Initialized, s.ready.Results.Exists, s.ready.Models.Exists = false, false, false
+	}},
 	{"任务 · 运行中", previewRunning},
 	{"任务 · 已完成", previewCompleted},
 	{"任务 · 失败", func(s *viewState) {
@@ -108,13 +113,7 @@ func previewEmpty(s *viewState) {
 	s.ready = core.Readiness{CLI: core.InferyardProbe{Status: "not_found"}}
 }
 
-func (*previewSession) report(reference string) (*core.ReportIndex, *core.ApiError) {
-	if reference == "broken-report" {
-		return nil, &core.ApiError{Code: "report_unreadable", Message: "无法读取"}
-	}
-	if reference != "preview-report" && reference != "long-report" {
-		return nil, core.Err("not_found")
-	}
+func previewReportFixture(reference string) *core.ReportIndex {
 	var index core.ReportIndex
 	if err := json.Unmarshal(previewReportJSON, &index); err != nil {
 		panic("invalid bundled UI preview report: " + err.Error())
@@ -125,10 +124,10 @@ func (*previewSession) report(reference string) (*core.ReportIndex, *core.ApiErr
 			run.Requests = append(run.Requests, core.ReportRequest{CaseID: fmt.Sprintf("preview-case-%03d", i), CategoryLabel: "模拟分类", State: "completed"})
 		}
 	}
-	return &index, nil
+	return &index
 }
 
-func (*previewSession) detail(id string) *core.RunTaskDetail {
+func previewDetailFixture(id string) *core.RunTaskDetail {
 	return &core.RunTaskDetail{
 		Task: core.RunTask{TaskId: id, Kind: "run", State: "running", Bundle: previewValue("zh-core"), RunId: previewValue("preview-run"), RunPath: previewValue("/preview/results/preview-run")},
 		Progress: &core.RunProgress{Done: 42, Total: previewValue(int64(120)), Phase: previewValue("formal"), CurrentCaseId: previewValue("preview-case-043"), Cases: []core.CaseProgress{

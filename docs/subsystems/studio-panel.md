@@ -121,7 +121,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 拒绝缺少 `release` 标签的产物。`release` 与 `ui_debug` 同时存在时仍排除预览。
 
 `--debug-ui` 在 `core.New` 之前分流至 `pages.NewPreview`，只创建原生窗口及内存
-`previewSession`，不创建服务、队列、事件订阅或桌面通知，不读取用户设置与工作区证据。
+`previewSession`，不创建真实服务、运行队列、事件订阅或桌面通知，不读取用户设置与工作区证据。
 页面通过未导出的 `previewMode` 接口访问预览；实现仅存在于开发构建，正式模式保持空值。
 普通模式与预览共用 `pageShellOptions` 和真实页面构建器；预览窗口的 `StateKey` 为空，
 不保存窗口和侧栏布局。标题与侧栏持续标注模拟数据。
@@ -129,17 +129,30 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 [`preview.go`](../../studio/internal/pages/preview.go) 管理场景、重置和操作提示；
 [`preview_fixtures.go`](../../studio/internal/pages/preview_fixtures.go) 提供固定 DTO 与嵌入报告索引。
 切换或重置场景创建新的 `viewState`，并更换页面子树 key，使字段、表格选择与 `ui.Local`
-折叠状态一起复位。报告读取和运行详情直接取内存 fixture；显示的路径、PID 与进度不代表真实资源。
+折叠状态一起复位。新任务只取消当前任务并返回准备阶段，保留设置、下载与历史；
+显示的路径、PID、采样与进度不代表真实资源。
 
-`work` 与刷新入口拦截实际操作；任务启动、绑定、服务发现等在创建异步上下文或读取文件前
-拦截，统一显示「模拟预览：未执行实际操作。」。导航、折叠、表格选择和字段编辑保留；
-新任务及取消任务回到准备场景，不调用取消服务。新增页面操作时须覆盖这些边界，
-不能以注入假 executor 代替服务隔离。启动方法与场景清单见
+页面在纯表单校验之后、真实 IO 或异步上下文创建之前派发 `previewIntent`，参数携带
+本次模型、题包、下载来源、任务 ID 或设置 patch，不根据按钮文案猜测操作。
+[`preview_operations.go`](../../studio/internal/pages/preview_operations.go) 分派内存操作；
+任务、下载与报告分别由 `preview_benchmark.go`、`preview_downloads.go`、`preview_reports.go` 推进。
+任务冻结所选模型、引擎和题包，逐题包完成后生成独立报告快照；已打开的详情随进度刷新。
+下载完成更新模型/引擎清单，重试分配新任务和目录名；设置只更新本次会话。
+
+[`preview_schedule.go`](../../studio/internal/pages/preview_schedule.go) 按到期时间、同时间插入顺序
+推进事件。原生窗口的 ticker 只经 `win.Update` 修改状态；关闭窗口取消上下文，场景重置清空
+事件并递增 generation，旧场景事件不能回写。任务取消保留短暂收尾状态，下载按任务 ID 独立取消。
+测试直接调用 `advance` 推进模拟时间，不等待真实时间。一次性失败在操作被接受时绑定到该操作，
+表单校验失败不消耗它，取消不受故障注入影响。
+
+`work` 保留禁止执行真实闭包的兜底；未接入动作显示明确错误，不能伪装成功。
+新增页面操作须覆盖这些边界，不能以注入假 executor 代替服务隔离。启动方法与场景清单见
 [Studio README](../../studio/README.md#ui-debug-preview)。
 
-`preview_test.go` 覆盖全部场景与页面导航、操作拦截、交互状态重置，以及 800/1120 宽、
-文字缩放 1/2、浅深主题下的布局。macOS 原生窗口已检查场景切换、完成任务打开报告、
-报告滚动及保存操作提示；这些模拟检查不证明真实模型流程或 Windows/Linux 原生行为。
+`preview_test.go` 覆盖全部场景、导航、隔离、重置，以及 800/1120 宽、文字缩放 1/2、浅深主题布局；
+`preview_interaction_test.go` 用页面按钮覆盖准备、双题包运行、动态详情、报告、取消收尾、
+失败重试、并行下载、设置生效和过期事件。macOS 原生窗口已用页面按钮完成准备环境、
+模拟下载并选择模型、双题包运行、动态详情与打开本次报告。模拟检查不证明真实模型流程或 Windows/Linux 原生行为。
 
 ## 关键状态转换
 
