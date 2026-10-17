@@ -73,6 +73,9 @@ func (s *viewState) reportSourcesView(c *ui.Context) {
 					paths = append(paths, r.Path)
 				}
 			}
+			if s.simulate(previewCreateReport{paths: paths}) {
+				return
+			}
 			s.work(func() (string, *core.ApiError) {
 				report, e := s.service.CreateReport(core.CreateReportRequest{RunPaths: paths})
 				return "已生成 " + report.ReportId, e

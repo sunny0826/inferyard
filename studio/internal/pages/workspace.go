@@ -66,6 +66,10 @@ func (s *viewState) checkedBundles() []string {
 }
 
 func (s *viewState) newBenchmark() {
+	if s.preview != nil {
+		s.preview.resetTask(s.model, s.engine)
+		return
+	}
 	if s.newTaskPending {
 		return
 	}

@@ -57,6 +57,9 @@ func (s *viewState) startBenchmark() {
 	if s.environmentMissing() || !s.preflightReady() || s.busy || len(names) == 0 || s.model == "" || s.engine == "" || s.engineState.State == "orphaned" {
 		return
 	}
+	if s.simulate(previewBenchmark{model: s.model, engine: s.engine, bundles: names}) {
+		return
+	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	s.taskCancel = cancel
 	s.task = benchmarkTask{stage: "prepare_candidate", bundles: names, bindings: &benchmarkBindings{}}
@@ -284,6 +287,9 @@ func benchmarkBindCommand(workspace string, b inferyard.BundleProgress, state co
 }
 
 func (s *viewState) retryBenchmark() {
+	if s.simulate(previewRetryBenchmark) {
+		return
+	}
 	if s.busy || s.task.stage != "bind" || s.task.failure == nil {
 		return
 	}

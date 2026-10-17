@@ -69,6 +69,9 @@ func deviceRow(c *ui.Context, label, value string) {
 	})
 }
 func (s *viewState) refreshDevice() {
+	if s.simulate(previewRefreshDevice) {
+		return
+	}
 	// RefreshDevice 异步执行：同步返回 nil 仅表示采集已开始，成败经 LastError 呈现，
 	// 因此这里用中性提示，不能承诺"已更新"。
 	s.work(func() (string, *core.ApiError) { return "正在采集设备信息…", s.service.RefreshDevice() })

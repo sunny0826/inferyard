@@ -18,6 +18,9 @@ func (s *viewState) startCombination() {
 	if s.busy || s.model == "" || s.engine == "" || !s.preflightReady() {
 		return
 	}
+	if s.simulate(previewStartEngine) {
+		return
+	}
 	model, engine := s.model, s.engine
 	s.autoBind = bindingArm{}
 	s.guideWork(func() (string, *core.ApiError) {

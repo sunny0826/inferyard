@@ -94,6 +94,9 @@ func (s *viewState) resume() {
 		s.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
 		return
 	}
+	if s.simulate(previewStartRun{bundle: emptyText(s.resumeSource.Bundle), resumePath: s.resumeSource.Path}) {
+		return
+	}
 	req := core.ResumeRunRequest{FromRun: s.resumeSource.Path}
 	endpoint, pid := strings.TrimSpace(s.endpoint), strings.TrimSpace(s.pid)
 	if pid != "" {

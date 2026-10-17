@@ -37,12 +37,15 @@ model/results directories, and initializing a new workspace. Existing initialize
 skip `init`; new workspaces omit `--bundle`. The first workspace device check runs once
 with `--models-root` and no `--model`. A later model-specific check still supplies `--model`.
 The task generates `report --runs` for its own sealed runs with verification disabled, displays
-the successful output path, and leaves verification on Reports. Duration and unfinished
-batch plans display their blocking reason without an execution button.
+only a “查看报告” button that opens that exact report, and leaves verification on Reports.
+Duration and unfinished batch plans display their blocking reason without an execution button.
 
 A fixed top-right status row shows engine and queue state; its idle text is
-“引擎 已停止 · 队列 空”. Background refresh and busy operations, including saves and
-download actions, show “执行中”. Stop is available for a starting or running engine
+“引擎 已停止 · 队列 空”. Active runs and non-stopped engine states stay visible during
+background refresh and busy operations. Otherwise, refresh and operations show “执行中”.
+During a run, the model-service card collapses into this row, including between bundles
+in an active task. Once execution ends, service recovery controls remain available in
+the run/resume stage. Stop is available for a starting or running engine
 when no non-terminal run exists and Studio is not busy, except on Models.
 
 When no CLI is configured, the Dashboard’s Prepare environment action installs the CLI: it reuses an existing
@@ -142,6 +145,48 @@ The version's single source is [mygo.config.ts](mygo.config.ts). Go embeds the c
 so an ordinary rebuild picks up version changes without generated files or linker flags.
 The packaging script reads the same version.
 
+## UI debug preview
+
+UI preview is available only in an explicitly tagged development/test build. From
+`studio/`, open the native pages with simulated data:
+
+```sh
+mise exec -- go run -tags ui_debug . --debug-ui
+```
+
+To build first and launch the local executable:
+
+```sh
+mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -tags ui_debug -o build/inferyard-studio .
+./build/inferyard-studio --debug-ui
+```
+
+Normal builds and packaged releases omit the switch, preview UI and embedded fixtures.
+Their help does not list `--debug-ui`, and passing it is an input error. The `release` tag
+disables preview even when combined with `ui_debug`; `build-all.sh` always sets `release`,
+and packaging rejects binaries without that tag before writing distributions.
+
+The sidebar's “模拟场景” selector provides 14 scenes: task preparation, running, completion and failure;
+live run details; report list, details, long tables and read errors; empty data; models;
+downloads; device measurements; and settings. Pages use the same components as normal
+Studio. The selector is a shortcut; normal page buttons drive the workflow. Start with
+“准备环境”, select the model and bundles, and click “运行 benchmark”. Simulated startup,
+per-bundle progress and report generation advance automatically. Open live details or
+switch pages while work continues; “查看报告” opens that task's model and run results.
+
+Downloads can complete, be cancelled, or fail and be retried; completed assets appear in
+Models. Settings are saved in memory and download directory names affect later tasks.
+“下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务” cancels the current
+task while retaining settings, downloads and results. “重置场景” restores all fixture data,
+form values, table selection and collapsed sections, and discards pending simulation steps.
+
+The window remains labelled “UI 调试 · 模拟数据”. It does not create `core.Service`, read
+user settings or workspace evidence, persist window layout, execute the CLI, start models,
+download files, or save settings to disk. Progress, resource samples and results are simulated.
+Restart the command after changing source code; there is no hot reload. Previewing a native
+window verifies its presentation, not the real model workflow. Implementation boundaries
+are described in the [subsystem reference](../docs/subsystems/studio-panel.md#ui-调试预览).
+
 ## Platform dependencies
 
 | Platform | Native windows |
@@ -152,8 +197,12 @@ The packaging script reads the same version.
 
 Reports use native controls inside the main window and do not create a WebView.
 The CLI still generates offline HTML, but Studio reads `index.json`: the existing
-`runs[].dashboard` quality, category denominators and latency, plus `runs[].requests`.
-Studio does not rescore results. Null latency displays as —. An unreadable index is
+`runs[].dashboard` metrics, `summary.completion_rate`, model/machine `profile`,
+`facets.bundle_label`, `source.run_id`, and `requests`. The detail view has four metric
+cards, category results, model/machine details, per-case answers, and data sources.
+Multiple runs have a selector and remain separate. Studio does not rescore results.
+Missing measurements display as —, with available sampling reasons; milliseconds and
+bytes are displayed as seconds and GiB. An unreadable index is
 marked in the list without hiding other reports; opening it offers retry and return.
 
 ## Safety and operation rules
@@ -210,12 +259,36 @@ change task outcomes.
 
 ## Verification boundaries
 
+To test the native preview window end to end on macOS with Xcode, run
+`mise run test:studio-ui` from the repository root. XCUITest launches a fresh
+`--debug-ui` app for each scenario and operates its controls. It covers preparation,
+downloads, model selection, two-bundle execution, live details, reports, cancellation
+and retry. Logs, failure screenshots and the Xcode result stay in a new
+`studio/build/ui-e2e/run-*` directory. See [native UI e2e](tests/ui/README.md) for
+requirements and the direct command. CI runs this suite on macOS; Windows/Linux
+native UI coverage is not claimed.
+
 From `studio/`, the code checks are:
 
 ```sh
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
 ```
+
+Also check the development preview and the release override:
+
+```sh
+mise exec -- go test -tags ui_debug . ./internal/pages
+mise exec -- go test -tags ui_debug,release .
+mise exec -- python -m unittest discover -s scripts -p test_package.py
+```
+
+The tagged page tests include `TestPreviewBenchmarkParity`: shared scenarios compare
+the production benchmark orchestration with scripted service responses against the
+preview simulator. Both must satisfy explicit expectations for stages, available
+controls, serial queue states, cancellation, startup retry, and report scope. These
+tests start with prepared candidates and do not establish parity for real CLI events,
+downloads, or every error path. See the [preview test boundaries](../docs/subsystems/studio-panel.md#ui-调试预览).
 
 `go test ./...` includes the boundary e2e suite under `tests/e2e`: the real CLI executes
 every operation against a fake engine (the test binary re-executing itself), each CLI call

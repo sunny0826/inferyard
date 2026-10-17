@@ -276,7 +276,7 @@ func TestDashboardSelectedRunReportIgnoresUnfinishedPelican(t *testing.T) {
 		t.Fatal(f.requests)
 	}
 	tt := ui.NewTester(s.stageView, 1120, 1000)
-	if !tt.HasText("任务报告已生成") || !tt.HasText(s.task.report) || tt.HasText("已核验") || tt.HasText("missing") {
+	if !tt.HasText("查看报告") || tt.HasText(s.task.report) || tt.HasText("已核验") || tt.HasText("missing") {
 		t.Fatal(tt.Texts())
 	}
 	f.p.Bundles[0].Runs[0].Sealed = false

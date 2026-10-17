@@ -51,9 +51,9 @@ func TestRecoveryCardSurvivesRunPhase(t *testing.T) {
 					s.tasks = []core.RunTask{{State: "running"}}
 				}
 				tt := ui.NewTester(s.stageView, 1120, 2400)
-				if path == "none" {
+				if path == "none" || running {
 					if tt.HasText("模型服务") {
-						t.Fatal("service card without candidate or binding")
+						t.Fatal("service card without candidate/binding or during an active run")
 					}
 					continue
 				}
@@ -67,15 +67,7 @@ func TestRecoveryCardSurvivesRunPhase(t *testing.T) {
 				if service.Y >= run.Y {
 					t.Fatal("service card must precede run content")
 				}
-				if running {
-					click(t, tt, "停止服务")
-					if path == "bound" {
-						click(t, tt, "重新绑定")
-					}
-					if s.busy {
-						t.Fatal("service mutation admitted while running")
-					}
-				} else if path == "bound" && !tt.HasText("重新绑定") {
+				if path == "bound" && !tt.HasText("重新绑定") {
 					t.Fatal("bound run lacks recovery action")
 				}
 			}

@@ -39,7 +39,36 @@ jobs:
       - name: Unit tests
         if: matrix.os == 'macos-15'
         working-directory: studio
-        run: mise exec -- go test ./internal/... -count=1
+        run: mise exec -- go test . ./internal/... -count=1
+      - name: UI preview and release boundary
+        if: matrix.os == 'macos-15'
+        working-directory: studio
+        run: |
+          mise exec -- go vet -tags ui_debug ./...
+          mise exec -- go test -tags ui_debug . ./internal/pages -count=1
+          mise exec -- go test -tags ui_debug,release . -count=1
+          mise exec -- python -m unittest discover -s scripts -p test_package.py
       - name: e2e (fake engine, recorded CLI boundary)
         working-directory: studio
         run: mise exec -- go test ./tests/e2e/ -count=1 -timeout 900s -v
+  native-ui:
+    name: native preview UI (macOS)
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5
+      - name: Native preview UI e2e
+        run: mise run test:studio-ui
+      - name: Upload native UI test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: studio-native-ui-results
+          path: |
+            studio/build/ui-e2e/run-*/xcodebuild.log
+            studio/build/ui-e2e/run-*/Results.xcresult
+          if-no-files-found: ignore
+          retention-days: 7

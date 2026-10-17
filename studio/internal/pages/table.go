@@ -33,7 +33,8 @@ func pageTable(c *ui.Context, s *pageTableState, label string, columns []ui.Tabl
 			}
 		}
 	}
-	return components.ScrollView(c, components.ScrollViewOptions{Axes: components.ScrollBoth}).FillWidth().MinWidth(0).Children(func() {
+	viewport := components.ScrollView(c, components.ScrollViewOptions{Axes: components.ScrollBoth}).FillWidth().MinWidth(0)
+	return viewport.Children(func() {
 		rows := make([]ui.Element, count)
 		components.Table(c, &s.layout, columns, func() {
 			for i := range count {
@@ -53,7 +54,7 @@ func pageTable(c *ui.Context, s *pageTableState, label string, columns []ui.Tabl
 					s.submitted = true
 				}
 			}
-		}).Shrink(0).Label(label)
+		}).Width(viewport.LayoutBounds().W).Shrink(0).Label(label)
 		if i := selectedRow(s, count); i >= 0 {
 			rows[i].Bind(&s.focus)
 		}

@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/egoist/mygo/ui"
 	"image/png"
@@ -49,7 +50,7 @@ func designFixture(page string) *viewState {
 }
 
 func TestDesignLayoutMatrix(t *testing.T) {
-	for _, page := range []string{"dashboard", "device", "models", "downloads", "reports", "settings", "detail"} {
+	for _, page := range []string{"dashboard", "device", "models", "downloads", "reports", "settings", "detail", "report-detail"} {
 		for _, width := range []int{1120, 800, 1440} {
 			for _, scale := range []float32{1, 1.5, 2} {
 				for _, dark := range []bool{false, true} {
@@ -57,6 +58,14 @@ func TestDesignLayoutMatrix(t *testing.T) {
 						name := fmt.Sprintf("%s/%d/%.1f/dark-%t/contrast-%t", page, width, scale, dark, contrast)
 						t.Run(name, func(t *testing.T) {
 							s := designFixture(page)
+							if page == "report-detail" {
+								var index core.ReportIndex
+								if err := json.Unmarshal(reportFixture(t), &index); err != nil {
+									t.Fatal(err)
+								}
+								s.selected = "reports"
+								s.openedReport = &reportViewState{reference: "summary-1", index: &index}
+							}
 							height := 800
 							if width == 800 {
 								height = 600
@@ -89,12 +98,12 @@ func TestDesignLayoutMatrix(t *testing.T) {
 							}
 							s.refreshing = true
 							tt.Frame()
-							before, ok := tt.Find("执行中")
+							before, ok := tt.Find("引擎 已停止 · 队列 执行中")
 							if !ok {
-								t.Fatal("missing refresh status")
+								t.Fatal("refresh hid engine and queue status")
 							}
 							tt.Scroll(float32(width-80), 400, 0, 600)
-							after, ok := tt.Find("执行中")
+							after, ok := tt.Find("引擎 已停止 · 队列 执行中")
 							if !ok || before != after {
 								t.Fatal("toolbar moved during content scroll")
 							}

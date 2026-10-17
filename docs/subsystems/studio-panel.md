@@ -50,20 +50,25 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 
 ## 运行路径
 
-1. **启动**：`main` 解析嵌入配置设置 `core.Version`，用 `signal.NotifyContext` 建应用上下文并
+1. **启动**：`main` 先解析启动参数；`--help` 输出说明并退出，非法参数退出 2。只有开发标签
+   `ui_debug` 且无 `release` 时注册 `--debug-ui` 并允许进入下述独立预览路径。
+   普通启动解析嵌入配置设置 `core.Version`，用 `signal.NotifyContext` 建应用上下文并
    `core.New` 创建服务（读设置、启动串行 runQueue、按需 `RefreshDevice`），随后 `mygo.App.Run`
    进入 WhenReady：注册桌面通知订阅、创建 `pages.Reports` 与主窗口 `pages.New`。SIGINT/SIGTERM
    触发 `mygo.App.Quit` 与 `Service.Shutdown`。
 2. **页面刷新**：主窗口的六页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
    取增量事件，六类事件触发全量刷新（`sync.reset`/`report.created`/`run.state`/`engine.state`/
    `download.state`/`device.updated`，见 [`studio/internal/pages/registry_refresh.go`](../../studio/internal/pages/registry_refresh.go)），其余做局部更新。
-3. **Dashboard 任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。新任务复用模型/引擎选择，默认勾选存在的 zh-core，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`，`ReportVerify=false`，显示成功路径而不显示已核验；核验留在报告页。没有活动任务时从 `progress.v1` 恢复。所有命令仍经 `WizardExecute` 原白名单和身份检查。
+3. **Dashboard 任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。新任务复用模型/引擎选择，默认勾选存在的 zh-core，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`，`ReportVerify=false`，完成区域仅显示「查看报告」，直接打开本次输出目录对应的报告；不展示路径、生成成功文字或已核验状态，核验留在报告页。没有活动任务时从 `progress.v1` 恢复。所有命令仍经 `WizardExecute` 原白名单和身份检查。
 4. **运行**：`StartRuns` 逐配置读取 bundle 与输出根并做包含/去重准入 → 入队由 `runQueue` 串行
    `executeRun` 派生 `inferyard run --config`（取消为 SIGINT + 两秒兜底）；执行循环每
    `ProgressInterval`（500ms）对比运行前后证据索引、tail `events.jsonl` 投影 case 进度与分数、
    聚合资源采样；终态经 `run.state` 事件发布。Dashboard 另经 `Service.Progress` 派生
    `inferyard progress --workspace` 解析 `progress.v1` 恢复工作区进度。运行实现与取消语义见
    [运行时执行与引擎适配](runtime-execution.md)。
+   `stageView` 在有非终态运行或活动任务处于未失败的 `run` 阶段时收起正文模型服务卡，
+   题包间隙不重新展开；`cornerStatus` 保留引擎与队列状态，不受后台刷新或 busy 覆盖。
+   无非终态运行且任务失败或回到工作区进度时，run/resume 阶段恢复服务操作；绑定阶段仍显示启动与绑定操作。
 5. **引擎服务**：Dashboard（绑定或运行阶段）`StartEngine` → `Startup` 从冻结配置目录取 `[engine]` 启动行 →
    监听端口预检 → 拉起引擎子进程（stdout/stderr 写入 workspace `logs/engine-*.log`）→
    持久化 `engine-owner.json` 所有权记录（写失败即中止启动）→
@@ -87,7 +92,10 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
    `startup_arguments_mismatch` 等拒绝原因如实呈现；`BindingAlive` 仅提供存活提示。
 8. **报告**：页面先展示「历史任务」，再展示「报告列表」。进入任务清除详情与续测来源并聚焦所选运行；续测清除详情并设置来源；实时详情打开对应任务，三者都进入 Dashboard。打开报告为主操作；1–100 个来源的生成入口折叠在「从历史运行另做报告」。仅工作区 `next_action=verify` 且报告未核验时显示「核验」，沿用向导并设置 `ReportVerify=true`；`verified` 显示「已核验」。
    `CreateReport` 校验 1–100 个位于结果根内的不同 run → 派生 `inferyard report`
-   写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面在主窗口内容区读取 `index.json`，呈现 `runs[].dashboard` 与 `runs[].requests`。报告 ID 为 UTC
+   写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面在主窗口内容区读取 `index.json`，呈现当前所选运行的指标卡、分类表、模型与机器、逐题答案及数据来源。
+   指标取自 `runs[].dashboard` 与 `summary.completion_rate`；模型、引擎和机器取自 `profile`、`threads`，题包取自 `facets.bundle_label`，运行 ID 取自 `source.run_id`，逐题行取自 `requests`。
+   多运行索引用选择器分别显示，不合并指标。质量和完成率保留分母与排除数；缺测显示 — 并保留已有采样原因。延迟从 ms 转为 s，内存从 bytes 转为 GiB；诊断运行标注「诊断运行」。
+   `ReportIndex` 接受列表 ID 或本次报告绝对目录；绝对目录先规范化并验证位于配置的 reports 根目录内，再经 `ReportFile` 校验索引，越界路径不能按同名目录打开。报告 ID 为 UTC
    `report-YYYYMMDDTHHMMSSZ[-N]`，命名冲突追加序号。报告与导出契约
    见 [评分、比较与报告](scoring-reporting.md) 与
    [report-contract](../../cli/docs/contracts/report-contract.md)。
@@ -104,6 +112,70 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 9. **关停**：`Shutdown` 立即关闭准入，未终态队列任务标 cancelled、活动任务标 cancelling 并
    取消上下文，待 runQueue 排空后停止自启动引擎再置 `shutdownDone`；调用方超时（main 为 30
    秒）不抛弃清理、不改变顺序。
+
+## UI 调试预览
+
+预览源文件、嵌入 fixture 与对应测试使用 `ui_debug && !release` 构建约束。普通构建
+不注册 `--debug-ui`，帮助不列出它，显式传入时退出 2。`build-all.sh` 固定 `-tags release`，
+覆盖环境传入的标签；`package.py` 在写入分发目录前读取全部二进制的 Go build info，
+拒绝缺少 `release` 标签的产物。`release` 与 `ui_debug` 同时存在时仍排除预览。
+
+`--debug-ui` 在 `core.New` 之前分流至 `pages.NewPreview`，只创建原生窗口及内存
+`previewSession`，不创建真实服务、运行队列、事件订阅或桌面通知，不读取用户设置与工作区证据。
+页面通过未导出的 `previewMode` 接口访问预览；实现仅存在于开发构建，正式模式保持空值。
+普通模式与预览共用 `pageShellOptions` 和真实页面构建器；预览窗口的 `StateKey` 为空，
+不保存窗口和侧栏布局。标题与侧栏持续标注模拟数据。
+
+[`preview.go`](../../studio/internal/pages/preview.go) 管理场景、重置和操作提示；
+[`preview_fixtures.go`](../../studio/internal/pages/preview_fixtures.go) 提供固定 DTO 与嵌入报告索引。
+切换或重置场景创建新的 `viewState`，并更换页面子树 key，使字段、表格选择与 `ui.Local`
+折叠状态一起复位。新任务只取消当前任务并返回准备阶段，保留设置、下载与历史；
+显示的路径、PID、采样与进度不代表真实资源。
+
+页面在纯表单校验之后、真实 IO 或异步上下文创建之前派发 `previewIntent`，参数携带
+本次模型、题包、下载来源、任务 ID 或设置 patch，不根据按钮文案猜测操作。
+[`preview_operations.go`](../../studio/internal/pages/preview_operations.go) 分派内存操作；
+任务、下载与报告分别由 `preview_benchmark.go`、`preview_downloads.go`、`preview_reports.go` 推进。
+任务冻结所选模型、引擎和题包，绑定后一次加入全部选中题包，串行运行；等待项与真实队列一样
+使用 `State=starting, Queued=true`。取消同时结束运行项与等待项，未启动项没有运行路径或历史证据。
+全部题包完成后生成独立报告快照；已打开的详情随进度刷新。
+下载完成更新模型/引擎清单，重试分配新任务和目录名；设置只更新本次会话。
+
+[`preview_schedule.go`](../../studio/internal/pages/preview_schedule.go) 按到期时间、同时间插入顺序
+推进事件。原生窗口的 ticker 只经 `win.Update` 修改状态；关闭窗口取消上下文，场景重置清空
+事件并递增 generation，旧场景事件不能回写。任务取消保留短暂收尾状态，下载按任务 ID 独立取消。
+测试直接调用 `advance` 推进模拟时间，不等待真实时间。一次性失败在操作被接受时绑定到该操作，
+表单校验失败不消耗它，取消不受故障注入影响。
+
+`work` 保留禁止执行真实闭包的兜底；未接入动作显示明确错误，不能伪装成功。
+新增页面操作须覆盖这些边界，不能以注入假 executor 代替服务隔离。启动方法与场景清单见
+[Studio README](../../studio/README.md#ui-debug-preview)。
+
+`preview_test.go` 覆盖全部场景、导航、隔离、重置，以及 800/1120 宽、文字缩放 1/2、浅深主题布局；
+`preview_interaction_test.go` 用页面按钮覆盖准备、双题包运行、动态详情、报告、取消收尾、
+失败重试、并行下载、设置生效和过期事件。macOS 原生窗口已用页面按钮完成准备环境、
+模拟下载并选择模型、双题包运行、动态详情与打开本次报告。模拟检查不证明真实模型流程或 Windows/Linux 原生行为。
+
+[`tests/ui`](../../studio/tests/ui/README.md) 使用 XCUITest 构建实际 Go 入口并启动独立
+`--debug-ui` macOS 窗口。测试只按可访问控件操作和断言，不读取 `viewState`、推进测试时钟或用
+场景下拉完成流程；由真实窗口 ticker 推进模拟任务。每个用例重新启动模拟应用，结果写入新的
+`build/ui-e2e/run-*`，失败保留截图与辅助功能树。根级 `mise run test:studio-ui` 和 macOS CI
+调用同一入口；此层与 `ui.NewTester` 内存回归、真实 CLI／假引擎边界测试分别报告。
+
+[`preview_parity_test.go`](../../studio/internal/pages/preview_parity_test.go) 对正常编排与模拟器运行同一组
+场景，并将双方各自与明确预期比较：core 单题包、pelican 单题包、双题包、启动失败后手动重试、
+绑定中取消、运行中同时取消活动项和等待项。观察包括阶段标题、键盘可达按钮、错误码、串行队列
+状态和报告包含的题包，报告不得混入已有的无关运行。检查不比较随机路径、PID、耗时或模拟分数。
+
+正常侧调用实际 `runBenchmarkFlow` / `cancelBenchmarkRuns`，在 `benchmarkBackend` 边界注入
+受控服务响应；模拟侧调用页面动作与内存调度器。起点是候选已准备好，取消比较终态与无报告，
+不覆盖正常窗口的异步重置过程。该层不启动 `core.Service`、CLI 或模型，不证明环境安装、下载、
+真实事件刷新或全部故障分支一致。已有 macOS CI 的 `ui_debug` 页面测试自动包含它。单独运行：
+
+```sh
+cd studio
+mise exec -- go test -tags ui_debug ./internal/pages -run TestPreviewBenchmarkParity -count=1
+```
 
 ## 关键状态转换
 
@@ -199,7 +271,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
   留在报告目录内；缺失来源 run 显示为不可用但不阻止打开。单项索引不可读不影响其他报告，
   列表标记无法读取，打开后可重新读取或返回列表。质量与类别分母直接取自索引，不重算分数；
   空延迟显示 —。CLI 仍生成 `report.html`，Studio 没有加载 HTML 的控件。实现见
-  [report_view.go](../../studio/internal/pages/report_view.go)，原生交互仍待真机验证。
+  [report_view.go](../../studio/internal/pages/report_view.go)、[report_metrics.go](../../studio/internal/pages/report_metrics.go) 与 [report_tables.go](../../studio/internal/pages/report_tables.go)。macOS 模拟数据的直达、布局与滚动已检查；其他平台和真实测评数据未在本轮验证。
 - **安全**：模型端点仅本地 loopback；token/凭据/完整 session URL 不进日志、设置或用户可见错误；
   向导执行不回传 stdout/stderr；设置文件 0700/0600 且仅在用户保存时替换。CLI 退出码语义
   （0/2/3/4/130）与呈现映射见 [CLI 与应用分发](cli-dispatch.md)。

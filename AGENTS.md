@@ -60,6 +60,25 @@ rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direc
 rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
 ```
 
+### Studio UI 与模拟行为一致性
+
+修改 Studio 页面或模拟流程前，阅读 [UI 调试预览与测试边界](docs/subsystems/studio-panel.md#ui-调试预览)；具体运行机制和覆盖场景以该参考为准，不在此维护测试数量或验收进度。
+
+- 正式与模拟模式共用页面构建器、主题、控件和按钮入口，不另写一套模拟页面。模拟模式在表单校验后、真实 IO 前通过 `previewIntent` 分流；正常页面按钮应能连续完成流程，场景选择器只用于设置起点。
+- 模拟操作只修改本窗口内存，不创建 `core.Service`、执行 CLI、启动模型、下载文件或持久化用户设置与布局。新增操作必须接入模拟分派并覆盖隔离测试；未支持的操作明确报错，不能落入真实执行或伪装成功。
+- 修改任务编排、队列、取消、重试或报告归属时，同轮同步模拟实现和 `preview_parity*_test.go` 的共享场景。两条路径分别对照明确预期，再互相比对阶段、可用控件、错误、队列状态和报告范围；不能只要求双方输出相等，也不能从某一实现的输出生成预期。
+- 行为测试应能捕获实际分歧。新增一致性检查时，用已复现的回归或隔离的故意错误证明它会失败；不得改写原始证据或保留破坏性修改来制造测试结果。
+- 一致性测试的生产侧调用实际编排代码，在服务边界注入受控响应；原生 E2E 驱动模拟窗口。分别报告页面测试、编排行为对照、原生窗口和真实 CLI／模型验证，不能将其中一层的通过扩大为全部一致。未覆盖的行为与平台须明确列出。
+- 预览实现和 fixture 仅进入 `ui_debug && !release` 构建。修改调试入口或打包路径时，验证普通构建与 `ui_debug,release` 均拒绝调试入口，正式产物不携带预览实现与 fixture。
+
+涉及上述行为的改动，在 `studio/` 运行带标签的页面回归（包含一致性测试）：
+
+```bash
+rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -tags ui_debug . ./internal/pages -count=1
+```
+
+影响原生控件交互或模拟流程时，还应在已登录的 macOS 桌面和完整 Xcode 环境下，从仓库根运行 `rtk proxy mise run test:studio-ui`。条件不足时报告未验证范围，不用内存测试替代原生验收。入口与产物说明见 [原生 UI E2E](studio/tests/ui/README.md)；纯文档改动仍按文档检查处理。
+
 ## Documentation and contracts
 
 - The README is the product entry point. Operational steps go into the installation/usage guides; topic rules live in `cli/docs/contracts/`. ADRs record long-term rationale only, plans keep only unfinished work, and current progress is centralized in `cli/docs/backlog.md`.

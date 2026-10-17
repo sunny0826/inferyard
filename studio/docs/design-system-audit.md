@@ -58,10 +58,10 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 | 运行详情 | 失败与加载分离、重试和返回、表格名称、换行图例 | [detail.go](../internal/pages/detail.go)、[chart.go](../internal/pages/chart.go) |
 | 报告 | 来源列表名称化展示、空态下一步、键盘打开 | [reports.go](../internal/pages/reports.go)、[reports_table.go](../internal/pages/reports_table.go) |
 | 设置 | 字段关联、路径保存与下载目录名 | [preparation.go](../internal/pages/preparation.go)、[form_validation.go](../internal/pages/form_validation.go) |
-| 报告视图 | 主窗口内呈现索引、无法读取状态、重读与返回列表 | [report_view.go](../internal/pages/report_view.go) |
+| 报告视图 | 完成按钮直达对应报告；四指标卡、分类表、模型与机器、逐题表和来源；多运行独立切换、缺测、重读与返回列表 | [report_view.go](../internal/pages/report_view.go) |
 
 设备页展示硬件快照；模型列表与推荐在模型页。未将历史 HTML 原型当成已经实现的原生页面。
-报告视图读取本地 `index.json`，呈现 `runs[].dashboard` 与请求行；重读重新执行路径校验。
+报告视图读取本地 `index.json`，字段映射见[子系统参考](../../docs/subsystems/studio-panel.md#运行路径)；重读重新执行路径校验。
 索引损坏只在该列表项及打开后的视图显示无法读取，不影响其他报告，不修改历史 HTML。
 
 ## 软件验证
@@ -120,5 +120,7 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 用户要求手动验收后，macOS 当前分支应用已用既有设置启动，两次均正常退出。
 根据用户的设置页截图反馈，已移除全部页面顶部的通用“刷新”按钮，空闲状态不再占用工具栏；
 自动更新、错误重试与 Cmd+R 保留。该调整后全模块测试、vet 与 macOS 构建通过。
-这次窗口启动与单页反馈不构成完整原生验收；上列交互、读屏和报告视图检查仍未完成。
+这次窗口启动与单页反馈不构成完整原生验收；报告视图的后续复核见下文，其他交互与读屏仍未完成。
 MyGo 内存渲染、PNG 目检和软件回归不替代以上验收，也不外推到其他平台。
+
+报告布局复核：[report_presentation_test.go](../internal/pages/report_presentation_test.go) 覆盖完成与恢复入口直达、多运行切换、数值与缺测、长表滚动及越界路径拒绝；布局矩阵包含报告详情。macOS 原生模拟窗口已检查完成按钮、直达详情、四指标卡、表格铺满和页面滚动；未运行模型，未改写历史报告。此证据不覆盖 Windows/Linux 原生交互、读屏或真实测评数据。

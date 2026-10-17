@@ -8,6 +8,9 @@ import (
 )
 
 func (s *viewState) refreshDiscovery() {
+	if s.simulate(previewRefreshDiscovery) {
+		return
+	}
 	if s.discovering {
 		return
 	}

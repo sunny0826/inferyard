@@ -36,6 +36,9 @@ func (s *viewState) detailView(c *ui.Context) {
 				return
 			}
 			id := t.TaskId
+			if s.simulate(previewCancelRun{id: id}) {
+				return
+			}
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.service.CancelRun(id)
 				return "已请求取消，等待安全收尾。", e

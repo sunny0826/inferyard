@@ -7,6 +7,9 @@ import (
 
 func (s *viewState) stopOrphanButton(c *ui.Context) {
 	button(c, "停止遗留服务").AlignSelf(ui.Start).Disabled(s.busy || s.running() != nil).OnClick(func() {
+		if s.simulate(previewStopEngine) {
+			return
+		}
 		s.work(func() (string, *core.ApiError) {
 			state, e := s.service.StopOrphanEngine()
 			if state.State == "stopped" {
@@ -18,6 +21,9 @@ func (s *viewState) stopOrphanButton(c *ui.Context) {
 	if orphanRecordRecoverable(s.engineState) {
 		ui.Text(c, "仅移除工作区 logs/engine-owner.json；原进程可能仍在运行，请自行确认。")
 		button(c, "仅删除记录（不终止进程）").AlignSelf(ui.Start).Disabled(s.busy || s.running() != nil).OnClick(func() {
+			if s.simulate(previewStopEngine) {
+				return
+			}
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.service.DiscardOrphanRecord()
 				return "已删除遗留记录，未终止任何进程。", e

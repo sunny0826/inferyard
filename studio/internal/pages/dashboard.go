@@ -160,8 +160,10 @@ func (s *viewState) stageView(c *ui.Context) {
 	case "bind":
 		stepTrack(c, "4", "启动与绑定", func() { s.serviceView(c) })
 	case "run", "resume":
-		if b := s.active(); b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil) {
-			card(c, "模型服务", func() { s.serviceView(c) })
+		if s.running() == nil && (s.task.stage == "" || s.task.failure != nil) {
+			if b := s.active(); b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil) {
+				card(c, "模型服务", func() { s.serviceView(c) })
+			}
 		}
 		stepTrack(c, "5", "运行", func() { s.runView(c) })
 	case "report":
@@ -177,13 +179,16 @@ func (s *viewState) stageView(c *ui.Context) {
 		stepTrack(c, "6", "报告", func() { ui.Text(c, "请在报告页核验报告。") })
 	case "done":
 		stepTrack(c, "6", "报告", func() {
-			if s.task.report != "" {
-				ui.Text(c, "任务报告已生成")
-				ui.Text(c, s.task.report).Selectable()
+			path := s.task.report
+			if path == "" && s.progress != nil {
+				path = emptyText(s.progress.Report.Path)
+			}
+			if path != "" {
+				button(c, "查看报告").AlignSelf(ui.Start).OnClick(func() { s.openReport(path) })
 			} else {
 				ui.Text(c, "运行已完成，可在报告页查看。")
+				button(c, "查看报告列表").AlignSelf(ui.Start).OnClick(func() { s.selected = "reports" })
 			}
-			button(c, "查看报告").OnClick(func() { s.selected = "reports" })
 		})
 	default:
 		if s.progress == nil {

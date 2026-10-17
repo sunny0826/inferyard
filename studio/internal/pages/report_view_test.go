@@ -16,7 +16,7 @@ import (
 func TestReportViewIndexAndUnreadable(t *testing.T) {
 	root := t.TempDir()
 	results := filepath.Join(root, "results")
-	fixture := `{"runs":[{"run_id":"fixture-run","dashboard":{"quality":{"numerator":7,"denominator":13,"excluded":2},"categories":[{"id":"math","label":"数学计算","rate":{"numerator":3,"denominator":8,"excluded":1}},{"id":"qa","label":"知识问答","rate":{"numerator":4,"denominator":5,"excluded":1}}],"latency":{"min":12,"p50":24,"p95":null,"max":41,"sample_count":9,"excluded":4}},"requests":[{"case_id":"null-case","category_label":"数学计算","state":"failed","quality":null,"latency_ms":null},{"case_id":"timed-case","category_label":"知识问答","state":"completed","quality":"pass","latency_ms":17.25}]}]}`
+	fixture := string(reportFixture(t))
 	for _, id := range []string{"good", "bad", "missing"} {
 		dir := filepath.Join(root, "reports", id)
 		if e := os.MkdirAll(dir, 0700); e != nil {
@@ -61,7 +61,7 @@ func TestReportViewIndexAndUnreadable(t *testing.T) {
 	click(t, tt, "good")
 	click(t, tt, "打开报告")
 	tt.Frame()
-	for _, want := range []string{"报告 good", "质量 7 / 13", "各类别不构成综合评分", "数学计算 · 3 / 8 · 排除 1", "知识问答 · 4 / 5 · 排除 1", "延迟 (ms) · 最小 12 · P50 24 · P95 — · 最大 41", "延迟样本 9 · 排除 4", "null-case · 数学计算 · failed · 未知 · 延迟 (ms) —", "timed-case · 知识问答 · completed · pass · 延迟 (ms) 17.25"} {
+	for _, want := range []string{"Fixture Model Q4", "7 / 13", "各类别不构成综合评分", "数学计算", "3 / 8", "知识问答", "4 / 5", "1.24 s", "9 个有效样本", "排除 4", "null-case", "—", "timed-case", "通过", "0.84 s"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %s: %v", want, tt.Texts())
 		}
@@ -78,7 +78,7 @@ func TestReportViewIndexAndUnreadable(t *testing.T) {
 		t.Fatal(e)
 	}
 	click(t, tt, "重新读取报告")
-	if !tt.HasText("质量 7 / 13") {
+	if !tt.HasText("7 / 13") {
 		t.Fatal(tt.Texts())
 	}
 	for _, id := range []string{"good", "bad", "missing"} {

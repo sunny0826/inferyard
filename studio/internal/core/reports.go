@@ -196,18 +196,49 @@ type ReportIndex struct {
 	Runs []ReportRun `json:"runs"`
 }
 type ReportRun struct {
-	RunID     string           `json:"run_id"`
+	Source struct {
+		RunID string `json:"run_id"`
+	} `json:"source"`
+	Model      string        `json:"model"`
+	Threads    *int64        `json:"threads"`
+	Diagnostic bool          `json:"diagnostic"`
+	Profile    ReportProfile `json:"profile"`
+	Facets     struct {
+		BundleLabel string `json:"bundle_label"`
+	} `json:"facets"`
+	Summary struct {
+		CompletionRate ReportRate `json:"completion_rate"`
+		StopReason     string     `json:"stop_reason"`
+	} `json:"summary"`
 	Dashboard *ReportDashboard `json:"dashboard"`
 	Requests  []ReportRequest  `json:"requests"`
+}
+type ReportProfile struct {
+	Title  string `json:"title"`
+	Engine struct {
+		BinaryPath string `json:"binary_path"`
+		Adapter    string `json:"adapter"`
+		Backend    string `json:"backend"`
+	} `json:"engine"`
+	Machine struct {
+		CPU              string `json:"cpu"`
+		LogicalCPUs      *int64 `json:"logical_cpus"`
+		MemoryTotalBytes *int64 `json:"memory_total_bytes"`
+	} `json:"machine"`
 }
 type ReportRate struct {
 	Numerator   *float64 `json:"numerator"`
 	Denominator *float64 `json:"denominator"`
 	Excluded    *float64 `json:"excluded"`
+	Complete    *bool    `json:"complete"`
 }
 type ReportDashboard struct {
-	Quality    ReportRate `json:"quality"`
-	Categories []struct {
+	SampledPeakRSSBytes          *float64   `json:"sampled_peak_rss_bytes"`
+	SampledPeakRSSReason         *string    `json:"sampled_peak_rss_reason"`
+	SampledMinimumAvailableBytes *float64   `json:"sampled_minimum_available_bytes"`
+	MinimumAvailableReason       *string    `json:"minimum_available_reason"`
+	Quality                      ReportRate `json:"quality"`
+	Categories                   []struct {
 		ID    string     `json:"id"`
 		Label string     `json:"label"`
 		Rate  ReportRate `json:"rate"`
@@ -229,8 +260,27 @@ type ReportRequest struct {
 	LatencyMS     *float64 `json:"latency_ms"`
 }
 
-func (s *Service) ReportIndex(id string) (*ReportIndex, *ApiError) {
-	path, e := s.ReportFile(id + "/index.json")
+func (s *Service) ReportIndex(reference string) (*ReportIndex, *ApiError) {
+	if filepath.IsAbs(reference) {
+		root := reportsRoot(s.userSettings())
+		if root == nil {
+			return nil, Err("not_found")
+		}
+		resolvedRoot, err := canonical(*root)
+		if err != nil {
+			return nil, Err("invalid_request")
+		}
+		resolved, err := Resolve(resolvedRoot, reference)
+		if err != nil {
+			return nil, Err("invalid_request")
+		}
+		relative, err := filepath.Rel(resolvedRoot, resolved)
+		if err != nil {
+			return nil, Err("invalid_request")
+		}
+		reference = filepath.ToSlash(relative)
+	}
+	path, e := s.ReportFile(reference + "/index.json")
 	if e != nil {
 		return nil, e
 	}

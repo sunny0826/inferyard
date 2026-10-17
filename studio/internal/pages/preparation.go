@@ -51,6 +51,9 @@ func (s *viewState) settingsView(c *ui.Context) {
 					patch[entry.key], _ = json.Marshal(value)
 				}
 			}
+			if s.simulate(previewSettings{patch: patch}) {
+				return
+			}
 			s.work(func() (string, *core.ApiError) {
 				v, e := s.service.UpdateSettings(patch)
 				if e == nil {
@@ -94,6 +97,9 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 			patch := map[string]json.RawMessage{}
 			patch["model_download_name"], _ = json.Marshal(s.modelName)
 			patch["engine_download_name"], _ = json.Marshal(s.engineName)
+			if s.simulate(previewSettings{patch: patch}) {
+				return
+			}
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.service.UpdateSettings(patch)
 				return "下载目录名已保存。", e
