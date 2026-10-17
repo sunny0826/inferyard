@@ -51,12 +51,27 @@ func (p *previewSession) beginBenchmark(op previewBenchmark) {
 				return
 			}
 			s.engineState.State = "running"
-			p.startRun(0, op)
+			p.startRun(0, op, p.queueRuns(op))
 		})
 	})
 }
 
-func (p *previewSession) startRun(bundleIndex int, op previewBenchmark) {
+func (p *previewSession) queueRuns(op previewBenchmark) []string {
+	var ids []string
+	for _, bundle := range op.bundles {
+		id := p.nextID("run")
+		task := core.RunTask{TaskId: id, Kind: "run", State: "starting", Queued: true, Bundle: previewValue(bundle), CreatedAt: p.timestamp()}
+		if op.resumePath != "" {
+			task.Kind, task.ResumeFrom = "resume", previewValue(op.resumePath)
+		}
+		p.state.tasks = append(p.state.tasks, task)
+		p.details[id] = &core.RunTaskDetail{Task: task}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func (p *previewSession) startRun(bundleIndex int, op previewBenchmark, ids []string) {
 	s := p.state
 	if bundleIndex >= len(op.bundles) {
 		p.finishBenchmark()
@@ -64,13 +79,17 @@ func (p *previewSession) startRun(bundleIndex int, op previewBenchmark) {
 	}
 	bundle := op.bundles[bundleIndex]
 	s.task.stage, s.progress.NextAction = "run", "run"
-	id := p.nextID("run")
+	id := ids[bundleIndex]
 	path := filepath.Join(s.results, id)
-	task := core.RunTask{TaskId: id, Kind: "run", State: "running", Bundle: previewValue(bundle), RunId: previewValue(id), RunPath: previewValue(path), CreatedAt: p.timestamp(), StartedAt: previewValue(p.timestamp())}
-	if op.resumePath != "" {
-		task.Kind, task.ResumeFrom = "resume", previewValue(op.resumePath)
+	task := p.details[id].Task
+	task.State, task.Queued = "running", false
+	task.RunId, task.RunPath, task.StartedAt = previewValue(id), previewValue(path), previewValue(p.timestamp())
+	for i := range s.tasks {
+		if s.tasks[i].TaskId == id {
+			s.tasks[i] = task
+			break
+		}
 	}
-	s.tasks = append(s.tasks, task)
 	s.runProgress = &core.RunProgress{Phase: previewValue("formal"), Total: previewValue(int64(120)), CurrentCaseId: previewValue("preview-case-001")}
 	p.details[id] = &core.RunTaskDetail{Task: task, Progress: s.runProgress}
 	s.history.StandaloneRuns = append(s.history.StandaloneRuns, core.RunSummary{RunId: id, Path: path, ModelName: previewValue(op.model), Engine: previewValue(op.engine), Bundle: previewValue(bundle), Status: "partial", StartedAt: task.StartedAt})
@@ -81,10 +100,10 @@ func (p *previewSession) startRun(bundleIndex int, op previewBenchmark) {
 			b.BoundPath = previewValue(filepath.Join(s.workspace, "bound", id))
 		}
 	}
-	p.tickRun(id, bundleIndex, op)
+	p.tickRun(id, bundleIndex, op, ids)
 }
 
-func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark) {
+func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark, ids []string) {
 	p.after("task", 500*time.Millisecond, func() {
 		s := p.state
 		detail := p.details[id]
@@ -100,7 +119,7 @@ func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark
 		progress.CurrentCaseId = previewValue(fmt.Sprintf("preview-case-%03d", min(end+1, *progress.Total)))
 		detail.Resources = append(detail.Resources, core.ResourceSample{Utc: p.timestamp(), MemAvailableBytes: previewValue(int64(10<<30) - end*(1<<20)), ServiceRssBytes: previewValue(int64(2<<30) + end*(1<<20)), ServiceCpuPercent: previewValue(120.0 + float64(end%40))})
 		if end < *progress.Total {
-			p.tickRun(id, bundleIndex, op)
+			p.tickRun(id, bundleIndex, op, ids)
 			return
 		}
 		p.terminalRun(id, "done")
@@ -111,7 +130,7 @@ func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark
 				b.Phase, b.NextAction = "run_complete", "none"
 			}
 		}
-		p.startRun(bundleIndex+1, op)
+		p.startRun(bundleIndex+1, op, ids)
 	})
 }
 
@@ -122,7 +141,7 @@ func (p *previewSession) terminalRun(id, state string) {
 		if task.TaskId != id {
 			continue
 		}
-		task.State, task.FinishedAt = state, previewValue(p.timestamp())
+		task.State, task.FinishedAt, task.Queued = state, previewValue(p.timestamp()), false
 		if detail := p.details[id]; detail != nil {
 			detail.Task = *task
 		}

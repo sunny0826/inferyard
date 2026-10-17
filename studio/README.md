@@ -283,6 +283,13 @@ mise exec -- go test -tags ui_debug,release .
 mise exec -- python -m unittest discover -s scripts -p test_package.py
 ```
 
+The tagged page tests include `TestPreviewBenchmarkParity`: shared scenarios compare
+the production benchmark orchestration with scripted service responses against the
+preview simulator. Both must satisfy explicit expectations for stages, available
+controls, serial queue states, cancellation, startup retry, and report scope. These
+tests start with prepared candidates and do not establish parity for real CLI events,
+downloads, or every error path. See the [preview test boundaries](../docs/subsystems/studio-panel.md#ui-调试预览).
+
 `go test ./...` includes the boundary e2e suite under `tests/e2e`: the real CLI executes
 every operation against a fake engine (the test binary re-executing itself), each CLI call
 is recorded to a blame transcript, and workspace evidence is validated against the exported

@@ -136,7 +136,9 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 本次模型、题包、下载来源、任务 ID 或设置 patch，不根据按钮文案猜测操作。
 [`preview_operations.go`](../../studio/internal/pages/preview_operations.go) 分派内存操作；
 任务、下载与报告分别由 `preview_benchmark.go`、`preview_downloads.go`、`preview_reports.go` 推进。
-任务冻结所选模型、引擎和题包，逐题包完成后生成独立报告快照；已打开的详情随进度刷新。
+任务冻结所选模型、引擎和题包，绑定后一次加入全部选中题包，串行运行；等待项与真实队列一样
+使用 `State=starting, Queued=true`。取消同时结束运行项与等待项，未启动项没有运行路径或历史证据。
+全部题包完成后生成独立报告快照；已打开的详情随进度刷新。
 下载完成更新模型/引擎清单，重试分配新任务和目录名；设置只更新本次会话。
 
 [`preview_schedule.go`](../../studio/internal/pages/preview_schedule.go) 按到期时间、同时间插入顺序
@@ -159,6 +161,21 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 场景下拉完成流程；由真实窗口 ticker 推进模拟任务。每个用例重新启动模拟应用，结果写入新的
 `build/ui-e2e/run-*`，失败保留截图与辅助功能树。根级 `mise run test:studio-ui` 和 macOS CI
 调用同一入口；此层与 `ui.NewTester` 内存回归、真实 CLI／假引擎边界测试分别报告。
+
+[`preview_parity_test.go`](../../studio/internal/pages/preview_parity_test.go) 对正常编排与模拟器运行同一组
+场景，并将双方各自与明确预期比较：core 单题包、pelican 单题包、双题包、启动失败后手动重试、
+绑定中取消、运行中同时取消活动项和等待项。观察包括阶段标题、键盘可达按钮、错误码、串行队列
+状态和报告包含的题包，报告不得混入已有的无关运行。检查不比较随机路径、PID、耗时或模拟分数。
+
+正常侧调用实际 `runBenchmarkFlow` / `cancelBenchmarkRuns`，在 `benchmarkBackend` 边界注入
+受控服务响应；模拟侧调用页面动作与内存调度器。起点是候选已准备好，取消比较终态与无报告，
+不覆盖正常窗口的异步重置过程。该层不启动 `core.Service`、CLI 或模型，不证明环境安装、下载、
+真实事件刷新或全部故障分支一致。已有 macOS CI 的 `ui_debug` 页面测试自动包含它。单独运行：
+
+```sh
+cd studio
+mise exec -- go test -tags ui_debug ./internal/pages -run TestPreviewBenchmarkParity -count=1
+```
 
 ## 关键状态转换
 

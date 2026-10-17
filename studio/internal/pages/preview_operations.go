@@ -266,7 +266,7 @@ func (p *previewSession) activateScene() {
 		}
 		s.task.bundles = []string{emptyText(task.Bundle)}
 		s.busy = true
-		p.tickRun(task.TaskId, 0, previewBenchmark{model: s.model, engine: s.engine, bundles: s.task.bundles})
+		p.tickRun(task.TaskId, 0, previewBenchmark{model: s.model, engine: s.engine, bundles: s.task.bundles}, []string{task.TaskId})
 	}
 	for _, task := range s.downloads {
 		if task.State == "downloading" {
