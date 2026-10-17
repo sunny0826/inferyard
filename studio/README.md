@@ -145,6 +145,28 @@ The version's single source is [mygo.config.ts](mygo.config.ts). Go embeds the c
 so an ordinary rebuild picks up version changes without generated files or linker flags.
 The packaging script reads the same version.
 
+## UI debug preview
+
+From `studio/`, open the native pages with simulated data:
+
+```sh
+mise exec -- go run . --debug-ui
+```
+
+An existing build also accepts `./build/inferyard-studio --debug-ui`. The sidebar's
+“模拟场景” selector provides 14 scenes: task preparation, running, completion and failure;
+live run details; report list, details, long tables and read errors; empty data; models;
+downloads; device measurements; and settings. Pages use the same components as normal
+Studio. “重置场景” restores fixture data, form values, table selection and collapsed sections.
+
+The window remains labelled “UI 调试 · 模拟数据”. It does not create `core.Service`, read
+user settings or workspace evidence, persist window layout, execute the CLI, start models,
+download files, or save settings. Action buttons show a preview notice; navigation and
+local form interactions remain available. Progress is fixed fixture data, not a live run.
+Restart the command after changing source code; there is no hot reload. Previewing a native
+window verifies its presentation, not the real model workflow. Implementation boundaries
+are described in the [subsystem reference](../docs/subsystems/studio-panel.md#ui-调试预览).
+
 ## Platform dependencies
 
 | Platform | Native windows |

@@ -247,6 +247,9 @@ func (w *viewState) runView(c *ui.Context) {
 		label = "继续未完成的运行"
 	}
 	if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.engineState.State != "running").Clicked() {
+		if w.previewAction() {
+			return
+		}
 		bundle := *b
 		ctx, cancel := context.WithCancel(w.ctx)
 		w.taskCancel = cancel

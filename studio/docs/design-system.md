@@ -295,6 +295,11 @@ CLI 仍生成离线 HTML；Studio 不修改历史报告文件。原生视图验�
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./internal/pages -count=1
 ```
 
+人工调整样式时使用 [UI debug preview](../README.md#ui-debug-preview)：
+`mise exec -- go run . --debug-ui` 打开同一套原生页面，侧栏切换模拟场景并重置交互状态。
+固定 fixture 覆盖常用任务、报告、空态、错误与缺测，不等于上述验收矩阵已全部覆盖；
+实际操作隔离规则见[子系统参考](../../docs/subsystems/studio-panel.md#ui-调试预览)。
+
 改变页面行为后执行 [Studio README 的检查](../README.md#verification-boundaries)，
 补充真实失败路径的回归。纯规范变更检查链接、命令与差异即可。
 测试通过、导出 PNG 和真机验收是不同证据；当前覆盖见[本次审查](design-system-audit.md)。

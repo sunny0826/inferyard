@@ -18,6 +18,9 @@ type reportViewState struct {
 }
 
 func (s *viewState) readReport(reference string) (*core.ReportIndex, *core.ApiError) {
+	if s.preview != nil {
+		return previewReport(reference)
+	}
 	if s.service == nil {
 		return nil, core.Err("not_found")
 	}

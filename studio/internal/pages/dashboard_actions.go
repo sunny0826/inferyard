@@ -118,6 +118,9 @@ func (w *viewState) managedBindCommand() (string, *core.ApiError) {
 }
 
 func (w *viewState) bindCommand(pid, endpoint string) (string, *core.ApiError) {
+	if w.preview != nil {
+		return "", nil
+	}
 	b := w.active()
 	if b == nil || w.progress == nil {
 		return "", core.Err("invalid_request")
@@ -168,6 +171,9 @@ func newBoundOutput(workspace, bundle string) (string, error) {
 }
 
 func (w *viewState) startEngine() {
+	if w.previewAction() {
+		return
+	}
 	if w.task.stage == "bind" && w.task.start.candidate != "" {
 		w.retryBenchmark()
 		return
@@ -247,6 +253,9 @@ func commandOf(args []string) string {
 }
 
 func (w *viewState) executeBinding(command string, e *core.ApiError) {
+	if w.previewAction() {
+		return
+	}
 	if e != nil {
 		w.submissionFailed(e)
 		return

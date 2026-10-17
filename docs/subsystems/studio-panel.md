@@ -50,7 +50,8 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 
 ## 运行路径
 
-1. **启动**：`main` 解析嵌入配置设置 `core.Version`，用 `signal.NotifyContext` 建应用上下文并
+1. **启动**：`main` 先解析启动参数；`--help` 输出说明并退出，非法参数退出 2；`--debug-ui`
+   进入下述独立预览路径。普通启动解析嵌入配置设置 `core.Version`，用 `signal.NotifyContext` 建应用上下文并
    `core.New` 创建服务（读设置、启动串行 runQueue、按需 `RefreshDevice`），随后 `mygo.App.Run`
    进入 WhenReady：注册桌面通知订阅、创建 `pages.Reports` 与主窗口 `pages.New`。SIGINT/SIGTERM
    触发 `mygo.App.Quit` 与 `Service.Shutdown`。
@@ -110,6 +111,28 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 9. **关停**：`Shutdown` 立即关闭准入，未终态队列任务标 cancelled、活动任务标 cancelling 并
    取消上下文，待 runQueue 排空后停止自启动引擎再置 `shutdownDone`；调用方超时（main 为 30
    秒）不抛弃清理、不改变顺序。
+
+## UI 调试预览
+
+`--debug-ui` 在 `core.New` 之前分流至 `pages.NewPreview`，只创建原生窗口及内存
+`previewSession`，不创建服务、队列、事件订阅或桌面通知，不读取用户设置与工作区证据。
+普通模式与预览共用 `pageShellOptions` 和真实页面构建器；预览窗口的 `StateKey` 为空，
+不保存窗口和侧栏布局。标题与侧栏持续标注模拟数据。
+
+[`preview.go`](../../studio/internal/pages/preview.go) 管理场景、重置和操作提示；
+[`preview_fixtures.go`](../../studio/internal/pages/preview_fixtures.go) 提供固定 DTO 与嵌入报告索引。
+切换或重置场景创建新的 `viewState`，并更换页面子树 key，使字段、表格选择与 `ui.Local`
+折叠状态一起复位。报告读取和运行详情直接取内存 fixture；显示的路径、PID 与进度不代表真实资源。
+
+`work` 与刷新入口拦截实际操作；任务启动、绑定、服务发现等在创建异步上下文或读取文件前
+拦截，统一显示「模拟预览：未执行实际操作。」。导航、折叠、表格选择和字段编辑保留；
+新任务及取消任务回到准备场景，不调用取消服务。新增页面操作时须覆盖这些边界，
+不能以注入假 executor 代替服务隔离。启动方法与场景清单见
+[Studio README](../../studio/README.md#ui-debug-preview)。
+
+`preview_test.go` 覆盖全部场景与页面导航、操作拦截、交互状态重置，以及 800/1120 宽、
+文字缩放 1/2、浅深主题下的布局。macOS 原生窗口已检查场景切换、完成任务打开报告、
+报告滚动及保存操作提示；这些模拟检查不证明真实模型流程或 Windows/Linux 原生行为。
 
 ## 关键状态转换
 

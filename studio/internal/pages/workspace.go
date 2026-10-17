@@ -66,6 +66,14 @@ func (s *viewState) checkedBundles() []string {
 }
 
 func (s *viewState) newBenchmark() {
+	if s.preview != nil {
+		model, engine := s.model, s.engine
+		s.preview.loadScene(0)
+		if model != "" && engine != "" {
+			s.preview.state.model, s.preview.state.engine = model, engine
+		}
+		return
+	}
 	if s.newTaskPending {
 		return
 	}

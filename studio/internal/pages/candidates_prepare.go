@@ -53,6 +53,9 @@ func prepareCombination(ctx context.Context, service *core.Service, model, engin
 }
 
 func (s *viewState) startBenchmark() {
+	if s.previewAction() {
+		return
+	}
 	names := s.checkedBundles()
 	if s.environmentMissing() || !s.preflightReady() || s.busy || len(names) == 0 || s.model == "" || s.engine == "" || s.engineState.State == "orphaned" {
 		return
@@ -284,6 +287,9 @@ func benchmarkBindCommand(workspace string, b inferyard.BundleProgress, state co
 }
 
 func (s *viewState) retryBenchmark() {
+	if s.previewAction() {
+		return
+	}
 	if s.busy || s.task.stage != "bind" || s.task.failure == nil {
 		return
 	}

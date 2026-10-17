@@ -15,7 +15,6 @@ import (
 	"github.com/oneo-me/onevra/source/components/chart"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
-	"github.com/oneo-me/onevra/source/theme"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
@@ -37,25 +36,7 @@ var navigation = []struct {
 func New(ctx context.Context, service *core.Service, page string) {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &viewState{ctx: ctx, service: service, selected: pageID(page), denied: map[string]bool{}, chartIndex: -1}
-	shell := sidebar.NewShell(sidebar.ShellOptions{
-		Title:           "InferYard Studio",
-		Width:           1120,
-		Height:          800,
-		MinWidth:        800,
-		MinHeight:       600,
-		StateKey:        "inferyard-studio-main",
-		LeftWidth:       205,
-		Left:            s.leftNav,
-		Content:         s.contentView,
-		Theme:           theme.Onevra,
-		LeftToggleLabel: "切换侧栏",
-		LeftResizeLabel: "调整侧栏宽度",
-		MinimizeLabel:   "最小化",
-		MaximizeLabel:   "最大化",
-		RestoreLabel:    "还原",
-		CloseLabel:      "关闭",
-		CloseToastLabel: "关闭通知",
-	})
+	shell := sidebar.NewShell(pageShellOptions("InferYard Studio", "inferyard-studio-main", s.leftNav, s.contentView))
 	w := shell.Window()
 	s.win = w
 	w.OnClosed(cancel)
@@ -89,6 +70,7 @@ func pageID(page string) string {
 }
 
 type viewState struct {
+	preview                                                                             *previewSession
 	lastEngineVerification                                                              time.Time
 	discoveryCLI                                                                        string
 	autoBind                                                                            bindingArm
@@ -158,6 +140,9 @@ type viewState struct {
 }
 
 func (s *viewState) refresh(full bool) {
+	if s.preview != nil {
+		return
+	}
 	s.refreshMu.Lock()
 	defer s.refreshMu.Unlock()
 	if s.ctx == nil || s.ctx.Err() != nil {
@@ -263,6 +248,9 @@ func (s *viewState) refresh(full bool) {
 	}
 }
 func (s *viewState) work(fn func() (string, *core.ApiError)) {
+	if s.previewAction() {
+		return
+	}
 	if s.busy {
 		return
 	}
@@ -287,6 +275,10 @@ func (s *viewState) finishWork(message string, e *core.ApiError) {
 	}
 }
 func (s *viewState) selectTask(id string) {
+	if s.preview != nil {
+		s.detailID, s.detail, s.detailError = id, previewDetail(id), nil
+		return
+	}
 	s.detailID = id
 	s.detail = nil
 	s.detailError = nil
@@ -415,6 +407,9 @@ func (s *viewState) contentView(c *ui.Context) {
 }
 
 func (s *viewState) refreshAction() {
+	if s.previewAction() {
+		return
+	}
 	if !s.busy {
 		go s.refresh(true)
 	}
