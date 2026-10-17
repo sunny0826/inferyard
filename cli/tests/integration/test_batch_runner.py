@@ -54,11 +54,13 @@ def batch(
     if duration_limit is not None:
         workload["purpose"] = "stability"
         workload["repeats"] = 1
+        # Keep the request cap ahead of the duration deadline even with a slow response.
+        duration_seconds = 2 * workload["timeout_seconds"] if duration_limit == 1 else 0.5
         workload["protocol"].update(
             kind="duration",
-            duration_seconds=0.5,
+            duration_seconds=duration_seconds,
             max_requests=duration_limit,
-            window_seconds=0.5,
+            window_seconds=duration_seconds,
             min_completed_per_case_per_window=1,
             drain_timeout_seconds=workload["timeout_seconds"],
         )

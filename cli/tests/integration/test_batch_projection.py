@@ -34,8 +34,13 @@ async def cancel_batch(request, deps, calls):
     return await task
 
 
-@pytest.mark.parametrize("mode", ["repeats", "resume", "capacity", "duration", "duration_limit"])
-def test_history_all_consumers_match_full_reduction(tmp_path, scenario, mode):
+@pytest.mark.parametrize(
+    "mode,stream_delay",
+    [(mode, 0.03) for mode in ("repeats", "resume", "capacity", "duration", "duration_limit")]
+    + [("duration_limit", 0.6)],
+)
+def test_history_all_consumers_match_full_reduction(tmp_path, scenario, mode, stream_delay):
+    scenario[3]["stream_delay"] = stream_delay
     request, deps = batch(
         tmp_path,
         scenario,
