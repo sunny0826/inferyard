@@ -11,7 +11,7 @@ import (
 
 func ptr[T any](v T) *T { return &v }
 func testState() viewState {
-	return viewState{selected: "dashboard", loaded: true, settingsLoaded: true, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
+	return viewState{selected: "dashboard", loaded: true, settingsLoaded: true, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}, Workspace: core.DirectoryReadiness{Initialized: true}, Results: core.DirectoryReadiness{Exists: true}, Models: core.DirectoryReadiness{Exists: true}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
 }
 func TestSixPagesRender(t *testing.T) {
 	for _, tc := range []struct{ page, want string }{{"dashboard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "选择模型与引擎"}, {"downloads", "下载引擎"}, {"reports", "从历史运行另做报告"}, {"settings", "CLI"}} {
@@ -47,6 +47,26 @@ func TestSixPagesRender(t *testing.T) {
 		})
 	}
 }
+func TestFirstOpen(t *testing.T) {
+	for _, tc := range []struct {
+		page  string
+		first bool
+		want  string
+	}{
+		{"", true, "dashboard"},
+		{"", false, "reports"},
+		{"/", true, "dashboard"},
+		{"/", false, "reports"},
+		{"/models", true, "models"},
+		{"dashboard", false, "dashboard"},
+		{"missing", true, "reports"},
+	} {
+		if got := firstOpen(tc.page, tc.first); got != tc.want {
+			t.Fatalf("firstOpen(%q, %v) = %q, want %q", tc.page, tc.first, got, tc.want)
+		}
+	}
+}
+
 func TestSidebarDashboardEntry(t *testing.T) {
 	s := testState()
 	tt := ui.NewTester(s.view, 1120, 2400)

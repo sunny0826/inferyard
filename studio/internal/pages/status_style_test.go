@@ -51,8 +51,11 @@ func TestDashboardStepStyles(t *testing.T) {
 	assertTextColor(t, tt, "✓  报告", theme.Success)
 	s.progress = nil
 	tt.Frame()
-	assertTextColor(t, tt, "准备", theme.Accent)
-	assertTextColor(t, tt, "设备检查", theme.TextMuted)
+	for _, label := range []string{"准备", "设备检查", "benchmark", "启动与绑定", "运行", "报告"} {
+		if tt.HasText(label) || tt.HasText("✓  "+label) {
+			t.Fatalf("track remains without progress: %v", tt.Texts())
+		}
+	}
 }
 
 func TestTaskTableChineseBadgeText(t *testing.T) {

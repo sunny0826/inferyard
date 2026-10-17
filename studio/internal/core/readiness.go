@@ -17,7 +17,6 @@ type Readiness struct {
 	Workspace DirectoryReadiness `json:"workspace"`
 	Results   DirectoryReadiness `json:"results"`
 	Models    DirectoryReadiness `json:"models"`
-	FirstRun  bool               `json:"first_run"`
 }
 
 func workspaceRoot(u UserSettings) *string {
@@ -48,7 +47,18 @@ func (s *Service) Readiness() Readiness {
 		}
 		w.Initialized = err == nil && json.Unmarshal(raw, &prep) == nil && prep.Kind == "community_init.v1"
 	}
-	return Readiness{CLI: s.probe(u), Workspace: w, Results: directoryReadiness(u.ResultsRoot, u.ResultsRoot != nil), Models: directoryReadiness(u.ModelsRoot, u.ModelsRoot != nil), FirstRun: u.WorkspaceRoot == nil && u.ResultsRoot == nil && u.ModelsRoot == nil}
+	return Readiness{CLI: s.probe(u), Workspace: w, Results: directoryReadiness(u.ResultsRoot, u.ResultsRoot != nil), Models: directoryReadiness(u.ModelsRoot, u.ModelsRoot != nil)}
+}
+
+// FirstRun reports whether the three path settings are still unset. It does not
+// probe the CLI or touch the filesystem; window creation reads it before the
+// first paint, and the background refresh probes separately.
+func (s *Service) FirstRun() bool {
+	return firstRun(s.userSettings())
+}
+
+func firstRun(u UserSettings) bool {
+	return u.WorkspaceRoot == nil && u.ResultsRoot == nil && u.ModelsRoot == nil
 }
 func (s *Service) Provision() (SettingsResponse, *ApiError) {
 	s.settingsMu.Lock()
