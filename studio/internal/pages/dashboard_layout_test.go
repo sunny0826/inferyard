@@ -3,6 +3,7 @@ package pages
 import (
 	"context"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -15,14 +16,13 @@ func TestDashboardEnvironmentVisibilityAndOrder(t *testing.T) {
 	s := testState()
 	s.ready.CLI.Status = "not_found"
 	tt := ui.NewTester(s.view, 1120, 3200)
-	labels := []string{"环境准备", "工作区进度", "阶段步骤 4"}
-	previous := float32(-1)
-	for _, label := range labels {
-		bounds, ok := tt.Find(label)
-		if !ok || bounds.Y <= previous {
-			t.Fatalf("section order %s: %+v", label, bounds)
+	if !tt.HasText("环境准备") {
+		t.Fatal(tt.Texts())
+	}
+	for _, label := range []string{"工作区进度", "阶段步骤 4"} {
+		if _, ok := tt.Find(label); ok {
+			t.Fatalf("unexpected section %s", label)
 		}
-		previous = bounds.Y
 	}
 	s.ready.CLI.Status = "ok"
 	s.ready.Workspace.Initialized = true
@@ -45,13 +45,10 @@ func TestDashboardOverviewStageMarkers(t *testing.T) {
 	for _, tc := range []struct {
 		action string
 		step   int
-	}{{"", 0}, {"device_check", 1}, {"prepare_candidate", 2}, {"bind", 3}, {"run", 4}, {"resume", 4}, {"report", 5}, {"verify", 5}, {"done", 6}} {
+	}{{"device_check", 1}, {"prepare_candidate", 2}, {"bind", 3}, {"run", 4}, {"resume", 4}, {"report", 5}, {"verify", 5}, {"done", 6}} {
 		t.Run(tc.action, func(t *testing.T) {
 			s := testState()
-			s.progress = nil
-			if tc.action != "" {
-				s.progress = &inferyard.WorkspaceProgress{NextAction: tc.action}
-			}
+			s.progress = &inferyard.WorkspaceProgress{NextAction: tc.action}
 			tt := ui.NewTester(s.conclusionView, 1120, 800)
 			current := 0
 			for i, label := range []string{"准备", "设备检查", "benchmark", "启动与绑定", "运行", "报告"} {
@@ -87,7 +84,7 @@ func TestDashboardMissingAndUnknownProgress(t *testing.T) {
 	s.progress = nil
 	s.refreshFailure = "进度读取失败详情"
 	tt := ui.NewTester(s.view, 1120, 2400)
-	if !tt.HasText("无法读取工作区进度，请刷新重试") || !tt.HasText(s.refreshFailure) {
+	if !tt.HasText("无法读取工作区进度，请刷新重试") || !tt.HasText(s.refreshFailure) || slices.Contains(tt.Texts(), "工作区进度") {
 		t.Fatal(tt.Texts())
 	}
 	s.progress = &inferyard.WorkspaceProgress{NextAction: "future_action"}

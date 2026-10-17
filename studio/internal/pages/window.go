@@ -35,7 +35,7 @@ var navigation = []struct {
 // The navigation and content builders are shared with the in-memory test view.
 func New(ctx context.Context, service *core.Service, page string) {
 	ctx, cancel := context.WithCancel(ctx)
-	s := &viewState{ctx: ctx, service: service, selected: pageID(page), denied: map[string]bool{}, chartIndex: -1}
+	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, chartIndex: -1}
 	shell := sidebar.NewShell(pageShellOptions("InferYard Studio", "inferyard-studio-main", s.leftNav, s.contentView))
 	w := shell.Window()
 	s.win = w
@@ -56,6 +56,16 @@ func New(ctx context.Context, service *core.Service, page string) {
 		}
 	}()
 }
+func firstOpen(page string, first bool) string {
+	if strings.TrimPrefix(page, "/") != "" {
+		return pageID(page)
+	}
+	if first {
+		return "dashboard"
+	}
+	return "reports"
+}
+
 func pageID(page string) string {
 	page = strings.TrimPrefix(page, "/")
 	for _, n := range navigation {

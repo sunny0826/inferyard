@@ -24,18 +24,25 @@ func TestDashboardViews(t *testing.T) {
 		want  string
 	}{
 		{"CLI unavailable", viewState{loaded: true}, "准备环境"},
+		{"missing progress uninitialized workspace", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Results: core.DirectoryReadiness{Exists: true}, Models: core.DirectoryReadiness{Exists: true}}}, "准备环境"},
 		{"initialize", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}}}, "准备环境"},
 		{"external service", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Phase: "bound_missing", CandidatePath: strptr("/tmp/c")}}}, startup: core.Startup{Path: "/engine/llama-server", Args: []string{"--port", "48857"}}}, "高级：手动绑定"},
 		{"managed engine", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Phase: "bound_missing", CandidatePath: strptr("/tmp/c")}}, NextCommand: strptr("inferyard config bind --candidate /tmp/c --pid 1 --endpoint http://x --out /tmp/new")}, engineState: core.EngineState{State: "running", Pid: 4242, Endpoint: "http://127.0.0.1:48857"}}, "重新绑定失败的题包"},
 		{"running", viewState{loaded: true, tasks: []core.RunTask{{State: "running"}}, runProgress: &core.RunProgress{Done: 86, Total: &total}}, "86 / 120 题"},
 		{"verified", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{DefaultScopeComplete: true, Report: inferyard.ProgressReport{Status: "verified"}}}, "已核验"},
 		{"device defaults", viewState{loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "device_check", Workspace: "/tmp/ws"}, modelURL: core.DefaultModelURL, engineURL: core.DefaultEngineURL()}, "引擎 URL"},
-		{"initialized outdated CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Path: strptr("/tmp/ws"), Exists: true, Initialized: true}}}, "已初始化"},
+		{"initialized outdated CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Path: strptr("/tmp/ws"), Exists: true, Initialized: true}}}, "准备环境"},
 		{"checkout CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: strptr("0.0.3"), Source: "checkout", Path: strptr("/src/inferyard")}}}, "准备环境"},
 		{"release CLI", viewState{loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: strptr("0.0.3"), Source: "release", Path: strptr("/usr/bin/inferyard")}}}, "准备环境"},
 	}
 	for i := range cases {
 		tc := &cases[i]
+		if tc.name == "external service" || tc.name == "managed engine" || tc.name == "running" {
+			tc.state.ready.CLI.Status = "ok"
+			tc.state.ready.Workspace.Initialized = true
+			tc.state.ready.Results.Exists = true
+			tc.state.ready.Models.Exists = true
+		}
 		if tc.name == "external service" || tc.name == "managed engine" {
 			tc.state.failure = core.Err("cli_error")
 		}
@@ -55,6 +62,9 @@ func TestDashboardViews(t *testing.T) {
 				t.Fatalf("missing %q: %v", tc.want, tt.Texts())
 			}
 			if tc.name == "initialized outdated CLI" {
+				if tt.HasText("已初始化") {
+					t.Fatal("initialized label must not be shown")
+				}
 				if tt.HasText("初始化工作区") && tt.HasText("新工作区目录") {
 					t.Fatal("init form must not be shown for an initialized workspace")
 				}
@@ -64,12 +74,16 @@ func TestDashboardViews(t *testing.T) {
 					t.Fatal("built-in asset URLs must be prefilled")
 				}
 			}
-			if tc.name == "CLI unavailable" {
-				if !tt.HasText("准备环境") {
-					t.Fatalf("missing auto-install action: %v", tt.Texts())
+			if tc.name == "CLI unavailable" || tc.name == "initialize" || tc.name == "missing progress uninitialized workspace" {
+				for _, label := range []string{"检查并安装 CLI。", "建立结果目录、模型目录和工作区。", "已完成的步骤会跳过。", "准备环境"} {
+					if !tt.HasText(label) {
+						t.Fatalf("missing %q: %v", label, tt.Texts())
+					}
 				}
-				if !tt.HasText("路径在设置页修改") {
-					t.Fatal("missing manual path action")
+				for _, label := range []string{"工作区进度", "无法读取工作区进度，请刷新重试", "路径在设置页修改"} {
+					if tt.HasText(label) {
+						t.Fatalf("unexpected %q: %v", label, tt.Texts())
+					}
 				}
 			}
 			if tc.name == "external service" {
@@ -104,7 +118,7 @@ func TestDashboardViews(t *testing.T) {
 	}
 }
 func TestSecondBundleAndIncompleteRun(t *testing.T) {
-	w := viewState{selected: "dashboard", loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete"}, {Bundle: "zh-svg-pelican", Phase: "candidate_missing"}}}}
+	w := viewState{selected: "dashboard", loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Initialized: true}, Results: core.DirectoryReadiness{Exists: true}, Models: core.DirectoryReadiness{Exists: true}}, progress: &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete"}, {Bundle: "zh-svg-pelican", Phase: "candidate_missing"}}}}
 	tt := ui.NewTester(w.view, 1000, 740)
 	if w.active().Bundle != "zh-svg-pelican" || !tt.HasText("zh-core · 已封存") || !tt.HasText("zh-svg-pelican") {
 		t.Fatal(tt.Texts())
@@ -122,7 +136,7 @@ func TestSecondBundleAndIncompleteRun(t *testing.T) {
 // resume is not offered), not a failure: during benchmark execution the
 // banner must show translated guidance instead of the raw-code fallback.
 func TestIncompleteRunBlockedReasonShowsGuidance(t *testing.T) {
-	w := viewState{selected: "dashboard", loaded: true, progress: &inferyard.WorkspaceProgress{NextAction: "run", Bundles: []inferyard.BundleProgress{{
+	w := viewState{selected: "dashboard", loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Initialized: true}, Results: core.DirectoryReadiness{Exists: true}, Models: core.DirectoryReadiness{Exists: true}}, progress: &inferyard.WorkspaceProgress{NextAction: "run", Bundles: []inferyard.BundleProgress{{
 		Bundle: "zh-core", Phase: "run_incomplete", NextAction: "run", BlockedReason: ptr("single_run_resume_not_supported"),
 	}}}}
 	tt := ui.NewTester(w.view, 1000, 740)

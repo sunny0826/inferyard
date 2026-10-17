@@ -9,7 +9,10 @@ operations and owns the evidence contract.
 
 ## Pages and first launch
 
-The sidebar opens on Reports and lists Reports, Models, Downloads, Device, and Settings.
+When the workspace, results, and model paths are all unset in settings, Studio opens
+on Dashboard with environment preparation. Once any of these paths has been saved,
+launching without an explicit page opens Reports. The sidebar lists Reports, Models,
+Downloads, Device, and Settings.
 A “新任务” (New task) button above the navigation opens Dashboard; no sidebar item is
 selected while Dashboard is open. The six page bodies are:
 

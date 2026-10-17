@@ -63,6 +63,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 	ui.Text(c, "配置、运行与跟踪本地模型测评。")
 	if s.environmentMissing() {
 		s.setupGuide(c)
+		return
 	}
 	s.conclusionView(c)
 	s.stageView(c)
@@ -80,6 +81,9 @@ func (s *viewState) environmentMissing() bool {
 }
 
 func (s *viewState) conclusionView(c *ui.Context) {
+	if s.progress == nil {
+		return
+	}
 	card(c, "工作区进度", func() {
 		step := s.step()
 		ui.Row(c).Wrap().Gap(c.Theme().Space(2)).Label("六阶段进度").Children(func() {
@@ -95,36 +99,32 @@ func (s *viewState) conclusionView(c *ui.Context) {
 			}
 		})
 		progressBar(c, float64(step)/6, "工作区六阶段准备进度").Description("六个准备阶段，不表示样本完成率。")
-		if s.progress != nil {
-			for _, b := range s.taskBundles() {
-				ui.Text(c, b.Bundle+" · "+stateLabel(b.Phase))
-				if b.BlockedReason != nil {
-					// An in-flight single-mode run legitimately reports
-					// "resume not supported" while it is still executing; the
-					// reason is flow guidance, not a failure, so it is not
-					// styled (or announced) as an error.
-					color := c.Theme().Danger
-					if b.Phase == "run_incomplete" {
-						color = c.Theme().Warning
-					}
-					ui.Text(c, human(*b.BlockedReason)).TextColor(color)
+		for _, b := range s.taskBundles() {
+			ui.Text(c, b.Bundle+" · "+stateLabel(b.Phase))
+			if b.BlockedReason != nil {
+				// An in-flight single-mode run legitimately reports
+				// "resume not supported" while it is still executing; the
+				// reason is flow guidance, not a failure, so it is not
+				// styled (or announced) as an error.
+				color := c.Theme().Danger
+				if b.Phase == "run_incomplete" {
+					color = c.Theme().Warning
 				}
+				ui.Text(c, human(*b.BlockedReason)).TextColor(color)
 			}
 		}
 	})
 }
 func (s *viewState) setupGuide(c *ui.Context) {
 	card(c, "环境准备", func() {
-		ui.Text(c, "按顺序检查 CLI、目录和工作区；已就绪的步骤会跳过。")
-		if s.ready.Workspace.Initialized {
-			ui.Text(c, "已初始化")
+		ui.Text(c, "检查并安装 CLI。")
+		ui.Text(c, "建立结果目录、模型目录和工作区。")
+		ui.Text(c, "已完成的步骤会跳过。")
+		if primaryButton(c, "准备环境").Disabled(s.busy).Clicked() {
+			s.prepareEnvironment()
 		}
 		if s.cliInstallStatus != "" {
 			ui.Text(c, s.cliInstallStatus)
-		}
-		ui.Text(c, "路径在设置页修改")
-		if primaryButton(c, "准备环境").Disabled(s.busy).Clicked() {
-			s.prepareEnvironment()
 		}
 	})
 }
