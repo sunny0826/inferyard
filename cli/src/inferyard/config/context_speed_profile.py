@@ -1,5 +1,7 @@
 """Pure frozen rules for the opt-in context speed experiment."""
 
+import re
+
 from inferyard.config.cache_policy import disabled_startup
 from inferyard.config.fixed_output import validate_inputs as validate_fixed_output
 from inferyard.config.startup_arguments import argument_values, model_argument
@@ -171,6 +173,8 @@ def _startup(config):
         "--host",
         "--port",
         "--reasoning",
+        "--device",
+        "--log-verbosity",
         "--chat-template-kwargs",
         "--cache-ram",
         "-cram",
@@ -201,6 +205,8 @@ def _startup(config):
     for index, option, value in argument_values(args, valued):
         _require(value is not None and not value.startswith("--"), "startup_value_missing")
         _require(index not in occupied and option not in seen, "startup_option_ambiguous")
+        if option in {"--device", "--log-verbosity"}:
+            _require(value != "", "startup_value_missing")
         seen.add(option)
         occupied.add(index)
         if "=" not in args[index]:
@@ -211,3 +217,12 @@ def _startup(config):
         _require(arg in flags, "startup_option_unsupported")
         _require(arg not in seen, "startup_option_ambiguous")
         seen.add(arg)
+    for _, option, value in argument_values(args, {"--device", "--log-verbosity"}):
+        if option == "--device":
+            _require(
+                config["engine"]["backend"] == "cuda"
+                and re.fullmatch(r"CUDA(0|[1-9][0-9]*)", value) is not None,
+                "startup_recipe_mismatch",
+            )
+        else:
+            _require(value == "4", "startup_recipe_mismatch")
