@@ -45,6 +45,7 @@ draft/lookup/ngram 或未知选项。固定输出复用既有 `config.fixed_outp
 
 Prism 实际构建仍须在 B 阶段通过现有 `/props` 的固定 `build_info` 核验，
 release 显示字符串本身不证明构建已验证。
+模板原件哈希与该 build 的服务表示分别按 [Prism 模板身份契约](prism-template-contract.md) 核验。
 
 跨输入校验重新计算题库 `content_hash`，绑定正文、规则、答案政策与版本，不只认显示名。
 专项 bundle/case 搭配缺失或错误 profile 必须拒绝；不能退回普通 performance。

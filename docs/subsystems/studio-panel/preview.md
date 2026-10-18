@@ -66,7 +66,9 @@
 
 正常侧调用实际 `runBenchmarkFlow` / `cancelBenchmarkRuns`，在 `benchmarkBackend` 边界注入
 受控服务响应；模拟侧调用页面动作与内存调度器。起点是候选已准备好，取消比较终态与无报告，
-不覆盖正常窗口的异步重置过程。该层不启动 `core.Service`、CLI 或模型，不证明环境安装、下载、
+异步重置另由 `preview_parity_reset_test.go` 对照空闲及活动/等待队列两种起点：正式侧调用
+实际重置循环并延迟 UI 回调，模拟侧调用新任务动作；各自断言旧任务结束、新任务不被取消，
+再比较结果。该层不启动 `core.Service`、CLI 或模型，不证明环境安装、下载、
 真实事件刷新或全部故障分支一致。已有 macOS CI 的 `ui_debug` 页面测试自动包含它。单独运行：
 
 ```sh
@@ -116,4 +118,3 @@ mise exec -- go test -tags ui_debug ./internal/pages -run TestPreviewBenchmarkPa
 匹配 → `dirty`；否则未封存或 completeness 非 `complete` → `partial`；否则 `complete`。优先级
 `cancelled > dirty > partial > complete`；该索引是 UI 投影，不执行 inferyard 的证据/哈希验证，
 完成性与 resume 终审归 CLI。
-

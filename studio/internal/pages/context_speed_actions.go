@@ -9,7 +9,7 @@ import (
 
 func (s *viewState) startSpeed() {
 	w := s.speed
-	if w == nil || s.busy || s.model == "" || s.engine == "" || (w.context != 65536 && w.context != 131072 && w.context != 262144) {
+	if w == nil || s.speedStartBlockReason() != "" || (w.context != 65536 && w.context != 131072 && w.context != 262144) {
 		return
 	}
 	if s.simulate(previewSpeedStart{model: s.model, engine: s.engine, context: w.context}) {

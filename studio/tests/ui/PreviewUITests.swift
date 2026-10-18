@@ -128,7 +128,9 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(text("各类任务表现").exists)
         keepScreenshot("Context speed result")
         app.disclosureTriangles["查看逐次测量"].click()
-        XCTAssertEqual(app.tables["专项逐次测量"].tableRows.count, 6)
+        let measurements = app.tables["专项逐次测量"]
+        XCTAssertTrue(measurements.waitForExistence(timeout: 5))
+        XCTAssertEqual(measurements.tableRows.count, 6)
         click("返回历史任务")
         let row = app.tables["专项历史表"].tableRows.element(boundBy: 1)
         XCTAssertTrue(row.exists)

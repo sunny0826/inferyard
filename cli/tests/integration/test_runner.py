@@ -54,6 +54,9 @@ def scenario(tmp_path, monkeypatch, config_path, *, initialize_host=True):
     config["generation"]["seed_support"] = "supported"
     config["conditions"]["cache_policy"] = "disabled"
     config["model"]["template_sha256"] = hashlib.sha256(b"fixture-template").hexdigest()
+    template = tmp_path / "fixture.jinja"
+    template.write_bytes(b"fixture-template")
+    config["model"]["template_path"] = str(template)
     config["engine"]["startup_args"] = [
         "-ngl",
         "0",

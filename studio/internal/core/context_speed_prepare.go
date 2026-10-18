@@ -226,7 +226,7 @@ func speedFailureMessage(reason string) string {
 	switch reason {
 	case "human_corpus_review_required":
 		return "专项题库尚未完成人工审核，不能开始测评。"
-	case "context_unsupported":
+	case "context_unsupported", "model_context_unsupported":
 		return "模型不支持所选上下文档位，请选择支持的档位。"
 	case "device_preflight_blocked", "insufficient_host_memory", "insufficient_device_memory":
 		return "设备资源预算未通过检查，测评未启动。"

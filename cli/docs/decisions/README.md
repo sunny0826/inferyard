@@ -47,6 +47,7 @@ Accepted 表示采纳设计，不代表所有平台已验证。
 | [ADR 050：Windows 内存诊断使用独立 kind](050-windows-memory-inventory.md) | Accepted |
 | [ADR 051：模型获取简化为 curl 级下载](051-simplified-model-acquisition.md) | Accepted |
 | [ADR 052：退役独立 Observer 项目](052-retire-standalone-observer.md) | Accepted |
+| [ADR 053：分别核验模板原件与 Prism 服务表示](053-prism-template-source-verification.md) | Accepted |
 
 ADR 039 删除 `host-state migrate` 与退休机制：实时入口自动初始化 clean 状态，
 旧工具文件完全忽略，主机互斥只覆盖 InferYard 自身进程。

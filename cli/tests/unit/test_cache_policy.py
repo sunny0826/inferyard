@@ -38,7 +38,7 @@ def test_missing_or_malformed_controls_rejected(args):
     assert not disabled_startup(args)
 
 
-def test_adapter_refuses_conflicting_ram_before_generation(config_path):
+def test_adapter_refuses_conflicting_ram_before_generation(config_path, tmp_path):
     import asyncio
     import hashlib
 
@@ -49,6 +49,9 @@ def test_adapter_refuses_conflicting_ram_before_generation(config_path):
     config = load_config(config_path).config.to_dict()
     config["conditions"]["cache_policy"] = "disabled"
     config["model"]["template_sha256"] = hashlib.sha256(b"template").hexdigest()
+    template_path = tmp_path / "template.jinja"
+    template_path.write_bytes(b"template")
+    config["model"]["template_path"] = str(template_path)
     config["engine"]["startup_args"] = [
         "-ngl",
         "0",
@@ -91,7 +94,9 @@ def test_adapter_refuses_conflicting_ram_before_generation(config_path):
         ("cpu", "999", False),
     ],
 )
-def test_requested_accelerator_backend_requires_gpu_offload(config_path, backend, layers, accepted):
+def test_requested_accelerator_backend_requires_gpu_offload(
+    config_path, tmp_path, backend, layers, accepted
+):
     import asyncio
     import hashlib
 
@@ -114,6 +119,9 @@ def test_requested_accelerator_backend_requires_gpu_offload(config_path, backend
         *BASE,
     ]
     config["model"]["template_sha256"] = hashlib.sha256(b"template").hexdigest()
+    template_path = tmp_path / "template.jinja"
+    template_path.write_bytes(b"template")
+    config["model"]["template_path"] = str(template_path)
 
     async def management(path):
         return {

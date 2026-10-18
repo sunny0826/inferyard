@@ -127,6 +127,8 @@ func (s *viewState) speedStartBlockReason() string {
 		return "请先完成环境准备。"
 	case !s.preflightReady():
 		return "请先完成工作区设备检查。"
+	case s.newTaskPending:
+		return "正在结束上一任务，请等待完成。"
 	case s.busy:
 		return "正在处理其他操作，请等待完成。"
 	case s.running() != nil:
@@ -143,6 +145,11 @@ func (s *viewState) speedStartBlockReason() string {
 	e := s.eligibility(s.engine)
 	switch e.State {
 	case core.EngineCheckEligible:
+		for _, model := range s.registry.Models {
+			if model.Name == s.model && model.ContextLength != nil && s.speed != nil && *model.ContextLength < int64(s.speed.context) {
+				return fmt.Sprintf("所选模型最多支持 %gK 上下文，不能运行 %dK 档；请更换长上下文模型。", float64(*model.ContextLength)/1024, s.speed.context/1024)
+			}
+		}
 		return ""
 	case core.EngineCheckChecking:
 		return "正在核验所选引擎，请稍候。"

@@ -73,7 +73,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 	}
 	s.stageView(c)
 	for _, task := range s.tasks {
-		if emptyText(task.RunPath) == "" {
+		if task.Kind != "context_speed" && emptyText(task.RunPath) == "" {
 			ui.Text(c, taskLabel(task))
 			errorView(c, task.Error)
 		}

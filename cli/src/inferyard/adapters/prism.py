@@ -8,6 +8,7 @@ import hashlib
 import json
 import math
 import time
+from pathlib import Path
 
 import httpx
 
@@ -19,6 +20,22 @@ from inferyard.evidence.storage import EvidenceError, Redactor
 from inferyard.platforms.identity import PreflightError, resolve_loopback_origin
 
 BUILD = "b10743-adfffbe41"
+
+
+def _service_template_digest(model, build):
+    if build != BUILD:
+        return model["template_sha256"]
+    try:
+        raw = Path(model["template_path"]).read_bytes()
+        if hashlib.sha256(raw).hexdigest() != model["template_sha256"]:
+            raise PreflightError("service_template_mismatch")
+        source = raw.decode("utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise PreflightError("service_template_mismatch") from exc
+    normalized = source.replace("\r\n", "\n").replace("\r", "\n")
+    if source.endswith("\n"):
+        normalized = normalized[:-1]
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 class ProtocolError(RuntimeError):
@@ -288,10 +305,9 @@ class PrismAdapter:
         ):
             raise PreflightError("service_properties_mismatch")
         template = props.get("chat_template")
-        if (
-            not isinstance(template, str)
-            or hashlib.sha256(template.encode()).hexdigest() != config["model"]["template_sha256"]
-        ):
+        if not isinstance(template, str) or hashlib.sha256(
+            template.encode()
+        ).hexdigest() != _service_template_digest(config["model"], self.build_info):
             raise PreflightError("service_template_mismatch")
         args = config["engine"]["startup_args"]
 
