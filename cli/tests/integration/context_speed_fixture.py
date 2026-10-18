@@ -179,7 +179,7 @@ def speed_service(scenario, tmp_path, monkeypatch):
     def write(context=65536):
         config["conditions"]["context_size"] = context
         config["engine"]["startup_args"][-3] = str(context)
-        path.write_text(render(config))
+        path.write_text(render(config), encoding="utf-8")
         return path
 
     import inferyard.runtime.batch_runner as batch_runner

@@ -1,6 +1,8 @@
 """Public parser/dispatch and real localhost HTTP; host/review are simulated."""
 
+import io
 import json
+import tomllib
 
 import pytest
 
@@ -15,6 +17,19 @@ from tests.integration.context_speed_fixture import (
 )
 
 speed_service = service_fixture
+
+
+def test_fixture_config_uses_utf8_with_legacy_locale(speed_service, monkeypatch):
+    with monkeypatch.context() as locale:
+        locale.setattr(
+            io,
+            "text_encoding",
+            lambda encoding, stacklevel=2: "cp1252" if encoding is None else encoding,
+        )
+        path = speed_service["write"]()
+    config = tomllib.loads(path.read_bytes().decode("utf-8"))
+    assert config == speed_service["config"]
+    assert speed_service["calls"] == []
 
 
 def invoke(capsys, *args):
