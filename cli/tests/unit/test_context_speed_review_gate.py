@@ -10,7 +10,10 @@ from inferyard.config.preparation_io import PreparationError
 from inferyard.contracts.validation import ContractError
 
 
-def test_public_review_reason(tmp_path, capsys):
+def test_public_review_reason(tmp_path, capsys, monkeypatch):
+    from scripts.build_context_speed_bundle import BUNDLE_NAME, outputs
+
+    monkeypatch.setattr(workspace, "resource_bytes", lambda _: outputs()[BUNDLE_NAME])
     out = tmp_path / "refused"
     assert main(["init", "--bundle", "zh-context-speed", "--out", str(out)]) == 4
     response = json.loads(capsys.readouterr().out)

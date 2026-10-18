@@ -5,7 +5,14 @@
   "language": "zh-CN",
   "license_note": "本项目原创确定性合成中文材料，按项目 MIT 许可发布；无外部语料、非真实人类语料；参考正文已离线分词，人工审核待完成。",
   "task_protocol": "performance",
-  "review_records": [],
+  "review_records": [
+    {
+      "reviewer": "Xudong Guo",
+      "reviewed_at": "2026-10-18T12:36:42.729438+00:00",
+      "content_sha256": "a92e8b9f9e108071d979efc598c3ed55a047220a893b9a8c85525357e6d31407",
+      "conclusion": "approved"
+    }
+  ],
   "case_review_records": [],
   "answer_policy": {
     "instruction_newlines": "crlf_to_lf",

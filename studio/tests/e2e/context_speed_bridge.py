@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 
+from scripts.build_context_speed_bundle import BUNDLE_NAME, outputs
 from tests.conftest import config_path  # noqa: F401
 from tests.integration.context_speed_fixture import (  # noqa: F401
     scenario,
@@ -21,7 +22,11 @@ def test_studio_context_speed_bridge(speed_service, monkeypatch, capsys):
     output = Path(os.environ["STUDIO_BRIDGE_OUTPUT"])
     output.mkdir(parents=True, exist_ok=False)
     refused = speed_service["root"] / "review-refused"
-    code, response = invoke(capsys, "init", "--bundle", "zh-context-speed", "--out", refused)
+    with monkeypatch.context() as draft:
+        draft.setattr(
+            "inferyard.config.community_workspace.resource_bytes", lambda _: outputs()[BUNDLE_NAME]
+        )
+        code, response = invoke(capsys, "init", "--bundle", "zh-context-speed", "--out", refused)
     (output / "review-rejection.json").write_text(
         json.dumps({"exit_code": code, "response": response})
     )

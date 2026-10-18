@@ -49,7 +49,8 @@ release 显示字符串本身不证明构建已验证。
 跨输入校验重新计算题库 `content_hash`，绑定正文、规则、答案政策与版本，不只认显示名。
 专项 bundle/case 搭配缺失或错误 profile 必须拒绝；不能退回普通 performance。
 该纯校验允许检查未批准草案，既有 `require_review` 及正式创建/运行审核关口保持原样。
-当前批准数组为空；包内副本已注册，但正式 init/create/plan 仍执行人工审核准入。
+三档已获[人工批准](../../bundles/CONTEXT-SPEED-APPROVAL-20261018.md)，整包内容哈希不变；
+包内副本携带批准记录，正式 init/create/plan 仍拒绝未批准或内容发生变化的题库。
 
 接口：
 
@@ -204,8 +205,7 @@ mise exec -- uv run --frozen pytest -q tests/unit/test_context_speed_contracts.p
 mise exec -- uv run --frozen python scripts/export_schemas.py --check
 ```
 
-后续 B 需完成原始证据认证、cohort 构造、只读 JSON 投影及各通用出口拒绝；C 消费相同
-Schema/黄金样例。Go、公开 CLI 五轮假引擎、原生 UI、真实模型和平台验收不由 A 的通过替代。
+原生 UI、真实模型和平台验收不由协议测试替代。
 
 ## CLI 物理读取实现
 

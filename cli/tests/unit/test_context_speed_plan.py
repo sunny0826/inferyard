@@ -15,7 +15,7 @@ inputs = profile_inputs
 
 
 @pytest.mark.parametrize("context", CASES)
-def test_fixed_plan_five_trials_and_budget(inputs, config_path, tmp_path, monkeypatch, context):
+def test_fixed_plan_five_trials_and_budget(inputs, config_path, tmp_path, context):
     _, config, bundle = inputs
     config["conditions"]["context_size"] = context
     config["engine"]["startup_args"][3] = str(context)
@@ -24,8 +24,6 @@ def test_fixed_plan_five_trials_and_budget(inputs, config_path, tmp_path, monkey
         config=Document.parse("config", config),
         bundle=Document.parse("bundle", bundle),
     )
-    # Controlled review response only; real bundle approval bytes remain empty.
-    monkeypatch.setattr("inferyard.config.context_speed_plan.require_review", lambda value: None)
     plan = freeze(loaded, tmp_path / "plan")
     reread, bound = read_frozen_plan(tmp_path / "plan/plan.json")
     assert plan == reread
@@ -43,6 +41,7 @@ def test_fixed_plan_five_trials_and_budget(inputs, config_path, tmp_path, monkey
 
 def test_formal_draft_refused_before_output(inputs, config_path, tmp_path):
     _, config, bundle = inputs
+    bundle["review_records"] = []
     loaded = replace(
         load_config(config_path),
         config=Document.parse("config", config),

@@ -70,6 +70,8 @@ def inputs(config_path):
 
 def test_draft_hash_and_review_are_separate(inputs):
     experiment, config, bundle = inputs
+    require_review(bundle)
+    bundle["review_records"] = []
     assert content_hash(bundle) == BUNDLE_CONTENT_SHA256
     assert bundle["review_records"] == []
     validate_document("bundle", bundle)

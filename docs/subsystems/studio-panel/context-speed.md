@@ -16,8 +16,10 @@
 专项在工作区 `context-speed-operations/TASK` 新建独立材料，调用 init、device-check、
 带 profile/context 的 config create，复用 StartEngine 的完整 argv、进程所有权与健康等待，
 然后由 CLI bind 核验 PID/start ticks，再调用 plan preset。
-当前正式 init 拒绝为 `human_corpus_review_required` / 4；页面显示固定原因，
-不以 fixture 或模拟模式绕过。预算读取冻结计划的 `max_wall_seconds`。
+正式 init 对未批准或审批失效的题库返回 `human_corpus_review_required` / 4；
+页面显示固定原因，不以 fixture 或模拟模式绕过。当前题库的批准记录见
+[人工审核](../../../cli/bundles/CONTEXT-SPEED-APPROVAL-20261018.md)。
+预算读取冻结计划的 `max_wall_seconds`。
 
 准备任务和冻结计划任务都归原 `s.runs`；计划就绪后由原 `runQueue` 单 worker 执行。
 `SpeedPlanRef`、`SpeedBatchRef` 与子 `SpeedRunRef` 不占用普通 `RunPath`。

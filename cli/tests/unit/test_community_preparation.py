@@ -26,7 +26,7 @@ def invoke(capsys, args):
     return code, json.loads(captured.out)
 
 
-@pytest.mark.parametrize("name", ["zh-smoke", "zh-core", "zh-svg-pelican"])
+@pytest.mark.parametrize("name", ["zh-smoke", "zh-core", "zh-svg-pelican", "zh-context-speed"])
 def test_init_preserves_authoritative_bytes_and_review(tmp_path, capsys, name):
     out = tmp_path / "中文 workspace"
     code, result = invoke(capsys, ["init", "--out", str(out), "--bundle", name])

@@ -68,8 +68,9 @@ checked in the golden chain.
 `TestContextSpeedPublicCLI` runs `context_speed_bridge.py` through mise's uv and the frozen
 CLI environment. It reuses the CLI localhost Prism fixture and publicly dispatches
 plan → five trials → speed-results. Human review and host observations are explicit
-test fixtures; before injecting them it checks that real init refuses with
-`human_corpus_review_required` / 4 and creates no output. Original hashes, model-request
+test fixtures; an unapproved generated corpus is supplied at the resource boundary to
+check that init refuses with `human_corpus_review_required` / 4 and creates no output.
+The shipped corpus has separate human approval. Original hashes, model-request
 counts and absence of HTML are checked after offline reading. The production Go parser
 consumes that JSON; this is not real model or context-capacity acceptance.
 

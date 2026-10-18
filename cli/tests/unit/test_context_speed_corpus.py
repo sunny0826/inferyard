@@ -60,7 +60,14 @@ def test_repeatable_bytes_and_checked_in_artifacts():
     first = outputs()
     assert outputs() == first
     for name, raw in first.items():
-        assert (ROOT / "bundles" / name).read_bytes() == raw
+        actual = (ROOT / "bundles" / name).read_bytes()
+        if name == BUNDLE_NAME:
+            approved = json.loads(actual)
+            require_review(approved)
+            approved["review_records"] = []
+            assert approved == json.loads(raw)
+        else:
+            assert actual == raw
 
 
 def test_material_has_multiple_topics_and_structures_without_duplicate_records():
@@ -129,6 +136,17 @@ def test_changed_content_invalidates_hash_binding(field, value):
 def test_real_review_gate_rejects_unapproved_corpus():
     bundle = build()
     assert bundle["review_records"] == bundle["case_review_records"] == []
+    with pytest.raises(ContractError, match="human_corpus_review_required"):
+        require_review(bundle)
+
+
+@pytest.mark.parametrize(
+    "field,value", [("prompt", "改动正文"), ("rules", {"output_target_tokens": 255})]
+)
+def test_approved_corpus_rejects_changed_content(field, value):
+    bundle = json.loads((ROOT / "bundles" / BUNDLE_NAME).read_bytes())
+    require_review(bundle)
+    bundle["cases"][0][field] = value
     with pytest.raises(ContractError, match="human_corpus_review_required"):
         require_review(bundle)
 

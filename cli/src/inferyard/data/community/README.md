@@ -16,8 +16,8 @@ inferyard progress --workspace "{{WORKSPACE}}"
 ## Context-speed workspace
 
 For an explicitly selected `zh-context-speed` workspace, use the dedicated flow below
-instead of the ordinary core/SVG and report steps. The shipped draft still requires
-human review; a test fixture does not approve it.
+instead of the ordinary core/SVG and report steps. The shipped corpus carries human
+approval for all three cases. Changed or unapproved content still fails the review gate.
 
 1. Prepare with `config create --profile context-speed --context-size 65536` and the
    existing platform asset arguments. Supported context sizes are 65536, 131072 and 262144.

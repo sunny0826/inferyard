@@ -61,14 +61,14 @@ def test_public_five_trials_and_readonly_results(speed_service, monkeypatch, cap
 
 def test_actual_public_review_gate(speed_service, capsys):
     path = speed_service["write"]()
+    bundle_path = speed_service["root"] / "bundle.json"
+    bundle = json.loads(bundle_path.read_bytes())
+    bundle["review_records"] = []
+    bundle_path.write_text(json.dumps(bundle))
+    prepared = speed_service["root"] / "approved"
+    code, response = invoke(capsys, "init", "--bundle", "zh-context-speed", "--out", prepared)
+    assert code == 0 and response["status"] == "prepared"
     out = speed_service["root"] / "refused"
-    code, response = invoke(capsys, "init", "--bundle", "zh-context-speed", "--out", out)
-    assert code == 4
-    assert response["limitations"] == ["human_corpus_review_required"]
-    assert response["status"] == "error"
-    assert response["completeness"] == "incomplete"
-    assert response["details"] is None
-    assert not out.exists()
     assert (
         invoke(capsys, "plan", "--preset", "context-speed", "--config", path, "--out", out)[0] == 2
     )
