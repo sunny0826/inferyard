@@ -122,7 +122,7 @@ func speedParityResult(t *testing.T, model, engine string, missing bool) inferya
 func TestPreviewContextSpeedParity(t *testing.T) {
 	for _, missing := range []bool{false, true} {
 		t.Run(map[bool]string{false: "five_complete", true: "missing_timing"}[missing], func(t *testing.T) {
-			p, tt := prepareSpeed(t, "64K · 65,536 tokens")
+			p, tt := prepareSpeed(t, "64k")
 			model, engine := p.state.model, p.state.engine
 			p.speedMissingTiming = missing
 			b := &speedParityBackend{task: core.RunTask{TaskId: "production", State: "starting", ContextSpeed: &core.ContextSpeedTask{Model: model, Engine: engine, Context: 65536, Stage: "preparing"}}, result: speedParityResult(t, model, engine, missing)}
@@ -200,7 +200,7 @@ func TestPreviewContextSpeedFailureParity(t *testing.T) {
 		{"binding", "startup_arguments_mismatch"}, {"planning", "context_unsupported"},
 	} {
 		t.Run(scenario.reason, func(t *testing.T) {
-			p, tt := prepareSpeed(t, "64K · 65,536 tokens")
+			p, tt := prepareSpeed(t, "64k")
 			p.speedFailureStage = scenario.stage
 			p.speedFailure = &core.ApiError{Code: scenario.reason, Message: scenario.reason}
 			model, engine := p.state.model, p.state.engine
@@ -249,7 +249,7 @@ func TestPreviewContextSpeedCancelParity(t *testing.T) {
 		{"waiting", 1600 * time.Millisecond, 0}, {"active", 3 * time.Second, 1},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			p, tt := prepareSpeed(t, "64K · 65,536 tokens")
+			p, tt := prepareSpeed(t, "64k")
 			click(t, tt, "开始专项测评")
 			p.advance(scenario.elapsed)
 			tt.Frame()

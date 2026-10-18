@@ -46,7 +46,7 @@ func TestSpeedAdmissionExplainsBlockingCondition(t *testing.T) {
 		{"preflight", "请先完成工作区设备检查。", func(s *viewState) { s.progress.DevicePreflight.Path = nil }},
 		{"busy", "正在处理其他操作，请等待完成。", func(s *viewState) { s.busy = true }},
 		{"resetting", "正在结束上一任务，请等待完成。", func(s *viewState) { s.newTaskPending = true }},
-		{"model_context", "所选模型最多支持 8K 上下文，不能运行 64K 档；请更换长上下文模型。", func(s *viewState) {
+		{"model_context", "所选模型最多支持 8k 上下文，不能运行 64k 档；请更换长上下文模型。", func(s *viewState) {
 			s.registry.Models = []core.ModelAsset{{Name: s.model, ContextLength: ptr(int64(8192)), Available: true}}
 		}},
 		{"orphaned", "请先处理遗留服务记录，再开始专项测评。", func(s *viewState) { s.engineState.State = "orphaned" }},

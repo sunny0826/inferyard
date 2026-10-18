@@ -48,7 +48,7 @@ func saveSpeedImage(t *testing.T, tt *ui.Tester, name string) {
 }
 
 func TestPreviewSpeedHistoricalIdentity(t *testing.T) {
-	p, tt := prepareSpeed(t, "128K · 131,072 tokens")
+	p, tt := prepareSpeed(t, "128k")
 	click(t, tt, "开始专项测评")
 	p.advance(10 * time.Second)
 	tt.Frame()
@@ -79,7 +79,7 @@ func TestPreviewSpeedHistoricalIdentity(t *testing.T) {
 	click(t, tt, "打开专项结果")
 	assertSpeedIdentity(t, tt, original)
 	click(t, tt, "用此组合新开任务")
-	if !tt.HasText(original.model) || !tt.HasText(original.engine) || !tt.HasText("128K · 131,072 tokens") {
+	if !tt.HasText(original.model) || !tt.HasText(original.engine) || !tt.HasText("128k") {
 		t.Fatal("rerun form did not restore recorded combination", tt.Texts())
 	}
 	click(t, tt, "停止当前服务")

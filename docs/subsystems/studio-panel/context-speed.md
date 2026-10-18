@@ -46,6 +46,10 @@ nullable 原因和统计一致性；展示采用 CLI 数值，不用 Go 计算�
 
 ## 历史与展示
 
+Context 在选择器、进度、结果与历史中显示为 `64k`、`128k`、`256k`，这里 `k = 1024`。
+底层仍保存整数 token 数；Prompt length 保留实际分词后的整数，不缩写为容量档位。
+`tokens` 是计数，`tok/s` 表示 token/s；每种模型使用自己的 tokenizer，不能将 token 当作字符。
+
 `workspace/logs/context-speed-tasks/TASK.json` 通过临时文件、fsync、rename 原子替换，
 仅记录任务身份、生命周期和引用；与原始 batch 隔离，无六列缓存。
 准备失败、排队取消及 batch 尚未创建也可恢复。中途退出留下的非终态记录显示 interrupted。

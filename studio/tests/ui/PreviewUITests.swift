@@ -111,7 +111,7 @@ final class PreviewUITests: XCTestCase {
     func testContextSpeedResultAndHistory() {
         prepareSpeed()
         openMenu("上下文档位")
-        app.menuItems["128K · 131,072 tokens"].click()
+        app.menuItems["128k"].click()
         keepScreenshot("Context speed setup")
         click("开始专项测评")
         expectText("已完成 1 / 5 次测量")
@@ -126,6 +126,8 @@ final class PreviewUITests: XCTestCase {
             XCTAssertLessThanOrEqual(header.frame.maxX, app.windows["InferYard Studio · UI 调试"].frame.maxX - 16)
         }
         XCTAssertFalse(text("各类任务表现").exists)
+        XCTAssertTrue(text("128k").exists)
+        XCTAssertFalse(text("131072").exists)
         keepScreenshot("Context speed result")
         app.disclosureTriangles["查看逐次测量"].click()
         let measurements = app.tables["专项逐次测量"]

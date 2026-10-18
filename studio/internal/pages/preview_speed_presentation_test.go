@@ -11,7 +11,7 @@ import (
 )
 
 func TestPreviewSpeedDefaultTableFits(t *testing.T) {
-	p, tt := prepareSpeed(t, "128K · 131,072 tokens")
+	p, tt := prepareSpeed(t, "128k")
 	click(t, tt, "开始专项测评")
 	p.advance(10 * time.Second)
 	tt.Frame()
@@ -31,7 +31,7 @@ func TestPreviewSpeedDefaultTableFits(t *testing.T) {
 }
 
 func TestPreviewSpeedNarrowTableCanReachDecode(t *testing.T) {
-	p, tt := prepareSpeed(t, "128K · 131,072 tokens")
+	p, tt := prepareSpeed(t, "128k")
 	click(t, tt, "开始专项测评")
 	p.advance(10 * time.Second)
 	p.state.openSpeed(p.state.speed.current.id)
@@ -50,7 +50,7 @@ func TestPreviewSpeedNarrowTableCanReachDecode(t *testing.T) {
 }
 
 func TestPreviewSpeedCancelledDiagnosticsAreCollapsed(t *testing.T) {
-	p, tt := prepareSpeed(t, "64K · 65,536 tokens")
+	p, tt := prepareSpeed(t, "64k")
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	click(t, tt, "开始专项测评")
 	p.advance(200 * time.Millisecond)

@@ -10,7 +10,7 @@ import (
 )
 
 func TestPreviewSpeedEngineVerificationRecovery(t *testing.T) {
-	p, tt := prepareSpeed(t, "128K · 131,072 tokens")
+	p, tt := prepareSpeed(t, "128k")
 	s := p.state
 	s.checks.Supported = false
 	s.checks.Engines[s.engine] = core.EngineEligibility{State: core.EngineCheckUnknown, Reason: "cli_outdated"}
@@ -36,10 +36,10 @@ func TestPreviewSpeedEngineVerificationRecovery(t *testing.T) {
 }
 
 func TestPreviewSpeedModelContextAdmissionParity(t *testing.T) {
-	p, tt := prepareSpeed(t, "64K · 65,536 tokens")
+	p, tt := prepareSpeed(t, "64k")
 	production := runStateFixture()
 	production.speed = &speedWorkspace{selected: true, context: 65536}
-	want := "所选模型最多支持 8K 上下文，不能运行 64K 档；请更换长上下文模型。"
+	want := "所选模型最多支持 8k 上下文，不能运行 64k 档；请更换长上下文模型。"
 	for _, s := range []*viewState{production, p.state} {
 		s.registry.Models = []core.ModelAsset{{Name: s.model, ContextLength: ptr(int64(8192)), Available: true}}
 		if got := s.speedStartBlockReason(); got != want {

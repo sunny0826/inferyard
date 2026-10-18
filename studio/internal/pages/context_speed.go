@@ -91,9 +91,9 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	}
 	ui.Field(c, "上下文档位", func() {
 		components.NativeSelect(c, &w.context, []components.NativeSelectOption[int]{
-			{Value: 65536, Label: "64K · 65,536 tokens"},
-			{Value: 131072, Label: "128K · 131,072 tokens"},
-			{Value: 262144, Label: "256K · 262,144 tokens"},
+			{Value: 65536, Label: "64k"},
+			{Value: 131072, Label: "128k"},
+			{Value: 262144, Label: "256k"},
 		}).Trigger.Label("上下文档位")
 	})
 	ui.Text(c, "zh-context-speed · 5 次测量 · 每次输出 256 tokens")
@@ -147,7 +147,7 @@ func (s *viewState) speedStartBlockReason() string {
 	case core.EngineCheckEligible:
 		for _, model := range s.registry.Models {
 			if model.Name == s.model && model.ContextLength != nil && s.speed != nil && *model.ContextLength < int64(s.speed.context) {
-				return fmt.Sprintf("所选模型最多支持 %gK 上下文，不能运行 %dK 档；请更换长上下文模型。", float64(*model.ContextLength)/1024, s.speed.context/1024)
+				return fmt.Sprintf("所选模型最多支持 %gk 上下文，不能运行 %dk 档；请更换长上下文模型。", float64(*model.ContextLength)/1024, s.speed.context/1024)
 			}
 		}
 		return ""
@@ -166,7 +166,7 @@ func (s *viewState) speedStartBlockReason() string {
 func (s *viewState) speedTaskView(c *ui.Context) {
 	r := s.speed.current
 	s.header(c, "长上下文速度")
-	ui.Text(c, fmt.Sprintf("%s · %s · %dK", r.model, r.engine, r.context/1024))
+	ui.Text(c, fmt.Sprintf("%s · %s · %s", r.model, r.engine, speedContext(r.context)))
 	label := "zh-context-speed · "
 	if s.preview != nil {
 		label += "模拟任务 "
@@ -348,10 +348,17 @@ func speedTable(c *ui.Context, state *pageTableState, label string, task *speedT
 		}
 		context := "—"
 		if v.context != nil {
-			context = fmt.Sprint(*v.context)
+			context = speedContext(*v.context)
 		}
 		ui.Text(c, []string{"", context, prompt, speedNumber(v.seconds), speedNumber(v.prefill), speedNumber(v.decode)}[col]).SingleLine()
 	}).Height(c.Theme().Rem(4)*float32(len(rows)+1) + 2)
+}
+
+func speedContext(tokens int) string {
+	if tokens <= 0 {
+		return "—"
+	}
+	return fmt.Sprintf("%gk", float64(tokens)/1024)
 }
 
 func speedNumber(v *float64) string {
@@ -382,7 +389,7 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 				speedIdentity(c, r)
 				return
 			}
-			ui.Text(c, []string{r.id, "", fmt.Sprint(r.context), r.label()}[col]).SingleLine()
+			ui.Text(c, []string{r.id, "", speedContext(r.context), r.label()}[col]).SingleLine()
 		}).Height(c.Theme().Rem(4)*float32(min(len(w.history), 5)+1) + 2)
 		if i := selectedRow(&w.historyTable, len(w.history)); i >= 0 {
 			if primaryButton(c, "打开专项结果").Clicked() || w.historyTable.submitted {

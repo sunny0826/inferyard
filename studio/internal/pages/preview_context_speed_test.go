@@ -20,7 +20,7 @@ func prepareSpeed(t *testing.T, tier string) (*previewSession, *ui.Tester) {
 	if err := tt.ChooseMenuItem("长上下文速度"); err != nil {
 		t.Fatal(err)
 	}
-	if tier != "64K · 65,536 tokens" {
+	if tier != "64k" {
 		click(t, tt, "上下文档位")
 		if err := tt.ChooseMenuItem(tier); err != nil {
 			t.Fatal(err)
@@ -44,7 +44,7 @@ func TestPreviewSpeedCompleteAndReopen(t *testing.T) {
 		label           string
 		context, tokens int
 	}{
-		{"64K · 65,536 tokens", 65536, 52625}, {"128K · 131,072 tokens", 131072, 106294}, {"256K · 262,144 tokens", 262144, 213612},
+		{"64k", 65536, 52625}, {"128k", 131072, 106294}, {"256k", 262144, 213612},
 	} {
 		t.Run(tc.label, func(t *testing.T) {
 			p, tt := prepareSpeed(t, tc.label)
@@ -61,7 +61,7 @@ func TestPreviewSpeedCompleteAndReopen(t *testing.T) {
 			p.advance(10 * time.Second)
 			tt.Frame()
 			click(t, tt, "查看结果")
-			for _, text := range []string{"模型 / 引擎", "Context", "Prompt length (tokens)", "Time (s)", "Prefill (tok/s)", "Decode (tok/s)", "有效 5/5 · 中位数", fmt.Sprint(tc.tokens)} {
+			for _, text := range []string{"模型 / 引擎", "Context", "Prompt length (tokens)", "Time (s)", "Prefill (tok/s)", "Decode (tok/s)", "有效 5/5 · 中位数", tc.label, fmt.Sprint(tc.tokens)} {
 				if !tt.HasText(text) {
 					t.Fatal("missing result", text, tt.Texts())
 				}
@@ -69,12 +69,18 @@ func TestPreviewSpeedCompleteAndReopen(t *testing.T) {
 			if tt.HasText("各类任务表现") || len(p.state.reports) != 0 || p.state.task.report != "" || len(p.state.historyRuns()) != 0 {
 				t.Fatal("specialist generated a generic report or grade")
 			}
+			if tt.HasText(fmt.Sprint(tc.context)) {
+				t.Fatal("context is not compact", tt.Texts())
+			}
 			assertSpeedIdentity(t, tt, r)
 			click(t, tt, "查看逐次测量")
 			if !tt.HasText("按第 1 至第 5 次测量顺序排列。") || len(r.samples) != 5 {
 				t.Fatal("samples unavailable")
 			}
 			click(t, tt, "返回历史任务")
+			if !tt.HasText(tc.label) || tt.HasText(fmt.Sprint(tc.context)) {
+				t.Fatal("history context is not compact", tt.Texts())
+			}
 			click(t, tt, r.id)
 			click(t, tt, "打开专项结果")
 			if p.state.speed.opened != r {
@@ -102,7 +108,7 @@ func TestPreviewSpeedCompleteAndReopen(t *testing.T) {
 func TestPreviewSpeedCancellationAndReset(t *testing.T) {
 	for _, elapsed := range []time.Duration{200 * time.Millisecond, 700 * time.Millisecond, 2800 * time.Millisecond, 6700 * time.Millisecond} {
 		t.Run(elapsed.String(), func(t *testing.T) {
-			p, tt := prepareSpeed(t, "64K · 65,536 tokens")
+			p, tt := prepareSpeed(t, "64k")
 			click(t, tt, "开始专项测评")
 			p.advance(elapsed)
 			tt.Frame()
@@ -141,7 +147,7 @@ func TestPreviewSpeedCancellationAndReset(t *testing.T) {
 }
 
 func TestPreviewSpeedMissingFailureAndReadRetry(t *testing.T) {
-	p, tt := prepareSpeed(t, "128K · 131,072 tokens")
+	p, tt := prepareSpeed(t, "128k")
 	click(t, tt, "下次操作模拟失败")
 	click(t, tt, "下次专项模拟缺测")
 	click(t, tt, "开始专项测评")
@@ -179,7 +185,7 @@ func TestPreviewSpeedMissingFailureAndReadRetry(t *testing.T) {
 }
 
 func TestPreviewSpeedStopGuard(t *testing.T) {
-	p, tt := prepareSpeed(t, "64K · 65,536 tokens")
+	p, tt := prepareSpeed(t, "64k")
 	if tt.HasText("工作区进度") {
 		t.Fatal("specialist setup displayed ordinary bundle progress")
 	}
@@ -199,7 +205,7 @@ func TestPreviewSpeedStopGuard(t *testing.T) {
 }
 
 func TestPreviewSpeedInvalidSubmissionKeepsFailureAndCloseStopsEvents(t *testing.T) {
-	p, _ := prepareSpeed(t, "64K · 65,536 tokens")
+	p, _ := prepareSpeed(t, "64k")
 	p.failNext = true
 	p.dispatch(previewSpeedStart{model: p.state.model, engine: p.state.engine, context: 4096})
 	if !p.failNext || p.state.speed.current != nil || p.state.busy {
@@ -221,7 +227,7 @@ func TestPreviewSpeedLayout(t *testing.T) {
 		for _, scale := range []float32{1, 2} {
 			for _, dark := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%d/%.0f/%t", width, scale, dark), func(t *testing.T) {
-					p, _ := prepareSpeed(t, "64K · 65,536 tokens")
+					p, _ := prepareSpeed(t, "64k")
 					p.dispatch(previewSpeedStart{model: p.state.model, engine: p.state.engine, context: 65536})
 					p.advance(10 * time.Second)
 					p.state.openSpeed(p.state.speed.current.id)
