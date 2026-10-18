@@ -238,8 +238,10 @@ func (s *viewState) speedResultView(c *ui.Context) {
 		primaryButton(c, "重新读取结果").OnClick(func() { s.openSpeed(r.id) })
 		return
 	}
-	if r.reason != "" {
-		ui.Text(c, r.reason).TextColor(c.Theme().Warning)
+	if r.stage == speedCancelled {
+		ui.Text(c, "任务已取消。已完成的测量已保留；未完成项显示为 —。")
+	} else if r.summary == nil {
+		ui.Text(c, "测量结果不满足完整汇总条件；请展开诊断详情查看缺测或校验原因。").TextColor(c.Theme().Warning)
 	}
 	card(c, "测量结果", func() {
 		if r.summary != nil {
@@ -255,17 +257,24 @@ func (s *viewState) speedResultView(c *ui.Context) {
 				speedTable(c.Key("speed-partial"), &w.table, "专项已完成测量", r, r.samples)
 			}
 		}
-		for i, sample := range r.samples {
-			if sample.missing != "" {
-				ui.Text(c, fmt.Sprintf("第 %d 次缺测：%s", i+1, sample.missing)).TextColor(c.Theme().Warning)
-			}
-			if sample.reason != "" {
-				ui.Text(c, fmt.Sprintf("第 %d 次：%s", i+1, sample.reason)).TextColor(c.Theme().Warning)
-			}
-		}
 		ui.Text(c, "Time 为输入处理耗时，包含首采样；不是完整请求耗时。")
 		ui.Text(c, "Prompt length 为模板后实际输入。— 表示缺测，不计为 0。")
 	})
+	if r.summary == nil || r.reason != "" {
+		componentFold(c.Key(r.id), "查看诊断详情", func() {
+			if r.reason != "" {
+				ui.Text(c, r.reason).TextColor(c.Theme().Warning)
+			}
+			for i, sample := range r.samples {
+				if sample.missing != "" {
+					ui.Text(c, fmt.Sprintf("第 %d 次缺测：%s", i+1, sample.missing)).TextColor(c.Theme().Warning)
+				}
+				if sample.reason != "" {
+					ui.Text(c, fmt.Sprintf("第 %d 次：%s", i+1, sample.reason)).TextColor(c.Theme().Warning)
+				}
+			}
+		})
+	}
 	if r.summary != nil {
 		componentFold(c, "查看逐次测量", func() {
 			ui.Text(c, "按第 1 至第 5 次测量顺序排列。")
@@ -276,7 +285,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 
 func speedTable(c *ui.Context, state *pageTableState, label string, task *speedTask, rows []speedSample) {
 	columns := []ui.TableColumn{
-		{Title: "模型 / 引擎", MinWidth: c.Theme().Rem(24)},
+		{Title: "模型 / 引擎", MinWidth: c.Theme().Rem(18)},
 		{Title: "Context", MinWidth: c.Theme().Rem(7)},
 		{Title: "Prompt length (tokens)", MinWidth: c.Theme().Rem(14)},
 		{Title: "Time (s)", MinWidth: c.Theme().Rem(6)},

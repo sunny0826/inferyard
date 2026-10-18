@@ -162,8 +162,12 @@ func TestPreviewSpeedMissingFailureAndReadRetry(t *testing.T) {
 		t.Fatal("read failure displayed stale results")
 	}
 	click(t, tt, "重新读取结果")
-	if !tt.HasText("有效 4/5 · 未形成完整汇总") || !tt.HasText("第 5 次：final_timing_missing、metric_missing") || !tt.HasText("—") {
+	if !tt.HasText("有效 4/5 · 未形成完整汇总") || !tt.HasText("—") {
 		t.Fatal("missing timing was presented as a complete result", tt.Texts())
+	}
+	click(t, tt, "查看诊断详情")
+	if !tt.HasText("第 5 次：final_timing_missing、metric_missing") {
+		t.Fatal("missing timing diagnostics unavailable", tt.Texts())
 	}
 	assertSpeedIdentity(t, tt, r)
 	if len(p.state.speed.history) != 2 || r.summary != nil || p.state.busy || len(p.jobs) != 0 {

@@ -117,6 +117,9 @@ final class PreviewUITests: XCTestCase {
         expectText("106294")
         for column in ["模型 / 引擎", "Context", "Prompt length (tokens)", "Time (s)", "Prefill (tok/s)", "Decode (tok/s)"] {
             expectText(column)
+            let header = text(column)
+            XCTAssertTrue(header.isHittable)
+            XCTAssertLessThanOrEqual(header.frame.maxX, app.windows["InferYard Studio · UI 调试"].frame.maxX - 16)
         }
         XCTAssertFalse(text("各类任务表现").exists)
         keepScreenshot("Context speed result")
@@ -135,7 +138,12 @@ final class PreviewUITests: XCTestCase {
         click("取消专项测评")
         click("查看结果", timeout: 10)
         expectText("有效 0/5 · 未形成完整汇总")
+        expectText("任务已取消。已完成的测量已保留；未完成项显示为 —。")
+        XCTAssertFalse(text("第 1 次缺测：Context: not_executed；Prompt length: not_executed；Time: not_executed；Prefill: not_executed；Decode: not_executed").exists)
         keepScreenshot("Context speed cancelled")
+        app.disclosureTriangles["查看诊断详情"].click()
+        expectText("第 1 次缺测：Context: not_executed；Prompt length: not_executed；Time: not_executed；Prefill: not_executed；Decode: not_executed")
+        keepScreenshot("Context speed cancellation diagnostics")
     }
 
     func testContextSpeedFailureMissingAndReadRetry() {
@@ -149,9 +157,13 @@ final class PreviewUITests: XCTestCase {
         click("开始专项测评")
         click("查看结果", timeout: 15)
         expectText("有效 4/5 · 未形成完整汇总")
+        expectText("测量结果不满足完整汇总条件；请展开诊断详情查看缺测或校验原因。")
+        XCTAssertFalse(text("第 5 次：final_timing_missing、metric_missing").exists)
+        keepScreenshot("Context speed missing timing")
+        app.disclosureTriangles["查看诊断详情"].click()
         expectText("第 5 次：final_timing_missing、metric_missing")
         expectText("第 5 次缺测：Time: final_timing_missing；Prefill: final_timing_missing；Decode: final_timing_missing")
-        keepScreenshot("Context speed missing timing")
+        keepScreenshot("Context speed missing timing diagnostics")
         click("返回历史任务")
         app.tables["专项历史表"].tableRows.element(boundBy: 2).click()
         app.checkBoxes["下次操作模拟失败"].click()
