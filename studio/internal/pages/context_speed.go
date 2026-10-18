@@ -29,12 +29,12 @@ type speedSample struct {
 }
 
 type speedTask struct {
-	id, model, engine, card string
-	context                 int
-	stage                   speedStage
-	samples                 []speedSample
-	summary                 *speedSample
-	reason                  string
+	id, model, engine string
+	context           int
+	stage             speedStage
+	samples           []speedSample
+	summary           *speedSample
+	reason            string
 }
 
 func (r *speedTask) active() bool { return r.stage <= speedReading || r.stage == speedCancelling }
@@ -88,7 +88,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		ui.Text(c, "并发 1 · 固定输入 · 关闭输入缓存与投机解码")
 		ui.Text(c, "停止条件示例：单次 300 秒；可用内存低于 2 GiB、磁盘低于 1 GiB 或温度达到 90°C。实际预算须经设备核验。")
 	})
-	ui.Text(c, "界面预览 · 尚待认可；数值为模拟，不代表模型性能。").TextColor(c.Theme().Warning)
+	ui.Text(c, "模拟数据 · 正式功能尚未接入；数值不代表模型性能。").TextColor(c.Theme().Warning)
 	blocked := s.environmentMissing() || !s.preflightReady() || s.busy || s.model == "" || s.engine == "" || s.eligibility(s.engine).State != core.EngineCheckEligible || s.engineState.State == "orphaned"
 	if engineLocked(s.engineState.State) {
 		ui.Text(c, "先停止当前受管服务，再按所选上下文启动新任务。")
@@ -199,7 +199,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 
 func speedTable(c *ui.Context, state *pageTableState, label string, task *speedTask, rows []speedSample) {
 	columns := []ui.TableColumn{
-		{Title: "Card", MinWidth: c.Theme().Rem(17)},
+		{Title: "模型 / 引擎", MinWidth: c.Theme().Rem(24)},
 		{Title: "Context", MinWidth: c.Theme().Rem(7)},
 		{Title: "Prompt length (tokens)", MinWidth: c.Theme().Rem(14)},
 		{Title: "Time (s)", MinWidth: c.Theme().Rem(6)},
@@ -213,8 +213,12 @@ func speedTable(c *ui.Context, state *pageTableState, label string, task *speedT
 		if v.prompt != nil {
 			prompt = fmt.Sprint(*v.prompt)
 		}
-		ui.Text(c, []string{task.card, fmt.Sprint(task.context), prompt, speedNumber(v.seconds), speedNumber(v.prefill), speedNumber(v.decode)}[col]).SingleLine()
-	}).Height(c.Theme().Space(8)*float32(len(rows)+1) + 2)
+		if col == 0 {
+			speedIdentity(c, task)
+			return
+		}
+		ui.Text(c, []string{"", fmt.Sprint(task.context), prompt, speedNumber(v.seconds), speedNumber(v.prefill), speedNumber(v.decode)}[col]).SingleLine()
+	}).Height(c.Theme().Rem(4)*float32(len(rows)+1) + 2)
 }
 
 func speedNumber(v *float64) string {
@@ -233,12 +237,16 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 		ui.Text(c, "本窗口的模拟记录；关闭窗口后清空。").TextColor(c.Theme().TextMuted)
 		selectableTable(&w.historyTable, func(i int) any { return w.history[i].id }, func(i int) string { return w.history[i].id })
 		pageTable(c.Key("speed-history"), &w.historyTable, "专项历史表", []ui.TableColumn{
-			{Title: "任务", MinWidth: c.Theme().Rem(11)}, {Title: "模型", MinWidth: c.Theme().Rem(15)},
+			{Title: "任务", MinWidth: c.Theme().Rem(11)}, {Title: "模型 / 引擎", MinWidth: c.Theme().Rem(24)},
 			{Title: "Context", MinWidth: c.Theme().Rem(6)}, {Title: "状态", MinWidth: c.Theme().Rem(6)},
 		}, len(w.history), func(row, col int) {
 			r := w.history[row]
-			ui.Text(c, []string{r.id, r.model, fmt.Sprint(r.context), r.label()}[col]).SingleLine()
-		}).Height(c.Theme().Space(8)*float32(min(len(w.history), 5)+1) + 2)
+			if col == 1 {
+				speedIdentity(c, r)
+				return
+			}
+			ui.Text(c, []string{r.id, "", fmt.Sprint(r.context), r.label()}[col]).SingleLine()
+		}).Height(c.Theme().Rem(4)*float32(min(len(w.history), 5)+1) + 2)
 		if i := selectedRow(&w.historyTable, len(w.history)); i >= 0 {
 			if primaryButton(c, "打开专项结果").Clicked() || w.historyTable.submitted {
 				s.openSpeed(w.history[i].id)
@@ -246,5 +254,12 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 		} else {
 			ui.Text(c, "选择任务后打开结果。")
 		}
+	})
+}
+
+func speedIdentity(c *ui.Context, task *speedTask) {
+	ui.Column(c).Gap(c.Theme().Space(1)).Children(func() {
+		ui.Text(c, task.model)
+		ui.Text(c, task.engine).TextColor(c.Theme().TextMuted)
 	})
 }

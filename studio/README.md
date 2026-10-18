@@ -183,10 +183,13 @@ Models. Settings are saved in memory and download directory names affect later t
 task while retaining settings, downloads and results. “重置场景” restores all fixture data,
 form values, table selection and collapsed sections, and discards pending simulation steps.
 
-The context-speed UI is currently a preview awaiting user approval. After preparing the
+The context-speed UI design has been approved; data remains simulated and the production
+workflow is not connected. After preparing the
 environment, choose “长上下文速度” in “测评类型”, select 64K, 128K or 256K, and click
 “开始专项测评”. The same native page builders show progress, cancellation and six-column
-results. “下次专项模拟缺测” makes the fifth sample lack timing; “下次操作模拟失败” applies
+results: model / engine, Context, Prompt length, Time, Prefill and Decode. Results and
+history show the recorded model and engine together, independent of the current selection.
+GPU model and memory are not shown in specialist results. “下次专项模拟缺测” makes the fifth sample lack timing; “下次操作模拟失败” applies
 to startup or opening results. Reading again does not rerun measurements. The Reports page
 keeps specialist history for this window only; “专项 · 历史恢复示例” shows a fixed history
 fixture, not evidence restored from disk. Normal Studio does not expose this workflow yet.

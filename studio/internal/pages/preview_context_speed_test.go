@@ -61,7 +61,7 @@ func TestPreviewSpeedCompleteAndReopen(t *testing.T) {
 			p.advance(10 * time.Second)
 			tt.Frame()
 			click(t, tt, "查看结果")
-			for _, text := range []string{"Card", "Context", "Prompt length (tokens)", "Time (s)", "Prefill (tok/s)", "Decode (tok/s)", "有效 5/5 · 中位数", fmt.Sprint(tc.tokens)} {
+			for _, text := range []string{"模型 / 引擎", "Context", "Prompt length (tokens)", "Time (s)", "Prefill (tok/s)", "Decode (tok/s)", "有效 5/5 · 中位数", fmt.Sprint(tc.tokens)} {
 				if !tt.HasText(text) {
 					t.Fatal("missing result", text, tt.Texts())
 				}
@@ -69,6 +69,7 @@ func TestPreviewSpeedCompleteAndReopen(t *testing.T) {
 			if tt.HasText("各类任务表现") || len(p.state.reports) != 0 || p.state.task.report != "" || len(p.state.historyRuns()) != 0 {
 				t.Fatal("specialist generated a generic report or grade")
 			}
+			assertSpeedIdentity(t, tt, r)
 			click(t, tt, "查看逐次测量")
 			if !tt.HasText("按第 1 至第 5 次测量顺序排列。") || len(r.samples) != 5 {
 				t.Fatal("samples unavailable")
@@ -123,6 +124,9 @@ func TestPreviewSpeedCancellationAndReset(t *testing.T) {
 			if !tt.HasText(fmt.Sprintf("有效 %d/5 · 未形成完整汇总", count)) {
 				t.Fatal("partial result missing", tt.Texts())
 			}
+			if count > 0 {
+				assertSpeedIdentity(t, tt, r)
+			}
 			click(t, tt, "重置场景")
 			p.advance(time.Minute)
 			if len(p.state.speed.history) != 0 || p.state.speed.current != nil {
@@ -157,6 +161,7 @@ func TestPreviewSpeedMissingFailureAndReadRetry(t *testing.T) {
 	if !tt.HasText("有效 4/5 · 未形成完整汇总") || !tt.HasText("第 5 次：引擎阶段计时缺失（模拟）；速度与耗时缺测。") || !tt.HasText("—") {
 		t.Fatal("missing timing was presented as a complete result", tt.Texts())
 	}
+	assertSpeedIdentity(t, tt, r)
 	if len(p.state.speed.history) != 2 || r.summary != nil || p.state.busy || len(p.jobs) != 0 {
 		t.Fatal("read retry reran measurements")
 	}
@@ -224,9 +229,14 @@ func TestPreviewSpeedLayout(t *testing.T) {
 							t.Errorf("overflow %s %.1f %.1f", n.FieldByName("text").String(), x, w)
 						}
 					})
+					assertSpeedIdentity(t, tt, p.state.speed.opened)
+					saveSpeedImage(t, tt, fmt.Sprintf("result-%d-%.0f-%t", width, scale, dark))
 					if !tt.HasText("长上下文速度 · 结果") {
 						t.Fatal("result vanished")
 					}
+					click(t, tt, "返回历史任务")
+					assertSpeedIdentity(t, tt, p.state.speed.current)
+					saveSpeedImage(t, tt, fmt.Sprintf("history-%d-%.0f-%t", width, scale, dark))
 				})
 			}
 		}

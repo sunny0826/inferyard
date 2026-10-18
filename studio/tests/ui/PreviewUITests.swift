@@ -116,7 +116,7 @@ final class PreviewUITests: XCTestCase {
         click("查看结果", timeout: 15)
         expectText("有效 5/5 · 中位数")
         expectText("106294")
-        for column in ["Card", "Context", "Prompt length (tokens)", "Time (s)", "Prefill (tok/s)", "Decode (tok/s)"] {
+        for column in ["模型 / 引擎", "Context", "Prompt length (tokens)", "Time (s)", "Prefill (tok/s)", "Decode (tok/s)"] {
             expectText(column)
         }
         XCTAssertFalse(text("各类任务表现").exists)

@@ -19,7 +19,7 @@ func (p *previewSession) startSpeed(op previewSpeedStart) {
 		return
 	}
 	r := &speedTask{id: p.nextID("speed"), model: op.model, engine: op.engine, context: op.context,
-		card: "Preview GPU · 24 GiB 共享", stage: speedPreparing}
+		stage: speedPreparing}
 	s.speed.current, s.speed.opened = r, nil
 	s.busy = true
 	fail, missing := p.takeFailure(), p.speedMissingTiming
@@ -79,7 +79,7 @@ func previewSpeedSample(context, index int) speedSample {
 
 func previewSpeedHistory(s *viewState) {
 	r := &speedTask{id: "preview-speed-history", model: s.model, engine: s.engine,
-		context: 131072, card: "Preview GPU · 24 GiB 共享", stage: speedDone}
+		context: 131072, stage: speedDone}
 	for i := range 5 {
 		r.samples = append(r.samples, previewSpeedSample(r.context, i))
 	}

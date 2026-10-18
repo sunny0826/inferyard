@@ -34,4 +34,6 @@ The context-speed preview tests drive the existing task form through tier select
 five simulated measurements, the six-column result, history reopening, cancellation,
 startup failure, missing timing and result-read retry. Screenshots of these states are
 retained in the result bundle even on success. This feature has no production CLI
-integration yet and still requires the user's explicit UI approval.
+integration yet. The user has approved the UI design; native execution and production
+integration are separate verification steps. Result and history tables show the model
+and engine recorded for each task.

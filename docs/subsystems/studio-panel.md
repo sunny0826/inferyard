@@ -151,11 +151,14 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 新增页面操作须覆盖这些边界，不能以注入假 executor 代替服务隔离。启动方法与场景清单见
 [Studio README](../../studio/README.md#ui-debug-preview)。
 
-长上下文速度专项目前处于[规划](../../cli/docs/plans/context-speed.md)的 U 阶段。
+长上下文速度专项界面已获用户认可；正式功能接入仍见[实施计划](../../cli/docs/plans/context-speed.md)。
 `context_speed.go` 提供共用页面构建器与展示状态，只有调试 fixture 初始化专项入口；
 普通模式尚未接入。`preview_context_speed.go` 在同一窗口调度器中模拟准备、启动/绑定、
 冻结计划、五次测量、读取结果；表单校验后经 `previewSpeedStart/Cancel/Read` 分派。
 重测创建新任务，取消先收尾再进入终态，结果重读不追加测量。窗口内历史与普通报告分开，
+结果六列为模型 / 引擎、Context、Prompt length、Time、Prefill、Decode。结果与历史的身份列
+分两行读取目标任务的模型和引擎，不跟随当前选择；重测沿用原任务模型、引擎和 context，保留原记录。
+专项结果不显示 GPU 型号或显存，设备页与后台设备核验职责不变。
 专项不进入通用报告生成；「历史恢复示例」仅展示 fixture，不执行磁盘恢复。
 下次启动失败、第五次计时缺测和打开结果失败分别有恢复/说明入口，缺测不参与完整汇总。
 页面测试覆盖三档、取消、重读、缺测、重置及浅深主题/文字缩放；专项还没有正式编排，
