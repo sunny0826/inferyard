@@ -7,6 +7,11 @@ the scene selector to complete workflows.
 
 From `studio/`, in a logged-in macOS desktop session with full Xcode selected:
 
+Before starting this suite, remind the user to watch for the macOS password or
+automation authorization prompt. The user enters the password directly in that system
+dialog. An automation-mode initialization timeout can occur before any test starts if
+authorization is still pending; retry after the user confirms authorization.
+
 ```sh
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 python tests/ui/run.py
 ```
