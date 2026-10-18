@@ -3,136 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
-<title>Dashboard · InferYard Studio 原型</title>
-<style>
-:root{color-scheme:light;--bg:#fcfbf9;--surface:#fefefd;--hover:#eceae4;--pressed:#d9d7d2;--border:#deded5;--text:#33332f;--muted:#72726a;--accent:#bd481b;--success:#059669;--warning:#b45309;--danger:#b4444c;--focus:rgba(185,71,22,.55);--radius:8px}
-
-/* onevra v0.2026.9 LightPalette. Dark reference: Background #211f1c,
-Surface #2b2925, Text #eeeae2, TextMuted #bdb6aa, Accent #ed986e, AccentText #291b14.
-HTML represents component semantics, not native MyGo rendering or acceptance. */
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.65 system-ui,-apple-system,"PingFang SC",sans-serif}
-h1,h2,h3,p{margin:0}
-h1{font-size:24px;line-height:1.4}
-h2{font-size:18px;line-height:1.5}
-h3{font-size:15px}
-p+ p{margin-top:8px}
-button,input,select{font:inherit;color:inherit}
-button,.button{border:1px solid var(--border);border-radius:8px;padding:7px 14px;background:color-mix(in srgb,var(--bg),var(--text) 8%);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px}
-button:hover,.button:hover{background:var(--hover)}
-button:active{background:var(--pressed)}
-.primary{background:var(--accent);border-color:var(--accent);color:white}
-.primary:hover{background:var(--accent);filter:brightness(.94)}
-button:disabled{opacity:.5;cursor:default}
-a{color:var(--accent)}
-:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
-input,select{min-width:0;width:100%;border:1px solid var(--border);background:var(--surface);padding:8px 10px;border-radius:8px}
-input[aria-invalid=true]{border-color:var(--danger)}
-label{display:block;font-weight:550;margin-bottom:6px}
-.field{margin-top:12px}
-.field small{display:block;margin-top:4px}
-small,.muted{color:var(--muted)}
-small{font-size:12px}
-code,.mono{font:12px/1.7 ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}
-p,li,dd,h3,strong{overflow-wrap:anywhere}
-.app{display:grid;grid-template-columns:205px minmax(0,1fr);min-height:100vh}
-.sidebar{padding:24px 12px;border-right:1px solid var(--border)}
-.brand{padding:0 10px 28px;font-size:20px;font-weight:700;letter-spacing:-.7px}
-.brand em{font-style:normal;color:var(--accent)}
-.brand small{display:block;font-size:11px;letter-spacing:2px;font-weight:500}
-.navitem{display:flex;width:100%;justify-content:flex-start;gap:10px;padding:10px;margin:4px 0;text-decoration:none;color:var(--text);border:0;background:transparent;border-radius:8px}
-.navitem:hover{background:transparent}
-.navitem[aria-current]{background:rgba(51,51,47,.1);font-weight:600}
-.navitem svg{width:18px;height:18px;color:var(--accent);flex-shrink:0}
-.sidefoot{margin:36px 10px;color:var(--muted);font-size:12px}
-.shellhead{display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
-.shellhead small{margin-left:auto}
-.shellhead button{padding:3px 10px;min-height:30px}
-main{max-width:1300px;margin:0 auto;padding:24px;min-width:0}
-.pagehead{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:20px}
-.pagehead p{margin-top:6px;color:var(--muted)}
-.preview{border:1px dashed var(--border);border-radius:8px;padding:12px 16px;margin-bottom:20px}
-.preview .actions{margin-top:8px}
-.actions,.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.row{justify-content:space-between}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;min-width:0}
-.card h2{margin-bottom:12px}
-.stack{display:grid;gap:16px}
-.grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(310px,1fr);gap:20px;align-items:start}
-.badge{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--surface),var(--muted) 9%);padding:2px 8px;border-radius:8px;font-size:12px}
-.badge.active{color:var(--accent);background:color-mix(in srgb,var(--surface),var(--accent) 9%)}
-.badge.good:before{content:'●';color:var(--success)}
-.badge.warn{color:var(--warning);background:color-mix(in srgb,var(--surface),var(--warning) 7%)}
-.badge.bad,.error{color:var(--danger)}
-.badge.checking{color:var(--muted);background:var(--surface)}
-.badge.eligible{color:var(--text);background:#79bea1}
-.badge.ineligible{color:#ffffff;background:var(--danger)}
-.badge.invalid-choice{color:#ffffff;background:var(--warning)}
-.selection-warning{margin-top:8px}
-.preview button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
-.error{margin-top:8px;font-size:14px}
-.notice{border-left:3px solid var(--accent);padding:10px 14px;background:color-mix(in srgb,var(--surface),var(--accent) 4%);margin:12px 0}
-.notice.bad{border-color:var(--danger)}
-ul.list{list-style:none;margin:0;padding:0}
-.list>li{padding:16px 0;border-top:1px solid var(--border)}
-.list>li:first-child{border-top:0;padding-top:4px}
-.list>li:last-child{padding-bottom:0}
-.list h3{margin-bottom:6px}
-.list .actions{margin-top:12px}
-.meta{display:flex;gap:8px 18px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:6px}
-.selected{border-left:3px solid var(--accent);padding-left:12px!important}
-dl{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;margin:12px 0}
-dt{color:var(--muted)}
-dd{margin:0}
-details{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
-summary{cursor:pointer;font-weight:550}
-details>p{margin-top:10px}
-.check{display:flex;align-items:center;gap:8px;font-weight:400}
-.check input{width:16px;height:16px;accent-color:var(--accent)}
-progress{display:block;width:100%;height:6px;border:0;border-radius:8px;overflow:hidden;accent-color:var(--accent);background:var(--hover);margin:12px 0}
-progress::-webkit-progress-bar{background:var(--hover)}
-progress::-webkit-progress-value{background:var(--accent)}
-.spinner{width:16px;height:16px;display:inline-block;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}
-}
-.steps{list-style:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:0;margin:16px 0}
-.steps li{font-size:12px;color:var(--muted)}
-.steps b{display:block;font-size:14px;font-weight:500;margin-bottom:4px}
-.steps [aria-current]{color:var(--accent);font-weight:650}
-.track{position:relative;padding:6px 0 12px 44px;margin:20px 0}
-.track:before{content:attr(data-step);position:absolute;left:0;top:5px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:white}
-.track:after{content:'';position:absolute;left:13px;top:43px;bottom:0;width:1px;background:var(--border)}
-.track h2{margin-bottom:12px}
-.flow{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-.flow span{font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:8px}
-.flow [aria-current]{color:var(--accent);border-color:var(--accent)}
-.twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.toast{position:fixed;bottom:20px;right:24px;max-width:min(430px,90vw);background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);padding:12px 18px;border-radius:8px;z-index:5}
-.toast:empty{display:none}
-.footer{font-size:12px;color:var(--muted);margin-top:20px}
-.collapsed{grid-template-columns:72px minmax(0,1fr)}
-.collapsed .navtext,.collapsed .brand,.collapsed .sidefoot{display:none}
-.collapsed .navitem{justify-content:center}
-.collapsed .sidebar{padding-top:24px}
-[hidden]{display:none!important}
-@media(max-width:1050px){.grid{grid-template-columns:1fr}
-.steps{grid-template-columns:repeat(3,minmax(0,1fr))}
-}
-@media(max-width:700px){.app{grid-template-columns:72px minmax(0,1fr)}
-.navtext,.brand,.sidefoot{display:none}
-main{padding:16px}
-.shellhead{padding:12px 16px}
-.twocol{grid-template-columns:1fr}
-.pagehead{align-items:flex-start;flex-wrap:wrap}
-}
-@media(prefers-reduced-motion:reduce){.spinner{animation:none}
-}
-@media(forced-colors:active){button,.badge,input,select{border:1px solid ButtonText}
-:focus-visible{outline:3px solid Highlight}
-}
-
-</style>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
+<title>任务页 · InferYard Studio 原型</title>
+<link rel="stylesheet" href="dashboard-page.css">
 </head>
 <body>
 <div class="app" id="app">
@@ -141,14 +14,14 @@ main{padding:16px}
 <small>STUDIO</small>
 </div>
 <nav aria-label="主导航">
-<a class="navitem" aria-label="Dashboard" href="dashboard-page.html" aria-current="page">
+<a class="navitem" aria-label="新任务" href="dashboard-page.html" aria-current="page">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 <rect x="3" y="3" width="7" height="7" rx="1"/>
 <rect x="14" y="3" width="7" height="7" rx="1"/>
 <rect x="3" y="14" width="7" height="7" rx="1"/>
 <rect x="14" y="14" width="7" height="7" rx="1"/>
 </svg>
-<span class="navtext">Dashboard</span>
+<span class="navtext">新任务</span>
 </a>
 <button class="navitem" aria-label="设备（本次未绘制）" data-note="设备页不在本次三个原型范围内。">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -199,7 +72,6 @@ main{padding:16px}
 <main>
 <header class="pagehead">
 <div>
-<h1>Dashboard</h1>
 <p>从环境准备到报告核验，跟踪本次双题包测评。</p>
 </div>
 <span class="badge">交互原型</span>
@@ -430,37 +302,4 @@ main{padding:16px}
 </main>
 </div>
 </div>
-<div id="toast" class="toast" role="status" aria-live="polite"></div><script>const $=id=>document.getElementById(id);let toastTimer;function toast(message){$('toast').textContent=message;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').textContent='',4500)}document.querySelectorAll('[data-note]').forEach(b=>b.addEventListener('click',()=>toast(b.dataset.note)));$('collapse').onclick=()=>{const collapsed=$('app').classList.toggle('collapsed');$('collapse').setAttribute('aria-expanded',String(!collapsed));$('collapse').setAttribute('aria-label',collapsed?'展开侧栏':'折叠侧栏')};
-
-let candidateScene='ready';
-const availableEngines=['llama-server b6800 · 最新下载','inference-engine · 用户引擎'];
-function candidateState(scene){
- candidateScene=scene;
- document.querySelectorAll('[data-candidate-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.candidateScene===scene)));
- const names=scene==='empty'?[]:scene==='revoked'?[availableEngines[1]]:availableEngines;
- $('engine').replaceChildren(...names.map(name=>new Option(name,name)));
- $('engine').disabled=scene==='empty';$('engine').selectedIndex=scene==='ready'?0:-1;
- $('candidate').disabled=scene!=='ready';
- const warning=$('candidate-warning');warning.hidden=scene==='ready';warning.replaceChildren();
- if(scene==='empty')warning.append('没有可用的引擎，请到模型页下载推荐引擎');
- if(scene==='revoked'){
-  const badge=document.createElement('span');badge.className='badge invalid-choice';badge.textContent='当前选择不可用';warning.append(badge);
-  const reason=document.createElement('p');reason.textContent='llama-server b6800 · 引擎运行库不完整。请重新选择可用引擎。';warning.append(reason);
- }
- if(scene!=='ready'){const link=document.createElement('a');link.href='models-page.html';link.textContent='到模型页'+(scene==='empty'?'下载推荐引擎':'重选');warning.append(' ',link)}
-}
-document.querySelectorAll('[data-candidate-scene]').forEach(b=>b.onclick=()=>candidateState(b.dataset.candidateScene));
-$('checking-demo').onchange=()=>{$('engine-checking').hidden=!$('checking-demo').checked};
-$('engine').onchange=()=>{if($('engine').value){$('candidate').disabled=false;$('candidate-warning').hidden=true}};
-$('model').onchange=()=>{$('model-summary').textContent='测评模型：'+$('model').value+($('model').selectedIndex===0?'（架构 llama · 约 2.1 GiB）':'（架构 Qwen3 · 约 4.9 GiB）')};
-candidateState('ready');
-let generation=0,busy=false;const phases=['准备','设备检查','候选','启动与绑定','运行','报告核验'];
-function stage(scene){generation++;busy=false;$('scene').value=scene;const index=['prepare','device','candidate','bind','run','report'].indexOf(scene);$('environment').hidden=scene!=='prepare';['device','candidate','bind','run','report'].forEach(s=>$(s+'-panel').hidden=s!==scene);document.querySelectorAll('.steps li').forEach((e,i)=>{e.removeAttribute('aria-current');if(i===index)e.setAttribute('aria-current','step')});$('phase').textContent='当前：'+phases[index];$('stage-progress').value=index;$('stage-description').textContent='已完成 '+index+' / 6 个阶段，不表示样本完成率。';$('bind-error').hidden=true;document.querySelectorAll('#bind-panel button,#bind-panel input,#bind-panel select').forEach(b=>b.disabled=false);$('service-status').textContent='已停止 · 等待启动';flow(0);$('core').textContent='zh-core · '+(index<3?'待创建候选':index===3?'待绑定':'已绑定');$('pelican').textContent='zh-svg-pelican · '+(index<3?'待创建候选':index===3?'待绑定':'已绑定');$('cancel').hidden=true;$('run').disabled=false;$('scene').disabled=false;$('queue').textContent='尚无排队任务。完成绑定后可启动默认双题包测评。';$('queue-badge').textContent='无活动任务'}
-function flow(n){document.querySelectorAll('[data-flow]').forEach(e=>{e.removeAttribute('aria-current');if(Number(e.dataset.flow)===n)e.setAttribute('aria-current','step')})}
-function status(text,n,active){$('service-status').replaceChildren();if(active){const s=document.createElement('span');s.className='spinner';s.setAttribute('aria-hidden','true');$('service-status').append(s,' ')}$('service-status').append(text);flow(n)}
-const wait=ms=>new Promise(r=>setTimeout(r,ms));
-async function bind(external=false,mismatch=false,pid=''){if(busy)return;busy=true;const token=++generation;const fail=mismatch||$('fail').checked;$('bind-error').hidden=true;document.querySelectorAll('#bind-panel button,#bind-panel input,#bind-panel select').forEach(b=>b.disabled=true);if(!external){status('starting · 正在启动引擎',1,true);await wait(900);if(token!==generation)return;status('running · 健康检查通过，尚未绑定',2,false);await wait(900)}else{status('running · 正在核验 PID '+pid+' 的服务身份',2,true);await wait(900)}if(token!==generation)return;status('绑定中 · zh-core',3,true);await wait(900);if(token!==generation)return;if(mismatch){failure('zh-core');return}$('core').textContent='zh-core · 已绑定';status('绑定中 · zh-svg-pelican',3,true);await wait(900);if(token!==generation)return;if(fail){failure('zh-svg-pelican');return}$('pelican').textContent='zh-svg-pelican · 已绑定';status('已绑定 · 两个题包均已完成绑定',4,false);toast('双题包绑定完成，可启动测评。');await wait(1200);if(token!==generation)return;stage('run');toast('两个题包已绑定，已进入运行阶段。')}
-function failure(bundle){busy=false;status('running · 服务仍在运行，绑定已停止',2,false);$(bundle==='zh-core'?'core':'pelican').textContent=bundle+' · 绑定失败';$('bind-error').hidden=false;$('bind-error').textContent=bundle+' 绑定失败：启动参数与候选不一致（startup_arguments_mismatch）。请核对引擎与候选配置后重新发起绑定；不会自动重试。';document.querySelectorAll('#bind-panel button,#bind-panel input,#bind-panel select').forEach(b=>b.disabled=false);$('start').disabled=true;}
-$('scene').onchange=e=>stage(e.target.value);$('prepare').onclick=()=>{stage('device');toast('示例工作区已初始化。')};$('device').onclick=()=>{stage('candidate');toast('示例设备检查已完成。')};$('candidate').onclick=()=>{$('chosen-engine').textContent=$('engine').value;$('chosen-model').textContent=$('model').value;stage('bind')};$('start').onclick=()=>bind();document.querySelectorAll('.external').forEach(b=>b.onclick=()=>bind(true,b.dataset.pid==='7310',b.dataset.pid));$('manual').onclick=()=>{let valid;try{const u=new URL($('endpoint').value);valid=['127.0.0.1','localhost','[::1]'].includes(u.hostname)&&u.protocol==='http:'}catch{valid=false}$('endpoint').setAttribute('aria-invalid',String(!valid));$('endpoint-error').hidden=valid;if(!valid){$('endpoint-error').textContent='请输入有效的本机 HTTP endpoint，例如 http://127.0.0.1:8080。';$('endpoint').focus();return}bind(true,$('process').value==='7310',$('process').value)};
-$('run').onclick=()=>{$('run').disabled=true;$('scene').disabled=true;$('cancel').hidden=false;$('queue-badge').textContent='运行中 · 示例';$('queue').innerHTML='<span class="spinner" aria-hidden="true"></span> zh-core · 运行中；zh-svg-pelican · 等待前项结束。<p class="muted">样本进度缺测：尚未收到冻结题集合计数。服务内存缺测：等待首个采样。</p>'};$('cancel').onclick=async()=>{$('cancel').disabled=true;$('queue').textContent='取消中／等待收尾 · 保留已产生的证据。';await wait(900);$('queue').textContent='已取消 · 当前运行已收尾；后续题包未启动。';$('queue-badge').textContent='已取消';$('cancel').hidden=true;$('cancel').disabled=false;$('scene').disabled=false;$('run').disabled=false};$('report').onclick=()=>{$('report-status').textContent='示例：新报告 report-20261015-02 已生成，离线核验通过。';toast('新报告已生成并核验。')};stage('candidate');
-</script></body></html>
+<div id="toast" class="toast" role="status" aria-live="polite"></div><script src="dashboard-page.js"></script></body></html>

@@ -90,7 +90,11 @@ func TestDesignLayoutMatrix(t *testing.T) {
 									t.Errorf("horizontal overflow %q (%s): x=%.1f w=%.1f", n.FieldByName("text").String(), n.FieldByName("widget").String(), x, w)
 								}
 							})
-							if headings != 1 {
+							wantHeadings := 1
+							if page == "dashboard" {
+								wantHeadings = 0
+							}
+							if headings != wantHeadings {
 								t.Errorf("page heading count %d", headings)
 							}
 							if _, ok := tt.Find("刷新"); ok {

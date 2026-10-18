@@ -55,7 +55,6 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		s.speedTaskView(c)
 		return
 	}
-	s.header(c, "Dashboard")
 	if s.resumeSource != nil {
 		s.resumeView(c)
 		return

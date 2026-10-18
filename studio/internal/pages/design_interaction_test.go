@@ -14,7 +14,7 @@ import (
 func TestDesignAnnouncementsOnce(t *testing.T) {
 	s := testState()
 	tt := ui.NewTester(s.view, 1120, 800)
-	if got := tt.Announcements(); len(got) != 1 || got[0] != "Dashboard" {
+	if got := tt.Announcements(); len(got) != 1 || got[0] != "任务" {
 		t.Fatal(got)
 	}
 	for range 3 {
@@ -225,7 +225,7 @@ func TestDesignPageLoadingErrorEmpty(t *testing.T) {
 		if !tt.HasText("正在读取页面数据") || tt.HasText("暂无报告") || tt.HasText("尚无设备快照") {
 			t.Fatal(page, tt.Texts())
 		}
-		if page == "dashboard" && (!tt.HasText("Dashboard") || tt.HasText("首次上手")) {
+		if page == "dashboard" && (tt.HasText("Dashboard") || tt.HasText("首次上手")) {
 			t.Fatal("incorrect dashboard loading title", tt.Texts())
 		}
 		s.refreshFailure = "读取失败，请重试。"

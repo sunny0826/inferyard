@@ -377,7 +377,7 @@ func (s *viewState) contentView(c *ui.Context) {
 				if !s.loaded {
 					title := "首次上手"
 					if s.selected == "dashboard" {
-						title = "Dashboard"
+						title = ""
 						if s.detailID != "" {
 							title = "运行详情"
 						}
@@ -387,7 +387,9 @@ func (s *viewState) contentView(c *ui.Context) {
 							title = n.label
 						}
 					}
-					s.header(c, title)
+					if title != "" {
+						s.header(c, title)
+					}
 					if s.failure != nil || s.refreshFailure != "" {
 						button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
 					} else {

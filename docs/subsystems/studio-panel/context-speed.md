@@ -6,7 +6,7 @@
 
 ## 调用与归属
 
-同一 Dashboard 按钮经 `startSpeedFlow` 调用 `Service.StartContextSpeed`。
+同一任务页按钮经 `startSpeedFlow` 调用 `Service.StartContextSpeed`。
 先查询 `--schema context_speed_result` 的版本、两种分支、必需字段及五项样本结构；
 不缓存能力，CLI 替换后重新查询。旧 CLI 的专项返回升级提示，普通功能继续使用原接口。
 

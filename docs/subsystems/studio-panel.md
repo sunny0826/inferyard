@@ -69,12 +69,12 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
   `service_discovery_invalid_response`，退出 4 映射 `service_discovery_error`；命令匹配的退出 2
   映射 `cli_blocked` 并保留 limitations，退出 130 映射 `cancelled`。发现结果不构成绑定资格，
   绑定终审始终在 CLI；同端口多监听进程标记 `ambiguous_listener`，不判唯一归属。
-  Dashboard 与模型页从 `EngineState` 独立展示 Studio 启动的 `starting`/`running`/`stopping`
+  任务页与模型页从 `EngineState` 独立展示 Studio 启动的 `starting`/`running`/`stopping`
   服务，扫描失败、未完成或 `models` 缺测均不影响该条目；候选名称取状态中的基名，不使用当前选择
   冒充运行模型。`orphaned` 显示为「遗留服务记录（状态未确认）」，`failed`/`stopped` 不列为活动服务。
   `engine.state` 事件沿用页面刷新路径；显式刷新服务列表也重读 `Service.Engine()`。
   其他 `models != null` 端点放入默认折叠的「待确认的兼容接口」，提示可能是代理、目录不证明本机
-  已加载模型，模型目录另行折叠。只有 Dashboard 提供显式绑定，模型页只读。
+  已加载模型，模型目录另行折叠。只有任务页提供显式绑定，模型页只读。
   展示去重要求活动生命周期、相同正 PID、完全相同 endpoint 且无监听歧义；仅隐藏重复条目，
   不为发现端点授予受管身份。未知端点、终态及遗留记录不参与去重。
   展示实现在 [`service_discovery.go`](../../studio/internal/pages/service_discovery.go)。
@@ -116,7 +116,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.10�
 组件映射与保留例外见
 [组件用法](../../studio/docs/design-system.md#onevra-组件映射)。
 
-Dashboard 按 [`studio/docs/prototypes/dashboard-page.html`](../../studio/docs/prototypes/dashboard-page.html)
+任务页按 [`studio/docs/prototypes/dashboard-page.html`](../../studio/docs/prototypes/dashboard-page.html)
 原型实施：结论卡置顶（六阶段步骤条 + 当前阶段徽标 + 阻断原因），阶段动作区使用步骤轨道组件
 （编号圆点 + 纵向连接线，内容铺在页面背景上不用卡片，只渲染当前阶段），移除运行历史、快速运行与任务队列卡；运行详情为页内子视图，通过「返回运行」回到任务。
 

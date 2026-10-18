@@ -30,6 +30,7 @@ final class PreviewUITests: XCTestCase {
 
     func testBenchmarkFromPreparationToReport() {
         prepare()
+        XCTAssertFalse(text("Dashboard").exists)
         click("下载")
         click("下载模型")
         expectText("已结束")
@@ -42,6 +43,9 @@ final class PreviewUITests: XCTestCase {
         click("用这个组合新开任务")
         app.checkBoxes["zh-svg-pelican"].click()
         click("运行 benchmark")
+        XCTAssertTrue(app.buttons["查看实时详情"].waitForExistence(timeout: 10))
+        XCTAssertFalse(text("Dashboard").exists)
+        keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
         expectText("实时进度")
         let progress = app.staticTexts.matching(NSPredicate(format: "value BEGINSWITH %@", "正式运行 · ")).firstMatch

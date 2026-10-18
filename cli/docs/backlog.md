@@ -53,6 +53,10 @@ MyGo 的 first-responder 顺序警告仍独立待查，未修改依赖；后续�
 
 ## InferYard Studio 后续工作
 
+- 普通任务页及加载占位已移除旧英文页顶标题，进入时读屏播报「任务」；当前文档和原型名称同步。
+  页面回归、Go vet 通过，macOS 原生模拟回归 `run-eaiay3ib` 6 项通过，运行中截图已核对。
+  原型 HTML 已检查结构和本地链接；浏览器安全策略禁止 `file://`，本轮未复验其渲染。
+
 - 遗留引擎停止的 PID 复用 TOCTOU 窗口可收紧（Windows OpenProcess 句柄钉住 / Linux pidfd）；
   当前由停止全程 25ms 身份重核收窄，本轮不实施。
 
