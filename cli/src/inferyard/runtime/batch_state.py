@@ -29,6 +29,10 @@ def open_batch(root, source, diagnostic, *, source_identity=None, implementation
     if (root / "batch.json").exists():
         meta = read_json(root / "batch.json")
         plan, loaded = read_frozen_plan(root / "frozen-plan/plan.json")
+        from inferyard.runtime.context_speed import is_speed
+
+        if is_speed(plan, loaded):
+            raise PreflightError("context_speed_requires_new_plan_and_batch")
         if (
             meta.get("schema_version") != SCHEMA_VERSION
             or meta.get("plan_sha256") != plan["plan_sha256"]

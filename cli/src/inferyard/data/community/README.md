@@ -13,6 +13,22 @@ inferyard progress --workspace "{{WORKSPACE}}"
 退出 0 只代表工作区可读，不代表测评完成。需要引擎、运行时回执、PID 或端点的命令
 使用显式 shell 变量占位；执行前把它们设置为真实本地资产和已由你启动的服务。
 
+## Context-speed workspace
+
+For an explicitly selected `zh-context-speed` workspace, use the dedicated flow below
+instead of the ordinary core/SVG and report steps. The shipped draft still requires
+human review; a test fixture does not approve it.
+
+1. Prepare with `config create --profile context-speed --context-size 65536` and the
+   existing platform asset arguments. Supported context sizes are 65536, 131072 and 262144.
+2. Start the declared service externally and use `config bind` with its actual PID.
+3. Freeze with `plan --preset context-speed --config BOUND_CONFIG --out NEW_PLAN`.
+4. Run with `run --plan NEW_PLAN/plan.json --output-root NEW_BATCH`.
+5. Read JSON with `speed-results --batch NEW_BATCH`; no HTML report is produced.
+
+Each new measurement uses a new plan and batch. Do not resume or rerun old trials.
+`progress` recommends the dedicated commands and can open a batch with zero trials.
+
 ## 1. 检查设备与已有模型
 
 ```bash

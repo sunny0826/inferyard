@@ -45,7 +45,11 @@ def _result(request, root, plan, runs, status, code=0, next_trial=None):
     details = {
         "plan_sha256": plan["plan_sha256"],
         "trials": progress,
-        "repetition_metrics": repetition_metrics(plan, runs),
+        **(
+            {"next_results_command": ["inferyard", "speed-results", "--batch", str(root)]}
+            if plan["experiment"].get("profile") == "context-speed.v1"
+            else {"repetition_metrics": repetition_metrics(plan, runs)}
+        ),
         "remaining_wall_budget_seconds": remaining_budget(plan, runs),
         "next_trial": next_trial,
         "runs": [str(d["path"]) for d in runs],

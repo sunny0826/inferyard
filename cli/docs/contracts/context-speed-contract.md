@@ -1,6 +1,6 @@
 # 长上下文速度共享契约
 
-本参考定义 A 阶段的纯规则、结构及语义校验。正式 CLI 投影与 Studio 消费属于后续接入；
+本参考定义冻结的纯规则、结构、语义校验及 CLI 原始证据读取。Studio 消费另行接入；
 结构通过不代表题库获人工批准、服务已核验或真实模型性能通过。
 来源结论遵循[证据血缘规则](../data-contract.md#证据血缘与比较结论)，
 格式支持遵循[当前格式契约](inferyard-current-format.md)。不接受历史格式迁移。
@@ -49,7 +49,7 @@ release 显示字符串本身不证明构建已验证。
 跨输入校验重新计算题库 `content_hash`，绑定正文、规则、答案政策与版本，不只认显示名。
 专项 bundle/case 搭配缺失或错误 profile 必须拒绝；不能退回普通 performance。
 该纯校验允许检查未批准草案，既有 `require_review` 及正式创建/运行审核关口保持原样。
-当前批准数组为空；本轮没有注册社区资源或声称草案正式可运行。
+当前批准数组为空；包内副本已注册，但正式 init/create/plan 仍执行人工审核准入。
 
 接口：
 
@@ -63,8 +63,8 @@ validate_workload_inputs(workload, config, bundle, *, experiment_profile=None) -
 ```
 
 这些接口要求先通过对应普通结构/语义校验。接线覆盖 `prepare_plan`、`read_frozen_plan`、
-`ledger._inputs`。计划自身拒绝五个 trial 的重复顺序被改写；离线读取仍核对完整编译展开。
-各通用消费者在 B 阶段接入共享 classifier，本阶段不新增 CLI 命令或输出旁路。
+`ledger._inputs` 和 `TrialJournal.__init__`。计划自身拒绝五个 trial 的重复顺序被改写；离线读取仍核对完整编译展开。
+CLI preset 与离线结果入口使用该 classifier；通用消费者 guard 属独立 B2 接入。
 
 ## 结果文档
 
@@ -206,3 +206,28 @@ mise exec -- uv run --frozen python scripts/export_schemas.py --check
 
 后续 B 需完成原始证据认证、cohort 构造、只读 JSON 投影及各通用出口拒绝；C 消费相同
 Schema/黄金样例。Go、公开 CLI 五轮假引擎、原生 UI、真实模型和平台验收不由 A 的通过替代。
+
+## CLI 物理读取实现
+
+`application/context_speed.py` 先调用完整 raw batch verifier，再通过
+`evidence/context_speed.py` 的 `history(..., allow_tool_change=True, full_verification=True)`
+读取原件。核验保存的 batch/run 执行身份，不要求历史记录匹配当前源码；不使用轻量 batch 投影
+替代完整 ledger。普通 batch 拒绝为 2，来源损坏返回不含旧 samples/summary 的 error 分支。
+
+`analysis/context_speed_samples.py` 使用 `TrialEvidence` 验证物理 hash 与真实成员，
+绑定 frozen plan、trial、run、正式 request、request body 与 token-budget inventory。
+最终 timing 的 seq 必须等于实际事件位置且属于同一正式 request/trial/run；引用整个事件文件，
+不伪造契约不支持的 event member。原始请求内容、固定输出 probe 和构建认证复用 ledger 的
+既有核验；正式输出还要求 endpoint usage 达到 256 且 length 终止，不能只相信 timing 计数。
+有实际 run 却声明 not_executed 的矛盾样本拒绝为 4；没有任何 run 的合法 batch 返回五项
+not_executed/unknown。预算在创建 run 后、发送正式请求前阻断时也可能留下前一种拒绝情况，
+不会伪造可读成绩；原始 `verify` 仍可单独读取这些证据。
+
+每个 trial 单独读取实测 token；非空值带同 run/request 的真实来源引用。固定配方的 seed、
+服务 context、模型/模板/引擎文件身份和构建必须可核验。cohort 使用已观察的稳定硬件身份、
+冻结条件及输入模板 hash；CUDA 空闲显存、温度、功率等瞬时读数不作为硬件身份，未知驱动
+或必要身份不合并为共同 unknown。cohort 仅用于本专项描述性汇总，不授予通用受控比较资格。
+
+`analysis/context_speed.py` 按冻结 trial 顺序投影五项，并调用共享语义及 binding 校验后返回。
+结果读取不写文件、不请求模型；接口语法见 [CLI](../cli-surface.md#长上下文速度专项)。
+本接入不表示 B2 通用消费者旁路、Studio、原生平台或真实模型已验收。

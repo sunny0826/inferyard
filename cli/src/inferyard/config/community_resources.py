@@ -5,7 +5,7 @@ from importlib.resources import files
 from inferyard.config.preparation_io import PreparationError, sha256
 from inferyard.contracts.validation import ContractError, strict_json_loads
 
-BUNDLES = ("zh-smoke", "zh-core", "zh-svg-pelican")
+BUNDLES = ("zh-smoke", "zh-core", "zh-svg-pelican", "zh-context-speed")
 
 
 def resource_bytes(name):

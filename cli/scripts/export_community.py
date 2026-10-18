@@ -9,7 +9,7 @@ from pathlib import Path
 from inferyard.config.bundle import require_review
 from inferyard.config.community_resources import BUNDLES
 from inferyard.config.preparation_io import json_bytes, sha256
-from inferyard.contracts.validation import strict_json_loads
+from inferyard.contracts.validation import strict_json_loads, validate_document
 from inferyard.platforms.runtime_archive import member_records
 from inferyard.platforms.runtime_profiles import (
     PROFILES,
@@ -26,7 +26,12 @@ def generated(archives):
     outputs = {}
     for name in BUNDLES:
         raw = (ROOT / f"bundles/{name}.json").read_bytes()
-        require_review(strict_json_loads(raw.decode()))
+        bundle = strict_json_loads(raw.decode())
+        if name == "zh-context-speed":
+            # Distribute frozen draft bytes; formal init/create retain require_review.
+            validate_document("bundle", bundle)
+        else:
+            require_review(bundle)
         outputs[f"bundles/{name}.json"] = raw
     for name in PROFILES:
         profile = profile_header(name)

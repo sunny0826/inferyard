@@ -8,3 +8,4 @@ cli/tests/fixtures/legacy/** -text -whitespace
 cli/tests/fixtures/prism/** -text -whitespace
 cli/tests/fixtures/legacy/README.md text eol=lf
 cli/tests/fixtures/prism/README.md text eol=lf
+cli/src/inferyard/data/community/bundles/zh-context-speed.json linguist-generated=true

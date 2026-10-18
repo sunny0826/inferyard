@@ -119,6 +119,14 @@
   摘要范围，不升级为完整资格；容器尾截断按实际文件名记入 `container_tails`，全量
   preload 后由账本归入 partial，不把截断当成功。
 
+## 长上下文速度接入
+
+专项 [`evidence/context_speed.py`](../../cli/src/inferyard/evidence/context_speed.py)
+复用完整 batch history/ledger 核验，保存身份无需匹配当前源码。逐次物理引用、正式请求、
+事件序号、token budget 与封存的认证规则集中在
+[专项读取说明](../../cli/docs/contracts/context-speed-contract.md#cli-物理读取实现)。
+合法零 run 可读，来源矛盾或坏原件不能降格为缺测；只读入口不生成派生文件。
+
 ## 验证
 
 以下命令在仓库根执行；pytest 子集覆盖本页写入、布局、账本与离线读取行为：

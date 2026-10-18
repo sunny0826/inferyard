@@ -14,6 +14,12 @@ def build_request(
     args: argparse.Namespace, *, config_loader: Callable[[Path], LoadedConfig] = load_config
 ) -> CommandRequest:
     values = vars(args)
+    if args.command == "plan" and bool(values.get("preset")) != bool(values.get("config")):
+        raise ArgumentError("--config requires --preset and vice versa")
+    if args.command == "config create" and bool(values.get("benchmark_profile")) != bool(
+        values.get("context_size")
+    ):
+        raise ArgumentError("--profile and --context-size must be provided together")
     if args.command == "config create" and values.get("workspace") is None:
         if values.get("preflight") is None or values.get("output_root") is None:
             raise ArgumentError("--preflight and --results are required without --workspace")

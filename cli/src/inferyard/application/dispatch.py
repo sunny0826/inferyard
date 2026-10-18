@@ -9,6 +9,10 @@ from inferyard.platforms.identity import PreflightError
 
 
 def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
+    if request.command == "speed-results" or (request.command == "plan" and request.preset):
+        from inferyard.application.context_speed import execute
+
+        return execute(request)
     if request.command == "service discover":
         from inferyard.application.service_discovery import execute
 

@@ -170,6 +170,13 @@ def create(request):
             results,
             **shared,
         )
+    if request.benchmark_profile == "context-speed":
+        from inferyard.config.context_speed_candidates import apply_recipe
+
+        apply_recipe(config, metadata, request.context_size)
+        from inferyard.config.context_speed_plan import experiment_for
+
+        experiment_for(config, bundle)
     validate_document("config", config)
     try:
         content = render(config)

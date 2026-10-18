@@ -47,6 +47,13 @@
 - **环境准入**：`admission` 返回 `environment-admission.v2` 记录（`policy_source`、`differences`、`blockers`）；显式策略优先级与诊断豁免见 [数据契约](../../cli/docs/data-contract.md#按用途分派)；策略只影响准入，观测不被过滤。
 - **失败映射**：本层全部拒绝以 `ContractError` 表达，经 CLI 错误映射为输入/预检阻断（退出 2）；计划工件与快照类失败为 `EvidenceError`（退出 4）。退出码总表见 [数据契约](../../cli/docs/data-contract.md#保持的行为)。
 
+## 长上下文速度接入
+
+context_speed_candidates 在平台推荐刷新后应用固定配方并检查模型 context 上限；
+context_speed_plan 复用 prepare_plan/write_plan，保留人工审核。
+progress 推荐专项结果读取或新计划/batch。见
+[CLI 专项接口](../../cli/docs/cli-surface.md#长上下文速度专项)。
+
 ## 验证
 
 以下命令在仓库的 `cli/` 目录内执行（从仓库根先 `cd cli`）：
