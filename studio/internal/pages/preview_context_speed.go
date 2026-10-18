@@ -19,17 +19,41 @@ func (p *previewSession) startSpeed(op previewSpeedStart) {
 		return
 	}
 	r := &speedTask{id: p.nextID("speed"), model: op.model, engine: op.engine, context: op.context,
-		stage: speedPreparing}
+		stage: speedPreparing, selectionModel: op.model, selectionEngine: op.engine}
 	s.speed.current, s.speed.opened = r, nil
 	s.busy = true
 	fail, missing := p.takeFailure(), p.speedMissingTiming
+	failureStage, failure := p.speedFailureStage, p.speedFailure
+	p.speedFailureStage, p.speedFailure = "", nil
+	reject := func(stage string) bool {
+		if failureStage != stage || failure == nil {
+			return false
+		}
+		projected := speedFromTask(core.RunTask{TaskId: r.id, State: "failed", Error: failure, ContextSpeed: &core.ContextSpeedTask{Stage: "failed", Model: r.model, Engine: r.engine, Context: r.context}})
+		r.stage, r.reason = speedFailed, projected.reason
+		if stage == "binding" {
+			s.engineState.State = "failed"
+		}
+		p.finishSpeed(r)
+		return true
+	}
 	p.after("speed", 400*time.Millisecond, func() {
+		if reject("preparing") {
+			p.cancelEvents("speed")
+			return
+		}
 		r.stage = speedBinding
 		s.engineState.State = "starting"
 	})
 	p.after("speed", 1100*time.Millisecond, func() {
+		if reject("binding") {
+			return
+		}
 		if fail {
-			r.stage, r.reason = speedFailed, "模拟启动失败；可用此组合新开任务。"
+			r.stage, r.reason = speedFailed, core.Err("engine_start_failed").Message
+			if r.reason == "" {
+				r.reason = "engine_start_failed"
+			}
 			s.engineState.State = "failed"
 			p.finishSpeed(r)
 			return
@@ -37,9 +61,15 @@ func (p *previewSession) startSpeed(op previewSpeedStart) {
 		s.engineState.State = "running"
 		r.stage = speedPlanning
 		p.after("speed", 400*time.Millisecond, func() {
-			r.stage = speedMeasuring
-			p.speedMissingTiming = false
-			p.tickSpeed(r, missing)
+			if reject("planning") {
+				return
+			}
+			r.stage = speedQueued
+			p.after("speed", 400*time.Millisecond, func() {
+				r.stage = speedMeasuring
+				p.speedMissingTiming = false
+				p.tickSpeed(r, missing)
+			})
 		})
 	})
 }
@@ -52,19 +82,15 @@ func (p *previewSession) tickSpeed(r *speedTask, missing bool) {
 			sample.reason = "引擎阶段计时缺失（模拟）；速度与耗时缺测。"
 		}
 		r.samples = append(r.samples, sample)
+		r.completed = len(r.samples)
 		if len(r.samples) < 5 {
 			p.tickSpeed(r, missing)
 			return
 		}
 		r.stage = speedReading
 		p.after("speed", 600*time.Millisecond, func() {
-			if !missing {
-				summary := r.samples[2]
-				r.summary = &summary
-			} else {
-				r.reason = "执行已完成，但部分指标缺测，不显示完整汇总。"
-			}
 			r.stage = speedDone
+			applySpeedResult(r, previewSpeedResult(r, 5, missing))
 			p.finishSpeed(r)
 		})
 	})
@@ -73,18 +99,15 @@ func (p *previewSession) tickSpeed(r *speedTask, missing bool) {
 func previewSpeedSample(context, index int) speedSample {
 	prompt := map[int]int{65536: 52625, 131072: 106294, 262144: 213612}[context]
 	seconds := float64(prompt)/2000 + float64(index-2)*0.2
-	return speedSample{prompt: previewValue(prompt), seconds: previewValue(seconds),
+	return speedSample{context: previewValue(context), prompt: previewValue(prompt), seconds: previewValue(seconds),
 		prefill: previewValue(float64(prompt) / seconds), decode: previewValue(42.0)}
 }
 
 func previewSpeedHistory(s *viewState) {
 	r := &speedTask{id: "preview-speed-history", model: s.model, engine: s.engine,
 		context: 131072, stage: speedDone}
-	for i := range 5 {
-		r.samples = append(r.samples, previewSpeedSample(r.context, i))
-	}
-	summary := r.samples[2]
-	r.summary = &summary
+	r.selectionModel, r.selectionEngine = s.model, s.engine
+	applySpeedResult(r, previewSpeedResult(r, 5, false))
 	s.speed.history = []*speedTask{r}
 	s.selected = "reports"
 }
@@ -133,9 +156,15 @@ func (p *previewSession) readSpeed(id string) {
 		if r.id != id {
 			continue
 		}
+		if r.stage == speedCancelled && r.result == nil {
+			applySpeedResult(r, previewSpeedResult(r, r.completed, false))
+		}
 		w.opened, w.readError = r, ""
 		w.table, w.samples = pageTableState{}, pageTableState{}
 		if p.takeFailure() {
+			copy := *r
+			copy.samples, copy.summary, copy.result = nil, nil, nil
+			w.opened = &copy
 			w.readError = "模拟结果读取失败；重新读取不会再次运行模型。"
 		}
 		return

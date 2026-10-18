@@ -103,3 +103,7 @@ Windows candidate 引用 runtime prepare 目录中的实际引擎和清单，不
 未知预检异常或包含额外文本的原因继续走原安全映射，不回显异常原文。
 JSON 重复键、NaN/Infinity、bool 冒充整数均拒绝。新准备动作不使用退出 3；
 已有执行及核验入口的退出语义不改变。
+
+`init` 仅将 `bundle.review_records` 的既有 `human_corpus_review_required` 原因传递为
+`limitations=["human_corpus_review_required"]`，保持退出 4 / error 与 `details=null`，不创建输出目录。
+其他结构、资源 hash 或审核记录损坏仍为 `package_resource_invalid` / 4；默认双题库不变。

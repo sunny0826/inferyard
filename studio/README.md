@@ -183,8 +183,9 @@ Models. Settings are saved in memory and download directory names affect later t
 task while retaining settings, downloads and results. “重置场景” restores all fixture data,
 form values, table selection and collapsed sections, and discards pending simulation steps.
 
-The context-speed UI design has been approved; data remains simulated and the production
-workflow is not connected. After preparing the
+The approved context-speed page now calls the CLI through the serial queue. The corpus
+still requires human review: production init currently refuses with
+`human_corpus_review_required`; no approval is fabricated. After preparing the
 environment, choose “长上下文速度” in “测评类型”, select 64K, 128K or 256K, and click
 “开始专项测评”. The same native page builders show progress, cancellation and six-column
 results: model / engine, Context, Prompt length, Time, Prefill and Decode. Results and
@@ -192,7 +193,9 @@ history show the recorded model and engine together, independent of the current 
 GPU model and memory are not shown in specialist results. “下次专项模拟缺测” makes the fifth sample lack timing; “下次操作模拟失败” applies
 to startup or opening results. Reading again does not rerun measurements. The Reports page
 keeps specialist history for this window only; “专项 · 历史恢复示例” shows a fixed history
-fixture, not evidence restored from disk. Normal Studio does not expose this workflow yet.
+fixture, not evidence restored from disk. Production history reads task records and frozen
+batches; opening a result always invokes `speed-results`. See the
+[context-speed reference](../docs/subsystems/studio-panel/context-speed.md).
 
 The window remains labelled “UI 调试 · 模拟数据”. It does not create `core.Service`, read
 user settings or workspace evidence, persist window layout, execute the CLI, start models,
@@ -230,7 +233,9 @@ Settings are stored in the system user configuration directory under
 `InferYard Studio/settings.json` (POSIX directory mode 0700, file mode 0600). Invalid JSON
 or field types fall back to defaults with a diagnostic; the file is replaced only when
 the user saves. Historical scans skip damaged runs and log the skipped count. Evidence
-directories remain the source of truth; in-memory task lists do not survive app restart.
+directories remain the source of truth. Ordinary task lists are in memory; context-speed
+identity, lifecycle and references survive restart in separate atomic task records, without
+caching result values. Unreadable batches remain visible for retry.
 
 Runs execute serially and retain CLI host locking, identity checks, cancellation, and
 draining. The default benchmark includes both `zh-core` and `zh-svg-pelican`; a single

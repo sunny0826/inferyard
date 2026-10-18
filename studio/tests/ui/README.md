@@ -42,7 +42,7 @@ Windows/Linux native UI acceptance.
 The context-speed preview tests drive the existing task form through tier selection,
 five simulated measurements, the six-column result, history reopening, cancellation,
 startup failure, missing timing and result-read retry. Screenshots of these states are
-retained in the result bundle even on success. This feature has no production CLI
-integration yet. The user has approved the UI design; native execution and production
-integration are separate verification steps. Result and history tables show the model
-and engine recorded for each task.
+retained in the result bundle even on success. Production CLI integration is implemented;
+the user has approved the UI design. Native execution and the real CLI/model workflow
+remain separate verification steps. Result and history tables show the model and engine
+recorded for each task. See the [context-speed reference](../../../docs/subsystems/studio-panel/context-speed.md).

@@ -296,6 +296,9 @@ func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 	}
 	summaries := map[string]RunSummary{}
 	for _, r := range index.Runs {
+		if evidence.IsContextSpeedRun(r.Inputs) {
+			continue
+		}
 		v, _, e := summarize(r, host)
 		if e != nil {
 			skipped++
@@ -307,6 +310,9 @@ func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 		}
 	}
 	for _, b := range index.Batches {
+		if evidence.IsContextSpeedBatch(b.Path) {
+			continue
+		}
 		bs := BatchSummary{BatchId: filepath.Base(b.Path), Path: b.Path, Runs: []RunSummary{}}
 		validRuns := []evidence.Run{}
 		for _, r := range b.Runs {
@@ -314,6 +320,9 @@ func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 				bs.Runs = append(bs.Runs, summary)
 				validRuns = append(validRuns, r)
 			}
+		}
+		if len(bs.Runs) == 0 && len(b.Runs) > 0 {
+			continue
 		}
 		markResumable(bs.Runs, validRuns)
 		sort.SliceStable(bs.Runs, func(i, j int) bool { return str(bs.Runs[i].StartedAt) > str(bs.Runs[j].StartedAt) })

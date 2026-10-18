@@ -103,20 +103,21 @@ type RunExit struct {
 }
 
 type RunTask struct {
-	TaskId     string    `json:"task_id"`
-	Kind       string    `json:"kind"`
-	State      string    `json:"state"`
-	Queued     bool      `json:"queued"`
-	ConfigPath *string   `json:"config_path"`
-	ResumeFrom *string   `json:"resume_from"`
-	Bundle     *string   `json:"bundle"`
-	RunId      *string   `json:"run_id"`
-	RunPath    *string   `json:"run_path"`
-	CreatedAt  string    `json:"created_at"`
-	StartedAt  *string   `json:"started_at"`
-	FinishedAt *string   `json:"finished_at"`
-	Exit       *RunExit  `json:"exit"`
-	Error      *ApiError `json:"error"`
+	ContextSpeed *ContextSpeedTask `json:"context_speed,omitempty"`
+	TaskId       string            `json:"task_id"`
+	Kind         string            `json:"kind"`
+	State        string            `json:"state"`
+	Queued       bool              `json:"queued"`
+	ConfigPath   *string           `json:"config_path"`
+	ResumeFrom   *string           `json:"resume_from"`
+	Bundle       *string           `json:"bundle"`
+	RunId        *string           `json:"run_id"`
+	RunPath      *string           `json:"run_path"`
+	CreatedAt    string            `json:"created_at"`
+	StartedAt    *string           `json:"started_at"`
+	FinishedAt   *string           `json:"finished_at"`
+	Exit         *RunExit          `json:"exit"`
+	Error        *ApiError         `json:"error"`
 }
 
 type CaseProgress struct {

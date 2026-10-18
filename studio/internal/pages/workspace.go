@@ -8,6 +8,7 @@ import (
 
 func (s *viewState) resetWorkspace() {
 	s.clearBenchmark()
+	s.speed = &speedWorkspace{context: 65536}
 	s.deviceChecked = ""
 	s.autoBind = bindingArm{}
 	s.model, s.registry = "", core.Registry{}
@@ -80,6 +81,9 @@ func (s *viewState) newBenchmark() {
 	s.newTaskPending = true
 	finish := func() {
 		s.clearBenchmark()
+		if s.speed != nil {
+			s.speed.current, s.speed.opened = nil, nil
+		}
 		s.task.stage = "prepare_candidate"
 		s.detailID, s.focusedRun = "", ""
 		s.resumeSource = nil

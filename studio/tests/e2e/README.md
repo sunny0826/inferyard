@@ -62,3 +62,21 @@ checked in the golden chain.
 - Window-level assembly (`ui.NewTester`) and real-window smoke are out of
   scope: page logic is covered by `internal/pages` unit tests, and native
   acceptance stays manual per `studio/README.md`.
+
+## Context-speed boundary
+
+`TestContextSpeedPublicCLI` runs `context_speed_bridge.py` through mise's uv and the frozen
+CLI environment. It reuses the CLI localhost Prism fixture and publicly dispatches
+plan → five trials → speed-results. Human review and host observations are explicit
+test fixtures; before injecting them it checks that real init refuses with
+`human_corpus_review_required` / 4 and creates no output. Original hashes, model-request
+counts and absence of HTML are checked after offline reading. The production Go parser
+consumes that JSON; this is not real model or context-capacity acceptance.
+
+Set `STUDIO_SPEED_E2E_ROOT` to a new directory to retain the fixture and `output/result.json`.
+Do not reuse an existing output directory. Set `UV_PYTHON` to `mise which python` and use
+the project's frozen uv environment. With the retained result, page projection can be checked:
+
+```sh
+STUDIO_SPEED_RESULT=/absolute/new-run/output/result.json mise exec -- go test ./internal/pages -run TestContextSpeedRealCLIProjection -count=1
+```

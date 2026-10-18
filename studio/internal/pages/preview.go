@@ -30,6 +30,8 @@ type previewSession struct {
 	details            map[string]*core.RunTaskDetail
 	indexes            map[string]*core.ReportIndex
 	reportReadFailed   bool
+	speedFailureStage  string
+	speedFailure       *core.ApiError
 	speedMissingTiming bool
 }
 
@@ -64,6 +66,7 @@ func (p *previewSession) loadScene(index int) {
 	p.jobs, p.clock, p.lastTick = nil, 0, time.Now()
 	p.failNext, p.reportReadFailed, p.serial = false, false, 0
 	p.speedMissingTiming = false
+	p.speedFailureStage, p.speedFailure = "", nil
 	p.details, p.indexes = map[string]*core.RunTaskDetail{}, map[string]*core.ReportIndex{}
 	s := previewBase(p.ctx)
 	s.preview, s.win = p, p.win

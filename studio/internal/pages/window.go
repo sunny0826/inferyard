@@ -35,7 +35,7 @@ var navigation = []struct {
 // The navigation and content builders are shared with the in-memory test view.
 func New(ctx context.Context, service *core.Service, page string) {
 	ctx, cancel := context.WithCancel(ctx)
-	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, chartIndex: -1}
+	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, chartIndex: -1, speed: &speedWorkspace{context: 65536}}
 	shell := sidebar.NewShell(pageShellOptions("InferYard Studio", "inferyard-studio-main", s.leftNav, s.contentView))
 	w := shell.Window()
 	s.win = w
@@ -161,6 +161,7 @@ func (s *viewState) refresh(full bool) {
 	}
 	s.win.Update(func() { s.refreshing = true })
 	device, tasks, downloads := s.service.Device(), s.service.RunTasks(), s.service.Downloads()
+	speedTasks, speedHistoryError := s.service.ContextSpeedHistory()
 	s.detailMu.Lock()
 	id := s.requestedDetail
 	s.detailMu.Unlock()
@@ -213,6 +214,9 @@ func (s *viewState) refresh(full bool) {
 		}
 		s.refreshing = false
 		s.device, s.tasks, s.downloads = device, tasks, downloads
+		if speedHistoryError == nil {
+			s.syncSpeedTasks(speedTasks)
+		}
 		s.runProgress = runProgress
 		if s.detailID == id {
 			if de == nil {

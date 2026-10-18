@@ -121,7 +121,11 @@ func TestPreviewSpeedCancellationAndReset(t *testing.T) {
 			click(t, tt, "报告")
 			click(t, tt, r.id)
 			click(t, tt, "打开专项结果")
-			if !tt.HasText(fmt.Sprintf("有效 %d/5 · 未形成完整汇总", count)) {
+			label := fmt.Sprintf("有效 %d/5 · 未形成完整汇总", count)
+			if count == 5 {
+				label = "有效 5/5 · 中位数"
+			}
+			if !tt.HasText(label) {
 				t.Fatal("partial result missing", tt.Texts())
 			}
 			if count > 0 {
@@ -158,7 +162,7 @@ func TestPreviewSpeedMissingFailureAndReadRetry(t *testing.T) {
 		t.Fatal("read failure displayed stale results")
 	}
 	click(t, tt, "重新读取结果")
-	if !tt.HasText("有效 4/5 · 未形成完整汇总") || !tt.HasText("第 5 次：引擎阶段计时缺失（模拟）；速度与耗时缺测。") || !tt.HasText("—") {
+	if !tt.HasText("有效 4/5 · 未形成完整汇总") || !tt.HasText("第 5 次：final_timing_missing、metric_missing") || !tt.HasText("—") {
 		t.Fatal("missing timing was presented as a complete result", tt.Texts())
 	}
 	assertSpeedIdentity(t, tt, r)
