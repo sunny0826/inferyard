@@ -19,14 +19,14 @@
 从 PyPI 安装固定版本：
 
 ```bash
-uv tool install --managed-python --python 3.14.7 inferyard==0.0.2
+uv tool install --managed-python --python 3.14.8 inferyard==0.0.2
 inferyard --help
 ```
 
 也可直接通过 `uvx` 运行，无须持久安装：
 
 ```bash
-uvx --isolated --managed-python --python 3.14.7 inferyard==0.0.2 --help
+uvx --isolated --managed-python --python 3.14.8 inferyard==0.0.2 --help
 ```
 
 无需克隆源码或安装 mise。首次准备 Python 和依赖需要联网；模型和引擎由操作者另行准备。

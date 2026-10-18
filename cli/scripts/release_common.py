@@ -174,7 +174,7 @@ def validate_installation(evidence, build, build_sha, files):
         or any(type(row.get("returncode")) is not int for row in evidence.get("checks", []))
         or type(evidence.get("commands")) is not int
         or evidence["commands"] != len(COMMANDS)
-        or evidence.get("python") != "3.14.7"
+        or evidence.get("python") != "3.14.8"
         or not target
         or type(evidence.get("model_requests_sent")) is not int
         or evidence.get("model_requests_sent") != 0
