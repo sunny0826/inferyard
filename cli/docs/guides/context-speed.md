@@ -3,8 +3,9 @@
 本页是[使用指南](../usage.md) 的子文档，收录「长上下文速度专项」的正文；内容不变，入口保留原节标题与锚点。
 
 本流程显式选择单一 `zh-context-speed`，不改变普通双题库默认范围。
-**当前题库人工审核仍 pending，正式 init/create/plan 会拒绝。** 以下是审核满足后的操作顺序；
-假引擎受控审核测试不代表正式题库已获批准或真实长上下文性能已验证。
+三档题库已有[哈希绑定的人工批准记录](../../bundles/CONTEXT-SPEED-APPROVAL-20261018.md)。
+正式 init/create/plan 仍核验批准及内容一致性；修改正文或规则后须重新审核。
+题库批准不代表所选模型在该档位的真实性能已验证。
 
 ```bash
 inferyard init --bundle zh-context-speed --out speed-ops
