@@ -105,19 +105,55 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	if s.preview != nil {
 		ui.Text(c, "模拟数据；数值不代表模型性能。").TextColor(c.Theme().Warning)
 	}
-	blocked := s.environmentMissing() || !s.preflightReady() || s.busy || s.model == "" || s.engine == "" || s.eligibility(s.engine).State != core.EngineCheckEligible || s.engineState.State == "orphaned"
+	reason := s.speedStartBlockReason()
 	if engineLocked(s.engineState.State) {
-		ui.Text(c, "先停止当前受管服务，再按所选上下文启动新任务。")
 		button(c, "停止当前服务").Disabled(s.busy || s.engineState.State == "stopping").OnClick(s.stopEngine)
-		blocked = true
 	}
-	if blocked {
-		ui.Text(c, "需完成环境准备、选择可用组合，且没有其他任务或受管服务在运行。").TextColor(c.Theme().Warning)
+	if reason != "" {
+		ui.Text(c, reason).TextColor(c.Theme().Warning)
 	}
-	if primaryButton(c, "开始专项测评").Disabled(blocked).AlignSelf(ui.Start).Clicked() {
+	if s.eligibility(s.engine).Reason == "cli_outdated" {
+		button(c, "打开 CLI 设置").OnClick(func() { s.selected = "settings" })
+	}
+	if primaryButton(c, "开始专项测评").Disabled(reason != "").AlignSelf(ui.Start).Clicked() {
 		s.startSpeed()
 	}
 	return true
+}
+
+func (s *viewState) speedStartBlockReason() string {
+	switch {
+	case s.environmentMissing():
+		return "请先完成环境准备。"
+	case !s.preflightReady():
+		return "请先完成工作区设备检查。"
+	case s.busy:
+		return "正在处理其他操作，请等待完成。"
+	case s.running() != nil:
+		return "已有任务尚未结束，请等待完成或取消后再开始。"
+	case s.model == "":
+		return "请选择测评模型。"
+	case s.engine == "":
+		return "请选择候选引擎。"
+	case s.engineState.State == "orphaned":
+		return "请先处理遗留服务记录，再开始专项测评。"
+	case engineLocked(s.engineState.State):
+		return "先停止当前受管服务，再按所选上下文启动新任务。"
+	}
+	e := s.eligibility(s.engine)
+	switch e.State {
+	case core.EngineCheckEligible:
+		return ""
+	case core.EngineCheckChecking:
+		return "正在核验所选引擎，请稍候。"
+	case core.EngineCheckIneligible:
+		return "所选引擎不可用：" + human(e.Reason) + "。请重新选择。"
+	default:
+		if e.Reason == "cli_outdated" {
+			return "当前 CLI 不支持引擎核验；请在设置中选择支持长上下文速度的 CLI。"
+		}
+		return "所选引擎尚未通过核验，请到模型页查看原因。"
+	}
 }
 
 func (s *viewState) speedTaskView(c *ui.Context) {

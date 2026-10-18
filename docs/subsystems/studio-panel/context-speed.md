@@ -7,6 +7,9 @@
 ## 调用与归属
 
 同一任务页按钮经 `startSpeedFlow` 调用 `Service.StartContextSpeed`。
+启动按钮按实际未满足的条件显示原因。旧 CLI 不支持 `engine check` 时，普通表单仍允许
+选择引擎，但不宣称已核验；专项保持禁用并提供「打开 CLI 设置」。选择支持核验的 CLI、
+刷新核验成功后恢复启动，不放宽引擎准入。已有未结束任务也阻止专项启动。
 先查询 `--schema context_speed_result` 的版本、两种分支、必需字段及五项样本结构；
 不缓存能力，CLI 替换后重新查询。旧 CLI 的专项返回升级提示，普通功能继续使用原接口。
 
@@ -64,4 +67,5 @@ nullable 原因和统计一致性；展示采用 CLI 数值，不用 Go 计算�
 `tests/e2e/context_speed_bridge.py` 复用 CLI 的 localhost Prism fixture，经公开命令五次运行，
 保留原件前后 hash、请求数和无HTML证据；Go e2e 消费真实结果。
 其中 host/review 是显式测试注入，不代表正式 init 已通过，也不代表64K性能测量。
-原生 macOS、Windows/Linux窗口、真实模型与最终独立审核由后续验收承担。
+当前原生窗口、真实 CLI／模型和独立审核的验收进度集中记录在
+[backlog](../../../cli/docs/backlog.md#长上下文速度专项测评)。

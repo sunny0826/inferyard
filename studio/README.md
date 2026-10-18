@@ -132,6 +132,13 @@ Development also works with `mise exec -- go run .`. The app uses a plain Go bui
 there is no frontend installation or build step. Environment overrides above apply only
 to the command, not to global configuration.
 
+For source development, prepare the CLI with `mise exec -- uv sync --frozen` in `cli/`,
+then set Studio's CLI path to the absolute path of `cli/.venv/bin/inferyard`
+(`cli/.venv/Scripts/inferyard.exe` on Windows). An installed CLI can report the same
+version while lacking newer source features. The specialist task requires engine
+verification and the context-speed result schema; an older CLI shows a settings action
+instead of claiming that an unverified engine is ready.
+
 To cross-build macOS arm64, Windows amd64, and Linux amd64 and assemble unsigned distributions:
 
 ```sh
