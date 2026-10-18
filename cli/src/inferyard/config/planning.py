@@ -145,7 +145,9 @@ def prepare_plan(source: Path):
             artifacts[reference["path"]] = content
         config, bundle = loaded["config"], loaded["bundle"]
         validate_runtime_config(config)
-        validate_workload_inputs(workload, config, bundle)
+        validate_workload_inputs(
+            workload, config, bundle, experiment_profile=incoming.get("profile")
+        )
         register_position_families(workload, bundle, position_families)
         config_path = source.parent / workload["config"]["path"]
         corpus_path = (config_path.parent / config["bundle"]["path"]).resolve()

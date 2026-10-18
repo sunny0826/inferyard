@@ -24,6 +24,7 @@ def _wire_spec(protocol):
 @cache
 def schemas_for():
     """Return the unique current registry; legacy wire revisions need migration."""
+    from inferyard.contracts.schemas_context_speed import CONTEXT_SPEED_RESULT
     from inferyard.contracts.schemas_engine_check import ENGINE_CHECK
     from inferyard.contracts.schemas_events import EVENT, SAMPLE, SELECTION
     from inferyard.contracts.schemas_experiment import (
@@ -46,6 +47,7 @@ def schemas_for():
     from inferyard.contracts.schemas_storage import MANIFEST, SUMMARY
 
     return {
+        "context_speed_result": CONTEXT_SPEED_RESULT,
         "inputs": INPUTS,
         "observation_record": OBSERVATION_RECORD,
         "prepared_request": PREPARED_REQUEST,

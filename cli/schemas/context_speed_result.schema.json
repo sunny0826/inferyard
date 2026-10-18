@@ -1,0 +1,3026 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:context_speed_result",
+  "title": "InferYard context_speed_result v3",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "context_speed_result.v1"
+          ]
+        },
+        "read_state": {
+          "type": "string",
+          "enum": [
+            "readable"
+          ]
+        },
+        "profile": {
+          "type": "string",
+          "enum": [
+            "context-speed.v1"
+          ]
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "batch_metadata": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "member": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "input"
+                          ]
+                        },
+                        "name": {
+                          "type": "string",
+                          "enum": [
+                            "run",
+                            "plan",
+                            "selection",
+                            "config",
+                            "bundle"
+                          ]
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "name",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "observation"
+                          ]
+                        },
+                        "seq": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "seq",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "request"
+                          ]
+                        },
+                        "request_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "request_id",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "plan": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "member": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "input"
+                          ]
+                        },
+                        "name": {
+                          "type": "string",
+                          "enum": [
+                            "run",
+                            "plan",
+                            "selection",
+                            "config",
+                            "bundle"
+                          ]
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "name",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "observation"
+                          ]
+                        },
+                        "seq": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "seq",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "request"
+                          ]
+                        },
+                        "request_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "request_id",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "config": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "member": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "input"
+                          ]
+                        },
+                        "name": {
+                          "type": "string",
+                          "enum": [
+                            "run",
+                            "plan",
+                            "selection",
+                            "config",
+                            "bundle"
+                          ]
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "name",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "observation"
+                          ]
+                        },
+                        "seq": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "seq",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "request"
+                          ]
+                        },
+                        "request_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "request_id",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "bundle": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "member": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "input"
+                          ]
+                        },
+                        "name": {
+                          "type": "string",
+                          "enum": [
+                            "run",
+                            "plan",
+                            "selection",
+                            "config",
+                            "bundle"
+                          ]
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "name",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "observation"
+                          ]
+                        },
+                        "seq": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "seq",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "request"
+                          ]
+                        },
+                        "request_id": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "request_id",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "plan_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "experiment_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "workload_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+            }
+          },
+          "required": [
+            "batch_metadata",
+            "plan",
+            "config",
+            "bundle",
+            "plan_sha256",
+            "experiment_id",
+            "workload_id"
+          ],
+          "additionalProperties": false
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "object",
+              "properties": {
+                "display_name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "template_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "display_name",
+                "sha256",
+                "template_sha256"
+              ],
+              "additionalProperties": false
+            },
+            "engine": {
+              "type": "object",
+              "properties": {
+                "adapter": {
+                  "type": "string",
+                  "enum": [
+                    "prism_llama_server_v1"
+                  ]
+                },
+                "release": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "binary_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "adapter",
+                "release",
+                "binary_sha256"
+              ],
+              "additionalProperties": false
+            },
+            "bundle": {
+              "type": "object",
+              "properties": {
+                "bundle_id": {
+                  "type": "string",
+                  "enum": [
+                    "zh-context-speed"
+                  ]
+                },
+                "version": {
+                  "type": "string",
+                  "enum": [
+                    "2026.10.1"
+                  ]
+                }
+              },
+              "required": [
+                "bundle_id",
+                "version"
+              ],
+              "additionalProperties": false
+            },
+            "selected_context_tokens": {
+              "type": "integer",
+              "enum": [
+                65536,
+                131072,
+                262144
+              ]
+            }
+          },
+          "required": [
+            "model",
+            "engine",
+            "bundle",
+            "selected_context_tokens"
+          ],
+          "additionalProperties": false
+        },
+        "execution": {
+          "type": "object",
+          "properties": {
+            "counts": {
+              "type": "object",
+              "properties": {
+                "planned": {
+                  "type": "integer",
+                  "const": 5
+                },
+                "completed": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                },
+                "failed": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                },
+                "cancelled": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                },
+                "invalid": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                },
+                "not_executed": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                }
+              },
+              "required": [
+                "planned",
+                "completed",
+                "failed",
+                "cancelled",
+                "invalid",
+                "not_executed"
+              ],
+              "additionalProperties": false
+            },
+            "stop_reason": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "missing_reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "evidence_refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "member": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "input"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "enum": [
+                                  "run",
+                                  "plan",
+                                  "selection",
+                                  "config",
+                                  "bundle"
+                                ]
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "name",
+                              "sha256"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "observation"
+                                ]
+                              },
+                              "seq": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "seq",
+                              "sha256"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "request"
+                                ]
+                              },
+                              "request_id": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "request_id",
+                              "sha256"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minItems": 0
+                }
+              },
+              "required": [
+                "value",
+                "missing_reason",
+                "evidence_refs"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "counts",
+            "stop_reason"
+          ],
+          "additionalProperties": false
+        },
+        "measurement": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "complete",
+                "incomplete"
+              ]
+            },
+            "valid_count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "reasons": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "status",
+            "valid_count",
+            "reasons"
+          ],
+          "additionalProperties": false
+        },
+        "samples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "trial_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+              },
+              "repeat_index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4
+              },
+              "case_id": {
+                "type": "string",
+                "enum": [
+                  "context-speed-64k",
+                  "context-speed-128k",
+                  "context-speed-256k"
+                ]
+              },
+              "run": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "run_id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                      },
+                      "inputs": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "sha256": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          "member": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "input"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "enum": [
+                                      "run",
+                                      "plan",
+                                      "selection",
+                                      "config",
+                                      "bundle"
+                                    ]
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "name",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "observation"
+                                    ]
+                                  },
+                                  "seq": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "seq",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "request"
+                                    ]
+                                  },
+                                  "request_id": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "request_id",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "manifest_sha256": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "integrity": {
+                        "type": "string",
+                        "enum": [
+                          "sealed",
+                          "unsealed"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "run_id",
+                      "inputs",
+                      "manifest_sha256",
+                      "integrity"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "request_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "execution_state": {
+                "type": "string",
+                "enum": [
+                  "completed",
+                  "failed",
+                  "cancelled",
+                  "invalid",
+                  "not_executed"
+                ]
+              },
+              "error_category": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "stop_reason": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "missing_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "member": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "input"
+                                  ]
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "enum": [
+                                    "run",
+                                    "plan",
+                                    "selection",
+                                    "config",
+                                    "bundle"
+                                  ]
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "name",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "observation"
+                                  ]
+                                },
+                                "seq": {
+                                  "type": "integer",
+                                  "minimum": 1
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "seq",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "request"
+                                  ]
+                                },
+                                "request_id": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "request_id",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 0
+                  }
+                },
+                "required": [
+                  "value",
+                  "missing_reason",
+                  "evidence_refs"
+                ],
+                "additionalProperties": false
+              },
+              "measurement": {
+                "type": "object",
+                "properties": {
+                  "valid": {
+                    "type": "boolean"
+                  },
+                  "reasons": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 0
+                  },
+                  "cohort_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "valid",
+                  "reasons",
+                  "cohort_sha256"
+                ],
+                "additionalProperties": false
+              },
+              "columns": {
+                "type": "object",
+                "properties": {
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "enum": [
+                              65536,
+                              131072,
+                              262144
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "missing_reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "evidence_refs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "member": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "input"
+                                      ]
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "enum": [
+                                        "run",
+                                        "plan",
+                                        "selection",
+                                        "config",
+                                        "bundle"
+                                      ]
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "name",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "observation"
+                                      ]
+                                    },
+                                    "seq": {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "seq",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "request"
+                                      ]
+                                    },
+                                    "request_id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "request_id",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "sha256"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "minItems": 0
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "missing_reason",
+                      "evidence_refs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "prompt_length": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "missing_reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "evidence_refs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "member": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "input"
+                                      ]
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "enum": [
+                                        "run",
+                                        "plan",
+                                        "selection",
+                                        "config",
+                                        "bundle"
+                                      ]
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "name",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "observation"
+                                      ]
+                                    },
+                                    "seq": {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "seq",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "request"
+                                      ]
+                                    },
+                                    "request_id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "request_id",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "sha256"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "minItems": 0
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "missing_reason",
+                      "evidence_refs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "time": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "missing_reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "evidence_refs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "member": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "input"
+                                      ]
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "enum": [
+                                        "run",
+                                        "plan",
+                                        "selection",
+                                        "config",
+                                        "bundle"
+                                      ]
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "name",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "observation"
+                                      ]
+                                    },
+                                    "seq": {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "seq",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "request"
+                                      ]
+                                    },
+                                    "request_id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "request_id",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "sha256"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "minItems": 0
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "missing_reason",
+                      "evidence_refs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "prefill": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "missing_reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "evidence_refs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "member": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "input"
+                                      ]
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "enum": [
+                                        "run",
+                                        "plan",
+                                        "selection",
+                                        "config",
+                                        "bundle"
+                                      ]
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "name",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "observation"
+                                      ]
+                                    },
+                                    "seq": {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "seq",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "request"
+                                      ]
+                                    },
+                                    "request_id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "request_id",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "sha256"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "minItems": 0
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "missing_reason",
+                      "evidence_refs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "decode": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "missing_reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "evidence_refs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "member": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "input"
+                                      ]
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "enum": [
+                                        "run",
+                                        "plan",
+                                        "selection",
+                                        "config",
+                                        "bundle"
+                                      ]
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "name",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "observation"
+                                      ]
+                                    },
+                                    "seq": {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "seq",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "request"
+                                      ]
+                                    },
+                                    "request_id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "request_id",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "sha256"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "minItems": 0
+                      }
+                    },
+                    "required": [
+                      "value",
+                      "missing_reason",
+                      "evidence_refs"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "context",
+                  "prompt_length",
+                  "time",
+                  "prefill",
+                  "decode"
+                ],
+                "additionalProperties": false
+              },
+              "proof": {
+                "type": "object",
+                "properties": {
+                  "identity": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "member": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "input"
+                                  ]
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "enum": [
+                                    "run",
+                                    "plan",
+                                    "selection",
+                                    "config",
+                                    "bundle"
+                                  ]
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "name",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "observation"
+                                  ]
+                                },
+                                "seq": {
+                                  "type": "integer",
+                                  "minimum": 1
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "seq",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "request"
+                                  ]
+                                },
+                                "request_id": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "request_id",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 0
+                  },
+                  "token_budget": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "sha256": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          "member": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "input"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "enum": [
+                                      "run",
+                                      "plan",
+                                      "selection",
+                                      "config",
+                                      "bundle"
+                                    ]
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "name",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "observation"
+                                    ]
+                                  },
+                                  "seq": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "seq",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "request"
+                                    ]
+                                  },
+                                  "request_id": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "request_id",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "request": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "sha256": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          },
+                          "member": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "input"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "enum": [
+                                      "run",
+                                      "plan",
+                                      "selection",
+                                      "config",
+                                      "bundle"
+                                    ]
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "name",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "observation"
+                                    ]
+                                  },
+                                  "seq": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "seq",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "request"
+                                    ]
+                                  },
+                                  "request_id": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                  },
+                                  "sha256": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "request_id",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "final_timing": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "file": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "member": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "input"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "enum": [
+                                          "run",
+                                          "plan",
+                                          "selection",
+                                          "config",
+                                          "bundle"
+                                        ]
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "name",
+                                      "sha256"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "observation"
+                                        ]
+                                      },
+                                      "seq": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "seq",
+                                      "sha256"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "request"
+                                        ]
+                                      },
+                                      "request_id": {
+                                        "type": "string",
+                                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "request_id",
+                                      "sha256"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "sha256"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "event_seq": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "record": {
+                            "type": "object",
+                            "properties": {
+                              "definition": {
+                                "type": "string",
+                                "enum": [
+                                  "prism.adfffbe41.timings.v1"
+                                ]
+                              },
+                              "final": {
+                                "type": "boolean"
+                              },
+                              "speculative": {
+                                "type": "boolean"
+                              },
+                              "missing_reason": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "invalid_engine_timings"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "cache_n": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "prompt_n": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "predicted_n": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "prompt_ms": {
+                                "anyOf": [
+                                  {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "predicted_ms": {
+                                "anyOf": [
+                                  {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "definition",
+                              "final",
+                              "speculative",
+                              "missing_reason",
+                              "cache_n",
+                              "prompt_n",
+                              "predicted_n",
+                              "prompt_ms",
+                              "predicted_ms"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "file",
+                          "event_seq",
+                          "record"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fixed_output": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "member": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "input"
+                                  ]
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "enum": [
+                                    "run",
+                                    "plan",
+                                    "selection",
+                                    "config",
+                                    "bundle"
+                                  ]
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "name",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "observation"
+                                  ]
+                                },
+                                "seq": {
+                                  "type": "integer",
+                                  "minimum": 1
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "seq",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "request"
+                                  ]
+                                },
+                                "request_id": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                },
+                                "sha256": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "request_id",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 0
+                  }
+                },
+                "required": [
+                  "identity",
+                  "token_budget",
+                  "request",
+                  "final_timing",
+                  "fixed_output"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "trial_id",
+              "repeat_index",
+              "case_id",
+              "run",
+              "request_id",
+              "execution_state",
+              "error_category",
+              "stop_reason",
+              "measurement",
+              "columns",
+              "proof"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 5,
+          "maxItems": 5
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "trial_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                  },
+                  "minItems": 5,
+                  "maxItems": 5
+                },
+                "columns": {
+                  "type": "object",
+                  "properties": {
+                    "context": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "enum": [
+                                65536,
+                                131072,
+                                262144
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "missing_reason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "evidence_refs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "member": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "input"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "enum": [
+                                          "run",
+                                          "plan",
+                                          "selection",
+                                          "config",
+                                          "bundle"
+                                        ]
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "name",
+                                      "sha256"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "observation"
+                                        ]
+                                      },
+                                      "seq": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "seq",
+                                      "sha256"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "request"
+                                        ]
+                                      },
+                                      "request_id": {
+                                        "type": "string",
+                                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "request_id",
+                                      "sha256"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "sha256"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 0
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "missing_reason",
+                        "evidence_refs"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "prompt_length": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "missing_reason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "evidence_refs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "member": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "input"
+                                        ]
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "enum": [
+                                          "run",
+                                          "plan",
+                                          "selection",
+                                          "config",
+                                          "bundle"
+                                        ]
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "name",
+                                      "sha256"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "observation"
+                                        ]
+                                      },
+                                      "seq": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "seq",
+                                      "sha256"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "request"
+                                        ]
+                                      },
+                                      "request_id": {
+                                        "type": "string",
+                                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+                                      },
+                                      "sha256": {
+                                        "type": "string",
+                                        "pattern": "^[a-f0-9]{64}$"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "request_id",
+                                      "sha256"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "sha256"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "minItems": 0
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "missing_reason",
+                        "evidence_refs"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "time": {
+                      "type": "object",
+                      "properties": {
+                        "median": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "min": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "max": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "median",
+                        "min",
+                        "max"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "prefill": {
+                      "type": "object",
+                      "properties": {
+                        "median": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "min": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "max": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "median",
+                        "min",
+                        "max"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "decode": {
+                      "type": "object",
+                      "properties": {
+                        "median": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "min": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "max": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "median",
+                        "min",
+                        "max"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "context",
+                    "prompt_length",
+                    "time",
+                    "prefill",
+                    "decode"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "trial_ids",
+                "columns"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "read_state",
+        "profile",
+        "source",
+        "metadata",
+        "execution",
+        "measurement",
+        "samples",
+        "summary"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 3
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "context_speed_result.v1"
+          ]
+        },
+        "read_state": {
+          "type": "string",
+          "enum": [
+            "error"
+          ]
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_path": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "source_path"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "read_state",
+        "error"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

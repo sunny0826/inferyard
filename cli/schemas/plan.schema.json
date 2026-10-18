@@ -559,6 +559,12 @@
           },
           "minItems": 1
         },
+        "profile": {
+          "type": "string",
+          "enum": [
+            "context-speed.v1"
+          ]
+        },
         "environment_admission": {
           "type": "object",
           "properties": {

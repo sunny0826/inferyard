@@ -104,6 +104,7 @@ EXPERIMENT = obj(
         "workloads": array(WORKLOAD, 1),
     }
 )
+EXPERIMENT["properties"]["profile"] = enum("context-speed.v1")
 EXPERIMENT["properties"]["environment_admission"] = ENVIRONMENT_ADMISSION
 EXPERIMENT["properties"]["performance_environment"] = obj(
     {
