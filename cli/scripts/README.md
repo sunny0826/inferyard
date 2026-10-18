@@ -115,3 +115,31 @@ dispatch ref 与源码提交一致。PR 运行不满足发布来源条件。核�
 非阻塞管道与句柄。文件 I/O 只在直接子进程或注入测试中执行；控制宿主不执行文件 I/O。
 `file_io.py`、`probe_host.py`、`probe_fixture.py` 的真实 CLI 入口仍拒绝运行，不提供下载或模型入口。
 库接口与待接手状态见[宿主契约](../docs/contracts/windows-source-host-contract.md)，未接入事项见 [backlog](../docs/backlog.md)。
+
+## Context-speed corpus generator
+
+From `cli/`, run:
+
+```bash
+mise exec -- uv run --frozen python scripts/build_context_speed_bundle.py --out-dir NEW_DIR
+```
+
+`--out-dir` is required. The generator creates the directory if needed and writes
+`zh-context-speed.json`, `zh-context-speed.review.json` and `CONTEXT-SPEED-REVIEW.md`.
+It refuses with exit code 2 before writing if any output already exists, including
+symlinks. Use a new directory for each regeneration; preserve previous materials.
+There is no overwrite, seed, model, tokenizer or text-length option: the versioned
+source fixes the corpus. An interrupted write may leave partial outputs; keep them
+and retry in a new directory.
+
+It uses original MIT-licensed synthetic Chinese records from
+[context_speed_corpus.py](context_speed_corpus.py), validates schema-3 bundle content,
+and records character/UTF-8 byte counts and review hashes. It makes no network or
+model requests, downloads nothing, and does not tokenize or approve the corpus.
+It reproduces frozen offline token observations bound to exact prompt hashes;
+changed text rejects stale counts. The observations use raw prompts without chat
+templates or BOS, and the reference model has only an 8K native context.
+Runtime input counts and context suitability still require separate verification.
+Both approval arrays remain empty. The five-trial execution recipe belongs to the
+[context-speed plan](../docs/plans/context-speed.md#专项题库与运行协议), not this generator.
+Full-text pointers, limitations and pending checks are in the generated review files.
