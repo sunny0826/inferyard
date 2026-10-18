@@ -3,6 +3,7 @@
 package pages
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -11,23 +12,34 @@ import (
 )
 
 func TestPreviewSpeedDefaultTableFits(t *testing.T) {
-	p, tt := prepareSpeed(t, "128k")
-	click(t, tt, "开始专项测评")
-	p.advance(10 * time.Second)
-	tt.Frame()
-	click(t, tt, "查看结果")
-	nodes := modelUINodes(tt, "label", "专项六项指标")
-	if len(nodes) != 1 {
-		t.Fatal("missing result table", len(nodes))
+	for _, width := range []int{1024, 1120} {
+		t.Run(fmt.Sprint(width), func(t *testing.T) {
+			p, tt := prepareSpeed(t, "128k")
+			click(t, tt, "开始专项测评")
+			p.advance(10 * time.Second)
+			tt.Frame()
+			click(t, tt, "查看结果")
+			tt = speedTester(p, width, 800)
+			nodes := modelUINodes(tt, "label", "专项六项指标")
+			if len(nodes) != 1 {
+				t.Fatal("missing result table", len(nodes))
+			}
+			table := nodes[0]
+			viewport := table.FieldByName("parent").Elem()
+			right := viewport.FieldByName("x").Float() + viewport.FieldByName("w").Float()
+			tableRight := table.FieldByName("x").Float() + table.FieldByName("w").Float()
+			if tableRight > right+.1 {
+				t.Fatalf("window clips table: right %.1f > viewport %.1f", tableRight, right)
+			}
+			for _, label := range []string{"模型 / 引擎", "Context", "Prompt length (tokens)", "Time (s)", "Prefill (tok/s)", "Decode (tok/s)"} {
+				header, ok := tt.Find(label)
+				if !ok || float64(header.X+header.W) > right+.1 {
+					t.Errorf("header %q is clipped: %+v, right %.1f", label, header, right)
+				}
+			}
+			saveSpeedImage(t, tt, fmt.Sprintf("default-result-%d", width))
+		})
 	}
-	table := nodes[0]
-	viewport := table.FieldByName("parent").Elem()
-	right := viewport.FieldByName("x").Float() + viewport.FieldByName("w").Float()
-	tableRight := table.FieldByName("x").Float() + table.FieldByName("w").Float()
-	if tableRight > right+.1 {
-		t.Fatalf("default window clips table: right %.1f > viewport %.1f", tableRight, right)
-	}
-	saveSpeedImage(t, tt, "default-result")
 }
 
 func TestPreviewSpeedNarrowTableCanReachDecode(t *testing.T) {
