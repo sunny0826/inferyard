@@ -1,12 +1,11 @@
 """Per-request speed projection from the full ledger and physical originals."""
 
-import hashlib
-
 from inferyard.analysis.context_speed_cohort import cohort as measurement_cohort
 from inferyard.analysis.engine_timing import engine_rates
 from inferyard.analysis.input_lengths import bind_token_counts
 from inferyard.evidence.context_speed import verified_trial
 from inferyard.evidence.storage import EvidenceError
+from inferyard.evidence.template_identity import matches_template
 from inferyard.evidence.trial_evidence import verify_reference
 
 
@@ -67,9 +66,7 @@ def sample(root, trial, data):
         and properties.get("total_slots") == 1
         and properties.get("default_generation_settings", {}).get("n_ctx") == context
         and properties.get("model_path") == config["model"]["local_path"]
-        and isinstance(properties.get("chat_template"), str)
-        and hashlib.sha256(properties["chat_template"].encode()).hexdigest()
-        == config["model"]["template_sha256"]
+        and matches_template(config["model"], properties, identity.get("template_identity"))
     )
     fixed_refs = []
     for stage in ("ordinary", "stream"):
@@ -130,6 +127,14 @@ def sample(root, trial, data):
     )
     token = counts.get(row["case_id"], {})
     actual = token.get("actual_input_tokens")
+    usage = [e["data"] for e in request_events if e["event_type"] == "usage"]
+    if (
+        len(usage) != 1
+        or usage[0].get("source") != "endpoint.usage"
+        or type(usage[0].get("prompt_tokens")) is not int
+        or usage[0]["prompt_tokens"] != actual
+    ):
+        reasons.append("input_token_mismatch")
     rates = engine_rates(row)
     time = None
     if timing and row["engine_build_verified"] and row["execution_state"] == "completed":
@@ -140,7 +145,7 @@ def sample(root, trial, data):
         "context": _value(
             context if context_verified else None,
             "context_unverified",
-            [observation("service_properties")] if context_verified else [],
+            identity_refs if context_verified else [],
         ),
         "prompt_length": _value(
             actual, "actual_input_unknown", [token_ref] if actual is not None else []

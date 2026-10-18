@@ -6,6 +6,7 @@ from pathlib import Path
 
 from inferyard.config.loader import validate_runtime_config
 from inferyard.evidence.storage import EvidenceError, read_json, sha256_file
+from inferyard.evidence.template_identity import matches_template
 from inferyard.runtime.length_builder import validate_spec
 
 REQUIRED = {
@@ -38,11 +39,9 @@ def read_preparation(directory):
     identity = read_json(root / "identity.json")
     props = read_json(root / "service.props.json")
     recorded = {item["path"]: item["sha256"] for item in identity.get("files", [])}
-    template = props.get("chat_template")
     if (
         identity.get("verification") != "verified"
-        or not isinstance(template, str)
-        or hashlib.sha256(template.encode()).hexdigest() != config["model"]["template_sha256"]
+        or not matches_template(config["model"], props, identity.get("template_identity"))
         or props.get("model_path") != config["model"]["local_path"]
         or any(
             recorded.get(config[section][path_key]) != config[section][hash_key]

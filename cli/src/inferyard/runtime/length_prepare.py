@@ -48,6 +48,8 @@ async def prepare(request, dependencies=None):
             if adapter.redactor.clean(spec) != spec:
                 raise EvidenceError("length_spec_contains_redacted_input")
             props = await adapter.verify_properties(config)
+            if getattr(adapter, "template_identity", None) is not None:
+                identity["template_identity"] = adapter.template_identity
             if not await adapter.wait_idle(config["execution"]["idle_wait_seconds"]):
                 raise PreflightError("length_preparation_service_not_idle")
             _new_output(request.out, [request.length_spec, request.config.source])

@@ -30,18 +30,8 @@ seed 声明不代替运行时核验。
 仅允许 `prism_llama_server_v1`；启动参数复用 `argument_values` 和 `disabled_startup`，
 要求 context、parallel、reasoning 与配方一致，使用当前支持的封闭参数词表，拒绝投机、
 draft/lookup/ngram 或未知选项。固定输出复用既有 `config.fixed_output.validate_inputs`。
-两个可选带值选项支持分离与等号写法：`--device CUDA0` / `--device=CUDA0`，
-`--log-verbosity 4` / `--log-verbosity=4`。`--device` 仅在 `engine.backend=cuda` 时允许，
-值须整串匹配 `CUDA(0|[1-9][0-9]*)`（ASCII 数字，支持 CUDA2、CUDA10 及更大索引）；
-拒绝前导零、负数、尾部字符/空白、Unicode 数字和多设备。`--log-verbosity` 只接受字面值 `4`。
-两者均不新增别名、默认值或环境兜底；未出现时保持原行为。仅校验原始 argv，不修改参数；
-候选设备选择及日志配方保留，实际绑定/预检仍核验设备与完整 startup_args。
-这两个选项的缺值、空值或 `--` 长选项占值报 `startup_value_missing`，
-重复（含分离/等号混写）报 `startup_option_ambiguous`，非法值或 backend 不符报
-`startup_recipe_mismatch`；词表外选项仍报 `startup_option_unsupported`。
-多错误并存遵循原有先失败顺序：追加 `--device -c 65536` 造成 context 重复时先报
-`startup_recipe_mismatch`；若 `--device` 占用唯一 `-c` 的位置则报 `startup_option_ambiguous`。
-这些可选参数不改变 schema_version=3、profile/result 结构、计时或证据支持集。
+`--device` 与 `--log-verbosity` 的合法值、参数形式和拒绝顺序见
+[可选启动参数](context-speed-startup.md)；实际绑定仍核验完整 argv。
 
 Prism 实际构建仍须在 B 阶段通过现有 `/props` 的固定 `build_info` 核验，
 release 显示字符串本身不证明构建已验证。
@@ -112,6 +102,10 @@ proof 另有 identity 数组、可空 token_budget、可空 request 和 fixed_ou
 每个引用 hash、同一正式 request 的事件序号/身份/token budget/请求体/fixed-output 证据，
 再投影；不得凭“有引用”把 build、seed、冷缓存或输出资格标为已验证。
 相同文件内属于不同请求的事件必须在读取层拒绝，不能仅凭路径相同判为同一请求。
+同一正式 request 必须恰有一条来源为 `endpoint.usage` 的 usage；其 `prompt_tokens`
+必须是整数且等于模板分词的实际输入，同时满足最终 timing 的输入计数等式。
+缺失、重复或矛盾记 `input_token_mismatch`，保留原始观测但不准入有效测量与汇总。
+Context 的引用包含 service_properties 与 identity，模板证明规则见上述模板契约。
 
 ## 测量与汇总
 

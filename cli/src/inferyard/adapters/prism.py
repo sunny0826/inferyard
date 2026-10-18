@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import codecs
-import hashlib
 import json
 import math
 import time
@@ -17,25 +16,22 @@ from inferyard.analysis.engine_timing import capture_timings
 from inferyard.config.cache_policy import disabled_startup
 from inferyard.contracts.validation import ContractError, strict_json_loads
 from inferyard.evidence.storage import EvidenceError, Redactor
+from inferyard.evidence.template_identity import (
+    PRISM_BUILD,
+    PRISM_TEMPLATE_PROFILE,
+    matches_template,
+)
 from inferyard.platforms.identity import PreflightError, resolve_loopback_origin
 
-BUILD = "b10743-adfffbe41"
+BUILD = PRISM_BUILD
 
 
-def _service_template_digest(model, build):
-    if build != BUILD:
-        return model["template_sha256"]
+def _template_binding(model):
     try:
-        raw = Path(model["template_path"]).read_bytes()
-        if hashlib.sha256(raw).hexdigest() != model["template_sha256"]:
-            raise PreflightError("service_template_mismatch")
-        source = raw.decode("utf-8")
+        source = Path(model["template_path"]).read_bytes().decode("utf-8")
     except (OSError, UnicodeError) as exc:
         raise PreflightError("service_template_mismatch") from exc
-    normalized = source.replace("\r\n", "\n").replace("\r", "\n")
-    if source.endswith("\n"):
-        normalized = normalized[:-1]
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    return {"profile": PRISM_TEMPLATE_PROFILE, "source": source}
 
 
 class ProtocolError(RuntimeError):
@@ -304,10 +300,8 @@ class PrismAdapter:
             or props.get("model_path") != config["model"]["local_path"]
         ):
             raise PreflightError("service_properties_mismatch")
-        template = props.get("chat_template")
-        if not isinstance(template, str) or hashlib.sha256(
-            template.encode()
-        ).hexdigest() != _service_template_digest(config["model"], self.build_info):
+        binding = _template_binding(config["model"]) if self.build_info == BUILD else None
+        if not matches_template(config["model"], props, binding):
             raise PreflightError("service_template_mismatch")
         args = config["engine"]["startup_args"]
 
@@ -340,6 +334,7 @@ class PrismAdapter:
         )
         if not cache_allowed or not disabled_startup(args):
             raise PreflightError("cache_policy_unverified")
+        self.template_identity = binding
         return props
 
     async def verify_effective(

@@ -39,9 +39,14 @@ def speed_service(scenario, tmp_path, monkeypatch):
         def log_message(self, *args):
             pass
 
-        def respond(self, value, *, stream=False):
+        def respond(self, value, *, stream=False, extra_usage=False):
+            frames = [value]
+            if extra_usage:
+                frames.append({"choices": [], "usage": value["usage"]})
             raw = (
-                ("data: " + json.dumps(value) + "\n\ndata: [DONE]\n\n").encode()
+                (
+                    "".join("data: " + json.dumps(f) + "\n\n" for f in frames) + "data: [DONE]\n\n"
+                ).encode()
                 if stream
                 else json.dumps(value).encode()
             )
@@ -108,7 +113,10 @@ def speed_service(scenario, tmp_path, monkeypatch):
             }
             response = {
                 "choices": [choice],
-                "usage": {"prompt_tokens": count, "completion_tokens": output},
+                "usage": {
+                    "prompt_tokens": state.get("formal_usage_prompt", count) if formal else count,
+                    "completion_tokens": output,
+                },
             }
             if state["timing"]:
                 response["timings"] = state.get("custom_timing") or {
@@ -118,7 +126,11 @@ def speed_service(scenario, tmp_path, monkeypatch):
                     "predicted_n": output,
                     "predicted_ms": 500,
                 }
-            self.respond(response, stream=body["stream"])
+            self.respond(
+                response,
+                stream=body["stream"],
+                extra_usage=formal and state.get("duplicate_usage", False),
+            )
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     server.daemon_threads = True

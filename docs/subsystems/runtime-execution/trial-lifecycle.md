@@ -17,4 +17,8 @@
 
 返回侧：单次路径在封存后从账本重建 summary（`read_trial`）随结果返回；批量路径读运行投影并附剩余预算、进度与重复指标。退出码与状态词的映射在 CLI 层完成，见 [CLI 与应用分发](../cli-dispatch.md)。
 
+Prism 的模板服务核验还生成 `template_identity`，由 `run_trial` 并入 identity 观察；
+`prepare-length` 将同一证明写入封存的 identity.json。离线读取不访问模板外部路径，
+按 [模板身份契约](../../../cli/docs/contracts/prism-template-contract.md) 重算。
+
 overhead、length、engine-fit 三条辅助通路只在约束节标注与正式通路的差异，本文不展开其内部细节。
