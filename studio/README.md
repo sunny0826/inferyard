@@ -169,9 +169,9 @@ Their help does not list `--debug-ui`, and passing it is an input error. The `re
 disables preview even when combined with `ui_debug`; `build-all.sh` always sets `release`,
 and packaging rejects binaries without that tag before writing distributions.
 
-The sidebar's “模拟场景” selector provides 14 scenes: task preparation, running, completion and failure;
+The sidebar's “模拟场景” selector provides task preparation, running, completion and failure;
 live run details; report list, details, long tables and read errors; empty data; models;
-downloads; device measurements; and settings. Pages use the same components as normal
+downloads; device measurements; settings; and a specialist history fixture. Pages use the same components as normal
 Studio. The selector is a shortcut; normal page buttons drive the workflow. Start with
 “准备环境”, select the model and bundles, and click “运行 benchmark”. Simulated startup,
 per-bundle progress and report generation advance automatically. Open live details or
@@ -182,6 +182,14 @@ Models. Settings are saved in memory and download directory names affect later t
 “下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务” cancels the current
 task while retaining settings, downloads and results. “重置场景” restores all fixture data,
 form values, table selection and collapsed sections, and discards pending simulation steps.
+
+The context-speed UI is currently a preview awaiting user approval. After preparing the
+environment, choose “长上下文速度” in “测评类型”, select 64K, 128K or 256K, and click
+“开始专项测评”. The same native page builders show progress, cancellation and six-column
+results. “下次专项模拟缺测” makes the fifth sample lack timing; “下次操作模拟失败” applies
+to startup or opening results. Reading again does not rerun measurements. The Reports page
+keeps specialist history for this window only; “专项 · 历史恢复示例” shows a fixed history
+fixture, not evidence restored from disk. Normal Studio does not expose this workflow yet.
 
 The window remains labelled “UI 调试 · 模拟数据”. It does not create `core.Service`, read
 user settings or workspace evidence, persist window layout, execute the CLI, start models,

@@ -80,6 +80,7 @@ func pageID(page string) string {
 }
 
 type viewState struct {
+	speed                                                                               *speedWorkspace
 	preview                                                                             previewMode
 	lastEngineVerification                                                              time.Time
 	discoveryCLI                                                                        string
@@ -430,6 +431,9 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		engine = stateLabel(s.engineState.State)
 	}
 	runActive := false
+	if s.speed != nil && s.speed.current != nil {
+		runActive = s.speed.current.active()
+	}
 	for _, task := range s.tasks {
 		if !terminal(task.State) {
 			runActive = true

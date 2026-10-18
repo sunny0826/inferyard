@@ -7,7 +7,10 @@
 2026-10-18：[专项规划](plans/context-speed.md) 已按 CLI 结构化输出、Studio 闭环展示和
 独立 performance 题库重新整理。指定 Lody「挑刺者」已完成首轮、复审与补充核对，
 批准规划快照 `ffe1e49c98cdd77fe126930cac023303cdda9c7ecfdb872996ef36c3d6cd8f98`。
-当前进入 UI 模拟阶段，正式功能尚未实施，用户尚未认可模拟界面。
+现有 `--debug-ui` 已接入专项设置、进度、六列结果、缺测与取消、历史打开和重测模拟。
+代码与文档的首轮审查及显示、模拟细节修正复核均通过；页面回归、Go vet 和 release 隔离检查通过。
+原生 UI E2E 在任何用例执行前因 XCTest automation mode 超时受阻，窗口控制返回 `cgWindowNotFound`；
+软件渲染不替代原生验收。正式功能尚未实施，用户尚未认可模拟界面。
 结果限 Card、Context、Prompt length、Time、Prefill、Decode 六列；专项不生成 HTML。
 普通题库的默认范围与报告流程保持原契约；规划批准不替代实现和真机验收。
 执行顺序：规划审核通过 → 在现有 `--debug-ui` 按 design system 完成模拟界面 → 用户明确

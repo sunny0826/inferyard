@@ -105,6 +105,76 @@ final class PreviewUITests: XCTestCase {
         expectText("实际目录名：model")
     }
 
+    func testContextSpeedResultAndHistory() {
+        prepareSpeed()
+        click("上下文档位")
+        app.menuItems["128K · 131,072 tokens"].click()
+        keepScreenshot("Context speed setup")
+        click("开始专项测评")
+        expectText("已完成 1 / 5 次测量")
+        keepScreenshot("Context speed progress")
+        click("查看结果", timeout: 15)
+        expectText("有效 5/5 · 中位数")
+        expectText("106294")
+        for column in ["Card", "Context", "Prompt length (tokens)", "Time (s)", "Prefill (tok/s)", "Decode (tok/s)"] {
+            expectText(column)
+        }
+        XCTAssertFalse(text("各类任务表现").exists)
+        keepScreenshot("Context speed result")
+        click("查看逐次测量")
+        XCTAssertEqual(app.tables["专项逐次测量"].tableRows.count, 6)
+        click("返回历史任务")
+        let row = app.tables["专项历史表"].tableRows.element(boundBy: 1)
+        XCTAssertTrue(row.exists)
+        row.click()
+        click("打开专项结果")
+        expectText("有效 5/5 · 中位数")
+        click("用此组合新开任务")
+        expectText("先停止当前受管服务，再按所选上下文启动新任务。")
+        click("停止当前服务")
+        click("开始专项测评")
+        click("取消专项测评")
+        click("查看结果", timeout: 10)
+        expectText("有效 0/5 · 未形成完整汇总")
+        keepScreenshot("Context speed cancelled")
+    }
+
+    func testContextSpeedFailureMissingAndReadRetry() {
+        prepareSpeed()
+        app.checkBoxes["下次操作模拟失败"].click()
+        click("开始专项测评")
+        expectText("模拟启动失败；可用此组合新开任务。")
+        click("用此组合新开任务")
+        app.checkBoxes["下次专项模拟缺测"].click()
+        click("开始专项测评")
+        click("查看结果", timeout: 15)
+        expectText("有效 4/5 · 未形成完整汇总")
+        expectText("第 5 次：引擎阶段计时缺失（模拟）；速度与耗时缺测。")
+        keepScreenshot("Context speed missing timing")
+        click("返回历史任务")
+        app.tables["专项历史表"].tableRows.element(boundBy: 2).click()
+        app.checkBoxes["下次操作模拟失败"].click()
+        click("打开专项结果")
+        expectText("模拟结果读取失败；重新读取不会再次运行模型。")
+        keepScreenshot("Context speed read error")
+        click("重新读取结果")
+        expectText("有效 4/5 · 未形成完整汇总")
+    }
+
+    private func prepareSpeed() {
+        prepare()
+        click("测评类型")
+        app.menuItems["长上下文速度"].click()
+        expectText("zh-context-speed · 5 次测量 · 每次输出 256 tokens")
+    }
+
+    private func keepScreenshot(_ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     private func prepare() {
         click("准备环境")
         wait("benchmark becomes available", timeout: 10) {

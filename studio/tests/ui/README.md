@@ -29,3 +29,9 @@ This is native UI coverage with a simulated backend. The existing fast `ui.NewTe
 regressions remain under `internal/pages`; real CLI/fake-engine boundary tests remain
 under [`../e2e`](../e2e/README.md). None establishes real model qualification or
 Windows/Linux native UI acceptance.
+
+The context-speed preview tests drive the existing task form through tier selection,
+five simulated measurements, the six-column result, history reopening, cancellation,
+startup failure, missing timing and result-read retry. Screenshots of these states are
+retained in the result bundle even on success. This feature has no production CLI
+integration yet and still requires the user's explicit UI approval.

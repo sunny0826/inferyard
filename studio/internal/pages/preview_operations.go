@@ -15,6 +15,12 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	s := p.state
 	s.failure, p.notice = nil, ""
 	switch op := intent.(type) {
+	case previewSpeedStart:
+		p.startSpeed(op)
+	case previewSpeedCancel:
+		p.cancelSpeed(nil)
+	case previewSpeedRead:
+		p.readSpeed(op.id)
 	case previewBenchmark:
 		p.beginBenchmark(op)
 	case previewDownload:
@@ -74,7 +80,7 @@ func (p *previewSession) dispatchStep(op previewStep) {
 	case previewBind:
 		p.startService()
 	case previewStopEngine:
-		if s.running() != nil {
+		if s.running() != nil || (s.speed != nil && s.speed.current != nil && s.speed.current.active()) {
 			s.failure = core.Err("run_active")
 			return
 		}

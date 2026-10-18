@@ -192,6 +192,11 @@ func (p *previewSession) resetTask(model, engine string) {
 	if s.newTaskPending {
 		return
 	}
+	if s.speed != nil && s.speed.current != nil && s.speed.current.active() {
+		s.newTaskPending = true
+		p.cancelSpeed(func() { s.newTaskPending = false; p.resetTask(model, engine) })
+		return
+	}
 	p.cancelEvents("task")
 	p.cancelEvents("service")
 	p.cancelEvents("environment")
@@ -207,6 +212,11 @@ func (p *previewSession) resetTask(model, engine string) {
 		}
 	}
 	finish := func() {
+		if s.speed != nil {
+			s.speed.current, s.speed.opened = nil, nil
+			s.speed.selected = false
+			s.speed.readError = ""
+		}
 		for _, task := range s.tasks {
 			if task.State == "cancelling" {
 				p.terminalRun(task.TaskId, "cancelled")

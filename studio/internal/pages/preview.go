@@ -16,20 +16,21 @@ import (
 const previewNotice = "此操作尚未接入模拟流程，未执行实际操作。"
 
 type previewSession struct {
-	ctx              context.Context
-	state            *viewState
-	win              *mygo.Window
-	scene            int
-	generation       int
-	notice           string
-	failNext         bool
-	serial           int
-	clock            time.Duration
-	lastTick         time.Time
-	jobs             []previewEvent
-	details          map[string]*core.RunTaskDetail
-	indexes          map[string]*core.ReportIndex
-	reportReadFailed bool
+	ctx                context.Context
+	state              *viewState
+	win                *mygo.Window
+	scene              int
+	generation         int
+	notice             string
+	failNext           bool
+	serial             int
+	clock              time.Duration
+	lastTick           time.Time
+	jobs               []previewEvent
+	details            map[string]*core.RunTaskDetail
+	indexes            map[string]*core.ReportIndex
+	reportReadFailed   bool
+	speedMissingTiming bool
 }
 
 // NewPreview opens the real page builders with in-memory fixtures and no Service.
@@ -62,6 +63,7 @@ func (p *previewSession) loadScene(index int) {
 	p.generation++
 	p.jobs, p.clock, p.lastTick = nil, 0, time.Now()
 	p.failNext, p.reportReadFailed, p.serial = false, false, 0
+	p.speedMissingTiming = false
 	p.details, p.indexes = map[string]*core.RunTaskDetail{}, map[string]*core.ReportIndex{}
 	s := previewBase(p.ctx)
 	s.preview, s.win = p, p.win
@@ -90,6 +92,9 @@ func (p *previewSession) left(c *ui.Context) {
 				})
 				button(c, "重置场景").OnClick(func() { p.loadScene(p.scene) })
 				components.Checkbox(c, &p.failNext, "下次操作模拟失败")
+				if p.state.speed != nil && (p.state.speed.selected || p.state.speed.current != nil) {
+					components.Checkbox(c, &p.speedMissingTiming, "下次专项模拟缺测")
+				}
 				ui.Text(c, "全部为模拟数据；操作仅改变本窗口，不运行模型或写入文件。").TextColor(c.Theme().TextMuted)
 				if p.notice != "" {
 					ui.Text(c, p.notice).Role(ui.RoleStatus).TextColor(c.Theme().Warning)

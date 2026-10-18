@@ -43,6 +43,7 @@ var previewScenes = []struct {
 	{"下载 · 进行中与失败", func(s *viewState) { s.selected = "downloads" }},
 	{"设备 · 含缺测", func(s *viewState) { s.selected = "device" }},
 	{"设置 · 路径与目录名", func(s *viewState) { s.selected = "settings" }},
+	{"专项 · 历史恢复示例", previewSpeedHistory},
 }
 
 func previewValue[T any](value T) *T { return &value }
@@ -52,7 +53,8 @@ func previewBase(ctx context.Context) *viewState {
 	model, engine := "Preview-Model-Q4.gguf", "preview-engine · llama-server"
 	settings := core.UserSettings{WorkspaceRoot: previewValue(root), ResultsRoot: previewValue(filepath.Join(root, "results")), ModelsRoot: previewValue(filepath.Join(root, "models"))}
 	s := &viewState{
-		ctx: ctx, selected: "dashboard", loaded: true, settingsLoaded: true,
+		speed: &speedWorkspace{context: 65536},
+		ctx:   ctx, selected: "dashboard", loaded: true, settingsLoaded: true,
 		denied: map[string]bool{}, chartIndex: -1, model: model, engine: engine, discoveryLoaded: true,
 		candidateMatches: func(string, string, string) (bool, bool) { return true, true },
 		engineState:      core.EngineState{State: "stopped"},

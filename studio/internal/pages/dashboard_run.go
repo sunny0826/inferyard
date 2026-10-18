@@ -78,6 +78,9 @@ func (w *viewState) candidateView(c *ui.Context) {
 	ui.Text(c, summary)
 	ui.Text(c, "引擎版本已核验；模型架构与引擎的适配在启动时验证。").TextColor(c.Theme().TextMuted)
 
+	if w.speedSelection(c) {
+		return
+	}
 	w.bundleSelection(c)
 	createDisabled := w.environmentMissing() || w.progress == nil || w.progress.DevicePreflight.Status != "ok" || w.busy || w.engine == "" || w.model == "" || revoked || len(w.checkedBundles()) == 0 || w.engineState.State == "orphaned"
 	if revoked {
