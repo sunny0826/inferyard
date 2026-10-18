@@ -15,11 +15,10 @@ final class PreviewUITests: XCTestCase {
 
     override func tearDownWithError() throws {
         if let app, app.state != .notRunning {
-            if testRun?.hasSucceeded == false {
-                let screenshot = XCTAttachment(screenshot: app.screenshot())
-                screenshot.name = "Failed preview window"
-                screenshot.lifetime = .keepAlways
-                add(screenshot)
+            if let testRun, testRun.totalFailureCount > 0 {
+                if app.windows["InferYard Studio · UI 调试"].exists {
+                    keepScreenshot("Failed preview window")
+                }
                 let tree = XCTAttachment(string: app.debugDescription)
                 tree.name = "Accessibility tree"
                 tree.lifetime = .keepAlways
@@ -107,7 +106,7 @@ final class PreviewUITests: XCTestCase {
 
     func testContextSpeedResultAndHistory() {
         prepareSpeed()
-        click("上下文档位")
+        openMenu("上下文档位")
         app.menuItems["128K · 131,072 tokens"].click()
         keepScreenshot("Context speed setup")
         click("开始专项测评")
@@ -121,7 +120,7 @@ final class PreviewUITests: XCTestCase {
         }
         XCTAssertFalse(text("各类任务表现").exists)
         keepScreenshot("Context speed result")
-        click("查看逐次测量")
+        app.disclosureTriangles["查看逐次测量"].click()
         XCTAssertEqual(app.tables["专项逐次测量"].tableRows.count, 6)
         click("返回历史任务")
         let row = app.tables["专项历史表"].tableRows.element(boundBy: 1)
@@ -163,13 +162,13 @@ final class PreviewUITests: XCTestCase {
 
     private func prepareSpeed() {
         prepare()
-        click("测评类型")
+        openMenu("测评类型")
         app.menuItems["长上下文速度"].click()
         expectText("zh-context-speed · 5 次测量 · 每次输出 256 tokens")
     }
 
     private func keepScreenshot(_ name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
+        let attachment = XCTAttachment(screenshot: app.windows["InferYard Studio · UI 调试"].screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
@@ -180,6 +179,12 @@ final class PreviewUITests: XCTestCase {
         wait("benchmark becomes available", timeout: 10) {
             self.app.buttons["运行 benchmark"].exists && self.app.buttons["运行 benchmark"].isEnabled
         }
+    }
+
+    private func openMenu(_ label: String) {
+        let button = app.menuButtons[label].firstMatch
+        wait("menu button \(label) is enabled", timeout: 5) { button.exists && button.isEnabled }
+        button.click()
     }
 
     private func click(_ label: String, timeout: TimeInterval = 5) {

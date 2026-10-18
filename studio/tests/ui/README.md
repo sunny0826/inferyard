@@ -30,8 +30,9 @@ nonzero status on unsupported platforms, build errors or test failures.
 Coverage: prepare → download → select model → two-bundle benchmark → live details →
 report; failed startup and retry; run cancellation and a new task; failed download,
 retry with a fresh name, preservation across new tasks, and scene reset. A test failure
-with the app still running attaches its screenshot and accessibility tree to the Xcode
-result; build and launch failures remain in the log and result bundle.
+with the app still running attaches its accessibility tree to the Xcode result, plus a
+screenshot when the preview window exists. Screenshots capture only that window.
+Build and launch failures remain in the log and result bundle.
 
 This is native UI coverage with a simulated backend. The existing fast `ui.NewTester`
 regressions remain under `internal/pages`; real CLI/fake-engine boundary tests remain
