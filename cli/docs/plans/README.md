@@ -1,5 +1,6 @@
 # Current plans
 
+- [长上下文速度专项测评](context-speed.md)：CLI 结构化采集与 Studio 六列结果闭环的规划；实施状态见 backlog。
 - [应用内存诊断后续平台](memory-check.md)：macOS 已实施；Linux、Windows 各自独立实施和验收。
 
 运行证据文件合并的软件实施与验收已完成，规则保留在
