@@ -13,6 +13,8 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.12�
 页内刷新由进程内事件总线驱动。页面与运营规则的产品级描述见
 [studio/README.md](../../studio/README.md)，本节只记录跨包职责边界、运行路径与约束。
 
+配套源码构建、隔离开发配置与重建行为见[Studio 源码开发环境](studio-development.md)。
+
 ## 职责与事实源
 
 正文见[职责与事实源](studio-panel/responsibilities.md).

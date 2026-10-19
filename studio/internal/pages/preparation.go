@@ -24,6 +24,16 @@ func (s *viewState) loadSettings(v core.SettingsResponse) {
 }
 func (s *viewState) settingsView(c *ui.Context) {
 	s.header(c, "设置")
+	if s.service != nil && s.service.BoundPaths() != nil {
+		p := s.service.BoundPaths()
+		card(c, "开发环境 · 固定路径", func() {
+			for _, line := range []string{"来源：" + p.Source, "CLI：" + p.CLI, "工作区：" + p.Workspace, "结果：" + p.Results, "模型：" + p.Models, "引擎：" + p.Engines} {
+				ui.Text(c, line)
+			}
+		})
+		s.downloadNamesView(c)
+		return
+	}
 	card(c, "路径设置", func() {
 		fields := func() {
 			field(c, "CLI", &s.cliPath).Description("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。").Error(pathError(s.cliPath))

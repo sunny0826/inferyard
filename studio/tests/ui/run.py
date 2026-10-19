@@ -3,10 +3,30 @@
 from __future__ import annotations
 
 import argparse
+import plistlib
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+
+def require_unlocked_desktop() -> None:
+    result = subprocess.run(
+        ["ioreg", "-n", "Root", "-d1", "-a"], capture_output=True, check=True
+    )
+    state = plistlib.loads(result.stdout)
+    if isinstance(state, list) and len(state) == 1:
+        state = state[0]
+    if not isinstance(state, dict) or not isinstance(state.get("IOConsoleUsers"), list):
+        raise ValueError("cannot determine the active macOS desktop session")
+    sessions = [
+        item for item in state["IOConsoleUsers"]
+        if isinstance(item, dict) and item.get("kCGSSessionOnConsoleKey") is True
+    ]
+    if len(sessions) != 1 or sessions[0].get("kCGSessionLoginDoneKey") is not True:
+        raise ValueError("native UI e2e requires a logged-in console desktop")
+    if sessions[0].get("CGSSessionScreenIsLocked", False) is not False:
+        raise ValueError("unlock the macOS desktop and keep it unlocked during native UI e2e")
 
 
 def main() -> int:
@@ -15,6 +35,10 @@ def main() -> int:
     args = parser.parse_args()
     if sys.platform != "darwin":
         parser.error("native UI e2e requires macOS, a logged-in desktop session, and Xcode")
+    try:
+        require_unlocked_desktop()
+    except (OSError, ValueError, plistlib.InvalidFileException, subprocess.SubprocessError) as exc:
+        parser.error(f"desktop preflight failed: {exc}")
     args.output_root.mkdir(parents=True, exist_ok=True)
     output = Path(tempfile.mkdtemp(prefix="run-", dir=args.output_root.resolve()))
     print(f"UI e2e artifacts: {output}", flush=True)

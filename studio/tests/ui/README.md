@@ -14,6 +14,10 @@ authorization is still pending; retry after the user confirms authorization.
 Keep the desktop unlocked throughout the run. A lock screen can block foreground
 activation after the app starts, leaving XCTest waiting at `app.launch()` with
 `Running Background`; completing the authorization prompt does not unlock the desktop.
+The runner checks for an unlocked, logged-in console session before building or
+opening the test app. An unavailable or unverifiable desktop fails immediately;
+it does not skip tests or disable screenshot assertions. The desktop must stay
+unlocked after this initial check.
 
 ```sh
 mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 python tests/ui/run.py

@@ -3,8 +3,6 @@ package pages
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -36,7 +34,11 @@ var navigation = []struct {
 func New(ctx context.Context, service *core.Service, page string) {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, chartIndex: -1, speed: &speedWorkspace{context: 65536}}
-	shell := sidebar.NewShell(pageShellOptions("InferYard Studio", "inferyard-studio-main", s.leftNav, s.contentView))
+	title := "InferYard Studio"
+	if paths := service.BoundPaths(); paths != nil {
+		title = paths.WindowTitle
+	}
+	shell := sidebar.NewShell(pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView))
 	w := shell.Window()
 	s.win = w
 	w.OnClosed(cancel)
@@ -313,56 +315,6 @@ func (s *viewState) view(c *ui.Context) {
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
 		ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
 		s.contentView(c)
-	})
-}
-
-// selectPage switches the visible page. Opening the models page kicks engine
-// verification directly: it otherwise runs only inside the event-driven
-// refresh loop, and on a quiet workspace no bus event arrives after the page
-// opens, leaving engines stuck at "unverified" (and unselectable) forever.
-func (s *viewState) selectPage(id string) {
-	if s.selected == id {
-		return
-	}
-	s.selected = id
-	if id != "models" || s.service == nil {
-		return
-	}
-	go func() {
-		s.service.VerifyEngines()
-		if s.win != nil {
-			s.win.Update(func() { s.checks = s.service.EngineChecks() })
-		}
-	}()
-}
-
-// studioOrigin reports a go run or go test process as source, and a built binary as packaged.
-func studioOrigin() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return "Studio 来源未知"
-	}
-	if strings.Contains(filepath.ToSlash(exe), "/go-build") {
-		return "Studio 源码运行 · " + exe
-	}
-	return "Studio 发行包 · " + exe
-}
-
-// leftNav builds the navigation column used both by the shell's left region
-// and by the in-memory test view. It clears the shell's floating header.
-func (s *viewState) leftNav(c *ui.Context) {
-	t := c.Theme()
-	ui.Column(c).FillWidth().MinWidth(0).Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
-		components.Sidebar(c).Children(func() {
-			components.Text(c, "InferYard Studio").Bold().FontSize(t.Rem(1)).
-				Padding(t.Space(2), t.Space(2), t.Space(1), t.Space(2)).SingleLine()
-			button(c, "新任务").OnClick(func() { s.newBenchmark() })
-			for _, n := range navigation {
-				if components.SidebarItem(c, n.label, n.icon(), s.selected == n.id).Clicked() {
-					s.selectPage(n.id)
-				}
-			}
-		})
 	})
 }
 

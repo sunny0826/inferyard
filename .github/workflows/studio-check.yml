@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "studio/**"
+      - "tools/**"
       - "cli/src/**"
       - "cli/schemas/**"
       - "cli/pyproject.toml"
@@ -30,6 +31,11 @@ jobs:
       - name: Sync CLI dependencies (e2e drives the real CLI)
         working-directory: cli
         run: mise exec -- uv sync --frozen
+      - name: Development launcher checks
+        run: mise exec -- python -m unittest discover -s tools/tests -v
+      - name: Development launcher lint
+        working-directory: cli
+        run: mise exec -- uv run --frozen ruff check ../tools --config pyproject.toml
       - name: Vet
         working-directory: studio
         run: mise exec -- go vet ./...
@@ -47,6 +53,8 @@ jobs:
           mise exec -- go vet -tags ui_debug ./...
           mise exec -- go test -tags ui_debug . ./internal/pages -count=1
           mise exec -- go test -tags ui_debug,release . -count=1
+          mise exec -- go test -tags studio_dev . ./internal/core ./internal/pages -count=1
+          mise exec -- go test -tags studio_dev,release . -count=1
           mise exec -- python -m unittest discover -s scripts -p test_package.py
       - name: e2e (fake engine, recorded CLI boundary)
         working-directory: studio

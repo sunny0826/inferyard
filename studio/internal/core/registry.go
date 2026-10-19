@@ -177,6 +177,9 @@ func (s *Service) registry() registryData {
 				continue
 			}
 			root := filepath.Join(str(workspaceRoot(u)), "engines")
+			if s.paths != nil {
+				root = s.paths.Engines
+			}
 			if _, err := Resolve(root, task.OutDir); err != nil {
 				continue
 			}

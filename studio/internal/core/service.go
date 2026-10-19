@@ -21,6 +21,8 @@ var Version = "dev"
 
 type Executor func(context.Context, string, ...string) (inferyard.Execution, error)
 type Options struct {
+	ValidateCLI       func(context.Context) error
+	Paths             *BoundPaths
 	ProcessStartTicks func(int64) (int64, error)
 	SignalProcess     func(int64, os.Signal) error
 	OrphanStopTimeout time.Duration
@@ -32,6 +34,7 @@ type Options struct {
 	EngineStartTimeout time.Duration
 }
 type Service struct {
+	paths             *BoundPaths
 	orphan            *orphanEngine
 	identityReader    func(int64) (int64, error)
 	processSignal     func(int64, os.Signal) error
@@ -73,6 +76,20 @@ type Service struct {
 }
 
 func New(ctx context.Context, o Options) (*Service, error) {
+	if o.Paths != nil {
+		copy := *o.Paths
+		o.Paths = &copy
+		if err := o.Paths.validate(); err != nil {
+			return nil, err
+		}
+		if o.ValidateCLI == nil {
+			return nil, errors.New("bound CLI requires startup validation")
+		}
+		if err := o.ValidateCLI(ctx); err != nil {
+			return nil, err
+		}
+		o.SettingsPath = o.Paths.Settings
+	}
 	if o.SettingsPath == "" {
 		d, e := os.UserConfigDir()
 		if e != nil {
@@ -97,6 +114,11 @@ func New(ctx context.Context, o Options) (*Service, error) {
 		return nil, err
 	}
 	s.settings = downloadNameDefaults(s.settings)
+	s.paths = o.Paths
+	if s.paths != nil {
+		s.settings = s.paths.bind(s.settings)
+		s.registryRoots = func(string) []string { return []string{s.paths.Engines} }
+	}
 	s.identityReader, s.processSignal, s.orphanStopTimeout = o.ProcessStartTicks, o.SignalProcess, o.OrphanStopTimeout
 	s.detectEngineOwner()
 	s.history = RunHistoryResponse{ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}
@@ -171,6 +193,9 @@ func (s *Service) userSettings() UserSettings {
 }
 func (s *Service) probe(u UserSettings) InferyardProbe {
 	path := str(u.InferyardPath)
+	if s.paths != nil {
+		path = s.paths.CLI
+	}
 	if path == "" {
 		path = "inferyard"
 	}
@@ -211,6 +236,9 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 	defer s.settingsMu.Unlock()
 	u := s.userSettings()
 	for k, v := range patch {
+		if s.paths != nil && k != "model_download_name" && k != "engine_download_name" {
+			return SettingsResponse{}, Conflict("paths_bound")
+		}
 		if k == "model_download_name" || k == "engine_download_name" {
 			var name string
 			if json.Unmarshal(v, &name) != nil || !ValidDownloadName(name) {
@@ -244,6 +272,9 @@ func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResp
 	return s.saveSettings(u)
 }
 func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
+	if s.paths != nil && !s.paths.matches(u) {
+		return SettingsResponse{}, Conflict("paths_bound")
+	}
 	s.mu.Lock()
 	workspaceChanged := str(workspaceRoot(u)) != str(workspaceRoot(s.settings))
 	if workspaceChanged && (s.orphan != nil || s.runsActiveLocked() || (s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping"))) {

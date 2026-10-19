@@ -374,6 +374,15 @@ func (s *viewState) prepareEnvironment() {
 		return
 	}
 	s.guideWork(func() (string, *core.ApiError) {
+		if paths := s.service.BoundPaths(); paths != nil && !s.service.Readiness().Workspace.Initialized {
+			result, e := s.service.WizardExecute(s.ctx, core.WizardRequest{Command: commandOf([]string{"init", "--out", paths.Workspace})})
+			if e != nil {
+				return "", e
+			}
+			if result.ExitCode != 0 {
+				return "", wizardFailure(result)
+			}
+		}
 		e := prepareEnvironmentSteps(s.ctx, s.service.Readiness, func(ctx context.Context) (string, *core.ApiError) {
 			return s.service.InstallCLI(ctx, func(message string) { s.win.Update(func() { s.cliInstallStatus = message }) })
 		}, func() *core.ApiError { _, e := s.service.Provision(); return e }, s.service.WizardExecute)

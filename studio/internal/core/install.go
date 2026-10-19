@@ -262,6 +262,12 @@ func writeBinary(src io.Reader, target string) *ApiError {
 // user shell configuration is never modified. onStatus receives progress lines
 // for the wizard UI.
 func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string, *ApiError) {
+	if s.paths != nil {
+		if p := s.probe(s.userSettings()); p.Status != "ok" || p.Path == nil || *p.Path != s.paths.CLI {
+			return "", Conflict("cli_binding_failed")
+		}
+		return s.paths.CLI, nil
+	}
 	toolsDir := filepath.Join(filepath.Dir(s.settingsPath), "tools")
 	existing := strings.TrimSpace(str(s.userSettings().InferyardPath))
 	if existing != "" {
