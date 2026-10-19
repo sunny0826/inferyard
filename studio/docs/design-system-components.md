@@ -99,7 +99,7 @@ HTML 原型与样式对照使用调色板实际值（来源：onevra `theme/them
 
 ### onevra 组件映射
 
-已实现的控件映射（onevra v0.2026.10）：
+已实现的控件映射（onevra v0.2026.12）：
 
 | Studio 用法 | onevra 组件 |
 | --- | --- |

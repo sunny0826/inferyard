@@ -15,4 +15,4 @@ MLX 使用随包受控脚本及公开生成 API，队列覆盖生成器关闭与
 改造上游私有 MLX server 会耦合不稳定生命周期，因此采用小型自有服务；Ollama 不伪造能力。
 引擎版本未公开时为 null，不用 CLI 版本替代。
 
-LM Studio 调用方式由 [ADR 015](015-lmstudio-local-cli-identity.md)补充；平台和字段见[常用引擎契约](../contracts/engine-fit-contract.md#常用引擎扩展)。
+LM Studio 调用方式由 [ADR 015](015-lmstudio-local-cli-identity.md)补充；平台和字段见[常用引擎契约](../contracts/engine-fit-contract-common.md#常用引擎扩展)。

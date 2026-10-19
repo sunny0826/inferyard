@@ -28,7 +28,7 @@ def build_fixture(root):
     project_text = """[project]
 name = "inferyard"
 version = "0.0.3"
-requires-python = "==3.14.*"
+requires-python = "==3.15.*"
 dependencies = []
 license = "MIT"
 license-files = ["LICENSE"]
@@ -41,7 +41,7 @@ inferyard = "inferyard.cli:main"
     lock = tomllib.loads(lock_text)
     license_raw = b"Synthetic license bytes for tests only, not a license grant.\n"
     metadata = (
-        f"Name: inferyard\nVersion: {VERSION}\nRequires-Python: ==3.14.*\n"
+        f"Name: inferyard\nVersion: {VERSION}\nRequires-Python: ==3.15.*\n"
         "License-Expression: MIT\nLicense-File: LICENSE\n"
         + "".join(f"Project-URL: {k}, {v}\n" for k, v in URLS.items())
     ).encode()
@@ -120,7 +120,7 @@ inferyard = "inferyard.cli:main"
         version=VERSION,
         platform="darwin",
         architecture="arm64",
-        python="3.14.7",
+        python="3.15.0",
         commands=len(COMMANDS),
         scope=SCOPE,
         model_requests_sent=0,

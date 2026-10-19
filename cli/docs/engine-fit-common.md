@@ -115,7 +115,7 @@ inferyard engine-fit run --plan results/gguf-plan/plan.json --engine lmstudio \
 
 lms 应提供 `status`、`queued`、`deviceIdentifier=null` 和 `deviceDisabled`；缺字段即阻断。
 还须在稳定服务子树观察到冻结 GGUF 的文件身份，不能只凭同名路径或 CLI 声明。
-模型版本、加载配置与原生观察上限见[常用引擎契约](contracts/engine-fit-contract.md#常用引擎扩展)。
+模型版本、加载配置与原生观察上限见[常用引擎契约](contracts/engine-fit-contract-common.md#常用引擎扩展)。
 
 ## 受控 MLX-LM 服务
 

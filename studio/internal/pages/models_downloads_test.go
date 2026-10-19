@@ -4,6 +4,7 @@ import (
 	"math"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -90,6 +91,7 @@ func TestDownloadsPageMigrationEmptyAndValidation(t *testing.T) {
 	s.failure = nil
 	tt.Frame()
 	click(t, tt, "需要凭据时")
+	tt.Advance(250 * time.Millisecond)
 	tt.Frame()
 	click(t, tt, "凭据环境变量名（可选）")
 	tt.Frame()

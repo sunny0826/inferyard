@@ -13,4 +13,4 @@ macOS engine-fit 使用原生进程身份、lsof 监听和 AppleSMC，按稳定�
 但有进程树变化与权限缺测；整树统计拒绝部分合计。后端声明不能独立证明 Rosetta 状态或 GPU 驻留。
 引擎环境独立于测评器，服务外部管理。
 
-Windows 后续支持见 [ADR 020](020-windows-engine-fit-native.md)。字段见[macOS 诊断契约](../contracts/engine-fit-contract.md#macos-原生来源)。
+Windows 后续支持见 [ADR 020](020-windows-engine-fit-native.md)。字段见[macOS 诊断契约](../contracts/engine-fit-contract-platforms.md#macos-原生来源)。

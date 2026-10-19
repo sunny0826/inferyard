@@ -31,7 +31,7 @@ Applies to this repository and its subdirectories. Communicate concisely in Chin
 | `data/`, `templates/` | Catalogue data and report templates shipped with the package |
 
 Business modules do not depend on the CLI; application request/result types live only in `application/types.py`. Help, version and schema queries must not load the live backend; installed resources are read from the package, not from the source checkout.
-Modify active source code, not the historical snapshots in the local repository-root `validation/` directory. Follow the Ruff configuration (Python 3.14, 100 columns); keep code files under ~500 lines and split new responsibilities into separate modules.
+Modify active source code, not the historical snapshots in the local repository-root `validation/` directory. Follow the Ruff configuration (Python 3.15, 100 columns); keep code files under ~500 lines and split new responsibilities into separate modules.
 Before parallel collaboration, assign file ownership first. Only modify authorized files in your own workspace and do not revert other people's changes; report the files and the reason before crossing a boundary.
 
 ## Environment and checks
