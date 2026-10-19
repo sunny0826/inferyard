@@ -51,7 +51,10 @@ func (w *viewState) step() int {
 }
 
 func (s *viewState) dashboardView(c *ui.Context) {
-	s.header(c, "Dashboard")
+	if s.speed != nil && s.speed.current != nil {
+		s.speedTaskView(c)
+		return
+	}
 	if s.resumeSource != nil {
 		s.resumeView(c)
 		return
@@ -65,10 +68,12 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		s.setupGuide(c)
 		return
 	}
-	s.conclusionView(c)
+	if s.speed == nil || !s.speed.selected {
+		s.conclusionView(c)
+	}
 	s.stageView(c)
 	for _, task := range s.tasks {
-		if emptyText(task.RunPath) == "" {
+		if task.Kind != "context_speed" && emptyText(task.RunPath) == "" {
 			ui.Text(c, taskLabel(task))
 			errorView(c, task.Error)
 		}

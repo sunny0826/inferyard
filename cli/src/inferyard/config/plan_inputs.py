@@ -87,12 +87,14 @@ def source_bytes(root, reference):
     return path, raw
 
 
-def validate_workload_inputs(workload, config, bundle):
+def validate_workload_inputs(workload, config, bundle, *, experiment_profile=None):
     from inferyard.analysis.position import validate_position_cases
+    from inferyard.config.context_speed_profile import classify_workload_inputs
     from inferyard.config.model_lineage import validate_lineage
     from inferyard.runtime.cache_execution import validate_inputs as validate_cache
     from inferyard.runtime.fixed_output import validate_inputs
 
+    classify_workload_inputs(workload, config, bundle, experiment_profile=experiment_profile)
     if config["engine"]["adapter"] in ("kvmem", "ninfer") and (
         workload["purpose"] != "quality" or workload["protocol"]["kind"] != "fixed"
     ):
@@ -184,7 +186,9 @@ def read_frozen_plan(path):
                 legacy["model"]["component_ledger_path"] = source["model"]["component_ledger_path"]
             if json_bytes(snapshot) != json_bytes(legacy):
                 raise EvidenceError("plan_runtime_snapshot_differs_from_source")
-        validate_workload_inputs(workload, snapshot, bundle)
+        validate_workload_inputs(
+            workload, snapshot, bundle, experiment_profile=plan["experiment"].get("profile")
+        )
         register_position_families(workload, bundle, position_families)
         config = deepcopy(expected)
         config["bundle"]["path"] = str(root / workload["bundle"]["path"])

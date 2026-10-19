@@ -58,6 +58,9 @@ func TestDashboardViews(t *testing.T) {
 				tc.state.selected = "dashboard"
 			}
 			tt := ui.NewTester(tc.state.view, 1120, 2400)
+			if tt.HasText("Dashboard") {
+				t.Fatal("obsolete task page title", tt.Texts())
+			}
 			if !tt.HasText(tc.want) {
 				t.Fatalf("missing %q: %v", tc.want, tt.Texts())
 			}

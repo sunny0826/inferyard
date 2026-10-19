@@ -22,7 +22,11 @@ def _load_bundle(name):
     raw = resource_bytes(f"bundles/{name}.json")
     try:
         require_review(strict_json_loads(raw.decode()))
-    except ValueError, ContractError:
+    except ContractError as error:
+        if error.path == "bundle.review_records" and error.reason == "human_corpus_review_required":
+            raise PreparationError("human_corpus_review_required", 4) from None
+        raise PreparationError("package_resource_invalid", 4) from None
+    except ValueError:
         raise PreparationError("package_resource_invalid", 4) from None
     return raw
 

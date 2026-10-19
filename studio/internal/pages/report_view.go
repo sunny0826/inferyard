@@ -28,6 +28,9 @@ func (s *viewState) readReport(reference string) (*core.ReportIndex, *core.ApiEr
 }
 
 func (s *viewState) openReport(reference string) {
+	if s.speed != nil {
+		s.speed.opened = nil
+	}
 	index, e := s.readReport(reference)
 	s.openedReport = &reportViewState{reference: reference, index: index, failure: e}
 	s.selected = "reports"

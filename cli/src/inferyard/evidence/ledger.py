@@ -100,7 +100,12 @@ def _inputs(root, reads, limits):
     )
     if workload["protocol"]["kind"] == "duration" and run["relation"] == "resume":
         raise EvidenceError("duration_resume_requires_new_window")
-    validate_workload_inputs(workload, documents["config"], documents["bundle"])
+    validate_workload_inputs(
+        workload,
+        documents["config"],
+        documents["bundle"],
+        experiment_profile=plan["experiment"].get("profile"),
+    )
     if run["execution_mode"] == "single":
         if (
             len(plan["trials"]) != 1

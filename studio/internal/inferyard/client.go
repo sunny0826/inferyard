@@ -102,6 +102,9 @@ func (c Client) Exec(ctx context.Context, args ...string) (Execution, error) {
 			cancelErr = ctx.Err()
 			interruptProcess(cmd)
 			grace := c.GracePeriod
+			if requested, ok := ctx.Value(drainGraceKey{}).(time.Duration); ok && requested > grace {
+				grace = requested
+			}
 			if grace <= 0 {
 				grace = 2 * time.Second
 			}

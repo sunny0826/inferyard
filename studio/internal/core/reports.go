@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"inferyard/studio/internal/evidence"
 	"inferyard/studio/internal/inferyard"
 	"os"
 	"path/filepath"
@@ -94,6 +95,10 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 		p, e := Resolve(*u.ResultsRoot, p)
 		if e != nil || seen[p] {
 			return ReportSummary{}, Err("invalid_request")
+		}
+		raw, readErr := os.ReadFile(filepath.Join(p, "inputs.json"))
+		if readErr == nil && evidence.IsContextSpeedRun(raw) {
+			return ReportSummary{}, Err("context_speed_report_forbidden")
 		}
 		seen[p] = true
 		paths = append(paths, p)

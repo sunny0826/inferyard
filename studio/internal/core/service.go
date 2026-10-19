@@ -43,6 +43,7 @@ type Service struct {
 	shutdownOnce      sync.Once
 	shutdownDone      chan struct{}
 	queueDone         chan struct{}
+	speedPreparing    sync.WaitGroup
 	mu                sync.Mutex
 	settingsMu        sync.Mutex
 	reportMu          sync.Mutex

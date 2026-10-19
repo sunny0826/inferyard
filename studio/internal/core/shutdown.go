@@ -33,6 +33,7 @@ func (s *Service) beginShutdown() {
 		s.cancel()
 		s.mu.Unlock()
 		go func() {
+			s.speedPreparing.Wait()
 			<-s.queueDone
 			s.mu.Lock()
 			e := s.engine
@@ -58,6 +59,11 @@ func (s *Service) beginShutdown() {
 func (s *Service) admitRunLocked() *ApiError {
 	if s.closing {
 		return Err("service_closing")
+	}
+	for _, t := range s.runs {
+		if t.Task.ContextSpeed != nil && !terminal(t.Task.State) {
+			return Conflict("context_speed_preparing")
+		}
 	}
 	if (s.engine != nil && s.engine.state.State == "stopping") ||
 		(s.orphan != nil && s.orphan.state.State == "stopping") {

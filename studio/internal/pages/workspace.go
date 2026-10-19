@@ -8,6 +8,7 @@ import (
 
 func (s *viewState) resetWorkspace() {
 	s.clearBenchmark()
+	s.speed = &speedWorkspace{context: 65536}
 	s.deviceChecked = ""
 	s.autoBind = bindingArm{}
 	s.model, s.registry = "", core.Registry{}
@@ -80,6 +81,9 @@ func (s *viewState) newBenchmark() {
 	s.newTaskPending = true
 	finish := func() {
 		s.clearBenchmark()
+		if s.speed != nil {
+			s.speed.current, s.speed.opened = nil, nil
+		}
 		s.task.stage = "prepare_candidate"
 		s.detailID, s.focusedRun = "", ""
 		s.resumeSource = nil
@@ -94,30 +98,18 @@ func (s *viewState) newBenchmark() {
 		return
 	}
 
-	go func() {
-		for {
-			e := cancelBenchmarkRuns(s.ctx, s.service.RunTasks, s.service.CancelRun)
-			if s.ctx.Err() != nil {
-				return
-			}
-			done := false
-			s.win.Update(func() {
-				if e != nil {
-					s.newTaskPending = false
-					s.failure = e
-					done = true
-					return
-				}
-				if benchmarkResetReady(s.busy, s.service.RunTasks()) {
-					finish()
-					done = true
-				}
-			})
-			if done || !taskWait(s.ctx) {
-				return
-			}
+	go awaitBenchmarkReset(s.ctx, s.service.RunTasks, s.service.CancelRun, s.win.Update, func(e *core.ApiError) bool {
+		if e != nil {
+			s.newTaskPending = false
+			s.failure = e
+			return true
 		}
-	}()
+		if benchmarkResetReady(s.busy, s.service.RunTasks()) {
+			finish()
+			return true
+		}
+		return false
+	})
 
 }
 
@@ -175,4 +167,32 @@ func benchmarkResetReady(busy bool, tasks []core.RunTask) bool {
 		}
 	}
 	return true
+}
+
+func awaitBenchmarkReset(ctx context.Context, tasks func() []core.RunTask, cancel func(string) (core.RunTask, *core.ApiError), update func(func()), finish func(*core.ApiError) bool) {
+	for {
+		e := cancelBenchmarkRuns(ctx, tasks, cancel)
+		if ctx.Err() != nil {
+			return
+		}
+		completed := make(chan bool, 1)
+		update(func() {
+			if ctx.Err() != nil {
+				completed <- true
+				return
+			}
+			completed <- finish(e)
+		})
+		select {
+		case done := <-completed:
+			if done {
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+		if !taskWait(ctx) {
+			return
+		}
+	}
 }

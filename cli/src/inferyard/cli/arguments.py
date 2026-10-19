@@ -6,6 +6,7 @@ from inferyard.cli.commands import (
     candidates,
     community,
     comparison,
+    context_speed,
     discovery,
     engine,
     engine_fit,
@@ -64,6 +65,7 @@ def parser() -> Parser:
         ),
     )
     community.add_commands(commands)
+    context_speed.add_commands(commands)
     discovery.add_commands(commands)
     verification.add_commands(commands)
     overhead.add_commands(commands)

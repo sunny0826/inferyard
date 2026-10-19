@@ -31,6 +31,9 @@ def _environment_admission(data, path):
 
 
 def _experiment(data):
+    from inferyard.config.context_speed_profile import validate_experiment_profile
+
+    validate_experiment_profile(data)
     _environment_admission(data, "experiment.environment_admission")
     execution = data["execution"]
     if (execution["order"] == "seeded") != (execution["seed"] is not None):
@@ -75,6 +78,10 @@ def _experiment(data):
 
 def _plan(data):
     _experiment(data["experiment"])
+    if data["experiment"].get("profile") == "context-speed.v1" and [
+        trial["repeat_index"] for trial in data["trials"]
+    ] != list(range(5)):
+        raise ContractError("plan.trials", "context speed requires frozen repeat order")
     unique([t["trial_id"] for t in data["trials"]], "plan.trials")
     workloads = {w["workload_id"]: w for w in data["experiment"]["workloads"]}
     bindings = data["runtime_bindings"]
@@ -172,6 +179,11 @@ def _observation(data):
 
 
 def validate_semantics(kind, data):
+    if kind == "context_speed_result":
+        from inferyard.contracts.context_speed import validate_result
+
+        validate_result(data)
+        return
     if kind in ("inputs", "observation_record", "prepared_request"):
         from inferyard.contracts.contracts_layout import validate_layout
 

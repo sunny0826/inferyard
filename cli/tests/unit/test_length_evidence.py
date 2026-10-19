@@ -11,6 +11,7 @@ from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.contracts.validation import ContractError
 from inferyard.evidence.length_evidence import REQUIRED, read_preparation
 from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, sha256_file
+from inferyard.evidence.template_identity import PRISM_BUILD, PRISM_TEMPLATE_PROFILE
 
 
 def seal(root):
@@ -79,6 +80,32 @@ def fixture(root, config_path):
     (root / "prompt.txt").write_text(prompt)
     seal(root)
     return root
+
+
+def test_preparation_verifies_sealed_template_source_without_external_file(tmp_path, config_path):
+    root = fixture(tmp_path / "prep", config_path)
+    source = "test template\r\n"
+    config = read_json(root / "config.frozen.json")
+    digest = hashlib.sha256(source.encode()).hexdigest()
+    config["model"].update(template_sha256=digest, template_path=str(tmp_path / "absent.jinja"))
+    identity = read_json(root / "identity.json")
+    identity["template_identity"] = {"profile": PRISM_TEMPLATE_PROFILE, "source": source}
+    identity["files"][1].update(path=config["model"]["template_path"], sha256=digest)
+    props = read_json(root / "service.props.json")
+    props["build_info"] = PRISM_BUILD
+    for name, value in (
+        ("config.frozen.json", config),
+        ("identity.json", identity),
+        ("service.props.json", props),
+    ):
+        (root / name).write_bytes(json_bytes(value))
+    seal(root)
+    assert read_preparation(root)["prompt"] == "开始填结束"
+    identity["template_identity"]["source"] = "test template\n"
+    (root / "identity.json").write_bytes(json_bytes(identity))
+    seal(root)
+    with pytest.raises(EvidenceError, match="identity_mismatch"):
+        read_preparation(root)
 
 
 def test_preparation_detects_raw_tamper_and_resealed_semantic_mismatch(tmp_path, config_path):

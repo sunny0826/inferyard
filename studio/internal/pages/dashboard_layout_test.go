@@ -169,7 +169,7 @@ func TestDashboardRunningDisablesQuickRunAndOpensDetail(t *testing.T) {
 	if s.detailID != "" || !tt.HasText("运行当前题包") {
 		t.Fatal(tt.Texts())
 	}
-	if got := tt.Announcements(); len(got) != 1 || got[0] != "Dashboard" {
+	if got := tt.Announcements(); len(got) != 1 || got[0] != "任务" {
 		t.Fatal(got)
 	}
 }

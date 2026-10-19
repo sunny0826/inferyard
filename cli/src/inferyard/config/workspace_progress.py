@@ -254,6 +254,10 @@ def bundle_state(workspace, name, bundle_path, preflight, candidate_records, bou
             result.update(phase="run_incomplete", next_action=action, next_command=text)
             if blocked:
                 result["blocked_reason"] = blocked
+    if name == "zh-context-speed":
+        from inferyard.config.context_speed_progress import update
+
+        return update(workspace, result, bundle, bound)
     return result, report_runs
 
 

@@ -68,6 +68,10 @@ class CommandRequest:
     source_roots: list[str] | None = None
     rerender: bool = False
     community_bundle: str | None = None
+    benchmark_profile: str | None = None
+    context_size: int | None = None
+    preset: str | None = None
+    batch: Path | None = None
     runtime_profile: str | None = None
     archive: Path | None = None
     runtime_archive: Path | None = None

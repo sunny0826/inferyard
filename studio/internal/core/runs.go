@@ -14,13 +14,14 @@ import (
 )
 
 type runEntry struct {
-	Task      RunTask
-	Progress  *RunProgress
-	Resources []ResourceSample
-	root      string
-	args      []string
-	binary    string
-	cancel    context.CancelFunc
+	Task       RunTask
+	Progress   *RunProgress
+	Resources  []ResourceSample
+	root       string
+	args       []string
+	binary     string
+	cancel     context.CancelFunc
+	recordRoot string
 }
 
 // Bound config artifacts are emitted by inferyard's TOML writer: one JSON
@@ -210,7 +211,14 @@ func (s *Service) signal() {
 	default:
 	}
 }
-func (s *Service) state(t *runEntry) { _ = s.Bus.Publish("run.state", map[string]any{"task": t.Task}) }
+func (s *Service) state(t *runEntry) {
+	if t.Task.ContextSpeed != nil {
+		if err := saveSpeedTask(t.recordRoot, t.Task); err != nil {
+			t.Task.Error = Err("task_record_write_failed")
+		}
+	}
+	_ = s.Bus.Publish("run.state", map[string]any{"task": t.Task})
+}
 func (s *Service) RunTasks() []RunTask {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -290,6 +298,10 @@ func (s *Service) runQueue() {
 	}
 }
 func (s *Service) executeRun(t *runEntry) {
+	if t.Task.ContextSpeed != nil {
+		s.executeContextSpeed(t)
+		return
+	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 	s.mu.Lock()

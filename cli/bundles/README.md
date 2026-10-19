@@ -19,3 +19,19 @@
 原审核 Markdown、[审核页面](zh-core-v2-review.html)和[边界样例](zh-core-v2.boundaries.json)保留原样；其中旧文件名用于说明被审核的来源。边界样例没有 wire revision，只验证算法边界，不能替代人工审核。
 
 修改题目、答案、规则、政策或元数据后，旧等价证明失效；应移除不再适用的证明并重新人工审核。删除或更改原审核记录也会使继承证明失效。测试夹具位于 `tests/fixtures/`，不作为正式题包。
+
+## Context-speed corpus
+
+[zh-context-speed.json](zh-context-speed.json) is a fixed synthetic Chinese performance
+corpus, version `2026.10.1`, with three cases for 64K / 128K / 256K contexts and an
+output target of 256 tokens. It has no quality score. The user approved all three
+cases on 2026-10-18; see the [hash-bound approval](CONTEXT-SPEED-APPROVAL-20261018.md).
+See the [full-text locations and review rules](CONTEXT-SPEED-REVIEW.md) and
+[hashes, provenance and reference token measurements](zh-context-speed.review.json).
+Offline reference counts are 52,469 / 106,313 / 213,940 raw-prompt tokens.
+These exclude chat templates and BOS; the 8K reference model does not qualify
+any specialty context tier. Runtime input counts remain unmeasured. The approved
+corpus is registered as a community resource; changed or unapproved content remains rejected.
+The review materials retain their original pending state as generation-time snapshots.
+The [generator](../scripts/build_context_speed_bundle.py) reproduces the fixed draft
+in a new directory and refuses to overwrite existing outputs.

@@ -7,6 +7,8 @@
 | 当前格式清理与主机状态 | [格式矩阵、主机状态与安装资格](inferyard-current-format.md) |
 | 执行窗口 | [持续负载发送准入](duration-send-contract.md) |
 | 平台身份与采集 | [macOS](macos-contract.md) · [Windows Prism 批量](windows-prism-batch-contract.md) |
+| Prism 模板身份 | [原件哈希与固定 build 服务表示](prism-template-contract.md) |
+| Context-speed measurements | [Frozen profile and result contract](context-speed-contract.md) |
 | 应用内存诊断 | [memory-check](memory-check-contract.md) |
 | 模型准备 | [模型获取、预算与来源记录](model-acquisition.md) · [引擎获取](engine-acquisition.md) |
 | 引擎适配 | [engine-fit](engine-fit-contract.md) · [Windows KVMem/NInfer](windows-ninfer-adaptation-contract.md) |

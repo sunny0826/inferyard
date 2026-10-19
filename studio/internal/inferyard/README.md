@@ -17,3 +17,9 @@ The service observes model download files together with task state in `core/down
 Current responsibilities and verification boundaries live in the
 [Studio subsystem reference](../../../docs/subsystems/studio-panel.md).
 Run the checks documented in the [Studio README](../../README.md).
+
+`ParseContextSpeed` strictly validates the versioned result and exit-code relationship;
+`SupportsContextSpeedSchema` checks the advertised readable/error shapes before preparation.
+Context-speed execution requests a bounded ten-second Unix drain grace; ordinary calls
+retain the two-second default. Windows termination semantics remain unchanged. The CLI
+still authenticates original evidence; Studio displays its supplied numbers.

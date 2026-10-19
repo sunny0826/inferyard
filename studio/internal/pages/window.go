@@ -35,7 +35,7 @@ var navigation = []struct {
 // The navigation and content builders are shared with the in-memory test view.
 func New(ctx context.Context, service *core.Service, page string) {
 	ctx, cancel := context.WithCancel(ctx)
-	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, chartIndex: -1}
+	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, chartIndex: -1, speed: &speedWorkspace{context: 65536}}
 	shell := sidebar.NewShell(pageShellOptions("InferYard Studio", "inferyard-studio-main", s.leftNav, s.contentView))
 	w := shell.Window()
 	s.win = w
@@ -80,6 +80,7 @@ func pageID(page string) string {
 }
 
 type viewState struct {
+	speed                                                                               *speedWorkspace
 	preview                                                                             previewMode
 	lastEngineVerification                                                              time.Time
 	discoveryCLI                                                                        string
@@ -160,6 +161,7 @@ func (s *viewState) refresh(full bool) {
 	}
 	s.win.Update(func() { s.refreshing = true })
 	device, tasks, downloads := s.service.Device(), s.service.RunTasks(), s.service.Downloads()
+	speedTasks, speedHistoryError := s.service.ContextSpeedHistory()
 	s.detailMu.Lock()
 	id := s.requestedDetail
 	s.detailMu.Unlock()
@@ -212,6 +214,9 @@ func (s *viewState) refresh(full bool) {
 		}
 		s.refreshing = false
 		s.device, s.tasks, s.downloads = device, tasks, downloads
+		if speedHistoryError == nil {
+			s.syncSpeedTasks(speedTasks)
+		}
 		s.runProgress = runProgress
 		if s.detailID == id {
 			if de == nil {
@@ -372,7 +377,7 @@ func (s *viewState) contentView(c *ui.Context) {
 				if !s.loaded {
 					title := "首次上手"
 					if s.selected == "dashboard" {
-						title = "Dashboard"
+						title = ""
 						if s.detailID != "" {
 							title = "运行详情"
 						}
@@ -382,7 +387,9 @@ func (s *viewState) contentView(c *ui.Context) {
 							title = n.label
 						}
 					}
-					s.header(c, title)
+					if title != "" {
+						s.header(c, title)
+					}
 					if s.failure != nil || s.refreshFailure != "" {
 						button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
 					} else {
@@ -430,6 +437,9 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		engine = stateLabel(s.engineState.State)
 	}
 	runActive := false
+	if s.speed != nil && s.speed.current != nil {
+		runActive = s.speed.current.active()
+	}
 	for _, task := range s.tasks {
 		if !terminal(task.State) {
 			runActive = true

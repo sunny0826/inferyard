@@ -46,7 +46,9 @@ def main() -> int:
     print("UI e2e passed" if result.returncode == 0 else "UI e2e failed", flush=True)
     print(f"Log: {log}\nResult: {output / 'Results.xcresult'}", flush=True)
     if result.returncode:
-        print("\n".join(log.read_text(errors="replace").splitlines()[-80:]))
+        lines = log.read_text(errors="replace").splitlines()
+        failures = [line for line in lines[:-80] if ": error:" in line]
+        print("\n".join([*failures, *lines[-80:]]))
     return result.returncode
 
 

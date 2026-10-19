@@ -56,3 +56,18 @@ func (previewStartRun) previewIntent() {}
 type previewCancelRun struct{ id string }
 
 func (previewCancelRun) previewIntent() {}
+
+type previewSpeedStart struct {
+	model, engine string
+	context       int
+}
+
+func (previewSpeedStart) previewIntent() {}
+
+type previewSpeedCancel struct{}
+
+func (previewSpeedCancel) previewIntent() {}
+
+type previewSpeedRead struct{ id string }
+
+func (previewSpeedRead) previewIntent() {}

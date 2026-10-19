@@ -8,11 +8,16 @@ import (
 )
 
 func (s *viewState) reportsView(c *ui.Context) {
+	if s.speed != nil && s.speed.opened != nil {
+		s.speedResultView(c)
+		return
+	}
 	if s.openedReport != nil {
 		s.reportView(c)
 		return
 	}
 	s.header(c, "报告")
+	s.speedHistoryView(c)
 	card(c, "历史任务", func() { errorView(c, s.historyError); s.historyView(c) })
 	card(c, "报告列表", func() {
 		s.reportsTableView(c)

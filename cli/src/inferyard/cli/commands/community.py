@@ -12,7 +12,7 @@ def add_commands(commands):
         "--bundle",
         dest="community_bundle",
         default=None,
-        choices=("zh-smoke", "zh-core", "zh-svg-pelican"),
+        choices=("zh-smoke", "zh-core", "zh-svg-pelican", "zh-context-speed"),
         help="one fixed bundle; omit to export zh-core and zh-svg-pelican",
     )
     runtime = commands.add_parser("runtime", help="prepare existing, pinned local engine archives")
@@ -41,6 +41,8 @@ def add_commands(commands):
         "create", help="macOS/Windows: create an unbound candidate; runs engine --version (10s)"
     )
     create.set_defaults(command="config create")
+    create.add_argument("--profile", dest="benchmark_profile", choices=("context-speed",))
+    create.add_argument("--context-size", type=int, choices=(65536, 131072, 262144))
     create.add_argument("--workspace", type=Path)
     create.add_argument("--preflight", type=Path)
     create.add_argument("--bundle", dest="bundle_path", type=Path, required=True)

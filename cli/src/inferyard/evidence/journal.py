@@ -81,7 +81,9 @@ class TrialJournal(RunRecords, EvidenceStore):
         self.cache_protocol = workload.get("cache_protocol")
         if self.duration_protocol and resume_case_ids:
             raise EvidenceError("duration_resume_requires_new_window")
-        validate_workload_inputs(workload, config, bundle)
+        validate_workload_inputs(
+            workload, config, bundle, experiment_profile=plan["experiment"].get("profile")
+        )
         selected = list(resume_case_ids) if resume_case_ids else list(trial["case_order"])
         if not selected or len(set(selected)) != len(selected):
             raise EvidenceError("invalid_trial_selection")

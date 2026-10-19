@@ -83,7 +83,7 @@ func (s *viewState) announceChanges(c *ui.Context) {
 				}
 			}
 			if s.selected == "dashboard" && s.detailID == "" {
-				title = "Dashboard"
+				title = "任务"
 			}
 		}
 		c.Announce(title)

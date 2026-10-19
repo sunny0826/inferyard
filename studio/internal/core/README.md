@@ -15,3 +15,9 @@ source for responsibilities, state transitions, path rules and current interface
 Build, test and native acceptance boundaries are documented in the
 [Studio README](../../README.md). Historical Web server handoffs are superseded by
 these references.
+
+Context-speed preparation creates one frozen plan and a distinct batch reference, then
+uses the same serial run queue. Atomic task records store identity and lifecycle without
+result values. Every open invokes the CLI's read-only `speed-results`; preparation failure
+and cancellation before batch creation remain in history. See the
+[context-speed reference](../../../docs/subsystems/studio-panel/context-speed.md).

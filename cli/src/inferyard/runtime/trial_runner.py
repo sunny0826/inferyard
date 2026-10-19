@@ -224,6 +224,8 @@ async def run_trial(
             single_kind=profile.kind if single else None,
             idle_state=idle_state,
         )
+        if getattr(adapter, "template_identity", None) is not None:
+            identity["template_identity"] = adapter.template_identity
         by_id = {c["case_id"]: c for c in bundle["cases"]}
         budgets = await collect_budgets(
             adapter,

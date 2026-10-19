@@ -10,26 +10,26 @@ operations and owns the evidence contract.
 ## Pages and first launch
 
 When the workspace, results, and model paths are all unset in settings, Studio opens
-on Dashboard with environment preparation. Once any of these paths has been saved,
+on the task page with environment preparation. Once any of these paths has been saved,
 launching without an explicit page opens Reports. The sidebar lists Reports, Models,
 Downloads, Device, and Settings.
-A “新任务” (New task) button above the navigation opens Dashboard; no sidebar item is
-selected while Dashboard is open. The six page bodies are:
+A “新任务” (New task) button above the navigation opens the task page; no sidebar item is
+selected while the task page is open. The six page bodies are:
 
 | Page | Purpose |
 | --- | --- |
-| Dashboard | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
+| Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Inspect service status without start, stop, binding, or orphan recovery actions; orphaned engines show a warning and hide the new-task action. No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and read each report index inside the main window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names. |
 
-Dashboard keeps the active task's selected bundles and new run paths in memory. New task
+The task page keeps the active task's selected bundles and new run paths in memory. New task
 cancels binding and all non-terminal runs, waits for them to finish, and returns to the
 shared engine/model selection without cancelling downloads or deleting evidence. The form
 lists only workspace bundles and checks `zh-core` when present. An unchecked bundle does
-not block the task. The old quick-run form, queue card, and run history card are removed from Dashboard.
+not block the task. The old quick-run form, queue card, and run history card are removed from the task page.
 Reports starts with task history, followed by the report list. Creating another report from
 1–100 historical runs is available in a collapsed section. Verification appears only when
 workspace `next_action` is `verify`; a `verified` report shows its verified status instead.
@@ -51,7 +51,7 @@ in an active task. Once execution ends, service recovery controls remain availab
 the run/resume stage. Stop is available for a starting or running engine
 when no non-terminal run exists and Studio is not busy, except on Models.
 
-When no CLI is configured, the Dashboard’s Prepare environment action installs the CLI: it reuses an existing
+When no CLI is configured, the task page’s Prepare environment action installs the CLI: it reuses an existing
 `inferyard`/`uv` when found (including Homebrew locations outside the GUI PATH), downloads
 a pinned standalone `uv` into the Studio tools directory when none exists — verified
 against the release checksum, without touching shell configuration — and installs
@@ -63,7 +63,7 @@ service automatically. Binding has its own cancellation context; a failure offer
 and the advanced manual binding fold. Existing single-config runs rebind the new PID before
 running; eligible resumes pass the started engine's PID and endpoint directly to `resume`.
 Studio stops its managed engine on exit and never restarts it automatically.
-Dashboard and Models show Studio-started services from `EngineState`, independently of
+The task page and Models show Studio-started services from `EngineState`, independently of
 service discovery. Starting, running, and stopping services remain visible when scanning
 fails or the model directory is unavailable. Leftover records are labelled unconfirmed;
 failed and stopped services are not shown as active. Candidate names come from the service
@@ -73,7 +73,7 @@ Other endpoints with model directories appear under the collapsed “待确认�
 (Unconfirmed compatible interfaces) section. They may be proxies: a model directory does
 not prove a model is loaded locally. Expanding an interface shows endpoint health and
 ambiguous-listener warnings; its model directory remains separately collapsed. Partial
-scan limitations remain visible. Only Dashboard offers explicit external binding after a binding failure, with the
+scan limitations remain visible. Only the task page offers explicit external binding after a binding failure, with the
 discovered PID and endpoint, through the existing CLI checks; Models remains read-only.
 Discovery does not establish bind eligibility: rejection reasons such as
 `startup_arguments_mismatch` remain visible. The collapsed advanced manual binding controls
@@ -83,7 +83,7 @@ for display deduplication rules.
 Binding always goes through the CLI's PID and start-time checks. Studio persists an
 ownership record (PID + start ticks) for each engine it starts. If Studio exits
 abnormally and the record survives, the next launch re-verifies the process start ticks
-before offering an explicit "stop leftover engine" action on Dashboard; a PID whose identity no
+before offering an explicit "stop leftover engine" action on the task page; a PID whose identity no
 longer matches is never signalled — only the stale record is removed. Invalid records,
 unverifiable identities, and failed cleanup expose a "delete record only (do not terminate
 process)" action for workspace `logs/engine-owner.json`. It re-reads the record and refuses
@@ -132,6 +132,13 @@ Development also works with `mise exec -- go run .`. The app uses a plain Go bui
 there is no frontend installation or build step. Environment overrides above apply only
 to the command, not to global configuration.
 
+For source development, prepare the CLI with `mise exec -- uv sync --frozen` in `cli/`,
+then set Studio's CLI path to the absolute path of `cli/.venv/bin/inferyard`
+(`cli/.venv/Scripts/inferyard.exe` on Windows). An installed CLI can report the same
+version while lacking newer source features. The specialist task requires engine
+verification and the context-speed result schema; an older CLI shows a settings action
+instead of claiming that an unverified engine is ready.
+
 To cross-build macOS arm64, Windows amd64, and Linux amd64 and assemble unsigned distributions:
 
 ```sh
@@ -169,9 +176,9 @@ Their help does not list `--debug-ui`, and passing it is an input error. The `re
 disables preview even when combined with `ui_debug`; `build-all.sh` always sets `release`,
 and packaging rejects binaries without that tag before writing distributions.
 
-The sidebar's “模拟场景” selector provides 14 scenes: task preparation, running, completion and failure;
+The sidebar's “模拟场景” selector provides task preparation, running, completion and failure;
 live run details; report list, details, long tables and read errors; empty data; models;
-downloads; device measurements; and settings. Pages use the same components as normal
+downloads; device measurements; settings; and a specialist history fixture. Pages use the same components as normal
 Studio. The selector is a shortcut; normal page buttons drive the workflow. Start with
 “准备环境”, select the model and bundles, and click “运行 benchmark”. Simulated startup,
 per-bundle progress and report generation advance automatically. Open live details or
@@ -182,6 +189,20 @@ Models. Settings are saved in memory and download directory names affect later t
 “下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务” cancels the current
 task while retaining settings, downloads and results. “重置场景” restores all fixture data,
 form values, table selection and collapsed sections, and discards pending simulation steps.
+
+The approved context-speed page now calls the CLI through the serial queue. The corpus
+still requires human review: production init currently refuses with
+`human_corpus_review_required`; no approval is fabricated. After preparing the
+environment, choose “长上下文速度” in “测评类型”, select 64K, 128K or 256K, and click
+“开始专项测评”. The same native page builders show progress, cancellation and six-column
+results: model / engine, Context, Prompt length, Time, Prefill and Decode. Results and
+history show the recorded model and engine together, independent of the current selection.
+GPU model and memory are not shown in specialist results. “下次专项模拟缺测” makes the fifth sample lack timing; “下次操作模拟失败” applies
+to startup or opening results. Reading again does not rerun measurements. The Reports page
+keeps specialist history for this window only; “专项 · 历史恢复示例” shows a fixed history
+fixture, not evidence restored from disk. Production history reads task records and frozen
+batches; opening a result always invokes `speed-results`. See the
+[context-speed reference](../docs/subsystems/studio-panel/context-speed.md).
 
 The window remains labelled “UI 调试 · 模拟数据”. It does not create `core.Service`, read
 user settings or workspace evidence, persist window layout, execute the CLI, start models,
@@ -219,7 +240,9 @@ Settings are stored in the system user configuration directory under
 `InferYard Studio/settings.json` (POSIX directory mode 0700, file mode 0600). Invalid JSON
 or field types fall back to defaults with a diagnostic; the file is replaced only when
 the user saves. Historical scans skip damaged runs and log the skipped count. Evidence
-directories remain the source of truth; in-memory task lists do not survive app restart.
+directories remain the source of truth. Ordinary task lists are in memory; context-speed
+identity, lifecycle and references survive restart in separate atomic task records, without
+caching result values. Unreadable batches remain visible for retry.
 
 Runs execute serially and retain CLI host locking, identity checks, cancellation, and
 draining. The default benchmark includes both `zh-core` and `zh-svg-pelican`; a single
@@ -302,7 +325,7 @@ the `INFERYARD_E2E_CLI` / `INFERYARD_E2E_ROOT` knobs. CI runs it on macOS and Wi
 `.github/workflows/studio-check.yml`.
 
 Native view tests, the e2e suite, and fixtures do not establish real-device acceptance. Verify all five
-pages, the Dashboard's stage navigation and restored progress, resource curves, and the
+pages, the task page's stage navigation and restored progress, resource curves, and the
 report index view on actual desktop windows. Cross-compilation is not Windows/Linux runtime evidence.
 The native UI migration requires fresh acceptance; historical Web UI checks do not qualify
 it. Original diagnostic artifacts under `docs/evidence/` are retained as historical evidence,

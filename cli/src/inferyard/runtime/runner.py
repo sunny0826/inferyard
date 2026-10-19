@@ -93,6 +93,9 @@ def load_rerun(request) -> tuple[LoadedConfig, dict]:
         raise PreflightError("rerun_requires_sealed_source")
     metadata = {}
     parent = read_trial(root, metadata=metadata)
+    from inferyard.runtime.context_speed import reject_rerun
+
+    reject_rerun(parent)
     parent["service_drain"] = metadata.get("service_drain")
     config, bundle, meta = (deepcopy(parent[k]) for k in ("config", "bundle", "run"))
     if meta["execution_mode"] != "single" or meta["kind"] != "run":
@@ -145,6 +148,10 @@ async def execute_async(request, dependencies: Dependencies | None = None):
     identity_context = IdentityContext(source_hash=tool_source_hash)
     loaded, parent = load_rerun(request) if request.from_run else (request.config, None)
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
+    if request.command == "run":
+        from inferyard.runtime.context_speed import reject_single
+
+        reject_single(bundle)
     deps = dependencies or Dependencies(
         adapter=adapter_factory(config["engine"]["adapter"]),
         sampler=collector_factory(adapter_collector_id(config["engine"]["adapter"])),

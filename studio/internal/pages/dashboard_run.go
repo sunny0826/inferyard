@@ -53,7 +53,11 @@ func (w *viewState) candidateView(c *ui.Context) {
 		}
 		engineOptions = append(engineOptions, components.NativeSelectOption[string]{Value: w.engine, Label: w.engine + suffix, Disabled: true})
 	}
-	ui.Field(c, "候选引擎", func() { components.NativeSelect(c, &w.engine, engineOptions) }).Description("仅列出核验可用的引擎；默认选中其中最新下载的引擎。")
+	engineHint := "仅列出核验可用的引擎；默认选中其中最新下载的引擎。"
+	if !w.checks.Supported {
+		engineHint = "当前 CLI 不支持引擎核验；列表中的引擎尚未核验。"
+	}
+	ui.Field(c, "候选引擎", func() { components.NativeSelect(c, &w.engine, engineOptions) }).Description(engineHint)
 	ui.Field(c, "测评模型", func() { components.NativeSelect(c, &w.model, modelOptions) }).Description("与模型页的选择框是同一选择。")
 	if w.checks.Checking > 0 {
 		ui.Text(c, fmt.Sprintf("正在核验 %d 个引擎…", w.checks.Checking)).TextColor(c.Theme().TextMuted)
@@ -76,8 +80,13 @@ func (w *viewState) candidateView(c *ui.Context) {
 		}
 	}
 	ui.Text(c, summary)
-	ui.Text(c, "引擎版本已核验；模型架构与引擎的适配在启动时验证。").TextColor(c.Theme().TextMuted)
+	if w.eligibility(w.engine).State == core.EngineCheckEligible {
+		ui.Text(c, "引擎版本已核验；模型架构与引擎的适配在启动时验证。").TextColor(c.Theme().TextMuted)
+	}
 
+	if w.speedSelection(c) {
+		return
+	}
 	w.bundleSelection(c)
 	createDisabled := w.environmentMissing() || w.progress == nil || w.progress.DevicePreflight.Status != "ok" || w.busy || w.engine == "" || w.model == "" || revoked || len(w.checkedBundles()) == 0 || w.engineState.State == "orphaned"
 	if revoked {
