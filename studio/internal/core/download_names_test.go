@@ -80,7 +80,7 @@ func TestModelAutomaticNamesAndToken(t *testing.T) {
 		t.Fatal(e)
 	}
 	wait(t, func() bool { return s.Downloads()[0].State == "cancelled" })
-	b, e := s.CreateDownload(CreateDownloadRequest{SourceUrl: DefaultModelURL})
+	b, e := s.CreateModelDownload(CreateDownloadRequest{SourceUrl: DefaultModelURL}, "")
 	if e != nil || b.OutName != "weights-4" {
 		t.Fatal(b, e)
 	}

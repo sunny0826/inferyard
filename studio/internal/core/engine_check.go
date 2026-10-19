@@ -134,16 +134,6 @@ func engineCheckKey(path, receipt string, modified time.Time) string {
 	return fmt.Sprintf("%d|%s|%s|%s", modified.UnixNano(), libraryFingerprint(path), receipt, stamp)
 }
 
-// CheckEngine runs one CLI `engine check`, following the same cli_outdated
-// and parsing pattern as Discover.
-func (s *Service) CheckEngine(ctx context.Context, path, receipt string) (inferyard.EngineCheck, *ApiError) {
-	p := s.probe(s.userSettings())
-	if p.Status != "ok" {
-		return inferyard.EngineCheck{}, Err("cli_outdated")
-	}
-	return s.checkEngineWithCLI(ctx, *p.Path, path, receipt)
-}
-
 func (s *Service) checkEngineWithCLI(ctx context.Context, cliPath, path, receipt string) (inferyard.EngineCheck, *ApiError) {
 	out, err := s.exec(ctx, cliPath, engineCheckArgs(path, receipt)...)
 	if err != nil {

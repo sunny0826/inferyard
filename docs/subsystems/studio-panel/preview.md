@@ -101,7 +101,7 @@ mise exec -- go test -tags ui_debug ./internal/pages -run TestPreviewBenchmarkPa
 
 ### 下载任务（`DownloadTask`）
 
-- `CreateDownload`（模型，`Kind="model"`）与 `CreateEngineDownload`（引擎，`Kind="engine"`）
+- `CreateModelDownload`（模型，`Kind="model"`）与 `CreateEngineDownload`（引擎，`Kind="engine"`）
   共用同一任务列表与 `downloading → done/failed/cancelled` 转换；目录名默认来自设置并自动避让
   占用（追加序号），显式指定的目录名已存在或被历史任务记录（含终态）占用返回 `output_exists`，
   来源或目录名非法返回 `invalid_request`，服务关停中返回

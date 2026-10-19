@@ -61,10 +61,6 @@ func validSource(source string) bool {
 	}
 	return true
 }
-func (s *Service) CreateDownload(req CreateDownloadRequest) (DownloadTask, *ApiError) {
-	return s.CreateModelDownload(req, "")
-}
-
 func (s *Service) CreateModelDownload(req CreateDownloadRequest, tokenEnv string) (DownloadTask, *ApiError) {
 	if (req.OutName != "" && !ValidDownloadName(req.OutName)) || !validSource(req.SourceUrl) || (tokenEnv != "" && !envName.MatchString(tokenEnv)) {
 		return DownloadTask{}, Err("invalid_request")

@@ -3,13 +3,12 @@
 import ast
 import ctypes
 import sys
-from ctypes import wintypes
 
 import pytest
 
 from scripts.ninfer_source_host.file_io import execute_io
 from scripts.ninfer_source_host.file_io_codec import IoError
-from scripts.ninfer_source_host.probe_io import ProbeFileApi, attribute_probe_flags
+from scripts.ninfer_source_host.probe_io import ProbeFileApi
 from scripts.ninfer_source_host.probe_io_limits import (
     DIAGNOSTIC_ROOT,
     ERROR_ACCESS_DENIED,
@@ -376,13 +375,6 @@ def test_high_handle_is_not_truncated_inside_the_adapter():
     assert handle in api.native.closed
 
 
-def test_attribute_probe_uses_reparse_flags_without_winapi():
-    access, flags = attribute_probe_flags()
-    assert access == 0x80
-    assert flags & 0x00200000
-    assert flags & 0x02000000
-
-
 @pytest.mark.skipif(sys.platform == "win32", reason="refusal is the non-windows path")
 def test_real_file_api_refuses_before_windll(monkeypatch):
     calls = []
@@ -455,4 +447,3 @@ def test_real_prototypes_keep_high_handles(monkeypatch):
 def test_open_access_constants_match_read_and_write_data():
     assert FILE_READ_DATA == 1
     assert FILE_WRITE_DATA == 2
-    assert wintypes.HANDLE is not ctypes.c_int or True

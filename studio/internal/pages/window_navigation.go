@@ -1,10 +1,6 @@
 package pages
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
@@ -25,17 +21,6 @@ func (s *viewState) selectPage(id string) {
 			s.win.Update(func() { s.checks = s.service.EngineChecks() })
 		}
 	}()
-}
-
-func studioOrigin() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return "Studio 来源未知"
-	}
-	if strings.Contains(filepath.ToSlash(exe), "/go-build") {
-		return "Studio 源码运行 · " + exe
-	}
-	return "Studio 发行包 · " + exe
 }
 
 func (s *viewState) leftNav(c *ui.Context) {

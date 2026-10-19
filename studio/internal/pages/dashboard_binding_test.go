@@ -21,62 +21,17 @@ func bindingFixture() *inferyard.WorkspaceProgress {
 	return p
 }
 
-func armedFixture() viewState {
+func bindingViewFixture() viewState {
 	p := bindingFixture()
 	candidate := *p.Bundles[0].CandidatePath
 	return viewState{progress: p, candidate: candidate,
-		autoBind:    bindingArm{armed: true, workspace: p.Workspace, candidate: candidate, pid: 42},
 		engineState: core.EngineState{State: "starting", Pid: 42, Candidate: candidate, Endpoint: "http://127.0.0.1:8080"}}
-}
-
-func TestBindingArmWaitsForHealthAndFiresOnce(t *testing.T) {
-	s := armedFixture()
-	if s.takeAutoBind() || !s.autoBind.armed {
-		t.Fatal("fired before health")
-	}
-	s.engineState.State, s.busy = "running", true
-	if s.takeAutoBind() || !s.autoBind.armed {
-		t.Fatal("fired while startup work is busy")
-	}
-	s.busy = false
-	if !s.takeAutoBind() || s.autoBind.armed {
-		t.Fatal("did not consume arm")
-	}
-	for range 5 {
-		if s.takeAutoBind() {
-			t.Fatal("repeated engine event retriggered chain")
-		}
-	}
-}
-
-func TestBindingArmRejectsChangedState(t *testing.T) {
-	for name, mutate := range map[string]func(*viewState){
-		"phase":        func(s *viewState) { s.progress.NextAction = "prepare_candidate" },
-		"workspace":    func(s *viewState) { s.progress.Workspace = "/other" },
-		"candidate":    func(s *viewState) { s.candidate = "/other" },
-		"pid":          func(s *viewState) { s.engineState.Pid++ },
-		"failed":       func(s *viewState) { s.engineState.State = "failed" },
-		"orphan":       func(s *viewState) { s.engineState.State = "orphaned" },
-		"running task": func(s *viewState) { s.tasks = []core.RunTask{{State: "running"}} },
-	} {
-		t.Run(name, func(t *testing.T) {
-			s := armedFixture()
-			s.engineState.State = "running"
-			mutate(&s)
-			if s.takeAutoBind() || s.autoBind.armed {
-				t.Fatal("stale arm survived")
-			}
-		})
-	}
 }
 
 func TestBindingChainOrderAndStopOnFailure(t *testing.T) {
 	for _, failAt := range []int{-1, 0, 1} {
-		s := armedFixture()
+		s := bindingViewFixture()
 		s.engineState.State = "running"
-		if !s.takeAutoBind() {
-			t.Fatal("not armed")
-		}
 		p := s.progress
 		jobs := bindingJobs(p)
 		var seen, announced []string
@@ -126,11 +81,6 @@ func TestBindingChainOrderAndStopOnFailure(t *testing.T) {
 				t.Fatal(tt.Texts())
 			}
 		}
-		for range 3 {
-			if s.takeAutoBind() {
-				t.Fatal("success/failure retried automatically")
-			}
-		}
 	}
 }
 
@@ -154,8 +104,7 @@ func TestBindingChainStopsWhenProgressChanges(t *testing.T) {
 
 func TestDiscoveryRenderedOnBothPages(t *testing.T) {
 	for _, modelPage := range []bool{false, true} {
-		s := armedFixture()
-		s.autoBind = bindingArm{}
+		s := bindingViewFixture()
 		s.discoveryLoaded = true
 		s.discovery = inferyard.ServiceDiscovery{Status: "partial", Limitations: []string{"listener_table_incomplete"}, Services: []inferyard.DiscoveredService{
 			{PID: 6124, ProcessName: "/private/bin/inference-engine", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:8081", Health: ptr("2xx"), Models: []string{"/private/models/Qwen.gguf"}, AmbiguousListener: true, Reason: ptr("health_timeout")}}},

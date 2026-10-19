@@ -26,13 +26,6 @@ class Deadline:
         self.after()
         return not self.veto
 
-    def allow_cleanup(self):
-        """失败收尾只用原 total。已经越过 total，或时钟已坏，就不再关闭。"""
-        if self.sticky or self.past_total:
-            return False
-        self.after()
-        return not self.sticky and not self.past_total
-
     def after(self):
         if self.sticky:
             self.veto = True

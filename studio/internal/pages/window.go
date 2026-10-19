@@ -86,7 +86,6 @@ type viewState struct {
 	preview                                                                             previewMode
 	lastEngineVerification                                                              time.Time
 	discoveryCLI                                                                        string
-	autoBind                                                                            bindingArm
 	binding                                                                             bool
 	bindingBundle                                                                       string
 	discovery                                                                           inferyard.ServiceDiscovery
@@ -238,8 +237,7 @@ func (s *viewState) refresh(full bool) {
 		}
 		s.ready, s.progress = ready, progress.Progress
 		s.applyDashboard(dashboard, pe)
-		// engine.state wakes this refresh; read the latest state after slow scans
-		// so an older snapshot cannot disarm a just-started binding chain.
+		// engine.state wakes this refresh; read the latest state after slow scans.
 		s.engineState = s.service.Engine()
 		if full {
 			s.registry = registry
@@ -247,7 +245,6 @@ func (s *viewState) refresh(full bool) {
 		s.checks = s.service.EngineChecks()
 		s.adoptDownloadedEngine()
 		s.loaded = true
-		s.continueAutoBind()
 		// Engine verification runs only while the models page or the Dashboard
 		// candidate stage is visible.
 		verifyVisible = s.selected == "models" ||

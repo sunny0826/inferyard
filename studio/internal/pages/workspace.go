@@ -10,7 +10,6 @@ func (s *viewState) resetWorkspace() {
 	s.clearBenchmark()
 	s.speed = &speedWorkspace{context: 65536}
 	s.deviceChecked = ""
-	s.autoBind = bindingArm{}
 	s.model, s.registry = "", core.Registry{}
 	s.initDir, s.engine, s.process, s.bindEndpoint, s.candidate = "", "", "", "", ""
 	s.assetsPreset, s.bindingStale, s.bindingUnknown = false, false, false
@@ -77,7 +76,6 @@ func (s *viewState) newBenchmark() {
 	if s.taskCancel != nil {
 		s.taskCancel()
 	}
-	s.autoBind = bindingArm{}
 	s.newTaskPending = true
 	finish := func() {
 		s.clearBenchmark()

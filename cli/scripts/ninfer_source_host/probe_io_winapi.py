@@ -6,7 +6,6 @@ import sys
 
 from .probe_fixture_descendant import fixed_command, try_descendant
 from .probe_io_limits import (
-    CREATE_BREAKAWAY_FROM_JOB,
     CREATE_NEW,
     CREATE_SUSPENDED,
     ERROR_ALREADY_EXISTS,
@@ -14,11 +13,6 @@ from .probe_io_limits import (
     ERROR_FILE_NOT_FOUND,
     ERROR_PATH_NOT_FOUND,
     FILE_ATTRIBUTE_NORMAL,
-    FILE_ATTRIBUTE_REPARSE_POINT,
-    FILE_FLAG_BACKUP_SEMANTICS,
-    FILE_FLAG_OPEN_REPARSE_POINT,
-    FILE_READ_ATTRIBUTES,
-    FILE_READ_DATA,
     FILE_SHARE_READ,
     FILE_SHARE_WRITE,
     FILE_WRITE_DATA,
@@ -214,22 +208,6 @@ class RealProbeFileApi:
             self._kernel = ctypes.WinDLL("kernel32", use_last_error=True)
             _bind(self._kernel, ctypes)
         return self._kernel, ctypes
-
-
-def reparse_flag():
-    return FILE_ATTRIBUTE_REPARSE_POINT
-
-
-def attribute_access():
-    return FILE_READ_ATTRIBUTES | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS
-
-
-def read_access():
-    return FILE_READ_DATA
-
-
-def suspended_without_breakaway():
-    return CREATE_SUSPENDED, CREATE_BREAKAWAY_FROM_JOB
 
 
 def _missing(handle):
