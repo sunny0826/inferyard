@@ -238,6 +238,9 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 		return DownloadTask{}, Conflict("settings_incomplete")
 	}
 	root, err := Resolve(workspace, "engines")
+	if s.paths != nil {
+		root, err = Resolve(s.paths.Engines, s.paths.Engines)
+	}
 	if err != nil {
 		return DownloadTask{}, Err("invalid_request")
 	}

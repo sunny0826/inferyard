@@ -36,6 +36,13 @@ func main() {
 	core.Version = version[0][1]
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	if handled, err := runDevelopment(ctx, cancel, options); handled {
+		if err != nil {
+			log.Print(err)
+			os.Exit(2)
+		}
+		return
+	}
 	if runDebugUI(ctx, options) {
 		return
 	}

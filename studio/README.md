@@ -120,6 +120,13 @@ review scope; they do not establish native desktop acceptance.
 
 ## Build and run
 
+For paired development from the current checkout, run `mise run dev` from the
+repository root. Use `mise run dev:rebuild` for fresh development settings and a new
+workspace while retaining previous evidence and model/engine assets. The
+[development commands](../tools/README.md) describe startup, shutdown, isolation and
+verification. On macOS the launcher creates a separate `InferYard Studio Dev.app`.
+This real CLI workflow is separate from the simulated UI preview below.
+
 Use the repository's mise-managed Go 1.27.2. Run these commands from `studio/`:
 
 ```sh

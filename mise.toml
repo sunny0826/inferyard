@@ -3,6 +3,18 @@ python = "3.15.0"
 uv = "0.13.1"
 go = "1.27.2"
 
+[tasks.dev]
+description = "Build and start this checkout's paired Studio and CLI"
+run = "python tools/dev.py"
+
+[tasks."dev:rebuild"]
+description = "Start a fresh development profile, preserving history and downloaded assets"
+run = "python tools/dev.py rebuild"
+
+[tasks."dev:stop"]
+description = "Gracefully stop only this checkout's recorded development Studio"
+run = "python tools/dev.py stop"
+
 [tasks.test]
 run = "cd cli && uv run --frozen pytest"
 

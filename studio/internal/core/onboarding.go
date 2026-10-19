@@ -119,6 +119,9 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 	if e != nil {
 		return result, e
 	}
+	if s.paths != nil && args[0] == "init" && value(flags, "--out") != s.paths.Workspace {
+		return result, Conflict("paths_bound")
+	}
 	if args[0] == "device-check" && q.ModelName != "" {
 		path, err := s.resourcePath(q.ModelName, false)
 		if err != nil {
@@ -208,7 +211,7 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 		}
 		return result, nil
 	}
-	if args[0] == "init" {
+	if args[0] == "init" && s.paths == nil {
 		root := value(flags, "--out")
 		if root == "" {
 			return result, Err("invalid_request")
