@@ -104,4 +104,3 @@ PR 提交 `83def2565f9d057621411e2cc4ab41752e7cb9c5`，已合入 `ce221771e426e1
 
 后续源码或发行物变化应建立新候选；最终清单与安装结果随 Actions artifact 保留，Release 记录其准确来源。
 Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能仍未验证。
-

@@ -328,12 +328,12 @@ func (s *viewState) speedResultView(c *ui.Context) {
 
 func speedTable(c *ui.Context, state *pageTableState, label string, task *speedTask, rows []speedSample) {
 	columns := []ui.TableColumn{
-		{Title: "模型 / 引擎", Width: 180, MinWidth: 120},
-		{Title: "Context", Width: 90, MinWidth: 72},
-		{Title: "Prompt length (tokens)", Width: 180, MinWidth: 150},
-		{Title: "Time (s)", Width: 90, MinWidth: 72},
-		{Title: "Prefill (tok/s)", Width: 120, MinWidth: 96},
-		{Title: "Decode (tok/s)", Width: 120, MinWidth: 96},
+		{Title: "模型 / 引擎", MinWidth: c.Theme().Rem(14)},
+		{Title: "Context", MinWidth: c.Theme().Rem(6)},
+		{Title: "Prompt length (tokens)", MinWidth: c.Theme().Rem(13)},
+		{Title: "Time (s)", MinWidth: c.Theme().Rem(6)},
+		{Title: "Prefill (tok/s)", MinWidth: c.Theme().Rem(8.5)},
+		{Title: "Decode (tok/s)", MinWidth: c.Theme().Rem(9)},
 	}
 	selectableTable(state, func(i int) any { return i }, func(i int) string { return fmt.Sprintf("测量行 %d", i+1) })
 	pageTable(c, state, label, columns, len(rows), func(row, col int) {

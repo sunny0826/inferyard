@@ -34,4 +34,3 @@
 [`studio/mygo.config.ts`](../../../studio/mygo.config.ts)，由 `main` 经 `go:embed` 读取。侧栏不再显示进程来源；`studioOrigin()` 仍区分 `go-build` 路径的「Studio 源码运行」和构建产物的「Studio 发行包」，并附 `os.Executable()` 路径，供 `TestStudioOriginNamesPackagedBuild` 测试使用。环境卡的 CLI 行显示 `checkout`（源码树）、`release`（发行安装）或未标明来源的旧 CLI、包版本和探测到的 CLI 路径；`source` 只说明安装方式，不包含 git 提交。自动安装保留已配置且存在的 CLI，缺失时才查找或安装。
 `InstallCLI` 固定的 Python（`installPython = "3.14.8"`）与独立 uv（`uvRelease`）版本必须与
 [cli/docs/installation.md](../../../cli/docs/installation.md) 保持同步（源码注释的维护义务）。
-
