@@ -146,17 +146,6 @@ func EngineRoots(workspace string) []string {
 	return roots
 }
 
-// FindEngineBinary returns the newest executable llama-server under the given
-// roots, or "" when none exists. Missing roots are skipped and the walk depth
-// is limited so a stray large tree cannot stall the wizard.
-func FindEngineBinary(roots ...string) string {
-	entries := scanEngineBinaries(roots...)
-	if len(entries) == 0 {
-		return ""
-	}
-	return entries[0].path
-}
-
 // cleanEntryName rejects absolute paths and traversal in archive entries. The
 // root "." entry is reported as skip, not as an error.
 func cleanEntryName(name string) (clean string, skip, ok bool) {

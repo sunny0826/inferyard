@@ -67,9 +67,9 @@ func TestValidEngineSource(t *testing.T) {
 func TestFetchEngineUnpacksArchive(t *testing.T) {
 	stubInstall(t)
 	archive := engineTarGz(t, map[string]string{
-		"llama-prism/":                    "",
+		"llama-prism/":                      "",
 		"llama-prism/" + engineBinaryName(): "#!/bin/sh\n",
-		"llama-prism/libimpl.dylib":        "lib",
+		"llama-prism/libimpl.dylib":         "lib",
 	})
 	installHTTPDo = roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(archive))}, nil
@@ -212,7 +212,6 @@ func TestFetchEngineOutputExists(t *testing.T) {
 	}
 }
 
-
 func writeEngineBinary(t *testing.T, dir string, mode os.FileMode, modTime time.Time) string {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -228,27 +227,27 @@ func writeEngineBinary(t *testing.T, dir string, mode os.FileMode, modTime time.
 	return path
 }
 
-func TestFindEngineBinaryPicksNewest(t *testing.T) {
+func TestScanEngineBinariesPicksNewest(t *testing.T) {
 	root := t.TempDir()
 	old := writeEngineBinary(t, filepath.Join(root, "engine-1", "inner"), 0o755, time.Unix(1000, 0))
 	_ = old
 	newest := writeEngineBinary(t, filepath.Join(root, "engine-2", "inner"), 0o755, time.Unix(2000, 0))
 	// Not executable: ignored.
 	writeEngineBinary(t, filepath.Join(root, "engine-3"), 0o644, time.Unix(3000, 0))
-	if got := FindEngineBinary(root, filepath.Join(root, "missing")); got != newest {
-		t.Fatalf("got %q, want %q", got, newest)
+	if got := scanEngineBinaries(root, filepath.Join(root, "missing")); len(got) != 2 || got[0].path != newest {
+		t.Fatalf("got %+v, want newest %q", got, newest)
 	}
 }
 
-func TestFindEngineBinarySkipsDeepTrees(t *testing.T) {
+func TestScanEngineBinariesSkipsDeepTrees(t *testing.T) {
 	root := t.TempDir()
 	deep := filepath.Join(root, "a", "b", "c", "d", "e", "f")
 	writeEngineBinary(t, deep, 0o755, time.Unix(1000, 0))
-	if got := FindEngineBinary(root); got != "" {
-		t.Fatalf("deep binary must be ignored, got %q", got)
+	if got := scanEngineBinaries(root); len(got) != 0 {
+		t.Fatalf("deep binary must be ignored, got %+v", got)
 	}
-	if got := FindEngineBinary(filepath.Join(root, "missing")); got != "" {
-		t.Fatalf("missing root must yield %q, got %q", "", got)
+	if got := scanEngineBinaries(filepath.Join(root, "missing")); len(got) != 0 {
+		t.Fatalf("missing root must yield no entries, got %+v", got)
 	}
 }
 

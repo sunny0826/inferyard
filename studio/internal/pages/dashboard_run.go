@@ -7,7 +7,6 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -273,47 +272,6 @@ func (w *viewState) runView(c *ui.Context) {
 		})
 	}
 
-}
-
-// boundOption maps a bound bundle to the frozen config written by `config bind`.
-type boundOption struct{ bundle, config string }
-
-func (s *viewState) boundConfigs() []boundOption {
-	options := []boundOption{}
-	if s.progress == nil {
-		return options
-	}
-	for _, b := range s.progress.Bundles {
-		if b.BoundPath != nil {
-			options = append(options, boundOption{bundle: b.Bundle, config: filepath.Join(*b.BoundPath, "config.toml")})
-		}
-	}
-	return options
-}
-
-// defaultBundle keeps the current selection when still valid, otherwise picks
-// the first option that is not exclude.
-func defaultBundle(current string, names []string, exclude string) string {
-	for _, n := range names {
-		if n == current {
-			return current
-		}
-	}
-	for _, n := range names {
-		if n != exclude {
-			return n
-		}
-	}
-	return names[0]
-}
-
-func configOf(options []boundOption, bundle string) string {
-	for _, o := range options {
-		if o.bundle == bundle {
-			return o.config
-		}
-	}
-	return ""
 }
 
 func nativeOptions(values []string) []components.NativeSelectOption[string] {

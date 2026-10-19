@@ -60,7 +60,6 @@ func (w *viewState) execute(command string, report bool) {
 		}
 		return
 	}
-	w.autoBind = bindingArm{}
 	model, engine := w.model, w.engine
 	w.guideWork(func() (string, *core.ApiError) {
 		r, e := w.service.WizardExecute(w.ctx, core.WizardRequest{Command: command, ReportVerify: report, ModelName: model, EngineName: engine})
@@ -199,7 +198,6 @@ func (w *viewState) startEngine() {
 	bundle, workspace := *b, w.progress.Workspace
 	ctx, cancel := context.WithCancel(w.ctx)
 	w.taskCancel = cancel
-	w.autoBind = bindingArm{}
 	w.guideWork(func() (string, *core.ApiError) {
 		defer cancel()
 		state, e := w.service.StartEngine(candidate)
@@ -242,7 +240,6 @@ func (w *viewState) stopEngine() {
 	if w.simulate(previewStopEngine) {
 		return
 	}
-	w.autoBind = bindingArm{}
 	w.guideWork(func() (string, *core.ApiError) {
 		_, e := w.service.StopEngine()
 		return "已请求停止服务。", e

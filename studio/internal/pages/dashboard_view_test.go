@@ -4,8 +4,6 @@ import (
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -155,20 +153,5 @@ func TestCommandArguments(t *testing.T) {
 	}
 	if environmentName.MatchString("token with spaces") || environmentName.MatchString("hf-secret-token") {
 		t.Fatal("invalid env name accepted")
-	}
-}
-
-func TestStudioOriginNamesPackagedBuild(t *testing.T) {
-	exe, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := studioOrigin()
-	want := "Studio 发行包 · " + exe
-	if strings.Contains(filepath.ToSlash(exe), "/go-build") {
-		want = "Studio 源码运行 · " + exe
-	}
-	if got != want {
-		t.Fatalf("studioOrigin = %q, want %q", got, want)
 	}
 }

@@ -40,7 +40,7 @@ func engineCheckService(t *testing.T, exitCode int, stdout string) (*Service, *[
 
 func TestCheckEngineInvocationAndVerdicts(t *testing.T) {
 	s, calls := engineCheckService(t, 0, engineCheckFixture)
-	r, e := s.CheckEngine(context.Background(), "/engines/release/llama-server", "")
+	r, e := s.checkEngineWithCLI(context.Background(), *s.settings.InferyardPath, "/engines/release/llama-server", "")
 	if e != nil || !r.Eligible || r.Reason != nil || *r.ReportedVersion != "prism-b10743-adfffbe" ||
 		r.ExpectedRelease != "prism-b10743-adfffbe" || r.Modes == nil || !r.Modes.Metal || r.Mode != nil {
 		t.Fatalf("%+v %v", r, e)
@@ -51,7 +51,7 @@ func TestCheckEngineInvocationAndVerdicts(t *testing.T) {
 	}
 	if runtime.GOOS == "windows" {
 		s, calls = engineCheckService(t, 0, engineCheckFixture)
-		if _, e = s.CheckEngine(context.Background(), "/engines/release/llama-server", "/receipt/runtime-receipt.json"); e != nil {
+		if _, e = s.checkEngineWithCLI(context.Background(), *s.settings.InferyardPath, "/engines/release/llama-server", "/receipt/runtime-receipt.json"); e != nil {
 			t.Fatal(e)
 		}
 	}
@@ -59,11 +59,11 @@ func TestCheckEngineInvocationAndVerdicts(t *testing.T) {
 		t.Fatal((*calls)[0])
 	}
 	s, _ = engineCheckService(t, 0, ineligibleFixture("engine_version_too_old"))
-	if _, e := s.CheckEngine(context.Background(), "/engines/old/llama-server", ""); e == nil || e.Code != "engine_check_invalid_response" {
+	if _, e := s.checkEngineWithCLI(context.Background(), *s.settings.InferyardPath, "/engines/old/llama-server", ""); e == nil || e.Code != "engine_check_invalid_response" {
 		t.Fatalf("free reason accepted: %v", e)
 	}
 	s, _ = engineCheckService(t, 0, ineligibleFixture("invalid_library_manifest"))
-	r, e = s.CheckEngine(context.Background(), "/engines/old/llama-server", "")
+	r, e = s.checkEngineWithCLI(context.Background(), *s.settings.InferyardPath, "/engines/old/llama-server", "")
 	if e != nil || r.Eligible || r.Reason == nil || *r.Reason != "invalid_library_manifest" || r.ExpectedRelease == "" {
 		t.Fatalf("%+v %v", r, e)
 	}
@@ -91,7 +91,7 @@ func TestCheckEngineFailureMapping(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s, _ := engineCheckService(t, tc.exit, tc.raw)
-			if _, e := s.CheckEngine(context.Background(), "/engines/release/llama-server", ""); e == nil || e.Code != tc.code {
+			if _, e := s.checkEngineWithCLI(context.Background(), *s.settings.InferyardPath, "/engines/release/llama-server", ""); e == nil || e.Code != tc.code {
 				t.Fatalf("%v", e)
 			} else if tc.code == "cli_blocked" && !reflect.DeepEqual(e.Limitations, []string{"invalid_input"}) {
 				t.Fatal(e)

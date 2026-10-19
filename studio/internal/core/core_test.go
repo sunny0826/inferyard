@@ -242,11 +242,11 @@ func TestParallelDownloadsAndProgress(t *testing.T) {
 	root := t.TempDir()
 	s.settings.ModelsRoot = &root
 	source := "https://huggingface.co/o/r/blob/0123456789012345678901234567890123456789/model.gguf"
-	a, e := s.CreateDownload(CreateDownloadRequest{source, "a"})
+	a, e := s.CreateModelDownload(CreateDownloadRequest{source, "a"}, "")
 	if e != nil {
 		t.Fatal(e)
 	}
-	b, e := s.CreateDownload(CreateDownloadRequest{source, "b"})
+	b, e := s.CreateModelDownload(CreateDownloadRequest{source, "b"}, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -261,7 +261,7 @@ func TestParallelDownloadsAndProgress(t *testing.T) {
 		tasks := s.Downloads()
 		return tasks[0].DownloadedBytes == 4 && tasks[1].DownloadedBytes == 4
 	})
-	if _, e = s.CreateDownload(CreateDownloadRequest{source, "a"}); e == nil || e.Details["reason"] != "output_exists" {
+	if _, e = s.CreateModelDownload(CreateDownloadRequest{source, "a"}, ""); e == nil || e.Details["reason"] != "output_exists" {
 		t.Fatal(e)
 	}
 	s.CancelDownload(a.TaskId)

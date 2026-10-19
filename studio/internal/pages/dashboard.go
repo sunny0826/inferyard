@@ -25,7 +25,7 @@ func (w *viewState) step() int {
 	if w.running() != nil {
 		return 4
 	}
-	if w.binding || w.autoBind.armed || w.bindingPhase() {
+	if w.binding || w.bindingPhase() {
 		return 3
 	}
 	if w.progress == nil {
@@ -144,7 +144,7 @@ func (s *viewState) stageView(c *ui.Context) {
 	if s.running() != nil {
 		action = "run"
 	}
-	if s.binding || s.autoBind.armed || s.bindingPhase() {
+	if s.binding || s.bindingPhase() {
 		action = "bind"
 	}
 	if s.task.stage != "" {

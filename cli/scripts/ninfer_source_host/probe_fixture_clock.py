@@ -62,12 +62,6 @@ class _Clock:
         self.last = value
         return value
 
-    def task_expired(self):
-        return self() >= self.task
-
-    def total_expired(self):
-        return self() >= self.total
-
 
 def _frequency(source):
     if source is qpc_ticks:

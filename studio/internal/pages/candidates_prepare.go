@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// prepareCombination is shared by Dashboard candidate creation and Models startup.
+// prepareCombination creates candidates for the task's selected model and engine.
 func prepareCombination(ctx context.Context, service *core.Service, model, engine string, selection ...[]string) (startChainResult, *core.ApiError) {
 	if model == "" {
 		current, e := service.Progress(ctx)
@@ -64,7 +64,6 @@ func (s *viewState) startBenchmark() {
 	s.taskCancel = cancel
 	s.task = benchmarkTask{stage: "prepare_candidate", bundles: names, bindings: &benchmarkBindings{}}
 	model, engine := s.model, s.engine
-	s.autoBind = bindingArm{}
 	s.guideWork(func() (string, *core.ApiError) {
 		defer cancel()
 		announce := func(stage string) { s.win.Update(func() { s.task.stage = stage }) }

@@ -9,56 +9,11 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// startCombination launches the selected model × engine combination from the
-// models page run zone: rerun device-check when the latest preflight
-// recommends another model, create candidates for bundles whose frozen
-// candidate does not match the combination, start the engine and arm the S5
-// binding chain. It never assembles engine argv itself.
-func (s *viewState) startCombination() {
-	if s.busy || s.model == "" || s.engine == "" || !s.preflightReady() {
-		return
-	}
-	if s.simulate(previewStartEngine) {
-		return
-	}
-	model, engine := s.model, s.engine
-	s.autoBind = bindingArm{}
-	s.guideWork(func() (string, *core.ApiError) {
-		result, e := prepareCombination(s.ctx, s.service, model, engine)
-		if e != nil {
-			return "", e
-		}
-		state, e := s.service.StartEngine(result.candidate)
-		s.win.Update(func() {
-			if e != nil {
-				return
-			}
-			s.applyCombinationStart(result, state)
-		})
-		if e != nil {
-			return "", e
-		}
-		if result.pendingBinding {
-			return "服务启动中，健康通过后依次绑定全部待绑题包。", nil
-		}
-		return "服务启动中，等待健康检查。", nil
-	})
-}
-
 type startChainResult struct {
 	candidate, workspace string
-	pendingBinding       bool
 }
 
-func (s *viewState) applyCombinationStart(result startChainResult, state core.EngineState) {
-	s.engineState = state
-	s.autoBind = bindingArm{}
-	if result.pendingBinding {
-		s.autoBind = bindingArm{armed: true, candidate: result.candidate, workspace: result.workspace, pid: state.Pid}
-	}
-}
-
-// runStartChain is the testable core of the models page start action. Every
+// runStartChain prepares candidates for the task page. Every
 // step re-reads progress instead of trusting earlier snapshots; commands come
 // from progress next_command or the config create flag surface, never from
 // hand-assembled engine argv.
@@ -165,7 +120,6 @@ func runStartChain(ctx context.Context, modelName, engineName string,
 		return startChainResult{}, core.Err("cli_error")
 	}
 	candidate, fallback := "", ""
-	pendingBinding := false
 	sealedMismatch := false
 	for _, b := range p.Bundles {
 		if b.Phase == "run_complete" {
@@ -181,7 +135,6 @@ func runStartChain(ctx context.Context, modelName, engineName string,
 			}
 			continue
 		}
-		pendingBinding = pendingBinding || b.Phase == "bound_missing"
 		if b.CandidatePath == nil {
 			return startChainResult{}, core.Err("candidate_mismatch")
 		}
@@ -199,7 +152,7 @@ func runStartChain(ctx context.Context, modelName, engineName string,
 		}
 		candidate = fallback
 	}
-	return startChainResult{candidate: candidate, workspace: p.Workspace, pendingBinding: pendingBinding}, nil
+	return startChainResult{candidate: candidate, workspace: p.Workspace}, nil
 }
 
 // chainFailure surfaces the CLI's fixed reason, translating device-check

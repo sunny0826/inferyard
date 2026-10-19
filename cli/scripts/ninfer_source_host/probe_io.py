@@ -9,7 +9,6 @@ from .probe_io_limits import (
     FILE_ATTRIBUTE_NORMAL,
     FILE_ATTRIBUTE_REPARSE_POINT,
     FILE_READ_DATA,
-    FILE_ROOT,
 )
 from .probe_io_path import contained_ancestors, path_relation, require_root
 
@@ -180,7 +179,7 @@ class ProbeFileApi:
         return bool(flags & FILE_ATTRIBUTE_REPARSE_POINT)
 
     def _present_reparse(self, path):
-        flags = self._attributes(path, missing="error")
+        flags = self._attributes(path)
         return bool(flags & FILE_ATTRIBUTE_REPARSE_POINT)
 
     def _leaf_state(self, path):
@@ -199,8 +198,7 @@ class ProbeFileApi:
             return "reparse"
         return "present"
 
-    def _attributes(self, path, *, missing):
-        _ = missing
+    def _attributes(self, path):
         try:
             flags = self._native_attributes(path)
         except OSError as exc:
@@ -274,18 +272,3 @@ def _windows_code(error):
     if args and type(args[0]) is int and not isinstance(args[0], bool):
         return args[0]
     return None
-
-
-def fixed_root():
-    return FILE_ROOT
-
-
-def attribute_probe_flags():
-    """目录 reparse 探测使用的访问和打开标志。不调用 WinAPI。"""
-    from .probe_io_limits import (
-        FILE_FLAG_BACKUP_SEMANTICS,
-        FILE_FLAG_OPEN_REPARSE_POINT,
-        FILE_READ_ATTRIBUTES,
-    )
-
-    return FILE_READ_ATTRIBUTES, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS

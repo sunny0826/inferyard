@@ -216,17 +216,15 @@ func TestChainFailureTranslatesDeviceReasons(t *testing.T) {
 	}
 }
 
-func TestStartChainArmsFromFreshProgressAfterCreate(t *testing.T) {
+func TestStartChainReturnsFreshProgressAfterCreate(t *testing.T) {
 	h := newChainHarness()
 	h.progress.Bundles = h.progress.Bundles[:1]
-	s := viewState{progress: &inferyard.WorkspaceProgress{Workspace: "/stale", NextAction: "prepare_candidate"}}
 	result, e := h.run(t, "model.gguf", "engine")
 	if e != nil || len(h.calls) != 1 {
 		t.Fatal(e, h.calls)
 	}
-	s.applyCombinationStart(result, core.EngineState{State: "starting", Pid: 123, Candidate: result.candidate})
-	if !s.autoBind.armed || s.autoBind.workspace != "/w" || s.autoBind.candidate != "/w/candidates/zh-core-1" || s.autoBind.pid != 123 {
-		t.Fatalf("fresh progress did not arm binding: %+v", s.autoBind)
+	if result.workspace != "/w" || result.candidate != "/w/candidates/zh-core-1" {
+		t.Fatalf("fresh progress not returned: %+v", result)
 	}
 }
 
@@ -238,7 +236,7 @@ func TestStartChainPreservesCompletedBundleOnCombinationChange(t *testing.T) {
 	if e != nil || len(h.calls) != 1 || !strings.Contains(h.calls[0].command, "--bundle 'zh-svg-pelican'") {
 		t.Fatal(e, h.calls)
 	}
-	if result.candidate != "/w/candidates/zh-svg-pelican-1" || !result.pendingBinding || h.progress.Bundles[0].Phase != "run_complete" || *h.progress.Bundles[0].CandidatePath != "/sealed/old-combination" {
+	if result.candidate != "/w/candidates/zh-svg-pelican-1" || h.progress.Bundles[0].Phase != "run_complete" || *h.progress.Bundles[0].CandidatePath != "/sealed/old-combination" {
 		t.Fatalf("%+v %+v", result, h.progress.Bundles)
 	}
 }
@@ -282,7 +280,7 @@ func TestStartChainAllCompletedReusesMatchingCombination(t *testing.T) {
 				want = *h.progress.Bundles[1].CandidatePath
 			}
 			result, e := h.run(t, "model.gguf", "engine")
-			if e != nil || result.candidate != want || result.pendingBinding || result.workspace != h.progress.Workspace {
+			if e != nil || result.candidate != want || result.workspace != h.progress.Workspace {
 				t.Fatalf("result=%+v error=%v", result, e)
 			}
 			if len(h.calls) != 0 {

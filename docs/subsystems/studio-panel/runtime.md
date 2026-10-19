@@ -35,9 +35,8 @@
    `config create` 的参数面组装 `--workspace`/`--bundle`/`--out`；引擎参数按平台注入 registry
    条目的同一资源：非 Windows `--engine` 二进制路径，Windows `--runtime-receipt` 回执路径，
    不拼引擎 argv）→ 复验全部待测题包
-   候选匹配（不匹配报 `candidate_mismatch`）→ `StartEngine` → 武装绑定链。新任务强制为所选题包重建候选；任一步失败即停，不自动重试。
-7. **绑定**：任务在健康通过后自动绑定所选题包；既有启动链由 armed 单次触发，
-   按 progress 顺序对目标 `bound_missing` 题包依次执行 `config bind`（同引擎同 endpoint、显式 PID），
+   候选匹配（不匹配报 `candidate_mismatch`）→ `runBenchmarkFlow` 启动引擎并等待健康检查。新任务强制为所选题包重建候选；任一步失败即停，不自动重试。
+7. **绑定**：`runBenchmarkFlow` 在健康通过后按所选题包顺序依次执行 `config bind`（同引擎同 endpoint、显式 PID），
    全部成功才进 run 阶段，任一失败即停、显示 CLI 固定原因、不自动重试；外部服务从
    `service discover` 清单一键绑定（显式传发现的 PID 与 endpoint），绑定失败后折叠的「高级：手动绑定」保留
    `Processes` 进程枚举 + endpoint 手输兜底（`Processes` 只暴露 PID 与可执行名，argv 可能带凭据）。
@@ -56,7 +55,7 @@
 9. **下载**：模型/引擎获取与运行队列并发、互不占位，共用 `downloading → done/failed/cancelled`
    任务列表与 `CancelDownload`。输出目录名默认取设置的下载目录名，占用（文件系统或历史任务记录，
    含终态）时自动追加 `-2`/`-3` 序号；调用方显式指定名字且冲突时仍返回 `output_exists`。
-   `CreateDownload` 只接受无用户信息、查询
+   `CreateModelDownload` 只接受无用户信息、查询
    与片段的 `https` 来源；轮询观测 `.part` 尺寸并以 5 读数窗口估算速率，正式发布文件出现后完成
    任务并按实测字节收尾。引擎获取（预置或自定义来源）经 `CreateEngineDownload` 进入同一列表，
    复用 `FetchEngine` 传输与解包：归档解包保留同级共享库、仅重建归档内相对

@@ -120,20 +120,6 @@ func TestBoundBundleSelectsAndDuplicateGuard(t *testing.T) {
 		t.Fatal(got)
 	}
 }
-func TestBundleHelpers(t *testing.T) {
-	s := viewState{}
-	if len(s.boundConfigs()) != 0 {
-		t.Fatal("nil progress yielded options")
-	}
-	names := []string{"a", "b"}
-	if defaultBundle("", names, "") != "a" || defaultBundle("a", names, "a") != "a" || defaultBundle("x", names, "a") != "b" {
-		t.Fatal("defaultBundle mismatch")
-	}
-	options := []boundOption{{bundle: "a", config: "/w/a/config.toml"}}
-	if configOf(options, "a") != "/w/a/config.toml" || configOf(options, "b") != "" {
-		t.Fatal("configOf mismatch")
-	}
-}
 func TestDetailTableAndResourcesRender(t *testing.T) {
 	s := testState()
 	s.selected = "dashboard"

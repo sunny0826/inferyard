@@ -8,12 +8,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-type bindingArm struct {
-	armed                bool
-	workspace, candidate string
-	pid                  int64
-}
-
 type bindingJob struct {
 	bundle, candidate string
 }
@@ -40,31 +34,6 @@ func bindingJobs(p *inferyard.WorkspaceProgress) []bindingJob {
 	return jobs
 }
 
-// Called only in the UI update loop. Consume the arm before scheduling any work.
-func (s *viewState) takeAutoBind() bool {
-	if !s.autoBind.armed || s.busy {
-		return false
-	}
-	arm, engine := s.autoBind, s.engineState
-	if !s.bindingPhase() || s.progress.Workspace != arm.workspace || s.candidate != arm.candidate ||
-		engine.Pid != arm.pid || engine.Candidate != arm.candidate ||
-		(engine.State != "starting" && engine.State != "running") {
-		s.autoBind = bindingArm{}
-		return false
-	}
-	if engine.State != "running" {
-		return false
-	}
-	s.autoBind = bindingArm{}
-	return true
-}
-
-func (s *viewState) continueAutoBind() {
-	if s.takeAutoBind() {
-		s.bindDiscovered(s.engineState.Pid, s.engineState.Endpoint)
-	}
-}
-
 func (s *viewState) bindDiscovered(pid int64, endpoint string) {
 	if s.simulate(previewBind) {
 		return
@@ -72,7 +41,6 @@ func (s *viewState) bindDiscovered(pid int64, endpoint string) {
 	if s.busy || !s.bindingPhase() || pid <= 0 || endpoint == "" {
 		return
 	}
-	s.autoBind = bindingArm{}
 	workspace, jobs := s.progress.Workspace, bindingJobs(selectedProgressForTask(s))
 	s.binding = true
 	ctx, cancel := context.WithCancel(s.ctx)
