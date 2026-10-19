@@ -42,6 +42,7 @@ COMMUNITY_FILES = {
         "configs/macos.example.toml",
         "configs/windows.example.toml",
         "bundles/zh-core.json",
+        "bundles/zh-context-speed.json",
         "bundles/zh-smoke.json",
         "bundles/zh-svg-pelican.json",
         "bundles/zh-context-speed.json",

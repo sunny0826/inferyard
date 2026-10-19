@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.check_distribution import inspect_wheel, source_resources
+from scripts.check_distribution import inspect_wheel, source_resources, validate_resources
 from scripts.export_runtime_constraints import validate
 from scripts.verify_release_candidate import checked_file, verify
 
@@ -64,6 +64,16 @@ def test_package_source_allowlist_rejects_accidental_credentials(tmp_path):
     (package / ".env").write_text("synthetic secret")
     with pytest.raises(ValueError, match="unexpected_source_resource"):
         source_resources(tmp_path)
+
+
+def test_package_source_includes_context_speed_bundle():
+    resources = source_resources(ROOT)
+    name = "data/community/bundles/zh-context-speed.json"
+    assert (
+        resources[name]
+        == hashlib.sha256((ROOT / "bundles/zh-context-speed.json").read_bytes()).hexdigest()
+    )
+    validate_resources(resources)
 
 
 def test_release_gate_refuses_dev_build_and_changed_acceptance_bytes(tmp_path):
