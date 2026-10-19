@@ -116,6 +116,6 @@ Planning, external services and the full commands are in the
 It records the native process-tree working set/CPU seconds, host memory and
 available NVIDIA temperatures; CPU temperature is a missing measurement.
 These diagnostics are separate from formal quality runs; see the
-[Windows engine-fit contract](docs/contracts/engine-fit-contract.md#windows-原生来源).
+[Windows engine-fit contract](docs/contracts/engine-fit-contract-platforms.md#windows-原生来源).
 Source development uses the mise/uv commands in the
 [contributing guide](CONTRIBUTING.md).

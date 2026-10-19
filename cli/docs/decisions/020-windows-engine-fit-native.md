@@ -17,4 +17,4 @@ Windows engine-fit 使用独立 run.v6，仅接入单 GGUF llama.cpp，接受 pl
 新定义增加维护面，但保持旧证据的来源含义。启动文件身份不证明加载字节或 GPU 驻留，边界采样不表示峰值。
 核心 KVMem/NInfer run 支持与本诊断分别维护，不将它们伪装为 llama.cpp。
 
-接口见[Windows engine-fit 契约](../contracts/engine-fit-contract.md#windows-原生来源)，原生覆盖见[平台状态](../platforms.md)。
+接口见[Windows engine-fit 契约](../contracts/engine-fit-contract-platforms.md#windows-原生来源)，原生覆盖见[平台状态](../platforms.md)。

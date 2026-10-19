@@ -14,4 +14,4 @@ engine-fit 创建计划可用 `--skip-memory-stop REASON`，与显式 `--min-fre
 显式新定义增加兼容分派，但明确区分默认保护与操作者限定的诊断。
 内存覆盖不改变设备物理容量、模型格式或 CUDA/Metal 要求；磁盘、期限、身份、取消和排空仍执行。
 
-字段与拒绝规则见[常用引擎契约](../contracts/engine-fit-contract.md#常用引擎扩展)，温度覆盖见 [ADR 016](016-engine-fit-temperature-override.md)。
+字段与拒绝规则见[常用引擎契约](../contracts/engine-fit-contract-common.md#常用引擎扩展)，温度覆盖见 [ADR 016](016-engine-fit-temperature-override.md)。

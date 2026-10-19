@@ -14,4 +14,4 @@ LM Studio 观察器固定连接 `127.0.0.1` 与合法显式端口。
 显式端口且不传 host 可观察已有本机服务，不授予远程权限、不读取或持久化 CLI 凭据。
 依据为[固定构建的 createClient 源码](https://github.com/lmstudio-ai/lms/blob/69d945a/src/createClient.ts#L95-L142)。
 
-字段定义保持，非法地址或端口在 CLI 调用前拒绝。接口见[常用引擎契约](../contracts/engine-fit-contract.md#常用引擎扩展)。
+字段定义保持，非法地址或端口在 CLI 调用前拒绝。接口见[常用引擎契约](../contracts/engine-fit-contract-common.md#常用引擎扩展)。

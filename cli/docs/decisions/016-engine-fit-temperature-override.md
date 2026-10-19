@@ -14,4 +14,4 @@ engine-fit 可在创建新计划时使用 `--skip-temperature-stop REASON`，冻
 编辑旧计划会破坏来源，因此使用新定义和显式原因。代价是新增版本分派与更高的诊断风险。
 旧授权不自动作用于新运行，两引擎比较须使用同一新计划。
 
-内存覆盖由 [ADR 019](019-engine-fit-memory-override.md)独立补充；原因长度、字段约束与旧格式读取见[常用引擎契约](../contracts/engine-fit-contract.md#常用引擎扩展)。
+内存覆盖由 [ADR 019](019-engine-fit-memory-override.md)独立补充；原因长度、字段约束与旧格式读取见[常用引擎契约](../contracts/engine-fit-contract-common.md#常用引擎扩展)。
