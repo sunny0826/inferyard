@@ -148,10 +148,19 @@ def test_overhead_cancel_retains_evidence_and_does_not_retry(scenario):
 
 
 @pytest.mark.parametrize(
-    "mode", ["common", "boundary", "first_events", "engine_rates", "block_gaps", "resources"]
+    "mode",
+    [
+        "common",
+        "boundary",
+        "first_events",
+        "engine_rates",
+        "block_gaps",
+        "resources",
+        "resources_stalled",
+    ],
 )
 def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatch, mode):
-    """Synthetic stable environment and idle host counters, real lifecycle/ledger."""
+    """Synthetic environment/timing; real lifecycle, native counters and ledger."""
     import sys
     from copy import deepcopy
     from dataclasses import replace
@@ -161,15 +170,23 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
     from inferyard.platforms.external_cpu import SOURCE
     from tests.unit.test_environment import state
 
-    if mode == "resources" and sys.platform != "linux":
-        pytest.skip("The source-qualified Linux resource arm requires native /proc counters")
+    collector_pause = 0.35 if mode == "resources_stalled" else 0
+    if collector_pause:
+        mode = "resources"
+    if mode == "resources" and sys.platform not in ("linux", "darwin"):
+        pytest.skip("Resource qualification requires Linux or macOS counters")
+
+    run = asyncio.run
+    if mode == "resources":
+        from tests.overhead_clock import use_logical_time
+
+        run = use_logical_time(monkeypatch, collector_pause=collector_pause)
 
     plan, loaded, deps, output = inputs(scenario)
     config = loaded.config.to_dict()
     config["telemetry"]["interval_ms"] = 250 if mode == "resources" else 1000
     if mode == "resources":
-        # Allow native collection and synchronous evidence writes on shared CI
-        # hosts, with three intervals inside each baseline/request window.
+        # Three logical intervals per window; native IO duration is not under test.
         config["telemetry"]["baseline_seconds"] = 0.75
         scenario[3]["stream_delay"] = 0.75
     loaded = replace(loaded, config=Document.parse("config", config))
@@ -242,7 +259,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
     if mode == "block_gaps":
         scenario[3].update(answer="x" * 21, split_content=True)
     root = output / "qualified-environment"
-    asyncio.run(
+    run(
         run_overhead(
             plan,
             plan["trials"][0]["trial_id"],
@@ -310,7 +327,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         deps.sampler = ResourceSampler
         targets = []
         for index in range(2):
-            code, data, path = asyncio.run(
+            code, data, path = run(
                 run_trial(
                     plan,
                     plan["trials"][0]["trial_id"],
