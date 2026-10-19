@@ -81,7 +81,7 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
     uvx = uv.with_name("uvx.exe" if os.name == "nt" else "uvx")
     env = environment(out)
     records = []
-    base = ["--managed-python", "--python", "3.14.8"]
+    base = ["--managed-python", "--python", "3.15.0"]
 
     def command(name, argv, *, expected=0, settings=None):
         result = subprocess.run(
@@ -125,7 +125,7 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
     for name, version in proof[target]["dependencies"].items():
         assert pinned["dependencies"][name] == version, (name, version, pinned)
     assert pinned["dependencies"]["pytest"] is None and pinned["dependencies"]["ruff"] is None
-    assert pinned["python"] == "3.14.8"
+    assert pinned["python"] == "3.15.0"
     assert pinned["tool_version"] == build["version"]
     command(
         "probe-install-a",

@@ -64,7 +64,7 @@ uv run --frozen pytest \
   tests/unit/test_verification.py \
   tests/unit/test_offline_reading.py
 
-# Ruff（Python 3.14，100 列；等价 mise task：mise run lint）
+# Ruff（Python 3.15，100 列；等价 mise task：mise run lint）
 uv run --frozen ruff check src tests scripts
 
 # JSON Schema 生成物与契约源无漂移（等价 mise task：mise run schemas）

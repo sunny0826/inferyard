@@ -59,7 +59,7 @@ def test_report_probe_preserves_unicode_with_simulated_cp1252_default(tmp_path, 
         checks.append(bool(options and options.rerender))
         return {"verified": True}
 
-    # Only simulate the probe's text I/O, not Python 3.14's production UTF-8 runtime.
+    # Only simulate the probe's text I/O, not Python 3.15's production UTF-8 runtime.
     monkeypatch.setattr(installed_probe, "write_report", current_writer)
     monkeypatch.setattr(installed_probe, "verify_report", current_verifier)
     monkeypatch.setattr(

@@ -1,6 +1,6 @@
 . (Join-Path $PSScriptRoot 'windows-env.ps1')
 $benchUvVersion = '0.12.18'
-$benchPythonVersion = '3.14.8'
+$benchPythonVersion = '3.15.0'
 if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
     throw 'This bootstrap currently supports Windows x64.'
 }

@@ -19,7 +19,7 @@ from inferyard.platforms.platform_io import open_nofollow
 
 def fingerprint(info):
     # Windows stat() and fstat() expose different deprecated st_ctime meanings
-    # in Python 3.14. The explicit birth time is consistent for both APIs.
+    # in Python 3.15. The explicit birth time is consistent for both APIs.
     creation = info.st_birthtime_ns if os.name == "nt" else info.st_ctime_ns
     return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, creation)
 

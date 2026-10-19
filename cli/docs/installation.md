@@ -16,7 +16,7 @@ PowerShell、macOS 或 Linux 的独立安装器或包管理器。社区使用无
 ### 从 PyPI 安装或运行
 
 ```bash
-uv tool install --managed-python --python 3.14.8 inferyard==0.0.2
+uv tool install --managed-python --python 3.15.0 inferyard==0.0.2
 inferyard --versions
 inferyard --help
 ```
@@ -24,12 +24,12 @@ inferyard --help
 无需持久安装也可以运行：
 
 ```bash
-uvx --isolated --managed-python --python 3.14.8 inferyard==0.0.2 --versions
-uvx --isolated --managed-python --python 3.14.8 inferyard==0.0.2 --help
+uvx --isolated --managed-python --python 3.15.0 inferyard==0.0.2 --versions
+uvx --isolated --managed-python --python 3.15.0 inferyard==0.0.2 --help
 ```
 
 后文每条 `inferyard ...` 都可替换为
-`uvx --isolated --managed-python --python 3.14.8 inferyard==0.0.2 ...`，
+`uvx --isolated --managed-python --python 3.15.0 inferyard==0.0.2 ...`，
 包括 init、设备检测、配置准备、run、report 和 verify。完整 benchmark 按
 [默认测评范围](usage.md#默认测评范围)分别运行 120 题核心包和 1 题鹈鹕包，再生成汇总报告。
 `uvx inferyard` 会选择可用版本；正式测评固定版本，并在整个运行和恢复期间保持环境不变。
@@ -60,7 +60,7 @@ Release 还附带源码包与依赖约束验证文件；普通安装只需上述
 摘要一致后安装：
 
 ```bash
-uv tool install --managed-python --python 3.14.8 --constraints runtime-constraints.txt ./inferyard-0.0.2-py3-none-any.whl
+uv tool install --managed-python --python 3.15.0 --constraints runtime-constraints.txt ./inferyard-0.0.2-py3-none-any.whl
 inferyard --versions
 inferyard --help
 ```
@@ -68,13 +68,13 @@ inferyard --help
 PowerShell 将 `./...whl` 换为 `'.\inferyard-0.0.2-py3-none-any.whl'`；路径含空格或中文
 时加引号。uv 管理 Python 和工具环境，缺解释器时首次安装需联网。首批目标为 Linux x64、
 Windows x64、macOS arm64；纯 Python wheel 标签不证明所有平台的原生采集和引擎能力已验收。
-当前开发与安装工具基线为 Python 3.14.8 / uv 0.13.1，不宣称 uv 最低支持版本。
+当前开发与安装工具基线为 Python 3.15.0 / uv 0.13.1，不宣称 uv 最低支持版本。
 发行候选仍须完成下方独立安装检查；工具升级不继承历史候选的验收结果。
 
 临时试用同一 wheel：
 
 ```bash
-uvx --isolated --managed-python --python 3.14.8 --constraints runtime-constraints.txt --from ./inferyard-0.0.2-py3-none-any.whl inferyard --help
+uvx --isolated --managed-python --python 3.15.0 --constraints runtime-constraints.txt --from ./inferyard-0.0.2-py3-none-any.whl inferyard --help
 ```
 
 `uvx` 是 `uv tool run` 的别名，`--from` 指定分发物，最后的 `inferyard` 是命令名。
@@ -221,9 +221,9 @@ Windows/PowerShell 可使用相同 CLI 参数，路径加引号，PID 使用实�
 
 ```bash
 # 已从 PyPI 准备好相同版本及依赖的缓存
-uvx --offline --isolated --managed-python --python 3.14.8 inferyard==0.0.2 --versions
+uvx --offline --isolated --managed-python --python 3.15.0 inferyard==0.0.2 --versions
 # 使用本地 Release 附件及同批约束
-uvx --offline --isolated --managed-python --python 3.14.8 --constraints runtime-constraints.txt --from ./inferyard-0.0.2-py3-none-any.whl inferyard --versions
+uvx --offline --isolated --managed-python --python 3.15.0 --constraints runtime-constraints.txt --from ./inferyard-0.0.2-py3-none-any.whl inferyard --versions
 ```
 
 `--offline` 要求解释器、wheel 和依赖均已在所选缓存中，冷缓存明确失败，不隐藏首次联网需求。

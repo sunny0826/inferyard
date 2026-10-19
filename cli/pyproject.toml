@@ -9,7 +9,7 @@ description = "Cross-platform local AI benchmarking CLI"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = "==3.14.*"
+requires-python = "==3.15.*"
 dependencies = [
   "httpx>=0.28,<0.29",
   "jinja2>=3.1.6,<3.2",
@@ -74,7 +74,7 @@ testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 
 [tool.ruff]
-target-version = "py314"
+target-version = "py315"
 line-length = 100
 
 [tool.ruff.lint]
