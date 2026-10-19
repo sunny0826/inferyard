@@ -111,8 +111,9 @@ def launch(state: Path, manifest: Path, cli: Path, *, timeout: float = 45) -> di
             time.sleep(0.1)
         raise DevError(f"Studio readiness timed out; see {directory / 'studio.log'}")
     except BaseException:
-        if process is not None and process.poll() is None:
-            write_json(directory / "stop.json", {"session_id": session_id})
+        if process is not None:
+            if process.poll() is None:
+                write_json(directory / "stop.json", {"session_id": session_id})
             try:
                 stop_manifest(state, manifest)
             except DevError:

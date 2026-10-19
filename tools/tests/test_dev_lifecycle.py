@@ -167,6 +167,75 @@ class DevelopmentTests(unittest.TestCase):
             read_json(manifest.parent / "stop.json")["session_id"], manifest.parent.name
         )
 
+    def exited_child(self, state="stopped", *, owner=False):
+        manifest = self.started(prepare_only=True)
+        profile = Path(read_json(manifest)["profile_root"])
+        if state is not None:
+            write_json(
+                manifest.parent / "session.json",
+                {
+                    "kind": "studio_dev_session.v1",
+                    "session_id": manifest.parent.name,
+                    "pid": 321,
+                    "start_ticks": 123,
+                    "state": state,
+                    "cli_path": str(self.builds[-1].cli),
+                },
+            )
+        if owner:
+            write_json(profile / "workspace/logs/engine-owner.json", {"fixture": True})
+        process = Mock(pid=321)
+        process.poll.return_value = 2
+        return manifest, process
+
+    def assert_exited_cleanup_rejection_retains_instance(self, state, *, owner=False):
+        manifest, process = self.exited_child(state, owner=owner)
+        original = {path: path.read_bytes() for path in manifest.parent.iterdir()}
+        with (
+            patch("inferyard_dev.lifecycle.subprocess.Popen", return_value=process),
+            patch("inferyard_dev.lifecycle.run", side_effect=DevError("cleanup rejected")),
+        ):
+            with self.assertRaises(DevError):
+                launch(self.state, manifest, self.builds[-1].cli)
+            pending = self.state / "pending.json"
+            self.assertTrue(pending.exists(), "Failed instance ownership must remain discoverable")
+            self.assertEqual(read_json(pending)["manifest_path"], str(manifest))
+            with self.assertRaises(DevError):
+                develop(self.root, "stop")
+            self.assertTrue(pending.exists())
+        for path, content in original.items():
+            self.assertEqual(path.read_bytes(), content)
+        if owner:
+            profile = Path(read_json(manifest)["profile_root"])
+            self.assertTrue((profile / "workspace/logs/engine-owner.json").exists())
+
+    def test_exited_launch_retains_pending_after_shutdown_failed(self):
+        self.assert_exited_cleanup_rejection_retains_instance("shutdown_failed")
+
+    def test_exited_launch_retains_pending_when_engine_owner_remains(self):
+        self.assert_exited_cleanup_rejection_retains_instance("stopped", owner=True)
+
+    def test_exited_launch_retains_pending_when_session_cannot_be_verified(self):
+        self.assert_exited_cleanup_rejection_retains_instance(None)
+
+    def test_exited_launch_releases_pending_after_verified_clean_shutdown(self):
+        manifest, process = self.exited_child()
+        with (
+            patch("inferyard_dev.lifecycle.subprocess.Popen", return_value=process),
+            patch("inferyard_dev.lifecycle.run"),
+        ):
+            with self.assertRaises(DevError):
+                launch(self.state, manifest, self.builds[-1].cli)
+        self.assertFalse((self.state / "pending.json").exists())
+        self.assertEqual(read_json(manifest.parent / "session.json")["state"], "stopped")
+
+    def test_launch_without_created_child_releases_pending(self):
+        manifest = self.started(prepare_only=True)
+        with patch("inferyard_dev.lifecycle.subprocess.Popen", side_effect=OSError("not created")):
+            with self.assertRaises(OSError):
+                launch(self.state, manifest, self.builds[-1].cli)
+        self.assertFalse((self.state / "pending.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
