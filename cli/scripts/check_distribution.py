@@ -44,6 +44,7 @@ COMMUNITY_FILES = {
         "bundles/zh-core.json",
         "bundles/zh-smoke.json",
         "bundles/zh-svg-pelican.json",
+        "bundles/zh-context-speed.json",
         "profile/prism-b10743-adfffbe-win-cpu-x64.json",
         "profile/prism-b10743-adfffbe-win-cuda-12.4-x64.json",
     )
