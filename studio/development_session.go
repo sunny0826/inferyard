@@ -162,7 +162,7 @@ func (m *devManifest) stopSession(ctx context.Context, reader devProcessReader) 
 	if s.State == "stopped" {
 		return m.ownerAbsent()
 	}
-	if err := atomicDevJSON(m.stopPath(), devStopRequest{m.sessionID()}); err != nil {
+	if err := m.ensureStopRequest(); err != nil {
 		return err
 	}
 	ticker := time.NewTicker(200 * time.Millisecond)

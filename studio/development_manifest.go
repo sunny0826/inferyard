@@ -36,14 +36,17 @@ type devManifest struct {
 	PackageSHA256 string `json:"package_sha256"`
 	PackageRoot   string `json:"package_root"`
 	path          string
+	inputDigest   string
 }
 
 func loadDevManifest(path string) (*devManifest, error) {
 	var m devManifest
-	if err := readDevJSON(path, &m); err != nil {
+	digest, err := readDevJSONSnapshot(path, &m)
+	if err != nil {
 		return nil, err
 	}
 	m.path = path
+	m.inputDigest = digest
 	if m.Kind != "studio_dev.v1" || m.Branch == "" || !regexp.MustCompile(`^[0-9a-f]{40}$`).MatchString(m.Commit) {
 		return nil, fmt.Errorf("invalid development manifest identity")
 	}

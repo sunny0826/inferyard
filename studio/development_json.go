@@ -4,6 +4,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,22 +15,42 @@ import (
 )
 
 func readDevJSON(path string, value any) error {
+	_, err := readDevJSONSnapshot(path, value)
+	return err
+}
+
+func readDevJSONSnapshot(path string, value any) (string, error) {
 	if err := canonicalDevPath(path); err != nil {
-		return err
+		return "", err
 	}
 	st, err := os.Lstat(path)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if !st.Mode().IsRegular() {
-		return fmt.Errorf("JSON path is not a regular file")
+		return "", fmt.Errorf("JSON path is not a regular file")
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer f.Close()
-	d := json.NewDecoder(io.LimitReader(f, 1<<20))
+	raw, err := io.ReadAll(io.LimitReader(f, (1<<20)+1))
+	if err != nil {
+		return "", err
+	}
+	if len(raw) > 1<<20 {
+		return "", fmt.Errorf("development JSON too large")
+	}
+	if err := decodeDevJSON(raw, value); err != nil {
+		return "", err
+	}
+	hash := sha256.Sum256(raw)
+	return hex.EncodeToString(hash[:]), nil
+}
+
+func decodeDevJSON(body []byte, value any) error {
+	d := json.NewDecoder(bytes.NewReader(body))
 	token, err := d.Token()
 	if err != nil {
 		return err
@@ -65,12 +87,19 @@ func readDevJSON(path string, value any) error {
 		return fmt.Errorf("trailing JSON data")
 	}
 	t := reflect.TypeOf(value).Elem()
+	allowed := map[string]bool{}
 	for i := 0; i < t.NumField(); i++ {
 		name := t.Field(i).Tag.Get("json")
 		if name != "" {
+			allowed[name] = true
 			if _, ok := fields[name]; !ok {
 				return fmt.Errorf("missing JSON field: %s", name)
 			}
+		}
+	}
+	for name := range fields {
+		if !allowed[name] {
+			return fmt.Errorf("unknown JSON field: %s", name)
 		}
 	}
 	raw, err := json.Marshal(fields)

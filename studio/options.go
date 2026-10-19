@@ -7,8 +7,9 @@ import (
 )
 
 type startupOptions struct {
-	debugUI                        bool
-	devManifest, devCheck, devStop string
+	debugUI                                  bool
+	devManifest, devCheck, devStop           string
+	devRecoveryController, devRecoveryTarget string
 }
 
 func parseOptions(args []string, output io.Writer) (startupOptions, error) {
@@ -22,7 +23,7 @@ func parseOptions(args []string, output io.Writer) (startupOptions, error) {
 	}
 	emptyDevelopment := false
 	flags.Visit(func(f *flag.Flag) {
-		if (f.Name == "dev-manifest" || f.Name == "dev-check" || f.Name == "dev-stop") && f.Value.String() == "" {
+		if (f.Name == "dev-manifest" || f.Name == "dev-check" || f.Name == "dev-stop" || f.Name == "dev-recovery-controller" || f.Name == "dev-recovery-target") && f.Value.String() == "" {
 			emptyDevelopment = true
 		}
 	})
@@ -33,6 +34,12 @@ func parseOptions(args []string, output io.Writer) (startupOptions, error) {
 		return options, fmt.Errorf("unexpected argument: %s", flags.Arg(0))
 	}
 	count := 0
+	if (options.devRecoveryController == "") != (options.devRecoveryTarget == "") {
+		return options, fmt.Errorf("recovery controller and target are both required")
+	}
+	if options.devRecoveryController != "" {
+		count++
+	}
 	for _, path := range []string{options.devManifest, options.devCheck, options.devStop} {
 		if path != "" {
 			count++

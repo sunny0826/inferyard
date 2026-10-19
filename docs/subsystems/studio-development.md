@@ -20,6 +20,7 @@ Studio 设置。源码开发命令的操作步骤只维护在[开发工具说明
 | 开发参数和真实服务装配 | [development.go](../../studio/development.go) |
 | manifest 解析与产物核验 | [development_manifest.go](../../studio/development_manifest.go) |
 | 进程身份、关停请求和会话回执 | [development_session.go](../../studio/development_session.go) |
+| 缺回执的窄恢复核验与结构化结果 | [development_recovery.go](../../studio/development_recovery.go)、[recovery.py](../../tools/inferyard_dev/recovery.py) |
 
 ## 运行路径与状态
 
@@ -58,10 +59,46 @@ settings、window-state 和 workspace；结果与报告派生自该 workspace。
   证据解释沿用[血缘规则](../../cli/docs/data-contract.md#证据血缘与比较结论)。
 - 构建失败时旧实例尚未被关闭，指针不切换。新窗口启动失败时保留该次 manifest、日志和
   工作区；无法确认关停的实例保留 pending 所有权，后续命令先处理它。
-  子进程已退出也必须经过同一停止控制器核验；关停失败、遗留引擎所有权或会话无法核验时，
+  子进程已退出也必须经过停止协议核验；关停失败、遗留引擎所有权或会话无法核验时，
   仍保留 pending，不把进程退出当作清理成功。只有核验成功或子进程从未创建才释放该记录。
 - settings、布局和指针是各自唯一拥有者的可变状态；manifest、build 记录和原始证据只写
   新路径。旧代不自动清理。
+
+## 缺 session 的恢复
+
+正常 dev/rebuild 在新 pair 准备并检查后，把新 manifest 作为 controller、旧 manifest 作为
+target。开发专用的 `--dev-recovery-controller` / `--dev-recovery-target` 必须成对，与启动、
+check、stop 和 UI 预览互斥，`release` 排除它们。controller 核验实际自身路径及摘要，target
+独立核验原 Studio 路径、摘要和同 checkout 布局；不能替换旧产物，也不执行任一 CLI。
+
+合法 session 只返回 `session_present`，由 Python 调用 target 原 Studio 的 `--dev-stop`。
+读到 session 后消失、损坏、身份不符或关停失败均保留指针，同一次停止不能降级为缺失恢复。
+`--dev-stop` 本身仍要求 session；仅停止时，显式 controller 的获取步骤见开发工具说明。
+
+只有最终路径确实不存在 session，才读取该 launch 不可变的 `child.json`，其键必须精确为
+`pid`，值为本平台范围内的正整数。缺 child、重复键、null、bool、浮点、符号链接、读取错误
+或坏 session 均拒绝。Go 创建或复用同 session 的 stop 意图；已有错误请求不覆盖。
+
+原生观察分为 Present、Absent、Unknown。存活或身份可能复用的 PID 不释放、不发信号；
+查询错误不视为退出。Darwin 接受成功查询的 zombie 或明确 ESRCH；Windows 接受明确的
+无进程或已退出句柄；Linux 接受有效 stat 的 Z/X，或在自身 proc 查询有效时以 ESRCH
+佐证目标 stat 缺失。缺失 `/proc`、权限与解析错误保持 Unknown。未回收 child 在某些宿主
+只能得到 Unknown，仍拒绝，父进程 wait 后可重新核验。
+
+确认 Absent 后，Go 有界获取真实 workspace 的永久 `engine-owner.json.lock`，与引擎归属
+写入共用原生锁和 inode。在锁内复读 session、manifest/child 原始摘要、停止请求及原生状态，
+检查 owner 始终不存在，才返回 `recovered_missing_session`。workspace 缺失或路径异常、
+owner 任意形式存在、锁超时均拒绝；不删 owner、锁或原证据。迟到的合法 session 交回原
+stop，PID 必须匹配已读 child；`shutdown_failed` 始终拒绝。
+
+Python 严格核验 stdout 结果的类型、目标路径和输入摘要；退出 0 但证明无效仍保留 pending。
+恢复和原 stop 共用单次超时预算，pending、active 按原顺序去重且全部成功后才新启动。
+启动失败清理以本次 manifest 为 controller；恢复成功只释放 pending，原启动仍报错。
+成功后、释放指针前中断可重新完整核验，不使用成功缓存或伪造 stopped 回执。
+
+PID-only 的否定证明限于私有可信 launch 记录、同 checkout launcher lock、随机新 launch、
+单次 Popen、无自动重启或 manifest 重放的受管协议。它不鉴别同 UID 人工合法改写的假记录；
+stop 意图也不保证任意旧程序未来重放都被阻止。来源不明或发现并发/重放证据时继续拒绝。
 
 ## 验证边界
 
@@ -73,3 +110,6 @@ Go 开发测试覆盖协议、固定绑定和关停路径；普通、`studio_dev
 `studio_dev,release` 与 `ui_debug,release` 分别验证入口边界。真实开发窗口需要在已登录桌面
 启动并检查来源和 CLI 调用；预览原生 E2E 使用模拟数据，其通过不等于开发链路或实模验收。
 平台与实际执行结果按本轮验证证据报告，不从交叉编译推导原生平台资格。
+恢复测试还覆盖严格 JSON 证明、legacy stop 路由、迟到 session、原生子进程状态和另一个
+真实进程持有 owner 锁时的有限等待。原生 UI runner 在构建前检查已登录且未锁屏的 console，
+执行中桌面仍须保持解锁；该预检不跳过 XCTest 或截图断言。

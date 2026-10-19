@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from .build import clean_environment, run, studio_path
+from .recovery import validate_proof
 from .state import DevError, file_sha, inside, read_json, write_json
 
 
@@ -24,6 +25,9 @@ def saved_manifest(state: Path, pointer: Path) -> Path | None:
 
 
 def executable(state: Path, manifest: Path) -> Path:
+    # The path itself participates in the launch identity.
+    if manifest != inside(manifest, state / "launches") or manifest.name != "manifest.json":
+        raise DevError("Invalid development manifest path")
     data = read_json(manifest)
     if data.get("kind") != "studio_dev.v1":
         raise DevError("Unknown development manifest")
@@ -38,21 +42,41 @@ def executable(state: Path, manifest: Path) -> Path:
     return binary
 
 
-def stop_manifest(state: Path, manifest: Path) -> None:
+def stop_manifest(state: Path, manifest: Path, *, controller: Path | None = None) -> None:
+    deadline = time.monotonic() + 75
     binary = executable(state, manifest)
+    if controller is not None:
+        control_binary = executable(state, controller)
+        hashes = file_sha(controller), file_sha(manifest)
+        result = run(
+            [
+                str(control_binary),
+                "--dev-recovery-controller",
+                str(controller),
+                "--dev-recovery-target",
+                str(manifest),
+            ],
+            cwd=state.parent,
+            env=clean_environment(),
+            capture=True,
+            timeout=max(0, deadline - time.monotonic()),
+        )
+        outcome = validate_proof(result.stdout, state, controller, manifest, hashes)
+        if outcome == "recovered_missing_session":
+            return
     run(
         [str(binary), "--dev-stop", str(manifest)],
         cwd=state.parent,
         env=clean_environment(),
-        timeout=75,
+        timeout=max(0, deadline - time.monotonic()),
     )
 
 
-def stop_recorded(state: Path) -> None:
+def stop_recorded(state: Path, *, controller: Path | None = None) -> None:
     pending = state / "pending.json"
     paths = [saved_manifest(state, path) for path in (pending, state / "active.json")]
     for manifest in dict.fromkeys(path for path in paths if path is not None):
-        stop_manifest(state, manifest)
+        stop_manifest(state, manifest, controller=controller)
     pending.unlink(missing_ok=True)
 
 
@@ -112,10 +136,8 @@ def launch(state: Path, manifest: Path, cli: Path, *, timeout: float = 45) -> di
         raise DevError(f"Studio readiness timed out; see {directory / 'studio.log'}")
     except BaseException:
         if process is not None:
-            if process.poll() is None:
-                write_json(directory / "stop.json", {"session_id": session_id})
             try:
-                stop_manifest(state, manifest)
+                stop_manifest(state, manifest, controller=manifest)
             except DevError:
                 # Keep pending ownership so the next command cannot hide this instance.
                 raise DevError(f"Startup did not shut down cleanly; retained {pending}") from None

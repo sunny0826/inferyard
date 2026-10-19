@@ -11,6 +11,10 @@ func processStartTicks(pid int64) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	return parseProcessStat(raw)
+}
+
+func parseProcessStat(raw []byte) (int64, error) {
 	end := strings.LastIndexByte(string(raw), ')')
 	if end < 0 {
 		return 0, os.ErrInvalid

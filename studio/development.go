@@ -22,9 +22,29 @@ func registerDevelopment(flags *flag.FlagSet, o *startupOptions) {
 	flags.StringVar(&o.devManifest, "dev-manifest", "", "Launch the paired checkout development environment")
 	flags.StringVar(&o.devCheck, "dev-check", "", "Validate a development manifest without opening a window")
 	flags.StringVar(&o.devStop, "dev-stop", "", "Request normal shutdown of a verified development session")
+	flags.StringVar(&o.devRecoveryController, "dev-recovery-controller", "", "Verify a missing-session target with this prepared controller")
+	flags.StringVar(&o.devRecoveryTarget, "dev-recovery-target", "", "Original launch manifest to verify for recovery")
 }
 
 func runDevelopment(ctx context.Context, cancel context.CancelFunc, o startupOptions) (bool, error) {
+	if o.devRecoveryController != "" {
+		controller, err := loadDevManifest(o.devRecoveryController)
+		if err != nil {
+			return true, err
+		}
+		if err := controller.checkSelf(); err != nil {
+			return true, err
+		}
+		target, err := loadDevManifest(o.devRecoveryTarget)
+		if err != nil {
+			return true, err
+		}
+		result, err := recoverDevelopment(ctx, controller, target, nativeDevRecoveryReader())
+		if err != nil {
+			return true, err
+		}
+		return true, json.NewEncoder(os.Stdout).Encode(result)
+	}
 	path := o.devManifest
 	if o.devCheck != "" {
 		path = o.devCheck

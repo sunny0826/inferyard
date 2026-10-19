@@ -76,7 +76,7 @@ func TestDevelopmentStartingCanStopBeforeWindowReady(t *testing.T) {
 
 func TestDevelopmentStartingHonorsExistingStop(t *testing.T) {
 	m := devFixture(t)
-	if err := atomicDevJSON(m.stopPath(), devStopRequest{m.sessionID()}); err != nil {
+	if err := m.ensureStopRequest(); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())

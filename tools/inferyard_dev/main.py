@@ -69,12 +69,16 @@ def manifest_for(state: Path, info: Source, build: Build, profile: Path) -> Path
     return path
 
 
-def develop(root: Path, action: str, *, prepare_only: bool = False) -> Path | None:
+def develop(
+    root: Path, action: str, *, prepare_only: bool = False, controller_manifest: Path | None = None
+) -> Path | None:
+    if controller_manifest is not None and action != "stop":
+        raise DevError("--controller-manifest is only valid with stop")
     root = root.resolve()
     state = root / ".inferyard-dev"
     with launcher_lock(state):
         if action == "stop":
-            stop_recorded(state)
+            stop_recorded(state, controller=controller_manifest)
             (state / "active.json").unlink(missing_ok=True)
             print("The recorded development Studio has shut down.")
             return None
@@ -97,7 +101,7 @@ def develop(root: Path, action: str, *, prepare_only: bool = False) -> Path | No
         if prepare_only:
             print(f"Prepared and checked, without opening a window: {manifest}")
             return manifest
-        stop_recorded(state)
+        stop_recorded(state, controller=manifest)
         session = launch(state, manifest, build.cli)
         write_json(pointer, {"profile_root": str(profile)})
         write_json(state / "active.json", {"manifest_path": str(manifest)})
@@ -119,11 +123,23 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Build, initialize and check without opening Studio or switching profiles",
     )
+    parser.add_argument(
+        "--controller-manifest",
+        type=Path,
+        help="Use a prepared controller to check an older missing-session launch (stop only)",
+    )
     args = parser.parse_args(argv)
     if args.prepare_only and args.action == "stop":
         parser.error("--prepare-only cannot be combined with stop")
+    if args.controller_manifest is not None and args.action != "stop":
+        parser.error("--controller-manifest is only valid with stop")
     try:
-        develop(Path(__file__).resolve().parents[2], args.action, prepare_only=args.prepare_only)
+        develop(
+            Path(__file__).resolve().parents[2],
+            args.action,
+            prepare_only=args.prepare_only,
+            controller_manifest=args.controller_manifest,
+        )
     except (DevError, OSError) as exc:
         print(f"Development environment: {exc}", file=sys.stderr)
         return 1

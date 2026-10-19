@@ -48,6 +48,26 @@ mise run dev -- --prepare-only
 
 That command still creates new build/workspace evidence. It does not prove native UI
 behavior. This workflow requires a logged-in desktop for the normal `dev` commands.
+
+If a previous Studio exited before writing its session receipt, `dev` and `dev:rebuild`
+use the newly prepared Studio to check that old launch. Recovery requires its original
+manifest and PID record, a natively absent child and no engine ownership record.
+Unknown or live processes, damaged records and failed shutdowns block the switch.
+Original builds, manifests and logs are preserved. A valid session is always stopped
+by its original Studio, with the existing process identity checks.
+
+To recover an older missing-session launch without opening another window, prepare
+a controller and pass the absolute manifest path printed by that command:
+
+```sh
+mise run dev -- --prepare-only
+mise run dev:stop -- --controller-manifest /absolute/printed/manifest.json
+```
+
+`--controller-manifest` is valid only for `stop`. Stop does not build or run the CLI;
+without an explicit controller it requires the original session receipt. Do not edit
+PID records, remove owner/host locks or replace old binaries to force recovery.
+
 It is separate from Studio's simulated `--debug-ui` preview. Development switches are
 compiled only with `studio_dev` and excluded by `release`.
 Launch the development executable through the mise task. Opening its `.app` or

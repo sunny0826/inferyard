@@ -9,7 +9,7 @@ import (
 )
 
 func TestDevelopmentFlagsRejected(t *testing.T) {
-	for _, name := range []string{"--dev-manifest", "--dev-check", "--dev-stop"} {
+	for _, name := range []string{"--dev-manifest", "--dev-check", "--dev-stop", "--dev-recovery-controller", "--dev-recovery-target"} {
 		if _, err := parseOptions([]string{name, "/tmp/manifest.json"}, &bytes.Buffer{}); err == nil {
 			t.Fatal(name, "accepted outside development build")
 		}
