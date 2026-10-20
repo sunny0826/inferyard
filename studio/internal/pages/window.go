@@ -3,7 +3,6 @@ package pages
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -380,40 +379,6 @@ func (s *viewState) refreshAction() {
 	if !s.busy {
 		go s.refresh(true)
 	}
-}
-func (s *viewState) cornerStatus(c *ui.Context) {
-	engine := "已停止"
-	if s.engineState.State != "" {
-		engine = stateLabel(s.engineState.State)
-	}
-	runActive := false
-	if s.speed != nil && s.speed.current != nil {
-		runActive = s.speed.current.active()
-	}
-	for _, task := range s.tasks {
-		if !terminal(task.State) {
-			runActive = true
-			break
-		}
-	}
-	queue := "空"
-	if runActive {
-		queue = "执行中"
-	}
-	ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(c.Theme().Space(2)).Padding(0, c.Theme().Space(6)).Children(func() {
-		downloads := s.activeDownloadCount()
-		if s.busy && downloads == 0 && !runActive && (s.engineState.State == "" || s.engineState.State == "stopped") {
-			ui.Text(c, "执行中")
-		} else {
-			ui.Text(c, "引擎 "+engine+" · 队列 "+queue)
-		}
-		if downloads > 0 {
-			ui.Text(c, fmt.Sprintf("下载中 %d 项", downloads))
-		}
-		if s.stopEnabled(true, runActive) {
-			button(c, "停止").OnClick(s.stopEngine)
-		}
-	})
 }
 func (s *viewState) header(c *ui.Context, title string) {
 	heading(c, title, 1)

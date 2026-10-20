@@ -44,6 +44,10 @@ It checks the resource guide and live queue labels, and retains screenshots befo
 resource acquisition, before execution, and during execution. Its owned test window
 is moved to the main display before capture.
 
+The resource/status scenario opens a dense 158-sample memory fixture with CPU and
+temperature unavailable. It captures the chart, opens the engine hover panel, and
+starts and stops a simulated engine without starting a benchmark.
+
 This is native UI coverage with a simulated backend. The existing fast `ui.NewTester`
 regressions remain under `internal/pages`; real CLI/fake-engine boundary tests remain
 under [`../e2e`](../e2e/README.md). None establishes real model qualification or

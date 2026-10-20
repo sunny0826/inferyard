@@ -191,10 +191,7 @@ final class PreviewUITests: XCTestCase {
     }
 
     func testFirstUseWithoutLocalAssets() {
-        let window = app.windows["InferYard Studio · UI 调试"]
-        let origin = window.frame.origin
-        let titlebar = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
-        titlebar.press(forDuration: 0.2, thenDragTo: titlebar.withOffset(CGVector(dx: 80 - origin.x, dy: 80 - origin.y)))
+        positionWindowForCapture()
         app.popUpButtons["模拟场景"].click()
         text("首次使用 · 无资源").click()
         click("准备环境")
@@ -219,6 +216,70 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("Active benchmark without recovery warning")
         click("查看报告", timeout: 25)
         expectText("各类任务表现")
+    }
+
+    func testResourceChartWithMissingMetrics() {
+        positionWindowForCapture()
+        app.popUpButtons["模拟场景"].click()
+        text("资源 · 密集采样与缺测").click()
+        expectText("采样点：158")
+        expectText("服务 CPU % · 暂无有效采样")
+        expectText("温度 °C · 暂无有效采样")
+        app.scrollViews.element(boundBy: 1).scroll(byDeltaX: 0, deltaY: -650)
+        let chart = text("内存 GiB曲线")
+        XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].frame.contains(chart.frame), "The full resource chart must be visible")
+        keepScreenshot("Dense memory samples without empty CPU and temperature plots")
+    }
+
+    func testEngineStatusPanel() {
+        positionWindowForCapture()
+        app.popUpButtons["模拟场景"].click()
+        text("任务 · 失败").click()
+        let engine = app.buttons["引擎 · 失败"]
+        XCTAssertTrue(engine.waitForExistence(timeout: 5))
+        engine.hover()
+        XCTAssertTrue(app.buttons["开启引擎"].waitForExistence(timeout: 5))
+        keepScreenshot("Engine hover panel before startup")
+        app.windows["InferYard Studio · UI 调试"].hover()
+        wait("hover panel closes after pointer leaves", timeout: 5) { !self.app.buttons["开启引擎"].exists }
+        engine.click()
+        XCTAssertTrue(app.buttons["开启引擎"].waitForExistence(timeout: 5))
+        keepScreenshot("Engine panel opened by clicking status icon")
+        click("开启引擎")
+        let running = app.buttons["引擎 · 运行中"]
+        XCTAssertTrue(running.waitForExistence(timeout: 5))
+        running.hover()
+        XCTAssertTrue(app.buttons["停止引擎"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["查看实时详情"].exists, "Engine startup must not start a benchmark")
+        keepScreenshot("Engine running icon and hover controls")
+        click("停止引擎")
+        XCTAssertTrue(app.buttons["引擎 · 已停止"].waitForExistence(timeout: 5))
+    }
+
+    func testRunningStatusPanels() {
+        positionWindowForCapture()
+        prepare()
+        click("运行 benchmark")
+        let engine = app.buttons["引擎 · 运行中"]
+        XCTAssertTrue(engine.waitForExistence(timeout: 10))
+        engine.hover()
+        let stop = app.buttons["停止引擎"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 3))
+        XCTAssertFalse(stop.isEnabled, "Running tasks must protect the engine")
+        keepScreenshot("Engine panel remains available during benchmark")
+        let waiting = app.buttons["任务 · 执行 1 · 等待 1"]
+        let queue = waiting.exists ? waiting : app.buttons["任务 · 执行 1 · 等待 0"]
+        XCTAssertTrue(queue.exists)
+        queue.click()
+        expectText("任务队列", timeout: 3)
+        keepScreenshot("Task icon opens live queue panel")
+    }
+
+    private func positionWindowForCapture() {
+        let window = app.windows["InferYard Studio · UI 调试"]
+        let origin = window.frame.origin
+        let titlebar = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
+        titlebar.press(forDuration: 0.2, thenDragTo: titlebar.withOffset(CGVector(dx: 80 - origin.x, dy: 80 - origin.y)))
     }
 
     private func keepScreenshot(_ name: String) {

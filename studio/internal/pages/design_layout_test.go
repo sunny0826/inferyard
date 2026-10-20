@@ -102,12 +102,12 @@ func TestDesignLayoutMatrix(t *testing.T) {
 							}
 							s.refreshing = true
 							tt.Frame()
-							before, ok := tt.Find("引擎 已停止 · 队列 执行中")
+							before, ok := tt.Find("任务 · 执行 1 · 等待 0")
 							if !ok {
 								t.Fatal("refresh hid engine and queue status")
 							}
 							tt.Scroll(float32(width-80), 400, 0, 600)
-							after, ok := tt.Find("引擎 已停止 · 队列 执行中")
+							after, ok := tt.Find("任务 · 执行 1 · 等待 0")
 							if !ok || before != after {
 								t.Fatal("toolbar moved during content scroll")
 							}

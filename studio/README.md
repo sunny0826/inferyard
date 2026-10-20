@@ -20,7 +20,7 @@ selected while the task page is open. The six page bodies are:
 | --- | --- |
 | Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
-| Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Inspect service status without start, stop, binding, or orphan recovery actions; orphaned engines show a warning and hide the new-task action. No absolute paths. |
+| Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and read each report index inside the main window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names. |
@@ -48,17 +48,20 @@ The task generates `report --runs` for its own sealed runs with verification dis
 only a “查看报告” button that opens that exact report, and leaves verification on Reports.
 Duration and unfinished batch plans display their blocking reason without an execution button.
 
-A fixed top-right status row shows engine and queue state; its idle text is
-“引擎 已停止 · 队列 空”. Background refresh never changes this text.
-Active runs and non-stopped engine states
-stay visible during operations. Active downloads add a stable “下载中 N 项” count; only
-foreground operations without these active states show “执行中”.
-Each active bundle shows its live queue state instead of offline resume guidance.
-Recovery reasons remain visible for inactive, interrupted bundles.
-During a run, the model-service card collapses into this row, including between bundles
-in an active task. Once execution ends, service recovery controls remain available in
-the run/resume stage. Stop is available for a starting or running engine
-when no non-terminal run exists and Studio is not busy, except on Models.
+Top-right engine and task icons pulse while active, respecting Reduce Motion.
+Hover, click, or press Enter to open their panels; Escape dismisses them.
+The engine panel shows status and start/stop controls on every page. Starting requires
+a prepared candidate and only starts the service; it does not bind or run a benchmark.
+The task panel separates executing and waiting tasks. Active downloads have a separate
+icon and count in their panel. Background refresh does not change activity.
+Active bundles show live state; interrupted bundles retain recovery guidance.
+The service card stays collapsed throughout an active benchmark, then exposes
+recovery controls in the run/resume stage. Stop is available for a starting or running engine
+when no non-terminal run exists and Studio is neither busy nor resetting a task.
+
+Resource charts use elapsed-time labels and equally spaced samples. Full UTC timestamps
+remain in sample details and the raw table. Missing values remain gaps; entirely missing
+metrics show compact messages.
 
 When no CLI is configured, the task page’s Prepare environment action installs the CLI: it reuses an existing
 `inferyard`/`uv` when found (including Homebrew locations outside the GUI PATH), downloads
@@ -83,7 +86,7 @@ Other endpoints with model directories appear under the collapsed “待确认�
 not prove a model is loaded locally. Expanding an interface shows endpoint health and
 ambiguous-listener warnings; its model directory remains separately collapsed. Partial
 scan limitations remain visible. Only the task page offers explicit external binding after a binding failure, with the
-discovered PID and endpoint, through the existing CLI checks; Models remains read-only.
+discovered PID and endpoint, through the existing CLI checks. Discovery cards on Models remain read-only.
 Discovery does not establish bind eligibility: rejection reasons such as
 `startup_arguments_mismatch` remain visible. The collapsed advanced manual binding controls
 remain available. See the [service discovery contract](../cli/docs/cli-surface.md#本机服务发现契约)

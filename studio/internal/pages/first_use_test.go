@@ -57,7 +57,7 @@ func TestDownloadHeaderStableAcrossRefresh(t *testing.T) {
 			t.Fatalf("background refresh changed header: before=%v after=%v", before, tt.Texts())
 		}
 	}
-	if !tt.HasText("下载中 1 项") {
+	if !hasStatusControl(tt, "下载中 1 项") {
 		t.Fatal("download lifecycle absent from header", tt.Texts())
 	}
 }

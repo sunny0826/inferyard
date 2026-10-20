@@ -21,6 +21,10 @@ const (
 
 func (previewStep) previewIntent() {}
 
+type previewManagedEngine struct{ candidate string }
+
+func (previewManagedEngine) previewIntent() {}
+
 type previewBenchmark struct {
 	model, engine string
 	bundles       []string

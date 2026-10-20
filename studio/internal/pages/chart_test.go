@@ -4,6 +4,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -29,8 +30,41 @@ func TestResourceLineDataPreservesGapsAndUnits(t *testing.T) {
 	if data.Series[0].Values[0] != 1 || data.Series[0].Values[2] != 2 || data.Series[2].Values[2] != 20 || data.Series[3].Values[2] != 50 {
 		t.Fatal("unit conversion changed", data.Series)
 	}
-	if data.Labels[2] != "2026-10-14T01:00:09Z" || !math.IsNaN(data.Series[1].Values[0]) {
-		t.Fatal("lost UTC or missing RSS")
+	if data.Labels[2] != "00:09" || !math.IsNaN(data.Series[1].Values[0]) {
+		t.Fatal("lost elapsed time or missing RSS")
+	}
+}
+
+func TestDenseMemoryOnlyResourcesStayCompact(t *testing.T) {
+	s := testState()
+	samples := make([]core.ResourceSample, 158)
+	for i := range samples {
+		samples[i] = core.ResourceSample{
+			Utc:               time.Date(2026, 10, 20, 9, 21, i, 570000000, time.UTC).Format(time.RFC3339Nano),
+			MemAvailableBytes: ptr(int64(3 << 30)), ServiceRssBytes: ptr(int64(1 << 28)),
+		}
+	}
+	points := resourcePoints(samples)
+	data := resourceChartData(points, []ui.Color{{}, {}, {}, {}}, 0, 1)
+	for _, label := range data.Labels {
+		if len(label) > 9 || strings.Contains(label, "2026") {
+			t.Fatalf("unreadable axis label %q", label)
+		}
+	}
+	tt := ui.NewTester(func(c *ui.Context) { s.resourceView(c, samples) }, 800, 1000)
+	for _, label := range []string{"服务 CPU %曲线", "温度 °C曲线"} {
+		if _, ok := tt.Find(label); ok {
+			t.Fatalf("empty metric reserves a plot: %s", label)
+		}
+	}
+	for _, label := range []string{"服务 CPU % · 暂无有效采样", "温度 °C · 暂无有效采样"} {
+		if !tt.HasText(label) {
+			t.Fatal("missing compact unavailable state", tt.Texts())
+		}
+	}
+	r, ok := tt.Find("资源采样数值表")
+	if !ok || r.Y > 550 {
+		t.Fatal("empty plots push raw samples out of view", r)
 	}
 }
 

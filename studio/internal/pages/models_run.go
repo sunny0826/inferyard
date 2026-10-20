@@ -78,7 +78,7 @@ func (s *viewState) preflightReady() bool {
 }
 
 func (s *viewState) stopEnabled(active, runActive bool) bool {
-	if s.selected == "models" || !active || runActive || s.busy {
+	if !active || runActive || s.busy || s.newTaskPending {
 		return false
 	}
 	return s.engineState.State == "starting" || s.engineState.State == "running"

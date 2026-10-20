@@ -2,12 +2,13 @@ package pages
 
 import (
 	"fmt"
-	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components/chart"
-	"inferyard/studio/internal/core"
 	"math"
 	"sort"
 	"time"
+
+	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components/chart"
+	"inferyard/studio/internal/core"
 )
 
 type resourcePoint struct {
@@ -50,7 +51,6 @@ func resourcePoints(samples []core.ResourceSample) []resourcePoint {
 func finite(v *float64) bool { return v != nil && !math.IsNaN(*v) && !math.IsInf(*v, 0) }
 func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 	card(c, "资源曲线", func() {
-		ui.Text(c, "内存由 bytes 换算为 GiB（1 GiB = 1,073,741,824 bytes）。CPU 为服务端 ticks 差分百分比；温度为 °C，独立刻度。缺测保留断点。")
 		points := resourcePoints(samples)
 		ui.Text(c, fmt.Sprintf("采样点：%d", len(points)))
 		if len(points) == 0 {
@@ -63,16 +63,20 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 			p := points[i]
 			return fmt.Sprintf("%s · 可用内存 %s GiB · RSS %s GiB · CPU %s %% · 温度 %s °C", p.utc, number(p.values[0]), number(p.values[1]), number(p.values[2]), number(p.values[3]))
 		}
-		ui.Text(c, "内存 GiB、CPU %、温度 °C 各用独立刻度分图展示。横轴按 UTC 样本顺序等距排列，实际时间见采样值。")
+		ui.Text(c, "横轴为距首个样本的时间，采样点等距排列；缺测保留断点。").TextColor(theme.TextMuted)
 		labels := []string{"内存 GiB", "服务 CPU %", "温度 °C"}
 		columns := [][]int{{0, 1}, {2}, {3}}
 		for i, cols := range columns {
 			c.Key(labels[i])
-			heading(c, labels[i], 3)
 			state := &s.resourceCharts[i]
 			state.Index = s.chartIndex
 			before := state.Index
 			data := resourceChartData(points, colors, cols...)
+			if !chartHasValues(data) {
+				ui.Text(c, labels[i]+" · 暂无有效采样").TextColor(theme.TextMuted)
+				continue
+			}
+			heading(c, labels[i], 3)
 			chart.Line(c, state, data, chart.Options{
 				HideLegend:        true,
 				Label:             labels[i] + "曲线",
@@ -80,24 +84,25 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				PlotHeight:        160,
 				AnimationDuration: -1,
 				EmptyText:         "此指标暂无有效测量；缺测不补零。",
-				Detail: func(c *ui.Context, selection chart.Selection) {
-					if selection.Index >= 0 {
-						ui.Text(c, describe(selection.Index)).Selectable()
-					}
-				},
+				Detail:            func(*ui.Context, chart.Selection) {},
 			})
 			if state.Index != before && chartHasValues(data) {
 				s.chartIndex = state.Index
 			}
 		}
 		ui.Row(c).Wrap().Gap(c.Theme().Space(4)).Children(func() {
-			for i, label := range []string{"可用内存 GiB（内存图）", "服务 RSS GiB（内存图）", "服务 CPU %（CPU 图）", "温度 °C（独立刻度）"} {
+			for i, label := range []string{"可用内存 GiB", "服务 RSS GiB", "服务 CPU（%）", "温度（°C）"} {
+				if !chartHasValues(resourceChartData(points, colors, i)) {
+					continue
+				}
 				ui.Text(c, label).TextColor(colors[i])
 			}
 		})
-		if s.chartIndex >= 0 && s.chartIndex < len(points) {
-			ui.Text(c, describe(s.chartIndex)).Selectable()
-		}
+		ui.Column(c).FillWidth().MinHeight(theme.Space(7)).Children(func() {
+			if s.chartIndex >= 0 && s.chartIndex < len(points) {
+				ui.Text(c, describe(s.chartIndex)).Selectable()
+			}
+		})
 		heading(c, "采样数值（内存原始单位 bytes）", 3)
 		cols := []ui.TableColumn{{Title: "UTC", Width: 220}, {Title: "可用内存 bytes", Width: 150}, {Title: "RSS bytes", Width: 130}, {Title: "CPU %", Width: 100}, {Title: "温度 °C", Width: 100}}
 		s.samplesTable.Key = func(i int) any { return points[i].utc }
@@ -114,7 +119,11 @@ func resourceChartData(points []resourcePoint, colors []ui.Color, columns ...int
 	names := []string{"可用内存 GiB", "服务 RSS GiB", "服务 CPU %", "温度 °C"}
 	ids := []string{"available-memory", "service-rss", "service-cpu", "temperature"}
 	for i, p := range points {
-		data.Labels[i] = p.utc
+		elapsed := int(math.Round((p.seconds - points[0].seconds) * 10))
+		data.Labels[i] = fmt.Sprintf("%02d:%02d", elapsed/600, elapsed/10%60)
+		if elapsed%10 != 0 {
+			data.Labels[i] += fmt.Sprintf(".%d", elapsed%10)
+		}
 	}
 	for _, col := range columns {
 		series := chart.Series{ID: ids[col], Label: names[col], Color: colors[col], Values: make([]float64, len(points))}

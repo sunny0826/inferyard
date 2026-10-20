@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
@@ -45,6 +46,22 @@ var previewScenes = []struct {
 		s.model, s.engine = "", ""
 		s.checks = core.EngineCheckOverview{Supported: true}
 	}},
+	{"资源 · 密集采样与缺测", previewDenseResources},
+}
+
+func previewDenseResources(s *viewState) {
+	s.detailID = "dense-resources"
+	s.detail = previewDetailFixture(s.detailID)
+	s.detail.Task.State = "done"
+	s.detail.Resources = make([]core.ResourceSample, 158)
+	for i := range s.detail.Resources {
+		s.detail.Resources[i] = core.ResourceSample{
+			Utc:               time.Date(2026, 10, 20, 9, 21, i, 570000000, time.UTC).Format(time.RFC3339Nano),
+			MemAvailableBytes: previewValue(int64(3<<30) + int64(i%18)*(1<<24)),
+			ServiceRssBytes:   previewValue(int64(1 << 28)),
+		}
+	}
+	s.downloads = nil
 }
 
 func previewPreparation(s *viewState) {
