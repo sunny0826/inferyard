@@ -2,6 +2,31 @@
 
 [返回 Backlog](../backlog.md)
 
+## 本地五引擎正式适配
+
+2026-10-21：已增加正式 local profile、冻结安装/模型清单、完整绑定、普通/流式
+请求、队列观察、批次交接和离线报告读取。独立审查发现的跨独立 run 换题包、
+dirty 孤儿 worker、Python import hook、context 参数及原生映射缺口已修复并复核。
+主进程与 worker 分别声明环境；外部固定安装补丁和准备方式见
+[正式安装准备](../local-engine-native-preparation.md)。
+
+macOS / Qwen3-0.6B 真机正式绑定已通过 llama.cpp、MLX-LM、补丁版 vLLM Metal
+和补丁版 SGLang MLX；LM Studio 双题包候选已生成，原有后台未接管或重启。
+llama.cpp 正式路径在 warmup 触发 87.3125°C，MLX-LM 在普通/流式探针完成后
+触发 88.953125°C；两者均保留 120 道 core 未执行分母，pelican 未开始。
+两份 incomplete 批次及其独立报告通过离线核验，不能计作题包完成。
+本轮自启服务均已停止，温停原件保留，不自动重试或提高 85°C 阈值。
+
+五引擎正式双题包验收尚未完成，Studio 尚未接入；受控回归、原生绑定与完整模型
+测评分别报告，不沿用历史短诊断的资格。剩余真机测评须具备稳定温度条件，
+LM 跨题包进程替换还须取得既有后台的管理授权。
+当前规则见[契约](../contracts/local-engines.md)，剩余事项见[实施计划](../plans/local-engines.md)。
+
+CLI 全量回归 5902 passed、54 skipped（平台限定及 opt-in 真机测试）；
+Ruff、schema/catalogue 导出一致性和 362 个本地文档链接检查通过。
+离线报告已在浏览器检查模型清单与运行时快照身份展示；受控双题包测试
+不代替上面的真机测评缺口。
+
 ## 小模型多引擎接入
 
 2026-10-20 在 main 的 CLI 源码上，以 Apple M4 / 16 GiB / macOS 和 Qwen3-0.6B

@@ -6,8 +6,8 @@ from copy import deepcopy
 from pathlib import Path
 
 from inferyard.config.loader import (
-    PATH_FIELDS,
     LoadedConfig,
+    path_fields,
     read_document,
     validate_runtime_config,
 )
@@ -42,7 +42,7 @@ def normalized_config(raw, filename, source_directory, bundle_path):
                     target[key] = deepcopy(value)
     validate_runtime_config(config)
     origin = Path(source_directory)
-    for section, key in PATH_FIELDS:
+    for section, key in path_fields(config):
         if config["engine"]["adapter"] in ("kvmem", "ninfer"):
             from pathlib import PureWindowsPath
 

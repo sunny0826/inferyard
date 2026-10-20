@@ -60,6 +60,11 @@ def compile_single_plan(config, bundle, *, experiment_id=None):
             },
             "comparison": {"mode": "side-by-side", "factor": None},
             **(
+                {"safety": {**config["safety"], "max_external_cpu_percent": None}}
+                if config.get("definition") == "local-engine-config.v1"
+                else {}
+            ),
+            **(
                 {"environment_admission": config["conditions"]["environment_admission"]}
                 if "environment_admission" in config["conditions"]
                 else {}

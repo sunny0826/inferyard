@@ -73,7 +73,7 @@ InferYard 只支持[格式矩阵](../contracts/inferyard-current-format.md#格�
 安装检查由历史报告成功变为当前格式成功及旧格式拒绝，因此结果升级为
 `installed_safe_checks.v3`，不复用旧 v2 的 scope 或通过结论。
 `community_distribution.v2` 字节绑定外壳保持，候选生成/核验仅接收新的安装结果；
-细节见[安装证据版本](../contracts/inferyard-current-format.md#安装检查与资格版本)。
+细节见[安装证据版本](../contracts/current-format-installation.md#安装检查与资格版本)。
 
 ## 拒绝与验收
 

@@ -20,6 +20,10 @@
 
 正文见 [引擎核验契约](cli-reference/engine-check.md#引擎核验契约)。
 
+## 本地五引擎正式接口
+
+正文见[本地五引擎正式接口](cli-reference/local-engines.md)。
+
 ## 首次上手进度契约
 
 正文见 [首次上手进度契约](cli-reference/progress.md#首次上手进度契约)。

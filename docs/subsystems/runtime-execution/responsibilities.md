@@ -27,3 +27,11 @@
 主机状态的事实源是锁旁的状态文件，不是任何运行目录：`HostLock.dirty` 写入 `dirty`、`dirty_token`、`run_id`、`kind`、`endpoint`、`server_pid`、`process_start_ticks`、`request_id`；`HostLock.clean` 只翻转 `dirty` 位。主机互斥状态不是测量文档，不进运行证据。状态文件格式与旧状态处置见 [当前格式契约](../../../cli/docs/contracts/inferyard-current-format.md#主机状态)，理由见 [ADR 039](../../../cli/docs/decisions/039-remove-host-state-migration.md)。单次入口先创建 Journal 与冻结输入再取锁（`SingleProfile` 的创建顺序在 `trial_profile.py` 注释中声明）；批量入口由 `batch_runner.execute_async` 持锁跨多个 trial。
 
 适配器层次：`LabAdapter` 组合 `LabParameters`（参数核验）、`NativeObservation`（能力发现）与 `LabTransport`（HTTP 端点读取）；`KVMemAdapter`、`NInferAdapter` 继承 `LabAdapter`，`LlamaCppAdapter` 继承 `PrismAdapter`。选择由 `adapter_factory` 按 `engine.adapter` 标识完成，新增适配器不改动调用方。`overhead` 命令同样汇入 `run_trial`，但把采样器换成开关组合（`ResourceOffSampler`、`BoundaryOnlySampler`、`EnvironmentOnlySampler`）以测量采集器自身开销，产物与正式运行分开。
+
+## 本地五引擎路径
+
+`local_openai_v1` 复用 trial 生命周期，`adapters/local_engines` 管理请求与队列观察，
+`platforms/local_engines` 管理冻结安装、模型及进程树绑定。`local_profile.safety_policy`
+限制固定串行协议；`local_host.admit` 在发题前检查持久 scope 和旧进程退出，
+`HostLock.dirty` 保留该记录，手工恢复也核查 worker。跨命令准入不是仅靠 batch 父关系。
+完整规则见[本地引擎契约](../../../cli/docs/contracts/local-engines.md)。

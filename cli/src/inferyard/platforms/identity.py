@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 
 from inferyard.config.loader import validate_endpoint
 from inferyard.config.startup_arguments import model_argument
+from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import ContractError, strict_json_loads
 from inferyard.platforms.cpu_policy import snapshot as cpu_policy_snapshot
 
@@ -325,6 +326,10 @@ def verify_process(
     *,
     bound_files=None,
 ) -> dict:
+    if is_local(config):
+        from inferyard.platforms.local_engines import verify_bound_service
+
+        return verify_bound_service(config, bound_files=bound_files)
     if config["engine"].get("adapter") in ("kvmem", "ninfer"):
         if platform.system() != "Windows":
             raise PreflightError("lab_adapter_requires_windows")
@@ -404,7 +409,13 @@ def static_preflight(
     if (backend == "metal" and system != "Darwin") or (backend == "cuda" and system == "Darwin"):
         raise PreflightError("unsupported_backend_platform")
     origin, address, port = service_origin(config["endpoint"]["url"])
-    if config["engine"].get("adapter") in ("kvmem", "ninfer"):
+    local_identity = {}
+    if is_local(config):
+        from inferyard.platforms.local_engines import preflight_assets, verify_bound_service
+
+        local_identity, identities = preflight_assets(config)
+        process = verify_bound_service(config, bound_files=identities)
+    elif config["engine"].get("adapter") in ("kvmem", "ninfer"):
         if system != "Windows":
             raise PreflightError("lab_adapter_requires_windows")
         from inferyard.platforms.lab_identity import bind_files
@@ -433,9 +444,10 @@ def static_preflight(
                 )
         except (OSError, ContractError) as exc:
             raise PreflightError("library_manifest_unreadable") from exc
-    process = verify_process(
-        config, identities[0], identities[1], address, port, bound_files=identities
-    )
+    if not is_local(config):
+        process = verify_process(
+            config, identities[0], identities[1], address, port, bound_files=identities
+        )
     environment = environment_snapshot()
     if backend == "metal":
         from inferyard.platforms.macos_identity import metal_capability
@@ -465,6 +477,7 @@ def static_preflight(
     if not all(item.unchanged() for item in identities):
         raise PreflightError("identity_file_changed")
     return {
+        **local_identity,
         "origin": origin,
         "process": process,
         "environment": environment,

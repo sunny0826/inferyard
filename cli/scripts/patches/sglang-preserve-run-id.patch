@@ -1,0 +1,7 @@
+--- a/python/sglang/srt/entrypoints/engine.py
++++ b/python/sglang/srt/entrypoints/engine.py
+@@ -1904,2 +1904,2 @@
+-    os.environ["SGLANG_RUN_ID"] = (
+-        f"sglang-run-{time.time()}-{random.randint(0, 100000000)}"
++    os.environ.setdefault(
++        "SGLANG_RUN_ID", f"sglang-run-{time.time()}-{random.randint(0, 100000000)}"

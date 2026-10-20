@@ -177,7 +177,11 @@ async def execute_async(request, dependencies=None):
             config["bundle"] = base.config.to_dict()["bundle"]
             base = replace(base, config=Document.parse("config", config))
         bound, binding = bind_service(
-            base, request.endpoint_url, request.server_pid, request.api_key_env
+            base,
+            request.endpoint_url,
+            request.server_pid,
+            request.api_key_env,
+            request.service_binding_path,
         )
         fresh_process = bound.config.to_dict()["execution"].get("require_fresh_process", False)
         if previous is not None and (not same_workload or fresh_process):

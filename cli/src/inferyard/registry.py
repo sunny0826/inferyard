@@ -159,6 +159,10 @@ def components():
 
 
 def adapter_factory(identifier):
+    if identifier == "local_openai_v1":
+        from inferyard.adapters.local_engines import LocalEngineAdapter
+
+        return LocalEngineAdapter
     from inferyard.adapters.kvmem import KVMemAdapter
     from inferyard.adapters.llama_cpp import LlamaCppAdapter
     from inferyard.adapters.ninfer import NInferAdapter

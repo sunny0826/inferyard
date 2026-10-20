@@ -113,8 +113,8 @@ readable; see the [evidence layout contract](docs/contracts/run-evidence-layout.
 
 ## InferYard Studio
 
-[InferYard Studio](../studio/README.md) is a desktop/Web dashboard for local benchmarks,
-built with MyGo, Go and Svelte.
+[InferYard Studio](../studio/README.md) is a native desktop dashboard for local benchmarks,
+built with MyGo and Go.
 
 ## Read more
 

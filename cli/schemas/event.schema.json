@@ -645,78 +645,101 @@
                       "type": "boolean"
                     },
                     "generation": {
-                      "type": "object",
-                      "properties": {
-                        "temperature": {
-                          "type": "number",
-                          "minimum": 0
-                        },
-                        "top_p": {
-                          "type": "number",
-                          "exclusiveMinimum": 0,
-                          "maximum": 1
-                        },
-                        "top_k": {
-                          "type": "integer",
-                          "minimum": 0
-                        },
-                        "min_p": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
-                        },
-                        "presence_penalty": {
-                          "type": "number"
-                        },
-                        "repeat_penalty": {
-                          "type": "number",
-                          "exclusiveMinimum": 0
-                        },
-                        "seed": {
-                          "type": "integer"
-                        },
-                        "seed_support": {
-                          "type": "string",
-                          "enum": [
-                            "supported",
-                            "unsupported",
-                            "unknown"
-                          ]
-                        },
-                        "max_tokens": {
-                          "type": "integer",
-                          "minimum": 1
-                        },
-                        "reasoning_mode": {
-                          "type": "string",
-                          "enum": [
-                            "off",
-                            "on"
-                          ]
-                        },
-                        "stop": {
-                          "type": "array",
-                          "items": {
-                            "type": "string",
-                            "minLength": 1
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "temperature": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "top_p": {
+                              "type": "number",
+                              "exclusiveMinimum": 0,
+                              "maximum": 1
+                            },
+                            "top_k": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "min_p": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "presence_penalty": {
+                              "type": "number"
+                            },
+                            "repeat_penalty": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            },
+                            "seed": {
+                              "type": "integer"
+                            },
+                            "seed_support": {
+                              "type": "string",
+                              "enum": [
+                                "supported",
+                                "unsupported",
+                                "unknown"
+                              ]
+                            },
+                            "max_tokens": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "reasoning_mode": {
+                              "type": "string",
+                              "enum": [
+                                "off",
+                                "on"
+                              ]
+                            },
+                            "stop": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "minItems": 0
+                            }
                           },
-                          "minItems": 0
+                          "required": [
+                            "temperature",
+                            "top_p",
+                            "top_k",
+                            "min_p",
+                            "presence_penalty",
+                            "repeat_penalty",
+                            "seed",
+                            "seed_support",
+                            "max_tokens",
+                            "reasoning_mode",
+                            "stop"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "temperature": {
+                              "type": "number",
+                              "const": 0
+                            },
+                            "max_tokens": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 8192
+                            }
+                          },
+                          "required": [
+                            "temperature",
+                            "max_tokens"
+                          ],
+                          "additionalProperties": false
                         }
-                      },
-                      "required": [
-                        "temperature",
-                        "top_p",
-                        "top_k",
-                        "min_p",
-                        "presence_penalty",
-                        "repeat_penalty",
-                        "seed",
-                        "seed_support",
-                        "max_tokens",
-                        "reasoning_mode",
-                        "stop"
-                      ],
-                      "additionalProperties": false
+                      ]
                     },
                     "messages": {
                       "type": "array",
@@ -763,78 +786,101 @@
                       "type": "boolean"
                     },
                     "generation": {
-                      "type": "object",
-                      "properties": {
-                        "temperature": {
-                          "type": "number",
-                          "minimum": 0
-                        },
-                        "top_p": {
-                          "type": "number",
-                          "exclusiveMinimum": 0,
-                          "maximum": 1
-                        },
-                        "top_k": {
-                          "type": "integer",
-                          "minimum": 0
-                        },
-                        "min_p": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
-                        },
-                        "presence_penalty": {
-                          "type": "number"
-                        },
-                        "repeat_penalty": {
-                          "type": "number",
-                          "exclusiveMinimum": 0
-                        },
-                        "seed": {
-                          "type": "integer"
-                        },
-                        "seed_support": {
-                          "type": "string",
-                          "enum": [
-                            "supported",
-                            "unsupported",
-                            "unknown"
-                          ]
-                        },
-                        "max_tokens": {
-                          "type": "integer",
-                          "minimum": 1
-                        },
-                        "reasoning_mode": {
-                          "type": "string",
-                          "enum": [
-                            "off",
-                            "on"
-                          ]
-                        },
-                        "stop": {
-                          "type": "array",
-                          "items": {
-                            "type": "string",
-                            "minLength": 1
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "temperature": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "top_p": {
+                              "type": "number",
+                              "exclusiveMinimum": 0,
+                              "maximum": 1
+                            },
+                            "top_k": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "min_p": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "presence_penalty": {
+                              "type": "number"
+                            },
+                            "repeat_penalty": {
+                              "type": "number",
+                              "exclusiveMinimum": 0
+                            },
+                            "seed": {
+                              "type": "integer"
+                            },
+                            "seed_support": {
+                              "type": "string",
+                              "enum": [
+                                "supported",
+                                "unsupported",
+                                "unknown"
+                              ]
+                            },
+                            "max_tokens": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "reasoning_mode": {
+                              "type": "string",
+                              "enum": [
+                                "off",
+                                "on"
+                              ]
+                            },
+                            "stop": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "minItems": 0
+                            }
                           },
-                          "minItems": 0
+                          "required": [
+                            "temperature",
+                            "top_p",
+                            "top_k",
+                            "min_p",
+                            "presence_penalty",
+                            "repeat_penalty",
+                            "seed",
+                            "seed_support",
+                            "max_tokens",
+                            "reasoning_mode",
+                            "stop"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "temperature": {
+                              "type": "number",
+                              "const": 0
+                            },
+                            "max_tokens": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 8192
+                            }
+                          },
+                          "required": [
+                            "temperature",
+                            "max_tokens"
+                          ],
+                          "additionalProperties": false
                         }
-                      },
-                      "required": [
-                        "temperature",
-                        "top_p",
-                        "top_k",
-                        "min_p",
-                        "presence_penalty",
-                        "repeat_penalty",
-                        "seed",
-                        "seed_support",
-                        "max_tokens",
-                        "reasoning_mode",
-                        "stop"
-                      ],
-                      "additionalProperties": false
+                      ]
                     },
                     "messages_sha256": {
                       "type": "string",

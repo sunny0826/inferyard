@@ -10,3 +10,5 @@ cli/tests/fixtures/legacy/README.md text eol=lf
 cli/tests/fixtures/prism/README.md text eol=lf
 cli/src/inferyard/data/community/bundles/zh-context-speed.json linguist-generated=true
 cli/bundles/zh-context-speed.json linguist-generated=true
+# Exported from runtime definitions by cli/scripts/export_schemas.py.
+cli/schemas/*.schema.json linguist-generated=true

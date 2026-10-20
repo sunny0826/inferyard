@@ -3,6 +3,7 @@
 import math
 
 from inferyard.analysis.comparison_helpers import _get, _known, comparable_arguments
+from inferyard.contracts.engine_profiles import is_local
 from inferyard.evidence.storage import EvidenceError
 
 FACTORS = {
@@ -37,6 +38,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     if chosen not in ("model", "config", "side-by-side"):
         raise EvidenceError("unsupported_comparison_mode")
     conditions = []
+    local_profile = any(is_local(data["config"]) for data in (left, right))
 
     def check(field, a, b, *, allowed=False, impact="common"):
         if field == "run.definition_versions.scoring":
@@ -151,6 +153,16 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
                 field = path + "." + component
                 check(field, _get(left, field), _get(right, field))
         else:
+            check(path, _get(left, path), _get(right, path))
+    if local_profile:
+        for path in (
+            "config.definition",
+            "config.engine.family",
+            "config.engine.installation_sha256",
+            "config.model.kind",
+            "config.model.content_sha256",
+            "config.model.assets_sha256",
+        ):
             check(path, _get(left, path), _get(right, path))
     for key in ("repo", "revision", "sha256", "packing", "template_sha256"):
         path = "config.model." + key
@@ -267,10 +279,11 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
             "max_tokens",
         ):
             observed = effective.get(key, {})
-            requested = data["config"]["generation"][key]
+            requested = data["config"]["generation"].get(key)
             actual = observed.get("effective")
             if (
                 observed.get("verification") == "verified"
+                and type(requested) in (int, float)
                 and type(actual) in (int, float)
                 and math.isfinite(actual)
                 and math.isclose(actual, requested, rel_tol=1e-6, abs_tol=1e-6)
@@ -279,7 +292,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
             check(
                 side + ".effective." + key,
                 observed.get("effective") if observed.get("verification") == "verified" else None,
-                data["config"]["generation"][key],
+                requested,
             )
     blockers = [
         c["field"] + ":" + c["status"]
@@ -288,6 +301,8 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     ]
     if chosen == "side-by-side":
         blockers.append("side_by_side_has_no_controlled_deltas")
+    if local_profile:
+        blockers.append("local_engine_controlled_comparison_not_supported")
     if (
         chosen == "config"
         and allowed_path

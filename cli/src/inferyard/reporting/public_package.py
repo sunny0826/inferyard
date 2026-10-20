@@ -70,6 +70,8 @@ def digest(value):
 def projection(data, source, *, policy=POLICY):
     require_version({"policy": policy}, "policy", (POLICY,), "public-summary")
     config, summary = data["config"], data["summary"]
+    if config.get("definition") == "local-engine-config.v1":
+        raise EvidenceError("local_engine_public_export_not_supported")
     counts = {
         key: number(summary["counts"].get(key))
         for key in ("planned", "completed", "failed", "invalid", "cancelled", "not_executed")

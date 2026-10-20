@@ -190,7 +190,12 @@ def validate_semantics(kind, data):
         validate_layout(kind, data)
         return
     if kind in ("config", "config_input"):
-        from inferyard.contracts.lab import validate_config
+        from inferyard.contracts.engine_profiles import is_local
+
+        if is_local(data):
+            from inferyard.contracts.local_engines import validate_config
+        else:
+            from inferyard.contracts.lab import validate_config
 
         validate_config(data)
         _environment_admission(data["conditions"], "config.conditions.environment_admission")

@@ -15,7 +15,7 @@ def clean_receipt_name(key):
     return "client-http-clean-" + hashlib.sha256(key.encode()).hexdigest() + ".json"
 
 
-def verify_clean_receipts(root, events, client_ids, manifest, *, reads=None):
+def verify_clean_receipts(root, events, client_ids, manifest, *, reads=None, allow_pending=False):
     reads = reads if reads is not None else TrialEvidence(root)
     completed = {
         event["request_id"]: event
@@ -28,7 +28,7 @@ def verify_clean_receipts(root, events, client_ids, manifest, *, reads=None):
         raise EvidenceError("native_clean_receipt_inventory_mismatch")
     for key, event in completed.items():
         if key not in actual:
-            if reads.layout_version == 1:
+            if reads.layout_version == 1 or allow_pending:
                 continue  # Pre-receipt v3 records retain their reading semantics.
             raise EvidenceError("native_clean_receipt_missing")
         if manifest is not None and not observation_sealed(

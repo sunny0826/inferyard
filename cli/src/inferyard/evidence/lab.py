@@ -8,6 +8,7 @@ from inferyard.adapters.lab_observation import (
 )
 from inferyard.adapters.lab_parameters import _equal
 from inferyard.adapters.requests import request_body
+from inferyard.contracts.engine_profiles import is_local
 from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.lab_parameters import verify_parameters
 from inferyard.evidence.native import observation_evidence, verify_native
@@ -17,6 +18,19 @@ from inferyard.evidence.trial_evidence import TrialEvidence
 
 def verify_lab(root, config, bundle, events, *, reads=None, _projection=False):
     reads = reads if reads is not None else TrialEvidence(root, projection=_projection)
+    if is_local(config):
+        from inferyard.evidence.local_engines import verify_queue_events
+
+        observation = observation_evidence(root, config, reads=reads)
+        if observation is None:
+            if any(e["event_type"] == "request_started" for e in events):
+                raise EvidenceError("local_engine_observation_missing")
+            return False
+        if _projection:
+            raise EvidenceError("local_engine_projection_not_supported")
+        verify_native(root, config, bundle, events, observation, reads=reads)
+        verify_queue_events(root, config, events, reads=reads)
+        return False
     engine = config["engine"]["adapter"]
     if engine not in ("kvmem", "ninfer"):
         if any(

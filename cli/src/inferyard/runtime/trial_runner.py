@@ -10,6 +10,7 @@ from pathlib import Path
 from inferyard.analysis.input_lengths import bind_token_counts, check_input_target
 from inferyard.analysis.scoring import score_case
 from inferyard.config.bundle import require_review
+from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import ContractError
 from inferyard.evidence.error_reasons import safe_reason
 from inferyard.evidence.formats import UnsupportedFormat
@@ -125,6 +126,8 @@ async def run_trial(
     def check_guard(config, files, *, periodic=False):
         config = transport_config(config, adapter)
         if single:
+            deadline.check()
+        if single and not is_local(config):
             # P1: single guard keeps its existing identity scope; no disk/memory safety gate.
             deadline.check()
             deps.guard(config, files)
@@ -135,7 +138,8 @@ async def run_trial(
             raise PreflightError("disk_safety_budget_reached")
         if memory_available() < budget["min_available_memory_bytes"]:
             raise PreflightError("memory_safety_budget_reached")
-        deps.guard(config, files)
+        if not (is_local(config) and periodic):
+            deps.guard(config, files)
         if safety is not None:
             safety.check(periodic=periodic)
 
@@ -189,11 +193,15 @@ async def run_trial(
             policy=plan["experiment"].get("environment_admission"),
         )
         policy = None if single else plan["experiment"].get("safety")
+        if is_local(config):
+            from inferyard.runtime.local_profile import safety_policy
+
+            policy = safety_policy(plan, config)
         if policy is not None:
-            safety = deps.safety(policy, config, deps.environment)
+            safety = getattr(deps, "safety", SafetyGuard)(policy, config, deps.environment)
             safety_trace = SafetyTrace(store, policy["interval_seconds"])
             store.observe("safety_policy", safety.metadata(), stage="prepare")
-        if not single:
+        if not single or is_local(config):
             guard(config, files)
         if policy is not None:
             safety_task = asyncio.create_task(
@@ -204,10 +212,16 @@ async def run_trial(
                 )
             )
         identity["files"] = [asdict(f) for f in files]
-        identity["runtime_library_hashes"] = read_json(
-            Path(config["engine"]["runtime_library_manifest"])
-        )
+        if not is_local(config):
+            identity["runtime_library_hashes"] = read_json(
+                Path(config["engine"]["runtime_library_manifest"])
+            )
         store.observe("environment", identity["environment"], stage="start")
+        if is_local(config):
+            from inferyard.runtime.local_host import admit
+            from inferyard.runtime.lock import process_start_ticks
+
+            admit(lock, config, bundle, identity, process_start_ticks)
         adapter = deps.adapter(identity["origin"], secret=secret)
         guard(config, files)
         if single:

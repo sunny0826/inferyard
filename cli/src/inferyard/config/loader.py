@@ -28,6 +28,27 @@ PATH_FIELDS = (
 )
 
 
+def path_fields(config):
+    from inferyard.contracts.engine_profiles import is_local
+
+    if not is_local(config):
+        return PATH_FIELDS
+    return tuple(
+        (section, key)
+        for section, key in (
+            ("model", "local_path"),
+            ("model", "template_path"),
+            ("model", "assets_path"),
+            ("engine", "installation_path"),
+            ("engine", "working_directory"),
+            ("endpoint", "binding_path"),
+            ("bundle", "path"),
+            ("output", "root"),
+        )
+        if key in config[section]
+    )
+
+
 def read_document(path: Path) -> bytes:
     # Bound config/corpus reads; model files are not read in this module.
     with path.open("rb") as stream:
@@ -141,16 +162,16 @@ def load_config(path: str | Path) -> LoadedConfig:
 
         if os.name != "nt":
             # Offline plans may freeze Windows config on another platform.
-            path_fields = [
+            paths = [
                 (section, key)
-                for section, key in PATH_FIELDS
+                for section, key in path_fields(normalized)
                 if not PureWindowsPath(normalized[section][key]).is_absolute()
             ]
         else:
-            path_fields = PATH_FIELDS
+            paths = path_fields(normalized)
     else:
-        path_fields = PATH_FIELDS
-    for section, key in path_fields:
+        paths = path_fields(normalized)
+    for section, key in paths:
         value = Path(normalized[section][key])
         normalized[section][key] = str((source.parent / value).resolve())
     if "component_ledger_path" in normalized["model"] and normalized["engine"]["adapter"] not in (

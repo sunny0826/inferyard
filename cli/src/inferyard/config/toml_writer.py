@@ -34,6 +34,11 @@ def render(
     config, *, comment="Unbound candidate; bind an externally started service.", writer=table_lines
 ):
     lines = ["# " + comment, "schema_version = 3"]
+    lines.extend(
+        f"{toml_key(key)} = {toml_value(value)}"
+        for key, value in config.items()
+        if key != "schema_version" and not isinstance(value, dict)
+    )
     for section, values in config.items():
         if isinstance(values, dict):
             lines.extend(writer((section,), values))

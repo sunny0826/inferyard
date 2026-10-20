@@ -112,6 +112,17 @@ def read_run_projection(root):
     files = reads.manifest["files"] if reads.manifest is not None else {}
     require_current_sources(root, files)
     documents, limits, trial, workload = _inputs(root, reads, limits)
+    if documents["config"].get("definition") == "local-engine-config.v1":
+        from inferyard.evidence.ledger import read_trial
+
+        metadata = {}
+        data = read_trial(root, metadata=metadata)
+        return {
+            **data,
+            "identity": metadata["identity"],
+            "manifest_sealed": metadata["manifest"] is not None,
+            "service_drain": metadata.get("service_drain"),
+        }
     if reads.errors:
         raise next(iter(reads.errors.values()))
     run, selection = documents["run"], documents["selection"]

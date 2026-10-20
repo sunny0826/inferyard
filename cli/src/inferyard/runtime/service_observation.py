@@ -47,6 +47,10 @@ def clean_observed(lock, adapter, store, *, run_id=None, key=None, recovery=None
         and state.done
         and state.finish_reason in ("stop", "length")
         and not adapter.native_uncertain
+        and (
+            getattr(adapter, "local_profile", False) is False
+            or getattr(adapter, "queue_ready", False)
+        )
     ):
         # This receipt finishes only the owned, validated HTTP roundtrip.
         store.observe(

@@ -5,6 +5,7 @@ import time
 from datetime import UTC, datetime
 
 from inferyard import SCHEMA_VERSION
+from inferyard.contracts.engine_profiles import observes_before_idle
 from inferyard.contracts.validation import ContractError, validate_document
 from inferyard.evidence.observations import MULTI_STAGE, validate_query
 from inferyard.evidence.storage import EvidenceError, json_bytes
@@ -41,7 +42,7 @@ class RunRecords:
         except (ValueError, ContractError) as exc:
             raise EvidenceError("invalid_observation_record") from exc
         if kind == "service_properties":
-            expected = "pre_idle" if self._record_adapter in ("kvmem", "ninfer") else "post_idle"
+            expected = "pre_idle" if observes_before_idle(self._record_adapter) else "post_idle"
             if stage != expected:
                 raise EvidenceError("service_properties_stage_mismatch")
         slot = (kind, stage if kind in MULTI_STAGE else None, key)

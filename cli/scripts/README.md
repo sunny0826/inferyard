@@ -29,6 +29,10 @@
 `git apply --check --unidiff-zero`；准备与启动见
 [小模型接入指南](../docs/engine-fit-small-model.md#sglang-固定源码补丁)。
 
+正式 profile 另有 SGLang/vLLM worker 身份、SGLang run ID 和 OpenCV Darwin
+环境补丁；它们仅用于固定外部安装的独立副本，应用后必须重冻运行时。
+版本、应用顺序及环境声明见[正式安装准备](../docs/local-engine-native-preparation.md)。
+
 ## 软件成本对比
 
 [benchmark_cost.py](benchmark_cost.py) 使用公开夹具生成固定合成输入。它不启动服务或发送模型请求。

@@ -73,6 +73,48 @@ def _verify(request):
 
 
 def execute(request):
+    if request.installation is not None:
+        from inferyard.platforms.identity import PreflightError
+        from inferyard.platforms.local_engines import (
+            freeze_installation,
+            read_installation,
+            verify_installation,
+        )
+
+        installation = None
+        try:
+            installation = read_installation(request.installation)
+            snapshot = freeze_installation(installation)
+            verify_installation(snapshot)
+        except PreflightError as exc:
+            return 0, CommandResult(
+                request.command,
+                "checked",
+                "complete",
+                details={
+                    "definition": "local-engine-check.v1",
+                    "eligible": False,
+                    "reason": str(exc),
+                    "family": installation["family"] if installation else None,
+                    "verification_scope": "installation_runtime_closure_only",
+                    "model_requests_sent": 0,
+                    "ready_to_run": False,
+                },
+            )
+        return 0, CommandResult(
+            request.command,
+            "checked",
+            "complete",
+            details={
+                "definition": "local-engine-check.v1",
+                "eligible": True,
+                "reason": None,
+                "family": installation["family"],
+                "verification_scope": "installation_runtime_closure_only",
+                "model_requests_sent": 0,
+                "ready_to_run": False,
+            },
+        )
     try:
         details = _verify(request)
     except PreparationError as exc:
