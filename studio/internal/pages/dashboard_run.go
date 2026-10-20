@@ -13,7 +13,6 @@ import (
 
 func (w *viewState) candidateView(c *ui.Context) {
 	w.verifyTaskEngines()
-	heading(c, "benchmark", 3)
 	w.adoptDownloadedEngine()
 
 	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: "使用 CLI 推荐模型"}}

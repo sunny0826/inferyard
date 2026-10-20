@@ -112,6 +112,27 @@ func TestDashboardTrackHeadingLevel(t *testing.T) {
 	}
 }
 
+func TestDashboardBenchmarkHasOneHeading(t *testing.T) {
+	s := testState()
+	s.progress = &inferyard.WorkspaceProgress{NextAction: "prepare_candidate"}
+	tt := ui.NewTester(s.view, 1120, 2400)
+	headings := 0
+	designNodes(tt, func(n reflect.Value, _ bool) {
+		if n.FieldByName("role").Uint() == uint64(ui.RoleHeading) &&
+			n.FieldByName("text").String() == "benchmark" {
+			headings++
+		}
+	})
+	if headings != 1 {
+		t.Fatalf("benchmark heading count %d, want 1", headings)
+	}
+	for _, label := range []string{"候选引擎", "测评模型", "运行 benchmark"} {
+		if _, ok := tt.Find(label); !ok {
+			t.Fatalf("missing benchmark control %q", label)
+		}
+	}
+}
+
 func TestActivityStatusToolbar(t *testing.T) {
 	s := testState()
 	for _, state := range []struct{ busy, refreshing bool }{{false, false}, {true, false}, {false, true}, {true, true}} {
