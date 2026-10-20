@@ -32,6 +32,7 @@ func TestChromeRefreshShortcutRemoved(t *testing.T) {
 		s.selected = page
 		if page == "dashboard" {
 			s.task.stage = "prepare_candidate"
+			s.registry = modelRegistryFixture()
 		}
 		tt.Frame()
 		if page == "settings" {
@@ -91,6 +92,7 @@ func TestChromeLayoutAcrossPages(t *testing.T) {
 			s.selected = page
 			if page == "dashboard" {
 				s.task.stage = "prepare_candidate"
+				s.registry = modelRegistryFixture()
 			}
 			labels := map[string][]string{
 				"settings":  {"保存"},

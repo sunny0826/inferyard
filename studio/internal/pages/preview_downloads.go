@@ -93,9 +93,7 @@ func (p *previewSession) installDownloadedAsset(task *core.DownloadTask) {
 		name := task.OutName + " · " + emptyText(task.FileName)
 		task.Result = &core.DownloadResult{Bytes: task.DownloadedBytes, Sha256: strings.Repeat("0", 64)}
 		s.registry.Models = append(s.registry.Models, core.ModelAsset{Name: name, Available: true, SizeBytes: previewValue(task.DownloadedBytes)})
-		if s.model == "" {
-			s.model = name
-		}
+		s.adoptOnlyModel()
 	}
 }
 

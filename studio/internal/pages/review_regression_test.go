@@ -134,6 +134,7 @@ func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 
 func TestQuickRunManualRecoveryWithoutProgress(t *testing.T) {
 	s := testState()
+	s.registry = modelRegistryFixture()
 	s.progress = nil
 	tt := ui.NewTester(s.dashboardView, 1120, 1600)
 	if tt.HasText("启动测评") || !tt.HasText("无法读取工作区进度，请刷新重试") {

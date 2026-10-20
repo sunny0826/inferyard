@@ -69,6 +69,7 @@ func TestFirstOpen(t *testing.T) {
 
 func TestSidebarDashboardEntry(t *testing.T) {
 	s := testState()
+	s.registry = modelRegistryFixture()
 	tt := ui.NewTester(s.view, 1120, 2400)
 	click(t, tt, "设置")
 	if s.selected != "settings" || !tt.HasText("路径设置") {
@@ -93,6 +94,10 @@ func TestSidebarDashboardEntry(t *testing.T) {
 func TestExplicitSingleBundleConfirmation(t *testing.T) {
 	s := testState()
 	tt := ui.NewTester(s.candidateView, 1120, 1400)
+	if got := s.checkedBundles(); len(got) != 2 {
+		t.Fatal(got)
+	}
+	click(t, tt, "zh-svg-pelican")
 	if got := s.checkedBundles(); len(got) != 1 || got[0] != "zh-core" {
 		t.Fatal(got)
 	}
@@ -111,7 +116,6 @@ func TestBoundBundleSelectsAndDuplicateGuard(t *testing.T) {
 	if tt.HasText("zh-smoke") {
 		t.Fatal(tt.Texts())
 	}
-	click(t, tt, "zh-svg-pelican")
 	if len(s.checkedBundles()) != 2 {
 		t.Fatal(s.checkedBundles())
 	}

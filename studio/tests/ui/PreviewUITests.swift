@@ -42,7 +42,6 @@ final class PreviewUITests: XCTestCase {
         let downloadedModel = "model · SmolLM2-135M-Instruct-Q4_K_M.gguf"
         text(downloadedModel).click()
         click("用这个组合新开任务")
-        app.checkBoxes["zh-svg-pelican"].click()
         click("运行 benchmark")
         XCTAssertTrue(app.buttons["查看实时详情"].waitForExistence(timeout: 10))
         XCTAssertFalse(text("Dashboard").exists)
@@ -79,7 +78,6 @@ final class PreviewUITests: XCTestCase {
 
     func testCancellationAllowsAnotherTask() {
         prepare()
-        app.checkBoxes["zh-svg-pelican"].click()
         click("运行 benchmark")
         click("查看实时详情", timeout: 10)
         click("取消任务")
@@ -190,6 +188,37 @@ final class PreviewUITests: XCTestCase {
         openMenu("测评类型")
         app.menuItems["长上下文速度"].click()
         expectText("zh-context-speed · 5 次测量 · 每次输出 256 tokens")
+    }
+
+    func testFirstUseWithoutLocalAssets() {
+        let window = app.windows["InferYard Studio · UI 调试"]
+        let origin = window.frame.origin
+        let titlebar = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
+        titlebar.press(forDuration: 0.2, thenDragTo: titlebar.withOffset(CGVector(dx: 80 - origin.x, dy: 80 - origin.y)))
+        app.popUpButtons["模拟场景"].click()
+        text("首次使用 · 无资源").click()
+        click("准备环境")
+        expectText("准备模型与引擎")
+        XCTAssertFalse(text("工作区进度").exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "尚未识别的原因码")).firstMatch.exists)
+        keepScreenshot("First use with no local assets")
+        click("到下载页")
+        click("下载引擎")
+        click("下载模型")
+        click("返回任务")
+        wait("downloaded resources unlock benchmark", timeout: 15) {
+            self.app.buttons["运行 benchmark"].exists && self.app.buttons["运行 benchmark"].isEnabled
+        }
+        XCTAssertEqual(String(describing: app.checkBoxes["zh-core"].value ?? ""), "1")
+        XCTAssertEqual(String(describing: app.checkBoxes["zh-svg-pelican"].value ?? ""), "1")
+        keepScreenshot("First use ready to benchmark")
+        click("运行 benchmark")
+        expectText("zh-core · 运行中")
+        expectText("zh-svg-pelican · 排队中")
+        XCTAssertFalse(text("单次运行不支持断点续跑；请重新运行该配置。").exists)
+        keepScreenshot("Active benchmark without recovery warning")
+        click("查看报告", timeout: 25)
+        expectText("各类任务表现")
     }
 
     private func keepScreenshot(_ name: String) {

@@ -37,6 +37,8 @@ func human(code string) string {
 		return "当前平台不支持此候选流程，请检查平台支持范围。"
 	case "device_preflight_blocked":
 		return "设备检查未给出可运行推荐，请检查设备报告后重试。"
+	case "no_local_model":
+		return "还没有可用的本地模型，请到下载页获取模型，或在设置中指定已有模型目录。"
 	case "blocked", "preflight_missing":
 		return "设备检查尚未通过，请检查准备条件后重试。"
 	case "incomplete", "run_incomplete":

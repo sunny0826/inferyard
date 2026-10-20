@@ -52,7 +52,6 @@ func TestPreviewCompleteWorkflowWithoutSceneSelector(t *testing.T) {
 	click(t, tt, "Preview-Model-Q4.gguf")
 	click(t, tt, "Preview-Small.gguf")
 	click(t, tt, "用这个组合新开任务")
-	click(t, tt, "zh-svg-pelican")
 	click(t, tt, "运行 benchmark")
 	p.advance(400 * time.Millisecond)
 	tt.Frame()

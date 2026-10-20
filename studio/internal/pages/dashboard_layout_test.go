@@ -114,6 +114,7 @@ func TestDashboardTrackHeadingLevel(t *testing.T) {
 
 func TestDashboardBenchmarkHasOneHeading(t *testing.T) {
 	s := testState()
+	s.registry = modelRegistryFixture()
 	s.progress = &inferyard.WorkspaceProgress{NextAction: "prepare_candidate"}
 	tt := ui.NewTester(s.view, 1120, 2400)
 	headings := 0
@@ -138,7 +139,7 @@ func TestActivityStatusToolbar(t *testing.T) {
 	for _, state := range []struct{ busy, refreshing bool }{{false, false}, {true, false}, {false, true}, {true, true}} {
 		s.busy, s.refreshing = state.busy, state.refreshing
 		tt := ui.NewTester(s.cornerStatus, 800, 600)
-		if tt.HasText("执行中") != (state.busy || state.refreshing) || tt.HasText("执行中…") || tt.HasText("正在刷新…") {
+		if tt.HasText("执行中") != state.busy || tt.HasText("执行中…") || tt.HasText("正在刷新…") {
 			t.Fatalf("state %+v texts=%v", state, tt.Texts())
 		}
 		if !state.busy && !state.refreshing && !tt.HasText("引擎 已停止 · 队列 空") {

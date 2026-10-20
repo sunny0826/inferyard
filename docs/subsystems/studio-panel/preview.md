@@ -27,6 +27,8 @@
 使用 `State=starting, Queued=true`。取消同时结束运行项与等待项，未启动项没有运行路径或历史证据。
 全部题包完成后生成独立报告快照；已打开的详情随进度刷新。
 下载完成更新模型/引擎清单，重试分配新任务和目录名；设置只更新本次会话。
+「首次使用 · 无资源」从未配置环境和空资源清单开始，共用正式资源引导与设备检查准入；
+`preview_first_use_test.go` 通过页面按钮完成准备、双资源下载、返回任务、双题包运行和报告。
 
 [`preview_schedule.go`](../../../studio/internal/pages/preview_schedule.go) 按到期时间、同时间插入顺序
 推进事件。原生窗口的 ticker 只经 `win.Update` 修改状态；关闭窗口取消上下文，场景重置清空
@@ -62,7 +64,9 @@
 [`preview_parity_test.go`](../../../studio/internal/pages/preview_parity_test.go) 对正常编排与模拟器运行同一组
 场景，并将双方各自与明确预期比较：core 单题包、pelican 单题包、双题包、启动失败后手动重试、
 绑定中取消、运行中同时取消活动项和等待项。观察包括阶段标题、键盘可达按钮、错误码、串行队列
-状态和报告包含的题包，报告不得混入已有的无关运行。检查不比较随机路径、PID、耗时或模拟分数。
+状态、活动题包显示和报告包含的题包，报告不得混入已有的无关运行。
+双方的活动 run fixture 均包含 CLI 会产生的 `single_run_resume_not_supported` 离线原因，
+显示仍须满足独立预期的「运行中／排队中」，不能泄漏恢复告警。检查不比较随机路径、PID、耗时或模拟分数。
 
 正常侧调用实际 `runBenchmarkFlow` / `cancelBenchmarkRuns`，在 `benchmarkBackend` 边界注入
 受控服务响应；模拟侧调用页面动作与内存调度器。起点是候选已准备好，取消比较终态与无报告，

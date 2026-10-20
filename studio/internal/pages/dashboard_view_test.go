@@ -120,6 +120,7 @@ func TestDashboardViews(t *testing.T) {
 }
 func TestSecondBundleAndIncompleteRun(t *testing.T) {
 	w := viewState{selected: "dashboard", loaded: true, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Initialized: true}, Results: core.DirectoryReadiness{Exists: true}, Models: core.DirectoryReadiness{Exists: true}}, progress: &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete"}, {Bundle: "zh-svg-pelican", Phase: "candidate_missing"}}}}
+	w.registry = modelRegistryFixture()
 	tt := ui.NewTester(w.view, 1000, 740)
 	if w.active().Bundle != "zh-svg-pelican" || !tt.HasText("zh-core · 已封存") || !tt.HasText("zh-svg-pelican") {
 		t.Fatal(tt.Texts())

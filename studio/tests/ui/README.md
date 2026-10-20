@@ -38,6 +38,12 @@ with the app still running attaches its accessibility tree to the Xcode result, 
 screenshot when the preview window exists. Screenshots capture only that window.
 Build and launch failures remain in the log and result bundle.
 
+The first-use scenario starts with no model or engine, acquires both through the
+download controls, returns to the task, and runs both default bundles to a report.
+It checks the resource guide and live queue labels, and retains screenshots before
+resource acquisition, before execution, and during execution. Its owned test window
+is moved to the main display before capture.
+
 This is native UI coverage with a simulated backend. The existing fast `ui.NewTester`
 regressions remain under `internal/pages`; real CLI/fake-engine boundary tests remain
 under [`../e2e`](../e2e/README.md). None establishes real model qualification or

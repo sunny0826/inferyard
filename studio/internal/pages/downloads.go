@@ -22,9 +22,19 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 		}
 	}
 	s.header(c, "下载")
+	s.downloadTaskGuide(c)
+	if s.preparingTask() {
+		s.newDownloadsView(c)
+	}
 	if len(s.downloads) > 0 {
 		card(c, "下载任务", func() { s.downloadsView(c) })
 	}
+	if !s.preparingTask() {
+		s.newDownloadsView(c)
+	}
+}
+
+func (s *viewState) newDownloadsView(c *ui.Context) {
 	card(c, "新建下载任务", func() {
 		s.engineDownloadView(c)
 		s.modelAssetsView(c)

@@ -21,12 +21,7 @@ var previewScenes = []struct {
 	label string
 	apply func(*viewState)
 }{
-	{"任务 · 准备", func(s *viewState) {
-		s.progress = nil
-		s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
-		s.ready.CLI.Status = "not_found"
-		s.ready.Workspace.Initialized, s.ready.Results.Exists, s.ready.Models.Exists = false, false, false
-	}},
+	{"任务 · 准备", previewPreparation},
 	{"任务 · 运行中", previewRunning},
 	{"任务 · 已完成", previewCompleted},
 	{"任务 · 失败", func(s *viewState) {
@@ -44,6 +39,19 @@ var previewScenes = []struct {
 	{"设备 · 含缺测", func(s *viewState) { s.selected = "device" }},
 	{"设置 · 路径与目录名", func(s *viewState) { s.selected = "settings" }},
 	{"专项 · 历史恢复示例", previewSpeedHistory},
+	{"首次使用 · 无资源", func(s *viewState) {
+		previewPreparation(s)
+		s.registry = core.Registry{}
+		s.model, s.engine = "", ""
+		s.checks = core.EngineCheckOverview{Supported: true}
+	}},
+}
+
+func previewPreparation(s *viewState) {
+	s.progress = nil
+	s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
+	s.ready.CLI.Status = "not_found"
+	s.ready.Workspace.Initialized, s.ready.Results.Exists, s.ready.Models.Exists = false, false, false
 }
 
 func previewValue[T any](value T) *T { return &value }
@@ -94,6 +102,7 @@ func previewRunning(s *viewState) {
 	s.task.stage = "run"
 	s.progress.NextAction = "run"
 	s.progress.Bundles[0].Phase, s.progress.Bundles[0].NextAction = "run_incomplete", "run"
+	s.progress.Bundles[0].BlockedReason = previewValue("single_run_resume_not_supported")
 	s.engineState = core.EngineState{State: "running", Pid: 42, Endpoint: "http://127.0.0.1:48857", Candidate: "/preview/candidate"}
 	s.tasks = []core.RunTask{{TaskId: "preview-run", State: "running", Bundle: previewValue("zh-core"), RunPath: previewValue("/preview/results/preview-run")}}
 	s.runProgress = &core.RunProgress{Done: 42, Total: previewValue(int64(120)), CurrentCaseId: previewValue("preview-case-043")}

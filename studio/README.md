@@ -28,8 +28,8 @@ selected while the task page is open. The six page bodies are:
 The task page keeps the active task's selected bundles and new run paths in memory. New task
 cancels binding and all non-terminal runs, waits for them to finish, and returns to the
 shared engine/model selection without cancelling downloads or deleting evidence. The form
-lists only workspace bundles and checks `zh-core` when present. An unchecked bundle does
-not block the task. The old quick-run form, queue card, and run history card are removed from the task page.
+lists only workspace bundles and checks both `zh-core` and `zh-svg-pelican` when present.
+Unchecking a bundle explicitly narrows the scope; unchecked bundles do not block the task.
 Reports starts with task history, followed by the report list. Creating another report from
 1–100 historical runs is available in a collapsed section. Verification appears only when
 workspace `next_action` is `verify`; a `verified` report shows its verified status instead.
@@ -37,15 +37,24 @@ Without an active task, the page restores workspace progress from `progress.v1`.
 
 Prepare environment rechecks readiness after installing the CLI, provisioning missing
 model/results directories, and initializing a new workspace. Existing initialized workspaces
-skip `init`; new workspaces omit `--bundle`. The first workspace device check runs once
-with `--models-root` and no `--model`. A later model-specific check still supplies `--model`.
+skip `init`; new workspaces omit `--bundle`. Missing models or engines lead to a resource
+guide with Downloads and Settings actions; other blockers remain visible.
+During preparation, Downloads places resource forms first and offers Return to task.
+Once resources exist, the first workspace device check runs once with `--models-root`
+and no `--model`. A sole available model is selected automatically; multiple models
+require a choice. Engines still require verification. Once a model appears, the old
+`no_local_model` warning clears; candidate preparation rechecks the model with `--model`.
 The task generates `report --runs` for its own sealed runs with verification disabled, displays
 only a “查看报告” button that opens that exact report, and leaves verification on Reports.
 Duration and unfinished batch plans display their blocking reason without an execution button.
 
 A fixed top-right status row shows engine and queue state; its idle text is
-“引擎 已停止 · 队列 空”. Active runs and non-stopped engine states stay visible during
-background refresh and busy operations. Otherwise, refresh and operations show “执行中”.
+“引擎 已停止 · 队列 空”. Background refresh never changes this text.
+Active runs and non-stopped engine states
+stay visible during operations. Active downloads add a stable “下载中 N 项” count; only
+foreground operations without these active states show “执行中”.
+Each active bundle shows its live queue state instead of offline resume guidance.
+Recovery reasons remain visible for inactive, interrupted bundles.
 During a run, the model-service card collapses into this row, including between bundles
 in an active task. Once execution ends, service recovery controls remain available in
 the run/resume stage. Stop is available for a starting or running engine

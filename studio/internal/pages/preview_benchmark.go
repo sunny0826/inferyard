@@ -97,6 +97,7 @@ func (p *previewSession) startRun(bundleIndex int, op previewBenchmark, ids []st
 		b := &s.progress.Bundles[i]
 		if b.Bundle == bundle {
 			b.Phase, b.NextAction = "run_incomplete", "run"
+			b.BlockedReason = previewValue("single_run_resume_not_supported")
 			b.BoundPath = previewValue(filepath.Join(s.workspace, "bound", id))
 		}
 	}
@@ -128,6 +129,7 @@ func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark
 			b := &s.progress.Bundles[i]
 			if b.Bundle == emptyText(detail.Task.Bundle) {
 				b.Phase, b.NextAction = "run_complete", "none"
+				b.BlockedReason = nil
 			}
 		}
 		p.startRun(bundleIndex+1, op, ids)

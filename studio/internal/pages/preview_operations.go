@@ -172,7 +172,7 @@ func (p *previewSession) prepareEnvironment() {
 
 func (p *previewSession) checkDevice() {
 	s := p.state
-	if s.busy || s.progress == nil || s.progress.DevicePreflight.Status != "missing" {
+	if s.busy || s.progress == nil || s.progress.DevicePreflight.Status != "missing" || s.needsTaskAssets() {
 		return
 	}
 	fail := p.takeFailure()
