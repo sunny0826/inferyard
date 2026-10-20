@@ -32,6 +32,7 @@ func TestChromeRefreshShortcutRemoved(t *testing.T) {
 		s.selected = page
 		if page == "dashboard" {
 			s.task.stage = "prepare_candidate"
+			s.registry = modelRegistryFixture()
 		}
 		tt.Frame()
 		if page == "settings" {
@@ -91,6 +92,7 @@ func TestChromeLayoutAcrossPages(t *testing.T) {
 			s.selected = page
 			if page == "dashboard" {
 				s.task.stage = "prepare_candidate"
+				s.registry = modelRegistryFixture()
 			}
 			labels := map[string][]string{
 				"settings":  {"保存"},
@@ -121,12 +123,12 @@ func TestChromeLayoutAcrossPages(t *testing.T) {
 			tt.SetSize(1120, 800)
 			s.busy = true
 			tt.Frame()
-			before, ok := tt.Find("执行中")
+			before, ok := tt.Find("任务 · 准备中")
 			if !ok {
 				t.Fatal("missing busy status")
 			}
 			tt.Scroll(700, 500, 0, 600)
-			after, ok := tt.Find("执行中")
+			after, ok := tt.Find("任务 · 准备中")
 			if !ok || before != after {
 				t.Fatal("toolbar scrolled with content")
 			}

@@ -35,7 +35,7 @@ func previewSceneIndex(t *testing.T, label string) int {
 }
 
 func TestPreviewScenesAndNavigation(t *testing.T) {
-	wants := []string{"准备环境", "42 / 120 题", "查看报告", "模型服务", "题目进度表", "历史任务", "各类任务表现", "preview-case-039", "重新读取报告", "暂无运行记录。", "选择模型与引擎", "下载失败", "Preview CPU", "路径设置", "专项历史任务"}
+	wants := []string{"准备环境", "42 / 120 题", "查看报告", "模型服务", "题目进度表", "历史任务", "各类任务表现", "preview-case-039", "重新读取报告", "暂无运行记录。", "选择模型与引擎", "下载失败", "Preview CPU", "路径设置", "专项历史任务", "准备环境", "采样记录：316 · 每个来源保留最近 600 点", "传感器温度 °C来源"}
 	for i, scene := range previewScenes {
 		t.Run(scene.label, func(t *testing.T) {
 			p := newPreviewSession(context.Background())
@@ -154,7 +154,8 @@ func TestPreviewRunAndStopActions(t *testing.T) {
 	}
 	p.advance(20 * time.Second)
 	tt.Frame()
-	click(t, tt, "停止")
+	click(t, tt, "引擎 · 运行中")
+	click(t, tt, "停止引擎")
 	if s.engineState.State != "stopping" {
 		t.Fatal("stop action did not transition")
 	}

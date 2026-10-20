@@ -5,6 +5,7 @@ on:
     paths:
       - "cli/src/inferyard/**"
       - "cli/tests/packaging/ci_model_e2e.py"
+      - "cli/tests/packaging/workspace_layout.py"
       - ".github/workflows/model-e2e.yml"
       - "cli/configs/**"
 permissions:

@@ -14,8 +14,9 @@ import (
 func (w *viewState) candidateView(c *ui.Context) {
 	w.verifyTaskEngines()
 	w.adoptDownloadedEngine()
+	w.adoptOnlyModel()
 
-	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: "使用 CLI 推荐模型"}}
+	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: "请选择模型"}}
 	for _, m := range w.registry.Models {
 		if m.Available {
 			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: m.Name})
@@ -105,8 +106,10 @@ func (w *viewState) candidateView(c *ui.Context) {
 		createDisabled = true
 	}
 	if w.model == "" {
-		ui.Text(c, "SmolLM2-135M-Instruct-Q4_K_M")
-		button(c, "下载模型").OnClick(func() { w.selected = "downloads" })
+		ui.Text(c, "请选择本次测评使用的模型。")
+		if len(modelOptions) == 1 {
+			button(c, "下载模型").OnClick(func() { w.selected = "downloads" })
+		}
 	}
 	if w.engineState.State == "orphaned" {
 		w.stopOrphanButton(c)
@@ -283,7 +286,7 @@ func nativeOptions(values []string) []components.NativeSelectOption[string] {
 
 func configuredModel(name string) string {
 	if name == "" {
-		return "使用 CLI 推荐模型"
+		return "尚未选择"
 	}
 	return name
 }

@@ -99,11 +99,14 @@ func previewReportMetrics(run *core.ReportRun, detail *core.RunTaskDetail) {
 	d.SampledPeakRSSBytes, d.SampledMinimumAvailableBytes = nil, nil
 	d.SampledPeakRSSReason, d.MinimumAvailableReason = previewValue("no_samples"), previewValue("no_samples")
 	for _, sample := range detail.Resources {
-		if v := sample.ServiceRssBytes; v != nil && (d.SampledPeakRSSBytes == nil || float64(*v) > *d.SampledPeakRSSBytes) {
-			d.SampledPeakRSSBytes, d.SampledPeakRSSReason = previewValue(float64(*v)), nil
+		if sample.MissingReason != nil || sample.Source.Unit != "bytes" {
+			continue
 		}
-		if v := sample.MemAvailableBytes; v != nil && (d.SampledMinimumAvailableBytes == nil || float64(*v) < *d.SampledMinimumAvailableBytes) {
-			d.SampledMinimumAvailableBytes, d.MinimumAvailableReason = previewValue(float64(*v)), nil
+		if v := sample.Value; sample.Source.Metric == "service_rss" && v != nil && (d.SampledPeakRSSBytes == nil || *v > *d.SampledPeakRSSBytes) {
+			d.SampledPeakRSSBytes, d.SampledPeakRSSReason = previewValue(*v), nil
+		}
+		if v := sample.Value; sample.Source.Metric == "system_mem_available" && v != nil && (d.SampledMinimumAvailableBytes == nil || *v < *d.SampledMinimumAvailableBytes) {
+			d.SampledMinimumAvailableBytes, d.MinimumAvailableReason = previewValue(*v), nil
 		}
 	}
 }

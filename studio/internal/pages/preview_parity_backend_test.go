@@ -170,6 +170,13 @@ func (b *parityBackend) StartRuns(request core.StartRunsRequest) ([]core.RunTask
 		tasks = append(tasks, core.RunTask{TaskId: bundle, Kind: "run", State: state, Queued: i > 0, Bundle: ptr(bundle), RunPath: ptr(filepath.Join(b.state.results, bundle))})
 	}
 	b.state.tasks = append(b.state.tasks, tasks...)
+	for i := range b.state.progress.Bundles {
+		bundle := &b.state.progress.Bundles[i]
+		if slices.Contains(b.state.task.bundles, bundle.Bundle) {
+			bundle.Phase = "run_incomplete"
+			bundle.BlockedReason = ptr("single_run_resume_not_supported")
+		}
+	}
 	return tasks, nil
 }
 
@@ -191,6 +198,7 @@ func (b *parityBackend) RunTasks() []core.RunTask {
 			bundle := &b.state.progress.Bundles[j]
 			if bundle.Bundle == emptyText(task.Bundle) {
 				bundle.Runs = []inferyard.ProgressRun{{Path: *task.RunPath, Sealed: true}}
+				bundle.Phase, bundle.BlockedReason = "run_complete", nil
 			}
 		}
 	}

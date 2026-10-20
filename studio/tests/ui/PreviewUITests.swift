@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 @MainActor
@@ -10,6 +11,7 @@ final class PreviewUITests: XCTestCase {
         app.launchArguments = ["--debug-ui"]
         app.launch()
         XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].waitForExistence(timeout: 10))
+        positionWindowForCapture()
         expectText("全部为模拟数据；操作仅改变本窗口，不运行模型或写入文件。")
     }
 
@@ -42,7 +44,6 @@ final class PreviewUITests: XCTestCase {
         let downloadedModel = "model · SmolLM2-135M-Instruct-Q4_K_M.gguf"
         text(downloadedModel).click()
         click("用这个组合新开任务")
-        app.checkBoxes["zh-svg-pelican"].click()
         click("运行 benchmark")
         XCTAssertTrue(app.buttons["查看实时详情"].waitForExistence(timeout: 10))
         XCTAssertFalse(text("Dashboard").exists)
@@ -79,7 +80,6 @@ final class PreviewUITests: XCTestCase {
 
     func testCancellationAllowsAnotherTask() {
         prepare()
-        app.checkBoxes["zh-svg-pelican"].click()
         click("运行 benchmark")
         click("查看实时详情", timeout: 10)
         click("取消任务")
@@ -190,6 +190,137 @@ final class PreviewUITests: XCTestCase {
         openMenu("测评类型")
         app.menuItems["长上下文速度"].click()
         expectText("zh-context-speed · 5 次测量 · 每次输出 256 tokens")
+    }
+
+    func testFirstUseWithoutLocalAssets() {
+        app.popUpButtons["模拟场景"].click()
+        text("首次使用 · 无资源").click()
+        click("准备环境")
+        expectText("准备模型与引擎")
+        XCTAssertFalse(text("工作区进度").exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "尚未识别的原因码")).firstMatch.exists)
+        keepScreenshot("First use with no local assets")
+        click("到下载页")
+        click("下载引擎")
+        click("下载模型")
+        click("返回任务")
+        wait("downloaded resources unlock benchmark", timeout: 15) {
+            self.app.buttons["运行 benchmark"].exists && self.app.buttons["运行 benchmark"].isEnabled
+        }
+        XCTAssertEqual(String(describing: app.checkBoxes["zh-core"].value ?? ""), "1")
+        XCTAssertEqual(String(describing: app.checkBoxes["zh-svg-pelican"].value ?? ""), "1")
+        revealInContent(app.buttons["运行 benchmark"])
+        keepScreenshot("First use ready to benchmark")
+        click("运行 benchmark")
+        expectText("zh-core · 运行中")
+        expectText("zh-svg-pelican · 排队中")
+        XCTAssertFalse(text("单次运行不支持断点续跑；请重新运行该配置。").exists)
+        keepScreenshot("Active benchmark without recovery warning")
+        click("查看报告", timeout: 25)
+        expectText("各类任务表现")
+    }
+
+    func testResourceChartWithMissingMetrics() {
+        app.popUpButtons["模拟场景"].click()
+        text("资源 · 密集采样与缺测").click()
+        expectText("采样记录：316 · 每个来源保留最近 600 点")
+        expectText("服务 CPU % · 此运行未记录该指标")
+        expectText("传感器温度 °C · 此运行未记录该指标")
+        let chart = text("可用内存 GiB曲线")
+        revealInContent(chart)
+        XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].frame.contains(chart.frame), "The full resource chart must be visible")
+        keepScreenshot("Dense memory samples without empty CPU and temperature plots")
+    }
+
+    func testCPUAndTemperatureSources() {
+        app.popUpButtons["模拟场景"].click()
+        text("资源 · CPU 与多路温度").click()
+        expectText("采样记录：160 · 每个来源保留最近 600 点")
+        expectText("服务 CPU %曲线")
+        expectText("传感器温度 °C曲线")
+        let source = app.popUpButtons["传感器温度 °C来源"]
+        revealInContent(source)
+        XCTAssertTrue(source.isHittable)
+        keepScreenshot("CPU curve and first temperature sensor")
+        source.click()
+        text("AppleSMC:Tp0C").click()
+        expectText("AppleSMC:Tp0C")
+        let chart = text("传感器温度 °C曲线")
+        revealInContent(chart)
+        XCTAssertTrue(chart.isHittable)
+        XCTAssertTrue(app.tables["资源采样数值表"].staticTexts.matching(NSPredicate(format: "value == %@", "AppleSMC:Tp0C")).firstMatch.exists)
+        keepScreenshot("Selected temperature source with its own measurements")
+    }
+
+    func testEngineStatusPanel() {
+        app.popUpButtons["模拟场景"].click()
+        text("任务 · 失败").click()
+        let engine = app.buttons["引擎 · 失败"]
+        XCTAssertTrue(engine.waitForExistence(timeout: 5))
+        engine.hover()
+        XCTAssertTrue(app.buttons["开启引擎"].waitForExistence(timeout: 5))
+        keepScreenshot("Engine hover panel before startup")
+        app.windows["InferYard Studio · UI 调试"].hover()
+        wait("hover panel closes after pointer leaves", timeout: 5) { !self.app.buttons["开启引擎"].exists }
+        engine.click()
+        XCTAssertTrue(app.buttons["开启引擎"].waitForExistence(timeout: 5))
+        keepScreenshot("Engine panel opened by clicking status icon")
+        click("开启引擎")
+        let running = app.buttons["引擎 · 运行中"]
+        XCTAssertTrue(running.waitForExistence(timeout: 5))
+        running.hover()
+        XCTAssertTrue(app.buttons["停止引擎"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["查看实时详情"].exists, "Engine startup must not start a benchmark")
+        keepScreenshot("Engine running icon and hover controls")
+        click("停止引擎")
+        XCTAssertTrue(app.buttons["引擎 · 已停止"].waitForExistence(timeout: 5))
+    }
+
+    func testRunningStatusPanels() {
+        prepare()
+        click("运行 benchmark")
+        let engine = app.buttons["引擎 · 运行中"]
+        XCTAssertTrue(engine.waitForExistence(timeout: 10))
+        engine.hover()
+        let stop = app.buttons["停止引擎"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 3))
+        XCTAssertFalse(stop.isEnabled, "Running tasks must protect the engine")
+        keepScreenshot("Engine panel remains available during benchmark")
+        let queue = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "任务 · 执行 1 · 等待 ")).firstMatch
+        XCTAssertTrue(queue.exists)
+        queue.click()
+        expectText("任务队列", timeout: 3)
+        keepScreenshot("Task icon opens live queue panel")
+    }
+
+    private func positionWindowForCapture() {
+        let window = app.windows["InferYard Studio · UI 调试"]
+        let screen = NSScreen.screens[0]
+        let visible = screen.visibleFrame
+        let desktop = CGRect(x: visible.minX, y: screen.frame.maxY - visible.maxY, width: visible.width, height: visible.height)
+        let size = CGSize(width: min(1024, desktop.width), height: min(681, desktop.height))
+        let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1)).withOffset(CGVector(dx: -2, dy: -2))
+        if window.frame.width > size.width || window.frame.height > size.height {
+            corner.press(forDuration: 0.2, thenDragTo: corner.withOffset(CGVector(dx: size.width - window.frame.width, dy: size.height - window.frame.height)))
+        }
+        let origin = window.frame.origin
+        let titlebar = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
+        let x = desktop.minX + max(0, (desktop.width - window.frame.width) / 2)
+        let y = desktop.minY + max(0, (desktop.height - window.frame.height) / 2)
+        titlebar.press(forDuration: 0.2, thenDragTo: titlebar.withOffset(CGVector(dx: x - origin.x, dy: y - origin.y)))
+        XCTAssertTrue(desktop.insetBy(dx: -1, dy: -1).contains(window.frame), "The test window must fit above the Dock and inside the display")
+    }
+
+    private func revealInContent(_ element: XCUIElement) {
+        let content = app.scrollViews.element(boundBy: 1)
+        for _ in 0..<5 {
+            let viewport = content.frame.insetBy(dx: 0, dy: 32)
+            let frame = element.frame
+            if viewport.contains(frame) { return }
+            let delta = frame.maxY > viewport.maxY ? viewport.maxY - frame.maxY : viewport.minY - frame.minY
+            content.scroll(byDeltaX: 0, deltaY: delta)
+        }
+        XCTAssertTrue(content.frame.contains(element.frame), "The complete control must be visible after scrolling")
     }
 
     private func keepScreenshot(_ name: String) {

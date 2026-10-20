@@ -387,7 +387,7 @@ func (s *viewState) prepareEnvironment() {
 	})
 }
 func (s *viewState) checkWorkspaceDevice() {
-	if s.progress == nil || s.progress.DevicePreflight.Status != "missing" || s.busy || s.ready.CLI.Status != "ok" {
+	if s.progress == nil || s.progress.DevicePreflight.Status != "missing" || s.busy || s.ready.CLI.Status != "ok" || s.needsTaskAssets() {
 		return
 	}
 	if s.simulate(previewCheckDevice) || s.service == nil {
@@ -401,6 +401,9 @@ func (s *viewState) checkWorkspaceDevice() {
 		r, e := s.service.WizardExecute(s.ctx, request)
 		if e != nil {
 			return "", e
+		}
+		if missingModelResult(r) {
+			return "请先准备本地模型，再继续测评。", nil
 		}
 		if r.ExitCode != 0 {
 			return "", wizardFailure(r)

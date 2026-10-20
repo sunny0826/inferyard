@@ -11,13 +11,13 @@
 2. **页面刷新**：主窗口的六页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
    取增量事件，六类事件触发全量刷新（`sync.reset`/`report.created`/`run.state`/`engine.state`/
    `download.state`/`device.updated`，见 [`studio/internal/pages/registry_refresh.go`](../../../studio/internal/pages/registry_refresh.go)），其余做局部更新。
-3. **任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。新任务复用模型/引擎选择，默认勾选存在的 zh-core，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`，`ReportVerify=false`，完成区域仅显示「查看报告」，直接打开本次输出目录对应的报告；不展示路径、生成成功文字或已核验状态，核验留在报告页。没有活动任务时从 `progress.v1` 恢复。所有命令仍经 `WizardExecute` 原白名单和身份检查。
+3. **任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次使用先根据资源清单引导准备模型与引擎，资源齐备后 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。只有退出 2 且唯一原因为 `no_local_model` 的检查结果视为资源准备提示，其他阻断保留错误。新任务复用模型/引擎选择，默认勾选存在的 zh-core 与 zh-svg-pelican，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`，`ReportVerify=false`，完成区域仅显示「查看报告」，直接打开本次输出目录对应的报告；不展示路径、生成成功文字或已核验状态，核验留在报告页。没有活动任务时从 `progress.v1` 恢复。所有命令仍经 `WizardExecute` 原白名单和身份检查。
 4. **运行**：`StartRuns` 逐配置读取 bundle 与输出根并做包含/去重准入 → 入队由 `runQueue` 串行执行。
    新任务重置等待 UI 线程确认完成后退出取消循环；`Window.Update` 只负责排队，不能视为
    回调已经执行。等待期间不能启动专项，重置结束后不再取消后续新任务。
    `executeRun` 派生 `inferyard run --config`（取消为 SIGINT + 两秒兜底）；执行循环每
    `ProgressInterval`（500ms）对比运行前后证据索引、tail `events.jsonl` 投影 case 进度与分数、
-   聚合资源采样；终态经 `run.state` 事件发布。任务页另经 `Service.Progress` 派生
+   投影逐来源资源采样；终态经 `run.state` 事件发布。任务页另经 `Service.Progress` 派生
    `inferyard progress --workspace` 解析 `progress.v1` 恢复工作区进度。运行实现与取消语义见
    [运行时执行与引擎适配](../runtime-execution.md)。
    `stageView` 在有非终态运行或活动任务处于未失败的 `run` 阶段时收起正文模型服务卡，
@@ -65,3 +65,31 @@
 9. **关停**：`Shutdown` 立即关闭准入，未终态队列任务标 cancelled、活动任务标 cancelling 并
    取消上下文，待专项准备与 runQueue 排空后停止自启动引擎再置 `shutdownDone`；调用方超时（main 为 30
    秒）不抛弃清理、不改变顺序。
+
+任务页的资源引导与活动题包投影由 [`first_use.go`](../../../studio/internal/pages/first_use.go) 从现有清单、下载任务和运行队列派生，不持久化另一套向导状态。活动题包按 bundle 关联非终态 RunTask，展示排队／运行／取消状态；离线 `progress.v1` 的恢复原因仅用于没有活动任务的题包。历史 `no_local_model` 在可用模型出现后不再重复展示，实际候选准备仍执行模型专属设备检查。右上角显示下载任务生命周期，后台 refresh 不产生全局忙碌提示。
+
+[`header_status.go`](../../../studio/internal/pages/header_status.go) 从 EngineState、RunTask 与专项状态派生图标及悬停面板，
+专项按 task ID 去重计数。面板开启引擎直接调用 `StartEngine`，不进入绑定或测评编排；
+模拟通过 `previewManagedEngine` 分流，只推进内存中的服务状态，不改变工作区进度。
+启动依赖已准备的候选且无活动任务，停止沿用服务层的活动任务保护；遗留服务仍到任务页核验处理。
+
+## 资源投影
+
+CLI 负责原生采集和证据落盘；普通 macOS/Linux single 使用资源采集器，范围见
+[ADR 054](../../../cli/docs/decisions/054-single-resource-collection.md)。
+Studio 的 [`resources.go`](../../../studio/internal/core/resources.go) 只读取 `memory.jsonl`，
+保留每条观测的 Seq、UTC、读取区间、phase/request、来源、collector、时钟、单位、语义和缺测原因。
+不合并同 UTC 行，也不用半秒窗口猜采样周期；Tail 的游标负责逐行消费。
+按指标、collector、来源、时钟、单位、语义各保留最近 600 点，多个温度来源不会挤掉 CPU 历史。
+
+CPU 只对 periodic 行做差分，使用读取区间中点差和声明的 `clock_ticks_per_second`：
+`100 × Δticks / ticks_per_second / Δseconds`。显示单核等效占用率，可超过 100%，
+范围为绑定 PID 全线程、不含子进程，连续采样允许跨阶段和请求。首次计数、缺测、进程/启动/boot/
+时钟/来源/尺度变化、总量或 user/system 分量回退、读取区间重叠，以及超过配置两周期的缺段
+均保留缺测原因并断线。它是实时显示口径，不代替 CLI 的请求窗口指标或性能资格。
+
+[`chart.go`](../../../studio/internal/pages/chart.go) 为可用内存、RSS、CPU 和选定温度来源
+分别成图。各图为等距分类轴，以本来源首个样本的经过时间标记，完整 UTC 和原始单位留在详情。
+温度选择器列出保存的完整来源；不推断 CPU 核心、不取跨传感器均值或最大值。
+全列缺测显示实际原因；旧内存运行显示此指标未记录，不补采或重写原件。
+当前选中来源的数值表每页 50 条，仅代表上述保留窗口；切来源重置表页与样本选择。

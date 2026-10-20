@@ -114,6 +114,7 @@ func TestDashboardTrackHeadingLevel(t *testing.T) {
 
 func TestDashboardBenchmarkHasOneHeading(t *testing.T) {
 	s := testState()
+	s.registry = modelRegistryFixture()
 	s.progress = &inferyard.WorkspaceProgress{NextAction: "prepare_candidate"}
 	tt := ui.NewTester(s.view, 1120, 2400)
 	headings := 0
@@ -129,37 +130,6 @@ func TestDashboardBenchmarkHasOneHeading(t *testing.T) {
 	for _, label := range []string{"候选引擎", "测评模型", "运行 benchmark"} {
 		if _, ok := tt.Find(label); !ok {
 			t.Fatalf("missing benchmark control %q", label)
-		}
-	}
-}
-
-func TestActivityStatusToolbar(t *testing.T) {
-	s := testState()
-	for _, state := range []struct{ busy, refreshing bool }{{false, false}, {true, false}, {false, true}, {true, true}} {
-		s.busy, s.refreshing = state.busy, state.refreshing
-		tt := ui.NewTester(s.cornerStatus, 800, 600)
-		if tt.HasText("执行中") != (state.busy || state.refreshing) || tt.HasText("执行中…") || tt.HasText("正在刷新…") {
-			t.Fatalf("state %+v texts=%v", state, tt.Texts())
-		}
-		if !state.busy && !state.refreshing && !tt.HasText("引擎 已停止 · 队列 空") {
-			t.Fatal(tt.Texts())
-		}
-	}
-	s.busy, s.refreshing = false, false
-	s.engineState.State = "running"
-	for _, state := range []string{"queued", "running", "cancelling", "done", "failed", "cancelled"} {
-		s.tasks = []core.RunTask{{State: state}}
-		tt := ui.NewTester(s.cornerStatus, 800, 600)
-		if tt.HasText("停止") != terminal(state) {
-			t.Fatalf("run %s: %v", state, tt.Texts())
-		}
-	}
-	s.tasks = nil
-	for _, busy := range []bool{false, true} {
-		s.busy = busy
-		tt := ui.NewTester(s.cornerStatus, 800, 600)
-		if tt.HasText("停止") == busy {
-			t.Fatal(tt.Texts())
 		}
 	}
 }

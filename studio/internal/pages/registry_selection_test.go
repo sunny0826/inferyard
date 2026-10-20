@@ -106,7 +106,7 @@ func TestCandidateModelSelectSharesSelection(t *testing.T) {
 	if s.model != "" {
 		t.Fatal(s.model)
 	}
-	click(t, tt, "使用 CLI 推荐模型")
+	click(t, tt, "请选择模型")
 	if err := tt.ChooseMenuItem("model.gguf"); err != nil {
 		t.Fatal(err)
 	}

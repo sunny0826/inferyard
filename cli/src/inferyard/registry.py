@@ -87,7 +87,7 @@ def components():
                 "status": "implemented",
                 "scope": (
                     "macOS available memory, bound-process RSS/CPU and host swap; "
-                    "temperature, frequency and GPU/energy sensors unavailable"
+                    "read-only AppleSMC temperature; frequency and GPU/energy unavailable"
                 ),
                 "live_verification_required": True,
             },
@@ -218,17 +218,11 @@ def require_execution_support(plan, loaded):
 
 
 def adapter_collector_id(identifier, *, batch=False):
-    """Bind the Windows lab adapters to the existing native memory collector."""
+    from inferyard.platforms.resources import resource_collector_id
+
     if identifier in ("kvmem", "ninfer"):
         return "windows-memory.v1"
-    if batch:
-        from inferyard.platforms.resources import resource_collector_id
-
-        return resource_collector_id()
-    import platform
-
-    return {
-        "Windows": "windows-memory.v1",
-        "Darwin": "macos-memory.v1",
-        "Linux": "linux-memory.v1",
-    }[platform.system()]
+    collector = resource_collector_id()
+    if collector == "windows-resource.v1" and not batch:
+        return "windows-memory.v1"
+    return collector

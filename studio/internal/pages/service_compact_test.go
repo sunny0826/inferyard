@@ -29,7 +29,10 @@ func TestRunningServiceStaysInCorner(t *testing.T) {
 				s := compactRunFixture()
 				s.task.stage, s.tasks[0].State = stage, state
 				tt := ui.NewTester(s.view, 1120, 800)
-				status := "引擎 运行中 · 队列 执行中"
+				status := "任务 · 执行 1 · 等待 0"
+				if state == "queued" {
+					status = "任务 · 执行 0 · 等待 1"
+				}
 				before, ok := tt.Find(status)
 				if !ok {
 					t.Fatal("missing corner service status", tt.Texts())
@@ -64,7 +67,7 @@ func TestServiceCardStaysCollapsedBetweenTaskRuns(t *testing.T) {
 	s.task.stage, s.busy = "run", true
 	s.tasks = nil
 	tt := ui.NewTester(s.view, 1120, 800)
-	if tt.HasText("模型服务") || !tt.HasText("引擎 运行中 · 队列 空") {
+	if tt.HasText("模型服务") || !hasStatusControl(tt, "引擎 · 运行中") {
 		t.Fatal("service expanded before queue refresh or between bundles", tt.Texts())
 	}
 	s.task.failure, s.busy = core.Err("engine_exited"), false
@@ -80,10 +83,10 @@ func TestActiveEngineStatusSurvivesBackgroundRefresh(t *testing.T) {
 		s := testState()
 		s.engineState.State = state
 		tt := ui.NewTester(s.cornerStatus, 800, 600)
-		label := "引擎 " + stateLabel(state) + " · 队列 空"
+		label := "引擎 · " + stateLabel(state)
 		s.busy, s.refreshing = true, true
 		tt.Frame()
-		if !tt.HasText(label) || slices.Contains(tt.Texts(), "执行中") {
+		if !hasStatusControl(tt, label) || slices.Contains(tt.Texts(), "执行中") {
 			t.Errorf("%s status replaced by background work: %v", state, tt.Texts())
 		}
 	}

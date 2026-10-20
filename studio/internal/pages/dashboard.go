@@ -68,12 +68,19 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		s.setupGuide(c)
 		return
 	}
+	if s.needsTaskAssets() {
+		s.taskAssetsView(c)
+		return
+	}
 	if s.speed == nil || !s.speed.selected {
 		s.conclusionView(c)
 	}
 	s.stageView(c)
 	for _, task := range s.tasks {
 		if task.Kind != "context_speed" && emptyText(task.RunPath) == "" {
+			if task.Queued && task.Bundle != nil && task.Error == nil {
+				continue
+			}
 			ui.Text(c, taskLabel(task))
 			errorView(c, task.Error)
 		}
@@ -105,12 +112,15 @@ func (s *viewState) conclusionView(c *ui.Context) {
 		})
 		progressBar(c, float64(step)/6, "工作区六阶段准备进度").Description("六个准备阶段，不表示样本完成率。")
 		for _, b := range s.taskBundles() {
+			if task := s.liveBundleTask(b.Bundle); task != nil {
+				ui.Text(c, b.Bundle+" · "+taskLabel(*task))
+				continue
+			}
 			ui.Text(c, b.Bundle+" · "+stateLabel(b.Phase))
 			if b.BlockedReason != nil {
-				// An in-flight single-mode run legitimately reports
-				// "resume not supported" while it is still executing; the
-				// reason is flow guidance, not a failure, so it is not
-				// styled (or announced) as an error.
+				if *b.BlockedReason == "no_local_model" && s.availableTaskAssets().model && s.preparingTask() {
+					continue
+				}
 				color := c.Theme().Danger
 				if b.Phase == "run_incomplete" {
 					color = c.Theme().Warning
@@ -122,6 +132,7 @@ func (s *viewState) conclusionView(c *ui.Context) {
 }
 func (s *viewState) setupGuide(c *ui.Context) {
 	card(c, "环境准备", func() {
+		ui.Text(c, "欢迎使用 InferYard Studio。先准备环境，再获取模型与引擎，最后开始测评。")
 		ui.Text(c, "检查并安装 CLI。")
 		ui.Text(c, "建立结果目录、模型目录和工作区。")
 		ui.Text(c, "已完成的步骤会跳过。")

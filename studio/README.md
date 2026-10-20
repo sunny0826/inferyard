@@ -1,11 +1,10 @@
 # InferYard Studio
 
-InferYard Studio is a desktop application for local model evaluation. Its native UI is
-written in Go on the [onevra](https://github.com/oneo-me/onevra) component library (MIT),
-which is built on MyGo v0.5.5, and calls `core.Service` directly. In-process events refresh
-the windows. Studio has no browser dashboard, headless mode, REST/SSE server, or generated
-JavaScript bindings. The separately installed [InferYard CLI](../cli/README.md) executes
-operations and owns the evidence contract.
+InferYard Studio evaluates local models through a native Go UI using
+[onevra](https://github.com/oneo-me/onevra) (MIT) and MyGo v0.5.5.
+Pages call `core.Service` and refresh through in-process events.
+The separately installed [CLI](../cli/README.md) executes operations and owns evidence.
+There is no browser UI, headless mode, REST/SSE server, or generated JavaScript.
 
 ## Pages and first launch
 
@@ -13,14 +12,13 @@ When the workspace, results, and model paths are all unset in settings, Studio o
 on the task page with environment preparation. Once any of these paths has been saved,
 launching without an explicit page opens Reports. The sidebar lists Reports, Models,
 Downloads, Device, and Settings.
-A “新任务” (New task) button above the navigation opens the task page; no sidebar item is
-selected while the task page is open. The six page bodies are:
+“新任务” (New task) opens the task page with no sidebar selection.
 
 | Page | Purpose |
 | --- | --- |
 | Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
-| Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Inspect service status without start, stop, binding, or orphan recovery actions; orphaned engines show a warning and hide the new-task action. No absolute paths. |
+| Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and read each report index inside the main window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names. |
@@ -28,8 +26,8 @@ selected while the task page is open. The six page bodies are:
 The task page keeps the active task's selected bundles and new run paths in memory. New task
 cancels binding and all non-terminal runs, waits for them to finish, and returns to the
 shared engine/model selection without cancelling downloads or deleting evidence. The form
-lists only workspace bundles and checks `zh-core` when present. An unchecked bundle does
-not block the task. The old quick-run form, queue card, and run history card are removed from the task page.
+lists only workspace bundles and checks both `zh-core` and `zh-svg-pelican` when present.
+Unchecking a bundle explicitly narrows the scope; unchecked bundles do not block the task.
 Reports starts with task history, followed by the report list. Creating another report from
 1–100 historical runs is available in a collapsed section. Verification appears only when
 workspace `next_action` is `verify`; a `verified` report shows its verified status instead.
@@ -37,19 +35,33 @@ Without an active task, the page restores workspace progress from `progress.v1`.
 
 Prepare environment rechecks readiness after installing the CLI, provisioning missing
 model/results directories, and initializing a new workspace. Existing initialized workspaces
-skip `init`; new workspaces omit `--bundle`. The first workspace device check runs once
-with `--models-root` and no `--model`. A later model-specific check still supplies `--model`.
+skip `init`; new workspaces omit `--bundle`. Missing models or engines lead to a resource
+guide with Downloads and Settings actions; other blockers remain visible.
+During preparation, Downloads places resource forms first and offers Return to task.
+Once resources exist, the first workspace device check runs once with `--models-root`
+and no `--model`. A sole available model is selected automatically; multiple models
+require a choice. Engines still require verification. Once a model appears, the old
+`no_local_model` warning clears; candidate preparation rechecks the model with `--model`.
 The task generates `report --runs` for its own sealed runs with verification disabled, displays
 only a “查看报告” button that opens that exact report, and leaves verification on Reports.
 Duration and unfinished batch plans display their blocking reason without an execution button.
 
-A fixed top-right status row shows engine and queue state; its idle text is
-“引擎 已停止 · 队列 空”. Active runs and non-stopped engine states stay visible during
-background refresh and busy operations. Otherwise, refresh and operations show “执行中”.
-During a run, the model-service card collapses into this row, including between bundles
-in an active task. Once execution ends, service recovery controls remain available in
-the run/resume stage. Stop is available for a starting or running engine
-when no non-terminal run exists and Studio is not busy, except on Models.
+Top-right engine and task icons pulse while active, respecting Reduce Motion.
+Hover, click, or press Enter to open their panels; Escape dismisses them.
+The engine panel shows status and start/stop controls on every page. Starting requires
+a prepared candidate and only starts the service; it does not bind or run a benchmark.
+The task panel separates executing and waiting tasks. Active downloads have a separate
+icon and count in their panel. Background refresh does not change activity.
+Active bundles show live state; interrupted bundles retain recovery guidance.
+The service card stays collapsed throughout an active benchmark, then exposes
+recovery controls in the run/resume stage. Stop is available for a starting or running engine
+when no non-terminal run exists and Studio is neither busy nor resetting a task.
+
+New macOS/Linux single runs collect CPU and available temperature sensors through the CLI.
+Resource charts keep sources separate and retain 600 observations per source. CPU shows
+single-core equivalent usage; temperature has a source selector. Elapsed-time labels use
+equally spaced samples, with UTC and original units in details and a paged raw table.
+Missing values remain gaps with reasons. Older memory-only runs are not backfilled.
 
 When no CLI is configured, the task page’s Prepare environment action installs the CLI: it reuses an existing
 `inferyard`/`uv` when found (including Homebrew locations outside the GUI PATH), downloads
@@ -74,7 +86,7 @@ Other endpoints with model directories appear under the collapsed “待确认�
 not prove a model is loaded locally. Expanding an interface shows endpoint health and
 ambiguous-listener warnings; its model directory remains separately collapsed. Partial
 scan limitations remain visible. Only the task page offers explicit external binding after a binding failure, with the
-discovered PID and endpoint, through the existing CLI checks; Models remains read-only.
+discovered PID and endpoint, through the existing CLI checks. Discovery cards on Models remain read-only.
 Discovery does not establish bind eligibility: rejection reasons such as
 `startup_arguments_mismatch` remain visible. The collapsed advanced manual binding controls
 remain available. See the [service discovery contract](../cli/docs/cli-surface.md#本机服务发现契约)

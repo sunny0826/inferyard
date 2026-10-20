@@ -54,7 +54,7 @@ func (s *viewState) checkedBundles() []string {
 	if s.selectedBundles == nil {
 		s.selectedBundles = map[string]bool{}
 		for _, b := range s.progress.Bundles {
-			s.selectedBundles[b.Bundle] = b.Bundle == "zh-core"
+			s.selectedBundles[b.Bundle] = b.Bundle == "zh-core" || b.Bundle == "zh-svg-pelican"
 		}
 	}
 	for _, b := range s.progress.Bundles {

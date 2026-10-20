@@ -50,4 +50,6 @@ request-bodies 扫描一次，索引只保留 O(N) 元数据；再次取 body �
 collector 声明；完整 lab single 固定 18 份加请求原件，默认两 scope 为 170 份含报告。
 使用 ResourceSampler 的同事实场景才额外写 collector，为固定 19 / 合计 172。
 native 还按实际能力声明及收据另计。不能因文件合并把 single 改成资源采集或补测。
-上述为源码推导，实际验收记录各次 sampler、输入、请求数和物理清单。
+上述为本决策当时的源码推导，实际验收记录各次 sampler、输入、请求数和物理清单。
+single 默认内存范围后来由 [ADR 054](054-single-resource-collection.md) 替代；
+该变更独立于容器迁移，不回写旧原件或重新解释上述历史计数。

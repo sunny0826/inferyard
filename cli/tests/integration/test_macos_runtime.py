@@ -114,7 +114,7 @@ def native_service(tmp_path, config_path, monkeypatch):
         process.stderr.close()
 
 
-def assert_native_evidence(path, *, experiment):
+def assert_native_evidence(path):
     assert verify_manifest(path) == []
     data = read_trial(path)
     assert data["run"]["diagnostic"] is True
@@ -126,12 +126,24 @@ def assert_native_evidence(path, *, experiment):
     rss = [s for s in data["samples"] if s["metric_name"] == "service_rss"]
     assert rss and all(s["value"] > 0 for s in rss)
     assert {s["source"] for s in rss} == {"psutil:Process.memory_info:rss"}
-    if experiment:
-        collector = TrialEvidence(path).observation("collector", stage="prepare")
-        assert collector["collector"] == "macos-resource.v1"
-        cpu = [s for s in data["samples"] if s["metric_name"] == "service_cpu_ticks"]
-        assert cpu and all(s["clock_ticks_per_second"] == 1_000_000 for s in cpu)
-        assert any(s["value"] is not None for s in cpu)
+    collector = TrialEvidence(path).observation("collector", stage="prepare")
+    assert collector is not None
+    assert collector["collector"] == "macos-resource.v1"
+    cpu = [s for s in data["samples"] if s["metric_name"] == "service_cpu_ticks"]
+    assert cpu and all(s["clock_ticks_per_second"] == 1_000_000 for s in cpu)
+    assert any(s["value"] is not None for s in cpu)
+    periodic = [s for s in cpu if s["capture"] == "periodic"]
+    assert len(periodic) >= 2
+    sensors = collector["sensors"]
+    temperature = [s for s in data["samples"] if s["metric_name"] == "temperature"]
+    if sensors["sources"]:
+        assert {s["source"] for s in temperature} == {
+            source["source"] for source in sensors["sources"]
+        }
+        assert all(s["value"] is not None or s["missing_reason"] for s in temperature)
+    else:
+        assert "temperature" in sensors["missing_metrics"]
+        assert sensors["discovery_issues"]
     return data
 
 
@@ -144,7 +156,7 @@ def test_native_single_probe_run_and_offline_report(native_service, tmp_path):
     code, result = asyncio.run(execute_async(replace(request, command="run")))
     assert code == 3 and "diagnostic_run_not_formal" in result.limitations, result
     path = Path(result.evidence_dir)
-    data = assert_native_evidence(path, experiment=False)
+    data = assert_native_evidence(path)
     process.terminate()
     process.wait(timeout=5)
     report = tmp_path / "offline-report"
@@ -175,7 +187,7 @@ def test_native_frozen_batch_uses_macos_collector_and_no_implicit_repeat(native_
     paths = [Path(p) for p in result.details["runs"]]
     assert len(paths) == 2
     for path in paths:
-        assert_native_evidence(path, experiment=True)
+        assert_native_evidence(path)
     before = {path: sha256_file(path / "manifest.json") for path in paths}
     code, repeat = asyncio.run(batch_execute(request))
     assert code == 0 and repeat.details["runs"] == result.details["runs"]

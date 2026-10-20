@@ -93,6 +93,24 @@ def test_component_registry_routes_only_implemented_components():
             lookup("unimplemented")
 
 
+@pytest.mark.parametrize(
+    "platform,collector",
+    [
+        ("darwin", "macos-resource.v1"),
+        ("linux", "linux-resource.v2"),
+    ],
+)
+@pytest.mark.parametrize("adapter", ["prism_llama_server_v1", "llama_cpp_b11146_v1"])
+def test_single_runs_select_native_cpu_and_temperature_collection(
+    monkeypatch, platform, collector, adapter
+):
+    from inferyard.registry import adapter_collector_id
+
+    monkeypatch.setattr("sys.platform", platform)
+    monkeypatch.setattr("platform.system", lambda: "Darwin" if platform == "darwin" else "Linux")
+    assert adapter_collector_id(adapter) == collector
+
+
 @pytest.mark.parametrize("kind", ["methods", "metrics"])
 def test_catalogue_cli_preserves_unicode_with_cp1252_default(monkeypatch, capsys, kind):
     expected = catalogue(kind)

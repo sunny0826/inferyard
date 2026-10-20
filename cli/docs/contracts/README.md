@@ -6,6 +6,8 @@
 | --- | --- |
 | 当前格式清理与主机状态 | [格式矩阵、主机状态与安装资格](inferyard-current-format.md) |
 | 执行窗口 | [持续负载发送准入](duration-send-contract.md) |
+| 执行准入与复用 | [按用途分派、环境准入与服务复用](purpose-specific-admission.md) |
+| 运行记录 | [命令内复用、预算、批次投影与周期环境](runtime-records.md) |
 | 平台身份与采集 | [macOS](macos-contract.md) · [Windows Prism 批量](windows-prism-batch-contract.md) |
 | Prism 模板身份 | [原件哈希与固定 build 服务表示](prism-template-contract.md) |
 | Context-speed measurements | [Frozen profile and result contract](context-speed-contract.md) |

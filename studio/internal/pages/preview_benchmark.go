@@ -97,6 +97,7 @@ func (p *previewSession) startRun(bundleIndex int, op previewBenchmark, ids []st
 		b := &s.progress.Bundles[i]
 		if b.Bundle == bundle {
 			b.Phase, b.NextAction = "run_incomplete", "run"
+			b.BlockedReason = previewValue("single_run_resume_not_supported")
 			b.BoundPath = previewValue(filepath.Join(s.workspace, "bound", id))
 		}
 	}
@@ -117,7 +118,7 @@ func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark
 		}
 		progress.Done, progress.LastSeq = end, end
 		progress.CurrentCaseId = previewValue(fmt.Sprintf("preview-case-%03d", min(end+1, *progress.Total)))
-		detail.Resources = append(detail.Resources, core.ResourceSample{Utc: p.timestamp(), MemAvailableBytes: previewValue(int64(10<<30) - end*(1<<20)), ServiceRssBytes: previewValue(int64(2<<30) + end*(1<<20)), ServiceCpuPercent: previewValue(120.0 + float64(end%40))})
+		detail.Resources = append(detail.Resources, previewResourceSamples(int64(len(detail.Resources)+1), p.timestamp(), int64(10<<30)-end*(1<<20), int64(2<<30)+end*(1<<20), 120+float64(end%40))...)
 		if end < *progress.Total {
 			p.tickRun(id, bundleIndex, op, ids)
 			return
@@ -128,6 +129,7 @@ func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark
 			b := &s.progress.Bundles[i]
 			if b.Bundle == emptyText(detail.Task.Bundle) {
 				b.Phase, b.NextAction = "run_complete", "none"
+				b.BlockedReason = nil
 			}
 		}
 		p.startRun(bundleIndex+1, op, ids)

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
@@ -21,12 +22,7 @@ var previewScenes = []struct {
 	label string
 	apply func(*viewState)
 }{
-	{"任务 · 准备", func(s *viewState) {
-		s.progress = nil
-		s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
-		s.ready.CLI.Status = "not_found"
-		s.ready.Workspace.Initialized, s.ready.Results.Exists, s.ready.Models.Exists = false, false, false
-	}},
+	{"任务 · 准备", previewPreparation},
 	{"任务 · 运行中", previewRunning},
 	{"任务 · 已完成", previewCompleted},
 	{"任务 · 失败", func(s *viewState) {
@@ -44,6 +40,34 @@ var previewScenes = []struct {
 	{"设备 · 含缺测", func(s *viewState) { s.selected = "device" }},
 	{"设置 · 路径与目录名", func(s *viewState) { s.selected = "settings" }},
 	{"专项 · 历史恢复示例", previewSpeedHistory},
+	{"首次使用 · 无资源", func(s *viewState) {
+		previewPreparation(s)
+		s.registry = core.Registry{}
+		s.model, s.engine = "", ""
+		s.checks = core.EngineCheckOverview{Supported: true}
+	}},
+	{"资源 · 密集采样与缺测", previewDenseResources},
+	{"资源 · CPU 与多路温度", previewMultiSensorResources},
+}
+
+func previewDenseResources(s *viewState) {
+	s.detailID = "dense-resources"
+	s.detail = previewDetailFixture(s.detailID)
+	s.detail.Task.State = "done"
+	s.detail.Resources = nil
+	for i := range 158 {
+		utc := time.Date(2026, 10, 20, 9, 21, i, 570000000, time.UTC).Format(time.RFC3339Nano)
+		rows := previewResourceSamples(int64(i*5+1), utc, int64(3<<30)+int64(i%18)*(1<<24), 1<<28, 0)
+		s.detail.Resources = append(s.detail.Resources, rows[:2]...)
+	}
+	s.downloads = nil
+}
+
+func previewPreparation(s *viewState) {
+	s.progress = nil
+	s.history, s.downloads, s.reports = core.RunHistoryResponse{}, nil, nil
+	s.ready.CLI.Status = "not_found"
+	s.ready.Workspace.Initialized, s.ready.Results.Exists, s.ready.Models.Exists = false, false, false
 }
 
 func previewValue[T any](value T) *T { return &value }
@@ -55,7 +79,7 @@ func previewBase(ctx context.Context) *viewState {
 	s := &viewState{
 		speed: &speedWorkspace{context: 65536},
 		ctx:   ctx, selected: "dashboard", loaded: true, settingsLoaded: true,
-		denied: map[string]bool{}, chartIndex: -1, model: model, engine: engine, discoveryLoaded: true,
+		denied: map[string]bool{}, model: model, engine: engine, discoveryLoaded: true,
 		candidateMatches: func(string, string, string) (bool, bool) { return true, true },
 		engineState:      core.EngineState{State: "stopped"},
 		ready: core.Readiness{
@@ -94,6 +118,7 @@ func previewRunning(s *viewState) {
 	s.task.stage = "run"
 	s.progress.NextAction = "run"
 	s.progress.Bundles[0].Phase, s.progress.Bundles[0].NextAction = "run_incomplete", "run"
+	s.progress.Bundles[0].BlockedReason = previewValue("single_run_resume_not_supported")
 	s.engineState = core.EngineState{State: "running", Pid: 42, Endpoint: "http://127.0.0.1:48857", Candidate: "/preview/candidate"}
 	s.tasks = []core.RunTask{{TaskId: "preview-run", State: "running", Bundle: previewValue("zh-core"), RunPath: previewValue("/preview/results/preview-run")}}
 	s.runProgress = &core.RunProgress{Done: 42, Total: previewValue(int64(120)), CurrentCaseId: previewValue("preview-case-043")}
@@ -136,10 +161,9 @@ func previewDetailFixture(id string) *core.RunTaskDetail {
 			{CaseId: "preview-case-001", State: "completed", QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)},
 			{CaseId: "preview-case-002", State: "failed", ErrorCategory: previewValue("preview_failure")},
 		}},
-		Resources: []core.ResourceSample{
-			{Utc: "2026-10-17T00:00:00Z", MemAvailableBytes: previewValue(int64(10 << 30)), ServiceRssBytes: previewValue(int64(2 << 30)), ServiceCpuPercent: previewValue(120.0)},
-			{Utc: "2026-10-17T00:00:01Z", MemAvailableBytes: previewValue(int64(9 << 30)), ServiceRssBytes: previewValue(int64(3 << 30)), ServiceCpuPercent: previewValue(240.0)},
-			{Utc: "2026-10-17T00:00:02Z", MemAvailableBytes: previewValue(int64(10 << 30)), ServiceRssBytes: previewValue(int64(2 << 30)), ServiceCpuPercent: previewValue(180.0)},
-		},
+		Resources: append(append(
+			previewResourceSamples(1, "2026-10-17T00:00:00Z", 10<<30, 2<<30, 120),
+			previewResourceSamples(6, "2026-10-17T00:00:01Z", 9<<30, 3<<30, 240)...),
+			previewResourceSamples(11, "2026-10-17T00:00:02Z", 10<<30, 2<<30, 180)...),
 	}
 }

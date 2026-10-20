@@ -27,6 +27,7 @@ func TestDashboardStages(t *testing.T) {
 	} {
 		t.Run(tc.action, func(t *testing.T) {
 			s := testState()
+			s.registry = modelRegistryFixture()
 			s.progress = &inferyard.WorkspaceProgress{NextAction: tc.action, Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", NextAction: tc.action}}}
 			tt := ui.NewTester(s.view, 1120, 2400)
 			if s.step() != tc.step || !tt.HasText(tc.want) {
@@ -232,6 +233,7 @@ func TestDashboardPrepareSkipsInitializedWorkspace(t *testing.T) {
 
 func TestDashboardNewTaskClearsDetailKeepsSelection(t *testing.T) {
 	s := testState()
+	s.registry = modelRegistryFixture()
 	s.model, s.engine = "model", "engine"
 	s.detailID = "old"
 	s.resumeSource = &core.RunSummary{Path: "old"}

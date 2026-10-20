@@ -15,6 +15,8 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	s := p.state
 	s.failure, p.notice = nil, ""
 	switch op := intent.(type) {
+	case previewManagedEngine:
+		p.startService(false, op.candidate)
 	case previewSpeedStart:
 		p.startSpeed(op)
 	case previewSpeedCancel:
@@ -75,23 +77,22 @@ func (p *previewSession) dispatchStep(op previewStep) {
 			}
 			p.beginBenchmark(previewBenchmark{model: s.model, engine: s.engine, bundles: names})
 		} else {
-			p.startService()
+			p.startService(true, s.candidate)
 		}
 	case previewBind:
-		p.startService()
+		p.startService(true, s.candidate)
 	case previewStopEngine:
 		if s.running() != nil || (s.speed != nil && s.speed.current != nil && s.speed.current.active()) {
 			s.failure = core.Err("run_active")
 			return
 		}
-		fail, before := p.takeFailure(), s.engineState.State
+		if p.takeFailure() {
+			s.failure = core.Err("engine_stop_failed")
+			return
+		}
 		p.cancelEvents("service")
 		s.engineState.State = "stopping"
 		p.after("service", 400*time.Millisecond, func() {
-			if fail {
-				s.engineState.State, s.failure = before, core.Err("engine_stop_failed")
-				return
-			}
 			s.engineState = core.EngineState{State: "stopped"}
 		})
 	case previewRefreshDevice:
@@ -172,7 +173,7 @@ func (p *previewSession) prepareEnvironment() {
 
 func (p *previewSession) checkDevice() {
 	s := p.state
-	if s.busy || s.progress == nil || s.progress.DevicePreflight.Status != "missing" {
+	if s.busy || s.progress == nil || s.progress.DevicePreflight.Status != "missing" || s.needsTaskAssets() {
 		return
 	}
 	fail := p.takeFailure()
@@ -223,23 +224,25 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	p.notice = "设置已保存到本次模拟会话。"
 }
 
-func (p *previewSession) startService() {
+func (p *previewSession) startService(bind bool, candidate string) {
 	s := p.state
 	if s.busy || s.running() != nil {
 		return
 	}
 	fail := p.takeFailure()
-	s.busy = true
-	s.engineState = core.EngineState{State: "starting", Pid: 42, Endpoint: "http://127.0.0.1:48857", Candidate: s.candidate}
+	s.busy = bind
+	s.engineState = core.EngineState{State: "starting", Pid: 42, Endpoint: "http://127.0.0.1:48857", Candidate: candidate}
 	p.after("service", 800*time.Millisecond, func() {
-		s.busy = false
+		if bind {
+			s.busy = false
+		}
 		if fail {
 			s.engineState.State, s.engineState.Error = "failed", core.Err("engine_start_failed")
 			s.failure = s.engineState.Error
 			return
 		}
 		s.engineState.State = "running"
-		if s.progress != nil {
+		if bind && s.progress != nil {
 			s.progress.NextAction = "run"
 			for i := range s.progress.Bundles {
 				b := &s.progress.Bundles[i]
@@ -253,6 +256,9 @@ func (p *previewSession) startService() {
 
 func (p *previewSession) activateScene() {
 	s := p.state
+	if s.detail != nil {
+		p.details[s.detailID] = s.detail
+	}
 	if task := s.running(); task != nil {
 		task.Kind, task.RunId = "run", previewValue(task.TaskId)
 		detail := previewDetailFixture(task.TaskId)

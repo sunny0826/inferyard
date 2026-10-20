@@ -6,6 +6,7 @@ import (
 	"context"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,6 +31,7 @@ type parityFrame struct {
 	Controls   []string
 	Runs       []string
 	Report     []string
+	LiveStatus []string
 }
 
 func TestPreviewBenchmarkParity(t *testing.T) {
@@ -66,22 +68,27 @@ func parityExpectation(s parityScenario) []parityFrame {
 	if s.cancelAt == "bind" {
 		return append(want, parityFrame{Checkpoint: "cancelled"})
 	}
-	var running, done, cancelled []string
+	var running, done, cancelled, live []string
 	for i, bundle := range s.bundles {
 		state := "queued"
 		if i == 0 {
 			state = "running"
 		}
 		running = append(running, bundle+":"+state)
+		label := "排队中"
+		if i == 0 {
+			label = "运行中"
+		}
+		live = append(live, bundle+" · "+label)
 		done = append(done, bundle+":done")
 		cancelled = append(cancelled, bundle+":cancelled")
 	}
-	want = append(want, parityFrame{Checkpoint: "run", Heading: "运行", Controls: []string{"查看实时详情", "取消运行"}, Runs: running})
+	want = append(want, parityFrame{Checkpoint: "run", Heading: "运行", Controls: []string{"查看实时详情", "取消运行"}, Runs: running, LiveStatus: live})
 	if s.cancelAt == "run" {
 		return append(want, parityFrame{Checkpoint: "cancelled", Runs: cancelled})
 	}
 	if len(s.bundles) == 2 {
-		want = append(want, parityFrame{Checkpoint: "next_run", Heading: "运行", Controls: []string{"查看实时详情", "取消运行"}, Runs: []string{s.bundles[0] + ":done", s.bundles[1] + ":running"}})
+		want = append(want, parityFrame{Checkpoint: "next_run", Heading: "运行", Controls: []string{"查看实时详情", "取消运行"}, Runs: []string{s.bundles[0] + ":done", s.bundles[1] + ":running"}, LiveStatus: []string{s.bundles[1] + " · 运行中"}})
 	}
 	want = append(want, parityFrame{Checkpoint: "report", Heading: "报告", Runs: done})
 	return append(want, parityFrame{Checkpoint: "done", Heading: "报告", Controls: []string{"查看报告"}, Runs: done, Report: s.bundles})
@@ -100,6 +107,14 @@ func observeParity(s *viewState, checkpoint string, report []string) parityFrame
 	}
 	if checkpoint == "cancelled" {
 		return frame
+	}
+	if checkpoint == "run" || checkpoint == "next_run" {
+		conclusion := ui.NewTester(s.conclusionView, 1120, 1000)
+		for _, text := range conclusion.Texts() {
+			if strings.HasSuffix(text, " · 运行中") || strings.HasSuffix(text, " · 排队中") || strings.Contains(text, "断点续跑") {
+				frame.LiveStatus = append(frame.LiveStatus, text)
+			}
+		}
 	}
 	tt := ui.NewTester(s.stageView, 1120, 1800)
 	for _, heading := range []string{"启动与绑定", "运行", "报告"} {
