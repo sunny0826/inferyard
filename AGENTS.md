@@ -56,8 +56,8 @@ Studio 检查在仓库的 `studio/` 目录内执行；以下环境变量仅作�
 Studio 当前是 MyGo 原生桌面应用，无 web 前端与前端构建步骤；构建与验收边界说明见 [Studio README](studio/README.md)。
 
 ```bash
-rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
-rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
+rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
+rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
 ```
 
 ### Studio UI 与模拟行为一致性
@@ -74,7 +74,7 @@ rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direc
 涉及上述行为的改动，在 `studio/` 运行带标签的页面回归（包含一致性测试）：
 
 ```bash
-rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -tags ui_debug . ./internal/pages -count=1
+rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -tags ui_debug . ./internal/pages -count=1
 ```
 
 影响原生控件交互或模拟流程时，还应在已登录的 macOS 桌面和完整 Xcode 环境下，从仓库根运行 `rtk proxy mise run test:studio-ui`。条件不足时报告未验证范围，不用内存测试替代原生验收。入口与产物说明见 [原生 UI E2E](studio/tests/ui/README.md)；纯文档改动仍按文档检查处理。

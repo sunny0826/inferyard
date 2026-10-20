@@ -66,8 +66,8 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 
 ## 软件验证
 
-环境为 macOS arm64、mise Go 1.27.2。命令从 `studio/` 执行，使用
-`GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0`：
+环境为 macOS arm64、mise Go 1.27.3。命令从 `studio/` 执行，使用
+`GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0`：
 
 - 实现阶段 `go test ./internal/pages -count=1` 通过：82 个顶层测试。
 - 整合、地址文案及重复提交公告修正后 `go test ./...` 与 `go vet ./...` 均通过。

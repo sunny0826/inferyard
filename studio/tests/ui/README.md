@@ -20,7 +20,7 @@ it does not skip tests or disable screenshot assertions. The desktop must stay
 unlocked after this initial check.
 
 ```sh
-mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 python tests/ui/run.py
+mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 python tests/ui/run.py
 ```
 
 The runner creates a new `build/ui-e2e/run-*` directory containing the build, log and

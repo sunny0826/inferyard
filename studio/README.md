@@ -139,10 +139,10 @@ workspace while retaining previous evidence and model/engine assets. The
 verification. On macOS the launcher creates a separate `InferYard Studio Dev.app`.
 This real CLI workflow is separate from the simulated UI preview below.
 
-Use the repository's mise-managed Go 1.27.2. Run these commands from `studio/`:
+Use the repository's mise-managed Go 1.27.3. Run these commands from `studio/`:
 
 ```sh
-mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -o build/inferyard-studio .
+mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -o build/inferyard-studio .
 ./build/inferyard-studio
 ```
 
@@ -161,7 +161,7 @@ instead of claiming that an unverified engine is ready.
 To cross-build macOS arm64, Windows amd64, and Linux amd64 and assemble unsigned distributions:
 
 ```sh
-mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct sh scripts/build-all.sh
+mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct sh scripts/build-all.sh
 ```
 
 [build-all.sh](scripts/build-all.sh) compiles the three binaries into `build/<os>-<arch>/`
@@ -186,7 +186,7 @@ mise exec -- go run -tags ui_debug . --debug-ui
 To build first and launch the local executable:
 
 ```sh
-mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -tags ui_debug -o build/inferyard-studio .
+mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -tags ui_debug -o build/inferyard-studio .
 ./build/inferyard-studio --debug-ui
 ```
 
@@ -316,8 +316,8 @@ native UI coverage is not claimed.
 From `studio/`, the code checks are:
 
 ```sh
-mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
-mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
+mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
+mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
 ```
 
 Also check the development preview and the release override:

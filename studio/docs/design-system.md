@@ -146,7 +146,7 @@ onevra 在 MyGo 之上提供产品中立的常用控件与侧栏外壳，但没�
 从 `studio/` 执行已有页面检查：
 
 ```sh
-mise exec -- env GOTOOLCHAIN=go1.27.2 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./internal/pages -count=1
+mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./internal/pages -count=1
 ```
 
 人工调整样式时使用 [UI debug preview](../README.md#ui-debug-preview)：
