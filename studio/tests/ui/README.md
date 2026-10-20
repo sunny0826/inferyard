@@ -38,6 +38,10 @@ with the app still running attaches its accessibility tree to the Xcode result, 
 screenshot when the preview window exists. Screenshots capture only that window.
 Build and launch failures remain in the log and result bundle.
 
+The local-engine scenarios cover a directory model through both bundles and a task report,
+and LM Studio waiting for a fresh service, a failed second binding, manual retry and the
+final two-bundle report. These are simulated services, not real engine acceptance.
+
 The first-use scenario starts with no model or engine, acquires both through the
 download controls, returns to the task, and runs both default bundles to a report.
 It checks the resource guide and live queue labels, and retains screenshots before

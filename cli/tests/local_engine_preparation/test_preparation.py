@@ -82,6 +82,33 @@ def test_describe_has_concrete_launch_and_honest_unknowns(prepared, monkeypatch)
     assert value["bound"] is False
 
 
+def test_description_and_engine_check_share_original_declaration_digest(prepared, monkeypatch):
+    from inferyard.application.engine_check import execute
+    from inferyard.evidence.storage import json_bytes
+    from inferyard.platforms import local_engines
+
+    request, path, runtime = prepared
+    monkeypatch.setattr(inspection, "assets", lambda config: (runtime, [], []))
+    monkeypatch.setattr(local_engines, "read_installation", lambda p: runtime["installation"])
+    monkeypatch.setattr(local_engines, "freeze_installation", lambda d: runtime)
+    monkeypatch.setattr(local_engines, "verify_installation", lambda r: [])
+    code, checked = execute(CommandRequest("engine check", installation=request.installation))
+    described = inspection.describe(CommandRequest("config describe", candidate=path))
+    digest = sha256(json_bytes(runtime["installation"]))
+    assert code == 0
+    assert checked.details["declaration_sha256"] == digest
+    assert described["assets"]["installation"]["declaration_sha256"] == digest
+    assert described["assets"]["installation"]["sha256"] != digest
+
+    import jsonschema
+
+    from inferyard.contracts.schemas_engine_check import LOCAL_DETAILS
+
+    jsonschema.validate(checked.details, LOCAL_DETAILS)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate({**checked.details, "declaration_sha256": None}, LOCAL_DETAILS)
+
+
 def test_bind_rejects_identity_mismatch_without_output(prepared, monkeypatch, tmp_path):
     _, path, _ = prepared
     monkeypatch.setattr(binding, "process_start_ticks", lambda pid: 123)
@@ -187,7 +214,8 @@ def test_engine_check_rejects_incomplete_runtime(monkeypatch, tmp_path):
     assert result.details["eligible"] is False
     assert result.details["ready_to_run"] is False
     assert result.details["reason"] == "local_engine_runtime_root_invalid"
-    assert result.details["definition"] == "local-engine-check.v1"
+    assert result.details["definition"] == "local-engine-check.v2"
+    assert result.details["declaration_sha256"] is None
 
 
 @pytest.mark.parametrize("family", ["llama-cpp", "mlx-lm", "vllm", "sglang"])

@@ -21,7 +21,7 @@ Downloads, Device, and Settings.
 | Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and read each report index inside the main window. |
-| Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names. |
+| Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
 
 The task page keeps the active task's selected bundles and new run paths in memory. New task
 cancels binding and all non-terminal runs, waits for them to finish, and returns to the
@@ -38,7 +38,8 @@ model/results directories, and initializing a new workspace. Existing initialize
 skip `init`; new workspaces omit `--bundle`. Missing models or engines lead to a resource
 guide with Downloads and Settings actions; other blockers remain visible.
 During preparation, Downloads places resource forms first and offers Return to task.
-Once resources exist, the first workspace device check runs once with `--models-root`
+For the original binary-engine workflow, once resources exist, the first workspace device
+check runs once with `--models-root`
 and no `--model`. A sole available model is selected automatically; multiple models
 require a choice. Engines still require verification. Once a model appears, the old
 `no_local_model` warning clears; candidate preparation rechecks the model with `--model`.
@@ -70,38 +71,40 @@ against the release checksum, without touching shell configuration — and insta
 `inferyard` matching the Studio version from PyPI via `uv tool install`. Manual path
 configuration in Settings remains available.
 
-Run benchmark creates fresh candidates for the checked bundles and starts and binds the
-service automatically. Binding has its own cancellation context; a failure offers a retry
-and the advanced manual binding fold. Existing single-config runs rebind the new PID before
+Run benchmark creates fresh candidates for the checked bundles. Direct services start and
+bind automatically; LM Studio requires an operator-provided service identity. Binding has
+its own cancellation context. The original binary-engine workflow offers binding retry
+and an advanced manual binding fold. Existing single-config runs rebind the new PID before
 running; eligible resumes pass the started engine's PID and endpoint directly to `resume`.
 Studio stops its managed engine on exit and never restarts it automatically.
+
+Register an existing local installation declaration in Settings, then select its engine and
+model on the task page. llama-cpp and LM Studio use GGUF files; MLX, vLLM and SGLang use
+model directories. Local profiles currently target macOS Metal and do not support the
+context-speed specialist. Each selected bundle uses a fresh direct service, or waits for
+a newly replaced LM Studio service. Studio never stops or restarts an existing LM daemon.
+A failure stops the remaining scopes; manual retry keeps completed runs and runs only the
+unfinished bundles. The final report contains this task's successful runs. See the
+[local-engine reference](../docs/subsystems/studio-panel/local-engines.md) for registration,
+CLI query versions, process ownership and verification boundaries.
+
 The task page and Models show Studio-started services from `EngineState`, independently of
 service discovery. Starting, running, and stopping services remain visible when scanning
 fails or the model directory is unavailable. Leftover records are labelled unconfirmed;
 failed and stopped services are not shown as active. Candidate names come from the service
 state, not the current model selection.
 
-Other endpoints with model directories appear under the collapsed “待确认的兼容接口”
-(Unconfirmed compatible interfaces) section. They may be proxies: a model directory does
-not prove a model is loaded locally. Expanding an interface shows endpoint health and
-ambiguous-listener warnings; its model directory remains separately collapsed. Partial
-scan limitations remain visible. Only the task page offers explicit external binding after a binding failure, with the
-discovered PID and endpoint, through the existing CLI checks. Discovery cards on Models remain read-only.
-Discovery does not establish bind eligibility: rejection reasons such as
-`startup_arguments_mismatch` remain visible. The collapsed advanced manual binding controls
-remain available. See the [service discovery contract](../cli/docs/cli-surface.md#本机服务发现契约)
-for the read-only probe scope and the [Studio subsystem reference](../docs/subsystems/studio-panel.md#约束与失败行为)
-for display deduplication rules.
-Binding always goes through the CLI's PID and start-time checks. Studio persists an
-ownership record (PID + start ticks) for each engine it starts. If Studio exits
-abnormally and the record survives, the next launch re-verifies the process start ticks
-before offering an explicit "stop leftover engine" action on the task page; a PID whose identity no
-longer matches is never signalled — only the stale record is removed. Invalid records,
-unverifiable identities, and failed cleanup expose a "delete record only (do not terminate
-process)" action for workspace `logs/engine-owner.json`. It re-reads the record and refuses
-deletion when the process identity still matches; that process must use the stop action.
-Successful deletion clears the orphaned state and allows a new startup. Model credentials
-are referenced only by an environment-variable name.
+Other endpoints appear under “待确认的兼容接口” (Unconfirmed compatible interfaces).
+They may be proxies; a model directory does not prove that a model is loaded locally.
+Only the task page offers external binding; Models remains read-only. Binding always
+uses CLI PID and start-time checks, with rejection reasons preserved. See the
+[service discovery contract](../cli/docs/cli-surface.md#本机服务发现契约).
+
+Studio records the identity of services it starts. After an abnormal exit, it checks
+that identity before offering to stop a leftover service. Uncertain identities block
+startup; the task page provides recovery actions with separate safeguards for local
+process trees. Credentials use environment-variable references. Recovery and display
+rules live in the [Studio subsystem reference](../docs/subsystems/studio-panel.md#约束与失败行为).
 
 The Downloads page presents one form card: the recommended llama-server engine first,
 then SmolLM2-135M-Instruct-Q4_K_M. Both HTTPS URLs are prefilled and editable; model
@@ -197,8 +200,8 @@ and packaging rejects binaries without that tag before writing distributions.
 
 The sidebar's “模拟场景” selector provides task preparation, running, completion and failure;
 live run details; report list, details, long tables and read errors; empty data; models;
-downloads; device measurements; settings; and a specialist history fixture. Pages use the same components as normal
-Studio. The selector is a shortcut; normal page buttons drive the workflow. Start with
+downloads; device measurements; settings; a specialist history fixture; and the five
+local-engine preparation scenes. Pages use the same components as normal Studio. The selector is a shortcut; normal page buttons drive the workflow. Start with
 “准备环境”, select the model and bundles, and click “运行 benchmark”. Simulated startup,
 per-bundle progress and report generation advance automatically. Open live details or
 switch pages while work continues; “查看报告” opens that task's model and run results.

@@ -33,6 +33,7 @@ type previewSession struct {
 	speedFailureStage  string
 	speedFailure       *core.ApiError
 	speedMissingTiming bool
+	local              *previewLocalTask
 }
 
 // NewPreview opens the real page builders with in-memory fixtures and no Service.
@@ -68,6 +69,7 @@ func (p *previewSession) loadScene(index int) {
 	p.speedMissingTiming = false
 	p.speedFailureStage, p.speedFailure = "", nil
 	p.details, p.indexes = map[string]*core.RunTaskDetail{}, map[string]*core.ReportIndex{}
+	p.local = nil
 	s := previewBase(p.ctx)
 	s.preview, s.win = p, p.win
 	p.state = s

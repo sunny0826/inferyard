@@ -74,6 +74,9 @@ func failureBadge(state core.EngineState) string {
 // device check.
 func (s *viewState) preflightReady() bool {
 	p := s.progress
+	if s.localEngine() != nil {
+		return p != nil && s.ready.Workspace.Initialized
+	}
 	return p != nil && p.DevicePreflight.Status == "ok" && p.DevicePreflight.Path != nil && p.NextAction != "device_check"
 }
 
@@ -91,13 +94,24 @@ func (s *viewState) comboAttribution() (match, known bool) {
 	if s.attributionKey == key {
 		return s.attributionMatch, s.attributionKnown
 	}
-	f := s.candidateMatches
-	if f == nil {
-		f = s.service.CandidateMatchesCombination
+	s.attributionKey, s.attributionMatch, s.attributionKnown = key, false, false
+	if s.candidateMatches != nil {
+		s.attributionMatch, s.attributionKnown = s.candidateMatches(s.engineState.Candidate, s.model, s.engine)
+	} else if s.service != nil {
+		candidate, model, engine := s.engineState.Candidate, s.model, s.engine
+		go func() {
+			match, known := s.service.CandidateMatchesCombination(candidate, model, engine)
+			if s.ctx.Err() != nil {
+				return
+			}
+			s.win.Update(func() {
+				if s.attributionKey == key {
+					s.attributionMatch, s.attributionKnown = match, known
+				}
+			})
+		}()
 	}
-	match, known = f(s.engineState.Candidate, s.model, s.engine)
-	s.attributionKey, s.attributionMatch, s.attributionKnown = key, match, known
-	return match, known
+	return s.attributionMatch, s.attributionKnown
 }
 
 // loopbackEndpoint displays only loopback service endpoints.

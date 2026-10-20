@@ -54,7 +54,7 @@ func prepareCombination(ctx context.Context, service *core.Service, model, engin
 
 func (s *viewState) startBenchmark() {
 	names := s.checkedBundles()
-	if s.environmentMissing() || !s.preflightReady() || s.busy || len(names) == 0 || s.model == "" || s.engine == "" || s.engineState.State == "orphaned" {
+	if s.environmentMissing() || !s.preflightReady() || s.busy || len(names) == 0 || s.model == "" || s.engine == "" || s.engineState.State == "orphaned" || s.localSelectionError() != "" {
 		return
 	}
 	if s.simulate(previewBenchmark{model: s.model, engine: s.engine, bundles: names}) {
@@ -64,10 +64,17 @@ func (s *viewState) startBenchmark() {
 	s.taskCancel = cancel
 	s.task = benchmarkTask{stage: "prepare_candidate", bundles: names, bindings: &benchmarkBindings{}}
 	model, engine := s.model, s.engine
+	localRequest := s.localCandidateRequest(names)
 	s.guideWork(func() (string, *core.ApiError) {
 		defer cancel()
 		announce := func(stage string) { s.win.Update(func() { s.task.stage = stage }) }
-		result, e := prepareCombination(ctx, s.service, model, engine, names)
+		var result startChainResult
+		var e *core.ApiError
+		if localRequest != nil {
+			result, e = prepareLocalCombination(ctx, s.service, *localRequest)
+		} else {
+			result, e = prepareCombination(ctx, s.service, model, engine, names)
+		}
 		if e == nil {
 			s.win.Update(func() { s.task.start = result })
 			e = s.runBenchmark(ctx, result, names, announce)
@@ -79,8 +86,11 @@ func (s *viewState) startBenchmark() {
 
 type benchmarkBindings struct {
 	pid        int64
+	startTicks int64
 	configs    map[string]string
 	candidates map[string]string
+	localTasks map[string]string
+	completed  map[string]string
 }
 
 type benchmarkBackend interface {
@@ -103,6 +113,9 @@ func (s *viewState) runBenchmark(ctx context.Context, result startChainResult, n
 func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result startChainResult, names []string, bindings *benchmarkBindings, announce func(string), queued func([]string), report func([]string, string)) *core.ApiError {
 	if ctx.Err() != nil {
 		return core.Err("cancelled")
+	}
+	if len(result.localCandidates) > 0 {
+		return runLocalBenchmarkFlow(ctx, backend, result, names, bindings, announce, queued, report)
 	}
 	announce("bind")
 	state, e := backend.StartEngine(result.candidate)
@@ -138,8 +151,9 @@ func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result star
 	if bindings == nil {
 		bindings = &benchmarkBindings{}
 	}
-	if bindings.pid != state.Pid {
+	if bindings.pid != state.Pid || bindings.startTicks != state.StartTicks {
 		bindings.pid = state.Pid
+		bindings.startTicks = state.StartTicks
 		bindings.configs = map[string]string{}
 		bindings.candidates = map[string]string{}
 	}
@@ -208,7 +222,11 @@ func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result star
 			return core.Err("cancelled")
 		}
 	}
-	current, e = backend.Progress(ctx)
+	return finishBenchmarkReport(ctx, backend, result.workspace, names, paths, announce, report)
+}
+
+func finishBenchmarkReport(ctx context.Context, backend benchmarkBackend, workspace string, names, paths []string, announce func(string), report func([]string, string)) *core.ApiError {
+	current, e := backend.Progress(ctx)
 	if e != nil {
 		return e
 	}
@@ -216,7 +234,7 @@ func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result star
 		return core.Err("run_incomplete")
 	}
 	announce("report")
-	out, e := newNumberedOutput(result.workspace, "reports", "summary")
+	out, e := newNumberedOutput(workspace, "reports", "summary")
 	if e != nil {
 		return e
 	}
@@ -289,7 +307,7 @@ func (s *viewState) retryBenchmark() {
 	if s.simulate(previewRetryBenchmark) {
 		return
 	}
-	if s.busy || s.task.stage != "bind" || s.task.failure == nil {
+	if s.busy || (s.task.stage != "bind" && len(s.task.start.localCandidates) == 0) || s.task.failure == nil {
 		return
 	}
 	ctx, cancel := context.WithCancel(s.ctx)

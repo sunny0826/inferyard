@@ -15,10 +15,12 @@ Python 安装可选填完整 `worker_environment`，与主进程 `environment` �
 启动时只传后者，不能把 worker 的线程标记提前注入主进程。
 固定外部安装及补丁准备见[正式安装准备](../local-engine-native-preparation.md)。
 
-核验返回 `local-engine-check.v1` details：`eligible`、`reason`、`family`、
+核验返回 `local-engine-check.v2` details：`eligible`、`reason`、`family`、`declaration_sha256`、
 `verification_scope=installation_runtime_closure_only`、`model_requests_sent=0`、
 `ready_to_run=false`。只读安装核验不启动模型、不发送生成请求；Python 使用隔离的
 标准库查询，不能从 eligible 推导可测评或实际模型兼容性。
+成功时 `declaration_sha256` 是路径规范化后原安装声明 canonical JSON（`json_bytes`）的 SHA-256；
+失败时为 `null`，不能保留上一次核验摘要。
 
 ```sh
 inferyard engine check --installation installation.json
@@ -34,9 +36,22 @@ inferyard config describe --candidate /absolute/candidate-core/candidate.toml
 单请求超时=600 秒；可在冻结前显式指定。LM Studio 候选还要求
 `--service-pid PID`，记录现有后台 argv/cwd；不是 lms 命令的 PID。
 
-`config describe` 的 `local-engine-description.v1` 输出提供结构化 launch、
+`config describe` 的 `local-engine-description.v2` 输出提供结构化 launch、
 资产引用及绑定状态。直接进程的 `launch.argv`、cwd 和环境供操作者执行；
 LM Studio 使用独立 launch 描述。CLI 不执行这些启动动作。
+`assets.installation.sha256` 绑定冻结运行时文件；其中 `declaration_sha256` 只绑定
+该文件内的原安装声明，与 `engine check` 的同名值相同，两者不能混用。
+
+安装核验与本地描述的查询响应因新增必需的声明摘要分别升级到 `.v2`。
+Studio 不接受缺少该身份字段的 `.v1` 查询响应，须使用配套 CLI 重新查询；
+这不修改 `schema_version=3`、安装/候选/绑定文件或已有运行的读取规则。
+
+旧正式配置也支持 `config describe`，返回独立 `engine-description.v1`，包含原
+`adapter`、`direct_process` launch、模型/引擎/模板路径与声明摘要，以及
+`endpoint`、`conditions`、`generation`。旧 launch 的 `working_directory` 和
+`environment` 均为 `null`，保持 Studio 原有的 cwd/环境继承语义；不推断绑定状态。
+描述加载并验证配置，不为旧配置重新执行引擎检查，不启动服务、不发送模型请求；
+这些声明摘要不是当次资产检查或正式可运行资格。
 
 ## 绑定、运行与交接
 

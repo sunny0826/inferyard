@@ -23,6 +23,10 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.12�
 
 正文见[运行路径](studio-panel/runtime.md).
 
+## 本地五引擎
+
+登记、模型格式、逐题包服务替换、LM 外部绑定与重试报告边界见[本地引擎参考](studio-panel/local-engines.md)。
+
 ## UI 调试预览
 
 正文见[UI 调试预览](studio-panel/preview.md).
@@ -61,6 +65,8 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.12�
   复用）只移除记录、绝不发信号；身份匹配时提供显式停止按钮，停止的每一步都重核
   身份。损坏记录、身份无法核验或清理失败也保持 `orphaned`；显式「仅删除记录（不终止进程）」
   重新读取 `logs/engine-owner.json`，有效且身份匹配时拒绝删除，其他可恢复情形只删记录，成功后解除启动阻塞。
+  本地进程组记录身份无法核验时，即使显式仅删记录也拒绝，以保留待核验 worker 的归属；
+  具体边界见[本地引擎参考](studio-panel/local-engines.md#串行执行与所有权)。
   正常引擎退出后的记录删除失败同样进入此恢复入口；启动前再次检查残留记录。owner 记录的写入与
   两类删除都在跨进程文件锁（`engine-owner.json.lock`，Unix flock / Windows LockFileEx）内执行，
   锁文件 inode 永久保留，防多实例并发覆盖对方的记录。端口占用返回 `engine_port_in_use`；有活动运行时

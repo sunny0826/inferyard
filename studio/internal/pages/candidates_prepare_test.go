@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,6 +90,9 @@ func TestDashboardPreparationFreezesSelectedModel(t *testing.T) {
 					write(preflight, report(checkedModel))
 					return inferyard.Execution{}, nil
 				case "config":
+					if args[1] == "describe" {
+						return legacyCandidateResponse(frozenModel, engine), nil
+					}
 					if runtime.GOOS == "windows" {
 						if flag(args, "--engine") != "" || flag(args, "--runtime-receipt") != receipt {
 							return inferyard.Execution{ExitCode: 2}, nil
@@ -166,4 +170,14 @@ func TestDashboardPreparationFreezesSelectedModel(t *testing.T) {
 			}
 		})
 	}
+}
+
+func legacyCandidateResponse(model, engine string) inferyard.Execution {
+	hash := strings.Repeat("a", 64)
+	details := map[string]any{"schema_version": 3, "definition": "engine-description.v1", "adapter": "llama_cpp_b11146_v1", "model_requests_sent": 0,
+		"launch":   map[string]any{"kind": "direct_process", "argv": []string{engine}, "working_directory": nil, "environment": nil, "ownership": "operator"},
+		"assets":   map[string]any{"engine": map[string]any{"path": engine, "sha256": hash}, "model": map[string]any{"path": model, "kind": "gguf", "content_sha256": hash}, "template": map[string]any{"path": "/fixture/template.jinja", "sha256": hash}},
+		"endpoint": map[string]any{"url": "http://127.0.0.1:48857", "server_pid": 1, "process_start_ticks": 1}, "conditions": map[string]any{"context_size": 4096}, "generation": map[string]any{"max_tokens": 32, "temperature": 0}}
+	raw, _ := json.Marshal(map[string]any{"command": "config describe", "status": "prepared", "completeness": "complete", "run_id": nil, "evidence_dir": nil, "limitations": []string{}, "details": details})
+	return inferyard.Execution{Stdout: raw}
 }

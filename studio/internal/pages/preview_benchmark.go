@@ -14,6 +14,10 @@ import (
 
 func (p *previewSession) beginBenchmark(op previewBenchmark) {
 	s := p.state
+	if s.localEngine() != nil {
+		p.beginLocalBenchmark(op, false)
+		return
+	}
 	if s.busy || s.running() != nil || len(op.bundles) == 0 || op.model == "" || op.engine == "" || !s.preflightReady() {
 		return
 	}
@@ -132,7 +136,11 @@ func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark
 				b.BlockedReason = nil
 			}
 		}
-		p.startRun(bundleIndex+1, op, ids)
+		if p.local != nil {
+			p.advanceLocalRun(bundleIndex + 1)
+		} else {
+			p.startRun(bundleIndex+1, op, ids)
+		}
 	})
 }
 
@@ -143,6 +151,7 @@ func (p *previewSession) terminalRun(id, state string) {
 		if task.TaskId != id {
 			continue
 		}
+		task.AwaitingService, task.PreparationStage = false, ""
 		task.State, task.FinishedAt, task.Queued = state, previewValue(p.timestamp()), false
 		if detail := p.details[id]; detail != nil {
 			detail.Task = *task
@@ -204,9 +213,11 @@ func (p *previewSession) resetTask(model, engine string) {
 	p.cancelEvents("environment")
 	p.cancelEvents("report")
 	pending := s.running() != nil || s.busy
+	stopLocalService := false
 	for i := range s.tasks {
 		task := &s.tasks[i]
 		if !terminal(task.State) {
+			stopLocalService = stopLocalService || !task.Queued && task.EngineFamily != "" && task.EngineFamily != "lmstudio"
 			task.State = "cancelling"
 			if detail := p.details[task.TaskId]; detail != nil {
 				detail.Task = *task
@@ -214,6 +225,7 @@ func (p *previewSession) resetTask(model, engine string) {
 		}
 	}
 	finish := func() {
+		p.local = nil
 		if s.speed != nil {
 			s.speed.current, s.speed.opened = nil, nil
 			s.speed.selected = false
@@ -229,7 +241,7 @@ func (p *previewSession) resetTask(model, engine string) {
 		s.selected, s.detailID, s.focusedRun = "dashboard", "", ""
 		s.detail, s.resumeSource, s.runProgress, s.openedReport = nil, nil, nil, nil
 		s.model, s.engine = model, engine
-		if s.engineState.State == "starting" || s.engineState.State == "stopping" {
+		if stopLocalService || s.engineState.State == "starting" || s.engineState.State == "stopping" {
 			s.engineState = core.EngineState{State: "stopped"}
 		}
 		if s.progress != nil {

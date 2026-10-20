@@ -236,7 +236,7 @@
                 "definition": {
                   "type": "string",
                   "enum": [
-                    "local-engine-check.v1"
+                    "local-engine-check.v2"
                   ]
                 },
                 "eligible": {
@@ -270,6 +270,17 @@
                     }
                   ]
                 },
+                "declaration_sha256": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "verification_scope": {
                   "type": "string",
                   "enum": [
@@ -290,6 +301,7 @@
                 "eligible",
                 "reason",
                 "family",
+                "declaration_sha256",
                 "verification_scope",
                 "model_requests_sent",
                 "ready_to_run"
@@ -318,6 +330,10 @@
                           "sglang",
                           "lmstudio"
                         ]
+                      },
+                      "declaration_sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
                       }
                     }
                   },
@@ -326,6 +342,9 @@
                       "reason": {
                         "type": "string",
                         "minLength": 1
+                      },
+                      "declaration_sha256": {
+                        "type": "null"
                       }
                     }
                   }
@@ -550,7 +569,7 @@
                   "definition": {
                     "type": "string",
                     "enum": [
-                      "local-engine-check.v1"
+                      "local-engine-check.v2"
                     ]
                   },
                   "eligible": {
@@ -584,6 +603,17 @@
                       }
                     ]
                   },
+                  "declaration_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "verification_scope": {
                     "type": "string",
                     "enum": [
@@ -604,6 +634,7 @@
                   "eligible",
                   "reason",
                   "family",
+                  "declaration_sha256",
                   "verification_scope",
                   "model_requests_sent",
                   "ready_to_run"
@@ -632,6 +663,10 @@
                             "sglang",
                             "lmstudio"
                           ]
+                        },
+                        "declaration_sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
                         }
                       }
                     },
@@ -640,6 +675,9 @@
                         "reason": {
                           "type": "string",
                           "minLength": 1
+                        },
+                        "declaration_sha256": {
+                          "type": "null"
                         }
                       }
                     }

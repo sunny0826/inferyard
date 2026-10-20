@@ -2,11 +2,14 @@ package core
 
 import (
 	"context"
+	"encoding/json"
+	"inferyard/studio/internal/inferyard"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -17,6 +20,10 @@ import (
 // elapsed, or always when ENGINE_HELPER_NOREADY), or exits immediately when
 // ENGINE_HELPER_EXIT is set.
 func TestMain(m *testing.M) {
+	if len(os.Args) > 1 && os.Args[1] == "local-queue-helper" {
+		runLocalQueueHelper(os.Args[2:])
+		return
+	}
 	if os.Getenv("ENGINE_HELPER") == "1" {
 		if len(os.Args) > 1 && os.Args[1] == "run" {
 			runDrainingHelper()
@@ -81,10 +88,19 @@ func engineServiceCtx(t *testing.T, ctx context.Context, workspace string) *Serv
 	if err := os.WriteFile(settings, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	s, err := New(ctx, Options{SettingsPath: settings, EngineStartTimeout: 3 * time.Second})
+	s, err := New(ctx, Options{SettingsPath: settings, EngineStartTimeout: 3 * time.Second, Execute: func(ctx context.Context, path string, args ...string) (inferyard.Execution, error) {
+		if out, ok := version(args); ok {
+			return out, nil
+		}
+		if out, ok := engineFixtureDescription(args); ok {
+			return out, nil
+		}
+		return (inferyard.Client{Path: path}).Exec(ctx, args...)
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
+	s.settings.InferyardPath = ptr(os.Args[0])
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
@@ -133,6 +149,17 @@ func TestStartEngineHealthyStopAndIdempotent(t *testing.T) {
 	again, e := s.StartEngine(candidate)
 	if e != nil || again.Pid != first.Pid {
 		t.Fatalf("start while starting must be a no-op: %+v %v", again, e)
+	}
+	other := filepath.Join(workspace, "candidates", "c2")
+	if err := os.MkdirAll(other, 0700); err != nil {
+		t.Fatal(err)
+	}
+	candidateBytes, _ := os.ReadFile(filepath.Join(candidate, "candidate.toml"))
+	if err := os.WriteFile(filepath.Join(other, "candidate.toml"), candidateBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, failure := s.StartEngine(other); failure == nil || failure.Code != "engine_candidate_mismatch" {
+		t.Fatal(failure)
 	}
 	running := pollEngine(t, s, "running")
 	if running.Endpoint == "" || running.LogPath == "" {
@@ -212,4 +239,37 @@ func TestShutdownStopsManagedEngine(t *testing.T) {
 			t.Fatal("engine process survived Studio shutdown")
 		}
 	}
+}
+
+// Only the engine test fixture consumes its tiny TOML stub. Production startup
+// always obtains and validates the structured CLI description.
+func engineFixtureDescription(args []string) (inferyard.Execution, bool) {
+	if len(args) != 4 || args[0] != "config" || args[1] != "describe" || args[2] != "--candidate" {
+		return inferyard.Execution{}, false
+	}
+	raw, err := os.ReadFile(args[3])
+	if err != nil {
+		return inferyard.Execution{ExitCode: 2}, true
+	}
+	var binary string
+	var argv []string
+	for _, line := range strings.Split(string(raw), "\n") {
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		switch strings.TrimSpace(key) {
+		case "binary_path":
+			binary, _ = strconv.Unquote(strings.TrimSpace(value))
+		case "startup_args":
+			_ = json.Unmarshal([]byte(strings.TrimSpace(value)), &argv)
+		}
+	}
+	hash := strings.Repeat("a", 64)
+	details := map[string]any{"schema_version": 3, "definition": "engine-description.v1", "adapter": "llama_cpp_b11146_v1", "model_requests_sent": 0,
+		"launch":   map[string]any{"kind": "direct_process", "argv": append([]string{binary}, argv...), "working_directory": nil, "environment": nil, "ownership": "operator"},
+		"assets":   map[string]any{"engine": map[string]any{"path": binary, "sha256": hash}, "model": map[string]any{"path": "/fixture/model.gguf", "kind": "gguf", "content_sha256": hash}, "template": map[string]any{"path": "/fixture/template.jinja", "sha256": hash}},
+		"endpoint": map[string]any{"url": "http://127.0.0.1:8080", "server_pid": 1, "process_start_ticks": 1}, "conditions": map[string]any{"context_size": 4096}, "generation": map[string]any{"max_tokens": 32, "temperature": 0}}
+	result, _ := json.Marshal(map[string]any{"command": "config describe", "status": "prepared", "completeness": "complete", "run_id": nil, "evidence_dir": nil, "limitations": []string{}, "details": details})
+	return inferyard.Execution{Stdout: result}, true
 }

@@ -40,6 +40,9 @@
 新增页面操作须覆盖这些边界，不能以注入假 executor 代替服务隔离。启动方法与场景清单见
 [Studio README](../../../studio/README.md#ui-debug-preview)。
 
+本地五引擎场景共用正式选择、注册与外部绑定控件；`preview_local_engines.go` 仅在窗口内存
+推进逐题包服务替换与等待，未接入真实进程或 CLI。共享场景与验证层次见[本地引擎参考](local-engines.md#验证边界)。
+
 长上下文速度正式与模拟共用页面和 `ContextSpeedResult` 投影；
 `preview_context_speed.go` 与 `preview_speed_result.go` 仅进入调试构建，
 在窗口内存推进准备、绑定、计划、等待、五次测量、取消和结果读取。

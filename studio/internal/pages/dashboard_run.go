@@ -19,7 +19,7 @@ func (w *viewState) candidateView(c *ui.Context) {
 	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: "请选择模型"}}
 	for _, m := range w.registry.Models {
 		if m.Available {
-			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: m.Name})
+			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m), Disabled: !w.compatibleModel(m)})
 		}
 	}
 
@@ -87,7 +87,8 @@ func (w *viewState) candidateView(c *ui.Context) {
 		return
 	}
 	w.bundleSelection(c)
-	createDisabled := w.environmentMissing() || w.progress == nil || w.progress.DevicePreflight.Status != "ok" || w.busy || w.engine == "" || w.model == "" || revoked || len(w.checkedBundles()) == 0 || w.engineState.State == "orphaned"
+	w.localSelectionView(c)
+	createDisabled := w.environmentMissing() || !w.preflightReady() || w.busy || w.engine == "" || w.model == "" || revoked || len(w.checkedBundles()) == 0 || w.engineState.State == "orphaned" || w.localSelectionError() != ""
 	if revoked {
 		el := w.eligibility(w.engine)
 		ui.Row(c).Wrap().Gap(c.Theme().Space(2)).Children(func() {
@@ -102,6 +103,7 @@ func (w *viewState) candidateView(c *ui.Context) {
 			ui.Text(c, "llama-server")
 			ui.Text(c, "没有可用的引擎，请到下载页下载推荐引擎。")
 			button(c, "到下载页").AlignSelf(ui.Start).OnClick(func() { w.selected = "downloads" })
+			button(c, "注册已有引擎").AlignSelf(ui.Start).OnClick(func() { w.selected = "settings" })
 		}
 		createDisabled = true
 	}

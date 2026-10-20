@@ -6,6 +6,9 @@ func (s *Service) candidateEngineArgs(args []string, name, platform string) ([]s
 		if entry.engine.Name != name {
 			continue
 		}
+		if entry.installation != "" {
+			return nil, Err("local_engine_requires_explicit_candidate")
+		}
 		flag, path, opposite := "--engine", entry.path, "--runtime-receipt"
 		if platform == "windows" {
 			flag, path, opposite = "--runtime-receipt", entry.receipt, "--engine"

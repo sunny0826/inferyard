@@ -1,7 +1,8 @@
 """Read-only, structured candidate presentation for CLI and native callers."""
 
 from inferyard.config.loader import load_config
-from inferyard.config.preparation_io import PreparationError
+from inferyard.config.preparation_io import sha256
+from inferyard.evidence.storage import json_bytes
 from inferyard.platforms.local_engines.assets import assets
 
 from .launch import description
@@ -10,18 +11,21 @@ from .launch import description
 def describe(request):
     config = load_config(request.candidate).config.to_dict()
     if config.get("definition") != "local-engine-config.v1":
-        raise PreparationError("local_engine_config_required")
+        from .description_legacy import describe as describe_legacy
+
+        return describe_legacy(config)
     runtime, _, _ = assets(config)
     model, engine = config["model"], config["engine"]
     return {
         "schema_version": 3,
-        "definition": "local-engine-description.v1",
+        "definition": "local-engine-description.v2",
         "family": engine["family"],
         "launch": description(config, runtime["installation"]),
         "assets": {
             "installation": {
                 "path": engine["installation_path"],
                 "sha256": engine["installation_sha256"],
+                "declaration_sha256": sha256(json_bytes(runtime["installation"])),
             },
             "model": {
                 "path": model["local_path"],

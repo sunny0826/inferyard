@@ -293,6 +293,51 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("Task icon opens live queue panel")
     }
 
+    func testLocalDirectoryEngineRunsBothScopes() {
+        app.popUpButtons["模拟场景"].click()
+        text("引擎 · 本地安装与目录模型").click()
+        expectText("local-weights · 目录模型")
+        revealInContent(app.buttons["运行 benchmark"])
+        keepScreenshot("Local directory model and registered engine")
+        click("运行 benchmark")
+        expectText("zh-core · 运行中")
+        expectText("zh-svg-pelican · 排队中")
+        keepScreenshot("Local first scope and queued second scope")
+        expectText("zh-svg-pelican · 运行中", timeout: 15)
+        keepScreenshot("Local second scope after service handoff")
+        click("查看报告", timeout: 20)
+        expectText("local-weights")
+        expectText("各类任务表现")
+    }
+
+    func testLMStudioBindingFailureKeepsCompletedScope() {
+        app.popUpButtons["模拟场景"].click()
+        text("引擎 · LM Studio 手动绑定").click()
+        revealInContent(app.buttons["运行 benchmark"])
+        click("运行 benchmark")
+        expectText("zh-svg-pelican · 等待绑定 LM Studio", timeout: 15)
+        let pid = app.textFields["新的后台 PID"]
+        XCTAssertTrue(pid.waitForExistence(timeout: 5))
+        revealInContent(pid)
+        keepScreenshot("LM Studio waits for a fresh second-scope service")
+        pid.click()
+        pid.typeText("4002")
+        app.checkBoxes["下次操作模拟失败"].click()
+        click("绑定并继续此题包")
+        click("重试未完成的题包", timeout: 10)
+        XCTAssertTrue(pid.waitForExistence(timeout: 5))
+        revealInContent(pid)
+        pid.click()
+        pid.typeText("4003")
+        click("绑定并继续此题包")
+        expectText("zh-svg-pelican · 运行中")
+        XCTAssertFalse(text("zh-core · 运行中").exists, "A completed scope must not run again")
+        keepScreenshot("LM Studio retries only the unfinished scope")
+        click("查看报告", timeout: 20)
+        expectText("local.gguf")
+        expectText("各类任务表现")
+    }
+
     private func positionWindowForCapture() {
         let window = app.windows["InferYard Studio · UI 调试"]
         let screen = NSScreen.screens[0]

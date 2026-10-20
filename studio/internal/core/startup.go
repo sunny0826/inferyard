@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -12,8 +11,14 @@ import (
 )
 
 type Startup struct {
-	Path string   `json:"path"`
-	Args []string `json:"startup_args"`
+	Path             string            `json:"path"`
+	Args             []string          `json:"startup_args"`
+	Kind             string            `json:"kind"`
+	Family           string            `json:"family"`
+	Local            bool              `json:"local"`
+	WorkingDirectory string            `json:"working_directory"`
+	Environment      map[string]string `json:"environment"`
+	Endpoint         string            `json:"endpoint"`
 }
 type ProcessCandidate struct {
 	PID  int64  `json:"pid"`
@@ -21,60 +26,17 @@ type ProcessCandidate struct {
 }
 
 func (s *Service) Startup(candidate string) (Startup, *ApiError) {
-	w := workspaceRoot(s.userSettings())
-	if w == nil {
-		return Startup{}, Conflict("settings_incomplete")
+	description, failure := s.DescribeCandidate(s.ctx, candidate)
+	if failure != nil {
+		return Startup{}, failure
 	}
-	path, err := Resolve(*w, candidate)
-	if err != nil {
-		return Startup{}, Err("invalid_request")
-	}
-	if st, e := os.Stat(path); e == nil && st.IsDir() {
-		path = filepath.Join(path, "candidate.toml")
-	}
-	if _, err = Resolve(*w, path); err != nil {
-		return Startup{}, Err("invalid_request")
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return Startup{}, Err("not_found")
-	}
-	result := Startup{Args: []string{}}
-	section := ""
-	seen := map[string]bool{}
-	for _, line := range strings.Split(string(raw), "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "[") {
-			section = strings.Trim(line, "[]")
-			continue
-		}
-		if section != "engine" {
-			continue
-		}
-		k, v, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		k = strings.TrimSpace(k)
-		if k != "binary_path" && k != "startup_args" {
-			continue
-		}
-		if seen[k] {
-			return Startup{}, Err("cli_error")
-		}
-		seen[k] = true
-		var err error
-		if k == "binary_path" {
-			err = json.Unmarshal([]byte(strings.TrimSpace(v)), &result.Path)
-		} else {
-			err = json.Unmarshal([]byte(strings.TrimSpace(v)), &result.Args)
-		}
-		if err != nil {
-			return Startup{}, Err("cli_error")
-		}
-	}
-	if result.Path == "" || !seen["startup_args"] || result.Args == nil {
-		return Startup{}, Err("cli_error")
+	launch := description.Launch
+	result := Startup{Kind: launch.Kind, Family: description.Family,
+		Local:            description.Definition == "local-engine-description.v2",
+		WorkingDirectory: str(launch.WorkingDirectory), Environment: launch.Environment,
+		Endpoint: description.Endpoint.URL, Args: []string{}}
+	if launch.Kind == "direct_process" {
+		result.Path, result.Args = launch.Argv[0], launch.Argv[1:]
 	}
 	return result, nil
 }

@@ -4,8 +4,9 @@ import stat
 import sys
 
 from inferyard.application.types import CommandResult
-from inferyard.config.preparation_io import PreparationError, require_platform
+from inferyard.config.preparation_io import PreparationError, require_platform, sha256
 from inferyard.contracts.schemas_engine_check import REASONS
+from inferyard.evidence.storage import json_bytes
 from inferyard.platforms.runtime_profiles import RELEASE
 
 
@@ -92,10 +93,11 @@ def execute(request):
                 "checked",
                 "complete",
                 details={
-                    "definition": "local-engine-check.v1",
+                    "definition": "local-engine-check.v2",
                     "eligible": False,
                     "reason": str(exc),
                     "family": installation["family"] if installation else None,
+                    "declaration_sha256": None,
                     "verification_scope": "installation_runtime_closure_only",
                     "model_requests_sent": 0,
                     "ready_to_run": False,
@@ -106,10 +108,11 @@ def execute(request):
             "checked",
             "complete",
             details={
-                "definition": "local-engine-check.v1",
+                "definition": "local-engine-check.v2",
                 "eligible": True,
                 "reason": None,
                 "family": installation["family"],
+                "declaration_sha256": sha256(json_bytes(installation)),
                 "verification_scope": "installation_runtime_closure_only",
                 "model_requests_sent": 0,
                 "ready_to_run": False,

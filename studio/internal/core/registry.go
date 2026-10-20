@@ -24,6 +24,7 @@ type Registry struct {
 }
 type ModelAsset struct {
 	Name          string
+	Format        string
 	SizeBytes     *int64
 	Architecture  string
 	ContextLength *int64
@@ -32,11 +33,14 @@ type ModelAsset struct {
 }
 type EngineAsset struct {
 	Name           string
+	Family         string
+	Kind           string
 	Source         string
 	LatestDownload bool
 }
 type registryEntry struct {
 	path, source         string
+	installation, family string
 	receipt              string
 	model                ModelAsset
 	engine               EngineAsset
@@ -142,9 +146,21 @@ func (s *Service) registry() registryData {
 			}
 			models[path] = len(data.models)
 			data.models = append(data.models, registryEntry{path: path, source: "设备快照", model: ModelAsset{
-				Name: filepath.Base(path), SizeBytes: model.SizeBytes, Architecture: model.Architecture,
+				Name: filepath.Base(path), Format: "gguf", SizeBytes: model.SizeBytes, Architecture: model.Architecture,
 				ContextLength: model.ContextLength, Available: model.Status == "available", Reason: model.Reason,
 			}})
+		}
+	}
+	if u.ModelsRoot != nil {
+		local, failure := scanDirectoryModels(*u.ModelsRoot)
+		if data.modelError == nil {
+			data.modelError = failure
+		}
+		for _, entry := range local {
+			if _, found := models[entry.path]; !found {
+				models[entry.path] = len(data.models)
+				data.models = append(data.models, entry)
+			}
 		}
 	}
 	rootsFor := EngineRoots
@@ -225,10 +241,11 @@ func (s *Service) registry() registryData {
 					continue
 				}
 				models[path] = len(data.models)
-				data.models = append(data.models, registryEntry{path: path, source: "模型下载", model: ModelAsset{Name: filepath.Base(path), SizeBytes: ptr(info.Size()), Available: true}})
+				data.models = append(data.models, registryEntry{path: path, source: "模型下载", model: ModelAsset{Name: filepath.Base(path), Format: "gguf", SizeBytes: ptr(info.Size()), Available: true}})
 			}
 		}
 	}
+	data.engines = append(data.engines, installationEntries(u.EngineInstallations)...)
 	sort.SliceStable(data.engines, func(i, j int) bool {
 		a, b := data.engines[i], data.engines[j]
 		if !a.downloaded.Equal(b.downloaded) {
@@ -251,10 +268,17 @@ func nameEntries(entries []registryEntry, engine bool) {
 		name := filepath.Base(e.path)
 		if engine {
 			name = filepath.Base(filepath.Dir(e.path)) + " · " + name
+			if e.installation != "" {
+				name = e.family + " · " + filepath.Base(e.installation)
+			}
 		}
 		counts[name]++
 		if engine {
-			e.engine = EngineAsset{Name: name, Source: e.source}
+			kind, family := "legacy_binary", "llama-cpp"
+			if e.installation != "" {
+				kind, family = "local_installation", e.family
+			}
+			e.engine = EngineAsset{Name: name, Source: e.source, Kind: kind, Family: family}
 		} else {
 			e.model.Name = name
 		}

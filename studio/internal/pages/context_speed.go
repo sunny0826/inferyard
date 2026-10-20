@@ -122,6 +122,9 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 }
 
 func (s *viewState) speedStartBlockReason() string {
+	if s.localEngine() != nil {
+		return "安装声明引擎暂不支持长上下文速度；可运行普通 benchmark。"
+	}
 	switch {
 	case s.environmentMissing():
 		return "请先完成环境准备。"

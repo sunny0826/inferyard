@@ -2,20 +2,23 @@ package core
 
 import (
 	"encoding/json"
-	"errors"
 	"net"
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 )
 
 // engineOwner contains identity and display metadata only, never startup argv.
 type engineOwner struct {
-	PID        int64  `json:"pid"`
-	StartTicks int64  `json:"start_ticks"`
-	Endpoint   string `json:"endpoint"`
-	LogFile    string `json:"log_file"`
-	Candidate  string `json:"candidate"`
+	Local        bool                    `json:"local,omitempty"`
+	ProcessGroup int64                   `json:"process_group,omitempty"`
+	Workers      []engineProcessIdentity `json:"workers,omitempty"`
+	PID          int64                   `json:"pid"`
+	StartTicks   int64                   `json:"start_ticks"`
+	Endpoint     string                  `json:"endpoint"`
+	LogFile      string                  `json:"log_file"`
+	Candidate    string                  `json:"candidate"`
 }
 type orphanEngine struct {
 	owner engineOwner
@@ -27,11 +30,22 @@ type orphanEngine struct {
 func ownerPath(workspace string) string { return filepath.Join(workspace, "logs", "engine-owner.json") }
 
 func (s *Service) persistEngineOwner(e *engineEntry, workspace string) *ApiError {
+	owner := engineOwner{PID: e.state.Pid, Local: e.state.Local, Endpoint: e.state.Endpoint, LogFile: filepath.Base(e.state.LogPath), Candidate: filepath.Base(e.state.Candidate)}
+	if owner.Local {
+		owner.ProcessGroup = owner.PID
+	}
+	e.owner, e.ownerPath = owner, ownerPath(workspace)
 	ticks, err := s.processTicks(e.state.Pid)
 	if err != nil || ticks <= 0 {
 		return &ApiError{Code: "service_identity_unreadable", Message: "无法读取引擎启动标识，已中止启动。"}
 	}
-	owner := engineOwner{PID: e.state.Pid, StartTicks: ticks, Endpoint: e.state.Endpoint, LogFile: filepath.Base(e.state.LogPath), Candidate: filepath.Base(e.state.Candidate)}
+	owner.StartTicks = ticks
+	e.owner = owner
+	if e.state.Local {
+		owner.Local = true
+		owner.ProcessGroup = owner.PID
+	}
+	e.state.StartTicks = ticks
 	path := ownerPath(workspace)
 	if err := writeEngineOwner(path, owner); err != nil {
 		return &ApiError{Code: "engine_owner_write_failed", Message: "无法保存工作区 logs/engine-owner.json，已中止启动。"}
@@ -62,7 +76,7 @@ func removeEngineOwnerLocked(path string, expected engineOwner) error {
 	if json.Unmarshal(raw, &current) != nil {
 		return os.ErrInvalid
 	}
-	if current.PID != expected.PID || current.StartTicks != expected.StartTicks {
+	if !reflect.DeepEqual(current, expected) {
 		return nil
 	}
 	err = os.Remove(path)
@@ -105,6 +119,16 @@ func writeEngineOwner(path string, owner engineOwner) error {
 }
 
 func validOwner(owner engineOwner) bool {
+	if owner.Local && owner.ProcessGroup != owner.PID || !owner.Local && (owner.ProcessGroup != 0 || len(owner.Workers) != 0) {
+		return false
+	}
+	seen := map[int64]bool{owner.PID: true}
+	for _, worker := range owner.Workers {
+		if worker.PID <= 0 || worker.StartTicks < owner.StartTicks || seen[worker.PID] {
+			return false
+		}
+		seen[worker.PID] = true
+	}
 	if owner.PID <= 0 || owner.StartTicks <= 0 || owner.LogFile == "" || owner.Candidate == "" {
 		return false
 	}
@@ -141,8 +165,8 @@ func (s *Service) detectEngineOwnerLocked() {
 	if err != nil || json.Unmarshal(raw, &owner) != nil || !validOwner(owner) {
 		failure = &ApiError{Code: "engine_owner_invalid", Message: "引擎所有权记录无法读取，请检查工作区 logs/engine-owner.json，或仅删除记录（不终止进程）。"}
 	} else {
-		ticks, err := s.processTicks(owner.PID)
-		if errors.Is(err, os.ErrNotExist) || err == nil && ticks != owner.StartTicks {
+		same, err := s.ownedTreeAlive(&owner, path)
+		if err == nil && !same {
 			if err := removeEngineOwner(path, owner); err == nil {
 				return
 			}
@@ -151,7 +175,7 @@ func (s *Service) detectEngineOwnerLocked() {
 			failure = &ApiError{Code: "service_identity_unreadable", Message: "无法确认遗留引擎的启动标识；可仅删除工作区 logs/engine-owner.json（不终止进程）。"}
 		}
 	}
-	state := EngineState{State: "orphaned", Pid: owner.PID, Endpoint: owner.Endpoint, LogPath: owner.LogFile, Candidate: owner.Candidate, Error: failure}
+	state := EngineState{State: "orphaned", Pid: owner.PID, StartTicks: owner.StartTicks, Local: owner.Local, Endpoint: owner.Endpoint, LogPath: owner.LogFile, Candidate: owner.Candidate, Error: failure}
 	s.orphan = &orphanEngine{owner: owner, path: path, state: state}
 	s.Bus.Publish("engine.state", map[string]any{"engine": clone(state)})
 }

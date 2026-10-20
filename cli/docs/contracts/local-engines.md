@@ -40,6 +40,10 @@ ICU 和 Metal 缓存等非 Mach-O 数据不作为动态库库存。模型仍独�
 `mapped file`，当前及最大权限都不可执行。缺失、格式不识别或任一区域可执行时拒绝；
 该观察不为未知原生库豁免库存核验。
 
+只读查询 `local-engine-check.v2` 与 `local-engine-description.v2` 提供规范安装声明摘要，
+供 Studio 绑定当前选择与冻结候选；旧 v1 查询缺该字段，不作为可归属候选接受，
+须用匹配版本 CLI 重新查询。它们不是封存证据格式；既有配置、binding 与 schema_version 不变。
+
 冻结的 runtime、模型清单和 binding JSON 必须采用 `storage.json_bytes` 的规范字节。
 离线从封存对象重建字节摘要，与配置及 FileIdentity 库存核对，
 不重新打开当前模型、Python 安装或服务。

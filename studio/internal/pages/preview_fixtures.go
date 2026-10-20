@@ -48,6 +48,12 @@ var previewScenes = []struct {
 	}},
 	{"资源 · 密集采样与缺测", previewDenseResources},
 	{"资源 · CPU 与多路温度", previewMultiSensorResources},
+	{"引擎 · 本地安装与目录模型", previewLocalEngines},
+	{"引擎 · LM Studio 手动绑定", func(s *viewState) {
+		previewLocalEngines(s)
+		s.engine, s.model = "lmstudio · 模拟安装", "local.gguf"
+		s.localPID, s.localEndpoint = "4001", "http://127.0.0.1:48857"
+	}},
 }
 
 func previewDenseResources(s *viewState) {
