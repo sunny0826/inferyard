@@ -44,16 +44,18 @@ type aggregate struct {
 	requests          map[string]int
 	stop              *string
 	started, finished *string
-	previous          object
-	resource          ResourceSample
-	resourceStart     time.Time
-	resourceClock     string
-	resourcePhase     string
-	resourceMetrics   map[string]bool
+	cpuPrevious       map[ResourceSource]object
+	resourceGap       time.Duration
 }
 
 func newAggregate(raw []byte) *aggregate {
-	a := &aggregate{Progress: RunProgress{Cases: []CaseProgress{}}, requests: map[string]int{}}
+	a := &aggregate{
+		Progress: RunProgress{Cases: []CaseProgress{}}, requests: map[string]int{},
+		cpuPrevious: map[ResourceSource]object{}, resourceGap: 2 * time.Second,
+	}
+	if interval := number(obj(payload(raw, "config")["telemetry"])["interval_ms"]); interval != nil && *interval > 0 {
+		a.resourceGap = time.Duration(*interval * 2 * float64(time.Millisecond))
+	}
 	selection := payload(raw, "selection")
 	if ids, ok := selection["case_ids"].([]any); ok {
 		a.Progress.Total = ptr(int64(len(ids)))
@@ -134,79 +136,6 @@ func (a *aggregate) events(records []evidence.Record) {
 			a.Progress.Done++
 		}
 	}
-}
-func (a *aggregate) resources(records []evidence.Record) []ResourceSample {
-	points := []ResourceSample{}
-	for _, r := range records {
-		m := document(r.Raw)
-		metric := str(text(m["metric_name"]))
-		v := number(m["value"])
-		if m["missing_reason"] != nil {
-			v = nil
-		}
-		if metric != "system_mem_available" && metric != "service_rss" && metric != "temperature" && metric != "service_cpu_ticks" {
-			continue
-		}
-		if metric == "service_cpu_ticks" && m["capture"] != "periodic" {
-			continue
-		}
-		utc := str(text(m["utc"]))
-		stamp, err := time.Parse(time.RFC3339Nano, utc)
-		clock, phase := str(text(m["clock_id"])), str(text(m["phase"]))
-		// Anchor a half-second window at the first metric, including across reads.
-		// A repeated metric starts a new cycle; values never carry into that cycle.
-		if a.resourceMetrics == nil || a.resourceMetrics[metric] || err != nil || a.resourceStart.IsZero() || stamp.Before(a.resourceStart) || stamp.Sub(a.resourceStart) >= 500*time.Millisecond || clock != a.resourceClock || phase != a.resourcePhase {
-			a.resource = ResourceSample{Utc: utc}
-			a.resourceStart, a.resourceClock, a.resourcePhase = stamp, clock, phase
-			a.resourceMetrics = map[string]bool{}
-		}
-		a.resourceMetrics[metric] = true
-		p := &a.resource
-		switch metric {
-		case "system_mem_available":
-			if v != nil {
-				p.MemAvailableBytes = ptr(int64(*v))
-			}
-		case "service_rss":
-			if v != nil {
-				p.ServiceRssBytes = ptr(int64(*v))
-			}
-		case "temperature":
-			p.TemperatureCelsius = v
-		case "service_cpu_ticks":
-			if m["capture"] != "periodic" {
-				continue
-			}
-			old := a.previous
-			dt, pt, hz, oldval := number(m["read_finished_ns"]), number(old["read_finished_ns"]), number(m["clock_ticks_per_second"]), number(old["value"])
-			same := true
-			for _, k := range []string{"clock_id", "source", "server_pid", "process_start_ticks", "boot_id", "clock_ticks_per_second"} {
-				if m[k] != old[k] {
-					same = false
-				}
-			}
-			if same && v != nil && oldval != nil && old["missing_reason"] == nil && dt != nil && pt != nil && hz != nil && *hz > 0 && *dt > *pt && *dt-*pt <= 2e9 && *v >= *oldval {
-				p.ServiceCpuPercent = ptr((*v - *oldval) / *hz / ((*dt - *pt) / 1e9) * 100)
-			}
-			a.previous = m
-		default:
-			continue
-		}
-		points = appendResources(points, []ResourceSample{*p})
-	}
-	return points
-}
-
-// appendResources replaces revisions of a sampling point with its merged value.
-func appendResources(dst, points []ResourceSample) []ResourceSample {
-	for _, p := range points {
-		if len(dst) > 0 && dst[len(dst)-1].Utc == p.Utc {
-			dst[len(dst)-1] = p
-		} else {
-			dst = append(dst, p)
-		}
-	}
-	return dst
 }
 func summarize(r evidence.Run, host string) (RunSummary, *aggregate, error) {
 	a := newAggregate(r.Inputs)

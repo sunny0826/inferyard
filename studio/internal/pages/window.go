@@ -10,7 +10,6 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
-	"github.com/oneo-me/onevra/source/components/chart"
 	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 	"inferyard/studio/internal/core"
@@ -33,7 +32,7 @@ var navigation = []struct {
 // The navigation and content builders are shared with the in-memory test view.
 func New(ctx context.Context, service *core.Service, page string) {
 	ctx, cancel := context.WithCancel(ctx)
-	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, chartIndex: -1, speed: &speedWorkspace{context: 65536}}
+	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, speed: &speedWorkspace{context: 65536}}
 	title := "InferYard Studio"
 	if paths := service.BoundPaths(); paths != nil {
 		title = paths.WindowTitle
@@ -147,8 +146,7 @@ type viewState struct {
 	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState
 	casesTable, samplesTable                                                            pageTableState
-	resourceCharts                                                                      [3]chart.State
-	chartIndex                                                                          int
+	resourceTablePage                                                                   int
 }
 
 func (s *viewState) refresh(full bool) {

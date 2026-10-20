@@ -1,11 +1,10 @@
 # InferYard Studio
 
-InferYard Studio is a desktop application for local model evaluation. Its native UI is
-written in Go on the [onevra](https://github.com/oneo-me/onevra) component library (MIT),
-which is built on MyGo v0.5.5, and calls `core.Service` directly. In-process events refresh
-the windows. Studio has no browser dashboard, headless mode, REST/SSE server, or generated
-JavaScript bindings. The separately installed [InferYard CLI](../cli/README.md) executes
-operations and owns the evidence contract.
+InferYard Studio evaluates local models through a native Go UI using
+[onevra](https://github.com/oneo-me/onevra) (MIT) and MyGo v0.5.5.
+Pages call `core.Service` and refresh through in-process events.
+The separately installed [CLI](../cli/README.md) executes operations and owns evidence.
+There is no browser UI, headless mode, REST/SSE server, or generated JavaScript.
 
 ## Pages and first launch
 
@@ -13,8 +12,7 @@ When the workspace, results, and model paths are all unset in settings, Studio o
 on the task page with environment preparation. Once any of these paths has been saved,
 launching without an explicit page opens Reports. The sidebar lists Reports, Models,
 Downloads, Device, and Settings.
-A “新任务” (New task) button above the navigation opens the task page; no sidebar item is
-selected while the task page is open. The six page bodies are:
+“新任务” (New task) opens the task page with no sidebar selection.
 
 | Page | Purpose |
 | --- | --- |
@@ -59,9 +57,11 @@ The service card stays collapsed throughout an active benchmark, then exposes
 recovery controls in the run/resume stage. Stop is available for a starting or running engine
 when no non-terminal run exists and Studio is neither busy nor resetting a task.
 
-Resource charts use elapsed-time labels and equally spaced samples. Full UTC timestamps
-remain in sample details and the raw table. Missing values remain gaps; entirely missing
-metrics show compact messages.
+New macOS/Linux single runs collect CPU and available temperature sensors through the CLI.
+Resource charts keep sources separate and retain 600 observations per source. CPU shows
+single-core equivalent usage; temperature has a source selector. Elapsed-time labels use
+equally spaced samples, with UTC and original units in details and a paged raw table.
+Missing values remain gaps with reasons. Older memory-only runs are not backfilled.
 
 When no CLI is configured, the task page’s Prepare environment action installs the CLI: it reuses an existing
 `inferyard`/`uv` when found (including Homebrew locations outside the GUI PATH), downloads

@@ -44,7 +44,7 @@ func designFixture(page string) *viewState {
 	s.reports = []core.ReportSummary{{ReportId: "report-fixture", Path: long + "report", RunIds: []string{"run-001"}}}
 	if page == "detail" {
 		s.selected, s.detailID = "dashboard", "active"
-		s.detail = &core.RunTaskDetail{Task: s.tasks[0], Progress: &core.RunProgress{Done: 1, Total: ptr(int64(4)), Cases: []core.CaseProgress{{CaseId: "case-fixture", State: "completed"}}}, Resources: []core.ResourceSample{{Utc: "2026-10-14T01:00:00Z", ServiceCpuPercent: ptr(10.0)}}}
+		s.detail = &core.RunTaskDetail{Task: s.tasks[0], Progress: &core.RunProgress{Done: 1, Total: ptr(int64(4)), Cases: []core.CaseProgress{{CaseId: "case-fixture", State: "completed"}}}, Resources: chartSamples()}
 	}
 	return s
 }

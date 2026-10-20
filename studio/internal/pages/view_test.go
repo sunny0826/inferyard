@@ -5,13 +5,12 @@ import (
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
-	"math"
 	"testing"
 )
 
 func ptr[T any](v T) *T { return &v }
 func testState() viewState {
-	return viewState{selected: "dashboard", loaded: true, settingsLoaded: true, denied: map[string]bool{}, chartIndex: -1, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}, Workspace: core.DirectoryReadiness{Initialized: true}, Results: core.DirectoryReadiness{Exists: true}, Models: core.DirectoryReadiness{Exists: true}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
+	return viewState{selected: "dashboard", loaded: true, settingsLoaded: true, denied: map[string]bool{}, ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok", Version: ptr("1.0")}, Workspace: core.DirectoryReadiness{Initialized: true}, Results: core.DirectoryReadiness{Exists: true}, Models: core.DirectoryReadiness{Exists: true}}, progress: &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "run_complete", BoundPath: ptr("/w/bound/zh-core-1")}, {Bundle: "zh-svg-pelican", Phase: "bound_missing"}}}}
 }
 func TestSixPagesRender(t *testing.T) {
 	for _, tc := range []struct{ page, want string }{{"dashboard", "zh-svg-pelican · 待绑定服务"}, {"device", "尚无设备快照"}, {"models", "选择模型与引擎"}, {"downloads", "下载引擎"}, {"reports", "从历史运行另做报告"}, {"settings", "CLI"}} {
@@ -128,9 +127,9 @@ func TestDetailTableAndResourcesRender(t *testing.T) {
 	s := testState()
 	s.selected = "dashboard"
 	s.detailID = "fixture"
-	s.detail = &core.RunTaskDetail{Task: core.RunTask{TaskId: "fixture", Kind: "resume", State: "done", Exit: &core.RunExit{ExitCode: 3}}, Progress: &core.RunProgress{Done: 1, Total: ptr(int64(2)), Phase: ptr("formal"), Cases: []core.CaseProgress{{CaseId: "case-pelican", State: "failed", ErrorCategory: ptr("fixture-failure")}}}, Resources: []core.ResourceSample{{Utc: "2026-10-13T06:00:00Z", MemAvailableBytes: ptr(int64(1073741824)), ServiceCpuPercent: ptr(12.5)}}}
+	s.detail = &core.RunTaskDetail{Task: core.RunTask{TaskId: "fixture", Kind: "resume", State: "done", Exit: &core.RunExit{ExitCode: 3}}, Progress: &core.RunProgress{Done: 1, Total: ptr(int64(2)), Phase: ptr("formal"), Cases: []core.CaseProgress{{CaseId: "case-pelican", State: "failed", ErrorCategory: ptr("fixture-failure")}}}, Resources: chartSamples()}
 	tt := ui.NewTester(s.view, 1120, 1800)
-	for _, want := range []string{"运行不完整", "原始状态：done", "1 / 2", "分母为冻结续测子集", "case-pelican", "fixture-failure", "采样点：1", "1073741824", "缺测"} {
+	for _, want := range []string{"运行不完整", "原始状态：done", "1 / 2", "分母为冻结续测子集", "case-pelican", "fixture-failure", "采样记录：15 · 每个来源保留最近 600 点", "1073741824", "缺测"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
@@ -140,16 +139,6 @@ func TestDetailTableAndResourcesRender(t *testing.T) {
 	}
 	if s.detailID != "" || !tt.HasText("配置、运行与跟踪本地模型测评。") {
 		t.Fatal("return navigation failed")
-	}
-}
-func TestResourceUnitsNullsAndOrdering(t *testing.T) {
-	samples := []core.ResourceSample{{Utc: "2026-10-13T06:00:02Z", ServiceCpuPercent: ptr(12.5)}, {Utc: "2026-10-13T06:00:00Z", MemAvailableBytes: ptr(int64(2147483648))}, {Utc: "2026-10-13T06:00:01Z"}, {Utc: "2026-10-13T06:00:02Z", ServiceCpuPercent: ptr(15.5)}, {Utc: "bad"}}
-	points := resourcePoints(samples)
-	if len(points) != 3 || *points[0].values[0] != 2 || points[1].values[0] != nil || points[1].values[2] != nil || *points[2].values[2] != 15.5 || points[2].seconds-points[0].seconds != 2 {
-		t.Fatalf("units, gaps or timestamp ordering changed: %+v", points)
-	}
-	if finite(nil) || finite(ptr(math.NaN())) || finite(ptr(math.Inf(1))) {
-		t.Fatal("missing / non-finite point accepted")
 	}
 }
 func TestReportFileURLAndInputNames(t *testing.T) {

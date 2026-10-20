@@ -1,141 +1,221 @@
 package pages
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/components/chart"
 	"inferyard/studio/internal/core"
 )
 
-type resourcePoint struct {
-	utc     string
-	seconds float64
-	values  [4]*float64
-	sample  core.ResourceSample
+type resourceSeries struct {
+	source core.ResourceSource
+	id     string
+	points []core.ResourceSample
 }
 
-func resourcePoints(samples []core.ResourceSample) []resourcePoint {
-	byTime := map[string]resourcePoint{}
+type resourceChartState struct {
+	source string
+	chart  chart.State
+}
+
+func resourceSeriesData(samples []core.ResourceSample) []resourceSeries {
+	groups := map[core.ResourceSource][]core.ResourceSample{}
 	for _, sample := range samples {
-		date, e := time.Parse(time.RFC3339Nano, sample.Utc)
-		if e != nil {
+		if _, err := time.Parse(time.RFC3339Nano, sample.Utc); err != nil {
 			continue
 		}
-		p := resourcePoint{utc: sample.Utc, seconds: float64(date.Unix()) + float64(date.Nanosecond())/1e9, sample: sample}
-		if sample.MemAvailableBytes != nil {
-			v := float64(*sample.MemAvailableBytes) / 1073741824
-			p.values[0] = &v
-		}
-		if sample.ServiceRssBytes != nil {
-			v := float64(*sample.ServiceRssBytes) / 1073741824
-			p.values[1] = &v
-		}
-		p.values[2] = sample.ServiceCpuPercent
-		p.values[3] = sample.TemperatureCelsius
-		byTime[sample.Utc] = p
+		groups[sample.Source] = append(groups[sample.Source], sample)
 	}
-	out := make([]resourcePoint, 0, len(byTime))
-	for _, p := range byTime {
-		out = append(out, p)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].seconds < out[j].seconds })
-	if len(out) > 600 {
-		out = out[len(out)-600:]
-	}
-	return out
-}
-func finite(v *float64) bool { return v != nil && !math.IsNaN(*v) && !math.IsInf(*v, 0) }
-func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
-	card(c, "资源曲线", func() {
-		points := resourcePoints(samples)
-		ui.Text(c, fmt.Sprintf("采样点：%d", len(points)))
-		if len(points) == 0 {
-			ui.Text(c, "等待资源采样，缺测不补零。")
-			return
-		}
-		theme := c.Theme()
-		colors := []ui.Color{theme.Accent, theme.Success, theme.Warning, theme.Danger}
-		describe := func(i int) string {
-			p := points[i]
-			return fmt.Sprintf("%s · 可用内存 %s GiB · RSS %s GiB · CPU %s %% · 温度 %s °C", p.utc, number(p.values[0]), number(p.values[1]), number(p.values[2]), number(p.values[3]))
-		}
-		ui.Text(c, "横轴为距首个样本的时间，采样点等距排列；缺测保留断点。").TextColor(theme.TextMuted)
-		labels := []string{"内存 GiB", "服务 CPU %", "温度 °C"}
-		columns := [][]int{{0, 1}, {2}, {3}}
-		for i, cols := range columns {
-			c.Key(labels[i])
-			state := &s.resourceCharts[i]
-			state.Index = s.chartIndex
-			before := state.Index
-			data := resourceChartData(points, colors, cols...)
-			if !chartHasValues(data) {
-				ui.Text(c, labels[i]+" · 暂无有效采样").TextColor(theme.TextMuted)
-				continue
+	series := make([]resourceSeries, 0, len(groups))
+	for source, points := range groups {
+		sort.SliceStable(points, func(i, j int) bool {
+			if points[i].ReadStartedNs != points[j].ReadStartedNs {
+				return points[i].ReadStartedNs < points[j].ReadStartedNs
 			}
-			heading(c, labels[i], 3)
-			chart.Line(c, state, data, chart.Options{
-				HideLegend:        true,
-				Label:             labels[i] + "曲线",
-				Description:       labels[i] + "独立刻度；缺测保留断点。左右方向键选择样本。",
-				PlotHeight:        160,
-				AnimationDuration: -1,
-				EmptyText:         "此指标暂无有效测量；缺测不补零。",
-				Detail:            func(*ui.Context, chart.Selection) {},
-			})
-			if state.Index != before && chartHasValues(data) {
-				s.chartIndex = state.Index
-			}
-		}
-		ui.Row(c).Wrap().Gap(c.Theme().Space(4)).Children(func() {
-			for i, label := range []string{"可用内存 GiB", "服务 RSS GiB", "服务 CPU（%）", "温度（°C）"} {
-				if !chartHasValues(resourceChartData(points, colors, i)) {
-					continue
-				}
-				ui.Text(c, label).TextColor(colors[i])
-			}
+			return points[i].Seq < points[j].Seq
 		})
-		ui.Column(c).FillWidth().MinHeight(theme.Space(7)).Children(func() {
-			if s.chartIndex >= 0 && s.chartIndex < len(points) {
-				ui.Text(c, describe(s.chartIndex)).Selectable()
-			}
-		})
-		heading(c, "采样数值（内存原始单位 bytes）", 3)
-		cols := []ui.TableColumn{{Title: "UTC", Width: 220}, {Title: "可用内存 bytes", Width: 150}, {Title: "RSS bytes", Width: 130}, {Title: "CPU %", Width: 100}, {Title: "温度 °C", Width: 100}}
-		s.samplesTable.Key = func(i int) any { return points[i].utc }
-		pageTable(c, &s.samplesTable, "资源采样数值表", cols, len(points), func(row, col int) {
-			p := points[row].sample
-			values := []string{p.Utc, number(p.MemAvailableBytes), number(p.ServiceRssBytes), number(p.ServiceCpuPercent), number(p.TemperatureCelsius)}
-			ui.Text(c, values[col]).Selectable()
-		}).Height(180).Label("资源采样数值表")
-	})
+		raw, _ := json.Marshal(source)
+		series = append(series, resourceSeries{source: source, id: string(raw), points: points})
+	}
+	sort.Slice(series, func(i, j int) bool { return series[i].id < series[j].id })
+	return series
 }
 
-func resourceChartData(points []resourcePoint, colors []ui.Color, columns ...int) chart.Data {
-	data := chart.Data{Labels: make([]string, len(points))}
-	names := []string{"可用内存 GiB", "服务 RSS GiB", "服务 CPU %", "温度 °C"}
-	ids := []string{"available-memory", "service-rss", "service-cpu", "temperature"}
-	for i, p := range points {
-		elapsed := int(math.Round((p.seconds - points[0].seconds) * 10))
+func finite(v *float64) bool { return v != nil && !math.IsNaN(*v) && !math.IsInf(*v, 0) }
+
+func resourceLineData(series resourceSeries, color ui.Color) chart.Data {
+	data := chart.Data{Labels: make([]string, len(series.points))}
+	values := make([]float64, len(series.points))
+	var origin int64
+	for i, point := range series.points {
+		midpoint := point.ReadStartedNs + (point.ReadFinishedNs-point.ReadStartedNs)/2
+		if i == 0 {
+			origin = midpoint
+		}
+		elapsed := max(int64(0), (midpoint-origin+50_000_000)/100_000_000)
 		data.Labels[i] = fmt.Sprintf("%02d:%02d", elapsed/600, elapsed/10%60)
 		if elapsed%10 != 0 {
 			data.Labels[i] += fmt.Sprintf(".%d", elapsed%10)
 		}
-	}
-	for _, col := range columns {
-		series := chart.Series{ID: ids[col], Label: names[col], Color: colors[col], Values: make([]float64, len(points))}
-		for i, p := range points {
-			series.Values[i] = math.NaN()
-			if finite(p.values[col]) {
-				series.Values[i] = *p.values[col]
+		values[i] = math.NaN()
+		if finite(point.Value) && point.MissingReason == nil {
+			values[i] = *point.Value
+			if series.source.Unit == "bytes" {
+				values[i] /= 1073741824
 			}
 		}
-		data.Series = append(data.Series, series)
 	}
+	data.Series = []chart.Series{{ID: series.id, Label: series.source.Name, Color: color, Values: values}}
 	return data
+}
+
+func sourceLabel(source core.ResourceSource) string {
+	if source.Name == "" {
+		return "来源未记录"
+	}
+	return source.Name
+}
+
+func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
+	card(c, "资源曲线", func() {
+		series := resourceSeriesData(samples)
+		ui.Text(c, fmt.Sprintf("采样记录：%d · 每个来源保留最近 600 点", len(samples)))
+		if len(series) == 0 {
+			ui.Text(c, "等待资源采样，缺测不补零。")
+			return
+		}
+		theme := c.Theme()
+		ui.Text(c, "各曲线按自己的采样时间显示，采样点等距排列；缺测保留断点。").TextColor(theme.TextMuted)
+		metrics := []struct {
+			id, label string
+			color     ui.Color
+		}{
+			{"system_mem_available", "可用内存 GiB", theme.Accent},
+			{"service_rss", "服务 RSS GiB", theme.Success},
+			{"service_cpu_percent", "服务 CPU %", theme.Warning},
+			{"temperature", "传感器温度 °C", theme.Danger},
+		}
+		selected := []core.ResourceSample{}
+		for _, metric := range metrics {
+			c.Key(metric.id)
+			var options []resourceSeries
+			for _, source := range series {
+				if source.source.Metric == metric.id {
+					options = append(options, source)
+				}
+			}
+			if len(options) == 0 {
+				ui.Text(c, metric.label+" · 此运行未记录该指标").TextColor(theme.TextMuted)
+				continue
+			}
+			container := ui.Column(c).FillWidth().Gap(theme.Space(2))
+			state := ui.Local(container, "resource-chart", func() resourceChartState {
+				return resourceChartState{chart: chart.State{Index: -1}}
+			})
+			container.Children(func() {
+				ui.Text(c, metric.label).TextColor(metric.color)
+				current := 0
+				for i, option := range options {
+					if state.source == option.id {
+						current = i
+					}
+				}
+				if state.source != options[current].id {
+					state.source, state.chart.Index = options[current].id, -1
+				}
+				if len(options) > 1 {
+					picker := components.Select(c, &state.source)
+					picker.Trigger.Label(metric.label + "来源").Children(func() {
+						ui.Text(c, sourceLabel(options[current].source)).SingleLine()
+					})
+					picker.Popup(func(ui.Element) {
+						for _, option := range options {
+							picker.Item(option.id).Label(sourceLabel(option.source)).Children(func() {
+								ui.Text(c, sourceLabel(option.source)).SingleLine()
+								ui.Text(c, option.source.Collector+" · "+option.source.ClockID).TextColor(theme.TextMuted)
+							})
+						}
+					})
+					if picker.Trigger.Changed() {
+						state.chart.Index = -1
+						s.samplesTable = pageTableState{}
+						s.resourceTablePage = 0
+					}
+				} else {
+					ui.Text(c, sourceLabel(options[current].source)).TextColor(theme.TextMuted)
+				}
+				if metric.id == "service_cpu_percent" {
+					ui.Text(c, "单核等效：100% 为占满一个逻辑核，可超过 100%；仅绑定服务进程，不含子进程。").TextColor(theme.TextMuted)
+				}
+				chosen := options[current]
+				selected = append(selected, chosen.points...)
+				data := resourceLineData(chosen, metric.color)
+				if !chartHasValues(data) {
+					reason := "暂无有效采样"
+					for _, point := range chosen.points {
+						if point.MissingReason != nil {
+							reason = *point.MissingReason
+						}
+					}
+					ui.Text(c, "缺测："+reason).TextColor(theme.TextMuted)
+					return
+				}
+				chart.Line(c, &state.chart, data, chart.Options{
+					HideLegend: true, Label: metric.label + "曲线", PlotHeight: 140, AnimationDuration: -1,
+					Description: "本来源独立刻度与时间，左右方向键选择样本。",
+					Detail: func(c *ui.Context, selection chart.Selection) {
+						ui.Column(c).MinHeight(theme.Space(6)).Children(func() {
+							if selection.Index >= 0 && selection.Index < len(chosen.points) {
+								point := chosen.points[selection.Index]
+								value := number(point.Value)
+								if point.MissingReason != nil {
+									value = "缺测：" + *point.MissingReason
+								}
+								ui.Text(c, point.Utc+" · "+value+" "+chosen.source.Unit).Selectable()
+							}
+						})
+					},
+				})
+			})
+		}
+		s.resourceTable(c, selected)
+	})
+}
+
+func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) {
+	sort.SliceStable(samples, func(i, j int) bool { return samples[i].Seq < samples[j].Seq })
+	heading(c, "当前来源数值（内存原始单位 bytes）", 3)
+	const pageSize = 50
+	pages := max(1, (len(samples)+pageSize-1)/pageSize)
+	s.resourceTablePage = min(max(0, s.resourceTablePage), pages-1)
+	ui.Row(c).Gap(c.Theme().Space(2)).Children(func() {
+		if button(c, "上一页采样").Disabled(s.resourceTablePage == 0).Clicked() {
+			s.resourceTablePage--
+		}
+		ui.Text(c, fmt.Sprintf("第 %d / %d 页 · 当前来源共 %d 条记录", s.resourceTablePage+1, pages, len(samples)))
+		if button(c, "下一页采样").Disabled(s.resourceTablePage == pages-1).Clicked() {
+			s.resourceTablePage++
+		}
+	})
+	start := s.resourceTablePage * pageSize
+	samples = samples[start:min(start+pageSize, len(samples))]
+	cols := []ui.TableColumn{{Title: "UTC", Width: 220}, {Title: "来源", Width: 250}, {Title: "数值", Width: 140}, {Title: "单位", Width: 80}, {Title: "缺测原因", Width: 180}}
+	s.samplesTable.Key = func(i int) any { return samples[i].Seq }
+	pageTable(c, &s.samplesTable, "资源采样数值表", cols, len(samples), func(row, col int) {
+		p := samples[row]
+		value := number(p.Value)
+		if p.Value != nil && p.Source.Unit == "bytes" {
+			value = fmt.Sprintf("%.0f", *p.Value)
+		}
+		values := []string{p.Utc, sourceLabel(p.Source), value, p.Source.Unit, emptyText(p.MissingReason)}
+		ui.Text(c, values[col]).Selectable()
+	}).Height(180).Label("资源采样数值表")
 }
 
 func chartHasValues(data chart.Data) bool {

@@ -141,12 +141,25 @@ type RunProgress struct {
 	Cases         []CaseProgress `json:"cases"`
 }
 
+type ResourceSource struct {
+	Metric    string `json:"metric"`
+	Collector string `json:"collector"`
+	Name      string `json:"name"`
+	ClockID   string `json:"clock_id"`
+	Unit      string `json:"unit"`
+	Semantics string `json:"semantics"`
+}
+
 type ResourceSample struct {
-	Utc                string   `json:"utc"`
-	MemAvailableBytes  *int64   `json:"mem_available_bytes"`
-	ServiceRssBytes    *int64   `json:"service_rss_bytes"`
-	ServiceCpuPercent  *float64 `json:"service_cpu_percent"`
-	TemperatureCelsius *float64 `json:"temperature_celsius"`
+	Source         ResourceSource `json:"source"`
+	Seq            int64          `json:"seq"`
+	Utc            string         `json:"utc"`
+	ReadStartedNs  int64          `json:"read_started_ns"`
+	ReadFinishedNs int64          `json:"read_finished_ns"`
+	Phase          string         `json:"phase"`
+	RequestID      *string        `json:"request_id"`
+	Value          *float64       `json:"value"`
+	MissingReason  *string        `json:"missing_reason"`
 }
 
 type StartRunsRequest struct {

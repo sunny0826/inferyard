@@ -90,7 +90,7 @@ func TestPreviewDenseResourcesSurviveClockRefresh(t *testing.T) {
 	p := newPreviewSession(context.Background())
 	p.loadScene(previewSceneIndex(t, "资源 · 密集采样与缺测"))
 	p.advance(time.Second)
-	if p.state.detail == nil || len(p.state.detail.Resources) != 158 {
+	if p.state.detail == nil || len(p.state.detail.Resources) != 316 {
 		t.Fatal("preview clock discarded resource detail")
 	}
 }

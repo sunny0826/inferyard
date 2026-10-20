@@ -2,6 +2,22 @@
 
 [返回 Backlog](../backlog.md)
 
+## 普通运行 CPU 与温度采集
+
+2026-10-20 按 [ADR 054](../decisions/054-single-resource-collection.md) 接通 macOS/Linux
+single 的完整资源采集；Studio 保留逐来源观测，提供独立曲线与温度来源选择器。
+旧内存证据保持原样。实施计划已完成，规则见 ADR 与
+[资源投影](../../../docs/subsystems/studio-panel/runtime.md#资源投影)。
+
+CLI 全量回归 5637 passed / 54 skipped；Studio 全量、页面/模拟一致性、release 隔离、
+Go vet、Ruff 与 Schema/catalogue 检查通过。独立审查发现的 CPU 跨请求缺测已用先失败、
+后通过的回归修复。本机原生采集经模拟 HTTP 服务跑通 single 的 probe/run/封存，
+新原件包含 CPU 与 57 路温度来源，Studio 投影读回通过；没有启动真实模型。
+
+剩余验收：原生窗口 E2E 被 macOS 锁屏前置检查阻断，解锁后须重跑
+`mise run test:studio-ui`。Linux 原生设备、Windows CPU/温度能力、真实模型与完整采集成本
+尚未验证；本轮不继承旧成本资格。Windows 普通 single 仍仅采内存。
+
 ## 运行证据文件合并
 
 2026-10-11 文件合并的软件实施与验收已完成；随后按用户要求收回范围扩展，
@@ -32,7 +48,8 @@
 - [x] PR2：一起切换 single、batch fixed/duration 的共享 writer，完成发送前持久化、dirty/排空、故障与新旧证据回归，实证普通完整 single 八个证据加三个报告文件。
 
 默认两题包各自生成一个 run，再生成一份汇总报告，共十九文件；准备、主机状态、batch 外层、父链和选用扩展产物另计。
-普通 single 仍使用内存 Sampler，不补造 collector 声明或扩大测量；旧 ResourceSampler 的额外原件按实际采集器另计。
+上述计数对应当时的内存 single。新 macOS/Linux single 的采集范围由
+[ADR 054](../decisions/054-single-resource-collection.md) 扩展，额外原件按实际采集器另计，旧证据不补造。
 未验证范围：三平台真实文件系统耐久/断电、原生传感器与真实模型、长时负载、新发行物构建与安装。
 模拟与软件成本通过不继承旧原生或发行资格；这些能力继续单独验收。
 

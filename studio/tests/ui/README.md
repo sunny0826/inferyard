@@ -47,6 +47,11 @@ is moved to the main display before capture.
 The resource/status scenario opens a dense 158-sample memory fixture with CPU and
 temperature unavailable. It captures the chart, opens the engine hover panel, and
 starts and stops a simulated engine without starting a benchmark.
+The multi-sensor resource scenario displays CPU and two independent temperature
+sources, switches the source through the real selector, and checks the displayed table.
+The optional `TestRecordedNativeResourceProjection` core test reads a new diagnostic run
+from `INFERYARD_TEST_RESOURCE_RUN` and checks that actual CPU/temperature observations reach
+Studio's projection. It is skipped when the path is absent and does not start a model.
 
 This is native UI coverage with a simulated backend. The existing fast `ui.NewTester`
 regressions remain under `internal/pages`; real CLI/fake-engine boundary tests remain

@@ -118,4 +118,7 @@ TrialEvidence。run 目录仍须严格识别版本及冻结输入；缺 run 的�
 
 先迁所有 reader 再切共享 writer；软件、模拟 CLI、离线浏览器、性能、原生能力分别登记。
 11/19 清点只适用完整普通初始 Prism 与两个默认 scope；高频扩展、父链及 batch 外层另计。
-保持 single 的默认内存采集器；不能以新增 collector 声明或补测来凑八文件。
+八文件是容器迁移时内存 single 的历史验收范围，不能靠补造原件凑数。
+[ADR 054](../decisions/054-single-resource-collection.md) 将 macOS/Linux 新 single 接到资源采集器，
+新增 `external-cpu.jsonl` 与 `request-environment.jsonl` 按实际观测保留；collector 声明仍在
+`observations.jsonl`。旧内存运行的读取不要求这些新增原件。

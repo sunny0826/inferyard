@@ -222,13 +222,32 @@ final class PreviewUITests: XCTestCase {
         positionWindowForCapture()
         app.popUpButtons["模拟场景"].click()
         text("资源 · 密集采样与缺测").click()
-        expectText("采样点：158")
-        expectText("服务 CPU % · 暂无有效采样")
-        expectText("温度 °C · 暂无有效采样")
+        expectText("采样记录：316 · 每个来源保留最近 600 点")
+        expectText("服务 CPU % · 此运行未记录该指标")
+        expectText("传感器温度 °C · 此运行未记录该指标")
         app.scrollViews.element(boundBy: 1).scroll(byDeltaX: 0, deltaY: -650)
-        let chart = text("内存 GiB曲线")
+        let chart = text("可用内存 GiB曲线")
         XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].frame.contains(chart.frame), "The full resource chart must be visible")
         keepScreenshot("Dense memory samples without empty CPU and temperature plots")
+    }
+
+    func testCPUAndTemperatureSources() {
+        positionWindowForCapture()
+        app.popUpButtons["模拟场景"].click()
+        text("资源 · CPU 与多路温度").click()
+        expectText("采样记录：160 · 每个来源保留最近 600 点")
+        expectText("服务 CPU %曲线")
+        expectText("传感器温度 °C曲线")
+        app.scrollViews.element(boundBy: 1).scroll(byDeltaX: 0, deltaY: -1050)
+        let source = app.popUpButtons["传感器温度 °C来源"]
+        XCTAssertTrue(source.isHittable)
+        keepScreenshot("CPU curve and first temperature sensor")
+        source.click()
+        text("AppleSMC:Tp0C").click()
+        expectText("AppleSMC:Tp0C")
+        XCTAssertTrue(text("传感器温度 °C曲线").isHittable)
+        XCTAssertTrue(app.tables["资源采样数值表"].staticTexts.matching(NSPredicate(format: "value == %@", "AppleSMC:Tp0C")).firstMatch.exists)
+        keepScreenshot("Selected temperature source with its own measurements")
     }
 
     func testEngineStatusPanel() {

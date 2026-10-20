@@ -17,7 +17,7 @@
    回调已经执行。等待期间不能启动专项，重置结束后不再取消后续新任务。
    `executeRun` 派生 `inferyard run --config`（取消为 SIGINT + 两秒兜底）；执行循环每
    `ProgressInterval`（500ms）对比运行前后证据索引、tail `events.jsonl` 投影 case 进度与分数、
-   聚合资源采样；终态经 `run.state` 事件发布。任务页另经 `Service.Progress` 派生
+   投影逐来源资源采样；终态经 `run.state` 事件发布。任务页另经 `Service.Progress` 派生
    `inferyard progress --workspace` 解析 `progress.v1` 恢复工作区进度。运行实现与取消语义见
    [运行时执行与引擎适配](../runtime-execution.md)。
    `stageView` 在有非终态运行或活动任务处于未失败的 `run` 阶段时收起正文模型服务卡，
@@ -72,4 +72,24 @@
 专项按 task ID 去重计数。面板开启引擎直接调用 `StartEngine`，不进入绑定或测评编排；
 模拟通过 `previewManagedEngine` 分流，只推进内存中的服务状态，不改变工作区进度。
 启动依赖已准备的候选且无活动任务，停止沿用服务层的活动任务保护；遗留服务仍到任务页核验处理。
-资源图表只投影已有采样；未采集 CPU 或温度的运行不会因打开图表而补采或重写证据。
+
+## 资源投影
+
+CLI 负责原生采集和证据落盘；普通 macOS/Linux single 使用资源采集器，范围见
+[ADR 054](../../../cli/docs/decisions/054-single-resource-collection.md)。
+Studio 的 [`resources.go`](../../../studio/internal/core/resources.go) 只读取 `memory.jsonl`，
+保留每条观测的 Seq、UTC、读取区间、phase/request、来源、collector、时钟、单位、语义和缺测原因。
+不合并同 UTC 行，也不用半秒窗口猜采样周期；Tail 的游标负责逐行消费。
+按指标、collector、来源、时钟、单位、语义各保留最近 600 点，多个温度来源不会挤掉 CPU 历史。
+
+CPU 只对 periodic 行做差分，使用读取区间中点差和声明的 `clock_ticks_per_second`：
+`100 × Δticks / ticks_per_second / Δseconds`。显示单核等效占用率，可超过 100%，
+范围为绑定 PID 全线程、不含子进程，连续采样允许跨阶段和请求。首次计数、缺测、进程/启动/boot/
+时钟/来源/尺度变化、总量或 user/system 分量回退、读取区间重叠，以及超过配置两周期的缺段
+均保留缺测原因并断线。它是实时显示口径，不代替 CLI 的请求窗口指标或性能资格。
+
+[`chart.go`](../../../studio/internal/pages/chart.go) 为可用内存、RSS、CPU 和选定温度来源
+分别成图。各图为等距分类轴，以本来源首个样本的经过时间标记，完整 UTC 和原始单位留在详情。
+温度选择器列出保存的完整来源；不推断 CPU 核心、不取跨传感器均值或最大值。
+全列缺测显示实际原因；旧内存运行显示此指标未记录，不补采或重写原件。
+当前选中来源的数值表每页 50 条，仅代表上述保留窗口；切来源重置表页与样本选择。

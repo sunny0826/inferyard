@@ -95,12 +95,12 @@ func TestTaskTableChineseBadgeText(t *testing.T) {
 func TestResourceLegendThemeColors(t *testing.T) {
 	s := testState()
 	var theme *ui.Theme
-	samples := []core.ResourceSample{{Utc: "2026-10-13T06:00:00Z", MemAvailableBytes: ptr(int64(1073741824)), ServiceRssBytes: ptr(int64(536870912)), ServiceCpuPercent: ptr(12.5), TemperatureCelsius: ptr(42.0)}}
+	samples := chartSamples()
 	tt := ui.NewTester(func(c *ui.Context) { theme = c.Theme(); ui.Column(c).Children(func() { s.resourceView(c, samples) }) }, 1120, 1000)
 	for _, dark := range []bool{false, true} {
 		tt.SetDark(dark)
 		colors := []ui.Color{theme.Accent, theme.Success, theme.Warning, theme.Danger}
-		for i, label := range []string{"可用内存 GiB", "服务 RSS GiB", "服务 CPU（%）", "温度（°C）"} {
+		for i, label := range []string{"可用内存 GiB", "服务 RSS GiB", "服务 CPU %", "传感器温度 °C"} {
 			assertTextColor(t, tt, label, colors[i])
 			for j := 0; j < i; j++ {
 				if colors[i] == colors[j] {

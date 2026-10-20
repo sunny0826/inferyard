@@ -377,9 +377,6 @@ func (s *Service) executeRun(t *runEntry) {
 		points := a.resources(rows)
 		if len(points) > 0 {
 			t.Resources = appendResources(t.Resources, points)
-			if len(t.Resources) > 600 {
-				t.Resources = append([]ResourceSample{}, t.Resources[len(t.Resources)-600:]...)
-			}
 			resourcePending = appendResources(resourcePending, points)
 		}
 		if len(resourcePending) > 0 && time.Since(lastResources) >= time.Second {

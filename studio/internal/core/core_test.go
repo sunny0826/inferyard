@@ -358,16 +358,6 @@ func TestResumePlanOrderAndParentChain(t *testing.T) {
 		t.Fatal(summaries)
 	}
 }
-func TestResourceCPUIdentityAndMissing(t *testing.T) {
-	a := newAggregate(nil)
-	row := func(seq int, value int, pid int) evidence.Record {
-		return evidence.Record{Raw: json.RawMessage(fmt.Sprintf(`{"utc":"2026-10-12T00:00:%02dZ","metric_name":"service_cpu_ticks","capture":"periodic","value":%d,"read_finished_ns":%d,"clock_ticks_per_second":100,"server_pid":%d,"clock_id":"c"}`, seq, value, seq*1000000000, pid))}
-	}
-	points := a.resources([]evidence.Record{row(1, 100, 1), row(2, 150, 1), row(3, 200, 2)})
-	if points[0].ServiceCpuPercent != nil || points[1].ServiceCpuPercent == nil || *points[1].ServiceCpuPercent != 50 || points[2].ServiceCpuPercent != nil {
-		t.Fatal(points)
-	}
-}
 func TestTwoConfigsExecuteInArrayOrder(t *testing.T) {
 	started := make(chan string, 2)
 	release := make(chan struct{})

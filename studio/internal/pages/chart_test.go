@@ -10,107 +10,171 @@ import (
 	"inferyard/studio/internal/core"
 )
 
+func chartSample(seq int64, metric, source string, seconds int, value *float64) core.ResourceSample {
+	unit := "bytes"
+	if metric == "service_cpu_percent" {
+		unit = "%"
+	} else if metric == "temperature" {
+		unit = "celsius"
+	}
+	sample := core.ResourceSample{
+		Source: core.ResourceSource{Metric: metric, Name: source, Unit: unit, ClockID: "clock", Collector: "fixture"},
+		Utc:    time.Date(2026, 10, 14, 1, 0, seconds, 0, time.UTC).Format(time.RFC3339Nano),
+		Seq:    seq, ReadStartedNs: int64(seconds+1) * 1e9, ReadFinishedNs: int64(seconds+1)*1e9 + 1e6, Value: value,
+	}
+	if value == nil {
+		sample.MissingReason = ptr("sensor_unavailable")
+	}
+	return sample
+}
+
 func chartSamples() []core.ResourceSample {
-	return []core.ResourceSample{
-		{Utc: "2026-10-14T01:00:00Z", MemAvailableBytes: ptr(int64(1073741824)), ServiceCpuPercent: ptr(10.0), TemperatureCelsius: ptr(40.0)},
-		{Utc: "2026-10-14T01:00:01Z"},
-		{Utc: "2026-10-14T01:00:09Z", MemAvailableBytes: ptr(int64(2147483648)), ServiceCpuPercent: ptr(20.0), TemperatureCelsius: ptr(50.0)},
+	var samples []core.ResourceSample
+	for i, seconds := range []int{0, 1, 9} {
+		for j, item := range []struct {
+			metric, source string
+			value          float64
+		}{
+			{"system_mem_available", "fixture:available", float64(1+i/2) * 1073741824},
+			{"service_rss", "fixture:rss", 536870912},
+			{"service_cpu_percent", "fixture:cpu", float64(120 + i*10)},
+			{"temperature", "AppleSMC:Tg0C", float64(40 + i*5)},
+			{"temperature", "AppleSMC:Tp0C", float64(60 + i*5)},
+		} {
+			value := ptr(item.value)
+			if i == 1 {
+				value = nil
+			}
+			samples = append(samples, chartSample(int64(i*5+j+1), item.metric, item.source, seconds, value))
+		}
+	}
+	return samples
+}
+
+func TestResourceLineDataPreservesSourceGapsAndUnits(t *testing.T) {
+	groups := resourceSeriesData(chartSamples())
+	if len(groups) != 5 {
+		t.Fatal("sensor sources merged", groups)
+	}
+	for _, group := range groups {
+		data := resourceLineData(group, ui.Hex("#123456"))
+		values := data.Series[0].Values
+		if len(values) != 3 || !math.IsNaN(values[1]) || data.Labels[2] != "00:09" {
+			t.Fatal("lost source gap or elapsed time", data)
+		}
+		if group.source.Metric == "system_mem_available" && (values[0] != 1 || values[2] != 2) {
+			t.Fatal("memory units", values)
+		}
+		if group.source.Name == "AppleSMC:Tp0C" && values[2] != 70 {
+			t.Fatal("mixed temperature sources", values)
+		}
+	}
+	if finite(nil) || finite(ptr(math.NaN())) || finite(ptr(math.Inf(1))) {
+		t.Fatal("missing / non-finite point accepted")
 	}
 }
 
-func TestResourceLineDataPreservesGapsAndUnits(t *testing.T) {
-	points := resourcePoints(chartSamples())
-	colors := []ui.Color{ui.Hex("#123456"), ui.Hex("#234567"), ui.Hex("#345678"), ui.Hex("#456789")}
-	data := resourceChartData(points, colors, 0, 1, 2, 3)
-	for i, series := range data.Series {
-		if len(series.Values) != 3 || !math.IsNaN(series.Values[1]) || series.Color != colors[i] {
-			t.Fatalf("lost gap/color: %+v", series)
-		}
+func TestResourceSameUTCKeepsDistinctObservations(t *testing.T) {
+	samples := []core.ResourceSample{
+		chartSample(3, "temperature", "sensor-a", 2, ptr(42.0)),
+		chartSample(1, "temperature", "sensor-a", 0, ptr(40.0)),
+		chartSample(2, "temperature", "sensor-b", 0, ptr(55.0)),
+		chartSample(4, "temperature", "sensor-a", 2, ptr(43.0)),
 	}
-	if data.Series[0].Values[0] != 1 || data.Series[0].Values[2] != 2 || data.Series[2].Values[2] != 20 || data.Series[3].Values[2] != 50 {
-		t.Fatal("unit conversion changed", data.Series)
-	}
-	if data.Labels[2] != "00:09" || !math.IsNaN(data.Series[1].Values[0]) {
-		t.Fatal("lost elapsed time or missing RSS")
+	groups := resourceSeriesData(samples)
+	if len(groups) != 2 || len(groups[0].points) != 3 || *groups[0].points[2].Value != 43 || *groups[1].points[0].Value != 55 {
+		t.Fatal("same UTC overwrote evidence", groups)
 	}
 }
 
 func TestDenseMemoryOnlyResourcesStayCompact(t *testing.T) {
 	s := testState()
-	samples := make([]core.ResourceSample, 158)
-	for i := range samples {
-		samples[i] = core.ResourceSample{
-			Utc:               time.Date(2026, 10, 20, 9, 21, i, 570000000, time.UTC).Format(time.RFC3339Nano),
-			MemAvailableBytes: ptr(int64(3 << 30)), ServiceRssBytes: ptr(int64(1 << 28)),
+	var samples []core.ResourceSample
+	for i := range 158 {
+		samples = append(samples,
+			chartSample(int64(i*2+1), "system_mem_available", "available", i, ptr(float64(3<<30))),
+			chartSample(int64(i*2+2), "service_rss", "rss", i, ptr(float64(1<<28))))
+	}
+	for _, group := range resourceSeriesData(samples) {
+		for _, label := range resourceLineData(group, ui.Color{}).Labels {
+			if len(label) > 9 || strings.Contains(label, "2026") {
+				t.Fatalf("unreadable axis label %q", label)
+			}
 		}
 	}
-	points := resourcePoints(samples)
-	data := resourceChartData(points, []ui.Color{{}, {}, {}, {}}, 0, 1)
-	for _, label := range data.Labels {
-		if len(label) > 9 || strings.Contains(label, "2026") {
-			t.Fatalf("unreadable axis label %q", label)
-		}
-	}
-	tt := ui.NewTester(func(c *ui.Context) { s.resourceView(c, samples) }, 800, 1000)
-	for _, label := range []string{"服务 CPU %曲线", "温度 °C曲线"} {
+	tt := ui.NewTester(func(c *ui.Context) { s.resourceView(c, samples) }, 1000, 1400)
+	for _, label := range []string{"服务 CPU %曲线", "传感器温度 °C曲线"} {
 		if _, ok := tt.Find(label); ok {
-			t.Fatalf("empty metric reserves a plot: %s", label)
+			t.Fatalf("unrecorded metric became a plot: %s", label)
 		}
 	}
-	for _, label := range []string{"服务 CPU % · 暂无有效采样", "温度 °C · 暂无有效采样"} {
+	for _, label := range []string{"服务 CPU % · 此运行未记录该指标", "传感器温度 °C · 此运行未记录该指标"} {
 		if !tt.HasText(label) {
-			t.Fatal("missing compact unavailable state", tt.Texts())
+			t.Fatal("missing unavailable state", tt.Texts())
 		}
-	}
-	r, ok := tt.Find("资源采样数值表")
-	if !ok || r.Y > 550 {
-		t.Fatal("empty plots push raw samples out of view", r)
 	}
 }
 
 func TestResourceLinePointerAndKeyboardSelection(t *testing.T) {
 	s := testState()
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.resourceView(c, chartSamples()) }) }, 1120, 1800)
-	bounds, ok := tt.Find("内存 GiB曲线")
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.resourceView(c, chartSamples()) }) }, 1120, 2100)
+	bounds, ok := tt.Find("可用内存 GiB曲线")
 	if !ok {
 		t.Fatal("missing memory chart")
 	}
-	tt.Move(bounds.X+bounds.W/2, bounds.Y+bounds.H/2)
-	if s.chartIndex != 1 {
-		t.Fatal("hover missed gap sample", s.chartIndex)
-	}
-	found := false
-	for _, text := range tt.Texts() {
-		if strings.Contains(text, "01:00:01Z · 可用内存 缺测") {
-			found = true
+	hasDetail := func(fragment string) bool {
+		for _, text := range tt.Texts() {
+			if strings.Contains(text, fragment) {
+				return true
+			}
 		}
+		return false
 	}
-	if !found {
-		t.Fatal("missing sample description", tt.Texts())
+	tt.Move(bounds.X+bounds.W/2, bounds.Y+bounds.H/2)
+	if !hasDetail("01:00:01Z · 缺测：sensor_unavailable") {
+		t.Fatal("hover lost missing sample reason", tt.Texts())
 	}
-	tt.Move(1200, 1900)
-	if s.chartIndex != -1 {
-		t.Fatal("hover exit did not clear selection")
+	tt.Move(1200, 2200)
+	if hasDetail("01:00:01Z · 缺测：sensor_unavailable") {
+		t.Fatal("hover exit retained detail")
 	}
 	tt.Key(0, ui.KeyTab)
-	if !tt.Focused("内存 GiB曲线") {
+	if !tt.Focused("可用内存 GiB曲线") {
 		t.Fatal("chart is not keyboard focusable")
 	}
 	tt.Key(0, ui.KeyEnd)
-	if s.chartIndex != 2 {
-		t.Fatal("End did not select last sample")
+	if !hasDetail("01:00:09Z ·") {
+		t.Fatal("End did not select last sample", tt.Texts())
 	}
 	tt.Key(0, ui.KeyLeft)
-	if s.chartIndex != 1 {
+	if !hasDetail("01:00:01Z · 缺测：sensor_unavailable") {
 		t.Fatal("keyboard skipped missing sample")
 	}
 	tt.Key(0, ui.KeyEscape)
-	if s.chartIndex != -1 {
+	if hasDetail("01:00:01Z · 缺测：sensor_unavailable") {
 		t.Fatal("Escape did not clear selection")
 	}
-	for _, want := range []string{"采样点：3", "1073741824", "2147483648", "CPU %", "温度 °C"} {
-		if !tt.HasText(want) {
-			t.Fatal("missing raw measurement", want)
-		}
+}
+
+func TestResourceTemperatureSourcePicker(t *testing.T) {
+	s := testState()
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.resourceView(c, chartSamples()) }) }, 1120, 2300)
+	if err := tt.Click("传感器温度 °C来源"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("AppleSMC:Tp0C"); err != nil {
+		t.Fatal(err, tt.Texts())
+	}
+	bounds, ok := tt.Find("传感器温度 °C曲线")
+	if !ok {
+		t.Fatal("temperature chart missing after source change")
+	}
+	tt.Move(bounds.X+bounds.W*.95, bounds.Y+bounds.H/2)
+	found := false
+	for _, text := range tt.Texts() {
+		found = found || strings.Contains(text, "70 celsius")
+	}
+	if !found {
+		t.Fatal("source selection did not update measurements", tt.Texts())
 	}
 }

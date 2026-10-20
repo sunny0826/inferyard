@@ -47,19 +47,18 @@ var previewScenes = []struct {
 		s.checks = core.EngineCheckOverview{Supported: true}
 	}},
 	{"资源 · 密集采样与缺测", previewDenseResources},
+	{"资源 · CPU 与多路温度", previewMultiSensorResources},
 }
 
 func previewDenseResources(s *viewState) {
 	s.detailID = "dense-resources"
 	s.detail = previewDetailFixture(s.detailID)
 	s.detail.Task.State = "done"
-	s.detail.Resources = make([]core.ResourceSample, 158)
-	for i := range s.detail.Resources {
-		s.detail.Resources[i] = core.ResourceSample{
-			Utc:               time.Date(2026, 10, 20, 9, 21, i, 570000000, time.UTC).Format(time.RFC3339Nano),
-			MemAvailableBytes: previewValue(int64(3<<30) + int64(i%18)*(1<<24)),
-			ServiceRssBytes:   previewValue(int64(1 << 28)),
-		}
+	s.detail.Resources = nil
+	for i := range 158 {
+		utc := time.Date(2026, 10, 20, 9, 21, i, 570000000, time.UTC).Format(time.RFC3339Nano)
+		rows := previewResourceSamples(int64(i*5+1), utc, int64(3<<30)+int64(i%18)*(1<<24), 1<<28, 0)
+		s.detail.Resources = append(s.detail.Resources, rows[:2]...)
 	}
 	s.downloads = nil
 }
@@ -80,7 +79,7 @@ func previewBase(ctx context.Context) *viewState {
 	s := &viewState{
 		speed: &speedWorkspace{context: 65536},
 		ctx:   ctx, selected: "dashboard", loaded: true, settingsLoaded: true,
-		denied: map[string]bool{}, chartIndex: -1, model: model, engine: engine, discoveryLoaded: true,
+		denied: map[string]bool{}, model: model, engine: engine, discoveryLoaded: true,
 		candidateMatches: func(string, string, string) (bool, bool) { return true, true },
 		engineState:      core.EngineState{State: "stopped"},
 		ready: core.Readiness{
@@ -162,10 +161,9 @@ func previewDetailFixture(id string) *core.RunTaskDetail {
 			{CaseId: "preview-case-001", State: "completed", QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)},
 			{CaseId: "preview-case-002", State: "failed", ErrorCategory: previewValue("preview_failure")},
 		}},
-		Resources: []core.ResourceSample{
-			{Utc: "2026-10-17T00:00:00Z", MemAvailableBytes: previewValue(int64(10 << 30)), ServiceRssBytes: previewValue(int64(2 << 30)), ServiceCpuPercent: previewValue(120.0)},
-			{Utc: "2026-10-17T00:00:01Z", MemAvailableBytes: previewValue(int64(9 << 30)), ServiceRssBytes: previewValue(int64(3 << 30)), ServiceCpuPercent: previewValue(240.0)},
-			{Utc: "2026-10-17T00:00:02Z", MemAvailableBytes: previewValue(int64(10 << 30)), ServiceRssBytes: previewValue(int64(2 << 30)), ServiceCpuPercent: previewValue(180.0)},
-		},
+		Resources: append(append(
+			previewResourceSamples(1, "2026-10-17T00:00:00Z", 10<<30, 2<<30, 120),
+			previewResourceSamples(6, "2026-10-17T00:00:01Z", 9<<30, 3<<30, 240)...),
+			previewResourceSamples(11, "2026-10-17T00:00:02Z", 10<<30, 2<<30, 180)...),
 	}
 }
