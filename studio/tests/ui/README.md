@@ -42,7 +42,10 @@ The first-use scenario starts with no model or engine, acquires both through the
 download controls, returns to the task, and runs both default bundles to a report.
 It checks the resource guide and live queue labels, and retains screenshots before
 resource acquisition, before execution, and during execution. Its owned test window
-is moved to the main display before capture.
+is resized to at most 1024 × 681 points and placed inside the main display's usable
+area, excluding the menu bar and Dock. Every scenario uses this compact window so
+local runs also exercise the CI viewport. Resource controls and complete charts are
+scrolled into view using their current frames, rather than fixed scroll distances.
 
 The resource/status scenario opens a dense 158-sample memory fixture with CPU and
 temperature unavailable. It captures the chart, opens the engine hover panel, and
@@ -62,7 +65,7 @@ The context-speed preview tests drive the existing task form through tier select
 five simulated measurements, the six-column result, history reopening, cancellation,
 startup failure, missing timing and result-read retry. Screenshots of these states are
 retained in the result bundle even on success.
-The suite also checks header visibility in the default window and the disclosure of
+The suite also checks header visibility in the compact test window and the disclosure of
 cancellation and missing-measurement diagnostics, retaining screenshots before and after expansion.
 Production CLI integration is implemented; the user has approved the UI design.
 Native execution and the real CLI/model workflow

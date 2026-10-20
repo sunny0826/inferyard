@@ -27,21 +27,11 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+from workspace_layout import assert_workspace
+
 SMOKE_BUNDLE = "zh-smoke"
 SVG_BUNDLE = "zh-svg-pelican"
 SMOKE_CASES = 40
-RUN_FILES = (
-    "environment.jsonl",
-    "events.jsonl",
-    "inputs.json",
-    "manifest.json",
-    "memory.jsonl",
-    "observations.jsonl",
-    "request-bodies.jsonl",
-    "schedule.jsonl",
-)
-REPORT_FILES = ("artifact-manifest.json", "index.json", "report.html")
-EXPECTED_WORKSPACE_FILES = 2 * len(RUN_FILES) + len(REPORT_FILES)
 
 
 def cli(args, *, check=True):
@@ -312,21 +302,6 @@ def prepare_candidate(root, bench_ops, bundle, *, preflight, model, engine_binar
     raise SystemExit(f"unsupported platform {system}")
 
 
-def assert_workspace(bench_work, run_dirs):
-    files = sorted(
-        path.relative_to(bench_work).as_posix() for path in bench_work.rglob("*") if path.is_file()
-    )
-    expected = sorted(
-        [f"results/{run_dir.name}/{name}" for run_dir in run_dirs for name in RUN_FILES]
-        + [f"report/{name}" for name in REPORT_FILES]
-    )
-    if files != expected:
-        raise SystemExit(
-            "workspace layout mismatch\n"
-            f"expected {EXPECTED_WORKSPACE_FILES} files: {expected}\nfound: {files}"
-        )
-
-
 def assert_scoring(report):
     """Prove the real scoring pipeline ran on real model output, not just wiring."""
     index = json.loads((report / "index.json").read_text(encoding="utf-8"))
@@ -479,7 +454,7 @@ def main():
             _, verified = cli(["verify", "--path", str(bench_work / "report"), "--rerender"])
             if verified["details"].get("verified") is not True:
                 raise SystemExit(f"verify failed: {verified}")
-            assert_workspace(bench_work, [smoke_dir, svg_dir])
+            workspace_files = assert_workspace(bench_work, [smoke_dir, svg_dir])
             quality = assert_scoring(bench_work / "report")
         finally:
             service.terminate()
@@ -501,7 +476,7 @@ def main():
         "smoke_run_dir": smoke_dir.name,
         "svg_run_dir": svg_dir.name,
         "smoke_quality": quality,
-        "workspace_files": EXPECTED_WORKSPACE_FILES,
+        "workspace_files": workspace_files,
         "verified_before_cleanup": True,
         "verified_after_cleanup": True,
         "animation_stats_line": True,
