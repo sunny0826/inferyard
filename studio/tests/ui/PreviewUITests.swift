@@ -31,6 +31,7 @@ final class PreviewUITests: XCTestCase {
     func testBenchmarkFromPreparationToReport() {
         prepare()
         XCTAssertFalse(text("Dashboard").exists)
+        keepScreenshot("Benchmark setup with single stage heading")
         click("下载")
         click("下载模型")
         expectText("已结束")
