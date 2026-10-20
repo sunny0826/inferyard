@@ -2,6 +2,45 @@
 
 [返回 Backlog](../backlog.md)
 
+## 小模型多引擎接入
+
+2026-10-20 在 main 的 CLI 源码上，以 Apple M4 / 16 GiB / macOS 和 Qwen3-0.6B
+完成以下短请求诊断。固定资产、版本、独立环境和补丁操作见
+[小模型准备](../engine-fit-small-model.md)。Ollama 按本轮要求排除。
+
+| 引擎 | 本轮结果 | 覆盖边界 |
+| --- | --- | --- |
+| llama.cpp | engine-fit 3/3 completed；普通请求成功 | 同一 GGUF Q8_0 |
+| LM Studio | engine-fit 3/3 completed；普通请求成功 | 同一 GGUF；第一次预检温停，降温后新运行通过 |
+| MLX-LM | engine-fit 3/3 completed | 受控流式服务，未新增普通请求能力 |
+| vLLM Metal | engine-fit 3/3 completed；普通请求成功 | 同一 MLX 4bit 目录 |
+| SGLang MLX | 本地补丁版 engine-fit 3/3 completed；普通请求成功 | 原版启动失败；补丁不是上游已发布修复 |
+| oMLX | 普通请求 1 条、流式请求 2 条成功 | 仅协议冒烟，未开放 engine-fit |
+| Splash | 未执行 | 官方没有共同小模型；不能外推 27B 或本机内存资格 |
+
+五份完成运行及三份两两比较均通过封存、语义与离线重渲染核验。engine-fit 比较
+只接受两份运行；GGUF 与 MLX 资产分开。SGLang 修复了 MLX stub 误入 Torch
+graph 初始化和 `setproctitle` 破坏主进程 argv；补丁只作用于独立引擎环境，
+InferYard 的身份、排空和停止校验保持不变。
+
+SGLang 第一次进入请求后的运行完成 1 条即温停，保留为 incomplete；
+测得空闲工作进程约 68% CPU，启用原生 `--sleep-on-idle` 后降至约 0.2%。
+确认旧进程退出后，使用恢复 token、新进程与新目录完成三条请求，85°C 门槛未修改。
+这些 CPU 观察用于排查空闲负载，不是推理性能比较。
+
+oMLX 的受控状态复现调用实际 scheduler abort、collector cleanup 和 status 函数：
+pending abort 与模型使用计数尚未清除时，API 已报告 active/waiting 为零。
+这证明计数不能单独用于排空判断，不是一次真实请求竞争时序的测量。
+待补可核验的模型实例身份、取消清理与完整空闲来源后，再实现 engine-fit 适配。
+
+本地原件位于 `.tools/engine-fit-small-20261020/`，含固定计划、运行、报告、
+依赖清单、失败日志及补丁应用核对；不提交原件。五份完成运行共 15 条流式请求，
+另有 7 条普通／流式协议冒烟。相关回归 386 passed、1 skipped（opt-in 原生
+测试未启用，本轮实际模型诊断单独记录）。本轮自有模型服务均已停止，主机状态 clean。
+未验证范围：27B、长上下文、持续负载、并发、完整取消／超时真机矩阵、
+Windows/Linux，以及正式双题包测评；结论遵循
+[证据血缘](../data-contract.md#证据血缘与比较结论)。
+
 ## 模型获取简化
 
 `model acquire` 已实现固定 Hugging Face/ModelScope 单 GGUF 获取、来源核验和候选绑定。
