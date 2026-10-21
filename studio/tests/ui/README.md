@@ -53,11 +53,13 @@ scrolled into view using their current frames, rather than fixed scroll distance
 Scene choices use a bounded scroll list; tests check that it stays inside the window
 and scroll each choice into view before selecting it.
 
-The resource/status scenario opens a dense 158-sample memory fixture with CPU and
-temperature unavailable. It captures the chart, opens the engine hover panel, and
-starts and stops a simulated engine without starting a benchmark.
-The multi-sensor resource scenario displays CPU and two independent temperature
-sources, switches the source through the real selector, and checks the displayed table.
+The resource chart scenario first opens a dense 158-sample memory fixture with CPU
+and temperature unavailable, then selects the CPU and multi-sensor fixture in the same
+window. It captures the charts, switches temperature sources through the real selector,
+and checks the displayed table. A separate engine-status scenario checks hover and click
+controls, then starts and stops an engine without starting a benchmark.
+The first-use workflow checks the running engine's disabled stop control and the live
+queue panel during its existing benchmark, without preparing another task for those checks.
 The optional `TestRecordedNativeResourceProjection` core test reads a new diagnostic run
 from `INFERYARD_TEST_RESOURCE_RUN` and checks that actual CPU/temperature observations reach
 Studio's projection. It is skipped when the path is absent and does not start a model.
@@ -66,6 +68,13 @@ This is native UI coverage with a simulated backend. The existing fast `ui.NewTe
 regressions remain under `internal/pages`; real CLI/fake-engine boundary tests remain
 under [`../e2e`](../e2e/README.md). None establishes real model qualification or
 Windows/Linux native UI acceptance.
+
+Wait helpers check the current condition before polling; an already-present element
+or enabled button needs no extra delay. Pending conditions retain their original timeouts.
+Scrolling stops when the complete control is inside its viewport. Fractional scroll
+distances round away from zero so a sub-point remainder cannot cause repeated no-op events.
+Each independent workflow still launches a fresh app; tests do not share mutable state
+across cases, accelerate the simulator clock, or bypass normal page controls.
 
 The context-speed preview tests drive the existing task form through tier selection,
 five simulated measurements, the six-column result, history reopening, cancellation,

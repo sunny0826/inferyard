@@ -64,6 +64,8 @@
 场景下拉完成流程；由真实窗口 ticker 推进模拟任务。每个用例重新启动模拟应用，结果写入新的
 `build/ui-e2e/run-*`，失败保留截图与辅助功能树。根级 `mise run test:studio-ui` 和 macOS CI
 调用同一入口；此层与 `ui.NewTester` 内存回归、真实 CLI／假引擎边界测试分别报告。
+原生检查在同一场景中复用已启动的测评，独立用例仍各自创建窗口；覆盖分配、等待和滚动策略
+统一记录在上述原生测试说明中，不改变模拟时钟或正式流程。
 
 [`preview_parity_test.go`](../../../studio/internal/pages/preview_parity_test.go) 对正常编排与模拟器运行同一组
 场景，并将双方各自与明确预期比较：core 单题包、pelican 单题包、双题包、启动失败后手动重试、
