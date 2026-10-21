@@ -87,9 +87,11 @@ func (p *previewSession) left(c *ui.Context) {
 					choice := components.Select(c, &p.scene)
 					choice.Trigger.Label("模拟场景").Children(func() { ui.Text(c, previewScenes[p.scene].label).SingleLine() })
 					choice.Popup(func(ui.Element) {
-						for i, scene := range previewScenes {
-							choice.Item(i).Label(scene.label).Children(func() { ui.Text(c, scene.label).SingleLine() })
-						}
+						components.ScrollView(c, components.ScrollViewOptions{}).Label("模拟场景列表").MaxHeight(240).Children(func() {
+							for i, scene := range previewScenes {
+								choice.Item(i).Label(scene.label).Children(func() { ui.Text(c, scene.label).SingleLine() })
+							}
+						})
 					})
 					if choice.Trigger.Changed() {
 						p.loadScene(p.scene)

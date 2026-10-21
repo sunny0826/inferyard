@@ -11,7 +11,7 @@ final class PreviewUITests: XCTestCase {
         app.launchArguments = ["--debug-ui"]
         app.launch()
         XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].waitForExistence(timeout: 10))
-        positionWindowForCapture()
+        positionPreviewWindowForCapture(app.windows["InferYard Studio · UI 调试"])
         expectText("全部为模拟数据；操作仅改变本窗口，不运行模型或写入文件。")
     }
 
@@ -144,13 +144,21 @@ final class PreviewUITests: XCTestCase {
         expectText("先停止当前受管服务，再按所选上下文启动新任务。")
         click("停止当前服务")
         click("开始专项测评")
+        expectText("已完成 1 / 5 次测量")
+    }
+
+    func testContextSpeedCancellationDiagnostics() {
+        prepareSpeed()
+        click("开始专项测评")
         click("取消专项测评")
         click("查看结果", timeout: 10)
         expectText("有效 0/5 · 未形成完整汇总")
         expectText("任务已取消。已完成的测量已保留；未完成项显示为 —。")
         XCTAssertFalse(text("第 1 次缺测：Context: not_executed；Prompt length: not_executed；Time: not_executed；Prefill: not_executed；Decode: not_executed").exists)
         keepScreenshot("Context speed cancelled")
-        app.disclosureTriangles["查看诊断详情"].click()
+        let diagnostics = app.disclosureTriangles["查看诊断详情"]
+        revealInContent(diagnostics)
+        diagnostics.click()
         expectText("第 1 次缺测：Context: not_executed；Prompt length: not_executed；Time: not_executed；Prefill: not_executed；Decode: not_executed")
         keepScreenshot("Context speed cancellation diagnostics")
     }
@@ -169,7 +177,9 @@ final class PreviewUITests: XCTestCase {
         expectText("测量结果不满足完整汇总条件；请展开诊断详情查看缺测或校验原因。")
         XCTAssertFalse(text("第 5 次：final_timing_missing、metric_missing").exists)
         keepScreenshot("Context speed missing timing")
-        app.disclosureTriangles["查看诊断详情"].click()
+        let diagnostics = app.disclosureTriangles["查看诊断详情"]
+        revealInContent(diagnostics)
+        diagnostics.click()
         expectText("第 5 次：final_timing_missing、metric_missing")
         expectText("第 5 次缺测：Time: final_timing_missing；Prefill: final_timing_missing；Decode: final_timing_missing")
         keepScreenshot("Context speed missing timing diagnostics")
@@ -193,8 +203,7 @@ final class PreviewUITests: XCTestCase {
     }
 
     func testFirstUseWithoutLocalAssets() {
-        app.popUpButtons["模拟场景"].click()
-        text("首次使用 · 无资源").click()
+        selectScene("首次使用 · 无资源")
         click("准备环境")
         expectText("准备模型与引擎")
         XCTAssertFalse(text("工作区进度").exists)
@@ -221,8 +230,7 @@ final class PreviewUITests: XCTestCase {
     }
 
     func testResourceChartWithMissingMetrics() {
-        app.popUpButtons["模拟场景"].click()
-        text("资源 · 密集采样与缺测").click()
+        selectScene("资源 · 密集采样与缺测")
         expectText("采样记录：316 · 每个来源保留最近 600 点")
         expectText("服务 CPU % · 此运行未记录该指标")
         expectText("传感器温度 °C · 此运行未记录该指标")
@@ -233,8 +241,7 @@ final class PreviewUITests: XCTestCase {
     }
 
     func testCPUAndTemperatureSources() {
-        app.popUpButtons["模拟场景"].click()
-        text("资源 · CPU 与多路温度").click()
+        selectScene("资源 · CPU 与多路温度")
         expectText("采样记录：160 · 每个来源保留最近 600 点")
         expectText("服务 CPU %曲线")
         expectText("传感器温度 °C曲线")
@@ -253,8 +260,7 @@ final class PreviewUITests: XCTestCase {
     }
 
     func testEngineStatusPanel() {
-        app.popUpButtons["模拟场景"].click()
-        text("任务 · 失败").click()
+        selectScene("任务 · 失败")
         let engine = app.buttons["引擎 · 失败"]
         XCTAssertTrue(engine.waitForExistence(timeout: 5))
         engine.hover()
@@ -294,9 +300,8 @@ final class PreviewUITests: XCTestCase {
     }
 
     func testLocalDirectoryEngineRunsBothScopes() {
-        app.popUpButtons["模拟场景"].click()
-        text("引擎 · 本地安装与目录模型").click()
-        expectText("local-weights · 目录模型")
+        selectScene("引擎 · 本地安装与目录模型")
+        XCTAssertTrue(app.menuButtons["local-weights · 目录模型"].waitForExistence(timeout: 5))
         revealInContent(app.buttons["运行 benchmark"])
         keepScreenshot("Local directory model and registered engine")
         click("运行 benchmark")
@@ -311,8 +316,7 @@ final class PreviewUITests: XCTestCase {
     }
 
     func testLMStudioBindingFailureKeepsCompletedScope() {
-        app.popUpButtons["模拟场景"].click()
-        text("引擎 · LM Studio 手动绑定").click()
+        selectScene("引擎 · LM Studio 手动绑定")
         revealInContent(app.buttons["运行 benchmark"])
         click("运行 benchmark")
         expectText("zh-svg-pelican · 等待绑定 LM Studio", timeout: 15)
@@ -338,22 +342,23 @@ final class PreviewUITests: XCTestCase {
         expectText("各类任务表现")
     }
 
-    private func positionWindowForCapture() {
-        let window = app.windows["InferYard Studio · UI 调试"]
-        let screen = NSScreen.screens[0]
-        let visible = screen.visibleFrame
-        let desktop = CGRect(x: visible.minX, y: screen.frame.maxY - visible.maxY, width: visible.width, height: visible.height)
-        let size = CGSize(width: min(1024, desktop.width), height: min(681, desktop.height))
-        let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1)).withOffset(CGVector(dx: -2, dy: -2))
-        if window.frame.width > size.width || window.frame.height > size.height {
-            corner.press(forDuration: 0.2, thenDragTo: corner.withOffset(CGVector(dx: size.width - window.frame.width, dy: size.height - window.frame.height)))
+    private func selectScene(_ label: String) {
+        app.popUpButtons["模拟场景"].click()
+        let list = app.scrollViews["模拟场景列表"]
+        XCTAssertTrue(list.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].frame.contains(list.frame), "Scene choices must stay inside the window")
+        let option = list.staticTexts[label].firstMatch
+        for _ in 0..<8 {
+            let viewport = list.frame
+            let frame = option.frame
+            if !frame.isEmpty && viewport.contains(frame) {
+                option.click()
+                wait("scene selector closes", timeout: 3) { !list.exists }
+                return
+            }
+            list.scroll(byDeltaX: 0, deltaY: frame.midY < viewport.midY ? viewport.height / 2 : -viewport.height / 2)
         }
-        let origin = window.frame.origin
-        let titlebar = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
-        let x = desktop.minX + max(0, (desktop.width - window.frame.width) / 2)
-        let y = desktop.minY + max(0, (desktop.height - window.frame.height) / 2)
-        titlebar.press(forDuration: 0.2, thenDragTo: titlebar.withOffset(CGVector(dx: x - origin.x, dy: y - origin.y)))
-        XCTAssertTrue(desktop.insetBy(dx: -1, dy: -1).contains(window.frame), "The test window must fit above the Dock and inside the display")
+        XCTFail("Scene option could not be scrolled into view: \(label), option: \(option.frame), list: \(list.frame)")
     }
 
     private func revealInContent(_ element: XCUIElement) {

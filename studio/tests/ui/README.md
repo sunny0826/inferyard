@@ -50,6 +50,8 @@ is resized to at most 1024 × 681 points and placed inside the main display's us
 area, excluding the menu bar and Dock. Every scenario uses this compact window so
 local runs also exercise the CI viewport. Resource controls and complete charts are
 scrolled into view using their current frames, rather than fixed scroll distances.
+Scene choices use a bounded scroll list; tests check that it stays inside the window
+and scroll each choice into view before selecting it.
 
 The resource/status scenario opens a dense 158-sample memory fixture with CPU and
 temperature unavailable. It captures the chart, opens the engine hover panel, and
