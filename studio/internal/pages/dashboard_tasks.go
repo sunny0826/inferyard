@@ -19,7 +19,7 @@ func aggregateStatus(runs []core.RunSummary) string {
 	return stateLabel(state)
 }
 func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
-	ui.Column(c).Key(r.Path).Gap(6).Padding(10).Children(func() {
+	ui.Column(c.Key(r.Path)).Gap(6).Padding(10).Children(func() {
 		ui.Text(c, r.RunId+" · "+stateLabel(r.Status)).Bold()
 		ui.Text(c, text(r.ModelName)+" · "+text(r.Bundle)+" · "+text(r.Engine))
 		ui.Text(c, displayName(r.Path)).Selectable()

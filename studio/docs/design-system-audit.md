@@ -1,6 +1,6 @@
 # Studio 页面 Design System 审查
 
-更新于 2026-10-14。初始审查基线为 `b92c41f`，MyGo v0.4.5；组件层随后迁移到
+更新于 2026-10-21。初始审查基线为 `b92c41f`，MyGo v0.4.5；组件层随后迁移到
 onevra v0.2026.9（构建在 MyGo v0.4.8 之上），映射见
 [组件用法](design-system.md#onevra-组件映射)。本页记录其后按
 [Studio Design System](design-system.md)实施的页面改动和实际验证范围。
@@ -27,6 +27,27 @@ DS-01 至 DS-09 已有对应实现和软件回归；原生窗口与辅助技术�
 初始 NaN 和详情错误/加载重叠已用真实视图回归复现，再以同一回归验证修复。
 NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃，不将它们描述为已复现后果。
 其余规范迁移包含项目新增的信息层级与尺寸约定，不倒推为旧页面违反 MyGo 官方设计。
+
+## onevra v0.2026.13 升级影响
+
+升级到 onevra v0.2026.13 与 MyGo v0.6.0 后，发现并处理两处回归：
+
+| 问题 | 原因 | 本轮落实 | 回归入口 |
+| --- | --- | --- | --- |
+| 成功 Toast 与辅助技术公告在真实窗口中不出现 | `6212373`（Onevra 迁移）把生产内容换成 `s.contentView`，而 Toast 消费与公告仍留在仅测试使用的 `s.view` | 消费逻辑移入共享的 `contentView`，生产窗口与预览窗口共用 | `TestProductionContentPathShowsToastAndAnnounces`、`TestProductionContentPathAnnouncesPage` |
+| Toast 位置由底部静默变为顶部居中 | onevra 调整了 `ToastPlacement` 常量顺序，零值不再是底部 | 位置在 `pageShellOptions` 显式固定为 `components.ToastTop`，不再依赖库默认值 | `TestShellPlacesToastsAtTheTop` |
+
+顶部位置的取舍：顶部居中会遮挡页面顶部内容，六个页面 × 两种尺寸 × 滚动前后的内存渲染
+测得顶部遮挡 19 处、底部 8 处、右下 4 处。仍选择顶部，因为该位置来自当前依赖的默认
+行为，显式固定可避免下次升级再次静默改变；遮挡是浮层覆盖，不改变页面布局。
+原型 CSS 的 `.toast` 规则同步改为顶部定位。
+
+内存渲染与软件回归不替代原生窗口目检，顶部位置仍需在真实窗口确认不遮挡标题与工具栏。
+
+本轮原生窗口复验：macOS 模拟窗口 e2e `run-0u6hr6ty` 12 项通过、0 失败、0 跳过，
+覆盖首次上手、准备到报告全流程、取消、失败重试、引擎状态面板、上下文速度与资源图表。
+该运行确认顶部 Toast 不遮挡可交互控件；未覆盖读屏播报内容、焦点环与高对比度外观，
+Windows 与 Linux 的位置表现未验证。
 
 ## 组件基线迁移
 
@@ -80,7 +101,7 @@ NaN 会被 MyGo 写入无障碍 range；此前未观察到读屏故障或崩溃�
 - [交互回归](../internal/pages/design_interaction_test.go)与
   [语义回归](../internal/pages/design_system_test.go)检查字段纠错、公告、焦点、恢复动作及进度。
   部分语义断言读取固定 MyGo 版本的内部视图节点，升级依赖时需要复核这些测试适配；
-  当前依赖为 MyGo v0.5.5 与 onevra v0.2026.12。2026-10-16 那次升级后在 macOS arm64
+  当前依赖为 MyGo v0.6.0 与 onevra v0.2026.13。2026-10-16 那次升级后在 macOS arm64
   重跑 `go vet ./...` 与 `go test ./... -count=1 -timeout 900s` 均通过，包含页面布局、交互与真实 CLI / 假引擎 e2e。
   那次未重做原生窗口目检，历史图片不作为新依赖的视觉验收证据。
   2026-10-19 再升到这两个版本：窗口控件标签改由 onevra 内置中文目录提供，不再传入应用自定义标签。
