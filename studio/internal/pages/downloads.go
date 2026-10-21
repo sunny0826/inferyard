@@ -53,7 +53,7 @@ func (s *viewState) modelAssetsView(c *ui.Context) {
 // A hand-edited URL matches no catalogue entry, so it has no title.
 func (s *viewState) modelAssetTitle() string {
 	if entry, ok := core.CatalogEntryByURL(s.modelURL); ok {
-		return entry.Title
+		return entry.DisplayName()
 	}
 	return "自定义地址"
 }
@@ -100,7 +100,7 @@ func (s *viewState) engineDownloadView(c *ui.Context) {
 // at. A hand-edited URL matches no catalogue entry, so it has no title.
 func (s *viewState) engineAssetTitle() string {
 	if entry, ok := core.CatalogEntryByURL(s.engineURL); ok {
-		return entry.Title
+		return entry.DisplayName()
 	}
 	return "自定义地址"
 }

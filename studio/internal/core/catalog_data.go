@@ -10,31 +10,31 @@ package core
 // the measured digest of the pinned repository revisions.
 var catalogEntries = []CatalogEntry{
 	{
-		ID: "engine-macos-arm64", Kind: CatalogEngine, Title: "llama-server · macOS arm64",
+		ID: "engine-macos-arm64", Kind: CatalogEngine, Title: "llama-server",
 		Family: "llama-cpp", URL: catalogEngineBase + "llama-prism-b10743-adfffbe-bin-macos-arm64.tar.gz",
 		Bytes: 11517506, SHA256: "596d257973080ca5011a4be50477c5f93ed1d231fcccfc2afb44bb573bb9629a",
 		Revision: "prism-b10743-adfffbe", Platform: "darwin/arm64",
 	},
 	{
-		ID: "engine-macos-x64", Kind: CatalogEngine, Title: "llama-server · macOS x64",
+		ID: "engine-macos-x64", Kind: CatalogEngine, Title: "llama-server",
 		Family: "llama-cpp", URL: catalogEngineBase + "llama-prism-b10743-adfffbe-bin-macos-x64.tar.gz",
 		Bytes: 11559738, SHA256: "3527598651d783b66d525afbcdd0cbbba12a8d59c388bb0e13fa85715381969d",
 		Revision: "prism-b10743-adfffbe", Platform: "darwin/amd64",
 	},
 	{
-		ID: "engine-linux-x64", Kind: CatalogEngine, Title: "llama-server · Linux x64",
+		ID: "engine-linux-x64", Kind: CatalogEngine, Title: "llama-server",
 		Family: "llama-cpp", URL: catalogEngineBase + "llama-prism-b10743-adfffbe-bin-ubuntu-x64.tar.gz",
 		Bytes: 17779725, SHA256: "1bb340929fddae8667c97ec6d4064a5768fe1dd08eeee0074b8d5e08f07dfc31",
 		Revision: "prism-b10743-adfffbe", Platform: "linux/amd64",
 	},
 	{
-		ID: "engine-linux-arm64", Kind: CatalogEngine, Title: "llama-server · Linux arm64",
+		ID: "engine-linux-arm64", Kind: CatalogEngine, Title: "llama-server",
 		Family: "llama-cpp", URL: catalogEngineBase + "llama-prism-b10743-adfffbe-bin-ubuntu-arm64.tar.gz",
 		Bytes: 13800344, SHA256: "ee4cb83a2985572459a5686ef175503d4e526b46b97c7fcc7152e868169b3060",
 		Revision: "prism-b10743-adfffbe", Platform: "linux/arm64",
 	},
 	{
-		ID: "engine-windows-x64", Kind: CatalogEngine, Title: "llama-server · Windows CPU x64",
+		ID: "engine-windows-x64", Kind: CatalogEngine, Title: "llama-server",
 		Family: "llama-cpp", URL: catalogEngineBase + "llama-prism-b10743-adfffbe-bin-win-cpu-x64.zip",
 		Bytes: 19441568, SHA256: "d0b3016c9cc4bc1385de68be034adee570277ba952dd94292ba3888b7f18cc44",
 		Revision: "prism-b10743-adfffbe", Platform: "windows/amd64",
@@ -52,7 +52,7 @@ var catalogEntries = []CatalogEntry{
 		Revision: "23749fefcc72300e3a2ad315e1317431b06b590a", Platform: "any",
 	},
 	{
-		ID: "engine-windows-cuda-x64", Kind: CatalogEngine, Title: "llama-server · Windows CUDA 12.4 x64",
+		ID: "engine-windows-cuda-x64", Kind: CatalogEngine, Title: "llama-server · CUDA 12.4",
 		Family: "llama-cpp", URL: catalogEngineBase + "llama-prism-b10743-adfffbe-bin-win-cuda-12.4-x64.zip",
 		Bytes: 257322810, SHA256: "1b849f713bee42fda258de83770cd422e8f48dd631ce370eb0641f6458c69d87",
 		Revision: "prism-b10743-adfffbe", Platform: "windows/amd64",

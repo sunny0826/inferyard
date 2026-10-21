@@ -121,8 +121,9 @@ can really fetch are offered as choices: the engine channel unpacks llama.cpp ar
 to 64 MiB, and the model channel accepts a single GGUF at a fixed revision. The other
 adapted runtimes stay visible in a folded “参考地址（不可直接下载）” section with the
 address, the reason it is not downloadable and the preparation document — no download
-button. Picking a built-in address fills the form; a hand-edited URL is never overwritten
-by the catalogue.
+button. An entry that shares its title with another carries its platform, so the
+llama-server builds stay distinguishable. Picking a built-in address fills the form; a
+hand-edited URL is never overwritten by the catalogue.
 
 The initial effective workspace is `~/.inferyard`. Preparing directories is an explicit,
 idempotent action; saving settings alone does not create them. CLI `init` requires a new

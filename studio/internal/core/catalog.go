@@ -160,6 +160,28 @@ func PlatformLabel(platform string) string {
 	return name + " " + arch
 }
 
+// DisplayName names an entry for the user. Entries that share a title — the
+// pinned llama-server archives differ only by platform — carry the platform
+// so they stay distinguishable.
+func (e CatalogEntry) DisplayName() string {
+	if e.SharesTitle() {
+		return e.Title + " · " + PlatformLabel(e.Platform)
+	}
+	return e.Title
+}
+
+// SharesTitle reports whether another entry of the same kind carries the
+// same title, which makes the title alone ambiguous.
+func (e CatalogEntry) SharesTitle() bool {
+	count := 0
+	for _, other := range catalogEntries {
+		if other.Kind == e.Kind && other.Title == e.Title {
+			count++
+		}
+	}
+	return count > 1
+}
+
 // DefaultModelURL returns the built-in tiny test model (SmolLM2-135M Q4_K_M,
 // about 100 MiB) so first-run users can pull a working model without hunting
 // for a URL. The revision is pinned; bump deliberately with releases.

@@ -29,4 +29,6 @@ engine channel only unpacks llama.cpp archives up to 64 MiB, and the model chann
 accepts a single GGUF at a fixed revision — so entries the channels cannot retrieve
 carry a `Reason` and a `Doc` pointer instead of a download path. `DefaultModelURL` and
 `DefaultEngineURL` derive the prefilled download URLs from this catalogue, so one
-pinned asset is described in exactly one place.
+pinned asset is described in exactly one place. `DisplayName` names an entry for the
+user and appends the platform only when other entries of the same kind share its
+title, so a display name stays unambiguous without repeating the platform.

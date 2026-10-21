@@ -66,11 +66,11 @@ func TestDownloadsCatalogPickerFillsTheDownloadForm(t *testing.T) {
 		t.Fatal("model entry missing")
 	}
 	current, _ := core.CatalogEntryByID("model-smollm2-135m")
-	click(t, tt, current.Title)
+	click(t, tt, current.DisplayName())
 	tt.Frame()
 	tt.Advance(300 * time.Millisecond)
 	tt.Frame()
-	click(t, tt, entry.Title)
+	click(t, tt, entry.DisplayName())
 	tt.Frame()
 	if s.catalog.modelID != entry.ID {
 		t.Fatal("picker did not record the choice", s.catalog.modelID)
@@ -99,7 +99,7 @@ func TestDownloadsCatalogKeepsTheSearchBox(t *testing.T) {
 	if engine.ID == "" {
 		t.Skip("no engine build for this platform")
 	}
-	click(t, tt, engine.Title)
+	click(t, tt, engine.DisplayName())
 	tt.Frame()
 	tt.Advance(300 * time.Millisecond)
 	tt.Frame()
@@ -134,6 +134,25 @@ func TestCatalogEntrySummaryLabelsEveryAsset(t *testing.T) {
 		}
 		if entry.Reason != "" && !strings.Contains(summary, "仅参考") {
 			t.Fatal("summary lost the reference marker", entry.ID, summary)
+		}
+		// The platform is part of the display name already; repeating it
+		// would read "macOS arm64 · macOS arm64".
+		if strings.Count(summary, core.PlatformLabel(entry.Platform)) > 1 {
+			t.Fatal("summary repeats the platform", entry.ID, summary)
+		}
+	}
+}
+
+func TestCatalogDisplayNameSeparatesEntriesThatShareATitle(t *testing.T) {
+	seen := map[string]bool{}
+	for _, entry := range core.Catalog() {
+		name := entry.DisplayName()
+		if seen[name] {
+			t.Fatal("two entries share a display name", entry.ID, name)
+		}
+		seen[name] = true
+		if entry.SharesTitle() && !strings.Contains(name, core.PlatformLabel(entry.Platform)) {
+			t.Fatal("an ambiguous title does not name its platform", entry.ID, name)
 		}
 	}
 }

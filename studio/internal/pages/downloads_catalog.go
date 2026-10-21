@@ -54,7 +54,7 @@ func (s *viewState) catalogKindView(c *ui.Context, kind core.CatalogKind, entrie
 				continue
 			}
 			note := core.PlatformLabel(entry.Platform) + " · " + catalogSize(entry.Bytes)
-			choices = append(choices, pickerOption{value: entry.ID, label: entry.Title, note: note})
+			choices = append(choices, pickerOption{value: entry.ID, label: entry.DisplayName(), note: note})
 		}
 		if len(choices) == 0 {
 			ui.Text(c, "当前平台没有可直接下载的内置地址。")
@@ -87,7 +87,7 @@ func (s *viewState) catalogKindView(c *ui.Context, kind core.CatalogKind, entrie
 	componentFoldOpen(c, "catalog-reference-"+string(kind), "参考地址（不可直接下载）", func() {
 		for _, entry := range references {
 			ui.Column(c).Gap(c.Theme().Space(0.5)).Children(func() {
-				ui.Text(c, entry.Title+" · "+core.PlatformLabel(entry.Platform)).Bold()
+				ui.Text(c, entry.DisplayName()).Bold()
 				ui.Text(c, entry.Reason).FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
 				ui.Text(c, entry.URL).FontSize(max(12, c.Theme().Rem(.8))).TextColor(c.Theme().TextMuted).Selectable()
 				if entry.Bytes > 0 {
@@ -156,7 +156,7 @@ func catalogHumanSize(bytes int64) string {
 
 // catalogEntrySummary describes one built-in entry in a single line.
 func catalogEntrySummary(entry core.CatalogEntry) string {
-	parts := []string{entry.Title, core.PlatformLabel(entry.Platform)}
+	parts := []string{entry.DisplayName()}
 	if entry.Revision != "" {
 		parts = append(parts, "版本 "+entry.Revision)
 	}

@@ -98,6 +98,17 @@ func TestCatalogEngineForPlatform(t *testing.T) {
 	}
 }
 
+func TestCatalogDisplayNameIsUnique(t *testing.T) {
+	seen := map[string]bool{}
+	for _, entry := range Catalog() {
+		name := entry.DisplayName()
+		if seen[name] {
+			t.Fatal("two entries share a display name", entry.ID, name)
+		}
+		seen[name] = true
+	}
+}
+
 func TestDefaultURLsComeFromTheCatalog(t *testing.T) {
 	model, ok := CatalogEntryByID("model-smollm2-135m")
 	if !ok {
