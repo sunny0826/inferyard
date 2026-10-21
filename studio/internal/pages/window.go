@@ -142,8 +142,6 @@ type viewState struct {
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                string
-	catalog                                                                             catalogSelectState
-	catalogEngineQuery, catalogModelQuery                                               string
 	historyTable, reportsTable                                                          pageTableState
 	reportSources                                                                       components.ListState
 	reportChoices                                                                       ui.Selection[any]

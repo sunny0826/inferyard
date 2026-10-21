@@ -3,7 +3,8 @@ import XCTest
 
 @MainActor
 final class PreviewUITests: XCTestCase {
-    private var app: XCUIApplication!
+    var app: XCUIApplication!
+    var currentScene = "任务 · 准备"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -30,7 +31,65 @@ final class PreviewUITests: XCTestCase {
         }
     }
 
-    func testBenchmarkFromPreparationToReport() {
+    func testPreviewWorkflowsInOneWindow() {
+        let host = NSRunningApplication.runningApplications(withBundleIdentifier: "local.inferyard.preview-e2e")
+        XCTAssertEqual(host.count, 1)
+        let process = host.first?.processIdentifier
+        XCTAssertEqual(app.state, .runningForeground)
+        XCTContext.runActivity(named: "BenchmarkFromPreparationToReport") { _ in
+            benchmarkFromPreparationToReport()
+        }
+        XCTContext.runActivity(named: "FailureCanRetryThroughNormalControls") { _ in
+            selectScene("任务 · 待运行")
+            failureCanRetryThroughNormalControls()
+        }
+        XCTContext.runActivity(named: "CancellationAllowsAnotherTask") { _ in
+            selectScene("任务 · 待运行")
+            cancellationAllowsAnotherTask()
+        }
+        XCTContext.runActivity(named: "DownloadFailureRetryAndReset") { _ in
+            selectScene("任务 · 准备")
+            downloadFailureRetryAndReset()
+        }
+        XCTContext.runActivity(named: "ContextSpeedResultAndHistory") { _ in
+            selectScene("任务 · 待运行")
+            contextSpeedResultAndHistory()
+        }
+        XCTContext.runActivity(named: "ContextSpeedCancellationDiagnostics") { _ in
+            selectScene("任务 · 待运行")
+            contextSpeedCancellationDiagnostics()
+        }
+        XCTContext.runActivity(named: "ContextSpeedFailureMissingAndReadRetry") { _ in
+            selectScene("任务 · 待运行")
+            contextSpeedFailureMissingAndReadRetry()
+        }
+        XCTContext.runActivity(named: "FirstUseWithoutLocalAssets") { _ in
+            selectScene("首次使用 · 无资源")
+            firstUseWithoutLocalAssets()
+        }
+        XCTContext.runActivity(named: "ResourceChartsAndSourceSelection") { _ in
+            selectScene("资源 · 密集采样与缺测")
+            resourceChartsAndSourceSelection()
+        }
+        XCTContext.runActivity(named: "EngineStatusPanel") { _ in
+            selectScene("任务 · 失败")
+            engineStatusPanel()
+        }
+        XCTContext.runActivity(named: "LocalDirectoryEngineRunsBothScopes") { _ in
+            selectScene("引擎 · 本地安装与目录模型")
+            localDirectoryEngineRunsBothScopes()
+        }
+        XCTContext.runActivity(named: "LMStudioBindingFailureKeepsCompletedScope") { _ in
+            selectScene("引擎 · LM Studio 手动绑定")
+            lmStudioBindingFailureKeepsCompletedScope()
+        }
+        XCTAssertEqual(app.windows.count, 1)
+        let remaining = NSRunningApplication.runningApplications(withBundleIdentifier: "local.inferyard.preview-e2e")
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.processIdentifier, process, "All workflows must keep the same app process")
+    }
+
+    private func benchmarkFromPreparationToReport() {
         prepare()
         XCTAssertFalse(text("Dashboard").exists)
         keepScreenshot("Benchmark setup with single stage heading")
@@ -68,8 +127,7 @@ final class PreviewUITests: XCTestCase {
         XCTAssertEqual(app.tables["报告列表"].tableRows.count, 2, "One report plus the header")
     }
 
-    func testFailureCanRetryThroughNormalControls() {
-        prepare()
+    private func failureCanRetryThroughNormalControls() {
         app.checkBoxes["下次操作模拟失败"].click()
         click("运行 benchmark")
         click("启动服务", timeout: 10)
@@ -78,8 +136,7 @@ final class PreviewUITests: XCTestCase {
         expectText("120 个有效样本")
     }
 
-    func testCancellationAllowsAnotherTask() {
-        prepare()
+    private func cancellationAllowsAnotherTask() {
         click("运行 benchmark")
         click("查看实时详情", timeout: 10)
         click("取消任务")
@@ -88,7 +145,7 @@ final class PreviewUITests: XCTestCase {
         expectText("各类任务表现")
     }
 
-    func testDownloadFailureRetryAndReset() {
+    private func downloadFailureRetryAndReset() {
         click("下载")
         app.checkBoxes["下次操作模拟失败"].click()
         click("下载模型")
@@ -109,7 +166,7 @@ final class PreviewUITests: XCTestCase {
         expectText("实际目录名：model")
     }
 
-    func testContextSpeedResultAndHistory() {
+    private func contextSpeedResultAndHistory() {
         prepareSpeed()
         openMenu("上下文档位")
         app.menuItems["128k"].click()
@@ -147,7 +204,7 @@ final class PreviewUITests: XCTestCase {
         expectText("已完成 1 / 5 次测量")
     }
 
-    func testContextSpeedCancellationDiagnostics() {
+    private func contextSpeedCancellationDiagnostics() {
         prepareSpeed()
         click("开始专项测评")
         click("取消专项测评")
@@ -163,7 +220,7 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("Context speed cancellation diagnostics")
     }
 
-    func testContextSpeedFailureMissingAndReadRetry() {
+    private func contextSpeedFailureMissingAndReadRetry() {
         prepareSpeed()
         app.checkBoxes["下次操作模拟失败"].click()
         click("开始专项测评")
@@ -196,20 +253,33 @@ final class PreviewUITests: XCTestCase {
     }
 
     private func prepareSpeed() {
-        prepare()
         openMenu("测评类型")
         app.menuItems["长上下文速度"].click()
         expectText("zh-context-speed · 5 次测量 · 每次输出 256 tokens")
     }
 
-    func testFirstUseWithoutLocalAssets() {
-        selectScene("首次使用 · 无资源")
+    private func firstUseWithoutLocalAssets() {
         click("准备环境")
         expectText("准备模型与引擎")
         XCTAssertFalse(text("工作区进度").exists)
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "尚未识别的原因码")).firstMatch.exists)
         keepScreenshot("First use with no local assets")
         click("到下载页")
+        #if arch(arm64)
+        expectText("推荐资源 · macOS arm64")
+        #else
+        expectText("推荐资源 · macOS x64")
+        #endif
+        XCTAssertFalse(text("Windows x64").exists)
+        XCTAssertFalse(text("Linux x64").exists)
+        keepScreenshot("Recommendations for this Mac")
+        let qwen = "Qwen3-0.6B-Q8_0（GGUF）"
+        let smol = "SmolLM2-135M-Instruct-Q4_K_M（GGUF）"
+        click("选择 · " + qwen)
+        expectExists(app.buttons["已选择 · " + qwen], timeout: 3)
+        XCTAssertFalse(app.textFields["模型 URL（固定 40 位 revision 的 GGUF）"].exists)
+        keepScreenshot("Model recommendations and selected Qwen")
+        click("选择 · " + smol)
         click("下载引擎")
         click("下载模型")
         click("返回任务")
@@ -242,8 +312,7 @@ final class PreviewUITests: XCTestCase {
         expectText("各类任务表现")
     }
 
-    func testResourceChartsAndSourceSelection() {
-        selectScene("资源 · 密集采样与缺测")
+    private func resourceChartsAndSourceSelection() {
         expectText("采样记录：316 · 每个来源保留最近 600 点")
         expectText("服务 CPU % · 此运行未记录该指标")
         expectText("传感器温度 °C · 此运行未记录该指标")
@@ -269,8 +338,7 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("Selected temperature source with its own measurements")
     }
 
-    func testEngineStatusPanel() {
-        selectScene("任务 · 失败")
+    private func engineStatusPanel() {
         let engine = app.buttons["引擎 · 失败"]
         expectExists(engine, timeout: 5)
         engine.hover()
@@ -292,8 +360,7 @@ final class PreviewUITests: XCTestCase {
         expectExists(app.buttons["引擎 · 已停止"], timeout: 5)
     }
 
-    func testLocalDirectoryEngineRunsBothScopes() {
-        selectScene("引擎 · 本地安装与目录模型")
+    private func localDirectoryEngineRunsBothScopes() {
         expectExists(app.menuButtons["local-weights · 目录模型"], timeout: 5)
         revealInContent(app.buttons["运行 benchmark"])
         keepScreenshot("Local directory model and registered engine")
@@ -308,8 +375,7 @@ final class PreviewUITests: XCTestCase {
         expectText("各类任务表现")
     }
 
-    func testLMStudioBindingFailureKeepsCompletedScope() {
-        selectScene("引擎 · LM Studio 手动绑定")
+    private func lmStudioBindingFailureKeepsCompletedScope() {
         revealInContent(app.buttons["运行 benchmark"])
         click("运行 benchmark")
         expectText("zh-svg-pelican · 等待绑定 LM Studio", timeout: 15)
@@ -335,79 +401,4 @@ final class PreviewUITests: XCTestCase {
         expectText("各类任务表现")
     }
 
-    private func selectScene(_ label: String) {
-        app.popUpButtons["模拟场景"].click()
-        let list = app.scrollViews["模拟场景列表"]
-        expectExists(list, timeout: 5)
-        XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].frame.contains(list.frame), "Scene choices must stay inside the window")
-        let option = list.staticTexts[label].firstMatch
-        for _ in 0..<8 {
-            let viewport = list.frame
-            let frame = option.frame
-            if !frame.isEmpty && viewport.contains(frame) {
-                option.click()
-                wait("scene selector closes", timeout: 3) { !list.exists }
-                return
-            }
-            list.scroll(byDeltaX: 0, deltaY: frame.midY < viewport.midY ? viewport.height / 2 : -viewport.height / 2)
-        }
-        XCTFail("Scene option could not be scrolled into view: \(label), option: \(option.frame), list: \(list.frame)")
-    }
-
-    private func revealInContent(_ element: XCUIElement) {
-        let content = app.scrollViews.element(boundBy: 1)
-        for _ in 0..<5 {
-            let viewport = content.frame
-            let frame = element.frame
-            if !frame.isEmpty && viewport.contains(frame) { return }
-            let delta = frame.maxY > viewport.maxY ? viewport.maxY - frame.maxY : viewport.minY - frame.minY
-            content.scroll(byDeltaX: 0, deltaY: delta.rounded(.awayFromZero))
-        }
-        XCTAssertTrue(content.frame.contains(element.frame), "The complete control must be visible after scrolling")
-    }
-
-    private func keepScreenshot(_ name: String) {
-        let attachment = XCTAttachment(screenshot: app.windows["InferYard Studio · UI 调试"].screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
-    }
-
-    private func prepare() {
-        click("准备环境")
-        wait("benchmark becomes available", timeout: 10) {
-            self.app.buttons["运行 benchmark"].exists && self.app.buttons["运行 benchmark"].isEnabled
-        }
-    }
-
-    private func openMenu(_ label: String) {
-        let button = app.menuButtons[label].firstMatch
-        wait("menu button \(label) is enabled", timeout: 5) { button.exists && button.isEnabled }
-        button.click()
-    }
-
-    private func click(_ label: String, timeout: TimeInterval = 5) {
-        let button = app.buttons[label].firstMatch
-        wait("button \(label) is enabled", timeout: timeout) { button.exists && button.isEnabled }
-        button.click()
-    }
-
-    private func expectText(_ text: String, timeout: TimeInterval = 10) {
-        let element = self.text(text)
-        XCTAssertTrue(element.exists || element.waitForExistence(timeout: timeout), "Missing text: \(text)")
-    }
-
-    private func expectExists(_ element: XCUIElement, timeout: TimeInterval) {
-        XCTAssertTrue(element.exists || element.waitForExistence(timeout: timeout))
-    }
-
-    private func text(_ value: String) -> XCUIElement {
-        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@ OR value == %@", value, value)).firstMatch
-    }
-
-    private func wait(_ description: String, timeout: TimeInterval, condition: @escaping () -> Bool) {
-        if condition() { return }
-        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition() }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed, description)
-    }
 }

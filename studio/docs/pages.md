@@ -16,7 +16,7 @@ Downloads, Device, and Settings.
 | Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
-| Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. A built-in address catalogue lists the pinned engine and model downloads the current download channels can really fetch; the remaining addresses stay visible as reference entries with the reason they are not downloadable and the preparation document. |
+| Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and read each report index inside the main window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
 
@@ -103,34 +103,31 @@ startup; the task page provides recovery actions with separate safeguards for lo
 process trees. Credentials use environment-variable references. Recovery and display
 rules live in the [Studio subsystem reference](../../docs/subsystems/studio-panel.md#约束与失败行为).
 
-The Downloads page presents one form card: the engine first, then the model, both
-picked from the built-in address catalogue. Both HTTPS URLs are prefilled and editable;
-model credentials accept only an environment-variable name under “需要凭证时”. Empty pages omit
-the task card; existing tasks list engines before models. Download
-directory names come from Settings (defaults `model` / `engine`); an occupied name
-automatically gains a `-2`/`-3` suffix instead of prompting per download, and the task
-detail shows the actual directory. Name allocation stops after 1,000 occupied candidates
-with `output_name_exhausted`; new binding directories use the same limit. Engine
-archives are downloaded and unpacked by the Studio side — preserving the sibling shared
-libraries and recreating only in-archive relative symlinks — into a fresh directory that
-never overwrites existing files.
+The Downloads page puts platform-filtered recommendations beside the download controls,
+with engines first and models second. Each resource row shows its name, platform, size,
+and selection state. Only assets matching the running OS and CPU architecture, plus
+platform-independent assets, appear. GGUF models are shared across platforms; the MLX
+directory-model reference appears only on macOS arm64. Matching a platform does not
+establish hardware eligibility, which is checked before a benchmark.
 
-Below the form card the page shows the built-in address catalogue. Each entry pins one
-asset with its measured byte count and SHA256. The engine channel streams the archive to
-disk and unpacks it there, so a pinned archive of any size is fetchable; what the channel
-accepts is the shape, not the size — a llama.cpp archive, or the engine binary itself. The
-model channel accepts a single GGUF at a fixed revision. The addresses the channels cannot
-fetch — Python wheels, the CUDA runtime archive, the SGLang source tree, the LM Studio
-page, the directory model — stay visible in a folded “其他内置地址（下载通道取不到，需自行准备）”
-section with the address, the reason it is not downloadable and the preparation document.
-Each of them has a “填入下载地址 · <name>” button, so the operator can put the address in
-the form and fetch it with the tool that suits it, instead of copying it by hand. An entry
-for another platform can also be fetched — the operator may be preparing it for another
-machine — so it stays selectable, and it is marked “非本机” in the picker with a note
-under the form saying the product cannot run on this machine. An entry that shares its
-title with another carries its platform, so the llama-server builds stay distinguishable.
-Picking a built-in address fills the form; a hand-edited URL is never overwritten by the
-catalogue.
+The form URL is the selection's single source of truth. Defaults fill empty fields once;
+clicking a resource replaces its URL. Editing an address clears the matching selection,
+and rendering never overwrites an existing custom address. Custom addresses, fixed revisions,
+and SHA256 details are available in collapsed sections. A manually entered catalogue URL
+for another platform shows a warning. Unknown platforms never default to another platform's
+engine. Model credentials accept only an environment-variable name under “需要凭据时”.
+
+“其他准备方式” lists matching reference resources with their address, unsupported-download
+reason, and preparation document. It starts collapsed and has no download action.
+Fixed catalogue addresses and the download channel validators remain authoritative: the
+engine channel downloads and unpacks llama.cpp archives, preserving sibling libraries and
+only in-archive relative symlinks; the model channel accepts a single GGUF at a fixed revision.
+
+Empty pages omit the task card; existing tasks list engines before models. Download directory
+names come from Settings (defaults `model` / `engine`); occupied names gain a `-2`/`-3` suffix.
+Task details show the actual directory. Allocation stops after 1,000 occupied candidates with
+`output_name_exhausted`; new binding directories use the same limit. Existing files are never
+overwritten.
 
 The initial effective workspace is `~/.inferyard`. Preparing directories is an explicit,
 idempotent action; saving settings alone does not create them. CLI `init` requires a new

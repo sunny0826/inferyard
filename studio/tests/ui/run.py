@@ -60,9 +60,9 @@ def main() -> int:
         "-test-timeouts-enabled",
         "YES",
         "-default-test-execution-time-allowance",
-        "60",
+        "600",
         "-maximum-test-execution-time-allowance",
-        "90",
+        "600",
     ]
     log = output / "xcodebuild.log"
     with log.open("w") as stream:

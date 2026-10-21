@@ -88,6 +88,18 @@ func (e CatalogEntry) RunsOnCurrentPlatform() bool {
 	return e.Platform == "any" || e.Platform == CurrentPlatform()
 }
 
+// CatalogForPlatform excludes assets built for another OS or architecture.
+// Matching the platform does not establish hardware or runtime eligibility.
+func CatalogForPlatform(platform string) []CatalogEntry {
+	var entries []CatalogEntry
+	for _, entry := range catalogEntries {
+		if entry.Platform == "any" || entry.Platform == platform {
+			entries = append(entries, entry)
+		}
+	}
+	return entries
+}
+
 // Catalog returns the built-in address list.
 func Catalog() []CatalogEntry {
 	out := make([]CatalogEntry, len(catalogEntries))

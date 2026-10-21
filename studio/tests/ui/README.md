@@ -1,7 +1,7 @@
 # Native preview UI e2e
 
-This suite builds the actual Go app with `ui_debug` and starts a fresh native macOS
-window with `--debug-ui` for each test. [XCUITest](https://developer.apple.com/documentation/xcuiautomation/xcuiapplication) drives public controls and checks the
+This suite builds the actual Go app with `ui_debug` and opens one native macOS
+window with `--debug-ui` for the entire suite. [XCUITest](https://developer.apple.com/documentation/xcuiautomation/xcuiapplication) drives public controls and checks the
 accessibility tree; it does not call preview internals, advance a test clock, or use
 the scene selector to complete workflows.
 
@@ -44,7 +44,8 @@ final two-bundle report. These are simulated services, not real engine acceptanc
 
 The first-use scenario starts with no model or engine, acquires both through the
 download controls, returns to the task, and runs both default bundles to a report.
-It checks the resource guide and live queue labels, and retains screenshots before
+It also checks platform-filtered recommendations and changes the selected model before
+downloading, then checks the resource guide and live queue labels. It retains screenshots before
 resource acquisition, before execution, and during execution. Its owned test window
 is resized to at most 1024 × 681 points and placed inside the main display's usable
 area, excluding the menu bar and Dock. Every scenario uses this compact window so
@@ -73,8 +74,16 @@ Wait helpers check the current condition before polling; an already-present elem
 or enabled button needs no extra delay. Pending conditions retain their original timeouts.
 Scrolling stops when the complete control is inside its viewport. Fractional scroll
 distances round away from zero so a sub-point remainder cannot cause repeated no-op events.
-Each independent workflow still launches a fresh app; tests do not share mutable state
-across cases, accelerate the simulator clock, or bypass normal page controls.
+One XCTest method groups workflows into named activities. The app launches, positions
+its window, and terminates once; the suite checks that its process ID remains unchanged.
+Between independent workflows, the scene selector resets window-local state and widget
+state. Reusing the same scene presses Reset instead of selecting the unchanged option.
+Failure, cancellation, and context-speed activities start from the prepared scene;
+preparation remains covered by the normal benchmark and first-use activities. Scene
+selection only establishes the starting state; each workflow uses normal page controls.
+The suite has a 600-second total allowance; individual control waits retain their existing
+timeouts. A failure stops the suite and attaches the window and accessibility tree to the
+result, under the failing activity. No simulator clock is accelerated.
 
 The context-speed preview tests drive the existing task form through tier selection,
 five simulated measurements, the six-column result, history reopening, cancellation,
