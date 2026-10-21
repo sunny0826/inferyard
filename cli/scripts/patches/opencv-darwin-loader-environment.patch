@@ -1,0 +1,5 @@
+--- a/cv2/__init__.py
++++ b/cv2/__init__.py
+@@ -145 +145 @@
+-    else:
++    elif sys.platform != 'darwin':

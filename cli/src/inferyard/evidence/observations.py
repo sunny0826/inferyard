@@ -1,5 +1,6 @@
 """Closed observation slots and strict run/trial/sequence binding."""
 
+from inferyard.contracts.engine_profiles import observes_before_idle
 from inferyard.contracts.schemas_layout import OBSERVATION_RECORD, OBSERVATION_STAGES
 from inferyard.contracts.validation import ContractError, _validate, validate_document
 from inferyard.evidence.storage import EvidenceError
@@ -49,7 +50,7 @@ class Observations:
             kind, stage, key = row["kind"], row["stage"], row["key"]
             if kind == "service_properties":
                 adapter = self.evidence.input("config")["engine"]["adapter"]
-                expected_stage = "pre_idle" if adapter in ("kvmem", "ninfer") else "post_idle"
+                expected_stage = "pre_idle" if observes_before_idle(adapter) else "post_idle"
                 if stage != expected_stage:
                     raise EvidenceError("service_properties_stage_mismatch")
             slot = (kind, stage if kind in MULTI_STAGE else None, key)

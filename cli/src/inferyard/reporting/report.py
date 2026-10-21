@@ -83,7 +83,7 @@ def presentation(data, source, out, *, contents, reads=None):
         "source": source,
         "model": data["config"]["model"]["display_name"],
         "experiment_id": data["run"]["experiment_id"],
-        "threads": data["config"]["conditions"]["threads"],
+        "threads": data["config"]["conditions"].get("threads"),
         "summary": summary,
         "duration_view": duration_view(summary),
         "resource_view": resource_view(data["samples"], data["config"]["telemetry"]["interval_ms"]),

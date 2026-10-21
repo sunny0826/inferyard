@@ -255,7 +255,7 @@ func TestStartChainAllCompletedRejectsNewCombination(t *testing.T) {
 				}
 			}
 			result, e := h.run(t, "new-model.gguf", "new-engine")
-			if e == nil || e.Code != "candidate_mismatch" || result != (startChainResult{}) {
+			if e == nil || e.Code != "candidate_mismatch" || result.candidate != "" || result.workspace != "" || len(result.localCandidates) != 0 {
 				t.Fatalf("result=%+v error=%v", result, e)
 			}
 			if len(h.calls) != 1 || !strings.Contains(h.calls[0].command, "device-check") {

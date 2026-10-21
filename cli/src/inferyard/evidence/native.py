@@ -4,6 +4,7 @@ from inferyard.adapters.lab_observation_json import LabProtocolError
 from inferyard.adapters.lab_parameters import _equal
 from inferyard.adapters.native_observation import OpenAIGenerationDecoder
 from inferyard.adapters.requests import request_body
+from inferyard.contracts.engine_profiles import LOCAL_OBSERVATION, is_local
 from inferyard.contracts.schemas_observation import OBSERVATION
 from inferyard.contracts.validation import ContractError, _validate
 from inferyard.evidence.engine_capabilities import observation_sealed
@@ -36,6 +37,11 @@ def observation_evidence(root, config, *, reads=None):
         "native",
     ):
         raise EvidenceError("engine_observation_binding_mismatch")
+    if is_local(config) and (
+        value.get("definition") != LOCAL_OBSERVATION
+        or value.get("family") != config["engine"]["family"]
+    ):
+        raise EvidenceError("engine_observation_binding_mismatch")
     if reads.manifest is not None:
         manifest = reads.manifest
         if (
@@ -57,10 +63,15 @@ def observation_evidence(root, config, *, reads=None):
             raise EvidenceError("native_evidence_cannot_prove_engine_drain")
         if config["engine"].get("observation_mode") == "lab_required":
             raise EvidenceError("required_lab_observation_missing")
-    for record in value["endpoints"].values():
+    for path, record in value["endpoints"].items():
+        expected_status = (
+            None
+            if is_local(config) and config["engine"]["family"] == "lmstudio" and path == "lms:ps"
+            else 200
+        )
         if record["available"] is True:
             if (
-                record["status_code"] != 200
+                record["status_code"] != expected_status
                 or record["missing_reason"] is not None
                 or type(record["body"]) is not str
             ):
@@ -143,5 +154,7 @@ def verify_native(root, config, bundle, events, observation, *, reads=None):
         elif kind == "native_observed":
             if data["engine_internal_drain"] is not None:
                 raise EvidenceError("native_evidence_cannot_prove_engine_drain")
-    verify_clean_receipts(root, events, usages, manifest, reads=reads)
+    verify_clean_receipts(
+        root, events, usages, manifest, reads=reads, allow_pending=is_local(config)
+    )
     return False  # Native observations never inherit lab/template/engine-timings qualification.

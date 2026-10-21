@@ -3,6 +3,10 @@
 `engine-fit` 记录同一台机器、同一份模型资产在不同引擎上的协议完成情况、客户端耗时、token 和进程树资源。
 默认三条短请求，生成离线 HTML；不计算正式质量分数或性能赢家。完整基准使用 `run`。
 
+Apple Silicon 多引擎准备、固定小模型与 SGLang 本地补丁见
+[小模型准备](engine-fit-small-model.md)；当前通过范围见
+[模型与引擎 backlog](backlog/model-engine.md#小模型多引擎接入)。
+
 ## 可执行范围
 
 ```bash

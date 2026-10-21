@@ -13,6 +13,7 @@ def add_commands(commands):
     origin.add_argument("--plan", dest="frozen_plan", type=Path)
     run.add_argument("--workload", dest="workload_id")
     run.add_argument("--handoff-note")
+    run.add_argument("--service-binding", dest="service_binding_path", type=Path)
     run.add_argument("--diagnostic", action="store_true")
     run.add_argument("--endpoint-url")
     run.add_argument("--server-pid", type=int)
@@ -24,6 +25,7 @@ def add_commands(commands):
     resume.add_argument("--server-pid", type=int)
     resume.add_argument("--api-key-env")
     resume.add_argument("--handoff-note")
+    resume.add_argument("--service-binding", dest="service_binding_path", type=Path)
     for command in (probe, run, resume):
         command.add_argument("--recovery-confirm")
         command.add_argument("--recovery-note")

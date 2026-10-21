@@ -1,5 +1,8 @@
 """Optional v3 disclosure separates endpoint capabilities from drain observations."""
 
+from copy import deepcopy
+
+from inferyard.contracts.engine_profiles import LOCAL_ADAPTER, LOCAL_FAMILIES, LOCAL_OBSERVATION
 from inferyard.contracts.schemas_common import BOOL, LABEL, NAT, TEXT, enum, nullable, obj
 
 ENDPOINT = obj(
@@ -37,3 +40,17 @@ OBSERVATION = obj(
         "process_evidence": LABEL,
     }
 )
+
+LOCAL_ENGINE_OBSERVATION = deepcopy(OBSERVATION)
+LOCAL_ENGINE_OBSERVATION["properties"].update(
+    definition=enum(LOCAL_OBSERVATION),
+    family=enum(*LOCAL_FAMILIES),
+    mode=enum("native"),
+    engine=enum(LOCAL_ADAPTER),
+    endpoints=obj(
+        {path: ENDPOINT for path in (*PATHS, "/version", "/get_server_info", "lms:ps")},
+        [],
+    ),
+)
+LOCAL_ENGINE_OBSERVATION["required"].extend(["definition", "family"])
+OBSERVATION = {"oneOf": [OBSERVATION, LOCAL_ENGINE_OBSERVATION]}

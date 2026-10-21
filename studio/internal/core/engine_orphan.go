@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"os"
 	"runtime"
 	"syscall"
@@ -48,49 +47,46 @@ func (s *Service) StopOrphanEngine() (EngineState, *ApiError) {
 }
 
 func orphanIdentityError() *ApiError {
-	return &ApiError{Code: "service_identity_unreadable", Message: "无法确认遗留引擎的启动标识；可仅删除工作区 logs/engine-owner.json（不终止进程）。"}
+	return &ApiError{Code: "service_identity_unreadable", Message: "无法确认遗留引擎进程树的启动标识，所有权记录已保留；未终止身份不明的进程。"}
 }
 func (s *Service) orphanIdentity(e *orphanEngine) (bool, error) {
-	ticks, err := s.processTicks(e.owner.PID)
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	return ticks == e.owner.StartTicks, nil
+	return s.ownedTreeAlive(&e.owner, e.path)
 }
 
 func (s *Service) stopOrphan(e *orphanEngine) {
 	defer close(e.done)
 	var failure *ApiError
-	for _, sig := range []os.Signal{syscall.SIGTERM, os.Kill} {
-		same, err := s.orphanIdentity(e)
-		if err != nil {
-			failure = orphanIdentityError()
-			break
-		}
-		if !same {
-			break
-		}
-		if err := s.signalOwnedPID(e.owner.PID, sig); err != nil {
-			same, identityErr := s.orphanIdentity(e)
-			if identityErr == nil && !same {
+	if e.owner.Local {
+		failure = s.terminateOwnedTree(&e.owner, e.path)
+	} else {
+		for _, sig := range []os.Signal{syscall.SIGTERM, os.Kill} {
+			same, err := s.orphanIdentity(e)
+			if err != nil {
+				failure = orphanIdentityError()
 				break
 			}
-			failure = &ApiError{Code: "engine_stop_failed", Message: "遗留引擎停止失败，所有权记录已保留。"}
-			break
-		}
-		same, err = s.waitOrphan(e)
-		if err != nil {
-			failure = orphanIdentityError()
-			break
-		}
-		if !same {
-			break
-		}
-		if sig == os.Kill {
-			failure = &ApiError{Code: "engine_stop_failed", Message: "遗留引擎仍未退出，所有权记录已保留。"}
+			if !same {
+				break
+			}
+			if err := s.signalOwnedPID(e.owner.PID, sig); err != nil {
+				same, identityErr := s.orphanIdentity(e)
+				if identityErr == nil && !same {
+					break
+				}
+				failure = &ApiError{Code: "engine_stop_failed", Message: "遗留引擎停止失败，所有权记录已保留。"}
+				break
+			}
+			same, err = s.waitOrphan(e)
+			if err != nil {
+				failure = orphanIdentityError()
+				break
+			}
+			if !same {
+				break
+			}
+			if sig == os.Kill {
+				failure = &ApiError{Code: "engine_stop_failed", Message: "遗留引擎仍未退出，所有权记录已保留。"}
+			}
 		}
 	}
 	s.mu.Lock()

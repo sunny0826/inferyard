@@ -366,6 +366,10 @@ def validate_document(kind: str, data: Any) -> None:
     if kind not in schemas:
         raise ContractError(kind, "unknown document kind")
     spec = schemas[kind]
+    if kind in ("config", "config_input"):
+        from inferyard.contracts.engine_profiles import is_local
+
+        spec = spec["oneOf"][int(is_local(data))]
     if kind == "run":
         # Identity presence selects the compatible wire variant; keep field-level
         # errors precise instead of hiding required fields behind a union error.

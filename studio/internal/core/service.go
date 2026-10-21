@@ -61,6 +61,7 @@ type Service struct {
 	runs              []*runEntry
 	downloads         []*downloadEntry
 	engine            *engineEntry
+	candidateOrigins  map[string]localCandidateOrigin
 	engineTimeout     time.Duration
 	wake              chan struct{}
 	hostStatePath     string

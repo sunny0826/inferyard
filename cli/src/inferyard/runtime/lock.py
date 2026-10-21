@@ -54,6 +54,7 @@ class HostLock:
         self._locked_fds = set()
         self._identities = {}
         self._created_paths = set()
+        self.local_service = None
 
     def _acquire(self, path):
         root = root_identity(path.parent)
@@ -123,6 +124,11 @@ class HostLock:
                 "server_pid": endpoint["server_pid"],
                 "process_start_ticks": endpoint["process_start_ticks"],
                 "request_id": request_id,
+                **(
+                    {"local_service": self.local_service or self.state["local_service"]}
+                    if self.local_service or (self.state and "local_service" in self.state)
+                    else {}
+                ),
             }
         )
 
@@ -148,6 +154,10 @@ class HostLock:
             still_same = False
         if still_same:
             raise PreflightError("old_service_still_alive")
+        if "local_service" in old:
+            from inferyard.runtime.local_host import require_gone
+
+            require_gone(old["local_service"]["service"], process_start_ticks)
         if (new_endpoint["server_pid"], new_endpoint["process_start_ticks"]) == (
             old["server_pid"],
             old["process_start_ticks"],

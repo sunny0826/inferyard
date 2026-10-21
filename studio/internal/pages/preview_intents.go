@@ -49,6 +49,17 @@ type previewSettings struct{ patch map[string]json.RawMessage }
 
 func (previewSettings) previewIntent() {}
 
+type previewInstallation struct{ action, path string }
+
+func (previewInstallation) previewIntent() {}
+
+type previewLocalBinding struct {
+	taskID, endpoint string
+	pid              int64
+}
+
+func (previewLocalBinding) previewIntent() {}
+
 type previewCreateReport struct{ paths []string }
 
 func (previewCreateReport) previewIntent() {}

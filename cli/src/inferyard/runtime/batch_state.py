@@ -9,12 +9,13 @@ from inferyard import SCHEMA_VERSION
 from inferyard.config.loader import validate_runtime_config
 from inferyard.config.plan_inputs import read_frozen_plan, source_bytes
 from inferyard.config.startup_arguments import replace_arguments
+from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_run_projection, read_trial
 from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, read_json
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.implementation_identity import execution_matches
-from inferyard.platforms.identity import PreflightError, process_start_ticks
+from inferyard.platforms.identity import PreflightError, hash_file, process_start_ticks
 from inferyard.provenance import tool_source_hash
 
 
@@ -107,7 +108,9 @@ def immutable_config(config):
     return value
 
 
-def bind_service(loaded, endpoint_url=None, server_pid=None, api_key_env=None):
+def bind_service(
+    loaded, endpoint_url=None, server_pid=None, api_key_env=None, service_binding_path=None
+):
     config = loaded.config.to_dict()
     original = deepcopy(config["endpoint"])
     if (endpoint_url is None) != (server_pid is None):
@@ -129,6 +132,10 @@ def bind_service(loaded, endpoint_url=None, server_pid=None, api_key_env=None):
         )
     if api_key_env is not None:
         config["endpoint"]["api_key_env"] = api_key_env
+    if service_binding_path is not None:
+        apply_local_binding(config, service_binding_path)
+    elif is_local(config) and endpoint_url is not None:
+        raise PreflightError("local_engine_service_binding_required")
     validate_runtime_config(config)
     binding = {
         "schema_version": SCHEMA_VERSION,
@@ -137,6 +144,18 @@ def bind_service(loaded, endpoint_url=None, server_pid=None, api_key_env=None):
         "effective_endpoint": config["endpoint"],
     }
     return replace(loaded, config=Document.parse("config", config)), binding
+
+
+def apply_local_binding(config, path):
+    from inferyard.platforms.local_engines.assets import bound_json
+    from inferyard.platforms.local_engines.service import validate_binding
+
+    if not is_local(config):
+        raise PreflightError("local_engine_profile_required")
+    identity = hash_file(path)
+    binding, _ = bound_json(identity.path, identity.sha256)
+    validate_binding(binding, config)
+    config["endpoint"].update(binding_path=identity.path, binding_sha256=identity.sha256)
 
 
 def require_replaced_service(previous, config, *, serial_continuation=False):
@@ -177,6 +196,8 @@ def history(
             data = read_trial(path, metadata=trial_metadata)
             data["manifest_sealed"] = trial_metadata["manifest"] is not None
             data["service_drain"] = trial_metadata.get("service_drain")
+            if is_local(data["config"]):
+                data["identity"] = trial_metadata["identity"]
         else:
             data = read_run_projection(path)
         run = data["run"]

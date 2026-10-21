@@ -21,6 +21,18 @@
 题包生成器依赖 `phase2_review.html`，它是活动模板，保留。
 真实 candidate/bound/frozen 配置和 `validation/` 不作为这些工具的默认回归或发行输入。
 
+## 外部引擎补丁
+
+`patches/sglang-e262b44-mlx.patch` 仅供固定 SGLang 源码在 macOS 独立环境中使用，
+不修改 InferYard 的运行时。它修复 MLX stub 误入 Torch graph 初始化以及
+`setproctitle` 导入破坏主进程 argv 的问题。应用前须核对源码提交并执行
+`git apply --check --unidiff-zero`；准备与启动见
+[小模型接入指南](../docs/engine-fit-small-model.md#sglang-固定源码补丁)。
+
+正式 profile 另有 SGLang/vLLM worker 身份、SGLang run ID 和 OpenCV Darwin
+环境补丁；它们仅用于固定外部安装的独立副本，应用后必须重冻运行时。
+版本、应用顺序及环境声明见[正式安装准备](../docs/local-engine-native-preparation.md)。
+
 ## 软件成本对比
 
 [benchmark_cost.py](benchmark_cost.py) 使用公开夹具生成固定合成输入。它不启动服务或发送模型请求。

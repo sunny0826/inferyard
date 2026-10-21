@@ -3,6 +3,7 @@
 import asyncio
 from dataclasses import dataclass
 
+from inferyard.contracts.engine_profiles import observes_before_idle
 from inferyard.evidence.token_budgets import probe_budget
 from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.duration_driver import run_duration
@@ -30,7 +31,7 @@ async def prepare_service(
     idle_state=None,
 ):
     pre_idle_props = None
-    if config["engine"]["adapter"] in ("kvmem", "ninfer"):
+    if observes_before_idle(config["engine"]["adapter"]):
         pre_idle_props = await adapter.verify_properties(config)
         store.observe("service_properties", pre_idle_props, stage="pre_idle")
         store.observe("engine_capabilities", adapter.capability_evidence, stage="pre_idle")

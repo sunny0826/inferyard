@@ -1,0 +1,44 @@
+--- a/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
++++ b/python/sglang/srt/hardware_backend/mlx/model_runner_stub.py
+@@ -338,0 +339,10 @@
++    def init_cuda_graphs(self, capture_decode_cuda_graph: bool = True):
++        """MLX executes through its native runner, without Torch warmup or graphs."""
++        self.eager_runner = None
++        self.prefill_cuda_graph_runner = None
++        self.decode_cuda_graph_runner = None
++        self.decode_cuda_graph_captured = False
++        self.decode_cuda_graph_capture_bs = []
++        self.graph_memory_usage = {}
++        self.graph_time_usage = {}
++
+--- a/python/sglang/srt/managers/scheduler.py
++++ b/python/sglang/srt/managers/scheduler.py
+@@ -56 +55,0 @@
+-import setproctitle
+@@ -6162,0 +6162,2 @@
++    import setproctitle
++
+--- a/python/sglang/srt/managers/detokenizer_manager.py
++++ b/python/sglang/srt/managers/detokenizer_manager.py
+@@ -25 +24,0 @@
+-import setproctitle
+@@ -544,0 +544,2 @@
++    import setproctitle
++
+--- a/python/sglang/srt/managers/data_parallel_controller.py
++++ b/python/sglang/srt/managers/data_parallel_controller.py
+@@ -28 +27,0 @@
+-import setproctitle
+@@ -928,0 +928,2 @@
++    import setproctitle
++
+--- a/python/sglang/srt/managers/multi_tokenizer_mixin.py
++++ b/python/sglang/srt/managers/multi_tokenizer_mixin.py
+@@ -37 +36,0 @@
+-import setproctitle
+@@ -815,0 +815,2 @@
++    import setproctitle
++
+@@ -841,0 +843,2 @@
++        import setproctitle
++

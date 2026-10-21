@@ -68,6 +68,9 @@ func speedService(t *testing.T, f *speedFixture) *Service {
 		if v, ok := version(args); ok {
 			return v, nil
 		}
+		if out, ok := engineFixtureDescription(args); ok {
+			return out, nil
+		}
 		f.mu.Lock()
 		f.commands = append(f.commands, append([]string{}, args...))
 		f.mu.Unlock()

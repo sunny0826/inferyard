@@ -49,6 +49,7 @@ func boundTestService(t *testing.T, check func(context.Context) error) (*Service
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { s.Shutdown(context.Background()) })
+	wait(t, func() bool { return !s.Device().Refreshing })
 	return s, p
 }
 
@@ -160,6 +161,7 @@ func TestBoundPathsAssetRoots(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
+	wait(t, func() bool { return s.Downloads()[0].State == "failed" })
 	if filepath.Dir(task.OutDir) != p.Engines {
 		t.Fatal(task.OutDir)
 	}

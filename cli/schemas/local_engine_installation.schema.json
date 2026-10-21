@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:local-ai-bench:schema:v3:local_engine_installation",
+  "title": "InferYard local_engine_installation v3",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    },
+    "definition": {
+      "type": "string",
+      "enum": [
+        "local-engine-installation.v1"
+      ]
+    },
+    "family": {
+      "type": "string",
+      "enum": [
+        "llama-cpp",
+        "mlx-lm",
+        "vllm",
+        "sglang",
+        "lmstudio"
+      ]
+    },
+    "executable": {
+      "type": "string",
+      "minLength": 1
+    },
+    "working_directory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runtime_roots": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "SGLANG_USE_MLX": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "PYTHONDONTWRITEBYTECODE": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "HF_HUB_OFFLINE": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "TRANSFORMERS_OFFLINE": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "SGLANG_RUN_ID": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9_.-]{0,127}"
+        },
+        "PROMETHEUS_MULTIPROC_DIR": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "models_root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "worker_environment": {
+      "type": "object",
+      "properties": {
+        "SGLANG_USE_MLX": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "PYTHONDONTWRITEBYTECODE": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "HF_HUB_OFFLINE": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "TRANSFORMERS_OFFLINE": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "SGLANG_RUN_ID": {
+          "type": "string",
+          "pattern": "[A-Za-z0-9][A-Za-z0-9_.-]{0,127}"
+        },
+        "PROMETHEUS_MULTIPROC_DIR": {
+          "type": "string",
+          "minLength": 1
+        },
+        "VLLM_WORKER_MULTIPROC_METHOD": {
+          "type": "string",
+          "enum": [
+            "spawn"
+          ]
+        },
+        "MLX_MAX_OPS_PER_BUFFER": {
+          "type": "string",
+          "enum": [
+            "2000"
+          ]
+        },
+        "TRANSFORMERS_NO_ADVISORY_WARNINGS": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "VLLM_USE_V2_MODEL_RUNNER": {
+          "type": "string",
+          "enum": [
+            "0"
+          ]
+        },
+        "VLLM_OMP_NUM_THREADS_SET_BY_VLLM": {
+          "type": "string",
+          "enum": [
+            "1"
+          ]
+        },
+        "OMP_NUM_THREADS": {
+          "type": "string",
+          "pattern": "[1-9][0-9]{0,2}"
+        },
+        "SGLANG_USE_CUDA_IPC_TRANSPORT": {
+          "type": "string",
+          "enum": [
+            "0"
+          ]
+        },
+        "SGLANG_ENABLE_TORCH_COMPILE": {
+          "type": "string",
+          "enum": [
+            "0"
+          ]
+        },
+        "SGLANG_DISABLE_OUTLINES_DISK_CACHE": {
+          "type": "string",
+          "enum": [
+            "0"
+          ]
+        },
+        "SGLANG_ENABLE_DETERMINISTIC_INFERENCE": {
+          "type": "string",
+          "enum": [
+            "0"
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "definition",
+    "family",
+    "executable",
+    "working_directory",
+    "runtime_roots",
+    "environment"
+  ],
+  "additionalProperties": false
+}

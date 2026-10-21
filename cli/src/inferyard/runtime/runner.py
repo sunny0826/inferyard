@@ -17,6 +17,7 @@ from inferyard.config.bundle import require_review
 from inferyard.config.loader import LoadedConfig
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.config.startup_arguments import replace_arguments
+from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import Document
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
@@ -44,6 +45,11 @@ from inferyard.runtime.lock import HostLock
 def _guard(config, files):
     if not all(item.unchanged() for item in files):
         raise PreflightError("identity_file_changed")
+    if is_local(config):
+        from inferyard.platforms.local_engines import verify_bound_service
+
+        verify_bound_service(config, bound_files=files)
+        return
     _, address, port = service_origin(config["endpoint"]["url"])
     verify_process(
         config,
@@ -97,6 +103,8 @@ def load_rerun(request) -> tuple[LoadedConfig, dict]:
 
     reject_rerun(parent)
     parent["service_drain"] = metadata.get("service_drain")
+    if is_local(parent["config"]):
+        parent["identity"] = metadata["identity"]
     config, bundle, meta = (deepcopy(parent[k]) for k in ("config", "bundle", "run"))
     if meta["execution_mode"] != "single" or meta["kind"] != "run":
         raise PreflightError("rerun_requires_single_run_source")
@@ -114,6 +122,12 @@ def load_rerun(request) -> tuple[LoadedConfig, dict]:
     config["endpoint"].update(
         url=request.endpoint_url, server_pid=request.server_pid, process_start_ticks=new_start
     )
+    if is_local(config):
+        from inferyard.runtime.batch_state import apply_local_binding
+
+        if request.service_binding_path is None:
+            raise PreflightError("local_engine_service_binding_required")
+        apply_local_binding(config, request.service_binding_path)
     from inferyard.runtime.service_reuse import require_transition, same_process
 
     if same_process(parent["config"]["endpoint"], config["endpoint"]):

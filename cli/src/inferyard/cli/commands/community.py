@@ -38,11 +38,12 @@ def add_commands(commands):
     assets.add_argument("--engine", dest="engine_path", type=Path, required=True)
     assets.add_argument("--out", type=Path, required=True)
     create = actions.add_parser(
-        "create", help="macOS/Windows: create an unbound candidate; runs engine --version (10s)"
+        "create",
+        help="create an unbound candidate from an explicit local installation or legacy engine",
     )
     create.set_defaults(command="config create")
     create.add_argument("--profile", dest="benchmark_profile", choices=("context-speed",))
-    create.add_argument("--context-size", type=int, choices=(65536, 131072, 262144))
+    create.add_argument("--context-size", type=int)
     create.add_argument("--workspace", type=Path)
     create.add_argument("--preflight", type=Path)
     create.add_argument("--bundle", dest="bundle_path", type=Path, required=True)
@@ -50,6 +51,12 @@ def add_commands(commands):
     engine = create.add_mutually_exclusive_group(required=True)
     engine.add_argument("--engine", dest="engine_path", type=Path)
     engine.add_argument("--runtime-receipt", type=Path)
+    engine.add_argument("--installation", type=Path)
+    create.add_argument("--model", dest="model_path", type=Path)
+    create.add_argument("--served-model")
+    create.add_argument("--max-tokens", type=int)
+    create.add_argument("--timeout-seconds", type=float)
+    create.add_argument("--service-pid", dest="server_pid", type=int)
     create.add_argument("--out", type=Path, required=True)
     create.add_argument("--port", type=int, default=48857)
     create.add_argument(
@@ -70,3 +77,6 @@ def add_commands(commands):
     bind.add_argument("--pid", dest="server_pid", type=int, required=True)
     bind.add_argument("--endpoint", dest="endpoint_url", required=True)
     bind.add_argument("--out", type=Path, required=True)
+    describe = actions.add_parser("describe", help="describe a frozen local engine candidate")
+    describe.set_defaults(command="config describe")
+    describe.add_argument("--candidate", type=Path, required=True)

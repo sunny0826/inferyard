@@ -43,6 +43,7 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         "config assets",
         "config create",
         "config bind",
+        "config describe",
     ):
         from inferyard.application.community import execute
 

@@ -1,6 +1,8 @@
 package core
 
 import (
+	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,6 +28,9 @@ func startupAddress(args []string) (string, int) {
 }
 
 func validateStartup(startup Startup) (string, int, *ApiError) {
+	if startup.Kind == "lmstudio" {
+		return "", 0, Err("local_engine_external_binding_required")
+	}
 	for _, arg := range startup.Args {
 		option, value, _ := strings.Cut(strings.ToLower(arg), "=")
 		switch option {
@@ -37,6 +42,29 @@ func validateStartup(startup Startup) (string, int, *ApiError) {
 		}
 	}
 	host, port := startupAddress(startup.Args)
+	if startup.Local {
+		if startup.Kind != "direct_process" {
+			return "", 0, Err("local_engine_external_binding_required")
+		}
+		u, err := url.Parse(startup.Endpoint)
+		if err != nil || u.Scheme != "http" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+			return "", 0, Err("engine_host_not_loopback")
+		}
+		host = u.Hostname()
+		port, _ = strconv.Atoi(u.Port())
+		if host != "localhost" && !net.ParseIP(host).IsLoopback() {
+			return "", 0, Err("engine_host_not_loopback")
+		}
+		st, err := os.Stat(startup.WorkingDirectory)
+		if !filepath.IsAbs(startup.WorkingDirectory) || err != nil || !st.IsDir() {
+			return "", 0, Err("engine_working_directory_invalid")
+		}
+		for key, value := range startup.Environment {
+			if key == "" || strings.ContainsAny(key, "=\x00") || strings.ContainsRune(value, 0) || (key == "HOME" && value != os.Getenv("HOME")) {
+				return "", 0, Err("engine_environment_invalid")
+			}
+		}
+	}
 	if host != "127.0.0.1" && host != "::1" && host != "localhost" {
 		return "", 0, Err("engine_host_not_loopback")
 	}

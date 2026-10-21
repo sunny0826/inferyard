@@ -93,6 +93,7 @@ type viewState struct {
 	registry                                                                            core.Registry
 	checks                                                                              core.EngineCheckOverview
 	attributionKey                                                                      string
+	installationPath, localPID, localEndpoint, localBindingTask                         string
 	attributionMatch, attributionKnown                                                  bool
 	candidateMatches                                                                    func(candidate, model, engine string) (bool, bool)
 	model                                                                               string

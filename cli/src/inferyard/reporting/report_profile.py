@@ -2,6 +2,8 @@
 
 from pathlib import PureWindowsPath
 
+from inferyard.contracts.engine_profiles import is_local
+
 
 def recorded_integer(value):
     return value if type(value) is int and value >= 0 else None
@@ -34,20 +36,36 @@ def profile_view(data, *, environment_source="environment.start.json"):
         entry["size"]
         for entry in files
         if entry.get("path") == model["local_path"]
-        and entry.get("sha256") == model["sha256"]
+        and entry.get("sha256") == model.get("sha256")
         and type(entry.get("size")) is int
         and entry["size"] >= 0
     }
     size = next(iter(sizes)) if len(sizes) == 1 else None
+    size_source = "identity.files:matching_path_and_sha256"
+    if is_local(config):
+        assets = identity.get("local_engine", {}).get("model_assets", {})
+        entries = assets.get("files", [])
+        if (
+            assets.get("sha256") == model["content_sha256"]
+            and entries
+            and all(recorded_integer(entry.get("size")) is not None for entry in entries)
+        ):
+            size = sum(entry["size"] for entry in entries)
+        size_source = "identity.local_engine.model_assets"
     model_rows = [
         item("配置显示名", model["display_name"], source="config.model.display_name"),
         item("模型文件", filename, source="config.model.local_path"),
         item("量化 / 打包", model["packing"], source="config.model.packing"),
-        item("权重文件大小", size, source="identity.files:matching_path_and_sha256", unit="bytes"),
+        item(
+            "模型资产大小" if is_local(config) else "权重文件大小",
+            size,
+            source=size_source,
+            unit="bytes",
+        ),
         item("模型来源", model["repo"], source="config.model.repo"),
         item("版本 / Revision", model["revision"], source="config.model.revision"),
         item("结构参数量", None, source="not_recorded", reason="parameter_count_not_frozen"),
-        item("引擎版本", engine["release"], source="config.engine.release"),
+        item("引擎版本", engine.get("release"), source="config.engine.release"),
         item("执行后端", engine["backend"], source="config.engine.backend"),
         item("适配器", engine["adapter"], source="config.engine.adapter"),
     ]
@@ -102,7 +120,7 @@ def profile_view(data, *, environment_source="environment.start.json"):
                 "requested": value,
                 "effective": actual.get("effective"),
                 "verification": actual.get("verification", "unknown"),
-                "source": actual.get("source", "not_recorded"),
+                "source": actual.get("source") or "not_recorded",
             }
         )
     return {

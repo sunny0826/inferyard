@@ -1,6 +1,7 @@
 """Engine check CommandResult contract; independent of live platform backends."""
 
-from inferyard.contracts.schemas_common import BOOL, LABEL, array, enum, nullable, obj
+from inferyard.contracts.engine_profiles import LOCAL_FAMILIES
+from inferyard.contracts.schemas_common import BOOL, HASH, LABEL, array, enum, nullable, obj
 
 # Ineligibility reuses the fixed PreparationError reasons from config create;
 # a passing check never confers candidate eligibility (config create decides).
@@ -62,6 +63,32 @@ DETAILS["allOf"] = [
         },
     }
 ]
+LOCAL_DETAILS = obj(
+    {
+        "definition": enum("local-engine-check.v2"),
+        "eligible": BOOL,
+        "reason": nullable(LABEL),
+        "family": nullable(enum(*LOCAL_FAMILIES)),
+        "declaration_sha256": nullable(HASH),
+        "verification_scope": enum("installation_runtime_closure_only"),
+        "model_requests_sent": {"type": "integer", "const": 0},
+        "ready_to_run": {"type": "boolean", "const": False},
+    }
+)
+LOCAL_DETAILS["allOf"] = [
+    {
+        "if": {"properties": {"eligible": {"const": True}}},
+        "then": {
+            "properties": {
+                "reason": {"type": "null"},
+                "family": enum(*LOCAL_FAMILIES),
+                "declaration_sha256": HASH,
+            }
+        },
+        "else": {"properties": {"reason": LABEL, "declaration_sha256": {"type": "null"}}},
+    }
+]
+DETAILS = {"oneOf": [DETAILS, LOCAL_DETAILS]}
 ENGINE_CHECK = obj(
     {
         "command": enum("engine check"),

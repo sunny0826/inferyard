@@ -20,6 +20,14 @@ def execute(request):
             from inferyard.config.community_assets import prepare
 
             details = prepare(request)
+        elif request.command == "config describe":
+            from inferyard.config.local_engines.inspection import describe
+
+            details = describe(request)
+        elif request.command == "config create" and request.installation is not None:
+            from inferyard.config.local_engines.candidate import create
+
+            details = create(request)
         elif request.command == "config create":
             from inferyard.config.community_candidates import create
 

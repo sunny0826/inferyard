@@ -38,6 +38,10 @@ func (p *previewSession) dispatch(intent previewIntent) {
 		}
 	case previewSettings:
 		p.saveSettings(op.patch)
+	case previewInstallation:
+		p.installation(op)
+	case previewLocalBinding:
+		p.bindLocal(op)
 	case previewCreateReport:
 		fail := p.takeFailure()
 		s.busy = true
@@ -70,6 +74,10 @@ func (p *previewSession) dispatchStep(op previewStep) {
 	case previewCheckDevice:
 		p.checkDevice()
 	case previewStartEngine, previewRetryBenchmark:
+		if op == previewRetryBenchmark && p.local != nil {
+			p.retryLocalBenchmark()
+			return
+		}
 		if s.task.stage == "bind" {
 			names := s.task.bundles
 			if len(names) == 0 {

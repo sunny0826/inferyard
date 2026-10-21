@@ -26,6 +26,11 @@ func errorView(c *ui.Context, e *core.ApiError) {
 	}
 }
 func taskLabel(t core.RunTask) string {
+	if !terminal(t.State) && t.PreparationStage != "" {
+		if label, ok := map[string]string{"awaiting_service": "等待绑定 LM Studio", "switching_service": "正在切换题包服务", "starting_engine": "正在启动题包服务", "binding": "正在校验服务绑定"}[t.PreparationStage]; ok {
+			return label
+		}
+	}
 	if t.Exit != nil {
 		switch t.Exit.ExitCode {
 		case 0:

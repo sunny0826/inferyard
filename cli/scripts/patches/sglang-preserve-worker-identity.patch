@@ -1,0 +1,33 @@
+--- a/python/sglang/srt/managers/scheduler.py
++++ b/python/sglang/srt/managers/scheduler.py
+@@ -6162,3 +6162 @@
+-    import setproctitle
+-
+-    setproctitle.setproctitle(f"sglang::scheduler{prefix.replace(' ', '_')}")
++
+--- a/python/sglang/srt/managers/detokenizer_manager.py
++++ b/python/sglang/srt/managers/detokenizer_manager.py
+@@ -544,3 +544 @@
+-    import setproctitle
+-
+-    setproctitle.setproctitle("sglang::detokenizer")
++
+--- a/python/sglang/srt/managers/data_parallel_controller.py
++++ b/python/sglang/srt/managers/data_parallel_controller.py
+@@ -928,3 +928 @@
+-    import setproctitle
+-
+-    setproctitle.setproctitle("sglang::data_parallel_controller")
++
+--- a/python/sglang/srt/managers/multi_tokenizer_mixin.py
++++ b/python/sglang/srt/managers/multi_tokenizer_mixin.py
+@@ -815,3 +815 @@
+-    import setproctitle
+-
+-    setproctitle.setproctitle("sglang::detokenizer_router")
++
+@@ -843,3 +841 @@
+-        import setproctitle
+-
+-        setproctitle.setproctitle(f"sglang::tokenizer_worker:{os.getpid()}")
++

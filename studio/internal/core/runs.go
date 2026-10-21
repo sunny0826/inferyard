@@ -14,14 +14,16 @@ import (
 )
 
 type runEntry struct {
-	Task       RunTask
-	Progress   *RunProgress
-	Resources  []ResourceSample
-	root       string
-	args       []string
-	binary     string
-	cancel     context.CancelFunc
-	recordRoot string
+	Task          RunTask
+	Progress      *RunProgress
+	Resources     []ResourceSample
+	root          string
+	args          []string
+	binary        string
+	cancel        context.CancelFunc
+	recordRoot    string
+	commandActive bool
+	local         *candidateRunState
 }
 
 // Bound config artifacts are emitted by inferyard's TOML writer: one JSON
@@ -310,6 +312,13 @@ func (s *Service) executeRun(t *runEntry) {
 		cancel()
 	}
 	s.mu.Unlock()
+	if t.local != nil {
+		defer s.cleanupCancelledCandidate(ctx, t)
+		if failure := s.prepareCandidateRun(ctx, t); failure != nil {
+			s.finishCandidatePreparation(t, ctx, failure)
+			return
+		}
+	}
 	before := map[string]bool{}
 	for _, r := range evidence.Index(t.root).Runs {
 		before[r.Path] = true
@@ -319,6 +328,9 @@ func (s *Service) executeRun(t *runEntry) {
 		err error
 	}
 	done := make(chan result, 1)
+	s.mu.Lock()
+	t.commandActive = true
+	s.mu.Unlock()
 	go func() { out, e := s.exec(ctx, t.binary, t.args...); done <- result{out, e} }()
 	ticker := time.NewTicker(ProgressInterval)
 	defer ticker.Stop()
@@ -414,6 +426,7 @@ loop:
 		s.Bus.Publish("run.resources", map[string]any{"task_id": t.Task.TaskId, "points": resourcePending})
 	}
 	out, err := resultValue.out, resultValue.err
+	t.commandActive = false
 	t.Task.FinishedAt = ptr(now())
 	r, parseErr := inferyard.Parse(out.Stdout)
 	limits := r.Limitations

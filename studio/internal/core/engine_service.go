@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,12 +15,14 @@ import (
 )
 
 type EngineState struct {
-	State     string    `json:"state"`
-	Pid       int64     `json:"pid"`
-	Endpoint  string    `json:"endpoint"`
-	LogPath   string    `json:"log_path"`
-	Candidate string    `json:"candidate"`
-	Error     *ApiError `json:"error,omitempty"`
+	StartTicks int64     `json:"start_ticks"`
+	Local      bool      `json:"local"`
+	State      string    `json:"state"`
+	Pid        int64     `json:"pid"`
+	Endpoint   string    `json:"endpoint"`
+	LogPath    string    `json:"log_path"`
+	Candidate  string    `json:"candidate"`
+	Error      *ApiError `json:"error,omitempty"`
 }
 
 type engineEntry struct {
@@ -47,6 +50,12 @@ func (s *Service) Engine() EngineState {
 func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
+	s.mu.Lock()
+	closing := s.closing
+	s.mu.Unlock()
+	if closing {
+		return EngineState{}, Err("service_closing")
+	}
 	startup, e := s.Startup(candidate)
 	if e != nil {
 		return EngineState{}, e
@@ -68,6 +77,9 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 		return clone(s.orphan.state), &ApiError{Code: "engine_orphaned", Message: "请先处理工作区 logs/engine-owner.json 对应的遗留服务或无效记录，再启动引擎。"}
 	}
 	if s.engine != nil && (s.engine.state.State == "starting" || s.engine.state.State == "running" || s.engine.state.State == "stopping") {
+		if s.engine.state.Candidate != candidate {
+			return clone(s.engine.state), Err("engine_candidate_mismatch")
+		}
 		return clone(s.engine.state), nil
 	}
 	s.detectEngineOwnerLocked()
@@ -90,13 +102,29 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 		return EngineState{}, Err("internal_error")
 	}
 	cmd := exec.Command(startup.Path, startup.Args...)
+	if err := configureEngineProcess(cmd, startup); err != nil {
+		_ = logFile.Close()
+		return EngineState{}, Err("engine_process_isolation_failed")
+	}
 	cmd.Stdout, cmd.Stderr = logFile, logFile
 	if err := cmd.Start(); err != nil {
 		_ = logFile.Close()
 		return EngineState{}, &ApiError{Code: "engine_start_failed", Message: "引擎进程启动失败，请检查文件权限与运行环境。"}
 	}
-	entry := &engineEntry{cmd: cmd, logFile: logFile, stop: make(chan struct{}), done: make(chan struct{}), state: EngineState{State: "starting", Pid: int64(cmd.Process.Pid), Endpoint: endpoint, LogPath: logPath, Candidate: candidate}}
+	entry := &engineEntry{cmd: cmd, logFile: logFile, stop: make(chan struct{}), done: make(chan struct{}), state: EngineState{State: "starting", Local: startup.Local, Pid: int64(cmd.Process.Pid), Endpoint: endpoint, LogPath: logPath, Candidate: candidate}}
 	if failure := s.persistEngineOwner(entry, *w); failure != nil {
+		if entry.state.Local {
+			// A failed owner write must still clean already spawned workers. Never
+			// replace a competing record while rolling this startup back.
+			if cleanupErr := s.terminateOwnedTree(&entry.owner, ""); cleanupErr != nil {
+				_ = writeEngineOwner(entry.ownerPath, entry.owner)
+				orphanState := clone(entry.state)
+				orphanState.State = "orphaned"
+				orphanState.Error = cleanupErr
+				s.orphan = &orphanEngine{owner: entry.owner, path: entry.ownerPath, state: orphanState}
+				s.Bus.Publish("engine.state", map[string]any{"engine": orphanState})
+			}
+		}
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
 		_ = logFile.Close()
@@ -145,10 +173,16 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 	deadline := time.Now().Add(s.engineStartTimeout())
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+	treeTicker := time.NewTicker(500 * time.Millisecond)
+	defer treeTicker.Stop()
 	finish := func(state string, err *ApiError) {
+		treeErr := s.finishEngineTree(e)
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
+		if treeErr != nil {
+			state, err = "failed", treeErr
+			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Pid: e.owner.PID, StartTicks: e.owner.StartTicks, Local: e.owner.Local, Endpoint: e.owner.Endpoint, Candidate: e.owner.Candidate, Error: err}}
+		} else if removeErr := removeEngineOwner(e.ownerPath, e.owner); removeErr != nil {
 			state, err = "failed", &ApiError{Code: "engine_owner_remove_failed", Message: "引擎已退出，但工作区 logs/engine-owner.json 未能清除；可仅删除记录（不终止进程）。"}
 			s.orphan = &orphanEngine{owner: e.owner, path: e.ownerPath, state: EngineState{State: "orphaned", Error: err}}
 		}
@@ -158,7 +192,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 	for {
 		select {
 		case <-e.stop:
-			terminateEngine(e, waitCh)
+			s.terminateEngine(e, waitCh)
 			finish("stopped", nil)
 			return
 		case <-waitCh:
@@ -171,6 +205,10 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 				finish("failed", &ApiError{Code: "engine_exited", Message: "引擎进程已退出，请检查日志后手动重启并重新绑定。"})
 			}
 			return
+		case <-treeTicker.C:
+			if e.state.Local {
+				_ = s.refreshEngineTree(&e.owner, e.ownerPath)
+			}
 		case <-ticker.C:
 			s.mu.Lock()
 			starting := e.state.State == "starting"
@@ -179,7 +217,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 				continue
 			}
 			healthy := false
-			if resp, err := health.Get(endpoint + "/health"); err == nil {
+			if resp, err := health.Get(endpoint + engineHealthPath(e.state.Local)); err == nil {
 				_ = resp.Body.Close()
 				healthy = resp.StatusCode >= 200 && resp.StatusCode < 300
 			}
@@ -201,7 +239,7 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 			}
 			s.mu.Unlock()
 			if timedOut {
-				terminateEngine(e, waitCh)
+				s.terminateEngine(e, waitCh)
 				finish("failed", &ApiError{Code: "engine_start_timeout", Message: "引擎启动超时（模型加载未完成），请检查引擎日志。"})
 				return
 			}
@@ -209,7 +247,13 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 	}
 }
 
-func terminateEngine(e *engineEntry, waitCh <-chan error) {
+func (s *Service) terminateEngine(e *engineEntry, waitCh <-chan error) {
+	if e.state.Local {
+		if s.terminateOwnedTree(&e.owner, e.ownerPath) == nil {
+			<-waitCh
+		}
+		return
+	}
 	signalEngine(e, syscall.SIGTERM)
 	timer := time.NewTimer(10 * time.Second)
 	defer timer.Stop()
@@ -234,4 +278,47 @@ func (s *Service) engineStartTimeout() time.Duration {
 		return s.engineTimeout
 	}
 	return 10 * time.Minute
+}
+
+func engineHealthPath(local bool) string {
+	if local {
+		return "/v1/models"
+	}
+	return "/health"
+}
+
+// Called only by the serial run queue between CLI children.
+func (s *Service) stopEngineForHandoff(ctx context.Context) *ApiError {
+	s.mu.Lock()
+	if s.orphan != nil {
+		s.mu.Unlock()
+		return Err("engine_orphaned")
+	}
+	for _, run := range s.runs {
+		if run.commandActive {
+			s.mu.Unlock()
+			return Err("run_active")
+		}
+	}
+	entry := s.engine
+	if entry == nil {
+		s.mu.Unlock()
+		return nil
+	}
+	s.stopEngineLocked(entry)
+	s.mu.Unlock()
+	select {
+	case <-ctx.Done():
+		return Err("cancelled")
+	case <-entry.done:
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.orphan != nil {
+		return Err("engine_orphaned")
+	}
+	if entry.state.State != "stopped" && entry.state.State != "failed" {
+		return Err("engine_stop_failed")
+	}
+	return nil
 }

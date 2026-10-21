@@ -37,6 +37,23 @@ def require_transition(previous, config, process_start, *, reason, serial_contin
         alive = False
     if alive:
         raise PreflightError("previous_service_still_alive")
+    if previous["config"].get("definition") == "local-engine-config.v1":
+        workers = (
+            previous.get("identity", {})
+            .get("local_engine", {})
+            .get("binding", {})
+            .get("service", {})
+            .get("workers")
+        )
+        if workers is None:
+            raise PreflightError("previous_local_workers_unverified")
+        for worker in workers:
+            try:
+                if process_start(worker["pid"]) == worker["start_ticks"]:
+                    raise PreflightError("previous_service_worker_still_alive")
+            except PreflightError as exc:
+                if str(exc) != "service_process_unavailable":
+                    raise
     return "replaced_process"
 
 

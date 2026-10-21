@@ -4,106 +4,61 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
-// CandidateAssets holds the canonical model and engine paths frozen into one
-// candidate.toml. It answers "does this candidate belong to the selected
-// combination" without exposing paths to the pages layer.
+// CandidateAssets is a projection of the CLI's verified candidate description.
 type CandidateAssets struct {
-	ModelPath  string `json:"model_path"`
-	EnginePath string `json:"engine_path"`
+	ModelPath          string `json:"model_path"`
+	EnginePath         string `json:"engine_path"`
+	InstallationSHA256 string `json:"installation_sha256,omitempty"`
 }
 
-// CandidateAssets reads [model] local_path and [engine] binary_path from a
-// frozen candidate inside the workspace, following the same line-oriented
-// parsing as Startup (no TOML dependency; values are JSON strings).
 func (s *Service) CandidateAssets(candidate string) (CandidateAssets, *ApiError) {
-	w := workspaceRoot(s.userSettings())
-	if w == nil {
-		return CandidateAssets{}, Conflict("settings_incomplete")
+	description, failure := s.DescribeCandidate(s.ctx, candidate)
+	if failure != nil {
+		return CandidateAssets{}, failure
 	}
-	path, err := Resolve(*w, candidate)
-	if err != nil {
-		return CandidateAssets{}, Err("invalid_request")
+	result := CandidateAssets{ModelPath: description.Assets.Model.Path}
+	if description.Assets.Installation != nil {
+		result.InstallationSHA256 = description.Assets.Installation.DeclarationSHA256
+	} else if description.Assets.Engine != nil {
+		result.EnginePath = description.Assets.Engine.Path
 	}
-	if st, e := os.Stat(path); e == nil && st.IsDir() {
-		path = filepath.Join(path, "candidate.toml")
-	}
-	if _, err = Resolve(*w, path); err != nil {
-		return CandidateAssets{}, Err("invalid_request")
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return CandidateAssets{}, Err("not_found")
-	}
-	values := map[string]string{}
-	section := ""
-	for _, line := range strings.Split(string(raw), "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "[") {
-			section = strings.Trim(line, "[]")
-			continue
-		}
-		k, v, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		k = strings.TrimSpace(k)
-		var want string
-		switch {
-		case section == "model" && k == "local_path":
-			want = "model"
-		case section == "engine" && k == "binary_path":
-			want = "engine"
-		default:
-			continue
-		}
-		if values[want] != "" {
-			return CandidateAssets{}, Err("cli_error")
-		}
-		var decoded string
-		if json.Unmarshal([]byte(strings.TrimSpace(v)), &decoded) != nil || decoded == "" {
-			return CandidateAssets{}, Err("cli_error")
-		}
-		values[want] = decoded
-	}
-	if values["model"] == "" || values["engine"] == "" {
-		return CandidateAssets{}, Err("cli_error")
-	}
-	assets := CandidateAssets{}
-	for _, pair := range [][2]string{{"model", values["model"]}, {"engine", values["engine"]}} {
-		canonical, err := canonical(pair[1])
-		if err != nil || !filepath.IsAbs(canonical) {
-			return CandidateAssets{}, Err("cli_error")
-		}
-		if pair[0] == "model" {
-			assets.ModelPath = canonical
-		} else {
-			assets.EnginePath = canonical
-		}
-	}
-	return assets, nil
+	return result, nil
 }
 
-// CandidateMatchesCombination reports whether the candidate froze exactly the
-// registry resources behind modelName and engineName. known is false when the
-// candidate cannot be read or a name no longer resolves, so callers present
-// "cannot attribute" instead of guessing.
 func (s *Service) CandidateMatchesCombination(candidate, modelName, engineName string) (match, known bool) {
-	assets, e := s.CandidateAssets(candidate)
-	if e != nil {
+	assets, failure := s.CandidateAssets(candidate)
+	if failure != nil {
 		return false, false
 	}
-	modelPath, e := s.resourcePath(modelName, false)
-	if e != nil {
+	candidatePath, _ := s.candidateFile(candidate)
+	s.mu.Lock()
+	origin, preparedHere := s.candidateOrigins[candidatePath]
+	s.mu.Unlock()
+	modelPath, failure := s.resourcePath(modelName, false)
+	if failure != nil {
 		return false, false
 	}
-	enginePath, e := s.resourcePath(engineName, true)
-	if e != nil {
-		return false, false
+	for _, entry := range s.registry().engines {
+		if entry.engine.Name != engineName {
+			continue
+		}
+		if entry.installation == "" {
+			return assets.InstallationSHA256 == "" && assets.ModelPath == modelPath && assets.EnginePath == entry.path, true
+		}
+		if preparedHere && origin.installationPath == entry.installation && origin.installationKey == installationKey(entry.installation) {
+			return assets.ModelPath == modelPath && assets.InstallationSHA256 == origin.declarationHash, true
+		}
+		s.checkMu.Lock()
+		check, found := s.checks[entry.path]
+		s.checkMu.Unlock()
+		if !found || check.key != installationKey(entry.path) || check.result.DeclarationSHA256 == nil {
+			return false, false
+		}
+		return assets.ModelPath == modelPath && assets.InstallationSHA256 == *check.result.DeclarationSHA256, true
 	}
-	return assets.ModelPath == modelPath && assets.EnginePath == enginePath, true
+	return false, false
 }
 
 // PreflightModelPath returns the canonical model path recommended by one

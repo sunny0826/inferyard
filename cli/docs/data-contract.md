@@ -146,3 +146,9 @@ plan/run 的 comparison 标记仍为 phase2.v1。新运行不再把 `tool_source
 模型绑定只核对启动参数路径的设备号与 inode；Linux 不为此读 `maps`。
 新运行只持久化原始请求事件，不写 requests.jsonl；
 混入旧副本的来源明确拒绝。校准总开销与增量诊断分开，适用域及未覆盖条件见主题契约。
+
+## 本地引擎显式定义
+
+`local-engine-config.v1`、安装快照、完整服务绑定与逐请求队列记录在现有 v3 外壳下
+独立识别。字段与旧单文件模型身份的边界见[本地引擎契约](contracts/local-engines.md)；
+旧配置和旧 native/lab 定义不重解释，完整本地身份验证失败不降级为旧读取路径。

@@ -31,6 +31,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 				ui.Text(c, line)
 			}
 		})
+		s.localInstallationsView(c)
 		s.downloadNamesView(c)
 		return
 	}
@@ -73,6 +74,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 			})
 		}
 	})
+	s.localInstallationsView(c)
 	s.downloadNamesView(c)
 }
 

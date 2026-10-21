@@ -14,14 +14,17 @@ import (
 // CLI never starts the service for this command, and a passing check never
 // confers candidate eligibility (config create decides).
 type EngineCheck struct {
-	Eligible        bool
-	Reason          *string
-	ReportedVersion *string
-	ExpectedRelease string
-	Modes           *EngineCheckModes
-	Mode            *string
-	Limitations     []string
-	Status          string
+	Eligible          bool
+	Reason            *string
+	ReportedVersion   *string
+	ExpectedRelease   string
+	Modes             *EngineCheckModes
+	Mode              *string
+	Limitations       []string
+	Status            string
+	Family            *string
+	DeclarationSHA256 *string
+	VerificationScope string
 }
 
 // EngineCheckModes carries the per-mode macOS verdict; Windows checks report
@@ -104,6 +107,13 @@ func ParseEngineCheck(raw []byte, exitCode int) (EngineCheck, error) {
 	if r.Status != "checked" || r.Completeness != "complete" || len(r.Limitations) != 0 {
 		return result, invalid
 	}
+	var branch map[string]json.RawMessage
+	if json.Unmarshal(r.Details, &branch) != nil {
+		return result, invalid
+	}
+	if _, ok := branch["definition"]; ok {
+		return parseLocalEngineCheck(r.Details)
+	}
 	if !discoveryFields(r.Details, "eligible", "reason", "reported_version", "expected_release", "modes", "mode") {
 		return result, invalid
 	}
@@ -171,4 +181,32 @@ func ParseEngineCheck(raw []byte, exitCode int) (EngineCheck, error) {
 		Limitations:     []string{},
 		Status:          r.Status,
 	}, nil
+}
+
+func parseLocalEngineCheck(raw []byte) (EngineCheck, error) {
+	invalid := errors.New("invalid local engine check result")
+	var d struct {
+		Definition        string  `json:"definition"`
+		Eligible          *bool   `json:"eligible"`
+		Reason            *string `json:"reason"`
+		Family            *string `json:"family"`
+		DeclarationSHA256 *string `json:"declaration_sha256"`
+		Scope             string  `json:"verification_scope"`
+		Requests          *int    `json:"model_requests_sent"`
+		Ready             *bool   `json:"ready_to_run"`
+	}
+	if !discoveryFields(raw, "definition", "eligible", "reason", "family", "declaration_sha256", "verification_scope", "model_requests_sent", "ready_to_run") ||
+		json.Unmarshal(raw, &d) != nil || d.Definition != "local-engine-check.v2" || d.Eligible == nil || d.Ready == nil || *d.Ready ||
+		d.Requests == nil || *d.Requests != 0 || d.Scope != "installation_runtime_closure_only" ||
+		(d.Family != nil && !localFamily(*d.Family)) {
+		return EngineCheck{}, invalid
+	}
+	if *d.Eligible {
+		if d.Reason != nil || d.Family == nil || d.DeclarationSHA256 == nil || !candidateHash(*d.DeclarationSHA256) {
+			return EngineCheck{}, invalid
+		}
+	} else if d.Reason == nil || *d.Reason == "" || d.DeclarationSHA256 != nil {
+		return EngineCheck{}, invalid
+	}
+	return EngineCheck{Eligible: *d.Eligible, Reason: d.Reason, Family: d.Family, DeclarationSHA256: d.DeclarationSHA256, VerificationScope: d.Scope, Limitations: []string{}, Status: "checked"}, nil
 }

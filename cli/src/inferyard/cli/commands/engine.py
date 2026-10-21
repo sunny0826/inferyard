@@ -27,3 +27,4 @@ def add_commands(commands):
     source = check.add_mutually_exclusive_group(required=True)
     source.add_argument("--engine", dest="engine_path", type=Path)
     source.add_argument("--runtime-receipt", type=Path)
+    source.add_argument("--installation", type=Path)

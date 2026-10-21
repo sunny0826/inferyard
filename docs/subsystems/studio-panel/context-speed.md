@@ -1,6 +1,7 @@
 # Studio 长上下文速度
 
 本参考记录 Studio 正式接线，不授予题库人工批准、原生窗口或真实模型资格。
+本地安装 profile 暂不支持该专项：页面与服务入口均在执行准备前拒绝，见[本地引擎](local-engines.md)。
 结果协议见[共享契约](../../../cli/docs/contracts/context-speed-contract.md)，
 证据解释见[血缘规则](../../../cli/docs/data-contract.md#证据血缘与比较结论)。
 

@@ -20,14 +20,15 @@ def run_facets(data, *, first_event_utc):
     config, bundle = data["config"], data["bundle"]
     recipe = {key: config[key] for key in ("conditions", "generation", "execution", "telemetry")}
     recipe_id = hashlib.sha256(json_bytes(recipe)).hexdigest()
+    threads = config["conditions"].get("threads")
+    prefix = f"{threads} 线程 · " if threads is not None else ""
     return {
         "date_utc": date,
         "date_source": "first_recorded_event_utc" if date else "unavailable",
         "bundle_id": content_hash(bundle),
         "bundle_label": f"{bundle['bundle_id']} · {bundle['version']}",
         "recipe_id": recipe_id,
-        "recipe_label": f"{config['conditions']['threads']} 线程 · "
-        f"上下文 {config['conditions']['context_size']} · "
+        "recipe_label": prefix + f"上下文 {config['conditions']['context_size']} · "
         f"输出预算 {config['generation']['max_tokens']} · {recipe_id[:12]}",
         "recipe": recipe,
     }

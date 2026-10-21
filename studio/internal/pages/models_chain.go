@@ -11,6 +11,9 @@ import (
 
 type startChainResult struct {
 	candidate, workspace string
+	localCandidates      []core.CandidateRun
+	existingService      *core.EngineState
+	localRequest         *core.LocalCandidateRequest
 }
 
 // runStartChain prepares candidates for the task page. Every

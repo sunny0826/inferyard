@@ -31,6 +31,7 @@ class CommandRequest:
     frozen_plan: Path | None = None
     workload_id: str | None = None
     handoff_note: str | None = None
+    service_binding_path: Path | None = None
     trial_id: str | None = None
     tolerance_ratio: float | None = None
     max_wall_seconds: float | None = None
@@ -75,6 +76,10 @@ class CommandRequest:
     runtime_profile: str | None = None
     archive: Path | None = None
     runtime_archive: Path | None = None
+    installation: Path | None = None
+    served_model: str | None = None
+    max_tokens: int | None = None
+    timeout_seconds: float | None = None
     engine_path: Path | None = None
     runtime_receipt: Path | None = None
     preflight: Path | None = None

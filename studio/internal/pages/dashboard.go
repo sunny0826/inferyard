@@ -8,7 +8,7 @@ func (w *viewState) step() int {
 	if w.task.stage != "" {
 		switch w.task.stage {
 		case "prepare_candidate":
-			if w.progress != nil && w.progress.DevicePreflight.Status == "missing" {
+			if w.localEngine() == nil && w.progress != nil && w.progress.DevicePreflight.Status == "missing" {
 				return 1
 			}
 			return 2
@@ -76,6 +76,11 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		s.conclusionView(c)
 	}
 	s.stageView(c)
+	s.awaitingLocalServiceView(c)
+	if len(s.task.start.localCandidates) > 0 && s.task.failure != nil && !s.busy {
+		ui.Text(c, "已完成的题包会保留；确认停止原因已解决后，仅重试未完成的题包。")
+		button(c, "重试未完成的题包").OnClick(s.retryBenchmark)
+	}
 	for _, task := range s.tasks {
 		if task.Kind != "context_speed" && emptyText(task.RunPath) == "" {
 			if task.Queued && task.Bundle != nil && task.Error == nil {
@@ -160,9 +165,12 @@ func (s *viewState) stageView(c *ui.Context) {
 	}
 	if s.task.stage != "" {
 		action = s.task.stage
-		if action == "prepare_candidate" && s.progress != nil && s.progress.DevicePreflight.Status == "missing" {
+		if action == "prepare_candidate" && s.localEngine() == nil && s.progress != nil && s.progress.DevicePreflight.Status == "missing" {
 			action = "device_check"
 		}
+	}
+	if action == "device_check" && s.hasLocalEngine() {
+		action = "prepare_candidate"
 	}
 	switch action {
 	case "device_check":

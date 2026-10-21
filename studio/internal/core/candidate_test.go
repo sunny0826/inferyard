@@ -1,10 +1,14 @@
 package core
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"inferyard/studio/internal/inferyard"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -26,6 +30,28 @@ func writeCandidateToml(t *testing.T, dir, modelPath, enginePath string) string 
 func candidateFixture(t *testing.T) (*Service, string, string) {
 	t.Helper()
 	s := registryService(t)
+	s.exec = func(ctx context.Context, binary string, args ...string) (inferyard.Execution, error) {
+		if len(args) == 4 && args[0] == "config" && args[1] == "describe" {
+			raw, _ := os.ReadFile(args[3])
+			if strings.Count(string(raw), "[engine]") != 1 {
+				return inferyard.Execution{ExitCode: 2}, nil
+			}
+			model := ""
+			for _, line := range strings.Split(string(raw), "\n") {
+				if value, ok := strings.CutPrefix(line, "local_path = "); ok {
+					model, _ = strconv.Unquote(value)
+				}
+			}
+			out, _ := engineFixtureDescription(args)
+			var response map[string]any
+			_ = json.Unmarshal(out.Stdout, &response)
+			response["details"].(map[string]any)["assets"].(map[string]any)["model"].(map[string]any)["path"] = model
+			out.Stdout, _ = json.Marshal(response)
+			return out, nil
+		}
+		out, _ := version(args)
+		return out, nil
+	}
 	model := filepath.Join(*s.settings.ModelsRoot, "model.gguf")
 	if err := os.WriteFile(model, []byte("gguf"), 0600); err != nil {
 		t.Fatal(err)
@@ -68,7 +94,7 @@ func TestCandidateAssetsParsing(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(bad, "candidate.toml"), raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, e = s.CandidateAssets(bad); e == nil || e.Code != "cli_error" {
+	if _, e = s.CandidateAssets(bad); e == nil || e.Code != "cli_blocked" {
 		t.Fatal(e)
 	}
 }

@@ -15,6 +15,11 @@ func (s *Service) StartContextSpeed(req StartContextSpeedRequest) (RunTask, *Api
 	if req.Model == "" || req.Engine == "" || (req.Context != 65536 && req.Context != 131072 && req.Context != 262144) {
 		return RunTask{}, Err("invalid_request")
 	}
+	for _, entry := range s.registry().engines {
+		if entry.engine.Name == req.Engine && entry.installation != "" {
+			return RunTask{}, Err("local_engine_context_speed_unsupported")
+		}
+	}
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
 	u := s.userSettings()

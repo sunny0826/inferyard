@@ -63,6 +63,11 @@ def bind(candidate, pid, endpoint, *, ticks=None, argv=None):
 
 
 def prepare(request):
+    candidate_config = load_config(request.candidate).config.to_dict()
+    if candidate_config.get("definition") == "local-engine-config.v1":
+        from inferyard.config.local_engines.binding import prepare as local_prepare
+
+        return local_prepare(request)
     require_platform(("Linux", "x64"), ("Windows", "x64"), ("Darwin", "arm64"))
     new_path(request.out, (request.candidate,))
     config, start = bind(request.candidate, request.server_pid, request.endpoint_url)

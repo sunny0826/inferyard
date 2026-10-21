@@ -25,12 +25,13 @@ type StatusResponse struct {
 }
 
 type UserSettings struct {
-	ModelDownloadName  string  `json:"model_download_name"`
-	EngineDownloadName string  `json:"engine_download_name"`
-	WorkspaceRoot      *string `json:"workspace_root"`
-	InferyardPath      *string `json:"inferyard_path"`
-	ResultsRoot        *string `json:"results_root"`
-	ModelsRoot         *string `json:"models_root"`
+	EngineInstallations []string `json:"engine_installations,omitempty"`
+	ModelDownloadName   string   `json:"model_download_name"`
+	EngineDownloadName  string   `json:"engine_download_name"`
+	WorkspaceRoot       *string  `json:"workspace_root"`
+	InferyardPath       *string  `json:"inferyard_path"`
+	ResultsRoot         *string  `json:"results_root"`
+	ModelsRoot          *string  `json:"models_root"`
 }
 
 type EffectiveSettings struct {
@@ -103,21 +104,25 @@ type RunExit struct {
 }
 
 type RunTask struct {
-	ContextSpeed *ContextSpeedTask `json:"context_speed,omitempty"`
-	TaskId       string            `json:"task_id"`
-	Kind         string            `json:"kind"`
-	State        string            `json:"state"`
-	Queued       bool              `json:"queued"`
-	ConfigPath   *string           `json:"config_path"`
-	ResumeFrom   *string           `json:"resume_from"`
-	Bundle       *string           `json:"bundle"`
-	RunId        *string           `json:"run_id"`
-	RunPath      *string           `json:"run_path"`
-	CreatedAt    string            `json:"created_at"`
-	StartedAt    *string           `json:"started_at"`
-	FinishedAt   *string           `json:"finished_at"`
-	Exit         *RunExit          `json:"exit"`
-	Error        *ApiError         `json:"error"`
+	CandidatePath    *string           `json:"candidate_path,omitempty"`
+	EngineFamily     string            `json:"engine_family,omitempty"`
+	PreparationStage string            `json:"preparation_stage,omitempty"`
+	AwaitingService  bool              `json:"awaiting_service,omitempty"`
+	ContextSpeed     *ContextSpeedTask `json:"context_speed,omitempty"`
+	TaskId           string            `json:"task_id"`
+	Kind             string            `json:"kind"`
+	State            string            `json:"state"`
+	Queued           bool              `json:"queued"`
+	ConfigPath       *string           `json:"config_path"`
+	ResumeFrom       *string           `json:"resume_from"`
+	Bundle           *string           `json:"bundle"`
+	RunId            *string           `json:"run_id"`
+	RunPath          *string           `json:"run_path"`
+	CreatedAt        string            `json:"created_at"`
+	StartedAt        *string           `json:"started_at"`
+	FinishedAt       *string           `json:"finished_at"`
+	Exit             *RunExit          `json:"exit"`
+	Error            *ApiError         `json:"error"`
 }
 
 type CaseProgress struct {

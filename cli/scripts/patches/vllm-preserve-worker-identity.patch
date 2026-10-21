@@ -1,0 +1,13 @@
+--- a/vllm/utils/system_utils.py
++++ b/vllm/utils/system_utils.py
+@@ -185,9 +185 @@
+-    try:
+-        import setproctitle
+-    except ImportError:
+-        return
+-
+-    if suffix:
+-        name = f"{name}_{suffix}"
+-
+-    setproctitle.setproctitle(f"{prefix}::{name}")
++    return

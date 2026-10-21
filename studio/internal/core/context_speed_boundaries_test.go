@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestContextSpeedOldCapabilityStopsBeforeInit(t *testing.T) {
@@ -63,7 +64,12 @@ func TestContextSpeedShutdownDrainsBeforeEngineStop(t *testing.T) {
 	f := &speedFixture{result: speedGolden(t, "zero_runs"), hold: make(chan struct{}), started: make(chan struct{})}
 	s := speedService(t, f)
 	task := startSpeedFixture(t, s)
-	<-f.started
+	select {
+	case <-f.started:
+	case <-time.After(5 * time.Second):
+		d, _ := s.RunDetail(task.TaskId)
+		t.Fatalf("measurement did not start: %+v", d.Task)
+	}
 	if err := s.Shutdown(t.Context()); err != nil {
 		t.Fatal(err)
 	}

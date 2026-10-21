@@ -46,6 +46,9 @@ func TestOrderedShutdownDrainsRealRunBeforeEngine(t *testing.T) {
 		if v, ok := version(args); ok {
 			return v, nil
 		}
+		if out, ok := engineFixtureDescription(args); ok {
+			return out, nil
+		}
 		return (inferyard.Client{Path: path}).Exec(ctx, args...)
 	}
 	if _, e := s.StartEngine(candidate); e != nil {

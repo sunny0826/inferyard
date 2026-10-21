@@ -3,6 +3,7 @@
 import base64
 from pathlib import Path
 
+from inferyard.contracts.engine_profiles import observes_before_idle
 from inferyard.contracts.schemas_layout import INPUT_KINDS, OBSERVATION_STAGES
 from inferyard.contracts.validation import ContractError, validate_document
 from inferyard.evidence.formats import UnsupportedFormat, require_core
@@ -125,7 +126,7 @@ class TrialEvidence:
         if kind == "service_properties":
             actual = (
                 "pre_idle"
-                if self.input("config")["engine"]["adapter"] in ("kvmem", "ninfer")
+                if observes_before_idle(self.input("config")["engine"]["adapter"])
                 else "post_idle"
             )
             if stage is not None and stage != actual:

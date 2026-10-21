@@ -7,6 +7,36 @@ import (
 
 func human(code string) string {
 	switch code {
+	case "candidate_description_invalid":
+		return "CLI 的候选描述不符合当前接口，请升级配套 CLI。"
+	case "local_engine_installation_changed":
+		return "安装声明在准备过程中发生变化，请重新核验并创建候选。"
+	case "local_engine_installation_unreadable", "local_engine_installation_rejected", "local_engine_installation_ineligible":
+		return "本地安装声明未通过核验，请检查声明和运行环境。"
+	case "local_engine_requires_darwin_arm64":
+		return "此本地引擎流程目前仅支持 Apple Silicon macOS。"
+	case "local_engine_service_reused":
+		return "上一题包的服务不能重复使用，请重新启动服务并填写新的后台 PID。"
+	case "local_engine_lmstudio_background_pid_required", "local_engine_external_binding_required":
+		return "请先启动 LM Studio 后台服务并加载模型，再绑定后台进程 PID。"
+	case "candidate_endpoint_mismatch":
+		return "服务地址与冻结候选不一致，请填写创建候选时的本机地址。"
+	case "service_identity_unavailable":
+		return "无法核验后台进程的启动身份，请检查 PID 和进程权限。"
+	case "previous_scope_incomplete":
+		return "上一题包未完整结束，后续题包尚未执行。请先处理停止原因。"
+	case "candidate_binding_invalid":
+		return "绑定产物与本次题包或结果目录不一致，运行已停止。"
+	case "local_engine_context_speed_unsupported", "local_engine_requires_explicit_candidate":
+		return "此安装声明引擎需要使用普通 benchmark 的本地引擎流程。"
+	case "engine_working_directory_invalid", "engine_environment_invalid", "engine_process_isolation_failed":
+		return "引擎工作目录或进程隔离设置无效，启动已停止。"
+	case "engine_candidate_mismatch":
+		return "当前服务属于另一候选，请先结束任务并停止该服务。"
+	case "model_discovery_limit":
+		return "模型目录超过扫描范围，请将模型放在较浅的独立目录中。"
+	case "model_discovery_unreadable":
+		return "无法读取模型目录，请检查目录与权限。"
 	case "service_closing":
 		return "Studio 正在关闭，无法接收新任务。"
 	case "run_active":

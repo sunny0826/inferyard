@@ -42,6 +42,11 @@ def schemas_for():
         TOTAL_TRIAL_CONTROL,
     )
     from inferyard.contracts.schemas_layout import INPUTS, OBSERVATION_RECORD, PREPARED_REQUEST
+    from inferyard.contracts.schemas_local_engines import (
+        INSTALLATION,
+        LOCAL_CONFIG_INPUT,
+        LOCAL_CONFIG_SCHEMA,
+    )
     from inferyard.contracts.schemas_memory_check import MEMORY_CHECK
     from inferyard.contracts.schemas_service_discovery import SERVICE_DISCOVERY
     from inferyard.contracts.schemas_storage import MANIFEST, SUMMARY
@@ -51,11 +56,12 @@ def schemas_for():
         "inputs": INPUTS,
         "observation_record": OBSERVATION_RECORD,
         "prepared_request": PREPARED_REQUEST,
-        "config": CONFIG,
+        "config": {"oneOf": [CONFIG, LOCAL_CONFIG_SCHEMA]},
+        "local_engine_installation": INSTALLATION,
         "memory_check": MEMORY_CHECK,
         "service_discovery": SERVICE_DISCOVERY,
         "engine_check": ENGINE_CHECK,
-        "config_input": CONFIG_INPUT,
+        "config_input": {"oneOf": [CONFIG_INPUT, LOCAL_CONFIG_INPUT]},
         "bundle": BUNDLE,
         "score": SCORE,
         "event": EVENT,

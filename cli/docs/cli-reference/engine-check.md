@@ -2,6 +2,9 @@
 
 本页是[CLI 接口](../cli-surface.md) 的子文档，收录「引擎核验契约」的正文；内容不变，入口保留原节标题与锚点。
 
+使用 `--installation` 的五引擎分支见[本地五引擎正式接口](local-engines.md)。
+以下是既有 Prism/Windows 分支。
+
 `inferyard engine check` 对本地引擎做只读核验，**输入面按平台不对称**：macOS arm64
 必填 `--engine FILE`，Windows x64 必填 `--runtime-receipt FILE`（`runtime prepare`
 目录中的回执）；两参数互斥，平台错配（Darwin 给回执 / Windows 给引擎）、路径不存在

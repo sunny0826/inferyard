@@ -93,6 +93,22 @@ def validate_state(value):
             require(type(value[key]) is str and bool(value[key]))
         for key in ("server_pid", "process_start_ticks"):
             require(type(value[key]) is int and value[key] > 0)
+    if "local_service" in value:
+        local = value["local_service"]
+        require(type(local) is dict)
+        require(local.get("definition") == "local-host-service.v1")
+        digest = local.get("scope_sha256")
+        require(
+            type(digest) is str
+            and len(digest) == 64
+            and all(char in "0123456789abcdef" for char in digest)
+        )
+        service = local.get("service")
+        require(type(service) is dict and type(service.get("workers")) is list)
+        for process in [service, *service["workers"]]:
+            require(type(process) is dict)
+            for key in ("pid", "start_ticks"):
+                require(type(process.get(key)) is int and process[key] > 0)
     return value
 
 

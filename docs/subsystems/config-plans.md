@@ -81,6 +81,9 @@ mise exec -- uv run --frozen python scripts/export_community.py --check
 
 命令形式对照 [`CONTRIBUTING.md`](../../cli/CONTRIBUTING.md) 的验证一节；Agent 执行时按仓库根 AGENTS.md 约定以 `rtk proxy` 包裹。
 
-## 与既有文档的差异
+## 本地引擎候选与绑定
 
-- 任务描述把 kind 注册表标注为 `registry.py`；源码与 [架构](../../cli/docs/architecture.md)、[数据契约](../../cli/docs/data-contract.md) 均表明 kind 注册表是 `contracts/schemas.py` 的 `schemas_for()`，根包 `registry.py` 管理的是方法/指标目录注册（`catalogue()`）。本文按源码记录。
+`config/local_engines` 提供安装声明候选、结构化启动描述及完整绑定输出，
+`contracts/schemas_local_engines.py` 持有显式配置分支。`config/single_plan.py`
+把该分支的温度策略冻结进正式单次计划；`config/plan_inputs.py` 绑定资产清单。
+公开参数与新目录产物见[本地引擎接口](../../cli/docs/cli-reference/local-engines.md)。

@@ -21,6 +21,7 @@ func (s *Service) executeContextSpeed(t *runEntry) {
 		t.Task.State = "running"
 	}
 	t.Task.ContextSpeed.Stage = "measuring"
+	t.commandActive = true
 	s.state(t)
 	s.mu.Unlock()
 	type response struct {
@@ -65,6 +66,9 @@ waitLoop:
 		}
 	}
 	out, err := completed.out, completed.err
+	s.mu.Lock()
+	t.commandActive = false
+	s.mu.Unlock()
 	var failure *ApiError
 	state := "done"
 	switch {

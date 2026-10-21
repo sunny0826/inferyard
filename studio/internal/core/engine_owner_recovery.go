@@ -35,7 +35,10 @@ func (s *Service) DiscardOrphanRecord() (EngineState, *ApiError) {
 	var owner engineOwner
 	valid := err == nil && json.Unmarshal(raw, &owner) == nil && validOwner(owner)
 	if valid {
-		same, identityErr := s.orphanIdentity(&orphanEngine{owner: owner})
+		same, identityErr := s.ownedTreeAlive(&owner, "")
+		if owner.Local && identityErr != nil {
+			return clone(e.state), orphanIdentityError()
+		}
 		if identityErr == nil && same {
 			return clone(e.state), &ApiError{Code: "engine_orphaned", Message: "logs/engine-owner.json 的进程身份仍匹配，请使用「停止遗留服务」。"}
 		}

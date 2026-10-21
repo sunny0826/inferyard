@@ -2,6 +2,77 @@
 
 [返回 Backlog](../backlog.md)
 
+## 本地五引擎正式适配
+
+2026-10-21：已增加正式 local profile、冻结安装/模型清单、完整绑定、普通/流式
+请求、队列观察、批次交接和离线报告读取。独立审查发现的跨独立 run 换题包、
+dirty 孤儿 worker、Python import hook、context 参数及原生映射缺口已修复并复核。
+主进程与 worker 分别声明环境；外部固定安装补丁和准备方式见
+[正式安装准备](../local-engine-native-preparation.md)。
+
+macOS / Qwen3-0.6B 真机正式绑定已通过 llama.cpp、MLX-LM、补丁版 vLLM Metal
+和补丁版 SGLang MLX；LM Studio 双题包候选已生成，原有后台未接管或重启。
+llama.cpp 正式路径在 warmup 触发 87.3125°C，MLX-LM 在普通/流式探针完成后
+触发 88.953125°C；两者均保留 120 道 core 未执行分母，pelican 未开始。
+两份 incomplete 批次及其独立报告通过离线核验，不能计作题包完成。
+本轮自启服务均已停止，温停原件保留，不自动重试或提高 85°C 阈值。
+
+Studio 已接入[五引擎流程](../../../docs/subsystems/studio-panel/local-engines.md)：
+安装注册、模型格式选择、逐题包服务替换或 LM 重绑、取消、未完成题包重试和任务报告；模拟共用页面入口。
+Studio 内部与 ui_debug 编排一致性测试、相关 race、vet、构建隔离及 Xcode 测试编译通过；
+CLI 查询回归 46 项通过。
+
+macOS 原生模拟 UI 已通过（12/12，无跳过），覆盖目录模型双题包和 LM 重绑、失败重试与报告；
+耗时 304.922 秒是单次观测，不代表稳定提速或真实模型、其他平台验收。
+完整 CLI／假引擎套件因真实 CLI 使用全机 host 状态暂未运行；温停 dirty 原件未改。
+五引擎双题包与 Studio 真机闭环仍待验收：需稳定温度条件及既有 LM 后台管理授权。
+
+当前规则见[契约](../contracts/local-engines.md)，剩余事项见[实施计划](../plans/local-engines.md)。
+
+CLI 全量回归 5902 passed、54 skipped（平台限定及 opt-in 真机测试）；
+Ruff、schema/catalogue 导出一致性和 362 个本地文档链接检查通过。
+离线报告已在浏览器检查模型清单与运行时快照身份展示；受控双题包测试
+不代替上面的真机测评缺口。
+
+## 小模型多引擎接入
+
+2026-10-20 在 main 的 CLI 源码上，以 Apple M4 / 16 GiB / macOS 和 Qwen3-0.6B
+完成以下短请求诊断。固定资产、版本、独立环境和补丁操作见
+[小模型准备](../engine-fit-small-model.md)。Ollama 按本轮要求排除。
+
+| 引擎 | 本轮结果 | 覆盖边界 |
+| --- | --- | --- |
+| llama.cpp | engine-fit 3/3 completed；普通请求成功 | 同一 GGUF Q8_0 |
+| LM Studio | engine-fit 3/3 completed；普通请求成功 | 同一 GGUF；第一次预检温停，降温后新运行通过 |
+| MLX-LM | engine-fit 3/3 completed | 受控流式服务，未新增普通请求能力 |
+| vLLM Metal | engine-fit 3/3 completed；普通请求成功 | 同一 MLX 4bit 目录 |
+| SGLang MLX | 本地补丁版 engine-fit 3/3 completed；普通请求成功 | 原版启动失败；补丁不是上游已发布修复 |
+| oMLX | 普通请求 1 条、流式请求 2 条成功 | 仅协议冒烟，未开放 engine-fit |
+| Splash | 未执行 | 官方没有共同小模型；不能外推 27B 或本机内存资格 |
+
+五份完成运行及三份两两比较均通过封存、语义与离线重渲染核验。engine-fit 比较
+只接受两份运行；GGUF 与 MLX 资产分开。SGLang 修复了 MLX stub 误入 Torch
+graph 初始化和 `setproctitle` 破坏主进程 argv；补丁只作用于独立引擎环境，
+InferYard 的身份、排空和停止校验保持不变。
+
+SGLang 第一次进入请求后的运行完成 1 条即温停，保留为 incomplete；
+测得空闲工作进程约 68% CPU，启用原生 `--sleep-on-idle` 后降至约 0.2%。
+确认旧进程退出后，使用恢复 token、新进程与新目录完成三条请求，85°C 门槛未修改。
+这些 CPU 观察用于排查空闲负载，不是推理性能比较。
+
+oMLX 的受控状态复现调用实际 scheduler abort、collector cleanup 和 status 函数：
+pending abort 与模型使用计数尚未清除时，API 已报告 active/waiting 为零。
+这证明计数不能单独用于排空判断，不是一次真实请求竞争时序的测量。
+待补可核验的模型实例身份、取消清理与完整空闲来源后，再实现 engine-fit 适配。
+
+本地原件位于 `.tools/engine-fit-small-20261020/`，含固定计划、运行、报告、
+依赖清单、失败日志及补丁应用核对；不提交原件。五份完成运行共 15 条流式请求，
+另有 7 条普通／流式协议冒烟。相关回归 386 passed、1 skipped（opt-in 原生
+测试未启用，本轮实际模型诊断单独记录）。本轮自有模型服务均已停止，主机状态 clean。
+未验证范围：27B、长上下文、持续负载、并发、完整取消／超时真机矩阵、
+Windows/Linux，以及正式双题包测评；结论遵循
+[证据血缘](../data-contract.md#证据血缘与比较结论)。
+
 ## 模型获取简化
 
 `model acquire` 已实现固定 Hugging Face/ModelScope 单 GGUF 获取、来源核验和候选绑定。

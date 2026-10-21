@@ -16,6 +16,7 @@ from inferyard.contracts.schemas_common import (
     obj,
 )
 from inferyard.contracts.schemas_config import CONFIG
+from inferyard.contracts.schemas_local_engines import LOCAL_CONFIG_SCHEMA
 from inferyard.contracts.schemas_memory import MEMORY_SAMPLE
 from inferyard.contracts.schemas_resources import RESOURCE_SAMPLE
 from inferyard.contracts.schemas_sensors import SENSOR_SAMPLE
@@ -37,7 +38,12 @@ MESSAGES = array(obj({"role": enum("system", "user", "assistant"), "content": TE
 REQUEST_BODY_FIELDS = {
     "model": LABEL,
     "stream": BOOL,
-    "generation": CONFIG["properties"]["generation"],
+    "generation": {
+        "oneOf": [
+            CONFIG["properties"]["generation"],
+            LOCAL_CONFIG_SCHEMA["properties"]["generation"],
+        ]
+    },
 }
 REQUEST = obj(
     {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -74,7 +75,7 @@ func TestOwnerRemovalSerializesAcrossProcesses(t *testing.T) {
 		t.Fatal("new record removed", err)
 	}
 	var saved engineOwner
-	if json.Unmarshal(raw, &saved) != nil || saved != fresh {
+	if json.Unmarshal(raw, &saved) != nil || !reflect.DeepEqual(saved, fresh) {
 		t.Fatalf("%s", raw)
 	}
 }

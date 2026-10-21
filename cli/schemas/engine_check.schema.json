@@ -51,180 +51,305 @@
     "details": {
       "anyOf": [
         {
-          "type": "object",
-          "properties": {
-            "eligible": {
-              "type": "boolean"
-            },
-            "reason": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "enum": [
-                    "invalid_library_manifest",
-                    "unsupported_engine_build_requires_adapter_validation",
-                    "unsupported_runtime_profile",
-                    "runtime_receipt_invalid",
-                    "runtime_profile_mismatch",
-                    "runtime_asset_mismatch"
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "eligible": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "invalid_library_manifest",
+                        "unsupported_engine_build_requires_adapter_validation",
+                        "unsupported_runtime_profile",
+                        "runtime_receipt_invalid",
+                        "runtime_profile_mismatch",
+                        "runtime_asset_mismatch"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "reported_version": {
-              "anyOf": [
-                {
+                "reported_version": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "expected_release": {
                   "type": "string",
                   "minLength": 1
                 },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "expected_release": {
-              "type": "string",
-              "minLength": 1
-            },
-            "modes": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "cpu": {
-                      "type": "boolean"
+                "modes": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "cpu": {
+                          "type": "boolean"
+                        },
+                        "metal": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "cpu",
+                        "metal"
+                      ],
+                      "additionalProperties": false
                     },
-                    "metal": {
-                      "type": "boolean"
+                    {
+                      "type": "null"
                     }
-                  },
-                  "required": [
-                    "cpu",
-                    "metal"
-                  ],
-                  "additionalProperties": false
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "mode": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "enum": [
-                    "cpu",
-                    "cuda"
                   ]
                 },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "required": [
-            "eligible",
-            "reason",
-            "reported_version",
-            "expected_release",
-            "modes",
-            "mode"
-          ],
-          "additionalProperties": false,
-          "allOf": [
-            {
-              "if": {
-                "properties": {
-                  "eligible": {
-                    "const": true
-                  }
+                "mode": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "cpu",
+                        "cuda"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
-              "then": {
-                "properties": {
-                  "reason": {
-                    "type": "null"
+              "required": [
+                "eligible",
+                "reason",
+                "reported_version",
+                "expected_release",
+                "modes",
+                "mode"
+              ],
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "eligible": {
+                        "const": true
+                      }
+                    }
                   },
-                  "reported_version": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "allOf": [
-                  {
-                    "if": {
-                      "properties": {
-                        "mode": {
-                          "type": "null"
-                        }
+                  "then": {
+                    "properties": {
+                      "reason": {
+                        "type": "null"
+                      },
+                      "reported_version": {
+                        "type": "string",
+                        "minLength": 1
                       }
                     },
-                    "then": {
-                      "properties": {
-                        "modes": {
-                          "type": "object",
+                    "allOf": [
+                      {
+                        "if": {
                           "properties": {
-                            "cpu": {
-                              "type": "boolean"
-                            },
-                            "metal": {
-                              "type": "boolean"
+                            "mode": {
+                              "type": "null"
                             }
-                          },
-                          "required": [
-                            "cpu",
-                            "metal"
-                          ],
-                          "additionalProperties": false
+                          }
+                        },
+                        "then": {
+                          "properties": {
+                            "modes": {
+                              "type": "object",
+                              "properties": {
+                                "cpu": {
+                                  "type": "boolean"
+                                },
+                                "metal": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "cpu",
+                                "metal"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "else": {
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "cpu",
+                                "cuda"
+                              ]
+                            },
+                            "modes": {
+                              "type": "null"
+                            }
+                          }
                         }
                       }
-                    },
-                    "else": {
-                      "properties": {
-                        "mode": {
-                          "type": "string",
-                          "enum": [
-                            "cpu",
-                            "cuda"
-                          ]
-                        },
-                        "modes": {
-                          "type": "null"
-                        }
+                    ]
+                  },
+                  "else": {
+                    "properties": {
+                      "reason": {
+                        "type": "string",
+                        "enum": [
+                          "invalid_library_manifest",
+                          "unsupported_engine_build_requires_adapter_validation",
+                          "unsupported_runtime_profile",
+                          "runtime_receipt_invalid",
+                          "runtime_profile_mismatch",
+                          "runtime_asset_mismatch"
+                        ]
+                      },
+                      "reported_version": {
+                        "type": "null"
+                      },
+                      "modes": {
+                        "type": "null"
+                      },
+                      "mode": {
+                        "type": "null"
                       }
                     }
                   }
-                ]
+                }
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "definition": {
+                  "type": "string",
+                  "enum": [
+                    "local-engine-check.v2"
+                  ]
+                },
+                "eligible": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "family": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "llama-cpp",
+                        "mlx-lm",
+                        "vllm",
+                        "sglang",
+                        "lmstudio"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "declaration_sha256": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "verification_scope": {
+                  "type": "string",
+                  "enum": [
+                    "installation_runtime_closure_only"
+                  ]
+                },
+                "model_requests_sent": {
+                  "type": "integer",
+                  "const": 0
+                },
+                "ready_to_run": {
+                  "type": "boolean",
+                  "const": false
+                }
               },
-              "else": {
-                "properties": {
-                  "reason": {
-                    "type": "string",
-                    "enum": [
-                      "invalid_library_manifest",
-                      "unsupported_engine_build_requires_adapter_validation",
-                      "unsupported_runtime_profile",
-                      "runtime_receipt_invalid",
-                      "runtime_profile_mismatch",
-                      "runtime_asset_mismatch"
-                    ]
+              "required": [
+                "definition",
+                "eligible",
+                "reason",
+                "family",
+                "declaration_sha256",
+                "verification_scope",
+                "model_requests_sent",
+                "ready_to_run"
+              ],
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "eligible": {
+                        "const": true
+                      }
+                    }
                   },
-                  "reported_version": {
-                    "type": "null"
+                  "then": {
+                    "properties": {
+                      "reason": {
+                        "type": "null"
+                      },
+                      "family": {
+                        "type": "string",
+                        "enum": [
+                          "llama-cpp",
+                          "mlx-lm",
+                          "vllm",
+                          "sglang",
+                          "lmstudio"
+                        ]
+                      },
+                      "declaration_sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      }
+                    }
                   },
-                  "modes": {
-                    "type": "null"
-                  },
-                  "mode": {
-                    "type": "null"
+                  "else": {
+                    "properties": {
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "declaration_sha256": {
+                        "type": "null"
+                      }
+                    }
                   }
                 }
-              }
+              ]
             }
           ]
         },
@@ -259,180 +384,305 @@
             "const": "complete"
           },
           "details": {
-            "type": "object",
-            "properties": {
-              "eligible": {
-                "type": "boolean"
-              },
-              "reason": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "enum": [
-                      "invalid_library_manifest",
-                      "unsupported_engine_build_requires_adapter_validation",
-                      "unsupported_runtime_profile",
-                      "runtime_receipt_invalid",
-                      "runtime_profile_mismatch",
-                      "runtime_asset_mismatch"
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "eligible": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "invalid_library_manifest",
+                          "unsupported_engine_build_requires_adapter_validation",
+                          "unsupported_runtime_profile",
+                          "runtime_receipt_invalid",
+                          "runtime_profile_mismatch",
+                          "runtime_asset_mismatch"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
                     ]
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "reported_version": {
-                "anyOf": [
-                  {
+                  "reported_version": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "expected_release": {
                     "type": "string",
                     "minLength": 1
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "expected_release": {
-                "type": "string",
-                "minLength": 1
-              },
-              "modes": {
-                "anyOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "cpu": {
-                        "type": "boolean"
+                  "modes": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "cpu": {
+                            "type": "boolean"
+                          },
+                          "metal": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "cpu",
+                          "metal"
+                        ],
+                        "additionalProperties": false
                       },
-                      "metal": {
-                        "type": "boolean"
+                      {
+                        "type": "null"
                       }
-                    },
-                    "required": [
-                      "cpu",
-                      "metal"
-                    ],
-                    "additionalProperties": false
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "mode": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "enum": [
-                      "cpu",
-                      "cuda"
                     ]
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            },
-            "required": [
-              "eligible",
-              "reason",
-              "reported_version",
-              "expected_release",
-              "modes",
-              "mode"
-            ],
-            "additionalProperties": false,
-            "allOf": [
-              {
-                "if": {
-                  "properties": {
-                    "eligible": {
-                      "const": true
-                    }
+                  "mode": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "cpu",
+                          "cuda"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
-                "then": {
-                  "properties": {
-                    "reason": {
-                      "type": "null"
+                "required": [
+                  "eligible",
+                  "reason",
+                  "reported_version",
+                  "expected_release",
+                  "modes",
+                  "mode"
+                ],
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "eligible": {
+                          "const": true
+                        }
+                      }
                     },
-                    "reported_version": {
-                      "type": "string",
-                      "minLength": 1
-                    }
-                  },
-                  "allOf": [
-                    {
-                      "if": {
-                        "properties": {
-                          "mode": {
-                            "type": "null"
-                          }
+                    "then": {
+                      "properties": {
+                        "reason": {
+                          "type": "null"
+                        },
+                        "reported_version": {
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
-                      "then": {
-                        "properties": {
-                          "modes": {
-                            "type": "object",
+                      "allOf": [
+                        {
+                          "if": {
                             "properties": {
-                              "cpu": {
-                                "type": "boolean"
-                              },
-                              "metal": {
-                                "type": "boolean"
+                              "mode": {
+                                "type": "null"
                               }
-                            },
-                            "required": [
-                              "cpu",
-                              "metal"
-                            ],
-                            "additionalProperties": false
+                            }
+                          },
+                          "then": {
+                            "properties": {
+                              "modes": {
+                                "type": "object",
+                                "properties": {
+                                  "cpu": {
+                                    "type": "boolean"
+                                  },
+                                  "metal": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "cpu",
+                                  "metal"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "else": {
+                            "properties": {
+                              "mode": {
+                                "type": "string",
+                                "enum": [
+                                  "cpu",
+                                  "cuda"
+                                ]
+                              },
+                              "modes": {
+                                "type": "null"
+                              }
+                            }
                           }
                         }
-                      },
-                      "else": {
-                        "properties": {
-                          "mode": {
-                            "type": "string",
-                            "enum": [
-                              "cpu",
-                              "cuda"
-                            ]
-                          },
-                          "modes": {
-                            "type": "null"
-                          }
+                      ]
+                    },
+                    "else": {
+                      "properties": {
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "invalid_library_manifest",
+                            "unsupported_engine_build_requires_adapter_validation",
+                            "unsupported_runtime_profile",
+                            "runtime_receipt_invalid",
+                            "runtime_profile_mismatch",
+                            "runtime_asset_mismatch"
+                          ]
+                        },
+                        "reported_version": {
+                          "type": "null"
+                        },
+                        "modes": {
+                          "type": "null"
+                        },
+                        "mode": {
+                          "type": "null"
                         }
                       }
                     }
-                  ]
+                  }
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "definition": {
+                    "type": "string",
+                    "enum": [
+                      "local-engine-check.v2"
+                    ]
+                  },
+                  "eligible": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "family": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "llama-cpp",
+                          "mlx-lm",
+                          "vllm",
+                          "sglang",
+                          "lmstudio"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "declaration_sha256": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "verification_scope": {
+                    "type": "string",
+                    "enum": [
+                      "installation_runtime_closure_only"
+                    ]
+                  },
+                  "model_requests_sent": {
+                    "type": "integer",
+                    "const": 0
+                  },
+                  "ready_to_run": {
+                    "type": "boolean",
+                    "const": false
+                  }
                 },
-                "else": {
-                  "properties": {
-                    "reason": {
-                      "type": "string",
-                      "enum": [
-                        "invalid_library_manifest",
-                        "unsupported_engine_build_requires_adapter_validation",
-                        "unsupported_runtime_profile",
-                        "runtime_receipt_invalid",
-                        "runtime_profile_mismatch",
-                        "runtime_asset_mismatch"
-                      ]
+                "required": [
+                  "definition",
+                  "eligible",
+                  "reason",
+                  "family",
+                  "declaration_sha256",
+                  "verification_scope",
+                  "model_requests_sent",
+                  "ready_to_run"
+                ],
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "eligible": {
+                          "const": true
+                        }
+                      }
                     },
-                    "reported_version": {
-                      "type": "null"
+                    "then": {
+                      "properties": {
+                        "reason": {
+                          "type": "null"
+                        },
+                        "family": {
+                          "type": "string",
+                          "enum": [
+                            "llama-cpp",
+                            "mlx-lm",
+                            "vllm",
+                            "sglang",
+                            "lmstudio"
+                          ]
+                        },
+                        "declaration_sha256": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      }
                     },
-                    "modes": {
-                      "type": "null"
-                    },
-                    "mode": {
-                      "type": "null"
+                    "else": {
+                      "properties": {
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "declaration_sha256": {
+                          "type": "null"
+                        }
+                      }
                     }
                   }
-                }
+                ]
               }
             ]
           }

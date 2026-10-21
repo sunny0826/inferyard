@@ -30,12 +30,15 @@ const (
 )
 
 type EngineEligibility struct {
-	State   string          `json:"state"`
-	Reason  string          `json:"reason"`
-	Version string          `json:"version"`
-	Release string          `json:"release"`
-	Modes   map[string]bool `json:"modes,omitempty"`
-	Mode    string          `json:"mode,omitempty"`
+	Family            string          `json:"family,omitempty"`
+	DeclarationSHA256 *string         `json:"declaration_sha256,omitempty"`
+	VerificationScope string          `json:"verification_scope,omitempty"`
+	State             string          `json:"state"`
+	Reason            string          `json:"reason"`
+	Version           string          `json:"version"`
+	Release           string          `json:"release"`
+	Modes             map[string]bool `json:"modes,omitempty"`
+	Mode              string          `json:"mode,omitempty"`
 }
 
 // EngineCheckOverview is the UI-facing snapshot of the verification pipeline.
@@ -55,6 +58,7 @@ type engineCheckEntry struct {
 
 type engineCheckTarget struct {
 	name, path, receipt, key string
+	installation             string
 	cliPath                  string
 	generation               uint64
 }
@@ -135,7 +139,26 @@ func engineCheckKey(path, receipt string, modified time.Time) string {
 }
 
 func (s *Service) checkEngineWithCLI(ctx context.Context, cliPath, path, receipt string) (inferyard.EngineCheck, *ApiError) {
-	out, err := s.exec(ctx, cliPath, engineCheckArgs(path, receipt)...)
+	result, failure := s.checkEngineArgsWithCLI(ctx, cliPath, engineCheckArgs(path, receipt))
+	if failure == nil && result.VerificationScope != "" {
+		return inferyard.EngineCheck{}, Err("engine_check_invalid_response")
+	}
+	return result, failure
+}
+
+func (s *Service) checkInstallationWithCLI(ctx context.Context, cliPath, path string) (inferyard.EngineCheck, *ApiError) {
+	result, failure := s.checkEngineArgsWithCLI(ctx, cliPath, []string{"engine", "check", "--installation", path})
+	if failure == nil && result.VerificationScope != "installation_runtime_closure_only" {
+		return inferyard.EngineCheck{}, Err("engine_check_invalid_response")
+	}
+	if failure == nil && !result.Eligible {
+		result.Reason = ptr(localInstallationReason(str(result.Reason)))
+	}
+	return result, failure
+}
+
+func (s *Service) checkEngineArgsWithCLI(ctx context.Context, cliPath string, args []string) (inferyard.EngineCheck, *ApiError) {
+	out, err := s.exec(ctx, cliPath, args...)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) || errors.Is(err, exec.ErrNotFound) {
 			return inferyard.EngineCheck{}, Err("cli_outdated")
@@ -191,10 +214,17 @@ func (s *Service) VerifyEngines() {
 	}
 	targets := make([]engineCheckTarget, 0, len(data.engines))
 	for _, e := range data.engines {
+		var key string
+		if e.installation != "" {
+			key = installationKey(e.installation)
+		} else {
+			key = engineCheckKey(e.path, e.receipt, e.modified)
+		}
 		targets = append(targets, engineCheckTarget{
 			name: e.engine.Name, path: e.path, receipt: e.receipt,
-			cliPath: str(p.Path), generation: s.checkGeneration,
-			key: engineCheckKey(e.path, e.receipt, e.modified),
+			installation: e.installation,
+			cliPath:      str(p.Path), generation: s.checkGeneration,
+			key: key,
 		})
 	}
 	s.checkNames = targets
@@ -241,13 +271,23 @@ func (s *Service) runEngineCheck(t engineCheckTarget) {
 	s.checkMu.Unlock()
 	eligibility := EngineEligibility{State: EngineCheckUnknown, Reason: "engine_check_error"}
 	verified := false
-	if runtime.GOOS == "windows" && t.receipt == "" {
+	if t.installation == "" && runtime.GOOS == "windows" && t.receipt == "" {
 		// Windows checks verify the runtime receipt; a bare binary directory
 		// without one cannot be checked (real-machine behavior unverified).
 		eligibility.Reason = "runtime_receipt_missing"
 	} else {
-		ctx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
-		result, e := s.checkEngineWithCLI(ctx, t.cliPath, t.path, t.receipt)
+		timeout := 30 * time.Second
+		if t.installation != "" {
+			timeout = installationCheckTimeout
+		}
+		ctx, cancel := context.WithTimeout(s.ctx, timeout)
+		var result inferyard.EngineCheck
+		var e *ApiError
+		if t.installation != "" {
+			result, e = s.checkInstallationWithCLI(ctx, t.cliPath, t.installation)
+		} else {
+			result, e = s.checkEngineWithCLI(ctx, t.cliPath, t.path, t.receipt)
+		}
 		cancel()
 		switch {
 		case e == nil && result.Eligible:
@@ -266,6 +306,11 @@ func (s *Service) runEngineCheck(t engineCheckTarget) {
 			if len(e.Limitations) > 0 {
 				eligibility.Reason = e.Limitations[0]
 			}
+		}
+		if t.installation != "" {
+			eligibility.Family = str(result.Family)
+			eligibility.DeclarationSHA256 = result.DeclarationSHA256
+			eligibility.VerificationScope = "installation_runtime_closure_only"
 		}
 	}
 	s.checkMu.Lock()

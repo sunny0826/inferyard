@@ -59,6 +59,9 @@ func TestWizardExitMappingAndReportVerify(t *testing.T) {
 }
 func TestWizardKeepsOriginalOutputsAndFrozenStartup(t *testing.T) {
 	s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+		if result, ok := engineFixtureDescription(args); ok {
+			return result, nil
+		}
 		if args[0] != "--version" {
 			t.Fatal("executed despite existing output")
 		}

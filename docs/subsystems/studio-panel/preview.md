@@ -18,6 +18,7 @@
 切换或重置场景创建新的 `viewState`，并更换页面子树 key，使字段、表格选择与 `ui.Local`
 折叠状态一起复位。新任务只取消当前任务并返回准备阶段，保留设置、下载与历史；
 显示的路径、PID、采样与进度不代表真实资源。
+场景下拉使用限高滚动列表，长清单不延伸到窗口外；选择末尾场景须先滚动到对应选项。
 
 页面在纯表单校验之后、真实 IO 或异步上下文创建之前派发 `previewIntent`，参数携带
 本次模型、题包、下载来源、任务 ID 或设置 patch，不根据按钮文案猜测操作。
@@ -40,6 +41,9 @@
 新增页面操作须覆盖这些边界，不能以注入假 executor 代替服务隔离。启动方法与场景清单见
 [Studio README](../../../studio/README.md#ui-debug-preview)。
 
+本地五引擎场景共用正式选择、注册与外部绑定控件；`preview_local_engines.go` 仅在窗口内存
+推进逐题包服务替换与等待，未接入真实进程或 CLI。共享场景与验证层次见[本地引擎参考](local-engines.md#验证边界)。
+
 长上下文速度正式与模拟共用页面和 `ContextSpeedResult` 投影；
 `preview_context_speed.go` 与 `preview_speed_result.go` 仅进入调试构建，
 在窗口内存推进准备、绑定、计划、等待、五次测量、取消和结果读取。
@@ -60,6 +64,8 @@
 场景下拉完成流程；由真实窗口 ticker 推进模拟任务。每个用例重新启动模拟应用，结果写入新的
 `build/ui-e2e/run-*`，失败保留截图与辅助功能树。根级 `mise run test:studio-ui` 和 macOS CI
 调用同一入口；此层与 `ui.NewTester` 内存回归、真实 CLI／假引擎边界测试分别报告。
+原生检查在同一场景中复用已启动的测评，独立用例仍各自创建窗口；覆盖分配、等待和滚动策略
+统一记录在上述原生测试说明中，不改变模拟时钟或正式流程。
 
 [`preview_parity_test.go`](../../../studio/internal/pages/preview_parity_test.go) 对正常编排与模拟器运行同一组
 场景，并将双方各自与明确预期比较：core 单题包、pelican 单题包、双题包、启动失败后手动重试、

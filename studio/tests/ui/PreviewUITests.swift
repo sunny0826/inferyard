@@ -10,8 +10,8 @@ final class PreviewUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["--debug-ui"]
         app.launch()
-        XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].waitForExistence(timeout: 10))
-        positionWindowForCapture()
+        expectExists(app.windows["InferYard Studio · UI 调试"], timeout: 10)
+        positionPreviewWindowForCapture(app.windows["InferYard Studio · UI 调试"])
         expectText("全部为模拟数据；操作仅改变本窗口，不运行模型或写入文件。")
     }
 
@@ -39,19 +39,19 @@ final class PreviewUITests: XCTestCase {
         expectText("已结束")
         click("模型")
         let picker = app.popUpButtons["模型"]
-        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        expectExists(picker, timeout: 5)
         picker.click()
         let downloadedModel = "model · SmolLM2-135M-Instruct-Q4_K_M.gguf"
         text(downloadedModel).click()
         click("用这个组合新开任务")
         click("运行 benchmark")
-        XCTAssertTrue(app.buttons["查看实时详情"].waitForExistence(timeout: 10))
+        expectExists(app.buttons["查看实时详情"], timeout: 10)
         XCTAssertFalse(text("Dashboard").exists)
         keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
         expectText("实时进度")
         let progress = app.staticTexts.matching(NSPredicate(format: "value BEGINSWITH %@", "正式运行 · ")).firstMatch
-        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        expectExists(progress, timeout: 5)
         let before = progress.value as? String
         wait("detail progress changes", timeout: 10) { (progress.value as? String) != before }
         click("返回运行")
@@ -132,11 +132,11 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("Context speed result")
         app.disclosureTriangles["查看逐次测量"].click()
         let measurements = app.tables["专项逐次测量"]
-        XCTAssertTrue(measurements.waitForExistence(timeout: 5))
+        expectExists(measurements, timeout: 5)
         XCTAssertEqual(measurements.tableRows.count, 6)
         click("返回历史任务")
         let row = app.tables["专项历史表"].tableRows.element(boundBy: 1)
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        expectExists(row, timeout: 5)
         row.click()
         click("打开专项结果")
         expectText("有效 5/5 · 中位数")
@@ -144,13 +144,21 @@ final class PreviewUITests: XCTestCase {
         expectText("先停止当前受管服务，再按所选上下文启动新任务。")
         click("停止当前服务")
         click("开始专项测评")
+        expectText("已完成 1 / 5 次测量")
+    }
+
+    func testContextSpeedCancellationDiagnostics() {
+        prepareSpeed()
+        click("开始专项测评")
         click("取消专项测评")
         click("查看结果", timeout: 10)
         expectText("有效 0/5 · 未形成完整汇总")
         expectText("任务已取消。已完成的测量已保留；未完成项显示为 —。")
         XCTAssertFalse(text("第 1 次缺测：Context: not_executed；Prompt length: not_executed；Time: not_executed；Prefill: not_executed；Decode: not_executed").exists)
         keepScreenshot("Context speed cancelled")
-        app.disclosureTriangles["查看诊断详情"].click()
+        let diagnostics = app.disclosureTriangles["查看诊断详情"]
+        revealInContent(diagnostics)
+        diagnostics.click()
         expectText("第 1 次缺测：Context: not_executed；Prompt length: not_executed；Time: not_executed；Prefill: not_executed；Decode: not_executed")
         keepScreenshot("Context speed cancellation diagnostics")
     }
@@ -169,13 +177,15 @@ final class PreviewUITests: XCTestCase {
         expectText("测量结果不满足完整汇总条件；请展开诊断详情查看缺测或校验原因。")
         XCTAssertFalse(text("第 5 次：final_timing_missing、metric_missing").exists)
         keepScreenshot("Context speed missing timing")
-        app.disclosureTriangles["查看诊断详情"].click()
+        let diagnostics = app.disclosureTriangles["查看诊断详情"]
+        revealInContent(diagnostics)
+        diagnostics.click()
         expectText("第 5 次：final_timing_missing、metric_missing")
         expectText("第 5 次缺测：Time: final_timing_missing；Prefill: final_timing_missing；Decode: final_timing_missing")
         keepScreenshot("Context speed missing timing diagnostics")
         click("返回历史任务")
         let row = app.tables["专项历史表"].tableRows.element(boundBy: 2)
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        expectExists(row, timeout: 5)
         row.click()
         app.checkBoxes["下次操作模拟失败"].click()
         click("打开专项结果")
@@ -193,8 +203,7 @@ final class PreviewUITests: XCTestCase {
     }
 
     func testFirstUseWithoutLocalAssets() {
-        app.popUpButtons["模拟场景"].click()
-        text("首次使用 · 无资源").click()
+        selectScene("首次使用 · 无资源")
         click("准备环境")
         expectText("准备模型与引擎")
         XCTAssertFalse(text("工作区进度").exists)
@@ -216,25 +225,33 @@ final class PreviewUITests: XCTestCase {
         expectText("zh-svg-pelican · 排队中")
         XCTAssertFalse(text("单次运行不支持断点续跑；请重新运行该配置。").exists)
         keepScreenshot("Active benchmark without recovery warning")
+        let engine = app.buttons["引擎 · 运行中"]
+        expectExists(engine, timeout: 10)
+        engine.hover()
+        let stop = app.buttons["停止引擎"]
+        expectExists(stop, timeout: 3)
+        XCTAssertFalse(stop.isEnabled, "Running tasks must protect the engine")
+        keepScreenshot("Engine panel remains available during benchmark")
+        let queue = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "任务 · 执行 1 · 等待 ")).firstMatch
+        XCTAssertTrue(queue.exists)
+        queue.click()
+        expectText("任务队列", timeout: 3)
+        keepScreenshot("Task icon opens live queue panel")
+        queue.click()
         click("查看报告", timeout: 25)
         expectText("各类任务表现")
     }
 
-    func testResourceChartWithMissingMetrics() {
-        app.popUpButtons["模拟场景"].click()
-        text("资源 · 密集采样与缺测").click()
+    func testResourceChartsAndSourceSelection() {
+        selectScene("资源 · 密集采样与缺测")
         expectText("采样记录：316 · 每个来源保留最近 600 点")
         expectText("服务 CPU % · 此运行未记录该指标")
         expectText("传感器温度 °C · 此运行未记录该指标")
-        let chart = text("可用内存 GiB曲线")
-        revealInContent(chart)
-        XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].frame.contains(chart.frame), "The full resource chart must be visible")
+        let memoryChart = text("可用内存 GiB曲线")
+        revealInContent(memoryChart)
+        XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].frame.contains(memoryChart.frame), "The full resource chart must be visible")
         keepScreenshot("Dense memory samples without empty CPU and temperature plots")
-    }
-
-    func testCPUAndTemperatureSources() {
-        app.popUpButtons["模拟场景"].click()
-        text("资源 · CPU 与多路温度").click()
+        selectScene("资源 · CPU 与多路温度")
         expectText("采样记录：160 · 每个来源保留最近 600 点")
         expectText("服务 CPU %曲线")
         expectText("传感器温度 °C曲线")
@@ -253,72 +270,98 @@ final class PreviewUITests: XCTestCase {
     }
 
     func testEngineStatusPanel() {
-        app.popUpButtons["模拟场景"].click()
-        text("任务 · 失败").click()
+        selectScene("任务 · 失败")
         let engine = app.buttons["引擎 · 失败"]
-        XCTAssertTrue(engine.waitForExistence(timeout: 5))
+        expectExists(engine, timeout: 5)
         engine.hover()
-        XCTAssertTrue(app.buttons["开启引擎"].waitForExistence(timeout: 5))
+        expectExists(app.buttons["开启引擎"], timeout: 5)
         keepScreenshot("Engine hover panel before startup")
         app.windows["InferYard Studio · UI 调试"].hover()
         wait("hover panel closes after pointer leaves", timeout: 5) { !self.app.buttons["开启引擎"].exists }
         engine.click()
-        XCTAssertTrue(app.buttons["开启引擎"].waitForExistence(timeout: 5))
+        expectExists(app.buttons["开启引擎"], timeout: 5)
         keepScreenshot("Engine panel opened by clicking status icon")
         click("开启引擎")
         let running = app.buttons["引擎 · 运行中"]
-        XCTAssertTrue(running.waitForExistence(timeout: 5))
+        expectExists(running, timeout: 5)
         running.hover()
-        XCTAssertTrue(app.buttons["停止引擎"].waitForExistence(timeout: 5))
+        expectExists(app.buttons["停止引擎"], timeout: 5)
         XCTAssertFalse(app.buttons["查看实时详情"].exists, "Engine startup must not start a benchmark")
         keepScreenshot("Engine running icon and hover controls")
         click("停止引擎")
-        XCTAssertTrue(app.buttons["引擎 · 已停止"].waitForExistence(timeout: 5))
+        expectExists(app.buttons["引擎 · 已停止"], timeout: 5)
     }
 
-    func testRunningStatusPanels() {
-        prepare()
+    func testLocalDirectoryEngineRunsBothScopes() {
+        selectScene("引擎 · 本地安装与目录模型")
+        expectExists(app.menuButtons["local-weights · 目录模型"], timeout: 5)
+        revealInContent(app.buttons["运行 benchmark"])
+        keepScreenshot("Local directory model and registered engine")
         click("运行 benchmark")
-        let engine = app.buttons["引擎 · 运行中"]
-        XCTAssertTrue(engine.waitForExistence(timeout: 10))
-        engine.hover()
-        let stop = app.buttons["停止引擎"]
-        XCTAssertTrue(stop.waitForExistence(timeout: 3))
-        XCTAssertFalse(stop.isEnabled, "Running tasks must protect the engine")
-        keepScreenshot("Engine panel remains available during benchmark")
-        let queue = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "任务 · 执行 1 · 等待 ")).firstMatch
-        XCTAssertTrue(queue.exists)
-        queue.click()
-        expectText("任务队列", timeout: 3)
-        keepScreenshot("Task icon opens live queue panel")
+        expectText("zh-core · 运行中")
+        expectText("zh-svg-pelican · 排队中")
+        keepScreenshot("Local first scope and queued second scope")
+        expectText("zh-svg-pelican · 运行中", timeout: 15)
+        keepScreenshot("Local second scope after service handoff")
+        click("查看报告", timeout: 20)
+        expectText("local-weights")
+        expectText("各类任务表现")
     }
 
-    private func positionWindowForCapture() {
-        let window = app.windows["InferYard Studio · UI 调试"]
-        let screen = NSScreen.screens[0]
-        let visible = screen.visibleFrame
-        let desktop = CGRect(x: visible.minX, y: screen.frame.maxY - visible.maxY, width: visible.width, height: visible.height)
-        let size = CGSize(width: min(1024, desktop.width), height: min(681, desktop.height))
-        let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1)).withOffset(CGVector(dx: -2, dy: -2))
-        if window.frame.width > size.width || window.frame.height > size.height {
-            corner.press(forDuration: 0.2, thenDragTo: corner.withOffset(CGVector(dx: size.width - window.frame.width, dy: size.height - window.frame.height)))
+    func testLMStudioBindingFailureKeepsCompletedScope() {
+        selectScene("引擎 · LM Studio 手动绑定")
+        revealInContent(app.buttons["运行 benchmark"])
+        click("运行 benchmark")
+        expectText("zh-svg-pelican · 等待绑定 LM Studio", timeout: 15)
+        let pid = app.textFields["新的后台 PID"]
+        expectExists(pid, timeout: 5)
+        revealInContent(pid)
+        keepScreenshot("LM Studio waits for a fresh second-scope service")
+        pid.click()
+        pid.typeText("4002")
+        app.checkBoxes["下次操作模拟失败"].click()
+        click("绑定并继续此题包")
+        click("重试未完成的题包", timeout: 10)
+        expectExists(pid, timeout: 5)
+        revealInContent(pid)
+        pid.click()
+        pid.typeText("4003")
+        click("绑定并继续此题包")
+        expectText("zh-svg-pelican · 运行中")
+        XCTAssertFalse(text("zh-core · 运行中").exists, "A completed scope must not run again")
+        keepScreenshot("LM Studio retries only the unfinished scope")
+        click("查看报告", timeout: 20)
+        expectText("local.gguf")
+        expectText("各类任务表现")
+    }
+
+    private func selectScene(_ label: String) {
+        app.popUpButtons["模拟场景"].click()
+        let list = app.scrollViews["模拟场景列表"]
+        expectExists(list, timeout: 5)
+        XCTAssertTrue(app.windows["InferYard Studio · UI 调试"].frame.contains(list.frame), "Scene choices must stay inside the window")
+        let option = list.staticTexts[label].firstMatch
+        for _ in 0..<8 {
+            let viewport = list.frame
+            let frame = option.frame
+            if !frame.isEmpty && viewport.contains(frame) {
+                option.click()
+                wait("scene selector closes", timeout: 3) { !list.exists }
+                return
+            }
+            list.scroll(byDeltaX: 0, deltaY: frame.midY < viewport.midY ? viewport.height / 2 : -viewport.height / 2)
         }
-        let origin = window.frame.origin
-        let titlebar = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
-        let x = desktop.minX + max(0, (desktop.width - window.frame.width) / 2)
-        let y = desktop.minY + max(0, (desktop.height - window.frame.height) / 2)
-        titlebar.press(forDuration: 0.2, thenDragTo: titlebar.withOffset(CGVector(dx: x - origin.x, dy: y - origin.y)))
-        XCTAssertTrue(desktop.insetBy(dx: -1, dy: -1).contains(window.frame), "The test window must fit above the Dock and inside the display")
+        XCTFail("Scene option could not be scrolled into view: \(label), option: \(option.frame), list: \(list.frame)")
     }
 
     private func revealInContent(_ element: XCUIElement) {
         let content = app.scrollViews.element(boundBy: 1)
         for _ in 0..<5 {
-            let viewport = content.frame.insetBy(dx: 0, dy: 32)
+            let viewport = content.frame
             let frame = element.frame
-            if viewport.contains(frame) { return }
+            if !frame.isEmpty && viewport.contains(frame) { return }
             let delta = frame.maxY > viewport.maxY ? viewport.maxY - frame.maxY : viewport.minY - frame.minY
-            content.scroll(byDeltaX: 0, deltaY: delta)
+            content.scroll(byDeltaX: 0, deltaY: delta.rounded(.awayFromZero))
         }
         XCTAssertTrue(content.frame.contains(element.frame), "The complete control must be visible after scrolling")
     }
@@ -351,7 +394,11 @@ final class PreviewUITests: XCTestCase {
 
     private func expectText(_ text: String, timeout: TimeInterval = 10) {
         let element = self.text(text)
-        XCTAssertTrue(element.waitForExistence(timeout: timeout), "Missing text: \(text)")
+        XCTAssertTrue(element.exists || element.waitForExistence(timeout: timeout), "Missing text: \(text)")
+    }
+
+    private func expectExists(_ element: XCUIElement, timeout: TimeInterval) {
+        XCTAssertTrue(element.exists || element.waitForExistence(timeout: timeout))
     }
 
     private func text(_ value: String) -> XCUIElement {
@@ -359,6 +406,7 @@ final class PreviewUITests: XCTestCase {
     }
 
     private func wait(_ description: String, timeout: TimeInterval, condition: @escaping () -> Bool) {
+        if condition() { return }
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition() }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed, description)
     }
