@@ -44,20 +44,25 @@ type CatalogEntry struct {
 	Reason string
 	// Doc points at the preparation document for reference-only entries.
 	Doc string
+	// Note says what still has to happen after a downloadable entry is
+	// fetched, empty when fetching it is enough.
+	Note string
 }
 
 // Downloadable reports whether the existing download path can fetch this
-// entry. Engines must pass the engine source validator, stay inside the
-// 64 MiB fetch limit and belong to the llama.cpp archive family; models must
-// pass the model source validator. The answer is derived, so a new entry
-// cannot claim to be downloadable without the transfer path accepting it.
+// entry. The engine channel streams the archive to disk and unpacks a
+// llama.cpp archive from it, so a large pinned archive is downloadable while
+// an archive of another shape is not, because unpacking it would not yield an
+// engine. The model channel accepts a single GGUF at a fixed revision. The
+// answer is derived, so a new entry cannot claim to be downloadable without
+// the transfer path accepting it.
 func (e CatalogEntry) Downloadable() bool {
 	if e.Reason != "" {
 		return false
 	}
 	switch e.Kind {
 	case CatalogEngine:
-		return e.Bytes <= maxFetchBytes && isLlamaArchive(e.URL) && validEngineSource(e.URL)
+		return isLlamaArchive(e.URL) && validEngineSource(e.URL)
 	case CatalogModel:
 		return validSource(e.URL)
 	}
@@ -68,13 +73,20 @@ func (e CatalogEntry) Downloadable() bool {
 // archive, the only engine shape the Studio unpack path understands.
 func isLlamaArchive(source string) bool {
 	lower := strings.ToLower(source)
-	return strings.Contains(lower, "/llama.cpp/releases/") &&
-		(strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tgz") || strings.HasSuffix(lower, ".zip"))
+	return strings.Contains(lower, "/llama.cpp/releases/") && isEngineArchive(lower)
 }
 
 // catalogEngineBase is the pinned Prism llama.cpp release the CLI contracts
 // reference (see cli/docs/contracts/windows-prism-batch-contract.md).
 const catalogEngineBase = "https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10743-adfffbe/"
+
+// RunsOnCurrentPlatform reports whether the asset can run on the machine
+// Studio is running on. An asset for another platform can still be fetched —
+// the operator may be preparing it for another machine — but it cannot be
+// started here.
+func (e CatalogEntry) RunsOnCurrentPlatform() bool {
+	return e.Platform == "any" || e.Platform == CurrentPlatform()
+}
 
 // Catalog returns the built-in address list.
 func Catalog() []CatalogEntry {

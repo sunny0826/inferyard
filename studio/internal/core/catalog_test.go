@@ -32,7 +32,10 @@ func TestCatalogDownloadableIsDerivedFromTheRealValidators(t *testing.T) {
 		downloadable := entry.Downloadable()
 		switch entry.Kind {
 		case CatalogEngine:
-			want := entry.Reason == "" && entry.Bytes <= maxFetchBytes && isLlamaArchive(entry.URL) && validEngineSource(entry.URL)
+			// The engine channel streams the archive to disk, so there is no
+			// size ceiling; the shape still has to be one the unpack path
+			// understands.
+			want := entry.Reason == "" && isLlamaArchive(entry.URL) && validEngineSource(entry.URL)
 			if downloadable != want {
 				t.Fatal("engine downloadability drifted from the transfer path", entry.ID)
 			}
@@ -69,6 +72,18 @@ func TestCatalogReferenceEntriesExplainWhyTheyAreNotDownloadable(t *testing.T) {
 	}
 	if reference == 0 {
 		t.Fatal("catalog lost its reference layer")
+	}
+}
+
+// TestCatalogSaysWhichEntriesRunHere keeps the platform note honest: an
+// entry for another platform can be fetched, but cannot be started here.
+func TestCatalogSaysWhichEntriesRunHere(t *testing.T) {
+	current := CurrentPlatform()
+	for _, entry := range Catalog() {
+		want := entry.Platform == "any" || entry.Platform == current
+		if entry.RunsOnCurrentPlatform() != want {
+			t.Fatal("the platform note drifted from the platform key", entry.ID, entry.Platform)
+		}
 	}
 }
 

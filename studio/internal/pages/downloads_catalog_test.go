@@ -9,11 +9,11 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-func TestDownloadsCatalogOffersOnlyFetchableAssets(t *testing.T) {
+func TestDownloadsCatalogOffersEveryBuiltInAddress(t *testing.T) {
 	s := testState()
 	s.selected = "downloads"
 	tt := ui.NewTester(s.view, 1120, 3000)
-	for _, want := range []string{"内置地址", "引擎地址", "模型地址", "参考地址（不可直接下载）"} {
+	for _, want := range []string{"内置地址", "引擎地址", "模型地址", "其他内置地址（下载通道取不到，需自行准备）"} {
 		if !tt.HasText(want) {
 			t.Fatal(want, tt.Texts())
 		}
@@ -48,12 +48,61 @@ func TestDownloadsCatalogReferenceEntriesAreNeverPrefilled(t *testing.T) {
 		if !tt.HasText(entry.Reason) {
 			t.Fatal("reference entry without a reason", entry.ID)
 		}
-		if !tt.HasText("准备说明：" + entry.Doc) {
+		if entry.Doc != "" && !tt.HasText("准备说明："+entry.Doc) {
 			t.Fatal("reference entry without a preparation document", entry.ID)
 		}
 		if s.engineURL == entry.URL || s.modelURL == entry.URL {
 			t.Fatal("reference entry was prefilled", entry.ID)
 		}
+	}
+}
+
+func TestDownloadsCatalogReferenceEntryCanBeChosen(t *testing.T) {
+	s := testState()
+	s.selected = "downloads"
+	tt := ui.NewTester(s.view, 1120, 3000)
+	entry, ok := core.CatalogEntryByID("engine-mlx-lm")
+	if !ok {
+		t.Fatal("reference engine entry missing")
+	}
+	if entry.Downloadable() {
+		t.Fatal("the entry under test is no longer a reference entry")
+	}
+	click(t, tt, "填入下载地址 · "+entry.DisplayName())
+	tt.Frame()
+	if s.engineURL != entry.URL {
+		t.Fatal("the reference address did not reach the download form", s.engineURL)
+	}
+	// The picker keeps its own choice: a reference entry is not one of its
+	// options, so the trigger must not show a raw id.
+	if s.catalog.engineID == entry.ID {
+		t.Fatal("the picker was pointed at an entry it does not offer", entry.ID)
+	}
+}
+
+func TestDownloadsCatalogMarksEntriesForAnotherPlatform(t *testing.T) {
+	s := testState()
+	s.selected = "downloads"
+	tt := ui.NewTester(s.view, 1120, 3000)
+	other := ""
+	for _, entry := range core.Catalog() {
+		if entry.Downloadable() && !entry.RunsOnCurrentPlatform() {
+			other = entry.ID
+			break
+		}
+	}
+	if other == "" {
+		t.Skip("no entry for another platform")
+	}
+	entry, _ := core.CatalogEntryByID(other)
+	click(t, tt, "内置引擎")
+	tt.Frame()
+	tt.Advance(300 * time.Millisecond)
+	tt.Frame()
+	click(t, tt, entry.DisplayName())
+	tt.Frame()
+	if !tt.HasText("该地址对应的产物不能在当前机器上运行") {
+		t.Fatal("the foreign-platform entry is not marked", tt.Texts())
 	}
 }
 

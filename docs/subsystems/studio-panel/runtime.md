@@ -63,10 +63,14 @@
    复用 `FetchEngine` 传输与解包：归档解包保留同级共享库、仅重建归档内相对
    符号链接（`safeLinkTarget` 拒绝越界链接），输出目录已存在或已被历史任务记录占用即拒绝
    （`output_exists`），取消贯穿传输与解包；该传输接口不提供字节读数，引擎任务的   `downloaded_bytes`/`bytes_per_second` 恒为 `null` 并带 `progress_reason`，成功收尾写
-   `engine_path`。所有 `fetchURL` 传输超过 64 MiB 拒绝（`download_too_large`），不静默截断。
+   `engine_path`。引擎归档流式落盘后从磁盘解包，因此没有字节上限；`fetchURL`（uv 安装等小文件）
+   仍拒绝超过 64 MiB 的响应（`download_too_large`），不静默截断。CLI 侧 `engine acquire` 同样
+   没有字节上限，但只下载不解包；`runtime prepare --archive` 只支持 Windows x64，因此 macOS 上
+   由 Studio 自己完成取归档与解包，产出的 `engine_path` 仍指向 `llama-server`。
    下载表单的预填 URL 来自内置地址目录（`Catalog`）：引擎按当前平台取对应归档，模型取
-   目录中体积最小的可下载 GGUF。目录里只有现有通道真能取到的资产可选，其余条目只作参考
-   地址，附不可下载的原因与准备说明，不提供下载入口。
+   目录中体积最小的可下载 GGUF。目录里现有通道真能取到的资产可选（引擎收 llama.cpp 归档或
+   引擎二进制本身，模型收固定 revision 的单个 GGUF）；其余条目同样列出，附不可下载的原因与
+   准备说明，并提供「填入下载地址」按钮，让操作者用合适的工具自行获取。
 9. **关停**：`Shutdown` 立即关闭准入，未终态队列任务标 cancelled、活动任务标 cancelling 并
    取消上下文，待专项准备与 runQueue 排空后停止自启动引擎再置 `shutdownDone`；调用方超时（main 为 30
    秒）不抛弃清理、不改变顺序。

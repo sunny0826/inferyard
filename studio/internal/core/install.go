@@ -126,7 +126,9 @@ func uvAsset() (string, *ApiError) {
 
 const maxFetchBytes = 64 << 20
 
-func fetchURL(ctx context.Context, url string) ([]byte, *ApiError) {
+// httpGet opens a GET request and checks the status, so every download path
+// reports the same failure for a dead or refused URL.
+func httpGet(ctx context.Context, url string) (*http.Response, *ApiError) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, Err("internal_error")
@@ -135,10 +137,19 @@ func fetchURL(ctx context.Context, url string) ([]byte, *ApiError) {
 	if err != nil {
 		return nil, &ApiError{Code: "download_failed", Message: "下载失败，请检查网络后重试。", Details: map[string]any{"url": url, "error": err.Error()}}
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
 		return nil, &ApiError{Code: "download_failed", Message: "下载失败，请检查网络后重试。", Details: map[string]any{"url": url, "status": resp.StatusCode}}
 	}
+	return resp, nil
+}
+
+func fetchURL(ctx context.Context, url string) ([]byte, *ApiError) {
+	resp, e := httpGet(ctx, url)
+	if e != nil {
+		return nil, e
+	}
+	defer resp.Body.Close()
 	if resp.ContentLength > maxFetchBytes {
 		return nil, &ApiError{Code: "download_too_large", Message: "下载超出 64 MiB 上限，请检查来源。", Details: map[string]any{"url": url, "content_length": resp.ContentLength}}
 	}
@@ -237,6 +248,13 @@ func unpackUVZip(archive []byte, target string) *ApiError {
 }
 
 func writeBinary(src io.Reader, target string) *ApiError {
+	return writeBinaryTo(src, target, "install_unpack_failed", "写入工具目录失败。")
+}
+
+// writeBinaryTo writes a binary file into place: it writes a temporary file
+// first and renames it, so a half-written file is never visible under the
+// target name.
+func writeBinaryTo(src io.Reader, target, code, message string) *ApiError {
 	tmp := target + ".tmp"
 	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 	if err != nil {
@@ -246,7 +264,7 @@ func writeBinary(src io.Reader, target string) *ApiError {
 	closeErr := f.Close()
 	if copyErr != nil || closeErr != nil {
 		os.Remove(tmp)
-		return &ApiError{Code: "install_unpack_failed", Message: "写入工具目录失败。"}
+		return &ApiError{Code: code, Message: message}
 	}
 	if err := os.Rename(tmp, target); err != nil {
 		os.Remove(tmp)

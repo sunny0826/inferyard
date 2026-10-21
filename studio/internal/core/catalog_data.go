@@ -56,15 +56,15 @@ var catalogEntries = []CatalogEntry{
 		Family: "llama-cpp", URL: catalogEngineBase + "llama-prism-b10743-adfffbe-bin-win-cuda-12.4-x64.zip",
 		Bytes: 257322810, SHA256: "1b849f713bee42fda258de83770cd422e8f48dd631ce370eb0641f6458c69d87",
 		Revision: "prism-b10743-adfffbe", Platform: "windows/amd64",
-		Reason: "归档 257 MB 超过 64 MiB 下载上限，Studio 引擎通道取不到。",
-		Doc:    "cli/docs/contracts/windows-prism-batch-contract.md",
+		Note: "还需要同版本的 CUDA 运行时归档，Windows 上按 CUDA 契约单独准备。",
+		Doc:  "cli/docs/contracts/windows-prism-batch-contract.md",
 	},
 	{
 		ID: "runtime-windows-cuda-cudart", Kind: CatalogEngine, Title: "CUDA 运行时 · Windows CUDA 12.4 x64",
 		Family: "llama-cpp", URL: catalogEngineBase + "cudart-llama-bin-win-cuda-12.4-x64.zip",
 		Bytes: 391443627, SHA256: "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6",
 		Revision: "prism-b10743-adfffbe", Platform: "windows/amd64",
-		Reason: "运行时归档 391 MB 超过 64 MiB 下载上限，且不是引擎可执行文件。",
+		Reason: "运行时归档不是引擎可执行文件，解包得不到 llama-server；需按 Windows CUDA 契约单独准备。",
 		Doc:    "cli/docs/contracts/windows-prism-batch-contract.md",
 	},
 	{
@@ -72,7 +72,7 @@ var catalogEntries = []CatalogEntry{
 		Family: "mlx-lm", URL: "https://files.pythonhosted.org/packages/d1/4f/000eefdeb41388782b47e7f39904cf2d9e7e49a60df5e172097c358dba8e/mlx_lm-0.32.2-py3-none-any.whl",
 		Bytes: 546040, SHA256: "5c0991248cfff5872503d74f466d2532dd8cb7fb3670cb9be7a06d7305dadc04",
 		Revision: "0.32.2", Platform: "darwin/arm64",
-		Reason: "Python 轮子是安装依赖，不是引擎归档；Studio 引擎通道只解包 llama.cpp 归档。",
+		Reason: "Python 轮子是安装依赖，不是引擎归档；解包得不到 llama-server，需按本地引擎准备文档单独安装。",
 		Doc:    "cli/docs/local-engine-native-preparation.md",
 	},
 	{
@@ -80,7 +80,7 @@ var catalogEntries = []CatalogEntry{
 		Family: "mlx-lm", URL: "https://files.pythonhosted.org/packages/6d/92/7a999dcf6460525a31e555905cdca2f835ec0d786c528e969e04cd00d158/mlx-0.32.4-cp312-cp312-macosx_15_0_arm64.whl",
 		Bytes: 667599, SHA256: "f0604cb3015091f285c79c7b7dbfcabcfa9948248728c7bab6e0263513c3d3fe",
 		Revision: "0.32.4", Platform: "darwin/arm64",
-		Reason: "Python 轮子是安装依赖，不是引擎归档；Studio 引擎通道只解包 llama.cpp 归档。",
+		Reason: "Python 轮子是安装依赖，不是引擎归档；解包得不到 llama-server，需按本地引擎准备文档单独安装。",
 		Doc:    "cli/docs/local-engine-native-preparation.md",
 	},
 	{
@@ -88,7 +88,7 @@ var catalogEntries = []CatalogEntry{
 		Family: "vllm", URL: "https://github.com/vllm-project/vllm/releases/download/v0.31.0/vllm-0.31.0%2Bcpu-cp312-cp312-macosx_11_0_arm64.whl",
 		Bytes: 29500084, SHA256: "21378516a51ff15029f71168e827b94660e21b39484eb52277166f01ac7dd686",
 		Revision: "v0.31.0", Platform: "darwin/arm64",
-		Reason: "Python 轮子是安装依赖，不是引擎归档；Studio 引擎通道只解包 llama.cpp 归档。",
+		Reason: "Python 轮子是安装依赖，不是引擎归档；解包得不到 llama-server，需按本地引擎准备文档单独安装。",
 		Doc:    "cli/docs/local-engine-native-preparation.md",
 	},
 	{
@@ -96,7 +96,7 @@ var catalogEntries = []CatalogEntry{
 		Family: "vllm", URL: "https://github.com/vllm-project/vllm-metal/releases/download/v0.31.0/vllm_metal-0.31.0-cp312-cp312-macosx_15_0_arm64.whl",
 		Bytes: 4290205, SHA256: "e2ab31296f8c42d8b65c8d5f5490f160087d1070178444870a5672e44aaacf6e",
 		Revision: "v0.31.0", Platform: "darwin/arm64",
-		Reason: "Python 轮子是安装依赖，不是引擎归档；Studio 引擎通道只解包 llama.cpp 归档。",
+		Reason: "Python 轮子是安装依赖，不是引擎归档；解包得不到 llama-server，需按本地引擎准备文档单独安装。",
 		Doc:    "cli/docs/local-engine-native-preparation.md",
 	},
 	{

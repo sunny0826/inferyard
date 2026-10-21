@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
 	"io"
 	"net/http"
 	"os"
@@ -209,6 +210,87 @@ func TestFetchEngineOutputExists(t *testing.T) {
 	_, e := s.FetchEngine(context.Background(), "https://example.test/llama.tar.gz", out, func(string) {})
 	if e == nil || e.Code != "output_exists" {
 		t.Fatalf("err = %+v", e)
+	}
+}
+
+// TestFetchEngineStreamsAnArchiveLargerThanTheInMemoryLimit pins the reason
+// the archive is written to disk: a pinned archive well past the old 64 MiB
+// in-memory ceiling has to reach the disk and unpack.
+func TestFetchEngineStreamsAnArchiveLargerThanTheInMemoryLimit(t *testing.T) {
+	stubInstall(t)
+	// Random bytes, so the compressed archive stays near the raw size: the
+	// body really is larger than the old in-memory ceiling.
+	big := make([]byte, maxFetchBytes+1)
+	if _, err := rand.Read(big); err != nil {
+		t.Fatal(err)
+	}
+	archive := engineTarGz(t, map[string]string{
+		"llama-prism/" + engineBinaryName(): "#!/bin/sh\n",
+		"llama-prism/libimpl.dylib":         string(big),
+	})
+	if int64(len(archive)) <= maxFetchBytes {
+		t.Fatalf("the fixture is not larger than the in-memory limit: %d", len(archive))
+	}
+	installHTTPDo = roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(archive))}, nil
+	}).Do
+	s := installService(t)
+	out := filepath.Join(t.TempDir(), "engine-new")
+	path, e := s.FetchEngine(context.Background(), "https://example.test/llama.tar.gz", out, func(string) {})
+	if e != nil {
+		t.Fatalf("FetchEngine: %+v", e)
+	}
+	if filepath.Base(path) != engineBinaryName() {
+		t.Fatalf("path = %q", path)
+	}
+	if _, err := os.Stat(filepath.Join(out, "llama-prism", "libimpl.dylib")); err != nil {
+		t.Fatal("sibling library missing:", err)
+	}
+	// The staging directory must not be left behind next to the output.
+	entries, err := os.ReadDir(filepath.Dir(out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".engine-download-") {
+			t.Fatal("the staging directory was left behind", entry.Name())
+		}
+	}
+}
+
+// TestFetchEngineFetchesTheEngineBinaryItself covers the plain-file shape:
+// the engine binary alone is a valid engine source.
+func TestFetchEngineFetchesTheEngineBinaryItself(t *testing.T) {
+	stubInstall(t)
+	installHTTPDo = roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("#!/bin/sh\n"))}, nil
+	}).Do
+	s := installService(t)
+	out := filepath.Join(t.TempDir(), "engine-new")
+	path, e := s.FetchEngine(context.Background(), "https://example.test/"+engineBinaryName(), out, func(string) {})
+	if e != nil {
+		t.Fatalf("FetchEngine: %+v", e)
+	}
+	if path != filepath.Join(out, engineBinaryName()) {
+		t.Fatalf("path = %q", path)
+	}
+}
+
+// TestFetchEngineRejectsAPlainFileThatIsNotTheEngine keeps the engine
+// channel from registering a wheel or a runtime archive as an engine.
+func TestFetchEngineRejectsAPlainFileThatIsNotTheEngine(t *testing.T) {
+	stubInstall(t)
+	installHTTPDo = roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("wheel"))}, nil
+	}).Do
+	s := installService(t)
+	out := filepath.Join(t.TempDir(), "engine-new")
+	_, e := s.FetchEngine(context.Background(), "https://example.test/mlx_lm-0.32.2-py3-none-any.whl", out, func(string) {})
+	if e == nil || e.Code != "engine_binary_missing" {
+		t.Fatalf("err = %+v", e)
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Fatal("a rejected download left an output directory behind")
 	}
 }
 

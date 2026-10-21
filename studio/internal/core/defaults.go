@@ -3,7 +3,6 @@ package core
 import (
 	"archive/tar"
 	"archive/zip"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"io"
@@ -42,6 +41,9 @@ func validEngineSource(source string) bool {
 // the sibling shared libraries the engine needs, and returns the llama-server
 // path. Plain single-file URLs are stored unpacked. macOS has no CLI-side
 // runtime prepare, so the Studio side owns archive fetching there.
+//
+// The archive is streamed to disk and unpacked from there, so a large pinned
+// archive costs disk space rather than the whole file in memory.
 func (s *Service) FetchEngine(ctx context.Context, source, outDir string, onStatus func(string)) (string, *ApiError) {
 	if !validEngineSource(source) {
 		return "", &ApiError{Code: "invalid_request", Message: "引擎 URL 不符合要求。"}
@@ -58,16 +60,35 @@ func (s *Service) FetchEngine(ctx context.Context, source, outDir string, onStat
 		}
 		return "", &ApiError{Code: "output_exists", Message: "输出目录已存在，请选择新目录。"}
 	}
+	if err := os.MkdirAll(filepath.Dir(outDir), 0755); err != nil {
+		return "", Err("internal_error")
+	}
+	base := filepath.Base(source)
+	// A plain file is only an engine when it is the engine binary itself.
+	// Anything else — a Python wheel, a runtime archive — is not an engine,
+	// and fetching it would only leave a file that cannot be registered.
+	if !isEngineArchive(base) && base != engineBinaryName() {
+		return "", &ApiError{
+			Code:    "engine_binary_missing",
+			Message: "该地址不是引擎可执行文件或 llama.cpp 归档；请按内置地址的说明自行准备。",
+		}
+	}
 	onStatus("正在下载引擎…")
-	archive, e := fetchURL(ctx, source)
+	// The archive cannot live inside outDir: that directory must not exist
+	// until the download succeeded. It sits in a hidden sibling instead, so
+	// it never mixes with the engines the registry scans.
+	staging, mkErr := os.MkdirTemp(filepath.Dir(outDir), ".engine-download-")
+	if mkErr != nil {
+		return "", Err("internal_error")
+	}
+	defer os.RemoveAll(staging)
+	archivePath, e := fetchURLToFile(ctx, source, staging)
 	if e != nil {
 		return "", e
 	}
+	defer os.Remove(archivePath)
 	if ctx.Err() != nil {
 		return "", Err("cancelled")
-	}
-	if err := os.MkdirAll(filepath.Dir(outDir), 0755); err != nil {
-		return "", Err("internal_error")
 	}
 	if err := os.Mkdir(outDir, 0755); err != nil {
 		if os.IsExist(err) {
@@ -75,18 +96,23 @@ func (s *Service) FetchEngine(ctx context.Context, source, outDir string, onStat
 		}
 		return "", Err("internal_error")
 	}
-	base := filepath.Base(source)
 	var enginePath string
 	switch {
 	case strings.HasSuffix(base, ".tar.gz") || strings.HasSuffix(base, ".tgz"):
 		onStatus("正在解压引擎…")
-		enginePath, e = unpackEngineTarGz(ctx, archive, outDir)
+		enginePath, e = unpackEngineTarGz(ctx, archivePath, outDir)
 	case strings.HasSuffix(base, ".zip"):
 		onStatus("正在解压引擎…")
-		enginePath, e = unpackEngineZip(ctx, archive, outDir)
+		enginePath, e = unpackEngineZip(ctx, archivePath, outDir)
 	default:
 		target := filepath.Join(outDir, base)
-		if e = writeBinary(engineContextReader{ctx, bytes.NewReader(archive)}, target); e == nil {
+		file, openErr := os.Open(archivePath)
+		if openErr != nil {
+			return "", Err("internal_error")
+		}
+		e = writeBinaryTo(engineContextReader{ctx, file}, target, "engine_unpack_failed", "引擎文件写入失败，请检查来源后重试。")
+		file.Close()
+		if e == nil {
 			enginePath = target
 		}
 	}
@@ -103,6 +129,12 @@ func (s *Service) FetchEngine(ctx context.Context, source, outDir string, onStat
 		return "", Err("internal_error")
 	}
 	return enginePath, nil
+}
+
+// isEngineArchive reports whether a file name is an archive shape the engine
+// unpack path understands.
+func isEngineArchive(base string) bool {
+	return strings.HasSuffix(base, ".tar.gz") || strings.HasSuffix(base, ".tgz") || strings.HasSuffix(base, ".zip")
 }
 
 // EngineRoots returns the directories that may hold fetched engines, most
@@ -137,8 +169,15 @@ func safeLinkTarget(target string) bool {
 	return target != "" && !filepath.IsAbs(target) && !strings.Contains(target, "..") && !strings.ContainsRune(target, 0)
 }
 
-func unpackEngineTarGz(ctx context.Context, archive []byte, destDir string) (string, *ApiError) {
-	zr, err := gzip.NewReader(engineContextReader{ctx, bytes.NewReader(archive)})
+// unpackEngineTarGz unpacks a gzipped tar archive from disk, keeping the
+// sibling shared libraries the engine needs.
+func unpackEngineTarGz(ctx context.Context, archivePath, destDir string) (string, *ApiError) {
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return "", Err("internal_error")
+	}
+	defer file.Close()
+	zr, err := gzip.NewReader(engineContextReader{ctx, file})
 	if err != nil {
 		return "", &ApiError{Code: "engine_unpack_failed", Message: "引擎归档损坏，请检查来源后重试。"}
 	}
@@ -187,7 +226,7 @@ func unpackEngineTarGz(ctx context.Context, archive []byte, destDir string) (str
 			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
 				return "", Err("internal_error")
 			}
-			if e := writeBinary(engineContextReader{ctx, tr}, target); e != nil {
+			if e := writeBinaryTo(engineContextReader{ctx, tr}, target, "engine_unpack_failed", "引擎归档写入失败，请检查来源后重试。"); e != nil {
 				return "", e
 			}
 			if filepath.Base(name) == engineBinaryName() {
@@ -200,11 +239,13 @@ func unpackEngineTarGz(ctx context.Context, archive []byte, destDir string) (str
 	return enginePath, nil
 }
 
-func unpackEngineZip(ctx context.Context, archive []byte, destDir string) (string, *ApiError) {
-	zr, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+// unpackEngineZip unpacks a zip archive from disk.
+func unpackEngineZip(ctx context.Context, archivePath, destDir string) (string, *ApiError) {
+	zr, err := zip.OpenReader(archivePath)
 	if err != nil {
 		return "", &ApiError{Code: "engine_unpack_failed", Message: "引擎归档损坏，请检查来源后重试。"}
 	}
+	defer zr.Close()
 	enginePath := ""
 	for _, f := range zr.File {
 		if ctx.Err() != nil {
@@ -231,7 +272,7 @@ func unpackEngineZip(ctx context.Context, archive []byte, destDir string) (strin
 		if err != nil {
 			return "", &ApiError{Code: "engine_unpack_failed", Message: "引擎归档损坏，请检查来源后重试。"}
 		}
-		e := writeBinary(engineContextReader{ctx, rc}, target)
+		e := writeBinaryTo(engineContextReader{ctx, rc}, target, "engine_unpack_failed", "引擎归档写入失败，请检查来源后重试。")
 		rc.Close()
 		if e != nil {
 			return "", e
@@ -253,4 +294,37 @@ func (r engineContextReader) Read(p []byte) (int, error) {
 		return 0, err
 	}
 	return r.reader.Read(p)
+}
+
+// fetchURLToFile streams a URL into a temporary file in dir and returns its
+// path. The archive is never held in memory, so a large pinned archive costs
+// disk space instead.
+func fetchURLToFile(ctx context.Context, source, dir string) (string, *ApiError) {
+	resp, e := httpGet(ctx, source)
+	if e != nil {
+		return "", e
+	}
+	defer resp.Body.Close()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", Err("internal_error")
+	}
+	handle, err := os.CreateTemp(dir, "archive-*")
+	if err != nil {
+		return "", Err("internal_error")
+	}
+	path := handle.Name()
+	_, copyErr := io.Copy(handle, engineContextReader{ctx, resp.Body})
+	closeErr := handle.Close()
+	if copyErr != nil {
+		os.Remove(path)
+		if ctx.Err() != nil {
+			return "", Err("cancelled")
+		}
+		return "", &ApiError{Code: "download_failed", Message: "下载中断，请重试。", Details: map[string]any{"url": source}}
+	}
+	if closeErr != nil {
+		os.Remove(path)
+		return "", Err("internal_error")
+	}
+	return path, nil
 }

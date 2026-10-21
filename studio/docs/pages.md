@@ -116,14 +116,21 @@ libraries and recreating only in-archive relative symlinks — into a fresh dire
 never overwrites existing files.
 
 Below the form card the page shows the built-in address catalogue. Each entry pins one
-asset with its measured byte count and SHA256. Only assets the current download channels
-can really fetch are offered as choices: the engine channel unpacks llama.cpp archives up
-to 64 MiB, and the model channel accepts a single GGUF at a fixed revision. The other
-adapted runtimes stay visible in a folded “参考地址（不可直接下载）” section with the
-address, the reason it is not downloadable and the preparation document — no download
-button. An entry that shares its title with another carries its platform, so the
-llama-server builds stay distinguishable. Picking a built-in address fills the form; a
-hand-edited URL is never overwritten by the catalogue.
+asset with its measured byte count and SHA256. The engine channel streams the archive to
+disk and unpacks it there, so a pinned archive of any size is fetchable; what the channel
+accepts is the shape, not the size — a llama.cpp archive, or the engine binary itself. The
+model channel accepts a single GGUF at a fixed revision. The addresses the channels cannot
+fetch — Python wheels, the CUDA runtime archive, the SGLang source tree, the LM Studio
+page, the directory model — stay visible in a folded “其他内置地址（下载通道取不到，需自行准备）”
+section with the address, the reason it is not downloadable and the preparation document.
+Each of them has a “填入下载地址 · <name>” button, so the operator can put the address in
+the form and fetch it with the tool that suits it, instead of copying it by hand. An entry
+for another platform can also be fetched — the operator may be preparing it for another
+machine — so it stays selectable, and it is marked “非本机” in the picker with a note
+under the form saying the product cannot run on this machine. An entry that shares its
+title with another carries its platform, so the llama-server builds stay distinguishable.
+Picking a built-in address fills the form; a hand-edited URL is never overwritten by the
+catalogue.
 
 The initial effective workspace is `~/.inferyard`. Preparing directories is an explicit,
 idempotent action; saving settings alone does not create them. CLI `init` requires a new

@@ -18,21 +18,21 @@ type catalogSelectState struct {
 	appliedModelID    string
 }
 
-// catalogView renders the read-only built-in address section. Only assets
-// the current download channel can really fetch are offered as choices; the
-// rest stay visible as reference entries with the reason and the preparation
-// document, never as a prefilled URL that is bound to fail.
+// catalogView renders the built-in address section. Assets the current
+// download channel can fetch are offered as choices; the rest stay visible
+// with the reason and the preparation document, and can still be put into
+// the form for the operator to fetch with the tool that suits them.
 func (s *viewState) catalogView(c *ui.Context) {
 	entries := core.Catalog()
 	card(c, "内置地址", func() {
-		ui.Text(c, "Studio 内置一份固定版本的下载地址目录。只有现有下载通道真能取到的资产可以直接下载；其余只作参考地址与准备说明。")
+		ui.Text(c, "Studio 内置一份固定版本的下载地址目录。选中的地址会填入上方的下载表单；下载通道取不到的条目也列在这里，注明原因与准备说明。")
 		s.catalogKindView(c, core.CatalogEngine, entries)
 		s.catalogKindView(c, core.CatalogModel, entries)
 	})
 }
 
 // catalogKindView renders one kind of built-in address: the choices the
-// download channel accepts, then the reference-only entries.
+// download channel accepts, then the entries it cannot fetch.
 func (s *viewState) catalogKindView(c *ui.Context, kind core.CatalogKind, entries []core.CatalogEntry) {
 	title, label, placeholder := "引擎地址", "内置引擎", "请选择内置引擎"
 	target := &s.engineURL
@@ -54,6 +54,9 @@ func (s *viewState) catalogKindView(c *ui.Context, kind core.CatalogKind, entrie
 				continue
 			}
 			note := core.PlatformLabel(entry.Platform) + " · " + catalogSize(entry.Bytes)
+			if !entry.RunsOnCurrentPlatform() {
+				note += " · 非本机"
+			}
 			choices = append(choices, pickerOption{value: entry.ID, label: entry.DisplayName(), note: note})
 		}
 		if len(choices) == 0 {
@@ -74,6 +77,12 @@ func (s *viewState) catalogKindView(c *ui.Context, kind core.CatalogKind, entrie
 		}
 		ui.Text(c, catalogEntrySummary(entry)).FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
 		ui.Text(c, "SHA256 "+entry.SHA256).FontSize(max(12, c.Theme().Rem(.8))).TextColor(c.Theme().TextMuted).Selectable()
+		if !entry.RunsOnCurrentPlatform() {
+			ui.Text(c, "该地址对应的产物不能在当前机器上运行；下载后需转到对应平台。").FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
+		}
+		if entry.Note != "" {
+			ui.Text(c, "下载后还需："+entry.Note).FontSize(max(12, c.Theme().Rem(.85))).TextColor(c.Theme().TextMuted)
+		}
 	})
 	references := []core.CatalogEntry{}
 	for _, entry := range entries {
@@ -84,7 +93,7 @@ func (s *viewState) catalogKindView(c *ui.Context, kind core.CatalogKind, entrie
 	if len(references) == 0 {
 		return
 	}
-	componentFoldOpen(c, "catalog-reference-"+string(kind), "参考地址（不可直接下载）", func() {
+	componentFoldOpen(c, "catalog-reference-"+string(kind), "其他内置地址（下载通道取不到，需自行准备）", func() {
 		for _, entry := range references {
 			ui.Column(c).Gap(c.Theme().Space(0.5)).Children(func() {
 				ui.Text(c, entry.DisplayName()).Bold()
@@ -93,7 +102,15 @@ func (s *viewState) catalogKindView(c *ui.Context, kind core.CatalogKind, entrie
 				if entry.Bytes > 0 {
 					ui.Text(c, catalogSize(entry.Bytes)).FontSize(max(12, c.Theme().Rem(.8))).TextColor(c.Theme().TextMuted)
 				}
-				ui.Text(c, "准备说明："+entry.Doc).FontSize(max(12, c.Theme().Rem(.8))).TextColor(c.Theme().TextMuted)
+				if entry.Doc != "" {
+					ui.Text(c, "准备说明："+entry.Doc).FontSize(max(12, c.Theme().Rem(.8))).TextColor(c.Theme().TextMuted)
+				}
+				button(c, "填入下载地址 · "+entry.DisplayName()).AlignSelf(ui.Start).OnClick(func() {
+					// The picker keeps its own choice: a reference entry is
+					// not one of its options, and pointing it at an unknown
+					// id would show that id in the trigger.
+					*target = entry.URL
+				})
 			})
 		}
 	})
