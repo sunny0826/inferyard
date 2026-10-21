@@ -59,7 +59,7 @@ func (s *viewState) applyDashboard(v dashboardSnapshot, e *core.ApiError) {
 	if !s.assetsPreset {
 		s.assetsPreset = true
 		if s.modelURL == "" {
-			s.modelURL = core.DefaultModelURL
+			s.modelURL = core.DefaultModelURL()
 		}
 		if s.engineURL == "" {
 			s.engineURL = core.DefaultEngineURL()

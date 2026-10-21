@@ -58,7 +58,7 @@ func TestDownloadsPageMigrationEmptyAndValidation(t *testing.T) {
 	if len(modelUINodes(tt, "text", "下载任务")) != 0 || tt.HasText("凭据环境变量名") {
 		t.Fatal(tt.Texts())
 	}
-	if s.engineURL != core.DefaultEngineURL() || s.modelURL != core.DefaultModelURL {
+	if s.engineURL != core.DefaultEngineURL() || s.modelURL != core.DefaultModelURL() {
 		t.Fatal("missing defaults")
 	}
 	engine, engineOK := tt.Find("下载引擎")
@@ -87,7 +87,7 @@ func TestDownloadsPageMigrationEmptyAndValidation(t *testing.T) {
 			}
 		})
 	}
-	s.modelURL = core.DefaultModelURL
+	s.modelURL = core.DefaultModelURL()
 	s.failure = nil
 	tt.Frame()
 	click(t, tt, "需要凭据时")

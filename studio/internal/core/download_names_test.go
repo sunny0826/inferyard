@@ -67,7 +67,7 @@ func TestModelAutomaticNamesAndToken(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), filepath.Join(root, "weights-2")); err != nil {
 		t.Fatal(err)
 	}
-	a, e := s.CreateModelDownload(CreateDownloadRequest{SourceUrl: DefaultModelURL}, "HF_TOKEN")
+	a, e := s.CreateModelDownload(CreateDownloadRequest{SourceUrl: DefaultModelURL()}, "HF_TOKEN")
 	if e != nil || a.OutName != "weights-3" {
 		t.Fatal(a, e)
 	}
@@ -80,7 +80,7 @@ func TestModelAutomaticNamesAndToken(t *testing.T) {
 		t.Fatal(e)
 	}
 	wait(t, func() bool { return s.Downloads()[0].State == "cancelled" })
-	b, e := s.CreateModelDownload(CreateDownloadRequest{SourceUrl: DefaultModelURL}, "")
+	b, e := s.CreateModelDownload(CreateDownloadRequest{SourceUrl: DefaultModelURL()}, "")
 	if e != nil || b.OutName != "weights-4" {
 		t.Fatal(b, e)
 	}

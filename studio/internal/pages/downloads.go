@@ -15,7 +15,7 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 	if !s.assetsPreset {
 		s.assetsPreset = true
 		if s.modelURL == "" {
-			s.modelURL = core.DefaultModelURL
+			s.modelURL = core.DefaultModelURL()
 		}
 		if s.engineURL == "" {
 			s.engineURL = core.DefaultEngineURL()
@@ -32,6 +32,7 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 	if !s.preparingTask() {
 		s.newDownloadsView(c)
 	}
+	s.catalogView(c)
 }
 
 func (s *viewState) newDownloadsView(c *ui.Context) {
@@ -44,8 +45,17 @@ func (s *viewState) newDownloadsView(c *ui.Context) {
 }
 
 func (s *viewState) modelAssetsView(c *ui.Context) {
-	heading(c, "SmolLM2-135M-Instruct-Q4_K_M", 3)
+	heading(c, "模型 · "+s.modelAssetTitle(), 3)
 	s.modelDownloadForm(c)
+}
+
+// modelAssetTitle names the model the download form is currently pointed at.
+// A hand-edited URL matches no catalogue entry, so it has no title.
+func (s *viewState) modelAssetTitle() string {
+	if entry, ok := core.CatalogEntryByURL(s.modelURL); ok {
+		return entry.DisplayName()
+	}
+	return "自定义地址"
 }
 
 func (s *viewState) modelDownloadForm(c *ui.Context) {
@@ -79,11 +89,20 @@ func (s *viewState) acquireModel() {
 }
 
 func (s *viewState) engineDownloadView(c *ui.Context) {
-	heading(c, "llama-server · 推荐", 3)
+	heading(c, "引擎 · "+s.engineAssetTitle(), 3)
 	field(c, "引擎 URL", &s.engineURL).Description("必填；引擎归档下载地址。").Error(downloadURLError(s.engineURL))
 	primaryButton(c, "下载引擎").AlignSelf(ui.Start).Disabled(s.busy || strings.TrimSpace(s.engineURL) == "").OnClick(func() {
 		s.acquireEngine(strings.TrimSpace(s.engineURL), "")
 	})
+}
+
+// engineAssetTitle names the engine the download form is currently pointed
+// at. A hand-edited URL matches no catalogue entry, so it has no title.
+func (s *viewState) engineAssetTitle() string {
+	if entry, ok := core.CatalogEntryByURL(s.engineURL); ok {
+		return entry.DisplayName()
+	}
+	return "自定义地址"
 }
 
 func (s *viewState) acquireEngine(source, name string) {

@@ -110,8 +110,22 @@ func groupedInt(v int64) string {
 }
 
 func componentFold(c *ui.Context, title string, fn func()) {
-	container := ui.Column(c.Key(title))
+	componentFoldKeyed(c, title, title, fn)
+}
+
+// componentFoldKeyed is a fold whose key differs from its title, so the same
+// title can appear under one parent more than once.
+func componentFoldKeyed(c *ui.Context, key, title string, fn func()) {
+	container := ui.Column(c.Key(key))
 	open := ui.Local(container, "open", func() bool { return false })
+	container.Children(func() { components.Collapsible(c, title, open, components.CollapsibleOptions{}, fn) })
+}
+
+// componentFoldOpen is a fold that starts expanded, for content the user
+// needs to read without an extra click.
+func componentFoldOpen(c *ui.Context, key, title string, fn func()) {
+	container := ui.Column(c.Key(key))
+	open := ui.Local(container, "open", func() bool { return true })
 	container.Children(func() { components.Collapsible(c, title, open, components.CollapsibleOptions{}, fn) })
 }
 

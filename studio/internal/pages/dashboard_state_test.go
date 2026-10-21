@@ -122,7 +122,7 @@ func TestAssetDefaultsApplyOnlyOnce(t *testing.T) {
 	s := testState()
 	s.engine = "/manual/engine"
 	s.applyDashboard(dashboardSnapshot{}, nil)
-	if s.modelURL != core.DefaultModelURL || s.engineURL != core.DefaultEngineURL() || s.engine != "/manual/engine" || !s.assetsPreset {
+	if s.modelURL != core.DefaultModelURL() || s.engineURL != core.DefaultEngineURL() || s.engine != "/manual/engine" || !s.assetsPreset {
 		t.Fatal("initial defaults")
 	}
 	s.modelURL, s.engineURL, s.engine = "", "", ""

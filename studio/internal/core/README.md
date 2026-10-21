@@ -21,3 +21,17 @@ uses the same serial run queue. Atomic task records store identity and lifecycle
 result values. Every open invokes the CLI's read-only `speed-results`; preparation failure
 and cancellation before batch creation remain in history. See the
 [context-speed reference](../../../docs/subsystems/studio-panel/context-speed.md).
+
+The built-in address catalogue lives in `catalog.go` and `catalog_data.go`. Each entry
+pins one asset: kind, title, canonical platform key, URL, measured byte count and
+SHA256. `Downloadable` is derived from the channels that actually fetch assets — the
+engine channel streams the archive to disk and unpacks it there, so it has no byte
+ceiling and accepts a llama.cpp archive or the engine binary itself, and the model
+channel only accepts a single GGUF at a fixed revision — so entries the channels
+cannot retrieve carry a `Reason` and a `Doc` pointer instead of a download path.
+`Note` says what still has to happen after a downloadable entry is fetched.
+`DefaultModelURL` and `DefaultEngineURL` derive the prefilled download URLs from this
+catalogue, so one pinned asset is described in exactly one place. `DisplayName` names
+an entry for the user and appends the platform only when other entries of the same
+kind share its title, so a display name stays unambiguous without repeating the
+platform.
