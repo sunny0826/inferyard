@@ -25,5 +25,9 @@ run = "cd cli && uv run --frozen ruff check src tests scripts"
 run = "cd cli && uv run --frozen python scripts/export_schemas.py --check"
 
 [tasks."test:studio-ui"]
-description = "Run macOS native UI e2e with the simulated Studio backend"
+description = "Run the daily macOS native UI checks (3 key workflows)"
 run = "cd studio && python tests/ui/run.py"
+
+[tasks."test:studio-ui:full"]
+description = "Run all 12 macOS native UI workflows with the simulated Studio backend"
+run = "cd studio && python tests/ui/run.py --suite full"

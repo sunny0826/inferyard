@@ -132,6 +132,7 @@ func TestDesignInvalidFieldsPreserveEdits(t *testing.T) {
 	s.modelURL = "bad url"
 	s.modelName = "../bad"
 	tt = ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.modelDownloadForm(c) }) }, 800, 1200)
+	click(t, tt, "自定义模型地址")
 	for _, label := range []string{"模型 URL（固定 40 位 revision 的 GGUF）"} {
 		nodes := designFieldInputs(tt, label)
 		if len(nodes) == 0 || !nodes[0].FieldByName("invalid").Bool() {

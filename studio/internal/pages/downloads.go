@@ -37,6 +37,7 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 
 func (s *viewState) newDownloadsView(c *ui.Context) {
 	card(c, "新建下载任务", func() {
+		ui.Text(c, "推荐资源 · "+core.PlatformLabel(core.CurrentPlatform())).TextColor(c.Theme().TextMuted)
 		s.engineDownloadView(c)
 		s.modelAssetsView(c)
 		ui.Text(c, "目录名取自设置，占用自动加序号；实际目录名见任务详情。")
@@ -45,21 +46,17 @@ func (s *viewState) newDownloadsView(c *ui.Context) {
 }
 
 func (s *viewState) modelAssetsView(c *ui.Context) {
-	heading(c, "模型 · "+s.modelAssetTitle(), 3)
+	heading(c, "模型", 3)
+	s.catalogChoices(c, core.CatalogModel, core.CurrentPlatform())
+	ui.Text(c, "先用小模型跑通流程；实际运行条件会在测评前检查。").TextColor(c.Theme().TextMuted)
 	s.modelDownloadForm(c)
 }
 
-// modelAssetTitle names the model the download form is currently pointed at.
-// A hand-edited URL matches no catalogue entry, so it has no title.
-func (s *viewState) modelAssetTitle() string {
-	if entry, ok := core.CatalogEntryByURL(s.modelURL); ok {
-		return entry.DisplayName()
-	}
-	return "自定义地址"
-}
-
 func (s *viewState) modelDownloadForm(c *ui.Context) {
-	field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL).Description("必填；使用固定 revision 的 GGUF 下载地址。").Error(downloadURLError(s.modelURL))
+	componentFold(c, "自定义模型地址", func() {
+		field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL).Description("必填；使用固定 revision 的 GGUF 下载地址。").Error(downloadURLError(s.modelURL))
+	})
+	catalogDetails(c, s.modelURL)
 	componentFold(c, "需要凭据时", func() {
 		field(c, "凭据环境变量名（可选）", &s.tokenEnv).Description("仅填写变量名称，不填写凭据值。").Error(tokenNameError(s.tokenEnv))
 		ui.Text(c, "凭据由启动 Studio 的环境提供。")
@@ -89,20 +86,15 @@ func (s *viewState) acquireModel() {
 }
 
 func (s *viewState) engineDownloadView(c *ui.Context) {
-	heading(c, "引擎 · "+s.engineAssetTitle(), 3)
-	field(c, "引擎 URL", &s.engineURL).Description("必填；引擎归档下载地址。").Error(downloadURLError(s.engineURL))
+	heading(c, "引擎", 3)
+	s.catalogChoices(c, core.CatalogEngine, core.CurrentPlatform())
+	componentFold(c, "自定义引擎地址", func() {
+		field(c, "引擎 URL", &s.engineURL).Description("必填；引擎归档下载地址。").Error(downloadURLError(s.engineURL))
+	})
+	catalogDetails(c, s.engineURL)
 	primaryButton(c, "下载引擎").AlignSelf(ui.Start).Disabled(s.busy || strings.TrimSpace(s.engineURL) == "").OnClick(func() {
 		s.acquireEngine(strings.TrimSpace(s.engineURL), "")
 	})
-}
-
-// engineAssetTitle names the engine the download form is currently pointed
-// at. A hand-edited URL matches no catalogue entry, so it has no title.
-func (s *viewState) engineAssetTitle() string {
-	if entry, ok := core.CatalogEntryByURL(s.engineURL); ok {
-		return entry.DisplayName()
-	}
-	return "自定义地址"
 }
 
 func (s *viewState) acquireEngine(source, name string) {

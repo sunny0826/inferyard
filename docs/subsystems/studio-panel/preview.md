@@ -61,10 +61,13 @@
 
 [`tests/ui`](../../../studio/tests/ui/README.md) 使用 XCUITest 构建实际 Go 入口并启动独立
 `--debug-ui` macOS 窗口。测试只按可访问控件操作和断言，不读取 `viewState`、推进测试时钟或用
-场景下拉完成流程；由真实窗口 ticker 推进模拟任务。每个用例重新启动模拟应用，结果写入新的
-`build/ui-e2e/run-*`，失败保留截图与辅助功能树。根级 `mise run test:studio-ui` 和 macOS CI
-调用同一入口；此层与 `ui.NewTester` 内存回归、真实 CLI／假引擎边界测试分别报告。
-原生检查在同一场景中复用已启动的测评，独立用例仍各自创建窗口；覆盖分配、等待和滚动策略
+场景下拉完成流程；由真实窗口 ticker 推进模拟任务。整套测试只启动一次模拟应用，按具名 activity 连续执行，结束时核对进程未替换。结果写入新的
+`build/ui-e2e/run-*`，失败保留截图与辅助功能树。根级 `mise run test:studio-ui` 运行日常精简验收，
+`mise run test:studio-ui:full` 与 macOS CI 运行完整验收；共用入口与场景函数，具体覆盖以
+原生测试说明中的矩阵为准。每轮保存套件名称、执行场景与耗时，精简通过不代表完整通过。
+此层与 `ui.NewTester` 内存回归、真实 CLI／假引擎边界测试分别报告。
+原生检查通过场景切换或「重置场景」隔离独立流程；「任务 · 待运行」提供已准备但未启动的起点，
+避免为失败、取消和专项重复准备环境。完整准备仍由普通测评和首次使用流程覆盖。覆盖分配、等待和滚动策略
 统一记录在上述原生测试说明中，不改变模拟时钟或正式流程。
 
 [`preview_parity_test.go`](../../../studio/internal/pages/preview_parity_test.go) 对正常编排与模拟器运行同一组

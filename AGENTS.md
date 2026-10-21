@@ -77,7 +77,7 @@ rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direc
 rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -tags ui_debug . ./internal/pages -count=1
 ```
 
-影响原生控件交互或模拟流程时，还应在已登录的 macOS 桌面和完整 Xcode 环境下，从仓库根运行 `rtk proxy mise run test:studio-ui`。条件不足时报告未验证范围，不用内存测试替代原生验收。入口与产物说明见 [原生 UI E2E](studio/tests/ui/README.md)；纯文档改动仍按文档检查处理。
+影响原生控件交互或模拟流程时，还应在已登录的 macOS 桌面和完整 Xcode 环境下执行原生验收。日常迭代从仓库根运行 `rtk proxy mise run test:studio-ui`；涉及队列、取消、重试、引擎绑定或测试框架，以及发布前，运行 `rtk proxy mise run test:studio-ui:full`。条件不足时报告未验证范围，不用内存测试或精简套件替代完整原生验收。覆盖矩阵、入口与产物说明见 [原生 UI E2E](studio/tests/ui/README.md)；纯文档改动仍按文档检查处理。
 
 ## Documentation and contracts
 

@@ -19,7 +19,7 @@ Downloads, Device, and Settings.
 | Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
-| Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. A built-in address catalogue lists the pinned engine and model downloads the current download channels can really fetch; the remaining addresses stay visible as reference entries with the reason they are not downloadable and the preparation document. |
+| Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and read each report index inside the main window. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
 
@@ -211,13 +211,14 @@ change task outcomes.
 
 ## Verification boundaries
 
-To test the native preview window end to end on macOS with Xcode, run
-`mise run test:studio-ui` from the repository root. XCUITest launches a fresh
-`--debug-ui` app for each scenario and operates its controls. It covers preparation,
-downloads, model selection, two-bundle execution, live details, reports, cancellation
-and retry. Logs, failure screenshots and the Xcode result stay in a new
+To test the native preview window on macOS with Xcode, run `mise run test:studio-ui`
+from the repository root for daily checks, or `mise run test:studio-ui:full` for
+complete coverage. Each suite uses one `--debug-ui` window throughout. Daily checks
+cover first-use downloads and a two-bundle report, context-speed results and history,
+and resource charts. Full checks also cover cancellation, failures, retry and engine
+binding. Logs, suite metadata, failure screenshots and the Xcode result stay in a new
 `studio/build/ui-e2e/run-*` directory. See [native UI e2e](tests/ui/README.md) for
-requirements and the direct command. CI runs this suite on macOS; Windows/Linux
+requirements and the coverage matrix. CI runs Full on macOS; Windows/Linux
 native UI coverage is not claimed.
 
 From `studio/`, the code checks are:
