@@ -1,7 +1,7 @@
 # InferYard Studio
 
 InferYard Studio evaluates local models through a native Go UI using
-[onevra](https://github.com/oneo-me/onevra) (MIT) and MyGo v0.6.0.
+[onevra](https://github.com/oneo-me/onevra) (MIT) and MyGo v0.6.2.
 Pages call `core.Service` and refresh through in-process events.
 The separately installed [CLI](../cli/README.md) executes operations and owns evidence.
 There is no browser UI, headless mode, REST/SSE server, or generated JavaScript.
@@ -30,8 +30,8 @@ registration, service discovery, download directory naming, and workspace initia
 ## Design and page review
 
 The [Studio Design System](docs/design-system.md) defines shared layout, theme, typography,
-components, feedback, accessibility, and verification rules against the onevra v0.2026.13
-component library on MyGo v0.6.0, including its collapsible, resizable sidebar shell and
+components, feedback, accessibility, and verification rules against the onevra v0.2026.14
+component library on MyGo v0.6.2, including its collapsible, resizable sidebar shell and
 component mapping.
 The [page audit](docs/design-system-audit.md) records implementation gaps across all five
 pages, the run detail view, and the report view. These documents define the target and

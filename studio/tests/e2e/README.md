@@ -13,9 +13,10 @@ From `studio/`:
 mise exec -- go test ./tests/e2e/ -count=1 -timeout 900s -v
 ```
 
-The suite resolves the CLI in order: `INFERYARD_E2E_CLI`, `PATH`, the synced
-in-repo environment (`cli/.venv`), then a `uv run` wrapper (POSIX only). It
-skips when none works. Set `INFERYARD_E2E_ROOT=<dir>` to preserve the
+The suite resolves the CLI in order: `INFERYARD_E2E_CLI`, a `PATH` entry whose
+`config describe --help` succeeds, the synced in-repo environment (`cli/.venv`),
+then a `uv run` wrapper (POSIX only). It skips when none works. An older installed
+CLI that does not accept `config describe` is skipped rather than used. Set `INFERYARD_E2E_ROOT=<dir>` to preserve the
 workspace and blame transcript for post-mortem inspection instead of
 cleaning them up.
 

@@ -1,6 +1,6 @@
 # Studio 面板
 
-InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.13（构建在 MyGo v0.6.0 之上）
+InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.14（构建在 MyGo v0.6.2 之上）
 原生窗口 UI（Go）直接调用进程内
 `core.Service`，CLI 仍是操作的执行者与证据契约的所有者。Studio 作为操作者代理可以启动并管理
 模型服务进程（拥有自启动进程、Studio 关停时停止、从不自动重启），但运行评测、生成报告等一切
@@ -119,7 +119,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.13�
 覆盖六个主页面、运行详情及报告视图。该规范吸收模型页的三区布局（选择/组合状态/只读服务）、主题状态色、
 内联详情和测量展示约定，并补齐表单、无障碍、缩放和验收要求。
 
-组件与窗口基线为 onevra v0.2026.13（构建在 MyGo v0.6.0 之上）：主窗口用 `shells/sidebar.NewShell`
+组件与窗口基线为 onevra v0.2026.14（构建在 MyGo v0.6.2 之上）：主窗口用 `shells/sidebar.NewShell`
 （可折叠可调宽侧栏、浮动 header、macOS titlebar 材质与 Windows Mica），主题用 `theme.Onevra`；
 组件映射与保留例外见
 [组件用法](../../studio/docs/design-system.md#onevra-组件映射)。
