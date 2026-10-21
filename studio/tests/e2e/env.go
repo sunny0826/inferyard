@@ -71,9 +71,10 @@ func repoRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
 }
 
-// ResolveCLI finds a usable inferyard CLI: explicit override, PATH, the
-// in-repo uv environment created by `uv sync`, then a uv wrapper. Tests skip
-// when none works.
+// ResolveCLI finds a usable inferyard CLI: explicit override, a PATH entry that
+// still accepts config describe, the in-repo uv environment created by `uv sync`,
+// then a uv wrapper. Tests skip when none works. An older installed CLI can shadow
+// PATH without the commands this suite drives.
 func ResolveCLI(t *testing.T) string {
 	t.Helper()
 	if override := os.Getenv("INFERYARD_E2E_CLI"); override != "" {
@@ -84,7 +85,9 @@ func ResolveCLI(t *testing.T) string {
 		return abs
 	}
 	if path, err := resolvePath("inferyard"); err == nil {
-		return path
+		if _, helpErr := exec.Command(path, "config", "describe", "--help").CombinedOutput(); helpErr == nil {
+			return path
+		}
 	}
 	project := filepath.Join(repoRoot(t), "cli")
 	// The synced project environment carries a native entry point on every
