@@ -1,9 +1,33 @@
 # Native preview UI e2e
 
-This suite builds the actual Go app with `ui_debug` and opens one native macOS
-window with `--debug-ui` for the entire suite. [XCUITest](https://developer.apple.com/documentation/xcuiautomation/xcuiapplication) drives public controls and checks the
+Both suites build the actual Go app with `ui_debug` and open one native macOS
+window with `--debug-ui` for the entire selected suite. [XCUITest](https://developer.apple.com/documentation/xcuiautomation/xcuiapplication) drives public controls and checks the
 accessibility tree; it does not call preview internals, advance a test clock, or use
 the scene selector to complete workflows.
+
+From the repository root:
+
+```sh
+mise run test:studio-ui       # Daily: 3 key workflows
+mise run test:studio-ui:full  # Full: all 12 workflows; also used by CI
+```
+
+| Coverage | Daily | Full |
+| --- | --- | --- |
+| First use: recommendations, engine/model downloads, two bundles, live queue and report | Yes | Yes |
+| Context-speed result, measurements, history and starting another task | Yes | Yes |
+| Resource charts, missing sources and temperature selection | Yes | Yes |
+| Prepared environment, downloaded-model switching and report preservation | — | Yes |
+| Startup/download failures, cancellation, retries and reset isolation | — | Yes |
+| Context-speed cancellation, missing timing and read failure | — | Yes |
+| Engine hover/start/stop, local directory model and LM Studio binding retry | — | Yes |
+
+Daily selects the same workflow functions used by Full; it does not shorten their
+assertions or simulation. Use Full for queue, cancellation, retry, engine binding,
+or test-harness changes, and before release. Daily success does not establish Full
+coverage. Each result retains an attachment listing the selected suite and workflows.
+Direct Xcode runs default to Full; the Python runner defaults to Daily and passes
+the selection through Xcode's [test-runner environment](https://developer.apple.com/documentation/xcode/environment-variable-reference).
 
 From `studio/`, in a logged-in, unlocked macOS desktop session with full Xcode selected:
 
@@ -21,10 +45,13 @@ unlocked after this initial check.
 
 ```sh
 mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 python tests/ui/run.py
+# Add --suite full for complete coverage.
 ```
 
-The runner creates a new `build/ui-e2e/run-*` directory containing the build, log and
-`Results.xcresult`. It opens and closes only the dedicated `PreviewHost.app` test app
+The runner creates a new `build/ui-e2e/run-*` directory containing the build, log,
+`Results.xcresult` and `run.json` (suite, exit code and elapsed build-and-test seconds).
+The XCTest case duration excludes building; do not compare it with `run.json` elapsed time.
+It opens and closes only the dedicated `PreviewHost.app` test app
 (`local.inferyard.preview-e2e`). It does not package or publish Studio. UI operations
 use simulated data: no CLI/model service, real downloads, or user settings writes.
 Go/Xcode may populate their normal build caches. No output directory is overwritten.
@@ -72,6 +99,9 @@ Windows/Linux native UI acceptance.
 
 Wait helpers check the current condition before polling; an already-present element
 or enabled button needs no extra delay. Pending conditions retain their original timeouts.
+Pending checks use a monotonic deadline and poll every 100 ms while allowing the test
+runner's run loop to process events. A missing condition still fails at the deadline;
+failure screenshots and the accessibility tree remain attached by teardown.
 Scrolling stops when the complete control is inside its viewport. Fractional scroll
 distances round away from zero so a sub-point remainder cannot cause repeated no-op events.
 One XCTest method groups workflows into named activities. The app launches, positions
@@ -81,9 +111,15 @@ state. Reusing the same scene presses Reset instead of selecting the unchanged o
 Failure, cancellation, and context-speed activities start from the prepared scene;
 preparation remains covered by the normal benchmark and first-use activities. Scene
 selection only establishes the starting state; each workflow uses normal page controls.
-The suite has a 600-second total allowance; individual control waits retain their existing
+Each suite has a 600-second total allowance; individual control waits retain their existing
 timeouts. A failure stops the suite and attaches the window and accessibility tree to the
 result, under the failing activity. No simulator clock is accelerated.
+
+Runner argument and failure-reporting checks require no native window:
+
+```sh
+mise exec -- python -m unittest discover -s tests/ui -p test_run.py
+```
 
 The context-speed preview tests drive the existing task form through tier selection,
 five simulated measurements, the six-column result, history reopening, cancellation,

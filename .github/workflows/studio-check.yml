@@ -68,14 +68,18 @@ jobs:
         with:
           persist-credentials: false
       - uses: jdx/mise-action@v5.2.1
-      - name: Native preview UI e2e
-        run: mise run test:studio-ui
+      - name: Native UI runner checks
+        working-directory: studio
+        run: mise exec -- python -m unittest discover -s tests/ui -p test_run.py
+      - name: Full native preview UI e2e
+        run: mise run test:studio-ui:full
       - name: Upload native UI test results
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: studio-native-ui-results
           path: |
+            studio/build/ui-e2e/run-*/run.json
             studio/build/ui-e2e/run-*/xcodebuild.log
             studio/build/ui-e2e/run-*/Results.xcresult
           if-no-files-found: ignore

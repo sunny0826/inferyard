@@ -5,9 +5,15 @@ import XCTest
 final class PreviewUITests: XCTestCase {
     var app: XCUIApplication!
     var currentScene = "任务 · 准备"
+    private var suite = "full"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+        suite = ProcessInfo.processInfo.environment["INFERYARD_UI_SUITE"] ?? "full"
+        guard ["daily", "full"].contains(suite) else {
+            XCTFail("Unknown native UI suite: \(suite)")
+            return
+        }
         app = XCUIApplication()
         app.launchArguments = ["--debug-ui"]
         app.launch()
@@ -36,52 +42,31 @@ final class PreviewUITests: XCTestCase {
         XCTAssertEqual(host.count, 1)
         let process = host.first?.processIdentifier
         XCTAssertEqual(app.state, .runningForeground)
-        XCTContext.runActivity(named: "BenchmarkFromPreparationToReport") { _ in
-            benchmarkFromPreparationToReport()
-        }
-        XCTContext.runActivity(named: "FailureCanRetryThroughNormalControls") { _ in
-            selectScene("任务 · 待运行")
-            failureCanRetryThroughNormalControls()
-        }
-        XCTContext.runActivity(named: "CancellationAllowsAnotherTask") { _ in
-            selectScene("任务 · 待运行")
-            cancellationAllowsAnotherTask()
-        }
-        XCTContext.runActivity(named: "DownloadFailureRetryAndReset") { _ in
-            selectScene("任务 · 准备")
-            downloadFailureRetryAndReset()
-        }
-        XCTContext.runActivity(named: "ContextSpeedResultAndHistory") { _ in
-            selectScene("任务 · 待运行")
-            contextSpeedResultAndHistory()
-        }
-        XCTContext.runActivity(named: "ContextSpeedCancellationDiagnostics") { _ in
-            selectScene("任务 · 待运行")
-            contextSpeedCancellationDiagnostics()
-        }
-        XCTContext.runActivity(named: "ContextSpeedFailureMissingAndReadRetry") { _ in
-            selectScene("任务 · 待运行")
-            contextSpeedFailureMissingAndReadRetry()
-        }
-        XCTContext.runActivity(named: "FirstUseWithoutLocalAssets") { _ in
-            selectScene("首次使用 · 无资源")
-            firstUseWithoutLocalAssets()
-        }
-        XCTContext.runActivity(named: "ResourceChartsAndSourceSelection") { _ in
-            selectScene("资源 · 密集采样与缺测")
-            resourceChartsAndSourceSelection()
-        }
-        XCTContext.runActivity(named: "EngineStatusPanel") { _ in
-            selectScene("任务 · 失败")
-            engineStatusPanel()
-        }
-        XCTContext.runActivity(named: "LocalDirectoryEngineRunsBothScopes") { _ in
-            selectScene("引擎 · 本地安装与目录模型")
-            localDirectoryEngineRunsBothScopes()
-        }
-        XCTContext.runActivity(named: "LMStudioBindingFailureKeepsCompletedScope") { _ in
-            selectScene("引擎 · LM Studio 手动绑定")
-            lmStudioBindingFailureKeepsCompletedScope()
+        let workflows: [(name: String, scene: String?, daily: Bool, run: () -> Void)] = [
+            ("BenchmarkFromPreparationToReport", nil, false, benchmarkFromPreparationToReport),
+            ("FailureCanRetryThroughNormalControls", "任务 · 待运行", false, failureCanRetryThroughNormalControls),
+            ("CancellationAllowsAnotherTask", "任务 · 待运行", false, cancellationAllowsAnotherTask),
+            ("DownloadFailureRetryAndReset", "任务 · 准备", false, downloadFailureRetryAndReset),
+            ("ContextSpeedResultAndHistory", "任务 · 待运行", true, contextSpeedResultAndHistory),
+            ("ContextSpeedCancellationDiagnostics", "任务 · 待运行", false, contextSpeedCancellationDiagnostics),
+            ("ContextSpeedFailureMissingAndReadRetry", "任务 · 待运行", false, contextSpeedFailureMissingAndReadRetry),
+            ("FirstUseWithoutLocalAssets", "首次使用 · 无资源", true, firstUseWithoutLocalAssets),
+            ("ResourceChartsAndSourceSelection", "资源 · 密集采样与缺测", true, resourceChartsAndSourceSelection),
+            ("EngineStatusPanel", "任务 · 失败", false, engineStatusPanel),
+            ("LocalDirectoryEngineRunsBothScopes", "引擎 · 本地安装与目录模型", false, localDirectoryEngineRunsBothScopes),
+            ("LMStudioBindingFailureKeepsCompletedScope", "引擎 · LM Studio 手动绑定", false, lmStudioBindingFailureKeepsCompletedScope),
+        ]
+        let selected = workflows.filter { suite == "full" || $0.daily }
+        XCTAssertEqual(selected.count, suite == "daily" ? 3 : 12)
+        let coverage = XCTAttachment(string: "Suite: \(suite)\n" + selected.map(\.name).joined(separator: "\n"))
+        coverage.name = "Native UI suite coverage"
+        coverage.lifetime = .keepAlways
+        add(coverage)
+        for workflow in selected {
+            XCTContext.runActivity(named: workflow.name) { _ in
+                if let scene = workflow.scene { selectScene(scene) }
+                workflow.run()
+            }
         }
         XCTAssertEqual(app.windows.count, 1)
         let remaining = NSRunningApplication.runningApplications(withBundleIdentifier: "local.inferyard.preview-e2e")

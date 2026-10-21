@@ -211,13 +211,14 @@ change task outcomes.
 
 ## Verification boundaries
 
-To test the native preview window end to end on macOS with Xcode, run
-`mise run test:studio-ui` from the repository root. XCUITest launches a fresh
-`--debug-ui` app for each scenario and operates its controls. It covers preparation,
-downloads, model selection, two-bundle execution, live details, reports, cancellation
-and retry. Logs, failure screenshots and the Xcode result stay in a new
+To test the native preview window on macOS with Xcode, run `mise run test:studio-ui`
+from the repository root for daily checks, or `mise run test:studio-ui:full` for
+complete coverage. Each suite uses one `--debug-ui` window throughout. Daily checks
+cover first-use downloads and a two-bundle report, context-speed results and history,
+and resource charts. Full checks also cover cancellation, failures, retry and engine
+binding. Logs, suite metadata, failure screenshots and the Xcode result stay in a new
 `studio/build/ui-e2e/run-*` directory. See [native UI e2e](tests/ui/README.md) for
-requirements and the direct command. CI runs this suite on macOS; Windows/Linux
+requirements and the coverage matrix. CI runs Full on macOS; Windows/Linux
 native UI coverage is not claimed.
 
 From `studio/`, the code checks are:

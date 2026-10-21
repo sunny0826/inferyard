@@ -70,11 +70,11 @@ extension PreviewUITests {
 
     func expectText(_ text: String, timeout: TimeInterval = 10) {
         let element = self.text(text)
-        XCTAssertTrue(element.exists || element.waitForExistence(timeout: timeout), "Missing text: \(text)")
+        wait("Missing text: \(text)", timeout: timeout) { element.exists }
     }
 
     func expectExists(_ element: XCUIElement, timeout: TimeInterval) {
-        XCTAssertTrue(element.exists || element.waitForExistence(timeout: timeout))
+        wait("Element must exist", timeout: timeout) { element.exists }
     }
 
     func text(_ value: String) -> XCUIElement {
@@ -82,8 +82,15 @@ extension PreviewUITests {
     }
 
     func wait(_ description: String, timeout: TimeInterval, condition: @escaping () -> Bool) {
-        if condition() { return }
-        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition() }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: timeout), .completed, description)
+        let deadline = ProcessInfo.processInfo.systemUptime + timeout
+        while true {
+            if condition() { return }
+            let remaining = deadline - ProcessInfo.processInfo.systemUptime
+            if remaining <= 0 {
+                XCTFail(description)
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(min(0.1, remaining)))
+        }
     }
 }
