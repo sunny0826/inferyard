@@ -19,13 +19,13 @@ llama.cpp 正式路径在 warmup 触发 87.3125°C，MLX-LM 在普通/流式探�
 
 Studio 已接入[五引擎流程](../../../docs/subsystems/studio-panel/local-engines.md)：
 安装注册、模型格式选择、逐题包服务替换或 LM 重绑、取消、未完成题包重试和任务报告；模拟共用页面入口。
-普通内部测试、ui_debug 页面/编排一致性、相关 race、vet、构建隔离、Xcode 测试编译通过；
-CLI 查询回归 46 项、Ruff、schema/catalogue 一致性及 156 个文档链接检查通过。
+Studio 内部与 ui_debug 编排一致性测试、相关 race、vet、构建隔离及 Xcode 测试编译通过；
+CLI 查询回归 46 项通过。
 
-原生 UI E2E 因桌面锁定预检退出 2，未执行窗口用例。
+macOS 原生模拟 UI 已通过（12/12，无跳过），覆盖目录模型双题包和 LM 重绑、失败重试与报告；
+耗时 304.922 秒是单次观测，不代表稳定提速或真实模型、其他平台验收。
 完整 CLI／假引擎套件因真实 CLI 使用全机 host 状态暂未运行；温停 dirty 原件未改。
 五引擎双题包与 Studio 真机闭环仍待验收：需稳定温度条件及既有 LM 后台管理授权。
-受控回归和绑定成功不代替完整测评，历史短诊断不授予正式资格。
 
 当前规则见[契约](../contracts/local-engines.md)，剩余事项见[实施计划](../plans/local-engines.md)。
 
