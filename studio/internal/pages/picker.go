@@ -11,7 +11,17 @@ import (
 // visible with their reason but cannot be chosen, by pointer or keyboard.
 type pickerOption struct {
 	value, note string
-	disabled    bool
+	// label is the text shown for the option. It defaults to the value.
+	label    string
+	disabled bool
+}
+
+// display returns the text shown for the option.
+func (o pickerOption) display() string {
+	if o.label != "" {
+		return o.label
+	}
+	return o.value
 }
 
 // pickerSelect renders a onevra Select with a search field and annotated
@@ -24,6 +34,13 @@ func pickerSelect(c *ui.Context, label, placeholder string, selected *string, qu
 		value := *selected
 		if value == "" {
 			value = placeholder
+		} else {
+			for _, opt := range options {
+				if opt.value == value {
+					value = opt.display()
+					break
+				}
+			}
 		}
 		components.Text(c, value).SingleLine()
 	})
@@ -32,13 +49,13 @@ func pickerSelect(c *ui.Context, label, placeholder string, selected *string, qu
 		shown := 0
 		q := strings.ToLower(strings.TrimSpace(*query))
 		for _, opt := range options {
-			if q != "" && !strings.Contains(strings.ToLower(opt.value), q) {
+			if q != "" && !strings.Contains(strings.ToLower(opt.display()), q) {
 				continue
 			}
 			shown++
 			row := func() {
 				ui.Column(c).Gap(t.Space(0.5)).Children(func() {
-					ui.Text(c, opt.value)
+					ui.Text(c, opt.display())
 					if opt.note != "" {
 						ui.Text(c, opt.note).FontSize(max(12, t.Rem(.85))).TextColor(t.TextMuted)
 					}
@@ -47,7 +64,7 @@ func pickerSelect(c *ui.Context, label, placeholder string, selected *string, qu
 			if opt.disabled {
 				ui.Column(c).Padding(t.Space(1.5), t.Space(2.5)).Children(func() {
 					ui.Column(c).Gap(t.Space(0.5)).Children(func() {
-						ui.Text(c, opt.value).TextColor(t.TextMuted)
+						ui.Text(c, opt.display()).TextColor(t.TextMuted)
 						if opt.note != "" {
 							ui.Text(c, opt.note).FontSize(max(12, t.Rem(.85))).TextColor(t.TextMuted)
 						}

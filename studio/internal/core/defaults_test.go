@@ -48,7 +48,7 @@ func TestDefaultEngineURLPlatforms(t *testing.T) {
 	if runtime.GOOS+"/"+runtime.GOARCH == "darwin/arm64" && !strings.HasSuffix(u, "macos-arm64.tar.gz") {
 		t.Fatalf("DefaultEngineURL = %q", u)
 	}
-	if u != "" && !strings.HasPrefix(u, engineReleaseBase) {
+	if u != "" && !strings.HasPrefix(u, catalogEngineBase) {
 		t.Fatalf("DefaultEngineURL outside pinned release: %q", u)
 	}
 }

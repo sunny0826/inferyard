@@ -142,6 +142,8 @@ type viewState struct {
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                string
+	catalog                                                                             catalogSelectState
+	catalogEngineQuery, catalogModelQuery                                               string
 	historyTable, reportsTable                                                          pageTableState
 	reportSources                                                                       components.ListState
 	reportChoices                                                                       ui.Selection[any]
@@ -300,6 +302,7 @@ func (s *viewState) selectTask(id string) {
 	s.detailMu.Unlock()
 	go s.refresh(false)
 }
+
 // view builds the in-memory test view of the same pages the window shows.
 // It has no shell around it, so it builds the toast viewport itself.
 func (s *viewState) view(c *ui.Context) {

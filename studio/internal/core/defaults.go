@@ -14,36 +14,9 @@ import (
 	"strings"
 )
 
-// DefaultModelURL is the built-in tiny test model (SmolLM2-135M Q4_K_M, about
-// 100 MiB) so first-run users can pull a working model without hunting for a
-// URL. The revision is pinned; bump deliberately with releases.
-const DefaultModelURL = "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/blob/9e6855bc4be717fca1ef21360a1db4b29d5c559a/SmolLM2-135M-Instruct-Q4_K_M.gguf"
-
-// engineReleaseBase is the pinned Prism llama.cpp release the CLI contracts
-// reference (see cli/docs/contracts/windows-prism-batch-contract.md).
-const engineReleaseBase = "https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10743-adfffbe/"
-
-// DefaultEngineURL returns the pinned Prism engine archive for the current
-// platform, or "" when no CPU build is known.
-func DefaultEngineURL() string {
-	asset := ""
-	switch runtime.GOOS + "/" + runtime.GOARCH {
-	case "darwin/arm64":
-		asset = "llama-prism-b10743-adfffbe-bin-macos-arm64.tar.gz"
-	case "darwin/amd64":
-		asset = "llama-prism-b10743-adfffbe-bin-macos-x64.tar.gz"
-	case "linux/amd64":
-		asset = "llama-prism-b10743-adfffbe-bin-ubuntu-x64.tar.gz"
-	case "linux/arm64":
-		asset = "llama-prism-b10743-adfffbe-bin-ubuntu-arm64.tar.gz"
-	case "windows/amd64":
-		asset = "llama-prism-b10743-adfffbe-bin-win-cpu-x64.zip"
-	}
-	if asset == "" {
-		return ""
-	}
-	return engineReleaseBase + asset
-}
+// The built-in address list lives in catalog.go; these two helpers keep the
+// prefilled download URLs pointing at it, so one pinned asset is described
+// in exactly one place.
 
 func engineBinaryName() string {
 	if runtime.GOOS == "windows" {
