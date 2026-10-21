@@ -170,7 +170,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 					HideLegend: true, Label: metric.label + "曲线", PlotHeight: 140, AnimationDuration: -1,
 					Description: "本来源独立刻度与时间，左右方向键选择样本。",
 					Detail: func(c *ui.Context, selection chart.Selection) {
-						ui.Column(c).MinHeight(theme.Space(6)).Children(func() {
+						ui.Column(c).Children(func() {
 							if selection.Index >= 0 && selection.Index < len(chosen.points) {
 								point := chosen.points[selection.Index]
 								value := number(point.Value)

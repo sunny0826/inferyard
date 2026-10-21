@@ -1,7 +1,7 @@
 # Studio Design System
 
 本规范面向 Studio 页面设计、开发与验收。适用六个主页面、运行详情和主窗口内报告视图。
-以 onevra v0.2026.12 为组件基线，它构建在 MyGo v0.5.5 之上；CLI 生成的报告正文继续遵守
+以 onevra v0.2026.13 为组件基线，它构建在 MyGo v0.6.0 之上；CLI 生成的报告正文继续遵守
 [报告契约](../../cli/docs/contracts/report-contract.md)。
 
 本规范由模型页已有视觉规格扩展为全局规则。本文是目标规范，不代表现有页面已经全部满足；
@@ -13,8 +13,8 @@
 | 来源 | 规定什么 |
 | --- | --- |
 | [Studio 子系统参考](../../docs/subsystems/studio-panel.md)与 CLI 契约 | 数据含义、状态、操作边界及失败行为；视觉设计不得改变它们 |
-| [onevra v0.2026.12](https://github.com/oneo-me/onevra) 组件契约（`components/doc.go`）与 `theme` 包文档 | 组件句柄生命周期、控件语义、主题调色板与外壳行为 |
-| MyGo v0.5.5 官方文档与源码 | API、布局、主题、键盘和辅助技术行为 |
+| [onevra v0.2026.13](https://github.com/oneo-me/onevra) 组件契约（`components/doc.go`）与 `theme` 包文档 | 组件句柄生命周期、控件语义、主题调色板与外壳行为 |
+| MyGo v0.6.0 官方文档与源码 | API、布局、主题、键盘和辅助技术行为 |
 | 本文 | Studio 的信息层级、组件用法、文案、尺寸策略和验收要求 |
 | [页面原型](prototypes/) | 页面设计基准（任务页、模型、设置）；CSS、浏览器截图不作为原生验收结果 |
 
@@ -25,14 +25,14 @@ onevra 在 MyGo 之上提供产品中立的常用控件与侧栏外壳，但没�
 
 官方参考固定到实际依赖版本，升级 MyGo 或 onevra 时一起复核：
 
-- [Styling and themes](https://github.com/egoist/mygo/blob/v0.5.5/docs/ui/styling.md)：语义颜色、`Space`、`Rem`、系统偏好。
-- [Layout](https://github.com/egoist/mygo/blob/v0.5.5/docs/ui/layout.md)：DIP、伸缩、约束与滚动。
-- [Text](https://github.com/egoist/mygo/blob/v0.5.5/docs/ui/text.md)：文字显示与选择。
-- [Form](https://github.com/egoist/mygo/blob/v0.5.5/docs/ui/form.md)：标签、说明与错误关联。
-- [Accessibility](https://github.com/egoist/mygo/blob/v0.5.5/docs/ui/accessibility.md)：名称、标题层级、状态、公告。
-- [Table](https://github.com/egoist/mygo/blob/v0.5.5/docs/ui/table.md)：列宽、横向滚动、选择和键盘提交。
-- [Progress](https://github.com/egoist/mygo/blob/v0.5.5/docs/ui/progress.md)：确定进度与不定活动。
-- [Testing](https://github.com/egoist/mygo/blob/v0.5.5/docs/ui/testing.md)：内存渲染与交互测试。
+- [Styling and themes](https://github.com/egoist/mygo/blob/v0.6.0/docs/ui/styling.md)：语义颜色、`Space`、`Rem`、系统偏好。
+- [Layout](https://github.com/egoist/mygo/blob/v0.6.0/docs/ui/layout.md)：DIP、伸缩、约束与滚动。
+- [Text](https://github.com/egoist/mygo/blob/v0.6.0/docs/ui/text.md)：文字显示与选择。
+- [Form](https://github.com/egoist/mygo/blob/v0.6.0/docs/ui/form.md)：标签、说明与错误关联。
+- [Accessibility](https://github.com/egoist/mygo/blob/v0.6.0/docs/ui/accessibility.md)：名称、标题层级、状态、公告。
+- [Table](https://github.com/egoist/mygo/blob/v0.6.0/docs/ui/table.md)：列宽、横向滚动、选择和键盘提交。
+- [Progress](https://github.com/egoist/mygo/blob/v0.6.0/docs/ui/progress.md)：确定进度与不定活动。
+- [Testing](https://github.com/egoist/mygo/blob/v0.6.0/docs/ui/testing.md)：内存渲染与交互测试。
 
 ## 页面结构
 
@@ -98,8 +98,10 @@ onevra 在 MyGo 之上提供产品中立的常用控件与侧栏外壳，但没�
 取消请求发出后显示“取消中／等待收尾”，直到终态到达；不立即显示“已取消”。
 普通可恢复操作不增加确认框；单题包等契约要求的显式选择仍保留。
 
-成功 Toast 使用 MyGo 自带公告能力。异步错误、阻断或页面变化没有 Toast 时，须提供
-一次性辅助技术公告或合理的焦点转移；不能在每次渲染或每个采样点重复播报。
+成功 Toast 使用 MyGo 自带公告能力。Toast 固定在窗口顶部居中，位置由
+`pageShellOptions` 显式指定为 `components.ToastTop`；不依赖 Onevra 的默认值，因为
+v0.2026.13 的升级把默认位置从底部改到了顶部。异步错误、阻断或页面变化没有 Toast
+时，须提供一次性辅助技术公告或合理的焦点转移；不能在每次渲染或每个采样点重复播报。
 刷新不抢焦点；关闭对话框或返回列表后恢复到合理位置。
 
 ## 状态、空态与错误

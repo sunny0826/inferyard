@@ -300,26 +300,28 @@ func (s *viewState) selectTask(id string) {
 	s.detailMu.Unlock()
 	go s.refresh(false)
 }
+// view builds the in-memory test view of the same pages the window shows.
+// It has no shell around it, so it builds the toast viewport itself.
 func (s *viewState) view(c *ui.Context) {
-	if s.pendingToast != "" {
-		message := s.pendingToast
-		s.pendingToast = ""
-		c.AddToast(ui.Toast{ID: message, Title: message})
-	}
-	s.announceChanges(c)
-
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
 		ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
 		s.contentView(c)
 	})
+	studioToasts(c)
 }
 
 // contentView builds the page area below the shell's floating header: the
 // corner status stays fixed while page content scrolls beneath it.
+//
+// The completion toast and the assistive-technology announcements are consumed
+// here, so that both the production shell and the preview window show them.
+// The shell builds its toast viewport around this content, which is where the
+// toast appears.
 func (s *viewState) contentView(c *ui.Context) {
+	s.consumeFeedback(c)
 	ui.Column(c).Grow(1).MinWidth(0).Fill().Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
 		s.cornerStatus(c)
-		ui.Scroll(c).Grow(1).Key(s.selected).TrackScroll(s.pageScroll()).Padding(c.Theme().Space(6)).Children(func() {
+		ui.Scroll(c.Key(s.selected)).Grow(1).TrackScroll(s.pageScroll()).Padding(c.Theme().Space(6)).Children(func() {
 			ui.Column(c).Gap(c.Theme().Space(4)).Children(func() {
 				s.feedback(c)
 				if !s.loaded {

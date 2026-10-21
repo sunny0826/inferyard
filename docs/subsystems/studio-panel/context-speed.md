@@ -78,4 +78,4 @@ Context 在选择器、进度、结果与历史中显示为 `64k`、`128k`、`25
 保留原件前后 hash、请求数和无HTML证据；Go e2e 消费真实结果。
 其中 host/review 是显式测试注入，不代表正式 init 已通过，也不代表64K性能测量。
 当前原生窗口、真实 CLI／模型和独立审核的验收进度集中记录在
-[backlog](../../../cli/docs/backlog.md#长上下文速度专项测评)。
+[backlog](../../../cli/docs/backlog/context-speed.md#长上下文速度专项测评)。

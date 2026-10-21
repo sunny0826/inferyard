@@ -1,6 +1,6 @@
 # Studio 面板
 
-InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.12（构建在 MyGo v0.5.5 之上）
+InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.13（构建在 MyGo v0.6.0 之上）
 原生窗口 UI（Go）直接调用进程内
 `core.Service`，CLI 仍是操作的执行者与证据契约的所有者。Studio 作为操作者代理可以启动并管理
 模型服务进程（拥有自启动进程、Studio 关停时停止、从不自动重启），但运行评测、生成报告等一切
@@ -119,7 +119,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.12�
 覆盖六个主页面、运行详情及报告视图。该规范吸收模型页的三区布局（选择/组合状态/只读服务）、主题状态色、
 内联详情和测量展示约定，并补齐表单、无障碍、缩放和验收要求。
 
-组件与窗口基线为 onevra v0.2026.12（构建在 MyGo v0.5.5 之上）：主窗口用 `shells/sidebar.NewShell`
+组件与窗口基线为 onevra v0.2026.13（构建在 MyGo v0.6.0 之上）：主窗口用 `shells/sidebar.NewShell`
 （可折叠可调宽侧栏、浮动 header、macOS titlebar 材质与 Windows Mica），主题用 `theme.Onevra`；
 组件映射与保留例外见
 [组件用法](../../studio/docs/design-system.md#onevra-组件映射)。
@@ -129,7 +129,11 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.12�
 （编号圆点 + 纵向连接线，内容铺在页面背景上不用卡片，只渲染当前阶段），移除运行历史、快速运行与任务队列卡；运行详情为页内子视图，通过「返回运行」回到任务。
 
 共享标题、活动进度、换行按钮和一次性公告由 `pages/design_system.go` 承载；
-字段提示由 `pages/form_validation.go` 承载。页面首次加载、刷新与失败分别呈现，刷新失败保留已有数据。
+字段提示由 `pages/form_validation.go` 承载。成功 Toast 与一次性公告在
+`pages/window.go` 的 `contentView` 中消费，主窗口、预览窗口与内存测试视图共用这一条路径，
+因此三者的反馈行为一致。Toast 位置由 `pages/window_shell.go` 的 `pageShellOptions` 显式
+固定为 `components.ToastTop`（顶部居中），不依赖 onevra 的默认常量。
+页面首次加载、刷新与失败分别呈现，刷新失败保留已有数据。
 已实施项、回归入口与本轮验证边界见
 [页面审查](../../studio/docs/design-system-audit.md)。当前整改进度见
 [backlog](../../cli/docs/backlog.md#inferyard-studio-后续工作)。数据层 `null` 及原因保持原契约，

@@ -69,6 +69,19 @@ func (s *viewState) submissionFailed(e *core.ApiError) {
 	delete(s.announcedErrors, errorAnnouncement(e))
 }
 
+// consumeFeedback shows the pending completion message as a toast and
+// announces what changed to assistive technology. It runs where the page
+// content is built, so that the production window and the preview window
+// behave the same.
+func (s *viewState) consumeFeedback(c *ui.Context) {
+	if s.pendingToast != "" {
+		message := s.pendingToast
+		s.pendingToast = ""
+		c.AddToast(ui.Toast{ID: message, Title: message})
+	}
+	s.announceChanges(c)
+}
+
 func (s *viewState) announceChanges(c *ui.Context) {
 	page := s.selected
 	if page == "dashboard" && s.detailID != "" {

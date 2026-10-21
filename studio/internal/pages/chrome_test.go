@@ -66,8 +66,8 @@ func TestCompletionToastAndInlineError(t *testing.T) {
 		t.Fatal("completion was not consumed as a toast", tt.Texts())
 	}
 	toast, ok := tt.Find("设置已保存。")
-	if !ok || toast.Y < 600 {
-		t.Fatalf("message is not in toast viewport: %+v", toast)
+	if !ok || toast.Y > 200 {
+		t.Fatalf("message is not in the top toast viewport: %+v", toast)
 	}
 	closeToast = true
 	tt.Frame()
