@@ -24,7 +24,7 @@ import (
 const installPython = "3.15.0"
 
 // uvRelease pins the standalone uv build downloaded when no uv is found.
-const uvRelease = "0.13.1"
+const uvRelease = "0.13.4"
 
 // Replaceable in tests.
 var (

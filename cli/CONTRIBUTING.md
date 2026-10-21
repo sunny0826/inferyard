@@ -9,7 +9,7 @@ The project uses the [MIT license](LICENSE); release status is on
 
 ## Development environment
 
-Versions are pinned by [mise.toml](../mise.toml): Python 3.15.0 and uv 0.13.1;
+Versions are pinned by [mise.toml](../mise.toml): Python 3.15.0 and uv 0.13.4;
 Go is used for the native Studio application. See [Studio](../studio/README.md) for its checks.
 Dependencies are managed by uv; do not substitute system Python or global pip.
 If an inherited `UV_PYTHON` points to another version, remove that override or
