@@ -35,5 +35,5 @@
 （`stopped`/`starting`/`running`/`stopping`/`failed`，另有启动核验期与遗留场景的 `orphaned` 展示态）；运行队列与普通历史索引常驻 `Service` 内存；专项任务另存身份、阶段、错误和引用，
 不缓存六列成绩。证据目录才是完成性的唯一事实源。版本号唯一来源是
 [`studio/mygo.config.ts`](../../../studio/mygo.config.ts)，由 `main` 经 `go:embed` 读取。普通窗口侧栏不显示进程来源；开发窗口的来源标识与固定绑定见[开发环境参考](../studio-development.md)。普通环境卡的 CLI 行显示 `checkout`（源码树）、`release`（发行安装）或未标明来源的旧 CLI、包版本和探测到的 CLI 路径；`source` 只说明安装方式，不包含 git 提交。普通自动安装保留已配置且存在的 CLI，缺失时才查找或安装。
-`InstallCLI` 固定的 Python（`installPython = "3.15.0"`）与独立 uv（`uvRelease`）版本必须与
+`InstallCLI` 固定的 Python（`installPython = "3.15.1"`）与独立 uv（`uvRelease`）版本必须与
 [cli/docs/installation.md](../../../cli/docs/installation.md) 保持同步（源码注释的维护义务）。
