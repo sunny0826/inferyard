@@ -27,7 +27,7 @@ def environments():
             platform_machine=machine,
             os_name="nt" if system == "win32" else "posix",
             python_version="3.15",
-            python_full_version="3.15.0",
+            python_full_version="3.15.1",
             implementation_name="cpython",
             extra="",
         )

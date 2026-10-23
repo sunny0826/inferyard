@@ -193,7 +193,7 @@ def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch
     monkeypatch.setattr(run_installed.sys, "platform", "darwin")
     monkeypatch.setattr(run_installed.platform, "machine", lambda: "arm64")
     pinned = {
-        "python": "3.15.0",
+        "python": "3.15.1",
         "tool_version": "0.0.3",
         "dependencies": {"pytest": None, "ruff": None, "idna": "3.20"},
     }

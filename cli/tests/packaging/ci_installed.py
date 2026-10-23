@@ -41,7 +41,7 @@ def main():
             "install",
             "--managed-python",
             "--python",
-            "3.15.0",
+            "3.15.1",
             "--constraints",
             str(files["constraints"]),
             "--with",
