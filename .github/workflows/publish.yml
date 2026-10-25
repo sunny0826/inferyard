@@ -31,7 +31,7 @@ jobs:
         with:
           ref: ${{ inputs.source_commit }}
           persist-credentials: false
-      - uses: jdx/mise-action@v5.2.2
+      - uses: jdx/mise-action@v5.2.3
       - run: mise exec -- uv --directory cli sync --frozen
       - uses: ./.github/actions/check-release
         with:
@@ -52,7 +52,7 @@ jobs:
         with:
           ref: ${{ inputs.source_commit }}
           persist-credentials: false
-      - uses: jdx/mise-action@v5.2.2
+      - uses: jdx/mise-action@v5.2.3
       - run: mise exec -- uv --directory cli sync --frozen
       - uses: ./.github/actions/check-release
         with:
@@ -107,7 +107,7 @@ jobs:
         with:
           ref: ${{ inputs.source_commit }}
           persist-credentials: false
-      - uses: jdx/mise-action@v5.2.2
+      - uses: jdx/mise-action@v5.2.3
       - run: mise exec -- uv --directory cli sync --frozen
       - uses: ./.github/actions/check-release
         with:
