@@ -101,7 +101,7 @@ Windows 与 Linux 的位置表现未验证。
 - [交互回归](../internal/pages/design_interaction_test.go)与
   [语义回归](../internal/pages/design_system_test.go)检查字段纠错、公告、焦点、恢复动作及进度。
   部分语义断言读取固定 MyGo 版本的内部视图节点，升级依赖时需要复核这些测试适配；
-  当前依赖为 MyGo v0.6.4 与 onevra v0.2026.15。2026-10-16 那次升级后在 macOS arm64
+  当前依赖为 MyGo v0.7.1 与 onevra v0.2026.16。2026-10-16 那次升级后在 macOS arm64
   重跑 `go vet ./...` 与 `go test ./... -count=1 -timeout 900s` 均通过，包含页面布局、交互与真实 CLI / 假引擎 e2e。
   那次未重做原生窗口目检，历史图片不作为新依赖的视觉验收证据。
   2026-10-19 再升到 MyGo v0.6.2 与 onevra v0.2026.14：窗口控件标签改由 onevra 内置中文目录提供，不再传入应用自定义标签。
