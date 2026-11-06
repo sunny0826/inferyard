@@ -63,4 +63,6 @@ llama.cpp 对 LM Studio；实测后增加 llama.cpp 对 MLX-LM（同一上游模
   6 块均通过 `verify`，但计划冻结为 `side-by-side`，`compare-engines` 按
   `frozen_comparison_mode` 阻断，不出结论；同时暴露本地 profile 旧字段为 unknown 的
   比较器缺口（已改为替代字段核验）。驱动改为冻结 `comparison.mode = engine` 后重跑 6 块。
+  重跑 6 块均通过 `verify`，两个题包 `compare-engines` 无阻断，结论见
+  [backlog](../backlog/engine-comparison.md#跨引擎受控比较)。LM Studio 组合未实测，本项保持未完成。
 - [ ] 合并等待用户明确授权。
