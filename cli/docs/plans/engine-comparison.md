@@ -23,8 +23,7 @@ llama.cpp 对 LM Studio；实测后增加 llama.cpp 对 MLX-LM（同一上游模
 - [x] [契约](../contracts/engine-comparison.md)：门槛、阻断原因与判定规则。
 - [x] `experiment.comparison.mode` 与 `compare --mode` 增加 `engine`，schema 已重新导出。
 - [x] 冻结调优声明 `engine.tuning`；LM Studio 不可观察，声明即拒绝。
-- [ ] 客户端解码间隔与首个正文文本进入指标目录（`scripts/export_catalogue.py`，不重排既有 ID）；
-  目前结果中暂以 `client_decode_interval` 与 `first_body_text` 标识。
+- [x] 客户端解码间隔与首个正文文本进入指标目录，新增 L08 与 L09，既有 ID 不变。
 
 ## 2. 运行时
 
@@ -47,11 +46,11 @@ llama.cpp 对 LM Studio；实测后增加 llama.cpp 对 MLX-LM（同一上游模
   同侧配置不变、块服务替换、逐请求配对与冷缓存、每块中位数、方向一致性判定，
   输出 `engine-comparison.v1`。
 - [x] 回归：合法判定、方向不一致、各阻断原因、输出长度排除、调优声明与请求体。
-- [ ] `engine-comparison.json` 封存与 `verify` 支持。
+- [x] `engine-comparison.json` 与 HTML 封存；`verify` 重算核验，`--rerender` 核对 HTML。
 
 ## 4. 报告与 Studio
 
-- [ ] 离线 HTML 比较页展示条件表、排除数量和结论范围；检查离线渲染。
+- [x] 离线 HTML 比较页展示判定、每块中位数、排除数量、调优键、限制与结论范围；已检查离线渲染。
 - [ ] Studio 接入在 CLI 契约稳定后进行，同步模拟流程与一致性测试。
 
 ## 5. 真机验收

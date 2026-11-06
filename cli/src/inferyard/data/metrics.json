@@ -21,7 +21,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -53,7 +53,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -85,7 +85,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -117,7 +117,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -149,7 +149,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -181,7 +181,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -213,7 +213,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -245,7 +245,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -277,7 +277,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -309,7 +309,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -341,7 +341,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -373,7 +373,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -405,7 +405,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -437,7 +437,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -469,7 +469,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -501,7 +501,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -533,7 +533,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -565,7 +565,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -605,7 +605,7 @@
       "evidence_refs": [
         {
           "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -622,6 +622,78 @@
         {
           "path": "tests/unit/test_engine_timing.py",
           "sha256": "20052d7639d3bc255e427f60c9f32984dd07d2e2bab63f446a33ba520565d18a"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "L08",
+      "name": "客户端解码间隔",
+      "definition_version": "phase2.v1",
+      "unit": "ms",
+      "layer": "request",
+      "source": "stream_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "仅 `compare-engines` 计算；输出 token ≤1 或无 tc 为 null；含首内容后的全部输出与测量开销，不是引擎 decode 速度或 ITL",
+      "required_capabilities": [
+        "stream_events"
+      ],
+      "aggregation": "(te−tc)/(端点输出 token 数−1)，ms",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
+        },
+        {
+          "path": "src/inferyard/analysis/engine_blocks.py",
+          "sha256": "dbf256c17b1ec6891f320e41eb5e587db0f5e76ceaeb46dc40e6d7e864f9cee8"
+        },
+        {
+          "path": "src/inferyard/analysis/first_body.py",
+          "sha256": "a3bd02a29e6bcbe09ab9c609dbaa34f405dea10a68c116fe5375ac65611df20a"
+        },
+        {
+          "path": "tests/unit/test_engine_blocks.py",
+          "sha256": "bc7f57c3b81561b8bc650a9df26174896cefa94b3e635b0f98ca95ab29d8a2f5"
+        }
+      ]
+    },
+    {
+      "schema_version": 3,
+      "metric_id": "L09",
+      "name": "首正文延迟",
+      "definition_version": "phase2.v1",
+      "unit": "ms",
+      "layer": "request",
+      "source": "stream_events",
+      "window": "frozen_protocol_and_declared_statistic",
+      "applicability": "仅 `compare-engines` 计算；tb 为 content/reasoning 累积后去掉开头 `<think>` 仍非空白的首个事件；无正文为 null",
+      "required_capabilities": [
+        "stream_events"
+      ],
+      "aggregation": "(tb−t0)，ms",
+      "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+      "implementation_status": "implemented",
+      "scope": "core",
+      "evidence_refs": [
+        {
+          "path": "docs/experiments/metrics.md",
+          "sha256": "1495fac88d771593b414d8ca36007f5a44012f7e5480c9564204da26735a71f6"
+        },
+        {
+          "path": "src/inferyard/analysis/engine_blocks.py",
+          "sha256": "dbf256c17b1ec6891f320e41eb5e587db0f5e76ceaeb46dc40e6d7e864f9cee8"
+        },
+        {
+          "path": "src/inferyard/analysis/first_body.py",
+          "sha256": "a3bd02a29e6bcbe09ab9c609dbaa34f405dea10a68c116fe5375ac65611df20a"
+        },
+        {
+          "path": "tests/unit/test_engine_blocks.py",
+          "sha256": "bc7f57c3b81561b8bc650a9df26174896cefa94b3e635b0f98ca95ab29d8a2f5"
         }
       ]
     },
@@ -644,8 +716,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -716,8 +788,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -788,8 +860,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -860,8 +932,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -924,8 +996,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -988,8 +1060,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1052,8 +1124,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1120,8 +1192,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1188,8 +1260,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1220,8 +1292,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1252,8 +1324,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1284,8 +1356,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1332,8 +1404,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1380,8 +1452,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1428,8 +1500,8 @@
       "scope": "core",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1476,8 +1548,8 @@
       "scope": "conditional",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1508,8 +1580,8 @@
       "scope": "conditional",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1540,8 +1612,8 @@
       "scope": "conditional",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1572,8 +1644,8 @@
       "scope": "conditional",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1604,8 +1676,8 @@
       "scope": "conditional",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1636,8 +1708,8 @@
       "scope": "conditional",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1668,8 +1740,8 @@
       "scope": "conditional",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1700,8 +1772,8 @@
       "scope": "conditional",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",
@@ -1732,8 +1804,8 @@
       "scope": "conditional",
       "evidence_refs": [
         {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "837910a5b9a57fe301242484665f6e88d8bcab2a3daca0a491ab82b9e2588fcc"
+          "path": "docs/experiments/metrics-resources.md",
+          "sha256": "e8ecc0422e827b0c50a750a51a947b868d376875c3352147ab6184ea6a764503"
         },
         {
           "path": "src/inferyard/analysis/observations.py",

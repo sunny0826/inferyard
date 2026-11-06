@@ -8,9 +8,16 @@
 - `compare --mode engine --left RUN --right RUN`：只做单对身份门槛，
   始终阻断 `engine_verdict_requires_block_comparison`，不给出性能资格。
 - `compare-engines --left-runs RUN... --right-runs RUN... --out DIR`：
-  读取全部块，写入新目录下的 `engine-comparison.json`（`engine-comparison.v1`），
+  读取全部块，在新目录写入 `engine-comparison.json`（`engine-comparison.v1`）与离线
+  `report.html`，再以 `artifact-manifest.json`（`presentation-seal.v1`）封存两者字节；
   stdout 输出同一结果。输出目录必须不存在，且不能位于任何输入 run 内。
-  该文件当前未封存，也不生成 HTML。
+- `engine-comparison.json` 的 `source_runs[].path` 相对输出目录；`producer` 记录
+  `tool_source_sha256` 与 `template_sha256`，只作来源，不作核验依据。
+- `verify --path DIR` 按 `engine-comparison.json` 识别该产物：先核对封存字节，再按
+  `source_runs` 读取原 run 重算全部结果并逐字节比对（`--source-root OLD=NEW` 定位已移动的来源）。
+  字节改动为 `presentation_bytes_changed`，重算不符为 `engine_comparison_recomputation_mismatch`；
+  `--rerender` 另核对 HTML，不符为 `engine_comparison_html_recomputation_mismatch`。
+  HTML 不含脚本与外部资源。
 
 ## 冻结调优声明
 
@@ -93,9 +100,9 @@
 ## 指标与判定
 
 客户端指标：`first_content_ms`（L01）、`e2e_ms`（L03）、
-`output_tokens_per_second`（L04）、`client_decode_interval_ms`
+`output_tokens_per_second`（L04）、`client_decode_interval_ms`（L08）
 = (E2E − 首内容) / (输出 token − 1)，输出 token ≤ 1 或无首内容时为 null。
-`first_body_text_ms` = 首个正文文本到达 − 发送。正文文本是 content 与 reasoning 累积后，
+`first_body_text_ms`（L09）= 首个正文文本到达 − 发送。正文文本是 content 与 reasoning 累积后，
 去掉开头 `<think>` 标记仍非空白的文本，由 `compare-engines` 从已校验的事件离线算出；
 没有正文时为 null。
 引擎自报 timings 不参与判定。
@@ -122,9 +129,7 @@ llama-cpp 对 lmstudio 当前总是后者。跨格式组合的 `scope` 固定为
 
 - LM Studio 后台的停止与重启由操作者执行；CLI 不停止服务，
   只通过既有主机状态与本比较的 `block_service_not_replaced` 核验替换。
-- 严格定长输出、块间温度等待证据、比较结果封存与 HTML 呈现。
-- 客户端解码间隔与首个正文文本尚未进入指标目录，ID 暂为 `client_decode_interval`
-  与 `first_body_text`。
+- 严格定长输出与块间温度等待证据。
 
 既有 run 与比较证据按原定义读取，不因新模式获得资格。
 证据解释遵循[血缘规则](../data-contract.md#证据血缘与比较结论)。

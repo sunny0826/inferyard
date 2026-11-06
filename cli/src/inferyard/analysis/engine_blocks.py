@@ -22,10 +22,10 @@ METRICS = {
 }
 METRIC_IDS = {
     "first_content_ms": "L01",
-    "first_body_text_ms": "first_body_text",
+    "first_body_text_ms": "L09",
     "e2e_ms": "L03",
     "output_tokens_per_second": "L04",
-    "client_decode_interval_ms": "client_decode_interval",
+    "client_decode_interval_ms": "L08",
 }
 SIDE_SCOPE = ("model", "engine", "generation", "conditions", "execution", "safety")
 # The formal MLX server (bound by source hash at service inspection) calls

@@ -4,6 +4,21 @@
 
 ### Added
 
+- Controlled engine comparison (ADR 056). `compare --mode engine` checks the
+  identity gates for one block pair and never returns a performance verdict.
+  `compare-engines --left-runs ... --right-runs ...` judges at least three
+  interleaved blocks per side. It requires a fresh service per block, matched
+  prompt tokens and proven cold caches. A metric gets a winner only when every
+  block pair's median difference points the same way. Supported pairs are
+  llama-cpp with lmstudio (same GGUF) and llama-cpp with mlx-lm (different
+  model formats, scope `engine_and_model_format`). For the cross-format pair,
+  only the client decode interval (L08) and the first body text latency (L09,
+  measured after a leading `<think>` tag) decide; first content, E2E and
+  throughput are display only. The output directory holds
+  `engine-comparison.json` and an offline `report.html`, both sealed. `verify`
+  recomputes the result from the source runs; `--rerender` also checks the
+  HTML. The metric catalogue grows from 43 to 45 entries; existing IDs are
+  unchanged.
 - A new read-only `service discover` command enumerates TCP loopback listeners
   and probes each endpoint with `GET /health` and `GET /v1/models` (2s timeout),
   reporting the owning process PID, executable name and start ticks per listener

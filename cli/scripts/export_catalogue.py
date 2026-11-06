@@ -13,7 +13,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "src/inferyard/data"
 MATRIX = ROOT / "docs/reference/methods-matrix.md"
-METRICS = ROOT / "docs/experiments/metrics.md"
+METRICS = (
+    ROOT / "docs/experiments/metrics.md",
+    ROOT / "docs/experiments/metrics-resources.md",
+)
 IMPLEMENTED = {
     f"{prefix}{i:02}"
     for prefix, count in (("R", 4), ("Q", 8), ("L", 7), ("C", 8))
@@ -21,13 +24,14 @@ IMPLEMENTED = {
 }
 IMPLEMENTED |= {"S01", "S02", "S03", "S04", "X01", "X02", "X03"}
 IMPLEMENTED |= {"E01", "E02", "E03", "E04", "E05", "N01", "N02", "N03", "U01"}
+IMPLEMENTED |= {"L08", "L09"}
 UNITS = {
     **{
         f"{prefix}{i:02}": "ratio"
         for prefix, count in (("R", 4), ("Q", 8), ("X", 3))
         for i in range(1, count + 1)
     },
-    **{f"L{i:02}": "ms" for i in (1, 2, 3, 5)},
+    **{f"L{i:02}": "ms" for i in (1, 2, 3, 5, 8, 9)},
     **{f"L{i:02}": "token/s" for i in (4, 6, 7)},
     "C01": "bytes",
     "C02": "bytes",
@@ -99,7 +103,12 @@ def methods():
 
 def metrics():
     items = []
-    for line in METRICS.read_text(encoding="utf-8").splitlines():
+    rows = [
+        (path, line)
+        for path in METRICS
+        for line in path.read_text(encoding="utf-8").splitlines()
+    ]
+    for path, line in rows:
         if not re.match(r"^\| [RQLCX SEN U]\d{2} \|", line):
             continue
         cells = [cell.strip() for cell in line.strip("|").split("|")]
@@ -136,13 +145,22 @@ def metrics():
                 "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
                 "implementation_status": "implemented" if key in IMPLEMENTED else "planned",
                 "scope": "conditional" if conditional else "core",
-                "evidence_refs": [reference(METRICS)]
+                "evidence_refs": [reference(path)]
                 + (
                     [
                         reference(ROOT / "src/inferyard/analysis/observations.py"),
                         reference(ROOT / "tests/unit/test_observations.py"),
                     ]
-                    if key in IMPLEMENTED
+                    if key in IMPLEMENTED and key not in ("L08", "L09")
+                    else []
+                )
+                + (
+                    [
+                        reference(ROOT / "src/inferyard/analysis/engine_blocks.py"),
+                        reference(ROOT / "src/inferyard/analysis/first_body.py"),
+                        reference(ROOT / "tests/unit/test_engine_blocks.py"),
+                    ]
+                    if key in ("L08", "L09")
                     else []
                 )
                 + (
@@ -202,8 +220,8 @@ def metrics():
                 ),
             }
         )
-    if len(items) != 43 or len({i["metric_id"] for i in items}) != 43:
-        raise ValueError("expected 34 core and 9 conditional groups")
+    if len(items) != 45 or len({i["metric_id"] for i in items}) != 45:
+        raise ValueError("expected 36 core and 9 conditional groups")
     return {"catalogue_version": "phase2.v1", "items": items}
 
 
