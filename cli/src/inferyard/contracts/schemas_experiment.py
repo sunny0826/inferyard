@@ -83,7 +83,9 @@ EXECUTION = obj(
         "service_transition": enum("operator_verified"),
     }
 )
-COMPARISON = obj({"mode": enum("model", "config", "side-by-side"), "factor": nullable(LABEL)})
+COMPARISON = obj(
+    {"mode": enum("model", "config", "side-by-side", "engine"), "factor": nullable(LABEL)}
+)
 BUDGET = obj(
     {
         "max_requests": POS,

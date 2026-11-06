@@ -23,10 +23,10 @@ llama-server 已停止；只记录了 `/props`（build b10566-bb4caa754，n_ctx 
 
 ## 1. 契约与 schema
 
-- [ ] 新增 `docs/contracts/engine-comparison.md`：配对规则、必须相同与允许不同的字段、
-  阻断原因枚举、胜负判定、合法与非法样本。
-- [ ] `experiment.comparison.mode` 增加 `engine`；冻结调优参数声明与 LM Studio
-  接管授权声明；修改源定义后运行 `scripts/export_schemas.py`。
+- [x] 新增[契约](../contracts/engine-comparison.md)：已实现门槛与待实现阻断原因。
+  胜负判定与合法／非法样本随第 3 步补齐。
+- [x] `experiment.comparison.mode` 与 `compare --mode` 增加 `engine`，schema 已重新导出。
+- [ ] 冻结调优参数声明与 LM Studio 接管授权声明。
 - [ ] 新增客户端解码间隔指标，运行 `scripts/export_catalogue.py`，不重排既有 ID。
 
 ## 2. 运行时
@@ -40,6 +40,8 @@ llama-server 已停止；只记录了 `/props`（build b10566-bb4caa754，n_ctx 
 
 ## 3. 比较器
 
+- [x] 身份门槛：双侧本地 profile、支持的家族组合、单 GGUF、模型字节相同；
+  只放行引擎家族、安装、启动参数与运行库差异（`analysis/engine_comparison.py`）。
 - [ ] `compare --mode engine` 接受每侧多个块的 run，核验 A/B 交错、
   每侧至少 3 块、同一计划、块间替换与重绑证据。
 - [ ] 逐请求配对，输出 `engine-comparison.v1`：条件表、配对排除数、

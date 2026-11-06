@@ -35,12 +35,15 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
     declared = [d["plan"]["experiment"]["comparison"] for d in (left, right)]
     chosen = mode or (declared[0]["mode"] if declared[0] == declared[1] else "side-by-side")
-    if chosen not in ("model", "config", "side-by-side"):
+    if chosen not in ("model", "config", "side-by-side", "engine"):
         raise EvidenceError("unsupported_comparison_mode")
     conditions = []
     local_profile = any(is_local(data["config"]) for data in (left, right))
+    engine_mode = chosen == "engine"
+    from inferyard.analysis.engine_comparison import ENGINE_DIFFERENCES, LEGACY_ENGINE_FIELDS
 
     def check(field, a, b, *, allowed=False, impact="common"):
+        allowed = allowed or engine_mode and field in ENGINE_DIFFERENCES
         if field == "run.definition_versions.scoring":
             impact = "quality"
         elif field == "run.definition_versions.measurement":
@@ -123,6 +126,8 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
         "environment_start.cpu_model",
         "environment_start.kernel",
     ):
+        if engine_mode and local_profile and path in LEGACY_ENGINE_FIELDS:
+            continue  # Replaced by config.engine.installation_sha256 for local profiles.
         if path == "run.tool_source_sha256" and any(
             "implementation_identity" in d["run"] for d in (left, right)
         ):
@@ -301,7 +306,11 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     ]
     if chosen == "side-by-side":
         blockers.append("side_by_side_has_no_controlled_deltas")
-    if local_profile:
+    if engine_mode:
+        from inferyard.analysis.engine_comparison import engine_blockers
+
+        blockers.extend(engine_blockers(left, right))
+    elif local_profile:
         blockers.append("local_engine_controlled_comparison_not_supported")
     if (
         chosen == "config"

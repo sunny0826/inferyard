@@ -11,5 +11,5 @@ def add_commands(commands):
     comparison.add_argument("--left-overhead", type=Path)
     comparison.add_argument("--right-overhead", type=Path)
     comparison.add_argument(
-        "--mode", dest="comparison_mode", choices=("model", "config", "side-by-side")
+        "--mode", dest="comparison_mode", choices=("model", "config", "side-by-side", "engine")
     )

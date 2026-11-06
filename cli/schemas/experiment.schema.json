@@ -92,7 +92,8 @@
           "enum": [
             "model",
             "config",
-            "side-by-side"
+            "side-by-side",
+            "engine"
           ]
         },
         "factor": {
