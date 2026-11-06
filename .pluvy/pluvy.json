@@ -1,0 +1,85 @@
+{
+  "version": 2,
+  "include": [
+    "cli/src/*",
+    "cli/tests/*",
+    "cli/scripts/*",
+    "tools/*",
+    "studio/*"
+  ],
+  "exclude": ["studio/build/*"],
+  "third_party_modules": [],
+  "checkers": {
+    "architecture.owner": {
+      "owners": [
+        {"name": "cli-entry", "paths": [
+          "cli/src/inferyard/__init__.py",
+          "cli/src/inferyard/__main__.py",
+          "cli/src/inferyard/implementation_identity.py",
+          "cli/src/inferyard/provenance.py",
+          "cli/src/inferyard/registry.py"
+        ]},
+        {"name": "cli-application", "paths": ["cli/src/inferyard/cli/*", "cli/src/inferyard/application/*"]},
+        {"name": "cli-contracts", "paths": ["cli/src/inferyard/contracts/*", "cli/src/inferyard/config/*"]},
+        {"name": "cli-runtime", "paths": ["cli/src/inferyard/runtime/*", "cli/src/inferyard/adapters/*"]},
+        {"name": "cli-evidence", "paths": ["cli/src/inferyard/evidence/*"]},
+        {"name": "cli-analysis", "paths": ["cli/src/inferyard/analysis/*", "cli/src/inferyard/reporting/*"]},
+        {"name": "cli-platform", "paths": ["cli/src/inferyard/platforms/*", "cli/src/inferyard/extensions/*"]},
+        {"name": "cli-resources", "paths": ["cli/src/inferyard/data/*", "cli/src/inferyard/templates/*"]},
+        {"name": "cli-tests", "paths": ["cli/tests/*"]},
+        {"name": "cli-scripts", "paths": ["cli/scripts/*"]},
+        {"name": "dev-tools", "paths": ["tools/*"]},
+        {"name": "studio-app", "paths": [
+          "studio/mygo.config.ts",
+          "studio/debug_ui.go",
+          "studio/debug_ui_release.go",
+          "studio/development.go",
+          "studio/development_control_test.go",
+          "studio/development_disabled.go",
+          "studio/development_disabled_test.go",
+          "studio/development_json.go",
+          "studio/development_manifest.go",
+          "studio/development_recovery.go",
+          "studio/development_recovery_test.go",
+          "studio/development_session.go",
+          "studio/development_session_test.go",
+          "studio/development_starting_test.go",
+          "studio/development_stop_request.go",
+          "studio/development_test.go",
+          "studio/main.go",
+          "studio/options.go",
+          "studio/options_debug_test.go",
+          "studio/options_release_test.go",
+          "studio/options_test.go"
+        ]},
+        {"name": "studio-core", "paths": ["studio/internal/core/*"]},
+        {"name": "studio-pages", "paths": ["studio/internal/pages/*"]},
+        {"name": "studio-evidence", "paths": ["studio/internal/evidence/*"]},
+        {"name": "studio-inferyard", "paths": ["studio/internal/inferyard/*"]},
+        {"name": "studio-desktop", "paths": ["studio/internal/desktop/*"]},
+        {"name": "studio-tests", "paths": ["studio/tests/*"]},
+        {"name": "studio-scripts", "paths": ["studio/scripts/*"]},
+        {"name": "studio-prototypes", "paths": ["studio/docs/*"]}
+      ]
+    },
+    "architecture.import": {
+      "boundaries": [
+        {
+          "name": "business modules do not depend on the CLI layer",
+          "sources": [
+            "cli/src/inferyard/contracts/*",
+            "cli/src/inferyard/config/*",
+            "cli/src/inferyard/runtime/*",
+            "cli/src/inferyard/adapters/*",
+            "cli/src/inferyard/evidence/*",
+            "cli/src/inferyard/analysis/*",
+            "cli/src/inferyard/reporting/*",
+            "cli/src/inferyard/platforms/*",
+            "cli/src/inferyard/extensions/*"
+          ],
+          "forbidden_imports": ["inferyard.cli", "inferyard.cli.*"]
+        }
+      ]
+    }
+  }
+}
