@@ -9,7 +9,7 @@
 | 实验准备 | `plan` | 离线预览或冻结实验 |
 | 服务诊断与执行 | `service discover`、`probe`、`overhead`、`prepare-length`、`run`、`resume` | discover 对 loopback 监听端点发送只读 GET；其他诊断和执行可能发送模型请求 |
 | 派生分析 | `repeat-summary`、`rescore`、`export`、`filter-candidates` | 离线读取已有证据或分析 |
-| 报告与证据 | `report`、`compare`、`verify` | 离线生成新产物、核验 |
+| 报告与证据 | `report`、`compare`、`compare-engines`、`verify` | 离线生成新产物、核验；`compare-engines` 见[跨引擎比较契约](../contracts/engine-comparison.md) |
 | 公开包 | `public package`、`public plan` | 本地打包和冻结复现计划 |
 | 扩展协议 | `extension freeze`、`extension run`、`extension replay` | freeze / replay 离线；run 连接真实服务 |
 | 同机引擎适配 | `engine-fit engines/plan/run/compare/verify` | engines 离线列出能力；plan 冻结目录或单 GGUF；run 按引擎范围连接已有本机服务 |

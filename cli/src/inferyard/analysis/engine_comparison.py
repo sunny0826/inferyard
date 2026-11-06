@@ -1,7 +1,7 @@
 """Gates for the same-GGUF engine comparison mode (ADR 056).
 
-Each gate that is not yet implemented stays a blocker, so the mode never
-grants performance eligibility from partial evidence.
+A single left/right pair checks identity only and stays blocked; the block
+comparison in ``engine_blocks`` owns the performance verdict.
 """
 
 from inferyard.contracts.engine_profiles import is_local
@@ -16,12 +16,9 @@ ENGINE_DIFFERENCES = (
     "config.engine.startup_args",
     "identity.runtime_library_hashes",
 )
-PENDING = (
-    "engine_tuning_observation_pending",
-    "per_request_prompt_token_pairing_pending",
-    "cold_cache_evidence_pending",
-    "block_alternation_pending",
-)
+# A single pair never carries a verdict; compare-engines evaluates the
+# per-request and block gates across interleaved runs.
+PENDING = ("engine_verdict_requires_block_comparison",)
 
 
 def engine_blockers(left, right):

@@ -273,7 +273,9 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
                     record["input_target_tokens"] = "not_targeted"
             check("task_protocol", a, b)
         effective = _get(data, "identity.effective_parameters.parameters") or {}
-        for key in (
+        # Native local services expose no effective parameters (ADR 055); engine mode
+        # compares the frozen generation config and reports the gap as a limitation.
+        for key in () if engine_mode and local_profile else (
             "seed",
             "temperature",
             "top_k",

@@ -61,6 +61,8 @@ LM Studio 的 argv 是实际后台进程命令，不能以 `lms server start` �
 
 请求只发送 model、messages、temperature、max_tokens、stream；
 流式额外发送 `stream_options.include_usage=true`。
+llama-cpp 冻结 `engine.tuning.prompt_cache = disabled` 时另发 `cache_prompt: false`，
+见[跨引擎比较契约](engine-comparison.md#冻结调优声明)。
 temperature 固定为 0，max_tokens 与 context 显式冻结；
 不发送 seed、top-p、reasoning 开关或假定各引擎共享默认值。
 实际参数、模板与精确输入预算没有可靠观察时为 unknown/null 加原因。

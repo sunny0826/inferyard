@@ -13,3 +13,9 @@ def add_commands(commands):
     comparison.add_argument(
         "--mode", dest="comparison_mode", choices=("model", "config", "side-by-side", "engine")
     )
+    engines = commands.add_parser(
+        "compare-engines", help="judge interleaved same-GGUF engine blocks offline"
+    )
+    engines.add_argument("--left-runs", type=Path, nargs="+", required=True)
+    engines.add_argument("--right-runs", type=Path, nargs="+", required=True)
+    engines.add_argument("--out", type=Path, required=True)

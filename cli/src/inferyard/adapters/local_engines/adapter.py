@@ -8,6 +8,7 @@ from copy import deepcopy
 from inferyard.adapters.engine_fit import FitTransportError, _json
 from inferyard.adapters.lab_adapter import LabAdapter
 from inferyard.adapters.local_engines.protocol import VERSION_PATHS, models, queue, service
+from inferyard.contracts.engine_tuning import prompt_cache_disabled
 from inferyard.platforms.engine_fit_lmstudio import LMStudioObserver
 from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.local_engines import verify_bound_service
@@ -37,6 +38,8 @@ class LocalEngineAdapter(LabAdapter):
             "max_tokens": config["generation"]["max_tokens"],
             "stream": stream,
             **({"stream_options": {"include_usage": True}} if stream else {}),
+            # Only a frozen llama-server tuning declaration adds this field.
+            **({"cache_prompt": False} if prompt_cache_disabled(config) else {}),
         }
 
     async def _bound(self, deadline):

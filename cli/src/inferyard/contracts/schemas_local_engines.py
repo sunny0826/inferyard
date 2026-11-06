@@ -2,7 +2,13 @@
 
 from copy import deepcopy
 
-from inferyard.contracts.engine_profiles import LOCAL_ADAPTER, LOCAL_CONFIG, LOCAL_FAMILIES
+from inferyard.contracts.engine_profiles import (
+    LOCAL_ADAPTER,
+    LOCAL_CONFIG,
+    LOCAL_FAMILIES,
+    PROMPT_CACHE,
+    TUNING_KEYS,
+)
 from inferyard.contracts.schemas_common import HASH, LABEL, TEXT, VERSION, array, enum, obj
 from inferyard.contracts.schemas_config import CONFIG, CONFIG_DEFAULTS
 
@@ -77,6 +83,9 @@ LOCAL_CONFIG_SCHEMA["properties"]["engine"] = obj(
         "environment": ENVIRONMENT,
         "served_model": LABEL,
     }
+)
+LOCAL_CONFIG_SCHEMA["properties"]["engine"]["properties"]["tuning"] = obj(
+    {**{key: LABEL for key in TUNING_KEYS}, "prompt_cache": enum(*PROMPT_CACHE)}, required=[]
 )
 LOCAL_CONFIG_SCHEMA["properties"]["generation"] = obj(
     {

@@ -38,6 +38,8 @@ class CommandRequest:
     comparison_mode: str | None = None
     filter_spec: Path | None = None
     report_runs: list[Path] | None = None
+    left_runs: list[Path] | None = None
+    right_runs: list[Path] | None = None
     analysis_path: Path | None = None
     scorer_id: str | None = None
     revision_reason: str | None = None

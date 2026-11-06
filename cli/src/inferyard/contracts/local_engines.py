@@ -28,6 +28,9 @@ def validate_config(config):
         "config.endpoint",
         "binding path and hash must occur together",
     )
+    from inferyard.contracts.engine_tuning import validate_tuning
+
+    validate_tuning(engine)
     environment = engine["environment"]
     validate_root_environment(engine["family"], environment, engine["working_directory"])
     require(

@@ -76,6 +76,7 @@ def reduce_events(events, run, selection, cases, *, duration=None, _projection=F
                 "engine_timings": [],
                 "finish_at": None,
                 "usage": None,
+                "lab_usage": None,
                 "http_response": None,
             }
         elif kind == "request_finished":
@@ -216,6 +217,8 @@ def reduce_events(events, run, selection, cases, *, duration=None, _projection=F
                 )
             elif kind == "usage":
                 protocol[key]["usage"] = data
+            elif kind == "lab_usage":
+                protocol[key]["lab_usage"] = data
             elif kind in ("content", "reasoning"):
                 partial[key][kind].append(data["text"])
             elif kind == "finish":
@@ -251,6 +254,7 @@ def reduce_events(events, run, selection, cases, *, duration=None, _projection=F
                 row["arrival_capture"] = protocol[key]["capture"]
                 row["block_arrivals"] = protocol[key]["arrivals"]
                 row["engine_timings"] = protocol[key]["engine_timings"]
+                row["usage_detail"] = protocol[key]["lab_usage"]
             if key not in terminals:
                 row.update(execution_state="invalid", error_category="tool_interrupted")
                 for channel in ("content", "reasoning"):

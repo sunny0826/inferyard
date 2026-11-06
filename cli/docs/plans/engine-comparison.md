@@ -23,31 +23,31 @@ llama-server 已停止；只记录了 `/props`（build b10566-bb4caa754，n_ctx 
 
 ## 1. 契约与 schema
 
-- [x] 新增[契约](../contracts/engine-comparison.md)：已实现门槛与待实现阻断原因。
-  胜负判定与合法／非法样本随第 3 步补齐。
+- [x] [契约](../contracts/engine-comparison.md)：门槛、阻断原因与判定规则。
 - [x] `experiment.comparison.mode` 与 `compare --mode` 增加 `engine`，schema 已重新导出。
-- [ ] 冻结调优参数声明与 LM Studio 接管授权声明。
-- [ ] 新增客户端解码间隔指标，运行 `scripts/export_catalogue.py`，不重排既有 ID。
+- [x] 冻结调优声明 `engine.tuning`；LM Studio 不可观察，声明即拒绝。
+- [ ] 客户端解码间隔进入指标目录（`scripts/export_catalogue.py`，不重排既有 ID）；
+  目前结果中暂以 `client_decode_interval` 标识。
 
 ## 2. 运行时
 
-- [ ] `local_profile.safety_policy`：仅 engine 模式放开 `strict_fixed_length`
-  与冷缓存协议；按第 0 步结果逐家族声明能力，不支持则拒绝而非静默降级。
-- [ ] 两个适配器逐请求保存缓存命中证据与实际输入 token 数；缺失时记原因，不补 0。
-- [ ] 服务侧调优参数观察：llama-server `/props`，LM Studio 依第 0 步结果确定来源。
-- [ ] LM Studio 接管：仅在冻结授权声明存在时，由 CLI 操作者流程停止并重启后台，
-  核验旧进程退出后重新绑定。
+- [x] 逐请求 `prompt_tokens`／`cached_tokens` 取自已复核的 `lab_usage`，
+  暴露为请求行 `usage_detail`；缺失不补 0。
+- [x] llama-server 调优参数从已绑定 argv 读取；`prompt_cache = disabled` 时发送
+  `cache_prompt: false`。
+- [ ] 严格定长：当前改为只配对输出 token 数相等的请求并报告排除数；
+  是否在 engine 模式放开 `strict_fixed_length` 待第 0 步实测。
+- [ ] 块间温度等待写入证据。
+- 不做：CLI 停止或重启 LM Studio。替换由操作者执行，比较器核验各块服务不同。
 
 ## 3. 比较器
 
-- [x] 身份门槛：双侧本地 profile、支持的家族组合、单 GGUF、模型字节相同；
-  只放行引擎家族、安装、启动参数与运行库差异（`analysis/engine_comparison.py`）。
-- [ ] `compare --mode engine` 接受每侧多个块的 run，核验 A/B 交错、
-  每侧至少 3 块、同一计划、块间替换与重绑证据。
-- [ ] 逐请求配对，输出 `engine-comparison.v1`：条件表、配对排除数、
-  每块中位数、方向一致性和 `winner` / `no_clear_difference`。
-- [ ] 回归：同 GGUF 合法比较、模型字节不同、输入 token 不等、调优参数未知、
-  缓存未证明、块未交错、方向不一致；旧 run 读取不获得资格。
+- [x] 单对身份门槛（`analysis/engine_comparison.py`），单对始终无性能结论。
+- [x] `compare-engines` 多块比较（`analysis/engine_blocks.py`）：交错、每侧至少 3 块、
+  同侧配置不变、块服务替换、逐请求配对与冷缓存、每块中位数、方向一致性判定，
+  输出 `engine-comparison.v1`。
+- [x] 回归：合法判定、方向不一致、各阻断原因、输出长度排除、调优声明与请求体。
+- [ ] `engine-comparison.json` 封存与 `verify` 支持。
 
 ## 4. 报告与 Studio
 

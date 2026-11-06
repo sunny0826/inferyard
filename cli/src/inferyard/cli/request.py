@@ -138,7 +138,7 @@ def build_request(
     for key, value in options.items():
         if isinstance(value, Path):
             options[key] = value.absolute() if preserve_links else value.resolve()
-    for key in ("report_runs", "models_roots"):
+    for key in ("report_runs", "models_roots", "left_runs", "right_runs"):
         if options.get(key):
             options[key] = [
                 path.absolute() if preserve_links else path.resolve() for path in options[key]
