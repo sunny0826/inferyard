@@ -29,6 +29,11 @@ def execute(request):
 
             details = create(request)
         elif request.command == "config create":
+            if (
+                request.temperature_stop_override_reason is not None
+                or request.prompt_cache is not None
+            ):
+                raise PreparationError("local_engine_installation_required")
             from inferyard.config.community_candidates import create
 
             details = create(request)

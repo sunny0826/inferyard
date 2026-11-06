@@ -10,6 +10,16 @@ from inferyard.contracts.validation import _validated_dict
 from inferyard.evidence.storage import json_bytes
 
 
+def local_safety(safety):
+    """A declared temperature-stop override freezes a null stop threshold."""
+    policy = {
+        key: value for key, value in safety.items() if key != "temperature_stop_override_reason"
+    }
+    if "temperature_stop_override_reason" in safety:
+        policy["max_temperature_celsius"] = None
+    return {**policy, "max_external_cpu_percent": None}
+
+
 def compile_single_plan(config, bundle, *, experiment_id=None):
     """Freeze an in-memory single workload before any service request is sent."""
     # Document inputs contain no new information; raw public inputs still validate fully.
@@ -60,7 +70,7 @@ def compile_single_plan(config, bundle, *, experiment_id=None):
             },
             "comparison": {"mode": "side-by-side", "factor": None},
             **(
-                {"safety": {**config["safety"], "max_external_cpu_percent": None}}
+                {"safety": local_safety(config["safety"])}
                 if config.get("definition") == "local-engine-config.v1"
                 else {}
             ),

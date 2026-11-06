@@ -71,3 +71,19 @@ def test_engine_mode_requires_local_profile_on_both_sides():
 def test_other_modes_keep_local_profile_blocked():
     result = compare_trials(local("llama-cpp"), local("lmstudio"), mode="side-by-side")
     assert "local_engine_controlled_comparison_not_supported" in result["blockers"]
+
+
+def test_cross_format_pair_allows_model_asset_differences():
+    mlx = local(
+        "mlx-lm", kind="directory", content_sha256="m", assets_sha256="ma", packing="directory"
+    )
+    result = compare_trials(local("llama-cpp"), mlx)
+    rows = statuses(result)
+    assert rows["config.model.content_sha256"] == "allowed_difference"
+    assert rows["config.model.kind"] == "allowed_difference"
+    assert result["blockers"] == list(PENDING)
+
+
+def test_same_asset_pair_still_rejects_model_differences():
+    result = compare_trials(local("llama-cpp"), local("lmstudio", packing="other"))
+    assert "config.model.packing:different" in result["blockers"]

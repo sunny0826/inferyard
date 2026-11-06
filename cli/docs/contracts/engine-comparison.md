@@ -24,14 +24,31 @@
   `prompt_cache = disabled` 时请求体额外发送 `cache_prompt: false`。
 - lmstudio：没有经核验的加载参数观察，声明任何调优键或 `prompt_cache` 均拒绝；
   比较中全部调优键为 unknown（`lmstudio_load_parameters_not_exposed`）。
+- mlx-lm：同样不接受调优声明，调优键为 unknown（`mlx-lm_load_parameters_not_exposed`）。
+
+`config create --installation` 提供 `--prompt-cache disabled`（仅 llama-cpp）写入上述声明；
+`--temperature-stop-override-reason TEXT` 写入 `safety.temperature_stop_override_reason`。
+两个选项用于旧 `--engine` 或 `--runtime-receipt` 候选时拒绝
+（`local_engine_installation_required`）。
+
+## 温度停止覆盖
+
+`safety.temperature_stop_override_reason` 可选，非空且不超过 1024 字符。
+存在时单服务计划把 `experiment.safety.max_temperature_celsius` 冻结为 null；
+`require_temperature` 仍为 true，温度源缺失仍停止，读数照常写入证据。
+运行准入要求两者一致：有声明必须为 null 阈值，无声明时 null 阈值或超过配置阈值
+都返回 `local_engine_safety_policy_required`。
 
 ## 身份门槛（每个配对块）
 
 - 两侧都必须是 `local-engine-config.v1`（`engine_mode_requires_local_profile`）。
 - 家族必须不同（`engine_family_did_not_change`），且组合受支持；
-  当前只有 llama-cpp 与 lmstudio（`unsupported_engine_pair`）。
-- 两侧 `model.kind` 都是 `gguf`（`engine_mode_requires_single_gguf`），
+  当前支持 llama-cpp 与 lmstudio（同资产）、llama-cpp 与 mlx-lm（跨格式）
+  （其他组合 `unsupported_engine_pair`）。
+- 同资产组合：两侧 `model.kind` 都是 `gguf`（`engine_mode_requires_single_gguf`），
   `content_sha256` 与 `assets_sha256` 相同。
+- 跨格式组合：`config.model` 的 kind、content/assets 摘要、repo、revision、sha256、
+  packing、template_sha256 允许不同。
 - 允许不同：`config.engine.family`、`installation_sha256`、`startup_args`、
   `identity.runtime_library_hashes`；本模式不比较旧字段 `release` 与 `binary_sha256`。
 - 原生服务不报告实际生成参数，本模式不逐项核对 effective 参数，
@@ -63,7 +80,9 @@
 - `prompt_tokens` 缺失阻断 `prompt_tokens_unobserved`，不等阻断
   `prompt_tokens_differ` 并写入 `prompt_token_mismatches`。
 - `cached_tokens` 缺失阻断 `<side>.cold_cache_unverified`，大于 0 阻断
-  `<side>.cache_hit_observed`。不补 0。
+  `<side>.cache_hit_observed`。不补 0。例外：mlx-lm 侧缺失时按结构保证计入
+  `formal_server_no_prompt_cache_reuse`（正式 MLX 服务不复用 prompt 缓存，
+  源码摘要在服务核验时比对）。各侧证据种类写入 `cache_evidence`。
 - 输出 token 数不等或缺失时该对计入 `excluded.output_tokens_differ`，不参与排名。
 
 ## 指标与判定
@@ -78,7 +97,10 @@
 否则全部块差值同号且非零时 verdict 为较优一侧的家族名，其余为 `no_clear_difference`。
 `scope` 只有全部调优键两侧已观察且相同时为 `engine_implementation`，
 否则为 `product_configuration` 并附 `engine_defaults_not_controlled`；
-llama-cpp 对 lmstudio 当前总是后者。
+llama-cpp 对 lmstudio 当前总是后者。跨格式组合的 `scope` 固定为
+`engine_and_model_format`，附 `engine_defaults_not_controlled` 与
+`model_format_differs_not_attributable_to_engine`。
+任一块冻结了温度停止覆盖时附 `temperature_stop_overridden`。
 
 ## 未实现
 

@@ -1280,6 +1280,11 @@
             "check_environment": {
               "type": "boolean",
               "const": true
+            },
+            "temperature_stop_override_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
             }
           },
           "required": [

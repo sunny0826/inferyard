@@ -1,6 +1,7 @@
 # 跨引擎受控比较实施
 
-目标：用同一个 GGUF 比较 llama.cpp 与 LM Studio 的速度，回答「换引擎是否改善」。
+目标：比较本机推理引擎的速度，回答「换引擎是否改善」。首组为同一 GGUF 下的
+llama.cpp 对 LM Studio；实测后增加 llama.cpp 对 MLX-LM（同一上游模型的不同格式）。
 设计理由见 [ADR 056](../decisions/056-engine-comparison.md)，当前状态见
 [backlog](../backlog/engine-comparison.md#跨引擎受控比较)。
 
@@ -9,17 +10,13 @@
 两侧各用 Qwen3-0.6B Q8_0、context 4096、少量 64-token 请求，只做诊断，不作比较结果。
 脚本与原件放在 `.tools/engine-compare-probe-20261106/`。
 
-- [ ] llama-server：`ignore_eos` 能否得到固定输出 token 数；`timings.cache_n`
-  与 `cache_prompt=false` 能否逐请求证明冷缓存；`/props` 能否观察调优参数。
-- [ ] LM Studio：OpenAI 兼容接口是否接受 `ignore_eos` 或等价参数；
-  usage 或 `/api/v0` stats 是否报告缓存命中数；`lms ps --json` 能否观察调优参数。
-- [ ] 同一 messages 在两侧的 `prompt_tokens` 是否相等。
+- [x] llama-server：usage 含 `cached_tokens`；`cache_prompt=false` 时为 0。
+  未测 `ignore_eos` 是否严格定长（样本均在上限截断）。
+- [x] LM Studio：usage 不含缓存命中数，`cache_prompt=false` 被忽略（重复请求
+  362ms → 80–85ms）。该组合因此无法证明冷缓存，见 ADR 修订。
+- [x] 同一 messages 在两侧的 `prompt_tokens` 相等（13、675）。
 
-2026-11-06 首次尝试：llama-server 已启动，发首个请求前温度检查读到 96.9°C
-（SMC Tp0W 等 CPU 传感器 87–89°C），按 85°C 阈值停止，未发请求。
-当时代理进程 verge-mihomo 占用约 163% CPU，属于外部背景负载，未处理。
-llama-server 已停止；只记录了 `/props`（build b10566-bb4caa754，n_ctx 4096）。
-待背景负载消除、温度回落后重试一次，不放宽阈值。
+2026-11-06 第二次探测按操作者指示只记录温度（98–110°C）。
 
 ## 1. 契约与 schema
 
@@ -37,8 +34,11 @@ llama-server 已停止；只记录了 `/props`（build b10566-bb4caa754，n_ctx 
   `cache_prompt: false`。
 - [ ] 严格定长：当前改为只配对输出 token 数相等的请求并报告排除数；
   是否在 engine 模式放开 `strict_fixed_length` 待第 0 步实测。
-- [ ] 块间温度等待写入证据。
+- [ ] 块间温度等待写入证据。操作者已要求忽略温度：候选可冻结温度停止覆盖
+  （读数照常记录），比较附 `temperature_stop_overridden`。
 - 不做：CLI 停止或重启 LM Studio。替换由操作者执行，比较器核验各块服务不同。
+- [x] llama-cpp 对 mlx-lm 跨格式组合：模型资产允许不同，范围 `engine_and_model_format`；
+  MLX 冷缓存按正式服务源码结构保证。
 
 ## 3. 比较器
 

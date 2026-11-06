@@ -73,6 +73,8 @@ temperature 固定为 0，max_tokens 与 context 显式冻结；
 旧诊断入口不接受这个新身份。
 
 新配置必须接通电源，温度来源必需，停止阈值最高 85°C；
+例外是操作者冻结的 `safety.temperature_stop_override_reason`：阈值冻结为 null，
+读数仍必需并记录，规则见[跨引擎比较契约](engine-comparison.md#温度停止覆盖)。
 安全检查间隔 0.1–5 秒，周期检查环境、温度、内存和磁盘。
 冻结实验不得省略或放宽配置要求；周期检查不反复全扫 Python 库存。
 请求边界与异步身份观察的成本必须纳入测量开销。

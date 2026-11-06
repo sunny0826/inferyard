@@ -31,6 +31,12 @@ def validate_config(config):
     from inferyard.contracts.engine_tuning import validate_tuning
 
     validate_tuning(engine)
+    reason = config["safety"].get("temperature_stop_override_reason")
+    require(
+        reason is None or bool(reason.strip()),
+        "config.safety.temperature_stop_override_reason",
+        "override reason must not be blank",
+    )
     environment = engine["environment"]
     validate_root_environment(engine["family"], environment, engine["working_directory"])
     require(

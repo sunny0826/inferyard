@@ -40,10 +40,12 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     conditions = []
     local_profile = any(is_local(data["config"]) for data in (left, right))
     engine_mode = chosen == "engine"
-    from inferyard.analysis.engine_comparison import ENGINE_DIFFERENCES, LEGACY_ENGINE_FIELDS
+    from inferyard.analysis.engine_comparison import LEGACY_ENGINE_FIELDS, allowed_differences
+
+    engine_allowed = allowed_differences(left, right) if engine_mode else ()
 
     def check(field, a, b, *, allowed=False, impact="common"):
-        allowed = allowed or engine_mode and field in ENGINE_DIFFERENCES
+        allowed = allowed or field in engine_allowed
         if field == "run.definition_versions.scoring":
             impact = "quality"
         elif field == "run.definition_versions.measurement":

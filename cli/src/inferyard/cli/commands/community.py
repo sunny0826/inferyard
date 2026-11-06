@@ -56,6 +56,15 @@ def add_commands(commands):
     create.add_argument("--served-model")
     create.add_argument("--max-tokens", type=int)
     create.add_argument("--timeout-seconds", type=float)
+    create.add_argument(
+        "--temperature-stop-override-reason",
+        help="local engines: record temperature but never stop on it; reason is frozen",
+    )
+    create.add_argument(
+        "--prompt-cache",
+        choices=("disabled",),
+        help="llama-cpp only: freeze engine.tuning.prompt_cache and send cache_prompt=false",
+    )
     create.add_argument("--service-pid", dest="server_pid", type=int)
     create.add_argument("--out", type=Path, required=True)
     create.add_argument("--port", type=int, default=48857)

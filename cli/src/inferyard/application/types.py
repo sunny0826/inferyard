@@ -98,6 +98,8 @@ class CommandRequest:
     engine_timeout_seconds: float = 1800
     protect_pids: list[int] | None = None
     workspace: Path | None = None
+    temperature_stop_override_reason: str | None = None
+    prompt_cache: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

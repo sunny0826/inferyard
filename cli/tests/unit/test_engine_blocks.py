@@ -148,3 +148,44 @@ def test_prompt_cache_declaration_adds_cache_prompt_for_llama_only():
     assert LocalEngineAdapter.request_body(config, "hi")["cache_prompt"] is False
     config["engine"]["tuning"] = {}
     assert "cache_prompt" not in LocalEngineAdapter.request_body(config, "hi")
+
+
+def mlx_block(order, **fields):
+    data = block("mlx-lm", order, **fields)
+    data["config"]["model"].update(kind="directory", content_sha256="m", assets_sha256="ma")
+    for row in data["requests"]:
+        row["usage_detail"]["cached_tokens"] = None
+    return data
+
+
+def cross_format(**right):
+    rows = []
+    for i in range(3):
+        rows.append(block("llama-cpp", 2 * i))
+        rows.append(mlx_block(2 * i + 1, **right))
+    return rows
+
+
+def test_cross_format_scope_and_structural_mlx_cold_cache():
+    result = compare_blocks(cross_format(e2e_ms=800))
+    assert result["eligible"] is True, result["blockers"]
+    assert result["scope"] == "engine_and_model_format"
+    assert result["verdicts"]["e2e_ms"]["verdict"] == "mlx-lm"
+    assert result["cache_evidence"] == {
+        "left": ["observed_zero_cached_tokens"],
+        "right": ["formal_server_no_prompt_cache_reuse"],
+    }
+    assert "model_format_differs_not_attributable_to_engine" in result["limitations"]
+
+
+def test_missing_llama_cache_counter_is_not_structural():
+    rows = cross_format()
+    rows[0]["requests"][0]["usage_detail"]["cached_tokens"] = None
+    assert "left.cold_cache_unverified" in compare_blocks(rows)["blockers"]
+
+
+def test_temperature_override_is_a_limitation():
+    rows = cross_format(e2e_ms=800)
+    for row in rows:
+        row["config"]["safety"] = {"temperature_stop_override_reason": "operator"}
+    assert "temperature_stop_overridden" in compare_blocks(rows)["limitations"]

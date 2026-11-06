@@ -1,4 +1,4 @@
-"""Interleaved block verdict for the same-GGUF engine comparison (ADR 056).
+"""Interleaved block verdict for the engine comparison mode (ADR 056).
 
 Only client-side timings decide. A winner requires every gate to pass and
 every block pair's median difference to point the same way.
@@ -6,7 +6,7 @@ every block pair's median difference to point the same way.
 
 import statistics
 
-from inferyard.analysis.engine_comparison import PENDING
+from inferyard.analysis.engine_comparison import CROSS_FORMAT, PENDING
 from inferyard.contracts.engine_profiles import TUNING_KEYS
 from inferyard.contracts.engine_tuning import observe
 
@@ -26,6 +26,9 @@ METRIC_IDS = {
     "client_decode_interval_ms": "client_decode_interval",
 }
 SIDE_SCOPE = ("model", "engine", "generation", "conditions", "execution", "safety")
+# The formal MLX server (bound by source hash at service inspection) calls
+# mlx_lm.stream_generate without a prompt_cache, so every request starts empty.
+STRUCTURAL_COLD_CACHE = {"mlx-lm": "formal_server_no_prompt_cache_reuse"}
 
 
 def _service(data):
@@ -92,9 +95,10 @@ def _metrics(row):
     }
 
 
-def _pair_requests(left, right, blockers, mismatches):
+def _pair_requests(left, right, blockers, mismatches, cache_evidence):
     rows = {r["plan_index"]: r for r in right["requests"]}
     pairs, excluded = [], {}
+    sides = (("left", left), ("right", right))
     for a in left["requests"]:
         b = rows.get(a["plan_index"])
         if b is None or b["case_id"] != a["case_id"]:
@@ -109,12 +113,17 @@ def _pair_requests(left, right, blockers, mismatches):
         elif prompts[0] != prompts[1]:
             blockers.append("prompt_tokens_differ")
             mismatches.append({"case_id": a["case_id"], "prompt_tokens": list(prompts)})
-        for side, row in (("left", a), ("right", b)):
+        for (side, data), row in zip(sides, (a, b), strict=True):
             cached = _usage(row, "cached_tokens")
-            if cached is None:
+            structural = STRUCTURAL_COLD_CACHE.get(data["config"]["engine"].get("family"))
+            if cached is None and structural is not None:
+                cache_evidence[side].add(structural)
+            elif cached is None:
                 blockers.append(side + ".cold_cache_unverified")
             elif cached > 0:
                 blockers.append(side + ".cache_hit_observed")
+            else:
+                cache_evidence[side].add("observed_zero_cached_tokens")
         counts = (a["completion_tokens"], b["completion_tokens"])
         if None in counts or counts[0] != counts[1]:
             excluded["output_tokens_differ"] = excluded.get("output_tokens_differ", 0) + 1
@@ -168,11 +177,12 @@ def compare_blocks(blocks):
         raise EvidenceError("engine_comparison_requires_two_families")
     conditions = None
     block_rows = []
+    cache_evidence = {"left": set(), "right": set()}
     for index, (a, b) in enumerate(zip(left, right, strict=False)):
         identity = compare_trials(a, b, mode="engine")
         conditions = conditions if conditions is not None else identity["conditions"]
         blockers.extend(x for x in identity["blockers"] if x not in PENDING)
-        pairs, excluded = _pair_requests(a, b, blockers, mismatches)
+        pairs, excluded = _pair_requests(a, b, blockers, mismatches, cache_evidence)
         medians = {
             metric: [_median(p[side][metric] for p in pairs) for side in (0, 1)]
             for metric in METRICS
@@ -198,6 +208,12 @@ def compare_blocks(blocks):
     blockers = list(dict.fromkeys(blockers))
     families = [left[0]["config"]["engine"]["family"], right[0]["config"]["engine"]["family"]]
     tuning, scope = _tuning(left[0], right[0])
+    cross_format = frozenset(families) == CROSS_FORMAT
+    if cross_format:
+        scope = "engine_and_model_format"
+    temperature_overridden = any(
+        "temperature_stop_override_reason" in d["config"].get("safety", {}) for d in ordered
+    )
     eligible = not blockers
     verdicts = {
         metric: {
@@ -220,6 +236,7 @@ def compare_blocks(blocks):
         "conditions": conditions or [],
         "tuning": tuning,
         "scope": scope,
+        "cache_evidence": {side: sorted(values) for side, values in cache_evidence.items()},
         "blocks": block_rows,
         "prompt_token_mismatches": mismatches,
         "verdicts": verdicts,
@@ -229,6 +246,8 @@ def compare_blocks(blocks):
             "client_timings_include_measurement_overhead",
             "effective_parameters_not_verified_native",
             "engine_reported_timings_not_used_for_verdict",
-            *(["engine_defaults_not_controlled"] if scope == "product_configuration" else []),
+            *(["engine_defaults_not_controlled"] if scope != "engine_implementation" else []),
+            *(["model_format_differs_not_attributable_to_engine"] if cross_format else []),
+            *(["temperature_stop_overridden"] if temperature_overridden else []),
         ],
     }

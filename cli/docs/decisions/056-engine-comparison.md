@@ -15,8 +15,7 @@ side-by-side 三种模式；[ADR 055](055-local-engine-formal.md) 明确本地�
 新增比较模式 `engine`，只允许推理引擎及其冻结的调优参数不同。
 首个支持的组合是 llama-cpp 对 lmstudio，两侧使用同一个单 GGUF 文件。
 其他家族组合返回 `unsupported_engine_pair`，逐对实测后再开放。
-MLX 与 GGUF 不是同一份资产，不进入本模式；需要时只能用 side-by-side 展示
-「引擎 + 资产组合」，不归因于引擎。
+MLX 与 GGUF 不是同一份资产；llama-cpp 对 mlx-lm 的组合见文末修订。
 
 ### 必须相同的条件
 
@@ -74,6 +73,28 @@ Studio 侧的接管需另行设计；ADR 055 中「Studio 不能停掉用户原�
 - 多轮会话回放与真实编程任务：本轮不做。
 - 32K 实际输入分档与显存溢出判定：另行设计，本模式先使用默认双题包。
 - 通用的强制可比开关。
+
+## 修订（2026-11-06，能力实测后）
+
+能力实测原件见 `.tools/engine-compare-probe-20261106/`（诊断，不是比较结果）。
+
+- LM Studio 的 usage 不含缓存命中数，`cache_prompt=false` 被忽略：同一 675 token
+  输入重复请求从 362ms 降到 80–85ms。因此 llama-cpp 对 lmstudio 在本模式下
+  恒为 `cold_cache_unverified`，保留支持但不会产生结论。
+- 新增组合 llama-cpp 对 mlx-lm（`CROSS_FORMAT`），使用同一上游模型的不同格式
+  （GGUF Q8_0 与 MLX 8bit）。模型资产字段允许不同；结论范围固定为
+  `engine_and_model_format`，附 `model_format_differs_not_attributable_to_engine`，
+  只回答「这台机器上哪套引擎与格式更快」。逐请求输入 token 相等仍为硬门槛，
+  它同时核对两侧分词与模板。
+- MLX 冷缓存由结构保证：项目自带的正式 MLX 服务调用 `mlx_lm.stream_generate`
+  不传 `prompt_cache`，每个请求新建缓存；服务源码在服务核验时与 CLI 包内源码
+  比对摘要。该侧缓存证据记为 `formal_server_no_prompt_cache_reuse`，
+  与 llama-cpp 侧的 `observed_zero_cached_tokens` 分别列出，证据强度不同。
+- 温度停止：操作者显式要求忽略温度。本地候选可冻结
+  `safety.temperature_stop_override_reason`；冻结计划的停止阈值随之为 null，
+  温度读数仍必需并记录。没有该声明时 null 阈值继续拒绝。
+  使用该声明的比较附 `temperature_stop_overridden`；
+  热降频可能影响两侧，A/B 交错只能部分抵消。
 
 ## 兼容性
 
