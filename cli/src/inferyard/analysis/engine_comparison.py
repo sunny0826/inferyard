@@ -11,8 +11,17 @@ SAME_ASSET = frozenset(("llama-cpp", "lmstudio"))
 # engine together with its model format and cannot be attributed to the engine.
 CROSS_FORMAT = frozenset(("llama-cpp", "mlx-lm"))
 SUPPORTED_PAIRS = (SAME_ASSET, CROSS_FORMAT)
-# Fields replaced by the local profile's installation and asset digests.
-LEGACY_ENGINE_FIELDS = ("config.engine.release", "config.engine.binary_sha256")
+# Fields the local profile never fills, each checked through its replacement:
+# installation_sha256 (release, binary, runtime closure), content_sha256 or
+# assets_sha256 (model bytes), and the per-request cold-cache gate in
+# engine_blocks (the local schema freezes cache_policy as "unknown").
+LEGACY_ENGINE_FIELDS = (
+    "config.engine.release",
+    "config.engine.binary_sha256",
+    "identity.runtime_library_hashes",
+    "config.model.sha256",
+    "config.conditions.cache_policy",
+)
 # Fields that legitimately differ between engines in this mode.
 ENGINE_DIFFERENCES = (
     "config.engine.family",

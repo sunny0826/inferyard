@@ -58,4 +58,9 @@ llama.cpp 对 LM Studio；实测后增加 llama.cpp 对 MLX-LM（同一上游模
 
 - [ ] 授权设备上按默认双题包执行 A/B/A/B/A/B，冻结温度与内存停止条件；
   背景负载记录在证据中。软件回归不替代真机证据。
+  2026-11-06 llama.cpp 对 MLX-LM：第 1、2 块完成并通过 `verify`；第 3 块第 19 题时
+  断开电源，按 `environment_safety_condition_changed` 停止，原件保留，第 3–6 块重新冻结运行。
+  6 块均通过 `verify`，但计划冻结为 `side-by-side`，`compare-engines` 按
+  `frozen_comparison_mode` 阻断，不出结论；同时暴露本地 profile 旧字段为 unknown 的
+  比较器缺口（已改为替代字段核验）。驱动改为冻结 `comparison.mode = engine` 后重跑 6 块。
 - [ ] 合并等待用户明确授权。

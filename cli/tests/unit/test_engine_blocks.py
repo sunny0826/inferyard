@@ -170,12 +170,25 @@ def test_cross_format_scope_and_structural_mlx_cold_cache():
     result = compare_blocks(cross_format(e2e_ms=800))
     assert result["eligible"] is True, result["blockers"]
     assert result["scope"] == "engine_and_model_format"
-    assert result["verdicts"]["e2e_ms"]["verdict"] == "mlx-lm"
+    assert result["verdicts"]["client_decode_interval_ms"]["verdict"] == "mlx-lm"
+    for metric in ("e2e_ms", "output_tokens_per_second"):
+        assert result["verdicts"][metric]["verdict"] == "display_only_output_length_unmatched"
     assert result["cache_evidence"] == {
         "left": ["observed_zero_cached_tokens"],
         "right": ["formal_server_no_prompt_cache_reuse"],
     }
     assert "model_format_differs_not_attributable_to_engine" in result["limitations"]
+
+
+def test_cross_format_keeps_unequal_lengths_for_per_token_metrics():
+    rows = cross_format(e2e_ms=800, tokens=12)
+    result = compare_blocks(rows)
+    assert result["eligible"] is True, result["blockers"]
+    assert result["blocks"][0]["paired_requests"] == 2
+    assert result["blocks"][0]["output_length_unmatched"] == 2
+    assert result["blocks"][0]["excluded"] == {}
+    assert result["verdicts"]["client_decode_interval_ms"]["verdict"] == "mlx-lm"
+    assert "decode_interval_not_matched_by_output_length" in result["limitations"]
 
 
 def test_missing_llama_cache_counter_is_not_structural():

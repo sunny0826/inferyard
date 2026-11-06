@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import sys
 import time
 from copy import deepcopy
 
@@ -179,10 +180,18 @@ class LocalEngineAdapter(LabAdapter):
             except asyncio.CancelledError:
                 self.native_uncertain = True
                 raise
-            except PreflightError, FitTransportError, TimeoutError:
+            except (PreflightError, FitTransportError, TimeoutError) as exc:
                 snapshot["observation"] = None
                 snapshot["missing_reason"] = "local_engine_queue_unverified"
                 self.native_uncertain = True
+                # Evidence keeps the fixed reason; stderr names the failed check for operators.
+                cause = exc.__cause__
+                print(
+                    "local_engine_queue_unverified: "
+                    + f"{type(exc).__name__}({exc})"
+                    + (f" from {type(cause).__name__}({cause})" if cause else ""),
+                    file=sys.stderr,
+                )
             snapshot["client_uncertain"] = self.native_uncertain
             signals["queue_snapshot"] = snapshot
             self.queue_ready = (

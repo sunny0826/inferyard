@@ -86,6 +86,10 @@ Studio 侧的接管需另行设计；ADR 055 中「Studio 不能停掉用户原�
   `engine_and_model_format`，附 `model_format_differs_not_attributable_to_engine`，
   只回答「这台机器上哪套引擎与格式更快」。逐请求输入 token 相等仍为硬门槛，
   它同时核对两侧分词与模板。
+- 跨格式的贪心输出长度几乎从不相等（真机第 1–2 块前 22 题：输入 token 全等，
+  输出 token 0 题相等）。操作者选择：该组合只用每 token 指标判定——
+  首内容延迟（只取决于相同输入）与客户端解码间隔；E2E 与输出吞吐只展示。
+  解码间隔未按输出长度对齐，较长输出的上下文更长，附相应限制。
 - MLX 冷缓存由结构保证：项目自带的正式 MLX 服务调用 `mlx_lm.stream_generate`
   不传 `prompt_cache`，每个请求新建缓存；服务源码在服务核验时与 CLI 包内源码
   比对摘要。该侧缓存证据记为 `formal_server_no_prompt_cache_reuse`，

@@ -45,6 +45,8 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     engine_allowed = allowed_differences(left, right) if engine_mode else ()
 
     def check(field, a, b, *, allowed=False, impact="common"):
+        if engine_mode and local_profile and field in LEGACY_ENGINE_FIELDS:
+            return  # Checked through its local-profile replacement (engine_comparison).
         allowed = allowed or field in engine_allowed
         if field == "run.definition_versions.scoring":
             impact = "quality"
@@ -128,8 +130,6 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
         "environment_start.cpu_model",
         "environment_start.kernel",
     ):
-        if engine_mode and local_profile and path in LEGACY_ENGINE_FIELDS:
-            continue  # Replaced by config.engine.installation_sha256 for local profiles.
         if path == "run.tool_source_sha256" and any(
             "implementation_identity" in d["run"] for d in (left, right)
         ):

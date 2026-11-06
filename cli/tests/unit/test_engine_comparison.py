@@ -87,3 +87,30 @@ def test_cross_format_pair_allows_model_asset_differences():
 def test_same_asset_pair_still_rejects_model_differences():
     result = compare_trials(local("llama-cpp"), local("lmstudio", packing="other"))
     assert "config.model.packing:different" in result["blockers"]
+
+
+def real_local_shape(family, **model):
+    # The local schema never fills these; real runs carry None or "unknown".
+    data = local(family, **model)
+    data["identity"]["runtime_library_hashes"] = None
+    data["config"]["model"]["sha256"] = None
+    data["config"]["conditions"]["cache_policy"] = "unknown"
+    return data
+
+
+def test_local_profile_legacy_fields_use_their_replacements():
+    result = compare_trials(real_local_shape("llama-cpp"), real_local_shape("lmstudio"))
+    rows = statuses(result)
+    for field in (
+        "identity.runtime_library_hashes",
+        "config.model.sha256",
+        "config.conditions.cache_policy",
+    ):
+        assert field not in rows
+    assert result["blockers"] == list(PENDING)
+
+
+def test_local_profile_replacement_digest_stays_mandatory():
+    left = real_local_shape("llama-cpp", content_sha256=None)
+    result = compare_trials(left, real_local_shape("lmstudio"))
+    assert "config.model.content_sha256:unknown" in result["blockers"]

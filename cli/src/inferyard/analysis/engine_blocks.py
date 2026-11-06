@@ -29,6 +29,9 @@ SIDE_SCOPE = ("model", "engine", "generation", "conditions", "execution", "safet
 # The formal MLX server (bound by source hash at service inspection) calls
 # mlx_lm.stream_generate without a prompt_cache, so every request starts empty.
 STRUCTURAL_COLD_CACHE = {"mlx-lm": "formal_server_no_prompt_cache_reuse"}
+# Different model formats rarely produce equal greedy output lengths, so only
+# per-token metrics decide; E2E and throughput depend on output length.
+CROSS_FORMAT_JUDGED = ("first_content_ms", "client_decode_interval_ms")
 
 
 def _service(data):
@@ -95,7 +98,7 @@ def _metrics(row):
     }
 
 
-def _pair_requests(left, right, blockers, mismatches, cache_evidence):
+def _pair_requests(left, right, blockers, mismatches, cache_evidence, cross_format, unmatched):
     rows = {r["plan_index"]: r for r in right["requests"]}
     pairs, excluded = [], {}
     sides = (("left", left), ("right", right))
@@ -125,9 +128,15 @@ def _pair_requests(left, right, blockers, mismatches, cache_evidence):
             else:
                 cache_evidence[side].add("observed_zero_cached_tokens")
         counts = (a["completion_tokens"], b["completion_tokens"])
-        if None in counts or counts[0] != counts[1]:
-            excluded["output_tokens_differ"] = excluded.get("output_tokens_differ", 0) + 1
+        if None in counts:
+            excluded["output_tokens_unobserved"] = excluded.get("output_tokens_unobserved", 0) + 1
             continue
+        if counts[0] != counts[1]:
+            if not cross_format:
+                excluded["output_tokens_differ"] = excluded.get("output_tokens_differ", 0) + 1
+                continue
+            # Per-token metrics stay comparable; length-dependent ones become display only.
+            unmatched["output_length_unmatched"] += 1
         pairs.append((_metrics(a), _metrics(b)))
     return pairs, excluded
 
@@ -178,11 +187,17 @@ def compare_blocks(blocks):
     conditions = None
     block_rows = []
     cache_evidence = {"left": set(), "right": set()}
+    families = [left[0]["config"]["engine"]["family"], right[0]["config"]["engine"]["family"]]
+    cross_format = frozenset(families) == CROSS_FORMAT
+    judged = CROSS_FORMAT_JUDGED if cross_format else tuple(METRICS)
     for index, (a, b) in enumerate(zip(left, right, strict=False)):
         identity = compare_trials(a, b, mode="engine")
         conditions = conditions if conditions is not None else identity["conditions"]
         blockers.extend(x for x in identity["blockers"] if x not in PENDING)
-        pairs, excluded = _pair_requests(a, b, blockers, mismatches, cache_evidence)
+        unmatched = {"output_length_unmatched": 0}
+        pairs, excluded = _pair_requests(
+            a, b, blockers, mismatches, cache_evidence, cross_format, unmatched
+        )
         medians = {
             metric: [_median(p[side][metric] for p in pairs) for side in (0, 1)]
             for metric in METRICS
@@ -192,6 +207,7 @@ def compare_blocks(blocks):
                 "block": index + 1,
                 "run_ids": [a["run"]["run_id"], b["run"]["run_id"]],
                 "paired_requests": len(pairs),
+                **(unmatched if cross_format else {}),
                 "excluded": excluded,
                 "medians": {
                     metric: {
@@ -206,9 +222,7 @@ def compare_blocks(blocks):
         if not pairs:
             blockers.append("block_without_paired_requests")
     blockers = list(dict.fromkeys(blockers))
-    families = [left[0]["config"]["engine"]["family"], right[0]["config"]["engine"]["family"]]
     tuning, scope = _tuning(left[0], right[0])
-    cross_format = frozenset(families) == CROSS_FORMAT
     if cross_format:
         scope = "engine_and_model_format"
     temperature_overridden = any(
@@ -224,7 +238,9 @@ def compare_blocks(blocks):
                 [row["medians"][metric]["difference"] for row in block_rows],
                 eligible,
                 families,
-            ),
+            )
+            if metric in judged
+            else "display_only_output_length_unmatched",
         }
         for metric, higher in METRICS.items()
     }
@@ -248,6 +264,7 @@ def compare_blocks(blocks):
             "engine_reported_timings_not_used_for_verdict",
             *(["engine_defaults_not_controlled"] if scope != "engine_implementation" else []),
             *(["model_format_differs_not_attributable_to_engine"] if cross_format else []),
+            *(["decode_interval_not_matched_by_output_length"] if cross_format else []),
             *(["temperature_stop_overridden"] if temperature_overridden else []),
         ],
     }

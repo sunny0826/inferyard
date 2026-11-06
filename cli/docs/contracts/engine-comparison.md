@@ -49,8 +49,11 @@
   `content_sha256` 与 `assets_sha256` 相同。
 - 跨格式组合：`config.model` 的 kind、content/assets 摘要、repo、revision、sha256、
   packing、template_sha256 允许不同。
-- 允许不同：`config.engine.family`、`installation_sha256`、`startup_args`、
-  `identity.runtime_library_hashes`；本模式不比较旧字段 `release` 与 `binary_sha256`。
+- 允许不同：`config.engine.family`、`installation_sha256`、`startup_args`。
+- 本地 profile 不填写的旧字段不参与比较，改由替代字段核验，替代字段缺失时仍阻断：
+  `release`、`binary_sha256`、`identity.runtime_library_hashes` 由 `installation_sha256`
+  （含运行时闭包核验）代替；`config.model.sha256` 由 `content_sha256`／`assets_sha256`
+  代替；`config.conditions.cache_policy`（本地 schema 固定为 `unknown`）由逐请求冷缓存门槛代替。
 - 原生服务不报告实际生成参数，本模式不逐项核对 effective 参数，
   只要求冻结的 `config.generation` 相同，并记录限制
   `effective_parameters_not_verified_native`。
@@ -84,6 +87,8 @@
   `formal_server_no_prompt_cache_reuse`（正式 MLX 服务不复用 prompt 缓存，
   源码摘要在服务核验时比对）。各侧证据种类写入 `cache_evidence`。
 - 输出 token 数不等或缺失时该对计入 `excluded.output_tokens_differ`，不参与排名。
+  跨格式组合例外：输出 token 数不等的对仍参与配对，计入块的
+  `output_length_unmatched`；缺失时计入 `excluded.output_tokens_unobserved`。
 
 ## 指标与判定
 
@@ -95,6 +100,9 @@
 每个配对块取两侧中位数，差值为 right − left。
 任一阻断存在时 verdict 为 `not_eligible`；
 否则全部块差值同号且非零时 verdict 为较优一侧的家族名，其余为 `no_clear_difference`。
+跨格式组合只判 `first_content_ms` 与 `client_decode_interval_ms`；
+`e2e_ms` 与 `output_tokens_per_second` 依赖输出长度，verdict 固定为
+`display_only_output_length_unmatched`，并附 `decode_interval_not_matched_by_output_length`。
 `scope` 只有全部调优键两侧已观察且相同时为 `engine_implementation`，
 否则为 `product_configuration` 并附 `engine_defaults_not_controlled`；
 llama-cpp 对 lmstudio 当前总是后者。跨格式组合的 `scope` 固定为
