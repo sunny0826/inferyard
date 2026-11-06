@@ -1,0 +1,16 @@
+{
+  "source_path": "cli/tests/unit/test_packaging_encoding.py",
+  "decisions": [
+    {
+      "test": "test_child_cli_encoding_overrides_inherited_codepage",
+      "decision": "keep",
+      "reason": "具体场景 test_child_cli_encoding_overrides_inherited_codepage。可观察预期：assert result.stdout == '中文🧪\\n'。打包安装保障：模拟非 UTF-8 默认与继承旧代码页时，中文/emoji 报告及子 CLI 输出仍可读取，probe 必须拒绝旧报告格式。"
+    },
+    {
+      "test": "test_report_probe_preserves_unicode_with_simulated_cp1252_default",
+      "decision": "keep",
+      "reason": "保留默认read_text/write_text被注入cp1252时真实installed_probe读取中文expected输入并完成、旧格式index生成且无报告HTML；删除stub写出的Unicode/version原样回显、runs转发和verifier调用序列，并按保留行为改名。子Python继承cp936仍UTF-8输出另测保留。",
+      "renamed_to": "test_installed_probe_reads_unicode_and_rejects_old_reports_with_cp1252_default"
+    }
+  ]
+}

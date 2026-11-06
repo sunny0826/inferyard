@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_native_batch_continuation.py",
+  "decisions": [
+    {
+      "test": "test_native_resume_after_clean_scoring_stop_and_dirty_rejection",
+      "decision": "keep",
+      "reason": "评分存储错误后仅clean状态可续测未执行题；dirty状态必须绑定恢复而非直接resume。"
+    },
+    {
+      "test": "test_native_two_repeats_keep_client_http_scope",
+      "decision": "keep",
+      "reason": "native两次重复保持client_http范围且无内部排空证明，正常继续后再次run不隐式发题。"
+    },
+    {
+      "test": "test_native_uncertain_or_cancelled_request_blocks_resume",
+      "decision": "keep",
+      "reason": "native截断或取消后即使清除fixture故障也不能resume，保持dirty和停止后的原请求数。"
+    }
+  ]
+}

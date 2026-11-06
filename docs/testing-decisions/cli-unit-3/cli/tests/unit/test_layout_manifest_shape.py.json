@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_layout_manifest_shape.py",
+  "decisions": [
+    {
+      "test": "test_unknown_layout_checks_physical_byte_count_type",
+      "decision": "keep",
+      "reason": "具体场景 test_unknown_layout_checks_physical_byte_count_type。逐项参数：pytest.mark.parametrize('byte_count, expected', [(0, 2), (False, 4), (0.0, 4), ('0', 4), (-1, 4)])。可观察预期：assert main(['verify', '--path', str(root)]) == expected；assert {p.name: sha256_file(p) for p in root.iterdir()} == before。未知布局仍先校验真实物理字节数类型；不能把 bool/浮点/负数伪装为合法文件长度并误报仅版本不支持，核验保持只读。"
+    }
+  ]
+}

@@ -49,19 +49,20 @@
 在窗口内存推进准备、绑定、计划、等待、五次测量、取消和结果读取。
 正常按钮仍经 `previewIntent` 分流，不建立服务或执行磁盘 IO。
 生产侧 `startSpeedFlow` / `readSpeedFlow` 在 Service 边界接受受控响应，
-`preview_speed_parity_test.go` 分别对照明确预期再比较阶段、数值、缺测、身份、
+`preview_speed_parity_test.go` 将两条路径分别对照明确预期，检查阶段、数值、缺测、身份、
 准备/绑定失败重试、等待/活动取消、只读重试及普通报告隔离。
 模拟结果另通过正式 parser 的结构/语义校验；原生窗口和真实模型另验。
 完整职责与历史边界见[长上下文专项](context-speed.md)。
 
-`preview_test.go` 覆盖全部场景、导航、隔离、重置，以及 800/1120 宽、文字缩放 1/2、浅深主题布局；
+`preview_test.go` 覆盖重置后表单与控件状态清空，以及页面和带外操作的内存隔离；
+固定尺寸、主题与布局树矩阵已按[测试策略](../../testing.md)删除。
 `preview_interaction_test.go` 用页面按钮覆盖准备、双题包运行、动态详情、报告、取消收尾、
 失败重试、并行下载、设置生效和过期事件。macOS 原生窗口已用页面按钮完成准备环境、
 模拟下载并选择模型、双题包运行、动态详情与打开本次报告。模拟检查不证明真实模型流程或 Windows/Linux 原生行为。
 
 [`tests/ui`](../../../studio/tests/ui/README.md) 使用 XCUITest 构建实际 Go 入口并启动独立
 `--debug-ui` macOS 窗口。测试只按可访问控件操作和断言，不读取 `viewState`、推进测试时钟或用
-场景下拉完成流程；由真实窗口 ticker 推进模拟任务。整套测试只启动一次模拟应用，按具名 activity 连续执行，结束时核对进程未替换。结果写入新的
+场景下拉完成流程；由真实窗口 ticker 推进模拟任务。整套测试只启动一次模拟应用，按具名 activity 连续执行。结果写入新的
 `build/ui-e2e/run-*`，失败保留截图与辅助功能树。根级 `mise run test:studio-ui` 运行日常精简验收，
 `mise run test:studio-ui:full` 与 macOS CI 运行完整验收；共用入口与场景函数，具体覆盖以
 原生测试说明中的矩阵为准。每轮保存套件名称、执行场景与耗时，精简通过不代表完整通过。
@@ -80,8 +81,7 @@
 正常侧调用实际 `runBenchmarkFlow` / `cancelBenchmarkRuns`，在 `benchmarkBackend` 边界注入
 受控服务响应；模拟侧调用页面动作与内存调度器。起点是候选已准备好，取消比较终态与无报告，
 异步重置另由 `preview_parity_reset_test.go` 对照空闲及活动/等待队列两种起点：正式侧调用
-实际重置循环并延迟 UI 回调，模拟侧调用新任务动作；各自断言旧任务结束、新任务不被取消，
-再比较结果。该层不启动 `core.Service`、CLI 或模型，不证明环境安装、下载、
+实际重置循环并延迟 UI 回调，模拟侧调用新任务动作；各自对照独立预期，断言旧任务结束、新任务不被取消。该层不启动 `core.Service`、CLI 或模型，不证明环境安装、下载、
 真实事件刷新或全部故障分支一致。已有 macOS CI 的 `ui_debug` 页面测试自动包含它。单独运行：
 
 ```sh

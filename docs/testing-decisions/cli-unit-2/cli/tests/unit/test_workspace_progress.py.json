@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_workspace_progress.py",
+  "decisions": [
+    {
+      "test": "test_blocked_preflight_remains_readable",
+      "decision": "keep",
+      "reason": "预检建议 blocked 仍可读且保留 no_local_model 原因，不能把业务阻塞当损坏证据。"
+    },
+    {
+      "test": "test_corrupt_report_is_rejected_even_before_runs",
+      "decision": "keep",
+      "reason": "即使尚无 run，已有损坏报告也必须阻止 progress，不能悄悄忽略不可信产物。"
+    },
+    {
+      "test": "test_incomplete_and_unsealed_run_are_not_complete",
+      "decision": "keep",
+      "reason": "未完成或未封存 run 不得标完整，单 run 只能建议重跑而不能给无 batch 的 resume。"
+    },
+    {
+      "test": "test_init_layout_roadmap_and_progress_read_only",
+      "decision": "keep",
+      "reason": "新工作区 progress 推荐双默认 scope 的 device-check，支持中文空格路径且只读；删固定目录集和 JSON key 集断言。"
+    },
+    {
+      "test": "test_new_command_never_reuses_existing_output",
+      "decision": "keep",
+      "reason": "生成下一命令不能复用已有输出目录，避免立即失败或覆盖既有原件。"
+    },
+    {
+      "test": "test_preparation_phases",
+      "decision": "keep",
+      "reason": "preflight/candidate/bound 三起点分别给出 prepare/bind/run，避免推荐不可执行下一步。"
+    },
+    {
+      "test": "test_two_runs_report_and_verified_default_scope",
+      "decision": "keep",
+      "reason": "两 scope 都完成且报告封存核验后才 done；缺报告 seal 要回到 verify，避免过早宣告默认测评完成。"
+    },
+    {
+      "test": "test_unreadable_artifacts_always_exit_two",
+      "decision": "keep",
+      "reason": "缺/损坏准备原件、坏 scope 与坏 run/preflight 都退出 2，避免下一步建议建立在错误输入上。"
+    },
+    {
+      "test": "test_unsealed_complete_run_stays_incomplete",
+      "decision": "keep",
+      "reason": "完成请求但未封存仍不完整，避免把崩溃前缀作为完成测评。"
+    }
+  ]
+}

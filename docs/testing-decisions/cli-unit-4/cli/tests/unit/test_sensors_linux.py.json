@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_sensors_linux.py",
+  "decisions": [
+    {
+      "test": "test_external_symlink_rejected",
+      "decision": "keep",
+      "reason": "sysfs 链接逃出根目录拒绝，避免读取外部文件冒充温度。"
+    },
+    {
+      "test": "test_identity_change_latched",
+      "decision": "keep",
+      "reason": "传感器身份变化后粘滞缺测，避免同路径换硬件拼接温度。"
+    },
+    {
+      "test": "test_invalid_temperature",
+      "decision": "keep",
+      "reason": "坏文本、绝对零度以下或超长数拒绝且 raw 不伪造，避免非法温度进入指标。"
+    },
+    {
+      "test": "test_missing_and_cancelled_observations",
+      "decision": "delete",
+      "reason": "无样本与取消请求不产值已由 test_sensor_observations.py::test_invalid_execution_keeps_counts_but_not_sensor_values 和 test_unavailable_metric_differs_from_source_without_samples_in_this_request 覆盖。"
+    },
+    {
+      "test": "test_missing_and_limited_discovery",
+      "decision": "keep",
+      "reason": "没有 sysfs 来源明确缺温度/频率，发现上限截断有 issue，避免枚举不完整伪装全部可见。"
+    },
+    {
+      "test": "test_permission_failure_not_zero",
+      "decision": "keep",
+      "reason": "温度读取权限失败为 null+permission_denied，避免零温度误导安全检查。"
+    },
+    {
+      "test": "test_schema_and_reductions_respect_sensor_and_window",
+      "decision": "keep",
+      "reason": "真实采样输出可过 schema、换算篡改拒绝、暖机/窗口外样本排除，避免采集与归约口径错配。"
+    },
+    {
+      "test": "test_units_and_semantics_remain_separate",
+      "decision": "keep",
+      "reason": "温度毫度与频率 kHz 换算为 celsius/Hz，硬件报告和请求频率语义分开，避免错误量纲或混合。"
+    }
+  ]
+}

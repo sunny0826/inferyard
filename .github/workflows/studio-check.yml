@@ -36,9 +36,6 @@ jobs:
       - name: Development launcher lint
         working-directory: cli
         run: mise exec -- uv run --frozen ruff check ../tools --config pyproject.toml
-      - name: Vet
-        working-directory: studio
-        run: mise exec -- go vet ./...
       # Unit tests run on macOS only: the pre-existing internal/core suite is
       # not Windows-clean yet (permission-bit, path-separator and timing
       # assumptions); that debt is tracked separately from this workflow.
@@ -50,7 +47,6 @@ jobs:
         if: matrix.os == 'macos-15'
         working-directory: studio
         run: |
-          mise exec -- go vet -tags ui_debug ./...
           mise exec -- go test -tags ui_debug . ./internal/pages -count=1
           mise exec -- go test -tags ui_debug,release . -count=1
           mise exec -- go test -tags studio_dev . ./internal/core ./internal/pages -count=1

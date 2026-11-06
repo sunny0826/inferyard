@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/core/local_resources_models_test.go",
+  "decisions": [
+    {
+      "test": "TestDirectoryDiscoveryLimitHasFixedReason",
+      "decision": "keep",
+      "reason": "扫描超过目录项上限须明确 model_discovery_limit，防无限遍历使模型页卡死或静默显示空模型。"
+    },
+    {
+      "test": "TestDirectoryModelRejectsEscapingAssetSymlink",
+      "decision": "keep",
+      "reason": "模型目录内权重指向根外时不能当成本地已登记模型，防选中未纳入边界的资源。"
+    },
+    {
+      "test": "TestRegistryDirectoryModelDiscoveryIsBoundedAndMergesGGUF",
+      "decision": "keep",
+      "reason": "有效目录模型和 GGUF 同时可选，venv/过深/不完整/逃逸模型不列出，缺测元数据保持未知且不泄路径。"
+    }
+  ]
+}

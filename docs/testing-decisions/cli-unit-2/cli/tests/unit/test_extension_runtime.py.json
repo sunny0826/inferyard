@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_extension_runtime.py",
+  "decisions": [
+    {
+      "test": "test_guarded_request_cancels_and_joins_owned_task",
+      "decision": "keep",
+      "reason": "stop 触发后取消并等待扩展拥有的请求 finally 清理，避免扩展返回后仍发模型请求。"
+    },
+    {
+      "test": "test_independent_guard_is_another_process_and_records_final_boundary",
+      "decision": "keep",
+      "reason": "独立 guard 检测缺失系统内存就停且保留末边界，避免阻塞主循环掩盖安全停止。"
+    },
+    {
+      "test": "test_total_runtime_uses_same_workload_and_seals_full_observer_arms",
+      "decision": "keep",
+      "reason": "总开销 ABBA 使用相同 workload 且 on 臂封存实际采样，避免把缺少观测或不同工作量比较成采集开销。"
+    }
+  ]
+}

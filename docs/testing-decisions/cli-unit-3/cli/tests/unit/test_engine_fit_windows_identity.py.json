@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_windows_identity.py",
+  "decisions": [
+    {
+      "test": "test_binding_preserves_exact_filetime_and_no_private_values",
+      "decision": "keep",
+      "reason": "具体场景 test_binding_preserves_exact_filetime_and_no_private_values。可观察预期：assert value['start_ticks'] == TICKS；assert value['process_start_source'] == WINDOWS_START_SOURCE；assert value['listener_inode'] is None；assert value['listener_identity'] == 'windows:tcp:127.0.0.1:8080:pid:321'。防止 Windows 环境变量绕过模型绑定、服务账户/FILETIME 改变后继续采集及含缺失成员的进程树被报告成完整；监听竞争不能被猜成唯一。"
+    },
+    {
+      "test": "test_cpu_counter_regression_during_tree_recheck_is_missing",
+      "decision": "keep",
+      "reason": "具体场景 test_cpu_counter_regression_during_tree_recheck_is_missing。可观察预期：assert result['process_tree_cpu_seconds'] is None；assert result['process_tree_rss_bytes'] is None；assert result['missing_reasons']['process_count'] == 'engine_fit_process_counter_unavailable'。防止 Windows 环境变量绕过模型绑定、服务账户/FILETIME 改变后继续采集及含缺失成员的进程树被报告成完整；监听竞争不能被猜成唯一。"
+    },
+    {
+      "test": "test_creation_identity_requires_exact_supported_integer",
+      "decision": "keep",
+      "reason": "具体场景 test_creation_identity_requires_exact_supported_integer。逐项参数：pytest.mark.parametrize('value', [True, 0, -1, float(TICKS), 2 ** 63])。可观察预期：pytest.raises(PreflightError, match='identity_unavailable')。防止 Windows 环境变量绕过模型绑定、服务账户/FILETIME 改变后继续采集及含缺失成员的进程树被报告成完整；监听竞争不能被猜成唯一。"
+    },
+    {
+      "test": "test_identity_change_between_native_observations_is_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_identity_change_between_native_observations_is_rejected。逐项参数：pytest.mark.parametrize('change', ['start', 'args', 'owner', 'exe', 'model'])。可观察预期：assert (current.st_dev, current.st_ino) != (previous.st_dev, previous.st_ino)；pytest.raises(PreflightError)。防止 Windows 环境变量绕过模型绑定、服务账户/FILETIME 改变后继续采集及含缺失成员的进程树被报告成完整；监听竞争不能被猜成唯一。"
+    },
+    {
+      "test": "test_listener_ambiguity_rejected_without_reading_other_process_details",
+      "decision": "keep",
+      "reason": "具体场景 test_listener_ambiguity_rejected_without_reading_other_process_details。逐项参数：pytest.mark.parametrize('extra', ['same_pid', 'other_pid', 'ipv6_wildcard'])。可观察预期：pytest.raises(PreflightError, match='endpoint_pid_mismatch')。防止 Windows 环境变量绕过模型绑定、服务账户/FILETIME 改变后继续采集及含缺失成员的进程树被报告成完整；监听竞争不能被猜成唯一。"
+    },
+    {
+      "test": "test_resources_sum_complete_tree_with_windows_units",
+      "decision": "keep",
+      "reason": "具体场景 test_resources_sum_complete_tree_with_windows_units。可观察预期：assert result['process_tree_rss_bytes'] == 3072；assert result['process_tree_cpu_seconds'] == 4.0；assert result['process_count'] == 2；assert result['scope'] == WINDOWS_SCOPE and result['missing_reasons'] == {}。防止 Windows 环境变量绕过模型绑定、服务账户/FILETIME 改变后继续采集及含缺失成员的进程树被报告成完整；监听竞争不能被猜成唯一。"
+    },
+    {
+      "test": "test_service_account_must_be_readable_and_match",
+      "decision": "keep",
+      "reason": "具体场景 test_service_account_must_be_readable_and_match。逐项参数：pytest.mark.parametrize('owner', ['other-account', '', None, 1])。可观察预期：pytest.raises(PreflightError, match='user_mismatch')。防止 Windows 环境变量绕过模型绑定、服务账户/FILETIME 改变后继续采集及含缺失成员的进程树被报告成完整；监听竞争不能被猜成唯一。"
+    },
+    {
+      "test": "test_unstable_or_missing_member_cannot_become_partial_sum",
+      "decision": "keep",
+      "reason": "具体场景 test_unstable_or_missing_member_cannot_become_partial_sum。逐项参数：pytest.mark.parametrize('change', ['parent', 'nan', 'missing', 'duplicate', 'root_reused'])。可观察预期：assert result['memory_available_bytes'] == 2 ** 30；assert result[name] is None and result['missing_reasons'][name]。防止 Windows 环境变量绕过模型绑定、服务账户/FILETIME 改变后继续采集及含缺失成员的进程树被报告成完整；监听竞争不能被猜成唯一。"
+    },
+    {
+      "test": "test_windows_cannot_accept_a_ninfer_or_draft_entrypoint",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_cannot_accept_a_ninfer_or_draft_entrypoint。可观察预期：pytest.raises(PreflightError, match='argument_ambiguous')；pytest.raises(PreflightError, match='windows_engine_unavailable')。防止 Windows 环境变量绕过模型绑定、服务账户/FILETIME 改变后继续采集及含缺失成员的进程树被报告成完整；监听竞争不能被猜成唯一。"
+    },
+    {
+      "test": "test_windows_environment_cannot_bypass_asset_binding",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_environment_cannot_bypass_asset_binding。逐项参数：pytest.mark.parametrize('key', ['LLAMA_ARG_RPC', 'llama_arg_model', 'LlAmA_ArG_MMProj'])。可观察预期：pytest.raises(PreflightError, match='environment_requires_explicit_args')。防止 Windows 环境变量绕过模型绑定、服务账户/FILETIME 改变后继续采集及含缺失成员的进程树被报告成完整；监听竞争不能被猜成唯一。"
+    }
+  ]
+}

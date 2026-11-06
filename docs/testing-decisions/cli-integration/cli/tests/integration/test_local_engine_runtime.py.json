@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/integration/test_local_engine_runtime.py",
+  "decisions": [
+    {
+      "test": "test_completed_http_then_queue_failure_retains_incomplete_original",
+      "decision": "keep",
+      "reason": "HTTP成功后队列观察失败仍需停发、保留已完成题和其余未执行及dirty。"
+    },
+    {
+      "test": "test_formal_local_run_seals_and_renders_offline",
+      "decision": "keep",
+      "reason": "本地引擎实际runner完成正式题后删除安装/模型仍可离线报告，未知参数不显示None线程，不能声称内部排空。"
+    },
+    {
+      "test": "test_local_missing_queue_stops_before_any_generation",
+      "decision": "keep",
+      "reason": "队列缺成对计数时，在任何生成前停止并保留不确定dirty。"
+    },
+    {
+      "test": "test_sealed_queue_tampering_rejected_before_report",
+      "decision": "keep",
+      "reason": "改写已保存queue idle归约值后，离线重建和报告必须拒绝。"
+    },
+    {
+      "test": "test_second_scope_requires_explicit_handoff_and_new_process",
+      "decision": "keep",
+      "reason": "跨scope交接要求新主进程及全部旧worker退出和完整重绑定，缺绑定或存活worker拒绝，组合报告不授跨引擎性能资格。"
+    },
+    {
+      "test": "test_uncertain_generation_stays_dirty_even_with_zero_queue",
+      "decision": "keep",
+      "reason": "EOF、取消或温度停止后即便队列为0也不能消除不确定性，必须停发并保留实际触发证据。"
+    }
+  ]
+}

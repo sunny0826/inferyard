@@ -24,13 +24,6 @@ def test_public_review_reason(tmp_path, capsys, monkeypatch):
     assert not out.exists()
 
 
-def test_default_bundles_still_prepare(tmp_path, capsys):
-    out = tmp_path / "ordinary"
-    assert main(["init", "--out", str(out)]) == 0
-    response = json.loads(capsys.readouterr().out)
-    assert [v["bundle"] for v in response["details"]["bundles"]] == list(workspace.DEFAULT_BUNDLES)
-
-
 @pytest.mark.parametrize("raw", [b"{", b"{}", b"null", b'{"schema_version":true}'])
 def test_malformed_resource_is_not_review(monkeypatch, raw):
     monkeypatch.setattr(workspace, "resource_bytes", lambda _: raw)

@@ -1,0 +1,80 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_file_io.py",
+  "decisions": [
+    {
+      "test": "test_clock_regression_does_not_open",
+      "decision": "keep",
+      "reason": "时钟倒退使期限无效时在打开文件前拒绝，避免错误预算授权。"
+    },
+    {
+      "test": "test_create_new_refuses_existing_file_without_writing",
+      "decision": "keep",
+      "reason": "执行器遇已存在文件不写入，原字节不变；独立于底层适配器直接调用。"
+    },
+    {
+      "test": "test_deadline_on_each_file_step_still_closes",
+      "decision": "keep",
+      "reason": "读写各步骤到期后停止后续操作并释放已开句柄，避免超预算继续写入或泄漏。"
+    },
+    {
+      "test": "test_duplicate_json_keys_and_non_finite_numbers_are_rejected",
+      "decision": "keep",
+      "reason": "顶层/嵌套重复键与三种非有限数拒绝，防止同一请求被不同读者作不同解释。"
+    },
+    {
+      "test": "test_final_sample_after_close_rejects_success_and_keeps_known_bytes",
+      "decision": "keep",
+      "reason": "最后关闭后才发现到期也不能报成功，同时保留已经读写的真实字节数。"
+    },
+    {
+      "test": "test_input_object_is_not_mutated",
+      "decision": "delete",
+      "reason": "只检查调用前后字典相等，未验证执行结果；合法 IO 与身份拒绝测试已有产品覆盖。"
+    },
+    {
+      "test": "test_legal_injected_operations",
+      "decision": "keep",
+      "reason": "read/hash/write_new 的内容、摘要和写入结果正确；删除固定键集合与完整内部调用序列。"
+    },
+    {
+      "test": "test_main_always_refuses_without_real_io",
+      "decision": "keep",
+      "reason": "独立 worker CLI 即使收到合法载荷也退出 2，不擅自授予真实 IO 许可。"
+    },
+    {
+      "test": "test_primary_error_and_close_error_are_both_kept",
+      "decision": "keep",
+      "reason": "读取失败和关闭失败同时发生时保留两个原因，不让清理错误掩盖主故障。"
+    },
+    {
+      "test": "test_reparse_ancestor_blocks_open_and_create",
+      "decision": "keep",
+      "reason": "本地祖先、叶节点及 UNC 根 reparse 均阻断读写，避免实验 IO 沿链接逃逸。"
+    },
+    {
+      "test": "test_size_sha_base64_path_and_duplicate_keys_do_nothing",
+      "decision": "keep",
+      "reason": "大小、摘要、Base64 和非法路径失败不得触碰 IO；末项实际测试编码长度超限。"
+    },
+    {
+      "test": "test_type_and_identity_errors_do_not_touch_io",
+      "decision": "keep",
+      "reason": "错误身份、布尔字节数、错误期限和超大请求在任何 IO 前失败，防止未经许可执行。"
+    },
+    {
+      "test": "test_unknown_byte_count_is_null_and_partial_is_not_zeroed",
+      "decision": "keep",
+      "reason": "失败前未知大小保留 null、部分读取保留 1 字节，真正空文件才为零。"
+    },
+    {
+      "test": "test_validate_copies_and_does_not_mutate",
+      "decision": "delete",
+      "reason": "仅约束 validate 返回新字典和深拷贝方式，没有后续产品状态转换。"
+    },
+    {
+      "test": "test_worker_sources_do_not_touch_the_filesystem",
+      "decision": "delete",
+      "reason": "以 AST/import/open 文本限制源码形状；运行期拒绝入口与非法输入隔离测试已验证副作用。"
+    }
+  ]
+}

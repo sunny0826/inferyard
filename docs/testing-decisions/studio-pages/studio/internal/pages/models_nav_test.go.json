@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/models_nav_test.go",
+  "decisions": [
+    {
+      "test": "TestModelsPageSelectionTriggersEngineVerification",
+      "decision": "keep",
+      "reason": "无事件的安静工作区打开模型页仍须主动核验，否则引擎永远不可选、用户无法测评。"
+    }
+  ]
+}

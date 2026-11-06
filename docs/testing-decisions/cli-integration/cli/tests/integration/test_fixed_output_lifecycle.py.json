@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/integration/test_fixed_output_lifecycle.py",
+  "decisions": [
+    {
+      "test": "test_strict_diagnostic_replays_requests_parameters_and_missing_formal_acceptance",
+      "decision": "keep",
+      "reason": "M1：删除重复 summary 等价；保留固定输出3/3、诊断资格与重封存篡改的明确错误。"
+    },
+    {
+      "test": "test_strict_probe_refusal_leaves_every_formal_case_unexecuted",
+      "decision": "keep",
+      "reason": "probe无法证明严格输出时只发首个探测，全部正式题保留未执行。"
+    }
+  ]
+}

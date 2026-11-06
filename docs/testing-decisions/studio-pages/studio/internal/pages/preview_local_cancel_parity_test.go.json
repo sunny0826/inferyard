@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/pages/preview_local_cancel_parity_test.go",
+  "decisions": [
+    {
+      "test": "TestLocalParityEngineHelper",
+      "decision": "keep",
+      "reason": "保留受命令标志启用的子进程测试入口；direct 家族取消所有权验证依赖它，不是独立产品断言。"
+    },
+    {
+      "test": "TestPreviewLocalCancelStopsOnlyOwnedServiceParity",
+      "decision": "keep",
+      "reason": "直启与 LM Studio 取消须结束双题包且无报告；受控服务拒绝给外部 LM Studio 发信号，防止杀用户自有进程。双方各对明确终态，删除多余互比。"
+    },
+    {
+      "test": "TestPreviewNewTaskDuringReportKeepsIdleLocalService",
+      "decision": "keep",
+      "reason": "两题包已结束、仅报告生成中重置，应取消报告但保留空闲本地服务，避免误停非活动服务。"
+    }
+  ]
+}

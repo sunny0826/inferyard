@@ -1,0 +1,56 @@
+{
+  "source_path": "cli/tests/local_engines/test_bootstrap.py",
+  "decisions": [
+    {
+      "test": "test_bootstrap_rejects_unknown_family",
+      "decision": "keep",
+      "reason": "未知engine family不得通过bootstrap执行任意模块。"
+    },
+    {
+      "test": "test_bootstrap_requires_venv",
+      "decision": "keep",
+      "reason": "非venv解释器不能作为隔离bootstrap运行源。"
+    },
+    {
+      "test": "test_context_matches_frozen_conditions",
+      "decision": "keep",
+      "reason": "启动context不符冻结条件时，各family均拒绝，防止错误上下文性能结论。"
+    },
+    {
+      "test": "test_editable_path_is_not_an_import_root",
+      "decision": "keep",
+      "reason": "editable外部路径不应被正式bootstrap导入，即使人为加入runtime roots仍拒绝入口。"
+    },
+    {
+      "test": "test_formal_entry_rejects_bootstrap_bypass",
+      "decision": "keep",
+      "reason": "三个Python家族不能绕过bootstrap直接-m入口，避免site hook混入。"
+    },
+    {
+      "test": "test_llama_context_shift_is_disabled",
+      "decision": "keep",
+      "reason": "llama允许context shift会破坏固定输入scope，缺禁止标志须拒绝。"
+    },
+    {
+      "test": "test_old_site_startup_executes_hook_but_bootstrap_does_not",
+      "decision": "keep",
+      "reason": "M7：删除标准库site夹具基线及以生产import_roots为expected的路径等价；仅运行InferYard bootstrap，独立检查hook不执行、outside不可导入、cwd不在path和argv透传。",
+      "renamed_to": "test_bootstrap_excludes_hooks_and_outside_imports"
+    },
+    {
+      "test": "test_spawn_and_forkserver_inherit_isolation_and_frozen_path",
+      "decision": "keep",
+      "reason": "spawn/forkserver实际worker继承隔离路径且不执行hook，不能只验证主进程安全。"
+    },
+    {
+      "test": "test_worker_observer_rejects_same_venv_without_no_site",
+      "decision": "keep",
+      "reason": "同venv子进程若未禁site，实际worker observer必须拒绝，不能只比较解释器路径。"
+    },
+    {
+      "test": "test_worker_rejects_unfrozen_execution",
+      "decision": "keep",
+      "reason": "worker去掉-S、修改spawn代码或改导入路径后必须拒绝，防止未冻结子进程执行。"
+    }
+  ]
+}

@@ -9,7 +9,6 @@ from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms import resources, resources_windows
-from inferyard.registry import collector_factory
 from inferyard.runtime import batch_runner, trial_runner
 from tests.integration.test_batch_runner import batch
 from tests.integration.test_runner import scenario as runner_scenario
@@ -41,7 +40,6 @@ def test_windows_prism_batch_reaches_collector_and_seals_mock_requests(
     code, result = asyncio.run(batch_runner.execute_async(request))
     assert code == 0 and result.status == "finished"
     assert len(scenario[2]) == 24  # Three repetitions: probe/warmup/formal fixture protocol.
-    assert deps.sampler is collector_factory("windows-resource.v1")
     for path in result.details["runs"]:
         data = read_trial(Path(path))
         assert data["summary"]["counts"]["completed"] == 3

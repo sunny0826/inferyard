@@ -1,0 +1,56 @@
+{
+  "source_path": "cli/tests/unit/test_contract_validation.py",
+  "decisions": [
+    {
+      "test": "test_exact_json_types_remain_accepted",
+      "decision": "delete",
+      "reason": "私有校验器对临时 schema 的普通 Python 类型接受表没有独立产品后果；真实文档成功路径由产物回放覆盖。"
+    },
+    {
+      "test": "test_nullable_numbers_do_not_hide_invalid_numeric_values",
+      "decision": "delete",
+      "reason": "临时 schema 的 nullable 排列不单列；错误测量值合并到真实 sample 文档拒绝场景。"
+    },
+    {
+      "test": "test_nullable_type_order_does_not_change_acceptance",
+      "decision": "delete",
+      "reason": "只排列 nullable schema 的类型数组再过正常输入，没有独立产品场景。"
+    },
+    {
+      "test": "test_numeric_boundaries_preserve_inclusive_and_exclusive_errors",
+      "decision": "keep",
+      "reason": "通过真实 TOML 配置加载验证超时必须大于零、预热次数最多三次，避免无效预算被接受；删除通用 schema 数值排列。",
+      "renamed_to": "test_config_rejects_zero_timeout_and_excess_warmup"
+    },
+    {
+      "test": "test_python_subclasses_booleans_and_nonfinite_numbers_remain_rejected",
+      "decision": "delete",
+      "reason": "删除不能经 JSON 到达的 Python 子类约束；布尔、字符串及非有限测量拒绝合并到真实 sample 文档二次校验场景。"
+    },
+    {
+      "test": "test_repeated_document_validation_rechecks_mutated_input_and_preserves_semantic_errors",
+      "decision": "keep",
+      "reason": "同对象二次校验也拒绝改成布尔的测量值和倒退读时窗，防缓存跳过新错误。"
+    },
+    {
+      "test": "test_required_fields_are_checked_before_unrecognized_fields",
+      "decision": "delete",
+      "reason": "同时缺字段和多字段只固定报错优先级，不改变是否拒绝输入。"
+    },
+    {
+      "test": "test_safe_field_name_at_length_limit_keeps_precise_error_path",
+      "decision": "delete",
+      "reason": "只冻结 64 字符诊断路径拼接细节；未知字段拒绝与不泄漏已有相邻测试。"
+    },
+    {
+      "test": "test_simultaneous_numeric_failures_keep_original_diagnostic_priority",
+      "decision": "delete",
+      "reason": "只要求矛盾 minimum/maximum 报错先后，任一拒绝已满足产品结果。"
+    },
+    {
+      "test": "test_untrusted_unknown_keys_keep_bounded_error_paths",
+      "decision": "keep",
+      "reason": "含换行、点号、Unicode 或超长未知字段不能进入报错文本，防敏感值/日志注入泄漏。"
+    }
+  ]
+}

@@ -158,7 +158,16 @@ def test_frozen_model_comparison_preserves_quality_deltas_without_performance_gr
     assert quality["category"] == "instruction" and quality["difference"] == pytest.approx(-1 / 3)
     assert result["completion_rate_difference"] == pytest.approx(1 / 3)
     index = write_report([a, b], tmp_path / "comparison")
-    assert index["comparison"] == result
+    comparison = index["comparison"]
+    assert comparison["eligibility"] == {
+        "quality": True, "completion": True, "performance": False
+    }
+    reported_quality = next(
+        row for row in comparison["quality_differences"] if row["metric_id"] == "Q01"
+    )
+    assert reported_quality["category"] == "instruction"
+    assert reported_quality["difference"] == pytest.approx(-1 / 3)
+    assert comparison["completion_rate_difference"] == pytest.approx(1 / 3)
     assert original == (digest_tree(a), digest_tree(b))
 
 

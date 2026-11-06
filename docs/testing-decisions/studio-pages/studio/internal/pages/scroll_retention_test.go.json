@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/pages/scroll_retention_test.go",
+  "decisions": [
+    {
+      "test": "TestEachPageKeepsItsOwnScrollPosition",
+      "decision": "delete",
+      "reason": "单页返回滚动位置与 TestScrollStateFollowsTheSelectedPage 重复，后者同时验证两个不同位置。"
+    },
+    {
+      "test": "TestOpenedReportScrollIsSeparateFromTheList",
+      "decision": "keep",
+      "reason": "从已滚动列表打开报告应从报告顶部开始，不能继承列表位置跳过关键结果。"
+    },
+    {
+      "test": "TestScrollStateFollowsTheSelectedPage",
+      "decision": "keep",
+      "reason": "设置与报告各保留自己的滚动位置，往返不能跳转到另一页的位置而丢失操作上下文。"
+    }
+  ]
+}

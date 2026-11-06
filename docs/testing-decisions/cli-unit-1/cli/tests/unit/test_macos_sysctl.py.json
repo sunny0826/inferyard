@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_macos_sysctl.py",
+  "decisions": [
+    {
+      "test": "test_environment_uses_new_native_value_on_every_call",
+      "decision": "keep",
+      "reason": "环境快照持续使用新原生值，失败后显示 null，防比较绑定过时设备信息。"
+    },
+    {
+      "test": "test_invalid_string_key_never_calls_native_api",
+      "decision": "keep",
+      "reason": "非 ASCII、嵌 NUL 和错类型 key 不交给原生 API，避免查询被截断或解释成别的键。"
+    },
+    {
+      "test": "test_native_string_api_unavailable_is_missing",
+      "decision": "keep",
+      "reason": "动态库加载失败或缺符号显示缺测，不能崩溃或伪造硬件值。"
+    },
+    {
+      "test": "test_native_string_failures_do_not_publish_partial_data",
+      "decision": "keep",
+      "reason": "查询错误、大小异常、缺/多 NUL、坏 UTF-8、空白和控制字符不作为真实硬件名发布。"
+    },
+    {
+      "test": "test_native_string_is_bounded_and_read_only",
+      "decision": "keep",
+      "reason": "读取 CPU 名正确且原生参数不写系统值；删除固定 4096 缓冲区和 ctypes 签名同一性。"
+    },
+    {
+      "test": "test_native_string_reads_changes_and_failure_without_old_value",
+      "decision": "keep",
+      "reason": "新硬件值和后续失败应即时反映，不沿用旧 CPU 名；删除调用三次计数。"
+    }
+  ]
+}

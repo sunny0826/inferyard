@@ -109,9 +109,6 @@ func TestPreviewLocalCancelStopsOnlyOwnedServiceParity(t *testing.T) {
 					t.Errorf("%s: %+v want %+v", name, got, want)
 				}
 			}
-			if !reflect.DeepEqual(production, preview) {
-				t.Error("normal cancellation diverged", production, preview)
-			}
 		})
 	}
 }

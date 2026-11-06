@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/integration/test_public_package.py",
+  "decisions": [
+    {
+      "test": "test_public_summary_omits_private_text_and_preserves_denominators",
+      "decision": "keep",
+      "reason": "公开包必须隐私脱敏但保留质量分母、指标缺测及复现预算；配置差异不ready，物化不发模型请求，额外文件或篡改拒绝且原件不改。"
+    }
+  ]
+}

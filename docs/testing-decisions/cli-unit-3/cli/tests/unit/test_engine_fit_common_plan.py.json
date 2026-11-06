@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_common_plan.py",
+  "decisions": [
+    {
+      "test": "test_capability_cli_explains_ollama_gap_without_backend",
+      "decision": "keep",
+      "reason": "具体场景 test_capability_cli_explains_ollama_gap_without_backend。可观察预期：assert main(['engine-fit', 'engines']) == 0；assert set(entries) == {'vllm', 'sglang', 'llama-cpp', 'mlx-lm', 'lmstudio', 'ollama'}；assert entries['ollama']['execution'] == 'blocked'；assert entries['ollama']['idle_source'] is None。单文件 GGUF 与目录引擎能力不能混用；分片/错资产/错版本冻结必须拒绝，Ollama 缺 idle 证据明确阻断且离线能力列表可读。"
+    },
+    {
+      "test": "test_directory_engines_cannot_use_frozen_gguf",
+      "decision": "keep",
+      "reason": "具体场景 test_directory_engines_cannot_use_frozen_gguf。逐项参数：pytest.mark.parametrize('engine', ['vllm', 'sglang', 'mlx-lm'])。可观察预期：assert not (tmp_path / 'plan').exists()；pytest.raises(ContractError, match='engine_asset_kind')。单文件 GGUF 与目录引擎能力不能混用；分片/错资产/错版本冻结必须拒绝，Ollama 缺 idle 证据明确阻断且离线能力列表可读。"
+    },
+    {
+      "test": "test_file_symlink_and_non_gguf_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_file_symlink_and_non_gguf_rejected。可观察预期：pytest.raises(PreflightError, match='symlink')；pytest.raises(PreflightError, match='model_unreadable')。单文件 GGUF 与目录引擎能力不能混用；分片/错资产/错版本冻结必须拒绝，Ollama 缺 idle 证据明确阻断且离线能力列表可读。"
+    },
+    {
+      "test": "test_mlx_directory_uses_versioned_plan_and_cannot_be_relabelled",
+      "decision": "keep",
+      "reason": "具体场景 test_mlx_directory_uses_versioned_plan_and_cannot_be_relabelled。可观察预期：assert plan['model']['kind'] == 'directory'；pytest.raises(ContractError)。单文件 GGUF 与目录引擎能力不能混用；分片/错资产/错版本冻结必须拒绝，Ollama 缺 idle 证据明确阻断且离线能力列表可读。"
+    },
+    {
+      "test": "test_ollama_run_blocks_before_any_model_or_service_access",
+      "decision": "keep",
+      "reason": "具体场景 test_ollama_run_blocks_before_any_model_or_service_access。可观察预期：pytest.raises(PreflightError, match='ollama_service_idle_observation_unavailable')。单文件 GGUF 与目录引擎能力不能混用；分片/错资产/错版本冻结必须拒绝，Ollama 缺 idle 证据明确阻断且离线能力列表可读。"
+    },
+    {
+      "test": "test_single_gguf_plan_freezes_file_and_selects_compatible_defaults",
+      "decision": "keep",
+      "reason": "具体场景 test_single_gguf_plan_freezes_file_and_selects_compatible_defaults。可观察预期：assert plan['definition'] == 'engine_fit_plan.v2'；assert plan['engines'] == ['llama-cpp', 'lmstudio']；assert plan['model']['kind'] == 'gguf'；assert plan['model']['files'][0]['path'] == 'model.gguf'。单文件 GGUF 与目录引擎能力不能混用；分片/错资产/错版本冻结必须拒绝，Ollama 缺 idle 证据明确阻断且离线能力列表可读。"
+    },
+    {
+      "test": "test_single_split_metadata_is_supported",
+      "decision": "keep",
+      "reason": "具体场景 test_single_split_metadata_is_supported。可观察预期：assert model_asset_manifest(model)['kind'] == 'gguf'。单文件 GGUF 与目录引擎能力不能混用；分片/错资产/错版本冻结必须拒绝，Ollama 缺 idle 证据明确阻断且离线能力列表可读。"
+    },
+    {
+      "test": "test_split_or_invalid_split_metadata_cannot_be_frozen",
+      "decision": "keep",
+      "reason": "具体场景 test_split_or_invalid_split_metadata_cannot_be_frozen。逐项参数：pytest.mark.parametrize('metadata', [[('split.count', 4, struct.pack('<I', 2))], [('split.no', 4, struct.pack('<I', 1))], [('split.count', 7, b'\\x01')], [('split.count', 6, struct.pack('<f', 1.0))], [('split.count', 9, struct.pack('<IQ', 4, 0))]])。可观察预期：pytest.raises(PreflightError, match='split_gguf|model_unreadable')。单文件 GGUF 与目录引擎能力不能混用；分片/错资产/错版本冻结必须拒绝，Ollama 缺 idle 证据明确阻断且离线能力列表可读。"
+    }
+  ]
+}

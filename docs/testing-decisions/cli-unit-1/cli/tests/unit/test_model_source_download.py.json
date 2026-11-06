@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_model_source_download.py",
+  "decisions": [
+    {
+      "test": "test_blank_or_unsafe_token_values_are_rejected",
+      "decision": "keep",
+      "reason": "空白或带空格的不安全 token 在网络请求前失败，避免非法凭据上网。"
+    },
+    {
+      "test": "test_compressed_response_is_rejected_instead_of_published",
+      "decision": "keep",
+      "reason": "要求 identity 编码时收到 gzip 不发布模型和来源记录，防摘要绑定到错误字节。"
+    },
+    {
+      "test": "test_download_streams_bytes_and_records_identity",
+      "decision": "keep",
+      "reason": "本地模拟 HTTP 获取后原字节、大小、摘要与来源记录一致，不因下载就宣称模型已可运行。"
+    },
+    {
+      "test": "test_existing_output_is_rejected_before_any_request",
+      "decision": "keep",
+      "reason": "已有目标目录先拒绝且不发送 HTTP，防覆盖原模型和浪费鉴权请求。"
+    },
+    {
+      "test": "test_http_failure_keeps_failed_directory_without_outputs",
+      "decision": "keep",
+      "reason": "404 保留失败目录但不留模型、source.json 或 part，防把失败获取当正式产物。"
+    },
+    {
+      "test": "test_redirect_is_followed_without_extra_configuration",
+      "decision": "keep",
+      "reason": "下载重定向到 CDN 后仍能获取模型，保障正常来源分发流程。"
+    },
+    {
+      "test": "test_timeout_must_be_a_positive_finite_number",
+      "decision": "keep",
+      "reason": "零、负、布尔、非有限和字符串超时都拒绝，防无限或无效下载预算。"
+    },
+    {
+      "test": "test_token_env_value_goes_to_the_request_header",
+      "decision": "keep",
+      "reason": "只从指定环境变量取 token 并放 Authorization，保障私有来源鉴权入口。"
+    },
+    {
+      "test": "test_token_option_only_accepts_environment_names",
+      "decision": "keep",
+      "reason": "token 参数只接受环境变量名，拒绝字面凭据和赋值字符串，防传入可持久化秘密。"
+    }
+  ]
+}

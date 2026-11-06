@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_macos_benchmark_config.py",
+  "decisions": [
+    {
+      "test": "test_candidate_checks_disk_on_existing_ancestor_before_creating_output",
+      "decision": "keep",
+      "reason": "嵌套输出先检查已有祖先磁盘且生成可读候选，避免对不存在目录查盘或提前创建副作用。"
+    },
+    {
+      "test": "test_candidate_rechecks_capacity_and_required_platform_assets",
+      "decision": "keep",
+      "reason": "本机容量/AC/Metal/库及保存平台变化重查并阻断，不写半成品，避免陈旧检测授权运行。"
+    },
+    {
+      "test": "test_create_local_candidate_with_fresh_assets_and_no_requests",
+      "decision": "keep",
+      "reason": "本机Metal资产生成的候选加载正确模型/库、明确未ready且不覆盖原配置；删线程/context常量和占位PID断言。"
+    }
+  ]
+}

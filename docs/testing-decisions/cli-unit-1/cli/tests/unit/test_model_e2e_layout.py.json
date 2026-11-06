@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_model_e2e_layout.py",
+  "decisions": [
+    {
+      "test": "test_model_e2e_accepts_current_platform_layout",
+      "decision": "keep",
+      "reason": "发行候选验收器接受三平台当前证据/报告文件集，保障真实模型打包验收入口可用。"
+    },
+    {
+      "test": "test_model_e2e_rejects_missing_or_extra_files",
+      "decision": "keep",
+      "reason": "候选验收目录漏证据或多未声明文件必须失败，防发布检查将错误布局当成功。"
+    }
+  ]
+}

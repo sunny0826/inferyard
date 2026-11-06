@@ -1,0 +1,55 @@
+{
+  "source_path": "studio/internal/pages/preview_interaction_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewBenchmarkButtonsStartWork",
+      "decision": "delete",
+      "reason": "仅覆盖开始按钮的第一步；TestPreviewCompleteWorkflowWithoutSceneSelector 完整覆盖。"
+    },
+    {
+      "test": "TestPreviewCancellationPreservesOtherWork",
+      "decision": "keep",
+      "reason": "取消准备或活动运行需等待收尾，不生成报告，不能清并行下载或已保存目录名。"
+    },
+    {
+      "test": "TestPreviewCompleteWorkflowWithoutSceneSelector",
+      "decision": "keep",
+      "reason": "正常按钮完成准备、换模型、双题包、动态详情与本次报告；生成报告含所选模型和两次实际 run 的各120请求，新任务保留旧结果且不进入真实 service/taskCancel。删除对同一局部 index 重复 Marshal 的无效比较；未验证普通报告在后来改选模型后重开仍冻结身份。"
+    },
+    {
+      "test": "TestPreviewCompletedTaskOpensItsGeneratedReport",
+      "decision": "delete",
+      "reason": "归属检查并入 TestPreviewCompleteWorkflowWithoutSceneSelector，避免再次完整准备和运行。"
+    },
+    {
+      "test": "TestPreviewDownloadsCancelRetryAndPopulateModels",
+      "decision": "keep",
+      "reason": "取消单下载不影响另一项；非法输入不消费故障；失败重试新建 ID/目录、保留旧记录并让完成模型可选。"
+    },
+    {
+      "test": "TestPreviewFailureRetriesThroughNormalButton",
+      "decision": "delete",
+      "reason": "启动失败保留/手动重试由 TestPreviewBenchmarkParity 的 startup_failure_retry 覆盖，原生正常按钮由 FailureCanRetryThroughNormalControls 覆盖。"
+    },
+    {
+      "test": "TestPreviewNewTaskCancelsPendingHistoricalReport",
+      "decision": "keep",
+      "reason": "新任务取消旧报告生成后，旧回调不能添加报告或清新任务 busy，新任务须生成自己的报告。"
+    },
+    {
+      "test": "TestPreviewNewTaskFinishesServiceStop",
+      "decision": "keep",
+      "reason": "停止服务期间新开任务不能丢停止回调或永远 busy，须最终 stopped 并可继续。"
+    },
+    {
+      "test": "TestPreviewResetAndCloseInvalidatePendingEvents",
+      "decision": "keep",
+      "reason": "重置/关闭后旧排程不得改替换场景或继续初始化，避免陈旧任务污染新窗口状态。"
+    },
+    {
+      "test": "TestPreviewSettingsDeviceAndReportRecovery",
+      "decision": "keep",
+      "reason": "保存目录名经导航仍影响后续下载，设备刷新结束可见，坏报告读取可手动恢复，均为正常按钮路径。"
+    }
+  ]
+}

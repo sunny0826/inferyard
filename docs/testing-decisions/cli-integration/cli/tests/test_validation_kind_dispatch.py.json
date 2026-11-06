@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/test_validation_kind_dispatch.py",
+  "decisions": [
+    {
+      "test": "test_existing_discriminator_error_order_is_unchanged",
+      "decision": "delete",
+      "reason": "只冻结内部discriminator错误顺序，与用户可核验结论无关。"
+    },
+    {
+      "test": "test_illegal_members_keep_union_error_path_and_reason",
+      "decision": "delete",
+      "reason": "非法union成员仍只比较两个实现同错误路径，具体坏证据由集成读取拒绝测试覆盖。"
+    },
+    {
+      "test": "test_nested_union_uses_recursive_validate_and_selected_branch_only",
+      "decision": "delete",
+      "reason": "只数_validate递归调用和选择分支次数，未绑定实际性能预算；删除内部算法自测。"
+    },
+    {
+      "test": "test_three_legal_members_match_original_algorithm",
+      "decision": "delete",
+      "reason": "只对照优化与旧union算法相等，没有独立产品输入后果。"
+    },
+    {
+      "test": "test_unsafe_kind_variants_use_original_algorithm",
+      "decision": "delete",
+      "reason": "直接调用私有编译器并要求None/回退算法，是内部优化选择约束。"
+    }
+  ]
+}

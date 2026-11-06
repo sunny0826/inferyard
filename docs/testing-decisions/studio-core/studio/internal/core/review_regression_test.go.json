@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/core/review_regression_test.go",
+  "decisions": [
+    {
+      "test": "TestCandidateEnginePlatformAndReceiptLayouts",
+      "decision": "keep",
+      "reason": "Windows 用运行时 receipt，macOS/Linux 用 binary；兄弟/父目录 receipt 均能定位，防资源选择后生成无法绑定的候选。"
+    },
+    {
+      "test": "TestOrphanStoppingRejectsRunAdmission",
+      "decision": "keep",
+      "reason": "孤儿停止中不能接收新运行，防任务发送给正在被终止的引擎。"
+    }
+  ]
+}

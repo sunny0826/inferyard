@@ -89,7 +89,6 @@ class DevelopmentTests(unittest.TestCase):
         self.assertEqual(read_json(evidence), {"original": True})
         self.assertEqual(asset.read_bytes(), b"cached model")
         self.assertEqual(read_json(self.state / "active.json")["manifest_path"], str(third))
-        self.assertEqual(self.events[-3:], ["check", "stop", "launch"])
 
     def test_build_failure_does_not_stop_or_switch_previous_instance(self):
         first = self.started()
@@ -146,9 +145,11 @@ class DevelopmentTests(unittest.TestCase):
     def test_explicit_stop_releases_pointer_but_preserves_profile_and_manifest(self):
         manifest = self.started()
         profile = Path(read_json(manifest)["profile_root"])
-        with patch("inferyard_dev.main.stop_recorded") as stop:
+        with (
+            patch("inferyard_dev.main.stop_recorded"),
+            patch("inferyard_dev.main.prepare", side_effect=AssertionError("stop must not build")),
+        ):
             develop(self.root, "stop")
-        stop.assert_called_once_with(self.state, controller=None)
         self.assertFalse((self.state / "active.json").exists())
         self.assertTrue(manifest.is_file())
         self.assertTrue((profile / "workspace/preparation.json").is_file())
@@ -159,39 +160,21 @@ class DevelopmentTests(unittest.TestCase):
         process.poll.return_value = None
         with (
             patch("inferyard_dev.lifecycle.subprocess.Popen", return_value=process),
-            patch(
-                "inferyard_dev.lifecycle.stop_manifest", side_effect=DevError("not stopped")
-            ) as stop,
+            patch("inferyard_dev.lifecycle.stop_manifest", side_effect=DevError("not stopped")),
         ):
             with self.assertRaisesRegex(DevError, "retained"):
                 launch(self.state, manifest, self.builds[-1].cli, timeout=0)
         self.assertEqual(read_json(self.state / "pending.json")["manifest_path"], str(manifest))
-        stop.assert_called_once_with(self.state, manifest, controller=manifest)
         self.assertFalse((manifest.parent / "stop.json").exists())
 
-    def exited_child(self, state="stopped", *, owner=False):
+    def exited_child(self):
         manifest = self.started(prepare_only=True)
-        profile = Path(read_json(manifest)["profile_root"])
-        if state is not None:
-            write_json(
-                manifest.parent / "session.json",
-                {
-                    "kind": "studio_dev_session.v1",
-                    "session_id": manifest.parent.name,
-                    "pid": 321,
-                    "start_ticks": 123,
-                    "state": state,
-                    "cli_path": str(self.builds[-1].cli),
-                },
-            )
-        if owner:
-            write_json(profile / "workspace/logs/engine-owner.json", {"fixture": True})
         process = Mock(pid=321)
         process.poll.return_value = 2
         return manifest, process
 
-    def assert_exited_cleanup_rejection_retains_instance(self, state, *, owner=False):
-        manifest, process = self.exited_child(state, owner=owner)
+    def test_exited_launch_retains_pending_after_cleanup_rejection(self):
+        manifest, process = self.exited_child()
         original = {path: path.read_bytes() for path in manifest.parent.iterdir()}
         with (
             patch("inferyard_dev.lifecycle.subprocess.Popen", return_value=process),
@@ -207,20 +190,8 @@ class DevelopmentTests(unittest.TestCase):
             self.assertTrue(pending.exists())
         for path, content in original.items():
             self.assertEqual(path.read_bytes(), content)
-        if owner:
-            profile = Path(read_json(manifest)["profile_root"])
-            self.assertTrue((profile / "workspace/logs/engine-owner.json").exists())
 
-    def test_exited_launch_retains_pending_after_shutdown_failed(self):
-        self.assert_exited_cleanup_rejection_retains_instance("shutdown_failed")
-
-    def test_exited_launch_retains_pending_when_engine_owner_remains(self):
-        self.assert_exited_cleanup_rejection_retains_instance("stopped", owner=True)
-
-    def test_exited_launch_retains_pending_when_session_cannot_be_verified(self):
-        self.assert_exited_cleanup_rejection_retains_instance(None)
-
-    def test_exited_launch_releases_pending_after_verified_clean_shutdown(self):
+    def test_exited_launch_releases_pending_after_cleanup_success(self):
         manifest, process = self.exited_child()
         with (
             patch("inferyard_dev.lifecycle.subprocess.Popen", return_value=process),
@@ -229,7 +200,6 @@ class DevelopmentTests(unittest.TestCase):
             with self.assertRaises(DevError):
                 launch(self.state, manifest, self.builds[-1].cli)
         self.assertFalse((self.state / "pending.json").exists())
-        self.assertEqual(read_json(manifest.parent / "session.json")["state"], "stopped")
 
     def test_launch_without_created_child_releases_pending(self):
         manifest = self.started(prepare_only=True)
@@ -249,29 +219,14 @@ class DevelopmentTests(unittest.TestCase):
             patch("inferyard_dev.main.Toolchain.load"),
             patch("inferyard_dev.main.prepare", side_effect=self.build),
             patch("inferyard_dev.main.run", side_effect=self.command),
-            patch(
-                "inferyard_dev.main.stop_recorded", side_effect=DevError("unknown child")
-            ) as stop,
+            patch("inferyard_dev.main.stop_recorded", side_effect=DevError("unknown child")),
             patch("inferyard_dev.main.launch") as start,
         ):
             with self.assertRaisesRegex(DevError, "unknown child"):
                 develop(self.root, "rebuild")
         start.assert_not_called()
-        self.assertTrue(stop.call_args.kwargs["controller"].is_file())
         self.assertEqual((self.state / "active.json").read_bytes(), previous)
         self.assertEqual(pointer.read_bytes(), original_pointer)
-
-    def test_explicit_controller_is_stop_only_and_stop_does_not_build(self):
-        manifest = self.started(prepare_only=True)
-        with (
-            patch("inferyard_dev.main.stop_recorded") as stop,
-            patch("inferyard_dev.main.prepare") as build,
-        ):
-            develop(self.root, "stop", controller_manifest=manifest)
-        stop.assert_called_once_with(self.state, controller=manifest)
-        build.assert_not_called()
-        with self.assertRaises(DevError):
-            develop(self.root, "start", controller_manifest=manifest)
 
 
 if __name__ == "__main__":

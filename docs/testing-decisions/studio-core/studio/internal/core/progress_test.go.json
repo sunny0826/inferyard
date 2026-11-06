@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/core/progress_test.go",
+  "decisions": [
+    {
+      "test": "TestProgressAcceptsCapableCLIBlocked",
+      "decision": "keep",
+      "reason": "支持 progress 但暂时 blocked 的 CLI 不应误报过旧，防无谓升级阻断用户。"
+    },
+    {
+      "test": "TestProgressCLIError",
+      "decision": "keep",
+      "reason": "progress 退出 4 须显示 cli_error，防工具失败被当作空进度。"
+    },
+    {
+      "test": "TestProgressDetectsOutdatedCLI",
+      "decision": "keep",
+      "reason": "缺 progress 命令的旧 CLI 应提示 cli_outdated，防环境准备页静默不前进。"
+    }
+  ]
+}

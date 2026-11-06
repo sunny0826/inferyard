@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_boundary_environment.py",
+  "decisions": [
+    {
+      "test": "test_missing_changed_or_inside_request_observations_do_not_qualify",
+      "decision": "keep",
+      "reason": "边界在请求内、重复/缺失、环境变化、超负载/宽度或无冻结策略都不得授予性能资格。"
+    },
+    {
+      "test": "test_nested_cpu_identity_cannot_be_reassigned",
+      "decision": "keep",
+      "reason": "嵌套 CPU 记录属于另一请求时直接证据错误，不能外层包装改归属。"
+    },
+    {
+      "test": "test_outside_request_bracket_is_bounded_observation_not_continuous",
+      "decision": "keep",
+      "reason": "请求外边界只能声明有界覆盖和观察到的负载，仍说明两边界之间变化未知。"
+    }
+  ]
+}

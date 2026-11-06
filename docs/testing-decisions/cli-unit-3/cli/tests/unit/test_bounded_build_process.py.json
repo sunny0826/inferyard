@@ -1,0 +1,75 @@
+{
+  "source_path": "cli/tests/unit/test_bounded_build_process.py",
+  "decisions": [
+    {
+      "test": "test_hot_preflight_preserves_exact_sensor_evidence",
+      "decision": "keep",
+      "reason": "具体场景 test_hot_preflight_preserves_exact_sensor_evidence。可观察预期：assert result['owned_pid'] is None；assert evidence['threshold_celsius'] == 90；assert evidence['temperature_samples'][0]['raw_value'] == 91000；assert evidence['temperature_samples'][0]['source'] == 'class/thermal/thermal_zone0/temp'。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_invalid_pacing_never_spawns",
+      "decision": "keep",
+      "reason": "具体场景 test_invalid_pacing_never_spawns。逐项参数：pytest.mark.parametrize('pacing', [{}, {'active_seconds': True, 'rest_seconds': 0.1}, {'active_seconds': 0.1, 'rest_seconds': 2}])。可观察预期：assert not (tmp_path / 'evidence').exists()；pytest.raises(ValueError, match='pacing')。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_missing_safety_prevents_spawn",
+      "decision": "keep",
+      "reason": "具体场景 test_missing_safety_prevents_spawn。可观察预期：assert terminal(tmp_path)['owned_pid'] is None；pytest.raises(RuntimeError, match='sensor_unavailable')。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_no_temperature_sources_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_no_temperature_sources_rejected。可观察预期：pytest.raises(RuntimeError, match='source_unavailable')。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_nonzero_is_preserved_without_retry",
+      "decision": "keep",
+      "reason": "具体场景 test_nonzero_is_preserved_without_retry。可观察预期：assert result['state'] == 'failed'；assert result['exit_code'] == 7。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_orphan_descendant_is_not_success",
+      "decision": "keep",
+      "reason": "具体场景 test_orphan_descendant_is_not_success。可观察预期：assert terminal(tmp_path)['remaining_members'] == []；pytest.raises(RuntimeError, match='descendants_remain')。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_pacing_records_stop_continue_and_finishes_cpu_work",
+      "decision": "keep",
+      "reason": "具体场景 test_pacing_records_stop_continue_and_finishes_cpu_work。可观察预期：assert result['state'] == 'succeeded'；assert controls and controls == ['SIGSTOP', 'SIGCONT'] * (len(controls) // 2)；assert result['elapsed_seconds'] > 0.3；assert result['remaining_members'] == []。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_rss_stop",
+      "decision": "keep",
+      "reason": "具体场景 test_rss_stop。可观察预期：assert terminal(tmp_path)['remaining_members'] == []；pytest.raises(RuntimeError, match='rss_budget')。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_runtime_safety_failure_cleans_process",
+      "decision": "keep",
+      "reason": "具体场景 test_runtime_safety_failure_cleans_process。可观察预期：assert terminal(tmp_path)['remaining_members'] == []；pytest.raises(RuntimeError, match='temperature_limit')。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_success_and_output",
+      "decision": "keep",
+      "reason": "具体场景 test_success_and_output。可观察预期：assert result['state'] == 'succeeded'；assert result['exit_code'] == 0；assert result['remaining_members'] == []；assert 'build-output' in (tmp_path / 'evidence/process.log').read_text()。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_temperature_failure_while_paused_never_resumes",
+      "decision": "keep",
+      "reason": "具体场景 test_temperature_failure_while_paused_never_resumes。可观察预期：assert [e['control'] for e in events if 'control' in e] == ['SIGSTOP']；assert terminal(tmp_path)['remaining_members'] == []；assert terminal(tmp_path)['stop_evidence'] == {'value': 91}；pytest.raises(build.BuildSafetyStop)。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_temperature_sensor_identity_and_disappearance",
+      "decision": "keep",
+      "reason": "具体场景 test_temperature_sensor_identity_and_disappearance。可观察预期：assert check()['temperature_samples'][0]['value'] == 45；pytest.raises(RuntimeError, match='threshold_reached')；pytest.raises(RuntimeError, match='source_unavailable')；pytest.raises(RuntimeError, match='source_unavailable')。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_timeout_kills_term_ignoring_parent_and_child",
+      "decision": "keep",
+      "reason": "具体场景 test_timeout_kills_term_ignoring_parent_and_child。可观察预期：assert result['state'] == 'stopped'；assert result['exit_code'] is not None；assert result['remaining_members'] == []；pytest.raises(TimeoutError)。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    },
+    {
+      "test": "test_wall_timeout_while_stopped_cleans_group",
+      "decision": "keep",
+      "reason": "具体场景 test_wall_timeout_while_stopped_cleans_group。可观察预期：assert terminal(tmp_path)['remaining_members'] == []；assert terminal(tmp_path)['exit_code'] is not None；pytest.raises(TimeoutError)。离线构建超时、过热、RSS 超预算或取消后必须清理拥有的进程树；遗留子进程不能报告成功，预检失败不得启动转换，pacing 不能绕过安全停止。"
+    }
+  ]
+}

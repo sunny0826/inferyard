@@ -1,0 +1,60 @@
+{
+  "source_path": "cli/tests/unit/test_prism.py",
+  "decisions": [
+    {
+      "test": "test_complete_without_final_answer_is_not_quality_success",
+      "decision": "keep",
+      "reason": "空答案或只有reasoning即使协议完成也评分失败，避免错误提高质量分数。"
+    },
+    {
+      "test": "test_content_after_finish_is_a_failed_protocol_response",
+      "decision": "keep",
+      "reason": "finish后又出现content应失败并保留此前答案，避免把额外内容当合法响应。"
+    },
+    {
+      "test": "test_context_budget_boundary",
+      "decision": "keep",
+      "reason": "3584输入加512输出刚好4096可用，3585拒绝，避免上下文溢出。"
+    },
+    {
+      "test": "test_f05_exact_timeline_reasoning_and_usage",
+      "decision": "keep",
+      "reason": "reasoning首内容与正式答案首字时间分开并用端点token算速率，避免混淆TTFT与答案延迟。"
+    },
+    {
+      "test": "test_finish_semantics_and_missing_done",
+      "decision": "keep",
+      "reason": "stop/length需完整DONE，缺结束及未知终态失败，避免半响应计成功。"
+    },
+    {
+      "test": "test_health_is_not_idle_evidence",
+      "decision": "keep",
+      "reason": "健康响应不能证明slots空闲，避免并发未知时继续运行。"
+    },
+    {
+      "test": "test_real_frozen_protocol_fixtures_parse",
+      "decision": "delete",
+      "reason": "混合解析冻结SSE并直接检查slots/tokenize fixture值，属于fixture自检；流终态由test_finish_semantics_and_missing_done、token预算由test_context_budget_boundary覆盖。"
+    },
+    {
+      "test": "test_redirect_is_not_followed_and_headers_not_in_result",
+      "decision": "keep",
+      "reason": "重定向不跟随且结果不带secret，避免凭据发往非本地地址。"
+    },
+    {
+      "test": "test_stream_secret_never_reconstructs_from_persisted_chunks",
+      "decision": "keep",
+      "reason": "凭据跨chunk切开仍不能从持久化片段还原，避免流式脱敏泄露。"
+    },
+    {
+      "test": "test_total_deadline_not_renewed_by_content",
+      "decision": "keep",
+      "reason": "持续输出不能续期总timeout，避免无限流突破请求预算。"
+    },
+    {
+      "test": "test_utf8_sse_crlf_multiline_and_comments",
+      "decision": "keep",
+      "reason": "中文UTF8逐字节及CRLF/注释可解析，避免合法端点流丢字或断帧。"
+    }
+  ]
+}

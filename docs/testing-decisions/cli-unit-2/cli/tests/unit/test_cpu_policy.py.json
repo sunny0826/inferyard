@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_cpu_policy.py",
+  "decisions": [
+    {
+      "test": "test_all_domains_are_read_without_substituting_cpu0",
+      "decision": "keep",
+      "reason": "读取所有CPU域而不是cpu0代全机，另一域powersave/缺失须影响资格，避免漏掉混合策略。"
+    },
+    {
+      "test": "test_cpu_list_parsing_and_missing_inventory",
+      "decision": "delete",
+      "reason": "仅cpu_list私有语法枚举和固定reason字符串；完整域缺测/变化由 test_incomplete_and_transient_domains_never_qualify 覆盖。"
+    },
+    {
+      "test": "test_incomplete_and_transient_domains_never_qualify",
+      "decision": "keep",
+      "reason": "缺inventory、域重叠、hotplug、瞬态频率策略变化或未知EPP都不能判完整稳定。"
+    }
+  ]
+}

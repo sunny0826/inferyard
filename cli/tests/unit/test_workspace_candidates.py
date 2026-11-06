@@ -101,7 +101,6 @@ def test_latest_preflight_and_explicit_inputs_take_precedence(tmp_path, capsys):
     assert resolved.preflight == request.preflight
     assert resolved.bundle_path == request.bundle_path
     assert resolved.output_root == explicit.output_root
-    assert resolve_candidate_inputs(request) is request
 
 
 @pytest.mark.parametrize(
@@ -136,21 +135,3 @@ def test_workspace_rejections_exit_two_without_outputs(tmp_path, capsys, damage)
     )
     result = json.loads(capsys.readouterr().out)
     assert code == 2 and result["status"] == "blocked" and not out.exists()
-
-
-def test_old_required_parameters_and_out_remain_required(tmp_path, capsys):
-    for arguments in (
-        ["config", "create", "--bundle", "zh-core", "--engine", "engine", "--out", "new"],
-        [
-            "config",
-            "create",
-            "--workspace",
-            str(tmp_path),
-            "--bundle",
-            "zh-core",
-            "--engine",
-            "engine",
-        ],
-    ):
-        assert main(arguments) == 2
-        assert json.loads(capsys.readouterr().out)["status"] == "blocked"

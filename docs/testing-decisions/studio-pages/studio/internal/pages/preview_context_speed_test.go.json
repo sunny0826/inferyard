@@ -1,0 +1,35 @@
+{
+  "source_path": "studio/internal/pages/preview_context_speed_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewSpeedCancellationAndReset",
+      "decision": "keep",
+      "reason": "准备/绑定/测量/完成边缘取消必须排空且停止追加样本，保留部分历史；新任务与场景重置不能接收旧事件。"
+    },
+    {
+      "test": "TestPreviewSpeedCompleteAndReopen",
+      "decision": "keep",
+      "reason": "64/128/256k 的所选档位和对应 token 数据应冻结，历史打开同一任务、重跑新建且专项不能生成普通报告。"
+    },
+    {
+      "test": "TestPreviewSpeedInvalidSubmissionKeepsFailureAndCloseStopsEvents",
+      "decision": "keep",
+      "reason": "无效上下文不能创建任务或消费失败注入；关闭窗口后排程不得继续写样本/历史。"
+    },
+    {
+      "test": "TestPreviewSpeedLayout",
+      "decision": "delete",
+      "reason": "宽度/缩放/主题矩阵只检查坐标和重复身份文字；身份由 TestPreviewSpeedHistoricalIdentity 覆盖。"
+    },
+    {
+      "test": "TestPreviewSpeedMissingFailureAndReadRetry",
+      "decision": "keep",
+      "reason": "启动失败不能造样本，缺一次 timing 只能 4/5 且无汇总；读取重试不得重测或触发真实 IO。"
+    },
+    {
+      "test": "TestPreviewSpeedStopGuard",
+      "decision": "keep",
+      "reason": "专项活跃时停止引擎必须拒绝，不能消耗下次失败注入或破坏后续测量。"
+    }
+  ]
+}

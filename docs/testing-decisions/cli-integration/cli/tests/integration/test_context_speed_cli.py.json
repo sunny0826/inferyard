@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_context_speed_cli.py",
+  "decisions": [
+    {
+      "test": "test_actual_public_review_gate",
+      "decision": "keep",
+      "reason": "未人工审核的context-speed题包必须在冻结前阻断且不发请求。"
+    },
+    {
+      "test": "test_fixture_config_uses_utf8_with_legacy_locale",
+      "decision": "delete",
+      "reason": "只测试speed_service fixture自己的文件写入编码，未经过生产CLI。"
+    },
+    {
+      "test": "test_public_five_trials_and_readonly_results",
+      "decision": "keep",
+      "reason": "三个上下文档的五次固定trial必须产生实际统计并支持只读离线结果，不能混入重复汇总或写报告。"
+    }
+  ]
+}

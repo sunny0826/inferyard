@@ -1,0 +1,40 @@
+{
+  "source_path": "studio/internal/pages/preview_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewActionButtonsStayInMemory",
+      "decision": "keep",
+      "reason": "仅保留未被长流程覆盖的刷新服务/保存路径分流，防止预览落入真实服务；其他八按钮重复路径已删。"
+    },
+    {
+      "test": "TestPreviewLayout",
+      "decision": "delete",
+      "reason": "宽度/主题/文字缩放矩阵只查导航和调试控件坐标，含重复 fixture 内容。"
+    },
+    {
+      "test": "TestPreviewOutOfBandActionsStayInMemory",
+      "decision": "keep",
+      "reason": "绕过正常按钮直接调用遗留入口时 work 闭包仍不能执行，也不得留下真实异步任务，避免预览隔离被旁路。"
+    },
+    {
+      "test": "TestPreviewResetClearsFormAndWidgetState",
+      "decision": "keep",
+      "reason": "场景重置必须清编辑、报告来源选择和折叠状态，防止下一场景沿用旧任务选择。"
+    },
+    {
+      "test": "TestPreviewRunAndStopActions",
+      "decision": "delete",
+      "reason": "手工重置私有任务状态再跑/停/取消，重复 TestPreviewBenchmarkParity、TestPreviewHeaderStartsOnlyEngineAndStopsIt。"
+    },
+    {
+      "test": "TestPreviewScenesAndNavigation",
+      "decision": "delete",
+      "reason": "遍历全部 fixture 检查预置文字，重复点击所有导航，未验证新的流程后果；隔离与正常工作流另有测试。"
+    },
+    {
+      "test": "TestPreviewSelectorAndCompletedReport",
+      "decision": "delete",
+      "reason": "通过场景选择器打开固定报告/详情，重复 TestPreviewCompleteWorkflowWithoutSceneSelector 和 TestReportViewIndexAndUnreadable。"
+    }
+  ]
+}

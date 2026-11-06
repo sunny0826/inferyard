@@ -1,0 +1,56 @@
+{
+  "source_path": "studio/internal/pages/design_interaction_test.go",
+  "decisions": [
+    {
+      "test": "TestDesignAnnouncementsOnce",
+      "decision": "keep",
+      "renamed_to": "TestDesignAsyncFailurePreservesInputFocus",
+      "reason": "保留已有错误后异步更新不得抢走 CLI 输入焦点；首次无错误到有错误的焦点行为不在本项条件内，既有失败观测仍交主 agent。"
+    },
+    {
+      "test": "TestDesignDetailRetryAndLoading",
+      "decision": "keep",
+      "reason": "首次详情缺失显示加载；读取失败后不再显示正在读取并提供公开重试入口；点击重试实际到达刷新边界、清错误并恢复加载。"
+    },
+    {
+      "test": "TestDesignEngineSemanticColors",
+      "decision": "delete",
+      "reason": "固定各引擎状态的 theme 颜色，与运行逻辑无关。"
+    },
+    {
+      "test": "TestDesignHiddenDetailErrorIsNotAnnounced",
+      "decision": "delete",
+      "reason": "隐藏 detailError 不应播报的独立结果已移入 TestProductionContentPathAnnouncesPage：未打开详情时仅播报任务页，空闲不播报；原同指针记账与重复当前错误断言删除。"
+    },
+    {
+      "test": "TestDesignInvalidFieldsPreserveEdits",
+      "decision": "keep",
+      "reason": "非法工作区/续测 endpoint 应拒绝且保留输入，键盘可修正；删去 invalid 字段、description 和下载输入控件结构断言。"
+    },
+    {
+      "test": "TestDesignKeyboardDetailsReturnAndHorizontalTable",
+      "decision": "delete",
+      "reason": "返回由 TestDashboardRunningDisablesQuickRunAndOpensDetail 覆盖；横向滚动只测表格库坐标变化。"
+    },
+    {
+      "test": "TestDesignNamedControlsAndHeadingLevels",
+      "decision": "delete",
+      "reason": "遍历控件树限制 role、heading level 和 label，未操作可访问流程。"
+    },
+    {
+      "test": "TestDesignPageLoadingErrorEmpty",
+      "decision": "keep",
+      "reason": "各页初次读取与失败不能伪装为空数据成功，失败须提供重试；删去旧标题和重复新任务导航。"
+    },
+    {
+      "test": "TestDesignReducedMotionIsStatic",
+      "decision": "delete",
+      "reason": "比较渲染像素与 progress 内部字段，只约束动画实现。"
+    },
+    {
+      "test": "TestDesignReportKeyboardOpenFailure",
+      "decision": "delete",
+      "reason": "键盘打开坏报告与返回由 TestReportViewIndexAndUnreadable 覆盖。"
+    }
+  ]
+}

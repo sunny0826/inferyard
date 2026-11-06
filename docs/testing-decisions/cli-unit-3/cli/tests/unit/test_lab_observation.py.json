@@ -1,0 +1,145 @@
+{
+  "source_path": "cli/tests/unit/test_lab_observation.py",
+  "decisions": [
+    {
+      "test": "test_is_idle_does_not_mutate_input",
+      "decision": "delete",
+      "reason": "仅输入字典复制/不变性实现断言。"
+    },
+    {
+      "test": "test_is_idle_revalidates_input",
+      "decision": "delete",
+      "reason": "缺键字典的内部二次校验，无独立 idle 行为；覆盖者 test_is_idle_true_only_for_clean_empty_snapshot。"
+    },
+    {
+      "test": "test_is_idle_true_only_for_clean_empty_snapshot",
+      "decision": "keep",
+      "reason": "具体场景 test_is_idle_true_only_for_clean_empty_snapshot。可观察预期：assert is_idle(json.loads(fixture('lifecycle.idle.json'))) is True；assert is_idle(json.loads(fixture('lifecycle.poisoned.json'))) is False；assert is_idle(json.loads(fixture('lifecycle.active.json'))) is False。防止把别的服务/请求状态当作本次排空或取消结果；矛盾活动清单、未释放请求与 poisoned 状态不能授权继续发送。"
+    },
+    {
+      "test": "test_parse_cancel_accepted_fixture",
+      "decision": "delete",
+      "reason": "accepted 字符串原样返回不证明取消完成；保留 test_parse_cancel_rejects_mismatched_ids 和 test_is_idle_true_only_for_clean_empty_snapshot。"
+    },
+    {
+      "test": "test_parse_cancel_error_fixture",
+      "decision": "delete",
+      "reason": "删除：固定cancel.error.json解析回显，没有任务或排空结果预期；test_lab_adapters中的cancel_error验证取消失败保留pending并产生total_timeout_cancel_unconfirmed，当前文件继续保留错实例/错请求拒绝。"
+    },
+    {
+      "test": "test_parse_cancel_rejects_invalid",
+      "decision": "delete",
+      "reason": "只枚举 protocol/enum/extra key 的格式形状；错误请求的取消归属由 test_parse_cancel_rejects_mismatched_ids 覆盖。"
+    },
+    {
+      "test": "test_parse_cancel_rejects_mismatched_ids",
+      "decision": "keep",
+      "reason": "具体场景 test_parse_cancel_rejects_mismatched_ids。可观察预期：assert reason_of(excinfo) == 'lab_instance_mismatch'；assert reason_of(excinfo) == 'lab_request_mismatch'；pytest.raises(LabProtocolError)；pytest.raises(LabProtocolError)。防止把别的服务/请求状态当作本次排空或取消结果；矛盾活动清单、未释放请求与 poisoned 状态不能授权继续发送。"
+    },
+    {
+      "test": "test_parse_cancel_rejects_non_string_enum_values",
+      "decision": "delete",
+      "reason": "仅 enum 的 Python 类型矩阵，不增加取消状态产品假设。"
+    },
+    {
+      "test": "test_parse_identity_kvmem_fixture_template_null",
+      "decision": "delete",
+      "reason": "只检查静态 fixture 的 kind/null 原样返回；没有模型绑定或执行结果假设。"
+    },
+    {
+      "test": "test_parse_identity_ninfer_fixture",
+      "decision": "delete",
+      "reason": "fixture 字段投影成功路径，没有观察绑定后果；真实原生模型身份由 test_joint_identity_rejects_wrong_components 覆盖。"
+    },
+    {
+      "test": "test_parse_identity_rejects_broken_wire",
+      "decision": "delete",
+      "reason": "通用严格 JSON 类型/编码拒绝重复；覆盖者 test_streaming_rejects_unknown_sse_field_and_bad_json 与 test_tail_is_recoverable_but_middle_corruption_is_not。"
+    },
+    {
+      "test": "test_parse_identity_rejects_invalid",
+      "decision": "delete",
+      "reason": "12 项仅复述 identity 字段格式、长度与类型的校验清单；保留真实进程/模型错绑拒绝测试，不为解析器每分支重复造结构输入。"
+    },
+    {
+      "test": "test_parse_identity_rejects_non_bool_capability",
+      "decision": "delete",
+      "reason": "仅 capability bool 类型枚举，无独立可观察能力行为。"
+    },
+    {
+      "test": "test_parse_identity_rejects_non_exact_key_sets",
+      "decision": "delete",
+      "reason": "仅 exact-key-set 实现契约自测。"
+    },
+    {
+      "test": "test_parse_identity_rejects_non_string_engine_and_kind",
+      "decision": "delete",
+      "reason": "仅 engine/kind 类型错误枚举，没有真实引擎能力拒绝。"
+    },
+    {
+      "test": "test_parse_identity_rejects_unknown_expected_engine",
+      "decision": "delete",
+      "reason": "内部解析器参数枚举；不触发真实适配器选择或模型行为。"
+    },
+    {
+      "test": "test_parse_lifecycle_accepts_sixteen_requests",
+      "decision": "delete",
+      "reason": "16 项固定上限成功边界，重复清单解析成功路径；idle/active 产品区别由 test_is_idle_true_only_for_clean_empty_snapshot 覆盖。"
+    },
+    {
+      "test": "test_parse_lifecycle_fixtures",
+      "decision": "delete",
+      "reason": "静态 active/idle fixture 字段原样返回；覆盖者 test_is_idle_true_only_for_clean_empty_snapshot。"
+    },
+    {
+      "test": "test_parse_lifecycle_rejects_inconsistent",
+      "decision": "keep",
+      "reason": "具体场景 test_parse_lifecycle_rejects_inconsistent。逐项参数：pytest.mark.parametrize('payload', [lifecycle(0), lifecycle(1, phase_counts={'decoding': 1}, requests=[]), lifecycle(1, phase_counts={'decoding': 2}, requests=[(REQUEST, 'decoding', False)]), lifecycle(1, phase_counts={}, requests=[(REQUEST, 'decoding', False)]), lifecycle(1, requests=[(REQUEST, 'released', False)]), lifecycle(1, requests=[(REQUEST, 'decoding', False), (REQUEST, 'decoding', False)]), lifecycle(1, requests=[('z' * 32, 'decoding', False)])])。可观察预期：assert reason_of(excinfo) == 'lab_invalid_lifecycle'；pytest.raises(LabProtocolError)。防止把别的服务/请求状态当作本次排空或取消结果；矛盾活动清单、未释放请求与 poisoned 状态不能授权继续发送。"
+    },
+    {
+      "test": "test_parse_lifecycle_rejects_instance_mismatch",
+      "decision": "keep",
+      "reason": "具体场景 test_parse_lifecycle_rejects_instance_mismatch。可观察预期：assert reason_of(excinfo) == 'lab_instance_mismatch'；pytest.raises(LabProtocolError)。防止把别的服务/请求状态当作本次排空或取消结果；矛盾活动清单、未释放请求与 poisoned 状态不能授权继续发送。"
+    },
+    {
+      "test": "test_parse_lifecycle_rejects_non_string_phase",
+      "decision": "delete",
+      "reason": "非字符串 phase 的结构重复；覆盖者 test_parse_lifecycle_rejects_inconsistent。"
+    },
+    {
+      "test": "test_parse_lifecycle_rejects_sixteen_plus_requests",
+      "decision": "delete",
+      "reason": "固定内部清单大小边界，没有证明停止发送/排空条件；保留 test_parse_lifecycle_rejects_inconsistent 的活动身份矛盾拒绝。"
+    },
+    {
+      "test": "test_parse_lifecycle_rejects_type_violations",
+      "decision": "delete",
+      "reason": "仅 stage/counter/key/bool 的结构枚举；活动清单矛盾由 test_parse_lifecycle_rejects_inconsistent 覆盖。"
+    },
+    {
+      "test": "test_parse_request_fixtures",
+      "decision": "delete",
+      "reason": "active/released fixture 的 outcome 投影，未验证运行终态；保留 test_parse_request_rejects_invalid 中 phase/outcome 矛盾拒绝。"
+    },
+    {
+      "test": "test_parse_request_rejects_instance_mismatch",
+      "decision": "delete",
+      "reason": "服务 instance 错绑重复；覆盖者 test_parse_lifecycle_rejects_instance_mismatch，本文件另保留请求 ID 与 cancel ID 专有拒绝。"
+    },
+    {
+      "test": "test_parse_request_rejects_invalid",
+      "decision": "keep",
+      "reason": "具体场景 test_parse_request_rejects_invalid。逐项参数：pytest.mark.parametrize('payload', [request_snapshot(1, outcome='completed'), request_snapshot(1, phase='released'), request_snapshot(1, phase='released', outcome='lost'), request_snapshot(1, phase='queued'), request_snapshot(0), request_snapshot(1, cancel=1)])。可观察预期：assert reason_of(excinfo) == 'lab_invalid_request'；pytest.raises(LabProtocolError)。防止把别的服务/请求状态当作本次排空或取消结果；矛盾活动清单、未释放请求与 poisoned 状态不能授权继续发送。"
+    },
+    {
+      "test": "test_parse_request_rejects_non_string_enum_values",
+      "decision": "delete",
+      "reason": "仅 enum 的 Python 类型矩阵；phase/outcome 矛盾由 test_parse_request_rejects_invalid 覆盖。"
+    },
+    {
+      "test": "test_parse_request_rejects_request_mismatch",
+      "decision": "keep",
+      "reason": "具体场景 test_parse_request_rejects_request_mismatch。可观察预期：assert reason_of(excinfo) == 'lab_request_mismatch'；pytest.raises(LabProtocolError)。防止把别的服务/请求状态当作本次排空或取消结果；矛盾活动清单、未释放请求与 poisoned 状态不能授权继续发送。"
+    }
+  ]
+}

@@ -1,7 +1,6 @@
 """CPU/swap counter units, identity changes, request windows and coverage examples."""
 
 from copy import deepcopy
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -120,24 +119,14 @@ def test_permission_and_boot_changes_are_missing_not_zero(tmp_path, monkeypatch)
     )
 
 
-def test_swap_reads_once_per_cycle_with_shared_window(tmp_path, monkeypatch):
+def test_swap_reads_once_per_cycle_with_shared_window(tmp_path):
     sampler = collector(tmp_path, clock=iter(range(100)).__next__)
-    original = Path.read_text
-    reads = []
-
-    def read(path, *args, **kwargs):
-        if path == tmp_path / "vmstat":
-            reads.append(path)
-        return original(path, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "read_text", read)
     for values in ((3, 4), (7, 8)):
         (tmp_path / "vmstat").write_text(f"pswpin {values[0]}\npswpout {values[1]}\n")
         _, incoming, outgoing = sampler.counters(77, 55)
         assert (incoming["value"], outgoing["value"]) == values
         for field in ("read_started_ns", "read_finished_ns"):
             assert incoming[field] == outgoing[field]
-    assert len(reads) == 2
 
 
 @pytest.mark.parametrize("text", ["pswpin -1\npswpout 4", "pswpin 3\npswpin 3\npswpout 4"])

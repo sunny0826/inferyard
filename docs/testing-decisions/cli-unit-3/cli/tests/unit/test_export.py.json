@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_export.py",
+  "decisions": [
+    {
+      "test": "test_all_formats_share_metric_values_without_rounding",
+      "decision": "keep",
+      "reason": "具体场景 test_all_formats_share_metric_values_without_rounding。可观察预期：assert json.loads(files['analysis.json']) == analysis；assert rows[0]['value'] == '-123.456789'；assert rows[1]['value'] == '' and rows[1]['denominator'] == '40'；assert all((row['export_analysis_id'] == 'analysis-a' for row in rows))。导出 CSV 不能执行公式样文本，负值/null/布尔及原始精度不能失真，Markdown 不能注入 HTML 或伪造列。"
+    },
+    {
+      "test": "test_formula_like_strings_are_text",
+      "decision": "keep",
+      "reason": "具体场景 test_formula_like_strings_are_text。逐项参数：pytest.mark.parametrize('value', ['=1+1', '+cmd', '-cmd', '@SUM(A1)', '  =1', '\\t=1', '\\n=1'])。可观察预期：assert csv_cell(value) == \"'\" + value。导出 CSV 不能执行公式样文本，负值/null/布尔及原始精度不能失真，Markdown 不能注入 HTML 或伪造列。"
+    },
+    {
+      "test": "test_markdown_cannot_inject_html_link_or_table_column",
+      "decision": "keep",
+      "reason": "具体场景 test_markdown_cannot_inject_html_link_or_table_column。可观察预期：assert '<img' not in text；assert '\\\\[link\\\\]' in text and '\\\\|' in text；assert '<br>' in text and '\\n' not in text。导出 CSV 不能执行公式样文本，负值/null/布尔及原始精度不能失真，Markdown 不能注入 HTML 或伪造列。"
+    },
+    {
+      "test": "test_negative_numbers_null_and_boolean_keep_meaning",
+      "decision": "keep",
+      "reason": "具体场景 test_negative_numbers_null_and_boolean_keep_meaning。可观察预期：assert csv_cell(-1.25) == '-1.25'；assert csv_cell(None) == ''；assert csv_cell(False) == 'false'；assert csv_cell(0) == '0'。导出 CSV 不能执行公式样文本，负值/null/布尔及原始精度不能失真，Markdown 不能注入 HTML 或伪造列。"
+    }
+  ]
+}

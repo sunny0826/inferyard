@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_verify_build_inputs.py",
+  "decisions": [
+    {
+      "test": "test_both_publisher_hash_types",
+      "decision": "keep",
+      "reason": "普通 Git blob SHA1 与 LFS SHA256 都验证实际字节及总量，避免合法构建输入被漏验。"
+    },
+    {
+      "test": "test_invalid_input_rejected",
+      "decision": "keep",
+      "reason": "partial、缺失、坏字节、symlink 或错大小拒绝，避免转换构建用不完整/替代权重。"
+    },
+    {
+      "test": "test_unexpected_python_input_rejected",
+      "decision": "keep",
+      "reason": "计划外 Python 输入拒绝，避免未冻结模型实现进入构建。"
+    }
+  ]
+}

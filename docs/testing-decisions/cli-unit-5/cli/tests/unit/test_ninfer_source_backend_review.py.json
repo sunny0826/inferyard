@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_backend_review.py",
+  "decisions": [
+    {
+      "test": "test_adapter_prototypes_keep_high_handles_and_job_layout",
+      "decision": "delete",
+      "reason": "ctypes argtypes/restype、结构偏移和人为截断对照，属于原型/布局实现测试。"
+    },
+    {
+      "test": "test_create_job_close_failure_keeps_full_handle_unknown",
+      "decision": "delete",
+      "reason": "Job关闭失败只检查内部ref和关闭列表，不直接验证产品或发行资格。"
+    },
+    {
+      "test": "test_failed_parent_close_stays_unknown_and_is_not_closed_again",
+      "decision": "delete",
+      "reason": "parent关闭未知时数组/close顺序测试，安全后果由test_ninfer_source_backend_round2.py::test_unknown_pipe_close_before_process_stays_with_custodian覆盖。"
+    },
+    {
+      "test": "test_retained_output_stops_at_32768_and_reads_stay_at_4096",
+      "decision": "delete",
+      "reason": "固定4096/32768和read次数约束优化策略；超量导致停止的后果由test_ninfer_source_backend_round2.py::test_custodian_keeps_prefix_and_stops_on_hidden_overflow覆盖。"
+    },
+    {
+      "test": "test_stderr_peek_failure_redelivers_stdout_once",
+      "decision": "delete",
+      "reason": "stderr peek故障的简单abc前缀被test_ninfer_source_backend_round2.py::test_second_stream_failure_keeps_distinct_prefix覆盖。"
+    },
+    {
+      "test": "test_stderr_read_failure_redelivers_stdout_once",
+      "decision": "delete",
+      "reason": "stderr read故障的简单abc前缀被test_ninfer_source_backend_round2.py::test_second_stream_failure_keeps_distinct_prefix覆盖。"
+    }
+  ]
+}

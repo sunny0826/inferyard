@@ -1,12 +1,10 @@
 """Release protocol failures preserve uncertainty rather than inventing engine release."""
 
 import asyncio
-from types import SimpleNamespace
 
 import httpx
 import pytest
 
-import inferyard.adapters.native_observation as observation
 from inferyard.adapters.requests import request_body
 from inferyard.config.loader import load_config
 from inferyard.contracts.validation import ContractError, Document
@@ -113,32 +111,3 @@ def test_observation_config_rejects_unsupported_mode_or_environment(native_case,
     config["engine"][field] = value
     with pytest.raises(ContractError):
         Document.parse("config", config)
-
-
-def test_capability_discovery_has_seven_individual_five_second_budgets(native_case, monkeypatch):
-    config, _ = native_case
-    clock, seen = [100.0], []
-    monkeypatch.setattr(observation, "time", SimpleNamespace(monotonic=lambda: clock[0]))
-
-    async def run():
-        adapter = adapter_factory(config["engine"]["adapter"])("http://127.0.0.1:8080")
-
-        async def inspect(path, *, deadline):
-            assert deadline == clock[0] + 5
-            seen.append(path)
-            clock[0] = deadline
-            return {
-                "available": None,
-                "missing_reason": "http_404",
-                "status_code": 404,
-                "body": None,
-            }
-
-        monkeypatch.setattr(adapter, "inspect_endpoint", inspect)
-        try:
-            await adapter.discover(config)
-        finally:
-            await adapter.close()
-
-    asyncio.run(run())
-    assert tuple(seen) == observation.PATHS and clock[0] == 135

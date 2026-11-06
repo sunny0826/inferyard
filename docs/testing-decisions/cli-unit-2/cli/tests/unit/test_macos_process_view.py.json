@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_macos_process_view.py",
+  "decisions": [
+    {
+      "test": "test_explicit_empty_view_does_not_trigger_independent_query",
+      "decision": "delete",
+      "reason": "仅空 rows 参数不得额外发起查询的优化约束，无用户预算假设。"
+    },
+    {
+      "test": "test_file_change_after_mapping_still_fails_final_guard",
+      "decision": "keep",
+      "reason": "读取映射后模型/引擎文件改变仍须最终拒绝，避免替换资产继承旧测量身份。"
+    },
+    {
+      "test": "test_full_view_does_not_relax_component_proof",
+      "decision": "keep",
+      "reason": "错误 PID/fd/type/inode/device/listener 协议地址不得证明二进制/Metal/端点身份；删固定查询次数。"
+    },
+    {
+      "test": "test_joint_metal_check_uses_one_fresh_pid_view",
+      "decision": "delete",
+      "reason": "只固定 lsof 查询一次与输出不含内部 rows/queries 的形状；映射证明由 test_full_view_does_not_relax_component_proof 覆盖。"
+    },
+    {
+      "test": "test_next_check_reads_changed_rows_instead_of_reusing_previous_view",
+      "decision": "keep",
+      "reason": "下次检查映射/监听变化必须失败，不能复用之前身份；删查询列表形状。"
+    },
+    {
+      "test": "test_next_check_rehashes_library_and_rereads_manifest",
+      "decision": "keep",
+      "reason": "库文件/清单更改或重复 JSON key 后重新核验必须失败，不能继承旧 Metal 资格；删查询次数。"
+    },
+    {
+      "test": "test_pid_change_at_final_check_is_rejected",
+      "decision": "delete",
+      "reason": "重复私有 _metal_binding 返回点注入 PID 变化；test_pid_change_during_file_view_is_rejected 已覆盖相同身份错误。"
+    },
+    {
+      "test": "test_pid_change_during_file_view_is_rejected",
+      "decision": "keep",
+      "reason": "读取 lsof 期间 PID 代际变化须拒绝，避免将新旧进程证据拼接。"
+    },
+    {
+      "test": "test_standalone_mapping_keeps_its_own_fresh_txt_query",
+      "decision": "delete",
+      "reason": "仅固定独立 mapped_file 的查询 selectors/次数，与 test_full_view_does_not_relax_component_proof 的映射拒绝重复。"
+    }
+  ]
+}

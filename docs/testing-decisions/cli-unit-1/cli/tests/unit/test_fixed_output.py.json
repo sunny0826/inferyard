@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_fixed_output.py",
+  "decisions": [
+    {
+      "test": "test_probe_rejects_unverified_parameters_or_counts",
+      "decision": "keep",
+      "reason": "ignore_eos、预算、实际 token、结束原因和 token 范围未验证时探测拒绝，防伪严格长度。"
+    },
+    {
+      "test": "test_strict_and_natural_workloads_cannot_be_compared_as_same_protocol",
+      "decision": "keep",
+      "reason": "严格长度与自然终止不能视作同协议比较，避免不同工作量得出性能结论。"
+    },
+    {
+      "test": "test_strict_mode_freezes_separately_and_cannot_score_quality",
+      "decision": "keep",
+      "reason": "严格长度模式独立冻结且仅性能使用，不接受质量题、stop 文本或错输出目标。"
+    },
+    {
+      "test": "test_strict_rate_retains_failed_denominator_and_does_not_use_finish_alone",
+      "decision": "keep",
+      "reason": "严格长度成功率保留失败分母，不凭 length finish 判成功；缺 token 时结果未知。"
+    }
+  ]
+}

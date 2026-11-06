@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/pages/dashboard_feedback_test.go",
+  "decisions": [
+    {
+      "test": "TestCandidateViewExplainsRemainingBundles",
+      "decision": "delete",
+      "reason": "仅复查默认两个勾选和按钮存在；TestExplicitSingleBundleConfirmation 与 TestPreviewFirstUseAcquiresAssetsBeforeDeviceCheck 覆盖默认范围。"
+    },
+    {
+      "test": "TestExecuteMessage",
+      "decision": "delete",
+      "reason": "只比较两条固定提示文本；排队/完成的真实阶段由 TestPreviewBenchmarkParity 检查。"
+    },
+    {
+      "test": "TestHumanCoversFormerDefaults",
+      "decision": "delete",
+      "reason": "仅要求翻译不等于默认文案，不能证明错误原因正确或用户可恢复。"
+    },
+    {
+      "test": "TestRefreshFailureRendersAndClears",
+      "decision": "keep",
+      "reason": "后台刷新失败要可见，用户随后提交的输入错误应优先显示，否则诊断被旧刷新错误遮挡。"
+    }
+  ]
+}

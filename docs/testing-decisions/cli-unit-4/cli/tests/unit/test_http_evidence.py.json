@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_http_evidence.py",
+  "decisions": [
+    {
+      "test": "test_http_event_binding",
+      "decision": "keep",
+      "reason": "HTTP 事件重复、状态与终态矛盾或 phase 错配拒绝，合法 413 归实际失败请求，避免错误证据归属。"
+    },
+    {
+      "test": "test_http_metadata_omits_error_body_and_preserves_failure",
+      "decision": "keep",
+      "reason": "HTTP 400/413/429/500 保留失败状态/状态码但不存错误正文，避免 prompt/secret 泄露。"
+    }
+  ]
+}

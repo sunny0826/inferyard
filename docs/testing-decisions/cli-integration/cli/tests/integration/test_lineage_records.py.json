@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/integration/test_lineage_records.py",
+  "decisions": [
+    {
+      "test": "test_frozen_reader_rechecks_receipt_chain_after_rehash",
+      "decision": "keep",
+      "reason": "修改转换输出并更新所有表层摘要仍必须因量化链不匹配拒绝冻结计划。"
+    },
+    {
+      "test": "test_raw_receipt_failures",
+      "decision": "keep",
+      "reason": "收据字节损坏、重复键、失败退出、重复资产和缺lineage不得成为有效模型血缘。"
+    },
+    {
+      "test": "test_receipts_survive_relocation_and_trial_offline_replay",
+      "decision": "keep",
+      "reason": "模型转换收据在源目录移走后仍可离线读，重算hash也不能掩盖量化输入链断裂。"
+    },
+    {
+      "test": "test_rehashed_inconsistent_receipts_rejected_before_freeze",
+      "decision": "keep",
+      "reason": "冻结前转换/量化的repo、revision、tokenizer、工具、recipe、input/output与packing不一致必须拒绝。"
+    },
+    {
+      "test": "test_rehashed_matching_but_incomplete_revision_rejected",
+      "decision": "keep",
+      "reason": "M5：删除read_frozen_plan已拒绝后再调validate_records的重复路径；保留重算外层hash后的base_revision拒绝。"
+    }
+  ]
+}

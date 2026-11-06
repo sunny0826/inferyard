@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/integration/test_network_deadline.py",
+  "decisions": [
+    {
+      "test": "test_real_tcp_continuous_stream_stops_at_total_deadline",
+      "decision": "keep",
+      "reason": "真实持续TCP流不能刷新总deadline；一秒到期返回total_timeout并仅发一次请求。"
+    }
+  ]
+}

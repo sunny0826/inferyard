@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -44,16 +43,6 @@ func engineTarGz(t *testing.T, entries map[string]string) []byte {
 	return buf.Bytes()
 }
 
-func TestDefaultEngineURLPlatforms(t *testing.T) {
-	u := DefaultEngineURL()
-	if runtime.GOOS+"/"+runtime.GOARCH == "darwin/arm64" && !strings.HasSuffix(u, "macos-arm64.tar.gz") {
-		t.Fatalf("DefaultEngineURL = %q", u)
-	}
-	if u != "" && !strings.HasPrefix(u, catalogEngineBase) {
-		t.Fatalf("DefaultEngineURL outside pinned release: %q", u)
-	}
-}
-
 func TestValidEngineSource(t *testing.T) {
 	if !validEngineSource(DefaultEngineURL()) {
 		t.Fatal("default engine URL must be valid")
@@ -62,41 +51,6 @@ func TestValidEngineSource(t *testing.T) {
 		if validEngineSource(bad) {
 			t.Fatalf("accepted %q", bad)
 		}
-	}
-}
-
-func TestFetchEngineUnpacksArchive(t *testing.T) {
-	stubInstall(t)
-	archive := engineTarGz(t, map[string]string{
-		"llama-prism/":                      "",
-		"llama-prism/" + engineBinaryName(): "#!/bin/sh\n",
-		"llama-prism/libimpl.dylib":         "lib",
-	})
-	installHTTPDo = roundTripFunc(func(*http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(archive))}, nil
-	}).Do
-	s := installService(t)
-	out := filepath.Join(t.TempDir(), "engine-new")
-	statuses := []string{}
-	path, e := s.FetchEngine(context.Background(), "https://example.test/llama.tar.gz", out, func(st string) { statuses = append(statuses, st) })
-	if e != nil {
-		t.Fatalf("FetchEngine: %+v", e)
-	}
-	if filepath.Base(path) != engineBinaryName() {
-		t.Fatalf("path = %q", path)
-	}
-	st, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if st.Mode().Perm() != 0755 {
-		t.Fatalf("mode = %v", st.Mode())
-	}
-	if _, err := os.Stat(filepath.Join(out, "llama-prism", "libimpl.dylib")); err != nil {
-		t.Fatal("sibling library missing:", err)
-	}
-	if len(statuses) == 0 {
-		t.Fatal("no status lines")
 	}
 }
 
@@ -109,19 +63,6 @@ func TestFetchEngineRejectsTraversal(t *testing.T) {
 	s := installService(t)
 	_, e := s.FetchEngine(context.Background(), "https://example.test/llama.tar.gz", filepath.Join(t.TempDir(), "engine-new"), func(string) {})
 	if e == nil || e.Code != "engine_unpack_failed" {
-		t.Fatalf("err = %+v", e)
-	}
-}
-
-func TestFetchEngineMissingBinary(t *testing.T) {
-	stubInstall(t)
-	archive := engineTarGz(t, map[string]string{"README.txt": "no engine here"})
-	installHTTPDo = roundTripFunc(func(*http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(archive))}, nil
-	}).Do
-	s := installService(t)
-	_, e := s.FetchEngine(context.Background(), "https://example.test/llama.tar.gz", filepath.Join(t.TempDir(), "engine-new"), func(string) {})
-	if e == nil || e.Code != "engine_binary_missing" {
 		t.Fatalf("err = %+v", e)
 	}
 }
@@ -167,50 +108,6 @@ func engineTarGzWithLink(t *testing.T, link, target string) []byte {
 		t.Fatal(err)
 	}
 	return buf.Bytes()
-}
-
-func TestFetchEngineRecreatesSafeSymlinks(t *testing.T) {
-	stubInstall(t)
-	installHTTPDo = roundTripFunc(func(*http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(engineTarGzWithLink(t, "libimpl.dylib", "libimpl.0.dylib")))}, nil
-	}).Do
-	s := installService(t)
-	out := filepath.Join(t.TempDir(), "engine-new")
-	if _, e := s.FetchEngine(context.Background(), "https://example.test/llama.tar.gz", out, func(string) {}); e != nil {
-		t.Fatalf("FetchEngine: %+v", e)
-	}
-	target, err := os.Readlink(filepath.Join(out, "dist", "libimpl.dylib"))
-	if err != nil {
-		t.Fatal("symlink missing:", err)
-	}
-	if target != "libimpl.0.dylib" {
-		t.Fatalf("link target = %q", target)
-	}
-}
-
-func TestFetchEngineRejectsEscapingSymlink(t *testing.T) {
-	stubInstall(t)
-	installHTTPDo = roundTripFunc(func(*http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(engineTarGzWithLink(t, "evil", "../../etc/passwd")))}, nil
-	}).Do
-	s := installService(t)
-	_, e := s.FetchEngine(context.Background(), "https://example.test/llama.tar.gz", filepath.Join(t.TempDir(), "engine-new"), func(string) {})
-	if e == nil || e.Code != "engine_unpack_failed" {
-		t.Fatalf("err = %+v", e)
-	}
-}
-
-func TestFetchEngineOutputExists(t *testing.T) {
-	stubInstall(t)
-	installHTTPDo = roundTripFunc(func(*http.Request) (*http.Response, error) {
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(engineTarGz(t, map[string]string{"a": "b"})))}, nil
-	}).Do
-	s := installService(t)
-	out := t.TempDir()
-	_, e := s.FetchEngine(context.Background(), "https://example.test/llama.tar.gz", out, func(string) {})
-	if e == nil || e.Code != "output_exists" {
-		t.Fatalf("err = %+v", e)
-	}
 }
 
 // TestFetchEngineStreamsAnArchiveLargerThanTheInMemoryLimit pins the reason
@@ -307,42 +204,4 @@ func writeEngineBinary(t *testing.T, dir string, mode os.FileMode, modTime time.
 		t.Fatal(err)
 	}
 	return path
-}
-
-func TestScanEngineBinariesPicksNewest(t *testing.T) {
-	root := t.TempDir()
-	old := writeEngineBinary(t, filepath.Join(root, "engine-1", "inner"), 0o755, time.Unix(1000, 0))
-	_ = old
-	newest := writeEngineBinary(t, filepath.Join(root, "engine-2", "inner"), 0o755, time.Unix(2000, 0))
-	// Not executable: ignored.
-	writeEngineBinary(t, filepath.Join(root, "engine-3"), 0o644, time.Unix(3000, 0))
-	if got := scanEngineBinaries(root, filepath.Join(root, "missing")); len(got) != 2 || got[0].path != newest {
-		t.Fatalf("got %+v, want newest %q", got, newest)
-	}
-}
-
-func TestScanEngineBinariesSkipsDeepTrees(t *testing.T) {
-	root := t.TempDir()
-	deep := filepath.Join(root, "a", "b", "c", "d", "e", "f")
-	writeEngineBinary(t, deep, 0o755, time.Unix(1000, 0))
-	if got := scanEngineBinaries(root); len(got) != 0 {
-		t.Fatalf("deep binary must be ignored, got %+v", got)
-	}
-	if got := scanEngineBinaries(filepath.Join(root, "missing")); len(got) != 0 {
-		t.Fatalf("missing root must yield no entries, got %+v", got)
-	}
-}
-
-func TestEngineRootsOrder(t *testing.T) {
-	roots := EngineRoots("/tmp/ws")
-	if len(roots) != 2 || roots[0] != "/tmp/ws/engines" {
-		t.Fatalf("%v", roots)
-	}
-	home, err := os.UserHomeDir()
-	if err != nil || roots[1] != filepath.Join(home, ".inferyard", "engine") {
-		t.Fatalf("%v %v", roots, err)
-	}
-	if roots := EngineRoots(""); len(roots) != 1 {
-		t.Fatalf("empty workspace must drop the workspace root: %v", roots)
-	}
 }

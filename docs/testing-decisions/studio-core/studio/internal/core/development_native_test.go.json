@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/core/development_native_test.go",
+  "decisions": [
+    {
+      "test": "TestDevelopmentNativeChild",
+      "decision": "keep",
+      "reason": "原生进程/跨进程锁 helper，为退出身份与恢复锁阻塞测试提供真实系统行为。"
+    },
+    {
+      "test": "TestDevelopmentNativeProcessObservation",
+      "decision": "keep",
+      "reason": "运行、退出未回收与已回收子进程须保守区分；非法 PID 拒绝，防恢复把存活进程当作不存在。"
+    },
+    {
+      "test": "TestDevelopmentOwnerLockNativeDeadlineAndRace",
+      "decision": "keep",
+      "reason": "真实 owner 锁必须支持取消且不换 inode，释放后可看到写入结果，防开发恢复越过仍在发布的 owner。"
+    },
+    {
+      "test": "TestDevelopmentOwnerLockRejectsInvalidWorkspace",
+      "decision": "keep",
+      "reason": "缺失或普通文件 workspace 不可获取恢复锁，否则对错误位置的空锁给出安全假象。"
+    }
+  ]
+}

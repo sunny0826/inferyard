@@ -1,0 +1,40 @@
+{
+  "source_path": "studio/internal/pages/device_test.go",
+  "decisions": [
+    {
+      "test": "TestDeviceBlockedAndUnknownFallback",
+      "decision": "delete",
+      "reason": "只确认推荐/下一步等整组旧版文案被隐藏，不验证阻断或恢复动作。"
+    },
+    {
+      "test": "TestDeviceEmptyAndError",
+      "decision": "keep",
+      "reason": "空/null 快照给设置入口，读取失败不能伪装为空成功，已有快照失败仍允许恢复。"
+    },
+    {
+      "test": "TestDeviceGPUUnavailableReason",
+      "decision": "keep",
+      "reason": "缺少 nvidia-smi 必须解释 GPU 未观测，不能显示为无 GPU 或 0 显存。"
+    },
+    {
+      "test": "TestDeviceInvalidSnapshot",
+      "decision": "keep",
+      "reason": "坏 JSON、错误根类型和尾随文本需显示读取失败并提供恢复入口，不能当有效设备。"
+    },
+    {
+      "test": "TestDeviceLocalizedSnapshot",
+      "decision": "keep",
+      "reason": "保留硬件/内存 GiB、共享显存缺测和估算标记，防止测量被误读；删除主题及大段旧文案缺席检查。"
+    },
+    {
+      "test": "TestDeviceMultipleGPUs",
+      "decision": "keep",
+      "reason": "多 GPU 必须分别显示各自名称及 16/8 GiB，不能合并成错误显存配置。"
+    },
+    {
+      "test": "TestDeviceReadyAndRefreshing",
+      "decision": "keep",
+      "reason": "设备快照 ready_to_run 不能冒充本次运行已获准；采集中禁重复刷新并正确结束采集提示。"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/integration/test_layout_cli.py",
+  "decisions": [
+    {
+      "test": "test_offline_cli_source_chain_keeps_originals_and_report_v8",
+      "decision": "keep",
+      "reason": "layout1/layout2来源经真实CLI子进程生成report/export/rescore/public/compare并全部核验，来源原件不得改写；防止某派生入口遗漏布局支持。"
+    }
+  ]
+}

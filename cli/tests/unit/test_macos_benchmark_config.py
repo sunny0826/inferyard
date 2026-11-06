@@ -57,10 +57,6 @@ def test_create_local_candidate_with_fresh_assets_and_no_requests(generator, tmp
     config = load_config(out).config.to_dict()
     assert config["engine"]["backend"] == "metal"
     assert config["model"]["local_path"] == str(model.resolve())
-    assert config["conditions"]["threads"] == 5
-    assert config["conditions"]["profile"] == "balanced"
-    assert config["conditions"]["context_size"] == 4096
-    assert config["endpoint"]["server_pid"] == config["endpoint"]["process_start_ticks"] == 1
     assert result["model_requests_sent"] == 0 and result["ready_to_run"] is False
     assert "libggml-metal.dylib" in json.loads(out.with_suffix(".libraries.json").read_text())
     before = out.read_bytes()

@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_telemetry.py",
+  "decisions": [
+    {
+      "test": "test_missing_rss_does_not_erase_system_memory_observations",
+      "decision": "keep",
+      "reason": "RSS 缺测不抹掉系统可用内存，进程和主机指标独立保留原因。"
+    },
+    {
+      "test": "test_missing_sensors_are_null_not_zero",
+      "decision": "keep",
+      "reason": "内存采样文件缺失须 null 加原因，不能显示零占用或零可用内存。"
+    },
+    {
+      "test": "test_only_formal_valid_request_windows_count_and_short_requests_stay_missing",
+      "decision": "keep",
+      "reason": "资源只算正式有效请求窗口，预热/评分/残留排除，短请求未采到样本保持缺失。"
+    },
+    {
+      "test": "test_outside_window_samples_are_counted_as_excluded",
+      "decision": "keep",
+      "reason": "越起点、越终点、错误阶段或时钟的样本不改变内存极值，仍记排除数量。"
+    },
+    {
+      "test": "test_pid_reuse_nulls_rss_but_not_system_memory",
+      "decision": "keep",
+      "reason": "PID 世代变化不能归入原进程 RSS，但独立主机内存仍有有效值。"
+    },
+    {
+      "test": "test_swap_and_power_drift_preserve_quality_but_disqualify_environment",
+      "decision": "keep",
+      "reason": "交换和供电变化取消性能资格但不改质量/完成率，swap 计数未知也明确报告。"
+    }
+  ]
+}

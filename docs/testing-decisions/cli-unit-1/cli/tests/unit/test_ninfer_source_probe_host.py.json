@@ -1,0 +1,60 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_host.py",
+  "decisions": [
+    {
+      "test": "test_caller_identity_mutation_does_not_rewrite_library_stage",
+      "decision": "delete",
+      "reason": "只验证构造后复制输入字典；错误身份实际恢复已由 wrong_identity_resume 覆盖。"
+    },
+    {
+      "test": "test_cancel_then_drain_counts_close_once",
+      "decision": "keep",
+      "reason": "取消后进入停止、排空、释放所有权，不升级 kill 或重复关闭句柄；删除固定清理字段数。"
+    },
+    {
+      "test": "test_deadline_error_stays_after_later_close",
+      "decision": "keep",
+      "reason": "超时后虽成功排空关闭仍保留失败原因，不能把后续清理成功改写为作业成功。"
+    },
+    {
+      "test": "test_main_always_rejects",
+      "decision": "keep",
+      "reason": "环境许可变量或 CLI 参数都不能启用未开放的 source-host 真实执行入口。"
+    },
+    {
+      "test": "test_output_limit_keeps_exact_prefix_and_sticky_error",
+      "decision": "keep",
+      "reason": "stdout/stderr 超限只保留允许前缀且停止作业，最终关闭也不能抹去超限失败。"
+    },
+    {
+      "test": "test_resume_does_not_construct_another_custodian",
+      "decision": "delete",
+      "reason": "仅 spy 私有 Custodian 的构造次数，恢复已有作业的输出连续性由相邻测试覆盖。"
+    },
+    {
+      "test": "test_snapshot_and_evidence_are_independent_copies",
+      "decision": "delete",
+      "reason": "固定键集合、阶段常量和多层对象深拷贝同一性，不对应用户作业流程。"
+    },
+    {
+      "test": "test_task_work_total_rejected_with_zero_backend_calls",
+      "decision": "keep",
+      "reason": "任务/工作/总期限倒置、阶段错误或任务越界必须在启动 backend 前拒绝。"
+    },
+    {
+      "test": "test_two_calls_resume_same_custodian_and_ref",
+      "decision": "keep",
+      "reason": "多次恢复继续保留同一已启动作业并累积 stdout；删除私有 Custodian 类型与同一性断言。"
+    },
+    {
+      "test": "test_unknown_close_cannot_exit_and_keeps_ref",
+      "decision": "keep",
+      "reason": "关闭状态未知时不能退出或宣称成功，仍须持有作业等待处置；删除固定清理步数。"
+    },
+    {
+      "test": "test_wrong_identity_resume_makes_zero_backend_calls",
+      "decision": "keep",
+      "reason": "错身份恢复不得推进或控制原作业，避免另一个任务接管进程。"
+    }
+  ]
+}

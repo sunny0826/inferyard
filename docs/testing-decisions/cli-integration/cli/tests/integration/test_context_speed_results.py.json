@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/integration/test_context_speed_results.py",
+  "decisions": [
+    {
+      "test": "test_damaged_copy_returns_only_error",
+      "decision": "delete",
+      "reason": "六种未重封存修改都可被通用字节哈希门挡住；重封存后的身份/顺序/成员语义拒绝由 test_context_speed_sources.test_semantic_source_mismatch 覆盖，普通哈希拒绝由test_batch_projection.test_skipped_timeline_validation_remains_in_verify_and_report覆盖。"
+    },
+    {
+      "test": "test_forbidden_reexecution",
+      "decision": "keep",
+      "reason": "M4：删除CLI拒绝后直接load_rerun的重复拒绝；保留resume/run/rerun各入口exit2、零新增请求、原件不变及无新目录。"
+    },
+    {
+      "test": "test_measurement_gaps",
+      "decision": "keep",
+      "reason": "缺timing、各trial不同prompt长度、缓存污染或短输出时，不能给出合并速度；保留实际可得测量与原因。"
+    },
+    {
+      "test": "test_partial_and_zero_copy",
+      "decision": "keep",
+      "reason": "零trial和部分trial结果必须退出3、保留未执行分母并禁止用复制批次继续发题。"
+    },
+    {
+      "test": "test_timing_cannot_override_actual_output_count",
+      "decision": "keep",
+      "reason": "timing自报256不能覆盖真实仅11输出token，不得把短回答算作固定长度速度样本。"
+    }
+  ]
+}

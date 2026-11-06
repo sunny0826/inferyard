@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_unified_contract.py",
+  "decisions": [
+    {
+      "test": "test_active_parser_never_accepts_old_or_implicit_revision",
+      "decision": "keep",
+      "reason": "具体场景 test_active_parser_never_accepts_old_or_implicit_revision。逐项参数：pytest.mark.parametrize('revision', [1, 2, True, '3', None])。可观察预期：pytest.raises(ContractError, match='schema_version')。防止失败请求被删出分母、持续负载上限被当计划题数、伪造样本被接受，以及历史或损坏来源获得当前证据资格。"
+    },
+    {
+      "test": "test_duration_does_not_turn_window_limits_into_planned_cases",
+      "decision": "keep",
+      "reason": "具体场景 test_duration_does_not_turn_window_limits_into_planned_cases。逐项参数：pytest.mark.parametrize('change', ['zero_planned', 'wrong_limit', 'admission', 'early_complete', 'cohort', 'probe'])。可观察预期：pytest.raises(ContractError)。防止失败请求被删出分母、持续负载上限被当计划题数、伪造样本被接受，以及历史或损坏来源获得当前证据资格。"
+    },
+    {
+      "test": "test_fixed_and_duration_keep_failed_request_in_denominator",
+      "decision": "keep",
+      "reason": "具体场景 test_fixed_and_duration_keep_failed_request_in_denominator。逐项参数：pytest.mark.parametrize('duration', [False, True])。可观察预期：assert saved.to_dict()['completion_rate'] == _rate(0, 1)；assert saved.to_dict()['counts']['planned'] == (None if duration else 1)；pytest.raises(ContractError)。防止失败请求被删出分母、持续负载上限被当计划题数、伪造样本被接受，以及历史或损坏来源获得当前证据资格。已删 Document 深拷贝隔离断言，保留失败分母守恒。"
+    },
+    {
+      "test": "test_fixed_summary_rejects_changed_or_removed_denominator",
+      "decision": "keep",
+      "reason": "具体场景 test_fixed_summary_rejects_changed_or_removed_denominator。逐项参数：pytest.mark.parametrize('changes', [{'planned': 2}, {'planned': None}, {'valid_executed': 0}, {'failed': True}, {'budget_exhausted': 2}, {'request_limit': 10}])。可观察预期：pytest.raises(ContractError)。防止失败请求被删出分母、持续负载上限被当计划题数、伪造样本被接受，以及历史或损坏来源获得当前证据资格。"
+    },
+    {
+      "test": "test_manifest_paths_and_derived_classification_are_not_data_owned",
+      "decision": "keep",
+      "reason": "具体场景 test_manifest_paths_and_derived_classification_are_not_data_owned。可观察预期：pytest.raises(ContractError, match='classification')；pytest.raises(ContractError, match='relative')。防止失败请求被删出分母、持续负载上限被当计划题数、伪造样本被接受，以及历史或损坏来源获得当前证据资格。"
+    },
+    {
+      "test": "test_registry_exposes_one_revision_and_no_version_switch",
+      "decision": "delete",
+      "reason": "只限定注册表 ID/API 签名及传错参数 TypeError；活动旧版本拒绝由 test_active_parser_never_accepts_old_or_implicit_revision 覆盖。"
+    },
+    {
+      "test": "test_run_records_require_explicit_kind_mode_and_measurement_origin",
+      "decision": "delete",
+      "reason": "只逐键删除结构字段，并接受应用实际禁止的 migrated schema 字典；真实递归准入由 test_migrated_schema_three_rejected_recursively 覆盖。"
+    },
+    {
+      "test": "test_unknown_nested_summary_fields_and_fabricated_metric_samples_are_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_unknown_nested_summary_fields_and_fabricated_metric_samples_are_rejected。可观察预期：pytest.raises(ContractError)。防止失败请求被删出分母、持续负载上限被当计划题数、伪造样本被接受，以及历史或损坏来源获得当前证据资格。已删 unknown-key 结构场景，保留伪造 L03 样本拒绝。"
+    }
+  ]
+}

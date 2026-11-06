@@ -34,10 +34,3 @@ def test_proof_tampering_never_grants_review(change):
         bundle["review_provenance"].append(copy.deepcopy(proof))
     with pytest.raises(ContractError):
         validate_bundle(bundle)
-
-
-def test_migration_generation_api_is_absent():
-    from inferyard.config import bundle, bundle_review
-
-    assert not hasattr(bundle, "upgrade_legacy_bundle")
-    assert not hasattr(bundle_review, "upgrade_legacy_bundle")

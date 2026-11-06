@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_position_corpus.py",
+  "decisions": [
+    {
+      "test": "test_generated_position_corpus_preserves_lengths_evidence_and_two_families",
+      "decision": "keep",
+      "reason": "18题仅2独立family，字符窗/证据位置和参考正反评分须准确且仍待审核；删除重复生成相等及固定填充文字断言。"
+    }
+  ]
+}

@@ -87,7 +87,6 @@ def test_mac_unknown_metal_and_invalid_core_counts_stay_missing(cores, metal):
 )
 def test_mac_system_query_has_bounded_failures(monkeypatch, exception, reason):
     def run(arguments, **kwargs):
-        assert kwargs["timeout"] == 2
         raise exception
 
     monkeypatch.setattr(device_macos.subprocess, "run", run)
@@ -108,7 +107,6 @@ def test_mac_snapshot_retains_partial_fields_and_query_sources(monkeypatch):
             return None, "probe_timeout"
         if arguments[0].endswith("pmset"):
             return "Now drawing from 'AC Power'", None
-        assert kwargs["timeout"] == 6
         return None, "permission_denied"
 
     monkeypatch.setattr(device_macos, "query", query)
@@ -169,38 +167,6 @@ def test_windows_partial_memory_probe_does_not_erase_cpu_and_power(monkeypatch, 
     assert report.get("mem_available_bytes") == (None if memory_fails else 8 * GIB)
     if memory_fails:
         assert report["missing"]["memory_available_bytes"] == "query_failed"
-
-
-@pytest.mark.parametrize("system", ["Darwin", "Linux", "Windows"])
-def test_hardware_snapshot_dispatches_and_preserves_missing_sources(monkeypatch, tmp_path, system):
-    observed = []
-
-    def snapshot(value):
-        observed.append(value)
-        return {
-            "cpu_model": "Known CPU",
-            "mem_available_bytes": None,
-            "sources": {"memory_available_bytes": "native_source"},
-            "missing": {"memory_available_bytes": "probe_timeout"},
-        }
-
-    monkeypatch.setattr(device_preflight.platform, "system", lambda: system)
-    monkeypatch.setattr(device_preflight, "host_snapshot", snapshot)
-    monkeypatch.setattr(
-        device_preflight,
-        "nvidia_snapshot",
-        lambda: {"status": "unavailable", "reason": "nvidia_smi_not_found", "devices": []},
-    )
-    report = device_preflight.hardware_snapshot(tmp_path)
-    assert observed == [system] and report["cpu_model"] == "Known CPU"
-    assert report["memory_available_bytes"] is None
-    assert report["missing"]["memory_available_bytes"] == "probe_timeout"
-    assert report["sources"]["memory_available_bytes"] == "native_source"
-    assert report["disk_path"] == str(tmp_path.resolve())
-    capabilities = device_preflight.platform_capabilities(system)
-    assert capabilities["live_single_run"]
-    assert capabilities["live_experiments"] == (system != "Windows")
-    assert not capabilities["metal_backend_verified"]
 
 
 def test_runtime_environment_injection_does_not_reprobe_host(monkeypatch, tmp_path):

@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/pages/models_downloads_test.go",
+  "decisions": [
+    {
+      "test": "TestDownloadsPageMigration",
+      "decision": "delete",
+      "reason": "主要约束下载卡片顺序、页面区块迁移和控件类型；下载实际测量与验证由同文件行为测试覆盖。"
+    },
+    {
+      "test": "TestDownloadsPageMigrationEmptyAndValidation",
+      "decision": "keep",
+      "reason": "模型/引擎非 https URL 和明文 token 形状的凭据输入必须拒绝并保留编辑，不创建任务；删除空页/表单顺序断言。"
+    },
+    {
+      "test": "TestModelsAdoptCompletedEngine",
+      "decision": "keep",
+      "reason": "只自动选可用已核验引擎，核验中不选；旧 CLI 按既定降级处理且绝不覆盖显式选择。"
+    },
+    {
+      "test": "TestModelsUnifiedDownloadMeasurements",
+      "decision": "keep",
+      "reason": "下载字节/速率单位准确，未知进度不能伪零；终态不可取消，仅失败可重建且旧目录保留；删除三列布局、4px 高度和原生控件类型限制。"
+    }
+  ]
+}

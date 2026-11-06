@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_mlx_stream.py",
+  "decisions": [
+    {
+      "test": "test_main_thread_load_and_worker_generation_synchronize_their_own_streams",
+      "decision": "keep",
+      "reason": "保留带真实形态线程亲和错误的 synchronize、连续生成结果与空闲；删内部 state.thread.ident 布局。"
+    }
+  ]
+}

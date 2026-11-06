@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_report_content.py",
+  "decisions": [
+    {
+      "test": "test_report_has_internal_refs_and_one_serialized_copy",
+      "decision": "keep",
+      "reason": "离线 HTML 可无脚本跳转阅读全文、转义攻击文本并拒绝内容 hash 篡改，避免报告 XSS 或显示未绑定回答；删除字段省略与序列化副本数量断言。"
+    },
+    {
+      "test": "test_text_is_stored_once_and_svg_keeps_only_checked_offsets",
+      "decision": "keep",
+      "reason": "SVG 字符偏移必须切出正确 Unicode 原始片段，避免报告渲染错片段；删除内容摘要算法与存储去重的重复断言。"
+    }
+  ]
+}

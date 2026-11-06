@@ -1,6 +1,5 @@
 import asyncio
 import copy
-import json
 
 import httpx
 import pytest
@@ -66,19 +65,13 @@ def inspecting(payload, *, ids=None):
 
 
 def test_llama_build_info_is_preserved_and_props_are_not_persisted():
-    seen = []
-
-    def handler(req):
-        seen.append(req.url.path)
-        return inspecting({"build_info": "b8919-dc80c5252", "secret": "not-recorded"})(req)
-
+    handler = inspecting({"build_info": "b8919-dc80c5252", "secret": "not-recorded"})
     assert request("llama-cpp", "inspect", handler) == {
         "engine": "llama-cpp",
         "version": "b8919-dc80c5252",
         "served_model": MODEL,
         "version_source": "/props",
     }
-    assert seen == ["/v1/models", "/props"]
 
 
 @pytest.mark.parametrize("build_info", [None, {}, True, 8919, "0.3.0", "b8-secret value", ""])
@@ -135,49 +128,12 @@ def test_mlx_still_requires_real_package_version(monkeypatch, version):
         request("mlx-lm", "inspect", inspecting({**mlx_payload(), "version": version}))
 
 
-@pytest.mark.parametrize("engine", ["llama-cpp", "mlx-lm"])
-def test_native_server_alias_or_extra_loaded_model_is_rejected(engine):
-    with pytest.raises(FitTransportError, match="^served_model_unverified$"):
-        request(engine, "inspect", inspecting({}, ids=[MODEL, "second-model"]))
-
-
-@pytest.mark.parametrize("engine", ["llama-cpp", "mlx-lm"])
-def test_common_metrics_include_all_running_waiting_and_poisoned_states(engine):
-    names = engine_fit_common.COMMON_METRICS[engine]
-    payload = "\n".join(f"{name} 0" for name in names)
-    assert request(engine, "idle", lambda _: httpx.Response(200, text=payload))["idle"] is True
-    for name in names:
-        busy = payload.replace(f"{name} 0", f"{name} 1")
-        assert (
-            request(engine, "idle", lambda _, text=busy: httpx.Response(200, text=text))["idle"]
-            is False
-        )
-
-
-@pytest.mark.parametrize("engine", ["llama-cpp", "mlx-lm"])
-@pytest.mark.parametrize("broken", ["missing", "duplicate", "different_labels", "fraction"])
-def test_common_metrics_fail_closed(engine, broken):
-    names = engine_fit_common.COMMON_METRICS[engine]
-    lines = [f"{name} 0" for name in names]
-    if broken == "missing":
-        lines.pop()
-    elif broken == "duplicate":
-        lines.append(lines[-1])
-    elif broken == "different_labels":
-        lines[-1] = f'{names[-1]}{{worker="1"}} 0'
-    else:
-        lines[-1] = f"{names[-1]} 0.5"
-    with pytest.raises(FitTransportError):
-        request(engine, "idle", lambda _: httpx.Response(200, text="\n".join(lines)))
-
-
 def test_lmstudio_candidates_are_not_mistaken_for_loaded_instances():
     observer = Observer()
     result = request(
         "lmstudio", "inspect", inspecting({}, ids=["candidate", MODEL]), observer=observer
     )
     assert result == observer.service
-    assert observer.calls == ["inspect"]
 
 
 @pytest.mark.parametrize("ids", [[MODEL, MODEL], ["candidate"]])
@@ -265,51 +221,3 @@ def test_lmstudio_observer_errors_are_bounded_and_sanitized(monkeypatch, method)
 def test_ollama_is_explicitly_blocked_before_any_network_client():
     with pytest.raises(FitTransportError, match="^ollama_service_idle_observation_unavailable$"):
         FitClient("ollama", "http://127.0.0.1:11434", MODEL)
-
-
-@pytest.mark.parametrize("engine", ["llama-cpp", "mlx-lm", "lmstudio"])
-@pytest.mark.parametrize("terminal", ["both", "no_done", "no_finish"])
-def test_common_completion_preserves_usage_and_requires_both_terminals(engine, terminal):
-    event = {
-        "choices": [
-            {
-                "index": 0,
-                "delta": {"content": "北京"},
-                "finish_reason": None if terminal == "no_finish" else "stop",
-            }
-        ],
-        "usage": {"prompt_tokens": 7, "completion_tokens": 2, "total_tokens": 9},
-    }
-    raw = f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-    if terminal != "no_done":
-        raw += "data: [DONE]\n\n"
-
-    def handler(req):
-        payload = json.loads(req.content)
-        assert payload["stream_options"] == {"include_usage": True}
-        assert payload["temperature"] == 0 and payload["model"] == MODEL
-        return httpx.Response(200, headers={"content-type": "text/event-stream"}, text=raw)
-
-    observer = Observer() if engine == "lmstudio" else None
-    if terminal == "both":
-        result = request(engine, "complete", handler, observer=observer)
-        assert result["text"] == "北京"
-        assert result["prompt_tokens"] == 7 and result["completion_tokens"] == 2
-        assert result["usage_missing_reason"] is None
-    else:
-        reason = "missing_done" if terminal == "no_done" else "missing_finish_reason"
-        with pytest.raises(FitTransportError, match=f"^{reason}$"):
-            request(engine, "complete", handler, observer=observer)
-
-
-@pytest.mark.parametrize("engine", ["llama-cpp", "mlx-lm", "lmstudio"])
-def test_new_engine_inspection_still_rejects_redirect_and_remote_body(engine):
-    with pytest.raises(FitTransportError, match="^http_status_error$"):
-        request(
-            engine,
-            "inspect",
-            lambda _: httpx.Response(
-                307, headers={"location": "https://remote.example"}, text="sensitive body"
-            ),
-            observer=Observer() if engine == "lmstudio" else None,
-        )

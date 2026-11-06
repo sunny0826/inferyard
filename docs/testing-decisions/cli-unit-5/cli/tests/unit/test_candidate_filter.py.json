@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_candidate_filter.py",
+  "decisions": [
+    {
+      "test": "test_contextual_qualification_does_not_rewrite_source",
+      "decision": "keep",
+      "reason": "对等上下文可授权局部性能筛选但不改来源，阈值89时90失败，避免污染原件或错筛。"
+    },
+    {
+      "test": "test_link_cannot_name_an_absent_candidate",
+      "decision": "keep",
+      "reason": "比较链接指向不在候选集的名字须拒绝，避免误用其他候选资格。"
+    },
+    {
+      "test": "test_pair_permission_never_replaces_metric_permission",
+      "decision": "keep",
+      "reason": "pair通过也不能覆盖单指标拒绝、错值/来源/单位/请求范围及重复，避免借总体资格选中候选。"
+    },
+    {
+      "test": "test_spec_requires_finite_threshold_and_nonempty_constraints",
+      "decision": "keep",
+      "reason": "NaN/Inf/bool/超大阈值及空约束拒绝，避免无效筛选自动匹配。"
+    },
+    {
+      "test": "test_threshold_inclusive_and_failures_retained",
+      "decision": "keep",
+      "reason": "阈值相等含边界、低于阈值保留失败数值，反向<=亦同，避免候选误选。"
+    },
+    {
+      "test": "test_unknown_and_incomparable_never_pass",
+      "decision": "keep",
+      "reason": "不完整、缺指标、重复、null、未可比或单位/请求范围不符均unknown不可通过。"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/pages/preview_local_parity_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewLocalDirectFamiliesAndRegistrationIsolation",
+      "decision": "keep",
+      "reason": "四直启家族双题包须更换服务 PID，报告包含两范围；注册/移除安装声明只改模拟内存。"
+    },
+    {
+      "test": "TestPreviewLocalParityDetectsReusedServiceMutation",
+      "decision": "delete",
+      "reason": "故意调用私有入口绕过 gate，仅证明比较工具能发现差异；实际拒绝服务复用已由 TestPreviewLocalQueueParity 覆盖。"
+    },
+    {
+      "test": "TestPreviewLocalQueueParity",
+      "decision": "keep",
+      "reason": "LM Studio 第二题包必须等新服务，复用旧 PID 拒绝；绑定失败重试不能重跑已完成 core，取消不报告。双方独立对照预期。"
+    }
+  ]
+}

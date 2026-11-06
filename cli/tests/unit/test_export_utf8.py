@@ -30,11 +30,6 @@ def test_export_and_check_ignore_gbk_default(tmp_path, monkeypatch, script, stal
         return "cp936" if encoding is None else encoding
 
     monkeypatch.setattr(io, "text_encoding", gbk_default)
-    control = tmp_path / "encoding-control.txt"
-    control.write_bytes("雪".encode())
-    with pytest.raises(UnicodeDecodeError):
-        control.read_text()
-    assert control.read_text(encoding="utf-8") == "雪"
 
     monkeypatch.setattr(sys, "argv", [f"{script}.py"])
     module.main()

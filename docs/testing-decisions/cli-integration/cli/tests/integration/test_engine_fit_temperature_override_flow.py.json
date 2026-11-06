@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/integration/test_engine_fit_temperature_override_flow.py",
+  "decisions": [
+    {
+      "test": "test_hot_pair_completes_with_frozen_override_and_verifies_offline",
+      "decision": "keep",
+      "reason": "显式温度豁免只改变冻结停止政策，仍保存热/正常/缺测读数和限制；离线报告转义理由并显示缺版本。"
+    },
+    {
+      "test": "test_override_does_not_clear_dirty_after_incomplete_protocol",
+      "decision": "keep",
+      "reason": "温度豁免不能让不完整协议变clean或允许第二次隐式重试。"
+    }
+  ]
+}

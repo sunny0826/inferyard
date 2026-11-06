@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_hash_format_priority.py",
+  "decisions": [
+    {
+      "test": "test_complete_old_plan_only_unsupported_when_existing_hash_is_intact",
+      "decision": "keep",
+      "reason": "完整旧plan仅unsupported，hash/类型破坏则证据错误，避免把坏原件当单纯不支持。"
+    },
+    {
+      "test": "test_current_plan_hash_precedes_version_rejection",
+      "decision": "keep",
+      "reason": "当前plan旧格式marker同时hash损坏须报4，仅完整拒绝格式报2，防止格式标记掩盖证据篡改。"
+    },
+    {
+      "test": "test_rescore_hashes_precede_deleted_analysis_versions",
+      "decision": "keep",
+      "reason": "rescore的父hash或自身重算不符优先报证据错误，单纯旧analysis才报unsupported且不改源。"
+    },
+    {
+      "test": "test_rescore_writer_checks_parent_lineage_hash_before_version",
+      "decision": "keep",
+      "reason": "重评分父链hash损坏必须在创建新输出前拒绝，即便父analysis版本已旧，避免继承伪造血缘。"
+    }
+  ]
+}

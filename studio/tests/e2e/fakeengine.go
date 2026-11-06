@@ -6,12 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 )
 
 // Fake engine behavior constants proven by the dist/e2e-spike experiments:
@@ -84,58 +81,6 @@ func writeFakeAssets(t *testing.T) *FakeAssets {
 	assets.ModelSHA256 = sha256File(t, assets.Model)
 	assets.TemplateSHA256 = sha256File(t, assets.Template)
 	return assets
-}
-
-// FakeEngine is a running fake llama-server process (the test binary itself).
-type FakeEngine struct {
-	PID      int
-	Endpoint string
-	Args     []string
-	Assets   *FakeAssets
-
-	cmd *exec.Cmd
-}
-
-// StartFakeEngine writes the fake assets and launches the test binary in
-// engine mode, waiting for /health. Cleanup kills the process.
-func StartFakeEngine(t *testing.T) *FakeEngine {
-	t.Helper()
-	assets := writeFakeAssets(t)
-	binary, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
-	writeJSONFile(t, assets.Manifest, map[string]string{filepath.Base(binary): sha256File(t, binary)})
-	port := freePort(t)
-	args := StartupArgs(assets.Model, assets.Params, port)
-	cmd := exec.Command(binary, args...)
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	engine := &FakeEngine{
-		PID: cmd.Process.Pid, Endpoint: "http://127.0.0.1:" + port,
-		Args: args, Assets: assets, cmd: cmd,
-	}
-	t.Cleanup(func() {
-		_ = cmd.Process.Kill()
-		_, _ = cmd.Process.Wait()
-	})
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		response, err := http.Get(engine.Endpoint + "/health")
-		if err == nil {
-			response.Body.Close()
-			if response.StatusCode == http.StatusOK {
-				return engine
-			}
-		}
-		if cmd.ProcessState != nil {
-			t.Fatal("fake engine exited before health")
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatal("fake engine did not become healthy")
-	return nil
 }
 
 type fakeParams struct {

@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_request_snapshots.py",
+  "decisions": [
+    {
+      "test": "test_current_filename_resolution_does_not_change_event_identity",
+      "decision": "keep",
+      "reason": "旧形态 opaque 请求 ID 可映射当前合法文件名而不改事件身份，避免血缘被重写。"
+    },
+    {
+      "test": "test_invalid_ordinal_is_not_silently_coerced",
+      "decision": "keep",
+      "reason": "零/负/布尔/浮点/字符串序号不得强制转成合法快照名，防错绑请求。"
+    },
+    {
+      "test": "test_legacy_filenames_are_explicitly_rejected",
+      "decision": "keep",
+      "reason": "三类旧请求快照命名明确拒绝，不在 Windows 误读 ADS 或隐式迁移旧证据。"
+    },
+    {
+      "test": "test_opaque_request_id_cannot_escape_root_or_gain_a_snapshot",
+      "decision": "keep",
+      "reason": "带 ../ 的 opaque 请求 ID 不能解析到根外或凭空取得快照。"
+    },
+    {
+      "test": "test_portable_names_sort_in_request_order_and_publish_normally",
+      "decision": "keep",
+      "reason": "证据快照名跨 Windows 保留字限制且按请求序排列，写读可用，保障跨平台产物发布。"
+    },
+    {
+      "test": "test_unsafe_or_overlong_names_fail_before_publication",
+      "decision": "keep",
+      "reason": "路径跳转、冒号 ADS、保留名、NUL、空名和超长名在快照发布前拒绝。"
+    }
+  ]
+}

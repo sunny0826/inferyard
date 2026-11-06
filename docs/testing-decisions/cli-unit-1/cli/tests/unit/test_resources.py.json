@@ -1,0 +1,60 @@
+{
+  "source_path": "cli/tests/unit/test_resources.py",
+  "decisions": [
+    {
+      "test": "test_bad_counter_pairs_never_form_plausible_cpu_values",
+      "decision": "keep",
+      "reason": "计数倒退、身份/刻度变化、缺测及越窗样本不能形成貌似合理的 CPU 值。"
+    },
+    {
+      "test": "test_boot_change_during_shared_swap_read_invalidates_both",
+      "decision": "keep",
+      "reason": "采样中重启使两个 swap 计数同时缺测，防止跨启动计算增量。"
+    },
+    {
+      "test": "test_cpu_uses_observed_wall_interval_not_whole_request",
+      "decision": "keep",
+      "reason": "按实际覆盖 1 秒算 100% CPU，不能除完整 2 秒误报 50%；全请求值保持缺失。"
+    },
+    {
+      "test": "test_failed_requests_keep_resources_but_cancelled_do_not",
+      "decision": "keep",
+      "reason": "模型失败仍计资源，取消/invalid 不计，防止选择性删除失败测量。"
+    },
+    {
+      "test": "test_invalid_swap_input_does_not_hide_valid_output",
+      "decision": "keep",
+      "reason": "负数或重复 swap-in 使该方向缺测，不能抹掉有效 swap-out。"
+    },
+    {
+      "test": "test_linux_counters_bind_pid_and_do_not_include_child_cpu",
+      "decision": "keep",
+      "reason": "CPU 只算绑定进程；PID 世代变化后保持缺测，主机 swap 仍独立可用。"
+    },
+    {
+      "test": "test_memory_extrema_exclude_warmup_residual_and_cross_boundary_and_rss_delta_can_be_negative",
+      "decision": "keep",
+      "reason": "内存极值排除预热、残留和越窗样本，RSS 相对基线允许为负。"
+    },
+    {
+      "test": "test_one_core_percent_can_exceed_one_hundred_and_full_boundaries_are_exact",
+      "decision": "keep",
+      "reason": "多核工作可为单核口径 300%，恰好覆盖请求边界算完整，避免截断利用率。"
+    },
+    {
+      "test": "test_permission_and_boot_changes_are_missing_not_zero",
+      "decision": "keep",
+      "reason": "权限拒绝和 boot ID 改变不能变成零使用，须有缺测原因。"
+    },
+    {
+      "test": "test_swap_is_host_pages_and_bytes_with_real_page_scale",
+      "decision": "keep",
+      "reason": "两页 16 KiB 交换换算为 32768 字节且为主机层，不能固定 4 KiB 或算进程量。"
+    },
+    {
+      "test": "test_swap_reads_once_per_cycle_with_shared_window",
+      "decision": "keep",
+      "reason": "保留 swap 进出计数共享窗口且读取新值的结果；删除文件读取次数。"
+    }
+  ]
+}

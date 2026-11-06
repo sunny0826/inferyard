@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/inferyard/engine_check_golden_test.go",
+  "decisions": [
+    {
+      "test": "TestEngineCheckGoldenContract",
+      "decision": "keep",
+      "reason": "保留 false、null、缺失模式等独立 wire 条件；跳过 macos_dual/windows_single 两个重复完整响应，由 TestParseEngineCheckContract 的模式与版本断言覆盖。"
+    }
+  ]
+}

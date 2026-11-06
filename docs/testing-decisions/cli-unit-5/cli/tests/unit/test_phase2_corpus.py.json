@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_phase2_corpus.py",
+  "decisions": [
+    {
+      "test": "test_each_new_reference_and_both_boundaries",
+      "decision": "keep",
+      "reason": "逐一80个新增case参考答案及正反边界须给既定评分，避免发行题目与评分规则冲突。"
+    },
+    {
+      "test": "test_exact_composition_and_reproducible_review_artifacts",
+      "decision": "keep",
+      "reason": "发行zh-core需与生成/审核材料和继承原件一致，类别与分类答案平衡，防止批准题包/资源漂移。"
+    },
+    {
+      "test": "test_no_parent_approval_can_authorize_new_content",
+      "decision": "keep",
+      "reason": "父题库批准不能批准新增内容，撤销当前审核必须拒绝，避免未审题库投入正式测评。"
+    },
+    {
+      "test": "test_review_html_escapes_task_content",
+      "decision": "keep",
+      "reason": "审核HTML中的prompt转义，避免人工审题页执行不可信脚本。"
+    }
+  ]
+}

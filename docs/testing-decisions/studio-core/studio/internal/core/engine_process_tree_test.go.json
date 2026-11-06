@@ -1,0 +1,45 @@
+{
+  "source_path": "studio/internal/core/engine_process_tree_test.go",
+  "decisions": [
+    {
+      "test": "TestEngineTreeHelper",
+      "decision": "keep",
+      "reason": "真实多进程树 helper，驱动停止、根退出、交接时 worker 必须回收的产品验证。"
+    },
+    {
+      "test": "TestEngineTreeOwnerCompareReplace",
+      "decision": "delete",
+      "reason": "直接构造 owner 调 replace/remove 的 compare-and-swap 微测试；真实进程树回收由 TestLocalEngineTreeStopAndRootExit，旧 owner 不覆盖新记录由 TestOwnerRemovalSerializesAcrossProcesses 覆盖。"
+    },
+    {
+      "test": "TestHandoffRejectsRealCLIChildAndOrphan",
+      "decision": "delete",
+      "reason": "直接拼私有 Service 标记再调私有 handoff，重复活动任务禁停和孤儿保护；TestOrderedShutdownDrainsRealRunBeforeEngine、TestOrphanNotStoppedByShutdownOrDuringRun 覆盖实际用户风险。"
+    },
+    {
+      "test": "TestLocalEngineEnvironmentAndValidation",
+      "decision": "keep",
+      "reason": "本地引擎只能继承许可环境及声明参数，禁止 HOME 覆盖与 LM 自动受管，防环境 secret 泄漏及越权接管。"
+    },
+    {
+      "test": "TestLocalEngineTreeStopAndRootExit",
+      "decision": "keep",
+      "reason": "停止、根进程崩溃和题包交接三条路径均须回收 root/worker 并清 owner，防子进程遗留或新旧引擎重叠。"
+    },
+    {
+      "test": "TestLocalOrphanRootGoneKeepsWorkerAndStopsIt",
+      "decision": "keep",
+      "reason": "root 已死但 worker 仍匹配时必须保留孤儿并显式回收 worker，防漏掉后台模型进程。"
+    },
+    {
+      "test": "TestLocalOrphanWorkerReuseNeverSignals",
+      "decision": "keep",
+      "reason": "worker PID 被复用时绝不发信号，防误杀无关进程。"
+    },
+    {
+      "test": "TestLocalUnknownWorkerBlocksStopAndDiscard",
+      "decision": "keep",
+      "reason": "worker 身份不可读时停止与仅删记录都阻断，防活 worker 丢失管理证据。"
+    }
+  ]
+}

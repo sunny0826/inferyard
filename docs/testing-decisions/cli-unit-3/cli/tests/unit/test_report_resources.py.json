@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_report_resources.py",
+  "decisions": [
+    {
+      "test": "test_cpu_deltas_counter_reset_and_large_gap",
+      "decision": "keep",
+      "reason": "具体场景 test_cpu_deltas_counter_reset_and_large_gap。可观察预期：assert [p['value'] for p in result['points']] == [None, 150, None, 100, None]；assert result['reasons'] == ['baseline_required', 'cpu_delta_unavailable', 'sampling_gap']。离线资源图须显示真实零值、MiB 转换和缺段，CPU 回退/长间隙不连成有效曲线，混时钟或无样本明确 unavailable。"
+    },
+    {
+      "test": "test_empty_and_mixed_clocks_are_explicitly_unavailable",
+      "decision": "keep",
+      "reason": "具体场景 test_empty_and_mixed_clocks_are_explicitly_unavailable。可观察预期：assert resource_view([], 500)['reason'] == 'resource_samples_missing'；assert resource_view(rows, 500)['reason'] == 'resource_clock_mismatch'。离线资源图须显示真实零值、MiB 转换和缺段，CPU 回退/长间隙不连成有效曲线，混时钟或无样本明确 unavailable。"
+    },
+    {
+      "test": "test_zero_missing_and_gaps_do_not_join_and_axes_are_aligned",
+      "decision": "keep",
+      "reason": "具体场景 test_zero_missing_and_gaps_do_not_join_and_axes_are_aligned。可观察预期：assert [p['value'] for p in rss['points']] == [0, 1, None, 2, 3]；assert len(rss['lines']) == 3；assert rss['missing_count'] == 1 and rss['gap_count'] == 1；assert result['duration_seconds'] == 8。离线资源图须显示真实零值、MiB 转换和缺段，CPU 回退/长间隙不连成有效曲线，混时钟或无样本明确 unavailable。已删固定坐标 500，保留 MiB、零值/缺测/缺段。"
+    }
+  ]
+}

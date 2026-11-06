@@ -1,0 +1,60 @@
+{
+  "source_path": "cli/tests/unit/test_cli_surface.py",
+  "decisions": [
+    {
+      "test": "test_all_help_and_metadata_are_cold_starts",
+      "decision": "keep",
+      "reason": "具体场景 test_all_help_and_metadata_are_cold_starts。逐项参数：pytest.mark.parametrize('arguments', [['--help'], ['--versions'], ['--schema', 'sample'], ['verify', '--help'], ['probe', '--help'], ['public', '--help'], ['public', 'package', '--help'], ['public', 'plan', '--help'], ['extension', '--help'], ['extension', 'freeze', '--help'], ['extension', 'run', '--help'], ['extension', 'replay', '--help'], ['engine-fit', '--help'], ['engine-fit', 'engines', '--help'], ['engine-fit', 'plan', '--help'], ['engine-fit', 'run', '--help'], ['engine-fit', 'compare', '--help'], ['engine-fit', 'verify', '--help'], ['init', '--help'], ['runtime', 'prepare', '--help'], ['config', 'assets', '--help'], ['config', 'create', '--help'], ['config', 'bind', '--help'], ['service', '--help'], ['service', 'discover', '--help'], ['--schema', 'service_discovery'], ['engine', 'check', '--help'], ['--schema', 'engine_check'], ['progress', '--help'], ['speed-results', '--help'], ['--schema', 'context_speed_result'], *[[command, '--help'] for command in ('device-check', 'catalogue', 'plan', 'run', 'resume', 'repeat-summary', 'prepare-length', 'rescore', 'export', 'report', 'compare', 'filter-candidates', 'overhead')]])。可观察预期：assert result.returncode == 0, (result.stdout, result.stderr)；assert result.stderr == ''；assert isinstance(json.loads(result.stdout), dict)。用户使用失效参数、非本地端点或缺绑定时必须明确阻断且不回显值；帮助/版本/schema 必须在实时后端不可用时仍能读取。已删固定帮助命令数/格式正则，只保留冷启动可读与 JSON 输出。"
+    },
+    {
+      "test": "test_canonical_entries_dispatch_with_the_full_entry_name",
+      "decision": "delete",
+      "reason": "同一 mock handler 转发矩阵，限定分派实现；实际入口拒绝与 cold-start 保留。"
+    },
+    {
+      "test": "test_command_groups_require_an_action",
+      "decision": "keep",
+      "reason": "具体场景 test_command_groups_require_an_action。逐项参数：pytest.mark.parametrize('command', [['public'], ['extension']])。可观察预期：assert cli.main(command) == 2；assert json.loads(output.out)['limitations'] == ['invalid_input']；assert output.err。用户使用失效参数、非本地端点或缺绑定时必须明确阻断且不回显值；帮助/版本/schema 必须在实时后端不可用时仍能读取。"
+    },
+    {
+      "test": "test_conflicting_aliases_are_rejected_without_echoing_values",
+      "decision": "keep",
+      "reason": "具体场景 test_conflicting_aliases_are_rejected_without_echoing_values。逐项参数：pytest.mark.parametrize('arguments', [['plan', '--experiment', 'a', '--config', 'b', '--dry-run'], ['run', '--rerun-from', 'a', '--from-run', 'b'], ['report', '--runs', 'a', '--run', 'b', '--out', 'out'], ['extension', 'run', '--plan', 'a', '--spec', 'b', '--config', 'cfg', '--out', 'out'], ['extension-run', '--plan', 'a', '--spec', 'b', '--config', 'cfg', '--out', 'out'], ['extension', 'replay', '--packet', 'a', '--spec', 'b', '--out', 'out'], ['extension-replay', '--packet', 'a', '--spec', 'b', '--out', 'out']])；pytest.mark.parametrize('reverse', [False, True])。可观察预期：assert cli.main(arguments) == 2；assert 'fixture-secret-7f39' not in output.out + output.err；assert json.loads(output.out)['limitations'] == ['invalid_input']。用户使用失效参数、非本地端点或缺绑定时必须明确阻断且不回显值；帮助/版本/schema 必须在实时后端不可用时仍能读取。"
+    },
+    {
+      "test": "test_live_binding_rejections_still_block_dispatch",
+      "decision": "keep",
+      "reason": "具体场景 test_live_binding_rejections_still_block_dispatch。逐项参数：pytest.mark.parametrize('arguments', [['run', '--rerun-from', 'source'], ['run', '--rerun-from', 'source', '--endpoint-url', 'http://127.0.0.1:8080'], ['run', '--config', 'cfg', '--endpoint-url', 'http://127.0.0.1:8080', '--server-pid', '123'], ['run', '--rerun-from', 'source', '--endpoint-url', 'http://127.0.0.1:8080', '--server-pid', '0'], ['run', '--rerun-from', 'source', '--endpoint-url', 'http://example.com', '--server-pid', '123'], ['run', '--plan', 'plan.json'], ['resume', '--from-run', 'source', '--server-pid', '123']])。可观察预期：assert cli.main(arguments, handlers={arguments[0]: seen.append}) == 2；assert seen == []；assert json.loads(capsys.readouterr().out)['limitations'] == ['invalid_input']。用户使用失效参数、非本地端点或缺绑定时必须明确阻断且不回显值；帮助/版本/schema 必须在实时后端不可用时仍能读取。"
+    },
+    {
+      "test": "test_removed_commands_reject_before_dispatch",
+      "decision": "keep",
+      "reason": "具体场景 test_removed_commands_reject_before_dispatch。逐项参数：pytest.mark.parametrize('command', sorted(REMOVED_COMMANDS))；pytest.mark.parametrize('suffix', [['--help'], ['--run', 'fixture-secret-7f39']])。可观察预期：assert cli.main([command, *suffix]) == 2；assert 'fixture-secret-7f39' not in output.out + output.err；assert json.loads(output.out)['limitations'] == ['invalid_input']。用户使用失效参数、非本地端点或缺绑定时必须明确阻断且不回显值；帮助/版本/schema 必须在实时后端不可用时仍能读取。"
+    },
+    {
+      "test": "test_removed_parameter_aliases_are_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_removed_parameter_aliases_are_rejected。逐项参数：pytest.mark.parametrize(('prefix', 'canonical', 'legacy', 'suffix', 'field'), [(['plan'], '--experiment', '--config', ['--dry-run'], 'experiment'), (['run'], '--rerun-from', '--from-run', ['--endpoint-url', 'http://127.0.0.1:8080', '--server-pid', '123'], 'from_run'), (['extension', 'run'], '--plan', '--spec', ['--config', 'cfg', '--out', 'out'], 'extension_spec'), (['extension', 'replay'], '--packet', '--spec', ['--out', 'out'], 'extension_spec')])。可观察预期：assert getattr(canonical_request, field) == Path('source').resolve()；pytest.raises(cli.ArgumentError)。用户使用失效参数、非本地端点或缺绑定时必须明确阻断且不回显值；帮助/版本/schema 必须在实时后端不可用时仍能读取。"
+    },
+    {
+      "test": "test_report_runs_accepts_one_or_more_paths_and_rejects_old_flag",
+      "decision": "keep",
+      "reason": "具体场景 test_report_runs_accepts_one_or_more_paths_and_rejects_old_flag。可观察预期：assert single.report_runs == [Path('a').resolve()]；assert multiple.report_runs == [Path('a').resolve(), Path('b').resolve()]；pytest.raises(cli.ArgumentError)。用户使用失效参数、非本地端点或缺绑定时必须明确阻断且不回显值；帮助/版本/schema 必须在实时后端不可用时仍能读取。"
+    },
+    {
+      "test": "test_retained_entries_preserve_the_called_command_and_result",
+      "decision": "delete",
+      "reason": "mock handler 直接回显输入再断言 DTO、Path 及次数，未执行产品命令。"
+    },
+    {
+      "test": "test_verify_source_binding_needs_no_service_and_preserves_exit_code",
+      "decision": "delete",
+      "reason": "注入 handler 后不会有真实核验/连接，socket 禁止不能证明离线 verify；覆盖者 test_raw_run_and_unsealed_partial_are_read_without_report 与 test_report_moves_with_sources_and_does_not_render_during_verify。"
+    },
+    {
+      "test": "test_verify_target_path_is_bound_without_service",
+      "decision": "delete",
+      "reason": "只检查 build_request DTO 字段与默认 None，未核验目标证据。"
+    }
+  ]
+}

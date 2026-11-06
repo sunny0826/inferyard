@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_environment_qualification.py",
+  "decisions": [
+    {
+      "test": "test_complete_evidence_qualifies_environment_but_not_performance",
+      "decision": "keep",
+      "reason": "完整环境只能授环境资格、不能自动授性能比较，避免无开销证明也排名。"
+    },
+    {
+      "test": "test_each_incomplete_or_conflicting_prerequisite_blocks_environment",
+      "decision": "keep",
+      "reason": "CPU policy、外部负载阈值/覆盖、未冻结策略、无效请求或采集超量任一不符阻断，避免环境未知仍比较。"
+    },
+    {
+      "test": "test_schedule_lateness_limit_is_two_declared_intervals",
+      "decision": "keep",
+      "reason": "调度迟到恰两周期可用、超过一纳秒拒绝，避免声明采样节奏与实际覆盖不符。"
+    }
+  ]
+}

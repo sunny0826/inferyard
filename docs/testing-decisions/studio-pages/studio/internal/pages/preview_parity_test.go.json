@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/preview_parity_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewBenchmarkParity",
+      "decision": "keep",
+      "reason": "core/pelican/双范围、启动失败重试、绑定/运行取消逐一对独立阶段、可用按钮、队列和报告预期，不能混入无关运行；删除多余互比。"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_model_lineage.py",
+  "decisions": [
+    {
+      "test": "test_complete_revision_identifiers_are_preserved",
+      "decision": "keep",
+      "reason": "40/64位完整revision原样冻结，避免合法提交身份截断。"
+    },
+    {
+      "test": "test_incomplete_lineage_rejected",
+      "decision": "keep",
+      "reason": "谱系任一必填绑定缺失拒绝，避免不完整来源仍作同base比较。"
+    },
+    {
+      "test": "test_lineage_is_frozen_without_modifying_existing_plan_shape",
+      "decision": "keep",
+      "reason": "新增谱系及base_revision改变计划hash，避免量化来源变化不改变冻结身份。"
+    },
+    {
+      "test": "test_mutable_or_invalid_revision_rejected",
+      "decision": "keep",
+      "reason": "main/latest/tag及不完整revision拒绝，避免可变base误称固定谱系。"
+    },
+    {
+      "test": "test_output_binding_and_duplicate_artifacts",
+      "decision": "keep",
+      "reason": "输出sha/packing不同及重复base资产拒绝，避免声明与实测模型不一致。"
+    }
+  ]
+}

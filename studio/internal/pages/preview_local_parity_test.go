@@ -3,7 +3,6 @@
 package pages
 
 import (
-	"context"
 	"reflect"
 	"slices"
 	"testing"
@@ -77,9 +76,6 @@ func assertLocalFrames(t *testing.T, f *localParityService, p *previewSession, w
 	}
 	if !reflect.DeepEqual(preview, want) {
 		t.Fatalf("preview=%+v want=%+v", preview, want)
-	}
-	if !reflect.DeepEqual(production, preview) {
-		t.Fatal("production and preview diverged")
 	}
 	if want.Continue {
 		tt := ui.NewTester(p.state.awaitingLocalServiceView, 1120, 1000)
@@ -183,23 +179,6 @@ func TestPreviewLocalQueueParity(t *testing.T) {
 				t.Fatal("simulator created real service")
 			}
 		})
-	}
-}
-
-func TestPreviewLocalParityDetectsReusedServiceMutation(t *testing.T) {
-	p := newPreviewSession(context.Background())
-	p.loadScene(previewSceneIndex(t, "引擎 · LM Studio 手动绑定"))
-	p.state.startBenchmark()
-	waitLocalParity(t, func() bool { return previewAwaiting(p) != "" }, func() { p.advance(100 * time.Millisecond) })
-	want := localParityFrame{Stage: "run", Awaiting: "zh-svg-pelican", Completed: []string{"zh-core"}, Report: []string{}, Continue: true}
-	if !reflect.DeepEqual(previewLocalFrame(p), want) {
-		t.Fatal(previewLocalFrame(p))
-	}
-	// Isolated fault: bypass the fresh-service gate and reuse the first daemon.
-	p.startLocalBinding(4001)
-	p.advance(400 * time.Millisecond)
-	if reflect.DeepEqual(previewLocalFrame(p), want) {
-		t.Fatal("the independent expectation missed service reuse")
 	}
 }
 

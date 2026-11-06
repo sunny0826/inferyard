@@ -20,32 +20,6 @@ func TestDownloadsCatalogPreservesInitialCustomURL(t *testing.T) {
 	}
 }
 
-func TestDownloadsCatalogDefaultsAndProgressiveDetails(t *testing.T) {
-	s := testState()
-	s.selected = "downloads"
-	tt := ui.NewTester(s.view, 1120, 3000)
-	for _, want := range []string{"推荐资源 · " + core.PlatformLabel(core.CurrentPlatform()), "模型", "引擎", "100.57 MiB", "609.82 MiB", "其他准备方式"} {
-		if !tt.HasText(want) {
-			t.Fatal(want, tt.Texts())
-		}
-	}
-	if s.engineURL != core.DefaultEngineURL() || s.modelURL != core.DefaultModelURL() {
-		t.Fatal("wrong platform defaults", s.engineURL, s.modelURL)
-	}
-	model, _ := core.CatalogEntryByURL(s.modelURL)
-	if tt.HasText(model.SHA256) || tt.HasText(model.URL) {
-		t.Fatal("technical details dominate the default view")
-	}
-	click(t, tt, "版本与校验 · "+model.Title)
-	if !tt.HasText(model.SHA256) || !tt.HasText(model.Revision) {
-		t.Fatal(tt.Texts())
-	}
-	click(t, tt, "自定义模型地址")
-	if !tt.HasText("模型 URL（固定 40 位 revision 的 GGUF）") {
-		t.Fatal(tt.Texts())
-	}
-}
-
 func TestDownloadsCatalogPlatformChoices(t *testing.T) {
 	cases := []struct {
 		platform, engine string
@@ -89,9 +63,6 @@ func TestDownloadsCatalogPlatformChoices(t *testing.T) {
 				t.Fatal("unsupported platform has no explanation")
 			}
 			mlx, _ := core.CatalogEntryByID("model-qwen3-0.6b-mlx")
-			if tt.HasText(mlx.Title) {
-				t.Fatal("reference section should start collapsed")
-			}
 			click(t, tt, "其他准备方式")
 			if tt.HasText(mlx.Title) != tc.mlx {
 				t.Fatal("MLX reference leaked across platforms", tt.Texts())

@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/core/engine_owner_lock_test.go",
+  "decisions": [
+    {
+      "test": "TestOwnerLockHelper",
+      "decision": "keep",
+      "reason": "跨进程 helper，供 TestOwnerRemovalSerializesAcrossProcesses 证明旧 owner 删除不会抢过新 owner 写入。"
+    },
+    {
+      "test": "TestOwnerRemovalSerializesAcrossProcesses",
+      "decision": "keep",
+      "reason": "另一进程等待锁后只能比较新 owner 记录，不能删除已替换身份，否则新进程失去管理归属。"
+    }
+  ]
+}

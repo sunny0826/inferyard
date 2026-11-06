@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_community_runtime.py",
+  "decisions": [
+    {
+      "test": "test_archive_hash_and_missing_runtime_block_before_writing",
+      "decision": "keep",
+      "reason": "具体场景 test_archive_hash_and_missing_runtime_block_before_writing。可观察预期：assert not request.out.exists()；pytest.raises(PreparationError, match='runtime_archive_required')；pytest.raises(PreparationError, match='archive_identity_mismatch')。防止准备后的回执授权已改引擎/DLL、错 profile 或逃逸归档；版本查询失败不能写成功回执，可信资产应可随目录搬迁。"
+    },
+    {
+      "test": "test_committed_profiles_have_complete_non_synthetic_archive_members",
+      "decision": "delete",
+      "reason": "成员数 >30、DLL 数 >25 不能证明必要文件完整或可运行，仅固定资源规模；实际改 DLL/缺 DLL 由 test_receipt_cannot_authorize_changed_assets 覆盖。"
+    },
+    {
+      "test": "test_cuda_conflicting_library_hashes_are_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_cuda_conflicting_library_hashes_are_rejected。可观察预期：assert output_files(members)[2]['cuda.dll'] == 'b' * 64；pytest.raises(PreparationError, match='runtime_library_collision')。防止准备后的回执授权已改引擎/DLL、错 profile 或逃逸归档；版本查询失败不能写成功回执，可信资产应可随目录搬迁。"
+    },
+    {
+      "test": "test_nested_packaged_profile_archive_types_are_exact",
+      "decision": "keep",
+      "reason": "具体场景 test_nested_packaged_profile_archive_types_are_exact。逐项参数：pytest.mark.parametrize('change', ['float', 'bool', 'extra', 'missing'])。可观察预期：pytest.raises(ValueError)。防止准备后的回执授权已改引擎/DLL、错 profile 或逃逸归档；版本查询失败不能写成功回执，可信资产应可随目录搬迁。"
+    },
+    {
+      "test": "test_nested_receipt_archive_types_are_exact",
+      "decision": "keep",
+      "reason": "具体场景 test_nested_receipt_archive_types_are_exact。逐项参数：pytest.mark.parametrize('change', ['float', 'bool', 'extra', 'missing'])。可观察预期：pytest.raises(PreparationError, match='runtime_profile_mismatch')。防止准备后的回执授权已改引擎/DLL、错 profile 或逃逸归档；版本查询失败不能写成功回执，可信资产应可随目录搬迁。"
+    },
+    {
+      "test": "test_prepared_receipt_uses_relative_paths_and_can_move_as_a_tree",
+      "decision": "keep",
+      "reason": "具体场景 test_prepared_receipt_uses_relative_paths_and_can_move_as_a_tree。可观察预期：assert receipt['engine_binary'] == profile['engine_binary']；assert not Path(receipt['engine_binary']).is_absolute()；assert receipt['ready_to_run'] is False and receipt['model_requests_sent'] == 0；assert engine == moved / profile['engine_binary']。防止准备后的回执授权已改引擎/DLL、错 profile 或逃逸归档；版本查询失败不能写成功回执，可信资产应可随目录搬迁。"
+    },
+    {
+      "test": "test_receipt_cannot_authorize_changed_assets",
+      "decision": "keep",
+      "reason": "具体场景 test_receipt_cannot_authorize_changed_assets。逐项参数：pytest.mark.parametrize('change', ['receipt_hash', 'manifest_delete', 'both', 'binary', 'extra_dll', 'missing_dll', 'escape', 'mode', 'bool', 'version_bool', 'unknown', 'duplicate'])。可观察预期：pytest.raises((PreparationError, OSError))。防止准备后的回执授权已改引擎/DLL、错 profile 或逃逸归档；版本查询失败不能写成功回执，可信资产应可随目录搬迁。"
+    },
+    {
+      "test": "test_unsafe_zip_entries_are_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_unsafe_zip_entries_are_rejected。逐项参数：pytest.mark.parametrize('names', [['../escape'], ['C:/escape'], ['a\\\\b'], ['CON.dll'], ['a.'], ['x', 'X'], ['a', 'a/b'], ['A/b', 'a/c']])。可观察预期：pytest.raises(PreparationError, match='unsafe_archive_entry')。防止准备后的回执授权已改引擎/DLL、错 profile 或逃逸归档；版本查询失败不能写成功回执，可信资产应可随目录搬迁。"
+    },
+    {
+      "test": "test_version_failure_never_creates_success_receipt",
+      "decision": "keep",
+      "reason": "保留timeout/nonzero/version/cancel失败或取消后抛错且不写runtime-receipt.json；删除mock内固定timeout=10与argv末项--version的实现断言。"
+    },
+    {
+      "test": "test_version_query_budget_covers_macos_signature_validation_stalls",
+      "decision": "delete",
+      "reason": "删除：mock无条件超时，timeout>=30锁定默认实现值，不能证明12秒签名延迟能成功；超时失败及不写成功receipt由test_version_failure_never_creates_success_receipt[timeout]验证。"
+    }
+  ]
+}

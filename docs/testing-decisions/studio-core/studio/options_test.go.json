@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/options_test.go",
+  "decisions": [
+    {
+      "test": "TestStartupOptions",
+      "decision": "keep",
+      "reason": "启动参数不能把位置参数工作区或未知选项静默忽略，防用户以为打开指定环境实际打开默认环境。"
+    }
+  ]
+}

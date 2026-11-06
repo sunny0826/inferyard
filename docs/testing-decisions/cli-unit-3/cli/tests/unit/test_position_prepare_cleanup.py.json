@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_position_prepare_cleanup.py",
+  "decisions": [
+    {
+      "test": "test_adapter_failure_still_stops_real_owned_process",
+      "decision": "keep",
+      "reason": "具体场景 test_adapter_failure_still_stops_real_owned_process。逐项参数：pytest.mark.parametrize('failure', [RuntimeError, asyncio.CancelledError])。可观察预期：assert process.poll() is not None；assert lifecycle['stopped'] is True；assert lifecycle['owned_pid'] == process.pid；assert 'lifecycle.json' in json.loads((tmp_path / 'manifest.json').read_text())['files']。准备脚本 adapter 关闭失败或取消时仍必须结束自己拥有的服务并封存退出记录，避免后台进程泄漏。"
+    }
+  ]
+}

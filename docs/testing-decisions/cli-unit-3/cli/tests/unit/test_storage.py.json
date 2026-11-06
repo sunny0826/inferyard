@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_storage.py",
+  "decisions": [
+    {
+      "test": "test_no_new_request_copy_and_legacy_hash_damage_is_integrity_error",
+      "decision": "keep",
+      "reason": "保留磁盘requests.jsonl缺席、manifest缺席、旧格式拒绝和损坏原始哈希优先报完整性错误；删除私有store._logs布局断言。"
+    },
+    {
+      "test": "test_no_overwrite_and_manifest_classification",
+      "decision": "keep",
+      "reason": "具体场景 test_no_overwrite_and_manifest_classification。可观察预期：assert verify_manifest(store.path) == []；assert 'manifest.json' not in manifest['files']；assert verify_manifest(store.path) == ['derived_evidence_damaged:summary.json']；assert b'fixture-secret-7f39' not in path.read_bytes()。防止分块凭据落盘、原件被覆盖、损坏原件被伪装成可修复派生数据，以及中段坏 JSON 被当合法尾截断；磁盘失败不得产生成功封存。"
+    },
+    {
+      "test": "test_nonsecret_partial_prefix_is_preserved",
+      "decision": "keep",
+      "reason": "具体场景 test_nonsecret_partial_prefix_is_preserved。可观察预期：assert stream.feed('fixture-sec') == ''；assert stream.feed('tion') == 'fixture-section'；assert stream.feed('fixture-', final=True) == 'fixture-'；assert not stream.changed。防止分块凭据落盘、原件被覆盖、损坏原件被伪装成可修复派生数据，以及中段坏 JSON 被当合法尾截断；磁盘失败不得产生成功封存。"
+    },
+    {
+      "test": "test_offline_reader_rejects_traversal_and_outside_symlinks",
+      "decision": "keep",
+      "reason": "具体场景 test_offline_reader_rejects_traversal_and_outside_symlinks。可观察预期：assert target.read_bytes() == b'original'；pytest.raises(EvidenceError)；pytest.raises(EvidenceError)。防止分块凭据落盘、原件被覆盖、损坏原件被伪装成可修复派生数据，以及中段坏 JSON 被当合法尾截断；磁盘失败不得产生成功封存。"
+    },
+    {
+      "test": "test_request_started_is_fsynced_before_return",
+      "decision": "delete",
+      "reason": "只截获 flush(sync=True)，重复且弱于实际 fd fsync；覆盖者 test_prepared_body_is_fsynced_before_start_and_unsent_is_not_execution。"
+    },
+    {
+      "test": "test_secret_redaction_across_arbitrary_chunks",
+      "decision": "keep",
+      "reason": "具体场景 test_secret_redaction_across_arbitrary_chunks。逐项参数：pytest.mark.parametrize('parts', [['fixture-secret-7f39'], ['fixture-', 'secret-', '7f39'], list('fixture-secret-7f39'), ['prefix fixture-sec', 'ret-7f39 suffix']])。可观察预期：assert 'fixture-secret-7f39' not in persisted；assert '[REDACTED]' in persisted；assert stream.changed。防止分块凭据落盘、原件被覆盖、损坏原件被伪装成可修复派生数据，以及中段坏 JSON 被当合法尾截断；磁盘失败不得产生成功封存。"
+    },
+    {
+      "test": "test_tail_is_recoverable_but_middle_corruption_is_not",
+      "decision": "keep",
+      "reason": "具体场景 test_tail_is_recoverable_but_middle_corruption_is_not。可观察预期：assert rows == [{'seq': 1}]；assert limits == ['truncated_tail_at_byte:10']；pytest.raises(EvidenceError, match='corrupt_jsonl')。防止分块凭据落盘、原件被覆盖、损坏原件被伪装成可修复派生数据，以及中段坏 JSON 被当合法尾截断；磁盘失败不得产生成功封存。"
+    },
+    {
+      "test": "test_write_failure_propagates_without_sealing",
+      "decision": "keep",
+      "reason": "具体场景 test_write_failure_propagates_without_sealing。可观察预期：assert not (store.path / 'manifest.json').exists()；pytest.raises(EvidenceError, match='append_failed')。防止分块凭据落盘、原件被覆盖、损坏原件被伪装成可修复派生数据，以及中段坏 JSON 被当合法尾截断；磁盘失败不得产生成功封存。"
+    }
+  ]
+}

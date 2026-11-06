@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_length_builder.py",
+  "decisions": [
+    {
+      "test": "test_character_cap_and_unknown_measurement_are_enforced",
+      "decision": "keep",
+      "reason": "字符上限不能超且declared非verified token不能选用，避免无界构造或假实测。"
+    },
+    {
+      "test": "test_constructs_measured_text_with_prefix_suffix_and_bounded_probes",
+      "decision": "keep",
+      "reason": "构造文本保留前后缀并实测23token且探针不超预算；去掉必须选择19重复的算法形状。"
+    },
+    {
+      "test": "test_search_exhaustion_never_claims_impossible_or_emits_wrong_length",
+      "decision": "keep",
+      "reason": "探针耗尽不给错误长度也不声称不可能，避免把有限搜索失败当模型能力结论。"
+    }
+  ]
+}

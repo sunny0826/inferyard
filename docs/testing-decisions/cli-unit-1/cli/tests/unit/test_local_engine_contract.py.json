@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_local_engine_contract.py",
+  "decisions": [
+    {
+      "test": "test_explicit_formal_profile_accepts_only_its_asset_kind",
+      "decision": "keep",
+      "reason": "五类正式引擎只接受其支持的 GGUF/目录资产，防把错误模型格式交给运行时。"
+    },
+    {
+      "test": "test_old_configuration_is_not_promoted_to_local_profile",
+      "decision": "keep",
+      "reason": "旧配置维持原模型 sha256 意义，不会静默升级为本地目录资产身份。"
+    },
+    {
+      "test": "test_python_environment_and_binding_pairs_are_required",
+      "decision": "keep",
+      "reason": "缺离线加载环境或绑定 path/hash 不成对时拒绝，防联网下载及无摘要身份。"
+    },
+    {
+      "test": "test_single_plan_preserves_required_temperature_stops",
+      "decision": "keep",
+      "reason": "单次正式计划保留强制温停和固定题集，不在编译中丢掉安全声明。"
+    },
+    {
+      "test": "test_toml_roundtrip_preserves_definition_and_resolves_new_assets",
+      "decision": "keep",
+      "reason": "新模型、模板、资产、安装和绑定路径经 TOML 写读按配置位置解析，避免部署后找错资源。"
+    },
+    {
+      "test": "test_unsupported_parameters_and_false_identity_are_rejected",
+      "decision": "keep",
+      "reason": "未支持生成参数、错误模型身份/backend/cache 及温停放宽都拒绝，防伪宣称可复现。"
+    }
+  ]
+}

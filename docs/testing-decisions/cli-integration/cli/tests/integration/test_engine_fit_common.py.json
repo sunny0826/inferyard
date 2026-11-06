@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/integration/test_engine_fit_common.py",
+  "decisions": [
+    {
+      "test": "test_changed_gguf_is_blocked_before_any_service_access",
+      "decision": "keep",
+      "reason": "GGUF冻结后改变必须在任何服务访问和绑定前阻断。"
+    },
+    {
+      "test": "test_common_engine_disconnect_seals_incomplete_and_preserves_dirty",
+      "decision": "keep",
+      "reason": "两种common引擎断连后只发一题、保留dirty和分母，恢复连接也不能隐式重试。"
+    },
+    {
+      "test": "test_existing_plan_run_and_comparison_never_overwritten",
+      "decision": "keep",
+      "reason": "已存在plan/run/comparison不可覆盖，原manifest及原运行字节必须保持。"
+    },
+    {
+      "test": "test_gguf_pair_full_run_compare_then_offline_verify",
+      "decision": "keep",
+      "reason": "GGUF的llama-cpp/LM Studio完整链必须可离线核验，LM服务版本缺失保持null和原因，不能授性能资格。混合测试去掉私有observer调用次数。"
+    }
+  ]
+}

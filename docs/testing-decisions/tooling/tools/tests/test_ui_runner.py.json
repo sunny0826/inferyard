@@ -1,0 +1,35 @@
+{
+  "source_path": "tools/tests/test_ui_runner.py",
+  "decisions": [
+    {
+      "test": "NativeUIRunnerTests.test_locked_desktop_does_not_start_native_tests",
+      "decision": "keep",
+      "reason": "锁屏时应明确失败且不产出可误当原生验收成功的目录。"
+    },
+    {
+      "test": "NativeUIRunnerTests.test_login_not_finished_does_not_start_native_tests",
+      "decision": "delete",
+      "reason": "同一桌面准入拒绝路径的输入形状重复，保留锁屏与无法探测两个独立条件。"
+    },
+    {
+      "test": "NativeUIRunnerTests.test_malformed_desktop_state_does_not_start_native_tests",
+      "decision": "delete",
+      "reason": "与probe_error同为无法证明桌面可用的拒绝分支，重复检查plist输入解析。"
+    },
+    {
+      "test": "NativeUIRunnerTests.test_missing_console_session_does_not_start_native_tests",
+      "decision": "delete",
+      "reason": "同一桌面准入拒绝路径的输入形状重复，保留锁屏与无法探测两个独立条件。"
+    },
+    {
+      "test": "NativeUIRunnerTests.test_probe_error_does_not_start_native_tests",
+      "decision": "keep",
+      "reason": "无法取得桌面状态时应失败，不允许未经实际原生验收冒充通过。"
+    },
+    {
+      "test": "NativeUIRunnerTests.test_unlocked_desktop_runs_native_tests",
+      "decision": "delete",
+      "reason": "mock始终返回0后仅验证调用xcodebuild和日志存在，没有证明真实窗口或测试执行；由完整原生套件验证。"
+    }
+  ]
+}

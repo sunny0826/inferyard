@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_windows_resources.py",
+  "decisions": [
+    {
+      "test": "test_invalid_values_are_null_with_reason",
+      "decision": "keep",
+      "reason": "两类内存的 bool、负数、小数、非有限与 null 明确缺测，不能伪造成有效零。"
+    },
+    {
+      "test": "test_memory_sources_units_identity_and_missing_metadata",
+      "decision": "keep",
+      "reason": "Windows 主机可用内存与绑定服务 RSS 保留 bytes/身份，未实现指标 null+原因，避免虚构资源。"
+    },
+    {
+      "test": "test_missing_process_cannot_be_replaced_with_same_pid",
+      "decision": "keep",
+      "reason": "进程消失后同 PID 不能恢复旧绑定采样，避免替换服务继承资源身份。"
+    },
+    {
+      "test": "test_pid_reuse_stays_missing_and_host_memory_survives",
+      "decision": "keep",
+      "reason": "RSS 前后 FILETIME 不符后持续缺测、主机内存仍有效，避免新 PID 的 RSS 归旧服务。"
+    },
+    {
+      "test": "test_platform_selection_keeps_explicit_proc_fixture",
+      "decision": "delete",
+      "reason": "D1：仅验证 collector ID 与显式 proc fixture 的内部路由；没有采样、持久化或用户结果。保留采样单位、身份与缺测测试。"
+    },
+    {
+      "test": "test_read_failures_are_explicit",
+      "decision": "keep",
+      "reason": "权限/来源失败只使对应内存指标缺测，不能破坏另一独立来源。"
+    },
+    {
+      "test": "test_unknown_platform_remains_closed",
+      "decision": "keep",
+      "reason": "未知平台拒绝采集而非随便回退，避免伪造平台测量支持。"
+    },
+    {
+      "test": "test_windows_factory_and_catalogue",
+      "decision": "delete",
+      "reason": "具体类工厂、isinstance、目录数与 proc fixture 参数属于实现/测试注入约束；采样行为由 test_memory_sources_units_identity_and_missing_metadata 覆盖。"
+    }
+  ]
+}

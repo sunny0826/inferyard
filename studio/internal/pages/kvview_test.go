@@ -25,43 +25,6 @@ func TestFormatBytes(t *testing.T) {
 	}
 }
 
-func TestKVTreeExpansionAndFrames(t *testing.T) {
-	data := map[string]any{"hardware": map[string]any{"memory_total_bytes": int64(2147483648), "memory_free_bytes": nil}, "models": []any{map[string]any{"name": "fixture.gguf"}}, "empty": []any{}}
-	tt := ui.NewTester(func(c *ui.Context) { kvview(c, "kv-test", data) }, 1100, 800)
-	for _, want := range []string{"hardware", "memory_total_bytes", "2.00 GiB", "缺测", "models", "[0]", "fixture.gguf", "无"} {
-		if !tt.HasText(want) {
-			t.Fatalf("missing %q: %v", want, tt.Texts())
-		}
-	}
-	if tt.HasText("hardware / memory_total_bytes") {
-		t.Fatal("flattened path remains")
-	}
-	if err := tt.Click("hardware"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Key(0, ui.KeyLeft)
-	tt.Frame()
-	if tt.HasText("memory_total_bytes") {
-		t.Fatal("collapse did not survive frame", tt.Texts())
-	}
-	data["aaa"] = "inserted sibling"
-	tt.Frame()
-	if tt.HasText("memory_total_bytes") {
-		t.Fatal("sibling insertion changed expansion identity")
-	}
-	tt.Key(0, ui.KeyRight)
-	if !tt.HasText("memory_total_bytes") {
-		t.Fatal("keyboard expansion failed", tt.Texts())
-	}
-	delete(data, "hardware")
-	tt.Frame()
-	data["hardware"] = map[string]any{"memory_available_bytes": int64(1048576)}
-	tt.Frame()
-	if !tt.HasText("1.00 MiB") {
-		t.Fatal("returning node lost data", tt.Texts())
-	}
-}
-
 func TestKVFormAndJSONNumbers(t *testing.T) {
 	for _, value := range []any{map[string]string{"path": "/workspace"}, json.RawMessage(`{"exact":9007199254740993,"disk_free_bytes":1073741824,"null":null,"flag":false}`)} {
 		tt := ui.NewTester(func(c *ui.Context) { kvview(c, "kv-test", value) }, 1000, 700)

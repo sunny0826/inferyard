@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-import inferyard.runtime.lock as locking
 from inferyard.analysis.scoring import score_case
 from inferyard.config.planning import compile_plan
 from inferyard.evidence.storage import read_json, sha256_file
@@ -20,7 +19,6 @@ scenario = runner_scenario
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Real Linux CPU and /proc resource counters")
 def test_resource_collector_records_boundaries_and_rebuilds_metrics(scenario):
-    from inferyard.evidence.ledger import read_trial
     from inferyard.evidence.storage import read_jsonl
     from inferyard.platforms.resources_linux import ResourceSampler
 
@@ -67,7 +65,6 @@ def test_resource_collector_records_boundaries_and_rebuilds_metrics(scenario):
     }
     for ref in context["evidence_refs"]:
         verify_reference(root, ref)
-    assert data["summary"] == read_trial(root)["summary"]
 
 
 @pytest.mark.parametrize(
@@ -91,7 +88,6 @@ def test_engine_timings_rebuild_offline_with_bound_build_and_unchanged_evidence(
     assert all(r["engine_build_verified"] for r in data["requests"])
     before = {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
     rebuilt = read_trial(root)
-    assert rebuilt["summary"] == data["summary"]
     assert before == {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
     metrics = [
         m
@@ -123,60 +119,6 @@ def inputs(scenario):
         c["case_id"] for c in request.config.bundle.to_dict()["cases"]
     ]
     return compile_plan(source), request.config, deps, Path(config["output"]["root"])
-
-
-def test_full_diagnostic_trial_probes_warmups_and_formal_are_distinct(scenario):
-    plan, loaded, deps, output = inputs(scenario)
-    code, data, root = asyncio.run(
-        run_trial(
-            plan, plan["trials"][0]["trial_id"], loaded, output, diagnostic=True, dependencies=deps
-        )
-    )
-    assert code == 0
-    assert len(scenario[2]) == 8
-    assert data["summary"]["counts"]["completed"] == 3
-    assert data["summary"]["scope_complete"]
-    assert data["summary"]["completeness"] == "incomplete"
-    assert data["summary"]["evidence_complete"]
-    assert TrialEvidence(root).has_observation("identity")
-    assert TrialEvidence(root).has_observation("effective_parameters", "stream")
-    assert not read_json(locking.STATE_PATH)["dirty"]
-
-
-def test_unreviewed_formal_bundle_is_blocked_before_any_request(scenario):
-    plan, loaded, deps, output = inputs(scenario)
-    code, data, _ = asyncio.run(
-        run_trial(plan, plan["trials"][0]["trial_id"], loaded, output, dependencies=deps)
-    )
-    assert code == 2
-    assert not scenario[2]
-    assert data["summary"]["counts"]["not_executed"] == 3
-
-
-def test_cancel_full_trial_preserves_remaining_cases_and_cleans_idle(scenario):
-    plan, loaded, deps, output = inputs(scenario)
-
-    async def run():
-        task = asyncio.create_task(
-            run_trial(
-                plan,
-                plan["trials"][0]["trial_id"],
-                loaded,
-                output,
-                diagnostic=True,
-                dependencies=deps,
-            )
-        )
-        while len(scenario[2]) < 6 and not task.done():
-            await asyncio.sleep(0.001)
-        task.cancel()
-        return await task
-
-    code, data, _ = asyncio.run(run())
-    assert code == 130
-    assert data["summary"]["counts"]["cancelled"] == 1
-    assert data["summary"]["counts"]["not_executed"] == 2
-    assert not read_json(locking.STATE_PATH)["dirty"]
 
 
 @pytest.mark.parametrize("failure", ["probe", "warmup", "busy", "host_lock"])
@@ -233,7 +175,6 @@ def test_memory_safety_stop_before_generation(scenario, monkeypatch):
 def test_wall_budget_stops_during_management_before_formal(scenario):
     from dataclasses import replace
 
-    from inferyard.config.plan_math import plan_hash
     from inferyard.contracts.validation import Document
 
     plan, loaded, deps, output = inputs(scenario)
@@ -243,7 +184,6 @@ def test_wall_budget_stops_during_management_before_formal(scenario):
     definition = plan["experiment"]
     definition["workloads"][0].update(timeout_seconds=0.01, overhead_budget_seconds=0.01)
     plan = compile_plan(definition)
-    assert plan["plan_sha256"] == plan_hash(plan)
     factory = deps.adapter
 
     def adapter(*args, **kwargs):
@@ -334,8 +274,6 @@ def test_budget_cancellation_is_not_mislabeled_as_user_cancellation(scenario):
 
 @pytest.mark.parametrize("target,expected", [(1, "matched"), (1024, "mismatch")])
 def test_input_target_checked_before_generation_and_rebuilt_offline(scenario, target, expected):
-    from inferyard.evidence.ledger import read_trial
-
     plan, loaded, deps, output = inputs(scenario)
     source = plan["experiment"]
     source["workloads"][0].update(input_target_tokens=target, input_tolerance_tokens=0)
@@ -347,7 +285,6 @@ def test_input_target_checked_before_generation_and_rebuilt_offline(scenario, ta
     )
     assert data["summary"]["input_target_check"]["status"] == expected
     assert TrialEvidence(root).observation("input_target_check")["status"] == expected
-    assert read_trial(root)["summary"] == data["summary"]
     if expected == "mismatch":
         assert code == 2
         assert not scenario[2]

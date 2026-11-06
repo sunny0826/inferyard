@@ -244,19 +244,6 @@ def test_listener_reuse_by_another_process_is_ambiguous(service):
         fit.bind_service("vllm", model, 123, "http://127.0.0.1:8080", proc_root=proc)
 
 
-def test_executable_content_not_basename_is_bound(service):
-    proc, directory, model = service
-    binary = model.parent / "unrelated-program"
-    binary.write_bytes(b"unrelated executable")
-    (directory / "exe").unlink()
-    (directory / "exe").symlink_to(binary)
-    binding = fit.bind_service("vllm", model, 123, "http://127.0.0.1:8080", proc_root=proc)
-    assert binding["executable_sha256"] == hashlib.sha256(binary.read_bytes()).hexdigest()
-    binary.write_bytes(b"changed executable")
-    with pytest.raises(PreflightError, match="identity_changed"):
-        fit.check_service(binding, proc_root=proc)
-
-
 def test_resource_snapshot_includes_children_from_all_threads(service, monkeypatch):
     proc, _, model = service
     binding = fit.bind_service("vllm", model, 123, "http://127.0.0.1:8080", proc_root=proc)
@@ -317,7 +304,7 @@ def test_unreadable_or_changed_process_tree_is_missing_not_partial(service, chan
     assert snapshot["memory_available_bytes"] == 2048 * 1024
 
 
-def test_asset_v2_excludes_documentation_cache_and_location(tmp_path, monkeypatch):
+def test_asset_v2_excludes_documentation_cache_and_location(tmp_path):
     from inferyard.config.engine_fit_assets import model_asset_manifest
     from inferyard.runtime.engine_fit import _manifest
 
@@ -329,22 +316,7 @@ def test_asset_v2_excludes_documentation_cache_and_location(tmp_path, monkeypatc
     cache = root / ".cache"
     cache.mkdir()
     (cache / "weights.safetensors").write_bytes(b"cache")
-    reads = []
-    original = fit._file_hash
-
-    def counted(path):
-        reads.append(path.name)
-        return original(path)
-
-    monkeypatch.setattr(fit, "_file_hash", counted)
     first = model_asset_manifest(root)
-    assert len(reads) == 4
-    assert set(reads) == {
-        "model.safetensors",
-        "config.json",
-        "tokenizer.json",
-        "chat_template.jinja",
-    }
     (root / "README.md").write_bytes(b"changed")
     (cache / "more.bin").write_bytes(b"cache")
     assert model_asset_manifest(root) == first
@@ -354,7 +326,6 @@ def test_asset_v2_excludes_documentation_cache_and_location(tmp_path, monkeypatc
         model_asset_manifest(root, definition=None)
     old = fit.model_manifest(root)
     assert "definition" not in old
-    assert len(old["files"]) == 7
     assert _manifest({"definition": "engine_fit_plan.v1", "model": old}) == old
     with pytest.raises(UnsupportedFormat):
         _manifest({"definition": "engine_fit_plan.v4", "model": old})

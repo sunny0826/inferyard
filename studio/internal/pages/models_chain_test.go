@@ -122,40 +122,6 @@ func TestStartChainSkipsWorkWhenCombinationMatches(t *testing.T) {
 	}
 }
 
-func TestStartChainCommandSequence(t *testing.T) {
-	h := newChainHarness()
-	h.preflightMatch = false
-	candidate, e := h.run(t, "model.gguf", "engine-2 · llama-server")
-	if e != nil {
-		t.Fatal(e)
-	}
-	if candidate.candidate != "/w/candidates/zh-core-1" {
-		t.Fatal(candidate)
-	}
-	if len(h.calls) != 3 {
-		t.Fatalf("calls: %+v", h.calls)
-	}
-	// 1. The changed model reruns device-check first, with the model name.
-	if !strings.Contains(h.calls[0].command, "device-check") || !strings.Contains(h.calls[0].command, "/w/preflight/device-1'") {
-		t.Fatal(h.calls[0])
-	}
-	if h.calls[0].model != "model.gguf" || h.calls[0].engine != "" {
-		t.Fatalf("%+v", h.calls[0])
-	}
-	// 2. The candidate_missing bundle reuses its progress next_command.
-	if h.calls[1].command != *h.progress.Bundles[0].NextCommand && !strings.Contains(h.calls[1].command, "config create") {
-		t.Fatal(h.calls[1])
-	}
-	if !strings.Contains(h.calls[1].command, "${INFERYARD_ENGINE") || h.calls[1].engine != "engine-2 · llama-server" {
-		t.Fatalf("next_command must come from progress: %+v", h.calls[1])
-	}
-	// 3. The mismatched existing candidate gets a constructed config create.
-	if !strings.Contains(h.calls[2].command, "config create") || !strings.Contains(h.calls[2].command, "--bundle 'zh-svg-pelican'") ||
-		!strings.Contains(h.calls[2].command, "--out '/w/candidates/zh-svg-pelican-") || h.calls[2].engine != "engine-2 · llama-server" {
-		t.Fatalf("%+v", h.calls[2])
-	}
-}
-
 func TestStartChainStopsOnBlockedDeviceCheck(t *testing.T) {
 	h := newChainHarness()
 	h.preflightMatch = false
@@ -202,29 +168,6 @@ func TestStartChainRequiresPreflight(t *testing.T) {
 	_, e := h.run(t, "model.gguf", "engine-2 · llama-server")
 	if e == nil || e.Code != "preflight_missing" || len(h.calls) != 0 {
 		t.Fatal(e, h.calls)
-	}
-}
-
-func TestChainFailureTranslatesDeviceReasons(t *testing.T) {
-	e := chainFailure(core.WizardResult{ExitCode: 2, Status: inferyard.Blocked, Limitations: []string{"no_local_model"}})
-	if !strings.Contains(e.Message, "未发现本地 GGUF 模型") {
-		t.Fatal(e)
-	}
-	e = chainFailure(core.WizardResult{ExitCode: 2, Status: inferyard.Blocked, Limitations: []string{"startup_arguments_mismatch"}})
-	if e.Message != human("startup_arguments_mismatch") {
-		t.Fatal(e)
-	}
-}
-
-func TestStartChainReturnsFreshProgressAfterCreate(t *testing.T) {
-	h := newChainHarness()
-	h.progress.Bundles = h.progress.Bundles[:1]
-	result, e := h.run(t, "model.gguf", "engine")
-	if e != nil || len(h.calls) != 1 {
-		t.Fatal(e, h.calls)
-	}
-	if result.workspace != "/w" || result.candidate != "/w/candidates/zh-core-1" {
-		t.Fatalf("fresh progress not returned: %+v", result)
 	}
 }
 

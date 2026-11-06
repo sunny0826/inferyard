@@ -1,10 +1,7 @@
 """Legacy descriptions consume validated fixture configs, never engine observations."""
 
-import json
-
 import pytest
 
-from inferyard import cli
 from inferyard.application.types import CommandRequest
 from inferyard.config.loader import load_config
 from inferyard.config.local_engines import inspection
@@ -45,12 +42,3 @@ def test_legacy_description_preserves_launch_and_declared_assets(config_path, mo
     assert result["endpoint"] == config["endpoint"]
     assert result["conditions"] == config["conditions"]
     assert result["generation"] == config["generation"]
-
-
-def test_legacy_description_cli_envelope(config_path, capsys):
-    assert cli.main(["config", "describe", "--candidate", str(config_path)]) == 0
-    response = json.loads(capsys.readouterr().out)
-    assert response["command"] == "config describe"
-    assert response["status"] == "prepared"
-    assert response["completeness"] == "complete"
-    assert response["details"]["definition"] == "engine-description.v1"

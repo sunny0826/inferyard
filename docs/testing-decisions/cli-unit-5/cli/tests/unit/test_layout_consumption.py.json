@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_layout_consumption.py",
+  "decisions": [
+    {
+      "test": "test_cost_worker_consumes_actual_layout_readonly",
+      "decision": "delete",
+      "reason": "软件成本worker read_trial/report结果回传只测试成本harness兼容层，不是产品报告或发布门。"
+    },
+    {
+      "test": "test_external_import_does_not_trust_resealed_bad_member",
+      "decision": "keep",
+      "reason": "重新封存但inputs成员hash错误必须在导入前拒绝，不产生输出。"
+    },
+    {
+      "test": "test_external_import_replays_actual_source_without_qualification",
+      "decision": "keep",
+      "reason": "新旧布局外部测量导入均只读且保留任务分母，不因软件重放取得物理资格。"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_engine_timing.py",
+  "decisions": [
+    {
+      "test": "test_adapter_captures_only_numeric_metadata_and_optional_errors_do_not_fail_answer",
+      "decision": "keep",
+      "reason": "流/非流计时元数据错误不使有效答案失败，但不给速率；有效最终计时产生已知 decode 值。"
+    },
+    {
+      "test": "test_engine_missingness",
+      "decision": "keep",
+      "reason": "零工作、零/负时长、布尔/非有限/越界 token 及投机范围不明都给缺测原因，不造速率。"
+    },
+    {
+      "test": "test_known_engine_timeline_uses_uncached_tokens_and_excludes_first_generated_token",
+      "decision": "keep",
+      "reason": "prefill 只计未缓存 token，decode 排除第一生成 token，防两种速率口径虚高。"
+    },
+    {
+      "test": "test_no_final_no_evidence_and_failure_never_infer_decode_from_e2e",
+      "decision": "keep",
+      "reason": "无最终计时、构建未验证、失败或多个最终记录都不能从客户端 E2E 推断引擎 decode。"
+    }
+  ]
+}

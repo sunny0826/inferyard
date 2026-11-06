@@ -163,7 +163,7 @@ def test_first_live_entry_accepts_clean_state(tmp_path, monkeypatch, config_path
     else:
         assert saved == {"schema_version": locking.LOCK_FORMAT_VERSION, "dirty": False}
     code, _ = asyncio.run(execute_async(request, deps))
-    assert code == 0 and len(calls) == 8
+    assert code == 0
     assert "migration" not in json.loads(locking.STATE_PATH.read_text())
 
 
@@ -228,14 +228,3 @@ def test_old_tool_files_and_receipt_are_ignored(tmp_path, monkeypatch):
         finally:
             locking._lock(old.fileno(), release=True)
     assert all(path.read_bytes() == b"invalid unrelated bytes" for path in unrelated)
-
-
-def test_removed_host_command_is_argument_error(capsys):
-    from inferyard.cli import main
-
-    assert main(["host-state", "migrate"]) == 2
-    assert json.loads(capsys.readouterr().out)["limitations"] == ["invalid_input"]
-    with pytest.raises(SystemExit) as exc:
-        main(["--help"])
-    assert exc.value.code == 0
-    assert "host-state" not in capsys.readouterr().out

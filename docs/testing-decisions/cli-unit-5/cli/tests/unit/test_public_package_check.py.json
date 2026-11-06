@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_public_package_check.py",
+  "decisions": [
+    {
+      "test": "test_old_policy_cannot_hide_missing_or_mistyped_candidate_identity",
+      "decision": "keep",
+      "reason": "旧policy也不能隐藏缺失/null/bool候选身份，先给身份错误且不改原件，避免损坏被误报不支持格式。"
+    },
+    {
+      "test": "test_rehashed_inconsistent_version_is_rejected",
+      "decision": "keep",
+      "reason": "重算哈希但format版本不符、bool或字符串仍拒绝，避免错误解释公开证据。"
+    },
+    {
+      "test": "test_rehashed_policy_payload_tampering_is_rejected",
+      "decision": "keep",
+      "reason": "redactions/REPRODUCE即使重算哈希也不能偏离policy，避免公开包改变脱敏/复现承诺。"
+    }
+  ]
+}

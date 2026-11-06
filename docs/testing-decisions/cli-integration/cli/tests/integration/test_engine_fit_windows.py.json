@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_engine_fit_windows.py",
+  "decisions": [
+    {
+      "test": "test_windows_tcp_completes_and_verifies_after_service_and_model_removed",
+      "decision": "keep",
+      "reason": "模拟Windows身份/资源的TCP链完成9请求并在服务和模型删除后可核验；零内存原值不得替换缺测或授性能资格。"
+    },
+    {
+      "test": "test_windows_tcp_disconnect_preserves_dirty_and_blocks_next_request",
+      "decision": "keep",
+      "reason": "Windows连接断开只失败首题并保留其余8未执行和dirty，禁止下一次请求。"
+    },
+    {
+      "test": "test_windows_unsupported_engine_rejected_without_protocol_traffic",
+      "decision": "keep",
+      "reason": "Windows不支持的LM Studio入口必须在GET/POST流量前拒绝。"
+    }
+  ]
+}

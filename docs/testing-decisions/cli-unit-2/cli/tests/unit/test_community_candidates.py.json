@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_community_candidates.py",
+  "decisions": [
+    {
+      "test": "test_binding_mismatch_does_not_write",
+      "decision": "keep",
+      "reason": "绑定 PID 代际或 argv 不一致不得落盘，避免配置绑定另一服务。"
+    },
+    {
+      "test": "test_macos_candidate_keeps_unknown_profile_when_environment_has_none",
+      "decision": "keep",
+      "reason": "环境无 profile 时保留 unknown，避免伪造性能环境资格。"
+    },
+    {
+      "test": "test_macos_candidate_preserves_existing_generation_and_exact_template",
+      "decision": "keep",
+      "reason": "macOS 候选保留模板 CRLF 原字节、原温度与 Metal/profile，避免准备阶段偷偷改生成口径。"
+    },
+    {
+      "test": "test_windows_candidate_references_verified_runtime_and_binding_keeps_recipe",
+      "decision": "keep",
+      "reason": "Windows 候选引用已核验 runtime，绑定 PID 后保持冻结配方与输出路径，避免绑定隐式改变测试条件。"
+    },
+    {
+      "test": "test_windows_candidate_rejects_bad_recommendation_before_engine_execution",
+      "decision": "keep",
+      "reason": "布尔线程/错误平台模式GPU/blocked建议/结果嵌套全部在执行引擎前拒绝且不产出候选。"
+    }
+  ]
+}

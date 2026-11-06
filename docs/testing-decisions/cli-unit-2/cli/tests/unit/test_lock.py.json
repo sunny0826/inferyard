@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_lock.py",
+  "decisions": [
+    {
+      "test": "test_dirty_state_survives_release_and_bound_confirmation",
+      "decision": "keep",
+      "reason": "dirty 跨释放保留，错误确认与旧服务仍活都不能恢复，防止新运行叠加未排空服务。"
+    },
+    {
+      "test": "test_first_live_entry_accepts_clean_state",
+      "decision": "keep",
+      "reason": "保留 clean 进入成功、旧 envelope 可读且执行后移除；删完整请求链固定调用次数。"
+    },
+    {
+      "test": "test_legacy_envelope_dirty_blocks_requests_and_requires_recovery",
+      "decision": "keep",
+      "reason": "历史 dirty envelope 阻止发送，确认旧进程已退出才恢复且不提前改原文件。"
+    },
+    {
+      "test": "test_old_tool_files_and_receipt_are_ignored",
+      "decision": "keep",
+      "reason": "旧工具文件与 migration receipt 不影响新锁且原字节保留，避免跨工具互相阻塞或篡改旧状态。"
+    },
+    {
+      "test": "test_recovery_identity_permission_failure_keeps_dirty_state",
+      "decision": "keep",
+      "reason": "恢复时进程身份权限失败仍保留 dirty，不能把不可读当已退出。"
+    },
+    {
+      "test": "test_removed_host_command_is_argument_error",
+      "decision": "delete",
+      "reason": "只检查已移除子命令解析与 help 文本，属于退役名称负向快照，无独立产品假设。"
+    },
+    {
+      "test": "test_sigkill_releases_kernel_lock_but_preserves_dirty",
+      "decision": "keep",
+      "reason": "进程被强杀后内核锁释放但 dirty 保留，绑定确认后才能 clean 且 token 不可重放。"
+    },
+    {
+      "test": "test_single_fixed_lock_and_inode_survives_close",
+      "decision": "keep",
+      "reason": "嵌套进程锁必须互斥，释放后可重新获取同一锁 inode，避免并发测量绕过锁。"
+    },
+    {
+      "test": "test_symlink_lock_rejected",
+      "decision": "keep",
+      "reason": "symlink 锁路径拒绝，避免多个操作者锁到不同对象破坏主机互斥。"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_macos_listener.py",
+  "decisions": [
+    {
+      "test": "test_global_query_failures_are_fixed_reason_not_raw_native_errors",
+      "decision": "keep",
+      "reason": "具体场景 test_global_query_failures_are_fixed_reason_not_raw_native_errors。逐项参数：pytest.mark.parametrize('exception', [PermissionError(), subprocess.TimeoutExpired('lsof', 2)])。可观察预期：pytest.raises(PreflightError, match='listener_identity_unavailable')。全局监听查询权限/命令失败、格式坏或无监听时必须拒绝唯一所有权判断，不能把未知当没有竞争者，错误不泄露原生详情。"
+    },
+    {
+      "test": "test_malformed_global_output_refuses_uncertain_evidence",
+      "decision": "keep",
+      "reason": "具体场景 test_malformed_global_output_refuses_uncertain_evidence。逐项参数：pytest.mark.parametrize('text', ['pbad\\x00', 'p0\\x00', 'f5\\x00tIPv4\\x00', 'p321\\x00f\\x00', 'p321\\x00f5\\x00tIPv4\\x00tIPv4\\x00', 'p321\\x00n127.0.0.1:8080\\x00'])。可观察预期：pytest.raises(PreflightError, match='listener_identity_unavailable')。全局监听查询权限/命令失败、格式坏或无监听时必须拒绝唯一所有权判断，不能把未知当没有竞争者，错误不泄露原生详情。"
+    },
+    {
+      "test": "test_no_global_listener_is_changed_not_success",
+      "decision": "keep",
+      "reason": "具体场景 test_no_global_listener_is_changed_not_success。可观察预期：pytest.raises(PreflightError, match='listener_ambiguous_or_changed')。全局监听查询权限/命令失败、格式坏或无监听时必须拒绝唯一所有权判断，不能把未知当没有竞争者，错误不泄露原生详情。"
+    },
+    {
+      "test": "test_one_global_matching_listener_is_proven",
+      "decision": "delete",
+      "reason": "重复成功绑定中的全局监听查询；覆盖者 test_native_binding_has_raw_start_microseconds_and_actual_sources。"
+    },
+    {
+      "test": "test_uncertain_global_query_never_means_no_competing_listener",
+      "decision": "keep",
+      "reason": "具体场景 test_uncertain_global_query_never_means_no_competing_listener。逐项参数：pytest.mark.parametrize('change', ['stderr', 'status', 'status_with_output'])。可观察预期：assert 'private permission detail' not in str(error.value)；pytest.raises(PreflightError, match='listener_identity_unavailable')。全局监听查询权限/命令失败、格式坏或无监听时必须拒绝唯一所有权判断，不能把未知当没有竞争者，错误不泄露原生详情。"
+    }
+  ]
+}

@@ -15,29 +15,9 @@ from inferyard.contracts.validation import (
 )
 
 
-@pytest.mark.parametrize("kind", ["bundle", "event", "sample", "summary"])
-def test_valid_wire_contracts_and_independent_json_schema(kind, wire_fixture):
-    data = wire_fixture(kind)
-    schema = export_schema(kind)
-    Draft202012Validator.check_schema(schema)
-    Draft202012Validator(schema).validate(data)
-    document = Document.parse(kind, data)
-    assert document.to_dict() == data
-    data["schema_version"] = 999
-    assert document.to_dict()["schema_version"] == 3
-    output = document.to_dict()
-    output["schema_version"] = 999
-    assert document.to_dict()["schema_version"] == 3
-
-
 def test_all_published_schemas_are_valid():
     for kind in schemas_for():
         Draft202012Validator.check_schema(export_schema(kind))
-
-
-def test_config_schema_matches_normalized_input(config_path):
-    config = load_config(config_path).config.to_dict()
-    Draft202012Validator(export_schema("config")).validate(config)
 
 
 def test_explicit_device_memory_budget_keeps_default_and_survives_loading(config_path, tmp_path):
@@ -204,10 +184,6 @@ def test_bundle_duplicate_id_and_typed_references(wire_fixture):
 @pytest.mark.parametrize(
     "raw",
     [
-        '{"a":1,"a":2}',
-        '{"a":NaN}',
-        '{"a":Infinity}',
-        '{"a":-Infinity}',
         '{"a":"fixture-secret-7f39"',
     ],
 )
@@ -223,13 +199,6 @@ def test_summary_rejects_wrong_metric_units(metric, unit, wire_fixture):
     summary["performance"]["instruction"]["metrics"][metric]["unit"] = unit
     with pytest.raises(ContractError, match="unsupported enum"):
         validate_document("summary", summary)
-
-
-def test_memory_evidence_keeps_byte_unit(wire_fixture):
-    sample = wire_fixture("sample")
-    sample["unit"] = "ns"
-    with pytest.raises(ContractError):
-        validate_document("sample", sample)
 
 
 def test_summary_incomplete_cannot_claim_comparison_eligibility(wire_fixture):

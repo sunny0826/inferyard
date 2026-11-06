@@ -48,23 +48,6 @@ def bind(module, observed, source, out, monkeypatch, *, pid=12345, endpoint=None
     return config
 
 
-def test_flat_tables_and_existing_nested_policy_keep_exact_text(binder):
-    module, _ = binder
-    fields = {
-        "name": "中文",
-        "enabled": True,
-        "count": 3,
-        "ratio": 0.7,
-        "paths": [r"D:\lab\engine.exe", "--flag"],
-        "policy": {"mode": "unsupported", "enabled": False},
-    }
-    assert "\n".join(module.table_lines(("engine",), fields)) == (
-        '\n[engine]\nname = "中文"\nenabled = true\ncount = 3\nratio = 0.7\n'
-        'paths = ["D:\\\\lab\\\\engine.exe", "--flag"]\n\n[engine.policy]\n'
-        'mode = "unsupported"\nenabled = false'
-    )
-
-
 def test_recursive_tables_arrays_and_quoted_keys_round_trip(binder):
     module, _ = binder
     fields = {

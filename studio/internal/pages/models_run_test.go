@@ -47,7 +47,7 @@ func TestRunPanelNewTaskPreservesPair(t *testing.T) {
 func assertModelsReadOnly(t *testing.T, tt *ui.Tester) {
 	t.Helper()
 	for _, label := range []string{"启动", "停止", "绑定", "停止遗留服务", "仅删除记录（不终止进程）", "到 Dashboard 完成设备检查"} {
-		if len(modelUINodes(tt, "text", label)) != 0 {
+		if _, ok := tt.Find(label); ok {
 			t.Fatal("models page exposes action", label, tt.Texts())
 		}
 	}
@@ -98,8 +98,25 @@ func TestRunPanelRunActiveLocksSelection(t *testing.T) {
 					t.Fatal(want, tt.Texts())
 				}
 			}
-			if len(designFieldInputs(tt, "模型")) != 0 || len(designFieldInputs(tt, "引擎")) != 0 || len(modelUINodes(tt, "text", s.model)) != 0 || len(modelUINodes(tt, "text", s.engine)) != 0 {
-				t.Fatal("active run renders pickers", tt.Texts())
+			// Try the normal picker entries through the public tester API.
+			// Locked selections must not open a menu or accept another pair.
+			for _, label := range []string{s.model, s.engine, "请选择模型", "请选择引擎"} {
+				if _, ok := tt.Find(label); ok {
+					click(t, tt, label)
+				}
+				for _, search := range []string{"搜索模型", "搜索引擎"} {
+					if _, ok := tt.Find(search); ok {
+						t.Fatal("active run opened a picker", label, search)
+					}
+				}
+				for _, option := range []string{"new.gguf", "release · inference-engine"} {
+					if _, ok := tt.Find(option); ok {
+						click(t, tt, option)
+					}
+				}
+			}
+			if s.model != "model.gguf" || s.engine != "engine-2 · llama-server" {
+				t.Fatal("active run changed its frozen pair", s.model, s.engine)
 			}
 		})
 	}

@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_native_adapters.py",
+  "decisions": [
+    {
+      "test": "test_auto_never_downgrades_conflicting_lab_engine_identity",
+      "decision": "keep",
+      "reason": "auto 模式不能降级掩盖 lab 引擎身份矛盾，避免测评归错引擎。"
+    },
+    {
+      "test": "test_capability_discovery_has_seven_individual_five_second_budgets",
+      "decision": "delete",
+      "reason": "七个路径各五秒仅用 mock deadline 算术和固定 PATHS 数组自证，不实际证明有界网络行为。"
+    },
+    {
+      "test": "test_native_interruption_keeps_dirty_scope_and_one_attempt",
+      "decision": "keep",
+      "reason": "原生超时/取消/证据写失败只能一次请求、保持 uncertain 且不能声称内部排空，避免取消后误复用服务。"
+    },
+    {
+      "test": "test_observation_config_rejects_unsupported_mode_or_environment",
+      "decision": "keep",
+      "reason": "未知 observation_mode 或凭据环境字段拒绝，避免假空闲模式与 secret 持久化。"
+    },
+    {
+      "test": "test_partial_lab_capabilities_default_to_disclosed_native",
+      "decision": "keep",
+      "reason": "lab 能力不全可明确降为 native 并保留未知 token/内部排空，避免伪装完整 lab 证明。"
+    }
+  ]
+}

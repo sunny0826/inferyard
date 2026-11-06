@@ -1,0 +1,45 @@
+{
+  "source_path": "studio/internal/core/engine_owner_test.go",
+  "decisions": [
+    {
+      "test": "TestOrphanExplicitStopAndRecheck",
+      "decision": "keep",
+      "reason": "显式停止孤儿的每一步重核身份；TERM/KILL 和停止前后 PID 复用分别覆盖，防升级信号误杀新进程。"
+    },
+    {
+      "test": "TestOrphanIdentityFailureDuringStopDoesNotKill",
+      "decision": "keep",
+      "reason": "TERM 后身份变不可读时禁止升级 KILL 并保留 owner，防终止无法确认归属的进程。"
+    },
+    {
+      "test": "TestOrphanNotStoppedByShutdownOrDuringRun",
+      "decision": "keep",
+      "reason": "孤儿不随 Studio 关停隐式停止，活动运行中也不能停止，防终止不属于当前窗口的服务。"
+    },
+    {
+      "test": "TestOrphanUnreadableIdentityPreservesRecord",
+      "decision": "keep",
+      "reason": "身份无法读取时保留记录且停止报固定原因，不发信号，防无证据清理或误杀。"
+    },
+    {
+      "test": "TestOwnerCleanupPreservesNewIdentity",
+      "decision": "delete",
+      "reason": "单进程旧记录删除不覆盖新身份已由 TestOwnerRemovalSerializesAcrossProcesses 的真实进程竞争覆盖。"
+    },
+    {
+      "test": "TestOwnerInvalidRecordDoesNotSignal",
+      "decision": "keep",
+      "reason": "布尔 start ticks 等坏 owner 不得触发停止信号，防把损坏记录当作进程身份。"
+    },
+    {
+      "test": "TestOwnerMismatchAndDeadNeverSignal",
+      "decision": "keep",
+      "reason": "PID 已退出或被复用只可清记录，不可发信号，防误杀其他用户进程。"
+    },
+    {
+      "test": "TestOwnerRecordIsPrivateAndDoesNotOverwrite",
+      "decision": "keep",
+      "reason": "owner 文件须私有且不可覆写已有归属，防其他用户读取路径或多窗口争抢同一服务。"
+    }
+  ]
+}

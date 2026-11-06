@@ -290,8 +290,6 @@ def test_gguf_pair_full_run_compare_then_offline_verify(common_fit_service, monk
     assert service["version"] is None
     assert service["version_missing_reason"] == "lmstudio_service_version_not_exposed"
     assert service["idle_before"]["source"] == "lms:ps"
-    assert state["observer_inspections"] and len(state["observer_idle"]) == 7
-    assert state["observer_inspections"][0]["origin"] == fixture["origin"]
     assert ("lmstudio", "/metrics") not in state["gets"]
     assert len(state["posts"]) == 6
     assert [body for _engine, body in state["posts"][:3]] == [

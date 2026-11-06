@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_rerun_policy.py",
+  "decisions": [
+    {
+      "test": "test_mixed_identity_schemes_are_different_not_missing",
+      "decision": "keep",
+      "reason": "角色身份与旧整体hash身份混用属于different，不是missing且不授比较差值，避免错误缺测解释。"
+    },
+    {
+      "test": "test_rerun_accepts_identity_difference_but_comparison_rejects",
+      "decision": "keep",
+      "reason": "源码/评分器/测量/版本变更不阻止显式重跑但子链绑定原父，比较须拒绝对应差异，避免继承旧资格。"
+    }
+  ]
+}

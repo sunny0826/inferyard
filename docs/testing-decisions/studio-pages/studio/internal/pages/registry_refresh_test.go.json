@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/pages/registry_refresh_test.go",
+  "decisions": [
+    {
+      "test": "TestEngineVerificationRefreshThrottle",
+      "decision": "delete",
+      "reason": "固定 5 秒 TTL、后台可见性和私有调用时点，没有可验证的产品性能预算。"
+    },
+    {
+      "test": "TestRegistryRefreshEventScope",
+      "decision": "delete",
+      "reason": "仅约束事件名到扫描布尔值及扫描次数，未关联产品预算；实际模型可选由 TestModelsPageSelectionTriggersEngineVerification、下载完成流程覆盖。"
+    }
+  ]
+}

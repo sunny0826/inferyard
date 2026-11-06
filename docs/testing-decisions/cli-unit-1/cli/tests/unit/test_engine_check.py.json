@@ -1,0 +1,85 @@
+{
+  "source_path": "cli/tests/unit/test_engine_check.py",
+  "decisions": [
+    {
+      "test": "test_contract_golden_samples_match_the_schema",
+      "decision": "keep",
+      "reason": "Studio 共用合法/非法发行样例与 CLI schema 一致，保障两端解析兼容。"
+    },
+    {
+      "test": "test_failed_version_query_is_tool_error_without_raw_output",
+      "decision": "keep",
+      "reason": "版本查询失败返回工具码 4，不泄漏原始 stderr 的敏感文本。"
+    },
+    {
+      "test": "test_invalid_input_path_is_blocked",
+      "decision": "keep",
+      "reason": "引擎/receipt 缺失或为目录均输入阻断；删除同类非目录父节点重复参数。"
+    },
+    {
+      "test": "test_macos_eligible_reports_dual_modes_and_writes_nothing",
+      "decision": "keep",
+      "reason": "在进程边界提供合法版本输出，经真实版本解析后引擎可用、版本与模式正确且无写入；合并原独立版本成功路径。"
+    },
+    {
+      "test": "test_macos_engine_without_dylibs_is_ineligible",
+      "decision": "keep",
+      "reason": "缺运行库先拒绝，不能继续查版本并误报安装可用。"
+    },
+    {
+      "test": "test_macos_matching_version_output_is_eligible",
+      "decision": "delete",
+      "reason": "合法版本输出经真实解析器被接受的成功路径合并到 test_macos_eligible_reports_dual_modes_and_writes_nothing；仅在 subprocess.run 边界注入版本输出，不再单列或断言完整命令数组。"
+    },
+    {
+      "test": "test_macos_metal_library_makes_metal_mode_available",
+      "decision": "keep",
+      "reason": "Metal 库存在才报告 Metal 可用，避免提供不可运行的模式。"
+    },
+    {
+      "test": "test_macos_version_mismatch_is_ineligible",
+      "decision": "keep",
+      "reason": "未认可版本不能直接认定适配合格，返回原因且不授予模式能力。"
+    },
+    {
+      "test": "test_mutually_exclusive_arguments_reject_before_dispatch",
+      "decision": "keep",
+      "reason": "缺目标或同时传 engine/receipt 时不执行，防止检查目标含糊。"
+    },
+    {
+      "test": "test_package_resource_failure_is_tool_error",
+      "decision": "keep",
+      "reason": "发行包 profile 资源损坏返回 package_resource_invalid/4，避免误判用户输入。"
+    },
+    {
+      "test": "test_platform_argument_mismatch_blocks_with_code_two",
+      "decision": "keep",
+      "reason": "macOS/Windows 参数互换及 Linux 不支持路径都返回输入阻断码 2。"
+    },
+    {
+      "test": "test_unexpected_failure_is_redacted_internal_error",
+      "decision": "keep",
+      "reason": "未知异常只显示 internal_error，不回显异常敏感内容。"
+    },
+    {
+      "test": "test_windows_eligible_reports_profile_mode",
+      "decision": "keep",
+      "reason": "Windows 有效运行时 receipt 按 profile 报告 CUDA 模式。"
+    },
+    {
+      "test": "test_windows_symlinked_receipt_is_ineligible_like_config_create",
+      "decision": "keep",
+      "reason": "receipt 链接与配置创建同样拒绝，防止预解析路径绕过身份检查。"
+    },
+    {
+      "test": "test_windows_tampered_manifest_is_ineligible",
+      "decision": "keep",
+      "reason": "运行库清单被改后不可报告 eligible，防止验证另一套安装字节。"
+    },
+    {
+      "test": "test_windows_unknown_profile_is_ineligible",
+      "decision": "keep",
+      "reason": "未知 runtime profile 返回不可用原因，不按默认 profile 放行。"
+    }
+  ]
+}

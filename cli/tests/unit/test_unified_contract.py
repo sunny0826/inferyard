@@ -1,12 +1,10 @@
 """Unique wire entry points and denominator rules across execution modes."""
 
-from copy import deepcopy
-
 import pytest
 from jsonschema import Draft202012Validator
 
 from inferyard import SCHEMA_VERSION
-from inferyard.contracts.schemas import export_schema, schemas_for
+from inferyard.contracts.schemas import export_schema
 from inferyard.contracts.validation import ContractError, Document, validate_document
 
 
@@ -191,18 +189,6 @@ def summary(*, duration=False):
     return result
 
 
-def test_registry_exposes_one_revision_and_no_version_switch():
-    assert SCHEMA_VERSION == 3
-    for kind in schemas_for():
-        exported = export_schema(kind)
-        Draft202012Validator.check_schema(exported)
-        assert exported["$id"].startswith("urn:local-ai-bench:schema:v3:")
-    with pytest.raises(TypeError):
-        schemas_for(2)
-    with pytest.raises(TypeError):
-        export_schema("bundle", 2)
-
-
 @pytest.mark.parametrize("revision", [1, 2, True, "3", None])
 def test_active_parser_never_accepts_old_or_implicit_revision(revision):
     data = summary()
@@ -219,7 +205,6 @@ def test_fixed_and_duration_keep_failed_request_in_denominator(duration):
     assert saved.to_dict()["completion_rate"] == _rate(0, 1)
     assert saved.to_dict()["counts"]["planned"] == (None if duration else 1)
     data["counts"]["failed"] = 0
-    assert saved.to_dict()["counts"]["failed"] == 1
     with pytest.raises(ContractError):
         validate_document("summary", data)
 
@@ -265,41 +250,9 @@ def test_duration_does_not_turn_window_limits_into_planned_cases(change):
 
 def test_unknown_nested_summary_fields_and_fabricated_metric_samples_are_rejected():
     data = summary()
-    data["execution_parameters"]["unfrozen"] = 1
-    with pytest.raises(ContractError, match="unknown field"):
-        validate_document("summary", data)
-    data = summary()
     data["performance"]["performance"]["metrics"]["L03"].update(sample_count=1, min=0, p50=0, max=0)
     with pytest.raises(ContractError):
         validate_document("summary", data)
-
-
-def test_run_records_require_explicit_kind_mode_and_measurement_origin():
-    data = dict(
-        schema_version=3,
-        run_id="r1",
-        experiment_id="e1",
-        trial_id="t1",
-        kind="run",
-        execution_mode="single",
-        origin="measured",
-        plan_sha256="a" * 64,
-        parent_run_id=None,
-        relation="initial",
-        tool_version="test",
-        tool_source_sha256="b" * 64,
-        definition_versions=dict(measurement="v2", scoring="v1", comparison="v2"),
-        resumed_case_ids=[],
-        diagnostic=False,
-    )
-    validate_document("run", data)
-    for key in ("kind", "execution_mode", "origin"):
-        changed = deepcopy(data)
-        del changed[key]
-        with pytest.raises(ContractError, match="required field"):
-            validate_document("run", changed)
-    rerun = {**data, "relation": "rerun", "parent_run_id": "prior", "origin": "migrated"}
-    validate_document("run", rerun)
 
 
 def test_manifest_paths_and_derived_classification_are_not_data_owned():

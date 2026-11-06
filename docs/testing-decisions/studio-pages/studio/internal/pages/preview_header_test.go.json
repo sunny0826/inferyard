@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/pages/preview_header_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewDenseResourcesSurviveClockRefresh",
+      "decision": "delete",
+      "reason": "只要求特定场景 fixture 固定 316 点，未检查实际观测含义；缺测/多来源由 chart 行为测试覆盖。"
+    },
+    {
+      "test": "TestPreviewFailedStopDoesNotDiscardEngineStartup",
+      "decision": "keep",
+      "reason": "停止请求失败须保留待完成启动，之后可重试停止，不能把服务永远卡在 starting。"
+    },
+    {
+      "test": "TestPreviewHeaderCanStopDuringEngineStartup",
+      "decision": "keep",
+      "reason": "模型尚启动时允许用户停止，晚到启动回调不得把已停止服务重新拉起。"
+    },
+    {
+      "test": "TestPreviewHeaderStartsOnlyEngineAndStopsIt",
+      "decision": "keep",
+      "reason": "标题栏启动/停止只管理冻结候选服务，不能隐式绑定或跑 benchmark；失败可见且保持模拟隔离。"
+    }
+  ]
+}

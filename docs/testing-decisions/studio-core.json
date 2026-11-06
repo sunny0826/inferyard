@@ -1,0 +1,460 @@
+{
+  "group": "studio-core",
+  "totals": {
+    "keep": 200,
+    "delete": 40
+  },
+  "files": [
+    {
+      "source_path": "studio/development_control_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/development_control_test.go.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/development_disabled_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/development_disabled_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/development_recovery_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/development_recovery_test.go.json",
+      "totals": {
+        "keep": 9
+      }
+    },
+    {
+      "source_path": "studio/development_session_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/development_session_test.go.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/development_starting_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/development_starting_test.go.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/development_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/development_test.go.json",
+      "totals": {
+        "keep": 7,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/core/bound_paths_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/bound_paths_test.go.json",
+      "totals": {
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "studio/internal/core/candidate_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/candidate_test.go.json",
+      "totals": {
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/core/catalog_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/catalog_test.go.json",
+      "totals": {
+        "delete": 4,
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/core/context_speed_boundaries_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/context_speed_boundaries_test.go.json",
+      "totals": {
+        "delete": 2,
+        "keep": 7
+      }
+    },
+    {
+      "source_path": "studio/internal/core/context_speed_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/context_speed_test.go.json",
+      "totals": {
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/core/core_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/core_test.go.json",
+      "totals": {
+        "keep": 9,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/core/defaults_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/defaults_test.go.json",
+      "totals": {
+        "delete": 9,
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "studio/internal/core/development_native_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/development_native_test.go.json",
+      "totals": {
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/core/development_observation_linux_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/development_observation_linux_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/core/discovery_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/discovery_test.go.json",
+      "totals": {
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "studio/internal/core/download_names_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/download_names_test.go.json",
+      "totals": {
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/core/engine_check_invalidation_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/engine_check_invalidation_test.go.json",
+      "totals": {
+        "keep": 1,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/core/engine_check_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/engine_check_test.go.json",
+      "totals": {
+        "keep": 2,
+        "delete": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/core/engine_downloads_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/engine_downloads_test.go.json",
+      "totals": {
+        "keep": 7,
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/core/engine_lifecycle_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/engine_lifecycle_test.go.json",
+      "totals": {
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/core/engine_owner_lock_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/engine_owner_lock_test.go.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/core/engine_owner_recovery_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/engine_owner_recovery_test.go.json",
+      "totals": {
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "studio/internal/core/engine_owner_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/engine_owner_test.go.json",
+      "totals": {
+        "keep": 7,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/core/engine_process_tree_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/engine_process_tree_test.go.json",
+      "totals": {
+        "keep": 6,
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/core/engine_service_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/engine_service_test.go.json",
+      "totals": {
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "studio/internal/core/install_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/install_test.go.json",
+      "totals": {
+        "keep": 8,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/core/local_candidates_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/local_candidates_test.go.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/core/local_resources_models_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/local_resources_models_test.go.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/core/local_resources_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/local_resources_test.go.json",
+      "totals": {
+        "keep": 3,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/core/local_runs_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/local_runs_test.go.json",
+      "totals": {
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "studio/internal/core/onboarding_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/onboarding_test.go.json",
+      "totals": {
+        "delete": 1,
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/core/progress_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/progress_test.go.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/core/registry_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/registry_test.go.json",
+      "totals": {
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "studio/internal/core/resources_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/resources_test.go.json",
+      "totals": {
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "studio/internal/core/review_regression_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/review_regression_test.go.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/core/rework_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/rework_test.go.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/core/workspace_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/core/workspace_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/desktop/notifications_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/desktop/notifications_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/evidence/dirty_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/evidence/dirty_test.go.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/evidence/index_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/evidence/index_test.go.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/evidence/tail_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/evidence/tail_test.go.json",
+      "totals": {
+        "delete": 1,
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/inferyard/candidate_description_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/inferyard/candidate_description_test.go.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/inferyard/client_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/inferyard/client_test.go.json",
+      "totals": {
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "studio/internal/inferyard/command_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/inferyard/command_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/inferyard/context_speed_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/inferyard/context_speed_test.go.json",
+      "totals": {
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/inferyard/drain_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/inferyard/drain_test.go.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/inferyard/engine_check_golden_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/inferyard/engine_check_golden_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/inferyard/engine_check_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/inferyard/engine_check_test.go.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/inferyard/progress_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/inferyard/progress_test.go.json",
+      "totals": {
+        "delete": 2,
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/inferyard/progress_validation_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/inferyard/progress_validation_test.go.json",
+      "totals": {
+        "delete": 1,
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/inferyard/result_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/internal/inferyard/result_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/options_debug_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/options_debug_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/options_release_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/options_release_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/options_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/options_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/tests/e2e/blame_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/tests/e2e/blame_test.go.json",
+      "totals": {
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/tests/e2e/chain_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/tests/e2e/chain_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/tests/e2e/context_speed_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/tests/e2e/context_speed_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/tests/e2e/fakeengine_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/tests/e2e/fakeengine_test.go.json",
+      "totals": {
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/tests/e2e/main_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/tests/e2e/main_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/tests/e2e/recorder_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/tests/e2e/recorder_test.go.json",
+      "totals": {
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "studio/tests/e2e/scenarios_test.go",
+      "record": "docs/testing-decisions/studio-core/studio/tests/e2e/scenarios_test.go.json",
+      "totals": {
+        "delete": 2,
+        "keep": 1
+      }
+    }
+  ]
+}

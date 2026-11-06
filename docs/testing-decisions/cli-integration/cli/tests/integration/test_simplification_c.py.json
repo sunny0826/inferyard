@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/integration/test_simplification_c.py",
+  "decisions": [
+    {
+      "test": "test_batch_continuation_dispatches_scoped_and_legacy_identity",
+      "decision": "keep",
+      "reason": "仅help/HTML相关总源码变化不应阻断scoped执行身份，但旧无scoped身份仍按原总hash拒绝续批次。"
+    },
+    {
+      "test": "test_raw_terminal_and_scores_sync_without_derived_request_copy",
+      "decision": "delete",
+      "reason": "仅监控fsync调用/私有日志fd与requests.jsonl文件形状；耐久完成终态通过本文件score_append_failure和test_process_interruptions的实际杀进程恢复覆盖。"
+    },
+    {
+      "test": "test_scoped_and_legacy_rerun_accept_new_service",
+      "decision": "keep",
+      "reason": "新服务的rerun支持当前和缺implementation_identity的旧身份读取，原件不修改。"
+    },
+    {
+      "test": "test_score_append_failure_preserves_durable_completed_terminal",
+      "decision": "keep",
+      "reason": "score写入失败必须仍可离线读出已完成题，退出4并保留其余未执行，不能因评分故障丢回答。"
+    }
+  ]
+}

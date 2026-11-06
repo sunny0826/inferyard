@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/core/engine_check_invalidation_test.go",
+  "decisions": [
+    {
+      "test": "TestVerifyEnginesDiscardsOldCLIAfterNewResult",
+      "decision": "keep",
+      "reason": "CLI 更新后旧异步失败不能覆盖新版成功资格，否则用户修复 CLI 后引擎仍显示不可用。"
+    },
+    {
+      "test": "TestVerifyEnginesLinkRemovalAndReceiptUpdate",
+      "decision": "delete",
+      "reason": "只有私有检查调用计数变化，检查前后始终相同不合格结果，不能证明用户看到的资格已更新。"
+    }
+  ]
+}

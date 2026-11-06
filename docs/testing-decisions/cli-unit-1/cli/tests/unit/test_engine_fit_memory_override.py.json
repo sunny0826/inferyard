@@ -1,0 +1,70 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_memory_override.py",
+  "decisions": [
+    {
+      "test": "test_cli_freezes_reason_and_refuses_missing_value_or_conflicting_threshold",
+      "decision": "keep",
+      "reason": "CLI 冻结内存理由并拒绝缺值、同时指定阈值及运行期追加覆盖。"
+    },
+    {
+      "test": "test_comparison_refuses_mixed_frozen_stopping_conditions",
+      "decision": "keep",
+      "reason": "内存理由、温停条件或覆盖代际不同的运行拒绝比较，防止异预算归为同计划。"
+    },
+    {
+      "test": "test_disabled_memory_is_still_collected_with_missing_reasons",
+      "decision": "keep",
+      "reason": "跳过内存停止仍记录低/高值或 null 原因，防止关闭停止就丢观测。"
+    },
+    {
+      "test": "test_disabled_stop_reason_is_refused_even_with_coherent_seal",
+      "decision": "keep",
+      "reason": "已关闭的内存阈值/缺测停止不能出现在请求或 run 原因中，重封后仍语义拒绝。"
+    },
+    {
+      "test": "test_invalid_memory_reason_refused_before_hashing",
+      "decision": "keep",
+      "reason": "空白、非字符串、超 UTF-8 上限和非法代理字符在模型读取前拒绝。"
+    },
+    {
+      "test": "test_legacy_run_cannot_claim_memory_override",
+      "decision": "keep",
+      "reason": "旧普通运行和温停覆盖运行不能追加内存已关闭限制来重解释证据。"
+    },
+    {
+      "test": "test_memory_override_keeps_other_conditions",
+      "decision": "keep",
+      "reason": "内存停止关闭时磁盘、服务身份和温度停止仍生效，避免关掉全部保护。"
+    },
+    {
+      "test": "test_old_plans_refuse_memory_override",
+      "decision": "keep",
+      "reason": "旧三个计划版本不得追加理由或清空内存阈值，防止改写旧安全条件。"
+    },
+    {
+      "test": "test_old_temperature_override_html_bytes_remain_unchanged",
+      "decision": "delete",
+      "reason": "仅冻结整页 HTML 哈希；转义和离线验证已有独立产品结果测试。"
+    },
+    {
+      "test": "test_pair_copies_sources_and_displays_escaped_reasons_offline",
+      "decision": "keep",
+      "reason": "比较复制证据后可独立回放，HTML 显示分别关闭的保护并转义理由。"
+    },
+    {
+      "test": "test_plan_freezes_memory_reason_and_optional_temperature_rule",
+      "decision": "keep",
+      "reason": "目录/GGUF 及温停同时覆盖的计划都绑定内存理由，变化须改计划身份。"
+    },
+    {
+      "test": "test_v4_refuses_missing_or_contradictory_stop_rules",
+      "decision": "keep",
+      "reason": "内存/温度理由缺失、错类型及阈值冲突都不能构成有效覆盖计划。"
+    },
+    {
+      "test": "test_v5_requires_matching_plan_and_limitations",
+      "decision": "keep",
+      "reason": "覆盖运行不能混旧定义、漏限制或额外声称温停关闭，避免错报安全条件。"
+    }
+  ]
+}

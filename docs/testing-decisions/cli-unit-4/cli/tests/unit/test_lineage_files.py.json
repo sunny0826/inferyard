@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_lineage_files.py",
+  "decisions": [
+    {
+      "test": "test_directory_is_rejected_without_descriptor_leak",
+      "decision": "keep",
+      "reason": "目录拒绝且反复调用不泄露描述符，避免大量无效资产耗尽进程资源。"
+    },
+    {
+      "test": "test_escape_rejected",
+      "decision": "keep",
+      "reason": "绝对路径与上级逃逸拒绝，避免核验声明根以外文件。"
+    },
+    {
+      "test": "test_every_artifact_is_required_and_remains_in_denominator",
+      "decision": "keep",
+      "reason": "任一 base/tokenizer/tool/recipe/output/intermediate 缺绑定、缺文件或坏字节都保留在分母并失败，避免只数成功文件。"
+    },
+    {
+      "test": "test_fifo_does_not_block",
+      "decision": "keep",
+      "reason": "FIFO 立即标非普通文件，避免谱系核验永久阻塞。"
+    },
+    {
+      "test": "test_file_changed_while_hashing_is_unknown",
+      "decision": "keep",
+      "reason": "哈希中修改或替换文件标 unknown 且不返回可信摘要，避免混合时刻原件被认证。"
+    },
+    {
+      "test": "test_file_identity_pass_is_not_authenticated_lineage",
+      "decision": "keep",
+      "reason": "八份文件 hash 正确仅证明字节一致，不能自动认证谱系或授比较资格。"
+    },
+    {
+      "test": "test_script_exit_and_report_bind_to_inputs",
+      "decision": "keep",
+      "reason": "脚本全通过 exit0、缺资产 exit3、已有输出不覆盖，避免操作层把不完整谱系判通过。"
+    },
+    {
+      "test": "test_unknown_binding_is_not_silently_ignored",
+      "decision": "keep",
+      "reason": "未知绑定名拒绝，避免输入 typo 静默遗漏必要资产。"
+    }
+  ]
+}

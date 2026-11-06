@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_cost_reads.py",
+  "decisions": [
+    {
+      "test": "test_checked_jsonl_matches_storage_rejections_and_tails",
+      "decision": "delete",
+      "reason": "用另一生产读取函数生成预期再比较内部观察缓存，没有独立预期；损坏 sidecar 拒绝已有测试。"
+    },
+    {
+      "test": "test_missing_sealed_sidecar_is_hash_failure",
+      "decision": "keep",
+      "reason": "已封存的环境结束记录丢失必须完整性失败，不能当可选缺测忽略。"
+    },
+    {
+      "test": "test_overhead_boundary_shares_local_reads_and_stays_json",
+      "decision": "keep",
+      "reason": "边界环境已读后原记录损坏仍拒绝重新评估资格；删除读取次数和 JSON 可编码自测。"
+    },
+    {
+      "test": "test_overhead_preserves_endpoint_before_boundary_error",
+      "decision": "delete",
+      "reason": "只约束两个同时无效文件的报错先后；环境损坏由 overhead_boundary 测试覆盖。"
+    },
+    {
+      "test": "test_sealed_sidecar_damage_is_never_ignored",
+      "decision": "keep",
+      "reason": "环境、调度和外部 CPU sidecar 即使重封也不能忽略非法对象/重复键，截断须显式降级。"
+    },
+    {
+      "test": "test_sidecars_are_parsed_and_hashed_once_per_read",
+      "decision": "keep",
+      "reason": "保留一次读取后修改环境 sidecar 再读必须拒绝，防缓存掩盖新篡改；删 open 次数。"
+    }
+  ]
+}

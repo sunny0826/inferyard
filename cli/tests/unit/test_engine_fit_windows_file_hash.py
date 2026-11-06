@@ -1,14 +1,12 @@
 """Windows hashing uses one native metadata API and rejects actual mutations."""
 
 import ctypes
-import hashlib
 import os
 import sys
 from types import SimpleNamespace
 
 import pytest
 
-from inferyard.platforms import engine_fit as identity
 from inferyard.platforms import engine_fit_windows_files as files
 from inferyard.platforms.identity import PreflightError
 
@@ -34,19 +32,6 @@ def hashed(tmp_path, monkeypatch):
     monkeypatch.setattr(files, "descriptor_stamp", lambda _: read("fd"))
     monkeypatch.setattr(files, "open_file", lambda value, flags: os.open(value, flags))
     return path, box
-
-
-def test_stable_executable_does_not_mix_python_stat_and_fstat(hashed, monkeypatch):
-    def forbidden(_):
-        raise AssertionError("Python fstat has different Windows ctime/mode semantics")
-
-    monkeypatch.setattr(files.os, "fstat", forbidden)
-    assert files.file_hash(hashed[0]) == (hashlib.sha256(CONTENT).hexdigest(), len(CONTENT))
-
-
-def test_shared_hash_dispatches_to_native_windows_metadata(hashed, monkeypatch):
-    monkeypatch.setattr(identity, "os", SimpleNamespace(name="nt"))
-    assert identity._file_hash(hashed[0]) == (hashlib.sha256(CONTENT).hexdigest(), len(CONTENT))
 
 
 @pytest.mark.parametrize("kind", ["path", "fd"])
@@ -115,14 +100,9 @@ def api(monkeypatch):
 
 
 def test_native_abi_sizes_and_full_unsigned_identity(api):
-    assert [
-        ctypes.sizeof(kind) for kind in (files._BasicInfo, files._StandardInfo, files._IdInfo)
-    ] == [
-        40,
-        24,
-        24,
-    ]
-    assert files.descriptor_stamp(7) == STAMP
+    stamp = files.descriptor_stamp(7)
+    assert stamp[0] == 2**64 - 1
+    assert stamp[1] == bytes(range(16))
 
 
 def test_access_time_is_excluded_but_change_time_is_retained(api):

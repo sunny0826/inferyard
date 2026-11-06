@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_scoring.py",
+  "decisions": [
+    {
+      "test": "test_draft_corpus_shape_and_reference_sanity_are_not_human_review",
+      "decision": "delete",
+      "reason": "固定草稿case数量/类别比例并用同一scorer评分reference，属于语料形状与自证；独立评分由 test_independently_prespecified_scoring_examples 覆盖。"
+    },
+    {
+      "test": "test_independently_prespecified_scoring_examples",
+      "decision": "keep",
+      "reason": "独立预设答案覆盖字面/禁词/行数/全半角、JSON错类型/重复键/额外字段/围栏/非有限等通过与格式预期，避免错误答案提分。"
+    }
+  ]
+}

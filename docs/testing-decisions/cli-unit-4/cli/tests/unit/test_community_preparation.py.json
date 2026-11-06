@@ -1,0 +1,60 @@
+{
+  "source_path": "cli/tests/unit/test_community_preparation.py",
+  "decisions": [
+    {
+      "test": "test_all_existing_outputs_refused_before_resolution",
+      "decision": "keep",
+      "reason": "已存在文件、目录、正常或悬空链接都不能覆盖，避免准备命令破坏原有输出。"
+    },
+    {
+      "test": "test_assets_preserves_template_utf8_bytes",
+      "decision": "keep",
+      "reason": "模型内 UTF8 模板原始换行字节和库/模型摘要保留，避免模板变化导致请求不同。"
+    },
+    {
+      "test": "test_assets_rejects_missing_template_and_escaping_library",
+      "decision": "keep",
+      "reason": "缺模板或库逃逸必须在创建输出前拒绝，避免半成品 candidate 被使用。"
+    },
+    {
+      "test": "test_help_and_versions_do_not_import_new_live_backends",
+      "decision": "keep",
+      "reason": "帮助/版本不载 live 后端，使仅安装包资源查询在无原生环境时可用。"
+    },
+    {
+      "test": "test_init_preserves_authoritative_bytes_and_review",
+      "decision": "keep",
+      "reason": "init 导出四个题包的权威原字节与审核 hash，已有输出拒绝覆盖，避免发行题包变化或历史被覆盖。"
+    },
+    {
+      "test": "test_invalid_parameters_are_json_blocked",
+      "decision": "keep",
+      "reason": "非法 PID、端口和 force 选项使用 JSON/2 拒绝，避免非法参数进入启动准备。"
+    },
+    {
+      "test": "test_library_failures_keep_cli_error_categories",
+      "decision": "keep",
+      "reason": "断链、环与权限/IO 故障分别返回输入或工具错误且不写半输出，避免错误恢复策略。"
+    },
+    {
+      "test": "test_missing_input_is_io_error",
+      "decision": "keep",
+      "reason": "缺输入文件返回 io_error/4，避免把工具错误误标为条件阻断。"
+    },
+    {
+      "test": "test_omitted_bundle_exports_documented_default_scope",
+      "decision": "keep",
+      "reason": "省略 bundle 默认导出 core 与 pelican，避免默认测评遗漏 SVG 范围。"
+    },
+    {
+      "test": "test_output_tree_reparse_replacement_is_rejected",
+      "decision": "keep",
+      "reason": "输出子目录被替换为 symlink 后写入拒绝，避免准备文件逃出新目录。"
+    },
+    {
+      "test": "test_request_keeps_lexical_output_without_changing_old_commands",
+      "decision": "delete",
+      "reason": "请求构造器 lexical/resolve 形状重复可见路径拒绝，由 test_all_existing_outputs_refused_before_resolution 覆盖悬空链接风险。"
+    }
+  ]
+}

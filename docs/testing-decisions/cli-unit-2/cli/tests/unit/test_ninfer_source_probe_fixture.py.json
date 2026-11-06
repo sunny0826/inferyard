@@ -1,0 +1,75 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_fixture.py",
+  "decisions": [
+    {
+      "test": "test_blocked_close_error_does_not_replace_read_error",
+      "decision": "delete",
+      "reason": "私有夹具 PipeHold 布局与关闭顺序自测；宿主资源保管边界另有回归。"
+    },
+    {
+      "test": "test_blocked_completion_is_not_reported_as_proved_blocking",
+      "decision": "delete",
+      "reason": "注入空 read 后检查夹具自身 blocking 解释，属于验收夹具自测。"
+    },
+    {
+      "test": "test_blocked_ready_failures_close_original_handles",
+      "decision": "delete",
+      "reason": "私有夹具 ready 发布与清理的自测，无独立产品路径。"
+    },
+    {
+      "test": "test_default_clock_refuses_before_qpc_on_mac",
+      "decision": "delete",
+      "reason": "只验证 macOS 上调用 Windows QPC 的异常名字，无支持的真实用户执行路径。"
+    },
+    {
+      "test": "test_descendant_reports_distinct_classifications",
+      "decision": "delete",
+      "reason": "Child fake 预设 classification，再检查私有夹具原样包装，没有真实 Job 隔离证据。"
+    },
+    {
+      "test": "test_descendant_silent_skip_is_rejected",
+      "decision": "delete",
+      "reason": "私有夹具如何处理 fake 的 silent 返回值，不经过产品入口。"
+    },
+    {
+      "test": "test_file_io_error_result_returns_nonzero_and_keeps_reason",
+      "decision": "delete",
+      "reason": "私有夹具包装注入 I/O 错误的自测，不经过可用产品流程；不宣称真实 CLI 接入覆盖。"
+    },
+    {
+      "test": "test_file_io_success_uses_original_task_deadline",
+      "decision": "delete",
+      "reason": "重复文件 I/O fixture happy path；错误及原始身份由 test_file_io_error_result_returns_nonzero_and_keeps_reason 覆盖。"
+    },
+    {
+      "test": "test_fixture_sources_do_not_import_process_tools",
+      "decision": "delete",
+      "reason": "AST/字符串限制导入与实现写法，不能证明实际没有外部副作用。"
+    },
+    {
+      "test": "test_injected_clock_rejects_expired_bool_and_regression",
+      "decision": "delete",
+      "reason": "私有诊断夹具注入时钟自测；真实入口未开放。宿主时钟回退由 custody_deadlines 的 sticky 否决覆盖。"
+    },
+    {
+      "test": "test_main_returns_two_without_fixture_or_environment",
+      "decision": "keep",
+      "reason": "保留公开 main 拒绝未开放真实执行且不进入夹具；删除私有 _module_entry 重复路由断言。"
+    },
+    {
+      "test": "test_output_stdout_is_raw_prefix_not_json",
+      "decision": "delete",
+      "reason": "输出压力夹具常量与预设长度自测，不属于发布产物。"
+    },
+    {
+      "test": "test_socket_subprocess_and_open_remain_unused",
+      "decision": "delete",
+      "reason": "只对已注入 Child 的 happy path 禁用未涉及的 socket/Popen/open，复述依赖注入而非证明产品隔离。"
+    },
+    {
+      "test": "test_unknown_mode_and_identity_do_not_start",
+      "decision": "delete",
+      "reason": "仅未支持模式与 bool stage 的微观接口拒绝；显式入口拒绝由 test_main_returns_two_without_fixture_or_environment 覆盖。"
+    }
+  ]
+}

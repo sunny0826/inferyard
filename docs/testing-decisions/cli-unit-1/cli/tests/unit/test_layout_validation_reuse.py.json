@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_layout_validation_reuse.py",
+  "decisions": [
+    {
+      "test": "test_container_inputs_still_validate_nested_documents_before_reduction",
+      "decision": "keep",
+      "reason": "run/plan/selection/config/bundle 任一嵌套输入多字段仍拒绝，防容器包装绕过活动验证。"
+    },
+    {
+      "test": "test_prior_valid_reference_does_not_hide_altered_reference",
+      "decision": "keep",
+      "reason": "先验证合法引用后仍拒绝额外键、错序号类型、空成员和错摘要，防缓存掩盖篡改。"
+    }
+  ]
+}

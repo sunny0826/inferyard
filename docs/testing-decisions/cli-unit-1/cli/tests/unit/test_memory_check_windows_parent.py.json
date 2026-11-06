@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_memory_check_windows_parent.py",
+  "decisions": [
+    {
+      "test": "test_parent_age",
+      "decision": "keep",
+      "reason": "父进程不能比子进程更新；无效父世代记缺测而保留子进程 RSS/private commit。"
+    },
+    {
+      "test": "test_reader_rejects_invalid_parent",
+      "decision": "keep",
+      "reason": "读取持久化内存报告也拒绝更年轻父进程、错世代及伪 root 声明，防报告篡改误导退出建议。"
+    },
+    {
+      "test": "test_verified_roots",
+      "decision": "keep",
+      "reason": "父身份改变、缺失、世代不符、异程序或不可读时保守确定 root，避免把无关进程并组。"
+    }
+  ]
+}

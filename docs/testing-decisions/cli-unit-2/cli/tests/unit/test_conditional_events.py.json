@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_conditional_events.py",
+  "decisions": [
+    {
+      "test": "test_content_chunks_and_missing_lifecycle_never_substitute_true_events",
+      "decision": "keep",
+      "reason": "内容chunk和缺生命周期不能冒充逐token/排队/启动指标，避免无观测仍输出测量。"
+    },
+    {
+      "test": "test_process_start_ready_first_answer_are_distinct_from_check_time",
+      "decision": "keep",
+      "reason": "进程启动、ready、首答案分别为1/3秒，PID变化拒绝且OS cache保持unknown，避免probe时间冒充冷启动。"
+    },
+    {
+      "test": "test_queue_pair_keeps_exact_request_and_server_clock",
+      "decision": "keep",
+      "reason": "同请求服务端clock排队差为2ms，request错配拒绝，避免将其他请求延迟归错。"
+    },
+    {
+      "test": "test_true_token_indices_usage_and_clock_recompute_median_interval",
+      "decision": "keep",
+      "reason": "独立三token时间手算median=3ms，跨clock拒绝，避免单位/间隔错误。"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_rescore.py",
+  "decisions": [
+    {
+      "test": "test_redacted_answers_are_never_reclassified_as_valid",
+      "decision": "keep",
+      "reason": "脱敏答案不能重判有效，避免未知内容被计入通过分子。"
+    },
+    {
+      "test": "test_rescoring_changes_only_scores_and_keeps_failed_attempts",
+      "decision": "keep",
+      "reason": "重评分仅改score且所有失败终态仍保留，不修改原rows，避免回算改变执行历史和分母。"
+    },
+    {
+      "test": "test_scorer_exception_does_not_change_execution_state",
+      "decision": "keep",
+      "reason": "评分器异常不改completed执行状态且不泄露异常文本，避免模型运行被误称失败。"
+    }
+  ]
+}

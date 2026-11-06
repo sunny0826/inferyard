@@ -1,6 +1,5 @@
 """Explicit temperature overrides preserve old evidence and all other safeguards."""
 
-import hashlib
 import shutil
 import struct
 from copy import deepcopy
@@ -72,7 +71,6 @@ def test_explicit_override_freezes_reason_and_modern_asset_manifest(model, tmp_p
     assert plan["model"]["kind"] == kind
     assert plan["parameters"]["max_temperature_celsius"] is None
     assert plan["parameters"]["temperature_stop_override_reason"] == REASON
-    assert runtime._manifest(plan) == plan["model"]
     changed = deepcopy(plan)
     changed["parameters"]["temperature_stop_override_reason"] += " changed"
     with pytest.raises(ContractError):
@@ -84,7 +82,6 @@ def test_explicit_override_freezes_reason_and_modern_asset_manifest(model, tmp_p
 
 def test_default_request_retains_legacy_plan_and_temperature_limit(model, tmp_path):
     request = CommandRequest("engine-fit plan", model_path=model, out=tmp_path / "plan")
-    assert request.fit_temperature_stop_override_reason is None
     plan = prepare(request)
     assert plan["definition"] == "engine_fit_plan.v1"
     assert "kind" not in plan["model"]
@@ -361,40 +358,3 @@ def test_comparison_refuses_mixed_temperature_rules_or_reasons(tmp_path, other):
         paths.append(path)
     with pytest.raises(EvidenceError, match="plan_mismatch"):
         compare(paths, tmp_path / "comparison")
-
-
-@pytest.mark.parametrize(
-    "version,expected",
-    [
-        ("v1", "147f701083c1d8e647ef87bc5ebdc71d10c5c5ec791ed98536edc8d783b350b0"),
-        ("v2", "f05c6b609511dcedeeda69819934d076b0f21b7e3cc76d6561047b45a006f885"),
-        ("v3", "0534776daa2c20696582128924e2e20d708365d154de51fe4dad453129120867"),
-        ("comparison", "9b73d788c159b5b93db4a8652ffec38ef807fefbd878ca7c308e10aa0cde3295"),
-    ],
-)
-def test_old_html_bytes_and_sealed_evidence_remain_readable(tmp_path, version, expected):
-    # Hashes captured from the pre-ADR-016 renderer, not recomputed from the new behavior.
-    if version == "v1":
-        plan = legacy_plan.__wrapped__()
-        run, rows = _data(plan)
-        entries = [(plan, run, rows)]
-    elif version == "v2":
-        entries = [native_data.__wrapped__()]
-    elif version == "v3":
-        entries = [common_data()]
-    else:
-        entries = [common_data("llama-cpp"), common_data()]
-    data = [dict(plan=plan, run=run, requests=rows) for plan, run, rows in entries]
-    html = render(data, comparison=version == "comparison").encode()
-    assert hashlib.sha256(html).hexdigest() == expected
-    paths = []
-    for index, (plan, run, rows) in enumerate(entries):
-        path = tmp_path / str(index)
-        path.mkdir()
-        seal_run(path, plan, run, rows)
-        assert verify(path)["run"] == run
-        paths.append(path)
-    if version == "comparison":
-        compare(paths, tmp_path / "comparison")
-        assert (tmp_path / "comparison/report.html").read_bytes() == html
-        verify(tmp_path / "comparison")

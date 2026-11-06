@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/preview_selector_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewSceneSelectorFitsCompactWindow",
+      "decision": "delete",
+      "reason": "只约束调试场景选择器坐标和 fixture 切换，是测试辅助 UI；实际正常操作由工作流覆盖。"
+    }
+  ]
+}

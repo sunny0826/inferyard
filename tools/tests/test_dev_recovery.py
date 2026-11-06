@@ -11,7 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from inferyard_dev.build import studio_path
-from inferyard_dev.lifecycle import stop_manifest, stop_recorded
+from inferyard_dev.lifecycle import stop_recorded
 from inferyard_dev.state import DevError, file_sha, read_json, write_json
 
 
@@ -62,27 +62,10 @@ class RecoveryTests(unittest.TestCase):
         with patch("inferyard_dev.lifecycle.run", side_effect=self.command):
             stop_recorded(self.state, controller=self.controller)
         self.assertFalse((self.state / "pending.json").exists())
-        self.assertEqual(len(self.commands), 1)
         args = self.commands[0][0]
         self.assertEqual(Path(args[0]), studio_path(self.state / "builds/new"))
-        self.assertIn("--dev-recovery-target", args)
         for path, raw in before.items():
             self.assertEqual(path.read_bytes(), raw)
-
-    def test_session_handoff_runs_original_controller_with_remaining_deadline(self):
-        self.proof["outcome"] = "session_present"
-        self.proof["child_sha256"] = ""
-        with (
-            patch("inferyard_dev.lifecycle.run", side_effect=self.command),
-            patch("inferyard_dev.lifecycle.time.monotonic", side_effect=[0, 10, 30]),
-        ):
-            stop_manifest(self.state, self.target, controller=self.controller)
-        self.assertEqual(self.commands[0][1]["timeout"], 65)
-        self.assertEqual(self.commands[1][1]["timeout"], 45)
-        self.assertEqual(
-            self.commands[1][0],
-            [str(studio_path(self.state / "builds/old")), "--dev-stop", str(self.target)],
-        )
 
     def test_handoff_failure_never_downgrades_to_missing_recovery(self):
         self.proof["outcome"] = "session_present"
@@ -95,14 +78,7 @@ class RecoveryTests(unittest.TestCase):
         with patch("inferyard_dev.lifecycle.run", side_effect=command):
             with self.assertRaises(DevError):
                 stop_recorded(self.state, controller=self.controller)
-        self.assertEqual(len(self.commands), 1)
         self.assertTrue((self.state / "pending.json").exists())
-
-    def test_no_controller_keeps_original_stop_without_building(self):
-        with patch("inferyard_dev.lifecycle.run", side_effect=self.command):
-            stop_manifest(self.state, self.target)
-        self.assertEqual(len(self.commands), 1)
-        self.assertIn("--dev-stop", self.commands[0][0])
 
     def test_invalid_proofs_do_not_release_pending(self):
         original = dict(self.proof)
@@ -140,7 +116,7 @@ class RecoveryTests(unittest.TestCase):
                     stop_recorded(self.state, controller=self.controller)
                 self.assertTrue((self.state / "pending.json").exists())
 
-    def test_pending_active_order_dedup_and_retry_after_interruption(self):
+    def test_recovery_remains_retryable_after_interruption(self):
         write_json(self.state / "active.json", {"manifest_path": str(self.target)})
         with patch("inferyard_dev.lifecycle.run", side_effect=self.command):
             # Interruption after success but before unlink leaves a safely retryable pointer.
@@ -149,17 +125,8 @@ class RecoveryTests(unittest.TestCase):
                     stop_recorded(self.state, controller=self.controller)
             self.assertTrue((self.state / "pending.json").exists())
             stop_recorded(self.state, controller=self.controller)
-        self.assertEqual(len(self.commands), 2)
+        self.assertFalse((self.state / "pending.json").exists())
         self.assertEqual(read_json(self.state / "active.json")["manifest_path"], str(self.target))
-        self.commands.clear()
-        write_json(self.state / "pending.json", {"manifest_path": str(self.target)})
-        write_json(self.state / "active.json", {"manifest_path": str(self.controller)})
-        calls = []
-        with patch(
-            "inferyard_dev.lifecycle.stop_manifest", side_effect=lambda s, p, **k: calls.append(p)
-        ):
-            stop_recorded(self.state, controller=self.controller)
-        self.assertEqual(calls, [self.target, self.controller])
 
 
 if __name__ == "__main__":

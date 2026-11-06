@@ -67,9 +67,6 @@ def test_container_rerun_writes_actual_source_or_preserves_missing(
     rerun = CommandRequest(
         "run", from_run=container, server_pid=os.getpid(), endpoint_url="http://127.0.0.1:9090"
     )
-    reloaded, _ = runner.load_rerun(rerun)
-    assert reloaded.source is None
-    assert reloaded.configuration_source()["data"] == expected
     code, result = asyncio.run(runner.execute_async(rerun, deps))
     assert code == 0, result
     out = Path(result.evidence_dir)

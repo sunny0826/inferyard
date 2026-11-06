@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_complete_trial_control.py",
+  "decisions": [
+    {
+      "test": "test_baseline_redacts_preserved_responses_before_disk",
+      "decision": "keep",
+      "reason": "baseline内回答、观察和快照中的凭据在持久化前必须脱敏。"
+    },
+    {
+      "test": "test_complete_control_uses_real_trial_seals_and_deferred_baselines",
+      "decision": "keep",
+      "reason": "总开销控制必须覆盖ABBA真实trial及封存关闭，离线核验不得修改子运行，篡改baseline回答须拒绝。"
+    },
+    {
+      "test": "test_full_control_plan_cannot_substitute_another_workload",
+      "decision": "keep",
+      "reason": "控制计划不能换成另一题集，避免用无关工作负载取得开销资格。"
+    }
+  ]
+}

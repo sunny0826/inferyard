@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_position_scan.py",
+  "decisions": [
+    {
+      "test": "test_position_scan_freezes_exact_shared_text_and_character_cohorts",
+      "decision": "keep",
+      "reason": "位置扫描冻结同一正文、2独立family与18请求但不填token target，题包未审仍拒绝，避免伪等长/独立样本。"
+    },
+    {
+      "test": "test_position_scan_rejects_misleading_cohort_metadata",
+      "decision": "keep",
+      "reason": "字符数、位置、cohort库存或family计数错拒绝且不落盘，避免实验元数据夸大独立性。"
+    }
+  ]
+}

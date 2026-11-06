@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_installed_harness.py",
+  "decisions": [
+    {
+      "test": "test_disposable_guard_precedes_initialization_or_subprocess",
+      "decision": "keep",
+      "reason": "缺任一 disposable 明确标记须在 host 操作与子进程前拒绝，避免发行测试污染真实主机状态。"
+    },
+    {
+      "test": "test_disposable_sequence_initializes_once_then_preserves_crash_dirty",
+      "decision": "keep",
+      "reason": "安装验收初始化一次、成功后模拟崩溃 dirty 不被后续检查清掉，脏服务不发请求，避免发布门禁假阳性。"
+    },
+    {
+      "test": "test_exported_scenario_builds_under_isolated_python",
+      "decision": "keep",
+      "reason": "导出的安装后 CI fixture 在 -I 隔离 Python 下可构造且缺 helper 必须失败，防止发行验收悄悄借用源码目录。"
+    }
+  ]
+}

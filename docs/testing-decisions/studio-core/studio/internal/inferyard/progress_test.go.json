@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/inferyard/progress_test.go",
+  "decisions": [
+    {
+      "test": "TestParseProgressFullFixture",
+      "decision": "delete",
+      "reason": "逐字段复述人工 JSON 到 struct 的赋值；实际双题包进度驱动与报告由 TestChainBindRunReport 覆盖，非法结构由 TestProgressContractBoundaries 覆盖。"
+    },
+    {
+      "test": "TestParseProgressRejections",
+      "decision": "keep",
+      "reason": "保留错误 kind/version/workspace/缺动作及错包装拒绝，防任务推进到不合法阶段；删除未知附加字段兼容重复子段，由 TestProgressContractBoundaries 覆盖。"
+    },
+    {
+      "test": "TestParseProgressVerifiedFixture",
+      "decision": "delete",
+      "reason": "完整双题包 verified JSON 的 happy path 由 TestChainBindRunReport 使用真实 CLI 产出最终进度覆盖。"
+    }
+  ]
+}

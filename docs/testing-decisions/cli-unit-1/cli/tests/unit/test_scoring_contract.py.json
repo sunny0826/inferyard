@@ -1,0 +1,75 @@
+{
+  "source_path": "cli/tests/unit/test_scoring_contract.py",
+  "decisions": [
+    {
+      "test": "test_classification_macro_f1_includes_invalid_and_failed_answers",
+      "decision": "keep",
+      "reason": "分类 macro F1 纳入无效标签和执行失败，不能删除困难样本提高质量。"
+    },
+    {
+      "test": "test_exact_answer_normalization",
+      "decision": "keep",
+      "reason": "strip 和 NFKC 策略区分空白、全角字母和标点，避免宽松正规化误给分。"
+    },
+    {
+      "test": "test_failed_partial_answer_never_passes_quality",
+      "decision": "keep",
+      "reason": "模型执行失败即使答案内容全对也不能得分，字段分母仍保留。"
+    },
+    {
+      "test": "test_inherited_approval_is_preserved_but_new_composition_needs_review",
+      "decision": "keep",
+      "reason": "已有子集审批可追溯，新增题目组合或改题不能未经人工复审沿用原审批。"
+    },
+    {
+      "test": "test_missing_duplicate_and_wrong_category_cannot_form_complete_trial",
+      "decision": "keep",
+      "reason": "缺请求保持未知，重复请求和错类别评分拒绝，防止拼出虚假完整试验。"
+    },
+    {
+      "test": "test_missing_field_scores_rejected_and_unscorable_is_incomplete",
+      "decision": "keep",
+      "reason": "空字段评分不能缩分母；已脱敏不可评分内容的质量保持缺失。"
+    },
+    {
+      "test": "test_nested_typed_fields_and_strict_json",
+      "decision": "keep",
+      "reason": "嵌套字段按类型和顺序评分，布尔不等整数、重复键/NaN/代码围栏不能冒充合法 JSON。"
+    },
+    {
+      "test": "test_numeric_bounds_are_exact",
+      "decision": "keep",
+      "reason": "极小数不下溢成精确零，大整数不丢精度，负值相对容差边界不能误判。"
+    },
+    {
+      "test": "test_numeric_tolerance_and_hostile_exponents",
+      "decision": "keep",
+      "reason": "数值容差边界、单位、解释性前缀及极端指数决定对错，拒绝 NaN/布尔假答案。"
+    },
+    {
+      "test": "test_original_forty_reference_answers_remain_passing",
+      "decision": "keep",
+      "reason": "已发布任务的全部参考答案必须判通过，防止评分改动把已审核正确答案判错。"
+    },
+    {
+      "test": "test_parse_failure_and_partial_correct_fields_keep_denominators",
+      "decision": "keep",
+      "reason": "解析失败仍留所有字段分母，部分正确不缩分母而虚高结构化质量。"
+    },
+    {
+      "test": "test_performance_has_no_quality_score",
+      "decision": "keep",
+      "reason": "纯性能任务和其 unscorable 状态均无质量分，防止把完成输出误当答案质量。"
+    },
+    {
+      "test": "test_remote_schema_and_invalid_reference_rejected_before_scoring",
+      "decision": "keep",
+      "reason": "远程 schema 引用及不满足自身 schema 的参考答案在评分前拒绝。"
+    },
+    {
+      "test": "test_removing_current_approval_does_not_reactivate_legacy_proof",
+      "decision": "keep",
+      "reason": "当前审批被删除后不得回退复活历史 provenance，防止撤审内容继续放行。"
+    }
+  ]
+}

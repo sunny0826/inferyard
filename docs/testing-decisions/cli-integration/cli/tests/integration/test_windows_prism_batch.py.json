@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/integration/test_windows_prism_batch.py",
+  "decisions": [
+    {
+      "test": "test_windows_prism_batch_reaches_collector_and_seals_mock_requests",
+      "decision": "keep",
+      "reason": "M2：删除工厂对象引用恒等；保留封存collector ID、实际来源、bytes单位、缺测及比较资格。"
+    }
+  ]
+}

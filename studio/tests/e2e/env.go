@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	_ "embed"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,8 +25,11 @@ type Env struct {
 	Options   core.Options
 }
 
-// NewEnv builds isolated settings/host-state paths and wraps CLI access in a
-// Recorder so every chain test produces a blame transcript by default.
+//go:embed cli_bootstrap.py
+var cliBootstrap []byte
+
+// NewEnv isolates settings and the real CLI's host files, then records CLI calls.
+// It changes the process environment, so callers must not use t.Parallel.
 func NewEnv(t *testing.T, cliPath string) *Env {
 	t.Helper()
 	root := t.TempDir()
@@ -33,6 +37,9 @@ func NewEnv(t *testing.T, cliPath string) *Env {
 	// the workspace and blame transcript survive for post-mortem inspection.
 	if keep := os.Getenv("INFERYARD_E2E_ROOT"); keep != "" {
 		root = keep
+		if err := os.MkdirAll(root, 0o700); err != nil {
+			t.Fatal(err)
+		}
 	}
 	// The CLI resolves config paths with Path.resolve(); keep every fixture path
 	// symlink-free so model_path comparisons see identical strings on macOS
@@ -40,6 +47,20 @@ func NewEnv(t *testing.T, cliPath string) *Env {
 	if resolved, err := filepath.EvalSymlinks(root); err == nil {
 		root = resolved
 	}
+	// All CLI processes in this test share one host state. Keep it unique even
+	// when INFERYARD_E2E_ROOT retains several tests in the same directory.
+	hostRoot, err := os.MkdirTemp(root, "host-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(hostRoot, "sitecustomize.py"), cliBootstrap, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pythonPath := hostRoot
+	if inherited := os.Getenv("PYTHONPATH"); inherited != "" {
+		pythonPath += string(os.PathListSeparator) + inherited
+	}
+	t.Setenv("PYTHONPATH", pythonPath)
 	env := &Env{
 		Workspace: filepath.Join(root, "workspace"),
 		Results:   filepath.Join(root, "results"),
@@ -53,7 +74,7 @@ func NewEnv(t *testing.T, cliPath string) *Env {
 	env.Recorder = NewRecorder(t, filepath.Join(root, "transcript"), real)
 	env.Options = core.Options{
 		SettingsPath:       env.Settings,
-		HostStatePath:      filepath.Join(root, "host-state.json"),
+		HostStatePath:      filepath.Join(hostRoot, "host-state.json"),
 		Execute:            env.Recorder.Exec,
 		EngineStartTimeout: 30 * time.Second,
 	}

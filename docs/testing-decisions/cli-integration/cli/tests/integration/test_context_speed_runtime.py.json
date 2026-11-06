@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_context_speed_runtime.py",
+  "decisions": [
+    {
+      "test": "test_actual_template_budget_refuses_before_formal_request",
+      "decision": "keep",
+      "reason": "模板后实际token预算超过context边界时，在formal前阻断，不能发送超预算长prompt。"
+    },
+    {
+      "test": "test_cancelled_formal_remains_readable_and_never_resumable",
+      "decision": "keep",
+      "reason": "取消formal后结果仍可离线读，保留1取消4未执行且不生成速度汇总。"
+    },
+    {
+      "test": "test_ordinary_batch_is_not_a_speed_result",
+      "decision": "keep",
+      "reason": "普通批次不能被speed-results误解释成context-speed数据，且不得补跑或改写。"
+    }
+  ]
+}

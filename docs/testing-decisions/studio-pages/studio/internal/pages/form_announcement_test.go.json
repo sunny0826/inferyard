@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/form_announcement_test.go",
+  "decisions": [
+    {
+      "test": "TestFormFailureAnnouncedOnEverySubmission",
+      "decision": "keep",
+      "reason": "设置/续测/模型与引擎下载/绑定/初始化非法提交不能到后端；每次重提交都播报错误，空闲帧不重复打断。"
+    }
+  ]
+}

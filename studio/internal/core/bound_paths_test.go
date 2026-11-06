@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync/atomic"
 	"testing"
 
 	"inferyard/studio/internal/inferyard"
@@ -75,9 +74,6 @@ func TestBoundPathsOverrideOldSettingsAndRejectChanges(t *testing.T) {
 	if !p.matches(s.userSettings()) || s.userSettings().ModelDownloadName != "kept" {
 		t.Fatal(s.userSettings())
 	}
-	if s.hostStatePath != "" {
-		t.Fatal("host state unexpectedly isolated")
-	}
 	for _, key := range []string{"inferyard_path", "workspace_root", "results_root", "models_root"} {
 		if _, e := s.UpdateSettings(map[string]json.RawMessage{key: []byte(`"/other"`)}); e == nil || e.Details["reason"] != "paths_bound" {
 			t.Fatal(key, e)
@@ -102,11 +98,7 @@ func TestBoundPathsOverrideOldSettingsAndRejectChanges(t *testing.T) {
 }
 
 func TestBoundPathsInstallNeverFallsBack(t *testing.T) {
-	var validations atomic.Int32
-	s, p := boundTestService(t, func(context.Context) error {
-		validations.Add(1)
-		return nil
-	})
+	s, p := boundTestService(t, func(context.Context) error { return nil })
 	stubInstall(t)
 	installLookPath = func(string) (string, error) { t.Error("installer searched PATH"); return "", os.ErrNotExist }
 	installCommandOutput = func(context.Context, string, ...string) ([]byte, error) {
@@ -115,14 +107,6 @@ func TestBoundPathsInstallNeverFallsBack(t *testing.T) {
 	}
 	if got, e := s.InstallCLI(context.Background(), func(string) {}); e != nil || got != p.CLI {
 		t.Fatal(got, e)
-	}
-	for range 3 {
-		s.Settings()
-		s.Status()
-		s.Readiness()
-	}
-	if validations.Load() != 1 {
-		t.Fatal("full validation repeated", validations.Load())
 	}
 	if err := os.Remove(p.CLI); err != nil {
 		t.Fatal(err)
@@ -150,10 +134,6 @@ func TestBoundPathsStartupValidationRejectsBeforeService(t *testing.T) {
 
 func TestBoundPathsAssetRoots(t *testing.T) {
 	s, p := boundTestService(t, func(context.Context) error { return nil })
-	roots := s.registryRoots(p.Workspace)
-	if len(roots) != 1 || roots[0] != p.Engines {
-		t.Fatal(roots)
-	}
 	old := installHTTPDo
 	installHTTPDo = roundTripFunc(func(*http.Request) (*http.Response, error) { return httpBody(500, "fixture"), nil })
 	t.Cleanup(func() { installHTTPDo = old })

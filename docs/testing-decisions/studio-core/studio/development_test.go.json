@@ -1,0 +1,45 @@
+{
+  "source_path": "studio/development_test.go",
+  "decisions": [
+    {
+      "test": "TestDevelopmentBuildRequiresLaunchContext",
+      "decision": "keep",
+      "reason": "开发二进制无 manifest 必须拒绝启动，防写入用户普通 Studio 设置。"
+    },
+    {
+      "test": "TestDevelopmentCanonicalPaths",
+      "decision": "keep",
+      "reason": "assets/profile 中 symlink 逃逸必须被拒绝，防开发配置写入隔离目录外。"
+    },
+    {
+      "test": "TestDevelopmentImportAndArtifactChecks",
+      "decision": "keep",
+      "reason": "隔离 Python 导入了错误包或 CLI 工件被替换时必须失败，否则运行的不是用户刚构建的配套版本。"
+    },
+    {
+      "test": "TestDevelopmentManifest",
+      "decision": "keep",
+      "reason": "开发 manifest 的根目录隔离、包路径、commit/kind 和 JSON 完整性必须校验，否则错误构建或 profile 会被接受。"
+    },
+    {
+      "test": "TestDevelopmentNativeProcessIdentity",
+      "decision": "keep",
+      "reason": "本机进程 start ticks 和可执行文件必须正确读取，否则开发停止的身份核验会误拒绝或误认目标。"
+    },
+    {
+      "test": "TestDevelopmentOptions",
+      "decision": "keep",
+      "reason": "开发模式路径不可为空且模式不可混用，防误用普通设置或同时操作多个控制目标。"
+    },
+    {
+      "test": "TestDevelopmentPackageDigest",
+      "decision": "keep",
+      "reason": "包内容改变或 symlink 必须使工件检查失败，pycache 不应误触发失败；删除固定拼接哈希算法断言。"
+    },
+    {
+      "test": "TestDevelopmentWindowStore",
+      "decision": "delete",
+      "reason": "只把空窗口状态保存成合法 JSON，未验证窗口位置恢复或隔离写入；仅证明序列化实现。"
+    }
+  ]
+}

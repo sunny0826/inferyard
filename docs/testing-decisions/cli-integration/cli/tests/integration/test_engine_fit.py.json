@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/integration/test_engine_fit.py",
+  "decisions": [
+    {
+      "test": "test_abrupt_interruption_keeps_identity_and_completed_answer",
+      "decision": "keep",
+      "reason": "第二次请求前崩溃仍保留首个回答和dirty；未封存核验退出3，伪造空manifest退出4。"
+    },
+    {
+      "test": "test_both_engines_compare_and_verify_after_sources_removed",
+      "decision": "keep",
+      "reason": "两引擎运行必须发送相同题目并能在源运行删除后核验比较，模型回答脚本不能进入HTML执行。"
+    },
+    {
+      "test": "test_cancel_keeps_partial_evidence_and_dirty",
+      "decision": "keep",
+      "reason": "用户取消退出130且保留不完整、可核验封存和dirty。"
+    },
+    {
+      "test": "test_changed_model_blocks_before_requests",
+      "decision": "keep",
+      "reason": "模型权重冻结后改变必须在请求前阻断。"
+    },
+    {
+      "test": "test_credentials_are_redacted_before_persisting",
+      "decision": "keep",
+      "reason": "服务回显凭据也必须在所有落盘产物和用户输出中脱敏。"
+    },
+    {
+      "test": "test_early_eof_stops_and_does_not_clear_dirty_on_zero_metrics",
+      "decision": "keep",
+      "reason": "提前EOF必须停止后续请求、保留失败与未执行分母和dirty，零队列不能授权再次运行。"
+    },
+    {
+      "test": "test_manual_recovery_requires_old_process_gone",
+      "decision": "keep",
+      "reason": "手动恢复不能在旧服务仍活着时继续，新start身份才可清dirty并执行。"
+    },
+    {
+      "test": "test_memory_stop_never_sends",
+      "decision": "keep",
+      "reason": "初始可用内存低于停止阈值时不得发送请求。"
+    },
+    {
+      "test": "test_runtime_memory_stop_preserves_trigger_reading",
+      "decision": "keep",
+      "reason": "运行时内存阈值触发后保留该读数和停发原因，尚未发送题仍为not_executed。"
+    },
+    {
+      "test": "test_sealing_failure_restores_dirty_for_manual_recovery",
+      "decision": "keep",
+      "reason": "封存失败必须返回4并恢复dirty，不能用未封存运行放行下一次测量。"
+    }
+  ]
+}

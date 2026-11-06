@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_workspace_candidates.py",
+  "decisions": [
+    {
+      "test": "test_latest_preflight_and_explicit_inputs_take_precedence",
+      "decision": "keep",
+      "reason": "保留最新preflight选择和显式preflight/bundle/output优先级；删除返回值必须是原request对象的身份断言。"
+    },
+    {
+      "test": "test_old_required_parameters_and_out_remain_required",
+      "decision": "delete",
+      "reason": "缺 parser 参数的重复基本检查；workspace 真输入损坏无半成品由 test_workspace_rejections_exit_two_without_outputs 覆盖。"
+    },
+    {
+      "test": "test_workspace_cli_reaches_real_candidate_generation",
+      "decision": "keep",
+      "reason": "具体场景 test_workspace_cli_reaches_real_candidate_generation。可观察预期：assert code == 0；assert result['details']['bundle'] == str(workspace / 'bundles/zh-core.json')；assert result['details']['results'] == str(workspace / 'results')；assert result['details']['device_preflight'] == str(workspace / 'preflight/device-1/device-preflight.json')。用户所选 workspace 应生成可加载候选，最新预检和显式输入优先级不得选错模型/结果目录；缺失或损坏输入退出 2 且不留半成品。"
+    },
+    {
+      "test": "test_workspace_rejections_exit_two_without_outputs",
+      "decision": "keep",
+      "reason": "具体场景 test_workspace_rejections_exit_two_without_outputs。逐项参数：pytest.mark.parametrize('damage', ['missing_preflight', 'missing_bundle', 'bad_preflight', 'missing_workspace'])。可观察预期：assert code == 2 and result['status'] == 'blocked' and (not out.exists())。用户所选 workspace 应生成可加载候选，最新预检和显式输入优先级不得选错模型/结果目录；缺失或损坏输入退出 2 且不留半成品。"
+    }
+  ]
+}

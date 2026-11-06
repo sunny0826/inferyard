@@ -1,0 +1,35 @@
+{
+  "source_path": "studio/internal/pages/report_presentation_test.go",
+  "decisions": [
+    {
+      "test": "TestCompletedTaskOpensItsReport",
+      "decision": "keep",
+      "reason": "新完成与重启恢复任务的查看报告须直接打开自己的离线报告、可返回列表，不经 CLI；删按钮宽度约束。"
+    },
+    {
+      "test": "TestReportAbsolutePathCannotOpenAnotherReport",
+      "decision": "keep",
+      "reason": "绝对路径同名碰撞和逃逸符号链接不能打开另一报告，避免展示错误/越界报告。"
+    },
+    {
+      "test": "TestReportMissingMeasurementsAndEmptyIndex",
+      "decision": "keep",
+      "reason": "缺资源样本和多来源未合并要显示原因及 —，不能显示 0；空报告明确无数据。"
+    },
+    {
+      "test": "TestReportPrototypeSectionsAndValues",
+      "decision": "keep",
+      "reason": "离线 index 的通过数/完成率、耗时秒、内存 GiB、逐题成败必须原样投影，路径不外露；删除区块坐标顺序。"
+    },
+    {
+      "test": "TestReportRunSelectionKeepsMetricsSeparate",
+      "decision": "keep",
+      "reason": "切到另一 run 后只显示它的模型/通过数/诊断和题目，不能混入前一 run 分数答案。"
+    },
+    {
+      "test": "TestReportTablesFillCardsAndScroll",
+      "decision": "delete",
+      "reason": "只规定表格填满卡片及滚动坐标变化，是通用表格布局实现。"
+    }
+  ]
+}

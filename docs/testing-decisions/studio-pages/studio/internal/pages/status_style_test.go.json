@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/pages/status_style_test.go",
+  "decisions": [
+    {
+      "test": "TestDashboardStepStyles",
+      "decision": "delete",
+      "reason": "固定步骤颜色、勾号与形状；阶段实际操作由 TestPreviewBenchmarkParity 覆盖。"
+    },
+    {
+      "test": "TestResourceLegendThemeColors",
+      "decision": "delete",
+      "reason": "固定每条图例的 theme 颜色与颜色唯一性；真实来源/数值由 chart 测试覆盖。assertTextColor/absDiff helper 暂保留供集成统一检查。"
+    },
+    {
+      "test": "TestTaskTableChineseBadgeText",
+      "decision": "keep",
+      "reason": "exit 3 必须显示运行不完整而非成功，2/4/130 分别显示阻断/证据错误/取消；排队与启动区分避免误读任务结局。"
+    }
+  ]
+}

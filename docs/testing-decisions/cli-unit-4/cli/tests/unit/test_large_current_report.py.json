@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_large_current_report.py",
+  "decisions": [
+    {
+      "test": "test_generic_readers_retain_strict_json_validation",
+      "decision": "keep",
+      "reason": "通用 JSON 与 TrialReads 都拒绝坏 UTF8、重复键和非有限值并不改字节，避免大文件支持放松证据读取。"
+    },
+    {
+      "test": "test_large_current_report_verifies_and_explicitly_rerenders",
+      "decision": "keep",
+      "reason": "M15：超过16 MiB 报告正常读回、verify/rerender 成功，原证据和报告文件摘要不变；删除 TrialReads 内部观测账本表示及重复 errors 检查。"
+    }
+  ]
+}

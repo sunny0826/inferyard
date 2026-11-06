@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_public_metrics.py",
+  "decisions": [
+    {
+      "test": "test_redaction_preserves_distinct_missing_reasons_sources_zero_and_counts",
+      "decision": "keep",
+      "reason": "公开脱敏保留来源/原因的区分 hash、null/零、分母/排除数与相对跨度；泄漏、篡改数量/值/资格拒绝，避免公开包改变结论。"
+    }
+  ]
+}

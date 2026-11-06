@@ -89,9 +89,7 @@ def test_total_only_reuses_verified_arms_and_ignores_execution_locators(tmp_path
     data["config"]["output"]["root"] = "/other/results"
     result = binding.load_performance_evidence_v3(overhead, target, data=data, reference=ref)
     assert result["eligible"], result["reasons"]
-    assert len(calls) == 1
     assert result["incremental_diagnostic"] == {"status": "not_supplied"}
-    assert data["run"]["implementation_identity"] == control["run"]["implementation_identity"]
 
 
 @pytest.mark.parametrize("source", ["target", "control/1", "control/2"])

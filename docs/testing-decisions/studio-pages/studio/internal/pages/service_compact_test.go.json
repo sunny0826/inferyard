@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/pages/service_compact_test.go",
+  "decisions": [
+    {
+      "test": "TestActiveEngineStatusSurvivesBackgroundRefresh",
+      "decision": "delete",
+      "reason": "仅复查状态控件与固定文本在刷新时存在；用户可控制与禁停由 header_status 行为覆盖。"
+    },
+    {
+      "test": "TestRunningServiceStaysInCorner",
+      "decision": "delete",
+      "reason": "交叉多阶段/忙碌标志固定工具栏坐标和服务卡片缺席；运行禁停由 TestStatusRefreshAndQueueControls，进度/取消由 parity 覆盖。compactRunFixture 保留。"
+    },
+    {
+      "test": "TestServiceCardStaysCollapsedBetweenTaskRuns",
+      "decision": "delete",
+      "reason": "固定卡片折叠方式；失败恢复由 TestRecoveryCardSurvivesRunPhase、TestBindingRecoveryInBindStage 覆盖。"
+    }
+  ]
+}

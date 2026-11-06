@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_overhead_binding.py",
+  "decisions": [
+    {
+      "test": "test_exact_binding_and_workload_changes",
+      "decision": "keep",
+      "reason": "工具、输出、题序、workload、执行完整性或config改变都不适用原开销证据，精确绑定也不自动授性能资格。"
+    },
+    {
+      "test": "test_shared_safety_policy_changes_reject_target_binding",
+      "decision": "keep",
+      "reason": "安全检查间隔从1改5改变实际观测成本，必须拒绝旧开销绑定，避免低估开销。"
+    }
+  ]
+}

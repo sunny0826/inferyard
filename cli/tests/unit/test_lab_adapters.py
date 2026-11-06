@@ -7,13 +7,11 @@ from copy import deepcopy
 import httpx
 import pytest
 
-from inferyard.adapters.kvmem import KVMemAdapter
-from inferyard.adapters.ninfer import NInferAdapter
 from inferyard.adapters.requests import request_body
 from inferyard.config.loader import load_config
 from inferyard.contracts.validation import ContractError, Document
 from inferyard.platforms.identity import PreflightError
-from inferyard.registry import adapter_collector_id, adapter_factory
+from inferyard.registry import adapter_factory
 from tests.lab_service import LabService, lab_config
 
 
@@ -21,16 +19,6 @@ from tests.lab_service import LabService, lab_config
 def lab_case(request, config_path):
     config = lab_config(load_config(config_path).config.to_dict(), request.param)
     return config, LabService(config)
-
-
-def test_registry_keeps_distinct_engine_ids(lab_case):
-    config, _ = lab_case
-    engine = config["engine"]["adapter"]
-    assert adapter_factory(engine) is {"kvmem": KVMemAdapter, "ninfer": NInferAdapter}[engine]
-    assert adapter_collector_id(engine, batch=True) == "windows-memory.v1"
-    body = request_body(config, "hello")
-    assert "chat_template_kwargs" not in body and "cache_prompt" not in body
-    assert Document.parse("config", config).to_dict()["schema_version"] == 3
 
 
 @pytest.mark.parametrize("stream", [False, True])
@@ -303,20 +291,3 @@ def test_lab_wire_and_terminal_redact_echoed_credentials_across_chunks(lab_case)
             await adapter.close()
 
     asyncio.run(run())
-
-
-def test_committed_legal_and_illegal_samples(config_path):
-    from pathlib import Path
-
-    from inferyard.contracts.validation import strict_json_loads
-
-    root = Path(__file__).parents[1] / "fixtures/contracts"
-    for engine in ("kvmem", "ninfer"):
-        valid = strict_json_loads((root / f"config.{engine}.valid.json").read_text())
-        assert Document.parse("config", valid).to_dict() == valid
-        bad = strict_json_loads((root / f"config.{engine}.wrong-asset.json").read_text())
-        with pytest.raises(ContractError, match="kind"):
-            Document.parse("config", bad)
-        bad = strict_json_loads((root / f"config.{engine}.wrong-observation.json").read_text())
-        with pytest.raises(ContractError, match="observation_mode"):
-            Document.parse("config", bad)

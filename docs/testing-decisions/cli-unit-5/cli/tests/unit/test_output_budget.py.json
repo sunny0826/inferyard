@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_output_budget.py",
+  "decisions": [
+    {
+      "test": "test_incomplete_repeated_probes_are_explicitly_limited",
+      "decision": "keep",
+      "reason": "持续重复探针及不完整结果明确subset限制，避免当独立完整题库。"
+    },
+    {
+      "test": "test_missing_tokens_never_become_zero_or_target_failure",
+      "decision": "keep",
+      "reason": "缺输出token时不报零或target失败，避免缺测被当短输出。"
+    },
+    {
+      "test": "test_natural_stop_is_not_failure_or_fixed_length_claim",
+      "decision": "keep",
+      "reason": "自然stop与严格定长目标区分，实际8/目标16并保留失败分母，不把提前自然结束当固定长度成功。"
+    },
+    {
+      "test": "test_not_executed_and_unknown_terminal_state_remain_valid_missing_observations",
+      "decision": "keep",
+      "reason": "未执行或终态未知时预算耗尽率null，避免默认为未耗尽并提高完成质量。"
+    }
+  ]
+}

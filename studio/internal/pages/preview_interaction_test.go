@@ -4,26 +4,11 @@ package pages
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 )
-
-func TestPreviewBenchmarkButtonsStartWork(t *testing.T) {
-	p := newPreviewSession(context.Background())
-	p.loadScene(previewSceneIndex(t, "模型 · 可用组合"))
-	tt := previewTester(p, 1120, 2000)
-	click(t, tt, "新任务")
-	click(t, tt, "运行 benchmark")
-	if !p.state.busy || p.state.task.stage != "prepare_candidate" {
-		t.Fatal("benchmark button did not begin simulated work", tt.Texts())
-	}
-	if p.state.service != nil {
-		t.Fatal("preview created a real service")
-	}
-}
 
 func preparePreview(t *testing.T) (*previewSession, *ui.Tester) {
 	t.Helper()
@@ -77,6 +62,12 @@ func TestPreviewCompleteWorkflowWithoutSceneSelector(t *testing.T) {
 	if len(p.state.historyRuns()) != 2 || len(p.state.reports) != 1 || p.state.busy {
 		t.Fatal("background workflow did not finish both bundles")
 	}
+	p.state.selected = "dashboard"
+	tt.Frame()
+	click(t, tt, "查看报告")
+	if p.state.openedReport.reference != p.state.task.report || !tt.HasText("Preview-Small.gguf") {
+		t.Fatal("task did not open its own generated report", tt.Texts())
+	}
 	click(t, tt, "新任务")
 	if len(p.state.reports) != 1 || len(p.state.historyRuns()) != 2 {
 		t.Fatal("new task erased previous results")
@@ -89,43 +80,9 @@ func TestPreviewCompleteWorkflowWithoutSceneSelector(t *testing.T) {
 		if run.Model != "Preview-Small.gguf" || len(run.Requests) != 120 || run.Source.RunID == "preview-run" {
 			t.Fatal("generated report did not use the actual simulated run", run.Model, run.Source.RunID)
 		}
-		if *run.Dashboard.Latency.SampleCount != 120 || *run.Dashboard.Latency.Excluded != 0 || *run.Dashboard.SampledPeakRSSBytes != float64((2<<30)+120*(1<<20)) {
-			t.Fatal("report metrics do not describe the simulated run")
-		}
 	}
-	before, _ := json.Marshal(index)
-	p.state.model = "different-model"
-	after, _ := json.Marshal(index)
-	if string(before) != string(after) || p.state.service != nil || p.state.taskCancel != nil {
-		t.Fatal("report changed with later selection or simulation reached real runtime")
-	}
-}
-
-func TestPreviewCompletedTaskOpensItsGeneratedReport(t *testing.T) {
-	p, tt := preparePreview(t)
-	click(t, tt, "运行 benchmark")
-	p.advance(20 * time.Second)
-	tt.Frame()
-	click(t, tt, "查看报告")
-	if p.state.openedReport.reference != p.state.task.report || !tt.HasText("Preview-Model-Q4.gguf") || !tt.HasText("preview-case-120") {
-		t.Fatal("task did not open its own generated report", tt.Texts())
-	}
-}
-
-func TestPreviewFailureRetriesThroughNormalButton(t *testing.T) {
-	p, tt := preparePreview(t)
-	click(t, tt, "下次操作模拟失败")
-	click(t, tt, "运行 benchmark")
-	p.advance(2 * time.Second)
-	tt.Frame()
-	if p.state.engineState.State != "failed" || p.state.task.failure == nil || p.failNext {
-		t.Fatal("one-shot failure was not attached to the accepted operation")
-	}
-	click(t, tt, "启动服务")
-	p.advance(20 * time.Second)
-	tt.Frame()
-	if p.state.task.stage != "done" || p.state.task.failure != nil || !tt.HasText("查看报告") {
-		t.Fatal("retry did not recover through the normal workflow", tt.Texts())
+	if p.state.service != nil || p.state.taskCancel != nil {
+		t.Fatal("simulation reached real runtime")
 	}
 }
 

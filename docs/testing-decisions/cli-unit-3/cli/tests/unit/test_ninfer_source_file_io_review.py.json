@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_file_io_review.py",
+  "decisions": [
+    {
+      "test": "test_base64_preparation_past_deadline_is_not_success",
+      "decision": "keep",
+      "reason": "具体场景 test_base64_preparation_past_deadline_is_not_success。可观察预期：。验收基建防假阳性：保留设备名/ADS/路径别名拒绝，无效请求不能发生 IO；额外字节或编码阶段超时不能返回成功内容或伪造已读计数。"
+    },
+    {
+      "test": "test_extra_received_byte_is_counted_without_success_body",
+      "decision": "keep",
+      "reason": "保留额外字节计入3、sha256和成功body为null、io_failure；删除私有handles偏移和对None重复hash不等比较。"
+    },
+    {
+      "test": "test_json_preparation_past_deadline_is_not_success",
+      "decision": "keep",
+      "reason": "具体场景 test_json_preparation_past_deadline_is_not_success。可观察预期：。验收基建防假阳性：保留设备名/ADS/路径别名拒绝，无效请求不能发生 IO；额外字节或编码阶段超时不能返回成功内容或伪造已读计数。"
+    },
+    {
+      "test": "test_non_string_operation_is_rejected_without_io",
+      "decision": "keep",
+      "reason": "具体场景 test_non_string_operation_is_rejected_without_io。逐项参数：pytest.mark.parametrize('operation', [[], {}])。可观察预期：assert caught.value.code == 'io_request'；assert result['primary_error'] == 'io_request'；assert result['bytes'] is None；assert result['data_b64'] is None。验收基建防假阳性：保留设备名/ADS/路径别名拒绝，无效请求不能发生 IO；额外字节或编码阶段超时不能返回成功内容或伪造已读计数。"
+    },
+    {
+      "test": "test_ordinary_names_remain_lexical_paths",
+      "decision": "keep",
+      "reason": "具体场景 test_ordinary_names_remain_lexical_paths。逐项参数：pytest.mark.parametrize('path', _ACCEPTED)。可观察预期：assert copied['path'] == path。验收基建防假阳性：保留设备名/ADS/路径别名拒绝，无效请求不能发生 IO；额外字节或编码阶段超时不能返回成功内容或伪造已读计数。"
+    },
+    {
+      "test": "test_reserved_ads_and_alias_paths_are_io_path_without_io",
+      "decision": "keep",
+      "reason": "具体场景 test_reserved_ads_and_alias_paths_are_io_path_without_io。逐项参数：pytest.mark.parametrize('path', _REJECTED)。可观察预期：assert caught.value.code == 'io_path'；assert result['primary_error'] == 'io_path'；assert result['bytes'] is None；assert result['data_b64'] is None。验收基建防假阳性：保留设备名/ADS/路径别名拒绝，无效请求不能发生 IO；额外字节或编码阶段超时不能返回成功内容或伪造已读计数。"
+    },
+    {
+      "test": "test_unknown_extra_does_not_invent_a_count",
+      "decision": "keep",
+      "reason": "保留明确计数2、sha256/body缺失、io_failure与恰好一次关闭避免重复释放；删除由bytes==2直接蕴含的bytes!=0。"
+    }
+  ]
+}

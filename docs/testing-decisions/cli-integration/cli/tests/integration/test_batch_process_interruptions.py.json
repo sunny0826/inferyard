@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/integration/test_batch_process_interruptions.py",
+  "decisions": [
+    {
+      "test": "test_killed_controller_rebuilds_and_resumes_without_overwriting",
+      "decision": "keep",
+      "reason": "控制器在冻结、开始、终态或评分耐久点被杀后，只续测未执行题并保持父运行原字节，避免重发和覆盖历史。"
+    },
+    {
+      "test": "test_real_signal_stops_controller_and_all_later_trials",
+      "decision": "keep",
+      "reason": "SIGINT/SIGTERM 必须退出130并停止后续trial，保留取消与未执行计数。"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_engine_acquire_cli.py",
+  "decisions": [
+    {
+      "test": "test_acquire_success_publishes_files_and_status",
+      "decision": "keep",
+      "reason": "本地模拟 HTTP 重定向下载必须发布正确字节、摘要与来源记录且不启动模型，保障 engine acquire 可用。"
+    },
+    {
+      "test": "test_help_keeps_engine_backend_lazy_and_run_local",
+      "decision": "keep",
+      "reason": "help 不载 engine_source/httpx，run 帮助无远程 source，避免查询能力依赖 live 后端。"
+    },
+    {
+      "test": "test_invalid_source_uses_fixed_reason_without_echo",
+      "decision": "keep",
+      "reason": "非法协议、含 token/fragment、越界/编码路径或异常主机以固定理由拒绝且不回显，避免下载到错误源或泄露。"
+    },
+    {
+      "test": "test_run_rejects_engine_url_option",
+      "decision": "keep",
+      "reason": "run 拒绝 --source，避免正式执行隐式网络获取引擎。"
+    },
+    {
+      "test": "test_timeout_must_be_a_positive_finite_number",
+      "decision": "keep",
+      "reason": "非正/非有限总超时拒绝，避免无界下载。"
+    }
+  ]
+}

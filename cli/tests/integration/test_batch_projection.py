@@ -11,17 +11,14 @@ from inferyard.application.verification import execute as verify
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.reporting.repetition_report import (
-    verify_repetition_summary,
-    write_repetition_summary,
-)
+from inferyard.reporting.repetition_report import write_repetition_summary
 from inferyard.reporting.report import write_report
 from inferyard.runtime import batch_state
-from inferyard.runtime.batch_runner import _next, _result, execute_async
+from inferyard.runtime.batch_runner import execute_async
 from tests.integration.test_batch_runner import batch
 from tests.integration.test_batch_runner import scenario as batch_scenario
 from tests.layout_mutations import change_input, change_observation, digest, reseal
-from tests.unit.test_run_projection import assert_projection, reseal_file
+from tests.unit.test_run_projection import reseal_file
 
 scenario = batch_scenario
 
@@ -32,75 +29,6 @@ async def cancel_batch(request, deps, calls):
         await asyncio.sleep(0.001)
     task.cancel()
     return await task
-
-
-@pytest.mark.parametrize(
-    "mode,stream_delay",
-    [(mode, 0.03) for mode in ("repeats", "resume", "capacity", "duration", "duration_limit")]
-    + [("duration_limit", 0.6)],
-)
-def test_history_all_consumers_match_full_reduction(tmp_path, scenario, mode, stream_delay):
-    scenario[3]["stream_delay"] = stream_delay
-    request, deps = batch(
-        tmp_path,
-        scenario,
-        capacity=mode == "capacity",
-        duration_limit=20 if mode == "duration" else 1 if mode == "duration_limit" else None,
-    )
-    if mode == "resume":
-        code, result = asyncio.run(cancel_batch(request, deps, scenario[2]))
-        assert code == 130
-        code, result = asyncio.run(
-            execute_async(CommandRequest("resume", from_run=Path(result.details["runs"][0])), deps)
-        )
-        assert code == 0
-        code, result = asyncio.run(execute_async(request, deps))
-        assert code == 0 and len(result.details["runs"]) == 4
-    else:
-        if mode == "capacity":
-            scenario[3]["fail_index"] = 6
-        code, result = asyncio.run(execute_async(request, deps))
-        assert code == (3 if mode in ("capacity", "duration_limit") else 0)
-    root = request.output_root
-    plan, loaded = read_frozen_plan(root / "frozen-plan/plan.json")
-    full = batch_state.history(root, plan, loaded, allow_tool_change=True, full_verification=True)
-    projected = batch_state.history(root, plan, loaded, allow_tool_change=True)
-    for actual, expected in zip(projected, full, strict=True):
-        assert actual["path"] == expected["path"]
-        assert_projection(actual["path"])
-    assert batch_state.remaining_budget(plan, full) == batch_state.remaining_budget(plan, projected)
-    full_next, full_parent = _next(plan, full)
-    light_next, light_parent = _next(plan, projected)
-    assert full_next == light_next
-    assert (full_parent or {}).get("run") == (light_parent or {}).get("run")
-    assert _result(request, root, plan, full, "fixture") == _result(
-        request, root, plan, projected, "fixture"
-    )
-    if mode == "capacity":
-        assert asyncio.run(execute_async(request, deps))[1].status == "capacity_scan_stopped"
-    if mode == "duration_limit":
-        assert asyncio.run(execute_async(request, deps))[1].status == "duration_requires_new_window"
-
-
-def test_runtime_projects_but_offline_batch_and_reports_use_full_reader(
-    tmp_path, scenario, monkeypatch
-):
-    request, deps = batch(tmp_path, scenario)
-    _, result = asyncio.run(execute_async(request, deps))
-    calls = len(scenario[2])
-    with monkeypatch.context() as patch:
-        patch.setattr(batch_state, "read_trial", lambda *a, **k: pytest.fail("full runtime replay"))
-        assert asyncio.run(execute_async(request, deps))[0] == 0
-    with monkeypatch.context() as patch:
-        patch.setattr(
-            batch_state, "read_run_projection", lambda *a: pytest.fail("projection in verifier")
-        )
-        assert verify(CommandRequest("verify", run=request.output_root))[0] == 0
-        out = tmp_path / "repeat-report"
-        write_repetition_summary(request.output_root, out)
-        assert verify_repetition_summary(out)["verified"]
-        write_report([Path(p) for p in result.details["runs"]], tmp_path / "report")
-    assert len(scenario[2]) == calls
 
 
 @pytest.mark.parametrize("name", ["memory.jsonl", "environment.jsonl", "schedule.jsonl"])
@@ -238,18 +166,3 @@ def test_resume_graph_rejections_match_full_history(tmp_path, scenario, change, 
             batch_state.history(
                 request.output_root, plan, loaded, allow_tool_change=True, full_verification=full
             )
-
-
-def test_unscorable_scores_preserve_result_exit_code(tmp_path, scenario):
-    from inferyard.analysis.scoring import unscorable
-
-    request, deps = batch(tmp_path, scenario)
-    deps.scorer = lambda case, *_: unscorable(case["category"], "fixture_scoring_failure")
-    code, result = asyncio.run(execute_async(request, deps))
-    assert code == 3 and len(result.details["runs"]) == 3
-    for path in result.details["runs"]:
-        data = assert_projection(Path(path))
-        assert all(r["score"]["quality_state"] == "unscorable" for r in data["requests"])
-    code, again = asyncio.run(execute_async(request, deps))
-    assert code == 3
-    assert again.details == result.details

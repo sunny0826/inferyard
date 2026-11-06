@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_epp_requirement.py",
+  "decisions": [
+    {
+      "test": "test_cpu_policy_opt_out_retains_unknown_and_other_mismatches",
+      "decision": "keep",
+      "reason": "EPP opt-out 只忽略该字段冻结差异，未知值与 governor 不符仍不合格，避免放宽所有 CPU 策略。"
+    },
+    {
+      "test": "test_diagnostic_preflight_does_not_override_explicit_runtime_safety",
+      "decision": "delete",
+      "reason": "写入生产未读取的假属性后重复 safety 路径；温度/AC 与 EPP 关闭后的 AC 监控已有独立回归。"
+    },
+    {
+      "test": "test_epp_switch_must_be_boolean",
+      "decision": "keep",
+      "reason": "字符串false、整数0、null 不得被当显式 opt-out，防止无意关闭匹配要求。"
+    },
+    {
+      "test": "test_preflight_epp_opt_out_is_explicit_and_keeps_observation",
+      "decision": "keep",
+      "reason": "只有显式 require_epp_match=false 才放宽启动 EPP 匹配，原观测仍保留；诊断与显式策略区别防止扩大放宽范围。"
+    },
+    {
+      "test": "test_reporting_ignores_only_frozen_epp_match_and_keeps_changes_ineligible",
+      "decision": "keep",
+      "reason": "EPP opt-out 不授运行中环境变化可比性，变化仍给环境与 CPU policy 不合格原因。"
+    },
+    {
+      "test": "test_runtime_epp_change_does_not_stop_but_ac_condition_still_does",
+      "decision": "keep",
+      "reason": "关闭 EPP 启动匹配不应关闭交流电运行安全条件，AC 改变仍须停。"
+    }
+  ]
+}

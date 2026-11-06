@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/tests/e2e/blame_test.go",
+  "decisions": [
+    {
+      "test": "TestBlameAttribution",
+      "decision": "delete",
+      "reason": "仅验证测试框架自己的判责分类与文案，不影响 Studio 产品行为，也不阻止发布假阳性。"
+    }
+  ]
+}

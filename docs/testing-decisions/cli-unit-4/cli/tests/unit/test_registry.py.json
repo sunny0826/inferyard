@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/unit/test_registry.py",
+  "decisions": [
+    {
+      "test": "test_all_199_methods_have_distinct_stable_identity_and_source",
+      "decision": "delete",
+      "reason": "固定 199 条/20 类/首条标题等资源快照约束无独立产品逻辑，发行资源有效性由 catalogue CLI 与打包检查覆盖。"
+    },
+    {
+      "test": "test_catalogue_cli_is_structured_and_detached",
+      "decision": "delete",
+      "reason": "仅将 catalogue 返回字典改名后检查深拷贝，非实际 CLI 用户行为。"
+    },
+    {
+      "test": "test_catalogue_cli_preserves_unicode_with_cp1252_default",
+      "decision": "keep",
+      "reason": "默认 cp1252 环境下 catalogue 仍可读中文 JSON，避免 Windows 安装后乱码或无法启动命令。"
+    },
+    {
+      "test": "test_component_registry_routes_only_implemented_components",
+      "decision": "keep",
+      "reason": "未知 adapter/collector 必须报未实现，避免静默回退；删除已实现组件精确类、数量和 SVG ID 形状断言。"
+    },
+    {
+      "test": "test_metric_inventory_is_complete_but_does_not_claim_planned_algorithms_exist",
+      "decision": "keep",
+      "reason": "公开指标不能宣称已 verified，L06 来源与 C04 秒单位需正确；删除固定总数与全量枚举实现状态快照。"
+    },
+    {
+      "test": "test_packaged_metric_changes_are_part_of_tool_identity",
+      "decision": "keep",
+      "reason": "包内指标定义改变须改变工具身份，pyc 缓存不影响，避免新计量定义继承旧资格。"
+    },
+    {
+      "test": "test_single_runs_select_native_cpu_and_temperature_collection",
+      "decision": "delete",
+      "reason": "仅比较工厂路由返回 ID，真实 macOS/Windows 采样单位与缺测行为由 test_macos_resources.py 和 test_windows_resources.py 覆盖。"
+    }
+  ]
+}

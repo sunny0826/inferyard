@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_identity.py",
+  "decisions": [
+    {
+      "test": "test_adapter_rechecks_dns_after_listener_resolution",
+      "decision": "keep",
+      "reason": "localhost 首次绑定后 DNS 变远程必须拒绝，避免本地服务请求被重定向外网。"
+    },
+    {
+      "test": "test_declared_debug_flag_must_match_actual_service_environment",
+      "decision": "keep",
+      "reason": "声明 slots_debug 必须匹配真实环境且非相关环境不泄露，避免把未开启调试的服务当作可验证队列。"
+    },
+    {
+      "test": "test_endpoint_pid_binary_and_model_are_jointly_checked",
+      "decision": "keep",
+      "reason": "PID、启动时间、二进制、模型和监听共同核验，端口错配/进程复用必须阻断。"
+    },
+    {
+      "test": "test_hash_change_and_replacement_are_detected",
+      "decision": "keep",
+      "reason": "同路径模型内容改变必须识别 hash_mismatch，避免替换权重沿用身份。"
+    },
+    {
+      "test": "test_model_argument_forms_keep_mapping_and_inode_checks",
+      "decision": "keep",
+      "reason": "短/长和 inline 模型参数均核验 inode，同字节替换文件不能继承绑定。"
+    },
+    {
+      "test": "test_real_proc_start_ticks_can_be_read",
+      "decision": "keep",
+      "reason": "真实 Linux /proc 能读取当前进程启动 ticks，防止唯一原生解析入口完全不可用；此平台本轮未验证。"
+    },
+    {
+      "test": "test_resource_limits_and_memavailable_source",
+      "decision": "keep",
+      "reason": "MemAvailable 而非 MemTotal 控制内存门，磁盘与内存恰好阈值通过、低于拒绝。"
+    },
+    {
+      "test": "test_unmapped_model_rejects_missing_or_ambiguous_argument",
+      "decision": "keep",
+      "reason": "模型参数缺值、空值或重复/含混拒绝，避免错误文件归属。"
+    },
+    {
+      "test": "test_unmapped_model_requires_matching_startup_inode",
+      "decision": "keep",
+      "reason": "没有 maps 时仍须匹配启动模型 inode，缺模型参数拒绝，避免以无法观测为理由跳过身份。"
+    },
+    {
+      "test": "test_wrong_identity_components_block",
+      "decision": "keep",
+      "reason": "错误二进制、模型路径、启动参数或监听任一不符阻断，避免向未绑定服务测评。"
+    }
+  ]
+}

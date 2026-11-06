@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/local_engine_runtime/test_host_scope.py",
+  "decisions": [
+    {
+      "test": "test_dirty_recovery_rejects_surviving_worker",
+      "decision": "keep",
+      "reason": "dirty恢复时旧worker存活即使主进程已没也必须拒绝，不能仅以新listener解除隔离。"
+    },
+    {
+      "test": "test_independent_run_cannot_reuse_process_for_second_bundle",
+      "decision": "keep",
+      "reason": "独立命令不能复用同一进程跑第二题包scope，避免缓存条件混淆且零额外请求。"
+    }
+  ]
+}

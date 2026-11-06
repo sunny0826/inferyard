@@ -1,0 +1,70 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_fixture_round3.py",
+  "decisions": [
+    {
+      "test": "test_create_pipe_is_sampled_before_ready",
+      "decision": "delete",
+      "reason": "重复 create_pipe 后跨期的句柄集合断言；test_ready_write_past_total_does_not_flush_or_publish 已覆盖期限后的资源接手。"
+    },
+    {
+      "test": "test_default_factory_hold_survives_collection",
+      "decision": "delete",
+      "reason": "局部强引用仍存在时调用 gc.collect 并比对象恒等，不能证明额外用户行为。"
+    },
+    {
+      "test": "test_default_factory_pipe_hold_survives_collection",
+      "decision": "delete",
+      "reason": "局部 PipeHold 强引用仍存时做 GC 恒等自测；test_ready_write_past_total_does_not_flush_or_publish 已覆盖实际资源接手。"
+    },
+    {
+      "test": "test_default_factory_unknown_close_is_not_retried",
+      "decision": "delete",
+      "reason": "重复 close_once 私有对象次数与 GC 恒等；test_close_failure_does_not_drop_or_retry_the_ref 覆盖未知关闭不重试。"
+    },
+    {
+      "test": "test_default_factory_wait_error_keeps_the_same_oserror",
+      "decision": "delete",
+      "reason": "局部异常强引用与 weakref 恒等自测；test_wait_past_total_does_not_read_exit_code 已覆盖未知退出时原进程保管。"
+    },
+    {
+      "test": "test_entry_parse_past_total_is_not_success",
+      "decision": "delete",
+      "reason": "重复 parse 后时钟跨期的私有调用顺序；test_ready_write_past_total_does_not_flush_or_publish 覆盖期限后不得继续执行。"
+    },
+    {
+      "test": "test_first_pipe_close_past_total_does_not_close_the_other_end",
+      "decision": "delete",
+      "reason": "重复 close 后跨期的 tried dict 结构；test_ready_write_past_total_does_not_flush_or_publish 覆盖期限后的保管。"
+    },
+    {
+      "test": "test_public_write_only_file_io_succeeds_from_write_count",
+      "decision": "delete",
+      "reason": "只计 write/flush 次数与 JSON 首字节，属于注入 sink 自测；真实输出分类由 test_file_io_error_result_returns_nonzero_and_keeps_reason 覆盖。"
+    },
+    {
+      "test": "test_public_write_only_output_succeeds_from_write_count",
+      "decision": "delete",
+      "reason": "重复 output fixture 正向输出；test_output_stdout_is_raw_prefix_not_json 已覆盖原始大输出。"
+    },
+    {
+      "test": "test_ready_write_past_total_does_not_flush_or_publish",
+      "decision": "delete",
+      "reason": "私有 ready 写回与 PipeHold 引用自测；宿主总期限阻断由 custody_round2 覆盖。"
+    },
+    {
+      "test": "test_result_write_past_total_does_not_flush",
+      "decision": "delete",
+      "reason": "重复 write 后跨期的逐调用形状；test_ready_write_past_total_does_not_flush_or_publish 覆盖无 flush 且保留 custody。"
+    },
+    {
+      "test": "test_thread_close_past_total_does_not_close_process",
+      "decision": "delete",
+      "reason": "重复 thread close 后跨期逐句断言；test_wait_past_total_does_not_read_exit_code 覆盖保留原进程、不继续操作。"
+    },
+    {
+      "test": "test_wait_past_total_does_not_read_exit_code",
+      "decision": "delete",
+      "reason": "私有 descendant wait 路由和布局自测；宿主调用返回后的总期限由 custody_round2 覆盖。"
+    }
+  ]
+}

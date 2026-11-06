@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_package_architecture.py",
+  "decisions": [
+    {
+      "test": "test_business_modules_do_not_import_cli_presentation",
+      "decision": "delete",
+      "reason": "全源AST禁止business import CLI的结构约束，不证明具体用户行为。"
+    },
+    {
+      "test": "test_public_package_apis_preserve_one_type_identity",
+      "decision": "delete",
+      "reason": "仅检查__init__重导出class对象恒等，没有安装/执行或发布失效后果。"
+    },
+    {
+      "test": "test_schema_registry_does_not_import_business_packages",
+      "decision": "delete",
+      "reason": "只限定schema registry导入包集合及固定ID形状；可用help/schema入口由CLI冷启动测试覆盖。"
+    }
+  ]
+}

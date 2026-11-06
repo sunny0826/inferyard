@@ -1,0 +1,105 @@
+{
+  "source_path": "cli/tests/unit/test_macos_identity.py",
+  "decisions": [
+    {
+      "test": "test_default_darwin_dispatch_and_custom_proc_root",
+      "decision": "delete",
+      "reason": "仅重复平台工厂/显式 proc_root 的成功转发；原生身份由 test_native_start_microseconds_and_joint_identity、复用拒绝由 test_pid_reuse_rejected_after_observation 覆盖。"
+    },
+    {
+      "test": "test_environment_is_lightweight_and_keeps_linux_fields_unknown",
+      "decision": "keep",
+      "reason": "具体场景 test_environment_is_lightweight_and_keeps_linux_fields_unknown。可观察预期：assert snapshot['platform'] == 'Darwin' and snapshot['ac_online'] is True；assert snapshot['swap_pages'] == {'pswpin': 2, 'pswpout': 3}；assert snapshot['profile'] == 'macos-low-power:0'；assert snapshot['governor'] is snapshot['epp'] is None。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。已删 query 调用次数约束，保留实际来源和缺测事实。"
+    },
+    {
+      "test": "test_invalid_native_creation_time_cannot_become_an_identity",
+      "decision": "keep",
+      "reason": "具体场景 test_invalid_native_creation_time_cannot_become_an_identity。逐项参数：pytest.mark.parametrize('value', [True, -1, float('nan'), float('inf')])。可观察预期：pytest.raises(PreflightError, match='identity_unreadable')。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_joint_identity_rejects_wrong_components",
+      "decision": "keep",
+      "reason": "具体场景 test_joint_identity_rejects_wrong_components。逐项参数：pytest.mark.parametrize('change,reason', [('start', 'identity_changed'), ('exe', 'binary_mismatch'), ('mapping', 'binary_mapping_unverified'), ('args', 'arguments_mismatch'), ('model', 'model_argument_mismatch'), ('listener', 'endpoint_pid_mismatch')])。可观察预期：pytest.raises(PreflightError, match=reason)。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_listener_requires_protocol_family_address_port_and_state",
+      "decision": "keep",
+      "reason": "具体场景 test_listener_requires_protocol_family_address_port_and_state。逐项参数：pytest.mark.parametrize('row,address,accepted', [(listener(), '127.0.0.1', True), (listener(n='*:8080'), '127.0.0.1', True), (listener(n='127.0.0.1:8081'), '127.0.0.1', False), (listener(n='127.0.0.2:8080'), '127.0.0.1', False), (listener(t='IPv6', n='[::1]:8080'), '::1', True), (listener(t='IPv6', n='[::1]:8080'), '127.0.0.1', False), (listener(T='ST=ESTABLISHED'), '127.0.0.1', False), (listener(P='UDP'), '127.0.0.1', False)])。可观察预期：assert macos_process.matching_listener(row, address, 8080) is accepted。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_lsof_failures_do_not_become_absence",
+      "decision": "keep",
+      "reason": "具体场景 test_lsof_failures_do_not_become_absence。逐项参数：pytest.mark.parametrize('failure', ['timeout', 'permission', 'stderr', 'malformed'])。可观察预期：pytest.raises(PreflightError, match='listener_identity_unavailable')。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_lsof_uses_bounded_machine_output_and_preserves_owner",
+      "decision": "delete",
+      "reason": "只复述 lsof 命令数组/timeout 和 mock 输出；实际身份拒绝由 test_joint_identity_rejects_wrong_components 与 test_lsof_failures_do_not_become_absence 覆盖。"
+    },
+    {
+      "test": "test_mapping_requires_the_captured_file_identity",
+      "decision": "keep",
+      "reason": "具体场景 test_mapping_requires_the_captured_file_identity。可观察预期：assert macos_process.mapped_file(321, engine)；assert not macos_process.mapped_file(321, engine)。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_metal_guard_matches_a_resolved_library_symlink",
+      "decision": "keep",
+      "reason": "具体场景 test_metal_guard_matches_a_resolved_library_symlink。可观察预期：assert bound[-1].path != str(library)；assert result['gpu_backend']['library_sha256'] == bound[-1].sha256；assert result['gpu_backend']['loaded_library'] == bound[-1].path。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_metal_library_must_be_manifest_bound_and_actually_mapped",
+      "decision": "keep",
+      "reason": "具体场景 test_metal_library_must_be_manifest_bound_and_actually_mapped。可观察预期：assert result['gpu_backend']['source'] == 'lsof:txt:file_identity'；assert result['gpu_backend']['gpu_residency'] == 'not_observed'；assert result['gpu_backend']['library_sha256'] == bound[-1].sha256；pytest.raises(PreflightError, match='metal_offload_configuration_unverified')。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_metal_requires_native_apple_capability",
+      "decision": "keep",
+      "reason": "具体场景 test_metal_requires_native_apple_capability。可观察预期：assert result['apple_silicon'] is True and result['gpu']['backend'] == 'metal'；pytest.raises(PreflightError, match='metal_device_unavailable')。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_native_start_identity_ignores_wall_clock_adjustment",
+      "decision": "keep",
+      "reason": "具体场景 test_native_start_identity_ignores_wall_clock_adjustment。可观察预期：assert macos_identity.process_start_ticks(321) == expected；assert macos_identity.process_start_ticks(321) != expected。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_native_start_microseconds_and_joint_identity",
+      "decision": "keep",
+      "reason": "具体场景 test_native_start_microseconds_and_joint_identity。可观察预期：assert result['start_ticks'] == 1700000000125000；assert result['process_start_source'] == 'psutil:macos:raw_kernel_starttime:microseconds'；assert result['model_binding'] == 'verified_startup_file_inode'；assert result['model_mapping'] == 'not_observed'。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_permission_is_not_process_disappearance",
+      "decision": "keep",
+      "reason": "具体场景 test_permission_is_not_process_disappearance。逐项参数：pytest.mark.parametrize('exception,reason', [(Gone, 'process_unavailable'), (Denied, 'identity_unreadable'), (PermissionError, 'identity_unreadable')])。可观察预期：pytest.raises(PreflightError, match=reason)。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_pid_reuse_rejected_after_observation",
+      "decision": "keep",
+      "reason": "具体场景 test_pid_reuse_rejected_after_observation。逐项参数：pytest.mark.parametrize('read', ['arguments', 'listener', 'process', 'rss'])。可观察预期：assert telemetry.read_rss(321, expected) == (None, 'source_changed')；pytest.raises(PreflightError, match='identity_changed')；pytest.raises(PreflightError, match='identity_changed')。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_slots_debug_persists_only_verified_boolean",
+      "decision": "keep",
+      "reason": "具体场景 test_slots_debug_persists_only_verified_boolean。可观察预期：assert result['slots_debug_environment_verified'] is True；assert 'do-not-persist' not in json.dumps(result)；pytest.raises(PreflightError, match='slots_debug_environment_mismatch')。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_static_preflight_darwin_keeps_explicit_unknown_policy",
+      "decision": "keep",
+      "reason": "具体场景 test_static_preflight_darwin_keeps_explicit_unknown_policy。逐项参数：pytest.mark.parametrize('backend', ['cpu', 'metal'])。可观察预期：assert observed['verification'] == 'verified'；assert observed['environment'].get('governor') is None；pytest.raises(PreflightError, match='frozen_environment_mismatch')。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_swap_uses_host_counters_and_rejects_a_failed_read",
+      "decision": "keep",
+      "reason": "具体场景 test_swap_uses_host_counters_and_rejects_a_failed_read。可观察预期：assert observed['pswpin'] == 2 and observed['pswpout'] == 3；assert observed['page_size_bytes'] == 16384；assert observed['source'] == {'pswpin': 'host_statistics64:swapins', 'pswpout': 'host_statistics64:swapouts'}；assert macos_native.swap_snapshot()['pswpin'] is None。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_unknown_opt_in_never_hides_observed_mismatch_or_offline_unknown",
+      "decision": "keep",
+      "reason": "具体场景 test_unknown_opt_in_never_hides_observed_mismatch_or_offline_unknown。可观察预期：assert mismatches(conditions, environment) == []；assert mismatches(conditions, {**environment, 'governor': 'powersave'}) == ['governor']；assert mismatches(conditions, {**environment, 'ac_online': False}) == ['ac_online']；assert mismatches(conditions, {**environment, 'ac_online': None}) == ['ac_online']。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    },
+    {
+      "test": "test_wrong_platform_backend_is_rejected_before_file_reads",
+      "decision": "keep",
+      "reason": "具体场景 test_wrong_platform_backend_is_rejected_before_file_reads。逐项参数：pytest.mark.parametrize('system,backend', [('Linux', 'metal'), ('Windows', 'metal'), ('Darwin', 'cuda')])。可观察预期：pytest.raises(PreflightError, match='unsupported_backend_platform')。阻止把其他 PID、二进制、模型、监听或 Metal 动态库的观测归给当前服务；原生计数或来源不可得时不能编造有效身份/资源值。"
+    }
+  ]
+}

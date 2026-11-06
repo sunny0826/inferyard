@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/inferyard/engine_check_test.go",
+  "decisions": [
+    {
+      "test": "TestParseEngineCheckContract",
+      "decision": "keep",
+      "reason": "macOS/Windows 和 ineligible 的模式/版本/原因需可用；错类型、重复键、混合模式、未知原因/status/exit 拒绝，防错误资格。"
+    },
+    {
+      "test": "TestParseEngineCheckFailureShapes",
+      "decision": "keep",
+      "reason": "blocked/error/cancelled 的状态、退出码和 limitation 必须一致，防 CLI 失败被错误当可执行资格。"
+    },
+    {
+      "test": "TestParseLocalEngineCheckContract",
+      "decision": "keep",
+      "reason": "五类本地安装核验只证明 runtime closure，禁止 ready_to_run=true、请求数非零及坏声明 hash，防安装核验被扩大成模型可运行资格。"
+    }
+  ]
+}

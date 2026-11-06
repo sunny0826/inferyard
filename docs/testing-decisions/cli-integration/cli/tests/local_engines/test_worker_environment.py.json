@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/local_engines/test_worker_environment.py",
+  "decisions": [
+    {
+      "test": "test_additional_execution_controls_require_declaration",
+      "decision": "keep",
+      "reason": "OMP/PROMETHEUS执行控制缺声明时须拒绝，避免后台线程与计数条件漂移。"
+    },
+    {
+      "test": "test_declared_worker_environment_does_not_change_root_launch",
+      "decision": "keep",
+      "reason": "worker额外环境不能污染主进程launch；按root环境核验worker额外控制也应拒绝，保持两个作用域。"
+    },
+    {
+      "test": "test_empty_library_path_segment_rejected",
+      "decision": "keep",
+      "reason": "库搜索路径尾空段不能等价工作目录放行，必须拒绝。"
+    },
+    {
+      "test": "test_invalid_worker_declaration_rejected",
+      "decision": "keep",
+      "reason": "未冻结搜索路径、plugin、禁用值或非法库路径不能进入worker声明。"
+    },
+    {
+      "test": "test_observer_requires_stable_worker_environment",
+      "decision": "keep",
+      "reason": "两次worker环境观察间即使PATH变化，也不能当稳定绑定；稳定值应通过。"
+    },
+    {
+      "test": "test_worker_declaration_preserves_root_contract",
+      "decision": "keep",
+      "reason": "worker必须保留root offline值且匹配家族，不能弱化离线条件。"
+    },
+    {
+      "test": "test_worker_values_remain_exact",
+      "decision": "keep",
+      "reason": "每个已声明worker变量缺失或值改变均须拒绝，不学习运行时新白名单。"
+    }
+  ]
+}

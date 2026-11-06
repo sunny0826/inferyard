@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_repetition_metrics.py",
+  "decisions": [
+    {
+      "test": "test_all_k_passes_use_unique_case_denominator",
+      "decision": "keep",
+      "reason": "40独立题重复3轮，全部通过率30/40而非按120请求，重复延迟按轮次，避免稳定性分母错误。"
+    },
+    {
+      "test": "test_failed_performance_case_prevents_composition_change",
+      "decision": "keep",
+      "reason": "性能case失败不能移除该case再计算轮次延迟范围，避免样本组成变化改善性能。"
+    },
+    {
+      "test": "test_foreign_or_duplicate_run_rejected_and_ambiguous_repeat_missing",
+      "decision": "keep",
+      "reason": "重复run或外来plan拒绝，重复轮次身份不明保持缺测，避免复用同一次结果凑重复。"
+    },
+    {
+      "test": "test_fragments_and_missing_repeats_never_fill_full_result",
+      "decision": "keep",
+      "reason": "缺轮次、resume片段、不完整或不可评分不能填完整S03，分母仍40。"
+    }
+  ]
+}

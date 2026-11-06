@@ -46,20 +46,6 @@ func TestContextSpeedUnreadableExternalBatchRetained(t *testing.T) {
 	}
 }
 
-func TestContextSpeedWaitingCancellationDoesNotExecute(t *testing.T) {
-	s := speedService(t, &speedFixture{})
-	root := filepath.Join(*s.settings.WorkspaceRoot, "logs", "context-speed-tasks")
-	root, _ = canonical(root)
-	task := &runEntry{Task: RunTask{TaskId: "waiting", Kind: "context_speed", State: "starting", Queued: true, ContextSpeed: &ContextSpeedTask{Stage: "queued"}}, recordRoot: root}
-	s.mu.Lock()
-	s.runs = append(s.runs, task)
-	s.mu.Unlock()
-	got, e := s.CancelRun("waiting")
-	if e != nil || got.State != "cancelled" || got.Queued || got.Exit != nil {
-		t.Fatalf("%+v %v", got, e)
-	}
-}
-
 func TestContextSpeedShutdownDrainsBeforeEngineStop(t *testing.T) {
 	f := &speedFixture{result: speedGolden(t, "zero_runs"), hold: make(chan struct{}), started: make(chan struct{})}
 	s := speedService(t, f)
@@ -76,9 +62,6 @@ func TestContextSpeedShutdownDrainsBeforeEngineStop(t *testing.T) {
 	d, _ := s.RunDetail(task.TaskId)
 	if d.Task.State != "cancelled" || d.Task.Exit == nil || d.Task.Exit.ExitCode != 130 || s.Engine().State != "stopped" {
 		t.Fatalf("%+v %+v", d.Task, s.Engine())
-	}
-	if f.reads != 1 {
-		t.Fatal("shutdown lost final offline read", f.reads)
 	}
 	if _, e := s.StartContextSpeed(StartContextSpeedRequest{Model: "m", Engine: "e", Context: 65536}); e == nil {
 		t.Fatal("shutdown admitted work")
@@ -98,23 +81,6 @@ func TestContextSpeedReadRejectsEscapedBatch(t *testing.T) {
 	r, e := s.readContextSpeed(t.Context(), "unused", &ContextSpeedTask{Batch: &SpeedBatchRef{Path: link}})
 	if e == nil || r.Samples != nil || r.Summary != nil {
 		t.Fatal("escaped batch accepted")
-	}
-}
-
-func TestContextSpeedBrokenPlanDoesNotHideBatch(t *testing.T) {
-	s := speedService(t, &speedFixture{})
-	batch := filepath.Join(*s.settings.ResultsRoot, "broken")
-	if err := os.MkdirAll(filepath.Join(batch, "frozen-plan"), 0700); err != nil {
-		t.Fatal(err)
-	}
-	for _, path := range []string{"batch.json", "frozen-plan/plan.json"} {
-		if err := os.WriteFile(filepath.Join(batch, path), []byte(`{}`), 0600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	rows, e := s.ContextSpeedHistory()
-	if e != nil || len(rows) != 1 || rows[0].Error == nil || rows[0].State != "failed" {
-		t.Fatalf("broken plan lost: %+v %v", rows, e)
 	}
 }
 

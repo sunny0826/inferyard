@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_aggregate_observations.py",
+  "decisions": [
+    {
+      "test": "test_aggregate_has_explicit_sources_without_single_trial_attribution",
+      "decision": "keep",
+      "reason": "聚合观察显式绑定 source_run_ids 而无单 trial 归属，旧单次观察仍合法，避免跨次指标冒认单运行。"
+    },
+    {
+      "test": "test_full_repeat_group_builds_typed_numeric_analyses",
+      "decision": "keep",
+      "reason": "真实重复组产数值分析，质量率 0.75/分母40 与时延离散2ms 保留三份来源，避免聚合计算或归属错误。"
+    },
+    {
+      "test": "test_invalid_aggregate_identity_or_clock_rejected",
+      "decision": "keep",
+      "reason": "重复/空 source、单运行身份或跨时钟窗口拒绝，避免聚合证据归属与时间含义伪造。"
+    },
+    {
+      "test": "test_parent_analysis_requires_known_aggregate_sources",
+      "decision": "keep",
+      "reason": "聚合必须引用当前 analysis 已知来源，错误 analysis_id/foreign run 拒绝，避免引用错谱系。"
+    }
+  ]
+}

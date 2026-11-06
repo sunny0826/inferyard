@@ -1,0 +1,87 @@
+{
+  "source_path": "cli/tests/integration/test_batch_runner.py",
+  "decisions": [
+    {
+      "test": "test_batch_has_its_own_frozen_sources",
+      "decision": "keep",
+      "reason": "删除源输入目录后，批次自己的冻结副本仍能被读取且不得隐式重跑。"
+    },
+    {
+      "test": "test_batch_identity_changes_block_without_generation",
+      "decision": "keep",
+      "reason": "既有批次诊断身份改变时必须阻断，不能偷偷生成新结果。"
+    },
+    {
+      "test": "test_cancel_resume_only_unexecuted_then_next_planned_repetitions",
+      "decision": "keep",
+      "reason": "取消后必须显式续测，只选择未执行题并保留父原件；缺封存、过时父链和缺trial如实报告。"
+    },
+    {
+      "test": "test_candidate_filter_public_cli_is_offline_and_empty_is_valid",
+      "decision": "keep",
+      "reason": "候选筛选通过公开CLI离线执行，未达约束和空候选均返回有效空集合。"
+    },
+    {
+      "test": "test_cli_plan_dispatch_stdout_single_json_and_progress_stderr",
+      "decision": "keep",
+      "reason": "M3：进度stderr仅要求非空，删除文本精确次数；保留单行JSON、exit0和finished。",
+      "final_path": "cli/tests/integration/test_batch_cli.py"
+    },
+    {
+      "test": "test_comparison_reads_saved_trials_without_requests",
+      "decision": "keep",
+      "reason": "离线比较不发题且保留原件；不可比较的诊断证据不得生成差值，篡改派生结论必须失败。"
+    },
+    {
+      "test": "test_duration_batch_finishes_without_implicit_repeat",
+      "decision": "keep",
+      "reason": "持续窗口完成后重复执行不得再次发题。"
+    },
+    {
+      "test": "test_export_replays_formats_and_never_changes_source",
+      "decision": "keep",
+      "reason": "离线CSV导出保持来源，追加伪造行后核验失败。"
+    },
+    {
+      "test": "test_incomplete_duration_cannot_implicitly_resume",
+      "decision": "keep",
+      "reason": "持续窗口触及请求上限后，run与resume都必须要求新窗口，避免把多段短窗口拼成完整实验。"
+    },
+    {
+      "test": "test_invalid_new_cli_combinations_rejected_before_backend",
+      "decision": "keep",
+      "reason": "不完整plan、config/workload混用、缺交接字段或外部endpoint参数必须在准入时退出2。",
+      "final_path": "cli/tests/integration/test_batch_cli.py"
+    },
+    {
+      "test": "test_repeat_analysis_tampering_rejected",
+      "decision": "keep",
+      "reason": "重复分析指标遭篡改后核验失败，防止伪造跨run结论。"
+    },
+    {
+      "test": "test_repeat_summary_is_offline_and_preserves_sources",
+      "decision": "keep",
+      "reason": "离线重复汇总不发题不修改原件；缺稳定性测量保留null，不能伪造零波动。"
+    },
+    {
+      "test": "test_report_is_offline_escaped_and_preserves_denominators",
+      "decision": "keep",
+      "reason": "报告保留全部分母，转义模型输出；篡改HTML或汇总拒绝，重复来源和写入原件内禁止。"
+    },
+    {
+      "test": "test_rescore_is_separate_replayable_analysis_with_export",
+      "decision": "keep",
+      "reason": "重评分另存带评分版本的新分析和可核验导出；篡改或未知评分器拒绝且保留原件。"
+    },
+    {
+      "test": "test_three_repetitions_new_runs_then_no_implicit_rerun",
+      "decision": "keep",
+      "reason": "三次冻结重复产生独立运行，单题失败保留且重复调用不再发题，避免隐式重测污染结果。"
+    },
+    {
+      "test": "test_workload_handoff_cold_policy_requires_binding_and_new_process",
+      "decision": "keep",
+      "reason": "要求冷进程的跨workload交接必须等待新绑定，旧PID/start不能继续发题。"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_quantization_comparison.py",
+  "decisions": [
+    {
+      "test": "test_byte_verified_same_base_can_compare_quality_without_granting_performance",
+      "decision": "keep",
+      "reason": "同base字节验证的两种量化可质量比较但不自动授性能，避免混淆谱系和计量资格。"
+    },
+    {
+      "test": "test_missing_tampered_or_multifactor_proof_refuses_deltas",
+      "decision": "keep",
+      "reason": "资产改写、tokenizer/revision/receipt不符、第二因子、同packing或缺绑定均拒绝差值。"
+    },
+    {
+      "test": "test_receipts_and_manual_verified_boolean_cannot_replace_file_bytes",
+      "decision": "keep",
+      "reason": "手工lineage_verified=true与receipt不能替代原始文件字节，避免假谱系获资格。"
+    },
+    {
+      "test": "test_v3_reuses_verified_lineage_once_for_tokenizer_rate",
+      "decision": "keep",
+      "reason": "v3字节谱系可授权token速率，模板变化后必须拒绝；删除verify_lineage_files调用次数与monkeypatch计数。"
+    }
+  ]
+}

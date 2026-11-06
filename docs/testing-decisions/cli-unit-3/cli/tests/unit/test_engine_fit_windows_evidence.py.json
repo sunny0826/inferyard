@@ -1,0 +1,65 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_windows_evidence.py",
+  "decisions": [
+    {
+      "test": "test_missing_gpu_reading_remains_null_and_offline_verifiable",
+      "decision": "keep",
+      "reason": "具体场景 test_missing_gpu_reading_remains_null_and_offline_verifiable。可观察预期：assert verify(tmp_path)['run']['resources'][0] == resource。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_old_definitions_keep_their_file_identity_integer_bound",
+      "decision": "keep",
+      "reason": "具体场景 test_old_definitions_keep_their_file_identity_integer_bound。可观察预期：pytest.raises(EvidenceError, match='model_binding_identity')。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_windows_binding_rejects_other_platforms_or_rounded_identity",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_binding_rejects_other_platforms_or_rounded_identity。逐项参数：pytest.mark.parametrize('key,value', [('listener_inode', '123'), ('listener_source', '/proc/net/tcp'), ('listener_identity', 'windows:tcp:127.0.0.1:8000:pid:999'), ('process_start_source', 'psutil:create_time:seconds'), ('start_ticks', 1.3409000000000013e+17)])。可观察预期：pytest.raises(EvidenceError)。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_windows_definition_seals_and_reads_without_live_windows",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_definition_seals_and_reads_without_live_windows。逐项参数：pytest.mark.parametrize('version', [2, 3, 4])。可观察预期：assert verify(tmp_path)['run'] == data[1]；assert '本次已显式跳过温度停止' in html；assert '本次已显式跳过内存停止' in html。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_windows_evidence_cannot_be_relabelled_as_an_old_definition",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_evidence_cannot_be_relabelled_as_an_old_definition。逐项参数：pytest.mark.parametrize('definition', ['engine_fit_run.v1', 'engine_fit_run.v2', 'engine_fit_run.v3', 'engine_fit_run.v4', 'engine_fit_run.v5'])。可观察预期：pytest.raises(EvidenceError)。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_windows_file_identity_rejects_nonintegers_and_overflow",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_file_identity_rejects_nonintegers_and_overflow。逐项参数：pytest.mark.parametrize('key,value', [('device', True), ('inode', True), ('device', -1), ('inode', -1), ('device', 2 ** 64), ('inode', 2 ** 128), ('device', float(2 ** 63))])。可观察预期：pytest.raises(EvidenceError, match='model_binding_identity')。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_windows_guard_keeps_default_stops_and_explicit_override_reads",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_guard_keeps_default_stops_and_explicit_override_reads。逐项参数：pytest.mark.parametrize('kind,reason', [('temperature', 'temperature_safety_threshold_reached'), ('memory', 'memory_safety_threshold_reached'), ('missing_memory', 'system_memory_unavailable')])。可观察预期：assert observed['memory_available_bytes'] == resource['memory_available_bytes']；assert observed['temperature_samples'][0]['value'] == (90 if kind == 'temperature' else 47)；pytest.raises(PreflightError, match=reason)。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_windows_resource_scope_and_limitations_are_required",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_resource_scope_and_limitations_are_required。逐项参数：pytest.mark.parametrize('change', ['scope', 'partial_tree', 'zero_processes', 'no_temperature', 'limitations', 'platform'])。可观察预期：pytest.raises(EvidenceError)。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_windows_run_rejects_disabled_stop_reason",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_run_rejects_disabled_stop_reason。可观察预期：pytest.raises(EvidenceError, match='memory_override')。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_windows_sensor_cannot_reinterpret_cpu_or_other_units",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_sensor_cannot_reinterpret_cpu_or_other_units。逐项参数：pytest.mark.parametrize('key,value', [('collector', 'linux-sensors.v2'), ('semantics', 'thermal_zone_reported'), ('source', 'ACPI:thermal_zone'), ('raw_value', 47000), ('value', float('nan')), ('value', True), ('read_finished_ns', 99), ('server_pid', 123)])。可观察预期：pytest.raises(EvidenceError)。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_windows_tampered_sealed_source_is_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_tampered_sealed_source_is_rejected。可观察预期：pytest.raises(EvidenceError, match='hash_mismatch')。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    },
+    {
+      "test": "test_windows_unsigned_volume_and_full_file_id_seal_losslessly",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_unsigned_volume_and_full_file_id_seal_losslessly。逐项参数：pytest.mark.parametrize('device,inode', [(10090975144720226164, 11258999068579525), (2 ** 64 - 1, 2 ** 128 - 1)])。可观察预期：assert verify(tmp_path)['run']['binding']['model_binding'] == run['binding']['model_binding']。Windows FILETIME/128 位文件身份不能被四舍五入或套用 Linux 单位；离线读取须保留缺测和显式停止覆盖，坏封存不能通过。"
+    }
+  ]
+}

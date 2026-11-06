@@ -1,0 +1,77 @@
+{
+  "source_path": "tools/tests/test_dev_lifecycle.py",
+  "decisions": [
+    {
+      "test": "DevelopmentTests.test_another_checkout_and_modified_binary_cannot_control_instance",
+      "decision": "keep",
+      "reason": "另一个checkout或被替换的二进制不能取得实例控制权，避免误停不属于当前源码的进程。"
+    },
+    {
+      "test": "DevelopmentTests.test_build_failure_does_not_stop_or_switch_previous_instance",
+      "decision": "keep",
+      "reason": "构建失败不能终止用户正在使用的旧实例或切换活动配置。"
+    },
+    {
+      "test": "DevelopmentTests.test_exited_launch_releases_pending_after_verified_clean_shutdown",
+      "decision": "keep",
+      "renamed_to": "DevelopmentTests.test_exited_launch_releases_pending_after_cleanup_success",
+      "reason": "退出后清理边界成功须解除pending以允许重试；删除fixture预写session状态回读，不宣称验证原生停机身份。"
+    },
+    {
+      "test": "DevelopmentTests.test_exited_launch_retains_pending_after_shutdown_failed",
+      "decision": "keep",
+      "renamed_to": "DevelopmentTests.test_exited_launch_retains_pending_after_cleanup_rejection",
+      "reason": "子进程退出且清理边界拒绝时保留恢复记录与原字节；不宣称本测试验证原生session身份判定。"
+    },
+    {
+      "test": "DevelopmentTests.test_exited_launch_retains_pending_when_engine_owner_remains",
+      "decision": "delete",
+      "reason": "与退出后清理拒绝同一mock失败路径，owner夹具未参与生产判定；由test_exited_launch_retains_pending_after_cleanup_rejection保留恢复结果。"
+    },
+    {
+      "test": "DevelopmentTests.test_exited_launch_retains_pending_when_session_cannot_be_verified",
+      "decision": "delete",
+      "reason": "与退出后清理拒绝同一mock失败路径，无session夹具未参与判定；由test_exited_launch_retains_pending_after_cleanup_rejection保留恢复结果。"
+    },
+    {
+      "test": "DevelopmentTests.test_explicit_controller_is_stop_only_and_stop_does_not_build",
+      "decision": "delete",
+      "reason": "删除精确mock路由与参数分派；stop不得构建的独立副作用边界已并入test_explicit_stop_releases_pointer_but_preserves_profile_and_manifest。"
+    },
+    {
+      "test": "DevelopmentTests.test_explicit_stop_releases_pointer_but_preserves_profile_and_manifest",
+      "decision": "keep",
+      "reason": "停止开发实例不得触发构建，且须保留工作区和原构建清单；删内部调用参数断言。"
+    },
+    {
+      "test": "DevelopmentTests.test_failed_launch_retains_pending_ownership_when_shutdown_fails",
+      "decision": "keep",
+      "reason": "启动失败且不能确认停机时仍须保留实例归属供恢复，不能遗失活动进程；删内部调用参数断言。"
+    },
+    {
+      "test": "DevelopmentTests.test_launch_without_created_child_releases_pending",
+      "decision": "keep",
+      "reason": "操作系统未创建子进程时不能留下永久阻塞重试的pending记录。"
+    },
+    {
+      "test": "DevelopmentTests.test_prepare_only_does_not_activate_or_stop_any_instance",
+      "decision": "keep",
+      "reason": "仅构建模式不得启动窗口、关闭旧实例或激活新实例。"
+    },
+    {
+      "test": "DevelopmentTests.test_ready_marker_must_match_child_and_fixed_cli",
+      "decision": "keep",
+      "reason": "启动回执必须对应真实子进程和冻结CLI，否则会把错误程序当作构建成功的配套实例。"
+    },
+    {
+      "test": "DevelopmentTests.test_recovery_rejection_prevents_new_launch_and_profile_switch",
+      "decision": "keep",
+      "reason": "旧实例无法恢复时不能启动新实例或切换用户配置；删controller内部文件断言。"
+    },
+    {
+      "test": "DevelopmentTests.test_regular_start_reuses_profile_rebuild_keeps_history_and_assets",
+      "decision": "keep",
+      "reason": "普通启动复用工作区，重建新工作区仍保留历史证据与已下载资产；删内部check/stop/launch精确顺序断言。"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_svg_report.py",
+  "decisions": [
+    {
+      "test": "test_current_non_svg_gallery_empty_and_old_renderers_unavailable",
+      "decision": "keep",
+      "reason": "普通文本run无SVG画廊且旧report格式1至7不可由当前renderer读取，避免错误兼容声明。"
+    },
+    {
+      "test": "test_diagnostic_svg_report_and_offline_verification",
+      "decision": "keep",
+      "reason": "M1/M8：删除重复 summary 等价和已被rerender涵盖的默认verify_report；保留SVG状态、CSP、rerender render_checked、通用工件发现及原件hash不变。"
+    },
+    {
+      "test": "test_failed_svg_preserves_execution_failure_without_quality_score",
+      "decision": "keep",
+      "reason": "SVG请求失败仍是执行failed而非质量0分，正式质量分母保持不适用。"
+    }
+  ]
+}

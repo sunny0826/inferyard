@@ -1,0 +1,120 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_custody.py",
+  "decisions": [
+    {
+      "test": "test_busy_while_job_open",
+      "decision": "keep",
+      "reason": "任务尚未关闭不能再启动第二任务，避免并行破坏独占与预算。"
+    },
+    {
+      "test": "test_cancel_closed_job_is_noop",
+      "decision": "keep",
+      "reason": "取消已关闭任务不能再触碰后端，避免句柄复用后误杀其他进程。"
+    },
+    {
+      "test": "test_cancel_reason_rejected",
+      "decision": "delete",
+      "reason": "取消 reason 类型枚举为内部 API 防御检查；有效取消由 test_cancel_running_job_stops_once 覆盖。"
+    },
+    {
+      "test": "test_cancel_running_job_stops_once",
+      "decision": "keep",
+      "reason": "取消运行任务后进入停止并完成关闭，不重复 terminate、不多杀进程。"
+    },
+    {
+      "test": "test_cancel_unknown_job_rejected",
+      "decision": "delete",
+      "reason": "取消不存在 ID 的参数类型枚举，无独立操作者交互路径。"
+    },
+    {
+      "test": "test_frequency_rejected",
+      "decision": "delete",
+      "reason": "时钟频率参数类型自测，不涉及任务截止行为；时钟回退由 test_ninfer_source_custody_errors.py::test_clock_regression_rejected_state_kept 覆盖。"
+    },
+    {
+      "test": "test_grace_rejected",
+      "decision": "delete",
+      "reason": "宽限期参数类型自测，未观察超时任务是否停止。"
+    },
+    {
+      "test": "test_identity_accepted_and_copied",
+      "decision": "delete",
+      "reason": "仅验证构造器拷贝字典，不观察操作者任务或结果；身份拒绝由 test_start_job_field_rejected 与 test_resume_identity_rejected 覆盖。"
+    },
+    {
+      "test": "test_identity_field_rejected",
+      "decision": "delete",
+      "reason": "构造器协议字段类型枚举自测；真实任务的身份错配由 test_start_job_field_rejected 覆盖。"
+    },
+    {
+      "test": "test_identity_shape_rejected",
+      "decision": "delete",
+      "reason": "构造器字典形状自测，不增加任务执行风险覆盖；test_start_job_field_rejected 保留实际启动阻断。"
+    },
+    {
+      "test": "test_inputs_not_mutated",
+      "decision": "delete",
+      "reason": "只保证内部输入字典不变，未证明任务结果或安全边界。"
+    },
+    {
+      "test": "test_job_id_never_reused_after_close",
+      "decision": "keep",
+      "reason": "关闭后不能复用 job_id，避免历史输出与新任务混为同一身份。"
+    },
+    {
+      "test": "test_now_ticks_not_callable_rejected",
+      "decision": "delete",
+      "reason": "不可调用时钟的构造器防御性自测，无独立产品情景。"
+    },
+    {
+      "test": "test_output_accumulates_across_steps",
+      "decision": "keep",
+      "reason": "多步读取 stdout/stderr 必须累积，避免诊断输出丢片段或覆盖。"
+    },
+    {
+      "test": "test_resume_identity_rejected",
+      "decision": "keep",
+      "reason": "host_id 或 execution hash 不匹配不能接管旧任务，避免跨执行实例认领资源。"
+    },
+    {
+      "test": "test_resume_matching_identity_steps",
+      "decision": "delete",
+      "reason": "匹配身份后的正常 resume 由 test_ninfer_source_custody_errors.py::test_pump_failure_then_resume_same_ref 覆盖，删除重复 happy path 与 pump 调用断言。"
+    },
+    {
+      "test": "test_single_step_closed_success",
+      "decision": "keep",
+      "reason": "正常任务完成后必须可退出且成功；删除关闭计数、对象集合等内部断言。"
+    },
+    {
+      "test": "test_snapshot_exact_keys_and_independence",
+      "decision": "delete",
+      "reason": "快照精确键集合和拷贝隔离仅约束内存表示，不验证操作者结果。"
+    },
+    {
+      "test": "test_start_job_field_rejected",
+      "decision": "keep",
+      "reason": "错误任务身份、种类与截止期限须在启动前拒绝，避免执行错任务或越过宿主预算。"
+    },
+    {
+      "test": "test_start_job_shape_rejected",
+      "decision": "delete",
+      "reason": "任务对象的类型/额外键枚举重复字段拒绝入口；由 test_start_job_field_rejected 覆盖实质拒绝。"
+    },
+    {
+      "test": "test_start_spec_field_rejected",
+      "decision": "keep",
+      "reason": "非法 argv、相对 cwd、坏资产摘要和允许后代的声明不能启动，避免执行未绑定命令。"
+    },
+    {
+      "test": "test_start_spec_shape_rejected",
+      "decision": "delete",
+      "reason": "启动 spec 的非对象/额外键形状自测；由 test_start_spec_field_rejected 覆盖实质拒绝。"
+    },
+    {
+      "test": "test_zero_job_decision",
+      "decision": "delete",
+      "reason": "空 custodian 的决策默认值无独立产品路径，任务成功/失败由 test_single_step_closed_success 与错误路径覆盖。"
+    }
+  ]
+}

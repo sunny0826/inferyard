@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/tests/e2e/context_speed_test.go",
+  "decisions": [
+    {
+      "test": "TestContextSpeedPublicCLI",
+      "decision": "keep",
+      "reason": "真实 CLI 在合成计时 fixture 下产出的专项结果必须被 Studio 接受且中位数准确，防两端独立 fixture 同错而假通过。"
+    }
+  ]
+}

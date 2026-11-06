@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/pages/dashboard_view_test.go",
+  "decisions": [
+    {
+      "test": "TestCommandArguments",
+      "decision": "delete",
+      "reason": "带空格/单引号的命令往返由 TestGuidedCommandsPreserveOutputAndResume 覆盖，凭据名拒绝由 TestDownloadsPageMigrationEmptyAndValidation 覆盖。"
+    },
+    {
+      "test": "TestDashboardViews",
+      "decision": "delete",
+      "reason": "静态状态/标题大矩阵与首次准备、运行详情、绑定和核验用例重复；由 first_use、dashboard binding、preview parity 及报告准入覆盖。strptr helper 保留。"
+    },
+    {
+      "test": "TestIncompleteRunBlockedReasonShowsGuidance",
+      "decision": "delete",
+      "reason": "单个恢复原因译文重复 TestLiveBundleDoesNotShowOfflineResumeWarning 的活动/终态切换覆盖。"
+    },
+    {
+      "test": "TestSecondBundleAndIncompleteRun",
+      "decision": "delete",
+      "reason": "仅复查活动题包选择及恢复文案；TestStartChainPreservesCompletedBundleOnCombinationChange、TestHistoryTableResumeAndDetails、TestPreviewBenchmarkParity 覆盖实际后果。"
+    }
+  ]
+}

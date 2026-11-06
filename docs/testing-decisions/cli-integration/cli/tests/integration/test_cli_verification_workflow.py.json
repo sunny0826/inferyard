@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_cli_verification_workflow.py",
+  "decisions": [
+    {
+      "test": "test_canonical_artifact_workflow_is_offline_and_checks_comparison_html",
+      "decision": "keep",
+      "reason": "六种派生产物均经公开CLI离线生成和核验，禁止网络与原件改写；比较HTML篡改拒绝，旧别名明确阻断。"
+    },
+    {
+      "test": "test_invalid_source_mapping_is_an_input_error",
+      "decision": "keep",
+      "reason": "非法source-root映射语法必须作为输入错误退出2，避免错误来源重定位。"
+    },
+    {
+      "test": "test_public_configuration_verification_keeps_match_and_mismatch_semantics",
+      "decision": "keep",
+      "reason": "公开配置匹配不等于ready；线程条件变化应返回mismatch并仍可核验来源投影。"
+    }
+  ]
+}

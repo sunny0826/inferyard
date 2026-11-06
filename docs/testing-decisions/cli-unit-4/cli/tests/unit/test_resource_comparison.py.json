@@ -1,0 +1,46 @@
+{
+  "source_path": "cli/tests/unit/test_resource_comparison.py",
+  "decisions": [
+    {
+      "test": "test_all_resource_sources_need_frozen_windows_and_preserve_original_observations",
+      "decision": "keep",
+      "reason": "M4：冻结窗口齐全时 C01–C08 均可比较，撤销窗口声明后均不可比较；删除 Python 入参深拷贝断言，不据此声称磁盘原件保护。",
+      "renamed_to": "test_all_resource_sources_need_frozen_windows"
+    },
+    {
+      "test": "test_bad_resource_window_is_not_authorized_by_e2e",
+      "decision": "keep",
+      "reason": "策略、封存、来源、缺测、缺段、覆盖、窗口偏移、PID、刻度、scope、sensor、基线或计数任一不符不能用 E2E 资格替代。"
+    },
+    {
+      "test": "test_expected_outside_request_counter_sample_is_excluded_without_poisoning_observed_window",
+      "decision": "keep",
+      "reason": "请求结束后边界计数排除但不能污染有效窗口，避免预期边界样本导致全部失资格。"
+    },
+    {
+      "test": "test_malformed_collector_returns_ineligibility",
+      "decision": "keep",
+      "reason": "collector 元数据坏类型时返回不具资格，不崩溃或猜测来源。"
+    },
+    {
+      "test": "test_malformed_sensor_metadata_only_blocks_sensor_metrics",
+      "decision": "keep",
+      "reason": "传感器元数据缺损只阻断温度/频率，不能抹去独立 CPU/内存比较。"
+    },
+    {
+      "test": "test_missing_sensor_metadata_field_does_not_crash",
+      "decision": "keep",
+      "reason": "缺传感器语义/单位/刻度只阻断 C07/C08，避免默认字段放行不明来源。"
+    },
+    {
+      "test": "test_partial_cpu_window_does_not_become_full_request_total",
+      "decision": "keep",
+      "reason": "局部 CPU 只可报告已观测 CPU，不能外推完整请求总量并输出差值。"
+    },
+    {
+      "test": "test_policy_changes_plan_and_overhead_workload_identity",
+      "decision": "keep",
+      "reason": "资源策略变化须改变 plan 与开销 workload 身份，避免旧校准授权新窗口。"
+    }
+  ]
+}

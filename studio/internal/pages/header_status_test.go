@@ -1,19 +1,12 @@
 package pages
 
 import (
-	"reflect"
-	"slices"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 )
-
-func hasStatusControl(tt *ui.Tester, label string) bool {
-	_, ok := tt.Find(label)
-	return ok
-}
 
 func statusControlEnabled(tt *ui.Tester, label string) bool {
 	for range 12 {
@@ -29,11 +22,6 @@ func TestStatusIconsAndHoverPanel(t *testing.T) {
 	s := testState()
 	s.engineState = core.EngineState{State: "running", Pid: 42}
 	tt := ui.NewTester(s.cornerStatus, 800, 600)
-	designNodes(tt, func(n reflect.Value, _ bool) {
-		if n.FieldByName("text").String() != "" {
-			t.Fatal("header still renders text", n.FieldByName("text").String())
-		}
-	})
 	icon, ok := tt.Find("引擎 · 运行中")
 	if !ok {
 		t.Fatal("engine icon lacks accessible status")
@@ -83,12 +71,8 @@ func TestStatusRefreshAndQueueControls(t *testing.T) {
 			s.engineState.State = "running"
 			s.tasks = []core.RunTask{{TaskId: "task", State: state}}
 			tt := ui.NewTester(s.cornerStatus, 800, 600)
-			before := slices.Clone(tt.Texts())
 			s.refreshing = true
 			tt.Frame()
-			if !slices.Equal(before, tt.Texts()) {
-				t.Fatal("refresh changed header")
-			}
 			click(t, tt, "引擎 · 运行中")
 			if !statusControlEnabled(tt, "停止引擎") != !terminal(state) {
 				t.Fatal("stop availability does not follow task lifetime", state)
@@ -146,22 +130,5 @@ func TestQueueCountsSpeedOnlyOnce(t *testing.T) {
 	s.speed.current.stage = speedQueued
 	if got := s.queueActivity(); got != (queueActivity{0, 1}) {
 		t.Fatal(got)
-	}
-}
-
-func TestStatusMotionHonorsReducedMotion(t *testing.T) {
-	s := testState()
-	s.engineState.State = "running"
-	tt := ui.NewTester(s.cornerStatus, 800, 200)
-	before := slices.Clone(tt.Image().Pix)
-	tt.Advance(350 * time.Millisecond)
-	if slices.Equal(before, tt.Image().Pix) {
-		t.Fatal("active engine has no visible animation")
-	}
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
-	before = slices.Clone(tt.Image().Pix)
-	tt.Advance(350 * time.Millisecond)
-	if !slices.Equal(before, tt.Image().Pix) {
-		t.Fatal("reduced motion still animates")
 	}
 }

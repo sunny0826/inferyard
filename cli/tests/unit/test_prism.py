@@ -160,27 +160,6 @@ def test_health_is_not_idle_evidence():
     asyncio.run(run())
 
 
-def test_real_frozen_protocol_fixtures_parse():
-    directory = Path(__file__).parents[1] / "fixtures/prism"
-    decoder = SSEDecoder()
-    state = ResponseState(0)
-    protocol = StreamProtocol(state, Redactor(), lambda *args: None)
-    for index, event in enumerate(decoder.feed((directory / "stream.sse").read_bytes()), 1):
-        protocol.accept(event, index)
-    assert state.done and state.finish_reason == "stop" and state.completion_tokens == 20
-    assert json.loads((directory / "slots-idle.json").read_text())[0]["is_processing"] is False
-    assert any(
-        s["slots"][0]["is_processing"]
-        for s in json.loads((directory / "slots-during.json").read_text())
-    )
-    template_tokens = json.loads((directory / "tokenize.json").read_text())["tokens"]
-    assert (
-        len(template_tokens)
-        == json.loads((directory / "ordinary.json").read_text())["usage"]["prompt_tokens"]
-        == 27
-    )
-
-
 @pytest.mark.parametrize("inputs,passes", [(3584, True), (3585, False)])
 def test_context_budget_boundary(inputs, passes):
     def handler(request):

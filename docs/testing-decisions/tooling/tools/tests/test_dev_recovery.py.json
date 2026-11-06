@@ -1,0 +1,36 @@
+{
+  "source_path": "tools/tests/test_dev_recovery.py",
+  "decisions": [
+    {
+      "test": "RecoveryTests.test_handoff_failure_never_downgrades_to_missing_recovery",
+      "decision": "keep",
+      "reason": "已有session停机失败不得被降级成无session清理成功，pending必须保留；删精确调用次数。"
+    },
+    {
+      "test": "RecoveryTests.test_invalid_proofs_do_not_release_pending",
+      "decision": "keep",
+      "reason": "错误PID、目标摘要或非法恢复回执不能解除旧实例归属。"
+    },
+    {
+      "test": "RecoveryTests.test_no_controller_keeps_original_stop_without_building",
+      "decision": "delete",
+      "reason": "仅检查mock被调用一次和命令包含--dev-stop，不验证停机或归属后果。"
+    },
+    {
+      "test": "RecoveryTests.test_pending_active_order_dedup_and_retry_after_interruption",
+      "decision": "keep",
+      "reason": "改名test_recovery_remains_retryable_after_interruption，保留中断后重试能清pending且不破坏active；删除调用次数和内部pending/active遍历顺序。",
+      "renamed_to": "RecoveryTests.test_recovery_remains_retryable_after_interruption"
+    },
+    {
+      "test": "RecoveryTests.test_recovery_uses_new_controller_and_retains_original_bytes",
+      "decision": "keep",
+      "reason": "新控制器能恢复旧实例并保留旧清单和PID原件；删精确调用次数和私有命令flag存在断言。"
+    },
+    {
+      "test": "RecoveryTests.test_session_handoff_runs_original_controller_with_remaining_deadline",
+      "decision": "delete",
+      "reason": "只锁定私有调用列表及65/45秒计算，无实际截止失败或用户状态结果。"
+    }
+  ]
+}

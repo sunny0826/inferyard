@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_duration_windows.py",
+  "decisions": [
+    {
+      "test": "test_case_local_baseline_includes_cross_boundary_latency",
+      "decision": "keep",
+      "reason": "按发送窗口归属跨界完成延迟、分别按case基线算漂移且尾窗不补延迟，避免混淆快慢题与窗口口径。"
+    },
+    {
+      "test": "test_failed_requests_count_but_do_not_supply_latency",
+      "decision": "keep",
+      "reason": "失败计数但不提供成功latency，重复request拒绝，避免错误时延或重复分母。"
+    },
+    {
+      "test": "test_missing_first_window_never_borrows_later_baseline",
+      "decision": "keep",
+      "reason": "首窗无数据不得借后窗当baseline，避免将缺测漂移说成零。"
+    },
+    {
+      "test": "test_missing_or_invalid_terminal_timing_preserves_all_execution_states",
+      "decision": "keep",
+      "reason": "取消/invalid/倒退/缺terminal都保留执行态和started分母，仅合法完成提供latency，避免丢失失败与中断。"
+    }
+  ]
+}

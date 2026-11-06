@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/integration/test_cache_protocol.py",
+  "decisions": [
+    {
+      "test": "test_cache_protocol_preserves_formal_failure_and_next_request",
+      "decision": "delete",
+      "reason": "普通HTTP失败保留并继续下一题由 test_runner.test_f07_full_pipeline_warmups_failed_case_and_no_retries 覆盖；本例只换enabled配置，没有新的缓存失败条件。"
+    },
+    {
+      "test": "test_cache_sequence_rebuilt_from_all_raw_request_phases",
+      "decision": "keep",
+      "reason": "M1：删除 cache_observations 再读等价；保留8请求、3 formal、phase顺序与policy/reuse预期。"
+    },
+    {
+      "test": "test_enabled_without_protocol_remains_rejected",
+      "decision": "keep",
+      "reason": "启用缓存却无冻结协议时，不得发送任何请求。"
+    },
+    {
+      "test": "test_frozen_prefix_reuse_trial_and_offline_replay",
+      "decision": "keep",
+      "reason": "M1：删除同一 read_trial 对相同证据的 summary 等价；保留请求策略、completed=3 与重封存篡改拒绝。"
+    },
+    {
+      "test": "test_prefix_reuse_and_strict_output_replay_together",
+      "decision": "keep",
+      "reason": "M1：删除重复 summary 等价；保留实际请求 ignore_eos/n_cache_reuse/cache_prompt 预期。"
+    },
+    {
+      "test": "test_prefix_reuse_refuses_unsealed_engine_evidence",
+      "decision": "keep",
+      "reason": "缺失封存引擎观察时，不能声称前缀复用协议已经验证。"
+    },
+    {
+      "test": "test_two_frozen_cache_policies_compare_with_replayed_evidence",
+      "decision": "keep",
+      "reason": "仅缓存政策变化且证据完整时可比较质量和完成率，仍无性能资格；派生产物不改变原件。"
+    },
+    {
+      "test": "test_unknown_policy_is_rejected_before_any_request",
+      "decision": "keep",
+      "reason": "未知缓存策略必须在请求前拒绝，不能默认为某种已知行为。"
+    }
+  ]
+}

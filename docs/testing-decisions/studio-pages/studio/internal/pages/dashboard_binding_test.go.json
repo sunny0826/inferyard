@@ -1,0 +1,40 @@
+{
+  "source_path": "studio/internal/pages/dashboard_binding_test.go",
+  "decisions": [
+    {
+      "test": "TestBindingChainOrderAndStopOnFailure",
+      "decision": "keep",
+      "reason": "双题包须使用当前 PID/endpoint 依次绑定；任一阻断不得继续或提前运行，保留具体拒绝原因。"
+    },
+    {
+      "test": "TestBindingChainStopsWhenProgressChanges",
+      "decision": "keep",
+      "reason": "候选阶段已变化时旧绑定计划必须中止，避免将陈旧候选绑定到当前服务。"
+    },
+    {
+      "test": "TestBindingExistingRunRebindsButResumeDoesNot",
+      "decision": "keep",
+      "reason": "新 run 必须使用新 PID 重绑，resume 必须沿原证据并携带服务身份，避免跑旧配置或另建运行。"
+    },
+    {
+      "test": "TestBindingRetryKeepsSuccessfulBundleUntilPIDChanges",
+      "decision": "keep",
+      "reason": "第二题包绑定失败重试应保留已成功绑定；PID 变化后必须重绑，避免重复操作或复用失效身份。"
+    },
+    {
+      "test": "TestDashboardSelectedRunReportIgnoresUnfinishedPelican",
+      "decision": "keep",
+      "reason": "明确单题包时只运行/报告所选封存 run；未封存不得报告，不能被无关未完成 pelican 阻断或混入。"
+    },
+    {
+      "test": "TestDiscoveryRenderedOnBothPages",
+      "decision": "keep",
+      "reason": "未知进程有效模型接口可见、无模型进程过滤；通过公开 Find 验证模型页无绑定入口、任务页保留入口，未执行实际绑定；点击模型目录后 Qwen.gguf 可读且绝对路径不外露。"
+    },
+    {
+      "test": "TestWizardFailureFallback",
+      "decision": "delete",
+      "reason": "仅复述错误映射 helper；实际绑定拒绝及原因传递由 TestBindingChainOrderAndStopOnFailure 覆盖。"
+    }
+  ]
+}

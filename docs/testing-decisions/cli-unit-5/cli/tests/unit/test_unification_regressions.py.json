@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_unification_regressions.py",
+  "decisions": [
+    {
+      "test": "test_experiment_parent_cannot_be_reinterpreted_as_single_rerun",
+      "decision": "keep",
+      "reason": "experiment来源不能当single rerun且不查询进程，避免计划/分母被重解释。"
+    },
+    {
+      "test": "test_report_local_links_support_cross_drive_outputs",
+      "decision": "keep",
+      "reason": "含空格和跨盘报告来源链接可打开，避免Windows交付报告找不到原件。"
+    },
+    {
+      "test": "test_report_preserves_escaped_prompt_as_well_as_answer",
+      "decision": "keep",
+      "reason": "报告保留prompt原文但HTML转义，避免丢题意或执行脚本。"
+    }
+  ]
+}

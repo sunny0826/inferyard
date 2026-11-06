@@ -1,0 +1,45 @@
+{
+  "source_path": "studio/internal/pages/dashboard_layout_test.go",
+  "decisions": [
+    {
+      "test": "TestDashboardBenchmarkHasOneHeading",
+      "decision": "delete",
+      "reason": "只规定 benchmark 标题数量和控件存在；实际选择与运行由 preview workflow 覆盖。"
+    },
+    {
+      "test": "TestDashboardEnvironmentVisibilityAndOrder",
+      "decision": "delete",
+      "reason": "只固定环境卡片及旧章节是否可见；首次准备、资源缺失与初始化跳过由 first_use 和 prepare 行为测试覆盖。"
+    },
+    {
+      "test": "TestDashboardHasOneStageTrack",
+      "decision": "delete",
+      "reason": "仅统计阶段控件数量。"
+    },
+    {
+      "test": "TestDashboardMissingAndUnknownProgress",
+      "decision": "keep",
+      "reason": "进度读失败或遇未知阶段须给出对应诊断，不能当作已准备就绪而误导用户开始运行。"
+    },
+    {
+      "test": "TestDashboardOverviewStageMarkers",
+      "decision": "delete",
+      "reason": "逐项复述阶段索引、勾号和可访问节点数量；真实阶段和可用操作由 TestPreviewBenchmarkParity 覆盖。"
+    },
+    {
+      "test": "TestDashboardRunningDisablesQuickRunAndOpensDetail",
+      "decision": "keep",
+      "reason": "活动任务时不能再启动 benchmark；实时详情须打开当前任务并可返回，删除重复播报与排版断言。"
+    },
+    {
+      "test": "TestDashboardSingleBundleStillNeedsExplicitConfirmation",
+      "decision": "delete",
+      "reason": "实际只检查空题包不能运行；由 TestExplicitSingleBundleConfirmation 覆盖。"
+    },
+    {
+      "test": "TestDashboardTrackHeadingLevel",
+      "decision": "delete",
+      "reason": "只规定一个二级标题的控件结构。"
+    }
+  ]
+}

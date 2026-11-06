@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/integration/test_trial_profiles.py",
+  "decisions": [
+    {
+      "test": "test_batch_resource_guard_does_not_leak_into_single",
+      "decision": "delete",
+      "reason": "用单run对batch的私有资源检查豁免作差异测试；内存不足停发由 test_trial_runner.test_memory_safety_stop_before_generation 覆盖，单run总预算由test_single_budget覆盖，不保留单模式绕检查实现约束。"
+    },
+    {
+      "test": "test_finalization_error_mapping_and_lock_release",
+      "decision": "delete",
+      "reason": "手拼store/lock后要求固定close/unlock顺序与异常传播；实际CLI故障映射与可读前缀由 test_layout_writer_faults.test_finalization_failures_keep_real_received_and_readable_prefix 覆盖。"
+    },
+    {
+      "test": "test_finalization_preserves_existing_identity_and_sampler_shutdown",
+      "decision": "delete",
+      "reason": "SimpleNamespace手拼finish_trial，仅约束sampler取消/返回及内部identity查询方式；真实终止与封存由test_layout_writer_faults覆盖。"
+    },
+    {
+      "test": "test_profile_admission_order_and_artifact_boundaries",
+      "decision": "delete",
+      "reason": "只断言review/reuse私有调用顺序和各模式旁证文件库存，未验证错误准入或用户结论。"
+    }
+  ]
+}

@@ -55,11 +55,6 @@ def test_independent_cadences_and_missed_deadlines(monkeypatch):
     assert [r["monotonic_ns"] / 1e9 for r in environment] == [0, 1, 5.5, 6, 7]
     assert [r["scheduled_ns"] / 1e9 for r in schedules] == [0, 2, 6]
     assert schedules[1]["collector_work_ns"] == 3_500_000_000
-    assert sampler.failure is None
-    assert not hasattr(sampler, "environment")
-    assert not hasattr(sampler, "schedule")
-    assert len(environment) == 5 and len(schedules) == 3
-    assert all("queue_depth" not in row for row in schedules)
 
 
 def test_observer_error_is_preserved(monkeypatch):

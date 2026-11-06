@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_windows_operator.py",
+  "decisions": [
+    {
+      "test": "test_identity_failure_after_start_still_closes_the_owned_process",
+      "decision": "keep",
+      "reason": "启动后身份失败仍终止自有服务且不启动 benchmark，避免失败路径遗留模型进程；Windows 本轮未实测。"
+    },
+    {
+      "test": "test_insufficient_memory_never_starts_a_service",
+      "decision": "keep",
+      "reason": "低可用内存时不启动任何服务或 benchmark，写明确阻断记录，避免操作者工具绕过预算；Windows 本轮未实测。"
+    },
+    {
+      "test": "test_startup_reserve_keeps_loaded_floor_and_counts_model_bytes",
+      "decision": "keep",
+      "reason": "启动预算必须包含模型字节与加载后内存地板，恰低一字节拒绝，避免低预算启动。"
+    }
+  ]
+}

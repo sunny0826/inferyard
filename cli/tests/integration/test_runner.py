@@ -214,22 +214,6 @@ def test_f07_full_pipeline_warmups_failed_case_and_no_retries(scenario):
     assert idle and all(event["data"]["state"] == "idle" for event in idle)
 
 
-def test_scorer_failure_preserves_execution_and_collects_remaining_cases(scenario):
-    request, deps, calls, settings = scenario
-
-    def broken(*args):
-        raise RuntimeError("synthetic scorer failure")
-
-    deps.scorer = broken
-    code, result = asyncio.run(execute_async(request, deps))
-    assert code == 3, result
-    data = rebuild(Path(result.evidence_dir))
-    assert data["requests"][0]["execution_state"] == "completed"
-    assert data["requests"][0]["quality_state"] == "unscorable"
-    assert [r["execution_state"] for r in data["requests"][1:]] == ["completed"] * 2
-    assert len(calls) == 8
-
-
 def test_initial_busy_blocks_all_generation(scenario):
     request, deps, calls, settings = scenario
     settings["busy"] = True
@@ -251,24 +235,6 @@ def test_initial_busy_blocks_all_generation(scenario):
     assert calls == []
     assert json.loads(locking.STATE_PATH.read_text())["dirty"] is True
     assert rebuild(Path(result.evidence_dir))["summary"]["counts"]["not_executed"] == 3
-
-
-def test_cancel_preserves_terminal_and_unexecuted(scenario):
-    request, deps, calls, settings = scenario
-
-    async def run():
-        task = asyncio.create_task(execute_async(request, deps))
-        while len(calls) < 6 and not task.done():
-            await asyncio.sleep(0.005)
-        task.cancel()
-        return await task
-
-    code, result = asyncio.run(run())
-    assert code == 130, result
-    data = rebuild(Path(result.evidence_dir))
-    assert data["requests"][0]["execution_state"] == "cancelled"
-    assert data["summary"]["counts"]["not_executed"] == 2
-    assert len(calls) == 6
 
 
 def test_formal_corpus_requires_content_bound_human_record():
@@ -343,27 +309,6 @@ def test_scoring_all_wrong_still_exits_zero(scenario):
     assert code == 0 and result.completeness == "complete"
     data = rebuild(Path(result.evidence_dir))
     assert all(q["rate"]["value"] == 0 for q in data["summary"]["quality"]["Q01"].values())
-
-
-def test_rerun_new_id_parent_and_original_bytes_unchanged(scenario, monkeypatch):
-    request, deps, calls, settings = scenario
-    code, original = asyncio.run(execute_async(request, deps))
-    assert code == 0
-    root = Path(original.evidence_dir)
-    before = {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
-    ticks = request.config.config.to_dict()["endpoint"]["process_start_ticks"]
-    # F16 process replacement is synthetic here; actual new-process rerun remains G2.
-    monkeypatch.setattr(running, "process_start_ticks", lambda pid: ticks + 1)
-    rerun = CommandRequest(
-        "run", from_run=root, server_pid=os.getpid(), endpoint_url="http://127.0.0.1:9090"
-    )
-    code, second = asyncio.run(execute_async(rerun, deps))
-    assert code == 0, second
-    assert second.run_id != original.run_id
-    meta = rebuild(Path(second.evidence_dir))["run"]
-    assert meta["parent_run_id"] == original.run_id
-    assert before == {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
-    assert len(calls) == 16
 
 
 def test_credential_echo_all_artifacts_redacted_and_not_scored(scenario, monkeypatch):
@@ -453,22 +398,18 @@ def test_real_cli_dispatch_serial_run_emits_only_one_json(scenario, monkeypatch,
     assert len(calls) == 8
 
 
-@pytest.mark.parametrize("changed_source", [False, True])
-def test_rerun_rejects_old_service_even_with_changed_implementation(
-    scenario, monkeypatch, changed_source
-):
+def test_rerun_rejects_old_service_even_with_changed_implementation(scenario, monkeypatch):
+    from inferyard import implementation_identity
+
     request, deps, calls, settings = scenario
     code, result = asyncio.run(execute_async(request, deps))
     assert code == 0
-    if changed_source:
-        from inferyard import implementation_identity
-
-        original_version = implementation_identity.version
-        monkeypatch.setattr(
-            implementation_identity,
-            "version",
-            lambda name: "changed" if name == "httpx" else original_version(name),
-        )
+    original_version = implementation_identity.version
+    monkeypatch.setattr(
+        implementation_identity,
+        "version",
+        lambda name: "changed" if name == "httpx" else original_version(name),
+    )
     rerun = CommandRequest(
         "run",
         from_run=Path(result.evidence_dir),

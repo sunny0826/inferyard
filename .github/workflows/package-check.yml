@@ -18,7 +18,6 @@ jobs:
       - run: mise exec -- uv sync --frozen
       - run: mise exec -- uv run --frozen pytest -q
       - run: mise exec -- uv run --frozen ruff check src tests scripts
-      - run: mise exec -- uv run --frozen ruff format --check src tests scripts
       - run: mise exec -- uv run --frozen python scripts/export_schemas.py --check
       - run: mise exec -- uv run --frozen python scripts/export_catalogue.py --check
       - run: mise exec -- uv run --frozen python scripts/export_community.py --check

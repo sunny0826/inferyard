@@ -3,14 +3,13 @@
 import shutil
 from copy import deepcopy
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 
 from inferyard.application.types import CommandRequest, VerificationOptions
 from inferyard.application.verification import execute
 from inferyard.cli import main
-from inferyard.config.loader import LoadedConfig, load_config
+from inferyard.config.loader import load_config
 from inferyard.contracts.validation import Document
 from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
@@ -78,10 +77,6 @@ def test_external_surface_keeps_source_bytes_and_denominators(sources, tmp_path,
             "artifact-manifest.json",
         }
         assert verify_report(out, options=VerificationOptions(rerender=True))["render_checked"]
-        expected = {"manifest.json", "events.jsonl"} | (
-            {"inputs.json"} if layout == 2 else {"config.frozen.json", "plan.json"}
-        )
-        assert set(index["runs"][0]["evidence"]) == expected
     elif surface == "export":
         write_export(out, run=root)
         assert verify_export(out)["verified"]
@@ -193,20 +188,6 @@ def test_rerun_loads_actual_embedded_source_without_virtual_path(sources, tmp_pa
     assert tree_bytes(root) == before
 
 
-def test_loaded_configuration_preserves_file_and_missing_original(config_path):
-    loaded = load_config(config_path)
-    assert loaded.source == Path(config_path).resolve()
-    assert loaded.configuration_source()["data"] == Path(config_path).read_bytes()
-    missing = LoadedConfig(
-        None, loaded.config, loaded.bundle, source_missing_reason="not_persisted"
-    )
-    assert missing.configuration_source() == {
-        "data": None,
-        "media_type": None,
-        "missing_reason": "not_persisted",
-    }
-
-
 def test_remaining_budget_reads_saved_member_and_reserves_unknown_crash(sources, tmp_path):
     old, _ = sources
     copied = tmp_path / "budget-source"
@@ -255,8 +236,6 @@ def test_optional_observation_is_never_inferred_from_container_existence(sources
     assert evidence.observation("collector", stage="prepare") is None
     with pytest.raises(EvidenceError):
         sealed_observation(evidence, "collector")
-    start = sealed_observation(evidence, "environment", stage="start")
-    assert start == evidence.observation("environment", stage="start")
 
 
 def test_mixed_layout_comparison_and_report_resolve_moved_sources(sources, tmp_path):

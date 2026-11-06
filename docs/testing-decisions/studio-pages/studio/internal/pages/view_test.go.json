@@ -1,0 +1,60 @@
+{
+  "source_path": "studio/internal/pages/view_test.go",
+  "decisions": [
+    {
+      "test": "TestBoundBundleSelectsAndDuplicateGuard",
+      "decision": "delete",
+      "reason": "实际没有测试 duplicate guard，仅默认勾选/取消；TestExplicitSingleBundleConfirmation 覆盖。"
+    },
+    {
+      "test": "TestDetailTableAndResourcesRender",
+      "decision": "keep",
+      "reason": "exit 3 和失败题目须仍显示不完整及冻结续测子集分母，避免成功率失真；删除固定采样条数和资源文字重复。"
+    },
+    {
+      "test": "TestExplicitSingleBundleConfirmation",
+      "decision": "keep",
+      "reason": "默认必须双题包，用户可明确改为一个或零个；零范围点击运行须拒绝，防止静默缩小范围。"
+    },
+    {
+      "test": "TestFirstOpen",
+      "decision": "keep",
+      "reason": "首次空配置默认任务准备，已有配置默认报告，显式页面优先，未知页面回报告，避免启动进入错误流程。"
+    },
+    {
+      "test": "TestLongPageStartsAtTopAndScrolls",
+      "decision": "delete",
+      "reason": "删除固定侧栏/首字段坐标和按钮矩形门禁；正式 settings 长页滚动后恢复默认值的独立操作结果已并入 TestDownloadNamesSettingsView，通过实际名称变化验证。"
+    },
+    {
+      "test": "TestNullDeviceSnapshotUsesEmptyState",
+      "decision": "delete",
+      "reason": "null 快照空态由 TestDeviceEmptyAndError 已覆盖。"
+    },
+    {
+      "test": "TestReportFileURLAndInputNames",
+      "decision": "keep",
+      "reason": "点目录、路径逃逸、空格及绝对路径不得作下载目录名，凭据只收环境变量名，防止错写目录或传明文凭据。"
+    },
+    {
+      "test": "TestResumePairRejectsInvalidInput",
+      "decision": "keep",
+      "reason": "续测 endpoint/PID 必须成对且 PID 正整数，不能向错误服务身份发请求。"
+    },
+    {
+      "test": "TestSettingsFollowWorkspaceHandoffAndPreserveEdits",
+      "decision": "keep",
+      "reason": "初始化切换工作区后设置跟随新目录，用户开始编辑后后台刷新不能覆盖未保存 CLI/路径。"
+    },
+    {
+      "test": "TestSidebarDashboardEntry",
+      "decision": "delete",
+      "reason": "导航数组顺序和数量属实现；新任务进入任务页由 TestRunPanelNewTaskPreservesPair、preview workflow 覆盖。"
+    },
+    {
+      "test": "TestSixPagesRender",
+      "decision": "delete",
+      "reason": "逐页检查固定标题、导航数量和主题内容，是重复渲染 smoke；具体页面操作已有场景。testState/ptr helper 保留。"
+    }
+  ]
+}

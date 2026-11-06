@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_custody_round2.py",
+  "decisions": [
+    {
+      "test": "test_cancel_terminate_clock_regression_recorded",
+      "decision": "delete",
+      "reason": "重复取消返回点时钟回退；test_clock_failure_sticky_denies_success 与 test_cancel_terminate_cross_total_records_no_further_calls 已覆盖失败保留。"
+    },
+    {
+      "test": "test_cancel_terminate_cross_total_records_no_further_calls",
+      "decision": "keep",
+      "reason": "用户取消的 terminate 跨总期限后不再 kill，保留取消根因和 deadline 清理错误以供接手。"
+    },
+    {
+      "test": "test_close_handle_cross_total_releases_known_closed_ref",
+      "decision": "delete",
+      "reason": "逐调用 close_successes 与释放对象结构，无独立产品结果；期限结果由 test_work_deadline_grace_window_may_end_at_total 覆盖。"
+    },
+    {
+      "test": "test_close_handle_return_clock_regression_recorded",
+      "decision": "delete",
+      "reason": "重复 close 返回点时钟回退及固定 close_successes 数量；test_clock_failure_sticky_denies_success 已覆盖不可恢复成功。"
+    },
+    {
+      "test": "test_late_exit_confirmation_records_deadline_no_terminate",
+      "decision": "keep",
+      "reason": "保留 closed/returncode/deadline/success=False/不 terminate；删 callback ref 互等。"
+    },
+    {
+      "test": "test_overflow_at_total_records_without_terminate",
+      "decision": "keep",
+      "reason": "保留 32768 总输出预算与过总期限不进一步操作；删单次 4096 内部切片断言（含共享 FakeBackend）。"
+    },
+    {
+      "test": "test_start_cross_total_keeps_job_without_terminate",
+      "decision": "keep",
+      "reason": "start 返回已达总期限仍保留原任务且不再自动 terminate，防止丢失活进程与超期操作。"
+    },
+    {
+      "test": "test_start_error_with_ref_clock_regression_keeps_ref",
+      "decision": "keep",
+      "reason": "启动部分失败同时回退时钟仍保留原对象，resume 只清理该对象且原失败不能变成功。"
+    },
+    {
+      "test": "test_start_return_clock_regression_recorded_sticky",
+      "decision": "delete",
+      "reason": "重复 start 返回点的时钟回退；test_clock_failure_sticky_denies_success 已覆盖恢复时钟后仍失败。"
+    }
+  ]
+}

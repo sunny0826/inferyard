@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/integration/test_windows_platform.py",
+  "decisions": [
+    {
+      "test": "test_atomic_unicode_snapshot_no_overwrite_and_reparse_rejection",
+      "decision": "keep",
+      "reason": "Windows Unicode原子写入不覆盖原件并拒绝reparse/symlink，保护保存证据。"
+    },
+    {
+      "test": "test_declared_cuda_without_a_loaded_cuda_library_is_rejected",
+      "decision": "keep",
+      "reason": "只声明CUDA但未加载CUDA库时，不能当真实CUDA运行接受。"
+    },
+    {
+      "test": "test_environment_unknowns_do_not_qualify_performance",
+      "decision": "keep",
+      "reason": "Windows缺governor/swap等信息不能补值或据此声称环境稳定、性能可比。"
+    },
+    {
+      "test": "test_native_process_listener_and_working_set_identity",
+      "decision": "keep",
+      "reason": "Windows真实listener和WorkingSet必须绑定FILETIME，start变化RSS变null而非读另一进程。"
+    },
+    {
+      "test": "test_native_windows_batch_collector_memory_and_filetime_identity",
+      "decision": "keep",
+      "reason": "M2：删除工厂类isinstance；保留真实collect内存、FILETIME及PID复用source_changed/后续缺测。"
+    },
+    {
+      "test": "test_proactor_signal_cancels_task_and_restores_handler",
+      "decision": "keep",
+      "reason": "Proactor下SIGTERM必须取消实际task并恢复信号handler，保证终端取消可用。"
+    },
+    {
+      "test": "test_unknown_environment_opt_in_preserves_nulls_and_rejects_known_mismatch",
+      "decision": "keep",
+      "reason": "仅allow_unknown可接受未知环境，已知电源冲突仍拒绝，未知值继续null且无性能资格。"
+    },
+    {
+      "test": "test_unsupported_phase2_dispatch_blocks_before_files_or_requests",
+      "decision": "keep",
+      "reason": "Windows未支持的实时扩展/批次入口必须在写文件和发题前拒绝，不能静默调用Linux路径。"
+    },
+    {
+      "test": "test_windows_artifact_paths_reject_streams_and_escape",
+      "decision": "keep",
+      "reason": "Windows ADS、盘符相对/绝对路径及上跳不能逃出证据目录。"
+    },
+    {
+      "test": "test_wrong_native_identity_blocks",
+      "decision": "keep",
+      "reason": "错PID/start/exe/args/model原生身份必须阻断，防止发给错误服务。"
+    }
+  ]
+}

@@ -33,7 +33,7 @@ def test_read_trial_rejects_prism_properties_saved_before_idle(tmp_path):
     assert original == {path.name: path.read_bytes() for path in old.iterdir()}
 
 
-@pytest.mark.parametrize("adapter", ["prism_llama_server_v1", "kvmem", "ninfer"])
+@pytest.mark.parametrize("adapter", ["kvmem", "ninfer"])
 @pytest.mark.parametrize("projection", [False, True])
 @pytest.mark.parametrize("correct_stage", [False, True])
 def test_scanning_any_observation_binds_properties_stage_to_adapter(

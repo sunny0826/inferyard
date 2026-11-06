@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_device_preflight.py",
+  "decisions": [
+    {
+      "test": "test_busy_gpu_and_unavailable_driver_recommend_cpu_when_model_fits_host",
+      "decision": "keep",
+      "reason": "GPU忙或无驱动但主内存够须回退CPU，避免错误阻断可运行模型。"
+    },
+    {
+      "test": "test_device_check_cli_is_read_only_and_selects_a_local_model",
+      "decision": "keep",
+      "reason": "device-check不发请求不改模型且选择本地用户文件，保证检测只读。"
+    },
+    {
+      "test": "test_invalid_gguf_metadata_types_are_preserved_as_unavailable",
+      "decision": "keep",
+      "reason": "GGUF上下文/文件类型/模板类型非法标不可用，避免推荐无效模型。"
+    },
+    {
+      "test": "test_loaded_service_is_not_required_to_reserve_model_memory_a_second_time",
+      "decision": "keep",
+      "reason": "已加载服务无需再预留同一模型内存，避免双重扣减导致假阻断。"
+    },
+    {
+      "test": "test_metal_capacity_uses_shared_host_memory_without_fabricating_vram",
+      "decision": "keep",
+      "reason": "Metal使用共享主内存不捏造VRAM，内存不足拒绝、Metal未知回退CPU。"
+    },
+    {
+      "test": "test_model_discovery_is_not_bound_to_a_name_and_preserves_invalid_candidates",
+      "decision": "keep",
+      "reason": "发现任意命名GGUF且保留无效候选与显式选择，避免只识别固定模型或隐藏坏文件。"
+    },
+    {
+      "test": "test_recommendation_uses_free_vram_model_size_and_selected_device",
+      "decision": "keep",
+      "reason": "按可用VRAM和模型大小选真实GPU索引及模型，避免错设备或按总显存过度推荐。"
+    },
+    {
+      "test": "test_resource_shortage_or_missing_model_cannot_be_recommended",
+      "decision": "keep",
+      "reason": "内存/磁盘不足、无模型或缺模板不得推荐，避免启动无法完成的工作。"
+    },
+    {
+      "test": "test_truncated_and_excessive_gguf_metadata_are_rejected",
+      "decision": "keep",
+      "reason": "GGUF截断和巨型元数据长度拒绝，避免读越界或异常内存消耗。"
+    }
+  ]
+}

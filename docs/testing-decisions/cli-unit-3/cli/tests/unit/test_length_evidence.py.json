@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_length_evidence.py",
+  "decisions": [
+    {
+      "test": "test_preparation_detects_raw_tamper_and_resealed_semantic_mismatch",
+      "decision": "keep",
+      "reason": "具体场景 test_preparation_detects_raw_tamper_and_resealed_semantic_mismatch。可观察预期：assert read_preparation(root)['prompt'] == '开始填结束'；pytest.raises(EvidenceError, match='hash_mismatch')；pytest.raises(EvidenceError, match='target_mismatch')。防止改 prompt/token/template/model 或重封不一致记录获得长度实验资格；扫描预算必须等于冻结笛卡尔积，生成文本不能冒充已人工审核质量题。"
+    },
+    {
+      "test": "test_preparation_rejects_config_model_without_matching_identity",
+      "decision": "keep",
+      "reason": "具体场景 test_preparation_rejects_config_model_without_matching_identity。可观察预期：pytest.raises(EvidenceError, match='identity_mismatch')。防止改 prompt/token/template/model 或重封不一致记录获得长度实验资格；扫描预算必须等于冻结笛卡尔积，生成文本不能冒充已人工审核质量题。"
+    },
+    {
+      "test": "test_preparation_rejects_invalid_resealed_records",
+      "decision": "keep",
+      "reason": "具体场景 test_preparation_rejects_invalid_resealed_records。逐项参数：pytest.mark.parametrize('mutation', ['selected', 'count', 'source', 'inventory', 'repetitions'])。可观察预期：pytest.raises(EvidenceError)。防止改 prompt/token/template/model 或重封不一致记录获得长度实验资格；扫描预算必须等于冻结笛卡尔积，生成文本不能冒充已人工审核质量题。"
+    },
+    {
+      "test": "test_preparation_verifies_sealed_template_source_without_external_file",
+      "decision": "keep",
+      "reason": "具体场景 test_preparation_verifies_sealed_template_source_without_external_file。可观察预期：assert read_preparation(root)['prompt'] == '开始填结束'；pytest.raises(EvidenceError, match='identity_mismatch')。防止改 prompt/token/template/model 或重封不一致记录获得长度实验资格；扫描预算必须等于冻结笛卡尔积，生成文本不能冒充已人工审核质量题。"
+    },
+    {
+      "test": "test_scan_freezes_cartesian_budget_without_fabricating_review",
+      "decision": "keep",
+      "reason": "具体场景 test_scan_freezes_cartesian_budget_without_fabricating_review。可观察预期：assert plan['request_limit'] == 10；assert len(plan['trials']) == 10；assert review['independent_quality_questions'] == 0；assert all((w['input_tolerance_tokens'] == 1 for w in plan['experiment']['workloads']))。防止改 prompt/token/template/model 或重封不一致记录获得长度实验资格；扫描预算必须等于冻结笛卡尔积，生成文本不能冒充已人工审核质量题。"
+    }
+  ]
+}

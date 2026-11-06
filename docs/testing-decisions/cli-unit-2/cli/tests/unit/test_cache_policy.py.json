@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_cache_policy.py",
+  "decisions": [
+    {
+      "test": "test_adapter_refuses_conflicting_ram_before_generation",
+      "decision": "keep",
+      "reason": "服务属性正确但 argv 又开启 RAM cache 仍须在生成前失败，防止错误缓存实验。"
+    },
+    {
+      "test": "test_conflicting_or_duplicate_cache_controls_rejected",
+      "decision": "keep",
+      "reason": "重复/相反 cache开关无论顺序都不得证明禁用，避免后出现参数打开缓存而仍称无缓存比较。"
+    },
+    {
+      "test": "test_explicit_unique_disabled_controls",
+      "decision": "keep",
+      "reason": "显式唯一禁用控制的四种合法拼写应接受，避免合法服务因参数拼写不可绑定。"
+    },
+    {
+      "test": "test_missing_or_malformed_controls_rejected",
+      "decision": "keep",
+      "reason": "不完整与错形禁用控制不得授无缓存资格，避免默认缓存被误认为禁用。"
+    },
+    {
+      "test": "test_requested_accelerator_backend_requires_gpu_offload",
+      "decision": "keep",
+      "reason": "CUDA/Metal 必须明确正 offload、CPU不能有GPU offload，避免后端宣称与真实执行不同。"
+    }
+  ]
+}

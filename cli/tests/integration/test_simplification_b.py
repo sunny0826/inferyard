@@ -105,10 +105,8 @@ def test_preflight_diagnostic_flag_is_forwarded(scenario, monkeypatch):
 
     request, deps, _, _ = scenario
     old = deps.preflight
-    flags = []
 
     def preflight(config, *, diagnostic=False, environment_policy=None):
-        flags.append(diagnostic)
         observed, files = old(config)
         env = {**observed["environment"], "ac_online": None}
         result = admission(
@@ -128,26 +126,6 @@ def test_preflight_diagnostic_flag_is_forwarded(scenario, monkeypatch):
         if expected != 2:
             observed = TrialEvidence(Path(result.evidence_dir)).observation("identity")
             assert "ac_online" in observed["environment_admission"]["differences"]
-    assert flags == [False, True, True]
-
-
-def test_trial_isolated_scorer_exception_collects_whole_selection(scenario):
-    from inferyard.runtime.trial_runner import run_trial
-
-    plan, loaded, deps, out = inputs(scenario)
-
-    def broken(*_):
-        raise ValueError("private exception")
-
-    deps.scorer = broken
-    code, data, _ = asyncio.run(
-        run_trial(
-            plan, plan["trials"][0]["trial_id"], loaded, out, dependencies=deps, diagnostic=True
-        )
-    )
-    assert code == 3
-    assert data["summary"]["counts"]["not_executed"] == 0
-    assert all(r["score"]["reason"] == "scorer_exception" for r in data["requests"])
 
 
 def test_batch_scoring_failures_do_not_drop_later_trials(tmp_path, scenario):
@@ -194,32 +172,6 @@ def test_applicable_handoff_reuses_clean_service(tmp_path, scenario, monkeypatch
     binding = TrialEvidence(Path(result.details["runs"][-1])).observation("service_binding")
     assert binding["transition"] == "same_process"
     assert binding["cache_state"] == "unknown"
-
-
-def test_partial_after_scoring_storage_error_still_requires_new_rerun_service(scenario):
-    request, deps, calls, _ = scenario
-
-    def fail(*_):
-        raise EvidenceError("evidence_io_error")
-
-    deps.scorer = fail
-    code, original = asyncio.run(execute_async(request, deps))
-    assert code == 4
-    root = Path(original.evidence_dir)
-    metadata = {}
-    data = read_trial(root, metadata=metadata)
-    assert not data["summary"]["scope_complete"]
-    assert data["summary"]["counts"]["not_executed"] == 2
-    assert metadata["service_drain"]["completion_scope"] == "engine_idle"
-    assert "service_drain" not in data  # Historical public ledger shape stays unchanged.
-    endpoint = data["config"]["endpoint"]
-    deps.scorer = score_case
-    rerun = CommandRequest(
-        "run", from_run=root, server_pid=endpoint["server_pid"], endpoint_url=endpoint["url"]
-    )
-    with pytest.raises(PreflightError, match="rerun_requires_new_service"):
-        asyncio.run(execute_async(rerun, deps))
-    assert len(calls) == 6
 
 
 @pytest.mark.parametrize("check_environment", [False, True])

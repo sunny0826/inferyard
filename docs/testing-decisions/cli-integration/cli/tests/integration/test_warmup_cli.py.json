@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_warmup_cli.py",
+  "decisions": [
+    {
+      "test": "test_cli_loads_zero_or_three_and_seals_actual_warmups",
+      "decision": "keep",
+      "reason": "公开probe/run加载0或3 warmup，实际请求相符且probe永不预热，正式分母不含warmup。"
+    },
+    {
+      "test": "test_cli_rejects_invalid_warmups_before_transport",
+      "decision": "keep",
+      "reason": "负数、4、bool或字符串warmup必须在transport前拒绝。"
+    },
+    {
+      "test": "test_frozen_plan_keeps_warmup_choice_and_rejects_later_mutation",
+      "decision": "keep",
+      "reason": "冻结计划保持所选warmup数；源快照后续改变后CLI拒绝且不得增加请求。"
+    }
+  ]
+}

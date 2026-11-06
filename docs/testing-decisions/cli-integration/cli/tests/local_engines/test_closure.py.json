@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/local_engines/test_closure.py",
+  "decisions": [
+    {
+      "test": "test_mapped_dependency_outside_inventory_blocks",
+      "decision": "keep",
+      "reason": "实际映射库依赖落在清单外时必须拒绝，不能仅验证主执行文件。"
+    },
+    {
+      "test": "test_optional_missing_recorded_but_mapped_blocks",
+      "decision": "keep",
+      "reason": "未用可选库依赖缺失可记录；一旦实际映射则必须阻断未解析闭包，避免错误拒绝未用codec或放行未冻结代码。"
+    },
+    {
+      "test": "test_worker_environment_override_blocks",
+      "decision": "keep",
+      "reason": "worker覆写PYTHONPATH必须拒绝，不能引入未冻结依赖。"
+    },
+    {
+      "test": "test_worker_identity_and_process_reuse",
+      "decision": "keep",
+      "reason": "worker在两次观察间start变化必须拒绝，不把被替换进程当稳定树。"
+    }
+  ]
+}

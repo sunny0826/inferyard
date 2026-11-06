@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.platforms.cpu_policy import assess, cpu_list, snapshot
+from inferyard.platforms.cpu_policy import assess, snapshot
 
 
 def inventory():
@@ -68,10 +68,3 @@ def test_incomplete_and_transient_domains_never_qualify(change):
     else:
         middle["policies"][0]["energy_performance_preference"] = None
     assert not assess([start, middle, start], {})["complete_and_stable"]
-
-
-def test_cpu_list_parsing_and_missing_inventory():
-    assert cpu_list("0-2,4 6") == [0, 1, 2, 4, 6]
-    for value in (None, "", "4-2", "1-x", "1000000"):
-        assert cpu_list(value) is None
-    assert assess([None], {})["reasons"] == ["cpu_policy_inventory_missing"]

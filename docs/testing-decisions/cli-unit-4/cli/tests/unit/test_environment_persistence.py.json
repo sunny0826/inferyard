@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_environment_persistence.py",
+  "decisions": [
+    {
+      "test": "test_both_writers_project_each_fresh_read_without_mutating_snapshot",
+      "decision": "delete",
+      "reason": "两个 writer 仅用 mock 复述投影字典、调用次数与键集合；由 test_sealed_old_and_new_runs_rebuild_the_same_context_and_report_profile 及 test_environment_schedule.py::test_independent_cadences_and_missed_deadlines 覆盖可见结果。"
+    },
+    {
+      "test": "test_environment_still_rejects_invalid_observation",
+      "decision": "keep",
+      "reason": "非法环境时间或 snapshot 类型拒绝，避免证据形状破坏环境评估。"
+    },
+    {
+      "test": "test_old_and_projected_records_have_identical_assessments",
+      "decision": "keep",
+      "reason": "M3：环境投影前后环境/调度判定及比较资格一致，并独立要求只有无变化时 eligible；删除 Python 输入不变、投影精确键布局及生产字段集合自证。磁盘原件保护另保留。"
+    },
+    {
+      "test": "test_schedule_still_rejects_invalid_retained_fields",
+      "decision": "keep",
+      "reason": "旧/新 schedule 的缺字段、bool、负数与小数拒绝，避免坏时间记录通过资格。"
+    },
+    {
+      "test": "test_sealed_old_and_new_runs_rebuild_the_same_context_and_report_profile",
+      "decision": "keep",
+      "reason": "封存旧/新记录重建相同上下文、资源和报告且原件不改，避免历史支持或呈现回归。"
+    }
+  ]
+}

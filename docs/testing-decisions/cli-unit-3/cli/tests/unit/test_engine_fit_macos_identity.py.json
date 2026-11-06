@@ -1,0 +1,85 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_macos_identity.py",
+  "decisions": [
+    {
+      "test": "test_bad_member_refuses_whole_tree_and_keeps_host_memory",
+      "decision": "keep",
+      "reason": "具体场景 test_bad_member_refuses_whole_tree_and_keeps_host_memory。逐项参数：pytest.mark.parametrize('change', ['root_reused', 'gone', 'denied', 'reparented', 'cycle', 'duplicate', 'zombie', 'dead'])。可观察预期：。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_dispatch_and_later_cwd_change_with_absolute_model_path",
+      "decision": "keep",
+      "reason": "具体场景 test_dispatch_and_later_cwd_change_with_absolute_model_path。可观察预期：pytest.raises(PreflightError, match='identity_changed')。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_duplicate_listener_is_ambiguous",
+      "decision": "keep",
+      "reason": "具体场景 test_duplicate_listener_is_ambiguous。可观察预期：pytest.raises(PreflightError, match='endpoint_pid_mismatch')。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_executable_content_is_bound_without_basename_authority",
+      "decision": "keep",
+      "reason": "具体场景 test_executable_content_is_bound_without_basename_authority。可观察预期：assert binding['executable_sha256'] == hashlib.sha256(other.read_bytes()).hexdigest()；pytest.raises(PreflightError, match='identity_changed')。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_global_reuseport_or_overlapping_listener_refuses_binding",
+      "decision": "keep",
+      "reason": "具体场景 test_global_reuseport_or_overlapping_listener_refuses_binding。逐项参数：pytest.mark.parametrize('change', ['other_pid', 'same_pid', 'ipv6', 'other_address', 'gone'])。可观察预期：pytest.raises(PreflightError, match='listener_ambiguous_or_changed')。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_host_memory_failure_preserves_complete_process_tree",
+      "decision": "keep",
+      "reason": "具体场景 test_host_memory_failure_preserves_complete_process_tree。可观察预期：assert result['memory_available_bytes'] is None；assert result['missing_reasons'] == {'memory_available_bytes': 'system_memory_unavailable'}；assert result['process_count'] == 3。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_identity_changes_during_lsof_are_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_identity_changes_during_lsof_are_rejected。逐项参数：pytest.mark.parametrize('change', ['start', 'args', 'cwd', 'executable', 'model'])。可观察预期：pytest.raises(PreflightError, match='identity_changed')。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_invalid_native_values_do_not_become_plausible_resource_totals",
+      "decision": "keep",
+      "reason": "具体场景 test_invalid_native_values_do_not_become_plausible_resource_totals。逐项参数：pytest.mark.parametrize('key,value', [('rss', -1), ('rss', True), ('rss', 1.5), ('user', -1), ('user', True), ('user', float('nan')), ('system', float('inf')), ('parent', True), ('start', float('nan'))])。可观察预期：。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_invalid_pid_rejected_before_native_reads",
+      "decision": "delete",
+      "reason": "只枚举 PID 的 bool/字符串/非正数类型和私有查询次数；运行中身份变化由 test_identity_changes_during_lsof_are_rejected 覆盖。"
+    },
+    {
+      "test": "test_mapping_and_listener_evidence_cannot_be_substituted",
+      "decision": "keep",
+      "reason": "具体场景 test_mapping_and_listener_evidence_cannot_be_substituted。逐项参数：pytest.mark.parametrize('index,changes,reason', [(0, {'p': 999}, 'mapping_unverified'), (0, {'f': '3'}, 'mapping_unverified'), (0, {'i': '0'}, 'mapping_unverified'), (0, {'D': '0'}, 'mapping_unverified'), (0, {'t': 'DIR'}, 'mapping_unverified'), (1, {'p': 999}, 'endpoint_pid_mismatch'), (1, {'P': 'UDP'}, 'endpoint_pid_mismatch'), (1, {'t': 'IPv6'}, 'endpoint_pid_mismatch'), (1, {'T': 'ST=ESTABLISHED'}, 'endpoint_pid_mismatch'), (1, {'n': '127.0.0.2:8080'}, 'endpoint_pid_mismatch'), (1, {'n': '127.0.0.1:8081'}, 'endpoint_pid_mismatch')])。可观察预期：pytest.raises(PreflightError, match=reason)。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_member_mutation_after_first_tree_read_is_missing",
+      "decision": "keep",
+      "reason": "具体场景 test_member_mutation_after_first_tree_read_is_missing。逐项参数：pytest.mark.parametrize('change', ['start', 'parent', 'children', 'counter'])。可观察预期：。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_native_binding_has_raw_start_microseconds_and_actual_sources",
+      "decision": "keep",
+      "reason": "具体场景 test_native_binding_has_raw_start_microseconds_and_actual_sources。逐项参数：pytest.mark.parametrize('engine,args', [('vllm', ['vllm', 'serve', 'model']), ('vllm', ['python3.14', '/bin/vllm', 'serve', 'model']), ('vllm', ['python3', '-u', '-m', 'vllm.entrypoints.openai.api_server', '--model=model']), ('vllm', ['Python', '-m', 'vllm.entrypoints.openai.api_server', '--model=model']), ('sglang', ['python3', '-m', 'sglang.launch_server', '--model-path', 'model'])])。可观察预期：assert observed['start_ticks'] == 1700000000125000；assert observed['listener_inode'] is None；assert observed['listener_identity'] == 'macos:tcp:127.0.0.1:8080:pid:321'；assert observed['listener_source'] == 'lsof:TCP:LISTEN:pid'。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。已删 lsof 命令数组/timeout 及私有 queries 计数，保留绑定哈希和不泄密。"
+    },
+    {
+      "test": "test_native_permission_failure_does_not_emit_partial_binding",
+      "decision": "keep",
+      "reason": "具体场景 test_native_permission_failure_does_not_emit_partial_binding。逐项参数：pytest.mark.parametrize('read', ['uids', 'exe', 'cwd', 'cmdline'])。可观察预期：assert 'private error detail' not in str(error.value)；pytest.raises(PreflightError)。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_native_python_framework_executable_name_is_supported",
+      "decision": "keep",
+      "reason": "具体场景 test_native_python_framework_executable_name_is_supported。可观察预期：assert bind(native)['executable_sha256'] == hashlib.sha256(renamed.read_bytes()).hexdigest()。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_native_resources_sum_descendants_in_bytes_and_seconds",
+      "decision": "keep",
+      "reason": "具体场景 test_native_resources_sum_descendants_in_bytes_and_seconds。可观察预期：assert result['memory_available_bytes'] == 2 ** 30；assert result['process_tree_rss_bytes'] == len(nodes) * 16384；assert result['process_tree_cpu_seconds'] == 1.125；assert result['process_count'] == 3。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    },
+    {
+      "test": "test_service_user_must_match_all_native_uids",
+      "decision": "keep",
+      "reason": "具体场景 test_service_user_must_match_all_native_uids。逐项参数：pytest.mark.parametrize('index', range(3))。可观察预期：pytest.raises(PreflightError, match='service_user_mismatch')。防止绑定到其他用户、其他模型或竞争监听；进程树变化/缺段时不能把部分 RSS/CPU 总和当完整资源，主机内存与进程来源独立保留。"
+    }
+  ]
+}

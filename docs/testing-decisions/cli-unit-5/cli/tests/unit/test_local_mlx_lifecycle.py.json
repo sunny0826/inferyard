@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_local_mlx_lifecycle.py",
+  "decisions": [
+    {
+      "test": "test_failed_ordinary_delivery_after_sync_still_poisons",
+      "decision": "keep",
+      "reason": "同步后普通响应传输失败仍poison并拒绝下一请求，避免交付失败被当安全完成。复审删除故障注入内metrics零元组；保留真实HTTP断连、等待poison完成和下一次503。"
+    },
+    {
+      "test": "test_failure_never_returns_success_terminal_and_blocks_next_request",
+      "decision": "keep",
+      "reason": "生成、close、sync、缺结束或超量失败不能返回成功terminal，且下一请求503，避免不确定服务继续测评。复审删除内部metrics元组；保留非流失败/流缺成功标志、错误脱敏及下一次请求503。"
+    },
+    {
+      "test": "test_http_queue_capacity_rejection_does_not_poison_active_work",
+      "decision": "keep",
+      "reason": "队列满429不污染正在执行和已排队任务，避免一次容量拒绝中止全部工作。复审删除内部metrics元组；保留四个排队任务作为条件、队满429及既有任务全部成功。"
+    },
+    {
+      "test": "test_ordinary_response_waits_for_generator_close_and_gpu_sync",
+      "decision": "keep",
+      "reason": "普通HTTP响应要等generator关闭和GPU同步才能成功，避免客户端完成时工作仍在运行。复审删除内部metrics元组；保留同步完成前HTTP请求不完成、释放后200的直接结果。"
+    },
+    {
+      "test": "test_tcp_disconnect_preserves_running_until_sync_and_poison_after_idle",
+      "decision": "keep",
+      "reason": "TCP断开后运行计数保持到同步结束并进入poison，避免取消后假空闲或复用脏服务。"
+    }
+  ]
+}

@@ -51,7 +51,6 @@ def test_arrival_timeline_survives_redaction_without_recording_secret():
     assert measured["L04"]["value"] == 10
     assert measured["L05"]["intervals"] == [100, 300]
     assert measured["L05"]["distribution"]["p50"] == 100
-    assert all(set(a) == {"index", "channel", "monotonic_ns"} for a in redacted["block_arrivals"])
 
 
 @pytest.mark.parametrize("count,p95", [(0, None), (19, None), (20, 19), (100, 95)])

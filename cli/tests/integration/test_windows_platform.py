@@ -232,7 +232,6 @@ def test_unsupported_phase2_dispatch_blocks_before_files_or_requests(tmp_path):
 
 def test_native_windows_batch_collector_memory_and_filetime_identity(service):
     from inferyard.platforms.resources import ResourceSampler, resource_collector_id
-    from inferyard.registry import collector_factory
 
     process, _, config, _, _ = service
     config["telemetry"] = {"interval_ms": 1000}
@@ -242,7 +241,6 @@ def test_native_windows_batch_collector_memory_and_filetime_identity(service):
     )
     assert resource_collector_id() == "windows-resource.v1"
     sampler = ResourceSampler(store, config)
-    assert isinstance(sampler, collector_factory("windows-resource.v1"))
     ticks = config["endpoint"]["process_start_ticks"]
     samples = sampler.collect(process.pid, ticks)
     assert all(row["value"] > 0 and row["missing_reason"] is None for row in samples)

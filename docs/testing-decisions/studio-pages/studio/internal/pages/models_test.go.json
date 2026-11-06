@@ -1,0 +1,45 @@
+{
+  "source_path": "studio/internal/pages/models_test.go",
+  "decisions": [
+    {
+      "test": "TestEngineFitTexts",
+      "decision": "delete",
+      "reason": "只比较引擎计数及固定提示格式；实际可选性由 TestEngineOptionAnnotations 覆盖。"
+    },
+    {
+      "test": "TestEngineOptionAnnotations",
+      "decision": "keep",
+      "reason": "核验中/失败不可选，旧 CLI 特定降级可选，活动服务锁所有选择；防止选用未验证或运行中更换引擎。"
+    },
+    {
+      "test": "TestModelOptionAnnotations",
+      "decision": "keep",
+      "reason": "不可读/元数据无效模型必须禁选，可用模型不因引擎选择被错误禁用，避免选择坏资产。"
+    },
+    {
+      "test": "TestModelsEmptyRegistryGuidance",
+      "decision": "keep",
+      "reason": "无模型/引擎时不能提供可运行组合，用户可以到下载页获取资源。"
+    },
+    {
+      "test": "TestModelsPageHidesPaths",
+      "decision": "keep",
+      "reason": "模型页不能暴露候选/日志/资源绝对路径，同时仍需正确标示另一组合的服务。"
+    },
+    {
+      "test": "TestModelsPageZonesAndNoDownloadCards",
+      "decision": "delete",
+      "reason": "静态页面分区、旧文案缺席和只读检查重复 TestRunPanelNewTaskPreservesPair、TestRunPanelAttributionStates。"
+    },
+    {
+      "test": "TestModelsPickerSelectsThroughUI",
+      "decision": "keep",
+      "reason": "真实选择操作须更新模型页共享引擎，搜索无结果需可诊断，避免列表显示但无法完成选择。"
+    },
+    {
+      "test": "TestModelsSelectionRevokeWarning",
+      "decision": "delete",
+      "reason": "撤销核验提示由 TestCandidateEngineDropdownThreeStates 和 TestRunPanelEngineVerdictWarning 覆盖。"
+    }
+  ]
+}

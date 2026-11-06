@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
-	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 )
 
@@ -15,9 +14,13 @@ import (
 // reaches the user in the window too.
 func TestProductionContentPathShowsToastAndAnnounces(t *testing.T) {
 	s := testState()
+	closeToast := false
 	tt := ui.NewTester(func(c *ui.Context) {
 		s.contentView(c)
 		studioToasts(c)
+		if closeToast {
+			c.CloseToast("设置已保存。")
+		}
 	}, 1120, 800)
 
 	s.busy = true
@@ -26,12 +29,14 @@ func TestProductionContentPathShowsToastAndAnnounces(t *testing.T) {
 	if !tt.HasText("设置已保存。") {
 		t.Fatalf("the window path dropped the completion message: %v", tt.Texts())
 	}
-	if s.pendingToast != "" {
-		t.Fatal("the completion message was not consumed")
+	closeToast = true
+	tt.Frame()
+	closeToast = false
+	for range 3 {
+		tt.Frame()
 	}
-	toast, ok := tt.Find("设置已保存。")
-	if !ok || toast.Y > 200 {
-		t.Fatalf("the message is not in the top toast viewport: %+v", toast)
+	if tt.HasText("设置已保存。") {
+		t.Fatal("toast reappeared after dismissal")
 	}
 }
 
@@ -39,6 +44,7 @@ func TestProductionContentPathShowsToastAndAnnounces(t *testing.T) {
 // screen reader learns about the page that the window shows.
 func TestProductionContentPathAnnouncesPage(t *testing.T) {
 	s := testState()
+	s.detailError = &core.ApiError{Code: "internal_error", Message: "hidden detail"}
 	tt := ui.NewTester(func(c *ui.Context) {
 		s.contentView(c)
 		studioToasts(c)
@@ -74,17 +80,11 @@ func TestProductionContentPathKeepsErrorsInline(t *testing.T) {
 	if tt.HasText("不应弹出") {
 		t.Fatal("a failure was shown as a toast")
 	}
+	if !tt.HasText("请修正路径") {
+		t.Fatal("failure is not readable inline", tt.Texts())
+	}
 	got := tt.Announcements()
 	if len(got) != 2 || !strings.Contains(got[1], "请修正路径") {
 		t.Fatalf("failure announcement = %v", got)
-	}
-}
-
-// The shell stacks the toasts at the top center, and the placement is set
-// rather than left to the library's default, which the upgrade changed.
-func TestShellPlacesToastsAtTheTop(t *testing.T) {
-	options := pageShellOptions("InferYard Studio", "", nil, nil)
-	if options.Toasts.Placement != components.ToastTop {
-		t.Fatalf("toast placement = %v, want the top center", options.Toasts.Placement)
 	}
 }

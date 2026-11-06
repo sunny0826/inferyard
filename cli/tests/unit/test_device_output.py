@@ -5,7 +5,7 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.application.types import CommandRequest, CommandResult
+from inferyard.application.types import CommandResult
 from inferyard.cli import main
 from inferyard.platforms import device_preflight
 from tests.unit.test_device_preflight import GIB, gguf, hardware, models
@@ -92,12 +92,11 @@ def test_output_existing_directory_preserves_original(host, tmp_path, capsys):
 def test_output_disk_uses_nearest_existing_ancestor_without_precreating(
     host, tmp_path, monkeypatch, capsys
 ):
-    observed = []
     model = gguf(tmp_path / "model.gguf")
     destination = tmp_path / "nested" / "output"
 
     def snapshot(path):
-        observed.append(path)
+        assert path.is_dir() and path == tmp_path.resolve()
         assert not destination.parent.exists()
         value = deepcopy(host)
         value["disk_free_bytes"] = GIB
@@ -105,7 +104,6 @@ def test_output_disk_uses_nearest_existing_ancestor_without_precreating(
 
     monkeypatch.setattr(device_preflight, "hardware_snapshot", snapshot)
     assert main(["device-check", "--model", str(model), "--out", str(destination), "--json"]) == 2
-    assert observed == [tmp_path.resolve()]
     report = json.loads(capsys.readouterr().out)["details"]
     assert report["recommendation"]["reason"] == "insufficient_output_disk"
     assert (destination / "device-preflight.json").is_file()
@@ -151,7 +149,6 @@ def test_format_options_are_mutually_exclusive(capsys):
 @pytest.mark.parametrize("flags", [[], ["--json"]])
 def test_errors_and_cancellation_use_selected_format(capsys, exception, code, limitation, flags):
     def handler(request):
-        assert isinstance(request, CommandRequest) and not hasattr(request, "device_format")
         raise exception
 
     assert main(["device-check", *flags], handlers={"device-check": handler}) == code

@@ -323,10 +323,6 @@ def assert_scoring(report):
         raise SystemExit("svg run lost its not_applicable score or gallery entry")
     if index.get("comparison") is None:
         raise SystemExit("two-run report is missing the side-by-side comparison")
-    html = (report / "report.html").read_text(encoding="utf-8")
-    for marker in ("答案通过数", "动画元素统计"):
-        if marker not in html:
-            raise SystemExit(f"report.html is missing the {marker} line")
     return {
         "pass": states.count("pass"),
         "fail": states.count("fail"),
@@ -479,7 +475,6 @@ def main():
         "workspace_files": workspace_files,
         "verified_before_cleanup": True,
         "verified_after_cleanup": True,
-        "animation_stats_line": True,
         "bench_ops_deleted": True,
     }
     print(json.dumps(summary, ensure_ascii=False))

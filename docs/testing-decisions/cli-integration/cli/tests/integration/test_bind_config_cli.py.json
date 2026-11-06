@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_bind_config_cli.py",
+  "decisions": [
+    {
+      "test": "test_bind_cli_preserves_only_fixed_process_reasons",
+      "decision": "keep",
+      "reason": "进程读取报错只暴露固定公开原因，未知错误及异常内凭据不能进入stdout/stderr或创建输出。"
+    },
+    {
+      "test": "test_bind_cli_replaces_only_endpoint_arguments",
+      "decision": "keep",
+      "reason": "绑定允许等号或分离host/port参数按实际endpoint更新；其他启动参数变化必须阻断且不改候选。"
+    },
+    {
+      "test": "test_manifest_binding_script_to_cli_probe_round_trip",
+      "decision": "keep",
+      "reason": "包含资产清单、环境与量化绑定的脚本输出必须被CLI probe实际加载，避免绑定过程丢失运行身份。"
+    }
+  ]
+}

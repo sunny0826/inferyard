@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/integration/test_lab_cli.py",
+  "decisions": [
+    {
+      "test": "test_formal_failure_stops_remaining_cases_without_retry",
+      "decision": "keep",
+      "reason": "formal首题协议失败必须停止其余题且不重试，已确认释放时才清dirty。"
+    },
+    {
+      "test": "test_frozen_plan_run_uses_shared_lab_lifecycle",
+      "decision": "keep",
+      "reason": "冻结实验真实dispatch必须能运行lab adapter并保存原配置源，不能只支持普通run入口。"
+    },
+    {
+      "test": "test_offline_rechecks_lab_parameter_binding",
+      "decision": "keep",
+      "reason": "参数/预算证据缺失或server实例、seed归属矛盾时，离线读取必须拒绝。"
+    },
+    {
+      "test": "test_offline_rejects_altered_wire_even_without_manifest",
+      "decision": "keep",
+      "reason": "即使移除manifest，wire回答被篡改仍须因终态不符拒绝。"
+    },
+    {
+      "test": "test_probe_failure_preserves_full_denominator",
+      "decision": "keep",
+      "reason": "probe截断、请求ID不符和HTTP失败阻断formal并保留全部计划分母。"
+    },
+    {
+      "test": "test_probe_run_report_verify_and_offline_plan",
+      "decision": "keep",
+      "reason": "kvmem/ninfer通过公开CLI完成probe/run与离线报告核验，实际input token进入结果且离线plan不发题。"
+    },
+    {
+      "test": "test_successful_response_without_release_keeps_dirty",
+      "decision": "keep",
+      "reason": "HTTP回答完成但服务未释放时必须保留dirty并停止，不能把成功回答当作排空证明。"
+    }
+  ]
+}

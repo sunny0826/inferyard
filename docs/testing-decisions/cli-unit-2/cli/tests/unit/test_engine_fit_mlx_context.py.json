@@ -1,0 +1,56 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_mlx_context.py",
+  "decisions": [
+    {
+      "test": "test_cli_forwards_optional_context_to_backend",
+      "decision": "delete",
+      "reason": "仅将 CLI 参数转交 mock MLXBackend，属于 wiring 复述；HTTP 上下文行为由 test_http_rejects_total_context_before_admission_and_remains_usable 覆盖。"
+    },
+    {
+      "test": "test_cli_rejects_out_of_range_context_without_loading",
+      "decision": "keep",
+      "reason": "CLI 0/32769 上下文退出 2 且固定脱敏错误，避免无效配置启动模型。"
+    },
+    {
+      "test": "test_configured_context_rejects_invalid_tokenization_before_admission",
+      "decision": "keep",
+      "reason": "保留错误 tokenization 拒绝、无生成和零状态计数；删内部 jobs.empty。"
+    },
+    {
+      "test": "test_http_rejects_total_context_before_admission_and_remains_usable",
+      "decision": "keep",
+      "reason": "保留上下文 400/无生成/max_model_len/后续可用；删内部 jobs.empty 和重复版本身份字段。"
+    },
+    {
+      "test": "test_invalid_context_limit_is_rejected_before_model_loading",
+      "decision": "keep",
+      "reason": "0/负数/超上限/布尔/浮点/字符串 context 在模型加载前拒绝，避免无效资源限制进入运行。"
+    },
+    {
+      "test": "test_omitted_context_retains_original_input_bound_and_generation_path",
+      "decision": "keep",
+      "reason": "未声明 context 时保留输入上限并拒绝过界，避免可选设置改变旧请求支持边界。"
+    },
+    {
+      "test": "test_preparation_cannot_enqueue_after_close_or_poison",
+      "decision": "delete",
+      "reason": "直接写 queue.poisoned/lock 再比私有 jobs 队列，复述内部状态机；真实失败持续拒绝由 test_generation_failure_poison_is_persistent 覆盖。"
+    },
+    {
+      "test": "test_preparation_is_visible_without_blocking_readonly_endpoints",
+      "decision": "keep",
+      "reason": "分词阶段必须对外可观察 waiting 且只读端点可用，避免守护者无法确认准备状态。"
+    },
+    {
+      "test": "test_preparation_reserves_bounded_capacity_and_serializes_tokenization",
+      "decision": "keep",
+      "reason": "准备中的请求也占有界容量，防止分词阶段无限积压；删固定串行调用次数断言。 精简后更名为 test_preparation_reserves_bounded_capacity。",
+      "renamed_to": "test_preparation_reserves_bounded_capacity"
+    },
+    {
+      "test": "test_rejected_context_does_not_poison_an_active_generation",
+      "decision": "keep",
+      "reason": "保留非法请求不污染活动任务且合法任务完成；删内部 jobs.empty。"
+    }
+  ]
+}

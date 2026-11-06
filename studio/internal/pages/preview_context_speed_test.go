@@ -5,7 +5,6 @@ package pages
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
@@ -219,40 +218,5 @@ func TestPreviewSpeedInvalidSubmissionKeepsFailureAndCloseStopsEvents(t *testing
 	p.advance(time.Minute)
 	if p.state.speed.current.stage != speedPreparing || len(p.state.speed.history) != 0 {
 		t.Fatal("closed window advanced work")
-	}
-}
-
-func TestPreviewSpeedLayout(t *testing.T) {
-	for _, width := range []int{800, 1120, 1440} {
-		for _, scale := range []float32{1, 2} {
-			for _, dark := range []bool{false, true} {
-				t.Run(fmt.Sprintf("%d/%.0f/%t", width, scale, dark), func(t *testing.T) {
-					p, _ := prepareSpeed(t, "64k")
-					p.dispatch(previewSpeedStart{model: p.state.model, engine: p.state.engine, context: 65536})
-					p.advance(10 * time.Second)
-					p.state.openSpeed(p.state.speed.current.id)
-					tt := speedTester(p, width, 800)
-					tt.SetDark(dark)
-					tt.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
-					designNodes(tt, func(n reflect.Value, table bool) {
-						if table {
-							return
-						}
-						x, w := n.FieldByName("x").Float(), n.FieldByName("w").Float()
-						if w > 0 && (x < -.1 || x+w > float64(width)+.1) {
-							t.Errorf("overflow %s %.1f %.1f", n.FieldByName("text").String(), x, w)
-						}
-					})
-					assertSpeedIdentity(t, tt, p.state.speed.opened)
-					saveSpeedImage(t, tt, fmt.Sprintf("result-%d-%.0f-%t", width, scale, dark))
-					if !tt.HasText("长上下文速度 · 结果") {
-						t.Fatal("result vanished")
-					}
-					click(t, tt, "返回历史任务")
-					assertSpeedIdentity(t, tt, p.state.speed.current)
-					saveSpeedImage(t, tt, fmt.Sprintf("history-%d-%.0f-%t", width, scale, dark))
-				})
-			}
-		}
 	}
 }

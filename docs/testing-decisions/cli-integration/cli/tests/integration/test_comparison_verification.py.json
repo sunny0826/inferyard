@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/integration/test_comparison_verification.py",
+  "decisions": [
+    {
+      "test": "test_tampered_bool_and_number_rejected_by_dedicated_and_generic_verify",
+      "decision": "delete",
+      "reason": "所有bool/数值修改均未更新封存，首先触发相同presentation字节门，未证明类型语义；由 test_batch_runner.test_comparison_reads_saved_trials_without_requests 的篡改拒绝覆盖。"
+    },
+    {
+      "test": "test_valid_comparison_passes_both_entry_points",
+      "decision": "delete",
+      "reason": "重复比较生成/核验happy path及普通字节变化拒绝，由 test_cli_verification_workflow.test_canonical_artifact_workflow_is_offline_and_checks_comparison_html 覆盖。"
+    }
+  ]
+}

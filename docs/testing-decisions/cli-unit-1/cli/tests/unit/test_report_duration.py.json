@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_report_duration.py",
+  "decisions": [
+    {
+      "test": "test_duration_view_keeps_zero_missing_and_failed_denominators",
+      "decision": "keep",
+      "reason": "持续窗口展示保留零/缺测、秒单位与失败分母；重复观测变缺失，避免虚构稳定趋势。"
+    },
+    {
+      "test": "test_non_duration_and_never_started_windows",
+      "decision": "keep",
+      "reason": "非持续任务无持续视图，从未开始窗口保持未完成空列表，不能伪造零时长成功窗口。"
+    }
+  ]
+}

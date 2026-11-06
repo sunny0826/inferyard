@@ -178,47 +178,6 @@ func TestDownloadTaskCardsAndDetails(t *testing.T) {
 	}
 }
 
-func TestDownloadTaskCardsRenderOnReorder(t *testing.T) {
-	s := testState()
-	a := core.DownloadTask{TaskId: "a", OutName: "model-a", State: "downloading", OutDir: "/out/a"}
-	b := core.DownloadTask{TaskId: "b", OutName: "model-b", State: "failed", OutDir: "/out/b"}
-	s.downloads = []core.DownloadTask{a, b}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 900)
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
-	for _, want := range []string{"实际目录名：model-a", "实际目录名：model-b"} {
-		if !tt.HasText(want) {
-			t.Fatal("missing", want, tt.Texts())
-		}
-	}
-	first, _ := tt.Find("model-a")
-	second, _ := tt.Find("model-b")
-	if first.Y >= second.Y {
-		t.Fatal("order", first, second)
-	}
-	s.downloads = []core.DownloadTask{b, a}
-	tt.Frame()
-	for _, want := range []string{"实际目录名：model-a", "实际目录名：model-b"} {
-		if !tt.HasText(want) {
-			t.Fatal("missing after reorder", want, tt.Texts())
-		}
-	}
-	first, _ = tt.Find("model-b")
-	second, _ = tt.Find("model-a")
-	if first.Y >= second.Y {
-		t.Fatal("reordered", first, second)
-	}
-	if dir := os.Getenv("STUDIO_UI_PREVIEW_DIR"); dir != "" {
-		f, err := os.Create(filepath.Join(dir, "downloads-reordered.png"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer f.Close()
-		if err := png.Encode(f, tt.Image()); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
 func TestHistoryResumePanelKeepsTableSelection(t *testing.T) {
 	s := testState()
 	s.selected = "reports"

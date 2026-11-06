@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_command_reuse.py",
+  "decisions": [
+    {
+      "test": "test_catalogue_reads_scoring_sources_only_once",
+      "decision": "delete",
+      "reason": "仅限制 scorer_hash 调用次数，没有对应用户性能预算。"
+    },
+    {
+      "test": "test_compare_reduces_each_source_once_and_compares_once",
+      "decision": "keep",
+      "reason": "比较生成后原 memory 被改必须在新命令拒绝，防止缓存掩盖篡改；删除归约次数。"
+    },
+    {
+      "test": "test_context_prepares_rules_once_and_detaches_input",
+      "decision": "delete",
+      "reason": "构造/校验次数、私有上下文复制和反复正常评分重复；参考答案由 scoring_contract 覆盖。"
+    },
+    {
+      "test": "test_core_logs_are_read_once_and_facets_do_not_reopen_events",
+      "decision": "delete",
+      "reason": "只统计文件 open 次数，不对应任何产品预算或错误结果。"
+    },
+    {
+      "test": "test_custom_scorer_result_still_checked_and_does_not_leak",
+      "decision": "keep",
+      "reason": "自定义评分器返回错身份/类别须拒绝，额外私有输出转为 unscorable 且不泄漏。"
+    },
+    {
+      "test": "test_explicit_custom_identity_is_not_bypassed_by_builtin_scorer",
+      "decision": "keep",
+      "reason": "显式评分身份与实际评分器不符必须拒绝，不能悄悄换内置身份；删除调用一次断言。"
+    },
+    {
+      "test": "test_pre_a_ledger_comparison_and_all_report_indexes_remain_equivalent",
+      "decision": "delete",
+      "reason": "仅取旧 fixture 比较字典后要求拒绝；旧比较版本拒绝由 purpose_contracts 参数覆盖。"
+    },
+    {
+      "test": "test_pre_c_ledger_comparison_v2_and_report_v5_remain_equivalent",
+      "decision": "delete",
+      "reason": "只再次验证旧比较 fixture 拒绝；同条件由 purpose_contracts 的旧版本参数覆盖。"
+    },
+    {
+      "test": "test_recursive_rescore_uses_one_identity_per_version_and_one_reduction",
+      "decision": "keep",
+      "reason": "保留递归重评后评分器身份变化与来源损坏拒绝；删除身份/归约调用次数。"
+    },
+    {
+      "test": "test_scoring_source_bytes_read_once_for_each_required_version",
+      "decision": "delete",
+      "reason": "固定十个源码文件与各读一次仅约束实现清单和缓存方式。"
+    }
+  ]
+}

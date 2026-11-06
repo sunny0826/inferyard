@@ -1,0 +1,27 @@
+{
+  "source_path": "studio/internal/core/local_resources_test.go",
+  "decisions": [
+    {
+      "test": "TestInstallationChecksIndependentAndContentInvalidation",
+      "decision": "keep",
+      "reason": "改名为 TestInstallationChecksIndependent；仅保留同可执行路径的两份声明独立资格、scope、family 与摘要结果。删除缓存/次数及内容失效子段；不再声称证明内容变更后旧资格失效。",
+      "renamed_to": "TestInstallationChecksIndependent"
+    },
+    {
+      "test": "TestLegacyEngineCheckRejectsLocalVerdictShape",
+      "decision": "delete",
+      "reason": "独立函数并入 TestCheckEngineFailureMapping/installation_scope：普通二进制核验必须拒绝安装 runtime closure 范围的 eligible 响应；parser 接受该 wire 不证明调用方范围隔离。",
+      "covered_by": "TestCheckEngineFailureMapping/installation_scope"
+    },
+    {
+      "test": "TestRegisterInstallationCanonicalIdempotentAndRemoveReference",
+      "decision": "keep",
+      "reason": "保留注册路径规范化去重、local_installation kind、只存引用不复制环境、不隐式生成候选及删除引用不删文件/不调用运行时；移除前后相对比较副作用，删除固定重检数、私有超时窗口和展示名快照。"
+    },
+    {
+      "test": "TestRegisterInstallationFailureDoesNotPersist",
+      "decision": "keep",
+      "reason": "不合格、旧格式、坏响应、未知原因和检查时声明改变都不得保存，错误不泄 stderr，防未验证安装被登记为可用。"
+    }
+  ]
+}

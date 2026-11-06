@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_aggregate_report.py",
+  "decisions": [
+    {
+      "test": "test_duplicate_terminal_is_rejected_even_before_manifest",
+      "decision": "keep",
+      "reason": "重复 terminal 即使未封存也拒绝，防止同请求重复计入汇总。"
+    },
+    {
+      "test": "test_exact_ledger_preserves_failures_and_uses_active_latency_definition",
+      "decision": "keep",
+      "reason": "4 完成+3失败时质量分母仍为7，预算耗尽完成保留且 latency 只取4个完成值，避免提分或拉坏时延分位。"
+    },
+    {
+      "test": "test_five_states_remain_distinct_and_incomplete_quality_has_no_rate",
+      "decision": "keep",
+      "reason": "五终态守恒，不完整测评不得输出完整质量率，避免取消/未执行被丢出分母。"
+    },
+    {
+      "test": "test_frozen_model_comparison_preserves_quality_deltas_without_performance_grant",
+      "decision": "keep",
+      "reason": "保留 eligibility、手算质量 -1/3 和完成率 +1/3、原件不变；报告直接对照这些独立常量，不比较两个生产结果互等。"
+    },
+    {
+      "test": "test_frozen_recipe_mismatch_blocks_controlled_differences",
+      "decision": "keep",
+      "reason": "冻结生成、执行及环境任一配方差异都阻止控制差值，避免将混杂因素归因模型。"
+    },
+    {
+      "test": "test_identically_unknown_identity_never_becomes_comparable",
+      "decision": "keep",
+      "reason": "双方都 unknown 的设备/引擎身份仍不可比，不能把相同未知值视为同一实物。"
+    },
+    {
+      "test": "test_interrupted_request_preserves_durable_partial_answer",
+      "decision": "keep",
+      "reason": "崩溃请求保留耐久部分答案但质量无 rate，避免丢失可审阅回答或误判完整。"
+    },
+    {
+      "test": "test_missing_terminal_and_missing_score_reconstruction",
+      "decision": "keep",
+      "reason": "缺 terminal 还原 invalid，缺 score 仍保留 completed 分母并 unscorable，避免静默漏计。"
+    },
+    {
+      "test": "test_report_autoescaping_readonly_inputs_and_output_protection",
+      "decision": "keep",
+      "reason": "恶意答案在离线报告转义且无外部脚本，原件只读并禁止覆盖/嵌套输出，避免脚本执行和原件破坏。"
+    },
+    {
+      "test": "test_single_default_cannot_be_promoted_to_controlled_comparison_after_measurement",
+      "decision": "keep",
+      "reason": "测后不能把普通 single 改成 controlled comparison，避免事后挑选比较条件。"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_length_resources.py",
+  "decisions": [
+    {
+      "test": "test_ambiguous_observations_do_not_duplicate_request_or_choose_one",
+      "decision": "keep",
+      "reason": "具体场景 test_ambiguous_observations_do_not_duplicate_request_or_choose_one。可观察预期：assert row['p50'] is None and row['observed_requests'] == 0；assert row['missing_reasons'] == {'ambiguous_observation': 1}；assert resource_cohort(requests, [])['status'] == 'missing'。长度分组仍纳入失败尝试与缺测，来源分开且非法请求排除；同请求重复观测不能任挑一个或把分母重复增加。"
+    },
+    {
+      "test": "test_resource_cohort_keeps_failures_missing_and_sources_separate",
+      "decision": "keep",
+      "reason": "具体场景 test_resource_cohort_keeps_failures_missing_and_sources_separate。可观察预期：assert a['valid_executed'] == 3 and a['observed_requests'] == 2；assert (a['min'], a['p50'], a['max']) == (0, 0, 20)；assert a['missing_reasons'] == {'read_failed': 1}；assert b['p50'] == 100 and b['missing_requests'] == 2。长度分组仍纳入失败尝试与缺测，来源分开且非法请求排除；同请求重复观测不能任挑一个或把分母重复增加。"
+    }
+  ]
+}

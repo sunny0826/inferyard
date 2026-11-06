@@ -1,0 +1,80 @@
+{
+  "source_path": "cli/tests/unit/test_windows_lab_files.py",
+  "decisions": [
+    {
+      "test": "test_change_during_read_is_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_change_during_read_is_rejected。可观察预期：assert caught.value.args == ('lab_windows_file_changed',)；assert store.closed == [store.handle]；pytest.raises(PreflightError)。防止 Windows 重解析点/同大小替换/错误哈希资产获授权；读取、末次核验或关闭超过既定 deadline 不能作为成功身份核验。"
+    },
+    {
+      "test": "test_chunk_deadline_rejects_without_success",
+      "decision": "keep",
+      "reason": "具体场景 test_chunk_deadline_rejects_without_success。可观察预期：assert caught.value.args == ('lab_windows_deadline_exceeded',)；assert store.closed == [store.handle]；assert store.reads == 1；pytest.raises(PreflightError)。防止 Windows 重解析点/同大小替换/错误哈希资产获授权；读取、末次核验或关闭超过既定 deadline 不能作为成功身份核验。"
+    },
+    {
+      "test": "test_close_past_deadline_is_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_close_past_deadline_is_rejected。可观察预期：assert caught.value.args == ('lab_windows_deadline_exceeded',)；assert store.closed == [store.handle]；pytest.raises(PreflightError)。防止 Windows 重解析点/同大小替换/错误哈希资产获授权；读取、末次核验或关闭超过既定 deadline 不能作为成功身份核验。"
+    },
+    {
+      "test": "test_eof_read_past_deadline_is_rejected",
+      "decision": "keep",
+      "reason": "保留EOF后超时拒绝、已读到结尾且不继续IO以及关闭；删除内部READ_CHUNK_BYTES大小断言。"
+    },
+    {
+      "test": "test_final_path_stamp_past_deadline_is_rejected",
+      "decision": "keep",
+      "reason": "保留最终路径stamp超时拒绝与资源关闭；删除恰好两次path_reads。故障注入仍依赖第二次及以后读取过期，是剩余fixture耦合。"
+    },
+    {
+      "test": "test_hash_budget_scales_and_stays_bounded",
+      "decision": "delete",
+      "reason": "只固定公式输出常数 181/244/2228，未证明实际预算停止；覆盖者 test_scaled_budget_still_rejects_read_past_deadline。"
+    },
+    {
+      "test": "test_hash_mismatch_and_size_mismatch",
+      "decision": "keep",
+      "reason": "具体场景 test_hash_mismatch_and_size_mismatch。可观察预期：assert caught.value.args == ('lab_windows_hash_mismatch',)；assert caught.value.args == ('lab_windows_file_identity_mismatch',)；pytest.raises(PreflightError)；pytest.raises(PreflightError)。防止 Windows 重解析点/同大小替换/错误哈希资产获授权；读取、末次核验或关闭超过既定 deadline 不能作为成功身份核验。"
+    },
+    {
+      "test": "test_invalid_manifest_rejects_before_api",
+      "decision": "keep",
+      "reason": "具体场景 test_invalid_manifest_rejects_before_api。可观察预期：pytest.raises(PreflightError, match='lab_windows_manifest_invalid')；pytest.raises(PreflightError, match='lab_windows_manifest_invalid')；pytest.raises(PreflightError, match='lab_windows_manifest_invalid')；pytest.raises(PreflightError, match='lab_windows_manifest_invalid')。防止 Windows 重解析点/同大小替换/错误哈希资产获授权；读取、末次核验或关闭超过既定 deadline 不能作为成功身份核验。"
+    },
+    {
+      "test": "test_manifest_fixture_matches_content_digest",
+      "decision": "delete",
+      "reason": "测试 fixture 自身哈希，与产品流程无关。"
+    },
+    {
+      "test": "test_reparse_on_ancestor_stops_before_the_leaf",
+      "decision": "keep",
+      "reason": "具体场景 test_reparse_on_ancestor_stops_before_the_leaf。可观察预期：assert caught.value.args == ('lab_windows_reparse_rejected',)；assert store.checked == ['C:\\\\', 'C:\\\\models']；assert store.closed == []；assert 'C:\\\\models\\\\model.bin' not in str(caught.value)。防止 Windows 重解析点/同大小替换/错误哈希资产获授权；读取、末次核验或关闭超过既定 deadline 不能作为成功身份核验。"
+    },
+    {
+      "test": "test_same_size_and_mtime_replacement_is_rejected",
+      "decision": "keep",
+      "reason": "保留同尺寸/mtime文件替换被生产校验拒绝及句柄关闭；删除fixture stamp索引相等自证。"
+    },
+    {
+      "test": "test_scaled_budget_still_rejects_read_past_deadline",
+      "decision": "keep",
+      "reason": "具体场景 test_scaled_budget_still_rejects_read_past_deadline。可观察预期：assert store.reads == 1 and store.closed == [store.handle]；pytest.raises(PreflightError, match='deadline_exceeded')。防止 Windows 重解析点/同大小替换/错误哈希资产获授权；读取、末次核验或关闭超过既定 deadline 不能作为成功身份核验。"
+    },
+    {
+      "test": "test_scaled_hash_budget_does_not_accept_invalid_manifest",
+      "decision": "delete",
+      "reason": "重复 manifest 基本类型/范围校验；覆盖者 test_invalid_manifest_rejects_before_api。"
+    },
+    {
+      "test": "test_success_returns_native_stamp_without_calling_file_hash",
+      "decision": "delete",
+      "reason": "主要限定私有调用、原样 stamp 列表和关闭顺序；实际资产替换拒绝由 test_same_size_and_mtime_replacement_is_rejected、test_change_during_read_is_rejected 覆盖。"
+    },
+    {
+      "test": "test_windows_case_duplicate_is_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_case_duplicate_is_rejected。可观察预期：pytest.raises(PreflightError, match='lab_windows_manifest_duplicate')。防止 Windows 重解析点/同大小替换/错误哈希资产获授权；读取、末次核验或关闭超过既定 deadline 不能作为成功身份核验。"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "source_path": "studio/internal/core/context_speed_boundaries_test.go",
+  "decisions": [
+    {
+      "test": "TestContextSpeedBrokenPlanDoesNotHideBatch",
+      "decision": "delete",
+      "reason": "另一个空对象 batch/plan 变体重复历史损坏仍可见；TestContextSpeedUnreadableExternalBatchRetained 覆盖相同用户结果。"
+    },
+    {
+      "test": "TestContextSpeedCancelCapabilityPreservesReason",
+      "decision": "keep",
+      "reason": "专项能力探测期间取消须显示 cancelled，防用户取消被误报成 CLI 过旧。"
+    },
+    {
+      "test": "TestContextSpeedExternalFrozenIdentity",
+      "decision": "keep",
+      "reason": "外部历史须展示冻结模型、引擎与 context，不能使用当前选择冒充历史身份。"
+    },
+    {
+      "test": "TestContextSpeedOldCapabilityStopsBeforeInit",
+      "decision": "keep",
+      "reason": "旧 CLI 缺专项 schema 时必须在 init 前阻断，防留下半准备任务或误报可运行。"
+    },
+    {
+      "test": "TestContextSpeedReadRejectsEscapedBatch",
+      "decision": "keep",
+      "reason": "结果根中逃逸 symlink 不得读出结果，防任意目录被当作本工作区专项证据。"
+    },
+    {
+      "test": "TestContextSpeedShutdownDrainsBeforeEngineStop",
+      "decision": "keep",
+      "reason": "关停专项运行保留 cancelled/130、引擎 stopped 并拒绝新工作；删除精确离线读取次数，不声称最终数据完整到达展示层。"
+    },
+    {
+      "test": "TestContextSpeedUnreadableExternalBatchRetained",
+      "decision": "keep",
+      "reason": "外部 batch 损坏时仍须出现在历史并显示错误，防用户结果凭空消失而无法重试读取。"
+    },
+    {
+      "test": "TestContextSpeedWaitingCancellationDoesNotExecute",
+      "decision": "delete",
+      "reason": "直接塞入私有 runEntry，只断言取消字段而未观察执行；公共队列取消且不执行由 TestQueueCancellationAndExitMapping 覆盖。"
+    },
+    {
+      "test": "TestContextSpeedZeroBatchExcludedFromOrdinaryHistory",
+      "decision": "keep",
+      "reason": "零执行专项 batch 不得混入普通 benchmark 历史，否则错误展示为普通运行。"
+    }
+  ]
+}

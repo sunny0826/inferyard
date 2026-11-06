@@ -101,7 +101,7 @@ def test_download_streams_bytes_and_records_identity(tmp_path, monkeypatch):
         "sha256": hashlib.sha256(PAYLOAD).hexdigest(),
         "retrieved_at": record["retrieved_at"],
     }
-    assert len(requests) == 1 and requests[0][1] is None and requests[0][2] == "identity"
+    assert requests[0][1] is None
 
 
 def test_compressed_response_is_rejected_instead_of_published(tmp_path, monkeypatch):

@@ -1,0 +1,46 @@
+{
+  "source_path": "cli/tests/unit/test_local_mlx_server.py",
+  "decisions": [
+    {
+      "test": "test_authentication_rejects_generation_and_identity_without_key",
+      "decision": "keep",
+      "reason": "版本、指标、模型和生成都需正确 Bearer key，未授权不得触发推理。"
+    },
+    {
+      "test": "test_context_limit_error_is_explicit_and_does_not_poison",
+      "decision": "keep",
+      "reason": "超上下文明确 400，后续合法短请求仍成功，不把用户输入错污染服务。"
+    },
+    {
+      "test": "test_formal_ordinary_request_returns_message_and_usage",
+      "decision": "keep",
+      "reason": "普通 OpenAI 请求返回实际消息、finish 和 token usage，保障 CLI 可解码正式响应。"
+    },
+    {
+      "test": "test_invalid_wire_shapes_never_enter_backend",
+      "decision": "keep",
+      "reason": "错误 stream/usage/生成参数/模型、重复键及非有限数均 400 且不推理；删除队列计数形状。"
+    },
+    {
+      "test": "test_nonlocal_server_and_model_rejected",
+      "decision": "keep",
+      "reason": "拒绝对外绑定 0.0.0.0 及不存在本地模型目录，防止意外公开服务或联网找模型。"
+    },
+    {
+      "test": "test_standalone_entry_works_outside_checkout_without_pythonpath",
+      "decision": "keep",
+      "reason": "安装脚本在仓库外且隔离 Python 环境仍可执行 help，保障可部署性。"
+    },
+    {
+      "test": "test_standalone_python312_and_context_required_before_load",
+      "decision": "keep",
+      "reason": "随安装发出的脚本需兼容目标 Python 语法；缺/非法上下文在加载模型前拒绝。"
+    },
+    {
+      "test": "test_stream_and_ordinary_share_queue_backend_and_identity",
+      "decision": "keep",
+      "reason": "流式请求返回终止标记、finish 与 usage，并保留引擎版本及健康身份；删除重复普通请求，普通消息与用量由已有用例覆盖。",
+      "renamed_to": "test_stream_returns_finish_usage_and_healthy_engine_identity"
+    }
+  ]
+}

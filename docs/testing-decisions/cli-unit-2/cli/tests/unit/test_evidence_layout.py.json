@@ -1,0 +1,115 @@
+{
+  "source_path": "cli/tests/unit/test_evidence_layout.py",
+  "decisions": [
+    {
+      "test": "test_byte_range_reread_rejects_changed_original",
+      "decision": "keep",
+      "reason": "首次读取后原始 body 被替换必须拒绝，防止已校验摘要配上新内容。"
+    },
+    {
+      "test": "test_fixture_generator_preserves_real_sent_body_and_complete_counts",
+      "decision": "delete",
+      "reason": "测试 fixture 生成器私有 entries 数量；实际外部读取与分母由 test_external_surface_keeps_source_bytes_and_denominators 覆盖。"
+    },
+    {
+      "test": "test_fixture_packing_cannot_invent_originals_from_old_inline_events",
+      "decision": "delete",
+      "reason": "仅测试 pack_layout2 测试辅助器如何拒绝旧 inline fixture；生产 started 缺原件由 test_layout2_inline_started_still_requires_physical_original 覆盖。"
+    },
+    {
+      "test": "test_inputs_published_before_observations_retains_missing_slot",
+      "decision": "keep",
+      "reason": "inputs 已写而观测尚未创建时应保留缺测，不能把崩溃前缀当损坏完整包。"
+    },
+    {
+      "test": "test_layout2_inline_started_still_requires_physical_original",
+      "decision": "keep",
+      "reason": "即便 started 内联了消息，layout2 缺物理发送原件仍失败，不能用事件重建发送事实。"
+    },
+    {
+      "test": "test_layout_and_input_corruption_is_not_a_legacy_fallback",
+      "decision": "keep",
+      "reason": "未知/冲突布局、混合权威源、重复 key、坏 hash 与 bool 版本必须拒绝，不能绕过原件校验。"
+    },
+    {
+      "test": "test_manifest_damage_is_rejected_at_domain_construction",
+      "decision": "keep",
+      "reason": "manifest JSON、字段类型、schema 与 sealed 损坏都拒绝，不能把损坏封存包当合法输入。"
+    },
+    {
+      "test": "test_member_reference_never_substitutes_member_hash_for_file_hash",
+      "decision": "keep",
+      "reason": "成员摘要不能冒充整个文件摘要，错误成员绑定必须拒绝，防止派生产物引用不实。"
+    },
+    {
+      "test": "test_missing_started_original_and_prepared_unsent_are_distinct",
+      "decision": "keep",
+      "reason": "started 请求缺物理原件必须报错，prepared 未发送不能冒充 executed。"
+    },
+    {
+      "test": "test_native_receipt_keys_are_actual_members_and_legacy_physical_files",
+      "decision": "keep",
+      "reason": "新旧布局均枚举真实 receipt，缺失物理收据必须失败，不能由事件补造已清理事实。"
+    },
+    {
+      "test": "test_native_receipt_query_binds_actual_request_key",
+      "decision": "keep",
+      "reason": "native receipt 必须按实际 request key 读取并核验，错配不能成为清 dirty 依据。"
+    },
+    {
+      "test": "test_observation_slots_and_records_are_closed",
+      "decision": "keep",
+      "reason": "重复观测、非法槽位/身份/序号和坏摘要必须拒绝，防止错误身份或观测被用于结论。"
+    },
+    {
+      "test": "test_only_unsealed_tail_retains_partial_state",
+      "decision": "keep",
+      "reason": "仅未封存的尾半行可读取前缀，封存截尾必须失败；删私有 _prepared.tails 断言。"
+    },
+    {
+      "test": "test_original_members_requests_and_references_round_trip",
+      "decision": "keep",
+      "reason": "两种合法布局读取相同冻结输入、观测与发送原件，引用可核验且原件字节不变；删文件数量与内部 hashes 容器断言。"
+    },
+    {
+      "test": "test_prepared_records_are_indexed_and_validated_before_any_body_read",
+      "decision": "keep",
+      "reason": "全部 prepared 记录的重复序号、身份、阶段和摘要损坏都须拒绝，避免只读取首条掩盖破坏。"
+    },
+    {
+      "test": "test_projection_checks_only_consumed_observation_payload_hashes",
+      "decision": "delete",
+      "reason": "只规定 projection 延迟检查哪个 payload 的实现策略；坏观测摘要拒绝由 test_observation_slots_and_records_are_closed 覆盖。"
+    },
+    {
+      "test": "test_projection_does_not_scan_unused_prepared_or_observation_payloads",
+      "decision": "delete",
+      "reason": "仅规定 projection 扫描/缓存哪些文件的优化实现，无产品预算；原件损坏拒绝由 test_observation_slots_and_records_are_closed 覆盖。"
+    },
+    {
+      "test": "test_reference_context_stays_bound_to_full_read",
+      "decision": "keep",
+      "reason": "修改成员摘要或以 projection reader 替代完整读取必须拒绝，防止引用错误证据。"
+    },
+    {
+      "test": "test_rejected_historical_sources_cannot_hide_inside_current_layout",
+      "decision": "keep",
+      "reason": "当前目录混入 migration/旧 requests/token budgets 等退役来源必须拒绝，不能继承旧资格。"
+    },
+    {
+      "test": "test_request_messages_digest_is_bound_to_original_body",
+      "decision": "keep",
+      "reason": "事件消息摘要不匹配实际发送 body 时必须失败，防止用替换问题的答案评分。"
+    },
+    {
+      "test": "test_scanned_container_tails_are_public_without_projection_scans",
+      "decision": "delete",
+      "reason": "只约束 projection 的扫描时点及内部尾状态暴露；封存/未封存尾行为由 test_only_unsealed_tail_retains_partial_state 覆盖。"
+    },
+    {
+      "test": "test_scanned_tail_state_is_read_only_to_consumers",
+      "decision": "delete",
+      "reason": "仅检查返回 dict 的深拷贝与对象隔离，未触发任何报告或证据结论。"
+    }
+  ]
+}

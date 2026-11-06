@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_cache_comparison.py",
+  "decisions": [
+    {
+      "test": "test_cache_history_gates_cannot_be_bypassed_by_summary_flags",
+      "decision": "keep",
+      "reason": "缺协议/历史、缓存数量未知、初次复用、策略/终态/来源/正式题错配及重复请求都拒绝，即使summary声称可比。"
+    },
+    {
+      "test": "test_cache_policy_can_differ_but_does_not_grant_performance_or_require_hits",
+      "decision": "keep",
+      "reason": "缓存factor可有质量/完成差值且不要求实际命中，但不授性能资格，其他线程差异仍阻止比较。"
+    },
+    {
+      "test": "test_cache_qualification_still_rejects_invalid_warmup_history",
+      "decision": "keep",
+      "reason": "非法warmup不能通过旁路历史校验，避免bool/字符串或越界次数得到比较资格。"
+    },
+    {
+      "test": "test_cache_qualification_uses_actual_frozen_warmup_history",
+      "decision": "keep",
+      "reason": "冻结warmup 0..3应按实际历史授缓存质量比较，双方次数不等拒绝，避免硬编码三次。"
+    }
+  ]
+}

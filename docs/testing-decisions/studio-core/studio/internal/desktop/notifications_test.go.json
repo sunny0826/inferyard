@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/desktop/notifications_test.go",
+  "decisions": [
+    {
+      "test": "TestEventNotifications",
+      "decision": "keep",
+      "reason": "终态运行/下载和报告才通知，通知失败不阻塞后续且正文/日志不泄私有路径，防通知风暴和路径泄漏。"
+    }
+  ]
+}

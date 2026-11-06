@@ -70,115 +70,6 @@ async def pipeline(scenario, action, *, scorer=score_case, secret=None):
     return read_trial(store.path), reason
 
 
-async def all_cases(execution, bundle, calls):
-    for i, case in enumerate(bundle["cases"]):
-        await execution.one("formal", case["prompt"], index=i)
-
-
-def test_streams_failures_and_no_implicit_retries(scenario):
-    _, _, calls, settings = scenario
-    settings["fail_index"] = 1
-    data, reason = asyncio.run(pipeline(scenario, all_cases))
-    assert reason == "plan_finished"
-    assert len(calls) == 3
-    assert [r["execution_state"] for r in data["requests"]] == ["completed", "failed", "completed"]
-    assert data["summary"]["completeness"] == "complete"
-    row = data["requests"][0]
-    assert row["arrival_capture"] == {"source": "decoded_delta", "streaming": True}
-    assert row["block_arrivals"][0]["monotonic_ns"] == row["t_first_content_ns"]
-    assert data["summary"]["performance"][row["category"]]["metrics"]["L03"]["sample_count"] >= 1
-    assert not read_json(locking.STATE_PATH)["dirty"]
-
-
-def test_cancel_terminates_once_and_does_not_start_next_case(scenario):
-    async def cancel(execution, bundle, calls):
-        task = asyncio.create_task(execution.one("formal", bundle["cases"][0]["prompt"], index=0))
-        while not calls:
-            await asyncio.sleep(0.001)
-        task.cancel()
-        await task
-
-    data, reason = asyncio.run(pipeline(scenario, cancel))
-    assert reason == "user_cancelled"
-    assert data["summary"]["counts"]["cancelled"] == 1
-    assert data["summary"]["counts"]["not_executed"] == 2
-    assert len(scenario[2]) == 1
-    assert not read_json(locking.STATE_PATH)["dirty"]
-
-
-def test_scorer_exception_keeps_all_model_completions(scenario):
-    def broken(*args):
-        raise RuntimeError("synthetic error")
-
-    data, reason = asyncio.run(pipeline(scenario, all_cases, scorer=broken))
-    assert reason == "plan_finished"
-    assert data["summary"]["counts"]["completed"] == 3
-    assert data["summary"]["counts"]["failed"] == 0
-    assert data["requests"][0]["score"]["reason"] == "scorer_exception"
-    assert len(scenario[2]) == 3
-
-
-def test_unknown_residual_keeps_dirty_and_blocks_following_requests(scenario):
-    _, deps, calls, _ = scenario
-    factory = deps.adapter
-
-    def adapter(*args, **kwargs):
-        instance = factory(*args, **kwargs)
-
-        async def idle(*args, **kwargs):
-            return not calls
-
-        instance.wait_idle = idle
-        return instance
-
-    deps.adapter = adapter
-    data, reason = asyncio.run(pipeline(scenario, all_cases))
-    assert reason == "service_stop_unconfirmed"
-    assert len(calls) == 1
-    assert data["summary"]["counts"]["not_executed"] == 2
-    assert read_json(locking.STATE_PATH)["dirty"]
-
-
-def test_io_failure_leaves_invalid_not_model_failed(scenario, monkeypatch):
-    original = TrialJournal.event
-
-    def failing(self, kind, *args, **kwargs):
-        if kind == "content":
-            raise EvidenceError("synthetic_io_failure")
-        return original(self, kind, *args, **kwargs)
-
-    monkeypatch.setattr(TrialJournal, "event", failing)
-    data, _ = asyncio.run(pipeline(scenario, all_cases))
-    assert data["summary"]["counts"]["invalid"] == 1
-    assert data["summary"]["counts"]["failed"] == 0
-    assert data["summary"]["counts"]["not_executed"] == 2
-    assert read_json(locking.STATE_PATH)["dirty"]
-
-
-@pytest.mark.parametrize("field,value", [("category", "qa"), ("scorer_sha256", "f" * 64)])
-def test_invalid_scorer_identity_stops_without_fabricating_score(scenario, field, value):
-    def broken(case, answer, policy):
-        score = score_case(case, answer, policy)
-        score[field] = value
-        return score
-
-    data, reason = asyncio.run(pipeline(scenario, all_cases, scorer=broken))
-    assert reason == "scorer_identity_mismatch"
-    assert data["requests"][0]["execution_state"] == "completed"
-    assert data["requests"][0]["score"] is None
-    assert data["summary"]["counts"]["not_executed"] == 2
-
-
-def test_redacted_answer_never_scored_and_secret_absent_from_artifacts(scenario):
-    secret = "synthetic-sensitive-answer-93a"
-    scenario[3]["answer"] = secret
-    data, reason = asyncio.run(pipeline(scenario, all_cases, secret=secret))
-    assert reason == "plan_finished"
-    assert data["requests"][0]["score"]["reason"] == "redacted_scoring_input"
-    root = Path(scenario[0].config.config.to_dict()["output"]["root"]) / data["run"]["run_id"]
-    assert all(secret.encode() not in p.read_bytes() for p in root.iterdir())
-
-
 @pytest.mark.parametrize("delay_stage", ["prepared", "observation"])
 def test_duration_admission_rechecks_deadline_after_durable_preparation(
     scenario, delay_stage, tmp_path
@@ -204,7 +95,7 @@ def test_duration_admission_rechecks_deadline_after_durable_preparation(
             admission_deadline_ns=time.monotonic_ns() + 10_000_000,
         )
         assert terminal is None
-        assert execution.next_formal == 0 and not calls
+        assert not calls
         assert not read_json(locking.STATE_PATH)["dirty"]
 
     data, _ = asyncio.run(pipeline(scenario, crosses_deadline))

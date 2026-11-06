@@ -1,7 +1,6 @@
 """No historical source can regain admission through a current derived artifact."""
 
 import hashlib
-import importlib.util
 import json
 
 import pytest
@@ -153,5 +152,3 @@ def test_public_old_policy_rejected_after_hash_checks(tmp_path, version, capsys)
 def test_migrator_command_and_modules_are_absent(capsys):
     assert main(["migrate", "--run", "missing", "--out", "missing"]) == 2
     capsys.readouterr()
-    for name in ("migration", "migration_source", "migration_transform"):
-        assert importlib.util.find_spec("inferyard.evidence." + name) is None

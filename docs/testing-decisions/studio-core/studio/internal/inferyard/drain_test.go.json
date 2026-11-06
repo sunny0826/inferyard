@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/inferyard/drain_test.go",
+  "decisions": [
+    {
+      "test": "TestContextSpeedDrainGrace",
+      "decision": "keep",
+      "reason": "取消后封存需三秒的子进程不能被默认短超时杀死，并须返回 130 和完整输出，防专项取消丢证据。"
+    },
+    {
+      "test": "TestSpeedDrainProcess",
+      "decision": "keep",
+      "reason": "真实慢封存子进程 helper，验证专项取消有足够 drain grace 保留 sealed 输出。"
+    }
+  ]
+}

@@ -85,7 +85,11 @@ Windows 与 Linux 的位置表现未验证。
 报告视图读取本地 `index.json`，字段映射见[子系统参考](../../docs/subsystems/studio-panel.md#运行路径)；重读重新执行路径校验。
 索引损坏只在该列表项及打开后的视图显示无法读取，不影响其他报告，不修改历史 HTML。
 
-## 软件验证
+## 历史软件验证
+
+以下记录设计交付时的验证，数量和矩阵不代表当前测试集。当前按[测试策略](../../docs/testing.md)
+保留交互、缺测、报告归属和发布保障；固定布局矩阵、控件形状及像素快照已删除。
+当前检查入口见 [Studio README](../README.md#verification-boundaries)。
 
 环境为 macOS arm64、mise Go 1.27.3。命令从 `studio/` 执行，使用
 `GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0`：
@@ -95,12 +99,12 @@ Windows 与 Linux 的位置表现未验证。
 - `CGO_ENABLED=0 go build` 对 darwin/arm64、windows/amd64、linux/amd64 均通过；
   产物写入临时目录，未打包或安装。macOS 后续按用户要求启动供手动验收；
   交叉编译不代表 Windows/Linux 运行验收。
-- [布局矩阵](../internal/pages/design_layout_test.go)覆盖 7 个视图 × 3 个尺寸 × 3 个文字比例 ×
+- 当时的布局矩阵覆盖 7 个视图 × 3 个尺寸 × 3 个文字比例 ×
   深浅色 × 高对比开关，共 252 个场景。尺寸为 1120×800、800×600、1440×900；文字比例为
   1、1.5、2。断言检查实际节点水平边界、一级标题和固定工具栏，表格仅豁免其内部可横向滚动内容。
-- [交互回归](../internal/pages/design_interaction_test.go)与
-  [语义回归](../internal/pages/design_system_test.go)检查字段纠错、公告、焦点、恢复动作及进度。
-  部分语义断言读取固定 MyGo 版本的内部视图节点，升级依赖时需要复核这些测试适配；
+- 当时的交互与语义回归检查字段纠错、公告、焦点、恢复动作及进度。
+  本轮删除其中的内部节点形状断言，保留用户可观察结果；当前入口见
+  [交互回归](../internal/pages/design_interaction_test.go)。历史语义断言依赖固定 MyGo 版本；
   当前依赖为 MyGo v0.6.2 与 onevra v0.2026.14。2026-10-16 那次升级后在 macOS arm64
   重跑 `go vet ./...` 与 `go test ./... -count=1 -timeout 900s` 均通过，包含页面布局、交互与真实 CLI / 假引擎 e2e。
   那次未重做原生窗口目检，历史图片不作为新依赖的视觉验收证据。
@@ -114,7 +118,7 @@ Windows 与 Linux 的位置表现未验证。
 高对比浅色图，以及部分深色图；未目检高对比关闭、1440 宽窗、文字比例 1.5 或滚动后的画面。
 
 图片复核确认报告来源列表按底边裁剪，列表与页脚相隔 10 DIP；
-[像素回归](../internal/pages/design_visual_regression_test.go)在深浅色下改写来源 ID，确认页脚区域不变。
+当时的像素回归在深浅色下改写来源 ID，确认页脚区域不变；该像素快照测试现已删除。
 详情的 `last_seq: 0` 是事件游标初值，不属于缺测补零；这两项初步判断均已撤回。
 模型双栏中地址值的重复 Endpoint 前缀使“未启动”断行，现已去掉该前缀。
 独立验证者目检主工作区重新生成的 1120×800／文字比例 1 高对比深浅色图，

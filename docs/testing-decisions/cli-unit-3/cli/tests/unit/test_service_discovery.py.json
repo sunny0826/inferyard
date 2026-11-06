@@ -1,0 +1,80 @@
+{
+  "source_path": "cli/tests/unit/test_service_discovery.py",
+  "decisions": [
+    {
+      "test": "test_cancellation_result_matches_the_contract",
+      "decision": "keep",
+      "reason": "具体场景 test_cancellation_result_matches_the_contract。可观察预期：assert code == 130；assert result['status'] == 'interrupted'；assert result['completeness'] == 'incomplete'；assert result['details'] is None。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。"
+    },
+    {
+      "test": "test_changed_identity_is_not_attributed",
+      "decision": "keep",
+      "reason": "具体场景 test_changed_identity_is_not_attributed。可观察预期：assert platform.psutil_listeners() == ([], {'process_identity_unavailable'})。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。"
+    },
+    {
+      "test": "test_empty_discovery_is_complete",
+      "decision": "keep",
+      "reason": "具体场景 test_empty_discovery_is_complete。可观察预期：assert code == 0；assert result['completeness'] == 'complete'；assert result['details']['services'] == []。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。"
+    },
+    {
+      "test": "test_health_failure_does_not_prevent_models_probe",
+      "decision": "keep",
+      "reason": "具体场景 test_health_failure_does_not_prevent_models_probe。可观察预期：assert code == 0；assert endpoint['health'] is None；assert endpoint['models'] == ['model']；assert endpoint['reason'] == 'health_unreachable'。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。"
+    },
+    {
+      "test": "test_linux_missing_owner_is_partial",
+      "decision": "keep",
+      "reason": "具体场景 test_linux_missing_owner_is_partial。可观察预期：assert processes == []；assert limitations == {'listener_ownership_incomplete'}。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。"
+    },
+    {
+      "test": "test_linux_proc_discovers_arbitrary_binary_and_excludes_nonloopback",
+      "decision": "keep",
+      "reason": "具体场景 test_linux_proc_discovers_arbitrary_binary_and_excludes_nonloopback。可观察预期：assert processes == [process()]；assert limitations == set()。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。"
+    },
+    {
+      "test": "test_linux_unreadable_tables_are_tool_failure",
+      "decision": "keep",
+      "reason": "具体场景 test_linux_unreadable_tables_are_tool_failure。可观察预期：pytest.raises(platform.DiscoveryError, match='listener_enumeration_failed')。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。"
+    },
+    {
+      "test": "test_models_and_multiple_owners_including_dual_stack",
+      "decision": "keep",
+      "reason": "保留多owner归属、models/health/歧义、IPv6 URL和GET/无authorization-cookie/不持久化响应secret；删除固定总调用4次。"
+    },
+    {
+      "test": "test_no_process_name_option",
+      "decision": "delete",
+      "reason": "仅证明一个不存在的 parser flag 不可用，不能证明任意名称的进程可发现；覆盖者 test_linux_proc_discovers_arbitrary_binary_and_excludes_nonloopback。"
+    },
+    {
+      "test": "test_non_cancelled_result_without_details_is_rejected",
+      "decision": "delete",
+      "reason": "人工构造壳字典验证 schema 形状，不运行发现；实际取消输出由 test_cancellation_result_matches_the_contract 覆盖。"
+    },
+    {
+      "test": "test_only_loopback_probe_targets",
+      "decision": "keep",
+      "reason": "具体场景 test_only_loopback_probe_targets。逐项参数：pytest.mark.parametrize('address, expected', [('0.0.0.0', '127.0.0.1'), ('::', '::1'), ('::1', '::1'), ('127.0.0.2', '127.0.0.2'), ('::ffff:127.0.0.1', '::ffff:127.0.0.1'), ('192.168.1.1', None)])。可观察预期：assert platform.loopback_host(address) == expected。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。"
+    },
+    {
+      "test": "test_partial_collection_preserves_services",
+      "decision": "keep",
+      "reason": "具体场景 test_partial_collection_preserves_services。可观察预期：assert code == 3；assert result['completeness'] == 'incomplete'；assert result['limitations'] == ['listener_ownership_incomplete']；assert result['details']['services'][0]['pid'] == 42。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。"
+    },
+    {
+      "test": "test_probe_failure_is_null_with_fixed_reason",
+      "decision": "keep",
+      "reason": "保留探测失败models为null、固定缺测原因及错误secret脱敏；删除health/models固定调用序列与独占calls收集。health失败仍可取models另有独立测试。"
+    },
+    {
+      "test": "test_psutil_permissions_and_identity_reuse",
+      "decision": "keep",
+      "reason": "具体场景 test_psutil_permissions_and_identity_reuse。逐项参数：pytest.mark.parametrize('system', ['Darwin', 'Windows'])。可观察预期：assert processes == [process()]；assert limitations == {'listener_ownership_incomplete'}。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。已删身份读取次数约束，保留权限失败时返回 partial 服务库存。"
+    },
+    {
+      "test": "test_tool_failure_is_code_four",
+      "decision": "keep",
+      "reason": "具体场景 test_tool_failure_is_code_four。逐项参数：pytest.mark.parametrize('error, reason', [(platform.DiscoveryError('listener_enumeration_failed'), 'listener_enumeration_failed'), (RuntimeError('secret'), 'service_discovery_error')])。可观察预期：assert cli.main(['service', 'discover']) == 4；assert result['limitations'] == [reason]；assert result['details']['model_requests_sent'] == 0；assert 'secret' not in json.dumps(result)。发现仅访问本机元数据端点且不带认证；权限失败、监听复用及 HTTP 失败必须保留不完整/缺测原因，不能给用户错误的可绑定服务或泄露响应内容。"
+    }
+  ]
+}

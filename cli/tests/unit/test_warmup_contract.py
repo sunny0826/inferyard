@@ -7,13 +7,10 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from inferyard.config.loader import load_config
-from inferyard.config.plan_math import plan_hash
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.contracts.schemas import export_schema
 from inferyard.contracts.validation import ContractError, Document
-from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import json_bytes
-from tests.unit.test_ledger import attempt, finish, journal, setup  # noqa: F401
 
 
 @pytest.mark.parametrize("kind", ["config_input", "config"])
@@ -47,22 +44,6 @@ def test_warmup_default_stays_three_and_choice_changes_plan_binding(config_path)
     for plan, frozen in ((old, config), (new, changed)):
         binding = plan["experiment"]["workloads"][0]["config"]
         assert binding["sha256"] == hashlib.sha256(json_bytes(frozen)).hexdigest()
-        assert plan["plan_sha256"] == plan_hash(plan)
     assert old["plan_sha256"] != new["plan_sha256"]
     assert old["total_budget_seconds"] > new["total_budget_seconds"]
     assert old["request_limit"] == new["request_limit"] == len(loaded.bundle.to_dict()["cases"])
-
-
-def test_legacy_three_warmup_plan_and_run_read_without_rewriting(tmp_path, setup):  # noqa: F811
-    # Existing v3 fixture shape; no new field or migration is needed by this extension.
-    config, _, plan = setup
-    assert config["execution"]["warmup_count"] == 3
-    store = journal(tmp_path, setup)
-    attempt(store, setup, 0, "completed")
-    original = finish(store)
-    before = {p.name: p.read_bytes() for p in store.path.iterdir() if p.is_file()}
-    assert Document.parse("plan", plan).to_dict() == plan
-    reread = read_trial(store.path)
-    assert reread["config"]["execution"]["warmup_count"] == 3
-    assert reread["run"] == original["run"] and reread["summary"] == original["summary"]
-    assert before == {p.name: p.read_bytes() for p in store.path.iterdir() if p.is_file()}

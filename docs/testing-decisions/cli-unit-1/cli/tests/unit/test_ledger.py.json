@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_ledger.py",
+  "decisions": [
+    {
+      "test": "test_arrival_evidence_is_bound_to_terminal_and_protocol",
+      "decision": "keep",
+      "reason": "到达序号、通道、流模式和采集声明要匹配，防止把 reasoning 当答案计时。"
+    },
+    {
+      "test": "test_completed_without_score_is_unscorable_not_model_failure",
+      "decision": "keep",
+      "reason": "完成未评分保持 completed 并整体不完整，不能把评分丢失算模型失败。"
+    },
+    {
+      "test": "test_corrupt_event_stream_rejected_before_metrics",
+      "decision": "keep",
+      "reason": "重复/重叠请求、错误身份/序列/终态/评分及停止后事件在指标归约前拒绝。"
+    },
+    {
+      "test": "test_crash_tail_stays_invalid_and_unsealed_cannot_claim_evidence_complete",
+      "decision": "keep",
+      "reason": "崩溃尾保持 invalid/未封存，不宣称证据完整或重发已开始题。"
+    },
+    {
+      "test": "test_five_terminal_counts_conserve_planned_cases",
+      "decision": "keep",
+      "reason": "五终态守恒，失败仍在有效分母，恢复只选未执行题，避免虚高完成率。"
+    },
+    {
+      "test": "test_hash_seal_rejects_original_mutation_and_run_id_cannot_be_reused",
+      "decision": "keep",
+      "reason": "同 run ID 不覆盖原目录，封存后 events 改动必须拒绝，保护原始测量。"
+    },
+    {
+      "test": "test_output_throughput_requires_matching_usage_evidence",
+      "decision": "keep",
+      "reason": "终态 token 数、来源或 usage 事件不匹配拒绝吞吐证据，不能凭声明造速率。"
+    },
+    {
+      "test": "test_repetitions_are_new_runs_and_failed_model_requests_are_valid",
+      "decision": "keep",
+      "reason": "重复用新 run ID；模型失败和 length 结束仍为有效执行，不算工具不完整。"
+    },
+    {
+      "test": "test_resume_cannot_replace_failure_or_claim_continuous_complete_trial",
+      "decision": "keep",
+      "reason": "恢复另建血缘且不改父字节，不能重做失败题或拼成连续完整试验。"
+    }
+  ]
+}

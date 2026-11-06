@@ -1,0 +1,105 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_identity.py",
+  "decisions": [
+    {
+      "test": "test_added_token_vocabulary_is_bound_in_frozen_and_runtime_assets",
+      "decision": "keep",
+      "reason": "附加词表新增、修改或删除必须改变冻结和运行模型身份，避免 tokenizer 变化继承比较资格。"
+    },
+    {
+      "test": "test_arbitrary_module_strings_and_ambiguous_model_arguments_cannot_bind",
+      "decision": "keep",
+      "reason": "任意模块字符串及重复模型参数不能冒充引擎入口，避免错绑其他进程。"
+    },
+    {
+      "test": "test_asset_v2_detects_selected_file_added_during_hash",
+      "decision": "keep",
+      "reason": "选定资产在哈希途中新增时拒绝，避免清单漏掉真实 tokenizer。"
+    },
+    {
+      "test": "test_asset_v2_excludes_documentation_cache_and_location",
+      "decision": "keep",
+      "reason": "M7：README/cache 与迁移目录不改变 v2 摘要，tokenizer 内容变化改变摘要，错误 definition 拒绝；删除旧资产清单必须七项的任意数量。"
+    },
+    {
+      "test": "test_asset_v2_hashes_every_index_referenced_weight",
+      "decision": "keep",
+      "reason": "index 指向的非默认名称权重必须进入摘要，避免权重变化未改变身份。"
+    },
+    {
+      "test": "test_asset_v2_rejects_missing_or_outside_index_references",
+      "decision": "keep",
+      "reason": "index 越界、绝对、缺失或缓存目录权重引用拒绝，避免冻结不完整或外部模型。"
+    },
+    {
+      "test": "test_binding_supported_entrypoints_and_relative_model_directory",
+      "decision": "keep",
+      "reason": "支持的 vLLM/SGLang 入口可绑定相对模型路径，并隐藏 api-key，防止合法本地服务误拒绝。"
+    },
+    {
+      "test": "test_check_service_detects_identity_changes",
+      "decision": "keep",
+      "reason": "PID、argv、二进制、监听、模型 inode 或 cwd 变更均阻止继续复用绑定。"
+    },
+    {
+      "test": "test_executable_content_not_basename_is_bound",
+      "decision": "delete",
+      "reason": "二进制内容变更拒绝已由 test_check_service_detects_identity_changes 的 binary 参数覆盖；去掉重复摘要计算与 basename 场景。"
+    },
+    {
+      "test": "test_host_hash_uses_machine_identity_and_hardware_without_disclosing_id",
+      "decision": "keep",
+      "reason": "设备摘要必须受稳定机器身份和硬件影响且不暴露原 machine-id，避免跨设备误比及隐私泄露。"
+    },
+    {
+      "test": "test_linux_machine_identity_requires_nonzero_machine_id",
+      "decision": "keep",
+      "reason": "全零 machine-id 不能作为稳定机器身份，避免不同 Linux 设备共用伪身份。"
+    },
+    {
+      "test": "test_listener_reuse_by_another_process_is_ambiguous",
+      "decision": "keep",
+      "reason": "监听端口由多个 socket 宣称时不能确认唯一进程，避免请求归属不明。"
+    },
+    {
+      "test": "test_manifest_detects_mutation_during_hash",
+      "decision": "keep",
+      "reason": "哈希期间内容、文件集或链接目标变化须拒绝，避免冻结混合时刻模型。"
+    },
+    {
+      "test": "test_manifest_follows_hf_file_links_and_hashes_sorted_relative_files",
+      "decision": "keep",
+      "reason": "HuggingFace 权重文件链接可哈希，清单绑定实际权重字节，避免链接目录丢失模型身份。"
+    },
+    {
+      "test": "test_manifest_rejects_root_directory_link",
+      "decision": "keep",
+      "reason": "根目录链接不能绕过声明根身份，避免重定向到其他模型目录。"
+    },
+    {
+      "test": "test_manifest_rejects_unsafe_or_empty_model_directories",
+      "decision": "keep",
+      "reason": "目录链接、FIFO、断链、空目录和普通文件不能当完整模型目录，避免卡住或漏权重。"
+    },
+    {
+      "test": "test_remote_endpoint_and_unsupported_windows_engine_binding_rejected",
+      "decision": "keep",
+      "reason": "远程 endpoint 与不受支持的 Windows 引擎拒绝，避免越出平台/本机范围。"
+    },
+    {
+      "test": "test_resource_snapshot_detects_child_replacement_mid_sample",
+      "decision": "keep",
+      "reason": "采样中子进程被替换时资源置 null，避免拼接不同进程的 RSS/CPU。"
+    },
+    {
+      "test": "test_resource_snapshot_includes_children_from_all_threads",
+      "decision": "keep",
+      "reason": "所有线程产生的子孙进程均计入 RSS/CPU，避免低估资源；页与时钟单位转换须正确。"
+    },
+    {
+      "test": "test_unreadable_or_changed_process_tree_is_missing_not_partial",
+      "decision": "keep",
+      "reason": "根复用、子缺失、重挂父进程或坏 RSS 时整树资源缺测，不能上报部分和。"
+    }
+  ]
+}

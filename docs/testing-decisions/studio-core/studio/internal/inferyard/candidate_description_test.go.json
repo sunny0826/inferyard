@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/inferyard/candidate_description_test.go",
+  "decisions": [
+    {
+      "test": "TestCandidateDescriptionFamilies",
+      "decision": "keep",
+      "reason": "旧版和五类本地引擎描述须保留启动参数、generation/context 和声明身份，防选定引擎无法启动或错误测量范围。"
+    },
+    {
+      "test": "TestCandidateDescriptionLegacyRejectsLocalFields",
+      "decision": "keep",
+      "reason": "旧描述混入本地 family/环境或 executable 与 assets 不一致须拒绝，防跨格式绕过启动身份边界。"
+    },
+    {
+      "test": "TestCandidateDescriptionRejectsMalformedFields",
+      "decision": "keep",
+      "reason": "逐项拒绝旧定义、错类型、非法 argv/环境/身份 hash/public endpoint/不完整 binding/生成预算及安全字段，防启动未经验证配置。"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_integration.py",
+  "decisions": [
+    {
+      "test": "test_file_result_crosses_backend_and_same_host_resume",
+      "decision": "keep",
+      "reason": "M13：原资源继续受托管、输出完整且同 host 接手完成后释放，decision 成功；保留 spawn/assign/resume 先后与关闭结果，移除私有 custodian/ref Python 对象布局。"
+    },
+    {
+      "test": "test_fixture_output_prefix_survives_real_backend_limit",
+      "decision": "keep",
+      "reason": "过量 fixture 输出跨 backend 保留固定前缀并失败/停止，避免诊断输出限额在集成后失效。"
+    },
+    {
+      "test": "test_fixture_success_does_not_hide_backend_unknown_close",
+      "decision": "keep",
+      "reason": "fixture 已成功但真实宿主清理未知时仍不得成功或退出，防止验收假阳性与资源遗失。"
+    }
+  ]
+}

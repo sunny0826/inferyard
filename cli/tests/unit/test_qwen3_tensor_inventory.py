@@ -38,7 +38,7 @@ def test_head_dimensions_and_tied_output(config):
     assert module.expected_tensors(config)["output.weight"] == [8, 20]
 
 
-@pytest.mark.parametrize("mutation", [None, "missing", "shape", "duplicate", "metadata"])
+@pytest.mark.parametrize("mutation", ["missing", "shape", "duplicate", "metadata"])
 def test_inventory_rejects_partial_or_wrong_model(config, mutation):
     rows = [
         {"name": name, "shape": shape} for name, shape in module.expected_tensors(config).items()
@@ -59,11 +59,8 @@ def test_inventory_rejects_partial_or_wrong_model(config, mutation):
         rows.append(rows[0])
     elif mutation == "metadata":
         data["metadata"]["qwen3.block_count"] = 3
-    if mutation:
-        with pytest.raises(ValueError):
-            module.check_inventory(data, config)
-    else:
-        assert module.check_inventory(data, config)["tensor_count"] == 24
+    with pytest.raises(ValueError):
+        module.check_inventory(data, config)
 
 
 @pytest.mark.parametrize("kind,storage", [("BF16", "BF16"), ("Q4_K_M", "Q4_K"), ("Q8_0", "Q8_0")])

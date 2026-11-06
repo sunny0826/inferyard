@@ -6,31 +6,6 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// Each page keeps its own scroll place: switching away and back restores
-// the offset the page was left at, instead of jumping back to the top.
-func TestEachPageKeepsItsOwnScrollPosition(t *testing.T) {
-	s := testState()
-	s.selected = "settings"
-	tt := ui.NewTester(s.view, 1120, 800)
-
-	tt.Scroll(700, 500, 0, 600)
-	if got := s.pageScroll().Y; got <= 0 {
-		t.Fatalf("settings page did not scroll: %v", got)
-	}
-	scrolled := s.pageScroll().Y
-
-	s.selected = "device"
-	tt.Frame()
-	if got := s.pageScroll().Y; got != 0 {
-		t.Fatalf("a fresh page did not start at the top: %v", got)
-	}
-	s.selected = "settings"
-	tt.Frame()
-	if got := s.pageScroll().Y; got != scrolled {
-		t.Fatalf("settings lost its scroll place: %v, want %v", got, scrolled)
-	}
-}
-
 // The keyed scroll container keeps the page's own scroll state, so the
 // offset survives the page switch that rebuilds the tree.
 func TestScrollStateFollowsTheSelectedPage(t *testing.T) {

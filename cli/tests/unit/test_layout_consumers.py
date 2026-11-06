@@ -1,7 +1,6 @@
 """Consumer regressions from fresh public synthetic originals; no model requests."""
 
 from copy import deepcopy
-from pathlib import Path
 
 import pytest
 
@@ -123,7 +122,6 @@ def test_old_new_reduction_conserves_scope_and_binds_real_members(tmp_path, coll
     assert without_refs(packed) == without_refs(legacy)
     for field in ("identity", "environment_start", "service_drain"):
         assert packed_metadata[field] == legacy_metadata[field]
-    assert len(list(new.iterdir())) == 8
     refs = list(all_refs(packed["summary"]))
     for reference in refs:
         assert (new / reference["path"]).is_file()
@@ -176,20 +174,6 @@ def test_missing_end_record_does_not_inherit_start_or_container_existence(tmp_pa
     assert record["endpoint_reasons"] == [
         "environment_endpoint_unsealed_or_missing:environment.end.json"
     ]
-
-
-def test_projection_does_not_read_prepared_or_measurement_logs(tmp_path, monkeypatch):
-    _, new = synthetic_pair(tmp_path)
-    original_open = Path.open
-
-    def guarded(path, *args, **kwargs):
-        assert path.name not in ("request-bodies.jsonl", "environment.jsonl", "schedule.jsonl")
-        return original_open(path, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "open", guarded)
-    result = read_run_projection(new)
-    assert result["summary"]["counts"]["executed"] == 3
-    assert "metric_observations" not in result["summary"]
 
 
 def test_non_strict_mode_checks_complete_original_body(tmp_path):
@@ -330,7 +314,6 @@ def test_protocol_consumers_read_complete_body_and_reject_hidden_mutation(tmp_pa
     append_observation(
         new, "service_properties", "pre_idle" if consumer == "lab" else "post_idle", props
     )
-    assert TrialEvidence(new).input("config") == config
 
     def check():
         if consumer == "cache":

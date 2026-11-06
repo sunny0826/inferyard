@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/unit/test_windows_machine.py",
+  "decisions": [
+    {
+      "test": "test_malformed_topology_refuses_manufactured_values",
+      "decision": "keep",
+      "reason": "截断/零长度/越界拓扑记录拒绝，避免制造 CPU 数量。"
+    },
+    {
+      "test": "test_missing_optional_sensor_still_publishes_verified_inventory",
+      "decision": "keep",
+      "reason": "可选传感器不可访问仍写可核验设备包、显式缺测且不授硬件资格，已有输出拒绝覆盖；Windows 本轮未实测。"
+    },
+    {
+      "test": "test_native_cpu_memory_and_power_api_units",
+      "decision": "keep",
+      "reason": "原生 CPU 拓扑、内存/commit 与电源单位对照系统 API，避免 Windows 设备清单量纲错误；Windows 本轮未实测。"
+    },
+    {
+      "test": "test_power_unknowns_do_not_become_false_or_zero",
+      "decision": "keep",
+      "reason": "Windows power 的未知哨兵保持 null，不能等同离电或零电量。"
+    },
+    {
+      "test": "test_reference_reports_shortfall_without_changing_candidate",
+      "decision": "keep",
+      "reason": "设备参考报告内存短缺但不能改 candidate 预算或创建未来结果，避免准备阶段偷改冻结条件；Windows 本轮未实测。"
+    },
+    {
+      "test": "test_timeout_preserves_completed_cim_queries",
+      "decision": "keep",
+      "reason": "CIM 查询超时保留已完成部分、其余明确缺测，避免整份设备信息丢失或补值。"
+    },
+    {
+      "test": "test_topology_walks_variable_sizes_and_preserves_group_identity",
+      "decision": "keep",
+      "reason": "不同大小拓扑记录保留 processor group 身份，避免跨组相同逻辑编号合并而少算 CPU。"
+    }
+  ]
+}

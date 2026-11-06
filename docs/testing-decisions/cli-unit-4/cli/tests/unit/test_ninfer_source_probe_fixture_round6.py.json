@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_fixture_round6.py",
+  "decisions": [
+    {
+      "test": "test_bool_and_regression_stop_after_recovery",
+      "decision": "delete",
+      "reason": "按模拟 _Direct/_Guard 时钟调用位置注入 bool/回退并检查 retained 引用，是模拟 fixture 实现自测，不证明真实宿主安全或发行门禁。"
+    },
+    {
+      "test": "test_reused_boundary_create_failure_does_not_replay_closed_handles",
+      "decision": "delete",
+      "reason": "重复使用模拟 NativeJobBoundary 时创建记录清空与句柄数组比较只约束内部转移表示。"
+    },
+    {
+      "test": "test_sample_failure_consumes_the_pair_before_a_later_rejection",
+      "decision": "delete",
+      "reason": "模拟创建后 QPC 失败再创建拒绝验证内部 created_handles 消费步骤，重复 round5 句柄保活机制。"
+    },
+    {
+      "test": "test_unknown_close_is_not_retried_or_replayed",
+      "decision": "delete",
+      "reason": "模拟 CloseHandle 抛错后的引用、unknown 数组和调用次数仅约束 fixture 账本；实际未知关闭不误报成功由 test_ninfer_source_probe_integration.py::test_fixture_success_does_not_hide_backend_unknown_close 覆盖。"
+    }
+  ]
+}

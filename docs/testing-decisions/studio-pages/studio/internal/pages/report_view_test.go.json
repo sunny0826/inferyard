@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/pages/report_view_test.go",
+  "decisions": [
+    {
+      "test": "TestReportViewHasNoWebViewPath",
+      "decision": "delete",
+      "reason": "扫描源码禁止某些标识符/字符串，约束实现形状；离线原生报告功能由 TestReportViewIndexAndUnreadable 覆盖。"
+    },
+    {
+      "test": "TestReportViewIndexAndUnreadable",
+      "decision": "keep",
+      "reason": "坏/缺失 index 不得隐藏其他报告，键盘可打开、修复后重读；读取不执行 CLI、不改原 HTML，并拒绝遍历。"
+    }
+  ]
+}

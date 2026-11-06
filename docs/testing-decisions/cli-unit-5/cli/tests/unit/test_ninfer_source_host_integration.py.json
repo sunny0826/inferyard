@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_host_integration.py",
+  "decisions": [
+    {
+      "test": "test_actual_worker_cli_remains_disabled",
+      "decision": "keep",
+      "reason": "禁用的实际worker CLI必须退出2且不调用文件IO，避免调试入口意外执行真实作业。"
+    },
+    {
+      "test": "test_cancel_then_resume_drains_original_backend_ref",
+      "decision": "keep",
+      "reason": "取消后续接必须排空原对象尾输出且失败，不能新开请求或漏证据。"
+    },
+    {
+      "test": "test_invalid_path_worker_result_is_preserved_and_denies_success",
+      "decision": "keep",
+      "reason": "非法设备路径的worker错误不能被host退出0掩盖，避免无效作业伪成功。"
+    },
+    {
+      "test": "test_io_result_survives_backend_and_same_owner_resume",
+      "decision": "keep",
+      "reason": "read/hash/write_new结果经backend与同owner续接仍保留身份/字节/摘要并最终成功，避免进程边界丢失证据；精简内部关闭次数helper。"
+    },
+    {
+      "test": "test_worker_close_at_task_deadline_cannot_become_host_success",
+      "decision": "keep",
+      "reason": "worker完成关闭已到任务期限时host仍拒绝成功，避免期限外结果被采纳。复审删除Clock赋值自证；保留io_deadline、无数据、host_deadline、失败结果及资源释放。"
+    }
+  ]
+}

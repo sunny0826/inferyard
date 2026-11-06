@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/unit/test_total_observer_control.py",
+  "decisions": [
+    {
+      "test": "test_driver_keeps_abba_order_and_times_close_with_no_retry",
+      "decision": "keep",
+      "reason": "实际驱动遵守 ABBA 实验次序，生命周期包含 observer close，避免调序或漏算关闭成本。"
+    },
+    {
+      "test": "test_failed_workload_closes_observer_and_checkpoints_partial_arm",
+      "decision": "keep",
+      "reason": "工作负载异常仍关闭观察器并保留未完成对照臂，不能丢失败证据或报 finalized。"
+    },
+    {
+      "test": "test_final_seal_cost_outside_request_latency_is_included_and_can_fail",
+      "decision": "keep",
+      "reason": "请求延迟相同但封存多耗时 12.5% 仍超限，避免漏算请求外总开销。"
+    },
+    {
+      "test": "test_identical_full_lifecycles_pass_software_but_not_hardware",
+      "decision": "keep",
+      "reason": "模拟完整生命周期一致只授予软件通过，不能伪装硬件开销合格。"
+    },
+    {
+      "test": "test_incomplete_or_confounding_control_refuses_qualification",
+      "decision": "keep",
+      "reason": "守护同 PID、采样缺口、不安全、越窗、环境/时钟变化、缺覆盖或输出不同均不合格。"
+    },
+    {
+      "test": "test_live_control_needs_full_guard_identity_environment_and_bound_policy",
+      "decision": "keep",
+      "reason": "live 对照缺独立 guardian 身份、完整环境和策略绑定时不能获得硬件资格。"
+    },
+    {
+      "test": "test_source_mismatch_and_overlapping_arms_are_evidence_errors",
+      "decision": "keep",
+      "reason": "源码身份不符和对照臂重叠是证据错误，不能继续计算资格。"
+    }
+  ]
+}

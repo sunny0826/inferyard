@@ -169,9 +169,6 @@ func TestPreviewContextSpeedParity(t *testing.T) {
 					t.Errorf("%s got %+v want %+v", label, got, want)
 				}
 			}
-			if prod != sim {
-				t.Fatal("production/preview drift")
-			}
 			p.state.model, p.state.engine = "other model", "other engine"
 			p.failNext = true
 			p.state.openSpeed(p.state.speed.current.id)

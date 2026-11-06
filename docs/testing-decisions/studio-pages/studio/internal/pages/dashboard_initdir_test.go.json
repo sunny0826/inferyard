@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/dashboard_initdir_test.go",
+  "decisions": [
+    {
+      "test": "TestSuggestInitDir",
+      "decision": "keep",
+      "reason": "已有普通目录要建议新子目录，已初始化工作区不得继续嵌套，避免覆盖目录或反复创建工作区。"
+    }
+  ]
+}

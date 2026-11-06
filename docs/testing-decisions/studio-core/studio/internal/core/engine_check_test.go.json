@@ -1,0 +1,36 @@
+{
+  "source_path": "studio/internal/core/engine_check_test.go",
+  "decisions": [
+    {
+      "test": "TestCheckEngineFailureMapping",
+      "decision": "keep",
+      "reason": "保留旧 CLI、blocked/cancelled/tool error/非法 JSON 映射；并入 installation_scope 拒绝以保护核验范围隔离，executor 检查实际 engine check 的 Windows receipt/其他平台 binary 输入。删除与 parser 重复的细节结构拒绝行。"
+    },
+    {
+      "test": "TestCheckEngineInvocationAndVerdicts",
+      "decision": "delete",
+      "reason": "删除重复资格解析（TestParseEngineCheckContract 覆盖）；实际 engine check CLI 输入边界并入 TestCheckEngineFailureMapping 的 executor，Windows 要求 --runtime-receipt 与所选 receipt，其他平台要求 --engine 与所选 binary；candidate 参数测试不覆盖核验命令。",
+      "covered_by": "TestCheckEngineFailureMapping; TestParseEngineCheckContract"
+    },
+    {
+      "test": "TestQueuedEngineChecksDoNotBlockOverview",
+      "decision": "delete",
+      "reason": "固定两个 semaphore 槽和四个 checking 计数，未对应已声明响应时间预算，主要断言锁与并发实现结构。"
+    },
+    {
+      "test": "TestVerifyEnginesCacheAndFingerprintInvalidation",
+      "decision": "delete",
+      "reason": "修改库后只断言调用次数而返回同一个 eligible，未证明过期资格无法使用，锁定缓存实现。"
+    },
+    {
+      "test": "TestVerifyEnginesIneligibleAndOutdatedCLI",
+      "decision": "keep",
+      "reason": "不合格引擎要呈现固定原因；旧 CLI 下所有引擎须保持 Unknown 且避免重复尝试，防误报已核验或错误风暴。"
+    },
+    {
+      "test": "TestVerifyEnginesTransientFailureIsRetried",
+      "decision": "delete",
+      "reason": "直接改私有 failedAt 再数调用，未证明恢复后用户资格或按钮变为可用；只是退避实现自测。"
+    }
+  ]
+}

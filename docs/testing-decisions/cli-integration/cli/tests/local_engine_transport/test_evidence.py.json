@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/local_engine_transport/test_evidence.py",
+  "decisions": [
+    {
+      "test": "test_lmstudio_normalized_counts_are_recomputed",
+      "decision": "keep",
+      "reason": "LM Studio规范队列计数遭改写必须由原计数重算拒绝，不能直接信任idle摘要。"
+    },
+    {
+      "test": "test_mlx_offline_source_uses_sealed_runtime_not_current_installation",
+      "decision": "keep",
+      "reason": "MLX离线依据封存入口源码而非当前安装源码，封存hash变化必须拒绝。"
+    },
+    {
+      "test": "test_post_observation_failure_retains_valid_incomplete_original",
+      "decision": "keep",
+      "reason": "请求后观察缺失可保留真实不完整原件，但不得同时拥有clean receipt。"
+    },
+    {
+      "test": "test_tampered_queue_evidence_is_rejected",
+      "decision": "keep",
+      "reason": "离线queue证据PID/source/family/count/raw/收据与identity任一不符都应拒绝，不能用篡改观察放行后续题。"
+    },
+    {
+      "test": "test_uncertain_cannot_claim_clean_or_admit_again",
+      "decision": "keep",
+      "reason": "failed/cancelled终态不能声称clean或再准入，即使后队列为0。"
+    },
+    {
+      "test": "test_valid_all_families_without_live_binding",
+      "decision": "delete",
+      "reason": "只遍历family happy path并断言verify返回False；完整生成和queue范围由 test_transport.test_formal_generation_and_queue_scope 覆盖，真实离线链由 test_local_engine_runtime.test_formal_local_run_seals_and_renders_offline 覆盖。"
+    }
+  ]
+}

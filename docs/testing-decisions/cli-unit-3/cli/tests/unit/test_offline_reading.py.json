@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_offline_reading.py",
+  "decisions": [
+    {
+      "test": "test_capability_definition_is_interpreted_once_from_bound_source",
+      "decision": "keep",
+      "reason": "具体场景 test_capability_definition_is_interpreted_once_from_bound_source。可观察预期：assert not result.verified。服务关闭、目录搬迁或派生摘要缺失时仍可核验原件；核验不得写回字节、重渲染冒充原报告或让重新封存的伪造答案通过。已删 bound_capabilities 只调用一次的计数路径，保留无绑定的 service.props 不授能力证明。"
+    },
+    {
+      "test": "test_changed_html_and_explicit_rerender",
+      "decision": "keep",
+      "reason": "具体场景 test_changed_html_and_explicit_rerender。可观察预期：assert verify_report(out, options=VerificationOptions(rerender=True))['render_checked']；assert verify_report(out)['verified']；pytest.raises(EvidenceError, match='html_recomputation')；pytest.raises(EvidenceError, match='presentation_bytes_changed')。服务关闭、目录搬迁或派生摘要缺失时仍可核验原件；核验不得写回字节、重渲染冒充原报告或让重新封存的伪造答案通过。"
+    },
+    {
+      "test": "test_changed_report_data_is_rejected_even_with_recomputed_byte_seal",
+      "decision": "keep",
+      "reason": "具体场景 test_changed_report_data_is_rejected_even_with_recomputed_byte_seal。逐项参数：pytest.mark.parametrize('reseal', [False, True])。可观察预期：pytest.raises(EvidenceError, match='presentation_bytes_changed|recomputation_mismatch')。服务关闭、目录搬迁或派生摘要缺失时仍可核验原件；核验不得写回字节、重渲染冒充原报告或让重新封存的伪造答案通过。"
+    },
+    {
+      "test": "test_comparison_and_linked_report_move_and_keep_source_binding",
+      "decision": "keep",
+      "reason": "具体场景 test_comparison_and_linked_report_move_and_keep_source_binding。可观察预期：assert execute(CommandRequest('verify', run=moved / 'comparison'))[0] == 0；assert verify_report(moved / 'report')['sources_verified']；pytest.raises(EvidenceError)。服务关闭、目录搬迁或派生摘要缺失时仍可核验原件；核验不得写回字节、重渲染冒充原报告或让重新封存的伪造答案通过。"
+    },
+    {
+      "test": "test_corrupt_seal_is_not_downgraded_to_partial",
+      "decision": "keep",
+      "reason": "具体场景 test_corrupt_seal_is_not_downgraded_to_partial。可观察预期：pytest.raises(EvidenceError)。服务关闭、目录搬迁或派生摘要缺失时仍可核验原件；核验不得写回字节、重渲染冒充原报告或让重新封存的伪造答案通过。"
+    },
+    {
+      "test": "test_explicit_source_root_mapping_preserves_saved_bytes",
+      "decision": "keep",
+      "reason": "具体场景 test_explicit_source_root_mapping_preserves_saved_bytes。可观察预期：assert verify_report(out, options=options)['sources_verified']；assert (out / 'index.json').read_bytes() == before。服务关闭、目录搬迁或派生摘要缺失时仍可核验原件；核验不得写回字节、重渲染冒充原报告或让重新封存的伪造答案通过。"
+    },
+    {
+      "test": "test_frozen_plan_and_empty_batch_are_read_without_derived_report",
+      "decision": "keep",
+      "reason": "具体场景 test_frozen_plan_and_empty_batch_are_read_without_derived_report。可观察预期：assert code == 3 and result.status == 'partial'；assert result.details['trials'] == []；assert result.details['verified'] is False；assert code == 0 and result.status == 'validated'。服务关闭、目录搬迁或派生摘要缺失时仍可核验原件；核验不得写回字节、重渲染冒充原报告或让重新封存的伪造答案通过。"
+    },
+    {
+      "test": "test_raw_run_and_unsealed_partial_are_read_without_report",
+      "decision": "keep",
+      "reason": "具体场景 test_raw_run_and_unsealed_partial_are_read_without_report。可观察预期：assert execute(CommandRequest('verify', run=root))[0] == 0；assert code == 3 and result.status == 'partial'；assert result.details['integrity'] == 'unsealed'；assert result.details['verified'] is False。服务关闭、目录搬迁或派生摘要缺失时仍可核验原件；核验不得写回字节、重渲染冒充原报告或让重新封存的伪造答案通过。"
+    },
+    {
+      "test": "test_report_moves_with_sources_and_does_not_render_during_verify",
+      "decision": "keep",
+      "reason": "具体场景 test_report_moves_with_sources_and_does_not_render_during_verify。可观察预期：assert saved['report_format_version'] == 8；assert not Path(saved['runs'][0]['source']['path']).is_absolute()；assert checked['bytes_verified'] and checked['semantic_verified']；assert not checked['render_checked']。服务关闭、目录搬迁或派生摘要缺失时仍可核验原件；核验不得写回字节、重渲染冒充原报告或让重新封存的伪造答案通过。"
+    },
+    {
+      "test": "test_sealed_partial_run_verifies_without_promoting_execution",
+      "decision": "keep",
+      "reason": "具体场景 test_sealed_partial_run_verifies_without_promoting_execution。逐项参数：pytest.mark.parametrize('states', [['cancelled', 'not_executed'], ['invalid', 'not_executed']])。可观察预期：assert code == 0 and result.status == 'verified'；assert result.completeness == result.details['execution_completeness'] == 'incomplete'；assert result.details['sealed'] and result.details['verified']；assert result.details['stop_reason'] == original['summary']['stop_reason']。服务关闭、目录搬迁或派生摘要缺失时仍可核验原件；核验不得写回字节、重渲染冒充原报告或让重新封存的伪造答案通过。"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_windows_benchmark_config.py",
+  "decisions": [
+    {
+      "test": "test_config_preserves_discovered_model_and_recommended_mode",
+      "decision": "keep",
+      "reason": "具体场景 test_config_preserves_discovered_model_and_recommended_mode。可观察预期：assert config['model']['local_path'] == str(model.resolve())；assert config['model']['display_name'] == 'Independent model GGUF'；assert config['model']['revision'] == hashlib.sha256(model.read_bytes()).hexdigest()；assert config['engine']['backend'] == 'cuda'。配置须使用用户发现模型和推荐设备/上下文，模板已存在时保持原文件并不写半成品配置。"
+    },
+    {
+      "test": "test_existing_template_is_preserved_and_no_partial_config_is_written",
+      "decision": "keep",
+      "reason": "具体场景 test_existing_template_is_preserved_and_no_partial_config_is_written。可观察预期：assert template.read_text() == 'existing template' and (not out.exists())；pytest.raises(FileExistsError, match='chat_template_already_exists')。配置须使用用户发现模型和推荐设备/上下文，模板已存在时保持原文件并不写半成品配置。"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_windows_lab_api.py",
+  "decisions": [
+    {
+      "test": "test_process_access_is_query_and_synchronize_only",
+      "decision": "keep",
+      "reason": "保留实际打开进程时不请求终止/写权限且不继承句柄；删除固定访问掩码和完整调用字典。"
+    },
+    {
+      "test": "test_real_api_refuses_off_windows_before_windll",
+      "decision": "keep",
+      "reason": "非 Windows 所有实际原生入口及 ProcessHandle 都明确拒绝，不能调用 WinDLL 或假装成功。"
+    },
+    {
+      "test": "test_sources_do_not_import_winreg_or_legacy_pid_checks",
+      "decision": "delete",
+      "reason": "扫描源码/AST 禁止 import、函数名和顶层 WinDLL，只限制实现写法。"
+    }
+  ]
+}

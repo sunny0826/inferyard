@@ -1,0 +1,80 @@
+{
+  "source_path": "studio/internal/pages/dashboard_state_test.go",
+  "decisions": [
+    {
+      "test": "TestAssetDefaultsApplyOnlyOnce",
+      "decision": "keep",
+      "reason": "后台刷新不得重填用户清空或手工填写的下载地址及引擎，防止下载/运行了非用户所选资源。"
+    },
+    {
+      "test": "TestDashboardCancelTerminalRaceStillCancelsRemaining",
+      "decision": "keep",
+      "reason": "取消首项时它恰好已完成，invalid_state 不能阻止取消后续排队项。"
+    },
+    {
+      "test": "TestDashboardCancelWaitsForRunningAndQueued",
+      "decision": "keep",
+      "reason": "取消必须覆盖活动与排队项并等待活动项结束，不能允许剩余工作继续发送请求。"
+    },
+    {
+      "test": "TestDashboardFirstDeviceCheckHasNoModelAndRunsOnce",
+      "decision": "keep",
+      "reason": "工作区首检不绑定用户模型且只派发一次；已有 preflight 不重复检查，避免错误冻结模型或重复检查。"
+    },
+    {
+      "test": "TestDashboardNewTaskClearsDetailKeepsSelection",
+      "decision": "keep",
+      "reason": "新任务必须取消旧生产者并清详情、续测来源和报告，但保留模型/引擎选择，避免结果串任务。"
+    },
+    {
+      "test": "TestDashboardNewTaskWaitsForLastEnqueuedRun",
+      "decision": "delete",
+      "reason": "只逐项复述 benchmarkResetReady 布尔表达式；实际异步重置由 TestNewTaskResetWaitsForUIAndLeavesNextTaskAlone、TestPreviewResetLeavesNextTaskAloneParity 覆盖。"
+    },
+    {
+      "test": "TestDashboardPlanOnlyShowsBlocker",
+      "decision": "keep",
+      "reason": "固定窗口需新窗口或批次未完时只给阻断原因，不提供无法合法执行的普通开始按钮。"
+    },
+    {
+      "test": "TestDashboardPrepareSkipsInitializedWorkspace",
+      "decision": "keep",
+      "reason": "已初始化工作区只补资源目录而不重建，普通已存在目录才建新子目录，避免覆盖现有工作区。"
+    },
+    {
+      "test": "TestDashboardRefreshClearsOnlyRefreshFailure",
+      "decision": "keep",
+      "reason": "刷新恢复只清刷新错误，保留用户进程/endpoint 编辑与操作错误；换候选时不得混用旧绑定身份及续测输入。"
+    },
+    {
+      "test": "TestDashboardStages",
+      "decision": "delete",
+      "reason": "按静态 next_action 重复阶段索引及文案；TestPreviewBenchmarkParity 检查实际编排阶段与按钮，核验准入由 TestReportGuidanceRequiresAllBundlesSealed 覆盖。"
+    },
+    {
+      "test": "TestDeviceGuidancePreservesSnapshot",
+      "decision": "delete",
+      "reason": "实际只验证空快照文案及按钮名；TestDeviceEmptyAndError 覆盖空设备状态与设置入口。"
+    },
+    {
+      "test": "TestGuidedCommandsPreserveOutputAndResume",
+      "decision": "keep",
+      "reason": "引擎路径含空格/单引号时仍正确传参，冻结输出路径保留；未完成任务必须执行 resume 而非错误新 run。"
+    },
+    {
+      "test": "TestHumanAllKnownCodes",
+      "decision": "delete",
+      "reason": "只要求所有错误码有非空非默认翻译，无法证明译文正确；实际阻断及恢复用例覆盖关键原因。"
+    },
+    {
+      "test": "TestManagedEngineStopDisabledWhileRunning",
+      "decision": "delete",
+      "reason": "与 TestStatusRefreshAndQueueControls 的运行生命周期禁停及 Swift 首次使用禁停重复。"
+    },
+    {
+      "test": "TestReportGuidanceRequiresAllBundlesSealed",
+      "decision": "keep",
+      "reason": "只有进度允许核验时才提供核验操作，已核验或仍待报告时不能误导用户提前核验。"
+    }
+  ]
+}

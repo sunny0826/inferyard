@@ -65,7 +65,6 @@ def test_strict_diagnostic_replays_requests_parameters_and_missing_formal_accept
     )
     assert m["numerator"] == m["denominator"] == 3
     assert m["value"] == (None if diagnostic else 1.0)
-    assert read_trial(root)["summary"] == data["summary"]
     if tamper is None:
         from inferyard.reporting.report import verify_report, write_report
 

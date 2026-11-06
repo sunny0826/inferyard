@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_cli_parser.py",
+  "decisions": [
+    {
+      "test": "test_speed_results_public_parser",
+      "decision": "delete",
+      "reason": "仅比较 argparse command/batch 属性，属于参数接线自测；实际 speed 计划/结果路径由 test_context_speed_plan.py 与相关命令集成覆盖。"
+    }
+  ]
+}

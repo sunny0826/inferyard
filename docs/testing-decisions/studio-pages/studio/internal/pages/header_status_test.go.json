@@ -1,0 +1,30 @@
+{
+  "source_path": "studio/internal/pages/header_status_test.go",
+  "decisions": [
+    {
+      "test": "TestManagedEngineStartRequiresCandidateAndIdleQueue",
+      "decision": "keep",
+      "reason": "无候选只能去任务准备，队列尚有等待项或重置中不得重启引擎，防止打断即将执行的任务。"
+    },
+    {
+      "test": "TestQueueCountsSpeedOnlyOnce",
+      "decision": "keep",
+      "reason": "同一专项同时存在工作区状态和队列任务时只能计一次，排队计入等待而不计执行。"
+    },
+    {
+      "test": "TestStatusIconsAndHoverPanel",
+      "decision": "keep",
+      "reason": "用户须能经悬停和键盘打开引擎控制、移入按钮不中途关闭、Escape 可关闭；删除只允许图标无文本的结构限制。"
+    },
+    {
+      "test": "TestStatusMotionHonorsReducedMotion",
+      "decision": "delete",
+      "reason": "仅比较 350ms 前后像素变化与否，约束动画实现。"
+    },
+    {
+      "test": "TestStatusRefreshAndQueueControls",
+      "decision": "keep",
+      "reason": "排队/运行/取消中及其他操作忙碌时不得停止引擎，终态才可停止，避免中断活动请求。"
+    }
+  ]
+}

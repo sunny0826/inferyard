@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/inferyard/command_test.go",
+  "decisions": [
+    {
+      "test": "TestSplitCommandWithoutShell",
+      "decision": "keep",
+      "reason": "含空格/单引号路径需正确拆分，命令替换、管道和未闭引号拒绝，防执行用户未要求的 shell 命令。"
+    }
+  ]
+}

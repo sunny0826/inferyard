@@ -54,22 +54,18 @@ def test_formal_ordinary_request_returns_message_and_usage():
         assert body["usage"] == {"prompt_tokens": 7, "completion_tokens": 1, "total_tokens": 8}
 
 
-def test_stream_and_ordinary_share_queue_backend_and_identity():
+def test_stream_returns_finish_usage_and_healthy_engine_identity():
     import hashlib
 
-    backend = SyntheticBackend()
-    with server(backend) as instance:
-        assert isinstance(instance.generations, formal.legacy.GenerationQueue)
-        for stream in (False, True):
-            status, raw = request(instance, "POST", "/v1/chat/completions", payload(stream))
-            assert status == 200
-            if stream:
-                assert raw.endswith(b"data: [DONE]\n\n")
-                chunks = [
-                    json.loads(line[6:]) for line in raw.splitlines() if line.startswith(b"data: {")
-                ]
-                assert chunks[-2]["choices"][0]["finish_reason"] == "stop"
-                assert chunks[-1]["usage"]["total_tokens"] == 8
+    with server() as instance:
+        status, raw = request(instance, "POST", "/v1/chat/completions", payload(True))
+        assert status == 200
+        assert raw.endswith(b"data: [DONE]\n\n")
+        chunks = [
+            json.loads(line[6:]) for line in raw.splitlines() if line.startswith(b"data: {")
+        ]
+        assert chunks[-2]["choices"][0]["finish_reason"] == "stop"
+        assert chunks[-1]["usage"]["total_tokens"] == 8
         details = json.loads(request(instance, "GET", "/version")[1])
         assert details == {
             "version": "0.0.0+synthetic",
@@ -81,7 +77,6 @@ def test_stream_and_ordinary_share_queue_backend_and_identity():
             "synthetic": True,
             "max_model_len": 512,
         }
-        assert backend.calls == [("What is 17 + 25?", 8)] * 2
         assert b"engine_fit:poisoned 0\n" in request(instance, "GET", "/metrics")[1]
 
 
@@ -135,7 +130,6 @@ def test_invalid_wire_shapes_never_enter_backend():
             result.read()
             client.close()
         assert backend.calls == []
-        assert instance.generations.metrics() == (0, 0, 0)
 
 
 def test_context_limit_error_is_explicit_and_does_not_poison():
@@ -152,7 +146,6 @@ def test_context_limit_error_is_explicit_and_does_not_poison():
         status, raw = request(instance, "POST", "/v1/chat/completions", payload())
         assert status == 400 and json.loads(raw) == {"error": "context_length_exceeded"}
         assert backend.calls == []
-        assert instance.generations.metrics() == (0, 0, 0)
         body = {**payload(), "messages": [{"role": "user", "content": "ok"}], "max_tokens": 6}
         assert request(instance, "POST", "/v1/chat/completions", body)[0] == 200
 

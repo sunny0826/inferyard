@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_stream_usage_null.py",
+  "decisions": [
+    {
+      "test": "test_nonstream_null_usage_keeps_existing_rejection",
+      "decision": "keep",
+      "reason": "非流响应 usage null 不等于流占位，仍拒绝以免协议放宽抹掉有效性要求。"
+    },
+    {
+      "test": "test_stream_usage_placeholder_and_object",
+      "decision": "keep",
+      "reason": "通用/lab 流允许 usage null 占位和缺失，但错 usage 拒绝；最终 token 未报告保持 null 原因。"
+    }
+  ]
+}

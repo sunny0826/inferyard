@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_startup_model_identity.py",
+  "decisions": [
+    {
+      "test": "test_model_binding_keeps_native_file_identity_checks",
+      "decision": "keep",
+      "reason": "macOS/Windows 的四种模型参数形式均绑定原生文件身份，错文件、重复、缺值/空值拒绝，避免同字节路径或含混参数错绑模型。"
+    }
+  ]
+}

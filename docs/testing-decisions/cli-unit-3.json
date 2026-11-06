@@ -1,0 +1,407 @@
+{
+  "group": "cli-unit-3",
+  "totals": {
+    "keep": 326,
+    "delete": 87
+  },
+  "files": [
+    {
+      "source_path": "cli/tests/unit/test_baseline_reads.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_baseline_reads.py.json",
+      "totals": {
+        "keep": 3,
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_bounded_build_process.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_bounded_build_process.py.json",
+      "totals": {
+        "keep": 14
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_cli_dispatch_surface.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_cli_dispatch_surface.py.json",
+      "totals": {
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_cli_surface.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_cli_surface.py.json",
+      "totals": {
+        "keep": 7,
+        "delete": 4
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_closed_concurrency.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_closed_concurrency.py.json",
+      "totals": {
+        "keep": 8
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_collector_overhead.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_collector_overhead.py.json",
+      "totals": {
+        "keep": 7
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_community_runtime.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_community_runtime.py.json",
+      "totals": {
+        "keep": 8,
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_context_speed_candidates_windows.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_context_speed_candidates_windows.py.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_context_speed_journal.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_context_speed_journal.py.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_current_formats.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_current_formats.py.json",
+      "totals": {
+        "keep": 7
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_duration_driver.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_duration_driver.py.json",
+      "totals": {
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_engine_fit_common_plan.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_engine_fit_common_plan.py.json",
+      "totals": {
+        "keep": 8
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_engine_fit_macos_identity.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_engine_fit_macos_identity.py.json",
+      "totals": {
+        "keep": 15,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_engine_fit_macos_listener.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_engine_fit_macos_listener.py.json",
+      "totals": {
+        "keep": 4,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_engine_fit_windows_evidence.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_engine_fit_windows_evidence.py.json",
+      "totals": {
+        "keep": 12
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_engine_fit_windows_identity.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_engine_fit_windows_identity.py.json",
+      "totals": {
+        "keep": 10
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_environment_constants.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_environment_constants.py.json",
+      "totals": {
+        "delete": 2,
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_export.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_export.py.json",
+      "totals": {
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_external_cpu.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_external_cpu.py.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_external_cpu_windows.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_external_cpu_windows.py.json",
+      "totals": {
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_first_event_overhead.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_first_event_overhead.py.json",
+      "totals": {
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_lab_generation.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_lab_generation.py.json",
+      "totals": {
+        "keep": 21,
+        "delete": 12
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_lab_observation.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_lab_observation.py.json",
+      "totals": {
+        "delete": 22,
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_layout_manifest_shape.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_layout_manifest_shape.py.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_length_evidence.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_length_evidence.py.json",
+      "totals": {
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_length_resources.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_length_resources.py.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_llama_cpp.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_llama_cpp.py.json",
+      "totals": {
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_macos_contracts.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_macos_contracts.py.json",
+      "totals": {
+        "keep": 4,
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_macos_identity.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_macos_identity.py.json",
+      "totals": {
+        "delete": 2,
+        "keep": 18
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_ninfer_source_file_io_review.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_ninfer_source_file_io_review.py.json",
+      "totals": {
+        "keep": 7
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_ninfer_source_probe_fixture_round4.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_ninfer_source_probe_fixture_round4.py.json",
+      "totals": {
+        "delete": 10
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_observer_cost_profile.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_observer_cost_profile.py.json",
+      "totals": {
+        "keep": 3,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_offline_reading.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_offline_reading.py.json",
+      "totals": {
+        "keep": 10
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_overhead_environment.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_overhead_environment.py.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_packaging_encoding.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_packaging_encoding.py.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_position_prepare_cleanup.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_position_prepare_cleanup.py.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_preflight_gpu_reuse.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_preflight_gpu_reuse.py.json",
+      "totals": {
+        "delete": 1,
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_qwen3_tensor_inventory.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_qwen3_tensor_inventory.py.json",
+      "totals": {
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_release_candidate.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_release_candidate.py.json",
+      "totals": {
+        "keep": 11
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_release_snapshots.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_release_snapshots.py.json",
+      "totals": {
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_report_resources.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_report_resources.py.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_run_projection.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_run_projection.py.json",
+      "totals": {
+        "delete": 5,
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_run_writer.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_run_writer.py.json",
+      "totals": {
+        "delete": 7,
+        "keep": 10
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_safety.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_safety.py.json",
+      "totals": {
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_sampler_wakeup.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_sampler_wakeup.py.json",
+      "totals": {
+        "keep": 3,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_service_discovery.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_service_discovery.py.json",
+      "totals": {
+        "keep": 13,
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_storage.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_storage.py.json",
+      "totals": {
+        "keep": 7,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_structured_clarity_bundle.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_structured_clarity_bundle.py.json",
+      "totals": {
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_thermal_diagnostic.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_thermal_diagnostic.py.json",
+      "totals": {
+        "keep": 12
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_unified_contract.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_unified_contract.py.json",
+      "totals": {
+        "keep": 6,
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_windows_benchmark_config.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_windows_benchmark_config.py.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_windows_lab_files.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_windows_lab_files.py.json",
+      "totals": {
+        "keep": 11,
+        "delete": 4
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_windows_runtime_download.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_windows_runtime_download.py.json",
+      "totals": {
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "cli/tests/unit/test_workspace_candidates.py",
+      "record": "docs/testing-decisions/cli-unit-3/cli/tests/unit/test_workspace_candidates.py.json",
+      "totals": {
+        "keep": 3,
+        "delete": 1
+      }
+    }
+  ]
+}

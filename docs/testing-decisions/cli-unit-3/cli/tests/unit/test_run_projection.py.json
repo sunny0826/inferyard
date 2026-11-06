@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_run_projection.py",
+  "decisions": [
+    {
+      "test": "test_consumed_events_keep_schema_validation",
+      "decision": "delete",
+      "reason": "data={} 的结构破坏仅要求 full/projection 同错，非独立产品判断；实际未完成与缺评分由本文件保留场景覆盖。"
+    },
+    {
+      "test": "test_corrupt_json_error_matches_full_reader",
+      "decision": "delete",
+      "reason": "只比较两实现错误字符串相等，可能双方同错；坏 JSON 的明确拒绝由 test_tail_is_recoverable_but_middle_corruption_is_not 覆盖。"
+    },
+    {
+      "test": "test_fixed_states_and_completeness",
+      "decision": "delete",
+      "reason": "只要求 projection 与 full reader 相等，没有独立状态预期；具体截尾/缺评分/排空的独立后果由本文件三条剩余测试覆盖。"
+    },
+    {
+      "test": "test_missing_original_error_matches_full_reader",
+      "decision": "delete",
+      "reason": "只比较两实现异常相等，没有独立缺原件预期；覆盖者 test_missing_prepared_file_never_authorizes_started_requests 和 test_corrupt_seal_is_not_downgraded_to_partial。"
+    },
+    {
+      "test": "test_missing_score_and_saved_summary_are_reconstructed",
+      "decision": "keep",
+      "reason": "直接调用read_run_projection，保留缺评分时每请求quality_state=unscorable的独立预期；取消与read_trial逐项相等helper的依赖。"
+    },
+    {
+      "test": "test_projection_does_not_read_sample_or_environment_timelines",
+      "decision": "delete",
+      "reason": "限定 Path.open/read(1)、TrialReads 调用和计数的优化形状，无明确可见预算。"
+    },
+    {
+      "test": "test_slots_drain_uses_last_request_and_seal",
+      "decision": "keep",
+      "reason": "直接调用read_run_projection，以sealed且idle才可确认service_drain的独立预期验证；取消与read_trial逐项相等helper的依赖。"
+    },
+    {
+      "test": "test_truncated_tail_never_promoted",
+      "decision": "keep",
+      "reason": "直接调用read_run_projection，以独立预期incomplete及evidence_complete=false验证截断尾不得提升完整证据；取消与read_trial逐项相等helper的依赖，共享helper暂保留给其他分组。"
+    }
+  ]
+}

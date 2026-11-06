@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"math"
 	"reflect"
 	"testing"
 	"time"
@@ -10,62 +9,10 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-func TestDownloadsPageMigration(t *testing.T) {
-	s := testState()
-	s.selected = "downloads"
-	s.downloads = []core.DownloadTask{
-		{TaskId: "model", Kind: "model", OutName: "model-fixture", State: "downloading", DownloadedBytes: 1572864, BytesPerSecond: ptr(2048.0)},
-		{TaskId: "engine", Kind: "engine", OutName: "engine-fixture", State: "failed", SourceUrl: "https://huggingface.co/owner/repo/blob/0123456789abcdef0123456789abcdef01234567/file.tar.gz", Error: core.Err("download_failed")},
-	}
-	tt := ui.NewTester(s.view, 1120, 2600)
-	for _, want := range []string{"下载任务", "新建下载任务", "model-fixture", "engine-fixture", "重新创建下载任务", "下载模型", "目录名取自设置，占用自动加序号；实际目录名见任务详情。", "打开设置"} {
-		if !tt.HasText(want) {
-			t.Fatal(want, tt.Texts())
-		}
-	}
-	engine, _ := tt.Find("engine-fixture")
-	model, _ := tt.Find("model-fixture")
-	if engine.Y >= model.Y {
-		t.Fatal("engine task must precede model task")
-	}
-	if s.downloads[0].TaskId != "model" {
-		t.Fatal("render reordered source tasks")
-	}
-	click(t, tt, "需要凭据时")
-	if !tt.HasText("凭据环境变量名") {
-		t.Fatal(tt.Texts())
-	}
-	if len(designFieldInputs(tt, "新目录名")) != 0 {
-		t.Fatal("per-task name input remains")
-	}
-	// The models page no longer carries any download UI.
-	s.selected = "models"
-	tt.Frame()
-	if tt.HasText("新建下载任务") || tt.HasText("取消下载") || tt.HasText("下载模型") {
-		t.Fatal("download UI still on models page", tt.Texts())
-	}
-	for _, n := range modelUINodes(tt, "text", "下载任务") {
-		if n.FieldByName("role").Uint() == uint64(ui.RoleHeading) {
-			t.Fatal("download task card still on models page", tt.Texts())
-		}
-	}
-}
-
 func TestDownloadsPageMigrationEmptyAndValidation(t *testing.T) {
 	s := testState()
 	s.selected = "downloads"
 	tt := ui.NewTester(s.view, 1120, 2400)
-	if len(modelUINodes(tt, "text", "下载任务")) != 0 || tt.HasText("凭据环境变量名") {
-		t.Fatal(tt.Texts())
-	}
-	if s.engineURL != core.DefaultEngineURL() || s.modelURL != core.DefaultModelURL() {
-		t.Fatal("missing defaults")
-	}
-	engine, engineOK := tt.Find("下载引擎")
-	model, modelOK := tt.Find("下载模型")
-	if !engineOK || !modelOK || engine.Y >= model.Y {
-		t.Fatal("engine form must precede model form")
-	}
 	for _, kind := range []string{"model", "engine"} {
 		t.Run(kind, func(t *testing.T) {
 			source := "http://example.com/model.gguf"
@@ -122,37 +69,6 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 			s.downloads = []core.DownloadTask{task}
 			tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 1200)
 			for _, want := range []string{task.OutName, "已观测", "速率", "总量", "总量未知", "取消下载"} {
-				if !tt.HasText(want) {
-					t.Fatal(want, tt.Texts())
-				}
-			}
-			amount, _ := tt.Find("已观测")
-			rate, _ := tt.Find("速率")
-			total, _ := tt.Find("总量")
-			if amount.Y != rate.Y || rate.Y != total.Y || amount.X >= rate.X || rate.X >= total.X {
-				t.Fatal("metrics are not three columns")
-			}
-			activity, ok := tt.Find("下载任务活动")
-			if !ok || math.Abs(float64(activity.H-4)) > .001 {
-				t.Fatal("missing activity progress", activity)
-			}
-			nodes := modelUINodes(tt, "label", "下载任务活动")
-			if len(nodes) != 1 || nodes[0].FieldByName("role").Uint() != uint64(ui.RoleProgress) ||
-				!nodes[0].FieldByName("hasRange").Bool() || !(nodes[0].FieldByName("accRange").Index(2).Float() < 0) {
-				t.Fatal("activity must be an indeterminate native progress component")
-			}
-			spinners := modelUINodes(tt, "label", "下载中")
-			if len(spinners) != 1 || spinners[0].FieldByName("role").Uint() != uint64(ui.RoleProgress) || !spinners[0].FieldByName("hasRange").Bool() || spinners[0].FieldByName("accRange").Index(2).Float() >= 0 {
-				t.Fatal("downloading task must show an indeterminate activity indicator")
-			}
-			for label, reason := range map[string]string{"总量": "总量未知", "下载中": "任务正在下载，总量未知。"} {
-				nodes := modelUINodes(tt, "description", reason)
-				if len(nodes) != 1 {
-					t.Fatal("missing accessible tooltip", label)
-				}
-			}
-
-			for _, want := range []string{"实际目录名：", "文件：", "1 MiB = 1,048,576 bytes", "1 GiB = 1,073,741,824 bytes", "总量未知不显示百分比"} {
 				if !tt.HasText(want) {
 					t.Fatal(want, tt.Texts())
 				}

@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_windows_file_hash.py",
+  "decisions": [
+    {
+      "test": "test_access_time_is_excluded_but_change_time_is_retained",
+      "decision": "keep",
+      "reason": "只读访问引起 atime 变化不误报模型变更，同时保留能识别替换的 change time。"
+    },
+    {
+      "test": "test_native_abi_sizes_and_full_unsigned_identity",
+      "decision": "keep",
+      "reason": "仅保留完整无符号 64 位卷号及 128 位文件 ID，不截断身份；删除 ctypes 固定结构尺寸。"
+    },
+    {
+      "test": "test_native_identity_attributes_size_and_all_change_times_are_checked",
+      "decision": "keep",
+      "reason": "路径或已开描述符的卷、文件 ID、属性、大小及创建/写入/变更时间变化均拒绝摘要。"
+    },
+    {
+      "test": "test_native_query_failure_has_no_truncated_or_creation_time_fallback",
+      "decision": "keep",
+      "reason": "三个原生元数据查询任一失败不得回退到不完整身份，防误认证错误文件。"
+    },
+    {
+      "test": "test_nonregular_reparse_and_delete_pending_files_are_rejected",
+      "decision": "keep",
+      "reason": "管道、reparse、目录或待删除文件都不能作为稳定模型/引擎资产认证。"
+    },
+    {
+      "test": "test_private_query_descriptor_is_closed_on_native_failure",
+      "decision": "keep",
+      "reason": "原生查询失败仍释放实际描述符，避免重复检查耗尽句柄并锁住文件。"
+    },
+    {
+      "test": "test_replacement_between_path_query_and_hash_open_is_rejected",
+      "decision": "keep",
+      "reason": "路径检查与实际打开之间被替换必须拒绝，不能将另一文件内容绑定原身份。"
+    },
+    {
+      "test": "test_shared_hash_dispatches_to_native_windows_metadata",
+      "decision": "delete",
+      "reason": "只验证私有 _file_hash 的平台分派后正常哈希，没有独立错误路径。"
+    },
+    {
+      "test": "test_stable_executable_does_not_mix_python_stat_and_fstat",
+      "decision": "delete",
+      "reason": "禁止 Python fstat 的实现选择再验一次正常摘要，未模拟两种元数据不同导致的产品错误。"
+    }
+  ]
+}

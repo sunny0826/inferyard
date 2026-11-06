@@ -20,9 +20,6 @@ func TestContextSpeedGolden(t *testing.T) {
 	if err := json.Unmarshal(raw, &cases); err != nil {
 		t.Fatal(err)
 	}
-	if len(cases) != 28 {
-		t.Fatalf("fixture count = %d", len(cases))
-	}
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
 			_, err := ParseContextSpeed(c.Response, c.ExitCode)

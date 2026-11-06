@@ -1,0 +1,85 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_backend_pipes.py",
+  "decisions": [
+    {
+      "test": "test_backend_sources_do_not_rebuild_a_pid_or_open_files",
+      "decision": "delete",
+      "reason": "AST/源码禁词检查限定 import/函数写法；不能证明未操作外来 PID，行为由 test_wrong_ref_does_not_touch_the_api 覆盖。"
+    },
+    {
+      "test": "test_bool_and_unknown_exit_payload_are_not_exits",
+      "decision": "keep",
+      "reason": "布尔 wait、空退出码与原生查询异常不得伪装正常退出，避免错误清理确认。"
+    },
+    {
+      "test": "test_close_failure_does_not_drop_or_retry_the_ref",
+      "decision": "keep",
+      "reason": "close 异常保留原进程与 Job 且不重试，避免误用可能已释放的句柄。"
+    },
+    {
+      "test": "test_close_handle_runs_once_and_failure_is_not_retried",
+      "decision": "delete",
+      "reason": "重复一次关闭成功后再次调用私有接口；未知关闭不重试由 test_close_failure_does_not_drop_or_retry_the_ref 覆盖。"
+    },
+    {
+      "test": "test_close_pipes_is_separate_from_the_process_handle",
+      "decision": "keep",
+      "reason": "关闭输出管道不能关闭活进程，后续 terminate/kill 仍作用于原进程，避免泄漏。"
+    },
+    {
+      "test": "test_exit_code_uses_original_handle_and_wait_failure_is_not_exit",
+      "decision": "keep",
+      "reason": "原句柄 wait 超时/失败不能当退出，已退出才取真实返回码，避免错误释放活进程。"
+    },
+    {
+      "test": "test_partial_spawn_keeps_same_objects",
+      "decision": "delete",
+      "reason": "同一 partial spawn 路径由 test_partial_spawn_keeps_original_ref_and_does_not_kill 覆盖原引用及不误清理副作用。"
+    },
+    {
+      "test": "test_pump_eof_requires_both_streams_drained",
+      "decision": "keep",
+      "reason": "stdout/stderr 都真正排空后才 EOF，避免截断诊断输出而误判完成。"
+    },
+    {
+      "test": "test_pump_reads_only_peeked_bytes_and_caps_the_limit",
+      "decision": "keep",
+      "reason": "只读取已 peek 到的有界字节，避免 pipe 读阻塞与无界内存。"
+    },
+    {
+      "test": "test_pump_rejects_bad_limit_without_reading",
+      "decision": "delete",
+      "reason": "内部 pump 参数 0/4097/bool/float 枚举，无用户入口；有界输出由 test_pump_reads_only_peeked_bytes_and_caps_the_limit 覆盖。"
+    },
+    {
+      "test": "test_read_past_peek_is_backend_error",
+      "decision": "delete",
+      "reason": "仅 fake API 故意返回比请求更多字节的自造不可能返回形状，没有真实用户故障。"
+    },
+    {
+      "test": "test_real_start_error_matches_custody_shape",
+      "decision": "delete",
+      "reason": "仅 class/type/issubclass 与异常 ref 形状；真实部分启动保管由 test_start_failure_keeps_original_ref 覆盖。"
+    },
+    {
+      "test": "test_short_read_is_not_eof",
+      "decision": "delete",
+      "reason": "仅 fake API 故意短读的实现拒绝，实际 EOF/排空由 test_pump_eof_requires_both_streams_drained 覆盖。"
+    },
+    {
+      "test": "test_spawn_failure_before_process_has_null_ref",
+      "decision": "delete",
+      "reason": "相同 backend spawn 故障已有 test_real_custody_exception_on_construct_and_missing_process，后者使用实际 custody 异常。"
+    },
+    {
+      "test": "test_start_failure_keeps_original_ref",
+      "decision": "keep",
+      "reason": "保留原资源保管、不 resume/terminate/kill/close；删完整 api.order 快照。"
+    },
+    {
+      "test": "test_wrong_ref_does_not_touch_the_api",
+      "decision": "keep",
+      "reason": "外来 ref 必须拒绝且不能读/等待/终止/关闭，避免操作不属于本宿主的进程。"
+    }
+  ]
+}

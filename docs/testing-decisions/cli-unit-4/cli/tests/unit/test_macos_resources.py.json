@@ -1,0 +1,100 @@
+{
+  "source_path": "cli/tests/unit/test_macos_resources.py",
+  "decisions": [
+    {
+      "test": "test_bad_swap_field_does_not_hide_other_field",
+      "decision": "keep",
+      "reason": "单个换页字段坏值只令自身缺测，另一个字段与 CPU 不应丢失。"
+    },
+    {
+      "test": "test_boundary_records_native_counter_and_idle_rss_sources",
+      "decision": "keep",
+      "reason": "请求结束与确认空闲 RSS 要记录不同采集来源，避免基线和请求内资源混淆。"
+    },
+    {
+      "test": "test_capture_native_cpu_retains_four_distinct_host_counters",
+      "decision": "keep",
+      "reason": "四个主机 CPU 分量分别保留且服务身份改变时缺测，避免外部 CPU 算错。"
+    },
+    {
+      "test": "test_counter_permission_boot_and_scale_failures_are_explicit",
+      "decision": "keep",
+      "reason": "权限、boot、页大小或缺失来源变化必须保留原因，避免未知值冒充有效资源。"
+    },
+    {
+      "test": "test_cpu_checks_process_identity_after_read_and_stays_missing",
+      "decision": "keep",
+      "reason": "CPU 读取前后 PID 身份变化后保持缺测，避免新进程计入旧服务。"
+    },
+    {
+      "test": "test_explicit_proc_root_retains_linux_factory",
+      "decision": "delete",
+      "reason": "显式 proc_root 切 Linux 工厂属于测试注入机制，非 macOS 用户路径；Linux 计数由 test_resources.py 覆盖。"
+    },
+    {
+      "test": "test_factory_and_native_counter_units",
+      "decision": "keep",
+      "reason": "macOS 秒转换为整数微秒、换页保留页大小与缺测来源，避免把原生计数套 Linux 单位；删除具体 sampler 类型断言。"
+    },
+    {
+      "test": "test_guardian_uses_native_boot_and_spawn",
+      "decision": "delete",
+      "reason": "只断言 multiprocessing 的 spawn 调用、clock 字符串和默认策略，不执行守护安全动作。"
+    },
+    {
+      "test": "test_invalid_native_cpu_is_missing_not_zero",
+      "decision": "keep",
+      "reason": "负数、非有限与 bool CPU 不得成为零或有效计数，避免虚构资源指标。"
+    },
+    {
+      "test": "test_missing_temperature_blocks_native_safety_guard",
+      "decision": "keep",
+      "reason": "要求温度安全线时缺温度必须阻断，避免没有传感器仍运行。"
+    },
+    {
+      "test": "test_mixed_source_or_wrong_scale_cannot_be_reinterpreted",
+      "decision": "keep",
+      "reason": "混合来源、错误字段数或时钟刻度拒绝，避免重解释为另一平台证据。"
+    },
+    {
+      "test": "test_native_bad_cpu_intervals_stay_missing",
+      "decision": "keep",
+      "reason": "计数回退、主机/服务偏差、boot 与采样缺段不能产生外部 CPU 百分比。"
+    },
+    {
+      "test": "test_native_boot_is_checked_after_counter_read",
+      "decision": "keep",
+      "reason": "读取中 boot 改变令计数缺测，避免跨启动拼接差值。"
+    },
+    {
+      "test": "test_observer_contracts_can_replay_linux_on_darwin",
+      "decision": "delete",
+      "reason": "只比较 observer_contract 生成字典和默认值；跨平台回放由 test_reduction_uses_saved_source_not_reading_platform 覆盖。"
+    },
+    {
+      "test": "test_reduction_uses_saved_source_not_reading_platform",
+      "decision": "keep",
+      "reason": "离线归约按保存的来源而非当前平台计算，避免跨平台读报告改变原结论。"
+    },
+    {
+      "test": "test_resource_windows_use_saved_native_identity",
+      "decision": "keep",
+      "reason": "macOS 保存资源窗口在 Linux 上仍可核验，collector 被篡改须失资格，避免生成机器影响比较。"
+    },
+    {
+      "test": "test_shared_swap_identity_failure_marks_both_missing",
+      "decision": "keep",
+      "reason": "共享 boot、页大小或权限失败令两个换页值均缺测，避免不一致的换页结论。"
+    },
+    {
+      "test": "test_swap_pair_uses_one_fresh_snapshot_and_shared_interval",
+      "decision": "keep",
+      "reason": "相邻采样必须读取新换页值，避免复用旧快照；删除固定读取次数与时钟调用布局断言。"
+    },
+    {
+      "test": "test_wrong_swap_source_is_rejected_per_field",
+      "decision": "keep",
+      "reason": "换页字段来源不匹配只拒绝对应字段，避免把 pageins 当 swapins。"
+    }
+  ]
+}

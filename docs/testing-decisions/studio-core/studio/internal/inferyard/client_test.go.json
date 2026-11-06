@@ -1,0 +1,35 @@
+{
+  "source_path": "studio/internal/inferyard/client_test.go",
+  "decisions": [
+    {
+      "test": "TestCancellation",
+      "decision": "keep",
+      "reason": "真实 CLI 子进程须先收到 SIGINT，忽略中断时等 grace 后强杀且返回 cancelled，防证据未封存或取消永挂。"
+    },
+    {
+      "test": "TestCancellationProcess",
+      "decision": "keep",
+      "reason": "真实信号 helper，为 TestCancellation 提供注册信号后的稳定就绪点，防假阳性取消。"
+    },
+    {
+      "test": "TestExecArgumentsAndFailures",
+      "decision": "keep",
+      "reason": "含空格和 shell 元字符的 argv 原样传递，缺 binary 和预取消正确失败，防 shell 注入和启动假成功。"
+    },
+    {
+      "test": "TestExitCodes",
+      "decision": "keep",
+      "reason": "真实子进程退出 0/2/3/4/130/未知码须保留 stdout/stderr 并正确分类，防错误任务结论。"
+    },
+    {
+      "test": "TestParseVersion",
+      "decision": "keep",
+      "reason": "支持 release/checkout/旧无 source 版本行，拒绝未知 source 和额外内容，防错误安装来源被当有效 CLI。"
+    },
+    {
+      "test": "TestRealCLI",
+      "decision": "keep",
+      "reason": "显式授权只读 smoke 可检验实际 CLI 版本及 device JSON 与 Studio 兼容；本轮不执行该环境依赖检查。"
+    }
+  ]
+}

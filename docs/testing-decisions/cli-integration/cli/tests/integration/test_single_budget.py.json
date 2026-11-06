@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_single_budget.py",
+  "decisions": [
+    {
+      "test": "test_overall_budget_stops_waits_and_requests_and_releases_resources",
+      "decision": "keep",
+      "reason": "总墙钟预算在idle、准备、baseline、生成和residual阶段耗尽均停发封存、释放锁；是否dirty按真实排空确定，保留五终态守恒。"
+    },
+    {
+      "test": "test_synchronous_preflight_overrun_stops_before_first_request",
+      "decision": "keep",
+      "reason": "同步preflight耗尽预算后必须复查并在首请求前停止，同时释放主机锁。"
+    },
+    {
+      "test": "test_user_cancel_during_generation_retains_reason_when_deadline_fires_in_drain",
+      "decision": "keep",
+      "reason": "用户先取消后排空阶段deadline到期，仍保留user_cancelled与130，不得改成预算停止。"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/pages/preview_speed_presentation_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewSpeedCancelledDiagnosticsAreCollapsed",
+      "decision": "delete",
+      "reason": "折叠默认与反复展开文案由 Swift ContextSpeedCancellationDiagnostics 覆盖，部分测量归属由 TestPreviewSpeedCancellationAndReset 覆盖。"
+    },
+    {
+      "test": "TestPreviewSpeedDefaultTableFits",
+      "decision": "delete",
+      "reason": "固定窗口宽度、表格父节点和列标题坐标，仅约束布局。"
+    },
+    {
+      "test": "TestPreviewSpeedNarrowTableCanReachDecode",
+      "decision": "delete",
+      "reason": "删除800宽、2倍文字下比较列坐标的布局实现断言；放大窄屏横向滚动后 Decode 最后一列可读未验证。原生 ContextSpeedResultAndHistory 的文字 exists 不构成同条件覆盖。"
+    }
+  ]
+}

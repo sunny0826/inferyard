@@ -1,0 +1,60 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_corpus.py",
+  "decisions": [
+    {
+      "test": "test_any_existing_output_blocks_all_writes",
+      "decision": "keep",
+      "reason": "任一已有产物阻止整批写出并保留原字节，避免覆盖审核原件。"
+    },
+    {
+      "test": "test_approved_corpus_rejects_changed_content",
+      "decision": "keep",
+      "reason": "已批准题包的 prompt/rules 变更后拒绝，避免沿用旧审核。"
+    },
+    {
+      "test": "test_changed_content_invalidates_hash_binding",
+      "decision": "delete",
+      "reason": "直接比较 hash 改变重复真实审核拒绝；由 test_approved_corpus_rejects_changed_content 覆盖 prompt/rules，reference 绑定由通用 bundle 契约覆盖。"
+    },
+    {
+      "test": "test_changed_prompt_cannot_inherit_reference_count",
+      "decision": "keep",
+      "reason": "prompt 变化不能继承旧参考 token 计数，避免上下文档位材料绑定过期。"
+    },
+    {
+      "test": "test_cli_generates_then_refuses_overwrite_with_exit_2",
+      "decision": "keep",
+      "reason": "生成器 CLI 首次成功、重复输出 exit2 且原字节不变，避免退出码或原件保护失效。"
+    },
+    {
+      "test": "test_dangling_symlink_is_not_overwritten",
+      "decision": "keep",
+      "reason": "悬空 symlink 也阻止覆盖，避免替换操作者声明路径。"
+    },
+    {
+      "test": "test_fixed_three_cases_and_output_recipe",
+      "decision": "keep",
+      "reason": "M8：保留三个 context case、performance 类型、256 输出 token 预算及独立 workload 目标 52625/106294/213612；删除档案段数实现配方。"
+    },
+    {
+      "test": "test_material_has_multiple_topics_and_structures_without_duplicate_records",
+      "decision": "delete",
+      "reason": "只枚举合成语料主题词与去重数量，不证明上下文性能或实际评分假设。"
+    },
+    {
+      "test": "test_real_review_gate_rejects_unapproved_corpus",
+      "decision": "keep",
+      "reason": "未人工批准的生成题包必须拒绝正式使用，避免草稿流入测评。"
+    },
+    {
+      "test": "test_repeatable_bytes_and_checked_in_artifacts",
+      "decision": "keep",
+      "reason": "生成字节可复现且与提交题包/审核材料匹配，避免打包资源漂移或失审核。"
+    },
+    {
+      "test": "test_review_hashes_and_missing_token_evidence",
+      "decision": "keep",
+      "reason": "M8：审核材料绑定内容摘要与字节，实际 token 缺测须 null 加原因，参考目标误差小于 400；保留裸 prompt/无模板/无 BOS 计数范围，删除参考工具型号、摘要长度及原生 context 8192 快照。"
+    }
+  ]
+}

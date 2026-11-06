@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_startup.py",
+  "decisions": [
+    {
+      "test": "test_device_occupying_the_only_context_option",
+      "decision": "keep",
+      "reason": "device 插在唯一 -c 前面时不能误认为仍声明了所需上下文，防止上下文绑定丢失。"
+    },
+    {
+      "test": "test_device_requires_cuda",
+      "decision": "keep",
+      "reason": "CPU/Metal 声明中不得混 CUDA device，防止配置声明与实际引擎目标不符。"
+    },
+    {
+      "test": "test_duplicates",
+      "decision": "keep",
+      "reason": "相同/混合等号形式的重复 device 或 verbosity 均拒绝，避免启动声明歧义。"
+    },
+    {
+      "test": "test_existing_recipe_without_optional_arguments",
+      "decision": "keep",
+      "reason": "CPU/CUDA/Metal 不带新增可选参数仍可识别固定实验，避免兼容回归。"
+    },
+    {
+      "test": "test_invalid_devices",
+      "decision": "keep",
+      "reason": "负号、前导零、尾缀/空白、Unicode 数字、多卡和错 backend 名不能冒充单 CUDA；删同义 Arabic 数字及 metal 参数。"
+    },
+    {
+      "test": "test_invalid_verbosity",
+      "decision": "keep",
+      "reason": "保留低/高级别、前导零、小数、空白和 Unicode 拒绝，防 recipe 偏离；0 与 3 同为低值而删除 0。"
+    },
+    {
+      "test": "test_missing_values",
+      "decision": "keep",
+      "reason": "两类可选参数缺值、空值或吞入长选项时拒绝，防止错读后续启动条件。"
+    },
+    {
+      "test": "test_optional_forms",
+      "decision": "keep",
+      "reason": "device/verbosity 独立等号和分离形式均可用，CUDA0/CUDA10 验单/多位编号；删重复编号。"
+    },
+    {
+      "test": "test_swallowed_options_and_unknown",
+      "decision": "keep",
+      "reason": "保留吞 -c 和未知选项的拒绝；删与 missing_values、invalid_devices 重复的长选项缺值及 -1 参数。"
+    },
+    {
+      "test": "test_windows_full_recipe",
+      "decision": "keep",
+      "reason": "Windows 生成的 CPU/CUDA 不同卡号及三种上下文配方均可正式识别；删除输入不变与打印。"
+    }
+  ]
+}

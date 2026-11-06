@@ -1,0 +1,30 @@
+{
+  "source_path": "studio/internal/core/discovery_test.go",
+  "decisions": [
+    {
+      "test": "TestBindPreservesFixedCLIFailureReasons",
+      "decision": "keep",
+      "reason": "绑定失败保留身份/启动参数固定原因并丢弃任意路径 limitation，防丢失可操作原因或泄漏路径。"
+    },
+    {
+      "test": "TestDiscoverFailuresAndPartialResults",
+      "decision": "keep",
+      "reason": "CLI 旧版、blocked、cancelled、partial、tool error 各须保留对应 limitation 和可用服务，防把部分发现当失败或把错误当成功。"
+    },
+    {
+      "test": "TestDiscoverMissingCLI",
+      "decision": "keep",
+      "reason": "CLI 缺失或版本查询失败须提示升级/配置，防发现页静默空列表。"
+    },
+    {
+      "test": "TestDiscoverRejectsMalformedWireContract",
+      "decision": "keep",
+      "reason": "非法 PID、重复键、缺歧义字段、非 loopback 和模型请求等逐项拒绝；合法空服务仍可读，防不可信服务被列为可用。"
+    },
+    {
+      "test": "TestDiscoverUsesCLIAndPreservesAmbiguity",
+      "decision": "keep",
+      "reason": "发现结果的 PID/start ticks、models 和 ambiguous_listener 必须保留，防同端口多进程被误认成唯一可绑定服务。"
+    }
+  ]
+}

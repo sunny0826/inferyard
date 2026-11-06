@@ -61,10 +61,7 @@ def run_request(handler, method="complete", *, engine="vllm", timeout=1, **kwarg
 
 @pytest.mark.parametrize("engine,path", [("vllm", "/version"), ("sglang", "/get_server_info")])
 def test_inspect_exact_model_and_version_only(engine, path):
-    seen = []
-
     def handler(request):
-        seen.append(request.url.path)
         if request.url.path == "/v1/models":
             return httpx.Response(200, json={"data": [{"id": "fixture-model"}]})
         assert request.url.path == path
@@ -77,7 +74,6 @@ def test_inspect_exact_model_and_version_only(engine, path):
         "served_model": "fixture-model",
         "version_source": path,
     }
-    assert seen == ["/v1/models", path]
     assert "do-not-persist" not in json.dumps(result)
 
 
@@ -317,9 +313,8 @@ def test_network_errors_are_sanitized():
     def handler(_):
         raise httpx.ReadError("raw-secret-in-network-error")
 
-    with pytest.raises(FitTransportError, match="^http_transport_error$") as error:
+    with pytest.raises(FitTransportError, match="^http_transport_error$"):
         run_request(handler)
-    assert error.value.__suppress_context__
 
 
 @pytest.mark.parametrize(
@@ -335,18 +330,6 @@ def test_network_errors_are_sanitized():
 def test_non_loopback_origins_credentials_and_paths_are_rejected(origin):
     with pytest.raises(FitTransportError, match="^invalid_loopback_origin$"):
         FitClient("vllm", origin, "fixture-model")
-
-
-def test_proxy_environment_is_ignored(monkeypatch):
-    for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"):
-        monkeypatch.setenv(name, "invalid-proxy-url")
-
-    async def run():
-        async with FitClient("vllm", "http://127.0.0.1:8000", "fixture-model") as client:
-            assert client._client.trust_env is False
-            assert client._client.follow_redirects is False
-
-    asyncio.run(run())
 
 
 @pytest.mark.parametrize(

@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_environment_schedule.py",
+  "decisions": [
+    {
+      "test": "test_independent_cadences_and_missed_deadlines",
+      "decision": "keep",
+      "reason": "资源慢采样不能降环境轮询节奏，延迟后不补造过去样本并保留真实工作耗时；删除 sampler 属性及写出键集合断言。"
+    },
+    {
+      "test": "test_observer_error_is_preserved",
+      "decision": "keep",
+      "reason": "环境观察失败必须传播并保存原错误，避免采集静默停止但测评继续宣称完整。"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/integration/test_macos_native_identity.py",
+  "decisions": [
+    {
+      "test": "test_native_child_listener_identity_memory_and_loaded_executable",
+      "decision": "keep",
+      "reason": "真实子进程listener、模型/执行映射与RSS必须绑定正确PID，错误PID不能认领端点。混合测试去掉私有lsof调用次数。"
+    },
+    {
+      "test": "test_native_closed_listener_is_rejected_without_pid_change",
+      "decision": "keep",
+      "reason": "同PID关闭listener后必须拒绝原进程绑定，不能只检查PID存活。"
+    },
+    {
+      "test": "test_native_cpu_string_matches_same_sysctl_key",
+      "decision": "delete",
+      "reason": "同一个sysctl键两个封装直接相等和无效键返回None仅复述实现；CPU品牌读取不能证明本任务保留的具体测评结论。"
+    },
+    {
+      "test": "test_native_pid_identity_survives_psutil_wall_clock_correction",
+      "decision": "keep",
+      "reason": "M7：删除psutil monkeypatch自证；保留boot_time改动条件下产品process_start_ticks匹配配置。"
+    },
+    {
+      "test": "test_native_wrong_binding_is_rejected",
+      "decision": "keep",
+      "reason": "错PID/start/exe/argv/model都必须拒绝，防止请求发给错误服务。"
+    },
+    {
+      "test": "test_reaped_child_is_unavailable",
+      "decision": "keep",
+      "reason": "实际子进程回收后应报service_process_unavailable，不能重用旧身份。"
+    }
+  ]
+}

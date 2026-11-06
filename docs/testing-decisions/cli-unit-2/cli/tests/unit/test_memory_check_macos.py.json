@@ -1,0 +1,60 @@
+{
+  "source_path": "cli/tests/unit/test_memory_check_macos.py",
+  "decisions": [
+    {
+      "test": "test_bundle_identity_uses_outer_app_and_distinguishes_installations",
+      "decision": "keep",
+      "reason": "同名 app 的不同安装目录必须分组不同，helper 归属外层 app，避免内存建议合并无关安装。"
+    },
+    {
+      "test": "test_deadline_reaps_only_owned_collector",
+      "decision": "keep",
+      "reason": "采集超时须有限返回且仅回收自己启动的 collector，避免挂起 CLI 或误杀外部应用。"
+    },
+    {
+      "test": "test_observe_checks_identity_without_sensitive_access",
+      "decision": "keep",
+      "reason": "读取 RSS 不应访问命令行或环境，避免诊断不必要接触凭据。"
+    },
+    {
+      "test": "test_observe_discards_rss_on_pid_reuse",
+      "decision": "keep",
+      "reason": "PID 重用时丢弃 RSS 并标 identity_changed，避免把新进程内存归给旧进程。"
+    },
+    {
+      "test": "test_observe_records_query_failures",
+      "decision": "keep",
+      "reason": "权限拒绝/进程退出保留不同缺测原因，不能把无法读到的 RSS 补零。"
+    },
+    {
+      "test": "test_owner_change_during_observation_discards_measurement",
+      "decision": "keep",
+      "reason": "观测中进程 owner 变化丢弃测量，避免把其他用户进程误归本用户建议。"
+    },
+    {
+      "test": "test_parent_generation_change_keeps_child_but_never_links_reused_parent",
+      "decision": "keep",
+      "reason": "父 PID 重用不能将子进程链接旧父组，子保留 unknown，避免把不可信归属带入保护/释放建议。"
+    },
+    {
+      "test": "test_parent_identity_failure_keeps_readable_child_and_unrelated_review",
+      "decision": "keep",
+      "reason": "父身份不可读仍保留子 RSS，但子为 unknown 且无关 app 可继续 review，避免全盘失败或错误安全建议。"
+    },
+    {
+      "test": "test_process_limit_reports_unobserved_records",
+      "decision": "keep",
+      "reason": "达到 process_limit 保留真实总数与截断原因，不能把只观察部分的诊断说成完整。"
+    },
+    {
+      "test": "test_stdin_library_entry_uses_independent_module_worker",
+      "decision": "keep",
+      "reason": "stdin 库入口的 memory-check 仍能完成独立 worker，避免库调用递归/启动失败。"
+    },
+    {
+      "test": "test_worker_process_budget_before_at_and_above_limit",
+      "decision": "delete",
+      "reason": "仅直接调用私有 _worker 并核对 send 顺序/数量；公开截断结果由 test_process_limit_reports_unobserved_records 覆盖。"
+    }
+  ]
+}

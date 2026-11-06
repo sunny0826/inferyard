@@ -1,6 +1,5 @@
 """Offline corpus identity, reproducibility and real admission/refusal paths."""
 
-import copy
 import hashlib
 import json
 import subprocess
@@ -20,7 +19,6 @@ from scripts.build_context_speed_bundle import (
     outputs,
     write_outputs,
 )
-from scripts.context_speed_corpus import record
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -28,22 +26,16 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_fixed_three_cases_and_output_recipe():
     bundle = build()
     validate_bundle(bundle)
-    assert (bundle["schema_version"], bundle["bundle_id"], bundle["version"]) == (
-        3,
-        "zh-context-speed",
-        "2026.10.1",
-    )
     assert bundle["task_protocol"] == "performance"
     assert [case["case_id"] for case in bundle["cases"]] == [
         "context-speed-64k",
         "context-speed-128k",
         "context-speed-256k",
     ]
-    for case, count in zip(bundle["cases"], (71, 144, 290), strict=True):
+    for case in bundle["cases"]:
         assert case["category"] == "performance"
         assert case["reference_answer"] == ""
         assert case["rules"] == {"output_target_tokens": 256}
-        assert case["prompt"].count("### 档案") == count
     review = json.loads(outputs()[REVIEW_NAME])
     assert [c["context_tokens"] for c in review["cases"]] == [65536, 131072, 262144]
     assert [c["reference_workload_target_tokens"] for c in review["cases"]] == [
@@ -70,24 +62,6 @@ def test_repeatable_bytes_and_checked_in_artifacts():
             assert actual == raw
 
 
-def test_material_has_multiple_topics_and_structures_without_duplicate_records():
-    records = [record(i) for i in range(512)]
-    assert len(set(records)) == 512
-    text = "\n".join(records[:72])
-    for marker in (
-        "河道观测",
-        "手工织造",
-        "古籍修复",
-        "过程叙述",
-        "批次表",
-        "访谈摘记",
-        "结构化摘录",
-        "工作步骤",
-        "方案对照",
-    ):
-        assert marker in text
-
-
 def test_review_hashes_and_missing_token_evidence():
     data = outputs()
     bundle = json.loads(data[BUNDLE_NAME])
@@ -101,36 +75,13 @@ def test_review_hashes_and_missing_token_evidence():
         assert entry["prompt_utf8_bytes"] == len(raw)
         assert entry["prompt_sha256"] == hashlib.sha256(raw).hexdigest()
         assert entry["case_content_sha256"] == case_content_hash(bundle, case)
-        assert entry["reference_tokenizer"] == "Prism llama-tokenize"
-        assert entry["reference_model"] == "SmolLM2-135M-Instruct-Q4_K_M.gguf"
-        assert len(entry["reference_tokenizer_sha256"]) == 64
-        assert len(entry["reference_model_sha256"]) == 64
         assert entry["reference_count_scope"] == "raw_prompt_no_chat_template_no_bos"
-        assert entry["reference_model_native_context_tokens"] == 8192
         assert entry["actual_input_tokens"] is None
         assert (
             abs(entry["reference_prompt_tokens"] - entry["reference_workload_target_tokens"]) < 400
         )
 
         assert entry["token_count_missing_reason"]
-
-
-@pytest.mark.parametrize(
-    "field,value",
-    [
-        ("prompt", "修改后的正文"),
-        ("reference_answer", "新答案"),
-        ("rules", {"output_target_tokens": 255}),
-    ],
-)
-def test_changed_content_invalidates_hash_binding(field, value):
-    original = build()
-    changed = copy.deepcopy(original)
-    changed["cases"][0][field] = value
-    assert content_hash(changed) != content_hash(original)
-    assert case_content_hash(changed, changed["cases"][0]) != case_content_hash(
-        original, original["cases"][0]
-    )
 
 
 def test_real_review_gate_rejects_unapproved_corpus():

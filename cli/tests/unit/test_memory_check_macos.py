@@ -133,21 +133,6 @@ def test_stdin_library_entry_uses_independent_module_worker():
     assert json.loads(result.stdout)["details"]["coverage"]["truncation_reason"] is None
 
 
-@pytest.mark.parametrize("count", [2, 3, 4])
-def test_worker_process_budget_before_at_and_above_limit(monkeypatch, count):
-    monkeypatch.setattr(psutil, "pids", lambda: list(range(1, count + 1)))
-    monkeypatch.setattr(psutil, "virtual_memory", lambda: SimpleNamespace(total=100, available=50))
-    monkeypatch.setattr(native, "observe", lambda pid, _: {"pid": pid})
-    messages = []
-    connection = SimpleNamespace(send=messages.append, close=lambda: None)
-    native._worker(connection, 3)
-    assert messages[0][1]["total_pids"] == count
-    assert [data["pid"] for tag, data in messages if tag == "process"] == list(
-        range(1, min(count, 3) + 1)
-    )
-    assert messages[-1] == ("done", "process_limit" if count > 3 else None)
-
-
 def test_owner_change_during_observation_discards_measurement(monkeypatch):
     process = FakeProcess()
     owners = iter([501, 501, 0])

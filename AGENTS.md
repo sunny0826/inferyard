@@ -50,13 +50,13 @@ rtk proxy mise exec -- uv --version
 See the [contributing guide](cli/CONTRIBUTING.md#changes-and-verification) for source installation, tests, Ruff and export commands; agents wrap them with RTK.
 Use `--frozen` for normal syncs; dependency changes require a stated reason and a lockfile update, and `--offline` only when the cache is complete.
 Pure docs do not require an installed environment or the full test suite; behavior changes run the relevant regressions first, and integration checks scale with the impact.
+测试仅保留产品或逻辑假设以及打包、安装、发布保障，逐条判断标准见[测试策略](docs/testing.md)。删除实现形状、重复路径和风格门禁；不因测试类型或目录保留。Go 编译与 `go test` 默认检查继续执行，不另设广泛 `go vet` 门禁。
 
 Studio 检查在仓库的 `studio/` 目录内执行；以下环境变量仅作用于对应命令：
 `GOTOOLCHAIN` 固定 Go 版本，`GOPROXY` 指定模块代理，`CGO_ENABLED=0` 禁用 CGO。
 Studio 当前是 MyGo 原生桌面应用，无 web 前端与前端构建步骤；构建与验收边界说明见 [Studio README](studio/README.md)。
 
 ```bash
-rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
 rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
 ```
 
@@ -66,7 +66,7 @@ rtk proxy mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direc
 
 - 正式与模拟模式共用页面构建器、主题、控件和按钮入口，不另写一套模拟页面。模拟模式在表单校验后、真实 IO 前通过 `previewIntent` 分流；正常页面按钮应能连续完成流程，场景选择器只用于设置起点。
 - 模拟操作只修改本窗口内存，不创建 `core.Service`、执行 CLI、启动模型、下载文件或持久化用户设置与布局。新增操作必须接入模拟分派并覆盖隔离测试；未支持的操作明确报错，不能落入真实执行或伪装成功。
-- 修改任务编排、队列、取消、重试或报告归属时，同轮同步模拟实现和 `preview_parity*_test.go` 的共享场景。两条路径分别对照明确预期，再互相比对阶段、可用控件、错误、队列状态和报告范围；不能只要求双方输出相等，也不能从某一实现的输出生成预期。
+- 修改任务编排、队列、取消、重试或报告归属时，同轮同步模拟实现和 `preview_parity*_test.go` 的共享场景。两条路径分别对照独立的明确预期，验证阶段、可用控件、错误、队列状态和报告范围；不能只要求双方输出相等，也不能从某一实现的输出生成预期。
 - 行为测试应能捕获实际分歧。新增一致性检查时，用已复现的回归或隔离的故意错误证明它会失败；不得改写原始证据或保留破坏性修改来制造测试结果。
 - 一致性测试的生产侧调用实际编排代码，在服务边界注入受控响应；原生 E2E 驱动模拟窗口。分别报告页面测试、编排行为对照、原生窗口和真实 CLI／模型验证，不能将其中一层的通过扩大为全部一致。未覆盖的行为与平台须明确列出。
 - 预览实现和 fixture 仅进入 `ui_debug && !release` 构建。修改调试入口或打包路径时，验证普通构建与 `ui_debug,release` 均拒绝调试入口，正式产物不携带预览实现与 fixture。

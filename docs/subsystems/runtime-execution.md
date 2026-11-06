@@ -54,7 +54,7 @@ uv run --frozen pytest tests/unit/test_lock.py tests/unit/test_host_lock_compati
 
 # 请求生命周期、trial 编排、duration 窗口与排空、安全停止、服务 drain
 uv run --frozen pytest tests/integration/test_trial_requests.py \
-  tests/integration/test_trial_runner.py tests/integration/test_trial_profiles.py \
+  tests/integration/test_trial_runner.py \
   tests/unit/test_duration_driver.py tests/unit/test_duration_send_admission.py \
   tests/unit/test_safety.py tests/unit/test_safety_trace.py tests/unit/test_service_drain.py
 

@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/bound_paths_test.go",
+  "decisions": [
+    {
+      "test": "TestBoundPathsSettingsView",
+      "decision": "keep",
+      "reason": "显示绑定开发环境的各固定路径和下载目录名保存入口，渲染不写 settings；已删私有输入节点计数。本项未通过编辑操作验证固定路径不可改或正式 bound 模式下载名可编辑。"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_fixture_round2.py",
+  "decisions": [
+    {
+      "test": "test_blocked_read_past_total_keeps_the_fact_and_does_not_close",
+      "decision": "delete",
+      "reason": "fixture阻塞读的PipeHold对象身份与字段检查，仅验证辅助夹具资源封装。"
+    },
+    {
+      "test": "test_close_failure_is_recorded_after_the_attempt",
+      "decision": "delete",
+      "reason": "fixture关闭失败的cause身份和close_once计数自测，移除后保留其他轮次引用的共享helper。"
+    },
+    {
+      "test": "test_create_process_refusal_records_the_api_error_and_does_not_terminate",
+      "decision": "delete",
+      "reason": "fixture的CreateProcess拒绝映射只复述mock并数API调用，没有用户可见结果。"
+    },
+    {
+      "test": "test_encoding_past_total_replaces_ok_and_returns_nonzero",
+      "decision": "delete",
+      "reason": "替换fixture编码函数推进时钟再检查内部sink.frame，属于夹具实现细节。"
+    },
+    {
+      "test": "test_file_io_publish_failure_is_not_success",
+      "decision": "delete",
+      "reason": "合成探针fixture的sink.write故障自测，无产品或发布结果断言。"
+    },
+    {
+      "test": "test_file_io_publishes_bound_frame_on_the_sink",
+      "decision": "delete",
+      "reason": "合成探针fixture把注入读取写到sink的正常路径自测，不是产品或发行门；保留其他文件导入的Kernel/_api/_errors。"
+    },
+    {
+      "test": "test_normal_exit_zero_is_not_job_termination",
+      "decision": "delete",
+      "reason": "fixture区分普通退出与Job终止只验证合成分类器，不直接检验产品或发布门。"
+    },
+    {
+      "test": "test_ok_frame_flushed_after_total_does_not_stay_successful",
+      "decision": "delete",
+      "reason": "fixture flush推进注入时钟后检查已写帧和退出码，属于辅助夹具边界自测。"
+    },
+    {
+      "test": "test_output_flush_past_total_is_nonzero_and_raw",
+      "decision": "delete",
+      "reason": "fixture原始输出前缀和晚flush退出码自测，不承载产品判断。"
+    },
+    {
+      "test": "test_output_short_partial_and_flush_failures_are_nonzero",
+      "decision": "delete",
+      "reason": "fixture注入短写/零写/异常/flush四种sink后验证buf长度，是测试输出器自测。"
+    },
+    {
+      "test": "test_public_run_fixture_reaches_create_process_without_assign",
+      "decision": "delete",
+      "reason": "辅助run_fixture注入WinAPI正常路径，断言CreateProcess flags/调用顺序和句柄列表，不是原生资格或发布保障。"
+    },
+    {
+      "test": "test_regressed_clock_vetoes_success_without_another_open",
+      "decision": "delete",
+      "reason": "fixture合成时钟回退后检查资源字段和close次数，没有产品流程或发布门。"
+    },
+    {
+      "test": "test_unconfirmed_child_keeps_original_handles",
+      "decision": "delete",
+      "reason": "fixture的DescendantHold对象引用与句柄字段属于辅助封装实现。"
+    }
+  ]
+}

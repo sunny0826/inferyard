@@ -1,0 +1,90 @@
+{
+  "source_path": "cli/tests/unit/test_svg_render.py",
+  "decisions": [
+    {
+      "test": "test_animation_stats_counts_only_style_element_text_not_inline_styles",
+      "decision": "keep",
+      "reason": "仅 style 元素文本纳入 CSS 静态统计，inline style 不应冒充当前观察范围。"
+    },
+    {
+      "test": "test_animation_stats_counts_smil_elements_and_css_declarations_statically",
+      "decision": "keep",
+      "reason": "静态 SMIL、keyframes 与 animation declaration 计数准确，避免报告观察量错报；删除同输入重复调用断言。"
+    },
+    {
+      "test": "test_animation_stats_matches_namespaced_and_bare_smil_local_names",
+      "decision": "delete",
+      "reason": "bare/namespace SMIL 计数重复合法动画统计，由 test_animation_stats_counts_smil_elements_and_css_declarations_statically 覆盖正常命名空间。"
+    },
+    {
+      "test": "test_animation_stats_missing_measurements_are_null_with_reason_never_zero",
+      "decision": "keep",
+      "reason": "缺 SVG、无片段、坏 XML、超限时动画计数 null+原因，避免缺测当零。"
+    },
+    {
+      "test": "test_animation_stats_zero_is_a_real_measurement_for_svg_without_animation",
+      "decision": "keep",
+      "reason": "无动画 SVG 的零值是真实测量，避免与缺测混淆。"
+    },
+    {
+      "test": "test_character_limit_is_inclusive_and_distinct_from_utf8_byte_count",
+      "decision": "keep",
+      "reason": "字符上限包含边界且不同于 UTF8 字节，避免中文 SVG 被错误截断或漏限。"
+    },
+    {
+      "test": "test_check_svg_status_and_original_utf8_bytes",
+      "decision": "keep",
+      "reason": "不存在、坏 XML、外部实体与合法 SVG 的状态和 UTF8 字节数区分，避免坏输出被渲染或误报尺寸。"
+    },
+    {
+      "test": "test_extract_svg_is_deterministic",
+      "decision": "keep",
+      "reason": "带围栏、行内、多 SVG 与截断输入抽取确定原片段，避免报告显示错误 SVG；删除自比相等断言。"
+    },
+    {
+      "test": "test_pelican_bundle_is_valid_and_human_reviewed",
+      "decision": "keep",
+      "reason": "发布 pelican 题包审核绑定当前内容；去审核记录必须拒绝正式使用。"
+    },
+    {
+      "test": "test_raw_styles_scripts_and_attributes_are_never_sanitized",
+      "decision": "keep",
+      "reason": "合法 SVG 原样呈现而不悄悄修复脚本/style/属性，避免报告篡改模型原输出。"
+    },
+    {
+      "test": "test_svg_always_not_applicable_and_never_scores_xml",
+      "decision": "keep",
+      "reason": "任意 SVG 回答均 not_applicable，伪造 pass 拒绝，避免 XML 正确性混入质量分数。"
+    },
+    {
+      "test": "test_svg_cannot_be_used_as_a_scored_position_probe",
+      "decision": "keep",
+      "reason": "SVG 不能当带评分的位置探针，避免 position 结论没有可评质量。"
+    },
+    {
+      "test": "test_svg_does_not_change_any_quality_metric_or_denominator",
+      "decision": "keep",
+      "reason": "SVG 所有执行终态均不改变 Q 指标分母，避免生成题稀释其他质量成绩。"
+    },
+    {
+      "test": "test_svg_length_cohort_keeps_timing_without_quality_or_unscorable_counts",
+      "decision": "keep",
+      "reason": "SVG 长度分组保留时延、质量为空且不计 unscorable，避免混合指标。"
+    },
+    {
+      "test": "test_svg_rejects_nonempty_or_nonobject_rules",
+      "decision": "keep",
+      "reason": "非空/非对象 SVG rules 拒绝，避免生成题被暗中当评分题。"
+    },
+    {
+      "test": "test_svg_repeat_cohort_has_no_quality_denominator",
+      "decision": "keep",
+      "reason": "重复 SVG 组质量分母零但保留各次时延，避免重复质量率虚构。"
+    },
+    {
+      "test": "test_svg_requires_reference_and_quality_protocol",
+      "decision": "keep",
+      "reason": "缺 reference 或 performance 协议中的 SVG 拒绝，避免题包含混计量口径。"
+    }
+  ]
+}

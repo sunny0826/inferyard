@@ -5,7 +5,6 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.idle_rss import MACOS_SOURCE, idle_rss_observations
-from inferyard.config.loader import load_config
 from inferyard.contracts.validation import ContractError, Document
 from inferyard.evidence.storage import EvidenceError
 from inferyard.runtime.collector_overhead import validate_protocol
@@ -15,16 +14,6 @@ from tests.unit.test_resources import CONFIG, cpu_sample
 from tests.unit.test_stability_observations import idle_inputs
 
 
-def test_metal_config_extension_retains_cpu_and_cuda(config_path):
-    config = load_config(config_path).config.to_dict()
-    for backend in ("cpu", "cuda", "metal"):
-        config["engine"]["backend"] = backend
-        assert Document.parse("config", config).to_dict()["engine"]["backend"] == backend
-    config["engine"]["backend"] = "unknown_accelerator"
-    with pytest.raises(ContractError):
-        Document.parse("config", config)
-
-
 def macos_cpu():
     return {
         **cpu_sample(1, 1_000_000),
@@ -32,11 +21,6 @@ def macos_cpu():
         "source": "psutil:Process.cpu_times:user+system",
         "clock_ticks_per_second": 1_000_000,
     }
-
-
-def test_old_linux_and_new_macos_samples_use_explicit_scales():
-    Document.parse("sample", cpu_sample(1, 100))
-    Document.parse("sample", macos_cpu())
 
 
 @pytest.mark.parametrize(

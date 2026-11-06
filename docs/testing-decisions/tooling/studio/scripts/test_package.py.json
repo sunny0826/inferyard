@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/scripts/test_package.py",
+  "decisions": [
+    {
+      "test": "ReleasePackagingTests.test_all_inputs_are_checked_before_writing_distributions",
+      "decision": "keep",
+      "reason": "任一平台不合格时不得留下部分可误发布的发行目录。"
+    },
+    {
+      "test": "ReleasePackagingTests.test_build_tags",
+      "decision": "keep",
+      "reason": "正式包拒绝未启用release的二进制，防止调试入口进入发行物。"
+    },
+    {
+      "test": "ReleasePackagingTests.test_missing_build_information_is_rejected",
+      "decision": "keep",
+      "reason": "无法证明release构建身份的二进制不能被分发。"
+    }
+  ]
+}

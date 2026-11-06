@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/integration/test_process_interruptions.py",
+  "decisions": [
+    {
+      "test": "test_real_signal_returns_130_without_starting_later_cases",
+      "decision": "keep",
+      "reason": "真实SIGINT/SIGTERM退出130，当前题取消、后续题未执行，不再发送请求。"
+    },
+    {
+      "test": "test_sigkill_at_persisted_boundaries_rebuilds_without_service",
+      "decision": "keep",
+      "reason": "真实SIGKILL发生在冻结/started/finished/score四边界时，离线区分未执行、invalid、无评分完成和已评分，并保持原字节。"
+    }
+  ]
+}

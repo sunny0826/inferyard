@@ -1,9 +1,6 @@
 package inferyard
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 const fullProgress = `{
   "kind": "progress",
@@ -38,78 +35,11 @@ const fullProgress = `{
   "default_scope_complete": false
 }`
 
-func TestParseProgressFullFixture(t *testing.T) {
-	p, err := ParseProgress([]byte(fullProgress))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if p.Kind != "progress" || p.ProgressVersion != 1 || p.Workspace != "/work/ws" {
-		t.Fatal(p)
-	}
-	if p.DevicePreflight.Status != "ok" || *p.DevicePreflight.Path != "/work/ws/preflight/device-preflight.json" {
-		t.Fatal(p.DevicePreflight)
-	}
-	if len(p.Bundles) != 2 {
-		t.Fatal(p.Bundles)
-	}
-	core := p.Bundles[0]
-	if core.Bundle != "zh-core" || core.Phase != "bound_missing" || core.NextAction != "bind" {
-		t.Fatal(core)
-	}
-	if core.CandidatePath == nil || *core.CandidatePath != "/work/ws/candidates/zh-core-1" || core.BoundPath != nil {
-		t.Fatal(core)
-	}
-	if len(core.Runs) != 1 || core.Runs[0].Path != "/work/ws/results/run-a" || !core.Runs[0].Complete || !core.Runs[0].Sealed {
-		t.Fatal(core.Runs)
-	}
-	if core.NextCommand == nil || *core.NextCommand == "" || core.BlockedReason != nil {
-		t.Fatal(core)
-	}
-	pelican := p.Bundles[1]
-	if pelican.Phase != "preflight_missing" || pelican.NextAction != "device_check" || pelican.NextCommand != nil {
-		t.Fatal(pelican)
-	}
-	if p.Report.Status != "missing" || p.Report.Path != nil || len(p.Report.Runs) != 0 {
-		t.Fatal(p.Report)
-	}
-	if p.NextAction != "bind" || p.NextCommand == nil || p.DefaultScopeComplete {
-		t.Fatal(p)
-	}
-}
-
-func TestParseProgressVerifiedFixture(t *testing.T) {
-	p, err := ParseProgress([]byte(`{
-  "kind": "progress", "progress_version": 1, "workspace": "/w",
-  "device_preflight": {"status": "ok", "path": "/w/p"},
-  "bundles": [
-    {"bundle": "zh-core", "phase": "run_complete", "candidate_path": "/w/c", "bound_path": "/w/b",
-     "runs": [{"path": "/w/r1", "complete": true, "sealed": true}], "next_action": "none", "next_command": null, "blocked_reason": null},
-    {"bundle": "zh-svg-pelican", "phase": "run_complete", "candidate_path": "/w/c2", "bound_path": "/w/b2",
-     "runs": [{"path": "/w/r2", "complete": true, "sealed": true}], "next_action": "none", "next_command": null, "blocked_reason": null}
-  ],
-  "report": {"status": "verified", "path": "/w/reports/summary-1", "runs": ["/w/r1", "/w/r2"]},
-  "next_action": "done", "next_command": null, "default_scope_complete": true}`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !p.DefaultScopeComplete || p.Report.Status != "verified" || *p.Report.Path != "/w/reports/summary-1" {
-		t.Fatal(p)
-	}
-	if len(p.Report.Runs) != 2 {
-		t.Fatal(p.Report.Runs)
-	}
-}
-
 func TestParseProgressRejections(t *testing.T) {
 	valid := `{"kind":"progress","progress_version":1,"workspace":"/w","device_preflight":{"status":"missing","path":null},
 	"bundles":[{"bundle":"zh-core","phase":"candidate_missing","candidate_path":null,"bound_path":null,"runs":[],"next_action":"prepare_candidate","next_command":null,"blocked_reason":null}],
 	"report":{"status":"missing","path":null,"runs":[]},"next_action":"prepare_candidate","next_command":null,"default_scope_complete":false}`
 	if _, err := ParseProgress([]byte(valid)); err != nil {
-		t.Fatal(err)
-	}
-	// Unknown CLI-added fields stay readable.
-	extended := strings.Replace(fullProgress, `"kind": "progress",`, `"kind": "progress", "future_field": 42,`, 1)
-	if _, err := ParseProgress([]byte(extended)); err != nil {
 		t.Fatal(err)
 	}
 	cases := map[string]struct {

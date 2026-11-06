@@ -11,7 +11,7 @@ from inferyard.config.single_plan import compile_single_plan
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.request_snapshots import messages_sha256
 from inferyard.evidence.storage import EvidenceError, EvidenceStore, Redactor, read_json, read_jsonl
-from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
+from inferyard.evidence.trial_evidence import TrialEvidence
 
 
 @pytest.fixture
@@ -54,31 +54,6 @@ def start(store, config, bundle, body, *, key="prepared-1", phase="formal"):
             "body": event_body(config, body),
         },
     )
-
-
-def test_inputs_publish_before_all_six_logs_and_seal_eight_files(make_store, monkeypatch):
-    make, _, _ = make_store
-    original = EvidenceStore._open_logs
-    seen = []
-
-    def open_logs(store, names):
-        seen.append({path.name for path in store.path.iterdir()})
-        assert seen[-1] == {"inputs.json"}
-        original(store, names)
-
-    monkeypatch.setattr(EvidenceStore, "_open_logs", open_logs)
-    store = make()
-    assert seen == [{"inputs.json"}]
-    assert len(list(store.path.iterdir())) == 7
-    store.seal()
-    assert store.sealed and len(list(store.path.iterdir())) == 8
-    evidence = TrialEvidence(store.path)
-    assert evidence.layout_version == evidence.manifest["evidence_layout_version"] == 2
-    for kind in ("run", "plan", "selection", "config", "bundle"):
-        verify_reference(store.path, evidence.input_reference(kind))
-    evidence.preload(evidence.manifest["files"])
-    with pytest.raises(EvidenceError, match="sealed_run"):
-        store.seal()
 
 
 @pytest.mark.parametrize("opened", [0, 3, 5])
@@ -175,21 +150,6 @@ def test_source_missing_fact_is_explicit_and_never_reconstructed(make_store):
     }
 
 
-@pytest.mark.parametrize(
-    "source",
-    [
-        {},
-        {"media_type": None, "data": None, "missing_reason": None},
-        {"media_type": "application/toml", "data": "parsed text", "missing_reason": None},
-        {"media_type": "application/toml", "data": b"raw", "missing_reason": "invented"},
-    ],
-)
-def test_invalid_source_cannot_produce_a_live_writer(make_store, source):
-    make, _, _ = make_store
-    with pytest.raises(EvidenceError, match="invalid_inputs_container"):
-        make(configuration_source=source)
-
-
 def test_observation_authority_and_closed_queries_follow_durable_publication(make_store):
     make, _, _ = make_store
     store = make()
@@ -206,24 +166,6 @@ def test_observation_authority_and_closed_queries_follow_durable_publication(mak
     assert evidence.observation("identity") == {"verification": "fixture"}
     assert evidence.observation("environment", "start") == {"stage": "start"}
     assert evidence.observation("environment", "end") == {"stage": "end"}
-
-
-@pytest.mark.parametrize(
-    "kind,stage,key",
-    [
-        ("unknown", "prepare", None),
-        ("collector", "finalizing", None),
-        ("collector", "prepare", "bad-key"),
-        ("service_properties", "pre_idle", None),
-    ],
-)
-def test_invalid_observation_never_appends_or_occupies_a_slot(make_store, kind, stage, key):
-    make, _, _ = make_store
-    store = make()
-    with pytest.raises(EvidenceError):
-        store.observe(kind, {"value": "invalid"}, stage=stage, key=key)
-    assert (store.path / "observations.jsonl").read_bytes() == b""
-    assert store._observation_slots == {}
 
 
 def test_prepared_body_is_fsynced_before_start_and_unsent_is_not_execution(make_store, monkeypatch):
@@ -249,10 +191,6 @@ def test_prepared_body_is_fsynced_before_start_and_unsent_is_not_execution(make_
     evidence = TrialEvidence(store.path)
     assert evidence.request_body(event) == body
     assert len(read_jsonl(store.path / "events.jsonl")[0]) == 1
-    assert all(
-        len(metadata) == 3 and isinstance(metadata[2], str)
-        for metadata in store._prepared_requests.values()
-    )
 
 
 def test_start_without_successful_prepare_or_matching_message_digest_is_rejected(make_store):
@@ -268,15 +206,6 @@ def test_start_without_successful_prepare_or_matching_message_digest_is_rejected
     with pytest.raises(EvidenceError, match="request_body_identity_mismatch"):
         start(store, config, bundle, body, phase="probe")
     assert (store.path / "events.jsonl").read_bytes() == b""
-
-
-@pytest.mark.parametrize("phase,ordinal", [("baseline", 1), ("formal", True), ("formal", 0)])
-def test_prepared_phase_and_ordinal_are_strict(make_store, phase, ordinal):
-    make, config, _ = make_store
-    store = make()
-    with pytest.raises(EvidenceError, match="invalid_prepared_request"):
-        store.prepare_request("prepared-1", phase, ordinal, request_body(config, "fixture"))
-    assert (store.path / "request-bodies.jsonl").read_bytes() == b""
 
 
 def test_prepared_identity_and_order_cannot_be_reused(make_store):
@@ -339,7 +268,6 @@ def test_failed_append_never_becomes_durable_or_allows_send_or_seal(
         else:
             store.prepare_request("prepared-1", "formal", 1, body)
     assert not store.has_observation("identity")
-    assert "prepared-1" not in store._prepared_requests
     with pytest.raises(EvidenceError):
         start(store, config, bundle, body)
     with pytest.raises(EvidenceError):
@@ -371,61 +299,3 @@ def test_manifest_publication_failure_cannot_retry_seal(make_store, monkeypatch)
     with pytest.raises(EvidenceError, match="atomic_write_failed"):
         store.seal()
     assert not store.sealed and not (store.path / "manifest.json").exists()
-
-
-def test_run_snapshot_guard_and_high_frequency_logs_remain_distinct(make_store):
-    make, _, _ = make_store
-    store = make()
-    for name in ("run.json", "identity.json", "collector.json", "config.input.toml"):
-        with pytest.raises(EvidenceError, match="invalid_observation_record"):
-            store.snapshot(name, {"old": "snapshot"})
-    with pytest.raises(EvidenceError):
-        store.text_snapshot("config.input.toml", "raw")
-    for name in ("external-cpu.jsonl", "request-environment.jsonl", "safety-checks.jsonl"):
-        store.observation(name, {"value": "actual-high-frequency"})
-    store.seal()
-    assert all(
-        name in read_json(store.path / "manifest.json")["files"]
-        for name in ("external-cpu.jsonl", "request-environment.jsonl", "safety-checks.jsonl")
-    )
-
-
-def test_generic_and_extension_stores_keep_independent_protocol(tmp_path):
-    from inferyard.extensions.extension_evidence import ExtensionJournal
-
-    for constructor in (EvidenceStore, ExtensionJournal):
-        store = constructor(tmp_path)
-        store.snapshot("run.json", {"kind": "independent"})
-        store.observe("collector", {"collector": "actual"}, stage="prepare")
-        with pytest.raises(EvidenceError, match="invalid_observation_record"):
-            store.observe("identity", {}, stage="finalizing")
-        store.seal()
-        store.close()
-        assert read_json(store.path / "collector.json") == {"collector": "actual"}
-        assert not (store.path / "inputs.json").exists()
-        assert not (store.path / "observations.jsonl").exists()
-        assert not (store.path / "request-bodies.jsonl").exists()
-
-
-def test_baseline_domain_methods_preserve_original_buffer_and_snapshot_keys(make_store, tmp_path):
-    from inferyard.evidence.request_snapshots import snapshot_filename
-    from inferyard.extensions.trial_control_baseline import BaselineJournal
-
-    make, config, bundle = make_store
-    store = make()
-    plan = TrialEvidence(store.path).input("plan")
-    baseline = BaselineJournal(tmp_path, plan, store.trial_id, config, bundle, redactor=Redactor())
-    baseline.observe("environment", {"value": "start"}, stage="start")
-    baseline.observe("identity", {"value": "identity"}, stage="finalizing")
-    body = request_body(config, "fixture")
-    baseline.prepare_request("baseline-body", "probe", 1, body)
-    assert baseline.has_observation("identity", stage="finalizing")
-    buffer = baseline.buffer()
-    assert buffer["definition"] == "trial_control_baseline.v1"
-    assert buffer["snapshots"]["environment.start.json"] == {"value": "start"}
-    assert buffer["snapshots"]["identity.json"] == {"value": "identity"}
-    assert buffer["snapshots"][snapshot_filename(baseline.run_id, "probe", 1)] == body
-    assert "inputs.json" not in buffer["snapshots"]
-    baseline.seal()
-    with pytest.raises(EvidenceError, match="sealed_run"):
-        baseline.observe("environment", {"value": "end"}, stage="end")

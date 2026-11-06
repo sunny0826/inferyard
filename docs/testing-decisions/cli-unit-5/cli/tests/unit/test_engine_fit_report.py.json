@@ -1,0 +1,90 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_report.py",
+  "decisions": [
+    {
+      "test": "test_all_five_terminal_states_remain_in_denominator",
+      "decision": "keep",
+      "reason": "五种终态均留在planned=5，失败与未执行不得缩小诊断分母。"
+    },
+    {
+      "test": "test_compare_rejects_duplicates_plans_sources_and_existing_out",
+      "decision": "keep",
+      "reason": "重复引擎、不同计划、已有输出目录及外部来源引用拒绝，避免假比较和覆盖。"
+    },
+    {
+      "test": "test_compare_requires_same_measurement_source",
+      "decision": "keep",
+      "reason": "两边测量源码不同拒绝比较，防止把实现变化当引擎差异。"
+    },
+    {
+      "test": "test_comparison_bool_cannot_be_replaced_by_integer",
+      "decision": "keep",
+      "reason": "诊断标记从bool改为整数即使重算哈希也拒绝，防止格式混淆获得资格。"
+    },
+    {
+      "test": "test_comparison_survives_removing_originals_and_keeps_nulls",
+      "decision": "keep",
+      "reason": "复制报告在原运行删除后仍可核验，缺usage和RSS保持null，避免交付失效或缺测变零。"
+    },
+    {
+      "test": "test_completed_response_rejects_invalid_values",
+      "decision": "keep",
+      "reason": "完成响应中的非有限时长、布尔token、错终态及不一致缺测原因不得封存，避免产生貌似有效指标。"
+    },
+    {
+      "test": "test_copied_source_directory_symlink_rejected",
+      "decision": "keep",
+      "reason": "复制来源目录改为symlink拒绝，防止报告依赖包外可变原件。"
+    },
+    {
+      "test": "test_empty_completed_subset_does_not_become_zero",
+      "decision": "keep",
+      "reason": "没有完成请求时延迟中位数是null及原因，不能显示零耗时。"
+    },
+    {
+      "test": "test_html_is_escaped_and_versioned_rebuild_is_explicit",
+      "decision": "keep",
+      "reason": "不可信prompt/answer须HTML转义，旧manifest拒绝且显式重绘发现变化；删除CSS文字与HTMLParser空操作。"
+    },
+    {
+      "test": "test_manifest_refuses_arbitrary_names_and_symlinks",
+      "decision": "keep",
+      "reason": "manifest越界名及指向外部原件的symlink拒绝，避免封包读取包外文件。"
+    },
+    {
+      "test": "test_new_engine_fit_seal_needs_no_renderer_but_checks_saved_bytes",
+      "decision": "keep",
+      "reason": "渲染器更新不影响已保存字节核验，显式重绘或改报告字节仍拒绝，保证离线旧证据可读。"
+    },
+    {
+      "test": "test_offline_plan_semantics_are_evidence_errors_with_valid_hashes",
+      "decision": "keep",
+      "reason": "哈希有效但计划请求计数不一致须成为离线证据错误；删除异常cause类型断言。"
+    },
+    {
+      "test": "test_plan_hash_and_duplicate_json_keys_rejected",
+      "decision": "keep",
+      "reason": "改prompt未改plan_id及重复JSON键须拒绝，避免读取不同于冻结输入的证据。"
+    },
+    {
+      "test": "test_seal_overwrites_checkpoints_but_never_a_sealed_run",
+      "decision": "keep",
+      "reason": "可封存检查点但已封存运行不可覆盖，缺请求原件须拒绝，防止原始证据被重写。"
+    },
+    {
+      "test": "test_semantic_tampering_rejected_even_with_updated_hashes",
+      "decision": "keep",
+      "reason": "重算文件哈希仍不能接受错分母、假性能资格、错模型路径或忙碌服务，防止语义造假。"
+    },
+    {
+      "test": "test_stop_snapshot_retains_temperature_and_disk_observations",
+      "decision": "keep",
+      "reason": "温度停机保留87摄氏度和磁盘快照，用户须能复核停止条件。"
+    },
+    {
+      "test": "test_unicode_surrogates_are_invalid_evidence",
+      "decision": "keep",
+      "reason": "孤立Unicode代理项证据拒绝为invalid_json，避免损坏输入进入离线报告。"
+    }
+  ]
+}

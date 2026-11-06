@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_backend_round2.py",
+  "decisions": [
+    {
+      "test": "test_close_exception_keeps_original_handle_and_cause",
+      "decision": "delete",
+      "reason": "异常形式的CloseHandle失败重复test_unknown_pipe_close_before_process_stays_with_custodian的托管否决，额外仅cause链断言。"
+    },
+    {
+      "test": "test_confirmed_pipe_close_still_has_null_ref",
+      "decision": "delete",
+      "reason": "只验证启动失败ref=None及关闭调用列表，没有用户可见输出或资格。"
+    },
+    {
+      "test": "test_custodian_keeps_prefix_and_stops_on_hidden_overflow",
+      "decision": "keep",
+      "reason": "另一输出流故障隐藏持续输出时仍截留前缀、停止作业并拒绝成功，防止无界输出；删除重复前缀和固定读取块统计。"
+    },
+    {
+      "test": "test_distinct_chunks_are_delivered_once_across_4096_and_32768",
+      "decision": "delete",
+      "reason": "正常分块拼接及held缓存清空与读取总量属于实现正确性，异常不丢前缀由test_second_stream_failure_keeps_distinct_prefix覆盖。"
+    },
+    {
+      "test": "test_multiple_close_failures_keep_original_cause_and_unattempted",
+      "decision": "delete",
+      "reason": "只约束多次关闭的内部顺序、异常cause链与extra/unknown数组；托管不得退出由test_unknown_pipe_close_before_process_stays_with_custodian覆盖。"
+    },
+    {
+      "test": "test_processless_ref_does_not_call_process_apis",
+      "decision": "delete",
+      "reason": "processless私有ref的方法调用列表测试；托管安全结果由test_unknown_pipe_close_before_process_stays_with_custodian覆盖。"
+    },
+    {
+      "test": "test_second_stream_failure_keeps_distinct_prefix",
+      "decision": "keep",
+      "reason": "stderr peek/read失败后stdout前缀不得丢失或重复，否则作业证据被截坏。复审删除held_stdout私有暂存/清空断言；保留故障后恢复字节必须精确为PREabcde。"
+    },
+    {
+      "test": "test_unknown_pipe_close_before_process_stays_with_custodian",
+      "decision": "keep",
+      "reason": "启动前管道关闭未知时Custodian不得退出或宣称成功，防止遗失仍需托管对象；删句柄集合和WinAPI形状断言。复审删除step内exit/pump顺序、次数和内部process字段断言；step后仍独立要求保管原ref、不能退出且不能成功。start失败前不访问半初始化对象的边界保留。"
+    }
+  ]
+}

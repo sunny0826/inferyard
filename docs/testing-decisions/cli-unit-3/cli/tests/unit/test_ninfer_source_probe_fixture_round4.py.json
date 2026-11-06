@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_fixture_round4.py",
+  "decisions": [
+    {
+      "test": "test_attributes_past_total_do_not_start_create_file",
+      "decision": "delete",
+      "reason": "诊断夹具自测：probe_fixture.main 对任何参数无条件返回2；本测试经共享run进入私有_run_fixture，仅检验夹具期限分段、时钟、保管对象或输出布局，未进入活动CLI成功路径，也非安装发布入口。不删除共享helper或生产probe_io_native所引用的DeadlineStop。"
+    },
+    {
+      "test": "test_descendant_cancel_after_create_keeps_the_original_handles",
+      "decision": "delete",
+      "reason": "诊断夹具自测：probe_fixture.main 对任何参数无条件返回2；本测试经共享run进入私有_run_fixture，仅检验夹具期限分段、时钟、保管对象或输出布局，未进入活动CLI成功路径，也非安装发布入口。不删除共享helper或生产probe_io_native所引用的DeadlineStop。"
+    },
+    {
+      "test": "test_file_read_past_total_does_not_close",
+      "decision": "delete",
+      "reason": "诊断夹具自测：probe_fixture.main 对任何参数无条件返回2；本测试经共享run进入私有_run_fixture，仅检验夹具期限分段、时钟、保管对象或输出布局，未进入活动CLI成功路径，也非安装发布入口。不删除共享helper或生产probe_io_native所引用的DeadlineStop。"
+    },
+    {
+      "test": "test_final_binding_samples_after_the_decision",
+      "decision": "delete",
+      "reason": "诊断夹具自测：probe_fixture.main 对任何参数无条件返回2；本测试经共享run进入私有_run_fixture，仅检验夹具期限分段、时钟、保管对象或输出布局，未进入活动CLI成功路径，也非安装发布入口。不删除共享helper或生产probe_io_native所引用的DeadlineStop。"
+    },
+    {
+      "test": "test_fixed_root_unknown_close_keeps_the_factory_object",
+      "decision": "delete",
+      "reason": "诊断夹具自测：probe_fixture.main 对任何参数无条件返回2；本测试经共享run进入私有_run_fixture，仅检验夹具期限分段、时钟、保管对象或输出布局，未进入活动CLI成功路径，也非安装发布入口。不删除共享helper或生产probe_io_native所引用的DeadlineStop。"
+    },
+    {
+      "test": "test_job_query_does_not_start_after_total",
+      "decision": "delete",
+      "reason": "诊断夹具自测：probe_fixture.main 对任何参数无条件返回2；本测试经共享run进入私有_run_fixture，仅检验夹具期限分段、时钟、保管对象或输出布局，未进入活动CLI成功路径，也非安装发布入口。不删除共享helper或生产probe_io_native所引用的DeadlineStop。"
+    },
+    {
+      "test": "test_output_payload_past_total_does_not_start_write",
+      "decision": "delete",
+      "reason": "诊断夹具自测：probe_fixture.main 对任何参数无条件返回2；本测试经共享run进入私有_run_fixture，仅检验夹具期限分段、时钟、保管对象或输出布局，未进入活动CLI成功路径，也非安装发布入口。不删除共享helper或生产probe_io_native所引用的DeadlineStop。"
+    },
+    {
+      "test": "test_pipe_cancel_after_create_keeps_the_original_pipe",
+      "decision": "delete",
+      "reason": "诊断夹具自测：probe_fixture.main 对任何参数无条件返回2；本测试经共享run进入私有_run_fixture，仅检验夹具期限分段、时钟、保管对象或输出布局，未进入活动CLI成功路径，也非安装发布入口。不删除共享helper或生产probe_io_native所引用的DeadlineStop。"
+    },
+    {
+      "test": "test_process_query_past_total_does_not_start_job_check",
+      "decision": "delete",
+      "reason": "诊断夹具自测：probe_fixture.main 对任何参数无条件返回2；本测试经共享run进入私有_run_fixture，仅检验夹具期限分段、时钟、保管对象或输出布局，未进入活动CLI成功路径，也非安装发布入口。不删除共享helper或生产probe_io_native所引用的DeadlineStop。"
+    },
+    {
+      "test": "test_ready_flush_past_task_does_not_start_read",
+      "decision": "delete",
+      "reason": "诊断夹具自测：probe_fixture.main 对任何参数无条件返回2；本测试经共享run进入私有_run_fixture，仅检验夹具期限分段、时钟、保管对象或输出布局，未进入活动CLI成功路径，也非安装发布入口。不删除共享helper或生产probe_io_native所引用的DeadlineStop。"
+    }
+  ]
+}

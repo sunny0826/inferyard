@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/evidence/index_test.go",
+  "decisions": [
+    {
+      "test": "TestIndex",
+      "decision": "keep",
+      "reason": "坏 run 单独跳过并计数，未封存 batch 子 run 保留 partial，缺根不致整个历史失败，防丢失其他可读证据。"
+    },
+    {
+      "test": "TestIndexSealAndIdentity",
+      "decision": "keep",
+      "reason": "manifest 与 inputs run_id 不符须排除，sealed=false 不能当 sealed，防错配证据或虚假完成。"
+    }
+  ]
+}

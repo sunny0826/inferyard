@@ -87,6 +87,11 @@ func TestQueueCancellationAndExitMapping(t *testing.T) {
 	if v.Task.Exit.ExitCode != 130 {
 		t.Fatal(v)
 	}
+	select {
+	case <-started:
+		t.Fatal("cancelled queued run executed")
+	default:
+	}
 	if _, e = s.CancelRun(tasks[0].TaskId); e == nil || e.Details["reason"] != "invalid_state" {
 		t.Fatal(e)
 	}
@@ -157,29 +162,6 @@ func TestSettingsAndDeviceRefresh(t *testing.T) {
 	if e1 != nil || len(raw) == 0 {
 		t.Fatal(e1)
 	}
-}
-func TestEventReplayLoad(t *testing.T) {
-	b := NewEventBus()
-	_, unsub, seed := b.Subscribe()
-	defer unsub()
-	start := time.Now()
-	for i := 0; i < 10000; i++ {
-		if e := b.Publish("run.progress", map[string]int{"done": i}); e != nil {
-			t.Fatal(e)
-		}
-	}
-	elapsed := time.Since(start)
-	if _, gap, _ := b.Since(seed); !gap {
-		t.Fatal("missing reset")
-	}
-	events, gap, last := b.Since(seed + 10000 - 2048 + 1)
-	if gap || len(events) != 2047 {
-		t.Fatal(len(events), gap)
-	}
-	if _, gap, _ = b.Since(last + 1); !gap {
-		t.Fatal("future cursor")
-	}
-	t.Logf("10000 fixture events in %s; retained=%d; replay=%d; heartbeat=%s; progress interval=%s", elapsed, len(b.ring), len(events), HeartbeatInterval, ProgressInterval)
 }
 func TestDirtyAndAggregation(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "host.json")

@@ -6,10 +6,7 @@ from inferyard.platforms.windows_host_paths import common_data_root
 
 
 def test_system_folder_comes_from_native_common_appdata_not_user_environment(monkeypatch):
-    seen = []
-
     def query(window, folder, token, flags, result):
-        seen.append((window, folder, token, flags))
         result.value = "C:/ProgramData"
         return 0
 
@@ -24,4 +21,3 @@ def test_system_folder_comes_from_native_common_appdata_not_user_environment(mon
         raising=False,
     )
     assert str(common_data_root()).replace("\\", "/") == "C:/ProgramData"
-    assert seen == [(None, 0x0023, None, 0)]

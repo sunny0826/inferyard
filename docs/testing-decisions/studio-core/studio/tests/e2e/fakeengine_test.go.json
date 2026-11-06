@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/tests/e2e/fakeengine_test.go",
+  "decisions": [
+    {
+      "test": "TestFakeEngineContract",
+      "decision": "delete",
+      "reason": "对测试假引擎自身固定回答、字段、tokenCount 和模板自算自比，属于 fixture 自测；真实产品链由 TestChainBindRunReport 覆盖。连同 TestEngineCrashRecovery 删除后，清理其独占 FakeEngine/StartFakeEngine 与 imports，保留真实链共用 helper。"
+    }
+  ]
+}

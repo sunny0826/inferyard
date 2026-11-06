@@ -1,0 +1,65 @@
+{
+  "source_path": "cli/tests/integration/test_trial_runner.py",
+  "decisions": [
+    {
+      "test": "test_budget_cancellation_is_not_mislabeled_as_user_cancellation",
+      "decision": "keep",
+      "reason": "预算取消必须明确trial_wall_budget_exhausted而非user_cancelled，保留当前取消题。"
+    },
+    {
+      "test": "test_cancel_full_trial_preserves_remaining_cases_and_cleans_idle",
+      "decision": "delete",
+      "reason": "共享trial取消由 test_batch_runner.test_cancel_resume_only_unexecuted_then_next_planned_repetitions 及实际控制器信号测试覆盖。"
+    },
+    {
+      "test": "test_corpus_scoring_is_connected_but_review_gate_remains",
+      "decision": "keep",
+      "reason": "未审题包正式阻断、诊断可实际执行qa评分但仍不完整，避免诊断绕成人工接受。"
+    },
+    {
+      "test": "test_engine_timings_rebuild_offline_with_bound_build_and_unchanged_evidence",
+      "decision": "keep",
+      "reason": "M1：删除summary整体等价，仍直接read_trial并检查L07明确500或null/invalid_engine_timings和原件不变。"
+    },
+    {
+      "test": "test_full_diagnostic_trial_probes_warmups_and_formal_are_distinct",
+      "decision": "delete",
+      "reason": "完整诊断流程的重复happy path由本文件test_corpus_scoring_is_connected_but_review_gate_remains覆盖，probe/warmup数由test_warmup_cli覆盖。"
+    },
+    {
+      "test": "test_input_target_checked_before_generation_and_rebuilt_offline",
+      "decision": "keep",
+      "reason": "M1：删除重复summary等价；保留matched/mismatch、mismatch零请求和not_executed=3。"
+    },
+    {
+      "test": "test_length_preparation_only_uses_management_calls",
+      "decision": "keep",
+      "reason": "prepare-length只能用管理调用搜prompt，匹配输出实际prompt，次数耗尽不发布假匹配且不发生成请求。"
+    },
+    {
+      "test": "test_memory_safety_stop_before_generation",
+      "decision": "keep",
+      "reason": "批次内存低于冻结预算时，首请求前退出2且明确memory_safety_budget_reached。"
+    },
+    {
+      "test": "test_preformal_failures_never_start_quality_requests",
+      "decision": "keep",
+      "reason": "probe/warmup/busy/host lock各准入故障不能发送formal，保留全部未执行分母。"
+    },
+    {
+      "test": "test_resource_collector_records_boundaries_and_rebuilds_metrics",
+      "decision": "keep",
+      "reason": "M1：删除重复 summary 等价；保留C04三条非空结果、覆盖率、采集来源和边界。"
+    },
+    {
+      "test": "test_unreviewed_formal_bundle_is_blocked_before_any_request",
+      "decision": "delete",
+      "reason": "未审核formal阻断由本文件test_corpus_scoring_is_connected_but_review_gate_remains的首阶段覆盖。"
+    },
+    {
+      "test": "test_wall_budget_stops_during_management_before_formal",
+      "decision": "keep",
+      "reason": "管理端点挂起必须消耗trial墙钟预算并停发，不能无限等待或标用户取消；删除plan_hash自算断言。"
+    }
+  ]
+}

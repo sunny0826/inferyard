@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_fixture_round5.py",
+  "decisions": [
+    {
+      "test": "test_clock_regression_after_open_still_holds_the_file",
+      "decision": "delete",
+      "reason": "模拟 open 后时钟回退的引用持有重复前述框架自测，不是用户运行截止证据。"
+    },
+    {
+      "test": "test_close_qpc_error_does_not_start_close_handle",
+      "decision": "delete",
+      "reason": "依赖第几个时钟调用来检查未调用 close，属于模拟 fixture 实现步骤约束。"
+    },
+    {
+      "test": "test_create_process_sample_keeps_original_handles",
+      "decision": "delete",
+      "reason": "模拟 CreateProcessW 后采样点只证明内部 process/thread 引用转移，未验证 OS 资源或验收结论。"
+    },
+    {
+      "test": "test_default_factory_sample_keeps_the_original_object",
+      "decision": "delete",
+      "reason": "默认 factory 对象弱引用与 GC 保活是模拟测试框架实现自测，无独立用户假设。"
+    },
+    {
+      "test": "test_pipe_sample_keeps_original_ends",
+      "decision": "delete",
+      "reason": "模拟 CreatePipe 后采样点只证明内部字典保存两个 pipe 值，无独立产品结果。"
+    },
+    {
+      "test": "test_publish_qpc_error_does_not_write_when_clock_recovers",
+      "decision": "delete",
+      "reason": "仅模拟 fixture 的预置时钟异常阻止 BytesIO 输出，没有贯穿真实验证入口，不作为产品或发布门禁。"
+    },
+    {
+      "test": "test_read_qpc_error_does_not_close_or_publish_after_recovery",
+      "decision": "delete",
+      "reason": "模拟 read 后精确时钟采样点注入并断言内部 retained 引用，重复本文件句柄持有路径，不证明发布证据正确性。"
+    },
+    {
+      "test": "test_returned_file_handle_survives_the_following_sample",
+      "decision": "delete",
+      "reason": "只在模拟 probe fixture 的内部时钟采样点验证异常持有句柄，不涉及 InferYard 结果；实际宿主未知关闭由 test_ninfer_source_probe_integration.py::test_fixture_success_does_not_hide_backend_unknown_close 覆盖。"
+    },
+    {
+      "test": "test_successful_close_stays_closed_when_later_qpc_fails",
+      "decision": "delete",
+      "reason": "依赖 close 后第几个 QPC 调用检查内部 closed 标志，属于模拟 fixture 实现步骤约束。"
+    }
+  ]
+}
