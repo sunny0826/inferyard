@@ -1,0 +1,140 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_transport.py",
+  "decisions": [
+    {
+      "test": "test_all_metric_series_participate_in_idle",
+      "decision": "keep",
+      "reason": "不同 rank 任一运行或等待计数非零都不能确认空闲，避免与在途工作重叠。"
+    },
+    {
+      "test": "test_escaped_surrogates_are_rejected_before_evidence_serialization",
+      "decision": "keep",
+      "reason": "孤立 Unicode surrogate 在序列化前拒绝，避免封存时才丢失回答。"
+    },
+    {
+      "test": "test_every_response_is_size_bounded",
+      "decision": "keep",
+      "reason": "普通生成、身份探测和空闲探测都须限制响应字节，避免无界读入服务输出。"
+    },
+    {
+      "test": "test_external_cancellation_propagates_and_closes_stream",
+      "decision": "keep",
+      "reason": "外部取消必须传播且关闭响应流，避免取消后请求仍占连接。"
+    },
+    {
+      "test": "test_http_error_body_and_redirect_target_never_escape",
+      "decision": "keep",
+      "reason": "重定向及 HTTP 失败不跟随外部地址、不泄露响应正文。"
+    },
+    {
+      "test": "test_inspect_exact_model_and_version_only",
+      "decision": "keep",
+      "reason": "M10：唯一模型与已核实版本及来源进入结果，远端私密字段不得进入证据；删除两个只读端点必须按固定顺序访问的断言和记录。"
+    },
+    {
+      "test": "test_inspect_rejects_missing_malformed_or_duplicate_models",
+      "decision": "keep",
+      "reason": "模型列表缺失、类型错误、目标不符或重复时拒绝，防止成绩归到错误模型。"
+    },
+    {
+      "test": "test_inspect_rejects_multiple_models_or_aliases_before_version_probe",
+      "decision": "keep",
+      "reason": "同时加载目标与别名或 LoRA 时拒绝，防止多实例请求来源不明。"
+    },
+    {
+      "test": "test_inspect_rejects_unverified_version",
+      "decision": "keep",
+      "reason": "版本缺失、类型错误或含自由文本时拒绝，防止未核实引擎进入比较。"
+    },
+    {
+      "test": "test_inspection_deadline_applies_to_streamed_bodies",
+      "decision": "keep",
+      "reason": "inspect/idle 的慢流体也受总期限约束，避免预检持续卡住。"
+    },
+    {
+      "test": "test_invalid_auth_header_never_reaches_httpx",
+      "decision": "keep",
+      "reason": "非法 API key 字符在建客户端时拒绝，避免传输层异常泄露凭据。"
+    },
+    {
+      "test": "test_invalid_metrics_fail_closed",
+      "decision": "keep",
+      "reason": "重复、非有限、负数或非法标签的指标拒绝，避免坏数据证明空闲。"
+    },
+    {
+      "test": "test_invalid_request_never_sent",
+      "decision": "keep",
+      "reason": "非法 token、超时或空 prompt 在网络请求前拒绝，避免带无效冻结参数发请求。"
+    },
+    {
+      "test": "test_invalid_usage_is_not_silently_discarded",
+      "decision": "keep",
+      "reason": "布尔、负数、小数、字符串或总量矛盾的 token usage 拒绝，避免错误吞吐结论。"
+    },
+    {
+      "test": "test_malformed_sse_is_rejected",
+      "decision": "keep",
+      "reason": "坏 UTF8、截断 SSE 或非协议字段必须报固定原因，避免损坏流成为有效成绩。"
+    },
+    {
+      "test": "test_missing_or_partial_metrics_rejected",
+      "decision": "keep",
+      "reason": "缺少运行/等待指标或 rank 不配对必须拒绝，避免仅局部空闲被认作整体空闲。"
+    },
+    {
+      "test": "test_missing_usage_is_null_with_reason_and_no_text_has_no_first_content",
+      "decision": "keep",
+      "reason": "服务未给完整用量时保存 null 与原因，空回答不能虚构首内容时间。"
+    },
+    {
+      "test": "test_nested_usage_details_are_not_rejected_as_token_counters",
+      "decision": "keep",
+      "reason": "合法嵌套 usage details 或 null 不能当作非法计数，避免正常引擎响应被判失败。"
+    },
+    {
+      "test": "test_network_errors_are_sanitized",
+      "decision": "keep",
+      "reason": "网络异常仅输出固定原因，避免远端异常中的敏感内容进入诊断；删除 Python 异常上下文属性断言。"
+    },
+    {
+      "test": "test_non_loopback_origins_credentials_and_paths_are_rejected",
+      "decision": "keep",
+      "reason": "远程地址、凭据、查询或路径不能充当本机 origin，避免请求越出本地服务。"
+    },
+    {
+      "test": "test_optional_active_queue_prevents_idle",
+      "decision": "keep",
+      "reason": "交换队列或语法队列非空仍为忙碌，避免漏算额外活动队列。"
+    },
+    {
+      "test": "test_proxy_environment_is_ignored",
+      "decision": "delete",
+      "reason": "只检查私有 httpx 对象的 trust_env/follow_redirects 属性；并未证明代理下实际请求去向，重定向行为由 test_http_error_body_and_redirect_target_never_escape 覆盖。"
+    },
+    {
+      "test": "test_reordered_labels_do_not_hide_duplicate_metrics",
+      "decision": "keep",
+      "reason": "标签顺序变化仍识别同一重复序列，避免双重指标隐蔽通过。"
+    },
+    {
+      "test": "test_stream_final_empty_choices_usage_and_split_unicode",
+      "decision": "keep",
+      "reason": "按字节分割中文 SSE 仍须还原北京、用量与首内容耗时，避免损坏回答和计量。"
+    },
+    {
+      "test": "test_stream_protocol_failures_are_fixed_reasons",
+      "decision": "keep",
+      "reason": "缺 DONE/finish、终态后内容、非法 choice、工具响应、重复键或非有限 JSON 必须失败，不能伪造完整回答。"
+    },
+    {
+      "test": "test_total_deadline_expires_despite_continuous_heartbeats",
+      "decision": "keep",
+      "reason": "连续心跳不能延长总截止时间，避免服务永远不结束阻塞测评。"
+    },
+    {
+      "test": "test_unsupported_response_format_rejected",
+      "decision": "keep",
+      "reason": "非 SSE 内容类型或未知压缩拒绝，避免错解正文。"
+    }
+  ]
+}

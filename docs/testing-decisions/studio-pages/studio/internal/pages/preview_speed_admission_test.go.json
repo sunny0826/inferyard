@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/pages/preview_speed_admission_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewSpeedEngineVerificationRecovery",
+      "decision": "keep",
+      "reason": "旧 CLI 阻断专项后恢复核验即可用原 128k 表单启动，无任务/真实服务泄漏。"
+    },
+    {
+      "test": "TestPreviewSpeedModelContextAdmissionParity",
+      "decision": "keep",
+      "reason": "8k 模型不能运行 64k，换为 256k 能力后恢复；正式/模拟均独立验证具体原因并阻止任务创建。"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "source_path": "cli/tests/unit/test_thermal_diagnostic.py",
+  "decisions": [
+    {
+      "test": "test_bad_bounds_create_no_output",
+      "decision": "keep",
+      "reason": "具体场景 test_bad_bounds_create_no_output。逐项参数：pytest.mark.parametrize('seconds,interval', [(float('nan'), 1), (1, 0), (3601, 1)])。可观察预期：assert not out.exists()；pytest.raises(ValueError)。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_bounded_capture_preserves_missing_values_and_refuses_overwrite",
+      "decision": "keep",
+      "reason": "具体场景 test_bounded_capture_preserves_missing_values_and_refuses_overwrite。可观察预期：assert result['state'] == 'completed'；assert result['samples'] >= 2；assert all((r['derived']['host_cpu_percent'] is None for r in rows))；assert not result['workload_started_or_stopped']。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_discovery_freezes_sensor_identity_and_missing_samples",
+      "decision": "keep",
+      "reason": "具体场景 test_discovery_freezes_sensor_identity_and_missing_samples。可观察预期：assert channels[str(zone / 'temp')]['label'] == 'x86_pkg_temp'；assert diag.snapshot(channels, tmp_path, [])['values'][str(zone / 'temp')]['unavailable']。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_interval_power_and_distinct_cpu_denominators",
+      "decision": "keep",
+      "reason": "具体场景 test_interval_power_and_distinct_cpu_denominators。可观察预期：assert result['host_cpu_percent'] == 50；assert result['process_cpu_percent_one_core']['42'] == 50；assert result['channels']['energy']['value'] == 2；assert result['channels']['throttle']['value'] == 2。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_invalid_counter_epoch_produces_no_deltas",
+      "decision": "keep",
+      "reason": "具体场景 test_invalid_counter_epoch_produces_no_deltas。逐项参数：pytest.mark.parametrize('change', ['boot', 'clock', 'missing_boot'])。可观察预期：assert result['channels'] == {} and result['host_cpu_percent'] is None。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_missing_or_decreasing_energy_is_unknown",
+      "decision": "keep",
+      "reason": "具体场景 test_missing_or_decreasing_energy_is_unknown。逐项参数：pytest.mark.parametrize('value', ['0', {'unavailable': 'PermissionError'}, 'nan'])。可观察预期：assert result['channels']['energy']['value'] is None；assert result['channels']['energy']['reason']。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_missing_tick_frequency_keeps_process_cpu_unknown",
+      "decision": "keep",
+      "reason": "具体场景 test_missing_tick_frequency_keeps_process_cpu_unknown。可观察预期：assert diag.derive(a, b, channels, None)['process_cpu_percent_one_core']['42'] is None。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_pid_reuse_does_not_become_process_cpu",
+      "decision": "keep",
+      "reason": "具体场景 test_pid_reuse_does_not_become_process_cpu。可观察预期：assert diag.derive(a, b, channels, 100)['process_cpu_percent_one_core']['42'] is None。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_proc_name_with_spaces_and_parentheses",
+      "decision": "keep",
+      "reason": "具体场景 test_proc_name_with_spaces_and_parentheses。可观察预期：assert diag.process_stat(tmp_path, 42) == {'ticks': 27, 'start_ticks': 123}；assert 'unavailable' in diag.process_stat(tmp_path, 99)。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_recorded_pid_identity_is_initial_process",
+      "decision": "keep",
+      "reason": "具体场景 test_recorded_pid_identity_is_initial_process。可观察预期：assert meta['process_identities'][str(os.getpid())]['start_ticks'] > 0；assert meta['process_names'][str(os.getpid())]。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_term_records_terminal_without_stopping_observed_process",
+      "decision": "keep",
+      "reason": "具体场景 test_term_records_terminal_without_stopping_observed_process。可观察预期：assert (out / 'samples.jsonl').exists()；assert json.loads((out / 'terminal.json').read_text())['state'] == 'interrupted'；assert child.poll() is None。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    },
+    {
+      "test": "test_windows_linux_collector_rejects_before_creating_output",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_linux_collector_rejects_before_creating_output。可观察预期：assert not out.exists()；pytest.raises(RuntimeError, match='linux_thermal_diagnostic_required')。诊断能量、CPU 计算必须使用相同身份/时钟与正确分母；重启、计数回退及传感器缺失给 unknown，诊断停止不能结束被观察进程或覆盖旧采集。"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_bind_service_config.py",
+  "decisions": [
+    {
+      "test": "test_bad_serialization_is_rejected_before_output_publication",
+      "decision": "keep",
+      "reason": "TOML 序列化损坏时不发布绑定文件，防下游读取半成品。"
+    },
+    {
+      "test": "test_flat_prism_binding_loads_and_preserves_declarations",
+      "decision": "keep",
+      "reason": "真实脚本写出的绑定能加载且保留配置，重复目标拒绝并保留原字节，防覆盖操作者文件。"
+    },
+    {
+      "test": "test_flat_tables_and_existing_nested_policy_keep_exact_text",
+      "decision": "delete",
+      "reason": "仅锁定 TOML 文本排版；真实 binding 写读和复杂字段 roundtrip 已覆盖可读性。"
+    },
+    {
+      "test": "test_recursive_tables_arrays_and_quoted_keys_round_trip",
+      "decision": "keep",
+      "reason": "递归表、数组、带点/引号键与控制字符经序列化能还原声明，防绑定文件写错资产和策略。"
+    }
+  ]
+}

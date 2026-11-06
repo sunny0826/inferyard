@@ -41,7 +41,7 @@ def test_capacity_stop_preserves_failure_and_forbids_resume_or_next_repeat(tmp_p
     assert sum(r["planned"] for r in view["length_bins"]) == 3
     assert sum(r["outcomes"]["terminal_counts"]["failed"] for r in view["length_bins"]) == 1
     html = (report / "report.html").read_text()
-    assert 'class="length-outcomes"' in html and "500：1" in html
+    assert "500：1" in html
     assert "未测档不等于不支持" in html
     assert verify_report(report)["verified"]
     assert before == {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}

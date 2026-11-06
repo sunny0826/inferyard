@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/integration/test_trial_requests.py",
+  "decisions": [
+    {
+      "test": "test_cancel_terminates_once_and_does_not_start_next_case",
+      "decision": "delete",
+      "reason": "手拼管线取消停发由 test_process_interruptions.test_real_signal_returns_130_without_starting_later_cases 覆盖。"
+    },
+    {
+      "test": "test_duration_admission_rechecks_deadline_after_durable_preparation",
+      "decision": "keep",
+      "reason": "prepare持久化或观察刚好跨过duration截止后不得发送请求或置dirty，全部正式题仍未执行。"
+    },
+    {
+      "test": "test_invalid_scorer_identity_stops_without_fabricating_score",
+      "decision": "delete",
+      "reason": "评分身份/类别错误必须停发由 test_simplification_b.test_identity_and_storage_errors_stop_independently 覆盖。"
+    },
+    {
+      "test": "test_io_failure_leaves_invalid_not_model_failed",
+      "decision": "delete",
+      "reason": "内容IO故障不归因模型由 test_runner.test_io_failure_mid_answer_stops_without_counting_model_failure 覆盖。"
+    },
+    {
+      "test": "test_redacted_answer_never_scored_and_secret_absent_from_artifacts",
+      "decision": "delete",
+      "reason": "凭据回显不参与评分且不落盘由 test_runner.test_credential_echo_all_artifacts_redacted_and_not_scored 覆盖。"
+    },
+    {
+      "test": "test_scorer_exception_keeps_all_model_completions",
+      "decision": "delete",
+      "reason": "评分异常继续收集由 test_simplification_b.test_isolated_score_failure_collects_following_answers 覆盖。"
+    },
+    {
+      "test": "test_streams_failures_and_no_implicit_retries",
+      "decision": "delete",
+      "reason": "手拼TrialRequests重复真实runner的HTTP失败不重试，由 test_runner.test_f07_full_pipeline_warmups_failed_case_and_no_retries 覆盖。"
+    },
+    {
+      "test": "test_unknown_residual_keeps_dirty_and_blocks_following_requests",
+      "decision": "delete",
+      "reason": "未知排空阻断后续请求由 test_runner.test_unconfirmed_residual_stops_and_keeps_dirty 覆盖。"
+    }
+  ]
+}

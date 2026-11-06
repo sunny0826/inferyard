@@ -1,0 +1,105 @@
+{
+  "source_path": "cli/tests/unit/test_contracts.py",
+  "decisions": [
+    {
+      "test": "test_all_published_schemas_are_valid",
+      "decision": "keep",
+      "reason": "所有公开 JSON Schema 自身必须合法，避免发行给外部工具的 schema 无法加载。"
+    },
+    {
+      "test": "test_bundle_duplicate_id_and_typed_references",
+      "decision": "keep",
+      "reason": "重复 case_id 与 reference 类型错配拒绝，避免题目错绑与评分含义错误。"
+    },
+    {
+      "test": "test_config_schema_matches_normalized_input",
+      "decision": "delete",
+      "reason": "单个默认 config 的 Schema happy path 重复 test_explicit_device_memory_budget_keeps_default_and_survives_loading。"
+    },
+    {
+      "test": "test_device_memory_budget_rejects_values_below_safety_floor",
+      "decision": "keep",
+      "reason": "0、负数、bool 与低于 1GiB 的预算拒绝，避免低于安全线运行。"
+    },
+    {
+      "test": "test_event_state_and_time_invariants",
+      "decision": "keep",
+      "reason": "事件非法终态、时间倒置、预算/用量矛盾与缺错误字段拒绝，避免伪造成功或错误时延。"
+    },
+    {
+      "test": "test_explicit_device_memory_budget_keeps_default_and_survives_loading",
+      "decision": "keep",
+      "reason": "设备默认内存线 8GiB、显式 1GiB 可正常加载并冻结，避免预算选项失效。"
+    },
+    {
+      "test": "test_memory_evidence_keeps_byte_unit",
+      "decision": "delete",
+      "reason": "内存单位拒绝重复 test_sample_invalid_missingness_identity_and_window 的 unit 参数及 test_windows_resources.py::test_memory_sources_units_identity_and_missing_metadata。"
+    },
+    {
+      "test": "test_non_finite_or_boolean_measurements_rejected",
+      "decision": "keep",
+      "reason": "非有限或 bool 测量拒绝，避免 JSON/统计中的无效值成为成绩。"
+    },
+    {
+      "test": "test_sample_invalid_missingness_identity_and_window",
+      "decision": "keep",
+      "reason": "sample 缺测原因、PID、窗口与单位矛盾拒绝，避免错误资源证据。"
+    },
+    {
+      "test": "test_sample_missing_and_zero_are_distinct",
+      "decision": "keep",
+      "reason": "明确零与带原因 null 都合法，避免把未测当零。"
+    },
+    {
+      "test": "test_strict_json_errors_do_not_echo_content",
+      "decision": "keep",
+      "reason": "M16：含敏感标记的坏 JSON 错误不得回显标记；删除不含标记时恒成立的四个参数，严格拒绝仍由 cost_json 字面量路径覆盖。"
+    },
+    {
+      "test": "test_structural_errors_rejected_by_both_validators",
+      "decision": "keep",
+      "reason": "未知字段、旧版本和 bool 版本均被 Schema 与解析器拒绝，避免旧/错 wire 静默入场。"
+    },
+    {
+      "test": "test_summary_does_not_allow_incomplete_quality_score",
+      "decision": "keep",
+      "reason": "不完整 summary 不能保留完整质量分数，避免短测冒充正式结果。"
+    },
+    {
+      "test": "test_summary_does_not_silently_drop_unscorable_case",
+      "decision": "keep",
+      "reason": "unscorable 不得从质量分母偷偷消失，避免提高通过率。"
+    },
+    {
+      "test": "test_summary_incomplete_cannot_claim_comparison_eligibility",
+      "decision": "keep",
+      "reason": "不完整 trial 不能宣称指标可比较，避免缺测运行生成差值结论。"
+    },
+    {
+      "test": "test_summary_ledger_rejects_inconsistent_counts",
+      "decision": "keep",
+      "reason": "summary 计划/执行/五终态与 bool 计数矛盾拒绝，避免分母失守。"
+    },
+    {
+      "test": "test_summary_rejects_fabricated_empty_distribution",
+      "decision": "keep",
+      "reason": "空分布不能虚构 max=0，避免无测量被误读为零延迟。"
+    },
+    {
+      "test": "test_summary_rejects_wrong_metric_units",
+      "decision": "keep",
+      "reason": "L03/L04 错单位拒绝，避免时间指标按错误量纲展示。"
+    },
+    {
+      "test": "test_unknown_event_type_is_not_silently_accepted",
+      "decision": "keep",
+      "reason": "未知 event_type 拒绝，避免无法解释的事件悄悄通过封存核验。"
+    },
+    {
+      "test": "test_valid_wire_contracts_and_independent_json_schema",
+      "decision": "delete",
+      "reason": "仅检查 wire fixture roundtrip 与深拷贝，结构接纳由 test_structural_errors_rejected_by_both_validators 和各业务输入测试覆盖。"
+    }
+  ]
+}

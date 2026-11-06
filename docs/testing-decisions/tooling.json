@@ -1,0 +1,55 @@
+{
+  "group": "tooling",
+  "totals": {
+    "keep": 28,
+    "delete": 10
+  },
+  "files": [
+    {
+      "source_path": "studio/scripts/test_package.py",
+      "record": "docs/testing-decisions/tooling/studio/scripts/test_package.py.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/tests/ui/test_run.py",
+      "record": "docs/testing-decisions/tooling/studio/tests/ui/test_run.py.json",
+      "totals": {
+        "keep": 2,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "tools/tests/test_dev_lifecycle.py",
+      "record": "docs/testing-decisions/tooling/tools/tests/test_dev_lifecycle.py.json",
+      "totals": {
+        "keep": 11,
+        "delete": 3
+      }
+    },
+    {
+      "source_path": "tools/tests/test_dev_recovery.py",
+      "record": "docs/testing-decisions/tooling/tools/tests/test_dev_recovery.py.json",
+      "totals": {
+        "keep": 4,
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "tools/tests/test_dev_state.py",
+      "record": "docs/testing-decisions/tooling/tools/tests/test_dev_state.py.json",
+      "totals": {
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "tools/tests/test_ui_runner.py",
+      "record": "docs/testing-decisions/tooling/tools/tests/test_ui_runner.py.json",
+      "totals": {
+        "keep": 2,
+        "delete": 4
+      }
+    }
+  ]
+}

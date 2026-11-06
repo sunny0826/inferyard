@@ -27,8 +27,6 @@ def test_large_current_report_verifies_and_explicitly_rerenders(tmp_path):
     assert read_json(path) == index
     reads = TrialReads(out)
     assert reads.json("index.json") == index
-    assert reads.observed()["index.json"] == (path.stat().st_size, saved["index.json"])
-    assert not reads.errors
     for rerender in (False, True):
         result = verify_report(out, options=VerificationOptions(rerender=rerender))
         assert result == {

@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/preview_parity_reset_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewResetLeavesNextTaskAloneParity",
+      "decision": "keep",
+      "reason": "空闲和活动+排队起点重置只能取消旧任务，UI 收尾之后的新专项必须保持 starting；双方各有明确预期，删除多余互比。"
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import pytest
 from inferyard.config.preparation_io import PreparationError
 from inferyard.platforms.identity import hash_file
 from inferyard.platforms.model_source import source_declaration
-from tests.unit.test_model_source import record_for, source
+from tests.unit.test_model_source import record_for
 
 
 def record_and_model(tmp_path, version):
@@ -23,14 +23,10 @@ def test_original_and_current_records_bind_without_rewriting(tmp_path, version):
     original = json.dumps(record).encode()
     path.write_bytes(original)
     assert source_declaration(path, model) == (
-        source("huggingface").repository,
-        source("huggingface").revision,
+        "ggml-org/models-moved",
+        "499bc8821c6b12b4e53c5bffcb21ec206f212d81",
     )
     assert path.read_bytes() == original
-    if version < 3:
-        assert "metadata_sha256" in json.loads(path.read_bytes())
-    if version == 1:
-        assert "acquisition_budget" not in json.loads(path.read_bytes())
 
 
 @pytest.mark.parametrize(

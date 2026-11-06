@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/local_engines/test_offline.py",
+  "decisions": [
+    {
+      "test": "test_frozen_json_requires_canonical_bytes",
+      "decision": "keep",
+      "reason": "非规范JSON字节即便hash匹配也不能当冻结身份输入，避免对象重建摘要歧义。"
+    },
+    {
+      "test": "test_offline_bootstrap_is_portable_and_does_not_read_current_files",
+      "decision": "keep",
+      "reason": "bootstrap复制到当前不存在路径后仍可只用封存数据核验，不能依赖当前包绝对路径。"
+    },
+    {
+      "test": "test_offline_does_not_open_assets",
+      "decision": "keep",
+      "reason": "删除全部当前资产目录后，封存身份仍可离线校验，不得重开当前安装或模型。"
+    },
+    {
+      "test": "test_offline_file_inventory_tampering",
+      "decision": "keep",
+      "reason": "封存FileIdentity尺寸不符必须拒绝，防止错误库存绑定。"
+    },
+    {
+      "test": "test_offline_model_body_tampering",
+      "decision": "keep",
+      "reason": "封存模型manifest内hash改变必须拒绝，不能信配置外壳。"
+    },
+    {
+      "test": "test_offline_rejects_invalid_python_startup_even_with_matching_hashes",
+      "decision": "keep",
+      "reason": "重新计算摘要后bootstrap绕过、缺失/重复root和context不匹配仍须离线拒绝。"
+    },
+    {
+      "test": "test_offline_runtime_body_tampering",
+      "decision": "keep",
+      "reason": "封存runtime内容改变必须拒绝，不能继承旧安装资格。"
+    },
+    {
+      "test": "test_offline_worker_declaration_is_bound_without_live_reads",
+      "decision": "keep",
+      "reason": "worker声明必须被安装摘要绑定；合法更新后可离线验证且不读当前文件。"
+    },
+    {
+      "test": "test_offline_worker_semantics_reject_even_with_updated_hashes",
+      "decision": "keep",
+      "reason": "重新算摘要也不能把缺offline、外家族变量、PYTHONPATH或库搜索路径当合法worker环境。"
+    }
+  ]
+}

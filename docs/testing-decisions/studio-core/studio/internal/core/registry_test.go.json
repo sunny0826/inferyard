@@ -1,0 +1,35 @@
+{
+  "source_path": "studio/internal/core/registry_test.go",
+  "decisions": [
+    {
+      "test": "TestRegistryEngineRootsDepthAndPlainFile",
+      "decision": "keep",
+      "reason": "工作区和用户引擎、已下载普通文件合并可选；过深/不可执行排除，外工作区新下载不得抢默认选择且不泄绝对路径。"
+    },
+    {
+      "test": "TestRegistryInvalidSnapshotReportsFailure",
+      "decision": "keep",
+      "reason": "损坏设备快照必须报模型读取错误，防空列表掩盖 CLI 数据损坏。"
+    },
+    {
+      "test": "TestRegistryModelsCombineAndDeduplicate",
+      "decision": "keep",
+      "reason": "下载模型与快照合并去重，缺元数据保持未知，明确 unavailable 不可选，防重复选项和失效模型启动。"
+    },
+    {
+      "test": "TestRegistrySameRootNamesKeepIdentityWhenMtimeChanges",
+      "decision": "keep",
+      "reason": "同名不同目录引擎更新时间变化不能交换名称对应路径，防当前选择悄然指向另一引擎。"
+    },
+    {
+      "test": "TestRegistrySelectionReachesExecutor",
+      "decision": "keep",
+      "reason": "模型/引擎选择须映射实际路径并拒绝未知名称，防 UI 所选资源和 CLI 执行资源不一致。"
+    },
+    {
+      "test": "TestScanEngineBinariesAcceptsExecutableNamesCaseInsensitively",
+      "decision": "keep",
+      "reason": "不同大小写及 exe 名称仍可发现，防用户安装的合法引擎因文件名大小写不可选。"
+    }
+  ]
+}

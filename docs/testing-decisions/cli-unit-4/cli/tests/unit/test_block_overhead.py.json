@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_block_overhead.py",
+  "decisions": [
+    {
+      "test": "test_absolute_pair_directions_do_not_cancel_and_contract_is_immutable",
+      "decision": "keep",
+      "reason": "ABBA 两方向绝对偏移不相消且冻结容差不可改，避免偏差抵消制造通过。"
+    },
+    {
+      "test": "test_only_qualified_per_request_statistics_can_be_compared",
+      "decision": "keep",
+      "reason": "M5：proof、容差、shape、cohort、aggregate 或 tokenizer 不满足时 L05 不可比较，正常条件可比较；删除 Python 入参深拷贝不变断言。"
+    },
+    {
+      "test": "test_per_statistic_gate_does_not_replace_e2e_or_pool_block_samples",
+      "decision": "keep",
+      "reason": "每个 block 统计独立开销门、不能池化请求样本，max 超限不应被 p50 通过掩盖。"
+    },
+    {
+      "test": "test_unknown_or_changed_chunks_never_qualify",
+      "decision": "keep",
+      "reason": "chunk 形状/数量变或缺失/非有限/负统计不授资格，避免不同输出工作量借用开销结果。"
+    },
+    {
+      "test": "test_zero_gaps_have_valid_absolute_tolerance_and_p95_requires_twenty",
+      "decision": "keep",
+      "reason": "零 block 间隔合法、p95 少于二十缺测、坏 index 不产 shape，避免零时延丢失或小样本伪精度。"
+    }
+  ]
+}

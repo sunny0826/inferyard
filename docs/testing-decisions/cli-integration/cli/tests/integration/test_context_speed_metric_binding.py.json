@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/integration/test_context_speed_metric_binding.py",
+  "decisions": [
+    {
+      "test": "test_formal_input_usage_must_match_tokenized_prompt",
+      "decision": "keep",
+      "reason": "formal usage缺失、重复或不同于独立tokenize结果时，不得汇总速度结论。"
+    },
+    {
+      "test": "test_verified_template_newline_survives_offline_read",
+      "decision": "keep",
+      "reason": "模板末尾换行按真实字节绑定；模板文件删除后，已有封存结果仍能离线读取。"
+    }
+  ]
+}

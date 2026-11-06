@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_partial.py",
+  "decisions": [
+    {
+      "test": "test_missing_manifest_does_not_claim_requested_rerender",
+      "decision": "keep",
+      "reason": "真缺manifest仅partial3且不能宣称rerender核验通过，保留实际请求前缀供审阅。"
+    },
+    {
+      "test": "test_unreadable_manifest_entry_is_not_treated_as_missing",
+      "decision": "keep",
+      "reason": "manifest权限不可读不是不存在，必须拒绝而非降级partial，避免坏封存包获得部分恢复。"
+    },
+    {
+      "test": "test_unsafe_manifest_never_becomes_partial",
+      "decision": "keep",
+      "reason": "manifest是dangling/symlink/目录时必须证据错误4，不能当缺seal的partial3放宽校验。"
+    }
+  ]
+}

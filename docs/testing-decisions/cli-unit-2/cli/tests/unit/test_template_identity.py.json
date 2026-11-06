@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_template_identity.py",
+  "decisions": [
+    {
+      "test": "test_existing_evidence_without_binding_requires_exact_raw_hash",
+      "decision": "keep",
+      "reason": "旧无receipt证据仅接受精确原始hash，不随新归一化规则改旧身份边界。"
+    },
+    {
+      "test": "test_offline_recomputes_original_and_service_identity",
+      "decision": "keep",
+      "reason": "离线按已保存原模板与固定lexer绑定服务模板，缺receipt不能凭归一化匹配，避免旧证据被放宽。"
+    },
+    {
+      "test": "test_offline_rejects_bad_binding",
+      "decision": "keep",
+      "reason": "错误原文/build/profile/类型/编码或service模板拒绝，避免伪造receipt授模板身份。"
+    }
+  ]
+}

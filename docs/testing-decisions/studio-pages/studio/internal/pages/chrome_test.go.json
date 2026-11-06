@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/pages/chrome_test.go",
+  "decisions": [
+    {
+      "test": "TestChromeLayoutAcrossPages",
+      "decision": "delete",
+      "reason": "固定按钮宽度、工具栏坐标和刷新按钮数量，主要约束排版；各流程行为由 preview workflow/parity 覆盖。"
+    },
+    {
+      "test": "TestChromeRefreshShortcutRemoved",
+      "decision": "delete",
+      "reason": "仅固定全局刷新入口和快捷键的移除形状；未验证一次刷新造成的具体错误。"
+    },
+    {
+      "test": "TestCompletionToastAndInlineError",
+      "decision": "delete",
+      "reason": "删除测试专用 view 路径、toast 坐标与 pendingToast 记账；关闭后多帧不重现已并入 TestProductionContentPathShowsToastAndAnnounces，失败页面文本与播报已并入 TestProductionContentPathKeepsErrorsInline。"
+    }
+  ]
+}

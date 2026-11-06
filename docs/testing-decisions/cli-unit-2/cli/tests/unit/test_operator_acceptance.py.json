@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_operator_acceptance.py",
+  "decisions": [
+    {
+      "test": "test_command_preserves_nonzero_exit",
+      "decision": "keep",
+      "reason": "执行命令非零必须保留该退出码，避免包装器把失败记为通过。"
+    },
+    {
+      "test": "test_no_temperature_gate_but_observations_preserved",
+      "decision": "keep",
+      "reason": "温度99或缺测仍保留原观测且未声明温度门不应阻塞，避免包装器擅自加验收门；删固定 safety fixture 值断言。"
+    },
+    {
+      "test": "test_service_readiness_failure_stops_child",
+      "decision": "keep",
+      "reason": "服务 ready 失败停止自己启动的服务且记录停止证据，避免诊断失败后服务泄漏。"
+    },
+    {
+      "test": "test_stopped_run_can_export_without_human_signoff",
+      "decision": "keep",
+      "reason": "运行因安全条件停止仍可导出不完整报告，无人类 signoff 不应阻塞离线产物。"
+    },
+    {
+      "test": "test_timeout_reaps_owned_child",
+      "decision": "keep",
+      "reason": "包装步骤超时回收自己启动的进程并保存 wrapper_timeout，避免后台遗留任务。"
+    },
+    {
+      "test": "test_verify_binds_explicit_packet_to_expected_hashes",
+      "decision": "keep",
+      "reason": "operator 包源码/preview/frozen hash 不一致必须拒绝，避免验收运行未批准计划。"
+    }
+  ]
+}

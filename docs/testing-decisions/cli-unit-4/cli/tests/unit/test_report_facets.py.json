@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_report_facets.py",
+  "decisions": [
+    {
+      "test": "test_dates_use_first_event_and_explicit_timezone",
+      "decision": "keep",
+      "reason": "首事件明确时区转换为 UTC 日期，坏值与无时区缺测，避免筛选报告分错日期。"
+    },
+    {
+      "test": "test_facets_preserve_content_identity_without_runtime_binding",
+      "decision": "keep",
+      "reason": "PID/审核记录不改内容分组，prompt 改 bundle、threads 改 recipe，避免报告把不同模型条件混为同组。"
+    }
+  ]
+}

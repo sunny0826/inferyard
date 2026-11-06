@@ -1,0 +1,41 @@
+{
+  "source_path": "cli/tests/unit/test_lab_identity.py",
+  "decisions": [
+    {
+      "test": "test_bind_files_uses_one_size_scaled_deadline",
+      "decision": "delete",
+      "reason": "仅以 mock 比较 manifest_hash_seconds 与传入 deadline/列表长度，未实际证明大资产可在预算内完成，属于公式和接线自测。"
+    },
+    {
+      "test": "test_cudart_declaration_requires_matching_actual_mapping",
+      "decision": "keep",
+      "reason": "声明与实际映射 cudart 必须一致，避免错用未冻结 CUDA 库。"
+    },
+    {
+      "test": "test_environment_outside_contract_identity_surface_is_not_frozen",
+      "decision": "keep",
+      "reason": "合同范围外环境变量不冻结、不泄露，避免普通 PATH 变化造成错误拒绝或隐私持久化；删除调用次数。"
+    },
+    {
+      "test": "test_lab_process_keeps_full_filetime_and_rechecks_binding",
+      "decision": "delete",
+      "reason": "D2：绑定器 mock 原样返回 expected，本测试只检查回显 start_ticks 和固定标签；没有验证 FILETIME 比对或第二次绑定。实际绑定拒绝由 Windows process 测试覆盖。"
+    },
+    {
+      "test": "test_lab_process_refuses_unbound_or_changed_identity",
+      "decision": "keep",
+      "reason": "M1：保留实际 _process_details 对模型、启动参数、环境和加载库变化的拒绝；删除由 mock 自己抛出的 PID reused 子场景，真实句柄 FILETIME 复用由 Windows process 测试覆盖。"
+    },
+    {
+      "test": "test_ninfer_positional_asset_and_frozen_cuda_environment",
+      "decision": "keep",
+      "reason": "NInfer 位置模型参数可绑定，冻结 CUDA 环境改变须拒绝，避免换设备/缓存条件后仍沿用身份；删除调用次数。"
+    },
+    {
+      "test": "test_process_evidence_uses_independent_sanitized_observed_argv",
+      "decision": "keep",
+      "reason": "M2：观察参数含凭据时返回证据必须不含凭据；移除同一生产 helper 自证、Python 深拷贝身份及内部 argv 摘要接线断言。",
+      "renamed_to": "test_process_evidence_does_not_expose_observed_credentials"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_duration_send_admission.py",
+  "decisions": [
+    {
+      "test": "test_admitted_start_and_send_share_sample_and_include_durable_write_cost",
+      "decision": "keep",
+      "reason": "截止前接纳请求，发送时间包含持久化 started 的成本且只计一次 completed，避免漏算观测开销；删内部游标标记断言。"
+    },
+    {
+      "test": "test_callback_write_failure_never_sends_or_cleans_dirty",
+      "decision": "keep",
+      "reason": "保留证据写失败不发送、不生成终态、持久 dirty 保留；删 idle 查询序列。"
+    },
+    {
+      "test": "test_cancel_after_admission_keeps_cancelled_terminal",
+      "decision": "keep",
+      "reason": "保留发送一次、cancelled terminal/send 时间/计数与最终 clean；删 next_formal 和 idle 查询序列。"
+    },
+    {
+      "test": "test_cancel_queued_generation_has_no_orphan_terminal",
+      "decision": "keep",
+      "reason": "保留取消排队不发送、不产生孤立终态和 dirty 清除；删 idle 查询序列。"
+    },
+    {
+      "test": "test_declined_request_cannot_clear_dirty_without_idle",
+      "decision": "keep",
+      "reason": "过期拒绝请求但无法确认服务空闲时必须保留 dirty 并报 service_stop_unconfirmed。"
+    },
+    {
+      "test": "test_generate_default_interface_and_declined_state_are_compatible",
+      "decision": "delete",
+      "reason": "重复 adapter 接口 happy path 与 None 状态；真实准入结果由 test_queued_generation_at_or_after_deadline_has_no_attempt 覆盖。"
+    },
+    {
+      "test": "test_missing_terminal_is_tool_failure_not_silent_decline",
+      "decision": "keep",
+      "reason": "保留发送一次但缺终态时报工具错误、dirty 保留与账本 invalid；删 next_formal。"
+    },
+    {
+      "test": "test_queued_generation_at_or_after_deadline_has_no_attempt",
+      "decision": "keep",
+      "reason": "保留无 POST/started/finished、持久 dirty 清除和空账本；删内部 idle 查询序列。"
+    }
+  ]
+}

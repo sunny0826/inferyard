@@ -1,0 +1,90 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_common_identity.py",
+  "decisions": [
+    {
+      "test": "test_additional_services_refuse_unsupported_native_platform",
+      "decision": "keep",
+      "reason": "不支持平台的 mlx/lmstudio 不得绑定，避免输出伪原生资格。"
+    },
+    {
+      "test": "test_empty_argument_vector_fails_cleanly",
+      "decision": "keep",
+      "reason": "空 argv 返回固定预检错误，避免无法证明启动身份时继续执行。"
+    },
+    {
+      "test": "test_linux_llama_environment_missing_is_not_an_empty_environment",
+      "decision": "keep",
+      "reason": "缺 environ 不能当空环境；真实空文件才接受，避免权限/缺文件被误当无覆盖。"
+    },
+    {
+      "test": "test_linux_llama_environment_rejects_overrides_and_unreadable_forms",
+      "decision": "keep",
+      "reason": "Linux 覆盖变量、损坏/重复/缺尾 environ 必须拒绝且不泄露 private 值。"
+    },
+    {
+      "test": "test_llama_alternate_assets_downloads_and_ambiguous_options_fail",
+      "decision": "keep",
+      "reason": "附加模型、LoRA、视觉、下载、RPC、配置与歧义参数全部拒绝，避免冻结模型身份被其他资产替代。"
+    },
+    {
+      "test": "test_llama_does_not_accept_directory_model_or_python_wrapper",
+      "decision": "keep",
+      "reason": "目录模型或 Python 包装歧义不能伪称原生单文件 llama 身份。"
+    },
+    {
+      "test": "test_llama_environment_added_during_native_evidence_read_is_rejected",
+      "decision": "keep",
+      "reason": "原生读取期间环境新增视觉模型参数必须拒绝，避免混合时点身份。"
+    },
+    {
+      "test": "test_llama_linux_binding_reuses_pid_and_listener_checks",
+      "decision": "keep",
+      "reason": "Linux llama 即使可执行文件改名仍绑定实际监听 PID，绑定后环境注入 RPC 必须拒绝，防止隐藏后端改变。"
+    },
+    {
+      "test": "test_llama_mac_environment_cannot_override_frozen_arguments",
+      "decision": "keep",
+      "reason": "macOS 环境变量不能覆盖冻结参数，错误不暴露变量值或凭据。"
+    },
+    {
+      "test": "test_llama_mac_environment_is_rechecked_after_binding",
+      "decision": "keep",
+      "reason": "绑定后添加环境 RPC 也须拒绝，避免一次校验后被替换运行条件。"
+    },
+    {
+      "test": "test_llama_mac_unreadable_environment_fails_closed",
+      "decision": "keep",
+      "reason": "无法读取环境时拒绝绑定，不能假设环境为空并漏掉隐藏模型设置。"
+    },
+    {
+      "test": "test_llama_macos_binding_is_native_single_file_and_revalidates",
+      "decision": "keep",
+      "reason": "macOS llama 绑定实际单文件模型，模型被替换必须重新检查失败，避免答案归属错误模型；删 listener_inode 结构断言。"
+    },
+    {
+      "test": "test_mlx_binds_valid_optional_context",
+      "decision": "delete",
+      "reason": "只重复边界值与等号拼写的正向绑定；上下文实际准入由 test_http_rejects_total_context_before_admission_and_remains_usable 覆盖。"
+    },
+    {
+      "test": "test_mlx_only_binds_the_packaged_server_content_and_rechecks_it",
+      "decision": "keep",
+      "reason": "MLX 仅绑定打包入口字节且运行前复核，入口更换必须失败，避免不同实现继承测量身份。"
+    },
+    {
+      "test": "test_mlx_rejects_invalid_duplicate_or_unknown_context",
+      "decision": "keep",
+      "reason": "非法/重复/未知 context 选项拒绝绑定，避免配置与真实上下文不一致。"
+    },
+    {
+      "test": "test_mlx_upstream_or_ambiguous_entrypoint_is_rejected",
+      "decision": "keep",
+      "reason": "上游 server、-c、adapter 与重复模型参数不能伪称受控 MLX 服务。"
+    },
+    {
+      "test": "test_script_changed_during_native_evidence_read_is_rejected",
+      "decision": "keep",
+      "reason": "读取原生证据期间脚本被替换要拒绝，避免组合两个版本的身份。"
+    }
+  ]
+}

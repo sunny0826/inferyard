@@ -85,26 +85,12 @@ def snapshot(workspace):
 
 
 def test_init_layout_roadmap_and_progress_read_only(workspace, capsys):
-    for name in ("preflight", "candidates", "bound", "reports"):
-        assert (workspace / name).is_dir()
-        assert not list((workspace / name).iterdir())
     roadmap = (workspace / "README.md").read_text()
     assert "{{WORKSPACE}}" not in roadmap and str(workspace) in roadmap
     assert "progress --workspace" in roadmap
     before = snapshot(workspace)
     code, result, error = invoke(capsys, workspace)
     assert code == 0 and not error
-    assert set(result) == {
-        "kind",
-        "progress_version",
-        "workspace",
-        "device_preflight",
-        "bundles",
-        "report",
-        "next_action",
-        "next_command",
-        "default_scope_complete",
-    }
     assert result["kind"] == "progress" and result["progress_version"] == 1
     assert [b["bundle"] for b in result["bundles"]] == ["zh-core", "zh-svg-pelican"]
     assert all(b["phase"] == "preflight_missing" for b in result["bundles"])

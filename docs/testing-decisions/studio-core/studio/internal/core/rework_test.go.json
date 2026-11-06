@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/core/rework_test.go",
+  "decisions": [
+    {
+      "test": "TestCorruptSettingsUseDefaults",
+      "decision": "keep",
+      "reason": "损坏或错误类型设置不应部分生效，启动不覆写原文件且用户保存可恢复，日志不泄原文，防错误路径和配置丢失。"
+    },
+    {
+      "test": "TestSettingsExistingDirectoryPermissions",
+      "decision": "keep",
+      "reason": "已有宽权限目录在保存时须收紧至 0700/0600，防其他本机用户读取设置。"
+    }
+  ]
+}

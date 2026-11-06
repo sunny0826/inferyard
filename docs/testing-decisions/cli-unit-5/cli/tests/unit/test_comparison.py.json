@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_comparison.py",
+  "decisions": [
+    {
+      "test": "test_cache_protocol_difference_blocks_controlled_comparison",
+      "decision": "keep",
+      "reason": "cache协议不同拒绝受控比较，避免缓存效果误作模型性能。"
+    },
+    {
+      "test": "test_config_declared_factor_propagates_to_startup_but_second_factor_blocks",
+      "decision": "keep",
+      "reason": "声明threads单因子可同步启动参数，另改threads_batch则拒绝，避免多因子归因。"
+    },
+    {
+      "test": "test_model_and_locations_may_change_but_measurement_source_may_not",
+      "decision": "keep",
+      "reason": "模型和端口可变但测量源码不同不能质量比较，避免实现变化被当模型差。"
+    },
+    {
+      "test": "test_performance_change_does_not_erase_quality_and_never_grants_performance",
+      "decision": "keep",
+      "reason": "性能profile不同仍允许质量但不给性能资格，避免把两类结论混为一谈。"
+    },
+    {
+      "test": "test_quality_difference_has_same_definition_and_explicit_direction",
+      "decision": "keep",
+      "reason": "质量差值按右减左为0.25，定义不同则null，避免符号或版本造成误判。"
+    },
+    {
+      "test": "test_quality_metric_eligibility_cannot_be_overridden_by_pair_gate",
+      "decision": "keep",
+      "reason": "整体质量可比不能覆盖单指标comparison_eligible=false，避免局部缺资格仍给差值。"
+    },
+    {
+      "test": "test_safety_policy_must_match_including_disabled_thresholds",
+      "decision": "keep",
+      "reason": "安全策略包括禁用阈值与轮询间隔须一致，避免条件不同仍受控比较。"
+    },
+    {
+      "test": "test_unknown_incomplete_and_side_by_side_never_produce_deltas",
+      "decision": "keep",
+      "reason": "未知身份、不完整及side-by-side不能输出受控差值，避免错误排名。"
+    }
+  ]
+}

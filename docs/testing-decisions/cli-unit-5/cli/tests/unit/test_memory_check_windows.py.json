@@ -1,0 +1,100 @@
+{
+  "source_path": "cli/tests/unit/test_memory_check_windows.py",
+  "decisions": [
+    {
+      "test": "test_agent_ancestor_protects_its_other_descendants",
+      "decision": "keep",
+      "reason": "调用者的agent祖先与其他子进程仍受保护，避免中断当前工作环境。"
+    },
+    {
+      "test": "test_cancellation_reaps_only_owned_worker",
+      "decision": "keep",
+      "reason": "取消诊断回收自有worker并传播KeyboardInterrupt，避免后台遗留。"
+    },
+    {
+      "test": "test_deadline_reaps_owned_worker_with_partial_host",
+      "decision": "keep",
+      "reason": "收集期限到达后自有worker确实退出且保留部分主机信息，避免诊断留下后台进程。"
+    },
+    {
+      "test": "test_declared_tree_and_caller_ancestors_do_not_protect_siblings",
+      "decision": "keep",
+      "reason": "声明保护和调用者祖先不扩到兄弟进程，无法核实的保护PID须标覆盖不完整。"
+    },
+    {
+      "test": "test_failed_worker_is_tool_error",
+      "decision": "keep",
+      "reason": "自有worker非零退出必须成为工具错误，不能把采集失败当无进程。"
+    },
+    {
+      "test": "test_groups_use_file_owner_session_never_name_and_redact_identity",
+      "decision": "keep",
+      "reason": "同名不同文件/账户/session不得合并，RSS与private分别求和并脱敏身份，避免错误释放估计和泄露路径。"
+    },
+    {
+      "test": "test_identity_reuse_discards_both_measurements",
+      "decision": "keep",
+      "reason": "PID启动、账户或session中途变化必须丢弃两种内存测量，避免把其他进程内存挂到旧身份。"
+    },
+    {
+      "test": "test_inaccessible_and_exited_keep_rows",
+      "decision": "keep",
+      "reason": "权限不足或退出仍保留缺测行与原因，避免进程消失并高估覆盖率。"
+    },
+    {
+      "test": "test_owner_missing_preserves_memory_without_group_or_recommendation",
+      "decision": "keep",
+      "reason": "所有者读不到时内存仍可显示但不分组或推荐，避免错误建议关闭未知应用。"
+    },
+    {
+      "test": "test_parent_reuse_does_not_discard_own_memory_or_propagate_protection",
+      "decision": "keep",
+      "reason": "父PID复用不丢子进程自身内存也不继承保护，避免错误依赖关系。"
+    },
+    {
+      "test": "test_partial_private_measurement_keeps_working_set_and_total_null",
+      "decision": "keep",
+      "reason": "部分private缺测时RSS仍有总量、private总量为null及已知值，不能低估真实占用。"
+    },
+    {
+      "test": "test_protections_and_verified_descendants",
+      "decision": "keep",
+      "reason": "安全软件、agent、SSH、系统session/账户/路径及可信子进程须保护，避免建议关闭关键进程。"
+    },
+    {
+      "test": "test_security_name_under_system_root_protects_descendants",
+      "decision": "keep",
+      "reason": "系统目录内安全软件仍保护其子进程，避免路径分类遮蔽安全软件身份。"
+    },
+    {
+      "test": "test_system_pid_zero_is_not_reported_as_exited",
+      "decision": "keep",
+      "reason": "系统PID0身份不可得应保护而非报已退出，避免把内核当可关闭应用。"
+    },
+    {
+      "test": "test_windows_contract_rejects_corruption",
+      "decision": "keep",
+      "reason": "保存诊断中的错误版本、布尔内存、假覆盖、错误分组及身份源须拒绝，防止载入误导性关闭建议。"
+    },
+    {
+      "test": "test_windows_saved_contract_examples",
+      "decision": "keep",
+      "reason": "已发布Windows合法样例可读而非法样例拒绝，保障保存格式和发行样例。"
+    },
+    {
+      "test": "test_worker_command_owns_actual_interpreter_and_preserves_module_imports",
+      "decision": "delete",
+      "reason": "改写私有_worker_command中的runpy源码再启动替代脚本，只验证命令实现形状和参数传递。"
+    },
+    {
+      "test": "test_worker_process_limit",
+      "decision": "delete",
+      "reason": "直接调用私有_worker并检查_send消息顺序与数量，属于内部工作协议自测；扫描不完整禁止推荐由test_memory_check.py::test_unavailable_protection_or_incomplete_scan_never_produces_review覆盖。"
+    },
+    {
+      "test": "test_working_set_and_private_commit_are_distinct",
+      "decision": "delete",
+      "reason": "单行读取字段复述mock；工作集/私有提交不同总量由test_groups_use_file_owner_session_never_name_and_redact_identity覆盖。"
+    }
+  ]
+}

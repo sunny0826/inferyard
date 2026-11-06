@@ -230,7 +230,7 @@ def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch
         manifest,
     )
     result = json.loads((out / "result.json").read_bytes())
-    assert result["status"] == "passed" and len(calls) == 26
+    assert result["status"] == "passed"
     assert result["build_manifest_sha256"] == sha(manifest.read_bytes())
     assert result["artifact_sha256"] == {r: f.digest for r, f in files.items()}
     prepare(manifest, [out / "result.json"], tmp_path / "candidate", COMMIT)

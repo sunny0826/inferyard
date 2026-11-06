@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_macos_native_policy.py",
+  "decisions": [
+    {
+      "test": "test_active_policy_prefers_lowercase_and_only_absence_falls_back",
+      "decision": "keep",
+      "reason": "真实属性名优先且仅缺失时回退，UPS 不当 AC，避免非法设置被另一字段掩盖。"
+    },
+    {
+      "test": "test_mach_swap_uses_vm_size_pointer_and_releases_port",
+      "decision": "delete",
+      "reason": "只对伪 ctypes 指针类型、flavor 数值和 release 调用次数断言，属于 FFI 形状自测；换页量纲由 test_macos_resources.py::test_factory_and_native_counter_units 覆盖，原生能力另验。"
+    },
+    {
+      "test": "test_native_policy_rejects_invalid_low_power",
+      "decision": "keep",
+      "reason": "bool、未知、负数等低功耗值保持 unknown，避免不明政策当作关闭节能。"
+    },
+    {
+      "test": "test_native_policy_rejects_invalid_power_mode",
+      "decision": "keep",
+      "reason": "非法 PowerMode 不得产生有效政策，避免电源档位证据错误。"
+    },
+    {
+      "test": "test_swap_failure_never_reuses_previous_value_or_falls_back",
+      "decision": "keep",
+      "reason": "Mach 交换读取失败不复用旧值也不走命令行回退，避免陈旧换页数冒充当前测量。"
+    }
+  ]
+}

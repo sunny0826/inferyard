@@ -2,7 +2,6 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.cli import _request, parser
 from inferyard.config.startup_portability import portable_startup
 from inferyard.evidence.storage import EvidenceError
 
@@ -59,11 +58,3 @@ def test_wrong_artifact_binding_rejected():
     value["model"]["local_path"] = "/different/model"
     with pytest.raises(EvidenceError, match="artifact_binding"):
         portable_startup(value)
-
-
-def test_public_source_check_is_offline_cli_without_endpoint_or_pid():
-    request = _request(
-        parser().parse_args(["verify", "--path", "/public", "--source-run", "/source"])
-    )
-    assert request.command == "verify"
-    assert request.endpoint_url is None and request.server_pid is None

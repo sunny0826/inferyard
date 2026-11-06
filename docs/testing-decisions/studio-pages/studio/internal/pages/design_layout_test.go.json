@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/pages/design_layout_test.go",
+  "decisions": [
+    {
+      "test": "TestDesignLayoutMatrix",
+      "decision": "delete",
+      "reason": "多页面/宽度/缩放/主题/对比度矩阵只检查坐标、标题数量和工具栏不动，含重复渲染；designNodes、designFixture helper 保留。"
+    },
+    {
+      "test": "TestDesignModelsStackAndLongPath",
+      "decision": "delete",
+      "reason": "只固定三个区块的纵向顺序。"
+    }
+  ]
+}

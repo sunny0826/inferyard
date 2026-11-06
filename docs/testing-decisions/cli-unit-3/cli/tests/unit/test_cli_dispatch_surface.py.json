@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_cli_dispatch_surface.py",
+  "decisions": [
+    {
+      "test": "test_grouped_command_preserves_backend_result",
+      "decision": "delete",
+      "reason": "注入 ModuleType 后自己返回 CommandResult 再比 DTO/次数，复述分派转换实现。"
+    },
+    {
+      "test": "test_verify_dispatch_does_not_fall_through_to_live_runner",
+      "decision": "delete",
+      "reason": "注入 verification 模块后只断言选中它及调用次数，未执行离线证据；覆盖者 test_raw_run_and_unsealed_partial_are_read_without_report。"
+    }
+  ]
+}

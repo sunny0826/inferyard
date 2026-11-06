@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_external_cpu.py",
+  "decisions": [
+    {
+      "test": "test_invalid_interval_is_missing_not_clamped_zero",
+      "decision": "keep",
+      "reason": "具体场景 test_invalid_interval_is_missing_not_clamped_zero。逐项参数：pytest.mark.parametrize('change,reason', [('counter', 'counter_regression'), ('skew', 'host_process_counter_skew'), ('gap', 'sampling_gap'), ('boot', 'counter_identity_changed'), ('missing', 'previous_sample_missing')])。可观察预期：assert result['intervals'][1]['missing_reason'] == reason；assert result['observed_max_percent'] is None。外部 CPU 以主机忙计数减服务计数并除主机容量；计数回退/时间间隙/PID 重用时为缺测，不能钳到零或授比较资格。"
+    },
+    {
+      "test": "test_residual_busy_uses_host_capacity_and_keeps_raw_scope",
+      "decision": "keep",
+      "reason": "具体场景 test_residual_busy_uses_host_capacity_and_keeps_raw_scope。可观察预期：assert result['observed_max_percent'] == 20；assert result['valid_intervals'] == 1；assert result['intervals'][0]['missing_reason'] == 'baseline_only'；assert not result['comparison_eligible']。外部 CPU 以主机忙计数减服务计数并除主机容量；计数回退/时间间隙/PID 重用时为缺测，不能钳到零或授比较资格。"
+    },
+    {
+      "test": "test_source_capture_and_pid_reuse",
+      "decision": "keep",
+      "reason": "具体场景 test_source_capture_and_pid_reuse。可观察预期：assert value['host_ticks'] == [100, 0, 20, 100, 0, 0, 0, 0]；assert value['service_ticks'] == 30；assert missing['host_ticks'] is None and missing['missing_reason']；pytest.raises(EvidenceError, match='binding')。外部 CPU 以主机忙计数减服务计数并除主机容量；计数回退/时间间隙/PID 重用时为缺测，不能钳到零或授比较资格。"
+    }
+  ]
+}

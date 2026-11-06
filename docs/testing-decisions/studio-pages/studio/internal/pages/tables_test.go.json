@@ -1,0 +1,40 @@
+{
+  "source_path": "studio/internal/pages/tables_test.go",
+  "decisions": [
+    {
+      "test": "TestDownloadTaskCardsAndDetails",
+      "decision": "keep",
+      "reason": "任务详情须展示实际目录、文件、字节、sha 和失败原因，失败项不能再取消，以便用户识别下载结果和后续恢复。"
+    },
+    {
+      "test": "TestDownloadTaskCardsRenderOnReorder",
+      "decision": "delete",
+      "reason": "只比较卡片顺序及重复文字，未点击取消/重试验证归属；真正多任务隔离由 TestPreviewDownloadsCancelRetryAndPopulateModels 覆盖。"
+    },
+    {
+      "test": "TestHistoryResumePanelKeepsTableSelection",
+      "decision": "keep",
+      "reason": "关闭续测面板及页面往返要保留选中 run，避免用户重新打开时误操作另一条历史。"
+    },
+    {
+      "test": "TestHistoryTableResumeAndDetails",
+      "decision": "keep",
+      "reason": "独立 run 或已拒绝来源不可续测，合格批次续测/实时详情须选对任务并清旧详情。"
+    },
+    {
+      "test": "TestReportMultiSelectionAndLimit",
+      "decision": "keep",
+      "reason": "生成报告只接受 1–100 个现有 run；空/超限拒绝，历史项删除须清旧选择，导航保留有效选择。"
+    },
+    {
+      "test": "TestReportTableSelection",
+      "decision": "keep",
+      "reason": "无选择不能打开，换报告后来源可达提示随之更新，打开须使用选中报告而非上一项。"
+    },
+    {
+      "test": "TestTaskTableActions",
+      "decision": "keep",
+      "reason": "进入历史任务须清旧详情和续测来源并聚焦所选 run，避免操作旧任务。"
+    }
+  ]
+}

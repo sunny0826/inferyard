@@ -1,0 +1,35 @@
+{
+  "source_path": "studio/internal/pages/review_regression_test.go",
+  "decisions": [
+    {
+      "test": "TestBindingRecoveryInBindStage",
+      "decision": "keep",
+      "reason": "旧绑定失效时多种 bundle 阶段都须提供停止/重绑恢复，避免用户卡在无法运行状态。"
+    },
+    {
+      "test": "TestInstallAndDownloadFeedbackStayOnTheirPages",
+      "decision": "keep",
+      "reason": "CLI 安装与引擎下载失败必须归各自操作页，不能将无关错误显示为当前模型/任务失败。"
+    },
+    {
+      "test": "TestQuickRunManualRecoveryWithoutProgress",
+      "decision": "delete",
+      "reason": "进度缺失提示重复 TestDashboardMissingAndUnknownProgress，准备后运行入口由 preview workflow 覆盖。"
+    },
+    {
+      "test": "TestRebindUsesFreshDirectoryAndCandidateFile",
+      "decision": "keep",
+      "reason": "重绑须用 candidate.toml、新输出目录和当前 PID，保留旧证据及 CLI 冻结输出，避免覆盖证据或绑定错身份。"
+    },
+    {
+      "test": "TestRecoveryCardSurvivesRunPhase",
+      "decision": "keep",
+      "reason": "run/resume 在旧绑定失效时仍需恢复入口；无候选或活跃运行不能出现服务控制，删除区块位置要求。"
+    },
+    {
+      "test": "TestWorkspaceSwitchClearsEngineSession",
+      "decision": "keep",
+      "reason": "切工作区必须清旧候选/进程/引擎/详情/题包选择，不能将旧工作区会话带入新结果。"
+    }
+  ]
+}

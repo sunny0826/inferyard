@@ -39,7 +39,6 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(env["TEST_RUNNER_INFERYARD_UI_SUITE"], "daily")
         self.assertEqual(manifest["suite"], "daily")
         self.assertEqual(manifest["exit_code"], 0)
-        self.assertGreaterEqual(manifest["elapsed_seconds"], 0)
 
     def test_full_failure_is_reported_and_returned(self):
         result, env, manifest = self.invoke(["--suite", "full"], 65)
@@ -47,19 +46,6 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(env["TEST_RUNNER_INFERYARD_UI_SUITE"], "full")
         self.assertEqual(manifest["suite"], "full")
         self.assertEqual(manifest["exit_code"], 65)
-
-    def test_unknown_suite_fails_before_desktop_or_build(self):
-        with (
-            patch.object(sys, "argv", ["run.py", "--suite", "ful"]),
-            patch.object(run, "require_unlocked_desktop") as desktop,
-            patch.object(run.subprocess, "run") as launch,
-            contextlib.redirect_stderr(io.StringIO()),
-            self.assertRaises(SystemExit) as error,
-        ):
-            run.main()
-        self.assertEqual(error.exception.code, 2)
-        desktop.assert_not_called()
-        launch.assert_not_called()
 
 
 if __name__ == "__main__":

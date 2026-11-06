@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/tests/ui/PreviewUITests.swift",
+  "decisions": [
+    {
+      "test": "testPreviewWorkflowsInOneWindow",
+      "decision": "keep",
+      "reason": "保留12条正常workflow及daily/full选择：准备与报告、失败重试、取消后新任务、下载重试、专项历史/取消/缺测/重读、首次使用、来源切换、引擎启停、目录模型双题包、LM Studio只重试未完成范围。删除宿主进程计数/PID/前台/窗口计数，以及选择运行popUpButton存在和折叠URL textField不存在断言。共享PreviewUIActions删场景列表和完整控件矩形包含断言，保留滚动驱动并以isHittable检查可操作性。未运行原生验收；来源标签不证明70°C数值，文字exists不证明放大窄屏Decode可见，普通报告未做原生多运行切换。"
+    }
+  ]
+}

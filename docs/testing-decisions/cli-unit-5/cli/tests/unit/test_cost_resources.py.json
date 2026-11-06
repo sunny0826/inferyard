@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_cost_resources.py",
+  "decisions": [
+    {
+      "test": "test_index_matches_full_scan_without_copying_or_reordering",
+      "decision": "delete",
+      "reason": "indexed/full_scan两种实现互相比等并断言对象身份、遍历量和不重排，没有独立产品预期；七种fault仍只是实现等价。"
+    }
+  ]
+}

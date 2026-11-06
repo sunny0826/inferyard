@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_performance.py",
+  "decisions": [
+    {
+      "test": "test_arrival_timeline_survives_redaction_without_recording_secret",
+      "decision": "keep",
+      "reason": "跨 chunk 脱敏保留原始到达时间，手算 L01-L05 正确且不泄露凭据；删除 block 字典键集合断言。"
+    },
+    {
+      "test": "test_failure_excluded_and_categories_not_pooled",
+      "decision": "keep",
+      "reason": "失败请求排除完成时延分布但保留失败首事件，类别不混池，避免失败改变速度排名。"
+    },
+    {
+      "test": "test_missing_evidence_empty_answer_and_ordinary_response",
+      "decision": "keep",
+      "reason": "非流、无回答、无用量或缺到达证据给独立原因/null，避免虚构时延/速率。"
+    },
+    {
+      "test": "test_nearest_rank_and_small_sample_policy",
+      "decision": "keep",
+      "reason": "最近秩 p95 与 20/100 小样本边界明确，避免统计分位或探索标记错误。"
+    },
+    {
+      "test": "test_same_read_blocks_preserve_zero_interval",
+      "decision": "keep",
+      "reason": "同次读取的 block 间隔零必须保留，避免去零导致 L05 偏高。"
+    }
+  ]
+}

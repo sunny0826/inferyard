@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/core/context_speed_test.go",
+  "decisions": [
+    {
+      "test": "TestContextSpeedCancelledFreshRead",
+      "decision": "keep",
+      "reason": "保留活动专项取消最终为 cancelled/130；删除精确离线读取次数及独占计数，不声称已证明取消后自动读取的数据完整到达展示层；历史读取与旧行清理由 TestContextSpeedFiveAndHistoryReadOnly、TestContextSpeedZeroAndReadFailureNeverReturnOldRows 覆盖。"
+    },
+    {
+      "test": "TestContextSpeedFiveAndHistoryReadOnly",
+      "decision": "keep",
+      "reason": "五次专项结果和历史可重新读取且不得重测；重启和 batch 丢失后任务记录仍可见，防重复计费或历史丢失。"
+    },
+    {
+      "test": "TestContextSpeedPreparationFailurePersists",
+      "decision": "keep",
+      "reason": "init 拒绝后任务失败和 limitation 必须持久可见且不继续后续准备，防失败任务消失或继续发起测量。"
+    },
+    {
+      "test": "TestContextSpeedZeroAndReadFailureNeverReturnOldRows",
+      "decision": "keep",
+      "reason": "零执行保留五个未执行样本；读取失败必须清空旧结果，重试只读不重测，防展示过期分数。"
+    }
+  ]
+}

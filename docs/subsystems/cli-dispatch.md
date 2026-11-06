@@ -50,33 +50,32 @@ CommandResult。progress 的专项建议由 config 层分派，仍保持裸 prog
 
 ```sh
 # 全量单元与集成回归（等价 mise task：mise run test）
-uv run --frozen pytest
+mise exec -- uv run --frozen pytest
 
 # 本分派面相关回归：冷启动不加载执行后端、规范命令映射、参数拒绝、progress 输出
-uv run --frozen pytest \
+mise exec -- uv run --frozen pytest \
   tests/unit/test_cli_architecture.py \
   tests/unit/test_cli_surface.py \
-  tests/unit/test_cli_dispatch_surface.py \
   tests/unit/test_workspace_progress.py
 
 # 产物识别与核验路由回归
-uv run --frozen pytest \
+mise exec -- uv run --frozen pytest \
   tests/unit/test_verification.py \
   tests/unit/test_offline_reading.py
 
-# Ruff（Python 3.15，100 列；等价 mise task：mise run lint）
-uv run --frozen ruff check src tests scripts
+# Ruff 运行缺陷检查（等价 mise task：mise run lint；规则见测试策略）
+mise exec -- uv run --frozen ruff check src tests scripts
 
 # JSON Schema 生成物与契约源无漂移（等价 mise task：mise run schemas）
-uv run --frozen python scripts/export_schemas.py --check
+mise exec -- uv run --frozen python scripts/export_schemas.py --check
 
 # 元数据冷启动冒烟（不加载实时后端）
-uv run --frozen inferyard --versions
+mise exec -- uv run --frozen inferyard --versions
 ```
 
-`test_cli_architecture.py` 用 import hook 断言 `--help`/`--versions`/`--schema` 不导入执行后端；`test_cli_surface.py` 断言已删除命令名与参数别名的显式拒绝；`test_cli_dispatch_surface.py` 断言规范命令分组不改变后端结果与退出码传递；`test_verification.py` 与 `test_offline_reading.py` 覆盖产物识别、专用验证器权威保留与核验选项约束。
+`test_cli_architecture.py` 用 import hook 断言 `--help`/`--versions`/`--schema` 不导入执行后端；`test_cli_surface.py` 断言已删除命令名与参数别名的显式拒绝；`test_verification.py` 与 `test_offline_reading.py` 覆盖产物识别、专用验证器权威保留与核验选项约束。
 
-本文是纯文档变更：写作时未执行上述命令，只核对了命令、脚本与测试文件的存在性及参数来源（mise task、`pyproject.toml` 的 pytest/ruff 配置、`scripts/export_schemas.py --check` 的 argparse 定义）。合入前应按项目流程实际运行 `test` 与 `lint`。
+测试保留标准见[测试策略](../testing.md)。实际命令链由集成测试与安装后检查验证，不保留只复述 mock 分派接线的测试。
 
 ## 与既有文档的差异
 

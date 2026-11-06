@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/options_debug_test.go",
+  "decisions": [
+    {
+      "test": "TestDebugUIOption",
+      "decision": "keep",
+      "reason": "仅 ui_debug 非 release 构建须接受预览参数并正确处理 false，保障调试入口可用而非误进真实流程。"
+    }
+  ]
+}

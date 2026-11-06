@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_model_source.py",
+  "decisions": [
+    {
+      "test": "test_ascii_filename_punctuation_is_supported",
+      "decision": "keep",
+      "reason": "加号括号的原样/百分号文件名解析一致，避免常见量化文件名被拒绝或错解。"
+    },
+    {
+      "test": "test_modelscope_download_url_carries_revision_and_path",
+      "decision": "keep",
+      "reason": "ModelScope 下载 URL 必须携带固定 revision 和嵌套路径，避免默取默认分支模型。"
+    },
+    {
+      "test": "test_nested_ascii_filename_and_uppercase_revision",
+      "decision": "keep",
+      "reason": "嵌套与空格文件名正确编码、revision 规范小写，避免合法冻结 URL 下载到错误文件。"
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "source_path": "cli/tests/unit/test_lab_generation.py",
+  "decisions": [
+    {
+      "test": "test_feed_counts_completed_line_and_pending_together",
+      "decision": "keep",
+      "reason": "具体场景 test_feed_counts_completed_line_and_pending_together。可观察预期：assert reason_of(excinfo) == 'lab_generation_size'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_feed_enforces_frame_budget_across_partial_feeds",
+      "decision": "keep",
+      "reason": "具体场景 test_feed_enforces_frame_budget_across_partial_feeds。可观察预期：assert reason_of(excinfo) == 'lab_generation_size'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_feed_rejects_oversize_pending_frame_without_newline",
+      "decision": "keep",
+      "reason": "具体场景 test_feed_rejects_oversize_pending_frame_without_newline。可观察预期：assert reason_of(excinfo) == 'lab_generation_size'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_frame_at_exact_budget_accepted",
+      "decision": "delete",
+      "reason": "固定字节阈值的成功边界重复 happy path 与预算测试；覆盖者 test_streaming_happy_path_exact_result 和 test_streaming_rejects_oversize_frame。"
+    },
+    {
+      "test": "test_frame_budget_crlf_exact_boundary_accepted",
+      "decision": "delete",
+      "reason": "CRLF 与精确阈值笛卡尔积重复；覆盖者 test_streaming_crlf_and_comment_heartbeats 和 test_streaming_rejects_oversize_frame。"
+    },
+    {
+      "test": "test_frame_budget_multibyte_split_at_boundary_accepted",
+      "decision": "delete",
+      "reason": "UTF-8 拆包与精确阈值组合重复；覆盖者 test_streaming_multibyte_split_across_feeds。"
+    },
+    {
+      "test": "test_frame_one_byte_over_budget_rejected",
+      "decision": "delete",
+      "reason": "同一超大帧拒绝只差精确一字节；覆盖者 test_streaming_rejects_oversize_frame。"
+    },
+    {
+      "test": "test_multiple_legal_frames_do_not_share_budget",
+      "decision": "delete",
+      "reason": "重复合法多帧成功路径；覆盖者 test_streaming_happy_path_exact_result，累计上限另由 test_streaming_rejects_cumulative_over_limit 覆盖。"
+    },
+    {
+      "test": "test_streaming_crlf_and_comment_heartbeats",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_crlf_and_comment_heartbeats。可观察预期：assert result['content'] == 'hi'；assert result['finish_reason'] == 'length'。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_happy_path_exact_result",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_happy_path_exact_result。可观察预期：assert result == {'request_id': REQUEST, 'server_instance_id': INSTANCE, 'content': 'Hello world', 'reasoning': ' 思考', 'finish_reason': 'stop', 'protocol_complete': True, 'prompt_tokens': 7, 'completion_tokens': 5, 'cached_tokens': 3, 'reasoning_tokens': 2, 'usage_missing_reasons': {'prompt_tokens': None, 'completion_tokens': None, 'cached_tokens': None, 'reasoning_tokens': None}, 't_send_ns': T_SEND, 't_first_content_ns': T0, 't_first_answer_ns': T0 + 1000000, 't_terminal_ns': T0 + 5000000}。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_missing_usage_reports_not_reported_not_zero",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_missing_usage_reports_not_reported_not_zero。可观察预期：assert result['reasoning'] == 'thinking'；assert result['reasoning_tokens'] is None；assert result['prompt_tokens'] is None；assert result['usage_missing_reasons'] == {'prompt_tokens': 'not_reported', 'completion_tokens': 'not_reported', 'cached_tokens': 'not_reported', 'reasoning_tokens': 'not_reported'}。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_multibyte_split_across_feeds",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_multibyte_split_across_feeds。可观察预期：assert result['content'] == '你好'。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_partial_usage_marks_only_missing",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_partial_usage_marks_only_missing。可观察预期：assert result['prompt_tokens'] == 4；assert result['cached_tokens'] == 1；assert result['completion_tokens'] is None；assert result['usage_missing_reasons']['completion_tokens'] == 'not_reported'。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_preserves_original_whitespace",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_preserves_original_whitespace。可观察预期：assert result['content'] == '  padded \\n'。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_choice_shape_violations",
+      "decision": "delete",
+      "reason": "仅枚举 choices/delta 的 Python 类型、index 和键形状；没有独立答案/计量假设，身份及终态产品场景保留于 test_streaming_rejects_id_mismatch 和 test_streaming_rejects_missing_finish_reason。"
+    },
+    {
+      "test": "test_streaming_rejects_cumulative_over_limit",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_cumulative_over_limit。可观察预期：assert reason_of(excinfo) == 'lab_generation_size'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_data_after_done",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_data_after_done。可观察预期：assert reason_of(excinfo) == 'lab_generation_done'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_duplicate_done",
+      "decision": "delete",
+      "reason": "重复 DONE 属于终态后额外数据；覆盖者 test_streaming_rejects_data_after_done。"
+    },
+    {
+      "test": "test_streaming_rejects_duplicate_finish",
+      "decision": "delete",
+      "reason": "重复 finish 属于 finish 后额外帧的同一拒绝路径；覆盖者 test_streaming_rejects_text_after_finish。"
+    },
+    {
+      "test": "test_streaming_rejects_error_frame",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_error_frame。可观察预期：assert reason_of(excinfo) == 'lab_generation_error_frame'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_id_mismatch",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_id_mismatch。逐项参数：pytest.mark.parametrize('payload', [chunk(content='x') | {'lab_request_id': OTHER_REQUEST}, chunk(content='x') | {'lab_server_instance_id': OTHER_INSTANCE}, {'lab_server_instance_id': INSTANCE, 'choices': []}, {'lab_request_id': REQUEST, 'choices': []}])。可观察预期：assert reason_of(excinfo) == 'lab_generation_id'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_missing_done",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_missing_done。可观察预期：assert reason_of(excinfo) == 'lab_generation_done'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_missing_finish_reason",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_missing_finish_reason。可观察预期：assert reason_of(excinfo) == 'lab_generation_finish_reason'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_non_string_finish_reason",
+      "decision": "delete",
+      "reason": "列表/字典/数值 enum 的实现类型枚举；完整终态必须有 finish 的产品条件由 test_streaming_rejects_missing_finish_reason 覆盖。"
+    },
+    {
+      "test": "test_streaming_rejects_oversize_frame",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_oversize_frame。可观察预期：assert reason_of(excinfo) == 'lab_generation_size'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_text_after_finish",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_text_after_finish。可观察预期：assert reason_of(excinfo) == 'lab_generation_finish_reason'；assert reason_of(excinfo) == 'lab_generation_finish_reason'；pytest.raises(LabProtocolError)；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_time_before_send",
+      "decision": "delete",
+      "reason": "时钟非法值重复；覆盖者 test_streaming_rejects_time_regression。"
+    },
+    {
+      "test": "test_streaming_rejects_time_regression",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_time_regression。可观察预期：assert reason_of(excinfo) == 'lab_generation_time'；assert reason_of(excinfo) == 'lab_generation_time'；pytest.raises(LabProtocolError)；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_truncated_frame",
+      "decision": "delete",
+      "reason": "尾帧截断重复；覆盖者 test_streaming_rejects_truncated_multibyte 同时检查截尾与坏 UTF-8。"
+    },
+    {
+      "test": "test_streaming_rejects_truncated_multibyte",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_truncated_multibyte。可观察预期：assert reason_of(excinfo) == 'lab_generation_truncated'；assert reason_of(excinfo) == 'lab_generation_utf8'；pytest.raises(LabProtocolError)；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_rejects_unknown_sse_field_and_bad_json",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_rejects_unknown_sse_field_and_bad_json。可观察预期：assert reason_of(excinfo) == 'lab_generation_frame'；assert reason_of(excinfo) == 'lab_generation_json'；assert reason_of(excinfo) == 'lab_generation_json'；pytest.raises(LabProtocolError)。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    },
+    {
+      "test": "test_streaming_usage_same_value_repeated_allowed",
+      "decision": "delete",
+      "reason": "相同 usage 重复输入只再次证明 happy path 的计数读取；覆盖者 test_streaming_happy_path_exact_result。"
+    },
+    {
+      "test": "test_streaming_whitespace_only_chunks_do_not_start_content",
+      "decision": "keep",
+      "reason": "具体场景 test_streaming_whitespace_only_chunks_do_not_start_content。可观察预期：assert result['t_first_content_ns'] == T0 + 2；assert result['t_first_answer_ns'] == T0 + 2。防止流式答案被截断、空白被改写、心跳污染首内容计时、缺 usage 被补零，或跨请求/错误终态被算成完整生成。"
+    }
+  ]
+}

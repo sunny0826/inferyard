@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_report_scans.py",
+  "decisions": [
+    {
+      "test": "test_actual_lengths_never_fall_back_to_targets_and_zero_is_visible",
+      "decision": "keep",
+      "reason": "长度图不以目标 token 补实际缺测，实际 10 token 和零延迟仍显示；删除输入不变断言。"
+    },
+    {
+      "test": "test_output_budget_never_substitutes_missing_actual_and_duplicates_are_missing",
+      "decision": "keep",
+      "reason": "预算不充当实际输出，零是有效值，重复观测则缺失，防输出长度展示虚构数据。"
+    },
+    {
+      "test": "test_position_patterns_and_denominators_are_not_merged",
+      "decision": "keep",
+      "reason": "报告保留不同位置组合及各自分母，不能合并成一个比例；删除深拷贝同一性。"
+    },
+    {
+      "test": "test_unexecuted_outputs_remain_visible_without_borrowing_counts",
+      "decision": "keep",
+      "reason": "未执行题在扫描报告中仍可见且不借已执行题 token 数，保留容量停止原因。"
+    }
+  ]
+}

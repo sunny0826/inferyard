@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_service_drain.py",
+  "decisions": [
+    {
+      "test": "test_lab_proof_uses_validated_lifecycle_and_release",
+      "decision": "keep",
+      "reason": "lab 必须 validated lifecycle 且 released、非 poisoned 并来自正确 source，避免表面 idle 掩盖排队或生成。"
+    },
+    {
+      "test": "test_only_final_idle_after_latest_request_proves_drain",
+      "decision": "keep",
+      "reason": "只有最近请求之后匹配的最终 idle 才证明排空，busy/其他请求不能借用，评分事件不破坏证明。"
+    },
+    {
+      "test": "test_unsealed_truncated_and_native_are_not_drain_proof",
+      "decision": "keep",
+      "reason": "未封存、截断或 native 模式均不能当内部排空证明，避免未知在途请求时复用。"
+    }
+  ]
+}

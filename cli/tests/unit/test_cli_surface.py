@@ -1,18 +1,14 @@
-"""Canonical CLI bindings and explicit rejection of removed compatibility inputs."""
+"""Public rejection behavior and metadata access without the live backend."""
 
 import json
 import os
-import re
-import socket
 import subprocess
 import sys
-from dataclasses import fields
 from pathlib import Path
 
 import pytest
 
 import inferyard.cli as cli
-from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.cli.request import build_request
 
 CONFIG = object()
@@ -33,139 +29,10 @@ REMOVED_COMMANDS = {
     "extension-run",
     "extension-replay",
 }
-INPUTS = [
-    ["device-check", "--model", "model.gguf", "--models-root", "models", "--out", "out", "--json"],
-    ["catalogue", "--kind", "methods"],
-    ["plan", "--experiment", "experiment.json", "--dry-run"],
-    ["check", "--config", "config.toml"],
-    ["run", "--config", "config.toml"],
-    ["resume", "--from-run", "source"],
-    ["repeat-summary", "--run", "source", "--out", "out"],
-    ["repeat-check", "--run", "source"],
-    ["prepare-length", "--config", "config.toml", "--spec", "length.json", "--out", "out"],
-    ["rescore", "--run", "source", "--out", "out", "--scorer", "s1", "--reason", "review"],
-    ["rescore-check", "--run", "source"],
-    ["export", "--analysis", "analysis", "--out", "out"],
-    ["export-check", "--run", "source"],
-    ["public-package", "--run", "source", "--out", "out"],
-    ["public-check", "--run", "source", "--from-run", "parent"],
-    ["public-config-check", "--run", "source", "--config", "config.toml"],
-    ["public-plan", "--run", "source", "--config", "config.toml", "--out", "out"],
-    ["report", "--runs", "source", "--out", "out", "--comparison", "comparison"],
-    ["report-check", "--run", "source"],
-    ["compare", "--left", "a", "--right", "b", "--out", "out", "--left-overhead", "oh"],
-    ["compare-check", "--run", "source"],
-    ["filter-candidates", "--spec", "filter.json", "--out", "out"],
-    [
-        "overhead",
-        "--plan",
-        "plan.json",
-        "--trial",
-        "t1",
-        "--output-root",
-        "out",
-        "--tolerance-ratio",
-        ".05",
-        "--max-wall-seconds",
-        "60",
-    ],
-    ["overhead-check", "--run", "source", "--target-run", "target"],
-    ["extension-freeze", "--spec", "spec.json", "--config", "config.toml", "--out", "out"],
-    ["extension-run", "--spec", "plan.json", "--config", "config.toml", "--out", "out"],
-    ["extension-replay", "--spec", "packet.json", "--out", "out"],
-    ["extension-check", "--run", "source"],
-]
-
-INPUTS = [args for args in INPUTS if args[0] not in REMOVED_COMMANDS]
 
 
 def request(arguments):
     return build_request(cli.parser().parse_args(arguments), config_loader=lambda _: CONFIG)
-
-
-@pytest.mark.parametrize("arguments", INPUTS, ids=lambda arguments: arguments[0])
-def test_retained_entries_preserve_the_called_command_and_result(arguments, monkeypatch, capsys):
-    seen = []
-    monkeypatch.setattr(cli, "load_config", lambda _: CONFIG)
-
-    def handler(value):
-        seen.append(value)
-        return 0, CommandResult(value.command, "tested", "complete", details={"tested": True})
-
-    assert cli.main(arguments, handlers={arguments[0]: handler}) == 0
-    output = capsys.readouterr()
-    assert output.err == ""
-    assert json.loads(output.out) == {
-        "command": arguments[0],
-        "status": "tested",
-        "completeness": "complete",
-        "run_id": None,
-        "evidence_dir": None,
-        "limitations": [],
-        "details": {"tested": True},
-    }
-    assert len(seen) == 1
-    for field in fields(CommandRequest):
-        value = getattr(seen[0], field.name)
-        if isinstance(value, Path):
-            assert value.is_absolute(), field.name
-        elif isinstance(value, list):
-            assert all(path.is_absolute() for path in value), field.name
-
-
-@pytest.mark.parametrize(
-    ("arguments", "command", "path_field"),
-    [
-        (["probe", "--config", "config.toml"], "probe", None),
-        (["engine", "check", "--engine", "engine.bin"], "engine check", "engine_path"),
-        (["verify", "--path", "artifact"], "verify", "run"),
-        (["public", "package", "--run", "source", "--out", "out"], "public package", "run"),
-        (
-            ["public", "plan", "--run", "source", "--config", "config.toml", "--out", "out"],
-            "public plan",
-            "run",
-        ),
-        (
-            [
-                "extension",
-                "freeze",
-                "--spec",
-                "spec.json",
-                "--config",
-                "config.toml",
-                "--out",
-                "out",
-            ],
-            "extension freeze",
-            "extension_spec",
-        ),
-        (
-            ["extension", "run", "--plan", "plan.json", "--config", "config.toml", "--out", "out"],
-            "extension run",
-            "extension_spec",
-        ),
-        (
-            ["extension", "replay", "--packet", "packet.json", "--out", "out"],
-            "extension replay",
-            "extension_spec",
-        ),
-    ],
-)
-def test_canonical_entries_dispatch_with_the_full_entry_name(
-    arguments, command, path_field, monkeypatch, capsys
-):
-    seen = []
-    monkeypatch.setattr(cli, "load_config", lambda _: CONFIG)
-
-    def handler(value):
-        seen.append(value)
-        return 0, CommandResult(value.command, "tested")
-
-    assert cli.main(arguments, handlers={command: handler}) == 0
-    assert seen[0].command == command
-    if path_field:
-        assert getattr(seen[0], path_field).is_absolute()
-    assert json.loads(capsys.readouterr().out)["command"] == command
 
 
 @pytest.mark.parametrize(
@@ -237,40 +104,6 @@ def test_command_groups_require_an_action(command, capsys):
     output = capsys.readouterr()
     assert json.loads(output.out)["limitations"] == ["invalid_input"]
     assert output.err
-
-
-@pytest.mark.parametrize("code", [0, 2, 3, 4, 130])
-def test_verify_source_binding_needs_no_service_and_preserves_exit_code(code, monkeypatch, capsys):
-    def no_service(*args, **kwargs):
-        raise AssertionError("artifact verification must not connect to a model service")
-
-    monkeypatch.setattr(socket.socket, "connect", no_service)
-    monkeypatch.setattr(cli, "load_config", lambda _: CONFIG)
-    seen = []
-
-    def handler(value):
-        seen.append(value)
-        return code, CommandResult(value.command, "tested")
-
-    assert (
-        cli.main(
-            ["verify", "--path", "public", "--source-run", "source", "--config", "cfg"],
-            handlers={"verify": handler},
-        )
-        == code
-    )
-    assert seen[0].run == Path("public").resolve()
-    assert seen[0].from_run == Path("source").resolve()
-    assert seen[0].config is CONFIG
-    assert seen[0].endpoint_url is None and seen[0].server_pid is None
-    assert json.loads(capsys.readouterr().out)["command"] == "verify"
-
-
-def test_verify_target_path_is_bound_without_service():
-    value = request(["verify", "--path", "overhead", "--target-run", "target"])
-    assert value.run == Path("overhead").resolve()
-    assert value.target_run == Path("target").resolve()
-    assert value.endpoint_url is None and value.server_pid is None
 
 
 @pytest.mark.parametrize(
@@ -351,7 +184,24 @@ def test_live_binding_rejections_still_block_dispatch(arguments, monkeypatch, ca
         ["progress", "--help"],
         ["speed-results", "--help"],
         ["--schema", "context_speed_result"],
-        *[[value[0], "--help"] for value in INPUTS],
+        *[
+            [command, "--help"]
+            for command in (
+                "device-check",
+                "catalogue",
+                "plan",
+                "run",
+                "resume",
+                "repeat-summary",
+                "prepare-length",
+                "rescore",
+                "export",
+                "report",
+                "compare",
+                "filter-candidates",
+                "overhead",
+            )
+        ],
     ],
 )
 def test_all_help_and_metadata_are_cold_starts(arguments):
@@ -379,14 +229,7 @@ raise SystemExit(main(json.loads(sys.argv[1])))
     )
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert result.stderr == ""
-    if arguments == ["--help"]:
-        primary = re.findall(r"^    ([a-z][a-z-]+)\s+", result.stdout, flags=re.MULTILINE)
-        assert len(primary) == 27
-        assert "speed-results" in primary
-        assert {"verify", "probe", "public", "extension", "engine", "engine-fit"} <= set(primary)
-        assert "check" not in primary and "extension-run" not in primary
-        assert "Compatibility" not in result.stdout and "extension-run" not in result.stdout
-    elif "--help" not in arguments:
+    if "--help" not in arguments:
         assert isinstance(json.loads(result.stdout), dict)
 
 

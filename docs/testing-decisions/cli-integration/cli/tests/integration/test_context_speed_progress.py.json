@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/integration/test_context_speed_progress.py",
+  "decisions": [
+    {
+      "test": "test_progress_preparation_plan_and_new_batch",
+      "decision": "keep",
+      "reason": "准备、绑定、冻结完成后的progress必须分别给出正确下一条用户命令及新批次路径。"
+    },
+    {
+      "test": "test_progress_with_zero_and_complete_batches",
+      "decision": "keep",
+      "reason": "空和完成的speed批次都引导speed-results，不能错误宣布默认完整benchmark完成或改写工作区。"
+    }
+  ]
+}

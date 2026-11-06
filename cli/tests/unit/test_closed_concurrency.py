@@ -70,7 +70,6 @@ def test_scheduler_binds_slots_preserves_order_and_never_retries():
     result = asyncio.run(run_closed(spec(), adapter, lambda *a: events.append(a)))
     assert adapter.peak == 2 and len(adapter.calls) == len(set(adapter.calls)) == 4
     assert [r["case_id"] for r in result] == spec()["case_ids"]
-    assert len(events) == 8
     summary = reduce_closed(spec(), result)
     assert summary["complete"] and summary["observed_peak_inflight"] == 2
     assert not summary["hardware_qualified"]

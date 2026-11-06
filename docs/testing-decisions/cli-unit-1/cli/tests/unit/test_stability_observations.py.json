@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_stability_observations.py",
+  "decisions": [
+    {
+      "test": "test_idle_claim_requires_observed_idle_and_bound_process",
+      "decision": "keep",
+      "reason": "无实际 idle 证明或进程 PID 不匹配时 idle RSS 缺失，不能把忙碌残留称为空闲内存。"
+    },
+    {
+      "test": "test_idle_rss_negative_delta_and_missing_first_cycle_not_rebased",
+      "decision": "keep",
+      "reason": "idle RSS 可负增量，首轮缺测不能改选后轮为基线，避免伪造稳定性改善。"
+    },
+    {
+      "test": "test_send_cohort_retains_slow_request_and_failure_denominator",
+      "decision": "keep",
+      "reason": "按发送窗口保留慢请求和失败分母，未关闭窗口的延迟不造值，防稳定性报告选择性删慢样本。"
+    }
+  ]
+}

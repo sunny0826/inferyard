@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/inferyard/context_speed_test.go",
+  "decisions": [
+    {
+      "test": "TestContextSpeedCompleteRequiresFinishedPlan",
+      "decision": "keep",
+      "reason": "stop_reason=user_cancelled 不可解析成 complete，即使响应声称五次完成，防取消任务被报告成完整测量。"
+    },
+    {
+      "test": "TestContextSpeedGolden",
+      "decision": "keep",
+      "reason": "28 个契约场景覆盖五次结果、缺测/取消/缓存/长度及 token 不齐、身份引用/计数/中位数错误与陈旧结果拒绝，防错误专项表；删除固定 fixture 数量断言。"
+    },
+    {
+      "test": "TestContextSpeedRawRejections",
+      "decision": "keep",
+      "reason": "重复键、尾随 JSON、截断、未知/缺版本和不匹配退出码须清结果后拒绝，防损坏响应留下旧测量。"
+    },
+    {
+      "test": "TestContextSpeedSchemaCapability",
+      "decision": "keep",
+      "reason": "发布的当前 schema 必须识别，缺 metadata/坏 schema 不能宣称兼容，防专项任务在旧 CLI 下继续准备。"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_duration_driver.py",
+  "decisions": [
+    {
+      "test": "test_admission_check_after_idle_can_decline_without_attempt",
+      "decision": "keep",
+      "reason": "具体场景 test_admission_check_after_idle_can_decline_without_attempt。可观察预期：assert result['returned_requests'] == 0；assert result['window_completed']。持续负载按冻结顺序循环，到窗口截止停止登记，到排空截止取消在途；耗尽请求上限或用户取消不能声称满时窗，提前 skip 不能默默缩分母。"
+    },
+    {
+      "test": "test_cycles_cases_and_allows_request_to_drain_after_window",
+      "decision": "keep",
+      "reason": "具体场景 test_cycles_cases_and_allows_request_to_drain_after_window。可观察预期：assert calls == [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'a'), (4, 'b'), (5, 'c'), (6, 'a')]；assert result['window_completed']；assert result['completed_requests'] == 7；assert events[0][0] == 'duration_started' and events[-1][0] == 'duration_closed'。持续负载按冻结顺序循环，到窗口截止停止登记，到排空截止取消在途；耗尽请求上限或用户取消不能声称满时窗，提前 skip 不能默默缩分母。"
+    },
+    {
+      "test": "test_inflight_request_cancelled_at_drain_deadline",
+      "decision": "keep",
+      "reason": "具体场景 test_inflight_request_cancelled_at_drain_deadline。可观察预期：assert cancelled == [True]；assert result['reason'] == 'drain_deadline_exceeded'；assert not result['window_completed']。持续负载按冻结顺序循环，到窗口截止停止登记，到排空截止取消在途；耗尽请求上限或用户取消不能声称满时窗，提前 skip 不能默默缩分母。"
+    },
+    {
+      "test": "test_premature_skip_is_integrity_error",
+      "decision": "keep",
+      "reason": "具体场景 test_premature_skip_is_integrity_error。可观察预期：pytest.raises(EvidenceError, match='skipped')。持续负载按冻结顺序循环，到窗口截止停止登记，到排空截止取消在途；耗尽请求上限或用户取消不能声称满时窗，提前 skip 不能默默缩分母。"
+    },
+    {
+      "test": "test_request_budget_exhaustion_does_not_claim_full_window",
+      "decision": "keep",
+      "reason": "具体场景 test_request_budget_exhaustion_does_not_claim_full_window。可观察预期：assert result['returned_requests'] == 2；assert result['completed_requests'] == 0；assert not result['window_completed']；assert result['reason'] == 'request_limit_reached'。持续负载按冻结顺序循环，到窗口截止停止登记，到排空截止取消在途；耗尽请求上限或用户取消不能声称满时窗，提前 skip 不能默默缩分母。"
+    },
+    {
+      "test": "test_user_cancel_propagates_and_records_interruption",
+      "decision": "keep",
+      "reason": "具体场景 test_user_cancel_propagates_and_records_interruption。可观察预期：assert events[-1][1]['reason'] == 'interrupted'；pytest.raises(asyncio.CancelledError)。持续负载按冻结顺序循环，到窗口截止停止登记，到排空截止取消在途；耗尽请求上限或用户取消不能声称满时窗，提前 skip 不能默默缩分母。"
+    }
+  ]
+}

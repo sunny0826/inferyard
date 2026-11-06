@@ -7,57 +7,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-func assertTextColor(t *testing.T, tt *ui.Tester, label string, want ui.Color) {
-	t.Helper()
-	r, ok := tt.Find(label)
-	if !ok {
-		t.Fatalf("missing %q: %v", label, tt.Texts())
-	}
-	img := tt.Image()
-	for y := int(r.Y); y < int(r.Y+r.H); y++ {
-		for x := int(r.X); x < int(r.X+r.W); x++ {
-			p := img.RGBAAt(x, y)
-			if absDiff(p.R, want.R) < 8 && absDiff(p.G, want.G) < 8 && absDiff(p.B, want.B) < 8 {
-				return
-			}
-		}
-	}
-	t.Fatalf("%q does not render theme color %v", label, want)
-}
-
-func absDiff(a, b uint8) int {
-	d := int(a) - int(b)
-	if d < 0 {
-		return -d
-	}
-	return d
-}
-
-func TestDashboardStepStyles(t *testing.T) {
-	s := testState()
-	var theme *ui.Theme
-	tt := ui.NewTester(func(c *ui.Context) { theme = c.Theme(); ui.Column(c).Children(func() { s.conclusionView(c) }) }, 1120, 1600)
-	for _, dark := range []bool{false, true} {
-		tt.SetDark(dark)
-		assertTextColor(t, tt, "✓  准备", theme.Success)
-		assertTextColor(t, tt, "启动与绑定", theme.Accent)
-		assertTextColor(t, tt, "报告", theme.TextMuted)
-		if tt.HasText("○") || tt.HasText("●") {
-			t.Fatal(tt.Texts())
-		}
-	}
-	s.progress.DefaultScopeComplete = true
-	tt.Frame()
-	assertTextColor(t, tt, "✓  报告", theme.Success)
-	s.progress = nil
-	tt.Frame()
-	for _, label := range []string{"准备", "设备检查", "benchmark", "启动与绑定", "运行", "报告"} {
-		if tt.HasText(label) || tt.HasText("✓  "+label) {
-			t.Fatalf("track remains without progress: %v", tt.Texts())
-		}
-	}
-}
-
 func TestTaskTableChineseBadgeText(t *testing.T) {
 	for _, tc := range []struct {
 		state  string
@@ -89,24 +38,5 @@ func TestTaskTableChineseBadgeText(t *testing.T) {
 				t.Fatalf("raw state in task table: %v", tt.Texts())
 			}
 		})
-	}
-}
-
-func TestResourceLegendThemeColors(t *testing.T) {
-	s := testState()
-	var theme *ui.Theme
-	samples := chartSamples()
-	tt := ui.NewTester(func(c *ui.Context) { theme = c.Theme(); ui.Column(c).Children(func() { s.resourceView(c, samples) }) }, 1120, 1000)
-	for _, dark := range []bool{false, true} {
-		tt.SetDark(dark)
-		colors := []ui.Color{theme.Accent, theme.Success, theme.Warning, theme.Danger}
-		for i, label := range []string{"可用内存 GiB", "服务 RSS GiB", "服务 CPU %", "传感器温度 °C"} {
-			assertTextColor(t, tt, label, colors[i])
-			for j := 0; j < i; j++ {
-				if colors[i] == colors[j] {
-					t.Fatal("resource colors overlap")
-				}
-			}
-		}
 	}
 }

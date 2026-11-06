@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_layout_rerun.py",
+  "decisions": [
+    {
+      "test": "test_container_rerun_writes_actual_source_or_preserves_missing",
+      "decision": "keep",
+      "reason": "M6：删除中间LoadedConfig.source和configuration_source断言；保留实际rerun新证据原文bytes/media_type或not_persisted。"
+    },
+    {
+      "test": "test_invalid_memory_source_is_rejected_before_creating_run",
+      "decision": "keep",
+      "reason": "内存提供的配置源非UTF8或媒体类型未知时，必须在创建运行和发题前拒绝。"
+    },
+    {
+      "test": "test_memory_source_uses_existing_text_snapshot_redaction",
+      "decision": "keep",
+      "reason": "内存配置原文含凭据时必须先脱敏再进入容器，保留原非敏感字节。"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/inferyard/result_test.go",
+  "decisions": [
+    {
+      "test": "TestParse",
+      "decision": "keep",
+      "reason": "非法/多段/坏 UTF-8 CLI JSON 和未知 device kind 必须拒绝，防日志垃圾被当成设备信息。"
+    }
+  ]
+}

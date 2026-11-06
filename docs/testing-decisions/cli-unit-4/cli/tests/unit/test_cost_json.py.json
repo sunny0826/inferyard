@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_cost_json.py",
+  "decisions": [
+    {
+      "test": "test_decoder_recursion_error_keeps_contract",
+      "decision": "delete",
+      "reason": "mock json.loads 抛 RecursionError 再检查异常字符串仅验证异常包装，不观察真实深度输入或产品行为。"
+    },
+    {
+      "test": "test_exact_rejection",
+      "decision": "keep",
+      "reason": "M16：重复键、非有限数字、非法 JSON 拒绝并提供固定 path/reason/错误文本；删除禁止 ContractError 子类的具体类型形状断言。"
+    },
+    {
+      "test": "test_nested_values_order_and_boolean_contract",
+      "decision": "delete",
+      "reason": "只检查 JSON 返回顺序/Python 类型与私有 _validate；bool 伪整数拒绝由 test_contracts.py::test_non_finite_or_boolean_measurements_rejected 覆盖。"
+    },
+    {
+      "test": "test_wide_object_keeps_every_pair",
+      "decision": "delete",
+      "reason": "千键 object 与 Python 字典直接比较是 JSON 实现 roundtrip 自测，无独立用户失败条件。"
+    }
+  ]
+}

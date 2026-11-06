@@ -33,17 +33,3 @@ func TestOnevraTableSelectionTracksKeyAcrossReorder(t *testing.T) {
 		t.Fatal("removed selected key selected a different task")
 	}
 }
-
-func TestOnevraTableClipsWideContent(t *testing.T) {
-	s := testState()
-	s.history.StandaloneRuns = []core.RunSummary{{RunId: "fixture", Path: "/fixture"}}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.historyView(c) }) }, 800, 600)
-	nodes := modelUINodes(tt, "label", "运行历史表")
-	if len(nodes) != 2 {
-		t.Fatal("expected scroll boundary and table", len(nodes))
-	}
-	outer, inner := nodes[0], nodes[1]
-	if outer.FieldByName("w").Float() > 800 || inner.FieldByName("w").Float() <= 800 {
-		t.Fatal("wide content must remain inside bounded scroller")
-	}
-}

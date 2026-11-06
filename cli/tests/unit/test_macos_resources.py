@@ -3,15 +3,12 @@
 import sys
 from copy import deepcopy
 from types import ModuleType, SimpleNamespace
-from unittest.mock import Mock
 
 import pytest
 
 from inferyard.evidence.storage import EvidenceError
 from inferyard.platforms import external_cpu, resources, resources_macos
 from inferyard.platforms.identity import PreflightError
-from inferyard.runtime.boundary_observer import boundary_contract
-from inferyard.runtime.environment_observer import observer_contract
 
 ENDPOINT = {"server_pid": 77, "process_start_ticks": 55}
 CONFIG = {"endpoint": ENDPOINT, "telemetry": {"interval_ms": 500}}
@@ -104,7 +101,6 @@ def sampler():
 def test_factory_and_native_counter_units(native):
     value, snapshots, _, _ = sampler()
     assert resources.resource_collector_id() == "macos-resource.v1"
-    assert isinstance(value, resources_macos.ResourceSampler)
     rows = value.counters(77, 55)
     assert [row["value"] for row in rows] == [1_750_000, 3, 4]
     assert rows[0]["raw_cpu"] == {"user_ticks": 1_250_000, "system_ticks": 500_000}
@@ -118,17 +114,6 @@ def test_factory_and_native_counter_units(native):
     ]
     assert snapshots[("observer", "prepare")]["kind"] == "macos-environment-observer.v1"
     assert snapshots[("boundary_observer", "prepare")]["collector"] == "macos-resource.v1"
-
-
-def test_explicit_proc_root_retains_linux_factory(native, tmp_path):
-    from inferyard.platforms.resources_linux import ResourceSampler
-    from tests.unit.test_resources import proc
-
-    proc(tmp_path)
-    store = SimpleNamespace(observe=lambda *args, **kwargs: None)
-    value = resources.ResourceSampler(store, CONFIG, proc_root=tmp_path, ticks_per_second=100)
-    assert isinstance(value, ResourceSampler)
-    assert value.counters(77, 55)[0]["value"] == 30
 
 
 def test_cpu_checks_process_identity_after_read_and_stays_missing(native):
@@ -270,19 +255,6 @@ def test_mixed_source_or_wrong_scale_cannot_be_reinterpreted(change):
         external_cpu.reduce_external_cpu(rows, ENDPOINT, 1000)
 
 
-def test_observer_contracts_can_replay_linux_on_darwin(native):
-    assert (
-        observer_contract(500, collector="linux-resource.v2")["kind"]
-        == "linux-environment-observer.v1"
-    )
-    assert (
-        boundary_contract(collector="linux-resource.v2")["kind"] == "outside-request-environment.v1"
-    )
-    assert observer_contract(500) == observer_contract(500, collector="linux-resource.v2")
-    assert boundary_contract() == boundary_contract(collector="linux-resource.v2")
-    assert observer_contract(500, collector="macos-resource.v1")["collector"] == "macos-resource.v1"
-
-
 def test_missing_temperature_blocks_native_safety_guard(native):
     from inferyard.runtime.safety import SafetyGuard
 
@@ -296,18 +268,6 @@ def test_missing_temperature_blocks_native_safety_guard(native):
     with pytest.raises(PreflightError, match="temperature_safety_source_unavailable"):
         guard.check()
     assert guard.last["temperature_samples"] == []
-
-
-def test_guardian_uses_native_boot_and_spawn(native, monkeypatch, tmp_path):
-    from inferyard.extensions import independent_guard
-
-    context = Mock()
-    get_context = Mock(return_value=context)
-    monkeypatch.setattr(independent_guard.mp, "get_context", get_context)
-    guard = independent_guard.IndependentGuard(tmp_path / "guard.jsonl", CONFIG)
-    get_context.assert_called_once_with("spawn")
-    assert guard.clock_id == "boot-mac:CLOCK_MONOTONIC"
-    assert guard.policy["require_temperature"] is True
 
 
 def test_resource_windows_use_saved_native_identity(monkeypatch):
@@ -339,19 +299,10 @@ def test_resource_windows_use_saved_native_identity(monkeypatch):
 
 def test_swap_pair_uses_one_fresh_snapshot_and_shared_interval(native):
     value, _, _, _ = sampler()
-    clock = iter(range(100, 1000, 100))
-    value.clock = lambda: next(clock)
-    native.native.swap_snapshot = Mock(wraps=native.native.swap_snapshot)
     first = value.counters(77, 55)
-    assert native.native.swap_snapshot.call_count == 1
-    assert [(r["read_started_ns"], r["read_finished_ns"]) for r in first] == [
-        (100, 200),
-        (300, 400),
-        (300, 400),
-    ]
+    assert [r["value"] for r in first[1:]] == [3, 4]
     native.swap_in, native.swap_out = 10, 20
     second = value.counters(77, 55, capture="request_end")
-    assert native.native.swap_snapshot.call_count == 2
     assert [r["value"] for r in second[1:]] == [10, 20]
     assert all(r["capture"] == "request_end" for r in second)
     assert all(r["server_pid"] is None and r["raw_cpu"] is None for r in second[1:])

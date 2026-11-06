@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/evidence/tail_test.go",
+  "decisions": [
+    {
+      "test": "TestFixtureTail",
+      "decision": "delete",
+      "reason": "两行 fixture 的 happy path 计数重复 TestTailAppendPartialResume；没有额外产品条件。"
+    },
+    {
+      "test": "TestTailAppendPartialResume",
+      "decision": "keep",
+      "reason": "末行未写完不消费，补全后不丢不重，截断须报错；仅保留 events.jsonl 一轮，删除仅换 memory.jsonl 文件名的重复场景。"
+    },
+    {
+      "test": "TestTailRejectsCorruption",
+      "decision": "keep",
+      "reason": "非法 JSON、null、缺 seq、重复或零 seq 必须在有效边界停下，防坏行污染当前进度。"
+    }
+  ]
+}

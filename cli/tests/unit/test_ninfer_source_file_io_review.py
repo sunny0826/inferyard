@@ -82,13 +82,10 @@ def test_ordinary_names_remain_lexical_paths(path):
 def test_extra_received_byte_is_counted_without_success_body():
     api = Mem({PATH: b"hix"})
     result = execute_io(request("read"), io_api=api, now_ticks=Clock())
-    assert api.handles[1]["off"] == 3
     assert result["bytes"] == 3
     assert result["sha256"] is None
     assert result["data_b64"] is None
     assert result["primary_error"] == "io_failure"
-    assert result["sha256"] != digest(b"hi")
-    assert result["sha256"] != digest(b"hix")
 
 
 def test_unknown_extra_does_not_invent_a_count():
@@ -102,7 +99,6 @@ def test_unknown_extra_does_not_invent_a_count():
     api = UnknownExtra({PATH: b"hi"})
     result = execute_io(request("read"), io_api=api, now_ticks=Clock())
     assert result["bytes"] == 2
-    assert result["bytes"] != 0
     assert result["sha256"] is None
     assert result["data_b64"] is None
     assert result["primary_error"] == "io_failure"

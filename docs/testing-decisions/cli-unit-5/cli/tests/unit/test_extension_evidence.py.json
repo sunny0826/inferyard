@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_extension_evidence.py",
+  "decisions": [
+    {
+      "test": "test_cli_fixture_reports_never_inherit_live_qualification",
+      "decision": "keep",
+      "reason": "fixture重放永不继承硬件资格，伪造live包拒绝且不落盘，避免模拟成绩冒充实测。"
+    },
+    {
+      "test": "test_offline_freeze_binds_config_corpus_and_installed_source",
+      "decision": "keep",
+      "reason": "extension freeze绑定配置、题库和安装源码且改计划后拒绝，避免运行不同于已冻结声明。"
+    },
+    {
+      "test": "test_sealed_extension_replay_rejects_raw_and_derived_tampering",
+      "decision": "keep",
+      "reason": "extension封存可只读重放且summary被改后拒绝，避免派生成绩脱离原始包。"
+    }
+  ]
+}

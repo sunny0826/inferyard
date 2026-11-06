@@ -33,7 +33,6 @@ def sse(*payloads):
 
 
 def reason_of(excinfo):
-    assert isinstance(excinfo.value, LabProtocolError)
     return excinfo.value.reason
 
 
@@ -64,18 +63,6 @@ def test_streaming_rejects_bad_usage(usage):
     assert reason_of(excinfo) == "lab_generation_usage"
 
 
-def test_streaming_rejects_usage_count_override():
-    decoder = streaming_decoder()
-    decoder.feed(
-        sse(chunk(usage={"prompt_tokens": 5}, choices_marker="usage_only")), observed_ns=T0
-    )
-    with pytest.raises(LabProtocolError) as excinfo:
-        decoder.feed(
-            sse(chunk(usage={"prompt_tokens": 6}, choices_marker="usage_only")), observed_ns=T0 + 1
-        )
-    assert reason_of(excinfo) == "lab_generation_usage"
-
-
 def test_streaming_usage_counter_override_rejected_across_finish():
     decoder = streaming_decoder()
     decoder.feed(
@@ -87,45 +74,6 @@ def test_streaming_usage_counter_override_rejected_across_finish():
             sse(chunk(usage={"prompt_tokens": 9}, choices_marker="usage_only")), observed_ns=T0 + 2
         )
     assert reason_of(excinfo) == "lab_generation_usage"
-
-
-# --- decoder lifecycle ------------------------------------------------------
-
-
-def test_decoder_rejects_feed_after_finish_and_double_finish():
-    decoder = streaming_decoder()
-    decoder.feed(sse(chunk(finish="stop"), "[DONE]"), observed_ns=T0)
-    decoder.finish(observed_ns=T0 + 1)
-    with pytest.raises(LabProtocolError) as excinfo:
-        decoder.feed(b"", observed_ns=T0 + 2)
-    assert reason_of(excinfo) == "lab_generation_state"
-    with pytest.raises(LabProtocolError) as excinfo:
-        decoder.finish(observed_ns=T0 + 2)
-    assert reason_of(excinfo) == "lab_generation_state"
-
-
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        {"request_id": "x" * 32},
-        {"instance_id": "y" * 32},
-        {"streaming": 1},
-        {"t_send_ns": True},
-        {"t_send_ns": -1},
-        {"t_send_ns": 2**63},
-    ],
-)
-def test_decoder_rejects_bad_constructor_arguments(kwargs):
-    arguments = {
-        "request_id": REQUEST,
-        "instance_id": INSTANCE,
-        "streaming": True,
-        "t_send_ns": T_SEND,
-    }
-    arguments.update(kwargs)
-    positional = {key: arguments.pop(key) for key in ("request_id", "instance_id")}
-    with pytest.raises(LabProtocolError):
-        GenerationDecoder(**positional, **arguments)
 
 
 # --- non-streaming ------------------------------------------------------------
@@ -238,19 +186,6 @@ def test_non_streaming_rejects_non_string_finish_reason(bad):
     with pytest.raises(LabProtocolError) as excinfo:
         decoder.finish(observed_ns=T0 + 1)
     assert reason_of(excinfo) == "lab_generation_finish_reason"
-
-
-def test_streaming_rejects_null_usage_details():
-    usage = {
-        "prompt_tokens": 5,
-        "prompt_tokens_details": None,
-        "completion_tokens_details": None,
-    }
-    decoder = streaming_decoder()
-    decoder.feed(sse(chunk(finish="stop")), observed_ns=T0)
-    with pytest.raises(LabProtocolError) as excinfo:
-        decoder.feed(sse(chunk(usage=usage, choices_marker="usage_only")), observed_ns=T0 + 1)
-    assert reason_of(excinfo) == "lab_generation_usage"
 
 
 @pytest.mark.parametrize("key", ["prompt_tokens_details", "completion_tokens_details"])

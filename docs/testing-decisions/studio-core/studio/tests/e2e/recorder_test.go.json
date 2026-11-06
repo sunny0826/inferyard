@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/tests/e2e/recorder_test.go",
+  "decisions": [
+    {
+      "test": "TestRecorderCapturesCalls",
+      "decision": "delete",
+      "reason": "只验证测试录制器的 seq、argv、文件和哈希布局；与产品行为、发布假阳性无直接关系。"
+    },
+    {
+      "test": "TestRecorderPropagatesErrors",
+      "decision": "delete",
+      "reason": "只断言测试包装器返回原 error 并记录次数；不是产品执行链验证。"
+    }
+  ]
+}

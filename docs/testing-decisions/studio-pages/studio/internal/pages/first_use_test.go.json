@@ -1,0 +1,35 @@
+{
+  "source_path": "studio/internal/pages/first_use_test.go",
+  "decisions": [
+    {
+      "test": "TestDownloadHeaderStableAcrossRefresh",
+      "decision": "delete",
+      "reason": "只反复比较刷新前后整组文本；下载生命周期行为由 TestPreviewDownloadsCancelRetryAndPopulateModels 覆盖。"
+    },
+    {
+      "test": "TestFirstUseMissingAssetsOffersNextStep",
+      "decision": "keep",
+      "reason": "无模型/引擎时阻止运行并能到下载页再返回任务，无模型原因不得成为不可恢复死路。"
+    },
+    {
+      "test": "TestLiveBundleDoesNotShowOfflineResumeWarning",
+      "decision": "keep",
+      "reason": "启动/运行/取消中须显示活跃题包状态，离线恢复警告只在终态出现，无关题包阻断仍保留。"
+    },
+    {
+      "test": "TestOnlyMissingModelIsPreparationGuidance",
+      "decision": "keep",
+      "reason": "仅 exit 2 且唯一 no_local_model 可降为资源引导，内存不足或工具错误不能被掩盖。"
+    },
+    {
+      "test": "TestResourceGuideKeepsOtherWorkspaceBlockers",
+      "decision": "keep",
+      "reason": "缺资源引导必须同时显示独立 unsupported_platform 阻断，否则下载完成后仍失败却无解释。"
+    },
+    {
+      "test": "TestSingleAvailableModelDefaultPreservesChoice",
+      "decision": "keep",
+      "reason": "仅一个可用模型才自动选择；已有选择保留，多模型不擅自猜测，避免测错模型。"
+    }
+  ]
+}

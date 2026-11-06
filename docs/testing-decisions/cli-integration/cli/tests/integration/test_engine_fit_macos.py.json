@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/integration/test_engine_fit_macos.py",
+  "decisions": [
+    {
+      "test": "test_native_closed_listener_and_reaped_service_invalidate_binding",
+      "decision": "keep",
+      "reason": "同PID关闭listener或进程已回收后原绑定不能继续使用。"
+    },
+    {
+      "test": "test_native_mac_both_engines_run_compare_and_offline_verify",
+      "decision": "keep",
+      "reason": "M7：删除fixture child_pid不同于父进程的自证；保留产品process_count=2、RSS/CPU及binding PID。"
+    },
+    {
+      "test": "test_native_reused_port_with_multiple_owners_is_rejected",
+      "decision": "keep",
+      "reason": "端口由多个实际进程共享时不能任择一个owner接受绑定。"
+    },
+    {
+      "test": "test_native_wrong_listener_pid_blocks_without_request",
+      "decision": "keep",
+      "reason": "实际listener不属于所给PID时，必须在请求与证据创建前阻断。"
+    },
+    {
+      "test": "test_native_wrong_startup_model_blocks_without_request",
+      "decision": "keep",
+      "reason": "实际startup模型目录不符时不得发题。"
+    }
+  ]
+}

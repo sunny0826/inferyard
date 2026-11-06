@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/integration/test_duration_trial.py",
+  "decisions": [
+    {
+      "test": "test_cancel_duration_retains_interrupted_window",
+      "decision": "keep",
+      "reason": "M1：删除重复 summary 等价；保留exit130、窗口未完成及interrupted。"
+    },
+    {
+      "test": "test_duration_cycles_requests_and_rebuilds_window",
+      "decision": "keep",
+      "reason": "M1：删除重复 summary 等价；保留冻结循环、请求唯一性、窗口完成和RSS缺测原因。"
+    },
+    {
+      "test": "test_duration_report_rebuilds_completed_and_interrupted_windows",
+      "decision": "keep",
+      "reason": "报告离线呈现完成/中断窗口和每题趋势，不把诊断窗口标正式成绩。"
+    },
+    {
+      "test": "test_duration_request_limit_is_incomplete",
+      "decision": "keep",
+      "reason": "到达请求上限而窗口未结束必须退出3，不能声称完成；删除同一plan的自算哈希断言。"
+    },
+    {
+      "test": "test_frozen_turbo_change_stops_real_safety_guard_inflight",
+      "decision": "keep",
+      "reason": "M1：删除重复 summary 等价；保留turbo停止原因、cancelled=1与最终no_turbo=0。"
+    },
+    {
+      "test": "test_native_duration_is_rejected_before_request_admission",
+      "decision": "keep",
+      "reason": "不支持duration的native配置须在任何请求和输出创建前拒绝。"
+    },
+    {
+      "test": "test_runtime_safety_cancels_inflight_and_preserves_incomplete_window",
+      "decision": "keep",
+      "reason": "M1：删除重复 summary 等价；保留温度停止、cancelled=1、最后观测和封存日志。"
+    }
+  ]
+}

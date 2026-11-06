@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/integration/test_context_speed_sources.py",
+  "decisions": [
+    {
+      "test": "test_qualification_requires_observed_seed_and_fixed_output",
+      "decision": "keep",
+      "reason": "seed未验证只保留4个有效样本且无汇总；固定输出观察被改为非严格时直接拒绝伪证。"
+    },
+    {
+      "test": "test_semantic_source_mismatch",
+      "decision": "keep",
+      "reason": "即使更新封存哈希，时序、请求归属、成员、prepared body、case或build矛盾仍拒绝；旧版本明确退出2。"
+    }
+  ]
+}

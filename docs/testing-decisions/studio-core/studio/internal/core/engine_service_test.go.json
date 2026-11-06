@@ -1,0 +1,35 @@
+{
+  "source_path": "studio/internal/core/engine_service_test.go",
+  "decisions": [
+    {
+      "test": "TestMain",
+      "decision": "keep",
+      "reason": "保留多测试共用的引擎/运行子进程入口；删除会使真实取消、排空、服务生命周期测试失去受控进程。"
+    },
+    {
+      "test": "TestShutdownStopsManagedEngine",
+      "decision": "keep",
+      "reason": "父 context 被取消也必须停止受管引擎，覆盖无显式 Shutdown 调用的关闭路径，防窗口退出后进程泄漏。"
+    },
+    {
+      "test": "TestStartEngineCrash",
+      "decision": "keep",
+      "reason": "启动时立即退出必须 failed/engine_exited，防 UI 持续显示 starting 或自动重启。"
+    },
+    {
+      "test": "TestStartEngineHealthyStopAndIdempotent",
+      "decision": "keep",
+      "reason": "启动重复操作不创建第二进程，另一候选不得接管当前启动，健康后停止清 owner，防重复服务和错绑模型。"
+    },
+    {
+      "test": "TestStartEnginePortInUse",
+      "decision": "keep",
+      "reason": "端口占用须启动前返回固定原因，防启动假成功或占用其他服务端口。"
+    },
+    {
+      "test": "TestStartEngineTimeout",
+      "decision": "keep",
+      "reason": "永不健康的进程须在启动时限后失败，防用户无限等待。"
+    }
+  ]
+}

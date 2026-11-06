@@ -1,0 +1,35 @@
+{
+  "source_path": "studio/internal/core/resources_test.go",
+  "decisions": [
+    {
+      "test": "TestRecordedNativeResourceProjection",
+      "decision": "keep",
+      "reason": "显式提供真机证据时验证 CPU/温度观测能进入展示投影，防实际采样格式与显示断开；本轮不执行该可选真机检查。"
+    },
+    {
+      "test": "TestResourceCPUContinuesAcrossRequestsAndPhases",
+      "decision": "keep",
+      "reason": "同进程跨请求/phase 仍连续计算 CPU 并保留元数据，防每个请求边界产生错误缺测。"
+    },
+    {
+      "test": "TestResourceCPURejectionAndRecovery",
+      "decision": "keep",
+      "reason": "PID/start/boot/scale 改变、counter reset、重叠读和权限缺测须断开 CPU 差分；恢复不能跨缺样计算，防伪造峰值。"
+    },
+    {
+      "test": "TestResourceCPUUsesReadMidpointAndConfiguredInterval",
+      "decision": "keep",
+      "reason": "CPU 按读取中点算时间并识别配置周期下的缺口，防采样耗时导致百分比错误和长间隔伪连续。"
+    },
+    {
+      "test": "TestResourceObservationsPreserveSourcesAndTailBoundaries",
+      "decision": "keep",
+      "reason": "同时刻多温度源不合并，增量尾读等价且缺测不变实测值，CPU 百分比不截断，防资源曲线失真。"
+    },
+    {
+      "test": "TestResourcesRetain600PerSourceWithoutDroppingCPU",
+      "decision": "keep",
+      "reason": "多温度源不能挤掉 CPU，各源按已声明 600 点窗口保留，防长运行曲线某类数据消失或无限增长。"
+    }
+  ]
+}

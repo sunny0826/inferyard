@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_bundle_migration.py",
+  "decisions": [
+    {
+      "test": "test_bundled_review_proof_is_still_approved",
+      "decision": "keep",
+      "reason": "发行zh-smoke现行不可变审核来源仍可批准，避免删旧迁移实现连带破坏合法当前题包。"
+    },
+    {
+      "test": "test_migration_generation_api_is_absent",
+      "decision": "delete",
+      "reason": "仅hasattr断言迁移函数不存在是API结构约束；旧证据拒绝由当前格式产品边界负责。"
+    },
+    {
+      "test": "test_proof_tampering_never_grants_review",
+      "decision": "keep",
+      "reason": "来源hash/text、题内容、审核或重复proof改变均拒绝，防止伪造批准。"
+    }
+  ]
+}

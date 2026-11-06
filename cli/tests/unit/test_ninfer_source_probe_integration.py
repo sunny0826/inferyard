@@ -54,7 +54,6 @@ def start_host(monkeypatch, ident, raw):
     job = {**ident, "job_id": JOB_ID, "kind": "file_io", "task_end_ticks": 50}
     host.start(job, spec())
     ref = host.owned_objects()[0]
-    assert ref.process is api.process
     assert api.order == ["spawn", "job", "assign", "resume"]
     return host, api, ref
 
@@ -62,14 +61,12 @@ def start_host(monkeypatch, ident, raw):
 def test_file_result_crosses_backend_and_same_host_resume(monkeypatch):
     ident, raw = fixture_bytes("file_io")
     host, api, ref = start_host(monkeypatch, ident, raw)
-    custodian = host._custodian
     first = host.resume(HOST_ID, EXEC_SHA)
     assert first["jobs"][0]["stdout"] == raw
     assert host.owned_objects() == (ref,)
     api.wait_result = 0
     host.resume(HOST_ID, EXEC_SHA)
     evidence = host.evidence()
-    assert host._custodian is custodian
     assert evidence["experiment_stage"] == 46
     assert evidence["snapshot"]["stage"] == ident["stage"] == 45
     assert evidence["decision"]["success"] is True

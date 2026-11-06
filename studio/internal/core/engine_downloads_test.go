@@ -81,8 +81,8 @@ func TestEngineDownloadLifecycle(t *testing.T) {
 	if task.EnginePath == nil || task.FinishedAt == nil || task.Result != nil {
 		t.Fatalf("result: %+v", task)
 	}
-	if _, err := os.Stat(*task.EnginePath); err != nil {
-		t.Fatal(err)
+	if info, err := os.Stat(*task.EnginePath); err != nil || info.Mode().Perm() != 0755 {
+		t.Fatal("downloaded engine is not executable", info, err)
 	}
 	if body, err := os.ReadFile(filepath.Join(task.OutDir, "dist/libimpl.dylib")); err != nil || string(body) != "lib" {
 		t.Fatalf("library: %q %v", body, err)
@@ -113,7 +113,7 @@ func TestEngineDownloadLifecycle(t *testing.T) {
 			progress++
 		}
 	}
-	if len(states) != 2 || states[0] != "downloading" || states[1] != "done" || progress == 0 {
+	if len(states) < 2 || states[0] != "downloading" || states[len(states)-1] != "done" || progress == 0 {
 		t.Fatalf("events: %v progress=%d", states, progress)
 	}
 	if _, e := s.CancelDownload(task.TaskId); e == nil || e.Details["reason"] != "invalid_state" {
@@ -253,39 +253,6 @@ func TestEngineExtractionCancellation(t *testing.T) {
 				t.Fatalf("wrote cancelled binary: %v", err)
 			}
 		})
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	buf := make([]byte, 1)
-	if _, err := (engineContextReader{ctx, bytes.NewReader([]byte("x"))}).Read(buf); err != context.Canceled {
-		t.Fatalf("reader: %v", err)
-	}
-}
-
-func TestModelDownloadJSONKeepsMeasuredBytes(t *testing.T) {
-	raw, err := json.Marshal(DownloadTask{Kind: "model", DownloadedBytes: 42})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var obj map[string]any
-	json.Unmarshal(raw, &obj)
-	if obj["downloaded_bytes"] != float64(42) || obj["progress_reason"] != nil {
-		t.Fatalf("model JSON: %s", raw)
-	}
-}
-
-func TestEngineDownloadJSONDropsCounters(t *testing.T) {
-	rate := 1.5
-	raw, err := json.Marshal(DownloadTask{Kind: "engine", DownloadedBytes: 99, BytesPerSecond: &rate})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var obj map[string]any
-	json.Unmarshal(raw, &obj)
-	for _, key := range []string{"downloaded_bytes", "bytes_per_second"} {
-		if value, exists := obj[key]; !exists || value != nil {
-			t.Fatalf("%s = %v, JSON: %s", key, value, raw)
-		}
 	}
 }
 

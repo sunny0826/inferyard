@@ -94,13 +94,12 @@ def pipeline(tmp_path, monkeypatch, config_path):
             },
             monotonic_ns=left,
         )
-        posts, idle_dirty = [], []
+        posts = []
         with locking.HostLock() as lock:
 
             async def handler(request):
                 if request.method == "GET":
                     assert request.url.path == "/slots"
-                    idle_dirty.append(bool(lock.state and lock.state["dirty"]))
                     return httpx.Response(200, json=[{"id": 0, "is_processing": False}])
                 assert request.url.path == "/v1/chat/completions"
                 posts.append(request)
@@ -167,7 +166,6 @@ def pipeline(tmp_path, monkeypatch, config_path):
                 lock=lock,
                 store=store,
                 posts=posts,
-                idle_dirty=idle_dirty,
                 prompt=bundle["cases"][0]["prompt"],
                 events=events,
                 finish=finish,
@@ -199,13 +197,10 @@ def test_queued_generation_at_or_after_deadline_has_no_attempt(pipeline, offset)
                 stream=False,
                 admission_deadline_ns=ctx.deadline,
             )
-            assert terminal is None and ctx.adapter.last_state is None
+            assert terminal is None
             assert not ctx.posts and not ctx.events("request_started")
             assert not ctx.events("request_finished")
-            assert ctx.requests.next_formal == 0 and not ctx.requests.formal_started
-            assert ctx.idle_dirty == [False, True]
             assert not read_json(locking.STATE_PATH)["dirty"]
-            assert ctx.sampler.phases[-1] == ("residual", None)
             assert ctx.finish()["requests"] == []
 
     asyncio.run(run())
@@ -235,7 +230,6 @@ def test_admitted_start_and_send_share_sample_and_include_durable_write_cost(pip
             assert len(ctx.posts) == 1
             assert ctx.events("request_started")[0]["monotonic_ns"] == terminal["t_send_ns"] == send
             assert terminal["t_terminal_ns"] - send == 30
-            assert ctx.requests.next_formal == 1 and ctx.requests.formal_started
             data = ctx.finish(returned=1, completed=1)
             assert data["summary"]["duration"]["admitted_requests"] == 1
             assert data["summary"]["counts"]["completed"] == 1
@@ -269,8 +263,8 @@ def test_cancel_after_admission_keeps_cancelled_terminal(pipeline):
                 await task
             terminal = ctx.events("request_finished")[0]["data"]
             assert terminal["execution_state"] == "cancelled" and terminal["t_send_ns"] == send
-            assert len(ctx.posts) == 1 and ctx.requests.next_formal == 1
-            assert ctx.idle_dirty == [False, True] and not ctx.lock.state["dirty"]
+            assert len(ctx.posts) == 1
+            assert not ctx.lock.state["dirty"]
             assert ctx.finish("interrupted")["summary"]["counts"]["cancelled"] == 1
 
     asyncio.run(run())
@@ -295,10 +289,9 @@ def test_cancel_queued_generation_has_no_orphan_terminal(pipeline, monkeypatch):
                     stream=False,
                     admission_deadline_ns=ctx.deadline,
                 )
-            assert not ctx.posts and ctx.adapter.last_state is None
+            assert not ctx.posts
             assert not ctx.events("request_started") and not ctx.events("request_finished")
-            assert ctx.requests.next_formal == 0 and not ctx.requests.formal_started
-            assert ctx.idle_dirty == [False, True] and not ctx.lock.state["dirty"]
+            assert not ctx.lock.state["dirty"]
             assert ctx.finish("interrupted")["requests"] == []
 
     asyncio.run(run())
@@ -327,11 +320,9 @@ def test_callback_write_failure_never_sends_or_cleans_dirty(pipeline, cancel_out
                     stream=False,
                     admission_deadline_ns=ctx.deadline,
                 )
-            assert not ctx.posts and ctx.adapter.last_state is None
-            assert ctx.requests.next_formal == 0 and not ctx.requests.formal_started
+            assert not ctx.posts
             assert not ctx.events("request_started") and not ctx.events("request_finished")
             assert read_json(locking.STATE_PATH)["dirty"]
-            assert ctx.idle_dirty == [False]
             assert ctx.finish("tool_error")["requests"] == []
 
     asyncio.run(run())
@@ -384,7 +375,7 @@ def test_missing_terminal_is_tool_failure_not_silent_decline(pipeline, monkeypat
                     stream=False,
                     admission_deadline_ns=ctx.deadline if duration else None,
                 )
-            assert len(ctx.posts) == 1 and ctx.requests.next_formal == 1
+            assert len(ctx.posts) == 1
             assert read_json(locking.STATE_PATH)["dirty"]
             assert not ctx.events("request_finished")
             ctx.store.event("run_stopped", "finalizing", None, {"reason": "tool_error"})
@@ -397,30 +388,5 @@ def test_missing_terminal_is_tool_failure_not_silent_decline(pipeline, monkeypat
                 duration=ctx.store.duration_protocol,
             )
             assert len(rows) == 1 and rows[0]["execution_state"] == "invalid"
-
-    asyncio.run(run())
-
-
-def test_generate_default_interface_and_declined_state_are_compatible():
-    async def run():
-        posts, samples = [], []
-
-        def handler(request):
-            posts.append(request)
-            return httpx.Response(500)
-
-        adapter = PrismAdapter("http://127.0.0.1:8080", transport=httpx.MockTransport(handler))
-        try:
-            assert (await adapter.generate({"stream": False}, 1))["error_category"] == "http_error"
-            assert adapter.last_state is not None and len(posts) == 1
-            assert (
-                await adapter.generate(
-                    {"stream": False}, 1, before_send=lambda sample: samples.append(sample) or False
-                )
-                is None
-            )
-            assert adapter.last_state is None and len(samples) == 1 and len(posts) == 1
-        finally:
-            await adapter.close()
 
     asyncio.run(run())

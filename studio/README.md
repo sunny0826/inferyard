@@ -221,10 +221,12 @@ binding. Logs, suite metadata, failure screenshots and the Xcode result stay in 
 requirements and the coverage matrix. CI runs Full on macOS; Windows/Linux
 native UI coverage is not claimed.
 
-From `studio/`, the code checks are:
+Keep checks that demonstrate product or logical invariants, or protect packaging
+and release; follow the [test policy](../docs/testing.md). `go test` includes compilation
+and its default vet checks; there is no separate broad vet gate.
+From `studio/`, run:
 
 ```sh
-mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
 mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
 ```
 

@@ -83,10 +83,9 @@ def test_receipts_and_manual_verified_boolean_cannot_replace_file_bytes(tmp_path
     assert not qualification(left, right)["eligible"]
 
 
-def test_v3_reuses_verified_lineage_once_for_tokenizer_rate(tmp_path, monkeypatch):
+def test_v3_reuses_verified_lineage_once_for_tokenizer_rate(tmp_path):
     from copy import deepcopy
 
-    from inferyard.analysis import quantization_comparison as module
     from inferyard.implementation_identity import IdentityContext
     from tests.unit.test_performance_comparison import inputs
 
@@ -104,16 +103,7 @@ def test_v3_reuses_verified_lineage_once_for_tokenizer_rate(tmp_path, monkeypatc
         }
         data["run"].update(run_id=performance["run"]["run_id"], implementation_identity=identity)
         data["run"]["definition_versions"]["scoring"] = "phase2.v1"
-    calls = []
-    original = module.verify_lineage_files
-
-    def counted(*args, **kwargs):
-        calls.append(1)
-        return original(*args, **kwargs)
-
-    monkeypatch.setattr(module, "verify_lineage_files", counted)
     result = compare_trials(left, right, definition="phase2.v3", performance_evidence=proofs)
-    assert calls == [1, 1]  # One per side; performance consumes the returned qualification.
     rows = {r["metric_id"]: r for r in result["performance_analysis"]["differences"]}
     assert rows["L04"]["eligible"], result["performance_analysis"]
     assert rows["L04"]["difference"] == 20

@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_layout_read_reuse.py",
+  "decisions": [
+    {
+      "test": "test_external_commands_read_each_original_once",
+      "decision": "delete",
+      "reason": "仅断言各命令每原件打开一次，未对应产品预算；布局与证据语义由 test_layout_surfaces.py 和本文件拒绝路径覆盖。"
+    },
+    {
+      "test": "test_nested_member_references_share_reader_without_rewriting_paths",
+      "decision": "keep",
+      "reason": "嵌套成员路径可核验且 ../ 逃逸拒绝，避免报告目录层次导致引用误解；删除 reader 打开次数断言。"
+    },
+    {
+      "test": "test_next_command_rechecks_changed_original_bytes",
+      "decision": "keep",
+      "reason": "下一个命令重新检查已变原件字节，避免长期缓存使篡改证据通过。"
+    },
+    {
+      "test": "test_read_bound_metric_validation_rejects_wrong_references",
+      "decision": "keep",
+      "reason": "物理摘要或成员摘要错误即使复用 reader 仍拒绝，避免缓存绕过来源绑定。"
+    },
+    {
+      "test": "test_standalone_member_references_share_one_source_reader",
+      "decision": "delete",
+      "reason": "重复引用单 reader 的打开次数是实现约束；错成员摘要由 test_read_bound_metric_validation_rejects_wrong_references 覆盖。"
+    }
+  ]
+}

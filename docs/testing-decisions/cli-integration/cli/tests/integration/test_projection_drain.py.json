@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/integration/test_projection_drain.py",
+  "decisions": [
+    {
+      "test": "test_lab_drain_is_identical",
+      "decision": "delete",
+      "reason": "只比较projection与full两个reader；lab实际故障/绑定由 test_lab_cli.test_offline_rechecks_lab_parameter_binding 覆盖，用户结果由实际批次测试覆盖。"
+    },
+    {
+      "test": "test_lab_drain_keeps_consumed_proof_validation",
+      "decision": "delete",
+      "reason": "snapshot/身份/request损坏只要求两个reader报同错，没有独立用户预期；实际lab wire与参数拒绝由 test_lab_cli 的offline测试覆盖。"
+    },
+    {
+      "test": "test_native_capability_manifest_binding_is_preserved",
+      "decision": "delete",
+      "reason": "只证明两个内部reader对manifest错误一致，完整native能力约束由 test_native_cli.test_native_offline_rejects_invented_drain 覆盖。"
+    },
+    {
+      "test": "test_native_idle_event_is_rejected",
+      "decision": "delete",
+      "reason": "native伪造idle拒绝与 test_native_cli.test_native_offline_rejects_invented_drain 同一产品假设；删除投影一致性测试。"
+    },
+    {
+      "test": "test_native_never_acquires_engine_drain",
+      "decision": "delete",
+      "reason": "native无drain由 test_native_cli.test_native_offline_rejects_invented_drain 和 test_native_batch_continuation.test_native_two_repeats_keep_client_http_scope 覆盖，删除投影对等。"
+    }
+  ]
+}

@@ -52,9 +52,6 @@ func TestPreviewBenchmarkParity(t *testing.T) {
 					t.Errorf("%s contract mismatch\n got: %+v\nwant: %+v", name, got, want)
 				}
 			}
-			if !reflect.DeepEqual(production, preview) {
-				t.Errorf("behavior drift\nproduction: %+v\n   preview: %+v", production, preview)
-			}
 		})
 	}
 }

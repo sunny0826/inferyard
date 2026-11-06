@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/options_release_test.go",
+  "decisions": [
+    {
+      "test": "TestReleaseDoesNotExposeDebugUI",
+      "decision": "keep",
+      "reason": "普通和 ui_debug,release 都必须隐藏且拒绝预览参数，保障正式发布不暴露模拟入口。"
+    }
+  ]
+}

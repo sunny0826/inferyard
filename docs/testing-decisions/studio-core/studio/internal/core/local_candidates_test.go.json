@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/core/local_candidates_test.go",
+  "decisions": [
+    {
+      "test": "TestLocalContextSpeedStopsBeforePreparation",
+      "decision": "keep",
+      "reason": "不支持本地声明引擎的专项任务须在入队/写文件前拒绝，防虚假任务或半准备残留。"
+    },
+    {
+      "test": "TestSGLangEachCandidateGetsNewMetricsWithoutChangingSource",
+      "decision": "keep",
+      "reason": "每候选有独立空指标目录且 worker 与 root 一致，源声明不改；声明改变要拒绝，防跨题包污染指标及覆盖原始配置。"
+    }
+  ]
+}

@@ -13,21 +13,23 @@ import (
 
 func TestDownloadNamesSettingsView(t *testing.T) {
 	s := testState()
+	s.selected = "settings"
 	s.modelName, s.engineName = "...", "a/b"
-	tt := ui.NewTester(func(c *ui.Context) { s.downloadNamesView(c) }, 1000, 800)
-	for _, label := range []string{"模型下载目录名", "引擎下载目录名"} {
-		inputs := designFieldInputs(tt, label)
-		if len(inputs) == 0 || !inputs[0].FieldByName("invalid").Bool() {
-			t.Fatal(label)
+	tt := ui.NewTester(s.view, 1120, 800)
+	// Drive the real long page by scrolling until its action can be clicked.
+	var clickErr error
+	for range 12 {
+		tt.Scroll(700, 500, 0, 200)
+		clickErr = tt.Click("恢复默认值")
+		if clickErr == nil {
+			break
 		}
 	}
-	click(t, tt, "恢复默认值")
+	if clickErr != nil {
+		t.Fatal("cannot restore names from the settings page", clickErr)
+	}
 	if s.modelName != "model" || s.engineName != "engine" {
 		t.Fatal(s.modelName, s.engineName)
-	}
-	tt.Frame()
-	if !tt.HasText("实际名称显示在下载任务详情中") {
-		t.Fatal(tt.Texts())
 	}
 }
 

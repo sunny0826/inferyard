@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/integration/test_position_report.py",
+  "decisions": [
+    {
+      "test": "test_position_report_projects_diagnostic_ledger_without_pooling",
+      "decision": "keep",
+      "reason": "位置报告保留front/middle/back三个变体在同一family内的结构，不能跨题族池化成错误位置结论。"
+    }
+  ]
+}

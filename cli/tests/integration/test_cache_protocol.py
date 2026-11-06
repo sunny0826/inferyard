@@ -38,7 +38,6 @@ def test_frozen_prefix_reuse_trial_and_offline_replay(scenario, policy):
     assert len(calls) == 8
     assert calls[0]["cache_prompt"] is False
     assert all(c["cache_prompt"] is (policy == "enabled") for c in calls[1:])
-    assert read_trial(root)["summary"] == data["summary"]
     assert (
         TrialEvidence(root).observation("effective_parameters", "stream")["cache"]["value"]
         == policy
@@ -103,7 +102,6 @@ def test_prefix_reuse_and_strict_output_replay_together(scenario):
     assert scenario[2][0]["cache_prompt"] is False
     assert all(c["ignore_eos"] is True and c["n_cache_reuse"] == 0 for c in scenario[2])
     assert all(c["cache_prompt"] is True for c in scenario[2][1:])
-    assert read_trial(root)["summary"] == data["summary"]
 
 
 def test_prefix_reuse_refuses_unsealed_engine_evidence(scenario):
@@ -135,7 +133,6 @@ def test_cache_sequence_rebuilt_from_all_raw_request_phases(scenario):
     assert cache["policy_consistent"] is True
     assert not any(r["reuse_observed"] for r in cache["rows"])
     assert [r["phase"] for r in cache["rows"]] == ["probe"] * 2 + ["warmup"] * 3 + ["formal"] * 3
-    assert read_trial(root)["summary"]["cache_observations"] == cache
 
 
 def test_two_frozen_cache_policies_compare_with_replayed_evidence(scenario, monkeypatch):
@@ -186,16 +183,3 @@ def test_two_frozen_cache_policies_compare_with_replayed_evidence(scenario, monk
     assert before == {
         str(p): sha256_file(p) for root in roots for p in root.iterdir() if p.is_file()
     }
-
-
-def test_cache_protocol_preserves_formal_failure_and_next_request(scenario):
-    scenario[3]["fail_index"] = 6
-    plan, loaded, deps, output = prepare(scenario, "enabled")
-    code, data, root = asyncio.run(
-        run_trial(
-            plan, plan["trials"][0]["trial_id"], loaded, output, diagnostic=True, dependencies=deps
-        )
-    )
-    assert code == 0
-    assert [r["execution_state"] for r in data["requests"]] == ["completed", "failed", "completed"]
-    assert read_trial(root)["summary"] == data["summary"]

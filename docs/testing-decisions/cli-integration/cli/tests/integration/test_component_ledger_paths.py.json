@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_component_ledger_paths.py",
+  "decisions": [
+    {
+      "test": "test_ledger_path_survives_relocation_and_old_snapshot_remains_readable",
+      "decision": "keep",
+      "reason": "来源删除及冻结目录搬迁后，当前和旧快照账本路径仍按原来源绑定；重新算哈希的路径/类型替换仍拒绝。"
+    },
+    {
+      "test": "test_single_and_frozen_toml_use_same_relative_ledger_origin",
+      "decision": "delete",
+      "reason": "只比较两个归一化函数；路径搬迁及来源矛盾由test_ledger_path_survives_relocation_and_old_snapshot_remains_readable覆盖。"
+    },
+    {
+      "test": "test_windows_native_asset_paths_keep_existing_adapter_semantics",
+      "decision": "delete",
+      "reason": "只直接调用归一化并复述Windows字段；实际Windows/lab配置读写由 test_bind_config_cli.test_manifest_binding_script_to_cli_probe_round_trip 覆盖。"
+    }
+  ]
+}

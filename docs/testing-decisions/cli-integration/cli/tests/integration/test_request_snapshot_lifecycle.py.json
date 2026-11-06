@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/integration/test_request_snapshot_lifecycle.py",
+  "decisions": [
+    {
+      "test": "test_new_event_requires_matching_original_snapshot",
+      "decision": "keep",
+      "reason": "prepared原件缺失、消息变化或started摘要伪造均须离线拒绝，即使移除manifest。"
+    },
+    {
+      "test": "test_writers_seal_body_snapshots_in_send_order",
+      "decision": "keep",
+      "reason": "实际发送body和request身份/顺序须耐久可绑定并重建消息摘要，防止报告引用到未发送prompt。"
+    }
+  ]
+}

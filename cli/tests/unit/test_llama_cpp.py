@@ -10,7 +10,6 @@ from inferyard.adapters.llama_cpp import BUILD, COMPONENT, LlamaCppAdapter
 from inferyard.adapters.prism import ResponseState
 from inferyard.config.loader import load_config, validate_runtime_config
 from inferyard.platforms.identity import PreflightError
-from inferyard.registry import adapter_factory
 
 
 def inputs(config_path):
@@ -41,9 +40,8 @@ def slot(config):
     return [{"id": 0, "is_processing": False, "params": params}]
 
 
-def test_upstream_registered_and_effective_stop_is_observed(config_path):
+def test_upstream_effective_stop_is_observed(config_path):
     config = inputs(config_path)
-    assert adapter_factory(COMPONENT) is LlamaCppAdapter
 
     async def check():
         adapter = LlamaCppAdapter(

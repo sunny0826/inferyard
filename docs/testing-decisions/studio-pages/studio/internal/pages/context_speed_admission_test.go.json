@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/pages/context_speed_admission_test.go",
+  "decisions": [
+    {
+      "test": "TestNewTaskFormDoesNotRepeatSpecialtyHistoryErrors",
+      "decision": "keep",
+      "reason": "新普通/专项表单不能把历史专项错误当成本次失败，同时保留普通操作错误及原任务记录。"
+    },
+    {
+      "test": "TestSpeedAdmissionExplainsBlockingCondition",
+      "decision": "keep",
+      "reason": "核验中/失败、缺 preflight、忙碌、重置、模型上下文不足、遗留服务、活动运行均应阻止专项并说明原因，避免错测或重叠运行。"
+    },
+    {
+      "test": "TestSpeedOutdatedCLIGuidance",
+      "decision": "keep",
+      "reason": "旧 CLI 未核验引擎不得开始专项；打开设置需保留上下文及模型选择，便于升级后继续。"
+    }
+  ]
+}

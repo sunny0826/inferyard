@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_common_evidence.py",
+  "decisions": [
+    {
+      "test": "test_lms_status_for_other_instance_never_becomes_idle",
+      "decision": "keep",
+      "reason": "其他 LM Studio 实例的零队列不能证明目标模型空闲，避免带旧请求开测。"
+    },
+    {
+      "test": "test_new_asset_cannot_be_compared_under_different_plan",
+      "decision": "keep",
+      "reason": "模型文件摘要改变形成另一计划，比较必须拒绝而不能归因于引擎性能。"
+    },
+    {
+      "test": "test_new_gguf_engines_compare_with_missing_version_and_no_live_backend",
+      "decision": "keep",
+      "reason": "GGUF 引擎离线比较可保留版本缺测原因，HTML 不显示 None 或误称目录模型。"
+    },
+    {
+      "test": "test_rejects_new_evidence_tampering",
+      "decision": "keep",
+      "reason": "服务版本、缺测理由、模型绑定、观察器实例/根、平台、旧定义和忙碌状态篡改均拒绝。"
+    }
+  ]
+}

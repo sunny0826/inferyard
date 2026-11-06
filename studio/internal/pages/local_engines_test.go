@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"testing"
 )
@@ -18,14 +17,6 @@ func TestLocalCandidateFormatAndSpeedAdmission(t *testing.T) {
 				t.Fatal(s.speedStartBlockReason())
 			}
 		})
-	}
-}
-
-func TestLocalEngineFieldsDoNotReplacePathSettings(t *testing.T) {
-	s := testState()
-	tt := ui.NewTester(s.settingsView, 1120, 1800)
-	if !tt.HasText("安装声明 JSON 路径") || !tt.HasText("注册引擎") || !tt.HasText("CLI") {
-		t.Fatal(tt.Texts())
 	}
 }
 

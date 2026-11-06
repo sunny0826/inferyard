@@ -2,7 +2,6 @@
 
 import asyncio
 import shutil
-from collections import Counter
 from dataclasses import replace
 from pathlib import Path
 
@@ -20,34 +19,6 @@ from tests.integration.test_runner import scenario as runner_scenario
 from tests.layout_mutations import change_input
 
 scenario = runner_scenario
-
-
-def test_raw_terminal_and_scores_sync_without_derived_request_copy(scenario, monkeypatch):
-    request, deps, _, _ = scenario
-    writes, syncs = Counter(), []
-    original_event, original_sync = TrialJournal.event, storage.os.fsync
-
-    def fsync(fd):
-        syncs.append(fd)
-        return original_sync(fd)
-
-    def event(self, kind, *args, **kwargs):
-        before = len(syncs)
-        result = original_event(self, kind, *args, **kwargs)
-        if kind in ("request_finished", "score"):
-            assert self._logs["events.jsonl"].fileno() in syncs[before:]
-            writes[kind] += 1
-        return result
-
-    monkeypatch.setattr(storage.os, "fsync", fsync)
-    monkeypatch.setattr(TrialJournal, "event", event)
-    code, result = asyncio.run(runner.execute_async(request, deps))
-    assert code == 0
-    root = Path(result.evidence_dir)
-    assert writes == {"request_finished": 8, "score": 3}
-    assert not (root / "requests.jsonl").exists()
-    assert "requests.jsonl" not in read_json(root / "manifest.json")["files"]
-    assert len(read_trial(root)["requests"]) == 3
 
 
 def test_score_append_failure_preserves_durable_completed_terminal(scenario, monkeypatch):

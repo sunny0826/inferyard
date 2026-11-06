@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/context_speed_bridge_test.go",
+  "decisions": [
+    {
+      "test": "TestContextSpeedRealCLIProjection",
+      "decision": "delete",
+      "reason": "依赖外部环境变量且硬编码某份合成结果的数值；投影与冻结身份由 TestPreviewContextSpeedParity、TestPreviewSpeedHistoricalIdentity 覆盖。"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_async_guard.py",
+  "decisions": [
+    {
+      "test": "test_cancellation_closes_http_before_draining_observer",
+      "decision": "keep",
+      "reason": "用户取消先关闭HTTP再排空原生观察，保留取消异常且不遗留观察线程，避免取消迟钝和后台观测跨运行。"
+    },
+    {
+      "test": "test_http_deadline_fires_while_native_observation_is_still_pending",
+      "decision": "keep",
+      "reason": "原生身份读取阻塞时HTTP仍按0.8秒超时，但必须等原生读取排空再封存且错误不能丢，避免超预算或后台改证据。"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "source_path": "studio/internal/pages/service_discovery_test.go",
+  "decisions": [
+    {
+      "test": "TestDiscoveryBindingDisabledDuringBusyScanOrOtherPhase",
+      "decision": "keep",
+      "reason": "忙碌、扫描中或非绑定阶段点击不能开始绑定，避免并发操作或错误阶段绑定。"
+    },
+    {
+      "test": "TestDiscoveryCompatibleInterfacesRequireExpansion",
+      "decision": "delete",
+      "reason": "目录展开后 basename 可读且绝对路径隐藏已并入 TestDiscoveryRenderedOnBothPages；删除逐进程名重复矩阵。"
+    },
+    {
+      "test": "TestDiscoveryDedupRequiresActivePIDAndExactEndpoint",
+      "decision": "keep",
+      "reason": "PID 不同、endpoint 不同、监听歧义或无 PID 时不得吞掉外部接口，避免用户丢失真实可绑定服务。"
+    },
+    {
+      "test": "TestDiscoveryEmptyAndTerminalStates",
+      "decision": "delete",
+      "reason": "终态不能显示活动服务由 TestDiscoveryLifecycleChangesAndDeduplication 覆盖；剩余仅空列表文案。"
+    },
+    {
+      "test": "TestDiscoveryHealthyDirectoryStillUnconfirmed",
+      "decision": "delete",
+      "reason": "健康 2xx 仍折叠待确认由 TestDiscoveryRenderedOnBothPages 的 2xx 模型接口覆盖，未额外验证身份拒绝。"
+    },
+    {
+      "test": "TestDiscoveryLifecycleChangesAndDeduplication",
+      "decision": "keep",
+      "reason": "只有活跃且确属 Studio 的服务可去重，停止/失败/遗留时接口仍须待确认，不能冒认所有权。"
+    },
+    {
+      "test": "TestDiscoveryManagedServiceIndependentOfScan",
+      "decision": "keep",
+      "reason": "扫描未加载/进行中/失败/不完整/缺目录时仍须显示 Studio 自有服务，避免误认未运行；只保留 running 起点，状态变化另由生命周期测试覆盖。"
+    },
+    {
+      "test": "TestModelsDiscoveryTitleIsNotRepeated",
+      "decision": "delete",
+      "reason": "只统计一个标题。"
+    }
+  ]
+}

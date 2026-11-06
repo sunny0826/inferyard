@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_repeat_case_orders.py",
+  "decisions": [
+    {
+      "test": "test_explicit_orders_require_one_complete_permutation_per_repeat",
+      "decision": "keep",
+      "reason": "每次必须完整 permutation、次数匹配且无重复 case，避免冻结漏题或重复分母。"
+    },
+    {
+      "test": "test_explicit_orders_survive_new_experiment_identity_and_seed",
+      "decision": "keep",
+      "reason": "显式每次题序不随实验改名/seed 改变，trial 身份仍变，避免跨设备配对失序或身份混淆。"
+    }
+  ]
+}

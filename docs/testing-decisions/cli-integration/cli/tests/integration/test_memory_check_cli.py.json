@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/integration/test_memory_check_cli.py",
+  "decisions": [
+    {
+      "test": "test_cancel_and_io_fault_preserve_json",
+      "decision": "keep",
+      "reason": "取消和IO故障也必须给可解析JSON和准确130/4退出码。"
+    },
+    {
+      "test": "test_invalid_protection_rejects_before_collecting",
+      "decision": "keep",
+      "reason": "保护PID为0、负数或非整数时，必须在采集前拒绝。"
+    },
+    {
+      "test": "test_metadata_never_imports_collector",
+      "decision": "keep",
+      "reason": "help/schema/versions冷启动不能导入采集后端，确保不具备原生采集能力的机器仍可读取元数据。"
+    },
+    {
+      "test": "test_other_platform_is_explicitly_unsupported",
+      "decision": "keep",
+      "reason": "Linux等未支持平台必须明确阻断且无伪造details。"
+    },
+    {
+      "test": "test_output_does_not_leak_internal_paths_or_sentinels_or_signal_user_processes",
+      "decision": "keep",
+      "reason": "只读内存诊断不得联网、发信号或写host状态，私有路径与环境sentinel不能输出或落盘。"
+    },
+    {
+      "test": "test_parent_failure_partial_cli_preserves_rss_and_saved_readback",
+      "decision": "keep",
+      "reason": "父身份缺失使决策unknown且退出3，但已得RSS不能丢失，其他独立应用仍可review。"
+    },
+    {
+      "test": "test_partial_json_reaches_user_with_exit_three",
+      "decision": "keep",
+      "reason": "RSS权限不足必须退出3并显示null，不能补0或说完整。"
+    },
+    {
+      "test": "test_real_dispatch_persists_and_refuses_overwrite",
+      "decision": "keep",
+      "reason": "memory-check经公开入口保存结果，已有输出拒绝覆盖并保持原字节。"
+    }
+  ]
+}

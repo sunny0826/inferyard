@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/test_report_read_efficiency.py",
+  "decisions": [
+    {
+      "test": "test_first_index_parse_preserves_invalid_json_mapping",
+      "decision": "delete",
+      "reason": "只断言首次解析异常统一映射字符串；实际JSONL损坏用户失败由test_cli.test_report_recovers_tail_and_rejects_middle_corruption覆盖，派生报告损坏由test_batch_runner报告篡改覆盖。"
+    },
+    {
+      "test": "test_first_index_read_preserves_io_error_mapping",
+      "decision": "delete",
+      "reason": "mock Path.open并核对私有首次read错误映射，重复test_cli.test_io_errors_and_internal_exception_messages_are_sanitized的用户IO错误出口。"
+    },
+    {
+      "test": "test_noncanonical_index_remains_valid_after_moving_sources",
+      "decision": "keep",
+      "reason": "报告与来源目录一起搬迁后，合法非规范空白/键序的封存index仍须离线核验并按新相对路径找到来源，且不得重写原index字节；避免交付包换位置后失效。"
+    },
+    {
+      "test": "test_portable_paths_leave_source_and_large_run_payloads_untouched",
+      "decision": "delete",
+      "reason": "对象共享/深拷贝策略和嵌套引用身份只约束portable_index实现，不证明独立用户行为。"
+    },
+    {
+      "test": "test_second_read_changes_keep_existing_semantic_policy",
+      "decision": "delete",
+      "reason": "模拟第二次内部读取替换并数parse次数属优化实现/极小竞争窗口，不保留；普通派生篡改拒绝由test_batch_runner.test_report_is_offline_escaped_and_preserves_denominators覆盖。"
+    },
+    {
+      "test": "test_stable_index_is_parsed_once_and_verified_bytes_are_released",
+      "decision": "delete",
+      "reason": "只监控strict_json_loads次数与read_sealed字节dict释放策略，无明确产品内存或延迟预算；损坏来源拒绝由test_batch_projection的timeline故障覆盖。"
+    },
+    {
+      "test": "test_written_index_is_detached_and_json_normalized",
+      "decision": "delete",
+      "reason": "人为注入Python tuple/整数key并断言输出对象detach是内部表示约束；实际报告保存核验由test_layout_cli覆盖。"
+    }
+  ]
+}

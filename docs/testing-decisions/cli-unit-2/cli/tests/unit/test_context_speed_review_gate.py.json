@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_review_gate.py",
+  "decisions": [
+    {
+      "test": "test_default_bundles_still_prepare",
+      "decision": "delete",
+      "reason": "重复默认初始化happy path并将输出与实现DEFAULT_BUNDLES相等；test_init_layout_roadmap_and_progress_read_only 已明确两个scope预期。"
+    },
+    {
+      "test": "test_malformed_resource_is_not_review",
+      "decision": "keep",
+      "reason": "坏JSON/空对象/null/bool schema为资源损坏而非缺人审，避免给错补救措施。"
+    },
+    {
+      "test": "test_other_contract_errors_remain_resource_errors",
+      "decision": "keep",
+      "reason": "其他路径/损坏review/含private text的异常不能冒充缺人审，避免漏掉资源破坏与暴露细节。"
+    },
+    {
+      "test": "test_public_review_reason",
+      "decision": "keep",
+      "reason": "未完成人工语料审核的专项bundle初始化必须退出4并保留单一review原因且不落目录，避免未经审核题库进入测评。"
+    },
+    {
+      "test": "test_resource_hash_gate_remains_before_review",
+      "decision": "keep",
+      "reason": "打包resource hash不符必须在review前拒绝为资源错误，避免改包内容伪装只待审核。"
+    }
+  ]
+}

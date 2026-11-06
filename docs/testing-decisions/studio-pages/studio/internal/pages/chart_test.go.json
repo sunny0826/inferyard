@@ -1,0 +1,30 @@
+{
+  "source_path": "studio/internal/pages/chart_test.go",
+  "decisions": [
+    {
+      "test": "TestDenseMemoryOnlyResourcesStayCompact",
+      "decision": "keep",
+      "reason": "精简为只记录内存时 CPU/温度必须显示未记录，不能生成伪曲线；删除轴标签长度约束。"
+    },
+    {
+      "test": "TestResourceLineDataPreservesSourceGapsAndUnits",
+      "decision": "keep",
+      "reason": "多温度来源及中途缺测必须分开保留，内存 bytes 转 GiB；否则曲线伪造连续观测或数量级错误。"
+    },
+    {
+      "test": "TestResourceLinePointerAndKeyboardSelection",
+      "decision": "keep",
+      "reason": "鼠标和键盘定位缺测点时必须读到原始原因，End/Left/Escape 应选择或清除对应观测。"
+    },
+    {
+      "test": "TestResourceSameUTCKeepsDistinctObservations",
+      "decision": "keep",
+      "reason": "同 UTC 不同 seq 的观测不得互相覆盖，否则用户丢失真实采样点。"
+    },
+    {
+      "test": "TestResourceTemperatureSourcePicker",
+      "decision": "keep",
+      "reason": "切换传感器后须显示该来源的 70°C 读数，不能沿用另一传感器数据。"
+    }
+  ]
+}

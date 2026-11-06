@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_macos_runtime.py",
+  "decisions": [
+    {
+      "test": "test_native_frozen_batch_uses_macos_collector_and_no_implicit_repeat",
+      "decision": "keep",
+      "reason": "Darwin实际批次两次重复都采集本机资源；再次执行不得增加run或改写manifest。"
+    },
+    {
+      "test": "test_native_guardian_spawns_and_retains_required_temperature_policy",
+      "decision": "keep",
+      "reason": "独立guardian必须另进程采样且保留温度必需政策，缺传感器时给明确不安全原因。"
+    },
+    {
+      "test": "test_native_single_probe_run_and_offline_report",
+      "decision": "keep",
+      "reason": "Darwin真实子服务的probe/run采集CPU/RSS并封存；停服务后报告核验不再需要live模型，诊断不算正式完成。"
+    }
+  ]
+}

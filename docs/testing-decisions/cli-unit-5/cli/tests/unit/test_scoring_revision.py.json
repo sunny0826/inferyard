@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_scoring_revision.py",
+  "decisions": [
+    {
+      "test": "test_missing_scores_use_selected_revision_identity",
+      "decision": "delete",
+      "reason": "unscorable与resolve指向同函数结果及VERSION常量，属于派发实现自测；脱敏后不可评分由test_rescore.py::test_redacted_answers_are_never_reclassified_as_valid覆盖。"
+    },
+    {
+      "test": "test_numeric_diagnostics_preserve_original_verdict",
+      "decision": "delete",
+      "reason": "新旧评分函数互相比同值并检查规则数组/版本/hash，缺独立答案期望；真实数字边界由评分契约和逐题test_phase2_corpus.py::test_each_new_reference_and_both_boundaries覆盖。"
+    }
+  ]
+}

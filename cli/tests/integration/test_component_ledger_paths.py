@@ -4,36 +4,11 @@ import hashlib
 
 import pytest
 
-from inferyard.config.loader import load_config
-from inferyard.config.plan_inputs import normalized_config, read_frozen_plan
+from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.plan_math import plan_hash
 from inferyard.config.planning import write_plan
 from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
 from tests.integration.test_phase2_plan import input_package
-from tests.lab_service import lab_config
-
-
-def test_single_and_frozen_toml_use_same_relative_ledger_origin(tmp_path, config_path):
-    bundle = load_config(config_path).config.to_dict()["bundle"]["path"]
-    text = config_path.read_text().replace(
-        "[model]", '[model]\ncomponent_ledger_path = "lineage.json"'
-    )
-    text = text.replace("../contracts/bundle.valid.json", bundle)
-    path = tmp_path / "config.toml"
-    path.write_text(text)
-    single = load_config(path).config.to_dict()
-    frozen = normalized_config(text.encode(), path.name, path.parent, bundle)
-    assert frozen == single
-    assert frozen["model"]["component_ledger_path"] == str(tmp_path / "lineage.json")
-
-
-@pytest.mark.parametrize("adapter", ["kvmem", "ninfer"])
-def test_windows_native_asset_paths_keep_existing_adapter_semantics(config_path, adapter):
-    config = lab_config(load_config(config_path).config.to_dict(), adapter)
-    config["model"]["component_ledger_path"] = r"D:\lab\components.json"
-    frozen = normalized_config(json_bytes(config), "config.json", "/removed/source", "bundle.json")
-    for field in ("local_path", "template_path", "component_ledger_path"):
-        assert frozen["model"][field] == config["model"][field]
 
 
 @pytest.mark.parametrize("legacy", [False, True])

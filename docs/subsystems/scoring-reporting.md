@@ -35,7 +35,7 @@
 
 ## 验证
 
-以下命令在仓库根执行；根级 mise tasks 已内置 `cd cli`（见 [mise.toml](../../mise.toml) 与 [cli/pyproject.toml](../../cli/pyproject.toml) 的 pytest/ruff 配置）：
+从仓库根开始执行；根级 mise tasks 已内置 `cd cli`，直接调用脚本和 pytest 前先切换到 `cli/`（见 [mise.toml](../../mise.toml) 与 [CLI 配置](../../cli/pyproject.toml)）。测试取舍遵循[测试策略](../testing.md)：
 
 ```sh
 # 全量单元与集成回归（pytest，testpaths = tests）
@@ -46,13 +46,13 @@ mise run lint
 
 # JSON Schema 与 catalogue 生成物漂移核对
 mise run schemas
+cd cli
 mise exec -- uv run --frozen python scripts/export_catalogue.py --check
 
 # 评分、比较与重评分回归
 mise exec -- uv run --frozen pytest \
   tests/unit/test_scoring.py \
   tests/unit/test_scoring_contract.py \
-  tests/unit/test_scoring_revision.py \
   tests/unit/test_rescore.py \
   tests/unit/test_comparison.py \
   tests/unit/test_performance_comparison.py \

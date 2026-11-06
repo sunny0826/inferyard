@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_engine_source_download.py",
+  "decisions": [
+    {
+      "test": "test_compressed_response_is_rejected_instead_of_published",
+      "decision": "keep",
+      "reason": "服务端 gzip 编码不得当原始发布包落盘，避免压缩透明转换破坏来源 hash。"
+    },
+    {
+      "test": "test_download_streams_bytes_and_records_identity",
+      "decision": "keep",
+      "reason": "真实回环 HTTP 下载原字节且来源 bytes/hash 对应、不发送认证，避免发布损坏引擎或来源身份错误；删固定 request次数/header形状。"
+    },
+    {
+      "test": "test_existing_output_is_rejected_before_any_request",
+      "decision": "keep",
+      "reason": "已有输出先拒绝且不发请求，防止覆盖原件与无用下载。"
+    },
+    {
+      "test": "test_http_failure_keeps_failed_directory_without_outputs",
+      "decision": "keep",
+      "reason": "404 不留下 archive/来源记录/part，避免半成品被后续当完整引擎。"
+    },
+    {
+      "test": "test_redirect_is_followed_without_extra_configuration",
+      "decision": "keep",
+      "reason": "302 重定向可取得同一下载内容，避免正式源 CDN 跳转不可用。"
+    },
+    {
+      "test": "test_timeout_must_be_a_positive_finite_number",
+      "decision": "keep",
+      "reason": "0/负数/bool/非有限/字符串超时不得开始获取，避免失去有界下载。"
+    }
+  ]
+}

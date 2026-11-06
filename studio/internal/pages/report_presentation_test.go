@@ -3,7 +3,6 @@ package pages
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -68,10 +67,6 @@ func TestCompletedTaskOpensItsReport(t *testing.T) {
 		if tt.HasText(path) || tt.HasText("任务报告已生成") {
 			t.Error("completion should only offer the report button", tt.Texts())
 		}
-		buttonBounds, ok := tt.Find("查看报告")
-		if !ok || buttonBounds.W > 240 {
-			t.Error("missing or stretched report button", buttonBounds)
-		}
 		click(t, tt, "查看报告")
 		if s.selected != "reports" || s.openedReport == nil || !tt.HasText("Fixture Model Q4") || tt.HasText("历史任务") {
 			t.Fatal("completion opened the report menu instead of the generated report", tt.Texts())
@@ -90,7 +85,7 @@ func TestReportPrototypeSectionsAndValues(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Column(c).Gap(16).Children(func() { s.reportView(c) })
 	}, 1120, 2200)
-	for _, want := range []string{"Fixture Model Q4", "答案通过数", "请求完成率", "完成请求中位耗时", "服务采样峰值 RSS", "7 / 13", "11 / 13", "1.24 s", "1.80 GiB", "系统最低可用 9.40 GiB", "各类任务表现", "3 / 8", "4 / 5", "模型与机器", "机器：Fixture CPU · 14 核 · 24.00 GiB", "引擎：llama-server · Metal · 8 线程", "逐题答案", "数据来源", "运行：fixture-run", "0.84 s", "1.20 s", "通过", "未通过", "—"} {
+	for _, want := range []string{"Fixture Model Q4", "答案通过数", "请求完成率", "完成请求中位耗时", "服务采样峰值 RSS", "7 / 13", "11 / 13", "1.24 s", "1.80 GiB", "系统最低可用 9.40 GiB", "3 / 8", "4 / 5", "机器：Fixture CPU · 14 核 · 24.00 GiB", "引擎：llama-server · Metal · 8 线程", "运行：fixture-run", "0.84 s", "1.20 s", "通过", "未通过", "—"} {
 		if !slices.Contains(tt.Texts(), want) {
 			t.Errorf("missing %q", want)
 		}
@@ -99,14 +94,6 @@ func TestReportPrototypeSectionsAndValues(t *testing.T) {
 		if strings.Contains(label, "/private/") {
 			t.Errorf("report reveals a local path: %s", label)
 		}
-	}
-	previous := float32(-1)
-	for _, label := range []string{"答案通过数", "各类任务表现", "模型与机器", "逐题答案", "数据来源"} {
-		bounds, ok := tt.Find(label)
-		if !ok || bounds.Y <= previous {
-			t.Errorf("section %s is missing or out of order", label)
-		}
-		previous = bounds.Y
 	}
 }
 
@@ -153,32 +140,6 @@ func TestReportRunSelectionKeepsMetricsSeparate(t *testing.T) {
 	}
 	if tt.HasText("7 / 13") || tt.HasText("timed-case") {
 		t.Fatal("previous run leaked into selected run")
-	}
-}
-
-func TestReportTablesFillCardsAndScroll(t *testing.T) {
-	s := testState()
-	s.service, _ = reportFixtureService(t)
-	s.openReport("summary-1")
-	run := &s.openedReport.index.Runs[0]
-	for i := range 30 {
-		run.Requests = append(run.Requests, core.ReportRequest{CaseID: fmt.Sprintf("extra-%02d", i)})
-	}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).FillWidth().Children(func() { s.reportView(c) }) }, 1120, 2400)
-	tt.Frame()
-	table, ok := tt.Find("质量分类")
-	if !ok || table.W < 1000 {
-		t.Fatalf("table does not fill card: %+v", table)
-	}
-	requests, ok := tt.Find("逐题答案表")
-	if !ok {
-		t.Fatal("request table missing")
-	}
-	first, _ := tt.Find("null-case")
-	tt.Scroll(requests.X+30, requests.Y+80, 0, 800)
-	after, _ := tt.Find("null-case")
-	if after.Y >= first.Y {
-		t.Fatal("long request table did not scroll")
 	}
 }
 

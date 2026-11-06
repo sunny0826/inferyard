@@ -1,29 +1,23 @@
 """Offline verification retains dedicated semantics and refuses weak fallbacks."""
 
 import hashlib
+import json
+import os
+import socket
+import subprocess
 from dataclasses import replace
 from importlib import import_module
 from pathlib import Path
 
 import pytest
 
+from inferyard import cli
 from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.application.verification import execute
 from inferyard.config.loader import load_config
 from inferyard.contracts.validation import ContractError, Document
 from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
 from tests.helpers import fixture_run, symlink_or_skip
-
-DISPATCH_CASES = [
-    ("overhead", "application.overhead", "overhead-check", "result.json"),
-    ("repeat", "reporting.repetition_report", "repeat-check", "repetition-summary.json"),
-    ("rescore", "reporting.rescore", "rescore-check", "rescore.json"),
-    ("export", "reporting.export", "export-check", "export.json"),
-    ("public", "reporting.public_package", "public-check", "candidate.json"),
-    ("report", "reporting.report", "report-check", "index.json"),
-    ("comparison", "reporting.comparison_report", "compare-check", "comparison.json"),
-    ("extension", "extensions.workflow", "extension-check", "packet.json"),
-]
 
 
 def marker(root, kind, filename):
@@ -35,16 +29,9 @@ def marker(root, kind, filename):
             "passed": False,
             "limitations": ["four_completed_runs_required"],
         }
-    elif kind == "repeat":
-        value = {"schema_version": 3, "kind": "frozen_repeat_summary.phase2.v1"}
     elif kind == "comparison":
         (root / "index.json").write_bytes(json_bytes({"report_format_version": 3}))
         (root / "report.html").write_text("synthetic report")
-    elif kind == "report":
-        value = {"report_format_version": 3}
-    elif kind == "extension":
-        (root / "run.json").write_bytes(json_bytes({"kind": "extension_packet.v1"}))
-        (root / "report.html").write_text("synthetic extension report")
     (root / filename).write_bytes(json_bytes(value))
 
 
@@ -67,53 +54,6 @@ def source_fixture(root, **kwargs):
     with pytest.MonkeyPatch.context() as patched:
         patched.setattr("tests.helpers.load_config", portable_config)
         return fixture_run(root, **kwargs)
-
-
-@pytest.mark.parametrize("kind,module,command,filename", DISPATCH_CASES)
-def test_dispatch_preserves_dedicated_result_and_request(
-    tmp_path, monkeypatch, kind, module, command, filename
-):
-    marker(tmp_path, kind, filename)
-    seen = []
-    original = CommandResult(
-        command,
-        "not_passed",
-        "incomplete",
-        "source-run",
-        str(tmp_path),
-        ("qualification_not_granted",),
-        {"passed": False, "runtime_verified": False},
-    )
-
-    def dedicated(request, *, options=None):
-        seen.append(request)
-        return 3, original
-
-    monkeypatch.setattr(import_module("inferyard." + module), "execute", dedicated)
-    if kind == "comparison":
-        report = import_module("inferyard.reporting.report")
-        monkeypatch.setattr(
-            report,
-            "execute",
-            lambda request, **kwargs: (0, CommandResult(request.command, "verified", "complete")),
-        )
-    target = tmp_path / "target" if kind == "overhead" else None
-    request = CommandRequest("verify", run=tmp_path, target_run=target)
-    before = digest_tree(tmp_path)
-    code, result = execute(request)
-    assert seen == [replace(request, command=command)]
-    assert code == 3
-    assert result.command == "verify"
-    assert result.status == original.status
-    assert result.completeness == original.completeness
-    assert result.run_id == original.run_id
-    assert result.evidence_dir == original.evidence_dir
-    assert result.limitations == original.limitations
-    assert result.details["artifact_type"] == kind
-    assert result.details["passed"] is False
-    assert result.details["runtime_verified"] is False
-    assert "artifact_type" not in original.details
-    assert before == digest_tree(tmp_path)
 
 
 def make_artifact(tmp_path, kind):
@@ -151,19 +91,35 @@ def make_artifact(tmp_path, kind):
 @pytest.mark.parametrize(
     "kind", ["export", "rescore", "public", "report", "comparison", "extension"]
 )
-def test_real_offline_artifacts_replay_without_mutating_any_source(tmp_path, kind):
-    _, out = make_artifact(tmp_path, kind)
+def test_real_offline_artifacts_replay_without_mutating_any_source(
+    tmp_path, kind, monkeypatch, capsys
+):
+    root, out = make_artifact(tmp_path, kind)
     before = digest_tree(tmp_path)
-    code, result = execute(CommandRequest("verify", run=out))
-    assert code == 0
-    assert result.command == "verify" and result.status == "verified"
-    assert result.completeness == "complete"
-    assert result.details["artifact_type"] == kind
+
+    def forbid_live_io(*args, **kwargs):
+        pytest.fail("offline verification attempted network or process IO")
+
+    monkeypatch.setattr(socket.socket, "connect", forbid_live_io)
+    monkeypatch.setattr(socket.socket, "connect_ex", forbid_live_io)
+    monkeypatch.setattr(socket, "create_connection", forbid_live_io)
+    monkeypatch.setattr(subprocess, "Popen", forbid_live_io)
+    monkeypatch.setattr(os, "kill", forbid_live_io)
+    argv = ["verify", "--path", str(out)]
+    if kind == "public":
+        argv += ["--source-run", str(root)]
+    assert cli.main(argv) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["command"] == "verify" and result["status"] == "verified"
+    assert result["completeness"] == "complete"
+    assert result["details"]["artifact_type"] == kind
     if kind == "comparison":
-        assert result.details["comparison"]["details"]["verified"]
-        assert result.details["report"]["details"]["semantic_verified"]
+        assert result["details"]["comparison"]["details"]["verified"]
+        assert result["details"]["report"]["details"]["semantic_verified"]
     elif kind == "extension":
-        assert result.details["hardware_qualified"] is False
+        assert result["details"]["hardware_qualified"] is False
+    elif kind == "public":
+        assert result["details"]["source_projection_verified"] is True
     assert before == digest_tree(tmp_path)
 
 
@@ -188,12 +144,13 @@ def test_real_payload_corruption_is_rejected(tmp_path, kind, filename):
     assert before == digest_tree(tmp_path)
 
 
-@pytest.mark.parametrize("kind,module,command,filename", DISPATCH_CASES)
+@pytest.mark.parametrize(
+    "filename",
+    ["result.json", "repetition-summary.json", "rescore.json", "export.json", "candidate.json",
+     "index.json", "comparison.json", "packet.json"],
+)
 @pytest.mark.parametrize("content", [b"{broken", b"[]", b'{"x":1,"x":2}', b'{"x":NaN}'])
-def test_corrupt_primary_marker_never_disappears(
-    tmp_path, kind, module, command, filename, content
-):
-    marker(tmp_path, kind, filename)
+def test_corrupt_primary_marker_never_disappears(tmp_path, filename, content):
     (tmp_path / filename).write_bytes(content)
     with pytest.raises(EvidenceError):
         execute(CommandRequest("verify", run=tmp_path))
@@ -215,12 +172,8 @@ def test_unsupported_artifacts_have_no_manifest_only_fallback(tmp_path, filename
 
 @pytest.mark.parametrize(
     "pair",
-    [
-        ("export.json", "rescore.json"),
-        ("result.json", "index.json"),
-        ("packet.json", "index.json"),
-        ("candidate.json", "comparison.json"),
-    ],
+    [("export.json", "rescore.json"), ("result.json", "index.json"),
+     ("packet.json", "index.json"), ("candidate.json", "comparison.json")],
 )
 def test_conflicting_types_rejected_even_when_one_marker_is_malformed(tmp_path, pair):
     for filename in pair:
@@ -244,18 +197,14 @@ def test_comparison_requires_complete_report_even_if_comparison_replays(tmp_path
         execute(CommandRequest("verify", run=out))
 
 
-def test_extension_identity_survives_missing_packet(tmp_path, monkeypatch):
+def test_extension_identity_survives_missing_packet(tmp_path):
     _, out = make_artifact(tmp_path, "extension")
     (out / "packet.json").unlink()
-    report = import_module("inferyard.reporting.report")
-    monkeypatch.setattr(report, "execute", lambda request: pytest.fail("extension is not report"))
     with pytest.raises(EvidenceError):
         execute(CommandRequest("verify", run=out))
 
 
-@pytest.mark.parametrize(
-    "filename", ["run.json", "packet.json", "summary.json", "report.html", "manifest.json"]
-)
+@pytest.mark.parametrize("filename", ["packet.json", "manifest.json"])
 def test_extension_symlinks_cannot_escape_artifact_root(tmp_path, filename):
     _, out = make_artifact(tmp_path, "extension")
     outside = tmp_path / "outside"
@@ -320,11 +269,9 @@ def test_public_source_and_config_preserve_mismatch_and_readiness(tmp_path, poli
     assert result.details["ready_to_run"] is False
 
 
-def test_public_source_projection_is_checked_before_configuration(tmp_path, monkeypatch):
+def test_public_source_mismatch_cannot_be_hidden_by_matching_configuration(tmp_path):
     root, out = make_artifact(tmp_path, "public")
     other = source_fixture(tmp_path / "other", model="synthetic-other")
-    config = import_module("inferyard.config.public_config_check")
-    monkeypatch.setattr(config, "execute", lambda request: pytest.fail("source must fail first"))
     with pytest.raises(EvidenceError, match="source_projection_mismatch"):
         execute(CommandRequest("verify", run=out, from_run=other, config=loaded_source(root)))
 
@@ -462,7 +409,6 @@ def test_compound_result_preserves_both_limitations_and_report_failure(tmp_path,
         ("run.json", {"kind": "extension_packet.v1"}),
         ("manifest.json", {"policy": "public-summary.v5"}),
         ("parent-analysis.json", {}),
-        ("redactions.json", {}),
     ],
 )
 def test_surviving_metadata_cannot_hide_missing_primary_marker(tmp_path, filename, value):
@@ -483,19 +429,7 @@ def test_path_is_required_and_must_be_a_directory(tmp_path):
             execute(CommandRequest("verify", run=path))
 
 
-def test_packet_marker_with_no_metadata_uses_extension_failure(tmp_path, monkeypatch):
-    (tmp_path / "packet.json").write_text("{}")
-    (tmp_path / "report.html").write_text("damaged extension")
-    monkeypatch.setattr(
-        import_module("inferyard.reporting.report"),
-        "execute",
-        lambda request: pytest.fail("extension report is owned by packet verifier"),
-    )
-    with pytest.raises(EvidenceError, match="extension_packet_unsealed"):
-        execute(CommandRequest("verify", run=tmp_path))
-
-
-@pytest.mark.parametrize("filename", ["run.json", "batch.json", "plan.json", "analysis.json"])
+@pytest.mark.parametrize("filename", ["run.json", "analysis.json"])
 def test_valid_report_cannot_hide_unsupported_root_artifacts(tmp_path, filename):
     _, out = make_artifact(tmp_path, "report")
     (out / filename).write_text("{}")

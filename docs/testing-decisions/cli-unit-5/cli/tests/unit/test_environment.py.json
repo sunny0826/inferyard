@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_environment.py",
+  "decisions": [
+    {
+      "test": "test_return_to_initial_state_does_not_hide_interference",
+      "decision": "keep",
+      "reason": "中途环境变化后恢复仍判受干扰，避免只看首尾错授稳定资格。"
+    },
+    {
+      "test": "test_schedule_cost_not_perturbation_gate",
+      "decision": "keep",
+      "reason": "调度成本超周期和boundary耗时保留但不是扰动门，避免采集耗时冒充开销资格。"
+    },
+    {
+      "test": "test_stable_environment_does_not_open_performance_gate",
+      "decision": "keep",
+      "reason": "观察环境稳定不能自动授性能比较资格，避免缺校准即给排名。"
+    },
+    {
+      "test": "test_timeline_gap_and_reversed_clock",
+      "decision": "keep",
+      "reason": "时间线缺口及逆时钟阻断或拒绝，避免未观测期间被当稳定。"
+    },
+    {
+      "test": "test_unknown_reset_swap_and_frozen_conditions",
+      "decision": "keep",
+      "reason": "缺epp、swap reset/活动及冻结governor不符均不授环境可比，避免硬件干扰被忽略。"
+    }
+  ]
+}

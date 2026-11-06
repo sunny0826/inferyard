@@ -1,0 +1,31 @@
+{
+  "source_path": "cli/tests/unit/test_llama_cpp.py",
+  "decisions": [
+    {
+      "test": "test_different_prompt_count_is_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_different_prompt_count_is_rejected。可观察预期：pytest.raises(PreflightError, match='template_token_count_mismatch')。llama.cpp 只有实际 stop、seed、token 预算及模板计数吻合才获得有效设置证明；未知上游或 Prism 身份不能继承本适配器资格。"
+    },
+    {
+      "test": "test_inconsistent_upstream_effective_settings_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_inconsistent_upstream_effective_settings_rejected。逐项参数：pytest.mark.parametrize('change,reason', [({'n_predict': 999}, 'generation_parameter_unverified'), ({'stop': ['unexpected']}, 'stop_parameter_unverified'), ({'seed': True}, 'generation_parameter_unverified')])。可观察预期：pytest.raises(PreflightError, match=reason)。llama.cpp 只有实际 stop、seed、token 预算及模板计数吻合才获得有效设置证明；未知上游或 Prism 身份不能继承本适配器资格。"
+    },
+    {
+      "test": "test_unknown_upstream_version_requires_separate_adapter",
+      "decision": "keep",
+      "reason": "具体场景 test_unknown_upstream_version_requires_separate_adapter。可观察预期：pytest.raises(ContractError)。llama.cpp 只有实际 stop、seed、token 预算及模板计数吻合才获得有效设置证明；未知上游或 Prism 身份不能继承本适配器资格。"
+    },
+    {
+      "test": "test_upstream_identity_cannot_inherit_prism_qualification",
+      "decision": "keep",
+      "reason": "具体场景 test_upstream_identity_cannot_inherit_prism_qualification。逐项参数：pytest.mark.parametrize('mutation', ['release', 'cache', 'build', 'slots_endpoint'])。可观察预期：pytest.raises(PreflightError)。llama.cpp 只有实际 stop、seed、token 预算及模板计数吻合才获得有效设置证明；未知上游或 Prism 身份不能继承本适配器资格。"
+    },
+    {
+      "test": "test_upstream_registered_and_effective_stop_is_observed",
+      "decision": "keep",
+      "reason": "保留实际template count与slots.params.stop的观测结果；删除adapter_factory映射到具体类的内部路由断言，并按剩余行为改名。",
+      "renamed_to": "test_upstream_effective_stop_is_observed"
+    }
+  ]
+}

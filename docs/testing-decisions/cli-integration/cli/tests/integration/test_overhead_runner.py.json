@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/integration/test_overhead_runner.py",
+  "decisions": [
+    {
+      "test": "test_abba_runs_real_lifecycle_and_preserves_frozen_protocol",
+      "decision": "keep",
+      "reason": "实际ABBA各arm必须绑定冻结协议且不能用自身校准授性能资格；修改采样间隔并重算摘要仍拒绝。"
+    },
+    {
+      "test": "test_observers_can_qualify_all_four_environment_windows",
+      "decision": "keep",
+      "reason": "M9：删除用当前生产数值反推阈值后的matched/pass==3断言；保留planned_requests=3、资格接线及缺引用/调换reference/篡改/写入原件拒绝。生成的阈值仅用于这些边界输入，不充作数值算法验收。"
+    },
+    {
+      "test": "test_overhead_budget_stops_without_starting_later_arms",
+      "decision": "keep",
+      "reason": "开销校准总预算耗尽时不再启动后续arm，保留不完整结果。"
+    },
+    {
+      "test": "test_overhead_cancel_retains_evidence_and_does_not_retry",
+      "decision": "keep",
+      "reason": "取消开销校准退出130，只保留已启动arm且可离线判为不完整，不能继续后续arm。"
+    }
+  ]
+}

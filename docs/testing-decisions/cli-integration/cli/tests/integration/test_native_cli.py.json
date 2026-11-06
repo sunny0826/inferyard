@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/integration/test_native_cli.py",
+  "decisions": [
+    {
+      "test": "test_native_cancel_disclosure_and_no_retry",
+      "decision": "delete",
+      "reason": "截断无重试及client范围已由test_native_stop_reason_keeps_actual_failure_and_denominator和test_probe_native_run_report_verify覆盖；删除固定取消实现字符串断言。"
+    },
+    {
+      "test": "test_native_clean_basis_is_sealed_and_bound_to_completed_requests",
+      "decision": "delete",
+      "reason": "逐条收据字段/文件名happy path重复离线准入；收据归属与缺失拒绝由test_native_clean_receipt_offline_rejection_and_legacy_reading覆盖。"
+    },
+    {
+      "test": "test_native_clean_receipt_offline_rejection_and_legacy_reading",
+      "decision": "keep",
+      "reason": "收据scope、clientID不符或缺失均不能让layout2 native完成题通过离线核验；旧封存不匹配先拒绝hash。"
+    },
+    {
+      "test": "test_native_explicit_lab_requirement_blocks_before_generation",
+      "decision": "keep",
+      "reason": "显式lab_required不能在lab不可用时静默退为native并发题。"
+    },
+    {
+      "test": "test_native_frozen_plan",
+      "decision": "delete",
+      "reason": "只是重用lab测试函数走native happy path；公开native冻结入口由 test_warmup_cli.test_frozen_plan_keeps_warmup_choice_and_rejects_later_mutation 覆盖，重复编排由test_native_batch_continuation覆盖。"
+    },
+    {
+      "test": "test_native_limits_and_dirty",
+      "decision": "keep",
+      "reason": "无signals可降级；截断或旧dirty必须阻断且保留分母，不能通过额外POST偷偷恢复。"
+    },
+    {
+      "test": "test_native_offline_rejects_invented_drain",
+      "decision": "keep",
+      "reason": "将native capability改成内部排空为true时，即使无manifest仍须离线拒绝。"
+    },
+    {
+      "test": "test_native_receipt_io_failure_keeps_dirty",
+      "decision": "delete",
+      "reason": "与 test_layout_writer_faults.test_native_receipt_failure_keeps_client_dirty 注入同一observe失败，后者经公开CLI并核对实际交付量，保留后者。"
+    },
+    {
+      "test": "test_native_stop_reason_keeps_actual_failure_and_denominator",
+      "decision": "keep",
+      "reason": "probe/formal阶段截断、HTTP错误和timeout必须保存真实失败原因、dirty和完整五终态分母并停发。"
+    },
+    {
+      "test": "test_probe_native_run_report_verify",
+      "decision": "keep",
+      "reason": "auto模式缺lab端点仍能完成native流程，但报告必须明确缺信号及client_http范围，不能发明内部排空或输入长度。"
+    }
+  ]
+}

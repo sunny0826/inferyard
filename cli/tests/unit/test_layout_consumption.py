@@ -19,9 +19,7 @@ sources = layout_sources
 @pytest.fixture
 def scripts(monkeypatch):
     monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[2] / "scripts"))
-    return importlib.import_module("import_external_measurements"), importlib.import_module(
-        "benchmark_cost_worker"
-    )
+    return importlib.import_module("import_external_measurements")
 
 
 def import_spec(root):
@@ -47,7 +45,7 @@ def test_external_import_replays_actual_source_without_qualification(
     sources, scripts, tmp_path, monkeypatch, capsys, layout
 ):
     root = sources[layout - 1]
-    importer, _ = scripts
+    importer = scripts
     before = tree_bytes(root)
     spec_path, out = tmp_path / "measurement.json", tmp_path / "import"
     spec_path.write_bytes(json_bytes(import_spec(root)))
@@ -71,7 +69,7 @@ def test_external_import_does_not_trust_resealed_bad_member(
     sources, scripts, tmp_path, monkeypatch
 ):
     root = sources[1]
-    importer, _ = scripts
+    importer = scripts
     spec = import_spec(root)
     inputs = read_json(root / "inputs.json")
     inputs["documents"]["config"]["sha256"] = "0" * 64
@@ -86,23 +84,3 @@ def test_external_import_does_not_trust_resealed_bad_member(
     with pytest.raises(EvidenceError, match="invalid_inputs_container"):
         importer.main()
     assert not out.exists()
-
-
-@pytest.mark.parametrize("layout", [1, 2])
-@pytest.mark.parametrize("operation", ["read_trial", "report"])
-def test_cost_worker_consumes_actual_layout_readonly(sources, scripts, tmp_path, layout, operation):
-    root = sources[layout - 1]
-    _, worker = scripts
-    before = tree_bytes(root)
-    corpus, out = tmp_path / "corpus", tmp_path / "worker"
-    corpus.mkdir()
-    out.mkdir()
-    (corpus / "corpus.json").write_bytes(json_bytes({"runs": [str(root)]}))
-    assert worker.workload(operation, corpus, out) == 0
-    result = read_json(out / "result.json")
-    if operation == "read_trial":
-        assert result[0]["summary"]["counts"]["planned"] == len(read_trial(root)["requests"])
-    else:
-        assert result["report_format_version"] == 8
-        assert len(result["runs"][0]["requests"]) == len(read_trial(root)["requests"])
-    assert tree_bytes(root) == before

@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/local_engine_preparation/test_description_legacy.py",
+  "decisions": [
+    {
+      "test": "test_legacy_description_cli_envelope",
+      "decision": "delete",
+      "reason": "只验证CLI envelope固定字段的happy path；同文件test_legacy_description_preserves_launch_and_declared_assets保留实际可用启动描述。"
+    },
+    {
+      "test": "test_legacy_description_preserves_launch_and_declared_assets",
+      "decision": "keep",
+      "reason": "旧配置description提供可直接启动的argv与资产摘要且不得查询服务，防止只读查看隐式触发引擎访问。"
+    }
+  ]
+}

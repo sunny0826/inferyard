@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_preflight_gpu_reuse.py",
+  "decisions": [
+    {
+      "test": "test_advice_preserves_unavailable_injected_observation",
+      "decision": "delete",
+      "reason": "只是 injected dict 投影加禁止第二次查询，主要限定缓存复用实现；CUDA 缺设备/CPU 不依赖 GPU 的产品后果保留在 test_cuda_preflight_observes_once_per_call_and_cpu_never。"
+    },
+    {
+      "test": "test_cuda_preflight_observes_once_per_call_and_cpu_never",
+      "decision": "keep",
+      "reason": "具体场景 test_cuda_preflight_observes_once_per_call_and_cpu_never。可观察预期：assert 'gpu' not in result['environment']；pytest.raises(identity.PreflightError, match='cuda_device_unavailable')。CUDA 无可用设备须拒绝；同一不可用 GPU 状态不能阻断 CPU 配置或给 CPU 伪造 GPU 观测。已删每次只查询一次 GPU 与内部 hardware 键集合断言，保留 CUDA 缺设备拒绝及 CPU 成功。"
+    }
+  ]
+}

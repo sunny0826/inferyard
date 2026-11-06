@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_windows_candidate_assets.py",
+  "decisions": [
+    {
+      "test": "test_missing_model_template_is_not_replaced_by_historical_default",
+      "decision": "keep",
+      "reason": "模型模板缺失、空白或错类型必须拒绝，不能套历史模板冒充当前模型模板。"
+    },
+    {
+      "test": "test_model_and_template_identity_replace_example_placeholders",
+      "decision": "keep",
+      "reason": "两个 GGUF 模板键均提取真实模型/模板摘要与 revision，避免候选继续使用示例占位身份。"
+    }
+  ]
+}

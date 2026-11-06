@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_candidates_windows.py",
+  "decisions": [
+    {
+      "test": "test_windows_candidate_and_binding",
+      "decision": "keep",
+      "reason": "具体场景 test_windows_candidate_and_binding。逐项参数：pytest.mark.parametrize('context', [65536, 131072, 262144])。可观察预期：assert args[args.index('--device') + 1] == 'CUDA0'；assert args[args.index('--log-verbosity') + 1] == '4'；assert config['conditions']['context_size'] == context；assert config['engine']['runtime_library_manifest'] == prepared['runtime_library_manifest']。Windows 长上下文候选须保留所选 CUDA 设备、冻结上下文及可信 DLL 回执，并经过实际 service-binding 生成可读取配置。"
+    }
+  ]
+}

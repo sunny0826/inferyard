@@ -1,0 +1,90 @@
+{
+  "source_path": "cli/tests/local_engines/test_identity.py",
+  "decisions": [
+    {
+      "test": "test_bad_startup",
+      "decision": "keep",
+      "reason": "入口、隔离flag、重复model、额外argv和cwd不同都必须拒绝，避免测非冻结启动条件。"
+    },
+    {
+      "test": "test_direct_binding",
+      "decision": "keep",
+      "reason": "完整startup进程绑定必须保存正确PID和模型目录来源，供后续身份守卫使用。"
+    },
+    {
+      "test": "test_directory_symlink",
+      "decision": "keep",
+      "reason": "运行时目录symlink不能作为稳定递归库存接受。"
+    },
+    {
+      "test": "test_does_not_reaccept_argv",
+      "decision": "keep",
+      "reason": "已绑定后实际argv变化不能重新接受新绑定，必须拒绝原配置继续使用。"
+    },
+    {
+      "test": "test_env_override",
+      "decision": "keep",
+      "reason": "PYTHONPATH、动态库注入和引擎plugin环境覆盖必须拒绝，避免未冻结实现参与。"
+    },
+    {
+      "test": "test_ignored_site_hooks_remain_frozen",
+      "decision": "keep",
+      "reason": "被禁执行的.pth/sitecustomize也属于冻结库存，事后变化必须拒绝，不能因禁执行就漏掉安装身份。"
+    },
+    {
+      "test": "test_listener_ambiguity",
+      "decision": "keep",
+      "reason": "唯一listener无法证明时必须拒绝绑定，不能任择owner。"
+    },
+    {
+      "test": "test_mapping_closure",
+      "decision": "delete",
+      "reason": "D1：service.mapped_closure 是 workers 同函数再导出，无独立绑定路径；test_mappings.test_unknown_native_image_rejected_even_with_data_filename 已独立覆盖 Mach-O/fat 及误导文件名拒绝。"
+    },
+    {
+      "test": "test_old_single_file_identity_misses_python_implementation",
+      "decision": "delete",
+      "reason": "只展示旧单文件hash不覆盖Python源码这一旧实现缺点，未执行当前准入；当前差异拒绝由test_runtime_drift覆盖。"
+    },
+    {
+      "test": "test_pid_reuse",
+      "decision": "keep",
+      "reason": "相同PID但start不同必须作为复用拒绝。"
+    },
+    {
+      "test": "test_platform_rejected",
+      "decision": "keep",
+      "reason": "macOS专用正式local profile在Linux必须明确拒绝，不静默走其他平台。"
+    },
+    {
+      "test": "test_removed_root_rejected",
+      "decision": "keep",
+      "reason": "移除全部runtime roots不能当有效安装通过，防止空库存绕过验证。"
+    },
+    {
+      "test": "test_required_env",
+      "decision": "delete",
+      "reason": "D2：必需环境键缺失通用分支已由 test_worker_environment.test_worker_values_remain_exact 的逐键删除/改值覆盖；保留不同分支的 environment_override。"
+    },
+    {
+      "test": "test_runtime_drift",
+      "decision": "keep",
+      "reason": "runtime文件修改/增加/删除、pyc注入、symlink替换及同mtime变化均必须拒绝，避免身份哈希漏检。"
+    },
+    {
+      "test": "test_snapshot_verify",
+      "decision": "delete",
+      "reason": "只数冻结后verify文件个数的happy path；实际runtime变更拒绝由test_runtime_drift覆盖。"
+    },
+    {
+      "test": "test_symlink_target_drift",
+      "decision": "keep",
+      "reason": "外部symlink指向内容改变也须使冻结runtime失效。"
+    },
+    {
+      "test": "test_uv_hook_drift",
+      "decision": "delete",
+      "reason": "与 test_runtime_drift 的普通.py内容修改及 test_ignored_site_hooks_remain_frozen 的site文件变更同一库存假设，删除_virtualenv.py单独重跑。"
+    }
+  ]
+}

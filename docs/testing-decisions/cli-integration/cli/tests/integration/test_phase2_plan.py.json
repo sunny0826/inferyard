@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/integration/test_phase2_plan.py",
+  "decisions": [
+    {
+      "test": "test_dry_run_no_network_no_writes_and_freeze_is_content_addressed",
+      "decision": "keep",
+      "reason": "plan dry-run离线无写入；冻结副本在原输入移走后可读，已存在输出不能覆盖。"
+    },
+    {
+      "test": "test_frozen_reader_rechecks_budget_bindings_and_seed_order",
+      "decision": "keep",
+      "reason": "输出预算与配置不符或seeded题序被反转，即使重算hash也不能通过冻结读取。"
+    },
+    {
+      "test": "test_plaintext_startup_secret_blocked_without_echo",
+      "decision": "keep",
+      "reason": "startup明文api-key在冻结前阻断且不回显。"
+    },
+    {
+      "test": "test_relative_toml_paths_survive_relocation",
+      "decision": "keep",
+      "reason": "相对TOML模型路径绑定原来源；冻结目录移动后bundle从新副本读取且不依赖旧来源。"
+    },
+    {
+      "test": "test_runtime_snapshot_tampering_is_rejected_even_with_rehashed_plan",
+      "decision": "keep",
+      "reason": "即使plan哈希更新，运行快照max_tokens与真实来源不符仍拒绝，防止伪造冻结条件。"
+    },
+    {
+      "test": "test_schema_cli_has_one_revision_and_rejects_version_selector",
+      "decision": "keep",
+      "reason": "公开schema版本选择必须只有活动v3，旧schema-version参数不能偷偷读取旧契约。"
+    },
+    {
+      "test": "test_symlink_escape_is_not_copied",
+      "decision": "keep",
+      "reason": "来源symlink逃出输入包时不能复制为可信冻结证据。"
+    },
+    {
+      "test": "test_tampered_source_rejected_before_snapshot",
+      "decision": "keep",
+      "reason": "来源bundle不符声明hash时冻结失败且不留下部分输出。"
+    }
+  ]
+}

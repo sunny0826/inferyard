@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/core/candidate_test.go",
+  "decisions": [
+    {
+      "test": "TestCandidateAssetsParsing",
+      "decision": "keep",
+      "reason": "保留 CLI 描述资产投影、候选缺失和路径越界拒绝；删除 fixture 自造重复 TOML 拒绝子段及专用 Count 校验，不声称覆盖真实 CLI 的重复 TOML 拒绝。"
+    },
+    {
+      "test": "TestCandidateMatchesCombination",
+      "decision": "keep",
+      "reason": "同模型但不同引擎的候选不可复用，不可读或未知选择保持 unknown，否则沿用错误组合。"
+    },
+    {
+      "test": "TestPreflightMatchesModel",
+      "decision": "keep",
+      "reason": "切换模型后旧预检不可继续匹配，否则对新模型沿用旧模型的资源准入。"
+    },
+    {
+      "test": "TestPreflightModelPath",
+      "decision": "keep",
+      "reason": "支持实际预检和 CommandResult 包装；blocked 保留内存不足原因，越界路径拒绝，否则使用了不适合本机的模型。"
+    }
+  ]
+}

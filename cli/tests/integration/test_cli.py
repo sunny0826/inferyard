@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.application.types import CommandResult
 from inferyard.cli import main
 
 
@@ -32,20 +31,6 @@ def no_network(monkeypatch):
     monkeypatch.setattr(socket, "create_connection", fail)
     monkeypatch.setattr(socket, "getaddrinfo", fail)
     monkeypatch.setattr(socket.socket, "connect", fail)
-
-
-def test_valid_configuration_enters_injected_preflight(config_path, capsys):
-    calls = []
-
-    def preflight(request):
-        calls.append(request)
-        return 2, CommandResult("probe", "blocked", limitations=("fixture_preflight",))
-
-    assert main(["probe", "--config", str(config_path)], handlers={"probe": preflight}) == 2
-    output = json.loads(capsys.readouterr().out)
-    assert len(calls) == 1
-    assert calls[0].config.bundle.to_dict()["bundle_id"] == "t01-fixture"
-    assert output["limitations"] == ["fixture_preflight"]
 
 
 @pytest.mark.parametrize(
@@ -120,22 +105,6 @@ def test_argument_errors_emit_one_json_and_no_argument_values(arguments, capsys)
     assert "fixture-secret-7f39" not in output.out + output.err
 
 
-def test_dependency_versions_export_is_json(capsys):
-    assert main(["--versions"]) == 0
-    data = json.loads(capsys.readouterr().out)
-    assert data["schema_version"] == 3
-    assert data["source"] == "checkout"
-    assert data["python"] == "3.15.2"
-    assert data["dependencies"]["httpx"]
-    assert "environment" not in data
-
-
-def test_schema_export(capsys):
-    assert main(["--schema", "sample"]) == 0
-    data = json.loads(capsys.readouterr().out)
-    assert all(item["additionalProperties"] is False for item in data["oneOf"])
-
-
 def test_io_errors_and_internal_exception_messages_are_sanitized(config_path, tmp_path, capsys):
     assert main(["probe", "--config", str(tmp_path / "fixture-secret-7f39")]) == 4
     first = capsys.readouterr()
@@ -165,20 +134,6 @@ def test_installed_module_command_discovery():
 def test_exported_schema_files_match_source():
     root = Path(__file__).resolve().parents[2]
     subprocess.run([sys.executable, str(root / "scripts/export_schemas.py"), "--check"], check=True)
-
-
-def test_real_offline_commands_need_no_network(tmp_path, capsys):
-    from tests.helpers import fixture_run
-
-    a = fixture_run(tmp_path / "runs")
-    b = fixture_run(tmp_path / "runs", model="synthetic-B")
-    assert main(["report", "--runs", str(a), "--out", str(tmp_path / "single")]) == 0
-    assert json.loads(capsys.readouterr().out)["status"] == "rendered"
-    assert (
-        main(["compare", "--left", str(a), "--right", str(b), "--out", str(tmp_path / "pair")]) == 0
-    )
-    assert json.loads(capsys.readouterr().out)["status"] == "compared"
-    assert (tmp_path / "pair/report.html").is_file()
 
 
 def test_report_recovers_tail_and_rejects_middle_corruption(tmp_path, capsys):

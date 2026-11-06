@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/workspace_reset_test.go",
+  "decisions": [
+    {
+      "test": "TestNewTaskResetWaitsForUIAndLeavesNextTaskAlone",
+      "decision": "keep",
+      "reason": "重置须等 UI 确认完成才结束取消循环，之后的新任务保持 starting，避免晚到取消杀掉新任务；helper 供 parity 共用。"
+    }
+  ]
+}

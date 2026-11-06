@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/candidates_prepare_test.go",
+  "decisions": [
+    {
+      "test": "TestDashboardPreparationFreezesSelectedModel",
+      "decision": "keep",
+      "reason": "初始检查推荐 A、用户改选 B 时候选必须冻结 B；未选择时采用 A，防止实际测错模型。"
+    }
+  ]
+}

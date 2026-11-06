@@ -1,0 +1,90 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_temperature_override.py",
+  "decisions": [
+    {
+      "test": "test_cli_plan_reason_reaches_shared_request_and_missing_value_is_rejected",
+      "decision": "keep",
+      "reason": "计划 CLI 传递实际授权理由，缺值返回输入错且不执行计划处理。"
+    },
+    {
+      "test": "test_cli_run_cannot_change_frozen_temperature_rules",
+      "decision": "keep",
+      "reason": "运行命令不能临时添加跳过温停参数，防止绕过冻结计划。"
+    },
+    {
+      "test": "test_comparison_refuses_mixed_temperature_rules_or_reasons",
+      "decision": "keep",
+      "reason": "不同温停规则或不同授权理由不能作为同计划比较，避免把安全条件变化当性能差异。"
+    },
+    {
+      "test": "test_default_guard_still_stops_at_85_and_keeps_the_reading",
+      "decision": "keep",
+      "reason": "默认恰好 85°C 立即停止且保留触发读数，防止阈值等号或记录丢失错误。"
+    },
+    {
+      "test": "test_default_request_retains_legacy_plan_and_temperature_limit",
+      "decision": "keep",
+      "reason": "未显式覆盖时温停仍为 85°C，避免默认无意关闭安全停止。"
+    },
+    {
+      "test": "test_explicit_override_freezes_reason_and_modern_asset_manifest",
+      "decision": "keep",
+      "reason": "目录/GGUF 计划冻结跳过温停的理由，改理由须改计划身份，防止运行后改安全条件。"
+    },
+    {
+      "test": "test_invalid_reason_rejected_before_model_hashing",
+      "decision": "keep",
+      "reason": "空白、错类型或超过 UTF-8 字节上限的授权理由在模型读取和输出创建前拒绝。"
+    },
+    {
+      "test": "test_legacy_disabled_limitation_rejected_by_seal_and_offline_verify",
+      "decision": "keep",
+      "reason": "旧运行不得补写温停已关闭限制来重解释旧测量，封存与离线读取两条路径都拒绝。"
+    },
+    {
+      "test": "test_old_html_bytes_and_sealed_evidence_remain_readable",
+      "decision": "delete",
+      "reason": "固定整个旧 HTML 哈希限制呈现实现；离线封存/比较能力已有 native/common/override 产物测试。"
+    },
+    {
+      "test": "test_old_plan_versions_reject_override_rules",
+      "decision": "keep",
+      "reason": "旧计划不得靠 null 温度或新增理由字段绕过原定停止规则。"
+    },
+    {
+      "test": "test_override_collects_cold_hot_and_missing_temperature_without_stopping",
+      "decision": "keep",
+      "reason": "显式跳过温停后冷/临界/高温仍采集，缺测保持原因而不会停止或伪造零温度。"
+    },
+    {
+      "test": "test_override_keeps_other_stops",
+      "decision": "keep",
+      "reason": "跳过温停不能关闭低内存、内存缺测、低磁盘和服务身份变化停止。"
+    },
+    {
+      "test": "test_override_pair_seals_compares_and_verifies_copied_sources_offline",
+      "decision": "keep",
+      "reason": "删除原运行后比较仍能离线验证，报告显示跳过温停并转义授权文本。"
+    },
+    {
+      "test": "test_reason_size_is_utf8_bytes_without_silently_normalizing",
+      "decision": "keep",
+      "reason": "边界 1024 字节及带空格的理由原样保存，避免多字节误算或静默改写操作者理由。"
+    },
+    {
+      "test": "test_run_v4_requires_plan_v3_and_explicit_limitation",
+      "decision": "keep",
+      "reason": "覆盖运行必须绑定对应计划并公开限制，不能混旧版本或宣称已关闭的温停触发。"
+    },
+    {
+      "test": "test_v3_requires_exact_override_parameters",
+      "decision": "keep",
+      "reason": "新版覆盖必须有有效理由且温度阈值为空，缺字段或互相矛盾时拒绝。"
+    },
+    {
+      "test": "test_v4_temperature_row_reason_rejected_by_seal_and_offline_verify",
+      "decision": "keep",
+      "reason": "四种非完成终态不能伪称关闭的温停触发；即使重封字节和 HTML 也须语义拒绝。"
+    }
+  ]
+}

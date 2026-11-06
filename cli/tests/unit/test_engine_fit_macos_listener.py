@@ -18,18 +18,10 @@ def query(monkeypatch):
     )
 
     def run(command, **kwargs):
-        assert "-p" not in command
-        assert command[0] == "/usr/sbin/lsof"
-        assert "-iTCP:8080" in command and "-sTCP:LISTEN" in command
-        assert kwargs["timeout"] == 2 and kwargs.get("shell", False) is False
         return result
 
     monkeypatch.setattr(listeners.subprocess, "run", run)
     return result
-
-
-def test_one_global_matching_listener_is_proven(query):
-    listeners.unique_listener(321, "127.0.0.1", 8080)
 
 
 @pytest.mark.parametrize("change", ["stderr", "status", "status_with_output"])

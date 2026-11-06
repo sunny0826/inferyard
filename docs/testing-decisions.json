@@ -1,0 +1,77 @@
+{
+  "baseline_commit": "487c93ca56842a79b91e2c6f11ecd44af8cb9fd8",
+  "policy": "docs/testing.md",
+  "counting": "One decision per original top-level test function or unittest method, not parameter-expanded pytest cases. The Swift suite counts as one function; its twelve workflows were reviewed individually.",
+  "original_test_count": 2863,
+  "totals": {
+    "keep": 2272,
+    "delete": 591
+  },
+  "groups": {
+    "cli-unit-1": {
+      "delete": 48,
+      "keep": 337
+    },
+    "cli-unit-2": {
+      "delete": 91,
+      "keep": 274
+    },
+    "cli-unit-3": {
+      "keep": 326,
+      "delete": 87
+    },
+    "cli-unit-4": {
+      "keep": 321,
+      "delete": 71
+    },
+    "cli-unit-5": {
+      "keep": 296,
+      "delete": 89
+    },
+    "cli-integration": {
+      "keep": 327,
+      "delete": 71
+    },
+    "studio-core": {
+      "keep": 200,
+      "delete": 40
+    },
+    "studio-pages": {
+      "keep": 163,
+      "delete": 84
+    },
+    "tooling": {
+      "keep": 28,
+      "delete": 10
+    }
+  },
+  "supplemental_reviews": [
+    {
+      "path": "studio/tests/e2e/context_speed_bridge.py",
+      "test": "test_studio_context_speed_bridge",
+      "decision": "keep",
+      "reason": "Go显式调用的补充入口，未计入原始按测试文件名建立的2863项基线；验证未审题库拒绝、五个长度样本实际经CLI产出、只读结果不新增请求、不改原证据且不自动生成HTML，供Studio解析真实CLI输出。"
+    },
+    {
+      "path": "cli/tests/packaging/installed_probe.py",
+      "decision": "keep",
+      "reason": "保留源码外安装资源字节、工具/评分身份及命令可用性；删除固定版本常量，调用方仍动态比对build版本。该脚本入口不计入原始测试函数数。"
+    },
+    {
+      "path": "cli/tests/packaging/ci_model_e2e.py",
+      "decision": "keep",
+      "reason": "保留真实模型请求、冻结分母、报告和离线回放保障；删除重复标题字符串检查。该手动模型执行入口不计入原始函数基线，本轮未运行真实模型。"
+    }
+  ],
+  "group_records": {
+    "cli-unit-1": "docs/testing-decisions/cli-unit-1.json",
+    "cli-unit-2": "docs/testing-decisions/cli-unit-2.json",
+    "cli-unit-3": "docs/testing-decisions/cli-unit-3.json",
+    "cli-unit-4": "docs/testing-decisions/cli-unit-4.json",
+    "cli-unit-5": "docs/testing-decisions/cli-unit-5.json",
+    "cli-integration": "docs/testing-decisions/cli-integration.json",
+    "studio-core": "docs/testing-decisions/studio-core.json",
+    "studio-pages": "docs/testing-decisions/studio-pages.json",
+    "tooling": "docs/testing-decisions/tooling.json"
+  }
+}

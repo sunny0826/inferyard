@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_safety.py",
+  "decisions": [
+    {
+      "test": "test_external_cpu_subtracts_service_and_rejects_counter_regression",
+      "decision": "keep",
+      "reason": "具体场景 test_external_cpu_subtracts_service_and_rejects_counter_regression。可观察预期：assert counter.sample() is None；assert counter.sample() == 25；pytest.raises(PreflightError, match='counter_changed')。过热、缺温度来源、外部 CPU 计数回退及冻结供电/no_turbo 变化时停止；不得修改系统开关或在停止后重试。"
+    },
+    {
+      "test": "test_frozen_no_turbo_condition_is_read_only_and_rechecked",
+      "decision": "keep",
+      "reason": "具体场景 test_frozen_no_turbo_condition_is_read_only_and_rechecked。可观察预期：assert guard.last['intel_pstate_no_turbo']['value'] == 1；assert path.read_text() == '1\\n'；assert guard.last['intel_pstate_no_turbo']['value'] == 0；assert guard.last['intel_pstate_no_turbo']['value'] is None。过热、缺温度来源、外部 CPU 计数回退及冻结供电/no_turbo 变化时停止；不得修改系统开关或在停止后重试。"
+    },
+    {
+      "test": "test_monitor_reports_stop_once_and_does_not_retry",
+      "decision": "keep",
+      "reason": "具体场景 test_monitor_reports_stop_once_and_does_not_retry。可观察预期：assert len(calls) == 1；assert reasons == ['temperature_safety_threshold_reached']。过热、缺温度来源、外部 CPU 计数回退及冻结供电/no_turbo 变化时停止；不得修改系统开关或在停止后重试。"
+    },
+    {
+      "test": "test_thermal_threshold_missing_source_and_environment_changes",
+      "decision": "keep",
+      "reason": "具体场景 test_thermal_threshold_missing_source_and_environment_changes。可观察预期：pytest.raises(PreflightError, match='temperature_safety_threshold')；pytest.raises(PreflightError, match='source_unavailable')；pytest.raises(PreflightError, match='environment_safety')。过热、缺温度来源、外部 CPU 计数回退及冻结供电/no_turbo 变化时停止；不得修改系统开关或在停止后重试。"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_resource_constraints.py",
+  "decisions": [
+    {
+      "test": "test_all_requests_upper_max_lower_min_and_category_scope",
+      "decision": "keep",
+      "reason": "所有请求上限取max下限取min，按类别缩范围且含阈值，避免资源筛选聚合错误。"
+    },
+    {
+      "test": "test_empty_scope_and_no_link_are_unknown",
+      "decision": "keep",
+      "reason": "类别范围空或无比较链接为unknown，不能因无数据自动通过。"
+    },
+    {
+      "test": "test_known_failure_is_preserved_when_another_request_is_unknown",
+      "decision": "keep",
+      "reason": "一请求已知超限、另一未知仍整体fail并保留各计数，避免unknown掩盖确定失败。"
+    },
+    {
+      "test": "test_schema_requires_explicit_resource_aggregation",
+      "decision": "keep",
+      "reason": "资源约束必须显式all_requests且限制合法指标/范围，避免sum等口径误当资源上限。"
+    },
+    {
+      "test": "test_unknown_slots_stay_in_denominator_and_never_pass",
+      "decision": "keep",
+      "reason": "缺/重复/未执行/失败/未授资格/无穷值的请求槽保留planned=2并unknown，避免遗漏坏请求而选中候选。"
+    }
+  ]
+}

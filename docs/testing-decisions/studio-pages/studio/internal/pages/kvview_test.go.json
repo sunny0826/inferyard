@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/pages/kvview_test.go",
+  "decisions": [
+    {
+      "test": "TestFormatBytes",
+      "decision": "keep",
+      "reason": "null 必须是缺测而 0 是真实零，MiB/GiB 换算保持准确，避免把缺测当容量。"
+    },
+    {
+      "test": "TestKVFormAndJSONNumbers",
+      "decision": "keep",
+      "reason": "大于 2^53 的 JSON 整数须精确保留，null/false 不混淆；非有限或非法 JSON 不能伪装有效测量。"
+    },
+    {
+      "test": "TestKVTreeExpansionAndFrames",
+      "decision": "delete",
+      "reason": "仅复测通用树控件折叠、帧重建和兄弟插入形状；数值投影由 TestKVFormAndJSONNumbers 覆盖。"
+    }
+  ]
+}

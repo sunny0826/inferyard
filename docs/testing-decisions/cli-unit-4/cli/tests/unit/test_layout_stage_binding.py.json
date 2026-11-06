@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_layout_stage_binding.py",
+  "decisions": [
+    {
+      "test": "test_layout1_properties_keep_the_original_support_boundary",
+      "decision": "keep",
+      "reason": "layout1 保留原 stage 支持且不修改原字节，避免读旧 v3 快照时错误收紧或迁移。"
+    },
+    {
+      "test": "test_read_trial_rejects_prism_properties_saved_before_idle",
+      "decision": "keep",
+      "reason": "Prism properties 在 idle 前保存不能证明运行 build，read_trial 必须明确拒绝并不改旧原件。"
+    },
+    {
+      "test": "test_scanning_any_observation_binds_properties_stage_to_adapter",
+      "decision": "keep",
+      "reason": "lab properties 绑定 pre_idle 阶段，投影或完整读取均拒绝错阶段；去掉与前一个 Prism 测试重复的 adapter 参数。"
+    }
+  ]
+}

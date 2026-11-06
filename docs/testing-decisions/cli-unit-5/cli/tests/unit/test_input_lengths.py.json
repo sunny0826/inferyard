@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_input_lengths.py",
+  "decisions": [
+    {
+      "test": "test_frozen_tolerance_has_inclusive_bounds_and_no_unknown_substitution",
+      "decision": "keep",
+      "reason": "目标1024±4含边界，边界外mismatch、未测unverified，避免错误输入长度资格。"
+    },
+    {
+      "test": "test_incomplete_or_repeated_scores_never_become_whole_corpus_quality",
+      "decision": "keep",
+      "reason": "不完整、持续重复或缺score不声称整语料质量，避免子集伪完整。"
+    },
+    {
+      "test": "test_input_tolerance_requires_target_and_nonzero_lower_bound",
+      "decision": "keep",
+      "reason": "容差无target或下界非正拒绝，避免冻结无意义长度范围。"
+    },
+    {
+      "test": "test_missing_counts_never_produce_measured_length_cohort",
+      "decision": "keep",
+      "reason": "缺token测量不产生实测长度或指标值，避免target冒充测量。"
+    },
+    {
+      "test": "test_real_length_cohort_keeps_failure_denominator_and_latency_convention",
+      "decision": "keep",
+      "reason": "实际31而目标1024须分开显示，4请求含失败仍3/4与2/4并只统计完成延迟，避免分母偏差。"
+    },
+    {
+      "test": "test_template_counts_bind_frozen_order_and_cannot_use_target_as_actual",
+      "decision": "keep",
+      "reason": "实际输入token绑定模板测量和冻结顺序，不能用target或错输出预算替代，避免虚假长度cohort。"
+    }
+  ]
+}

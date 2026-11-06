@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/integration/test_capacity_stop.py",
+  "decisions": [
+    {
+      "test": "test_capacity_stop_preserves_failure_and_forbids_resume_or_next_repeat",
+      "decision": "keep",
+      "reason": "容量扫描遇首个失败必须停止、不续测不重复；报告保留失败和未测档、null及完整计划分母。"
+    }
+  ]
+}

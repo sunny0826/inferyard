@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_position.py",
+  "decisions": [
+    {
+      "test": "test_cross_workload_family_requires_same_question_and_scoring",
+      "decision": "keep",
+      "reason": "跨工作负载同族题的前后缀、答案、策略、规则和证据内容须一致，防把异题合成位置效应。"
+    },
+    {
+      "test": "test_frozen_positions_and_families_do_not_count_variants_as_questions",
+      "decision": "keep",
+      "reason": "前中后变体仍是一个问题家族，失败变体保留分母，不凭变体数虚增题量。"
+    },
+    {
+      "test": "test_metadata_mismatch_rejected",
+      "decision": "keep",
+      "reason": "题文/证据片段哈希、同族规则、缺记录和重叠片段不符均拒绝位置实验。"
+    },
+    {
+      "test": "test_position_metadata_is_serializable_in_frozen_experiment_contract",
+      "decision": "delete",
+      "reason": "仅让手造合法字典通过 schema，没有验证冻结、执行或位置结论。"
+    },
+    {
+      "test": "test_unknown_length_and_incomplete_never_produce_complete_quality",
+      "decision": "keep",
+      "reason": "实际长度未知或实验未完成时位置质量保持缺失，不能从目标长度补值。"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_model_acquire_e2e.py",
+  "decisions": [
+    {
+      "test": "test_acquire_existing_output_never_sends_a_request",
+      "decision": "keep",
+      "reason": "输出已存在时必须在任何下载请求前拒绝，防止浪费流量及覆盖。"
+    },
+    {
+      "test": "test_acquire_http_failure_maps_to_blocked",
+      "decision": "keep",
+      "reason": "HTTP404必须退出2且不能发布模型或source.json成功产物。"
+    },
+    {
+      "test": "test_acquire_redirect_then_publish",
+      "decision": "keep",
+      "reason": "公开acquire通过实际重定向下载完整字节，计算内容摘要并发布来源记录，下载完成不能冒充ready。"
+    }
+  ]
+}

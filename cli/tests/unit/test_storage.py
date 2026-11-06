@@ -77,48 +77,6 @@ def test_tail_is_recoverable_but_middle_corruption_is_not(tmp_path):
         read_jsonl(path)
 
 
-def test_request_started_is_fsynced_before_return(tmp_path, monkeypatch):
-    store = make_journal(tmp_path)
-    store.prepare_request(
-        "r1",
-        "formal",
-        1,
-        {"model": "fixture", "messages": [{"role": "user", "content": "hello"}], "stream": True},
-    )
-    seen = []
-    original = store.flush
-
-    def flush(*, sync=False):
-        seen.append(sync)
-        original(sync=sync)
-
-    monkeypatch.setattr(store, "flush", flush)
-    from inferyard.config.loader import load_config
-
-    generation = load_config(
-        Path(__file__).parents[1] / "fixtures/config/valid.toml"
-    ).config.to_dict()["generation"]
-    store.event(
-        "request_started",
-        "formal",
-        "r1",
-        {
-            "case_id": "c1",
-            "plan_index": 0,
-            "attempt": 1,
-            "body": {
-                "model": "fixture",
-                "messages": [{"role": "user", "content": "hello"}],
-                "stream": True,
-                "generation": generation,
-            },
-        },
-    )
-    assert seen == [True]
-    assert read_jsonl(store.path / "events.jsonl")[0][0]["event_type"] == "request_started"
-    store.close()
-
-
 def test_write_failure_propagates_without_sealing(tmp_path, monkeypatch):
     store = make_journal(tmp_path)
 
@@ -177,7 +135,6 @@ def make_journal(root):
 
 def test_no_new_request_copy_and_legacy_hash_damage_is_integrity_error(tmp_path):
     store = EvidenceStore(tmp_path, run_id="modern")
-    assert "requests.jsonl" not in store._logs
     assert not (store.path / "requests.jsonl").exists()
     store.seal()
     store.close()

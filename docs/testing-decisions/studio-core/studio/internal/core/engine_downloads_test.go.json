@@ -1,0 +1,50 @@
+{
+  "source_path": "studio/internal/core/engine_downloads_test.go",
+  "decisions": [
+    {
+      "test": "TestEngineDownloadAdmission",
+      "decision": "keep",
+      "reason": "目录名、源、已有文件、symlink、未配置及 closing 逐项拒绝，防覆盖用户文件和关停后新增下载。"
+    },
+    {
+      "test": "TestEngineDownloadCancel",
+      "decision": "keep",
+      "reason": "取消传输须收敛 cancelled 且无可用引擎，目录名继续占用，防取消资源仍可选或重试覆盖残留。"
+    },
+    {
+      "test": "TestEngineDownloadFailures",
+      "decision": "keep",
+      "reason": "503、坏归档、缺二进制、逃逸链接均须 failed 且无 engine path，防失败下载被当作已安装。"
+    },
+    {
+      "test": "TestEngineDownloadJSONDropsCounters",
+      "decision": "delete",
+      "reason": "未知引擎传输值的 null/reason 在 TestEngineDownloadLifecycle 的真实任务和事件 JSON 中覆盖。"
+    },
+    {
+      "test": "TestEngineDownloadLifecycle",
+      "decision": "keep",
+      "reason": "保留下载完成后二进制可执行/库可读、缺测 null/reason、重名和终态取消拒绝、开始及结束状态通知与进度可收到；删除状态事件恰好两个的总数限制，允许合法中间通知。"
+    },
+    {
+      "test": "TestEngineDownloadShutdownConverges",
+      "decision": "keep",
+      "reason": "关停窗口须取消仍在等待响应的下载并写终态时间，防关闭后后台传输存活。"
+    },
+    {
+      "test": "TestEngineExtractionCancellation",
+      "decision": "keep",
+      "reason": "tar/zip/plain 在解压阶段取消后不可写出可用二进制，防已取消下载继续安装。"
+    },
+    {
+      "test": "TestFetchURLRejectsOversized",
+      "decision": "keep",
+      "reason": "Content-Length 和 chunked 均超过允许的内存下载上限时须失败，防无界读取资源耗尽。"
+    },
+    {
+      "test": "TestModelDownloadJSONKeepsMeasuredBytes",
+      "decision": "delete",
+      "reason": "构造一个 struct 再检查默认 JSON 字段，仅证明序列化；实测模型 bytes 已由 TestParallelDownloadsAndProgress 覆盖。"
+    }
+  ]
+}

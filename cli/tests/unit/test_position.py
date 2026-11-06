@@ -8,9 +8,8 @@ from inferyard.analysis.position import (
     position_summary,
     validate_position_cases,
 )
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import ContractError
 from tests.unit.test_observations import EVIDENCE, RUN
-from tests.unit.test_phase2_contracts import experiment
 
 
 def digest(text):
@@ -102,15 +101,6 @@ def test_unknown_length_and_incomplete_never_produce_complete_quality():
     ):
         _, metrics = position_summary(RUN, work, rows, counts, EVIDENCE, complete=complete)
         assert all(m["value"] is None for m in metrics)
-
-
-def test_position_metadata_is_serializable_in_frozen_experiment_contract():
-    data = experiment()
-    work, _, _ = fixture()
-    data["workloads"][0].update(
-        purpose="position", protocol=work["protocol"], position_cases=work["position_cases"]
-    )
-    validate_document("experiment", data)
 
 
 @pytest.mark.parametrize("change", ["prefix", "suffix", "reference", "policy", "rules", "evidence"])

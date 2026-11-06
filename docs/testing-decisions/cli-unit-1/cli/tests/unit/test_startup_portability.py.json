@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_startup_portability.py",
+  "decisions": [
+    {
+      "test": "test_ambiguous_bindings_are_rejected",
+      "decision": "keep",
+      "reason": "重复模型、缺端口值和非本地 host 拒绝便携绑定，防重绑后启动含糊或对外服务。"
+    },
+    {
+      "test": "test_local_rebinding_preserves_fingerprint_but_measurement_changes_do_not",
+      "decision": "keep",
+      "reason": "本地模型/模板路径与端口重绑不变测量指纹，线程数变化则必须改变，防把测量变化当便携路径。"
+    },
+    {
+      "test": "test_public_source_check_is_offline_cli_without_endpoint_or_pid",
+      "decision": "delete",
+      "reason": "删除内部 CommandRequest 默认字段检查；无 endpoint/PID 的公开包与来源核验并入真实离线产物 CLI 回放，并禁止网络及进程 IO。"
+    },
+    {
+      "test": "test_wrong_artifact_binding_rejected",
+      "decision": "keep",
+      "reason": "声明模型路径与真实启动参数不同必须拒绝，避免绑定错模型。"
+    }
+  ]
+}

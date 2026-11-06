@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/preview_context_speed_identity_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewSpeedHistoricalIdentity",
+      "decision": "keep",
+      "reason": "换当前选择或同模型多引擎后历史/逐次结果仍归原身份；重跑生成新记录并恢复原上下文，不改旧结果。"
+    }
+  ]
+}

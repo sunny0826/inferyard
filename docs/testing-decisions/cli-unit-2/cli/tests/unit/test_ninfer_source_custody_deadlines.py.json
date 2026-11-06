@@ -1,0 +1,100 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_custody_deadlines.py",
+  "decisions": [
+    {
+      "test": "test_astral_argv_counts_utf16_units",
+      "decision": "delete",
+      "reason": "仅检查 UTF16 单位计数实现与一个天文字符正向值；无具体用户命令或预算假设。"
+    },
+    {
+      "test": "test_cancel_at_total_makes_no_backend_calls",
+      "decision": "delete",
+      "reason": "重复总期限入口的零调用形状；test_work_deadline_grace_window_may_end_at_total 覆盖总期限后的保管结果。"
+    },
+    {
+      "test": "test_clock_failure_during_step_stops_further_calls",
+      "decision": "delete",
+      "reason": "重复逐调用时钟故障注入；test_clock_failure_sticky_denies_success 覆盖故障不可恢复为成功。"
+    },
+    {
+      "test": "test_clock_failure_sticky_denies_success",
+      "decision": "keep",
+      "reason": "时钟回退后即使清理完成也不能恢复 success，避免不可计量运行获得成功资格。"
+    },
+    {
+      "test": "test_cross_task_deadline_during_pump_rechecked",
+      "decision": "delete",
+      "reason": "重复枚举 pump 返回后的同一期限复核；期限结果由 test_task_deadline_stops_before_work_and_denies_success，退出跨期由 test_late_exit_confirmation_records_deadline_no_terminate 覆盖。"
+    },
+    {
+      "test": "test_cross_total_during_close_skips_handle",
+      "decision": "delete",
+      "reason": "仅固定 close_attempts/close_successes 与逐句调用边界；test_work_deadline_grace_window_may_end_at_total 覆盖期限后 custody 保留。"
+    },
+    {
+      "test": "test_cross_total_during_pump_keeps_facts_and_ref",
+      "decision": "delete",
+      "reason": "重复跨总期限逐调用复核；test_overflow_at_total_records_without_terminate 覆盖保留输出、原引用与停止调用。"
+    },
+    {
+      "test": "test_identity_trailing_lf_rejected",
+      "decision": "delete",
+      "reason": "仅正则尾 LF 的微观输入枚举，与 test_job_identity_float_and_bool_rejected 的身份拒绝和既有宿主身份校验重复。"
+    },
+    {
+      "test": "test_job_id_trailing_lf_rejected",
+      "decision": "delete",
+      "reason": "仅 job_id 正则尾 LF 的微观输入枚举，与宿主身份拒绝路径重复，无独立用户后果。"
+    },
+    {
+      "test": "test_job_identity_float_and_bool_rejected",
+      "decision": "keep",
+      "reason": "浮点/布尔 stage 与期限不能被当整数身份，且不启动进程，防止错误执行边界。"
+    },
+    {
+      "test": "test_kill_after_grace_within_total_closes",
+      "decision": "keep",
+      "reason": "取消宽限结束且仍在总期限内必须强杀并收尾，结果保留取消而非成功。"
+    },
+    {
+      "test": "test_kill_failure_keeps_ref_no_retry",
+      "decision": "keep",
+      "reason": "kill 失败后保留错误且只尝试一次，防止对未知已回收句柄重复发送终止。"
+    },
+    {
+      "test": "test_resume_at_total_makes_no_backend_calls",
+      "decision": "delete",
+      "reason": "重复总期限入口的零调用形状；test_work_deadline_grace_window_may_end_at_total 覆盖总期限后的保管结果。"
+    },
+    {
+      "test": "test_step_at_total_makes_no_backend_calls",
+      "decision": "delete",
+      "reason": "重复 step 总期限入口；test_work_deadline_grace_window_may_end_at_total 已覆盖冻结 backend 与保留原引用。"
+    },
+    {
+      "test": "test_surrogate_argv_rejected",
+      "decision": "keep",
+      "reason": "孤立代理字符 argv 必须在启动前拒绝，避免 Windows 命令构造失败后残留半启动任务。"
+    },
+    {
+      "test": "test_task_deadline_boundary_exact_and_before",
+      "decision": "keep",
+      "reason": "199 tick 可继续、200 tick 必须停止，防止期限边界多运行一个周期。"
+    },
+    {
+      "test": "test_task_deadline_stops_before_work_and_denies_success",
+      "decision": "keep",
+      "reason": "任务期限早于工作期限时停止任务且最终成功为 false，避免超时任务被记成功。"
+    },
+    {
+      "test": "test_terminate_failure_keeps_ref_no_retry",
+      "decision": "keep",
+      "reason": "terminate 失败后保留原引用与清理错误，不能重试未知操作或丢失仍需接手的进程。"
+    },
+    {
+      "test": "test_work_deadline_grace_window_may_end_at_total",
+      "decision": "keep",
+      "reason": "宽限期跨总期限时不能继续 kill/close 且保留 custody，避免期限后失控操作并误称可退出。"
+    }
+  ]
+}

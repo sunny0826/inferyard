@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/internal/pages/local_engines_test.go",
+  "decisions": [
+    {
+      "test": "TestLocalCandidateFormatAndSpeedAdmission",
+      "decision": "keep",
+      "reason": "五引擎家族只能选择适配的 GGUF/目录模型，本地安装声明暂不支持专项时必须阻止启动。"
+    },
+    {
+      "test": "TestLocalEngineFieldsDoNotReplacePathSettings",
+      "decision": "delete",
+      "reason": "仅检查三个固定设置标签存在；注册隔离由 TestPreviewLocalDirectFamiliesAndRegistrationIsolation 覆盖。"
+    },
+    {
+      "test": "TestSwitchingFromLMStudioDoesNotAttachItsServiceToDirectEngines",
+      "decision": "keep",
+      "reason": "从 LM Studio 切直启引擎必须清外部 PID/endpoint，不能误把另一服务绑定给新模型。"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/local_engines/test_mappings.py",
+  "decisions": [
+    {
+      "test": "test_data_classification_rejects_fifo_replacement_without_blocking",
+      "decision": "keep",
+      "reason": "文件被FIFO替换时必须快速拒绝而不挂死preflight，子进程有5秒超时证明。"
+    },
+    {
+      "test": "test_data_classification_rejects_inode_replacement",
+      "decision": "keep",
+      "reason": "映射inode被替换时不能读取新文件冒充旧映射身份。"
+    },
+    {
+      "test": "test_every_mapping_of_unlinked_path_must_be_non_executable",
+      "decision": "keep",
+      "reason": "同路径任一区域可执行就必须拒绝，不能只选首个安全区域。"
+    },
+    {
+      "test": "test_mapped_data_does_not_become_a_required_runtime_library",
+      "decision": "keep",
+      "reason": "GGUF/plist/cache数据映射不能被误当必需动态库，否则本机正常服务会无故阻断；不保留verify_libraries调用参数。"
+    },
+    {
+      "test": "test_mapping_without_path_is_a_preflight_rejection",
+      "decision": "keep",
+      "reason": "无路径的映射不能被默认为安全已知库存。"
+    },
+    {
+      "test": "test_missing_or_malformed_mapping_permissions_are_rejected",
+      "decision": "keep",
+      "reason": "空或不可识别vmmap文本不能当不可执行证明。"
+    },
+    {
+      "test": "test_permission_denied_data_requires_non_executable_mapping",
+      "decision": "keep",
+      "reason": "权限不可读数据仅在当前和最大权限均不可执行时豁免，否则拒绝。"
+    },
+    {
+      "test": "test_unknown_native_image_rejected_even_with_data_filename",
+      "decision": "keep",
+      "reason": "原生Mach-O即使命名.data也必须拒绝未知代码映射，不能只看扩展名。"
+    },
+    {
+      "test": "test_unlinked_code_or_executable_permission_is_not_data",
+      "decision": "keep",
+      "reason": "已删除映射若当前/最大可执行或属于代码段不能按缓存数据放行。"
+    },
+    {
+      "test": "test_unlinked_data_requires_live_non_executable_mapping",
+      "decision": "keep",
+      "reason": "已删除缓存只有实时vmmap证明全部不可执行区域才可接受，没有PID观察必须拒绝。"
+    }
+  ]
+}

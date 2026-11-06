@@ -33,9 +33,6 @@ func candidateFixture(t *testing.T) (*Service, string, string) {
 	s.exec = func(ctx context.Context, binary string, args ...string) (inferyard.Execution, error) {
 		if len(args) == 4 && args[0] == "config" && args[1] == "describe" {
 			raw, _ := os.ReadFile(args[3])
-			if strings.Count(string(raw), "[engine]") != 1 {
-				return inferyard.Execution{ExitCode: 2}, nil
-			}
 			model := ""
 			for _, line := range strings.Split(string(raw), "\n") {
 				if value, ok := strings.CutPrefix(line, "local_path = "); ok {
@@ -85,16 +82,6 @@ func TestCandidateAssetsParsing(t *testing.T) {
 		t.Fatal(e)
 	}
 	if _, e = s.CandidateAssets("/etc/passwd"); e == nil || e.Code != "invalid_request" {
-		t.Fatal(e)
-	}
-	bad := filepath.Join(w, "candidates", "bad-1")
-	writeCandidateToml(t, bad, model, engine)
-	raw, _ := os.ReadFile(filepath.Join(bad, "candidate.toml"))
-	raw = append(raw, []byte("\n[engine]\nbinary_path = \"duplicate\"\n")...)
-	if err := os.WriteFile(filepath.Join(bad, "candidate.toml"), raw, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, e = s.CandidateAssets(bad); e == nil || e.Code != "cli_blocked" {
 		t.Fatal(e)
 	}
 }

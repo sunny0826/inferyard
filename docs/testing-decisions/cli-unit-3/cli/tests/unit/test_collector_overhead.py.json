@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/unit/test_collector_overhead.py",
+  "decisions": [
+    {
+      "test": "test_boundary_protocol_has_distinct_frozen_scope",
+      "decision": "keep",
+      "reason": "具体场景 test_boundary_protocol_has_distinct_frozen_scope。可观察预期：assert p['kind'] == 'collector_overhead_abba.v3'；assert p['boundary_observer']['boundaries'] == ['before_send', 'after_terminal']；assert result['passed']；assert 'baseline_environment_is_bracketed_not_continuously_observed' in result['limitations']。开销门限按独立 ABBA 对检查，差值正负不能互消；失败/输出不同/少臂及篡改协议不能 passed，不同观察器及输出 token 范围不能混用资格。"
+    },
+    {
+      "test": "test_common_observer_protocol_is_versioned_and_cannot_be_relabelled",
+      "decision": "keep",
+      "reason": "具体场景 test_common_observer_protocol_is_versioned_and_cannot_be_relabelled。可观察预期：assert old['kind'] == 'collector_overhead_abba.v1'；assert 'observer' not in old；assert new['kind'] == 'collector_overhead_abba.v2'；assert new['protocol_sha256'] != old['protocol_sha256']。开销门限按独立 ABBA 对检查，差值正负不能互消；失败/输出不同/少臂及篡改协议不能 passed，不同观察器及输出 token 范围不能混用资格。"
+    },
+    {
+      "test": "test_exact_tolerance_and_independent_pairs",
+      "decision": "keep",
+      "reason": "具体场景 test_exact_tolerance_and_independent_pairs。可观察预期：assert assess_overhead(p, trials(p, (100, 105, 105, 100)))['passed']；assert not result['passed']；assert result['max_absolute_pair_median_change'] == 0.1。开销门限按独立 ABBA 对检查，差值正负不能互消；失败/输出不同/少臂及篡改协议不能 passed，不同观察器及输出 token 范围不能混用资格。"
+    },
+    {
+      "test": "test_freeze_rejects_invalid_inputs",
+      "decision": "keep",
+      "reason": "具体场景 test_freeze_rejects_invalid_inputs。逐项参数：pytest.mark.parametrize('field,value', [('tolerance_ratio', float('nan')), ('tolerance_ratio', True), ('max_wall_seconds', 0), ('interval_ms', 0), ('case_ids', ['a', 'a']), ('tool_source_sha256', 'unknown')])。可观察预期：pytest.raises(EvidenceError)。开销门限按独立 ABBA 对检查，差值正负不能互消；失败/输出不同/少臂及篡改协议不能 passed，不同观察器及输出 token 范围不能混用资格。"
+    },
+    {
+      "test": "test_partial_failed_or_different_work_is_not_pass",
+      "decision": "keep",
+      "reason": "具体场景 test_partial_failed_or_different_work_is_not_pass。可观察预期：assert not assess_overhead(p, trials(p)[:3])['passed']；assert not assess_overhead(p, rows)['passed']。开销门限按独立 ABBA 对检查，差值正负不能互消；失败/输出不同/少臂及篡改协议不能 passed，不同观察器及输出 token 范围不能混用资格。"
+    },
+    {
+      "test": "test_projection_requires_known_output_tokens_and_preserves_scope",
+      "decision": "keep",
+      "reason": "具体场景 test_projection_requires_known_output_tokens_and_preserves_scope。可观察预期：assert first['output_identity']；assert request_projection({**row, 'completion_tokens': None})['output_identity'] is None；assert request_projection({**row, 'completion_tokens': 3})['output_identity'] != first['output_identity']；assert request_projection({**row, 'token_scope': 'content+reasoning'})['output_identity'] != first['output_identity']。开销门限按独立 ABBA 对检查，差值正负不能互消；失败/输出不同/少臂及篡改协议不能 passed，不同观察器及输出 token 范围不能混用资格。"
+    },
+    {
+      "test": "test_tampered_protocol_or_order_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_tampered_protocol_or_order_rejected。可观察预期：pytest.raises(EvidenceError, match='protocol')；pytest.raises(EvidenceError, match='binding')。开销门限按独立 ABBA 对检查，差值正负不能互消；失败/输出不同/少臂及篡改协议不能 passed，不同观察器及输出 token 范围不能混用资格。"
+    }
+  ]
+}

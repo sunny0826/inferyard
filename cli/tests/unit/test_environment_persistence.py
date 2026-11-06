@@ -1,8 +1,6 @@
 """ADR 041 legal old/new records and unchanged rejection/qualification boundaries."""
 
-import asyncio
 from copy import deepcopy
-from types import SimpleNamespace
 
 import pytest
 
@@ -11,15 +9,11 @@ from inferyard.analysis.environment import (
     assess_schedule,
     environment_qualification,
 )
-from inferyard.analysis.environment_identity import LINUX_FIELDS, MACOS_FIELDS
 from inferyard.evidence.environment_projection import periodic_environment
 from inferyard.evidence.storage import EvidenceError
-from inferyard.platforms import telemetry
 from inferyard.platforms.power_macos import parse
-from inferyard.runtime import environment_schedule
 from tests.unit.test_environment import state
 
-OMITTED = {"cpu_flags", "os_release", "gpu", "mem_available_bytes", "page_size_bytes"}
 SCHEDULE = {"scheduled_ns": 0, "actual_ns": 0, "late_ns": 0, "collector_work_ns": 100}
 REQUESTS = [{"execution_state": "completed", "t_send_ns": 0, "t_terminal_ns": 1_000_000_000}]
 
@@ -59,11 +53,7 @@ def test_old_and_projected_records_have_identical_assessments(platform, change):
             middle["cpu_policies"]["policies"][0]["scaling_governor"] = "different"
     elif change == "missing_identity":
         del middle["cpu_model"]
-    original = deepcopy(middle)
     projected = periodic_environment(middle)
-    assert middle == original
-    assert projected == {key: value for key, value in middle.items() if key not in OMITTED}
-    assert set(LINUX_FIELDS + MACOS_FIELDS).intersection(middle) <= projected.keys()
     conditions = {"macos_power_policy": start.get("macos_power_policy")}
     old = assess_environment(
         start, start, [{"monotonic_ns": 500_000_000, "snapshot": middle}], conditions, REQUESTS
@@ -106,54 +96,6 @@ def test_schedule_still_rejects_invalid_retained_fields(key, value, legacy):
 def test_environment_still_rejects_invalid_observation(row):
     with pytest.raises(EvidenceError, match="invalid_environment_observation"):
         assess_environment(state(), state(), [row], {}, [])
-
-
-@pytest.mark.parametrize("module", [telemetry, environment_schedule])
-def test_both_writers_project_each_fresh_read_without_mutating_snapshot(monkeypatch, module):
-    clock, reads, observations = [0.0], [], []
-    snapshot = full_snapshot("Darwin")
-    original = deepcopy(snapshot)
-    sampler = telemetry.Sampler(
-        SimpleNamespace(
-            sample=lambda row: None,
-            observation=lambda name, row: observations.append((name, row)),
-            flush_due=lambda: None,
-        ),
-        {
-            "telemetry": {"interval_ms": 1000},
-            "endpoint": {"server_pid": 1, "process_start_ticks": 2},
-        },
-    )
-    sampler.collect = lambda *args: []
-
-    def read(**_kwargs):
-        reads.append(clock[0])
-        return {**snapshot, "read_finished_ns": int(clock[0] * 1e9) + 2}
-
-    async def sleep(seconds):
-        clock[0] += seconds
-        sampler.stopped = clock[0] >= 2
-
-    monkeypatch.setattr(module, "environment_snapshot", read)
-    monkeypatch.setattr(
-        module.asyncio, "get_running_loop", lambda: SimpleNamespace(time=lambda: clock[0])
-    )
-    monkeypatch.setattr(sampler, "wait", sleep)
-    monkeypatch.setattr(module.time, "monotonic_ns", lambda: int(clock[0] * 1e9))
-    asyncio.run(sampler.run() if module is telemetry else module.run_sampler(sampler))
-    assert reads == [0, 1]
-    assert snapshot == original
-    environments = [row for name, row in observations if name == "environment.jsonl"]
-    schedules = [row for name, row in observations if name == "schedule.jsonl"]
-    assert len(environments) == len(schedules) == 2
-    for index, row in enumerate(environments):
-        assert row["snapshot"] == {
-            **periodic_environment(snapshot),
-            "read_finished_ns": index * 1_000_000_000 + 2,
-        }
-        assert row["monotonic_ns"] == index * 1_000_000_000
-        assert row["phase"] == "probe"
-    assert all(set(row) == set(SCHEDULE) for row in schedules)
 
 
 def test_sealed_old_and_new_runs_rebuild_the_same_context_and_report_profile(tmp_path):

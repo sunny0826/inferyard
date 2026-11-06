@@ -1,7 +1,5 @@
 """Sensor grouping must preserve request windows, source semantics and missing evidence."""
 
-from copy import deepcopy
-
 import pytest
 
 from inferyard.analysis.observations import Observations
@@ -43,7 +41,7 @@ def observe(requests, samples, *, complete=True):
     return output.items
 
 
-def test_sources_are_global_sorted_and_separate_by_metric_and_semantics():
+def test_global_sources_keep_request_metric_and_semantics_separate():
     samples = [
         sample(source="B", request_id="b", value=80),
         sample("frequency", "A", "requested_or_driver_reported", value=3000),
@@ -53,21 +51,34 @@ def test_sources_are_global_sorted_and_separate_by_metric_and_semantics():
         sample("frequency", "A", "hardware_reported", value=1000),
         sample(source="Z", request_id=None, phase="baseline"),
     ]
-    original = deepcopy(samples)
     rows = observe([request(), request("b", execution_state="failed")], samples)
-    first, second = rows[:8], rows[8:]
-    assert [r["metric_id"] for r in first] == ["C07"] * 4 + ["C08"] * 4
-    assert [r["source"] for r in first] == ["A", "A", "B", "Z", "A", "A", "A", "A"]
-    assert [r["value"] for r in first] == [10, -4.5, None, None, 2000, 1000, 3000, 3000]
-    assert [r["statistic"] for r in first[4:]] == ["observed_max", "observed_min"] * 2
-    assert first[0]["limitations"][0] == "other_reported"
-    assert first[1]["limitations"][0] == "smc_key_reported"
-    assert all(r["missing_reason"] == "no_sensor_samples_in_window" for r in first[2:4])
-    assert second[2]["value"] == 80  # Failed requests still retain valid observations.
-    assert all(r["request_id"] == "a" for r in first)
-    assert all(r["request_id"] == "b" for r in second)
+    semantics = {
+        "other_reported", "smc_key_reported", "hardware_reported", "requested_or_driver_reported"
+    }
+    actual = {
+        (
+            r["request_id"], r["metric_id"], r["source"],
+            next(s for s in semantics if s in r["limitations"]), r["statistic"],
+        ): (r["value"], r["missing_reason"])
+        for r in rows
+    }
+    expected = {}
+    for metric, source, meaning, statistic, a_value, b_value in [
+        ("C07", "A", "other_reported", "observed_max", 10, None),
+        ("C07", "A", "smc_key_reported", "observed_max", -4.5, None),
+        ("C07", "B", "smc_key_reported", "observed_max", None, 80),
+        ("C07", "Z", "smc_key_reported", "observed_max", None, None),
+        ("C08", "A", "hardware_reported", "observed_max", 2000, None),
+        ("C08", "A", "hardware_reported", "observed_min", 1000, None),
+        ("C08", "A", "requested_or_driver_reported", "observed_max", 3000, None),
+        ("C08", "A", "requested_or_driver_reported", "observed_min", 3000, None),
+    ]:
+        for request_id, value in (("a", a_value), ("b", b_value)):
+            reason = "no_sensor_samples_in_window" if value is None else None
+            expected[request_id, metric, source, meaning, statistic] = (value, reason)
+    assert len(rows) == len(actual)  # Duplicate observations must not inflate the evidence.
+    assert actual == expected
     assert all(not r["comparison_eligible"] for r in rows)
-    assert samples == original
 
 
 def test_window_exclusions_and_missing_reasons_are_not_lost_by_grouping():
@@ -100,13 +111,16 @@ def test_source_change_overrides_good_samples_without_contaminating_other_reques
         sample(request_id="b", value=60),
         sample(source="B", value=70),
     ]
-    rows = observe([request(), request("b")], samples)
-    changed, independent = rows[0], rows[1]
+    rows = {
+        (r["request_id"], r["metric_id"], r["source"]): r
+        for r in observe([request(), request("b")], samples)
+    }
+    changed, independent = rows["a", "C07", "A"], rows["a", "C07", "B"]
     assert changed["value"] is None and changed["missing_reason"] == "source_changed"
     assert (changed["sample_count"], changed["excluded"]) == (1, 2)
     assert changed["sampled_start_ns"] is None and changed["coverage_ratio"] is None
     assert independent["value"] == 70
-    assert rows[3]["value"] == 60
+    assert rows["b", "C07", "A"]["value"] == 60
 
 
 @pytest.mark.parametrize("state", ["cancelled", "invalid", "not_executed"])
@@ -128,28 +142,8 @@ def test_missing_request_boundary_excludes_samples(field):
 def test_unavailable_metric_differs_from_source_without_samples_in_this_request():
     rows = observe([request(), request(None)], [sample(request_id="unselected")])
     assert len(rows) == 2
-    assert [r["missing_reason"] for r in rows] == [
-        "no_sensor_samples_in_window",
-        "sensor_evidence_unavailable",
-    ]
+    assert {r["metric_id"]: r["missing_reason"] for r in rows} == {
+        "C07": "no_sensor_samples_in_window",
+        "C08": "sensor_evidence_unavailable",
+    }
     assert observe([request(None)], []) == []
-
-
-def test_whole_sample_timeline_is_not_rescanned_per_request_and_source():
-    class CountedTimeline(list):
-        visited = 0
-
-        def __iter__(self):
-            for item in super().__iter__():
-                self.visited += 1
-                yield item
-
-    requests = [request(str(i)) for i in range(12)]
-    samples = CountedTimeline(
-        sample(source=str(source), request_id=row["request_id"])
-        for row in requests
-        for source in range(8)
-    )
-    rows = observe(requests, samples)
-    assert len(rows) == 12 * 9
-    assert samples.visited <= 2 * len(samples)

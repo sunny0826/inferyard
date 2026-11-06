@@ -35,7 +35,6 @@ def test_llama_macos_binding_is_native_single_file_and_revalidates(native, monke
     monkeypatch.setattr(fit.platform, "system", lambda: "Darwin")
     binding = fit.bind_service("llama-cpp", model, 321, "http://127.0.0.1:8080")
     assert binding["model_binding"]["source"] == "verified_startup_file_identity"
-    assert binding["listener_inode"] is None
     fit.check_service(binding)
     model.rename(model.with_suffix(".old"))
     model.write_bytes(b"replacement")
@@ -138,17 +137,6 @@ def test_mlx_upstream_or_ambiguous_entrypoint_is_rejected(native, monkeypatch, a
     native[0]["args"] = args
     with pytest.raises(PreflightError):
         macos.bind_service("mlx-lm", native[3], 321, "http://127.0.0.1:8080")
-
-
-@pytest.mark.parametrize("length", [1, 512, 32768])
-@pytest.mark.parametrize("equal", [False, True])
-def test_mlx_binds_valid_optional_context(native, monkeypatch, length, equal):
-    _mlx_native(native, monkeypatch)
-    native[0]["args"].extend(
-        [f"--max-model-len={length}"] if equal else ["--max-model-len", str(length)]
-    )
-    binding = macos.bind_service("mlx-lm", native[3], 321, "http://127.0.0.1:8080")
-    assert binding["model_binding"]["source"] == "verified_startup_directory_identity"
 
 
 @pytest.mark.parametrize(

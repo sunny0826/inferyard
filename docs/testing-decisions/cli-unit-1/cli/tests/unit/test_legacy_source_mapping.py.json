@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_legacy_source_mapping.py",
+  "decisions": [
+    {
+      "test": "test_legacy_comparison_mapping_rejected_by_both_entrypoints",
+      "decision": "keep",
+      "reason": "CLI 加 source-root 仍拒绝旧比较版本并保留原字节，防路径重绑成为旧证据升级开关。"
+    },
+    {
+      "test": "test_legacy_report_mapping_rejected_by_both_entrypoints",
+      "decision": "keep",
+      "reason": "CLI 加 source-root 仍拒绝旧报告格式并显示支持范围，不绕过 ADR 038 读取边界。"
+    },
+    {
+      "test": "test_modern_comparison_mapping_is_applied_and_bad_source_is_evidence_error",
+      "decision": "keep",
+      "reason": "当前比较移源后映射可验证，映射目标缺失返回证据错误 4，保障可搬运报告的真实归属。"
+    }
+  ]
+}

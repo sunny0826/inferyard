@@ -117,7 +117,6 @@ func TestChainBindRunReport(t *testing.T) {
 			t.Errorf("bundle %s phase %q, want run_complete", b.Bundle, b.Phase)
 		}
 	}
-	assertGoldenTranscript(t, env.Recorder)
 	assertReportExists(t, final.Progress.Workspace)
 	assertEvidenceContracts(t, final.Progress.Workspace)
 }
@@ -243,31 +242,6 @@ func waitTasksTerminal(t *testing.T, service *core.Service, timeout time.Duratio
 		time.Sleep(500 * time.Millisecond)
 	}
 	t.Fatalf("run tasks did not reach terminal state [%s]", analyzeFailure(recorder))
-}
-
-func assertGoldenTranscript(t *testing.T, recorder *Recorder) {
-	t.Helper()
-	commands := map[string]int{}
-	for _, record := range recorder.Records() {
-		if len(record.Argv) < 2 {
-			continue
-		}
-		key := record.Argv[1]
-		if key == "config" && len(record.Argv) > 2 {
-			key += " " + record.Argv[2]
-		}
-		commands[key]++
-		if record.ExitCode != 0 {
-			t.Errorf("record %d %q exited %d", record.Seq, key, record.ExitCode)
-		}
-	}
-	for command, want := range map[string]int{
-		"init": 1, "device-check": 1, "config bind": 2, "run": 2, "report": 1, "verify": 1,
-	} {
-		if commands[command] < want {
-			t.Errorf("command %q recorded %d times, want >= %d", command, commands[command], want)
-		}
-	}
 }
 
 func assertReportExists(t *testing.T, workspace string) {

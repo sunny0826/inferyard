@@ -64,13 +64,6 @@ def setup_assets(tmp_path, monkeypatch):
     return config, model, manifest
 
 
-def test_existing_v2_bytes_retained(tmp_path, monkeypatch):
-    config, _, expected = setup_assets(tmp_path, monkeypatch)
-    _, _, files = assets(config)
-    assert len(files) == 6
-    assert expected["definition"] == "model-assets.v2"
-
-
 def test_sealed_identity_retains_model_manifest(tmp_path, monkeypatch):
     config, _, expected = setup_assets(tmp_path, monkeypatch)
     path = tmp_path / "binding.json"

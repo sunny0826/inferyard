@@ -131,17 +131,6 @@ def test_parent_identity_change_does_not_bind_to_new_pid_generation():
     assert by_pid(data, 11)["group_id"] is None
 
 
-def test_conflicting_bundle_and_parent_evidence_does_not_merge_apps():
-    data = report(
-        [
-            observed(10, bundle=app()),
-            observed(11, parent=10, bundle=app("Other", "other")),
-        ]
-    )
-    assert by_pid(data, 11)["group_id"] is None
-    assert by_pid(data, 11)["decision"]["status"] == "unknown"
-
-
 @pytest.mark.parametrize(
     "options",
     [
@@ -212,13 +201,6 @@ def test_saved_reader_rejects_duplicate_json_keys(tmp_path):
         read_memory_check(path)
 
 
-def test_snapshot_is_fresh_without_cross_command_cache():
-    first = report([observed(10, bundle=app())])
-    second = report([observed(12, bundle=app())])
-    assert [r["pid"] for r in first["processes"]] == [10]
-    assert [r["pid"] for r in second["processes"]] == [12]
-
-
 def test_bundle_conflict_remains_unknown_for_descendants_in_any_enumeration_order():
     rows = [
         observed(10, bundle=app()),
@@ -253,13 +235,6 @@ def test_public_saved_samples_are_read_at_the_contract_boundary():
     }
     with pytest.raises(ContractError, match="count mismatch"):
         read_memory_check(root / "memory-check.invalid.json")
-
-
-def test_mixed_null_reason_identity_is_rejected_as_contract_error():
-    data = report([observed(10, bundle=app()), observed(12, bundle=app())])
-    data["groups"][0]["decision"]["reasons"][0]["pid"] = None
-    with pytest.raises(ContractError):
-        validate_memory_check(data)
 
 
 def test_usr_local_tool_is_unknown_instead_of_a_system_process():

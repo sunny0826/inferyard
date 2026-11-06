@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_macos_contracts.py",
+  "decisions": [
+    {
+      "test": "test_macos_idle_rss_reduces_on_any_host_and_rejects_changed_source",
+      "decision": "keep",
+      "reason": "具体场景 test_macos_idle_rss_reduces_on_any_host_and_rejects_changed_source。可观察预期：assert summary['first_cycle_rss_bytes'] == 1000 and items[-1]['value'] == -100；assert all((item['source'] == MACOS_SOURCE for item in items))；assert items[-1]['value'] is None；assert items[-1]['missing_reason'] == 'idle_cycle_source_changed'。macOS CPU 微秒尺度不能按 Linux tick 误读；换来源或缺初始 idle 基线时不造漂移值，离线开销资格必须绑定保存平台。"
+    },
+    {
+      "test": "test_macos_samples_reject_wrong_scale_source_or_components",
+      "decision": "keep",
+      "reason": "具体场景 test_macos_samples_reject_wrong_scale_source_or_components。逐项参数：pytest.mark.parametrize('change', [{'clock_ticks_per_second': 100}, {'source': '/proc/<pid>/stat:utime+stime'}, {'unit': 'seconds'}, {'raw_cpu': {'user_ticks': 5, 'system_ticks': 0}}, {'value': None, 'missing_reason': 'source_unavailable'}])。可观察预期：pytest.raises(ContractError)。macOS CPU 微秒尺度不能按 Linux tick 误读；换来源或缺初始 idle 基线时不造漂移值，离线开销资格必须绑定保存平台。"
+    },
+    {
+      "test": "test_metal_config_extension_retains_cpu_and_cuda",
+      "decision": "delete",
+      "reason": "只枚举 config backend 字符串并原样返回；真实平台组合拒绝由 test_wrong_platform_backend_is_rejected_before_file_reads 覆盖。"
+    },
+    {
+      "test": "test_missing_initial_macos_idle_sample_retains_later_observations",
+      "decision": "keep",
+      "reason": "具体场景 test_missing_initial_macos_idle_sample_retains_later_observations。逐项参数：pytest.mark.parametrize('first_cycle', ['missing', 'duplicate'])。可观察预期：assert items[-2]['value'] == 900 and items[-2]['source'] == MACOS_SOURCE；assert items[-1]['value'] is None；assert items[-1]['missing_reason'] == 'first_cycle_baseline_missing'。macOS CPU 微秒尺度不能按 Linux tick 误读；换来源或缺初始 idle 基线时不造漂移值，离线开销资格必须绑定保存平台。"
+    },
+    {
+      "test": "test_old_linux_and_new_macos_samples_use_explicit_scales",
+      "decision": "delete",
+      "reason": "仅两条合法 sample 被 parser 接受；错单位来源的独立拒绝由 test_macos_samples_reject_wrong_scale_source_or_components 覆盖。"
+    },
+    {
+      "test": "test_overhead_replay_binds_saved_platform_not_reading_host",
+      "decision": "keep",
+      "reason": "具体场景 test_overhead_replay_binds_saved_platform_not_reading_host。逐项参数：pytest.mark.parametrize('observer', ['common_observer', 'boundary_observer'])。可观察预期：assert linux['protocol_sha256'] != mac['protocol_sha256']；assert 'resource_collector' not in linux；pytest.raises(EvidenceError, match='protocol_mismatch')。macOS CPU 微秒尺度不能按 Linux tick 误读；换来源或缺初始 idle 基线时不造漂移值，离线开销资格必须绑定保存平台。"
+    }
+  ]
+}

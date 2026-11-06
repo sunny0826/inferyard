@@ -16,9 +16,24 @@ mise exec -- go test ./tests/e2e/ -count=1 -timeout 900s -v
 The suite resolves the CLI in order: `INFERYARD_E2E_CLI`, a `PATH` entry whose
 `config describe --help` succeeds, the synced in-repo environment (`cli/.venv`),
 then a `uv run` wrapper (POSIX only). It skips when none works. An older installed
-CLI that does not accept `config describe` is skipped rather than used. Set `INFERYARD_E2E_ROOT=<dir>` to preserve the
-workspace and blame transcript for post-mortem inspection instead of
-cleaning them up.
+CLI that does not accept `config describe` is skipped rather than used. Set
+`INFERYARD_E2E_ROOT=<new-dir>` to preserve the workspace, host files and blame
+transcript for post-mortem inspection instead of cleaning them up. Use a fresh
+root for each test invocation so recorded evidence is not overwritten.
+
+`NewEnv` creates a unique `host-*` directory per test. It copies the embedded
+`cli_bootstrap.py` there as `sitecustomize.py` and prepends that directory to
+`PYTHONPATH`, retaining the inherited value. Every real CLI subprocess in that
+test uses the same temporary `LOCK_PATH` and `STATE_PATH`; Studio's
+`Options.HostStatePath` reads that same state. HostLock, dirty-state handling and
+identity checks still execute normally. Bootstrap failure stops Python instead
+of continuing with the global host files.
+
+The original Python CLI entry point is used, including `inferyard.exe` on
+Windows; it must allow Python's normal `sitecustomize` startup. This injection
+is test-only and does not change the production fixed-path contract. `t.Setenv`
+restores the environment after each test and forbids parallel tests; callers of
+`NewEnv` and their ancestors must not use `t.Parallel`.
 
 ## Layout
 
@@ -28,12 +43,13 @@ cleaning them up.
 | `fakeengine.go` / `fakeengine_server.go` | Fake llama-server: the seven endpoints the prism adapter verifies, byte-length token accounting |
 | `gguf.go` | Minimal valid GGUF so the real device-check discovers one local model |
 | `candidate.go` | Fabricates the `config_candidate.v1` pair (the deliberate fixture boundary) |
-| `env.go` | Isolated settings/host state, CLI resolution, `INFERYARD_E2E_ROOT` |
+| `env.go` | Isolated settings and shared per-test CLI host files, CLI resolution, `INFERYARD_E2E_ROOT` |
+| `cli_bootstrap.py` | Test-only Python startup injection for the real CLI host paths |
 | `recorder.go` | Executor middleware: `transcript.jsonl` plus per-call stdout/stderr with sha256 |
 | `schemagate.go` | Validates every schema-covered evidence document against `cli/schemas/` |
 | `blame.go` | Failure attribution from the transcript (see below) |
 | `chain_test.go` | Golden chain: init → device-check → bind → run both bundles → verified report |
-| `scenarios_test.go` | Command guards, queued-run cancellation, engine crash recovery |
+| `scenarios_test.go` | Command guards reject invalid requests before launching CLI work |
 
 ## Blame model
 
@@ -60,9 +76,11 @@ checked in the golden chain.
   differences are still recorded in evidence.
 - Device check runs for real against the fake GGUF; only the model is a
   fixture, not the hardware probe.
-- Window-level assembly (`ui.NewTester`) and real-window smoke are out of
-  scope: page logic is covered by `internal/pages` unit tests, and native
-  acceptance stays manual per `studio/README.md`.
+- Queue cancellation and engine-process failure behavior use controlled core tests;
+  this suite does not claim separate real-CLI cancellation or crash scenarios.
+- Window-level assembly (`ui.NewTester`) and native windows are out of scope:
+  page logic is covered by `internal/pages`, while [native UI e2e](../ui/README.md)
+  drives the actual window with a simulated backend.
 
 ## Context-speed boundary
 
@@ -77,8 +95,5 @@ consumes that JSON; this is not real model or context-capacity acceptance.
 
 Set `STUDIO_SPEED_E2E_ROOT` to a new directory to retain the fixture and `output/result.json`.
 Do not reuse an existing output directory. Set `UV_PYTHON` to `mise which python` and use
-the project's frozen uv environment. With the retained result, page projection can be checked:
-
-```sh
-STUDIO_SPEED_RESULT=/absolute/new-run/output/result.json mise exec -- go test ./internal/pages -run TestContextSpeedRealCLIProjection -count=1
-```
+the project's frozen uv environment. Page tests verify their own result, missing-data
+and retry expectations; the native UI suite verifies interaction with the simulated results.

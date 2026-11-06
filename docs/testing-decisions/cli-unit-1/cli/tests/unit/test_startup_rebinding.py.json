@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_startup_rebinding.py",
+  "decisions": [
+    {
+      "test": "test_batch_retains_existing_short_port_binding",
+      "decision": "keep",
+      "reason": "-p 分离/等号形式也更新实际端口，防配置 URL 变了但服务启动参数仍旧。"
+    },
+    {
+      "test": "test_sealed_rerun_and_batch_rebind_endpoint",
+      "decision": "keep",
+      "reason": "rerun 与 batch 都重绑新 host/端口/PID 世代并保留原封存字节，避免仍连旧服务。"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/development_disabled_test.go",
+  "decisions": [
+    {
+      "test": "TestDevelopmentFlagsRejected",
+      "decision": "keep",
+      "reason": "普通及 release 构建必须拒绝全部开发控制参数，防发布产物进入隔离开发恢复入口。"
+    }
+  ]
+}

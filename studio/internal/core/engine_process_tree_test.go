@@ -192,44 +192,6 @@ func TestLocalEngineEnvironmentAndValidation(t *testing.T) {
 	if _, _, err := validateStartup(startup); err == nil || err.Code != "local_engine_external_binding_required" {
 		t.Fatal(err)
 	}
-	legacy := exec.Command(os.Args[0])
-	if err := configureEngineProcess(legacy, Startup{}); err != nil || legacy.Env != nil || legacy.Dir != "" || legacy.SysProcAttr != nil {
-		t.Fatal("legacy changed")
-	}
-}
-
-func TestEngineTreeOwnerCompareReplace(t *testing.T) {
-	path := ownerPath(t.TempDir())
-	owner := engineOwner{PID: 42, StartTicks: 1}
-	if err := writeEngineOwner(path, owner); err != nil {
-		t.Fatal(err)
-	}
-	next := owner
-	next.Workers = []engineProcessIdentity{{43, 2}}
-	if err := replaceEngineOwner(path, owner, next); err != nil {
-		t.Fatal(err)
-	}
-	if err := replaceEngineOwner(path, owner, owner); err == nil {
-		t.Fatal("stale owner replaced latest snapshot")
-	}
-	if err := removeEngineOwner(path, owner); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(path); err != nil {
-		t.Fatal("stale owner removed latest snapshot")
-	}
-}
-
-func TestHandoffRejectsRealCLIChildAndOrphan(t *testing.T) {
-	s := &Service{runs: []*runEntry{{commandActive: true}}}
-	if err := s.stopEngineForHandoff(context.Background()); err == nil || err.Code != "run_active" {
-		t.Fatal(err)
-	}
-	s.runs = nil
-	s.orphan = &orphanEngine{}
-	if err := s.stopEngineForHandoff(context.Background()); err == nil || err.Code != "engine_orphaned" {
-		t.Fatal(err)
-	}
 }
 
 func treeIdentityFixture(t *testing.T) (*Service, engineOwner, string, map[int64]int64, *[]int64) {

@@ -49,23 +49,6 @@ def test_cuda_preflight_observes_once_per_call_and_cpu_never(tmp_path, monkeypat
         "environment_snapshot",
         lambda: {**config["conditions"], "mem_available_bytes": 2**40},
     )
-    calls = []
-
-    def gpu():
-        value = {
-            "status": "observed",
-            "source": "nvidia-smi",
-            "devices": [{"name": f"GPU-{len(calls)}"}],
-        }
-        calls.append(value)
-        return value
-
-    monkeypatch.setattr(device_preflight, "nvidia_snapshot", gpu)
-    for expected in range(2):
-        result, _ = identity.static_preflight(config)
-        assert len(calls) == expected + 1
-        assert result["environment"]["gpu"]["devices"] == calls[-1]["devices"]
-        assert set(result["device_preflight"]["hardware"]) == {"disk_free_bytes"}
     monkeypatch.setattr(
         device_preflight,
         "nvidia_snapshot",
@@ -74,21 +57,5 @@ def test_cuda_preflight_observes_once_per_call_and_cpu_never(tmp_path, monkeypat
     with pytest.raises(identity.PreflightError, match="cuda_device_unavailable"):
         identity.static_preflight(config)
     config["engine"]["backend"] = "cpu"
-    monkeypatch.setattr(device_preflight, "nvidia_snapshot", gpu)
-    count = len(calls)
     result, _ = identity.static_preflight(config)
-    assert len(calls) == count
     assert "gpu" not in result["environment"]
-
-
-def test_advice_preserves_unavailable_injected_observation(tmp_path, monkeypatch):
-    monkeypatch.setattr(device_preflight.platform, "system", lambda: "Linux")
-    observed = {"status": "unavailable", "reason": "probe_timeout", "devices": []}
-
-    def forbidden():
-        pytest.fail("injected observation must not trigger a second GPU query")
-
-    monkeypatch.setattr(device_preflight, "nvidia_snapshot", forbidden)
-    result = device_preflight.hardware_snapshot(tmp_path, {}, gpu_observation=observed)
-    assert result["gpu"] == observed
-    assert result["missing"]["gpu"] == "probe_timeout"

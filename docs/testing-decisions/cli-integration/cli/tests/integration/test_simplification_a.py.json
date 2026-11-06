@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/integration/test_simplification_a.py",
+  "decisions": [
+    {
+      "test": "test_batch_reuses_source_and_score_identities_across_trials",
+      "decision": "delete",
+      "reason": "仅断言私有scorer/source哈希调用次数；没有实际预算或用户延迟阈值。"
+    },
+    {
+      "test": "test_budget_only_inputs_that_will_be_sent",
+      "decision": "keep",
+      "reason": "probe或零warmup运行不能因未使用warmup的预算失败被阻断；保留实际发送数和分母，删除scorer哈希次数、内部token_budget调用顺序及旧文件不存在断言。"
+    },
+    {
+      "test": "test_changed_scorer_cli_and_lineage_hash_check",
+      "decision": "keep",
+      "reason": "当前评分器身份变化必须使重评分核验失败，伪造父lineage理由还须触发独立父重算拒绝。"
+    },
+    {
+      "test": "test_lab_budget_v1_is_unsupported_without_rewriting",
+      "decision": "keep",
+      "reason": "旧v1预算独立文件必须明确unsupported_format而非迁移或回写。"
+    },
+    {
+      "test": "test_lab_budget_v2_rejects_bad_shape_and_inventory",
+      "decision": "keep",
+      "reason": "lab预算多余字段、bool数字、重复/错case、顺序、formal缺ID及新旧冲突不能离线接受，且不得回写原件。"
+    },
+    {
+      "test": "test_runtime_evidence_reason_survives",
+      "decision": "delete",
+      "reason": "只向guard注入固定EvidenceError再验证同字符串映射；实际错误路径由test_runner的IO失败和test_native_cli的stop_reason测试覆盖。"
+    },
+    {
+      "test": "test_safe_entrypoint_reasons",
+      "decision": "delete",
+      "reason": "注入异常allowlist与sanitization重复 test_cli.test_io_errors_and_internal_exception_messages_are_sanitized 和 test_bind_config_cli.test_bind_cli_preserves_only_fixed_process_reasons，保留真实入口故障。"
+    },
+    {
+      "test": "test_trial_and_resume_budget_follow_selected_cases",
+      "decision": "delete",
+      "reason": "只核对resume内部预算列表；实际只续测未执行题由 test_batch_runner.test_cancel_resume_only_unexecuted_then_next_planned_repetitions 覆盖。"
+    }
+  ]
+}

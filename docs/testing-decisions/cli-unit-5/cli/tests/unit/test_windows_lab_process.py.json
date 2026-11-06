@@ -1,0 +1,106 @@
+{
+  "source_path": "cli/tests/unit/test_windows_lab_process.py",
+  "decisions": [
+    {
+      "test": "test_account_hash_and_path_mismatches_do_not_echo_secrets",
+      "decision": "keep",
+      "reason": "账户、argv或二进制哈希改变须拒绝且不泄露账户，避免身份冒用。"
+    },
+    {
+      "test": "test_binding_final_close_past_deadline_does_not_succeed",
+      "decision": "keep",
+      "reason": "绑定清理已越总期限不得返回成功，防止冻结预算之外继续授权运行。"
+    },
+    {
+      "test": "test_binding_returns_exact_fields_and_hides_argv_account",
+      "decision": "keep",
+      "reason": "绑定成功输出不得包含argv与账户，保留公开监听身份，移除字段集和关闭顺序约束。"
+    },
+    {
+      "test": "test_bound_executable_skips_full_hash_with_details_inside_handles",
+      "decision": "delete",
+      "reason": "只检查跳过完整哈希、回调位于句柄内和调用次数的优化策略。"
+    },
+    {
+      "test": "test_close_handle_winerror_87_is_unknown_and_closes_once",
+      "decision": "delete",
+      "reason": "仅验证CloseHandle失败异常映射及关闭一次，没有产品后果断言。"
+    },
+    {
+      "test": "test_deadline_and_shape_failures",
+      "decision": "delete",
+      "reason": "将过期期限、缺字段及重复JSON夹具拼在一起的内部边界测试；期限完成后拒绝由test_binding_final_close_past_deadline_does_not_succeed覆盖。"
+    },
+    {
+      "test": "test_details_scan_cannot_hide_pid_reuse_exit_or_file_replacement",
+      "decision": "keep",
+      "reason": "扫描期间PID复用、退出或文件替换后拒绝绑定，避免检查窗口隐藏身份变化；去掉缓存与关闭次数断言。"
+    },
+    {
+      "test": "test_exited_process_is_visible_to_handle_and_rejected_by_binding",
+      "decision": "keep",
+      "reason": "已退出进程不能继续绑定，且错误不得回显argv或账户。"
+    },
+    {
+      "test": "test_explicit_close_is_not_repeated_by_exit",
+      "decision": "delete",
+      "reason": "重复close只计一次属于ProcessHandle包装器实现测试。"
+    },
+    {
+      "test": "test_filetime_mismatch_is_not_reported_as_missing",
+      "decision": "keep",
+      "reason": "启动FILETIME变化须阻断绑定，避免PID被复用后测到其他进程。复审删除wait/详情零调用约束；保留身份时间不一致原因和已打开句柄释放。"
+    },
+    {
+      "test": "test_fixture_hash_matches_strict_utf8_oracle",
+      "decision": "delete",
+      "reason": "只重算夹具argv/cwd摘要，与被测产品无交互，是fixture自测。"
+    },
+    {
+      "test": "test_invalid_scalars_do_not_open_or_load_api",
+      "decision": "delete",
+      "reason": "私有binding函数构造布尔PID/FILETIME及NaN期限，只覆盖内部参数形状。"
+    },
+    {
+      "test": "test_ipv6_loopback_listener_uses_existing_source_constants",
+      "decision": "delete",
+      "reason": "只比较IPv6监听身份固定字符串，属于常量拼接测试。"
+    },
+    {
+      "test": "test_listener_and_origin_rejections",
+      "decision": "keep",
+      "reason": "通配监听、监听PID不符、带凭据或查询的非本地origin须拒绝，防止测量到错误服务。"
+    },
+    {
+      "test": "test_non_timeout_wait_is_unknown_not_exited",
+      "decision": "delete",
+      "reason": "注入非真实WinAPI等待返回类型，仅检查内部状态映射；打开失败未知原因由test_open_failure_distinguishes_missing_from_unknown_and_does_not_close覆盖。"
+    },
+    {
+      "test": "test_open_failure_distinguishes_missing_from_unknown_and_does_not_close",
+      "decision": "keep",
+      "reason": "进程不存在与权限未知给不同阻断原因，防止未知身份被误报退出。复审删除详情零调用断言；保留缺失/未知的不同原因及未打开句柄不得关闭。"
+    },
+    {
+      "test": "test_opened_handle_winerror_87_is_unknown_not_missing",
+      "decision": "delete",
+      "reason": "在不同私有WinAPI槽注入87并数wait/close，重复未知身份映射与调用次数约束。"
+    },
+    {
+      "test": "test_pid_reuse_closes_both_handles_without_reading_new_details",
+      "decision": "keep",
+      "reason": "第二次句柄身份不同须阻断并不回显敏感参数，防止PID复用产生错误绑定。复审删除详情零调用约束，改名说明实际假设；增加所有实际打开句柄均释放的集合预期，不冻结关闭顺序，保留PID复用拒绝及脱敏。",
+      "renamed_to": "test_pid_reuse_rejects_binding_and_releases_handles"
+    },
+    {
+      "test": "test_same_handle_times_and_wait_close_once_on_success_and_api_failure",
+      "decision": "delete",
+      "reason": "验证同句柄查询及close调用顺序/次数，属于资源包装实现约束。"
+    },
+    {
+      "test": "test_surrogate_argv_is_incomplete_identity",
+      "decision": "delete",
+      "reason": "孤立代理项argv只覆盖内部编码错误分支，参数哈希身份不符已有test_account_hash_and_path_mismatches_do_not_echo_secrets。"
+    }
+  ]
+}

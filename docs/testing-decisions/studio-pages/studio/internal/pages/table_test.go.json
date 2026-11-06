@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/pages/table_test.go",
+  "decisions": [
+    {
+      "test": "TestOnevraTableClipsWideContent",
+      "decision": "delete",
+      "reason": "要求一层 scroller 加一层 table 及固定内外宽度，直接约束控件结构。"
+    },
+    {
+      "test": "TestOnevraTableSelectionTracksKeyAcrossReorder",
+      "decision": "keep",
+      "reason": "刷新重排报告后选择须跟报告 ID，删除已选项不能改选其他报告，避免打开错报告。"
+    }
+  ]
+}

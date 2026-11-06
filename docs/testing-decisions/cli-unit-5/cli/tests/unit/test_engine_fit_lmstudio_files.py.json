@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_lmstudio_files.py",
+  "decisions": [
+    {
+      "test": "test_additional_gguf_after_target_is_always_rejected",
+      "decision": "keep",
+      "reason": "目标模型之外还加载额外GGUF必须拒绝，避免草稿模型改变受测条件。"
+    },
+    {
+      "test": "test_all_process_queries_share_one_deadline",
+      "decision": "keep",
+      "reason": "多个进程共享总观察期限而不逐进程续期，避免大树突破预检预算。复审删除deadline参数列表及计数记录；保留耗时查询累计超出总预算时observer_timeout，允许查询组织变化。"
+    },
+    {
+      "test": "test_deadline_expiry_never_spawns_lsof",
+      "decision": "keep",
+      "reason": "期限已过不得启动新lsof，避免超预算继续执行外部探针。"
+    },
+    {
+      "test": "test_non_mapping_or_wrong_inode_records_do_not_prove_ownership",
+      "decision": "keep",
+      "reason": "错误PID/类型/FD/dev/inode不能证明模型归属，避免绑定非目标模型。"
+    },
+    {
+      "test": "test_owner_changes_while_reading_files_fail_closed",
+      "decision": "keep",
+      "reason": "读取时PID、父子树、存活状态或模型字节变化须拒绝，避免观测窗口混入不同模型/进程。"
+    },
+    {
+      "test": "test_service_tree_has_a_small_hard_cap",
+      "decision": "delete",
+      "reason": "对私有进程树加固定数量节点只检查硬编码cap，未证明明确产品资源预算。"
+    },
+    {
+      "test": "test_stable_descendant_mapping_or_numeric_fd_is_observable",
+      "decision": "keep",
+      "reason": "稳定子孙进程的映射及数字FD可证明目标文件，避免误拒合法模型加载方式。"
+    },
+    {
+      "test": "test_unreadable_lsof_is_a_failure_even_with_other_valid_members",
+      "decision": "keep",
+      "reason": "lsof无法读取即使其他进程有合法记录也拒绝，防止忽略无法证明的模型归属。"
+    },
+    {
+      "test": "test_unstable_or_unreadable_subtree_never_yields_partial_success",
+      "decision": "keep",
+      "reason": "其他用户、权限拒绝、错父、重复或循环子树拒绝且脱敏，不能拿局部观察假称完整。"
+    }
+  ]
+}

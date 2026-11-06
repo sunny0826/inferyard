@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/pages/preview_speed_parity_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewContextSpeedCancelParity",
+      "decision": "keep",
+      "reason": "等待与测量中取消须排空并保留各自完成数，之后不再增加测量；生产取消实际到服务边界。"
+    },
+    {
+      "test": "TestPreviewContextSpeedFailureParity",
+      "decision": "keep",
+      "reason": "准备/绑定/规划六类失败不能造样本或自动重试，手动重试新建任务且保留旧失败身份。"
+    },
+    {
+      "test": "TestPreviewContextSpeedParity",
+      "decision": "keep",
+      "reason": "五次有效与缺 timing 均对独立数值/身份/阶段预期；读取失败清陈旧值，重试只读不重测、不产生普通报告或真实 IO；删多余互比。"
+    },
+    {
+      "test": "TestPreviewContextSpeedTypedContract",
+      "decision": "keep",
+      "reason": "三档位与 0/1/4/5 次及缺测组合必须能被正式 parser 接受，否则模拟投影与实际 CLI 契约脱节。"
+    }
+  ]
+}

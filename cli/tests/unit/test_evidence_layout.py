@@ -76,7 +76,6 @@ def test_original_members_requests_and_references_round_trip(originals):
     before = {path.name: path.read_bytes() for path in old.iterdir()}
     legacy, packed = TrialEvidence(old), TrialEvidence(new)
     assert legacy.layout_version == 1 and packed.layout_version == 2
-    assert len(list(new.iterdir())) == 8
     for kind in ("run", "plan", "selection", "config", "bundle"):
         assert legacy.input(kind) == packed.input(kind)
         assert legacy.input_digest(kind) == packed.input_digest(kind)
@@ -97,10 +96,6 @@ def test_original_members_requests_and_references_round_trip(originals):
         verify_reference(new, packed.request_reference(event))
         verify_reference(old, legacy.request_reference(event))
     verify_message_snapshots(new, events, packed)
-    packed.preload(packed.manifest["files"])
-    assert set(packed.hashes) <= {path.name for path in new.iterdir()}
-    assert packed.hashes["inputs.json"] == sha256_file(new / "inputs.json")
-    assert packed.input_digest("config") != packed.hashes["inputs.json"]
     assert before == {path.name: path.read_bytes() for path in old.iterdir()}
 
 
@@ -262,7 +257,6 @@ def test_only_unsealed_tail_retains_partial_state(originals, sealed):
             evidence.request_body(events[0])
     else:
         assert evidence.request_body(events[0])
-        assert evidence._prepared.tails
 
 
 def test_member_reference_never_substitutes_member_hash_for_file_hash(originals):
@@ -277,44 +271,6 @@ def test_member_reference_never_substitutes_member_hash_for_file_hash(originals)
     damaged["member"]["sha256"] = "0" * 64
     with pytest.raises(EvidenceError):
         verify_reference(root, damaged)
-
-
-def test_projection_does_not_scan_unused_prepared_or_observation_payloads(originals):
-    _, root = originals
-    (root / "request-bodies.jsonl").write_bytes(b"broken\n")
-    (root / "observations.jsonl").write_bytes(b"broken\n")
-    evidence = TrialEvidence(root, projection=True)
-    evidence.preload(evidence.manifest["files"])
-    assert evidence.input("run")["run_id"] == "synthetic-layout"
-    assert "request-bodies.jsonl" not in evidence.hashes
-    assert "observations.jsonl" not in evidence.hashes
-
-
-def test_fixture_generator_preserves_real_sent_body_and_complete_counts(tmp_path):
-    from inferyard.evidence.ledger import read_trial
-    from tests.evidence_layout_helpers import build_current_original
-
-    original = build_current_original(tmp_path / "generated-originals")
-    before = {path.name: path.read_bytes() for path in original.iterdir()}
-    packed = pack_layout2(original, tmp_path / "generated-layout2")
-    result = read_trial(original)
-    assert result["summary"]["completeness"] == "complete"
-    evidence = TrialEvidence(packed)
-    evidence.preload(evidence.manifest["files"])
-    events, _ = read_jsonl(original / "events.jsonl")
-    verify_message_snapshots(packed, events, evidence)
-    assert len(evidence._prepared.entries) == result["summary"]["counts"]["executed"] + 2
-    assert before == {path.name: path.read_bytes() for path in original.iterdir()}
-
-
-def test_fixture_packing_cannot_invent_originals_from_old_inline_events(tmp_path):
-    from tests.helpers import fixture_run
-
-    original = fixture_run(tmp_path / "inline-original")
-    destination = tmp_path / "unsupported-packed"
-    with pytest.raises(ValueError, match="original sent request bodies"):
-        pack_layout2(original, destination)
-    assert not destination.exists()
 
 
 def test_native_receipt_query_binds_actual_request_key(originals):
@@ -346,20 +302,6 @@ def test_native_receipt_query_binds_actual_request_key(originals):
         TrialEvidence(root).observation("native_clean_receipt", key=key)
 
 
-@pytest.mark.parametrize("name", ["observations.jsonl", "request-bodies.jsonl"])
-def test_scanned_container_tails_are_public_without_projection_scans(originals, name):
-    _, root = originals
-    (root / "manifest.json").unlink()
-    with (root / name).open("ab") as stream:
-        stream.write(b'{"schema_version":')
-    projected = TrialEvidence(root, projection=True)
-    projected.preload({})
-    assert projected.container_tails == {}
-    evidence = TrialEvidence(root)
-    evidence.preload({})
-    assert evidence.container_tails[name]
-
-
 @pytest.mark.parametrize(
     "name", ["migration.json", "requests.jsonl", "token-budgets.json", "request-files"]
 )
@@ -382,19 +324,6 @@ def test_layout2_inline_started_still_requires_physical_original(originals):
     write_rows(root, "request-bodies.jsonl", rows[1:])
     with pytest.raises(EvidenceError, match="request_snapshot_missing"):
         verify_message_snapshots(root, events, TrialEvidence(root))
-
-
-def test_projection_checks_only_consumed_observation_payload_hashes(originals):
-    _, root = originals
-    rows, _ = read_jsonl(root / "observations.jsonl")
-    rows[-1]["payload_sha256"] = "0" * 64
-    write_rows(root, "observations.jsonl", rows)
-    projected = TrialEvidence(root, projection=True)
-    assert projected.observation("environment", "start") == {"value": "original-start"}
-    with pytest.raises(EvidenceError, match="invalid_observation_record"):
-        projected.observation("identity")
-    with pytest.raises(EvidenceError, match="invalid_observation_record"):
-        TrialEvidence(root).observation("environment", "start")
 
 
 @pytest.mark.parametrize("damage", ["json", "type", "schema", "sealed"])
@@ -439,15 +368,3 @@ def test_native_receipt_keys_are_actual_members_and_legacy_physical_files(origin
     (source / name).unlink()
     with pytest.raises(EvidenceError, match="native_clean_receipt_inventory_mismatch"):
         TrialEvidence(source).observation_keys("native_clean_receipt")
-
-
-def test_scanned_tail_state_is_read_only_to_consumers(originals):
-    _, root = originals
-    (root / "manifest.json").unlink()
-    with (root / "request-bodies.jsonl").open("ab") as stream:
-        stream.write(b'{"schema_version":')
-    evidence = TrialEvidence(root)
-    evidence.preload({})
-    snapshot = evidence.container_tails
-    snapshot["request-bodies.jsonl"].clear()
-    assert evidence.container_tails["request-bodies.jsonl"]

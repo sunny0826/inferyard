@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_qwen3_tensor_inventory.py",
+  "decisions": [
+    {
+      "test": "test_actual_storage_matches_recipe",
+      "decision": "keep",
+      "reason": "具体场景 test_actual_storage_matches_recipe。逐项参数：pytest.mark.parametrize('kind,storage', [('BF16', 'BF16'), ('Q4_K_M', 'Q4_K'), ('Q8_0', 'Q8_0')])。可观察预期：pytest.raises(ValueError, match='storage_type_mismatch')。转换检查不能接受缺张量/错形状/错量化存储或改 tokenizer/template 的模型；Q4 配方必须实际含 Q4，不因元数据保持就授比较资格。"
+    },
+    {
+      "test": "test_head_dimensions_and_tied_output",
+      "decision": "keep",
+      "reason": "具体场景 test_head_dimensions_and_tied_output。可观察预期：assert len(expected) == 24；assert expected['blk.1.attn_q.weight'] == [8, 16]；assert expected['blk.1.attn_output.weight'] == [16, 8]；assert expected['blk.1.attn_k.weight'] == [8, 8]。转换检查不能接受缺张量/错形状/错量化存储或改 tokenizer/template 的模型；Q4 配方必须实际含 Q4，不因元数据保持就授比较资格。"
+    },
+    {
+      "test": "test_inventory_rejects_partial_or_wrong_model",
+      "decision": "keep",
+      "reason": "仅保留missing/shape/duplicate/metadata四种破坏输入后必须抛ValueError；删除None成功参数和tensor_count==24，避免expected_tensors同时充当输入与正确性判据。手写head/tied-output预期由另一测试保留。"
+    },
+    {
+      "test": "test_metadata_only_allows_quantization_fields_to_change",
+      "decision": "keep",
+      "reason": "具体场景 test_metadata_only_allows_quantization_fields_to_change。逐项参数：pytest.mark.parametrize('change', [None, 'template', 'unknown_field', 'missing', 'bad_hash'])。可观察预期：assert result['metadata_preserved'] is True；assert result['comparison_eligible'] is False；pytest.raises(ValueError)。转换检查不能接受缺张量/错形状/错量化存储或改 tokenizer/template 的模型；Q4 配方必须实际含 Q4，不因元数据保持就授比较资格。"
+    },
+    {
+      "test": "test_q4_mixture_requires_q4_tensor",
+      "decision": "keep",
+      "reason": "具体场景 test_q4_mixture_requires_q4_tensor。可观察预期：pytest.raises(ValueError, match='primary_storage_type_missing')。转换检查不能接受缺张量/错形状/错量化存储或改 tokenizer/template 的模型；Q4 配方必须实际含 Q4，不因元数据保持就授比较资格。"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 import ctypes
 
-from scripts.ninfer_source_host.probe_io_native import InheritedJob, NativeJobBoundary
+from scripts.ninfer_source_host.probe_io_native import NativeJobBoundary
 from scripts.ninfer_source_host.probe_io_winapi import RealProbeFileApi
 from tests.unit.test_ninfer_source_probe_io import HIGH
 
@@ -36,8 +36,6 @@ def test_current_job_is_not_a_process_pseudo_handle_and_assign_rejects_null():
     raw._dll = lambda: (kernel, ctypes)
     boundary = NativeJobBoundary(raw)
     job = boundary.current_job()
-    assert type(job) is InheritedJob
-    assert job is not kernel.GetCurrentProcess()
     assert ("job", 11, None) in kernel.calls
     limits = boundary.job_limits(job)
     assert limits["job_handle"] is None

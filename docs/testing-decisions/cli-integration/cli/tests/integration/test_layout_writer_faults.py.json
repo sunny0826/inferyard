@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/integration/test_layout_writer_faults.py",
+  "decisions": [
+    {
+      "test": "test_actual_cli_interruption_keeps_dirty_and_durable_prefix",
+      "decision": "keep",
+      "reason": "真实CLI被杀或SIGINT后保留prepared耐久前缀、invalid/cancelled及未执行分母，dirty依据实际确定性区分。"
+    },
+    {
+      "test": "test_finalization_failures_keep_real_received_and_readable_prefix",
+      "decision": "keep",
+      "reason": "采样/close/seal故障均返回4，保留真实已交付数量及可读前缀，不能丢题或把IO错误算模型失败。"
+    },
+    {
+      "test": "test_native_receipt_failure_keeps_client_dirty",
+      "decision": "keep",
+      "reason": "native clean receipt落盘失败后保留dirty且离线拒绝缺收据证据，不能把已完成HTTP当clean。"
+    },
+    {
+      "test": "test_prepared_io_failure_does_not_send_formal_request",
+      "decision": "keep",
+      "reason": "prepared write/flush/fsync失败必须在发送formal前停发，全部正式题仍未执行且不伪造模型失败。"
+    },
+    {
+      "test": "test_started_write_failure_keeps_dirty_without_delivery",
+      "decision": "keep",
+      "reason": "request_started写入失败时不得交付请求但保留dirty和已耐久prepared前缀。"
+    }
+  ]
+}

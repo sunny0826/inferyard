@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_layout_surfaces.py",
+  "decisions": [
+    {
+      "test": "test_analysis_checks_both_container_and_member_hash",
+      "decision": "keep",
+      "reason": "analysis 成员 hash 错配必须拒绝，即使外层文件引用正确也不能替换逻辑证据。"
+    },
+    {
+      "test": "test_external_surface_keeps_source_bytes_and_denominators",
+      "decision": "keep",
+      "reason": "verify/report/export/rescore/public 对两种布局均保持来源字节及正式分母，派生结果可核验；删内部 evidence 文件集断言。"
+    },
+    {
+      "test": "test_legacy_budget_file_outside_manifest_is_rejected",
+      "decision": "keep",
+      "reason": "未封存 execution-budget 不得用来释放剩余预算，避免凭未核验数值超支。"
+    },
+    {
+      "test": "test_loaded_configuration_preserves_file_and_missing_original",
+      "decision": "delete",
+      "reason": "仅 LoadedConfig 属性与字典形状 happy path；容器原文重跑由 test_rerun_loads_actual_embedded_source_without_virtual_path 覆盖。"
+    },
+    {
+      "test": "test_mixed_layout_comparison_and_report_resolve_moved_sources",
+      "decision": "keep",
+      "reason": "混合布局比较及报告搬迁后仍可核验来源且原件不变，保证离线交付可移植。"
+    },
+    {
+      "test": "test_optional_observation_is_never_inferred_from_container_existence",
+      "decision": "keep",
+      "reason": "保留 collector 缺失/拒绝；删两个生产 environment observation 成功结果互等。"
+    },
+    {
+      "test": "test_remaining_budget_reads_saved_member_and_reserves_unknown_crash",
+      "decision": "keep",
+      "reason": "封存实际预算只扣实耗，未封存崩溃按冻结预算保守预留，避免续测超总预算。"
+    },
+    {
+      "test": "test_rerun_loads_actual_embedded_source_without_virtual_path",
+      "decision": "keep",
+      "reason": "从容器重跑取回实际 CRLF 配置原文并重新绑定服务，不改源，不能由 parsed config 重造。"
+    },
+    {
+      "test": "test_target_binding_does_not_downgrade_corrupt_members_to_non_applicability",
+      "decision": "keep",
+      "reason": "观测 hash 损坏必须错误，不能降成开销不适用并继续生成看似合法报告。"
+    },
+    {
+      "test": "test_verify_layout_version_and_conflicting_evidence_exit_codes",
+      "decision": "keep",
+      "reason": "未知版本退出 2、冲突/混合/坏摘要退出 4 且不改源，避免把损坏当纯格式不支持。"
+    }
+  ]
+}

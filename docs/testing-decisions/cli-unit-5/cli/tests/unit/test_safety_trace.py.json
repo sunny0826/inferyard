@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_safety_trace.py",
+  "decisions": [
+    {
+      "test": "test_actual_periodic_gaps_survive_intervening_boundary_check",
+      "decision": "keep",
+      "reason": "插入边界检查不能缩短实际两次周期检查间隔，避免把轮询设定当真实保护保证。"
+    },
+    {
+      "test": "test_environment_failure_keeps_this_attempt_sensor_reading",
+      "decision": "keep",
+      "reason": "环境读取失败仍保存本次55度而非旧值且不泄露异常文本，便于复核停止。"
+    },
+    {
+      "test": "test_evidence_write_error_is_not_silently_ignored",
+      "decision": "keep",
+      "reason": "写入安全证据失败必须传播，不能悄悄继续运行并宣称有保护记录。"
+    },
+    {
+      "test": "test_hot_reading_is_retained_and_still_raises",
+      "decision": "keep",
+      "reason": "过热仍抛停止且保留真实91度读数，避免丢失触发依据。"
+    },
+    {
+      "test": "test_prerequisite_failure_never_reuses_previous_temperature",
+      "decision": "keep",
+      "reason": "本次磁盘前置失败不能复用上次温度，避免停止证据错误。"
+    }
+  ]
+}

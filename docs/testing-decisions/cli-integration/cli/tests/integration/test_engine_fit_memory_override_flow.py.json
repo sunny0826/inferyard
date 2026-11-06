@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_engine_fit_memory_override_flow.py",
+  "decisions": [
+    {
+      "test": "test_low_or_missing_memory_pair_completes_only_with_frozen_overrides",
+      "decision": "keep",
+      "reason": "低或缺内存且温度过高只能凭冻结显式override继续；缺测保留null、原读数和限制，报告不能声称性能资格。"
+    },
+    {
+      "test": "test_memory_only_keeps_temperature_stop",
+      "decision": "keep",
+      "reason": "仅豁免内存时温度停止仍须生效且不发题。"
+    },
+    {
+      "test": "test_overrides_preserve_dirty_and_no_implicit_retry_after_broken_protocol",
+      "decision": "keep",
+      "reason": "即使同时显式豁免内存和温度，断连后仍dirty、不重试，避免override扩大到恢复权限。"
+    }
+  ]
+}

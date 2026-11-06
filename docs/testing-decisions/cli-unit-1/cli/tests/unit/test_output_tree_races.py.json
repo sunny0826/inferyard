@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_output_tree_races.py",
+  "decisions": [
+    {
+      "test": "test_directory_handles_close_on_success_and_exception",
+      "decision": "keep",
+      "reason": "实际目录描述符在成功和 copy 异常后均释放，防长期操作耗尽句柄或阻止后续目录变更。"
+    },
+    {
+      "test": "test_swapped_directory_never_writes_external_target",
+      "decision": "keep",
+      "reason": "写/拷贝/JSON/mkdir 中祖先、根或子目录被换链接均拒绝，不写外部目标且保留原件。"
+    },
+    {
+      "test": "test_windows_held_directories_cannot_be_replaced",
+      "decision": "keep",
+      "reason": "Windows 原生共享语义应在发布时阻止目录被换，操作结束可改名；本机 macOS 跳过。"
+    }
+  ]
+}

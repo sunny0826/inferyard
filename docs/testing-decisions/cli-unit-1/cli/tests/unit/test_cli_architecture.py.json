@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/unit/test_cli_architecture.py",
+  "decisions": [
+    {
+      "test": "test_cli_reexports_the_single_application_type_definitions",
+      "decision": "delete",
+      "reason": "类同一性、字段表、slots 和 frozen 形状不证明用户命令结果。"
+    },
+    {
+      "test": "test_entrypoint_preserves_supported_exit_codes",
+      "decision": "keep",
+      "reason": "五种支持退出码保留，stdout 单行 JSON/stderr 空，保障脚本判定完成、阻断和取消。"
+    },
+    {
+      "test": "test_entrypoint_rejects_invalid_backend_exit_codes",
+      "decision": "keep",
+      "reason": "未知后端退出码变成工具错误 4 且不泄漏内部结果内容，避免 shell 错判成功。"
+    },
+    {
+      "test": "test_explicit_dispatch_uses_the_selected_backend",
+      "decision": "delete",
+      "reason": "用 ModuleType 桩复述命令到模块的内部映射，没有执行产品流程。"
+    },
+    {
+      "test": "test_metadata_cold_start_does_not_import_execution_backends",
+      "decision": "keep",
+      "reason": "help/version/schema 在执行后端不可用时仍能启动，保障元数据查询与安装诊断。"
+    },
+    {
+      "test": "test_public_load_config_hook_reaches_request_construction",
+      "decision": "delete",
+      "reason": "用 object 配置和 handler 桩检查对象转交，未验证加载真实配置后的行为。"
+    },
+    {
+      "test": "test_unknown_application_request_never_imports_a_fallback",
+      "decision": "delete",
+      "reason": "直接私有应用分派器并拦截 import，只限制内部回退路由；不经过用户 CLI 输入。"
+    }
+  ]
+}

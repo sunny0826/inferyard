@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_duration_ledger.py",
+  "decisions": [
+    {
+      "test": "test_forged_duration_boundaries_rejected",
+      "decision": "keep",
+      "reason": "冻结截止不符、过期发送、提前关闭、关闭后返回或重复开始拒绝，避免持续负载窗口被篡改。"
+    },
+    {
+      "test": "test_full_window_and_probe_coverage_are_separate",
+      "decision": "keep",
+      "reason": "完整持续窗口与每 case 覆盖独立判断，缺关闭或某 case 无响应不能假称全部完成。"
+    }
+  ]
+}

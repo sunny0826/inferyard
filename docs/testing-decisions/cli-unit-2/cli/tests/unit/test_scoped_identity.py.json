@@ -1,0 +1,36 @@
+{
+  "source_path": "cli/tests/unit/test_scoped_identity.py",
+  "decisions": [
+    {
+      "test": "test_comparison_v3_scope_dispatch_and_legacy_full_hash",
+      "decision": "keep",
+      "reason": "v3 按角色身份比较、旧完整源码 hash 仍遵循旧资格，混合缺失身份不授质量/完成差值。"
+    },
+    {
+      "test": "test_missing_dependency_is_not_equal_to_itself",
+      "decision": "keep",
+      "reason": "缺展示依赖不能伪造展示身份，测量身份仍有效；坏角色摘要须拒绝，避免损坏身份被接受。"
+    },
+    {
+      "test": "test_new_journal_with_role_identity_does_not_require_or_compute_whole_hash",
+      "decision": "delete",
+      "reason": "只用 monkeypatch 禁止 whole hash 二次计算并检查新 Journal 字段，属于优化/结构复述；身份支持边界由 test_run_requires_one_saved_identity_and_new_role_record_needs_no_whole_hash 覆盖。"
+    },
+    {
+      "test": "test_one_read_per_file_and_role_boundaries",
+      "decision": "keep",
+      "reason": "展示源码改变不能撤销执行身份、storage/validation 改变必须改变相关角色，避免展示变更误封重跑或测量变更继承资格；删每文件只读一次。 精简后更名为 test_source_changes_respect_role_boundaries。",
+      "renamed_to": "test_source_changes_respect_role_boundaries"
+    },
+    {
+      "test": "test_run_requires_one_saved_identity_and_new_role_record_needs_no_whole_hash",
+      "decision": "keep",
+      "reason": "run 至少保留一种合法测量身份，禁止身份全缺；角色身份允许没有旧 whole hash，保证新旧记录支持边界。"
+    },
+    {
+      "test": "test_runtime_dependency_changes_only_relevant_role",
+      "decision": "keep",
+      "reason": "httpx 版本改变应改变测量身份但不改变评分/展示，避免依赖改变后沿用旧资格；删 dev工具依赖清单结构断言。"
+    }
+  ]
+}

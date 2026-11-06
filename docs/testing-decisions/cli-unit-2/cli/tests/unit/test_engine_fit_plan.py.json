@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_plan.py",
+  "decisions": [
+    {
+      "test": "test_changed_prompt_and_model_manifest_hash_are_rejected",
+      "decision": "keep",
+      "reason": "修改 prompt 或模型文件摘要即使重算外层 plan_id 也要拒绝，防止冻结计划被替换。"
+    },
+    {
+      "test": "test_cli_rejects_remote_service_without_calling_handler",
+      "decision": "keep",
+      "reason": "远端 engine-fit URL 退出2且 handler不调用，避免本地测评意外连接远端服务。"
+    },
+    {
+      "test": "test_cli_run_bindings_reach_shared_request_type",
+      "decision": "delete",
+      "reason": "仅将 CLI 参数转给注入 handler 的共享类型结构，未运行任何产品行为。"
+    },
+    {
+      "test": "test_duplicate_keys_are_not_loaded",
+      "decision": "keep",
+      "reason": "重复 JSON key 的 plan 必须拒绝，避免两种解释执行不同任务。"
+    },
+    {
+      "test": "test_foreign_platform_model_paths_are_valid_offline",
+      "decision": "keep",
+      "reason": "外平台 Windows 模型路径可离线校验，不应要求当前主机能访问模型，保证跨平台交付可读。"
+    },
+    {
+      "test": "test_model_root_directory_symlink_is_rejected",
+      "decision": "keep",
+      "reason": "模型根是 symlink 不得冻结，避免目录身份在测量间被切换。"
+    },
+    {
+      "test": "test_plan_freezes_full_directory_and_order",
+      "decision": "delete",
+      "reason": "仅固定默认180秒、request_count及生成列表与自身cases相等，属于计划结构 happy path；安全与篡改拒绝由本文件后续测试覆盖。"
+    },
+    {
+      "test": "test_plan_rejects_unsafe_parameters",
+      "decision": "keep",
+      "reason": "bool/零 token、非有限超时、布尔重复、过低内存门和过高温度门必须拒绝，避免失去运行预算保护。"
+    }
+  ]
+}

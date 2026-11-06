@@ -7,7 +7,6 @@ import pytest
 from inferyard.config.context_speed_candidates import apply_recipe
 from inferyard.config.context_speed_profile import (
     CASES,
-    GENERATION,
     PROFILE,
     classify_workload_inputs,
 )
@@ -31,7 +30,6 @@ def test_recipe_after_platform_defaults(inputs, context, backend):
     workload = experiment["workloads"][0]
     workload["protocol"]["case_ids"] = [CASES[context]]
     assert classify_workload_inputs(workload, config, bundle, experiment_profile=PROFILE) == PROFILE
-    assert config["generation"] == GENERATION
     assert config["output"] == original
     if backend == "cuda":
         assert config["engine"]["startup_args"][-4:] == [
@@ -100,8 +98,6 @@ def test_macos_create_applies_recipe_after_fresh_recommendation(tmp_path, monkey
     config = load_config(result["candidate"]).config.to_dict()
     assert config["conditions"]["context_size"] == 131072
     assert config["conditions"]["threads"] == 3
-    assert config["generation"] == GENERATION
     assert config["conditions"]["profile"] == "balanced"
     assert config["output"]["min_available_memory_bytes"] == 1073741824
     assert config["output"]["min_disk_bytes"] == 5368709120
-    assert config["engine"]["startup_args"][9] == "131072"

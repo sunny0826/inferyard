@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_windows_runtime_download.py",
+  "decisions": [
+    {
+      "test": "test_mismatched_range_never_appends",
+      "decision": "keep",
+      "reason": "具体场景 test_mismatched_range_never_appends。可观察预期：assert partial.read_bytes() == b'abc' and (not setup.exists())；pytest.raises(ValueError, match='download_range_mismatch')。下载续传必须核对 Content-Range，忽略 Range 时重启；错 hash/错现有资产不得发布或覆盖，归档逃逸拒绝且已安装 DLL 变更必须被发现。"
+    },
+    {
+      "test": "test_resume_validates_range_or_restarts_when_ignored",
+      "decision": "keep",
+      "reason": "具体场景 test_resume_validates_range_or_restarts_when_ignored。逐项参数：pytest.mark.parametrize('range_supported', [True, False])。可观察预期：assert setup.read_bytes() == content and (not partial.exists())；assert request.headers['range'] == 'bytes=6-'。下载续传必须核对 Content-Range，忽略 Range 时重启；错 hash/错现有资产不得发布或覆盖，归档逃逸拒绝且已安装 DLL 变更必须被发现。"
+    },
+    {
+      "test": "test_runtime_install_verifies_existing_files_and_writes_real_hashes",
+      "decision": "keep",
+      "reason": "具体场景 test_runtime_install_verifies_existing_files_and_writes_real_hashes。可观察预期：assert identities['lib.dll'] == hashlib.sha256(b'synthetic-library').hexdigest()；assert server.is_file() and manifest.is_file()；pytest.raises(ValueError, match='existing_engine_file_mismatch')。下载续传必须核对 Content-Range，忽略 Range 时重启；错 hash/错现有资产不得发布或覆盖，归档逃逸拒绝且已安装 DLL 变更必须被发现。"
+    },
+    {
+      "test": "test_unsafe_archive_rejected_before_output",
+      "decision": "keep",
+      "reason": "具体场景 test_unsafe_archive_rejected_before_output。逐项参数：pytest.mark.parametrize('name', ['../escape.dll', 'D:/escape.dll', 'lib.dll:stream', 'folder\\\\lib.dll'])。可观察预期：assert not destination.exists()；pytest.raises(ValueError, match='unsafe_engine_archive_entry')。下载续传必须核对 Content-Range，忽略 Range 时重启；错 hash/错现有资产不得发布或覆盖，归档逃逸拒绝且已安装 DLL 变更必须被发现。"
+    },
+    {
+      "test": "test_wrong_hash_is_not_published_and_existing_file_is_not_overwritten",
+      "decision": "keep",
+      "reason": "具体场景 test_wrong_hash_is_not_published_and_existing_file_is_not_overwritten。可观察预期：assert not setup.exists() and setup.with_suffix('.bin.part').read_bytes() == b'wrong'；assert setup.read_bytes() == b'existing'；pytest.raises(ValueError, match='download_hash_mismatch')；pytest.raises(ValueError, match='existing_asset_identity_mismatch')。下载续传必须核对 Content-Range，忽略 Range 时重启；错 hash/错现有资产不得发布或覆盖，归档逃逸拒绝且已安装 DLL 变更必须被发现。"
+    }
+  ]
+}

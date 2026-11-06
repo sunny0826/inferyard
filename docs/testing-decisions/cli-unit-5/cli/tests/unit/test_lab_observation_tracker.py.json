@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_lab_observation_tracker.py",
+  "decisions": [
+    {
+      "test": "test_tracker_accepts_progress_and_repeat_observation",
+      "decision": "delete",
+      "reason": "仅连续accept正常/重复快照无输出期望，是内部tracker正常路径自测。"
+    },
+    {
+      "test": "test_tracker_keeps_endpoint_streams_separate",
+      "decision": "keep",
+      "reason": "两个端点seq各自单调而非要求全局同一seq，避免合法请求观察被误拒或各自回退被漏检。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_tracker_rejects_bad_constructor_instance_id",
+      "decision": "delete",
+      "reason": "私有tracker构造器not-an-id检查内部参数，不是端点身份变化；后者由test_tracker_rejects_instance_change覆盖。"
+    },
+    {
+      "test": "test_tracker_rejects_cancel_flag_rollback",
+      "decision": "keep",
+      "reason": "取消flag不能回滚，避免取消任务被当未取消继续处理。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_tracker_rejects_instance_change",
+      "decision": "keep",
+      "reason": "server_instance改变须拒绝，避免将重启后服务当原绑定。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_tracker_rejects_invalid_snapshot_structure",
+      "decision": "delete",
+      "reason": "只传缺字段/queued枚举检查结构错误，没有额外产品场景。"
+    },
+    {
+      "test": "test_tracker_rejects_phase_regression_across_endpoints",
+      "decision": "keep",
+      "reason": "生命周期与请求端点跨phase回退须拒绝，避免把较早阶段当当前状态。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_tracker_rejects_revival_after_release",
+      "decision": "keep",
+      "reason": "released任务不能复活，避免排空资格被伪造。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_tracker_rejects_same_seq_conflicting_content",
+      "decision": "keep",
+      "reason": "相同seq却有不同poison/phase必须拒绝，避免相互矛盾状态获信任。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_tracker_rejects_seq_regression",
+      "decision": "keep",
+      "reason": "snapshot序号回退须拒绝，避免旧空闲快照覆盖当前忙碌状态。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "source_path": "cli/tests/unit/test_release_candidate.py",
+  "decisions": [
+    {
+      "test": "test_build_refusal",
+      "decision": "keep",
+      "reason": "具体场景 test_build_refusal。逐项参数：pytest.mark.parametrize('change', ['dirty', 'dev', 'commit', 'old', 'checks', 'license', 'urls'])。可观察预期：assert not (tmp_path / 'candidate').exists()；pytest.raises(ValueError)。打包发布保障：缺安装通过证据、版本/提交/归档/许可证/入口/模板不匹配时拒绝候选，失败安装不能写 passed，已核验包才能进入发布暂存。"
+    },
+    {
+      "test": "test_build_refuses_dirty_source_before_creating_output",
+      "decision": "keep",
+      "reason": "具体场景 test_build_refuses_dirty_source_before_creating_output。可观察预期：assert not (tmp_path / 'build').exists()；pytest.raises(ValueError, match='requires_clean_source')。打包发布保障：缺安装通过证据、版本/提交/归档/许可证/入口/模板不匹配时拒绝候选，失败安装不能写 passed，已核验包才能进入发布暂存。"
+    },
+    {
+      "test": "test_check_distribution_cli_produces_bound_v2_build",
+      "decision": "keep",
+      "reason": "具体场景 test_check_distribution_cli_produces_bound_v2_build。可观察预期：assert json.loads(capsys.readouterr().out)['candidate_status'] == 'build_checked'。打包发布保障：缺安装通过证据、版本/提交/归档/许可证/入口/模板不匹配时拒绝候选，失败安装不能写 passed，已核验包才能进入发布暂存。"
+    },
+    {
+      "test": "test_constraints_proof_is_content_checked",
+      "decision": "keep",
+      "reason": "具体场景 test_constraints_proof_is_content_checked。可观察预期：pytest.raises(ValueError, match='constraints_validation_drift')。打包发布保障：缺安装通过证据、版本/提交/归档/许可证/入口/模板不匹配时拒绝候选，失败安装不能写 passed，已核验包才能进入发布暂存。"
+    },
+    {
+      "test": "test_installation_refusal",
+      "decision": "keep",
+      "reason": "具体场景 test_installation_refusal。逐项参数：pytest.mark.parametrize('change', ['missing', 'failed', 'incomplete', 'commit', 'manifest', 'artifact', 'commands', 'scope', 'arch', 'old', 'v2', 'missing_probe', 'missing_negative', 'wrong_template'])。可观察预期：assert not (tmp_path / 'out').exists()；pytest.raises(ValueError, match='installation_evidence')。打包发布保障：缺安装通过证据、版本/提交/归档/许可证/入口/模板不匹配时拒绝候选，失败安装不能写 passed，已核验包才能进入发布暂存。"
+    },
+    {
+      "test": "test_prepare_cli_and_verify_cli",
+      "decision": "keep",
+      "reason": "具体场景 test_prepare_cli_and_verify_cli。可观察预期：assert len(list((tmp_path / 'staged').iterdir())) == 4。打包发布保障：缺安装通过证据、版本/提交/归档/许可证/入口/模板不匹配时拒绝候选，失败安装不能写 passed，已核验包才能进入发布暂存。"
+    },
+    {
+      "test": "test_run_installed_failure_cannot_write_passed_result",
+      "decision": "keep",
+      "reason": "具体场景 test_run_installed_failure_cannot_write_passed_result。可观察预期：assert not (tmp_path / 'installed/result.json').exists()；pytest.raises(RuntimeError, match='install: expected')。打包发布保障：缺安装通过证据、版本/提交/归档/许可证/入口/模板不匹配时拒绝候选，失败安装不能写 passed，已核验包才能进入发布暂存。"
+    },
+    {
+      "test": "test_simulated_completed_matrix_binds_actual_snapshots",
+      "decision": "keep",
+      "reason": "保留模拟安装编排passed、build manifest/artifact摘要绑定与候选准备结果；删除固定26次调用。mock仍按COMMANDS索引响应，是剩余模拟调度耦合，不代表实际安装矩阵验收。"
+    },
+    {
+      "test": "test_symlink_artifact_is_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_symlink_artifact_is_rejected。可观察预期：pytest.raises(ValueError, match='candidate_symlink')。打包发布保障：缺安装通过证据、版本/提交/归档/许可证/入口/模板不匹配时拒绝候选，失败安装不能写 passed，已核验包才能进入发布暂存。"
+    },
+    {
+      "test": "test_synthetic_upgrade_is_next_development_version",
+      "decision": "keep",
+      "reason": "具体场景 test_synthetic_upgrade_is_next_development_version。可观察预期：assert upgraded.name == 'inferyard-0.0.4.dev0-py3-none-any.whl'；assert b'__version__ = \"0.0.4.dev0\"' in archive.read('inferyard/__init__.py')；assert b'Version: 0.0.4.dev0' in archive.read('inferyard-0.0.4.dev0.dist-info/METADATA')。打包发布保障：缺安装通过证据、版本/提交/归档/许可证/入口/模板不匹配时拒绝候选，失败安装不能写 passed，已核验包才能进入发布暂存。"
+    },
+    {
+      "test": "test_wheel_metadata_and_license_drift_are_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_wheel_metadata_and_license_drift_are_rejected。逐项参数：pytest.mark.parametrize('change', ['license_bytes', 'license_metadata', 'version_metadata', 'entrypoint'])。可观察预期：pytest.raises(ValueError, match='license|metadata|entry_point')。打包发布保障：缺安装通过证据、版本/提交/归档/许可证/入口/模板不匹配时拒绝候选，失败安装不能写 passed，已核验包才能进入发布暂存。"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/evidence/dirty_test.go",
+  "decisions": [
+    {
+      "test": "TestDirtyRunSchemaVersions",
+      "decision": "keep",
+      "reason": "当前 host 标记须校验版本、布尔及身份，坏数据不能 clean；未来版本不误套当前 run，防 dirty 状态误判。"
+    },
+    {
+      "test": "TestRunStatusRealStopReasons",
+      "decision": "keep",
+      "reason": "用户取消优先于 dirty，预算/温度/诊断等停止仍 partial；未封存不能 complete，防历史错误宣布完成。"
+    }
+  ]
+}

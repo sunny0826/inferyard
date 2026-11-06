@@ -32,21 +32,7 @@ func TestBoundPathsSettingsView(t *testing.T) {
 			t.Fatal(text, tt.Texts())
 		}
 	}
-	for _, label := range []string{"CLI", "工作区目录", "结果目录", "模型目录"} {
-		if len(designFieldInputs(tt, label)) != 0 {
-			t.Fatal("bound path is editable", label)
-		}
-	}
-	for _, label := range []string{"模型下载目录名", "引擎下载目录名"} {
-		if len(designFieldInputs(tt, label)) == 0 {
-			t.Fatal("download name missing", label)
-		}
-	}
 	if _, err := os.Stat(p.Settings); !os.IsNotExist(err) {
 		t.Fatal("render wrote settings", err)
-	}
-	nav := ui.NewTester(func(c *ui.Context) { s.leftNav(c) }, 205, 800)
-	if !nav.HasText("开发环境") || !nav.HasText(p.SourceLabel) {
-		t.Fatal("development source is not visible", nav.Texts())
 	}
 }

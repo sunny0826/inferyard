@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_stream_redactor.py",
+  "decisions": [
+    {
+      "test": "test_no_secret_returns_chunk_without_character_work",
+      "decision": "delete",
+      "reason": "用特殊 str 禁止扫描并要求对象同一性，只限定优化手段，无用户预算。"
+    },
+    {
+      "test": "test_overlaps_long_short_unicode_and_final_flush_match_old_stream",
+      "decision": "keep",
+      "reason": "改用独立已知输出覆盖重叠、多字节 secret、跨块尾部与最终刷新，防流式凭据泄漏；删私有 pending。"
+    },
+    {
+      "test": "test_secret_matching_never_copies_unbounded_suffixes",
+      "decision": "delete",
+      "reason": "仅限制 str 后缀切片方式；实际长输出跨块脱敏已并入保留的已知结果测试。"
+    }
+  ]
+}

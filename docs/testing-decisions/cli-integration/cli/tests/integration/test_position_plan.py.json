@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/integration/test_position_plan.py",
+  "decisions": [
+    {
+      "test": "test_freeze_accepts_shared_family_and_rejects_changed_reference",
+      "decision": "keep",
+      "reason": "同family跨workload须绑定同reference；变更参考答案不能仍合并位置效果。"
+    },
+    {
+      "test": "test_frozen_loader_rejects_rehashed_cross_workload_family_collision",
+      "decision": "keep",
+      "reason": "重封存后把独立family改为冲突family也须在离线load拒绝。"
+    }
+  ]
+}

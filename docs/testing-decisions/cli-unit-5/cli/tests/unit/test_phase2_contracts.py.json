@@ -1,0 +1,70 @@
+{
+  "source_path": "cli/tests/unit/test_phase2_contracts.py",
+  "decisions": [
+    {
+      "test": "test_analysis_cannot_claim_a_metric_from_an_unbound_run",
+      "decision": "keep",
+      "reason": "analysis指标引用不在source_runs的运行须拒绝，避免借用无关成绩。"
+    },
+    {
+      "test": "test_duration_upper_request_limit_is_not_a_fixed_case_count",
+      "decision": "keep",
+      "reason": "持续60秒发送加10秒排空加5秒准备，max_requests=50是上限不是固定样本量。"
+    },
+    {
+      "test": "test_insufficient_frozen_budget_is_rejected",
+      "decision": "keep",
+      "reason": "请求或wall冻结预算不足须在运行前拒绝，避免执行超出用户预算。"
+    },
+    {
+      "test": "test_invalid_observations_do_not_create_plausible_numbers",
+      "decision": "keep",
+      "reason": "错误比率、非法分母、非有限值、缺来源及逆时间拒绝，防止看似合理的错误指标。"
+    },
+    {
+      "test": "test_missing_zero_rates_and_intervals_are_separate",
+      "decision": "keep",
+      "reason": "真实零率与缺测不同，缺测指标不能宣称可比，避免将缺测用于排名。"
+    },
+    {
+      "test": "test_no_implicit_retry_or_concurrency_and_no_secret_echo",
+      "decision": "keep",
+      "reason": "禁止隐式重试/并发，未知api_key不回显，避免重复请求和凭据泄露。"
+    },
+    {
+      "test": "test_optional_turbo_safety_condition_is_frozen_and_strict",
+      "decision": "keep",
+      "reason": "turbo安全条件值改变须改变冻结身份且只接受0/1，避免比较混入不同硬件条件。"
+    },
+    {
+      "test": "test_plan_references_cannot_escape_artifact_root",
+      "decision": "keep",
+      "reason": "计划引用不能逃出产物根目录，避免读取非计划输入。"
+    },
+    {
+      "test": "test_repetition_ledger_cannot_drop_duplicate_or_reorder_cases",
+      "decision": "keep",
+      "reason": "轮次被删、重复、重排或预算/hash变化即使重算计划哈希也拒绝，避免冻结计划语义篡改。"
+    },
+    {
+      "test": "test_repetitions_are_trials_not_new_cases_and_have_exact_budget",
+      "decision": "keep",
+      "reason": "2题重复3轮须为6请求/60秒请求/75秒总预算，不能当6独立题；去掉对象拷贝、schema重复验证和确定性实现断言。"
+    },
+    {
+      "test": "test_resume_lineage_requires_new_run_and_explicit_subset",
+      "decision": "keep",
+      "reason": "resume必须有不同父run和明确子集，避免重跑伪装完整初始运行。"
+    },
+    {
+      "test": "test_seeded_order_reproducible_and_hash_changes_with_protocol",
+      "decision": "keep",
+      "reason": "相同seed重现题序、不同seed改变计划身份，保证冻结实验可重现且不丢题。"
+    },
+    {
+      "test": "test_unsupported_or_boolean_versions_fail_closed",
+      "decision": "keep",
+      "reason": "拒绝旧版、布尔及字符串schema版本并验证导出schema合法，保障读入边界和发行schema。"
+    }
+  ]
+}

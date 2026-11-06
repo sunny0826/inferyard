@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_prism_template_identity.py",
+  "decisions": [
+    {
+      "test": "test_pinned_prism_lexer_source_matches_frozen_raw_bytes",
+      "decision": "keep",
+      "reason": "固定Prism构建按其真实lexer的换行规则匹配原模板而不改原字节，避免合法CRLF模板被拒。"
+    },
+    {
+      "test": "test_template_changes_remain_rejected",
+      "decision": "keep",
+      "reason": "内容、空白、换行、缺service模板或原文件hash变化全部仍拒绝，防止归一化规则放宽模板身份。"
+    },
+    {
+      "test": "test_unknown_build_cannot_use_pinned_lexer_rule",
+      "decision": "keep",
+      "reason": "未知引擎构建不能套用固定lexer例外，避免不同实现误称同模板。"
+    }
+  ]
+}

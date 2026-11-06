@@ -91,23 +91,12 @@ def test_corrupt_seal_is_not_downgraded_to_partial(tmp_path):
         execute(CommandRequest("verify", run=root))
 
 
-def test_capability_definition_is_interpreted_once_from_bound_source(tmp_path, monkeypatch):
+def test_capability_definition_is_interpreted_once_from_bound_source(tmp_path):
     from inferyard.evidence import engine_capabilities
-    from inferyard.evidence.ledger import read_trial
 
     root = fixture_run(tmp_path)
-    calls = []
-    original = engine_capabilities.bound_capabilities
-
-    def counted(*args, **kwargs):
-        calls.append(1)
-        return original(*args, **kwargs)
-
-    monkeypatch.setattr(engine_capabilities, "bound_capabilities", counted)
-    read_trial(root)
-    assert len(calls) == 1
     (root / "service.props.json").write_bytes(json_bytes({"engine_build_verified": True}))
-    result = original(root, {"service.props.json": {}})
+    result = engine_capabilities.bound_capabilities(root, {"service.props.json": {}})
     assert not result.verified
 
 

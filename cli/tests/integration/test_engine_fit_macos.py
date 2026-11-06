@@ -196,13 +196,12 @@ def test_native_mac_both_engines_run_compare_and_offline_verify(native_fit, caps
     sent = []
     for engine in ("vllm", "sglang"):
         with start(engine) as service:
-            process, _, record, child_pid = service
+            process, _, record, _ = service
             code = _run(root, service, engine, engine)
             output = capsys.readouterr()
             _stop_on_temperature(root, engine, record, code, output)
             assert code == 0, output
             assert process.poll() is None
-            assert child_pid != process.pid
             run = read_json(root / engine / "run.json")
             assert run["definition"] == "engine_fit_run.v2"
             assert run["binding"]["pid"] == process.pid

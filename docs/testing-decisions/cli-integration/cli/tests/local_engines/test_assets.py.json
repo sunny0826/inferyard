@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/local_engines/test_assets.py",
+  "decisions": [
+    {
+      "test": "test_directory_model_injection_rejected",
+      "decision": "keep",
+      "reason": "模型目录新增权重必须使冻结资产失效，阻断误测修改模型。"
+    },
+    {
+      "test": "test_existing_v2_bytes_retained",
+      "decision": "delete",
+      "reason": "仅文件数量和definition字符串的happy path；模型变更实际拒绝由本文件directory_model_injection/model_template_edit/model_cached_hash测试覆盖。"
+    },
+    {
+      "test": "test_legacy_entrypoint_still_refuses_formal_script",
+      "decision": "keep",
+      "reason": "旧诊断入口不能接受新formal MLX脚本身份，避免跨协议误认。"
+    },
+    {
+      "test": "test_lm_instance_drift_and_ambiguity",
+      "decision": "keep",
+      "reason": "LM实例标识漂移或同模型多实例都拒绝，避免绑定到另一加载实例。"
+    },
+    {
+      "test": "test_model_cached_hash_detects_same_mtime_edit",
+      "decision": "keep",
+      "reason": "权重同mtime改写仍须因内容hash变化拒绝，不能只信mtime缓存。"
+    },
+    {
+      "test": "test_model_index_new_reference_rejected",
+      "decision": "keep",
+      "reason": "新增index引用及shard必须使原模型清单失效，防止漏测新增权重。"
+    },
+    {
+      "test": "test_model_template_edit_rejected",
+      "decision": "keep",
+      "reason": "模型模板修改必须使资产准入失败，防止测量不同模板。"
+    },
+    {
+      "test": "test_sealed_identity_retains_model_manifest",
+      "decision": "keep",
+      "reason": "封存身份必须带完整模型manifest，否则模型目录删除后无法离线绑定；保留实际model_assets对象而不伪造单文件身份。"
+    }
+  ]
+}

@@ -82,33 +82,6 @@ def test_describe_has_concrete_launch_and_honest_unknowns(prepared, monkeypatch)
     assert value["bound"] is False
 
 
-def test_description_and_engine_check_share_original_declaration_digest(prepared, monkeypatch):
-    from inferyard.application.engine_check import execute
-    from inferyard.evidence.storage import json_bytes
-    from inferyard.platforms import local_engines
-
-    request, path, runtime = prepared
-    monkeypatch.setattr(inspection, "assets", lambda config: (runtime, [], []))
-    monkeypatch.setattr(local_engines, "read_installation", lambda p: runtime["installation"])
-    monkeypatch.setattr(local_engines, "freeze_installation", lambda d: runtime)
-    monkeypatch.setattr(local_engines, "verify_installation", lambda r: [])
-    code, checked = execute(CommandRequest("engine check", installation=request.installation))
-    described = inspection.describe(CommandRequest("config describe", candidate=path))
-    digest = sha256(json_bytes(runtime["installation"]))
-    assert code == 0
-    assert checked.details["declaration_sha256"] == digest
-    assert described["assets"]["installation"]["declaration_sha256"] == digest
-    assert described["assets"]["installation"]["sha256"] != digest
-
-    import jsonschema
-
-    from inferyard.contracts.schemas_engine_check import LOCAL_DETAILS
-
-    jsonschema.validate(checked.details, LOCAL_DETAILS)
-    with pytest.raises(jsonschema.ValidationError):
-        jsonschema.validate({**checked.details, "declaration_sha256": None}, LOCAL_DETAILS)
-
-
 def test_bind_rejects_identity_mismatch_without_output(prepared, monkeypatch, tmp_path):
     _, path, _ = prepared
     monkeypatch.setattr(binding, "process_start_ticks", lambda pid: 123)
@@ -127,30 +100,6 @@ def test_bind_rejects_identity_mismatch_without_output(prepared, monkeypatch, tm
     with pytest.raises(PreflightError, match="startup_mismatch"):
         binding.prepare(request)
     assert not request.out.exists()
-
-
-def test_bind_writes_new_verified_binding(prepared, monkeypatch, tmp_path):
-    _, path, _ = prepared
-    original = path.read_bytes()
-    monkeypatch.setattr(binding, "process_start_ticks", lambda pid: 123)
-    value = {"definition": "local-engine-binding.v1", "service": {"pid": 22}}
-    monkeypatch.setattr(binding, "bind_service", lambda config: value)
-    verified = []
-    monkeypatch.setattr(binding, "verify_bound_service", lambda config: verified.append(config))
-    result = binding.prepare(
-        CommandRequest(
-            "config bind",
-            candidate=path,
-            out=tmp_path / "bound",
-            server_pid=22,
-            endpoint_url="http://127.0.0.1:48857",
-        )
-    )
-    config = load_config(Path(result["config"])).config.to_dict()
-    assert config["endpoint"]["server_pid"] == 22
-    assert json.loads(Path(config["endpoint"]["binding_path"]).read_text()) == value
-    assert path.read_bytes() == original
-    assert len(verified) == 1
 
 
 def test_missing_template_is_rejected(tmp_path):
@@ -216,37 +165,6 @@ def test_engine_check_rejects_incomplete_runtime(monkeypatch, tmp_path):
     assert result.details["reason"] == "local_engine_runtime_root_invalid"
     assert result.details["definition"] == "local-engine-check.v2"
     assert result.details["declaration_sha256"] is None
-
-
-@pytest.mark.parametrize("family", ["llama-cpp", "mlx-lm", "vllm", "sglang"])
-def test_launch_matches_identity_parser(family, tmp_path):
-    from inferyard.platforms.local_engines.startup import validate_startup
-
-    installation = {
-        "family": family,
-        "executable": str(tmp_path / "exe"),
-        "working_directory": str(tmp_path),
-        "environment": {},
-    }
-    model = tmp_path / "model"
-    args, cwd = launch.startup(installation, model, "bench", 8192, 48857)
-    config = {
-        "engine": {
-            "family": family,
-            "startup_args": args,
-            "working_directory": cwd,
-            "environment": {},
-        },
-        "model": {"local_path": str(model)},
-        "conditions": {"context_size": 8192},
-    }
-    validate_startup(
-        config,
-        installation,
-        [installation["executable"], *args],
-        Path(installation["executable"]),
-        tmp_path,
-    )
 
 
 @pytest.mark.parametrize(

@@ -2,7 +2,6 @@
 
 import copy
 import os
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -32,22 +31,6 @@ def installation(tmp_path, monkeypatch):
         "environment": {},
     }
     return value, root
-
-
-def test_old_single_file_identity_misses_python_implementation(installation):
-    _, root = installation
-    with pytest.raises(PreflightError):
-        hash_file(root)
-    executable = hash_file(root / "server")
-    (root / "package.py").write_text("changed implementation\n")
-    assert executable.unchanged()
-    assert hash_file(root / "server").sha256 == executable.sha256
-
-
-def test_snapshot_verify(installation):
-    declaration, _ = installation
-    snapshot = runtime.freeze_installation(declaration)
-    assert len(runtime.verify_installation(snapshot)) == 2
 
 
 @pytest.mark.parametrize("mutation", ["modify", "add", "delete", "pyc", "symlink", "same_mtime"])
@@ -99,50 +82,6 @@ def test_removed_root_rejected(installation):
     from inferyard.contracts.validation import ContractError
 
     with pytest.raises(ContractError):
-        runtime.verify_installation(snapshot)
-
-
-def test_uv_hook_drift(installation, monkeypatch):
-    declaration, root = installation
-    declaration["family"] = "vllm"
-    monkeypatch.setattr(
-        runtime,
-        "_python",
-        lambda _: (
-            {
-                "path": [],
-                "prefix": str(root),
-                "base_prefix": str(root),
-                "paths": dict.fromkeys(
-                    (
-                        "stdlib",
-                        "platstdlib",
-                        "purelib",
-                        "platlib",
-                        "include",
-                        "platinclude",
-                        "scripts",
-                        "data",
-                    ),
-                    str(root),
-                ),
-                "version": [3, 12],
-                "site_packages": str(root),
-                "import_roots": [str(root)],
-                "entrypoint_sources": [str(root / "package.py")],
-            },
-            [],
-        ),
-    )
-    monkeypatch.setattr(
-        "inferyard.platforms.local_engines.python_sources.resolve_sources", lambda *_: None
-    )
-    (root / "_virtualenv.pth").write_text("import _virtualenv\n")
-    (root / "_virtualenv.py").write_text("# frozen hook\n")
-    snapshot = runtime.freeze_installation(declaration)
-    runtime.verify_installation(snapshot)
-    (root / "_virtualenv.py").write_text("# changed hook\n")
-    with pytest.raises(PreflightError, match="runtime_changed"):
         runtime.verify_installation(snapshot)
 
 
@@ -299,32 +238,6 @@ def test_listener_ambiguity(bound, monkeypatch):
 def test_env_override(environment):
     with pytest.raises(PreflightError, match="environment_override"):
         check_environment(environment, {})
-
-
-def test_required_env():
-    with pytest.raises(PreflightError, match="environment_mismatch"):
-        check_environment({}, {"SGLANG_USE_MLX": "1"})
-
-
-@pytest.mark.skipif(os.name != "posix", reason="Darwin mapping identity primitives")
-def test_mapping_closure(tmp_path):
-    plugin = tmp_path / "plugin.dylib"
-    plugin.write_bytes(b"\xcf\xfa\xed\xfe")
-    info = plugin.stat()
-    with pytest.raises(PreflightError, match="mapping_outside"):
-        service.mapped_closure(
-            [
-                {
-                    "f": "txt",
-                    "t": "REG",
-                    "n": str(plugin),
-                    "D": hex(info.st_dev),
-                    "i": str(info.st_ino),
-                }
-            ],
-            [],
-            Path("/fixture"),
-        )
 
 
 def test_does_not_reaccept_argv(bound, monkeypatch):

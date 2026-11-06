@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/core/development_observation_linux_test.go",
+  "decisions": [
+    {
+      "test": "TestDevelopmentLinuxMissingProcIsNotAbsence",
+      "decision": "keep",
+      "reason": "Linux proc 不可用或 native 仍报告存在/无权限时必须 Unknown，防容器或 proc 异常时误判旧进程已退出。"
+    }
+  ]
+}

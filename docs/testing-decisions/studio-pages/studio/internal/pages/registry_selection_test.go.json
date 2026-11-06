@@ -1,0 +1,36 @@
+{
+  "source_path": "studio/internal/pages/registry_selection_test.go",
+  "decisions": [
+    {
+      "test": "TestCandidateEngineDropdownThreeStates",
+      "decision": "keep",
+      "reason": "核验不可用引擎须不可选、无可用或撤销选择须拒绝运行并有下载/重选出口，防止无效组合到 CLI。"
+    },
+    {
+      "test": "TestCandidateModelSelectSharesSelection",
+      "decision": "keep",
+      "reason": "任务页选中模型应更新共享选择，防止界面选 A 而后续冻结旧模型。"
+    },
+    {
+      "test": "TestCandidateUsesRegistryNames",
+      "decision": "keep",
+      "reason": "任务页实际菜单选择另一引擎后共享 engine 更新，避免继续使用默认引擎；删除私有输入节点不存在的形状断言。"
+    },
+    {
+      "test": "TestOrphanRecoveryButtonOnBothPages",
+      "decision": "keep",
+      "renamed_to": "TestOrphanRecoveryButtonOnDashboard",
+      "reason": "任务页三种身份/记录错误时提供仅删除记录恢复入口和记录位置，无错误时不提供；未执行删除操作。移除重复模型页矩阵，模型页遗留指引由 TestRunPanelOrphan 保留。"
+    },
+    {
+      "test": "TestOrphanServiceViews",
+      "decision": "keep",
+      "reason": "遗留服务时任务页显示遗留状态及停止入口，点击启动服务不会进入 busy。删除重复模型页分支，该分支同状态结果由 TestRunPanelOrphan 保留。"
+    },
+    {
+      "test": "TestRunAndServiceViewsHidePaths",
+      "decision": "keep",
+      "reason": "任务/服务卡片不显示启动绝对路径，但失败时手动绑定仍可用，避免隐藏配置后失去恢复入口。"
+    }
+  ]
+}

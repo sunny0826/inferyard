@@ -1,6 +1,5 @@
 """Windows batch memory selection, source identity and explicit missing values."""
 
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -8,7 +7,6 @@ import pytest
 from inferyard.contracts.validation import validate_document
 from inferyard.platforms import resources, resources_windows
 from inferyard.platforms.identity import PreflightError
-from inferyard.registry import adapter_collector_id, collector_factory, components
 from tests.unit.test_resources import CONFIG, envelope
 
 
@@ -49,38 +47,10 @@ def sampler(monkeypatch):
     return value, snapshots
 
 
-@pytest.mark.parametrize(
-    "platform,collector",
-    [
-        ("win32", "windows-resource.v1"),
-        ("darwin", "macos-resource.v1"),
-        ("linux", "linux-resource.v2"),
-    ],
-)
-def test_platform_selection_keeps_explicit_proc_fixture(platform, collector, monkeypatch, tmp_path):
-    monkeypatch.setattr(resources, "sys", SimpleNamespace(platform=platform))
-    assert resources.resource_collector_id() == collector
-    assert resources.resource_collector_id(proc_root=tmp_path) == "linux-resource.v2"
-    assert adapter_collector_id("prism_llama_server_v1", batch=True) == collector
-    assert adapter_collector_id("kvmem", batch=True) == "windows-memory.v1"
-    assert adapter_collector_id("ninfer", batch=True) == "windows-memory.v1"
-
-
 def test_unknown_platform_remains_closed(monkeypatch):
     monkeypatch.setattr(resources, "sys", SimpleNamespace(platform="unsupported"))
     with pytest.raises(PreflightError, match="resource_collector_platform_unsupported"):
         resources.resource_collector_id()
-
-
-def test_windows_factory_and_catalogue(sampler, monkeypatch):
-    monkeypatch.setattr(resources, "sys", SimpleNamespace(platform="win32"))
-    assert collector_factory("windows-resource.v1") is resources_windows.ResourceSampler
-    store = SimpleNamespace(observe=lambda *args, **kwargs: None)
-    assert isinstance(resources.ResourceSampler(store, CONFIG), resources_windows.ResourceSampler)
-    entry = next(i for i in components()["items"] if i["component_id"] == "windows-resource.v1")
-    assert entry["live_verification_required"] is True
-    with pytest.raises(ValueError, match="native platform"):
-        resources_windows.ResourceSampler(store, CONFIG, proc_root=Path("/fixture"))
 
 
 def test_memory_sources_units_identity_and_missing_metadata(sampler):

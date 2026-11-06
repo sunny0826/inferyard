@@ -36,9 +36,12 @@ complete. User installation and source development are separate: the
 
 ## Changes and verification
 
-Inspect the working-tree diff first and preserve existing changes. Behavior
-fixes add regressions covering the real failure path; contract changes cover
-rejection paths and old-data reading.
+Inspect the working-tree diff first and preserve existing changes. Keep tests
+only when they demonstrate a product or logical invariant, or protect packaging,
+installation and release; see the [test policy](../docs/testing.md).
+Behavior fixes cover the real failure path; contract changes cover rejection
+paths and old-data reading. Remove redundant assertions and implementation-shape
+tests instead of preserving them under a new name.
 Use fixtures and simulated services by default; real models, builds and
 long-running workloads require separately agreed device, budget and stop
 conditions.
@@ -48,7 +51,6 @@ Pick the checks that match the impact; not everything has to run every time:
 ```bash
 mise exec -- uv run --frozen pytest -q tests/unit/test_RELEVANT.py
 mise exec -- uv run --frozen ruff check src tests scripts
-mise exec -- uv run --frozen ruff format --check src tests scripts
 mise exec -- uv run --frozen python scripts/export_schemas.py --check
 mise exec -- uv run --frozen python scripts/export_catalogue.py --check
 git diff --check

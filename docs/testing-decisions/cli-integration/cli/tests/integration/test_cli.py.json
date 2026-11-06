@@ -1,0 +1,70 @@
+{
+  "source_path": "cli/tests/integration/test_cli.py",
+  "decisions": [
+    {
+      "test": "test_argument_errors_emit_one_json_and_no_argument_values",
+      "decision": "keep",
+      "reason": "空命令、未知命令和不合法参数组合只输出受控JSON，不回显敏感参数值。"
+    },
+    {
+      "test": "test_dependency_versions_export_is_json",
+      "decision": "delete",
+      "reason": "固定checkout和Python补丁版本及字段形状是环境/实现快照；帮助冷启动由 test_memory_check_cli.test_metadata_never_imports_collector 覆盖，包入口由test_installed_module_command_discovery覆盖。"
+    },
+    {
+      "test": "test_exported_schema_files_match_source",
+      "decision": "keep",
+      "reason": "发布schema文件必须与生成源同步，避免安装后导出错误契约。"
+    },
+    {
+      "test": "test_installed_module_command_discovery",
+      "decision": "keep",
+      "reason": "python -m inferyard必须提供用户命令帮助，防止发行包入口不可用。"
+    },
+    {
+      "test": "test_invalid_configuration_never_dispatches",
+      "decision": "keep",
+      "reason": "未知字段、非法并发/超时、明文密钥和重复题配置必须在dispatch前拒绝，且不回显秘密。"
+    },
+    {
+      "test": "test_io_errors_and_internal_exception_messages_are_sanitized",
+      "decision": "keep",
+      "reason": "IO与内部异常中的敏感路径、凭据不得泄露，只返回固定公开错误。"
+    },
+    {
+      "test": "test_missing_credentials_do_not_claim_benchmark_success",
+      "decision": "keep",
+      "reason": "缺凭据必须阻断，不能输出成功run身份。"
+    },
+    {
+      "test": "test_missing_rerun_is_blocked_without_writing",
+      "decision": "keep",
+      "reason": "缺少封存重跑来源时退出2并不给出新证据目录。"
+    },
+    {
+      "test": "test_readonly_evidence_with_damaged_derived_files_rebuilds",
+      "decision": "keep",
+      "reason": "只读原件上的损坏派生文件不能阻止从原始证据新建报告，也不能回写原件。"
+    },
+    {
+      "test": "test_real_offline_commands_need_no_network",
+      "decision": "delete",
+      "reason": "报告/比较离线无网络的重复happy path，由 test_cli_verification_workflow.test_canonical_artifact_workflow_is_offline_and_checks_comparison_html 覆盖。"
+    },
+    {
+      "test": "test_report_recovers_tail_and_rejects_middle_corruption",
+      "decision": "keep",
+      "reason": "未封存尾半行可重建不完整报告；中间坏行必须退出4且不创建报告。"
+    },
+    {
+      "test": "test_schema_export",
+      "decision": "delete",
+      "reason": "只断言导出schema的内部additionalProperties形状；实际发布schema同步由test_exported_schema_files_match_source覆盖。"
+    },
+    {
+      "test": "test_valid_configuration_enters_injected_preflight",
+      "decision": "delete",
+      "reason": "仅证明注入handler收到了解析对象；实际CLI run由 test_runner.test_real_cli_dispatch_serial_run_emits_only_one_json 覆盖。"
+    }
+  ]
+}

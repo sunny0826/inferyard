@@ -48,14 +48,6 @@ func installService(t *testing.T) *Service {
 	return s
 }
 
-func TestFindCLIInPath(t *testing.T) {
-	stubInstall(t)
-	installLookPath = func(string) (string, error) { return "/usr/local/bin/inferyard", nil }
-	if got := FindCLI(); got != "/usr/local/bin/inferyard" {
-		t.Fatalf("FindCLI = %q", got)
-	}
-}
-
 func TestFindCLIFallsBackToLocalBin(t *testing.T) {
 	stubInstall(t)
 	installLookPath = func(string) (string, error) { return "", errors.New("not found") }
@@ -193,10 +185,13 @@ func TestInstallCLIViaUV(t *testing.T) {
 	if path != installed {
 		t.Fatalf("path = %q, want %q", path, installed)
 	}
-	if len(calls) != 2 {
-		t.Fatalf("calls = %v", calls)
+	var joined string
+	for _, call := range calls {
+		if len(call) >= 3 && call[1] == "tool" && call[2] == "install" {
+			joined = strings.Join(call, " ")
+			break
+		}
 	}
-	joined := strings.Join(calls[0], " ")
 	for _, want := range []string{"tool", "install", "--managed-python", "--python", installPython, "inferyard==0.0.2"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("install call %q missing %q", joined, want)

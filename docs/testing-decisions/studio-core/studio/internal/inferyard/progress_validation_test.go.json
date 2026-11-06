@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/inferyard/progress_validation_test.go",
+  "decisions": [
+    {
+      "test": "TestProgressAllPhases",
+      "decision": "delete",
+      "reason": "人工替换 phase/action 后仅检查同值返回，未验证工作流转换；实际推进由 TestChainBindRunReport 覆盖，错误 phase 由 TestProgressContractBoundaries 覆盖。"
+    },
+    {
+      "test": "TestProgressContractBoundaries",
+      "decision": "keep",
+      "reason": "必填 progress 字段丢失、bool/null/重复键/未知 phase 和尾随 JSON 拒绝，防不完整进度被显示为可继续。"
+    }
+  ]
+}

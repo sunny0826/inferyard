@@ -1,0 +1,106 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_mlx_server.py",
+  "decisions": [
+    {
+      "test": "test_authentication_failure_never_enters_generation_queue",
+      "decision": "keep",
+      "reason": "未认证请求不能进入生成队列或读取指标，合法 bearer 才能读取。"
+    },
+    {
+      "test": "test_cancelled_waiting_request_never_reaches_backend",
+      "decision": "keep",
+      "reason": "排队请求在取消后不能进入后端，避免用户取消后仍生成。"
+    },
+    {
+      "test": "test_disconnect_does_not_clear_active_generation_before_sync",
+      "decision": "delete",
+      "reason": "重复直接设置 cancelled 的模拟；真实断连入口由 test_tcp_disconnect_keeps_running_until_backend_cleanup_and_sync 覆盖。"
+    },
+    {
+      "test": "test_generation_failure_poison_is_persistent",
+      "decision": "keep",
+      "reason": "生成失败后拒绝后续请求，避免不确定 GPU 状态继续产生有效测量。"
+    },
+    {
+      "test": "test_http_sse_identity_usage_and_readonly_endpoints",
+      "decision": "keep",
+      "reason": "HTTP 返回可核验引擎身份、SSE 终止和真实 usage，离线诊断才可绑定对应服务。"
+    },
+    {
+      "test": "test_invalid_http_json_and_payload_never_enter_backend",
+      "decision": "keep",
+      "reason": "未知请求字段、重复 JSON key 和错误路由不能进入生成后端。"
+    },
+    {
+      "test": "test_invalid_or_unbounded_backend_output_is_poisoned",
+      "decision": "keep",
+      "reason": "空输出、无终止、token 越界/布尔、非法 finish、终止后追加及超大文本必须失败，防止错误 usage 或无限输出当成功。"
+    },
+    {
+      "test": "test_iterator_close_failure_cannot_claim_idle",
+      "decision": "keep",
+      "reason": "迭代器关闭失败不能确认空闲，否则后续请求可能叠加未清理生成。"
+    },
+    {
+      "test": "test_metrics_remain_available_during_blocked_gpu_work",
+      "decision": "keep",
+      "reason": "GPU 工作阻塞时指标端点仍可响应，否则守护者无法判断是否排空。"
+    },
+    {
+      "test": "test_nonlocal_model_fails_before_importing_mlx",
+      "decision": "keep",
+      "reason": "不存在的本地模型目录必须拒绝，不能退化成远程下载。"
+    },
+    {
+      "test": "test_output_backpressure_is_bounded_and_cancellation_unblocks_cleanup",
+      "decision": "keep",
+      "reason": "读者不消费输出时必须有界背压，取消应解除阻塞并清理生成；删固定队列容量数值断言。"
+    },
+    {
+      "test": "test_public_backend_is_offline_local_only_and_tracks_its_gpu_stream",
+      "decision": "delete",
+      "reason": "仅比对 monkeypatch 的 load/generate/sync 实参，不能证明真实离线加载；实际线程同步失败由 test_main_thread_load_and_worker_generation_synchronize_their_own_streams 覆盖。"
+    },
+    {
+      "test": "test_queued_work_is_counted_and_queue_is_bounded",
+      "decision": "keep",
+      "reason": "单个生成阻塞时只接受有限排队，超量必须拒绝，避免诊断服务无限堆积任务。"
+    },
+    {
+      "test": "test_reject_unsupported_request_before_queueing",
+      "decision": "keep",
+      "reason": "远端模型、非法 token/温度、非流式、工具与图像等未支持请求必须拒绝，避免诊断语义漂移。"
+    },
+    {
+      "test": "test_script_retains_python312_grammar_and_standalone_imports",
+      "decision": "keep",
+      "reason": "保留发布脚本可被目标 Python 3.12 解析的保障；删除 AST 禁止 inferyard import 的结构约束。 精简后更名为 test_script_retains_python312_grammar。",
+      "renamed_to": "test_script_retains_python312_grammar"
+    },
+    {
+      "test": "test_server_rejects_nonloopback",
+      "decision": "keep",
+      "reason": "0.0.0.0 监听必须拒绝，避免将本地诊断服务对外开放。"
+    },
+    {
+      "test": "test_single_generation_has_usage_and_becomes_idle_after_sync",
+      "decision": "delete",
+      "reason": "重复队列 happy path；HTTP 输出与 usage 由 test_http_sse_identity_usage_and_readonly_endpoints 覆盖，同步边界由 test_sync_is_covered_by_running_and_delays_terminal_marker 覆盖。"
+    },
+    {
+      "test": "test_sync_failure_keeps_running_and_poisoned",
+      "decision": "keep",
+      "reason": "GPU 同步失败必须保留 running/poisoned，不能错误确认服务空闲。"
+    },
+    {
+      "test": "test_sync_is_covered_by_running_and_delays_terminal_marker",
+      "decision": "keep",
+      "reason": "GPU 同步未返回时仍须报告 running 且不能发送完成标记，否则宿主会提前开始下一测量。"
+    },
+    {
+      "test": "test_tcp_disconnect_keeps_running_until_backend_cleanup_and_sync",
+      "decision": "keep",
+      "reason": "TCP 断连后同步尚未结束仍报告 running，结束后保留 poison，避免误清 dirty。"
+    }
+  ]
+}

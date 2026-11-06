@@ -27,39 +27,6 @@ func eligibleChecks() core.EngineCheckOverview {
 	}}
 }
 
-func TestModelsPageZonesAndNoDownloadCards(t *testing.T) {
-	s := testState()
-	s.selected = "models"
-	s.registry = modelRegistryFixture()
-	s.checks = eligibleChecks()
-	s.model, s.engine = "model.gguf", "engine-2 · llama-server"
-	tt := ui.NewTester(s.view, 1120, 2400)
-	for _, want := range []string{
-		"选择模型与引擎", "组合状态", "用这个组合新开任务", "本机运行的服务",
-		"model.gguf × engine-2 · llama-server",
-		"Studio 启动的服务随 Studio 退出关闭，不会自动重启。",
-	} {
-		if !tt.HasText(want) {
-			t.Fatal(want, tt.Texts())
-		}
-	}
-	for _, gone := range []string{
-		"下载任务", "下载预置模型", "本地模型清单", "引擎清单", "创建模型下载",
-		"绑定操作在 Dashboard 进行",
-		"适配性按引擎版本核验与模型格式判断",
-		"启动使用冻结候选的启动参数",
-		"discover 发现结果，只读",
-	} {
-		if tt.HasText(gone) {
-			t.Fatal("models page keeps download/registry UI: "+gone, tt.Texts())
-		}
-	}
-	assertModelsReadOnly(t, tt)
-	if len(modelUINodes(tt, "text", "绑定")) != 0 {
-		t.Fatal("models page must not offer binding", tt.Texts())
-	}
-}
-
 func TestModelsEmptyRegistryGuidance(t *testing.T) {
 	s := testState()
 	s.selected = "models"
@@ -139,36 +106,6 @@ func TestModelOptionAnnotations(t *testing.T) {
 	s.engine = "engine-2 · llama-server"
 	if got := s.modelOptions()[0].note; got != "" {
 		t.Fatal(got)
-	}
-}
-
-func TestEngineFitTexts(t *testing.T) {
-	s := testState()
-	s.registry = modelRegistryFixture()
-	s.checks = eligibleChecks()
-	if got := s.engineFit(); got != "1 个可用 · 1 个不可用" {
-		t.Fatal(got)
-	}
-	s.checks.Checking = 2
-	if got := s.engineFit(); got != "核验中…（1 个可用 · 1 个不可用）" {
-		t.Fatal(got)
-	}
-	s.checks = core.EngineCheckOverview{Supported: false}
-	if got := s.engineFit(); got != "未核验（CLI 过旧，建议升级）" {
-		t.Fatal(got)
-	}
-}
-
-func TestModelsSelectionRevokeWarning(t *testing.T) {
-	s := testState()
-	s.registry = modelRegistryFixture()
-	s.checks = eligibleChecks()
-	s.engine = "release · inference-engine"
-	tt := ui.NewTester(s.selectionView, 1120, 900)
-	for _, want := range []string{"当前选择不可用", "引擎运行库不完整或库链接无效", "请重新选择"} {
-		if !tt.HasText(want) {
-			t.Fatal(want, tt.Texts())
-		}
 	}
 }
 

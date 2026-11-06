@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_report_dashboard.py",
+  "decisions": [
+    {
+      "test": "test_completed_latency_excludes_failures_and_uses_nearest_rank",
+      "decision": "keep",
+      "reason": "只完成样本按 nearest-rank 得 p50/p95，失败不拉高延迟，小样本不假报 p95。"
+    },
+    {
+      "test": "test_current_template_identity_binds_all_partial_assets",
+      "decision": "keep",
+      "reason": "部分模板样式被改也改变模板身份，防止报告封存遗漏发行模板依赖。"
+    },
+    {
+      "test": "test_five_states_and_unknown_quality_survive_dashboard_and_html",
+      "decision": "keep",
+      "reason": "HTML 和 dashboard 保留五终态、失败分母及未知质量，不合成单一总分。"
+    },
+    {
+      "test": "test_frozen_profile_does_not_infer_parameter_count_or_inspect_missing_weights",
+      "decision": "keep",
+      "reason": "文件名含 27B 不等于已测参数量；缺失/错身份文件不猜权重大小，真零字节仍可见。"
+    },
+    {
+      "test": "test_missing_hardware_and_effective_parameters_stay_missing",
+      "decision": "keep",
+      "reason": "缺硬件和生效参数不能从请求值补造；生效零温度仍显示 verified。"
+    },
+    {
+      "test": "test_new_detail_fields_are_escaped_and_requested_values_do_not_become_effective",
+      "decision": "keep",
+      "reason": "模型标题、答案和规则文本转义防注入，实际参数缺失显示未知且 HTML 不依赖外网资源。"
+    },
+    {
+      "test": "test_resource_sources_are_not_pooled_and_zero_is_not_missing",
+      "decision": "keep",
+      "reason": "不同 RSS 来源不能混成一个峰值，零为有效测量，未知可用内存保持缺失。"
+    },
+    {
+      "test": "test_unknown_report_format_is_rejected_before_loading_sources",
+      "decision": "keep",
+      "reason": "布尔、未知整数及错误类型报告版本在来源读取前拒绝，避免旧格式被误解释。"
+    },
+    {
+      "test": "test_untyped_historical_hardware_values_are_not_numeric_readings",
+      "decision": "keep",
+      "reason": "字符串、布尔、负值和错误数值类型不显示为真实硬件读数。"
+    },
+    {
+      "test": "test_verifier_rejects_boolean_report_version",
+      "decision": "delete",
+      "reason": "改索引未重封仅触发通用字节哈希失败；版本语义已由 unknown_report_format 的布尔参数覆盖。"
+    }
+  ]
+}

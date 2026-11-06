@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_performance_comparison.py",
+  "decisions": [
+    {
+      "test": "test_bad_individual_metric_remains_ineligible",
+      "decision": "keep",
+      "reason": "局部指标缺测、定义不同、空cohort、重复或非有限保持无资格，避免整体门覆盖坏指标。"
+    },
+    {
+      "test": "test_context_grants_only_validated_metrics_without_mutating_source",
+      "decision": "keep",
+      "reason": "经校准上下文仅授L03/L04而非无首事件资格的L01，且不改源，避免性能越权结论。"
+    },
+    {
+      "test": "test_current_comparison_accepts_independently_qualified_tolerances",
+      "decision": "keep",
+      "reason": "两边各自合格的一般容差可不同，避免把独立资格误当同一实验合同。"
+    },
+    {
+      "test": "test_different_model_tokenizer_blocks_rate_but_not_task_e2e",
+      "decision": "keep",
+      "reason": "模型tokenizer不同可比任务总耗时但不可比token速率，避免不等工作量比较。"
+    },
+    {
+      "test": "test_failed_prerequisite_cannot_produce_any_performance_delta",
+      "decision": "keep",
+      "reason": "开销、目标绑定、环境、完整性或并列模式任一失败均无性能差值，避免假比较。"
+    },
+    {
+      "test": "test_first_event_requires_both_predeclared_metric_assessments",
+      "decision": "keep",
+      "reason": "首事件L01要求两边预声明相同容差且通过，缺/错专项评估不能给差值。"
+    }
+  ]
+}

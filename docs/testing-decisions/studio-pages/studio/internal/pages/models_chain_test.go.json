@@ -1,0 +1,70 @@
+{
+  "source_path": "studio/internal/pages/models_chain_test.go",
+  "decisions": [
+    {
+      "test": "TestChainFailureTranslatesDeviceReasons",
+      "decision": "delete",
+      "reason": "只复述错误翻译 helper；实际阻断由 TestStartChainStopsOnBlockedDeviceCheck 及 TestBindingChainOrderAndStopOnFailure 覆盖。"
+    },
+    {
+      "test": "TestStartChainAllCompletedRejectsNewCombination",
+      "decision": "keep",
+      "reason": "所有题包已完成但候选不匹配或身份未知时拒绝复用，防止把旧结果归到新组合。"
+    },
+    {
+      "test": "TestStartChainAllCompletedReusesMatchingCombination",
+      "decision": "keep",
+      "reason": "已完成候选中存在匹配组合时应正确选择匹配项且不重建，保留封存结果。"
+    },
+    {
+      "test": "TestStartChainBlockedRecommendationIsAMiss",
+      "decision": "keep",
+      "reason": "旧推荐 blocked 不能被当作匹配，须为当前模型重跑检查，避免被陈旧推荐卡住或误复用。"
+    },
+    {
+      "test": "TestStartChainCommandSequence",
+      "decision": "delete",
+      "reason": "细查 mock 命令序列、占位符和次数；选中模型的真实冻结由 TestDashboardPreparationFreezesSelectedModel 覆盖，失败停止/候选再验另有用例。"
+    },
+    {
+      "test": "TestStartChainFreshTaskRecreatesSealedSelection",
+      "decision": "keep",
+      "reason": "用户明确新任务时应生成新候选，不能复用封存候选或把未选题包加入运行。"
+    },
+    {
+      "test": "TestStartChainPreservesCompletedBundleOnCombinationChange",
+      "decision": "keep",
+      "reason": "改组合时只准备未完成题包，不改已封存题包原候选或结果，避免覆盖历史证据。"
+    },
+    {
+      "test": "TestStartChainRequiresPreflight",
+      "decision": "keep",
+      "reason": "缺 preflight 时必须在任何创建前阻断，避免缺设备安全条件仍启动模型。"
+    },
+    {
+      "test": "TestStartChainReturnsFreshProgressAfterCreate",
+      "decision": "delete",
+      "reason": "单个 happy path 仅检查返回的 workspace/candidate 和次数；TestDashboardPreparationFreezesSelectedModel、TestStartChainPreservesCompletedBundleOnCombinationChange 覆盖。"
+    },
+    {
+      "test": "TestStartChainReverifiesCandidates",
+      "decision": "keep",
+      "reason": "CLI 声称创建成功但重新读取候选身份仍不匹配时必须拒绝，不能测错模型/引擎。"
+    },
+    {
+      "test": "TestStartChainSkipsWorkWhenCombinationMatches",
+      "decision": "keep",
+      "reason": "现有未封存候选已匹配模型/引擎时不得重建，避免丢失已有准备并产生重复候选。"
+    },
+    {
+      "test": "TestStartChainStopsOnBlockedDeviceCheck",
+      "decision": "keep",
+      "reason": "内存不足导致设备检查阻断后不得继续建候选，保留用户可读的不足原因。"
+    },
+    {
+      "test": "TestStartChainStopsOnFailedCreate",
+      "decision": "keep",
+      "reason": "第一题包候选失败后不得继续建第二题包，避免半失败状态被当可运行。"
+    }
+  ]
+}

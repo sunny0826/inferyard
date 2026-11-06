@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_file_io_paths.py",
+  "decisions": [
+    {
+      "test": "test_ordinary_unicode_and_com10_stay_lexical_paths",
+      "decision": "keep",
+      "reason": "COM10、上标后续数字、非设备上标及中文普通路径仍可读，避免过宽设备拦截；13重复变体缩到4并以读取成功替代字典回传断言。"
+    },
+    {
+      "test": "test_superscript_devices_and_controls_reject_before_io",
+      "decision": "keep",
+      "reason": "设备COM/LPT上标与控制字符含路径祖先拒绝且不执行IO，防止误开设备；21重复变体缩到7边界并去掉禁用worker重复检查。"
+    }
+  ]
+}

@@ -95,13 +95,6 @@ func TestDenseMemoryOnlyResourcesStayCompact(t *testing.T) {
 			chartSample(int64(i*2+1), "system_mem_available", "available", i, ptr(float64(3<<30))),
 			chartSample(int64(i*2+2), "service_rss", "rss", i, ptr(float64(1<<28))))
 	}
-	for _, group := range resourceSeriesData(samples) {
-		for _, label := range resourceLineData(group, ui.Color{}).Labels {
-			if len(label) > 9 || strings.Contains(label, "2026") {
-				t.Fatalf("unreadable axis label %q", label)
-			}
-		}
-	}
 	tt := ui.NewTester(func(c *ui.Context) { s.resourceView(c, samples) }, 1000, 1400)
 	for _, label := range []string{"服务 CPU %曲线", "传感器温度 °C曲线"} {
 		if _, ok := tt.Find(label); ok {

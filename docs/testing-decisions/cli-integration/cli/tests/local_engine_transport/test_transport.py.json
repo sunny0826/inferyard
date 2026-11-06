@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/local_engine_transport/test_transport.py",
+  "decisions": [
+    {
+      "test": "test_failure_never_becomes_clean_when_queue_zero",
+      "decision": "keep",
+      "reason": "五family超时/HTTP/EOF/取消后，queue=0不能允许第二次请求；保留实际准入拒绝与POST数，删除私有native_uncertain/queue_ready字段断言。"
+    },
+    {
+      "test": "test_formal_generation_and_queue_scope",
+      "decision": "keep",
+      "reason": "五family的普通/流式实际请求完成且只发送受支持字段，队列观察不构成内部drain，未知effective参数保持null；删除OBSERVATION结构自校验和私有queue_ready状态断言。"
+    },
+    {
+      "test": "test_http_context_close_failure_is_not_clean",
+      "decision": "keep",
+      "reason": "HTTP context关闭失败必须判failed并保留uncertain，不能按已读完整JSON清理。"
+    },
+    {
+      "test": "test_identity_change_blocks_without_post",
+      "decision": "keep",
+      "reason": "服务start身份改变后队列准入必须拒绝且无POST。"
+    },
+    {
+      "test": "test_lmstudio_invalid_count_blocks_admission",
+      "decision": "keep",
+      "reason": "LM Studio queued为bool而非合法整数时，必须拒绝准入且不发题。"
+    },
+    {
+      "test": "test_metrics_cannot_admit_malformed_queue",
+      "decision": "keep",
+      "reason": "metrics缺失、重复、负数、NaN或label不齐不能证明队列可用，保持零请求。"
+    },
+    {
+      "test": "test_missing_usage_is_null_with_reason",
+      "decision": "keep",
+      "reason": "普通或流式缺usage应成功但completion_tokens为null并有原因，不能补零。"
+    },
+    {
+      "test": "test_mlx_formal_protocol_binding",
+      "decision": "keep",
+      "reason": "MLX入口/queue源码、synthetic、context或version不符合冻结formal协议时，首请求前拒绝。"
+    },
+    {
+      "test": "test_successful_http_then_observer_failure_stays_uncertain",
+      "decision": "delete",
+      "reason": "成功HTTP后观察故障不得后续被queue恢复抹掉，由 test_local_engine_runtime.test_completed_http_then_queue_failure_retains_incomplete_original 经真实runner覆盖。"
+    }
+  ]
+}

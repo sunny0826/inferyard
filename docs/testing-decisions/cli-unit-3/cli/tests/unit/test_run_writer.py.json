@@ -1,0 +1,90 @@
+{
+  "source_path": "cli/tests/unit/test_run_writer.py",
+  "decisions": [
+    {
+      "test": "test_baseline_domain_methods_preserve_original_buffer_and_snapshot_keys",
+      "decision": "delete",
+      "reason": "仅 buffer 私有键与 snapshot_filename 布局；真实 baseline 引用由 test_baseline_domain_refs_bind_original_sensor_bytes 覆盖。"
+    },
+    {
+      "test": "test_configuration_source_binds_redacted_raw_utf8_and_crlf",
+      "decision": "keep",
+      "reason": "具体场景 test_configuration_source_binds_redacted_raw_utf8_and_crlf。可观察预期：assert evidence.configuration_source() == {'media_type': 'application/toml', 'data': expected, 'missing_reason': None}；assert source['bytes'] == len(expected)；assert source['sha256'] == hashlib.sha256(expected).hexdigest()；assert not (store.path / 'config.input.toml').exists()。防止请求没有耐久原件却被发送/计执行、身份观测被覆盖、配置原文泄密或伪造，及写入失败的前缀被封成完整证据。"
+    },
+    {
+      "test": "test_failed_append_never_becomes_durable_or_allows_send_or_seal",
+      "decision": "keep",
+      "reason": "具体场景 test_failed_append_never_becomes_durable_or_allows_send_or_seal。逐项参数：pytest.mark.parametrize('method', ['observe', 'prepare'])；pytest.mark.parametrize('fault', ['append', 'flush', 'fsync'])。可观察预期：assert not store.has_observation('identity')；assert not (store.path / 'manifest.json').exists()；assert (store.path / 'events.jsonl').read_bytes() == b''；assert tails if fault == 'append' else len(rows) == 1。防止请求没有耐久原件却被发送/计执行、身份观测被覆盖、配置原文泄密或伪造，及写入失败的前缀被封成完整证据。已删私有 prepared 字典断言，保留停发/拒封存与实际日志。"
+    },
+    {
+      "test": "test_generic_and_extension_stores_keep_independent_protocol",
+      "decision": "delete",
+      "reason": "仅构造器分工和有无三个内部文件，无独立扩展执行假设。"
+    },
+    {
+      "test": "test_inputs_publish_before_all_six_logs_and_seal_eight_files",
+      "decision": "delete",
+      "reason": "主要限定私有 _open_logs 顺序与固定文件数；中断后真实 partial、成员引用由 test_interrupted_log_creation_reads_only_real_partial_evidence 覆盖。"
+    },
+    {
+      "test": "test_interrupted_log_creation_reads_only_real_partial_evidence",
+      "decision": "keep",
+      "reason": "具体场景 test_interrupted_log_creation_reads_only_real_partial_evidence。逐项参数：pytest.mark.parametrize('opened', [0, 3, 5])。可观察预期：assert summary['counts']['planned'] == len(bundle['cases'])；assert summary['counts']['not_executed'] == len(bundle['cases'])；assert summary['counts']['executed'] == 0；assert not summary['evidence_complete'] and (not summary['scope_complete'])。防止请求没有耐久原件却被发送/计执行、身份观测被覆盖、配置原文泄密或伪造，及写入失败的前缀被封成完整证据。"
+    },
+    {
+      "test": "test_invalid_observation_never_appends_or_occupies_a_slot",
+      "decision": "delete",
+      "reason": "仅封闭 kind/stage/key 与私有槽字典形状；覆盖者 test_observation_authority_and_closed_queries_follow_durable_publication 保留禁止覆盖真实权威槽。"
+    },
+    {
+      "test": "test_invalid_source_cannot_produce_a_live_writer",
+      "decision": "delete",
+      "reason": "仅构造器 source 字典类型/键值矩阵；原文真实字节与缺失事实由 test_configuration_source_binds_redacted_raw_utf8_and_crlf、test_source_missing_fact_is_explicit_and_never_reconstructed 覆盖。"
+    },
+    {
+      "test": "test_manifest_publication_failure_cannot_retry_seal",
+      "decision": "keep",
+      "reason": "具体场景 test_manifest_publication_failure_cannot_retry_seal。可观察预期：assert not store.sealed and (not (store.path / 'manifest.json').exists())；pytest.raises(EvidenceError, match='atomic_write_failed')；pytest.raises(EvidenceError, match='atomic_write_failed')。防止请求没有耐久原件却被发送/计执行、身份观测被覆盖、配置原文泄密或伪造，及写入失败的前缀被封成完整证据。"
+    },
+    {
+      "test": "test_missing_prepared_file_never_authorizes_started_requests",
+      "decision": "keep",
+      "reason": "具体场景 test_missing_prepared_file_never_authorizes_started_requests。逐项参数：pytest.mark.parametrize('sealed', [False, True])。可观察预期：pytest.raises(EvidenceError, match=reason)。防止请求没有耐久原件却被发送/计执行、身份观测被覆盖、配置原文泄密或伪造，及写入失败的前缀被封成完整证据。"
+    },
+    {
+      "test": "test_observation_authority_and_closed_queries_follow_durable_publication",
+      "decision": "keep",
+      "reason": "具体场景 test_observation_authority_and_closed_queries_follow_durable_publication。可观察预期：assert not store.has_observation('identity')；assert store.has_observation('identity')；assert store.has_observation('identity', stage='post_probe')；assert not store.has_observation('identity', stage='finalizing')。防止请求没有耐久原件却被发送/计执行、身份观测被覆盖、配置原文泄密或伪造，及写入失败的前缀被封成完整证据。"
+    },
+    {
+      "test": "test_prepared_body_is_fsynced_before_start_and_unsent_is_not_execution",
+      "decision": "keep",
+      "reason": "具体场景 test_prepared_body_is_fsynced_before_start_and_unsent_is_not_execution。可观察预期：assert store._logs['request-bodies.jsonl'].fileno() in seen；assert read_jsonl(store.path / 'events.jsonl') == ([], [])；assert store._logs['events.jsonl'].fileno() in seen；assert evidence.request_body(event) == body。防止请求没有耐久原件却被发送/计执行、身份观测被覆盖、配置原文泄密或伪造，及写入失败的前缀被封成完整证据。已删私有 _prepared_requests 三元组存储形状断言，保留 fsync/未发送不计执行。"
+    },
+    {
+      "test": "test_prepared_identity_and_order_cannot_be_reused",
+      "decision": "keep",
+      "reason": "具体场景 test_prepared_identity_and_order_cannot_be_reused。可观察预期：assert len(read_jsonl(store.path / 'request-bodies.jsonl')[0]) == 1；pytest.raises(EvidenceError, match='duplicate_or_misordered_prepared_request')。防止请求没有耐久原件却被发送/计执行、身份观测被覆盖、配置原文泄密或伪造，及写入失败的前缀被封成完整证据。"
+    },
+    {
+      "test": "test_prepared_phase_and_ordinal_are_strict",
+      "decision": "delete",
+      "reason": "仅 phase/ordinal 的基本类型；身份/次序重复的产品拒绝由 test_prepared_identity_and_order_cannot_be_reused 覆盖。"
+    },
+    {
+      "test": "test_run_snapshot_guard_and_high_frequency_logs_remain_distinct",
+      "decision": "delete",
+      "reason": "仅 API 路由、文件名与库存形状，不证明报告/运行结果；实际耐久前缀由 test_failed_append_never_becomes_durable_or_allows_send_or_seal 覆盖。"
+    },
+    {
+      "test": "test_source_missing_fact_is_explicit_and_never_reconstructed",
+      "decision": "keep",
+      "reason": "具体场景 test_source_missing_fact_is_explicit_and_never_reconstructed。可观察预期：assert TrialEvidence(store.path).configuration_source() == {'media_type': None, 'data': None, 'missing_reason': 'not_persisted'}。防止请求没有耐久原件却被发送/计执行、身份观测被覆盖、配置原文泄密或伪造，及写入失败的前缀被封成完整证据。"
+    },
+    {
+      "test": "test_start_without_successful_prepare_or_matching_message_digest_is_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_start_without_successful_prepare_or_matching_message_digest_is_rejected。可观察预期：assert (store.path / 'events.jsonl').read_bytes() == b''；pytest.raises(EvidenceError, match='request_snapshot_missing')；pytest.raises(EvidenceError, match='request_messages_hash_mismatch')；pytest.raises(EvidenceError, match='request_body_identity_mismatch')。防止请求没有耐久原件却被发送/计执行、身份观测被覆盖、配置原文泄密或伪造，及写入失败的前缀被封成完整证据。"
+    }
+  ]
+}

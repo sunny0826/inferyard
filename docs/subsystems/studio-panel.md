@@ -146,7 +146,6 @@ UI 文案按全局规范区分缺测、未知与未配置。
 
 ```sh
 cd studio
-mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go vet ./...
 mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
 mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go build -o build/inferyard-studio .
 mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct sh scripts/build-all.sh
@@ -160,7 +159,7 @@ transcript。判责规则：CLI 非零退出或 stdout 非法归 CLI；应答合
 跨平台可移植，观测差异仍全部落证据。运行旋钮：`INFERYARD_E2E_CLI` 指定 CLI、
 `INFERYARD_E2E_ROOT` 保留现场。套件清单与布局见
 [studio/tests/e2e/README.md](../../studio/tests/e2e/README.md)。CI 由
-`.github/workflows/studio-check.yml` 在 macos-15 与 windows-2025 执行 vet 与该套件；
+`.github/workflows/studio-check.yml` 在 macos-15 与 windows-2025 执行该套件（含编译及默认 vet 检查）；
 内部包单测暂仅在 macos-15 执行，Windows 单测的路径、权限位与时序假设仍待清理。
 
 ## 历史验证材料

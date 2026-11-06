@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_lab_assets.py",
+  "decisions": [
+    {
+      "test": "test_file_guard_uses_native_identity_and_refuses_reparse",
+      "decision": "keep",
+      "reason": "运行前文件变更或祖先 reparse 使 LabFileIdentity 不再 unchanged，防替换模型仍继续跑。"
+    },
+    {
+      "test": "test_native_asset_refusal_paths",
+      "decision": "keep",
+      "reason": "旧 magic、分卷、对象重叠/越界、ledger 不符和目录尺寸错误都拒绝模型身份。"
+    },
+    {
+      "test": "test_native_header_and_ledger_bind_exact_components",
+      "decision": "keep",
+      "reason": "合法 NInfer 容器能读出绑定 artifact ID，防把全部有效模型也误拒绝。"
+    },
+    {
+      "test": "test_real_preflight_blocks_lab_engine_on_mac_before_any_asset_read",
+      "decision": "keep",
+      "reason": "macOS 不支持的 lab adapter 在资产读取前明确阻断，不触发模型或引擎准备。"
+    }
+  ]
+}

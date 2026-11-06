@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_candidates.py",
+  "decisions": [
+    {
+      "test": "test_macos_create_applies_recipe_after_fresh_recommendation",
+      "decision": "keep",
+      "reason": "M9：macOS 新推荐后须保留请求 context=131072、threads=3、profile 和独立内存/磁盘阈值；删除 production GENERATION 自证。"
+    },
+    {
+      "test": "test_model_context_refused",
+      "decision": "keep",
+      "reason": "模型上下文未知、太小或 bool 拒绝且不改候选，避免发出不支持的长上下文请求。"
+    },
+    {
+      "test": "test_recipe_after_platform_defaults",
+      "decision": "keep",
+      "reason": "M9：保留 profile 准入、平台资源阈值及自定义 CUDA 参数；删除 generation 与生产 GENERATION 同源常量比较，配方拒绝另有字面量破坏测试。"
+    }
+  ]
+}

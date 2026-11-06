@@ -1,0 +1,85 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_custody_errors.py",
+  "decisions": [
+    {
+      "test": "test_clock_regression_rejected_state_kept",
+      "decision": "keep",
+      "reason": "运行时时钟回退须拒绝且保留任务，恢复后可关闭，避免截止失效并遗失所有权。"
+    },
+    {
+      "test": "test_clock_value_rejected",
+      "decision": "delete",
+      "reason": "无任务时输入时钟类型枚举为内部防御自测；回退与运行状态由 test_clock_regression_rejected_state_kept 覆盖。"
+    },
+    {
+      "test": "test_close_handle_failure_single_attempt_keeps_ref",
+      "decision": "delete",
+      "reason": "单独 close_handle 失败重复清理托管路径，由 test_close_pipes_failure_single_attempt_keeps_ref 与 test_primary_and_cleanup_errors_kept_separately 覆盖。"
+    },
+    {
+      "test": "test_close_pipes_failure_single_attempt_keeps_ref",
+      "decision": "keep",
+      "reason": "M12：关闭失败保留 unknown、host_cleanup、原引用和托管阻断，后续 step 不重复处置，can_exit=False；删除固定两个关闭尝试/一个成功的内部统计。"
+    },
+    {
+      "test": "test_closed_job_no_further_backend_calls",
+      "decision": "delete",
+      "reason": "关闭后的无调用重复 test_ninfer_source_custody.py::test_cancel_closed_job_is_noop；其余 snapshot/decision 调用次数为实现约束。"
+    },
+    {
+      "test": "test_decision_snapshot_owned_objects_no_backend_calls",
+      "decision": "delete",
+      "reason": "仅断言 snapshot/decision/owned_objects 不调用后端，不观察用户结果。"
+    },
+    {
+      "test": "test_exit_code_failure_then_resume",
+      "decision": "keep",
+      "reason": "退出码读取失败后恢复必须保留真实非零码与先前错误，避免恢复后报成功。"
+    },
+    {
+      "test": "test_nonzero_returncode_can_exit_without_success",
+      "decision": "keep",
+      "reason": "非零退出码可安全退出但不能成功，避免把诊断失败当验证通过。"
+    },
+    {
+      "test": "test_output_limit_after_exit_only_notes",
+      "decision": "keep",
+      "reason": "进程已退出后才发现输出超量应报失败且不再终止进程，避免误触复用 PID。"
+    },
+    {
+      "test": "test_output_limit_stops_job_keeps_exact_prefix",
+      "decision": "keep",
+      "reason": "超量输出停止任务、仅保留有界前缀，避免失控输出耗内存并误报完整诊断。"
+    },
+    {
+      "test": "test_owned_objects_are_original_refs_whole_lifecycle",
+      "decision": "delete",
+      "reason": "仅逐步比较原始 Python 引用身份；错误接手与资源保留已由 test_start_partial_creation_keeps_original_ref 和 test_pump_failure_then_resume_same_ref 覆盖。"
+    },
+    {
+      "test": "test_primary_and_cleanup_errors_kept_separately",
+      "decision": "keep",
+      "reason": "输出超限后又清理失败必须同时保留主错误与清理错误，避免隐藏尚需接管的资源。"
+    },
+    {
+      "test": "test_pump_failure_then_resume_same_ref",
+      "decision": "keep",
+      "reason": "输出读取反复失败后 resume 仍处理原任务，最终可退出但不能抹去 backend 错误。"
+    },
+    {
+      "test": "test_start_error_without_ref_not_registered",
+      "decision": "keep",
+      "reason": "启动没有创建资源时不能登记幽灵任务，后续允许重试启动。"
+    },
+    {
+      "test": "test_start_partial_creation_keeps_original_ref",
+      "decision": "keep",
+      "reason": "启动部分成功时原资源继续被托管，重复 job_id 拒绝且 resume 清理，避免泄漏后误报成功。"
+    },
+    {
+      "test": "test_start_plain_backend_error_not_registered",
+      "decision": "delete",
+      "reason": "无资源的普通 BackendError 与 test_start_error_without_ref_not_registered 重复启动失败后可重试路径。"
+    }
+  ]
+}

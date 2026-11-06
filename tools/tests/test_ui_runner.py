@@ -55,34 +55,12 @@ class NativeUIRunnerTests(unittest.TestCase):
             ]
         )
 
-    def test_missing_console_session_does_not_start_native_tests(self):
-        self.reject([])
-
-    def test_login_not_finished_does_not_start_native_tests(self):
-        self.reject([{"kCGSSessionOnConsoleKey": True, "kCGSessionLoginDoneKey": False}])
-
     def test_probe_error_does_not_start_native_tests(self):
         with patch.object(subprocess, "run", side_effect=OSError("probe unavailable")):
             with self.assertRaises(SystemExit) as error:
                 runner.main()
         self.assertEqual(error.exception.code, 2)
         self.assertFalse(self.output.exists())
-
-    def test_malformed_desktop_state_does_not_start_native_tests(self):
-        with patch.object(
-            subprocess, "run", return_value=subprocess.CompletedProcess([], 0, b"invalid plist")
-        ):
-            with self.assertRaises(SystemExit) as error:
-                runner.main()
-        self.assertEqual(error.exception.code, 2)
-        self.assertFalse(self.output.exists())
-
-    def test_unlocked_desktop_runs_native_tests(self):
-        self.sessions = [{"kCGSSessionOnConsoleKey": True, "kCGSessionLoginDoneKey": True}]
-        with patch.object(subprocess, "run", side_effect=self.command):
-            self.assertEqual(runner.main(), 0)
-        self.assertIn("xcodebuild", self.commands)
-        self.assertTrue(next(self.output.glob("run-*/xcodebuild.log")).is_file())
 
 
 if __name__ == "__main__":

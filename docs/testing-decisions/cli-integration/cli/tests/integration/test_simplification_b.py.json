@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/integration/test_simplification_b.py",
+  "decisions": [
+    {
+      "test": "test_applicable_handoff_reuses_clean_service",
+      "decision": "keep",
+      "reason": "允许复用的clean交接可显式使用原进程，但cache状态必须unknown，不能冒充冷缓存。"
+    },
+    {
+      "test": "test_batch_scoring_failures_do_not_drop_later_trials",
+      "decision": "keep",
+      "reason": "所有评分器异常不能丢失后续trial和执行分母，最终仍退出3且不完整。"
+    },
+    {
+      "test": "test_diagnostic_trial_respects_explicit_environment_safety",
+      "decision": "keep",
+      "reason": "diagnostic不应绕过显式环境安全政策，check_environment开启时在请求前停止，关闭时完成题集。"
+    },
+    {
+      "test": "test_identity_and_storage_errors_stop_independently",
+      "decision": "keep",
+      "reason": "评分器身份/类别不符和存储错误都必须退出4停发，不能作为普通unscorable继续。"
+    },
+    {
+      "test": "test_isolated_score_failure_collects_following_answers",
+      "decision": "keep",
+      "reason": "首题评分器异常不得终止后续回答；整组质量率不可伪造，私有异常文本不能泄露。"
+    },
+    {
+      "test": "test_partial_after_scoring_storage_error_still_requires_new_rerun_service",
+      "decision": "delete",
+      "reason": "存储错误后仍拒绝旧服务的rerun由test_identity_and_storage_errors_stop_independently与test_rerun_same_service_is_always_refused覆盖；metadata私有形状不保留。"
+    },
+    {
+      "test": "test_preflight_diagnostic_flag_is_forwarded",
+      "decision": "keep",
+      "reason": "电源信息缺失时正式run阻断而诊断/check可保留差异继续；删除内部diagnostic参数转发次数断言。"
+    },
+    {
+      "test": "test_rerun_same_service_is_always_refused",
+      "decision": "keep",
+      "reason": "clean/dirty和require_fresh不同组合下，完整重跑均拒绝旧服务且原件不变。"
+    },
+    {
+      "test": "test_trial_isolated_scorer_exception_collects_whole_selection",
+      "decision": "delete",
+      "reason": "共享run_trial评分异常继续收集由本文件test_batch_scoring_failures_do_not_drop_later_trials经实际batch入口覆盖，删除重复单trial路径。"
+    }
+  ]
+}

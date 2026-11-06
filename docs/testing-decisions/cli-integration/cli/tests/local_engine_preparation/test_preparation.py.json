@@ -1,0 +1,65 @@
+{
+  "source_path": "cli/tests/local_engine_preparation/test_preparation.py",
+  "decisions": [
+    {
+      "test": "test_bind_cli_reports_public_reason_without_exception_details",
+      "decision": "keep",
+      "reason": "公开绑定错误只回显受控原因，私有token异常不得泄漏。"
+    },
+    {
+      "test": "test_bind_rejects_identity_mismatch_without_output",
+      "decision": "keep",
+      "reason": "完整local bind身份校验失败时不得写bound产物。"
+    },
+    {
+      "test": "test_bind_writes_new_verified_binding",
+      "decision": "delete",
+      "reason": "bind_service和verify均全mock为成功/append，再核对相同PID字段与调用次数；实际冻结binding消费由 test_local_engine_runtime.test_formal_local_run_seals_and_renders_offline 覆盖，错误拒绝由前一个测试覆盖。"
+    },
+    {
+      "test": "test_candidate_freezes_assets_and_safe_defaults",
+      "decision": "keep",
+      "reason": "新候选冻结模板/模型/安装资产并使用温度必需、安全默认值与具体生成预算，不能默认宽松执行。"
+    },
+    {
+      "test": "test_cli_rejects_invalid_local_options",
+      "decision": "keep",
+      "reason": "非法max tokens/context、nan超时或PID0必须在创建候选前阻断。"
+    },
+    {
+      "test": "test_describe_has_concrete_launch_and_honest_unknowns",
+      "decision": "keep",
+      "reason": "未绑定候选描述必须把实际参数和模板标unknown/null，不能把声明当观察事实。"
+    },
+    {
+      "test": "test_description_and_engine_check_share_original_declaration_digest",
+      "decision": "delete",
+      "reason": "全mock安装后对两个查询返回的digest及schema形状作同实现复述，未走Studio候选错配或绑定拒绝；删除孤立字段同步测试。"
+    },
+    {
+      "test": "test_engine_check_rejects_incomplete_runtime",
+      "decision": "keep",
+      "reason": "安装runtime根无效时engine-check应返回eligible/ready false及原因，不能声称可运行。"
+    },
+    {
+      "test": "test_launch_matches_identity_parser",
+      "decision": "delete",
+      "reason": "只证明startup生成器与validate_startup彼此接受，无独立启动预期；具体隔离、context、重复model拒绝由 test_bootstrap 和 test_identity 的故障测试覆盖。"
+    },
+    {
+      "test": "test_lmstudio_requires_observed_background_process",
+      "decision": "keep",
+      "reason": "LM Studio缺后台PID不能把启动命令冒充实际服务身份。"
+    },
+    {
+      "test": "test_missing_template_is_rejected",
+      "decision": "keep",
+      "reason": "模型无chat_template时必须明确拒绝准备，不能发出无法冻结模板的候选。"
+    },
+    {
+      "test": "test_pelican_default_uses_bundle_id_not_filename",
+      "decision": "keep",
+      "reason": "pelican文件改名不能改变bundle特定4096预算，应按bundle_id选择。"
+    }
+  ]
+}

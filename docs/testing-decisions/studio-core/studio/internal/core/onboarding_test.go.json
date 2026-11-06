@@ -1,0 +1,30 @@
+{
+  "source_path": "studio/internal/core/onboarding_test.go",
+  "decisions": [
+    {
+      "test": "TestProgressUsesInjectedExecutor",
+      "decision": "delete",
+      "reason": "只证明注入 executor 被调用及固定 argv；blocked progress 接受由 TestProgressAcceptsCapableCLIBlocked 覆盖。"
+    },
+    {
+      "test": "TestWizardDeviceCommandUsesConfiguredModelRoot",
+      "decision": "keep",
+      "reason": "用户配置的模型目录必须传至 device-check 并请求 JSON，防扫描错目录导致模型列表为空。"
+    },
+    {
+      "test": "TestWizardExitMappingAndReportVerify",
+      "decision": "keep",
+      "reason": "保留退出码透传、报告失败不得 verify、成功 verify 对应输出；删除用同一生产 MapExitCode 自算 expected 的 status 比较，独立退出映射由 TestExitCodes 覆盖。"
+    },
+    {
+      "test": "TestWizardInitHandoff",
+      "decision": "keep",
+      "reason": "init 新工作区成功后 settings 和 readiness 必须切到新 results，防后续任务仍写旧工作区。"
+    },
+    {
+      "test": "TestWizardKeepsOriginalOutputsAndFrozenStartup",
+      "decision": "keep",
+      "reason": "已有 init 输出不覆盖，候选启动参数含空格须原样保留且越界候选拒绝，防证据丢失与启动错模型。"
+    }
+  ]
+}

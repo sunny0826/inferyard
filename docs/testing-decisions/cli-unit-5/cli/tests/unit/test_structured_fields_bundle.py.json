@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_structured_fields_bundle.py",
+  "decisions": [
+    {
+      "test": "test_current_root_clarification_approval_cannot_approve_new_field_meanings",
+      "decision": "keep",
+      "reason": "旧prompt批准不能授权新字段语义，即使拷贝审核记录也拒绝，避免复用过期审题。"
+    },
+    {
+      "test": "test_documented_direct_script_check_works_outside_repository_cwd",
+      "decision": "keep",
+      "reason": "文档直接脚本--check在仓库外cwd仍成功，保障打包/操作者入口资源定位。"
+    },
+    {
+      "test": "test_two_field_prompts_preserve_all_other_cases_rules_and_order",
+      "decision": "keep",
+      "reason": "两字段语义澄清只改prompt不改其余case/rules/题序，避免意外改变评分任务。"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/integration/test_memory_check_windows_cli.py",
+  "decisions": [
+    {
+      "test": "test_native_token_session_and_filetime_are_read_only",
+      "decision": "keep",
+      "reason": "原生token/session和FILETIME读取应有有效值且只读前后一致，防止诊断改变或混淆进程身份。"
+    },
+    {
+      "test": "test_partial_reaches_public_cli",
+      "decision": "keep",
+      "reason": "owner/主机内存/预算/保护目标/private commit缺失时，coverage不完整且决策unknown。"
+    },
+    {
+      "test": "test_public_cli_success_persistence_privacy_and_no_external_actions",
+      "decision": "keep",
+      "reason": "Windows公开诊断实际保护PID、隐去owner/path、不联网不发信号不写host状态，结果落盘且不覆盖。"
+    }
+  ]
+}

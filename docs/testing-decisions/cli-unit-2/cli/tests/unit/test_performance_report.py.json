@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_performance_report.py",
+  "decisions": [
+    {
+      "test": "test_comparison_table_escapes_labels_and_keeps_refused_difference_empty",
+      "decision": "keep",
+      "reason": "保留恶意标签转义与拒绝差值 — ms；删内部模板 data-eligible 属性。"
+    }
+  ]
+}

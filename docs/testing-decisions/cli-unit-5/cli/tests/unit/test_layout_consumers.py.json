@@ -1,0 +1,75 @@
+{
+  "source_path": "cli/tests/unit/test_layout_consumers.py",
+  "decisions": [
+    {
+      "test": "test_configuration_binding_uses_content_not_container_digest",
+      "decision": "keep",
+      "reason": "配置成员内容变了但计划绑定未变时拒绝，避免以容器新哈希掩盖测量输入变化。"
+    },
+    {
+      "test": "test_container_tail_retains_denominator_and_rejects_sealed_run",
+      "decision": "keep",
+      "reason": "未封存尾半行保留分母但标不完整，已封存截断拒绝，防止残缺证据变成功。"
+    },
+    {
+      "test": "test_legacy_broken_seal_precedes_malformed_parsed_config",
+      "decision": "keep",
+      "reason": "旧原件哈希损坏先于配置解析报告证据错误，避免损坏被误称输入配置问题。"
+    },
+    {
+      "test": "test_missing_end_record_does_not_inherit_start_or_container_existence",
+      "decision": "keep",
+      "reason": "缺结束环境观测须阻断环境资格，不得以开始观测或容器存在补造结束值。"
+    },
+    {
+      "test": "test_missing_run_inputs_cannot_fall_back_to_independent_environment_sidecars",
+      "decision": "keep",
+      "reason": "独立environment旁证无run输入不能当成运行，防止旁证目录获得运行资格。"
+    },
+    {
+      "test": "test_native_manifest_claim_requires_actual_capability_member",
+      "decision": "keep",
+      "reason": "manifest声称native能力但无真实能力成员须拒绝，避免伪造采集资格。"
+    },
+    {
+      "test": "test_native_missing_receipt_is_legacy_only_and_has_exact_public_reason",
+      "decision": "keep",
+      "reason": "旧布局允许缺收据而新布局拒绝并给公开原因，避免破坏历史读取或放宽新写入要求。"
+    },
+    {
+      "test": "test_native_receipts_bind_inventory_and_never_prove_engine_drain",
+      "decision": "keep",
+      "reason": "缺收据、额外收据、错客户端或错误排空范围均拒绝；客户端完成不得证明引擎内部排空。"
+    },
+    {
+      "test": "test_non_strict_mode_checks_complete_original_body",
+      "decision": "keep",
+      "reason": "普通模式原始body偷加ignore_eos，即使重新封存也应拒绝，避免错误的固定输出资格。"
+    },
+    {
+      "test": "test_old_new_reduction_conserves_scope_and_binds_real_members",
+      "decision": "keep",
+      "reason": "新旧布局归约的分母、token与可核验来源引用须一致，否则迁移布局会改变报告结论；去掉八文件数量断言。"
+    },
+    {
+      "test": "test_prepared_without_started_never_increases_executed",
+      "decision": "keep",
+      "reason": "prepared未发送请求不得增加executed，否则完成率分母与实际执行混淆。"
+    },
+    {
+      "test": "test_projection_does_not_read_prepared_or_measurement_logs",
+      "decision": "delete",
+      "reason": "仅钩住Path.open禁止读取特定日志，约束投影读取实现；prepared分母由test_prepared_without_started_never_increases_executed覆盖。"
+    },
+    {
+      "test": "test_protocol_consumers_read_complete_body_and_reject_hidden_mutation",
+      "decision": "keep",
+      "reason": "cache及lab读取完整请求后拒绝max_tokens偏离冻结计划，避免摘要隐藏参数变化。复审删除TrialEvidence读取等于写入配置的夹具自证；保留变异前check成功及重新封存后request_differs_from_plan，防止拒绝测试空跑。"
+    },
+    {
+      "test": "test_token_inventory_rejects_resealed_bad_logical_members",
+      "decision": "keep",
+      "reason": "token库存缺项、布尔phase、乱序或多项即使重新封存也拒绝，防止错误输入长度结论。"
+    }
+  ]
+}

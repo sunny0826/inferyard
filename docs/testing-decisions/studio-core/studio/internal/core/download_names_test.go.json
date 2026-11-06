@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/core/download_names_test.go",
+  "decisions": [
+    {
+      "test": "TestDownloadNameExhaustion",
+      "decision": "keep",
+      "reason": "1000 个目录全部占用须明确失败，释放末名可用且失败任务仍保留名称，防无界寻找或覆盖旧下载。"
+    },
+    {
+      "test": "TestDownloadNamesSettings",
+      "decision": "keep",
+      "reason": "下载目录名禁止路径/空值/错误类型且保存后仍可读，设置权限私有，防越界目录和设置泄漏。"
+    },
+    {
+      "test": "TestEngineAutomaticNames",
+      "decision": "keep",
+      "reason": "连续创建引擎任务须避开已存在目录及尚在运行的任务预留名，防并发任务覆盖同一输出。"
+    },
+    {
+      "test": "TestModelAutomaticNamesAndToken",
+      "decision": "keep",
+      "reason": "自动命名避开已有文件、symlink 和取消保留名；凭据仅传环境引用且不在任务 JSON 暴露，防覆盖与泄漏。"
+    }
+  ]
+}

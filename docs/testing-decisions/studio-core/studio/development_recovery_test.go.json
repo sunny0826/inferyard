@@ -1,0 +1,50 @@
+{
+  "source_path": "studio/development_recovery_test.go",
+  "decisions": [
+    {
+      "test": "TestDevelopmentRecoveryHandoffCannotDowngradeAfterSessionDisappears",
+      "decision": "keep",
+      "reason": "已发现 session 后它消失不能降级为缺失 session 恢复，否则身份检查被绕过并错误切换环境。"
+    },
+    {
+      "test": "TestDevelopmentRecoveryLateSessions",
+      "decision": "keep",
+      "reason": "三个恢复屏障上出现 starting/ready/stopped receipt 必须交回原停止路径，failed 或错误 PID 不能被忽略，否则恢复结论错误。"
+    },
+    {
+      "test": "TestDevelopmentRecoveryLockChild",
+      "decision": "keep",
+      "reason": "原生锁竞争 helper，供 TestDevelopmentRecoveryWaitsForRealOwnerWriter 验证另一个进程尚在写 owner 时不得恢复。"
+    },
+    {
+      "test": "TestDevelopmentRecoveryOptions",
+      "decision": "keep",
+      "reason": "controller/target 必须成对且与 stop/debug 模式互斥，防命令把错误 launch 当作恢复目标。"
+    },
+    {
+      "test": "TestDevelopmentRecoveryPreservesInputsAndNeedsNoCLI",
+      "decision": "keep",
+      "reason": "CLI 环境已缺失仍须可重复恢复并保留 manifest/binary/child 字节；跨 checkout 与超大记录拒绝，防恢复破坏原始归属。"
+    },
+    {
+      "test": "TestDevelopmentRecoveryRecoversExitedChildWithoutReceipt",
+      "decision": "keep",
+      "reason": "已退出且未写 session 的开发子进程应可恢复，不得伪造 session receipt，否则重建永久阻塞或伪造证据。"
+    },
+    {
+      "test": "TestDevelopmentRecoveryRejectsPresentUnknownAndChangedInputs",
+      "decision": "keep",
+      "reason": "活进程、未知身份、二次观察变活、child/manifest/binary/owner/workspace 改变或锁失败均必须阻断恢复，防新环境与旧进程重叠。"
+    },
+    {
+      "test": "TestDevelopmentRecoveryRejectsUnsafeRecords",
+      "decision": "keep",
+      "reason": "逐项覆盖非法 PID 类型/范围/重复键、symlink、损坏 session/stop；拒绝且不覆写原记录，防错误进程被当作可恢复。"
+    },
+    {
+      "test": "TestDevelopmentRecoveryWaitsForRealOwnerWriter",
+      "decision": "keep",
+      "reason": "owner 写入尚持有跨进程锁时恢复必须超时，锁释放后也必须看到新 owner，否则切换会遗留运行中的引擎。"
+    }
+  ]
+}

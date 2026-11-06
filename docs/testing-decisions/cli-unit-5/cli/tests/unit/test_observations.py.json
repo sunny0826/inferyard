@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_observations.py",
+  "decisions": [
+    {
+      "test": "test_absent_attempts_have_zero_denominator_not_zero_score",
+      "decision": "keep",
+      "reason": "全部未执行时完成率与延迟null并零观测分母，不能冒充零分/零延迟。"
+    },
+    {
+      "test": "test_cancelled_attempt_never_improves_quality_or_budget_rate",
+      "decision": "keep",
+      "reason": "取消任务不改善质量或预算率且不授完整可比资格，避免取消刷高成绩。"
+    },
+    {
+      "test": "test_four_attempts_keep_failures_and_budget_exhaustion_in_denominator",
+      "decision": "keep",
+      "reason": "四尝试含失败/预算耗尽时完成率3/4质量2/4，p95样本不足缺测，避免分母缩减和延迟偏低。"
+    },
+    {
+      "test": "test_identical_numeric_values_remain_separate_by_category",
+      "decision": "keep",
+      "reason": "数学与QA即使同值也独立归约，避免跨类别串分。"
+    },
+    {
+      "test": "test_structured_field_count_is_not_request_count",
+      "decision": "keep",
+      "reason": "结构化2请求6字段的分母应为6而非2，避免字段通过率错误。"
+    }
+  ]
+}

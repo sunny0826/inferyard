@@ -1,0 +1,40 @@
+{
+  "source_path": "studio/internal/pages/downloads_catalog_test.go",
+  "decisions": [
+    {
+      "test": "TestCatalogDisplayNameSeparatesEntriesThatShareATitle",
+      "decision": "keep",
+      "reason": "同名跨平台资源必须有不同显示名及平台信息，防止用户点选错误发行包。"
+    },
+    {
+      "test": "TestCatalogSizeRendering",
+      "decision": "keep",
+      "reason": "未知大小不能显示零；bytes/KiB/MiB 显式转换防止用户误判下载体积。"
+    },
+    {
+      "test": "TestDownloadsCatalogDefaultsAndProgressiveDetails",
+      "decision": "delete",
+      "reason": "静态大小、折叠默认和版本面板文案为展示结构；平台资源选择由 TestDownloadsCatalogPlatformChoices 覆盖，默认资源由 first-use 流程覆盖。"
+    },
+    {
+      "test": "TestDownloadsCatalogPlatformChoices",
+      "decision": "keep",
+      "reason": "macOS/Windows/Linux 各架构只列本平台可下载资源，不支持平台给原因；参考准备项不能变成不可用下载。"
+    },
+    {
+      "test": "TestDownloadsCatalogPreservesInitialCustomURL",
+      "decision": "keep",
+      "reason": "打开下载页不得覆盖已有自定义 URL，否则用户下载错资源。"
+    },
+    {
+      "test": "TestDownloadsCatalogSelectionAndManualEdit",
+      "decision": "keep",
+      "reason": "选择资源填入正确 URL，手工改地址清掉旧选中状态且允许重新选回，避免地址与选择标记不一致。"
+    },
+    {
+      "test": "TestDownloadsCatalogWarnsForCustomForeignAsset",
+      "decision": "keep",
+      "reason": "手填其他平台引擎地址不能被自动替换，但须警示不能本机运行，避免无效下载。"
+    }
+  ]
+}

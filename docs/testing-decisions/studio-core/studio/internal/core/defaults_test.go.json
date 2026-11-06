@@ -1,0 +1,80 @@
+{
+  "source_path": "studio/internal/core/defaults_test.go",
+  "decisions": [
+    {
+      "test": "TestDefaultEngineURLPlatforms",
+      "decision": "delete",
+      "reason": "固定当前 macOS 文件后缀及目录 URL 前缀，重复 TestCatalogEngineForPlatform 的平台资源选择保障。"
+    },
+    {
+      "test": "TestEngineRootsOrder",
+      "decision": "delete",
+      "reason": "仅固定私有根目录数组与下标顺序；用户可见工作区/用户资源合并由 TestRegistryEngineRootsDepthAndPlainFile 覆盖。"
+    },
+    {
+      "test": "TestFetchEngineFetchesTheEngineBinaryItself",
+      "decision": "keep",
+      "reason": "单独引擎二进制应可下载使用，防只支持归档使合法资源不可安装。"
+    },
+    {
+      "test": "TestFetchEngineMissingBinary",
+      "decision": "delete",
+      "reason": "只有 README 的归档须失败，由 TestEngineDownloadFailures/missing 通过公共下载任务覆盖。"
+    },
+    {
+      "test": "TestFetchEngineOutputExists",
+      "decision": "delete",
+      "reason": "已有输出不覆盖由 TestEngineDownloadAdmission 和 TestEngineDownloadLifecycle 重名准入覆盖。"
+    },
+    {
+      "test": "TestFetchEngineRecreatesSafeSymlinks",
+      "decision": "delete",
+      "reason": "安全兄弟库 symlink 的可用性由 TestEngineDownloadLifecycle 读取链接对应真实库内容覆盖；不再固定链接字符串。"
+    },
+    {
+      "test": "TestFetchEngineRejectsAPlainFileThatIsNotTheEngine",
+      "decision": "keep",
+      "reason": "wheel 等普通文件不能被登记成引擎且不能留下输出目录，否则不可执行资源伪装下载完成。"
+    },
+    {
+      "test": "TestFetchEngineRejectsBadInput",
+      "decision": "keep",
+      "reason": "直接下载接口不能接受相对输出目录或非 HTTPS 源，防写入不确定位置。"
+    },
+    {
+      "test": "TestFetchEngineRejectsEscapingSymlink",
+      "decision": "delete",
+      "reason": "逃逸符号链接拒绝由 TestEngineDownloadFailures/link 经完整任务状态和错误码覆盖。"
+    },
+    {
+      "test": "TestFetchEngineRejectsTraversal",
+      "decision": "keep",
+      "reason": "tar 条目 ../ 逃逸必须失败，防解压覆盖目标目录外文件。"
+    },
+    {
+      "test": "TestFetchEngineStreamsAnArchiveLargerThanTheInMemoryLimit",
+      "decision": "keep",
+      "reason": "真实大小超过旧 64MiB 上限的归档仍须解压且无 staging 残留，否则用户无法安装实际较大的引擎发布包。"
+    },
+    {
+      "test": "TestFetchEngineUnpacksArchive",
+      "decision": "delete",
+      "reason": "下载解压、可执行权限和兄弟库保留由 TestEngineDownloadLifecycle 覆盖；可执行权限断言移入该完整流程。"
+    },
+    {
+      "test": "TestScanEngineBinariesPicksNewest",
+      "decision": "delete",
+      "reason": "重复引擎扫描与默认选择，TestRegistryEngineRootsDepthAndPlainFile 通过用户注册表覆盖；不再固定底层扫描数组顺序。"
+    },
+    {
+      "test": "TestScanEngineBinariesSkipsDeepTrees",
+      "decision": "delete",
+      "reason": "扫描深度及无执行权限排除由 TestRegistryEngineRootsDepthAndPlainFile 覆盖，不另保留私有函数变体。"
+    },
+    {
+      "test": "TestValidEngineSource",
+      "decision": "keep",
+      "reason": "引擎源拒绝 HTTP、query、用户凭据和路径穿越，防不安全下载或凭据被保存。"
+    }
+  ]
+}

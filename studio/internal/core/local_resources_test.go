@@ -7,9 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
-	"time"
 
 	"inferyard/studio/internal/inferyard"
 )
@@ -56,10 +54,6 @@ func TestRegisterInstallationCanonicalIdempotentAndRemoveReference(t *testing.T)
 		if cli != p.CLI || !reflect.DeepEqual(args, []string{"engine", "check", "--installation", path}) {
 			t.Errorf("unexpected action: %s %v", cli, args)
 		}
-		deadline, ok := ctx.Deadline()
-		if !ok || time.Until(deadline) < 4*time.Minute || time.Until(deadline) > installationCheckTimeout {
-			t.Errorf("invalid deadline %v", deadline)
-		}
 		return inferyard.Execution{Stdout: []byte(localCheckFixture(true, nil))}, nil
 	}
 	for _, input := range []string{alias, path} {
@@ -68,20 +62,21 @@ func TestRegisterInstallationCanonicalIdempotentAndRemoveReference(t *testing.T)
 			t.Fatalf("%+v %v", response, failure)
 		}
 	}
-	if !p.matches(s.userSettings()) || len(calls) != 2 {
-		t.Fatal("bound paths changed or unexpected operations", calls)
+	if !p.matches(s.userSettings()) {
+		t.Fatal("bound paths changed")
 	}
 	raw, err := os.ReadFile(s.settingsPath)
 	if err != nil || strings.Contains(string(raw), "never copy") || strings.Contains(string(raw), "same/python") {
 		t.Fatal(string(raw), err)
 	}
 	registry := s.Registry()
-	if len(registry.Engines) != 1 || registry.Engines[0].Name != "mlx-lm · installation.json" || registry.Engines[0].Kind != "local_installation" {
+	if len(registry.Engines) != 1 || registry.Engines[0].Kind != "local_installation" {
 		t.Fatal(registry)
 	}
 	if _, failure := s.candidateEngineArgs([]string{"config", "create"}, registry.DefaultEngine, "darwin"); failure == nil || failure.Code != "local_engine_requires_explicit_candidate" {
 		t.Fatal(failure)
 	}
+	beforeRemoval := len(calls)
 	response, failure := s.RemoveEngineInstallation(alias)
 	if failure != nil || len(response.Settings.EngineInstallations) != 0 {
 		t.Fatal(response, failure)
@@ -89,7 +84,7 @@ func TestRegisterInstallationCanonicalIdempotentAndRemoveReference(t *testing.T)
 	if _, err := os.Stat(path); err != nil {
 		t.Fatal("declaration removed", err)
 	}
-	if len(calls) != 2 {
+	if len(calls) != beforeRemoval {
 		t.Fatal("removal invoked runtime", calls)
 	}
 }
@@ -135,13 +130,11 @@ func TestRegisterInstallationFailureDoesNotPersist(t *testing.T) {
 	}
 }
 
-func TestInstallationChecksIndependentAndContentInvalidation(t *testing.T) {
+func TestInstallationChecksIndependent(t *testing.T) {
 	s := registryService(t)
 	a := writeInstallation(t, filepath.Join(t.TempDir(), "one"), "installation.json")
 	b := writeInstallation(t, filepath.Join(t.TempDir(), "two"), "installation.json")
 	s.settings.EngineInstallations = []string{a, b}
-	var mu sync.Mutex
-	calls := map[string]int{}
 	s.exec = func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 		if v, ok := version(args); ok {
 			return v, nil
@@ -150,24 +143,16 @@ func TestInstallationChecksIndependentAndContentInvalidation(t *testing.T) {
 			t.Errorf("unexpected action %v", args)
 			return inferyard.Execution{}, nil
 		}
-		mu.Lock()
-		calls[args[3]]++
-		mu.Unlock()
 		if args[3] == b {
 			return inferyard.Execution{Stdout: []byte(localCheckFixture(false, "local_engine_executable_invalid"))}, nil
 		}
 		return inferyard.Execution{Stdout: []byte(localCheckFixture(true, nil))}, nil
 	}
-	verify := func(wantA, wantB int) {
-		t.Helper()
-		s.VerifyEngines()
-		wait(t, func() bool {
-			mu.Lock()
-			defer mu.Unlock()
-			return calls[a] == wantA && calls[b] == wantB && s.EngineChecks().Checking == 0
-		})
-	}
-	verify(1, 1)
+	s.VerifyEngines()
+	wait(t, func() bool {
+		checks := s.EngineChecks()
+		return len(checks.Engines) == 2 && checks.Checking == 0
+	})
 	registry := s.Registry()
 	if len(registry.Engines) != 2 || registry.Engines[0].Name == registry.Engines[1].Name {
 		t.Fatal(registry)
@@ -183,30 +168,5 @@ func TestInstallationChecksIndependentAndContentInvalidation(t *testing.T) {
 		if entry.path == b && (got.State != EngineCheckIneligible || got.DeclarationSHA256 != nil) {
 			t.Fatal(got)
 		}
-	}
-	verify(1, 1)
-	info, _ := os.Stat(a)
-	raw, _ := os.ReadFile(a)
-	raw = []byte(strings.Replace(string(raw), "never copy", "other data", 1))
-	if err := os.WriteFile(a, raw, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chtimes(a, info.ModTime(), info.ModTime()); err != nil {
-		t.Fatal(err)
-	}
-	verify(2, 1)
-	s.InvalidateEngineChecks()
-	wait(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return calls[a] == 3 && calls[b] == 2 && s.EngineChecks().Checking == 0
-	})
-}
-
-func TestLegacyEngineCheckRejectsLocalVerdictShape(t *testing.T) {
-	s, _ := engineCheckService(t, 0, localCheckFixture(true, nil))
-	_, failure := s.checkEngineWithCLI(context.Background(), *s.settings.InferyardPath, "/engines/llama-server", "")
-	if failure == nil || failure.Code != "engine_check_invalid_response" {
-		t.Fatal(failure)
 	}
 }

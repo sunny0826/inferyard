@@ -42,13 +42,3 @@ func TestProgressContractBoundaries(t *testing.T) {
 		}
 	}
 }
-func TestProgressAllPhases(t *testing.T) {
-	for phase, action := range map[string]string{"preflight_missing": "device_check", "candidate_missing": "prepare_candidate", "bound_missing": "bind", "run_missing": "run", "run_incomplete": "resume", "run_complete": "none"} {
-		raw := strings.Replace(contractProgressFixture, `"phase": "bound_missing"`, `"phase": "`+phase+`"`, 1)
-		raw = strings.Replace(raw, `"next_action": "bind"`, `"next_action": "`+action+`"`, 1)
-		p, err := ParseProgress([]byte(raw))
-		if err != nil || p.Bundles[0].Phase != phase || p.Bundles[0].NextAction != action {
-			t.Fatalf("%s %v", phase, err)
-		}
-	}
-}

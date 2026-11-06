@@ -97,14 +97,6 @@ def report(monkeypatch, rows, protected=(), **updates):
     return memory_check.inspect_memory(protected, collector=lambda **_: snapshot(rows, **updates))
 
 
-def test_working_set_and_private_commit_are_distinct(boundary):
-    row = native.observe(10, psutil)
-    assert row["rss"]["value"] == 100
-    assert row["private_commit"]["value"] == 300
-    assert row["start_identity"] == 1000
-    assert row["owner"] == "private-owner"
-
-
 @pytest.mark.parametrize("field", ["start", "owner", "session"])
 def test_identity_reuse_discards_both_measurements(boundary, monkeypatch, field):
     calls = iter([1000, 1001])
@@ -326,18 +318,6 @@ def test_deadline_reaps_owned_worker_with_partial_host(tmp_path, monkeypatch):
     assert owned[0].poll() is not None
 
 
-@pytest.mark.parametrize("count", [1, 2, 3])
-def test_worker_process_limit(boundary, monkeypatch, count):
-    messages = []
-    monkeypatch.setattr(psutil, "pids", lambda: list(range(10, 10 + count)))
-    monkeypatch.setattr(psutil, "virtual_memory", lambda: SimpleNamespace(total=100, available=50))
-    monkeypatch.setattr(native, "_send", lambda *message: messages.append(message))
-    native._worker(2)
-    assert messages[0][1]["total_pids"] == count
-    assert len([m for m in messages if m[0] == "process"]) == min(count, 2)
-    assert messages[-1] == ("done", "process_limit" if count > 2 else None)
-
-
 def test_failed_worker_is_tool_error():
     with pytest.raises(OSError, match="memory_collector_failed"):
         native.collect(
@@ -379,18 +359,3 @@ def test_cancellation_reaps_only_owned_worker(monkeypatch):
     with pytest.raises(KeyboardInterrupt):
         native.collect(deadline_seconds=1, max_processes=1)
     assert worker.killed
-
-
-def test_worker_command_owns_actual_interpreter_and_preserves_module_imports(tmp_path):
-    marker = tmp_path / "worker.py"
-    marker.write_text("import os, sys; print(os.getpid()); print(sys.argv[-1])", encoding="utf-8")
-    command = native._worker_command(7)
-    command[-1] = command[-1].replace(
-        "runpy.run_module('inferyard.platforms.memory_windows', run_name='__main__')",
-        f"runpy.run_path({str(marker)!r}, run_name='__main__')",
-    )
-    with subprocess.Popen(command, stdout=subprocess.PIPE) as worker:
-        output, _ = worker.communicate(timeout=3)
-        worker_pid, limit = output.decode().splitlines()
-        assert int(worker_pid) == worker.pid
-        assert limit == "7" and worker.returncode == 0

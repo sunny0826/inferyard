@@ -1,0 +1,40 @@
+{
+  "source_path": "studio/internal/core/catalog_test.go",
+  "decisions": [
+    {
+      "test": "TestCatalogDisplayNameIsUnique",
+      "decision": "delete",
+      "reason": "静态展示名唯一性没有验证选择或下载行为；资源 ID 唯一由 TestCatalogEntriesAreUniqueAndComplete，实际选择身份由 TestRegistrySameRootNamesKeepIdentityWhenMtimeChanges 覆盖。"
+    },
+    {
+      "test": "TestCatalogDownloadableIsDerivedFromTheRealValidators",
+      "decision": "delete",
+      "reason": "用同一生产私有 validator 重算 Downloadable，复述实现；真实下载成功/拒绝由 TestEngineDownloadLifecycle、TestEngineDownloadAdmission 覆盖。"
+    },
+    {
+      "test": "TestCatalogEngineForPlatform",
+      "decision": "keep",
+      "reason": "五种支持平台须获得存在且可下载的匹配引擎，未知平台须无结果，否则安装错误平台二进制。"
+    },
+    {
+      "test": "TestCatalogEntriesAreUniqueAndComplete",
+      "decision": "keep",
+      "reason": "内置资源 ID 重复、空下载 URL 或坏摘要会使发布包无法正确选择和下载资源。"
+    },
+    {
+      "test": "TestCatalogReferenceEntriesExplainWhyTheyAreNotDownloadable",
+      "decision": "keep",
+      "reason": "不能直接下载的参考资源须有原因及准备文档，防用户只看到不可操作资源；删除强制存在参考条目的数量断言。"
+    },
+    {
+      "test": "TestCatalogSaysWhichEntriesRunHere",
+      "decision": "delete",
+      "reason": "直接比较 Platform == any/current 与同样实现的返回值，仅重写条件表达式；平台引擎选择由 TestCatalogEngineForPlatform 覆盖。"
+    },
+    {
+      "test": "TestDefaultURLsComeFromTheCatalog",
+      "decision": "delete",
+      "reason": "只要求两套 getter 返回同一个目录字段，锁定内部事实来源；可下载引擎与实际默认模型下载由 TestCatalogEngineForPlatform、TestModelAutomaticNamesAndToken 覆盖。"
+    }
+  ]
+}

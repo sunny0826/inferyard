@@ -5,8 +5,6 @@ import httpx
 import pytest
 
 from inferyard.adapters.local_engines.protocol import FAMILIES
-from inferyard.contracts.schemas_observation import OBSERVATION
-from inferyard.contracts.validation import _validate
 from inferyard.platforms.identity import PreflightError
 
 
@@ -18,8 +16,6 @@ def test_formal_generation_and_queue_scope(rig, family, stream):
         a = r.adapter
         try:
             props = await a.verify_properties(r.config)
-            assert props["observation"]["definition"] == "local-engine-observation.v1"
-            _validate(props["observation"], OBSERVATION, "observation")
             if family == "lmstudio":
                 assert props["observation"]["endpoints"]["lms:ps"]["status_code"] is None
             observations = []
@@ -33,9 +29,7 @@ def test_formal_generation_and_queue_scope(rig, family, stream):
             assert result["execution_state"] == "completed"
             assert result["content"] == "ok"
             assert result["completion_tokens"] == 1
-            assert not a.queue_ready
             assert await a.wait_ready(observe=lambda _, data: observations.append(data))
-            assert a.queue_ready
             assert all(item["engine_internal_drain"] is None for item in observations)
             assert all(
                 item["signals"]["queue_snapshot"]["observation"]["idle"] for item in observations
@@ -88,11 +82,9 @@ def test_failure_never_becomes_clean_when_queue_zero(rig, family, failure):
             else:
                 result = await task
                 assert result["execution_state"] == "failed"
-            assert a.native_uncertain
             observed = []
             assert not await a.wait_ready(observe=lambda _, data: observed.append(data))
             assert observed[-1]["signals"]["queue_snapshot"]["observation"]["idle"]
-            assert not a.queue_ready
             with pytest.raises(PreflightError, match="queue_admission"):
                 await a.generate(a.request_body(r.config, "never"), 1)
             assert len(r.posts) == 1
@@ -231,27 +223,6 @@ def test_http_context_close_failure_is_not_clean(rig):
             assert result["execution_state"] == "failed"
             assert r.adapter.native_uncertain
             assert not await r.adapter.wait_ready()
-        finally:
-            await r.adapter.close()
-
-    asyncio.run(run())
-
-
-def test_successful_http_then_observer_failure_stays_uncertain(rig):
-    async def run():
-        r = rig()
-        try:
-            await r.adapter.verify_properties(r.config)
-            assert await r.adapter.wait_ready()
-            assert (await r.adapter.generate(r.adapter.request_body(r.config, "hi"), 1))[
-                "execution_state"
-            ] == "completed"
-            original = r.metrics
-            r.metrics = ""
-            assert not await r.adapter.wait_ready()
-            r.metrics = original
-            assert not await r.adapter.wait_ready()
-            assert r.adapter.native_uncertain
         finally:
             await r.adapter.close()
 

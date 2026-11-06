@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_external_cpu_windows.py",
+  "decisions": [
+    {
+      "test": "test_bracketing_intervals_cover_request_without_double_counting",
+      "decision": "keep",
+      "reason": "具体场景 test_bracketing_intervals_cover_request_without_double_counting。可观察预期：assert row['covered_ns'] == 800 and row['coverage_ratio'] == 1；assert row['observed_max_percent'] == 10 and result['all_requests_eligible']；assert overlapping['requests'][0]['coverage_ratio'] == 1。Windows 请求只在冻结阈值下被完整有效区间覆盖才可比；重叠不能重复覆盖，缺测/超阈/过宽区间不能通过，容差必须改变冻结身份。"
+    },
+    {
+      "test": "test_missing_excess_and_wide_intervals_do_not_qualify",
+      "decision": "keep",
+      "reason": "具体场景 test_missing_excess_and_wide_intervals_do_not_qualify。逐项参数：pytest.mark.parametrize('rows,reason', [([interval(200, 1000, 0)], 'external_load_request_coverage_incomplete'), ([interval(0, 500, 0), interval(500, 1000, None)], 'external_load_request_coverage_incomplete'), ([interval(0, 1000, 11)], 'external_load_frozen_tolerance_exceeded'), ([interval(0, 2000000000, 0)], 'external_load_interval_too_wide')])。可观察预期：assert not result['all_requests_eligible']；assert reason in result['requests'][0]['reasons']。Windows 请求只在冻结阈值下被完整有效区间覆盖才可比；重叠不能重复覆盖，缺测/超阈/过宽区间不能通过，容差必须改变冻结身份。"
+    },
+    {
+      "test": "test_no_frozen_tolerance_or_no_request_interval_never_qualifies",
+      "decision": "keep",
+      "reason": "具体场景 test_no_frozen_tolerance_or_no_request_interval_never_qualifies。可观察预期：assert not assess([interval(0, 1000, 0)], None)['all_requests_eligible']；assert not assess([], request={**REQUEST, 't_terminal_ns': None})['all_requests_eligible']；assert not assess_windows({'intervals': []}, [], POLICY)['all_requests_eligible']。Windows 请求只在冻结阈值下被完整有效区间覆盖才可比；重叠不能重复覆盖，缺测/超阈/过宽区间不能通过，容差必须改变冻结身份。"
+    },
+    {
+      "test": "test_performance_tolerance_changes_plan_hash_and_invalid_bounds_rejected",
+      "decision": "keep",
+      "reason": "具体场景 test_performance_tolerance_changes_plan_hash_and_invalid_bounds_rejected。可观察预期：assert compile_plan(source)['plan_sha256'] != original；pytest.raises(ContractError)。Windows 请求只在冻结阈值下被完整有效区间覆盖才可比；重叠不能重复覆盖，缺测/超阈/过宽区间不能通过，容差必须改变冻结身份。"
+    }
+  ]
+}

@@ -144,31 +144,19 @@ func TestDiscoveryRenderedOnBothPages(t *testing.T) {
 				t.Fatal("non-model noise rendered: "+gone, tt.Texts())
 			}
 		}
-		if modelPage {
-			// The models page services card is read-only: no binding UI of any
-			// kind, and no bind-related explanation text either.
-			if len(modelUINodes(tt, "text", "绑定")) != 0 || tt.HasText("绑定操作在 Dashboard 进行") {
-				t.Fatal("models page must not offer binding", tt.Texts())
-			}
-		} else if len(modelUINodes(tt, "text", "绑定")) == 0 {
-			t.Fatal("dashboard keeps the bind action", tt.Texts())
+		_, hasBinding := tt.Find("绑定")
+		if hasBinding == modelPage {
+			t.Fatal("binding entry must only be available on the task page", tt.Texts())
+		}
+		click(t, tt, "模型目录（1）")
+		if !tt.HasText("Qwen.gguf") {
+			t.Fatal("expanded model directory is unreadable", tt.Texts())
 		}
 		for _, text := range tt.Texts() {
 			if strings.Contains(text, "/private/") {
 				t.Fatal("path leaked", text)
 			}
 		}
-	}
-}
-
-func TestWizardFailureFallback(t *testing.T) {
-	r := core.WizardResult{ExitCode: 2, Status: inferyard.Blocked}
-	if e := wizardFailure(r); e.Message != human("blocked") {
-		t.Fatal(e)
-	}
-	r.Limitations = []string{"startup_arguments_mismatch", "service_process_unavailable"}
-	if e := wizardFailure(r); e.Message != human("startup_arguments_mismatch") || len(e.Limitations) != 2 {
-		t.Fatal(e)
 	}
 }
 

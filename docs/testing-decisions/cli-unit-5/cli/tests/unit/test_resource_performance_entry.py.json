@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_resource_performance_entry.py",
+  "decisions": [
+    {
+      "test": "test_another_allowed_case_does_not_hide_unknown_resource",
+      "decision": "delete",
+      "reason": "专项验收helper缺/拒资源对的合成矩阵自测；产品逐请求unknown分母由test_resource_constraints.py::test_unknown_slots_stay_in_denominator_and_never_pass覆盖。"
+    },
+    {
+      "test": "test_every_required_case_and_metric_must_be_qualified",
+      "decision": "delete",
+      "reason": "专项真实设备验收脚本的合成qualify_resources正常路径，不是产品或发行门。"
+    },
+    {
+      "test": "test_no_comparison_is_not_a_pass",
+      "decision": "delete",
+      "reason": "专项验收缺comparison文件返回false，只覆盖辅助脚本缺文件路径。"
+    },
+    {
+      "test": "test_preparation_uses_explicit_frozen_inputs",
+      "decision": "delete",
+      "reason": "专项验收prepare对固定源码输入的回传和常量检查，不是发布准备入口。"
+    },
+    {
+      "test": "test_resource_pairs_do_not_authorize_missing_e2e",
+      "decision": "delete",
+      "reason": "专项验收helper的E2E拒绝映射不授资源门，是辅助验证器自测。"
+    }
+  ]
+}

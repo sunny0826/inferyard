@@ -1,0 +1,31 @@
+{
+  "source_path": "cli/tests/unit/test_model_source_candidates.py",
+  "decisions": [
+    {
+      "test": "test_config_cli_preserves_explicit_record_and_omitted_repo",
+      "decision": "delete",
+      "reason": "仅 CLI 将 record/repo 转给注入 handler，属于参数 wiring；实际模型声明由 test_macos_record_is_explicit_and_model_is_hashed_once 覆盖。"
+    },
+    {
+      "test": "test_conflicting_record_or_declaration_rejects_candidate",
+      "decision": "keep",
+      "reason": "size/hash/bool bytes/parser 与声明repo/revision 冲突拒绝且不产候选，避免模型来源伪装。"
+    },
+    {
+      "test": "test_macos_record_is_explicit_and_model_is_hashed_once",
+      "decision": "keep",
+      "reason": "保留 macOS 候选身份绑定；revision expected 改为独立冻结字符串 499bc8821c6b12b4e53c5bffcb21ec206f212d81。",
+      "renamed_to": "test_macos_record_explicitly_binds_model_identity"
+    },
+    {
+      "test": "test_old_neighbor_record_is_never_searched",
+      "decision": "keep",
+      "reason": "不能自动搜索邻近旧来源记录，未指定时仍为本地内容 hash，避免旧文件污染候选身份。"
+    },
+    {
+      "test": "test_windows_record_binds_without_lineage",
+      "decision": "keep",
+      "reason": "保留 Windows 独立路径候选身份绑定；共享断言 revision expected 改为独立冻结字符串。"
+    }
+  ]
+}

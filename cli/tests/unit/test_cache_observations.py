@@ -1,4 +1,3 @@
-from copy import deepcopy
 
 import pytest
 
@@ -63,7 +62,6 @@ def test_sequence_retains_probes_and_unexecuted_formal_requests():
         dict(event_type="request_finished", request_id="p", data={"execution_state": "completed"}),
     ]
     requests = [dict(request_id=None, case_id="c1", execution_state="not_executed")]
-    before = deepcopy(events)
     result = cache_series(
         events, {"conditions": {"cache_policy": "enabled"}}, requests, build_verified=True
     )
@@ -73,7 +71,6 @@ def test_sequence_retains_probes_and_unexecuted_formal_requests():
     assert result["policy_consistent"] is None
     assert result["rows"][0]["requested_reuse"] is False
     assert result["rows"][1]["requested_reuse"] is True
-    assert events == before
     events[1]["data"] = record(2, 10)
     assert (
         cache_series(

@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/tests/e2e/main_test.go",
+  "decisions": [
+    {
+      "test": "TestMain",
+      "decision": "keep",
+      "reason": "保留测试二进制作为假引擎的子进程启动入口，供真实 CLI 边界链使用，删除会破坏受控验证。"
+    }
+  ]
+}

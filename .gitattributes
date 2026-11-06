@@ -12,3 +12,5 @@ cli/src/inferyard/data/community/bundles/zh-context-speed.json linguist-generate
 cli/bundles/zh-context-speed.json linguist-generated=true
 # Exported from runtime definitions by cli/scripts/export_schemas.py.
 cli/schemas/*.schema.json linguist-generated=true
+# Exported from metric definitions and source bindings by cli/scripts/export_catalogue.py.
+cli/src/inferyard/data/metrics.json linguist-generated=true

@@ -1,0 +1,41 @@
+{
+  "source_path": "cli/tests/unit/test_sensor_observations.py",
+  "decisions": [
+    {
+      "test": "test_invalid_execution_keeps_counts_but_not_sensor_values",
+      "decision": "keep",
+      "reason": "取消、invalid、未执行样本只留计数不产生传感器值，避免无效请求贡献有效资源。"
+    },
+    {
+      "test": "test_missing_request_boundary_excludes_samples",
+      "decision": "keep",
+      "reason": "请求边界缺失时不能分配窗口样本，避免时间未知仍有温度/频率结论。"
+    },
+    {
+      "test": "test_source_change_overrides_good_samples_without_contaminating_other_requests",
+      "decision": "keep",
+      "reason": "source_changed 优先令对应来源缺测且不污染别的 request/source，避免已变传感器拼接历史值。"
+    },
+    {
+      "test": "test_sources_are_global_sorted_and_separate_by_metric_and_semantics",
+      "decision": "keep",
+      "reason": "M6：按 request/metric/source/semantics/statistic 检查独立数值及缺测原因，失败请求仍保留 80；全时间线来源互不污染且不得错误声明可比较。删除排序和输入深拷贝约束，拒绝重复观测。",
+      "renamed_to": "test_global_sources_keep_request_metric_and_semantics_separate"
+    },
+    {
+      "test": "test_unavailable_metric_differs_from_source_without_samples_in_this_request",
+      "decision": "keep",
+      "reason": "没有该窗口样本与整体没有证据保留不同原因，避免缺测解释被合并。"
+    },
+    {
+      "test": "test_whole_sample_timeline_is_not_rescanned_per_request_and_source",
+      "decision": "delete",
+      "reason": "仅检查 CountedTimeline 的遍历次数，未绑定产品耗时预算；输出分组由 test_sources_are_global_sorted_and_separate_by_metric_and_semantics 覆盖。"
+    },
+    {
+      "test": "test_window_exclusions_and_missing_reasons_are_not_lost_by_grouping",
+      "decision": "keep",
+      "reason": "warmup/residual、异 clock、窗口外与其他 request 样本排除，权限缺测保留原因，避免污染正式窗口。"
+    }
+  ]
+}

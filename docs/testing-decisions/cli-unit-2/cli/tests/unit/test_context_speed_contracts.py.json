@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_contracts.py",
+  "decisions": [
+    {
+      "test": "test_bindings_reject_other_plan_trial_and_run",
+      "decision": "keep",
+      "reason": "样本必须属于当前 plan/trial/run，错配拒绝，避免混合不同轮次产生速度汇总。"
+    },
+    {
+      "test": "test_complete_response_cannot_claim_another_exit",
+      "decision": "keep",
+      "reason": "完整结果不得搭配错误/取消/布尔退出码，避免 Studio 把执行状态错误解释成完成。"
+    },
+    {
+      "test": "test_existing_timing_formula_hand_computed",
+      "decision": "keep",
+      "reason": "保留生产 rates L06=200、L07=20；删输入字典除法自测。"
+    },
+    {
+      "test": "test_fixture_is_strict_json",
+      "decision": "delete",
+      "reason": "仅再次解析已被 strict_json_loads 加载的 fixture，重复 fixture 自测。"
+    },
+    {
+      "test": "test_independent_observable_expectations",
+      "decision": "delete",
+      "reason": "只断言 fixture 内预填 median/计数/summary，本体不调用计算生产逻辑，属于数据自测；计算由 test_existing_timing_formula_hand_computed 与 context-speed 集成覆盖。"
+    },
+    {
+      "test": "test_nonfinite_boolean_negative_rejected",
+      "decision": "keep",
+      "reason": "测量值 NaN/Inf/bool/负值不能进入结果，避免速度与汇总出现无效数。"
+    },
+    {
+      "test": "test_raw_json_rejected",
+      "decision": "delete",
+      "reason": "重复 strict_json_loads 通用重复key/NaN/Infinity 校验，无 context-speed 独有路径；test_required_invalid_fixtures 和通用契约测试已覆盖。"
+    },
+    {
+      "test": "test_result_kind_registered",
+      "decision": "delete",
+      "reason": "仅 schema kind 在 registry 字典中出现的结构断言；实际跨端输入校验由 test_shared_golden 覆盖。"
+    },
+    {
+      "test": "test_result_schema_is_lazy",
+      "decision": "delete",
+      "reason": "通过导入另一个 test 函数验证模块 lazy 的结构约束；模型 help 冷启动由 test_help_keeps_model_backend_lazy_and_run_local 覆盖。"
+    },
+    {
+      "test": "test_shared_golden",
+      "decision": "keep",
+      "reason": "逐个共享 golden 验证合法与非法结果/退出码，避免 CLI 与 Studio 对同一测量有不同解释。"
+    }
+  ]
+}

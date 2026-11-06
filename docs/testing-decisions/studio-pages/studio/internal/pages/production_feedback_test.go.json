@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/pages/production_feedback_test.go",
+  "decisions": [
+    {
+      "test": "TestProductionContentPathAnnouncesPage",
+      "decision": "keep",
+      "reason": "正式内容路径初始及切页各播报一次、空闲不重复；未打开详情而留有 hidden detail 错误时只播报当前任务页，不泄漏隐藏面板旧错误。"
+    },
+    {
+      "test": "TestProductionContentPathKeepsErrorsInline",
+      "decision": "keep",
+      "reason": "正式 contentView 中失败的请修正路径文本实际可读并被播报，不出现成功 toast，防止用户遗漏失败。"
+    },
+    {
+      "test": "TestProductionContentPathShowsToastAndAnnounces",
+      "decision": "keep",
+      "reason": "正式 contentView 显示成功 toast；调用公开 CloseToast 后推进多帧消息不重现。删除坐标与 pendingToast 内部消费标志，不约束消费实现。"
+    },
+    {
+      "test": "TestShellPlacesToastsAtTheTop",
+      "decision": "delete",
+      "reason": "只断言 shell 配置等于某个 ToastTop 枚举，固定实现与位置。"
+    }
+  ]
+}

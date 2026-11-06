@@ -118,23 +118,3 @@ def test_schema_and_reductions_respect_sensor_and_window(tmp_path):
     assert {s["value"] for s in output.items[1:]} == {2000000000, 3000000000}
     assert all(not s["comparison_eligible"] for s in output.items)
     assert all(s["coverage_ratio"] == 0 for s in output.items)
-
-
-def test_missing_and_cancelled_observations(tmp_path):
-    from inferyard.analysis.observations import Observations
-    from inferyard.analysis.sensor_observations import add_sensor_observations
-    from tests.unit.test_observations import EVIDENCE, RUN
-    from tests.unit.test_resources import ROW, envelope
-
-    output = Observations(RUN, "w1", EVIDENCE, complete=True)
-    add_sensor_observations(output, [ROW], [])
-    assert len(output.items) == 2
-    assert all(s["missing_reason"] == "sensor_evidence_unavailable" for s in output.items)
-    fixtures(tmp_path)
-    samples = [
-        envelope(s) for s in LinuxSensors(tmp_path, clock=lambda: 10).collect("formal", "request-1")
-    ]
-    output = Observations(RUN, "w1", EVIDENCE, complete=True)
-    add_sensor_observations(output, [{**ROW, "execution_state": "cancelled"}], samples)
-    assert all(s["value"] is None for s in output.items)
-    assert all(s["missing_reason"] == "request_not_validly_executed" for s in output.items)

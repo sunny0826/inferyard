@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/development_control_test.go",
+  "decisions": [
+    {
+      "test": "TestDevelopmentControlProcess",
+      "decision": "keep",
+      "reason": "子进程 helper：TestDevelopmentStopWithMissingCLI 通过真实开发二进制停止入口证明 CLI 丢失时仍能停止旧会话。"
+    },
+    {
+      "test": "TestDevelopmentStopWithMissingCLI",
+      "decision": "keep",
+      "reason": "旧 CLI 文件丢失时开发停止仍须成功并保留会话证据，否则用户无法重建或退出开发环境。"
+    }
+  ]
+}

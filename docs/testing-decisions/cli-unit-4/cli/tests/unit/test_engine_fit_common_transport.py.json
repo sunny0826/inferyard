@@ -1,0 +1,105 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_common_transport.py",
+  "decisions": [
+    {
+      "test": "test_common_completion_preserves_usage_and_requires_both_terminals",
+      "decision": "delete",
+      "reason": "相同 complete SSE 解析器的用量和双终态重复测试，由 test_engine_fit_transport.py::test_stream_final_empty_choices_usage_and_split_unicode 与 test_stream_protocol_failures_are_fixed_reasons 覆盖。"
+    },
+    {
+      "test": "test_common_metrics_fail_closed",
+      "decision": "delete",
+      "reason": "D3：由生产 COMMON_METRICS 生成非法输入，缺失、重复、label 不一致和非法计数重复共同解析器已有拒绝路径；未独立保障引擎指标名映射。"
+    },
+    {
+      "test": "test_common_metrics_include_all_running_waiting_and_poisoned_states",
+      "decision": "delete",
+      "reason": "D3：输入由生产 COMMON_METRICS 生成，指标映射漂移同步通过；busy 行为重复共同解析器的字面量协议测试。现有测试不能独立证明真实指标名。"
+    },
+    {
+      "test": "test_llama_build_info_is_preserved_and_props_are_not_persisted",
+      "decision": "keep",
+      "reason": "M10：保留版本、目标模型、来源的独立完整返回值，排除 props 私密额外字段；删除只读元数据读取先后约束。"
+    },
+    {
+      "test": "test_llama_unknown_commit_remains_explicit_reported_build",
+      "decision": "keep",
+      "reason": "b0-unknown 作为服务显式报告的 build 保留，不虚构 commit 或误拒绝诊断。"
+    },
+    {
+      "test": "test_llama_version_failure_has_no_remote_body",
+      "decision": "keep",
+      "reason": "缺失、类型错误或自由文本 build_info 拒绝，避免未核实版本参与比较。"
+    },
+    {
+      "test": "test_lmstudio_ambiguous_or_inconsistent_idle_rejected",
+      "decision": "keep",
+      "reason": "缺指标、重复、错误实例、idle 标志矛盾或活动非零均拒绝，避免空闲谎报。"
+    },
+    {
+      "test": "test_lmstudio_candidates_are_not_mistaken_for_loaded_instances",
+      "decision": "keep",
+      "reason": "M10：包含候选列表时仍返回本地核实的目标服务，不能把候选当加载实例；删除成功路径 observer 调用数组断言。"
+    },
+    {
+      "test": "test_lmstudio_cannot_send_requests_without_observer",
+      "decision": "keep",
+      "reason": "LM Studio 没有受支持观察器不能发送请求，避免无法确认排空仍入场。"
+    },
+    {
+      "test": "test_lmstudio_idle_uses_observer_only_and_retains_busy_state",
+      "decision": "keep",
+      "reason": "LM Studio idle 使用本地队列观测并保留忙碌值，不能用推理请求测空闲。"
+    },
+    {
+      "test": "test_lmstudio_malformed_queue_count_rejected",
+      "decision": "keep",
+      "reason": "队列 bool、负数、小数、null 或字符串拒绝，避免坏队列证明空闲。"
+    },
+    {
+      "test": "test_lmstudio_observer_errors_are_bounded_and_sanitized",
+      "decision": "keep",
+      "reason": "观察器异常输出固定原因且慢观察有界超时，避免泄露正文或卡住预检。"
+    },
+    {
+      "test": "test_lmstudio_service_observation_cannot_substitute_cli_version_or_model",
+      "decision": "keep",
+      "reason": "观察器不能以 CLI commit 替服务版本或改目标模型，避免错误身份写证据。"
+    },
+    {
+      "test": "test_lmstudio_target_must_exist_once_before_local_observation",
+      "decision": "keep",
+      "reason": "目标缺失或重复不能再用本地 observer 确认，避免观察错目标。"
+    },
+    {
+      "test": "test_mlx_requires_protocol_and_current_packaged_source",
+      "decision": "keep",
+      "reason": "自定义 MLX 协议和当前包源码摘要匹配才接纳，避免裸服务冒充测量适配服务。"
+    },
+    {
+      "test": "test_mlx_still_requires_real_package_version",
+      "decision": "keep",
+      "reason": "MLX 必须同时有合法包版本，不能只靠自定义协议当版本证据。"
+    },
+    {
+      "test": "test_native_server_alias_or_extra_loaded_model_is_rejected",
+      "decision": "delete",
+      "reason": "唯一模型检查复用共同 inspect 路径，由 test_engine_fit_transport.py::test_inspect_rejects_multiple_models_or_aliases_before_version_probe 覆盖。"
+    },
+    {
+      "test": "test_new_engine_inspection_still_rejects_redirect_and_remote_body",
+      "decision": "delete",
+      "reason": "共同 HTTP 重定向拒绝重复 test_engine_fit_transport.py::test_http_error_body_and_redirect_target_never_escape。"
+    },
+    {
+      "test": "test_ollama_is_explicitly_blocked_before_any_network_client",
+      "decision": "keep",
+      "reason": "没有可验证服务空闲观测的 Ollama 必须阻断，避免未知状态进入测量。"
+    },
+    {
+      "test": "test_stock_or_stale_mlx_server_is_rejected",
+      "decision": "keep",
+      "reason": "MLX 协议缺失、旧版本或源码摘要不符拒绝，避免执行不同协议实现。"
+    }
+  ]
+}

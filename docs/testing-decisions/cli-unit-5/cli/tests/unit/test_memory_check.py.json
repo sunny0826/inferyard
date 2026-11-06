@@ -1,0 +1,100 @@
+{
+  "source_path": "cli/tests/unit/test_memory_check.py",
+  "decisions": [
+    {
+      "test": "test_access_denied_is_null_and_blocks_review_when_same_account_may_be_unseen",
+      "decision": "keep",
+      "reason": "同账户可能有不可读进程时内存null并阻断应用review，不能忽略潜在依赖。"
+    },
+    {
+      "test": "test_bundle_conflict_remains_unknown_for_descendants_in_any_enumeration_order",
+      "decision": "keep",
+      "reason": "冲突bundle及其后代在不同枚举顺序下都unknown，避免顺序影响关闭建议。"
+    },
+    {
+      "test": "test_caller_ancestors_protected_without_protecting_unrelated_siblings",
+      "decision": "keep",
+      "reason": "调用者及祖先保护不扩到无关兄弟应用，避免误保护或伤害当前会话。"
+    },
+    {
+      "test": "test_conflicting_bundle_and_parent_evidence_does_not_merge_apps",
+      "decision": "delete",
+      "reason": "双节点bundle冲突重复test_bundle_conflict_remains_unknown_for_descendants_in_any_enumeration_order的更完整多节点/乱序场景。"
+    },
+    {
+      "test": "test_declared_protection_reaches_descendants_and_entire_app_not_siblings",
+      "decision": "keep",
+      "reason": "用户保护扩到可信子进程和同应用而不扩到无关进程，避免保护范围走样。"
+    },
+    {
+      "test": "test_known_agents_services_connections_and_other_accounts_are_protected",
+      "decision": "keep",
+      "reason": "agent、系统服务和其他账户须保护，避免诊断建议停止关键进程。"
+    },
+    {
+      "test": "test_missing_kernel_and_other_account_do_not_block_readable_application_review",
+      "decision": "keep",
+      "reason": "不可读内核、外账户和已退出进程不阻断无关可读应用review，避免一律不给诊断结果。"
+    },
+    {
+      "test": "test_mixed_null_reason_identity_is_rejected_as_contract_error",
+      "decision": "delete",
+      "reason": "只向原因pid字段塞null检验结构校验，没有额外产品条件；保存腐坏拒绝由test_saved_contract_rejects_corruption覆盖。"
+    },
+    {
+      "test": "test_parent_failure_saved_contract_keeps_readable_measurements_and_rejects_bad_edges",
+      "decision": "keep",
+      "reason": "父身份读取失败保留子内存及无关应用review，保存数据不得伪造完整覆盖或通过建议。"
+    },
+    {
+      "test": "test_parent_identity_change_does_not_bind_to_new_pid_generation",
+      "decision": "keep",
+      "reason": "父启动身份不符不挂靠新PID一代，避免误分组和保护继承。"
+    },
+    {
+      "test": "test_public_saved_samples_are_read_at_the_contract_boundary",
+      "decision": "keep",
+      "reason": "发行中的合法/非法保存样例经公共reader验证，保障保存样例和读取边界。"
+    },
+    {
+      "test": "test_review_groups_helpers_and_multiple_instances_without_merging_install_copies",
+      "decision": "keep",
+      "reason": "同安装应用多实例及helper合并求和、不同安装副本分开，避免错误占用组与关闭建议。"
+    },
+    {
+      "test": "test_saved_contract_rejects_corruption",
+      "decision": "keep",
+      "reason": "保存格式坏计数、版本、NaN、重复成员及不一致建议须拒绝，防止展示错误占用与建议。"
+    },
+    {
+      "test": "test_saved_reader_rejects_duplicate_json_keys",
+      "decision": "keep",
+      "reason": "重复JSON键诊断拒绝，避免读取器采用不同值产生不同建议。"
+    },
+    {
+      "test": "test_snapshot_is_fresh_without_cross_command_cache",
+      "decision": "delete",
+      "reason": "两次report注入不同快照再看PID是普通无缓存happy path，不能证明真实采集新鲜性。"
+    },
+    {
+      "test": "test_unavailable_protection_must_have_no_identity_and_a_reason",
+      "decision": "keep",
+      "reason": "不可用保护请求不能捏造启动身份或省略原因，避免错误声称用户声明已保护。"
+    },
+    {
+      "test": "test_unavailable_protection_or_incomplete_scan_never_produces_review",
+      "decision": "keep",
+      "reason": "指定保护不可得、扫描超时或到进程上限均阻断review，避免信息不全时建议关闭应用。"
+    },
+    {
+      "test": "test_unknown_interpreter_and_orphan_helper_remain_unknown",
+      "decision": "keep",
+      "reason": "未知解释器和孤儿helper不得推荐，已识别普通应用才review，避免关闭未确认依赖。"
+    },
+    {
+      "test": "test_usr_local_tool_is_unknown_instead_of_a_system_process",
+      "decision": "keep",
+      "reason": "/usr/local工具须unknown而非系统保护，避免仅靠目录前缀错误分类。"
+    }
+  ]
+}

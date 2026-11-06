@@ -1,0 +1,60 @@
+{
+  "source_path": "cli/tests/unit/test_external_measurement_import.py",
+  "decisions": [
+    {
+      "test": "test_counter_reset_without_wrap_is_unknown",
+      "decision": "keep",
+      "reason": "计数器下降且无回绕声明保持未知，避免把reset算成能耗。"
+    },
+    {
+      "test": "test_documented_calibration_does_not_mean_physically_verified",
+      "decision": "keep",
+      "reason": "有校准文档也不自动变物理验证，日期需时区，避免伪造测量资格和时点。"
+    },
+    {
+      "test": "test_duplicate_or_out_of_order_time_is_rejected",
+      "decision": "keep",
+      "reason": "重复或逆序时间拒绝，避免积分重复或时间窗错误。"
+    },
+    {
+      "test": "test_explicit_single_wrap_is_recomputed_without_physical_qualification",
+      "decision": "keep",
+      "reason": "显式一次计数器回绕90到5模100应为15J/每成功任务5J，但不授物理校准资格。"
+    },
+    {
+      "test": "test_failed_replay_never_writes_a_pass_marker",
+      "decision": "keep",
+      "reason": "离线重放核验失败不能写verification通过标记，避免导入输出假通过。"
+    },
+    {
+      "test": "test_gap_blocks_energy_total",
+      "decision": "keep",
+      "reason": "采样间隙超过声明上限时不报能耗总量，避免缺段低估。"
+    },
+    {
+      "test": "test_gpu_sample_mean_and_peak_have_observation_semantics",
+      "decision": "keep",
+      "reason": "GPU采样均值与最大值分别50/80且不冒充时间平均/瞬时峰值，避免夸大采集范围。"
+    },
+    {
+      "test": "test_invalid_source_contract_is_rejected",
+      "decision": "keep",
+      "reason": "时钟、单位、校准及scope不符拒绝，避免将不同口径外部测量混入运行。"
+    },
+    {
+      "test": "test_missing_energy_and_zero_success_do_not_become_zero",
+      "decision": "keep",
+      "reason": "缺能耗且零成功任务时能耗和每任务成本都null，避免显示零成本。"
+    },
+    {
+      "test": "test_partial_run_retains_planned_denominator",
+      "decision": "keep",
+      "reason": "partial运行仍planned=2而只有一个绑定窗口，避免导入能耗缩小任务分母。"
+    },
+    {
+      "test": "test_report_escapes_imported_text",
+      "decision": "keep",
+      "reason": "导入instrument等文本HTML转义，避免离线报告执行脚本。"
+    }
+  ]
+}

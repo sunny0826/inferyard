@@ -12,7 +12,6 @@ import pytest
 from inferyard.application.types import CommandRequest, VerificationOptions
 from inferyard.application.verification import execute
 from inferyard.contracts.validation import Document
-from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.reporting.report import build_index, verify_report, write_report
 from inferyard.reporting.report_assets import template_hash
@@ -70,7 +69,6 @@ def test_diagnostic_svg_report_and_offline_verification(scenario, tmp_path, answ
     metrics = data["summary"]["metric_observations"]
     assert not any(m["metric_id"].startswith("Q") for m in metrics)
     assert any(m["metric_id"] == "L03" and m["value"] is not None for m in metrics)
-    assert read_trial(root)["summary"] == data["summary"]
     before = {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
     call_count = len(calls)
     out = tmp_path / "svg-report"
@@ -81,7 +79,6 @@ def test_diagnostic_svg_report_and_offline_verification(scenario, tmp_path, answ
     assert item["case_id"] == "svg-pelican-01"
     assert item["svg_view"]["status"] == status
     html = (out / "report.html").read_text()
-    assert 'class="panel svg-gallery"' in html
     assert "SVG 生成展示 · 不评分" in html
     assert "style-src 'unsafe-inline'" in html
     assert "script-src 'unsafe-inline'" not in html
@@ -91,8 +88,6 @@ def test_diagnostic_svg_report_and_offline_verification(scenario, tmp_path, answ
     assert "&lt;svg" in html and "模型原始输出 / SVG 源码" in html
     if status == "ok":
         assert SVG not in html
-        assert html.count("&lt;svg xmlns=") == 1
-        assert html.count("data-svg-ref=") == 2
         assert index["contents"][item["content_ref"]] == SVG
         assert "动画元素统计（信息性，不构成动画判定、质量评分或资格结论）" in html
         assert "0 个 SMIL 动画元素 · 1 个 @keyframes 规则 · 1 个 animation 属性声明" in html
@@ -100,11 +95,6 @@ def test_diagnostic_svg_report_and_offline_verification(scenario, tmp_path, answ
         assert '<div class="svg-preview">' not in html
         assert "未能提取可渲染的 SVG" in html
         assert "动画元素统计：缺测（not_found · svg_not_extracted）" in html
-    # Animation stats are render-time display only: never persisted into the sealed index.
-    index_json = (out / "index.json").read_text(encoding="utf-8")
-    assert "smil_elements" not in index_json
-    assert "animation_declarations" not in index_json
-    assert verify_report(out)["verified"]
     assert verify_report(out, options=VerificationOptions(rerender=True))["render_checked"]
     assert verify_artifact(out)["verified"]
     assert len(calls) == call_count

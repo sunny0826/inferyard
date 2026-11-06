@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_io_descendant.py",
+  "decisions": [
+    {
+      "test": "test_current_job_is_not_a_process_pseudo_handle_and_assign_rejects_null",
+      "decision": "keep",
+      "reason": "M14：NULL 当前 Job 查询语义正确，NULL/query marker 不得进入 AssignProcessToJobObject；删除包装具体类与 Python is not 断言。"
+    }
+  ]
+}

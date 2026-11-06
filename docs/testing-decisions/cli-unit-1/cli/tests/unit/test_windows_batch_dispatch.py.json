@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_windows_batch_dispatch.py",
+  "decisions": [
+    {
+      "test": "test_batch_production_whitelist",
+      "decision": "keep",
+      "reason": "真实 batch 编排入口按 Windows 引擎支持范围阻断且不写输出，避免未支持适配器继续执行。"
+    },
+    {
+      "test": "test_trial_production_whitelist",
+      "decision": "keep",
+      "reason": "直接 trial 入口也执行平台支持门禁，不能绕过 batch 的 Windows 适配限制。"
+    }
+  ]
+}

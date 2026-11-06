@@ -78,4 +78,7 @@ target-version = "py315"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+# Execution failures only; formatting, import order and syntax preferences are not gates.
+# E9: syntax; F63/F7: invalid expressions/control flow; F82: undefined names;
+# B006/B012/B023: shared mutable defaults, swallowed exits, and late-bound loop closures.
+select = ["E9", "F63", "F7", "F82", "B006", "B012", "B023"]

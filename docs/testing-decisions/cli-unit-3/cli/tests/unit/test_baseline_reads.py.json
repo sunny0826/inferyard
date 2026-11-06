@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_baseline_reads.py",
+  "decisions": [
+    {
+      "test": "test_baseline_domain_refs_bind_original_sensor_bytes",
+      "decision": "keep",
+      "reason": "保留传感器内容、缺测、引用验证、原始字节不变和不能读取为run；删除BaselineEvidence实例类型断言。"
+    },
+    {
+      "test": "test_baseline_queries_cannot_read_inputs_or_requests",
+      "decision": "delete",
+      "reason": "仅私有领域查询 allowlist/API 边界，没有真实读取/报告结果。"
+    },
+    {
+      "test": "test_baseline_rejects_run_inventory_and_identifies_strictly",
+      "decision": "keep",
+      "reason": "具体场景 test_baseline_rejects_run_inventory_and_identifies_strictly。逐项参数：pytest.mark.parametrize('name', ['events.jsonl', 'memory.jsonl', 'config.input.json'])。可观察预期：pytest.raises(EvidenceError, match='baseline_evidence_contains_run')；pytest.raises(EvidenceError, match='run_evidence_missing')。独立 baseline 只能引用真实传感器原件，不能当完整 run 获准；缺来源的公开错误须明确且剔除私有路径详情。"
+    },
+    {
+      "test": "test_new_codec_failures_keep_exact_public_reasons",
+      "decision": "keep",
+      "reason": "具体场景 test_new_codec_failures_keep_exact_public_reasons。可观察预期：assert safe_reason(failure.value, 'offline_error') == 'run_evidence_missing'；assert safe_reason(failure.value, 'offline_error') == 'evidence_reference_missing'；assert safe_reason(EvidenceError('run_evidence_missing:private-path'), 'offline_error') == 'offline_error'；pytest.raises(EvidenceError)。独立 baseline 只能引用真实传感器原件，不能当完整 run 获准；缺来源的公开错误须明确且剔除私有路径详情。"
+    },
+    {
+      "test": "test_run_selection_uses_strict_domain_reader",
+      "decision": "delete",
+      "reason": "主要 isinstance 分派结构，拒绝混库存重复；覆盖者 test_baseline_rejects_run_inventory_and_identifies_strictly。"
+    }
+  ]
+}

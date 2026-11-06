@@ -10,8 +10,6 @@ import pytest
 
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
-from inferyard.cli.arguments import parser
-from inferyard.cli.request import build_request
 from inferyard.config import preparation_io
 from inferyard.config.community_assets import prepare
 from inferyard.config.preparation_io import NewDirectory, PreparationError
@@ -85,14 +83,6 @@ def test_all_existing_outputs_refused_before_resolution(tmp_path, capsys, kind):
     assert code == 2 and result["limitations"] == ["output_exists"]
     if kind == "dangling":
         assert out.is_symlink() and not target.exists()
-
-
-def test_request_keeps_lexical_output_without_changing_old_commands(tmp_path):
-    out = tmp_path / "dangling"
-    out.symlink_to(tmp_path / "other")
-    assert build_request(parser().parse_args(["init", "--out", str(out)])).out == out
-    old = build_request(parser().parse_args(["verify", "--path", str(out)]))
-    assert old.run == out.resolve()
 
 
 def test_output_tree_reparse_replacement_is_rejected(tmp_path):

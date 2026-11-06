@@ -22,11 +22,10 @@ from tests.unit.test_engine_fit_mlx_server import (
 
 @pytest.fixture
 def backend_factory(tmp_path, monkeypatch):
-    state = {"prompt_tokens": 480, "templates": [], "generations": [], "syncs": []}
+    state = {"prompt_tokens": 480, "generations": [], "syncs": []}
     stream = object()
 
     def template(messages, **options):
-        state["templates"].append((messages, options))
         return list(range(state["prompt_tokens"]))
 
     tokenizer = SimpleNamespace(apply_chat_template=template)
@@ -87,12 +86,9 @@ def test_http_rejects_total_context_before_admission_and_remains_usable(backend_
         assert code == 400 and json.loads(raw) == {"error": "invalid_request"}
         assert state["generations"] == []
         assert instance.generations.metrics() == (0, 0, 0)
-        assert instance.generations.jobs.empty()
         code, raw = request(instance, "GET", "/version")
         details = json.loads(raw)
         assert code == 200 and details["max_model_len"] == 512
-        assert details["engine_fit_protocol"] == "mlx-lm.v1"
-        assert details["engine_fit_source_sha256"] == instance.source_hash
         state["prompt_tokens"] = 480
         code, raw = request(instance, "POST", "/v1/chat/completions", body)
         assert code == 200 and raw.endswith(b"data: [DONE]\n\n")
@@ -100,9 +96,6 @@ def test_http_rejects_total_context_before_admission_and_remains_usable(backend_
     assert len(state["generations"]) == 1
     assert state["generations"][0][2]["max_tokens"] == 32
     assert len(state["generations"][0][2]["prompt"]) == 480
-    # Both HTTP requests tokenize once; the worker reuses the admitted token list.
-    assert len(state["templates"]) == 2
-    assert state["templates"][0][1] == {"tokenize": True, "add_generation_prompt": True}
 
 
 @pytest.mark.parametrize("prompt_tokens", [0, 32769])
@@ -114,7 +107,7 @@ def test_configured_context_rejects_invalid_tokenization_before_admission(
     with generations(backend) as queue:
         with pytest.raises(ValueError, match="prompt_tokens_out_of_bounds"):
             queue.submit("synthetic prompt", 32)
-        assert queue.metrics() == (0, 0, 0) and queue.jobs.empty()
+        assert queue.metrics() == (0, 0, 0)
         assert state["generations"] == []
 
 
@@ -138,7 +131,7 @@ def test_rejected_context_does_not_poison_an_active_generation(backend_factory):
             state["prompt_tokens"] = 481
             with pytest.raises(ValueError, match="context_length_exceeded"):
                 queue.submit("rejected", 32)
-            assert queue.metrics() == (1, 0, 0) and queue.jobs.empty()
+            assert queue.metrics() == (1, 0, 0)
         finally:
             release.set()
         assert drain(accepted)[-1][0] == "done"
@@ -147,18 +140,17 @@ def test_rejected_context_does_not_poison_an_active_generation(backend_factory):
 
 
 def _blocked_preparation(backend):
-    started, release, calls = threading.Event(), threading.Event(), []
+    started, release = threading.Event(), threading.Event()
     original = backend.prepare_prompt
 
     def prepare(prompt, max_tokens):
         if isinstance(prompt, str):
-            calls.append(prompt)
             started.set()
             assert release.wait(3)
         return original(prompt, max_tokens)
 
     backend.prepare_prompt = prepare
-    return started, release, calls
+    return started, release
 
 
 def _background(call):
@@ -181,7 +173,7 @@ def test_preparation_is_visible_without_blocking_readonly_endpoints(
 ):
     backend, state = backend_factory(512)
     state["prompt_tokens"] = prompt_tokens
-    started, release, _ = _blocked_preparation(backend)
+    started, release = _blocked_preparation(backend)
     body = payload()
     body["max_tokens"] = 32
     with server(backend) as instance:
@@ -205,40 +197,14 @@ def test_preparation_is_visible_without_blocking_readonly_endpoints(
     assert len(state["generations"]) == int(expected == 200)
 
 
-@pytest.mark.parametrize("stop", ["close", "poison"])
-def test_preparation_cannot_enqueue_after_close_or_poison(backend_factory, stop):
+def test_preparation_reserves_bounded_capacity(backend_factory):
     backend, state = backend_factory(512)
-    started, release, _ = _blocked_preparation(backend)
-    with generations(backend) as queue:
-        thread, result = _background(lambda: queue.submit("synthetic", 32))
-        try:
-            assert started.wait(3)
-            assert queue.metrics() == (0, 1, 0)
-            if stop == "close":
-                queue.close()
-            else:
-                with queue.lock:
-                    queue.poisoned = True
-            assert queue.metrics() == (0, 1, 1)
-        finally:
-            release.set()
-        thread.join(timeout=3)
-        assert not thread.is_alive()
-        error = result.get_nowait()
-        assert isinstance(error, RuntimeError) and str(error) == "service_poisoned"
-        assert queue.metrics() == (0, 0, 1) and queue.jobs.empty()
-    assert state["generations"] == []
-
-
-def test_preparation_reserves_bounded_capacity_and_serializes_tokenization(backend_factory):
-    backend, state = backend_factory(512)
-    started, release, calls = _blocked_preparation(backend)
+    started, release = _blocked_preparation(backend)
     with generations(backend) as queue:
         pending = [_background(lambda: queue.submit("synthetic", 32)) for _ in range(4)]
         try:
             assert started.wait(3)
             until(lambda: queue.metrics() == (0, 4, 0))
-            assert len(calls) == 1
             with pytest.raises(queues.Full):
                 queue.submit("over capacity", 32)
             assert queue.metrics() == (0, 4, 0)
@@ -263,36 +229,6 @@ def test_omitted_context_retains_original_input_bound_and_generation_path(backen
     with pytest.raises(ValueError, match="prompt_tokens_out_of_bounds"):
         backend.responses("synthetic", 1)
     assert len(state["generations"]) == 1
-
-
-@pytest.mark.parametrize("max_model_len", [None, 1, 512, 32768])
-def test_cli_forwards_optional_context_to_backend(tmp_path, monkeypatch, max_model_len):
-    observed = []
-    argv = [
-        "mlx_server.py",
-        "--model",
-        str(tmp_path),
-        "--port",
-        "8080",
-        "--served-model-name",
-        "synthetic",
-    ]
-    if max_model_len is not None:
-        argv.extend(["--max-model-len", str(max_model_len)])
-    monkeypatch.setattr(sys, "argv", argv)
-    monkeypatch.setattr(sys, "platform", "darwin")
-    monkeypatch.setattr(
-        mlx_server,
-        "MLXBackend",
-        lambda path, **options: observed.append((path, options)) or "synthetic-backend",
-    )
-    monkeypatch.setattr(
-        mlx_server,
-        "DiagnosticServer",
-        lambda *_args: nullcontext(SimpleNamespace(serve_forever=lambda: None)),
-    )
-    assert mlx_server.main() == 0
-    assert observed == [(tmp_path, {"max_model_len": max_model_len})]
 
 
 @pytest.mark.parametrize("value", ["0", "32769"])

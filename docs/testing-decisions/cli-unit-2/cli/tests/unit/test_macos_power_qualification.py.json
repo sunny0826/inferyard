@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_macos_power_qualification.py",
+  "decisions": [
+    {
+      "test": "test_active_native_power_policy_does_not_invent_governor_or_high_power_support",
+      "decision": "keep",
+      "reason": "macOS按当前AC/电池档读取low power，不能虚构governor/high-power支持，避免错误环境匹配资格。"
+    },
+    {
+      "test": "test_config_rejects_contradictory_power_mode_support",
+      "decision": "keep",
+      "reason": "声明不支持power_mode却给数字模式要拒绝，避免自相矛盾配置通过。"
+    },
+    {
+      "test": "test_missing_or_ambiguous_policy_is_rejected",
+      "decision": "keep",
+      "reason": "缺/非数/重复/越界lowpowermode不能变成合法政策，避免模糊原生输出授资格。"
+    },
+    {
+      "test": "test_platform_and_frozen_policy_changes_remain_qualification_failures",
+      "decision": "keep",
+      "reason": "电源策略变化、未冻结原生政策及平台变化都不合格，避免跨功耗档比较。"
+    }
+  ]
+}

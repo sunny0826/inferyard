@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from inferyard.adapters.local_engines.protocol import FAMILIES, mlx_sources
+from inferyard.adapters.local_engines.protocol import mlx_sources
 from inferyard.evidence.local_engines import verify_queue_events
 from inferyard.evidence.storage import EvidenceError
 
@@ -98,12 +98,6 @@ def metrics(e, index, value):
     item = snapshot(e, index)
     item["raw_metrics"] = value
     e.events[index]["data"]["signals"]["/metrics"]["body"] = value
-
-
-def test_valid_all_families_without_live_binding(rig):
-    for family in FAMILIES:
-        e = capture(rig, family)
-        assert verify(e) is False
 
 
 @pytest.mark.parametrize(

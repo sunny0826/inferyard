@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_extension_transport.py",
+  "decisions": [
+    {
+      "test": "test_capability_and_parameter_gaps_fail_closed",
+      "decision": "keep",
+      "reason": "模板、slot 身份、busy、工具能力和有效 seed 任一不符拒绝，避免扩展绕过冻结条件。"
+    },
+    {
+      "test": "test_native_stream_path_preserves_actual_usage_and_finish",
+      "decision": "keep",
+      "reason": "原生流式工具响应保留正文和实际 completion usage，避免扩展流路径丢计量。"
+    },
+    {
+      "test": "test_separate_multislot_transport_checks_template_tokens_effective_slot_and_quality",
+      "decision": "keep",
+      "reason": "多 slot 扩展请求固定有效 slot、模板和 token 后产真实质量结果并排空，避免并发请求错 slot 或缺评分。"
+    }
+  ]
+}

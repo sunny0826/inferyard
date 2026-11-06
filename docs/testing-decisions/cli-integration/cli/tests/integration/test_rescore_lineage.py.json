@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/integration/test_rescore_lineage.py",
+  "decisions": [
+    {
+      "test": "test_multigeneration_replay_uses_immediate_parent_and_rejects_forgery",
+      "decision": "keep",
+      "reason": "多代重评分按直接父版本比对；伪造祖先拒绝，父目录移走后封存血缘仍核验，缺父证据不能仅传对象绕过。"
+    }
+  ]
+}

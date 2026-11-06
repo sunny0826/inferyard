@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_storage_sync.py",
+  "decisions": [
+    {
+      "test": "test_buffer_flush_keeps_pending_fsync_and_only_changed_log_syncs",
+      "decision": "delete",
+      "reason": "只断言fileno、_pending_sync及fsync时点，属于内部dirty位策略。"
+    },
+    {
+      "test": "test_empty_logs_initially_sync_but_unchanged_logs_do_not",
+      "decision": "delete",
+      "reason": "只数空日志fsync四次及不重复调用，约束写入优化实现，不证明用户预算。"
+    },
+    {
+      "test": "test_extension_terminal_sync_and_later_samples_wait_for_existing_boundary",
+      "decision": "delete",
+      "reason": "extension依边界延迟fsync测试大量fileno/_pending_sync调用统计，未模拟崩溃或验证产品结论；失败不得封存由test_failed_fsync_preserves_prefix_and_blocks_same_writer_retry覆盖。"
+    },
+    {
+      "test": "test_failed_fsync_preserves_prefix_and_blocks_same_writer_retry",
+      "decision": "keep",
+      "reason": "fsync失败后原前缀保留、同writer不能再写或封存，避免不耐久证据伪成功；删除_pending_sync私有字段。"
+    }
+  ]
+}

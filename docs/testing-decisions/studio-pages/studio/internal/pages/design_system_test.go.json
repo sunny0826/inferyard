@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/pages/design_system_test.go",
+  "decisions": [
+    {
+      "test": "TestDesignDetailFailureIsNotLoading",
+      "decision": "delete",
+      "reason": "失败态不再显示加载且存在重试入口已明确并入 TestDesignDetailRetryAndLoading，再验证点击后的重新加载；详情返回由 TestDashboardRunningDisablesQuickRunAndOpensDetail 覆盖。"
+    },
+    {
+      "test": "TestDesignProgressRanges",
+      "decision": "delete",
+      "reason": "只遍历私有控件树并检查 role/accRange 下标，不能据此保留实现快照。现存详情和运行测试保留已知分母读数；未知/零分母的可访问进度读数未覆盖，不声称已被完整替代。"
+    }
+  ]
+}

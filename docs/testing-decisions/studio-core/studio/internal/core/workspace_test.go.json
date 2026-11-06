@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/core/workspace_test.go",
+  "decisions": [
+    {
+      "test": "TestWorkspaceSwitchRetainsOwnershipUntilStopped",
+      "decision": "keep",
+      "reason": "引擎运行时不可切换 workspace，停止后才切换并清旧 PID，防引擎失去归属。"
+    }
+  ]
+}

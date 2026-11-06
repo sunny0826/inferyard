@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_journal.py",
+  "decisions": [
+    {
+      "test": "test_actual_journal_preserves_frozen_profile",
+      "decision": "keep",
+      "reason": "具体场景 test_actual_journal_preserves_frozen_profile。逐项参数：pytest.mark.parametrize('special', [True, False])。可观察预期：assert saved == plan；assert saved['experiment'].get('profile') == ('context-speed.v1' if special else None)。实际 Journal 封存必须保留 context-speed 冻结 profile，普通计划继续读取，不能在写入时抹去实验范围。"
+    }
+  ]
+}

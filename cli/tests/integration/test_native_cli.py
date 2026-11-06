@@ -13,14 +13,10 @@ import inferyard.runtime.runner as running
 from inferyard.cli import main
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, read_json, read_jsonl
-from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
+from inferyard.evidence.storage import EvidenceError, read_json
 from inferyard.registry import adapter_factory
 from inferyard.runtime.runner import execute_async
 from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401
-from tests.integration.test_lab_cli import (
-    test_frozen_plan_run_uses_shared_lab_lifecycle as frozen_plan_flow,
-)
 from tests.integration.test_runner import scenario  # noqa: F401
 from tests.layout_mutations import change_observation
 from tests.native_service import NativeService
@@ -107,10 +103,6 @@ def test_native_offline_rejects_invented_drain(native_scenario):
         read_trial(root)
 
 
-def test_native_frozen_plan(native_scenario, tmp_path, monkeypatch, capsys):
-    frozen_plan_flow(native_scenario, tmp_path, monkeypatch, capsys)
-
-
 def test_native_explicit_lab_requirement_blocks_before_generation(native_scenario):
     command, deps, service = native_scenario
     config = command.config.config.to_dict()
@@ -121,43 +113,6 @@ def test_native_explicit_lab_requirement_blocks_before_generation(native_scenari
     code, result = asyncio.run(execute_async(command, deps))
     assert code == 2 and "required_lab_observation_unavailable" in result.limitations[0]
     assert service.requests == []
-
-
-def test_native_cancel_disclosure_and_no_retry(native_scenario):
-    command, deps, service = native_scenario
-    service.options["truncated"] = True
-    code, result = asyncio.run(execute_async(command, deps))
-    assert code == 2
-    read_trial(Path(result.evidence_dir))
-    events, _ = read_jsonl(Path(result.evidence_dir) / "events.jsonl")
-    observations = [e["data"] for e in events if e["event_type"] == "native_observed"]
-    assert observations[-1]["cancellation"]["client_action"] == "close_http_response_context"
-    assert observations[-1]["cancellation"]["native_cancel"] is None
-    assert len(service.requests) == 2  # One ordinary probe, one truncated stream; no retry.
-
-
-def test_native_clean_basis_is_sealed_and_bound_to_completed_requests(native_scenario):
-    command, deps, _ = native_scenario
-    code, result = asyncio.run(execute_async(command, deps))
-    assert code == 0
-    root = Path(result.evidence_dir)
-    events, _ = read_jsonl(root / "events.jsonl")
-    evidence = TrialEvidence(root)
-    finished = [e for e in events if e["event_type"] == "request_finished"]
-    assert len(evidence.observation_keys("native_clean_receipt")) == len(finished)
-    assert not list(root.glob("client-http-clean-*.json"))
-    for event in finished:
-        receipt = evidence.observation("native_clean_receipt", key=event["request_id"])
-        verify_reference(
-            root,
-            evidence.observation_reference("native_clean_receipt", key=event["request_id"]),
-            reads=evidence,
-        )
-        assert receipt["run_id"] == event["run_id"]
-        assert receipt["request_id"] == event["request_id"]
-        assert receipt["completion_scope"] == "client_http"
-        assert receipt["engine_internal_drain"] is None
-    read_trial(root)
 
 
 @pytest.mark.parametrize("change", ["scope", "client_id", "missing", "sealed_missing"])
@@ -184,22 +139,6 @@ def test_native_clean_receipt_offline_rejection_and_legacy_reading(native_scenar
         EvidenceError, match="native_clean_receipt_binding_mismatch|native_clean_receipt_missing"
     ):
         read_trial(root)
-
-
-def test_native_receipt_io_failure_keeps_dirty(native_scenario, monkeypatch):
-    command, deps, _ = native_scenario
-    original = running.TrialJournal.observe
-
-    def observe(self, kind, value, **options):
-        if kind == "native_clean_receipt":
-            raise EvidenceError("fixture_receipt_write_failed")
-        return original(self, kind, value, **options)
-
-    monkeypatch.setattr(running.TrialJournal, "observe", observe)
-    code, result = asyncio.run(execute_async(command, deps))
-    assert code == 4 and "native_clean_receipt_missing" in result.limitations
-    assert read_json(locking.STATE_PATH)["dirty"] is True
-    assert TrialEvidence(Path(result.evidence_dir)).observation_keys("native_clean_receipt") == []
 
 
 @pytest.mark.parametrize("phase", ["probe", "formal"])

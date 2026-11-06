@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/preview_first_use_test.go",
+  "decisions": [
+    {
+      "test": "TestPreviewFirstUseAcquiresAssetsBeforeDeviceCheck",
+      "decision": "keep",
+      "reason": "空资源首次准备须先下载模型/引擎再检查设备，随后默认双题包完成并打开报告；全过程不得创建真实服务或持久布局。"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/integration/test_native_usage_null.py",
+  "decisions": [
+    {
+      "test": "test_cli_stream_usage",
+      "decision": "keep",
+      "reason": "native普通/stream usage可为object/null/缺省；缺数值保持null原因，非法usage停止且保留分母，不能伪造token数。"
+    }
+  ]
+}

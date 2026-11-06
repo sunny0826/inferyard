@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_closed_concurrency.py",
+  "decisions": [
+    {
+      "test": "test_drain_is_part_of_throughput_window_and_client_capacity_is_required",
+      "decision": "keep",
+      "reason": "具体场景 test_drain_is_part_of_throughput_window_and_client_capacity_is_required。可观察预期：assert result['window_seconds'] == 300 / 1000000000.0；assert result['resource_window'] == [1, 301]；assert not result['hardware_qualified']；assert result['client_capacity_qualified'] and result['hardware_qualified']。封闭并发不得重试或复用忙 slot；超时/未知 idle 后停发并保留未执行分母，排空计入吞吐窗口，缺客户端容量或冲突身份不能授硬件资格。"
+    },
+    {
+      "test": "test_handwritten_throughput_goodput_and_resource_window",
+      "decision": "keep",
+      "reason": "具体场景 test_handwritten_throughput_goodput_and_resource_window。可观察预期：assert result['window_seconds'] == 200 / 1000000000.0；assert result['N01_completed_requests_per_second'] == 20000000；assert result['N02_goodput_per_second'] == 15000000；assert result['resource_window'] == [1, 201]。封闭并发不得重试或复用忙 slot；超时/未知 idle 后停发并保留未执行分母，排空计入吞吐窗口，缺客户端容量或冲突身份不能授硬件资格。"
+    },
+    {
+      "test": "test_malformed_evidence_does_not_grant_qualification",
+      "decision": "keep",
+      "reason": "具体场景 test_malformed_evidence_does_not_grant_qualification。逐项参数：pytest.mark.parametrize('change,reason', [({'request_id': 'a'}, 'identity_ambiguous'), ({'slot_id': 0}, 'slot_overlap'), ({'slot_id': True}, 'window_or_slot'), ({'end_ns': 0}, 'window_or_slot'), ({'protocol_complete': False}, 'protocol_missing'), ({'dispatch_delay_ns': None}, 'dispatch_evidence')])。可观察预期：pytest.raises(EvidenceError, match=reason)。封闭并发不得重试或复用忙 slot；超时/未知 idle 后停发并保留未执行分母，排空计入吞吐窗口，缺客户端容量或冲突身份不能授硬件资格。"
+    },
+    {
+      "test": "test_missing_idle_and_client_delay_refuse_real_qualification",
+      "decision": "keep",
+      "reason": "具体场景 test_missing_idle_and_client_delay_refuse_real_qualification。可观察预期：assert not result['hardware_qualified'] and (not result['complete'])；assert not result['client_dispatch_qualified']。封闭并发不得重试或复用忙 slot；超时/未知 idle 后停发并保留未执行分母，排空计入吞吐窗口，缺客户端容量或冲突身份不能授硬件资格。"
+    },
+    {
+      "test": "test_preexisting_busy_slot_refuses_all_requests",
+      "decision": "keep",
+      "reason": "具体场景 test_preexisting_busy_slot_refuses_all_requests。可观察预期：assert adapter.calls == []；pytest.raises(EvidenceError, match='verified_idle')。封闭并发不得重试或复用忙 slot；超时/未知 idle 后停发并保留未执行分母，排空计入吞吐窗口，缺客户端容量或冲突身份不能授硬件资格。"
+    },
+    {
+      "test": "test_scheduler_binds_slots_preserves_order_and_never_retries",
+      "decision": "keep",
+      "reason": "保留冻结4请求无重试、峰值2、冻结case顺序、完整并发结果及无硬件资格；删除任意事件数量8的断言。"
+    },
+    {
+      "test": "test_timeout_cancels_peers_keeps_unexecuted_denominator",
+      "decision": "keep",
+      "reason": "具体场景 test_timeout_cancels_peers_keeps_unexecuted_denominator。可观察预期：assert sum(result['counts'].values()) == 4；assert result['counts']['not_executed'] == 2；assert len(adapter.calls) == 2 and (not adapter.busy)。封闭并发不得重试或复用忙 slot；超时/未知 idle 后停发并保留未执行分母，排空计入吞吐窗口，缺客户端容量或冲突身份不能授硬件资格。"
+    },
+    {
+      "test": "test_unknown_idle_stops_new_requests_without_retry",
+      "decision": "keep",
+      "reason": "具体场景 test_unknown_idle_stops_new_requests_without_retry。可观察预期：assert len(adapter.calls) == 2；assert not reduce_closed(spec(), data)['drained']。封闭并发不得重试或复用忙 slot；超时/未知 idle 后停发并保留未执行分母，排空计入吞吐窗口，缺客户端容量或冲突身份不能授硬件资格。"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "source_path": "studio/internal/pages/models_run_test.go",
+  "decisions": [
+    {
+      "test": "TestRunPanelAttributionStates",
+      "decision": "keep",
+      "reason": "服务属于其他组合或身份未知必须明确区分，模型页不可误提供直接控制，避免把其他服务当当前模型。"
+    },
+    {
+      "test": "TestRunPanelEngineVerdictWarning",
+      "decision": "keep",
+      "reason": "已选引擎核验被撤销后组合状态须说明原因并要求重选，避免用户以为仍可用。"
+    },
+    {
+      "test": "TestRunPanelFailureShowsFixedReason",
+      "decision": "keep",
+      "reason": "服务退出/超时/端口占用须给对应固定诊断和任务页恢复入口，不能只呈现不可解释失败。"
+    },
+    {
+      "test": "TestRunPanelHidesNonLoopbackEndpoint",
+      "decision": "keep",
+      "reason": "非 loopback endpoint 不应作为可用本机服务展示，而合法 127.0.0.1 保留，避免误导本机绑定。"
+    },
+    {
+      "test": "TestRunPanelNewTaskPreservesPair",
+      "decision": "keep",
+      "reason": "模型页新开任务需保留当前组合且清旧详情/阶段，不得直接启动服务。"
+    },
+    {
+      "test": "TestRunPanelOrphan",
+      "decision": "keep",
+      "reason": "遗留服务时模型页不能新开任务或控制进程，须引导在任务页处理，避免重复启动。"
+    },
+    {
+      "test": "TestRunPanelRunActiveLocksSelection",
+      "decision": "keep",
+      "reason": "排队/运行/取消中模型页显示冻结组合；公开 Find/Click 尝试正常选中值和占位入口后没有搜索框或可选另一模型/引擎，model/engine 保持原值。不再遍历私有 UI 树。"
+    }
+  ]
+}

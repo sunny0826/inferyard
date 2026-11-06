@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_warmup_contract.py",
+  "decisions": [
+    {
+      "test": "test_legacy_three_warmup_plan_and_run_read_without_rewriting",
+      "decision": "delete",
+      "reason": "同一生产 run 重读互等无独立历史预期；warmup 默认/范围与 layout 原件不变另有覆盖。"
+    },
+    {
+      "test": "test_warmup_default_stays_three_and_choice_changes_plan_binding",
+      "decision": "keep",
+      "reason": "保留默认3、手动 hashlib 配置摘要、warmup 改变冻结 hash/预算与 formal limit 不变；删生产 plan_hash 自证。"
+    },
+    {
+      "test": "test_warmup_range_accepted_by_runtime_and_exported_schema",
+      "decision": "keep",
+      "reason": "配置与导出schema都接受0..3次warmup，避免用户合法零预热被一端拒绝。"
+    },
+    {
+      "test": "test_warmup_rejects_bounds_and_wrong_types",
+      "decision": "keep",
+      "reason": "-1/4/bool/字符串在运行和发布schema都拒绝，避免冻结执行次数含歧义。"
+    }
+  ]
+}

@@ -1,6 +1,5 @@
 """Memory overrides must be frozen, auditable, and independent of temperature rules."""
 
-import hashlib
 import shutil
 import struct
 from copy import deepcopy
@@ -59,7 +58,6 @@ def test_plan_freezes_memory_reason_and_optional_temperature_rule(model, tmp_pat
     )
     assert plan["definition"] == "engine_fit_plan.v4"
     assert plan["model"]["kind"] == kind
-    assert temperature.runtime._manifest(plan) == plan["model"]
     assert plan["parameters"]["min_free_memory_bytes"] is None
     assert plan["parameters"]["memory_stop_override_reason"] == REASON
     assert plan["parameters"]["max_temperature_celsius"] == (None if both else 85)
@@ -165,7 +163,6 @@ def test_cli_freezes_reason_and_refuses_missing_value_or_conflicting_threshold(t
         == 2
     )
     assert len(requests) == 1
-    assert CommandRequest("engine-fit plan").fit_memory_stop_override_reason is None
     assert (
         main(
             ["engine-fit", "run", "--skip-memory-stop", REASON],
@@ -299,12 +296,3 @@ def test_comparison_refuses_mixed_frozen_stopping_conditions(tmp_path, other):
         paths.append(root)
     with pytest.raises(EvidenceError, match="plan_mismatch"):
         compare(paths, tmp_path / "comparison")
-
-
-def test_old_temperature_override_html_bytes_remain_unchanged():
-    plan, run, rows = temperature._override_data()
-    html = render([dict(plan=plan, run=run, requests=rows)]).encode()
-    # Captured with the HEAD renderer before ADR 019, not the modified renderer.
-    assert hashlib.sha256(html).hexdigest() == (
-        "b114bb30dc8d61a7fda2b87a968246c7629267d47f2e3041aa155177f4b48ee1"
-    )

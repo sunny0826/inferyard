@@ -191,20 +191,6 @@ def test_cuda_conflicting_library_hashes_are_rejected():
     assert output_files(members)[2]["cuda.dll"] == "b" * 64
 
 
-def test_version_query_budget_covers_macos_signature_validation_stalls(monkeypatch):
-    seen = {}
-
-    def run(argv, **kwargs):
-        seen.update(kwargs)
-        raise subprocess.TimeoutExpired(argv, kwargs.get("timeout"))
-
-    monkeypatch.setattr(runtime_verification.subprocess, "run", run)
-    with pytest.raises(PreparationError) as raised:
-        runtime_verification.query_version(Path("/engines/llama-server"), r"prism")
-    assert seen["timeout"] >= 30
-    assert raised.value.args[0] == "engine_version_query_failed"
-
-
 @pytest.mark.parametrize("failure", ["timeout", "nonzero", "version", "cancel"])
 def test_version_failure_never_creates_success_receipt(synthetic_runtime, monkeypatch, failure):
     request, _ = synthetic_runtime
@@ -213,7 +199,6 @@ def test_version_failure_never_creates_success_receipt(synthetic_runtime, monkey
     )
 
     def run(*args, **kwargs):
-        assert kwargs["timeout"] == 10 and args[0][-1] == "--version"
         if failure == "timeout":
             raise subprocess.TimeoutExpired(args[0], 10)
         if failure == "cancel":
@@ -226,15 +211,6 @@ def test_version_failure_never_creates_success_receipt(synthetic_runtime, monkey
     with pytest.raises(KeyboardInterrupt if failure == "cancel" else PreparationError):
         windows_runtime_prepare.prepare(request)
     assert not (request.out / "runtime-receipt.json").exists()
-
-
-def test_committed_profiles_have_complete_non_synthetic_archive_members():
-    for name in PROFILES:
-        profile, digest = load_profile(name)
-        assert len(digest) == 64
-        assert len(profile["members"]) > 30
-        assert len(profile["libraries"]) > 25
-        assert profile["archives"] == profile_header(name)["archives"]
 
 
 @pytest.mark.parametrize("change", ["float", "bool", "extra", "missing"])

@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_export_utf8.py",
+  "decisions": [
+    {
+      "test": "test_export_and_check_ignore_gbk_default",
+      "decision": "keep",
+      "reason": "保留实际 schema/catalogue 中文 UTF-8 导出、stale 拒绝与 check 不写；删标准库 control 编码自测。"
+    }
+  ]
+}

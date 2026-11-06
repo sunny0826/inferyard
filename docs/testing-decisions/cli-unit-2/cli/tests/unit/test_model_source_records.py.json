@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_model_source_records.py",
+  "decisions": [
+    {
+      "test": "test_legacy_metadata_hash_field_stays_strict",
+      "decision": "keep",
+      "reason": "旧记录缺/错metadata hash与v3混入旧hash字段都拒绝，避免跨定义放宽证据身份。"
+    },
+    {
+      "test": "test_original_and_current_records_bind_without_rewriting",
+      "decision": "keep",
+      "reason": "保留各版来源记录绑定与原件不变；expected 使用明确 repository ggml-org/models-moved 及冻结 revision 字符串，移除生产 parser 派生 expected。"
+    },
+    {
+      "test": "test_record_budget_shape_and_values_are_strict",
+      "decision": "keep",
+      "reason": "预算缺字段/错形/实际大小超预算/bool/小数/超cap/超大整数都拒绝，避免不真实下载约束进入候选。"
+    },
+    {
+      "test": "test_record_timeouts_reject_invalid_numbers",
+      "decision": "keep",
+      "reason": "总/读/清理时间的零负布尔非有限字符串null都拒绝，避免来源记录声称无限或无效获取预算。"
+    },
+    {
+      "test": "test_unknown_definitions_are_rejected",
+      "decision": "keep",
+      "reason": "未知v0/v4定义必须拒绝，不默认为最新记录，避免错误解释来源。"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_windows_temperature.py",
+  "decisions": [
+    {
+      "test": "test_complete_query_is_used_without_cpu_temperature_substitution",
+      "decision": "keep",
+      "reason": "真实GPU查询47℃保留GPU语义，不能用CPU温度替代，避免测量范围错误。"
+    },
+    {
+      "test": "test_gpu_values_are_celsius_and_missing_devices_stay_missing",
+      "decision": "keep",
+      "reason": "GPU温度为摄氏度，N/A设备保留null原因，不能填零或丢设备。"
+    },
+    {
+      "test": "test_malformed_query_cannot_become_a_temperature",
+      "decision": "keep",
+      "reason": "空/NaN/Inf/越物理范围/错列/重复设备/bool index 不得成为温度，避免错误安全判断。"
+    },
+    {
+      "test": "test_private_query_is_bounded_and_reaped",
+      "decision": "keep",
+      "reason": "查询超时/超输出/非零退出有限失败并回收自有进程，避免CLI挂起或后台遗留。"
+    },
+    {
+      "test": "test_unavailable_tool_produces_null_source_not_fake_device",
+      "decision": "keep",
+      "reason": "工具不存在产生null与tool_unavailable而非伪GPU，避免凭空温度与错误资格。"
+    }
+  ]
+}

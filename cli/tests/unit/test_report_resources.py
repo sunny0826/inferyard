@@ -31,11 +31,9 @@ def test_zero_missing_and_gaps_do_not_join_and_axes_are_aligned():
     ]
     result = resource_view(rows, 1000)
     rss = next(c for c in result["charts"] if c["metric"] == "service_rss")
-    thermal = next(c for c in result["charts"] if c["metric"] == "temperature")
     assert [p["value"] for p in rss["points"]] == [0, 1, None, 2, 3]
     assert len(rss["lines"]) == 3
     assert rss["missing_count"] == 1 and rss["gap_count"] == 1
-    assert thermal["lines"][0]["single"][0] == 500
     assert result["duration_seconds"] == 8
 
 

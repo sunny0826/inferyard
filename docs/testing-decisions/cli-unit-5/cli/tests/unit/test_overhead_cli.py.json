@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_overhead_cli.py",
+  "decisions": [
+    {
+      "test": "test_block_p95_missing_is_not_hidden_by_other_statistics",
+      "decision": "keep",
+      "reason": "其他gap统计通过而p95缺资格仍退出3，避免不完整专项通过。"
+    },
+    {
+      "test": "test_engine_rate_refusal_is_not_hidden_by_e2e_pass",
+      "decision": "keep",
+      "reason": "E2E通过但引擎L07失败仍退出3，避免总门掩盖局部速率扰动。"
+    },
+    {
+      "test": "test_offline_command_routes_without_service",
+      "decision": "keep",
+      "reason": "离线verify遇不完整开销结果退出3并输出passed=false，避免自动化误认为通过。"
+    },
+    {
+      "test": "test_overhead_cli_requires_explicit_budget_and_tolerance",
+      "decision": "keep",
+      "reason": "开销校准必须显式总预算/容差且observer互斥，各专项容差传递，避免隐式预算发请求。"
+    }
+  ]
+}

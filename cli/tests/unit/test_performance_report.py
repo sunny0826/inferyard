@@ -34,5 +34,4 @@ def test_comparison_table_escapes_labels_and_keeps_refused_difference_empty():
     html = str(module.performance_table([row]))
     assert "<script>" not in html and "<img " not in html and "<svg " not in html
     assert "&lt;script&gt;" in html and "&lt;img " in html
-    assert 'data-eligible="false"' in html
     assert "— ms" in html

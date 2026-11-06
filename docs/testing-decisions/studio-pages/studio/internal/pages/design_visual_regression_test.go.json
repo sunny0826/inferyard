@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/internal/pages/design_visual_regression_test.go",
+  "decisions": [
+    {
+      "test": "TestReportSourcesDoNotPaintOverFooter",
+      "decision": "delete",
+      "reason": "逐像素比较表格重绘并固定 footer 坐标，是绘制实现回归。"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "source_path": "studio/internal/core/local_runs_test.go",
+  "decisions": [
+    {
+      "test": "TestLocalQueueCancelDrainsBeforeServiceStops",
+      "decision": "keep",
+      "reason": "取消本地运行后当前任务 cancelled、后续 scope 阻断、服务最终停止，防取消后继续下个题包。"
+    },
+    {
+      "test": "TestLocalQueueCancelWhileAwaitingDoesNotBind",
+      "decision": "keep",
+      "reason": "等待外部服务时取消不得再绑定并须阻断后续 scope，防用户取消后开始执行。"
+    },
+    {
+      "test": "TestLocalQueueFailureBlocksRemainingAndCleansService",
+      "decision": "keep",
+      "reason": "首题包绑定失败须阻断后续 scope 并清理服务，防不完整前置条件下继续运行。"
+    },
+    {
+      "test": "TestLocalQueueLMStudioRequiresFreshExternalIdentity",
+      "decision": "keep",
+      "reason": "LM 第二题包必须新进程身份，错误身份不能消耗等待状态且外部服务不转为受管，防复用脏服务或越权停止。"
+    },
+    {
+      "test": "TestLocalQueueRejectsLMIdentityChangeDuringBinding",
+      "decision": "keep",
+      "reason": "LM 绑定前后 start ticks 改变时不能发送 run，防任务落到替换进程。"
+    },
+    {
+      "test": "TestLocalQueueStartsFreshProcessPerBundle",
+      "decision": "keep",
+      "reason": "四类受管本地引擎每题包用新 PID，按 core/pelican 顺序且首进程已退出，防跨题包状态污染。"
+    }
+  ]
+}

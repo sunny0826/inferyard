@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_plan.py",
+  "decisions": [
+    {
+      "test": "test_fixed_plan_five_trials_and_budget",
+      "decision": "keep",
+      "reason": "每上下文冻结五次正确 case、请求限额与总预算且可重读，避免执行次数或 wall budget 与配方不符。"
+    },
+    {
+      "test": "test_formal_draft_refused_before_output",
+      "decision": "keep",
+      "reason": "未审核题包冻结前拒绝且不创建输出，避免草稿成为正式 speed plan。"
+    }
+  ]
+}

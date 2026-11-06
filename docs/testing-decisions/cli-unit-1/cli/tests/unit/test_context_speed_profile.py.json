@@ -1,0 +1,70 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_profile.py",
+  "decisions": [
+    {
+      "test": "test_all_three_fixed_contexts",
+      "decision": "keep",
+      "reason": "64k/128k/256k 均接受与案例对应的上下文，防止误拒部分支持规格。"
+    },
+    {
+      "test": "test_config_recipe_rejected",
+      "decision": "keep",
+      "reason": "上下文、缓存、slots、seed、stop、预算、warmup、fresh 或 adapter 偏离时拒绝。"
+    },
+    {
+      "test": "test_draft_hash_and_review_are_separate",
+      "decision": "keep",
+      "reason": "专用 bundle 内容正确不代表人工已审核，移除审批后仍须阻止正式使用。"
+    },
+    {
+      "test": "test_ordinary_inputs_keep_behavior",
+      "decision": "keep",
+      "reason": "普通配置仍能编译和校验，不会被强加 context-speed 专用 recipe。"
+    },
+    {
+      "test": "test_ordinary_plan_hash_unchanged",
+      "decision": "delete",
+      "reason": "固定普通计划 SHA 和输入不变仅限制表示；普通可用性与冻结回读已有检查。"
+    },
+    {
+      "test": "test_prepare_and_offline_read_share_profile_validation",
+      "decision": "keep",
+      "reason": "冻结写入和离线回读分别保留固定五次顺序重复的独立预期，缺失 profile 时拒绝，防止改变测评样本预算。"
+    },
+    {
+      "test": "test_profile_plan",
+      "decision": "delete",
+      "reason": "固定五次重复的样本预算假设合并到已有冻结写入与离线回读场景，两侧分别对照手写 repeat_index [0,1,2,3,4]；不再单列数量检查。"
+    },
+    {
+      "test": "test_rehashed_trial_reorder_is_rejected",
+      "decision": "keep",
+      "reason": "重算摘要后的逆序试验仍拒绝，防止看过结果后调换冻结重复顺序。"
+    },
+    {
+      "test": "test_run_input_read_rejects_conflicting_profile",
+      "decision": "keep",
+      "reason": "证据读取也拒绝缺 profile 或案例/上下文冲突，防止离线归约放松检查。"
+    },
+    {
+      "test": "test_same_name_different_body_or_policy_rejected",
+      "decision": "keep",
+      "reason": "相同 bundle 名不能掩盖题干和规则变化，防止冒用固定任务身份。"
+    },
+    {
+      "test": "test_special_cannot_fall_back_to_ordinary",
+      "decision": "keep",
+      "reason": "专用 bundle 缺失或未知 profile 不得按普通任务放行，防止方法失去绑定。"
+    },
+    {
+      "test": "test_startup_conflicts_rejected",
+      "decision": "keep",
+      "reason": "草稿/投机解码、额外 slots 或 prompt cache 参数不得混入固定实验。"
+    },
+    {
+      "test": "test_workload_recipe_rejected",
+      "decision": "keep",
+      "reason": "重复数、任务目的、输入目标和输出预算偏离专用定义时拒绝计划。"
+    }
+  ]
+}

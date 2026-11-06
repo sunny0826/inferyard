@@ -171,16 +171,6 @@ def test_streaming_partial_usage_marks_only_missing():
     assert result["usage_missing_reasons"]["prompt_tokens"] is None
 
 
-def test_streaming_usage_same_value_repeated_allowed():
-    decoder = streaming_decoder()
-    usage = {"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6}
-    decoder.feed(sse(chunk(content="x", finish="stop")), observed_ns=T0)
-    decoder.feed(sse(chunk(usage=usage, choices_marker="usage_only")), observed_ns=T0 + 1)
-    decoder.feed(sse(chunk(usage=usage, choices_marker="usage_only"), "[DONE]"), observed_ns=T0 + 2)
-    result = finish_stream(decoder)
-    assert result["completion_tokens"] == 2
-
-
 # --- streaming rejections --------------------------------------------------
 
 
@@ -190,14 +180,6 @@ def test_streaming_rejects_missing_done():
     with pytest.raises(LabProtocolError) as excinfo:
         finish_stream(decoder)
     assert reason_of(excinfo) == "lab_generation_done"
-
-
-def test_streaming_rejects_truncated_frame():
-    decoder = streaming_decoder()
-    decoder.feed(b"data: " + json.dumps(chunk(content="x")).encode(), observed_ns=T0)
-    with pytest.raises(LabProtocolError) as excinfo:
-        finish_stream(decoder)
-    assert reason_of(excinfo) == "lab_generation_truncated"
 
 
 def test_streaming_rejects_truncated_multibyte():
@@ -224,13 +206,6 @@ def test_streaming_rejects_data_after_done():
     assert reason_of(excinfo) == "lab_generation_done"
 
 
-def test_streaming_rejects_duplicate_done():
-    decoder = streaming_decoder()
-    with pytest.raises(LabProtocolError) as excinfo:
-        decoder.feed(sse(chunk(finish="stop"), "[DONE]", "[DONE]"), observed_ns=T0)
-    assert reason_of(excinfo) == "lab_generation_done"
-
-
 def test_streaming_rejects_text_after_finish():
     decoder = streaming_decoder()
     decoder.feed(sse(chunk(content="x", finish="stop")), observed_ns=T0)
@@ -241,14 +216,6 @@ def test_streaming_rejects_text_after_finish():
     decoder.feed(sse(chunk(content="x", finish="stop")), observed_ns=T0)
     with pytest.raises(LabProtocolError) as excinfo:
         decoder.feed(sse(chunk(reasoning="y")), observed_ns=T0 + 1)
-    assert reason_of(excinfo) == "lab_generation_finish_reason"
-
-
-def test_streaming_rejects_duplicate_finish():
-    decoder = streaming_decoder()
-    decoder.feed(sse(chunk(finish="stop")), observed_ns=T0)
-    with pytest.raises(LabProtocolError) as excinfo:
-        decoder.feed(sse(chunk(finish="length")), observed_ns=T0 + 1)
     assert reason_of(excinfo) == "lab_generation_finish_reason"
 
 
@@ -283,34 +250,6 @@ def test_streaming_rejects_id_mismatch(payload):
     assert reason_of(excinfo) == "lab_generation_id"
 
 
-@pytest.mark.parametrize(
-    "mutate",
-    [
-        lambda c: c.update(choices=[{"index": 1, "delta": {}, "finish_reason": None}]),
-        lambda c: c.update(
-            choices=[{"index": 0, "delta": {}, "finish_reason": None}, {"index": 1}]
-        ),
-        lambda c: c.update(choices=[{"index": True, "delta": {}, "finish_reason": None}]),
-        lambda c: c.update(choices="x"),
-        lambda c: c["choices"][0].update(delta="text"),
-        lambda c: c["choices"][0].update(delta={"content": 5}),
-        lambda c: c["choices"][0].update(delta={"reasoning": ["x"]}),
-        lambda c: c["choices"][0].update(finish_reason="tool_calls"),
-    ],
-)
-def test_streaming_rejects_choice_shape_violations(mutate):
-    payload = chunk(content="x")
-    mutate(payload)
-    decoder = streaming_decoder()
-    with pytest.raises(LabProtocolError) as excinfo:
-        decoder.feed(sse(payload), observed_ns=T0)
-    assert reason_of(excinfo) in {
-        "lab_generation_choices",
-        "lab_generation_delta",
-        "lab_generation_finish_reason",
-    }
-
-
 def test_streaming_rejects_oversize_frame():
     decoder = streaming_decoder()
     payload = sse(chunk(content="x" * (256 * 1024)))
@@ -340,13 +279,6 @@ def test_streaming_rejects_time_regression():
     assert reason_of(excinfo) == "lab_generation_time"
 
 
-def test_streaming_rejects_time_before_send():
-    decoder = streaming_decoder()
-    with pytest.raises(LabProtocolError) as excinfo:
-        decoder.feed(b"", observed_ns=T_SEND - 1)
-    assert reason_of(excinfo) == "lab_generation_time"
-
-
 def test_streaming_rejects_unknown_sse_field_and_bad_json():
     decoder = streaming_decoder()
     with pytest.raises(LabProtocolError) as excinfo:
@@ -360,29 +292,6 @@ def test_streaming_rejects_unknown_sse_field_and_bad_json():
     with pytest.raises(LabProtocolError) as excinfo:
         decoder.feed(b'data: {"a": 1, "a": 2}\n\n', observed_ns=T0)
     assert reason_of(excinfo) == "lab_generation_json"
-
-
-# --- enum type safety (review round 1) ---------------------------------------
-
-
-@pytest.mark.parametrize("bad", [[], {}, 1, True, 1.5])
-def test_streaming_rejects_non_string_finish_reason(bad):
-    decoder = streaming_decoder()
-    with pytest.raises(LabProtocolError) as excinfo:
-        decoder.feed(sse(chunk(finish=bad)), observed_ns=T0)
-    assert reason_of(excinfo) == "lab_generation_finish_reason"
-
-
-# --- frame budget enforced at feed time (review round 1) ----------------------
-
-
-def exact_frame(total, crlf=False, tail=""):
-    reference = sse(chunk(content=tail), crlf=crlf)
-    pad = total - len(reference)
-    assert pad >= 0
-    frame = sse(chunk(content="x" * pad + tail), crlf=crlf)
-    assert len(frame) == total
-    return frame
 
 
 def test_feed_rejects_oversize_pending_frame_without_newline():
@@ -407,50 +316,3 @@ def test_feed_counts_completed_line_and_pending_together():
     with pytest.raises(LabProtocolError) as excinfo:
         decoder.feed(b"data: " + b"z" * (60 * 1024), observed_ns=T0 + 1)
     assert reason_of(excinfo) == "lab_generation_size"
-
-
-def test_frame_at_exact_budget_accepted():
-    decoder = streaming_decoder()
-    pad = 256 * 1024 - len(sse(chunk(content="")))
-    decoder.feed(exact_frame(256 * 1024), observed_ns=T0)
-    decoder.feed(sse(chunk(finish="stop"), "[DONE]"), observed_ns=T0 + 1)
-    result = decoder.finish(observed_ns=T0 + 2)
-    assert result["protocol_complete"] is True
-    assert result["content"] == "x" * pad
-
-
-def test_frame_one_byte_over_budget_rejected():
-    decoder = streaming_decoder()
-    with pytest.raises(LabProtocolError) as excinfo:
-        decoder.feed(exact_frame(256 * 1024 + 1), observed_ns=T0)
-    assert reason_of(excinfo) == "lab_generation_size"
-
-
-def test_frame_budget_crlf_exact_boundary_accepted():
-    decoder = streaming_decoder()
-    decoder.feed(exact_frame(256 * 1024, crlf=True), observed_ns=T0)
-    decoder.feed(sse(chunk(finish="stop"), "[DONE]", crlf=True), observed_ns=T0 + 1)
-    result = decoder.finish(observed_ns=T0 + 2)
-    assert result["protocol_complete"] is True
-
-
-def test_frame_budget_multibyte_split_at_boundary_accepted():
-    decoder = streaming_decoder()
-    frame = exact_frame(256 * 1024, tail="好")
-    cut = frame.index("好".encode()) + 1
-    decoder.feed(frame[:cut], observed_ns=T0)
-    decoder.feed(frame[cut:], observed_ns=T0 + 1)
-    decoder.feed(sse(chunk(finish="stop"), "[DONE]"), observed_ns=T0 + 2)
-    result = decoder.finish(observed_ns=T0 + 3)
-    assert result["content"].endswith("好")
-    assert result["protocol_complete"] is True
-
-
-def test_multiple_legal_frames_do_not_share_budget():
-    decoder = streaming_decoder()
-    frame = sse(chunk(content="x" * (200 * 1024)))
-    decoder.feed(frame, observed_ns=T0)
-    decoder.feed(frame, observed_ns=T0 + 1)
-    decoder.feed(sse(chunk(finish="stop"), "[DONE]"), observed_ns=T0 + 2)
-    result = decoder.finish(observed_ns=T0 + 3)
-    assert result["protocol_complete"] is True

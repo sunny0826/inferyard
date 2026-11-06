@@ -1,0 +1,40 @@
+{
+  "source_path": "cli/tests/unit/test_current_formats.py",
+  "decisions": [
+    {
+      "test": "test_bad_presentation_seal_precedes_unsupported",
+      "decision": "keep",
+      "reason": "具体场景 test_bad_presentation_seal_precedes_unsupported。可观察预期：assert main(['verify', '--path', str(out)]) == 4；assert json.loads(capsys.readouterr().out)['limitations'] == ['presentation_bytes_changed']。旧/迁移格式不能经派生产物递归重新获准；损坏封存优先报证据错误，unsupported_format 与 malformed 必须给不同退出码并保持原字节。"
+    },
+    {
+      "test": "test_malformed_report_version_is_integrity_error",
+      "decision": "keep",
+      "reason": "具体场景 test_malformed_report_version_is_integrity_error。逐项参数：pytest.mark.parametrize('value', [None, True, '7', 7.0])。可观察预期：assert main(['verify', '--path', str(tmp_path)]) == 4。旧/迁移格式不能经派生产物递归重新获准；损坏封存优先报证据错误，unsupported_format 与 malformed 必须给不同退出码并保持原字节。"
+    },
+    {
+      "test": "test_migrated_schema_three_rejected_recursively",
+      "decision": "keep",
+      "reason": "具体场景 test_migrated_schema_three_rejected_recursively。逐项参数：pytest.mark.parametrize('artifact', ['run', 'report', 'comparison', 'public'])。可观察预期：assert main(args) == 2；assert 'unsupported_format' in json.loads(capsys.readouterr().out)['limitations']。旧/迁移格式不能经派生产物递归重新获准；损坏封存优先报证据错误，unsupported_format 与 malformed 必须给不同退出码并保持原字节。"
+    },
+    {
+      "test": "test_migrator_command_and_modules_are_absent",
+      "decision": "keep",
+      "reason": "具体场景 test_migrator_command_and_modules_are_absent。可观察预期：assert main(['migrate', '--run', 'missing', '--out', 'missing']) == 2。旧/迁移格式不能经派生产物递归重新获准；损坏封存优先报证据错误，unsupported_format 与 malformed 必须给不同退出码并保持原字节。已删模块 find_spec 形状断言，保留 migrate 命令拒绝。"
+    },
+    {
+      "test": "test_old_core_manifest_hash_checked_before_version",
+      "decision": "keep",
+      "reason": "具体场景 test_old_core_manifest_hash_checked_before_version。逐项参数：pytest.mark.parametrize('version', [1, 2, 9])。可观察预期：assert main(['verify', '--path', str(root)]) == 2；assert main(['verify', '--path', str(root)]) == 4。旧/迁移格式不能经派生产物递归重新获准；损坏封存优先报证据错误，unsupported_format 与 malformed 必须给不同退出码并保持原字节。"
+    },
+    {
+      "test": "test_public_old_policy_rejected_after_hash_checks",
+      "decision": "keep",
+      "reason": "具体场景 test_public_old_policy_rejected_after_hash_checks。逐项参数：pytest.mark.parametrize('version', [1, 2, 3, 4])。可观察预期：assert verify_public(out)['integrity_verified']；assert digest_tree(root) == before_source；assert main([command, flag, str(out)]) == code；assert digest_tree(out) == before。旧/迁移格式不能经派生产物递归重新获准；损坏封存优先报证据错误，unsupported_format 与 malformed 必须给不同退出码并保持原字节。"
+    },
+    {
+      "test": "test_report_unsupported_is_code_two_in_both_entries",
+      "decision": "keep",
+      "reason": "具体场景 test_report_unsupported_is_code_two_in_both_entries。逐项参数：pytest.mark.parametrize('version', [1, 2, 3, 4, 5, 6, 7, 9])。可观察预期：assert {p.name for p in tmp_path.iterdir()} == {'index.json'}；assert main([*args, str(tmp_path)]) == 2；assert result['limitations'] == ['unsupported_format']；assert result['details']['saved_version'] == version。旧/迁移格式不能经派生产物递归重新获准；损坏封存优先报证据错误，unsupported_format 与 malformed 必须给不同退出码并保持原字节。"
+    }
+  ]
+}

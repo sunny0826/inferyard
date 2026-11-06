@@ -120,24 +120,14 @@ def invoke(declaration, arguments):
     )
 
 
-def test_old_site_startup_executes_hook_but_bootstrap_does_not(environment):
+def test_bootstrap_excludes_hooks_and_outside_imports(environment):
     declaration, _, marker, customize = environment
-    baseline = invoke(declaration, ["-I", "-B", "-m", "sglang.launch_server", "--fixture"])
-    assert baseline.returncode == 0, baseline.stderr
-    assert marker.exists() and customize.exists()
-    assert json.loads(baseline.stdout)["outside"] is True
-    marker.unlink()
-    customize.unlink()
-
     result = invoke(declaration, ["-I", "-S", "-B", BOOTSTRAP, "sglang", "--fixture"])
     assert result.returncode == 0, result.stderr
     observed = json.loads(result.stdout)
     assert not marker.exists() and not customize.exists()
     assert observed["outside"] is False
     assert observed["engine_argv"] == ["--fixture"]
-    python, roots = _python(declaration)
-    resolve_sources(python, declaration, roots)
-    assert observed["path"] == python["import_roots"]
     assert str(Path(declaration["working_directory"])) not in observed["path"]
     assert not marker.exists() and not customize.exists()
 

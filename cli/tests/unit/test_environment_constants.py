@@ -1,30 +1,7 @@
 """Run-start constants are copied; power, swap and free memory stay fresh."""
 
-from inferyard.platforms.environment_constants import apply_constants, capture_constants
+from inferyard.platforms.environment_constants import capture_constants
 from inferyard.platforms.identity import environment_snapshot
-
-
-def test_capture_keeps_only_constant_fields():
-    captured = capture_constants(
-        {"cpu_model": "test", "cpu_flags": None, "governor": "powersave", "extra": 1}
-    )
-    assert captured == {"cpu_model": "test", "cpu_flags": None}
-    assert apply_constants({"cpu_model": "later", "governor": "ondemand"}, captured) == {
-        "cpu_model": "test",
-        "cpu_flags": None,
-        "governor": "ondemand",
-    }
-
-
-def test_missing_start_fields_are_not_invented_and_values_are_detached():
-    start = {"gpu": {"backend": "cpu"}, "cpu_model": None}
-    captured = capture_constants(start)
-    start["gpu"]["backend"] = "changed"
-    current = apply_constants({"kernel": "later", "cpu_model": "later"}, captured)
-    assert current == {"gpu": {"backend": "cpu"}, "cpu_model": None}
-    current["gpu"]["backend"] = "changed again"
-    assert captured["gpu"] == {"backend": "cpu"}
-    assert apply_constants({"kernel": "later", "ac_online": True}, {}) == {"ac_online": True}
 
 
 def test_periodic_copy_skips_cpuinfo_and_keeps_power_fresh(tmp_path, monkeypatch):

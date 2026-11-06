@@ -175,5 +175,3 @@ def test_rehashed_matching_but_incomplete_revision_rejected(tmp_path, config_pat
     (frozen / "plan.json").write_text(json.dumps(plan))
     with pytest.raises(ContractError, match="base_revision"):
         read_frozen_plan(frozen / "plan.json")
-    with pytest.raises(ContractError, match="base_revision"):
-        validate_records(workload)

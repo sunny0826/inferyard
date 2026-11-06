@@ -144,8 +144,6 @@ def test_only_qualified_per_request_statistics_can_be_compared(change):
         right["summary"]["metric_observations"][-1]["request_id"] = None
     elif change == "tokenizer":
         right["config"]["model"]["sha256"] = "different"
-    before = deepcopy((left, right))
     result = compare_trials(left, right, performance_evidence=proofs)["performance_analysis"]
     rows = [r for r in result["differences"] if r["metric_id"] == "L05"]
     assert all(r["eligible"] is (change is None) for r in rows)
-    assert (left, right) == before

@@ -1,0 +1,65 @@
+{
+  "source_path": "cli/tests/unit/test_device_platforms.py",
+  "decisions": [
+    {
+      "test": "test_hardware_snapshot_dispatches_and_preserves_missing_sources",
+      "decision": "delete",
+      "reason": "注入整个host_snapshot再检查dispatcher调用和能力常量，复述路由实现；实际平台缺测行为由本文件各原生snapshot测试覆盖。"
+    },
+    {
+      "test": "test_linux_arm_cpu_and_memory_are_read_independently",
+      "decision": "keep",
+      "reason": "Linux ARM内存字段坏仍显示CPU和总内存，避免部分探针失败误报无设备。"
+    },
+    {
+      "test": "test_mac_available_estimate_does_not_count_purgeable_or_compressed_twice",
+      "decision": "keep",
+      "reason": "4K/16K页按free+inactive+speculative求可用量，不重复加压缩/purgeable，避免容量高估。"
+    },
+    {
+      "test": "test_mac_display_whitelist_preserves_shared_memory_and_excludes_serials",
+      "decision": "keep",
+      "reason": "两种Metal字段和Intel/Apple GPU区分共享内存且不公开序列号，避免假显存与隐私泄露。"
+    },
+    {
+      "test": "test_mac_invalid_profiler_is_missing_instead_of_crashing",
+      "decision": "keep",
+      "reason": "坏profiler、重复键及无限core值应标不可用而非崩溃，避免设备检测失败或伪造容量。"
+    },
+    {
+      "test": "test_mac_snapshot_retains_partial_fields_and_query_sources",
+      "decision": "keep",
+      "reason": "mac内存查询失败仍保留CPU/电源和可复核缺测来源，避免一项失败抹掉全部信息。复审删除固定6秒内部超时断言，保留局部失败不抹掉其他观测及缺测来源。"
+    },
+    {
+      "test": "test_mac_system_query_has_bounded_failures",
+      "decision": "keep",
+      "reason": "命令不存在、权限拒绝或超时给有界缺测原因，避免设备检测挂住。复审删除固定2秒内部超时断言，保留超时/权限异常到缺测原因的独立预期。"
+    },
+    {
+      "test": "test_mac_unknown_metal_and_invalid_core_counts_stay_missing",
+      "decision": "keep",
+      "reason": "未知Metal支持和非法core数保留缺测，避免据此推荐Metal。"
+    },
+    {
+      "test": "test_nvidia_invalid_memory_cannot_be_capacity_recommendation",
+      "decision": "keep",
+      "reason": "NVIDIA空闲显存非有限、负数或缺失不得生成容量建议，避免推荐无法运行的模型。"
+    },
+    {
+      "test": "test_nvidia_nonfinite_or_missing_sensor_values_remain_json_safe",
+      "decision": "keep",
+      "reason": "NVIDIA可选传感器非有限或不支持时保持null且JSON可序列化，避免整个设备报告失败。"
+    },
+    {
+      "test": "test_runtime_environment_injection_does_not_reprobe_host",
+      "decision": "keep",
+      "reason": "运行时已绑定环境注入后保留原CPU/电源/内存，不重新探测覆盖同一时点事实。"
+    },
+    {
+      "test": "test_windows_partial_memory_probe_does_not_erase_cpu_and_power",
+      "decision": "keep",
+      "reason": "Windows内存失败不丢CPU/电源，缺测单独给原因，避免推荐依据被清空。"
+    }
+  ]
+}

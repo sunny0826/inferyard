@@ -1,0 +1,15 @@
+{
+  "source_path": "cli/tests/unit/test_context_speed_results_cohort.py",
+  "decisions": [
+    {
+      "test": "test_cuda_telemetry_changes_do_not_split_identity",
+      "decision": "keep",
+      "reason": "GPU瞬态内存/温度功耗不拆硬件cohort，driver变化须拆、unknown不得分组，避免混合不同测量身份。"
+    },
+    {
+      "test": "test_missing_hardware_never_gets_common_unknown_cohort",
+      "decision": "keep",
+      "reason": "缺硬件身份不能进入共同unknown cohort，避免无证据五次结果被汇总。"
+    }
+  ]
+}

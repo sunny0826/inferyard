@@ -1,6 +1,5 @@
 """Physical originals and incomplete measurements, using the public command."""
 
-import json
 import shutil
 from pathlib import Path
 
@@ -48,45 +47,6 @@ def test_measurement_gaps(speed_service, monkeypatch, capsys, mode):
     else:
         assert d["measurement"]["valid_count"] == 0
     assert before == tree_hashes(batch) and calls == speed_service["calls"]
-
-
-@pytest.mark.parametrize(
-    "mode", ["hash", "seal", "other_request", "event_seq", "other_run", "member"]
-)
-def test_damaged_copy_returns_only_error(speed_service, monkeypatch, capsys, mode):
-    batch, _ = run_speed(speed_service, monkeypatch, capsys)
-    original = tree_hashes(batch)
-    copy = batch.parent / "damaged"
-    shutil.copytree(batch, copy)
-    runs = sorted((copy / "runs").iterdir())
-    run = runs[0]
-    if mode == "hash":
-        with (run / "events.jsonl").open("ab") as out:
-            out.write(b"\n")
-    elif mode == "seal":
-        (run / "manifest.json").write_text("{}")
-    elif mode == "other_run":
-        shutil.copyfile(runs[1] / "inputs.json", run / "inputs.json")
-    else:
-        path = run / ("request-bodies.jsonl" if mode == "member" else "events.jsonl")
-        rows = [json.loads(line) for line in path.read_text().splitlines()]
-        if mode == "member":
-            rows[-1]["request_id"] = rows[0]["request_id"]
-        else:
-            event = next(
-                r for r in rows if r["event_type"] == "engine_timings" and r["phase"] == "formal"
-            )
-            if mode == "event_seq":
-                event["seq"] = 1
-            else:
-                event["request_id"] = rows[0]["request_id"]
-        path.write_text("".join(json.dumps(r) + "\n" for r in rows))
-    before, calls = tree_hashes(copy), list(speed_service["calls"])
-    code, result = invoke(capsys, "speed-results", "--batch", copy)
-    assert code == 4, result
-    assert set(result["details"]) == {"schema_version", "kind", "read_state", "error"}
-    assert before == tree_hashes(copy) and calls == speed_service["calls"]
-    assert original == tree_hashes(batch)
 
 
 def test_partial_and_zero_copy(speed_service, monkeypatch, capsys):
@@ -139,12 +99,6 @@ def test_forbidden_reexecution(speed_service, monkeypatch, capsys):
         assert code == 2
         assert before == tree_hashes(batch) and calls == speed_service["calls"]
     assert not (speed_service["root"] / "must-not-exist").exists()
-    from inferyard.application.types import CommandRequest
-    from inferyard.platforms.identity import PreflightError
-    from inferyard.runtime.runner import load_rerun
-
-    with pytest.raises(PreflightError, match="context_speed_requires_new_plan_and_batch"):
-        load_rerun(CommandRequest("run", from_run=Path(run)))
 
 
 def test_timing_cannot_override_actual_output_count(speed_service, monkeypatch, capsys):

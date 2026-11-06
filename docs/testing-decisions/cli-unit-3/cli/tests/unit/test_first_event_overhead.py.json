@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_first_event_overhead.py",
+  "decisions": [
+    {
+      "test": "test_first_event_contract_is_explicit_and_each_metric_is_separate",
+      "decision": "keep",
+      "reason": "具体场景 test_first_event_contract_is_explicit_and_each_metric_is_separate。可观察预期：assert all((v['passed'] for v in result['first_event_assessments'].values()))；assert result['passed']；assert not result['first_event_assessments']['L01']['passed']；assert result['first_event_assessments']['L02']['passed']。首内容/首答案开销分别检查，E2E 通过不代表首事件通过；缺事件、正负抵消、错时钟和事后改容差不能获得资格。"
+    },
+    {
+      "test": "test_first_event_projection_uses_raw_clocks_and_rejects_bad_bounds",
+      "decision": "keep",
+      "reason": "具体场景 test_first_event_projection_uses_raw_clocks_and_rejects_bad_bounds。可观察预期：assert projection(row) == {'L01': 50, 'L02': 200}；assert projection({**row, 't_first_content_ns': value})['L01'] is None。首内容/首答案开销分别检查，E2E 通过不代表首事件通过；缺事件、正负抵消、错时钟和事后改容差不能获得资格。"
+    },
+    {
+      "test": "test_frozen_tolerance_and_baseline_required",
+      "decision": "keep",
+      "reason": "具体场景 test_frozen_tolerance_and_baseline_required。可观察预期：assert 'first_event_contract' not in protocol(boundary_observer=True)；pytest.raises(EvidenceError, match='requires_boundary')；pytest.raises(EvidenceError, match='protocol_mismatch')；pytest.raises(EvidenceError)。首内容/首答案开销分别检查，E2E 通过不代表首事件通过；缺事件、正负抵消、错时钟和事后改容差不能获得资格。"
+    },
+    {
+      "test": "test_missing_or_zero_first_events_never_qualify",
+      "decision": "keep",
+      "reason": "具体场景 test_missing_or_zero_first_events_never_qualify。逐项参数：pytest.mark.parametrize('value', [None, 0, -1, True, float('nan')])。可观察预期：assert not result['passed'] and result['pairs'] == []。首内容/首答案开销分别检查，E2E 通过不代表首事件通过；缺事件、正负抵消、错时钟和事后改容差不能获得资格。"
+    },
+    {
+      "test": "test_opposite_signs_do_not_cancel",
+      "decision": "keep",
+      "reason": "具体场景 test_opposite_signs_do_not_cancel。可观察预期：assert not a['passed'] and a['max_absolute_pair_median_change'] == 0.1。首内容/首答案开销分别检查，E2E 通过不代表首事件通过；缺事件、正负抵消、错时钟和事后改容差不能获得资格。"
+    }
+  ]
+}

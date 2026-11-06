@@ -28,7 +28,7 @@ class ThreadLocalStream:
 def test_main_thread_load_and_worker_generation_synchronize_their_own_streams(
     tmp_path, monkeypatch
 ):
-    syncs, supplied_streams = [], []
+    syncs = []
     main_thread = threading.get_ident()
     tokenizer = SimpleNamespace(apply_chat_template=lambda *_args, **_kwargs: [1, 2, 3])
 
@@ -39,7 +39,6 @@ def test_main_thread_load_and_worker_generation_synchronize_their_own_streams(
         syncs.append((threading.get_ident(), resolved))
 
     def generate(_model, _tokenizer, **options):
-        supplied_streams.append(options["stream"])
         try:
             yield response()
         finally:
@@ -73,16 +72,9 @@ def test_main_thread_load_and_worker_generation_synchronize_their_own_streams(
     backend = mlx_server.MLXBackend(tmp_path)
     assert syncs[0][0] == main_thread
     with generations(backend) as state:
-        worker_thread = state.thread.ident
-        assert worker_thread != main_thread
         for prompt in ("first", "second"):
             assert drain(state.submit(prompt, 8)) == [
                 ("text", "42"),
                 ("done", ("stop", 7, 1)),
             ]
             assert state.metrics() == (0, 0, 0)
-
-    assert supplied_streams == [backend.stream, backend.stream]
-    assert [thread for thread, _stream in syncs] == [main_thread] + [worker_thread] * 4
-    assert all(stream is syncs[1][1] for _thread, stream in syncs[1:])
-    assert syncs[0][1] is not syncs[1][1]

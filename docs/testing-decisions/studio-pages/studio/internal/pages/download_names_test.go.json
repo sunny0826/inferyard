@@ -1,0 +1,15 @@
+{
+  "source_path": "studio/internal/pages/download_names_test.go",
+  "decisions": [
+    {
+      "test": "TestBoundOutputNameExhaustion",
+      "decision": "keep",
+      "reason": "全部候选目录已占用应明确拒绝绑定、不覆盖旧目录；释放一个名称后可恢复。"
+    },
+    {
+      "test": "TestDownloadNamesSettingsView",
+      "decision": "keep",
+      "reason": "正式 settings 长页内，从非法目录名起始，经公开 Scroll/Click 操作恢复默认 model/engine；实际状态变化证明按钮可用。删除 invalid 私有字段断言；本项不验证下载目录名提交拒绝。"
+    }
+  ]
+}

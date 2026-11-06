@@ -1,0 +1,10 @@
+{
+  "source_path": "studio/tests/e2e/chain_test.go",
+  "decisions": [
+    {
+      "test": "TestChainBindRunReport",
+      "decision": "keep",
+      "reason": "真实 CLI 与假引擎完成双默认题包、报告及证据 schema 验证，防跨产品版本不兼容；删除只计命令次数的 transcript 断言。"
+    }
+  ]
+}

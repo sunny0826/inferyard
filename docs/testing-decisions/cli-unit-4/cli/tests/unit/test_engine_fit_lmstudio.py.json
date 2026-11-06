@@ -1,0 +1,90 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_lmstudio.py",
+  "decisions": [
+    {
+      "test": "test_absent_fields_are_not_inferred_from_loaded_models",
+      "decision": "keep",
+      "reason": "缺失设备、队列、状态或路径不能从候选模型推断，避免未知状态变成空闲。"
+    },
+    {
+      "test": "test_bound_evidence_changes_are_rejected",
+      "decision": "keep",
+      "reason": "绑定后 CLI、模型、实例、Link 或 PID 改变必须拒绝，避免沿用过期身份。"
+    },
+    {
+      "test": "test_bounded_reader_rejects_large_output_timeout_and_malformed_json",
+      "decision": "keep",
+      "reason": "过大输出、重复 JSON、进程失败和超时必须失败，避免观测器无界输出或坏 JSON 被接受。"
+    },
+    {
+      "test": "test_cli_mutation_during_command_is_rejected",
+      "decision": "keep",
+      "reason": "执行观测命令过程中 CLI 被替换须拒绝，避免单次绑定混合两个观察器。"
+    },
+    {
+      "test": "test_cli_uses_exact_valid_port_with_local_authentication",
+      "decision": "delete",
+      "reason": "仅比较 mock 收到的完整命令数组和固定调用次数；合法端点绑定由 test_native_lms_binding_and_observer_never_discover_or_persist_private_output 覆盖。"
+    },
+    {
+      "test": "test_declared_root_cannot_substitute_another_same_named_gguf",
+      "decision": "keep",
+      "reason": "同名 GGUF 的另一个根目录不能代替实际已加载文件，避免以文件名证明模型。"
+    },
+    {
+      "test": "test_idle_requires_both_idle_state_and_zero_inclusive_queue",
+      "decision": "keep",
+      "reason": "状态非 idle 或包含队列非零都不能证明空闲，避免与加载/生成重叠。"
+    },
+    {
+      "test": "test_link_offline_or_unknown_is_not_explicitly_disabled",
+      "decision": "keep",
+      "reason": "Link 离线、未知或未明确 disabled 不能被当作远端功能已禁用。"
+    },
+    {
+      "test": "test_missing_cli_or_unexecutable_cli_fails_closed",
+      "decision": "keep",
+      "reason": "缺 CLI 可执行权限或缺显式选项应阻断，避免静默使用自动发现路径。"
+    },
+    {
+      "test": "test_missing_or_multiple_loaded_models_cannot_prove_idle",
+      "decision": "keep",
+      "reason": "没有或多个 loaded 实例时拒绝，避免候选清单冒充唯一运行实例。"
+    },
+    {
+      "test": "test_model_mapping_disappearance_fails_later_native_check",
+      "decision": "keep",
+      "reason": "绑定后模型映射消失不能继续确认身份，避免卸载模型后仍用原资格。"
+    },
+    {
+      "test": "test_model_symlink_cannot_escape_declared_root",
+      "decision": "keep",
+      "reason": "GGUF symlink 不能逃出 models_root，避免声明路径与实际权重不一致。"
+    },
+    {
+      "test": "test_native_binding_cli_and_file_queries_share_the_same_total_deadline",
+      "decision": "keep",
+      "reason": "慢 CLI 与 lsof 共享总截止，避免多子查询各自重置预算；删除 deadline 调用列表的固定次数断言。"
+    },
+    {
+      "test": "test_native_lms_binding_and_observer_never_discover_or_persist_private_output",
+      "decision": "keep",
+      "reason": "LM Studio 绑定实际 GGUF 并披露版本缺测，私密主机/额外字段不能进入证据，避免伪造版本和泄露。"
+    },
+    {
+      "test": "test_other_engine_refuses_lms_options",
+      "decision": "keep",
+      "reason": "非 LM Studio 引擎传 lms 选项应报错，避免误用观测源。"
+    },
+    {
+      "test": "test_unverified_endpoint_is_rejected_before_any_cli_call",
+      "decision": "keep",
+      "reason": "非精确本机地址、缺失或非法端口在调用 CLI 前拒绝，避免连接错误实例。"
+    },
+    {
+      "test": "test_unverified_instance_path_or_state_is_rejected_before_generation",
+      "decision": "keep",
+      "reason": "错误模型、embedding、MLX、远端设备、坏队列或越界路径拒绝，避免非声明 GGUF 参与测评。"
+    }
+  ]
+}

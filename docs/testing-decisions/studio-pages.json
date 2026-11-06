@@ -1,0 +1,444 @@
+{
+  "group": "studio-pages",
+  "totals": {
+    "keep": 163,
+    "delete": 84
+  },
+  "files": [
+    {
+      "source_path": "studio/internal/pages/bound_paths_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/bound_paths_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/candidates_prepare_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/candidates_prepare_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/chart_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/chart_test.go.json",
+      "totals": {
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/chrome_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/chrome_test.go.json",
+      "totals": {
+        "delete": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/context_speed_admission_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/context_speed_admission_test.go.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/context_speed_bridge_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/context_speed_bridge_test.go.json",
+      "totals": {
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/dashboard_binding_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/dashboard_binding_test.go.json",
+      "totals": {
+        "keep": 6,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/dashboard_feedback_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/dashboard_feedback_test.go.json",
+      "totals": {
+        "delete": 3,
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/dashboard_initdir_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/dashboard_initdir_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/dashboard_layout_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/dashboard_layout_test.go.json",
+      "totals": {
+        "delete": 6,
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/dashboard_state_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/dashboard_state_test.go.json",
+      "totals": {
+        "keep": 10,
+        "delete": 5
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/dashboard_view_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/dashboard_view_test.go.json",
+      "totals": {
+        "delete": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/design_interaction_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/design_interaction_test.go.json",
+      "totals": {
+        "keep": 4,
+        "delete": 6
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/design_layout_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/design_layout_test.go.json",
+      "totals": {
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/design_system_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/design_system_test.go.json",
+      "totals": {
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/design_visual_regression_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/design_visual_regression_test.go.json",
+      "totals": {
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/device_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/device_test.go.json",
+      "totals": {
+        "delete": 1,
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/download_names_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/download_names_test.go.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/downloads_catalog_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/downloads_catalog_test.go.json",
+      "totals": {
+        "keep": 6,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/first_use_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/first_use_test.go.json",
+      "totals": {
+        "delete": 1,
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/form_announcement_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/form_announcement_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/header_status_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/header_status_test.go.json",
+      "totals": {
+        "keep": 4,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/kvview_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/kvview_test.go.json",
+      "totals": {
+        "keep": 2,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/local_engines_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/local_engines_test.go.json",
+      "totals": {
+        "keep": 2,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/models_chain_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/models_chain_test.go.json",
+      "totals": {
+        "delete": 3,
+        "keep": 10
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/models_downloads_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/models_downloads_test.go.json",
+      "totals": {
+        "delete": 1,
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/models_nav_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/models_nav_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/models_run_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/models_run_test.go.json",
+      "totals": {
+        "keep": 7
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/models_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/models_test.go.json",
+      "totals": {
+        "delete": 3,
+        "keep": 5
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_context_speed_identity_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_context_speed_identity_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_context_speed_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_context_speed_test.go.json",
+      "totals": {
+        "keep": 5,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_first_use_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_first_use_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_header_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_header_test.go.json",
+      "totals": {
+        "delete": 1,
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_interaction_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_interaction_test.go.json",
+      "totals": {
+        "delete": 3,
+        "keep": 7
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_local_cancel_parity_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_local_cancel_parity_test.go.json",
+      "totals": {
+        "keep": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_local_parity_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_local_parity_test.go.json",
+      "totals": {
+        "keep": 2,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_parity_reset_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_parity_reset_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_parity_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_parity_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_selector_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_selector_test.go.json",
+      "totals": {
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_speed_admission_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_speed_admission_test.go.json",
+      "totals": {
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_speed_parity_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_speed_parity_test.go.json",
+      "totals": {
+        "keep": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_speed_presentation_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_speed_presentation_test.go.json",
+      "totals": {
+        "delete": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/preview_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/preview_test.go.json",
+      "totals": {
+        "keep": 3,
+        "delete": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/production_feedback_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/production_feedback_test.go.json",
+      "totals": {
+        "keep": 3,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/registry_refresh_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/registry_refresh_test.go.json",
+      "totals": {
+        "delete": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/registry_selection_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/registry_selection_test.go.json",
+      "totals": {
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/report_presentation_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/report_presentation_test.go.json",
+      "totals": {
+        "keep": 5,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/report_view_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/report_view_test.go.json",
+      "totals": {
+        "delete": 1,
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/review_regression_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/review_regression_test.go.json",
+      "totals": {
+        "keep": 5,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/scroll_retention_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/scroll_retention_test.go.json",
+      "totals": {
+        "delete": 1,
+        "keep": 2
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/service_compact_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/service_compact_test.go.json",
+      "totals": {
+        "delete": 3
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/service_discovery_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/service_discovery_test.go.json",
+      "totals": {
+        "keep": 4,
+        "delete": 4
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/status_style_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/status_style_test.go.json",
+      "totals": {
+        "delete": 2,
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/table_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/table_test.go.json",
+      "totals": {
+        "delete": 1,
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/tables_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/tables_test.go.json",
+      "totals": {
+        "keep": 6,
+        "delete": 1
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/view_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/view_test.go.json",
+      "totals": {
+        "delete": 5,
+        "keep": 6
+      }
+    },
+    {
+      "source_path": "studio/internal/pages/workspace_reset_test.go",
+      "record": "docs/testing-decisions/studio-pages/studio/internal/pages/workspace_reset_test.go.json",
+      "totals": {
+        "keep": 1
+      }
+    },
+    {
+      "source_path": "studio/tests/ui/PreviewUITests.swift",
+      "record": "docs/testing-decisions/studio-pages/studio/tests/ui/PreviewUITests.swift.json",
+      "totals": {
+        "keep": 1
+      }
+    }
+  ]
+}

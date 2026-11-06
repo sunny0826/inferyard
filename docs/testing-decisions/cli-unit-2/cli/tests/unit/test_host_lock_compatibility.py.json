@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_host_lock_compatibility.py",
+  "decisions": [
+    {
+      "test": "test_system_folder_comes_from_native_common_appdata_not_user_environment",
+      "decision": "keep",
+      "reason": "用户ProgramData环境覆盖不能改变系统公共锁目录，避免不同用户锁到不同位置失去主机互斥；删WinAPI固定参数调用断言。"
+    }
+  ]
+}

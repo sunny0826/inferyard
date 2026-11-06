@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_cache_observations.py",
+  "decisions": [
+    {
+      "test": "test_sequence_retains_probes_and_unexecuted_formal_requests",
+      "decision": "keep",
+      "reason": "缓存序列保留探测和未执行正式题，初次复用异常须不一致，不能丢项美化策略；删拷贝断言。"
+    },
+    {
+      "test": "test_unknown_never_becomes_zero_or_verified",
+      "decision": "keep",
+      "reason": "缺/重复计时、未验构建、失败、错定义、投机和坏数值均不能变零缓存或验证通过。"
+    },
+    {
+      "test": "test_zero_counts_are_observations_not_missing_rates",
+      "decision": "keep",
+      "reason": "零缓存/处理计数是观测，是否违背缓存策略按请求意图区分，不能当缺测。"
+    }
+  ]
+}

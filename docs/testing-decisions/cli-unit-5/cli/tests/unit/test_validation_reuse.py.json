@@ -1,0 +1,50 @@
+{
+  "source_path": "cli/tests/unit/test_validation_reuse.py",
+  "decisions": [
+    {
+      "test": "test_bundle_structure_is_walked_once",
+      "decision": "delete",
+      "reason": "只计递归_validate遍历次数与内部路径名称，不证明产品或预算。"
+    },
+    {
+      "test": "test_cache_does_not_trust_mutable_inputs_or_invalid_proofs",
+      "decision": "keep",
+      "reason": "已批准缓存后新增非法字段或伪造来源证明仍拒绝，避免mutable输入绕过人工审核。"
+    },
+    {
+      "test": "test_cli_review_scope_resets_even_after_failure",
+      "decision": "delete",
+      "reason": "直接改review_cache集合再看CLI finally是否重置是内部context生命周期测试，无真实审核输入后果。"
+    },
+    {
+      "test": "test_command_validation_is_content_bound_and_boundary_is_full",
+      "decision": "keep",
+      "reason": "缓存通过后修改bundle字段/版本仍拒绝，防止变更输入借用信任；删除_validate私有调用次数断言。"
+    },
+    {
+      "test": "test_document_constructor_cannot_forge_trust",
+      "decision": "keep",
+      "reason": "直接Document构造不能让布尔版本和重复键获信任，避免绕过公开输入验证；删除正常回传断言。"
+    },
+    {
+      "test": "test_public_case_and_bundle_still_reject_structure_and_semantics",
+      "decision": "delete",
+      "reason": "结构unknown字段和空评分规则拒绝重复已有bundle边界，本文件test_command_validation_is_content_bound_and_boundary_is_full覆盖unknown变异，评分语义由评分契约测试负责。"
+    },
+    {
+      "test": "test_registry_and_wire_specs_are_reused_but_exports_are_detached",
+      "decision": "delete",
+      "reason": "registry对象is、spec缓存和export拷贝身份均约束缓存实现。"
+    },
+    {
+      "test": "test_review_cache_is_hash_bound_and_command_local",
+      "decision": "keep",
+      "reason": "同命令缓存审核通过后撤掉review_records必须拒绝dict与Document，避免未审核题包借旧批准；删除缓存对象与调用次数。"
+    },
+    {
+      "test": "test_single_plan_reuses_documents_and_rejects_changed_dicts",
+      "decision": "keep",
+      "reason": "预解析Document与变更dict混用时仍拒绝非法并发和重复case，避免计划漏校验；删除调用计数及等价happy path。"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_sampler_wakeup.py",
+  "decisions": [
+    {
+      "test": "test_stop_does_not_hide_failure_from_started_read",
+      "decision": "keep",
+      "reason": "具体场景 test_stop_does_not_hide_failure_from_started_read。逐项参数：pytest.mark.parametrize('module', [telemetry, environment_schedule])。可观察预期：assert samples == [{'sample': 1}]；assert sampler.failure is failure；assert caught.value is failure；pytest.raises(OSError)。停止必须及时唤醒长间隔采样，已开始的读取须完成并保存证据；同次读取异常不能因停止被吞掉而导致虚假成功。"
+    },
+    {
+      "test": "test_stop_finishes_started_collection_and_writes_schedule",
+      "decision": "keep",
+      "reason": "两份实际采样循环均保留stop期间已开始的样本完整写入、environment/schedule记录存在及无错误；删除完整输出列表的固定数量/顺序，改为所需记录存在。"
+    },
+    {
+      "test": "test_stop_wakes_pending_wait_and_can_be_reset",
+      "decision": "keep",
+      "reason": "具体场景 test_stop_wakes_pending_wait_and_can_be_reset。可观察预期：assert not waiting.done()。停止必须及时唤醒长间隔采样，已开始的读取须完成并保存证据；同次读取异常不能因停止被吞掉而导致虚假成功。"
+    },
+    {
+      "test": "test_wait_cancellation_propagates",
+      "decision": "delete",
+      "reason": "只取消等待 task 并观察 asyncio.CancelledError，接近 asyncio 原语自测；停机唤醒由 test_stop_wakes_pending_wait_and_can_be_reset 覆盖。"
+    }
+  ]
+}

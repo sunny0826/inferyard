@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_host_ast.py",
+  "decisions": [
+    {
+      "test": "test_probe_host_ast_has_no_io_sleep_thread_or_network",
+      "decision": "delete",
+      "reason": "整项只固定 import、AST 语句、类/函数拆分和构造数量；实际入口拒绝及恢复隔离已有行为测试。"
+    }
+  ]
+}

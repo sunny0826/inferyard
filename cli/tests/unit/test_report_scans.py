@@ -1,4 +1,3 @@
-from copy import deepcopy
 
 from inferyard.reporting.report_scans import scan_view
 
@@ -20,12 +19,10 @@ def test_actual_lengths_never_fall_back_to_targets_and_zero_is_visible():
             ]
         }
     }
-    before = deepcopy(summary)
     result = scan_view(summary, [])
     assert result["length_bins"][0]["point"] is None
     assert result["length_bins"][1]["point"] is not None
     assert result["input_axis_max"] == 10
-    assert summary == before
 
 
 def test_output_budget_never_substitutes_missing_actual_and_duplicates_are_missing():
@@ -70,7 +67,6 @@ def test_position_patterns_and_denominators_are_not_merged():
     }
     result = scan_view({"positions": positions}, [])
     assert result["positions"] == positions
-    assert result["positions"] is not positions
 
 
 def test_unexecuted_outputs_remain_visible_without_borrowing_counts():

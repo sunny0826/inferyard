@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/development_starting_test.go",
+  "decisions": [
+    {
+      "test": "TestDevelopmentStartingCanStopBeforeWindowReady",
+      "decision": "keep",
+      "reason": "窗口准备前也要允许停止，清理完成前不得报告 stopped；否则初始化卡住时无法退出且新旧环境并行。"
+    },
+    {
+      "test": "TestDevelopmentStartingFailureKeepsShutdownOutcome",
+      "decision": "keep",
+      "reason": "启动失败时须保留 shutdown_failed 与正常 stopped 的区别，防失败清理被当作可安全切换。"
+    },
+    {
+      "test": "TestDevelopmentStartingHonorsExistingStop",
+      "decision": "keep",
+      "reason": "启动前已有停止意图时不得继续打开窗口，否则取消后的开发窗口仍被启动。"
+    }
+  ]
+}

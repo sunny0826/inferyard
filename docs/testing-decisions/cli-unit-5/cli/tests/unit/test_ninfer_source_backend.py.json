@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_backend.py",
+  "decisions": [
+    {
+      "test": "test_bad_spec_does_nothing",
+      "decision": "keep",
+      "reason": "相对/设备/越界cwd、非法argv、未声明无后代等作业规格须在任何执行前拒绝，避免错误启动不受控作业。"
+    },
+    {
+      "test": "test_command_line_quotes_without_loading_winapi",
+      "decision": "delete",
+      "reason": "只断言私有_command_line拼接字符串，未通过实际进程验证用户参数。"
+    },
+    {
+      "test": "test_fake_start_order_does_not_import_custody_or_spawn",
+      "decision": "delete",
+      "reason": "fake启动顺序、模块导入状态、对象身份和无子进程，复述实现与测试隔离。"
+    },
+    {
+      "test": "test_job_limits_forbid_breakaway_and_cap_one_process",
+      "decision": "delete",
+      "reason": "固定WinAPI常量、flags位与ctypes结构尺寸断言，只约束实现结构。"
+    },
+    {
+      "test": "test_partial_spawn_keeps_original_ref_and_does_not_kill",
+      "decision": "delete",
+      "reason": "部分启动同对象与不kill断言重复test_ninfer_source_backend_pipes.py::test_partial_spawn_keeps_same_objects；保留FakeApi/spec等跨文件helper。"
+    },
+    {
+      "test": "test_project_cli_detection_uses_command_tokens",
+      "decision": "delete",
+      "reason": "只验证本测试文件的_is_project_cli helper，是测试框架自测。"
+    },
+    {
+      "test": "test_pytest_process_is_not_an_asset_worker",
+      "decision": "delete",
+      "reason": "检查pytest argv、环境变量和子进程名称，与产品行为及发布结果无关。"
+    },
+    {
+      "test": "test_real_constructor_refuses_before_windll",
+      "decision": "delete",
+      "reason": "非Windows构造WinAPI的导入/调用次数测试，不是产品支持或发布资格验证。"
+    },
+    {
+      "test": "test_real_custody_exception_on_construct_and_missing_process",
+      "decision": "delete",
+      "reason": "构造器异常精确类型和spawn顺序；失败托管结果由test_ninfer_source_backend_round2.py::test_unknown_pipe_close_before_process_stays_with_custodian覆盖。"
+    },
+    {
+      "test": "test_utf16_boundary_is_allowed_and_spawns_once",
+      "decision": "delete",
+      "reason": "12000字符边界的正常fake启动仅检查argv回传和调用序列，未验证实际Windows命令执行。"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_observer_read_costs.py",
+  "decisions": [
+    {
+      "test": "test_invalid_clocks_are_rejected",
+      "decision": "keep",
+      "reason": "逆时、负时、浮点和布尔时钟拒绝，防生成貌似精确的无效观察开销。"
+    },
+    {
+      "test": "test_missing_logs_remain_unknown_and_never_qualify_total_cost",
+      "decision": "keep",
+      "reason": "缺观察日志时总成本和各分量保持未知，不能凭空取得完整观察成本资格。"
+    },
+    {
+      "test": "test_nested_and_overlapping_reads_are_not_double_counted",
+      "decision": "keep",
+      "reason": "嵌套和重叠读取时窗按并集算开销 35 ns，不重复累加夸大观察成本。"
+    }
+  ]
+}

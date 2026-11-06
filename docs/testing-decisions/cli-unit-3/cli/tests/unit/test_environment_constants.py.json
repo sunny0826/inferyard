@@ -1,0 +1,20 @@
+{
+  "source_path": "cli/tests/unit/test_environment_constants.py",
+  "decisions": [
+    {
+      "test": "test_capture_keeps_only_constant_fields",
+      "decision": "delete",
+      "reason": "只固定字典筛选/覆盖实现；动态环境变化的真实采集由 test_periodic_copy_skips_cpuinfo_and_keeps_power_fresh 覆盖。"
+    },
+    {
+      "test": "test_missing_start_fields_are_not_invented_and_values_are_detached",
+      "decision": "delete",
+      "reason": "只证明 dict 深拷贝/字段剔除，不观察运行后果；周期实际状态由 test_periodic_copy_skips_cpuinfo_and_keeps_power_fresh 覆盖。"
+    },
+    {
+      "test": "test_periodic_copy_skips_cpuinfo_and_keeps_power_fresh",
+      "decision": "keep",
+      "reason": "具体场景 test_periodic_copy_skips_cpuinfo_and_keeps_power_fresh。可观察预期：assert periodic['cpu_model'] == 'first'；assert periodic['cpu_flags'] == ['fpu']；assert periodic['governor'] == 'performance'；assert periodic['swap_pages'] == {'pswpin': 1, 'pswpout': 2}。周期环境必须保持开始时机器身份而刷新 governor/换页等动态值；否则可能漏掉性能环境变化或把跨时点身份当新设备。"
+    }
+  ]
+}

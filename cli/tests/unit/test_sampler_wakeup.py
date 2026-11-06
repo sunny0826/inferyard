@@ -62,7 +62,7 @@ def test_stop_finishes_started_collection_and_writes_schedule(monkeypatch, modul
 
     asyncio.run(scenario())
     assert samples == [{"sample": 1}, {"sample": 2}]
-    assert [name for name, _ in observations] == ["environment.jsonl", "schedule.jsonl"]
+    assert {"environment.jsonl", "schedule.jsonl"} <= {name for name, _ in observations}
     assert sampler.failure is None
 
 
@@ -86,15 +86,3 @@ def test_stop_does_not_hide_failure_from_started_read(monkeypatch, module):
     asyncio.run(scenario())
     assert samples == [{"sample": 1}]
     assert sampler.failure is failure
-
-
-def test_wait_cancellation_propagates():
-    async def scenario():
-        sampler, _, _ = make_sampler()
-        waiting = asyncio.create_task(sampler.wait(60))
-        await asyncio.sleep(0)
-        waiting.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await waiting
-
-    asyncio.run(scenario())

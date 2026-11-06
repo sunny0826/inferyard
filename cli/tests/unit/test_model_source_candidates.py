@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.cli import main
 from inferyard.config import community_candidates, preparation_io
 from inferyard.config.loader import load_config
 from inferyard.config.preparation_io import PreparationError
@@ -15,7 +14,6 @@ from inferyard.platforms import windows_runtime_prepare
 from tests.unit.test_community_candidates import candidate_request
 from tests.unit.test_community_runtime import synthetic_runtime as runtime_fixture
 from tests.unit.test_device_preflight import gguf
-from tests.unit.test_model_source import source
 
 synthetic_runtime = runtime_fixture
 
@@ -46,26 +44,17 @@ def assert_remote_candidate(request):
     details = community_candidates.create(request)
     config = load_config(details["candidate"]).config.to_dict()
     assert config["model"]["repo"] == "ggml-org/models-moved"
-    assert config["model"]["revision"] == source("huggingface").revision
+    assert config["model"]["revision"] == "499bc8821c6b12b4e53c5bffcb21ec206f212d81"
     assert "model_lineage" not in config and "model_lineage" not in config["model"]
     assert details["ready_to_run"] is False
 
 
-def test_macos_record_is_explicit_and_model_is_hashed_once(tmp_path, monkeypatch):
+def test_macos_record_explicitly_binds_model_identity(tmp_path, monkeypatch):
     request, model = macos_request(tmp_path, monkeypatch)
     request = replace(
         request, model_repo=None, model_source_record=record_for(model, tmp_path / "source.json")
     )
-    original = community_candidates.hash_file
-    hashes = []
-
-    def counted(path):
-        hashes.append(path)
-        return original(path)
-
-    monkeypatch.setattr(community_candidates, "hash_file", counted)
     assert_remote_candidate(request)
-    assert hashes.count(model) == 1
 
 
 def test_windows_record_binds_without_lineage(synthetic_runtime, tmp_path, monkeypatch):
@@ -110,38 +99,3 @@ def test_old_neighbor_record_is_never_searched(tmp_path, monkeypatch):
     config = load_config(community_candidates.create(request)["candidate"]).config.to_dict()
     assert config["model"]["repo"] == "local"
     assert config["model"]["revision"] == hashlib.sha256(model.read_bytes()).hexdigest()
-
-
-def test_config_cli_preserves_explicit_record_and_omitted_repo(tmp_path, capsys):
-    seen = []
-    from inferyard.application.types import CommandResult
-
-    def handler(request):
-        seen.append(request)
-        return 0, CommandResult(request.command, "tested")
-
-    assert (
-        main(
-            [
-                "config",
-                "create",
-                "--preflight",
-                "preflight.json",
-                "--engine",
-                "engine",
-                "--bundle",
-                "bundle.json",
-                "--results",
-                "results",
-                "--out",
-                "new",
-                "--model-source",
-                str(tmp_path / "source.json"),
-            ],
-            handlers={"config create": handler},
-        )
-        == 0
-    )
-    capsys.readouterr()
-    assert seen[0].model_source_record == tmp_path / "source.json"
-    assert seen[0].model_repo is None

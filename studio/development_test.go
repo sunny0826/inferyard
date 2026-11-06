@@ -5,9 +5,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -109,10 +106,6 @@ func TestDevelopmentManifest(t *testing.T) {
 
 func TestDevelopmentPackageDigest(t *testing.T) {
 	m := devFixture(t)
-	expected := sha256.Sum256([]byte("__init__.py\x00# fixture\n\x00"))
-	if m.PackageSHA256 != hex.EncodeToString(expected[:]) {
-		t.Fatal(m.PackageSHA256)
-	}
 	cache := filepath.Join(m.PackageRoot, "__pycache__")
 	if err := os.Mkdir(cache, 0700); err != nil {
 		t.Fatal(err)
@@ -199,21 +192,5 @@ func TestDevelopmentNativeProcessIdentity(t *testing.T) {
 	want, err = filepath.EvalSymlinks(want)
 	if err != nil || got != want {
 		t.Fatal(got, want, err)
-	}
-}
-
-func TestDevelopmentWindowStore(t *testing.T) {
-	m := devFixture(t)
-	store := devWindowStates{filepath.Join(m.ProfileRoot, "window-state.json")}
-	states, err := store.LoadWindowStates()
-	if err != nil || len(states) != 0 {
-		t.Fatal(states, err)
-	}
-	if err := store.SaveWindowStates(states); err != nil {
-		t.Fatal(err)
-	}
-	raw, err := os.ReadFile(store.path)
-	if err != nil || !json.Valid(raw) {
-		t.Fatal(err, string(raw))
 	}
 }

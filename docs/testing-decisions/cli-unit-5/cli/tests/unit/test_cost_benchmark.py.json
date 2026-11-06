@@ -1,0 +1,60 @@
+{
+  "source_path": "cli/tests/unit/test_cost_benchmark.py",
+  "decisions": [
+    {
+      "test": "test_actual_corrupted_evidence_matches_rejection_matrix",
+      "decision": "delete",
+      "reason": "专项成本harness拒绝矩阵自检，重复已有证据坏封存/旧格式产品边界。"
+    },
+    {
+      "test": "test_empty_secret_clean_preserves_all_nested_input",
+      "decision": "delete",
+      "reason": "成本测量专用redact_empty operation的嵌套数据等价检查，属于harness自测。"
+    },
+    {
+      "test": "test_hash_and_numeric_semantics_are_not_discarded",
+      "decision": "delete",
+      "reason": "临时result文件的哈希与bool数值比较只测试harness require_equal，不是产品输入。"
+    },
+    {
+      "test": "test_independent_fixture_expectation_rejects_matching_but_incomplete_results",
+      "decision": "delete",
+      "reason": "两份harness输出同时丢行后的期望检查，是软件成本fixture完整性自测，不是发布假阳性门。"
+    },
+    {
+      "test": "test_multirun_report_and_separate_comparison_are_both_exercised",
+      "decision": "delete",
+      "reason": "成本harness是否触发多run/比较及render_checked的流程自测，不是离线报告功能本身。"
+    },
+    {
+      "test": "test_real_nonzero_worker_is_rejected_and_logs_preserved",
+      "decision": "delete",
+      "reason": "harness子进程无效operation和日志保留自测，没有产品/发布结果。"
+    },
+    {
+      "test": "test_real_reports_match_and_refuse_missing_last_row",
+      "decision": "delete",
+      "reason": "软件成本对比harness自测：删最后请求再验内容差异，不承载产品或发行门。"
+    },
+    {
+      "test": "test_report_seal_must_match_actual_artifact_bytes",
+      "decision": "delete",
+      "reason": "成本harness产物manifest差异比较自测；真实报告封存由test_engine_fit_report.py等产品证据测试负责。"
+    },
+    {
+      "test": "test_successful_report_cannot_hide_disk_index_change",
+      "decision": "delete",
+      "reason": "软件成本harness修改磁盘index再验差异，属于内部验收比较器自测。"
+    },
+    {
+      "test": "test_successful_report_cannot_hide_lost_svg_or_html",
+      "decision": "delete",
+      "reason": "软件成本harness改HTML鹈字符再验diff，属于测试输出比较器自测。"
+    },
+    {
+      "test": "test_svg_count_uses_independent_declaration_and_rejects_missing_gallery",
+      "decision": "delete",
+      "reason": "成本harness SVG gallery计数声明与自测，不承载发行门或实际报告渲染结果。"
+    }
+  ]
+}

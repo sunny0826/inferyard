@@ -1,0 +1,31 @@
+{
+  "source_path": "cli/tests/unit/test_cost_reporting.py",
+  "decisions": [
+    {
+      "test": "test_default_retains_verified_bytes_and_rejects_escaping_paths",
+      "decision": "keep",
+      "reason": "报告封存拒绝../与逃逸symlink，避免封存包绑定工作目录外任意文件；保留真实字节读取。"
+    },
+    {
+      "test": "test_nonpair_releases_raw_samples_before_reading_next_run",
+      "decision": "keep",
+      "reason": "三个run的报告不得虚构成对比较，重复同一run必须拒绝以免重复展示/计数；删weakref与raw samples释放时点断言。 精简后更名为 test_multi_run_report_rejects_duplicate_sources。",
+      "renamed_to": "test_multi_run_report_rejects_duplicate_sources"
+    },
+    {
+      "test": "test_portable_index_does_not_mutate_nested_input",
+      "decision": "delete",
+      "reason": "仅portable_index的深拷贝、nested别名隔离，未验证实际可移植报告；test_mixed_layout_comparison_and_report_resolve_moved_sources 覆盖交付。"
+    },
+    {
+      "test": "test_rerender_consumes_the_verified_html_snapshot",
+      "decision": "keep",
+      "reason": "rerender必须消费已校验HTML快照，同次被改不能混读，下次必拒绝，避免验证结论绑定不同字节。"
+    },
+    {
+      "test": "test_seal_streams_and_selective_reads_still_verify_html",
+      "decision": "delete",
+      "reason": "只规定read_bytes不读HTML和retain缓存策略，无产品内存预算；HTML篡改由 test_rerender_consumes_the_verified_html_snapshot 覆盖。"
+    }
+  ]
+}

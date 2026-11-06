@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/tests/e2e/scenarios_test.go",
+  "decisions": [
+    {
+      "test": "TestEngineCrashRecovery",
+      "decision": "delete",
+      "reason": "实际子进程崩溃、显式清理和重新启动由 TestBindingRecoveryAcrossRestartAndCrash 覆盖，并额外检查旧绑定不能复活。"
+    },
+    {
+      "test": "TestQueuedRunCancel",
+      "decision": "delete",
+      "reason": "取消排队任务不执行的公共服务行为由 TestQueueCancellationAndExitMapping 覆盖，删除重复真实 CLI 准备链。"
+    },
+    {
+      "test": "TestWizardCommandGuards",
+      "decision": "keep",
+      "reason": "公共 Wizard 请求拒绝 shell 注入、未知命令/参数、相对输出及缺报告来源/verify path，防误执行和写错目录。"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "source_path": "cli/tests/integration/test_closed_loop_download_e2e.py",
+  "decisions": [
+    {
+      "test": "test_real_downloads_drive_the_full_benchmark_chain",
+      "decision": "keep",
+      "reason": "可选真实下载和安装闭环验证同一下载字节能完成打包入口、core/pelican报告并在清理后离线核验；保障发行链。未在本轮执行。"
+    }
+  ]
+}

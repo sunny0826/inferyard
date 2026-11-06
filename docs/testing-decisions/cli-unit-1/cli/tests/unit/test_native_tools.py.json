@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_native_tools.py",
+  "decisions": [
+    {
+      "test": "test_complete_mock_chain_has_four_independent_checks_and_no_hardware_pass",
+      "decision": "keep",
+      "reason": "工具选择、实际执行和正确最终答案可通过模拟能力测试，但不能据此宣布硬件合格。"
+    },
+    {
+      "test": "test_correct_answer_without_tool_cannot_pass_tool_execution",
+      "decision": "keep",
+      "reason": "直接给正确答案不算选择/执行工具成功，防混淆语言回答与工具能力。"
+    },
+    {
+      "test": "test_malformed_or_non_allowlisted_tools_never_execute",
+      "decision": "keep",
+      "reason": "非白名单工具、错类型、重复键、越界参数和额外 path 都不得执行，防任意工具注入。"
+    },
+    {
+      "test": "test_stream_without_finish_or_done_is_rejected",
+      "decision": "keep",
+      "reason": "缺完成标记或先 DONE 无 finish 的工具流拒绝，防不完整调用冒充完成。"
+    },
+    {
+      "test": "test_streamed_argument_fragments_and_usage_reassemble_without_chunk_tokens",
+      "decision": "keep",
+      "reason": "SSE 分片重组完整 JSON 参数与服务报告 usage，不能把分片数当 token 数。"
+    },
+    {
+      "test": "test_tampered_execution_or_quality_does_not_replay",
+      "decision": "keep",
+      "reason": "修改已记录工具运算结果后重放拒绝，避免伪造工具执行或质量。"
+    },
+    {
+      "test": "test_timeout_retains_executed_tool_and_failed_final_answer",
+      "decision": "keep",
+      "reason": "工具已执行而后续回答超时，保留执行成功与最终答案失败，不能丢部分事实。"
+    },
+    {
+      "test": "test_wrong_final_answer_keeps_successful_tool_checks",
+      "decision": "keep",
+      "reason": "最终算错不抹掉已成功执行的工具检查，分别报告各项能力。"
+    }
+  ]
+}

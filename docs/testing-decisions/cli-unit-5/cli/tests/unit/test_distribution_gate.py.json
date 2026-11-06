@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_distribution_gate.py",
+  "decisions": [
+    {
+      "test": "test_constraint_export_is_plain_text_with_forced_color",
+      "decision": "keep",
+      "reason": "FORCE_COLOR不能污染constraints文本，三平台校验且check一致，避免安装解析失败。"
+    },
+    {
+      "test": "test_constraint_export_rejects_missing_transitive_and_marker_overlaps",
+      "decision": "keep",
+      "reason": "运行依赖闭包缺传递项、marker重叠或非固定registry拒绝，避免发行安装缺包/不确定依赖。"
+    },
+    {
+      "test": "test_package_source_allowlist_rejects_accidental_credentials",
+      "decision": "keep",
+      "reason": "源码资源allowlist拒绝.env，避免凭据进入发行物。"
+    },
+    {
+      "test": "test_package_source_includes_context_speed_bundle",
+      "decision": "keep",
+      "reason": "发行资源必须含context-speed且与批准bundle同字节，避免安装后缺题包或审核漂移。"
+    },
+    {
+      "test": "test_release_artifact_bytes_checked_not_only_claimed",
+      "decision": "keep",
+      "reason": "发行物检查真实bytes/hash而非声明值，避免验证后替换包。"
+    },
+    {
+      "test": "test_release_gate_refuses_dev_build_and_changed_acceptance_bytes",
+      "decision": "keep",
+      "reason": "未批准开发构建和验收manifest字节改变拒绝发布，避免未经验证版本发行。"
+    },
+    {
+      "test": "test_release_paths_cannot_escape",
+      "decision": "keep",
+      "reason": "发行路径不能越界，避免候选读取包外文件。"
+    },
+    {
+      "test": "test_wheel_cannot_hide_machine_files_in_dist_info",
+      "decision": "keep",
+      "reason": "wheel的dist-info隐藏机器文件拒绝，避免意外私密文件进入发行包。"
+    }
+  ]
+}

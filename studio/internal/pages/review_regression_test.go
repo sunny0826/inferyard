@@ -62,11 +62,6 @@ func TestRecoveryCardSurvivesRunPhase(t *testing.T) {
 						t.Fatalf("%s/%s running=%v lacks %s", action, path, running, label)
 					}
 				}
-				service, _ := tt.Find("模型服务")
-				run, _ := tt.Find("运行当前题包")
-				if service.Y >= run.Y {
-					t.Fatal("service card must precede run content")
-				}
 				if path == "bound" && !tt.HasText("重新绑定") {
 					t.Fatal("bound run lacks recovery action")
 				}
@@ -129,21 +124,6 @@ func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 	args, _ = inferyard.SplitCommand(command)
 	if !slices.Contains(args, "/frozen/output") {
 		t.Fatal("rewrote CLI --out", args)
-	}
-}
-
-func TestQuickRunManualRecoveryWithoutProgress(t *testing.T) {
-	s := testState()
-	s.registry = modelRegistryFixture()
-	s.progress = nil
-	tt := ui.NewTester(s.dashboardView, 1120, 1600)
-	if tt.HasText("启动测评") || !tt.HasText("无法读取工作区进度，请刷新重试") {
-		t.Fatal(tt.Texts())
-	}
-	s.progress = &inferyard.WorkspaceProgress{NextAction: "prepare_candidate", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core"}}}
-	tt.Frame()
-	if !tt.HasText("运行 benchmark") || tt.HasText("高级：手动配置路径") {
-		t.Fatal(tt.Texts())
 	}
 }
 

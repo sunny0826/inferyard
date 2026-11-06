@@ -125,18 +125,15 @@ def test_producer_copies_verified_snapshot_and_keeps_inputs(tmp_path, monkeypatc
 def test_artifact_swap_after_hash_does_not_reopen_for_metadata(tmp_path, monkeypatch, capsys):
     manifest, data = candidate(tmp_path)
     original = gate.checked_file
-    reads = []
 
     def checked(root, record):
         approved = original(root, record)
         if record.get("role") in {"wheel", "sdist"}:
             (root / record["path"]).write_bytes(b"not even an archive")
-            reads.append(record["role"])
         return approved
 
     monkeypatch.setattr(gate, "checked_file", checked)
     run_main(monkeypatch, manifest, tmp_path / "stage")
-    assert reads == ["wheel", "sdist"]
     assert json.loads(capsys.readouterr().out)["verified"]
     for record in data["artifacts"][:2]:
         assert (

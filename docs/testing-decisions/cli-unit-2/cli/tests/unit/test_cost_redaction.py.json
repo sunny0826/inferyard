@@ -1,0 +1,31 @@
+{
+  "source_path": "cli/tests/unit/test_cost_redaction.py",
+  "decisions": [
+    {
+      "test": "test_clean_container_isolation_and_tuple_conversion",
+      "decision": "delete",
+      "reason": "仅深拷贝别名、tuple转list与opaque恒等，未包含secret及真实持久化后果。"
+    },
+    {
+      "test": "test_clean_keys_marker_flags_and_serialized_output",
+      "decision": "keep",
+      "reason": "字典key与嵌套tuple中的secret在实际序列化JSON中都替换，避免持久化凭据；删changed标记与修改内部secrets的断言。 精简后更名为 test_keys_and_nested_values_are_redacted_in_serialized_output。",
+      "renamed_to": "test_keys_and_nested_values_are_redacted_in_serialized_output"
+    },
+    {
+      "test": "test_every_chunk_partition",
+      "decision": "delete",
+      "reason": "与冻结历史 scalar 算法逐块比较 pending/changed，属于实现差分；泄露风险由 test_prefix_not_emitted_before_later_complete_match 与 test_clean_keys_marker_flags_and_serialized_output 覆盖。"
+    },
+    {
+      "test": "test_prefix_not_emitted_before_later_complete_match",
+      "decision": "keep",
+      "reason": "secret 跨 chunk 尚未完整前不得输出前缀，完整后替换，重叠短secret仍消除，避免凭据泄漏；删 pending 内部缓存断言。"
+    },
+    {
+      "test": "test_random_chunks_and_final_boundaries",
+      "decision": "delete",
+      "reason": "1000次随机与历史算法复述，预期并非独立产品规则；跨chunk泄露由 test_prefix_not_emitted_before_later_complete_match 覆盖。"
+    }
+  ]
+}

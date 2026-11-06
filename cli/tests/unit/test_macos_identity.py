@@ -202,21 +202,6 @@ def test_listener_requires_protocol_family_address_port_and_state(row, address, 
     assert macos_process.matching_listener(row, address, 8080) is accepted
 
 
-def test_lsof_uses_bounded_machine_output_and_preserves_owner(monkeypatch):
-    def run(command, **kwargs):
-        assert command[:6] == ["/usr/sbin/lsof", "-nP", "-a", "-p", "321", "-iTCP:8080"]
-        assert kwargs["timeout"] == 2
-        assert kwargs.get("shell", False) is False
-        return SimpleNamespace(
-            returncode=0,
-            stderr="",
-            stdout=("p321\0\nf5\0tIPv4\0PTCP\0n127.0.0.1:8080\0TST=LISTEN\0TQR=0\0\n"),
-        )
-
-    monkeypatch.setattr(macos_process.subprocess, "run", run)
-    assert macos_process.lsof_records(321, ["-iTCP:8080"])[0] == listener()
-
-
 @pytest.mark.parametrize("failure", ["timeout", "permission", "stderr", "malformed"])
 def test_lsof_failures_do_not_become_absence(monkeypatch, failure):
     def run(*args, **kwargs):
@@ -277,7 +262,6 @@ def test_environment_is_lightweight_and_keeps_linux_fields_unknown(native, monke
     assert snapshot["profile"] == "macos-low-power:0"
     assert snapshot["governor"] is snapshot["epp"] is None
     assert snapshot["memory_source"] == "psutil:virtual_memory:available"
-    assert commands == []
 
 
 def test_unknown_opt_in_never_hides_observed_mismatch_or_offline_unknown():
@@ -299,23 +283,6 @@ def test_unknown_opt_in_never_hides_observed_mismatch_or_offline_unknown():
     assessment = assess_environment(environment, environment, [], conditions, [])
     assert not assessment["stable_observed_environment"]
     assert "swap_counter_unknown:pswpin" in assessment["reasons"]
-
-
-def test_default_darwin_dispatch_and_custom_proc_root(native, monkeypatch, tmp_path):
-    monkeypatch.setattr(identity.platform, "system", lambda: "Darwin")
-    assert identity.process_start_ticks(321) == 1_700_000_000_125000
-    assert identity.memory_available() == 16384
-    (tmp_path / "321").mkdir()
-    (tmp_path / "321/stat").write_text("321 (fake) " + " ".join(["S"] + ["0"] * 18 + ["77"]))
-    (tmp_path / "meminfo").write_text("MemAvailable: 8 kB\n")
-    assert identity.process_start_ticks(321, tmp_path) == 77
-    assert identity.memory_available(tmp_path) == 8192
-    samples = telemetry.sample_memory(321, 1_700_000_000_125000, "formal", "r1")
-    assert [sample["source"] for sample in samples] == [
-        "psutil:virtual_memory:available",
-        "psutil:Process.memory_info:rss",
-    ]
-    assert samples[1]["value"] == 12345
 
 
 def test_swap_uses_host_counters_and_rejects_a_failed_read(native, monkeypatch):

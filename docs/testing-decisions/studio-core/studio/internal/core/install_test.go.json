@@ -1,0 +1,50 @@
+{
+  "source_path": "studio/internal/core/install_test.go",
+  "decisions": [
+    {
+      "test": "TestDownloadUVChecksumMismatch",
+      "decision": "keep",
+      "reason": "uv 下载校验和不匹配必须拒绝，防执行损坏或被替换的安装器。"
+    },
+    {
+      "test": "TestDownloadUVUnpacksVerifiedBinary",
+      "decision": "keep",
+      "reason": "校验通过的 uv 发布归档须提取正确内容且设可执行权限，保障初次安装可成功。"
+    },
+    {
+      "test": "TestFindCLIFallsBackToLocalBin",
+      "decision": "keep",
+      "reason": "PATH 不含 uv 用户 bin 时仍须找到已安装 CLI，防要求用户重复安装。"
+    },
+    {
+      "test": "TestFindCLIInPath",
+      "decision": "delete",
+      "reason": "PATH 查找成功已由 TestInstallCLIReusesExisting 通过实际安装入口和设置持久值覆盖。"
+    },
+    {
+      "test": "TestInstallCLIFailureTail",
+      "decision": "keep",
+      "reason": "安装失败须有固定错误及可诊断原因，防用户只收到安装成功或无提示。"
+    },
+    {
+      "test": "TestInstallCLIIgnoresMissingConfiguredPath",
+      "decision": "keep",
+      "reason": "已配置路径丢失时可发现有效替代 CLI，防环境准备卡在失效路径。"
+    },
+    {
+      "test": "TestInstallCLIKeepsConfiguredPath",
+      "decision": "keep",
+      "reason": "用户显式配置可用 CLI 时不得被 PATH 中另一版本替换，防运行错误版本。"
+    },
+    {
+      "test": "TestInstallCLIReusesExisting",
+      "decision": "keep",
+      "reason": "已有可用 CLI 应复用并保存路径，防不必要安装及后续找不到入口。"
+    },
+    {
+      "test": "TestInstallCLIViaUV",
+      "decision": "keep",
+      "reason": "保留指定发布版本、受管 Python 参数、实际生成 binary 路径和保存设置；删除固定总调用数。Python 参数比对生产 installPython，仅证明传参，不作为独立发行 Python 版本正确性证据。"
+    }
+  ]
+}

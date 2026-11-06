@@ -1,0 +1,75 @@
+{
+  "source_path": "cli/tests/unit/test_lab_generation_plain.py",
+  "decisions": [
+    {
+      "test": "test_decoder_rejects_bad_constructor_arguments",
+      "decision": "delete",
+      "reason": "decoder构造器ID/时间形状校验，仅约束内部函数入参。"
+    },
+    {
+      "test": "test_decoder_rejects_feed_after_finish_and_double_finish",
+      "decision": "delete",
+      "reason": "finish后再次feed/finish是私有decoder生命周期自测，不是模型响应产品条件。"
+    },
+    {
+      "test": "test_non_streaming_happy_path",
+      "decision": "keep",
+      "reason": "非流式分块响应保留最终答案、reasoning和usage，首内容时间在完整解析后，避免时延和文本错误。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_non_streaming_rejections",
+      "decision": "keep",
+      "reason": "非流式错终态、多choice、请求ID不符、错误帧及非法usage拒绝；length合法，避免错响应计成功。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_non_streaming_rejects_invalid_utf8_and_size",
+      "decision": "keep",
+      "reason": "非流式非法UTF8及超过响应大小限制须拒绝，防止损坏文本进入证据或无界响应。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_non_streaming_rejects_non_string_finish_reason",
+      "decision": "keep",
+      "reason": "非字符串finish_reason拒绝为协议错误，避免异常类型崩溃或伪完成。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_non_streaming_rejects_null_usage_details",
+      "decision": "keep",
+      "reason": "非流式usage details为null拒绝，避免缓存与reasoning统计含混。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_non_streaming_without_reasoning_is_null_not_zero",
+      "decision": "keep",
+      "reason": "端点不报reasoning/cache时保持null及原因，不能冒充零token。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_streaming_rejects_bad_usage",
+      "decision": "keep",
+      "reason": "负数/布尔token、cache/reasoning超过总数和不一致usage拒绝，避免输出错误吞吐与成本。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_streaming_rejects_each_null_usage_details",
+      "decision": "keep",
+      "reason": "每个usage details独立null都拒绝，防止部分畸形usage被遗漏。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_streaming_rejects_null_usage_details",
+      "decision": "delete",
+      "reason": "两个details同时null重复test_streaming_rejects_each_null_usage_details逐字段覆盖。"
+    },
+    {
+      "test": "test_streaming_rejects_usage_count_override",
+      "decision": "delete",
+      "reason": "普通流计数覆盖被test_streaming_usage_counter_override_rejected_across_finish的终态跨帧场景覆盖。"
+    },
+    {
+      "test": "test_streaming_usage_counter_override_rejected_across_finish",
+      "decision": "keep",
+      "reason": "结束帧前后usage计数不得被后到帧覆盖，防止最终报告token被改写。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    },
+    {
+      "test": "test_usage_details_empty_object_and_unknown_extension_accepted",
+      "decision": "keep",
+      "reason": "合法空details及vendor扩展不被拒绝，缺cache/reasoning仍null，避免误拒兼容端点。复审删除独占reason_of中pytest.raises已保证的异常类型重复检查，保留调用方raises及reason预期。"
+    }
+  ]
+}

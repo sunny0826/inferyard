@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_model_acquire_cli.py",
+  "decisions": [
+    {
+      "test": "test_help_keeps_model_backend_lazy_and_run_local",
+      "decision": "keep",
+      "reason": "help在httpx/远端模型后端不可导入时仍可用，run不暴露下载选项，保障安装环境最小入口。"
+    },
+    {
+      "test": "test_invalid_source_uses_fixed_reason_without_echo",
+      "decision": "keep",
+      "reason": "非固定HTTPS可信源、branch、错后缀、凭据/查询、Unicode/遍历/编码分隔符等退出2不回显secret且不建目录。"
+    },
+    {
+      "test": "test_run_rejects_model_url_option",
+      "decision": "keep",
+      "reason": "run不能接受远程--source，避免执行测评隐式触发下载。"
+    },
+    {
+      "test": "test_token_option_only_accepts_environment_names",
+      "decision": "keep",
+      "reason": "--token-env仅环境变量名，不接受字面token/赋值/空值/数字开头，防止凭据进入进程参数。"
+    }
+  ]
+}

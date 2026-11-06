@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_lab_adapters.py",
+  "decisions": [
+    {
+      "test": "test_bad_response_has_one_attempt_and_request_cancel",
+      "decision": "keep",
+      "reason": "截断、ID 不符、done 后数据与 HTTP 错误只能尝试一次并取消，避免隐式重试污染测量。"
+    },
+    {
+      "test": "test_committed_legal_and_illegal_samples",
+      "decision": "delete",
+      "reason": "D4：测试目录配置 fixture 的解析回显和两个拒绝条件重复实际请求/输入验证；这些 fixture 不进入 wheel/sdist 或安装检查输入，保留文档引用的原 JSON。"
+    },
+    {
+      "test": "test_complete_request_budget_parameters_and_release",
+      "decision": "keep",
+      "reason": "lab 普通/流式请求完成后释放、回答与 token 正确，缺 cached_tokens 为 null，避免正常适配器生成失败或虚构缓存指标。"
+    },
+    {
+      "test": "test_contract_refuses_bad_asset_combinations",
+      "decision": "keep",
+      "reason": "模型类型、bool 字节数、资产缺漏、缓存、seed、cwd 和 ledger 错配都须拒绝，避免不可核验配置执行。"
+    },
+    {
+      "test": "test_decline_sends_nothing_and_preserves_no_partial_state",
+      "decision": "keep",
+      "reason": "before_send 拒绝后不得发送请求，避免取消/预算结束后仍向模型发工作。"
+    },
+    {
+      "test": "test_false_idle_identity_budget_and_effective_settings_are_refused",
+      "decision": "keep",
+      "reason": "poisoned/busy、实例变化、缺能力、有效参数不符或 token 超窗均阻断，避免不符合冻结条件的请求入场。"
+    },
+    {
+      "test": "test_lab_wire_and_terminal_redact_echoed_credentials_across_chunks",
+      "decision": "keep",
+      "reason": "凭据跨流 chunk 回显也必须从事件和终态脱敏，避免 secret 落证据。"
+    },
+    {
+      "test": "test_missing_required_protocol_is_contract_error",
+      "decision": "keep",
+      "reason": "缺 identity/token-budget 协议不能发送生成请求，避免未验证引擎入场。"
+    },
+    {
+      "test": "test_registry_keeps_distinct_engine_ids",
+      "decision": "delete",
+      "reason": "工厂具体类、collector ID 和请求字典形状是实现接线；真实生成路径由 test_complete_request_budget_parameters_and_release 覆盖。"
+    },
+    {
+      "test": "test_timeout_cancellation_and_sink_failure_preserve_pending_id",
+      "decision": "keep",
+      "reason": "超时、取消、证据写入失败与取消未确认仍须保留在途 ID，避免误确认服务空闲。"
+    }
+  ]
+}

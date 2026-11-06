@@ -1,0 +1,25 @@
+{
+  "source_path": "cli/tests/unit/test_engine_overhead.py",
+  "decisions": [
+    {
+      "test": "test_context_requires_engine_proof_and_matching_work",
+      "decision": "keep",
+      "reason": "引擎比较需专项proof/容差、工作量、build/tokenizer/来源匹配，避免借普通性能资格输出速率差。"
+    },
+    {
+      "test": "test_each_engine_metric_qualifies_independently_of_e2e",
+      "decision": "keep",
+      "reason": "引擎L06/L07开销各自判定，E2E通过不能掩盖L07超限。"
+    },
+    {
+      "test": "test_frozen_contract_and_absolute_pair_changes",
+      "decision": "keep",
+      "reason": "正负偏差不得相消，改冻结容差拒绝且需boundary观测，避免校准放宽条件。"
+    },
+    {
+      "test": "test_rate_requires_verified_equal_processed_work",
+      "decision": "keep",
+      "reason": "速率需要相同处理量/cache/来源和非零可核验值，避免不等工作量伪开销。"
+    }
+  ]
+}

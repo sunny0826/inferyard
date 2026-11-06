@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_sensors_macos.py",
+  "decisions": [
+    {
+      "test": "test_key_identity_and_temperature_are_preserved_without_averaging",
+      "decision": "keep",
+      "reason": "每个 SMC key 保留独立温度、不平均，registry 身份变更后缺测，避免换源仍沿用读数。"
+    },
+    {
+      "test": "test_nonfinite_or_invalid_temperature_is_missing",
+      "decision": "keep",
+      "reason": "非有限与物理范围外温度缺测，避免错误值触发或绕过停止线。"
+    },
+    {
+      "test": "test_smc_temperature_still_enforces_90_degree_stop",
+      "decision": "keep",
+      "reason": "有效 SMC 温度达到 90 度必须停止，编码变未知仍阻断，避免实际温度守卫失效。"
+    },
+    {
+      "test": "test_unknown_encoding_and_connection_failure_do_not_fabricate_zero",
+      "decision": "keep",
+      "reason": "未知 SMC 编码或连接失败不产零温度，避免无法观测被当安全。"
+    },
+    {
+      "test": "test_wire_contract_preserves_native_float_and_rejects_linux_float",
+      "decision": "keep",
+      "reason": "macOS 原生 float 与 Linux 毫度整数转换按来源验证，避免不同平台原始数值重解释。"
+    }
+  ]
+}

@@ -174,5 +174,3 @@ def test_no_temperature_gate_but_observations_preserved(value, tmp_path, monkeyp
     guard = SafetyGuard(policy, {}, lambda: {}, sensors=Sensors())
     guard.check(periodic=True)
     assert guard.last["temperature_samples"][0]["value"] == value
-    assert safety["check_environment"] is True
-    assert safety["max_external_cpu_percent"] == 25

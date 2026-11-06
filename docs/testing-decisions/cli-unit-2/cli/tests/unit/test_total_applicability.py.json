@@ -1,0 +1,30 @@
+{
+  "source_path": "cli/tests/unit/test_total_applicability.py",
+  "decisions": [
+    {
+      "test": "test_explicit_control_root_mapping_keeps_binding_bytes_and_checks_manifest",
+      "decision": "keep",
+      "reason": "显式 source-root 搬移保持绑定原字节且核验源 manifest，避免迁移路径丢失或接错源。"
+    },
+    {
+      "test": "test_incompatible_targets_and_unknown_scope_refused",
+      "decision": "keep",
+      "reason": "输出、测量源码、加载配方、采集范围、boot 或环境未知必须不授资格，manifest 不符直接拒绝。"
+    },
+    {
+      "test": "test_incremental_tolerance_or_failure_does_not_replace_total_estimate",
+      "decision": "keep",
+      "reason": "增量诊断失败/不同容差不能替代总开销估计，避免性能结论用了错误口径。"
+    },
+    {
+      "test": "test_total_control_requires_each_bound_collector",
+      "decision": "keep",
+      "reason": "目标及每个控制臂都必须有已封存 collector，避免无采集范围证明却给性能资格。"
+    },
+    {
+      "test": "test_total_only_reuses_verified_arms_and_ignores_execution_locators",
+      "decision": "keep",
+      "reason": "保留 locator 改变仍 eligible 与 incremental 未提供；删 deepcopy 输入 identity 互等。"
+    }
+  ]
+}

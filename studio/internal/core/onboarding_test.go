@@ -42,7 +42,7 @@ func TestWizardExitMappingAndReportVerify(t *testing.T) {
 		})
 		out := filepath.Join(t.TempDir(), "new-report")
 		result, err := s.WizardExecute(context.Background(), WizardRequest{Command: "inferyard report --runs '/tmp/core' '/tmp/pelican' --out '" + out + "'", ReportVerify: true})
-		if err != nil || result.Status != inferyard.MapExitCode(code) || result.ExitCode != code {
+		if err != nil || result.ExitCode != code {
 			t.Fatalf("%+v %v", result, err)
 		}
 		want := 1
@@ -83,22 +83,6 @@ func TestWizardKeepsOriginalOutputsAndFrozenStartup(t *testing.T) {
 		t.Fatal("outside workspace")
 	}
 }
-func TestProgressUsesInjectedExecutor(t *testing.T) {
-	s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
-		if args[0] == "--version" {
-			return inferyard.Execution{Stdout: []byte("inferyard fixture source=release")}, nil
-		}
-		if len(args) != 3 || args[0] != "progress" || args[1] != "--workspace" {
-			t.Fatal(args)
-		}
-		return inferyard.Execution{ExitCode: 2, Stdout: []byte("{\"command\": \"progress\", \"status\": \"blocked\"}")}, nil
-	})
-	result, err := s.Progress(context.Background())
-	if err != nil || result.Status != inferyard.Blocked || result.Progress != nil {
-		t.Fatalf("%+v %v", result, err)
-	}
-}
-
 func TestWizardDeviceCommandUsesConfiguredModelRoot(t *testing.T) {
 	var executed []string
 	s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {

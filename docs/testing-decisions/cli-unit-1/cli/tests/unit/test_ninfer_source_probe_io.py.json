@@ -1,0 +1,110 @@
+{
+  "source_path": "cli/tests/unit/test_ninfer_source_probe_io.py",
+  "decisions": [
+    {
+      "test": "test_ancestor_reparse_is_refused_and_leaf_is_not_opened",
+      "decision": "keep",
+      "reason": "父目录 reparse 必须阻止打开叶文件，防止借链接越界访问。"
+    },
+    {
+      "test": "test_close_failure_is_visible_and_handle_is_not_retried_by_adapter",
+      "decision": "keep",
+      "reason": "关闭失败必须可见且不重关失效句柄，避免句柄复用后误关闭其他对象。"
+    },
+    {
+      "test": "test_create_new_refuses_existing_file_without_truncation",
+      "decision": "keep",
+      "reason": "原生适配层 create_new 遇已有文件拒绝且原内容保留，防止诊断覆盖用户文件。"
+    },
+    {
+      "test": "test_direct_open_checks_leaf_reparse_before_create_file",
+      "decision": "keep",
+      "reason": "叶文件自身为 reparse 时也必须先拒绝，防止只检查父目录而读到外部数据。"
+    },
+    {
+      "test": "test_drive_ancestor_query_checks_native_reparse_and_does_not_open",
+      "decision": "keep",
+      "reason": "驱动器根的 reparse 观察保持有效且拒绝异盘查询，避免漏检根祖先。"
+    },
+    {
+      "test": "test_escape_is_refused_before_native_open",
+      "decision": "keep",
+      "reason": "父目录跳转和相似前缀 files2 不能绕过固定根写入限制。"
+    },
+    {
+      "test": "test_execute_io_close_after_deadline_keeps_cleanup_error",
+      "decision": "keep",
+      "reason": "关闭出错并超时仍保留清理错误和已写字节数，不能宣称写入成功。"
+    },
+    {
+      "test": "test_execute_io_uses_only_the_probe_shape",
+      "decision": "keep",
+      "reason": "执行器接真实适配层加注入 Native 后写入字节和摘要正确；删除类名字符串断言。"
+    },
+    {
+      "test": "test_high_handle_is_not_truncated_inside_the_adapter",
+      "decision": "keep",
+      "reason": "超过 32 位的句柄仍能正确读取并关闭，防止 x64 句柄截断。"
+    },
+    {
+      "test": "test_kernel_missing_attribute_is_error_not_normal",
+      "decision": "delete",
+      "reason": "只检查常量数值和 Native fixture 自身抛错；生产缺叶/缺父目录路径已有执行测试。"
+    },
+    {
+      "test": "test_missing_leaf_error_two_reaches_create_new_and_error_three_does_not",
+      "decision": "keep",
+      "reason": "只允许叶文件不存在时新建；父目录缺失或访问拒绝不得继续写入。"
+    },
+    {
+      "test": "test_open_access_constants_match_read_and_write_data",
+      "decision": "delete",
+      "reason": "只比较常量 1/2，没有执行文件读写，也未证明任何用户结果。"
+    },
+    {
+      "test": "test_read_only_flush_and_fsync_do_not_call_flush_file_buffers",
+      "decision": "keep",
+      "reason": "只读文件不调用写句柄的 FlushFileBuffers，避免正常读取被错误的刷盘失败中断。"
+    },
+    {
+      "test": "test_real_file_api_refuses_before_windll",
+      "decision": "keep",
+      "reason": "非 Windows 平台拒绝原生文件和进程入口，不加载 WinDLL 或伪装执行成功。"
+    },
+    {
+      "test": "test_real_prototypes_keep_high_handles",
+      "decision": "keep",
+      "reason": "保留真实 ctypes 回调传递 64 位句柄的结果；删除 argtypes 同一性、固定 ABI 尺寸和 ctypes 自测。"
+    },
+    {
+      "test": "test_request_path_cannot_change_the_permitted_root",
+      "decision": "keep",
+      "reason": "请求路径在固定根之外或等于根时不得触发原生文件调用。"
+    },
+    {
+      "test": "test_root_and_parent_are_not_openable_files",
+      "decision": "delete",
+      "reason": "根路径与范围外父目录拒绝已由 request_path_cannot_change_the_permitted_root 验证。"
+    },
+    {
+      "test": "test_root_must_be_the_fixed_files_directory",
+      "decision": "keep",
+      "reason": "拒绝其他盘符、诊断父目录和文件路径作为操作根，防止扩大实验写入范围。"
+    },
+    {
+      "test": "test_root_reparse_refuses_every_child",
+      "decision": "delete",
+      "reason": "与 ancestor_reparse_is_refused_and_leaf_is_not_opened 同为祖先 reparse 阻断，无独立故障路径。"
+    },
+    {
+      "test": "test_sources_do_not_construct_real_calls_on_import",
+      "decision": "delete",
+      "reason": "扫描 import/源码片段来限制模块写法，不能证明实际操作是否越过文件边界。"
+    },
+    {
+      "test": "test_write_handle_flush_calls_flush_file_buffers_once_per_sync",
+      "decision": "keep",
+      "reason": "写入后的 flush/fsync 确实提交该句柄，防止把未刷盘写入当成完成。"
+    }
+  ]
+}

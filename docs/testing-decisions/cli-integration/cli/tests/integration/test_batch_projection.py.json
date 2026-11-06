@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/integration/test_batch_projection.py",
+  "decisions": [
+    {
+      "test": "test_batch_rejections_remain",
+      "decision": "keep",
+      "reason": "两种生产history读取模式分别断言显式错误理由，保留诊断、源码身份、负预算和封存观测拒绝；不以双方相等为expected。"
+    },
+    {
+      "test": "test_history_all_consumers_match_full_reduction",
+      "decision": "delete",
+      "reason": "各模式只比较投影和全读两个实现结果；用户结果由 test_batch_runner 的重复/续测/持续窗口和 test_capacity_stop 的独立预期覆盖。"
+    },
+    {
+      "test": "test_resume_graph_rejections_match_full_history",
+      "decision": "keep",
+      "reason": "两种生产history读取模式分别断言batch_run_identity_mismatch/branched_resume_history/disconnected_resume_history，预期为显式错误字符串；不调用same_error/assert_projection。"
+    },
+    {
+      "test": "test_runtime_projects_but_offline_batch_and_reports_use_full_reader",
+      "decision": "delete",
+      "reason": "用 monkeypatch 强制内部读取器选型，不证明额外用户行为；离线无请求由 test_cli_verification_workflow.test_canonical_artifact_workflow_is_offline_and_checks_comparison_html 覆盖。"
+    },
+    {
+      "test": "test_skipped_timeline_validation_remains_in_verify_and_report",
+      "decision": "keep",
+      "reason": "篡改内存、环境或调度日志，即使重封存，也不能生成可信报告；运行投影可延迟检查而 verify/report 必须拒绝。"
+    },
+    {
+      "test": "test_unscorable_scores_preserve_result_exit_code",
+      "decision": "delete",
+      "reason": "评分失败仍退出3并运行后续trial，由 test_simplification_b.test_batch_scoring_failures_do_not_drop_later_trials 覆盖；删除投影等价和重复执行结果断言。"
+    }
+  ]
+}

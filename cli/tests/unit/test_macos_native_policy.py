@@ -65,39 +65,3 @@ def test_swap_failure_never_reuses_previous_value_or_falls_back(monkeypatch):
     second = macos_native.swap_snapshot()
     assert second["pswpin"] is None and second["pswpout"] == 9
     assert macos_native.swap_snapshot()["pswpout"] is None
-
-
-def test_mach_swap_uses_vm_size_pointer_and_releases_port(monkeypatch):
-    import ctypes
-
-    calls = []
-
-    class Call:
-        def __init__(self, implementation):
-            self.implementation = implementation
-
-        def __call__(self, *args):
-            return self.implementation(*args)
-
-    def stats(port, flavor, result, count):
-        assert port == 7 and flavor == 4
-        result._obj.swapins, result._obj.swapouts = 11, 12
-        return 0
-
-    def page(port, value):
-        assert type(value._obj) is ctypes.c_size_t
-        value._obj.value = 16384
-        return 0
-
-    library = SimpleNamespace(
-        mach_host_self=Call(lambda: 7),
-        host_statistics64=Call(stats),
-        host_page_size=Call(page),
-    )
-    monkeypatch.setattr(ctypes, "CDLL", lambda *args: library)
-    monkeypatch.setattr(macos_native, "_release_host_port", lambda lib, port: calls.append(port))
-    assert macos_native._host_vm_swap() == (16384, 11, 12)
-    assert calls == [7]
-    library.host_statistics64.implementation = lambda *args: 1
-    assert macos_native._host_vm_swap() == (None, None, None)
-    assert calls == [7, 7]

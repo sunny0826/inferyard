@@ -1,0 +1,90 @@
+{
+  "source_path": "cli/tests/unit/test_purpose_contracts.py",
+  "decisions": [
+    {
+      "test": "test_case_hash_covers_every_supported_semantic_field",
+      "decision": "keep",
+      "reason": "题号、题干、答案、规则、类别、协议和策略变化都使逐题内容哈希失效。"
+    },
+    {
+      "test": "test_case_review_only_invalidates_affected_content",
+      "decision": "keep",
+      "reason": "逐题审批只使改题失效，补审后恢复；全局答题策略变更则全部失效。"
+    },
+    {
+      "test": "test_clean_incomplete_source_is_not_a_restart_gate",
+      "decision": "keep",
+      "reason": "已排空但范围未完成仍可复用服务，不因测评不完整无故要求重启。"
+    },
+    {
+      "test": "test_environment_admission_legacy_and_explicit",
+      "decision": "keep",
+      "reason": "正式、诊断及显式环境策略产生各自阻断项，避免把观察差异一概放行。"
+    },
+    {
+      "test": "test_environment_policy_rejects_ambiguous_or_safety_fields",
+      "decision": "keep",
+      "reason": "未知定义、重复字段、布尔字段和 temperature 不能作为可选环境准入声明。"
+    },
+    {
+      "test": "test_legacy_bundle_approval_unchanged",
+      "decision": "keep",
+      "reason": "整包审批在参考答案变化后失效，避免未审核内容继承旧认可。"
+    },
+    {
+      "test": "test_mismatched_legacy_approval_is_not_projected_to_cases",
+      "decision": "keep",
+      "reason": "整包审批失配不投射到逐题审批，新审一题也不能批准其余题。"
+    },
+    {
+      "test": "test_old_comparison_rejected_before_source_loading",
+      "decision": "keep",
+      "reason": "比较版本 1/2/3 读取与构建均拒绝，不能继续解释不支持格式。"
+    },
+    {
+      "test": "test_only_offline_v2_ignores_legacy_comparison_marker",
+      "decision": "keep",
+      "reason": "旧比较标记不影响新离线推导，但测量定义变化仍阻止完成率差值。"
+    },
+    {
+      "test": "test_plan_environment_policy_overrides_config_without_rewriting_conditions",
+      "decision": "keep",
+      "reason": "冻结计划环境策略优先于配置，显式空 required_fields 免准入阻断；删除输入字典不变断言。"
+    },
+    {
+      "test": "test_process_reuse_requires_matching_clean_scope",
+      "decision": "keep",
+      "reason": "模型/引擎/生成参数/上下文或 fresh 要求变化拒绝同进程；干净相同范围可复用。"
+    },
+    {
+      "test": "test_quality_overall_null_when_content_or_scope_does_not_match",
+      "decision": "keep",
+      "reason": "题目、规则、策略、评分器、分母或完整性不一致时质量差值必须缺失。"
+    },
+    {
+      "test": "test_replacement_requires_old_process_exit_and_propagates_unknown",
+      "decision": "keep",
+      "reason": "换服务要证明旧进程退出，检查被拒绝不得冒充已退出。"
+    },
+    {
+      "test": "test_same_process_without_drain_proof_is_explicitly_refused",
+      "decision": "keep",
+      "reason": "三个 Windows 引擎缺排空证明均拒绝复用，防止旧请求污染新轮。"
+    },
+    {
+      "test": "test_side_by_side_observed_quality_with_device_and_engine_differences",
+      "decision": "keep",
+      "reason": "设备/引擎不同可并排展示观察质量，不能授予可比资格或输出性能差值。"
+    },
+    {
+      "test": "test_v2_definition_checks_apply_to_their_metric_family",
+      "decision": "keep",
+      "reason": "评分版本差异只影响质量，测量版本差异阻断完成/性能，防止错误联动资格。"
+    },
+    {
+      "test": "test_whole_bundle_hash_still_excludes_only_old_review_records",
+      "decision": "delete",
+      "reason": "重写 JSON 排序和排除键算法复述哈希实现；审批失效已有实际流程测试。"
+    }
+  ]
+}

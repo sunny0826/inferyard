@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/tests/ui/test_run.py",
+  "decisions": [
+    {
+      "test": "RunnerTests.test_default_daily_overrides_inherited_suite",
+      "decision": "keep",
+      "reason": "运行器必须执行并记录用户选择的套件，不能受陈旧环境变量污染；删除耗时非负的通用计时器断言。"
+    },
+    {
+      "test": "RunnerTests.test_full_failure_is_reported_and_returned",
+      "decision": "keep",
+      "reason": "完整原生验收失败必须以非零退出及失败记录阻断CI，不能假通过。"
+    },
+    {
+      "test": "RunnerTests.test_unknown_suite_fails_before_desktop_or_build",
+      "decision": "delete",
+      "reason": "重复验证argparse choices拒绝未知字符串，不验证产品或独立发布后果。"
+    }
+  ]
+}

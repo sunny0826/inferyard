@@ -66,20 +66,6 @@ func TestDeviceLocalizedSnapshot(t *testing.T) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}
 	}
-	for _, unwanted := range []string{"ready_to_run", "unified_memory_fit_estimate", "可运行：false", "✓ 可运行", "暂不可运行", "下一步", "快照 2026", "本次检查未发送模型请求", "前往 Dashboard", "复制", " bytes", "本地模型", "平台能力", "推荐配置", "推荐方案"} {
-		if tt.HasText(unwanted) {
-			t.Fatalf("unexpected %q", unwanted)
-		}
-	}
-	for _, unwanted := range []string{"检查设备", "数据来源与缺测明细", "temperature：缺测 — unsupported", "cpu_model ← fixture:cpu", "检测位置：workspace", "memory_free_bytes：缺测 — 未测量"} {
-		if slices.Contains(tt.Texts(), unwanted) {
-			t.Fatalf("unexpected detail %q: %v", unwanted, tt.Texts())
-		}
-	}
-	tt.SetDark(true)
-	if !tt.HasText("硬件") {
-		t.Fatal("dark theme lost hardware card")
-	}
 }
 
 func TestDeviceReadyAndRefreshing(t *testing.T) {
@@ -145,20 +131,6 @@ func TestDeviceEmptyAndError(t *testing.T) {
 		if s.selected != "settings" {
 			t.Fatal("error settings navigation failed")
 		}
-	}
-}
-
-func TestDeviceBlockedAndUnknownFallback(t *testing.T) {
-	s := deviceTestState()
-	s.device.Snapshot = json.RawMessage(`{"recommendation":{"status":"blocked","reason":"fixture blocked","selected":{"model_name":"Hidden model"}},"hardware":{"cpu_model":"Fixture CPU","missing":{"temperature":"unsupported"}},"next_steps":[{"action":"future_action","reason":"future_reason"}]}`)
-	tt := ui.NewTester(s.view, 1120, 1800)
-	for _, unwanted := range []string{"推荐方案", "上下文长度", "模型文件与原始参数", "Hidden model", "future_action", "future_reason", "fixture blocked", "暂不可运行"} {
-		if tt.HasText(unwanted) {
-			t.Fatalf("unexpected %q", unwanted)
-		}
-	}
-	if slices.Contains(tt.Texts(), "数据来源与缺测明细") {
-		t.Fatal(tt.Texts())
 	}
 }
 

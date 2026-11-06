@@ -39,25 +39,6 @@ def test_nested_cost_is_counted_once_and_never_grants_causal_eligibility(profile
     assert not value["causal_total_perturbation_qualified"]
 
 
-def test_error_is_recorded_and_inherited_method_is_restored(profiler):
-    class Parent:
-        def operation(self):
-            raise ValueError("expected")
-
-    class Child(Parent):
-        pass
-
-    profile = profiler.ObserverCostProfile()
-    profile.wrap(Child, "operation", "test")
-    with pytest.raises(ValueError, match="expected"):
-        Child().operation()
-    assert profile.depth == 0
-    assert profile.records[0]["outcome"] == "raised"
-    profile.__exit__()
-    assert "operation" not in vars(Child)
-    assert Child.operation is Parent.operation
-
-
 def test_empty_profile_is_not_zero_cost(profiler):
     with pytest.raises(EvidenceError, match="incomplete_observer_cost_profile"):
         profiler.ObserverCostProfile().summarize([])

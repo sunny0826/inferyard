@@ -1,0 +1,25 @@
+{
+  "source_path": "studio/internal/core/engine_lifecycle_test.go",
+  "decisions": [
+    {
+      "test": "TestBindingRecoveryAcrossRestartAndCrash",
+      "decision": "keep",
+      "reason": "重启不自动接管孤儿；PID 复用/崩溃/新引擎不能复活旧绑定，显式清理可重启且旧配置不改，防任务发给错进程。"
+    },
+    {
+      "test": "TestOrderedShutdownDrainsRealRunBeforeEngine",
+      "decision": "keep",
+      "reason": "真实 CLI 子进程取消排空期间引擎须仍可请求，结束后才回收引擎并拒绝新任务，防证据缺失和引擎泄漏。"
+    },
+    {
+      "test": "TestStartValidationRejectsBeforeLaunch",
+      "decision": "keep",
+      "reason": "公网 host、凭据参数、缺失和不可执行 binary 都须启动前拒绝且不建日志，防暴露服务、泄密或假启动。"
+    },
+    {
+      "test": "TestStopEngineEscalatesAndReaps",
+      "decision": "keep",
+      "reason": "忽略 SIGTERM 的引擎须最终被强制回收，防停止按钮永久挂起和占用端口。"
+    }
+  ]
+}

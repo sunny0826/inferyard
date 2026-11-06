@@ -1,0 +1,30 @@
+{
+  "source_path": "studio/internal/core/bound_paths_test.go",
+  "decisions": [
+    {
+      "test": "TestBoundPathsAssetRoots",
+      "decision": "keep",
+      "reason": "通过实际 CreateEngineDownload 的 OutDir 验证下载落入绑定 assets root；删除私有 registryRoots 数组长度及 index 0 布局断言。"
+    },
+    {
+      "test": "TestBoundPathsInitUsesFixedWorkspace",
+      "decision": "keep",
+      "reason": "开发 init 不得选择另一 workspace，成功后就绪信息须指向绑定目录，防证据写错位置。"
+    },
+    {
+      "test": "TestBoundPathsInstallNeverFallsBack",
+      "decision": "keep",
+      "reason": "绑定 CLI 丢失不能转而发现或安装其他版本，否则源码开发运行错版本；删除固定验证调用次数断言。"
+    },
+    {
+      "test": "TestBoundPathsOverrideOldSettingsAndRejectChanges",
+      "decision": "keep",
+      "reason": "旧设置和后续更新不得覆盖开发绑定路径，下载名仍可编辑；防启动后 CLI/结果根悄然改变。"
+    },
+    {
+      "test": "TestBoundPathsStartupValidationRejectsBeforeService",
+      "decision": "keep",
+      "reason": "启动工件校验失败或校验器缺失时不得创建 service，防未核验开发构建被运行。"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "source_path": "cli/tests/unit/test_config.py",
+  "decisions": [
+    {
+      "test": "test_bundle_version_mismatch",
+      "decision": "keep",
+      "reason": "题包版本与config声明不符拒绝，避免实际测评与冻结版本不同。"
+    },
+    {
+      "test": "test_endpoint_rejections_do_not_echo_values",
+      "decision": "keep",
+      "reason": "远端/伪localhost/凭据/query/fragment/path/无效port等拒绝且不回显secret，避免连接错误服务与泄漏。"
+    },
+    {
+      "test": "test_loopback_origins",
+      "decision": "keep",
+      "reason": "IPv4/IPv6/localhost合法loopback可接受，避免本地服务被误拒。"
+    },
+    {
+      "test": "test_malformed_toml_redacts_parser_message",
+      "decision": "keep",
+      "reason": "TOML解析错误不能携带输入secret，避免stderr泄漏配置凭据。"
+    },
+    {
+      "test": "test_paths_are_relative_to_config_not_working_directory",
+      "decision": "keep",
+      "reason": "不同cwd仍按config目录解析bundle/模型路径，避免跑错模型；删默认并发/采样/预热常量断言。"
+    },
+    {
+      "test": "test_required_invalid_fixtures",
+      "decision": "keep",
+      "reason": "未知字段、并发、负超时、明文key、重复case都拒绝且不回显secret，避免错误执行口径与凭据泄漏。"
+    },
+    {
+      "test": "test_schema_validation_precedes_bundle_file_access",
+      "decision": "delete",
+      "reason": "只限定schema检查早于bundle文件访问的内部顺序；明文凭据拒绝由 test_required_invalid_fixtures 覆盖。"
+    },
+    {
+      "test": "test_startup_arguments_cannot_smuggle_plaintext_credentials",
+      "decision": "keep",
+      "reason": "startup_args不能暗带明文api-key且错误不回显，避免凭据进入配置、参数与持久化。"
+    }
+  ]
+}

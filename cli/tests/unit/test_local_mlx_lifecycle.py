@@ -30,11 +30,9 @@ def test_ordinary_response_waits_for_generator_close_and_gpu_sync():
         try:
             assert syncing.wait(3) and closed.is_set()
             assert not result.done()
-            assert instance.generations.metrics() == (1, 0, 0)
         finally:
             release.set()
         assert result.result(timeout=3)[0] == 200
-        assert instance.generations.metrics() == (0, 0, 0)
 
 
 @pytest.mark.parametrize("stream", [False, True])
@@ -64,7 +62,6 @@ def test_failure_never_returns_success_terminal_and_blocks_next_request(stream, 
             assert status == 200 and b"[DONE]" not in raw and b'"usage"' not in raw
         else:
             assert status == 500 and json.loads(raw) == {"error": "generation_failed"}
-        assert instance.generations.metrics() == (int(failure in ("close", "sync")), 0, 1)
         assert request(instance, "POST", "/v1/chat/completions", payload())[0] == 503
 
 
@@ -125,7 +122,6 @@ def test_http_queue_capacity_rejection_does_not_poison_active_work():
             waiting = [instance.generations.submit("queued", 8) for _ in range(4)]
             status, raw = request(instance, "POST", "/v1/chat/completions", payload())
             assert status == 429 and json.loads(raw) == {"error": "generation_queue_full"}
-            assert instance.generations.metrics() == (1, 4, 0)
         finally:
             release.set()
         for job in [first, *waiting]:
@@ -141,7 +137,6 @@ def test_failed_ordinary_delivery_after_sync_still_poisons(monkeypatch):
 
     def fail_delivery(self, status, body, content_type="application/json"):
         if status == 200 and isinstance(body, dict) and "choices" in body:
-            assert self.server.generations.metrics() == (0, 0, 0)
             raise BrokenPipeError("synthetic post-sync disconnect")
         return original(self, status, body, content_type)
 

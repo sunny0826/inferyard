@@ -1,0 +1,55 @@
+{
+  "source_path": "cli/tests/unit/test_engine_fit_native_evidence.py",
+  "decisions": [
+    {
+      "test": "test_linux_v1_cannot_reinterpret_smc_temperature",
+      "decision": "keep",
+      "reason": "Linux 旧定义不能接收 SMC 温度源，防止把摄氏数误按 Linux 原始单位解释。"
+    },
+    {
+      "test": "test_macos_binding_rejects_forged_linux_or_other_pid",
+      "decision": "keep",
+      "reason": "macOS listener 的 PID/来源、cwd 摘要及 Linux inode 伪装必须拒绝。"
+    },
+    {
+      "test": "test_macos_fields_cannot_be_relabelled_v1",
+      "decision": "keep",
+      "reason": "直接改旧运行定义不能让 macOS 绑定字段变成 Linux 证据。"
+    },
+    {
+      "test": "test_macos_guard_stops_at_smc_temperature_without_linux_conversion",
+      "decision": "keep",
+      "reason": "SMC 86.5°C 直接触发温停并保留读数，不能按毫度缩成低温。"
+    },
+    {
+      "test": "test_macos_missing_temperature_stays_null_with_reason",
+      "decision": "keep",
+      "reason": "SMC 缺测封存/回放后仍 null 加原因，不能被转换为零温度。"
+    },
+    {
+      "test": "test_macos_sensor_rejects_mixed_units_and_invalid_values",
+      "decision": "keep",
+      "reason": "错采集器、来源、语义、毫度值、布尔/非有限数、越界温度和逆时窗不得入证据。"
+    },
+    {
+      "test": "test_macos_v2_comparison_reads_copied_evidence_offline",
+      "decision": "keep",
+      "reason": "比较复制 macOS 来源后删除原运行仍能验证，防止报告偷偷依赖原路径。"
+    },
+    {
+      "test": "test_macos_v2_seals_and_reads_without_live_platform",
+      "decision": "keep",
+      "reason": "macOS 原生温度证据在别的平台可离线封存/读取，不依赖运行中的原设备。"
+    },
+    {
+      "test": "test_v2_cannot_relabel_linux_host",
+      "decision": "keep",
+      "reason": "macOS 原生运行不能搭配伪称 Linux 的计划主机，避免错平台解释。"
+    },
+    {
+      "test": "test_windows_live_rejected_before_loading_plan",
+      "decision": "keep",
+      "reason": "未支持的 Windows vLLM 实时执行在读计划前停止，不触发模型流程。"
+    }
+  ]
+}

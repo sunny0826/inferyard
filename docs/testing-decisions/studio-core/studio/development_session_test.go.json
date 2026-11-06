@@ -1,0 +1,20 @@
+{
+  "source_path": "studio/development_session_test.go",
+  "decisions": [
+    {
+      "test": "TestDevelopmentStopCompletesAndPreservesEvidence",
+      "decision": "keep",
+      "reason": "停止请求必须指向当前 session 并等待 stopped receipt，防用户切换环境时旧会话尚未结束。"
+    },
+    {
+      "test": "TestDevelopmentStopIdentityAndOwner",
+      "decision": "keep",
+      "reason": "PID 复用、可执行文件不符、owner 尚存、失败关停及超时不能误报停止；已消失且无 owner 可停止，原会话证据须保持。"
+    },
+    {
+      "test": "TestDevelopmentStopWatcherMatchesSession",
+      "decision": "keep",
+      "reason": "其他 session 的 stop 文件不能取消当前窗口；匹配请求须触发取消，否则错停窗口或无法退出。"
+    }
+  ]
+}

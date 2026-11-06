@@ -2,10 +2,8 @@ import asyncio
 
 import pytest
 
-from inferyard.config.plan_math import plan_hash
 from inferyard.config.planning import compile_plan
 from inferyard.contracts.validation import ContractError
-from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_lab_cli import lab_scenario  # noqa: F401
@@ -74,15 +72,12 @@ def test_duration_cycles_requests_and_rebuilds_window(scenario, monkeypatch, str
         )
     assert data["summary"]["counts"]["planned"] is None
     assert data["summary"]["quality"]["status"] == "repeated_probe_observations_only"
-    assert data["summary"] == read_trial(root)["summary"]
 
 
 @pytest.mark.parametrize("stream_delay", [0.03, 0.6])
 def test_duration_request_limit_is_incomplete(scenario, stream_delay):
     scenario[3]["stream_delay"] = stream_delay
     plan, loaded, deps, output = duration_inputs(scenario, limit=1)
-    # Plan budget always remains canonical after the fixture changes.
-    assert plan["plan_sha256"] == plan_hash(plan)
     code, data, _ = asyncio.run(
         run_trial(
             plan, plan["trials"][0]["trial_id"], loaded, output, diagnostic=True, dependencies=deps
@@ -135,7 +130,6 @@ def test_cancel_duration_retains_interrupted_window(scenario):
     assert code == 130
     assert not data["summary"]["duration"]["window_completed"]
     assert data["summary"]["duration"]["reason"] == "interrupted"
-    assert data["summary"] == read_trial(root)["summary"]
 
 
 def test_duration_report_rebuilds_completed_and_interrupted_windows(scenario, tmp_path):
@@ -218,7 +212,6 @@ def test_runtime_safety_cancels_inflight_and_preserves_incomplete_window(scenari
     assert history[-1]["error"]["reason"] == "temperature_safety_threshold_reached"
     assert history[-1]["observation"] == {"temperature": 90}
     assert "safety-checks.jsonl" in read_json(root / "manifest.json")["files"]
-    assert data["summary"] == read_trial(root)["summary"]
 
 
 def test_frozen_turbo_change_stops_real_safety_guard_inflight(scenario, tmp_path):
@@ -270,4 +263,3 @@ def test_frozen_turbo_change_stops_real_safety_guard_inflight(scenario, tmp_path
         ]["value"]
         == 0
     )
-    assert data["summary"] == read_trial(root)["summary"]

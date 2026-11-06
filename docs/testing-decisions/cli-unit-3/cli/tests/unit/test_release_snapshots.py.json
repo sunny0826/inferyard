@@ -1,0 +1,35 @@
+{
+  "source_path": "cli/tests/unit/test_release_snapshots.py",
+  "decisions": [
+    {
+      "test": "test_acceptance_swap_after_hash_uses_approved_bytes",
+      "decision": "keep",
+      "reason": "具体场景 test_acceptance_swap_after_hash_uses_approved_bytes。可观察预期：assert json.loads(capsys.readouterr().out)['verified']。打包发布保障：批准后暂存使用同一已核验快照字节；核验前资产/安装证据损坏必须拒绝，已存在暂存不可覆盖，未验证平台不报告通过。"
+    },
+    {
+      "test": "test_acceptance_swap_before_hash_refuses_staging",
+      "decision": "keep",
+      "reason": "具体场景 test_acceptance_swap_before_hash_refuses_staging。可观察预期：assert not (tmp_path / 'stage').exists()；pytest.raises(ValueError, match='candidate_hash_mismatch')。打包发布保障：批准后暂存使用同一已核验快照字节；核验前资产/安装证据损坏必须拒绝，已存在暂存不可覆盖，未验证平台不报告通过。"
+    },
+    {
+      "test": "test_artifact_swap_after_hash_does_not_reopen_for_metadata",
+      "decision": "keep",
+      "reason": "保留哈希校验后替换源归档仍验证成功并输出批准快照摘要的发布保障；删除wheel/sdist遍历顺序及独占reads收集。"
+    },
+    {
+      "test": "test_complete_staging_uses_approved_snapshot",
+      "decision": "keep",
+      "reason": "具体场景 test_complete_staging_uses_approved_snapshot。逐项参数：pytest.mark.parametrize('swap', [False, True])。可观察预期：assert json.loads(capsys.readouterr().out)['verified'] is True；assert (stage / file.name).read_bytes() == file.raw；pytest.raises(FileExistsError)。打包发布保障：批准后暂存使用同一已核验快照字节；核验前资产/安装证据损坏必须拒绝，已存在暂存不可覆盖，未验证平台不报告通过。"
+    },
+    {
+      "test": "test_missing_installation_has_clear_classification",
+      "decision": "keep",
+      "reason": "具体场景 test_missing_installation_has_clear_classification。逐项参数：pytest.mark.parametrize('value', ['not_performed', None, [], 0, {}, 'missing'])。可观察预期：assert not (tmp_path / 'stage').exists()；pytest.raises(ValueError, match='installation_evidence_missing')。打包发布保障：批准后暂存使用同一已核验快照字节；核验前资产/安装证据损坏必须拒绝，已存在暂存不可覆盖，未验证平台不报告通过。"
+    },
+    {
+      "test": "test_producer_copies_verified_snapshot_and_keeps_inputs",
+      "decision": "keep",
+      "reason": "具体场景 test_producer_copies_verified_snapshot_and_keeps_inputs。可观察预期：assert gate.verify(path, result['manifest_sha256'], COMMIT)；assert (manifest.read_bytes(), installed.read_bytes()) == before；assert result['platform_coverage'] == {'macos-arm64': 'passed', 'linux-x64': 'not_verified', 'windows-x64': 'not_verified'}；pytest.raises(FileExistsError)。打包发布保障：批准后暂存使用同一已核验快照字节；核验前资产/安装证据损坏必须拒绝，已存在暂存不可覆盖，未验证平台不报告通过。"
+    }
+  ]
+}
