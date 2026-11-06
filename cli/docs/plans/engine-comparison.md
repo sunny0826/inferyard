@@ -23,8 +23,8 @@ llama.cpp 对 LM Studio；实测后增加 llama.cpp 对 MLX-LM（同一上游模
 - [x] [契约](../contracts/engine-comparison.md)：门槛、阻断原因与判定规则。
 - [x] `experiment.comparison.mode` 与 `compare --mode` 增加 `engine`，schema 已重新导出。
 - [x] 冻结调优声明 `engine.tuning`；LM Studio 不可观察，声明即拒绝。
-- [ ] 客户端解码间隔进入指标目录（`scripts/export_catalogue.py`，不重排既有 ID）；
-  目前结果中暂以 `client_decode_interval` 标识。
+- [ ] 客户端解码间隔与首个正文文本进入指标目录（`scripts/export_catalogue.py`，不重排既有 ID）；
+  目前结果中暂以 `client_decode_interval` 与 `first_body_text` 标识。
 
 ## 2. 运行时
 

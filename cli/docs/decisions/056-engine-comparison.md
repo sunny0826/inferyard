@@ -92,7 +92,8 @@ Studio 侧的接管需另行设计；ADR 055 中「Studio 不能停掉用户原�
   解码间隔未按输出长度对齐，较长输出的上下文更长，附相应限制。
 - 真机核对后修订：首内容延迟改为只展示。mlx-lm 的首个非空白输出是 `<think>`，
   llama-server 解析掉该标记后首个输出是其后的正文词，两侧相差约 2 个 token。
-  未对齐时判 MLX-LM 更优；按首个正文词对齐后方向相反。跨格式只判解码间隔。
+  未对齐时判 MLX-LM 更优；按首个正文词对齐后方向相反。跨格式改用 `first_body_text_ms`
+  判定首响应，它从已校验的事件离线算出，不需要重跑。解码间隔的判定不变。
 - MLX 冷缓存由结构保证：项目自带的正式 MLX 服务调用 `mlx_lm.stream_generate`
   不传 `prompt_cache`，每个请求新建缓存；服务源码在服务核验时与 CLI 包内源码
   比对摘要。该侧缓存证据记为 `formal_server_no_prompt_cache_reuse`，

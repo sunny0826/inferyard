@@ -3,13 +3,14 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.engine_blocks import compare_blocks
+from inferyard.analysis.first_body import first_body_times
 from inferyard.contracts.engine_tuning import llama_arguments, validate_tuning
 from inferyard.contracts.validation import ContractError
 from inferyard.evidence.storage import EvidenceError
 from tests.unit.test_engine_comparison import local
 
 
-def request(index, *, prompt=100, cached=0, tokens=10, e2e_ms=1000, first_ms=100):
+def request(index, *, prompt=100, cached=0, tokens=10, e2e_ms=1000, first_ms=100, body_ms=None):
     return {
         "plan_index": index,
         "request_id": f"r-{index}",
@@ -18,6 +19,7 @@ def request(index, *, prompt=100, cached=0, tokens=10, e2e_ms=1000, first_ms=100
         "completion_tokens": tokens,
         "t_send_ns": 0,
         "t_first_content_ns": first_ms * 1_000_000,
+        "t_first_body_ns": (first_ms if body_ms is None else body_ms) * 1_000_000,
         "t_terminal_ns": e2e_ms * 1_000_000,
         "usage_detail": {"prompt_tokens": prompt, "cached_tokens": cached},
     }
@@ -195,6 +197,52 @@ def test_cross_format_keeps_unequal_lengths_for_per_token_metrics():
     assert result["blocks"][0]["excluded"] == {}
     assert result["verdicts"]["client_decode_interval_ms"]["verdict"] == "mlx-lm"
     assert "decode_interval_not_matched_by_output_length" in result["limitations"]
+
+
+def test_cross_format_first_body_decides_when_first_content_is_misaligned():
+    # The real failure: mlx-lm reaches `<think>` first but its first body text comes later.
+    result = compare_blocks(cross_format(first_ms=50, body_ms=150))
+    assert result["verdicts"]["first_body_text_ms"]["verdict"] == "llama-cpp"
+    assert (
+        result["verdicts"]["first_content_ms"]["verdict"]
+        == "display_only_first_output_token_not_aligned"
+    )
+
+
+def test_cross_format_missing_first_body_has_no_winner():
+    rows = cross_format()
+    for row in rows[1]["requests"]:
+        row["t_first_body_ns"] = None
+    assert compare_blocks(rows)["verdicts"]["first_body_text_ms"]["verdict"] == (
+        "no_clear_difference"
+    )
+
+
+@pytest.mark.parametrize(
+    "chunks,index",
+    [
+        (["<think>", "\n", "好的"], 2),
+        (["<think>\n好的"], 0),
+        (["<thi", "nk>", "\n", "好"], 3),
+        (["好的"], 0),
+        (["<think>\n", "\n"], None),
+    ],
+)
+def test_first_body_skips_only_the_leading_think_tag(chunks, index):
+    events = [
+        {"event_type": "content", "request_id": "r", "monotonic_ns": i, "data": {"text": text}}
+        for i, text in enumerate(chunks)
+    ]
+    assert first_body_times(events).get("r") == index
+
+
+def test_first_body_spans_reasoning_and_ignores_other_events():
+    events = [
+        {"event_type": "finish", "request_id": "r", "monotonic_ns": 0, "data": {}},
+        {"event_type": "reasoning", "request_id": "r", "monotonic_ns": 1, "data": {"text": "好"}},
+        {"event_type": "content", "request_id": "r", "monotonic_ns": 2, "data": {"text": "京"}},
+    ]
+    assert first_body_times(events) == {"r": 1}
 
 
 def test_missing_llama_cache_counter_is_not_structural():

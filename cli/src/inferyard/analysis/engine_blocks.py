@@ -15,12 +15,14 @@ MIN_BLOCKS = 3
 # metric -> True when a larger value is better
 METRICS = {
     "first_content_ms": False,
+    "first_body_text_ms": False,
     "e2e_ms": False,
     "output_tokens_per_second": True,
     "client_decode_interval_ms": False,
 }
 METRIC_IDS = {
     "first_content_ms": "L01",
+    "first_body_text_ms": "first_body_text",
     "e2e_ms": "L03",
     "output_tokens_per_second": "L04",
     "client_decode_interval_ms": "client_decode_interval",
@@ -29,11 +31,10 @@ SIDE_SCOPE = ("model", "engine", "generation", "conditions", "execution", "safet
 # The formal MLX server (bound by source hash at service inspection) calls
 # mlx_lm.stream_generate without a prompt_cache, so every request starts empty.
 STRUCTURAL_COLD_CACHE = {"mlx-lm": "formal_server_no_prompt_cache_reuse"}
-# Different model formats rarely produce equal greedy output lengths, so only the
-# decode interval decides. E2E and throughput depend on output length. First content
-# is not aligned: mlx-lm streams `<think>` as text, llama-server parses it away, so
-# the two sides time different output tokens.
-CROSS_FORMAT_JUDGED = ("client_decode_interval_ms",)
+# Different model formats rarely produce equal greedy output lengths, so E2E and
+# throughput only display. First content is not aligned: mlx-lm streams `<think>` as
+# text and llama-server parses it away, so first_body_text_ms decides instead.
+CROSS_FORMAT_JUDGED = ("first_body_text_ms", "client_decode_interval_ms")
 CROSS_FORMAT_DISPLAY = {
     "first_content_ms": "display_only_first_output_token_not_aligned",
     "e2e_ms": "display_only_output_length_unmatched",
@@ -95,8 +96,10 @@ def _metrics(row):
     e2e = (row["t_terminal_ns"] - row["t_send_ns"]) / 1e6
     first = row.get("t_first_content_ns")
     ttft = (first - row["t_send_ns"]) / 1e6 if first is not None else None
+    body = row.get("t_first_body_ns")
     return {
         "first_content_ms": ttft,
+        "first_body_text_ms": (body - row["t_send_ns"]) / 1e6 if body is not None else None,
         "e2e_ms": e2e,
         "output_tokens_per_second": tokens / (e2e / 1e3) if e2e > 0 else None,
         "client_decode_interval_ms": (e2e - ttft) / (tokens - 1)

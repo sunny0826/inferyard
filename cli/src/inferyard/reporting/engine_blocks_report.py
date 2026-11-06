@@ -6,6 +6,7 @@ from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes
 
 def execute(request):
     from inferyard.analysis.engine_blocks import compare_blocks
+    from inferyard.analysis.first_body import attach_first_body
     from inferyard.reporting.comparison_report import comparison_input
     from inferyard.reporting.report_common import _new_output
 
@@ -14,7 +15,9 @@ def execute(request):
         raise EvidenceError("duplicate_engine_comparison_run")
     blocks, sources = [], []
     for path in paths:
-        data, reference = comparison_input(path, bind_unsealed=True)
+        metadata = {}
+        data, reference = comparison_input(path, bind_unsealed=True, metadata=metadata)
+        attach_first_body(data, metadata["evidence"].jsonl("events.jsonl")[0])
         blocks.append(data)
         sources.append(reference)
     result = compare_blocks(blocks)

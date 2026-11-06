@@ -95,17 +95,22 @@
 客户端指标：`first_content_ms`（L01）、`e2e_ms`（L03）、
 `output_tokens_per_second`（L04）、`client_decode_interval_ms`
 = (E2E − 首内容) / (输出 token − 1)，输出 token ≤ 1 或无首内容时为 null。
+`first_body_text_ms` = 首个正文文本到达 − 发送。正文文本是 content 与 reasoning 累积后，
+去掉开头 `<think>` 标记仍非空白的文本，由 `compare-engines` 从已校验的事件离线算出；
+没有正文时为 null。
 引擎自报 timings 不参与判定。
 
 每个配对块取两侧中位数，差值为 right − left。
 任一阻断存在时 verdict 为 `not_eligible`；
 否则全部块差值同号且非零时 verdict 为较优一侧的家族名，其余为 `no_clear_difference`。
-跨格式组合只判 `client_decode_interval_ms`；
+跨格式组合只判 `first_body_text_ms` 与 `client_decode_interval_ms`；
 `e2e_ms` 与 `output_tokens_per_second` 依赖输出长度，verdict 固定为
 `display_only_output_length_unmatched`，并附 `decode_interval_not_matched_by_output_length`。
 `first_content_ms` 的 verdict 固定为 `display_only_first_output_token_not_aligned`，并附
 `first_content_token_not_aligned_across_formats`：mlx-lm 把 `<think>` 作为文本输出，
-llama-server 解析掉该标记，两侧计时的不是同一个输出 token。
+llama-server 解析掉该标记，两侧计时的不是同一个输出 token，因此由 `first_body_text_ms` 判定。
+解码间隔仍以 `first_content_ms` 为起点，llama-server 一侧的起点晚约 2 个 token，
+其间隔因此略微偏小。
 `scope` 只有全部调优键两侧已观察且相同时为 `engine_implementation`，
 否则为 `product_configuration` 并附 `engine_defaults_not_controlled`；
 llama-cpp 对 lmstudio 当前总是后者。跨格式组合的 `scope` 固定为
@@ -118,7 +123,8 @@ llama-cpp 对 lmstudio 当前总是后者。跨格式组合的 `scope` 固定为
 - LM Studio 后台的停止与重启由操作者执行；CLI 不停止服务，
   只通过既有主机状态与本比较的 `block_service_not_replaced` 核验替换。
 - 严格定长输出、块间温度等待证据、比较结果封存与 HTML 呈现。
-- 客户端解码间隔尚未进入指标目录，ID 暂为 `client_decode_interval`。
+- 客户端解码间隔与首个正文文本尚未进入指标目录，ID 暂为 `client_decode_interval`
+  与 `first_body_text`。
 
 既有 run 与比较证据按原定义读取，不因新模式获得资格。
 证据解释遵循[血缘规则](../data-contract.md#证据血缘与比较结论)。
