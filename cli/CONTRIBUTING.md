@@ -9,12 +9,12 @@ The project uses the [MIT license](LICENSE); release status is on
 
 ## Development environment
 
-Versions are pinned by [mise.toml](../mise.toml): Python 3.15.1 and uv 0.13.5;
+Versions are pinned by [mise.toml](../mise.toml): Python 3.15.2 and uv 0.13.6;
 Go is used for the native Studio application. See [Studio](../studio/README.md) for its checks.
 Dependencies are managed by uv; do not substitute system Python or global pip.
 If an inherited `UV_PYTHON` points to another version, remove that override or
 point it at the path returned by `mise which python`; confirm the interpreter
-is actually 3.15.1 before syncing and running.
+is actually 3.15.2 before syncing and running.
 
 Run all CLI development commands below from the monorepo's `cli/` directory
 (`cd cli` from the repository root). Root mise tasks already enter `cli/`.

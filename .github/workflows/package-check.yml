@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@v5.2.2
+      - uses: jdx/mise-action@v5.2.4
       - run: mise exec -- uv sync --frozen
       - run: mise exec -- uv run --frozen pytest -q
       - run: mise exec -- uv run --frozen ruff check src tests scripts
@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@v5.2.2
+      - uses: jdx/mise-action@v5.2.4
       - run: mise exec -- uv sync --frozen
       - uses: actions/download-artifact@v8
         with:
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@v5.2.2
+      - uses: jdx/mise-action@v5.2.4
       - run: mise exec -- uv sync --frozen
       - uses: actions/download-artifact@v8
         with:

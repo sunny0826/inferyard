@@ -24,14 +24,14 @@ Included since the 0.0.2 PyPI build (the 0.0.1 build did not ship it).
 Install the pinned version from PyPI:
 
 ```bash
-uv tool install --managed-python --python 3.15.1 inferyard==0.0.2
+uv tool install --managed-python --python 3.15.2 inferyard==0.0.2
 inferyard --help
 ```
 
 Or run it directly with `uvx`, without a persistent install:
 
 ```bash
-uvx --isolated --managed-python --python 3.15.1 inferyard==0.0.2 --help
+uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.2 --help
 ```
 
 No source checkout or mise is needed. Preparing Python and dependencies on the

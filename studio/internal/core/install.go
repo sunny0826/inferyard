@@ -21,10 +21,10 @@ import (
 
 // installPython pins the managed Python build the CLI contract requires; keep
 // it in sync with cli/docs/installation.md.
-const installPython = "3.15.1"
+const installPython = "3.15.2"
 
 // uvRelease pins the standalone uv build downloaded when no uv is found.
-const uvRelease = "0.13.5"
+const uvRelease = "0.13.6"
 
 // Replaceable in tests.
 var (
