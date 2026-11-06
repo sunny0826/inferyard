@@ -100,9 +100,12 @@
 每个配对块取两侧中位数，差值为 right − left。
 任一阻断存在时 verdict 为 `not_eligible`；
 否则全部块差值同号且非零时 verdict 为较优一侧的家族名，其余为 `no_clear_difference`。
-跨格式组合只判 `first_content_ms` 与 `client_decode_interval_ms`；
+跨格式组合只判 `client_decode_interval_ms`；
 `e2e_ms` 与 `output_tokens_per_second` 依赖输出长度，verdict 固定为
 `display_only_output_length_unmatched`，并附 `decode_interval_not_matched_by_output_length`。
+`first_content_ms` 的 verdict 固定为 `display_only_first_output_token_not_aligned`，并附
+`first_content_token_not_aligned_across_formats`：mlx-lm 把 `<think>` 作为文本输出，
+llama-server 解析掉该标记，两侧计时的不是同一个输出 token。
 `scope` 只有全部调优键两侧已观察且相同时为 `engine_implementation`，
 否则为 `product_configuration` 并附 `engine_defaults_not_controlled`；
 llama-cpp 对 lmstudio 当前总是后者。跨格式组合的 `scope` 固定为

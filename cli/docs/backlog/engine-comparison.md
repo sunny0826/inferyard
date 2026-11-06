@@ -18,6 +18,9 @@
 2026-11-06 真机：llama.cpp（Qwen3-0.6B Q8_0 GGUF）对 MLX-LM（同上游 8bit MLX），
 Apple M4，engine 模式冻结 A/B×3，默认双题包，温度停止按操作者指示关闭（读数照常记录）。
 两个题包的 `compare-engines` 均无阻断，范围 `engine_and_model_format`：
-首内容延迟与客户端解码间隔判 MLX-LM 更优，E2E 与吞吐因输出长度不等仅展示。
+客户端解码间隔判 MLX-LM 更优。E2E 与吞吐因输出长度不等仅展示。首内容延迟仅展示：
+两侧计时的 token 不同（MLX-LM 计入 `<think>`）；临时脚本按首个正文词对齐后，
+zh-core 三对块均为 llama.cpp 更快（差 8–12 ms），该对齐不是契约指标。
+结果在 `.tools/engine-compare-mlx-20261106/compare-e2/`。
 zh-svg-pelican 每块只有 1 题，证据弱。结论不归因于引擎实现，LM Studio 组合仍未实测。
 `engine-comparison.json` 未封存、无 `verify` 与 HTML。

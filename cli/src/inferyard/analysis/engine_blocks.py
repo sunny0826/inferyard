@@ -29,9 +29,16 @@ SIDE_SCOPE = ("model", "engine", "generation", "conditions", "execution", "safet
 # The formal MLX server (bound by source hash at service inspection) calls
 # mlx_lm.stream_generate without a prompt_cache, so every request starts empty.
 STRUCTURAL_COLD_CACHE = {"mlx-lm": "formal_server_no_prompt_cache_reuse"}
-# Different model formats rarely produce equal greedy output lengths, so only
-# per-token metrics decide; E2E and throughput depend on output length.
-CROSS_FORMAT_JUDGED = ("first_content_ms", "client_decode_interval_ms")
+# Different model formats rarely produce equal greedy output lengths, so only the
+# decode interval decides. E2E and throughput depend on output length. First content
+# is not aligned: mlx-lm streams `<think>` as text, llama-server parses it away, so
+# the two sides time different output tokens.
+CROSS_FORMAT_JUDGED = ("client_decode_interval_ms",)
+CROSS_FORMAT_DISPLAY = {
+    "first_content_ms": "display_only_first_output_token_not_aligned",
+    "e2e_ms": "display_only_output_length_unmatched",
+    "output_tokens_per_second": "display_only_output_length_unmatched",
+}
 
 
 def _service(data):
@@ -240,7 +247,7 @@ def compare_blocks(blocks):
                 families,
             )
             if metric in judged
-            else "display_only_output_length_unmatched",
+            else CROSS_FORMAT_DISPLAY[metric],
         }
         for metric, higher in METRICS.items()
     }
@@ -265,6 +272,7 @@ def compare_blocks(blocks):
             *(["engine_defaults_not_controlled"] if scope != "engine_implementation" else []),
             *(["model_format_differs_not_attributable_to_engine"] if cross_format else []),
             *(["decode_interval_not_matched_by_output_length"] if cross_format else []),
+            *(["first_content_token_not_aligned_across_formats"] if cross_format else []),
             *(["temperature_stop_overridden"] if temperature_overridden else []),
         ],
     }
