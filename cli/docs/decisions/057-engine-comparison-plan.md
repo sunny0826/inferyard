@@ -1,6 +1,6 @@
 # ADR 057b：单份完整比较计划与旧产物
 
-状态：Draft（草案，返工第 2 轮）。日期：2026-11-07。原始基线：`6783414ccd73e8f2991adae7d3e1d707bfba9ff7`；本轮基线：`b12eb1b0cee2c34c07ddf3d8b7e651cb310351e2`。
+状态：Accepted（2026-11-07 用户批准 D1，原话「D1 全批准」）。日期：2026-11-07。原始基线：`6783414ccd73e8f2991adae7d3e1d707bfba9ff7`；本轮基线：`b12eb1b0cee2c34c07ddf3d8b7e651cb310351e2`。
 本草案扩展 [ADR 056](056-engine-comparison.md)；专用任务与 D2 见 [ADR 057a](057-comparison-task.md)，交接链和失败停止规则见 [ADR 057c](057-comparison-verification.md)。
 文中“事实”附源码或样本位置；“推导”是设计判断；“未验证”不当作既有能力。
 `.tools/...` 均指主 checkout 中的只读样本，不是发行或测试依赖。

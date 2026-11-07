@@ -1,6 +1,6 @@
 # ADR 057c：v2 封存交接链与比较专用停止规则
 
-状态：Draft（草案，返工第 2 轮）。日期：2026-11-07。本轮基线：`b12eb1b0cee2c34c07ddf3d8b7e651cb310351e2`。
+状态：Accepted（2026-11-07 用户批准 D1，原话「D1 全批准」）。日期：2026-11-07。本轮基线：`b12eb1b0cee2c34c07ddf3d8b7e651cb310351e2`。
 单份完整计划见 [ADR 057b](057-engine-comparison-plan.md)，专用任务见 [ADR 057a](057-comparison-task.md)。
 本部分只复用现有 run、batch 和 `service_binding` 证据，不新增批次身份字段、第二份顺序日志或通用任务状态系统。
 
@@ -16,7 +16,7 @@ v2 必须按冻结 plan 的槽位逐一选择 run，并读取各 run 已封存�
 2. 后续槽位的 `previous_run_id` 必须精确等于前一冻结槽位所选 run 的 `run_id`。
 3. 观测缺失、前驱字段缺失、指向不存在或非相邻槽位均阻断；不能用集合相等、reader 返回顺序或事件时间重排替代。
 
-阻断原因至少为：
+阻断原因至少为（命名存在重叠，T2 冻结契约前必须收敛为每种条件一个规范原因，或写明互斥条件与优先级）：
 
 - `comparison_handoff_missing`：缺少封存交接观测或应有前驱为空。
 - `comparison_handoff_broken`：前驱不是前一槽位的选中 run。
@@ -73,6 +73,9 @@ run 封存完整 plan 及其哈希，因此不能事后另造缩减计划来合�
 预注册只保证所提交计划、run 集合和交接链满足规则，不扩大为全机行为证明。
 
 ## 验证与未验证项
+
+T2 必须先收敛诊断命名：`comparison_handoff_broken` 与 `comparison_handoff_slot_mismatch` 在前驱指向非相邻槽位时重叠；
+`comparison_unplanned_trial` 与 ADR 057b 的 `unplanned_run_present` 指同一条件；`execution_order_differs` 与交接链原因的关系也要写明，避免重复报告。
 
 T2 必须覆盖：同计划跨 batch 拼槽位、首槽位有前驱、缺观测、断链、跳槽位、reader 顺序与时间顺序相反、
 未知 trial、错计划、同 trial 多次尝试、历史取消后继续调用、正常 handoff、模型答错和 unscorable。
