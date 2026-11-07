@@ -381,7 +381,11 @@ def _collect_run(path: Path, context: HistoryContext, state: _CollectState) -> N
                 trial_id=identity.trial_id,
                 run_id=identity.run_id,
                 classification=identity.classification,
-                detail=str(exc) or identity.detail,
+                detail=(
+                    str(exc) or identity.detail
+                    if identity.classification == HISTORY_IDENTITY_ERROR
+                    else identity.detail
+                ),
             )
             _register_identity(
                 state,

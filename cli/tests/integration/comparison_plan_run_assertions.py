@@ -20,6 +20,7 @@ from inferyard.runtime.history_state import history, history_diagnostics
 from inferyard.runtime.trial_runner import TrialDependencies
 from tests.integration.comparison_plan_assertions import (
     _assert_not_selected,
+    _reader_case,
     mutate_run_documents,
     run_paths,
 )
@@ -293,6 +294,28 @@ def assert_cross_trial_duplicate(
     assert document["eligible"] is False
     _assert_not_selected(document, source.name)
     _assert_not_selected(document, target.name)
+
+
+def assert_wrong_plan_stop_detail(
+    tmp_path: Path,
+    plan: JSONRecord,
+    request: CommandRequest,
+    deps: TrialDependencies,
+) -> None:
+    last_trial = plan["trials"][-1]["trial_id"]
+
+    def wrong_plan(run: JSONRecord, _: JSONRecord) -> None:
+        run["plan_sha256"] = "f" * 64
+
+    _, _, target = _reader_case(tmp_path, plan, "wrong-plan-stop", last_trial, wrong_plan)
+    for command in (
+        replace(request, output_root=target.parent.parent),
+        CommandRequest("resume", from_run=target),
+    ):
+        code, result = asyncio.run(execute_async(command, deps))
+        assert code == 3 and result.status == "comparison_history_stopped"
+        detail = result.details["comparison_stop"]["detail"]
+        assert detail == "run_plan_mismatch", detail
 
 
 def assert_layout1_case(

@@ -489,6 +489,9 @@ def assert_real_reader_classification(
         tmp_path, plan, request, deps, StopPriorityCase("priority-unreadable", True)
     )
     _assert_wrong_plan(tmp_path, plan, second_trial)
+    from tests.integration.comparison_plan_run_assertions import assert_wrong_plan_stop_detail
+
+    assert_wrong_plan_stop_detail(tmp_path, plan, request, deps)
     _assert_wrong_metadata(tmp_path, plan, second_trial)
     _assert_invalid_resume(tmp_path, plan, second_trial)
     _assert_unreadable(tmp_path, plan, second_trial, request, deps)
