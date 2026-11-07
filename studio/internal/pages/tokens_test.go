@@ -29,18 +29,34 @@ func productionTheme(t *testing.T, dark, highContrast bool) *ui.Theme {
 }
 
 // TestABSideColorsAreDistinguishable covers the comparison requirement that
-// the two sides of an A/B result must not share a color, which would make the
-// paired bars indistinguishable. It does not pin the chosen colors.
+// both sides of an A/B result stay visible on the card surface, in both
+// appearances: the sides must not share a color and each must reach the 3:1
+// non-text contrast floor against the actual Surface. It does not pin the
+// chosen colors.
 func TestABSideColorsAreDistinguishable(t *testing.T) {
-	var first, second ui.Color
+	for _, dark := range []bool{false, true} {
+		assertABSideColors(t, dark)
+	}
+}
+
+func assertABSideColors(t *testing.T, dark bool) {
+	t.Helper()
+	var a, b, surface ui.Color
 	install := productionThemeInstall()
 	tt := ui.NewTester(func(c *ui.Context) {
 		c.SetTheme(install(c))
-		first, second = sideColor(c, sideA), sideColor(c, sideB)
+		a, b = sideColor(c, sideA), sideColor(c, sideB)
+		surface = c.Theme().Surface
 	}, 40, 40)
+	tt.SetDark(dark)
 	tt.Frame()
-	if first == second {
-		t.Fatal("A/B sides share a color; the paired bars are indistinguishable")
+	if a == b {
+		t.Fatalf("dark=%v A/B sides share a color; the paired bars are indistinguishable", dark)
+	}
+	for name, color := range map[string]ui.Color{"A": a, "B": b} {
+		if ratio := contrastRatio(color, surface); ratio < 3 {
+			t.Fatalf("dark=%v side %s contrast against surface %.2f < 3", dark, name, ratio)
+		}
 	}
 }
 
