@@ -51,6 +51,7 @@ Accepted 表示采纳设计，不代表所有平台已验证。
 | [ADR 054：普通运行采集 CPU 与温度](054-single-resource-collection.md) | Accepted；替代 ADR 048 的 single 默认内存范围 |
 | [ADR 055：本地五引擎正式串行测评](055-local-engine-formal.md) | Accepted；实施与原生验收分阶段 |
 | [ADR 056：同一 GGUF 的跨引擎受控比较](056-engine-comparison.md) | Accepted；实施未开始 |
+| [ADR 057：专用比较任务](057-comparison-task.md)、[完整比较计划](057-engine-comparison-plan.md)与[v2 核验](057-comparison-verification.md) | Draft；D2 已定，等待 D1 收尾 |
 
 ADR 039 删除 `host-state migrate` 与退休机制：实时入口自动初始化 clean 状态，
 旧工具文件完全忽略，主机互斥只覆盖 InferYard 自身进程。
