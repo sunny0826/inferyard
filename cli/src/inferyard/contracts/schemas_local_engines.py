@@ -2,7 +2,13 @@
 
 from copy import deepcopy
 
-from inferyard.contracts.engine_profiles import LOCAL_ADAPTER, LOCAL_CONFIG, LOCAL_FAMILIES
+from inferyard.contracts.engine_profiles import (
+    LOCAL_ADAPTER,
+    LOCAL_CONFIG,
+    LOCAL_FAMILIES,
+    PROMPT_CACHE,
+    TUNING_KEYS,
+)
 from inferyard.contracts.schemas_common import HASH, LABEL, TEXT, VERSION, array, enum, obj
 from inferyard.contracts.schemas_config import CONFIG, CONFIG_DEFAULTS
 
@@ -78,6 +84,9 @@ LOCAL_CONFIG_SCHEMA["properties"]["engine"] = obj(
         "served_model": LABEL,
     }
 )
+LOCAL_CONFIG_SCHEMA["properties"]["engine"]["properties"]["tuning"] = obj(
+    {**{key: LABEL for key in TUNING_KEYS}, "prompt_cache": enum(*PROMPT_CACHE)}, required=[]
+)
 LOCAL_CONFIG_SCHEMA["properties"]["generation"] = obj(
     {
         "temperature": {"type": "number", "const": 0},
@@ -97,7 +106,15 @@ LOCAL_CONFIG_SCHEMA["properties"]["safety"] = obj(
         "max_temperature_celsius": {"type": "number", "minimum": 1, "maximum": 85},
         "require_temperature": {"type": "boolean", "const": True},
         "check_environment": {"type": "boolean", "const": True},
-    }
+        # Operator-declared: temperature is still sampled and required, but never stops.
+        "temperature_stop_override_reason": {"type": "string", "minLength": 1, "maxLength": 1024},
+    },
+    required=[
+        "interval_seconds",
+        "max_temperature_celsius",
+        "require_temperature",
+        "check_environment",
+    ],
 )
 LOCAL_CONFIG_SCHEMA["required"].append("safety")
 LOCAL_CONFIG_SCHEMA["properties"]["execution"]["properties"]["idle_wait_seconds"] = {

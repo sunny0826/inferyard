@@ -67,8 +67,8 @@ running scripts; never batch-execute `verify_*`.
 
 Schema sources live in `src/inferyard/contracts/`; run the exporter (without
 `--check`) after changing them.
-`docs/experiments/metrics.md` and `docs/reference/methods-matrix.md` are the
-catalogue generation sources; re-export when they change, and never reassign
+`docs/experiments/metrics.md`, `docs/experiments/metrics-resources.md` and
+`docs/reference/methods-matrix.md` are the catalogue generation sources; re-export when they change, and never reassign
 existing IDs for layout reasons. Bundles and their review materials keep the
 original hash relationships; re-run manual review for affected cases after
 changing them.

@@ -38,6 +38,8 @@ class CommandRequest:
     comparison_mode: str | None = None
     filter_spec: Path | None = None
     report_runs: list[Path] | None = None
+    left_runs: list[Path] | None = None
+    right_runs: list[Path] | None = None
     analysis_path: Path | None = None
     scorer_id: str | None = None
     revision_reason: str | None = None
@@ -96,6 +98,8 @@ class CommandRequest:
     engine_timeout_seconds: float = 1800
     protect_pids: list[int] | None = None
     workspace: Path | None = None
+    temperature_stop_override_reason: str | None = None
+    prompt_cache: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

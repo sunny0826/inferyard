@@ -2,12 +2,14 @@
 
 import asyncio
 import json
+import sys
 import time
 from copy import deepcopy
 
 from inferyard.adapters.engine_fit import FitTransportError, _json
 from inferyard.adapters.lab_adapter import LabAdapter
 from inferyard.adapters.local_engines.protocol import VERSION_PATHS, models, queue, service
+from inferyard.contracts.engine_tuning import prompt_cache_disabled
 from inferyard.platforms.engine_fit_lmstudio import LMStudioObserver
 from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.local_engines import verify_bound_service
@@ -37,6 +39,8 @@ class LocalEngineAdapter(LabAdapter):
             "max_tokens": config["generation"]["max_tokens"],
             "stream": stream,
             **({"stream_options": {"include_usage": True}} if stream else {}),
+            # Only a frozen llama-server tuning declaration adds this field.
+            **({"cache_prompt": False} if prompt_cache_disabled(config) else {}),
         }
 
     async def _bound(self, deadline):
@@ -176,10 +180,18 @@ class LocalEngineAdapter(LabAdapter):
             except asyncio.CancelledError:
                 self.native_uncertain = True
                 raise
-            except PreflightError, FitTransportError, TimeoutError:
+            except (PreflightError, FitTransportError, TimeoutError) as exc:
                 snapshot["observation"] = None
                 snapshot["missing_reason"] = "local_engine_queue_unverified"
                 self.native_uncertain = True
+                # Evidence keeps the fixed reason; stderr names the failed check for operators.
+                cause = exc.__cause__
+                print(
+                    "local_engine_queue_unverified: "
+                    + f"{type(exc).__name__}({exc})"
+                    + (f" from {type(cause).__name__}({cause})" if cause else ""),
+                    file=sys.stderr,
+                )
             snapshot["client_uncertain"] = self.native_uncertain
             signals["queue_snapshot"] = snapshot
             self.queue_ready = (

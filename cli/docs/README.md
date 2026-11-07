@@ -32,5 +32,5 @@
 
 CLI 开发命令和 `scripts/` 工具在仓库的 `cli/` 目录内执行（从仓库根先 `cd cli`）；根级 mise tasks 已内置切换目录。安装用户的 `inferyard ...` 命令不受影响。
 
-catalogue 生成源只有 [指标定义](experiments/metrics.md) 和 [方法目录](reference/methods-matrix.md) 两个文件，修改后运行 `scripts/export_catalogue.py` 导出且保留稳定 ID。
+catalogue 生成源只有 [指标定义](experiments/metrics.md)、[资源、稳定性与条件指标](experiments/metrics-resources.md) 和 [方法目录](reference/methods-matrix.md) 三个文件，修改后运行 `scripts/export_catalogue.py` 导出且保留稳定 ID。
 原始运行留在本机，仓库根的 `validation/` 不属于公开工作树；证据规则统一见[数据契约](data-contract.md#证据血缘与比较结论)。

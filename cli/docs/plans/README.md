@@ -3,6 +3,7 @@
 - [专项指标证据修复](context-speed-metric-fix.md)：输入计数与模板证明回归、独立审核及真实 64k 复验。
 
 - [长上下文速度专项测评](context-speed.md)：CLI 结构化采集与 Studio 六列结果闭环的规划；实施状态见 backlog。
+- [跨引擎受控比较](engine-comparison.md)：同一 GGUF 下 llama.cpp 对 LM Studio 的能力实测、契约、比较器与真机验收。
 - [应用内存诊断后续平台](memory-check.md)：macOS 已实施；Linux、Windows 各自独立实施和验收。
 
 运行证据文件合并的软件实施与验收已完成，规则保留在

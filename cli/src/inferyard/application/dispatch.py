@@ -120,6 +120,10 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         from inferyard.analysis.candidate_filter import execute
 
         return execute(request)
+    if request.command == "compare-engines":
+        from inferyard.reporting.engine_blocks_report import execute
+
+        return execute(request)
     if request.command in ("compare", "compare-check"):
         from inferyard.reporting.comparison_report import execute
 

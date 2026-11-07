@@ -90,6 +90,10 @@
 
 正文见[交付目录组织（#28）](backlog/delivery-layout.md#交付目录组织28)。
 
+## 跨引擎受控比较
+
+正文见[跨引擎受控比较](backlog/engine-comparison.md#跨引擎受控比较)。
+
 ## 模型获取简化
 
 正文见[模型获取简化](backlog/model-engine.md#模型获取简化)。

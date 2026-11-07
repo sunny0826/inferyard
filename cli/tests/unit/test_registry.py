@@ -16,6 +16,11 @@ def test_metric_inventory_is_complete_but_does_not_claim_planned_algorithms_exis
     metrics = {item["metric_id"]: item for item in data["items"]}
     assert metrics["L06"]["source"] == "verified_engine_timings"
     assert metrics["C04"]["unit"] == "s"
+    # Engine comparison metrics take new IDs; existing IDs are never reassigned.
+    for key in ("L08", "L09"):
+        assert metrics[key]["unit"] == "ms"
+        assert metrics[key]["implementation_status"] == "implemented"
+    assert len(metrics) == 45
 
 
 def test_packaged_metric_changes_are_part_of_tool_identity(tmp_path, monkeypatch):

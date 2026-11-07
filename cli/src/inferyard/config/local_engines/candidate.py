@@ -128,6 +128,12 @@ def create(request):
     )
     if environment.get("macos_power_policy") is not None:
         config["conditions"]["macos_power_policy"] = environment["macos_power_policy"]
+    if request.prompt_cache is not None:
+        config["engine"]["tuning"] = {"prompt_cache": request.prompt_cache}
+    if request.temperature_stop_override_reason is not None:
+        config["safety"]["temperature_stop_override_reason"] = (
+            request.temperature_stop_override_reason
+        )
     config["output"].update(root=str(results), min_available_memory_bytes=1024**3)
     config["execution"]["timeout_seconds"] = request.timeout_seconds or 600
     config["execution"]["idle_wait_seconds"] = 30

@@ -6,7 +6,7 @@
 
 ### 维护路径：改生成源或契约后重新导出
 
-1. 修改 catalogue 生成源（仅 [metrics.md](../../cli/docs/experiments/metrics.md) 或 [methods-matrix.md](../../cli/docs/reference/methods-matrix.md)）或 schema 定义（[`contracts/schemas.py`](../../cli/src/inferyard/contracts/schemas.py)，按配置、题包/评分、事件/采样、实验、封存/汇总分段）。
+1. 修改 catalogue 生成源（仅 [metrics.md](../../cli/docs/experiments/metrics.md)、[metrics-resources.md](../../cli/docs/experiments/metrics-resources.md) 或 [methods-matrix.md](../../cli/docs/reference/methods-matrix.md)）或 schema 定义（[`contracts/schemas.py`](../../cli/src/inferyard/contracts/schemas.py)，按配置、题包/评分、事件/采样、实验、封存/汇总分段）。
 2. 在 `cli/` 目录运行导出脚本（不带 `--check`）：`scripts/export_catalogue.py` 重新生成两个 catalogue JSON；`scripts/export_schemas.py` 重新生成 `schemas/*.schema.json` 并删除注册表外旧文件与空目录。
 3. 若改动触及 `src/inferyard/data/community/`（题包、profile、示例配置或 README），同一轮必须重生成 `resources.json`：调用 `generated(None)`（无归档，只重验并回写已提交的包内资源），或存在三份固定 Windows ZIP 归档时带 `--archives` 从归档派生 profile。
 4. 若运行依赖变化，按目标平台重导出 runtime 约束（`--out` 新路径），`.validation.json` 随约束文件一起提交。
@@ -27,7 +27,7 @@
 
 | 变更 | 必须动作 | 核对 |
 | --- | --- | --- |
-| 改 [`metrics.md`](../../cli/docs/experiments/metrics.md) 或 [`methods-matrix.md`](../../cli/docs/reference/methods-matrix.md) | 重跑 `export_catalogue.py` | `export_catalogue.py --check` |
+| 改 [`metrics.md`](../../cli/docs/experiments/metrics.md)、[`metrics-resources.md`](../../cli/docs/experiments/metrics-resources.md) 或 [`methods-matrix.md`](../../cli/docs/reference/methods-matrix.md) | 重跑 `export_catalogue.py` | `export_catalogue.py --check` |
 | 改 [`contracts/`](../../cli/src/inferyard/contracts/schemas.py) 下 schema 定义 | 重跑 `export_schemas.py` | `export_schemas.py --check`（根 `mise run schemas`） |
 | 改 `data/community/` 任何文件 | 同轮重生成 `resources.json`（`generated(None)` 或 `--archives`） | `export_community.py --check` |
 | 改运行依赖或 [`uv.lock`](../../cli/uv.lock) | 重导出 runtime 约束到新 `--out` 路径 | `.validation.json` 随文件走，`.validation.json` 漂移即失败 |
@@ -41,7 +41,7 @@
 
 | 脚本 | 输入 | 输出 | `--check` 语义 | 非 check 副作用 |
 | --- | --- | --- | --- | --- |
-| `export_catalogue.py` | 两个 Markdown 生成源 | `data/methods.json`、`data/metrics.json` | 比对磁盘内容与重算文本，stale 即 `SystemExit` | 重写两份 JSON；删除过时的 `methods-v1.json` / `metrics-v2.json` |
+| `export_catalogue.py` | 三个 Markdown 生成源 | `data/methods.json`、`data/metrics.json` | 比对磁盘内容与重算文本，stale 即 `SystemExit` | 重写两份 JSON；删除过时的 `methods-v1.json` / `metrics-v2.json` |
 | `export_schemas.py` | 契约包 `schemas_for()` 注册表 | `schemas/<kind>.schema.json` | 缺失或内容不符记为 stale | 写全部 schema；删除注册表外旧 `*.schema.json` 与空目录 |
 | `export_community.py` | `cli/bundles/` 已审题包、固定 ZIP 归档（可选）、包内既有资源 | `data/community/` 全树与 `resources.json` | 逐文件比对字节并核对树内无未登记文件 | 重写社区资源树；结束时打印 `{checked, resources, archives_verified}` 摘要 |
 | `export_runtime_constraints.py` | `uv.lock`、`pyproject.toml`、`uv export --frozen --no-dev` 结果 | 约束 txt + `.validation.json` 证明 | 重算证明并与 `.validation.json` 比对 | 仅写新路径（已存在即失败），不改动 lock 或项目定义 |

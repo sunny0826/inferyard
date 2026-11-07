@@ -17,6 +17,7 @@ _MARKERS = {
     "public": {"candidate.json", "redactions.json", "REPRODUCE.md"},
     "report": {"index.json"},
     "comparison": {"comparison.json"},
+    "engine-comparison": {"engine-comparison.json"},
     "extension": {"packet.json"},
 }
 _HANDLERS = {
@@ -27,6 +28,7 @@ _HANDLERS = {
     "public": ("inferyard.reporting.public_package", "public-check"),
     "report": ("inferyard.reporting.report", "report-check"),
     "comparison": ("inferyard.reporting.comparison_report", "compare-check"),
+    "engine-comparison": ("inferyard.reporting.engine_blocks_report", "engine-compare-check"),
     "extension": ("inferyard.extensions.workflow", "extension-check"),
 }
 
@@ -72,7 +74,8 @@ def _identify(root: Path) -> set[str]:
             "public-summary."
         ):
             found.add("public")
-    if "report.html" in names and "extension" not in found:
+    # The engine comparison HTML is sealed and verified by its own verifier.
+    if "report.html" in names and not found & {"extension", "engine-comparison"}:
         found.add("report")
     if "comparison" in found:
         # Every comparison writer also produces an index and HTML report.
@@ -132,7 +135,7 @@ def _check_markers(root: Path, kinds: set[str]) -> None:
 
 def _dedicated(request: CommandRequest, kind: str, *, options=None) -> tuple[int, CommandResult]:
     module, command = _HANDLERS[kind]
-    if kind in {"report", "comparison"}:
+    if kind in {"report", "comparison", "engine-comparison"}:
         return import_module(module).execute(replace(request, command=command), options=options)
     return import_module(module).execute(replace(request, command=command))
 
@@ -170,9 +173,16 @@ def execute(request: CommandRequest) -> tuple[int, CommandResult]:
             raise ContractError("verify.source_run", "only public artifacts accept source run")
     if request.target_run is not None and "overhead" not in kinds:
         raise ContractError("verify.target_run", "only overhead artifacts accept target run")
-    if request.source_roots and not kinds <= {"report", "comparison"}:
-        raise ContractError("verify.source_root", "only report/comparison accept source roots")
-    if request.rerender and not kinds <= {"report", "comparison", "engine-fit"}:
+    if request.source_roots and not kinds <= {"report", "comparison", "engine-comparison"}:
+        raise ContractError(
+            "verify.source_root", "only report/comparison/engine-comparison accept source roots"
+        )
+    if request.rerender and not kinds <= {
+        "report",
+        "comparison",
+        "engine-comparison",
+        "engine-fit",
+    }:
         raise ContractError("verify.rerender", "only rendered artifacts accept rerender")
     options = VerificationOptions.from_request(request)
     try:

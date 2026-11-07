@@ -839,6 +839,44 @@
             "served_model": {
               "type": "string",
               "minLength": 1
+            },
+            "tuning": {
+              "type": "object",
+              "properties": {
+                "flash_attention": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "batch_size": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "ubatch_size": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kv_cache_type_k": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kv_cache_type_v": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "gpu_layers": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "prompt_cache": {
+                  "type": "string",
+                  "enum": [
+                    "enabled",
+                    "disabled"
+                  ]
+                }
+              },
+              "required": [],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -1242,6 +1280,11 @@
             "check_environment": {
               "type": "boolean",
               "const": true
+            },
+            "temperature_stop_override_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
             }
           },
           "required": [

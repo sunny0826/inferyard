@@ -78,5 +78,5 @@ mise exec -- uv run --frozen pytest \
 
 ## 与既有文档的差异
 
-- [实验设计](../../cli/docs/experiments/design.md) 的比较模式表列出 `device` / `engine` 两种模式，但 `compare_trials` 只接受 `model` / `config` / `side-by-side`，其余模式抛 `unsupported_comparison_mode`；设备与引擎作为被测因素的条件扩展由 engine-fit 比较路径处理，不经本子系统的 `compare` 命令。
+- [实验设计](../../cli/docs/experiments/design.md) 的比较模式表列出 `device` 模式，但 `compare_trials` 只接受 `model` / `config` / `side-by-side` / `engine`，其余模式抛 `unsupported_comparison_mode`；设备作为被测因素由 engine-fit 比较路径处理。`engine` 模式的门槛与待实现阻断见[跨引擎比较契约](../../cli/docs/contracts/engine-comparison.md)。
 - [报告契约](../../cli/docs/contracts/report-contract.md) 的 CSP 一节描述 `default-src 'none'; style-src 'unsafe-inline'` 与 `script-src` 哈希，实际模板 meta 还含 `img-src data:`、`base-uri 'none'`、`form-action 'none'`；契约只列安全关键指令，语义不冲突。
