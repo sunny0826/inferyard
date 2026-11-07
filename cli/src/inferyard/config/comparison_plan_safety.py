@@ -77,5 +77,3 @@ def require_bundle_content(
                     "compare_plan.bundle",
                     f"{label} config bundle content differs for {key}",
                 )
-
-

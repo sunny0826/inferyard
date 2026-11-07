@@ -73,5 +73,3 @@ def test_twelve_slots_execute_with_handoffs_and_read_back(
     helpers.assert_read_back(tmp_path, slots)
     assertions.assert_drift_and_endpoint_rejection(tmp_path, execution.request, deps)
     assertions.assert_rejected_run_identity(tmp_path, plan, execution.request, deps)
-
-

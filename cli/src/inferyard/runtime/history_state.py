@@ -377,4 +377,3 @@ def history_diagnostics(
 
     runs = _collect_history(context, collect)
     return runs, diagnostics
-
