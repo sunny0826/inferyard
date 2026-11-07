@@ -92,8 +92,8 @@ v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 - 同一 `run_id` 的成功、拒绝与身份回退读取都参与重复登记；关联的全部 trial 不进入
   selected runs、handoff 或指标。reader 与 runset 每个路径只留一条重复证据，
   原始拒绝原因与重复证据并存。
-- 直接 `evaluate_comparison` 与 reader 共用停止判定：重复拒绝参与停止，取最早被拒槽位，
-  detail 为重复根原因。
+- 直接 `evaluate_comparison` 与 reader 共用停止：四类拒绝都参与，取最早受影响槽位，
+  detail 用拒绝分类或原始 detail。
 - 被拒绝的 run 保留已读取的 trial/run 身份与底层错误；确实无法证明 trial 的损坏记录不猜测归属。
 - 无 slot 可归属且不属于规范列表的拒绝原因统一为 `comparison_history_identity_error`，
   不把 `EvidenceError` 等底层异常名复制到顶层 classification。
@@ -104,9 +104,10 @@ v2 的分类与共享停止粒度映射：
 
 | v2 分类 | 共享停止 | 说明 |
 | --- | --- | --- |
-| `comparison_unplanned_trial` | `comparison_history_identity_error`，detail 为 `rejection_outside_planned_slots` | run 的 trial 不属于冻结计划；保留 trial/run/path 与底层 error，不能猜测归属到某个计划槽位 |
+| `comparison_unplanned_trial` | `comparison_history_identity_error`，detail 为 `rejection_outside_planned_slots` | run 的 trial 不属于计划；保留 trial/run/path 与 error，不猜测槽位 |
 | `run_plan_mismatch` | `comparison_history_identity_error`，detail 为 `run_plan_mismatch` | run 已绑定计划槽位，但计划哈希、experiment 或 definition versions 不匹配 |
-| `comparison_duplicate_trial_attempt` | `comparison_history_identity_error`，detail 为重复根原因或 `duplicate_run_id` | 同 trial 多根或跨 trial 重复 run id；共享该 run_id 的所有 trial 都不进入 selected runs、handoff 或指标 |
+| `comparison_history_identity_error` | `comparison_history_identity_error`，detail 为原始 detail | 读取或身份失败的 run/trial；直接与 reader 共用 |
+| `comparison_duplicate_trial_attempt` | `comparison_history_identity_error`，detail 为重复根原因或 `duplicate_run_id` | 同 trial 多根或跨 trial 复用 run id；关联 trial 不进入 selected/handoff/指标 |
 - 完整成功要求 scope/evidence complete 且全部请求终态为 completed；
   模型答错但请求 completed、或 `unscorable` 不按执行失败处理。
 - 正常 `awaiting_handoff` 不是 run 终态，不触发停止。

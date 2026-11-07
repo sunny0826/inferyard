@@ -145,7 +145,8 @@ def test_run_with_another_plan_hash_is_mismatched(tmp_path: Path) -> None:
     runs = synthetic_runs(plan)
     runs[3]["run"]["plan_sha256"] = "f" * 64
     document = evaluate_comparison(plan, runs)
-    assert reasons(document) == [RUN_PLAN_MISMATCH]
+    assert reasons(document) == [RUN_PLAN_MISMATCH, HISTORY_IDENTITY_ERROR]
+    assert document["history_stop"]["detail"] == RUN_PLAN_MISMATCH
 
 
 def test_duplicate_run_id_direct_entry_is_classified(tmp_path: Path) -> None:

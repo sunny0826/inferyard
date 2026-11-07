@@ -63,3 +63,121 @@ def test_three_same_ids_keep_one_evidence_row_per_path(tmp_path: Path) -> None:
         plan["trials"][4]["trial_id"],
         plan["trials"][9]["trial_id"],
     }
+
+
+def _rejection(reason: str, trial_id: str, run_id: str, detail: str) -> JSONRecord:
+    return {
+        "reason": reason,
+        "trial_id": trial_id,
+        "run_id": run_id,
+        "path": "/runs/evidence-copy",
+        "detail": detail,
+        "error": {"reason": reason},
+    }
+
+
+def _assert_source_rejected(document: JSONRecord, run_id: str) -> None:
+    assert run_id not in _selected(document)
+
+
+def test_direct_wrong_plan_rejection_stops_at_slot(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    runs[3]["run"]["plan_sha256"] = "f" * 64
+    document = evaluate_comparison(plan, runs)
+    assert document["history_stop"]["trial_id"] == plan["trials"][3]["trial_id"]
+    assert document["history_stop"]["detail"] == "run_plan_mismatch"
+    _assert_source_rejected(document, runs[3]["run"]["run_id"])
+
+
+def test_direct_identity_error_rejection_stops_at_slot(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    runs[3]["identity_error"] = "identity_error"
+    runs[3]["identity_error_detail"] = {"reason": "identity_error"}
+    document = evaluate_comparison(plan, runs)
+    assert document["history_stop"]["trial_id"] == plan["trials"][3]["trial_id"]
+    assert document["history_stop"]["detail"] == "identity_error"
+    _assert_source_rejected(document, runs[3]["run"]["run_id"])
+
+
+def test_direct_unplanned_rejection_stops_batch(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    extra = deepcopy(runs[0])
+    extra["run"]["run_id"] = "run-extra"
+    extra["run"]["trial_id"] = "trial-extra"
+    extra["path"] = "/runs/extra"
+    document = evaluate_comparison(plan, [*runs, extra])
+    assert document["history_stop"]["trial_id"] == "trial-extra"
+    assert document["history_stop"]["detail"] == "rejection_outside_planned_slots"
+
+
+def test_dual_input_unplanned_duplicate_rejects_source(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    source = runs[0]["run"]["run_id"]
+    error = _rejection(
+        "comparison_unplanned_trial",
+        "trial-extra",
+        source,
+        "unplanned_run_present",
+    )
+    document = evaluate_comparison(plan, runs, evidence_errors=[error])
+    rows = _duplicate_rows(document)
+    assert {row["trial_id"] for row in rows} == {
+        plan["trials"][0]["trial_id"],
+        "trial-extra",
+    }
+    _assert_source_rejected(document, source)
+
+
+def test_dual_input_wrong_plan_duplicate_rejects_source(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    source = runs[0]["run"]["run_id"]
+    error = _rejection(
+        "run_plan_mismatch", plan["trials"][4]["trial_id"], source, "run_plan_mismatch"
+    )
+    document = evaluate_comparison(plan, runs, evidence_errors=[error])
+    assert {row["trial_id"] for row in _duplicate_rows(document)} == {
+        plan["trials"][0]["trial_id"],
+        plan["trials"][4]["trial_id"],
+    }
+    _assert_source_rejected(document, source)
+
+
+def test_dual_input_identity_error_duplicate_rejects_source(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    source = runs[0]["run"]["run_id"]
+    error = _rejection(
+        "comparison_history_identity_error",
+        plan["trials"][4]["trial_id"],
+        source,
+        "identity_error",
+    )
+    document = evaluate_comparison(plan, runs, evidence_errors=[error])
+    assert {row["trial_id"] for row in _duplicate_rows(document)} == {
+        plan["trials"][0]["trial_id"],
+        plan["trials"][4]["trial_id"],
+    }
+    _assert_source_rejected(document, source)
+
+
+def test_duplicate_wrong_plan_keeps_mismatch_in_both_orders(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    source = synthetic_runs(plan)
+    copy = deepcopy(source[0])
+    copy["run"]["trial_id"] = source[4]["run"]["trial_id"]
+    copy["run"]["plan_sha256"] = "f" * 64
+    copy["path"] = "/runs/ordered-copy"
+    for runs in (source + [copy], [copy, *source]):
+        document = evaluate_comparison(plan, runs)
+        assert any(
+            row["detail"] == "run_plan_mismatch"
+            for row in document["run_set"]["mismatched"]
+        )
+        assert len({row["path"] for row in _duplicate_rows(document)}) == 2
+        _assert_source_rejected(document, copy["run"]["run_id"])
+        assert source[4]["run"]["run_id"] not in _selected(document)

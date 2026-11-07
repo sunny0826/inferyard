@@ -171,10 +171,31 @@ def _duplicate_same_trial(tmp_path: Path, plan: JSONRecord) -> None:
     _assert_not_selected(document, source.name)
 
 
+def _duplicate_wrong_plan_order(tmp_path: Path, plan: JSONRecord) -> None:
+    def wrong_plan(run: JSONRecord, _: JSONRecord) -> None:
+        run["plan_sha256"] = "f" * 64
+
+    for name in ("000-wrong-copy", "zz-wrong-copy"):
+        _, source, _, document = _duplicate_copy(tmp_path, plan, name, wrong_plan)
+        assert any(
+            row["detail"] == "run_plan_mismatch"
+            for row in document["run_set"]["mismatched"]
+        )
+        assert len(
+            [
+                row
+                for row in document["run_set"]["duplicates"]
+                if row["detail"] == "duplicate_run_id"
+            ]
+        ) >= 2
+        _assert_not_selected(document, source.name)
+
+
 def assert_duplicate_with_rejections(tmp_path: Path, plan: JSONRecord) -> None:
     _duplicate_unplanned(tmp_path, plan)
     _duplicate_bundle(tmp_path, plan)
     _duplicate_same_trial(tmp_path, plan)
+    _duplicate_wrong_plan_order(tmp_path, plan)
 
 
 def assert_batch_envelope_rejections(tmp_path: Path) -> None:
@@ -193,6 +214,12 @@ def assert_batch_envelope_rejections(tmp_path: Path) -> None:
     def bad_tool(meta: JSONRecord) -> None:
         meta["tool_source_sha256"] = "0" * 63
 
+    expected = {
+        "schema-float": "invalid_artifact_version",
+        "diagnostic-int": "batch_plan_identity_mismatch",
+        "empty-identity": "batch_plan_identity_mismatch",
+        "bad-tool": "batch_plan_identity_mismatch",
+    }
     for name, mutate in (
         ("schema-float", schema_float),
         ("diagnostic-int", diagnostic_int),
@@ -214,11 +241,11 @@ def assert_batch_envelope_rejections(tmp_path: Path) -> None:
             for row in document["diagnostics"]
         )
         try:
-            code, _ = verify(CommandRequest("verify", run=copy))
-        except (EvidenceError, ValueError, TypeError):
-            pass
+            verify(CommandRequest("verify", run=copy))
+        except EvidenceError as exc:
+            assert str(exc) == expected[name]
         else:
-            assert code != 0
+            raise AssertionError(f"verify accepted invalid envelope {name}")
 
 
 def _assert_duplicate_rows(
