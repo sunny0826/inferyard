@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from dataclasses import replace
 
+from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.analysis.repetition_metrics import repetition_metrics
 from inferyard.analysis.scoring import ScoringContext
 from inferyard.application.types import CommandRequest, CommandResult
@@ -23,25 +24,28 @@ from inferyard.registry import (
     registered_score,
     require_execution_support,
 )
+from inferyard.runtime.batch_history import HistoryLoadOptions, load_plan_history
 from inferyard.runtime.batch_state import (
     bind_service,
     history,
-    history_diagnostics,
     open_batch,
     remaining_budget,
     require_replaced_service,
 )
+
 from inferyard.runtime.trial_runner import TrialDependencies, run_trial
+
+__all__ = ["history"]
 
 
 def _result(
     request: CommandRequest,
     root: Path,
-    plan: dict,
-    runs: list[dict],
+    plan: JSONRecord,
+    runs: list[JSONRecord],
     status: str,
     code: int = 0,
-    next_trial: dict | None = None,
+    next_trial: JSONRecord | None = None,
 ) -> tuple[int, CommandResult]:
     progress = plan_progress(plan, runs)
     complete = all(t["status"] == "complete" for t in progress)
@@ -92,26 +96,32 @@ def _next(plan, runs):
     return None, None
 
 
+def _capacity_scan_stopped(plan: JSONRecord, runs: list[JSONRecord]) -> bool:
+    if plan["experiment"].get("capacity_stop") != "first_failed_request":
+        return False
+    return (
+        next(
+            (
+                d
+                for d in runs
+                if d["summary"]["stop_reason"] != "plan_finished"
+                or any(r["execution_state"] != "completed" for r in d["requests"])
+            ),
+            None,
+        )
+        is not None
+    )
+
+
 def _comparison_stopped(
     request: CommandRequest,
     root: Path,
-    plan: dict,
-    runs: list[dict],
-    stop: dict,
+    plan: JSONRecord,
+    runs: list[JSONRecord],
+    stop: JSONRecord,
 ) -> tuple[int, CommandResult]:
     code, result = _result(request, root, plan, runs, "comparison_history_stopped", 3)
     return code, replace(result, details={**result.details, "comparison_stop": stop})
-
-
-def _identity_stop(error: dict) -> dict:
-    underlying = error.get("error") or {"reason": error.get("reason")}
-    return {
-        "reason": "comparison_history_identity_error",
-        "detail": error.get("detail") or error.get("reason"),
-        "trial_id": error.get("trial_id"),
-        "run_id": error.get("run_id"),
-        "error": underlying,
-    }
 
 
 async def execute_async(
@@ -145,48 +155,20 @@ async def execute_async(
             )
         ):
             raise PreflightError("windows_phase2_live_not_supported")
-        from inferyard.analysis.engine_comparison_v2 import (
-            comparison_history_stop,
-            is_comparison_plan,
+        runs, comparison_stop = load_plan_history(
+            root,
+            plan,
+            loaded,
+            options=HistoryLoadOptions(
+                source_identity,
+                identity_context.value,
+                history,
+            ),
         )
-
-        comparison = is_comparison_plan(plan)
-        if comparison:
-            runs, history_errors = history_diagnostics(
-                root,
-                plan,
-                loaded,
-                source_identity=source_identity,
-                implementation_identity=identity_context.value,
-                full_verification=False,
-            )
-            if history_errors:
-                return _comparison_stopped(
-                    request, root, plan, runs, _identity_stop(history_errors[0])
-                )
-            comparison_stop = comparison_history_stop(plan, runs)
-            if comparison_stop is not None:
-                return _comparison_stopped(request, root, plan, runs, comparison_stop)
-        else:
-            runs = history(
-                root,
-                plan,
-                loaded,
-                source_identity=source_identity,
-                implementation_identity=identity_context.value,
-            )
-        if plan["experiment"].get("capacity_stop") == "first_failed_request":
-            stopped = next(
-                (
-                    d
-                    for d in runs
-                    if d["summary"]["stop_reason"] != "plan_finished"
-                    or any(r["execution_state"] != "completed" for r in d["requests"])
-                ),
-                None,
-            )
-            if stopped is not None:
-                return _result(request, root, plan, runs, "capacity_scan_stopped", 3)
+        if comparison_stop is not None:
+            return _comparison_stopped(request, root, plan, runs, comparison_stop)
+        if _capacity_scan_stopped(plan, runs):
+            return _result(request, root, plan, runs, "capacity_scan_stopped", 3)
         pending, interrupted = _next(plan, runs)
         if interrupted and "duration" in interrupted["summary"]:
             return _result(request, root, plan, runs, "duration_requires_new_window", 3, pending)

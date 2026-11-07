@@ -6,6 +6,9 @@ terminal state, and model answer quality is outside execution stopping.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.config.comparison_plan import Slot, comparison_slots
 
 HISTORY_IDENTITY_ERROR = "comparison_history_identity_error"
@@ -14,7 +17,14 @@ HISTORY_FAILED = "comparison_history_failed"
 HISTORY_INCOMPLETE = "comparison_history_incomplete"
 
 
-def _entry_label(slot: Slot, entry: dict | None = None) -> dict:
+@dataclass(frozen=True, slots=True)
+class StopEvidence:
+    subsequent: tuple[str, ...] = ()
+    run_id: str | None = None
+    error: JSONRecord | None = None
+
+
+def _entry_label(slot: Slot, entry: JSONRecord | None = None) -> JSONRecord:
     return {
         "trial_id": slot.trial_id,
         "workload_id": slot.workload_id,
@@ -27,21 +37,29 @@ def _entry_label(slot: Slot, entry: dict | None = None) -> dict:
 
 def _stop(
     slot: Slot,
-    entry: dict | None,
+    entry: JSONRecord | None,
     reason: str,
     detail: str,
-    *,
-    subsequent: tuple[str, ...] = (),
-) -> dict:
-    return {
-        **{key: value for key, value in _entry_label(slot, entry).items() if value is not None},
+    evidence: StopEvidence | None = None,
+) -> JSONRecord:
+    evidence = evidence or StopEvidence()
+    label = _entry_label(slot, entry)
+    if evidence.run_id is not None:
+        label["run_id"] = evidence.run_id
+    stop = {
+        **{key: value for key, value in label.items() if value is not None},
         "reason": reason,
         "detail": detail,
-        "subsequent_run_ids": list(subsequent),
+        "subsequent_run_ids": list(evidence.subsequent),
     }
+    if evidence.error is not None:
+        stop["error"] = evidence.error
+    return stop
 
 
-def _attempts(plan: dict, runs: list[dict]) -> tuple[tuple[Slot, ...], dict[str, list[dict]]]:
+def _attempts(
+    plan: JSONRecord, runs: list[JSONRecord]
+) -> tuple[tuple[Slot, ...], dict[str, list[JSONRecord]]]:
     slots = comparison_slots(plan)
     by_trial = {}
     for entry in runs:
@@ -49,24 +67,33 @@ def _attempts(plan: dict, runs: list[dict]) -> tuple[tuple[Slot, ...], dict[str,
     return slots, by_trial
 
 
-def _gap_with_later_run(
-    slots: tuple[Slot, ...], by_trial: dict[str, list[dict]], runs: list[dict]
-) -> dict | None:
-    index = {slot.trial_id: position for position, slot in enumerate(slots)}
-    first_missing = next(
-        (position for position, slot in enumerate(slots) if not by_trial.get(slot.trial_id)),
-        None,
+def _rejection_stop(
+    slot: Slot,
+    position: int,
+    rejection: JSONRecord,
+    slots: tuple[Slot, ...],
+    by_trial: dict[str, list[JSONRecord]],
+) -> JSONRecord:
+    error = rejection.get("error")
+    detail = rejection.get("detail") or (
+        error.get("reason") if error is not None else rejection.get("reason")
     )
-    if first_missing is None:
-        return None
-    later = [entry for entry in runs if index.get(entry["run"]["trial_id"], -1) > first_missing]
-    if not later:
-        return None
-    return _stop(slots[first_missing], later[0], HISTORY_IDENTITY_ERROR, "subsequent_run_present")
+    underlying = error or {"reason": detail}
+    return _stop(
+        slot,
+        None,
+        HISTORY_IDENTITY_ERROR,
+        detail,
+        StopEvidence(
+            subsequent=tuple(_later_run_ids(slots, position, by_trial)),
+            run_id=rejection.get("run_id"),
+            error=underlying,
+        ),
+    )
 
 
 def _later_run_ids(
-    slots: tuple[Slot, ...], position: int, by_trial: dict[str, list[dict]]
+    slots: tuple[Slot, ...], position: int, by_trial: dict[str, list[JSONRecord]]
 ) -> list[str]:
     return [
         later["run"]["run_id"]
@@ -75,31 +102,56 @@ def _later_run_ids(
     ]
 
 
-def comparison_history_stop(plan: dict, runs: list[dict]) -> dict | None:
-    """Return the first comparison-specific history stop, or ``None``.
+def comparison_history_stop(
+    plan: JSONRecord,
+    runs: list[JSONRecord],
+    rejections: tuple[JSONRecord, ...] | list[JSONRecord] = (),
+) -> JSONRecord | None:
+    """Return the earliest comparison-specific stop in frozen slot order.
 
-    Only frozen slot order is consulted. A later run after a missing slot, a
-    resumed/duplicated trial, a cancelled slot, an execution failure or an
-    incomplete success blocks further dispatch.
+    Identity rejections and terminal run states are judged for one slot before
+    looking at later slots, so a later gap cannot replace an earlier cancel. A
+    missing slot with later evidence is itself the stop; rejected runs never
+    enter handoff or bundle metrics.
     """
     slots, by_trial = _attempts(plan, runs)
-    gap = _gap_with_later_run(slots, by_trial, runs)
-    if gap is not None:
-        return gap
+    rejected_by_trial = {}
+    for rejection in rejections:
+        trial_id = rejection.get("trial_id")
+        if trial_id is not None:
+            rejected_by_trial.setdefault(trial_id, []).append(rejection)
     for position, slot in enumerate(slots):
+        rejected = rejected_by_trial.get(slot.trial_id, [])
+        if rejected:
+            return _rejection_stop(slot, position, rejected[0], slots, by_trial)
         attempts = by_trial.get(slot.trial_id, [])
-        if not attempts:
+        if attempts:
+            if len(attempts) != 1:
+                return _stop(
+                    slot,
+                    attempts[0],
+                    HISTORY_IDENTITY_ERROR,
+                    "duplicate_trial_attempt",
+                    StopEvidence(subsequent=tuple(_later_run_ids(slots, position, by_trial))),
+                )
+            stop = _terminal_stop(slot, attempts[0])
+            if stop is not None:
+                stop["subsequent_run_ids"] = _later_run_ids(slots, position, by_trial)
+                return stop
             continue
-        if len(attempts) != 1:
-            return _stop(slot, attempts[0], HISTORY_IDENTITY_ERROR, "duplicate_trial_attempt")
-        stop = _terminal_stop(slot, attempts[0])
-        if stop is not None:
-            stop["subsequent_run_ids"] = _later_run_ids(slots, position, by_trial)
-            return stop
+        later = _later_run_ids(slots, position, by_trial)
+        if later:
+            return _stop(
+                slot,
+                None,
+                HISTORY_IDENTITY_ERROR,
+                "subsequent_run_present",
+                StopEvidence(subsequent=tuple(later)),
+            )
     return None
 
 
-def _execution_stop(slot: Slot, entry: dict) -> dict | None:
+def _execution_stop(slot: Slot, entry: JSONRecord) -> JSONRecord | None:
     summary = entry["summary"]
     states = [request["execution_state"] for request in entry["requests"]]
     if summary.get("stop_reason") == "user_cancelled" or "cancelled" in states:
@@ -116,7 +168,7 @@ def _execution_stop(slot: Slot, entry: dict) -> dict | None:
     return None
 
 
-def _terminal_stop(slot: Slot, entry: dict) -> dict | None:
+def _terminal_stop(slot: Slot, entry: JSONRecord) -> JSONRecord | None:
     stop = _execution_stop(slot, entry)
     if stop is not None:
         return stop

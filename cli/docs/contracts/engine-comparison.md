@@ -74,10 +74,12 @@ v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 
 ## 比较专用历史停止
 
-`comparison_history_stop(plan, selected_runs)` 是执行入口与 v2 共用的唯一 CLI 判定来源：
+`comparison_history_stop(plan, selected_runs, rejections=())` 是执行入口与 v2 共用的唯一 CLI 判定来源：
 
 - 按冻结槽位顺序返回首个 `{trial_id, run_id, reason, detail}`；无停止返回 null。
 - 取消、执行失败、身份错误或成功后缺槽位却已有后续 run 时阻断，不再派发后续槽位。
+- 被拒绝的 run 保留已读取的 trial/run 身份与底层错误；确实无法证明 trial 的损坏记录不猜测归属。
+- 后续污染 run 附在最早停止记录中，不改变其 trial/run/reason/detail；停止后的缺失尾部不单独报告。
 - 完整成功要求 scope/evidence complete 且全部请求终态为 completed；
   模型答错但请求 completed、或 `unscorable` 不按执行失败处理。
 - 正常 `awaiting_handoff` 不是 run 终态，不触发停止。

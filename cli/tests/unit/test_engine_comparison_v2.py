@@ -1,10 +1,12 @@
 """Internal engine-comparison.v2 run set, handoff chain and history stop (ADR 057c)."""
 
+from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
 
 import pytest
 
+from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.analysis.comparison_history import (
     HISTORY_CANCELLED,
     HISTORY_FAILED,
@@ -30,7 +32,7 @@ from tests.unit.test_comparison_plan import comparison_inputs
 from tests.unit.test_engine_blocks import block, request
 
 
-def plan_with_slots(tmp_path: Path) -> tuple[dict, tuple[Slot, ...]]:
+def plan_with_slots(tmp_path: Path) -> tuple[JSONRecord, tuple[Slot, ...]]:
     left, right, specs = comparison_inputs(tmp_path)
     plan = freeze(
         left,
@@ -46,7 +48,7 @@ def run_id(slot: Slot) -> str:
     return f"run-{slot.block}-{slot.side}-{slot.bundle_key}"
 
 
-def synthetic_runs(plan: dict, *, same_plan: bool = True) -> list[dict]:
+def synthetic_runs(plan: JSONRecord, *, same_plan: bool = True) -> list[JSONRecord]:
     slots = comparison_slots(plan)
     entries, previous = [], None
     for index, slot in enumerate(slots):
@@ -89,7 +91,7 @@ def tmp_path_path(slot: Slot) -> str:
     return f"/runs/{slot.trial_id}"
 
 
-def reasons(document: dict) -> list[str]:
+def reasons(document: JSONRecord) -> list[str]:
     return [row["reason"] for row in document["diagnostics"]]
 
 
@@ -236,7 +238,7 @@ def test_reader_order_and_event_time_never_override_plan_order(tmp_path: Path) -
     ],
 )
 def test_terminal_history_blocks_further_slots(
-    tmp_path: Path, mutate: object, expected: str
+    tmp_path: Path, mutate: Callable[[list[JSONRecord]], None], expected: str
 ) -> None:
     plan, _ = plan_with_slots(tmp_path)
     runs = synthetic_runs(plan)
@@ -255,6 +257,22 @@ def test_subsequent_run_after_a_stop_is_reported(tmp_path: Path) -> None:
     assert stop["reason"] == HISTORY_CANCELLED
     assert stop["trial_id"] == slots[1].trial_id
     assert runs[2]["run"]["run_id"] in stop["subsequent_run_ids"]
+
+
+def test_earlier_cancel_wins_over_a_later_gap(tmp_path: Path) -> None:
+    plan, slots = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    runs[0]["summary"]["stop_reason"] = "user_cancelled"
+    del runs[1]
+    stop = comparison_history_stop(plan, runs)
+    assert stop["trial_id"] == slots[0].trial_id
+    assert stop["run_id"] == runs[0]["run"]["run_id"]
+    assert stop["reason"] == HISTORY_CANCELLED
+    assert stop["detail"] == "user_cancelled"
+    assert runs[0]["run"]["run_id"] not in stop["subsequent_run_ids"]
+    assert set(stop["subsequent_run_ids"]) == {
+        entry["run"]["run_id"] for entry in runs[1:]
+    }
 
 
 def test_normal_handoff_and_quality_outcomes_do_not_stop(tmp_path: Path) -> None:
@@ -285,7 +303,7 @@ def test_resume_attempt_and_later_run_after_gap_are_identity_errors(tmp_path: Pa
     assert stop["trial_id"] == slots[1].trial_id
 
 
-def bundle_block_data(slots: tuple[Slot, ...]) -> dict:
+def bundle_block_data(slots: tuple[Slot, ...]) -> dict[str, JSONRecord]:
     data = {}
     for key, right_ms in (("core", 800), ("pelican", 1200)):
         for slot in (item for item in slots if item.bundle_key == key):
@@ -293,7 +311,7 @@ def bundle_block_data(slots: tuple[Slot, ...]) -> dict:
     return data
 
 
-def block_row(slot: Slot, key: str, right_ms: int) -> dict:
+def block_row(slot: Slot, key: str, right_ms: int) -> JSONRecord:
     order = slot.block - 1
     family = "llama-cpp" if slot.side == "a" else "lmstudio"
     row = block(family, order, e2e_ms=right_ms if slot.side == "b" else 1000)
@@ -347,7 +365,7 @@ def test_per_bundle_blocks_use_the_existing_six_block_verdict(tmp_path: Path) ->
     ],
 )
 def test_process_identity_must_be_present_and_unique_across_all_slots(
-    tmp_path: Path, mutate: object, expected: str
+    tmp_path: Path, mutate: Callable[[list[JSONRecord]], None], expected: str
 ) -> None:
     plan, _ = plan_with_slots(tmp_path)
     runs = synthetic_runs(plan)
@@ -399,6 +417,17 @@ def test_first_real_stop_survives_a_missing_tail(tmp_path: Path) -> None:
     assert document["history_stop"]["reason"] == HISTORY_CANCELLED
     # Twelve slots minus the first cancelled slot: tails are not called missing.
     assert document["run_set"]["missing"] == []
+
+
+def test_reader_maps_a_plan_without_required_top_level_shape(tmp_path: Path) -> None:
+    from inferyard.analysis.engine_comparison_v2 import read_comparison_v2
+    from inferyard.evidence.storage import json_bytes
+
+    (tmp_path / "bad").mkdir()
+    (tmp_path / "bad" / "plan.json").write_bytes(json_bytes({"schema_version": 3}))
+    document = read_comparison_v2(tmp_path / "bad" / "plan.json", tmp_path / "batch")
+    assert document["diagnostics"][0]["reason"] == "comparison_plan_required"
+    assert document["diagnostics"][0]["error"]["type"] == "KeyError"
 
 
 def test_top_level_reader_rejects_broken_inputs(tmp_path: Path) -> None:

@@ -6,6 +6,7 @@ every block pair's median difference to point the same way.
 
 import statistics
 
+from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.analysis.engine_comparison import CROSS_FORMAT, PENDING
 from inferyard.contracts.engine_profiles import TUNING_KEYS
 from inferyard.contracts.engine_tuning import observe
@@ -183,14 +184,14 @@ def _verdict(metric, deltas, eligible, families):
     return families[1] if right_better else families[0]
 
 
-def compare_blocks(blocks: list[dict]) -> dict:
+def compare_blocks(blocks: list[JSONRecord]) -> JSONRecord:
     """Blocks are verified trial data carrying first_event_utc, in any order."""
     blockers = []
     ordered = _order(blocks, blockers)
     return _compare_ordered(ordered, blockers)
 
 
-def compare_paired_blocks(blocks: list[dict]) -> dict:
+def compare_paired_blocks(blocks: list[JSONRecord]) -> JSONRecord:
     """Blocks arrive in verified frozen pair order: left, right, left, right.
 
     The frozen plan and its sealed handoff chain already prove continuity, so the
@@ -199,7 +200,7 @@ def compare_paired_blocks(blocks: list[dict]) -> dict:
     return _compare_ordered(list(blocks), [])
 
 
-def _compare_ordered(ordered: list[dict], blockers: list[str]) -> dict:
+def _compare_ordered(ordered: list[JSONRecord], blockers: list[str]) -> JSONRecord:
     from inferyard.analysis.comparison import compare_trials
 
     mismatches = []

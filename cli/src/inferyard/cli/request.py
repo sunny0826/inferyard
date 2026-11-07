@@ -5,10 +5,34 @@ import math
 from collections.abc import Callable
 from pathlib import Path
 
+from inferyard.analysis.comparison_types import JSONValue
 from inferyard.application.types import CommandRequest
 from inferyard.cli.arguments import ArgumentError
 from inferyard.config.loader import LoadedConfig, load_config, validate_endpoint
 from inferyard.contracts.validation import ContractError
+
+
+def _comparison_experiment_id(values: dict[str, JSONValue]) -> None:
+    identifier = values.get("comparison_experiment_id")
+    if identifier is not None and (type(identifier) is not str or not identifier.strip()):
+        raise ArgumentError("--experiment-id must be nonempty")
+
+
+def _normalize_path_collections(
+    options: dict[str, JSONValue], preserve_links: bool
+) -> None:
+    for key in (
+        "report_runs",
+        "models_roots",
+        "left_runs",
+        "right_runs",
+        "left_configs",
+        "right_configs",
+    ):
+        if options.get(key):
+            options[key] = [
+                path.absolute() if preserve_links else path.resolve() for path in options[key]
+            ]
 
 
 def build_request(
@@ -18,9 +42,7 @@ def build_request(
     if args.command == "plan" and bool(values.get("preset")) != bool(values.get("config")):
         raise ArgumentError("--config requires --preset and vice versa")
     if args.command == "compare-plan":
-        identifier = values.get("comparison_experiment_id")
-        if identifier is not None and not identifier.strip():
-            raise ArgumentError("--experiment-id must be nonempty")
+        _comparison_experiment_id(values)
     if args.command == "config create":
         local = values.get("installation") is not None
         if local:
@@ -142,16 +164,5 @@ def build_request(
     for key, value in options.items():
         if isinstance(value, Path):
             options[key] = value.absolute() if preserve_links else value.resolve()
-    for key in (
-        "report_runs",
-        "models_roots",
-        "left_runs",
-        "right_runs",
-        "left_configs",
-        "right_configs",
-    ):
-        if options.get(key):
-            options[key] = [
-                path.absolute() if preserve_links else path.resolve() for path in options[key]
-            ]
+    _normalize_path_collections(options, preserve_links)
     return CommandRequest(args.command, config=config, **options)

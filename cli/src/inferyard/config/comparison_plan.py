@@ -16,11 +16,19 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 from inferyard import SCHEMA_VERSION
+from inferyard.analysis.comparison_types import JSONRecord, JSONValue
 from inferyard.analysis.engine_comparison import config_pair_blockers
 from inferyard.analysis.scoring import SCORER_VERSION
 from inferyard.config.community_resources import BUNDLES, resource_bytes
 from inferyard.config.loader import load_config, read_document
-from inferyard.config.planning import prepare_plan, write_plan
+from inferyard.config.plan_inputs import read_frozen_plan
+from inferyard.config.comparison_plan_safety import (
+    comparison_budget,
+    comparison_overhead,
+    require_bundle_content,
+    comparison_safety,
+)
+from inferyard.config.planning import write_plan
 from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
 from inferyard.evidence.formats import require_input
@@ -28,6 +36,7 @@ from inferyard.evidence.storage import json_bytes
 
 if TYPE_CHECKING:
     from inferyard.application.types import CommandRequest, CommandResult
+    from inferyard.config.loader import LoadedConfig
 
 DEFINITION = "engine-comparison-plan.v1"
 BLOCKS = 6
@@ -54,7 +63,7 @@ def slot_id(block: int, side: str, bundle_key: str) -> str:
     return f"block-{block:02d}-{side}-{bundle_key}"
 
 
-def bundle_key(bundle: dict) -> str:
+def bundle_key(bundle: JSONRecord) -> str:
     identifier = bundle.get("bundle_id")
     if identifier in BUNDLE_KEYS:
         return BUNDLE_KEYS[identifier]
@@ -65,7 +74,7 @@ def bundle_key(bundle: dict) -> str:
     return identifier
 
 
-def _parsed_workloads(workloads: list) -> list[tuple[int, str, str, dict]]:
+def _parsed_workloads(workloads: list[JSONRecord]) -> list[tuple[int, str, str, JSONRecord]]:
     parsed = []
     for workload in workloads:
         match = _SLOT.fullmatch(workload.get("workload_id", ""))
@@ -78,40 +87,54 @@ def _parsed_workloads(workloads: list) -> list[tuple[int, str, str, dict]]:
     return parsed
 
 
-def _bundle_keys(parsed: list) -> list[str]:
+def _bundle_keys(parsed: list[tuple[int, str, str, JSONRecord]]) -> list[str]:
     keys = [item[2] for item in parsed if item[0] == 1]
     if len(keys) not in (1, 2) or len(set(keys)) != len(keys):
         raise ContractError("plan.workloads", "one or two bundle workloads per block required")
     return keys
 
 
-def _require_frozen_order(parsed: list, trials: list, keys: list[str]) -> None:
+def _frozen_slot_error(
+    position: int,
+    item: tuple[int, str, str, JSONRecord],
+    trial: JSONRecord,
+    keys: list[str],
+) -> str | None:
+    block, side, key, workload = item
+    expected_block, expected_key = divmod(position, len(keys))
+    expected_block += 1
+    if (
+        block != expected_block
+        or key != keys[expected_key]
+        or side != slot_side(block)
+        or workload["workload_id"] != slot_id(block, side, key)
+    ):
+        return "blocks, sides or bundle order are not frozen plan order"
+    if workload["protocol"]["kind"] != "fixed" or workload["repeats"] != 1:
+        return "comparison slots require one fixed trial"
+    if (
+        trial["workload_id"] != workload["workload_id"]
+        or trial["repeat_index"] != 0
+        or trial.get("requires_service_handoff") is not True
+    ):
+        return "trial does not match its frozen slot"
+    return None
+
+
+def _require_frozen_order(
+    parsed: list[tuple[int, str, str, JSONRecord]],
+    trials: list[JSONRecord],
+    keys: list[str],
+) -> None:
     if len(parsed) != BLOCKS * len(keys) or len(trials) != len(parsed):
         raise ContractError("plan.workloads", f"exactly {BLOCKS} complete blocks required")
-    for index, (block, side, key, workload) in enumerate(parsed):
-        expected_block, expected_key = divmod(index, len(keys))
-        expected_block += 1
-        if (
-            block != expected_block
-            or key != keys[expected_key]
-            or side != slot_side(block)
-            or workload["workload_id"] != slot_id(block, side, key)
-        ):
-            raise ContractError(
-                "plan.workloads", "blocks, sides or bundle order are not frozen plan order"
-            )
-        if workload["protocol"]["kind"] != "fixed" or workload["repeats"] != 1:
-            raise ContractError("plan.workloads", "comparison slots require one fixed trial")
-        trial = trials[index]
-        if (
-            trial["workload_id"] != workload["workload_id"]
-            or trial["repeat_index"] != 0
-            or trial.get("requires_service_handoff") is not True
-        ):
-            raise ContractError("plan.trials", "trial does not match its frozen slot")
+    for position, (item, trial) in enumerate(zip(parsed, trials, strict=True)):
+        error = _frozen_slot_error(position, item, trial, keys)
+        if error is not None:
+            raise ContractError("plan.comparison", error)
 
 
-def comparison_slots(plan: dict) -> tuple[Slot, ...]:
+def comparison_slots(plan: JSONRecord) -> tuple[Slot, ...]:
     """Return frozen slots in execution order; reject any other plan shape."""
     experiment = plan.get("experiment") if type(plan) is dict else None
     if type(experiment) is not dict or experiment.get("comparison") != {
@@ -132,12 +155,44 @@ def comparison_slots(plan: dict) -> tuple[Slot, ...]:
     )
 
 
-def validate_comparison_plan(plan: dict, loaded: dict) -> tuple[Slot, ...]:
+def _profile_key(config: JSONRecord) -> tuple[str, str]:
+    engine = config["engine"]
+    return ("local" if is_local(config) else "external", engine.get("family") or engine["adapter"])
+
+
+def _validate_config_profiles(
+    left: dict[str, JSONRecord], right: dict[str, JSONRecord], *, prefix: str
+) -> None:
+    sides = {"left": left, "right": right}
+    profiles = {}
+    for label, side in sides.items():
+        if not side:
+            raise ContractError(f"{prefix}.config", "at least one config per side required")
+        if not all(is_local(config) for config in side.values()):
+            raise ContractError(
+                f"{prefix}.profile", "engine comparison requires local engine profiles"
+            )
+        values = {_profile_key(config) for config in side.values()}
+        if len(values) != 1:
+            raise ContractError(f"{prefix}.config", "one engine profile per side required")
+        profile = next(iter(values))
+        if profile[1] is None:
+            raise ContractError(f"{prefix}.engines", "local profile requires a family")
+        profiles[label] = profile
+    for key in sorted(left):
+        blockers = config_pair_blockers(left[key], right[key])
+        if blockers:
+            raise ContractError(f"{prefix}.engines", "; ".join(blockers))
+
+
+def validate_comparison_plan(
+    plan: JSONRecord, loaded: dict[str, LoadedConfig]
+) -> tuple[Slot, ...]:
     """Apply the per-side and fresh-process rules that need loaded configs."""
     slots = comparison_slots(plan)
     workloads = {w["workload_id"]: w for w in plan["experiment"]["workloads"]}
     configs, bundles = {}, {}
-    profiles = {side: set() for side in ("a", "b")}
+    side_configs = {"a": {}, "b": {}}
     for slot in slots:
         config = loaded[slot.workload_id].config.to_dict()
         if config["execution"].get("require_fresh_process") is not True:
@@ -157,33 +212,12 @@ def validate_comparison_plan(plan: dict, loaded: dict) -> tuple[Slot, ...]:
             )
         configs[key] = reference["config"]["sha256"]
         bundles[slot.bundle_key] = reference["bundle"]["sha256"]
-        profiles[slot.side].add(_profile_key(config))
-    if any(len(values) != 1 for values in profiles.values()):
-        raise ContractError("plan.comparison.config", "one engine profile per side required")
-    if profiles["a"] == profiles["b"]:
-        raise ContractError("plan.comparison.engines", "comparison sides must differ")
-    local_sides = {
-        side: next(iter(values))[0] == "local" for side, values in profiles.items()
-    }
-    if len(set(local_sides.values())) != 1:
-        raise ContractError(
-            "plan.comparison.profile", "mixed local and external engine profiles are not comparable"
-        )
-    if local_sides["a"]:
-        families = {side: next(iter(values))[1] for side, values in profiles.items()}
-        if any(family is None for family in families.values()):
-            raise ContractError("plan.comparison.engines", "local profile requires a family")
-        if families["a"] == families["b"]:
-            raise ContractError("plan.comparison.engines", "engine families must differ")
+        side_configs[slot.side].setdefault(slot.bundle_key, config)
+    _validate_config_profiles(side_configs["a"], side_configs["b"], prefix="plan.comparison")
     return slots
 
 
-def _profile_key(config: dict) -> tuple[str, str]:
-    engine = config["engine"]
-    return ("local" if is_local(config) else "external", engine.get("family") or engine["adapter"])
-
-
-def is_comparison_plan(plan: object) -> bool:
+def is_comparison_plan(plan: JSONValue) -> bool:
     try:
         slots = comparison_slots(plan)
     except (ContractError, KeyError, TypeError, ValueError):
@@ -191,7 +225,7 @@ def is_comparison_plan(plan: object) -> bool:
     return bool(slots)
 
 
-def _bundle_documents(specs: tuple[str, ...]) -> dict[str, tuple[bytes, dict]]:
+def _bundle_documents(specs: tuple[str, ...]) -> dict[str, tuple[bytes, JSONRecord]]:
     if not specs:
         specs = DEFAULT_BUNDLES
     documents = {}
@@ -215,7 +249,9 @@ def _bundle_documents(specs: tuple[str, ...]) -> dict[str, tuple[bytes, dict]]:
     return documents
 
 
-def _side_configs(paths: tuple[Path, ...]) -> dict[str, tuple[object, bytes, dict]]:
+def _side_configs(
+    paths: tuple[Path, ...],
+) -> dict[str, tuple[LoadedConfig, bytes, JSONRecord]]:
     if not paths:
         raise ContractError("compare_plan.config", "at least one config per side required")
     result = {}
@@ -231,7 +267,9 @@ def _side_configs(paths: tuple[Path, ...]) -> dict[str, tuple[object, bytes, dic
     return result
 
 
-def _require_coverage(left: dict, right: dict, expected: dict) -> None:
+def _require_coverage(
+    left: dict[str, JSONRecord], right: dict[str, JSONRecord], expected: dict[str, JSONRecord]
+) -> None:
     for label, side in (("left", left), ("right", right)):
         missing = sorted(set(expected) - set(side))
         extra = sorted(set(side) - set(expected))
@@ -242,44 +280,6 @@ def _require_coverage(left: dict, right: dict, expected: dict) -> None:
                 + (f"; missing {missing}" if missing else "")
                 + (f"; extra {extra}" if extra else ""),
             )
-
-
-def _overhead(config: dict, count: int) -> float:
-    execution, telemetry = config["execution"], config["telemetry"]
-    auxiliary = 2 + execution["warmup_count"]
-    return (
-        auxiliary * execution["timeout_seconds"]
-        + (count + auxiliary + 1) * execution["idle_wait_seconds"]
-        + telemetry["baseline_seconds"]
-    )
-
-
-def _safety(configs: list[dict]) -> dict | None:
-    if not all("safety" in config for config in configs):
-        if any("safety" in config for config in configs):
-            raise ContractError(
-                "compare_plan.profile",
-                "mixed local and external engine profiles are not comparable",
-            )
-        return None
-    policies = [config["safety"] for config in configs]
-    overrides = [
-        "temperature_stop_override_reason" in policy for policy in policies
-    ]
-    if any(overrides) and not all(overrides):
-        raise ContractError(
-            "compare_plan.safety",
-            "temperature stop override must cover every comparison config",
-        )
-    return {
-        "interval_seconds": min(policy["interval_seconds"] for policy in policies),
-        "max_temperature_celsius": None
-        if all(overrides)
-        else min(policy["max_temperature_celsius"] for policy in policies),
-        "require_temperature": all(policy["require_temperature"] for policy in policies),
-        "check_environment": all(policy["check_environment"] for policy in policies),
-        "max_external_cpu_percent": None,
-    }
 
 
 def _experiment_id(left: str | None, right: str | None, override: str | None) -> str:
@@ -294,7 +294,11 @@ def _experiment_id(left: str | None, right: str | None, override: str | None) ->
     return ("engine-compare-" + "-vs-".join(parts))[:128]
 
 
-def _side_workloads(side: str, configs: dict, files: dict) -> list[dict]:
+def _side_workloads(
+    side: str,
+    configs: dict[str, tuple[LoadedConfig, bytes, JSONRecord]],
+    files: dict[str, bytes],
+) -> list[JSONRecord]:
     workloads = []
     for key, (loaded, raw, bundle) in configs.items():
         config = loaded.config.to_dict()
@@ -324,7 +328,7 @@ def _side_workloads(side: str, configs: dict, files: dict) -> list[dict]:
     return workloads
 
 
-def _definition(item: dict) -> tuple[dict, int, float]:
+def _definition(item: JSONRecord) -> tuple[JSONRecord, int, float]:
     config = item["config"]
     limit = len(item["cases"])
     return {
@@ -340,24 +344,18 @@ def _definition(item: dict) -> tuple[dict, int, float]:
         "protocol": {"kind": "fixed", "case_ids": item["cases"]},
         "repeats": 1,
         "timeout_seconds": config["execution"]["timeout_seconds"],
-        "overhead_budget_seconds": _overhead(config, limit),
+        "overhead_budget_seconds": comparison_overhead(config, limit),
         "input_target_tokens": None,
         "output_budget_tokens": config["generation"]["max_tokens"],
-    }, limit, limit * config["execution"]["timeout_seconds"] + _overhead(config, limit)
+    }, limit, limit * config["execution"]["timeout_seconds"] + comparison_overhead(config, limit)
 
 
-def _budget(configs: list[dict], limits: list[tuple[int, float]]) -> dict:
-    return {
-        "max_requests": sum(limit for limit, _ in limits),
-        "max_wall_seconds": sum(total for _, total in limits),
-        "min_disk_bytes": max(config["output"]["min_disk_bytes"] for config in configs),
-        "min_available_memory_bytes": max(
-            config["output"]["min_available_memory_bytes"] for config in configs
-        ),
-    }
-
-
-def _experiment(left: dict, right: dict, bundles: dict, experiment_id: str) -> tuple[dict, dict]:
+def _experiment(
+    left: dict[str, tuple[LoadedConfig, bytes, JSONRecord]],
+    right: dict[str, tuple[LoadedConfig, bytes, JSONRecord]],
+    bundles: dict[str, tuple[bytes, JSONRecord]],
+    experiment_id: str,
+) -> tuple[JSONRecord, dict[str, bytes]]:
     files, workloads = {}, []
     workloads.extend(_side_workloads("a", left, files))
     workloads.extend(_side_workloads("b", right, files))
@@ -385,40 +383,25 @@ def _experiment(left: dict, right: dict, bundles: dict, experiment_id: str) -> t
             "service_transition": "operator_verified",
         },
         "comparison": {"mode": "engine", "factor": None},
-        "budget": _budget(configs, limits),
+        "budget": comparison_budget(configs, limits),
         "workloads": definitions,
     }
-    safety = _safety(configs)
+    safety = comparison_safety(configs)
     if safety is not None:
         experiment["safety"] = safety
     return experiment, files
 
 
-def _require_bundle_content(left: dict, right: dict, expected: dict) -> None:
-    for key, (raw, _) in expected.items():
-        for label, side in (("left", left), ("right", right)):
-            if hashlib.sha256(side[key][1]).hexdigest() != hashlib.sha256(raw).hexdigest():
-                raise ContractError(
-                    "compare_plan.bundle",
-                    f"{label} config bundle content differs for {key}",
-                )
-
-
-def _side_profiles(left: dict, right: dict) -> tuple[str | None, str | None]:
-    left_configs = [loaded.config.to_dict() for loaded, _, _ in left.values()]
-    right_configs = [loaded.config.to_dict() for loaded, _, _ in right.values()]
-    if not all(is_local(config) for config in left_configs + right_configs):
-        raise ContractError(
-            "compare_plan.profile", "engine comparison requires local engine profiles"
-        )
-    for key, right_config in right.items():
-        blockers = config_pair_blockers(left[key][0].config.to_dict(), right_config[0].config.to_dict())
-        if blockers:
-            raise ContractError("compare_plan.engines", "; ".join(blockers))
-    families = {config["engine"].get("family") for config in left_configs + right_configs}
-    if len(families) != 2:
-        raise ContractError("compare_plan.engines", "engine families must differ")
-    return left_configs[0]["engine"]["family"], right_configs[0]["engine"]["family"]
+def _side_profiles(
+    left: dict[str, tuple[LoadedConfig, bytes, JSONRecord]],
+    right: dict[str, tuple[LoadedConfig, bytes, JSONRecord]],
+) -> tuple[str, str]:
+    left_configs = {key: loaded.config.to_dict() for key, (loaded, _, _) in left.items()}
+    right_configs = {key: loaded.config.to_dict() for key, (loaded, _, _) in right.items()}
+    _validate_config_profiles(left_configs, right_configs, prefix="compare_plan")
+    left_name = _profile_key(next(iter(left_configs.values())))[1]
+    right_name = _profile_key(next(iter(right_configs.values())))[1]
+    return left_name, right_name
 
 
 def _comparison_inputs(
@@ -426,18 +409,19 @@ def _comparison_inputs(
     right_configs: tuple[Path, ...],
     bundle_specs: tuple[str, ...],
     experiment_id: str | None,
-) -> tuple[dict, dict]:
+) -> tuple[JSONRecord, dict[str, bytes]]:
     expected = _bundle_documents(tuple(bundle_specs))
     left = _side_configs(tuple(left_configs))
     right = _side_configs(tuple(right_configs))
     _require_coverage(left, right, expected)
-    _require_bundle_content(left, right, expected)
+    require_bundle_content(left, right, expected)
     left_name, right_name = _side_profiles(left, right)
     identity = _experiment_id(left_name, right_name, experiment_id)
     return _experiment(left, right, expected, identity)
 
 
-def _write_inputs(root: Path, experiment: dict, files: dict) -> Path:
+def _write_inputs(root: Path, experiment: JSONRecord, files: dict[str, bytes]) -> Path:
+    root.mkdir(parents=True, exist_ok=True)
     for name, raw in files.items():
         (root / name).write_bytes(raw)
     source = root / "experiment.json"
@@ -452,7 +436,7 @@ def freeze(
     *,
     experiment_id: str | None = None,
     destination: Path | None = None,
-) -> dict:
+) -> JSONRecord:
     """Freeze one comparison plan; ``destination=None`` previews without writing."""
     experiment, files = _comparison_inputs(
         left_configs, right_configs, bundle_specs, experiment_id
@@ -460,9 +444,14 @@ def freeze(
     if destination is not None and Path(destination).exists():
         raise ContractError("compare_plan.out", "output directory must not exist")
     with TemporaryDirectory(prefix="inferyard-compare-plan-") as temporary:
-        source = _write_inputs(Path(temporary), experiment, files)
+        source = _write_inputs(Path(temporary) / "source", experiment, files)
+        write_plan(source, Path(temporary) / "plan")
+        validated, loaded = read_frozen_plan(Path(temporary) / "plan" / "plan.json")
+        slots = validate_comparison_plan(validated, loaded)
+        if not slots:
+            raise ContractError("compare_plan.workloads", "comparison plan has no slots")
         if destination is None:
-            return prepare_plan(source)[0]
+            return validated
         return write_plan(source, Path(destination))
 
 

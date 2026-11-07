@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.config.bundle import content_hash
 from inferyard.config.comparison_plan import (
     DEFAULT_BUNDLES,
@@ -28,7 +29,7 @@ ANSWER_POLICY = {
 }
 
 
-def instruction_case(case_id: str = "instruction-01") -> dict:
+def instruction_case(case_id: str = "instruction-01") -> JSONRecord:
     return {
         "case_id": case_id,
         "category": "instruction",
@@ -42,7 +43,7 @@ def instruction_case(case_id: str = "instruction-01") -> dict:
     }
 
 
-def extraction_case(case_id: str = "extraction-01") -> dict:
+def extraction_case(case_id: str = "extraction-01") -> JSONRecord:
     return {
         "case_id": case_id,
         "category": "extraction",
@@ -58,7 +59,7 @@ def extraction_case(case_id: str = "extraction-01") -> dict:
     }
 
 
-def svg_case(case_id: str = "svg-pelican-01") -> dict:
+def svg_case(case_id: str = "svg-pelican-01") -> JSONRecord:
     return {
         "case_id": case_id,
         "category": "svg",
@@ -68,7 +69,7 @@ def svg_case(case_id: str = "svg-pelican-01") -> dict:
     }
 
 
-def bundle_document(bundle_id: str, cases: list) -> dict:
+def bundle_document(bundle_id: str, cases: list[JSONRecord]) -> JSONRecord:
     bundle = {
         "schema_version": 3,
         "bundle_id": bundle_id,
@@ -91,7 +92,7 @@ def bundle_document(bundle_id: str, cases: list) -> dict:
     return bundle
 
 
-def write_bundle(root: Path, name: str, bundle: dict) -> Path:
+def write_bundle(root: Path, name: str, bundle: JSONRecord) -> Path:
     from inferyard.evidence.storage import json_bytes
 
     path = root / f"{name}.json"
@@ -106,16 +107,9 @@ LOCAL_MODEL = {
 }
 
 
-def write_config(root: Path, name: str, spec: dict) -> Path:
-    bundle_path = spec["bundle_path"]
-    bundle = spec["bundle"]
-    family = spec["family"]
-    max_tokens = spec.get("max_tokens", 32)
-    runtime = spec.get("runtime")
-    base = tomllib.loads((FIXTURES / "config" / "valid.toml").read_text())
+def _local_model(family: str) -> JSONRecord:
     kind = "directory" if family == "mlx-lm" else "gguf"
-    base["definition"] = "local-engine-config.v1"
-    base["model"] = {
+    return {
         "display_name": "Local fixture model",
         "repo": "fixture/local",
         "revision": "fixture-v1",
@@ -128,6 +122,9 @@ def write_config(root: Path, name: str, spec: dict) -> Path:
         "template_path": "template.jinja",
         "template_sha256": LOCAL_MODEL["template_sha256"],
     }
+
+
+def _local_engine(root: Path, family: str) -> JSONRecord:
     environment = (
         {
             "PYTHONDONTWRITEBYTECODE": "1",
@@ -137,7 +134,7 @@ def write_config(root: Path, name: str, spec: dict) -> Path:
         if family == "mlx-lm"
         else {}
     )
-    base["engine"] = {
+    return {
         "adapter": "local_openai_v1",
         "family": family,
         "backend": "metal",
@@ -148,6 +145,19 @@ def write_config(root: Path, name: str, spec: dict) -> Path:
         "environment": environment,
         "served_model": "fixture",
     }
+
+
+def _local_config(
+    root: Path,
+    spec: JSONRecord,
+    bundle_path: Path,
+    bundle: JSONRecord,
+) -> JSONRecord:
+    family = spec["family"]
+    base = tomllib.loads((FIXTURES / "config" / "valid.toml").read_text())
+    base["definition"] = "local-engine-config.v1"
+    base["model"] = _local_model(family)
+    base["engine"] = _local_engine(root, family)
     base["conditions"].pop("threads", None)
     base["conditions"].pop("threads_batch", None)
     base["conditions"].pop("slots", None)
@@ -159,24 +169,30 @@ def write_config(root: Path, name: str, spec: dict) -> Path:
         "require_temperature": True,
         "check_environment": True,
     }
-    base["generation"] = {"temperature": 0, "max_tokens": max_tokens}
+    base["generation"] = {"temperature": 0, "max_tokens": spec.get("max_tokens", 32)}
     base["bundle"] = {"path": str(bundle_path), "version": bundle["version"]}
     base["endpoint"].pop("api_key_env", None)
     base.setdefault("execution", {}).update(warmup_count=0, timeout_seconds=30)
     base.setdefault("telemetry", {}).update(interval_ms=10, baseline_seconds=0.015)
     base["output"]["root"] = str(root / "results")
+    runtime = spec.get("runtime")
     if runtime is not None:
         base["endpoint"].update(runtime.get("endpoint", {}))
+    return base
+
+
+def write_config(root: Path, name: str, spec: JSONRecord) -> Path:
+    bundle = spec["bundle"]
+    base = _local_config(root, spec, spec["bundle_path"], bundle)
     path = root / f"{name}.toml"
     path.write_text(render(base))
     return path
-
 
 def comparison_inputs(
     tmp_path: Path,
     *,
     bundles: tuple[str, ...] = ("core", "pelican"),
-    runtime: dict | None = None,
+    runtime: JSONRecord | None = None,
     left_family: str = "llama-cpp",
     right_family: str = "lmstudio",
 ) -> tuple[list[Path], list[Path], list[str]]:
@@ -327,6 +343,45 @@ def test_bundle_content_must_match_across_sides(tmp_path: Path) -> None:
     )
     with pytest.raises(ContractError, match="content differs"):
         freeze(left, right, specs)
+
+
+def test_side_profiles_must_not_be_mixed_across_bundles(tmp_path: Path) -> None:
+    left, right, specs = comparison_inputs(tmp_path)
+    mixed_left = [left[0], right[1]]
+    mixed_right = [right[0], left[1]]
+    out = tmp_path / "mixed-plan"
+    with pytest.raises(ContractError, match="one engine profile per side"):
+        freeze(mixed_left, mixed_right, specs, destination=out)
+    assert not out.exists()
+    with pytest.raises(ContractError, match="one engine profile per side"):
+        freeze(mixed_left, mixed_right, specs)
+
+
+def test_reread_plan_uses_the_current_support_matrix(tmp_path: Path) -> None:
+    from inferyard.config.comparison_plan import (
+        _bundle_documents,
+        _experiment,
+        _side_configs,
+        _write_inputs,
+    )
+    from inferyard.config.planning import write_plan
+
+    left, right, specs = comparison_inputs(
+        tmp_path, left_family="lmstudio", right_family="mlx-lm"
+    )
+    experiment, files = _experiment(
+        _side_configs(tuple(left)),
+        _side_configs(tuple(right)),
+        _bundle_documents(tuple(specs)),
+        "unsupported-reread",
+    )
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    source = _write_inputs(source_dir, experiment, files)
+    write_plan(source, tmp_path / "unsupported")
+    frozen, loaded = read_frozen_plan(tmp_path / "unsupported" / "plan.json")
+    with pytest.raises(ContractError, match="unsupported_engine_pair"):
+        validate_comparison_plan(frozen, loaded)
 
 
 def test_same_engine_on_both_sides_is_rejected(tmp_path: Path) -> None:
