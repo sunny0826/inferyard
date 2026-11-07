@@ -8,10 +8,10 @@ import (
 )
 
 // card is the shared surface card: a second-level heading with related content
-// and nearby actions, without a border.
+// and nearby actions. Edge adds the optional hairline a scheme may define.
 func card(c *ui.Context, title string, fn func()) {
 	t := tokens(c)
-	ui.Column(c).MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Children(func() { heading(c, title, 2); fn() })
+	ui.Column(c).MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() { heading(c, title, 2); fn() })
 }
 
 // statusBadge renders a state label; the color comes from the semantic state

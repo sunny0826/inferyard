@@ -48,10 +48,13 @@ type radiusTokens struct {
 	Inset   float32 // nested rows inside a surface
 }
 
-// cardTokens describes the card surface and its empty-state variant.
+// cardTokens describes the card surface and its empty-state variant. Border
+// outlines task cards and rows; Edge adds an optional hairline to the plain
+// page surface so a scheme can define distinct card structure, not just color.
 type cardTokens struct {
 	Padding      float32
 	Border       float32
+	Edge         float32
 	EmptyPadding float32
 }
 
@@ -122,7 +125,7 @@ func (s sideColors) forSide(side sideKind) ui.Color {
 func tokens(c *ui.Context) designTokens {
 	t := c.Theme()
 	radius, card, metric := surfaceTokensFor(t)
-	return designTokens{
+	return styledTokens(c, designTokens{
 		Density: spacingTokensFor(t),
 		Type:    typeTokensFor(t),
 		Radius:  radius,
@@ -130,7 +133,7 @@ func tokens(c *ui.Context) designTokens {
 		Metric:  metric,
 		State:   stateColorsFor(t),
 		Sides:   sideColorsFor(t),
-	}
+	})
 }
 
 func spacingTokensFor(t *ui.Theme) spacingTokens {
