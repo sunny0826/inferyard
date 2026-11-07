@@ -9,17 +9,18 @@ import (
 )
 
 func heading(c *ui.Context, title string, level int) ui.Element {
-	size := float32(1.1)
+	scale := tokens(c).Type
+	size := scale.Section
 	if level == 1 {
-		size = 1.7
+		size = scale.PageTitle
 	} else if level == 2 {
-		size = 1.3
+		size = scale.CardTitle
 	}
-	return ui.Text(c, title).Bold().FontSize(c.Theme().Rem(size)).Role(ui.RoleHeading).Level(level)
+	return ui.Text(c, title).Bold().FontSize(size).Role(ui.RoleHeading).Level(level)
 }
 
 func section(c *ui.Context, title string, fn func()) {
-	ui.Column(c).Gap(c.Theme().Space(2.5)).Children(func() { heading(c, title, 3); fn() })
+	ui.Column(c).Gap(tokens(c).Density.CardGap).Children(func() { heading(c, title, 3); fn() })
 }
 
 func configuredValue(value string) string {
@@ -162,26 +163,25 @@ func (s *viewState) announceChanges(c *ui.Context) {
 }
 
 func runColor(c *ui.Context, task core.RunTask) ui.Color {
-	t := c.Theme()
 	if task.Exit != nil {
 		switch task.Exit.ExitCode {
 		case 0:
-			return t.Success
+			return stateColor(c, stateSuccess)
 		case 2, 3:
-			return t.Warning
+			return stateColor(c, stateWarning)
 		case 4:
-			return t.Danger
+			return stateColor(c, stateDanger)
 		case 130:
-			return t.TextMuted
+			return stateColor(c, stateNeutral)
 		}
 	}
 	switch task.State {
 	case "starting", "running", "cancelling":
-		return t.Accent
+		return stateColor(c, stateActive)
 	case "failed":
-		return t.Danger
+		return stateColor(c, stateDanger)
 	}
-	return t.TextMuted
+	return stateColor(c, stateNeutral)
 }
 
 func progressTotal(total *int64) string {

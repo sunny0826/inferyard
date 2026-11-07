@@ -103,14 +103,14 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		ui.Text(c, "超时、内存、磁盘及设备限制由 CLI 核验；容量不足或题库尚未批准时拒绝执行。")
 	})
 	if s.preview != nil {
-		ui.Text(c, "模拟数据；数值不代表模型性能。").TextColor(c.Theme().Warning)
+		ui.Text(c, "模拟数据；数值不代表模型性能。").TextColor(stateColor(c, stateWarning))
 	}
 	reason := s.speedStartBlockReason()
 	if engineLocked(s.engineState.State) {
 		button(c, "停止当前服务").Disabled(s.busy || s.engineState.State == "stopping").OnClick(s.stopEngine)
 	}
 	if reason != "" {
-		ui.Text(c, reason).TextColor(c.Theme().Warning)
+		ui.Text(c, reason).TextColor(stateColor(c, stateWarning))
 	}
 	if s.eligibility(s.engine).Reason == "cli_outdated" {
 		button(c, "打开 CLI 设置").OnClick(func() { s.selected = "settings" })
@@ -179,10 +179,10 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 		ui.Text(c, fmt.Sprintf("冻结墙钟预算 %.0f 秒（含准备与排空）", r.budget))
 	}
 	card(c, "任务进度", func() {
-		ui.Row(c).Wrap().Gap(c.Theme().Space(2)).Children(func() {
+		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
 			for i, label := range []string{"准备", "启动与绑定", "冻结计划", "测量", "读取结果"} {
 				if speedStage(i) == r.stage {
-					statusBadge(c, label, c.Theme().Accent)
+					statusBadge(c, label, stateColor(c, stateActive))
 				} else {
 					ui.Text(c, label)
 				}
@@ -199,7 +199,7 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 		ui.Text(c, fmt.Sprintf("已完成 %d / 5 次测量", r.completed))
 		progressBar(c, float64(r.completed)/5, "专项五次测量进度")
 		if r.reason != "" {
-			ui.Text(c, r.reason).TextColor(c.Theme().Warning)
+			ui.Text(c, r.reason).TextColor(stateColor(c, stateWarning))
 		}
 		switch {
 		case r.active():
@@ -274,20 +274,20 @@ func (s *viewState) speedResultView(c *ui.Context) {
 	if s.preview != nil {
 		prefix = "模拟数据 · "
 	}
-	ui.Text(c, prefix+r.id+" · "+r.label()).TextColor(c.Theme().Warning)
-	ui.Row(c).Wrap().Gap(c.Theme().Space(2)).Children(func() {
+	ui.Text(c, prefix+r.id+" · "+r.label()).TextColor(stateColor(c, stateWarning))
+	ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
 		button(c, "返回历史任务").OnClick(func() { w.opened = nil; w.readError = "" })
 		button(c, "用此组合新开任务").Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
 	if w.readError != "" {
-		ui.Text(c, w.readError).TextColor(c.Theme().Danger)
+		ui.Text(c, w.readError).TextColor(stateColor(c, stateDanger))
 		primaryButton(c, "重新读取结果").OnClick(func() { s.openSpeed(r.id) })
 		return
 	}
 	if r.stage == speedCancelled {
 		ui.Text(c, "任务已取消。已完成的测量已保留；未完成项显示为 —。")
 	} else if r.summary == nil {
-		ui.Text(c, "测量结果不满足完整汇总条件；请展开诊断详情查看缺测或校验原因。").TextColor(c.Theme().Warning)
+		ui.Text(c, "测量结果不满足完整汇总条件；请展开诊断详情查看缺测或校验原因。").TextColor(stateColor(c, stateWarning))
 	}
 	card(c, "测量结果", func() {
 		if r.summary != nil {
@@ -309,14 +309,14 @@ func (s *viewState) speedResultView(c *ui.Context) {
 	if r.summary == nil || r.reason != "" {
 		componentFold(c.Key(r.id), "查看诊断详情", func() {
 			if r.reason != "" {
-				ui.Text(c, r.reason).TextColor(c.Theme().Warning)
+				ui.Text(c, r.reason).TextColor(stateColor(c, stateWarning))
 			}
 			for i, sample := range r.samples {
 				if sample.missing != "" {
-					ui.Text(c, fmt.Sprintf("第 %d 次缺测：%s", i+1, sample.missing)).TextColor(c.Theme().Warning)
+					ui.Text(c, fmt.Sprintf("第 %d 次缺测：%s", i+1, sample.missing)).TextColor(stateColor(c, stateWarning))
 				}
 				if sample.reason != "" {
-					ui.Text(c, fmt.Sprintf("第 %d 次：%s", i+1, sample.reason)).TextColor(c.Theme().Warning)
+					ui.Text(c, fmt.Sprintf("第 %d 次：%s", i+1, sample.reason)).TextColor(stateColor(c, stateWarning))
 				}
 			}
 		})
@@ -405,7 +405,7 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 }
 
 func speedIdentity(c *ui.Context, task *speedTask) {
-	ui.Column(c).Gap(c.Theme().Space(1)).Children(func() {
+	ui.Column(c).Gap(tokens(c).Density.Tight).Children(func() {
 		ui.Text(c, task.model)
 		ui.Text(c, task.engine).TextColor(c.Theme().TextMuted)
 	})

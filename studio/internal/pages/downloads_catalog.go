@@ -8,6 +8,7 @@ import (
 )
 
 func (s *viewState) catalogChoices(c *ui.Context, kind core.CatalogKind, platform string) {
+	t := tokens(c)
 	target := &s.engineURL
 	if kind == core.CatalogModel {
 		target = &s.modelURL
@@ -21,14 +22,14 @@ func (s *viewState) catalogChoices(c *ui.Context, kind core.CatalogKind, platfor
 		selected := *target == entry.URL
 		border := c.Theme().Border
 		if selected {
-			border = c.Theme().Accent
+			border = stateColor(c, stateActive)
 		}
-		ui.Row(c.Key(entry.ID)).FillWidth().AlignItems(ui.Center).Gap(c.Theme().Space(3)).Padding(c.Theme().Space(3)).Radius(c.Theme().Space(2)).Border(1, border).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(0).Gap(c.Theme().Space(1)).Children(func() {
+		ui.Row(c.Key(entry.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Density.Stack).Radius(t.Radius.Inset).Border(t.Card.Border, border).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
 				ui.Text(c, entry.Title).Bold()
 				ui.Text(c, core.PlatformLabel(entry.Platform)+" · "+catalogHumanSize(entry.Bytes)).TextColor(c.Theme().TextMuted)
 				if entry.Note != "" {
-					ui.Text(c, entry.Note).TextColor(c.Theme().Warning)
+					ui.Text(c, entry.Note).TextColor(stateColor(c, stateWarning))
 				}
 			})
 			label := "选择"
@@ -50,7 +51,7 @@ func catalogDetails(c *ui.Context, source string) {
 		return
 	}
 	if !entry.RunsOnCurrentPlatform() {
-		ui.Text(c, "此资源适用于 "+core.PlatformLabel(entry.Platform)+"，不能在本机运行。").TextColor(c.Theme().Warning)
+		ui.Text(c, "此资源适用于 "+core.PlatformLabel(entry.Platform)+"，不能在本机运行。").TextColor(stateColor(c, stateWarning))
 	}
 	componentFoldKeyed(c, "catalog-details-"+string(entry.Kind), "版本与校验 · "+entry.Title, func() {
 		ui.Text(c, "版本 "+entry.Revision).Selectable()
@@ -64,12 +65,13 @@ func (s *viewState) catalogView(c *ui.Context) {
 }
 
 func catalogReferences(c *ui.Context, platform string) {
+	t := tokens(c)
 	componentFold(c, "其他准备方式", func() {
 		for _, entry := range core.CatalogForPlatform(platform) {
 			if entry.Downloadable() {
 				continue
 			}
-			ui.Column(c.Key(entry.ID)).Gap(c.Theme().Space(1)).Padding(c.Theme().Space(2)).Children(func() {
+			ui.Column(c.Key(entry.ID)).Gap(t.Density.Tight).Padding(t.Density.Row).Children(func() {
 				ui.Text(c, entry.Title).Bold()
 				ui.Text(c, entry.Reason).TextColor(c.Theme().TextMuted)
 				ui.Text(c, entry.URL).Selectable().TextColor(c.Theme().TextMuted)

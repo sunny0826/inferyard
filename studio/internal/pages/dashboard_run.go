@@ -91,8 +91,8 @@ func (w *viewState) candidateView(c *ui.Context) {
 	createDisabled := w.environmentMissing() || !w.preflightReady() || w.busy || w.engine == "" || w.model == "" || revoked || len(w.checkedBundles()) == 0 || w.engineState.State == "orphaned" || w.localSelectionError() != ""
 	if revoked {
 		el := w.eligibility(w.engine)
-		ui.Row(c).Wrap().Gap(c.Theme().Space(2)).Children(func() {
-			statusBadge(c, "当前选择不可用", c.Theme().Warning)
+		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
+			statusBadge(c, "当前选择不可用", stateColor(c, stateWarning))
 			ui.Text(c, w.engine+" · "+human(el.Reason)+"。请重新选择可用引擎。")
 		})
 		button(c, "到模型页重选").AlignSelf(ui.Start).OnClick(func() { w.selected = "models" })
@@ -123,24 +123,24 @@ func (w *viewState) candidateView(c *ui.Context) {
 func (w *viewState) serviceView(c *ui.Context) {
 	heading(c, "启动模型服务并绑定", 3)
 	if w.bindingStale {
-		ui.Text(c, "旧绑定已失效，请重启服务并重新绑定").TextColor(c.Theme().Danger)
+		ui.Text(c, "旧绑定已失效，请重启服务并重新绑定").TextColor(stateColor(c, stateDanger))
 	}
 	ui.Text(c, "Studio 启动冻结候选中的引擎并管理其生命周期；退出 Studio 时自动停止。绑定时 CLI 校验 PID、启动时间与实际参数。")
 	switch w.engineState.State {
 	case "orphaned":
-		ui.Text(c, "遗留引擎：请先处理上次 Studio 留下的服务或无效记录。").TextColor(c.Theme().Warning)
+		ui.Text(c, "遗留引擎：请先处理上次 Studio 留下的服务或无效记录。").TextColor(stateColor(c, stateWarning))
 		errorView(c, w.engineState.Error)
 		w.stopOrphanButton(c)
 	case "starting":
 		ui.Text(c, fmt.Sprintf("正在启动（PID %d）——模型加载可能需要几分钟…", w.engineState.Pid))
 		progressBar(c, -1, "模型服务启动进度")
 	case "running":
-		ui.Text(c, fmt.Sprintf("运行中 · PID %d · %s", w.engineState.Pid, w.engineState.Endpoint)).TextColor(c.Theme().Success)
+		ui.Text(c, fmt.Sprintf("运行中 · PID %d · %s", w.engineState.Pid, w.engineState.Endpoint)).TextColor(stateColor(c, stateSuccess))
 	case "stopping":
 		ui.Text(c, "正在停止服务…")
 	case "failed":
 		if w.engineState.Error != nil {
-			ui.Text(c, w.engineState.Error.Message).TextColor(c.Theme().Danger)
+			ui.Text(c, w.engineState.Error.Message).TextColor(stateColor(c, stateDanger))
 		}
 	}
 	candidateReady := w.candidate != "" || w.task.start.candidate != ""
@@ -151,7 +151,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 		ui.Text(c, "测评运行期间不能停止或重新绑定服务。")
 	}
 	startable := w.engineState.State == "" || w.engineState.State == "stopped" || w.engineState.State == "failed"
-	ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
+	ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
 		startButton := button
 		if startable {
 			startButton = primaryButton

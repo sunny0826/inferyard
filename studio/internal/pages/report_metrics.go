@@ -61,16 +61,9 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 	if compactLayout(c) {
 		columns = 1
 	}
-	ui.Grid(c).Columns(columns).Gap(c.Theme().Space(3)).Children(func() {
+	ui.Grid(c).Columns(columns).Gap(tokens(c).Density.Stack).Children(func() {
 		for _, metric := range metrics {
-			ui.Column(c).MinWidth(0).Gap(c.Theme().Space(1)).Padding(c.Theme().Space(3.5), c.Theme().Space(4)).Background(c.Theme().Surface).Radius(c.Theme().Space(3)).Children(func() {
-				ui.Text(c, metric.label)
-				ui.Text(c, metric.value).Bold().FontSize(c.Theme().Rem(1.7)).Selectable()
-				ui.Text(c, metric.detail).TextColor(c.Theme().TextMuted)
-				if metric.note != "" {
-					ui.Text(c, metric.note).TextColor(c.Theme().TextMuted)
-				}
-			})
+			metricCard(c, metric.label, metric.value, metric.detail, metric.note)
 		}
 	})
 	if reason := reportMemoryReason(d.MinimumAvailableReason); reason != "" {

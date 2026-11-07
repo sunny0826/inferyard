@@ -17,7 +17,7 @@ func errorView(c *ui.Context, e *core.ApiError) {
 	if message == "" {
 		message = human(e.Code)
 	}
-	ui.Text(c, message+" · "+e.Code).TextColor(c.Theme().Danger)
+	ui.Text(c, message+" · "+e.Code).TextColor(stateColor(c, stateDanger))
 	for _, v := range e.Limitations {
 		ui.Text(c, human(v)+" · "+v)
 	}
@@ -127,12 +127,4 @@ func componentFoldOpen(c *ui.Context, key, title string, fn func()) {
 	container := ui.Column(c.Key(key))
 	open := ui.Local(container, "open", func() bool { return true })
 	container.Children(func() { components.Collapsible(c, title, open, components.CollapsibleOptions{}, fn) })
-}
-
-func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {
-	badge := components.Badge(c, label).TextColor(color).Background(color.Alpha(0.10))
-	if c.Preferences().HighContrast {
-		badge.Background(c.Theme().Surface).Border(1, color)
-	}
-	return badge
 }

@@ -42,7 +42,7 @@ func (s *viewState) reportView(c *ui.Context) {
 	if report.failure != nil {
 		s.header(c, "报告 "+id)
 		button(c, "返回报告列表").AlignSelf(ui.Start).OnClick(func() { s.openedReport = nil })
-		ui.Text(c, "无法读取").TextColor(c.Theme().Danger)
+		ui.Text(c, "无法读取").TextColor(stateColor(c, stateDanger))
 		button(c, "重新读取报告").AlignSelf(ui.Start).OnClick(func() { s.openReport(report.reference) })
 		return
 	}
@@ -61,10 +61,10 @@ func (s *viewState) reportView(c *ui.Context) {
 		run = report.index.Runs[report.run]
 	}
 	if run.Diagnostic {
-		statusBadge(c, "诊断运行", c.Theme().Warning)
+		statusBadge(c, "诊断运行", stateColor(c, stateWarning))
 	}
 	if run.Dashboard == nil {
-		ui.Text(c, "无法读取 dashboard").TextColor(c.Theme().Danger)
+		ui.Text(c, "无法读取 dashboard").TextColor(stateColor(c, stateDanger))
 	} else {
 		reportMetrics(c, run)
 		report.categoryView(c, run)

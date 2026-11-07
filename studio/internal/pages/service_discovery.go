@@ -57,7 +57,7 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 		ui.Text(c, "状态："+stateLabel(state.State))
 	case state.State == "orphaned":
 		heading(c, "遗留服务记录（状态未确认）", 3)
-		ui.Text(c, "上次 Studio 留下的服务或记录，尚不能确认运行状态。").TextColor(c.Theme().Warning)
+		ui.Text(c, "上次 Studio 留下的服务或记录，尚不能确认运行状态。").TextColor(stateColor(c, stateWarning))
 	default:
 		ui.Text(c, "暂无 Studio 启动的活动服务。")
 		return
@@ -86,7 +86,7 @@ func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
 	errorView(c, s.discoveryError)
 	if s.discoveryError == nil {
 		for _, code := range s.discovery.Limitations {
-			ui.Text(c, human(code)+" · "+code).TextColor(c.Theme().Warning)
+			ui.Text(c, human(code)+" · "+code).TextColor(stateColor(c, stateWarning))
 		}
 	}
 	compatible, other := 0, 0
@@ -134,7 +134,7 @@ func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
 }
 
 func (s *viewState) compatibleEndpointView(c *ui.Context, service inferyard.DiscoveredService, endpoint inferyard.DiscoveredEndpoint, bindable bool) {
-	ui.Column(c.Key(fmt.Sprintf("service-%d-%s", service.PID, endpoint.URL))).Gap(c.Theme().Space(2)).Children(func() {
+	ui.Column(c.Key(fmt.Sprintf("service-%d-%s", service.PID, endpoint.URL))).Gap(tokens(c).Density.Row).Children(func() {
 		heading(c, displayName(service.ProcessName), 3)
 		ui.Text(c, fmt.Sprintf("PID %d · %s", service.PID, endpoint.URL))
 		if endpoint.Health == nil {
@@ -143,7 +143,7 @@ func (s *viewState) compatibleEndpointView(c *ui.Context, service inferyard.Disc
 			ui.Text(c, "健康检查："+*endpoint.Health)
 		}
 		if endpoint.AmbiguousListener {
-			ui.Text(c, "多个进程监听同一端口，归属存在歧义 · ambiguous_listener").TextColor(c.Theme().Warning)
+			ui.Text(c, "多个进程监听同一端口，归属存在歧义 · ambiguous_listener").TextColor(stateColor(c, stateWarning))
 		}
 		if endpoint.Reason != nil {
 			ui.Text(c, human(*endpoint.Reason)+" · "+*endpoint.Reason)

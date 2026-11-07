@@ -42,23 +42,23 @@ func (s *viewState) queueActivity() queueActivity {
 }
 
 func (s *viewState) cornerStatus(c *ui.Context) {
-	t := c.Theme()
+	t := tokens(c)
 	q := s.queueActivity()
-	ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(t.Space(2)).Padding(0, t.Space(6)).Children(func() {
+	ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(t.Density.Row).Padding(0, t.Density.Page).Children(func() {
 		state := s.engineState.State
 		if state == "" {
 			state = "stopped"
 		}
-		color, animated := t.TextMuted, false
+		color, animated := stateColor(c, stateNeutral), false
 		switch state {
 		case "running":
-			color, animated = t.Success, true
+			color, animated = stateColor(c, stateSuccess), true
 		case "starting", "stopping":
-			color, animated = t.Accent, true
+			color, animated = stateColor(c, stateActive), true
 		case "failed":
-			color = t.Danger
+			color = stateColor(c, stateDanger)
 		case "orphaned":
-			color = t.Warning
+			color = stateColor(c, stateWarning)
 		}
 		statusPanel(c, "engine-status", "引擎 · "+stateLabel(state), lucide.Cpu, color, animated, func() {
 			s.engineStatusPanel(c, q.active())
@@ -69,9 +69,9 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		} else if s.busy {
 			label = "任务 · 准备中"
 		}
-		queueColor := t.TextMuted
+		queueColor := stateColor(c, stateNeutral)
 		if q.active() || s.busy {
-			queueColor = t.Accent
+			queueColor = stateColor(c, stateActive)
 		}
 		statusPanel(c, "queue-status", label, lucide.ListTodo, queueColor, q.active() || s.busy, func() {
 			heading(c, "任务队列", 3)
@@ -88,7 +88,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		})
 		if n := s.activeDownloadCount(); n > 0 {
 			label := fmt.Sprintf("下载中 %d 项", n)
-			statusPanel(c, "download-status", label, lucide.Download, t.Accent, true, func() {
+			statusPanel(c, "download-status", label, lucide.Download, stateColor(c, stateActive), true, func() {
 				ui.Text(c, label)
 			})
 		}
