@@ -56,7 +56,7 @@ func newPreviewSession(ctx context.Context) *previewSession {
 func (p *previewSession) shellOptions() sidebar.ShellOptions {
 	options := pageShellOptions("InferYard Studio · UI 调试", "", p.left, p.content)
 	options.ContentTitle = func(c *ui.Context) {
-		ui.Text(c, "UI 调试 · 模拟数据").SingleLine().TextColor(c.Theme().Warning)
+		ui.Text(c, "UI 调试 · 模拟数据").SingleLine().TextColor(stateColor(c, stateWarning))
 	}
 	return options
 }
@@ -81,7 +81,7 @@ func (p *previewSession) left(c *ui.Context) {
 	ui.Scroll(c).Fill().Children(func() {
 		ui.Column(c).FillWidth().Children(func() {
 			ui.Column(c.Key(p.generation)).Children(func() { p.state.leftNav(c) })
-			ui.Column(c).Padding(c.Theme().Space(3)).Gap(c.Theme().Space(2)).Children(func() {
+			ui.Column(c).Padding(tokens(c).Density.Stack).Gap(tokens(c).Density.Row).Children(func() {
 				heading(c, "UI 调试", 2)
 				ui.Field(c, "模拟场景", func() {
 					choice := components.Select(c, &p.scene)
@@ -104,7 +104,7 @@ func (p *previewSession) left(c *ui.Context) {
 				}
 				ui.Text(c, "全部为模拟数据；操作仅改变本窗口，不运行模型或写入文件。").TextColor(c.Theme().TextMuted)
 				if p.notice != "" {
-					ui.Text(c, p.notice).Role(ui.RoleStatus).TextColor(c.Theme().Warning)
+					ui.Text(c, p.notice).Role(ui.RoleStatus).TextColor(stateColor(c, stateWarning))
 				}
 			})
 		})

@@ -23,7 +23,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 		s.reportsTableView(c)
 		if s.progress != nil {
 			if s.progress.Report.Status == "verified" {
-				statusBadge(c, "已核验", c.Theme().Success)
+				statusBadge(c, "已核验", stateColor(c, stateSuccess))
 			} else if s.progress.NextAction == "verify" {
 				if button(c, "核验").Disabled(s.busy).Clicked() {
 					s.execute(s.nextCommand(), true)
@@ -61,9 +61,9 @@ func (s *viewState) reportSourcesView(c *ui.Context) {
 		s.reportSources.Key = func(i int) any { return runs[i].Path }
 		s.reportSources.Selection = &s.reportChoices
 		components.List(c, &s.reportSources, len(runs), func(i int) {
-			ui.Column(c).Padding(6).Gap(2).Children(func() {
+			ui.Column(c).Padding(tokens(c).Density.Inset).Gap(tokens(c).Density.Hairline).Children(func() {
 				ui.Text(c, runs[i].RunId)
-				ui.Text(c, displayName(runs[i].Path)).FontSize(max(12, c.Theme().Rem(.85)))
+				ui.Text(c, displayName(runs[i].Path)).FontSize(tokens(c).Type.Caption)
 			})
 		}).Label("报告来源运行列表").Height(220).Disabled(s.busy)
 		count := s.reportChoices.Len()

@@ -95,7 +95,7 @@ func (s *viewState) localSelectionView(c *ui.Context) {
 		}
 	}
 	if reason := s.localSelectionError(); reason != "" {
-		ui.Text(c, reason).TextColor(c.Theme().Warning)
+		ui.Text(c, reason).TextColor(stateColor(c, stateWarning))
 	}
 }
 

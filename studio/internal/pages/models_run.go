@@ -22,29 +22,29 @@ func (s *viewState) runPanelView(c *ui.Context) {
 		other, unknown = known && !match, !known
 	}
 
-	badge, color := "未启动", t.TextMuted
+	badge, color := "未启动", stateColor(c, stateNeutral)
 	switch {
 	case state.State == "orphaned":
-		badge, color = "遗留引擎", t.Warning
+		badge, color = "遗留引擎", stateColor(c, stateWarning)
 	case active && other:
-		badge, color = fmt.Sprintf("%s · 另一个组合的服务（候选 %s）", stateLabel(state.State), displayName(state.Candidate)), t.Success
+		badge, color = fmt.Sprintf("%s · 另一个组合的服务（候选 %s）", stateLabel(state.State), displayName(state.Candidate)), stateColor(c, stateSuccess)
 	case active && unknown:
-		badge, color = fmt.Sprintf("%s · 无法确认属于当前组合（候选 %s）", stateLabel(state.State), displayName(state.Candidate)), t.Warning
+		badge, color = fmt.Sprintf("%s · 无法确认属于当前组合（候选 %s）", stateLabel(state.State), displayName(state.Candidate)), stateColor(c, stateWarning)
 	case state.State == "starting":
-		badge, color = "启动中…", t.Accent
+		badge, color = "启动中…", stateColor(c, stateActive)
 	case state.State == "stopping":
-		badge, color = "停止中…", t.Accent
+		badge, color = "停止中…", stateColor(c, stateActive)
 	case state.State == "running":
-		badge, color = fmt.Sprintf("运行中 · PID %d · %s", state.Pid, loopbackEndpoint(state.Endpoint)), t.Success
+		badge, color = fmt.Sprintf("运行中 · PID %d · %s", state.Pid, loopbackEndpoint(state.Endpoint)), stateColor(c, stateSuccess)
 	case state.State == "failed":
-		badge, color = failureBadge(state), t.Danger
+		badge, color = failureBadge(state), stateColor(c, stateDanger)
 	case state.State == "stopped":
 		badge = "已停止"
 	}
 	statusBadge(c, badge, color)
 
 	if el := s.eligibility(s.engine); el.State == core.EngineCheckIneligible {
-		ui.Text(c, s.engine+" · "+human(el.Reason)+"。请重新选择。").TextColor(t.Warning)
+		ui.Text(c, s.engine+" · "+human(el.Reason)+"。请重新选择。").TextColor(stateColor(c, stateWarning))
 	}
 
 	if state.State == "orphaned" {

@@ -57,13 +57,13 @@ func deviceMeasurement(v deviceObject, key string, capacity bool) string {
 }
 func deviceRow(c *ui.Context, label, value string) {
 	if compactLayout(c) {
-		ui.Column(c).Gap(c.Theme().Space(1)).Children(func() {
+		ui.Column(c).Gap(tokens(c).Density.Tight).Children(func() {
 			ui.Text(c, label).TextColor(c.Theme().TextMuted)
 			ui.Text(c, value).Selectable().Label(label + "：" + value)
 		})
 		return
 	}
-	ui.Row(c).Gap(c.Theme().Space(4)).Children(func() {
+	ui.Row(c).Gap(tokens(c).Density.Section).Children(func() {
 		ui.Text(c, label).Width(c.Theme().Rem(10)).TextColor(c.Theme().TextMuted)
 		ui.Text(c, value).Grow(1).MinWidth(0).Selectable().Label(label + "：" + value)
 	})
@@ -98,6 +98,7 @@ func parseDeviceSnapshot(raw json.RawMessage) (deviceObject, error) {
 }
 
 func (s *viewState) deviceView(c *ui.Context) {
+	t := tokens(c)
 	ui.Row(c).Wrap().Children(func() {
 		heading(c, "设备", 1).Grow(1)
 		if s.device.Refreshing {
@@ -111,7 +112,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 	}
 	errorView(c, s.device.LastError)
 	if s.device.LastError != nil {
-		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
+		ui.Row(c).Wrap().Gap(t.Density.CardGap).Children(func() {
 			s.deviceRefreshButton(c, "重试")
 			if button(c, "前往设置").Clicked() {
 				s.selected = "settings"
@@ -119,13 +120,13 @@ func (s *viewState) deviceView(c *ui.Context) {
 		})
 	}
 	if parseError != nil {
-		ui.Text(c, "设备快照无法读取。请重新采集；仍然失败时检查设置。").TextColor(c.Theme().Danger)
+		ui.Text(c, "设备快照无法读取。请重新采集；仍然失败时检查设置。").TextColor(stateColor(c, stateDanger))
 		s.deviceRefreshButton(c, "重新采集设备")
 		button(c, "检查设备设置").AlignSelf(ui.Start).OnClick(func() { s.selected = "settings" })
 		return
 	}
 	if snapshot == nil && s.device.LastError == nil && !s.device.Refreshing {
-		ui.Column(c).AlignItems(ui.Center).Gap(c.Theme().Space(3)).Padding(40).Background(c.Theme().Surface).Radius(12).Children(func() {
+		ui.Column(c).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Card.EmptyPadding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Children(func() {
 			heading(c, "尚无设备快照", 2)
 			ui.Text(c, "设备检查会采集硬件、GPU 与本地模型信息，不会向模型发送请求。")
 			if button(c, "前往设置配置模型目录").Clicked() {

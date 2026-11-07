@@ -19,7 +19,8 @@ func aggregateStatus(runs []core.RunSummary) string {
 	return stateLabel(state)
 }
 func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
-	ui.Column(c.Key(r.Path)).Gap(6).Padding(10).Children(func() {
+	t := tokens(c)
+	ui.Column(c.Key(r.Path)).Gap(t.Density.Inset).Padding(t.Density.CardGap).Children(func() {
 		ui.Text(c, r.RunId+" · "+stateLabel(r.Status)).Bold()
 		ui.Text(c, text(r.ModelName)+" · "+text(r.Bundle)+" · "+text(r.Engine))
 		ui.Text(c, displayName(r.Path)).Selectable()
@@ -35,7 +36,7 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 		componentFold(c, "运行原始详情", func() {
 			ui.Text(c, "关系："+text(r.Relation)+" · 来源："+text(r.ParentRunId)+" · 开始："+text(r.StartedAt)+" · 结束："+text(r.FinishedAt)).Selectable()
 		})
-		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
+		ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
 			button(c, "进入任务").OnClick(func() {
 				s.detailID = ""
 				s.resumeSource = nil
@@ -73,7 +74,7 @@ func (s *viewState) resumeView(c *ui.Context) {
 		field(c, "endpoint_url（可选）", &s.endpoint).Description("本机服务 URL；与 PID 同时填写或同时省略。").Error(endpointError)
 		field(c, "server_pid（与 endpoint 同给同省）", &s.pid).Description("正整数；不填写时沿用来源配置。").Error(pidError)
 		ui.Text(c, "不填写时沿用来源配置；来源是否可续测由 CLI 最终裁决。")
-		ui.Row(c).Wrap().Gap(c.Theme().Space(2.5)).Children(func() {
+		ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
 			if primaryButton(c, "确认续测").AlignSelf(ui.Start).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
 				s.resume()
 			}

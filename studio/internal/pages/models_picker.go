@@ -99,8 +99,8 @@ func (s *viewState) selectionView(c *ui.Context) {
 		ui.Form(c, fields)
 	}
 	if el := s.eligibility(s.engine); s.engine != "" && el.State == core.EngineCheckIneligible {
-		ui.Row(c).Wrap().Gap(c.Theme().Space(2)).Children(func() {
-			statusBadge(c, "当前选择不可用", c.Theme().Warning)
+		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
+			statusBadge(c, "当前选择不可用", stateColor(c, stateWarning))
 			ui.Text(c, s.engine+" · "+human(el.Reason)+"。请重新选择。")
 		})
 	}

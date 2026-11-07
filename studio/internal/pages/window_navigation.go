@@ -24,17 +24,17 @@ func (s *viewState) selectPage(id string) {
 }
 
 func (s *viewState) leftNav(c *ui.Context) {
-	t := c.Theme()
+	t := tokens(c)
 	ui.Column(c).FillWidth().MinWidth(0).Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
 		components.Sidebar(c).Children(func() {
-			components.Text(c, "InferYard Studio").Bold().FontSize(t.Rem(1)).
-				Padding(t.Space(2), t.Space(2), t.Space(1), t.Space(2)).SingleLine()
+			components.Text(c, "InferYard Studio").Bold().FontSize(t.Type.Body).
+				Padding(t.Density.Row, t.Density.Row, t.Density.Tight, t.Density.Row).SingleLine()
 			if s.service != nil {
 				if paths := s.service.BoundPaths(); paths != nil {
-					components.Text(c, "开发环境").Bold().FontSize(t.Rem(0.75)).
-						Padding(0, t.Space(2), 0, t.Space(2))
-					components.Text(c, paths.SourceLabel).FontSize(t.Rem(0.625)).
-						Padding(0, t.Space(2), t.Space(2), t.Space(2))
+					components.Text(c, "开发环境").Bold().FontSize(t.Type.ShellLabel).
+						Padding(0, t.Density.Row, 0, t.Density.Row)
+					components.Text(c, paths.SourceLabel).FontSize(t.Type.ShellDetail).
+						Padding(0, t.Density.Row, t.Density.Row, t.Density.Row)
 				}
 			}
 			button(c, "新任务").OnClick(func() { s.newBenchmark() })
