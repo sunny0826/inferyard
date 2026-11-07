@@ -51,7 +51,6 @@ type radiusTokens struct {
 // cardTokens describes the card surface and its empty-state variant.
 type cardTokens struct {
 	Padding      float32
-	Gap          float32
 	Border       float32
 	EmptyPadding float32
 }
@@ -163,7 +162,7 @@ func typeTokensFor(t *ui.Theme) typeTokens {
 
 func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
 	radius := radiusTokens{Surface: t.Space(3), Inset: t.Space(2)}
-	card := cardTokens{Padding: t.Space(4.5), Gap: t.Space(2.5), Border: 1, EmptyPadding: 40}
+	card := cardTokens{Padding: t.Space(4.5), Border: 1, EmptyPadding: 40}
 	metric := metricTokens{PaddingX: t.Space(4), PaddingY: t.Space(3.5), Gap: t.Space(1)}
 	return radius, card, metric
 }
