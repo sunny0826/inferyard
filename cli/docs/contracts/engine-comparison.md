@@ -45,6 +45,8 @@
 v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 
 - 先核验完整 batch，再按冻结槽位选择 run；从不按 `first_event_utc` 重排槽位。
+- layout 1 旧 run 不参与 v2 身份回退：只有 layout 2 的已验证 run envelope 才能提供
+  `trial_id`/`run_id`；layout 1 的 fallback 直接禁用，避免未校验身份被当成计划槽位。
 - 每个 run 必须绑定同一完整 `plan_sha256`、experiment 与 definition versions。
 - 交接链读取各 run 已封存的 `service_binding.previous_run_id`：首槽位必须为 null；
   后续必须精确等于前一冻结槽位选中 run 的 `run_id`。
@@ -58,13 +60,13 @@ v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 | `comparison_plan_required` | 计划不是上述受限形状，或缺少可用 plan |
 | `comparison_plan_hash_mismatch` | batch 冻结计划哈希与提交计划不同 |
 | `planned_run_missing` | 冻结槽位没有可用 run（错计划/重复尝试单独报） |
-| `comparison_unplanned_trial` | batch 内存在计划外 trial；`unplanned_run_present` 不再单独输出 |
+| `comparison_unplanned_trial` | batch 内存在计划外 trial；`unplanned_run_present` 不再单独输出；`run_set` 与 diagnostic 保留 `detail` 及底层 error |
 | `run_plan_mismatch` | run 绑定的计划哈希、experiment 或 definition versions 不同 |
 | `comparison_duplicate_trial_attempt` | 同 trial 多根、多次尝试或重复 run id |
 | `comparison_handoff_missing` | 缺已封存交接观测、字段缺失，或应有前驱为空 |
 | `comparison_handoff_broken` | 非首槽位前驱不是前一槽位选中 run（含跳槽位、跨 batch） |
 | `comparison_handoff_slot_mismatch` | 首槽位存在前驱 |
-| `comparison_history_identity_error` | 证据、计划、trial、run 或身份核验失败；含成功后缺槽位仍有后续 run |
+| `comparison_history_identity_error` | 证据、计划、trial、run 或身份核验失败；含成功后缺槽位仍有后续 run，以及无法归属计划槽位的拒绝污染整个 batch |
 | `comparison_history_cancelled` | `stop_reason = user_cancelled` 或存在 cancelled 终态 |
 | `comparison_history_failed` | 其他非 `plan_finished` 停止，或存在 failed/invalid/not_executed |
 | `comparison_history_incomplete` | 全部请求 completed 但 scope/evidence 不完整 |
@@ -78,7 +80,13 @@ v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 
 - 按冻结槽位顺序返回首个 `{trial_id, run_id, reason, detail}`；无停止返回 null。
 - 取消、执行失败、身份错误或成功后缺槽位却已有后续 run 时阻断，不再派发后续槽位。
+- 计划外 trial 或 trial 为 null 的拒绝没有可归属槽位时，整个 batch 阻断：
+  返回 `comparison_history_identity_error`，detail 固定为 `rejection_outside_planned_slots`，
+  保留已知 trial/run 与底层 error；`run` 与 `resume` 同样停止。
+- 被拒绝的 trial 不得因同一 trial 的另一尝试可用而重新进入 selected runs、handoff 或指标。
 - 被拒绝的 run 保留已读取的 trial/run 身份与底层错误；确实无法证明 trial 的损坏记录不猜测归属。
+- 无 slot 可归属且不属于规范列表的拒绝原因统一为 `comparison_history_identity_error`，
+  不把 `EvidenceError` 等底层异常名复制到顶层 classification。
 - 后续污染 run 附在最早停止记录中，不改变其 trial/run/reason/detail；停止后的缺失尾部不单独报告。
 - 普通 batch history 校验 run/selection 的 schema relation 与 parent 一致性；comparison diagnostic history 在此之上保留拒绝分类。
 
@@ -86,41 +94,19 @@ v2 的分类与共享停止粒度映射：
 
 | v2 分类 | 共享停止 | 说明 |
 | --- | --- | --- |
-| `comparison_unplanned_trial` | 无对应槽位停止 | run 的 trial 不属于冻结计划；保留 trial/run/path，不能猜测归属到某个计划槽位 |
+| `comparison_unplanned_trial` | `comparison_history_identity_error`，detail 为 `rejection_outside_planned_slots` | run 的 trial 不属于冻结计划；保留 trial/run/path 与底层 error，不能猜测归属到某个计划槽位 |
 | `run_plan_mismatch` | `comparison_history_identity_error`，detail 为 `run_plan_mismatch` | run 已绑定计划槽位，但计划哈希、experiment 或 definition versions 不匹配 |
-| `comparison_duplicate_trial_attempt` | `comparison_history_identity_error`，detail 为重复根原因或 `duplicate_run_id` | 同 trial 多个 initial/repeat 根或重复 run id；拒绝项不进入 handoff 或指标 |
+| `comparison_duplicate_trial_attempt` | `comparison_history_identity_error`，detail 为重复根原因或 `duplicate_run_id` | 同 trial 多个 initial/repeat 根或重复 run id；拒绝 trial 不进入 selected runs、handoff 或指标 |
 - 完整成功要求 scope/evidence complete 且全部请求终态为 completed；
   模型答错但请求 completed、或 `unscorable` 不按执行失败处理。
 - 正常 `awaiting_handoff` 不是 run 终态，不触发停止。
 - `resume`、普通 `run --plan` 遇到比较停止时返回 `comparison_history_stopped`；
   `resume` 不能借同一 trial 的第二次尝试追加槽位。
 - 普通计划、`resume` 与长上下文专项不匹配上述受限形状，保持原语义。
-## 冻结调优声明
 
-`local-engine-config.v1` 的 `engine.tuning` 可选，键为
-`flash_attention`、`batch_size`、`ubatch_size`、`kv_cache_type_k`、
-`kv_cache_type_v`、`gpu_layers`（取值为启动参数文本）及 `prompt_cache`（`enabled`/`disabled`）。
+## 冻结调优与温度停止覆盖
 
-- llama-cpp：声明值必须与 `startup_args` 中对应选项一致，否则配置拒绝；
-  绑定已核验实际进程 argv，所以观察来源为 `verified_startup_args`，
-  未出现的选项记为 `engine_default`。
-  `prompt_cache = disabled` 时请求体额外发送 `cache_prompt: false`。
-- lmstudio：没有经核验的加载参数观察，声明任何调优键或 `prompt_cache` 均拒绝；
-  比较中全部调优键为 unknown（`lmstudio_load_parameters_not_exposed`）。
-- mlx-lm：同样不接受调优声明，调优键为 unknown（`mlx-lm_load_parameters_not_exposed`）。
-
-`config create --installation` 提供 `--prompt-cache disabled`（仅 llama-cpp）写入上述声明；
-`--temperature-stop-override-reason TEXT` 写入 `safety.temperature_stop_override_reason`。
-两个选项用于旧 `--engine` 或 `--runtime-receipt` 候选时拒绝
-（`local_engine_installation_required`）。
-
-## 温度停止覆盖
-
-`safety.temperature_stop_override_reason` 可选，非空且不超过 1024 字符。
-存在时单服务计划把 `experiment.safety.max_temperature_celsius` 冻结为 null；
-`require_temperature` 仍为 true，温度源缺失仍停止，读数照常写入证据。
-运行准入要求两者一致：有声明必须为 null 阈值，无声明时 null 阈值或超过配置阈值
-都返回 `local_engine_safety_policy_required`。
+见[调优与温度覆盖](engine-comparison-tuning.md)。
 
 ## 身份门槛（每个配对块）
 

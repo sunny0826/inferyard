@@ -79,6 +79,7 @@ def _assert_duplicate(
     assert document["run_set"]["duplicates"][0]["detail"] == "duplicate_run_id"
     assert document["history_stop"]["trial_id"] == slot["trial_id"]
     assert document["history_stop"]["run_id"] == first.name
+    _assert_not_selected(document, first.name)
 
 
 def assert_rejected_run_identity(
@@ -262,7 +263,13 @@ def _assert_duplicate_initial(
     _assert_not_selected(document, target.name)
 
 
-def _assert_unplanned(tmp_path: Path, plan: JSONRecord, second_trial: str) -> None:
+def _assert_unplanned(
+    tmp_path: Path,
+    plan: JSONRecord,
+    second_trial: str,
+    request: CommandRequest,
+    deps: TrialDependencies,
+) -> None:
     def unplanned(run: JSONRecord, selection: JSONRecord) -> None:
         run["trial_id"] = "trial-unplanned"
         selection["trial_id"] = "trial-unplanned"
@@ -276,12 +283,28 @@ def _assert_unplanned(tmp_path: Path, plan: JSONRecord, second_trial: str) -> No
         and row["run_id"] == target.name
         for row in diagnostics
     )
+    unplanned_row = document["run_set"]["unplanned"][0]
+    assert unplanned_row["detail"] == "unplanned_run_present"
+    assert unplanned_row["error"]["reason"] == "trial_not_in_plan"
     assert any(
         row["reason"] == "comparison_unplanned_trial"
         and row["trial_id"] == "trial-unplanned"
+        and row["error"]["reason"] == "trial_not_in_plan"
         for row in document["diagnostics"]
     )
     _assert_not_selected(document, target.name)
+    limited = tmp_path / "unplanned-only"
+    first_run_id = run_paths(tmp_path / "batch")[plan["trials"][0]["trial_id"]].name
+    _keep_two_slots(target.parent.parent, limited, {first_run_id, target.name})
+    limited_document = read_comparison_v2(tmp_path / "plan", limited)
+    assert limited_document["history_stop"]["detail"] == "rejection_outside_planned_slots"
+    for command in (
+        replace(request, output_root=limited),
+        CommandRequest("resume", from_run=limited / "runs" / target.name),
+    ):
+        code, result = asyncio.run(execute_async(command, deps))
+        assert code == 3 and result.status == "comparison_history_stopped"
+        assert result.details["comparison_stop"]["detail"] == "rejection_outside_planned_slots"
 
 
 def _assert_wrong_plan(tmp_path: Path, plan: JSONRecord, second_trial: str) -> None:
@@ -349,24 +372,108 @@ def _assert_invalid_resume(tmp_path: Path, plan: JSONRecord, second_trial: str) 
     assert document["eligible"] is False
 
 
-def _assert_unreadable(tmp_path: Path, plan: JSONRecord, second_trial: str) -> None:
+def _assert_unreadable(
+    tmp_path: Path,
+    plan: JSONRecord,
+    second_trial: str,
+    request: CommandRequest,
+    deps: TrialDependencies,
+) -> None:
     _, loaded = read_frozen_plan(tmp_path / "plan" / "plan.json")
     corrupt = tmp_path / "unreadable"
     shutil.copytree(tmp_path / "batch", corrupt)
     corrupt_run = run_paths(corrupt)[second_trial]
     (corrupt_run / "inputs.json").write_text("{}")
     _, diagnostics = history_diagnostics(corrupt, plan, loaded, None)
-    assert any(row["reason"] == "EvidenceError" for row in diagnostics)
+    assert any(row["reason"] == "comparison_history_identity_error" and row.get("error") for row in diagnostics)
     assert all(row.get("trial_id") != second_trial for row in diagnostics)
+    document = read_comparison_v2(tmp_path / "plan", corrupt)
+    assert all(row["reason"] != "EvidenceError" for row in document["diagnostics"])
+    assert any(
+        row["reason"] == "comparison_history_identity_error" and row.get("error")
+        for row in document["diagnostics"]
+    )
+    first_run_id = run_paths(tmp_path / "batch")[plan["trials"][0]["trial_id"]].name
+    limited = tmp_path / "unreadable-only"
+    _keep_two_slots(corrupt, limited, {first_run_id, corrupt_run.name})
+    limited_document = read_comparison_v2(tmp_path / "plan", limited)
+    assert limited_document["history_stop"]["detail"] == "rejection_outside_planned_slots"
+    for command in (
+        replace(request, output_root=limited),
+        CommandRequest("resume", from_run=limited / "runs" / corrupt_run.name),
+    ):
+        code, result = asyncio.run(execute_async(command, deps))
+        assert code == 3 and result.status == "comparison_history_stopped"
     try:
         history(tmp_path / "wrong-definition", plan, loaded, full_verification=True)
     except Exception as exc:
-        assert str(exc)
+        assert not isinstance(exc, KeyError)
     else:
         raise AssertionError("ordinary history must fail fast")
 
 
-def assert_real_reader_classification(tmp_path: Path, plan: JSONRecord) -> None:
+def _keep_two_slots(source: Path, destination: Path, keep_names: set[str]) -> None:
+    shutil.copytree(source, destination)
+    for run in (destination / "runs").iterdir():
+        if run.name not in keep_names:
+            shutil.rmtree(run)
+
+
+def _assert_layout1_fallback(tmp_path: Path, plan: JSONRecord) -> None:
+    _, loaded = read_frozen_plan(tmp_path / "plan" / "plan.json")
+    batch = tmp_path / "layout1-batch"
+    (batch / "runs").mkdir(parents=True)
+    shutil.copy(tmp_path / "batch" / "batch.json", batch / "batch.json")
+    run_dir = batch / "runs" / "layout1"
+    run_dir.mkdir()
+    source = run_paths(tmp_path / "batch")[plan["trials"][0]["trial_id"]]
+    original = json.loads((source / "inputs.json").read_text())["documents"]["run"]["payload"]
+    (run_dir / "selection.json").write_bytes(json_bytes({"schema_version": 3}))
+    for name, payload in (
+        ("damaged", {"schema_version": 3}),
+        (
+            "forged",
+            {
+                **original,
+                "run_id": "unvalidated-run",
+                "trial_id": plan["trials"][0]["trial_id"],
+                "plan_sha256": plan["plan_sha256"],
+                "experiment_id": plan["experiment"]["experiment_id"],
+                "definition_versions": plan["experiment"]["definition_versions"],
+            },
+        ),
+    ):
+        (run_dir / "run.json").write_bytes(json_bytes(payload))
+        _, diagnostics = history_diagnostics(batch, plan, loaded, None)
+        assert all(
+            row.get("trial_id") is None
+            and row["reason"] == "comparison_history_identity_error"
+            and row.get("error")
+            for row in diagnostics
+        )
+        document = read_comparison_v2(tmp_path / "plan", batch)
+        assert all(row["reason"] != "EvidenceError" for row in document["diagnostics"])
+        assert all(
+            row.get("trial_id") != plan["trials"][0]["trial_id"]
+            or row["reason"] == "planned_run_missing"
+            for row in document["diagnostics"]
+        )
+        try:
+            history(batch, plan, loaded, full_verification=True)
+        except KeyError:
+            raise AssertionError(f"layout1 {name} leaked KeyError")
+        except Exception:
+            pass
+        else:
+            raise AssertionError("ordinary history must fail fast")
+
+
+def assert_real_reader_classification(
+    tmp_path: Path,
+    plan: JSONRecord,
+    request: CommandRequest,
+    deps: TrialDependencies,
+) -> None:
     first_trial = plan["trials"][0]["trial_id"]
     second_trial = plan["trials"][1]["trial_id"]
     workloads = {row["workload_id"]: row for row in plan["experiment"]["workloads"]}
@@ -377,8 +484,9 @@ def assert_real_reader_classification(tmp_path: Path, plan: JSONRecord) -> None:
         if workloads[trial["workload_id"]]["config"]["sha256"] == first_config
     )
     _assert_duplicate_initial(tmp_path, plan, first_trial, other_trial)
-    _assert_unplanned(tmp_path, plan, second_trial)
+    _assert_unplanned(tmp_path, plan, second_trial, request, deps)
     _assert_wrong_plan(tmp_path, plan, second_trial)
     _assert_wrong_metadata(tmp_path, plan, second_trial)
     _assert_invalid_resume(tmp_path, plan, second_trial)
-    _assert_unreadable(tmp_path, plan, second_trial)
+    _assert_unreadable(tmp_path, plan, second_trial, request, deps)
+    _assert_layout1_fallback(tmp_path, plan)

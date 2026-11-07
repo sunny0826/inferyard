@@ -10,6 +10,7 @@ from pathlib import Path
 from inferyard.analysis.comparison_history import (
     DUPLICATE_ATTEMPT,
     HISTORY_IDENTITY_ERROR,
+    REJECTION_CLASSIFICATIONS,
     RUN_PLAN_MISMATCH,
     UNPLANNED_TRIAL,
 )
@@ -125,6 +126,8 @@ def _identity_classification(
 
 def _read_envelope_identity(path: Path) -> JSONRecord:
     reads = TrialEvidence(path.resolve(), projection=True)
+    if reads.layout_version != 2:
+        raise EvidenceError("identity_fallback_requires_layout2")
     return {"run": reads.input("run"), "selection": reads.input("selection")}
 
 
@@ -134,7 +137,10 @@ def _failure_identity(path: Path, plan: JSONRecord) -> RunRead | None:
     except (EvidenceError, ContractError, UnsupportedFormat, OSError, ValueError, KeyError, TypeError, IndexError):
         return None
     run = identity["run"]
-    classification, detail = _identity_classification(run, plan)
+    try:
+        classification, detail = _identity_classification(run, plan)
+    except (KeyError, TypeError):
+        return None
     return _rejected(
         path,
         classification or HISTORY_IDENTITY_ERROR,
@@ -458,8 +464,8 @@ def history_diagnostics(
     def collect(outcome: RunRead) -> None:
         exc = outcome.error
         reason = outcome.classification or outcome.code
-        if reason is None and exc is not None:
-            reason = "unsupported_format" if isinstance(exc, UnsupportedFormat) else type(exc).__name__
+        if reason not in REJECTION_CLASSIFICATIONS:
+            reason = HISTORY_IDENTITY_ERROR
         diagnostics.append(
             {
                 "reason": reason,

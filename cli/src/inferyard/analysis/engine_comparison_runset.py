@@ -6,6 +6,7 @@ from inferyard.analysis.comparison_types import JSONRecord, JSONValue
 from inferyard.analysis.comparison_history import (
     DUPLICATE_ATTEMPT,
     HISTORY_IDENTITY_ERROR,
+    REJECTION_CLASSIFICATIONS,
     RUN_PLAN_MISMATCH,
     UNPLANNED_TRIAL,
     comparison_history_stop,
@@ -63,7 +64,7 @@ def _observed_label(run: JSONRecord, entry: JSONRecord, slot: Slot | None) -> JS
     }
 
 
-def _reject_duplicate(
+def _reject_duplicate_run_id(
     run: JSONRecord, entry: JSONRecord, run_set: JSONRecord, rejected: set[str]
 ) -> None:
     run_set["duplicates"].append(
@@ -107,7 +108,7 @@ def _classify_entry(
         )
         return
     if run["run_id"] in seen:
-        _reject_duplicate(run, entry, run_set, rejected)
+        _reject_duplicate_run_id(run, entry, run_set, rejected)
         return
     seen.add(run["run_id"])
     reason = _plan_mismatch_reason(entry, plan)
@@ -150,11 +151,13 @@ def _reject_unplanned(run_set: JSONRecord, rejection: JSONRecord) -> None:
             "trial_id": rejection.get("trial_id"),
             "run_id": rejection.get("run_id"),
             "path": rejection.get("path"),
+            "detail": "unplanned_run_present",
+            "error": rejection.get("error"),
         }
     )
 
 
-def _reject_duplicate(
+def _reject_duplicate_attempt(
     run_set: JSONRecord, slot: Slot, rejection: JSONRecord
 ) -> None:
     run_set["duplicates"].append(
@@ -201,9 +204,10 @@ def _classify_rejections(
             _reject_unplanned(run_set, rejection)
             continue
         if slot is None:
+            canonical = reason if reason in REJECTION_CLASSIFICATIONS else HISTORY_IDENTITY_ERROR
             append_diagnostic(
                 diagnostics,
-                reason or HISTORY_IDENTITY_ERROR,
+                canonical,
                 trial_id=trial_id,
                 run_id=rejection.get("run_id"),
                 path=rejection.get("path"),
@@ -220,7 +224,7 @@ def _classify_rejections(
             }
         )
         if reason == DUPLICATE_ATTEMPT:
-            _reject_duplicate(run_set, slot, rejection)
+            _reject_duplicate_attempt(run_set, slot, rejection)
         else:
             _reject_mismatch(run_set, slot, rejection)
 
@@ -233,6 +237,8 @@ def _select_slots(
 ) -> dict[str, JSONRecord]:
     selected = {}
     for slot in slots:
+        if slot.trial_id in rejected:
+            continue
         attempts = by_trial.get(slot.trial_id, [])
         if not attempts:
             if slot.trial_id not in rejected:
@@ -276,7 +282,8 @@ def _run_set_diagnostics(run_set: JSONRecord, diagnostics: list[JSONRecord]) -> 
             UNPLANNED_TRIAL,
             trial_id=row["trial_id"],
             run_id=row["run_id"],
-            detail="unplanned_run_present",
+            detail=row.get("detail") or "unplanned_run_present",
+            error=row.get("error"),
         )
     for row in run_set["mismatched"]:
         append_diagnostic(

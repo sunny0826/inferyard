@@ -148,6 +148,16 @@ def test_run_with_another_plan_hash_is_mismatched(tmp_path: Path) -> None:
     assert reasons(document) == [RUN_PLAN_MISMATCH]
 
 
+def test_duplicate_run_id_direct_entry_is_classified(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    runs.append(deepcopy(runs[0]))
+    document = evaluate_comparison(plan, runs)
+    assert "comparison_duplicate_trial_attempt" in reasons(document)
+    assert document["run_set"]["duplicates"][0]["detail"] == "duplicate_run_id"
+    assert document["eligible"] is False
+
+
 def test_duplicate_trial_attempt_blocks(tmp_path: Path) -> None:
     plan, _ = plan_with_slots(tmp_path)
     runs = synthetic_runs(plan)

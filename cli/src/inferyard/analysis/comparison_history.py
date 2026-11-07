@@ -18,6 +18,9 @@ HISTORY_INCOMPLETE = "comparison_history_incomplete"
 UNPLANNED_TRIAL = "comparison_unplanned_trial"
 RUN_PLAN_MISMATCH = "run_plan_mismatch"
 DUPLICATE_ATTEMPT = "comparison_duplicate_trial_attempt"
+REJECTION_CLASSIFICATIONS = frozenset(
+    {HISTORY_IDENTITY_ERROR, UNPLANNED_TRIAL, RUN_PLAN_MISMATCH, DUPLICATE_ATTEMPT}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +98,27 @@ def _rejection_stop(
     )
 
 
+def _batch_rejection_stop(rejections: tuple[JSONRecord, ...] | list[JSONRecord]) -> JSONRecord | None:
+    for rejection in rejections:
+        if rejection.get("trial_id") is not None and rejection.get("reason") != UNPLANNED_TRIAL:
+            continue
+        detail = "rejection_outside_planned_slots"
+        error = rejection.get("error") or {
+            "reason": rejection.get("detail") or rejection.get("reason") or detail
+        }
+        stop = {
+            "reason": HISTORY_IDENTITY_ERROR,
+            "detail": detail,
+            "subsequent_run_ids": [],
+            "error": error,
+        }
+        for key in ("trial_id", "run_id"):
+            if rejection.get(key) is not None:
+                stop[key] = rejection[key]
+        return stop
+    return None
+
+
 def _later_run_ids(
     slots: tuple[Slot, ...], position: int, by_trial: dict[str, list[JSONRecord]]
 ) -> list[str]:
@@ -118,6 +142,7 @@ def comparison_history_stop(
     enter handoff or bundle metrics.
     """
     slots, by_trial = _attempts(plan, runs)
+    batch_stop = _batch_rejection_stop(rejections)
     rejected_by_trial = {}
     for rejection in rejections:
         trial_id = rejection.get("trial_id")
@@ -142,6 +167,8 @@ def comparison_history_stop(
                 stop["subsequent_run_ids"] = _later_run_ids(slots, position, by_trial)
                 return stop
             continue
+        if batch_stop is not None:
+            return batch_stop
         later = _later_run_ids(slots, position, by_trial)
         if later:
             return _stop(
@@ -151,7 +178,7 @@ def comparison_history_stop(
                 "subsequent_run_present",
                 StopEvidence(subsequent=tuple(later)),
             )
-    return None
+    return batch_stop
 
 
 def _execution_stop(slot: Slot, entry: JSONRecord) -> JSONRecord | None:
