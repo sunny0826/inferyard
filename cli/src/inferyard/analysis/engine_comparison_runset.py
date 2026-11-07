@@ -65,17 +65,37 @@ def _observed_label(run: JSONRecord, entry: JSONRecord, slot: Slot | None) -> JS
 
 
 def _reject_duplicate_run_id(
-    run: JSONRecord, entry: JSONRecord, run_set: JSONRecord, rejected: set[str]
+    run: JSONRecord,
+    entry: JSONRecord,
+    run_set: JSONRecord,
+    rejected: set[str],
+    reported: set[tuple[str, str]],
 ) -> None:
-    run_set["duplicates"].append(
-        {
-            "trial_id": run["trial_id"],
-            "run_id": run["run_id"],
-            "path": str(entry.get("path")),
-            "detail": "duplicate_run_id",
-        }
-    )
+    path = str(entry.get("path"))
+    key = (run["run_id"], path)
+    if key not in reported:
+        reported.add(key)
+        run_set["duplicates"].append(
+            {
+                "trial_id": run["trial_id"],
+                "run_id": run["run_id"],
+                "path": path,
+                "detail": "duplicate_run_id",
+            }
+        )
     rejected.add(run["trial_id"])
+
+
+def _register_identity(entry: JSONRecord, state: JSONRecord) -> None:
+    run = entry["run"]
+    seen, rejected = state["seen"], state["rejected"]
+    reported = state["duplicate_paths"]
+    if run["run_id"] in seen:
+        original = seen[run["run_id"]]
+        _reject_duplicate_run_id(original["run"], original, state["run_set"], rejected, reported)
+        _reject_duplicate_run_id(run, entry, state["run_set"], rejected, reported)
+        return
+    seen[run["run_id"]] = entry
 
 
 def _classify_entry(
@@ -101,18 +121,18 @@ def _classify_entry(
             }
         )
         rejected.add(run["trial_id"])
+        _register_identity(entry, state)
         return
     if position is None:
         run_set["unplanned"].append(
             {"trial_id": run["trial_id"], "run_id": run["run_id"], "path": str(entry.get("path"))}
         )
+        _register_identity(entry, state)
         return
-    if run["run_id"] in seen:
-        original = seen[run["run_id"]]
-        _reject_duplicate_run_id(original["run"], original, run_set, rejected)
-        _reject_duplicate_run_id(run, entry, run_set, rejected)
+    duplicate = run["run_id"] in seen
+    _register_identity(entry, state)
+    if duplicate:
         return
-    seen[run["run_id"]] = entry
     reason = _plan_mismatch_reason(entry, plan)
     if reason is not None:
         run_set["mismatched"].append(
@@ -141,7 +161,13 @@ def _classify_runs(
     }
     index = {slot.trial_id: position for position, slot in enumerate(slots)}
     by_trial, seen, rejected = {}, {}, set()
-    state = {"run_set": run_set, "by_trial": by_trial, "seen": seen, "rejected": rejected}
+    state = {
+        "run_set": run_set,
+        "by_trial": by_trial,
+        "seen": seen,
+        "rejected": rejected,
+        "duplicate_paths": set(),
+    }
     for entry in runs:
         _classify_entry(plan, slots, index, entry, state)
     return run_set, by_trial, rejected
@@ -207,6 +233,15 @@ def _classify_rejections(
             continue
         if slot is None:
             canonical = reason if reason in REJECTION_CLASSIFICATIONS else HISTORY_IDENTITY_ERROR
+            if reason == DUPLICATE_ATTEMPT:
+                run_set["duplicates"].append(
+                    {
+                        "trial_id": trial_id,
+                        "run_id": rejection.get("run_id"),
+                        "path": rejection.get("path"),
+                        "detail": rejection.get("detail") or "duplicate_run_id",
+                    }
+                )
             append_diagnostic(
                 diagnostics,
                 canonical,
@@ -483,9 +518,16 @@ def build_run_set(
     diagnostics: list[JSONRecord] = []
     if not plan_hash_ok:
         append_diagnostic(diagnostics, PLAN_HASH_MISMATCH, detail="batch_plan_mismatch")
-    history_stop = comparison_history_stop(plan, runs, rejections)
     run_set, by_trial, rejected = _classify_runs(plan, slots, runs)
     _classify_rejections(slots, run_set, rejected, rejections, diagnostics)
+    duplicate_rejections = [
+        {"reason": DUPLICATE_ATTEMPT, **row}
+        for row in run_set["duplicates"]
+        if row["detail"] == "duplicate_run_id"
+    ]
+    history_stop = comparison_history_stop(
+        plan, runs, [*rejections, *duplicate_rejections]
+    )
     selected = _select_slots(run_set, slots, by_trial, rejected)
     _trim_missing_tails(run_set, None if history_stop is None else history_stop.get("trial_id"))
     _run_set_diagnostics(run_set, diagnostics)

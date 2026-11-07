@@ -1,14 +1,19 @@
 """Sealed-copy assertions for comparison stop priority and duplicate run ids."""
 
 import asyncio
+import json
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
 from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.analysis.engine_comparison_v2 import read_comparison_v2
 from inferyard.application.types import CommandRequest
+from inferyard.application.verification import execute as verify
+from inferyard.config.comparison_plan import comparison_slots
 from inferyard.config.plan_inputs import read_frozen_plan
+from inferyard.evidence.storage import EvidenceError, json_bytes
 from inferyard.runtime.batch_runner import execute_async
 from inferyard.runtime.history_state import history_diagnostics
 from inferyard.runtime.trial_runner import TrialDependencies
@@ -76,6 +81,144 @@ def assert_stop_priority(
         comparison_stop = result.details["comparison_stop"]
         assert comparison_stop["trial_id"] == plan["trials"][1]["trial_id"]
         assert comparison_stop["detail"] == "subsequent_run_present"
+
+
+
+def _duplicate_copy(
+    tmp_path: Path,
+    plan: JSONRecord,
+    name: str,
+    mutate: Callable[[JSONRecord, JSONRecord], None],
+) -> tuple[Path, Path, Path | None, JSONRecord]:
+    first_trial = plan["trials"][0]["trial_id"]
+    slots = comparison_slots(plan)
+    target_trial = next(
+        slot.trial_id for slot in slots if slot.bundle_key != slots[0].bundle_key
+    )
+    copy = tmp_path / name
+    shutil.copytree(tmp_path / "batch", copy)
+    paths = run_paths(copy)
+    source = paths[first_trial]
+    target = paths.get(target_trial)
+    duplicate = copy / "runs" / f"{name}-copy"
+    shutil.copytree(source, duplicate)
+    mutate_run_documents(duplicate, mutate)
+    return copy, source, target, read_comparison_v2(tmp_path / "plan", copy)
+
+
+def _duplicate_unplanned(tmp_path: Path, plan: JSONRecord) -> None:
+    def unplanned(run: JSONRecord, selection: JSONRecord) -> None:
+        run["trial_id"] = "trial-unplanned-xyz"
+        selection["trial_id"] = "trial-unplanned-xyz"
+
+    _, source, _, document = _duplicate_copy(tmp_path, plan, "dup-unplanned", unplanned)
+    rows = [
+        row
+        for row in document["run_set"]["duplicates"]
+        if row["detail"] == "duplicate_run_id"
+    ]
+    assert {row["trial_id"] for row in rows} == {
+        plan["trials"][0]["trial_id"],
+        "trial-unplanned-xyz",
+    }
+    assert document["run_set"]["unplanned"]
+    _assert_not_selected(document, source.name)
+
+
+def _duplicate_bundle(tmp_path: Path, plan: JSONRecord) -> None:
+    slots = comparison_slots(plan)
+    target_trial = next(
+        slot.trial_id for slot in slots if slot.bundle_key != slots[0].bundle_key
+    )
+
+    def retrial(run: JSONRecord, selection: JSONRecord) -> None:
+        run["trial_id"] = target_trial
+        selection["trial_id"] = target_trial
+
+    _, source, target, document = _duplicate_copy(tmp_path, plan, "dup-bundle", retrial)
+    rows = [
+        row
+        for row in document["run_set"]["duplicates"]
+        if row["detail"] == "duplicate_run_id"
+    ]
+    assert {row["trial_id"] for row in rows} == {
+        plan["trials"][0]["trial_id"],
+        target_trial,
+    }
+    _assert_not_selected(document, source.name)
+    if target is not None:
+        _assert_not_selected(document, target.name)
+
+
+def _duplicate_same_trial(tmp_path: Path, plan: JSONRecord) -> None:
+    first_trial = plan["trials"][0]["trial_id"]
+    same = tmp_path / "dup-same-rejection"
+    shutil.copytree(tmp_path / "batch", same)
+    source = run_paths(same)[first_trial]
+    duplicate = same / "runs" / "same-rejection-copy"
+    shutil.copytree(source, duplicate)
+
+    def wrong_plan(run: JSONRecord, _: JSONRecord) -> None:
+        run["plan_sha256"] = "f" * 64
+
+    mutate_run_documents(duplicate, wrong_plan)
+    document = read_comparison_v2(tmp_path / "plan", same)
+    assert any(
+        row["detail"] == "duplicate_run_id" and row["trial_id"] == first_trial
+        for row in document["run_set"]["duplicates"]
+    )
+    assert document["run_set"]["mismatched"]
+    _assert_not_selected(document, source.name)
+
+
+def assert_duplicate_with_rejections(tmp_path: Path, plan: JSONRecord) -> None:
+    _duplicate_unplanned(tmp_path, plan)
+    _duplicate_bundle(tmp_path, plan)
+    _duplicate_same_trial(tmp_path, plan)
+
+
+def assert_batch_envelope_rejections(tmp_path: Path) -> None:
+    batch = tmp_path / "batch"
+    original = json.loads((batch / "batch.json").read_text())
+
+    def schema_float(meta: JSONRecord) -> None:
+        meta["schema_version"] = 3.0
+
+    def diagnostic_int(meta: JSONRecord) -> None:
+        meta["diagnostic"] = 0
+
+    def empty_identity(meta: JSONRecord) -> None:
+        meta["implementation_identity"] = {}
+
+    def bad_tool(meta: JSONRecord) -> None:
+        meta["tool_source_sha256"] = "0" * 63
+
+    for name, mutate in (
+        ("schema-float", schema_float),
+        ("diagnostic-int", diagnostic_int),
+        ("empty-identity", empty_identity),
+        ("bad-tool", bad_tool),
+    ):
+        copy = tmp_path / f"envelope-{name}"
+        shutil.copytree(batch, copy)
+        meta = dict(original)
+        mutate(meta)
+        (copy / "batch.json").write_bytes(json_bytes(meta))
+        document = read_comparison_v2(tmp_path / "plan", copy)
+        assert document["eligible"] is False
+        assert any(
+            row["reason"] == "comparison_history_identity_error"
+            and row["detail"] == "batch_envelope_invalid"
+            and row.get("error")
+            and "type" not in row["error"]
+            for row in document["diagnostics"]
+        )
+        try:
+            code, _ = verify(CommandRequest("verify", run=copy))
+        except (EvidenceError, ValueError, TypeError):
+            pass
+        else:
+            assert code != 0
 
 
 def _assert_duplicate_rows(

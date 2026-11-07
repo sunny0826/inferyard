@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.analysis.comparison_history import (
     HISTORY_IDENTITY_ERROR,
@@ -43,7 +42,9 @@ from inferyard.config.comparison_plan import (
 from inferyard.config.loader import LoadedConfig
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.contracts.validation import ContractError
+from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.storage import EvidenceError, read_json
+from inferyard.runtime.batch_envelope import validate_batch_envelope
 from inferyard.runtime.batch_state import history_diagnostics
 
 DEFINITION = "engine-comparison.v2"
@@ -143,30 +144,27 @@ def _read_plan(
 def _read_batch(root: Path, plan: JSONRecord, plan_path: Path) -> tuple[bool, JSONRecord | None]:
     try:
         metadata = read_json(root / "batch.json")
-    except (EvidenceError, ContractError, OSError, ValueError, TypeError) as exc:
+        validate_batch_envelope(metadata)
+    except (
+        EvidenceError,
+        ContractError,
+        UnsupportedFormat,
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        IndexError,
+    ) as exc:
         return True, _empty(
             plan,
             plan_path,
             {
                 "reason": HISTORY_IDENTITY_ERROR,
                 "detail": "batch_envelope_invalid",
-                "error": {"type": type(exc).__name__, "reason": str(exc)},
+                "error": {"reason": str(exc) or type(exc).__name__},
             },
         )
-    if type(metadata) is not dict:
-        return True, _empty(
-            plan,
-            plan_path,
-            {
-                "reason": HISTORY_IDENTITY_ERROR,
-                "detail": "batch_envelope_invalid",
-                "error": {"type": type(metadata).__name__, "reason": "batch envelope is not an object"},
-            },
-        )
-    plan_hash_ok = (
-        metadata.get("schema_version") == SCHEMA_VERSION
-        and metadata.get("plan_sha256") == plan["plan_sha256"]
-    )
+    plan_hash_ok = metadata["plan_sha256"] == plan["plan_sha256"]
     runs_root = root / "runs"
     if not runs_root.is_dir() or runs_root.is_symlink():
         return plan_hash_ok, _empty(

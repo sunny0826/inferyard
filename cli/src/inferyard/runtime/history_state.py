@@ -24,6 +24,7 @@ from inferyard.evidence.storage import EvidenceError, read_json
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.implementation_identity import execution_matches
 from inferyard.provenance import tool_source_hash
+from inferyard.runtime.batch_envelope import validate_batch_envelope
 
 
 def _args_without_endpoint(args: list[str]) -> list[str]:
@@ -51,6 +52,7 @@ def _history_scope(
     root: Path, allow_tool_change: bool, source_identity: str | None
 ) -> tuple[JSONRecord, str]:
     metadata = read_json(root / "batch.json")
+    validate_batch_envelope(metadata)
     expected_tool = (
         metadata.get("tool_source_sha256")
         if allow_tool_change
@@ -175,6 +177,8 @@ def _load_run(path: Path, context: HistoryContext) -> tuple[JSONRecord, JSONReco
 
 def _identity_code(data: JSONRecord, context: HistoryContext) -> str | None:
     run = data["run"]
+    if context.metadata["plan_sha256"] != context.plan["plan_sha256"]:
+        return "batch_plan_identity_mismatch"
     if run["plan_sha256"] != context.plan["plan_sha256"] or run["trial_id"] not in {
         trial["trial_id"] for trial in context.plan["trials"]
     }:
@@ -312,37 +316,54 @@ def _ordered_group(
     return ordered, None
 
 
+@dataclass(frozen=True, slots=True)
+class _RunIdentity:
+    path: Path
+    run_id: str | None
+    trial_id: str | None
+
+
 @dataclass(slots=True)
 class _CollectState:
     by_id: dict[str, JSONRecord]
     groups: dict[str, list[JSONRecord]]
     on_error: Callable[[RunRead], None]
     reported_duplicates: set[str]
+    seen: dict[str, _RunIdentity]
 
 
 def _reject_duplicate_run(
-    state: _CollectState, original: JSONRecord, path: Path, run: JSONRecord
+    state: _CollectState, original: _RunIdentity, current: _RunIdentity
 ) -> None:
-    if run["run_id"] not in state.reported_duplicates:
-        state.reported_duplicates.add(run["run_id"])
+    if current.run_id not in state.reported_duplicates:
+        state.reported_duplicates.add(current.run_id)
         state.on_error(
             _rejected(
-                original["path"],
+                original.path,
                 "batch_run_identity_mismatch",
-                original["run"],
+                {"run_id": original.run_id, "trial_id": original.trial_id},
                 classification=DUPLICATE_ATTEMPT,
                 detail="duplicate_run_id",
             )
         )
     state.on_error(
         _rejected(
-            path,
+            current.path,
             "batch_run_identity_mismatch",
-            run,
+            {"run_id": current.run_id, "trial_id": current.trial_id},
             classification=DUPLICATE_ATTEMPT,
             detail="duplicate_run_id",
         )
     )
+
+
+def _register_identity(state: _CollectState, identity: _RunIdentity) -> None:
+    if identity.run_id is None:
+        return
+    if identity.run_id in state.seen:
+        _reject_duplicate_run(state, state.seen[identity.run_id], identity)
+        return
+    state.seen[identity.run_id] = identity
 
 
 def _collect_run(path: Path, context: HistoryContext, state: _CollectState) -> None:
@@ -353,19 +374,26 @@ def _collect_run(path: Path, context: HistoryContext, state: _CollectState) -> N
         if identity is None:
             state.on_error(RunRead(path, error=exc))
         else:
-            state.on_error(
-                RunRead(
-                    path,
-                    code=identity.code,
-                    error=exc,
-                    trial_id=identity.trial_id,
-                    run_id=identity.run_id,
-                    classification=identity.classification,
-                    detail=identity.detail,
-                )
+            rejected = RunRead(
+                path,
+                code=identity.code,
+                error=exc,
+                trial_id=identity.trial_id,
+                run_id=identity.run_id,
+                classification=identity.classification,
+                detail=identity.detail,
             )
+            _register_identity(
+                state,
+                _RunIdentity(path, identity.run_id, identity.trial_id),
+            )
+            state.on_error(rejected)
         return
     if outcome.code is not None or outcome.error is not None:
+        _register_identity(
+            state,
+            _RunIdentity(outcome.path, outcome.run_id, outcome.trial_id),
+        )
         state.on_error(outcome)
         return
     data = outcome.data
@@ -373,8 +401,9 @@ def _collect_run(path: Path, context: HistoryContext, state: _CollectState) -> N
         state.on_error(RunRead(path, error=EvidenceError("invalid_run_projection")))
         return
     run = data["run"]
-    if run["run_id"] in state.by_id:
-        _reject_duplicate_run(state, state.by_id[run["run_id"]], path, run)
+    duplicate = run["run_id"] in state.seen
+    _register_identity(state, _RunIdentity(path, run["run_id"], run["trial_id"]))
+    if duplicate:
         return
     state.by_id[run["run_id"]] = data
     state.groups[run["trial_id"]].append(data)
@@ -416,7 +445,7 @@ def _collect_history(
     context: HistoryContext, on_error: Callable[[RunRead], None]
 ) -> list[JSONRecord]:
     groups = {t["trial_id"]: [] for t in context.plan["trials"]}
-    state = _CollectState({}, groups, on_error, set())
+    state = _CollectState({}, groups, on_error, set(), {})
     for path in sorted((context.root / "runs").iterdir()):
         _collect_run(path, context, state)
     return _ordered_groups(state.groups, state.by_id, state.on_error)

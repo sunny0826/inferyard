@@ -1,11 +1,14 @@
 """Direct offline verification without creating a derived report."""
 
-from inferyard.application.types import CommandResult
+from pathlib import Path
+
+from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.config.engine_fit import load_plan
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, local_file, read_json
-from inferyard.implementation_identity import validate_identity
+from inferyard.runtime.batch_envelope import validate_batch_envelope
 
 
 def _trial(data, sealed):
@@ -22,7 +25,35 @@ def _trial(data, sealed):
     }
 
 
-def execute(request, kind):
+def _verify_batch(root: Path) -> tuple[JSONRecord, bool]:
+    from inferyard.runtime.batch_state import history
+
+    plan, loaded = read_frozen_plan(local_file(root, "frozen-plan/plan.json"))
+    meta = read_json(local_file(root, "batch.json"))
+    validate_batch_envelope(meta, plan["plan_sha256"])
+    local_file(root, "runs")
+    runs = history(root, plan, loaded, allow_tool_change=True, full_verification=True)
+    trials = [_trial(data, data["manifest_sealed"]) for data in runs]
+    complete = bool(trials) and all(t["verified"] for t in trials)
+    missing = sorted(
+        {t["trial_id"] for t in plan["trials"]} - {data["run"]["trial_id"] for data in runs}
+    )
+    details = {
+        "verified": complete,
+        "sealed": False,
+        "integrity": "frozen_inputs_and_trial_seals",
+        "semantic_validation": True,
+        "execution_completeness": "complete"
+        if not missing and all(t["execution_completeness"] == "complete" for t in trials)
+        else "incomplete",
+        "trials": trials,
+        "planned_trials": len(plan["trials"]),
+        "missing_trials": missing,
+    }
+    return details, complete
+
+
+def execute(request: CommandRequest, kind: str) -> tuple[int, CommandResult]:
     root = request.run
     if kind == "engine-fit":
         from dataclasses import replace
@@ -54,57 +85,7 @@ def execute(request, kind):
         details = _trial(data, metadata["manifest"] is not None)
         complete = details["verified"]
     else:
-        from inferyard.runtime.batch_state import history
-
-        plan, loaded = read_frozen_plan(local_file(root, "frozen-plan/plan.json"))
-        meta = read_json(local_file(root, "batch.json"))
-        from inferyard.evidence.formats import require_core
-
-        require_core(meta, "batch")
-        if (
-            type(meta) is not dict
-            or type(meta.get("schema_version")) is not int
-            or meta["schema_version"] != 3
-            or meta.get("plan_sha256") != plan["plan_sha256"]
-            or type(meta.get("diagnostic")) is not bool
-            or set(meta)
-            - {
-                "schema_version",
-                "plan_sha256",
-                "diagnostic",
-                "tool_source_sha256",
-                "implementation_identity",
-            }
-        ):
-            raise EvidenceError("batch_plan_identity_mismatch")
-        source = meta.get("tool_source_sha256")
-        if (
-            type(source) is not str
-            or len(source) != 64
-            or any(c not in "0123456789abcdef" for c in source)
-        ):
-            raise EvidenceError("batch_plan_identity_mismatch")
-        if "implementation_identity" in meta:
-            validate_identity(meta["implementation_identity"])
-        local_file(root, "runs")
-        runs = history(root, plan, loaded, allow_tool_change=True, full_verification=True)
-        trials = [_trial(data, data["manifest_sealed"]) for data in runs]
-        complete = bool(trials) and all(t["verified"] for t in trials)
-        missing = sorted(
-            {t["trial_id"] for t in plan["trials"]} - {data["run"]["trial_id"] for data in runs}
-        )
-        details = {
-            "verified": complete,
-            "sealed": False,
-            "integrity": "frozen_inputs_and_trial_seals",
-            "semantic_validation": True,
-            "execution_completeness": "complete"
-            if not missing and all(t["execution_completeness"] == "complete" for t in trials)
-            else "incomplete",
-            "trials": trials,
-            "planned_trials": len(plan["trials"]),
-            "missing_trials": missing,
-        }
+        details, complete = _verify_batch(root)
     return 0 if complete else 3, CommandResult(
         request.command,
         "verified" if complete else "partial",

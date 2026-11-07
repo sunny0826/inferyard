@@ -11,7 +11,7 @@
   读取全部块，在新目录写入 `engine-comparison.json`（`engine-comparison.v1`）与离线
   `report.html`，再以 `artifact-manifest.json`（`presentation-seal.v1`）封存两者字节；
   stdout 输出同一结果。输出目录必须不存在，且不能位于任何输入 run 内。
-- `compare-plan --left-config CFG... --right-config CFG... [--bundle NAME_OR_PATH]... (--out DIR | --dry-run)`：
+- `compare-plan --left-config CFG [--left-config CFG]... --right-config CFG [--right-config CFG]... [--bundle NAME_OR_PATH]... (--out DIR | --dry-run)`：
   离线冻结一份 `engine-comparison-plan.v1`（现有 plan JSON 的受限形状），stdout 输出计划。
   不连接或启动模型服务。默认题包为 `zh-core` 与 `zh-svg-pelican`；单题包必须由
   `--bundle` 显式声明。输出目录必须不存在。
@@ -45,8 +45,11 @@
 v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 
 - 先核验完整 batch，再按冻结槽位选择 run；从不按 `first_event_utc` 重排槽位。
-- layout 1 旧 run 不参与 v2 身份回退：只有 layout 2 的已验证 run envelope 才能提供
-  `trial_id`/`run_id`；layout 1 的 fallback 直接禁用，避免未校验身份被当成计划槽位。
+- v2 reader 与离线 verify 复用同一 `batch.json` 严格准入：整数 `schema_version=3`、
+  布尔 `diagnostic`、完整身份/工具摘要与计划哈希；非法输入返回 `batch_envelope_invalid`，
+  `eligible=false`。
+- layout 1 旧 run 禁用 v2 身份回退；只有 layout 2 已验证 envelope 可提供
+  `trial_id`/`run_id`。
 - 每个 run 必须绑定同一完整 `plan_sha256`、experiment 与 definition versions。
 - 交接链读取各 run 已封存的 `service_binding.previous_run_id`：首槽位必须为 null；
   后续必须精确等于前一冻结槽位选中 run 的 `run_id`。
@@ -82,12 +85,15 @@ v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 - 取消、执行失败、身份错误或成功后缺槽位却已有后续 run 时阻断，不再派发后续槽位。
 - 槽位级停止（rejection、terminal、缺槽且已有后续 run）优先于 batch 兜底；
   batch 污染只在遍历完所有冻结槽位后仍无槽位级停止时返回。
-- 计划外 trial 或 trial 为 null 的拒绝没有可归属槽位时，整个 batch 阻断：
-  返回 `comparison_history_identity_error`，detail 固定为 `rejection_outside_planned_slots`，
-  保留已知 trial/run 与底层 error；`run` 与 `resume` 同样停止。
+- 计划外或 trial 为 null 的拒绝无可归属槽位时，整个 batch 阻断：
+  `comparison_history_identity_error` / `rejection_outside_planned_slots`，保留已知
+  trial/run/error；`run` 与 `resume` 同样停止。
 - 被拒绝的 trial 不得因同一 trial 的另一尝试可用而重新进入 selected runs、handoff 或指标。
-- 同一 `run_id` 关联的所有 trial 都不得进入 selected runs、handoff 或指标，包括先读到并持有该
-  `run_id` 的 trial；reader 与 runset 都保留两个 trial 的 trial/run/path 拒绝证据。
+- 同一 `run_id` 的成功、拒绝与身份回退读取都参与重复登记；关联的全部 trial 不进入
+  selected runs、handoff 或指标。reader 与 runset 每个路径只留一条重复证据，
+  原始拒绝原因与重复证据并存。
+- 直接 `evaluate_comparison` 与 reader 共用停止判定：重复拒绝参与停止，取最早被拒槽位，
+  detail 为重复根原因。
 - 被拒绝的 run 保留已读取的 trial/run 身份与底层错误；确实无法证明 trial 的损坏记录不猜测归属。
 - 无 slot 可归属且不属于规范列表的拒绝原因统一为 `comparison_history_identity_error`，
   不把 `EvidenceError` 等底层异常名复制到顶层 classification。

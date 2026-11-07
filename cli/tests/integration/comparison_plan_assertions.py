@@ -78,9 +78,11 @@ def assert_rejected_run_identity(
     from tests.integration.comparison_plan_run_assertions import (
         assert_cross_trial_duplicate,
         assert_duplicate,
+        assert_duplicate_with_rejections,
     )
 
     assert_duplicate(tmp_path, plan, first)
+    assert_duplicate_with_rejections(tmp_path, plan)
     assert_cross_trial_duplicate(
         tmp_path, plan, first_trial, target_trial, "000-cross-copy"
     )
@@ -484,9 +486,11 @@ def assert_real_reader_classification(
     _assert_unplanned(tmp_path, plan, second_trial, request, deps)
     from tests.integration.comparison_plan_run_assertions import (
         StopPriorityCase,
+        assert_batch_envelope_rejections,
         assert_stop_priority,
     )
 
+    assert_batch_envelope_rejections(tmp_path)
     assert_stop_priority(
         tmp_path, plan, request, deps, StopPriorityCase("priority-unplanned", False)
     )
