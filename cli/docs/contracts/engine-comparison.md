@@ -80,10 +80,14 @@ v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 
 - 按冻结槽位顺序返回首个 `{trial_id, run_id, reason, detail}`；无停止返回 null。
 - 取消、执行失败、身份错误或成功后缺槽位却已有后续 run 时阻断，不再派发后续槽位。
+- 槽位级停止（rejection、terminal、缺槽且已有后续 run）优先于 batch 兜底；
+  batch 污染只在遍历完所有冻结槽位后仍无槽位级停止时返回。
 - 计划外 trial 或 trial 为 null 的拒绝没有可归属槽位时，整个 batch 阻断：
   返回 `comparison_history_identity_error`，detail 固定为 `rejection_outside_planned_slots`，
   保留已知 trial/run 与底层 error；`run` 与 `resume` 同样停止。
 - 被拒绝的 trial 不得因同一 trial 的另一尝试可用而重新进入 selected runs、handoff 或指标。
+- 同一 `run_id` 关联的所有 trial 都不得进入 selected runs、handoff 或指标，包括先读到并持有该
+  `run_id` 的 trial；reader 与 runset 都保留两个 trial 的 trial/run/path 拒绝证据。
 - 被拒绝的 run 保留已读取的 trial/run 身份与底层错误；确实无法证明 trial 的损坏记录不猜测归属。
 - 无 slot 可归属且不属于规范列表的拒绝原因统一为 `comparison_history_identity_error`，
   不把 `EvidenceError` 等底层异常名复制到顶层 classification。
@@ -96,7 +100,7 @@ v2 的分类与共享停止粒度映射：
 | --- | --- | --- |
 | `comparison_unplanned_trial` | `comparison_history_identity_error`，detail 为 `rejection_outside_planned_slots` | run 的 trial 不属于冻结计划；保留 trial/run/path 与底层 error，不能猜测归属到某个计划槽位 |
 | `run_plan_mismatch` | `comparison_history_identity_error`，detail 为 `run_plan_mismatch` | run 已绑定计划槽位，但计划哈希、experiment 或 definition versions 不匹配 |
-| `comparison_duplicate_trial_attempt` | `comparison_history_identity_error`，detail 为重复根原因或 `duplicate_run_id` | 同 trial 多个 initial/repeat 根或重复 run id；拒绝 trial 不进入 selected runs、handoff 或指标 |
+| `comparison_duplicate_trial_attempt` | `comparison_history_identity_error`，detail 为重复根原因或 `duplicate_run_id` | 同 trial 多根或跨 trial 重复 run id；共享该 run_id 的所有 trial 都不进入 selected runs、handoff 或指标 |
 - 完整成功要求 scope/evidence complete 且全部请求终态为 completed；
   模型答错但请求 completed、或 `unscorable` 不按执行失败处理。
 - 正常 `awaiting_handoff` 不是 run 终态，不触发停止。

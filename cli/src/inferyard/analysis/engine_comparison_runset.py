@@ -108,9 +108,11 @@ def _classify_entry(
         )
         return
     if run["run_id"] in seen:
+        original = seen[run["run_id"]]
+        _reject_duplicate_run_id(original["run"], original, run_set, rejected)
         _reject_duplicate_run_id(run, entry, run_set, rejected)
         return
-    seen.add(run["run_id"])
+    seen[run["run_id"]] = entry
     reason = _plan_mismatch_reason(entry, plan)
     if reason is not None:
         run_set["mismatched"].append(
@@ -138,7 +140,7 @@ def _classify_runs(
         "duplicates": [],
     }
     index = {slot.trial_id: position for position, slot in enumerate(slots)}
-    by_trial, seen, rejected = {}, set(), set()
+    by_trial, seen, rejected = {}, {}, set()
     state = {"run_set": run_set, "by_trial": by_trial, "seen": seen, "rejected": rejected}
     for entry in runs:
         _classify_entry(plan, slots, index, entry, state)

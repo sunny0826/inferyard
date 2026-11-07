@@ -65,23 +65,6 @@ def _assert_identity_first(
         assert comparison_stop["error"] == {"reason": "batch_frozen_inputs_changed"}
 
 
-def _assert_duplicate(
-    tmp_path: Path, plan: JSONRecord, first: Path
-) -> None:
-    batch = tmp_path / "batch"
-    slot = plan["trials"][0]
-    duplicate = tmp_path / "duplicate-batch"
-    shutil.copytree(batch, duplicate)
-    shutil.copytree(first, duplicate / "runs" / "extra-copy")
-    document = read_comparison_v2(tmp_path / "plan", duplicate)
-    assert document["eligible"] is False
-    assert document["run_set"]["duplicates"][0]["run_id"] == first.name
-    assert document["run_set"]["duplicates"][0]["detail"] == "duplicate_run_id"
-    assert document["history_stop"]["trial_id"] == slot["trial_id"]
-    assert document["history_stop"]["run_id"] == first.name
-    _assert_not_selected(document, first.name)
-
-
 def assert_rejected_run_identity(
     tmp_path: Path,
     plan: JSONRecord,
@@ -89,8 +72,21 @@ def assert_rejected_run_identity(
     deps: TrialDependencies,
 ) -> None:
     first = _first_slot_run(tmp_path / "batch", plan)
+    first_trial = plan["trials"][0]["trial_id"]
+    target_trial = plan["trials"][4]["trial_id"]
     _assert_identity_first(tmp_path, plan, first, request, deps)
-    _assert_duplicate(tmp_path, plan, first)
+    from tests.integration.comparison_plan_run_assertions import (
+        assert_cross_trial_duplicate,
+        assert_duplicate,
+    )
+
+    assert_duplicate(tmp_path, plan, first)
+    assert_cross_trial_duplicate(
+        tmp_path, plan, first_trial, target_trial, "000-cross-copy"
+    )
+    assert_cross_trial_duplicate(
+        tmp_path, plan, first_trial, target_trial, "zz-cross-copy"
+    )
 
 
 def _rehash_manifest(run_dir: Path, filename: str) -> None:
@@ -307,6 +303,7 @@ def _assert_unplanned(
         assert result.details["comparison_stop"]["detail"] == "rejection_outside_planned_slots"
 
 
+
 def _assert_wrong_plan(tmp_path: Path, plan: JSONRecord, second_trial: str) -> None:
     def wrong_plan(run: JSONRecord, _: JSONRecord) -> None:
         run["plan_sha256"] = "f" * 64
@@ -485,6 +482,17 @@ def assert_real_reader_classification(
     )
     _assert_duplicate_initial(tmp_path, plan, first_trial, other_trial)
     _assert_unplanned(tmp_path, plan, second_trial, request, deps)
+    from tests.integration.comparison_plan_run_assertions import (
+        StopPriorityCase,
+        assert_stop_priority,
+    )
+
+    assert_stop_priority(
+        tmp_path, plan, request, deps, StopPriorityCase("priority-unplanned", False)
+    )
+    assert_stop_priority(
+        tmp_path, plan, request, deps, StopPriorityCase("priority-unreadable", True)
+    )
     _assert_wrong_plan(tmp_path, plan, second_trial)
     _assert_wrong_metadata(tmp_path, plan, second_trial)
     _assert_invalid_resume(tmp_path, plan, second_trial)

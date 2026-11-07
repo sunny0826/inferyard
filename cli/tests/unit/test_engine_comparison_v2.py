@@ -158,6 +158,35 @@ def test_duplicate_run_id_direct_entry_is_classified(tmp_path: Path) -> None:
     assert document["eligible"] is False
 
 
+def test_duplicate_run_id_across_trials_rejects_both(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    duplicate = deepcopy(runs[0])
+    duplicate["run"]["trial_id"] = runs[4]["run"]["trial_id"]
+    duplicate["path"] = "/runs/cross-trial-copy"
+    runs.append(duplicate)
+    document = evaluate_comparison(plan, runs)
+    rows = [
+        row
+        for row in document["run_set"]["duplicates"]
+        if row["detail"] == "duplicate_run_id"
+    ]
+    assert {row["trial_id"] for row in rows} == {
+        plan["trials"][0]["trial_id"],
+        plan["trials"][4]["trial_id"],
+    }
+    assert {row["run_id"] for row in rows} == {runs[0]["run"]["run_id"]}
+    assert {row["path"] for row in rows} == {runs[0]["path"], duplicate["path"]}
+    selected = {
+        row["run_id"]
+        for row in document["handoff"]["slots"]
+        if row["run_id"] is not None
+    }
+    assert runs[0]["run"]["run_id"] not in selected
+    assert runs[4]["run"]["run_id"] not in selected
+    assert document["eligible"] is False
+
+
 def test_duplicate_trial_attempt_blocks(tmp_path: Path) -> None:
     plan, _ = plan_with_slots(tmp_path)
     runs = synthetic_runs(plan)

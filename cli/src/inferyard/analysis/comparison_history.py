@@ -167,8 +167,6 @@ def comparison_history_stop(
                 stop["subsequent_run_ids"] = _later_run_ids(slots, position, by_trial)
                 return stop
             continue
-        if batch_stop is not None:
-            return batch_stop
         later = _later_run_ids(slots, position, by_trial)
         if later:
             return _stop(

@@ -312,21 +312,48 @@ def _ordered_group(
     return ordered, None
 
 
-def _collect_run(
-    path: Path,
-    context: HistoryContext,
-    by_id: dict[str, JSONRecord],
-    groups: dict[str, list[JSONRecord]],
-    on_error: Callable[[RunRead], None],
+@dataclass(slots=True)
+class _CollectState:
+    by_id: dict[str, JSONRecord]
+    groups: dict[str, list[JSONRecord]]
+    on_error: Callable[[RunRead], None]
+    reported_duplicates: set[str]
+
+
+def _reject_duplicate_run(
+    state: _CollectState, original: JSONRecord, path: Path, run: JSONRecord
 ) -> None:
+    if run["run_id"] not in state.reported_duplicates:
+        state.reported_duplicates.add(run["run_id"])
+        state.on_error(
+            _rejected(
+                original["path"],
+                "batch_run_identity_mismatch",
+                original["run"],
+                classification=DUPLICATE_ATTEMPT,
+                detail="duplicate_run_id",
+            )
+        )
+    state.on_error(
+        _rejected(
+            path,
+            "batch_run_identity_mismatch",
+            run,
+            classification=DUPLICATE_ATTEMPT,
+            detail="duplicate_run_id",
+        )
+    )
+
+
+def _collect_run(path: Path, context: HistoryContext, state: _CollectState) -> None:
     try:
         outcome = _read_run(path, context)
     except (EvidenceError, ContractError, UnsupportedFormat, OSError, ValueError, KeyError, TypeError, IndexError) as exc:
         identity = _failure_identity(path, context.plan)
         if identity is None:
-            on_error(RunRead(path, error=exc))
+            state.on_error(RunRead(path, error=exc))
         else:
-            on_error(
+            state.on_error(
                 RunRead(
                     path,
                     code=identity.code,
@@ -339,26 +366,18 @@ def _collect_run(
             )
         return
     if outcome.code is not None or outcome.error is not None:
-        on_error(outcome)
+        state.on_error(outcome)
         return
     data = outcome.data
     if data is None:
-        on_error(RunRead(path, error=EvidenceError("invalid_run_projection")))
+        state.on_error(RunRead(path, error=EvidenceError("invalid_run_projection")))
         return
     run = data["run"]
-    if run["run_id"] in by_id:
-        on_error(
-            _rejected(
-                path,
-                "batch_run_identity_mismatch",
-                run,
-                classification=DUPLICATE_ATTEMPT,
-                detail="duplicate_run_id",
-            )
-        )
+    if run["run_id"] in state.by_id:
+        _reject_duplicate_run(state, state.by_id[run["run_id"]], path, run)
         return
-    by_id[run["run_id"]] = data
-    groups[run["trial_id"]].append(data)
+    state.by_id[run["run_id"]] = data
+    state.groups[run["trial_id"]].append(data)
 
 
 def _ordered_groups(
@@ -397,10 +416,10 @@ def _collect_history(
     context: HistoryContext, on_error: Callable[[RunRead], None]
 ) -> list[JSONRecord]:
     groups = {t["trial_id"]: [] for t in context.plan["trials"]}
-    by_id = {}
+    state = _CollectState({}, groups, on_error, set())
     for path in sorted((context.root / "runs").iterdir()):
-        _collect_run(path, context, by_id, groups, on_error)
-    return _ordered_groups(groups, by_id, on_error)
+        _collect_run(path, context, state)
+    return _ordered_groups(state.groups, state.by_id, state.on_error)
 
 
 def _raise_history_error(outcome: RunRead) -> None:
