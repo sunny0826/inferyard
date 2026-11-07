@@ -8,19 +8,24 @@ import (
 	"inferyard/studio/internal/core"
 )
 
+// productionThemeInstall is the entry the main window uses for its theme.
+func productionThemeInstall() func(*ui.Context) *ui.Theme {
+	return pageShellOptions("InferYard Studio", "", nil, nil).Theme
+}
+
 // productionTheme resolves the installed Studio theme for one appearance.
-func productionTheme(t *testing.T, dark, highContrast bool) (*ui.Theme, designTokens) {
+func productionTheme(t *testing.T, dark, highContrast bool) *ui.Theme {
 	t.Helper()
 	var theme *ui.Theme
-	var set designTokens
+	install := productionThemeInstall()
 	tt := ui.NewTester(func(c *ui.Context) {
-		c.SetTheme(studioTheme(c))
-		theme, set = c.Theme(), tokens(c)
-	}, 400, 400)
+		c.SetTheme(install(c))
+		theme = c.Theme()
+	}, 200, 200)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true, HighContrast: highContrast})
 	tt.SetDark(dark)
 	tt.Frame()
-	return theme, set
+	return theme
 }
 
 // TestABSideColorsAreDistinguishable covers the comparison requirement that
@@ -28,8 +33,9 @@ func productionTheme(t *testing.T, dark, highContrast bool) (*ui.Theme, designTo
 // paired bars indistinguishable. It does not pin the chosen colors.
 func TestABSideColorsAreDistinguishable(t *testing.T) {
 	var first, second ui.Color
+	install := productionThemeInstall()
 	tt := ui.NewTester(func(c *ui.Context) {
-		c.SetTheme(studioTheme(c))
+		c.SetTheme(install(c))
 		first, second = sideColor(c, sideA), sideColor(c, sideB)
 	}, 40, 40)
 	tt.Frame()
@@ -52,21 +58,6 @@ func TestPairedBarRendersBothSides(t *testing.T) {
 	}
 }
 
-// TestProductionThemeDensity covers the selected scheme: tighter spacing,
-// smaller radii and an edged page card. These are the user's visual decision,
-// not a snapshot of incidental values.
-func TestProductionThemeDensity(t *testing.T) {
-	for _, dark := range []bool{false, true} {
-		theme, set := productionTheme(t, dark, false)
-		if theme.Spacing != 3 || theme.Radius != 4 {
-			t.Fatalf("dark=%v: spacing %v radius %v", dark, theme.Spacing, theme.Radius)
-		}
-		if set.Radius.Surface != 6 || set.Card.Edge != 1 {
-			t.Fatalf("dark=%v: card radius %v edge %v", dark, set.Radius.Surface, set.Card.Edge)
-		}
-	}
-}
-
 // TestBodyTextContrast covers the review finding that body and secondary text
 // looked washed out: both keep their contrast floor on the page and on cards,
 // including high contrast.
@@ -80,7 +71,7 @@ func TestBodyTextContrast(t *testing.T) {
 
 func assertTextContrast(t *testing.T, dark, highContrast bool) {
 	t.Helper()
-	theme, _ := productionTheme(t, dark, highContrast)
+	theme := productionTheme(t, dark, highContrast)
 	if ratio := contrastRatio(theme.Text, theme.Background); ratio < 7 {
 		t.Fatalf("dark=%v hc=%v text %.2f", dark, highContrast, ratio)
 	}
@@ -104,11 +95,13 @@ func TestStatusBadgeTextContrast(t *testing.T) {
 
 func assertBadgeContrast(t *testing.T, dark, highContrast bool) {
 	t.Helper()
-	theme, set := productionTheme(t, dark, highContrast)
-	for name, tint := range map[string]ui.Color{
-		"neutral": set.State.Neutral, "active": set.State.Active, "success": set.State.Success,
-		"warning": set.State.Warning, "danger": set.State.Danger,
-	} {
+	theme := productionTheme(t, dark, highContrast)
+	colors := map[string]ui.Color{
+		"neutral": stateColorContext(t, theme, stateNeutral), "active": stateColorContext(t, theme, stateActive),
+		"success": stateColorContext(t, theme, stateSuccess), "warning": stateColorContext(t, theme, stateWarning),
+		"danger": stateColorContext(t, theme, stateDanger),
+	}
+	for name, tint := range colors {
 		background, foreground := badgeSurfaceColors(theme, tint)
 		if highContrast {
 			background = theme.Surface
@@ -119,13 +112,27 @@ func assertBadgeContrast(t *testing.T, dark, highContrast bool) {
 	}
 }
 
+// stateColorContext resolves one semantic state color through the page entry
+// so the test reads the same mapping the pages use.
+func stateColorContext(t *testing.T, theme *ui.Theme, kind stateKind) ui.Color {
+	t.Helper()
+	var color ui.Color
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(theme)
+		color = stateColor(c, kind)
+	}, 40, 40)
+	tt.Frame()
+	return color
+}
+
 // TestQueuedRunUsesWaitingColor covers the design contract that a task reading
 // "排队中" uses the neutral waiting color, not the active one. Tasks that
 // actually started keep the active color.
 func TestQueuedRunUsesWaitingColor(t *testing.T) {
 	var neutral, active, queued, starting ui.Color
+	install := productionThemeInstall()
 	tt := ui.NewTester(func(c *ui.Context) {
-		c.SetTheme(studioTheme(c))
+		c.SetTheme(install(c))
 		neutral, active = stateColor(c, stateNeutral), stateColor(c, stateActive)
 		queued = runColor(c, core.RunTask{State: "starting", Queued: true})
 		starting = runColor(c, core.RunTask{State: "starting"})

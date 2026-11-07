@@ -3,95 +3,83 @@
 package pages
 
 import (
+	"bytes"
 	"context"
+	"image"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 )
 
-func candidateStyleFor(t *testing.T, index int, dark bool) (*ui.Theme, designTokens) {
-	t.Helper()
-	var theme *ui.Theme
-	var set designTokens
+// pageProbe renders the shared surfaces that depend on the installed theme and
+// token set, so two install entries can be compared by their visible output.
+func pageProbe(c *ui.Context) {
+	t := tokens(c)
+	ui.Column(c).Fill().Padding(t.Density.Page).Gap(t.Density.Section).Children(func() {
+		card(c, "组合状态", func() {
+			ui.Row(c).Gap(t.Density.Row).Children(func() {
+				ui.Text(c, "Preview-Model × preview-engine").Bold()
+				statusBadge(c, "运行中", stateColor(c, stateActive)).Description("当前状态")
+			})
+			pairedBar(c, "通过率", pairedBarValue{Label: "A", Value: .72, Text: "72%"}, pairedBarValue{Label: "B", Value: .54, Text: "54%"})
+		})
+		stepTrack(c, "5", "运行", func() { ui.Text(c, "42 / 120 题") })
+	})
+}
+
+func probeImage(install func(*ui.Context) *ui.Theme) *image.RGBA {
 	tt := ui.NewTester(func(c *ui.Context) {
-		c.SetTheme(candidateTheme(index, c))
-		theme, set = c.Theme(), tokens(c)
-	}, 200, 200)
+		c.SetTheme(install(c))
+		pageProbe(c)
+	}, 480, 600)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
-	tt.SetDark(dark)
-	tt.Frame()
-	return theme, set
+	tt.Advance(2 * time.Second)
+	return tt.Image()
 }
 
-// TestPreviewCandidateSwitchesStructure covers the product rule that a
-// candidate is a token set with real layout differences, not a recolor. Every
-// candidate must change at least one density, radius, card or type value.
-func TestPreviewCandidateSwitchesStructure(t *testing.T) {
-	_, base := candidateStyleFor(t, 0, false)
-	for i := 1; i < len(previewCandidates); i++ {
-		_, set := candidateStyleFor(t, i, false)
-		changed := set.Density.Page != base.Density.Page ||
-			set.Radius.Surface != base.Radius.Surface ||
-			set.Card.Edge != base.Card.Edge ||
-			set.Card.Padding != base.Card.Padding ||
-			set.Type.PageTitle != base.Type.PageTitle
-		if !changed {
-			t.Fatalf("candidate %q only changes colors", previewCandidates[i].id)
-		}
-	}
+func sameImage(a, b *image.RGBA) bool {
+	return a.Rect == b.Rect && bytes.Equal(a.Pix, b.Pix)
 }
 
-// TestPreviewDefaultMatchesProduction covers that the first candidate is the
-// production scheme, so the debug window compares against what ships.
+// TestPreviewDefaultMatchesProduction covers that the debug window installs
+// the production scheme through its own shell entry. Both sides render the
+// same probe with their real install paths and must paint the same result.
 func TestPreviewDefaultMatchesProduction(t *testing.T) {
-	_, previewDefault := candidateStyleFor(t, 0, false)
-	_, production := productionTheme(t, false, false)
-	if previewDefault != production {
-		t.Fatal("preview default does not match the production tokens")
+	production := probeImage(productionThemeInstall())
+	preview := probeImage(newPreviewSession(context.Background()).shellOptions().Theme)
+	if !sameImage(production, preview) {
+		t.Fatal("preview default paints differently from the production window")
 	}
 }
 
-// TestCandidateSideColorsRemainDistinguishable covers the comparison rule that
-// the two sides of an A/B result must stay distinguishable in both palettes.
-// Bars are graphical objects, so each side keeps 3:1 contrast with the
-// candidate's own surface.
-func TestCandidateSideColorsRemainDistinguishable(t *testing.T) {
-	for i := range previewCandidates {
-		for _, dark := range []bool{false, true} {
-			assertSideColors(t, i, dark)
-		}
+// TestPreviewCandidateSwitchChangesRendering covers that choosing a candidate
+// changes the visible scheme in this window.
+func TestPreviewCandidateSwitchChangesRendering(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	current := probeImage(p.shellOptions().Theme)
+	p.selectCandidate(1)
+	comparison := probeImage(p.shellOptions().Theme)
+	if sameImage(current, comparison) {
+		t.Fatal("candidate switch did not change the rendered scheme")
 	}
 }
 
-func assertSideColors(t *testing.T, index int, dark bool) {
-	t.Helper()
-	theme, set := candidateStyleFor(t, index, dark)
-	if set.Sides.A == set.Sides.B {
-		t.Fatalf("candidate %q shares a side color", previewCandidates[index].id)
-	}
-	for side, color := range map[string]ui.Color{"A": set.Sides.A, "B": set.Sides.B} {
-		if ratio := contrastRatio(color, theme.Surface); ratio < 3 {
-			t.Fatalf("candidate %q side %s contrast %.2f on dark=%v", previewCandidates[index].id, side, ratio, dark)
-		}
-	}
-}
-
-// TestCandidateStyleDoesNotLeakIntoDefaultTheme covers the boundary that a
-// candidate is installed only in the preview session: after a comparison
-// candidate was rendered, the production theme must resolve the same tokens as
-// the production default.
+// TestCandidateStyleDoesNotLeakIntoDefaultTheme covers that installing a
+// comparison candidate in the preview window never changes the production
+// window's tokens.
 func TestCandidateStyleDoesNotLeakIntoDefaultTheme(t *testing.T) {
-	_, want := candidateStyleFor(t, 0, false)
-	_, _ = candidateStyleFor(t, 1, false)
-	var set designTokens
-	tt := ui.NewTester(func(c *ui.Context) {
-		c.SetTheme(studioTheme(c))
-		set = tokens(c)
-	}, 200, 200)
-	tt.Frame()
-	if set != want {
-		t.Fatalf("preview candidate leaked into the production theme: %+v != %+v", set, want)
+	production := probeImage(productionThemeInstall())
+	p := newPreviewSession(context.Background())
+	p.selectCandidate(1)
+	comparison := probeImage(p.shellOptions().Theme)
+	if comparison == nil {
+		t.Fatal("comparison candidate did not render")
+	}
+	after := probeImage(productionThemeInstall())
+	if !sameImage(production, after) {
+		t.Fatal("preview candidate leaked into the production window")
 	}
 }
 

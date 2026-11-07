@@ -168,13 +168,17 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 	})
 }
 
-// stepTrack places a numbered rail beside content on the page background.
+// stepTrack places a numbered rail beside content on the page background. The
+// number badge stays round and follows the desktop text scale: the diameter is
+// derived from the same rem the number is drawn with, because MyGo exposes no
+// measured line height while building, and 1.6 rem leaves room for it.
 func stepTrack(c *ui.Context, number, title string, fn func()) {
 	t := tokens(c)
 	theme := c.Theme()
+	size := max(theme.Space(7), theme.Rem(1.6))
 	ui.Row(c).AlignItems(ui.Stretch).Gap(t.Density.Section).Label("阶段步骤 " + number).Children(func() {
-		ui.Column(c).Width(theme.Space(7)).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			ui.Box(c).Width(theme.Space(7)).Height(theme.Space(7)).Radius(theme.Space(3.5)).Background(stateColor(c, stateActive)).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+		ui.Column(c).MinWidth(size).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			ui.Box(c).Label("阶段编号 "+number).Size(size, size).Radius(size / 2).Background(stateColor(c, stateActive)).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 				ui.Text(c, number).Bold().TextColor(theme.Surface)
 			})
 			ui.Box(c).Width(theme.Space(.5)).Grow(1).Background(theme.Border)
