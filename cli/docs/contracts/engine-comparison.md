@@ -11,6 +11,10 @@
   读取全部块，在新目录写入 `engine-comparison.json`（`engine-comparison.v1`）与离线
   `report.html`，再以 `artifact-manifest.json`（`presentation-seal.v1`）封存两者字节；
   stdout 输出同一结果。输出目录必须不存在，且不能位于任何输入 run 内。
+- `compare-plan --left-config CFG... --right-config CFG... [--bundle NAME_OR_PATH]... (--out DIR | --dry-run)`：
+  离线冻结一份 `engine-comparison-plan.v1`（现有 plan JSON 的受限形状），stdout 输出计划。
+  不连接或启动模型服务。默认题包为 `zh-core` 与 `zh-svg-pelican`；单题包必须由
+  `--bundle` 显式声明。输出目录必须不存在。
 - `engine-comparison.json` 的 `source_runs[].path` 相对输出目录；`producer` 记录
   `tool_source_sha256` 与 `template_sha256`，只作来源，不作核验依据。
 - `verify --path DIR` 按 `engine-comparison.json` 识别该产物：先核对封存字节，再按
@@ -19,6 +23,67 @@
   `--rerender` 另核对 HTML，不符为 `engine_comparison_html_recomputation_mismatch`。
   HTML 不含脚本与外部资源。
 
+## `engine-comparison-plan.v1`
+
+它是现有冻结 plan 的受限形状，不是第二份计划文档：
+
+- `experiment.comparison = {"mode": "engine", "factor": null}`。
+- 恰好 6 个块，块号 1..6；奇数块为 `a` 侧、偶数块为 `b` 侧，两侧交错。
+- 每块包含同一组题包（默认 `core` 与 `pelican`）。槽位 `workload_id` 固定为
+  `block-NN-[ab]-<bundle>`，每槽位 `repeats = 1`、固定题序，trial 顺序与块顺序一致。
+- 每个槽位引用本侧、本题包的 config 与 bundle；同侧同题包各块必须引用同一 config 摘要，
+  同题包各块必须引用同一 bundle 摘要。
+- 每个被引用 config 的 `execution.require_fresh_process = true`（不是
+  `experiment.execution`）；`compare-plan` 写入冻结副本，不修改源配置。
+- `plan_sha256` 仍按现有 canonical JSON 计算；核心 `schema_version = 3` 与 run 字段不变。
+- `compare-plan` 在写计划前拒绝：无效配置、两侧题包覆盖不一致、两侧题包内容不同、
+  两侧引擎 profile 相同、输出目录已存在。它不判断真实服务身份。
+
+## `engine-comparison.v2`（T2a 仅内部构造）
+
+本阶段只实现内部读取与阻断数据；`compare-engines` 的公开派生仍输出 v1，
+v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
+
+- 先核验完整 batch，再按冻结槽位选择 run；从不按 `first_event_utc` 重排槽位。
+- 每个 run 必须绑定同一完整 `plan_sha256`、experiment 与 definition versions。
+- 交接链读取各 run 已封存的 `service_binding.previous_run_id`：首槽位必须为 null；
+  后续必须精确等于前一冻结槽位选中 run 的 `run_id`。
+- 完整 batch 核验后，按题包拆成各自的 A/B 块，再复用既有六块判定；
+  不把 12 个 run 直接交给 v1 逻辑。
+
+规范阻断原因（每种条件只保留一个名字）：
+
+| 原因 | 条件 |
+| --- | --- |
+| `comparison_plan_required` | 计划不是上述受限形状，或缺少可用 plan |
+| `comparison_plan_hash_mismatch` | batch 冻结计划哈希与提交计划不同 |
+| `planned_run_missing` | 冻结槽位没有可用 run（错计划/重复尝试单独报） |
+| `comparison_unplanned_trial` | batch 内存在计划外 trial；`unplanned_run_present` 不再单独输出 |
+| `run_plan_mismatch` | run 绑定的计划哈希、experiment 或 definition versions 不同 |
+| `comparison_duplicate_trial_attempt` | 同 trial 多根、多次尝试或重复 run id |
+| `comparison_handoff_missing` | 缺已封存交接观测、字段缺失，或应有前驱为空 |
+| `comparison_handoff_broken` | 非首槽位前驱不是前一槽位选中 run（含跳槽位、跨 batch） |
+| `comparison_handoff_slot_mismatch` | 首槽位存在前驱 |
+| `comparison_history_identity_error` | 证据、计划、trial、run 或身份核验失败；含成功后缺槽位仍有后续 run |
+| `comparison_history_cancelled` | `stop_reason = user_cancelled` 或存在 cancelled 终态 |
+| `comparison_history_failed` | 其他非 `plan_finished` 停止，或存在 failed/invalid/not_executed |
+| `comparison_history_incomplete` | 全部请求 completed 但 scope/evidence 不完整 |
+
+`execution_order_differs` 不输出：v2 只按冻结槽位顺序读取，实际连续性由交接链证明；
+事件时间不参与选择。缺槽位或错计划时不重复报 `planned_run_missing`。
+
+## 比较专用历史停止
+
+`comparison_history_stop(plan, selected_runs)` 是执行入口与 v2 共用的唯一 CLI 判定来源：
+
+- 按冻结槽位顺序返回首个 `{trial_id, run_id, reason, detail}`；无停止返回 null。
+- 取消、执行失败、身份错误或成功后缺槽位却已有后续 run 时阻断，不再派发后续槽位。
+- 完整成功要求 scope/evidence complete 且全部请求终态为 completed；
+  模型答错但请求 completed、或 `unscorable` 不按执行失败处理。
+- 正常 `awaiting_handoff` 不是 run 终态，不触发停止。
+- `resume`、普通 `run --plan` 遇到比较停止时返回 `comparison_history_stopped`；
+  `resume` 不能借同一 trial 的第二次尝试追加槽位。
+- 普通计划、`resume` 与长上下文专项不匹配上述受限形状，保持原语义。
 ## 冻结调优声明
 
 `local-engine-config.v1` 的 `engine.tuning` 可选，键为
@@ -127,9 +192,13 @@ llama-cpp 对 lmstudio 当前总是后者。跨格式组合的 `scope` 固定为
 
 ## 未实现
 
+- T2b 才切换 `compare-engines` 的公开派生入口：v2 输出、HTML、封存与 `verify`
+  尚未交付；当前新比较仍走 v1。
 - LM Studio 后台的停止与重启由操作者执行；CLI 不停止服务，
   只通过既有主机状态与本比较的 `block_service_not_replaced` 核验替换。
 - 严格定长输出与块间温度等待证据。
+- 单份 12 槽位计划仅用合成服务验证执行与内部读取；真实引擎、逐槽位服务替换
+  与真实样本 `verify` 仍按 T2b/T9 单独验收。
 
 既有 run 与比较证据按原定义读取，不因新模式获得资格。
 证据解释遵循[血缘规则](../data-contract.md#证据血缘与比较结论)。

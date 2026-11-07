@@ -32,7 +32,7 @@ from inferyard.runtime.batch_state import (
 from inferyard.runtime.trial_runner import TrialDependencies, run_trial
 
 
-def _result(request, root, plan, runs, status, code=0, next_trial=None):
+def _result(request, root, plan, runs, status, code=0, next_trial=None, comparison_stop=None):
     progress = plan_progress(plan, runs)
     complete = all(t["status"] == "complete" for t in progress)
     latest = runs[-1] if runs else None
@@ -54,6 +54,7 @@ def _result(request, root, plan, runs, status, code=0, next_trial=None):
         "next_trial": next_trial,
         "runs": [str(d["path"]) for d in runs],
         "last_stop_reason": latest["summary"]["stop_reason"] if latest else None,
+        **({"comparison_stop": comparison_stop} if comparison_stop is not None else {}),
     }
     return code, CommandResult(
         request.command,
@@ -118,6 +119,23 @@ async def execute_async(request, dependencies=None):
             source_identity=source_identity,
             implementation_identity=identity_context.value,
         )
+        from inferyard.analysis.engine_comparison_v2 import (
+            comparison_history_stop,
+            is_comparison_plan,
+        )
+
+        if is_comparison_plan(plan):
+            comparison_stop = comparison_history_stop(plan, runs)
+            if comparison_stop is not None:
+                return _result(
+                    request,
+                    root,
+                    plan,
+                    runs,
+                    "comparison_history_stopped",
+                    3,
+                    comparison_stop=comparison_stop,
+                )
         if plan["experiment"].get("capacity_stop") == "first_failed_request":
             stopped = next(
                 (

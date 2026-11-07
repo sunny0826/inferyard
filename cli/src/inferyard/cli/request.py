@@ -17,6 +17,10 @@ def build_request(
     values = vars(args)
     if args.command == "plan" and bool(values.get("preset")) != bool(values.get("config")):
         raise ArgumentError("--config requires --preset and vice versa")
+    if args.command == "compare-plan":
+        identifier = values.get("comparison_experiment_id")
+        if identifier is not None and not identifier.strip():
+            raise ArgumentError("--experiment-id must be nonempty")
     if args.command == "config create":
         local = values.get("installation") is not None
         if local:
@@ -138,7 +142,14 @@ def build_request(
     for key, value in options.items():
         if isinstance(value, Path):
             options[key] = value.absolute() if preserve_links else value.resolve()
-    for key in ("report_runs", "models_roots", "left_runs", "right_runs"):
+    for key in (
+        "report_runs",
+        "models_roots",
+        "left_runs",
+        "right_runs",
+        "left_configs",
+        "right_configs",
+    ):
         if options.get(key):
             options[key] = [
                 path.absolute() if preserve_links else path.resolve() for path in options[key]

@@ -105,6 +105,12 @@ Experiment 抽象是否超出当前两三种实验的需要，能否只加比较
 检查：`ruff`、相关 pytest、schema 导出漂移核对、对 `.tools/engine-compare-mlx-20261106/compare-e5`
 （当前格式的封存产物；`compare-e1` 是早期未封存产物）执行 `verify` 确认旧产物读取符合政策（只读，不改原件）、HTML 离线渲染检查。
 
+
+### T2a 状态（2026-11-07）
+
+已交付计划冻结、v2 内部 run set/交接链/停止规则与合成 12 槽位验证；
+公开 v2 派生、HTML、封存、`verify` 与真实引擎验收留给 T2b。
+
 ## T3 共享状态词表（worker；Studio 小改需协调者授权）
 
 目标：比较判定、限制、阻断原因等枚举的中文措辞只保留一处，HTML 模板与 Studio 共用。
