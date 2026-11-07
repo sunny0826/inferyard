@@ -1,6 +1,6 @@
 # ADR 057a：跨引擎比较专用任务与职责边界
 
-状态：Draft（草案，返工第 1 轮）。日期：2026-11-07。原始基线：`6783414ccd73e8f2991adae7d3e1d707bfba9ff7`；返工基线：`a514efff72cbccb13ca709fbb9726f8093b23e7d`。
+状态：Draft（草案，返工第 2 轮）。日期：2026-11-07。原始基线：`6783414ccd73e8f2991adae7d3e1d707bfba9ff7`；本轮基线：`b12eb1b0cee2c34c07ddf3d8b7e651cb310351e2`。
 本草案采用用户指定的“专用比较任务记录”，不定义通用 Experiment；方案 A 的单份完整计划见 [ADR 057b](057-engine-comparison-plan.md)。
 文中“事实”附源码位置；“推导”是设计判断；“未验证”不当作既有能力。
 
@@ -49,6 +49,10 @@ stage              = preparing | executing | deriving | verifying | done | faile
 公共入口采用专用 `StartEngineComparison` / `ReadEngineComparison`，取消复用现有 `CancelRun`。
 执行器隐藏逐槽位停止旧服务、启动、CLI 绑定、执行和清理；页面可观察计划顺序、当前 trial、失败和产物，
 不能重排槽位。`done` 只表示编排结束，不等于比较 `eligible`。
+
+历史取消、执行失败或身份错误是否停止后续槽位，由 CLI 比较专用规则统一判定，Studio 只读取结果；
+正常 handoff 和模型答错不由 Go 另行解释为失败。run 创建前的启动／绑定失败由 Studio 立即终止本任务；
+手动路径由操作者终止，CLI 离线证据不能保证这一段。规则见 [ADR 057c](057-comparison-verification.md)。
 
 这份专用记录直接解决本次 Studio 状态与报告归属；不再保留“只有通用 Experiment 才能解决归属”的假设。
 CLI 计划负责完整测量范围，专用记录负责执行状态，两者不互相替代。

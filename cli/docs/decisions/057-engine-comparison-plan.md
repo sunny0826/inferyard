@@ -1,7 +1,7 @@
 # ADR 057b：单份完整比较计划与旧产物
 
-状态：Draft（草案，返工第 1 轮）。日期：2026-11-07。原始基线：`6783414ccd73e8f2991adae7d3e1d707bfba9ff7`；返工基线：`a514efff72cbccb13ca709fbb9726f8093b23e7d`。
-本草案扩展 [ADR 056](056-engine-comparison.md)；专用任务与 D2 见 [ADR 057a](057-comparison-task.md)。
+状态：Draft（草案，返工第 2 轮）。日期：2026-11-07。原始基线：`6783414ccd73e8f2991adae7d3e1d707bfba9ff7`；本轮基线：`b12eb1b0cee2c34c07ddf3d8b7e651cb310351e2`。
+本草案扩展 [ADR 056](056-engine-comparison.md)；专用任务与 D2 见 [ADR 057a](057-comparison-task.md)，交接链和失败停止规则见 [ADR 057c](057-comparison-verification.md)。
 文中“事实”附源码或样本位置；“推导”是设计判断；“未验证”不当作既有能力。
 `.tools/...` 均指主 checkout 中的只读样本，不是发行或测试依赖。
 
@@ -27,11 +27,11 @@
 
 **事实**：Journal 将完整 `plan` 对象和 `run.plan_sha256` 写入 `inputs.json`；读取时核对该哈希、experiment 和 trial
 （`cli/src/inferyard/evidence/journal.py:122-173`，`evidence/ledger.py:74-122`）。
-真实样本的 core/pelican 两个 run 已共享同一完整双题包 plan 哈希，而各自 trial 不同
+真实样本的 core/pelican 两个 run 共享同一双 trial plan 哈希，而各自 trial 不同
 （`.tools/engine-compare-mlx-20261106/blocks-e1/block1-llama-cpp/plan/plan.json` 及其 `batch/runs/*/inputs.json`）。
 
-所以 A 复用既有 run 绑定语义：每个 run 都绑定同一完整范围，挑块会直接表现为该计划的 trial 缺 run。
-无需改变字段、五终态、已封存 run 读取或计划哈希语义，不触发停止条件。
+所以 A 复用既有 run 绑定语义：每个 run 都绑定同一完整范围，缩减计划不能合法化已有 run。
+连续执行和跨 batch 防拼接另由 ADR 057c 的封存交接链保证；无需改变 run 字段、五终态或已封存读取语义。
 
 ### 方案 B：两层块计划（不采用）
 
@@ -54,7 +54,7 @@ CLI 提供生成子命令，复用 `compile_plan` / `write_plan`；Studio 收集
 
 CLI 预先生成计划 → 操作者按槽位执行 → CLI 派生仍是合法手动路径；新规则只阻断未预注册的事后比较。
 执行使用一个 batch，`run --plan` 逐槽位调用并显式 handoff。`compare-engines` 改为接收完整 plan 与 batch，
-按 trial 集合核验，不再接受任意左右 run 集合来产生新结论，也不再以事件时间重排出合法顺序。
+按 trial 集合和交接链核验，不再接受任意左右 run 集合来产生新结论，也不以事件时间重排出合法顺序。
 
 新派生格式为 `engine-comparison.v2`：
 
@@ -64,27 +64,31 @@ run_set = { expected_trials, observed_runs, missing, unplanned, mismatched }
 ```
 
 至少阻断 `comparison_plan_required / comparison_plan_hash_mismatch / planned_run_missing /
-unplanned_run_present / run_plan_mismatch / execution_order_differs`。
+unplanned_run_present / run_plan_mismatch / execution_order_differs`，并加入 ADR 057c 的交接链和历史停止原因。
 遗漏不多算，额外 run 不进入指标，错 trial 不改挂槽位；现有身份、token、冷缓存和块方向门槛继续逐题包执行。
+v2 先核验整个 batch，再按冻结槽位拆成各题包 A/B 块；不能把 12 个 run 直接交给现有六块比较逻辑。
 不能判定时也可封存含阻断和空指标原因的 v2，不把子集写成完整实验。
 
 ## 逐题包替换服务
 
 首轮每个 workload/trial 都更换服务进程并重新绑定；删除块内双题包共用服务的许可。
-计划生成器为每个槽位冻结 `execution.require_fresh_process = true`，执行器停止旧服务、确认退出、启动并绑定新服务；
-v2 另要求全部槽位的 PID/start 互不相同。
+计划生成器把 `require_fresh_process = true` 写入每个 workload 所引用 **config 的 `execution`**，
+不是 `experiment.execution`；现有 schema 已接受该字段（`cli/src/inferyard/contracts/schemas_config.py:120-122`）。
+执行器停止旧服务、确认退出、启动并绑定新服务；v2 另要求全部槽位的 PID/start 互不相同。
 
 **事实**：现有 `reuse_allowed` 只有 model、engine、generation 等相同才允许同进程复用
 （`cli/src/inferyard/runtime/service_reuse.py:10-21`）。真实样本 core 为 `max_tokens=512`、pelican 为 `4096`
 （`.tools/engine-compare-mlx-20261106/blocks-e1/block1-llama-cpp/plan/{core,pelican}-config.toml`），
-所以块内复用不能沿用一般复用门。逐槽位换服务也与现有脚本的实际行为一致（`engine_pair.py:177-264`）。
+所以块内复用不能沿用一般复用门。逐槽位换服务也与现有脚本一致（`engine_pair.py:177-264`）。
 
 ## 中途失败的代价与恢复
 
 首轮采用“整体作废”：任一槽位失败、取消或身份不符，停止后续派发，该比较不产生性能判定。
 末块失败可能使此前多小时测量无法形成判定，这是选择简单、避免事后换块所接受的实际成本。
-“作废”不删除或修改 run；已完成块仍可单独核验和诊断，重跑测量必须新建计划、batch 和输出目录，且无自动重试。
+“作废”不删除或修改 run；重跑测量必须新建计划、batch 和输出目录，且无自动重试。
 
+是否停止由 ADR 057c 的 CLI 比较专用历史规则统一判定，执行入口与 v2 派生共用；Studio 只读取结果。
+正常 handoff 和模型答错不算执行失败；run 创建前的启动/绑定失败由 Studio 或手动操作者终止，CLI 离线证据不能保证这一段。
 若只是派生、HTML 或展示失败，直接复用原 run 和完整计划重新派生到新目录，不重跑测量。
 “作废并追加”仍不采用；若未来允许，须先冻结追加次数、触发条件和槽位，不能看到结果后选择替换块。
 
@@ -96,7 +100,7 @@ v2 另要求全部槽位的 PID/start 互不相同。
 - 合法 v1 继续按原边界核验和展示，不追加计划门，也不获得 v2 资格；新比较必须走 v2，不提供 `--allow-unplanned`。
 
 **事实**：`compare-e5/core` 与 `compare-e5/pelican` 都有 `engine-comparison.json`、`report.html` 和
-`presentation-seal.v1` 的 `artifact-manifest.json`。本轮实际只读运行 `inferyard verify --path`，两者均返回
+`presentation-seal.v1` 的 `artifact-manifest.json`。返工第 1 轮实际只读运行 `inferyard verify --path`，两者均返回
 `verified / complete`、`source_runs=6`、`semantic_verified=true`、`render_checked=false`
 （样本目录 `.tools/engine-compare-mlx-20261106/compare-e5/{core,pelican}/`，本 ADR 记录的是未做 `--rerender` 的检查）。
 
@@ -110,8 +114,8 @@ v2 另要求全部槽位的 PID/start 互不相同。
 D1 批准后由 T2 落入契约和导出 schema：
 
 1. 定义 `engine-comparison-plan.v1` 为上述现有 plan 的受限形状及确定槽位 ID，不增加外层计划或 run 字段。
-2. 新增 `engine-comparison.v2` 和完整 run 集合阻断；保留 v1 读取路径。
-3. `compare-engines` 新执行只接受完整 plan/batch；报告按槽位和题包展示缺失、额外及不匹配 run。
+2. 新增 `engine-comparison.v2` 和完整 run 集合、交接链及历史停止阻断；保留 v1 读取路径。
+3. `compare-engines` 新执行只接受完整 plan/batch；报告按槽位和题包展示缺失、额外、错配及断链 run。
 4. 既有 run 字段、五终态、分母、缓存证据、身份和已封存读取语义不变；既有 v1 结论不升级。
 
 这是对“新建无计划比较”的阻断性行为变更，不破坏既有 run 证据语义，核心 `schema_version = 3` 不变。
@@ -121,11 +125,12 @@ D1 批准后由 T2 落入契约和导出 schema：
 ## 验证计划与未验证项
 
 T2 覆盖：一份计划生成全部槽位、所有 run 共享计划哈希、不同家族 handoff、逐槽位 fresh process、
-缺/多/重复/错 trial、乱序、手动与 Studio 路径、失败后重新派生不重跑，以及 v1/e1/e5 回归。
+缺/多/重复/错 trial、乱序、手动与 Studio 路径、失败后重新派生不重跑，以及 ADR 057c 的断链与历史停止反例。
 T6/T7 覆盖取消清理、绑定/替换失败、原子恢复和模拟一致性；T9 在授权设备执行默认双题包 A/B/A/B/A/B，
 分别保存 `compare-engines` 与 `verify` 结果。
 
-- **未验证**：当前只由源码路径和真实双 workload 样本证明 A 的结构可行；12 槽位完整计划尚需 T2 实际生成并离线核验。
+- **未验证**：`.tools/engine-compare-mlx-20261106/blocks-e1/` 实际是 6 份双 trial 计划，不是 A 的单份 12 槽位计划；
+  单份 12 槽位计划尚未生成与核验，现有样本只支持既有机制判断。
 - **未验证**：`require_fresh_process=true` 的 Studio 全链路和逐槽位服务替换未做真实引擎验收。
 - **事实（文档与源码分歧）**：CLI 帮助仍称 same-GGUF，代码已支持 llama-cpp 对 mlx-lm 跨格式
   （`cli/src/inferyard/cli/commands/comparison.py:16-18`，`analysis/engine_comparison.py:9-13`）。
