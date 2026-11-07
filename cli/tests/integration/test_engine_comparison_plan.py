@@ -39,7 +39,7 @@ def test_twelve_slots_execute_with_handoffs_and_read_back(
     plan, sides, states, identities, identity_files = helpers.local_inputs(tmp_path, rig)
     slots, bindings = helpers.slot_inputs(plan, identities, tmp_path)
     assert len(slots) == 12
-    helpers._assert_family_dispatch(sides)
+    helpers.assert_family_dispatch(sides)
     execution = helpers.SlotExecution(
         plan,
         states,

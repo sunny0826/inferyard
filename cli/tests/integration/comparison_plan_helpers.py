@@ -398,7 +398,7 @@ class SlotExecution:
                 assert code == 0 and result.status == "finished", result
 
 
-def _assert_family_dispatch(sides: dict[str, list[Path]]) -> None:
+def assert_family_dispatch(sides: dict[str, list[Path]]) -> None:
     for side in ("a", "b"):
         config = load_config(sides[side][0]).config.to_dict()
         assert adapter_factory(config["engine"]["adapter"]) is LocalEngineAdapter
