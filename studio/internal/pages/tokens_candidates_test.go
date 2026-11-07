@@ -4,7 +4,6 @@ package pages
 
 import (
 	"context"
-	"math"
 	"reflect"
 	"testing"
 
@@ -43,6 +42,16 @@ func TestPreviewCandidateSwitchesStructure(t *testing.T) {
 	}
 }
 
+// TestPreviewDefaultMatchesProduction covers that the first candidate is the
+// production scheme, so the debug window compares against what ships.
+func TestPreviewDefaultMatchesProduction(t *testing.T) {
+	_, previewDefault := candidateStyleFor(t, 0, false)
+	_, production := productionTheme(t, false, false)
+	if previewDefault != production {
+		t.Fatal("preview default does not match the production tokens")
+	}
+}
+
 // TestCandidateSideColorsRemainDistinguishable covers the comparison rule that
 // the two sides of an A/B result must stay distinguishable in both palettes.
 // Bars are graphical objects, so each side keeps 3:1 contrast with the
@@ -69,15 +78,20 @@ func assertSideColors(t *testing.T, index int, dark bool) {
 }
 
 // TestCandidateStyleDoesNotLeakIntoDefaultTheme covers the boundary that a
-// candidate is installed only in the preview session: the stock theme must
-// still resolve the default tokens after a candidate was rendered.
+// candidate is installed only in the preview session: after a comparison
+// candidate was rendered, the production theme must resolve the same tokens as
+// the production default.
 func TestCandidateStyleDoesNotLeakIntoDefaultTheme(t *testing.T) {
-	_, _ = candidateStyleFor(t, 2, true)
+	_, want := candidateStyleFor(t, 0, false)
+	_, _ = candidateStyleFor(t, 1, false)
 	var set designTokens
-	tt := ui.NewTester(func(c *ui.Context) { set = tokens(c) }, 200, 200)
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(studioTheme(c))
+		set = tokens(c)
+	}, 200, 200)
 	tt.Frame()
-	if set.Card.Edge != 0 || set.Radius.Surface != 12 {
-		t.Fatalf("preview candidate leaked into the default theme: %+v", set.Card)
+	if set != want {
+		t.Fatalf("preview candidate leaked into the production theme: %+v != %+v", set, want)
 	}
 }
 
@@ -114,23 +128,4 @@ func TestPreviewCandidateSwitchKeepsSessionIsolated(t *testing.T) {
 	if p.scene != previewSceneIndex(t, "下载 · 进行中与失败") {
 		t.Fatal("candidate switch reloaded the scene")
 	}
-}
-
-func contrastRatio(a, b ui.Color) float64 {
-	la, lb := relativeLuminance(a), relativeLuminance(b)
-	if la < lb {
-		la, lb = lb, la
-	}
-	return (la + .05) / (lb + .05)
-}
-
-func relativeLuminance(c ui.Color) float64 {
-	channel := func(v uint8) float64 {
-		s := float64(v) / 255
-		if s <= .03928 {
-			return s / 12.92
-		}
-		return math.Pow((s+.055)/1.055, 2.4)
-	}
-	return .2126*channel(c.R) + .7152*channel(c.G) + .0722*channel(c.B)
 }

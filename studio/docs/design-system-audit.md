@@ -56,7 +56,7 @@ Windows 与 Linux 的位置表现未验证。
 
 - 窗口外壳改用 `shells/sidebar.NewShell`：可折叠、可调宽侧栏，浮动 header，macOS titlebar
   材质与 Windows Mica；标题 1120 × 800、最小 800 × 600，侧栏状态键 `inferyard-studio-main`。
-- 主题改用 `theme.Onevra`（暖中性色 + terracotta），经 `ShellOptions.Theme` 安装。
+- 主题改用 Studio 调色板（onevra 基线，方案 A），经 `ShellOptions.Theme` 安装。
 - 导航改用 `components.Sidebar` / `components.SidebarItem` 配 lucide 图标；后随模型服务流
   改造增至六页（新增「下载」页）。
 - 按钮、徽章、Spinner、进度、复选框、选择、文本框、表格与资源曲线映射到 onevra 组件；

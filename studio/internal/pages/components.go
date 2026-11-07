@@ -8,20 +8,28 @@ import (
 )
 
 // card is the shared surface card: a second-level heading with related content
-// and nearby actions. Edge adds the optional hairline a scheme may define.
+// and nearby actions. Edge draws the card hairline defined by the scheme.
 func card(c *ui.Context, title string, fn func()) {
 	t := tokens(c)
 	ui.Column(c).MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() { heading(c, title, 2); fn() })
 }
 
 // statusBadge renders a state label; the color comes from the semantic state
-// tokens at the call site.
+// tokens at the call site. The badge is opaque and mixes the label toward the
+// theme text, so it stays readable on dark surfaces instead of relying on a
+// translucent tint.
 func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {
-	badge := components.Badge(c, label).TextColor(color).Background(color.Alpha(0.10))
+	t := c.Theme()
+	background, foreground := badgeSurfaceColors(t, color)
+	badge := components.Badge(c, label).TextColor(foreground).Background(background)
 	if c.Preferences().HighContrast {
-		badge.Background(c.Theme().Surface).Border(1, color)
+		badge.Background(t.Surface).Border(1, color)
 	}
 	return badge
+}
+
+func badgeSurfaceColors(t *ui.Theme, tint ui.Color) (background, foreground ui.Color) {
+	return t.Surface.Mix(tint, .12), tint.Mix(t.Text, .3)
 }
 
 // phaseProgressOptions describes a labeled phase sequence.
