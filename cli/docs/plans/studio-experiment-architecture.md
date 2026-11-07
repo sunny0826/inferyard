@@ -57,7 +57,7 @@
 契约改动写成 ADR 内的「契约变更」一节；D1 批准后由 T2 落入 `contracts/engine-comparison.md`，
 未批准的规则不进入现行契约。
 
-设计依据真实样本：核对主 checkout 下 `.tools/engine-compare-mlx-20261106/compare-e1`
+设计依据真实样本：核对主 checkout 下 `.tools/engine-compare-mlx-20261106/compare-e5`（当前格式）与 `compare-e1`（早期未封存）
 的产物与其 `source_runs`（只读），不基于假想字段出方案。
 
 必读：
@@ -102,8 +102,8 @@ Experiment 抽象是否超出当前两三种实验的需要，能否只加比较
 [评分与报告子系统](../../../docs/subsystems/scoring-reporting.md)、
 [scripts/README](../../scripts/README.md)（运行 export 脚本前）。
 
-检查：`ruff`、相关 pytest、schema 导出漂移核对、对 `.tools/engine-compare-mlx-20261106/compare-e1`
-现有产物执行 `verify` 确认旧产物读取符合政策（只读，不改原件）、HTML 离线渲染检查。
+检查：`ruff`、相关 pytest、schema 导出漂移核对、对 `.tools/engine-compare-mlx-20261106/compare-e5`
+（当前格式的封存产物；`compare-e1` 是早期未封存产物）执行 `verify` 确认旧产物读取符合政策（只读，不改原件）、HTML 离线渲染检查。
 
 ## T3 共享状态词表（worker；Studio 小改需协调者授权）
 
