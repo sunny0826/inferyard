@@ -98,9 +98,13 @@ def _rejection_stop(
     )
 
 
-def _batch_rejection_stop(rejections: tuple[JSONRecord, ...] | list[JSONRecord]) -> JSONRecord | None:
+def _batch_rejection_stop(
+    plan: JSONRecord, rejections: tuple[JSONRecord, ...] | list[JSONRecord]
+) -> JSONRecord | None:
+    planned = {trial["trial_id"] for trial in plan["trials"]}
     for rejection in rejections:
-        if rejection.get("trial_id") is not None and rejection.get("reason") != UNPLANNED_TRIAL:
+        trial_id = rejection.get("trial_id")
+        if trial_id in planned and rejection.get("reason") != UNPLANNED_TRIAL:
             continue
         detail = "rejection_outside_planned_slots"
         error = rejection.get("error") or {
@@ -129,6 +133,16 @@ def _later_run_ids(
     ]
 
 
+def _rejection_priority(rejection: JSONRecord) -> tuple[int, str, str, str]:
+    reason = rejection.get("reason")
+    return (
+        2 if reason == DUPLICATE_ATTEMPT else 1,
+        str(rejection.get("detail") or ""),
+        str(rejection.get("run_id") or ""),
+        str(rejection.get("path") or ""),
+    )
+
+
 def comparison_history_stop(
     plan: JSONRecord,
     runs: list[JSONRecord],
@@ -142,7 +156,7 @@ def comparison_history_stop(
     enter handoff or bundle metrics.
     """
     slots, by_trial = _attempts(plan, runs)
-    batch_stop = _batch_rejection_stop(rejections)
+    batch_stop = _batch_rejection_stop(plan, rejections)
     rejected_by_trial = {}
     for rejection in rejections:
         trial_id = rejection.get("trial_id")
@@ -151,7 +165,8 @@ def comparison_history_stop(
     for position, slot in enumerate(slots):
         rejected = rejected_by_trial.get(slot.trial_id, [])
         if rejected:
-            return _rejection_stop(slot, position, rejected[0], slots, by_trial)
+            chosen = min(rejected, key=_rejection_priority)
+            return _rejection_stop(slot, position, chosen, slots, by_trial)
         attempts = by_trial.get(slot.trial_id, [])
         if attempts:
             if len(attempts) != 1:

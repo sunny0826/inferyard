@@ -12,10 +12,11 @@ from inferyard.analysis.engine_comparison_v2 import read_comparison_v2
 from inferyard.application.types import CommandRequest
 from inferyard.application.verification import execute as verify
 from inferyard.config.comparison_plan import comparison_slots
+from inferyard.config.loader import LoadedConfig
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.evidence.storage import EvidenceError, json_bytes
 from inferyard.runtime.batch_runner import execute_async
-from inferyard.runtime.history_state import history_diagnostics
+from inferyard.runtime.history_state import history, history_diagnostics
 from inferyard.runtime.trial_runner import TrialDependencies
 from tests.integration.comparison_plan_assertions import (
     _assert_not_selected,
@@ -188,6 +189,7 @@ def _duplicate_wrong_plan_order(tmp_path: Path, plan: JSONRecord) -> None:
                 if row["detail"] == "duplicate_run_id"
             ]
         ) >= 2
+        assert document["history_stop"]["detail"] == "run_plan_mismatch"
         _assert_not_selected(document, source.name)
 
 
@@ -291,3 +293,43 @@ def assert_cross_trial_duplicate(
     assert document["eligible"] is False
     _assert_not_selected(document, source.name)
     _assert_not_selected(document, target.name)
+
+
+def assert_layout1_case(
+    batch: Path,
+    plan: JSONRecord,
+    loaded: dict[str, LoadedConfig],
+    name: str,
+    payload: JSONRecord,
+) -> None:
+    run_dir = batch / "runs" / "layout1"
+    (run_dir / "run.json").write_bytes(json_bytes(payload))
+    _, diagnostics = history_diagnostics(batch, plan, loaded, None)
+    assert all(
+        row.get("trial_id") is None
+        and row["reason"] == "comparison_history_identity_error"
+        and row.get("error")
+        for row in diagnostics
+    )
+    document = read_comparison_v2(batch.parent / "plan", batch)
+    assert all(row["reason"] != "EvidenceError" for row in document["diagnostics"])
+    assert all(
+        row.get("trial_id") != plan["trials"][0]["trial_id"]
+        or row["reason"] == "planned_run_missing"
+        for row in document["diagnostics"]
+    )
+    try:
+        history(
+            batch,
+            plan,
+            loaded,
+            allow_tool_change=True,
+            full_verification=True,
+        )
+    except EvidenceError as exc:
+        assert str(exc) == {
+            "damaged": "invalid_trial_input",
+            "forged": "invalid_json_evidence",
+        }[name]
+    else:
+        raise AssertionError("ordinary history must fail fast")

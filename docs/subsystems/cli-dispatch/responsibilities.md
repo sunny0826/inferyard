@@ -46,6 +46,7 @@
 | `public package/plan` | `public.py` | `reporting/public_package.py`、`config/public_plan.py` |
 | `report` | `reporting.py` | `reporting/report.py` |
 | `compare` | `comparison.py` | `reporting/comparison_report.py` |
+| `compare-plan` | `comparison.py` | `application/comparison.py`（延迟到 `config/comparison_plan.py`） |
 | `filter-candidates` | `candidates.py` | `analysis/candidate_filter.py` |
 | `extension freeze/run/replay` | `extensions.py` | `extensions/workflow.py` |
 | `engine-fit engines/plan/run/compare/verify` | `engine_fit.py` | `application/engine_fit.py` |

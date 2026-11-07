@@ -31,6 +31,7 @@
 - 采样任务与请求并发竞争（`asyncio.wait` FIRST_COMPLETED）：采样器先结束即取消生成并按证据错误处理；请求进行中采样器停止为 `sampler_stopped_early`。工具/IO 失败不虚构模型终态，持久化的尝试保留为中断状态（终态 `invalid`，归属见 [架构](../../../cli/docs/architecture.md) 的状态表）。
 - wall 预算由 `TrialDeadline` 以单调时钟记账：批量 trial 的允许时长取 trial 预算与批次剩余 wall 的较小者，非正即 `experiment_wall_budget_exhausted`；到期取消当前任务并给请求标记 `single_wall_budget_exhausted`（单次）或 `trial_wall_budget_exhausted`（批量）原因；操作者信号取消映射为退出码 130，二者都不缩小质量分母。批量路径还把剩余预算（`remaining_budget`）随结果返回。
 - 批量 resume 只续跑最近一次未完成运行的缺口（`resume_selection` 与 not_executed 身份，事实源在证据账本），不重跑已完成请求；恢复源必须是批次 runs 目录下的最新中断运行（`resume_requires_latest_unfinished_run`）。
+- 比较计划的 `run` 与 `resume` 先经 `runtime/batch_history.py`、`runtime/batch_state.py` 的严格 batch envelope/history 读取，再由 `analysis/comparison_history.py` 的共享停止判定；计划外、无 trial、重复与身份错误均可能阻断，语义见[跨引擎比较契约](../../../cli/docs/contracts/engine-comparison.md#比较专用历史停止)。
 - 请求边界事件（`arrival_capture`、`block_arrived` 与采样器的 `boundary("request_start"/"request_end"/"idle")` 回调）把线数据到达与请求归属传给采集器，跨边界样本的归因规则见 [平台采集与设备身份](../platform-sampling.md)。
 - 预检类失败按阶段定级：正式执行已开始后的 `PreflightError`/`ContractError` 归为退出码 3（运行不完整），之前归为 2（预检阻断）；证据与内部故障为 4，见 [CLI 与应用分发](../cli-dispatch.md) 的退出码表。
 - Windows 上非 `WINDOWS_BATCH_ADAPTERS` 白名单内的适配器在批量实时路径阻断（`windows_phase2_live_not_supported`）；白名单当前为 `kvmem`、`ninfer`、`prism_llama_server_v1`。lab 适配器在非 Windows 平台阻断（`lab_adapter_requires_windows`）。模拟/软件验证不授予真机资格，见 [数据契约](../../../cli/docs/data-contract.md#身份与测量资格分派)。

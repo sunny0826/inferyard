@@ -14,7 +14,7 @@ from inferyard.application.types import CommandRequest
 from inferyard.config.loader import LoadedConfig
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import json_bytes
+from inferyard.evidence.storage import EvidenceError, json_bytes
 from inferyard.runtime.batch_runner import execute_async
 from inferyard.runtime.history_state import history, history_diagnostics
 from inferyard.runtime.trial_runner import TrialDependencies
@@ -404,9 +404,15 @@ def _assert_unreadable(
         code, result = asyncio.run(execute_async(command, deps))
         assert code == 3 and result.status == "comparison_history_stopped"
     try:
-        history(tmp_path / "wrong-definition", plan, loaded, full_verification=True)
-    except Exception as exc:
-        assert not isinstance(exc, KeyError)
+        history(
+            tmp_path / "wrong-definition",
+            plan,
+            loaded,
+            allow_tool_change=True,
+            full_verification=True,
+        )
+    except EvidenceError as exc:
+        assert str(exc) == "trial_plan_binding_mismatch"
     else:
         raise AssertionError("ordinary history must fail fast")
 
@@ -442,29 +448,9 @@ def _assert_layout1_fallback(tmp_path: Path, plan: JSONRecord) -> None:
             },
         ),
     ):
-        (run_dir / "run.json").write_bytes(json_bytes(payload))
-        _, diagnostics = history_diagnostics(batch, plan, loaded, None)
-        assert all(
-            row.get("trial_id") is None
-            and row["reason"] == "comparison_history_identity_error"
-            and row.get("error")
-            for row in diagnostics
-        )
-        document = read_comparison_v2(tmp_path / "plan", batch)
-        assert all(row["reason"] != "EvidenceError" for row in document["diagnostics"])
-        assert all(
-            row.get("trial_id") != plan["trials"][0]["trial_id"]
-            or row["reason"] == "planned_run_missing"
-            for row in document["diagnostics"]
-        )
-        try:
-            history(batch, plan, loaded, full_verification=True)
-        except KeyError:
-            raise AssertionError(f"layout1 {name} leaked KeyError")
-        except Exception:
-            pass
-        else:
-            raise AssertionError("ordinary history must fail fast")
+        from tests.integration.comparison_plan_run_assertions import assert_layout1_case
+
+        assert_layout1_case(batch, plan, loaded, name, payload)
 
 
 def assert_real_reader_classification(

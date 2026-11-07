@@ -23,6 +23,7 @@
 | 格式边界 | 当前格式核验：`schema_version=3`、`origin=measured`，拒绝旧格式与历史来源 | `require_core` / `UnsupportedFormat` 在 [`cli/src/inferyard/evidence/formats.py`](../../cli/src/inferyard/evidence/formats.py)；历史来源拒绝在 `require_current_sources`，见 [`cli/src/inferyard/evidence/request_snapshots.py`](../../cli/src/inferyard/evidence/request_snapshots.py) |
 | 原生 clean receipt | layout 2 已完成请求必有 receipt；库存与 dirty_token 绑定核验 | `verify_clean_receipts` 在 [`cli/src/inferyard/evidence/native_receipts.py`](../../cli/src/inferyard/evidence/native_receipts.py)；receipt 写入与清 dirty 的次序在 [`cli/src/inferyard/runtime/service_observation.py`](../../cli/src/inferyard/runtime/service_observation.py)（属运行时） |
 | 旁证读取 | 独立 baseline 旁证按自身物理协议读取，不借用放宽识别规则的 `TrialEvidence` | `BaselineEvidence` 在 [`cli/src/inferyard/evidence/baseline_reads.py`](../../cli/src/inferyard/evidence/baseline_reads.py) |
+| 批量与比较读取 | 严格 batch envelope、history 拒绝登记与共享停止 | `batch_envelope.py`、`history_state.py`、`batch_state.py`；停止在 `analysis/comparison_history.py`，见[跨引擎比较契约](../../cli/docs/contracts/engine-comparison.md) |
 | 错误与投影读取 | 证据错误原因归一呈现；batch 延续字段与 resume 选择集的历史投影读取 | `safe_reason` 在 [`cli/src/inferyard/evidence/error_reasons.py`](../../cli/src/inferyard/evidence/error_reasons.py)；`read_run_projection` 在 [`cli/src/inferyard/evidence/run_projection.py`](../../cli/src/inferyard/evidence/run_projection.py)；`resume_selection` / `plan_progress` 在 [`cli/src/inferyard/evidence/ledger.py`](../../cli/src/inferyard/evidence/ledger.py) |
 
 关键状态的事实源：`EvidenceStore._initialize` 生成 `run_id` 与 `clock_id`，并初始化

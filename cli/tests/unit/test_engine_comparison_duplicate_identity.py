@@ -4,6 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.analysis.comparison_history import comparison_history_stop
 from inferyard.analysis.engine_comparison_v2 import evaluate_comparison
 from tests.unit.test_engine_comparison_v2 import plan_with_slots, synthetic_runs
 
@@ -169,7 +170,6 @@ def test_duplicate_wrong_plan_keeps_mismatch_in_both_orders(tmp_path: Path) -> N
     plan, _ = plan_with_slots(tmp_path)
     source = synthetic_runs(plan)
     copy = deepcopy(source[0])
-    copy["run"]["trial_id"] = source[4]["run"]["trial_id"]
     copy["run"]["plan_sha256"] = "f" * 64
     copy["path"] = "/runs/ordered-copy"
     for runs in (source + [copy], [copy, *source]):
@@ -178,6 +178,56 @@ def test_duplicate_wrong_plan_keeps_mismatch_in_both_orders(tmp_path: Path) -> N
             row["detail"] == "run_plan_mismatch"
             for row in document["run_set"]["mismatched"]
         )
+        assert document["history_stop"]["detail"] == "run_plan_mismatch"
         assert len({row["path"] for row in _duplicate_rows(document)}) == 2
         _assert_source_rejected(document, copy["run"]["run_id"])
-        assert source[4]["run"]["run_id"] not in _selected(document)
+
+
+def test_direct_unplanned_identity_error_stops_batch(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    extra = deepcopy(runs[0])
+    extra["run"]["run_id"] = "run-unplanned-error"
+    extra["run"]["trial_id"] = "trial-unplanned-error"
+    extra["identity_error"] = "invalid_trial_input"
+    extra["identity_error_detail"] = {"reason": "invalid_trial_input"}
+    document = evaluate_comparison(plan, [*runs, extra])
+    assert document["history_stop"]["trial_id"] == "trial-unplanned-error"
+    assert document["history_stop"]["detail"] == "rejection_outside_planned_slots"
+
+
+def test_direct_null_trial_identity_error_stops_batch(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    extra = deepcopy(runs[0])
+    extra["run"]["run_id"] = "run-null-trial-error"
+    extra["run"]["trial_id"] = None
+    extra["identity_error"] = "invalid_trial_input"
+    extra["identity_error_detail"] = {"reason": "invalid_trial_input"}
+    document = evaluate_comparison(plan, [*runs, extra])
+    assert document["history_stop"].get("trial_id") is None
+    assert document["history_stop"]["detail"] == "rejection_outside_planned_slots"
+
+
+def test_same_slot_priority_is_order_independent(tmp_path: Path) -> None:
+    plan, _ = plan_with_slots(tmp_path)
+    runs = synthetic_runs(plan)
+    trial = plan["trials"][0]["trial_id"]
+    run_id = runs[0]["run"]["run_id"]
+    wrong = {
+        "trial_id": trial,
+        "run_id": run_id,
+        "path": runs[0]["path"],
+        "reason": "run_plan_mismatch",
+        "detail": "run_plan_mismatch",
+    }
+    duplicate = {
+        "trial_id": trial,
+        "run_id": run_id,
+        "path": runs[0]["path"],
+        "reason": "comparison_duplicate_trial_attempt",
+        "detail": "duplicate_run_id",
+    }
+    for rejections in ([wrong, duplicate], [duplicate, wrong]):
+        stop = comparison_history_stop(plan, runs, rejections)
+        assert stop["detail"] == "run_plan_mismatch"

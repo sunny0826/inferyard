@@ -45,11 +45,9 @@
 v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 
 - 先核验完整 batch，再按冻结槽位选择 run；从不按 `first_event_utc` 重排槽位。
-- v2 reader 与离线 verify 复用同一 `batch.json` 严格准入：整数 `schema_version=3`、
-  布尔 `diagnostic`、完整身份/工具摘要与计划哈希；非法输入返回 `batch_envelope_invalid`，
-  `eligible=false`。
-- layout 1 旧 run 禁用 v2 身份回退；只有 layout 2 已验证 envelope 可提供
-  `trial_id`/`run_id`。
+- v2 reader 与 verify 复用同一 `batch.json` 严格准入（整数版本、布尔 `diagnostic`、
+  完整身份/哈希）；非法返回 `batch_envelope_invalid` 且 `eligible=false`。
+- layout 1 禁用 v2 身份回退；只有 layout 2 的 envelope 可提供 `trial_id`/`run_id`。
 - 每个 run 必须绑定同一完整 `plan_sha256`、experiment 与 definition versions。
 - 交接链读取各 run 已封存的 `service_binding.previous_run_id`：首槽位必须为 null；
   后续必须精确等于前一冻结槽位选中 run 的 `run_id`。
@@ -85,6 +83,8 @@ v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 - 取消、执行失败、身份错误或成功后缺槽位却已有后续 run 时阻断，不再派发后续槽位。
 - 槽位级停止（rejection、terminal、缺槽且已有后续 run）优先于 batch 兜底；
   batch 污染只在遍历完所有冻结槽位后仍无槽位级停止时返回。
+- 同槽位多原因固定优先级：wrong-plan/identity-error > duplicate，同优先级按
+  detail/run_id/path 排序；计划内按槽位停止；计划外/无 trial 走 batch 停止。
 - 计划外或 trial 为 null 的拒绝无可归属槽位时，整个 batch 阻断：
   `comparison_history_identity_error` / `rejection_outside_planned_slots`，保留已知
   trial/run/error；`run` 与 `resume` 同样停止。
@@ -92,8 +92,7 @@ v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 - 同一 `run_id` 的成功、拒绝与身份回退读取都参与重复登记；关联的全部 trial 不进入
   selected runs、handoff 或指标。reader 与 runset 每个路径只留一条重复证据，
   原始拒绝原因与重复证据并存。
-- 直接 `evaluate_comparison` 与 reader 共用停止：四类拒绝都参与，取最早受影响槽位，
-  detail 用拒绝分类或原始 detail。
+- 直接 `evaluate_comparison` 与 reader 共用四类拒绝停止，取最早受影响槽位。
 - 被拒绝的 run 保留已读取的 trial/run 身份与底层错误；确实无法证明 trial 的损坏记录不猜测归属。
 - 无 slot 可归属且不属于规范列表的拒绝原因统一为 `comparison_history_identity_error`，
   不把 `EvidenceError` 等底层异常名复制到顶层 classification。
@@ -106,8 +105,8 @@ v2 的分类与共享停止粒度映射：
 | --- | --- | --- |
 | `comparison_unplanned_trial` | `comparison_history_identity_error`，detail 为 `rejection_outside_planned_slots` | run 的 trial 不属于计划；保留 trial/run/path 与 error，不猜测槽位 |
 | `run_plan_mismatch` | `comparison_history_identity_error`，detail 为 `run_plan_mismatch` | run 已绑定计划槽位，但计划哈希、experiment 或 definition versions 不匹配 |
-| `comparison_history_identity_error` | `comparison_history_identity_error`，detail 为原始 detail | 读取或身份失败的 run/trial；直接与 reader 共用 |
-| `comparison_duplicate_trial_attempt` | `comparison_history_identity_error`，detail 为重复根原因或 `duplicate_run_id` | 同 trial 多根或跨 trial 复用 run id；关联 trial 不进入 selected/handoff/指标 |
+| `comparison_history_identity_error` | `comparison_history_identity_error`，detail 为原始 detail | 读取/身份失败；与 reader 共用 |
+| `comparison_duplicate_trial_attempt` | `comparison_history_identity_error`，detail 为重复根原因或 `duplicate_run_id` | 同/跨 trial 多根或复用；关联 trial 不进入 selected/handoff/指标 |
 - 完整成功要求 scope/evidence complete 且全部请求终态为 completed；
   模型答错但请求 completed、或 `unscorable` 不按执行失败处理。
 - 正常 `awaiting_handoff` 不是 run 终态，不触发停止。
