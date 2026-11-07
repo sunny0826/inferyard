@@ -80,6 +80,15 @@ v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
 - 取消、执行失败、身份错误或成功后缺槽位却已有后续 run 时阻断，不再派发后续槽位。
 - 被拒绝的 run 保留已读取的 trial/run 身份与底层错误；确实无法证明 trial 的损坏记录不猜测归属。
 - 后续污染 run 附在最早停止记录中，不改变其 trial/run/reason/detail；停止后的缺失尾部不单独报告。
+- 普通 batch history 校验 run/selection 的 schema relation 与 parent 一致性；comparison diagnostic history 在此之上保留拒绝分类。
+
+v2 的分类与共享停止粒度映射：
+
+| v2 分类 | 共享停止 | 说明 |
+| --- | --- | --- |
+| `comparison_unplanned_trial` | 无对应槽位停止 | run 的 trial 不属于冻结计划；保留 trial/run/path，不能猜测归属到某个计划槽位 |
+| `run_plan_mismatch` | `comparison_history_identity_error`，detail 为 `run_plan_mismatch` | run 已绑定计划槽位，但计划哈希、experiment 或 definition versions 不匹配 |
+| `comparison_duplicate_trial_attempt` | `comparison_history_identity_error`，detail 为重复根原因或 `duplicate_run_id` | 同 trial 多个 initial/repeat 根或重复 run id；拒绝项不进入 handoff 或指标 |
 - 完整成功要求 scope/evidence complete 且全部请求终态为 completed；
   模型答错但请求 completed、或 `unscorable` 不按执行失败处理。
 - 正常 `awaiting_handoff` 不是 run 终态，不触发停止。

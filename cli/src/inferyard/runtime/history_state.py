@@ -7,10 +7,16 @@ from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 
+from inferyard.analysis.comparison_history import (
+    DUPLICATE_ATTEMPT,
+    HISTORY_IDENTITY_ERROR,
+    RUN_PLAN_MISMATCH,
+    UNPLANNED_TRIAL,
+)
 from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.config.loader import LoadedConfig
 from inferyard.contracts.engine_profiles import is_local
-from inferyard.contracts.validation import ContractError
+from inferyard.contracts.validation import ContractError, validate_document
 from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.ledger import read_run_projection, read_trial
 from inferyard.evidence.storage import EvidenceError, read_json
@@ -80,15 +86,70 @@ class RunRead:
     error: Exception | None = None
     trial_id: str | None = None
     run_id: str | None = None
+    classification: str | None = None
+    detail: str | None = None
 
 
-def _rejected(path: Path, code: str, run: JSONRecord | None = None) -> RunRead:
+def _rejected(
+    path: Path,
+    code: str,
+    run: JSONRecord | None = None,
+    *,
+    classification: str | None = None,
+    detail: str | None = None,
+) -> RunRead:
     return RunRead(
         path,
         code=code,
         trial_id=None if run is None else run.get("trial_id"),
         run_id=None if run is None else run.get("run_id"),
+        classification=classification or code,
+        detail=detail or code,
     )
+
+
+def _identity_classification(
+    run: JSONRecord, plan: JSONRecord
+) -> tuple[str | None, str | None]:
+    if run["trial_id"] not in {trial["trial_id"] for trial in plan["trials"]}:
+        return UNPLANNED_TRIAL, None
+    experiment = plan["experiment"]
+    if (
+        run["plan_sha256"] != plan["plan_sha256"]
+        or run["experiment_id"] != experiment["experiment_id"]
+        or run["definition_versions"] != experiment["definition_versions"]
+    ):
+        return RUN_PLAN_MISMATCH, RUN_PLAN_MISMATCH
+    return None, None
+
+
+def _read_envelope_identity(path: Path) -> JSONRecord:
+    reads = TrialEvidence(path.resolve(), projection=True)
+    return {"run": reads.input("run"), "selection": reads.input("selection")}
+
+
+def _failure_identity(path: Path, plan: JSONRecord) -> RunRead | None:
+    try:
+        identity = _read_envelope_identity(path)
+    except (EvidenceError, ContractError, UnsupportedFormat, OSError, ValueError, KeyError, TypeError, IndexError):
+        return None
+    run = identity["run"]
+    classification, detail = _identity_classification(run, plan)
+    return _rejected(
+        path,
+        classification or HISTORY_IDENTITY_ERROR,
+        run,
+        classification=classification or HISTORY_IDENTITY_ERROR,
+        detail=detail,
+    )
+
+
+def _validate_run_documents(data: JSONRecord) -> None:
+    try:
+        validate_document("run", data["run"])
+        validate_document("selection", data["selection"])
+    except ContractError as exc:
+        raise EvidenceError("invalid_trial_input") from exc
 
 
 def _load_run(path: Path, context: HistoryContext) -> tuple[JSONRecord, JSONRecord]:
@@ -102,6 +163,7 @@ def _load_run(path: Path, context: HistoryContext) -> tuple[JSONRecord, JSONReco
     else:
         data = read_run_projection(path)
         data["manifest_sealed"] = data.get("manifest_sealed", False)
+    _validate_run_documents(data)
     return data, trial_metadata
 
 
@@ -166,7 +228,14 @@ def _read_run(path: Path, context: HistoryContext) -> RunRead:
     run = data["run"]
     code = _identity_code(data, context)
     if code is not None:
-        return _rejected(path, code, run)
+        classification, detail = _identity_classification(run, context.plan)
+        return _rejected(
+            path,
+            code,
+            run,
+            classification=classification or code,
+            detail=detail or code,
+        )
     binding, sealed, code = _binding(path, data, trial_metadata, context)
     if code is not None:
         return _rejected(path, code, run)
@@ -247,7 +316,21 @@ def _collect_run(
     try:
         outcome = _read_run(path, context)
     except (EvidenceError, ContractError, UnsupportedFormat, OSError, ValueError, KeyError, TypeError, IndexError) as exc:
-        on_error(RunRead(path, error=exc))
+        identity = _failure_identity(path, context.plan)
+        if identity is None:
+            on_error(RunRead(path, error=exc))
+        else:
+            on_error(
+                RunRead(
+                    path,
+                    code=identity.code,
+                    error=exc,
+                    trial_id=identity.trial_id,
+                    run_id=identity.run_id,
+                    classification=identity.classification,
+                    detail=identity.detail,
+                )
+            )
         return
     if outcome.code is not None or outcome.error is not None:
         on_error(outcome)
@@ -258,7 +341,15 @@ def _collect_run(
         return
     run = data["run"]
     if run["run_id"] in by_id:
-        on_error(_rejected(path, "duplicate_run_id", run))
+        on_error(
+            _rejected(
+                path,
+                "batch_run_identity_mismatch",
+                run,
+                classification=DUPLICATE_ATTEMPT,
+                detail="duplicate_run_id",
+            )
+        )
         return
     by_id[run["run_id"]] = data
     groups[run["trial_id"]].append(data)
@@ -276,12 +367,19 @@ def _ordered_groups(
         group_ordered, code = _ordered_group(tid, group, by_id)
         if code is not None:
             first = group[0]
+            classification = (
+                DUPLICATE_ATTEMPT
+                if code == "trial_history_has_multiple_or_missing_roots"
+                else HISTORY_IDENTITY_ERROR
+            )
             on_error(
                 RunRead(
                     first["path"],
                     code=code,
                     trial_id=tid,
                     run_id=first["run"]["run_id"],
+                    classification=classification,
+                    detail=code,
                 )
             )
             continue
@@ -359,8 +457,8 @@ def history_diagnostics(
 
     def collect(outcome: RunRead) -> None:
         exc = outcome.error
-        reason = outcome.code
-        if exc is not None:
+        reason = outcome.classification or outcome.code
+        if reason is None and exc is not None:
             reason = "unsupported_format" if isinstance(exc, UnsupportedFormat) else type(exc).__name__
         diagnostics.append(
             {
@@ -371,7 +469,7 @@ def history_diagnostics(
                 "error": None
                 if exc is None
                 else {"type": type(exc).__name__, "reason": str(exc)},
-                "detail": outcome.code,
+                "detail": outcome.detail or outcome.code,
             }
         )
 

@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from inferyard.analysis.comparison_types import JSONRecord, JSONValue
 from inferyard.analysis.comparison_history import (
+    DUPLICATE_ATTEMPT,
     HISTORY_IDENTITY_ERROR,
+    RUN_PLAN_MISMATCH,
+    UNPLANNED_TRIAL,
     comparison_history_stop,
 )
 from inferyard.config.comparison_plan import Slot
 
 PLAN_HASH_MISMATCH = "comparison_plan_hash_mismatch"
 PLANNED_RUN_MISSING = "planned_run_missing"
-UNPLANNED_TRIAL = "comparison_unplanned_trial"
-RUN_PLAN_MISMATCH = "run_plan_mismatch"
-DUPLICATE_ATTEMPT = "comparison_duplicate_trial_attempt"
 HANDOFF_MISSING = "comparison_handoff_missing"
 HANDOFF_BROKEN = "comparison_handoff_broken"
 HANDOFF_SLOT_MISMATCH = "comparison_handoff_slot_mismatch"
@@ -144,6 +144,47 @@ def _classify_runs(
     return run_set, by_trial, rejected
 
 
+def _reject_unplanned(run_set: JSONRecord, rejection: JSONRecord) -> None:
+    run_set["unplanned"].append(
+        {
+            "trial_id": rejection.get("trial_id"),
+            "run_id": rejection.get("run_id"),
+            "path": rejection.get("path"),
+        }
+    )
+
+
+def _reject_duplicate(
+    run_set: JSONRecord, slot: Slot, rejection: JSONRecord
+) -> None:
+    run_set["duplicates"].append(
+        {
+            "trial_id": slot.trial_id,
+            "run_id": rejection.get("run_id"),
+            "path": rejection.get("path"),
+            "detail": rejection.get("detail") or "duplicate_trial_attempt",
+        }
+    )
+
+
+def _reject_mismatch(
+    run_set: JSONRecord, slot: Slot, rejection: JSONRecord
+) -> None:
+    reason = rejection.get("reason")
+    detail = rejection.get("detail")
+    run_set["mismatched"].append(
+        {
+            "trial_id": slot.trial_id,
+            "run_id": rejection.get("run_id"),
+            "path": rejection.get("path"),
+            "detail": RUN_PLAN_MISMATCH if reason == RUN_PLAN_MISMATCH else (
+                detail or "run_unreadable"
+            ),
+            "error": rejection.get("error"),
+        }
+    )
+
+
 def _classify_rejections(
     slots: tuple[Slot, ...],
     run_set: JSONRecord,
@@ -154,11 +195,15 @@ def _classify_rejections(
     by_trial = {slot.trial_id: slot for slot in slots}
     for rejection in rejections:
         trial_id = rejection.get("trial_id")
+        reason = rejection.get("reason")
         slot = by_trial.get(trial_id)
+        if reason == UNPLANNED_TRIAL:
+            _reject_unplanned(run_set, rejection)
+            continue
         if slot is None:
             append_diagnostic(
                 diagnostics,
-                HISTORY_IDENTITY_ERROR,
+                reason or HISTORY_IDENTITY_ERROR,
                 trial_id=trial_id,
                 run_id=rejection.get("run_id"),
                 path=rejection.get("path"),
@@ -167,31 +212,17 @@ def _classify_rejections(
             )
             continue
         rejected.add(slot.trial_id)
-        label = {
-            **_slot_label(slot),
-            "run_id": rejection.get("run_id"),
-            "path": rejection.get("path"),
-        }
-        run_set["observed_runs"].append(label)
-        if rejection.get("detail") == "duplicate_run_id":
-            run_set["duplicates"].append(
-                {
-                    "trial_id": slot.trial_id,
-                    "run_id": rejection.get("run_id"),
-                    "path": rejection.get("path"),
-                    "detail": "duplicate_run_id",
-                }
-            )
+        run_set["observed_runs"].append(
+            {
+                **_slot_label(slot),
+                "run_id": rejection.get("run_id"),
+                "path": rejection.get("path"),
+            }
+        )
+        if reason == DUPLICATE_ATTEMPT:
+            _reject_duplicate(run_set, slot, rejection)
         else:
-            run_set["mismatched"].append(
-                {
-                    "trial_id": slot.trial_id,
-                    "run_id": rejection.get("run_id"),
-                    "path": rejection.get("path"),
-                    "detail": rejection.get("detail") or "run_unreadable",
-                    "error": rejection.get("error"),
-                }
-            )
+            _reject_mismatch(run_set, slot, rejection)
 
 
 def _select_slots(

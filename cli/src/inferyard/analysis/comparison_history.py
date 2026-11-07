@@ -15,6 +15,9 @@ HISTORY_IDENTITY_ERROR = "comparison_history_identity_error"
 HISTORY_CANCELLED = "comparison_history_cancelled"
 HISTORY_FAILED = "comparison_history_failed"
 HISTORY_INCOMPLETE = "comparison_history_incomplete"
+UNPLANNED_TRIAL = "comparison_unplanned_trial"
+RUN_PLAN_MISMATCH = "run_plan_mismatch"
+DUPLICATE_ATTEMPT = "comparison_duplicate_trial_attempt"
 
 
 @dataclass(frozen=True, slots=True)
