@@ -52,5 +52,3 @@ def service_diagnostics(
             )
         else:
             seen[service] = slot.trial_id
-
-

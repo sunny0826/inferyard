@@ -13,14 +13,15 @@
 | 配置加载 | TOML/JSON 读取、默认值补齐、凭据与容量规则、路径解析、题包加载 | `load_config`、`validate_runtime_config`、`validate_endpoint`、`read_document` 在 [`cli/src/inferyard/config/loader.py`](../../cli/src/inferyard/config/loader.py) |
 | 题包与审核 | 统一题包结构/语义校验、内容哈希、人工审核门槛、迁移与逐题证明核验 | `content_hash`、`validate_bundle`、`require_review`、`validate_case` 在 [`cli/src/inferyard/config/bundle.py`](../../cli/src/inferyard/config/bundle.py)；`approved`、`validate_provenance` 在 [`cli/src/inferyard/config/bundle_review.py`](../../cli/src/inferyard/config/bundle_review.py) |
 | 冻结计划 | 实验定义展开为 trial、预算核算、计划哈希、运行配置快照、原子发布 | `compile_plan`、`prepare_plan`、`write_plan` 在 [`cli/src/inferyard/config/planning.py`](../../cli/src/inferyard/config/planning.py)；`compile_single_plan` 在 [`cli/src/inferyard/config/single_plan.py`](../../cli/src/inferyard/config/single_plan.py)；`plan_hash`、`workload_budget` 在 [`cli/src/inferyard/config/plan_math.py`](../../cli/src/inferyard/config/plan_math.py)；`normalized_config`、`runtime_snapshot`、`source_bytes`、`validate_workload_inputs`、`read_frozen_plan` 在 [`cli/src/inferyard/config/plan_inputs.py`](../../cli/src/inferyard/config/plan_inputs.py) |
+| 比较计划 | 六块 A/B 槽位、侧切换链、题包覆盖与安全约束冻结 | `freeze`、`comparison_slots`、`validate_comparison_plan` 在 [`cli/src/inferyard/config/comparison_plan.py`](../../cli/src/inferyard/config/comparison_plan.py)；安全阈值与题包一致性在 [`cli/src/inferyard/config/comparison_plan_safety.py`](../../cli/src/inferyard/config/comparison_plan_safety.py)；规则见[跨引擎比较契约](../../cli/docs/contracts/engine-comparison.md) |
 | 环境准入 | 冻结环境条件的声明式准入，诊断模式只记录差异 | `admission`、`mismatches` 在 [`cli/src/inferyard/config/environment_binding.py`](../../cli/src/inferyard/config/environment_binding.py) |
 | 服务绑定 | 候选配置与已运行服务进程的启动参数/启动时刻绑定 | `bind`、`prepare` 在 [`cli/src/inferyard/config/service_binding.py`](../../cli/src/inferyard/config/service_binding.py) |
 | 声明谱系 | 冻结的模型来源/量化/转换声明只哈希不鉴权 | `validate_lineage` 在 [`cli/src/inferyard/config/model_lineage.py`](../../cli/src/inferyard/config/model_lineage.py)；`parse_record` 在 [`cli/src/inferyard/config/lineage_records.py`](../../cli/src/inferyard/config/lineage_records.py) |
 | 社区资源 | 随包交付的已审题包与示例配置的哈希核验读取 | `resource_bytes`、`BUNDLES` 在 [`cli/src/inferyard/config/community_resources.py`](../../cli/src/inferyard/config/community_resources.py)；`initialize` 在 [`cli/src/inferyard/config/community_workspace.py`](../../cli/src/inferyard/config/community_workspace.py) |
 
-关键事实源只有一处：`SCHEMA_VERSION = 3` 是唯一活动契约版本，全部 kind 的结构定义由 `schemas_for()` 注册表给出，`export_schema()` 不接受版本选择；执行终态枚举 `ExecutionState`（`completed`/`failed`/`cancelled`/`invalid`/`not_executed`）定义在 `contracts/validation.py`，是五终态守恒的符号来源。凭据从不以值进入本层：配置中只保存 `endpoint.api_key_env` 环境变量名，字段语义与拒绝规则见 [数据契约](../../cli/docs/data-contract.md)。
+关键事实源只有一处：`SCHEMA_VERSION = 3` 与 `schemas_for()` 定义唯一活动契约，`export_schema()` 不接受版本选择；五终态 `ExecutionState` 定义在 `contracts/validation.py`。凭据只以 `endpoint.api_key_env` 变量名进入本层，规则见[数据契约](../../cli/docs/data-contract.md)。
 
-`config/` 内其余模块的归属边界：`engine_fit*.py` 是 engine-fit 专用计划与资产声明，属于 [engine-fit 引擎诊断](engine-fit.md)；`fixed_output.py`、`cache_execution.py`、`cache_policy.py` 是固定输出与缓存复用的冻结输入规则，执行侧核验在 `runtime/`，属于 [运行时执行与引擎适配](runtime-execution.md)；`workspace_inputs.py`、`workspace_progress.py`、`community_candidates*.py`、`public_config_check.py` 是操作者准备工作流与离线声明核对，命令面见 [CLI 与应用分发](cli-dispatch.md)；`public_recipe.py`、`public_plan.py` 服务的公开复现产物属于 [评分、比较与报告](scoring-reporting.md)。
+`config/` 其余模块归属：`engine_fit*.py` 属 [engine-fit](engine-fit.md)；`fixed_output.py`、`cache_execution.py`、`cache_policy.py` 属 [运行时执行](runtime-execution.md)；工作流/离线声明核对模块见 [CLI 分发](cli-dispatch.md)；`public_recipe.py`、`public_plan.py` 属 [评分、比较与报告](scoring-reporting.md)；`comparison_plan.py`、`comparison_plan_safety.py` 属比较计划冻结与安全校验，见[跨引擎比较契约](../../cli/docs/contracts/engine-comparison.md)。
 
 ## 运行路径
 
@@ -31,7 +32,8 @@
 5. **计划读取（批量/续测）**：`read_frozen_plan` 在不访问原源目录的前提下核验 `plan.json`：结构版本、`plan_sha256` 自哈希、与 `compile_plan` 重展开结果一致、runtime 绑定齐全、快照字节与从冻结源字节重归一化的结果一致（仅接受一个哈希绑定的历史投影例外），最后产出可直接执行的 `LoadedConfig`。
 6. **计划再校验**：任何路径进入 `validate_document("plan", ...)` 都重新执行 `_plan` 语义校验：重算 `plan_hash` 比对 `plan_sha256`、trial 题序与冻结 case 集一致、预算与 trial 总和一致、runtime 绑定覆盖每个 workload。
 7. **执行时审核**：trial 启动前由运行时调用 `require_review`（[`cli/src/inferyard/runtime/trial_runner.py`](../../cli/src/inferyard/runtime/trial_runner.py)），命中当前内容的人工批准、核验过的迁移/继承证明或逐题审核记录才放行，审核语义见 [数据契约](../../cli/docs/data-contract.md#按用途分派)。
-8. **工作区初始化**：`community_workspace.initialize` 用 `resource_bytes` 读取随包题包原字节并立即 `require_review`，连同三平台示例配置一起写入新工作区；题包字节与 `resources.json` 清单哈希不符即拒绝。
+8. **比较计划冻结（`compare-plan`）**：应用分派进入 [`application/comparison.py`](../../cli/src/inferyard/application/comparison.py)，再到 `config/comparison_plan.execute`；`freeze` 校验两侧配置/题包、构造六块 A/B 槽位与切换链、核算比较预算和安全门槛，先写临时计划再 `read_frozen_plan`/`validate_comparison_plan` 复核，`--dry-run` 只预览，`--out` 才发布新目录。规则见[跨引擎比较契约](../../cli/docs/contracts/engine-comparison.md)。
+9. **工作区初始化**：`community_workspace.initialize` 用 `resource_bytes` 读取随包题包原字节并立即 `require_review`，连同三平台示例配置一起写入新工作区；题包字节与 `resources.json` 清单哈希不符即拒绝。
 
 ## 约束与失败行为
 
@@ -56,30 +58,8 @@ progress 推荐专项结果读取或新计划/batch。见
 
 ## 验证
 
-以下命令在仓库的 `cli/` 目录内执行（从仓库根先 `cd cli`）：
-
-```sh
-# 契约结构/语义、配置解析、题包审核、验证复用、社区资源的相关单测
-mise exec -- uv run --frozen pytest -q \
-  tests/unit/test_contract_validation.py \
-  tests/unit/test_unified_contract.py \
-  tests/unit/test_config.py \
-  tests/unit/test_validation_reuse.py \
-  tests/unit/test_bundle_migration.py \
-  tests/unit/test_community_candidates.py \
-  tests/unit/test_community_preparation.py
-
-# 静态检查（pyproject.toml 中 ruff 配置：py314、100 列）
-mise exec -- uv run --frozen ruff check src tests scripts
-
-# schema 导出物与生成源一致（改 contracts/schemas*.py 后必须运行）
-mise exec -- uv run --frozen python scripts/export_schemas.py --check
-
-# 社区资源清单与随包题包字节一致
-mise exec -- uv run --frozen python scripts/export_community.py --check
-```
-
-命令形式对照 [`CONTRIBUTING.md`](../../cli/CONTRIBUTING.md) 的验证一节；Agent 执行时按仓库根 AGENTS.md 约定以 `rtk proxy` 包裹。
+配置、契约、题包与社区资源回归，以及 schema/community 导出检查，命令与工作目录约定见
+[CONTRIBUTING.md](../../cli/CONTRIBUTING.md#changes-and-verification)；Agent 以 `rtk proxy` 包裹。
 
 ## 本地引擎候选与绑定
 

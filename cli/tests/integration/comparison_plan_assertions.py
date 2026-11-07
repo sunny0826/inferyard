@@ -476,6 +476,11 @@ def assert_real_reader_classification(
         assert_stop_priority,
     )
 
+    from tests.integration.comparison_plan_run_assertions import (
+        assert_reader_preserves_read_detail,
+    )
+
+    assert_reader_preserves_read_detail(tmp_path, plan)
     assert_batch_envelope_rejections(tmp_path)
     assert_stop_priority(
         tmp_path, plan, request, deps, StopPriorityCase("priority-unplanned", False)

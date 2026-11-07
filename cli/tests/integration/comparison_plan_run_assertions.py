@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from inferyard.analysis.comparison_types import JSONRecord
-from inferyard.analysis.engine_comparison_v2 import read_comparison_v2
+from inferyard.analysis.engine_comparison_v2 import evaluate_comparison, read_comparison_v2
 from inferyard.application.types import CommandRequest
 from inferyard.application.verification import execute as verify
 from inferyard.config.comparison_plan import comparison_slots
@@ -333,3 +333,32 @@ def assert_layout1_case(
         }[name]
     else:
         raise AssertionError("ordinary history must fail fast")
+
+
+def assert_reader_preserves_read_detail(tmp_path: Path, plan: JSONRecord) -> None:
+    first_trial = plan["trials"][0]["trial_id"]
+    batch = tmp_path / "batch"
+    copy = tmp_path / "reader-detail"
+    shutil.copytree(batch, copy)
+    source = run_paths(copy)[first_trial]
+    events = source / "events.jsonl"
+    events.write_bytes(events.read_bytes() + b"\n")
+    document = read_comparison_v2(tmp_path / "plan", copy)
+    detail = document["history_stop"]["detail"]
+    assert detail == "original_evidence_hash_mismatch"
+    for expected in (detail, "invalid_trial_input"):
+        direct = evaluate_comparison(
+            plan,
+            [],
+            evidence_errors=[
+                {
+                    "reason": "comparison_history_identity_error",
+                    "trial_id": first_trial,
+                    "run_id": source.name,
+                    "path": str(source),
+                    "detail": expected,
+                    "error": {"reason": expected},
+                }
+            ],
+        )
+        assert direct["history_stop"]["detail"] == expected

@@ -75,5 +75,3 @@ def bundle_groups(
     block_count = _append_side_runs(groups, slots, selected)
     _append_bundle_pairs(groups, slots, selected, block_count)
     return groups
-
-

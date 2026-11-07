@@ -64,5 +64,3 @@ def handoff_rows(
             )
         rows.append(row)
     return rows
-
-
