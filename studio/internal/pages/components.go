@@ -8,20 +8,28 @@ import (
 )
 
 // card is the shared surface card: a second-level heading with related content
-// and nearby actions, without a border.
+// and nearby actions. Edge draws the card hairline defined by the scheme.
 func card(c *ui.Context, title string, fn func()) {
 	t := tokens(c)
-	ui.Column(c).MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Children(func() { heading(c, title, 2); fn() })
+	ui.Column(c).MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() { heading(c, title, 2); fn() })
 }
 
 // statusBadge renders a state label; the color comes from the semantic state
-// tokens at the call site.
+// tokens at the call site. The badge is opaque and mixes the label toward the
+// theme text, so it stays readable on dark surfaces instead of relying on a
+// translucent tint.
 func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {
-	badge := components.Badge(c, label).TextColor(color).Background(color.Alpha(0.10))
+	t := c.Theme()
+	background, foreground := badgeSurfaceColors(t, color)
+	badge := components.Badge(c, label).TextColor(foreground).Background(background)
 	if c.Preferences().HighContrast {
-		badge.Background(c.Theme().Surface).Border(1, color)
+		badge.Background(t.Surface).Border(1, color)
 	}
 	return badge
+}
+
+func badgeSurfaceColors(t *ui.Theme, tint ui.Color) (background, foreground ui.Color) {
+	return t.Surface.Mix(tint, .12), tint.Mix(t.Text, .3)
 }
 
 // phaseProgressOptions describes a labeled phase sequence.
@@ -160,13 +168,17 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 	})
 }
 
-// stepTrack places a numbered rail beside content on the page background.
+// stepTrack places a numbered rail beside content on the page background. The
+// number badge stays round and follows the desktop text scale: the diameter is
+// derived from the same rem the number is drawn with, because MyGo exposes no
+// measured line height while building, and 1.6 rem leaves room for it.
 func stepTrack(c *ui.Context, number, title string, fn func()) {
 	t := tokens(c)
 	theme := c.Theme()
+	size := max(theme.Space(7), theme.Rem(1.6))
 	ui.Row(c).AlignItems(ui.Stretch).Gap(t.Density.Section).Label("阶段步骤 " + number).Children(func() {
-		ui.Column(c).Width(theme.Space(7)).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
-			ui.Box(c).Width(theme.Space(7)).Height(theme.Space(7)).Radius(theme.Space(3.5)).Background(stateColor(c, stateActive)).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
+		ui.Column(c).MinWidth(size).AlignItems(ui.Center).Gap(t.Density.Tight).Children(func() {
+			ui.Box(c).Label("阶段编号 "+number).Size(size, size).Radius(size / 2).Background(stateColor(c, stateActive)).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
 				ui.Text(c, number).Bold().TextColor(theme.Surface)
 			})
 			ui.Box(c).Width(theme.Space(.5)).Grow(1).Background(theme.Border)

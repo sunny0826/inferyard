@@ -162,7 +162,12 @@ func (s *viewState) announceChanges(c *ui.Context) {
 	s.announcedErrors = current
 }
 
+// runColor maps a run task to its status color. A queued task already reads
+// "排队中", so it keeps the neutral waiting color instead of the active one.
 func runColor(c *ui.Context, task core.RunTask) ui.Color {
+	if task.Queued && task.State == "starting" {
+		return stateColor(c, stateNeutral)
+	}
 	if task.Exit != nil {
 		switch task.Exit.ExitCode {
 		case 0:

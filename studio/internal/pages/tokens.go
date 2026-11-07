@@ -48,10 +48,13 @@ type radiusTokens struct {
 	Inset   float32 // nested rows inside a surface
 }
 
-// cardTokens describes the card surface and its empty-state variant.
+// cardTokens describes the card surface and its empty-state variant. Border
+// outlines task cards and rows; Edge adds an optional hairline to the plain
+// page surface so a scheme can define distinct card structure, not just color.
 type cardTokens struct {
 	Padding      float32
 	Border       float32
+	Edge         float32
 	EmptyPadding float32
 }
 
@@ -105,8 +108,8 @@ const (
 	sideB
 )
 
-// sideColors distinguishes the two sides of an A/B comparison. No page uses
-// them yet; T5 selects the final values.
+// sideColors distinguishes the two sides of an A/B comparison. The values are
+// the selected scheme's blue/amber pair, ready for the comparison view.
 type sideColors struct {
 	A ui.Color
 	B ui.Color
@@ -122,7 +125,7 @@ func (s sideColors) forSide(side sideKind) ui.Color {
 func tokens(c *ui.Context) designTokens {
 	t := c.Theme()
 	radius, card, metric := surfaceTokensFor(t)
-	return designTokens{
+	return styledTokens(c, designTokens{
 		Density: spacingTokensFor(t),
 		Type:    typeTokensFor(t),
 		Radius:  radius,
@@ -130,7 +133,7 @@ func tokens(c *ui.Context) designTokens {
 		Metric:  metric,
 		State:   stateColorsFor(t),
 		Sides:   sideColorsFor(t),
-	}
+	})
 }
 
 func spacingTokensFor(t *ui.Theme) spacingTokens {
@@ -148,22 +151,22 @@ func spacingTokensFor(t *ui.Theme) spacingTokens {
 
 func typeTokensFor(t *ui.Theme) typeTokens {
 	return typeTokens{
-		PageTitle:   t.Rem(1.7),
-		CardTitle:   t.Rem(1.3),
-		Section:     t.Rem(1.1),
-		Metric:      t.Rem(1.35),
-		MetricLarge: t.Rem(1.7),
+		PageTitle:   t.Rem(1.6),
+		CardTitle:   t.Rem(1.2),
+		Section:     t.Rem(1.05),
+		Metric:      t.Rem(1.25),
+		MetricLarge: t.Rem(1.55),
 		Body:        t.Rem(1),
-		Caption:     max(12, t.Rem(.85)),
+		Caption:     max(12, t.Rem(.82)),
 		ShellLabel:  t.Rem(.75),
 		ShellDetail: t.Rem(.625),
 	}
 }
 
 func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
-	radius := radiusTokens{Surface: t.Space(3), Inset: t.Space(2)}
-	card := cardTokens{Padding: t.Space(4.5), Border: 1, EmptyPadding: 40}
-	metric := metricTokens{PaddingX: t.Space(4), PaddingY: t.Space(3.5), Gap: t.Space(1)}
+	radius := radiusTokens{Surface: t.Space(2), Inset: t.Space(1)}
+	card := cardTokens{Padding: t.Space(3.5), Border: 1, Edge: 1, EmptyPadding: 32}
+	metric := metricTokens{PaddingX: t.Space(3), PaddingY: t.Space(2.5), Gap: t.Space(1)}
 	return radius, card, metric
 }
 
@@ -172,7 +175,10 @@ func stateColorsFor(t *ui.Theme) stateColors {
 }
 
 func sideColorsFor(t *ui.Theme) sideColors {
-	return sideColors{A: t.Accent, B: t.Success}
+	if t.Dark {
+		return sideColors{A: ui.Hex("#7cb2ff"), B: ui.Hex("#e6b567")}
+	}
+	return sideColors{A: ui.Hex("#2563eb"), B: ui.Hex("#b45309")}
 }
 
 func stateColor(c *ui.Context, kind stateKind) ui.Color {

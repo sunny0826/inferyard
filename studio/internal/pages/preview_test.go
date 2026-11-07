@@ -13,6 +13,7 @@ import (
 
 func previewTester(p *previewSession, width, height int) *ui.Tester {
 	return ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(p.theme(c))
 		ui.Row(c).Fill().Children(func() {
 			ui.Column(c).Width(205).Shrink(0).Children(func() { p.left(c) })
 			p.content(c)

@@ -4,7 +4,6 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
-	"github.com/oneo-me/onevra/source/theme"
 )
 
 func pageShellOptions(title, stateKey string, left, content func(*ui.Context)) sidebar.ShellOptions {
@@ -18,7 +17,7 @@ func pageShellOptions(title, stateKey string, left, content func(*ui.Context)) s
 		LeftWidth: 205,
 		Left:      left,
 		Content:   content,
-		Theme:     theme.Onevra,
+		Theme:     studioTheme,
 		Toasts:    components.ToastOptions{Placement: components.ToastTop},
 	}
 }
