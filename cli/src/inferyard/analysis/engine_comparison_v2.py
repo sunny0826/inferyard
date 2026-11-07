@@ -19,16 +19,15 @@ from inferyard.analysis.comparison_history import (
     comparison_history_stop,
 )
 from inferyard.config.comparison_plan import (
+    Slot,
     comparison_slots,
     is_comparison_plan,
     validate_comparison_plan,
 )
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.contracts.validation import ContractError
-from inferyard.evidence.formats import UnsupportedFormat
-from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import EvidenceError, read_json
-from inferyard.implementation_identity import execution_matches
+from inferyard.runtime.batch_state import history_diagnostics
 
 DEFINITION = "engine-comparison.v2"
 
@@ -41,6 +40,9 @@ DUPLICATE_ATTEMPT = "comparison_duplicate_trial_attempt"
 HANDOFF_MISSING = "comparison_handoff_missing"
 HANDOFF_BROKEN = "comparison_handoff_broken"
 HANDOFF_SLOT_MISMATCH = "comparison_handoff_slot_mismatch"
+SERVICE_IDENTITY_MISSING = "comparison_service_identity_missing"
+SERVICE_IDENTITY_INVALID = "comparison_service_identity_invalid"
+SERVICE_NOT_REPLACED = "comparison_service_not_replaced"
 
 # Retired/duplicate names are intentionally absent: comparison_unplanned_trial
 # covers unplanned_run_present, and actual continuity is proven by the handoff
@@ -54,16 +56,27 @@ __all__ = [
 ]
 
 
-def _append(diagnostics, reason, **fields):
+def _append(diagnostics: list[dict], reason: str, **fields: object) -> None:
     row = {"reason": reason, **{key: value for key, value in fields.items() if value is not None}}
     if row not in diagnostics:
         diagnostics.append(row)
 
 
-def _empty(plan, plan_path, reason, detail, *, plan_hash_ok=True):
+def _empty(
+    plan: dict | None,
+    plan_path: Path | str,
+    reason: str,
+    detail: str,
+    *,
+    plan_hash_ok: bool = True,
+    error: dict | None = None,
+) -> dict:
     document = {
         "definition": DEFINITION,
-        "plan": {"path": str(plan_path), "sha256": plan.get("plan_sha256")},
+        "plan": {
+            "path": str(plan_path),
+            "sha256": None if plan is None else plan.get("plan_sha256"),
+        },
         "run_set": {
             "expected_trials": [],
             "observed_runs": [],
@@ -78,13 +91,13 @@ def _empty(plan, plan_path, reason, detail, *, plan_hash_ok=True):
         "diagnostics": [],
         "eligible": False,
     }
-    _append(document["diagnostics"], reason, detail=detail)
+    _append(document["diagnostics"], reason, detail=detail, error=error)
     if not plan_hash_ok:
         _append(document["diagnostics"], PLAN_HASH_MISMATCH, detail="batch_plan_mismatch")
     return document
 
 
-def _plan_mismatch_reason(entry, plan):
+def _plan_mismatch_reason(entry: dict, plan: dict) -> str | None:
     run, experiment = entry["run"], plan["experiment"]
     if (
         run["plan_sha256"] != plan["plan_sha256"]
@@ -95,7 +108,7 @@ def _plan_mismatch_reason(entry, plan):
     return None
 
 
-def _slot_label(slot):
+def _slot_label(slot: Slot) -> dict:
     return {
         "trial_id": slot.trial_id,
         "workload_id": slot.workload_id,
@@ -105,7 +118,7 @@ def _slot_label(slot):
     }
 
 
-def _observed_label(run, entry, slot):
+def _observed_label(run: dict, entry: dict, slot: Slot | None) -> dict:
     return {
         "trial_id": run["trial_id"],
         "run_id": run["run_id"],
@@ -117,7 +130,9 @@ def _observed_label(run, entry, slot):
     }
 
 
-def _classify_entry(plan, slots, index, entry, state):
+def _classify_entry(
+    plan: dict, slots: tuple[Slot, ...], index: dict[str, int], entry: dict, state: dict
+) -> None:
     run_set, by_trial = state["run_set"], state["by_trial"]
     seen, rejected = state["seen"], state["rejected"]
     run = entry["run"]
@@ -167,7 +182,9 @@ def _classify_entry(plan, slots, index, entry, state):
     by_trial.setdefault(run["trial_id"], []).append(entry)
 
 
-def _classify_runs(plan, slots, runs):
+def _classify_runs(
+    plan: dict, slots: tuple[Slot, ...], runs: list[dict]
+) -> tuple[dict, dict, set[str]]:
     run_set = {
         "expected_trials": [slot.trial_id for slot in slots],
         "observed_runs": [],
@@ -184,7 +201,9 @@ def _classify_runs(plan, slots, runs):
     return run_set, by_trial, rejected
 
 
-def _select_slots(run_set, slots, by_trial, rejected):
+def _select_slots(
+    run_set: dict, slots: tuple[Slot, ...], by_trial: dict, rejected: set[str]
+) -> dict[str, dict]:
     selected = {}
     for slot in slots:
         attempts = by_trial.get(slot.trial_id, [])
@@ -204,7 +223,21 @@ def _select_slots(run_set, slots, by_trial, rejected):
     return selected
 
 
-def _run_set_diagnostics(run_set, diagnostics):
+def _trim_missing_tails(run_set: dict, stop_trial_id: str | None) -> None:
+    if stop_trial_id is None:
+        return
+    positions = {trial_id: index for index, trial_id in enumerate(run_set["expected_trials"])}
+    stop_index = positions.get(stop_trial_id)
+    if stop_index is None:
+        return
+    run_set["missing"] = [
+        row
+        for row in run_set["missing"]
+        if positions.get(row["trial_id"], -1) <= stop_index
+    ]
+
+
+def _run_set_diagnostics(run_set: dict, diagnostics: list[dict]) -> None:
     for row in run_set["missing"]:
         _append(
             diagnostics,
@@ -239,7 +272,51 @@ def _run_set_diagnostics(run_set, diagnostics):
         )
 
 
-def _handoff_outcome(position, entry, slots, selected):
+def _service_identity(entry: dict) -> tuple[int, int] | None:
+    try:
+        service = entry["identity"]["local_engine"]["binding"]["service"]
+    except (KeyError, TypeError):
+        return None
+    if type(service.get("pid")) is not int or type(service.get("start_ticks")) is not int:
+        return None
+    return service["pid"], service["start_ticks"]
+
+
+def _service_diagnostics(
+    slots: tuple[Slot, ...], selected: dict[str, dict], diagnostics: list[dict]
+) -> None:
+    seen = {}
+    for slot in slots:
+        entry = selected.get(slot.trial_id)
+        if entry is None:
+            continue
+        service = _service_identity(entry)
+        if service is None:
+            raw = entry.get("identity")
+            reason = SERVICE_IDENTITY_MISSING if raw is None else SERVICE_IDENTITY_INVALID
+            _append(
+                diagnostics,
+                reason,
+                trial_id=slot.trial_id,
+                run_id=entry["run"]["run_id"],
+                workload_id=slot.workload_id,
+            )
+            continue
+        if service in seen:
+            _append(
+                diagnostics,
+                SERVICE_NOT_REPLACED,
+                trial_id=slot.trial_id,
+                run_id=entry["run"]["run_id"],
+                detail=f"same_process_as:{seen[service]}",
+            )
+        else:
+            seen[service] = slot.trial_id
+
+
+def _handoff_outcome(
+    position: int, entry: dict, slots: tuple[Slot, ...], selected: dict[str, dict]
+) -> tuple[str, str | None, int | None]:
     if entry is None:
         return "not_selected", None, None
     binding = entry.get("service_binding")
@@ -262,7 +339,9 @@ def _handoff_outcome(position, entry, slots, selected):
     return "ok", None, previous
 
 
-def _handoff(slots, selected, diagnostics):
+def _handoff(
+    slots: tuple[Slot, ...], selected: dict[str, dict], diagnostics: list[dict]
+) -> list[dict]:
     rows = []
     for position, slot in enumerate(slots):
         entry = selected.get(slot.trial_id)
@@ -285,7 +364,7 @@ def _handoff(slots, selected, diagnostics):
     return rows
 
 
-def _bundle_headers(plan, slots):
+def _bundle_headers(plan: dict, slots: tuple[Slot, ...]) -> dict:
     workloads = {item["workload_id"]: item for item in plan["experiment"]["workloads"]}
     groups = {}
     for slot in slots:
@@ -299,7 +378,9 @@ def _bundle_headers(plan, slots):
     return groups
 
 
-def _append_side_runs(groups, slots, selected):
+def _append_side_runs(
+    groups: dict, slots: tuple[Slot, ...], selected: dict[str, dict]
+) -> int:
     block_count = max(slot.block for slot in slots)
     for block in range(1, block_count + 1):
         for slot in slots:
@@ -311,7 +392,12 @@ def _append_side_runs(groups, slots, selected):
     return block_count
 
 
-def _append_bundle_pairs(groups, slots, selected, block_count):
+def _append_bundle_pairs(
+    groups: dict,
+    slots: tuple[Slot, ...],
+    selected: dict[str, dict],
+    block_count: int,
+) -> None:
     for key, group in groups.items():
         for pair in range(1, block_count // 2 + 1):
             left_block, right_block = pair * 2 - 1, pair * 2
@@ -326,14 +412,18 @@ def _append_bundle_pairs(groups, slots, selected, block_count):
             )
 
 
-def _bundle_groups(plan, slots, selected):
+def _bundle_groups(
+    plan: dict, slots: tuple[Slot, ...], selected: dict[str, dict]
+) -> dict:
     groups = _bundle_headers(plan, slots)
     block_count = _append_side_runs(groups, slots, selected)
     _append_bundle_pairs(groups, slots, selected, block_count)
     return groups
 
 
-def _block_run(selected, slots, key, block):
+def _block_run(
+    selected: dict[str, dict], slots: tuple[Slot, ...], key: str, block: int
+) -> str | None:
     entry = next(
         (
             selected[slot.trial_id]
@@ -345,7 +435,14 @@ def _block_run(selected, slots, key, block):
     return None if entry is None else entry["run"]["run_id"]
 
 
-def evaluate_comparison(plan, runs, *, plan_path=None, plan_hash_ok=True, evidence_errors=()):
+def evaluate_comparison(
+    plan: dict,
+    runs: list[dict],
+    *,
+    plan_path: Path | str | None = None,
+    plan_hash_ok: bool = True,
+    evidence_errors: tuple[dict, ...] | list[dict] = (),
+) -> dict:
     """Build the v2 run set, handoff chain, history stop and bundle slots."""
     try:
         slots = comparison_slots(plan)
@@ -364,21 +461,21 @@ def evaluate_comparison(plan, runs, *, plan_path=None, plan_hash_ok=True, eviden
             detail=error.get("detail"),
             error=error.get("error"),
         )
+    history_stop = comparison_history_stop(plan, runs)
     run_set, by_trial, rejected = _classify_runs(plan, slots, runs)
     selected = _select_slots(run_set, slots, by_trial, rejected)
+    _trim_missing_tails(run_set, None if history_stop is None else history_stop.get("trial_id"))
     _run_set_diagnostics(run_set, diagnostics)
+    _service_diagnostics(slots, selected, diagnostics)
     handoff_rows = _handoff(slots, selected, diagnostics)
-    history_stop = None
-    if not diagnostics:
-        history_stop = comparison_history_stop(plan, runs)
-        if history_stop is not None:
-            _append(
-                diagnostics,
-                history_stop["reason"],
-                trial_id=history_stop.get("trial_id"),
-                run_id=history_stop.get("run_id"),
-                detail=history_stop.get("detail"),
-            )
+    if history_stop is not None:
+        _append(
+            diagnostics,
+            history_stop["reason"],
+            trial_id=history_stop.get("trial_id"),
+            run_id=history_stop.get("run_id"),
+            detail=history_stop.get("detail"),
+        )
     return {
         "definition": DEFINITION,
         "plan": {"path": str(plan_path), "sha256": plan["plan_sha256"]},
@@ -398,84 +495,78 @@ def evaluate_comparison(plan, runs, *, plan_path=None, plan_hash_ok=True, eviden
     }
 
 
-def _batch_identity_error(entry, metadata):
-    run = entry["run"]
-    if "implementation_identity" in metadata:
-        if not execution_matches(
-            run.get("implementation_identity"), metadata["implementation_identity"]
-        ):
-            return "batch_run_tool_changed"
-    elif run.get("tool_source_sha256") != metadata.get("tool_source_sha256"):
-        return "batch_run_tool_changed"
-    if run.get("diagnostic") != metadata.get("diagnostic"):
-        return "batch_diagnostic_mode_changed"
-    return None
-
-
-def _binding(metadata):
-    evidence = metadata["evidence"]
-    if metadata["manifest"] is None:
-        return None
-    binding = evidence.observation("service_binding", stage="prepare")
-    if binding is None:
-        return None
-    reference = evidence.observation_reference("service_binding", stage="prepare")
-    if reference["path"] not in metadata["manifest"]["files"]:
-        return None
-    return binding
-
-
-def _read_runs(root, metadata):
-    runs, evidence_errors = [], []
-    for path in sorted((root / "runs").iterdir()):
-        if not path.is_dir() or path.is_symlink():
-            evidence_errors.append({"path": str(path), "detail": "unexpected_batch_entry"})
-            continue
-        trial_metadata = {}
-        try:
-            entry = read_trial(path, metadata=trial_metadata)
-        except (
-            EvidenceError,
-            ContractError,
-            UnsupportedFormat,
-            OSError,
-            ValueError,
-            KeyError,
-            TypeError,
-        ) as exc:
-            evidence_errors.append(
-                {
-                    "path": str(path),
-                    "detail": "evidence_read_failed",
-                    "error": {"type": type(exc).__name__, "reason": str(exc)},
-                }
-            )
-            continue
-        entry["path"] = path
-        entry["service_binding"] = _binding(trial_metadata)
-        identity_error = _batch_identity_error(entry, metadata)
-        if identity_error is not None:
-            entry["identity_error"] = identity_error
-        runs.append(entry)
-    return runs, evidence_errors
-
-
-def read_comparison_v2(plan_path, batch_root):
+def read_comparison_v2(plan_path: Path | str, batch_root: Path | str) -> dict:
     """Read one batch into the internal v2 document without computing metrics."""
     path = Path(plan_path)
     plan_path = path / "plan.json" if path.is_dir() else path
     root = Path(batch_root).resolve()
-    plan, loaded = read_frozen_plan(plan_path)
+    try:
+        plan, loaded = read_frozen_plan(plan_path)
+    except (EvidenceError, ContractError, OSError, ValueError, TypeError) as exc:
+        return _empty(
+            None,
+            plan_path,
+            PLAN_REQUIRED,
+            "plan_unreadable",
+            error={"type": type(exc).__name__, "reason": str(exc)},
+        )
     try:
         validate_comparison_plan(plan, loaded)
     except (ContractError, KeyError, TypeError, ValueError) as exc:
-        return _empty(plan, plan_path, PLAN_REQUIRED, str(exc))
-    metadata = read_json(root / "batch.json")
+        return _empty(
+            plan,
+            plan_path,
+            PLAN_REQUIRED,
+            str(exc),
+            error={"type": type(exc).__name__, "reason": str(exc)},
+        )
+    try:
+        metadata = read_json(root / "batch.json")
+    except (EvidenceError, ContractError, OSError, ValueError, TypeError) as exc:
+        return _empty(
+            plan,
+            plan_path,
+            HISTORY_IDENTITY_ERROR,
+            "batch_envelope_invalid",
+            error={"type": type(exc).__name__, "reason": str(exc)},
+        )
+    if type(metadata) is not dict:
+        return _empty(
+            plan,
+            plan_path,
+            HISTORY_IDENTITY_ERROR,
+            "batch_envelope_invalid",
+            error={"type": type(metadata).__name__, "reason": "batch envelope is not an object"},
+        )
     plan_hash_ok = (
         metadata.get("schema_version") == SCHEMA_VERSION
         and metadata.get("plan_sha256") == plan["plan_sha256"]
     )
-    runs, evidence_errors = _read_runs(root, metadata)
+    runs_root = root / "runs"
+    if not runs_root.is_dir() or runs_root.is_symlink():
+        return _empty(
+            plan,
+            plan_path,
+            HISTORY_IDENTITY_ERROR,
+            "batch_runs_invalid",
+            plan_hash_ok=plan_hash_ok,
+        )
+    try:
+        runs, evidence_errors = history_diagnostics(
+            root,
+            plan,
+            loaded,
+            full_verification=True,
+        )
+    except (EvidenceError, ContractError, OSError, ValueError, TypeError) as exc:
+        return _empty(
+            plan,
+            plan_path,
+            HISTORY_IDENTITY_ERROR,
+            "batch_history_unreadable",
+            plan_hash_ok=plan_hash_ok,
+            error={"type": type(exc).__name__, "reason": str(exc)},
+        )
     return evaluate_comparison(
         plan,
         runs,
@@ -485,14 +576,41 @@ def read_comparison_v2(plan_path, batch_root):
     )
 
 
-def bundle_comparisons(document, data_by_run_id):
-    """Apply the existing six-block verdict once per bundle, never to all 12 runs."""
-    from inferyard.analysis.engine_blocks import compare_blocks
+def _blocked_comparison(document: dict) -> dict:
+    from inferyard.analysis.engine_blocks import METRIC_IDS, METRICS
 
+    return {
+        "definition": "engine-comparison.v1",
+        "eligible": False,
+        "blockers": sorted(
+            {row["reason"] for row in document["diagnostics"]} | {"comparison_overall_blocked"}
+        ),
+        "overall_diagnostics": document["diagnostics"],
+        "blocks": [],
+        "verdicts": {
+            metric: {
+                "metric_id": METRIC_IDS[metric],
+                "higher_is_better": higher,
+                "verdict": "not_eligible",
+            }
+            for metric, higher in METRICS.items()
+        },
+    }
+
+
+def bundle_comparisons(document: dict, data_by_run_id: dict) -> dict:
+    """Judge each bundle only for a fully eligible whole-plan run set."""
+    from inferyard.analysis.engine_blocks import compare_paired_blocks
+
+    if not document["eligible"]:
+        return {key: _blocked_comparison(document) for key in document["bundles"]}
     results = {}
     for key, group in document["bundles"].items():
-        run_ids = [*group["left"], *group["right"]]
-        if any(identifier is None or identifier not in data_by_run_id for identifier in run_ids):
-            raise EvidenceError("comparison_bundle_run_missing")
-        results[key] = compare_blocks([data_by_run_id[identifier] for identifier in run_ids])
+        ordered = []
+        for block in group["blocks"]:
+            for identifier in (block["left_run_id"], block["right_run_id"]):
+                if identifier is None or identifier not in data_by_run_id:
+                    raise EvidenceError("comparison_bundle_run_missing")
+                ordered.append(data_by_run_id[identifier])
+        results[key] = compare_paired_blocks(ordered)
     return results

@@ -28,7 +28,7 @@ ANSWER_POLICY = {
 }
 
 
-def instruction_case(case_id="instruction-01"):
+def instruction_case(case_id: str = "instruction-01") -> dict:
     return {
         "case_id": case_id,
         "category": "instruction",
@@ -42,7 +42,7 @@ def instruction_case(case_id="instruction-01"):
     }
 
 
-def extraction_case(case_id="extraction-01"):
+def extraction_case(case_id: str = "extraction-01") -> dict:
     return {
         "case_id": case_id,
         "category": "extraction",
@@ -58,7 +58,7 @@ def extraction_case(case_id="extraction-01"):
     }
 
 
-def svg_case(case_id="svg-pelican-01"):
+def svg_case(case_id: str = "svg-pelican-01") -> dict:
     return {
         "case_id": case_id,
         "category": "svg",
@@ -68,7 +68,7 @@ def svg_case(case_id="svg-pelican-01"):
     }
 
 
-def bundle_document(bundle_id, cases):
+def bundle_document(bundle_id: str, cases: list) -> dict:
     bundle = {
         "schema_version": 3,
         "bundle_id": bundle_id,
@@ -91,7 +91,7 @@ def bundle_document(bundle_id, cases):
     return bundle
 
 
-def write_bundle(root, name, bundle):
+def write_bundle(root: Path, name: str, bundle: dict) -> Path:
     from inferyard.evidence.storage import json_bytes
 
     path = root / f"{name}.json"
@@ -99,34 +99,87 @@ def write_bundle(root, name, bundle):
     return path
 
 
-def write_config(root, name, bundle_path, bundle, adapter, *, max_tokens=32, runtime=None):
-    base = tomllib.loads((FIXTURES / "config" / "valid.toml").read_text())
-    if runtime is not None:
-        for section in ("engine", "model", "conditions", "generation", "telemetry", "execution"):
-            if section in runtime:
-                from copy import deepcopy
+LOCAL_MODEL = {
+    "content_sha256": "2" * 64,
+    "assets_sha256": "1" * 64,
+    "template_sha256": "3" * 64,
+}
 
-                base[section] = deepcopy(runtime[section])
+
+def write_config(root: Path, name: str, spec: dict) -> Path:
+    bundle_path = spec["bundle_path"]
+    bundle = spec["bundle"]
+    family = spec["family"]
+    max_tokens = spec.get("max_tokens", 32)
+    runtime = spec.get("runtime")
+    base = tomllib.loads((FIXTURES / "config" / "valid.toml").read_text())
+    kind = "directory" if family == "mlx-lm" else "gguf"
+    base["definition"] = "local-engine-config.v1"
+    base["model"] = {
+        "display_name": "Local fixture model",
+        "repo": "fixture/local",
+        "revision": "fixture-v1",
+        "kind": kind,
+        "local_path": "model" if kind == "directory" else "model.gguf",
+        "packing": "4bit",
+        "assets_path": "model-assets.json",
+        "assets_sha256": LOCAL_MODEL["assets_sha256"],
+        "content_sha256": LOCAL_MODEL["content_sha256"],
+        "template_path": "template.jinja",
+        "template_sha256": LOCAL_MODEL["template_sha256"],
+    }
+    environment = (
+        {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "HF_HUB_OFFLINE": "1",
+            "TRANSFORMERS_OFFLINE": "1",
+        }
+        if family == "mlx-lm"
+        else {}
+    )
+    base["engine"] = {
+        "adapter": "local_openai_v1",
+        "family": family,
+        "backend": "metal",
+        "installation_path": "runtime.json",
+        "installation_sha256": "4" * 64,
+        "startup_args": ["-I", "-B", "/installed/server.py", "--model", "/model"],
+        "working_directory": str(root),
+        "environment": environment,
+        "served_model": "fixture",
+    }
+    base["conditions"].pop("threads", None)
+    base["conditions"].pop("threads_batch", None)
+    base["conditions"].pop("slots", None)
+    base["conditions"]["cache_policy"] = "unknown"
+    base["conditions"]["model_loaded"] = True
+    base["safety"] = {
+        "interval_seconds": 0.5,
+        "max_temperature_celsius": 85,
+        "require_temperature": True,
+        "check_environment": True,
+    }
+    base["generation"] = {"temperature": 0, "max_tokens": max_tokens}
     base["bundle"] = {"path": str(bundle_path), "version": bundle["version"]}
     base["endpoint"].pop("api_key_env", None)
-    base["engine"]["adapter"] = adapter
-    base["generation"]["max_tokens"] = max_tokens
     base.setdefault("execution", {}).update(warmup_count=0, timeout_seconds=30)
     base.setdefault("telemetry", {}).update(interval_ms=10, baseline_seconds=0.015)
     base["output"]["root"] = str(root / "results")
-    template = root / "fixture.jinja"
-    template.write_bytes(b"fixture-template")
-    base["model"]["template_path"] = str(template)
-    base["model"]["template_sha256"] = hashlib.sha256(b"fixture-template").hexdigest()
-    libraries = root / "libraries.json"
-    libraries.write_text('{"fixture.so":"' + "a" * 64 + '"}')
-    base["engine"]["runtime_library_manifest"] = str(libraries)
+    if runtime is not None:
+        base["endpoint"].update(runtime.get("endpoint", {}))
     path = root / f"{name}.toml"
     path.write_text(render(base))
     return path
 
 
-def comparison_inputs(tmp_path, *, bundles=("core", "pelican"), runtime=None):
+def comparison_inputs(
+    tmp_path: Path,
+    *,
+    bundles: tuple[str, ...] = ("core", "pelican"),
+    runtime: dict | None = None,
+    left_family: str = "llama-cpp",
+    right_family: str = "lmstudio",
+) -> tuple[list[Path], list[Path], list[str]]:
     root = tmp_path / "inputs"
     root.mkdir()
     core = bundle_document("core", [instruction_case(), extraction_case()])
@@ -139,10 +192,12 @@ def comparison_inputs(tmp_path, *, bundles=("core", "pelican"), runtime=None):
         write_config(
             root,
             f"left-{key}",
-            bundle_paths[key],
-            documents[key],
-            "prism_llama_server_v1",
-            runtime=runtime,
+            {
+                "bundle_path": bundle_paths[key],
+                "bundle": documents[key],
+                "family": left_family,
+                "runtime": runtime,
+            },
         )
         for key in bundles
     ]
@@ -150,10 +205,12 @@ def comparison_inputs(tmp_path, *, bundles=("core", "pelican"), runtime=None):
         write_config(
             root,
             f"right-{key}",
-            bundle_paths[key],
-            documents[key],
-            "llama_cpp_b11146_v1",
-            runtime=runtime,
+            {
+                "bundle_path": bundle_paths[key],
+                "bundle": documents[key],
+                "family": right_family,
+                "runtime": runtime,
+            },
         )
         for key in bundles
     ]
@@ -161,7 +218,7 @@ def comparison_inputs(tmp_path, *, bundles=("core", "pelican"), runtime=None):
     return left, right, specs
 
 
-def test_two_bundles_freeze_six_blocks_and_fresh_each_slot(tmp_path):
+def test_two_bundles_freeze_six_blocks_and_fresh_each_slot(tmp_path: Path) -> None:
     left, right, specs = comparison_inputs(tmp_path)
     plan = freeze(left, right, specs, destination=tmp_path / "plan")
     slots = comparison_slots(plan)
@@ -182,7 +239,7 @@ def test_two_bundles_freeze_six_blocks_and_fresh_each_slot(tmp_path):
         assert "experiment" not in loaded[workload["workload_id"]].config.to_dict()
 
 
-def test_default_product_bundles_are_used_when_no_bundle_is_declared(tmp_path):
+def test_default_product_bundles_are_used_when_no_bundle_is_declared(tmp_path: Path) -> None:
     from inferyard.config.community_resources import resource_bytes
 
     root = tmp_path / "inputs"
@@ -204,20 +261,24 @@ def test_default_product_bundles_are_used_when_no_bundle_is_declared(tmp_path):
             write_config(
                 root,
                 f"left-{key}",
-                paths[name],
-                documents[name],
-                "prism_llama_server_v1",
-                max_tokens=max_tokens,
+                {
+                    "bundle_path": paths[name],
+                    "bundle": documents[name],
+                    "family": "llama-cpp",
+                    "max_tokens": max_tokens,
+                },
             )
         )
         right.append(
             write_config(
                 root,
                 f"right-{key}",
-                paths[name],
-                documents[name],
-                "llama_cpp_b11146_v1",
-                max_tokens=max_tokens,
+                {
+                    "bundle_path": paths[name],
+                    "bundle": documents[name],
+                    "family": "lmstudio",
+                    "max_tokens": max_tokens,
+                },
             )
         )
     plan = freeze(left, right, destination=tmp_path / "plan")
@@ -225,7 +286,7 @@ def test_default_product_bundles_are_used_when_no_bundle_is_declared(tmp_path):
     assert len(plan["trials"]) == 12
 
 
-def test_freeze_is_deterministic_and_previews_without_output(tmp_path):
+def test_freeze_is_deterministic_and_previews_without_output(tmp_path: Path) -> None:
     left, right, specs = comparison_inputs(tmp_path)
     first = freeze(left, right, specs, experiment_id="engine-compare-fixture")
     second = freeze(left, right, specs, experiment_id="engine-compare-fixture")
@@ -236,7 +297,7 @@ def test_freeze_is_deterministic_and_previews_without_output(tmp_path):
     assert not (tmp_path / "plan").exists()
 
 
-def test_explicit_single_bundle_freezes_six_slots(tmp_path):
+def test_explicit_single_bundle_freezes_six_slots(tmp_path: Path) -> None:
     left, right, specs = comparison_inputs(tmp_path, bundles=("core",))
     plan = freeze(left, right, [specs[0]], destination=tmp_path / "plan")
     slots = comparison_slots(plan)
@@ -244,13 +305,13 @@ def test_explicit_single_bundle_freezes_six_slots(tmp_path):
     assert {slot.bundle_key for slot in slots} == {"core"}
 
 
-def test_default_scope_requires_both_declared_bundles(tmp_path):
+def test_default_scope_requires_both_declared_bundles(tmp_path: Path) -> None:
     left, right, _ = comparison_inputs(tmp_path, bundles=("core",))
     with pytest.raises(ContractError, match="do not cover"):
         freeze(left, right)
 
 
-def test_bundle_content_must_match_across_sides(tmp_path):
+def test_bundle_content_must_match_across_sides(tmp_path: Path) -> None:
     left, right, specs = comparison_inputs(tmp_path)
     other = write_bundle(
         tmp_path / "inputs", "other", bundle_document("core", [instruction_case("x-01")])
@@ -258,28 +319,30 @@ def test_bundle_content_must_match_across_sides(tmp_path):
     right[0] = write_config(
         tmp_path / "inputs",
         "right-core-other",
-        other,
-        bundle_document("core", [instruction_case("x-01")]),
-        "llama_cpp_b11146_v1",
+        {
+            "bundle_path": other,
+            "bundle": bundle_document("core", [instruction_case("x-01")]),
+            "family": "lmstudio",
+        },
     )
     with pytest.raises(ContractError, match="content differs"):
         freeze(left, right, specs)
 
 
-def test_same_engine_on_both_sides_is_rejected(tmp_path):
+def test_same_engine_on_both_sides_is_rejected(tmp_path: Path) -> None:
     left, right, specs = comparison_inputs(tmp_path)
     same = []
     for index, config in enumerate(right):
         path = tmp_path / "inputs" / f"same-{index}.toml"
         path.write_text(
-            Path(config).read_text().replace("llama_cpp_b11146_v1", "prism_llama_server_v1")
+            Path(config).read_text().replace('family = "lmstudio"', 'family = "llama-cpp"')
         )
         same.append(path)
-    with pytest.raises(ContractError, match="sides must differ"):
+    with pytest.raises(ContractError, match="engine_family_did_not_change"):
         freeze(left, same, specs)
 
 
-def test_existing_output_directory_is_rejected_before_writing(tmp_path):
+def test_existing_output_directory_is_rejected_before_writing(tmp_path: Path) -> None:
     left, right, specs = comparison_inputs(tmp_path)
     out = tmp_path / "plan"
     out.mkdir()
@@ -288,7 +351,7 @@ def test_existing_output_directory_is_rejected_before_writing(tmp_path):
     assert list(out.iterdir()) == []
 
 
-def test_frozen_plan_rejects_unplanned_shape(tmp_path):
+def test_frozen_plan_rejects_unplanned_shape(tmp_path: Path) -> None:
     left, right, specs = comparison_inputs(tmp_path)
     plan = freeze(left, right, specs)
     plan["experiment"]["workloads"] = plan["experiment"]["workloads"][:-1]
@@ -297,11 +360,13 @@ def test_frozen_plan_rejects_unplanned_shape(tmp_path):
         comparison_slots(plan)
 
 
-def test_default_bundle_names_are_the_declared_product_pair():
+def test_default_bundle_names_are_the_declared_product_pair() -> None:
     assert DEFAULT_BUNDLES == ("zh-core", "zh-svg-pelican")
 
 
-def test_compare_plan_cli_prints_the_frozen_plan(tmp_path, capsys):
+def test_compare_plan_cli_prints_the_frozen_plan(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     import json
 
     from inferyard.cli import main
@@ -320,3 +385,93 @@ def test_compare_plan_cli_prints_the_frozen_plan(tmp_path, capsys):
     assert saved["command"] == "compare-plan"
     assert len(saved["details"]["trials"]) == 12
     assert (tmp_path / "plan" / "plan.json").exists()
+
+
+def test_unsupported_engine_pair_is_rejected_before_writing(tmp_path: Path) -> None:
+    left, right, specs = comparison_inputs(
+        tmp_path, left_family="lmstudio", right_family="mlx-lm"
+    )
+    with pytest.raises(ContractError, match="unsupported_engine_pair"):
+        freeze(left, right, specs, destination=tmp_path / "plan")
+    assert not (tmp_path / "plan").exists()
+
+
+def test_external_profile_is_rejected_for_engine_comparison(tmp_path: Path) -> None:
+    left, right, specs = comparison_inputs(tmp_path)
+    local = tomllib.loads(Path(right[0]).read_text())
+    config = tomllib.loads((FIXTURES / "config" / "valid.toml").read_text())
+    config.update(bundle=local["bundle"], output=local["output"])
+    path = tmp_path / "inputs" / "right-external.toml"
+    path.write_text(render(config))
+    right = [path, right[1]]
+    with pytest.raises(ContractError, match="local engine profile"):
+        freeze(left, right, specs)
+
+
+def test_partial_temperature_override_is_rejected_before_writing(tmp_path: Path) -> None:
+    left, right, specs = comparison_inputs(tmp_path)
+    config = tomllib.loads(Path(left[0]).read_text())
+    config["safety"]["temperature_stop_override_reason"] = "operator override"
+    path = tmp_path / "inputs" / "left-override.toml"
+    path.write_text(render(config))
+    left = [path, left[1]]
+    with pytest.raises(ContractError, match="override must cover"):
+        freeze(left, right, specs)
+    assert not (tmp_path / "plan").exists()
+
+
+@pytest.mark.parametrize("family", ["mlx-lm"])
+def test_safety_policy_admits_every_frozen_config(tmp_path: Path, family: str) -> None:
+    from inferyard.runtime.local_profile import safety_policy
+
+    left, right, specs = comparison_inputs(
+        tmp_path, left_family="llama-cpp", right_family=family
+    )
+    plan = freeze(left, right, specs)
+    from inferyard.config.plan_inputs import read_frozen_plan
+
+    frozen, loaded = read_frozen_plan(tmp_path / "plan" / "plan.json") if (tmp_path / "plan").exists() else (plan, None)
+    if loaded is None:
+        from inferyard.config.comparison_plan import validate_comparison_plan
+
+        # Freeze a second copy to obtain loaded configs from a real plan package.
+        destination = tmp_path / "plan"
+        freeze(left, right, specs, destination=destination)
+        frozen, loaded = read_frozen_plan(destination / "plan.json")
+    validate_comparison_plan(frozen, loaded)
+    for workload in frozen["experiment"]["workloads"]:
+        safety_policy(frozen, loaded[workload["workload_id"]].config.to_dict())
+
+
+def _with_override(paths: list[Path], tmp_path: Path, prefix: str) -> list[Path]:
+    changed = []
+    for index, path in enumerate(paths):
+        config = tomllib.loads(Path(path).read_text())
+        config["safety"]["temperature_stop_override_reason"] = "operator approved"
+        target = tmp_path / "inputs" / f"{prefix}-{index}.toml"
+        target.write_text(render(config))
+        changed.append(target)
+    return changed
+
+
+def test_temperature_override_covers_every_config_or_fails(tmp_path: Path) -> None:
+    from inferyard.runtime.local_profile import safety_policy
+
+    left, right, specs = comparison_inputs(tmp_path)
+    destination = tmp_path / "plan"
+    freeze(left, right, specs, destination=destination)
+    from inferyard.config.plan_inputs import read_frozen_plan
+
+    frozen, loaded = read_frozen_plan(destination / "plan.json")
+    assert frozen["experiment"]["safety"]["max_temperature_celsius"] == 85
+    for workload in frozen["experiment"]["workloads"]:
+        safety_policy(frozen, loaded[workload["workload_id"]].config.to_dict())
+
+    left = _with_override(left, tmp_path, "left-override")
+    right = _with_override(right, tmp_path, "right-override")
+    destination = tmp_path / "override-plan"
+    freeze(left, right, specs, destination=destination)
+    frozen, loaded = read_frozen_plan(destination / "plan.json")
+    assert frozen["experiment"]["safety"]["max_temperature_celsius"] is None
+    for workload in frozen["experiment"]["workloads"]:
+        safety_policy(frozen, loaded[workload["workload_id"]].config.to_dict())

@@ -183,12 +183,26 @@ def _verdict(metric, deltas, eligible, families):
     return families[1] if right_better else families[0]
 
 
-def compare_blocks(blocks):
+def compare_blocks(blocks: list[dict]) -> dict:
     """Blocks are verified trial data carrying first_event_utc, in any order."""
+    blockers = []
+    ordered = _order(blocks, blockers)
+    return _compare_ordered(ordered, blockers)
+
+
+def compare_paired_blocks(blocks: list[dict]) -> dict:
+    """Blocks arrive in verified frozen pair order: left, right, left, right.
+
+    The frozen plan and its sealed handoff chain already prove continuity, so the
+    v2 path never re-sorts by event time. Structural gates still run below.
+    """
+    return _compare_ordered(list(blocks), [])
+
+
+def _compare_ordered(ordered: list[dict], blockers: list[str]) -> dict:
     from inferyard.analysis.comparison import compare_trials
 
-    blockers, mismatches = [], []
-    ordered = _order(blocks, blockers)
+    mismatches = []
     left, right = _structure(ordered, blockers)
     if not left or not right:
         from inferyard.evidence.storage import EvidenceError

@@ -1,9 +1,10 @@
 """Argument registration for comparison commands."""
 
+import argparse
 from pathlib import Path
 
 
-def add_commands(commands):
+def add_commands(commands: argparse._SubParsersAction) -> None:
     comparison = commands.add_parser("compare", help="compare frozen trial evidence offline")
     comparison.add_argument("--left", type=Path, required=True)
     comparison.add_argument("--right", type=Path, required=True)

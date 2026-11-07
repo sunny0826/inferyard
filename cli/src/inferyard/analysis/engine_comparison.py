@@ -54,6 +54,18 @@ def allowed_differences(left, right):
     return ENGINE_DIFFERENCES
 
 
+def config_pair_blockers(left_config: dict, right_config: dict) -> list[str]:
+    """Supported engine pairs for plan freezing and frozen-plan reading (ADR 056)."""
+    left = {"config": left_config}
+    right = {"config": right_config}
+    blockers = [item for item in engine_blockers(left, right) if item not in PENDING]
+    if families(left, right) == SAME_ASSET:
+        for key in ("content_sha256", "assets_sha256"):
+            if left_config["model"].get(key) != right_config["model"].get(key):
+                blockers.append(f"config.model.{key}:different")
+    return blockers
+
+
 def engine_blockers(left, right):
     sides = (left, right)
     if not all(is_local(d["config"]) for d in sides):

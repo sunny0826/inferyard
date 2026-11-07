@@ -3,6 +3,8 @@
 import math
 from copy import deepcopy
 from dataclasses import replace
+from collections.abc import Callable
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from inferyard import SCHEMA_VERSION
@@ -10,7 +12,8 @@ from inferyard.config.loader import validate_runtime_config
 from inferyard.config.plan_inputs import read_frozen_plan, source_bytes
 from inferyard.config.startup_arguments import replace_arguments
 from inferyard.contracts.engine_profiles import is_local
-from inferyard.contracts.validation import Document
+from inferyard.contracts.validation import ContractError, Document
+from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.ledger import read_run_projection, read_trial
 from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, read_json
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
@@ -170,120 +173,264 @@ def require_replaced_service(previous, config, *, serial_continuation=False):
     )
 
 
-def history(
-    root,
-    plan,
-    loaded,
-    *,
-    allow_tool_change=False,
-    source_identity=None,
-    implementation_identity=None,
-    full_verification=False,
-):
+def _history_scope(
+    root: Path, allow_tool_change: bool, source_identity: str | None
+) -> tuple[dict, str]:
     metadata = read_json(root / "batch.json")
     expected_tool = (
         metadata.get("tool_source_sha256")
         if allow_tool_change
         else source_identity or tool_source_hash()
     )
+    return metadata, expected_tool
+
+
+def _read_run(
+    path: Path,
+    plan: dict,
+    loaded: dict,
+    metadata: dict,
+    expected_tool: str,
+    *,
+    allow_tool_change: bool,
+    implementation_identity: dict | None,
+    full_verification: bool,
+    retain_binding: bool,
+) -> tuple[dict | None, str | None]:
+    if not path.is_dir() or path.is_symlink():
+        return None, "unexpected_batch_entry"
+    trial_metadata = {}
+    if full_verification:
+        data = read_trial(path, metadata=trial_metadata)
+        data["manifest_sealed"] = trial_metadata["manifest"] is not None
+        data["service_drain"] = trial_metadata.get("service_drain")
+        if is_local(data["config"]):
+            data["identity"] = trial_metadata["identity"]
+    else:
+        data = read_run_projection(path)
+        data["manifest_sealed"] = data.get("manifest_sealed", False)
+    run = data["run"]
+    if run["plan_sha256"] != plan["plan_sha256"] or run["trial_id"] not in {
+        trial["trial_id"] for trial in plan["trials"]
+    }:
+        return None, "batch_run_identity_mismatch"
+    if "implementation_identity" in metadata:
+        expected_identity = (
+            metadata["implementation_identity"] if allow_tool_change else implementation_identity
+        )
+        if not execution_matches(run.get("implementation_identity"), expected_identity):
+            return None, "batch_run_tool_changed"
+    elif run.get("tool_source_sha256") != expected_tool:
+        return None, "batch_run_tool_changed"
+    if run["diagnostic"] != metadata["diagnostic"]:
+        return None, "batch_diagnostic_mode_changed"
+    evidence = (
+        trial_metadata["evidence"] if full_verification else TrialEvidence(path, projection=True)
+    )
+    binding = evidence.observation("service_binding", stage="prepare")
+    sealed = False
+    if binding is not None:
+        if binding.get("effective_endpoint") != data["config"]["endpoint"]:
+            return None, "service_binding_differs_from_execution"
+        ref = evidence.observation_reference("service_binding", stage="prepare")
+        if evidence.manifest is not None:
+            if ref["path"] not in evidence.manifest["files"]:
+                return None, "service_binding_not_sealed"
+            verify_reference(path, ref, reads=evidence if full_verification else None)
+            sealed = True
+    elif data["summary"]["counts"]["executed"] or evidence.manifest is not None:
+        return None, "service_binding_missing"
+    trial = next(t for t in plan["trials"] if t["trial_id"] == run["trial_id"])
+    base = loaded[trial["workload_id"]]
+    if (
+        immutable_config(data["config"]) != immutable_config(base.config.to_dict())
+        or data["bundle"] != base.bundle.to_dict()
+    ):
+        return None, "batch_frozen_inputs_changed"
+    data["path"] = path
+    if retain_binding:
+        data["service_binding"] = binding if sealed else None
+        data["service_binding_sealed"] = sealed
+    return data, None
+
+
+def _ordered_group(
+    tid: str, group: list[dict], by_id: dict[str, dict]
+) -> tuple[list[dict], str | None]:
+    roots = [d for d in group if d["run"]["relation"] != "resume"]
+    if len(roots) != 1:
+        return [], "trial_history_has_multiple_or_missing_roots"
+    ordered, current, visited = [], roots[0], set()
+    while current is not None:
+        run = current["run"]
+        if run["run_id"] in visited:
+            return [], "cyclic_resume_history"
+        visited.add(run["run_id"])
+        if run["parent_run_id"] is not None:
+            parent = by_id.get(run["parent_run_id"])
+            if (
+                parent is None
+                or current["selection"]["parent_events_sha256"] != parent["events_sha256"]
+            ):
+                return [], "parent_events_changed_or_missing"
+            if run["relation"] == "resume":
+                expected = [
+                    r["case_id"]
+                    for r in parent["requests"]
+                    if r["execution_state"] == "not_executed"
+                ]
+                if (
+                    parent["run"]["trial_id"] != tid
+                    or current["selection"]["case_ids"] != expected
+                ):
+                    return [], "resume_replaces_attempted_cases"
+        ordered.append(current)
+        children = [d for d in group if d["run"]["parent_run_id"] == run["run_id"]]
+        if len(children) > 1:
+            return [], "branched_resume_history"
+        current = children[0] if children else None
+    if len(visited) != len(group):
+        return [], "disconnected_resume_history"
+    return ordered, None
+
+
+def _collect_history(
+    root: Path,
+    plan: dict,
+    loaded: dict,
+    metadata: dict,
+    expected_tool: str,
+    *,
+    allow_tool_change: bool,
+    implementation_identity: dict | None,
+    full_verification: bool,
+    retain_binding: bool,
+    on_error: Callable[..., None],
+) -> list[dict]:
     groups = {t["trial_id"]: [] for t in plan["trials"]}
     by_id = {}
     for path in sorted((root / "runs").iterdir()):
-        if not path.is_dir() or path.is_symlink():
-            raise EvidenceError("unexpected_batch_entry")
-        if full_verification:
-            trial_metadata = {}
-            data = read_trial(path, metadata=trial_metadata)
-            data["manifest_sealed"] = trial_metadata["manifest"] is not None
-            data["service_drain"] = trial_metadata.get("service_drain")
-            if is_local(data["config"]):
-                data["identity"] = trial_metadata["identity"]
-        else:
-            data = read_run_projection(path)
-        run = data["run"]
-        if (
-            run["plan_sha256"] != plan["plan_sha256"]
-            or run["trial_id"] not in groups
-            or run["run_id"] in by_id
-        ):
-            raise EvidenceError("batch_run_identity_mismatch")
-        if "implementation_identity" in metadata:
-            expected_identity = (
-                metadata["implementation_identity"]
-                if allow_tool_change
-                else implementation_identity
+        try:
+            data, code = _read_run(
+                path,
+                plan,
+                loaded,
+                metadata,
+                expected_tool,
+                allow_tool_change=allow_tool_change,
+                implementation_identity=implementation_identity,
+                full_verification=full_verification,
+                retain_binding=retain_binding,
             )
-            if not execution_matches(run.get("implementation_identity"), expected_identity):
-                raise EvidenceError("batch_run_tool_changed")
-        elif run.get("tool_source_sha256") != expected_tool:
-            raise EvidenceError("batch_run_tool_changed")
-        if run["diagnostic"] != metadata["diagnostic"]:
-            raise EvidenceError("batch_diagnostic_mode_changed")
-        evidence = (
-            trial_metadata["evidence"]
-            if full_verification
-            else TrialEvidence(path, projection=True)
-        )
-        binding = evidence.observation("service_binding", stage="prepare")
-        if binding is not None:
-            if binding.get("effective_endpoint") != data["config"]["endpoint"]:
-                raise EvidenceError("service_binding_differs_from_execution")
-            ref = evidence.observation_reference("service_binding", stage="prepare")
-            if evidence.manifest is not None:
-                if ref["path"] not in evidence.manifest["files"]:
-                    raise EvidenceError("service_binding_not_sealed")
-                verify_reference(path, ref, reads=evidence if full_verification else None)
-        elif data["summary"]["counts"]["executed"] or evidence.manifest is not None:
-            raise EvidenceError("service_binding_missing")
-        trial = next(t for t in plan["trials"] if t["trial_id"] == run["trial_id"])
-        base = loaded[trial["workload_id"]]
-        if (
-            immutable_config(data["config"]) != immutable_config(base.config.to_dict())
-            or data["bundle"] != base.bundle.to_dict()
-        ):
-            raise EvidenceError("batch_frozen_inputs_changed")
-        data["path"] = path
+        except (EvidenceError, ContractError, UnsupportedFormat, OSError, ValueError, KeyError, TypeError, IndexError) as exc:
+            on_error(path=path, code=None, exc=exc)
+            continue
+        if code is not None:
+            on_error(path=path, code=code, exc=None)
+            continue
+        run = data["run"]
+        if run["run_id"] in by_id:
+            on_error(path=path, code="batch_run_identity_mismatch", exc=None)
+            continue
         by_id[run["run_id"]] = data
         groups[run["trial_id"]].append(data)
     ordered = []
     for tid, group in groups.items():
         if not group:
             continue
-        roots = [d for d in group if d["run"]["relation"] != "resume"]
-        if len(roots) != 1:
-            raise EvidenceError("trial_history_has_multiple_or_missing_roots")
-        current, visited = roots[0], set()
-        while current is not None:
-            run = current["run"]
-            if run["run_id"] in visited:
-                raise EvidenceError("cyclic_resume_history")
-            visited.add(run["run_id"])
-            if run["parent_run_id"] is not None:
-                parent = by_id.get(run["parent_run_id"])
-                if (
-                    parent is None
-                    or current["selection"]["parent_events_sha256"] != parent["events_sha256"]
-                ):
-                    raise EvidenceError("parent_events_changed_or_missing")
-                if run["relation"] == "resume":
-                    expected = [
-                        r["case_id"]
-                        for r in parent["requests"]
-                        if r["execution_state"] == "not_executed"
-                    ]
-                    if (
-                        parent["run"]["trial_id"] != tid
-                        or current["selection"]["case_ids"] != expected
-                    ):
-                        raise EvidenceError("resume_replaces_attempted_cases")
-            ordered.append(current)
-            children = [d for d in group if d["run"]["parent_run_id"] == run["run_id"]]
-            if len(children) > 1:
-                raise EvidenceError("branched_resume_history")
-            current = children[0] if children else None
-        if len(visited) != len(group):
-            raise EvidenceError("disconnected_resume_history")
+        group_ordered, code = _ordered_group(tid, group, by_id)
+        if code is not None:
+            on_error(path=group[0].get("path"), code=code, exc=None, trial_id=tid)
+            continue
+        ordered.extend(group_ordered)
     return ordered
+
+
+def _raise_history_error(
+    *, path: Path | None = None, code: str | None, exc: Exception | None, trial_id: str | None = None
+) -> None:
+    if exc is not None:
+        raise exc
+    raise EvidenceError(code)
+
+
+def history(
+    root: Path,
+    plan: dict,
+    loaded: dict,
+    *,
+    allow_tool_change: bool = False,
+    source_identity: str | None = None,
+    implementation_identity: dict | None = None,
+    full_verification: bool = False,
+) -> list[dict]:
+    metadata, expected_tool = _history_scope(root, allow_tool_change, source_identity)
+    return _collect_history(
+        root,
+        plan,
+        loaded,
+        metadata,
+        expected_tool,
+        allow_tool_change=allow_tool_change,
+        implementation_identity=implementation_identity,
+        full_verification=full_verification,
+        retain_binding=False,
+        on_error=_raise_history_error,
+    )
+
+
+def history_diagnostics(
+    root: Path,
+    plan: dict,
+    loaded: dict,
+    *,
+    source_identity: str | None = None,
+    implementation_identity: dict | None = None,
+    full_verification: bool = True,
+) -> tuple[list[dict], list[dict]]:
+    """Collect per-run rejection reasons for comparison readers (fail-fast stays in history)."""
+    metadata, expected_tool = _history_scope(root, False, source_identity)
+    if implementation_identity is None:
+        from inferyard.implementation_identity import IdentityContext
+
+        implementation_identity = IdentityContext(source_hash=tool_source_hash).value
+    diagnostics: list[dict] = []
+
+    def collect(
+        *,
+        path: Path | None = None,
+        code: str | None,
+        exc: Exception | None,
+        trial_id: str | None = None,
+    ) -> None:
+        reason = code
+        if exc is not None:
+            reason = "unsupported_format" if isinstance(exc, UnsupportedFormat) else type(exc).__name__
+        diagnostics.append(
+            {
+                "reason": reason,
+                "path": None if path is None else str(path),
+                "trial_id": trial_id,
+                "error": None
+                if exc is None
+                else {"type": type(exc).__name__, "reason": str(exc)},
+                "detail": code,
+            }
+        )
+
+    runs = _collect_history(
+        root,
+        plan,
+        loaded,
+        metadata,
+        expected_tool,
+        allow_tool_change=False,
+        implementation_identity=implementation_identity,
+        full_verification=full_verification,
+        retain_binding=True,
+        on_error=collect,
+    )
+    return runs, diagnostics
 
 
 def remaining_budget(plan, runs):

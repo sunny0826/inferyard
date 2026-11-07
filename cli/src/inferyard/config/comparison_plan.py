@@ -13,8 +13,10 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING
 
 from inferyard import SCHEMA_VERSION
+from inferyard.analysis.engine_comparison import config_pair_blockers
 from inferyard.analysis.scoring import SCORER_VERSION
 from inferyard.config.community_resources import BUNDLES, resource_bytes
 from inferyard.config.loader import load_config, read_document
@@ -23,6 +25,9 @@ from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
 from inferyard.evidence.formats import require_input
 from inferyard.evidence.storage import json_bytes
+
+if TYPE_CHECKING:
+    from inferyard.application.types import CommandRequest, CommandResult
 
 DEFINITION = "engine-comparison-plan.v1"
 BLOCKS = 6
@@ -41,15 +46,15 @@ class Slot:
     trial_id: str
 
 
-def slot_side(block):
+def slot_side(block: int) -> str:
     return "a" if block % 2 else "b"
 
 
-def slot_id(block, side, bundle_key):
+def slot_id(block: int, side: str, bundle_key: str) -> str:
     return f"block-{block:02d}-{side}-{bundle_key}"
 
 
-def bundle_key(bundle):
+def bundle_key(bundle: dict) -> str:
     identifier = bundle.get("bundle_id")
     if identifier in BUNDLE_KEYS:
         return BUNDLE_KEYS[identifier]
@@ -60,7 +65,7 @@ def bundle_key(bundle):
     return identifier
 
 
-def _parsed_workloads(workloads):
+def _parsed_workloads(workloads: list) -> list[tuple[int, str, str, dict]]:
     parsed = []
     for workload in workloads:
         match = _SLOT.fullmatch(workload.get("workload_id", ""))
@@ -73,14 +78,14 @@ def _parsed_workloads(workloads):
     return parsed
 
 
-def _bundle_keys(parsed):
+def _bundle_keys(parsed: list) -> list[str]:
     keys = [item[2] for item in parsed if item[0] == 1]
     if len(keys) not in (1, 2) or len(set(keys)) != len(keys):
         raise ContractError("plan.workloads", "one or two bundle workloads per block required")
     return keys
 
 
-def _require_frozen_order(parsed, trials, keys):
+def _require_frozen_order(parsed: list, trials: list, keys: list[str]) -> None:
     if len(parsed) != BLOCKS * len(keys) or len(trials) != len(parsed):
         raise ContractError("plan.workloads", f"exactly {BLOCKS} complete blocks required")
     for index, (block, side, key, workload) in enumerate(parsed):
@@ -106,7 +111,7 @@ def _require_frozen_order(parsed, trials, keys):
             raise ContractError("plan.trials", "trial does not match its frozen slot")
 
 
-def comparison_slots(plan):
+def comparison_slots(plan: dict) -> tuple[Slot, ...]:
     """Return frozen slots in execution order; reject any other plan shape."""
     experiment = plan.get("experiment") if type(plan) is dict else None
     if type(experiment) is not dict or experiment.get("comparison") != {
@@ -127,7 +132,7 @@ def comparison_slots(plan):
     )
 
 
-def validate_comparison_plan(plan, loaded):
+def validate_comparison_plan(plan: dict, loaded: dict) -> tuple[Slot, ...]:
     """Apply the per-side and fresh-process rules that need loaded configs."""
     slots = comparison_slots(plan)
     workloads = {w["workload_id"]: w for w in plan["experiment"]["workloads"]}
@@ -173,12 +178,12 @@ def validate_comparison_plan(plan, loaded):
     return slots
 
 
-def _profile_key(config):
+def _profile_key(config: dict) -> tuple[str, str]:
     engine = config["engine"]
     return ("local" if is_local(config) else "external", engine.get("family") or engine["adapter"])
 
 
-def is_comparison_plan(plan):
+def is_comparison_plan(plan: object) -> bool:
     try:
         slots = comparison_slots(plan)
     except (ContractError, KeyError, TypeError, ValueError):
@@ -186,7 +191,7 @@ def is_comparison_plan(plan):
     return bool(slots)
 
 
-def _bundle_documents(specs):
+def _bundle_documents(specs: tuple[str, ...]) -> dict[str, tuple[bytes, dict]]:
     if not specs:
         specs = DEFAULT_BUNDLES
     documents = {}
@@ -210,7 +215,7 @@ def _bundle_documents(specs):
     return documents
 
 
-def _side_configs(paths):
+def _side_configs(paths: tuple[Path, ...]) -> dict[str, tuple[object, bytes, dict]]:
     if not paths:
         raise ContractError("compare_plan.config", "at least one config per side required")
     result = {}
@@ -226,7 +231,7 @@ def _side_configs(paths):
     return result
 
 
-def _require_coverage(left, right, expected):
+def _require_coverage(left: dict, right: dict, expected: dict) -> None:
     for label, side in (("left", left), ("right", right)):
         missing = sorted(set(expected) - set(side))
         extra = sorted(set(side) - set(expected))
@@ -239,7 +244,7 @@ def _require_coverage(left, right, expected):
             )
 
 
-def _overhead(config, count):
+def _overhead(config: dict, count: int) -> float:
     execution, telemetry = config["execution"], config["telemetry"]
     auxiliary = 2 + execution["warmup_count"]
     return (
@@ -249,7 +254,7 @@ def _overhead(config, count):
     )
 
 
-def _safety(configs):
+def _safety(configs: list[dict]) -> dict | None:
     if not all("safety" in config for config in configs):
         if any("safety" in config for config in configs):
             raise ContractError(
@@ -258,10 +263,18 @@ def _safety(configs):
             )
         return None
     policies = [config["safety"] for config in configs]
+    overrides = [
+        "temperature_stop_override_reason" in policy for policy in policies
+    ]
+    if any(overrides) and not all(overrides):
+        raise ContractError(
+            "compare_plan.safety",
+            "temperature stop override must cover every comparison config",
+        )
     return {
         "interval_seconds": min(policy["interval_seconds"] for policy in policies),
         "max_temperature_celsius": None
-        if any("temperature_stop_override_reason" in policy for policy in policies)
+        if all(overrides)
         else min(policy["max_temperature_celsius"] for policy in policies),
         "require_temperature": all(policy["require_temperature"] for policy in policies),
         "check_environment": all(policy["check_environment"] for policy in policies),
@@ -269,7 +282,7 @@ def _safety(configs):
     }
 
 
-def _experiment_id(left, right, override):
+def _experiment_id(left: str | None, right: str | None, override: str | None) -> str:
     if override is not None:
         if not _IDENTIFIER.fullmatch(override):
             raise ContractError("compare_plan.experiment_id", "invalid experiment id")
@@ -281,7 +294,7 @@ def _experiment_id(left, right, override):
     return ("engine-compare-" + "-vs-".join(parts))[:128]
 
 
-def _side_workloads(side, configs, files):
+def _side_workloads(side: str, configs: dict, files: dict) -> list[dict]:
     workloads = []
     for key, (loaded, raw, bundle) in configs.items():
         config = loaded.config.to_dict()
@@ -311,7 +324,7 @@ def _side_workloads(side, configs, files):
     return workloads
 
 
-def _definition(item):
+def _definition(item: dict) -> tuple[dict, int, float]:
     config = item["config"]
     limit = len(item["cases"])
     return {
@@ -333,7 +346,7 @@ def _definition(item):
     }, limit, limit * config["execution"]["timeout_seconds"] + _overhead(config, limit)
 
 
-def _budget(configs, limits):
+def _budget(configs: list[dict], limits: list[tuple[int, float]]) -> dict:
     return {
         "max_requests": sum(limit for limit, _ in limits),
         "max_wall_seconds": sum(total for _, total in limits),
@@ -344,7 +357,7 @@ def _budget(configs, limits):
     }
 
 
-def _experiment(left, right, bundles, experiment_id):
+def _experiment(left: dict, right: dict, bundles: dict, experiment_id: str) -> tuple[dict, dict]:
     files, workloads = {}, []
     workloads.extend(_side_workloads("a", left, files))
     workloads.extend(_side_workloads("b", right, files))
@@ -381,7 +394,7 @@ def _experiment(left, right, bundles, experiment_id):
     return experiment, files
 
 
-def _require_bundle_content(left, right, expected):
+def _require_bundle_content(left: dict, right: dict, expected: dict) -> None:
     for key, (raw, _) in expected.items():
         for label, side in (("left", left), ("right", right)):
             if hashlib.sha256(side[key][1]).hexdigest() != hashlib.sha256(raw).hexdigest():
@@ -391,23 +404,29 @@ def _require_bundle_content(left, right, expected):
                 )
 
 
-def _side_profiles(left, right):
-    left_profile = {_profile_key(loaded.config.to_dict()) for loaded, _, _ in left.values()}
-    right_profile = {_profile_key(loaded.config.to_dict()) for loaded, _, _ in right.values()}
-    if len(left_profile) != 1 or len(right_profile) != 1:
-        raise ContractError("compare_plan.config", "one engine profile per side required")
-    if left_profile == right_profile:
-        raise ContractError("compare_plan.engines", "comparison sides must differ")
-    configs = [loaded.config.to_dict() for side in (left, right) for loaded, _, _ in side.values()]
-    if len({is_local(config) for config in configs}) != 1:
+def _side_profiles(left: dict, right: dict) -> tuple[str | None, str | None]:
+    left_configs = [loaded.config.to_dict() for loaded, _, _ in left.values()]
+    right_configs = [loaded.config.to_dict() for loaded, _, _ in right.values()]
+    if not all(is_local(config) for config in left_configs + right_configs):
         raise ContractError(
-            "compare_plan.profile",
-            "mixed local and external engine profiles are not comparable",
+            "compare_plan.profile", "engine comparison requires local engine profiles"
         )
-    return next(iter(left_profile))[1], next(iter(right_profile))[1]
+    for key, right_config in right.items():
+        blockers = config_pair_blockers(left[key][0].config.to_dict(), right_config[0].config.to_dict())
+        if blockers:
+            raise ContractError("compare_plan.engines", "; ".join(blockers))
+    families = {config["engine"].get("family") for config in left_configs + right_configs}
+    if len(families) != 2:
+        raise ContractError("compare_plan.engines", "engine families must differ")
+    return left_configs[0]["engine"]["family"], right_configs[0]["engine"]["family"]
 
 
-def _comparison_inputs(left_configs, right_configs, bundle_specs, experiment_id):
+def _comparison_inputs(
+    left_configs: tuple[Path, ...],
+    right_configs: tuple[Path, ...],
+    bundle_specs: tuple[str, ...],
+    experiment_id: str | None,
+) -> tuple[dict, dict]:
     expected = _bundle_documents(tuple(bundle_specs))
     left = _side_configs(tuple(left_configs))
     right = _side_configs(tuple(right_configs))
@@ -418,7 +437,7 @@ def _comparison_inputs(left_configs, right_configs, bundle_specs, experiment_id)
     return _experiment(left, right, expected, identity)
 
 
-def _write_inputs(root, experiment, files):
+def _write_inputs(root: Path, experiment: dict, files: dict) -> Path:
     for name, raw in files.items():
         (root / name).write_bytes(raw)
     source = root / "experiment.json"
@@ -427,13 +446,13 @@ def _write_inputs(root, experiment, files):
 
 
 def freeze(
-    left_configs,
-    right_configs,
-    bundle_specs=(),
+    left_configs: tuple[Path, ...],
+    right_configs: tuple[Path, ...],
+    bundle_specs: tuple[str, ...] = (),
     *,
-    experiment_id=None,
-    destination=None,
-):
+    experiment_id: str | None = None,
+    destination: Path | None = None,
+) -> dict:
     """Freeze one comparison plan; ``destination=None`` previews without writing."""
     experiment, files = _comparison_inputs(
         left_configs, right_configs, bundle_specs, experiment_id
@@ -447,7 +466,7 @@ def freeze(
         return write_plan(source, Path(destination))
 
 
-def execute(request):
+def execute(request: "CommandRequest") -> tuple[int, "CommandResult"]:
     from inferyard.application.types import CommandResult
 
     plan = freeze(

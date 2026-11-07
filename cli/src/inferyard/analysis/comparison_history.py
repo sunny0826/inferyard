@@ -6,7 +6,7 @@ terminal state, and model answer quality is outside execution stopping.
 
 from __future__ import annotations
 
-from inferyard.config.comparison_plan import comparison_slots
+from inferyard.config.comparison_plan import Slot, comparison_slots
 
 HISTORY_IDENTITY_ERROR = "comparison_history_identity_error"
 HISTORY_CANCELLED = "comparison_history_cancelled"
@@ -14,7 +14,7 @@ HISTORY_FAILED = "comparison_history_failed"
 HISTORY_INCOMPLETE = "comparison_history_incomplete"
 
 
-def _entry_label(slot, entry=None):
+def _entry_label(slot: Slot, entry: dict | None = None) -> dict:
     return {
         "trial_id": slot.trial_id,
         "workload_id": slot.workload_id,
@@ -25,7 +25,14 @@ def _entry_label(slot, entry=None):
     }
 
 
-def _stop(slot, entry, reason, detail, *, subsequent=()):
+def _stop(
+    slot: Slot,
+    entry: dict | None,
+    reason: str,
+    detail: str,
+    *,
+    subsequent: tuple[str, ...] = (),
+) -> dict:
     return {
         **{key: value for key, value in _entry_label(slot, entry).items() if value is not None},
         "reason": reason,
@@ -34,7 +41,7 @@ def _stop(slot, entry, reason, detail, *, subsequent=()):
     }
 
 
-def _attempts(plan, runs):
+def _attempts(plan: dict, runs: list[dict]) -> tuple[tuple[Slot, ...], dict[str, list[dict]]]:
     slots = comparison_slots(plan)
     by_trial = {}
     for entry in runs:
@@ -42,7 +49,9 @@ def _attempts(plan, runs):
     return slots, by_trial
 
 
-def _gap_with_later_run(slots, by_trial, runs):
+def _gap_with_later_run(
+    slots: tuple[Slot, ...], by_trial: dict[str, list[dict]], runs: list[dict]
+) -> dict | None:
     index = {slot.trial_id: position for position, slot in enumerate(slots)}
     first_missing = next(
         (position for position, slot in enumerate(slots) if not by_trial.get(slot.trial_id)),
@@ -56,7 +65,9 @@ def _gap_with_later_run(slots, by_trial, runs):
     return _stop(slots[first_missing], later[0], HISTORY_IDENTITY_ERROR, "subsequent_run_present")
 
 
-def _later_run_ids(slots, position, by_trial):
+def _later_run_ids(
+    slots: tuple[Slot, ...], position: int, by_trial: dict[str, list[dict]]
+) -> list[str]:
     return [
         later["run"]["run_id"]
         for later_slot in slots[position + 1 :]
@@ -64,7 +75,7 @@ def _later_run_ids(slots, position, by_trial):
     ]
 
 
-def comparison_history_stop(plan, runs):
+def comparison_history_stop(plan: dict, runs: list[dict]) -> dict | None:
     """Return the first comparison-specific history stop, or ``None``.
 
     Only frozen slot order is consulted. A later run after a missing slot, a
@@ -88,7 +99,7 @@ def comparison_history_stop(plan, runs):
     return None
 
 
-def _execution_stop(slot, entry):
+def _execution_stop(slot: Slot, entry: dict) -> dict | None:
     summary = entry["summary"]
     states = [request["execution_state"] for request in entry["requests"]]
     if summary.get("stop_reason") == "user_cancelled" or "cancelled" in states:
@@ -105,7 +116,7 @@ def _execution_stop(slot, entry):
     return None
 
 
-def _terminal_stop(slot, entry):
+def _terminal_stop(slot: Slot, entry: dict) -> dict | None:
     stop = _execution_stop(slot, entry)
     if stop is not None:
         return stop

@@ -3,11 +3,12 @@
 import asyncio
 import os
 import sys
+from pathlib import Path
 from dataclasses import replace
 
 from inferyard.analysis.repetition_metrics import repetition_metrics
 from inferyard.analysis.scoring import ScoringContext
-from inferyard.application.types import CommandResult
+from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import plan_progress, resume_selection
 from inferyard.evidence.storage import EvidenceError, read_json
@@ -25,6 +26,7 @@ from inferyard.registry import (
 from inferyard.runtime.batch_state import (
     bind_service,
     history,
+    history_diagnostics,
     open_batch,
     remaining_budget,
     require_replaced_service,
@@ -32,7 +34,15 @@ from inferyard.runtime.batch_state import (
 from inferyard.runtime.trial_runner import TrialDependencies, run_trial
 
 
-def _result(request, root, plan, runs, status, code=0, next_trial=None, comparison_stop=None):
+def _result(
+    request: CommandRequest,
+    root: Path,
+    plan: dict,
+    runs: list[dict],
+    status: str,
+    code: int = 0,
+    next_trial: dict | None = None,
+) -> tuple[int, CommandResult]:
     progress = plan_progress(plan, runs)
     complete = all(t["status"] == "complete" for t in progress)
     latest = runs[-1] if runs else None
@@ -54,7 +64,6 @@ def _result(request, root, plan, runs, status, code=0, next_trial=None, comparis
         "next_trial": next_trial,
         "runs": [str(d["path"]) for d in runs],
         "last_stop_reason": latest["summary"]["stop_reason"] if latest else None,
-        **({"comparison_stop": comparison_stop} if comparison_stop is not None else {}),
     }
     return code, CommandResult(
         request.command,
@@ -83,7 +92,31 @@ def _next(plan, runs):
     return None, None
 
 
-async def execute_async(request, dependencies=None):
+def _comparison_stopped(
+    request: CommandRequest,
+    root: Path,
+    plan: dict,
+    runs: list[dict],
+    stop: dict,
+) -> tuple[int, CommandResult]:
+    code, result = _result(request, root, plan, runs, "comparison_history_stopped", 3)
+    return code, replace(result, details={**result.details, "comparison_stop": stop})
+
+
+def _identity_stop(error: dict) -> dict:
+    underlying = error.get("error") or {"reason": error.get("reason")}
+    return {
+        "reason": "comparison_history_identity_error",
+        "detail": error.get("detail") or error.get("reason"),
+        "trial_id": error.get("trial_id"),
+        "run_id": error.get("run_id"),
+        "error": underlying,
+    }
+
+
+async def execute_async(
+    request: CommandRequest, dependencies: TrialDependencies | None = None
+) -> tuple[int, CommandResult]:
     deps = dependencies or TrialDependencies(scorer=registered_score)
     scoring_context = ScoringContext()
     identity_context = IdentityContext(source_hash=tool_source_hash)
@@ -112,30 +145,36 @@ async def execute_async(request, dependencies=None):
             )
         ):
             raise PreflightError("windows_phase2_live_not_supported")
-        runs = history(
-            root,
-            plan,
-            loaded,
-            source_identity=source_identity,
-            implementation_identity=identity_context.value,
-        )
         from inferyard.analysis.engine_comparison_v2 import (
             comparison_history_stop,
             is_comparison_plan,
         )
 
-        if is_comparison_plan(plan):
+        comparison = is_comparison_plan(plan)
+        if comparison:
+            runs, history_errors = history_diagnostics(
+                root,
+                plan,
+                loaded,
+                source_identity=source_identity,
+                implementation_identity=identity_context.value,
+                full_verification=False,
+            )
+            if history_errors:
+                return _comparison_stopped(
+                    request, root, plan, runs, _identity_stop(history_errors[0])
+                )
             comparison_stop = comparison_history_stop(plan, runs)
             if comparison_stop is not None:
-                return _result(
-                    request,
-                    root,
-                    plan,
-                    runs,
-                    "comparison_history_stopped",
-                    3,
-                    comparison_stop=comparison_stop,
-                )
+                return _comparison_stopped(request, root, plan, runs, comparison_stop)
+        else:
+            runs = history(
+                root,
+                plan,
+                loaded,
+                source_identity=source_identity,
+                implementation_identity=identity_context.value,
+            )
         if plan["experiment"].get("capacity_stop") == "first_failed_request":
             stopped = next(
                 (
@@ -320,8 +359,8 @@ async def execute_async(request, dependencies=None):
         )
 
 
-def execute(request):
-    async def dispatch():
+def execute(request: CommandRequest) -> tuple[int, CommandResult]:
+    async def dispatch() -> tuple[int, CommandResult]:
         from inferyard.runtime.signals import install_termination_handler
 
         restore_signal = install_termination_handler()
