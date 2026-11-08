@@ -226,6 +226,6 @@ func (s *viewState) feedback(c *ui.Context) {
 	if s.failure != nil {
 		errorView(c, s.failure)
 	} else if s.refreshFailure != "" {
-		ui.Text(c, s.refreshFailure).TextColor(c.Theme().Danger)
+		ui.Text(c, s.refreshFailure).TextColor(stateColor(c, stateDanger))
 	}
 }

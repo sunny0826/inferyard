@@ -114,7 +114,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				ui.Text(c, metric.label+" · 此运行未记录该指标").TextColor(theme.TextMuted)
 				continue
 			}
-			container := ui.Column(c).FillWidth().Gap(theme.Space(2))
+			container := ui.Column(c).FillWidth().Gap(tokens(c).Density.Row)
 			state := ui.Local(container, "resource-chart", func() resourceChartState {
 				return resourceChartState{chart: chart.State{Index: -1}}
 			})
@@ -194,7 +194,7 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 	const pageSize = 50
 	pages := max(1, (len(samples)+pageSize-1)/pageSize)
 	s.resourceTablePage = min(max(0, s.resourceTablePage), pages-1)
-	ui.Row(c).Gap(c.Theme().Space(2)).Children(func() {
+	ui.Row(c).Gap(tokens(c).Density.Row).Children(func() {
 		if button(c, "上一页采样").Disabled(s.resourceTablePage == 0).Clicked() {
 			s.resourceTablePage--
 		}

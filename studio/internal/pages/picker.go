@@ -28,7 +28,7 @@ func (o pickerOption) display() string {
 // options, following the models/downloads prototype pickers. It reports a
 // changed selection; the caller owns side effects.
 func pickerSelect(c *ui.Context, label, placeholder string, selected *string, query *string, options []pickerOption, emptyMessage string) bool {
-	t := c.Theme()
+	t := tokens(c)
 	sel := components.Select(c, selected)
 	sel.Trigger.Label(label).Children(func() {
 		value := *selected
@@ -54,19 +54,19 @@ func pickerSelect(c *ui.Context, label, placeholder string, selected *string, qu
 			}
 			shown++
 			row := func() {
-				ui.Column(c).Gap(t.Space(0.5)).Children(func() {
+				ui.Column(c).Gap(t.Density.Hairline).Children(func() {
 					ui.Text(c, opt.display())
 					if opt.note != "" {
-						ui.Text(c, opt.note).FontSize(max(12, t.Rem(.85))).TextColor(t.TextMuted)
+						ui.Text(c, opt.note).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 					}
 				})
 			}
 			if opt.disabled {
-				ui.Column(c).Padding(t.Space(1.5), t.Space(2.5)).Children(func() {
-					ui.Column(c).Gap(t.Space(0.5)).Children(func() {
-						ui.Text(c, opt.display()).TextColor(t.TextMuted)
+				ui.Column(c).Padding(t.Density.Inset, t.Density.CardGap).Children(func() {
+					ui.Column(c).Gap(t.Density.Hairline).Children(func() {
+						ui.Text(c, opt.display()).TextColor(c.Theme().TextMuted)
 						if opt.note != "" {
-							ui.Text(c, opt.note).FontSize(max(12, t.Rem(.85))).TextColor(t.TextMuted)
+							ui.Text(c, opt.note).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 						}
 					})
 				})
@@ -75,7 +75,7 @@ func pickerSelect(c *ui.Context, label, placeholder string, selected *string, qu
 			sel.Item(opt.value).Children(row)
 		}
 		if shown == 0 {
-			ui.Text(c, emptyMessage).TextColor(t.TextMuted)
+			ui.Text(c, emptyMessage).TextColor(c.Theme().TextMuted)
 		}
 	})
 	if sel.Trigger.Changed() {

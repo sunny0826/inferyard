@@ -4,6 +4,7 @@ A single left/right pair checks identity only and stays blocked; the block
 comparison in ``engine_blocks`` owns the performance verdict.
 """
 
+from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.contracts.engine_profiles import is_local
 
 SAME_ASSET = frozenset(("llama-cpp", "lmstudio"))
@@ -52,6 +53,20 @@ def allowed_differences(left, right):
     if families(left, right) == CROSS_FORMAT:
         return ENGINE_DIFFERENCES + MODEL_FORMAT_DIFFERENCES
     return ENGINE_DIFFERENCES
+
+
+def config_pair_blockers(
+    left_config: JSONRecord, right_config: JSONRecord
+) -> list[str]:
+    """Supported engine pairs for plan freezing and frozen-plan reading (ADR 056)."""
+    left = {"config": left_config}
+    right = {"config": right_config}
+    blockers = [item for item in engine_blockers(left, right) if item not in PENDING]
+    if families(left, right) == SAME_ASSET:
+        for key in ("content_sha256", "assets_sha256"):
+            if left_config["model"].get(key) != right_config["model"].get(key):
+                blockers.append(f"config.model.{key}:different")
+    return blockers
 
 
 def engine_blockers(left, right):

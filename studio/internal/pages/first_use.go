@@ -81,14 +81,14 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 		for _, bundle := range s.taskBundles() {
 			reason := emptyText(bundle.BlockedReason)
 			if reason != "" && reason != "no_local_model" && !shown[reason] {
-				ui.Text(c, human(reason)).TextColor(c.Theme().Danger)
+				ui.Text(c, human(reason)).TextColor(stateColor(c, stateDanger))
 				shown[reason] = true
 			}
 		}
 		if s.engineState.State == "orphaned" {
 			s.stopOrphanButton(c)
 		}
-		ui.Row(c).Wrap().Gap(c.Theme().Space(2)).Children(func() {
+		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
 			primaryButton(c, "到下载页").OnClick(func() { s.selected = "downloads" })
 			button(c, "使用已有资源").OnClick(func() { s.selected = "settings" })
 		})

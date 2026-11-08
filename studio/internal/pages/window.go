@@ -322,8 +322,8 @@ func (s *viewState) contentView(c *ui.Context) {
 	s.consumeFeedback(c)
 	ui.Column(c).Grow(1).MinWidth(0).Fill().Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
 		s.cornerStatus(c)
-		ui.Scroll(c.Key(s.selected)).Grow(1).TrackScroll(s.pageScroll()).Padding(c.Theme().Space(6)).Children(func() {
-			ui.Column(c).Gap(c.Theme().Space(4)).Children(func() {
+		ui.Scroll(c.Key(s.selected)).Grow(1).TrackScroll(s.pageScroll()).Padding(tokens(c).Density.Page).Children(func() {
+			ui.Column(c).Gap(tokens(c).Density.Section).Children(func() {
 				s.feedback(c)
 				if !s.loaded {
 					title := "首次上手"
@@ -384,9 +384,6 @@ func (s *viewState) refreshAction() {
 }
 func (s *viewState) header(c *ui.Context, title string) {
 	heading(c, title, 1)
-}
-func card(c *ui.Context, title string, fn func()) {
-	ui.Column(c).MinWidth(0).Gap(c.Theme().Space(2.5)).Padding(c.Theme().Space(4.5)).Background(c.Theme().Surface).Radius(c.Theme().Space(3)).Children(func() { heading(c, title, 2); fn() })
 }
 func field(c *ui.Context, label string, value *string) ui.Element {
 	return ui.Field(c, label, func() { components.TextBox(c, value, components.TextBoxOptions{}) })

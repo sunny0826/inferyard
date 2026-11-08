@@ -3,51 +3,74 @@
 import math
 from copy import deepcopy
 from dataclasses import replace
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from inferyard import SCHEMA_VERSION
-from inferyard.config.loader import validate_runtime_config
+from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.config.loader import LoadedConfig, validate_runtime_config
 from inferyard.config.plan_inputs import read_frozen_plan, source_bytes
 from inferyard.config.startup_arguments import replace_arguments
 from inferyard.contracts.engine_profiles import is_local
-from inferyard.contracts.validation import Document
-from inferyard.evidence.ledger import read_run_projection, read_trial
+from inferyard.contracts.validation import ContractError, Document
+from inferyard.evidence.formats import UnsupportedFormat
 from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, read_json
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.implementation_identity import execution_matches
-from inferyard.platforms.identity import PreflightError, hash_file, process_start_ticks
 from inferyard.provenance import tool_source_hash
+from inferyard.platforms.identity import PreflightError, hash_file, process_start_ticks
+
+from inferyard.runtime.batch_envelope import validate_batch_envelope
+from inferyard.runtime.history_state import HistoryOptions, history, history_diagnostics
+
+def _open_existing_batch(
+    root: Path,
+    source: Path | None,
+    diagnostic: bool,
+    source_identity: str,
+    implementation_identity: JSONRecord | None,
+) -> tuple[JSONRecord, dict[str, LoadedConfig]]:
+    meta = read_json(root / "batch.json")
+    try:
+        validate_batch_envelope(meta)
+    except (
+        EvidenceError,
+        ContractError,
+        UnsupportedFormat,
+        KeyError,
+        TypeError,
+        ValueError,
+        IndexError,
+    ) as exc:
+        raise EvidenceError("batch_identity_or_tool_changed") from exc
+    plan, loaded = read_frozen_plan(root / "frozen-plan/plan.json")
+    from inferyard.runtime.context_speed import is_speed
+
+    if is_speed(plan, loaded):
+        raise PreflightError("context_speed_requires_new_plan_and_batch")
+    if (
+        meta.get("schema_version") != SCHEMA_VERSION
+        or meta.get("plan_sha256") != plan["plan_sha256"]
+        or meta.get("diagnostic") != diagnostic
+        or (
+            not execution_matches(meta["implementation_identity"], implementation_identity)
+            if "implementation_identity" in meta
+            else meta.get("tool_source_sha256") != source_identity
+        )
+    ):
+        raise EvidenceError("batch_identity_or_tool_changed")
+    if source and read_frozen_plan(source)[0]["plan_sha256"] != plan["plan_sha256"]:
+        raise EvidenceError("batch_plan_mismatch")
+    return plan, loaded
 
 
-def open_batch(root, source, diagnostic, *, source_identity=None, implementation_identity=None):
-    if implementation_identity is None:
-        from inferyard.implementation_identity import IdentityContext
-
-        context = IdentityContext(source_hash=tool_source_hash)
-        implementation_identity = context.value
-        source_identity = source_identity or context.source
-    source_identity = source_identity or tool_source_hash()
-    if (root / "batch.json").exists():
-        meta = read_json(root / "batch.json")
-        plan, loaded = read_frozen_plan(root / "frozen-plan/plan.json")
-        from inferyard.runtime.context_speed import is_speed
-
-        if is_speed(plan, loaded):
-            raise PreflightError("context_speed_requires_new_plan_and_batch")
-        if (
-            meta.get("schema_version") != SCHEMA_VERSION
-            or meta.get("plan_sha256") != plan["plan_sha256"]
-            or meta.get("diagnostic") != diagnostic
-            or (
-                not execution_matches(meta["implementation_identity"], implementation_identity)
-                if "implementation_identity" in meta
-                else meta.get("tool_source_sha256") != source_identity
-            )
-        ):
-            raise EvidenceError("batch_identity_or_tool_changed")
-        if source and read_frozen_plan(source)[0]["plan_sha256"] != plan["plan_sha256"]:
-            raise EvidenceError("batch_plan_mismatch")
-        return plan, loaded
+def _create_batch(
+    root: Path,
+    source: Path | None,
+    diagnostic: bool,
+    source_identity: str,
+    implementation_identity: JSONRecord | None,
+) -> tuple[JSONRecord, dict[str, LoadedConfig]]:
     if source is None:
         raise EvidenceError("batch_source_plan_required")
     plan, _ = read_frozen_plan(source)
@@ -87,25 +110,27 @@ def open_batch(root, source, diagnostic, *, source_identity=None, implementation
     return read_frozen_plan(frozen / "plan.json")
 
 
-def _args_without_endpoint(args):
-    result, index = [], 0
-    while index < len(args):
-        value = args[index]
-        if value in ("--host", "--port", "-p"):
-            index += 2
-            continue
-        if not value.startswith(("--host=", "--port=", "-p=")):
-            result.append(value)
-        index += 1
-    return result
+def open_batch(
+    root: Path,
+    source: Path | None,
+    diagnostic: bool,
+    *,
+    source_identity: str | None = None,
+    implementation_identity: JSONRecord | None = None,
+) -> tuple[JSONRecord, dict[str, LoadedConfig]]:
+    if implementation_identity is None:
+        from inferyard.implementation_identity import IdentityContext
 
+        context = IdentityContext(source_hash=tool_source_hash)
+        implementation_identity = context.value
+        source_identity = source_identity or context.source
+    source_identity = source_identity or tool_source_hash()
+    if (root / "batch.json").exists():
+        return _open_existing_batch(
+            root, source, diagnostic, source_identity, implementation_identity
+        )
+    return _create_batch(root, source, diagnostic, source_identity, implementation_identity)
 
-def immutable_config(config):
-    value = deepcopy(config)
-    value.pop("endpoint")
-    value["engine"]["startup_args"] = _args_without_endpoint(value["engine"]["startup_args"])
-    value["bundle"].pop("path")
-    return value
 
 
 def bind_service(
@@ -169,121 +194,6 @@ def require_replaced_service(previous, config, *, serial_continuation=False):
         serial_continuation=serial_continuation,
     )
 
-
-def history(
-    root,
-    plan,
-    loaded,
-    *,
-    allow_tool_change=False,
-    source_identity=None,
-    implementation_identity=None,
-    full_verification=False,
-):
-    metadata = read_json(root / "batch.json")
-    expected_tool = (
-        metadata.get("tool_source_sha256")
-        if allow_tool_change
-        else source_identity or tool_source_hash()
-    )
-    groups = {t["trial_id"]: [] for t in plan["trials"]}
-    by_id = {}
-    for path in sorted((root / "runs").iterdir()):
-        if not path.is_dir() or path.is_symlink():
-            raise EvidenceError("unexpected_batch_entry")
-        if full_verification:
-            trial_metadata = {}
-            data = read_trial(path, metadata=trial_metadata)
-            data["manifest_sealed"] = trial_metadata["manifest"] is not None
-            data["service_drain"] = trial_metadata.get("service_drain")
-            if is_local(data["config"]):
-                data["identity"] = trial_metadata["identity"]
-        else:
-            data = read_run_projection(path)
-        run = data["run"]
-        if (
-            run["plan_sha256"] != plan["plan_sha256"]
-            or run["trial_id"] not in groups
-            or run["run_id"] in by_id
-        ):
-            raise EvidenceError("batch_run_identity_mismatch")
-        if "implementation_identity" in metadata:
-            expected_identity = (
-                metadata["implementation_identity"]
-                if allow_tool_change
-                else implementation_identity
-            )
-            if not execution_matches(run.get("implementation_identity"), expected_identity):
-                raise EvidenceError("batch_run_tool_changed")
-        elif run.get("tool_source_sha256") != expected_tool:
-            raise EvidenceError("batch_run_tool_changed")
-        if run["diagnostic"] != metadata["diagnostic"]:
-            raise EvidenceError("batch_diagnostic_mode_changed")
-        evidence = (
-            trial_metadata["evidence"]
-            if full_verification
-            else TrialEvidence(path, projection=True)
-        )
-        binding = evidence.observation("service_binding", stage="prepare")
-        if binding is not None:
-            if binding.get("effective_endpoint") != data["config"]["endpoint"]:
-                raise EvidenceError("service_binding_differs_from_execution")
-            ref = evidence.observation_reference("service_binding", stage="prepare")
-            if evidence.manifest is not None:
-                if ref["path"] not in evidence.manifest["files"]:
-                    raise EvidenceError("service_binding_not_sealed")
-                verify_reference(path, ref, reads=evidence if full_verification else None)
-        elif data["summary"]["counts"]["executed"] or evidence.manifest is not None:
-            raise EvidenceError("service_binding_missing")
-        trial = next(t for t in plan["trials"] if t["trial_id"] == run["trial_id"])
-        base = loaded[trial["workload_id"]]
-        if (
-            immutable_config(data["config"]) != immutable_config(base.config.to_dict())
-            or data["bundle"] != base.bundle.to_dict()
-        ):
-            raise EvidenceError("batch_frozen_inputs_changed")
-        data["path"] = path
-        by_id[run["run_id"]] = data
-        groups[run["trial_id"]].append(data)
-    ordered = []
-    for tid, group in groups.items():
-        if not group:
-            continue
-        roots = [d for d in group if d["run"]["relation"] != "resume"]
-        if len(roots) != 1:
-            raise EvidenceError("trial_history_has_multiple_or_missing_roots")
-        current, visited = roots[0], set()
-        while current is not None:
-            run = current["run"]
-            if run["run_id"] in visited:
-                raise EvidenceError("cyclic_resume_history")
-            visited.add(run["run_id"])
-            if run["parent_run_id"] is not None:
-                parent = by_id.get(run["parent_run_id"])
-                if (
-                    parent is None
-                    or current["selection"]["parent_events_sha256"] != parent["events_sha256"]
-                ):
-                    raise EvidenceError("parent_events_changed_or_missing")
-                if run["relation"] == "resume":
-                    expected = [
-                        r["case_id"]
-                        for r in parent["requests"]
-                        if r["execution_state"] == "not_executed"
-                    ]
-                    if (
-                        parent["run"]["trial_id"] != tid
-                        or current["selection"]["case_ids"] != expected
-                    ):
-                        raise EvidenceError("resume_replaces_attempted_cases")
-            ordered.append(current)
-            children = [d for d in group if d["run"]["parent_run_id"] == run["run_id"]]
-            if len(children) > 1:
-                raise EvidenceError("branched_resume_history")
-            current = children[0] if children else None
-        if len(visited) != len(group):
-            raise EvidenceError("disconnected_resume_history")
-    return ordered
 
 
 def remaining_budget(plan, runs):

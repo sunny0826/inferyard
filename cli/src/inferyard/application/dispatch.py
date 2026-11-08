@@ -124,8 +124,8 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         from inferyard.reporting.engine_blocks_report import execute
 
         return execute(request)
-    if request.command in ("compare", "compare-check"):
-        from inferyard.reporting.comparison_report import execute
+    if request.command in ("compare-plan", "compare", "compare-check"):
+        from inferyard.application.comparison import execute
 
         return execute(request)
     if request.command in ("repeat-summary", "repeat-check"):

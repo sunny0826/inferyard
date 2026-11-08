@@ -103,19 +103,13 @@ func (s *viewState) conclusionView(c *ui.Context) {
 	}
 	card(c, "工作区进度", func() {
 		step := s.step()
-		ui.Row(c).Wrap().Gap(c.Theme().Space(2)).Label("六阶段进度").Children(func() {
-			for i, label := range []string{"准备", "设备检查", "benchmark", "启动与绑定", "运行", "报告"} {
-				switch {
-				case i < step:
-					ui.Text(c, "✓  "+label).TextColor(c.Theme().Success)
-				case i == step:
-					statusBadge(c, label, c.Theme().Accent).Description("当前阶段：" + label)
-				default:
-					ui.Text(c, label).TextColor(c.Theme().TextMuted)
-				}
-			}
+		phaseProgress(c, phaseProgressOptions{
+			Labels:      []string{"准备", "设备检查", "benchmark", "启动与绑定", "运行", "报告"},
+			Current:     step,
+			RowLabel:    "六阶段进度",
+			BarLabel:    "工作区六阶段准备进度",
+			Description: "六个准备阶段，不表示样本完成率。",
 		})
-		progressBar(c, float64(step)/6, "工作区六阶段准备进度").Description("六个准备阶段，不表示样本完成率。")
 		for _, b := range s.taskBundles() {
 			if task := s.liveBundleTask(b.Bundle); task != nil {
 				ui.Text(c, b.Bundle+" · "+taskLabel(*task))
@@ -126,9 +120,9 @@ func (s *viewState) conclusionView(c *ui.Context) {
 				if *b.BlockedReason == "no_local_model" && s.availableTaskAssets().model && s.preparingTask() {
 					continue
 				}
-				color := c.Theme().Danger
+				color := stateColor(c, stateDanger)
 				if b.Phase == "run_incomplete" {
-					color = c.Theme().Warning
+					color = stateColor(c, stateWarning)
 				}
 				ui.Text(c, human(*b.BlockedReason)).TextColor(color)
 			}

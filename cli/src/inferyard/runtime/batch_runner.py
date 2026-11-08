@@ -3,11 +3,13 @@
 import asyncio
 import os
 import sys
+from pathlib import Path
 from dataclasses import replace
 
+from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.analysis.repetition_metrics import repetition_metrics
 from inferyard.analysis.scoring import ScoringContext
-from inferyard.application.types import CommandResult
+from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.contracts.validation import Document
 from inferyard.evidence.ledger import plan_progress, resume_selection
 from inferyard.evidence.storage import EvidenceError, read_json
@@ -22,6 +24,7 @@ from inferyard.registry import (
     registered_score,
     require_execution_support,
 )
+from inferyard.runtime.batch_history import HistoryLoadOptions, load_plan_history
 from inferyard.runtime.batch_state import (
     bind_service,
     history,
@@ -29,10 +32,21 @@ from inferyard.runtime.batch_state import (
     remaining_budget,
     require_replaced_service,
 )
+
 from inferyard.runtime.trial_runner import TrialDependencies, run_trial
 
+__all__ = ["history"]
 
-def _result(request, root, plan, runs, status, code=0, next_trial=None):
+
+def _result(
+    request: CommandRequest,
+    root: Path,
+    plan: JSONRecord,
+    runs: list[JSONRecord],
+    status: str,
+    code: int = 0,
+    next_trial: JSONRecord | None = None,
+) -> tuple[int, CommandResult]:
     progress = plan_progress(plan, runs)
     complete = all(t["status"] == "complete" for t in progress)
     latest = runs[-1] if runs else None
@@ -82,7 +96,37 @@ def _next(plan, runs):
     return None, None
 
 
-async def execute_async(request, dependencies=None):
+def _capacity_scan_stopped(plan: JSONRecord, runs: list[JSONRecord]) -> bool:
+    if plan["experiment"].get("capacity_stop") != "first_failed_request":
+        return False
+    return (
+        next(
+            (
+                d
+                for d in runs
+                if d["summary"]["stop_reason"] != "plan_finished"
+                or any(r["execution_state"] != "completed" for r in d["requests"])
+            ),
+            None,
+        )
+        is not None
+    )
+
+
+def _comparison_stopped(
+    request: CommandRequest,
+    root: Path,
+    plan: JSONRecord,
+    runs: list[JSONRecord],
+    stop: JSONRecord,
+) -> tuple[int, CommandResult]:
+    code, result = _result(request, root, plan, runs, "comparison_history_stopped", 3)
+    return code, replace(result, details={**result.details, "comparison_stop": stop})
+
+
+async def execute_async(
+    request: CommandRequest, dependencies: TrialDependencies | None = None
+) -> tuple[int, CommandResult]:
     deps = dependencies or TrialDependencies(scorer=registered_score)
     scoring_context = ScoringContext()
     identity_context = IdentityContext(source_hash=tool_source_hash)
@@ -111,25 +155,20 @@ async def execute_async(request, dependencies=None):
             )
         ):
             raise PreflightError("windows_phase2_live_not_supported")
-        runs = history(
+        runs, comparison_stop = load_plan_history(
             root,
             plan,
             loaded,
-            source_identity=source_identity,
-            implementation_identity=identity_context.value,
+            options=HistoryLoadOptions(
+                source_identity,
+                identity_context.value,
+                history,
+            ),
         )
-        if plan["experiment"].get("capacity_stop") == "first_failed_request":
-            stopped = next(
-                (
-                    d
-                    for d in runs
-                    if d["summary"]["stop_reason"] != "plan_finished"
-                    or any(r["execution_state"] != "completed" for r in d["requests"])
-                ),
-                None,
-            )
-            if stopped is not None:
-                return _result(request, root, plan, runs, "capacity_scan_stopped", 3)
+        if comparison_stop is not None:
+            return _comparison_stopped(request, root, plan, runs, comparison_stop)
+        if _capacity_scan_stopped(plan, runs):
+            return _result(request, root, plan, runs, "capacity_scan_stopped", 3)
         pending, interrupted = _next(plan, runs)
         if interrupted and "duration" in interrupted["summary"]:
             return _result(request, root, plan, runs, "duration_requires_new_window", 3, pending)
@@ -302,8 +341,8 @@ async def execute_async(request, dependencies=None):
         )
 
 
-def execute(request):
-    async def dispatch():
+def execute(request: CommandRequest) -> tuple[int, CommandResult]:
+    async def dispatch() -> tuple[int, CommandResult]:
         from inferyard.runtime.signals import install_termination_handler
 
         restore_signal = install_termination_handler()

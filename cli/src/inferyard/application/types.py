@@ -40,6 +40,10 @@ class CommandRequest:
     report_runs: list[Path] | None = None
     left_runs: list[Path] | None = None
     right_runs: list[Path] | None = None
+    left_configs: list[Path] | None = None
+    right_configs: list[Path] | None = None
+    bundles: list[str] | None = None
+    comparison_experiment_id: str | None = None
     analysis_path: Path | None = None
     scorer_id: str | None = None
     revision_reason: str | None = None

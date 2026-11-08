@@ -38,14 +38,14 @@ func (s *viewState) downloadsView(c *ui.Context) {
 		if task.Kind != "engine" && task.BytesPerSecond == nil {
 			rateReason = "无速率读数"
 		}
-		color := c.Theme().TextMuted
+		color := stateColor(c, stateNeutral)
 		switch task.State {
 		case "done":
-			color = c.Theme().Success
+			color = stateColor(c, stateSuccess)
 		case "failed":
-			color = c.Theme().Danger
+			color = stateColor(c, stateDanger)
 		case "downloading":
-			color = c.Theme().Accent
+			color = stateColor(c, stateActive)
 		}
 		ui.Column(c.Key(task.TaskId)).Children(func() {
 			taskCard(c, taskCardOptions{
