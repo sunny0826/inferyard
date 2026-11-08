@@ -67,6 +67,7 @@ __all__ = [
     "UNPLANNED_TRIAL",
     "bundle_comparisons",
     "comparison_history_stop",
+    "derive_comparison_v2",
     "evaluate_comparison",
     "is_comparison_plan",
     "read_comparison_v2",
@@ -226,27 +227,43 @@ def evaluate_comparison(
     }
 
 
-def read_comparison_v2(plan_path: Path | str, batch_root: Path | str) -> JSONRecord:
-    """Read one batch into the internal v2 document without computing metrics."""
+def _read_comparison(
+    plan_path: Path | str, batch_root: Path | str
+) -> tuple[JSONRecord, list[JSONRecord]]:
     path = Path(plan_path)
     plan_path = path / "plan.json" if path.is_dir() else path
     root = Path(batch_root).resolve()
     plan, loaded, failure = _read_plan(plan_path)
     if failure is not None:
-        return failure
+        return failure, []
     plan_hash_ok, failure = _read_batch(root, plan, plan_path)
     if failure is not None:
-        return failure
+        return failure, []
     runs, errors, failure = _read_history(root, plan, loaded, plan_path, plan_hash_ok)
     if failure is not None:
-        return failure
-    return evaluate_comparison(
-        plan,
+        return failure, []
+    return (
+        evaluate_comparison(
+            plan,
+            runs,
+            plan_path=plan_path,
+            plan_hash_ok=plan_hash_ok,
+            evidence_errors=errors,
+        ),
         runs,
-        plan_path=plan_path,
-        plan_hash_ok=plan_hash_ok,
-        evidence_errors=errors,
     )
+
+
+def read_comparison_v2(plan_path: Path | str, batch_root: Path | str) -> JSONRecord:
+    """Read one batch into the internal v2 document without computing metrics."""
+    return _read_comparison(plan_path, batch_root)[0]
+
+
+def derive_comparison_v2(
+    plan_path: Path | str, batch_root: Path | str
+) -> tuple[JSONRecord, list[JSONRecord]]:
+    """Read one batch and retain the verified run data used for v2 metrics."""
+    return _read_comparison(plan_path, batch_root)
 
 
 def _blocked_comparison(document: JSONRecord) -> JSONRecord:

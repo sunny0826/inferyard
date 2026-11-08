@@ -15,10 +15,10 @@ def add_commands(commands: argparse._SubParsersAction) -> None:
         "--mode", dest="comparison_mode", choices=("model", "config", "side-by-side", "engine")
     )
     engines = commands.add_parser(
-        "compare-engines", help="judge interleaved same-GGUF engine blocks offline"
+        "compare-engines", help="derive engine-comparison.v2 from one plan and batch"
     )
-    engines.add_argument("--left-runs", type=Path, nargs="+", required=True)
-    engines.add_argument("--right-runs", type=Path, nargs="+", required=True)
+    engines.add_argument("--plan", dest="frozen_plan", type=Path, required=True)
+    engines.add_argument("--batch", type=Path, required=True)
     engines.add_argument("--out", type=Path, required=True)
     plan = commands.add_parser(
         "compare-plan", help="freeze one six-block engine comparison plan offline"

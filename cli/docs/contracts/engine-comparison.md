@@ -7,10 +7,12 @@
 
 - `compare --mode engine --left RUN --right RUN`：只做单对身份门槛，
   始终阻断 `engine_verdict_requires_block_comparison`，不给出性能资格。
-- `compare-engines --left-runs RUN... --right-runs RUN... --out DIR`：
-  读取全部块，在新目录写入 `engine-comparison.json`（`engine-comparison.v1`）与离线
-  `report.html`，再以 `artifact-manifest.json`（`presentation-seal.v1`）封存两者字节；
-  stdout 输出同一结果。输出目录必须不存在，且不能位于任何输入 run 内。
+- `compare-engines --plan PLAN --batch BATCH --out DIR`：
+  从一份完整冻结计划和一个 batch 派生 `engine-comparison.v2`；在新目录写入
+  `engine-comparison.json` 与离线 `report.html`，再以 `artifact-manifest.json`
+  （`presentation-seal.v1`）封存两者字节，stdout 输出同一结果。输出目录必须不存在，
+  且不能位于 plan 或 batch 内。旧 `--left-runs/--right-runs` 输入已移除，不提供
+  `--allow-unplanned`；合法 v1 产物仍可 `verify` 与直接查看。
 - `compare-plan --left-config CFG [--left-config CFG]... --right-config CFG [--right-config CFG]... [--bundle NAME_OR_PATH]... (--out DIR | --dry-run)`：
   离线冻结一份 `engine-comparison-plan.v1`（现有 plan JSON 的受限形状），stdout 输出计划。
   不连接或启动模型服务。默认题包为 `zh-core` 与 `zh-svg-pelican`；单题包必须由
@@ -39,41 +41,37 @@
 - `compare-plan` 在写计划前拒绝：无效配置、两侧题包覆盖不一致、两侧题包内容不同、
   两侧引擎 profile 相同、输出目录已存在。它不判断真实服务身份。
 
-## `engine-comparison.v2`（T2a 仅内部构造）
+## `engine-comparison.v2`（公开派生）
 
-本阶段只实现内部读取与阻断数据；`compare-engines` 的公开派生仍输出 v1，
-v2 HTML、封存与 `verify` 由 T2b 交付。读取规则：
+v2 只接受完整 plan 与 batch，按冻结槽位和封存交接链核验；不把任意左右 run 集合
+拼成新结论，也不按事件时间重排。入口与 v2 reader 共用 `read_comparison_v2` 的读取和
+停止规则；计划外、缺失、错配、重复与断链 run 全部作为可封存诊断，不静默丢弃。
+规范阻断原因的权威定义在 [ADR 057c](../decisions/057-comparison-verification.md)；
+v2 公开产物沿用同一套原因，本契约不重复定义。
 
-- 先核验完整 batch，再按冻结槽位选择 run；从不按 `first_event_utc` 重排槽位。
-- v2 reader 与 verify 复用同一 `batch.json` 严格准入（整数版本、布尔 `diagnostic`、
-  完整身份/哈希）；非法返回 `batch_envelope_invalid` 且 `eligible=false`。
-- layout 1 禁用 v2 身份回退；只有 layout 2 的 envelope 可提供 `trial_id`/`run_id`。
-- 每个 run 必须绑定同一完整 `plan_sha256`、experiment 与 definition versions。
-- 交接链读取各 run 已封存的 `service_binding.previous_run_id`：首槽位必须为 null；
-  后续必须精确等于前一冻结槽位选中 run 的 `run_id`。
-- 完整 batch 核验后，按题包拆成各自的 A/B 块，再复用既有六块判定；
-  不把 12 个 run 直接交给 v1 逻辑。
+`engine-comparison.json` 至少包含：
 
-规范阻断原因（每种条件只保留一个名字）：
+```text
+definition = engine-comparison.v2
+plan   = { path（相对输出目录）, sha256 }
+batch  = { path（相对输出目录）, plan_sha256 }
+run_set / handoff / history_stop / bundles / diagnostics
+comparisons = 每个题包复用既有六块判定；内层 definition: engine-comparison.v1
+              标识六块判定语义版本，不是产物版本；产物版本以顶层 definition 为准
+source_runs = 选中 run 的 trial_id/run_id/path/manifest_sha256
+eligible / blockers / empty_metrics / limitations / producer
+```
 
-| 原因 | 条件 |
-| --- | --- |
-| `comparison_plan_required` | 计划不是上述受限形状，或缺少可用 plan |
-| `comparison_plan_hash_mismatch` | batch 冻结计划哈希与提交计划不同 |
-| `planned_run_missing` | 冻结槽位没有可用 run（错计划/重复尝试单独报） |
-| `comparison_unplanned_trial` | batch 内存在计划外 trial；`unplanned_run_present` 不再单独输出；`run_set` 与 diagnostic 保留 `detail` 及底层 error |
-| `run_plan_mismatch` | run 绑定的计划哈希、experiment 或 definition versions 不同 |
-| `comparison_duplicate_trial_attempt` | 同 trial 多根、多次尝试或重复 run id |
-| `comparison_handoff_missing` | 缺已封存交接观测、字段缺失，或应有前驱为空 |
-| `comparison_handoff_broken` | 非首槽位前驱不是前一槽位选中 run（含跳槽位、跨 batch） |
-| `comparison_handoff_slot_mismatch` | 首槽位存在前驱 |
-| `comparison_history_identity_error` | 证据、计划、trial、run 或身份核验失败；含成功后缺槽位仍有后续 run，以及无法归属计划槽位的拒绝污染整个 batch |
-| `comparison_history_cancelled` | `stop_reason = user_cancelled` 或存在 cancelled 终态 |
-| `comparison_history_failed` | 其他非 `plan_finished` 停止，或存在 failed/invalid/not_executed |
-| `comparison_history_incomplete` | 全部请求 completed 但 scope/evidence 不完整 |
+`producer` 记录 `tool_source_sha256` 与 `template_sha256`，只作来源，不作核验依据。
+`eligible=false` 时仍封存：保留阻断原因、完整诊断和 `empty_metrics`（值为 null 及原因），
+不把子集写成完整实验。`verify --path` 从 `source_runs` 与 plan/batch 引用重算；
+封存字节改动报 `presentation_bytes_changed`；整体重算不符（含来源数量变化）报
+`engine_comparison_recomputation_mismatch`；来源 run 身份错位报
+`engine_comparison_sources_mismatch`；
+`--rerender` 不符报 `engine_comparison_html_recomputation_mismatch`。v2 与 v1 按封存后的
+`engine-comparison.json` definition 区分；v1 继续走原核验路径，不追加计划门，也不获得
+v2 资格。`verify --source-root OLD=NEW` 同时映射 plan、batch 和来源 run 位置。
 
-`execution_order_differs` 不输出：v2 只按冻结槽位顺序读取，实际连续性由交接链证明；
-事件时间不参与选择。缺槽位或错计划时不重复报 `planned_run_missing`。
 
 ## 比较专用历史停止
 
@@ -199,13 +197,11 @@ llama-cpp 对 lmstudio 当前总是后者。跨格式组合的 `scope` 固定为
 
 ## 未实现
 
-- T2b 才切换 `compare-engines` 的公开派生入口：v2 输出、HTML、封存与 `verify`
-  尚未交付；当前新比较仍走 v1。
 - LM Studio 后台的停止与重启由操作者执行；CLI 不停止服务，
   只通过既有主机状态与本比较的 `block_service_not_replaced` 核验替换。
 - 严格定长输出与块间温度等待证据。
-- 单份 12 槽位计划仅用合成服务验证执行与内部读取；真实引擎、逐槽位服务替换
-  与真实样本 `verify` 仍按 T2b/T9 单独验收。
+- 单份 12 槽位计划仅用合成服务验证执行、派生与 `verify`；真实引擎、逐槽位服务替换
+  与真实样本 `verify` 仍按 T9 单独验收。
 
 既有 run 与比较证据按原定义读取，不因新模式获得资格。
 证据解释遵循[血缘规则](../data-contract.md#证据血缘与比较结论)。
