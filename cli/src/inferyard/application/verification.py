@@ -28,7 +28,10 @@ _HANDLERS = {
     "public": ("inferyard.reporting.public_package", "public-check"),
     "report": ("inferyard.reporting.report", "report-check"),
     "comparison": ("inferyard.reporting.comparison_report", "compare-check"),
-    "engine-comparison": ("inferyard.reporting.engine_blocks_report", "engine-compare-check"),
+    "engine-comparison": (
+        "inferyard.reporting.engine_comparison_v2_report",
+        "engine-compare-check",
+    ),
     "extension": ("inferyard.extensions.workflow", "extension-check"),
 }
 

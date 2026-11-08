@@ -113,7 +113,12 @@ def build_request(
         "resume",
         "prepare-length",
     )
-    if values.get("frozen_plan") and values.get("output_root") is None and not fit_execution:
+    if (
+        values.get("frozen_plan")
+        and values.get("output_root") is None
+        and not fit_execution
+        and args.command != "compare-engines"
+    ):
         raise ArgumentError("--plan requires --output-root")
     if (values.get("workload_id") or values.get("handoff_note")) and not experiment_execution:
         raise ArgumentError("workload and handoff options require experiment execution")

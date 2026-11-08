@@ -24,3 +24,9 @@ Apple M4，engine 模式冻结 A/B×3，默认双题包，温度停止按操作�
 封存结果（含 HTML）在 `.tools/engine-compare-mlx-20261106/compare-e5/`，
 两个题包 `verify --rerender` 均通过。
 zh-svg-pelican 每块只有 1 题，证据弱。结论不归因于引擎实现，LM Studio 组合仍未实测。
+
+## 剩余工作
+
+- 真实单份 12 槽位计划、逐槽位服务替换和真实样本 `compare-engines`/`verify --rerender`
+  仍需 T9 在操作者授权设备上验收；合成 batch 通过不替代真实引擎证据。
+- Studio 专用比较任务、页面投影与模拟/原生一致性属于 T6/T7，尚未接入。
