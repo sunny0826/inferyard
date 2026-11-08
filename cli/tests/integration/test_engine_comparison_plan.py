@@ -288,7 +288,22 @@ def test_v2_positive_metrics_render_and_verify(
     assert all(item["eligible"] for item in saved["comparisons"].values())
     assert saved["empty_metrics"] == []
     html = (output / "report.html").read_text()
-    assert "可判定" in html
+    comparison = next(iter(saved["comparisons"].values()))
+    metric = next(
+        row for row in comparison["blocks"][0]["medians"].values()
+        if row["difference"] is not None
+    )
+    medians = (
+        f"{metric['left']:.2f} / {metric['right']:.2f} / "
+        f"{metric['difference']:.2f}"
+    )
+    assert "无阻断，可判定。" in html
+    assert "配对请求" in html
+    assert medians in html
+    assert any(
+        verdict["metric_id"] in html
+        for verdict in comparison["verdicts"].values()
+    )
     assert "<h2>空指标原因</h2>" not in html
     from inferyard.application.verification import execute as verify
 
