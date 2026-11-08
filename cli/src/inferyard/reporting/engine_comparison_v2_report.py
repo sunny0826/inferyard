@@ -209,20 +209,27 @@ def _saved(raw: bytes) -> JSONRecord:
     return saved
 
 
+def _restore_list(values: list[JSONValue], stored: list[JSONValue]) -> None:
+    for item, original in zip(values, stored, strict=True):
+        if type(item) is dict and type(original) is dict:
+            _restore_paths(item, original)
+
+
+def _restore_value(key: str, value: JSONValue, stored: JSONValue) -> JSONValue:
+    if key == "path" and type(value) is str and type(stored) is str:
+        return stored
+    if type(value) is dict and type(stored) is dict:
+        _restore_paths(value, stored)
+    elif type(value) is list and type(stored) is list and len(value) == len(stored):
+        _restore_list(value, stored)
+    return value
+
+
 def _restore_paths(expected: JSONRecord, saved: JSONRecord) -> None:
     """Keep saved path strings when only the source root moved."""
     for key, value in expected.items():
-        if key not in saved:
-            continue
-        stored = saved[key]
-        if key == "path" and type(value) is str and type(stored) is str:
-            expected[key] = stored
-        elif type(value) is dict and type(stored) is dict:
-            _restore_paths(value, stored)
-        elif type(value) is list and type(stored) is list and len(value) == len(stored):
-            for item, original in zip(value, stored, strict=True):
-                if type(item) is dict and type(original) is dict:
-                    _restore_paths(item, original)
+        if key in saved:
+            expected[key] = _restore_value(key, value, saved[key])
 
 
 def _restore_source_paths(expected: JSONRecord, saved: JSONRecord) -> None:
