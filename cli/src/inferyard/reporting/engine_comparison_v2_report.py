@@ -209,15 +209,29 @@ def _saved(raw: bytes) -> JSONRecord:
     return saved
 
 
+def _restore_paths(expected: JSONRecord, saved: JSONRecord) -> None:
+    """Keep saved path strings when only the source root moved."""
+    for key, value in expected.items():
+        if key not in saved:
+            continue
+        stored = saved[key]
+        if key == "path" and type(value) is str and type(stored) is str:
+            expected[key] = stored
+        elif type(value) is dict and type(stored) is dict:
+            _restore_paths(value, stored)
+        elif type(value) is list and type(stored) is list and len(value) == len(stored):
+            for item, original in zip(value, stored, strict=True):
+                if type(item) is dict and type(original) is dict:
+                    _restore_paths(item, original)
+
+
 def _restore_source_paths(expected: JSONRecord, saved: JSONRecord) -> None:
-    expected["plan"]["path"] = saved["plan"]["path"]
-    expected["batch"]["path"] = saved["batch"]["path"]
-    if len(expected["source_runs"]) != len(saved["source_runs"]):
-        raise EvidenceError("engine_comparison_sources_mismatch")
-    for ref, stored in zip(expected["source_runs"], saved["source_runs"], strict=True):
+    _restore_paths(expected, saved)
+    for ref, stored in zip(
+        expected["source_runs"], saved["source_runs"], strict=False
+    ):
         if ref.get("run_id") != stored.get("run_id"):
             raise EvidenceError("engine_comparison_sources_mismatch")
-        ref["path"] = stored["path"]
 
 
 def _expected_artifact(

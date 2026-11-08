@@ -46,6 +46,8 @@
 v2 只接受完整 plan 与 batch，按冻结槽位和封存交接链核验；不把任意左右 run 集合
 拼成新结论，也不按事件时间重排。入口与 v2 reader 共用 `read_comparison_v2` 的读取和
 停止规则；计划外、缺失、错配、重复与断链 run 全部作为可封存诊断，不静默丢弃。
+规范阻断原因的权威定义在 [ADR 057c](../decisions/057-comparison-verification.md)；
+v2 公开产物沿用同一套原因，本契约不重复定义。
 
 `engine-comparison.json` 至少包含：
 

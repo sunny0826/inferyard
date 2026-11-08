@@ -129,6 +129,28 @@ def _assert_blocked_guards(
     )
 
 
+def _assert_moved_sources(tmp_path: Path, plan_path: Path, batch_path: Path, output: Path) -> None:
+    from inferyard.application.verification import execute as verify
+
+    old_plan, old_batch = plan_path.parent, batch_path
+    moved = tmp_path / "moved-sources"
+    (moved / "plan").parent.mkdir(parents=True)
+    shutil.move(old_plan, moved / "plan")
+    shutil.move(old_batch, moved / "batch")
+    with pytest.raises(EvidenceError, match="engine_comparison_recomputation_mismatch"):
+        verify(CommandRequest("verify", run=output))
+    request = CommandRequest(
+        "verify",
+        run=output,
+        rerender=True,
+        source_roots=[
+            f"{old_plan}={moved / 'plan'}",
+            f"{old_batch}={moved / 'batch'}",
+        ],
+    )
+    assert verify(request)[0] == 0
+
+
 def _assert_v2_report_guards(
     tmp_path: Path,
     plan: JSONRecord,
@@ -138,6 +160,7 @@ def _assert_v2_report_guards(
 ) -> None:
     _assert_seal_guards(tmp_path, output)
     _assert_blocked_guards(tmp_path, plan, plan_path, batch_path)
+    _assert_moved_sources(tmp_path, plan_path, batch_path, output)
 
 
 def _run_twelve_slots(
