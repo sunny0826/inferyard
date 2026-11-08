@@ -64,7 +64,7 @@ def _empty_metrics(comparisons: JSONRecord) -> list[JSONRecord]:
     for bundle, result in comparisons.items():
         if result.get("eligible") is not False:
             continue
-        blockers = result.get("blockers") or ["comparison_overall_blocked"]
+        blockers = result["blockers"]
         for metric, row in result.get("verdicts", {}).items():
             if row.get("verdict") == "not_eligible":
                 rows.append(

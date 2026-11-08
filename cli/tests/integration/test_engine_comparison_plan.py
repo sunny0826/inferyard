@@ -4,10 +4,11 @@ import asyncio
 import hashlib
 import json
 import shutil
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import pytest
 
 from inferyard.analysis.comparison_types import JSONRecord
@@ -163,14 +164,42 @@ def _assert_v2_report_guards(
     _assert_moved_sources(tmp_path, plan_path, batch_path, output)
 
 
+async def _cached_completion(request: httpx.Request) -> httpx.Response:
+    body = json.loads(request.content)
+    usage = {
+        "prompt_tokens": 2,
+        "completion_tokens": 1,
+        "total_tokens": 3,
+        "prompt_tokens_details": {"cached_tokens": 0},
+    }
+    choice = {"index": 0, "finish_reason": "stop"}
+    if body["stream"]:
+        chunks = [
+            {"choices": [{"index": 0, "delta": {"content": "ok"}, "finish_reason": None}]},
+            {"choices": [{**choice, "delta": {}}]},
+            {"choices": [], "usage": usage},
+        ]
+        raw = (
+            "".join("data: " + json_bytes(c).decode("utf-8") + "\n\n" for c in chunks)
+            + "data: [DONE]\n\n"
+        )
+        return httpx.Response(200, text=raw, headers={"content-type": "text/event-stream"})
+    return httpx.Response(
+        200,
+        json={"choices": [{**choice, "message": {"content": "ok"}}], "usage": usage},
+    )
+
+
 def _run_twelve_slots(
     tmp_path: Path,
     batch_scenario: helpers.Scenario,
     rig: Callable[[str], SimpleNamespace],
     monkeypatch: pytest.MonkeyPatch,
+    completion: Callable[[httpx.Request], Awaitable[httpx.Response]] | None = None,
 ) -> tuple[helpers.SlotExecution, JSONRecord]:
     _, deps, calls, _ = batch_scenario
-    plan, sides, states, identities, identity_files = helpers.local_inputs(tmp_path, rig)
+    factory = rig if completion is None else lambda family: rig(family, completion=completion)
+    plan, sides, states, identities, identity_files = helpers.local_inputs(tmp_path, factory)
     slots, bindings = helpers.slot_inputs(plan, identities, tmp_path)
     assert len(slots) == 12
     helpers.assert_family_dispatch(sides)
@@ -238,3 +267,30 @@ def test_twelve_slots_execute_with_handoffs_and_read_back(
         execution.request.output_root,
         output,
     )
+
+
+def test_v2_positive_metrics_render_and_verify(
+    tmp_path: Path,
+    batch_scenario: helpers.Scenario,
+    rig: Callable[[str], SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    execution, _ = _run_twelve_slots(
+        tmp_path, batch_scenario, rig, monkeypatch, completion=_cached_completion
+    )
+    output = tmp_path / "comparison-v2-positive"
+    code, derived = _derive(
+        execution.request.frozen_plan, execution.request.output_root, output
+    )
+    assert code == 0 and derived.status == "derived"
+    saved = json.loads((output / "engine-comparison.json").read_text())
+    assert saved["eligible"] is True
+    assert all(item["eligible"] for item in saved["comparisons"].values())
+    assert saved["empty_metrics"] == []
+    html = (output / "report.html").read_text()
+    assert "可判定" in html
+    assert "<h2>空指标原因</h2>" not in html
+    from inferyard.application.verification import execute as verify
+
+    code, verified = verify(CommandRequest("verify", run=output, rerender=True))
+    assert code == 0 and verified.details["render_checked"] is True

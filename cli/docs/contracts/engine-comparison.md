@@ -56,7 +56,8 @@ definition = engine-comparison.v2
 plan   = { path（相对输出目录）, sha256 }
 batch  = { path（相对输出目录）, plan_sha256 }
 run_set / handoff / history_stop / bundles / diagnostics
-comparisons = 每个题包复用既有六块判定
+comparisons = 每个题包复用既有六块判定；内层 definition: engine-comparison.v1
+              标识六块判定语义版本，不是产物版本；产物版本以顶层 definition 为准
 source_runs = 选中 run 的 trial_id/run_id/path/manifest_sha256
 eligible / blockers / empty_metrics / limitations / producer
 ```
@@ -64,8 +65,9 @@ eligible / blockers / empty_metrics / limitations / producer
 `producer` 记录 `tool_source_sha256` 与 `template_sha256`，只作来源，不作核验依据。
 `eligible=false` 时仍封存：保留阻断原因、完整诊断和 `empty_metrics`（值为 null 及原因），
 不把子集写成完整实验。`verify --path` 从 `source_runs` 与 plan/batch 引用重算；
-封存字节改动、重算不符、来源 run 集合不符分别报 `presentation_bytes_changed`、
-`engine_comparison_recomputation_mismatch`、`engine_comparison_sources_mismatch`；
+封存字节改动报 `presentation_bytes_changed`；整体重算不符（含来源数量变化）报
+`engine_comparison_recomputation_mismatch`；来源 run 身份错位报
+`engine_comparison_sources_mismatch`；
 `--rerender` 不符报 `engine_comparison_html_recomputation_mismatch`。v2 与 v1 按封存后的
 `engine-comparison.json` definition 区分；v1 继续走原核验路径，不追加计划门，也不获得
 v2 资格。`verify --source-root OLD=NEW` 同时映射 plan、batch 和来源 run 位置。
