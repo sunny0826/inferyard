@@ -12,7 +12,7 @@ from inferyard.config.engine_fit_native_sources import (
 )
 from inferyard.errors import EvidenceError, PreflightError
 from inferyard.reporting.engine_fit import seal_run, verify
-from inferyard.reporting.engine_fit_validation import validate_run
+from inferyard.analysis.engine_fit_validation import validate_run
 from tests.unit.test_engine_fit_common_evidence import common_data
 from tests.unit.test_engine_fit_memory_override import _data as memory_data
 from tests.unit.test_engine_fit_temperature_override import _override_data as temperature_data

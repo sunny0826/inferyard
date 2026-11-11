@@ -13,7 +13,7 @@ from inferyard.config.engine_fit import digest, prepare, validate_plan
 from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.reporting.engine_fit import compare, seal_run, verify
 from inferyard.reporting.engine_fit_html import render
-from inferyard.reporting.engine_fit_validation import validate_run
+from inferyard.analysis.engine_fit_validation import validate_run
 from inferyard.runtime import engine_fit as runtime
 from tests.unit.test_engine_fit_common_evidence import common_data
 from tests.unit.test_engine_fit_native_evidence import native_data

@@ -3,7 +3,7 @@
 import re
 
 from inferyard.config.engine_fit_native_sources import WINDOWS_SCOPE
-from inferyard.reporting.engine_fit_validation_primitives import fields, number, require, text
+from inferyard.analysis.engine_fit_validation_primitives import fields, number, require, text
 
 SAMPLE_FIELDS = {
     "collector",

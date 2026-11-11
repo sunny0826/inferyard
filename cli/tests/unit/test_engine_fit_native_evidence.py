@@ -8,7 +8,7 @@ import pytest
 from inferyard.config.engine_fit import digest
 from inferyard.errors import EvidenceError, PreflightError
 from inferyard.reporting.engine_fit import compare, seal_run, verify
-from inferyard.reporting.engine_fit_validation import validate_run
+from inferyard.analysis.engine_fit_validation import validate_run
 from tests.unit.test_engine_fit_report import _data, _idle
 from tests.unit.test_engine_fit_report import plan as _plan_fixture
 

@@ -2,11 +2,11 @@
 
 from collections import Counter
 
-from inferyard.reporting.engine_fit_binding_validation import validate_binding as _binding
-from inferyard.reporting.engine_fit_validation_primitives import (
+from inferyard.analysis.engine_fit_binding_validation import validate_binding as _binding
+from inferyard.analysis.engine_fit_validation_primitives import (
     digest as _digest,
 )
-from inferyard.reporting.engine_fit_validation_primitives import (
+from inferyard.analysis.engine_fit_validation_primitives import (
     fields,
     number,
     require,
@@ -73,7 +73,7 @@ def _response(value):
 
 def _temperatures(value, *, macos, windows=False):
     if windows:
-        from inferyard.reporting.engine_fit_windows_validation import temperatures
+        from inferyard.analysis.engine_fit_windows_validation import temperatures
 
         temperatures(value)
         return
@@ -225,7 +225,7 @@ def _resources(values, request_ids, engine, *, macos, windows=False, instance=No
             else:
                 require(reasons.get(key) is None, "resource_unexpected_reason")
         if windows:
-            from inferyard.reporting.engine_fit_windows_validation import resources
+            from inferyard.analysis.engine_fit_windows_validation import resources
 
             resources(value)
         if TEMPERATURE_FIELDS & value.keys():

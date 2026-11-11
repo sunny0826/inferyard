@@ -11,7 +11,7 @@ from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.storage import atomic_bytes
 from inferyard.reporting.engine_fit_html import LIMITATIONS, render
 from inferyard.reporting.engine_fit_metrics import observations
-from inferyard.reporting.engine_fit_validation import fields, require, validate_run
+from inferyard.analysis.engine_fit_validation import fields, require, validate_run
 
 RUN_FILES = ("plan.json", "run.json", "requests.json", "report.html")
 COMPARISON_FILES = ("comparison.json", "report.html")
@@ -214,7 +214,7 @@ def verify(path, *, rerender=False):
     """Verify hashes, plan/row semantics, copied source seals and deterministic HTML."""
     root = require_directory(path)
     if not manifest_present(root):
-        from inferyard.evidence.engine_fit_checkpoint import read_partial
+        from inferyard.reporting.engine_fit_checkpoint import read_partial
 
         return read_partial(root)
     manifest, blobs = _load_manifest(root)

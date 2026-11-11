@@ -7,13 +7,13 @@ from inferyard.config.engine_fit_native_sources import (
     WINDOWS_LISTENER_SOURCE,
     WINDOWS_START_SOURCE,
 )
-from inferyard.reporting.engine_fit_validation_primitives import (
+from inferyard.analysis.engine_fit_validation_primitives import (
     absolute as _absolute,
 )
-from inferyard.reporting.engine_fit_validation_primitives import (
+from inferyard.analysis.engine_fit_validation_primitives import (
     digest as _digest,
 )
-from inferyard.reporting.engine_fit_validation_primitives import (
+from inferyard.analysis.engine_fit_validation_primitives import (
     fields,
     number,
     require,
