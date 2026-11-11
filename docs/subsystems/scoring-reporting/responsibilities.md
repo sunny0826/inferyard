@@ -21,7 +21,7 @@
 | 重评分 | 独立分析身份、谱系重放、逐请求变化记录 | `build_rescore`、`write_rescore`、`verify_rescore`、`replay_lineage`、`rescore_rows` 在 [`reporting/rescore.py`](../../../cli/src/inferyard/reporting/rescore.py) |
 | 导出与比较产物 | `analysis.json` + CSV/Markdown 导出；comparison4 构建与核验 | `trial_analysis`、`formatted_files`、`write_export` 在 [`reporting/export.py`](../../../cli/src/inferyard/reporting/export.py)；`build_comparison`、`verify_comparison`、`comparison_input` 在 [`reporting/comparison_report.py`](../../../cli/src/inferyard/reporting/comparison_report.py) |
 | 公开发布包 | 脱敏公开副本的投影、写出与核验 | `projection`、`write_public`、`verify_public` 在 [`reporting/public_package.py`](../../../cli/src/inferyard/reporting/public_package.py) |
-| 命令接入 | `report`/`compare`/`rescore`/`export`/`public-package` 及 `*-check` 延迟分派 | [`application/dispatch.py`](../../../cli/src/inferyard/application/dispatch.py) |
+| 命令接入 | `report`/`compare`/`rescore`/`export`/`public-package` 及 `*-check` 延迟分派；命令结果由应用层构造 | [`application/dispatch.py`](../../../cli/src/inferyard/application/dispatch.py)、[`application/reporting.py`](../../../cli/src/inferyard/application/reporting.py) |
 
 关键身份与版本的事实在此处定义一次：评分器身份是 `scorer_hash()` 对固定源码文件列表、`jsonschema` 版本与 `unicodedata` 版本的 SHA-256，修订版身份在其上叠加 `scoring_revision.py` 字节；`analysis_id` 由来源绑定与生成者哈希派生（原始分析为 `trial-` 前缀，重评分为 `rescore-` 前缀）。当前格式版本：报告 `report_format_version = 8`、比较产物 `format_version = 4`（定义版本 `phase2.v3`）、重评分记录 `format_version = 1`，均要求 `schema_version = 3`。字段语义与格式规则见 [数据契约](../../../cli/docs/data-contract.md) 与 [报告契约](../../../cli/docs/contracts/report-contract.md)，不在这里复制。
 
