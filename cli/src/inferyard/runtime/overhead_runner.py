@@ -6,6 +6,7 @@ import time
 from dataclasses import replace
 
 from inferyard import SCHEMA_VERSION
+from inferyard.errors import EvidenceError
 from inferyard.evidence.journal import trial_for
 from inferyard.evidence.storage import atomic_bytes, json_bytes, sha256_file
 from inferyard.platforms.resources import ResourceSampler, resource_collector_id
@@ -110,7 +111,6 @@ async def run_overhead(
         w for w in plan["experiment"]["workloads"] if w["workload_id"] == trial["workload_id"]
     )
     if workload["protocol"]["kind"] != "fixed":
-        from inferyard.evidence.storage import EvidenceError
 
         raise EvidenceError("overhead_requires_fixed_workload")
     protocol = freeze_protocol(
@@ -191,7 +191,7 @@ def read_overhead(root, *, target=None, target_data=None):
     """Recompute from sealed trials; do not trust cached request projections/results."""
     from inferyard.analysis.overhead_environment import assess_environments, environment_record
     from inferyard.evidence.ledger import read_trial
-    from inferyard.evidence.storage import EvidenceError, local_file, read_json
+    from inferyard.evidence.storage import local_file, read_json
     from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
     from inferyard.runtime.collector_overhead import validate_protocol
     from inferyard.runtime.overhead_binding import (

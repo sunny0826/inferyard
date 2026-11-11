@@ -9,8 +9,8 @@ import pytest
 
 from inferyard.adapters.requests import request_body
 from inferyard.config.loader import load_config
-from inferyard.contracts.validation import ContractError, Document
-from inferyard.platforms.identity import PreflightError
+from inferyard.contracts.validation import Document
+from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.registry import adapter_factory
 from tests.lab_service import LabService, lab_config
 
@@ -159,7 +159,6 @@ def test_contract_refuses_bad_asset_combinations(lab_case, change):
 
 @pytest.mark.parametrize("scenario", ["timeout", "cancel", "sink", "cancel_error"])
 def test_timeout_cancellation_and_sink_failure_preserve_pending_id(lab_case, scenario):
-    from inferyard.evidence.storage import EvidenceError
 
     config, service = lab_case
     service.options["delay"] = 0.05

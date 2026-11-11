@@ -7,9 +7,8 @@ from inferyard.adapters.requests import request_body
 from inferyard.adapters.response_state import ResponseState
 from inferyard.analysis.scoring import ScoringContext, score_case
 from inferyard.contracts.validation import validate_document
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.request_snapshots import messages_sha256
-from inferyard.evidence.storage import EvidenceError
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.service_observation import clean_observed, native, observe_service
 
 

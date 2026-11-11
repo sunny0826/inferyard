@@ -1,7 +1,7 @@
 """Separate native serial-client admission from verified engine-wide release."""
 
 from inferyard.adapters.requests import idle_evidence
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 
 
 def native(adapter):

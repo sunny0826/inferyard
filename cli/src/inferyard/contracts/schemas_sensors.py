@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from inferyard.contracts.schemas_common import VERSION, enum, nullable
 from inferyard.contracts.schemas_memory import MEMORY_SAMPLE
+from inferyard.errors import ContractError
 
 SENSOR_SAMPLE = deepcopy(MEMORY_SAMPLE)
 SENSOR_SAMPLE["properties"].update(
@@ -26,7 +27,7 @@ SENSOR_SAMPLE["required"] = list(SENSOR_SAMPLE["properties"])
 
 
 def validate_sensor_sample(data):
-    from inferyard.contracts.validation import ContractError, _sample_invariants
+    from inferyard.contracts.validation import _sample_invariants
 
     _sample_invariants(data)
     thermal = data["metric_name"] == "temperature"

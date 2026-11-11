@@ -7,12 +7,8 @@ from jsonschema import Draft202012Validator
 
 from inferyard.config.loader import load_config
 from inferyard.contracts.schemas import export_schema, schemas_for
-from inferyard.contracts.validation import (
-    ContractError,
-    Document,
-    strict_json_loads,
-    validate_document,
-)
+from inferyard.contracts.validation import Document, strict_json_loads, validate_document
+from inferyard.errors import ContractError
 
 
 def test_all_published_schemas_are_valid():

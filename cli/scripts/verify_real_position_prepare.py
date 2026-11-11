@@ -12,7 +12,8 @@ from dataclasses import asdict
 from pathlib import Path
 
 from inferyard.config.plan_inputs import read_frozen_plan
-from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, sha256_file
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import atomic_bytes, json_bytes, sha256_file
 from inferyard.provenance import tool_source_hash
 from inferyard.runtime.batch_state import bind_service
 from inferyard.runtime.runner import Dependencies

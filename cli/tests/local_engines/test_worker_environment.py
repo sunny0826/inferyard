@@ -6,8 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from inferyard.config.local_engines.launch import description
-from inferyard.contracts.validation import ContractError
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.local_engines.installation import description as installation
 from inferyard.platforms.local_engines.startup import check_environment
 
@@ -132,7 +131,7 @@ def test_observer_requires_stable_worker_environment(tmp_path, monkeypatch, chan
         workers.native, "_children", lambda process: [2] if process.pid == 1 else []
     )
     monkeypatch.setattr(
-        workers.native, "_state", lambda *_: (123, ["worker"], b"worker\0", executable, tmp_path)
+        workers.native, "service_process_state", lambda *_: (123, ["worker"], b"worker\0", executable, tmp_path)
     )
     monkeypatch.setattr(workers, "lsof_records", lambda *_: [])
     monkeypatch.setattr(workers, "mapped_file", lambda *_: True)

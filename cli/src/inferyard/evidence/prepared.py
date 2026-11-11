@@ -2,8 +2,9 @@
 
 import hashlib
 
-from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
-from inferyard.evidence.storage import EvidenceError, local_file
+from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.errors import ContractError, EvidenceError
+from inferyard.evidence.storage import local_file
 
 
 class PreparedRequests:

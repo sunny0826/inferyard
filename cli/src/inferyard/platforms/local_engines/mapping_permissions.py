@@ -2,8 +2,8 @@
 
 import re
 import subprocess
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 _REGION = re.compile(
     r"^(.*?)\s+([0-9a-fA-F]+)-([0-9a-fA-F]+)\s+\[[^\]]+\]\s+"

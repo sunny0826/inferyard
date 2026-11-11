@@ -7,8 +7,8 @@ import pytest
 from inferyard.application.engine_fit import execute
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
+from inferyard.errors import EvidenceError
 from inferyard.evidence.engine_fit_checkpoint import read_partial
-from inferyard.evidence.storage import EvidenceError
 from inferyard.reporting.engine_fit import seal_run, verify
 from tests.unit.test_engine_fit_report import _data
 from tests.unit.test_engine_fit_report import plan as plan

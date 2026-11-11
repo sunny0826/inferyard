@@ -3,8 +3,8 @@
 import hashlib
 from importlib.resources import files
 from pathlib import Path
+from inferyard.errors import PreflightError, UnsupportedFormat
 
-from inferyard.platforms.identity import PreflightError
 
 
 def mlx_server_path():
@@ -27,14 +27,14 @@ def runtime_manifest(plan):
 
 
 def model_asset_manifest(path, *, definition="model-assets.v2"):
-    from inferyard.platforms.engine_fit import _file_hash, _stamp, model_manifest
+    from inferyard.platforms.engine_fit import file_stamp, model_manifest, stable_file_digest
     from inferyard.platforms.gguf_metadata import read_metadata
 
     path = Path(path)
     if path.is_symlink():
         raise PreflightError("engine_fit_directory_symlink")
     if path.is_dir():
-        from inferyard.evidence.formats import UnsupportedFormat, require_version
+        from inferyard.evidence.formats import require_version
 
         if definition is None:
             raise UnsupportedFormat("model-assets", "unversioned", ("model-assets.v2",))
@@ -47,15 +47,15 @@ def model_asset_manifest(path, *, definition="model-assets.v2"):
         root = path.resolve(strict=True)
         if not root.is_file() or root.suffix.lower() != ".gguf":
             raise PreflightError("engine_fit_single_gguf_required")
-        before = _stamp(root.stat())
-        sha, size = _file_hash(root)
+        before = file_stamp(root.stat())
+        sha, size = stable_file_digest(root)
         metadata = read_metadata(root, extra_keys=("split.count", "split.no"))
         count, index = metadata.get("split.count"), metadata.get("split.no")
         if (count is not None and (type(count) is not int or count != 1)) or (
             index is not None and (type(index) is not int or index != 0)
         ):
             raise PreflightError("engine_fit_split_gguf_unsupported")
-        if _stamp(root.stat()) != before:
+        if file_stamp(root.stat()) != before:
             raise PreflightError("engine_fit_model_changed_during_hash")
         entries = [{"path": root.name, "sha256": sha, "size": size}]
         from inferyard.config.engine_fit import digest

@@ -8,7 +8,8 @@ from inferyard.config.context_speed_plan import freeze
 from inferyard.config.context_speed_profile import CASES
 from inferyard.config.loader import load_config
 from inferyard.config.plan_inputs import read_frozen_plan
-from inferyard.contracts.validation import ContractError, Document
+from inferyard.contracts.validation import Document
+from inferyard.errors import ContractError
 from tests.unit.test_context_speed_profile import inputs as profile_inputs
 
 inputs = profile_inputs

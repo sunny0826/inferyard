@@ -4,7 +4,8 @@ import pytest
 
 from inferyard.application.types import VerificationOptions
 from inferyard.config.loader import MAX_DOCUMENT_BYTES
-from inferyard.evidence.storage import EvidenceError, read_json, sha256_file
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.evidence.trial_reads import TrialReads
 from inferyard.reporting.report import verify_report, write_report
 from tests.helpers import fixture_run

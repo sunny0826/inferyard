@@ -2,14 +2,8 @@
 
 import hashlib
 
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-    sha256_file,
-)
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, read_json, sha256_file
 
 
 def seal(root, names):

@@ -1,8 +1,8 @@
 """Darwin native CPU counters, stored as integer microseconds, never Linux jiffies."""
 
 import math
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 SOURCE = "macos.psutil.host_minus_bound_pid.v1"
 TICKS_PER_SECOND = 1_000_000

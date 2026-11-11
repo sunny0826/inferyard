@@ -7,7 +7,8 @@ import pytest
 
 from inferyard.analysis.engine_timing import engine_rates
 from inferyard.contracts.context_speed import validate_response, validate_result_bindings
-from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.errors import ContractError
 
 GOLDEN = (
     Path(__file__).resolve().parents[3]

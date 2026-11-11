@@ -14,10 +14,10 @@ from inferyard.application.types import CommandRequest
 from inferyard.cli import main
 from inferyard.config.planning import write_plan
 from inferyard.contracts.validation import Document
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, sha256_file
+from inferyard.evidence.storage import sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.batch_runner import execute_async
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.unit.test_phase2_contracts import experiment

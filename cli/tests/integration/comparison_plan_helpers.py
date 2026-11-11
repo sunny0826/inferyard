@@ -25,9 +25,10 @@ from inferyard.config.engine_fit_assets import model_asset_manifest
 from inferyard.config.local_engines.launch import startup
 from inferyard.config.loader import load_config
 from inferyard.config.toml_writer import render
+from inferyard.errors import PreflightError
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import json_bytes
-from inferyard.platforms.identity import FileIdentity, PreflightError, environment_snapshot, hash_file
+from inferyard.platforms.identity import FileIdentity, environment_snapshot, hash_file
 from inferyard.platforms.local_engines.installation import _snapshot
 from inferyard.platforms.local_engines.offline import validate_frozen_identity
 from inferyard.runtime import batch_state

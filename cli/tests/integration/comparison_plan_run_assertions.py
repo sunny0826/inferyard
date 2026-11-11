@@ -14,7 +14,8 @@ from inferyard.application.verification import execute as verify
 from inferyard.config.comparison_plan import comparison_slots
 from inferyard.config.loader import LoadedConfig
 from inferyard.config.plan_inputs import read_frozen_plan
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import json_bytes
 from inferyard.runtime.batch_runner import execute_async
 from inferyard.runtime.history_state import history, history_diagnostics
 from inferyard.runtime.trial_runner import TrialDependencies

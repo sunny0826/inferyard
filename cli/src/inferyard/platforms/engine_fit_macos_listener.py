@@ -2,7 +2,7 @@
 
 import subprocess
 
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.platforms.macos_process import matching_listener
 
 

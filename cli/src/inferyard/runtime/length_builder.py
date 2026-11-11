@@ -3,8 +3,8 @@
 import hashlib
 
 from jsonschema import Draft202012Validator
+from inferyard.errors import EvidenceError
 
-from inferyard.evidence.storage import EvidenceError
 
 SPEC = {
     "type": "object",

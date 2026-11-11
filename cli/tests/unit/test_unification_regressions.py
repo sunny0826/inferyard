@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from inferyard.application.types import CommandRequest
+from inferyard.errors import PreflightError
 from inferyard.evidence.storage import json_bytes, sha256_file
-from inferyard.platforms.identity import PreflightError
 from inferyard.reporting.report import write_report
 from inferyard.reporting.report_common import evidence_url
 from inferyard.runtime.runner import load_rerun

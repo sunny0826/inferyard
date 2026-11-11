@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 

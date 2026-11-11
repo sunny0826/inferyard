@@ -4,7 +4,7 @@ import math
 
 from inferyard.analysis.comparison_helpers import _get, _known, comparable_arguments
 from inferyard.contracts.engine_profiles import is_local
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 
 FACTORS = {
     "cache_policy": ("conditions.cache_policy", ()),

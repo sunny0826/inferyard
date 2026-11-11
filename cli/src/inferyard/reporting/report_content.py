@@ -2,7 +2,7 @@
 
 import hashlib
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.reporting.svg_render import check_svg, extract_svg
 
 

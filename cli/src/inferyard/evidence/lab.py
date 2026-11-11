@@ -6,13 +6,14 @@ from inferyard.adapters.lab_observation import (
     ObservationTracker,
     parse_identity,
 )
-from inferyard.adapters.lab_parameters import _equal
+from inferyard.adapters.lab_parameters import values_equal
 from inferyard.adapters.requests import request_body
 from inferyard.contracts.engine_profiles import is_local
+from inferyard.errors import EvidenceError
 from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.lab_parameters import verify_parameters
 from inferyard.evidence.native import observation_evidence, verify_native
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.evidence.storage import json_bytes
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 
@@ -106,7 +107,7 @@ def _verify(root, config, bundle, events, starts, props, *, reads=None, _project
                 expected.update(
                     cache_policy="disabled", reasoning_mode=config["generation"]["reasoning_mode"]
                 )
-            if not _equal(body, expected):
+            if not values_equal(body, expected):
                 raise EvidenceError("lab_request_differs_from_plan")
             bodies[key] = body
             decoders[key] = GenerationDecoder(

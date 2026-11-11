@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from inferyard import implementation_identity as identity
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError, UnsupportedFormat
 
 
 @pytest.fixture
@@ -79,7 +79,6 @@ def test_comparison_v3_scope_dispatch_and_legacy_full_hash(tmp_path):
     right["run"]["tool_source_sha256"] = "b" * 64
     scoped = compare_trials(left, right, definition="phase2.v3")
     assert scoped["eligibility"]["quality"] and scoped["eligibility"]["completion"]
-    from inferyard.evidence.formats import UnsupportedFormat
 
     with pytest.raises(UnsupportedFormat):
         compare_trials(left, right, definition="phase2.v2")

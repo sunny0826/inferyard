@@ -3,7 +3,8 @@
 from importlib.resources import files
 
 from inferyard import SCHEMA_VERSION
-from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.errors import ContractError
 
 WINDOWS_BATCH_ADAPTERS = ("kvmem", "ninfer", "prism_llama_server_v1")
 

@@ -9,9 +9,9 @@ import uuid
 from copy import deepcopy
 
 from inferyard.analysis.scoring import ScoringContext
+from inferyard.errors import EvidenceError
 from inferyard.evidence.journal import trial_for
 from inferyard.evidence.run_records import RunRecords
-from inferyard.evidence.storage import EvidenceError
 from inferyard.platforms.external_cpu import read_boot_id
 
 

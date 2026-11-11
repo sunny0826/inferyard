@@ -12,7 +12,7 @@ from inferyard.adapters.lab_observation import (
     parse_request,
 )
 from inferyard.adapters.lab_observation_json import MAX_RESPONSE_BYTES, LabProtocolError
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 
 
 class LabTransport:

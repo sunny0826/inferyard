@@ -6,8 +6,8 @@ import hashlib
 import ipaddress
 import time
 from urllib.parse import urlsplit
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 MAX_INT = 2**63 - 1
 MAX_DWORD = 0xFFFFFFFF

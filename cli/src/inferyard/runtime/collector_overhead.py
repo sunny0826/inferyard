@@ -9,7 +9,8 @@ import math
 from statistics import median
 
 from inferyard import SCHEMA_VERSION
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import json_bytes
 from inferyard.runtime.boundary_observer import boundary_contract
 from inferyard.runtime.environment_observer import observer_contract
 

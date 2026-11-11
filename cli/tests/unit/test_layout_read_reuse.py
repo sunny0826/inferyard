@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.reporting.comparison_report import comparison_input, verify_metric_references
 from inferyard.reporting.report import verify_report, write_report

@@ -4,7 +4,8 @@ import hashlib
 import re
 from ntpath import isreserved
 
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
+from inferyard.evidence.storage import json_bytes
 
 
 def messages_sha256(messages):
@@ -14,7 +15,7 @@ def messages_sha256(messages):
 def verify_message_snapshots(root, events, reads):
     """New hash-only events require original snapshots, never reconstructed prompts."""
     from inferyard.contracts.schemas_events import MESSAGES
-    from inferyard.contracts.validation import ContractError, _validate
+    from inferyard.contracts.validation import validate_value
     from inferyard.evidence.trial_evidence import TrialEvidence
 
     evidence = reads if isinstance(reads, TrialEvidence) else TrialEvidence(root)
@@ -28,7 +29,7 @@ def verify_message_snapshots(root, events, reads):
         if type(snapshot) is not dict or "messages" not in snapshot:
             raise EvidenceError("request_snapshot_messages_invalid")
         try:
-            _validate(snapshot["messages"], MESSAGES, "request.messages")
+            validate_value(snapshot["messages"], MESSAGES, "request.messages")
         except ContractError as exc:
             raise EvidenceError("request_snapshot_messages_invalid") from exc
         expected = body.get("messages_sha256") or messages_sha256(body["messages"])
@@ -68,7 +69,6 @@ def snapshot_name_for_event(root, event, manifest=None):
 
 
 def require_current_sources(root, manifest=None):
-    from inferyard.evidence.formats import UnsupportedFormat
     from inferyard.evidence.storage import local_file, read_json
 
     names = set(manifest or {}) | {path.name for path in root.iterdir()}

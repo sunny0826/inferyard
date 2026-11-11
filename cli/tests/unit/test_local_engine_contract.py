@@ -8,7 +8,7 @@ import pytest
 from inferyard.config.loader import load_config, validate_runtime_config
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.config.toml_writer import render
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 @pytest.fixture

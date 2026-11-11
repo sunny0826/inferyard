@@ -13,10 +13,9 @@ from inferyard.adapters.llama_cpp import BUILD
 from inferyard.adapters.prism import PrismAdapter, SSEDecoder, request_body
 from inferyard.analysis.scoring import score_case
 from inferyard.contracts.validation import strict_json_loads
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.extensions.native_tool_stream import ToolStream
 from inferyard.extensions.native_tools import parse_reply
-from inferyard.platforms.identity import PreflightError
 
 
 class ExtensionTransport(PrismAdapter):

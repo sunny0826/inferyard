@@ -5,8 +5,9 @@ from shutil import copytree
 
 import pytest
 
+from inferyard.errors import EvidenceError
 from inferyard.evidence import total_applicability as binding
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, sha256_file
+from inferyard.evidence.storage import json_bytes, read_json, sha256_file
 from inferyard.reporting.comparison_report import comparison_input
 from inferyard.runtime.overhead_runner import request_projection
 from tests.helpers import fixture_run

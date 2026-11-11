@@ -1,6 +1,6 @@
+from inferyard.errors import EvidenceError
 """Replay the frozen first-failure stopping invariant from request evidence."""
 
-from inferyard.evidence.storage import EvidenceError
 
 
 def validate_capacity_stop(experiment, requests, stopped):

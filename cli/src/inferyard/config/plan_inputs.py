@@ -12,14 +12,10 @@ from inferyard.config.loader import (
     validate_runtime_config,
 )
 from inferyard.contracts.schemas import CONFIG_DEFAULTS
-from inferyard.contracts.validation import (
-    ContractError,
-    Document,
-    strict_json_loads,
-    validate_document,
-)
+from inferyard.contracts.validation import Document, strict_json_loads, validate_document
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core, require_input
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.evidence.storage import json_bytes
 
 
 def normalized_config(raw, filename, source_directory, bundle_path):

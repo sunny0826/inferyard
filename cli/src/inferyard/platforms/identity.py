@@ -16,12 +16,9 @@ from urllib.parse import urlsplit
 from inferyard.config.loader import validate_endpoint
 from inferyard.config.startup_arguments import model_argument
 from inferyard.contracts.engine_profiles import is_local
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.cpu_policy import snapshot as cpu_policy_snapshot
-
-
-class PreflightError(RuntimeError):
-    """Fixed error category only; callers must not persist raw OS exceptions."""
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,6 +1,7 @@
 import pytest
 
 from inferyard.config.cache_policy import disabled_startup
+from inferyard.errors import PreflightError
 
 BASE = ["--no-cache-prompt", "--no-cache-idle-slots", "--cache-ram", "0"]
 
@@ -44,7 +45,6 @@ def test_adapter_refuses_conflicting_ram_before_generation(config_path, tmp_path
 
     from inferyard.adapters.prism import BUILD, PrismAdapter
     from inferyard.config.loader import load_config
-    from inferyard.platforms.identity import PreflightError
 
     config = load_config(config_path).config.to_dict()
     config["conditions"]["cache_policy"] = "disabled"
@@ -102,7 +102,6 @@ def test_requested_accelerator_backend_requires_gpu_offload(
 
     from inferyard.adapters.prism import BUILD, PrismAdapter
     from inferyard.config.loader import load_config
-    from inferyard.platforms.identity import PreflightError
 
     config = load_config(config_path).config.to_dict()
     config["engine"]["backend"] = backend

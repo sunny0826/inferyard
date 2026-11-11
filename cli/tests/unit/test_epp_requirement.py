@@ -8,7 +8,7 @@ import pytest
 
 from inferyard.analysis.environment import assess_environment
 from inferyard.config.loader import load_config, validate_runtime_config
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.platforms import identity
 from inferyard.platforms.cpu_policy import assess
 from inferyard.runtime.safety import SafetyGuard

@@ -3,9 +3,8 @@
 import os
 import sys
 from pathlib import Path
+from inferyard.errors import EvidenceError, PreflightError
 
-from inferyard.evidence.storage import EvidenceError
-from inferyard.platforms.identity import PreflightError
 
 SOURCE = "linux.proc.host_minus_bound_pid.v1"
 MACOS_SOURCE = "macos.psutil.host_minus_bound_pid.v1"

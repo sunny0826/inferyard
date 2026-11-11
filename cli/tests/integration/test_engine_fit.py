@@ -10,6 +10,7 @@ import pytest
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
 from inferyard.config.engine_fit import prepare
+from inferyard.errors import EvidenceError
 from inferyard.evidence.storage import read_json
 
 
@@ -345,7 +346,6 @@ def test_manual_recovery_requires_old_process_gone(fit_service, monkeypatch, cap
 
 
 def test_sealing_failure_restores_dirty_for_manual_recovery(fit_service, monkeypatch):
-    from inferyard.evidence.storage import EvidenceError
 
     root, state, origin, runtime = fit_service
 

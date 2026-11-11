@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from inferyard.cli import main
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.registry import catalogue
 
 

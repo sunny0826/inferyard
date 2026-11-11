@@ -1,7 +1,8 @@
 """Exact observed-workload applicability; never authorizes performance comparisons."""
 
+from inferyard.errors import EvidenceError
 from inferyard.evidence.journal import trial_for
-from inferyard.evidence.storage import EvidenceError, sha256_file
+from inferyard.evidence.storage import sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 
 

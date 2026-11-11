@@ -8,10 +8,11 @@ from inferyard.adapters.prism import BUILD
 from inferyard.adapters.requests import request_body
 from inferyard.analysis.overhead_environment import environment_record
 from inferyard.config.plan_math import plan_hash
+from inferyard.errors import EvidenceError
 from inferyard.evidence.fixed_output import verify_execution
 from inferyard.evidence.ledger import read_run_projection, read_trial
 from inferyard.evidence.request_snapshots import messages_sha256, snapshot_filename
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl, sha256_file
+from inferyard.evidence.storage import json_bytes, read_json, read_jsonl, sha256_file
 from inferyard.evidence.token_budgets import DEFINITION, planned_inputs, read_budgets
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from tests.evidence_layout_helpers import digest, pack_layout2, seal_layout

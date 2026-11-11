@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.platforms.windows_lab_api import WindowsLabApi, _bounded_open_process
 from inferyard.platforms.windows_lab_process import ProcessHandle
 

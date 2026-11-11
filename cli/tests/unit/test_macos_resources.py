@@ -6,9 +6,8 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.platforms import external_cpu, resources, resources_macos
-from inferyard.platforms.identity import PreflightError
 
 ENDPOINT = {"server_pid": 77, "process_start_ticks": 55}
 CONFIG = {"endpoint": ENDPOINT, "telemetry": {"interval_ms": 500}}

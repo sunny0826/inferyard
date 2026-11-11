@@ -5,8 +5,8 @@ import time
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
+from inferyard.errors import PreflightError
 from inferyard.platforms.external_cpu_macos import TICKS_PER_SECOND, read_cpu
-from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.sensors_macos import MacSensors
 from inferyard.platforms.telemetry import read_rss, sample_memory
 from inferyard.runtime.environment_observer import EnvironmentObserver

@@ -4,7 +4,7 @@ import math
 from pathlib import PurePosixPath, PureWindowsPath
 
 from inferyard.config.plan_math import plan_hash, workload_budget
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 def unique(values, path):
@@ -12,7 +12,7 @@ def unique(values, path):
         raise ContractError(path, "duplicate identifier")
 
 
-def _reference(ref, path):
+def validate_artifact_reference(ref, path):
     name = ref["path"]
     # PurePosixPath.parts discards empty segments and standalone '.', not '..'.
     parts = tuple(part for part in name.split("/") if part and part != ".")
@@ -45,7 +45,7 @@ def _experiment(data):
     for i, workload in enumerate(data["workloads"]):
         path = f"experiment.workloads[{i}]"
         for field in ("config", "bundle"):
-            _reference(workload[field], f"{path}.{field}.path")
+            validate_artifact_reference(workload[field], f"{path}.{field}.path")
         tolerance = workload.get("input_tolerance_tokens", 0)
         target = workload["input_target_tokens"]
         if (target is None and tolerance) or (target is not None and tolerance >= target):
@@ -89,7 +89,7 @@ def _plan(data):
     if bindings and {b["workload_id"] for b in bindings} != set(workloads):
         raise ContractError("plan.runtime_bindings", "bindings must cover every workload")
     for binding in bindings:
-        _reference(binding["config"], "plan.runtime_bindings.config")
+        validate_artifact_reference(binding["config"], "plan.runtime_bindings.config")
         origin = binding["source_directory"]
         if not (PurePosixPath(origin).is_absolute() or PureWindowsPath(origin).is_absolute()):
             raise ContractError(
@@ -175,7 +175,7 @@ def _observation(data):
         if data["value"] is not None and not math.isclose(data["value"], num / den):
             raise ContractError("metric_observation.value", "inconsistent rate")
     for ref in data["evidence_refs"]:
-        _reference(ref, "metric_observation.evidence_refs")
+        validate_artifact_reference(ref, "metric_observation.evidence_refs")
 
 
 def validate_semantics(kind, data):
@@ -243,10 +243,10 @@ def validate_semantics(kind, data):
         unique(data["case_ids"], "selection.case_ids")
         return
     if kind == "bundle":
-        from inferyard.config.bundle import _validate_bundle_semantics
+        from inferyard.config.bundle import validate_bundle_semantics
 
         # validate_document has already checked this exact bundle's structure.
-        _validate_bundle_semantics(data)
+        validate_bundle_semantics(data)
         return
     if kind == "score":
         if data["quality_state"] == "unscorable" and not data["reason"]:
@@ -273,7 +273,7 @@ def validate_semantics(kind, data):
         _observation(data)
     elif kind == "metric_definition":
         for ref in data["evidence_refs"]:
-            _reference(ref, "metric_definition.evidence_refs")
+            validate_artifact_reference(ref, "metric_definition.evidence_refs")
         if data["implementation_status"] == "verified" and not data["evidence_refs"]:
             raise ContractError("metric_definition.evidence_refs", "verification requires evidence")
         unique(data["required_capabilities"], "metric_definition.required_capabilities")

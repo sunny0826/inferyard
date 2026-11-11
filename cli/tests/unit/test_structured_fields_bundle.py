@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from inferyard.config.bundle import require_review
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import read_json
 from scripts.build_structured_fields_bundle import FACTS, SOURCE, build
 

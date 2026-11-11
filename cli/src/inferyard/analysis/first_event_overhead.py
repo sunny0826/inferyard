@@ -2,8 +2,8 @@
 
 import math
 from statistics import median
+from inferyard.errors import EvidenceError
 
-from inferyard.evidence.storage import EvidenceError
 
 FIELDS = {"L01": "t_first_content_ns", "L02": "t_first_answer_ns"}
 

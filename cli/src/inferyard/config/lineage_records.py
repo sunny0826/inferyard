@@ -6,7 +6,8 @@ from inferyard.contracts.schemas_lineage import CONVERSION as CONVERSION
 from inferyard.contracts.schemas_lineage import QUANTIZATION as QUANTIZATION
 from inferyard.contracts.schemas_lineage import RAW_RECORD as RAW_RECORD
 from inferyard.contracts.schemas_lineage import RECORDS as RECORDS
-from inferyard.contracts.validation import ContractError, _validate, strict_json_loads
+from inferyard.contracts.validation import validate_value, strict_json_loads
+from inferyard.errors import ContractError
 
 
 def parse_record(raw, schema):
@@ -17,7 +18,7 @@ def parse_record(raw, schema):
         record = strict_json_loads(raw["text"])
     except (ValueError, RecursionError) as exc:
         raise ContractError(path, "invalid receipt JSON") from exc
-    _validate(record, schema, path)
+    validate_value(record, schema, path)
     return record
 
 

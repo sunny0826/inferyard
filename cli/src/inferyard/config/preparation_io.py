@@ -9,7 +9,8 @@ import stat
 from contextlib import contextmanager
 from pathlib import Path
 
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.output_tree import anchored
 from inferyard.platforms.platform_io import is_reparse
 
@@ -61,7 +62,7 @@ def linked(path):
 
 
 def asset_identity(path):
-    from inferyard.platforms.identity import PreflightError, hash_file
+    from inferyard.platforms.identity import hash_file
 
     try:
         return hash_file(Path(path))

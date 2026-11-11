@@ -7,17 +7,10 @@ import re
 from inferyard.analysis.public_metrics import project_metrics
 from inferyard.application.types import CommandResult
 from inferyard.config.public_recipe import reproduction_recipe
+from inferyard.errors import EvidenceError
 from inferyard.evidence.formats import require_version
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-    sha256_file,
-)
+from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, read_json, sha256_file
 from inferyard.reporting.comparison_report import comparison_input
-from inferyard.reporting.report_common import _new_output
 
 POLICY = "public-summary.v5"
 REMOVED = [
@@ -195,7 +188,7 @@ def write_public(root, out):
     data, source = comparison_input(root)
     candidate = projection(data, source)
     files = payloads(candidate)
-    _new_output(out, [root])
+    new_output(out, [root])
     for name, content in files.items():
         atomic_bytes(out / name, content)
     manifest = {

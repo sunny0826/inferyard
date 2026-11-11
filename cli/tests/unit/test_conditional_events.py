@@ -1,7 +1,7 @@
 import pytest
 
+from inferyard.errors import EvidenceError
 from inferyard.evidence.conditional_events import queue_delay, startup, token_intervals
-from inferyard.evidence.storage import EvidenceError
 
 
 def test_content_chunks_and_missing_lifecycle_never_substitute_true_events():

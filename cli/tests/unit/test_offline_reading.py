@@ -8,7 +8,8 @@ import pytest
 
 from inferyard.application.types import CommandRequest, VerificationOptions
 from inferyard.application.verification import execute
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import json_bytes, read_json
 from inferyard.reporting.report import verify_report, write_report
 from tests.helpers import fixture_run
 

@@ -13,11 +13,11 @@ from inferyard.analysis.engine_comparison_v2 import (
     derive_comparison_v2,
 )
 from inferyard.application.types import CommandRequest, CommandResult, VerificationOptions
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.artifact_seal import read_sealed, seal
 from inferyard.evidence.source_locations import relative_source, resolve_source
-from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes
-from inferyard.reporting.report_common import _new_output
+from inferyard.evidence.storage import atomic_bytes, json_bytes, new_output
 
 RESULT = "engine-comparison.json"
 HTML = "report.html"
@@ -291,7 +291,7 @@ def _derivation_targets(request: CommandRequest) -> tuple[Path, Path, Path]:
 
 def _publish(request: CommandRequest, result: JSONRecord) -> None:
     plan_path, batch_root, out = _derivation_targets(request)
-    _new_output(out, [plan_path.parent if plan_path.is_file() else plan_path, batch_root])
+    new_output(out, [plan_path.parent if plan_path.is_file() else plan_path, batch_root])
     raw = json_bytes(result)
     atomic_bytes(out / RESULT, raw)
     # Render the saved form so verify --rerender sees the same key order.

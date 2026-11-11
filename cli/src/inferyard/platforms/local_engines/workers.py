@@ -6,8 +6,9 @@ import os
 from importlib.resources import files
 from pathlib import Path
 
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_macos as native
-from inferyard.platforms.identity import PreflightError, hash_file
+from inferyard.platforms.identity import hash_file
 from inferyard.platforms.local_engines.closure import mapped_native_image, verify_libraries
 from inferyard.platforms.local_engines.startup import check_environment
 from inferyard.platforms.macos_process import lsof_records, mapped_file
@@ -143,7 +144,7 @@ def observe_workers(pid, psutil, runtime_files, environment):
     python_root = None
     bootstrap = str(files("inferyard").joinpath("data/local_engine/bootstrap.py"))
     if first and any(item.path == str(Path(bootstrap).resolve()) for item in runtime_files):
-        root_state = native._state(pid, psutil)
+        root_state = native.service_process_state(pid, psutil)
         if root_state[1][1:5] == ["-I", "-S", "-B", bootstrap]:
             from inferyard.data.local_engine.bootstrap import import_paths
             from inferyard.platforms.local_engines.installation import _python
@@ -159,7 +160,7 @@ def observe_workers(pid, psutil, runtime_files, environment):
         if child in states or len(states) >= 10000 or child == pid:
             raise PreflightError("local_engine_worker_tree_changed")
         process = psutil.Process(child)
-        state = native._state(child, psutil)
+        state = native.service_process_state(child, psutil)
         start, _, raw, executable, cwd = state
         if process.ppid() != parent:
             raise PreflightError("local_engine_worker_tree_changed")
@@ -198,7 +199,7 @@ def observe_workers(pid, psutil, runtime_files, environment):
         if process.environ() != observed_environment:
             raise PreflightError("local_engine_service_changed")
         if (
-            native._state(child, psutil) != state
+            native.service_process_state(child, psutil) != state
             or process.ppid() != parent
             or native._children(process) != children
         ):

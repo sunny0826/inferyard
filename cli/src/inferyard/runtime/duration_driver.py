@@ -7,8 +7,8 @@ Returning None must not create a durable request attempt.
 
 import asyncio
 import time
+from inferyard.errors import EvidenceError
 
-from inferyard.evidence.storage import EvidenceError
 
 
 async def run_duration(protocol, case_order, request, emit, *, clock=time.monotonic_ns):

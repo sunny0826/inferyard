@@ -1,6 +1,6 @@
+from inferyard.errors import ContractError
 """Frozen fixed-output input rules."""
 
-from inferyard.contracts.validation import ContractError
 
 MODE = "strict_fixed_length"
 

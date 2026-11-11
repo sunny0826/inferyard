@@ -2,8 +2,9 @@
 
 import hashlib
 
-from inferyard.contracts.validation import ContractError, strict_json_loads
-from inferyard.evidence.storage import EvidenceError, local_file
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, EvidenceError
+from inferyard.evidence.storage import local_file
 
 SIDECARS = {"environment.end.json", "environment.jsonl", "schedule.jsonl", "external-cpu.jsonl"}
 

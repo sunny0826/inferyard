@@ -6,7 +6,7 @@ import pytest
 
 from inferyard.adapters import engine_fit, engine_fit_common
 from inferyard.adapters.engine_fit import FitClient, FitTransportError
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 
 MODEL = "fixture-model"
 

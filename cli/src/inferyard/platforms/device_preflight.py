@@ -350,7 +350,7 @@ def inspect_device(roots, *, model_path=None, disk_path=None):
     return report
 
 
-def _disk_ancestor(path):
+def existing_ancestor(path):
     candidate = Path(path).resolve()
     while not candidate.exists() and candidate.parent != candidate:
         candidate = candidate.parent
@@ -363,7 +363,7 @@ def execute(request):
     report = inspect_device(
         request.models_roots or [Path("artifacts")],
         model_path=request.model_path,
-        disk_path=_disk_ancestor(request.out or Path.cwd()),
+        disk_path=existing_ancestor(request.out or Path.cwd()),
     )
     if request.out:
         request.out.mkdir(parents=True, exist_ok=False)

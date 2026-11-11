@@ -5,9 +5,9 @@ import re
 import time
 from pathlib import Path
 
+from inferyard.errors import PreflightError
 from inferyard.platforms.engine_fit_macos_listener import _records
 from inferyard.platforms.engine_fit_observer_io import TOTAL_TIMEOUT, read_process, remaining
-from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.macos_identity import process_start_ticks
 from inferyard.platforms.macos_native import psutil_module
 
@@ -83,7 +83,7 @@ def _matches(row, pid, stat):
 
 def verify_model_file(pid, start, model, *, psutil=None, deadline=None):
     """Require an observed mapping/FD, never only a model-root path declaration."""
-    from inferyard.platforms.engine_fit import _stamp
+    from inferyard.platforms.engine_fit import file_stamp
 
     psutil = psutil or psutil_module()
     deadline = deadline if deadline is not None else time.monotonic() + TOTAL_TIMEOUT
@@ -100,7 +100,7 @@ def verify_model_file(pid, start, model, *, psutil=None, deadline=None):
                     found = True
                 elif _additional_gguf(row, owner):
                     raise PreflightError("engine_fit_lms_additional_gguf_observed")
-        if _tree(pid, start, psutil, deadline) != tree or _stamp(model.stat()) != _stamp(before):
+        if _tree(pid, start, psutil, deadline) != tree or file_stamp(model.stat()) != file_stamp(before):
             raise PreflightError("engine_fit_lms_file_owner_changed")
         if not found:
             raise PreflightError("engine_fit_lms_model_file_not_observed")

@@ -10,7 +10,7 @@ from inferyard.config.engine_fit_native_sources import (
     WINDOWS_SCOPE,
     WINDOWS_START_SOURCE,
 )
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.reporting.engine_fit import seal_run, verify
 from inferyard.reporting.engine_fit_validation import validate_run
 from tests.unit.test_engine_fit_common_evidence import common_data
@@ -244,7 +244,6 @@ def test_windows_guard_keeps_default_stops_and_explicit_override_reads(
     reason,
 ):
     from inferyard.platforms import engine_fit_windows_temperature as sensors
-    from inferyard.platforms.identity import PreflightError
     from inferyard.runtime import engine_fit as runtime
 
     monkeypatch.setattr(runtime.platform, "system", lambda: "Windows")

@@ -6,8 +6,8 @@ from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
 from inferyard.application.types import CommandRequest, CommandResult, VerificationOptions
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.storage import EvidenceError, local_file, read_json
+from inferyard.errors import ContractError, EvidenceError
+from inferyard.evidence.storage import local_file, read_json
 
 _MARKERS = {
     "overhead": {"result.json"},

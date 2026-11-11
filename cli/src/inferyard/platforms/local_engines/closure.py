@@ -4,8 +4,8 @@ import os
 import stat
 import subprocess
 from pathlib import Path
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 _MAGIC = {
     b"\xfe\xed\xfa\xce",

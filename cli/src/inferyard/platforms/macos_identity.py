@@ -5,8 +5,9 @@ import platform
 from pathlib import Path
 
 from inferyard.config.startup_arguments import model_argument
-from inferyard.contracts.validation import ContractError, strict_json_loads
-from inferyard.platforms.identity import PreflightError, hash_file, sanitized_arguments
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, PreflightError
+from inferyard.platforms.identity import hash_file, sanitized_arguments
 from inferyard.platforms.macos_native import (
     boot_id,
     microseconds,

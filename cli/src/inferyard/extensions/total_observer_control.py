@@ -11,8 +11,9 @@ from statistics import median
 
 from inferyard.contracts.schemas_extensions import TOTAL_OBSERVER_CONTROL as SPEC
 from inferyard.contracts.schemas_extensions import TOTAL_TRIAL_CONTROL
-from inferyard.contracts.validation import _validate
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.contracts.validation import validate_value
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import json_bytes
 
 ORDER = ("off", "on", "on", "off")
 COVERAGE = (
@@ -31,7 +32,7 @@ COVERAGE = (
 
 
 def validate_spec(spec):
-    _validate(
+    validate_value(
         spec,
         TOTAL_TRIAL_CONTROL if spec.get("definition") == "total_observer_control.v2" else SPEC,
         "total_observer_control",

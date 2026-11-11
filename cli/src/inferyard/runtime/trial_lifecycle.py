@@ -4,8 +4,8 @@ import asyncio
 from dataclasses import dataclass
 
 from inferyard.contracts.engine_profiles import observes_before_idle
+from inferyard.errors import PreflightError
 from inferyard.evidence.token_budgets import probe_budget
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.duration_driver import run_duration
 from inferyard.runtime.service_observation import (
     clean_observed,

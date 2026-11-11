@@ -4,7 +4,7 @@ import pytest
 
 from inferyard.config.model_lineage import validate_lineage
 from inferyard.config.planning import compile_plan
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from tests.unit.test_phase2_contracts import experiment
 
 

@@ -6,7 +6,8 @@ from importlib.resources import files
 
 from inferyard.application.types import CommandResult
 from inferyard.contracts.validation import strict_json_loads
-from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import atomic_bytes, json_bytes, new_output
 
 RESULT = "engine-comparison.json"
 HTML = "report.html"
@@ -68,11 +69,10 @@ def execute(request, *, options=None):
         details = verify(request.run, options=options)
         return 0, CommandResult(request.command, "verified", "complete", details=details)
     from inferyard.evidence.artifact_seal import seal
-    from inferyard.reporting.report_common import _new_output
 
     paths = [*(request.left_runs or ()), *(request.right_runs or ())]
     result = build(paths, request.out)
-    _new_output(request.out, paths)
+    new_output(request.out, paths)
     raw = json_bytes(result)
     atomic_bytes(request.out / RESULT, raw)
     # Render the saved form so verify --rerender sees the same key order.

@@ -1,15 +1,16 @@
 """Semantic invariants for sealing and fixed/duration summary accounting."""
 
-from inferyard.contracts.validation import ContractError, ExecutionState, _rate_invariants
+from inferyard.contracts.validation import ExecutionState, _rate_invariants
+from inferyard.errors import ContractError
 
 
 def _manifest(data):
-    from inferyard.contracts.contracts_experiment import _reference
+    from inferyard.contracts.contracts_experiment import validate_artifact_reference
 
     for name, record in data["files"].items():
         if name == "manifest.json":
             raise ContractError("manifest.files", "manifest cannot contain itself")
-        _reference({"path": name}, "manifest.files")
+        validate_artifact_reference({"path": name}, "manifest.files")
         expected = name in ("summary.json", "report.html", "requests.jsonl")
         if record["derived"] != expected:
             raise ContractError("manifest.files.derived", "artifact classification is code-owned")

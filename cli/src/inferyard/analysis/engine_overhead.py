@@ -4,7 +4,7 @@ import math
 from statistics import median
 
 from inferyard.analysis.engine_timing import DEFINITION, engine_rates
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 
 CODES = ("L06", "L07")
 CONTRACT = "engine_rate_abba.v1"

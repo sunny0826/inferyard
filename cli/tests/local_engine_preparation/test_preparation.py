@@ -9,7 +9,7 @@ from inferyard.application.types import CommandRequest
 from inferyard.config.loader import load_config
 from inferyard.config.local_engines import binding, candidate, inspection, launch
 from inferyard.config.preparation_io import PreparationError, sha256
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 
 
 @pytest.fixture

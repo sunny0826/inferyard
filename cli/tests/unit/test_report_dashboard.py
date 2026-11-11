@@ -3,7 +3,7 @@
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.reporting import report_assets
 from inferyard.reporting.report import _environment, build_index, verify_report, write_report
 from inferyard.reporting.report_dashboard import dashboard_view
@@ -157,7 +157,6 @@ def test_current_template_identity_binds_all_partial_assets(tmp_path, monkeypatc
 
 @pytest.mark.parametrize("version", [True, 7, 9, "2", None])
 def test_unknown_report_format_is_rejected_before_loading_sources(tmp_path, version):
-    from inferyard.evidence.formats import UnsupportedFormat
 
     error = UnsupportedFormat if type(version) is int else EvidenceError
     with pytest.raises(error):

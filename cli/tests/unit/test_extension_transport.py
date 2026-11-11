@@ -5,8 +5,8 @@ import json
 import httpx
 import pytest
 
+from inferyard.errors import PreflightError
 from inferyard.extensions.extension_transport import ExtensionTransport
-from inferyard.platforms.identity import PreflightError
 from tests.unit.test_llama_cpp import inputs
 
 

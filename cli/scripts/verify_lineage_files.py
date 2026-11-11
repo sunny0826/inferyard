@@ -3,8 +3,9 @@
 import argparse
 from pathlib import Path
 
+from inferyard.errors import EvidenceError
 from inferyard.evidence.lineage_files import verify_lineage_files
-from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, read_json
+from inferyard.evidence.storage import atomic_bytes, json_bytes, read_json
 from inferyard.provenance import tool_source_hash
 
 

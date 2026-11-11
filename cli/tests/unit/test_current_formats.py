@@ -7,7 +7,7 @@ import pytest
 
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
-from inferyard.evidence.formats import UnsupportedFormat
+from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.evidence.storage import json_bytes
 from inferyard.reporting.comparison_report import execute as compare
 from inferyard.reporting.public_package import verify_public, write_public
@@ -101,7 +101,6 @@ def test_bad_presentation_seal_precedes_unsupported(tmp_path, capsys):
 
 @pytest.mark.parametrize("version", [1, 2, 3, 4])
 def test_public_old_policy_rejected_after_hash_checks(tmp_path, version, capsys):
-    from inferyard.evidence.storage import EvidenceError
     from tests.unit.test_verification import digest_tree
 
     root = fixture_run(tmp_path / "source")

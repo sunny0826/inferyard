@@ -1,6 +1,7 @@
 """Audit recorded observer wall intervals; persistence and total perturbation stay unknown."""
 
-from inferyard.evidence.storage import EvidenceError, read_jsonl
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import read_jsonl
 
 
 def union_ns(intervals):

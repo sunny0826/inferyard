@@ -3,15 +3,9 @@
 import hashlib
 
 from inferyard.contracts.validation import validate_document
+from inferyard.errors import EvidenceError
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import (
-    EvidenceError,
-    json_bytes,
-    local_file,
-    read_json,
-    read_jsonl,
-    sha256_file,
-)
+from inferyard.evidence.storage import json_bytes, local_file, read_json, read_jsonl, sha256_file
 from inferyard.runtime.overhead_runner import request_projection
 
 

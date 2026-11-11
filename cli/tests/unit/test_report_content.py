@@ -2,7 +2,7 @@
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.reporting.report import build_index
 from inferyard.reporting.report_common import _environment, render_report_html
 from inferyard.reporting.report_content import svg_reference, text_ref, validate_contents

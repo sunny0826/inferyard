@@ -1,8 +1,7 @@
 """Lazy application dispatch for independent engine adaptation diagnostics."""
 
 from inferyard.application.types import CommandResult
-from inferyard.contracts.validation import ContractError
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import ContractError, PreflightError
 
 
 def execute(request):

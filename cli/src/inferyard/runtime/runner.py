@@ -19,6 +19,7 @@ from inferyard.config.single_plan import compile_single_plan
 from inferyard.config.startup_arguments import replace_arguments
 from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import Document
+from inferyard.errors import PreflightError
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import (
@@ -28,14 +29,7 @@ from inferyard.evidence.storage import (
 )
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.implementation_identity import IdentityContext
-from inferyard.platforms.identity import (
-    PreflightError,
-    environment_snapshot,
-    process_start_ticks,
-    service_origin,
-    static_preflight,
-    verify_process,
-)
+from inferyard.platforms.identity import environment_snapshot, process_start_ticks, service_origin, static_preflight, verify_process
 from inferyard.platforms.telemetry import Sampler
 from inferyard.provenance import tool_source_hash
 from inferyard.registry import adapter_collector_id, adapter_factory, collector_factory

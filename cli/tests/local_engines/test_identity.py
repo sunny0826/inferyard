@@ -7,7 +7,8 @@ from types import SimpleNamespace
 import pytest
 
 from inferyard.config.local_engines.launch import startup
-from inferyard.platforms.identity import PreflightError, hash_file
+from inferyard.errors import ContractError, PreflightError
+from inferyard.platforms.identity import hash_file
 from inferyard.platforms.local_engines import installation as runtime
 from inferyard.platforms.local_engines import service
 from inferyard.platforms.local_engines.startup import check_environment, validate_startup
@@ -79,7 +80,6 @@ def test_removed_root_rejected(installation):
     declaration, _ = installation
     snapshot = runtime.freeze_installation(declaration)
     snapshot["roots"] = []
-    from inferyard.contracts.validation import ContractError
 
     with pytest.raises(ContractError):
         runtime.verify_installation(snapshot)
@@ -178,7 +178,7 @@ def bound(tmp_path, monkeypatch):
         "D": hex(identity.device),
         "i": str(identity.inode),
     }
-    monkeypatch.setattr(service.native, "_state", lambda *_: state)
+    monkeypatch.setattr(service.native, "service_process_state", lambda *_: state)
     monkeypatch.setattr(service, "lsof_records", lambda *_: [row])
     monkeypatch.setattr(service, "_listener_identity", lambda *_: "listener")
     monkeypatch.setattr(service.native, "unique_listener", lambda *_: None)

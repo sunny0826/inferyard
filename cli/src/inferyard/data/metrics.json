@@ -649,7 +649,7 @@
         },
         {
           "path": "src/inferyard/analysis/engine_blocks.py",
-          "sha256": "f47eaa313670f0f4936ac7ff85352dbf092e98b4d52a9d107a5ff0376bc30bf1"
+          "sha256": "979f9757081e4544815000bff7fbf5263810258eebbc69a8b38558037ddd5af5"
         },
         {
           "path": "src/inferyard/analysis/first_body.py",
@@ -657,7 +657,7 @@
         },
         {
           "path": "tests/unit/test_engine_blocks.py",
-          "sha256": "bc7f57c3b81561b8bc650a9df26174896cefa94b3e635b0f98ca95ab29d8a2f5"
+          "sha256": "9cb671b5582040416e19773d66736e7997ea0dd832561fb9de18eb75ec9ab718"
         }
       ]
     },
@@ -685,7 +685,7 @@
         },
         {
           "path": "src/inferyard/analysis/engine_blocks.py",
-          "sha256": "f47eaa313670f0f4936ac7ff85352dbf092e98b4d52a9d107a5ff0376bc30bf1"
+          "sha256": "979f9757081e4544815000bff7fbf5263810258eebbc69a8b38558037ddd5af5"
         },
         {
           "path": "src/inferyard/analysis/first_body.py",
@@ -693,7 +693,7 @@
         },
         {
           "path": "tests/unit/test_engine_blocks.py",
-          "sha256": "bc7f57c3b81561b8bc650a9df26174896cefa94b3e635b0f98ca95ab29d8a2f5"
+          "sha256": "9cb671b5582040416e19773d66736e7997ea0dd832561fb9de18eb75ec9ab718"
         }
       ]
     },
@@ -729,11 +729,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "9dccbd1a929f67c6af7a334db742f6c8c48140c5eeee1f431ded50a94b5fd2a5"
+          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "b143287a6aa8ef82492ab86f6fce63c216b4230d9947b690006f36b2814236d7"
+          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
         },
         {
           "path": "src/inferyard/runtime/environment_observer.py",
@@ -749,7 +749,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "e1011c55bab8aef9afb43ca45256fd7b481802b9eee50a5204c5483f5887e0ec"
+          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -761,11 +761,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_windows.py",
-          "sha256": "f1c4dae89942e60f729ef422b21002428ceffc1b1803643b036df966386221c7"
+          "sha256": "9dacb3caad82ab83d0a56c5895675fc8c3c3a2b2ea39941ae8cb3bc0d60213ca"
         },
         {
           "path": "tests/unit/test_windows_resources.py",
-          "sha256": "08dd92e1d21f74c7a084229b7dc4de1fabc34fa855533496037e5c0f8e0f84d7"
+          "sha256": "fc1d341db12099a1a69e0fac3e217ed3466aa58cf2a77346db769a78bafc7141"
         }
       ]
     },
@@ -801,11 +801,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "9dccbd1a929f67c6af7a334db742f6c8c48140c5eeee1f431ded50a94b5fd2a5"
+          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "b143287a6aa8ef82492ab86f6fce63c216b4230d9947b690006f36b2814236d7"
+          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
         },
         {
           "path": "src/inferyard/runtime/environment_observer.py",
@@ -821,7 +821,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "e1011c55bab8aef9afb43ca45256fd7b481802b9eee50a5204c5483f5887e0ec"
+          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -833,11 +833,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_windows.py",
-          "sha256": "f1c4dae89942e60f729ef422b21002428ceffc1b1803643b036df966386221c7"
+          "sha256": "9dacb3caad82ab83d0a56c5895675fc8c3c3a2b2ea39941ae8cb3bc0d60213ca"
         },
         {
           "path": "tests/unit/test_windows_resources.py",
-          "sha256": "08dd92e1d21f74c7a084229b7dc4de1fabc34fa855533496037e5c0f8e0f84d7"
+          "sha256": "fc1d341db12099a1a69e0fac3e217ed3466aa58cf2a77346db769a78bafc7141"
         }
       ]
     },
@@ -873,11 +873,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "9dccbd1a929f67c6af7a334db742f6c8c48140c5eeee1f431ded50a94b5fd2a5"
+          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "b143287a6aa8ef82492ab86f6fce63c216b4230d9947b690006f36b2814236d7"
+          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
         },
         {
           "path": "src/inferyard/runtime/environment_observer.py",
@@ -893,7 +893,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "e1011c55bab8aef9afb43ca45256fd7b481802b9eee50a5204c5483f5887e0ec"
+          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -905,11 +905,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_windows.py",
-          "sha256": "f1c4dae89942e60f729ef422b21002428ceffc1b1803643b036df966386221c7"
+          "sha256": "9dacb3caad82ab83d0a56c5895675fc8c3c3a2b2ea39941ae8cb3bc0d60213ca"
         },
         {
           "path": "tests/unit/test_windows_resources.py",
-          "sha256": "08dd92e1d21f74c7a084229b7dc4de1fabc34fa855533496037e5c0f8e0f84d7"
+          "sha256": "fc1d341db12099a1a69e0fac3e217ed3466aa58cf2a77346db769a78bafc7141"
         }
       ]
     },
@@ -945,11 +945,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "9dccbd1a929f67c6af7a334db742f6c8c48140c5eeee1f431ded50a94b5fd2a5"
+          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "b143287a6aa8ef82492ab86f6fce63c216b4230d9947b690006f36b2814236d7"
+          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
         },
         {
           "path": "src/inferyard/runtime/environment_observer.py",
@@ -965,7 +965,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "e1011c55bab8aef9afb43ca45256fd7b481802b9eee50a5204c5483f5887e0ec"
+          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -1009,11 +1009,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "9dccbd1a929f67c6af7a334db742f6c8c48140c5eeee1f431ded50a94b5fd2a5"
+          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "b143287a6aa8ef82492ab86f6fce63c216b4230d9947b690006f36b2814236d7"
+          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
         },
         {
           "path": "src/inferyard/runtime/environment_observer.py",
@@ -1029,7 +1029,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "e1011c55bab8aef9afb43ca45256fd7b481802b9eee50a5204c5483f5887e0ec"
+          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -1073,11 +1073,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "9dccbd1a929f67c6af7a334db742f6c8c48140c5eeee1f431ded50a94b5fd2a5"
+          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "b143287a6aa8ef82492ab86f6fce63c216b4230d9947b690006f36b2814236d7"
+          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
         },
         {
           "path": "src/inferyard/runtime/environment_observer.py",
@@ -1093,7 +1093,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "e1011c55bab8aef9afb43ca45256fd7b481802b9eee50a5204c5483f5887e0ec"
+          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -1137,11 +1137,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "9dccbd1a929f67c6af7a334db742f6c8c48140c5eeee1f431ded50a94b5fd2a5"
+          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "b143287a6aa8ef82492ab86f6fce63c216b4230d9947b690006f36b2814236d7"
+          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
         },
         {
           "path": "src/inferyard/runtime/environment_observer.py",
@@ -1157,7 +1157,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "e1011c55bab8aef9afb43ca45256fd7b481802b9eee50a5204c5483f5887e0ec"
+          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -1205,11 +1205,11 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "9dccbd1a929f67c6af7a334db742f6c8c48140c5eeee1f431ded50a94b5fd2a5"
+          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "b143287a6aa8ef82492ab86f6fce63c216b4230d9947b690006f36b2814236d7"
+          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
         },
         {
           "path": "src/inferyard/runtime/environment_observer.py",
@@ -1225,7 +1225,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "e1011c55bab8aef9afb43ca45256fd7b481802b9eee50a5204c5483f5887e0ec"
+          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -1369,7 +1369,7 @@
         },
         {
           "path": "src/inferyard/analysis/duration_windows.py",
-          "sha256": "c1cb46d09a012d172d69c304e54dc8703b979048157a0493fd66f97d4bf8619f"
+          "sha256": "558c1cdf34dc3c40b92b3b4d4dc854c4e1f57d1d49eca0edc4574e2ef3262331"
         },
         {
           "path": "src/inferyard/analysis/stability_observations.py",
@@ -1417,7 +1417,7 @@
         },
         {
           "path": "src/inferyard/analysis/duration_windows.py",
-          "sha256": "c1cb46d09a012d172d69c304e54dc8703b979048157a0493fd66f97d4bf8619f"
+          "sha256": "558c1cdf34dc3c40b92b3b4d4dc854c4e1f57d1d49eca0edc4574e2ef3262331"
         },
         {
           "path": "src/inferyard/analysis/stability_observations.py",
@@ -1465,19 +1465,19 @@
         },
         {
           "path": "src/inferyard/analysis/repetition_metrics.py",
-          "sha256": "41dc4540a84f7dc7a827fcb6a30cf984d7fa7e84f108d0e0c69e6feb588f82a7"
+          "sha256": "b2c5dfd4c718039a0082208db9ed8615a0eb451ecbd3ed50600c2ff9457d6040"
         },
         {
           "path": "src/inferyard/analysis/repetition_analysis.py",
-          "sha256": "91598cfb4fb9f7e1d22b2283a26b84fc6c977646659d1a50362edda18df8ccb6"
+          "sha256": "0f7eb7e34f4a7e5457dd88d83f6fcb1caadc3f36360ee27d1af09f9f50257821"
         },
         {
           "path": "tests/unit/test_repetition_metrics.py",
-          "sha256": "e896ed4d121fb91afa8754cf7d1d08abe0c4c21d1e5ade3054be2101466aa079"
+          "sha256": "e4d78a6c6a0b7a4bc7238bff8a81f0b6b030ecf2e62bc86c7cbe25da768e3b04"
         },
         {
           "path": "tests/unit/test_aggregate_observations.py",
-          "sha256": "1a52224e414af3adf9b9141a61a038bcda60e8d2b78950af5b0403efcd68e791"
+          "sha256": "50da4644307f3facfd49b09bce87ade083721fbb551e6aa679f749116440128d"
         }
       ]
     },
@@ -1513,19 +1513,19 @@
         },
         {
           "path": "src/inferyard/analysis/repetition_metrics.py",
-          "sha256": "41dc4540a84f7dc7a827fcb6a30cf984d7fa7e84f108d0e0c69e6feb588f82a7"
+          "sha256": "b2c5dfd4c718039a0082208db9ed8615a0eb451ecbd3ed50600c2ff9457d6040"
         },
         {
           "path": "src/inferyard/analysis/repetition_analysis.py",
-          "sha256": "91598cfb4fb9f7e1d22b2283a26b84fc6c977646659d1a50362edda18df8ccb6"
+          "sha256": "0f7eb7e34f4a7e5457dd88d83f6fcb1caadc3f36360ee27d1af09f9f50257821"
         },
         {
           "path": "tests/unit/test_repetition_metrics.py",
-          "sha256": "e896ed4d121fb91afa8754cf7d1d08abe0c4c21d1e5ade3054be2101466aa079"
+          "sha256": "e4d78a6c6a0b7a4bc7238bff8a81f0b6b030ecf2e62bc86c7cbe25da768e3b04"
         },
         {
           "path": "tests/unit/test_aggregate_observations.py",
-          "sha256": "1a52224e414af3adf9b9141a61a038bcda60e8d2b78950af5b0403efcd68e791"
+          "sha256": "50da4644307f3facfd49b09bce87ade083721fbb551e6aa679f749116440128d"
         }
       ]
     },

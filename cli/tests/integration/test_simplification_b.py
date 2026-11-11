@@ -9,10 +9,10 @@ import pytest
 from inferyard.analysis.scoring import score_case
 from inferyard.application.types import CommandRequest
 from inferyard.contracts.validation import Document
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, read_json
+from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.runner import execute_async
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.integration.test_trial_runner import inputs

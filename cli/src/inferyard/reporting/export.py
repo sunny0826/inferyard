@@ -11,17 +11,10 @@ from pathlib import Path
 from inferyard import SCHEMA_VERSION
 from inferyard.application.types import CommandResult
 from inferyard.contracts.validation import validate_document
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-    sha256_file,
-)
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, read_json, sha256_file
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input, verify_metric_references
-from inferyard.reporting.report_common import _new_output
 
 
 def trial_analysis(root, *, producer=None, loaded=None):
@@ -129,7 +122,7 @@ def formatted_files(analysis):
 def write_export(out, *, run=None, analysis_path=None):
     analysis, source = trial_analysis(run) if run is not None else existing_analysis(analysis_path)
     files = formatted_files(analysis)
-    _new_output(out, [run if run is not None else analysis_path.parent])
+    new_output(out, [run if run is not None else analysis_path.parent])
     for name, content in files.items():
         atomic_bytes(out / name, content)
     manifest = {

@@ -9,10 +9,10 @@ import pytest
 
 from inferyard.application.types import CommandRequest
 from inferyard.contracts.validation import Document
+from inferyard.errors import PreflightError
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import json_bytes
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime import runner
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.unit.test_layout_surfaces import tree_bytes

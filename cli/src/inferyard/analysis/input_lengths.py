@@ -7,7 +7,7 @@ from inferyard.analysis.length_outcomes import outcome_cohort
 from inferyard.analysis.length_resources import resource_cohort
 from inferyard.analysis.observations import Observations
 from inferyard.analysis.performance import distribution
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.evidence.token_budgets import formal_budgets
 
 TOKEN_SOURCE = "apply-template+tokenize:add_special,parse_special"

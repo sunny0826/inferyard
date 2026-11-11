@@ -5,7 +5,8 @@ from pathlib import PurePosixPath
 
 from inferyard.config.community_resources import resource_bytes
 from inferyard.config.preparation_io import PreparationError, sha256
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError
 from inferyard.platforms.runtime_archive import safe_member
 
 RELEASE = "prism-b10743-adfffbe"

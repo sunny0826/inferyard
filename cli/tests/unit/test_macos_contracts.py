@@ -5,8 +5,8 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.idle_rss import MACOS_SOURCE, idle_rss_observations
-from inferyard.contracts.validation import ContractError, Document
-from inferyard.evidence.storage import EvidenceError
+from inferyard.contracts.validation import Document
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.runtime.collector_overhead import validate_protocol
 from tests.unit.test_collector_overhead import protocol
 from tests.unit.test_observations import EVIDENCE, RUN

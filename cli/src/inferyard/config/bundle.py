@@ -9,7 +9,8 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 
 from inferyard.contracts.schemas_tasks import BUNDLE, CASE
-from inferyard.contracts.validation import ContractError, Document, _bundle_invariants, _validate
+from inferyard.contracts.validation import Document, bundle_invariants, validate_value
+from inferyard.errors import ContractError
 
 
 def content_hash(bundle):
@@ -60,7 +61,7 @@ def _json_tree(value, *, schema=False, depth=0):
 
 
 def validate_case(case):
-    _validate(case, CASE, "case")
+    validate_value(case, CASE, "case")
     _validate_case_semantics(case)
 
 
@@ -70,7 +71,7 @@ def _validate_case_semantics(case):
         # CASE requires reference_answer and an empty rules object; no quality rules apply.
         return
     if category in ("instruction", "extraction"):
-        _bundle_invariants({"cases": [case]})
+        bundle_invariants({"cases": [case]})
     elif category == "classification":
         if (
             len(set(rules["labels"])) != len(rules["labels"])
@@ -100,11 +101,11 @@ def _validate_case_semantics(case):
 
 
 def validate_bundle(bundle):
-    _validate(bundle, BUNDLE, "bundle")
-    return _validate_bundle_semantics(bundle)
+    validate_value(bundle, BUNDLE, "bundle")
+    return validate_bundle_semantics(bundle)
 
 
-def _validate_bundle_semantics(bundle):
+def validate_bundle_semantics(bundle):
     by_id = {}
     label_sets = set()
     for case in bundle["cases"]:

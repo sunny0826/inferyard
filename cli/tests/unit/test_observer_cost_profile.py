@@ -2,8 +2,8 @@ import importlib
 from pathlib import Path
 
 import pytest
+from inferyard.errors import EvidenceError
 
-from inferyard.evidence.storage import EvidenceError
 
 
 @pytest.fixture

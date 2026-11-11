@@ -11,7 +11,8 @@ from inferyard.application.verification import execute
 from inferyard.cli import main
 from inferyard.config.loader import load_config
 from inferyard.contracts.validation import Document
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl, sha256_file
+from inferyard.errors import EvidenceError, PreflightError
+from inferyard.evidence.storage import json_bytes, read_json, read_jsonl, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.reporting.comparison_report import (
     comparison_input,
@@ -167,7 +168,6 @@ def test_rerun_loads_actual_embedded_source_without_virtual_path(sources, tmp_pa
 
     def ticks(pid):
         if pid == old_pid:
-            from inferyard.platforms.identity import PreflightError
 
             raise PreflightError("service_process_unavailable")
         return 98765

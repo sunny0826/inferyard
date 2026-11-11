@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.runtime import batch_runner, trial_runner
 
 

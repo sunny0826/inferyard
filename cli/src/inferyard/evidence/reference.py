@@ -3,17 +3,18 @@
 from pathlib import Path
 
 from inferyard.contracts.schemas_evidence_reference import EVIDENCE_REFERENCE
-from inferyard.contracts.validation import ContractError, _validate
-from inferyard.evidence.storage import EvidenceError, local_file, sha256_file
+from inferyard.contracts.validation import validate_value
+from inferyard.errors import ContractError, EvidenceError
+from inferyard.evidence.storage import local_file, sha256_file
 
 
 def verify_reference(root, ref, *, reads=None, readers=None):
-    from inferyard.contracts.contracts_experiment import _reference
+    from inferyard.contracts.contracts_experiment import validate_artifact_reference
     from inferyard.evidence.trial_evidence import TrialEvidence
 
     try:
-        _validate(ref, EVIDENCE_REFERENCE, "evidence_reference")
-        _reference(ref, "evidence_reference.path")
+        validate_value(ref, EVIDENCE_REFERENCE, "evidence_reference")
+        validate_artifact_reference(ref, "evidence_reference.path")
     except ContractError as exc:
         raise EvidenceError("invalid_evidence_reference") from exc
     path = local_file(Path(root).resolve(), ref["path"])

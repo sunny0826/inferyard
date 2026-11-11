@@ -3,8 +3,9 @@
 from pathlib import Path
 
 from inferyard.config.engine_fit_assets import model_asset_manifest
-from inferyard.platforms.engine_fit import _stamp
-from inferyard.platforms.identity import FileIdentity, PreflightError
+from inferyard.errors import PreflightError
+from inferyard.platforms.engine_fit import file_stamp
+from inferyard.platforms.identity import FileIdentity
 from inferyard.platforms.model_assets import inventory
 
 _CACHE = {}
@@ -17,7 +18,7 @@ def snapshot(path):
         def view():
             if path.is_dir():
                 return inventory(path)
-            return {path.name: (_stamp(path.lstat()), _stamp(path.stat()))}
+            return {path.name: (file_stamp(path.lstat()), file_stamp(path.stat()))}
 
         before = view()
         cached = _CACHE.get(str(path))

@@ -4,7 +4,8 @@ import time
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
-from inferyard.platforms.identity import PreflightError, process_start_ticks
+from inferyard.errors import PreflightError
+from inferyard.platforms.identity import process_start_ticks
 from inferyard.platforms.telemetry import Sampler
 
 COLLECTOR = "windows-resource.v1"

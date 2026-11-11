@@ -6,6 +6,7 @@ import sys
 from inferyard.application.types import CommandResult
 from inferyard.config.preparation_io import PreparationError, require_platform, sha256
 from inferyard.contracts.schemas_engine_check import REASONS
+from inferyard.errors import PreflightError
 from inferyard.evidence.storage import json_bytes
 from inferyard.platforms.runtime_profiles import RELEASE
 
@@ -75,7 +76,6 @@ def _verify(request):
 
 def execute(request):
     if request.installation is not None:
-        from inferyard.platforms.identity import PreflightError
         from inferyard.platforms.local_engines import (
             freeze_installation,
             read_installation,

@@ -5,7 +5,8 @@ from jsonschema import Draft202012Validator
 
 from inferyard import SCHEMA_VERSION
 from inferyard.contracts.schemas import export_schema
-from inferyard.contracts.validation import ContractError, Document, validate_document
+from inferyard.contracts.validation import Document, validate_document
+from inferyard.errors import ContractError
 
 
 def _rate(n=0, d=0, excluded=0):

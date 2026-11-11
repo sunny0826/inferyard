@@ -16,7 +16,8 @@ from inferyard.config.preparation_io import (
 )
 from inferyard.config.startup_arguments import replace_arguments
 from inferyard.config.toml_writer import render
-from inferyard.platforms.identity import PreflightError, process_start_ticks, sanitized_arguments
+from inferyard.errors import PreflightError
+from inferyard.platforms.identity import process_start_ticks, sanitized_arguments
 
 
 def arguments(pid):

@@ -2,8 +2,8 @@
 
 from hashlib import sha256
 
+from inferyard.errors import PreflightError
 from inferyard.evidence.storage import json_bytes
-from inferyard.platforms.identity import PreflightError
 
 
 def require_gone(service, process_start):

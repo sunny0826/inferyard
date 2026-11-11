@@ -97,6 +97,7 @@
     "contracts/validation_cache.py",
     "data/engine_fit/mlx_server.py",
     "data/metrics.json",
+    "errors.py",
     "evidence/baseline_reads.py",
     "evidence/cache_execution.py",
     "evidence/capacity_stop.py",
@@ -234,6 +235,7 @@
     "contracts/schemas_tasks.py",
     "contracts/validation.py",
     "contracts/validation_cache.py",
+    "errors.py",
     "implementation_identity.py"
   ],
   "presentation": [
@@ -369,6 +371,7 @@
     "contracts/validation.py",
     "contracts/validation_cache.py",
     "data/metrics.json",
+    "errors.py",
     "evidence/artifact_seal.py",
     "evidence/baseline_reads.py",
     "evidence/cache_execution.py",

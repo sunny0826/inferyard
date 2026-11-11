@@ -8,7 +8,7 @@ import httpx
 from inferyard.adapters.lab_generation import GenerationDecoder
 from inferyard.adapters.lab_observation import ObservationTracker, parse_identity
 from inferyard.adapters.lab_observation_json import PROTOCOL, LabProtocolError, load_strict
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 
 PATHS = (
     "/lab/v1/identity",

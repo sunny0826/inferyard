@@ -3,7 +3,8 @@
 from importlib.resources import files
 
 from inferyard.config.preparation_io import PreparationError, sha256
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError
 
 BUNDLES = ("zh-smoke", "zh-core", "zh-svg-pelican", "zh-context-speed")
 

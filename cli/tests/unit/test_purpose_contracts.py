@@ -8,9 +8,9 @@ from inferyard.analysis.comparison import compare_trials
 from inferyard.config.bundle import content_hash, require_review
 from inferyard.config.bundle_review import approved_cases, case_content_hash
 from inferyard.config.environment_binding import admission
-from inferyard.contracts.validation import ContractError, Document
+from inferyard.contracts.validation import Document
+from inferyard.errors import ContractError, PreflightError, UnsupportedFormat
 from inferyard.evidence.storage import json_bytes
-from inferyard.platforms.identity import PreflightError
 from inferyard.reporting.comparison_report import (
     build_comparison,
     comparison_input,
@@ -74,7 +74,6 @@ def test_only_offline_v2_ignores_legacy_comparison_marker(pair):
 
 @pytest.mark.parametrize("version", [1, 2, 3])
 def test_old_comparison_rejected_before_source_loading(tmp_path, version):
-    from inferyard.evidence.formats import UnsupportedFormat
 
     (tmp_path / "comparison.json").write_bytes(
         json_bytes({"schema_version": 3, "format_version": version})

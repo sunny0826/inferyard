@@ -5,8 +5,8 @@ import sys
 
 import pytest
 
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_windows_temperature as sensors
-from inferyard.platforms.identity import PreflightError
 
 
 @pytest.mark.parametrize(

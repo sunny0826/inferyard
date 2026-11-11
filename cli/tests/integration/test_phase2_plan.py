@@ -11,7 +11,7 @@ from inferyard.cli import main
 from inferyard.config.loader import load_config
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.planning import prepare_plan, write_plan
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import ContractError, EvidenceError
 from tests.unit.test_phase2_contracts import experiment
 
 
@@ -160,7 +160,6 @@ def test_runtime_snapshot_tampering_is_rejected_even_with_rehashed_plan(tmp_path
 
 def test_frozen_reader_rechecks_budget_bindings_and_seed_order(tmp_path, config_path):
     from inferyard.config.plan_math import plan_hash
-    from inferyard.contracts.validation import ContractError
 
     path = input_package(tmp_path, config_path)
     source = json.loads(path.read_text())

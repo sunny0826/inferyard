@@ -6,7 +6,7 @@ import pytest
 
 from inferyard.adapters.prism import BUILD, PrismAdapter
 from inferyard.config.loader import load_config
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 
 
 def verify(config_path, tmp_path, raw, service, *, changed=None, build=BUILD):

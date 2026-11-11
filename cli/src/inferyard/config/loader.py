@@ -10,12 +10,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from inferyard.contracts.schemas import CONFIG_DEFAULTS
-from inferyard.contracts.validation import (
-    ContractError,
-    Document,
-    strict_json_loads,
-    validate_document,
-)
+from inferyard.contracts.validation import Document, strict_json_loads, validate_document
+from inferyard.errors import ContractError
 
 MAX_DOCUMENT_BYTES = 16 * 1024 * 1024
 PATH_FIELDS = (

@@ -5,6 +5,7 @@ import pytest
 from inferyard.analysis.environment import assess_environment
 from inferyard.analysis.environment_identity import MACOS_FIELDS, fields
 from inferyard.config.environment_binding import mismatches
+from inferyard.errors import ContractError
 from inferyard.platforms.power_macos import assess, parse, valid
 
 TEXT = "Battery Power:\n lowpowermode 1\nAC Power:\n lowpowermode 0\n"
@@ -84,7 +85,7 @@ def test_platform_and_frozen_policy_changes_remain_qualification_failures():
 
 def test_config_rejects_contradictory_power_mode_support(config_path):
     from inferyard.config.loader import load_config
-    from inferyard.contracts.validation import ContractError, Document
+    from inferyard.contracts.validation import Document
 
     config = load_config(config_path).config.to_dict()
     policy = parse(TEXT, True)

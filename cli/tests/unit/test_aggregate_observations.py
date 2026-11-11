@@ -2,7 +2,8 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError
 from tests.unit.test_phase2_contracts import observation
 
 

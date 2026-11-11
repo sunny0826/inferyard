@@ -9,19 +9,13 @@ from inferyard.analysis.observations import Observations, quality_observations
 from inferyard.analysis.scoring import ScoringContext, score_case, scorer_hash, unscorable
 from inferyard.analysis.scoring_revision import resolve
 from inferyard.application.types import CommandResult
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-)
+from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, read_json
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input
 from inferyard.reporting.export import trial_analysis
-from inferyard.reporting.report_common import _new_output
 
 
 def rescore_rows(
@@ -240,7 +234,7 @@ def write_rescore(root, out, *, scorer_id, reason, parent_path=None):
     files = build_rescore(
         root, scorer_id=scorer_id, reason=reason, parent=parent, parent_evidence=lineage
     )
-    _new_output(out, [root, *([parent_path.parent] if parent_path else [])])
+    new_output(out, [root, *([parent_path.parent] if parent_path else [])])
     for name, value in files.items():
         atomic_bytes(out / name, json_bytes(value))
     return files["analysis.json"]

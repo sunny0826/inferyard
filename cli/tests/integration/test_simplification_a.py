@@ -11,12 +11,11 @@ import pytest
 from inferyard.analysis import scoring
 from inferyard.cli import main
 from inferyard.contracts.validation import Document
-from inferyard.evidence.formats import UnsupportedFormat
+from inferyard.errors import EvidenceError, PreflightError, UnsupportedFormat
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
+from inferyard.evidence.storage import json_bytes, read_json
 from inferyard.evidence.token_budgets import V1
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.platforms.identity import PreflightError
 from inferyard.reporting.rescore import verify_rescore, write_rescore
 from inferyard.runtime.runner import execute_async
 from tests.helpers import fixture_run

@@ -7,7 +7,8 @@ import pytest
 from inferyard.config.public_config_check import check_config
 from inferyard.config.public_plan import materialize
 from inferyard.contracts.validation import Document
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, sha256_file
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import json_bytes, read_json, sha256_file
 from inferyard.reporting.comparison_report import comparison_input
 from inferyard.reporting.public_package import projection, verify_public, write_public
 from inferyard.runtime.batch_runner import execute_async

@@ -6,7 +6,7 @@ import pytest
 
 from inferyard.analysis.scoring import score_case
 from inferyard.config.bundle import require_review
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import read_json, sha256_file
 from scripts.build_structured_clarity_bundle import SOURCE, build, write_outputs
 

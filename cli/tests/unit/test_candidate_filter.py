@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.candidate_filter import evaluate_candidate, validate_spec
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 
 
 def fixture():

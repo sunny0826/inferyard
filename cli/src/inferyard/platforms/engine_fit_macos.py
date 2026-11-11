@@ -6,9 +6,9 @@ import os
 import time
 from pathlib import Path
 
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.engine_fit_macos_listener import unique_listener
-from inferyard.platforms.identity import FileIdentity, PreflightError, service_origin
+from inferyard.platforms.identity import FileIdentity, service_origin
 from inferyard.platforms.macos_identity import (
     _listener_identity,
     memory_available,
@@ -19,7 +19,7 @@ from inferyard.platforms.macos_native import psutil_module
 from inferyard.platforms.macos_process import lsof_records, mapped_file
 
 
-def _state(pid, psutil):
+def service_process_state(pid, psutil):
     start = process_start_ticks(pid)
     process = psutil.Process(pid)
     user = os.getuid()
@@ -54,7 +54,7 @@ def bind_service(
     served_model=None,
 ):
     """Bind fresh PID, startup, mapped executable, model directory and TCP evidence."""
-    from inferyard.platforms.engine_fit import _file_hash, _stamp
+    from inferyard.platforms.engine_fit import file_stamp, stable_file_digest
     from inferyard.platforms.engine_fit_entrypoints import (
         lmstudio_executable,
         macos_llama_environment,
@@ -74,7 +74,7 @@ def bind_service(
     deadline = time.monotonic() + 10.0
     try:
         origin, address, port = service_origin(url)
-        state = _state(pid, psutil)
+        state = service_process_state(pid, psutil)
         start, arguments, raw, executable, cwd = state
         if engine == "llama-cpp":
             macos_llama_environment(pid, psutil)
@@ -100,7 +100,7 @@ def bind_service(
         model = validate_model(startup_model, model_path, source)
         model_stat = model.stat()
         before = executable.stat()
-        digest, size = _file_hash(executable)
+        digest, size = stable_file_digest(executable)
         identity = FileIdentity(
             str(executable), digest, size, before.st_dev, before.st_ino, before.st_mtime_ns
         )
@@ -132,8 +132,8 @@ def bind_service(
             raise PreflightError("engine_fit_service_identity_changed")
         final_model = model.stat()
         if (
-            _state(pid, psutil) != state
-            or _stamp(executable.stat()) != _stamp(before)
+            service_process_state(pid, psutil) != state
+            or file_stamp(executable.stat()) != file_stamp(before)
             or (final_model.st_dev, final_model.st_ino) != (model_stat.st_dev, model_stat.st_ino)
             or not os.path.samefile(startup_model, model)
         ):

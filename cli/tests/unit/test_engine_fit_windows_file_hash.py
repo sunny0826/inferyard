@@ -7,8 +7,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_windows_files as files
-from inferyard.platforms.identity import PreflightError
 
 CONTENT = b"synthetic bytes, never executed"
 STAMP = (2**64 - 1, bytes(range(16)), 32, len(CONTENT), 100, 200, 300)

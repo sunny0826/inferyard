@@ -4,9 +4,7 @@ import sys
 
 from inferyard.application.types import CommandResult
 from inferyard.config.preparation_io import PreparationError
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.formats import UnsupportedFormat
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 
 
 def execute(request):

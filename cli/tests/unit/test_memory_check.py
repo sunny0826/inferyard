@@ -6,8 +6,7 @@ import pytest
 
 from inferyard.application.memory_check import inspect_memory
 from inferyard.contracts.memory_check import read_memory_check, validate_memory_check
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.platforms.memory_macos import reading
 
 

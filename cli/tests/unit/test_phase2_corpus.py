@@ -8,7 +8,8 @@ import pytest
 
 from inferyard.analysis.scoring import score_case
 from inferyard.config.bundle import require_review
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError
 from scripts.build_phase2_bundle import build, render
 
 ROOT = Path(__file__).resolve().parents[2]

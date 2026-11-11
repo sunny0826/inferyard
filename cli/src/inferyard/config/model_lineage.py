@@ -2,7 +2,7 @@
 
 from inferyard.contracts.schemas_lineage import LINEAGE as LINEAGE
 from inferyard.contracts.schemas_lineage import REVISION as REVISION
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 def validate_lineage(workload, config):

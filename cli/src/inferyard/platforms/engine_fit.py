@@ -9,18 +9,12 @@ import stat
 import uuid
 from pathlib import Path
 
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError, PreflightError
 from inferyard.evidence.storage import json_bytes
-from inferyard.platforms.identity import (
-    PreflightError,
-    memory_available,
-    process_start_ticks,
-    service_origin,
-    verify_listener,
-)
+from inferyard.platforms.identity import memory_available, process_start_ticks, service_origin, verify_listener
 
 
-def _stamp(value):
+def file_stamp(value):
     return (
         value.st_dev,
         value.st_ino,
@@ -31,7 +25,7 @@ def _stamp(value):
     )
 
 
-def _file_hash(path):
+def stable_file_digest(path):
     if os.name == "nt":
         from inferyard.platforms.engine_fit_windows_files import file_hash
 
@@ -42,13 +36,13 @@ def _file_hash(path):
     # Nonblocking open avoids hanging if a regular file is replaced by a FIFO.
     descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
     with os.fdopen(descriptor, "rb") as stream:
-        expected = _stamp(before)
-        if _stamp(os.fstat(stream.fileno())) != expected:
+        expected = file_stamp(before)
+        if file_stamp(os.fstat(stream.fileno())) != expected:
             raise PreflightError("engine_fit_file_changed")
         digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        if _stamp(os.fstat(stream.fileno())) != expected:
+        if file_stamp(os.fstat(stream.fileno())) != expected:
             raise PreflightError("engine_fit_file_changed")
-    if _stamp(path.stat()) != _stamp(before) or _stamp(path.lstat()) != _stamp(link):
+    if file_stamp(path.stat()) != file_stamp(before) or file_stamp(path.lstat()) != file_stamp(link):
         raise PreflightError("engine_fit_file_changed")
     return digest, before.st_size
 
@@ -61,8 +55,8 @@ def _inventory(root):
         if directory.is_symlink():
             raise PreflightError("engine_fit_directory_symlink")
         result[directory.relative_to(root).as_posix()] = (
-            _stamp(directory.lstat()),
-            _stamp(directory.stat()),
+            file_stamp(directory.lstat()),
+            file_stamp(directory.stat()),
         )
         for entry in sorted(directory.iterdir()):
             link, target = entry.lstat(), entry.stat()
@@ -71,7 +65,7 @@ def _inventory(root):
                     raise PreflightError("engine_fit_directory_symlink")
                 pending.append(entry)
             elif stat.S_ISREG(target.st_mode):
-                result[entry.relative_to(root).as_posix()] = (_stamp(link), _stamp(target))
+                result[entry.relative_to(root).as_posix()] = (file_stamp(link), file_stamp(target))
             else:
                 raise PreflightError("engine_fit_not_regular_file")
     return result
@@ -96,7 +90,7 @@ def model_manifest(path: Path, *, definition=None) -> dict:
         files = []
         for relative, (_, target) in sorted(before.items()):
             if stat.S_ISREG(target[2]):
-                digest, size = _file_hash(root / relative)
+                digest, size = stable_file_digest(root / relative)
                 files.append({"path": relative, "sha256": digest, "size": size})
         if not files:
             raise PreflightError("engine_fit_model_directory_empty")
@@ -334,7 +328,7 @@ def bind_service(
         )
         model = validate_model(startup_model, model_path, source)
         model_stat = model.stat()
-        executable, _ = _file_hash(directory / "exe")
+        executable, _ = stable_file_digest(directory / "exe")
         listener = _listener(pid, address, port, proc_root)
         if engine == "llama-cpp":
             linux_llama_environment(directory)

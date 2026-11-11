@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from inferyard.errors import UnsupportedFormat
 from inferyard.evidence.storage import json_bytes, sha256_file
 from inferyard.reporting.report import verify_report, write_report
 from inferyard.runtime.runner import execute_async
@@ -55,7 +56,6 @@ def test_unknown_source_version_is_not_guessed_as_legacy(tmp_path):
     source = tmp_path / "unknown"
     source.mkdir()
     (source / "run.json").write_bytes(json_bytes({"schema_version": 999}))
-    from inferyard.evidence.formats import UnsupportedFormat
 
     with pytest.raises(UnsupportedFormat):
         write_report([source], tmp_path / "out")

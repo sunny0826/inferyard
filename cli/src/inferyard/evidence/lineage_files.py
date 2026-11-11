@@ -12,7 +12,8 @@ from inferyard.config.lineage_records import (
     validate_records,
 )
 from inferyard.config.model_lineage import LINEAGE
-from inferyard.contracts.validation import ContractError, _validate
+from inferyard.contracts.validation import validate_value
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import json_bytes
 from inferyard.platforms.platform_io import open_nofollow
 
@@ -64,9 +65,9 @@ def verify_file(root, reference, expected):
 
 def verify_lineage_files(workload, bindings, root):
     declaration = workload.get("model_lineage")
-    _validate(declaration, LINEAGE, "lineage.declaration")
+    validate_value(declaration, LINEAGE, "lineage.declaration")
     records = workload.get("model_lineage_records")
-    _validate(records, RECORDS, "lineage.records")
+    validate_value(records, RECORDS, "lineage.records")
     validate_records(workload)
     expected = {"base:" + a["name"]: a["sha256"] for a in declaration["base_artifacts"]}
     for key in (

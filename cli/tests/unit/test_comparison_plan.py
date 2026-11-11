@@ -16,8 +16,7 @@ from inferyard.config.comparison_plan import (
 )
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.toml_writer import render
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import ContractError
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 ANSWER_POLICY = {

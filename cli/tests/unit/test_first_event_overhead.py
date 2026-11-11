@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.first_event_overhead import projection
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.runtime.collector_overhead import assess_overhead, validate_protocol
 from tests.unit.test_collector_overhead import protocol, trials
 

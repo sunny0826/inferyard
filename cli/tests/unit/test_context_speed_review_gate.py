@@ -7,7 +7,7 @@ import pytest
 from inferyard.cli import main
 from inferyard.config import community_workspace as workspace
 from inferyard.config.preparation_io import PreparationError
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 def test_public_review_reason(tmp_path, capsys, monkeypatch):

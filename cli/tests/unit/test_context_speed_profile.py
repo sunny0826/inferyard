@@ -18,7 +18,8 @@ from inferyard.config.context_speed_profile import (
 from inferyard.config.loader import load_config
 from inferyard.config.plan_inputs import read_frozen_plan, validate_workload_inputs
 from inferyard.config.planning import compile_plan, write_plan
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import json_bytes
 from tests.unit.test_phase2_contracts import experiment
 

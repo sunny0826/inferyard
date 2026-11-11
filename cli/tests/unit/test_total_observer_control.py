@@ -4,7 +4,8 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import json_bytes
 from inferyard.extensions.total_observer_control import COVERAGE, assess_total, run_total
 
 

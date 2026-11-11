@@ -12,10 +12,10 @@ def startup(installation, model, served_model, context, port, service_pid=None):
     if family == "lmstudio":
         if service_pid is None:
             raise PreparationError("local_engine_lmstudio_background_pid_required")
-        from inferyard.platforms.engine_fit_macos import _state, psutil_module
+        from inferyard.platforms.engine_fit_macos import service_process_state, psutil_module
 
-        state = _state(service_pid, psutil_module())
-        if _state(service_pid, psutil_module()) != state:
+        state = service_process_state(service_pid, psutil_module())
+        if service_process_state(service_pid, psutil_module()) != state:
             raise PreparationError("service_identity_changed")
         return state[1], str(state[4])
     if family == "llama-cpp":

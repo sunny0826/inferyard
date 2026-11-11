@@ -8,7 +8,7 @@ from inferyard.config.loader import load_config
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.plan_math import plan_hash
 from inferyard.config.planning import prepare_plan, write_plan
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import json_bytes, read_json, sha256_file
 from tests.unit.test_phase2_contracts import experiment
 from tests.unit.test_position import fixture

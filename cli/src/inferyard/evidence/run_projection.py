@@ -3,16 +3,17 @@
 import hashlib
 import os
 
-from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.evidence.capacity_stop import validate_capacity_stop
 from inferyard.evidence.duration_ledger import duration_summary
 from inferyard.evidence.event_ledger import PROJECTION_EVENTS, reduce_events
-from inferyard.evidence.formats import UnsupportedFormat, require_core
+from inferyard.evidence.formats import require_core
 from inferyard.evidence.lab import verify_lab
 from inferyard.evidence.native import observation_evidence
 from inferyard.evidence.request_snapshots import require_current_sources
 from inferyard.evidence.service_drain import service_drain
-from inferyard.evidence.storage import EvidenceError, local_file
+from inferyard.evidence.storage import local_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.evidence.trial_summary import trial_summary
 

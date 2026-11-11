@@ -3,8 +3,8 @@
 from inferyard.analysis.context_speed_cohort import cohort as measurement_cohort
 from inferyard.analysis.engine_timing import engine_rates
 from inferyard.analysis.input_lengths import bind_token_counts
+from inferyard.errors import EvidenceError
 from inferyard.evidence.context_speed import verified_trial
-from inferyard.evidence.storage import EvidenceError
 from inferyard.evidence.template_identity import matches_template
 from inferyard.evidence.trial_evidence import verify_reference
 

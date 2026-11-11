@@ -2,8 +2,8 @@
 
 import time
 from datetime import UTC, datetime
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 
 class SafetyTrace:

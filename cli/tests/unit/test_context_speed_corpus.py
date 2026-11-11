@@ -10,7 +10,7 @@ import pytest
 
 from inferyard.config.bundle import content_hash, require_review, validate_bundle
 from inferyard.config.bundle_review import case_content_hash
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from scripts.build_context_speed_bundle import (
     BUNDLE_NAME,
     MARKDOWN_NAME,

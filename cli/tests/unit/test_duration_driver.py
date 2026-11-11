@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.runtime.duration_driver import run_duration
 
 

@@ -7,7 +7,7 @@
 | 部分 | 责任 | 事实源 |
 | --- | --- | --- |
 | 契约版本 | 唯一活动 wire 版本常量；kind 注册表与 JSON Schema 导出 | `SCHEMA_VERSION` 在 [`cli/src/inferyard/__init__.py`](../../cli/src/inferyard/__init__.py)；`schemas_for`、`export_schema` 在 [`cli/src/inferyard/contracts/schemas.py`](../../cli/src/inferyard/contracts/schemas.py) |
-| 结构验证 | 严格 JSON 解析（拒绝重复键、非有限数）、结构校验、不可变快照 | `validate_document`、`strict_json_loads`、`Document`、`ContractError` 在 [`cli/src/inferyard/contracts/validation.py`](../../cli/src/inferyard/contracts/validation.py) |
+| 结构验证 | 严格 JSON 解析（拒绝重复键、非有限数）、结构校验、不可变快照 | `validate_document`、`strict_json_loads`、`Document` 在 [`validation.py`](../../cli/src/inferyard/contracts/validation.py)；`ContractError` 在 [`errors.py`](../../cli/src/inferyard/errors.py) |
 | 语义验证 | 按 kind 分派的跨字段/跨记录校验（实验与计划身份、事件时序、样本缺测、汇总守恒） | `validate_semantics` 在 [`cli/src/inferyard/contracts/contracts_experiment.py`](../../cli/src/inferyard/contracts/contracts_experiment.py)；`validate_storage` 在 [`cli/src/inferyard/contracts/contracts_storage.py`](../../cli/src/inferyard/contracts/contracts_storage.py)；`validate_config`、`validate_event` 在 [`cli/src/inferyard/contracts/lab.py`](../../cli/src/inferyard/contracts/lab.py) |
 | 命令内复用 | 单命令内按内容哈希复用已成功校验与审核结论，命令结束即丢弃 | `command_validation`、`validation_key` 在 [`cli/src/inferyard/contracts/validation_cache.py`](../../cli/src/inferyard/contracts/validation_cache.py)；`review_cache` 在 [`cli/src/inferyard/config/review_cache.py`](../../cli/src/inferyard/config/review_cache.py) |
 | 配置加载 | TOML/JSON 读取、默认值补齐、凭据与容量规则、路径解析、题包加载 | `load_config`、`validate_runtime_config`、`validate_endpoint`、`read_document` 在 [`cli/src/inferyard/config/loader.py`](../../cli/src/inferyard/config/loader.py) |

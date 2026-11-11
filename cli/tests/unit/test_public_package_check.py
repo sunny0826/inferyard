@@ -3,7 +3,8 @@ import json
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import json_bytes
 from inferyard.reporting.public_package import payloads, verify_public
 
 

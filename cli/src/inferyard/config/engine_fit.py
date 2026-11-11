@@ -5,7 +5,7 @@ import math
 import re
 from pathlib import PurePosixPath, PureWindowsPath
 
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError, UnsupportedFormat
 from inferyard.evidence.storage import atomic_bytes, json_bytes, read_json
 
 LEGACY_ENGINES = ("vllm", "sglang")
@@ -98,7 +98,6 @@ def validate_plan(plan):
     model = plan["model"]
     model_keys = "path sha256 files kind" if modern else "path sha256 files"
     if modern and model.get("kind") == "directory" and "definition" not in model:
-        from inferyard.evidence.formats import UnsupportedFormat
 
         raise UnsupportedFormat("model-assets", "unversioned", ("model-assets.v2",))
     if "definition" in model:

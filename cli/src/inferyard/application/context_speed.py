@@ -4,10 +4,8 @@ from dataclasses import asdict, replace
 
 from inferyard.application.types import CommandResult
 from inferyard.contracts.context_speed import validate_response
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.evidence.context_speed import NotSpeed
-from inferyard.evidence.formats import UnsupportedFormat
-from inferyard.evidence.storage import EvidenceError
 
 
 def execute(request):

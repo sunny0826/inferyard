@@ -26,19 +26,24 @@ def write_checkpoint(root, plan, run, rows):
 
 
 def read_partial(root):
-    from inferyard.reporting.engine_fit import _directory, _json, _manifest_present, _read
+    from inferyard.reporting.engine_fit import (
+        decode_json_bytes,
+        manifest_present,
+        read_entry,
+        require_directory,
+    )
 
-    root = _directory(root)
-    require(not _manifest_present(root), "partial_has_manifest")
-    plan = validate_plan(_json(_read(root, "plan.json")))
-    rows = _json(_read(root, "requests.json"))
+    root = require_directory(root)
+    require(not manifest_present(root), "partial_has_manifest")
+    plan = validate_plan(decode_json_bytes(read_entry(root, "plan.json")))
+    rows = decode_json_bytes(read_entry(root, "requests.json"))
     require(
         type(rows) is list
         and all(type(row) is dict and type(row.get("status")) is str for row in rows),
         "checkpoint_rows",
     )
     if (root / "checkpoint.json").exists():
-        checkpoint = _json(_read(root, "checkpoint.json"))
+        checkpoint = decode_json_bytes(read_entry(root, "checkpoint.json"))
         fields(checkpoint, {"definition", "run"}, "checkpoint_fields")
         require(checkpoint["definition"] == "engine_fit_checkpoint.v1", "checkpoint_definition")
         run = checkpoint["run"]
@@ -50,7 +55,7 @@ def read_partial(root):
         # This is a read projection, never a rewrite or a claim of observed final resources.
         run = {**run, "counts": request_counts(rows), "stop_reason": "interrupted_checkpoint"}
     else:
-        run = _json(_read(root, "run.json"))
+        run = decode_json_bytes(read_entry(root, "run.json"))
     validate_run(plan, run, rows)
     return {
         "kind": "engine_fit_run",

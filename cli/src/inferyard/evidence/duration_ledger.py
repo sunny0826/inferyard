@@ -1,7 +1,7 @@
 """Validate frozen window boundaries against durable request admission events."""
 
 from inferyard.analysis.duration_windows import summarize_windows
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 
 
 def duration_summary(protocol, order, events, requests):

@@ -11,7 +11,8 @@ from inferyard.config.preparation_io import (
     require_platform,
     sha256,
 )
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError
 
 DEFAULT_BUNDLES = ("zh-core", "zh-svg-pelican")
 

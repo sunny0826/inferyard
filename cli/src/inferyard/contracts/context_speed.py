@@ -6,7 +6,7 @@ from statistics import median
 
 from inferyard.analysis.engine_timing import capture_timings, engine_rates
 from inferyard.config.context_speed_profile import CASES, PROFILE
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 def require(condition, reason):

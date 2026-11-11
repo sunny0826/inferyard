@@ -11,7 +11,8 @@ from copy import deepcopy
 
 from inferyard import SCHEMA_VERSION
 from inferyard.contracts.schemas_tasks import BUNDLE
-from inferyard.contracts.validation import ContractError, _validate, strict_json_loads
+from inferyard.contracts.validation import validate_value, strict_json_loads
+from inferyard.errors import ContractError
 
 PROOF_PATH = "bundle.review_provenance"
 BASE_FIELDS = {
@@ -65,17 +66,17 @@ def _legacy_source(source, *, inherited=False):
     current["schema_version"] = SCHEMA_VERSION
     current.setdefault("task_protocol", "quality")
     ancestors = current.pop("inherited_bundles", [])
-    _validate(current, BUNDLE, PROOF_PATH)
+    validate_value(current, BUNDLE, PROOF_PATH)
     if revision == 1 and any(
         case["category"] not in ("instruction", "extraction") for case in current["cases"]
     ):
         raise ContractError(PROOF_PATH, "legacy revision has unsupported task categories")
     if type(ancestors) is not list:
         raise ContractError(PROOF_PATH, "legacy inheritance must be an array")
-    from inferyard.config.bundle import _validate_bundle_semantics
+    from inferyard.config.bundle import validate_bundle_semantics
 
     # The normalized proof passed BUNDLE above and has not changed since.
-    _validate_bundle_semantics(current)
+    validate_bundle_semantics(current)
     by_id = {case["case_id"]: case for case in current["cases"]}
     seen = set()
     all_approved = bool(approved(source))

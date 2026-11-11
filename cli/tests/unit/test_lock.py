@@ -6,7 +6,7 @@ import sys
 import pytest
 
 import inferyard.runtime.lock as locking
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.runtime.lock import HostLock
 from tests.helpers import python_worker, readline_timeout, symlink_or_skip
 

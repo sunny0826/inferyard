@@ -6,22 +6,16 @@ from pathlib import Path
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandResult, VerificationOptions
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    sha256_file,
-)
+from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input, read_verified_comparison
 from inferyard.reporting.report_assets import template_hash
 from inferyard.reporting.report_common import (
     _environment,
-    _new_output,
     evidence_url,
     render_report_html,
 )
@@ -233,7 +227,7 @@ def write_report(roots, out, *, comparison_path=None):
             out / Path(proof["source"]["path"])
             for proof in index["comparison"].get("performance_evidence", [])
         )
-    _new_output(out, protected)
+    new_output(out, protected)
     atomic_bytes(out / "index.json", json_bytes(index))
     atomic_bytes(out / "report.html", html.encode())
     seal_report(out)

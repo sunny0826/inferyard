@@ -6,8 +6,8 @@ Client HTTP completion never establishes engine-wide drain.
 import hashlib
 import re
 
+from inferyard.errors import EvidenceError
 from inferyard.evidence.engine_capabilities import observation_sealed
-from inferyard.evidence.storage import EvidenceError
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 

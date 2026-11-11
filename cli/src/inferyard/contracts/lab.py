@@ -9,7 +9,7 @@ from inferyard.adapters.lab_observation import (
     parse_lifecycle,
     parse_request,
 )
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import json_bytes
 
 LAB_ENGINES = {"kvmem": "gguf", "ninfer": "ninfer"}

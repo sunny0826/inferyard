@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from inferyard.errors import PreflightError
 from inferyard.platforms import identity, macos_identity, macos_process, telemetry
-from inferyard.platforms.identity import PreflightError
 
 pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Native Darwin identity test")
 

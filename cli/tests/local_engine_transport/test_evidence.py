@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import pytest
 
 from inferyard.adapters.local_engines.protocol import mlx_sources
+from inferyard.errors import EvidenceError
 from inferyard.evidence.local_engines import verify_queue_events
-from inferyard.evidence.storage import EvidenceError
 
 
 @pytest.fixture(autouse=True)

@@ -9,7 +9,7 @@ import pytest
 from inferyard.adapters.llama_cpp import BUILD, COMPONENT, LlamaCppAdapter
 from inferyard.adapters.prism import ResponseState
 from inferyard.config.loader import load_config, validate_runtime_config
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import ContractError, PreflightError
 
 
 def inputs(config_path):
@@ -145,7 +145,6 @@ def test_different_prompt_count_is_rejected(config_path):
 def test_unknown_upstream_version_requires_separate_adapter(config_path):
     config = deepcopy(inputs(config_path))
     config["engine"]["adapter"] = "llama_cpp_latest"
-    from inferyard.contracts.validation import ContractError
 
     with pytest.raises(ContractError):
         validate_runtime_config(config)

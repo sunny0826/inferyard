@@ -2,8 +2,8 @@
 
 import os
 from pathlib import Path
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 _LLAMA_VALUES = {
     "-m",
@@ -113,7 +113,7 @@ def _options(arguments, valued, flags, model_options):
 
 def _mlx_script(arguments, cwd):
     from inferyard.config.engine_fit_assets import mlx_server_sha256
-    from inferyard.platforms.engine_fit import _file_hash
+    from inferyard.platforms.engine_fit import stable_file_digest
 
     if not arguments:
         raise PreflightError("engine_fit_startup_entrypoint_unverified")
@@ -135,7 +135,7 @@ def _mlx_script(arguments, cwd):
     script = Path(arguments[cursor])
     if not script.is_absolute():
         script = cwd / script
-    digest, _ = _file_hash(script)
+    digest, _ = stable_file_digest(script)
     if digest != mlx_server_sha256():
         raise PreflightError("engine_fit_mlx_entrypoint_changed")
     model = _options(arguments[cursor + 1 :], _MLX_VALUES, set(), {"--model"})

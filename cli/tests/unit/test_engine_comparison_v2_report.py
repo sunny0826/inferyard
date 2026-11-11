@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from inferyard.application.types import CommandRequest
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 def test_compare_engines_parser_accepts_plan_and_batch_only(tmp_path: Path) -> None:

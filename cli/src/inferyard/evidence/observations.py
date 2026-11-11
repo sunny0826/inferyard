@@ -2,8 +2,8 @@
 
 from inferyard.contracts.engine_profiles import observes_before_idle
 from inferyard.contracts.schemas_layout import OBSERVATION_RECORD, OBSERVATION_STAGES
-from inferyard.contracts.validation import ContractError, _validate, validate_document
-from inferyard.evidence.storage import EvidenceError
+from inferyard.contracts.validation import validate_value, validate_document
+from inferyard.errors import ContractError, EvidenceError
 
 MULTI_STAGE = {"environment", "effective_parameters"}
 
@@ -39,7 +39,7 @@ class Observations:
         for seq, row in enumerate(rows, 1):
             try:
                 if self.evidence.projection:
-                    _validate(row, OBSERVATION_RECORD, "observation_record")
+                    validate_value(row, OBSERVATION_RECORD, "observation_record")
                 else:
                     validate_document("observation_record", row)
             except ContractError as exc:

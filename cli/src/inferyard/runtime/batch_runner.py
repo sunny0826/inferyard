@@ -11,10 +11,10 @@ from inferyard.analysis.repetition_metrics import repetition_metrics
 from inferyard.analysis.scoring import ScoringContext
 from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.contracts.validation import Document
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.ledger import plan_progress, resume_selection
-from inferyard.evidence.storage import EvidenceError, read_json
+from inferyard.evidence.storage import read_json
 from inferyard.implementation_identity import IdentityContext
-from inferyard.platforms.identity import PreflightError
 from inferyard.provenance import tool_source_hash
 from inferyard.registry import (
     WINDOWS_BATCH_ADAPTERS,

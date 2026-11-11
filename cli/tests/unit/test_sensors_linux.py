@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from inferyard.errors import ContractError
 from inferyard.platforms.sensors_linux import LinuxSensors
 
 
@@ -97,7 +98,7 @@ def test_external_symlink_rejected(tmp_path):
 def test_schema_and_reductions_respect_sensor_and_window(tmp_path):
     from inferyard.analysis.observations import Observations
     from inferyard.analysis.sensor_observations import add_sensor_observations
-    from inferyard.contracts.validation import ContractError, validate_document
+    from inferyard.contracts.validation import validate_document
     from tests.unit.test_observations import EVIDENCE, RUN
     from tests.unit.test_resources import ROW, envelope
 

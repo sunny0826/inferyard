@@ -5,7 +5,7 @@ import re
 from inferyard.config.cache_policy import disabled_startup
 from inferyard.config.fixed_output import validate_inputs as validate_fixed_output
 from inferyard.config.startup_arguments import argument_values, model_argument
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 PROFILE = "context-speed.v1"
 BUNDLE_ID = "zh-context-speed"

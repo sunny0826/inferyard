@@ -1,8 +1,8 @@
 """Strict layout detection and private layout 1 name mapping."""
 
-from inferyard.evidence.formats import UnsupportedFormat, require_core
+from inferyard.errors import EvidenceError, UnsupportedFormat
+from inferyard.evidence.formats import require_core
 from inferyard.evidence.request_snapshots import require_current_sources
-from inferyard.evidence.storage import EvidenceError
 
 INPUT_FILES = {
     "run": "run.json",

@@ -8,7 +8,8 @@ import pytest
 from inferyard.analysis.quality import summarize_quality
 from inferyard.analysis.scoring import score_case, unscorable
 from inferyard.config.bundle import require_review, validate_case
-from inferyard.contracts.validation import ContractError, Document
+from inferyard.contracts.validation import Document
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import read_json
 from inferyard.reporting.svg_render import (
     MAX_SVG_CHARACTERS,

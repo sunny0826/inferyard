@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 from inferyard.application.types import CommandResult
 from inferyard.contracts.memory_check import validate_memory_check
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import atomic_bytes, json_bytes
 
 # Defaults are frozen after the MC-1a native observation; see the diagnostic contract.

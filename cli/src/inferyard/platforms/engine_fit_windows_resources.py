@@ -6,8 +6,8 @@ import time
 import psutil
 
 from inferyard.config.engine_fit_native_sources import WINDOWS_SCOPE
+from inferyard.errors import PreflightError
 from inferyard.platforms.engine_fit_windows import _remaining, _start
-from inferyard.platforms.identity import PreflightError
 
 
 def _row(pid, deadline):

@@ -9,7 +9,8 @@ import pytest
 from inferyard.analysis.quality import summarize_quality
 from inferyard.analysis.scoring import score_case, unscorable
 from inferyard.config.bundle import content_hash, require_review, validate_case
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError
 
 BUNDLE = json.loads(Path("bundles/zh-smoke.json").read_text())
 POLICY = BUNDLE["answer_policy"]

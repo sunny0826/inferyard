@@ -3,8 +3,8 @@
 import math
 import re
 from pathlib import PurePosixPath, PureWindowsPath
+from inferyard.errors import EvidenceError
 
-from inferyard.evidence.storage import EvidenceError
 
 
 def require(condition, reason):

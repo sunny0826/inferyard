@@ -3,7 +3,8 @@
 from inferyard.application.types import CommandResult
 from inferyard.config.public_recipe import fingerprint
 from inferyard.config.startup_portability import portable_startup
-from inferyard.evidence.storage import EvidenceError, local_file, read_json
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import local_file, read_json
 from inferyard.reporting.public_package import verify_public
 
 REQUIRED = {

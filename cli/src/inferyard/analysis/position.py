@@ -4,7 +4,7 @@ import hashlib
 from collections import defaultdict
 
 from inferyard.analysis.observations import Observations
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import json_bytes
 
 

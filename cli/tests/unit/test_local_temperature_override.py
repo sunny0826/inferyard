@@ -1,7 +1,7 @@
 import pytest
 
 from inferyard.config.single_plan import local_safety
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.runtime.local_profile import safety_policy
 
 SAFETY = {

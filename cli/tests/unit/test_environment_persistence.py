@@ -9,8 +9,8 @@ from inferyard.analysis.environment import (
     assess_schedule,
     environment_qualification,
 )
+from inferyard.errors import EvidenceError
 from inferyard.evidence.environment_projection import periodic_environment
-from inferyard.evidence.storage import EvidenceError
 from inferyard.platforms.power_macos import parse
 from tests.unit.test_environment import state
 

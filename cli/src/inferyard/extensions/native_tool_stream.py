@@ -1,7 +1,7 @@
 """Tool-call SSE assembly is independent of the serial answer-only parser."""
 
 from inferyard.contracts.validation import strict_json_loads
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.extensions.native_tools import parse_reply
 
 

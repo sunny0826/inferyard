@@ -1,9 +1,10 @@
 """Verify a sealed engine-comparison.v1 artifact by recomputing it from its source runs."""
 
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.artifact_seal import read_sealed
 from inferyard.evidence.source_locations import resolve_source
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.evidence.storage import json_bytes
 
 
 def _hash(value):

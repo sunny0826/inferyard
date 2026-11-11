@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.platforms.local_engines import workers
 
 pytestmark = pytest.mark.skipif(os.name != "posix", reason="Darwin mapping identity primitives")
@@ -66,7 +66,7 @@ def test_data_classification_rejects_fifo_replacement_without_blocking(tmp_path)
 import json, sys
 from pathlib import Path
 from inferyard.platforms.local_engines.workers import mapped_closure
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 try:
     mapped_closure([json.loads(sys.argv[1])], [], Path("/fixture"))
 except PreflightError as error:

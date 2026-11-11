@@ -5,13 +5,13 @@ import time
 from collections import Counter, deque
 
 from inferyard.contracts.schemas_extensions import CLOSED_CONCURRENCY as SPEC
-from inferyard.contracts.validation import ContractError, _validate
-from inferyard.evidence.storage import EvidenceError
+from inferyard.contracts.validation import validate_value
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.extensions.client_capacity import qualified
 
 
 def validate_spec(spec):
-    _validate(spec, SPEC, "closed_concurrency")
+    validate_value(spec, SPEC, "closed_concurrency")
     if len(set(spec["case_ids"])) != len(spec["case_ids"]):
         raise ContractError("closed_concurrency.case_ids", "duplicate case")
     if spec["concurrency"] > spec["server_slots"]:

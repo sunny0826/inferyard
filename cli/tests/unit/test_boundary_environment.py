@@ -3,7 +3,8 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.boundary_environment import qualify_boundary_environment
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import json_bytes
 from inferyard.runtime.boundary_observer import boundary_contract
 from tests.unit.test_environment import state
 from tests.unit.test_external_cpu import ENDPOINT, rows

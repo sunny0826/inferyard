@@ -1,7 +1,7 @@
 import pytest
 
 from inferyard.analysis.duration_windows import summarize_windows
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 
 P = {"window_seconds": 1, "duration_seconds": 2.5, "min_completed_per_case_per_window": 1}
 

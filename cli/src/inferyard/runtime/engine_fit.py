@@ -14,16 +14,15 @@ from inferyard.adapters.engine_fit import FitClient, FitTransportError
 from inferyard.application.types import CommandResult
 from inferyard.config.engine_fit import load_plan, request_rows
 from inferyard.config.engine_fit_assets import runtime_manifest as _manifest
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.evidence.engine_fit_checkpoint import request_counts, write_checkpoint
-from inferyard.evidence.storage import EvidenceError, Redactor, atomic_bytes, json_bytes
+from inferyard.evidence.storage import Redactor, atomic_bytes, json_bytes
 from inferyard.platforms.engine_fit import (
     bind_service,
     check_service,
     host_identity,
     resource_snapshot,
 )
-from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.sensors_linux import LinuxSensors
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.engine_fit import seal_run

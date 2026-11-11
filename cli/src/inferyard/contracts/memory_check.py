@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError
 
 
 def _require(condition, path, reason):

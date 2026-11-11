@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.extensions.native_tool_stream import ToolStream
 from inferyard.extensions.native_tools import reduce_tools, run_tool_case
 

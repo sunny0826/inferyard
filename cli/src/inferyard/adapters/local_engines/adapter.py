@@ -6,12 +6,12 @@ import sys
 import time
 from copy import deepcopy
 
-from inferyard.adapters.engine_fit import FitTransportError, _json
+from inferyard.adapters.engine_fit import FitTransportError, parse_json_body
 from inferyard.adapters.lab_adapter import LabAdapter
 from inferyard.adapters.local_engines.protocol import VERSION_PATHS, models, queue, service
 from inferyard.contracts.engine_tuning import prompt_cache_disabled
+from inferyard.errors import PreflightError
 from inferyard.platforms.engine_fit_lmstudio import LMStudioObserver
-from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.local_engines import verify_bound_service
 
 
@@ -75,7 +75,9 @@ class LocalEngineAdapter(LabAdapter):
                 async with asyncio.timeout_at(deadline):
                     payload = await self._observer.inspect()
             else:
-                payload = _json(await self._endpoint(VERSION_PATHS[family], deadline, matrix))
+                payload = parse_json_body(
+                    await self._endpoint(VERSION_PATHS[family], deadline, matrix)
+                )
             properties = service(family, payload, config)
             if family != "lmstudio":
                 await self._endpoint("/metrics", deadline, matrix)

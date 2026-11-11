@@ -2,12 +2,11 @@
 
 from pathlib import Path
 
-from inferyard.adapters.engine_fit import FitTransportError, _json
-from inferyard.adapters.lab_parameters import _equal
+from inferyard.adapters.engine_fit import FitTransportError, parse_json_body
+from inferyard.adapters.lab_parameters import values_equal
 from inferyard.adapters.local_engines.protocol import VERSION_PATHS, models, queue, service
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.local_engines import validate_frozen_identity
 from inferyard.platforms.local_engines.service import validate_binding
 
@@ -63,11 +62,11 @@ def _bound(reads, config):
     family = config["engine"]["family"]
     props = reads.observation("service_properties")
     if family == "lmstudio":
-        queue(family, config["engine"]["served_model"], None, _json(endpoints["lms:ps"]["body"]))
+        queue(family, config["engine"]["served_model"], None, parse_json_body(endpoints["lms:ps"]["body"]))
     payload = (
         props["service"]
         if family == "lmstudio"
-        else _json(endpoints[VERSION_PATHS[family]]["body"])
+        else parse_json_body(endpoints[VERSION_PATHS[family]]["body"])
     )
     verified = service(
         family,
@@ -75,7 +74,7 @@ def _bound(reads, config):
         config,
         sources=_sources(local["runtime"]) if family == "mlx-lm" else None,
     )
-    if not _equal(props, {"service": verified, "observation": capability}):
+    if not values_equal(props, {"service": verified, "observation": capability}):
         raise EvidenceError("local_engine_service_evidence_mismatch")
     return binding["service"]
 
@@ -94,7 +93,7 @@ def _snapshot(data, config, binding):
         or snapshot["definition"] != "local-engine-queue.v1"
         or snapshot["family"] != family
         or snapshot["served_model"] != config["engine"]["served_model"]
-        or not _equal(snapshot["binding"], binding)
+        or not values_equal(snapshot["binding"], binding)
         or snapshot["source"] != ("lms:ps" if family == "lmstudio" else "/metrics")
         or type(snapshot["client_uncertain"]) is not bool
     ):
@@ -110,7 +109,7 @@ def _snapshot(data, config, binding):
     if snapshot["missing_reason"] is not None:
         raise EvidenceError("local_engine_queue_missing_reason")
     parsed = queue(family, snapshot["served_model"], snapshot["raw_metrics"], observed)
-    if not _equal(parsed, observed):
+    if not values_equal(parsed, observed):
         raise EvidenceError("local_engine_queue_reconstruction_mismatch")
     if family != "lmstudio":
         endpoint = data["signals"]["/metrics"]

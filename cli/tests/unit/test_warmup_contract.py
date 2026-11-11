@@ -9,7 +9,8 @@ from jsonschema import Draft202012Validator
 from inferyard.config.loader import load_config
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.contracts.schemas import export_schema
-from inferyard.contracts.validation import ContractError, Document
+from inferyard.contracts.validation import Document
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import json_bytes
 
 

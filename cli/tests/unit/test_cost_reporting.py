@@ -3,8 +3,8 @@
 import pytest
 
 from inferyard.application.types import VerificationOptions
+from inferyard.errors import EvidenceError
 from inferyard.evidence.artifact_seal import read_sealed, seal
-from inferyard.evidence.storage import EvidenceError
 from inferyard.reporting import report
 from tests.helpers import fixture_run, symlink_or_skip
 

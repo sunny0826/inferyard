@@ -6,8 +6,9 @@ from pathlib import Path
 from stat import S_ISREG
 
 from inferyard.config.engine_fit import validate_plan
-from inferyard.contracts.validation import ContractError, strict_json_loads
-from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, EvidenceError
+from inferyard.evidence.storage import atomic_bytes, json_bytes
 from inferyard.reporting.engine_fit_html import LIMITATIONS, render
 from inferyard.reporting.engine_fit_metrics import observations
 from inferyard.reporting.engine_fit_validation import fields, require, validate_run
@@ -20,7 +21,7 @@ def _sha(content):
     return hashlib.sha256(content).hexdigest()
 
 
-def _directory(path):
+def require_directory(path):
     path = Path(path)
     require(not path.is_symlink() and path.is_dir(), "unsafe_directory")
     return path
@@ -33,14 +34,14 @@ def _file(root, name):
     return path
 
 
-def _read(root, name):
+def read_entry(root, name):
     try:
         return _file(root, name).read_bytes()
     except OSError as exc:
         raise EvidenceError("engine_fit_missing_file") from exc
 
 
-def _manifest_present(root):
+def manifest_present(root):
     try:
         entry = (root / "manifest.json").lstat()
     except FileNotFoundError:
@@ -51,7 +52,7 @@ def _manifest_present(root):
     return True
 
 
-def _json(content):
+def decode_json_bytes(content):
     try:
         result = strict_json_loads(content.decode("utf-8"))
         pending = [result]
@@ -79,15 +80,15 @@ def _manifest(blobs, kind, *, definition="engine_fit_manifest.v2"):
 
 
 def _load_manifest(root):
-    content = _read(root, "manifest.json")
-    manifest = _json(content)
+    content = read_entry(root, "manifest.json")
+    manifest = decode_json_bytes(content)
     fields(manifest, {"schema_version", "definition", "kind", "files"}, "manifest_fields")
     require(manifest["kind"] in ("run", "comparison"), "manifest_kind")
     names = RUN_FILES if manifest["kind"] == "run" else COMPARISON_FILES
     fields(manifest["files"], set(names), "manifest_files")
     for digest in manifest["files"].values():
         require(type(digest) is str and re.fullmatch(r"[a-f0-9]{64}", digest), "manifest_hash")
-    blobs = {name: _read(root, name) for name in names}
+    blobs = {name: read_entry(root, name) for name in names}
     require(
         manifest["files"] == {name: _sha(raw) for name, raw in blobs.items()},
         "hash_mismatch",
@@ -100,15 +101,15 @@ def _load_manifest(root):
 
 
 def _verified_run(root, *, rerender=False, verified=None):
-    root = _directory(root)
+    root = require_directory(root)
     manifest, blobs = verified if verified is not None else _load_manifest(root)
     require(manifest["kind"] == "run", "run_required")
     try:
-        plan = validate_plan(_json(blobs["plan.json"]))
+        plan = validate_plan(decode_json_bytes(blobs["plan.json"]))
     except ContractError as exc:
         raise EvidenceError("engine_fit_invalid_plan_evidence") from exc
-    run = _json(blobs["run.json"])
-    rows = _json(blobs["requests.json"])
+    run = decode_json_bytes(blobs["run.json"])
+    rows = decode_json_bytes(blobs["requests.json"])
     validate_run(plan, run, rows)
     data = {"kind": "engine_fit_run", "plan": plan, "run": run, "requests": rows}
     if rerender:
@@ -118,7 +119,7 @@ def _verified_run(root, *, rerender=False, verified=None):
 
 def seal_run(out, plan, run, rows):
     """Publish final snapshots and manifest last; an existing seal is never replaced."""
-    root = _directory(out)
+    root = require_directory(out)
     require(not (root / "manifest.json").exists(), "already_sealed")
     _file(root, "manifest.json")
     validate_plan(plan)
@@ -211,8 +212,8 @@ def compare(paths, out):
 
 def verify(path, *, rerender=False):
     """Verify hashes, plan/row semantics, copied source seals and deterministic HTML."""
-    root = _directory(path)
-    if not _manifest_present(root):
+    root = require_directory(path)
+    if not manifest_present(root):
         from inferyard.evidence.engine_fit_checkpoint import read_partial
 
         return read_partial(root)
@@ -220,11 +221,11 @@ def verify(path, *, rerender=False):
     # A final manifest is authoritative; the retained in-flight checkpoint is ignored.
     if manifest["kind"] == "run":
         return _verified_run(root, rerender=rerender, verified=(manifest, blobs))[0]
-    saved = _json(blobs["comparison.json"])
+    saved = decode_json_bytes(blobs["comparison.json"])
     require(type(saved) is dict, "comparison_type")
     refs = saved.get("source_runs")
     require(type(refs) is list and len(refs) == 2, "comparison_sources")
-    source_root = _directory(root / "sources")
+    source_root = require_directory(root / "sources")
     runs, hashes = [], []
     for index, ref in enumerate(refs):
         fields(ref, {"path", "manifest_sha256"}, "source_reference")

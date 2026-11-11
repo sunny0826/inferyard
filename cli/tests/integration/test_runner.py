@@ -16,13 +16,10 @@ from inferyard.adapters.prism import BUILD, PrismAdapter
 from inferyard.application.types import CommandRequest
 from inferyard.config.bundle import content_hash, require_review
 from inferyard.config.loader import load_config
-from inferyard.contracts.validation import ContractError, Document
+from inferyard.contracts.validation import Document
+from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.evidence.ledger import read_trial as rebuild
-from inferyard.platforms.identity import (
-    PreflightError,
-    environment_snapshot,
-    process_start_ticks,
-)
+from inferyard.platforms.identity import environment_snapshot, process_start_ticks
 from inferyard.runtime.runner import Dependencies, execute_async
 
 
@@ -335,7 +332,6 @@ def test_credential_echo_all_artifacts_redacted_and_not_scored(scenario, monkeyp
 
 def test_io_failure_mid_answer_stops_without_counting_model_failure(scenario, monkeypatch):
     from inferyard.evidence.journal import TrialJournal
-    from inferyard.evidence.storage import EvidenceError
 
     request, deps, calls, settings = scenario
     original = TrialJournal.event

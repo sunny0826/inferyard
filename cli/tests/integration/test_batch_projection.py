@@ -9,7 +9,8 @@ import pytest
 from inferyard.application.types import CommandRequest
 from inferyard.application.verification import execute as verify
 from inferyard.config.plan_inputs import read_frozen_plan
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import json_bytes, read_json, read_jsonl
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.reporting.repetition_report import write_repetition_summary
 from inferyard.reporting.report import write_report

@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError
 
 PROTOCOL = "lab_observation.v1"
 MAX_RESPONSE_BYTES = 2 * 1024**2

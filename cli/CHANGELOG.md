@@ -52,6 +52,13 @@
   `config create`. A passing check never confers candidate
   eligibility. Output schema is registered as `--schema engine_check`.
 
+### Changed
+
+- Internal: moved shared exception types to `inferyard.errors` and made
+  cross-package helpers public. The measurement/scoring implementation identity
+  changes, so runs created before this change cannot be resumed or compared as
+  the same implementation by runs created after it.
+
 ### Removed
 
 - Retired the standalone `inferyard-observer` project, its build and offline

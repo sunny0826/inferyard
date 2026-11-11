@@ -9,11 +9,11 @@ import pytest
 
 from inferyard.application.types import CommandRequest
 from inferyard.contracts.validation import Document
+from inferyard.errors import PreflightError
 from inferyard.evidence import storage
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import json_bytes, read_json, read_jsonl
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime import runner
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.layout_mutations import change_input

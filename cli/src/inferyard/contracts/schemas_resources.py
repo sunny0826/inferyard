@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from inferyard.contracts.schemas_common import LABEL, NAT, POS, VERSION, enum, nullable, obj
 from inferyard.contracts.schemas_memory import MEMORY_SAMPLE
+from inferyard.errors import ContractError
 
 RESOURCE_SAMPLE = deepcopy(MEMORY_SAMPLE)
 RESOURCE_SAMPLE["properties"].update(
@@ -23,7 +24,7 @@ RESOURCE_SAMPLE["required"] = list(RESOURCE_SAMPLE["properties"])
 
 
 def validate_resource_sample(data):
-    from inferyard.contracts.validation import ContractError, _sample_invariants
+    from inferyard.contracts.validation import _sample_invariants
 
     _sample_invariants(data)
     cpu = data["metric_name"] == "service_cpu_ticks"

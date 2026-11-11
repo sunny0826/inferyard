@@ -6,7 +6,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.config.engine_fit import digest
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.reporting.engine_fit import compare, seal_run, verify
 from inferyard.reporting.engine_fit_validation import validate_run
 from tests.unit.test_engine_fit_report import _data, _idle
@@ -156,7 +156,6 @@ def test_v2_cannot_relabel_linux_host(native_data):
 def test_windows_live_rejected_before_loading_plan(monkeypatch):
     from types import SimpleNamespace
 
-    from inferyard.platforms.identity import PreflightError
     from inferyard.runtime import engine_fit
 
     monkeypatch.setattr(engine_fit.platform, "system", lambda: "Windows")
@@ -168,7 +167,6 @@ def test_macos_guard_stops_at_smc_temperature_without_linux_conversion(
     tmp_path, native_data, monkeypatch
 ):
     from inferyard.platforms import sensors_macos
-    from inferyard.platforms.identity import PreflightError
     from inferyard.runtime import engine_fit
 
     plan, run, _ = native_data

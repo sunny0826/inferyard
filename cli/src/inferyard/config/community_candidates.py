@@ -59,13 +59,13 @@ def selected_preflight(path, system):
 
 def fresh_macos(selected, results):
     from inferyard.platforms.device_preflight import (
-        _disk_ancestor,
+        existing_ancestor,
         discover_models,
         hardware_snapshot,
         recommend,
     )
 
-    hardware = hardware_snapshot(_disk_ancestor(results))
+    hardware = hardware_snapshot(existing_ancestor(results))
     fresh = recommend(hardware, discover_models([], selected["model_path"]))
     if fresh["status"] != "recommended":
         raise PreparationError("device_preflight_blocked")

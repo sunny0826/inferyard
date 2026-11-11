@@ -4,8 +4,8 @@ import asyncio
 from pathlib import Path
 
 from inferyard.config.environment_binding import mismatches
+from inferyard.errors import PreflightError
 from inferyard.platforms.external_cpu import native_macos
-from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.resources_linux import read_cpu
 from inferyard.platforms.sensors_linux import LinuxSensors
 

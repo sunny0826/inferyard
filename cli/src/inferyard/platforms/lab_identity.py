@@ -6,9 +6,9 @@ from pathlib import Path
 
 import psutil
 
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError, PreflightError
 from inferyard.evidence.storage import read_json
-from inferyard.platforms.identity import PreflightError, sanitized_arguments
+from inferyard.platforms.identity import sanitized_arguments
 from inferyard.platforms.windows_lab_api import current_windows_lab_api
 from inferyard.platforms.windows_lab_checks import (
     argv_digest,

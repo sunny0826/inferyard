@@ -9,9 +9,10 @@ from pathlib import Path
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
 from inferyard.contracts.local_environment import validate_installation_environment
 from inferyard.contracts.schemas_local_engines import INSTALLATION
-from inferyard.contracts.validation import _validate, strict_json_loads
+from inferyard.contracts.validation import validate_value, strict_json_loads
 from inferyard.data.local_engine.bootstrap import import_paths
-from inferyard.platforms.identity import PreflightError, hash_file
+from inferyard.errors import PreflightError
+from inferyard.platforms.identity import hash_file
 
 RUNTIME = "local-engine-runtime.v1"
 _FILE_CACHE = {}
@@ -30,7 +31,7 @@ def read_json(path):
 
 
 def description(value):
-    _validate(value, INSTALLATION, "installation")
+    validate_value(value, INSTALLATION, "installation")
     result = dict(value)
     for key in ("executable", "working_directory", "models_root"):
         if key in result:
@@ -240,7 +241,7 @@ def verify_installation(snapshot):
         raise PreflightError("local_engine_runtime_invalid")
     from inferyard.platforms.local_engines.runtime_schema import RUNTIME as schema
 
-    _validate(snapshot, schema, "local_engine_runtime")
+    validate_value(snapshot, schema, "local_engine_runtime")
     current, identities = _freeze(snapshot["installation"])
     if current != snapshot:
         raise PreflightError("local_engine_runtime_changed")

@@ -4,15 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.evidence.storage import (
-    EvidenceError,
-    EvidenceStore,
-    Redactor,
-    atomic_bytes,
-    local_file,
-    read_jsonl,
-    verify_manifest,
-)
+from inferyard.errors import EvidenceError, UnsupportedFormat
+from inferyard.evidence.storage import EvidenceStore, Redactor, atomic_bytes, local_file, read_jsonl, verify_manifest
 
 
 @pytest.mark.parametrize(
@@ -143,7 +136,6 @@ def test_no_new_request_copy_and_legacy_hash_damage_is_integrity_error(tmp_path)
     (legacy.path / "requests.jsonl").write_bytes(b"{}\n")
     legacy.seal()
     legacy.close()
-    from inferyard.evidence.formats import UnsupportedFormat
 
     with pytest.raises(UnsupportedFormat):
         verify_manifest(legacy.path)

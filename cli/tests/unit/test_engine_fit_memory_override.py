@@ -10,9 +10,7 @@ import pytest
 from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.cli import main
 from inferyard.config.engine_fit import prepare, validate_plan
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.storage import EvidenceError
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.reporting.engine_fit import compare, seal_run, verify
 from inferyard.reporting.engine_fit_html import render
 from inferyard.reporting.engine_fit_validation import validate_run

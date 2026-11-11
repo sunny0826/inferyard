@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from inferyard.analysis.comparison_types import JSONRecord, JSONValue
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core
-from inferyard.evidence.storage import EvidenceError
 from inferyard.implementation_identity import validate_identity
 
 _BATCH_KEYS = {

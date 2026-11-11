@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.runtime.collector_overhead import ORDER, assess_overhead, freeze_protocol
 
 

@@ -4,8 +4,7 @@ import os
 from dataclasses import replace
 
 from inferyard.application.types import CommandRequest, CommandResult
-from inferyard.contracts.validation import ContractError
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import ContractError, PreflightError
 
 
 def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:

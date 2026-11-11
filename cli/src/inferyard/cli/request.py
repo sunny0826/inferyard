@@ -9,7 +9,7 @@ from inferyard.analysis.comparison_types import JSONValue
 from inferyard.application.types import CommandRequest
 from inferyard.cli.arguments import ArgumentError
 from inferyard.config.loader import LoadedConfig, load_config, validate_endpoint
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 def _comparison_experiment_id(values: dict[str, JSONValue]) -> None:

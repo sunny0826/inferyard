@@ -2,8 +2,9 @@
 
 from inferyard.config.context_speed_profile import classify_verified_inputs
 from inferyard.config.plan_inputs import read_frozen_plan
+from inferyard.errors import EvidenceError
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, local_file, sha256_file
+from inferyard.evidence.storage import local_file, sha256_file
 from inferyard.runtime.batch_state import history
 
 

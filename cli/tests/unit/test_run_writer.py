@@ -8,9 +8,10 @@ import pytest
 from inferyard.adapters.requests import request_body
 from inferyard.config.loader import load_config
 from inferyard.config.single_plan import compile_single_plan
+from inferyard.errors import EvidenceError
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.request_snapshots import messages_sha256
-from inferyard.evidence.storage import EvidenceError, EvidenceStore, Redactor, read_json, read_jsonl
+from inferyard.evidence.storage import EvidenceStore, Redactor, read_json, read_jsonl
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 

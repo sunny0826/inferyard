@@ -5,7 +5,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.config.engine_fit import digest
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.reporting.engine_fit import compare, seal_run, verify
 from inferyard.reporting.engine_fit_validation import validate_run
 from tests.unit.test_engine_fit_report import _data

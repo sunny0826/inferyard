@@ -3,15 +3,10 @@
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandResult, VerificationOptions
+from inferyard.errors import EvidenceError
 from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-)
+from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, read_json
 from inferyard.evidence.trial_evidence import verify_reference
 
 
@@ -233,11 +228,11 @@ def execute(request, *, options=None):
         format_version=4,
     )
     from inferyard.reporting.report import build_index
-    from inferyard.reporting.report_common import _environment, _new_output
+    from inferyard.reporting.report_common import _environment
 
     sources = [request.left, request.right]
     sources.extend(p for p in (request.left_overhead, request.right_overhead) if p is not None)
-    _new_output(request.out, sources)
+    new_output(request.out, sources)
     from copy import deepcopy
 
     from inferyard.evidence.source_locations import relative_comparison

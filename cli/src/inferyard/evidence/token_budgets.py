@@ -1,8 +1,8 @@
 """Versioned, explicit token-budget inventory; current inventory only."""
 
+from inferyard.errors import EvidenceError
 from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.formats import require_version
-from inferyard.evidence.storage import EvidenceError
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 V1 = "token-budgets.json"

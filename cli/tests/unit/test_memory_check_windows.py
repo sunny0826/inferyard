@@ -13,7 +13,7 @@ import pytest
 
 from inferyard.application import memory_check
 from inferyard.contracts.memory_check import validate_memory_check
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.platforms import memory_windows as native
 
 

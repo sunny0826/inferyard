@@ -5,14 +5,8 @@ import hashlib
 import os
 from copy import deepcopy
 
-from inferyard.evidence.storage import (
-    EvidenceError,
-    Redactor,
-    atomic_bytes,
-    json_bytes,
-    read_json,
-    sha256_file,
-)
+from inferyard.errors import EvidenceError, PreflightError
+from inferyard.evidence.storage import Redactor, atomic_bytes, json_bytes, read_json, sha256_file
 from inferyard.extensions.client_capacity import ClientCapacity
 from inferyard.extensions.closed_concurrency import run_closed
 from inferyard.extensions.closed_concurrency import validate_spec as validate_closed
@@ -29,7 +23,7 @@ from inferyard.extensions.native_tools import run_tool_case
 from inferyard.extensions.native_tools import validate_spec as validate_tools
 from inferyard.extensions.total_control_runtime import execute_total
 from inferyard.extensions.total_observer_control import validate_spec as validate_total
-from inferyard.platforms.identity import PreflightError, static_preflight
+from inferyard.platforms.identity import static_preflight
 from inferyard.platforms.resources import ResourceSampler
 from inferyard.provenance import tool_source_hash
 from inferyard.runtime.lock import HostLock

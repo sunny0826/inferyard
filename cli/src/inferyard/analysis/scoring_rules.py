@@ -3,7 +3,8 @@
 import json
 import math
 
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError
 
 
 def _typed(value, expected):

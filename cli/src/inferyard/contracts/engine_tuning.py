@@ -7,7 +7,7 @@ rejected instead of recorded as unverifiable.
 """
 
 from inferyard.contracts.engine_profiles import TUNING_KEYS
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 # Option spellings accepted by llama-server; values are kept as frozen text.
 LLAMA_OPTIONS = {

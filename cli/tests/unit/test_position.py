@@ -8,7 +8,7 @@ from inferyard.analysis.position import (
     position_summary,
     validate_position_cases,
 )
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from tests.unit.test_observations import EVIDENCE, RUN
 
 

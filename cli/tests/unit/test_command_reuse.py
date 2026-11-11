@@ -4,7 +4,7 @@ import pytest
 
 from inferyard.analysis import scoring
 from inferyard.application.types import CommandRequest
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.reporting import comparison_report, rescore
 from inferyard.reporting.report import verify_report
 from tests.helpers import fixture_run

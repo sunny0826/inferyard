@@ -2,8 +2,8 @@
 
 import sys
 from pathlib import Path
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 
 def resource_collector_id(*, proc_root=Path("/proc")):

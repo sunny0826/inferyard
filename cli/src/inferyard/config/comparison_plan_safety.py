@@ -6,7 +6,7 @@ import hashlib
 
 from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.config.loader import LoadedConfig
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 def comparison_overhead(config: JSONRecord, count: int) -> float:

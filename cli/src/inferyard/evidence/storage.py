@@ -12,7 +12,8 @@ from datetime import UTC, datetime
 from pathlib import Path, PureWindowsPath
 
 from inferyard import SCHEMA_VERSION
-from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.platforms.platform_io import (
     filesystem_path,
     open_nofollow,
@@ -20,10 +21,6 @@ from inferyard.platforms.platform_io import (
     resolved_within,
     sync_directory,
 )
-
-
-class EvidenceError(RuntimeError):
-    pass
 
 
 def _copy_clean_containers(value):
@@ -164,6 +161,15 @@ def local_file(root: Path, relative: str) -> Path:
     if not resolved_within(candidate, root):
         raise EvidenceError("unsafe_evidence_symlink")
     return filesystem_path(candidate)
+
+
+def new_output(out: Path, inputs: list[Path]) -> None:
+    """Create a new output directory that never contains original evidence inputs."""
+    resolved = out.resolve()
+    if any(resolved.is_relative_to(path.resolve()) for path in inputs):
+        raise EvidenceError("report_output_inside_original_evidence")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.mkdir(mode=0o700)
 
 
 def read_json(path: Path):
@@ -376,7 +382,7 @@ def verify_manifest(root: Path, *, _manifest=None, _observed=None) -> list[str]:
         return ["manifest_missing_unsealed_run"]
     manifest = _manifest if _manifest is not None else read_json(manifest_path)
     limitations = verify_manifest_files(root, manifest, observed=_observed)
-    from inferyard.evidence.formats import UnsupportedFormat, require_core
+    from inferyard.evidence.formats import require_core
 
     require_core(manifest, "manifest")
     try:

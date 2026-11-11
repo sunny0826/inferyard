@@ -2,10 +2,9 @@
 
 from inferyard.adapters.requests import request_body
 from inferyard.config.fixed_output import enabled
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.engine_capabilities import observation_sealed
-from inferyard.evidence.storage import EvidenceError
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.platforms.identity import PreflightError
 
 
 def verify_probe(effective, response, target):

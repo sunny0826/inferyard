@@ -8,15 +8,8 @@ from inferyard.application.types import CommandResult
 from inferyard.config.planning import compile_plan, write_plan
 from inferyard.config.public_config_check import check_config
 from inferyard.config.public_recipe import fingerprint
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-    sha256_file,
-)
-from inferyard.reporting.report_common import _new_output
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, read_json, sha256_file
 
 
 def materialize(package, loaded, out):
@@ -106,7 +99,7 @@ def materialize(package, loaded, out):
     if reproduction["safety"] is not None:
         experiment["safety"] = reproduction["safety"]
     compile_plan(experiment)
-    _new_output(out, [package, loaded.source.parent])
+    new_output(out, [package, loaded.source.parent])
     inputs = out / "input"
     inputs.mkdir()
     for name, value in (("config", config), ("bundle", bundle), ("experiment", experiment)):

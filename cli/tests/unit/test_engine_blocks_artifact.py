@@ -6,8 +6,8 @@ import pytest
 
 from inferyard.application.types import CommandRequest
 from inferyard.application.verification import execute as verify
+from inferyard.errors import EvidenceError
 from inferyard.evidence.artifact_seal import seal
-from inferyard.evidence.storage import EvidenceError
 from inferyard.reporting import engine_blocks_report
 from tests.unit.test_engine_blocks import cross_format
 

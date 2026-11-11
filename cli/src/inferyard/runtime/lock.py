@@ -6,7 +6,8 @@ import os
 import uuid
 from pathlib import Path
 
-from inferyard.platforms.identity import PreflightError, process_start_ticks
+from inferyard.errors import PreflightError
+from inferyard.platforms.identity import process_start_ticks
 from inferyard.platforms.platform_io import open_nofollow
 from inferyard.runtime.host_files import (
     decode,

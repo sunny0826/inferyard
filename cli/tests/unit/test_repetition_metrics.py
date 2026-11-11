@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.repetition_metrics import repetition_metrics
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 
 
 def inputs():

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from inferyard.config.loader import LoadedConfig
+from inferyard.errors import ContractError
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,7 +114,6 @@ class VerificationOptions:
 
     @classmethod
     def from_request(cls, request):
-        from inferyard.contracts.validation import ContractError
 
         roots = []
         for entry in request.source_roots or ():

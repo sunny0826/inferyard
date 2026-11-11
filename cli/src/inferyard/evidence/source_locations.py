@@ -2,8 +2,8 @@
 
 import os
 from pathlib import Path
+from inferyard.errors import EvidenceError
 
-from inferyard.evidence.storage import EvidenceError
 
 
 def relative_source(path, out):

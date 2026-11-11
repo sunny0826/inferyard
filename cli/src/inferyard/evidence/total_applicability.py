@@ -4,8 +4,9 @@ from copy import deepcopy
 from pathlib import Path
 
 from inferyard.analysis.environment_identity import fields
+from inferyard.errors import EvidenceError
 from inferyard.evidence.performance_evidence import clock_span
-from inferyard.evidence.storage import EvidenceError, local_file, read_json, sha256_file
+from inferyard.evidence.storage import local_file, read_json, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.extensions.extension_evidence import verify_packet
 from inferyard.implementation_identity import role_identity

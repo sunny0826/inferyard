@@ -10,7 +10,6 @@ from urllib.parse import quote
 from jinja2 import Environment, PackageLoader, StrictUndefined
 from markupsafe import Markup, escape
 
-from inferyard.evidence.storage import EvidenceError
 from inferyard.reporting.svg_render import animation_stats
 
 
@@ -74,11 +73,3 @@ def render_report_html(environment, name, index):
     script = environment.get_template(prefix + "report_script.html").render()
     digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode("ascii")
     return environment.get_template(name).render(index=index, report_script_sha256=digest)
-
-
-def _new_output(out: Path, inputs: list[Path]):
-    resolved = out.resolve()
-    if any(resolved.is_relative_to(path.resolve()) for path in inputs):
-        raise EvidenceError("report_output_inside_original_evidence")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.mkdir(mode=0o700)

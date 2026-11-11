@@ -13,7 +13,8 @@ from inferyard.config.context_speed_profile import (
     PROFILE,
     classify_workload_inputs,
 )
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError
 from tests.unit import test_context_speed_profile
 
 inputs = test_context_speed_profile.inputs
