@@ -27,7 +27,7 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 		return ProgressResponse{}, Err("internal_error")
 	}
 	result := ProgressResponse{Status: inferyard.MapExitCode(out.ExitCode), ExitCode: out.ExitCode}
-	if out.ExitCode == 2 {
+	if out.ExitCode == inferyard.ExitBlocked {
 		// A CLI without the progress command (released 0.0.2 predates it)
 		// rejects the arguments with command "unknown"; a capable CLI reports
 		// command "progress" even for blocked queries.
@@ -36,7 +36,7 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 		}
 		return result, nil
 	}
-	if out.ExitCode != 0 {
+	if out.ExitCode != inferyard.ExitComplete {
 		return result, Err("cli_error")
 	}
 	value, err := inferyard.ParseProgress(out.Stdout)

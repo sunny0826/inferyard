@@ -2,11 +2,9 @@ package pages
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
-	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -128,55 +126,41 @@ func (w *viewState) managedBindCommand() (string, *core.ApiError) {
 
 func (w *viewState) bindCommand(pid, endpoint string) (string, *core.ApiError) {
 	if w.preview != nil {
+		// The preview never builds a real argv: a modeled bind is dispatched in
+		// memory, and anything the simulator does not represent stays an error.
+		if w.progress == nil || w.active() == nil {
+			return "", core.Err("preview_unsupported")
+		}
+		w.simulate(previewBind)
 		return "", nil
 	}
 	b := w.active()
 	if b == nil || w.progress == nil {
 		return "", core.Err("invalid_request")
 	}
-	var args []string
 	if b.Phase == "bound_missing" {
-		var err error
-		args, err = inferyard.SplitCommand(emptyText(b.NextCommand))
+		args, err := inferyard.SplitCommand(emptyText(b.NextCommand))
 		if err != nil {
 			args = w.baseCommand()
 		}
-	} else {
-		out, err := newBoundOutput(w.progress.Workspace, b.Bundle)
-		if err != nil {
-			var api *core.ApiError
-			if errors.As(err, &api) {
-				return "", api
-			}
-			return "", core.Err("internal_error")
+		if len(args) < 2 || args[0] != "config" || args[1] != "bind" {
+			return "", core.Err("invalid_request")
 		}
-		candidate := w.candidate
-		if st, err := os.Stat(candidate); err == nil && st.IsDir() {
-			candidate = filepath.Join(candidate, "candidate.toml")
-		}
-		args = []string{"config", "bind", "--candidate", candidate, "--out", out}
+		return commandOf(setArg(setArg(args, "--pid", pid), "--endpoint", endpoint)), nil
 	}
-	if len(args) < 2 || args[0] != "config" || args[1] != "bind" {
+	value, err := strconv.ParseInt(pid, 10, 64)
+	if err != nil {
 		return "", core.Err("invalid_request")
 	}
-	args = setArg(args, "--pid", pid)
-	args = setArg(args, "--endpoint", endpoint)
+	out, e := core.NextOutput(w.progress.Workspace, "bound", b.Bundle)
+	if e != nil {
+		return "", e
+	}
+	args, e := core.BindArgs(w.candidate, out, value, endpoint)
+	if e != nil {
+		return "", e
+	}
 	return commandOf(args), nil
-}
-
-func newBoundOutput(workspace, bundle string) (string, error) {
-	if !validName(bundle) {
-		return "", os.ErrInvalid
-	}
-	for n := 1; n <= 1000; n++ {
-		path := filepath.Join(workspace, "bound", fmt.Sprintf("%s-%d", bundle, n))
-		if _, err := os.Lstat(path); os.IsNotExist(err) {
-			return path, nil
-		} else if err != nil {
-			return "", err
-		}
-	}
-	return "", core.Err("output_name_exhausted")
 }
 
 func (w *viewState) startEngine() {
@@ -263,7 +247,12 @@ func commandOf(args []string) string {
 }
 
 func (w *viewState) executeBinding(command string, e *core.ApiError) {
-	if w.simulate(previewBind) {
+	if w.preview != nil {
+		// bindCommand already dispatched a modeled bind in memory. Only a
+		// refused attempt arrives here with an error.
+		if e != nil {
+			w.previewAction()
+		}
 		return
 	}
 	if e != nil {

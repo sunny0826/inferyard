@@ -2,9 +2,6 @@ package pages
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"path/filepath"
 
 	"inferyard/studio/internal/core"
 )
@@ -45,7 +42,7 @@ func runStartChain(ctx context.Context, modelName, engineName string,
 		match = false
 	}
 	if !match {
-		out, e := newNumberedOutput(p.Workspace, "preflight", "device")
+		out, e := core.NextOutput(p.Workspace, "preflight", "device")
 		if e != nil {
 			return startChainResult{}, e
 		}
@@ -91,7 +88,7 @@ func runStartChain(ctx context.Context, modelName, engineName string,
 		}
 		command := emptyText(b.NextCommand)
 		if force || b.NextAction != "prepare_candidate" || command == "" {
-			out, e := newNumberedOutput(p.Workspace, "candidates", b.Bundle)
+			out, e := core.NextOutput(p.Workspace, "candidates", b.Bundle)
 			if e != nil {
 				return startChainResult{}, e
 			}
@@ -168,21 +165,4 @@ func chainFailure(r core.WizardResult) *core.ApiError {
 		}
 	}
 	return e
-}
-
-// newNumberedOutput picks a fresh "<prefix>-N" child inside workspace/dir,
-// mirroring the CLI's new_output pattern for device and candidate outputs.
-func newNumberedOutput(workspace, dir, prefix string) (string, *core.ApiError) {
-	if workspace == "" || !validName(prefix) {
-		return "", core.Err("invalid_request")
-	}
-	for n := 1; n <= 1000; n++ {
-		path := filepath.Join(workspace, dir, fmt.Sprintf("%s-%d", prefix, n))
-		if _, err := os.Lstat(path); os.IsNotExist(err) {
-			return path, nil
-		} else if err != nil {
-			return "", core.Err("internal_error")
-		}
-	}
-	return "", core.Err("output_name_exhausted")
 }

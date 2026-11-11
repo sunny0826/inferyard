@@ -21,17 +21,27 @@ const (
 	Unknown    ExitStatus = "unknown"
 )
 
+// CLI exit codes. Studio maps them to task states and user-facing labels.
+// See studio/README.md ("CLI exit") for the product meaning.
+const (
+	ExitComplete   = 0
+	ExitBlocked    = 2
+	ExitIncomplete = 3
+	ExitToolError  = 4
+	ExitCancelled  = 130
+)
+
 func MapExitCode(code int) ExitStatus {
 	switch code {
-	case 0:
+	case ExitComplete:
 		return Complete
-	case 2:
+	case ExitBlocked:
 		return Blocked
-	case 3:
+	case ExitIncomplete:
 		return Incomplete
-	case 4:
+	case ExitToolError:
 		return Error
-	case 130:
+	case ExitCancelled:
 		return Cancelled
 	default:
 		return Unknown

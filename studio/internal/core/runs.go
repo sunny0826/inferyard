@@ -444,22 +444,22 @@ loop:
 			t.Task.Exit.StopReason = text(details["last_stop_reason"])
 		}
 	}
-	if out.ExitCode == 3 {
+	if out.ExitCode == inferyard.ExitIncomplete {
 		t.Task.Exit.Completeness = ptr("incomplete")
 	}
 	switch {
 	case tailErr != nil:
 		t.Task.State = "failed"
 		t.Task.Error = Err("internal_error")
-	case out.ExitCode == 130 || ctx.Err() != nil:
+	case out.ExitCode == inferyard.ExitCancelled || ctx.Err() != nil:
 		t.Task.State = "cancelled"
 		if ctx.Err() != nil {
-			t.Task.Exit.ExitCode = 130
+			t.Task.Exit.ExitCode = inferyard.ExitCancelled
 		}
 	case err != nil:
 		t.Task.State = "failed"
 		t.Task.Error = Err("internal_error")
-	case out.ExitCode == 0 || out.ExitCode == 3:
+	case out.ExitCode == inferyard.ExitComplete || out.ExitCode == inferyard.ExitIncomplete:
 		if parseErr != nil {
 			t.Task.State = "failed"
 			t.Task.Error = Err("internal_error")

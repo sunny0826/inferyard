@@ -94,7 +94,11 @@ func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"config", "bind", "--candidate", filepath.Join(candidate, "candidate.toml"), "--out", filepath.Join(root, "bound", "zh-core-2"), "--pid", "123", "--endpoint", s.engineState.Endpoint}
+	bound2, err := core.Resolve(root, filepath.Join("bound", "zh-core-2"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"config", "bind", "--candidate", filepath.Join(candidate, "candidate.toml"), "--pid", "123", "--endpoint", s.engineState.Endpoint, "--out", bound2}
 	if !slices.Equal(args, want) {
 		t.Fatalf("%v", args)
 	}
@@ -104,7 +108,11 @@ func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 		t.Fatal(e)
 	}
 	args, _ = inferyard.SplitCommand(command)
-	if !slices.Contains(args, filepath.Join(root, "bound", "zh-core-3")) || !slices.Contains(args, "456") {
+	bound3, err := core.Resolve(root, filepath.Join("bound", "zh-core-3"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(args, bound3) || !slices.Contains(args, "456") {
 		t.Fatal(args)
 	}
 	raw, _ := os.ReadFile(marker)

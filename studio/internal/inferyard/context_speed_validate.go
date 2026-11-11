@@ -10,10 +10,10 @@ import (
 
 func validSpeedResult(r ContextSpeedResult) bool {
 	m := r.Metadata
-	contextCase := map[int]string{65536: "context-speed-64k", 131072: "context-speed-128k", 262144: "context-speed-256k"}[m.SelectedContextTokens]
-	if contextCase == "" || m.Engine.Adapter != "prism_llama_server_v1" || m.Bundle.BundleID != "zh-context-speed" || m.Bundle.Version != "2026.10.1" ||
+	contextCase, known := ContextSpeedCaseID(m.SelectedContextTokens)
+	if !known || m.Engine.Adapter != ContextSpeedAdapter || m.Bundle.BundleID != ContextSpeedBundleID || m.Bundle.Version != ContextSpeedBundleVersion ||
 		!speedHash.MatchString(m.Model.SHA256) || !speedHash.MatchString(m.Model.TemplateSHA256) || !speedHash.MatchString(m.Engine.BinarySHA256) ||
-		!speedHash.MatchString(r.Source.PlanSHA256) || !speedID.MatchString(r.Source.ExperimentID) || !speedID.MatchString(r.Source.WorkloadID) || len(r.Samples) != 5 {
+		!speedHash.MatchString(r.Source.PlanSHA256) || !speedID.MatchString(r.Source.ExperimentID) || !speedID.MatchString(r.Source.WorkloadID) || len(r.Samples) != ContextSpeedSamples {
 		return false
 	}
 	for _, ref := range speedRefs(reflect.ValueOf(r)) {
@@ -184,7 +184,7 @@ func validSpeedSample(s SpeedSample, context int) bool {
 		!validSpeedValue(c.Context) || !validSpeedValue(c.PromptLength) || !validSpeedValue(c.Time) || !validSpeedValue(c.Prefill) || !validSpeedValue(c.Decode) {
 		return false
 	}
-	if c.Context.Value != nil && !slices.Contains([]int64{65536, 131072, 262144}, *c.Context.Value) || c.PromptLength.Value != nil && *c.PromptLength.Value < 1 {
+	if c.Context.Value != nil && !ValidContextSpeedContext(int(*c.Context.Value)) || c.PromptLength.Value != nil && *c.PromptLength.Value < 1 {
 		return false
 	}
 	if s.Measurement.CohortSHA256 != nil && !speedHash.MatchString(*s.Measurement.CohortSHA256) {

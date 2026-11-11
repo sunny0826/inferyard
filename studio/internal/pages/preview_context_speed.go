@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
 func (p *previewSession) startSpeed(op previewSpeedStart) {
 	s := p.state
-	validContext := op.context == 65536 || op.context == 131072 || op.context == 262144
+	validContext := inferyard.ValidContextSpeedContext(op.context)
 	if s.speed == nil || s.busy || s.running() != nil || s.environmentMissing() || !s.preflightReady() ||
 		op.model == "" || op.engine == "" || op.model != s.model || op.engine != s.engine ||
 		s.eligibility(op.engine).State != core.EngineCheckEligible || !validContext ||
@@ -97,7 +98,7 @@ func (p *previewSession) tickSpeed(r *speedTask, missing bool) {
 }
 
 func previewSpeedSample(context, index int) speedSample {
-	prompt := map[int]int{65536: 52625, 131072: 106294, 262144: 213612}[context]
+	prompt := map[int]int{inferyard.ContextSpeed64K: 52625, inferyard.ContextSpeed128K: 106294, inferyard.ContextSpeed256K: 213612}[context]
 	seconds := float64(prompt)/2000 + float64(index-2)*0.2
 	return speedSample{context: previewValue(context), prompt: previewValue(prompt), seconds: previewValue(seconds),
 		prefill: previewValue(float64(prompt) / seconds), decode: previewValue(42.0)}
@@ -105,7 +106,7 @@ func previewSpeedSample(context, index int) speedSample {
 
 func previewSpeedHistory(s *viewState) {
 	r := &speedTask{id: "preview-speed-history", model: s.model, engine: s.engine,
-		context: 131072, stage: speedDone}
+		context: inferyard.ContextSpeed128K, stage: speedDone}
 	r.selectionModel, r.selectionEngine = s.model, s.engine
 	applySpeedResult(r, previewSpeedResult(r, 5, false))
 	s.speed.history = []*speedTask{r}
