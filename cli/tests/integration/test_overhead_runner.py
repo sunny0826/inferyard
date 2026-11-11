@@ -301,7 +301,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             if arm["mode"] == "off":
                 assert not data["samples"]
                 assert not (path / "environment.jsonl").read_text()
-        from inferyard.evidence.total_applicability import load_performance_evidence_v3
+        from inferyard.reporting.total_applicability import load_performance_evidence_v3
         from inferyard.platforms.resources import ResourceSampler
 
         # An ABBA arm is not an independent subsequent target.
@@ -321,7 +321,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         # Isolate incremental per-metric gates in this synthetic fixture.
         # The actual full-trial path and missing-proof rejection have separate regressions.
         monkeypatch.setattr(
-            "inferyard.evidence.total_applicability.load_total_applicability",
+            "inferyard.reporting.total_applicability.load_total_applicability",
             lambda *args, **kwargs: {"eligible": True, "reasons": [], "tolerance_ratio": 0.99},
         )
         # Only this synthetic test bypasses human corpus admission.

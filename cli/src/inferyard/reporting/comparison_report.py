@@ -88,7 +88,7 @@ def build_comparison(
     (left, left_ref), (right, right_ref) = loaded
     evidence = None
     if left_overhead is not None:
-        from inferyard.evidence.total_applicability import load_performance_evidence_v3
+        from inferyard.reporting.total_applicability import load_performance_evidence_v3
 
         evidence = [
             load_performance_evidence_v3(

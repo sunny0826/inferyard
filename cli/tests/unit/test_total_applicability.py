@@ -6,7 +6,7 @@ from shutil import copytree
 import pytest
 
 from inferyard.errors import EvidenceError
-from inferyard.evidence import total_applicability as binding
+from inferyard.reporting import total_applicability as binding
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.reporting.comparison_report import comparison_input
