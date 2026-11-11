@@ -1,18 +1,15 @@
 """Serial fixed-plan controller; service changes remain explicit operator actions."""
 
-import asyncio
 import os
 import sys
 from pathlib import Path
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from inferyard.analysis.comparison_types import JSONRecord
-from inferyard.analysis.repetition_metrics import repetition_metrics
 from inferyard.analysis.scoring import ScoringContext
-from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.contracts.validation import Document
 from inferyard.errors import EvidenceError, PreflightError
-from inferyard.evidence.ledger import plan_progress, resume_selection
+from inferyard.evidence.ledger import resume_selection
 from inferyard.evidence.storage import read_json
 from inferyard.implementation_identity import IdentityContext
 from inferyard.provenance import tool_source_hash
@@ -38,46 +35,29 @@ from inferyard.runtime.trial_runner import TrialDependencies, run_trial
 __all__ = ["history"]
 
 
-def _result(
-    request: CommandRequest,
+@dataclass(frozen=True, slots=True)
+class BatchOutcome:
+    """Domain result of one fixed-plan batch step, before command presentation."""
+
+    code: int
+    root: Path
+    plan: JSONRecord
+    runs: list[JSONRecord]
+    state: str
+    next_trial: JSONRecord | None = None
+    comparison_stop: JSONRecord | None = None
+
+
+def _outcome(
     root: Path,
     plan: JSONRecord,
     runs: list[JSONRecord],
-    status: str,
+    state: str,
     code: int = 0,
     next_trial: JSONRecord | None = None,
-) -> tuple[int, CommandResult]:
-    progress = plan_progress(plan, runs)
-    complete = all(t["status"] == "complete" for t in progress)
-    latest = runs[-1] if runs else None
-    if code == 0 and any(
-        (r.get("score") or {}).get("quality_state") == "unscorable"
-        for d in runs
-        for r in d["requests"]
-    ):
-        code = 3
-    details = {
-        "plan_sha256": plan["plan_sha256"],
-        "trials": progress,
-        **(
-            {"next_results_command": ["inferyard", "speed-results", "--batch", str(root)]}
-            if plan["experiment"].get("profile") == "context-speed.v1"
-            else {"repetition_metrics": repetition_metrics(plan, runs)}
-        ),
-        "remaining_wall_budget_seconds": remaining_budget(plan, runs),
-        "next_trial": next_trial,
-        "runs": [str(d["path"]) for d in runs],
-        "last_stop_reason": latest["summary"]["stop_reason"] if latest else None,
-    }
-    return code, CommandResult(
-        request.command,
-        status,
-        "complete" if complete else "incomplete",
-        latest["run"]["run_id"] if latest else None,
-        str(root),
-        () if complete else ("experiment_incomplete",),
-        details,
-    )
+    comparison_stop: JSONRecord | None = None,
+) -> BatchOutcome:
+    return BatchOutcome(code, root, plan, runs, state, next_trial, comparison_stop)
 
 
 def _next(plan, runs):
@@ -114,19 +94,24 @@ def _capacity_scan_stopped(plan: JSONRecord, runs: list[JSONRecord]) -> bool:
 
 
 def _comparison_stopped(
-    request: CommandRequest,
     root: Path,
     plan: JSONRecord,
     runs: list[JSONRecord],
     stop: JSONRecord,
-) -> tuple[int, CommandResult]:
-    code, result = _result(request, root, plan, runs, "comparison_history_stopped", 3)
-    return code, replace(result, details={**result.details, "comparison_stop": stop})
+) -> BatchOutcome:
+    return _outcome(
+        root,
+        plan,
+        runs,
+        "comparison_history_stopped",
+        3,
+        comparison_stop=stop,
+    )
 
 
 async def execute_async(
-    request: CommandRequest, dependencies: TrialDependencies | None = None
-) -> tuple[int, CommandResult]:
+    request, dependencies: TrialDependencies | None = None
+) -> BatchOutcome:
     deps = dependencies or TrialDependencies(scorer=registered_score)
     scoring_context = ScoringContext()
     identity_context = IdentityContext(source_hash=tool_source_hash)
@@ -166,12 +151,12 @@ async def execute_async(
             ),
         )
         if comparison_stop is not None:
-            return _comparison_stopped(request, root, plan, runs, comparison_stop)
+            return _comparison_stopped(root, plan, runs, comparison_stop)
         if _capacity_scan_stopped(plan, runs):
-            return _result(request, root, plan, runs, "capacity_scan_stopped", 3)
+            return _outcome(root, plan, runs, "capacity_scan_stopped", 3)
         pending, interrupted = _next(plan, runs)
         if interrupted and "duration" in interrupted["summary"]:
-            return _result(request, root, plan, runs, "duration_requires_new_window", 3, pending)
+            return _outcome(root, plan, runs, "duration_requires_new_window", 3, pending)
         if resume:
             source = next(
                 (d for d in runs if d["path"].resolve() == request.from_run.resolve()), None
@@ -188,10 +173,9 @@ async def execute_async(
         else:
             source, selection = None, ()
             if pending is None:
-                return _result(request, root, plan, runs, "finished")
+                return _outcome(root, plan, runs, "finished")
             if interrupted is not None:
-                return _result(
-                    request,
+                return _outcome(
                     root,
                     plan,
                     runs,
@@ -225,8 +209,7 @@ async def execute_async(
         fresh_process = bound.config.to_dict()["execution"].get("require_fresh_process", False)
         if previous is not None and (not same_workload or fresh_process):
             if not request.workload_id or not request.handoff_note or request.server_pid is None:
-                return _result(
-                    request,
+                return _outcome(
                     root,
                     plan,
                     runs,
@@ -274,7 +257,7 @@ async def execute_async(
         for trial in selected_trials:
             wall = remaining_budget(plan, runs)
             if wall <= 0:
-                return _result(request, root, plan, runs, "budget_exhausted", 3, trial)
+                return _outcome(root, plan, runs, "budget_exhausted", 3, trial)
             parent = (
                 source
                 if resume
@@ -320,8 +303,7 @@ async def execute_async(
                 and any(r.get("quality_state") == "unscorable" for r in data["requests"])
             )
             if code and not scoring_partial:
-                return _result(
-                    request,
+                return _outcome(
                     root,
                     plan,
                     runs,
@@ -336,19 +318,6 @@ async def execute_async(
             status = "resumed_subset"
         else:
             status = "awaiting_handoff"
-        return _result(
-            request, root, plan, runs, status, 0 if pending is None or resume else 3, pending
+        return _outcome(
+            root, plan, runs, status, 0 if pending is None or resume else 3, pending
         )
-
-
-def execute(request: CommandRequest) -> tuple[int, CommandResult]:
-    async def dispatch() -> tuple[int, CommandResult]:
-        from inferyard.runtime.signals import install_termination_handler
-
-        restore_signal = install_termination_handler()
-        try:
-            return await execute_async(request)
-        finally:
-            restore_signal()
-
-    return asyncio.run(dispatch())

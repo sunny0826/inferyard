@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from inferyard.errors import PreflightError
+from inferyard.runtime.batch_runner import execute_async
 from inferyard.runtime import batch_runner, trial_runner
 
 
@@ -39,7 +40,7 @@ def test_batch_production_whitelist(tmp_path, monkeypatch, name, adapter):
     )
     blocked = name == "nt" and adapter == "llama_cpp_b11146_v1"
     with pytest.raises(PreflightError if blocked else AfterPlatformGate) as caught:
-        asyncio.run(batch_runner.execute_async(request))
+        asyncio.run(execute_async(request))
     if blocked:
         assert str(caught.value) == "windows_phase2_live_not_supported"
     assert not list(tmp_path.iterdir())

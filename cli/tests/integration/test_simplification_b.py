@@ -13,7 +13,7 @@ from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.integration.test_trial_runner import inputs
 
@@ -138,7 +138,7 @@ def test_batch_scoring_failures_do_not_drop_later_trials(tmp_path, scenario):
         raise RuntimeError("isolated scoring failure")
 
     deps.scorer = broken
-    code, result = asyncio.run(batch_runner.execute_async(request, deps))
+    code, result = asyncio.run(execute_async(request, deps))
     assert code == 3
     assert len(result.details["runs"]) == 3
     assert result.completeness == "incomplete"
@@ -153,7 +153,7 @@ def test_applicable_handoff_reuses_clean_service(tmp_path, scenario, monkeypatch
     from tests.integration.test_batch_runner import batch
 
     request, deps = batch(tmp_path, scenario, second=True)
-    code, first = asyncio.run(batch_runner.execute_async(request, deps))
+    code, first = asyncio.run(execute_async(request, deps))
     assert code == 3 and first.status == "awaiting_handoff"
     endpoint = scenario[0].config.config.to_dict()["endpoint"]
     monkeypatch.setattr(
@@ -166,7 +166,7 @@ def test_applicable_handoff_reuses_clean_service(tmp_path, scenario, monkeypatch
         server_pid=endpoint["server_pid"],
         handoff_note="same clean service",
     )
-    code, result = asyncio.run(batch_runner.execute_async(handoff, deps))
+    code, result = asyncio.run(execute_async(handoff, deps))
     assert code == 0
     assert len(scenario[2]) == 16
     binding = TrialEvidence(Path(result.details["runs"][-1])).observation("service_binding")

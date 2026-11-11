@@ -2,7 +2,6 @@
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
-from inferyard.application.types import CommandResult, VerificationOptions
 from inferyard.errors import EvidenceError
 from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
 from inferyard.evidence.ledger import read_trial
@@ -205,11 +204,8 @@ def verify_comparison(root, *, source_roots=()):
     return {"verified": True, "source_runs": 2}
 
 
-def execute(request, *, options=None):
-    if request.command == "compare-check":
-        options = options or VerificationOptions.from_request(request)
-        result = verify_comparison(request.run, source_roots=options.source_roots)
-        return 0, CommandResult(request.command, "verified", "complete", details=result)
+def write_comparison(request):
+    """Build, render and seal one pair comparison; returns the comparison document."""
     source_metadata = {}
     loaded = [
         comparison_input(
@@ -259,11 +255,4 @@ def execute(request, *, options=None):
     atomic_bytes(request.out / "index.json", json_bytes(index))
     atomic_bytes(request.out / "report.html", html.encode())
     seal_report(request.out, comparison=True)
-    return 0, CommandResult(
-        request.command,
-        "compared",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(result["limitations"]),
-        details=result,
-    )
+    return result

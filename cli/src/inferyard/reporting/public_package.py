@@ -5,7 +5,6 @@ import math
 import re
 
 from inferyard.analysis.public_metrics import project_metrics
-from inferyard.application.types import CommandResult
 from inferyard.config.public_recipe import reproduction_recipe
 from inferyard.errors import EvidenceError
 from inferyard.evidence.formats import require_version
@@ -257,18 +256,3 @@ def verify_public(out, source_root=None):
             raise EvidenceError("public_source_projection_mismatch")
         result["source_projection_verified"] = True
     return result
-
-
-def execute(request):
-    result = (
-        verify_public(request.run, request.from_run)
-        if request.command == "public-check"
-        else write_public(request.run, request.out)
-    )
-    return 0, CommandResult(
-        request.command,
-        "verified" if request.command == "public-check" else "exported",
-        "complete",
-        details=result,
-        limitations=tuple(LIMITS),
-    )

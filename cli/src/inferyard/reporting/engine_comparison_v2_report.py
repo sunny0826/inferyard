@@ -12,7 +12,7 @@ from inferyard.analysis.engine_comparison_v2 import (
     bundle_comparisons,
     derive_comparison_v2,
 )
-from inferyard.application.types import CommandRequest, CommandResult, VerificationOptions
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.artifact_seal import read_sealed, seal
@@ -281,7 +281,7 @@ def verify(root: Path, *, options: VerificationOptions) -> JSONRecord:
     }
 
 
-def _derivation_targets(request: CommandRequest) -> tuple[Path, Path, Path]:
+def _derivation_targets(request) -> tuple[Path, Path, Path]:
     if request.frozen_plan is None or request.batch is None or request.out is None:
         raise ContractError(
             "compare_engines.input", "compare-engines requires --plan, --batch and --out"
@@ -289,7 +289,7 @@ def _derivation_targets(request: CommandRequest) -> tuple[Path, Path, Path]:
     return request.frozen_plan, request.batch, request.out
 
 
-def _publish(request: CommandRequest, result: JSONRecord) -> None:
+def _publish(request, result: JSONRecord) -> None:
     plan_path, batch_root, out = _derivation_targets(request)
     new_output(out, [plan_path.parent if plan_path.is_file() else plan_path, batch_root])
     raw = json_bytes(result)
@@ -299,21 +299,8 @@ def _publish(request: CommandRequest, result: JSONRecord) -> None:
     seal(out, SEALED)
 
 
-def execute(
-    request: CommandRequest, *, options: VerificationOptions | None = None
-) -> tuple[int, CommandResult]:
-    if request.command == "engine-compare-check":
-        options = options or VerificationOptions.from_request(request)
-        details = verify(request.run, options=options)
-        return 0, CommandResult(request.command, "verified", "complete", details=details)
+def write(request):
     plan_path, batch_root, out = _derivation_targets(request)
     result = build(plan_path, batch_root, out)
     _publish(request, result)
-    return 0, CommandResult(
-        request.command,
-        "derived",
-        "complete",
-        evidence_dir=str(out),
-        limitations=tuple(result["limitations"]),
-        details=result,
-    )
+    return result

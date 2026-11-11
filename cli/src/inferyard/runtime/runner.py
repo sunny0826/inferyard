@@ -12,7 +12,6 @@ from urllib.parse import urlsplit
 
 from inferyard.adapters.prism import PrismAdapter
 from inferyard.analysis.scoring import ScoringContext, score_case
-from inferyard.application.types import CommandResult
 from inferyard.config.bundle import require_review
 from inferyard.config.loader import LoadedConfig
 from inferyard.config.single_plan import compile_single_plan
@@ -72,6 +71,18 @@ class Dependencies:
     guard: object = _guard
     scorer: object = score_case
     environment: object = environment_snapshot
+
+
+@dataclass(frozen=True, slots=True)
+class RunOutcome:
+    """Domain result of one serial run, before command presentation."""
+
+    code: int
+    run_id: str
+    path: Path
+    summary: dict | None
+    reason: str
+    observation: dict
 
 
 def read_configuration_source(loaded):
@@ -225,36 +236,11 @@ async def execute_async(request, dependencies: Dependencies | None = None):
         ),
     )
     summary, reason = outcome["summary"], outcome["reason"]
-    return code, CommandResult(
-        request.command,
-        "finished"
-        if code == 0
-        else "interrupted"
-        if code == 130
-        else "blocked"
-        if code == 2
-        else "error",
-        summary["completeness"] if summary else "incomplete",
-        store.run_id,
-        str(store.path),
-        tuple(
-            ([reason] if reason != "plan_finished" else [])
-            + (summary["limitations"] if summary else [])
-        ),
-        details={
-            **outcome["observation"],
-            "evidence_only": True,
-            "next_report_command": [
-                "inferyard",
-                "report",
-                "--runs",
-                str(store.path),
-                "--out",
-                str(store.path.parent / (store.run_id + "-report")),
-            ],
-        },
+    return code, RunOutcome(
+        code=code,
+        run_id=store.run_id,
+        path=store.path,
+        summary=summary,
+        reason=reason,
+        observation=outcome["observation"],
     )
-
-
-def execute(request):
-    return asyncio.run(execute_async(request))

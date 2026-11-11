@@ -2,7 +2,7 @@
 
 import json
 
-from inferyard.application.types import VerificationOptions
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.reporting import report, sealed_report
 from tests.helpers import fixture_run
 

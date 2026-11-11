@@ -141,7 +141,7 @@ with locking.HostLock() as lock:
 @pytest.mark.parametrize("envelope", [None, {"phase": "ready"}, {"phase": "pending"}])
 def test_first_live_entry_accepts_clean_state(tmp_path, monkeypatch, config_path, envelope):
     from inferyard.runtime.host_files import publish_state
-    from inferyard.runtime.runner import execute_async
+    from inferyard.application.execution import execute_async
     from tests.integration.test_runner import scenario
 
     request, deps, calls, _ = scenario.__wrapped__(
@@ -171,7 +171,7 @@ def test_legacy_envelope_dirty_blocks_requests_and_requires_recovery(
     tmp_path, monkeypatch, config_path
 ):
     from inferyard.runtime.host_files import publish_state
-    from inferyard.runtime.runner import execute_async
+    from inferyard.application.execution import execute_async
     from tests.integration.test_runner import scenario
 
     request, deps, calls, _ = scenario.__wrapped__(tmp_path, monkeypatch, config_path)

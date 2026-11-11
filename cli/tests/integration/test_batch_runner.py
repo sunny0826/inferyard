@@ -18,7 +18,7 @@ from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.runtime.batch_runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.unit.test_phase2_contracts import experiment
 
@@ -282,7 +282,8 @@ def test_repeat_analysis_tampering_rejected(tmp_path, scenario):
 
 
 def test_comparison_reads_saved_trials_without_requests(tmp_path, scenario):
-    from inferyard.reporting.comparison_report import execute, verify_comparison
+    from inferyard.application.reporting import execute
+    from inferyard.reporting.comparison_report import verify_comparison
 
     request, deps = batch(tmp_path, scenario)
     _, batch_result = asyncio.run(execute_async(request, deps))

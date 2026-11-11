@@ -33,7 +33,7 @@ def main():
     import inferyard.runtime.lock as locking
     from inferyard.cli import main as cli_main
     from inferyard.evidence.ledger import read_trial
-    from inferyard.runtime.runner import execute_async
+    from inferyard.application.execution import execute_async
 
     assert "site-packages" in Path(inferyard.__file__).parts
     fixed = {name: getattr(locking, name) for name in ("LOCK_PATH", "STATE_PATH")}

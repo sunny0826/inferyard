@@ -9,7 +9,7 @@ from pathlib import Path
 
 from inferyard import __version__
 from inferyard.analysis.scoring import scorer_hash
-from inferyard.application.types import VerificationOptions
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.report import verify_report, write_report
 from inferyard.reporting.report_assets import template_hash

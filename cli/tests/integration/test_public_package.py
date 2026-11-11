@@ -11,7 +11,7 @@ from inferyard.errors import EvidenceError
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.reporting.comparison_report import comparison_input
 from inferyard.reporting.public_package import projection, verify_public, write_public
-from inferyard.runtime.batch_runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.integration.test_batch_runner import batch
 from tests.integration.test_runner import scenario as runner_scenario
 

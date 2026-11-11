@@ -323,36 +323,3 @@ async def live(plan, loaded, out, *, identity_context=None):
                 if not unknown:
                     lock.clean()
             store.close()
-
-
-def execute(request):
-    from inferyard.application.types import CommandResult
-
-    if request.command == "extension-check":
-        summary = verify_packet(request.run)
-        path, status = request.run, "verified"
-    elif request.command == "extension-freeze":
-        plan = freeze(read_json(request.extension_spec), request.config, request.out)
-        return 0, CommandResult(
-            request.command, "frozen", "complete", evidence_dir=str(request.out), details=plan
-        )
-    elif request.command == "extension-replay":
-        packet = read_json(request.extension_spec)
-        if packet.get("evidence_kind") != "fixture":
-            raise EvidenceError("offline_import_cannot_grant_live_qualification")
-        path, summary = save_packet(request.out, packet)
-        status = "software_verified"
-    else:
-        from inferyard.implementation_identity import IdentityContext
-
-        identity_context = IdentityContext(source_hash=tool_source_hash)
-        plan = read_plan(
-            request.extension_spec, request.config, source_identity=identity_context.source
-        )
-        path, summary = asyncio.run(
-            live(plan, request.config, request.out, identity_context=identity_context)
-        )
-        status = "executed"
-    return 0, CommandResult(
-        request.command, status, "complete", evidence_dir=str(path), details=summary
-    )

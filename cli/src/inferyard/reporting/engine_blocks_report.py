@@ -4,7 +4,6 @@ import hashlib
 from copy import deepcopy
 from importlib.resources import files
 
-from inferyard.application.types import CommandResult
 from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import EvidenceError
 from inferyard.evidence.storage import atomic_bytes, new_output
@@ -60,14 +59,7 @@ def render(result):
     return _environment().get_template(TEMPLATE).render(result=result)
 
 
-def execute(request, *, options=None):
-    if request.command == "engine-compare-check":
-        from inferyard.application.types import VerificationOptions
-        from inferyard.reporting.engine_blocks_verify import verify
-
-        options = options or VerificationOptions.from_request(request)
-        details = verify(request.run, options=options)
-        return 0, CommandResult(request.command, "verified", "complete", details=details)
+def write(request):
     from inferyard.evidence.artifact_seal import seal
 
     paths = [*(request.left_runs or ()), *(request.right_runs or ())]
@@ -78,11 +70,4 @@ def execute(request, *, options=None):
     # Render the saved form so verify --rerender sees the same key order.
     atomic_bytes(request.out / HTML, render(strict_json_loads(raw.decode())).encode())
     seal(request.out, SEALED)
-    return 0, CommandResult(
-        request.command,
-        "compared",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(result["limitations"]),
-        details=result,
-    )
+    return result

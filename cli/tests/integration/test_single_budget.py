@@ -8,6 +8,7 @@ import pytest
 
 import inferyard.runtime.lock as locking
 import inferyard.runtime.runner as running
+from inferyard.application.execution import execute_async
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import read_json, read_jsonl
 from inferyard.evidence.trial_evidence import TrialEvidence
@@ -81,7 +82,7 @@ def test_overall_budget_stops_waits_and_requests_and_releases_resources(
             return instance
 
         deps.adapter = adapter
-        code, result = await asyncio.wait_for(running.execute_async(request, deps), 5)
+        code, result = await asyncio.wait_for(execute_async(request, deps), 5)
         frozen = TrialEvidence(Path(result.evidence_dir)).input("plan")["experiment"]["budget"]
         assert 0 < clock.deadline_seconds <= frozen["max_wall_seconds"]
         assert not [
@@ -144,7 +145,7 @@ def test_user_cancel_during_generation_retains_reason_when_deadline_fires_in_dra
             return instance
 
         deps.adapter = adapter
-        task = asyncio.create_task(running.execute_async(request, deps))
+        task = asyncio.create_task(execute_async(request, deps))
         while len(calls) < 6:
             await asyncio.sleep(0)
         task.cancel()
@@ -173,7 +174,7 @@ def test_synchronous_preflight_overrun_stops_before_first_request(scenario, monk
         return result
 
     deps.preflight = slow_preflight
-    code, result = asyncio.run(running.execute_async(request, deps))
+    code, result = asyncio.run(execute_async(request, deps))
     assert code == 3 and "single_wall_budget_exhausted" in result.limitations
     assert calls == []
     assert read_trial(Path(result.evidence_dir))["summary"]["counts"]["not_executed"] == 3

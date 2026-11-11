@@ -14,7 +14,7 @@ from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from inferyard.runtime.trial_runner import TrialDependencies
 from tests.integration.test_runner import scenario  # noqa: F401
 from tests.local_engine_runtime.identity import freeze
@@ -271,7 +271,7 @@ def test_second_scope_requires_explicit_handoff_and_new_process(
     rig,  # noqa: F811
 ):
     from inferyard.runtime import batch_state
-    from inferyard.runtime.batch_runner import execute_async as execute_batch
+    from inferyard.application.execution import execute_async as execute_batch
     from tests.integration.test_batch_runner import batch
 
     command, deps, state = local_run

@@ -140,7 +140,8 @@ def test_two_frozen_cache_policies_compare_with_replayed_evidence(scenario, monk
     from copy import deepcopy
 
     from inferyard.application.types import CommandRequest
-    from inferyard.reporting.comparison_report import build_comparison, execute, verify_comparison
+    from inferyard.application.reporting import execute
+    from inferyard.reporting.comparison_report import build_comparison, verify_comparison
     from tests.unit.test_environment import state
 
     # Synthetic admission only; does not approve any real corpus.

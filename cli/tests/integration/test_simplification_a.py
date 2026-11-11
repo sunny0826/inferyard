@@ -17,7 +17,7 @@ from inferyard.evidence.storage import read_json
 from inferyard.evidence.token_budgets import V1
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.reporting.rescore import verify_rescore, write_rescore
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.helpers import fixture_run
 from tests.integration.test_lab_cli import lab_scenario as lab_fixture
 from tests.integration.test_runner import scenario as runner_fixture

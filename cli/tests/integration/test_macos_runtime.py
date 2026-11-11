@@ -19,8 +19,8 @@ from inferyard.evidence.storage import sha256_file, verify_manifest
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.identity import environment_snapshot, process_start_ticks
 from inferyard.reporting.report import verify_report, write_report
-from inferyard.runtime.batch_runner import execute_async as batch_execute
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async as batch_execute
+from inferyard.application.execution import execute_async
 from scripts.create_macos_benchmark_config import render_toml
 from tests.helpers import readline_timeout
 

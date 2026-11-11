@@ -4,7 +4,6 @@ import asyncio
 import os
 from dataclasses import asdict
 
-from inferyard.application.types import CommandResult
 from inferyard.errors import EvidenceError, PreflightError
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import atomic_bytes, new_output, read_json, sha256_file
@@ -93,17 +92,6 @@ async def prepare(request, dependencies=None):
                 "files": {p.name: sha256_file(p) for p in request.out.iterdir() if p.is_file()}
             }
             atomic_bytes(request.out / "preparation-manifest.json", json_bytes(manifest))
-            return 0 if result["status"] == "matched" else 3, CommandResult(
-                request.command,
-                result["status"],
-                "complete" if prompt is not None else "incomplete",
-                evidence_dir=str(request.out),
-                limitations=tuple(result["limitations"]),
-                details=result,
-            )
+            return result, prompt is not None
         finally:
             await adapter.close()
-
-
-def execute(request):
-    return asyncio.run(prepare(request))

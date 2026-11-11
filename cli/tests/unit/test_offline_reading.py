@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.application.types import CommandRequest, VerificationOptions
+from inferyard.application.types import CommandRequest
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.application.verification import execute
 from inferyard.errors import EvidenceError
 from inferyard.contracts.validation import json_bytes
@@ -70,7 +71,7 @@ def test_frozen_plan_and_empty_batch_are_read_without_derived_report(tmp_path, c
 
 
 def test_comparison_and_linked_report_move_and_keep_source_binding(tmp_path):
-    from inferyard.reporting.comparison_report import execute as compare
+    from inferyard.application.reporting import execute as compare
 
     base = tmp_path / "original"
     roots = [fixture_run(base / side) for side in ("left", "right")]

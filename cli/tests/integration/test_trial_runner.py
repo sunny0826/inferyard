@@ -307,12 +307,12 @@ def test_length_preparation_only_uses_management_calls(scenario, tmp_path, targe
     source.write_bytes(json_bytes(spec(target_tokens=target, max_probes=3)))
     out = tmp_path / "length-prepared"
     request = replace(request, command="prepare-length", length_spec=source, out=out)
-    code, result = asyncio.run(prepare(request, deps))
+    result, prompt_present = asyncio.run(prepare(request, deps))
     if target == 1:
-        assert code == 0 and result.status == "matched"
+        assert result["status"] == "matched" and prompt_present is True
         assert (out / "prompt.txt").read_text() == "开始结束"
     else:
-        assert code == 3 and result.status == "search_exhausted"
+        assert result["status"] == "search_exhausted" and prompt_present is False
         assert not (out / "prompt.txt").exists()
         assert len(read_json(out / "probes.json")) == 3
     assert calls == []

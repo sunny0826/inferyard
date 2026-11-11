@@ -4,7 +4,6 @@ from copy import deepcopy
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.scoring import scorer_hash
-from inferyard.application.types import CommandResult
 from inferyard.config.planning import compile_plan, write_plan
 from inferyard.config.public_config_check import check_config
 from inferyard.config.public_recipe import fingerprint
@@ -121,15 +120,3 @@ def materialize(package, loaded, out):
     }
     atomic_bytes(out / "reproduction.json", json_bytes(lineage))
     return lineage
-
-
-def execute(request):
-    result = materialize(request.run, request.config, request.out)
-    return 0, CommandResult(
-        request.command,
-        "planned",
-        "incomplete",
-        evidence_dir=str(request.out),
-        details=result,
-        limitations=tuple(result["limitations"]),
-    )

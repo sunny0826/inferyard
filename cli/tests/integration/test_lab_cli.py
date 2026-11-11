@@ -19,7 +19,7 @@ from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.registry import adapter_factory
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.integration.test_runner import scenario  # noqa: F401, F811
 from tests.lab_service import LabService, lab_config
 from tests.layout_mutations import change_observation

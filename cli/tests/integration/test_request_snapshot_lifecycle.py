@@ -11,7 +11,7 @@ from inferyard.evidence.request_snapshots import messages_sha256
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import read_jsonl, verify_manifest
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_runner import scenario
 from tests.integration.test_trial_runner import inputs

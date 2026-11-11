@@ -1,6 +1,5 @@
 """Offline declared configuration match; runtime preflight is still required."""
 
-from inferyard.application.types import CommandResult
 from inferyard.config.public_recipe import fingerprint
 from inferyard.config.startup_portability import portable_startup
 from inferyard.errors import EvidenceError
@@ -66,15 +65,3 @@ def check_config(root, loaded):
             "device_equivalence_not_verified",
         ],
     }
-
-
-def execute(request):
-    result = check_config(request.run, request.config)
-    passed = result["declared_configuration_matches"]
-    return (0 if passed else 3), CommandResult(
-        request.command,
-        "matched" if passed else "mismatch",
-        "incomplete",
-        details=result,
-        limitations=tuple(result["limitations"]),
-    )

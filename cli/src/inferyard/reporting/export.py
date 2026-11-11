@@ -9,7 +9,6 @@ import re
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
-from inferyard.application.types import CommandResult
 from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.errors import EvidenceError
 from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json, sha256_file
@@ -166,19 +165,3 @@ def verify_export(out):
         "analysis_id": analysis["analysis_id"],
         "metric_rows": len(analysis["metrics"]),
     }
-
-
-def execute(request):
-    if request.command == "export-check":
-        return 0, CommandResult(
-            request.command, "verified", "complete", details=verify_export(request.run)
-        )
-    result = write_export(request.out, run=request.run, analysis_path=request.analysis_path)
-    return 0, CommandResult(
-        request.command,
-        "exported",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(result["limitations"]),
-        details=result,
-    )

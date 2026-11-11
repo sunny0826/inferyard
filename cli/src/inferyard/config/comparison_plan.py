@@ -35,7 +35,6 @@ from inferyard.errors import ContractError
 from inferyard.evidence.formats import require_input
 
 if TYPE_CHECKING:
-    from inferyard.application.types import CommandRequest, CommandResult
     from inferyard.config.loader import LoadedConfig
 
 DEFINITION = "engine-comparison-plan.v1"
@@ -453,23 +452,3 @@ def freeze(
         if destination is None:
             return validated
         return write_plan(source, Path(destination))
-
-
-def execute(request: "CommandRequest") -> tuple[int, "CommandResult"]:
-    from inferyard.application.types import CommandResult
-
-    plan = freeze(
-        request.left_configs or (),
-        request.right_configs or (),
-        request.bundles or (),
-        experiment_id=request.comparison_experiment_id,
-        destination=None if request.dry_run else request.out,
-    )
-    return 0, CommandResult(
-        "compare-plan",
-        "previewed" if request.dry_run else "frozen",
-        "complete",
-        evidence_dir=None if request.dry_run else str(request.out),
-        limitations=tuple(plan["limitations"]),
-        details=plan,
-    )

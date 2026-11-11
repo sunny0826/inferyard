@@ -6,10 +6,7 @@ from jsonschema import Draft202012Validator
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
-from inferyard.application.types import CommandResult
 from inferyard.errors import EvidenceError
-from inferyard.contracts.validation import json_bytes
-from inferyard.evidence.storage import atomic_bytes, new_output, read_json
 from inferyard.reporting.comparison_report import comparison_input, read_verified_comparison
 
 SELECTOR_KEYS = (
@@ -224,25 +221,3 @@ def filter_candidates(spec, base):
             ),
         ],
     }
-
-
-def execute(request):
-    spec = read_json(request.filter_spec)
-    result = filter_candidates(spec, request.filter_spec.parent)
-    protected = [request.filter_spec.parent / p for p in [spec["reference"], *spec["candidates"]]]
-    protected.extend(request.filter_spec.parent / p for p in spec.get("comparisons", {}).values())
-    for candidate in result["candidates"]:
-        protected.extend(
-            request.filter_spec.parent / proof["source"]["path"]
-            for proof in candidate["comparison"].get("performance_evidence", [])
-        )
-    new_output(request.out, protected)
-    atomic_bytes(request.out / "candidates.json", json_bytes(result))
-    return 0, CommandResult(
-        request.command,
-        "filtered",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(result["limitations"]),
-        details=result,
-    )

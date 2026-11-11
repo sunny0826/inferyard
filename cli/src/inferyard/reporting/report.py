@@ -5,7 +5,7 @@ from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
-from inferyard.application.types import CommandResult, VerificationOptions
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
@@ -257,25 +257,3 @@ def verify_report(out, *, options=None):
     from inferyard.reporting.sealed_report import verify
 
     return verify(out, saved, options=options or VerificationOptions(), index_sha256=index_sha256)
-
-
-def execute(request, *, options=None):
-    if request.command == "report-check":
-        return 0, CommandResult(
-            request.command,
-            "verified",
-            "complete",
-            details=verify_report(
-                request.run, options=options or VerificationOptions.from_request(request)
-            ),
-        )
-    roots = request.report_runs or [request.run]
-    index = write_report(roots, request.out, comparison_path=request.comparison_path)
-    return 0, CommandResult(
-        request.command,
-        "rendered",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(index["limitations"]),
-        details={"runs": len(index["runs"]), "report": str(request.out / "report.html")},
-    )

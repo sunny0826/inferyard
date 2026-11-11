@@ -77,7 +77,7 @@ def make_artifact(tmp_path, kind):
 
         write_report([root], out)
     elif kind == "comparison":
-        from inferyard.reporting.comparison_report import execute as compare
+        from inferyard.application.reporting import execute as compare
 
         right = source_fixture(tmp_path / "sources", model="synthetic-B")
         compare(CommandRequest("compare", left=root, right=right, out=out))
@@ -388,14 +388,11 @@ def test_compound_result_preserves_both_limitations_and_report_failure(tmp_path,
         details={"verified": False},
     )
     monkeypatch.setattr(
-        import_module("inferyard.reporting.comparison_report"),
+        import_module("inferyard.application.reporting"),
         "execute",
-        lambda request, **kwargs: (0, comparison),
-    )
-    monkeypatch.setattr(
-        import_module("inferyard.reporting.report"),
-        "execute",
-        lambda request, **kwargs: (3, report),
+        lambda request, **kwargs: (0, comparison)
+        if request.command == "compare-check"
+        else (3, report),
     )
     code, result = execute(CommandRequest("verify", run=tmp_path))
     assert code == 3 and result.status == "not_passed" and result.completeness == "incomplete"

@@ -18,7 +18,7 @@ from dataclasses import asdict
 from pathlib import Path
 import pytest
 from tests.integration.test_runner import scenario
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from inferyard.evidence.journal import TrialJournal as EvidenceStore
 
 root, point = Path(sys.argv[1]), sys.argv[2]

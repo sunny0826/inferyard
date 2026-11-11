@@ -9,7 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.application.types import CommandRequest, VerificationOptions
+from inferyard.application.types import CommandRequest
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.application.verification import execute
 from inferyard.contracts.validation import Document
 from inferyard.errors import UnsupportedFormat

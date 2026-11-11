@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from inferyard.config.loader import LoadedConfig
-from inferyard.errors import ContractError
+if TYPE_CHECKING:
+    from inferyard.config.loader import LoadedConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,26 +106,6 @@ class CommandRequest:
     workspace: Path | None = None
     temperature_stop_override_reason: str | None = None
     prompt_cache: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class VerificationOptions:
-    source_roots: tuple[tuple[Path, Path], ...] = ()
-    rerender: bool = False
-
-    @classmethod
-    def from_request(cls, request):
-
-        roots = []
-        for entry in request.source_roots or ():
-            old, separator, new = entry.partition("=")
-            if not separator or not old or not new:
-                raise ContractError("source_root", "expected OLD=NEW")
-            pair = (Path(old).resolve(), Path(new).resolve())
-            if any(pair[0].is_relative_to(p[0]) or p[0].is_relative_to(pair[0]) for p in roots):
-                raise ContractError("source_root", "overlapping source roots")
-            roots.append(pair)
-        return cls(tuple(roots), request.rerender)
 
 
 @dataclass(frozen=True, slots=True)

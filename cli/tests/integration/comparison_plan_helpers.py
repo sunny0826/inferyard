@@ -33,7 +33,7 @@ from inferyard.platforms.local_engines.installation import _snapshot
 from inferyard.platforms.local_engines.offline import validate_frozen_identity
 from inferyard.runtime import batch_state
 from inferyard.registry import adapter_collector_id, adapter_factory, collector_factory
-from inferyard.runtime.batch_runner import execute_async
+from inferyard.application.execution import execute_async
 from inferyard.runtime.trial_runner import TrialDependencies
 from tests.unit.test_comparison_plan import (
     bundle_document,

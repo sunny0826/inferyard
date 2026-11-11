@@ -16,7 +16,7 @@ from inferyard.errors import EvidenceError
 from inferyard.evidence.ledger import read_trial
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.runtime.batch_runner import execute_async
+from inferyard.application.execution import execute_async
 from inferyard.runtime.trial_runner import TrialDependencies
 from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401
 from tests.integration.test_native_cli import native_scenario  # noqa: F401

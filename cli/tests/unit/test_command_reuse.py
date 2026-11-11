@@ -4,6 +4,7 @@ import pytest
 
 from inferyard.analysis import scoring
 from inferyard.application.types import CommandRequest
+from inferyard.application.reporting import execute as compare
 from inferyard.errors import EvidenceError
 from inferyard.reporting import comparison_report, rescore
 from inferyard.reporting.report import verify_report
@@ -31,7 +32,7 @@ def test_recursive_rescore_uses_one_identity_per_version_and_one_reduction(tmp_p
 def test_compare_reduces_each_source_once_and_compares_once(tmp_path):
     roots = [fixture_run(tmp_path / side) for side in ("left", "right")]
     out = tmp_path / "comparison"
-    code, _ = comparison_report.execute(
+    code, _ = compare(
         CommandRequest("compare", left=roots[0], right=roots[1], out=out)
     )
     assert code == 0

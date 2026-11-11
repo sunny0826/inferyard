@@ -17,7 +17,7 @@ from inferyard.errors import EvidenceError
 from inferyard.evidence.artifact_seal import seal
 from inferyard.contracts.validation import json_bytes
 from inferyard.runtime import batch_state
-from inferyard.runtime.batch_runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.integration import comparison_plan_assertions as assertions
 from tests.integration import comparison_plan_helpers as helpers
 from tests.integration.test_runner import scenario

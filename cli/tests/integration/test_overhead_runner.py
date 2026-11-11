@@ -371,7 +371,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             assert {"L01", "L02"} <= {r["metric_id"] for r in eligible}
         out = output / "performance-comparison"
         from inferyard.application.types import CommandRequest
-        from inferyard.reporting.comparison_report import execute as write_comparison
+        from inferyard.application.reporting import execute as write_comparison
 
         write_comparison(
             CommandRequest(
@@ -443,7 +443,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         if mode == "resources":
             aggregate = filtered["candidates"][0]["constraints"][1]["aggregation"]
             assert aggregate["planned_requests"] == 3
-        from inferyard.analysis.candidate_filter import execute as execute_filter
+        from inferyard.application.candidates import execute as execute_filter
         from inferyard.application.types import CommandRequest
 
         spec_file = output / "criteria.json"

@@ -16,7 +16,7 @@ from inferyard.config.loader import LoadedConfig
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.errors import EvidenceError
 from inferyard.contracts.validation import json_bytes
-from inferyard.runtime.batch_runner import execute_async
+from inferyard.application.execution import execute_async
 from inferyard.runtime.history_state import history, history_diagnostics
 from inferyard.runtime.trial_runner import TrialDependencies
 from tests.integration.comparison_plan_assertions import (

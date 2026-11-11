@@ -2,7 +2,7 @@
 
 import pytest
 
-from inferyard.application.types import VerificationOptions
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.config.loader import MAX_DOCUMENT_BYTES
 from inferyard.errors import EvidenceError
 from inferyard.evidence.storage import read_json, sha256_file

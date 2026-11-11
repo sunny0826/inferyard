@@ -182,12 +182,14 @@ def speed_service(scenario, tmp_path, monkeypatch):
         path.write_text(render(config), encoding="utf-8")
         return path
 
-    import inferyard.runtime.batch_runner as batch_runner
+    import inferyard.application.execution as execution
 
-    original = batch_runner.execute_async
-    monkeypatch.setattr(
-        batch_runner, "execute", lambda request: asyncio.run(original(request, deps))
-    )
+    original = execution.execute_async
+
+    async def with_dependencies(request):
+        return await original(request, deps)
+
+    monkeypatch.setattr(execution, "execute_async", with_dependencies)
     state.update(config=config, write=write, deps=deps, root=tmp_path)
     try:
         yield state

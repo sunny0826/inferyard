@@ -8,7 +8,6 @@ from inferyard import SCHEMA_VERSION
 from inferyard.analysis.observations import Observations, quality_observations
 from inferyard.analysis.scoring import ScoringContext, score_case, scorer_hash, unscorable
 from inferyard.analysis.scoring_revision import resolve
-from inferyard.application.types import CommandResult
 from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core
@@ -316,28 +315,3 @@ def verify_rescore(out):
         "analysis_id": expected["analysis.json"]["analysis_id"],
         "requests": len(record["changes"]),
     }
-
-
-def execute(request):
-    if request.command == "rescore-check":
-        return 0, CommandResult(
-            request.command, "verified", "complete", details=verify_rescore(request.run)
-        )
-    analysis = write_rescore(
-        request.run,
-        request.out,
-        scorer_id=request.scorer_id,
-        reason=request.revision_reason,
-        parent_path=request.analysis_path,
-    )
-    return 0, CommandResult(
-        request.command,
-        "rescored",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(analysis["limitations"]),
-        details={
-            "analysis_id": analysis["analysis_id"],
-            "parent_analysis_id": analysis["parent_analysis_id"],
-        },
-    )

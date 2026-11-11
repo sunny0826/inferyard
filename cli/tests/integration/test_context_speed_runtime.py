@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from inferyard.runtime.batch_runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.integration.context_speed_fixture import (  # noqa: F401
     allow_synthetic_review,
     tree_hashes,
@@ -48,7 +48,7 @@ def test_cancelled_formal_remains_readable_and_never_resumable(speed_service, mo
         return await task
 
     monkeypatch.setattr(
-        "inferyard.runtime.batch_runner.execute", lambda request: asyncio.run(cancel(request))
+        "inferyard.application.execution.execute", lambda request: asyncio.run(cancel(request))
     )
     code, result = invoke(capsys, "run", "--plan", plan / "plan.json", "--output-root", batch)
     assert code == 130, result

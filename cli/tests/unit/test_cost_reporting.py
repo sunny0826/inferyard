@@ -2,7 +2,7 @@
 
 import pytest
 
-from inferyard.application.types import VerificationOptions
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.errors import EvidenceError
 from inferyard.evidence.artifact_seal import read_sealed, seal
 from inferyard.reporting import report

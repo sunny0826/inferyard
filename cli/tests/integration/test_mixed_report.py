@@ -7,7 +7,7 @@ from inferyard.errors import UnsupportedFormat
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import sha256_file
 from inferyard.reporting.report import verify_report, write_report
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.integration.test_trial_runner import inputs

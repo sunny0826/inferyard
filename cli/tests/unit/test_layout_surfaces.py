@@ -6,7 +6,8 @@ from dataclasses import replace
 
 import pytest
 
-from inferyard.application.types import CommandRequest, VerificationOptions
+from inferyard.application.types import CommandRequest
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.application.verification import execute
 from inferyard.cli import main
 from inferyard.config.loader import load_config
@@ -18,9 +19,7 @@ from inferyard.reporting.comparison_report import (
     comparison_input,
     verify_comparison,
 )
-from inferyard.reporting.comparison_report import (
-    execute as compare,
-)
+from inferyard.application.reporting import execute as compare
 from inferyard.reporting.export import (
     existing_analysis,
     trial_analysis,
