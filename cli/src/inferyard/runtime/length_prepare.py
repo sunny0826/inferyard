@@ -10,7 +10,8 @@ from inferyard.evidence.storage import atomic_bytes, new_output, read_json, sha2
 from inferyard.provenance import tool_source_hash
 from inferyard.registry import adapter_factory
 from inferyard.runtime.batch_state import bind_service
-from inferyard.runtime.length_builder import fit_length, validate_spec
+from inferyard.contracts.length_spec import validate_spec
+from inferyard.runtime.length_builder import fit_length
 from inferyard.runtime.runner import Dependencies, transport_config
 from inferyard.runtime.template_tokens import count_template
 

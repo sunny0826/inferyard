@@ -13,7 +13,7 @@ import httpx
 
 from inferyard.adapters.response_state import ResponseState
 from inferyard.contracts.engine_timing import capture_timings
-from inferyard.config.cache_policy import disabled_startup
+from inferyard.contracts.cache_policy import disabled_startup
 from inferyard.contracts.validation import strict_json_loads
 from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.evidence.storage import Redactor

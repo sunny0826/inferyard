@@ -1,7 +1,7 @@
 """Offline proof of the frozen fixed-output requests and probe."""
 
 from inferyard.adapters.requests import request_body
-from inferyard.config.fixed_output import enabled
+from inferyard.contracts.fixed_output import enabled
 from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.trial_evidence import TrialEvidence
@@ -73,7 +73,7 @@ def verify_execution(root, workload, config, bundle, events, *, capabilities=Non
             "ignore_eos": True,
         }
         if "cache_protocol" in workload:
-            from inferyard.config.cache_execution import request_value
+            from inferyard.contracts.cache_execution import request_value
 
             expected["cache_prompt"] = request_value(config, phase, ordinal)
             expected["n_cache_reuse"] = 0

@@ -90,9 +90,9 @@ def source_bytes(root, reference):
 def validate_workload_inputs(workload, config, bundle, *, experiment_profile=None):
     from inferyard.analysis.position import validate_position_cases
     from inferyard.config.context_speed_profile import classify_workload_inputs
-    from inferyard.config.model_lineage import validate_lineage
-    from inferyard.runtime.cache_execution import validate_inputs as validate_cache
-    from inferyard.runtime.fixed_output import validate_inputs
+    from inferyard.contracts.cache_execution import validate_inputs as validate_cache
+    from inferyard.contracts.fixed_output import validate_inputs
+    from inferyard.contracts.model_lineage import validate_lineage
 
     classify_workload_inputs(workload, config, bundle, experiment_profile=experiment_profile)
     if config["engine"]["adapter"] in ("kvmem", "ninfer") and (

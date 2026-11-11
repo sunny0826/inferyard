@@ -8,7 +8,7 @@ from inferyard.contracts.bundle import content_hash
 from inferyard.config.planning import write_plan
 from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.errors import EvidenceError
-from inferyard.evidence.length_evidence import read_preparation
+from inferyard.runtime.length_evidence import read_preparation
 from inferyard.evidence.storage import atomic_bytes, sha256_file
 
 

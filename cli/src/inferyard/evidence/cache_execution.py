@@ -1,6 +1,6 @@
 """Offline proof of the frozen prefix-reuse request sequence."""
 
-from inferyard.config.cache_execution import request_value, validate_inputs
+from inferyard.contracts.cache_execution import request_value, validate_inputs
 from inferyard.errors import EvidenceError
 from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.trial_evidence import TrialEvidence

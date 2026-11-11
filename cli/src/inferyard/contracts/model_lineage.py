@@ -6,7 +6,7 @@ from inferyard.errors import ContractError
 
 
 def validate_lineage(workload, config):
-    from inferyard.config.lineage_records import validate_records
+    from inferyard.contracts.lineage_records import validate_records
 
     validate_records(workload)
     lineage = workload.get("model_lineage")

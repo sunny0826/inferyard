@@ -8,7 +8,7 @@ from inferyard.config.loader import validate_runtime_config
 from inferyard.errors import EvidenceError
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.evidence.template_identity import matches_template
-from inferyard.runtime.length_builder import validate_spec
+from inferyard.contracts.length_spec import validate_spec
 
 REQUIRED = {
     "spec.json",

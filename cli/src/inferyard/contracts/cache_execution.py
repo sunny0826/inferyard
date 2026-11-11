@@ -1,6 +1,6 @@
 """Frozen prefix-reuse inputs and explicit request policy."""
 
-from inferyard.config.cache_policy import disabled_startup
+from inferyard.contracts.cache_policy import disabled_startup
 from inferyard.errors import ContractError
 
 PROTOCOL = "prism_prefix_reuse.v1"

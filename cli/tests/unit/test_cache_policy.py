@@ -1,6 +1,6 @@
 import pytest
 
-from inferyard.config.cache_policy import disabled_startup
+from inferyard.contracts.cache_policy import disabled_startup
 from inferyard.errors import PreflightError
 
 BASE = ["--no-cache-prompt", "--no-cache-idle-slots", "--cache-ram", "0"]

@@ -6,7 +6,7 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.config.lineage_records import validate_records
+from inferyard.contracts.lineage_records import validate_records
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.contracts.plan_math import plan_hash
 from inferyard.config.planning import prepare_plan, write_plan

@@ -5,13 +5,13 @@ import os
 import stat
 from pathlib import Path
 
-from inferyard.config.lineage_records import (
+from inferyard.contracts.lineage_records import (
     CONVERSION,
     RECORDS,
     parse_record,
     validate_records,
 )
-from inferyard.config.model_lineage import LINEAGE
+from inferyard.contracts.model_lineage import LINEAGE
 from inferyard.contracts.validation import validate_value, json_bytes
 from inferyard.errors import ContractError
 from inferyard.platforms.platform_io import open_nofollow

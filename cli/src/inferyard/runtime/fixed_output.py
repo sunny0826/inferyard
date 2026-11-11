@@ -1,12 +1,12 @@
 """Compatibility imports and fixed-output result calculation."""
 
-from inferyard.config.fixed_output import (
+from inferyard.contracts.fixed_output import (
     MODE as MODE,
 )
-from inferyard.config.fixed_output import (
+from inferyard.contracts.fixed_output import (
     enabled as enabled,
 )
-from inferyard.config.fixed_output import (
+from inferyard.contracts.fixed_output import (
     validate_inputs as validate_inputs,
 )
 from inferyard.evidence.fixed_output import (

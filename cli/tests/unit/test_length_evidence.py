@@ -9,7 +9,7 @@ from inferyard.config.bundle import require_review
 from inferyard.config.loader import load_config
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.length_evidence import REQUIRED, read_preparation
+from inferyard.runtime.length_evidence import REQUIRED, read_preparation
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.evidence.template_identity import PRISM_BUILD, PRISM_TEMPLATE_PROFILE
