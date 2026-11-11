@@ -68,7 +68,7 @@ run 创建前的启动或绑定失败由 Studio／手动操作者立即终止本
 ## 保证边界
 
 run 封存完整 plan 及其哈希，因此不能事后另造缩减计划来合法化已有 run
-（`cli/src/inferyard/evidence/ledger.py:86-122`）；交接链进一步阻止跨 batch 拼选槽位。
+（`cli/src/inferyard/analysis/ledger.py`）；交接链进一步阻止跨 batch 拼选槽位。
 但 v2 仍不能证明操作者没有执行过其他完整实验、也没有保留其他未提交证据。
 预注册只保证所提交计划、run 集合和交接链满足规则，不扩大为全机行为证明。
 

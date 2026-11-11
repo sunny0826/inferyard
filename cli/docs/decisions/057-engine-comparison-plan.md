@@ -26,7 +26,7 @@
 因此同一计划可容纳不同引擎家族和不同服务进程。
 
 **事实**：Journal 将完整 `plan` 对象和 `run.plan_sha256` 写入 `inputs.json`；读取时核对该哈希、experiment 和 trial
-（`cli/src/inferyard/evidence/journal.py:122-173`，`evidence/ledger.py:74-122`）。
+（`cli/src/inferyard/evidence/journal.py`，`cli/src/inferyard/analysis/ledger.py`）。
 真实样本的 core/pelican 两个 run 共享同一双 trial plan 哈希，而各自 trial 不同
 （`.tools/engine-compare-mlx-20261106/blocks-e1/block1-llama-cpp/plan/plan.json` 及其 `batch/runs/*/inputs.json`）。
 

@@ -61,7 +61,9 @@
   measurement/scoring implementation identity and the scorer hash change, so runs
   created before this change cannot be resumed or compared as the same
   implementation by runs created after it. Command handlers now return domain data
-  and the application layer builds command results.
+  and the application layer builds command results. Trial ledger reconstruction moved
+  from `inferyard.evidence` to `inferyard.analysis`; evidence keeps storage, sealing,
+  journals and format checks.
 
 ### Removed
 

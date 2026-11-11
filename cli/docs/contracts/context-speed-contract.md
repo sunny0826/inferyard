@@ -205,7 +205,7 @@ mise exec -- uv run --frozen python scripts/export_schemas.py --check
 ## CLI 物理读取实现
 
 `application/context_speed.py` 先调用完整 raw batch verifier，再通过
-`evidence/context_speed.py` 的 `history(..., allow_tool_change=True, full_verification=True)`
+`application/context_speed_evidence.py` 的 `history(..., allow_tool_change=True, full_verification=True)`
 读取原件。核验保存的 batch/run 执行身份，不要求历史记录匹配当前源码；不使用轻量 batch 投影
 替代完整 ledger。普通 batch 拒绝为 2，来源损坏返回不含旧 samples/summary 的 error 分支。
 
