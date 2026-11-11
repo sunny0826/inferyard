@@ -60,7 +60,8 @@
   power policy shape and bundle semantics) into `inferyard.contracts`. The
   measurement/scoring implementation identity and the scorer hash change, so runs
   created before this change cannot be resumed or compared as the same
-  implementation by runs created after it.
+  implementation by runs created after it. Command handlers now return domain data
+  and the application layer builds command results.
 
 ### Removed
 

@@ -47,8 +47,8 @@ flowchart LR
 
 ## CLI 与应用边界
 
-- `main(argv=None, *, handlers=None) -> int` 是控制台和模块入口。CLI 负责参数、输入校验、请求构造和输出呈现；业务执行器返回结果，不向 stdout 写诊断。`device-check` 默认人类摘要，显式 JSON 保留既有结果外层，其他命令仍为 JSON；格式参数不进入应用请求。
-- `CommandRequest`、`CommandResult`、`Handler` 只定义在 `application/types.py`；业务模块不依赖 CLI，CLI 重导出同一对象。
+- `main(argv=None, *, handlers=None) -> int` 是控制台和模块入口。CLI 负责参数、输入校验、请求构造和输出呈现；业务执行器返回领域数据，不向 stdout 写诊断。`device-check` 默认人类摘要，显式 JSON 保留既有结果外层，其他命令仍为 JSON；格式参数不进入应用请求。
+- `CommandRequest`、`CommandResult`、`Handler` 只定义在 `application/types.py`；业务模块不依赖 CLI，也不构造命令结果。命令结果（status、completeness、run_id、evidence_dir、limitations、details、退出码）由应用层按命令组构造，业务函数只返回领域数据（详见[分派职责](subsystems/cli-dispatch/responsibilities.md)）。
 - `--help`、`--versions` 和 `--schema` 只注册参数及读取元数据，不加载实时后端。Schema 注册表只依赖契约包与版本常量；语义验证在解析时调用。
 - 应用分派显式覆盖注册命令，未知请求拒绝。`run --plan` 和 `resume` 进入批量路径，单次运行与专项命令进入各自处理器。
 - 规范命令适配到已有业务动作。旧命令名和参数别名已删除。`application/verification.py` 识别产物并延迟调用专用验证器；CLI 不复制其验证逻辑。

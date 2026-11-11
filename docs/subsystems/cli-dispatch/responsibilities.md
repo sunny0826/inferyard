@@ -8,7 +8,7 @@
 | 参数解析与命令注册 | 净化解析器（不回显原始参数）、子命令注册；各命令只注册参数，不导入执行器 | `Parser`、`ArgumentError`、`parser` 在 [`cli/src/inferyard/cli/arguments.py`](../../../cli/src/inferyard/cli/arguments.py)，注册函数 `add_commands` 分布在 `cli/src/inferyard/cli/commands/` 各模块（如 [`execution.py`](../../../cli/src/inferyard/cli/commands/execution.py)、[`discovery.py`](../../../cli/src/inferyard/cli/commands/discovery.py)） |
 | 元数据查询 | `--versions` 导出工具/依赖版本，`--schema KIND` 导出当前 JSON Schema | `versions` 在 [`cli/src/inferyard/cli/metadata.py`](../../../cli/src/inferyard/cli/metadata.py)；`export_schema`、`schemas_for` 在 [`cli/src/inferyard/contracts/schemas.py`](../../../cli/src/inferyard/contracts/schemas.py) |
 | 请求构造 | 跨参数校验、路径解析、配置加载，产出 `CommandRequest` | `build_request` 在 [`cli/src/inferyard/cli/request.py`](../../../cli/src/inferyard/cli/request.py)，配置加载入口 `load_config`、`validate_endpoint` 在 [`cli/src/inferyard/config/loader.py`](../../../cli/src/inferyard/config/loader.py) |
-| 共享类型 | `CommandRequest`/`CommandResult`/`Handler`/`VerificationOptions` 唯一定义处 | [`cli/src/inferyard/application/types.py`](../../../cli/src/inferyard/application/types.py) |
+| 共享类型 | `CommandRequest`/`CommandResult`/`Handler` 唯一定义处；`VerificationOptions` 是证据层领域参数 | [`cli/src/inferyard/application/types.py`](../../../cli/src/inferyard/application/types.py)、[`cli/src/inferyard/evidence/verification_options.py`](../../../cli/src/inferyard/evidence/verification_options.py) |
 | 命令分派 | 显式命令到执行模块的映射；执行模块只在分派时导入 | `default_backend` 在 [`cli/src/inferyard/application/dispatch.py`](../../../cli/src/inferyard/application/dispatch.py) |
 | 产物识别与核验路由 | 按标记文件识别派生产物，保留各专用验证器权威 | `execute`、`_identify`、`_HANDLERS` 在 [`cli/src/inferyard/application/verification.py`](../../../cli/src/inferyard/application/verification.py)；原始 run/batch/plan 核验在 [`cli/src/inferyard/application/raw_verification.py`](../../../cli/src/inferyard/application/raw_verification.py) |
 | 应用侧聚合执行器 | 社区准备、engine-fit 五个动作、memory-check、model/engine acquire、overhead、progress、service discover 的应用层入口 | [`cli/src/inferyard/application/community.py`](../../../cli/src/inferyard/application/community.py)、[`engine_fit.py`](../../../cli/src/inferyard/application/engine_fit.py)、[`memory_check.py`](../../../cli/src/inferyard/application/memory_check.py)、[`model_source.py`](../../../cli/src/inferyard/application/model_source.py)、[`engine_source.py`](../../../cli/src/inferyard/application/engine_source.py)、[`overhead.py`](../../../cli/src/inferyard/application/overhead.py)、[`progress.py`](../../../cli/src/inferyard/application/progress.py)、[`service_discovery.py`](../../../cli/src/inferyard/application/service_discovery.py) |
@@ -24,7 +24,7 @@
 - 结果外层的字段语义（`status`/`completeness`/`limitations`/`details` 等）见 [CLI 接口](../../../cli/docs/cli-surface.md) 的 JSON 与共享类型一节，此处不复制。
 - 退出码语义（0/2/3/4/130）见 [CLI 接口](../../../cli/docs/cli-surface.md)；stdout JSON 与诊断分流约定见[架构](../../../cli/docs/architecture.md)的层表。
 - 活跃契约版本常量为 `SCHEMA_VERSION = 3`（[`cli/src/inferyard/__init__.py`](../../../cli/src/inferyard/__init__.py)），`--versions` 与 schema 导出的版本字段都以此为准。
-- `VerificationOptions`（[`cli/src/inferyard/application/types.py`](../../../cli/src/inferyard/application/types.py)）在类型层解析核验专用选项：`--source-root OLD=NEW` 校验非空、解析为绝对路径并拒绝互相包含的重叠映射；它与 `rerender` 一起构成传给报告/比较验证器的选项对象，解析失败抛 `ContractError`。
+- `VerificationOptions`（[`cli/src/inferyard/evidence/verification_options.py`](../../../cli/src/inferyard/evidence/verification_options.py)）是报告/比较验证器的领域参数；`application/verification.py` 的 `verification_options` 解析 `--source-root OLD=NEW`：校验非空、解析为绝对路径并拒绝互相包含的重叠映射，与 `rerender` 一起构成选项对象，解析失败抛 `ContractError`。
 
 命令注册与分派目标一一对应（注册模块不导入执行器，目标模块只在分派时导入）：
 
@@ -33,26 +33,26 @@
 | `init`、`runtime prepare`、`config assets/create/bind` | `community.py` | `application/community.py` |
 | `progress` | `discovery.py` | `application/progress.py` |
 | `memory-check` | `discovery.py` | `application/memory_check.py` |
-| `device-check` | `discovery.py` | `platforms/device_preflight.py` |
+| `device-check` | `discovery.py` | `application/device.py` |
 | `catalogue`、`plan` | `discovery.py` | 分派内联：`registry.catalogue`、`config.planning` |
 | `verify` | `verification.py` | `application/verification.py` |
 | `overhead` | `overhead.py` | `application/overhead.py` |
-| `probe`、`run`（单次） | `execution.py` | `runtime/runner.py` |
-| `run --plan`、`resume` | `execution.py` | `runtime/batch_runner.py` |
-| `prepare-length` | `length.py` | `runtime/length_prepare.py`（Windows 拒绝） |
-| `repeat-summary` | `repetition.py` | `reporting/repetition_report.py` |
-| `rescore` | `scoring.py` | `reporting/rescore.py` |
-| `export` | `exports.py` | `reporting/export.py` |
-| `public package/plan` | `public.py` | `reporting/public_package.py`、`config/public_plan.py` |
-| `report` | `reporting.py` | `reporting/report.py` |
-| `compare` | `comparison.py` | `reporting/comparison_report.py` |
+| `probe`、`run`（单次） | `execution.py` | `application/execution.py`（延迟到 `runtime/runner.py`） |
+| `run --plan`、`resume` | `execution.py` | `application/execution.py`（延迟到 `runtime/batch_runner.py`） |
+| `prepare-length` | `length.py` | `application/execution.py`（延迟到 `runtime/length_prepare.py`；Windows 拒绝） |
+| `repeat-summary` | `repetition.py` | `application/reporting.py` |
+| `rescore` | `scoring.py` | `application/reporting.py` |
+| `export` | `exports.py` | `application/reporting.py` |
+| `public package/plan` | `public.py` | `application/reporting.py`、`application/public_plan.py` |
+| `report` | `reporting.py` | `application/reporting.py` |
+| `compare` | `comparison.py` | `application/reporting.py` |
 | `compare-plan` | `comparison.py` | `application/comparison.py`（延迟到 `config/comparison_plan.py`） |
-| `filter-candidates` | `candidates.py` | `analysis/candidate_filter.py` |
-| `extension freeze/run/replay` | `extensions.py` | `extensions/workflow.py` |
+| `filter-candidates` | `candidates.py` | `application/candidates.py` |
+| `extension freeze/run/replay` | `extensions.py` | `application/extensions.py` |
 | `engine-fit engines/plan/run/compare/verify` | `engine_fit.py` | `application/engine_fit.py` |
 | `model acquire` | `model.py` | `application/model_source.py` |
 | `engine acquire` | `engine.py` | `application/engine_source.py` |
 | `engine check` | `engine.py` | `application/engine_check.py` |
 | `service discover` | `service.py` | `application/service_discovery.py`（枚举与探测在 `platforms/service_discovery.py`） |
 
-注册模块只描述参数形状（类型、必填、互斥组），分派目标模块统一暴露 `execute(request) -> (code, CommandResult)` 约定；`application/` 下的聚合执行器是该约定的薄适配层，业务规则仍在领域包内，`application/types.py` 是两侧共享的唯一类型来源。
+注册模块只描述参数形状（类型、必填、互斥组），分派目标模块统一暴露 `execute(request) -> (code, CommandResult)` 约定。业务函数返回领域数据，不构造 `CommandResult`；`application/` 下的模块承接命令结果的 status、completeness、run_id、evidence_dir、limitations、details 与退出码，业务规则仍在领域包内。`application/types.py` 是请求/结果的唯一类型来源，核验选项 `VerificationOptions` 属于证据层，由 `application/verification.py` 从请求解析。
