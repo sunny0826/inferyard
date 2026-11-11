@@ -15,7 +15,7 @@ from inferyard.cli import main
 from inferyard.config.planning import write_plan
 from inferyard.contracts.validation import Document
 from inferyard.errors import EvidenceError, PreflightError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.application.execution import execute_async

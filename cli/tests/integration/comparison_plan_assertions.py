@@ -14,7 +14,7 @@ from inferyard.application.types import CommandRequest
 from inferyard.config.loader import LoadedConfig
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.errors import EvidenceError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.contracts.validation import json_bytes
 from inferyard.application.execution import execute_async
 from inferyard.runtime.history_state import history, history_diagnostics

@@ -5,7 +5,7 @@ from dataclasses import asdict, replace
 from inferyard.application.types import CommandResult
 from inferyard.contracts.context_speed import validate_response
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
-from inferyard.evidence.context_speed import NotSpeed
+from inferyard.application.context_speed_evidence import NotSpeed
 
 
 def execute(request):
@@ -24,8 +24,8 @@ def execute(request):
     try:
         from inferyard.analysis.context_speed import project
         from inferyard.application.raw_verification import execute as verify
-        from inferyard.evidence.context_speed import read_inputs
-        from inferyard.evidence.ledger import plan_progress
+        from inferyard.application.context_speed_evidence import read_inputs
+        from inferyard.analysis.ledger import plan_progress
 
         # Reuse the complete raw batch verifier, including metadata and saved identities.
         verify(replace(request, run=request.batch), "batch")

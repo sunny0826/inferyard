@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import replace
 from pathlib import Path
 
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import sha256_file
 from inferyard.application.execution import execute_async
 from tests.integration.test_batch_runner import batch

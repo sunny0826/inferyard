@@ -7,7 +7,7 @@ import pytest
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandRequest
 from inferyard.errors import PreflightError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.runtime import runner
 from tests.helpers import fixture_run

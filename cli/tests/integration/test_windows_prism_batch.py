@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from types import SimpleNamespace
 
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms import resources, resources_windows

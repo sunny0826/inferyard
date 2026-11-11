@@ -191,7 +191,7 @@ async def run_overhead(
 def read_overhead(root, *, target=None, target_data=None):
     """Recompute from sealed trials; do not trust cached request projections/results."""
     from inferyard.analysis.overhead_environment import assess_environments, environment_record
-    from inferyard.evidence.ledger import read_trial
+    from inferyard.analysis.ledger import read_trial
     from inferyard.evidence.storage import local_file, read_json
     from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
     from inferyard.runtime.collector_overhead import validate_protocol

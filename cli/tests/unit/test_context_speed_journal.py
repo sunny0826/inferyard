@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from inferyard.analysis.scoring import ScoringContext
 from inferyard.config.context_speed_plan import freeze
 from inferyard.config.loader import load_config
 from inferyard.config.single_plan import compile_single_plan
@@ -30,7 +31,14 @@ def test_actual_journal_preserves_frozen_profile(
     else:
         config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
         plan = compile_single_plan(config, bundle)
-    store = TrialJournal(tmp_path / "runs", plan, plan["trials"][0]["trial_id"], config, bundle)
+    store = TrialJournal(
+        tmp_path / "runs",
+        plan,
+        plan["trials"][0]["trial_id"],
+        config,
+        bundle,
+        scoring_context=ScoringContext(),
+    )
     try:
         store.seal()
         saved = TrialEvidence(store.path).input("plan")

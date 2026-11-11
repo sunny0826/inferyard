@@ -12,7 +12,7 @@ from inferyard.analysis import scoring
 from inferyard.cli import main
 from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import EvidenceError, PreflightError, UnsupportedFormat
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.evidence.token_budgets import V1
 from inferyard.evidence.trial_evidence import TrialEvidence

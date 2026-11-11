@@ -5,8 +5,6 @@ import time
 from datetime import UTC, datetime
 
 from inferyard import SCHEMA_VERSION, __version__
-from inferyard.analysis.scoring import ScoringContext
-from inferyard.config.plan_inputs import validate_workload_inputs
 from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.contracts.validation_cache import command_validation
 from inferyard.errors import EvidenceError
@@ -22,6 +20,31 @@ def trial_for(plan, trial_id):
         if trial["trial_id"] == trial_id:
             return trial
     raise EvidenceError("trial_not_in_plan")
+
+
+def trial_inputs(
+    plan,
+    trial_id,
+    config,
+    bundle,
+    *,
+    resume_case_ids=(),
+    parent=None,
+    rerun_parent=None,
+):
+    """Frozen scope checks; config-dependent workload rules stay with the caller."""
+    if rerun_parent and (parent or resume_case_ids):
+        raise EvidenceError("rerun_parent_conflicts_with_trial_parent")
+    with command_validation(enabled=False):
+        trial = trial_for(plan, trial_id)
+        validate_document("config", config)
+        validate_document("bundle", bundle)
+    workload = next(
+        w for w in plan["experiment"]["workloads"] if w["workload_id"] == trial["workload_id"]
+    )
+    if workload["protocol"]["kind"] == "duration" and resume_case_ids:
+        raise EvidenceError("duration_resume_requires_new_window")
+    return trial, workload
 
 
 class TrialJournal(RunRecords, EvidenceStore):
@@ -50,7 +73,7 @@ class TrialJournal(RunRecords, EvidenceStore):
         kind="run",
         execution_mode="experiment",
         rerun_parent=None,
-        scoring_context=None,
+        scoring_context,
         source_identity=None,
         implementation_identity=None,
         configuration_source=None,
@@ -61,25 +84,20 @@ class TrialJournal(RunRecords, EvidenceStore):
             identity_context = IdentityContext(source_hash=tool_source_hash)
             source_identity = source_identity or identity_context.source
             implementation_identity = identity_context.value
-        if rerun_parent and (parent or resume_case_ids):
-            raise EvidenceError("rerun_parent_conflicts_with_trial_parent")
-        with command_validation(enabled=False):
-            trial = trial_for(plan, trial_id)
-            validate_document("config", config)
-            validate_document("bundle", bundle)
-        workload = next(
-            w for w in plan["experiment"]["workloads"] if w["workload_id"] == trial["workload_id"]
+        trial, workload = trial_inputs(
+            plan,
+            trial_id,
+            config,
+            bundle,
+            resume_case_ids=resume_case_ids,
+            parent=parent,
+            rerun_parent=rerun_parent,
         )
         self.duration_protocol = (
             workload["protocol"] if workload["protocol"]["kind"] == "duration" else None
         )
         self.strict_output = workload.get("output_mode") == "strict_fixed_length"
         self.cache_protocol = workload.get("cache_protocol")
-        if self.duration_protocol and resume_case_ids:
-            raise EvidenceError("duration_resume_requires_new_window")
-        validate_workload_inputs(
-            workload, config, bundle, experiment_profile=plan["experiment"].get("profile")
-        )
         selected = list(resume_case_ids) if resume_case_ids else list(trial["case_order"])
         if not selected or len(set(selected)) != len(selected):
             raise EvidenceError("invalid_trial_selection")
@@ -108,7 +126,7 @@ class TrialJournal(RunRecords, EvidenceStore):
                 raise EvidenceError("repeat_parent_mismatch")
         if redactor and (redactor.clean(config) != config or redactor.clean(bundle) != bundle):
             raise EvidenceError("sensitive_frozen_input")
-        self.scoring_context = scoring_context or ScoringContext()
+        self.scoring_context = scoring_context
         self.experiment_id = plan["experiment"]["experiment_id"]
         self.trial_id = trial_id
         self._initialize(root, redactor, run_id=run_id)

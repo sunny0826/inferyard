@@ -12,7 +12,7 @@ import pytest
 import inferyard.runtime.lock as locking
 from inferyard.analysis.scoring import score_case
 from inferyard.application.types import CommandRequest
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.application.execution import execute_async
 from tests.helpers import readline_timeout

@@ -9,7 +9,7 @@ import pytest
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
 from inferyard.errors import EvidenceError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_jsonl
 from inferyard.reporting.comparison_report import comparison_input
 from inferyard.reporting.report import verify_report, write_report

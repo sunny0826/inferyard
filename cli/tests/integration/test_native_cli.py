@@ -13,7 +13,7 @@ import inferyard.runtime.runner as running
 from inferyard.cli import main
 from inferyard.contracts.validation import Document
 from inferyard.errors import EvidenceError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.registry import adapter_factory
 from inferyard.application.execution import execute_async

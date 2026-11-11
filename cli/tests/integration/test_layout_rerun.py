@@ -11,7 +11,7 @@ from inferyard.application.types import CommandRequest
 from inferyard.application.execution import execute_async
 from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import PreflightError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime import runner
 from tests.integration.test_runner import scenario as runner_scenario

@@ -75,7 +75,7 @@ def test_resource_collector_records_boundaries_and_rebuilds_metrics(scenario):
     ],
 )
 def test_engine_timings_rebuild_offline_with_bound_build_and_unchanged_evidence(scenario, timings):
-    from inferyard.evidence.ledger import read_trial
+    from inferyard.analysis.ledger import read_trial
 
     scenario[3]["timings"] = timings
     plan, loaded, deps, output = inputs(scenario)

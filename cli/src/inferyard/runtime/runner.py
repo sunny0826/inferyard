@@ -14,13 +14,14 @@ from inferyard.adapters.prism import PrismAdapter
 from inferyard.analysis.scoring import ScoringContext, score_case
 from inferyard.config.bundle import require_review
 from inferyard.config.loader import LoadedConfig
+from inferyard.config.plan_inputs import validate_workload_inputs
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.config.startup_arguments import replace_arguments
 from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import Document
 from inferyard.errors import PreflightError
-from inferyard.evidence.journal import TrialJournal
-from inferyard.evidence.ledger import read_trial
+from inferyard.evidence.journal import TrialJournal, trial_inputs
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import (
     Redactor,
     sha256_file,
@@ -184,6 +185,16 @@ async def execute_async(request, dependencies: Dependencies | None = None):
     started_at = time.monotonic()
     allowed_seconds = plan["experiment"]["budget"]["max_wall_seconds"]
     configuration_source = read_configuration_source(loaded)
+    _, workload = trial_inputs(
+        plan,
+        plan["trials"][0]["trial_id"],
+        config,
+        bundle,
+        rerun_parent=parent,
+    )
+    validate_workload_inputs(
+        workload, config, bundle, experiment_profile=plan["experiment"].get("profile")
+    )
     store = TrialJournal(
         Path(config["output"]["root"]),
         plan,

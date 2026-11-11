@@ -9,7 +9,7 @@ import pytest
 import inferyard.runtime.lock as locking
 import inferyard.runtime.runner as running
 from inferyard.application.execution import execute_async
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json, read_jsonl
 from inferyard.evidence.trial_evidence import TrialEvidence
 from tests.integration.test_runner import scenario as runner_scenario

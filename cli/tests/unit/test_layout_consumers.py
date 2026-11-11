@@ -10,7 +10,7 @@ from inferyard.analysis.overhead_environment import environment_record
 from inferyard.contracts.plan_math import plan_hash
 from inferyard.errors import EvidenceError
 from inferyard.evidence.fixed_output import verify_execution
-from inferyard.evidence.ledger import read_run_projection, read_trial
+from inferyard.analysis.ledger import read_run_projection, read_trial
 from inferyard.evidence.request_snapshots import messages_sha256, snapshot_filename
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import read_json, read_jsonl, sha256_file

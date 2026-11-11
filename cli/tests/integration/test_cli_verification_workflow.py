@@ -10,7 +10,7 @@ import pytest
 import inferyard.cli as cli
 from inferyard.config.loader import LoadedConfig, load_config
 from inferyard.contracts.validation import Document
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import sha256_file
 from tests.helpers import fixture_run
 from tests.unit.test_closed_concurrency import rows, spec

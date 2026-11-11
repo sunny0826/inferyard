@@ -10,7 +10,7 @@ from inferyard.analysis.scoring import score_case
 from inferyard.application.types import CommandRequest
 from inferyard.contracts.validation import Document
 from inferyard.errors import EvidenceError, PreflightError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.application.execution import execute_async

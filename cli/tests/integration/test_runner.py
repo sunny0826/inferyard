@@ -19,7 +19,7 @@ from inferyard.config.bundle import require_review
 from inferyard.config.loader import load_config
 from inferyard.contracts.validation import Document
 from inferyard.errors import ContractError, EvidenceError, PreflightError
-from inferyard.evidence.ledger import read_trial as rebuild
+from inferyard.analysis.ledger import read_trial as rebuild
 from inferyard.platforms.identity import environment_snapshot, process_start_ticks
 from inferyard.application.execution import execute_async
 from inferyard.runtime.runner import Dependencies

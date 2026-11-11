@@ -32,7 +32,7 @@ def test_raw_run_and_unsealed_partial_are_read_without_report(tmp_path):
 
 @pytest.mark.parametrize("states", [["cancelled", "not_executed"], ["invalid", "not_executed"]])
 def test_sealed_partial_run_verifies_without_promoting_execution(tmp_path, states):
-    from inferyard.evidence.ledger import read_trial
+    from inferyard.analysis.ledger import read_trial
 
     root = fixture_run(tmp_path, states=states)
     original = read_trial(root)

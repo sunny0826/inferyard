@@ -9,7 +9,7 @@ from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.analysis.scoring import ScoringContext
 from inferyard.contracts.validation import Document
 from inferyard.errors import EvidenceError, PreflightError
-from inferyard.evidence.ledger import resume_selection
+from inferyard.analysis.ledger import resume_selection
 from inferyard.evidence.storage import read_json
 from inferyard.implementation_identity import IdentityContext
 from inferyard.provenance import tool_source_hash

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from inferyard.errors import EvidenceError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import read_json, sha256_file
 from tests.evidence_layout_helpers import seal_layout

@@ -10,7 +10,7 @@ from inferyard.contracts.context_speed import (
     sample_reasons,
     validate_result_bindings,
 )
-from inferyard.evidence.context_speed import reference
+from inferyard.evidence.reference import file_reference
 
 
 def value(number=None, reason="unknown", refs=()):
@@ -83,12 +83,12 @@ def project(root, plan, loaded, runs):
         "read_state": "readable",
         "profile": PROFILE,
         "source": {
-            "batch_metadata": reference(root, "batch.json"),
-            "plan": reference(root, "frozen-plan/plan.json"),
-            "config": reference(
+            "batch_metadata": file_reference(root, "batch.json"),
+            "plan": file_reference(root, "frozen-plan/plan.json"),
+            "config": file_reference(
                 root, "frozen-plan/" + plan["runtime_bindings"][0]["config"]["path"]
             ),
-            "bundle": reference(root, "frozen-plan/" + workload["bundle"]["path"]),
+            "bundle": file_reference(root, "frozen-plan/" + workload["bundle"]["path"]),
             "plan_sha256": plan["plan_sha256"],
             "experiment_id": plan["experiment"]["experiment_id"],
             "workload_id": workload["workload_id"],

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.evidence.ledger import read_trial as rebuild
+from inferyard.analysis.ledger import read_trial as rebuild
 from inferyard.reporting.report import write_report
 from tests.helpers import python_worker, readline_timeout
 

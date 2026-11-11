@@ -6,7 +6,7 @@ import os
 from inferyard.contracts.validation import strict_json_loads, validate_document
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.evidence.capacity_stop import validate_capacity_stop
-from inferyard.evidence.duration_ledger import duration_summary
+from inferyard.analysis.duration_ledger import duration_summary
 from inferyard.evidence.event_ledger import PROJECTION_EVENTS, reduce_events
 from inferyard.evidence.formats import require_core
 from inferyard.evidence.lab import verify_lab
@@ -15,7 +15,7 @@ from inferyard.evidence.request_snapshots import require_current_sources
 from inferyard.evidence.service_drain import service_drain
 from inferyard.evidence.storage import local_file
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.evidence.trial_summary import trial_summary
+from inferyard.analysis.trial_summary import trial_summary
 
 
 def _manifest(root, reads):
@@ -104,7 +104,7 @@ def _memory_tail(root):
 
 
 def read_run_projection(root):
-    from inferyard.evidence.ledger import _inputs, preload_inputs
+    from inferyard.analysis.ledger import _inputs, preload_inputs
 
     root = root.resolve()
     reads = TrialEvidence(root, projection=True)
@@ -114,7 +114,7 @@ def read_run_projection(root):
     require_current_sources(root, files)
     documents, limits, trial, workload = _inputs(root, reads, limits)
     if documents["config"].get("definition") == "local-engine-config.v1":
-        from inferyard.evidence.ledger import read_trial
+        from inferyard.analysis.ledger import read_trial
 
         metadata = {}
         data = read_trial(root, metadata=metadata)

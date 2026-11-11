@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.errors import EvidenceError
-from inferyard.evidence.duration_ledger import duration_summary
+from inferyard.analysis.duration_ledger import duration_summary
 
 P = {
     "duration_seconds": 1,

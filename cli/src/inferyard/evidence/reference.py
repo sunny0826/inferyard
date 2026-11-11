@@ -76,3 +76,8 @@ def verify_reference(root, ref, *, reads=None, readers=None):
         raise EvidenceError("evidence_reference_member_mismatch")
     if actual["sha256"] != ref["sha256"]:
         raise EvidenceError("evidence_reference_hash_mismatch")
+
+
+def file_reference(root, name):
+    """Describe one saved source byte-for-byte under the evidence root."""
+    return {"path": name, "sha256": sha256_file(local_file(root, name))}

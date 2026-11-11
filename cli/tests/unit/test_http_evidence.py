@@ -5,7 +5,7 @@ import pytest
 
 from inferyard.adapters.prism import PrismAdapter
 from inferyard.errors import EvidenceError
-from inferyard.evidence.ledger import reduce_events
+from inferyard.analysis.ledger import reduce_events
 from inferyard.evidence.storage import read_json, read_jsonl
 from tests.unit.test_ledger import attempt, journal, setup
 

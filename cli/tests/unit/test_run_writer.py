@@ -6,6 +6,7 @@ import json
 import pytest
 
 from inferyard.adapters.requests import request_body
+from inferyard.analysis.scoring import ScoringContext
 from inferyard.config.loader import load_config
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.errors import EvidenceError
@@ -23,6 +24,7 @@ def make_store(tmp_path, config_path):
     stores = []
 
     def make(**kwargs):
+        kwargs.setdefault("scoring_context", ScoringContext())
         store = TrialJournal(
             tmp_path, plan, plan["trials"][0]["trial_id"], config, bundle, **kwargs
         )
@@ -62,7 +64,7 @@ def test_interrupted_log_creation_reads_only_real_partial_evidence(
     make_store, tmp_path, monkeypatch, capsys, opened
 ):
     from inferyard.cli import main
-    from inferyard.evidence.ledger import read_trial
+    from inferyard.analysis.ledger import read_trial
 
     make, _, bundle = make_store
     open_logs = EvidenceStore._open_logs
@@ -101,7 +103,7 @@ def test_interrupted_log_creation_reads_only_real_partial_evidence(
 
 @pytest.mark.parametrize("sealed", [False, True])
 def test_missing_prepared_file_never_authorizes_started_requests(make_store, sealed):
-    from inferyard.evidence.ledger import read_trial
+    from inferyard.analysis.ledger import read_trial
 
     make, config, bundle = make_store
     store = make()

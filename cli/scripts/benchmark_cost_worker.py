@@ -90,7 +90,7 @@ def workload(operation, corpus, out):
     from inferyard.analysis.resource_metrics import reduce_resources
     from inferyard.cli import main
     from inferyard.contracts.validation import strict_json_loads
-    from inferyard.evidence.ledger import read_trial
+    from inferyard.analysis.ledger import read_trial
     from inferyard.contracts.validation import json_bytes
     from inferyard.evidence.storage import Redactor
     from inferyard.reporting.report import write_report

@@ -51,7 +51,7 @@ def _run_result(request, outcome):
 def _batch_result(request, outcome):
     from inferyard.analysis.repetition_metrics import repetition_metrics
     from inferyard.application.types import CommandResult
-    from inferyard.evidence.ledger import plan_progress
+    from inferyard.analysis.ledger import plan_progress
     from inferyard.runtime.batch_state import remaining_budget
 
     plan, runs = outcome.plan, outcome.runs

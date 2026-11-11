@@ -1,29 +1,14 @@
-"""Read authenticated batch inputs and trial histories without writing artifacts."""
+"""Authenticated read of a dedicated context-speed batch, without writing artifacts."""
 
 from inferyard.config.context_speed_profile import classify_verified_inputs
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.errors import EvidenceError
-from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import local_file, sha256_file
+from inferyard.evidence.storage import local_file
 from inferyard.runtime.batch_state import history
 
 
 class NotSpeed(ValueError):
     pass
-
-
-def reference(root, name):
-    return {"path": name, "sha256": sha256_file(local_file(root, name))}
-
-
-def verified_trial(data):
-    """Keep projection references on the exact bytes checked by the full ledger."""
-    metadata = {}
-    verified = read_trial(data["path"], metadata=metadata)
-    for key in ("run", "plan", "config", "bundle", "selection", "events_sha256", "requests"):
-        if verified[key] != data[key]:
-            raise EvidenceError("context_speed_source_changed_during_read")
-    return metadata["evidence"]
 
 
 def read_inputs(root):

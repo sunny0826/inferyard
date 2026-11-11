@@ -3,11 +3,11 @@
 from inferyard.config.context_speed_profile import classify_verified_inputs
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.workspace_inputs import latest
-from inferyard.evidence.context_speed import read_inputs
+from inferyard.application.context_speed_evidence import read_inputs
 
 
 def update(workspace, result, bundle, bound):
-    from inferyard.config.workspace_progress import command, new_output
+    from inferyard.application.workspace_progress import command, new_output
 
     batches = []
     results = workspace / "results"

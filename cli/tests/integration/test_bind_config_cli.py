@@ -14,7 +14,7 @@ from inferyard.config.loader import load_config
 from inferyard.config.toml_writer import render
 from inferyard.contracts.validation import Document
 from inferyard.errors import PreflightError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401
 from tests.integration.test_native_cli import native_scenario as _native_scenario
 from tests.integration.test_runner import scenario  # noqa: F401

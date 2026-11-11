@@ -4,7 +4,7 @@ from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
 from inferyard.errors import EvidenceError
 from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json
 from inferyard.evidence.trial_evidence import verify_reference

@@ -8,7 +8,7 @@ from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 
 
 def execute(request):
-    from inferyard.config.workspace_progress import inspect_workspace
+    from inferyard.application.workspace_progress import inspect_workspace
 
     try:
         details = inspect_workspace(request.workspace)

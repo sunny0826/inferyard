@@ -209,7 +209,7 @@ def test_prepare_and_offline_read_share_profile_validation(inputs, tmp_path):
 def test_run_input_read_rejects_conflicting_profile(inputs, tmp_path, profile, reason):
     from types import SimpleNamespace
 
-    from inferyard.evidence.ledger import _inputs
+    from inferyard.analysis.ledger import _inputs
 
     experiment, config, bundle = inputs
     if profile is None:

@@ -13,7 +13,7 @@ from inferyard.application.types import CommandRequest
 from inferyard.config.loader import load_config
 from inferyard.config.planning import write_plan
 from inferyard.config.single_plan import compile_single_plan
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import sha256_file, verify_manifest
 from inferyard.evidence.trial_evidence import TrialEvidence

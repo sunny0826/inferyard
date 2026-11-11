@@ -26,7 +26,7 @@ from inferyard.config.local_engines.launch import startup
 from inferyard.config.loader import load_config
 from inferyard.config.toml_writer import render
 from inferyard.errors import PreflightError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.identity import FileIdentity, environment_snapshot, hash_file
 from inferyard.platforms.local_engines.installation import _snapshot

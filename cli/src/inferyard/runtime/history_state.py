@@ -19,7 +19,7 @@ from inferyard.config.loader import LoadedConfig
 from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import validate_document
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
-from inferyard.evidence.ledger import read_run_projection, read_trial
+from inferyard.analysis.ledger import read_run_projection, read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.implementation_identity import execution_matches

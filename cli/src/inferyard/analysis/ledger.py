@@ -22,7 +22,7 @@ from inferyard.config.plan_inputs import validate_workload_inputs
 from inferyard.contracts.validation import strict_json_loads, validate_document, json_bytes
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.evidence.capacity_stop import validate_capacity_stop
-from inferyard.evidence.duration_ledger import duration_summary
+from inferyard.analysis.duration_ledger import duration_summary
 from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.event_ledger import reduce_events
 from inferyard.evidence.formats import require_core
@@ -30,7 +30,7 @@ from inferyard.evidence.journal import trial_for
 from inferyard.evidence.storage import verify_manifest
 from inferyard.evidence.token_budgets import read_budgets
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.evidence.trial_summary import trial_summary
+from inferyard.analysis.trial_summary import trial_summary
 
 CORE = {
     "run.json",
@@ -424,7 +424,7 @@ def read_trial(root: Path, *, metadata=None):
 
 def read_run_projection(root: Path):
     """Read batch continuation fields without a full offline measurement verification."""
-    from inferyard.evidence.run_projection import read_run_projection as project
+    from inferyard.analysis.run_projection import read_run_projection as project
 
     return project(root)
 

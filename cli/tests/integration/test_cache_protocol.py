@@ -6,7 +6,7 @@ import pytest
 from inferyard.config.planning import compile_plan
 from inferyard.contracts.validation import Document
 from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime.trial_runner import run_trial

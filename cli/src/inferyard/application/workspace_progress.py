@@ -54,7 +54,7 @@ def bindings(workspace):
 
 
 def run_records(workspace):
-    from inferyard.evidence.ledger import read_trial
+    from inferyard.analysis.ledger import read_trial
 
     root = workspace / "results"
     if not root.exists():
@@ -123,7 +123,7 @@ def run_groups(matching):
 
 def group_complete(group):
     """Reuse the authoritative plan history projection, not a per-run shortcut."""
-    from inferyard.evidence.ledger import plan_progress
+    from inferyard.analysis.ledger import plan_progress
 
     plan = group[0][1]["plan"]
     progress = plan_progress(plan, [data for _, data, _ in group])
@@ -255,7 +255,7 @@ def bundle_state(workspace, name, bundle_path, preflight, candidate_records, bou
             if blocked:
                 result["blocked_reason"] = blocked
     if name == "zh-context-speed":
-        from inferyard.config.context_speed_progress import update
+        from inferyard.application.context_speed_progress import update
 
         return update(workspace, result, bundle, bound)
     return result, report_runs

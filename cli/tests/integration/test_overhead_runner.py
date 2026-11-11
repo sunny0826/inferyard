@@ -285,7 +285,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
     assert all(row["eligible"] for row in result["environment_binding"]["runs"])
     assert not result["performance_comparison_eligible"]
     if mode in ("boundary", "first_events", "engine_rates", "block_gaps", "resources"):
-        from inferyard.evidence.ledger import read_trial
+        from inferyard.analysis.ledger import read_trial
         from inferyard.evidence.storage import read_jsonl
 
         for arm in trials:

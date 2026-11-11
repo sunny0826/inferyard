@@ -15,7 +15,7 @@ from inferyard.config.loader import load_config
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.contracts.validation import Document
 from inferyard.errors import EvidenceError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.registry import adapter_factory

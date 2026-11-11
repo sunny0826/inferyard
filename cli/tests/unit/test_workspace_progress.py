@@ -9,7 +9,7 @@ import pytest
 
 from inferyard.cli import main
 from inferyard.config.preparation_io import json_bytes
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.reporting.report import write_report
 from tests.helpers import fixture_run
 

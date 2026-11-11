@@ -10,7 +10,7 @@ from inferyard.analysis.scoring import score_case
 from inferyard.config.loader import load_config
 from inferyard.config.planning import compile_plan
 from inferyard.errors import EvidenceError
-from inferyard.evidence.ledger import (
+from inferyard.analysis.ledger import (
     plan_progress,
     read_trial,
     reduce_events,

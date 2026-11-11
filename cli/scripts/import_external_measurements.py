@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from inferyard.errors import EvidenceError
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import atomic_bytes, local_file, read_json, sha256_file
 

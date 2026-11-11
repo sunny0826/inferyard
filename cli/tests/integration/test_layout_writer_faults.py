@@ -14,7 +14,7 @@ import inferyard.runtime.runner as running
 from inferyard.cli import main
 from inferyard.errors import EvidenceError
 from inferyard.evidence.journal import TrialJournal
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import read_json, read_jsonl
 from inferyard.evidence.trial_evidence import TrialEvidence
