@@ -4,13 +4,11 @@ import base64
 import binascii
 import hashlib
 
-from inferyard.contracts.validation import validate_value, validate_document
+from inferyard.contracts.validation import json_bytes, validate_document, validate_value
 from inferyard.errors import ContractError
 
 
 def content_digest(value):
-    from inferyard.evidence.storage import json_bytes
-
     return hashlib.sha256(json_bytes(value)).hexdigest()
 
 

@@ -10,7 +10,7 @@ import pytest
 
 from inferyard.config.engine_fit import digest, request_rows
 from inferyard.errors import EvidenceError, UnsupportedFormat
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.reporting.engine_fit import compare, seal_run, verify
 from inferyard.reporting.engine_fit_metrics import observations
 

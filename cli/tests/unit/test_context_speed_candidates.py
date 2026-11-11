@@ -5,11 +5,8 @@ from copy import deepcopy
 import pytest
 
 from inferyard.config.context_speed_candidates import apply_recipe
-from inferyard.config.context_speed_profile import (
-    CASES,
-    PROFILE,
-    classify_workload_inputs,
-)
+from inferyard.config.context_speed_profile import classify_workload_inputs
+from inferyard.contracts.context_speed_profile import CASES, PROFILE
 from inferyard.config.preparation_io import PreparationError
 from tests.unit.test_context_speed_profile import inputs as profile_inputs
 

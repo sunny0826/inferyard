@@ -14,7 +14,8 @@ import inferyard.runtime.lock as locking
 import inferyard.runtime.runner as running
 from inferyard.adapters.prism import BUILD, PrismAdapter
 from inferyard.application.types import CommandRequest
-from inferyard.config.bundle import content_hash, require_review
+from inferyard.contracts.bundle import content_hash
+from inferyard.config.bundle import require_review
 from inferyard.config.loader import load_config
 from inferyard.contracts.validation import Document
 from inferyard.errors import ContractError, EvidenceError, PreflightError

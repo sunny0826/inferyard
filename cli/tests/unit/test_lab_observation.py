@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.adapters.lab_observation import (
+from inferyard.contracts.lab_observation import (
     LabProtocolError,
     is_idle,
     parse_cancel,

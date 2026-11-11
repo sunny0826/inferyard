@@ -12,9 +12,9 @@ from inferyard.config.loader import LoadedConfig, validate_runtime_config
 from inferyard.config.plan_inputs import read_frozen_plan, source_bytes
 from inferyard.config.startup_arguments import replace_arguments
 from inferyard.contracts.engine_profiles import is_local
-from inferyard.contracts.validation import Document
+from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import ContractError, EvidenceError, PreflightError, UnsupportedFormat
-from inferyard.evidence.storage import atomic_bytes, json_bytes, read_json
+from inferyard.evidence.storage import atomic_bytes, read_json
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.implementation_identity import execution_matches
 from inferyard.provenance import tool_source_hash

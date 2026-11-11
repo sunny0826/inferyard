@@ -15,7 +15,7 @@ from inferyard.analysis.comparison_types import JSONRecord
 from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.errors import EvidenceError
 from inferyard.evidence.artifact_seal import seal
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.runtime import batch_state
 from inferyard.runtime.batch_runner import execute_async
 from tests.integration import comparison_plan_assertions as assertions

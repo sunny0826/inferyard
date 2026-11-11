@@ -20,12 +20,12 @@ def mismatches(conditions, environment):
         and (environment.get(field) is None or environment[field] != conditions[field])
     ]
     if "macos_power_policy" in conditions:
-        from inferyard.platforms.power_macos import valid
+        from inferyard.contracts.power_policy import valid_power_policy
 
         observed = environment.get("macos_power_policy")
         if (
             environment.get("platform") != "Darwin"
-            or not valid(observed)
+            or not valid_power_policy(observed)
             or observed != conditions["macos_power_policy"]
         ):
             result.append("macos_power_policy")

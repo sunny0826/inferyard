@@ -7,7 +7,7 @@ from copy import deepcopy
 
 import httpx
 
-from inferyard.adapters.lab_observation_json import ACTIVE_PHASES, PROTOCOL
+from inferyard.contracts.lab_observation_json import ACTIVE_PHASES, PROTOCOL
 from inferyard.adapters.lab_parameters import CONDITIONS
 
 INSTANCE = "1" * 32

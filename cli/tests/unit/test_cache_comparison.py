@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.comparison import compare_trials
-from inferyard.analysis.engine_timing import DEFINITION
+from inferyard.contracts.engine_timing import DEFINITION
 from tests.unit.test_comparison import trial
 
 

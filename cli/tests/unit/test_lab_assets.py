@@ -8,7 +8,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.errors import PreflightError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.identity import static_preflight
 from inferyard.platforms.lab_assets import inspect_asset
 from inferyard.platforms.lab_identity import LabFileIdentity

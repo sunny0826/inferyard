@@ -2,8 +2,8 @@
 
 import hashlib
 
-from inferyard.analysis.engine_timing import DEFINITION
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.engine_timing import DEFINITION
+from inferyard.contracts.validation import json_bytes
 
 
 def _known(value):

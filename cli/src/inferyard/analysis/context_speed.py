@@ -4,7 +4,7 @@ from collections import Counter
 from statistics import median
 
 from inferyard.analysis.context_speed_samples import sample
-from inferyard.config.context_speed_profile import PROFILE
+from inferyard.contracts.context_speed_profile import PROFILE
 from inferyard.contracts.context_speed import (
     aggregate_reasons,
     sample_reasons,

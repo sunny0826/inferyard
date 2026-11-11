@@ -11,7 +11,8 @@ from inferyard.evidence.request_snapshots import (
     snapshot_filename,
     snapshot_name_for_event,
 )
-from inferyard.evidence.storage import EvidenceStore, json_bytes, local_file, read_json
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import EvidenceStore, local_file, read_json
 
 
 def test_portable_names_sort_in_request_order_and_publish_normally(tmp_path):

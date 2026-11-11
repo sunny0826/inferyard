@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import json_bytes, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.reporting.rescore import build_rescore, verify_rescore, write_rescore
 from inferyard.runtime.batch_runner import execute_async
 from tests.integration.test_batch_runner import batch

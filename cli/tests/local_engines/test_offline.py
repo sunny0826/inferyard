@@ -124,7 +124,7 @@ def python_sealed(local_config, rig, tmp_path):  # noqa: F811
 
 
 def refresh_documents(config, local, identities):
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
 
     argv = [
         local["runtime"]["installation"]["executable"],

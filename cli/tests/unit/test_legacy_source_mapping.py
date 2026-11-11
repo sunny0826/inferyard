@@ -6,7 +6,7 @@ import shutil
 import pytest
 
 from inferyard.cli import main
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from tests.helpers import fixture_run
 
 

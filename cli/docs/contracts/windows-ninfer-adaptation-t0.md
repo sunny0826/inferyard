@@ -87,7 +87,7 @@ disposition 仅 `accepted|already_released`。同一个请求重复取消幂等�
 
 ## 观测与生成解析接口
 
-`adapters/lab_observation.py`：
+`contracts/lab_observation.py`：
 
 ```python
 parse_identity(raw: bytes, *, expected_engine: str) -> dict

@@ -3,7 +3,7 @@
 import pytest
 
 from inferyard.adapters.lab_generation import GenerationDecoder
-from inferyard.adapters.lab_observation_json import LabProtocolError
+from inferyard.contracts.lab_observation_json import LabProtocolError
 from inferyard.adapters.native_observation import OpenAIGenerationDecoder
 from tests.native_stream import usage_stream
 

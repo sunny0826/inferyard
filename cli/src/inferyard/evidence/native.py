@@ -1,6 +1,6 @@
 """Offline reconstruction of release-binary responses without invented lab IDs/drain."""
 
-from inferyard.adapters.lab_observation_json import LabProtocolError
+from inferyard.contracts.lab_observation_json import LabProtocolError
 from inferyard.adapters.lab_parameters import values_equal
 from inferyard.adapters.native_observation import OpenAIGenerationDecoder
 from inferyard.adapters.requests import request_body

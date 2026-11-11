@@ -4,7 +4,8 @@ from collections import Counter
 from copy import deepcopy
 
 from inferyard.config.engine_fit import request_rows, validate_plan
-from inferyard.evidence.storage import atomic_bytes, json_bytes
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes
 from inferyard.reporting.engine_fit_validation import fields, require, validate_run
 
 STATES = ("completed", "failed", "cancelled", "invalid", "not_executed")

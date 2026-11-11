@@ -1,7 +1,5 @@
 """Cross-record checks for memory diagnostics, including saved JSON."""
 
-from pathlib import Path
-
 from inferyard.contracts.validation import validate_document
 from inferyard.errors import ContractError
 
@@ -254,11 +252,3 @@ def _windows_process(row):
         "processes.identity_source",
         "wrong Windows identity source",
     )
-
-
-def read_memory_check(path: Path):
-    from inferyard.evidence.storage import read_json
-
-    data = read_json(path)
-    validate_memory_check(data)
-    return data

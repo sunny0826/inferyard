@@ -5,7 +5,7 @@ import pytest
 from inferyard.analysis.public_metrics import project_metrics
 from inferyard.analysis.public_metrics_check import validate_metrics
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.reporting.public_package import number
 
 

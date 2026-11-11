@@ -576,12 +576,12 @@
           "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
         },
         {
-          "path": "src/inferyard/analysis/engine_timing.py",
+          "path": "src/inferyard/contracts/engine_timing.py",
           "sha256": "48d21e4e8cc02949d09a63ec76264210791b4318c5ce207df0367406310c1a3c"
         },
         {
           "path": "tests/unit/test_engine_timing.py",
-          "sha256": "20052d7639d3bc255e427f60c9f32984dd07d2e2bab63f446a33ba520565d18a"
+          "sha256": "f3d55d0c682bfe03cbc305e3407e757764f6ef57a27c1a4a6af26be2100a1a49"
         }
       ]
     },
@@ -616,12 +616,12 @@
           "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
         },
         {
-          "path": "src/inferyard/analysis/engine_timing.py",
+          "path": "src/inferyard/contracts/engine_timing.py",
           "sha256": "48d21e4e8cc02949d09a63ec76264210791b4318c5ce207df0367406310c1a3c"
         },
         {
           "path": "tests/unit/test_engine_timing.py",
-          "sha256": "20052d7639d3bc255e427f60c9f32984dd07d2e2bab63f446a33ba520565d18a"
+          "sha256": "f3d55d0c682bfe03cbc305e3407e757764f6ef57a27c1a4a6af26be2100a1a49"
         }
       ]
     },
@@ -1469,7 +1469,7 @@
         },
         {
           "path": "src/inferyard/analysis/repetition_analysis.py",
-          "sha256": "0f7eb7e34f4a7e5457dd88d83f6fcb1caadc3f36360ee27d1af09f9f50257821"
+          "sha256": "ce81889ae18a8402445a25dbdfb33d0f59bef57492180bf03fe60accdd8c1804"
         },
         {
           "path": "tests/unit/test_repetition_metrics.py",
@@ -1517,7 +1517,7 @@
         },
         {
           "path": "src/inferyard/analysis/repetition_analysis.py",
-          "sha256": "0f7eb7e34f4a7e5457dd88d83f6fcb1caadc3f36360ee27d1af09f9f50257821"
+          "sha256": "ce81889ae18a8402445a25dbdfb33d0f59bef57492180bf03fe60accdd8c1804"
         },
         {
           "path": "tests/unit/test_repetition_metrics.py",

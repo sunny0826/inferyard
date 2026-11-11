@@ -18,8 +18,7 @@ from inferyard.config.preparation_io import (
 )
 from inferyard.config.toml_writer import render
 from inferyard.contracts.schemas_config import CONFIG_DEFAULTS
-from inferyard.contracts.validation import validate_document
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.platforms.identity import environment_snapshot
 from inferyard.platforms.local_engines import (
     freeze_installation,

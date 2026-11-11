@@ -2,7 +2,7 @@
 
 import hashlib
 
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.registry import catalogue
 
 # Only reviewed, fixed vocabulary is published. Unknown strings remain distinguishable

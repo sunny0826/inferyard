@@ -30,10 +30,9 @@ from inferyard.config.comparison_plan_safety import (
 )
 from inferyard.config.planning import write_plan
 from inferyard.contracts.engine_profiles import is_local
-from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.contracts.validation import strict_json_loads, validate_document, json_bytes
 from inferyard.errors import ContractError
 from inferyard.evidence.formats import require_input
-from inferyard.evidence.storage import json_bytes
 
 if TYPE_CHECKING:
     from inferyard.application.types import CommandRequest, CommandResult

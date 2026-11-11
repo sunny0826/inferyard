@@ -34,7 +34,7 @@ def _canonical(value):
 
 
 def approved(bundle):
-    from inferyard.config.bundle import content_hash
+    from inferyard.contracts.bundle import content_hash
 
     digest = content_hash(bundle)
     return any(
@@ -73,7 +73,7 @@ def _legacy_source(source, *, inherited=False):
         raise ContractError(PROOF_PATH, "legacy revision has unsupported task categories")
     if type(ancestors) is not list:
         raise ContractError(PROOF_PATH, "legacy inheritance must be an array")
-    from inferyard.config.bundle import validate_bundle_semantics
+    from inferyard.contracts.bundle import validate_bundle_semantics
 
     # The normalized proof passed BUNDLE above and has not changed since.
     validate_bundle_semantics(current)
@@ -94,7 +94,7 @@ def _legacy_source(source, *, inherited=False):
 
 def validate_provenance(bundle):
     """Return approval flags after verifying all proof hashes and equivalence."""
-    from inferyard.config.bundle import content_hash
+    from inferyard.contracts.bundle import content_hash
 
     result, seen = [], set()
     covered = approved_cases(bundle)

@@ -398,6 +398,15 @@ def strict_json_loads(text: str) -> Any:
         raise ContractError("document", "invalid JSON syntax or nesting") from exc
 
 
+def json_bytes(value) -> bytes:
+    return (
+        json.dumps(
+            value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
 @dataclass(frozen=True, slots=True)
 class Document:
     """Detached, validated wire record; mutations of input/output cannot alter it."""

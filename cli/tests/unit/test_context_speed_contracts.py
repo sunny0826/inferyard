@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.analysis.engine_timing import engine_rates
+from inferyard.contracts.engine_timing import engine_rates
 from inferyard.contracts.context_speed import validate_response, validate_result_bindings
 from inferyard.contracts.validation import strict_json_loads, validate_document
 from inferyard.errors import ContractError

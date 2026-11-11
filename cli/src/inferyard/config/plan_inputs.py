@@ -12,10 +12,14 @@ from inferyard.config.loader import (
     validate_runtime_config,
 )
 from inferyard.contracts.schemas import CONFIG_DEFAULTS
-from inferyard.contracts.validation import Document, strict_json_loads, validate_document
+from inferyard.contracts.validation import (
+    Document,
+    json_bytes,
+    strict_json_loads,
+    validate_document,
+)
 from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core, require_input
-from inferyard.evidence.storage import json_bytes
 
 
 def normalized_config(raw, filename, source_directory, bundle_path):
@@ -126,7 +130,7 @@ def read_frozen_plan(path):
         raise EvidenceError("invalid_artifact_version")
     # This canonical self-hash is interpretable without loading an old schema.
     if "plan_sha256" in plan:
-        from inferyard.config.plan_math import plan_hash
+        from inferyard.contracts.plan_math import plan_hash
 
         digest = plan["plan_sha256"]
         if (

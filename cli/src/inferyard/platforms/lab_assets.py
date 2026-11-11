@@ -9,9 +9,8 @@ import os
 import struct
 from pathlib import Path
 
-from inferyard.contracts.validation import strict_json_loads
+from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import ContractError, PreflightError
-from inferyard.evidence.storage import json_bytes
 
 MAX_DIRECTORY_BYTES = 16 * 1024**2
 

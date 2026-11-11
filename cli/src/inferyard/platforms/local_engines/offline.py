@@ -7,9 +7,8 @@ from pathlib import PurePosixPath
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
 from inferyard.contracts.local_environment import validate_installation_environment
 from inferyard.contracts.schemas_common import HASH, LABEL, NAT, array, obj
-from inferyard.contracts.validation import validate_value
+from inferyard.contracts.validation import validate_value, json_bytes
 from inferyard.errors import ContractError, PreflightError
-from inferyard.evidence.storage import json_bytes
 from inferyard.platforms.local_engines.binding_schema import validate as validate_binding
 from inferyard.platforms.local_engines.runtime_schema import RUNTIME
 from inferyard.platforms.local_engines.startup import validate_arguments

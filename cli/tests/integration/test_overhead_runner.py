@@ -3,7 +3,8 @@ import asyncio
 import pytest
 
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import json_bytes, read_json
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.resources import resource_collector_id
 from inferyard.runtime.overhead_runner import read_overhead, run_overhead

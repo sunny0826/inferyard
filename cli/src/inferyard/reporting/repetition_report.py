@@ -8,7 +8,8 @@ from inferyard.analysis.repetition_metrics import repetition_metrics
 from inferyard.application.types import CommandResult
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, local_file, read_json, sha256_file
 from inferyard.provenance import tool_source_hash
 from inferyard.runtime.batch_state import history
 

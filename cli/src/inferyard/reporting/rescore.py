@@ -9,10 +9,10 @@ from inferyard.analysis.observations import Observations, quality_observations
 from inferyard.analysis.scoring import ScoringContext, score_case, scorer_hash, unscorable
 from inferyard.analysis.scoring_revision import resolve
 from inferyard.application.types import CommandResult
-from inferyard.contracts.validation import validate_document
+from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core
-from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, read_json
+from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input
 from inferyard.reporting.export import trial_analysis

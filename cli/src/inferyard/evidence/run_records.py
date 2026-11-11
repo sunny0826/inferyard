@@ -6,10 +6,9 @@ from datetime import UTC, datetime
 
 from inferyard import SCHEMA_VERSION
 from inferyard.contracts.engine_profiles import observes_before_idle
-from inferyard.contracts.validation import validate_document
+from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.observations import MULTI_STAGE, validate_query
-from inferyard.evidence.storage import json_bytes
 
 
 class RunRecords:

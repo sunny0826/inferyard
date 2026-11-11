@@ -6,11 +6,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from inferyard.config.bundle import require_review
-from inferyard.config.context_speed_profile import CASES, PROFILE, classify_workload_inputs
+from inferyard.config.context_speed_profile import classify_workload_inputs
+from inferyard.contracts.context_speed_profile import CASES, PROFILE
 from inferyard.config.planning import prepare_plan, write_plan
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.errors import ContractError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 
 
 def experiment_for(config, bundle):

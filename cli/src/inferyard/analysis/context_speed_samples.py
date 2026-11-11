@@ -1,7 +1,7 @@
 """Per-request speed projection from the full ledger and physical originals."""
 
 from inferyard.analysis.context_speed_cohort import cohort as measurement_cohort
-from inferyard.analysis.engine_timing import engine_rates
+from inferyard.contracts.engine_timing import engine_rates
 from inferyard.analysis.input_lengths import bind_token_counts
 from inferyard.errors import EvidenceError
 from inferyard.evidence.context_speed import verified_trial

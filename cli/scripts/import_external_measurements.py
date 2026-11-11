@@ -10,7 +10,8 @@ from pathlib import Path
 
 from inferyard.errors import EvidenceError
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, local_file, read_json, sha256_file
 
 METRICS = {"E01": "bytes", "E02": "percent", "E03": "W", "E04": "J"}
 

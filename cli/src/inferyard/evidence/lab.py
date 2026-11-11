@@ -1,7 +1,7 @@
 """Offline lab response, request-ID and lifecycle reconstruction for formal evidence."""
 
 from inferyard.adapters.lab_generation import GenerationDecoder
-from inferyard.adapters.lab_observation import (
+from inferyard.contracts.lab_observation import (
     LabProtocolError,
     ObservationTracker,
     parse_identity,
@@ -13,7 +13,7 @@ from inferyard.errors import EvidenceError
 from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.lab_parameters import verify_parameters
 from inferyard.evidence.native import observation_evidence, verify_native
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 

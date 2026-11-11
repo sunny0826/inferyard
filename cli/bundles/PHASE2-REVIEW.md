@@ -13,6 +13,6 @@
 本次审核绑定的组合包内容SHA256（排除顶层review_records）：
 `022ebb43192769cfba05ee2dc70322961e1ad8c6e4010b9c237c71facf894f86`。
 
-来源与生成器：[build_phase2_bundle.py](../scripts/build_phase2_bundle.py)。`--check`核对题包、边界样例和HTML是否一致；普通生成模式遇到已审核题包会拒绝覆盖。新增内容或规则调整后必须形成新的审核版本；编写代码与自动校验不构成人工审批。
+来源与生成器：[build_phase2_bundle.py](../scripts/build_phase2_bundle.py)（题目数据见 [phase2_corpus.py](../scripts/phase2_corpus.py)）。`--check`核对题包、边界样例和HTML是否一致；普通生成模式遇到已审核题包会拒绝覆盖。新增内容或规则调整后必须形成新的审核版本；编写代码与自动校验不构成人工审批。
 
 自动检查：120个标准答案及160个正反例匹配预期；新增83项题包测试通过。浏览器离线筛选、详情展开、1280/390像素布局无横向溢出，见本机原件 `validation/phase2/P2-06/corpus-review/browser.json`（不随公开仓库分发）。这些仅为开发证据。

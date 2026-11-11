@@ -6,7 +6,8 @@ import os
 from copy import deepcopy
 
 from inferyard.errors import EvidenceError, PreflightError
-from inferyard.evidence.storage import Redactor, atomic_bytes, json_bytes, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import Redactor, atomic_bytes, read_json, sha256_file
 from inferyard.extensions.client_capacity import ClientCapacity
 from inferyard.extensions.closed_concurrency import run_closed
 from inferyard.extensions.closed_concurrency import validate_spec as validate_closed

@@ -165,7 +165,7 @@ def metrics():
                 )
                 + (
                     [
-                        reference(ROOT / "src/inferyard/analysis/engine_timing.py"),
+                        reference(ROOT / "src/inferyard/contracts/engine_timing.py"),
                         reference(ROOT / "tests/unit/test_engine_timing.py"),
                     ]
                     if key in ("L06", "L07")

@@ -5,7 +5,8 @@ import hashlib
 import re
 
 from inferyard.evidence.layout import INPUT_FILES, OBSERVATION_FILES
-from inferyard.evidence.storage import json_bytes, read_json, read_jsonl, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json, read_jsonl, sha256_file
 
 
 def digest(value):

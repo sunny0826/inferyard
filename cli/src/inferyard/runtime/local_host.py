@@ -3,7 +3,7 @@
 from hashlib import sha256
 
 from inferyard.errors import PreflightError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 
 
 def require_gone(service, process_start):

@@ -193,8 +193,8 @@ mise exec -- uv run --frozen python - bundles/example.json <<'PY'
 import sys
 from pathlib import Path
 from inferyard.evidence.storage import read_json
-from inferyard.config.bundle import validate_bundle
-from inferyard.config.bundle_review import case_content_hash
+from inferyard.contracts.bundle import validate_bundle
+from inferyard.contracts.bundle_review import case_content_hash
 bundle = read_json(Path(sys.argv[1]))
 validate_bundle(bundle)
 for case in bundle['cases']:

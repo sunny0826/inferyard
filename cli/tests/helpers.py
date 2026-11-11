@@ -9,7 +9,7 @@ from pathlib import Path
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.scoring import score_case
 from inferyard.config.loader import load_config
-from inferyard.config.plan_math import plan_hash
+from inferyard.contracts.plan_math import plan_hash
 from inferyard.config.single_plan import compile_single_plan
 from tests.legacy_journal import LegacyJournal
 

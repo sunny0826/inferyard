@@ -2,7 +2,7 @@
 
 import time
 
-from inferyard.adapters.lab_observation_json import (
+from inferyard.contracts.lab_observation_json import (
     PROTOCOL,
     LabProtocolError,
     load_strict,

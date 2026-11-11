@@ -13,7 +13,7 @@
 | 社区资源 | [export_community.py](export_community.py) | 复制已审题包原字节、生成 profile/摘要；读取固定归档，不执行引擎 |
 | 发行物 | [build_distribution.py](build_distribution.py)、[check_distribution.py](check_distribution.py)、[export_runtime_constraints.py](export_runtime_constraints.py)、[prepare_release_candidate.py](prepare_release_candidate.py)、[verify_release_candidate.py](verify_release_candidate.py) | 新目录构建、安装结果绑定、候选生成与字节暂存，不上传 |
 | 配置 | [bind_service_config.py](bind_service_config.py)、[create_macos_benchmark_config.py](create_macos_benchmark_config.py)、[create_windows_benchmark_config.py](create_windows_benchmark_config.py)、[create_windows_candidate.py](create_windows_candidate.py) | 读取本机身份和资产，写新候选或 bound；部分入口查询引擎版本 |
-| 题包 | [build_phase2_bundle.py](build_phase2_bundle.py)、[build_position_bundle.py](build_position_bundle.py)、[build_structured_clarity_bundle.py](build_structured_clarity_bundle.py)、[build_structured_fields_bundle.py](build_structured_fields_bundle.py) | 创建题包与审核材料；改内容后仍须人工审核 |
+| 题包 | [build_phase2_bundle.py](build_phase2_bundle.py)（题目数据见 [phase2_corpus.py](phase2_corpus.py)）、[build_position_bundle.py](build_position_bundle.py)、[build_structured_clarity_bundle.py](build_structured_clarity_bundle.py)、[build_structured_fields_bundle.py](build_structured_fields_bundle.py) | 创建题包与审核材料；改内容后仍须人工审核 |
 | 扫描准备 | [prepare_length_scan.py](prepare_length_scan.py)、[prepare_position_scan.py](prepare_position_scan.py) | 从准备证据生成新实验定义，检查各脚本要求 |
 | 原生采集 | [collect_windows_machine.py](collect_windows_machine.py)、[collect_thermal_diagnostic.py](collect_thermal_diagnostic.py) | 读取设备/温度与来源，写诊断，不等于模型测评 |
 | 来源核对 | [verify_lineage_files.py](verify_lineage_files.py)、[import_external_measurements.py](import_external_measurements.py) | 核对谱系、导入有来源观测；历史迁移工具已移除，旧数据回原项目处理 |

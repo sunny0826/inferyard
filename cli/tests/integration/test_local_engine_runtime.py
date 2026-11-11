@@ -287,7 +287,7 @@ def test_second_scope_requires_explicit_handoff_and_new_process(
         }
         return value
 
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
     from inferyard.platforms.identity import hash_file
 
     config = command.config.config.to_dict()
@@ -338,7 +338,7 @@ def test_second_scope_requires_explicit_handoff_and_new_process(
     assert len(state.posts) == 5
     assert len(list((tmp_path / "batch" / "runs").iterdir())) == 1
 
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
 
     replacement = rig("vllm")
     replacement.binding = deepcopy(state.binding)

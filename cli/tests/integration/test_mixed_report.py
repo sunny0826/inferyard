@@ -4,7 +4,8 @@ from pathlib import Path
 import pytest
 
 from inferyard.errors import UnsupportedFormat
-from inferyard.evidence.storage import json_bytes, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import sha256_file
 from inferyard.reporting.report import verify_report, write_report
 from inferyard.runtime.runner import execute_async
 from inferyard.runtime.trial_runner import run_trial

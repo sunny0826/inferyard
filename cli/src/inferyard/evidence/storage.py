@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import re
 import time
@@ -12,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path, PureWindowsPath
 
 from inferyard import SCHEMA_VERSION
-from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.contracts.validation import json_bytes, strict_json_loads, validate_document
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.platforms.platform_io import (
     filesystem_path,
@@ -109,15 +108,6 @@ class StreamRedactor:
                     return "".join(result)
         result.append(text[index : len(text)])
         return "".join(result)
-
-
-def json_bytes(value) -> bytes:
-    return (
-        json.dumps(
-            value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
-        )
-        + "\n"
-    ).encode("utf-8")
 
 
 def sha256_file(path: Path) -> str:

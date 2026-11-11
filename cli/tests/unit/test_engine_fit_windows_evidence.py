@@ -222,7 +222,7 @@ def test_windows_tampered_sealed_source_is_rejected(tmp_path):
     seal_run(tmp_path, plan, run, rows)
     changed = deepcopy(run)
     changed["binding"]["process_start_source"] = "guessed"
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
 
     (tmp_path / "run.json").write_bytes(json_bytes(changed))
     with pytest.raises(EvidenceError, match="hash_mismatch"):

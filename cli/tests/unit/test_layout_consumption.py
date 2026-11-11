@@ -8,7 +8,8 @@ import pytest
 
 from inferyard.errors import EvidenceError
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import json_bytes, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json, sha256_file
 from tests.evidence_layout_helpers import seal_layout
 from tests.unit.test_external_measurement_import import channel
 from tests.unit.test_layout_surfaces import sources as layout_sources

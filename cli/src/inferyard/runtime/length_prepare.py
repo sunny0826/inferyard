@@ -6,7 +6,8 @@ from dataclasses import asdict
 
 from inferyard.application.types import CommandResult
 from inferyard.errors import EvidenceError, PreflightError
-from inferyard.evidence.storage import atomic_bytes, json_bytes, new_output, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, new_output, read_json, sha256_file
 from inferyard.provenance import tool_source_hash
 from inferyard.registry import adapter_factory
 from inferyard.runtime.batch_state import bind_service

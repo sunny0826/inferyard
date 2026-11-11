@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.config.bundle import require_review, validate_bundle
+from inferyard.contracts.bundle import validate_bundle
+from inferyard.config.bundle import require_review
 from inferyard.errors import ContractError
 
 

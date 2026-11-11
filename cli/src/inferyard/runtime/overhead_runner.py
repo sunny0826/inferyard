@@ -8,7 +8,8 @@ from dataclasses import replace
 from inferyard import SCHEMA_VERSION
 from inferyard.errors import EvidenceError
 from inferyard.evidence.journal import trial_for
-from inferyard.evidence.storage import atomic_bytes, json_bytes, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, sha256_file
 from inferyard.platforms.resources import ResourceSampler, resource_collector_id
 from inferyard.platforms.telemetry import Sampler
 from inferyard.provenance import tool_source_hash

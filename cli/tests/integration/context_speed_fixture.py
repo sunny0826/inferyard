@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from inferyard.adapters.prism import BUILD, PrismAdapter
-from inferyard.config.context_speed_profile import GENERATION
+from inferyard.contracts.context_speed_profile import GENERATION
 from inferyard.config.toml_writer import render
 from inferyard.platforms.identity import FileIdentity
 from tests.integration.test_runner import scenario as runner_scenario

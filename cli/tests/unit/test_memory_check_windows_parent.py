@@ -5,7 +5,7 @@ import json
 import psutil
 import pytest
 
-from inferyard.contracts.memory_check import read_memory_check
+from inferyard.evidence.memory_check import read_memory_check
 from inferyard.errors import ContractError
 from inferyard.platforms import memory_windows as native
 from tests.unit.test_memory_check_windows import boundary, observed, report  # noqa: F401

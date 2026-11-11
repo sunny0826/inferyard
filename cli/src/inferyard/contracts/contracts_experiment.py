@@ -3,7 +3,7 @@
 import math
 from pathlib import PurePosixPath, PureWindowsPath
 
-from inferyard.config.plan_math import plan_hash, workload_budget
+from inferyard.contracts.plan_math import plan_hash, workload_budget
 from inferyard.errors import ContractError
 
 
@@ -31,7 +31,7 @@ def _environment_admission(data, path):
 
 
 def _experiment(data):
-    from inferyard.config.context_speed_profile import validate_experiment_profile
+    from inferyard.contracts.context_speed_profile import validate_experiment_profile
 
     validate_experiment_profile(data)
     _environment_admission(data, "experiment.environment_admission")
@@ -200,9 +200,9 @@ def validate_semantics(kind, data):
         validate_config(data)
         _environment_admission(data["conditions"], "config.conditions.environment_admission")
     if kind == "config" and "macos_power_policy" in data["conditions"]:
-        from inferyard.platforms.power_macos import valid
+        from inferyard.contracts.power_policy import valid_power_policy
 
-        if not valid(data["conditions"]["macos_power_policy"]):
+        if not valid_power_policy(data["conditions"]["macos_power_policy"]):
             raise ContractError(
                 "config.conditions.macos_power_policy", "inconsistent native policy"
             )
@@ -229,7 +229,7 @@ def validate_semantics(kind, data):
             if data["event_type"] == "score":
                 validate_semantics("score", data["data"])
             elif data["event_type"] == "engine_timings":
-                from inferyard.analysis.engine_timing import capture_timings
+                from inferyard.contracts.engine_timing import capture_timings
 
                 raw = data["data"]
                 expected = capture_timings(raw, final=raw["final"])
@@ -243,7 +243,7 @@ def validate_semantics(kind, data):
         unique(data["case_ids"], "selection.case_ids")
         return
     if kind == "bundle":
-        from inferyard.config.bundle import validate_bundle_semantics
+        from inferyard.contracts.bundle import validate_bundle_semantics
 
         # validate_document has already checked this exact bundle's structure.
         validate_bundle_semantics(data)

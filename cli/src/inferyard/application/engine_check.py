@@ -7,7 +7,7 @@ from inferyard.application.types import CommandResult
 from inferyard.config.preparation_io import PreparationError, require_platform, sha256
 from inferyard.contracts.schemas_engine_check import REASONS
 from inferyard.errors import PreflightError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.runtime_profiles import RELEASE
 
 

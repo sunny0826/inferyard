@@ -8,7 +8,7 @@
   "generator_version": "context-speed-corpus.v2",
   "generation_seed": "inferyard-2026-10-18-context-speed",
   "generator_sources_sha256": {
-    "build_context_speed_bundle.py": "f844d01efd712a4a67d2277e435aa7660bb798d46fc452e091bd25ac12940976",
+    "build_context_speed_bundle.py": "275bd57a184213780b41d38665369d6faabbeada0b5eb73af439fe4e5d99e9e3",
     "context_speed_corpus.py": "2588d593b6da7ea40d4395cebc3f7365a3129d1cc0e12b77f6ddb14c55aab53e"
   },
   "license": "MIT",

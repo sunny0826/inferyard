@@ -10,9 +10,9 @@ from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
 from inferyard.application.types import CommandResult
-from inferyard.contracts.validation import validate_document
+from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, read_json, sha256_file
+from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json, sha256_file
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input, verify_metric_references
 

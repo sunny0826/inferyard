@@ -140,7 +140,7 @@ def test_relative_toml_paths_survive_relocation(tmp_path, config_path):
 
 
 def test_runtime_snapshot_tampering_is_rejected_even_with_rehashed_plan(tmp_path, config_path):
-    from inferyard.config.plan_math import plan_hash
+    from inferyard.contracts.plan_math import plan_hash
 
     path = input_package(tmp_path, config_path)
     frozen = tmp_path / "frozen"
@@ -159,7 +159,7 @@ def test_runtime_snapshot_tampering_is_rejected_even_with_rehashed_plan(tmp_path
 
 
 def test_frozen_reader_rechecks_budget_bindings_and_seed_order(tmp_path, config_path):
-    from inferyard.config.plan_math import plan_hash
+    from inferyard.contracts.plan_math import plan_hash
 
     path = input_package(tmp_path, config_path)
     source = json.loads(path.read_text())

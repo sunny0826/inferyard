@@ -111,7 +111,7 @@ def performance_comparison(left, right, comparison, evidence, *, definition="pha
                 local.append("first_event_overhead_contract_mismatch")
         elif code in ("L06", "L07") and engine_rate_mode:
             from inferyard.analysis.engine_overhead import pair_reasons
-            from inferyard.analysis.engine_timing import DEFINITION
+            from inferyard.contracts.engine_timing import DEFINITION
 
             cohorts = [
                 [

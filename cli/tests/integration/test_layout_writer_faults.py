@@ -15,7 +15,8 @@ from inferyard.cli import main
 from inferyard.errors import EvidenceError
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import json_bytes, read_json, read_jsonl
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json, read_jsonl
 from inferyard.evidence.trial_evidence import TrialEvidence
 from tests.helpers import python_worker, readline_timeout
 from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401

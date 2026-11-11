@@ -3,7 +3,8 @@
 import pytest
 
 from inferyard.evidence.ledger import read_run_projection
-from inferyard.evidence.storage import json_bytes, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json, sha256_file
 from tests.unit.test_ledger import attempt, finish, journal
 from tests.unit.test_ledger import setup as ledger_setup
 

@@ -8,7 +8,7 @@ import pytest
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
 from inferyard.errors import EvidenceError, UnsupportedFormat
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.reporting.comparison_report import execute as compare
 from inferyard.reporting.public_package import verify_public, write_public
 from inferyard.reporting.report import write_report

@@ -6,7 +6,8 @@ import re
 from pathlib import PurePosixPath, PureWindowsPath
 
 from inferyard.errors import ContractError, UnsupportedFormat
-from inferyard.evidence.storage import atomic_bytes, json_bytes, read_json
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, read_json
 
 LEGACY_ENGINES = ("vllm", "sglang")
 ENGINES = (*LEGACY_ENGINES, "llama-cpp", "mlx-lm", "lmstudio", "ollama")

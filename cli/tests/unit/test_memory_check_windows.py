@@ -328,7 +328,7 @@ def test_failed_worker_is_tool_error():
 
 
 def test_windows_saved_contract_examples():
-    from inferyard.contracts.memory_check import read_memory_check
+    from inferyard.evidence.memory_check import read_memory_check
 
     root = Path(__file__).parents[1] / "fixtures/contracts"
     valid = read_memory_check(root / "memory-check.windows.valid.json")

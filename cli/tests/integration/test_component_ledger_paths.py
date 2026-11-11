@@ -5,10 +5,11 @@ import hashlib
 import pytest
 
 from inferyard.config.plan_inputs import read_frozen_plan
-from inferyard.config.plan_math import plan_hash
+from inferyard.contracts.plan_math import plan_hash
 from inferyard.config.planning import write_plan
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import json_bytes, read_json
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json
 from tests.integration.test_phase2_plan import input_package
 
 

@@ -8,8 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.config.bundle import content_hash, require_review, validate_bundle
-from inferyard.config.bundle_review import case_content_hash
+from inferyard.contracts.bundle import content_hash, validate_bundle
+from inferyard.config.bundle import require_review
+from inferyard.contracts.bundle_review import case_content_hash
 from inferyard.errors import ContractError
 from scripts.build_context_speed_bundle import (
     BUNDLE_NAME,

@@ -6,8 +6,7 @@ import uuid
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.scoring import SCORER_VERSION
 from inferyard.config.planning import compile_plan
-from inferyard.contracts.validation import validated_dict
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import validated_dict, json_bytes
 
 
 def local_safety(safety):

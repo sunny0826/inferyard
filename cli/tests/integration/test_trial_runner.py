@@ -298,7 +298,7 @@ def test_input_target_checked_before_generation_and_rebuilt_offline(scenario, ta
 def test_length_preparation_only_uses_management_calls(scenario, tmp_path, target):
     from dataclasses import replace
 
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
     from inferyard.runtime.length_prepare import prepare
     from tests.unit.test_length_builder import spec
 

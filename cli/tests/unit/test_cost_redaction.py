@@ -1,6 +1,7 @@
 """Credentials split across chunks or nested in JSON must remain redacted."""
 
-from inferyard.evidence.storage import Redactor, json_bytes
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import Redactor
 
 
 def test_prefix_not_emitted_before_later_complete_match():

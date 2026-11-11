@@ -7,12 +7,8 @@ from types import SimpleNamespace
 import pytest
 
 from inferyard.config.community_candidates_windows import build_config
-from inferyard.config.context_speed_profile import (
-    CASES,
-    GENERATION,
-    PROFILE,
-    classify_workload_inputs,
-)
+from inferyard.config.context_speed_profile import classify_workload_inputs
+from inferyard.contracts.context_speed_profile import CASES, GENERATION, PROFILE
 from inferyard.contracts.validation import validate_document
 from inferyard.errors import ContractError
 from tests.unit import test_context_speed_profile

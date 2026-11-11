@@ -3,7 +3,7 @@
 from copy import deepcopy
 from hashlib import sha256
 
-from inferyard.contracts.validation import strict_json_loads
+from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import EvidenceError
 from inferyard.evidence.artifact_seal import read_sealed, seal
 from inferyard.evidence.source_locations import (
@@ -12,7 +12,6 @@ from inferyard.evidence.source_locations import (
     resolve_source,
     retain_comparison_locations,
 )
-from inferyard.evidence.storage import json_bytes
 
 
 def portable_index(index, out, comparison_path=None):

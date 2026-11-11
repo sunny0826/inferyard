@@ -5,9 +5,9 @@ from copy import deepcopy
 from importlib.resources import files
 
 from inferyard.application.types import CommandResult
-from inferyard.contracts.validation import strict_json_loads
+from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import atomic_bytes, json_bytes, new_output
+from inferyard.evidence.storage import atomic_bytes, new_output
 
 RESULT = "engine-comparison.json"
 HTML = "report.html"

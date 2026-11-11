@@ -15,9 +15,9 @@ from inferyard import cli
 from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.application.verification import execute
 from inferyard.config.loader import load_config
-from inferyard.contracts.validation import Document
+from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.storage import json_bytes, read_json
+from inferyard.evidence.storage import read_json
 from tests.helpers import fixture_run, symlink_or_skip
 
 

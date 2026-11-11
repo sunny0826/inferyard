@@ -10,7 +10,8 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
-from inferyard.evidence.storage import atomic_bytes, json_bytes
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes
 from inferyard.platforms.device_host import snapshot as host_snapshot
 from inferyard.platforms.gguf_metadata import read_metadata
 

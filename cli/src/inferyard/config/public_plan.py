@@ -9,7 +9,8 @@ from inferyard.config.planning import compile_plan, write_plan
 from inferyard.config.public_config_check import check_config
 from inferyard.config.public_recipe import fingerprint
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json, sha256_file
 
 
 def materialize(package, loaded, out):

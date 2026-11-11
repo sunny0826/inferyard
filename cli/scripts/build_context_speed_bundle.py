@@ -5,8 +5,8 @@ import hashlib
 import json
 from pathlib import Path
 
-from inferyard.config.bundle import content_hash, validate_bundle
-from inferyard.config.bundle_review import case_content_hash
+from inferyard.contracts.bundle import content_hash, validate_bundle
+from inferyard.contracts.bundle_review import case_content_hash
 
 if __package__:
     from .context_speed_corpus import GENERATOR_VERSION, SEED, SPECS, TOPICS, prompt

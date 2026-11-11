@@ -2,7 +2,7 @@
 import pytest
 
 from inferyard.analysis.cache_observations import cache_series, observe
-from inferyard.analysis.engine_timing import capture_timings
+from inferyard.contracts.engine_timing import capture_timings
 
 
 def record(cached=0, processed=0):

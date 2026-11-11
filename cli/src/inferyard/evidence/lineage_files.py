@@ -12,9 +12,8 @@ from inferyard.config.lineage_records import (
     validate_records,
 )
 from inferyard.config.model_lineage import LINEAGE
-from inferyard.contracts.validation import validate_value
+from inferyard.contracts.validation import validate_value, json_bytes
 from inferyard.errors import ContractError
-from inferyard.evidence.storage import json_bytes
 from inferyard.platforms.platform_io import open_nofollow
 
 

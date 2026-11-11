@@ -5,7 +5,7 @@ import ipaddress
 from pathlib import Path
 
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 
 BINDINGS = {
     "-m": "model",

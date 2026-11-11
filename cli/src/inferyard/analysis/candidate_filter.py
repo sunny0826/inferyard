@@ -8,7 +8,8 @@ from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandResult
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import atomic_bytes, json_bytes, new_output, read_json
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, new_output, read_json
 from inferyard.reporting.comparison_report import comparison_input, read_verified_comparison
 
 SELECTOR_KEYS = (

@@ -6,9 +6,9 @@ from pathlib import Path
 from stat import S_ISREG
 
 from inferyard.config.engine_fit import validate_plan
-from inferyard.contracts.validation import strict_json_loads
+from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.storage import atomic_bytes, json_bytes
+from inferyard.evidence.storage import atomic_bytes
 from inferyard.reporting.engine_fit_html import LIMITATIONS, render
 from inferyard.reporting.engine_fit_metrics import observations
 from inferyard.reporting.engine_fit_validation import fields, require, validate_run

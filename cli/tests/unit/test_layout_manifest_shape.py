@@ -3,7 +3,8 @@
 import pytest
 
 from inferyard.cli import main
-from inferyard.evidence.storage import json_bytes, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json, sha256_file
 from tests.evidence_layout_helpers import build_current_original, pack_layout2, seal_layout
 
 

@@ -12,7 +12,7 @@ from __future__ import annotations
 import codecs
 from typing import Any
 
-from inferyard.adapters.lab_observation_json import (
+from inferyard.contracts.lab_observation_json import (
     MAX_RESPONSE_BYTES,
     MAX_SSE_FRAME_BYTES,
     LabProtocolError,

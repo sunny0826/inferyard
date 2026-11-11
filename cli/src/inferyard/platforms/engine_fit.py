@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 
 from inferyard.errors import ContractError, PreflightError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.identity import memory_available, process_start_ticks, service_origin, verify_listener
 
 

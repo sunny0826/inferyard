@@ -5,7 +5,7 @@ import re
 from ntpath import isreserved
 
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 
 
 def messages_sha256(messages):

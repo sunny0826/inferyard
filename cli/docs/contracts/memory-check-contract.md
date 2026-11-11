@@ -22,7 +22,7 @@ inferyard --schema memory_check
 ## 输出与读取支持
 
 macOS 诊断为 `schema_version = 3`、`kind = memory_check.v1`，与 run/sample/device_preflight 独立。
-`--schema memory_check` 输出结构 Schema；`contracts.memory_check.read_memory_check` 还核验
+`--schema memory_check` 输出结构 Schema；`evidence.memory_check.read_memory_check` 还核验
 重复键、PID/组唯一性、成员关系、原因、保护声明、RSS 归约和覆盖计数。未知 kind/旧版本拒绝，
 不迁移或转换历史诊断。`verify` 不接受本诊断为正式 run 或报告证据。
 

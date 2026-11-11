@@ -7,7 +7,7 @@ import pytest
 
 from inferyard.config.engine_fit_assets import model_asset_manifest
 from inferyard.errors import PreflightError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.engine_fit_lmstudio import _model_row
 from inferyard.platforms.identity import hash_file
 from inferyard.platforms.local_engines import installation

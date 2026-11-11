@@ -54,10 +54,13 @@
 
 ### Changed
 
-- Internal: moved shared exception types to `inferyard.errors` and made
-  cross-package helpers public. The measurement/scoring implementation identity
-  changes, so runs created before this change cannot be resumed or compared as
-  the same implementation by runs created after it.
+- Internal: moved shared exception types to `inferyard.errors`, made cross-package
+  helpers public, and moved pure contract rules (canonical JSON, lab observation
+  parsing, engine timing mapping, plan math, context-speed profile constants,
+  power policy shape and bundle semantics) into `inferyard.contracts`. The
+  measurement/scoring implementation identity and the scorer hash change, so runs
+  created before this change cannot be resumed or compared as the same
+  implementation by runs created after it.
 
 ### Removed
 

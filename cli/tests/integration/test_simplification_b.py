@@ -86,7 +86,7 @@ def test_rerun_same_service_is_always_refused(scenario, monkeypatch, dirty, fres
     if dirty:
         state = read_json(locking.STATE_PATH)
         state["dirty"] = True
-        from inferyard.evidence.storage import json_bytes
+        from inferyard.contracts.validation import json_bytes
 
         locking.STATE_PATH.write_bytes(json_bytes(state))
     endpoint = config["endpoint"]

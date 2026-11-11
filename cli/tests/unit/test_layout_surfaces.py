@@ -10,9 +10,9 @@ from inferyard.application.types import CommandRequest, VerificationOptions
 from inferyard.application.verification import execute
 from inferyard.cli import main
 from inferyard.config.loader import load_config
-from inferyard.contracts.validation import Document
+from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import EvidenceError, PreflightError
-from inferyard.evidence.storage import json_bytes, read_json, read_jsonl, sha256_file
+from inferyard.evidence.storage import read_json, read_jsonl, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.reporting.comparison_report import (
     comparison_input,

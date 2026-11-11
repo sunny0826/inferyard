@@ -2,10 +2,7 @@
 
 import re
 
-SOURCE = "macos.iokit.power-policy.v1"
-LEGACY_SOURCE = "macos.pmset.power-policy.v1"
-SOURCES = frozenset({SOURCE, LEGACY_SOURCE})
-
+from inferyard.contracts.power_policy import LEGACY_SOURCE, SOURCE, valid_power_policy
 
 def parse(text, ac_online):
     if type(ac_online) is not bool or not isinstance(text, str):
@@ -169,31 +166,13 @@ def _read_iokit():
             core.CFRelease(preferences)
 
 
-def valid(value):
-    return (
-        isinstance(value, dict)
-        and set(value)
-        == {"source", "ac_online", "low_power_mode", "power_mode", "power_mode_supported"}
-        and value["source"] in SOURCES
-        and type(value["ac_online"]) is bool
-        and type(value["low_power_mode"]) is int
-        and value["low_power_mode"] in (0, 1)
-        and type(value["power_mode_supported"]) is bool
-        and (
-            type(value["power_mode"]) is int and value["power_mode"] in (0, 1, 2)
-            if value["power_mode_supported"]
-            else value["power_mode"] == "unsupported"
-        )
-    )
-
-
 def assess(snapshots, conditions):
     reasons = set()
     frozen = conditions.get("macos_power_policy")
-    if not valid(frozen):
+    if not valid_power_policy(frozen):
         reasons.add("macos_power_policy_not_frozen")
     for value in snapshots:
-        if not valid(value):
+        if not valid_power_policy(value):
             reasons.add("macos_power_policy_unavailable")
         elif value != frozen:
             reasons.add("macos_power_policy_frozen_mismatch")

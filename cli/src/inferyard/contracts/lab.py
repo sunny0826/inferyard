@@ -2,15 +2,15 @@
 
 from pathlib import PureWindowsPath
 
-from inferyard.adapters.lab_observation import (
+from inferyard.contracts.lab_observation import (
     LabProtocolError,
     is_idle,
     parse_cancel,
     parse_lifecycle,
     parse_request,
 )
+from inferyard.contracts.validation import json_bytes
 from inferyard.errors import ContractError
-from inferyard.evidence.storage import json_bytes
 
 LAB_ENGINES = {"kvmem": "gguf", "ninfer": "ninfer"}
 

@@ -204,11 +204,11 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
             )
             values = (a.get(key), b.get(key))
             if section == "conditions" and key == "macos_power_policy":
-                from inferyard.platforms.power_macos import valid
+                from inferyard.contracts.power_policy import valid_power_policy
 
                 values = tuple(
                     {**v, "power_mode": "not_supported"}
-                    if valid(v) and not v["power_mode_supported"]
+                    if valid_power_policy(v) and not v["power_mode_supported"]
                     else v
                     for v in values
                 )

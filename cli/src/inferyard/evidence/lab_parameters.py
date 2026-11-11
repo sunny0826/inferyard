@@ -9,7 +9,7 @@ from inferyard.adapters.lab_parameters import (
 )
 from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.engine_capabilities import observation_sealed
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.token_budgets import probe_budget, read_budgets
 from inferyard.evidence.trial_evidence import TrialEvidence
 

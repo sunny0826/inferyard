@@ -11,7 +11,8 @@ from inferyard.config.planning import compile_plan
 from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.journal import TrialJournal
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import Redactor, json_bytes, read_json, read_jsonl
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import Redactor, read_json, read_jsonl
 from inferyard.runtime.request_execution import TrialRequests
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.unit.test_phase2_contracts import experiment

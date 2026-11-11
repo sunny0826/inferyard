@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.scoring_rules import score_rules
-from inferyard.config.bundle import pointer, validate_case
+from inferyard.contracts.bundle import pointer, validate_case
 from inferyard.contracts.validation import strict_json_loads, validate_document
 from inferyard.errors import ContractError, EvidenceError
 
@@ -36,8 +36,8 @@ def scorer_hash():
     for name in (
         "analysis/scoring.py",
         "analysis/scoring_rules.py",
-        "config/bundle.py",
-        "config/bundle_review.py",
+        "contracts/bundle.py",
+        "contracts/bundle_review.py",
         "contracts/validation.py",
         "contracts/contracts_experiment.py",
         "contracts/schemas_tasks.py",

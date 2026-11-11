@@ -6,10 +6,10 @@ from pathlib import Path
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandResult, VerificationOptions
-from inferyard.contracts.validation import strict_json_loads
+from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
-from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, sha256_file
+from inferyard.evidence.storage import atomic_bytes, local_file, new_output, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input, read_verified_comparison

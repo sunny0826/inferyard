@@ -14,7 +14,8 @@ from inferyard.config.loader import load_config
 from inferyard.config.planning import write_plan
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import json_bytes, sha256_file, verify_manifest
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import sha256_file, verify_manifest
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.identity import environment_snapshot, process_start_ticks
 from inferyard.reporting.report import verify_report, write_report

@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from inferyard.analysis.observations import Observations
 from inferyard.errors import ContractError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 
 
 def validate_position_cases(workload, bundle):

@@ -4,7 +4,7 @@ import hashlib
 
 from inferyard.config.startup_portability import portable_startup
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 
 
 def fingerprint(value):

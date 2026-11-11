@@ -4,7 +4,7 @@ import json
 import pytest
 
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.reporting.public_package import payloads, verify_public
 
 

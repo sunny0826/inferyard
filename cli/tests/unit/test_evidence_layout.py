@@ -13,7 +13,8 @@ from inferyard.evidence.request_snapshots import (
     snapshot_filename,
     verify_message_snapshots,
 )
-from inferyard.evidence.storage import json_bytes, read_json, read_jsonl, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json, read_jsonl, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from tests.evidence_layout_helpers import digest, pack_layout2, seal_layout
 from tests.legacy_journal import LegacyJournal

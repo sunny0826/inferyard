@@ -13,11 +13,11 @@ from inferyard.analysis.engine_comparison_v2 import (
     derive_comparison_v2,
 )
 from inferyard.application.types import CommandRequest, CommandResult, VerificationOptions
-from inferyard.contracts.validation import strict_json_loads
+from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.artifact_seal import read_sealed, seal
 from inferyard.evidence.source_locations import relative_source, resolve_source
-from inferyard.evidence.storage import atomic_bytes, json_bytes, new_output
+from inferyard.evidence.storage import atomic_bytes, new_output
 
 RESULT = "engine-comparison.json"
 HTML = "report.html"

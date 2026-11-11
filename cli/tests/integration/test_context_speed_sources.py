@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from tests.integration.context_speed_fixture import scenario, tree_hashes  # noqa: F401
 from tests.integration.context_speed_fixture import speed_service as service_fixture
 from tests.integration.test_context_speed_cli import invoke, run_speed

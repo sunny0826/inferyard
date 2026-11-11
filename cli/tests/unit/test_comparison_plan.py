@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from inferyard.analysis.comparison_types import JSONRecord
-from inferyard.config.bundle import content_hash
+from inferyard.contracts.bundle import content_hash
 from inferyard.config.comparison_plan import (
     DEFAULT_BUNDLES,
     comparison_slots,
@@ -92,7 +92,7 @@ def bundle_document(bundle_id: str, cases: list[JSONRecord]) -> JSONRecord:
 
 
 def write_bundle(root: Path, name: str, bundle: JSONRecord) -> Path:
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
 
     path = root / f"{name}.json"
     path.write_bytes(json_bytes(bundle))

@@ -3,7 +3,7 @@
 import math
 from statistics import median
 
-from inferyard.analysis.engine_timing import DEFINITION, engine_rates
+from inferyard.contracts.engine_timing import DEFINITION, engine_rates
 from inferyard.errors import EvidenceError
 
 CODES = ("L06", "L07")

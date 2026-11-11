@@ -9,7 +9,8 @@ from inferyard.application.types import CommandResult
 from inferyard.config.public_recipe import reproduction_recipe
 from inferyard.errors import EvidenceError
 from inferyard.evidence.formats import require_version
-from inferyard.evidence.storage import atomic_bytes, json_bytes, local_file, new_output, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json, sha256_file
 from inferyard.reporting.comparison_report import comparison_input
 
 POLICY = "public-summary.v5"

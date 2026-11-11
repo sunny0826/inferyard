@@ -8,10 +8,10 @@ from datetime import UTC, datetime
 from inferyard import SCHEMA_VERSION, __version__
 from inferyard.analysis.scoring import ScoringContext
 from inferyard.config.plan_inputs import validate_workload_inputs
-from inferyard.contracts.validation import validate_document
+from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.contracts.validation_cache import command_validation
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import EvidenceStore, fsync_directory, json_bytes
+from inferyard.evidence.storage import EvidenceStore, fsync_directory
 from inferyard.platforms.platform_io import open_nofollow
 from inferyard.provenance import tool_source_hash
 

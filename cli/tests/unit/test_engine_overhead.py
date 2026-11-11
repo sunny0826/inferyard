@@ -4,7 +4,7 @@ import pytest
 
 from inferyard.analysis.comparison import compare_trials
 from inferyard.analysis.engine_overhead import CONTRACT, projection
-from inferyard.analysis.engine_timing import DEFINITION
+from inferyard.contracts.engine_timing import DEFINITION
 from inferyard.errors import EvidenceError
 from inferyard.runtime.collector_overhead import assess_overhead, validate_protocol
 from tests.unit.test_collector_overhead import protocol, trials

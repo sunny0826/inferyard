@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 
-from inferyard.config.context_speed_profile import CASES, GENERATION
+from inferyard.contracts.context_speed_profile import CASES, GENERATION
 from inferyard.config.preparation_io import PreparationError
 from inferyard.config.startup_arguments import replace_arguments
 

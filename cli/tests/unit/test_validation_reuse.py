@@ -4,7 +4,8 @@ import json
 
 import pytest
 
-from inferyard.config.bundle import content_hash, require_review
+from inferyard.contracts.bundle import content_hash
+from inferyard.config.bundle import require_review
 from inferyard.config.loader import load_config
 from inferyard.config.review_cache import command_reviews
 from inferyard.config.single_plan import compile_single_plan

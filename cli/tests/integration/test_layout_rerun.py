@@ -8,10 +8,9 @@ from pathlib import Path
 import pytest
 
 from inferyard.application.types import CommandRequest
-from inferyard.contracts.validation import Document
+from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import PreflightError
 from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import json_bytes
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime import runner
 from tests.integration.test_runner import scenario as runner_scenario

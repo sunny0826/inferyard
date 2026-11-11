@@ -4,8 +4,8 @@ import math
 from collections import Counter
 from statistics import median
 
-from inferyard.analysis.engine_timing import capture_timings, engine_rates
-from inferyard.config.context_speed_profile import CASES, PROFILE
+from inferyard.contracts.engine_timing import capture_timings, engine_rates
+from inferyard.contracts.context_speed_profile import CASES, PROFILE
 from inferyard.errors import ContractError
 
 

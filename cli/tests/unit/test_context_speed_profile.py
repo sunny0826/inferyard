@@ -7,20 +7,20 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.config.bundle import content_hash, require_review
-from inferyard.config.context_speed_profile import (
+from inferyard.contracts.bundle import content_hash
+from inferyard.config.bundle import require_review
+from inferyard.config.context_speed_profile import classify_workload_inputs
+from inferyard.contracts.context_speed_profile import (
     BUNDLE_CONTENT_SHA256,
     CASES,
     GENERATION,
     PROFILE,
-    classify_workload_inputs,
 )
 from inferyard.config.loader import load_config
 from inferyard.config.plan_inputs import read_frozen_plan, validate_workload_inputs
 from inferyard.config.planning import compile_plan, write_plan
-from inferyard.contracts.validation import validate_document
+from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.errors import ContractError
-from inferyard.evidence.storage import json_bytes
 from tests.unit.test_phase2_contracts import experiment
 
 
@@ -189,7 +189,7 @@ def test_prepare_and_offline_read_share_profile_validation(inputs, tmp_path):
     loaded, _ = read_frozen_plan(out / "plan.json")
     assert [trial["repeat_index"] for trial in loaded["trials"]] == [0, 1, 2, 3, 4]
     # A validly rehashed ordinary declaration cannot hide the special bundle.
-    from inferyard.config.plan_math import plan_hash
+    from inferyard.contracts.plan_math import plan_hash
 
     loaded["experiment"].pop("profile")
     loaded["plan_sha256"] = plan_hash(loaded)
@@ -254,7 +254,7 @@ def test_ordinary_inputs_keep_behavior(config_path):
 
 
 def test_rehashed_trial_reorder_is_rejected():
-    from inferyard.config.plan_math import plan_hash
+    from inferyard.contracts.plan_math import plan_hash
 
     plan = compile_plan(speed_experiment())
     plan["trials"].reverse()

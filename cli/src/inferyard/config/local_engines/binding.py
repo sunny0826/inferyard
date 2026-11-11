@@ -10,7 +10,7 @@ from inferyard.config.preparation_io import (
     sha256,
 )
 from inferyard.config.toml_writer import render
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.identity import process_start_ticks
 from inferyard.platforms.local_engines import bind_service, verify_bound_service
 

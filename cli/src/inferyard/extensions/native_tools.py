@@ -5,9 +5,8 @@ import asyncio
 from inferyard.contracts.schemas_extensions import NATIVE_ARGS as ARGS
 from inferyard.contracts.schemas_extensions import NATIVE_LOOKUP as LOOKUP
 from inferyard.contracts.schemas_extensions import NATIVE_TOOLS as SPEC
-from inferyard.contracts.validation import validate_value, strict_json_loads
+from inferyard.contracts.validation import validate_value, strict_json_loads, json_bytes
 from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.storage import json_bytes
 
 CATALOGUE = {"alpha": "北京", "beta": "上海"}
 TOOLS = [

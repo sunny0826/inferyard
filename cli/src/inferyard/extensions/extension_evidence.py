@@ -6,9 +6,9 @@ from datetime import UTC, datetime
 
 from inferyard import SCHEMA_VERSION
 from inferyard.contracts.schemas import IDENTIFIER, LABEL, NAT, POS, obj
-from inferyard.contracts.validation import validate_value, validate_document
+from inferyard.contracts.validation import validate_value, validate_document, json_bytes
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import EvidenceStore, json_bytes, read_json, verify_manifest
+from inferyard.evidence.storage import EvidenceStore, read_json, verify_manifest
 from inferyard.extensions.closed_concurrency import reduce_closed
 from inferyard.extensions.native_tools import reduce_tools
 from inferyard.extensions.total_observer_control import assess_total

@@ -91,7 +91,8 @@ def workload(operation, corpus, out):
     from inferyard.cli import main
     from inferyard.contracts.validation import strict_json_loads
     from inferyard.evidence.ledger import read_trial
-    from inferyard.evidence.storage import Redactor, json_bytes
+    from inferyard.contracts.validation import json_bytes
+    from inferyard.evidence.storage import Redactor
     from inferyard.reporting.report import write_report
 
     if operation == "reject":

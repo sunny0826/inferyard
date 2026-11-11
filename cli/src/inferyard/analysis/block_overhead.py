@@ -6,7 +6,7 @@ from statistics import median
 
 from inferyard.analysis.performance import distribution
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 
 DEFINITION = "block_gap_abba.v1"
 STATISTICS = ("min", "p50", "p95", "max")

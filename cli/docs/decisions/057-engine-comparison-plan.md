@@ -50,7 +50,7 @@ C 只能在 Studio 受控流程中预先固定范围，离线核验不能排除�
 CLI 提供生成子命令，复用 `compile_plan` / `write_plan`；Studio 收集两侧候选后调用 CLI，不在 Go 中拼 JSON。
 默认冻结 `zh-core` 与 `zh-svg-pelican`，单题包仅在用户显式固定时允许。
 计划包含全部 config、bundle、缓存声明、case 顺序、预算和确定 trial ID；`plan_sha256` 继续按现有 canonical JSON 计算
-（`cli/src/inferyard/config/plan_math.py:7-13`）。
+（`cli/src/inferyard/contracts/plan_math.py:7-13`）。
 
 CLI 预先生成计划 → 操作者按槽位执行 → CLI 派生仍是合法手动路径；新规则只阻断未预注册的事后比较。
 执行使用一个 batch，`run --plan` 逐槽位调用并显式 handoff。`compare-engines` 改为接收完整 plan 与 batch，

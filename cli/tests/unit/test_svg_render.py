@@ -7,7 +7,8 @@ import pytest
 
 from inferyard.analysis.quality import summarize_quality
 from inferyard.analysis.scoring import score_case, unscorable
-from inferyard.config.bundle import require_review, validate_case
+from inferyard.contracts.bundle import validate_case
+from inferyard.config.bundle import require_review
 from inferyard.contracts.validation import Document
 from inferyard.errors import ContractError
 from inferyard.evidence.storage import read_json
@@ -156,7 +157,7 @@ def test_pelican_bundle_is_valid_and_human_reviewed():
     assert BUNDLE["cases"][0]["prompt"] == (
         "Generate an animated SVG of a pelican riding a bicycle"
     )
-    from inferyard.config.bundle import content_hash
+    from inferyard.contracts.bundle import content_hash
 
     (record,) = BUNDLE["review_records"]
     assert record["conclusion"] == "approved"

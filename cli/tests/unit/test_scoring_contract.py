@@ -8,7 +8,8 @@ import pytest
 
 from inferyard.analysis.quality import summarize_quality
 from inferyard.analysis.scoring import score_case, unscorable
-from inferyard.config.bundle import content_hash, require_review, validate_case
+from inferyard.contracts.bundle import content_hash, validate_case
+from inferyard.config.bundle import require_review
 from inferyard.contracts.validation import validate_document
 from inferyard.errors import ContractError
 
