@@ -1,4 +1,4 @@
-"""Verify real physical bytes and optional container member bindings."""
+"""Build and verify physical byte references, including container members."""
 
 from pathlib import Path
 

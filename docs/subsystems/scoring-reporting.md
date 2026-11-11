@@ -1,6 +1,6 @@
 # 评分、比较与报告
 
-确定性评分、指标归约、比较资格判定、重评分、离线 HTML 报告与导出的实现子系统，覆盖 `analysis/` 与 `reporting/` 两个包。评分输入是冻结题目、参考答案与 answer policy，输出是带身份哈希的 score 文档与指标观测；本子系统只读取已保存证据，不发送模型请求、不调用模型裁判。运行期评分的调用方在执行子系统（见[运行时执行与引擎适配](runtime-execution.md)），日志、封存与账本重建在证据子系统（见[证据、封存与离线读取](evidence-storage.md)），命令入口在[CLI 与应用分发](cli-dispatch.md)）。
+确定性评分、指标归约、比较资格判定、重评分、离线 HTML 报告与导出的实现子系统，覆盖 `analysis/` 与 `reporting/` 两个包。评分输入是冻结题目、参考答案与 answer policy，输出是带身份哈希的 score 文档与指标观测；本子系统只读取已保存证据，不发送模型请求、不调用模型裁判。运行期评分的调用方在执行子系统（见[运行时执行与引擎适配](runtime-execution.md)），日志与封存在证据子系统（见[证据、封存与离线读取](evidence-storage.md)），离线账本重建属于本子系统的 `analysis/ledger.py`，命令入口在[CLI 与应用分发](cli-dispatch.md)）。
 
 「职责与事实源」「运行路径」「约束与失败行为」三节正文已移入 `scoring-reporting/` 目录；其余各节保留在本页。
 

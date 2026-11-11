@@ -1,1 +1,1 @@
-"""Local evidence IO, sealing, ledgers and explicit historical migration."""
+"""Local evidence IO, sealing, provenance references and current-format checks."""
