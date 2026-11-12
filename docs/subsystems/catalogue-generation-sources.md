@@ -15,7 +15,7 @@
 | catalogue 运行时读取 | 从安装包资源读 catalogue JSON，逐项校验后返回；`components` 目录为运行时计算，不是生成文件 | `catalogue` / `components` 在 [`registry.py`](../../cli/src/inferyard/registry.py)；CLI 出口在 [`application/dispatch.py`](../../cli/src/inferyard/application/dispatch.py) 的 catalogue 命令 |
 | 社区资源运行时读取 | 按 `resources.json` 清单核验 SHA-256 后返回包内资源字节 | `resource_bytes` 在 [`community_resources.py`](../../cli/src/inferyard/provisioning/community_resources.py)，消费方 [`community_workspace.py`](../../cli/src/inferyard/config/community_workspace.py)、[`runtime_profiles.py`](../../cli/src/inferyard/provisioning/runtime_profiles.py) |
 | 报告模板与内容身份 | 包内 `templates/*.html` 为唯一模板来源，整目录哈希计入报告身份 | `template_name` / `template_hash` 在 [`report_assets.py`](../../cli/src/inferyard/reporting/report_assets.py)，消费 `template_sha256` 在 [`report.py`](../../cli/src/inferyard/reporting/report.py) |
-| 实现身份的职责清单 | 按 measurement/scoring/presentation 三角色登记负责文件，作为实现身份计算的输入 | [`implementation-files.json`](../../cli/src/inferyard/data/implementation-files.json)，读取方 `IdentityContext` 在 [`implementation_identity.py`](../../cli/src/inferyard/implementation_identity.py)，源哈希 `tool_source_hash` 在 [`provenance.py`](../../cli/src/inferyard/provenance.py) |
+| 实现身份的职责清单 | 按 measurement/scoring/presentation 三角色登记负责文件，作为实现身份计算的输入 | `data/implementation-files/` 下的 [`measurement.json`](../../cli/src/inferyard/data/implementation-files/measurement.json)、[`scoring.json`](../../cli/src/inferyard/data/implementation-files/scoring.json) 与 [`presentation.json`](../../cli/src/inferyard/data/implementation-files/presentation.json)，读取方 `IdentityContext` 在 [`implementation_identity.py`](../../cli/src/inferyard/implementation_identity.py)，源哈希 `tool_source_hash` 在 [`provenance.py`](../../cli/src/inferyard/provenance.py) |
 | engine-fit 包内资产 | 随包交付的受控 MLX 服务脚本，从包内资源路径解析 | [`engine_fit_assets.py`](../../cli/src/inferyard/platforms/engine_fit_assets.py)，资产 [`mlx_server.py`](../../cli/src/inferyard/data/engine_fit/mlx_server.py) |
 
 关键事实源约定：
@@ -24,7 +24,7 @@
 - 生成物是事实源的字节固化：导出脚本为生成源记录 `{path, sha256}`（`reference` 在 [`export_catalogue.py`](../../cli/scripts/export_catalogue.py)），catalogue 的 `source` / `evidence_refs` 字段把定义绑定到真实文件字节。
 - 运行时代码一律通过 `importlib.resources`（`files("inferyard")`）从安装包内读取资源，不依赖源码检出目录；wheel/sdist 的显式 include 清单见 [`pyproject.toml`](../../cli/pyproject.toml) 的 hatch 构建段，`data/`、`templates/`、`data/community/` 均在包内。
 
-- 工具身份覆盖包内全部 `.py` / `.html` / `.json`（`tool_source_hash` 在 [`provenance.py`](../../cli/src/inferyard/provenance.py)），修改 catalogue、模板或 `implementation-files.json` 都会改变测量实现身份，并与冻结计划的 `definition_versions` 校验联动（`require_execution_support` 在 [`registry.py`](../../cli/src/inferyard/registry.py)）。
+- 工具身份覆盖包内全部 `.py` / `.html` / `.json`（`tool_source_hash` 在 [`provenance.py`](../../cli/src/inferyard/provenance.py)），修改 catalogue、模板或 `data/implementation-files/{role}.json` 都会改变测量实现身份，并与冻结计划的 `definition_versions` 校验联动（`require_execution_support` 在 [`registry.py`](../../cli/src/inferyard/registry.py)）。
 
 打包边界按 [`pyproject.toml`](../../cli/pyproject.toml) 的 include 清单执行：`src/inferyard/**/*.py`、`templates/**/*.html`、`data/*.json`（catalogue、实现清单）与 `data/community/` 的 `resources.json`、README、三平台 `*.example.toml`、`bundles/*.json`、`profile/*.json`；`__pycache__` 与字节码排除。`data/engine_fit/mlx_server.py` 作为包内 `.py` 资源随包交付，由 [`engine_fit_assets.py`](../../cli/src/inferyard/platforms/engine_fit_assets.py) 解析路径后交给受控服务脚本使用；真实设备配置、证据、缓存与模型资产不在打包范围内。
 
@@ -36,10 +36,10 @@
 - `data/community/resources.json`：社区资源树（题包、profile、三平台示例配置、README）全量 `{相对路径: SHA-256}` 清单，由 `generated` 重建；运行时 `resource_bytes` 逐字节核验。
 - 社区 profile：两份固定归档派生 profile（`PROFILES` 以 `RELEASE = prism-b10743-adfffbe` 命名，win-cpu-x64 与 win-cuda-12.4-x64）。带归档生成时逐份核对 ZIP 大小与 SHA-256，用 `member_records` 展开成员并按 `(role, path)` 排序，`output_files` 派生 `engine_binary`、`runtime_library_manifest`、`libraries`，最后过 `validate_profile`；无归档模式只重验已提交的 profile 字节，不引入新的信任。
 - `templates/report*.html`：离线 HTML 报告的全部页面片与脚本样式（v3 报告固定 `report.html` 入口，`template_name` 校验版本号段）；渲染走 Jinja2 `PackageLoader("inferyard", "templates")`（[`report_common.py`](../../cli/src/inferyard/reporting/report_common.py)），CSP 脚本哈希按模板版本重算，冻结快照跨脚本修改保持字节稳定；整目录哈希作为报告呈现身份。
-- `implementation-files.json`：三角色负责文件清单，`IdentityContext` 据此计算每个角色的 `files + dependencies` 身份（角色清单语义见 [架构](../../cli/docs/architecture.md) 与 [职责身份契约](../../cli/docs/contracts/scoped-measurement-contract.md)）。
+- `data/implementation-files/{role}.json`：三角色各自负责的文件清单，`IdentityContext` 据此计算每个角色的 `files + dependencies` 身份（角色清单语义见 [架构](../../cli/docs/architecture.md) 与 [职责身份契约](../../cli/docs/contracts/scoped-measurement-contract.md)）。
 - 版本关系：`SCHEMA_VERSION = 3`（[`__init__.py`](../../cli/src/inferyard/__init__.py)）是 wire revision；catalogue 的 `catalogue_version` 与指标 `definition_version` 独立管理，schema 文件不随定义版本自动变化，反之亦然。
 
-包内并行三套一致性机制，覆盖不同资源面：`resources.json` 管社区资源树逐字节完整性（`resource_bytes` 核验）；`implementation-files.json` + `tool_source_hash` 管测量/评分/呈现三角色的实现身份（`IdentityContext` 计算）；`template_hash` 管报告呈现身份。三者都不依赖 Git 或源码检出，安装包自证。其中 `implementation-files.json` 是人工维护的已审职责清单，不被任何 `--check` 覆盖，修改它与修改源码同属实现身份变更。
+包内并行三套一致性机制，覆盖不同资源面：`resources.json` 管社区资源树逐字节完整性（`resource_bytes` 核验）；`data/implementation-files/{role}.json` + `tool_source_hash` 管测量/评分/呈现三角色的实现身份（`IdentityContext` 计算）；`template_hash` 管报告呈现身份。三者都不依赖 Git 或源码检出，安装包自证。其中 `data/implementation-files/{role}.json` 是人工维护的已审职责清单，不被任何 `--check` 覆盖，修改它与修改源码同属实现身份变更。
 
 `components()` 组件目录（运行时计算，非生成文件）登记适配器、采集器、扩展协议与评分器共 23 项：适配器与采集器逐项标注能力范围并要求实测核验；评分器条目绑定 `scorer_hash()`（[`scoring.py`](../../cli/src/inferyard/analysis/scoring.py)）且 `live_verification_required = false`，因为确定性评分器本身不需真机。`adapter_factory` / `collector_factory` 只路由到已实现组件，未知标识抛 `ContractError("... not implemented")`。
 

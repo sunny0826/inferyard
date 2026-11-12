@@ -32,7 +32,7 @@
 | 改 `data/community/` 任何文件 | 同轮重生成 `resources.json`（`generated(None)` 或 `--archives`） | `export_community.py --check` |
 | 改运行依赖或 [`uv.lock`](../../cli/uv.lock) | 重导出 runtime 约束到新 `--out` 路径 | `.validation.json` 随文件走，`.validation.json` 漂移即失败 |
 | 改 `templates/*.html` | 无导出步骤；`template_hash` 在报告时整目录现算 | 报告回归中的 `template_sha256` 与封存核验 |
-| 改 [`implementation-files.json`](../../cli/src/inferyard/data/implementation-files.json) | 无导出步骤；身份在运行时计算 | `IdentityContext` 相关回归 |
+| 改 [`data/implementation-files/{role}.json`](../../cli/src/inferyard/data/implementation-files/measurement.json) | 无导出步骤；身份在运行时计算 | `IdentityContext` 相关回归 |
 | 改导出脚本本身的解析或序列化逻辑 | 重跑受影响导出并复核生成物 diff | 对应 `--check` + `ruff check src tests scripts` |
 
 模板没有 `--check` 的原因是其身份没有独立生成物可漂移——`template_hash` 在报告时对包内目录现算，唯一事实是“模板被改”，它直接反映在报告 `template_sha256` 上。

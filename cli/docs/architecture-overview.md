@@ -44,6 +44,7 @@ flowchart LR
 | `platforms/`、`extensions/`        | 设备与进程身份、平台采集；独立扩展协议及执行工作流                  |
 | `provisioning/`                    | 引擎/模型来源获取、运行时归档与 profile 核验、准备输出 IO            |
 | `adapters/`、`data/`、`templates/` | 引擎传输和解析；随安装包交付的方法/指标目录与报告模板               |
+| `errors.py`                        | 只依赖标准库的失败类别叶子，供各层与入口描述错误而不加载其他子系统   |
 
 `registry.py` 和 `provenance.py` 位于根包，分别管理目录注册和源码身份。
 engine-fit 诊断的封存入口与 HTML 渲染位于 `analysis/`（`engine_fit_seal`、`engine_fit_html`），
@@ -54,7 +55,7 @@ engine-fit 诊断的封存入口与 HTML 渲染位于 `analysis/`（`engine_fit_
 ## CLI 与应用边界
 
 - `main(argv=None, *, handlers=None) -> int` 是控制台和模块入口。CLI 负责参数、输入校验、请求构造和输出呈现；业务执行器返回领域数据，不向 stdout 写诊断。`device-check` 默认人类摘要，显式 JSON 保留既有结果外层，其他命令仍为 JSON；格式参数不进入应用请求。
-- `CommandRequest`、`CommandResult`、`Handler` 只定义在 `application/types.py`；业务模块不依赖 CLI，也不构造命令结果。命令结果（status、completeness、run_id、evidence_dir、limitations、details、退出码）由应用层按命令组构造，业务函数只返回领域数据（详见[分派职责](subsystems/cli-dispatch/responsibilities.md)）。
+- `CommandRequest`、`CommandResult`、`Handler` 只定义在 `application/types.py`；业务模块不依赖 CLI，也不构造命令结果。命令结果（status、completeness、run_id、evidence_dir、limitations、details、退出码）由应用层按命令组构造，业务函数只返回领域数据（详见[分派职责](../../docs/subsystems/cli-dispatch/responsibilities.md)）。
 - `--help`、`--versions` 和 `--schema` 只注册参数及读取元数据，不加载实时后端。Schema 注册表只依赖契约包与版本常量；语义验证在解析时调用。
 - 应用分派显式覆盖注册命令，未知请求拒绝。`run --plan` 和 `resume` 进入批量路径，单次运行与专项命令进入各自处理器。
 - 规范命令适配到已有业务动作。旧命令名和参数别名已删除。`application/verification.py` 识别产物并延迟调用专用验证器；CLI 不复制其验证逻辑。
