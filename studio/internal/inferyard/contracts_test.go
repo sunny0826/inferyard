@@ -60,7 +60,7 @@ func TestConstantsMatchCLIContract(t *testing.T) {
 	})
 
 	t.Run("context_speed_case_mapping", func(t *testing.T) {
-		source := readCLI(t, "src/inferyard/config/context_speed_profile.py")
+		source := readCLI(t, "src/inferyard/contracts/context_speed_profile.py")
 		match := regexp.MustCompile(`(?m)^CASES = \{([^}]*)\}`).FindStringSubmatch(string(source))
 		if match == nil {
 			t.Fatal("CLI context-speed profile has no CASES mapping")
@@ -82,10 +82,10 @@ func TestConstantsMatchCLIContract(t *testing.T) {
 	})
 
 	t.Run("default_bundles", func(t *testing.T) {
-		source := readCLI(t, "src/inferyard/config/community_workspace.py")
+		source := readCLI(t, "src/inferyard/contracts/bundle.py")
 		match := regexp.MustCompile(`(?m)^DEFAULT_BUNDLES = \(([^)]*)\)`).FindStringSubmatch(string(source))
 		if match == nil {
-			t.Fatal("CLI community workspace has no DEFAULT_BUNDLES tuple")
+			t.Fatal("CLI bundle contract has no DEFAULT_BUNDLES tuple")
 		}
 		var bundles []string
 		for _, quoted := range regexp.MustCompile(`"([^"]+)"`).FindAllStringSubmatch(match[1], -1) {

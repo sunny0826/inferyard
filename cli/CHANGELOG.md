@@ -63,7 +63,7 @@
   implementation by runs created after it. Command handlers now return domain data
   and the application layer builds command results. Trial ledger reconstruction moved
   from `inferyard.evidence` to `inferyard.analysis`; evidence keeps storage, sealing,
-  journals and format checks. Provisioning (engine/model source download, runtime archive/profiles/verification) moved from `platforms` and `config` into `inferyard.provisioning`. The remaining package-level import cycles were removed; help, version and schema queries no longer import live backend packages. The responsibility file lists moved to per-role JSON files and now close under static imports.
+  journals and format checks. Provisioning (engine/model source download, runtime archive/profiles/verification) moved from `platforms` and `config` into `inferyard.provisioning`. The remaining package-level import cycles were removed; help, version and schema queries no longer import live backend packages. The responsibility file lists moved to per-role JSON files and now close under static imports. Studio now reads the frozen context-speed constants from their new CLI locations.
 
 ### Removed
 

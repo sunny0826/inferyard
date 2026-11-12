@@ -3,7 +3,7 @@ package inferyard
 import "slices"
 
 // The context-speed profile is frozen by the CLI
-// (cli/src/inferyard/config/context_speed_profile.py) and exported in
+// (cli/src/inferyard/contracts/context_speed_profile.py) and exported in
 // cli/schemas/context_speed_result.schema.json. Studio keeps one definition of
 // each value here; contracts_test.go fails when the two sides drift.
 const (
