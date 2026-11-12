@@ -23,6 +23,7 @@ from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.evidence.storage import read_json
 from inferyard.runtime.batch_state import history_diagnostics
 
+
 def _read_plan(
     plan_path: Path,
 ) -> tuple[JSONRecord | None, dict[str, LoadedConfig] | None, JSONRecord | None]:
@@ -136,19 +137,6 @@ def _read_comparison(
         ),
         runs,
     )
-
-
-def read_comparison_v2(plan_path: Path | str, batch_root: Path | str) -> JSONRecord:
-    """Read one batch into the internal v2 document without computing metrics."""
-    return _read_comparison(plan_path, batch_root)[0]
-
-
-def derive_comparison_v2(
-    plan_path: Path | str, batch_root: Path | str
-) -> tuple[JSONRecord, list[JSONRecord]]:
-    """Read one batch and retain the verified run data used for v2 metrics."""
-    return _read_comparison(plan_path, batch_root)
-
 
 
 def read_comparison_v2(plan_path: Path | str, batch_root: Path | str) -> JSONRecord:

@@ -6,7 +6,7 @@ from inferyard.config.engine_fit import request_rows, validate_plan
 
 
 def read_partial(root):
-    from inferyard.reporting.engine_fit import (
+    from inferyard.analysis.engine_fit_artifacts import (
         decode_json_bytes,
         manifest_present,
         read_entry,
