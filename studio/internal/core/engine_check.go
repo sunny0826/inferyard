@@ -165,7 +165,7 @@ func (s *Service) checkEngineArgsWithCLI(ctx context.Context, cliPath string, ar
 		}
 		return inferyard.EngineCheck{}, Err("engine_check_error")
 	}
-	if out.ExitCode == 2 {
+	if out.ExitCode == inferyard.ExitBlocked {
 		var header struct {
 			Command string `json:"command"`
 		}
@@ -178,16 +178,16 @@ func (s *Service) checkEngineArgsWithCLI(ctx context.Context, cliPath string, ar
 	if err != nil {
 		return inferyard.EngineCheck{}, Err("engine_check_invalid_response")
 	}
-	if out.ExitCode == 2 || out.ExitCode == 130 {
+	if out.ExitCode == inferyard.ExitBlocked || out.ExitCode == inferyard.ExitCancelled {
 		code := "cli_blocked"
-		if out.ExitCode == 130 {
+		if out.ExitCode == inferyard.ExitCancelled {
 			code = "cancelled"
 		}
 		e := Err(code)
 		e.Limitations = result.Limitations
 		return result, e
 	}
-	if out.ExitCode == 4 {
+	if out.ExitCode == inferyard.ExitToolError {
 		return result, &ApiError{Code: "engine_check_error", Limitations: result.Limitations}
 	}
 	return result, nil

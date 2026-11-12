@@ -9,7 +9,7 @@ import (
 
 func (s *viewState) startSpeed() {
 	w := s.speed
-	if w == nil || s.speedStartBlockReason() != "" || (w.context != 65536 && w.context != 131072 && w.context != 262144) {
+	if w == nil || s.speedStartBlockReason() != "" || !inferyard.ValidContextSpeedContext(w.context) {
 		return
 	}
 	if s.simulate(previewSpeedStart{model: s.model, engine: s.engine, context: w.context}) {
@@ -90,7 +90,7 @@ func speedFromTask(t core.RunTask) *speedTask {
 
 func (s *viewState) syncSpeedTasks(tasks []core.RunTask) {
 	if s.speed == nil {
-		s.speed = &speedWorkspace{context: 65536}
+		s.speed = &speedWorkspace{context: inferyard.ContextSpeed64K}
 	}
 	w := s.speed
 	w.history = nil

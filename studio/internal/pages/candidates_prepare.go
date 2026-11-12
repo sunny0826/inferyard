@@ -6,7 +6,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 	"path/filepath"
 	"slices"
-	"strconv"
 )
 
 // prepareCombination creates candidates for the task's selected model and engine.
@@ -234,7 +233,7 @@ func finishBenchmarkReport(ctx context.Context, backend benchmarkBackend, worksp
 		return core.Err("run_incomplete")
 	}
 	announce("report")
-	out, e := newNumberedOutput(workspace, "reports", "summary")
+	out, e := core.NextOutput(workspace, "reports", "summary")
 	if e != nil {
 		return e
 	}
@@ -292,15 +291,15 @@ func benchmarkBindCommand(workspace string, b inferyard.BundleProgress, state co
 	if b.CandidatePath == nil || state.Pid <= 0 || state.Endpoint == "" {
 		return "", "", core.Err("invalid_request")
 	}
-	out, e := newNumberedOutput(workspace, "bound", b.Bundle)
+	out, e := core.NextOutput(workspace, "bound", b.Bundle)
 	if e != nil {
 		return "", "", e
 	}
-	candidate := *b.CandidatePath
-	if filepath.Ext(candidate) != ".toml" {
-		candidate = filepath.Join(candidate, "candidate.toml")
+	args, e := core.BindArgs(*b.CandidatePath, out, state.Pid, state.Endpoint)
+	if e != nil {
+		return "", "", e
 	}
-	return commandOf([]string{"config", "bind", "--candidate", candidate, "--pid", strconv.FormatInt(state.Pid, 10), "--endpoint", state.Endpoint, "--out", out}), out, nil
+	return commandOf(args), out, nil
 }
 
 func (s *viewState) retryBenchmark() {

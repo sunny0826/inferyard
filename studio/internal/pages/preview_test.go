@@ -86,6 +86,7 @@ func TestPreviewActionButtonsStayInMemory(t *testing.T) {
 
 func TestPreviewOutOfBandActionsStayInMemory(t *testing.T) {
 	p := newPreviewSession(context.Background())
+	p.loadScene(previewSceneIndex(t, "模型 · 可用组合"))
 	s := p.state
 	s.work(func() (string, *core.ApiError) { t.Fatal("preview executed closure"); return "", nil })
 	s.startEngine()
@@ -98,7 +99,25 @@ func TestPreviewOutOfBandActionsStayInMemory(t *testing.T) {
 	if command, err := s.bindCommand("42", "http://127.0.0.1:48857"); command != "" || err != nil {
 		t.Fatal(command, err)
 	}
-	if s.busy || s.binding || s.taskCancel != nil || s.service != nil {
-		t.Fatal("preview left asynchronous work")
+	if s.service != nil || s.taskCancel != nil {
+		t.Fatal("preview executed a real bind")
+	}
+	p.advance(20 * time.Second)
+	if s.busy || s.binding || s.taskCancel != nil || s.service != nil || s.engineState.State != "running" {
+		t.Fatal("preview bind did not stay in memory", s.busy, s.engineState.State)
+	}
+}
+
+func TestPreviewBindWithoutScenarioIsExplicit(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	s := p.state
+	s.progress = nil
+	command, e := s.bindCommand("42", "http://127.0.0.1:48857")
+	if command != "" || e == nil || e.Code != "preview_unsupported" {
+		t.Fatal(command, e)
+	}
+	s.executeBinding("", e)
+	if s.failure == nil || s.failure.Code != "preview_unsupported" {
+		t.Fatal("unsupported bind did not report", s.failure)
 	}
 }

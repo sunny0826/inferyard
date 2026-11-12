@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -90,7 +91,7 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		if ctx.Err() != nil {
 			return nil, Err("cancelled")
 		}
-		if bundle != "zh-core" && bundle != "zh-svg-pelican" || seen[bundle] {
+		if !slices.Contains(inferyard.DefaultBundles, bundle) || seen[bundle] {
 			return nil, Err("invalid_request")
 		}
 		seen[bundle] = true
@@ -105,7 +106,7 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 				return nil, failure
 			}
 		}
-		output, failure := nextLocalOutput(*workspace, "candidates", bundle)
+		output, failure := NextOutput(*workspace, "candidates", bundle)
 		if failure != nil {
 			return nil, failure
 		}
@@ -161,7 +162,13 @@ func localEndpointPort(endpoint string) (string, *ApiError) {
 	return strconv.Itoa(port), nil
 }
 
-func nextLocalOutput(workspace, category, prefix string) (string, *ApiError) {
+// NextOutput picks a fresh "<category>/<prefix>-N" child inside workspace.
+// Resolve rejects paths that escape the workspace, including through symlinked
+// ancestors of a not-yet-created directory.
+func NextOutput(workspace, category, prefix string) (string, *ApiError) {
+	if workspace == "" || !ValidDownloadName(prefix) {
+		return "", Err("invalid_request")
+	}
 	for i := 1; i <= 1000; i++ {
 		path, err := Resolve(workspace, filepath.Join(category, prefix+"-"+strconv.Itoa(i)))
 		if err != nil {
@@ -186,7 +193,7 @@ func scopedSGLangInstallation(workspace, path, key string) (string, *ApiError) {
 	if json.Unmarshal(raw, &declaration) != nil {
 		return "", Err("local_engine_installation_unreadable")
 	}
-	stateRoot, failure := nextLocalOutput(workspace, "service-state", "sglang")
+	stateRoot, failure := NextOutput(workspace, "service-state", "sglang")
 	if failure != nil {
 		return "", failure
 	}

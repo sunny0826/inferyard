@@ -86,7 +86,7 @@ func previewBase(ctx context.Context) *viewState {
 	model, engine := "Preview-Model-Q4.gguf", "preview-engine · llama-server"
 	settings := core.UserSettings{WorkspaceRoot: previewValue(root), ResultsRoot: previewValue(filepath.Join(root, "results")), ModelsRoot: previewValue(filepath.Join(root, "models"))}
 	s := &viewState{
-		speed: &speedWorkspace{context: 65536},
+		speed: &speedWorkspace{context: inferyard.ContextSpeed64K},
 		ctx:   ctx, selected: "dashboard", loaded: true, settingsLoaded: true,
 		denied: map[string]bool{}, model: model, engine: engine, discoveryLoaded: true,
 		candidateMatches: func(string, string, string) (bool, bool) { return true, true },
@@ -108,13 +108,13 @@ func previewBase(ctx context.Context) *viewState {
 		progress: &inferyard.WorkspaceProgress{Workspace: root, NextAction: "prepare_candidate",
 			DevicePreflight: inferyard.ProgressPreflight{Status: "ok", Path: previewValue(filepath.Join(root, "preflight"))},
 			Bundles: []inferyard.BundleProgress{
-				{Bundle: "zh-core", Phase: "candidate_missing", NextAction: "prepare_candidate"},
-				{Bundle: "zh-svg-pelican", Phase: "candidate_missing", NextAction: "prepare_candidate"},
+				{Bundle: inferyard.DefaultBundleCore, Phase: "candidate_missing", NextAction: "prepare_candidate"},
+				{Bundle: inferyard.DefaultBundlePelican, Phase: "candidate_missing", NextAction: "prepare_candidate"},
 			}},
 		reports: []core.ReportSummary{{ReportId: "preview-report", Path: "/preview/reports/preview-report", RunIds: []string{"preview-run"}}},
 	}
 	s.loadSettings(s.settings)
-	s.history.StandaloneRuns = []core.RunSummary{{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue("zh-core"), Status: "complete", Sealed: true}}
+	s.history.StandaloneRuns = []core.RunSummary{{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true}}
 	s.downloads = []core.DownloadTask{
 		{TaskId: "preview-engine", Kind: "engine", State: "downloading", OutName: "preview-engine", OutDir: "/preview/engines/preview-engine"},
 		{TaskId: "preview-model", Kind: "model", State: "failed", OutName: "preview-model", OutDir: "/preview/models/preview-model", SourceUrl: "https://example.invalid/preview.gguf", Error: core.Err("download_failed")},
@@ -129,7 +129,7 @@ func previewRunning(s *viewState) {
 	s.progress.Bundles[0].Phase, s.progress.Bundles[0].NextAction = "run_incomplete", "run"
 	s.progress.Bundles[0].BlockedReason = previewValue("single_run_resume_not_supported")
 	s.engineState = core.EngineState{State: "running", Pid: 42, Endpoint: "http://127.0.0.1:48857", Candidate: "/preview/candidate"}
-	s.tasks = []core.RunTask{{TaskId: "preview-run", State: "running", Bundle: previewValue("zh-core"), RunPath: previewValue("/preview/results/preview-run")}}
+	s.tasks = []core.RunTask{{TaskId: "preview-run", State: "running", Bundle: previewValue(inferyard.DefaultBundleCore), RunPath: previewValue("/preview/results/preview-run")}}
 	s.runProgress = &core.RunProgress{Done: 42, Total: previewValue(int64(120)), CurrentCaseId: previewValue("preview-case-043")}
 }
 
@@ -165,7 +165,7 @@ func previewReportFixture(reference string) *core.ReportIndex {
 
 func previewDetailFixture(id string) *core.RunTaskDetail {
 	return &core.RunTaskDetail{
-		Task: core.RunTask{TaskId: id, Kind: "run", State: "running", Bundle: previewValue("zh-core"), RunId: previewValue("preview-run"), RunPath: previewValue("/preview/results/preview-run")},
+		Task: core.RunTask{TaskId: id, Kind: "run", State: "running", Bundle: previewValue(inferyard.DefaultBundleCore), RunId: previewValue("preview-run"), RunPath: previewValue("/preview/results/preview-run")},
 		Progress: &core.RunProgress{Done: 42, Total: previewValue(int64(120)), Phase: previewValue("formal"), CurrentCaseId: previewValue("preview-case-043"), Cases: []core.CaseProgress{
 			{CaseId: "preview-case-001", State: "completed", QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)},
 			{CaseId: "preview-case-002", State: "failed", ErrorCategory: previewValue("preview_failure")},

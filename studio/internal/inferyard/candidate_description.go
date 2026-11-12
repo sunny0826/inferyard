@@ -170,7 +170,7 @@ func ParseCandidateDescription(raw []byte, exitCode int) (CandidateDescription, 
 			(!bytes.Equal(fields["bound"], []byte("true")) && !bytes.Equal(fields["bound"], []byte("false"))) || !validCandidateSafety(fields["safety"]) {
 			return CandidateDescription{}, invalid
 		}
-	} else if !slices.Contains([]string{"prism_llama_server_v1", "llama_cpp_b11146_v1", "kvmem", "ninfer"}, result.Adapter) {
+	} else if !slices.Contains([]string{ContextSpeedAdapter, "llama_cpp_b11146_v1", "kvmem", "ninfer"}, result.Adapter) {
 		return CandidateDescription{}, invalid
 	}
 	if !validCandidateLaunch(fields["launch"], result.Launch, local, result.Family) ||

@@ -2,13 +2,16 @@ package pages
 
 import (
 	"context"
-	"inferyard/studio/internal/core"
+	"slices"
 	"time"
+
+	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
 func (s *viewState) resetWorkspace() {
 	s.clearBenchmark()
-	s.speed = &speedWorkspace{context: 65536}
+	s.speed = &speedWorkspace{context: inferyard.ContextSpeed64K}
 	s.deviceChecked = ""
 	s.model, s.registry = "", core.Registry{}
 	s.initDir, s.engine, s.process, s.bindEndpoint, s.candidate = "", "", "", "", ""
@@ -54,7 +57,7 @@ func (s *viewState) checkedBundles() []string {
 	if s.selectedBundles == nil {
 		s.selectedBundles = map[string]bool{}
 		for _, b := range s.progress.Bundles {
-			s.selectedBundles[b.Bundle] = b.Bundle == "zh-core" || b.Bundle == "zh-svg-pelican"
+			s.selectedBundles[b.Bundle] = slices.Contains(inferyard.DefaultBundles, b.Bundle)
 		}
 	}
 	for _, b := range s.progress.Bundles {
