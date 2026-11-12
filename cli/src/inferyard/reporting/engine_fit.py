@@ -1,28 +1,24 @@
 """Sealed, independently verifiable engine-fit runs and portable comparisons."""
 
-import hashlib
-import re
 from pathlib import Path
-from stat import S_ISREG
 
-from inferyard.config.engine_fit import validate_plan
-from inferyard.contracts.validation import strict_json_loads, json_bytes
-from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.storage import atomic_bytes
 from inferyard.analysis.engine_fit_artifacts import (
-    RUN_FILES,
     decode_json_bytes,
-    sha256_hex,
     entry_path,
-    manifest_document,
     load_manifest,
+    manifest_document,
     manifest_present,
     read_entry,
     require_directory,
+    sha256_hex,
 )
 from inferyard.analysis.engine_fit_html import LIMITATIONS, render
 from inferyard.analysis.engine_fit_metrics import observations
 from inferyard.analysis.engine_fit_validation import fields, require, validate_run
+from inferyard.config.engine_fit import validate_plan
+from inferyard.contracts.validation import json_bytes
+from inferyard.errors import ContractError, EvidenceError
+from inferyard.evidence.storage import atomic_bytes
 
 def _verified_run(root, *, rerender=False, verified=None):
     root = require_directory(root)

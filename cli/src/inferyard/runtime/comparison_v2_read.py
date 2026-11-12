@@ -8,7 +8,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from inferyard.analysis.comparison_history import HISTORY_IDENTITY_ERROR
-from inferyard.analysis.engine_comparison_runset import PLAN_HASH_MISMATCH, append_diagnostic
 from inferyard.analysis.engine_comparison_v2 import (
     PLAN_REQUIRED,
     empty_comparison_document,
