@@ -55,15 +55,7 @@ def parser() -> Parser:
         choices=sorted(schemas_for()),
         help="export the active JSON Schema",
     )
-    commands = result.add_subparsers(
-        dest="command",
-        title="commands",
-        metavar=(
-            "{init,runtime,config,progress,device-check,memory-check,catalogue,plan,compare-plan,verify,overhead,probe,run,resume,repeat-summary,"
-            "prepare-length,rescore,export,public,report,compare,filter-candidates,"
-            "extension,engine-fit,model,engine,service}"
-        ),
-    )
+    commands = result.add_subparsers(dest="command", title="commands")
     community.add_commands(commands)
     context_speed.add_commands(commands)
     discovery.add_commands(commands)

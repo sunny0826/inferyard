@@ -39,7 +39,7 @@ def experiment_for(config, bundle):
 
 def freeze(loaded, destination=None):
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
-    require_review(bundle)
+    require_review(loaded.bundle)
     experiment = experiment_for(config, bundle)
     workload = experiment["workloads"][0]
     # Preserve resolved host assets; only the copied bundle is package relative.

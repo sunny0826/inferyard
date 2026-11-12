@@ -4,10 +4,11 @@ from collections import Counter
 from copy import deepcopy
 
 from inferyard.analysis.engine_fit_validation import validate_run
+from inferyard.contracts.schemas_common import EXECUTION_STATES
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import atomic_bytes
 
-STATES = ("completed", "failed", "cancelled", "invalid", "not_executed")
+STATES = EXECUTION_STATES
 
 
 def request_counts(rows):

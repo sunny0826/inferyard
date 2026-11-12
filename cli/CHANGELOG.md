@@ -54,6 +54,25 @@
 
 ### Changed
 
+- Internal: removed redundant checks found by a simplification review: a
+  hand-written command metavar (help now lists all 29 top-level commands, adding
+  `speed-results` and `compare-engines`), a test-only application wrapper for
+  engine-block reports, an unreachable `macos_live_not_supported` next-step
+  branch, duplicate manifest container checks in `read_trial`, duplicate
+  layout 2 message-structure checks, a redundant prepared-request ordinal set
+  and unused host-lock created-path state. `verify_lab` now returns the
+  already-verified engine observation so `read_trial` and `read_run_projection`
+  reuse it instead of re-verifying. Whole-bundle review no longer re-evaluates
+  inherited proofs when a current approval already covers a validated
+  Document (mutable dict inputs keep full validation), and context-speed
+  freezing reviews the loaded Document directly. The five execution states
+  derive from a single contracts source. The `device-check` human summary no
+  longer claims Windows batch live experiments are unsupported; it now states
+  the adapter whitelist. The measurement and scoring implementation identity
+  and the scorer hash change, so runs created before this change cannot be
+  resumed or compared as the same implementation by runs created after it.
+  Subsystem docs were corrected for stale paths and over-broad wording, and
+  `experiment.json` is documented as a rebuildable convenience copy.
 - Internal: moved shared exception types to `inferyard.errors`, made cross-package
   helpers public, and moved pure contract rules (canonical JSON, lab observation
   parsing, engine timing mapping, plan math, context-speed profile constants,

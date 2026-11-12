@@ -26,12 +26,14 @@ def verify_message_snapshots(root, events, reads):
         if "messages_sha256" not in body and evidence.layout_version == 1:
             continue  # Old inline events retain their original reading policy.
         snapshot = evidence.request_body(event)
-        if type(snapshot) is not dict or "messages" not in snapshot:
-            raise EvidenceError("request_snapshot_messages_invalid")
-        try:
-            validate_value(snapshot["messages"], MESSAGES, "request.messages")
-        except ContractError as exc:
-            raise EvidenceError("request_snapshot_messages_invalid") from exc
+        if evidence.layout_version == 1:
+            # Layout 2 prepared bodies already passed the prepared_request contract.
+            if type(snapshot) is not dict or "messages" not in snapshot:
+                raise EvidenceError("request_snapshot_messages_invalid")
+            try:
+                validate_value(snapshot["messages"], MESSAGES, "request.messages")
+            except ContractError as exc:
+                raise EvidenceError("request_snapshot_messages_invalid") from exc
         expected = body.get("messages_sha256") or messages_sha256(body["messages"])
         if messages_sha256(snapshot["messages"]) != expected:
             raise EvidenceError("request_messages_hash_mismatch")

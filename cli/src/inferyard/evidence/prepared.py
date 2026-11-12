@@ -19,7 +19,7 @@ class PreparedRequests:
         if self.evidence.manifest is None and not self.evidence.exists("request-bodies.jsonl"):
             self.entries = {}
             return
-        entries, ordinals = {}, set()
+        entries = {}
         digest, size, previous = hashlib.sha256(), 0, 0
         try:
             with local_file(self.evidence.root, "request-bodies.jsonl").open("rb") as stream:
@@ -33,7 +33,7 @@ class PreparedRequests:
                         validate_document("prepared_request", record)
                         self.evidence._check_identity(record)
                         key, ordinal = record["request_id"], record["ordinal"]
-                        if key in entries or ordinal in ordinals or ordinal <= previous:
+                        if key in entries or ordinal <= previous:
                             raise EvidenceError("duplicate_or_misordered_prepared_request")
                         entries[key] = (
                             size,
@@ -43,7 +43,6 @@ class PreparedRequests:
                             record["body_sha256"],
                         )
                         previous = ordinal
-                        ordinals.add(ordinal)
                     size += length
         except (OSError, UnicodeError, ContractError) as exc:
             raise EvidenceError("invalid_prepared_request") from exc

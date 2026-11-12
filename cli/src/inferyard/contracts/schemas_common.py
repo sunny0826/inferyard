@@ -35,6 +35,7 @@ BOOL = {"type": "boolean"}
 VERSION = {"type": "integer", "const": SCHEMA_VERSION}
 STRING_LIST = array(LABEL)
 EXECUTION = enum("completed", "failed", "cancelled", "invalid", "not_executed")
+EXECUTION_STATES = tuple(EXECUTION["enum"])
 QUALITY = enum("pass", "fail", "unscorable", "not_scored")
 PHASE = enum("probe", "warmup", "baseline", "formal", "scoring", "residual", "finalizing")
 PROVENANCE = enum("declared", "observed", "verified", "unknown")

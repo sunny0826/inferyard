@@ -13,6 +13,7 @@ from typing import Any
 
 from inferyard import SCHEMA_VERSION
 from inferyard.contracts.schemas import schemas_for
+from inferyard.contracts.schemas_common import EXECUTION_STATES
 from inferyard.errors import ContractError
 
 _FIELD_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
@@ -26,12 +27,11 @@ _JSON_TYPES = {
 }
 
 
-class ExecutionState(StrEnum):
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-    INVALID = "invalid"
-    NOT_EXECUTED = "not_executed"
+ExecutionState = StrEnum(
+    "ExecutionState",
+    {state.upper(): state for state in EXECUTION_STATES},
+    module=__name__,
+)
 
 
 class QualityState(StrEnum):

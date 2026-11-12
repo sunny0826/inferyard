@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from statistics import median
 
-STATES = ("completed", "failed", "cancelled", "invalid", "not_executed")
+from inferyard.contracts.schemas_common import EXECUTION_STATES
+
+STATES = EXECUTION_STATES
 
 
 def distribution(values, unit, excluded=0):

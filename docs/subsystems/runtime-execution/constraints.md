@@ -4,11 +4,11 @@
 
 ## 主机锁与 dirty 恢复
 
-- 锁是非阻塞独占的（Linux `flock`，Windows `msvcrt.locking`），争用即 `host_lock_unavailable`；锁与状态文件要求安全文件身份，且每次写入前后重验 dev/inode 与父目录身份，漂移即 `host_state_identity_changed`。锁文件永不删除，见 [用法](../../../cli/docs/usage.md#取消与-dirty-恢复)。锁路径按平台选择：Linux 为 `/var/tmp/inferyard-host.{lock,state.json}`，Windows 为 Common AppData 下同名文件。
-- 状态文件读写有硬边界：`open_nofollow` 打开，POSIX 上要求属主正确且权限 `0600`、无 reparse、硬链接数为 1；读取限 1 MiB 且要求读前读后文件身份与大小时间戳一致（`host_state_changed_during_read`）；发布走证据包的同步原子写（`atomic_bytes`）。字段校验在 `validate_state`：dirty 为真或带脏字段时，`dirty_token`/`run_id`/`kind`/`endpoint`/`request_id` 必须是非空字符串，`server_pid`/`process_start_ticks` 必须是正整数。
+- 锁是非阻塞独占的（Linux `flock`，Windows `msvcrt.locking`），争用即 `host_lock_unavailable`。锁文件在获取时记录 fd 与路径的 dev/inode 及父目录身份，此后每次写入前重验，漂移即 `host_state_identity_changed`；锁文件永不删除，见 [用法](../../../cli/docs/usage.md#取消与-dirty-恢复)。锁路径按平台选择：Linux 为 `/var/tmp/inferyard-host.{lock,state.json}`，Windows 为 Common AppData 下同名文件。
+- 状态文件与锁文件身份检查不同：状态文件由锁路径绑定，按设计原子替换（临时文件写入、flush、fsync 后原子发布，再 fsync 父目录），替换后不核对路径身份；`open_nofollow` 打开，POSIX 上要求属主正确且权限 `0600`、无 reparse、硬链接数为 1；读取限 1 MiB 且要求读前读后 fd 身份、路径 lstat 身份与大小时间戳一致（`host_state_changed_during_read`）。字段校验在 `validate_state`：dirty 为真或带脏字段时，`dirty_token`/`run_id`/`kind`/`endpoint`/`request_id` 必须是非空字符串，`server_pid`/`process_start_ticks` 必须是正整数。
 - `HostLock.write` 要求持锁（`host_lock_not_held`），写入前重验全部已锁文件的身份；恢复核验通过也只返回恢复记录，清 dirty 仍由调用方在新服务空闲确认后执行。
-- dirty 语义：请求发送前必须置 dirty；只有空闲证据确认后才允许 clean。初始空闲、请求前空闲、取消/超时后的排空空闲任一环节无法确认，都保留 dirty 并给出对应原因（`initial_idle_unknown`、`pre_request_idle_unknown` 或保留请求级脏记录）。
-- 人工恢复绑定当前 `dirty_token` 与非空说明；程序仍核验旧进程消失（启动 ticks 比对）、新进程身份不同，且恢复后仍须通过新服务的身份预检与空闲观察。批量路径中恢复 token 一次性，首个 trial 后清除。单次路径在取消发生时若初始空闲仍未确认，会补写带 `kind` 的 `initial_idle_unknown` 脏记录，证据写入失败再把结果降为退出码 4。
+- dirty 语义：请求发送前必须置 dirty；只有空闲证据确认后才允许 clean。空闲观察返回失败时保留 dirty 并给出对应原因：初始空闲失败为 `initial_idle_unknown`，请求前空闲失败为 `pre_request_idle_unknown`，取消/超时后排空无法确认则保留请求级脏记录。取消打断尚未返回的初始空闲观察属于另一条路径：正常失败分支不会执行，由单次路径的取消分支补写 `initial_idle_unknown`（仅 single、初始空闲仍 pending、原状态不脏时；补写失败把结果降为退出码 4）；批量路径不在取消分支补写。
+- 人工恢复绑定当前 `dirty_token` 与非空说明；程序仍核验旧进程消失（启动 ticks 比对）、新进程身份不同，且恢复后仍须通过新服务的身份预检与空闲观察。批量路径中恢复 token 一次性，首个 trial 后清除。
 - 服务复用受 `reuse_allowed` 约束：任一侧 `require_fresh_process`、model/engine/generation 或关键 conditions/端点变化都禁止同进程复用；非串行续测复用还要求上次运行的 drain 证据（`service_reuse_drain_evidence_missing`）。同进程复用遇上 dirty 状态必须走绑定恢复（`dirty_service_requires_bound_recovery`）。
 
 ## dirty 状态转换
@@ -21,11 +21,11 @@
 | clean → dirty | 初始空闲观察失败（`initial_idle_unknown`）或请求前空闲观察失败（`pre_request_idle_unknown`） | 空闲观察超时未确认 |
 | dirty → clean | 空闲确认（`clean_observed` → `lock.clean`） | lab/Prism：引擎级空闲观察通过；native：持有 `client_http` 完成收据 |
 | dirty → clean | 绑定恢复（`verify_manual_recovery` + `completion_scope: "process_replacement"`） | token 与说明匹配、旧进程消失、新进程身份不同且通过身份预检与空闲观察 |
-| dirty 保持 | 取消/超时后空闲无法确认、native 无收据、证据写入失败 | 下一次运行必须携带恢复声明或复用同一服务身份 |
+| dirty 保持 | 排空观察返回未确认（含 native 未取得 clean 收据）、取消打断初始空闲观察（single 补写）或证据写入失败 | 下一次运行必须携带恢复声明或复用同一服务身份 |
 
 ## 请求准入与执行
 
-- 请求身份（`prepare_request` 落盘 + dirty）必须先于发送；必要证据写入失败即停发并保留 dirty，不产生无证据结果。duration 准入下 `before_send` 在发送点重查准入截止，逾期返回 `None` 且不创建持久尝试；准入截止前请求被跳过属证据错误（`duration_request_skipped_before_deadline`）。
+- 请求身份（`prepare_request` 落盘 + dirty）必须先于发送；必要证据写入失败即停发并保留 dirty，不产生无证据结果。duration 准入下 `before_send` 在发送点重查准入截止，逾期返回 `None` 且不创建 attempt 事件；准入竞态可能已留下 prepared 行，但 prepared 原件不算 attempt。准入截止前请求被跳过属证据错误（`duration_request_skipped_before_deadline`）。
 - 没有隐式重试：`request_started` 固定 `attempt: 1`；正式请求按冻结索引顺序逐个执行，顺序或 prompt 不符即证据错误。五个终态与守恒等式的语义见 [架构](../../../cli/docs/architecture.md) 与 [运行证据布局契约](../../../cli/docs/contracts/run-evidence-layout.md)。
 - 取消（`CancelledError`，含 wall 预算到期与安全停止触发）后取消生成任务；已发送的请求以最后一个已知状态合成 `cancelled` 终态落盘，未发送的只留脏记录。安全停止保留原因与计数、不当作模型失败，映射为退出码 3，见 [CLI 与应用分发](../cli-dispatch.md)。
 - 采样任务与请求并发竞争（`asyncio.wait` FIRST_COMPLETED）：采样器先结束即取消生成并按证据错误处理；请求进行中采样器停止为 `sampler_stopped_early`。工具/IO 失败不虚构模型终态，持久化的尝试保留为中断状态（终态 `invalid`，归属见 [架构](../../../cli/docs/architecture.md) 的状态表）。
