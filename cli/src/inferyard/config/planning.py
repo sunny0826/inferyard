@@ -9,7 +9,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
-from inferyard.analysis.position import register_position_families
+from inferyard.contracts.position_cases import register_position_families
 from inferyard.config.loader import load_config, read_document, validate_runtime_config
 from inferyard.config.plan_inputs import (
     runtime_snapshot,

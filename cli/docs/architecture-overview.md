@@ -46,6 +46,10 @@ flowchart LR
 | `adapters/`、`data/`、`templates/` | 引擎传输和解析；随安装包交付的方法/指标目录与报告模板               |
 
 `registry.py` 和 `provenance.py` 位于根包，分别管理目录注册和源码身份。
+engine-fit 诊断的封存入口与 HTML 渲染位于 `analysis/`（`engine_fit_seal`、`engine_fit_html`），
+以便运行时在持有主机锁时完成封存；`reporting/engine_fit.py` 只保留离线 compare/verify。
+跨包共享的纯规则（脱敏、模板身份、比较门槛、位置用例、batch envelope、公开原因、命令内审核缓存）
+位于 `contracts/`，CLI 元数据查询只加载这一层与根级轻量模块。
 
 ## CLI 与应用边界
 

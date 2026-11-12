@@ -7,7 +7,7 @@ import pytest
 
 from inferyard.adapters.prism import PrismAdapter, ResponseState, SSEDecoder, StreamProtocol
 from inferyard.errors import PreflightError
-from inferyard.evidence.storage import Redactor
+from inferyard.contracts.redaction import Redactor
 
 
 def frame(delta=None, reason=None, usage=None):

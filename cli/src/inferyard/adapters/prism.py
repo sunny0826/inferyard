@@ -16,8 +16,8 @@ from inferyard.contracts.engine_timing import capture_timings
 from inferyard.contracts.cache_policy import disabled_startup
 from inferyard.contracts.validation import strict_json_loads
 from inferyard.errors import ContractError, EvidenceError, PreflightError
-from inferyard.evidence.storage import Redactor
-from inferyard.evidence.template_identity import (
+from inferyard.contracts.redaction import Redactor
+from inferyard.contracts.template_identity import (
     PRISM_BUILD,
     PRISM_TEMPLATE_PROFILE,
     matches_template,

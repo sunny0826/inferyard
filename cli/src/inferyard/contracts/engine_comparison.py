@@ -4,7 +4,7 @@ A single left/right pair checks identity only and stays blocked; the block
 comparison in ``engine_blocks`` owns the performance verdict.
 """
 
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.contracts.engine_profiles import is_local
 
 SAME_ASSET = frozenset(("llama-cpp", "lmstudio"))

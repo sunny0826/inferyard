@@ -22,11 +22,8 @@ from inferyard.contracts.validation import Document
 from inferyard.errors import PreflightError
 from inferyard.evidence.journal import TrialJournal, trial_inputs
 from inferyard.analysis.ledger import read_trial
-from inferyard.evidence.storage import (
-    Redactor,
-    sha256_file,
-    verify_manifest,
-)
+from inferyard.contracts.redaction import Redactor
+from inferyard.evidence.storage import sha256_file, verify_manifest
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.implementation_identity import IdentityContext
 from inferyard.platforms.identity import environment_snapshot, process_start_ticks, service_origin, static_preflight, verify_process

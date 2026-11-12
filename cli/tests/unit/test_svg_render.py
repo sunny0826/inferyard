@@ -252,7 +252,7 @@ def test_svg_repeat_cohort_has_no_quality_denominator():
 
 
 def test_svg_cannot_be_used_as_a_scored_position_probe():
-    from inferyard.analysis.position import validate_position_cases
+    from inferyard.contracts.position_cases import validate_position_cases
 
     task = BUNDLE["cases"][0]
     workload = {

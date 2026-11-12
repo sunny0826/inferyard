@@ -5,9 +5,7 @@ import math
 from jsonschema import Draft202012Validator
 
 from inferyard import SCHEMA_VERSION
-from inferyard.analysis.comparison import compare_trials
 from inferyard.errors import EvidenceError
-from inferyard.reporting.comparison_report import comparison_input, read_verified_comparison
 
 SELECTOR_KEYS = (
     "metric_id",
@@ -177,29 +175,8 @@ def evaluate_candidate(data, comparison, constraints):
     }
 
 
-def filter_candidates(spec, base):
-    validate_spec(spec)
-    reference, reference_ref = comparison_input((base / spec["reference"]).resolve())
-    candidates, seen = [], set()
-    for path in spec["candidates"]:
-        data, ref = comparison_input((base / path).resolve())
-        if ref["run_id"] in seen:
-            raise EvidenceError("duplicate_candidate_run")
-        seen.add(ref["run_id"])
-        comparison = compare_trials(reference, data)
-        linked = spec.get("comparisons", {}).get(path)
-        if linked is not None:
-            from inferyard.evidence.source_locations import comparison_locations, resolve_source
-
-            comparison_root = (base / linked).resolve()
-            comparison = read_verified_comparison(comparison_root)
-            for source in comparison_locations(comparison):
-                source["path"] = str(resolve_source(comparison_root, source["path"]))
-            if comparison["source_runs"] != [reference_ref, ref]:
-                raise EvidenceError("candidate_comparison_sources_or_order_mismatch")
-        candidates.append(
-            {"source": ref, **evaluate_candidate(data, comparison, spec["constraints"])}
-        )
+def candidate_document(spec, reference_ref, candidates):
+    """Assemble the filtered result from already verified candidate data."""
     resource_scope = any(c.get("aggregation") == "all_requests" for c in spec["constraints"])
     return {
         "schema_version": SCHEMA_VERSION,

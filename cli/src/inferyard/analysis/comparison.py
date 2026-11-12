@@ -40,7 +40,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     conditions = []
     local_profile = any(is_local(data["config"]) for data in (left, right))
     engine_mode = chosen == "engine"
-    from inferyard.analysis.engine_comparison import LEGACY_ENGINE_FIELDS, allowed_differences
+    from inferyard.contracts.engine_comparison import LEGACY_ENGINE_FIELDS, allowed_differences
 
     engine_allowed = allowed_differences(left, right) if engine_mode else ()
 
@@ -311,7 +311,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     if chosen == "side-by-side":
         blockers.append("side_by_side_has_no_controlled_deltas")
     if engine_mode:
-        from inferyard.analysis.engine_comparison import engine_blockers
+        from inferyard.contracts.engine_comparison import engine_blockers
 
         blockers.extend(engine_blockers(left, right))
     elif local_profile:

@@ -12,6 +12,9 @@ from inferyard.contracts.schemas_tasks import BUNDLE, CASE
 from inferyard.contracts.validation import bundle_invariants, validate_value
 from inferyard.errors import ContractError
 
+# Default benchmark scope: every formal benchmark covers both shipped bundles.
+DEFAULT_BUNDLES = ("zh-core", "zh-svg-pelican")
+
 
 def content_hash(bundle):
     return hashlib.sha256(

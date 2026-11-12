@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from typing import TYPE_CHECKING
 from collections.abc import Mapping, Sequence
 
 from inferyard.application.dispatch import default_backend
@@ -11,8 +12,10 @@ from inferyard.cli.arguments import ArgumentError, Parser, parser
 from inferyard.cli.entrypoint import run
 from inferyard.cli.metadata import versions
 from inferyard.cli.request import build_request
-from inferyard.config.loader import LoadedConfig, load_config
-from inferyard.config.review_cache import command_reviews
+from inferyard.contracts.review_cache import command_reviews
+
+if TYPE_CHECKING:
+    from inferyard.config.loader import LoadedConfig
 
 __all__ = [
     "ArgumentError",
@@ -27,6 +30,13 @@ __all__ = [
     "parser",
     "versions",
 ]
+
+
+def load_config(path):
+    """Load one configuration through the pinned loader, resolved at call time."""
+    from inferyard.config.loader import load_config as load
+
+    return load(path)
 
 
 def _request(args: argparse.Namespace) -> CommandRequest:

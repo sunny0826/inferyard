@@ -10,7 +10,7 @@
 
 | 部分 | 责任 | 事实源 |
 | --- | --- | --- |
-| 通用追加存储 | 目录创建（`0o700`）、追加日志、周期性 flush、原子快照、封存 manifest、凭据脱敏 | `EvidenceStore` 在 [`cli/src/inferyard/evidence/storage.py`](../../cli/src/inferyard/evidence/storage.py)；`Redactor` / `StreamRedactor`（流式分块脱敏）同文件 |
+| 通用追加存储 | 目录创建（`0o700`）、追加日志、周期性 flush、原子快照、封存 manifest、凭据脱敏 | `EvidenceStore` 在 [`cli/src/inferyard/evidence/storage.py`](../../cli/src/inferyard/evidence/storage.py)；`Redactor` / `StreamRedactor`（流式分块脱敏）在 `contracts/redaction.py` |
 | 原子发布与路径校验 | 临时文件 + flush/fsync + 原子改名发布；拒绝绝对路径、`..` 与越界符号链接 | `atomic_bytes` 与 `local_file` 在 [`cli/src/inferyard/evidence/storage.py`](../../cli/src/inferyard/evidence/storage.py) |
 | run 写入器（layout 2） | 构造时原子发布 `inputs.json` 并创建六份日志；观测槽、prepared 请求、`event`/`sample`/`seal` | `TrialJournal` 在 [`cli/src/inferyard/evidence/journal.py`](../../cli/src/inferyard/evidence/journal.py)；观测与 prepared 行构造在 `RunRecords.observe` / `RunRecords.prepare_request`，见 [`cli/src/inferyard/evidence/run_records.py`](../../cli/src/inferyard/evidence/run_records.py) |
 | inputs envelope | 冻结五份文档 + 配置原文（base64 + 摘要），成员 sha256 按 `json_bytes` 计算 | `frozen_inputs` 在 [`cli/src/inferyard/evidence/run_inputs.py`](../../cli/src/inferyard/evidence/run_inputs.py) |
@@ -23,8 +23,8 @@
 | 格式边界 | 当前格式核验：`schema_version=3`、`origin=measured`，拒绝旧格式与历史来源 | `require_core` 在 [`cli/src/inferyard/evidence/formats.py`](../../cli/src/inferyard/evidence/formats.py)，`UnsupportedFormat` 在 [`cli/src/inferyard/errors.py`](../../cli/src/inferyard/errors.py)；历史来源拒绝在 `require_current_sources`，见 [`cli/src/inferyard/evidence/request_snapshots.py`](../../cli/src/inferyard/evidence/request_snapshots.py) |
 | 原生 clean receipt | layout 2 已完成请求必有 receipt；库存与 dirty_token 绑定核验 | `verify_clean_receipts` 在 [`cli/src/inferyard/evidence/native_receipts.py`](../../cli/src/inferyard/evidence/native_receipts.py)；receipt 写入与清 dirty 的次序在 [`cli/src/inferyard/runtime/service_observation.py`](../../cli/src/inferyard/runtime/service_observation.py)（属运行时） |
 | 旁证读取 | 独立 baseline 旁证按自身物理协议读取，不借用放宽识别规则的 `TrialEvidence` | `BaselineEvidence` 在 [`cli/src/inferyard/evidence/baseline_reads.py`](../../cli/src/inferyard/evidence/baseline_reads.py) |
-| 批量与比较读取 | 严格 batch envelope、history 拒绝登记与共享停止 | `batch_envelope.py`、`history_read.py`、`history_state.py`、`batch_state.py`；停止在 `analysis/comparison_history.py`，见[跨引擎比较契约](../../cli/docs/contracts/engine-comparison.md) |
-| 错误与投影读取 | 证据错误原因归一呈现；batch 延续字段与 resume 选择集的历史投影读取 | `safe_reason` 在 [`cli/src/inferyard/evidence/error_reasons.py`](../../cli/src/inferyard/evidence/error_reasons.py)；`read_run_projection` 在 [`cli/src/inferyard/analysis/run_projection.py`](../../cli/src/inferyard/analysis/run_projection.py)；`resume_selection` / `plan_progress` 在 [`cli/src/inferyard/analysis/ledger.py`](../../cli/src/inferyard/analysis/ledger.py) |
+| 批量与比较读取 | 严格 batch envelope、history 拒绝登记与共享停止 | `contracts/batch_envelope.py`、`history_read.py`、`history_state.py`、`batch_state.py`；停止在 `analysis/comparison_history.py`，见[跨引擎比较契约](../../cli/docs/contracts/engine-comparison.md) |
+| 错误与投影读取 | 证据错误原因归一呈现；batch 延续字段与 resume 选择集的历史投影读取 | `safe_reason` 在 [`contracts/error_reasons.py`](../../cli/src/inferyard/contracts/error_reasons.py)；`read_run_projection` 在 [`cli/src/inferyard/analysis/run_projection.py`](../../cli/src/inferyard/analysis/run_projection.py)；`resume_selection` / `plan_progress` 在 [`cli/src/inferyard/analysis/ledger.py`](../../cli/src/inferyard/analysis/ledger.py) |
 
 关键状态的事实源：`EvidenceStore._initialize` 生成 `run_id` 与 `clock_id`，并初始化
 `sealed=False` 与 `_write_error=None`；`_seq` 由 `TrialJournal.event` / `sample` 递增，

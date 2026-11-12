@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from inferyard import SCHEMA_VERSION
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.config.loader import LoadedConfig, validate_runtime_config
 from inferyard.config.plan_inputs import read_frozen_plan, source_bytes
 from inferyard.platforms.startup_arguments import replace_arguments
@@ -20,7 +20,7 @@ from inferyard.implementation_identity import execution_matches
 from inferyard.provenance import tool_source_hash
 from inferyard.platforms.identity import hash_file, process_start_ticks
 
-from inferyard.runtime.batch_envelope import validate_batch_envelope
+from inferyard.contracts.batch_envelope import validate_batch_envelope
 from inferyard.runtime.history_state import HistoryOptions, history, history_diagnostics
 
 def _open_existing_batch(

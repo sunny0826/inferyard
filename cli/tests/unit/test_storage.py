@@ -5,7 +5,14 @@ from pathlib import Path
 import pytest
 
 from inferyard.errors import EvidenceError, UnsupportedFormat
-from inferyard.evidence.storage import EvidenceStore, Redactor, atomic_bytes, local_file, read_jsonl, verify_manifest
+from inferyard.contracts.redaction import Redactor
+from inferyard.evidence.storage import (
+    EvidenceStore,
+    atomic_bytes,
+    local_file,
+    read_jsonl,
+    verify_manifest,
+)
 
 
 @pytest.mark.parametrize(

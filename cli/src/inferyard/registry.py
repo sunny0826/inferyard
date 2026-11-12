@@ -29,7 +29,8 @@ def catalogue(kind):
 
 
 def components():
-    from inferyard.analysis.scoring import CATEGORIES, SCORER_VERSION, scorer_hash
+    from inferyard.analysis.scoring import CATEGORIES, scorer_hash
+    from inferyard.contracts.scoring_version import SCORER_VERSION
 
     identity = scorer_hash()
     return {
@@ -210,7 +211,7 @@ def registered_score(case, answer, policy):
 
 
 def require_execution_support(plan, loaded):
-    from inferyard.analysis.scoring import SCORER_VERSION
+    from inferyard.contracts.scoring_version import SCORER_VERSION
 
     if plan["experiment"]["definition_versions"] != {
         "measurement": "phase2.v1",

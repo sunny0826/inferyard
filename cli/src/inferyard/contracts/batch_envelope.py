@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from inferyard.analysis.comparison_types import JSONRecord, JSONValue
+from inferyard.contracts.comparison_types import JSONRecord, JSONValue
+from inferyard.contracts.format_versions import require_current
 from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.formats import require_core
 from inferyard.implementation_identity import validate_identity
 
 _BATCH_KEYS = {
@@ -28,7 +28,7 @@ def validate_batch_envelope(
     metadata: JSONRecord, expected_plan_sha256: str | None = None
 ) -> None:
     """Reject malformed batch metadata before any run or identity is trusted."""
-    require_core(metadata, "batch")
+    require_current(metadata, "batch")
     if (
         type(metadata) is not dict
         or type(metadata.get("diagnostic")) is not bool

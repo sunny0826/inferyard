@@ -12,8 +12,9 @@ from inferyard.config.engine_fit import request_rows
 from inferyard.contracts.json_digest import digest
 from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.contracts.validation import json_bytes
-from inferyard.reporting.engine_fit import compare, seal_run, verify
-from inferyard.reporting.engine_fit_metrics import observations
+from inferyard.analysis.engine_fit_seal import seal_run
+from inferyard.reporting.engine_fit import compare, verify
+from inferyard.analysis.engine_fit_metrics import observations
 
 
 @pytest.fixture

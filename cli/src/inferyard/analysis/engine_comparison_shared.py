@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from inferyard.analysis.comparison_types import JSONRecord, JSONValue
+from inferyard.contracts.comparison_types import JSONRecord, JSONValue
 from inferyard.config.comparison_plan import Slot
 
 PLAN_HASH_MISMATCH = "comparison_plan_hash_mismatch"

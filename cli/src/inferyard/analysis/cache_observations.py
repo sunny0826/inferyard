@@ -1,7 +1,7 @@
 """Observed prompt reuse counts, separate from requested policy and qualification."""
 
 from inferyard.contracts.engine_timing import DEFINITION
-from inferyard.runtime.cache_execution import request_value
+from inferyard.contracts.cache_execution import request_value
 
 
 def observe(records, state, build_verified, requested):

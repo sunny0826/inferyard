@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.analysis.engine_comparison_shared import (
     HANDOFF_BROKEN,
     HANDOFF_MISSING,

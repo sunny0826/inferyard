@@ -133,7 +133,7 @@ T6/T7 覆盖取消清理、绑定/替换失败、原子恢复和模拟一致性�
   单份 12 槽位计划尚未生成与核验，现有样本只支持既有机制判断。
 - **未验证**：`require_fresh_process=true` 的 Studio 全链路和逐槽位服务替换未做真实引擎验收。
 - **事实（文档与源码分歧）**：CLI 帮助仍称 same-GGUF，代码已支持 llama-cpp 对 mlx-lm 跨格式
-  （`cli/src/inferyard/cli/commands/comparison.py:16-18`，`analysis/engine_comparison.py:9-13`）。
+  （`cli/src/inferyard/cli/commands/comparison.py:16-18`，`contracts/engine_comparison.py:9-13`）。
 - **事实（文档状态分歧）**：决策索引称 ADR 056“实施未开始”，实施计划和 backlog 已记录实现及真机结果
   （`cli/docs/decisions/README.md:53`，`plans/engine-comparison.md:42-66`，`backlog/engine-comparison.md:18-26`）。
 

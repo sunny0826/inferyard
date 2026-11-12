@@ -11,7 +11,7 @@ from inferyard.analysis.comparison_history import (
     RUN_PLAN_MISMATCH,
     UNPLANNED_TRIAL,
 )
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.config.loader import LoadedConfig
 from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import validate_document

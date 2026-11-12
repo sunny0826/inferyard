@@ -11,12 +11,12 @@ from inferyard.analysis.comparison_history import (
     HISTORY_IDENTITY_ERROR,
     REJECTION_CLASSIFICATIONS,
 )
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.config.loader import LoadedConfig
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.evidence.storage import read_json
 from inferyard.provenance import tool_source_hash
-from inferyard.runtime.batch_envelope import validate_batch_envelope
+from inferyard.contracts.batch_envelope import validate_batch_envelope
 from inferyard.runtime.history_read import (
     HistoryContext,
     RunRead,

@@ -36,7 +36,7 @@
 ### 命令级验证与审核缓存
 
 - `command_validation(enabled=...)`（[`cli/src/inferyard/contracts/validation_cache.py`](../../../cli/src/inferyard/contracts/validation_cache.py)）只在入口为 `run`/`resume`/`plan`/`probe` 打开，其余命令显式禁用；缓存以文档内容哈希（`validation_key` 对 `config`/`config_input`/`bundle`/`plan`/`experiment` 五类文档计算 SHA-256）为键，同一次命令内重复校验同一文档只成功一次。
-- `command_reviews`（[`cli/src/inferyard/config/review_cache.py`](../../../cli/src/inferyard/config/review_cache.py)）贯穿整个 `main` 调用，供题包加载登记人工审核结果；两个缓存都经 `ContextVar` 实现、随命令结束丢弃，不落盘、不跨命令复用。
+- `command_reviews`（[`cli/src/inferyard/contracts/review_cache.py`](../../../cli/src/inferyard/contracts/review_cache.py)）贯穿整个 `main` 调用，供题包加载登记人工审核结果；两个缓存都经 `ContextVar` 实现、随命令结束丢弃，不落盘、不跨命令复用。
 
 ### 元数据查询
 

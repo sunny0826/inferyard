@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.config.loader import LoadedConfig
 from inferyard.errors import ContractError
 

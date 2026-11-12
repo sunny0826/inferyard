@@ -14,10 +14,10 @@ from jsonschema import Draft202012Validator
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.scoring_rules import score_rules
 from inferyard.contracts.bundle import pointer, validate_case
+from inferyard.contracts.scoring_version import SCORER_VERSION
 from inferyard.contracts.validation import strict_json_loads, validate_document
 from inferyard.errors import ContractError, EvidenceError
 
-SCORER_VERSION = "phase2.v1"
 CATEGORIES = (
     "instruction",
     "extraction",

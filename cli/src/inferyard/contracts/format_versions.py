@@ -9,3 +9,10 @@ def require_version(value, key, supported, artifact):
         raise EvidenceError("invalid_artifact_version")
     if value[key] not in supported:
         raise UnsupportedFormat(artifact, value[key], supported)
+
+
+def require_current(value, artifact):
+    """Admit only the active schema version and measured artifacts."""
+    require_version(value, "schema_version", (3,), artifact)
+    if value.get("origin") == "migrated":
+        raise UnsupportedFormat(artifact + ".origin", "migrated", ("measured",))

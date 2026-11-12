@@ -41,7 +41,7 @@ llama.cpp 对 LM Studio；实测后增加 llama.cpp 对 MLX-LM（同一上游模
 
 ## 3. 比较器
 
-- [x] 单对身份门槛（`analysis/engine_comparison.py`），单对始终无性能结论。
+- [x] 单对身份门槛（`contracts/engine_comparison.py`），单对始终无性能结论。
 - [x] `compare-engines` 多块比较（`analysis/engine_blocks.py`）：交错、每侧至少 3 块、
   同侧配置不变、块服务替换、逐请求配对与冷缓存、每块中位数、方向一致性判定，
   输出 `engine-comparison.v1`。

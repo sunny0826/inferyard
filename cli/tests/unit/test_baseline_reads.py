@@ -4,7 +4,7 @@ import pytest
 
 from inferyard.errors import EvidenceError
 from inferyard.evidence.baseline_reads import BaselineEvidence, environment_reads
-from inferyard.evidence.error_reasons import safe_reason
+from inferyard.contracts.error_reasons import safe_reason
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 

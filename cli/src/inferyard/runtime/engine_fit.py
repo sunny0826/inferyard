@@ -17,7 +17,8 @@ from inferyard.platforms.model_asset_manifest import runtime_manifest as _manife
 from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.analysis.engine_fit_checkpoint import request_counts, write_checkpoint
 from inferyard.contracts.validation import json_bytes
-from inferyard.evidence.storage import Redactor, atomic_bytes
+from inferyard.contracts.redaction import Redactor
+from inferyard.evidence.storage import atomic_bytes
 from inferyard.platforms.engine_fit import (
     bind_service,
     check_service,
@@ -26,7 +27,7 @@ from inferyard.platforms.engine_fit import (
 )
 from inferyard.platforms.sensors_linux import LinuxSensors
 from inferyard.provenance import tool_source_hash
-from inferyard.reporting.engine_fit import seal_run
+from inferyard.analysis.engine_fit_seal import seal_run
 from inferyard.runtime.lock import HostLock
 from inferyard.runtime.signals import install_termination_handler
 

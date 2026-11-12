@@ -3,7 +3,7 @@
 import pytest
 
 from inferyard.errors import EvidenceError
-from inferyard.evidence.error_reasons import safe_reason
+from inferyard.contracts.error_reasons import safe_reason
 from inferyard.analysis.ledger import read_trial
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import read_jsonl

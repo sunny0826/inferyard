@@ -316,7 +316,7 @@ def test_comparison_reads_saved_trials_without_requests(tmp_path, scenario):
 
 
 def test_candidate_filter_public_cli_is_offline_and_empty_is_valid(tmp_path, scenario, capsys):
-    from inferyard.analysis.candidate_filter import filter_candidates
+    from inferyard.application.candidates import filter_candidates
 
     request, deps = batch(tmp_path, scenario)
     _, result = asyncio.run(execute_async(request, deps))

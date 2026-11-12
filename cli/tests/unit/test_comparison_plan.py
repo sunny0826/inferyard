@@ -6,10 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.analysis.comparison_types import JSONRecord
-from inferyard.contracts.bundle import content_hash
+from inferyard.contracts.bundle import DEFAULT_BUNDLES, content_hash
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.config.comparison_plan import (
-    DEFAULT_BUNDLES,
     comparison_slots,
     freeze,
     validate_comparison_plan,

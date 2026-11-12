@@ -8,8 +8,8 @@ from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
-from inferyard.analysis.comparison_types import JSONRecord
-from inferyard.analysis.engine_comparison_v2 import read_comparison_v2
+from inferyard.contracts.comparison_types import JSONRecord
+from inferyard.runtime.comparison_v2_read import read_comparison_v2
 from inferyard.application.types import CommandRequest
 from inferyard.config.loader import LoadedConfig
 from inferyard.config.plan_inputs import read_frozen_plan

@@ -1,13 +1,11 @@
 """Current artifact boundaries, independent of evidence integrity errors."""
 
-from inferyard.contracts.format_versions import require_version
-from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
+from inferyard.contracts.format_versions import require_current, require_version
+from inferyard.errors import ContractError, EvidenceError
 
 
 def require_core(value, artifact):
-    require_version(value, "schema_version", (3,), artifact)
-    if value.get("origin") == "migrated":
-        raise UnsupportedFormat(artifact + ".origin", "migrated", ("measured",))
+    require_current(value, artifact)
 
 
 def check_presentation_seal(root):

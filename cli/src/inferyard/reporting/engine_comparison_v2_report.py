@@ -6,12 +6,9 @@ import hashlib
 from importlib.resources import files
 from pathlib import Path
 
-from inferyard.analysis.comparison_types import JSONRecord, JSONValue
-from inferyard.analysis.engine_comparison_v2 import (
-    DEFINITION,
-    bundle_comparisons,
-    derive_comparison_v2,
-)
+from inferyard.contracts.comparison_types import JSONRecord, JSONValue
+from inferyard.analysis.engine_comparison_v2 import DEFINITION, bundle_comparisons
+from inferyard.runtime.comparison_v2_read import derive_comparison_v2
 from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import ContractError, EvidenceError

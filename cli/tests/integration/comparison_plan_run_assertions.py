@@ -7,8 +7,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from inferyard.analysis.comparison_types import JSONRecord
-from inferyard.analysis.engine_comparison_v2 import evaluate_comparison, read_comparison_v2
+from inferyard.contracts.comparison_types import JSONRecord
+from inferyard.analysis.engine_comparison_v2 import evaluate_comparison
+from inferyard.runtime.comparison_v2_read import read_comparison_v2
 from inferyard.application.types import CommandRequest
 from inferyard.application.verification import execute as verify
 from inferyard.config.comparison_plan import comparison_slots

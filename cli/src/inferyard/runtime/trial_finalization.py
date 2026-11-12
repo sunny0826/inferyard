@@ -5,7 +5,7 @@ import time
 
 from inferyard import SCHEMA_VERSION
 from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.error_reasons import safe_reason
+from inferyard.contracts.error_reasons import safe_reason
 from inferyard.runtime.trial_lifecycle import seal_stopped
 
 

@@ -21,6 +21,12 @@ blocked = (
     "inferyard.runtime",
     "inferyard.extensions",
     "inferyard.adapters",
+    "inferyard.platforms",
+    "inferyard.provisioning",
+    "inferyard.evidence",
+    "inferyard.analysis",
+    "inferyard.config",
+    "inferyard.reporting",
 )
 
 class RejectBackends(importlib.abc.MetaPathFinder):

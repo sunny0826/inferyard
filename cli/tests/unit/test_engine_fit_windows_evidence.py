@@ -11,7 +11,8 @@ from inferyard.contracts.engine_fit_native_sources import (
     WINDOWS_START_SOURCE,
 )
 from inferyard.errors import EvidenceError, PreflightError
-from inferyard.reporting.engine_fit import seal_run, verify
+from inferyard.analysis.engine_fit_seal import seal_run
+from inferyard.reporting.engine_fit import verify
 from inferyard.analysis.engine_fit_validation import validate_run
 from tests.unit.test_engine_fit_common_evidence import common_data
 from tests.unit.test_engine_fit_memory_override import _data as memory_data

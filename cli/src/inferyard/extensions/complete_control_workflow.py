@@ -4,7 +4,8 @@ import asyncio
 import os
 
 from inferyard.errors import EvidenceError
-from inferyard.evidence.storage import Redactor, sha256_file
+from inferyard.contracts.redaction import Redactor
+from inferyard.evidence.storage import sha256_file
 from inferyard.extensions.complete_trial_control import execute_complete, read_trial_plan
 from inferyard.extensions.extension_evidence import ExtensionJournal, reduce_packet, render
 from inferyard.extensions.independent_guard import IndependentGuard

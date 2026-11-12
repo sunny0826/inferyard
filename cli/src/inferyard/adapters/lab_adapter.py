@@ -15,7 +15,7 @@ from inferyard.adapters.lab_transport import LabTransport
 from inferyard.adapters.native_observation import NativeObservation, OpenAIGenerationDecoder
 from inferyard.adapters.response_state import ResponseState
 from inferyard.errors import EvidenceError, PreflightError
-from inferyard.evidence.storage import Redactor
+from inferyard.contracts.redaction import Redactor
 from inferyard.platforms.identity import resolve_loopback_origin
 
 

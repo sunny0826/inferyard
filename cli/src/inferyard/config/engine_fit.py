@@ -4,13 +4,17 @@ import math
 import re
 from pathlib import PurePosixPath, PureWindowsPath
 
+from inferyard.contracts.engine_profiles import (
+    DIAGNOSTIC_ENGINES,
+    LEGACY_DIAGNOSTIC_ENGINES,
+)
 from inferyard.contracts.json_digest import digest
 from inferyard.contracts.validation import json_bytes
 from inferyard.errors import ContractError, UnsupportedFormat
 from inferyard.evidence.storage import atomic_bytes, read_json
 
-LEGACY_ENGINES = ("vllm", "sglang")
-ENGINES = (*LEGACY_ENGINES, "llama-cpp", "mlx-lm", "lmstudio", "ollama")
+LEGACY_ENGINES = LEGACY_DIAGNOSTIC_ENGINES
+ENGINES = DIAGNOSTIC_ENGINES
 DEFAULT_CASES = [
     {"id": "arithmetic", "prompt": "What is 17 + 25? Reply with only the integer."},
     {"id": "json", "prompt": 'Return only valid JSON with key "status" and value "ok".'},

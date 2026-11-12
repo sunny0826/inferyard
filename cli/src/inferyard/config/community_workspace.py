@@ -1,6 +1,7 @@
 """Export a reviewed corpus and deliberately unbound platform examples."""
 
 from inferyard.config.bundle import require_review
+from inferyard.contracts.bundle import DEFAULT_BUNDLES
 from inferyard.provisioning.community_resources import BUNDLES, resource_bytes
 from inferyard.provisioning.preparation_io import (
     NewDirectory,
@@ -13,8 +14,6 @@ from inferyard.provisioning.preparation_io import (
 )
 from inferyard.contracts.validation import strict_json_loads
 from inferyard.errors import ContractError
-
-DEFAULT_BUNDLES = ("zh-core", "zh-svg-pelican")
 
 
 def _load_bundle(name):

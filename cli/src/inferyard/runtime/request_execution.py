@@ -81,7 +81,7 @@ class TrialRequests:
         key = f"{self.store.run_id}-{phase}-{self.ordinal}"
         body = request_body(self.config, prompt, stream=stream)
         if getattr(self.store, "cache_protocol", None):
-            from inferyard.runtime.cache_execution import request_value
+            from inferyard.contracts.cache_execution import request_value
 
             body["cache_prompt"] = request_value(self.config, phase, self.ordinal)
             body["n_cache_reuse"] = 0

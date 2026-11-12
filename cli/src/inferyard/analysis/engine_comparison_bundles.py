@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.config.comparison_plan import Slot
 
 

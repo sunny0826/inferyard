@@ -401,7 +401,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             write_report(targets[:1], output / "wrong-scope", comparison_path=out)
         with pytest.raises(EvidenceError, match="inside_original_evidence"):
             write_report(targets, root / "forbidden-report", comparison_path=out)
-        from inferyard.analysis.candidate_filter import filter_candidates
+        from inferyard.application.candidates import filter_candidates
 
         metric = next(
             m

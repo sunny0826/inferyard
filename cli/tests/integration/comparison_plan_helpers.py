@@ -17,8 +17,8 @@ from urllib.parse import urlsplit
 
 
 from inferyard.adapters.local_engines import LocalEngineAdapter
-from inferyard.analysis.comparison_types import JSONRecord, JSONValue
-from inferyard.analysis.engine_comparison_v2 import read_comparison_v2
+from inferyard.contracts.comparison_types import JSONRecord, JSONValue
+from inferyard.runtime.comparison_v2_read import read_comparison_v2
 from inferyard.application.types import CommandRequest
 from inferyard.config.comparison_plan import Slot, comparison_slots, freeze
 from inferyard.platforms.model_asset_manifest import model_asset_manifest

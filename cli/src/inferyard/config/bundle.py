@@ -3,7 +3,7 @@
 import hashlib
 import json
 
-from inferyard.config.review_cache import review_cache
+from inferyard.contracts.review_cache import review_cache
 from inferyard.contracts.bundle import validate_bundle
 from inferyard.contracts.bundle_review import approved, validate_provenance
 from inferyard.contracts.validation import Document

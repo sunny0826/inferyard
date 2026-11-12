@@ -1,16 +1,16 @@
-"""Append-only evidence, atomic snapshots, secret redaction, and strict offline reads."""
+"""Append-only evidence, atomic snapshots, and strict offline reads."""
 
 from __future__ import annotations
 
 import hashlib
 import os
-import re
 import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path, PureWindowsPath
 
 from inferyard import SCHEMA_VERSION
+from inferyard.contracts.redaction import Redactor
 from inferyard.contracts.validation import json_bytes, strict_json_loads, validate_document
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.platforms.platform_io import (
@@ -20,94 +20,6 @@ from inferyard.platforms.platform_io import (
     resolved_within,
     sync_directory,
 )
-
-
-def _copy_clean_containers(value):
-    """Detach containers even without credentials; tuples still become JSON arrays."""
-    if isinstance(value, str):
-        return value
-    if isinstance(value, (list, tuple)):
-        return [_copy_clean_containers(item) for item in value]
-    if isinstance(value, dict):
-        return {key: _copy_clean_containers(item) for key, item in value.items()}
-    return value
-
-
-class Redactor:
-    def __init__(self, secrets=()):
-        self.secrets = tuple(sorted({value for value in secrets if value}, key=len, reverse=True))
-        self.changed = False
-
-    def text(self, value: str) -> str:
-        for secret in self.secrets:
-            if secret in value:
-                self.changed = True
-                value = value.replace(secret, "[REDACTED]")
-        return value
-
-    def clean(self, value):
-        if not self.secrets:
-            return _copy_clean_containers(value)
-        return self._clean_with_secrets(value)
-
-    def _clean_with_secrets(self, value):
-        if isinstance(value, str):
-            return self.text(value)
-        if isinstance(value, list):
-            return [self._clean_with_secrets(item) for item in value]
-        if isinstance(value, tuple):
-            return [self._clean_with_secrets(item) for item in value]
-        if isinstance(value, dict):
-            return {self.text(key): self._clean_with_secrets(item) for key, item in value.items()}
-        return value
-
-    def stream(self):
-        return StreamRedactor(self)
-
-
-class StreamRedactor:
-    """Hold a possible secret prefix until a later chunk disambiguates it."""
-
-    def __init__(self, redactor: Redactor):
-        self.redactor = redactor
-        self.pending = ""
-        self.changed = False
-        self.max_secret_length = max(map(len, redactor.secrets), default=0)
-        alternatives = "|".join(map(re.escape, redactor.secrets))
-        self._complete = re.compile(f"(?P<secret>{alternatives})") if alternatives else None
-        self._partial = self._complete
-        if self.max_secret_length > 1:
-            starts = re.escape("".join(sorted({secret[0] for secret in redactor.secrets})))
-            # Complete matches come first, including a shorter complete secret when
-            # a longer one is incomplete. Only the bounded tail can be a prefix.
-            self._partial = re.compile(
-                f"(?P<secret>{alternatives})|[{starts}]"
-                rf"(?=[\s\S]{{0,{self.max_secret_length - 2}}}\Z)"
-            )
-
-    def feed(self, chunk: str, *, final=False) -> str:
-        if not self.redactor.secrets:
-            return chunk
-        text = self.pending + chunk
-        self.pending = ""
-        result = []
-        index = 0
-        pattern = self._complete if final else self._partial
-        for match in pattern.finditer(text):
-            start, end = match.span()
-            if match.lastgroup == "secret":
-                result.append(text[index:start])
-                result.append("[REDACTED]")
-                self.changed = self.redactor.changed = True
-                index = end
-            else:
-                suffix = text[start:]
-                if any(secret.startswith(suffix) for secret in self.redactor.secrets):
-                    result.append(text[index:start])
-                    self.pending = suffix
-                    return "".join(result)
-        result.append(text[index : len(text)])
-        return "".join(result)
 
 
 def sha256_file(path: Path) -> str:

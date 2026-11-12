@@ -11,8 +11,9 @@ from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.cli import main
 from inferyard.config.engine_fit import prepare, validate_plan
 from inferyard.errors import ContractError, EvidenceError, PreflightError
-from inferyard.reporting.engine_fit import compare, seal_run, verify
-from inferyard.reporting.engine_fit_html import render
+from inferyard.analysis.engine_fit_seal import seal_run
+from inferyard.reporting.engine_fit import compare, verify
+from inferyard.analysis.engine_fit_html import render
 from inferyard.analysis.engine_fit_validation import validate_run
 from tests.unit import test_engine_fit_temperature_override as temperature
 from tests.unit.test_engine_fit_common_evidence import common_data

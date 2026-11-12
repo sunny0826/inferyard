@@ -1,7 +1,7 @@
 """Conservative per-sequence cache policy comparability, never a speedup gate."""
 
 from inferyard.contracts.engine_timing import DEFINITION
-from inferyard.runtime.cache_execution import PROTOCOL
+from inferyard.contracts.cache_execution import PROTOCOL
 
 
 def qualification(data, workload):

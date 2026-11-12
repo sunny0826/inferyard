@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from dataclasses import dataclass, replace
 
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.analysis.scoring import ScoringContext
 from inferyard.contracts.validation import Document
 from inferyard.errors import EvidenceError, PreflightError

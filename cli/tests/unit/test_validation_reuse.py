@@ -7,7 +7,7 @@ import pytest
 from inferyard.contracts.bundle import content_hash
 from inferyard.config.bundle import require_review
 from inferyard.config.loader import load_config
-from inferyard.config.review_cache import command_reviews
+from inferyard.contracts.review_cache import command_reviews
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.contracts.validation import Document, validate_document
 from inferyard.contracts.validation_cache import command_validation

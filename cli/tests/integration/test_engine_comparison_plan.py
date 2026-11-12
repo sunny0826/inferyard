@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.errors import EvidenceError
 from inferyard.evidence.artifact_seal import seal

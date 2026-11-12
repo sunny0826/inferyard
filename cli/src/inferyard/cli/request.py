@@ -4,13 +4,16 @@ import argparse
 import math
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from inferyard.analysis.comparison_types import JSONValue
+from inferyard.contracts.comparison_types import JSONValue
 from inferyard.application.types import CommandRequest
 from inferyard.cli.arguments import ArgumentError
-from inferyard.config.loader import LoadedConfig, load_config
 from inferyard.contracts.endpoint import validate_endpoint
 from inferyard.errors import ContractError
+
+if TYPE_CHECKING:
+    from inferyard.config.loader import LoadedConfig
 
 
 def _comparison_experiment_id(values: dict[str, JSONValue]) -> None:
@@ -37,8 +40,12 @@ def _normalize_path_collections(
 
 
 def build_request(
-    args: argparse.Namespace, *, config_loader: Callable[[Path], LoadedConfig] = load_config
+    args: argparse.Namespace, *, config_loader: Callable[[Path], LoadedConfig] | None = None
 ) -> CommandRequest:
+    if config_loader is None:
+        from inferyard.config.loader import load_config
+
+        config_loader = load_config
     values = vars(args)
     if args.command == "plan" and bool(values.get("preset")) != bool(values.get("config")):
         raise ArgumentError("--config requires --preset and vice versa")

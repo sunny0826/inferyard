@@ -4,7 +4,7 @@ import hashlib
 import uuid
 
 from inferyard import SCHEMA_VERSION
-from inferyard.analysis.scoring import SCORER_VERSION
+from inferyard.contracts.scoring_version import SCORER_VERSION
 from inferyard.config.planning import compile_plan
 from inferyard.contracts.validation import validated_dict, json_bytes
 

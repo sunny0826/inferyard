@@ -5,7 +5,7 @@ from inferyard.contracts.engine_timing import engine_rates
 from inferyard.analysis.input_lengths import bind_token_counts
 from inferyard.errors import EvidenceError
 from inferyard.analysis.ledger import read_trial
-from inferyard.evidence.template_identity import matches_template
+from inferyard.contracts.template_identity import matches_template
 from inferyard.evidence.trial_evidence import verify_reference
 
 

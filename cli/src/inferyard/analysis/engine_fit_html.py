@@ -3,7 +3,7 @@
 import json
 from html import escape
 
-from inferyard.reporting.engine_fit_metrics import observations
+from inferyard.analysis.engine_fit_metrics import observations
 
 LIMITATIONS = [
     "diagnostic_only_no_performance_qualification",

@@ -460,7 +460,7 @@ def test_container_tail_retains_denominator_and_rejects_sealed_run(tmp_path, fil
 
 
 def test_native_missing_receipt_is_legacy_only_and_has_exact_public_reason(tmp_path):
-    from inferyard.evidence.error_reasons import safe_reason
+    from inferyard.contracts.error_reasons import safe_reason
     from inferyard.evidence.native_receipts import verify_clean_receipts
 
     old, new = synthetic_pair(tmp_path)

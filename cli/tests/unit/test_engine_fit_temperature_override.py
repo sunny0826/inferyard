@@ -12,8 +12,9 @@ from inferyard.cli import main
 from inferyard.config.engine_fit import prepare, validate_plan
 from inferyard.contracts.json_digest import digest
 from inferyard.errors import ContractError, EvidenceError, PreflightError
-from inferyard.reporting.engine_fit import compare, seal_run, verify
-from inferyard.reporting.engine_fit_html import render
+from inferyard.analysis.engine_fit_seal import seal_run
+from inferyard.reporting.engine_fit import compare, verify
+from inferyard.analysis.engine_fit_html import render
 from inferyard.analysis.engine_fit_validation import validate_run
 from inferyard.runtime import engine_fit as runtime
 from tests.unit.test_engine_fit_common_evidence import common_data

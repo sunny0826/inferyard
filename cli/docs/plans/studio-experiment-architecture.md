@@ -66,7 +66,7 @@
 - [数据契约 · 证据血缘与比较结论](../data-contract.md#证据血缘与比较结论)、[实验设计](../experiments/design.md)、[指标](../experiments/metrics.md)。
 - [Studio 职责与事实源](../../../docs/subsystems/studio-panel/responsibilities.md)、[运行路径](../../../docs/subsystems/studio-panel/runtime.md)、[本地引擎](../../../docs/subsystems/studio-panel/local-engines.md)、[长上下文专项](../../../docs/subsystems/studio-panel/context-speed.md)。
 
-只读上下文：`cli/src/inferyard/analysis/engine_blocks.py`、`analysis/engine_comparison.py`、
+只读上下文：`cli/src/inferyard/analysis/engine_blocks.py`、`contracts/engine_comparison.py`、
 `reporting/engine_blocks_verify.py`、`cli/commands/comparison.py`；
 `studio/internal/core/runs.go`、`local_runs.go`、`context_speed_*.go`；
 `.tools/engine-compare-mlx-20261106/engine_pair.py`、`bind_loop.py`（只作现状参考，不迁入）。
