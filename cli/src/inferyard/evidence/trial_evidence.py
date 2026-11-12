@@ -218,7 +218,7 @@ class TrialEvidence:
 
     def request_body(self, event):
         if self.layout_version == 2:
-            return self._prepared.record(event)["body"]
+            return self._prepared.row(event)["body"]
         self._check_identity(event)
         name = self._legacy_request_name(event)
         body = self._reads.checked_json(name)
@@ -227,7 +227,7 @@ class TrialEvidence:
 
     def request_reference(self, event):
         if self.layout_version == 2:
-            row = self._prepared.record(event)
+            row = self._prepared.row(event)
             return self._reference(
                 "request-bodies.jsonl",
                 {

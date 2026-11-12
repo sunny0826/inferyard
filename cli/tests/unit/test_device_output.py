@@ -188,6 +188,17 @@ def test_mac_capacity_requires_service_binding_and_live_probe(host, tmp_path, ca
     assert "检测结果不表示服务已就绪" in output
 
 
+def test_windows_batch_summary_names_its_supported_adapters(host, tmp_path, capsys):
+    host.update(platform="Windows")
+    model = gguf(tmp_path / "model.gguf")
+    assert main(["device-check", "--model", str(model)]) == 0
+    output = capsys.readouterr().out
+    assert "批量实时实验未支持" not in output
+    assert "批量实时实验仅支持指定适配器" in output
+    assert "KVMem" in output and "NInfer" in output and "Prism llama-server" in output
+    assert "以实际配置预检为准" in output
+
+
 def test_human_untrusted_model_metadata_and_paths_cannot_inject_terminal_controls(
     host, tmp_path, capsys
 ):

@@ -23,7 +23,14 @@ def require_review(bundle):
             if digest in cache:
                 return
         bundle = bundle.to_dict()
-        inherited = validate_provenance(bundle)
+        # A current whole-bundle approval already covers proof verification; the snapshot
+        # cannot have changed since construction. Only an unapproved snapshot needs the
+        # inherited-approval evaluation.
+        if not (approved(bundle) or any(validate_provenance(bundle))):
+            raise ContractError("bundle.review_records", "human_corpus_review_required")
+        if digest is not None:
+            cache.add(digest)
+        return
     else:
         # Public mutable inputs always receive complete validation.
         inherited = validate_bundle(bundle)

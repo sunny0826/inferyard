@@ -140,10 +140,6 @@ def read_trial(root: Path, *, metadata=None):
     preload_inputs(reads)
     events, event_tails = reads.jsonl("events.jsonl")
     samples, sample_tails = reads.jsonl("memory.jsonl")
-    if reads.manifest is not None and (
-        type(reads.manifest) is not dict or type(reads.manifest.get("files")) is not dict
-    ):
-        raise EvidenceError("invalid_manifest")
     manifest_files = reads.manifest["files"] if reads.manifest is not None else {}
     reads.preload(manifest_files)
     limits = verify_manifest(root, _manifest=reads.manifest, _observed=reads.observed())
@@ -183,6 +179,7 @@ def read_trial(root: Path, *, metadata=None):
     )
     from inferyard.evidence.fixed_output import verify_execution
 
+    expected_bodies = {}
     verify_execution(
         root,
         workload,
@@ -191,6 +188,7 @@ def read_trial(root: Path, *, metadata=None):
         events,
         capabilities=capabilities,
         reads=reads,
+        expected_bodies=expected_bodies,
     )
     from inferyard.evidence.cache_execution import verify_execution as verify_cache_execution
 
@@ -202,13 +200,13 @@ def read_trial(root: Path, *, metadata=None):
         events,
         capabilities=capabilities,
         reads=reads,
+        expected_bodies=expected_bodies,
     )
     from inferyard.evidence.lab import verify_lab
 
-    lab_verified = verify_lab(root, documents["config"], documents["bundle"], events, reads=reads)
-    from inferyard.evidence.native import observation_evidence
-
-    engine_observation = observation_evidence(root, documents["config"], reads=reads)
+    lab_verified, engine_observation = verify_lab(
+        root, documents["config"], documents["bundle"], events, reads=reads
+    )
     if metadata is not None:
         from inferyard.evidence.service_drain import service_drain
 

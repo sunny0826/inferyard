@@ -325,8 +325,6 @@ def _next_steps(report):
                 "reason": reason,
             }
         ]
-    if not report["platform_capabilities"]["live_single_run"]:
-        return [{"action": "use_supported_live_platform", "reason": "macos_live_not_supported"}]
     return [
         {"action": "configure_and_bind_existing_service", "reason": "live_preflight_required"},
         {"action": "probe", "command": ["inferyard", "probe", "--config", "CONFIG.toml"]},

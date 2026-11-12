@@ -6,10 +6,13 @@ from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 
-def verify_execution(root, workload, config, bundle, events, *, capabilities=None, reads=None):
+def verify_execution(
+    root, workload, config, bundle, events, *, capabilities=None, reads=None, expected_bodies=None
+):
     if "cache_protocol" not in workload:
         return
-    from inferyard.adapters.prism import request_body
+    from inferyard.contracts.fixed_output import enabled
+    from inferyard.evidence.fixed_output import expected_body
 
     validate_inputs(workload, config)
     starts = [e for e in events if e["event_type"] == "request_started"]
@@ -17,6 +20,8 @@ def verify_execution(root, workload, config, bundle, events, *, capabilities=Non
         return
     reads = reads if reads is not None else TrialEvidence(root)
     manifest = reads.manifest["files"] if reads.manifest is not None else None
+    memo = {} if expected_bodies is None else expected_bodies
+    cases = {c["case_id"]: c for c in bundle["cases"]}
     if manifest is not None and not observation_sealed(reads, "service_properties", manifest):
         raise EvidenceError("cache_protocol_engine_unsealed")
     if capabilities is None:
@@ -53,16 +58,14 @@ def verify_execution(root, workload, config, bundle, events, *, capabilities=Non
         body = reads.request_body(event)
         if body.get("cache_prompt") is not request_value(config, event["phase"], ordinal):
             raise EvidenceError("cache_protocol_request_policy_mismatch")
-        phase = event["phase"]
-        prompt = (
-            next(c["prompt"] for c in bundle["cases"] if c["case_id"] == event["data"]["case_id"])
-            if phase == "formal"
-            else config["execution"][phase + "_prompt"]
+        expected = expected_body(
+            workload,
+            config,
+            cases,
+            event,
+            ordinal,
+            strict=enabled(workload),
+            memo=memo,
         )
-        expected = request_body(config, prompt, stream=event["data"]["body"]["stream"])
-        expected["cache_prompt"] = request_value(config, phase, ordinal)
-        expected["n_cache_reuse"] = 0
-        if workload.get("output_mode") == "strict_fixed_length":
-            expected["ignore_eos"] = True
         if body != expected:
             raise EvidenceError("cache_protocol_request_differs_from_plan")

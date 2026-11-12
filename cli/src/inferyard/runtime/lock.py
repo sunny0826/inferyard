@@ -54,14 +54,12 @@ class HostLock:
         self._fds = []
         self._locked_fds = set()
         self._identities = {}
-        self._created_paths = set()
         self.local_service = None
 
     def _acquire(self, path):
         root = root_identity(path.parent)
         try:
             fd = open_nofollow(path, os.O_RDWR | os.O_CREAT | os.O_EXCL)
-            self._created_paths.add(path)
         except FileExistsError:
             fd = open_nofollow(path, os.O_RDWR)
         self._fds.append(fd)
@@ -194,7 +192,6 @@ class HostLock:
             self._locked_fds.clear()
             self.fd = None
             self._identities.clear()
-            self._created_paths.clear()
         return error
 
     def __exit__(self, *args):

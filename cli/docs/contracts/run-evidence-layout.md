@@ -81,9 +81,10 @@ prepared 没有 started 合法，不能计 executed；started 有消息摘要就
 `read_trial(..., metadata=...)` 的 metadata.evidence 只供同次命令复用领域读取，不进入 JSON
 产物或持久状态；来源摘要与成员引用继续绑定该次已核验字节。
 
-request-bodies 单次扫描全部完整行并严格校验，缓存身份到 byte range 与该行摘要，不常驻全文。
+request-bodies 单次扫描全部完整行并严格校验，缓存身份到 byte range 与该行摘要，不常驻请求体文本。
 observations 同次扫描建立 kind/key/stage 索引；单次领域查询不再遍历全部收据。
-取 body 重读区间后核对已核验行摘要，变化立即拒绝。无磁盘索引、隐式请求上限或跨命令缓存。
+首次取 body 时重读区间并核对已核验行摘要，变化立即拒绝；同次读取内复用该已核验行，跨读取重新核验。
+无磁盘索引、隐式请求上限或跨命令缓存。
 合法未封存尾半行按既有 partial/3；中间坏行、封存截尾及缺 started 原件为 4。
 inputs 已发布而日志尚未创建的未封存前缀可读取为 partial/3：没有事件时保留
 not_executed 分母，缺失日志不产生物理摘要或来源引用。已封存文件缺失、

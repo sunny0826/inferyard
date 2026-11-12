@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +13,37 @@ import inferyard.cli as cli
 from inferyard.cli.request import build_request
 
 CONFIG = object()
+TOP_LEVEL_COMMANDS = (
+    "catalogue",
+    "compare",
+    "compare-engines",
+    "compare-plan",
+    "config",
+    "device-check",
+    "engine",
+    "engine-fit",
+    "export",
+    "extension",
+    "filter-candidates",
+    "init",
+    "memory-check",
+    "model",
+    "overhead",
+    "plan",
+    "prepare-length",
+    "probe",
+    "progress",
+    "public",
+    "repeat-summary",
+    "report",
+    "rescore",
+    "resume",
+    "run",
+    "runtime",
+    "service",
+    "speed-results",
+    "verify",
+)
 REMOVED_COMMANDS = {
     "check",
     "overhead-check",
@@ -240,3 +272,12 @@ def test_removed_commands_reject_before_dispatch(command, suffix, capsys):
     output = capsys.readouterr()
     assert "fixture-secret-7f39" not in output.out + output.err
     assert json.loads(output.out)["limitations"] == ["invalid_input"]
+
+
+def test_help_usage_renders_every_registered_top_level_command():
+    usage = cli.parser().format_usage()
+    groups = [group.split(",") for group in re.findall(r"\{([^{}]*)\}", usage)]
+    commands = next(
+        group for group in groups if "speed-results" in group and "device-check" in group
+    )
+    assert set(commands) == set(TOP_LEVEL_COMMANDS)

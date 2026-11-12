@@ -106,7 +106,10 @@ def _human(result):
     if not capabilities.get("live_single_run", False):
         lines.append(f"平台限制：{system} 实时测评未支持；可使用离线报告流程")
     elif not capabilities.get("live_experiments", False):
-        lines.append("平台限制：批量实时实验未支持")
+        lines.append(
+            "平台限制：批量实时实验仅支持指定适配器（KVMem、NInfer、Prism llama-server）；"
+            "以实际配置预检为准"
+        )
     if result.evidence_dir:
         lines.append(f"保存：{result.evidence_dir}/device-preflight.json")
     lines.append("本次未发送模型请求；检测结果不表示服务已就绪。")

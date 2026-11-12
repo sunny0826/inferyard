@@ -18,6 +18,7 @@ from inferyard.evidence.trial_evidence import TrialEvidence
 
 
 def verify_lab(root, config, bundle, events, *, reads=None, _projection=False):
+    """Return ``(verified, observation)``; the observation is the one already validated here."""
     reads = reads if reads is not None else TrialEvidence(root, projection=_projection)
     if is_local(config):
         from inferyard.evidence.local_engines import verify_queue_events
@@ -26,12 +27,12 @@ def verify_lab(root, config, bundle, events, *, reads=None, _projection=False):
         if observation is None:
             if any(e["event_type"] == "request_started" for e in events):
                 raise EvidenceError("local_engine_observation_missing")
-            return False
+            return False, observation
         if _projection:
             raise EvidenceError("local_engine_projection_not_supported")
         verify_native(root, config, bundle, events, observation, reads=reads)
         verify_queue_events(root, config, events, reads=reads)
-        return False
+        return False, observation
     engine = config["engine"]["adapter"]
     if engine not in ("kvmem", "ninfer"):
         if any(
@@ -39,19 +40,19 @@ def verify_lab(root, config, bundle, events, *, reads=None, _projection=False):
             for e in events
         ):
             raise EvidenceError("lab_evidence_requires_lab_engine")
-        return False
+        return False, observation_evidence(root, config, reads=reads)
     observation = observation_evidence(root, config, reads=reads)
     if observation and observation["mode"] == "native":
         if _projection:
             if any(e["event_type"] == "idle_observed" for e in events):
                 raise EvidenceError("native_evidence_cannot_prove_engine_drain")
-            return False
-        return verify_native(root, config, bundle, events, observation, reads=reads)
+            return False, observation
+        return verify_native(root, config, bundle, events, observation, reads=reads), observation
     starts = {e["request_id"]: e for e in events if e["event_type"] == "request_started"}
     if not reads.has_observation("service_properties"):
         if starts:
             raise EvidenceError("lab_identity_evidence_missing")
-        return False
+        return False, observation
     try:
         props = parse_identity(
             json_bytes(reads.observation("service_properties")), expected_engine=engine
@@ -68,8 +69,11 @@ def verify_lab(root, config, bundle, events, *, reads=None, _projection=False):
             or not all(props["capabilities"].values())
         ):
             raise EvidenceError("lab_identity_evidence_mismatch")
-        return _verify(
-            root, config, bundle, events, starts, props, reads=reads, _projection=_projection
+        return (
+            _verify(
+                root, config, bundle, events, starts, props, reads=reads, _projection=_projection
+            ),
+            observation,
         )
     except (LabProtocolError, KeyError, TypeError, ValueError) as exc:
         raise EvidenceError("lab_protocol_evidence_invalid") from exc

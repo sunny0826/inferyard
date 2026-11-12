@@ -235,7 +235,7 @@ def test_byte_range_reread_rejects_changed_original(originals):
     _, root = originals
     evidence = TrialEvidence(root)
     events, _ = read_jsonl(root / "events.jsonl")
-    assert evidence.request_body(events[0])
+    evidence.preload(set(evidence.manifest["files"]))
     raw = (root / "request-bodies.jsonl").read_bytes()
     (root / "request-bodies.jsonl").write_bytes(
         raw.replace(b"synthetic original", b"synthetic tampered")

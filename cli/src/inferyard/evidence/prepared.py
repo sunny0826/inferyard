@@ -12,6 +12,7 @@ class PreparedRequests:
         self.evidence = evidence
         self.entries = None
         self.tails = []
+        self.rows = {}
 
     def scan(self):
         if self.entries is not None:
@@ -19,7 +20,7 @@ class PreparedRequests:
         if self.evidence.manifest is None and not self.evidence.exists("request-bodies.jsonl"):
             self.entries = {}
             return
-        entries, ordinals = {}, set()
+        entries = {}
         digest, size, previous = hashlib.sha256(), 0, 0
         try:
             with local_file(self.evidence.root, "request-bodies.jsonl").open("rb") as stream:
@@ -33,7 +34,7 @@ class PreparedRequests:
                         validate_document("prepared_request", record)
                         self.evidence._check_identity(record)
                         key, ordinal = record["request_id"], record["ordinal"]
-                        if key in entries or ordinal in ordinals or ordinal <= previous:
+                        if key in entries or ordinal <= previous:
                             raise EvidenceError("duplicate_or_misordered_prepared_request")
                         entries[key] = (
                             size,
@@ -43,7 +44,6 @@ class PreparedRequests:
                             record["body_sha256"],
                         )
                         previous = ordinal
-                        ordinals.add(ordinal)
                     size += length
         except (OSError, UnicodeError, ContractError) as exc:
             raise EvidenceError("invalid_prepared_request") from exc
@@ -54,6 +54,20 @@ class PreparedRequests:
             raise EvidenceError("sealed_jsonl_truncated")
         self.evidence._check_sealed("request-bodies.jsonl")
         self.entries = entries
+
+    def row(self, event):
+        """Same verified record for every consumer of one request within this read."""
+        self.scan()
+        self.evidence._check_identity(event)
+        request_id = event["request_id"]
+        cached = self.rows.get(request_id)
+        if cached is not None:
+            if event["phase"] != cached["phase"]:
+                raise EvidenceError("request_body_identity_mismatch")
+            return cached
+        row = self.record(event)
+        self.rows[request_id] = row
+        return row
 
     def record(self, event):
         self.scan()

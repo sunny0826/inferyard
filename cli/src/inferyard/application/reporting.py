@@ -150,21 +150,6 @@ def _engine_compare_check(request, options):
     )
 
 
-def engine_blocks(request):
-    """Write the legacy engine-comparison v1 artifact (kept for existing artifacts)."""
-    from inferyard.reporting.engine_blocks_report import write
-
-    result = write(request)
-    return 0, CommandResult(
-        request.command,
-        "compared",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(result["limitations"]),
-        details=result,
-    )
-
-
 def _engine_comparison(request):
     from inferyard.reporting.engine_comparison_v2_report import write
 

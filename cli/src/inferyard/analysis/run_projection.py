@@ -10,7 +10,6 @@ from inferyard.analysis.duration_ledger import duration_summary
 from inferyard.evidence.event_ledger import PROJECTION_EVENTS, reduce_events
 from inferyard.evidence.formats import require_core
 from inferyard.evidence.lab import verify_lab
-from inferyard.evidence.native import observation_evidence
 from inferyard.evidence.request_snapshots import require_current_sources
 from inferyard.evidence.service_drain import service_drain
 from inferyard.evidence.storage import local_file
@@ -146,10 +145,9 @@ def read_run_projection(root):
     summary = trial_summary(
         run, requests, stopped, limits + tails + _memory_tail(root), window, duration
     )
-    verify_lab(
+    _, observation = verify_lab(
         root, documents["config"], documents["bundle"], retained, reads=reads, _projection=True
     )
-    observation = observation_evidence(root, documents["config"], reads=reads)
     fields = (
         "case_id",
         "execution_state",

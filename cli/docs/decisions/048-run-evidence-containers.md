@@ -35,7 +35,7 @@ manifest 八文件。四份采样/事件日志不合并，选用高频扩展流�
 全部读取方先迁移，生产 writer 再一起切换。原子 snapshot、通用日志和封存仍供
 ExtensionJournal 使用；独立封包与 baseline 格式不随 run 布局改变。
 prepared append/flush/fsync 必须先于 dirty/started/send，native receipt 耐久先于 clean。
-request-bodies 扫描一次，索引只保留 O(N) 元数据；再次取 body 时核对已验证的记录字节。
+request-bodies 扫描一次，索引只保留 O(N) 元数据；首次取 body 时核对已验证的记录字节，同次读取内复用该行。
 独立 Go observer 的新布局绑定不在范围内，继续支持旧布局绑定与独立 PID 诊断。
 
 软件验收要求旧证据原字节不变、新旧语义一致、容器/成员篡改与生命周期故障严格拒绝，

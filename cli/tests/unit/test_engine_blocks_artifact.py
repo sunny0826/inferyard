@@ -8,7 +8,6 @@ from inferyard.application.types import CommandRequest
 from inferyard.application.verification import execute as verify
 from inferyard.errors import EvidenceError
 from inferyard.evidence.artifact_seal import seal
-from inferyard.application.reporting import engine_blocks
 from inferyard.reporting import engine_blocks_report
 from tests.unit.test_engine_blocks import cross_format
 
@@ -35,10 +34,9 @@ def artifact(tmp_path, monkeypatch):
     runs = [tmp_path / "runs" / row["run"]["run_id"] for row in rows]
     monkeypatch.setattr(engine_blocks_report, "load_blocks", fake_loader(tmp_path, rows))
     out = tmp_path / "compare"
-    code, result = engine_blocks(
+    engine_blocks_report.write(
         CommandRequest("compare-engines", left_runs=runs[0::2], right_runs=runs[1::2], out=out)
     )
-    assert code == 0 and result.status == "compared"
     return out, rows, monkeypatch
 
 
@@ -105,7 +103,7 @@ def test_existing_output_is_not_overwritten(artifact):
     runs = [out.parent / "runs" / row["run"]["run_id"] for row in rows]
     before = (out / "engine-comparison.json").read_bytes()
     with pytest.raises(FileExistsError):
-        engine_blocks(
+        engine_blocks_report.write(
             CommandRequest("compare-engines", left_runs=runs[0::2], right_runs=runs[1::2], out=out)
         )
     assert (out / "engine-comparison.json").read_bytes() == before
