@@ -305,7 +305,7 @@ def test_unreadable_or_changed_process_tree_is_missing_not_partial(service, chan
 
 
 def test_asset_v2_excludes_documentation_cache_and_location(tmp_path):
-    from inferyard.config.engine_fit_assets import model_asset_manifest
+    from inferyard.platforms.engine_fit_assets import model_asset_manifest
     from inferyard.runtime.engine_fit import _manifest
 
     root = tmp_path / "first"
@@ -339,7 +339,7 @@ def test_asset_v2_excludes_documentation_cache_and_location(tmp_path):
 @pytest.mark.parametrize("definition", [None, "model-assets.v2"])
 @pytest.mark.parametrize("change", ["content", "add", "delete"])
 def test_added_token_vocabulary_is_bound_in_frozen_and_runtime_assets(tmp_path, definition, change):
-    from inferyard.config.engine_fit_assets import model_asset_manifest
+    from inferyard.platforms.engine_fit_assets import model_asset_manifest
     from inferyard.runtime.engine_fit import _manifest
 
     (tmp_path / "model.safetensors").write_bytes(b"weights")

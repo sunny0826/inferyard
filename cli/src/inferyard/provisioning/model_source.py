@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import quote, unquote, urlencode, urlsplit
 
-from inferyard.config.preparation_io import PreparationError, read_json
+from inferyard.provisioning.preparation_io import PreparationError, read_json
 
 DEFINITION = "remote_model_source.v1"
 DEFINITION_V2 = "remote_model_source.v2"

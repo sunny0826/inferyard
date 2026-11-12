@@ -3,8 +3,8 @@
 from copy import deepcopy
 
 from inferyard.contracts.context_speed_profile import CASES, GENERATION
-from inferyard.config.preparation_io import PreparationError
-from inferyard.config.startup_arguments import replace_arguments
+from inferyard.provisioning.preparation_io import PreparationError
+from inferyard.platforms.startup_arguments import replace_arguments
 
 
 def apply_recipe(config, metadata, context):

@@ -30,7 +30,7 @@ def normalized_args(args, excluded=()):
 
 
 def compare_trials(left, right, *, mode=None, performance_evidence=None, definition="phase2.v3"):
-    from inferyard.evidence.formats import require_version
+    from inferyard.contracts.format_versions import require_version
 
     require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
     declared = [d["plan"]["experiment"]["comparison"] for d in (left, right)]

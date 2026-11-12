@@ -8,7 +8,7 @@ from inferyard.analysis.comparison import compare_trials
 from inferyard.contracts.bundle import content_hash
 from inferyard.config.bundle import require_review
 from inferyard.contracts.bundle_review import approved_cases, case_content_hash
-from inferyard.config.environment_binding import admission
+from inferyard.contracts.environment_admission import admission
 from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import ContractError, PreflightError, UnsupportedFormat
 from inferyard.reporting.comparison_report import (

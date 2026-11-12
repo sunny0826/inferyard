@@ -3,7 +3,7 @@
 import hashlib
 from importlib.resources import files
 
-from inferyard.evidence.formats import require_version
+from inferyard.contracts.format_versions import require_version
 
 
 def template_name(version):

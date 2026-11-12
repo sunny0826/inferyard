@@ -3,7 +3,7 @@
 import asyncio
 import time
 
-from inferyard.evidence.environment_projection import periodic_environment
+from inferyard.platforms.environment_projection import periodic_environment
 from inferyard.platforms.identity import environment_snapshot
 
 

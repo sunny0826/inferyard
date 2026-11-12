@@ -19,7 +19,7 @@ from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison_types import JSONRecord, JSONValue
 from inferyard.analysis.engine_comparison import config_pair_blockers
 from inferyard.analysis.scoring import SCORER_VERSION
-from inferyard.config.community_resources import BUNDLES, resource_bytes
+from inferyard.provisioning.community_resources import BUNDLES, resource_bytes
 from inferyard.config.loader import load_config, read_document
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.comparison_plan_safety import (

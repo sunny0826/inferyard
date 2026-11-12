@@ -100,7 +100,7 @@ def test_rerun_same_service_is_always_refused(scenario, monkeypatch, dirty, fres
 
 
 def test_preflight_diagnostic_flag_is_forwarded(scenario, monkeypatch):
-    from inferyard.config.environment_binding import admission
+    from inferyard.contracts.environment_admission import admission
     from inferyard.platforms import identity
 
     request, deps, _, _ = scenario

@@ -3,8 +3,9 @@
 import hashlib
 from importlib.resources import files
 from pathlib import Path
-from inferyard.errors import PreflightError, UnsupportedFormat
 
+from inferyard.contracts.json_digest import digest
+from inferyard.errors import PreflightError, UnsupportedFormat
 
 
 def mlx_server_path():
@@ -34,7 +35,7 @@ def model_asset_manifest(path, *, definition="model-assets.v2"):
     if path.is_symlink():
         raise PreflightError("engine_fit_directory_symlink")
     if path.is_dir():
-        from inferyard.evidence.formats import require_version
+        from inferyard.contracts.format_versions import require_version
 
         if definition is None:
             raise UnsupportedFormat("model-assets", "unversioned", ("model-assets.v2",))
@@ -58,8 +59,6 @@ def model_asset_manifest(path, *, definition="model-assets.v2"):
         if file_stamp(root.stat()) != before:
             raise PreflightError("engine_fit_model_changed_during_hash")
         entries = [{"path": root.name, "sha256": sha, "size": size}]
-        from inferyard.config.engine_fit import digest
-
         return {"kind": "gguf", "path": str(root), "sha256": digest(entries), "files": entries}
     except (OSError, ValueError) as exc:
         raise PreflightError("engine_fit_model_unreadable") from exc

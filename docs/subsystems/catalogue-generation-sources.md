@@ -10,13 +10,13 @@
 | 指标 catalogue 生成源 | 36 组核心 + 9 组条件指标的唯一文本来源；字段语义见 [指标定义](../../cli/docs/experiments/metrics.md) | [`metrics.md`](../../cli/docs/experiments/metrics.md) 与 [`metrics-resources.md`](../../cli/docs/experiments/metrics-resources.md)，解析器 `metrics` 在 [`export_catalogue.py`](../../cli/scripts/export_catalogue.py) |
 | catalogue 导出 | 从三个生成源生成 `methods.json` / `metrics.json` 并核对稳定 ID；`--check` 只查不写 | `main` 在 [`export_catalogue.py`](../../cli/scripts/export_catalogue.py)；生成物 [`methods.json`](../../cli/src/inferyard/data/methods.json)、[`metrics.json`](../../cli/src/inferyard/data/metrics.json) |
 | JSON Schema 导出 | 从契约包定义导出每个注册 kind 的 `*.schema.json`；`--check` 查漂移，非 check 模式移除注册表外旧文件 | `schemas_for` / `export_schema` 在 [`contracts/schemas.py`](../../cli/src/inferyard/contracts/schemas.py)，驱动 `main` 在 [`export_schemas.py`](../../cli/scripts/export_schemas.py)；生成物目录 [`schemas/`](../../cli/schemas/README.md) |
-| 社区资源导出 | 复制已审题包原字节、生成/重验固定归档派生的 runtime profile、重建 `resources.json` 全量清单 | `generated` 在 [`export_community.py`](../../cli/scripts/export_community.py)；题包清单 `BUNDLES` 在 [`community_resources.py`](../../cli/src/inferyard/config/community_resources.py)；profile 定义 `PROFILES`、`profile_header`、`output_files`、`validate_profile` 在 [`runtime_profiles.py`](../../cli/src/inferyard/platforms/runtime_profiles.py)；归档成员解析 `member_records` 在 [`runtime_archive.py`](../../cli/src/inferyard/platforms/runtime_archive.py)；题包审核 `require_review` 在 [`bundle.py`](../../cli/src/inferyard/config/bundle.py) |
+| 社区资源导出 | 复制已审题包原字节、生成/重验固定归档派生的 runtime profile、重建 `resources.json` 全量清单 | `generated` 在 [`export_community.py`](../../cli/scripts/export_community.py)；题包清单 `BUNDLES` 在 [`community_resources.py`](../../cli/src/inferyard/provisioning/community_resources.py)；profile 定义 `PROFILES`、`profile_header`、`output_files`、`validate_profile` 在 [`runtime_profiles.py`](../../cli/src/inferyard/provisioning/runtime_profiles.py)；归档成员解析 `member_records` 在 [`runtime_archive.py`](../../cli/src/inferyard/provisioning/runtime_archive.py)；题包审核 `require_review` 在 [`bundle.py`](../../cli/src/inferyard/config/bundle.py) |
 | 运行时约束导出 | 核对 `uv export` 运行依赖闭包与 `uv.lock` 在三平台目标下逐一相等，写约束文件与 `.validation.json` 证明 | `main` / `validate` / `closure` 在 [`export_runtime_constraints.py`](../../cli/scripts/export_runtime_constraints.py)，输入 [`uv.lock`](../../cli/uv.lock)、[`pyproject.toml`](../../cli/pyproject.toml) |
 | catalogue 运行时读取 | 从安装包资源读 catalogue JSON，逐项校验后返回；`components` 目录为运行时计算，不是生成文件 | `catalogue` / `components` 在 [`registry.py`](../../cli/src/inferyard/registry.py)；CLI 出口在 [`application/dispatch.py`](../../cli/src/inferyard/application/dispatch.py) 的 catalogue 命令 |
-| 社区资源运行时读取 | 按 `resources.json` 清单核验 SHA-256 后返回包内资源字节 | `resource_bytes` 在 [`community_resources.py`](../../cli/src/inferyard/config/community_resources.py)，消费方 [`community_workspace.py`](../../cli/src/inferyard/config/community_workspace.py)、[`runtime_profiles.py`](../../cli/src/inferyard/platforms/runtime_profiles.py) |
+| 社区资源运行时读取 | 按 `resources.json` 清单核验 SHA-256 后返回包内资源字节 | `resource_bytes` 在 [`community_resources.py`](../../cli/src/inferyard/provisioning/community_resources.py)，消费方 [`community_workspace.py`](../../cli/src/inferyard/config/community_workspace.py)、[`runtime_profiles.py`](../../cli/src/inferyard/provisioning/runtime_profiles.py) |
 | 报告模板与内容身份 | 包内 `templates/*.html` 为唯一模板来源，整目录哈希计入报告身份 | `template_name` / `template_hash` 在 [`report_assets.py`](../../cli/src/inferyard/reporting/report_assets.py)，消费 `template_sha256` 在 [`report.py`](../../cli/src/inferyard/reporting/report.py) |
 | 实现身份的职责清单 | 按 measurement/scoring/presentation 三角色登记负责文件，作为实现身份计算的输入 | [`implementation-files.json`](../../cli/src/inferyard/data/implementation-files.json)，读取方 `IdentityContext` 在 [`implementation_identity.py`](../../cli/src/inferyard/implementation_identity.py)，源哈希 `tool_source_hash` 在 [`provenance.py`](../../cli/src/inferyard/provenance.py) |
-| engine-fit 包内资产 | 随包交付的受控 MLX 服务脚本，从包内资源路径解析 | [`engine_fit_assets.py`](../../cli/src/inferyard/config/engine_fit_assets.py)，资产 [`mlx_server.py`](../../cli/src/inferyard/data/engine_fit/mlx_server.py) |
+| engine-fit 包内资产 | 随包交付的受控 MLX 服务脚本，从包内资源路径解析 | [`engine_fit_assets.py`](../../cli/src/inferyard/platforms/engine_fit_assets.py)，资产 [`mlx_server.py`](../../cli/src/inferyard/data/engine_fit/mlx_server.py) |
 
 关键事实源约定：
 
@@ -26,7 +26,7 @@
 
 - 工具身份覆盖包内全部 `.py` / `.html` / `.json`（`tool_source_hash` 在 [`provenance.py`](../../cli/src/inferyard/provenance.py)），修改 catalogue、模板或 `implementation-files.json` 都会改变测量实现身份，并与冻结计划的 `definition_versions` 校验联动（`require_execution_support` 在 [`registry.py`](../../cli/src/inferyard/registry.py)）。
 
-打包边界按 [`pyproject.toml`](../../cli/pyproject.toml) 的 include 清单执行：`src/inferyard/**/*.py`、`templates/**/*.html`、`data/*.json`（catalogue、实现清单）与 `data/community/` 的 `resources.json`、README、三平台 `*.example.toml`、`bundles/*.json`、`profile/*.json`；`__pycache__` 与字节码排除。`data/engine_fit/mlx_server.py` 作为包内 `.py` 资源随包交付，由 [`engine_fit_assets.py`](../../cli/src/inferyard/config/engine_fit_assets.py) 解析路径后交给受控服务脚本使用；真实设备配置、证据、缓存与模型资产不在打包范围内。
+打包边界按 [`pyproject.toml`](../../cli/pyproject.toml) 的 include 清单执行：`src/inferyard/**/*.py`、`templates/**/*.html`、`data/*.json`（catalogue、实现清单）与 `data/community/` 的 `resources.json`、README、三平台 `*.example.toml`、`bundles/*.json`、`profile/*.json`；`__pycache__` 与字节码排除。`data/engine_fit/mlx_server.py` 作为包内 `.py` 资源随包交付，由 [`engine_fit_assets.py`](../../cli/src/inferyard/platforms/engine_fit_assets.py) 解析路径后交给受控服务脚本使用；真实设备配置、证据、缓存与模型资产不在打包范围内。
 
 ### 生成物与版本
 
@@ -53,5 +53,5 @@
 
 ### 导出侧与运行侧的环境分离
 
-导出脚本只活在源码检出中：读取 `docs/`、`cli/bundles/`、`uv.lock` 并写回包内资源，安装用户从不运行它们。运行侧只认安装包：wheel 内的 `data/`、`templates/`、`data/community/` 由 `importlib.resources` 读取，editable 安装与 wheel 安装走同一代码路径（[`community_resources.py`](../../cli/src/inferyard/config/community_resources.py) 的模块 docstring 明确此约定）。因此 `--check` 漂移核对是两边唯一的一致性闸门：生成物手改、生成源改动未重导出、归档派生 profile 过期，都会在核对时暴露，而不会等到运行期。
+导出脚本只活在源码检出中：读取 `docs/`、`cli/bundles/`、`uv.lock` 并写回包内资源，安装用户从不运行它们。运行侧只认安装包：wheel 内的 `data/`、`templates/`、`data/community/` 由 `importlib.resources` 读取，editable 安装与 wheel 安装走同一代码路径（[`community_resources.py`](../../cli/src/inferyard/provisioning/community_resources.py) 的模块 docstring 明确此约定）。因此 `--check` 漂移核对是两边唯一的一致性闸门：生成物手改、生成源改动未重导出、归档派生 profile 过期，都会在核对时暴露，而不会等到运行期。
 

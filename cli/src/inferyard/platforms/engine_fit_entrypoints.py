@@ -112,7 +112,7 @@ def _options(arguments, valued, flags, model_options):
 
 
 def _mlx_script(arguments, cwd):
-    from inferyard.config.engine_fit_assets import mlx_server_sha256
+    from inferyard.platforms.engine_fit_assets import mlx_server_sha256
     from inferyard.platforms.engine_fit import stable_file_digest
 
     if not arguments:

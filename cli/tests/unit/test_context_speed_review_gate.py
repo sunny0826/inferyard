@@ -6,7 +6,7 @@ import pytest
 
 from inferyard.cli import main
 from inferyard.config import community_workspace as workspace
-from inferyard.config.preparation_io import PreparationError
+from inferyard.provisioning.preparation_io import PreparationError
 from inferyard.errors import ContractError
 
 
@@ -51,7 +51,7 @@ def test_other_contract_errors_remain_resource_errors(monkeypatch, path, reason)
 
 
 def test_resource_hash_gate_remains_before_review(tmp_path, monkeypatch):
-    from inferyard.config import community_resources as resources
+    from inferyard.provisioning import community_resources as resources
 
     root = tmp_path / "data" / "community"
     (root / "bundles").mkdir(parents=True)

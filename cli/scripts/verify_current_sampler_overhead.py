@@ -14,7 +14,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from inferyard.config.environment_binding import mismatches
+from inferyard.contracts.environment_admission import mismatches
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.planning import write_plan
 from inferyard.contracts.validation import json_bytes

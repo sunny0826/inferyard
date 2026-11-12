@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.config import engine_fit_assets
+from inferyard.platforms import engine_fit_assets
 from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit as fit
 from inferyard.platforms import engine_fit_macos as macos

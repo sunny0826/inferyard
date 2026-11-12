@@ -8,7 +8,7 @@ from pathlib import Path
 
 import psutil
 
-from inferyard.config.startup_arguments import model_argument
+from inferyard.platforms.startup_arguments import model_argument
 from inferyard.errors import PreflightError
 from inferyard.platforms.identity import sanitized_arguments
 from inferyard.platforms.platform_io import durability

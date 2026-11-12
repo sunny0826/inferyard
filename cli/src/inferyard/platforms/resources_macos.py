@@ -9,7 +9,7 @@ from inferyard.errors import PreflightError
 from inferyard.platforms.external_cpu_macos import TICKS_PER_SECOND, read_cpu
 from inferyard.platforms.sensors_macos import MacSensors
 from inferyard.platforms.telemetry import read_rss, sample_memory
-from inferyard.runtime.environment_observer import EnvironmentObserver
+from inferyard.platforms.environment_observer import EnvironmentObserver
 
 COLLECTOR = "macos-resource.v1"
 SOURCES = {

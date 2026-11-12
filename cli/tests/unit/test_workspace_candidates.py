@@ -8,7 +8,8 @@ import pytest
 from inferyard.cli import main
 from inferyard.cli.arguments import parser
 from inferyard.cli.request import build_request
-from inferyard.config import community_candidates, preparation_io
+from inferyard.config import community_candidates
+from inferyard.provisioning import preparation_io
 from inferyard.config.workspace_inputs import resolve_candidate_inputs
 from tests.unit.test_community_candidates import candidate_request
 from tests.unit.test_device_preflight import gguf

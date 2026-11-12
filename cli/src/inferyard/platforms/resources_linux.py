@@ -9,7 +9,7 @@ from inferyard.errors import PreflightError
 from inferyard.platforms.identity import process_start_ticks
 from inferyard.platforms.sensors_linux import LinuxSensors
 from inferyard.platforms.telemetry import read_rss, sample_memory
-from inferyard.runtime.environment_observer import EnvironmentObserver
+from inferyard.platforms.environment_observer import EnvironmentObserver
 
 
 def read_cpu(pid, ticks, proc_root):

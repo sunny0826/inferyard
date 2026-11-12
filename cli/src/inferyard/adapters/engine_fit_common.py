@@ -15,7 +15,7 @@ COMMON_METRICS = {
 
 
 def _mlx_source_sha256():
-    from inferyard.config.engine_fit_assets import mlx_server_sha256
+    from inferyard.platforms.engine_fit_assets import mlx_server_sha256
 
     return mlx_server_sha256()
 

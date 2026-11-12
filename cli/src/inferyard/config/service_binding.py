@@ -5,8 +5,12 @@ import platform
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from inferyard.config.loader import load_config, validate_endpoint
-from inferyard.config.preparation_io import (
+from inferyard.config.loader import load_config
+from inferyard.config.toml_writer import render
+from inferyard.contracts.endpoint import validate_endpoint
+from inferyard.errors import PreflightError
+from inferyard.platforms.startup_arguments import replace_arguments
+from inferyard.provisioning.preparation_io import (
     NewDirectory,
     PreparationError,
     base_details,
@@ -14,9 +18,6 @@ from inferyard.config.preparation_io import (
     new_path,
     require_platform,
 )
-from inferyard.config.startup_arguments import replace_arguments
-from inferyard.config.toml_writer import render
-from inferyard.errors import PreflightError
 from inferyard.platforms.identity import process_start_ticks, sanitized_arguments
 
 

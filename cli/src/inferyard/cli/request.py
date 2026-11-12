@@ -8,7 +8,8 @@ from pathlib import Path
 from inferyard.analysis.comparison_types import JSONValue
 from inferyard.application.types import CommandRequest
 from inferyard.cli.arguments import ArgumentError
-from inferyard.config.loader import LoadedConfig, load_config, validate_endpoint
+from inferyard.config.loader import LoadedConfig, load_config
+from inferyard.contracts.endpoint import validate_endpoint
 from inferyard.errors import ContractError
 
 

@@ -16,10 +16,10 @@
 
 1. CLI `catalogue --kind methods|metrics|components` 经 [`application/dispatch.py`](../../cli/src/inferyard/application/dispatch.py) 调用 `catalogue(kind)`（[`registry.py`](../../cli/src/inferyard/registry.py)），后者用 `importlib.resources` 读取包内 JSON；`metrics` 逐项过 `metric_definition` 结构校验，`methods` 查重 `method_id`，结果装入 `CommandResult("catalogue", "listed", "complete", details=...)`（[`types.py`](../../cli/src/inferyard/application/types.py)），details 即 catalogue 文档。
 2. 指标定义被评分/汇总路径惰性加载：`Observations`（[`observations.py`](../../cli/src/inferyard/analysis/observations.py)）、`public_metrics`（[`public_metrics.py`](../../cli/src/inferyard/analysis/public_metrics.py)）从 `catalogue("metrics")` 取 `metric_id → definition` 映射。
-3. `init` / 准备工作区时 `resource_bytes`（[`community_resources.py`](../../cli/src/inferyard/config/community_resources.py)）按 `resources.json` 的 SHA-256 逐个核验包内题包、三平台示例配置与路线图 README 后写出到操作者目录（[`community_workspace.py`](../../cli/src/inferyard/config/community_workspace.py)）；路线图模板中的 `{{WORKSPACE}}` 占位在写出时替换为真实目录。
+3. `init` / 准备工作区时 `resource_bytes`（[`community_resources.py`](../../cli/src/inferyard/provisioning/community_resources.py)）按 `resources.json` 的 SHA-256 逐个核验包内题包、三平台示例配置与路线图 README 后写出到操作者目录（[`community_workspace.py`](../../cli/src/inferyard/config/community_workspace.py)）；路线图模板中的 `{{WORKSPACE}}` 占位在写出时替换为真实目录。
 4. 生成离线报告时 `template_hash`（[`report_assets.py`](../../cli/src/inferyard/reporting/report_assets.py)）对 `templates/` 下全部 `report*.html` 计算整目录哈希，由 [`report.py`](../../cli/src/inferyard/reporting/report.py) 写入 `template_sha256`，绑定报告呈现身份；报告内容与展示规则见 [报告契约](../../cli/docs/contracts/report-contract.md)。
 5. 离线指标核对（`public_metrics_check` 在 [`public_metrics_check.py`](../../cli/src/inferyard/analysis/public_metrics_check.py)）同样从 `catalogue("metrics")` 取定义，核验派生指标的缺测与口径。
-6. `config create` 绑定 MLX 随包服务脚本时，`engine_fit_assets`（[`engine_fit_assets.py`](../../cli/src/inferyard/config/engine_fit_assets.py)）从包内 `data/engine_fit/` 解析 `mlx_server.py` 路径，不读源码检出。
+6. `config create` 绑定 MLX 随包服务脚本时，`engine_fit_assets`（[`engine_fit_assets.py`](../../cli/src/inferyard/platforms/engine_fit_assets.py)）从包内 `data/engine_fit/` 解析 `mlx_server.py` 路径，不读源码检出。
 
 以上消费路径全部离线：catalogue 命令、报告渲染与资源写出不访问网络，也不因读取资源而声明任何平台或实测资格。
 

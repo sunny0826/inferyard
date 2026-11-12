@@ -6,8 +6,7 @@ from pathlib import Path
 
 import psutil
 
-from inferyard.errors import ContractError, PreflightError
-from inferyard.evidence.storage import read_json
+from inferyard.errors import PreflightError
 from inferyard.platforms.identity import sanitized_arguments
 from inferyard.platforms.windows_lab_api import current_windows_lab_api
 from inferyard.platforms.windows_lab_checks import (
@@ -43,7 +42,8 @@ class LabFileIdentity:
             return False
 
 
-def bind_files(config):
+def bind_files(config, library_manifest):
+    """Bind declared lab assets; the caller passes the already-read library manifest."""
     entries = config["engine"]["asset_manifest"]
     # Large-model hashing has a fixed preparation deadline, never refreshed per file.
     verified = verify_file_manifest(
@@ -64,15 +64,11 @@ def bind_files(config):
         )
         for row in verified
     ]
-    try:
-        manifest = read_json(Path(config["engine"]["runtime_library_manifest"]))
-        libraries = {
-            Path(row["path"]).name: row["sha256"] for row in entries if row["role"] == "library"
-        }
-        if manifest != libraries:
-            raise PreflightError("lab_library_manifest_mismatch")
-    except (OSError, ContractError) as exc:
-        raise PreflightError("lab_library_manifest_invalid") from exc
+    libraries = {
+        Path(row["path"]).name: row["sha256"] for row in entries if row["role"] == "library"
+    }
+    if library_manifest != libraries:
+        raise PreflightError("lab_library_manifest_mismatch")
     from inferyard.platforms.lab_assets import inspect_asset
 
     inspect_asset(config)

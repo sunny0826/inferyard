@@ -2,7 +2,7 @@
 
 from inferyard.errors import EvidenceError
 from inferyard.evidence.engine_capabilities import observation_sealed
-from inferyard.evidence.formats import require_version
+from inferyard.contracts.format_versions import require_version
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 V1 = "token-budgets.json"

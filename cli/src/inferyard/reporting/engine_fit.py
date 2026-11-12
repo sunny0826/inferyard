@@ -93,7 +93,8 @@ def _load_manifest(root):
         manifest["files"] == {name: _sha(raw) for name, raw in blobs.items()},
         "hash_mismatch",
     )
-    from inferyard.evidence.formats import require_core, require_version
+    from inferyard.contracts.format_versions import require_version
+    from inferyard.evidence.formats import require_core
 
     require_core(manifest, "engine-fit manifest")
     require_version(manifest, "definition", ("engine_fit_manifest.v2",), "engine-fit manifest")

@@ -70,7 +70,7 @@ class ResourceSampler(Sampler):
         )
 
     async def run(self):
-        from inferyard.runtime.environment_schedule import run_sampler
+        from inferyard.platforms.environment_schedule import run_sampler
 
         await run_sampler(self)
 

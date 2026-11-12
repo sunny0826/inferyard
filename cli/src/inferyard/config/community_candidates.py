@@ -5,7 +5,7 @@ from pathlib import Path
 from inferyard.config.bundle import require_review
 from inferyard.config.community_assets import libraries, model_template
 from inferyard.config.loader import load_config
-from inferyard.config.preparation_io import (
+from inferyard.provisioning.preparation_io import (
     NewDirectory,
     PreparationError,
     base_details,
@@ -15,11 +15,11 @@ from inferyard.config.preparation_io import (
     require_platform,
     sha256,
 )
-from inferyard.config.preparation_io import asset_identity as hash_file
+from inferyard.provisioning.preparation_io import asset_identity as hash_file
 from inferyard.config.toml_writer import render
 from inferyard.contracts.validation import validate_document
-from inferyard.platforms.runtime_profiles import RELEASE, VERSION_PATTERN
-from inferyard.platforms.runtime_verification import query_version, verify_receipt
+from inferyard.provisioning.runtime_profiles import RELEASE, VERSION_PATTERN
+from inferyard.provisioning.runtime_verification import query_version, verify_receipt
 
 
 def selected_preflight(path, system):
@@ -128,7 +128,7 @@ def create(request):
     new_path(request.out, (*inputs, model.path))
     metadata, template_raw = model_template(model.path)
     template_path = out / "chat-template.jinja"
-    from inferyard.platforms.model_source import source_declaration
+    from inferyard.provisioning.model_source import source_declaration
 
     repo, revision = source_declaration(
         request.model_source_record, model, repo=request.model_repo, revision=request.model_revision

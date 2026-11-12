@@ -8,7 +8,8 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.config.engine_fit import digest, request_rows
+from inferyard.config.engine_fit import request_rows
+from inferyard.contracts.json_digest import digest
 from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.contracts.validation import json_bytes
 from inferyard.reporting.engine_fit import compare, seal_run, verify

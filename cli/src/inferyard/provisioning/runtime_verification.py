@@ -6,9 +6,9 @@ import stat
 import subprocess
 from pathlib import Path
 
-from inferyard.config.preparation_io import PreparationError, file_record, linked, read_json
-from inferyard.platforms.runtime_archive import safe_member
-from inferyard.platforms.runtime_profiles import exact_value, load_profile, output_files
+from inferyard.provisioning.preparation_io import PreparationError, file_record, linked, read_json
+from inferyard.provisioning.runtime_archive import safe_member
+from inferyard.provisioning.runtime_profiles import exact_value, load_profile, output_files
 
 
 def inside_file(root, relative):

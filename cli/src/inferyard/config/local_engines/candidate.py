@@ -4,9 +4,9 @@ from copy import deepcopy
 
 from inferyard.config.bundle import require_review
 from inferyard.config.community_assets import model_template
-from inferyard.config.engine_fit_assets import model_asset_manifest
+from inferyard.platforms.engine_fit_assets import model_asset_manifest
 from inferyard.config.loader import load_config
-from inferyard.config.preparation_io import (
+from inferyard.provisioning.preparation_io import (
     NewDirectory,
     PreparationError,
     base_details,

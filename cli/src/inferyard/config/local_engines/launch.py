@@ -2,7 +2,7 @@
 
 from importlib.resources import files
 
-from inferyard.config.preparation_io import PreparationError
+from inferyard.provisioning.preparation_io import PreparationError
 
 
 def startup(installation, model, served_model, context, port, service_pid=None):

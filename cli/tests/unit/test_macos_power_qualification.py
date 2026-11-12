@@ -4,7 +4,7 @@ import pytest
 
 from inferyard.analysis.environment import assess_environment
 from inferyard.analysis.environment_identity import MACOS_FIELDS, fields
-from inferyard.config.environment_binding import mismatches
+from inferyard.contracts.environment_admission import mismatches
 from inferyard.errors import ContractError
 from inferyard.contracts.power_policy import valid_power_policy
 from inferyard.platforms.power_macos import assess, parse

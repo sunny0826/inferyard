@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from urllib.parse import unquote, urlsplit
 
-from inferyard.config.preparation_io import PreparationError
+from inferyard.provisioning.preparation_io import PreparationError
 
 DEFINITION = "remote_engine_source.v1"
 PARSER = "remote-engine-source-parser.v1"

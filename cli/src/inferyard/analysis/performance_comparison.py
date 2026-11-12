@@ -30,7 +30,7 @@ def metric_index(data):
 
 
 def performance_comparison(left, right, comparison, evidence, *, definition="phase2.v3"):
-    from inferyard.evidence.formats import require_version
+    from inferyard.contracts.format_versions import require_version
 
     require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
     reasons = list(comparison["blockers"])

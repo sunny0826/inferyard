@@ -1,12 +1,12 @@
 """Frozen diagnostic plans; independent of the formal single-file model contract."""
 
-import hashlib
 import math
 import re
 from pathlib import PurePosixPath, PureWindowsPath
 
-from inferyard.errors import ContractError, UnsupportedFormat
+from inferyard.contracts.json_digest import digest
 from inferyard.contracts.validation import json_bytes
+from inferyard.errors import ContractError, UnsupportedFormat
 from inferyard.evidence.storage import atomic_bytes, read_json
 
 LEGACY_ENGINES = ("vllm", "sglang")
@@ -43,10 +43,6 @@ def _override_reason(value, field="temperature_stop_override_reason"):
         raise ContractError("engine_fit." + field, "invalid diagnostic input") from exc
 
 
-def digest(value):
-    return hashlib.sha256(json_bytes(value)).hexdigest()
-
-
 def validate_cases(cases):
     _require(isinstance(cases, list) and 1 <= len(cases) <= 1000, "cases")
     identifiers = []
@@ -72,7 +68,8 @@ def validate_plan(plan):
         "request_count max_request_wall_seconds",
         "plan",
     )
-    from inferyard.evidence.formats import require_core, require_version
+    from inferyard.contracts.format_versions import require_version
+    from inferyard.evidence.formats import require_core
 
     _require(
         _sha(plan["plan_id"])
@@ -212,7 +209,7 @@ def request_rows(plan):
 
 
 def prepare(request):
-    from inferyard.config.engine_fit_assets import model_asset_manifest
+    from inferyard.platforms.engine_fit_assets import model_asset_manifest
     from inferyard.platforms.engine_fit import host_identity, model_manifest
 
     _require(not request.out.exists() and not request.out.is_symlink(), "out")

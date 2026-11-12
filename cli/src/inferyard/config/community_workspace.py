@@ -1,8 +1,8 @@
 """Export a reviewed corpus and deliberately unbound platform examples."""
 
 from inferyard.config.bundle import require_review
-from inferyard.config.community_resources import BUNDLES, resource_bytes
-from inferyard.config.preparation_io import (
+from inferyard.provisioning.community_resources import BUNDLES, resource_bytes
+from inferyard.provisioning.preparation_io import (
     NewDirectory,
     PreparationError,
     base_details,

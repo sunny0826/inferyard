@@ -3,7 +3,7 @@
 import sys
 
 from inferyard.application.types import CommandResult
-from inferyard.config.preparation_io import PreparationError
+from inferyard.provisioning.preparation_io import PreparationError
 
 
 def execute(request):
@@ -13,7 +13,7 @@ def execute(request):
 
             details = initialize(request)
         elif request.command == "runtime prepare":
-            from inferyard.platforms.windows_runtime_prepare import prepare
+            from inferyard.provisioning.windows_runtime_prepare import prepare
 
             details = prepare(request)
         elif request.command == "config assets":

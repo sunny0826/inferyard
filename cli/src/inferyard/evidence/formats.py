@@ -1,14 +1,7 @@
 """Current artifact boundaries, independent of evidence integrity errors."""
 
-from inferyard.errors import EvidenceError, UnsupportedFormat
-
-
-def require_version(value, key, supported, artifact):
-    expected_type = type(supported[0])
-    if type(value) is not dict or type(value.get(key)) is not expected_type:
-        raise EvidenceError("invalid_artifact_version")
-    if value[key] not in supported:
-        raise UnsupportedFormat(artifact, value[key], supported)
+from inferyard.contracts.format_versions import require_version
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 
 
 def require_core(value, artifact):
@@ -29,8 +22,6 @@ def check_presentation_seal(root):
 
 
 def require_input(value, artifact):
-    from inferyard.errors import ContractError
-
     try:
         require_core(value, artifact)
     except EvidenceError as exc:

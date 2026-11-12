@@ -255,7 +255,7 @@ def test_two_bundles_freeze_six_blocks_and_fresh_each_slot(tmp_path: Path) -> No
 
 
 def test_default_product_bundles_are_used_when_no_bundle_is_declared(tmp_path: Path) -> None:
-    from inferyard.config.community_resources import resource_bytes
+    from inferyard.provisioning.community_resources import resource_bytes
 
     root = tmp_path / "inputs"
     root.mkdir()

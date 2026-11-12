@@ -12,7 +12,7 @@ from inferyard.platforms.external_cpu import capture as capture_external_cpu
 from inferyard.platforms.external_cpu import clock_ticks_per_second, read_boot_id
 from inferyard.platforms.resources import resource_collector_id
 from inferyard.platforms.telemetry import Sampler
-from inferyard.runtime.boundary_observer import BoundaryGuard
+from inferyard.platforms.boundary_observer import BoundaryGuard
 
 
 def observer_contract(interval_ms, *, collector="linux-resource.v2"):
@@ -32,7 +32,7 @@ def observer_contract(interval_ms, *, collector="linux-resource.v2"):
 
 class EnvironmentObserver(Sampler):
     async def run(self):
-        from inferyard.runtime.environment_schedule import run_sampler
+        from inferyard.platforms.environment_schedule import run_sampler
 
         await run_sampler(self)
 

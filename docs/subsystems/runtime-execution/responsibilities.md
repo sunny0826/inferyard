@@ -14,7 +14,7 @@
 | 服务复用与交接 | 同进程复用条件、替换判定、恢复与 drain 证据要求 | `same_process`、`reuse_allowed`、`require_transition`、`record_reuse` 在 [`cli/src/inferyard/runtime/service_reuse.py`](../../../cli/src/inferyard/runtime/service_reuse.py) |
 | 安全停止 | 冻结策略的周期温度/外部 CPU/环境检查，一次停止无重试 | `SafetyGuard`、`monitor` 在 [`cli/src/inferyard/runtime/safety.py`](../../../cli/src/inferyard/runtime/safety.py) |
 | duration 窗口 | 固定时窗循环、发送准入截止与排空截止 | `run_duration` 在 [`cli/src/inferyard/runtime/duration_driver.py`](../../../cli/src/inferyard/runtime/duration_driver.py) |
-| 采样调度 | 资源样本按声明周期调度、1 秒周期环境观测、调度延迟记录 | `run_sampler`、`advance` 在 [`cli/src/inferyard/runtime/environment_schedule.py`](../../../cli/src/inferyard/runtime/environment_schedule.py) |
+| 采样调度 | 资源样本按声明周期调度、1 秒周期环境观测、调度延迟记录 | `run_sampler`、`advance` 在 [`cli/src/inferyard/platforms/environment_schedule.py`](../../../cli/src/inferyard/platforms/environment_schedule.py) |
 | 信号处理 | 单次与批量进程的信号捕获与恢复 | `install_termination_handler` 在 [`cli/src/inferyard/runtime/signals.py`](../../../cli/src/inferyard/runtime/signals.py)；安全停止轨迹 `safety_trace.py` 同目录 |
 | 适配器注册 | 适配器/采集器工厂、Windows 批量适配器白名单 | `adapter_factory`、`collector_factory`、`adapter_collector_id`、`WINDOWS_BATCH_ADAPTERS` 在 [`cli/src/inferyard/registry.py`](../../../cli/src/inferyard/registry.py) |
 | 请求构造与终态 | 按适配器分派的请求体构造、空闲证据来源、引擎无关的终态记录 | `request_body`、`idle_evidence` 在 [`cli/src/inferyard/adapters/requests.py`](../../../cli/src/inferyard/adapters/requests.py)；`ResponseState` 在 [`cli/src/inferyard/adapters/response_state.py`](../../../cli/src/inferyard/adapters/response_state.py) |

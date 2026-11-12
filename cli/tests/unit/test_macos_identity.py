@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from inferyard.config.environment_binding import mismatches
+from inferyard.contracts.environment_admission import mismatches
 from inferyard.errors import PreflightError
 from inferyard.platforms import (
     identity,

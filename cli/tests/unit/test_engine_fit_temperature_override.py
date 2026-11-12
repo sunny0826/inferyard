@@ -9,7 +9,8 @@ import pytest
 
 from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.cli import main
-from inferyard.config.engine_fit import digest, prepare, validate_plan
+from inferyard.config.engine_fit import prepare, validate_plan
+from inferyard.contracts.json_digest import digest
 from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.reporting.engine_fit import compare, seal_run, verify
 from inferyard.reporting.engine_fit_html import render
@@ -89,7 +90,7 @@ def test_default_request_retains_legacy_plan_and_temperature_limit(model, tmp_pa
 
 @pytest.mark.parametrize("reason", ["", " \t\n", False, 1, [], {}, "a" * 1025, "温" * 342])
 def test_invalid_reason_rejected_before_model_hashing(model, tmp_path, monkeypatch, reason):
-    from inferyard.config import engine_fit_assets
+    from inferyard.platforms import engine_fit_assets
 
     monkeypatch.setattr(
         engine_fit_assets,

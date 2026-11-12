@@ -3,7 +3,7 @@
 import ipaddress
 from urllib.parse import urlsplit
 
-from inferyard.config.engine_fit_native_sources import (
+from inferyard.contracts.engine_fit_native_sources import (
     WINDOWS_LISTENER_SOURCE,
     WINDOWS_START_SOURCE,
 )

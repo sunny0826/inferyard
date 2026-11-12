@@ -3,7 +3,7 @@
 from dataclasses import replace
 from pathlib import Path
 
-from inferyard.config.preparation_io import PreparationError, read_json
+from inferyard.provisioning.preparation_io import PreparationError, read_json
 
 
 def latest(paths):

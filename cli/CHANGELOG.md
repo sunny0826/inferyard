@@ -63,7 +63,7 @@
   implementation by runs created after it. Command handlers now return domain data
   and the application layer builds command results. Trial ledger reconstruction moved
   from `inferyard.evidence` to `inferyard.analysis`; evidence keeps storage, sealing,
-  journals and format checks.
+  journals and format checks. Provisioning (engine/model source download, runtime archive/profiles/verification) moved from `platforms` and `config` into `inferyard.provisioning`.
 
 ### Removed
 

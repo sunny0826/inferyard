@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 from inferyard.errors import PreflightError
-from inferyard.evidence.environment_projection import periodic_environment
+from inferyard.platforms.environment_projection import periodic_environment
 from inferyard.platforms.identity import environment_snapshot, memory_available, process_start_ticks
 
 

@@ -28,6 +28,7 @@ Applies to this repository and its subdirectories. Communicate concisely in Chin
 | `evidence/` | Journals, sealing, ledgers, provenance and current-format rejection |
 | `analysis/`, `reporting/` | Scoring, metrics, comparison, rescoring, reports and exports |
 | `platforms/`, `extensions/` | Device and process sampling; the standalone extension protocol |
+| `provisioning/` | Engine/model source acquisition, runtime archives and preparation IO |
 | `data/`, `templates/` | Catalogue data and report templates shipped with the package |
 
 Business modules do not depend on the CLI; application request/result types live only in `application/types.py`. Help, version and schema queries must not load the live backend; installed resources are read from the package, not from the source checkout.

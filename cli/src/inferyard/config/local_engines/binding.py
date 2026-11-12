@@ -1,7 +1,12 @@
 """Persist a verified service identity into a new immutable binding output."""
 
-from inferyard.config.loader import load_config, validate_endpoint
-from inferyard.config.preparation_io import (
+from inferyard.config.loader import load_config
+from inferyard.config.toml_writer import render
+from inferyard.contracts.endpoint import validate_endpoint
+from inferyard.contracts.validation import json_bytes
+from inferyard.platforms.identity import process_start_ticks
+from inferyard.platforms.local_engines import bind_service, verify_bound_service
+from inferyard.provisioning.preparation_io import (
     NewDirectory,
     PreparationError,
     base_details,
@@ -9,10 +14,6 @@ from inferyard.config.preparation_io import (
     new_path,
     sha256,
 )
-from inferyard.config.toml_writer import render
-from inferyard.contracts.validation import json_bytes
-from inferyard.platforms.identity import process_start_ticks
-from inferyard.platforms.local_engines import bind_service, verify_bound_service
 
 
 def prepare(request):

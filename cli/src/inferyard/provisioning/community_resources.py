@@ -2,7 +2,7 @@
 
 from importlib.resources import files
 
-from inferyard.config.preparation_io import PreparationError, sha256
+from inferyard.provisioning.preparation_io import PreparationError, sha256
 from inferyard.contracts.validation import strict_json_loads
 from inferyard.errors import ContractError
 

@@ -8,7 +8,8 @@ from inferyard.analysis.comparison import compare_trials
 from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.contracts.validation import strict_json_loads, json_bytes
 from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
+from inferyard.contracts.format_versions import require_version
+from inferyard.evidence.formats import check_presentation_seal, require_core
 from inferyard.evidence.storage import atomic_bytes, local_file, new_output, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.provenance import tool_source_hash

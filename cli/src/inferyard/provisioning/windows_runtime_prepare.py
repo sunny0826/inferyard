@@ -4,7 +4,7 @@ import zipfile
 from contextlib import ExitStack
 from pathlib import PurePosixPath
 
-from inferyard.config.preparation_io import (
+from inferyard.provisioning.preparation_io import (
     NewDirectory,
     PreparationError,
     base_details,
@@ -12,9 +12,9 @@ from inferyard.config.preparation_io import (
     new_path,
     require_platform,
 )
-from inferyard.platforms.runtime_archive import zip_entries
-from inferyard.platforms.runtime_profiles import load_profile, output_files
-from inferyard.platforms.runtime_verification import query_version, verify_files
+from inferyard.provisioning.runtime_archive import zip_entries
+from inferyard.provisioning.runtime_profiles import load_profile, output_files
+from inferyard.provisioning.runtime_verification import query_version, verify_files
 
 
 def prepare(request):

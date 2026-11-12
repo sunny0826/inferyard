@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import pytest
 
 from inferyard.platforms.telemetry import Sampler
-from inferyard.runtime import environment_schedule
-from inferyard.runtime.environment_observer import EnvironmentObserver
+from inferyard.platforms import environment_schedule
+from inferyard.platforms.environment_observer import EnvironmentObserver
 
 
 def test_independent_cadences_and_missed_deadlines(monkeypatch):

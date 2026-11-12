@@ -16,7 +16,7 @@ from inferyard.config.bundle import require_review
 from inferyard.config.loader import LoadedConfig
 from inferyard.config.plan_inputs import validate_workload_inputs
 from inferyard.config.single_plan import compile_single_plan
-from inferyard.config.startup_arguments import replace_arguments
+from inferyard.platforms.startup_arguments import replace_arguments
 from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import Document
 from inferyard.errors import PreflightError

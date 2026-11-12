@@ -17,7 +17,7 @@
 | 环境准入 | 冻结环境条件的声明式准入，诊断模式只记录差异 | `admission`、`mismatches` 在 [`cli/src/inferyard/config/environment_binding.py`](../../cli/src/inferyard/config/environment_binding.py) |
 | 服务绑定 | 候选配置与已运行服务进程的启动参数/启动时刻绑定 | `bind`、`prepare` 在 [`cli/src/inferyard/config/service_binding.py`](../../cli/src/inferyard/config/service_binding.py) |
 | 声明谱系 | 冻结的模型来源/量化/转换声明只哈希不鉴权 | `validate_lineage` 在 [`contracts/model_lineage.py`](../../cli/src/inferyard/contracts/model_lineage.py)；`parse_record` 在 [`contracts/lineage_records.py`](../../cli/src/inferyard/contracts/lineage_records.py) |
-| 社区资源 | 随包交付的已审题包与示例配置的哈希核验读取 | `resource_bytes`、`BUNDLES` 在 [`cli/src/inferyard/config/community_resources.py`](../../cli/src/inferyard/config/community_resources.py)；`initialize` 在 [`cli/src/inferyard/config/community_workspace.py`](../../cli/src/inferyard/config/community_workspace.py) |
+| 社区资源 | 随包交付的已审题包与示例配置的哈希核验读取 | `resource_bytes`、`BUNDLES` 在 [`cli/src/inferyard/provisioning/community_resources.py`](../../cli/src/inferyard/provisioning/community_resources.py)；`initialize` 在 [`cli/src/inferyard/config/community_workspace.py`](../../cli/src/inferyard/config/community_workspace.py) |
 
 关键事实源只有一处：`SCHEMA_VERSION = 3` 与 `schemas_for()` 定义唯一活动契约，`export_schema()` 不接受版本选择；五终态 `ExecutionState` 定义在 `contracts/validation.py`。凭据只以 `endpoint.api_key_env` 变量名进入本层，规则见[数据契约](../../cli/docs/data-contract.md)。
 

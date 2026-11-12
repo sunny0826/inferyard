@@ -729,15 +729,15 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
+          "sha256": "0909bef5741a5e3bad3cfb93443bfe0a2e6670fcd4f61e3ac187e5ef4b1e5f86"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
+          "sha256": "c174c5601948793e490aa07d89335a06a3c6ba6e2c51a59eff16a7777082bbd2"
         },
         {
-          "path": "src/inferyard/runtime/environment_observer.py",
-          "sha256": "073bd7fa26a8c9e68960d21303e8aab18b74ab032949b22dcc75854db66845e9"
+          "path": "src/inferyard/platforms/environment_observer.py",
+          "sha256": "04cfeadbc23cdbe4d4cf6c63827daad1e27fe49e750a060c4c21f0a2f3858465"
         },
         {
           "path": "src/inferyard/platforms/sensors_linux.py",
@@ -761,7 +761,7 @@
         },
         {
           "path": "src/inferyard/platforms/resources_windows.py",
-          "sha256": "9dacb3caad82ab83d0a56c5895675fc8c3c3a2b2ea39941ae8cb3bc0d60213ca"
+          "sha256": "4b5f95e854f5caf4ee8fe3f17f2e92d0e899f58246d7c76299372df2b0d4eea8"
         },
         {
           "path": "tests/unit/test_windows_resources.py",
@@ -801,15 +801,15 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
+          "sha256": "0909bef5741a5e3bad3cfb93443bfe0a2e6670fcd4f61e3ac187e5ef4b1e5f86"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
+          "sha256": "c174c5601948793e490aa07d89335a06a3c6ba6e2c51a59eff16a7777082bbd2"
         },
         {
-          "path": "src/inferyard/runtime/environment_observer.py",
-          "sha256": "073bd7fa26a8c9e68960d21303e8aab18b74ab032949b22dcc75854db66845e9"
+          "path": "src/inferyard/platforms/environment_observer.py",
+          "sha256": "04cfeadbc23cdbe4d4cf6c63827daad1e27fe49e750a060c4c21f0a2f3858465"
         },
         {
           "path": "src/inferyard/platforms/sensors_linux.py",
@@ -833,7 +833,7 @@
         },
         {
           "path": "src/inferyard/platforms/resources_windows.py",
-          "sha256": "9dacb3caad82ab83d0a56c5895675fc8c3c3a2b2ea39941ae8cb3bc0d60213ca"
+          "sha256": "4b5f95e854f5caf4ee8fe3f17f2e92d0e899f58246d7c76299372df2b0d4eea8"
         },
         {
           "path": "tests/unit/test_windows_resources.py",
@@ -873,15 +873,15 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
+          "sha256": "0909bef5741a5e3bad3cfb93443bfe0a2e6670fcd4f61e3ac187e5ef4b1e5f86"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
+          "sha256": "c174c5601948793e490aa07d89335a06a3c6ba6e2c51a59eff16a7777082bbd2"
         },
         {
-          "path": "src/inferyard/runtime/environment_observer.py",
-          "sha256": "073bd7fa26a8c9e68960d21303e8aab18b74ab032949b22dcc75854db66845e9"
+          "path": "src/inferyard/platforms/environment_observer.py",
+          "sha256": "04cfeadbc23cdbe4d4cf6c63827daad1e27fe49e750a060c4c21f0a2f3858465"
         },
         {
           "path": "src/inferyard/platforms/sensors_linux.py",
@@ -905,7 +905,7 @@
         },
         {
           "path": "src/inferyard/platforms/resources_windows.py",
-          "sha256": "9dacb3caad82ab83d0a56c5895675fc8c3c3a2b2ea39941ae8cb3bc0d60213ca"
+          "sha256": "4b5f95e854f5caf4ee8fe3f17f2e92d0e899f58246d7c76299372df2b0d4eea8"
         },
         {
           "path": "tests/unit/test_windows_resources.py",
@@ -945,15 +945,15 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
+          "sha256": "0909bef5741a5e3bad3cfb93443bfe0a2e6670fcd4f61e3ac187e5ef4b1e5f86"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
+          "sha256": "c174c5601948793e490aa07d89335a06a3c6ba6e2c51a59eff16a7777082bbd2"
         },
         {
-          "path": "src/inferyard/runtime/environment_observer.py",
-          "sha256": "073bd7fa26a8c9e68960d21303e8aab18b74ab032949b22dcc75854db66845e9"
+          "path": "src/inferyard/platforms/environment_observer.py",
+          "sha256": "04cfeadbc23cdbe4d4cf6c63827daad1e27fe49e750a060c4c21f0a2f3858465"
         },
         {
           "path": "src/inferyard/platforms/sensors_linux.py",
@@ -1009,15 +1009,15 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
+          "sha256": "0909bef5741a5e3bad3cfb93443bfe0a2e6670fcd4f61e3ac187e5ef4b1e5f86"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
+          "sha256": "c174c5601948793e490aa07d89335a06a3c6ba6e2c51a59eff16a7777082bbd2"
         },
         {
-          "path": "src/inferyard/runtime/environment_observer.py",
-          "sha256": "073bd7fa26a8c9e68960d21303e8aab18b74ab032949b22dcc75854db66845e9"
+          "path": "src/inferyard/platforms/environment_observer.py",
+          "sha256": "04cfeadbc23cdbe4d4cf6c63827daad1e27fe49e750a060c4c21f0a2f3858465"
         },
         {
           "path": "src/inferyard/platforms/sensors_linux.py",
@@ -1073,15 +1073,15 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
+          "sha256": "0909bef5741a5e3bad3cfb93443bfe0a2e6670fcd4f61e3ac187e5ef4b1e5f86"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
+          "sha256": "c174c5601948793e490aa07d89335a06a3c6ba6e2c51a59eff16a7777082bbd2"
         },
         {
-          "path": "src/inferyard/runtime/environment_observer.py",
-          "sha256": "073bd7fa26a8c9e68960d21303e8aab18b74ab032949b22dcc75854db66845e9"
+          "path": "src/inferyard/platforms/environment_observer.py",
+          "sha256": "04cfeadbc23cdbe4d4cf6c63827daad1e27fe49e750a060c4c21f0a2f3858465"
         },
         {
           "path": "src/inferyard/platforms/sensors_linux.py",
@@ -1137,15 +1137,15 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
+          "sha256": "0909bef5741a5e3bad3cfb93443bfe0a2e6670fcd4f61e3ac187e5ef4b1e5f86"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
+          "sha256": "c174c5601948793e490aa07d89335a06a3c6ba6e2c51a59eff16a7777082bbd2"
         },
         {
-          "path": "src/inferyard/runtime/environment_observer.py",
-          "sha256": "073bd7fa26a8c9e68960d21303e8aab18b74ab032949b22dcc75854db66845e9"
+          "path": "src/inferyard/platforms/environment_observer.py",
+          "sha256": "04cfeadbc23cdbe4d4cf6c63827daad1e27fe49e750a060c4c21f0a2f3858465"
         },
         {
           "path": "src/inferyard/platforms/sensors_linux.py",
@@ -1205,15 +1205,15 @@
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
-          "sha256": "ab747e1f1ef9d528542693f245a84c0c50fa3281e8bf309aefff7bc29d78539b"
+          "sha256": "0909bef5741a5e3bad3cfb93443bfe0a2e6670fcd4f61e3ac187e5ef4b1e5f86"
         },
         {
           "path": "src/inferyard/platforms/resources_macos.py",
-          "sha256": "86f479624a6cc837477524db1489dde607c23bc97546b2302f65ea99739216c8"
+          "sha256": "c174c5601948793e490aa07d89335a06a3c6ba6e2c51a59eff16a7777082bbd2"
         },
         {
-          "path": "src/inferyard/runtime/environment_observer.py",
-          "sha256": "073bd7fa26a8c9e68960d21303e8aab18b74ab032949b22dcc75854db66845e9"
+          "path": "src/inferyard/platforms/environment_observer.py",
+          "sha256": "04cfeadbc23cdbe4d4cf6c63827daad1e27fe49e750a060c4c21f0a2f3858465"
         },
         {
           "path": "src/inferyard/platforms/sensors_linux.py",

@@ -1,7 +1,7 @@
 """Read-only, structured candidate presentation for CLI and native callers."""
 
 from inferyard.config.loader import load_config
-from inferyard.config.preparation_io import sha256
+from inferyard.provisioning.preparation_io import sha256
 from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.local_engines.assets import assets
 

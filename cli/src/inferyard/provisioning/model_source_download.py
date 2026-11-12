@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 
 import httpx
 
-from inferyard.config.preparation_io import NewDirectory, PreparationError, new_path
-from inferyard.platforms.model_source import DEFINITION_V3, PARSER, parse_source, validate_token_env
+from inferyard.provisioning.preparation_io import NewDirectory, PreparationError, new_path
+from inferyard.provisioning.model_source import DEFINITION_V3, PARSER, parse_source, validate_token_env
 from inferyard.platforms.platform_io import sync_directory
 
 INCOMPLETE = "model_acquire_incomplete"

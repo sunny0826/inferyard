@@ -4,7 +4,7 @@ import re
 
 from inferyard.contracts.cache_policy import disabled_startup
 from inferyard.contracts.fixed_output import validate_inputs as validate_fixed_output
-from inferyard.config.startup_arguments import argument_values, model_argument
+from inferyard.platforms.startup_arguments import argument_values, model_argument
 from inferyard.contracts.context_speed_profile import (
     BUNDLE_CONTENT_SHA256,
     BUNDLE_ID,

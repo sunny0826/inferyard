@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.config.engine_fit import digest
+from inferyard.contracts.json_digest import digest
 from inferyard.errors import EvidenceError
 from inferyard.reporting.engine_fit import compare, seal_run, verify
 from inferyard.analysis.engine_fit_validation import validate_run

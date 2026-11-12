@@ -5,7 +5,7 @@ import shutil
 import pytest
 
 from inferyard.cli import main
-from inferyard.config.engine_fit_native_sources import WINDOWS_SCOPE, WINDOWS_START_SOURCE
+from inferyard.contracts.engine_fit_native_sources import WINDOWS_SCOPE, WINDOWS_START_SOURCE
 from inferyard.evidence.storage import read_json
 from inferyard.reporting.engine_fit import verify
 from tests.integration.test_engine_fit_common import common_fit_service as common_fit_service

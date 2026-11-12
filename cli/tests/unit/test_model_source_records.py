@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-from inferyard.config.preparation_io import PreparationError
+from inferyard.provisioning.preparation_io import PreparationError
 from inferyard.platforms.identity import hash_file
-from inferyard.platforms.model_source import source_declaration
+from inferyard.provisioning.model_source import source_declaration
 from tests.unit.test_model_source import record_for
 
 

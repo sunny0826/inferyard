@@ -3,11 +3,11 @@
 import sys
 
 from inferyard.application.types import CommandResult
-from inferyard.config.preparation_io import PreparationError
+from inferyard.provisioning.preparation_io import PreparationError
 
 
 def execute(request):
-    from inferyard.platforms.model_source_download import acquire
+    from inferyard.provisioning.model_source_download import acquire
 
     try:
         details = acquire(

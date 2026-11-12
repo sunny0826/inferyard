@@ -9,9 +9,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from inferyard.config.preparation_io import PreparationError
-from inferyard.platforms.engine_source import EngineSource
-from inferyard.platforms.engine_source_download import acquire
+from inferyard.provisioning.preparation_io import PreparationError
+from inferyard.provisioning.engine_source import EngineSource
+from inferyard.provisioning.engine_source_download import acquire
 from tests.unit.test_engine_acquire_cli import SOURCE
 
 PAYLOAD = b"synthetic engine archive bytes\n" * 64

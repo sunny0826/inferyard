@@ -3,8 +3,8 @@
 import shlex
 from pathlib import Path
 
-from inferyard.config.community_resources import BUNDLES
-from inferyard.config.preparation_io import PreparationError, read_json
+from inferyard.provisioning.community_resources import BUNDLES
+from inferyard.provisioning.preparation_io import PreparationError, read_json
 from inferyard.config.workspace_inputs import latest, latest_preflight, preflight_files
 
 

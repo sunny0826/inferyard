@@ -7,10 +7,11 @@ from pathlib import Path
 import pytest
 
 from inferyard.application.types import CommandRequest
-from inferyard.config import community_candidates, preparation_io, service_binding
+from inferyard.config import community_candidates, service_binding
+from inferyard.provisioning import preparation_io
 from inferyard.config.loader import load_config
-from inferyard.config.preparation_io import PreparationError
-from inferyard.platforms import windows_runtime_prepare
+from inferyard.provisioning.preparation_io import PreparationError
+from inferyard.provisioning import windows_runtime_prepare
 from tests.unit.test_community_runtime import synthetic_runtime as runtime_fixture
 from tests.unit.test_device_preflight import gguf
 

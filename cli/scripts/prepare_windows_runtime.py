@@ -131,8 +131,8 @@ def unpack(archive, destination):
     destination = require_destination(destination)
     with zipfile.ZipFile(archive) as package:
         entries = package.infolist()
-        from inferyard.config.preparation_io import PreparationError
-        from inferyard.platforms.runtime_archive import zip_entries
+        from inferyard.provisioning.preparation_io import PreparationError
+        from inferyard.provisioning.runtime_archive import zip_entries
 
         try:
             zip_entries(package)

@@ -42,7 +42,7 @@ def main():
     parser.add_argument("--endpoint", required=True)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-    from inferyard.config.preparation_io import PreparationError
+    from inferyard.provisioning.preparation_io import PreparationError
     from inferyard.config.service_binding import bind
     from inferyard.config.toml_writer import render
 

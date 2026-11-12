@@ -3,7 +3,7 @@
 import sys
 
 from inferyard.application.types import CommandResult
-from inferyard.config.preparation_io import PreparationError
+from inferyard.provisioning.preparation_io import PreparationError
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 
 

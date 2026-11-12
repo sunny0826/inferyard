@@ -14,9 +14,9 @@ from inferyard.platforms.resources import ResourceSampler, resource_collector_id
 from inferyard.platforms.telemetry import Sampler
 from inferyard.provenance import tool_source_hash
 from inferyard.registry import adapter_factory
-from inferyard.runtime.boundary_observer import BoundaryOnlySampler
+from inferyard.platforms.boundary_observer import BoundaryOnlySampler
 from inferyard.runtime.collector_overhead import ORDER, assess_overhead, freeze_protocol
-from inferyard.runtime.environment_observer import EnvironmentOnlySampler
+from inferyard.platforms.environment_observer import EnvironmentOnlySampler
 from inferyard.runtime.trial_runner import TrialDependencies, run_trial
 
 

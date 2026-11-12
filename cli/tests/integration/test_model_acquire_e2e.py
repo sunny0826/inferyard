@@ -4,7 +4,7 @@ import hashlib
 import json
 
 from inferyard.cli import main
-from inferyard.platforms.model_source import ModelSource
+from inferyard.provisioning.model_source import ModelSource
 from tests.unit.test_model_acquire_cli import SOURCE
 from tests.unit.test_model_source_download import FILENAME, PAYLOAD, body_server
 

@@ -248,7 +248,8 @@ def validate_run(plan, run, rows):
         "engine_fit_run.v5",
         "engine_fit_run.v6",
     )
-    from inferyard.evidence.formats import require_core, require_version
+    from inferyard.contracts.format_versions import require_version
+    from inferyard.evidence.formats import require_core
 
     require_core(run, "engine-fit run")
     require_version(
@@ -300,7 +301,7 @@ def validate_run(plan, run, rows):
     require(type(run["limitations"]) is list, "limitations")
     require(all(text(item) for item in run["limitations"]), "limitations")
     if windows:
-        from inferyard.config.engine_fit_native_sources import WINDOWS_LIMITATIONS
+        from inferyard.contracts.engine_fit_native_sources import WINDOWS_LIMITATIONS
 
         require(set(WINDOWS_LIMITATIONS) <= set(run["limitations"]), "windows_limitations")
         require(

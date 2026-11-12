@@ -225,10 +225,10 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
     deps.environment = lambda **kwargs: deepcopy(snapshot)
     monkeypatch.setattr("inferyard.platforms.telemetry.environment_snapshot", deps.environment)
     monkeypatch.setattr(
-        "inferyard.runtime.environment_schedule.environment_snapshot", deps.environment
+        "inferyard.platforms.environment_schedule.environment_snapshot", deps.environment
     )
     monkeypatch.setattr(
-        "inferyard.runtime.boundary_observer.environment_snapshot", deps.environment
+        "inferyard.platforms.boundary_observer.environment_snapshot", deps.environment
     )
 
     def idle_cpu(pid, ticks, boot, hz, phase, request, clock, root=None):
@@ -248,8 +248,8 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             "missing_reason": None,
         }
 
-    monkeypatch.setattr("inferyard.runtime.environment_observer.capture_external_cpu", idle_cpu)
-    monkeypatch.setattr("inferyard.runtime.boundary_observer.capture", idle_cpu)
+    monkeypatch.setattr("inferyard.platforms.environment_observer.capture_external_cpu", idle_cpu)
+    monkeypatch.setattr("inferyard.platforms.boundary_observer.capture", idle_cpu)
     if mode == "engine_rates":
         scenario[3]["timings"] = {
             "cache_n": 0,

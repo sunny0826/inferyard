@@ -10,7 +10,7 @@ from inferyard.analysis.environment import (
     environment_qualification,
 )
 from inferyard.errors import EvidenceError
-from inferyard.evidence.environment_projection import periodic_environment
+from inferyard.platforms.environment_projection import periodic_environment
 from inferyard.platforms.power_macos import parse
 from tests.unit.test_environment import state
 

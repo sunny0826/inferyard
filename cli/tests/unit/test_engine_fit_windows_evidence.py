@@ -4,8 +4,8 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.config.engine_fit import digest
-from inferyard.config.engine_fit_native_sources import (
+from inferyard.contracts.json_digest import digest
+from inferyard.contracts.engine_fit_native_sources import (
     WINDOWS_LIMITATIONS,
     WINDOWS_SCOPE,
     WINDOWS_START_SOURCE,

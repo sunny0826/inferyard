@@ -6,7 +6,7 @@ from inferyard.evidence.baseline_reads import environment_reads
 from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.platforms.external_cpu import reduce_external_cpu
 from inferyard.platforms.external_cpu_windows import assess_windows
-from inferyard.runtime.boundary_observer import boundary_contract
+from inferyard.platforms.boundary_observer import boundary_contract
 
 
 def qualify_boundary_environment(root, data, sealed, *, reads=None):

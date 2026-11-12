@@ -5,7 +5,7 @@ import re
 import stat
 from pathlib import PurePosixPath, PureWindowsPath
 
-from inferyard.config.preparation_io import PreparationError
+from inferyard.provisioning.preparation_io import PreparationError
 
 
 def safe_member(name, *, directory=False):

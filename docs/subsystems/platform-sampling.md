@@ -3,7 +3,7 @@
 本子系统证明一次测量发生在哪台设备、哪个进程、哪组计数器上，并按绝对调度点采集资源样本与周期环境快照。
 它只读不改：不启动、停止或信号任何被测服务。
 `engine_fit_*` 模块的引擎诊断定义不属于这里，见 [engine-fit 引擎诊断](engine-fit.md)；采样任务由运行时创建与停止，见 [运行时执行与引擎适配](runtime-execution.md)；日志落盘与封存见 [证据、封存与离线读取](evidence-storage.md)；设备检测命令的 CLI 分派见 [CLI 与应用分发](cli-dispatch.md)。
-覆盖范围为 `cli/src/inferyard/platforms/` 中除 `engine_fit*` 以外的模块，加上运行时侧的两个调度协作者（`environment_schedule.py`、`environment_observer.py`）。
+覆盖范围为 `cli/src/inferyard/platforms/` 中除 `engine_fit*` 以外的模块，含采样基类同层的调度与环境观测协作者（`environment_schedule.py`、`environment_observer.py`、`boundary_observer.py`、`environment_projection.py`）。
 
 ## 职责与事实源
 
@@ -15,8 +15,8 @@
 | macOS 原生小查询 | 有界 sysctl/boot session/换页快照，无 shell | `sysctl_string`、`sysctl_text`、`boot_id`、`swap_snapshot`、`query` 在 [`cli/src/inferyard/platforms/macos_native.py`](../../cli/src/inferyard/platforms/macos_native.py) |
 | Windows 进程身份 | FILETIME 启动身份、exe 路径、监听归属与 CUDA 库映射核验 | `verify_process`、`verify_listener` 在 [`cli/src/inferyard/platforms/windows_identity.py`](../../cli/src/inferyard/platforms/windows_identity.py)；`process_start`（GetProcessTimes FILETIME）在 [`cli/src/inferyard/platforms/windows_api.py`](../../cli/src/inferyard/platforms/windows_api.py) |
 | Windows lab 进程树 | KVMem/NInfer 的句柄级创建 FILETIME 复核与进程退出检查 | `ProcessHandle`、`verify_process_binding` 在 [`cli/src/inferyard/platforms/windows_lab_process.py`](../../cli/src/inferyard/platforms/windows_lab_process.py)；`bind_files`、`verify_process` 在 [`cli/src/inferyard/platforms/lab_identity.py`](../../cli/src/inferyard/platforms/lab_identity.py) |
-| 采样基类与调度 | phase 标记、停止唤醒、绝对调度点与丢样记录 | `Sampler`、`read_rss`、`sample_memory` 在 [`cli/src/inferyard/platforms/telemetry.py`](../../cli/src/inferyard/platforms/telemetry.py)；`run_sampler`、`advance` 在 [`cli/src/inferyard/runtime/environment_schedule.py`](../../cli/src/inferyard/runtime/environment_schedule.py) |
-| 环境观察者 | 外部 CPU 观测、请求边界守卫、off 臂共用的 observer 契约 | `EnvironmentObserver`、`EnvironmentOnlySampler`、`observer_contract` 在 [`cli/src/inferyard/runtime/environment_observer.py`](../../cli/src/inferyard/runtime/environment_observer.py) |
+| 采样基类与调度 | phase 标记、停止唤醒、绝对调度点与丢样记录 | `Sampler`、`read_rss`、`sample_memory` 在 [`cli/src/inferyard/platforms/telemetry.py`](../../cli/src/inferyard/platforms/telemetry.py)；`run_sampler`、`advance` 在 [`cli/src/inferyard/platforms/environment_schedule.py`](../../cli/src/inferyard/platforms/environment_schedule.py) |
+| 环境观察者 | 外部 CPU 观测、请求边界守卫、off 臂共用的 observer 契约 | `EnvironmentObserver`、`EnvironmentOnlySampler`、`observer_contract` 在 [`cli/src/inferyard/platforms/environment_observer.py`](../../cli/src/inferyard/platforms/environment_observer.py) |
 | Linux 采集 | `/proc` 计数器、vmstat 换页、thermal/CPUFreq 传感器 | `ResourceSampler`、`read_cpu` 在 [`cli/src/inferyard/platforms/resources_linux.py`](../../cli/src/inferyard/platforms/resources_linux.py)；`LinuxSensors` 在 [`cli/src/inferyard/platforms/sensors_linux.py`](../../cli/src/inferyard/platforms/sensors_linux.py) |
 | macOS 采集 | CPU/RSS/可用内存/换页计数器与只读 AppleSMC 温度 | `ResourceSampler` 在 [`cli/src/inferyard/platforms/resources_macos.py`](../../cli/src/inferyard/platforms/resources_macos.py)；`read_cpu`、`capture`、`ExternalCpu` 在 [`cli/src/inferyard/platforms/external_cpu_macos.py`](../../cli/src/inferyard/platforms/external_cpu_macos.py)；`SMC` 在 [`cli/src/inferyard/platforms/smc_macos.py`](../../cli/src/inferyard/platforms/smc_macos.py)；`MacSensors` 在 [`cli/src/inferyard/platforms/sensors_macos.py`](../../cli/src/inferyard/platforms/sensors_macos.py) |
 | 外部 CPU 归约 | host 减绑定 PID 的残余忙碌区间计算与离线校验 | `capture`、`reduce_external_cpu` 在 [`cli/src/inferyard/platforms/external_cpu.py`](../../cli/src/inferyard/platforms/external_cpu.py)；Windows 请求绑定评估在 [`cli/src/inferyard/platforms/external_cpu_windows.py`](../../cli/src/inferyard/platforms/external_cpu_windows.py) |
