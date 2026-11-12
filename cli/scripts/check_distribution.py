@@ -31,7 +31,14 @@ SDIST_FILES = {
     ".gitignore",
 }
 DATA_FILES = {
-    "data/" + name for name in ("metrics.json", "methods.json", "implementation-files.json")
+    "data/" + name
+    for name in (
+        "metrics.json",
+        "methods.json",
+        "implementation-files/measurement.json",
+        "implementation-files/scoring.json",
+        "implementation-files/presentation.json",
+    )
 }
 COMMUNITY_FILES = {
     "data/community/" + name

@@ -44,7 +44,9 @@ build-constraint-dependencies = [
 packages = ["src/inferyard"]
 include = [
   "src/inferyard/**/*.py", "src/inferyard/templates/**/*.html",
-  "src/inferyard/data/*.json", "src/inferyard/data/community/resources.json",
+  "src/inferyard/data/*.json",
+  "src/inferyard/data/implementation-files/*.json",
+  "src/inferyard/data/community/resources.json",
   "src/inferyard/data/community/README.md",
   "src/inferyard/data/community/configs/*.example.toml",
   "src/inferyard/data/community/bundles/*.json",
@@ -61,7 +63,9 @@ only-include = [
 include = [
   "/pyproject.toml", "/uv.lock", "/LICENSE", "/README.md", "/docs/installation.md", "/.gitignore",
   "src/inferyard/**/*.py", "src/inferyard/templates/**/*.html",
-  "src/inferyard/data/*.json", "src/inferyard/data/community/resources.json",
+  "src/inferyard/data/*.json",
+  "src/inferyard/data/implementation-files/*.json",
+  "src/inferyard/data/community/resources.json",
   "src/inferyard/data/community/README.md",
   "src/inferyard/data/community/configs/*.example.toml",
   "src/inferyard/data/community/bundles/*.json",

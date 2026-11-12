@@ -13,6 +13,7 @@ from inferyard.provenance import tool_source_hash
 
 DEFINITION = "implementation-identity.v1"
 ROLES = ("measurement", "scoring", "presentation")
+LISTS_ROOT = "data/implementation-files/"
 VALIDATION_DEPENDENCIES = (
     "jsonschema",
     "attrs",
@@ -68,15 +69,16 @@ def dependency_versions(role):
 class IdentityContext:
     def __init__(self, *, root=None, source_hash=tool_source_hash):
         root = root or Path(__file__).parent
-        hashes, lists = {}, None
+        hashes, lists = {}, {}
         for path in sorted(root.rglob("*")):
             if path.suffix not in (".py", ".html", ".json"):
                 continue
             raw = path.read_bytes()
             name = path.relative_to(root).as_posix()
             hashes[name] = hashlib.sha256(raw).hexdigest()
-            if name == "data/implementation-files.json":
-                lists = json.loads(raw)
+            if name.startswith(LISTS_ROOT) and name.endswith(".json"):
+                role = name.removeprefix(LISTS_ROOT).removesuffix(".json")
+                lists[role] = json.loads(raw)
         self.source = source_hash(file_hashes=hashes)
         self.value = {"definition": DEFINITION}
         for role in ROLES:
