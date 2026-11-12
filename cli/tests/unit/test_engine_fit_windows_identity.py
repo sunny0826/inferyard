@@ -6,10 +6,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from inferyard.config.engine_fit_native_sources import WINDOWS_SCOPE, WINDOWS_START_SOURCE
+from inferyard.contracts.engine_fit_native_sources import WINDOWS_SCOPE, WINDOWS_START_SOURCE
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_windows as native
 from inferyard.platforms import engine_fit_windows_resources as resources
-from inferyard.platforms.identity import PreflightError
 
 TICKS = 134_090_000_000_000_123
 

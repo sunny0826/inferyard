@@ -10,7 +10,7 @@ import pytest
 
 from inferyard import cli
 from inferyard.application import memory_check
-from inferyard.contracts.memory_check import read_memory_check
+from inferyard.evidence.memory_check import read_memory_check
 from tests.unit.test_memory_check import app, observed, report
 
 

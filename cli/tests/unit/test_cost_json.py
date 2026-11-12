@@ -2,7 +2,8 @@
 
 import pytest
 
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError
 
 
 @pytest.mark.parametrize(

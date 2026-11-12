@@ -8,10 +8,12 @@ import unicodedata
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
+from inferyard.errors import ContractError
 from inferyard.provenance import tool_source_hash
 
 DEFINITION = "implementation-identity.v1"
 ROLES = ("measurement", "scoring", "presentation")
+LISTS_ROOT = "data/implementation-files/"
 VALIDATION_DEPENDENCIES = (
     "jsonschema",
     "attrs",
@@ -67,15 +69,16 @@ def dependency_versions(role):
 class IdentityContext:
     def __init__(self, *, root=None, source_hash=tool_source_hash):
         root = root or Path(__file__).parent
-        hashes, lists = {}, None
+        hashes, lists = {}, {}
         for path in sorted(root.rglob("*")):
             if path.suffix not in (".py", ".html", ".json"):
                 continue
             raw = path.read_bytes()
             name = path.relative_to(root).as_posix()
             hashes[name] = hashlib.sha256(raw).hexdigest()
-            if name == "data/implementation-files.json":
-                lists = json.loads(raw)
+            if name.startswith(LISTS_ROOT) and name.endswith(".json"):
+                role = name.removeprefix(LISTS_ROOT).removesuffix(".json")
+                lists[role] = json.loads(raw)
         self.source = source_hash(file_hashes=hashes)
         self.value = {"definition": DEFINITION}
         for role in ROLES:
@@ -88,9 +91,9 @@ class IdentityContext:
 
 def validate_identity(value):
     from inferyard.contracts.schemas_identity import IMPLEMENTATION_IDENTITY
-    from inferyard.contracts.validation import ContractError, _validate
+    from inferyard.contracts.validation import validate_value
 
-    _validate(value, IMPLEMENTATION_IDENTITY, "implementation_identity")
+    validate_value(value, IMPLEMENTATION_IDENTITY, "implementation_identity")
     for role in ROLES:
         entry = value[role]
         names = [row["path"] for row in entry["files"]]

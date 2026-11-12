@@ -5,10 +5,11 @@ import os
 from pathlib import Path
 from types import SimpleNamespace
 
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms import resources, resources_windows
+from inferyard.application.execution import execute_async
 from inferyard.runtime import batch_runner, trial_runner
 from tests.integration.test_batch_runner import batch
 from tests.integration.test_runner import scenario as runner_scenario
@@ -37,7 +38,7 @@ def test_windows_prism_batch_reaches_collector_and_seals_mock_requests(
     monkeypatch.setattr(batch_runner, "TrialDependencies", lambda **kwargs: deps)
     monkeypatch.setattr(batch_runner, "adapter_factory", lambda identifier: deps.adapter)
     # No dependencies argument: execute the actual Windows gate and collector factory.
-    code, result = asyncio.run(batch_runner.execute_async(request))
+    code, result = asyncio.run(execute_async(request))
     assert code == 0 and result.status == "finished"
     assert len(scenario[2]) == 24  # Three repetitions: probe/warmup/formal fixture protocol.
     for path in result.details["runs"]:

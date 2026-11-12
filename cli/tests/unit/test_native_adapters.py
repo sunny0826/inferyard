@@ -7,9 +7,8 @@ import pytest
 
 from inferyard.adapters.requests import request_body
 from inferyard.config.loader import load_config
-from inferyard.contracts.validation import ContractError, Document
-from inferyard.evidence.storage import EvidenceError
-from inferyard.platforms.identity import PreflightError
+from inferyard.contracts.validation import Document
+from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.registry import adapter_factory
 from tests.lab_service import LabService, lab_config
 from tests.native_service import NativeService

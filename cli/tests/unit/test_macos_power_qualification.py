@@ -4,8 +4,10 @@ import pytest
 
 from inferyard.analysis.environment import assess_environment
 from inferyard.analysis.environment_identity import MACOS_FIELDS, fields
-from inferyard.config.environment_binding import mismatches
-from inferyard.platforms.power_macos import assess, parse, valid
+from inferyard.contracts.environment_admission import mismatches
+from inferyard.errors import ContractError
+from inferyard.contracts.power_policy import valid_power_policy
+from inferyard.platforms.power_macos import assess, parse
 
 TEXT = "Battery Power:\n lowpowermode 1\nAC Power:\n lowpowermode 0\n"
 
@@ -37,9 +39,8 @@ def snapshots():
 
 def test_active_native_power_policy_does_not_invent_governor_or_high_power_support():
     power = parse(TEXT, True)
-    assert (
-        valid(power) and power["power_mode"] == "unsupported" and not power["power_mode_supported"]
-    )
+    assert valid_power_policy(power)
+    assert power["power_mode"] == "unsupported" and not power["power_mode_supported"]
     assert parse(TEXT, False)["low_power_mode"] == 1
     environment, conditions = snapshots()
     assert mismatches(conditions, environment) == []
@@ -84,7 +85,7 @@ def test_platform_and_frozen_policy_changes_remain_qualification_failures():
 
 def test_config_rejects_contradictory_power_mode_support(config_path):
     from inferyard.config.loader import load_config
-    from inferyard.contracts.validation import ContractError, Document
+    from inferyard.contracts.validation import Document
 
     config = load_config(config_path).config.to_dict()
     policy = parse(TEXT, True)

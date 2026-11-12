@@ -8,10 +8,13 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.config.engine_fit import digest, request_rows
-from inferyard.evidence.storage import EvidenceError, json_bytes
-from inferyard.reporting.engine_fit import compare, seal_run, verify
-from inferyard.reporting.engine_fit_metrics import observations
+from inferyard.config.engine_fit import request_rows
+from inferyard.contracts.json_digest import digest
+from inferyard.errors import EvidenceError, UnsupportedFormat
+from inferyard.contracts.validation import json_bytes
+from inferyard.analysis.engine_fit_seal import seal_run
+from inferyard.reporting.engine_fit import compare, verify
+from inferyard.analysis.engine_fit_metrics import observations
 
 
 @pytest.fixture
@@ -308,7 +311,6 @@ def test_html_is_escaped_and_versioned_rebuild_is_explicit(tmp_path, plan, versi
     (path / "manifest.json").write_bytes(json_bytes(manifest))
     _replace(path, "report.html", html.replace("引擎适配诊断", "unverified").encode())
     if version == 1:
-        from inferyard.evidence.formats import UnsupportedFormat
 
         with pytest.raises(UnsupportedFormat):
             verify(path)

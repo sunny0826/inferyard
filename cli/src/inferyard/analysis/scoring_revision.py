@@ -5,7 +5,7 @@ from pathlib import Path
 
 from inferyard.analysis import scoring as original
 from inferyard.contracts.validation import validate_document
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 
 VERSION = "phase2.v2"
 

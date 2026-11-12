@@ -4,7 +4,7 @@ import hashlib
 import re
 from importlib.resources import files
 
-from inferyard.adapters.engine_fit import FitTransportError, _idle_metrics, _json
+from inferyard.adapters.engine_fit import FitTransportError, _idle_metrics, parse_json_body
 from inferyard.adapters.engine_fit_common import common_service, observer_idle, observer_service
 
 FAMILIES = ("llama-cpp", "mlx-lm", "vllm", "sglang", "lmstudio")
@@ -27,7 +27,7 @@ def mlx_sources():
 
 
 def models(raw, served_model):
-    listing = _json(raw).get("data")
+    listing = parse_json_body(raw).get("data")
     if (
         not isinstance(listing, list)
         or len(listing) != 1

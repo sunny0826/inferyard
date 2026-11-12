@@ -3,7 +3,8 @@
 from importlib.resources import files
 
 from inferyard import SCHEMA_VERSION
-from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.errors import ContractError
 
 WINDOWS_BATCH_ADAPTERS = ("kvmem", "ninfer", "prism_llama_server_v1")
 
@@ -28,7 +29,8 @@ def catalogue(kind):
 
 
 def components():
-    from inferyard.analysis.scoring import CATEGORIES, SCORER_VERSION, scorer_hash
+    from inferyard.analysis.scoring import CATEGORIES, scorer_hash
+    from inferyard.contracts.scoring_version import SCORER_VERSION
 
     identity = scorer_hash()
     return {
@@ -209,7 +211,7 @@ def registered_score(case, answer, policy):
 
 
 def require_execution_support(plan, loaded):
-    from inferyard.analysis.scoring import SCORER_VERSION
+    from inferyard.contracts.scoring_version import SCORER_VERSION
 
     if plan["experiment"]["definition_versions"] != {
         "measurement": "phase2.v1",

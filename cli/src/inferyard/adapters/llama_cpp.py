@@ -6,7 +6,7 @@ The shared HTTP parser does not grant performance comparison qualification.
 """
 
 from inferyard.adapters.prism import PrismAdapter
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 
 BUILD = "b11146-7fe450e19"
 COMPONENT = "llama_cpp_b11146_v1"

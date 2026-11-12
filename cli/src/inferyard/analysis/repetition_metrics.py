@@ -2,8 +2,8 @@
 
 import math
 from statistics import median
+from inferyard.errors import EvidenceError
 
-from inferyard.evidence.storage import EvidenceError
 
 
 def repetition_metrics(plan, runs):

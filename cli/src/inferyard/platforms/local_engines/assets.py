@@ -2,8 +2,9 @@
 
 from pathlib import Path
 
-from inferyard.evidence.storage import json_bytes
-from inferyard.platforms.identity import PreflightError, hash_file
+from inferyard.errors import PreflightError
+from inferyard.contracts.validation import json_bytes
+from inferyard.platforms.identity import hash_file
 from inferyard.platforms.local_engines.installation import read_json, verify_installation
 from inferyard.platforms.local_engines.model_snapshot import snapshot as model_snapshot
 

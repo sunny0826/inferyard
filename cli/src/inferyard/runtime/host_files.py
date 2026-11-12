@@ -3,9 +3,9 @@
 import os
 import stat
 
-from inferyard.contracts.validation import ContractError, strict_json_loads
-from inferyard.evidence.storage import atomic_bytes, json_bytes
-from inferyard.platforms.identity import PreflightError
+from inferyard.contracts.validation import strict_json_loads, json_bytes
+from inferyard.errors import ContractError, PreflightError
+from inferyard.evidence.storage import atomic_bytes
 from inferyard.platforms.platform_io import is_reparse, open_nofollow
 
 MAX_BYTES = 1024 * 1024

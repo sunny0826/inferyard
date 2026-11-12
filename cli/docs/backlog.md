@@ -27,7 +27,7 @@
   已有错误后的异步更新仍保留焦点。首次报错的原生窗口表现与原因待核查，本轮未改产品代码。
 - Studio 真实 CLI／假引擎链已隔离测试主机锁；双题包 run、report、verify 均成功，
   后续 `progress` 读取 34.07 MiB 报告索引却被 preparation JSON 的 16 MiB 上限拒绝。
-  需核对[报告读取器](../src/inferyard/config/workspace_progress.py)与报告契约，
+  需核对[报告读取器](../src/inferyard/application/workspace_progress.py)与报告契约，
   不通过缩小默认题包或放宽所有 preparation 输入限制规避；本轮未改生产读取逻辑。
 - 测试精简后的完整原生 UI 验收两次未通过，现场观察到其他应用／系统设置窗口干扰；
   具体失败原因尚未完全确认。用户已选择暂缓，待桌面可独占时重跑 `mise run test:studio-ui:full`。

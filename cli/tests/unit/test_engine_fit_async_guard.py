@@ -7,7 +7,7 @@ import threading
 import pytest
 
 from inferyard.adapters.engine_fit import FitTransportError
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.runtime.engine_fit import _guarded_completion
 
 

@@ -7,9 +7,8 @@ from pathlib import PurePosixPath
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
 from inferyard.contracts.local_environment import validate_installation_environment
 from inferyard.contracts.schemas_common import HASH, LABEL, NAT, array, obj
-from inferyard.contracts.validation import ContractError, _validate
-from inferyard.evidence.storage import json_bytes
-from inferyard.platforms.identity import PreflightError
+from inferyard.contracts.validation import validate_value, json_bytes
+from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.local_engines.binding_schema import validate as validate_binding
 from inferyard.platforms.local_engines.runtime_schema import RUNTIME
 from inferyard.platforms.local_engines.startup import validate_arguments
@@ -29,7 +28,7 @@ def validate_frozen_identity(config, local_identity, *, files):
         and set(local_identity) == {"runtime", "binding", "model_assets"}
     )
     runtime, binding, manifest = (local_identity[k] for k in ("runtime", "binding", "model_assets"))
-    _validate(runtime, RUNTIME, "identity.local_engine.runtime")
+    validate_value(runtime, RUNTIME, "identity.local_engine.runtime")
     try:
         service = validate_binding(binding, config)
     except PreflightError as exc:
@@ -95,7 +94,7 @@ def validate_frozen_identity(config, local_identity, *, files):
     properties = {"kind": LABEL, "path": LABEL, "sha256": HASH, "files": array(_ENTRY, 1)}
     if model["kind"] == "directory":
         properties["definition"] = {"type": "string", "const": "model-assets.v2"}
-    _validate(manifest, obj(properties), "identity.local_engine.model_assets")
+    validate_value(manifest, obj(properties), "identity.local_engine.model_assets")
     _require(manifest["kind"] == model["kind"] and manifest["path"] == model["local_path"])
     _require(
         manifest["sha256"]

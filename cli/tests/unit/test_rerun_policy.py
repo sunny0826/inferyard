@@ -6,9 +6,9 @@ import pytest
 
 from inferyard.analysis.comparison import compare_trials
 from inferyard.application.types import CommandRequest
-from inferyard.evidence.ledger import read_trial
+from inferyard.errors import PreflightError
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime import runner
 from tests.helpers import fixture_run
 from tests.legacy_journal import LegacyJournal

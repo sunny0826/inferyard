@@ -4,7 +4,7 @@ from pathlib import Path
 
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES, LOCAL_ADAPTER, LOCAL_CONFIG
 from inferyard.contracts.local_environment import validate_root_environment
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 def require(condition, field, reason):

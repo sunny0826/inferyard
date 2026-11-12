@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_macos_listener as listeners
-from inferyard.platforms.identity import PreflightError
 
 
 @pytest.fixture

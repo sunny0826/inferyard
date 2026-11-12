@@ -11,8 +11,8 @@ from statistics import median
 
 from inferyard.contracts.schemas_extensions import TOTAL_OBSERVER_CONTROL as SPEC
 from inferyard.contracts.schemas_extensions import TOTAL_TRIAL_CONTROL
-from inferyard.contracts.validation import _validate
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.contracts.validation import validate_value, json_bytes
+from inferyard.errors import EvidenceError
 
 ORDER = ("off", "on", "on", "off")
 COVERAGE = (
@@ -31,7 +31,7 @@ COVERAGE = (
 
 
 def validate_spec(spec):
-    _validate(
+    validate_value(
         spec,
         TOTAL_TRIAL_CONTROL if spec.get("definition") == "total_observer_control.v2" else SPEC,
         "total_observer_control",
@@ -78,12 +78,12 @@ def assess_total(spec, arms, guard, *, evidence_kind="fixture"):
     if evidence_kind == "live":
         required = {"platform", "kernel", "cpu_model", "ac_online", "governor", "epp"}
         from inferyard.analysis.environment_identity import MACOS_FIELDS
-        from inferyard.platforms.power_macos import valid
+        from inferyard.contracts.power_policy import valid_power_policy
 
         if any(
             not isinstance(e, dict)
             or not (
-                set(MACOS_FIELDS) <= set(e) and valid(e.get("macos_power_policy"))
+                set(MACOS_FIELDS) <= set(e) and valid_power_policy(e.get("macos_power_policy"))
                 if e.get("platform") == "Darwin"
                 else required <= set(e)
             )

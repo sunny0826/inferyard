@@ -3,7 +3,8 @@
 from collections import Counter
 
 from inferyard.analysis.aggregate import rate
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError
 
 
 def _expected_counts(case):

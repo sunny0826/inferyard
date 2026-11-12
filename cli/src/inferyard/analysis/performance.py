@@ -3,7 +3,7 @@
 import math
 from collections import Counter
 
-from inferyard.analysis.engine_timing import engine_rates
+from inferyard.contracts.engine_timing import engine_rates
 
 
 def distribution(values, excluded=0):

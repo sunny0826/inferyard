@@ -4,8 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.config.loader import load_config, validate_endpoint
-from inferyard.contracts.validation import ContractError
+from inferyard.config.loader import load_config
+from inferyard.contracts.endpoint import validate_endpoint
+from inferyard.errors import ContractError
 
 
 @pytest.mark.parametrize(

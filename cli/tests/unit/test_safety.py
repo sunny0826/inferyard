@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.runtime.safety import ExternalCpu, SafetyGuard, monitor
 
 

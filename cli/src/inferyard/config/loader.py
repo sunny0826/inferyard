@@ -2,20 +2,15 @@
 
 from __future__ import annotations
 
-import ipaddress
 import tomllib
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlsplit
 
+from inferyard.contracts.endpoint import validate_endpoint
 from inferyard.contracts.schemas import CONFIG_DEFAULTS
-from inferyard.contracts.validation import (
-    ContractError,
-    Document,
-    strict_json_loads,
-    validate_document,
-)
+from inferyard.contracts.validation import Document, strict_json_loads, validate_document
+from inferyard.errors import ContractError
 
 MAX_DOCUMENT_BYTES = 16 * 1024 * 1024
 PATH_FIELDS = (
@@ -56,34 +51,6 @@ def read_document(path: Path) -> bytes:
     if len(raw) > MAX_DOCUMENT_BYTES:
         raise ContractError("document", "exceeds size limit")
     return raw
-
-
-def validate_endpoint(url: str) -> None:
-    try:
-        parts = urlsplit(url)
-        host = parts.hostname
-        port = parts.port
-        if (
-            parts.scheme not in ("http", "https")
-            or host is None
-            or parts.username is not None
-            or parts.password is not None
-            or parts.query
-            or parts.fragment
-            or "?" in url
-            or "#" in url
-            or any(character.isspace() for character in url)
-            or parts.path not in ("", "/")
-            or port == 0
-        ):
-            raise ValueError
-        # A future transport must pin localhost resolution to loopback too.
-        if host != "localhost" and not ipaddress.ip_address(host).is_loopback:
-            raise ValueError
-    except ValueError as exc:
-        raise ContractError(
-            "config.endpoint.url", "requires a loopback origin without credentials"
-        ) from exc
 
 
 @dataclass(frozen=True, slots=True)

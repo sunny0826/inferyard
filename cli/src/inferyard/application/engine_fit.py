@@ -1,8 +1,7 @@
 """Lazy application dispatch for independent engine adaptation diagnostics."""
 
 from inferyard.application.types import CommandResult
-from inferyard.contracts.validation import ContractError
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import ContractError, PreflightError
 
 
 def execute(request):
@@ -22,10 +21,19 @@ def execute(request):
         from inferyard.runtime.engine_fit import execute as run
 
         try:
-            return run(request)
+            outcome = run(request)
         except PreflightError as exc:
             # PreflightError contains fixed categories only, never OS/service response text.
             return 2, CommandResult(command, "blocked", limitations=(str(exc),))
+        return outcome.code, CommandResult(
+            command,
+            "completed" if outcome.code == 0 else "stopped",
+            outcome.run["completeness"],
+            run_id=outcome.run["run_id"],
+            evidence_dir=str(request.out),
+            limitations=tuple(outcome.run["limitations"]),
+            details=outcome.details,
+        )
     if command == "engine-fit compare":
         from inferyard.reporting.engine_fit import compare
 

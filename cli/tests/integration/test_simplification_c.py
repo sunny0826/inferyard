@@ -8,12 +8,13 @@ from pathlib import Path
 import pytest
 
 from inferyard.application.types import CommandRequest
-from inferyard.contracts.validation import Document
+from inferyard.application.execution import execute_async
+from inferyard.contracts.validation import Document, json_bytes
+from inferyard.errors import PreflightError
 from inferyard.evidence import storage
 from inferyard.evidence.journal import TrialJournal
-from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import json_bytes, read_json, read_jsonl
-from inferyard.platforms.identity import PreflightError
+from inferyard.analysis.ledger import read_trial
+from inferyard.evidence.storage import read_json, read_jsonl
 from inferyard.runtime import runner
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.layout_mutations import change_input
@@ -41,7 +42,7 @@ def test_score_append_failure_preserves_durable_completed_terminal(scenario, mon
         return original(self, kind, *args, **kwargs)
 
     monkeypatch.setattr(TrialJournal, "event", event)
-    code, result = asyncio.run(runner.execute_async(request, deps))
+    code, result = asyncio.run(execute_async(request, deps))
     assert code == 4 and len(seen) == 1
     data = read_trial(Path(result.evidence_dir))
     assert data["summary"]["counts"]["completed"] == 1
@@ -57,7 +58,7 @@ def test_scoped_and_legacy_rerun_accept_new_service(scenario, monkeypatch):
     request = replace(
         request, config=replace(request.config, config=Document.parse("config", config))
     )
-    code, result = asyncio.run(runner.execute_async(request, deps))
+    code, result = asyncio.run(execute_async(request, deps))
     assert code == 0
     root = Path(result.evidence_dir)
     endpoint = config["endpoint"]
@@ -89,13 +90,13 @@ def test_batch_continuation_dispatches_scoped_and_legacy_identity(scenario, tmp_
     from tests.integration.test_batch_runner import batch
 
     request, deps = batch(tmp_path, scenario)
-    code, result = asyncio.run(batch_runner.execute_async(request, deps))
+    code, result = asyncio.run(execute_async(request, deps))
     assert code == 0 and len(result.details["runs"]) == 3
     context = IdentityContext()
     context.source = "b" * 64  # e.g. help/HTML changed; execution roles stay the same.
     monkeypatch.setattr(batch_runner, "IdentityContext", lambda **kw: context)
     before = len(scenario[2])
-    code, repeated = asyncio.run(batch_runner.execute_async(request, deps))
+    code, repeated = asyncio.run(execute_async(request, deps))
     assert code == 0 and len(scenario[2]) == before
     assert len(repeated.details["runs"]) == 3
     meta_path = request.output_root / "batch.json"
@@ -103,5 +104,5 @@ def test_batch_continuation_dispatches_scoped_and_legacy_identity(scenario, tmp_
     metadata.pop("implementation_identity")
     meta_path.write_bytes(json_bytes(metadata))
     with pytest.raises(storage.EvidenceError, match="batch_identity_or_tool_changed"):
-        asyncio.run(batch_runner.execute_async(request, deps))
+        asyncio.run(execute_async(request, deps))
     assert len(scenario[2]) == before

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.evidence.lineage_files import verify_file, verify_lineage_files
 from tests.integration.test_lineage_records import encoded, records
 from tests.unit.test_model_lineage import lineage

@@ -2,7 +2,7 @@ import hashlib
 
 import pytest
 
-from inferyard.evidence.template_identity import (
+from inferyard.contracts.template_identity import (
     PRISM_BUILD,
     PRISM_TEMPLATE_PROFILE,
     matches_template,

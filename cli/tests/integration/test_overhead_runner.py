@@ -2,7 +2,9 @@ import asyncio
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
+from inferyard.errors import EvidenceError
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.resources import resource_collector_id
 from inferyard.runtime.overhead_runner import read_overhead, run_overhead
@@ -223,10 +225,10 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
     deps.environment = lambda **kwargs: deepcopy(snapshot)
     monkeypatch.setattr("inferyard.platforms.telemetry.environment_snapshot", deps.environment)
     monkeypatch.setattr(
-        "inferyard.runtime.environment_schedule.environment_snapshot", deps.environment
+        "inferyard.platforms.environment_schedule.environment_snapshot", deps.environment
     )
     monkeypatch.setattr(
-        "inferyard.runtime.boundary_observer.environment_snapshot", deps.environment
+        "inferyard.platforms.boundary_observer.environment_snapshot", deps.environment
     )
 
     def idle_cpu(pid, ticks, boot, hz, phase, request, clock, root=None):
@@ -246,8 +248,8 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             "missing_reason": None,
         }
 
-    monkeypatch.setattr("inferyard.runtime.environment_observer.capture_external_cpu", idle_cpu)
-    monkeypatch.setattr("inferyard.runtime.boundary_observer.capture", idle_cpu)
+    monkeypatch.setattr("inferyard.platforms.environment_observer.capture_external_cpu", idle_cpu)
+    monkeypatch.setattr("inferyard.platforms.boundary_observer.capture", idle_cpu)
     if mode == "engine_rates":
         scenario[3]["timings"] = {
             "cache_n": 0,
@@ -283,7 +285,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
     assert all(row["eligible"] for row in result["environment_binding"]["runs"])
     assert not result["performance_comparison_eligible"]
     if mode in ("boundary", "first_events", "engine_rates", "block_gaps", "resources"):
-        from inferyard.evidence.ledger import read_trial
+        from inferyard.analysis.ledger import read_trial
         from inferyard.evidence.storage import read_jsonl
 
         for arm in trials:
@@ -299,7 +301,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             if arm["mode"] == "off":
                 assert not data["samples"]
                 assert not (path / "environment.jsonl").read_text()
-        from inferyard.evidence.total_applicability import load_performance_evidence_v3
+        from inferyard.reporting.total_applicability import load_performance_evidence_v3
         from inferyard.platforms.resources import ResourceSampler
 
         # An ABBA arm is not an independent subsequent target.
@@ -319,7 +321,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         # Isolate incremental per-metric gates in this synthetic fixture.
         # The actual full-trial path and missing-proof rejection have separate regressions.
         monkeypatch.setattr(
-            "inferyard.evidence.total_applicability.load_total_applicability",
+            "inferyard.reporting.total_applicability.load_total_applicability",
             lambda *args, **kwargs: {"eligible": True, "reasons": [], "tolerance_ratio": 0.99},
         )
         # Only this synthetic test bypasses human corpus admission.
@@ -369,7 +371,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             assert {"L01", "L02"} <= {r["metric_id"] for r in eligible}
         out = output / "performance-comparison"
         from inferyard.application.types import CommandRequest
-        from inferyard.reporting.comparison_report import execute as write_comparison
+        from inferyard.application.reporting import execute as write_comparison
 
         write_comparison(
             CommandRequest(
@@ -399,7 +401,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             write_report(targets[:1], output / "wrong-scope", comparison_path=out)
         with pytest.raises(EvidenceError, match="inside_original_evidence"):
             write_report(targets, root / "forbidden-report", comparison_path=out)
-        from inferyard.analysis.candidate_filter import filter_candidates
+        from inferyard.application.candidates import filter_candidates
 
         metric = next(
             m
@@ -441,7 +443,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         if mode == "resources":
             aggregate = filtered["candidates"][0]["constraints"][1]["aggregation"]
             assert aggregate["planned_requests"] == 3
-        from inferyard.analysis.candidate_filter import execute as execute_filter
+        from inferyard.application.candidates import execute as execute_filter
         from inferyard.application.types import CommandRequest
 
         spec_file = output / "criteria.json"

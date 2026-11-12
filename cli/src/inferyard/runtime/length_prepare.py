@@ -4,20 +4,14 @@ import asyncio
 import os
 from dataclasses import asdict
 
-from inferyard.application.types import CommandResult
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    read_json,
-    sha256_file,
-)
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import EvidenceError, PreflightError
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, new_output, read_json, sha256_file
 from inferyard.provenance import tool_source_hash
 from inferyard.registry import adapter_factory
-from inferyard.reporting.report_common import _new_output
 from inferyard.runtime.batch_state import bind_service
-from inferyard.runtime.length_builder import fit_length, validate_spec
+from inferyard.contracts.length_spec import validate_spec
+from inferyard.runtime.length_builder import fit_length
 from inferyard.runtime.runner import Dependencies, transport_config
 from inferyard.runtime.template_tokens import count_template
 
@@ -52,7 +46,7 @@ async def prepare(request, dependencies=None):
                 identity["template_identity"] = adapter.template_identity
             if not await adapter.wait_idle(config["execution"]["idle_wait_seconds"]):
                 raise PreflightError("length_preparation_service_not_idle")
-            _new_output(request.out, [request.length_spec, request.config.source])
+            new_output(request.out, [request.length_spec, request.config.source])
             for name, value in (
                 ("spec.json", spec),
                 ("config.frozen.json", config),
@@ -99,17 +93,6 @@ async def prepare(request, dependencies=None):
                 "files": {p.name: sha256_file(p) for p in request.out.iterdir() if p.is_file()}
             }
             atomic_bytes(request.out / "preparation-manifest.json", json_bytes(manifest))
-            return 0 if result["status"] == "matched" else 3, CommandResult(
-                request.command,
-                result["status"],
-                "complete" if prompt is not None else "incomplete",
-                evidence_dir=str(request.out),
-                limitations=tuple(result["limitations"]),
-                details=result,
-            )
+            return result, prompt is not None
         finally:
             await adapter.close()
-
-
-def execute(request):
-    return asyncio.run(prepare(request))

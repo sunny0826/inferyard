@@ -3,7 +3,7 @@
 from copy import deepcopy
 from pathlib import Path
 
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.analysis.comparison_history import comparison_history_stop
 from inferyard.analysis.engine_comparison_v2 import evaluate_comparison
 from tests.unit.test_engine_comparison_v2 import plan_with_slots, synthetic_runs

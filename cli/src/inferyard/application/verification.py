@@ -5,9 +5,10 @@ from importlib import import_module
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
-from inferyard.application.types import CommandRequest, CommandResult, VerificationOptions
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.storage import EvidenceError, local_file, read_json
+from inferyard.application.types import CommandRequest, CommandResult
+from inferyard.errors import ContractError, EvidenceError
+from inferyard.evidence.storage import local_file, read_json
+from inferyard.evidence.verification_options import VerificationOptions
 
 _MARKERS = {
     "overhead": {"result.json"},
@@ -22,18 +23,31 @@ _MARKERS = {
 }
 _HANDLERS = {
     "overhead": ("inferyard.application.overhead", "overhead-check"),
-    "repeat": ("inferyard.reporting.repetition_report", "repeat-check"),
-    "rescore": ("inferyard.reporting.rescore", "rescore-check"),
-    "export": ("inferyard.reporting.export", "export-check"),
-    "public": ("inferyard.reporting.public_package", "public-check"),
-    "report": ("inferyard.reporting.report", "report-check"),
-    "comparison": ("inferyard.reporting.comparison_report", "compare-check"),
+    "repeat": ("inferyard.application.reporting", "repeat-check"),
+    "rescore": ("inferyard.application.reporting", "rescore-check"),
+    "export": ("inferyard.application.reporting", "export-check"),
+    "public": ("inferyard.application.reporting", "public-check"),
+    "report": ("inferyard.application.reporting", "report-check"),
+    "comparison": ("inferyard.application.reporting", "compare-check"),
     "engine-comparison": (
-        "inferyard.reporting.engine_comparison_v2_report",
+        "inferyard.application.reporting",
         "engine-compare-check",
     ),
-    "extension": ("inferyard.extensions.workflow", "extension-check"),
+    "extension": ("inferyard.application.extensions", "extension-check"),
 }
+
+
+def verification_options(request: CommandRequest) -> VerificationOptions:
+    roots = []
+    for entry in request.source_roots or ():
+        old, separator, new = entry.partition("=")
+        if not separator or not old or not new:
+            raise ContractError("source_root", "expected OLD=NEW")
+        pair = (Path(old).resolve(), Path(new).resolve())
+        if any(pair[0].is_relative_to(p[0]) or p[0].is_relative_to(pair[0]) for p in roots):
+            raise ContractError("source_root", "overlapping source roots")
+        roots.append(pair)
+    return VerificationOptions(tuple(roots), request.rerender)
 
 
 def _object(root: Path, name: str) -> dict:
@@ -151,7 +165,7 @@ def _public(request: CommandRequest) -> tuple[int, CommandResult]:
             return code, result
         source_result = result
     # Source projection must fail before a declared configuration can match.
-    module = import_module("inferyard.config.public_config_check")
+    module = import_module("inferyard.application.public_plan")
     code, result = module.execute(replace(request, command="public-config-check"))
     if source_result is not None:
         result = replace(
@@ -187,7 +201,7 @@ def execute(request: CommandRequest) -> tuple[int, CommandResult]:
         "engine-fit",
     }:
         raise ContractError("verify.rerender", "only rendered artifacts accept rerender")
-    options = VerificationOptions.from_request(request)
+    options = verification_options(request)
     try:
         if kinds <= {"run", "batch", "plan", "engine-fit"}:
             from inferyard.application.raw_verification import execute as raw

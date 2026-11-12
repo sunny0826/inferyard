@@ -11,13 +11,14 @@ from collections import Counter
 
 from observer_read_costs import union_ns
 
+from inferyard.errors import EvidenceError
 from inferyard.evidence.journal import TrialJournal
-from inferyard.evidence.storage import EvidenceError, EvidenceStore
+from inferyard.evidence.storage import EvidenceStore
 from inferyard.platforms import identity
 from inferyard.platforms.resources_linux import ResourceSampler
-from inferyard.runtime import environment_schedule
-from inferyard.runtime.boundary_observer import BoundaryGuard
-from inferyard.runtime.environment_observer import EnvironmentObserver
+from inferyard.platforms import environment_schedule
+from inferyard.platforms.boundary_observer import BoundaryGuard
+from inferyard.platforms.environment_observer import EnvironmentObserver
 from inferyard.runtime.safety_trace import SafetyTrace
 
 

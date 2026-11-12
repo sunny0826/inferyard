@@ -30,7 +30,7 @@ def metric_index(data):
 
 
 def performance_comparison(left, right, comparison, evidence, *, definition="phase2.v3"):
-    from inferyard.evidence.formats import require_version
+    from inferyard.contracts.format_versions import require_version
 
     require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
     reasons = list(comparison["blockers"])
@@ -111,7 +111,7 @@ def performance_comparison(left, right, comparison, evidence, *, definition="pha
                 local.append("first_event_overhead_contract_mismatch")
         elif code in ("L06", "L07") and engine_rate_mode:
             from inferyard.analysis.engine_overhead import pair_reasons
-            from inferyard.analysis.engine_timing import DEFINITION
+            from inferyard.contracts.engine_timing import DEFINITION
 
             cohorts = [
                 [

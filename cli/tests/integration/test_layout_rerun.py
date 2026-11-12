@@ -8,11 +8,11 @@ from pathlib import Path
 import pytest
 
 from inferyard.application.types import CommandRequest
-from inferyard.contracts.validation import Document
-from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import json_bytes
+from inferyard.application.execution import execute_async
+from inferyard.contracts.validation import Document, json_bytes
+from inferyard.errors import PreflightError
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime import runner
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.unit.test_layout_surfaces import tree_bytes
@@ -55,7 +55,7 @@ def test_container_rerun_writes_actual_source_or_preserves_missing(
         )
         expected = raw
     request = replace(request, config=loaded)
-    code, original = asyncio.run(runner.execute_async(request, deps))
+    code, original = asyncio.run(execute_async(request, deps))
     assert code == 0, original
     old = Path(original.evidence_dir)
     container = old
@@ -67,7 +67,7 @@ def test_container_rerun_writes_actual_source_or_preserves_missing(
     rerun = CommandRequest(
         "run", from_run=container, server_pid=os.getpid(), endpoint_url="http://127.0.0.1:9090"
     )
-    code, result = asyncio.run(runner.execute_async(rerun, deps))
+    code, result = asyncio.run(execute_async(rerun, deps))
     assert code == 0, result
     out = Path(result.evidence_dir)
     data = read_trial(out)
@@ -109,7 +109,7 @@ def test_invalid_memory_source_is_rejected_before_creating_run(scenario, data, m
     )
     request = replace(request, config=loaded)
     with pytest.raises(PreflightError, match=reason):
-        asyncio.run(runner.execute_async(request, deps))
+        asyncio.run(execute_async(request, deps))
     assert not Path(loaded.config.to_dict()["output"]["root"]).exists()
     assert not calls
 
@@ -129,7 +129,7 @@ def test_memory_source_uses_existing_text_snapshot_redaction(scenario, monkeypat
         source_missing_reason=None,
         config=Document.parse("config", config),
     )
-    code, result = asyncio.run(runner.execute_async(replace(request, config=loaded), deps))
+    code, result = asyncio.run(execute_async(replace(request, config=loaded), deps))
     assert code == 0, result
     out = Path(result.evidence_dir)
     assert TrialEvidence(out).configuration_source()["data"] == raw.replace(

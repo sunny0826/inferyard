@@ -14,10 +14,11 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from inferyard.config.environment_binding import mismatches
+from inferyard.contracts.environment_admission import mismatches
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.planning import write_plan
-from inferyard.evidence.storage import atomic_bytes, json_bytes, read_json, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, read_json, sha256_file
 from inferyard.platforms.identity import environment_snapshot, process_start_ticks
 from inferyard.platforms.sensors_linux import LinuxSensors
 from inferyard.reporting.comparison_report import build_comparison, verify_comparison

@@ -26,7 +26,7 @@
 因此同一计划可容纳不同引擎家族和不同服务进程。
 
 **事实**：Journal 将完整 `plan` 对象和 `run.plan_sha256` 写入 `inputs.json`；读取时核对该哈希、experiment 和 trial
-（`cli/src/inferyard/evidence/journal.py:122-173`，`evidence/ledger.py:74-122`）。
+（`cli/src/inferyard/evidence/journal.py`，`cli/src/inferyard/analysis/ledger.py`）。
 真实样本的 core/pelican 两个 run 共享同一双 trial plan 哈希，而各自 trial 不同
 （`.tools/engine-compare-mlx-20261106/blocks-e1/block1-llama-cpp/plan/plan.json` 及其 `batch/runs/*/inputs.json`）。
 
@@ -50,7 +50,7 @@ C 只能在 Studio 受控流程中预先固定范围，离线核验不能排除�
 CLI 提供生成子命令，复用 `compile_plan` / `write_plan`；Studio 收集两侧候选后调用 CLI，不在 Go 中拼 JSON。
 默认冻结 `zh-core` 与 `zh-svg-pelican`，单题包仅在用户显式固定时允许。
 计划包含全部 config、bundle、缓存声明、case 顺序、预算和确定 trial ID；`plan_sha256` 继续按现有 canonical JSON 计算
-（`cli/src/inferyard/config/plan_math.py:7-13`）。
+（`cli/src/inferyard/contracts/plan_math.py:7-13`）。
 
 CLI 预先生成计划 → 操作者按槽位执行 → CLI 派生仍是合法手动路径；新规则只阻断未预注册的事后比较。
 执行使用一个 batch，`run --plan` 逐槽位调用并显式 handoff。`compare-engines` 改为接收完整 plan 与 batch，
@@ -133,7 +133,7 @@ T6/T7 覆盖取消清理、绑定/替换失败、原子恢复和模拟一致性�
   单份 12 槽位计划尚未生成与核验，现有样本只支持既有机制判断。
 - **未验证**：`require_fresh_process=true` 的 Studio 全链路和逐槽位服务替换未做真实引擎验收。
 - **事实（文档与源码分歧）**：CLI 帮助仍称 same-GGUF，代码已支持 llama-cpp 对 mlx-lm 跨格式
-  （`cli/src/inferyard/cli/commands/comparison.py:16-18`，`analysis/engine_comparison.py:9-13`）。
+  （`cli/src/inferyard/cli/commands/comparison.py:16-18`，`contracts/engine_comparison.py:9-13`）。
 - **事实（文档状态分歧）**：决策索引称 ADR 056“实施未开始”，实施计划和 backlog 已记录实现及真机结果
   （`cli/docs/decisions/README.md:53`，`plans/engine-comparison.md:42-66`，`backlog/engine-comparison.md:18-26`）。
 

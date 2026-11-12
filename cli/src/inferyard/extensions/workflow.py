@@ -5,14 +5,10 @@ import hashlib
 import os
 from copy import deepcopy
 
-from inferyard.evidence.storage import (
-    EvidenceError,
-    Redactor,
-    atomic_bytes,
-    json_bytes,
-    read_json,
-    sha256_file,
-)
+from inferyard.errors import EvidenceError, PreflightError
+from inferyard.contracts.validation import json_bytes
+from inferyard.contracts.redaction import Redactor
+from inferyard.evidence.storage import atomic_bytes, read_json, sha256_file
 from inferyard.extensions.client_capacity import ClientCapacity
 from inferyard.extensions.closed_concurrency import run_closed
 from inferyard.extensions.closed_concurrency import validate_spec as validate_closed
@@ -29,7 +25,7 @@ from inferyard.extensions.native_tools import run_tool_case
 from inferyard.extensions.native_tools import validate_spec as validate_tools
 from inferyard.extensions.total_control_runtime import execute_total
 from inferyard.extensions.total_observer_control import validate_spec as validate_total
-from inferyard.platforms.identity import PreflightError, static_preflight
+from inferyard.platforms.identity import static_preflight
 from inferyard.platforms.resources import ResourceSampler
 from inferyard.provenance import tool_source_hash
 from inferyard.runtime.lock import HostLock
@@ -328,36 +324,3 @@ async def live(plan, loaded, out, *, identity_context=None):
                 if not unknown:
                     lock.clean()
             store.close()
-
-
-def execute(request):
-    from inferyard.application.types import CommandResult
-
-    if request.command == "extension-check":
-        summary = verify_packet(request.run)
-        path, status = request.run, "verified"
-    elif request.command == "extension-freeze":
-        plan = freeze(read_json(request.extension_spec), request.config, request.out)
-        return 0, CommandResult(
-            request.command, "frozen", "complete", evidence_dir=str(request.out), details=plan
-        )
-    elif request.command == "extension-replay":
-        packet = read_json(request.extension_spec)
-        if packet.get("evidence_kind") != "fixture":
-            raise EvidenceError("offline_import_cannot_grant_live_qualification")
-        path, summary = save_packet(request.out, packet)
-        status = "software_verified"
-    else:
-        from inferyard.implementation_identity import IdentityContext
-
-        identity_context = IdentityContext(source_hash=tool_source_hash)
-        plan = read_plan(
-            request.extension_spec, request.config, source_identity=identity_context.source
-        )
-        path, summary = asyncio.run(
-            live(plan, request.config, request.out, identity_context=identity_context)
-        )
-        status = "executed"
-    return 0, CommandResult(
-        request.command, status, "complete", evidence_dir=str(path), details=summary
-    )

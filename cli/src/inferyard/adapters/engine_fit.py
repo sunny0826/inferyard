@@ -22,8 +22,9 @@ from inferyard.adapters.engine_fit_common import (
     observer_idle,
     observer_service,
 )
-from inferyard.contracts.validation import ContractError, strict_json_loads
-from inferyard.platforms.identity import PreflightError, resolve_loopback_origin
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, PreflightError
+from inferyard.platforms.identity import resolve_loopback_origin
 
 MAX_RESPONSE_BYTES = 8 * 1024**2
 INSPECTION_TIMEOUT_SECONDS = 10.0
@@ -48,7 +49,7 @@ class FitTransportError(RuntimeError):
         super().__init__(reason)
 
 
-def _json(text: str) -> dict:
+def parse_json_body(text: str) -> dict:
     try:
         value = strict_json_loads(text)
         pending = [value]
@@ -147,7 +148,7 @@ class _StreamState:
                 raise FitTransportError("missing_finish_reason")
             self.done = True
             return
-        event = _json(data)
+        event = parse_json_body(data)
         usage = event.get("usage")
         if usage is not None:
             if not isinstance(usage, dict):
@@ -342,7 +343,7 @@ class FitClient:
             text = body.decode("utf-8")
         except UnicodeError:
             raise FitTransportError("invalid_utf8") from None
-        return _json(text) if as_json else text
+        return parse_json_body(text) if as_json else text
 
     async def inspect(self) -> dict:
         listing = await self._read("/v1/models")

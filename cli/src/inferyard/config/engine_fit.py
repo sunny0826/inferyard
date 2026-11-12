@@ -1,15 +1,20 @@
 """Frozen diagnostic plans; independent of the formal single-file model contract."""
 
-import hashlib
 import math
 import re
 from pathlib import PurePosixPath, PureWindowsPath
 
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.storage import atomic_bytes, json_bytes, read_json
+from inferyard.contracts.engine_profiles import (
+    DIAGNOSTIC_ENGINES,
+    LEGACY_DIAGNOSTIC_ENGINES,
+)
+from inferyard.contracts.json_digest import digest
+from inferyard.contracts.validation import json_bytes
+from inferyard.errors import ContractError, UnsupportedFormat
+from inferyard.evidence.storage import atomic_bytes, read_json
 
-LEGACY_ENGINES = ("vllm", "sglang")
-ENGINES = (*LEGACY_ENGINES, "llama-cpp", "mlx-lm", "lmstudio", "ollama")
+LEGACY_ENGINES = LEGACY_DIAGNOSTIC_ENGINES
+ENGINES = DIAGNOSTIC_ENGINES
 DEFAULT_CASES = [
     {"id": "arithmetic", "prompt": "What is 17 + 25? Reply with only the integer."},
     {"id": "json", "prompt": 'Return only valid JSON with key "status" and value "ok".'},
@@ -42,10 +47,6 @@ def _override_reason(value, field="temperature_stop_override_reason"):
         raise ContractError("engine_fit." + field, "invalid diagnostic input") from exc
 
 
-def digest(value):
-    return hashlib.sha256(json_bytes(value)).hexdigest()
-
-
 def validate_cases(cases):
     _require(isinstance(cases, list) and 1 <= len(cases) <= 1000, "cases")
     identifiers = []
@@ -71,7 +72,8 @@ def validate_plan(plan):
         "request_count max_request_wall_seconds",
         "plan",
     )
-    from inferyard.evidence.formats import require_core, require_version
+    from inferyard.contracts.format_versions import require_version
+    from inferyard.evidence.formats import require_core
 
     _require(
         _sha(plan["plan_id"])
@@ -98,7 +100,6 @@ def validate_plan(plan):
     model = plan["model"]
     model_keys = "path sha256 files kind" if modern else "path sha256 files"
     if modern and model.get("kind") == "directory" and "definition" not in model:
-        from inferyard.evidence.formats import UnsupportedFormat
 
         raise UnsupportedFormat("model-assets", "unversioned", ("model-assets.v2",))
     if "definition" in model:
@@ -212,7 +213,7 @@ def request_rows(plan):
 
 
 def prepare(request):
-    from inferyard.config.engine_fit_assets import model_asset_manifest
+    from inferyard.platforms.model_asset_manifest import model_asset_manifest
     from inferyard.platforms.engine_fit import host_identity, model_manifest
 
     _require(not request.out.exists() and not request.out.is_symlink(), "out")

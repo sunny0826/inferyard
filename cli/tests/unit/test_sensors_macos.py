@@ -2,6 +2,7 @@ import struct
 
 import pytest
 
+from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.sensors_macos import MacSensors
 from inferyard.platforms.smc_macos import SMCError
 from inferyard.runtime.safety import SafetyGuard
@@ -63,7 +64,6 @@ def test_unknown_encoding_and_connection_failure_do_not_fabricate_zero():
 
 
 def test_smc_temperature_still_enforces_90_degree_stop():
-    from inferyard.platforms.identity import PreflightError
 
     source = FakeSMC()
     sensor = MacSensors(factory=lambda: source)
@@ -84,7 +84,7 @@ def test_smc_temperature_still_enforces_90_degree_stop():
 
 
 def test_wire_contract_preserves_native_float_and_rejects_linux_float():
-    from inferyard.contracts.validation import ContractError, validate_document
+    from inferyard.contracts.validation import validate_document
     from tests.unit.test_resources import envelope
 
     sample = envelope(MacSensors(factory=FakeSMC).collect("formal", "request-1")[0])

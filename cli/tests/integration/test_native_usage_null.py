@@ -8,7 +8,7 @@ import pytest
 import inferyard.runtime.lock as locking
 import inferyard.runtime.runner as running
 from inferyard.cli import main
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json, read_jsonl
 from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401
 from tests.integration.test_native_cli import native_scenario as _native_scenario

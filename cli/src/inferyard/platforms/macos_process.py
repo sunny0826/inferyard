@@ -2,8 +2,8 @@
 
 import ipaddress
 import subprocess
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 
 def lsof_records(pid, selectors):

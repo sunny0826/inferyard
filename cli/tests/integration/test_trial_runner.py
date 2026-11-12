@@ -75,7 +75,7 @@ def test_resource_collector_records_boundaries_and_rebuilds_metrics(scenario):
     ],
 )
 def test_engine_timings_rebuild_offline_with_bound_build_and_unchanged_evidence(scenario, timings):
-    from inferyard.evidence.ledger import read_trial
+    from inferyard.analysis.ledger import read_trial
 
     scenario[3]["timings"] = timings
     plan, loaded, deps, output = inputs(scenario)
@@ -298,7 +298,7 @@ def test_input_target_checked_before_generation_and_rebuilt_offline(scenario, ta
 def test_length_preparation_only_uses_management_calls(scenario, tmp_path, target):
     from dataclasses import replace
 
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
     from inferyard.runtime.length_prepare import prepare
     from tests.unit.test_length_builder import spec
 
@@ -307,12 +307,12 @@ def test_length_preparation_only_uses_management_calls(scenario, tmp_path, targe
     source.write_bytes(json_bytes(spec(target_tokens=target, max_probes=3)))
     out = tmp_path / "length-prepared"
     request = replace(request, command="prepare-length", length_spec=source, out=out)
-    code, result = asyncio.run(prepare(request, deps))
+    result, prompt_present = asyncio.run(prepare(request, deps))
     if target == 1:
-        assert code == 0 and result.status == "matched"
+        assert result["status"] == "matched" and prompt_present is True
         assert (out / "prompt.txt").read_text() == "开始结束"
     else:
-        assert code == 3 and result.status == "search_exhausted"
+        assert result["status"] == "search_exhausted" and prompt_present is False
         assert not (out / "prompt.txt").exists()
         assert len(read_json(out / "probes.json")) == 3
     assert calls == []

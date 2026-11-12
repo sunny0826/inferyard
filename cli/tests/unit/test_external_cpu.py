@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.platforms.external_cpu import SOURCE, capture, reduce_external_cpu
 from tests.unit.test_resources import proc
 

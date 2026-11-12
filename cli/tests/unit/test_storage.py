@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
+from inferyard.errors import EvidenceError, UnsupportedFormat
+from inferyard.contracts.redaction import Redactor
 from inferyard.evidence.storage import (
-    EvidenceError,
     EvidenceStore,
-    Redactor,
     atomic_bytes,
     local_file,
     read_jsonl,
@@ -123,6 +123,7 @@ def test_offline_reader_rejects_traversal_and_outside_symlinks(tmp_path):
 
 
 def make_journal(root):
+    from inferyard.analysis.scoring import ScoringContext
     from inferyard.config.loader import load_config
     from inferyard.config.single_plan import compile_single_plan
     from inferyard.evidence.journal import TrialJournal
@@ -130,7 +131,10 @@ def make_journal(root):
     loaded = load_config(Path(__file__).parents[1] / "fixtures/config/valid.toml")
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
     plan = compile_single_plan(config, bundle)
-    return TrialJournal(root, plan, plan["trials"][0]["trial_id"], config, bundle)
+    return TrialJournal(
+        root, plan, plan["trials"][0]["trial_id"], config, bundle,
+        scoring_context=ScoringContext(),
+    )
 
 
 def test_no_new_request_copy_and_legacy_hash_damage_is_integrity_error(tmp_path):
@@ -143,7 +147,6 @@ def test_no_new_request_copy_and_legacy_hash_damage_is_integrity_error(tmp_path)
     (legacy.path / "requests.jsonl").write_bytes(b"{}\n")
     legacy.seal()
     legacy.close()
-    from inferyard.evidence.formats import UnsupportedFormat
 
     with pytest.raises(UnsupportedFormat):
         verify_manifest(legacy.path)

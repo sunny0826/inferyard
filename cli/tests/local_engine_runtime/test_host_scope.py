@@ -7,10 +7,10 @@ from dataclasses import replace
 import pytest
 
 from inferyard.contracts.validation import Document
+from inferyard.errors import PreflightError
 from inferyard.evidence.storage import read_json
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime import lock as locking
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.integration.test_local_engine_runtime import local_run  # noqa: F401
 from tests.integration.test_runner import scenario  # noqa: F401
 from tests.local_engine_transport.conftest import rig  # noqa: F401

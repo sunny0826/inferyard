@@ -12,9 +12,9 @@ from pathlib import Path
 import pytest
 
 from inferyard.cli import main
+from inferyard.errors import PreflightError
 from inferyard.evidence.storage import read_json
 from inferyard.platforms.engine_fit import bind_service, check_service, resource_snapshot
-from inferyard.platforms.identity import PreflightError
 
 pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Native Darwin engine-fit test")
 SERVICE = Path(__file__).parents[1] / "fixtures/engine_fit_macos/service.py"

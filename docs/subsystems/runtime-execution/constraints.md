@@ -37,7 +37,7 @@
 - Windows 上非 `WINDOWS_BATCH_ADAPTERS` 白名单内的适配器在批量实时路径阻断（`windows_phase2_live_not_supported`）；白名单当前为 `kvmem`、`ninfer`、`prism_llama_server_v1`。lab 适配器在非 Windows 平台阻断（`lab_adapter_requires_windows`）。模拟/软件验证不授予真机资格，见 [数据契约](../../../cli/docs/data-contract.md#身份与测量资格分派)。
 - `prepare-length` 是操作者绑定的辅助通路：复用锁、身份预检与空闲观察，但只做模板计数拟合，不发送生成请求；服务 dirty 时阻断（`length_preparation_requires_clean_service`），spec 触到脱敏内容即拒绝。产物自标 `preparation_not_benchmark`，不进入正式测评。
 - 环境准入只影响准入、不过滤观察：`run_preflight` 传入的 `environment_admission` 策略把差异分为 `differences`（全部记录）与 `blockers`（阻断项），诊断运行不阻断；环境事实源在 [平台采集与设备身份](../platform-sampling.md)。
-- 批量路径把 `store.cache_protocol` 交给适配器，请求体按冻结序号注入 `cache_prompt`/`n_cache_reuse`（`cache_execution.request_value`）；缓存语义与资格限制见 [数据契约](../../../cli/docs/data-contract.md) 与 [实验设计](../../../cli/docs/experiments/design.md)，运行层只按冻结值转发。
+- 批量路径把 `store.cache_protocol` 交给适配器，请求体按冻结序号注入 `cache_prompt`/`n_cache_reuse`（`contracts.cache_execution.request_value`）；缓存语义与资格限制见 [数据契约](../../../cli/docs/data-contract.md) 与 [实验设计](../../../cli/docs/experiments/design.md)，运行层只按冻结值转发。
 - 适配器在构造时把 URL 重新解析并固定为 origin（`resolve_loopback_origin`）；`transport_config` 用该 origin 替换 guard 用配置中的 URL，但不改变冻结输入，guard 据此重验监听归属。
 - strict-output 模式在请求体加 `ignore_eos`，探针响应经 `verify_probe` 核验输出预算达标后才进入正式执行；达标率由 `target_rate` 按 completed/failed 终态与端点用量口径计算，口径细则见 [指标定义](../../../cli/docs/experiments/metrics.md)。
 

@@ -1,8 +1,8 @@
 """Explicit imports for true token/queue events and process startup timelines."""
 
 from statistics import median
+from inferyard.errors import EvidenceError
 
-from inferyard.evidence.storage import EvidenceError
 
 
 def times(events, clock_id):

@@ -5,9 +5,9 @@ import os
 import time
 from pathlib import Path, PurePosixPath
 
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, PreflightError
 from inferyard.platforms.engine_fit_observer_io import TOTAL_TIMEOUT, read_process, remaining
-from inferyard.platforms.identity import PreflightError
 
 _LIMIT = 1024 * 1024
 _TIMEOUT = 2.0
@@ -35,11 +35,11 @@ def _run(command, *, deadline=None):
 
 
 def _cli_hash(path):
-    from inferyard.platforms.engine_fit import _file_hash
+    from inferyard.platforms.engine_fit import stable_file_digest
 
     if not path.is_file() or not os.access(path, os.X_OK):
         raise PreflightError("engine_fit_lms_cli_unavailable")
-    return _file_hash(path)[0]
+    return stable_file_digest(path)[0]
 
 
 def _query(observer, command, address, port, deadline):

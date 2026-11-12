@@ -8,7 +8,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from inferyard.config.environment_binding import mismatches
+from inferyard.contracts.environment_admission import mismatches
+from inferyard.errors import PreflightError
 from inferyard.platforms import (
     identity,
     macos_identity,
@@ -16,7 +17,7 @@ from inferyard.platforms import (
     macos_process,
     telemetry,
 )
-from inferyard.platforms.identity import PreflightError, hash_file
+from inferyard.platforms.identity import hash_file
 
 
 class NativeError(Exception):

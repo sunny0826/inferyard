@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.platforms.windows_lab_api import current_windows_lab_api
 from inferyard.platforms.windows_lab_checks import (
     MAX_INT,

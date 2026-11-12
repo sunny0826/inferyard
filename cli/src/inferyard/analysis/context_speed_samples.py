@@ -1,12 +1,22 @@
 """Per-request speed projection from the full ledger and physical originals."""
 
 from inferyard.analysis.context_speed_cohort import cohort as measurement_cohort
-from inferyard.analysis.engine_timing import engine_rates
+from inferyard.contracts.engine_timing import engine_rates
 from inferyard.analysis.input_lengths import bind_token_counts
-from inferyard.evidence.context_speed import verified_trial
-from inferyard.evidence.storage import EvidenceError
-from inferyard.evidence.template_identity import matches_template
+from inferyard.errors import EvidenceError
+from inferyard.analysis.ledger import read_trial
+from inferyard.contracts.template_identity import matches_template
 from inferyard.evidence.trial_evidence import verify_reference
+
+
+def verified_trial(data):
+    """Keep projection references on the exact bytes checked by the full ledger."""
+    metadata = {}
+    verified = read_trial(data["path"], metadata=metadata)
+    for key in ("run", "plan", "config", "bundle", "selection", "events_sha256", "requests"):
+        if verified[key] != data[key]:
+            raise EvidenceError("context_speed_source_changed_during_read")
+    return metadata["evidence"]
 
 
 def _value(number=None, reason="unknown", refs=()):

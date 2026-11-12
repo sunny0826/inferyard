@@ -8,11 +8,12 @@ import jsonschema
 import pytest
 
 from inferyard import cli
-from inferyard.config import community_assets, preparation_io
-from inferyard.config.preparation_io import PreparationError
+from inferyard.config import community_assets
+from inferyard.provisioning import preparation_io
+from inferyard.provisioning.preparation_io import PreparationError
 from inferyard.contracts.schemas import export_schema
-from inferyard.platforms import runtime_verification, windows_runtime_prepare
-from inferyard.platforms.runtime_profiles import RELEASE, profile_header
+from inferyard.provisioning import runtime_verification, windows_runtime_prepare
+from inferyard.provisioning.runtime_profiles import RELEASE, profile_header
 from tests.unit.test_community_runtime import synthetic_runtime as runtime_fixture
 
 synthetic_runtime = runtime_fixture

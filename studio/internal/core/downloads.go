@@ -183,12 +183,12 @@ loop:
 	defer s.mu.Unlock()
 	d.Task.FinishedAt = ptr(now())
 	switch {
-	case r.out.ExitCode == 130 || ctx.Err() != nil:
+	case r.out.ExitCode == inferyard.ExitCancelled || ctx.Err() != nil:
 		d.Task.State = "cancelled"
 	case r.err != nil:
 		d.Task.State = "failed"
 		d.Task.Error = Err("internal_error")
-	case r.out.ExitCode != 0:
+	case r.out.ExitCode != inferyard.ExitComplete:
 		d.Task.State = "failed"
 		d.Task.Error = exitError(r.out, nil)
 		if d.Task.Error == nil {

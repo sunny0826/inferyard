@@ -3,29 +3,33 @@
 from copy import deepcopy
 
 from inferyard import SCHEMA_VERSION
-from inferyard.analysis.scoring import scorer_hash
-from inferyard.application.types import CommandResult
 from inferyard.config.planning import compile_plan, write_plan
 from inferyard.config.public_config_check import check_config
 from inferyard.config.public_recipe import fingerprint
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-    sha256_file,
-)
-from inferyard.reporting.report_common import _new_output
+from inferyard.errors import EvidenceError
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json, sha256_file
 
 
-def materialize(package, loaded, out):
+def require_declared_config(package, loaded):
+    """Reject a local configuration that differs from the published declaration."""
     matched = check_config(package, loaded)
     if not matched["declared_configuration_matches"]:
         raise EvidenceError("public_local_configuration_mismatch")
-    candidate = read_json(local_file(package, "candidate.json"))
-    if candidate["identities"]["scorer_sha256"] != scorer_hash():
-        raise EvidenceError("public_plan_scorer_source_mismatch")
+
+
+def read_candidate(package):
+    return read_json(local_file(package, "candidate.json"))
+
+
+def materialize(package, loaded, out):
+    """Validate the declaration, then materialize the published recipe."""
+    require_declared_config(package, loaded)
+    return build_reproduction(package, loaded, read_candidate(package), out)
+
+
+def build_reproduction(package, loaded, candidate, out):
+    """Build and write the reproduction from one already verified candidate."""
     reproduction = candidate["reproduction"]
     recipe = reproduction["workload"]
     bundle, config = loaded.bundle.to_dict(), loaded.config.to_dict()
@@ -106,7 +110,7 @@ def materialize(package, loaded, out):
     if reproduction["safety"] is not None:
         experiment["safety"] = reproduction["safety"]
     compile_plan(experiment)
-    _new_output(out, [package, loaded.source.parent])
+    new_output(out, [package, loaded.source.parent])
     inputs = out / "input"
     inputs.mkdir()
     for name, value in (("config", config), ("bundle", bundle), ("experiment", experiment)):
@@ -127,15 +131,3 @@ def materialize(package, loaded, out):
     }
     atomic_bytes(out / "reproduction.json", json_bytes(lineage))
     return lineage
-
-
-def execute(request):
-    result = materialize(request.run, request.config, request.out)
-    return 0, CommandResult(
-        request.command,
-        "planned",
-        "incomplete",
-        evidence_dir=str(request.out),
-        details=result,
-        limitations=tuple(result["limitations"]),
-    )

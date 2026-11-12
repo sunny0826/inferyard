@@ -5,8 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.runtime.safety import SafetyGuard
 from inferyard.runtime.safety_trace import SafetyTrace
 from tests.unit.test_safety import Sensors

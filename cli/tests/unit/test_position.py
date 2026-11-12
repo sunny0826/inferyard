@@ -3,12 +3,9 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.analysis.position import (
-    position_pattern,
-    position_summary,
-    validate_position_cases,
-)
-from inferyard.contracts.validation import ContractError
+from inferyard.analysis.position import position_pattern, position_summary
+from inferyard.contracts.position_cases import validate_position_cases
+from inferyard.errors import ContractError
 from tests.unit.test_observations import EVIDENCE, RUN
 
 
@@ -105,7 +102,7 @@ def test_unknown_length_and_incomplete_never_produce_complete_quality():
 
 @pytest.mark.parametrize("change", ["prefix", "suffix", "reference", "policy", "rules", "evidence"])
 def test_cross_workload_family_requires_same_question_and_scoring(change):
-    from inferyard.analysis.position import register_position_families
+    from inferyard.contracts.position_cases import register_position_families
 
     work, bundle, _ = fixture()
     families = {}

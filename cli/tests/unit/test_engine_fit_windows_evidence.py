@@ -4,15 +4,16 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.config.engine_fit import digest
-from inferyard.config.engine_fit_native_sources import (
+from inferyard.contracts.json_digest import digest
+from inferyard.contracts.engine_fit_native_sources import (
     WINDOWS_LIMITATIONS,
     WINDOWS_SCOPE,
     WINDOWS_START_SOURCE,
 )
-from inferyard.evidence.storage import EvidenceError
-from inferyard.reporting.engine_fit import seal_run, verify
-from inferyard.reporting.engine_fit_validation import validate_run
+from inferyard.errors import EvidenceError, PreflightError
+from inferyard.analysis.engine_fit_seal import seal_run
+from inferyard.reporting.engine_fit import verify
+from inferyard.analysis.engine_fit_validation import validate_run
 from tests.unit.test_engine_fit_common_evidence import common_data
 from tests.unit.test_engine_fit_memory_override import _data as memory_data
 from tests.unit.test_engine_fit_temperature_override import _override_data as temperature_data
@@ -222,7 +223,7 @@ def test_windows_tampered_sealed_source_is_rejected(tmp_path):
     seal_run(tmp_path, plan, run, rows)
     changed = deepcopy(run)
     changed["binding"]["process_start_source"] = "guessed"
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
 
     (tmp_path / "run.json").write_bytes(json_bytes(changed))
     with pytest.raises(EvidenceError, match="hash_mismatch"):
@@ -244,7 +245,6 @@ def test_windows_guard_keeps_default_stops_and_explicit_override_reads(
     reason,
 ):
     from inferyard.platforms import engine_fit_windows_temperature as sensors
-    from inferyard.platforms.identity import PreflightError
     from inferyard.runtime import engine_fit as runtime
 
     monkeypatch.setattr(runtime.platform, "system", lambda: "Windows")

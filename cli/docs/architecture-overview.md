@@ -25,6 +25,7 @@ flowchart LR
 | 契约              | 一个版本常量、一个 kind 注册表和一套结构/语义入口；Schema 合法不替代跨记录校验                        |
 | 执行              | 单次配置编译为一个 workload、一个 trial；显式计划执行多轮实验，共用 Journal 与 ledger                 |
 | 适配器            | 核验固定引擎能力，解析普通/流式响应、用量、结束及空闲证据；不管理外部服务生命周期                     |
+| 供给              | 获取并核验引擎/模型来源、运行时归档与 profile，写出新的准备目录；不启动服务、不发送模型请求           |
 | 评分器            | 以冻结题目、答案与政策做纯计算；不调用模型裁判，不访问网络                                            |
 | 采集器            | 按来源和窗口输出样本及缺测原因，不改变答案质量；平台能力独立声明                                      |
 | 存储              | 凭据脱敏、追加日志、刷盘、原子快照和封存；文件证据为事实源                                            |
@@ -38,17 +39,23 @@ flowchart LR
 | ---------------------------------- | ------------------------------------------------------------------- |
 | `cli/`、`application/`             | 参数、请求构造、输出呈现与错误映射；共享请求/结果类型及延迟命令分派 |
 | `contracts/`、`config/`            | 唯一结构/语义契约；配置、题包、冻结计划与声明绑定                   |
-| `runtime/`、`evidence/`            | 请求、取消、排空与安全控制；日志、封存、账本、当前格式核验与旧格式拒绝 |
-| `analysis/`、`reporting/`          | 评分、指标和比较计算；离线报告、重评分与导出                        |
+| `runtime/`、`evidence/`            | 请求、取消、排空与安全控制；日志、封存、来源引用、当前格式核验与旧格式拒绝 |
+| `analysis/`、`reporting/`          | 评分、指标、离线账本重建和比较计算；离线报告、重评分与导出          |
 | `platforms/`、`extensions/`        | 设备与进程身份、平台采集；独立扩展协议及执行工作流                  |
+| `provisioning/`                    | 引擎/模型来源获取、运行时归档与 profile 核验、准备输出 IO            |
 | `adapters/`、`data/`、`templates/` | 引擎传输和解析；随安装包交付的方法/指标目录与报告模板               |
+| `errors.py`                        | 只依赖标准库的失败类别叶子，供各层与入口描述错误而不加载其他子系统   |
 
 `registry.py` 和 `provenance.py` 位于根包，分别管理目录注册和源码身份。
+engine-fit 诊断的封存入口与 HTML 渲染位于 `analysis/`（`engine_fit_seal`、`engine_fit_html`），
+以便运行时在持有主机锁时完成封存；`reporting/engine_fit.py` 只保留离线 compare/verify。
+跨包共享的纯规则（脱敏、模板身份、比较门槛、位置用例、batch envelope、公开原因、命令内审核缓存）
+位于 `contracts/`，CLI 元数据查询只加载这一层与根级轻量模块。
 
 ## CLI 与应用边界
 
-- `main(argv=None, *, handlers=None) -> int` 是控制台和模块入口。CLI 负责参数、输入校验、请求构造和输出呈现；业务执行器返回结果，不向 stdout 写诊断。`device-check` 默认人类摘要，显式 JSON 保留既有结果外层，其他命令仍为 JSON；格式参数不进入应用请求。
-- `CommandRequest`、`CommandResult`、`Handler` 只定义在 `application/types.py`；业务模块不依赖 CLI，CLI 重导出同一对象。
+- `main(argv=None, *, handlers=None) -> int` 是控制台和模块入口。CLI 负责参数、输入校验、请求构造和输出呈现；业务执行器返回领域数据，不向 stdout 写诊断。`device-check` 默认人类摘要，显式 JSON 保留既有结果外层，其他命令仍为 JSON；格式参数不进入应用请求。
+- `CommandRequest`、`CommandResult`、`Handler` 只定义在 `application/types.py`；业务模块不依赖 CLI，也不构造命令结果。命令结果（status、completeness、run_id、evidence_dir、limitations、details、退出码）由应用层按命令组构造，业务函数只返回领域数据（详见[分派职责](../../docs/subsystems/cli-dispatch/responsibilities.md)）。
 - `--help`、`--versions` 和 `--schema` 只注册参数及读取元数据，不加载实时后端。Schema 注册表只依赖契约包与版本常量；语义验证在解析时调用。
 - 应用分派显式覆盖注册命令，未知请求拒绝。`run --plan` 和 `resume` 进入批量路径，单次运行与专项命令进入各自处理器。
 - 规范命令适配到已有业务动作。旧命令名和参数别名已删除。`application/verification.py` 识别产物并延迟调用专用验证器；CLI 不复制其验证逻辑。

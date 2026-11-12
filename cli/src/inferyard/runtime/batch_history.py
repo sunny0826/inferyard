@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Protocol
 
 from inferyard.analysis.comparison_history import comparison_history_stop
-from inferyard.analysis.comparison_types import JSONRecord, JSONValue
+from inferyard.contracts.comparison_types import JSONRecord, JSONValue
 from inferyard.config.loader import LoadedConfig
 from inferyard.runtime.batch_state import HistoryOptions, history_diagnostics
 

@@ -67,11 +67,12 @@ live 且 hardware_qualified；明确绑定来源 manifest、控制臂与目标�
 
 ## 具体清单和使用边界
 
-安装包 `data/implementation-files.json` 是显式职责清单。measurement 从 run/batch/trial 的
-实际导入链确认，包含请求适配、采集、存储、结束时的 ledger/reducer、动态工厂所选平台模块、
-共享结构/语义契约及 `data/metrics.json`；共享文件作为整体保守绑定。scoring 包含题包解释、
-评分 v1/v2 与所用共享契约；presentation 包含报告/离线比较的读取、归约、模板及 CLI 展示。
-CLI 参数结果已冻结为输入，帮助文本和 HTML 不属于测量源码。新增导入或包数据需审查清单；
+安装包 `data/implementation-files/{measurement,scoring,presentation}.json` 是按职责拆分的
+显式清单。measurement 从 run/batch/trial 的实际导入链确认，包含请求适配、采集、存储、
+结束时的 ledger/reducer、动态工厂所选平台模块、共享结构/语义契约及 `data/metrics.json`；
+共享文件作为整体保守绑定。scoring 包含题包解释、评分 v1/v2 与所用共享契约；presentation
+包含报告/离线比较的读取、归约、模板及 CLI 展示。CLI 参数结果已冻结为输入，帮助文本和
+HTML 不属于测量源码。清单对静态可见的导入保持闭合；新增导入或包数据需审查清单；
 运行时不扫描 AST。一次读取计算文件摘要并释放原始字节，总包与职责身份复用这些摘要。
 清单成员自身进入相应职责摘要，不把其他职责的列表变化混入该职责。开发测试依赖不记录。
 

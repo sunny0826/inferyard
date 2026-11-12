@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.config import engine_fit_assets
+from inferyard.platforms import engine_fit_assets
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit as fit
 from inferyard.platforms import engine_fit_macos as macos
 from inferyard.platforms.engine_fit_entrypoints import startup_binding
-from inferyard.platforms.identity import PreflightError
 from tests.unit import test_engine_fit_identity as linux_fixtures
 from tests.unit import test_engine_fit_macos_identity as mac_fixtures
 

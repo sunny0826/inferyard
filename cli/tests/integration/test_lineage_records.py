@@ -6,12 +6,12 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.config.lineage_records import validate_records
+from inferyard.contracts.lineage_records import validate_records
 from inferyard.config.plan_inputs import read_frozen_plan
-from inferyard.config.plan_math import plan_hash
+from inferyard.contracts.plan_math import plan_hash
 from inferyard.config.planning import prepare_plan, write_plan
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.ledger import read_trial
+from inferyard.errors import ContractError
+from inferyard.analysis.ledger import read_trial
 from tests.integration.test_phase2_plan import input_package
 from tests.legacy_journal import LegacyJournal
 from tests.unit.test_model_lineage import lineage

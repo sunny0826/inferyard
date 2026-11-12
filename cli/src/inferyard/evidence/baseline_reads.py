@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.evidence.trial_reads import TrialReads
 
 _RUN_FILES = frozenset(

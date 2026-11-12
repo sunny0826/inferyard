@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from inferyard.data.local_engine.bootstrap import import_paths
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 
 
 def resolve_sources(python, declaration, roots):

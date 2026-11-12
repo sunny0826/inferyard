@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.extensions.closed_concurrency import reduce_closed, run_closed
 
 

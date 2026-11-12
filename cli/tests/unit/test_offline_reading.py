@@ -6,9 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.application.types import CommandRequest, VerificationOptions
+from inferyard.application.types import CommandRequest
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.application.verification import execute
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
+from inferyard.errors import EvidenceError
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json
 from inferyard.reporting.report import verify_report, write_report
 from tests.helpers import fixture_run
 
@@ -29,7 +32,7 @@ def test_raw_run_and_unsealed_partial_are_read_without_report(tmp_path):
 
 @pytest.mark.parametrize("states", [["cancelled", "not_executed"], ["invalid", "not_executed"]])
 def test_sealed_partial_run_verifies_without_promoting_execution(tmp_path, states):
-    from inferyard.evidence.ledger import read_trial
+    from inferyard.analysis.ledger import read_trial
 
     root = fixture_run(tmp_path, states=states)
     original = read_trial(root)
@@ -68,7 +71,7 @@ def test_frozen_plan_and_empty_batch_are_read_without_derived_report(tmp_path, c
 
 
 def test_comparison_and_linked_report_move_and_keep_source_binding(tmp_path):
-    from inferyard.reporting.comparison_report import execute as compare
+    from inferyard.application.reporting import execute as compare
 
     base = tmp_path / "original"
     roots = [fixture_run(base / side) for side in ("left", "right")]

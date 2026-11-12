@@ -13,15 +13,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from inferyard.config.loader import validate_endpoint
-from inferyard.config.startup_arguments import model_argument
+from inferyard.contracts.endpoint import validate_endpoint
 from inferyard.contracts.engine_profiles import is_local
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.platforms.cpu_policy import snapshot as cpu_policy_snapshot
-
-
-class PreflightError(RuntimeError):
-    """Fixed error category only; callers must not persist raw OS exceptions."""
+from inferyard.platforms.platform_io import filesystem_path
+from inferyard.platforms.startup_arguments import model_argument
 
 
 @dataclass(frozen=True, slots=True)
@@ -400,6 +398,15 @@ def check_resources(config: dict, available: int, free_disk: int) -> None:
         raise PreflightError("insufficient_output_disk")
 
 
+def read_library_manifest(config: dict):
+    """Read the declared lab library manifest; unreadable or malformed input is evidence-invalid."""
+    path = filesystem_path(config["engine"]["runtime_library_manifest"])
+    try:
+        return strict_json_loads(Path(path).read_bytes().decode("utf-8"))
+    except (OSError, UnicodeError, ContractError) as exc:
+        raise EvidenceError("invalid_json_evidence") from exc
+
+
 def static_preflight(
     config: dict, *, diagnostic=False, environment_policy=None
 ) -> tuple[dict, list[FileIdentity]]:
@@ -420,7 +427,7 @@ def static_preflight(
             raise PreflightError("lab_adapter_requires_windows")
         from inferyard.platforms.lab_identity import bind_files
 
-        identities = bind_files(config)
+        identities = bind_files(config, read_library_manifest(config))
     else:
         identities = [
             hash_file(Path(config["model"]["local_path"]), config["model"]["sha256"]),
@@ -467,7 +474,7 @@ def static_preflight(
         ancestor = ancestor.parent
     disk_free = shutil.disk_usage(ancestor).free
     check_resources(config, environment["mem_available_bytes"], disk_free)
-    from inferyard.config.environment_binding import admission
+    from inferyard.contracts.environment_admission import admission
 
     environment_admission = admission(
         config["conditions"], environment, diagnostic=diagnostic, policy=environment_policy

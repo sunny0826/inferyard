@@ -45,8 +45,8 @@ def main():
     runtime = require_destination(ROOT / ".tools/cuda12.4-runtime")
     with zipfile.ZipFile(ROOT / ".tools/downloads" / ASSETS[1][0]) as package:
         entries = package.infolist()
-        from inferyard.config.preparation_io import PreparationError
-        from inferyard.platforms.runtime_archive import zip_entries
+        from inferyard.provisioning.preparation_io import PreparationError
+        from inferyard.provisioning.runtime_archive import zip_entries
 
         try:
             zip_entries(package)

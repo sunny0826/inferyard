@@ -13,10 +13,11 @@ from jsonschema import Draft202012Validator
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.scoring_rules import score_rules
-from inferyard.config.bundle import pointer, validate_case
-from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.contracts.bundle import pointer, validate_case
+from inferyard.contracts.scoring_version import SCORER_VERSION
+from inferyard.contracts.validation import strict_json_loads, validate_document
+from inferyard.errors import ContractError, EvidenceError
 
-SCORER_VERSION = "phase2.v1"
 CATEGORIES = (
     "instruction",
     "extraction",
@@ -35,8 +36,8 @@ def scorer_hash():
     for name in (
         "analysis/scoring.py",
         "analysis/scoring_rules.py",
-        "config/bundle.py",
-        "config/bundle_review.py",
+        "contracts/bundle.py",
+        "contracts/bundle_review.py",
         "contracts/validation.py",
         "contracts/contracts_experiment.py",
         "contracts/schemas_tasks.py",
@@ -239,7 +240,6 @@ class ScoringContext:
                 self._identities[version] = scorer_hash()
             else:
                 from inferyard.analysis import scoring_revision
-                from inferyard.evidence.storage import EvidenceError
 
                 if version != scoring_revision.VERSION:
                     raise EvidenceError("unsupported_rescore_version")

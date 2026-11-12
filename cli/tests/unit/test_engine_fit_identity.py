@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.evidence.storage import json_bytes
+from inferyard.errors import PreflightError, UnsupportedFormat
+from inferyard.contracts.validation import json_bytes
 from inferyard.platforms import engine_fit as fit
-from inferyard.platforms.identity import PreflightError
 
 
 def test_manifest_follows_hf_file_links_and_hashes_sorted_relative_files(tmp_path):
@@ -305,7 +305,7 @@ def test_unreadable_or_changed_process_tree_is_missing_not_partial(service, chan
 
 
 def test_asset_v2_excludes_documentation_cache_and_location(tmp_path):
-    from inferyard.config.engine_fit_assets import model_asset_manifest
+    from inferyard.platforms.model_asset_manifest import model_asset_manifest
     from inferyard.runtime.engine_fit import _manifest
 
     root = tmp_path / "first"
@@ -320,7 +320,6 @@ def test_asset_v2_excludes_documentation_cache_and_location(tmp_path):
     (root / "README.md").write_bytes(b"changed")
     (cache / "more.bin").write_bytes(b"cache")
     assert model_asset_manifest(root) == first
-    from inferyard.evidence.formats import UnsupportedFormat
 
     with pytest.raises(UnsupportedFormat):
         model_asset_manifest(root, definition=None)
@@ -340,7 +339,7 @@ def test_asset_v2_excludes_documentation_cache_and_location(tmp_path):
 @pytest.mark.parametrize("definition", [None, "model-assets.v2"])
 @pytest.mark.parametrize("change", ["content", "add", "delete"])
 def test_added_token_vocabulary_is_bound_in_frozen_and_runtime_assets(tmp_path, definition, change):
-    from inferyard.config.engine_fit_assets import model_asset_manifest
+    from inferyard.platforms.model_asset_manifest import model_asset_manifest
     from inferyard.runtime.engine_fit import _manifest
 
     (tmp_path / "model.safetensors").write_bytes(b"weights")
@@ -367,14 +366,14 @@ def test_added_token_vocabulary_is_bound_in_frozen_and_runtime_assets(tmp_path, 
 
 def test_asset_v2_detects_selected_file_added_during_hash(tmp_path, monkeypatch):
     (tmp_path / "model.safetensors").write_bytes(b"weights")
-    original = fit._file_hash
+    original = fit.stable_file_digest
 
     def added(path):
         value = original(path)
         (tmp_path / "tokenizer.json").write_bytes(b"{}")
         return value
 
-    monkeypatch.setattr(fit, "_file_hash", added)
+    monkeypatch.setattr(fit, "stable_file_digest", added)
     with pytest.raises(PreflightError, match="model_changed_during_hash"):
         fit.model_manifest(tmp_path, definition="model-assets.v2")
 

@@ -9,9 +9,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from inferyard.config.preparation_io import PreparationError
-from inferyard.platforms.model_source import ModelSource
-from inferyard.platforms.model_source_download import acquire
+from inferyard.provisioning.preparation_io import PreparationError
+from inferyard.provisioning.model_source import ModelSource
+from inferyard.provisioning.model_source_download import acquire
 from tests.unit.test_model_acquire_cli import SOURCE
 
 PAYLOAD = b"synthetic gguf bytes\n" * 64

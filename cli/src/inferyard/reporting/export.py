@@ -9,19 +9,11 @@ import re
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
-from inferyard.application.types import CommandResult
-from inferyard.contracts.validation import validate_document
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-    sha256_file,
-)
+from inferyard.contracts.validation import validate_document, json_bytes
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json, sha256_file
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input, verify_metric_references
-from inferyard.reporting.report_common import _new_output
 
 
 def trial_analysis(root, *, producer=None, loaded=None):
@@ -129,7 +121,7 @@ def formatted_files(analysis):
 def write_export(out, *, run=None, analysis_path=None):
     analysis, source = trial_analysis(run) if run is not None else existing_analysis(analysis_path)
     files = formatted_files(analysis)
-    _new_output(out, [run if run is not None else analysis_path.parent])
+    new_output(out, [run if run is not None else analysis_path.parent])
     for name, content in files.items():
         atomic_bytes(out / name, content)
     manifest = {
@@ -173,19 +165,3 @@ def verify_export(out):
         "analysis_id": analysis["analysis_id"],
         "metric_rows": len(analysis["metrics"]),
     }
-
-
-def execute(request):
-    if request.command == "export-check":
-        return 0, CommandResult(
-            request.command, "verified", "complete", details=verify_export(request.run)
-        )
-    result = write_export(request.out, run=request.run, analysis_path=request.analysis_path)
-    return 0, CommandResult(
-        request.command,
-        "exported",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(result["limitations"]),
-        details=result,
-    )

@@ -2,8 +2,8 @@
 
 import stat
 from pathlib import PurePosixPath
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 DEFINITION = "model-assets.v2"
 IGNORED_DIRECTORIES = {".git", ".cache", "__pycache__", "cache", "logs"}
@@ -23,7 +23,7 @@ def is_asset(path):
 
 
 def inventory(root, *, frozen_paths=None):
-    from inferyard.platforms.engine_fit import _stamp
+    from inferyard.platforms.engine_fit import file_stamp
 
     result, pending = {}, [root]
     while pending:
@@ -41,14 +41,14 @@ def inventory(root, *, frozen_paths=None):
                 link, target = entry.lstat(), entry.stat()
                 if not stat.S_ISREG(target.st_mode):
                     raise PreflightError("engine_fit_not_regular_file")
-                result[entry.relative_to(root).as_posix()] = (_stamp(link), _stamp(target))
+                result[entry.relative_to(root).as_posix()] = (file_stamp(link), file_stamp(target))
     references = frozen_paths if frozen_paths is not None else _index_paths(root, result)
     for name in references:
         path = root / name
         link, target = path.lstat(), path.stat()
         if not stat.S_ISREG(target.st_mode):
             raise PreflightError("engine_fit_not_regular_file")
-        result.setdefault(name, (_stamp(link), _stamp(target)))
+        result.setdefault(name, (file_stamp(link), file_stamp(target)))
     return result
 
 

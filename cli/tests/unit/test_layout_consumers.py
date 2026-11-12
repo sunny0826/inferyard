@@ -7,11 +7,13 @@ import pytest
 from inferyard.adapters.prism import BUILD
 from inferyard.adapters.requests import request_body
 from inferyard.analysis.overhead_environment import environment_record
-from inferyard.config.plan_math import plan_hash
+from inferyard.contracts.plan_math import plan_hash
+from inferyard.errors import EvidenceError
 from inferyard.evidence.fixed_output import verify_execution
-from inferyard.evidence.ledger import read_run_projection, read_trial
+from inferyard.analysis.ledger import read_run_projection, read_trial
 from inferyard.evidence.request_snapshots import messages_sha256, snapshot_filename
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json, read_jsonl, sha256_file
 from inferyard.evidence.token_budgets import DEFINITION, planned_inputs, read_budgets
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from tests.evidence_layout_helpers import digest, pack_layout2, seal_layout
@@ -458,7 +460,7 @@ def test_container_tail_retains_denominator_and_rejects_sealed_run(tmp_path, fil
 
 
 def test_native_missing_receipt_is_legacy_only_and_has_exact_public_reason(tmp_path):
-    from inferyard.evidence.error_reasons import safe_reason
+    from inferyard.contracts.error_reasons import safe_reason
     from inferyard.evidence.native_receipts import verify_clean_receipts
 
     old, new = synthetic_pair(tmp_path)

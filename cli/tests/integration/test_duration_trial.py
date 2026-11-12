@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from inferyard.config.planning import compile_plan
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError, PreflightError
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_lab_cli import lab_scenario  # noqa: F401
@@ -159,7 +159,6 @@ def test_duration_report_rebuilds_completed_and_interrupted_windows(scenario, tm
 
 def test_runtime_safety_cancels_inflight_and_preserves_incomplete_window(scenario):
     from inferyard.evidence.storage import read_json
-    from inferyard.platforms.identity import PreflightError
 
     plan, loaded, deps, output = duration_inputs(scenario)
     source = plan["experiment"]

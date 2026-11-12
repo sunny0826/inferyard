@@ -4,7 +4,8 @@ import time
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
-from inferyard.platforms.identity import PreflightError, process_start_ticks
+from inferyard.errors import PreflightError
+from inferyard.platforms.identity import process_start_ticks
 from inferyard.platforms.telemetry import Sampler
 
 COLLECTOR = "windows-resource.v1"
@@ -69,7 +70,7 @@ class ResourceSampler(Sampler):
         )
 
     async def run(self):
-        from inferyard.runtime.environment_schedule import run_sampler
+        from inferyard.platforms.environment_schedule import run_sampler
 
         await run_sampler(self)
 

@@ -9,7 +9,7 @@ import pytest
 
 from inferyard import cli
 from inferyard.application import memory_check
-from inferyard.contracts.memory_check import read_memory_check
+from inferyard.evidence.memory_check import read_memory_check
 from inferyard.platforms import memory_windows
 from tests.unit.test_memory_check_windows import observed, snapshot
 

@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-from inferyard.config.environment_binding import requires_match
+from inferyard.contracts.environment_admission import requires_match
 
 FIELDS = (
     "scaling_driver",

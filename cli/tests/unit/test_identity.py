@@ -5,15 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.platforms.identity import (
-    PreflightError,
-    check_resources,
-    hash_file,
-    memory_available,
-    process_start_ticks,
-    verify_listener,
-    verify_process,
-)
+from inferyard.errors import PreflightError
+from inferyard.platforms.identity import check_resources, hash_file, memory_available, process_start_ticks, verify_listener, verify_process
 
 
 def test_adapter_rechecks_dns_after_listener_resolution(monkeypatch):

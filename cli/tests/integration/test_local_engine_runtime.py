@@ -10,10 +10,11 @@ import pytest
 import inferyard.runtime.lock as locking
 from inferyard.cli import main
 from inferyard.contracts.validation import Document
-from inferyard.evidence.ledger import read_trial
+from inferyard.errors import EvidenceError, PreflightError
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from inferyard.runtime.trial_runner import TrialDependencies
 from tests.integration.test_runner import scenario  # noqa: F401
 from tests.local_engine_runtime.identity import freeze
@@ -245,7 +246,7 @@ def test_uncertain_generation_stays_dirty_even_with_zero_queue(local_run, fault_
 def test_sealed_queue_tampering_rejected_before_report(local_run, tmp_path, capsys):
     import json
 
-    from inferyard.evidence.storage import EvidenceError, read_jsonl
+    from inferyard.evidence.storage import read_jsonl
 
     command, deps, _ = local_run
     code, result = asyncio.run(execute_async(command, deps))
@@ -269,9 +270,8 @@ def test_second_scope_requires_explicit_handoff_and_new_process(
     monkeypatch,
     rig,  # noqa: F811
 ):
-    from inferyard.platforms.identity import PreflightError
     from inferyard.runtime import batch_state
-    from inferyard.runtime.batch_runner import execute_async as execute_batch
+    from inferyard.application.execution import execute_async as execute_batch
     from tests.integration.test_batch_runner import batch
 
     command, deps, state = local_run
@@ -287,7 +287,7 @@ def test_second_scope_requires_explicit_handoff_and_new_process(
         }
         return value
 
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
     from inferyard.platforms.identity import hash_file
 
     config = command.config.config.to_dict()
@@ -338,7 +338,7 @@ def test_second_scope_requires_explicit_handoff_and_new_process(
     assert len(state.posts) == 5
     assert len(list((tmp_path / "batch" / "runs").iterdir())) == 1
 
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
 
     replacement = rig("vllm")
     replacement.binding = deepcopy(state.binding)

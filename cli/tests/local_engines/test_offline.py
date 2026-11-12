@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 
 from inferyard.config.local_engines.launch import startup
-from inferyard.contracts.validation import ContractError
-from inferyard.platforms.identity import PreflightError, hash_file
+from inferyard.errors import ContractError, PreflightError
+from inferyard.platforms.identity import hash_file
 from inferyard.platforms.local_engines.assets import assets, bound_json
 from inferyard.platforms.local_engines.offline import validate_frozen_identity
 from tests.local_engine_runtime.identity import freeze
@@ -124,7 +124,7 @@ def python_sealed(local_config, rig, tmp_path):  # noqa: F811
 
 
 def refresh_documents(config, local, identities):
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
 
     argv = [
         local["runtime"]["installation"]["executable"],

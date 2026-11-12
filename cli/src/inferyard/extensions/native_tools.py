@@ -5,8 +5,8 @@ import asyncio
 from inferyard.contracts.schemas_extensions import NATIVE_ARGS as ARGS
 from inferyard.contracts.schemas_extensions import NATIVE_LOOKUP as LOOKUP
 from inferyard.contracts.schemas_extensions import NATIVE_TOOLS as SPEC
-from inferyard.contracts.validation import ContractError, _validate, strict_json_loads
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.contracts.validation import validate_value, strict_json_loads, json_bytes
+from inferyard.errors import ContractError, EvidenceError
 
 CATALOGUE = {"alpha": "北京", "beta": "上海"}
 TOOLS = [
@@ -26,14 +26,14 @@ TOOLS = [
 
 
 def validate_spec(spec):
-    _validate(spec, SPEC, "native_tools")
+    validate_value(spec, SPEC, "native_tools")
     if spec["max_calls"] > 8 or spec["max_rounds"] > 9 or len(spec["cases"]) > 128:
         raise ContractError("native_tools", "bounded chain budget exceeded")
     ids = [c["case_id"] for c in spec["cases"]]
     if len(set(ids)) != len(ids):
         raise ContractError("native_tools.cases", "duplicate case")
     for case in spec["cases"]:
-        _validate(
+        validate_value(
             case["expected_arguments"],
             ARGS if case["expected_tool"] == "add" else LOOKUP,
             "native_tools.arguments",
@@ -49,7 +49,7 @@ def validate_spec(spec):
 def call_mock(name, arguments):
     if name not in ("add", "lookup"):
         raise EvidenceError("tool_not_allowlisted")
-    _validate(arguments, ARGS if name == "add" else LOOKUP, "tool.arguments")
+    validate_value(arguments, ARGS if name == "add" else LOOKUP, "tool.arguments")
     return arguments["a"] + arguments["b"] if name == "add" else CATALOGUE[arguments["key"]]
 
 

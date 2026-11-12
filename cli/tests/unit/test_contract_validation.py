@@ -5,7 +5,8 @@ from copy import deepcopy
 import pytest
 
 from inferyard.config.loader import load_config
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError
 
 
 @pytest.mark.parametrize(

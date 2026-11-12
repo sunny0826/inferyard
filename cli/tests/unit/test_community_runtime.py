@@ -11,11 +11,11 @@ from types import SimpleNamespace
 import pytest
 
 from inferyard.application.types import CommandRequest
-from inferyard.config import preparation_io
-from inferyard.config.preparation_io import PreparationError, json_bytes
-from inferyard.platforms import runtime_verification, windows_runtime_prepare
-from inferyard.platforms.runtime_archive import member_records, zip_entries
-from inferyard.platforms.runtime_profiles import (
+from inferyard.provisioning import preparation_io
+from inferyard.provisioning.preparation_io import PreparationError, json_bytes
+from inferyard.provisioning import runtime_verification, windows_runtime_prepare
+from inferyard.provisioning.runtime_archive import member_records, zip_entries
+from inferyard.provisioning.runtime_profiles import (
     PROFILES,
     load_profile,
     output_files,
@@ -235,7 +235,7 @@ def test_nested_receipt_archive_types_are_exact(synthetic_runtime, change):
 
 @pytest.mark.parametrize("change", ["float", "bool", "extra", "missing"])
 def test_nested_packaged_profile_archive_types_are_exact(change):
-    from inferyard.platforms.runtime_profiles import validate_profile
+    from inferyard.provisioning.runtime_profiles import validate_profile
 
     name = next(iter(PROFILES))
     profile, _ = load_profile(name)

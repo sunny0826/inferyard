@@ -3,7 +3,32 @@
 from collections import Counter
 
 from inferyard.analysis.observations import Observations
-from inferyard.runtime.fixed_output import enabled, target_rate
+from inferyard.contracts.fixed_output import enabled
+
+
+def target_rate(rows, target, complete):
+    valid = [r for r in rows if r["execution_state"] in ("completed", "failed")]
+    known = all(
+        type(r.get("completion_tokens")) is int
+        and r["completion_tokens"] >= 0
+        and r.get("token_source") == "endpoint.usage"
+        and r.get("token_scope") == "completion_tokens"
+        for r in valid
+    )
+    reached = sum(
+        r["execution_state"] == "completed"
+        and r.get("completion_tokens") == target
+        and r.get("raw_finish_reason") == "length"
+        for r in valid
+    )
+    return {
+        "value": reached / len(valid) if complete and valid and known else None,
+        "count": len(valid),
+        "numerator": reached if known else None,
+        "denominator": len(valid),
+        "excluded": len(rows) - len(valid),
+        "reason": "incomplete_or_terminal_output_count_unknown",
+    }
 
 
 def output_budget_observations(run, workload, cases, requests, evidence, *, complete):

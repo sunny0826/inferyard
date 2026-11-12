@@ -9,8 +9,8 @@ from inferyard.analysis.environment import (
     assess_schedule,
     environment_qualification,
 )
-from inferyard.evidence.environment_projection import periodic_environment
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
+from inferyard.platforms.environment_projection import periodic_environment
 from inferyard.platforms.power_macos import parse
 from tests.unit.test_environment import state
 
@@ -101,7 +101,8 @@ def test_environment_still_rejects_invalid_observation(row):
 def test_sealed_old_and_new_runs_rebuild_the_same_context_and_report_profile(tmp_path):
     from shutil import copytree
 
-    from inferyard.evidence.storage import json_bytes, read_json
+    from inferyard.contracts.validation import json_bytes
+    from inferyard.evidence.storage import read_json
     from inferyard.reporting.comparison_report import comparison_input
     from inferyard.reporting.report_profile import profile_view
     from tests.helpers import fixture_run

@@ -7,7 +7,7 @@ import pytest
 
 import inferyard.platforms.lab_identity as binding
 from inferyard.config.loader import load_config
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from tests.lab_service import lab_config
 
 

@@ -77,9 +77,10 @@ and invokes [package.py](scripts/package.py), using mise-managed Python, to asse
 instructions; it does not sign, notarize, or publish. On macOS, launch the packaged app with
 `open "InferYard Studio.app"` to use desktop notifications.
 
-The version's single source is [mygo.config.ts](mygo.config.ts). Go embeds the configuration,
-so an ordinary rebuild picks up version changes without generated files or linker flags.
-The packaging script reads the same version.
+The version's single source is [mygo.config.ts](mygo.config.ts). It carries only the MyGo
+embed metadata and is not a web frontend build configuration; there is no frontend install
+or build step. Go embeds the configuration, so an ordinary rebuild picks up version changes
+without generated files or linker flags. The packaging script reads the same version.
 
 ## UI debug preview
 

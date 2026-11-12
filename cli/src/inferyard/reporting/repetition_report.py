@@ -5,16 +5,10 @@ import hashlib
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.repetition_analysis import make_analysis
 from inferyard.analysis.repetition_metrics import repetition_metrics
-from inferyard.application.types import CommandResult
 from inferyard.config.plan_inputs import read_frozen_plan
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-    sha256_file,
-)
+from inferyard.errors import EvidenceError
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, local_file, read_json, sha256_file
 from inferyard.provenance import tool_source_hash
 from inferyard.runtime.batch_state import history
 
@@ -70,21 +64,6 @@ def write_repetition_summary(root, out):
     for name, analysis in zip(result["analysis_files"], analyses, strict=True):
         atomic_bytes(out / name, json_bytes(analysis))
     return result
-
-
-def execute(request):
-    if request.command == "repeat-check":
-        result = verify_repetition_summary(request.run)
-        return 0, CommandResult(request.command, "verified", "complete", details=result)
-    result = write_repetition_summary(request.run, request.out)
-    return 0, CommandResult(
-        request.command,
-        "derived",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(result["limitations"]),
-        details=result,
-    )
 
 
 def verify_repetition_summary(out):

@@ -91,12 +91,12 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	}
 	ui.Field(c, "上下文档位", func() {
 		components.NativeSelect(c, &w.context, []components.NativeSelectOption[int]{
-			{Value: 65536, Label: "64k"},
-			{Value: 131072, Label: "128k"},
-			{Value: 262144, Label: "256k"},
+			{Value: inferyard.ContextSpeed64K, Label: "64k"},
+			{Value: inferyard.ContextSpeed128K, Label: "128k"},
+			{Value: inferyard.ContextSpeed256K, Label: "256k"},
 		}).Trigger.Label("上下文档位")
 	})
-	ui.Text(c, "zh-context-speed · 5 次测量 · 每次输出 256 tokens")
+	ui.Text(c, fmt.Sprintf("%s · %d 次测量 · 每次输出 256 tokens", inferyard.ContextSpeedBundleID, inferyard.ContextSpeedSamples))
 	ui.Text(c, "5 次正式测量；另含探测、预热与排空。墙钟预算由冻结配方生成。")
 	componentFold(c, "查看配方与停止条件", func() {
 		ui.Text(c, "并发 1 · 固定输入 · 关闭输入缓存与投机解码")
@@ -170,7 +170,7 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 	r := s.speed.current
 	s.header(c, "长上下文速度")
 	ui.Text(c, fmt.Sprintf("%s · %s · %s", r.model, r.engine, speedContext(r.context)))
-	label := "zh-context-speed · "
+	label := inferyard.ContextSpeedBundleID + " · "
 	if s.preview != nil {
 		label += "模拟任务 "
 	}
@@ -269,7 +269,7 @@ func (s *viewState) openSpeed(id string) {
 func (s *viewState) speedResultView(c *ui.Context) {
 	w, r := s.speed, s.speed.opened
 	s.header(c, "长上下文速度 · 结果")
-	ui.Text(c, r.model+" · "+r.engine+" · zh-context-speed")
+	ui.Text(c, r.model+" · "+r.engine+" · "+inferyard.ContextSpeedBundleID)
 	prefix := ""
 	if s.preview != nil {
 		prefix = "模拟数据 · "

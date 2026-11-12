@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_lmstudio_files as files
-from inferyard.platforms.identity import PreflightError
 
 
 class NativeError(Exception):

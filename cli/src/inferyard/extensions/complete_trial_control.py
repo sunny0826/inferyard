@@ -4,8 +4,9 @@ from dataclasses import replace
 from pathlib import Path
 
 from inferyard.contracts.validation import validate_document
+from inferyard.errors import EvidenceError
 from inferyard.evidence.journal import trial_for
-from inferyard.evidence.storage import EvidenceError, read_json, sha256_file
+from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.extensions.total_observer_control import run_total
 from inferyard.extensions.trial_control_baseline import BaselineJournal, CommonGuardSafety
 from inferyard.runtime.overhead_runner import ResourceOffSampler, request_projection

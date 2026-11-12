@@ -5,18 +5,14 @@ from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
 
-from inferyard.analysis.position import position_pattern, register_position_families
-from inferyard.config.bundle import content_hash
+from inferyard.analysis.position import position_pattern
+from inferyard.contracts.position_cases import register_position_families
+from inferyard.contracts.bundle import content_hash
 from inferyard.config.loader import load_config
 from inferyard.config.planning import write_plan
-from inferyard.contracts.validation import validate_document
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    read_json,
-    sha256_file,
-)
+from inferyard.contracts.validation import validate_document, json_bytes
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import atomic_bytes, read_json, sha256_file
 
 
 def prepare(corpus, configs, out):

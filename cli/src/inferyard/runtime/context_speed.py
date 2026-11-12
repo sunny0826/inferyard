@@ -1,7 +1,8 @@
 """Special profile admission; all execution remains in the ordinary runner."""
 
-from inferyard.config.context_speed_profile import BUNDLE_ID, CASES, classify_verified_inputs
-from inferyard.platforms.identity import PreflightError
+from inferyard.config.context_speed_profile import classify_verified_inputs
+from inferyard.contracts.context_speed_profile import BUNDLE_ID, CASES
+from inferyard.errors import PreflightError
 
 
 def is_speed(plan, loaded):

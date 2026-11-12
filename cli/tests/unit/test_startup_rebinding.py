@@ -7,7 +7,7 @@ import pytest
 from inferyard.application.types import CommandRequest
 from inferyard.config.loader import load_config
 from inferyard.contracts.validation import Document
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.runtime import batch_state, runner
 from tests import helpers
 

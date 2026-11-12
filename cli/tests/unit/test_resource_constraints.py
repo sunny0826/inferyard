@@ -4,7 +4,7 @@ import pytest
 
 from inferyard.analysis.candidate_filter import evaluate_candidate, validate_spec
 from inferyard.analysis.comparison import compare_trials
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from tests.unit.test_resource_comparison import fixture, refresh
 
 

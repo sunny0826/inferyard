@@ -10,9 +10,9 @@ import pytest
 
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
-from inferyard.config import preparation_io
+from inferyard.provisioning import preparation_io
 from inferyard.config.community_assets import prepare
-from inferyard.config.preparation_io import NewDirectory, PreparationError
+from inferyard.provisioning.preparation_io import NewDirectory, PreparationError
 from tests.unit.test_device_preflight import gguf
 
 ROOT = Path(__file__).parents[2]
@@ -204,7 +204,7 @@ def test_help_and_versions_do_not_import_new_live_backends():
 import importlib.abc, sys
 class Reject(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        forbidden = ("inferyard.platforms.windows_runtime_prepare",
+        forbidden = ("inferyard.provisioning.windows_runtime_prepare",
                      "inferyard.config.community_candidates", "inferyard.runtime")
         if fullname.startswith(forbidden):
             raise AssertionError(fullname)

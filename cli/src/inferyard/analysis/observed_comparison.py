@@ -1,7 +1,7 @@
 """Descriptive comparisons with task, denominator and per-metric boundaries."""
 
 from inferyard.analysis.comparison import quality_differences
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 
 
 def _tasks(data):

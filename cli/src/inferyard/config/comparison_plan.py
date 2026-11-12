@@ -16,10 +16,11 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 from inferyard import SCHEMA_VERSION
-from inferyard.analysis.comparison_types import JSONRecord, JSONValue
-from inferyard.analysis.engine_comparison import config_pair_blockers
-from inferyard.analysis.scoring import SCORER_VERSION
-from inferyard.config.community_resources import BUNDLES, resource_bytes
+from inferyard.contracts.bundle import DEFAULT_BUNDLES
+from inferyard.contracts.comparison_types import JSONRecord, JSONValue
+from inferyard.contracts.engine_comparison import config_pair_blockers
+from inferyard.contracts.scoring_version import SCORER_VERSION
+from inferyard.provisioning.community_resources import BUNDLES, resource_bytes
 from inferyard.config.loader import load_config, read_document
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.comparison_plan_safety import (
@@ -30,17 +31,15 @@ from inferyard.config.comparison_plan_safety import (
 )
 from inferyard.config.planning import write_plan
 from inferyard.contracts.engine_profiles import is_local
-from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.contracts.validation import strict_json_loads, validate_document, json_bytes
+from inferyard.errors import ContractError
 from inferyard.evidence.formats import require_input
-from inferyard.evidence.storage import json_bytes
 
 if TYPE_CHECKING:
-    from inferyard.application.types import CommandRequest, CommandResult
     from inferyard.config.loader import LoadedConfig
 
 DEFINITION = "engine-comparison-plan.v1"
 BLOCKS = 6
-DEFAULT_BUNDLES = ("zh-core", "zh-svg-pelican")
 BUNDLE_KEYS = {"zh-core": "core", "zh-core-v2": "core", "zh-svg-pelican": "pelican"}
 _SLOT = re.compile(r"^block-(\d{2})-([ab])-(.+)$")
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
@@ -453,23 +452,3 @@ def freeze(
         if destination is None:
             return validated
         return write_plan(source, Path(destination))
-
-
-def execute(request: "CommandRequest") -> tuple[int, "CommandResult"]:
-    from inferyard.application.types import CommandResult
-
-    plan = freeze(
-        request.left_configs or (),
-        request.right_configs or (),
-        request.bundles or (),
-        experiment_id=request.comparison_experiment_id,
-        destination=None if request.dry_run else request.out,
-    )
-    return 0, CommandResult(
-        "compare-plan",
-        "previewed" if request.dry_run else "frozen",
-        "complete",
-        evidence_dir=None if request.dry_run else str(request.out),
-        limitations=tuple(plan["limitations"]),
-        details=plan,
-    )

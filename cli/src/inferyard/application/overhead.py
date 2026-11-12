@@ -5,8 +5,8 @@ import os
 
 from inferyard.application.types import CommandResult
 from inferyard.config.plan_inputs import read_frozen_plan
+from inferyard.errors import PreflightError
 from inferyard.evidence.journal import trial_for
-from inferyard.platforms.identity import PreflightError
 from inferyard.registry import require_execution_support
 from inferyard.runtime.overhead_runner import read_overhead, run_overhead
 from inferyard.runtime.signals import install_termination_handler

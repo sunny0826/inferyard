@@ -4,8 +4,8 @@ import ipaddress
 from urllib.parse import urlsplit
 
 from inferyard.contracts.schemas_common import HASH, LABEL, NAT, POS, VERSION, array, enum, obj
-from inferyard.contracts.validation import _validate
-from inferyard.platforms.identity import PreflightError
+from inferyard.contracts.validation import validate_value
+from inferyard.errors import PreflightError
 
 MODEL = obj(
     {
@@ -63,7 +63,7 @@ BINDING = obj(
 
 
 def validate(binding, config):
-    _validate(binding, BINDING, "local_engine_binding")
+    validate_value(binding, BINDING, "local_engine_binding")
     service, engine, endpoint = binding["service"], config["engine"], config["endpoint"]
     origin = endpoint["url"]
     parsed = urlsplit(origin)

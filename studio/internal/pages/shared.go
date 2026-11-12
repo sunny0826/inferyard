@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
 func errorView(c *ui.Context, e *core.ApiError) {
@@ -33,15 +34,15 @@ func taskLabel(t core.RunTask) string {
 	}
 	if t.Exit != nil {
 		switch t.Exit.ExitCode {
-		case 0:
+		case inferyard.ExitComplete:
 			return "成功"
-		case 2:
+		case inferyard.ExitBlocked:
 			return "输入 / 预检阻断"
-		case 3:
+		case inferyard.ExitIncomplete:
 			return "运行不完整"
-		case 4:
+		case inferyard.ExitToolError:
 			return "工具 / 证据错误"
-		case 130:
+		case inferyard.ExitCancelled:
 			return "已取消"
 		}
 	}

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from inferyard.config.engine_fit import ENGINES
+from inferyard.contracts.engine_profiles import DIAGNOSTIC_ENGINES as ENGINES
 
 
 def add_commands(commands):

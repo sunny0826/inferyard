@@ -7,26 +7,27 @@ import re
 import shutil
 import time
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from inferyard.adapters.engine_fit import FitClient, FitTransportError
-from inferyard.application.types import CommandResult
 from inferyard.config.engine_fit import load_plan, request_rows
-from inferyard.config.engine_fit_assets import runtime_manifest as _manifest
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.engine_fit_checkpoint import request_counts, write_checkpoint
-from inferyard.evidence.storage import EvidenceError, Redactor, atomic_bytes, json_bytes
+from inferyard.platforms.model_asset_manifest import runtime_manifest as _manifest
+from inferyard.errors import ContractError, EvidenceError, PreflightError
+from inferyard.analysis.engine_fit_checkpoint import request_counts, write_checkpoint
+from inferyard.contracts.validation import json_bytes
+from inferyard.contracts.redaction import Redactor
+from inferyard.evidence.storage import atomic_bytes
 from inferyard.platforms.engine_fit import (
     bind_service,
     check_service,
     host_identity,
     resource_snapshot,
 )
-from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.sensors_linux import LinuxSensors
 from inferyard.provenance import tool_source_hash
-from inferyard.reporting.engine_fit import seal_run
+from inferyard.analysis.engine_fit_seal import seal_run
 from inferyard.runtime.lock import HostLock
 from inferyard.runtime.signals import install_termination_handler
 
@@ -41,6 +42,15 @@ LIMITATIONS = [
     "gpu_memory_and_energy_not_collected",
     "no_winner_or_speedup_claim",
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class FitOutcome:
+    """Domain result of one engine-fit diagnostic run, before command presentation."""
+
+    code: int
+    run: dict
+    details: dict
 
 
 def _key(request):
@@ -246,7 +256,7 @@ async def _run(request, plan, key, lock):
             run["platform"] = platform.system()
             run["service"].setdefault("version_missing_reason", None)
         if platform.system() == "Windows":
-            from inferyard.config.engine_fit_native_sources import WINDOWS_LIMITATIONS
+            from inferyard.contracts.engine_fit_native_sources import WINDOWS_LIMITATIONS
 
             run["definition"] = "engine_fit_run.v6"
             run["limitations"].remove(
@@ -347,15 +357,7 @@ async def _run(request, plan, key, lock):
         }
         if lock.state and lock.state["dirty"]:
             details["recovery_token"] = lock.state["dirty_token"]
-        return code, CommandResult(
-            request.command,
-            "completed" if code == 0 else "stopped",
-            run["completeness"],
-            run_id=run["run_id"],
-            evidence_dir=str(request.out),
-            limitations=tuple(run["limitations"]),
-            details=details,
-        )
+        return code, run, details
 
 
 async def _with_signals(request, plan, key, lock):
@@ -395,4 +397,5 @@ def execute(request):
         raise PreflightError("invalid_served_model")
     key = _key(request)
     with HostLock() as lock:
-        return asyncio.run(_with_signals(request, plan, key, lock))
+        code, run, details = asyncio.run(_with_signals(request, plan, key, lock))
+    return FitOutcome(code=code, run=run, details=details)

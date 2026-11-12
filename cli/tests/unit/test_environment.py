@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.environment import FIELDS, assess_environment, assess_schedule
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from tests.unit.test_cpu_policy import inventory
 
 

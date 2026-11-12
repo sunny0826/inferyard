@@ -7,11 +7,11 @@ from types import SimpleNamespace
 
 import pytest
 
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit as fit
 from inferyard.platforms import engine_fit_macos as macos
 from inferyard.platforms import engine_fit_macos_listener as listeners
 from inferyard.platforms import macos_identity
-from inferyard.platforms.identity import PreflightError
 
 
 class NativeError(Exception):

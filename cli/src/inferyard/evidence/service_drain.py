@@ -1,6 +1,6 @@
 """Extract reuse evidence from this read's validated, sealed events only."""
 
-from inferyard.adapters.lab_observation import is_idle
+from inferyard.contracts.lab_observation import is_idle
 
 
 def _idle(data, latest, observation):

@@ -1,5 +1,8 @@
 """Explicit formal profiles; diagnostic support does not imply execution support."""
 
+# Diagnostics may name these engines; execution support stays profile-declared.
+LEGACY_DIAGNOSTIC_ENGINES = ("vllm", "sglang")
+DIAGNOSTIC_ENGINES = (*LEGACY_DIAGNOSTIC_ENGINES, "llama-cpp", "mlx-lm", "lmstudio", "ollama")
 LOCAL_ADAPTER = "local_openai_v1"
 LOCAL_CONFIG = "local-engine-config.v1"
 LOCAL_OBSERVATION = "local-engine-observation.v1"

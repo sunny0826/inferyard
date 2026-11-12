@@ -1,9 +1,9 @@
 """Validate and reduce request events independently of fixed/duration summaries."""
 
 from inferyard import SCHEMA_VERSION
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core
-from inferyard.evidence.storage import EvidenceError
 
 PROJECTION_EVENTS = frozenset(
     (

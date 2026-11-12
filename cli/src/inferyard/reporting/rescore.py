@@ -8,20 +8,13 @@ from inferyard import SCHEMA_VERSION
 from inferyard.analysis.observations import Observations, quality_observations
 from inferyard.analysis.scoring import ScoringContext, score_case, scorer_hash, unscorable
 from inferyard.analysis.scoring_revision import resolve
-from inferyard.application.types import CommandResult
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document, json_bytes
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-)
+from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json
 from inferyard.provenance import tool_source_hash
 from inferyard.reporting.comparison_report import comparison_input
 from inferyard.reporting.export import trial_analysis
-from inferyard.reporting.report_common import _new_output
 
 
 def rescore_rows(
@@ -240,7 +233,7 @@ def write_rescore(root, out, *, scorer_id, reason, parent_path=None):
     files = build_rescore(
         root, scorer_id=scorer_id, reason=reason, parent=parent, parent_evidence=lineage
     )
-    _new_output(out, [root, *([parent_path.parent] if parent_path else [])])
+    new_output(out, [root, *([parent_path.parent] if parent_path else [])])
     for name, value in files.items():
         atomic_bytes(out / name, json_bytes(value))
     return files["analysis.json"]
@@ -322,28 +315,3 @@ def verify_rescore(out):
         "analysis_id": expected["analysis.json"]["analysis_id"],
         "requests": len(record["changes"]),
     }
-
-
-def execute(request):
-    if request.command == "rescore-check":
-        return 0, CommandResult(
-            request.command, "verified", "complete", details=verify_rescore(request.run)
-        )
-    analysis = write_rescore(
-        request.run,
-        request.out,
-        scorer_id=request.scorer_id,
-        reason=request.revision_reason,
-        parent_path=request.analysis_path,
-    )
-    return 0, CommandResult(
-        request.command,
-        "rescored",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(analysis["limitations"]),
-        details={
-            "analysis_id": analysis["analysis_id"],
-            "parent_analysis_id": analysis["parent_analysis_id"],
-        },
-    )

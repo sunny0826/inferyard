@@ -9,9 +9,11 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.application.types import CommandRequest, VerificationOptions
+from inferyard.application.types import CommandRequest
+from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.application.verification import execute
 from inferyard.contracts.validation import Document
+from inferyard.errors import UnsupportedFormat
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.reporting.report import build_index, verify_report, write_report
 from inferyard.reporting.report_assets import template_hash
@@ -120,7 +122,6 @@ def test_failed_svg_preserves_execution_failure_without_quality_score(scenario, 
 
 
 def test_current_non_svg_gallery_empty_and_old_renderers_unavailable(tmp_path):
-    from inferyard.evidence.formats import UnsupportedFormat
 
     root = fixture_run(tmp_path / "runs")
     out = tmp_path / "report"

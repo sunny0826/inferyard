@@ -3,9 +3,10 @@ from copy import deepcopy
 import pytest
 
 from inferyard.config.planning import compile_plan
-from inferyard.contracts.validation import ContractError
-from inferyard.platforms.identity import PreflightError
-from inferyard.runtime.fixed_output import target_rate, validate_inputs, verify_probe
+from inferyard.errors import ContractError, PreflightError
+from inferyard.analysis.output_budget import target_rate
+from inferyard.contracts.fixed_output import validate_inputs
+from inferyard.evidence.fixed_output import verify_probe
 from tests.unit.test_phase2_contracts import experiment
 
 

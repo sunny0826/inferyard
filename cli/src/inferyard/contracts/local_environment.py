@@ -3,7 +3,7 @@
 from pathlib import PurePosixPath
 
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 _SGLANG_ROOT = {"SGLANG_RUN_ID", "PROMETHEUS_MULTIPROC_DIR"}
 _VLLM_WORKER = {

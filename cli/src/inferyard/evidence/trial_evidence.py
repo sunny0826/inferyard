@@ -5,13 +5,14 @@ from pathlib import Path
 
 from inferyard.contracts.engine_profiles import observes_before_idle
 from inferyard.contracts.schemas_layout import INPUT_KINDS, OBSERVATION_STAGES
-from inferyard.contracts.validation import ContractError, validate_document
-from inferyard.evidence.formats import UnsupportedFormat, require_core
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
+from inferyard.evidence.formats import require_core
 from inferyard.evidence.layout import INPUT_FILES, OBSERVATION_FILES, identify
 from inferyard.evidence.observations import Observations, validate_query
 from inferyard.evidence.prepared import PreparedRequests
 from inferyard.evidence.reference import verify_reference as verify_reference
-from inferyard.evidence.storage import EvidenceError, verify_manifest_files
+from inferyard.evidence.storage import verify_manifest_files
 from inferyard.evidence.trial_reads import TrialReads
 
 

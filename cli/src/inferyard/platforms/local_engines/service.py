@@ -4,8 +4,9 @@ import hashlib
 import os
 from pathlib import Path
 
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_macos as native
-from inferyard.platforms.identity import PreflightError, hash_file, service_origin
+from inferyard.platforms.identity import hash_file, service_origin
 from inferyard.platforms.local_engines.assets import assets, bound_json
 from inferyard.platforms.local_engines.installation import darwin
 from inferyard.platforms.local_engines.startup import check_environment, validate_startup
@@ -25,7 +26,7 @@ def validate_binding(binding, config):
 def _direct(config, declaration, runtime_files, psutil):
     endpoint = config["endpoint"]
     pid = endpoint["server_pid"]
-    state = native._state(pid, psutil)
+    state = native.service_process_state(pid, psutil)
     start, arguments, raw, executable, cwd = state
     if start != endpoint["process_start_ticks"]:
         raise PreflightError("local_engine_pid_reused")
@@ -46,7 +47,7 @@ def _direct(config, declaration, runtime_files, psutil):
     native.unique_listener(pid, address, port)
     model = Path(config["model"]["local_path"]).resolve(strict=True)
     info = model.stat()
-    if native._state(pid, psutil) != state or psutil.Process(pid).environ() != environment:
+    if native.service_process_state(pid, psutil) != state or psutil.Process(pid).environ() != environment:
         raise PreflightError("local_engine_service_changed")
     return {
         "pid": pid,
@@ -92,7 +93,7 @@ def bind_service(config):
             )
             if service["start_ticks"] != endpoint["process_start_ticks"]:
                 raise PreflightError("local_engine_pid_reused")
-            state = native._state(endpoint["server_pid"], psutil)
+            state = native.service_process_state(endpoint["server_pid"], psutil)
             if state[1] != engine["startup_args"] or str(state[4]) != engine["working_directory"]:
                 raise PreflightError("local_engine_startup_mismatch")
             check_environment(
@@ -112,7 +113,7 @@ def bind_service(config):
         from inferyard.platforms.local_engines.installation import verify_installation
 
         verify_installation(runtime)
-        final = native._state(endpoint["server_pid"], psutil)
+        final = native.service_process_state(endpoint["server_pid"], psutil)
         if (
             final[0] != service["start_ticks"]
             or hashlib.sha256(final[2]).hexdigest() != service["argv_sha256"]

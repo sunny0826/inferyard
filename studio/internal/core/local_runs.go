@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"path/filepath"
-	"strconv"
 	"time"
 )
 
@@ -238,11 +237,14 @@ func (s *Service) prepareCandidateRun(ctx context.Context, t *runEntry) (failure
 	if workspace == nil {
 		return Conflict("settings_incomplete")
 	}
-	output, failure := nextLocalOutput(*workspace, "bound", str(t.Task.Bundle))
+	output, failure := NextOutput(*workspace, "bound", str(t.Task.Bundle))
 	if failure != nil {
 		return failure
 	}
-	args := []string{"config", "bind", "--candidate", t.local.candidate, "--pid", strconv.FormatInt(state.Pid, 10), "--endpoint", state.Endpoint, "--out", output}
+	args, failure := BindArgs(t.local.candidate, output, state.Pid, state.Endpoint)
+	if failure != nil {
+		return failure
+	}
 	out, err := s.exec(ctx, t.binary, args...)
 	if ctx.Err() != nil {
 		return Err("cancelled")

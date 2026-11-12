@@ -8,13 +8,9 @@ import platform
 import time
 from pathlib import Path
 
-from inferyard.evidence.environment_projection import periodic_environment
-from inferyard.platforms.identity import (
-    PreflightError,
-    environment_snapshot,
-    memory_available,
-    process_start_ticks,
-)
+from inferyard.errors import PreflightError
+from inferyard.platforms.environment_projection import periodic_environment
+from inferyard.platforms.identity import environment_snapshot, memory_available, process_start_ticks
 
 
 def read_rss(pid: int, start_ticks: int, proc_root=Path("/proc")) -> tuple[int | None, str | None]:

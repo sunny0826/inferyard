@@ -5,8 +5,8 @@ resource-off arms must not inherit the environment eligibility of an on arm.
 """
 
 from inferyard.analysis.environment_identity import fields as identity_fields
+from inferyard.errors import EvidenceError
 from inferyard.evidence.engine_capabilities import observation_sealed
-from inferyard.evidence.storage import EvidenceError
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 

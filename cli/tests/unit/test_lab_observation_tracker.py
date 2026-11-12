@@ -1,6 +1,6 @@
 import pytest
 
-from inferyard.adapters.lab_observation import LabProtocolError, ObservationTracker
+from inferyard.contracts.lab_observation import LabProtocolError, ObservationTracker
 
 INSTANCE = "1" * 32
 REQUEST = "2" * 32

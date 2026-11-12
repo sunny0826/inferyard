@@ -5,14 +5,14 @@ import time
 
 import httpx
 
-from inferyard.adapters.lab_observation import (
+from inferyard.contracts.lab_observation import (
     ObservationTracker,
     parse_identity,
     parse_lifecycle,
     parse_request,
 )
-from inferyard.adapters.lab_observation_json import MAX_RESPONSE_BYTES, LabProtocolError
-from inferyard.platforms.identity import PreflightError
+from inferyard.contracts.lab_observation_json import MAX_RESPONSE_BYTES, LabProtocolError
+from inferyard.errors import PreflightError
 
 
 class LabTransport:
@@ -84,7 +84,7 @@ class LabTransport:
 
     async def management(self, path, body=None, *, timeout=5):
         # Kept for the common adapter interface; lab adapters never guess legacy routes.
-        from inferyard.adapters.lab_observation_json import load_strict
+        from inferyard.contracts.lab_observation_json import load_strict
 
         return load_strict(
             await self.read(

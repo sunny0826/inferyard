@@ -11,7 +11,8 @@ from types import SimpleNamespace
 import pytest
 
 from inferyard.config.local_engines.launch import startup
-from inferyard.platforms.identity import PreflightError, hash_file
+from inferyard.errors import PreflightError
+from inferyard.platforms.identity import hash_file
 from inferyard.platforms.local_engines import workers
 from inferyard.platforms.local_engines.installation import _python
 from inferyard.platforms.local_engines.python_sources import resolve_sources
@@ -267,7 +268,7 @@ def test_worker_observer_rejects_same_venv_without_no_site(environment, monkeypa
     ]
     monkeypatch.setattr(
         workers.native,
-        "_state",
+        "service_process_state",
         lambda pid, _: (1, arguments if pid == 1 else child_args, b"", executable, cwd),
     )
     psutil = SimpleNamespace(

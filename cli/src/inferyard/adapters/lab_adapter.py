@@ -8,14 +8,15 @@ import uuid
 import httpx
 
 from inferyard.adapters.lab_generation import GenerationDecoder
-from inferyard.adapters.lab_observation import is_idle, parse_cancel
-from inferyard.adapters.lab_observation_json import LabProtocolError
+from inferyard.contracts.lab_observation import is_idle, parse_cancel
+from inferyard.contracts.lab_observation_json import LabProtocolError
 from inferyard.adapters.lab_parameters import LabParameters
 from inferyard.adapters.lab_transport import LabTransport
 from inferyard.adapters.native_observation import NativeObservation, OpenAIGenerationDecoder
 from inferyard.adapters.response_state import ResponseState
-from inferyard.evidence.storage import EvidenceError, Redactor
-from inferyard.platforms.identity import PreflightError, resolve_loopback_origin
+from inferyard.errors import EvidenceError, PreflightError
+from inferyard.contracts.redaction import Redactor
+from inferyard.platforms.identity import resolve_loopback_origin
 
 
 class LabAdapter(LabParameters, NativeObservation, LabTransport):

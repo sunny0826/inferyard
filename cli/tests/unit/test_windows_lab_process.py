@@ -6,8 +6,8 @@ import time
 
 import pytest
 
+from inferyard.errors import PreflightError
 from inferyard.platforms import windows_lab_checks as checks
-from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.windows_lab_api import override_windows_lab_api
 from inferyard.platforms.windows_lab_process import (
     ProcessHandle,

@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.comparison import compare_trials
-from inferyard.analysis.engine_comparison import PENDING
+from inferyard.contracts.engine_comparison import PENDING
 from tests.unit.test_comparison import trial
 
 

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from inferyard.platforms import telemetry
-from inferyard.runtime import environment_schedule
+from inferyard.platforms import environment_schedule
 
 
 def make_sampler():

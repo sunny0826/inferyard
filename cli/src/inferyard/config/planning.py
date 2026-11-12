@@ -9,18 +9,19 @@ from copy import deepcopy
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
-from inferyard.analysis.position import register_position_families
+from inferyard.contracts.position_cases import register_position_families
 from inferyard.config.loader import load_config, read_document, validate_runtime_config
 from inferyard.config.plan_inputs import (
     runtime_snapshot,
     source_bytes,
     validate_workload_inputs,
 )
-from inferyard.config.plan_math import plan_hash, workload_budget
-from inferyard.contracts.validation import ContractError, strict_json_loads, validate_document
+from inferyard.contracts.plan_math import plan_hash, workload_budget
+from inferyard.contracts.validation import strict_json_loads, validate_document, json_bytes
 from inferyard.contracts.validation_cache import command_validation
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core, require_input
-from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes
+from inferyard.evidence.storage import atomic_bytes
 
 
 def compile_plan(experiment):

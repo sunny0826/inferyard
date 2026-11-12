@@ -8,12 +8,12 @@ from pathlib import Path
 
 import psutil
 
-from inferyard.config.engine_fit_native_sources import (
+from inferyard.contracts.engine_fit_native_sources import (
     WINDOWS_LISTENER_SOURCE,
     WINDOWS_START_SOURCE,
 )
-from inferyard.contracts.validation import ContractError
-from inferyard.platforms.identity import PreflightError, service_origin
+from inferyard.errors import ContractError, PreflightError
+from inferyard.platforms.identity import service_origin
 
 
 def _remaining(deadline):
@@ -92,7 +92,7 @@ def _environment(pid):
 def bind_service(
     engine, model_path, pid, url, *, lms_path=None, models_root=None, served_model=None
 ):
-    from inferyard.platforms.engine_fit import _file_hash, _stamp
+    from inferyard.platforms.engine_fit import file_stamp, stable_file_digest
     from inferyard.platforms.engine_fit_entrypoints import startup_binding, validate_model
 
     if engine != "llama-cpp" or type(pid) is not int or pid < 1:
@@ -108,12 +108,12 @@ def bind_service(
         startup, source, extras = startup_binding(engine, arguments, executable, cwd)
         model = validate_model(startup, model_path, source)
         model_stat, executable_stat = model.stat(), executable.stat()
-        digest, _size = _file_hash(executable)
+        digest, _size = stable_file_digest(executable)
         listener = _listener(pid, address, port)
         _environment(pid)
         if (
             _state(pid, deadline) != state
-            or _stamp(executable.stat()) != _stamp(executable_stat)
+            or file_stamp(executable.stat()) != file_stamp(executable_stat)
             or (model.stat().st_dev, model.stat().st_ino) != (model_stat.st_dev, model_stat.st_ino)
             or not os.path.samefile(startup, model)
             or _listener(pid, address, port) != listener

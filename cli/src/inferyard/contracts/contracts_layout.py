@@ -4,12 +4,11 @@ import base64
 import binascii
 import hashlib
 
-from inferyard.contracts.validation import ContractError, _validate, validate_document
+from inferyard.contracts.validation import json_bytes, validate_document, validate_value
+from inferyard.errors import ContractError
 
 
 def content_digest(value):
-    from inferyard.evidence.storage import json_bytes
-
     return hashlib.sha256(json_bytes(value)).hexdigest()
 
 
@@ -51,6 +50,6 @@ def validate_layout(kind, data):
 
         if "messages" not in data["body"]:
             raise ContractError("prepared_request.body.messages", "original messages required")
-        _validate(data["body"]["messages"], MESSAGES, "prepared_request.body.messages")
+        validate_value(data["body"]["messages"], MESSAGES, "prepared_request.body.messages")
         if content_digest(data["body"]) != data["body_sha256"]:
             raise ContractError("prepared_request.body_sha256", "content hash mismatch")

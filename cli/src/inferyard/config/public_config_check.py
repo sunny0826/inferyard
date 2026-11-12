@@ -1,10 +1,9 @@
 """Offline declared configuration match; runtime preflight is still required."""
 
-from inferyard.application.types import CommandResult
 from inferyard.config.public_recipe import fingerprint
 from inferyard.config.startup_portability import portable_startup
-from inferyard.evidence.storage import EvidenceError, local_file, read_json
-from inferyard.reporting.public_package import verify_public
+from inferyard.errors import EvidenceError
+from inferyard.evidence.storage import local_file, read_json
 
 REQUIRED = {
     "generation.stop",
@@ -18,7 +17,6 @@ REQUIRED = {
 
 
 def check_config(root, loaded):
-    verify_public(root)
     candidate = read_json(local_file(root, "candidate.json"))
     config = loaded.config.to_dict()
     reproduction = candidate["reproduction"]
@@ -65,15 +63,3 @@ def check_config(root, loaded):
             "device_equivalence_not_verified",
         ],
     }
-
-
-def execute(request):
-    result = check_config(request.run, request.config)
-    passed = result["declared_configuration_matches"]
-    return (0 if passed else 3), CommandResult(
-        request.command,
-        "matched" if passed else "mismatch",
-        "incomplete",
-        details=result,
-        limitations=tuple(result["limitations"]),
-    )

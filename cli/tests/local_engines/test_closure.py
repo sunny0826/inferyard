@@ -5,7 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from inferyard.platforms.identity import PreflightError, hash_file
+from inferyard.errors import PreflightError
+from inferyard.platforms.identity import hash_file
 from inferyard.platforms.local_engines import closure, workers
 
 
@@ -57,7 +58,7 @@ def test_worker_identity_and_process_reuse(tmp_path, monkeypatch):
 
     psutil = SimpleNamespace(Process=process)
     state = (123, ["python"], b"python\0", executable, tmp_path)
-    monkeypatch.setattr(workers.native, "_state", lambda *_: state)
+    monkeypatch.setattr(workers.native, "service_process_state", lambda *_: state)
     monkeypatch.setattr(
         workers,
         "lsof_records",
@@ -75,7 +76,7 @@ def test_worker_identity_and_process_reuse(tmp_path, monkeypatch):
     result = workers.observe_workers(1, psutil, [identity], {})
     assert result[0]["pid"] == 2 and result[0]["parent_pid"] == 1
     calls = iter([state, (124, *state[1:])])
-    monkeypatch.setattr(workers.native, "_state", lambda *_: next(calls))
+    monkeypatch.setattr(workers.native, "service_process_state", lambda *_: next(calls))
     with pytest.raises(PreflightError, match="worker_tree_changed"):
         workers.observe_workers(1, psutil, [identity], {})
 
@@ -90,7 +91,7 @@ def test_worker_environment_override_blocks(tmp_path, monkeypatch):
 
     psutil = SimpleNamespace(Process=process)
     monkeypatch.setattr(
-        workers.native, "_state", lambda *_: (1, [], b"", Path("/python"), tmp_path)
+        workers.native, "service_process_state", lambda *_: (1, [], b"", Path("/python"), tmp_path)
     )
     with pytest.raises(PreflightError, match="environment_override"):
         workers.observe_workers(1, psutil, [], {})

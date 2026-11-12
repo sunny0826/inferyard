@@ -6,8 +6,8 @@ import httpx
 import pytest
 
 from inferyard.adapters.prism import PrismAdapter, ResponseState, SSEDecoder, StreamProtocol
-from inferyard.evidence.storage import Redactor
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
+from inferyard.contracts.redaction import Redactor
 
 
 def frame(delta=None, reason=None, usage=None):

@@ -7,9 +7,8 @@ from inferyard.adapters.requests import request_body
 from inferyard.adapters.response_state import ResponseState
 from inferyard.analysis.scoring import ScoringContext, score_case
 from inferyard.contracts.validation import validate_document
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.request_snapshots import messages_sha256
-from inferyard.evidence.storage import EvidenceError
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.service_observation import clean_observed, native, observe_service
 
 
@@ -82,7 +81,7 @@ class TrialRequests:
         key = f"{self.store.run_id}-{phase}-{self.ordinal}"
         body = request_body(self.config, prompt, stream=stream)
         if getattr(self.store, "cache_protocol", None):
-            from inferyard.runtime.cache_execution import request_value
+            from inferyard.contracts.cache_execution import request_value
 
             body["cache_prompt"] = request_value(self.config, phase, self.ordinal)
             body["n_cache_reuse"] = 0

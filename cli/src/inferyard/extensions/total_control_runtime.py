@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import time
 
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.extensions.extension_evidence import ExtensionJournal
 from inferyard.extensions.total_observer_control import run_total
 from inferyard.platforms.identity import environment_snapshot

@@ -6,18 +6,16 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.analysis.comparison_types import JSONRecord
-from inferyard.config.bundle import content_hash
+from inferyard.contracts.bundle import DEFAULT_BUNDLES, content_hash
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.config.comparison_plan import (
-    DEFAULT_BUNDLES,
     comparison_slots,
     freeze,
     validate_comparison_plan,
 )
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.toml_writer import render
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import ContractError
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 ANSWER_POLICY = {
@@ -93,7 +91,7 @@ def bundle_document(bundle_id: str, cases: list[JSONRecord]) -> JSONRecord:
 
 
 def write_bundle(root: Path, name: str, bundle: JSONRecord) -> Path:
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
 
     path = root / f"{name}.json"
     path.write_bytes(json_bytes(bundle))
@@ -256,7 +254,7 @@ def test_two_bundles_freeze_six_blocks_and_fresh_each_slot(tmp_path: Path) -> No
 
 
 def test_default_product_bundles_are_used_when_no_bundle_is_declared(tmp_path: Path) -> None:
-    from inferyard.config.community_resources import resource_bytes
+    from inferyard.provisioning.community_resources import resource_bytes
 
     root = tmp_path / "inputs"
     root.mkdir()

@@ -12,7 +12,7 @@ import (
 )
 
 func (s *Service) StartContextSpeed(req StartContextSpeedRequest) (RunTask, *ApiError) {
-	if req.Model == "" || req.Engine == "" || (req.Context != 65536 && req.Context != 131072 && req.Context != 262144) {
+	if req.Model == "" || req.Engine == "" || !inferyard.ValidContextSpeedContext(req.Context) {
 		return RunTask{}, Err("invalid_request")
 	}
 	for _, entry := range s.registry().engines {
@@ -162,7 +162,7 @@ func (s *Service) prepareContextSpeed(ctx context.Context, t *runEntry, req Star
 	if err := os.MkdirAll(filepath.Dir(ops), 0700); err != nil {
 		return Err("internal_error")
 	}
-	if e := s.speedCommand(ctx, t, "init", "--bundle", "zh-context-speed", "--out", ops); e != nil {
+	if e := s.speedCommand(ctx, t, "init", "--bundle", inferyard.ContextSpeedBundleID, "--out", ops); e != nil {
 		return e
 	}
 	preflight := filepath.Join(ops, "preflight", "selected")
@@ -170,7 +170,7 @@ func (s *Service) prepareContextSpeed(ctx context.Context, t *runEntry, req Star
 		return e
 	}
 	candidate := filepath.Join(ops, "candidates", "selected")
-	args := []string{"config", "create", "--workspace", ops, "--bundle", "zh-context-speed", "--profile", "context-speed", "--context-size", strconv.Itoa(req.Context), "--preflight", filepath.Join(preflight, "device-preflight.json"), "--results", t.root, "--out", candidate}
+	args := []string{"config", "create", "--workspace", ops, "--bundle", inferyard.ContextSpeedBundleID, "--profile", "context-speed", "--context-size", strconv.Itoa(req.Context), "--preflight", filepath.Join(preflight, "device-preflight.json"), "--results", t.root, "--out", candidate}
 	args, e = s.candidateEngineArgs(args, req.Engine, runtime.GOOS)
 	if e != nil {
 		return e
@@ -198,7 +198,11 @@ func (s *Service) prepareContextSpeed(ctx context.Context, t *runEntry, req Star
 		return Err("engine_start_failed")
 	}
 	bound := filepath.Join(ops, "bound", "selected")
-	if e := s.speedCommand(ctx, t, "config", "bind", "--candidate", filepath.Join(candidate, "candidate.toml"), "--pid", strconv.FormatInt(engine.Pid, 10), "--endpoint", engine.Endpoint, "--out", bound); e != nil {
+	bind, e := BindArgs(filepath.Join(candidate, "candidate.toml"), bound, engine.Pid, engine.Endpoint)
+	if e != nil {
+		return e
+	}
+	if e := s.speedCommand(ctx, t, bind...); e != nil {
 		return e
 	}
 	s.speedStage(t, "planning")

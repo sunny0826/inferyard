@@ -2,16 +2,12 @@
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
-from inferyard.application.types import CommandResult, VerificationOptions
-from inferyard.evidence.formats import check_presentation_seal, require_core, require_version
-from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import (
-    EvidenceError,
-    atomic_bytes,
-    json_bytes,
-    local_file,
-    read_json,
-)
+from inferyard.errors import EvidenceError
+from inferyard.contracts.format_versions import require_version
+from inferyard.evidence.formats import check_presentation_seal, require_core
+from inferyard.analysis.ledger import read_trial
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json
 from inferyard.evidence.trial_evidence import verify_reference
 
 
@@ -93,7 +89,7 @@ def build_comparison(
     (left, left_ref), (right, right_ref) = loaded
     evidence = None
     if left_overhead is not None:
-        from inferyard.evidence.total_applicability import load_performance_evidence_v3
+        from inferyard.reporting.total_applicability import load_performance_evidence_v3
 
         evidence = [
             load_performance_evidence_v3(
@@ -209,11 +205,8 @@ def verify_comparison(root, *, source_roots=()):
     return {"verified": True, "source_runs": 2}
 
 
-def execute(request, *, options=None):
-    if request.command == "compare-check":
-        options = options or VerificationOptions.from_request(request)
-        result = verify_comparison(request.run, source_roots=options.source_roots)
-        return 0, CommandResult(request.command, "verified", "complete", details=result)
+def write_comparison(request):
+    """Build, render and seal one pair comparison; returns the comparison document."""
     source_metadata = {}
     loaded = [
         comparison_input(
@@ -233,11 +226,11 @@ def execute(request, *, options=None):
         format_version=4,
     )
     from inferyard.reporting.report import build_index
-    from inferyard.reporting.report_common import _environment, _new_output
+    from inferyard.reporting.report_common import _environment
 
     sources = [request.left, request.right]
     sources.extend(p for p in (request.left_overhead, request.right_overhead) if p is not None)
-    _new_output(request.out, sources)
+    new_output(request.out, sources)
     from copy import deepcopy
 
     from inferyard.evidence.source_locations import relative_comparison
@@ -263,11 +256,4 @@ def execute(request, *, options=None):
     atomic_bytes(request.out / "index.json", json_bytes(index))
     atomic_bytes(request.out / "report.html", html.encode())
     seal_report(request.out, comparison=True)
-    return 0, CommandResult(
-        request.command,
-        "compared",
-        "complete",
-        evidence_dir=str(request.out),
-        limitations=tuple(result["limitations"]),
-        details=result,
-    )
+    return result

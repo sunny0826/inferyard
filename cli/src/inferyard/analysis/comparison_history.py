@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.config.comparison_plan import Slot, comparison_slots
 
 HISTORY_IDENTITY_ERROR = "comparison_history_identity_error"

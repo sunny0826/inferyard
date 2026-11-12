@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from inferyard.errors import PreflightError
 
 
 def guard():
@@ -45,7 +46,7 @@ def initialize(out):
 
 
 def child(mode):
-    from inferyard.platforms.identity import PreflightError, process_start_ticks
+    from inferyard.platforms.identity import process_start_ticks
     from inferyard.runtime.lock import HostLock
 
     if mode == "contend":
@@ -87,7 +88,7 @@ def main():
     if args.initialize:
         initialize(args.out)
         return
-    from inferyard.platforms.identity import PreflightError, process_start_ticks
+    from inferyard.platforms.identity import process_start_ticks
     from inferyard.runtime.lock import HostLock
 
     with HostLock() as lock:

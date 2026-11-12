@@ -1,6 +1,6 @@
+from inferyard.errors import PreflightError
 """Clean process reuse and replacement isolation for explicit reruns/handoffs."""
 
-from inferyard.platforms.identity import PreflightError
 
 
 def same_process(old, new):

@@ -3,9 +3,10 @@
 import pytest
 
 from inferyard.analysis.overhead_environment import environment_record
-from inferyard.evidence.formats import UnsupportedFormat
+from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.evidence.lab_parameters import verify_parameters
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json
 from inferyard.evidence.token_budgets import read_budgets
 from inferyard.evidence.trial_evidence import TrialEvidence
 from tests.unit.test_layout_consumers import synthetic_pair

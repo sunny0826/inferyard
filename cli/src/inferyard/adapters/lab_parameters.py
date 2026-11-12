@@ -2,7 +2,7 @@
 
 import time
 
-from inferyard.adapters.lab_observation_json import (
+from inferyard.contracts.lab_observation_json import (
     PROTOCOL,
     LabProtocolError,
     load_strict,
@@ -12,8 +12,8 @@ from inferyard.adapters.lab_observation_json import (
     require_sha256,
 )
 from inferyard.contracts.schemas_config import CONFIG
-from inferyard.contracts.validation import ContractError, _validate
-from inferyard.platforms.identity import PreflightError
+from inferyard.contracts.validation import validate_value
+from inferyard.errors import ContractError, PreflightError
 
 CONDITIONS = ("context_size", "threads", "threads_batch", "slots", "cache_policy")
 
@@ -136,8 +136,8 @@ def validate_budget(value, config):
 
 def validate_parameters(value, config):
     try:
-        _validate(value["generation"], CONFIG["properties"]["generation"], "lab.generation")
-        _validate(
+        validate_value(value["generation"], CONFIG["properties"]["generation"], "lab.generation")
+        validate_value(
             value["conditions"],
             {
                 "type": "object",
@@ -158,22 +158,22 @@ def validate_parameters(value, config):
         "auxiliary_routes": {"vision": False, "speculative": False, "ngram": False},
     }
     for key, requested in expected.items():
-        if not _equal(value[key], requested):
+        if not values_equal(value[key], requested):
             raise PreflightError("lab_effective_parameter_mismatch")
 
 
-def _equal(actual, expected):
+def values_equal(actual, expected):
     if type(actual) in (int, float) and type(expected) in (int, float):
         return actual == expected
     if type(actual) is not type(expected):
         return False
     if isinstance(expected, dict):
         return actual.keys() == expected.keys() and all(
-            _equal(actual[key], value) for key, value in expected.items()
+            values_equal(actual[key], value) for key, value in expected.items()
         )
     if isinstance(expected, list):
         return len(actual) == len(expected) and all(
-            _equal(a, b) for a, b in zip(actual, expected, strict=True)
+            values_equal(a, b) for a, b in zip(actual, expected, strict=True)
         )
     return actual == expected
 

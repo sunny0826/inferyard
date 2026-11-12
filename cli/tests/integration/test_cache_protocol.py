@@ -4,9 +4,10 @@ from dataclasses import replace
 import pytest
 
 from inferyard.config.planning import compile_plan
-from inferyard.contracts.validation import ContractError, Document
-from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, sha256_file
+from inferyard.contracts.validation import Document
+from inferyard.errors import ContractError, EvidenceError
+from inferyard.analysis.ledger import read_trial
+from inferyard.evidence.storage import sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_trial_runner import inputs, scenario
@@ -139,7 +140,8 @@ def test_two_frozen_cache_policies_compare_with_replayed_evidence(scenario, monk
     from copy import deepcopy
 
     from inferyard.application.types import CommandRequest
-    from inferyard.reporting.comparison_report import build_comparison, execute, verify_comparison
+    from inferyard.application.reporting import execute
+    from inferyard.reporting.comparison_report import build_comparison, verify_comparison
     from tests.unit.test_environment import state
 
     # Synthetic admission only; does not approve any real corpus.

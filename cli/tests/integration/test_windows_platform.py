@@ -13,17 +13,10 @@ import pytest
 
 import inferyard.platforms.identity as identity
 from inferyard.analysis.environment import assess_environment
-from inferyard.evidence.storage import EvidenceError, atomic_bytes, json_bytes, local_file
-from inferyard.platforms.identity import (
-    PreflightError,
-    environment_snapshot,
-    hash_file,
-    memory_available,
-    process_start_ticks,
-    static_preflight,
-    verify_listener,
-    verify_process,
-)
+from inferyard.errors import EvidenceError, PreflightError
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import atomic_bytes, local_file
+from inferyard.platforms.identity import environment_snapshot, hash_file, memory_available, process_start_ticks, static_preflight, verify_listener, verify_process
 from inferyard.platforms.platform_io import open_nofollow
 from inferyard.platforms.telemetry import read_rss, sample_memory
 from inferyard.runtime.signals import install_termination_handler

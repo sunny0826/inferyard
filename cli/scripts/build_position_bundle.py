@@ -4,10 +4,10 @@ import argparse
 import hashlib
 from pathlib import Path
 
-from inferyard.analysis.position import register_position_families
-from inferyard.config.bundle import content_hash
-from inferyard.contracts.validation import validate_document
-from inferyard.evidence.storage import atomic_bytes, json_bytes
+from inferyard.contracts.position_cases import register_position_families
+from inferyard.contracts.bundle import content_hash
+from inferyard.contracts.validation import validate_document, json_bytes
+from inferyard.evidence.storage import atomic_bytes
 
 FAMILIES = (
     {

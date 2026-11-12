@@ -4,8 +4,8 @@ import base64
 import hashlib
 
 from inferyard import SCHEMA_VERSION
-from inferyard.contracts.validation import ContractError, validate_document
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.contracts.validation import validate_document, json_bytes
+from inferyard.errors import ContractError, EvidenceError
 
 
 def frozen_inputs(run_id, documents, configuration_source, redactor):

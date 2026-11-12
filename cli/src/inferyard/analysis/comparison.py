@@ -4,7 +4,7 @@ import math
 
 from inferyard.analysis.comparison_helpers import _get, _known, comparable_arguments
 from inferyard.contracts.engine_profiles import is_local
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 
 FACTORS = {
     "cache_policy": ("conditions.cache_policy", ()),
@@ -30,7 +30,7 @@ def normalized_args(args, excluded=()):
 
 
 def compare_trials(left, right, *, mode=None, performance_evidence=None, definition="phase2.v3"):
-    from inferyard.evidence.formats import require_version
+    from inferyard.contracts.format_versions import require_version
 
     require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
     declared = [d["plan"]["experiment"]["comparison"] for d in (left, right)]
@@ -40,7 +40,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     conditions = []
     local_profile = any(is_local(data["config"]) for data in (left, right))
     engine_mode = chosen == "engine"
-    from inferyard.analysis.engine_comparison import LEGACY_ENGINE_FIELDS, allowed_differences
+    from inferyard.contracts.engine_comparison import LEGACY_ENGINE_FIELDS, allowed_differences
 
     engine_allowed = allowed_differences(left, right) if engine_mode else ()
 
@@ -204,11 +204,11 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
             )
             values = (a.get(key), b.get(key))
             if section == "conditions" and key == "macos_power_policy":
-                from inferyard.platforms.power_macos import valid
+                from inferyard.contracts.power_policy import valid_power_policy
 
                 values = tuple(
                     {**v, "power_mode": "not_supported"}
-                    if valid(v) and not v["power_mode_supported"]
+                    if valid_power_policy(v) and not v["power_mode_supported"]
                     else v
                     for v in values
                 )
@@ -311,7 +311,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     if chosen == "side-by-side":
         blockers.append("side_by_side_has_no_controlled_deltas")
     if engine_mode:
-        from inferyard.analysis.engine_comparison import engine_blockers
+        from inferyard.contracts.engine_comparison import engine_blockers
 
         blockers.extend(engine_blockers(left, right))
     elif local_profile:

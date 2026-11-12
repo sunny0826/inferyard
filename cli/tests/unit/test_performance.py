@@ -6,7 +6,7 @@ import pytest
 
 from inferyard.adapters.prism import ResponseState, StreamProtocol
 from inferyard.analysis.performance import distribution, request_timing, summarize_performance
-from inferyard.evidence.storage import Redactor
+from inferyard.contracts.redaction import Redactor
 from tests.unit.test_prism import frame
 
 

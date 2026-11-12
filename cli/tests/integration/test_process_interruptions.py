@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.evidence.ledger import read_trial as rebuild
+from inferyard.analysis.ledger import read_trial as rebuild
 from inferyard.reporting.report import write_report
 from tests.helpers import python_worker, readline_timeout
 
@@ -18,7 +18,7 @@ from dataclasses import asdict
 from pathlib import Path
 import pytest
 from tests.integration.test_runner import scenario
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from inferyard.evidence.journal import TrialJournal as EvidenceStore
 
 root, point = Path(sys.argv[1]), sys.argv[2]

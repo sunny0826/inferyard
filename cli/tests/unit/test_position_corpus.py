@@ -6,7 +6,7 @@ import pytest
 from inferyard.analysis.position import position_pattern
 from inferyard.analysis.scoring import score_case
 from inferyard.config.bundle import require_review
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 def test_generated_position_corpus_preserves_lengths_evidence_and_two_families():

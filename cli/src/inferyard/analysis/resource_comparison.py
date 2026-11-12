@@ -1,7 +1,7 @@
 """Frozen, matched observed windows; never claim continuous or whole-host attribution."""
 
 from inferyard.analysis.resource_metrics import sample_time, select_samples
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 
 NAMES = {
     "C01": "system_mem_available",

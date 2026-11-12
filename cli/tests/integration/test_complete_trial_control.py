@@ -7,7 +7,10 @@ from dataclasses import asdict
 import pytest
 
 from inferyard.config.single_plan import compile_single_plan
-from inferyard.evidence.storage import EvidenceError, Redactor, json_bytes, read_json
+from inferyard.errors import EvidenceError
+from inferyard.contracts.validation import json_bytes
+from inferyard.contracts.redaction import Redactor
+from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.extensions.complete_trial_control import execute_complete, read_trial_plan
 from inferyard.extensions.extension_evidence import ExtensionJournal

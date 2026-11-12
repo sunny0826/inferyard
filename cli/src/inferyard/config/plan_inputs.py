@@ -13,13 +13,13 @@ from inferyard.config.loader import (
 )
 from inferyard.contracts.schemas import CONFIG_DEFAULTS
 from inferyard.contracts.validation import (
-    ContractError,
     Document,
+    json_bytes,
     strict_json_loads,
     validate_document,
 )
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core, require_input
-from inferyard.evidence.storage import EvidenceError, json_bytes
 
 
 def normalized_config(raw, filename, source_directory, bundle_path):
@@ -88,11 +88,11 @@ def source_bytes(root, reference):
 
 
 def validate_workload_inputs(workload, config, bundle, *, experiment_profile=None):
-    from inferyard.analysis.position import validate_position_cases
+    from inferyard.contracts.position_cases import validate_position_cases
     from inferyard.config.context_speed_profile import classify_workload_inputs
-    from inferyard.config.model_lineage import validate_lineage
-    from inferyard.runtime.cache_execution import validate_inputs as validate_cache
-    from inferyard.runtime.fixed_output import validate_inputs
+    from inferyard.contracts.cache_execution import validate_inputs as validate_cache
+    from inferyard.contracts.fixed_output import validate_inputs
+    from inferyard.contracts.model_lineage import validate_lineage
 
     classify_workload_inputs(workload, config, bundle, experiment_profile=experiment_profile)
     if config["engine"]["adapter"] in ("kvmem", "ninfer") and (
@@ -130,7 +130,7 @@ def read_frozen_plan(path):
         raise EvidenceError("invalid_artifact_version")
     # This canonical self-hash is interpretable without loading an old schema.
     if "plan_sha256" in plan:
-        from inferyard.config.plan_math import plan_hash
+        from inferyard.contracts.plan_math import plan_hash
 
         digest = plan["plan_sha256"]
         if (
@@ -158,7 +158,7 @@ def read_frozen_plan(path):
     workloads = {w["workload_id"]: w for w in plan["experiment"]["workloads"]}
     loaded = {}
     position_families = {}
-    from inferyard.analysis.position import register_position_families
+    from inferyard.contracts.position_cases import register_position_families
 
     for binding in plan["runtime_bindings"]:
         workload = workloads[binding["workload_id"]]

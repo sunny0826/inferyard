@@ -3,7 +3,8 @@
 import httpx
 
 from inferyard.application.types import CommandResult
-from inferyard.contracts.validation import ContractError, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError
 from inferyard.platforms.service_discovery import DiscoveryError, collect_listeners
 
 

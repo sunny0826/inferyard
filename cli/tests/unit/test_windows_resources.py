@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import pytest
 
 from inferyard.contracts.validation import validate_document
+from inferyard.errors import PreflightError
 from inferyard.platforms import resources, resources_windows
-from inferyard.platforms.identity import PreflightError
 from tests.unit.test_resources import CONFIG, envelope
 
 

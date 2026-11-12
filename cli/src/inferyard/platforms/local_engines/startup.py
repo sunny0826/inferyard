@@ -4,13 +4,13 @@ from importlib.resources import files
 from pathlib import Path, PurePosixPath
 
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
+from inferyard.errors import PreflightError
 from inferyard.platforms.engine_fit_entrypoints import (
     _LLAMA_FLAGS,
     _LLAMA_VALUES,
     _MLX_VALUES,
     _options,
 )
-from inferyard.platforms.identity import PreflightError
 
 _VALUES = {
     "--host",

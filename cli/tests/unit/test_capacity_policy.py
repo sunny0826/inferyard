@@ -1,7 +1,7 @@
 import pytest
 
 from inferyard.config.planning import compile_plan
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError, EvidenceError
 from tests.unit.test_phase2_contracts import experiment
 
 
@@ -20,7 +20,6 @@ def test_capacity_policy_requires_frozen_performance_length_protocol():
 
 def test_replay_rejects_work_after_first_failure_and_false_stop_claim():
     from inferyard.evidence.capacity_stop import validate_capacity_stop
-    from inferyard.evidence.storage import EvidenceError
 
     policy = {"capacity_stop": "first_failed_request"}
     failed = {"execution_state": "failed", "request_id": "a"}

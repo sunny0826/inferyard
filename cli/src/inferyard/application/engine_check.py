@@ -4,10 +4,11 @@ import stat
 import sys
 
 from inferyard.application.types import CommandResult
-from inferyard.config.preparation_io import PreparationError, require_platform, sha256
+from inferyard.provisioning.preparation_io import PreparationError, require_platform, sha256
 from inferyard.contracts.schemas_engine_check import REASONS
-from inferyard.evidence.storage import json_bytes
-from inferyard.platforms.runtime_profiles import RELEASE
+from inferyard.errors import PreflightError
+from inferyard.contracts.validation import json_bytes
+from inferyard.provisioning.runtime_profiles import RELEASE
 
 
 def _reported(version):
@@ -35,8 +36,8 @@ def _input_file(path, *, resolve):
 
 def _verify(request):
     from inferyard.config.community_assets import libraries
-    from inferyard.platforms import runtime_verification
-    from inferyard.platforms.runtime_profiles import VERSION_PATTERN
+    from inferyard.provisioning import runtime_verification
+    from inferyard.provisioning.runtime_profiles import VERSION_PATTERN
 
     system, _ = require_platform(("Darwin", "arm64"), ("Windows", "x64"))
     if (
@@ -75,7 +76,6 @@ def _verify(request):
 
 def execute(request):
     if request.installation is not None:
-        from inferyard.platforms.identity import PreflightError
         from inferyard.platforms.local_engines import (
             freeze_installation,
             read_installation,

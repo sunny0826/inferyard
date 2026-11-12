@@ -6,11 +6,11 @@ are refusal fixtures, not Windows API measurements.
 
 from __future__ import annotations
 
-from inferyard.config.engine_fit_native_sources import (
+from inferyard.contracts.engine_fit_native_sources import (
     WINDOWS_LISTENER_SOURCE,
     WINDOWS_START_SOURCE,
 )
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.platforms.windows_lab_api import current_windows_lab_api
 from inferyard.platforms.windows_lab_checks import (
     MAX_INT,

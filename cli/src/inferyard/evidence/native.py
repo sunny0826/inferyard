@@ -1,15 +1,15 @@
 """Offline reconstruction of release-binary responses without invented lab IDs/drain."""
 
-from inferyard.adapters.lab_observation_json import LabProtocolError
-from inferyard.adapters.lab_parameters import _equal
+from inferyard.contracts.lab_observation_json import LabProtocolError
+from inferyard.adapters.lab_parameters import values_equal
 from inferyard.adapters.native_observation import OpenAIGenerationDecoder
 from inferyard.adapters.requests import request_body
 from inferyard.contracts.engine_profiles import LOCAL_OBSERVATION, is_local
 from inferyard.contracts.schemas_observation import OBSERVATION
-from inferyard.contracts.validation import ContractError, _validate
+from inferyard.contracts.validation import validate_value
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.engine_capabilities import observation_sealed
 from inferyard.evidence.native_receipts import verify_clean_receipts
-from inferyard.evidence.storage import EvidenceError
 from inferyard.evidence.trial_evidence import TrialEvidence
 
 
@@ -29,7 +29,7 @@ def observation_evidence(root, config, *, reads=None):
             raise EvidenceError("engine_observation_manifest_mismatch")
         return None
     try:
-        _validate(value, OBSERVATION, "engine_observation")
+        validate_value(value, OBSERVATION, "engine_observation")
     except ContractError as exc:
         raise EvidenceError("engine_observation_invalid") from exc
     if value.get("engine") != config["engine"]["adapter"] or value.get("mode") not in (
@@ -98,7 +98,7 @@ def verify_native(root, config, bundle, events, observation, *, reads=None):
                 else config["execution"][event["phase"] + "_prompt"]
             )
             expected = request_body(config, prompt, stream=data["body"]["stream"])
-            if not _equal(reads.request_body(event), expected):
+            if not values_equal(reads.request_body(event), expected):
                 raise EvidenceError("native_request_differs_from_plan")
             decoders[key] = OpenAIGenerationDecoder(
                 "0" * 32, "0" * 32, streaming=expected["stream"], t_send_ns=event["monotonic_ns"]

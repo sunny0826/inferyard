@@ -7,7 +7,7 @@ import stat
 from ctypes import wintypes
 from pathlib import Path
 
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 from inferyard.platforms.windows_api import _error, _function, _kernel, open_file
 
 
@@ -78,7 +78,7 @@ def path_stamp(path):
 
 
 def file_hash(path):
-    from inferyard.platforms.engine_fit import _stamp
+    from inferyard.platforms.engine_fit import file_stamp
 
     path = Path(path)
     before, link = path.stat(), path.lstat()
@@ -95,8 +95,8 @@ def file_hash(path):
             raise PreflightError("engine_fit_file_changed")
     if (
         path_stamp(path.resolve(strict=True)) != expected
-        or _stamp(path.stat()) != _stamp(before)
-        or _stamp(path.lstat()) != _stamp(link)
+        or file_stamp(path.stat()) != file_stamp(before)
+        or file_stamp(path.lstat()) != file_stamp(link)
     ):
         raise PreflightError("engine_fit_file_changed")
     return digest, expected[3]

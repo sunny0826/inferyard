@@ -7,13 +7,14 @@ import pytest
 from inferyard.adapters.requests import request_body
 from inferyard.config.loader import load_config
 from inferyard.config.single_plan import compile_single_plan
-from inferyard.evidence.formats import UnsupportedFormat
+from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.evidence.request_snapshots import (
     messages_sha256,
     snapshot_filename,
     verify_message_snapshots,
 )
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl, sha256_file
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json, read_jsonl, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from tests.evidence_layout_helpers import digest, pack_layout2, seal_layout
 from tests.legacy_journal import LegacyJournal

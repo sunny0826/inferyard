@@ -7,8 +7,10 @@ import pytest
 
 from inferyard.analysis.quality import summarize_quality
 from inferyard.analysis.scoring import score_case, unscorable
-from inferyard.config.bundle import require_review, validate_case
-from inferyard.contracts.validation import ContractError, Document
+from inferyard.contracts.bundle import validate_case
+from inferyard.config.bundle import require_review
+from inferyard.contracts.validation import Document
+from inferyard.errors import ContractError
 from inferyard.evidence.storage import read_json
 from inferyard.reporting.svg_render import (
     MAX_SVG_CHARACTERS,
@@ -155,7 +157,7 @@ def test_pelican_bundle_is_valid_and_human_reviewed():
     assert BUNDLE["cases"][0]["prompt"] == (
         "Generate an animated SVG of a pelican riding a bicycle"
     )
-    from inferyard.config.bundle import content_hash
+    from inferyard.contracts.bundle import content_hash
 
     (record,) = BUNDLE["review_records"]
     assert record["conclusion"] == "approved"
@@ -250,7 +252,7 @@ def test_svg_repeat_cohort_has_no_quality_denominator():
 
 
 def test_svg_cannot_be_used_as_a_scored_position_probe():
-    from inferyard.analysis.position import validate_position_cases
+    from inferyard.contracts.position_cases import validate_position_cases
 
     task = BUNDLE["cases"][0]
     workload = {

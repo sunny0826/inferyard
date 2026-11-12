@@ -5,8 +5,8 @@ from __future__ import annotations
 import contextvars
 import sys
 from contextlib import contextmanager
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 SYNCHRONIZE = 0x00100000

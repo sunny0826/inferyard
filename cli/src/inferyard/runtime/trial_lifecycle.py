@@ -4,8 +4,8 @@ import asyncio
 from dataclasses import dataclass
 
 from inferyard.contracts.engine_profiles import observes_before_idle
+from inferyard.errors import PreflightError
 from inferyard.evidence.token_budgets import probe_budget
-from inferyard.platforms.identity import PreflightError
 from inferyard.runtime.duration_driver import run_duration
 from inferyard.runtime.service_observation import (
     clean_observed,
@@ -87,7 +87,7 @@ async def probe_service(
             config, probe_budget(budgets)["input_tokens"], adapter.last_state
         )
         if output_budget_tokens is not None and store.strict_output:
-            from inferyard.runtime.fixed_output import verify_probe
+            from inferyard.evidence.fixed_output import verify_probe
 
             effective["strict_output"] = verify_probe(effective, response, output_budget_tokens)
         store.observe("effective_parameters", effective, stage="stream" if stream else "ordinary")

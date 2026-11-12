@@ -1,7 +1,8 @@
 """Public API for the sole active data contract."""
 
+from inferyard.errors import ContractError
+
 from .validation import (
-    ContractError,
     Document,
     ExecutionState,
     QualityState,

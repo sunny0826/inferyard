@@ -5,7 +5,7 @@ from __future__ import annotations
 from inferyard.analysis.engine_comparison_bundles import bundle_groups
 from inferyard.analysis.engine_comparison_handoff import handoff_rows
 from inferyard.analysis.engine_comparison_services import service_diagnostics
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.analysis.engine_comparison_shared import (
     HANDOFF_BROKEN,
     HANDOFF_MISSING,

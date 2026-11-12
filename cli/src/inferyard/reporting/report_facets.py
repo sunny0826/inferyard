@@ -3,8 +3,8 @@
 import hashlib
 from datetime import UTC, datetime
 
-from inferyard.config.bundle import content_hash
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.bundle import content_hash
+from inferyard.contracts.validation import json_bytes
 
 
 def run_facets(data, *, first_event_utc):

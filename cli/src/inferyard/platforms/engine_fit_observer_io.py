@@ -5,8 +5,8 @@ import selectors
 import signal
 import subprocess
 import time
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 TOTAL_TIMEOUT = 10.0
 

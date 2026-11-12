@@ -13,7 +13,7 @@ import pytest
 
 from inferyard.application import memory_check
 from inferyard.contracts.memory_check import validate_memory_check
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 from inferyard.platforms import memory_windows as native
 
 
@@ -328,7 +328,7 @@ def test_failed_worker_is_tool_error():
 
 
 def test_windows_saved_contract_examples():
-    from inferyard.contracts.memory_check import read_memory_check
+    from inferyard.evidence.memory_check import read_memory_check
 
     root = Path(__file__).parents[1] / "fixtures/contracts"
     valid = read_memory_check(root / "memory-check.windows.valid.json")

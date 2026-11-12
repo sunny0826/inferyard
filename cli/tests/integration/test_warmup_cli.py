@@ -15,8 +15,9 @@ from inferyard.config.loader import load_config
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.single_plan import compile_single_plan
 from inferyard.contracts.validation import Document
-from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, read_json, read_jsonl, sha256_file
+from inferyard.errors import EvidenceError
+from inferyard.analysis.ledger import read_trial
+from inferyard.evidence.storage import read_json, read_jsonl, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401
 from tests.integration.test_native_cli import native_scenario as _native_scenario

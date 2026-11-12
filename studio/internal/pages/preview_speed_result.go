@@ -16,8 +16,8 @@ func previewSpeedResult(r *speedTask, completed int, missing bool) inferyard.Con
 	result := inferyard.ContextSpeedResult{SchemaVersion: 3, Kind: "context_speed_result.v1", ReadState: "readable", Profile: "context-speed.v1"}
 	result.Source = inferyard.SpeedSource{BatchMetadata: ref("batch.json"), Plan: ref("frozen-plan/plan.json"), Config: ref("frozen-plan/config.json"), Bundle: ref("frozen-plan/bundle.json"), PlanSHA256: hash, ExperimentID: "preview", WorkloadID: "speed"}
 	result.Metadata.Model.DisplayName, result.Metadata.Model.SHA256, result.Metadata.Model.TemplateSHA256 = r.model, hash, hash
-	result.Metadata.Engine.Adapter, result.Metadata.Engine.Release, result.Metadata.Engine.BinarySHA256 = "prism_llama_server_v1", r.engine, hash
-	result.Metadata.Bundle.BundleID, result.Metadata.Bundle.Version = "zh-context-speed", "2026.10.1"
+	result.Metadata.Engine.Adapter, result.Metadata.Engine.Release, result.Metadata.Engine.BinarySHA256 = inferyard.ContextSpeedAdapter, r.engine, hash
+	result.Metadata.Bundle.BundleID, result.Metadata.Bundle.Version = inferyard.ContextSpeedBundleID, inferyard.ContextSpeedBundleVersion
 	result.Metadata.SelectedContextTokens = r.context
 	result.Execution.Counts.Planned, result.Execution.Counts.Completed, result.Execution.Counts.NotExecuted = 5, completed, 5-completed
 	result.Execution.StopReason = previewMissing[string]("unknown")
@@ -30,7 +30,8 @@ func previewSpeedResult(r *speedTask, completed int, missing bool) inferyard.Con
 	}
 	result.Measurement = inferyard.SpeedMeasurement{Status: "incomplete", ValidCount: completed, Reasons: []string{"five_valid_samples_required", "cohort_unknown", "aggregate_context_mismatch", "aggregate_prompt_length_mismatch"}}
 	for i := range 5 {
-		sample := inferyard.SpeedSample{TrialID: fmt.Sprintf("trial-%d", i), RepeatIndex: i, CaseID: map[int]string{65536: "context-speed-64k", 131072: "context-speed-128k", 262144: "context-speed-256k"}[r.context], ExecutionState: "not_executed", StopReason: previewMissing[string]("unknown")}
+		caseID, _ := inferyard.ContextSpeedCaseID(r.context)
+		sample := inferyard.SpeedSample{TrialID: fmt.Sprintf("trial-%d", i), RepeatIndex: i, CaseID: caseID, ExecutionState: "not_executed", StopReason: previewMissing[string]("unknown")}
 		sample.Proof.Identity, sample.Proof.FixedOutput = []inferyard.SpeedRef{}, []inferyard.SpeedRef{}
 		sample.Columns = inferyard.SpeedColumns{Context: previewMissing[int64]("not_executed"), PromptLength: previewMissing[int64]("not_executed"), Time: previewMissing[float64]("not_executed"), Prefill: previewMissing[float64]("not_executed"), Decode: previewMissing[float64]("not_executed")}
 		sample.Measurement.Reasons = []string{"request_not_completed", "sealed_run_required", "request_missing", "identity_evidence_missing", "token_budget_evidence_missing", "request_evidence_missing", "fixed_output_evidence_missing", "context_unverified", "actual_input_unknown", "final_timing_missing", "metric_missing"}
@@ -68,7 +69,8 @@ func previewCompletedSample(r *speedTask, i int, ref func(string) inferyard.Spee
 	values := previewSpeedSample(r.context, i)
 	path := fmt.Sprintf("runs/preview-%d", i)
 	request := fmt.Sprintf("request-%d", i)
-	sample := inferyard.SpeedSample{TrialID: fmt.Sprintf("trial-%d", i), RepeatIndex: i, CaseID: map[int]string{65536: "context-speed-64k", 131072: "context-speed-128k", 262144: "context-speed-256k"}[r.context], ExecutionState: "completed", RequestID: &request}
+	caseID, _ := inferyard.ContextSpeedCaseID(r.context)
+	sample := inferyard.SpeedSample{TrialID: fmt.Sprintf("trial-%d", i), RepeatIndex: i, CaseID: caseID, ExecutionState: "completed", RequestID: &request}
 	sample.Run = &inferyard.SpeedRunRef{Path: path, RunID: fmt.Sprintf("run-%d", i), Inputs: ref(path + "/inputs.json"), ManifestSHA256: &hash, Integrity: "sealed"}
 	sample.StopReason = previewMeasured("completed", ref(path+"/events.jsonl"))
 	sample.Columns = inferyard.SpeedColumns{Context: previewMeasured(int64(r.context), ref(path+"/inputs.json")), PromptLength: previewMeasured(int64(*values.prompt), ref(path+"/events.jsonl")), Time: previewMeasured(*values.seconds, ref(path+"/events.jsonl")), Prefill: previewMeasured(*values.prefill, ref(path+"/events.jsonl")), Decode: previewMeasured(*values.decode, ref(path+"/events.jsonl"))}

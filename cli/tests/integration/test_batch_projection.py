@@ -9,12 +9,14 @@ import pytest
 from inferyard.application.types import CommandRequest
 from inferyard.application.verification import execute as verify
 from inferyard.config.plan_inputs import read_frozen_plan
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_json, read_jsonl
+from inferyard.errors import EvidenceError
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_json, read_jsonl
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.reporting.repetition_report import write_repetition_summary
 from inferyard.reporting.report import write_report
 from inferyard.runtime import batch_state
-from inferyard.runtime.batch_runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.integration.test_batch_runner import batch
 from tests.integration.test_batch_runner import scenario as batch_scenario
 from tests.layout_mutations import change_input, change_observation, digest, reseal

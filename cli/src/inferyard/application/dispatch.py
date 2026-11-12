@@ -4,8 +4,7 @@ import os
 from dataclasses import replace
 
 from inferyard.application.types import CommandRequest, CommandResult
-from inferyard.contracts.validation import ContractError
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import ContractError, PreflightError
 
 
 def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
@@ -74,7 +73,7 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         code, result = default_backend(replace(request, command=aliases[request.command]))
         return code, replace(result, command=request.command)
     if request.command == "device-check":
-        from inferyard.platforms.device_preflight import execute
+        from inferyard.application.device import execute
 
         return execute(request)
     if request.command in (
@@ -83,45 +82,45 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         "extension-replay",
         "extension-check",
     ):
-        from inferyard.extensions.workflow import execute
+        from inferyard.application.extensions import execute
 
         return execute(request)
     if request.command == "public-plan":
-        from inferyard.config.public_plan import execute
+        from inferyard.application.public_plan import execute
 
         return execute(request)
     if request.command == "public-config-check":
-        from inferyard.config.public_config_check import execute
+        from inferyard.application.public_plan import execute
 
         return execute(request)
     if request.command in ("public-package", "public-check"):
-        from inferyard.reporting.public_package import execute
+        from inferyard.application.reporting import execute
 
         return execute(request)
     if request.command == "prepare-length":
         if os.name == "nt":
             raise PreflightError("windows_phase2_live_not_supported")
-        from inferyard.runtime.length_prepare import execute
+        from inferyard.application.execution import execute
 
         return execute(request)
     if request.command in ("rescore", "rescore-check"):
-        from inferyard.reporting.rescore import execute
+        from inferyard.application.reporting import execute
 
         return execute(request)
     if request.command in ("export", "export-check"):
-        from inferyard.reporting.export import execute
+        from inferyard.application.reporting import execute
 
         return execute(request)
     if request.command in ("report", "report-check"):
-        from inferyard.reporting.report import execute
+        from inferyard.application.reporting import execute
 
         return execute(request)
     if request.command == "filter-candidates":
-        from inferyard.analysis.candidate_filter import execute
+        from inferyard.application.candidates import execute
 
         return execute(request)
     if request.command == "compare-engines":
-        from inferyard.reporting.engine_comparison_v2_report import execute
+        from inferyard.application.reporting import execute
 
         return execute(request)
     if request.command in ("compare-plan", "compare", "compare-check"):
@@ -129,7 +128,7 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
 
         return execute(request)
     if request.command in ("repeat-summary", "repeat-check"):
-        from inferyard.reporting.repetition_report import execute
+        from inferyard.application.reporting import execute
 
         return execute(request)
     if request.command in ("overhead", "overhead-check"):
@@ -139,7 +138,7 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
     if request.command == "resume" or (
         request.command == "run" and request.frozen_plan is not None
     ):
-        from inferyard.runtime.batch_runner import execute
+        from inferyard.application.execution import execute
 
         return execute(request)
     if request.command == "catalogue":
@@ -165,7 +164,7 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
             details=plan,
         )
     if request.command in ("check", "run"):
-        from inferyard.runtime.runner import execute
+        from inferyard.application.execution import execute
 
         return execute(request)
     raise ContractError("command", "unsupported command")

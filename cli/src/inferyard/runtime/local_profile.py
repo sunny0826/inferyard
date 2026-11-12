@@ -1,6 +1,6 @@
+from inferyard.errors import PreflightError
 """Admission for the initial serial local-engine profile."""
 
-from inferyard.platforms.identity import PreflightError
 
 
 def _temperature_admitted(policy, required):

@@ -7,10 +7,10 @@ import pytest
 
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
-from inferyard.config.engine_fit import digest, prepare, validate_plan
-from inferyard.config.engine_fit_assets import model_asset_manifest
-from inferyard.contracts.validation import ContractError
-from inferyard.platforms.identity import PreflightError
+from inferyard.config.engine_fit import prepare, validate_plan
+from inferyard.contracts.json_digest import digest
+from inferyard.platforms.model_asset_manifest import model_asset_manifest
+from inferyard.errors import ContractError, PreflightError
 
 
 def gguf(path, metadata=()):

@@ -4,10 +4,11 @@ from copy import deepcopy
 
 import pytest
 
-from inferyard.config.engine_fit import digest
-from inferyard.evidence.storage import EvidenceError
-from inferyard.reporting.engine_fit import compare, seal_run, verify
-from inferyard.reporting.engine_fit_validation import validate_run
+from inferyard.contracts.json_digest import digest
+from inferyard.errors import EvidenceError
+from inferyard.analysis.engine_fit_seal import seal_run
+from inferyard.reporting.engine_fit import compare, verify
+from inferyard.analysis.engine_fit_validation import validate_run
 from tests.unit.test_engine_fit_report import _data
 from tests.unit.test_engine_fit_report import plan as _plan_fixture
 

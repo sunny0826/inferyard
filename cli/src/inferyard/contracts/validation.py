@@ -13,6 +13,7 @@ from typing import Any
 
 from inferyard import SCHEMA_VERSION
 from inferyard.contracts.schemas import schemas_for
+from inferyard.errors import ContractError
 
 _FIELD_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
 _JSON_TYPES = {
@@ -23,15 +24,6 @@ _JSON_TYPES = {
     "boolean": bool,
     "null": type(None),
 }
-
-
-class ContractError(ValueError):
-    """Only field paths and fixed descriptions; never include rejected values."""
-
-    def __init__(self, path: str, reason: str):
-        self.path = path
-        self.reason = reason
-        super().__init__(f"{path}: {reason}")
 
 
 class ExecutionState(StrEnum):
@@ -134,7 +126,7 @@ def _compile_union(spec, alternatives, nodes):
                         if selected in values
                     ]
                 if len(matches) == 1:
-                    _validate(value, matches[0], path)
+                    validate_value(value, matches[0], path)
                     return
                 if not matches:
                     raise ContractError(_field(path, discriminator), "unsupported enum value")
@@ -143,7 +135,7 @@ def _compile_union(spec, alternatives, nodes):
                 selected_branch = kind_dispatch.get(selected_kind)
                 if selected_branch is not None:
                     try:
-                        _validate(value, selected_branch, path)
+                        validate_value(value, selected_branch, path)
                     except ContractError:
                         pass  # Preserve the original union diagnostic for rejected variants.
                     else:
@@ -151,7 +143,7 @@ def _compile_union(spec, alternatives, nodes):
         successes = 0
         for branch in branches:
             try:
-                _validate(value, branch, path)
+                validate_value(value, branch, path)
                 successes += 1
             except ContractError:
                 pass
@@ -216,7 +208,7 @@ def _compile_node(spec, nodes):
                 raise ContractError(path, "too many items")
             if items is not None:
                 for index, item in enumerate(value):
-                    _validate(item, items, f"{path}[{index}]")
+                    validate_value(item, items, f"{path}[{index}]")
         if value_type is dict:
             if len(value) < min_properties:
                 raise ContractError(path, "too few fields")
@@ -228,11 +220,11 @@ def _compile_node(spec, nodes):
                     raise ContractError(path, "field names must be strings")
                 child = properties.get(key)
                 if child is not None:
-                    _validate(item, child[0], path + child[1])
+                    validate_value(item, child[0], path + child[1])
                 elif additional is False:
                     raise ContractError(_field(path, key), "unknown field")
                 elif callable(additional):
-                    _validate(item, additional, _field(path, key))
+                    validate_value(item, additional, _field(path, key))
 
     return validate
 
@@ -246,7 +238,7 @@ def _compiled_nodes():
     return nodes
 
 
-def _validate(value: Any, spec: dict | Callable, path: str) -> None:
+def validate_value(value: Any, spec: dict | Callable, path: str) -> None:
     if callable(spec):
         spec(value, path)
         return
@@ -256,7 +248,7 @@ def _validate(value: Any, spec: dict | Callable, path: str) -> None:
     validate(value, path)
 
 
-def _bundle_invariants(data: dict) -> None:
+def bundle_invariants(data: dict) -> None:
     ids = set()
     for index, case in enumerate(data["cases"]):
         path = f"bundle.cases[{index}]"
@@ -374,7 +366,7 @@ def validate_document(kind: str, data: Any) -> None:
         # Identity presence selects the compatible wire variant; keep field-level
         # errors precise instead of hiding required fields behind a union error.
         spec = spec["oneOf"][int("implementation_identity" in data)]
-    _validate(data, spec, kind)
+    validate_value(data, spec, kind)
     from inferyard.contracts.contracts_experiment import validate_semantics
 
     validate_semantics(kind, data)
@@ -406,6 +398,15 @@ def strict_json_loads(text: str) -> Any:
         raise ContractError("document", "invalid JSON syntax or nesting") from exc
 
 
+def json_bytes(value) -> bytes:
+    return (
+        json.dumps(
+            value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
 @dataclass(frozen=True, slots=True)
 class Document:
     """Detached, validated wire record; mutations of input/output cannot alter it."""
@@ -435,7 +436,7 @@ class Document:
         return json.loads(self._json)
 
 
-def _validated_dict(kind: str, data: Any) -> dict:
+def validated_dict(kind: str, data: Any) -> dict:
     """Reuse only an immutable same-kind Document, never a mutable dict's history."""
     if type(data) is Document and data.kind == kind:
         return data.to_dict()

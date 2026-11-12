@@ -32,7 +32,7 @@ var navigation = []struct {
 // The navigation and content builders are shared with the in-memory test view.
 func New(ctx context.Context, service *core.Service, page string) {
 	ctx, cancel := context.WithCancel(ctx)
-	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, speed: &speedWorkspace{context: 65536}}
+	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, speed: &speedWorkspace{context: inferyard.ContextSpeed64K}}
 	title := "InferYard Studio"
 	if paths := service.BoundPaths(); paths != nil {
 		title = paths.WindowTitle

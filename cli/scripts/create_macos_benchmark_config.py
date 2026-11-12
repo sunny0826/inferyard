@@ -11,7 +11,7 @@ from inferyard.config.loader import load_config
 from inferyard.contracts.validation import validate_document
 from inferyard.evidence.storage import read_json
 from inferyard.platforms.device_preflight import (
-    _disk_ancestor,
+    existing_ancestor,
     discover_models,
     hardware_snapshot,
     recommend,
@@ -77,7 +77,7 @@ def create(preflight, engine_path, out, *, repo="local", revision=None, port=488
     if selected["mode"] not in ("cpu", "metal"):
         raise ValueError("unsupported_macos_backend")
     # The saved estimate is not permission to use stale free-memory observations.
-    hardware = hardware_snapshot(_disk_ancestor(out.parent))
+    hardware = hardware_snapshot(existing_ancestor(out.parent))
     models = discover_models([], selected["model_path"])
     fresh = recommend(hardware, models)
     if fresh["status"] != "recommended":

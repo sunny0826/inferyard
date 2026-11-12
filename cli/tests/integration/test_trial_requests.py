@@ -6,12 +6,14 @@ from pathlib import Path
 import pytest
 
 import inferyard.runtime.lock as locking
-from inferyard.analysis.scoring import score_case
+from inferyard.analysis.scoring import ScoringContext, score_case
 from inferyard.config.planning import compile_plan
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.journal import TrialJournal
-from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, Redactor, json_bytes, read_json, read_jsonl
-from inferyard.platforms.identity import PreflightError
+from inferyard.analysis.ledger import read_trial
+from inferyard.contracts.validation import json_bytes
+from inferyard.contracts.redaction import Redactor
+from inferyard.evidence.storage import read_json, read_jsonl
 from inferyard.runtime.request_execution import TrialRequests
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.unit.test_phase2_contracts import experiment
@@ -34,6 +36,7 @@ async def pipeline(scenario, action, *, scorer=score_case, secret=None):
         config,
         bundle,
         redactor=Redactor([secret] if secret else []),
+        scoring_context=ScoringContext(),
     )
     adapter = deps.adapter(config["endpoint"]["url"], secret=secret)
     sampler = deps.sampler(store, config)

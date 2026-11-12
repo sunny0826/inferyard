@@ -10,12 +10,11 @@ import pytest
 from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.cli import main
 from inferyard.config.engine_fit import prepare, validate_plan
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.storage import EvidenceError
-from inferyard.platforms.identity import PreflightError
-from inferyard.reporting.engine_fit import compare, seal_run, verify
-from inferyard.reporting.engine_fit_html import render
-from inferyard.reporting.engine_fit_validation import validate_run
+from inferyard.errors import ContractError, EvidenceError, PreflightError
+from inferyard.analysis.engine_fit_seal import seal_run
+from inferyard.reporting.engine_fit import compare, verify
+from inferyard.analysis.engine_fit_html import render
+from inferyard.analysis.engine_fit_validation import validate_run
 from tests.unit import test_engine_fit_temperature_override as temperature
 from tests.unit.test_engine_fit_common_evidence import common_data
 from tests.unit.test_engine_fit_report import _replace
@@ -71,10 +70,10 @@ def test_plan_freezes_memory_reason_and_optional_temperature_rule(model, tmp_pat
 
 @pytest.mark.parametrize("reason", ["", " \t", False, 1, [], "温" * 342, "\ud800"])
 def test_invalid_memory_reason_refused_before_hashing(model, tmp_path, monkeypatch, reason):
-    from inferyard.config import engine_fit_assets
+    from inferyard.platforms import model_asset_manifest
 
     monkeypatch.setattr(
-        engine_fit_assets, "model_asset_manifest", lambda *_: pytest.fail("reached model hashing")
+        model_asset_manifest, "model_asset_manifest", lambda *_: pytest.fail("reached model hashing")
     )
     with pytest.raises(ContractError, match="memory_stop_override_reason"):
         prepare(

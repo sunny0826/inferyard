@@ -1,17 +1,17 @@
 """Recheck archived lab token budgets and both effective-parameter probes offline."""
 
 from inferyard.adapters.lab_parameters import (
-    _equal,
+    values_equal,
     effective_evidence,
     response,
     validate_budget,
     validate_parameters,
 )
+from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.engine_capabilities import observation_sealed
-from inferyard.evidence.storage import EvidenceError, json_bytes
+from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.token_budgets import probe_budget, read_budgets
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.platforms.identity import PreflightError
 
 
 def verify_parameters(root, config, props, events, bodies, usage, manifest, *, reads=None):
@@ -51,7 +51,7 @@ def verify_parameters(root, config, props, events, bodies, usage, manifest, *, r
                 request_id=body["lab_request_id"],
             )
             validate_parameters(value, config)
-            if not _equal(evidence, effective_evidence(value, config)):
+            if not values_equal(evidence, effective_evidence(value, config)):
                 raise EvidenceError("lab_parameter_evidence_mismatch")
             if (
                 budgets is None
@@ -100,6 +100,6 @@ def _budgets(root, config, props, manifest, *, required, reads=None):
             "verification": "verified",
             "lab_token_budget": value,
         }
-        if not _equal(record, expected):
+        if not values_equal(record, expected):
             raise EvidenceError("lab_token_budget_evidence_mismatch")
     return budgets

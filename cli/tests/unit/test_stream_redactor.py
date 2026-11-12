@@ -2,7 +2,7 @@
 
 import pytest
 
-from inferyard.evidence.storage import Redactor
+from inferyard.contracts.redaction import Redactor
 
 
 @pytest.mark.parametrize(

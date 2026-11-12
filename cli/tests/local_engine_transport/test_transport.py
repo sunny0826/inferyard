@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from inferyard.adapters.local_engines.protocol import FAMILIES
-from inferyard.platforms.identity import PreflightError
+from inferyard.errors import PreflightError
 
 
 @pytest.mark.parametrize("family", FAMILIES)

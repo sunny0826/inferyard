@@ -40,7 +40,7 @@ func TestBoundOutputNameExhaustion(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	_, err := newBoundOutput(root, "zh-core")
+	_, err := core.NextOutput(root, "bound", "zh-core")
 	var api *core.ApiError
 	if !errors.As(err, &api) || api.Code != "output_name_exhausted" {
 		t.Fatal(err)
@@ -51,11 +51,14 @@ func TestBoundOutputNameExhaustion(t *testing.T) {
 	if s.failure == nil || s.failure.Code != "output_name_exhausted" || s.busy {
 		t.Fatal("binding did not report exhausted names", s.failure)
 	}
-	last := filepath.Join(root, "bound", "zh-core-1000")
+	last, resolveErr := core.Resolve(root, filepath.Join("bound", "zh-core-1000"))
+	if resolveErr != nil {
+		t.Fatal(resolveErr)
+	}
 	if err := os.Remove(last); err != nil {
 		t.Fatal(err)
 	}
-	if path, err := newBoundOutput(root, "zh-core"); err != nil || path != last {
-		t.Fatal(path, err)
+	if path, e := core.NextOutput(root, "bound", "zh-core"); e != nil || path != last {
+		t.Fatal(path, e)
 	}
 }

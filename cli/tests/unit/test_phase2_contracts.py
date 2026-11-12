@@ -3,10 +3,11 @@
 import pytest
 from jsonschema import Draft202012Validator
 
-from inferyard.config.plan_math import plan_hash
+from inferyard.contracts.plan_math import plan_hash
 from inferyard.config.planning import compile_plan
 from inferyard.contracts.schemas import export_schema, schemas_for
-from inferyard.contracts.validation import ContractError, validate_document
+from inferyard.contracts.validation import validate_document
+from inferyard.errors import ContractError
 
 
 def experiment():

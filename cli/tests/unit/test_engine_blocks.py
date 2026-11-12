@@ -5,8 +5,7 @@ import pytest
 from inferyard.analysis.engine_blocks import compare_blocks
 from inferyard.analysis.first_body import first_body_times
 from inferyard.contracts.engine_tuning import llama_arguments, validate_tuning
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import ContractError, EvidenceError
 from tests.unit.test_engine_comparison import local
 
 

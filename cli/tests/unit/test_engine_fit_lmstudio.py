@@ -8,11 +8,11 @@ from pathlib import Path
 
 import pytest
 
+from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit as fit
 from inferyard.platforms import engine_fit_lmstudio as lms
 from inferyard.platforms import engine_fit_lmstudio_files as files
 from inferyard.platforms import engine_fit_macos as macos
-from inferyard.platforms.identity import PreflightError
 from tests.unit import test_engine_fit_macos_identity as mac_fixtures
 
 native = mac_fixtures.native

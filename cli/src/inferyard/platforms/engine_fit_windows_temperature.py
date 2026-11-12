@@ -8,8 +8,8 @@ import shutil
 import subprocess
 import threading
 import time
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 OUTPUT_LIMIT = 64 * 1024
 

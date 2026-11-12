@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from inferyard.application.types import CommandRequest
-from inferyard.contracts.validation import ContractError
+from inferyard.errors import ContractError
 
 
 def test_compare_engines_parser_accepts_plan_and_batch_only(tmp_path: Path) -> None:
@@ -33,7 +33,7 @@ def test_compare_engines_parser_accepts_plan_and_batch_only(tmp_path: Path) -> N
 
 
 def test_compare_engines_requires_plan_and_batch(tmp_path: Path) -> None:
-    from inferyard.reporting.engine_comparison_v2_report import execute
+    from inferyard.application.reporting import execute
 
     with pytest.raises(ContractError):
         execute(CommandRequest("compare-engines", out=tmp_path / "out"))

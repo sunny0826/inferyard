@@ -8,14 +8,11 @@ import time
 from pathlib import Path
 
 from inferyard.analysis.environment_identity import fields
-from inferyard.evidence.storage import EvidenceError, json_bytes, read_jsonl
+from inferyard.errors import EvidenceError, PreflightError
+from inferyard.contracts.validation import json_bytes
+from inferyard.evidence.storage import read_jsonl
 from inferyard.platforms.external_cpu import native_macos, read_boot_id
-from inferyard.platforms.identity import (
-    PreflightError,
-    check_resources,
-    environment_snapshot,
-    process_start_ticks,
-)
+from inferyard.platforms.identity import check_resources, environment_snapshot, process_start_ticks
 from inferyard.platforms.platform_io import open_nofollow
 from inferyard.runtime.safety import SafetyGuard
 

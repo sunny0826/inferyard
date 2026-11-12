@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.config.startup_portability import portable_startup
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 
 
 def config():

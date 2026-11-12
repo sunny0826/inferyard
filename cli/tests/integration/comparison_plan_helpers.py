@@ -17,22 +17,23 @@ from urllib.parse import urlsplit
 
 
 from inferyard.adapters.local_engines import LocalEngineAdapter
-from inferyard.analysis.comparison_types import JSONRecord, JSONValue
-from inferyard.analysis.engine_comparison_v2 import read_comparison_v2
+from inferyard.contracts.comparison_types import JSONRecord, JSONValue
+from inferyard.runtime.comparison_v2_read import read_comparison_v2
 from inferyard.application.types import CommandRequest
 from inferyard.config.comparison_plan import Slot, comparison_slots, freeze
-from inferyard.config.engine_fit_assets import model_asset_manifest
+from inferyard.platforms.model_asset_manifest import model_asset_manifest
 from inferyard.config.local_engines.launch import startup
 from inferyard.config.loader import load_config
 from inferyard.config.toml_writer import render
-from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import json_bytes
-from inferyard.platforms.identity import FileIdentity, PreflightError, environment_snapshot, hash_file
+from inferyard.errors import PreflightError
+from inferyard.analysis.ledger import read_trial
+from inferyard.contracts.validation import json_bytes
+from inferyard.platforms.identity import FileIdentity, environment_snapshot, hash_file
 from inferyard.platforms.local_engines.installation import _snapshot
 from inferyard.platforms.local_engines.offline import validate_frozen_identity
 from inferyard.runtime import batch_state
 from inferyard.registry import adapter_collector_id, adapter_factory, collector_factory
-from inferyard.runtime.batch_runner import execute_async
+from inferyard.application.execution import execute_async
 from inferyard.runtime.trial_runner import TrialDependencies
 from tests.unit.test_comparison_plan import (
     bundle_document,

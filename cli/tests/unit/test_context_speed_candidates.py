@@ -5,12 +5,9 @@ from copy import deepcopy
 import pytest
 
 from inferyard.config.context_speed_candidates import apply_recipe
-from inferyard.config.context_speed_profile import (
-    CASES,
-    PROFILE,
-    classify_workload_inputs,
-)
-from inferyard.config.preparation_io import PreparationError
+from inferyard.config.context_speed_profile import classify_workload_inputs
+from inferyard.contracts.context_speed_profile import CASES, PROFILE
+from inferyard.provisioning.preparation_io import PreparationError
 from tests.unit.test_context_speed_profile import inputs as profile_inputs
 
 inputs = profile_inputs
@@ -55,7 +52,8 @@ def test_macos_create_applies_recipe_after_fresh_recommendation(tmp_path, monkey
     from dataclasses import replace
     from pathlib import Path
 
-    from inferyard.config import community_candidates, preparation_io
+    from inferyard.config import community_candidates
+    from inferyard.provisioning import preparation_io
     from inferyard.config.loader import load_config
     from tests.unit.test_community_candidates import candidate_request
     from tests.unit.test_device_preflight import gguf

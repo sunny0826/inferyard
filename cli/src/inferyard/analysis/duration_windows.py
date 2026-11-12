@@ -6,8 +6,8 @@ in that cohort even when they finish in a later window or the drain period.
 
 from collections import Counter
 from statistics import median
+from inferyard.errors import EvidenceError
 
-from inferyard.evidence.storage import EvidenceError
 
 
 def summarize_windows(protocol, case_order, start_ns, requests):

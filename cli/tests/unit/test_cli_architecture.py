@@ -17,10 +17,18 @@ import importlib.abc
 import json
 import sys
 
+# Backends only: inferyard.application.dispatch/types are the CLI's own request
+# and result layer and must stay importable for metadata queries.
 blocked = (
     "inferyard.runtime",
     "inferyard.extensions",
     "inferyard.adapters",
+    "inferyard.platforms",
+    "inferyard.provisioning",
+    "inferyard.evidence",
+    "inferyard.analysis",
+    "inferyard.config",
+    "inferyard.reporting",
 )
 
 class RejectBackends(importlib.abc.MetaPathFinder):

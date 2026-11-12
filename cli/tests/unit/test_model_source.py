@@ -4,7 +4,7 @@ import hashlib
 
 import pytest
 
-from inferyard.platforms.model_source import parse_source
+from inferyard.provisioning.model_source import parse_source
 
 REVISIONS = {
     "huggingface": "499bc8821c6b12b4e53c5bffcb21ec206f212d81",

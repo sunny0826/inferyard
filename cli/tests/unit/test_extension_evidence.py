@@ -3,7 +3,7 @@ import json
 import pytest
 
 from inferyard.cli import main
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.extensions.extension_evidence import save_packet, verify_packet
 from tests.unit.test_closed_concurrency import rows, spec
 

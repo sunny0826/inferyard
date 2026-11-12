@@ -1,7 +1,7 @@
 """Same-base quantization qualification requires replayed receipts and file bytes."""
 
-from inferyard.config.lineage_records import validate_records
-from inferyard.contracts.validation import ContractError
+from inferyard.contracts.lineage_records import validate_records
+from inferyard.errors import ContractError
 from inferyard.evidence.lineage_files import verify_lineage_files
 
 BASE_FIELDS = (

@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from inferyard.analysis.environment import measurement_context
-from inferyard.evidence.storage import json_bytes
+from inferyard.contracts.validation import json_bytes
 from tests.unit.test_cpu_policy import inventory
 from tests.unit.test_environment import state
 from tests.unit.test_external_cpu import ENDPOINT, rows

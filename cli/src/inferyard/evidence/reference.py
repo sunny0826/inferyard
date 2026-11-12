@@ -1,19 +1,20 @@
-"""Verify real physical bytes and optional container member bindings."""
+"""Build and verify physical byte references, including container members."""
 
 from pathlib import Path
 
 from inferyard.contracts.schemas_evidence_reference import EVIDENCE_REFERENCE
-from inferyard.contracts.validation import ContractError, _validate
-from inferyard.evidence.storage import EvidenceError, local_file, sha256_file
+from inferyard.contracts.validation import validate_value
+from inferyard.errors import ContractError, EvidenceError
+from inferyard.evidence.storage import local_file, sha256_file
 
 
 def verify_reference(root, ref, *, reads=None, readers=None):
-    from inferyard.contracts.contracts_experiment import _reference
+    from inferyard.contracts.contracts_experiment import validate_artifact_reference
     from inferyard.evidence.trial_evidence import TrialEvidence
 
     try:
-        _validate(ref, EVIDENCE_REFERENCE, "evidence_reference")
-        _reference(ref, "evidence_reference.path")
+        validate_value(ref, EVIDENCE_REFERENCE, "evidence_reference")
+        validate_artifact_reference(ref, "evidence_reference.path")
     except ContractError as exc:
         raise EvidenceError("invalid_evidence_reference") from exc
     path = local_file(Path(root).resolve(), ref["path"])
@@ -75,3 +76,8 @@ def verify_reference(root, ref, *, reads=None, readers=None):
         raise EvidenceError("evidence_reference_member_mismatch")
     if actual["sha256"] != ref["sha256"]:
         raise EvidenceError("evidence_reference_hash_mismatch")
+
+
+def file_reference(root, name):
+    """Describe one saved source byte-for-byte under the evidence root."""
+    return {"path": name, "sha256": sha256_file(local_file(root, name))}

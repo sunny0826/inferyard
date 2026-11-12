@@ -6,10 +6,11 @@ every block pair's median difference to point the same way.
 
 import statistics
 
-from inferyard.analysis.comparison_types import JSONRecord
-from inferyard.analysis.engine_comparison import CROSS_FORMAT, PENDING
+from inferyard.contracts.comparison_types import JSONRecord
+from inferyard.contracts.engine_comparison import CROSS_FORMAT, PENDING
 from inferyard.contracts.engine_profiles import TUNING_KEYS
 from inferyard.contracts.engine_tuning import observe
+from inferyard.errors import EvidenceError
 
 DEFINITION = "engine-comparison.v1"
 MIN_BLOCKS = 3
@@ -206,7 +207,6 @@ def _compare_ordered(ordered: list[JSONRecord], blockers: list[str]) -> JSONReco
     mismatches = []
     left, right = _structure(ordered, blockers)
     if not left or not right:
-        from inferyard.evidence.storage import EvidenceError
 
         raise EvidenceError("engine_comparison_requires_two_families")
     conditions = None

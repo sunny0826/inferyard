@@ -10,7 +10,8 @@ import sys
 import time
 from pathlib import Path
 
-from inferyard.platforms.identity import PreflightError, process_start_ticks
+from inferyard.errors import PreflightError
+from inferyard.platforms.identity import process_start_ticks
 
 IDENTITY_SOURCE = "psutil:macos:raw_kernel_starttime:microseconds"
 RSS_SOURCE = "psutil:Process.memory_info:rss_bytes"

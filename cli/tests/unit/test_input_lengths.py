@@ -5,7 +5,7 @@ from inferyard.analysis.input_lengths import (
     bind_token_counts,
     input_length_summary,
 )
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import ContractError, EvidenceError
 from tests.unit.test_observations import EVIDENCE, RUN, examples
 
 
@@ -105,7 +105,7 @@ def test_frozen_tolerance_has_inclusive_bounds_and_no_unknown_substitution():
 
 
 def test_input_tolerance_requires_target_and_nonzero_lower_bound():
-    from inferyard.contracts.validation import ContractError, validate_document
+    from inferyard.contracts.validation import validate_document
     from tests.unit.test_phase2_contracts import experiment
 
     for target, tolerance in ((None, 1), (10, 10), (10, 11)):

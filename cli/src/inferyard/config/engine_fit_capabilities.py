@@ -2,7 +2,7 @@
 
 
 def capabilities():
-    from inferyard.config.engine_fit_assets import mlx_server_path
+    from inferyard.platforms.engine_fit_assets import mlx_server_path
 
     return {
         "schema_version": 3,

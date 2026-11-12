@@ -9,8 +9,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 
 @pytest.fixture

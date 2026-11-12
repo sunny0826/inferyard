@@ -9,13 +9,13 @@ import pytest
 
 from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.cli import main
-from inferyard.config.engine_fit import digest, prepare, validate_plan
-from inferyard.contracts.validation import ContractError
-from inferyard.evidence.storage import EvidenceError
-from inferyard.platforms.identity import PreflightError
-from inferyard.reporting.engine_fit import compare, seal_run, verify
-from inferyard.reporting.engine_fit_html import render
-from inferyard.reporting.engine_fit_validation import validate_run
+from inferyard.config.engine_fit import prepare, validate_plan
+from inferyard.contracts.json_digest import digest
+from inferyard.errors import ContractError, EvidenceError, PreflightError
+from inferyard.analysis.engine_fit_seal import seal_run
+from inferyard.reporting.engine_fit import compare, verify
+from inferyard.analysis.engine_fit_html import render
+from inferyard.analysis.engine_fit_validation import validate_run
 from inferyard.runtime import engine_fit as runtime
 from tests.unit.test_engine_fit_common_evidence import common_data
 from tests.unit.test_engine_fit_native_evidence import native_data
@@ -91,10 +91,10 @@ def test_default_request_retains_legacy_plan_and_temperature_limit(model, tmp_pa
 
 @pytest.mark.parametrize("reason", ["", " \t\n", False, 1, [], {}, "a" * 1025, "温" * 342])
 def test_invalid_reason_rejected_before_model_hashing(model, tmp_path, monkeypatch, reason):
-    from inferyard.config import engine_fit_assets
+    from inferyard.platforms import model_asset_manifest
 
     monkeypatch.setattr(
-        engine_fit_assets,
+        model_asset_manifest,
         "model_asset_manifest",
         lambda *_args: pytest.fail("invalid reason reached model hashing"),
     )

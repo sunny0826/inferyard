@@ -1,1 +1,1 @@
-"""Deterministic scoring, metrics and comparison calculations."""
+"""Deterministic scoring, offline ledger reconstruction, metrics and comparisons."""

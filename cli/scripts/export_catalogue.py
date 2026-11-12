@@ -165,7 +165,7 @@ def metrics():
                 )
                 + (
                     [
-                        reference(ROOT / "src/inferyard/analysis/engine_timing.py"),
+                        reference(ROOT / "src/inferyard/contracts/engine_timing.py"),
                         reference(ROOT / "tests/unit/test_engine_timing.py"),
                     ]
                     if key in ("L06", "L07")
@@ -175,7 +175,7 @@ def metrics():
                     [
                         reference(ROOT / "src/inferyard/platforms/resources_linux.py"),
                         reference(ROOT / "src/inferyard/platforms/resources_macos.py"),
-                        reference(ROOT / "src/inferyard/runtime/environment_observer.py"),
+                        reference(ROOT / "src/inferyard/platforms/environment_observer.py"),
                         reference(ROOT / "src/inferyard/platforms/sensors_linux.py"),
                         reference(ROOT / "src/inferyard/analysis/sensor_observations.py"),
                         reference(ROOT / "tests/unit/test_sensors_linux.py"),

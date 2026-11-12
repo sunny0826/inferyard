@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from inferyard.config.preparation_io import NewDirectory, PreparationError, sha256
+from inferyard.provisioning.preparation_io import NewDirectory, PreparationError, sha256
 from inferyard.platforms import output_tree
 
 

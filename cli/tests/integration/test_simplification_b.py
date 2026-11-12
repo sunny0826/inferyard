@@ -9,11 +9,11 @@ import pytest
 from inferyard.analysis.scoring import score_case
 from inferyard.application.types import CommandRequest
 from inferyard.contracts.validation import Document
-from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import EvidenceError, read_json
+from inferyard.errors import EvidenceError, PreflightError
+from inferyard.analysis.ledger import read_trial
+from inferyard.evidence.storage import read_json
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.platforms.identity import PreflightError
-from inferyard.runtime.runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.integration.test_trial_runner import inputs
 
@@ -86,7 +86,7 @@ def test_rerun_same_service_is_always_refused(scenario, monkeypatch, dirty, fres
     if dirty:
         state = read_json(locking.STATE_PATH)
         state["dirty"] = True
-        from inferyard.evidence.storage import json_bytes
+        from inferyard.contracts.validation import json_bytes
 
         locking.STATE_PATH.write_bytes(json_bytes(state))
     endpoint = config["endpoint"]
@@ -100,7 +100,7 @@ def test_rerun_same_service_is_always_refused(scenario, monkeypatch, dirty, fres
 
 
 def test_preflight_diagnostic_flag_is_forwarded(scenario, monkeypatch):
-    from inferyard.config.environment_binding import admission
+    from inferyard.contracts.environment_admission import admission
     from inferyard.platforms import identity
 
     request, deps, _, _ = scenario
@@ -138,7 +138,7 @@ def test_batch_scoring_failures_do_not_drop_later_trials(tmp_path, scenario):
         raise RuntimeError("isolated scoring failure")
 
     deps.scorer = broken
-    code, result = asyncio.run(batch_runner.execute_async(request, deps))
+    code, result = asyncio.run(execute_async(request, deps))
     assert code == 3
     assert len(result.details["runs"]) == 3
     assert result.completeness == "incomplete"
@@ -153,7 +153,7 @@ def test_applicable_handoff_reuses_clean_service(tmp_path, scenario, monkeypatch
     from tests.integration.test_batch_runner import batch
 
     request, deps = batch(tmp_path, scenario, second=True)
-    code, first = asyncio.run(batch_runner.execute_async(request, deps))
+    code, first = asyncio.run(execute_async(request, deps))
     assert code == 3 and first.status == "awaiting_handoff"
     endpoint = scenario[0].config.config.to_dict()["endpoint"]
     monkeypatch.setattr(
@@ -166,7 +166,7 @@ def test_applicable_handoff_reuses_clean_service(tmp_path, scenario, monkeypatch
         server_pid=endpoint["server_pid"],
         handoff_note="same clean service",
     )
-    code, result = asyncio.run(batch_runner.execute_async(handoff, deps))
+    code, result = asyncio.run(execute_async(handoff, deps))
     assert code == 0
     assert len(scenario[2]) == 16
     binding = TrialEvidence(Path(result.details["runs"][-1])).observation("service_binding")

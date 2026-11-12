@@ -11,7 +11,7 @@
 整个字段自然参加既有 `plan_sha256`；普通计划不补字段，旧无 profile 计划的字节/hash 不变。
 run、selection、batch 不另存独立 profile。`config.conditions.profile` 仍表示环境。
 
-常量和纯规则位于 `config/context_speed_profile.py`：
+常量和纯实验规则位于 `contracts/context_speed_profile.py`，依赖缓存策略与题包审阅的输入分类仍在 `config/context_speed_profile.py`：
 
 | 常量 | 值 |
 | --- | --- |
@@ -119,7 +119,7 @@ B 仅在这些条件都有可靠身份时生成稳定 cohort hash，排除 trial
 valid 当且仅当 reasons 为空；已知必要缺陷不可被省略。未知 cohort 可以保留逐次有效值，
 但整批 measurement 不完整。
 
-Time=`prompt_ms/1000`。L06/L07 复用 `analysis.engine_timing.engine_rates`；不新增生产速度公式。
+Time=`prompt_ms/1000`。L06/L07 复用 `contracts.engine_timing.engine_rates`；不新增生产速度公式。
 最终 timing 必须与 `capture_timings` 的当前记录语义一致。跨字段验证非空数值；缺少
 proof.final_timing 时不能带旧速度。冷缓存汇总要求 cache_n=0、prompt_n+cache_n=实际输入，
 输出达到 256，且 actual_input+256<=context。非正时长不提供对应有效速度。
@@ -205,7 +205,7 @@ mise exec -- uv run --frozen python scripts/export_schemas.py --check
 ## CLI 物理读取实现
 
 `application/context_speed.py` 先调用完整 raw batch verifier，再通过
-`evidence/context_speed.py` 的 `history(..., allow_tool_change=True, full_verification=True)`
+`application/context_speed_evidence.py` 的 `history(..., allow_tool_change=True, full_verification=True)`
 读取原件。核验保存的 batch/run 执行身份，不要求历史记录匹配当前源码；不使用轻量 batch 投影
 替代完整 ledger。普通 batch 拒绝为 2，来源损坏返回不含旧 samples/summary 的 error 分支。
 

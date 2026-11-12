@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from inferyard.analysis.comparison_types import JSONRecord
+from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.analysis.comparison_history import (
     HISTORY_CANCELLED,
     HISTORY_FAILED,
@@ -460,8 +460,8 @@ def test_first_real_stop_survives_a_missing_tail(tmp_path: Path) -> None:
 
 
 def test_reader_maps_a_plan_without_required_top_level_shape(tmp_path: Path) -> None:
-    from inferyard.analysis.engine_comparison_v2 import read_comparison_v2
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.runtime.comparison_v2_read import read_comparison_v2
+    from inferyard.contracts.validation import json_bytes
 
     (tmp_path / "bad").mkdir()
     (tmp_path / "bad" / "plan.json").write_bytes(json_bytes({"schema_version": 3}))
@@ -471,7 +471,7 @@ def test_reader_maps_a_plan_without_required_top_level_shape(tmp_path: Path) -> 
 
 
 def test_top_level_reader_rejects_broken_inputs(tmp_path: Path) -> None:
-    from inferyard.analysis.engine_comparison_v2 import read_comparison_v2
+    from inferyard.runtime.comparison_v2_read import read_comparison_v2
 
     missing_plan = read_comparison_v2(tmp_path / "absent", tmp_path / "batch")
     assert missing_plan["diagnostics"][0]["reason"] == "comparison_plan_required"
@@ -484,7 +484,7 @@ def test_top_level_reader_rejects_broken_inputs(tmp_path: Path) -> None:
     assert no_batch["diagnostics"][0]["reason"] == "comparison_history_identity_error"
     assert no_batch["diagnostics"][0]["detail"] == "batch_envelope_invalid"
 
-    from inferyard.evidence.storage import json_bytes
+    from inferyard.contracts.validation import json_bytes
 
     (batch / "batch.json").write_bytes(json_bytes([]))
     invalid_batch = read_comparison_v2(tmp_path / "plan", batch)

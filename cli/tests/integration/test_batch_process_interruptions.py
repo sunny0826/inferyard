@@ -12,9 +12,9 @@ import pytest
 import inferyard.runtime.lock as locking
 from inferyard.analysis.scoring import score_case
 from inferyard.application.types import CommandRequest
-from inferyard.evidence.ledger import read_trial
+from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_json, sha256_file
-from inferyard.runtime.batch_runner import execute_async
+from inferyard.application.execution import execute_async
 from tests.helpers import readline_timeout
 from tests.integration.test_runner import scenario
 
@@ -28,6 +28,7 @@ from dataclasses import asdict
 from pathlib import Path
 import pytest
 import inferyard.runtime.batch_runner as running
+from inferyard.application.execution import execute
 from inferyard.evidence.journal import TrialJournal
 from tests.integration.test_runner import scenario
 from tests.integration.test_batch_runner import batch
@@ -69,7 +70,7 @@ else:
         instance.generate = generate
         return instance
     deps.adapter = adapter
-code, result = running.execute(request)
+code, result = execute(request)
 print(json.dumps({'code': code, 'result': asdict(result)}), flush=True)
 """
 

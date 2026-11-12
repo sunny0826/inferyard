@@ -4,7 +4,7 @@ import math
 import re
 
 from inferyard.analysis.public_metrics import NUMERIC, TEXT, VOCABULARY, fingerprint
-from inferyard.evidence.storage import EvidenceError
+from inferyard.errors import EvidenceError
 from inferyard.registry import catalogue
 
 

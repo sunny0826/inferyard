@@ -12,30 +12,21 @@ from urllib.parse import urlsplit
 
 from inferyard.adapters.prism import PrismAdapter
 from inferyard.analysis.scoring import ScoringContext, score_case
-from inferyard.application.types import CommandResult
 from inferyard.config.bundle import require_review
 from inferyard.config.loader import LoadedConfig
+from inferyard.config.plan_inputs import validate_workload_inputs
 from inferyard.config.single_plan import compile_single_plan
-from inferyard.config.startup_arguments import replace_arguments
+from inferyard.platforms.startup_arguments import replace_arguments
 from inferyard.contracts.engine_profiles import is_local
 from inferyard.contracts.validation import Document
-from inferyard.evidence.journal import TrialJournal
-from inferyard.evidence.ledger import read_trial
-from inferyard.evidence.storage import (
-    Redactor,
-    sha256_file,
-    verify_manifest,
-)
+from inferyard.errors import PreflightError
+from inferyard.evidence.journal import TrialJournal, trial_inputs
+from inferyard.analysis.ledger import read_trial
+from inferyard.contracts.redaction import Redactor
+from inferyard.evidence.storage import sha256_file, verify_manifest
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.implementation_identity import IdentityContext
-from inferyard.platforms.identity import (
-    PreflightError,
-    environment_snapshot,
-    process_start_ticks,
-    service_origin,
-    static_preflight,
-    verify_process,
-)
+from inferyard.platforms.identity import environment_snapshot, process_start_ticks, service_origin, static_preflight, verify_process
 from inferyard.platforms.telemetry import Sampler
 from inferyard.provenance import tool_source_hash
 from inferyard.registry import adapter_collector_id, adapter_factory, collector_factory
@@ -78,6 +69,18 @@ class Dependencies:
     guard: object = _guard
     scorer: object = score_case
     environment: object = environment_snapshot
+
+
+@dataclass(frozen=True, slots=True)
+class RunOutcome:
+    """Domain result of one serial run, before command presentation."""
+
+    code: int
+    run_id: str
+    path: Path
+    summary: dict | None
+    reason: str
+    observation: dict
 
 
 def read_configuration_source(loaded):
@@ -179,6 +182,16 @@ async def execute_async(request, dependencies: Dependencies | None = None):
     started_at = time.monotonic()
     allowed_seconds = plan["experiment"]["budget"]["max_wall_seconds"]
     configuration_source = read_configuration_source(loaded)
+    _, workload = trial_inputs(
+        plan,
+        plan["trials"][0]["trial_id"],
+        config,
+        bundle,
+        rerun_parent=parent,
+    )
+    validate_workload_inputs(
+        workload, config, bundle, experiment_profile=plan["experiment"].get("profile")
+    )
     store = TrialJournal(
         Path(config["output"]["root"]),
         plan,
@@ -231,36 +244,11 @@ async def execute_async(request, dependencies: Dependencies | None = None):
         ),
     )
     summary, reason = outcome["summary"], outcome["reason"]
-    return code, CommandResult(
-        request.command,
-        "finished"
-        if code == 0
-        else "interrupted"
-        if code == 130
-        else "blocked"
-        if code == 2
-        else "error",
-        summary["completeness"] if summary else "incomplete",
-        store.run_id,
-        str(store.path),
-        tuple(
-            ([reason] if reason != "plan_finished" else [])
-            + (summary["limitations"] if summary else [])
-        ),
-        details={
-            **outcome["observation"],
-            "evidence_only": True,
-            "next_report_command": [
-                "inferyard",
-                "report",
-                "--runs",
-                str(store.path),
-                "--out",
-                str(store.path.parent / (store.run_id + "-report")),
-            ],
-        },
+    return code, RunOutcome(
+        code=code,
+        run_id=store.run_id,
+        path=store.path,
+        summary=summary,
+        reason=reason,
+        observation=outcome["observation"],
     )
-
-
-def execute(request):
-    return asyncio.run(execute_async(request))

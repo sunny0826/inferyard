@@ -7,11 +7,11 @@ import zipfile
 from pathlib import Path
 
 from inferyard.config.bundle import require_review
-from inferyard.config.community_resources import BUNDLES
-from inferyard.config.preparation_io import json_bytes, sha256
+from inferyard.provisioning.community_resources import BUNDLES
+from inferyard.provisioning.preparation_io import json_bytes, sha256
 from inferyard.contracts.validation import strict_json_loads, validate_document
-from inferyard.platforms.runtime_archive import member_records
-from inferyard.platforms.runtime_profiles import (
+from inferyard.provisioning.runtime_archive import member_records
+from inferyard.provisioning.runtime_profiles import (
     PROFILES,
     output_files,
     profile_header,

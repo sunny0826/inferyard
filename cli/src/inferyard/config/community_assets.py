@@ -4,7 +4,7 @@ import errno
 import stat
 from pathlib import Path
 
-from inferyard.config.preparation_io import (
+from inferyard.provisioning.preparation_io import (
     NewDirectory,
     PreparationError,
     base_details,

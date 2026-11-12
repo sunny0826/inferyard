@@ -1,8 +1,8 @@
 """Pinned template/tokenizer management calls, without generation or context admission."""
 
 import hashlib
+from inferyard.errors import PreflightError
 
-from inferyard.platforms.identity import PreflightError
 
 
 async def count_template(adapter, config, prompt):

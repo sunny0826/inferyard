@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 
 from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import PreflightError
 from inferyard.platforms import windows_lab_checks as checks
 from inferyard.platforms import windows_lab_files as files
-from inferyard.platforms.identity import PreflightError
 from inferyard.platforms.windows_lab_api import override_windows_lab_api
 
 ROOT = Path(__file__).parents[1] / "fixtures" / "windows_lab"

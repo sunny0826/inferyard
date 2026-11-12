@@ -98,7 +98,7 @@ import json
 import sys
 class RejectBackend(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname.startswith(('inferyard.platforms.engine_source', 'httpx')):
+        if fullname.startswith(('inferyard.provisioning.engine_source', 'httpx')):
             raise AssertionError(fullname)
 sys.meta_path.insert(0, RejectBackend())
 from inferyard.cli import main

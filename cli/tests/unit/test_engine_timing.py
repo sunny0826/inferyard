@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 from inferyard.adapters.prism import PrismAdapter
-from inferyard.analysis.engine_timing import capture_timings, engine_rates
+from inferyard.contracts.engine_timing import capture_timings, engine_rates
 
 RAW = {"cache_n": 20, "prompt_n": 80, "prompt_ms": 400, "predicted_n": 11, "predicted_ms": 500}
 

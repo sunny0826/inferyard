@@ -8,7 +8,7 @@ from inferyard.config.local_engines import inspection
 
 
 def test_legacy_description_preserves_launch_and_declared_assets(config_path, monkeypatch):
-    from inferyard.platforms import runtime_verification
+    from inferyard.provisioning import runtime_verification
 
     monkeypatch.setattr(
         runtime_verification,
