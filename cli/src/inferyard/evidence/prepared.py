@@ -12,6 +12,7 @@ class PreparedRequests:
         self.evidence = evidence
         self.entries = None
         self.tails = []
+        self.rows = {}
 
     def scan(self):
         if self.entries is not None:
@@ -53,6 +54,20 @@ class PreparedRequests:
             raise EvidenceError("sealed_jsonl_truncated")
         self.evidence._check_sealed("request-bodies.jsonl")
         self.entries = entries
+
+    def row(self, event):
+        """Same verified record for every consumer of one request within this read."""
+        self.scan()
+        self.evidence._check_identity(event)
+        request_id = event["request_id"]
+        cached = self.rows.get(request_id)
+        if cached is not None:
+            if event["phase"] != cached["phase"]:
+                raise EvidenceError("request_body_identity_mismatch")
+            return cached
+        row = self.record(event)
+        self.rows[request_id] = row
+        return row
 
     def record(self, event):
         self.scan()

@@ -179,6 +179,7 @@ def read_trial(root: Path, *, metadata=None):
     )
     from inferyard.evidence.fixed_output import verify_execution
 
+    expected_bodies = {}
     verify_execution(
         root,
         workload,
@@ -187,6 +188,7 @@ def read_trial(root: Path, *, metadata=None):
         events,
         capabilities=capabilities,
         reads=reads,
+        expected_bodies=expected_bodies,
     )
     from inferyard.evidence.cache_execution import verify_execution as verify_cache_execution
 
@@ -198,6 +200,7 @@ def read_trial(root: Path, *, metadata=None):
         events,
         capabilities=capabilities,
         reads=reads,
+        expected_bodies=expected_bodies,
     )
     from inferyard.evidence.lab import verify_lab
 

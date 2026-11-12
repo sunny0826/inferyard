@@ -54,6 +54,20 @@
 
 ### Changed
 
+- Internal: reading a frozen plan now validates each distinct bundle once
+  per read and reuses the immutable Document across bindings, and `read_trial`
+  now reads and verifies each request body once per read, sharing the verified
+  row with the message, strict-output and cache proofs instead of re-reading
+  per proof. The first access to a prepared body still re-reads and checks
+  the verified row digest, so tampering after the scan is still rejected on
+  first access, and a fresh read re-verifies. Commands that re-read frozen
+  plans without the command-local validation cache (`verify`,
+  `speed-results`, `compare-engines`, `compare-plan`, `repeat-summary`,
+  `overhead`, `progress`) benefit most; in a synthetic default two-bundle
+  plan the measured read drops from about 447 ms to about 45 ms median. The
+  measurement implementation identity changes again within this unreleased
+  series; runs made between these entries are not comparable as the same
+  implementation.
 - Internal: removed redundant checks found by a simplification review: a
   hand-written command metavar (help now lists all 29 top-level commands, adding
   `speed-results` and `compare-engines`), a test-only application wrapper for

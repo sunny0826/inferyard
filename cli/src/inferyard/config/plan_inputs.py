@@ -158,15 +158,21 @@ def read_frozen_plan(path):
     workloads = {w["workload_id"]: w for w in plan["experiment"]["workloads"]}
     loaded = {}
     position_families = {}
+    # Same verified bundle bytes are reused across bindings within this one read.
+    bundle_documents: dict[str, Document] = {}
     from inferyard.contracts.position_cases import register_position_families
 
     for binding in plan["runtime_bindings"]:
         workload = workloads[binding["workload_id"]]
         _, raw = source_bytes(root, workload["config"])
         _, bundle_raw = source_bytes(root, workload["bundle"])
-        bundle = strict_json_loads(bundle_raw.decode())
-        require_core(bundle, "bundle")
-        validate_document("bundle", bundle)
+        bundle_sha = workload["bundle"]["sha256"]
+        document = bundle_documents.get(bundle_sha)
+        if document is None:
+            bundle = strict_json_loads(bundle_raw.decode())
+            require_core(bundle, "bundle")
+            document = bundle_documents[bundle_sha] = Document.parse("bundle", bundle)
+        bundle = document.to_dict()
         _, snapshot_raw = source_bytes(root, binding["config"])
         snapshot = strict_json_loads(snapshot_raw.decode())
         expected = normalized_config(
@@ -195,7 +201,7 @@ def read_frozen_plan(path):
         loaded[workload["workload_id"]] = LoadedConfig(
             root / binding["config"]["path"],
             Document.parse("config", config),
-            Document.parse("bundle", bundle),
+            document,
             source_data=raw,
             source_media_type="application/toml"
             if workload["config"]["path"].endswith(".toml")

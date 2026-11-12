@@ -36,13 +36,38 @@ def verify_probe(effective, response, target):
     }
 
 
-def verify_execution(root, workload, config, bundle, events, *, capabilities=None, reads=None):
+def expected_body(workload, config, cases, event, ordinal, *, strict, memo):
+    """One frozen request body per request, shared by the strict and cache proofs."""
+    key = (event["request_id"], strict)
+    if key not in memo:
+        phase = event["phase"]
+        prompt = (
+            cases[event["data"]["case_id"]]["prompt"]
+            if phase == "formal"
+            else config["execution"][phase + "_prompt"]
+        )
+        expected = request_body(config, prompt, stream=event["data"]["body"]["stream"])
+        if strict:
+            expected["ignore_eos"] = True
+        if "cache_protocol" in workload:
+            from inferyard.contracts.cache_execution import request_value
+
+            expected["cache_prompt"] = request_value(config, phase, ordinal)
+            expected["n_cache_reuse"] = 0
+        memo[key] = expected
+    return memo[key]
+
+
+def verify_execution(
+    root, workload, config, bundle, events, *, capabilities=None, reads=None, expected_bodies=None
+):
     """Rebuild request/parameter binding independently of cached summary flags."""
     strict = enabled(workload)
     starts = [e for e in events if e["event_type"] == "request_started"]
     reads = reads if reads is not None else TrialEvidence(root)
     manifest = reads.manifest["files"] if reads.manifest is not None else None
     cases = {c["case_id"]: c for c in bundle["cases"]}
+    memo = {} if expected_bodies is None else expected_bodies
     for ordinal, event in enumerate(starts, 1):
         try:
             body = reads.request_body(event)
@@ -62,21 +87,7 @@ def verify_execution(root, workload, config, bundle, events, *, capabilities=Non
         reference = reads.request_reference(event)
         if manifest is not None and reference["path"] not in manifest:
             raise EvidenceError("strict_output_request_unsealed")
-        phase = event["phase"]
-        prompt = (
-            cases[event["data"]["case_id"]]["prompt"]
-            if phase == "formal"
-            else config["execution"][phase + "_prompt"]
-        )
-        expected = {
-            **request_body(config, prompt, stream=event["data"]["body"]["stream"]),
-            "ignore_eos": True,
-        }
-        if "cache_protocol" in workload:
-            from inferyard.contracts.cache_execution import request_value
-
-            expected["cache_prompt"] = request_value(config, phase, ordinal)
-            expected["n_cache_reuse"] = 0
+        expected = expected_body(workload, config, cases, event, ordinal, strict=True, memo=memo)
         if body != expected:
             raise EvidenceError("strict_output_request_differs_from_frozen_protocol")
     if not strict or not any(e["phase"] == "formal" for e in starts):
