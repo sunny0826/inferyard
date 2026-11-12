@@ -90,10 +90,10 @@ def test_default_request_retains_legacy_plan_and_temperature_limit(model, tmp_pa
 
 @pytest.mark.parametrize("reason", ["", " \t\n", False, 1, [], {}, "a" * 1025, "温" * 342])
 def test_invalid_reason_rejected_before_model_hashing(model, tmp_path, monkeypatch, reason):
-    from inferyard.platforms import engine_fit_assets
+    from inferyard.platforms import model_asset_manifest
 
     monkeypatch.setattr(
-        engine_fit_assets,
+        model_asset_manifest,
         "model_asset_manifest",
         lambda *_args: pytest.fail("invalid reason reached model hashing"),
     )

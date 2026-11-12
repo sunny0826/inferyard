@@ -9,7 +9,7 @@ from inferyard.application.types import CommandRequest
 from inferyard.cli import main
 from inferyard.config.engine_fit import prepare, validate_plan
 from inferyard.contracts.json_digest import digest
-from inferyard.platforms.engine_fit_assets import model_asset_manifest
+from inferyard.platforms.model_asset_manifest import model_asset_manifest
 from inferyard.errors import ContractError, PreflightError
 
 

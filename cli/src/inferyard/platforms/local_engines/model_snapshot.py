@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from inferyard.platforms.engine_fit_assets import model_asset_manifest
+from inferyard.platforms.model_asset_manifest import model_asset_manifest
 from inferyard.errors import PreflightError
 from inferyard.platforms.engine_fit import file_stamp
 from inferyard.platforms.identity import FileIdentity

@@ -209,7 +209,7 @@ def request_rows(plan):
 
 
 def prepare(request):
-    from inferyard.platforms.engine_fit_assets import model_asset_manifest
+    from inferyard.platforms.model_asset_manifest import model_asset_manifest
     from inferyard.platforms.engine_fit import host_identity, model_manifest
 
     _require(not request.out.exists() and not request.out.is_symlink(), "out")

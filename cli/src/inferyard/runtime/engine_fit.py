@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 
 from inferyard.adapters.engine_fit import FitClient, FitTransportError
 from inferyard.config.engine_fit import load_plan, request_rows
-from inferyard.platforms.engine_fit_assets import runtime_manifest as _manifest
+from inferyard.platforms.model_asset_manifest import runtime_manifest as _manifest
 from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.analysis.engine_fit_checkpoint import request_counts, write_checkpoint
 from inferyard.contracts.validation import json_bytes

@@ -6,7 +6,7 @@ from importlib.resources import files as package_files
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from inferyard.platforms.engine_fit_assets import model_asset_manifest
+from inferyard.platforms.model_asset_manifest import model_asset_manifest
 from inferyard.config.local_engines.launch import startup
 from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.identity import hash_file

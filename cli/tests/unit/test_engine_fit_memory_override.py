@@ -69,10 +69,10 @@ def test_plan_freezes_memory_reason_and_optional_temperature_rule(model, tmp_pat
 
 @pytest.mark.parametrize("reason", ["", " \t", False, 1, [], "温" * 342, "\ud800"])
 def test_invalid_memory_reason_refused_before_hashing(model, tmp_path, monkeypatch, reason):
-    from inferyard.platforms import engine_fit_assets
+    from inferyard.platforms import model_asset_manifest
 
     monkeypatch.setattr(
-        engine_fit_assets, "model_asset_manifest", lambda *_: pytest.fail("reached model hashing")
+        model_asset_manifest, "model_asset_manifest", lambda *_: pytest.fail("reached model hashing")
     )
     with pytest.raises(ContractError, match="memory_stop_override_reason"):
         prepare(

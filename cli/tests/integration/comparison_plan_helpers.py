@@ -21,7 +21,7 @@ from inferyard.analysis.comparison_types import JSONRecord, JSONValue
 from inferyard.analysis.engine_comparison_v2 import read_comparison_v2
 from inferyard.application.types import CommandRequest
 from inferyard.config.comparison_plan import Slot, comparison_slots, freeze
-from inferyard.platforms.engine_fit_assets import model_asset_manifest
+from inferyard.platforms.model_asset_manifest import model_asset_manifest
 from inferyard.config.local_engines.launch import startup
 from inferyard.config.loader import load_config
 from inferyard.config.toml_writer import render
