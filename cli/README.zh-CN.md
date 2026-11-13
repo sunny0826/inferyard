@@ -82,7 +82,7 @@ inferyard verify --path bench-work/report
 
 ## InferYard Studio
 
-[InferYard Studio](../studio/README.md) 是基于 MyGo + Go + Svelte 的本地 benchmark 桌面/Web 双端面板。
+[InferYard Studio](../studio/README.md) 是基于 MyGo + Go 的本地 benchmark 原生桌面面板。
 
 ## 继续阅读
 

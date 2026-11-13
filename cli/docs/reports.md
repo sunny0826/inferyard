@@ -12,7 +12,7 @@ inferyard verify --path reports/NEW_REPORT
 新报告按相对路径引用来源，一起移动目录树后可直接核验。来源单独移动时，使用
 `verify --path REPORT --source-root OLD=NEW` 显式映射；保存文件不变。
 默认核验封存字节和来源语义；`--rerender` 另检查当前渲染结果。
-旧版本仍按原规则核验，详见[离线读取契约](contracts/offline-reading-contract.md)。
+报告核验只接受当前格式；旧版本的拒绝规则与损坏证据分类见[离线读取契约](contracts/offline-reading-contract.md)。
 
 ## 页面内容
 

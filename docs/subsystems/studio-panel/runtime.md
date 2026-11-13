@@ -6,7 +6,7 @@
    `ui_debug` 且无 `release` 时注册 `--debug-ui` 并允许进入下述独立预览路径。
    普通启动解析嵌入配置设置 `core.Version`，用 `signal.NotifyContext` 建应用上下文并
    `core.New` 创建服务（读设置、启动串行 runQueue、按需 `RefreshDevice`），随后 `mygo.App.Run`
-   进入 WhenReady：注册桌面通知订阅、创建 `pages.Reports` 与主窗口 `pages.New`。SIGINT/SIGTERM
+   进入 WhenReady：注册桌面通知订阅、通过 `pages.New` 创建主窗口。SIGINT/SIGTERM
    触发 `mygo.App.Quit` 与 `Service.Shutdown`。
 2. **页面刷新**：主窗口的六页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
    取增量事件，六类事件触发全量刷新（`sync.reset`/`report.created`/`run.state`/`engine.state`/

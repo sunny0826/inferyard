@@ -67,7 +67,7 @@
 冻结 plan 的可解释 `plan_sha256`、rescore 的既有自哈希与来源摘要先于版本拒绝核验；
 坏哈希或 plan 内外版本声明冲突为 4，不能因同时带有旧格式标记而降格为 2。
 任何拒绝都不覆盖输入、不生成成功产物、不调用模型或自动 rescore。
-report v7/comparison v4/engine-fit manifest.v2 保持保存字节与显式 `--rerender` 分离；
+report v8/comparison v4/engine-fit manifest.v2 保持保存字节与显式 `--rerender` 分离；
 普通相对来源与显式根映射保留，携带包继续拒绝路径逃逸与外部映射。
 
 ## 主机状态

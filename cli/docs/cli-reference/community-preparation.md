@@ -13,7 +13,9 @@
 
 ## 参数、平台和产物
 
-下表是完整的新命令参数集；所有 `--out NEW` 都是**不存在的新目录**，不是 TOML 文件名。
+下表列出通用获取命令和原有二进制引擎的准备路径；所有 `--out NEW` 都是**不存在的新目录**，不是 TOML 文件名。
+本地安装声明与 `config describe` 的完整参数见[本地五引擎正式接口](local-engines.md#安装声明与候选)；
+长上下文专项参数见[长上下文速度专项](context-speed.md)。
 各路径参数按调用 cwd 解析，写出的配置和 stdout 路径为绝对路径；安装资源用包资源 API 读取，
 不查找仓库根。所有命令支持 `--help`，不提供 `--force`、启动或跳过核验开关。
 
@@ -21,17 +23,19 @@
 | --- | --- | --- | --- |
 | `model acquire` | `--source URL --out NEW` | `--token-env NAME`：只接受环境变量名；`--timeout-seconds 1800` | 三平台；单 GGUF 文件的基名和 `source.json`，失败目录保留 |
 | `engine acquire` | `--source URL --out NEW` | `--timeout-seconds 1800` | 三平台；单引擎文件的基名和 `engine-source.json`，失败目录保留 |
-| `init` | `--out NEW` | `--bundle {zh-smoke,zh-core,zh-svg-pelican}`；省略时导出 `zh-core` 和 `zh-svg-pelican` | 三平台；`README.md`、`configs/{linux,macos,windows}.example.toml`、`bundles/NAME.json`、`assets/`、`results/`、`preflight/`、`candidates/`、`bound/`、`reports/`、`preparation.json` |
+| `init` | `--out NEW` | `--bundle {zh-smoke,zh-core,zh-svg-pelican,zh-context-speed}`；省略时导出 `zh-core` 和 `zh-svg-pelican` | 三平台；`README.md`、`configs/{linux,macos,windows}.example.toml`、`bundles/NAME.json`、`assets/`、`results/`、`preflight/`、`candidates/`、`bound/`、`reports/`、`preparation.json` |
 | `runtime prepare` | `--profile NAME --archive FILE --out NEW` | `--runtime-archive FILE`，仅 CUDA 必填，CPU 禁止 | 仅 Windows x64；`engine/`、CUDA 的 `runtime/`、`engine/engine-sha256.json`、`runtime-receipt.json` |
 | `config assets` | `--model FILE --engine FILE --out NEW` | 无 | 仅 Linux x64；`chat-template.jinja`、`engine-sha256.json`、`assets.json` |
-| `config create` | `--bundle FILE_OR_NAME --out NEW`；无 workspace 时另必填 `--preflight FILE --results DIR`；另按平台指定下述参数 | `--workspace DIR` 推导题包、preflight 和 results；`--port INT` 默认 48857，范围 1..65535；`--model-source FILE` 显式来源记录；无记录时 `--model-repo TEXT` 默认 `local`、`--model-revision TEXT` 默认所选模型 SHA256，显式文本须非空 | 仅 macOS arm64 / Windows x64；`candidate.toml`、`chat-template.jinja`、`preparation.json`；macOS 另有 `engine-sha256.json`，Windows 引用回执目录清单 |
+| `config create`（原有二进制引擎） | `--bundle FILE_OR_NAME --out NEW`；无 workspace 时另必填 `--preflight FILE --results DIR`；另按平台指定下述参数 | `--workspace DIR` 推导题包、preflight 和 results；`--port INT` 默认 48857，范围 1..65535；`--model-source FILE` 显式来源记录；无记录时 `--model-repo TEXT` 默认 `local`、`--model-revision TEXT` 默认所选模型 SHA256，显式文本须非空 | 仅 macOS arm64 / Windows x64；`candidate.toml`、`chat-template.jinja`、`preparation.json`；macOS 另有 `engine-sha256.json`，Windows 引用回执目录清单 |
 | `config bind` | `--candidate FILE --pid INT --endpoint URL --out NEW` | 无；PID 应为正整数 | 三平台及既有可绑定适配器；`config.toml`、`preparation.json` |
 
 `runtime prepare` 的 NAME 只有 `prism-b10743-adfffbe-win-cpu-x64` 和
 `prism-b10743-adfffbe-win-cuda-12.4-x64`，可信归档、清单和回执字段见
 [Windows 准备契约](../contracts/windows-prism-batch-contract.md#社区安装的离线运行时准备)。
-`config create` 在 macOS 必填 `--engine FILE` 且禁止 `--runtime-receipt`；
-Windows 必填 `--runtime-receipt FILE` 且禁止 `--engine`。两者不能同时提供。
+使用原有二进制引擎时，macOS 必填 `--engine FILE` 且禁止 `--runtime-receipt` 和 `--installation`；
+Windows 必填 `--runtime-receipt FILE` 且禁止 `--engine` 和 `--installation`。本地安装声明路径改用
+`--installation FILE`，与上述两个参数同组互斥；模型、LM Studio 服务 PID、上下文和生成预算等参数见
+[本地五引擎正式接口](local-engines.md#安装声明与候选)。
 不提供跨平台模拟生成参数；Linux 使用 `config assets` 和示例手工冻结配置。
 `--model-source` 只读取显式传入的 `remote_model_source.v1/v2/v3` 记录，不按目录查找旧记录。
 记录的大小和 SHA256 必须等于当次所选文件；候选生成复用当次文件哈希，不重复扫描模型。
