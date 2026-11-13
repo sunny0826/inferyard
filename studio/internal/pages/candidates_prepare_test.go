@@ -47,7 +47,7 @@ func TestDashboardPreparationFreezesSelectedModel(t *testing.T) {
 			write(preflight, report(a))
 			old := preflight
 			command := "inferyard config create --workspace " + quote(root) + " --bundle zh-core --preflight " + quote(old) + " --engine placeholder --out " + quote(filepath.Join(root, "candidates", "core-1"))
-			progress := inferyard.WorkspaceProgress{Kind: "progress", ProgressVersion: 1, Workspace: root, NextAction: "prepare_candidate",
+			progress := inferyard.WorkspaceProgress{Kind: "progress", ProgressVersion: 2, Workspace: root, NextAction: "prepare_candidate",
 				DevicePreflight: inferyard.ProgressPreflight{Status: "ok", Path: &preflight}, Report: inferyard.ProgressReport{Status: "missing", Runs: []string{}},
 				Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: "candidate_missing", NextAction: "prepare_candidate", NextCommand: &command, Runs: []inferyard.ProgressRun{}}}}
 			var checkedModel, frozenModel, usedPreflight string

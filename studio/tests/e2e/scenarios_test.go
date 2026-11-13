@@ -34,7 +34,7 @@ func TestWizardCommandGuards(t *testing.T) {
 		{"disallowed flag", "inferyard init --out /tmp/x --force"},
 		{"relative output path", "inferyard init --out relative/dir"},
 		{"report without runs", "inferyard report --out /tmp/x"},
-		{"verify without path", "inferyard verify"},
+		{"removed verify command", "inferyard verify --path /tmp/x"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, apiErr := service.WizardExecute(ctx, core.WizardRequest{Command: tc.command})

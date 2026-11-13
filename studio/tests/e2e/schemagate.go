@@ -16,9 +16,9 @@ import (
 // cli/schemas. Mappings were verified against the CLI's own
 // validate_document: events.jsonl lines are event, observations.jsonl lines
 // are observation_record, memory.jsonl lines are sample, request-bodies.jsonl
-// lines are prepared_request. Documents without a wire schema (preparation
-// records, device preflight, report index, environment/schedule journals) are
-// counted as skipped, not validated.
+// lines are prepared_request, and a report directory holds studio.json.
+// Documents without a wire schema (preparation records, device preflight,
+// environment/schedule journals) are counted as skipped, not validated.
 var artifactSchema = map[string]string{
 	"inputs.json":          "inputs",
 	"manifest.json":        "manifest",
@@ -27,6 +27,7 @@ var artifactSchema = map[string]string{
 	"observations.jsonl":   "observation_record",
 	"memory.jsonl":         "sample",
 	"request-bodies.jsonl": "prepared_request",
+	"studio.json":          "studio_report",
 }
 
 // assertEvidenceContracts validates every schema-covered evidence document

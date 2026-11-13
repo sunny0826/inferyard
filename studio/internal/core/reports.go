@@ -1,7 +1,6 @@
 package core
 
 import (
-	"encoding/json"
 	"fmt"
 	"inferyard/studio/internal/evidence"
 	"inferyard/studio/internal/inferyard"
@@ -12,33 +11,44 @@ import (
 	"time"
 )
 
+// ReportIndex aliases the typed studio.json projection. The CLI contract lives
+// in inferyard so Studio never rescans evidence or recomputes presentation.
+type (
+	ReportIndex     = inferyard.StudioReport
+	ReportRun       = inferyard.StudioRun
+	ReportSource    = inferyard.StudioSource
+	ReportFacets    = inferyard.StudioFacets
+	ReportProfile   = inferyard.StudioProfile
+	ReportEngine    = inferyard.StudioEngine
+	ReportMachine   = inferyard.StudioMachine
+	ReportCounts    = inferyard.StudioCounts
+	ReportQuality   = inferyard.StudioQuality
+	ReportCategory  = inferyard.StudioCategory
+	ReportLatency   = inferyard.StudioLatency
+	ReportDashboard = inferyard.StudioDashboard
+	ReportRequest   = inferyard.StudioRequest
+)
+
 func reportSummary(path string) (ReportSummary, error) {
-	r := ReportSummary{ReportId: filepath.Base(path), Path: path, RunIds: []string{}, RunPaths: []*string{}, HtmlUrl: "/reports/" + filepath.Base(path) + "/report.html"}
+	r := ReportSummary{ReportId: filepath.Base(path), Path: path, RunIds: []string{}, RunPaths: []*string{}}
 	info, e := os.Stat(path)
 	if e != nil {
 		return r, e
 	}
 	r.CreatedAt = ptr(info.ModTime().UTC().Format(time.RFC3339Nano))
-	raw, e := os.ReadFile(filepath.Join(path, "index.json"))
+	raw, e := os.ReadFile(filepath.Join(path, "studio.json"))
 	if e != nil {
 		return r, e
 	}
-	var index map[string]any
-	if e := json.Unmarshal(raw, &index); e != nil {
+	report, e := inferyard.ParseStudioReport(raw)
+	if e != nil {
 		return r, e
 	}
-	rows, _ := index["runs"].([]any)
-	for _, row := range rows {
-		m := obj(row)
-		id := text(m["run_id"])
-		if id == nil {
-			id = text(obj(m["source"])["run_id"])
-		}
-		r.RunIds = append(r.RunIds, str(id))
-		source := text(obj(m["source"])["path"])
+	for _, run := range report.Runs {
+		r.RunIds = append(r.RunIds, run.Source.RunID)
 		var p *string
-		if source != nil {
-			v := *source
+		if run.Source.Path != "" {
+			v := run.Source.Path
 			if !filepath.IsAbs(v) {
 				v = filepath.Join(path, v)
 			}
@@ -69,7 +79,7 @@ func (s *Service) Reports() (*string, []ReportSummary, *ApiError) {
 			continue
 		}
 		path := filepath.Join(*root, entry.Name())
-		if _, e := os.Stat(filepath.Join(path, "report.html")); e != nil {
+		if _, e := os.Stat(filepath.Join(path, "studio.json")); e != nil {
 			continue
 		}
 		r, _ := reportSummary(path)
@@ -155,7 +165,7 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 	if _, e := inferyard.Parse(out.Stdout); e != nil {
 		return ReportSummary{}, Err("internal_error")
 	}
-	if _, e := os.Stat(filepath.Join(path, "report.html")); e != nil {
+	if !validStudioReport(path) {
 		return ReportSummary{}, Err("internal_error")
 	}
 	r, err := reportSummary(path)
@@ -165,6 +175,18 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 	s.Bus.Publish("report.created", map[string]any{"report": r})
 	return r, nil
 }
+
+// validStudioReport checks that a created directory holds the single typed
+// document Studio consumes. Old index.json/report.html output is not accepted.
+func validStudioReport(path string) bool {
+	raw, e := os.ReadFile(filepath.Join(path, "studio.json"))
+	if e != nil {
+		return false
+	}
+	_, e = inferyard.ParseStudioReport(raw)
+	return e == nil
+}
+
 func (s *Service) ReportFile(relative string) (string, *ApiError) {
 	root := reportsRoot(s.userSettings())
 	if root == nil {
@@ -196,75 +218,6 @@ func (s *Service) ReportFile(relative string) (string, *ApiError) {
 	return path, nil
 }
 
-// ReportIndex contains the CLI's presentation values; Studio never rescores them.
-type ReportIndex struct {
-	Runs []ReportRun `json:"runs"`
-}
-type ReportRun struct {
-	Source struct {
-		RunID string `json:"run_id"`
-	} `json:"source"`
-	Model      string        `json:"model"`
-	Threads    *int64        `json:"threads"`
-	Diagnostic bool          `json:"diagnostic"`
-	Profile    ReportProfile `json:"profile"`
-	Facets     struct {
-		BundleLabel string `json:"bundle_label"`
-	} `json:"facets"`
-	Summary struct {
-		CompletionRate ReportRate `json:"completion_rate"`
-		StopReason     string     `json:"stop_reason"`
-	} `json:"summary"`
-	Dashboard *ReportDashboard `json:"dashboard"`
-	Requests  []ReportRequest  `json:"requests"`
-}
-type ReportProfile struct {
-	Title  string `json:"title"`
-	Engine struct {
-		BinaryPath string `json:"binary_path"`
-		Adapter    string `json:"adapter"`
-		Backend    string `json:"backend"`
-	} `json:"engine"`
-	Machine struct {
-		CPU              string `json:"cpu"`
-		LogicalCPUs      *int64 `json:"logical_cpus"`
-		MemoryTotalBytes *int64 `json:"memory_total_bytes"`
-	} `json:"machine"`
-}
-type ReportRate struct {
-	Numerator   *float64 `json:"numerator"`
-	Denominator *float64 `json:"denominator"`
-	Excluded    *float64 `json:"excluded"`
-	Complete    *bool    `json:"complete"`
-}
-type ReportDashboard struct {
-	SampledPeakRSSBytes          *float64   `json:"sampled_peak_rss_bytes"`
-	SampledPeakRSSReason         *string    `json:"sampled_peak_rss_reason"`
-	SampledMinimumAvailableBytes *float64   `json:"sampled_minimum_available_bytes"`
-	MinimumAvailableReason       *string    `json:"minimum_available_reason"`
-	Quality                      ReportRate `json:"quality"`
-	Categories                   []struct {
-		ID    string     `json:"id"`
-		Label string     `json:"label"`
-		Rate  ReportRate `json:"rate"`
-	} `json:"categories"`
-	Latency struct {
-		Min         *float64 `json:"min"`
-		P50         *float64 `json:"p50"`
-		P95         *float64 `json:"p95"`
-		Max         *float64 `json:"max"`
-		SampleCount *float64 `json:"sample_count"`
-		Excluded    *float64 `json:"excluded"`
-	} `json:"latency"`
-}
-type ReportRequest struct {
-	CaseID        string   `json:"case_id"`
-	CategoryLabel string   `json:"category_label"`
-	State         string   `json:"state"`
-	Quality       *string  `json:"quality"`
-	LatencyMS     *float64 `json:"latency_ms"`
-}
-
 func (s *Service) ReportIndex(reference string) (*ReportIndex, *ApiError) {
 	if filepath.IsAbs(reference) {
 		root := reportsRoot(s.userSettings())
@@ -285,14 +238,36 @@ func (s *Service) ReportIndex(reference string) (*ReportIndex, *ApiError) {
 		}
 		reference = filepath.ToSlash(relative)
 	}
-	path, e := s.ReportFile(reference + "/index.json")
+	path, e := s.ReportFile(reference + "/studio.json")
 	if e != nil {
+		if e.Code == "not_found" && s.legacyReport(reference) {
+			return nil, &ApiError{Code: "unsupported_report_format", Message: "旧格式报告不受支持，请用当前 CLI 重新生成报告。"}
+		}
 		return nil, e
 	}
 	raw, err := os.ReadFile(path)
-	var index ReportIndex
-	if err != nil || json.Unmarshal(raw, &index) != nil || index.Runs == nil {
-		return nil, &ApiError{Code: "report_unreadable", Message: "无法读取"}
+	if err != nil {
+		return nil, reportUnreadable()
 	}
-	return &index, nil
+	report, err := inferyard.ParseStudioReport(raw)
+	if err != nil {
+		return nil, reportUnreadable()
+	}
+	return &report, nil
+}
+
+// legacyReport reports whether a directory still holds the retired HTML/JSON
+// presentation. Such directories stay hidden from batch discovery but an
+// explicit open explains that the format is unsupported.
+func (s *Service) legacyReport(reference string) bool {
+	for _, name := range []string{"index.json", "report.html"} {
+		if _, e := s.ReportFile(reference + "/" + name); e == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func reportUnreadable() *ApiError {
+	return &ApiError{Code: "report_unreadable", Message: "无法读取"}
 }

@@ -21,7 +21,7 @@ func reportText(value string) string {
 	return displayValue(value)
 }
 
-func reportRate(rate core.ReportRate) string {
+func reportRate(rate core.ReportCounts) string {
 	return reportNumber(rate.Numerator) + " / " + reportNumber(rate.Denominator)
 }
 
@@ -48,11 +48,11 @@ func reportMemoryReason(reason *string) string {
 func reportMetrics(c *ui.Context, run core.ReportRun) {
 	d := run.Dashboard
 	qualityNote := "各类别不构成综合评分"
-	if d.Quality.Complete != nil && !*d.Quality.Complete {
+	if !d.Quality.Complete {
 		qualityNote += " · 仅已记录通过数"
 	}
 	metrics := []struct{ label, value, detail, note string }{
-		{"答案通过数", reportRate(d.Quality), qualityNote, "质量排除数 " + reportNumber(d.Quality.Excluded)},
+		{"答案通过数", reportRate(d.Quality.StudioCounts), qualityNote, "质量排除数 " + reportNumber(d.Quality.Excluded)},
 		{"请求完成率", reportRate(run.Summary.CompletionRate), "完成 / 有效执行", "排除 " + reportNumber(run.Summary.CompletionRate.Excluded)},
 		{"完成请求中位耗时", reportScaled(d.Latency.P50, 1000, "s"), reportNumber(d.Latency.SampleCount) + " 个有效样本", "排除 " + reportNumber(d.Latency.Excluded)},
 		{"服务采样峰值 RSS", reportScaled(d.SampledPeakRSSBytes, 1<<30, "GiB"), "系统最低可用 " + reportScaled(d.SampledMinimumAvailableBytes, 1<<30, "GiB"), reportMemoryReason(d.SampledPeakRSSReason)},

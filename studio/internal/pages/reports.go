@@ -19,18 +19,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 	s.header(c, "报告")
 	s.speedHistoryView(c)
 	card(c, "历史任务", func() { errorView(c, s.historyError); s.historyView(c) })
-	card(c, "报告列表", func() {
-		s.reportsTableView(c)
-		if s.progress != nil {
-			if s.progress.Report.Status == "verified" {
-				statusBadge(c, "已核验", stateColor(c, stateSuccess))
-			} else if s.progress.NextAction == "verify" {
-				if button(c, "核验").Disabled(s.busy).Clicked() {
-					s.execute(s.nextCommand(), true)
-				}
-			}
-		}
-	})
+	card(c, "报告列表", func() { s.reportsTableView(c) })
 	s.reportSourcesView(c)
 }
 
