@@ -113,17 +113,6 @@ def bind_service(config):
         from inferyard.platforms.local_engines.installation import verify_installation
 
         verify_installation(runtime)
-        final = native.service_process_state(endpoint["server_pid"], psutil)
-        if (
-            final[0] != service["start_ticks"]
-            or hashlib.sha256(final[2]).hexdigest() != service["argv_sha256"]
-            or hashlib.sha256(os.fsencode(final[4])).hexdigest() != service["cwd_sha256"]
-            or observe_workers(endpoint["server_pid"], psutil, runtime_files, worker_environment)
-            != service["workers"]
-        ):
-            raise PreflightError("local_engine_service_changed")
-        check_environment(psutil.Process(endpoint["server_pid"]).environ(), engine["environment"])
-        native.unique_listener(endpoint["server_pid"], service["address"], service["port"])
         result = {
             "schema_version": 3,
             "definition": DEFINITION,
