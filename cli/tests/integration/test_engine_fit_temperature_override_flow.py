@@ -145,10 +145,10 @@ def test_hot_pair_completes_with_frozen_override_and_verifies_offline(
     monkeypatch.setattr(fixture["runtime"], "FitClient", no_live_access)
     monkeypatch.setattr(fixture["runtime"], "host_identity", no_live_access)
     assert main(["engine-fit", "verify", "--path", str(comparison)]) == 0
-    html = (comparison / "report.html").read_text()
-    assert "本次已显式跳过温度停止" in html
-    assert "&lt;script&gt;reason&lt;/script&gt;" in html and "<script>" not in html
-    assert "缺测 · lmstudio_service_version_not_exposed" in html and "<td>None</td>" not in html
+    saved = read_json(comparison / "comparison.json")
+    assert "temperature_stop_explicitly_disabled" in saved["sides"][0]["run"]["limitations"]
+    assert saved["sides"][1]["run"]["service"]["version"] is None
+    assert not (comparison / "report.html").exists()
 
 
 def test_override_does_not_clear_dirty_after_incomplete_protocol(override_service, capsys):

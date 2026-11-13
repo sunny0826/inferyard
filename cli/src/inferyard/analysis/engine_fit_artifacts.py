@@ -7,10 +7,16 @@ from stat import S_ISREG
 
 from inferyard.analysis.engine_fit_validation import fields, require
 from inferyard.contracts.validation import strict_json_loads
-from inferyard.errors import ContractError, EvidenceError
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
+from inferyard.evidence.formats import require_core
 
-RUN_FILES = ("plan.json", "run.json", "requests.json", "report.html")
-COMPARISON_FILES = ("comparison.json", "report.html")
+RUN_FILES = ("plan.json", "run.json", "requests.json")
+COMPARISON_FILES = ("comparison.json",)
+DEFINITION = "engine_fit_manifest.v3"
+# Retired layouts are only named so they can be rejected after byte checks.
+LEGACY_V2_DEFINITION = "engine_fit_manifest.v2"
+_LEGACY_V2_RUN_FILES = (*RUN_FILES, "report.html")
+_LEGACY_V2_COMPARISON_FILES = (*COMPARISON_FILES, "report.html")
 
 
 def sha256_hex(content):
@@ -66,7 +72,7 @@ def decode_json_bytes(content):
         raise EvidenceError("engine_fit_invalid_json") from exc
 
 
-def manifest_document(blobs, kind, *, definition="engine_fit_manifest.v2"):
+def manifest_document(blobs, kind, *, definition=DEFINITION):
     return {
         "schema_version": 3,
         "definition": definition,
@@ -75,12 +81,7 @@ def manifest_document(blobs, kind, *, definition="engine_fit_manifest.v2"):
     }
 
 
-def load_manifest(root):
-    content = read_entry(root, "manifest.json")
-    manifest = decode_json_bytes(content)
-    fields(manifest, {"schema_version", "definition", "kind", "files"}, "manifest_fields")
-    require(manifest["kind"] in ("run", "comparison"), "manifest_kind")
-    names = RUN_FILES if manifest["kind"] == "run" else COMPARISON_FILES
+def _hashed_blobs(root, manifest, names):
     fields(manifest["files"], set(names), "manifest_files")
     for digest in manifest["files"].values():
         require(type(digest) is str and re.fullmatch(r"[a-f0-9]{64}", digest), "manifest_hash")
@@ -89,11 +90,29 @@ def load_manifest(root):
         manifest["files"] == {name: sha256_hex(raw) for name, raw in blobs.items()},
         "hash_mismatch",
     )
-    from inferyard.contracts.format_versions import require_version
-    from inferyard.evidence.formats import require_core
+    return blobs
 
+
+def load_manifest(root):
+    content = read_entry(root, "manifest.json")
+    manifest = decode_json_bytes(content)
+    fields(manifest, {"schema_version", "definition", "kind", "files"}, "manifest_fields")
+    require(manifest["kind"] in ("run", "comparison"), "manifest_kind")
+    definition = manifest["definition"]
+    if type(definition) is not str:
+        raise EvidenceError("engine_fit_manifest_definition")
+    if definition != DEFINITION:
+        # A complete retired v2 artifact is recognized by its own file set and
+        # hashes before the version decision, so damage cannot become "old".
+        if definition == LEGACY_V2_DEFINITION:
+            legacy = (
+                _LEGACY_V2_RUN_FILES
+                if manifest["kind"] == "run"
+                else _LEGACY_V2_COMPARISON_FILES
+            )
+            _hashed_blobs(root, manifest, legacy)
+        raise UnsupportedFormat("engine-fit manifest", definition, (DEFINITION,))
+    names = RUN_FILES if manifest["kind"] == "run" else COMPARISON_FILES
+    blobs = _hashed_blobs(root, manifest, names)
     require_core(manifest, "engine-fit manifest")
-    require_version(manifest, "definition", ("engine_fit_manifest.v2",), "engine-fit manifest")
     return manifest, {**blobs, "manifest.json": content}
-
-

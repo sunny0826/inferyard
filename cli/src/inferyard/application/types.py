@@ -74,7 +74,6 @@ class CommandRequest:
     fit_temperature_stop_override_reason: str | None = None
     fit_memory_stop_override_reason: str | None = None
     source_roots: list[str] | None = None
-    rerender: bool = False
     community_bundle: str | None = None
     benchmark_profile: str | None = None
     context_size: int | None = None

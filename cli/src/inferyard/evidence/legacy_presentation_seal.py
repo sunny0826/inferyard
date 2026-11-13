@@ -51,3 +51,10 @@ def legacy_index_bytes(root: Path) -> bytes | None:
     if not local_file(root, SEAL).exists():
         return None
     return _check_seal(root, sealed_members(root))["index.json"]
+
+
+def check_seal(root: Path, names: tuple[str, ...]) -> None:
+    """Validate an exact old seal for these members when one is present."""
+    if not local_file(root, SEAL).exists():
+        return
+    _check_seal(root, tuple(names))

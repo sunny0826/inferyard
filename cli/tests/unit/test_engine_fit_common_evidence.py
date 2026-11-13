@@ -85,10 +85,11 @@ def test_new_gguf_engines_compare_with_missing_version_and_no_live_backend(tmp_p
     out = tmp_path / "comparison"
     result = compare(paths, out)
     assert verify(out)["comparison"] == result
-    html = (out / "report.html").read_text()
-    assert "模型文件" in html and "模型目录" not in html
-    assert "缺测 · lmstudio_service_version_not_exposed" in html
-    assert "<td>None</td>" not in html
+    assert result["sides"][1]["run"]["service"]["version"] is None
+    assert result["sides"][1]["run"]["service"]["version_missing_reason"] == (
+        "lmstudio_service_version_not_exposed"
+    )
+    assert not (out / "report.html").exists()
 
 
 @pytest.mark.parametrize(

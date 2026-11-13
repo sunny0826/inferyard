@@ -19,7 +19,7 @@ def source_tree(tmp_path):
 def test_source_changes_respect_role_boundaries(source_tree):
     original = Path.read_bytes
     first = identity.IdentityContext(root=source_tree)
-    for name in ("cli/metadata.py", "templates/report_script.html"):
+    for name in ("cli/metadata.py", "reporting/studio_report.py"):
         path = source_tree / name
         path.write_bytes(original(path) + b"\n")
     second = identity.IdentityContext(root=source_tree)
@@ -70,18 +70,23 @@ def test_runtime_dependency_changes_only_relevant_role(source_tree, monkeypatch)
     assert first.value["presentation"] == second.value["presentation"]
 
 
-def test_missing_dependency_is_not_equal_to_itself(source_tree, monkeypatch):
+def test_presentation_depends_only_on_shared_validation(source_tree):
+    assert identity.DEPENDENCIES["presentation"] == identity.VALIDATION_DEPENDENCIES
+    assert "jinja2" not in identity.DEPENDENCIES["presentation"]
+
+
+def test_missing_presentation_dependency_is_not_equal_to_itself(source_tree, monkeypatch):
     old = identity.version
 
     def missing(name):
-        if name == "jinja2":
+        if name == "attrs":
             raise identity.PackageNotFoundError(name)
         return old(name)
 
     monkeypatch.setattr(identity, "version", missing)
     value = identity.IdentityContext(root=source_tree).value
     assert identity.role_identity(value, "presentation") is None
-    assert identity.execution_matches(value, value)
+    assert not identity.execution_matches(value, value)
     broken = deepcopy(value)
     broken["measurement"]["sha256"] = "a" * 64
     with pytest.raises(ContractError, match="digest mismatch"):

@@ -163,8 +163,8 @@ def test_seal_overwrites_checkpoints_but_never_a_sealed_run(tmp_path, plan):
         "plan.json",
         "run.json",
         "requests.json",
-        "report.html",
     }
+    assert saved["manifest"]["definition"] == "engine_fit_manifest.v3"
     assert (tmp_path / "checkpoint.json").read_text() == "ignored in-flight identity"
     (tmp_path / "checkpoint.json").unlink()
     assert verify(tmp_path)["run"] == run
@@ -298,37 +298,48 @@ def test_offline_plan_semantics_are_evidence_errors_with_valid_hashes(tmp_path, 
         verify(path)
 
 
-@pytest.mark.parametrize("version", [1, 2])
-def test_html_is_escaped_and_versioned_rebuild_is_explicit(tmp_path, plan, version):
-    path = _seal(tmp_path / "run", plan)
-    html = (path / "report.html").read_text()
-    assert "&lt;script&gt;" in html and "&lt;img" in html
-    assert "<script" not in html and "<img" not in html
-    assert "客户端总耗时" in html and "端点输出 token" in html
-    assert "RSS 相加可能重复计算共享页" in html
+def _retire_manifest(path, definition="engine_fit_manifest.v2"):
     manifest = json.loads((path / "manifest.json").read_text())
-    manifest["definition"] = f"engine_fit_manifest.v{version}"
+    retired = b"retired presentation"
+    (path / "report.html").write_bytes(retired)
+    manifest["definition"] = definition
+    manifest["files"]["report.html"] = hashlib.sha256(retired).hexdigest()
     (path / "manifest.json").write_bytes(json_bytes(manifest))
-    _replace(path, "report.html", html.replace("引擎适配诊断", "unverified").encode())
-    if version == 1:
-
-        with pytest.raises(UnsupportedFormat):
-            verify(path)
-    else:
-        assert verify(path)["kind"] == "engine_fit_run"
-        with pytest.raises(EvidenceError, match="html_rebuild_mismatch"):
-            verify(path, rerender=True)
+    return path
 
 
-def test_new_engine_fit_seal_needs_no_renderer_but_checks_saved_bytes(tmp_path, plan, monkeypatch):
-    from inferyard.reporting import engine_fit
+@pytest.mark.parametrize("definition", ["engine_fit_manifest.v1", "engine_fit_manifest.v2"])
+def test_complete_retired_run_manifest_is_unsupported(tmp_path, plan, definition):
+    path = _retire_manifest(_seal(tmp_path / "run", plan), definition)
+    with pytest.raises(UnsupportedFormat):
+        verify(path)
 
+
+def test_complete_retired_comparison_manifest_is_unsupported(tmp_path, plan):
+    left = _seal(tmp_path / "left", plan)
+    right = _seal(tmp_path / "right", plan, "sglang")
+    out = compare([left, right], tmp_path / "comparison")
+    assert out["schema_version"] == 3
+    assert _retire_manifest(tmp_path / "comparison")
+    with pytest.raises(UnsupportedFormat):
+        verify(tmp_path / "comparison")
+
+
+def test_damaged_retired_manifest_is_an_integrity_error(tmp_path, plan):
+    missing = _retire_manifest(_seal(tmp_path / "run", plan))
+    (missing / "report.html").unlink()
+    with pytest.raises(EvidenceError, match="missing_file"):
+        verify(missing)
+    changed = _retire_manifest(_seal(tmp_path / "other", plan))
+    (changed / "report.html").write_bytes(b"changed bytes")
+    with pytest.raises(EvidenceError, match="hash_mismatch"):
+        verify(changed)
+
+
+def test_json_only_seal_needs_no_renderer_but_checks_saved_bytes(tmp_path, plan):
     path = _seal(tmp_path / "run", plan)
-    monkeypatch.setattr(engine_fit, "render", lambda *args, **kwargs: "renderer changed")
-    assert verify(path)["manifest"]["definition"] == "engine_fit_manifest.v2"
-    with pytest.raises(EvidenceError, match="html_rebuild_mismatch"):
-        verify(path, rerender=True)
-    (path / "report.html").write_text("changed bytes")
+    assert verify(path)["manifest"]["definition"] == "engine_fit_manifest.v3"
+    (path / "run.json").write_text("{}")
     with pytest.raises(EvidenceError, match="hash_mismatch"):
         verify(path)
 

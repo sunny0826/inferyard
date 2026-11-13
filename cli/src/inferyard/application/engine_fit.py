@@ -44,7 +44,7 @@ def execute(request):
     if command == "engine-fit verify":
         from inferyard.reporting.engine_fit import verify
 
-        data = verify(request.run, rerender=request.rerender)
+        data = verify(request.run)
         sealed = "manifest" in data
         execution = data.get("run")
         return 0 if sealed else 3, CommandResult(
@@ -61,7 +61,6 @@ def execute(request):
                 "bytes_verified": sealed,
                 "sources_verified": sealed,
                 "semantic_verified": True,
-                "render_checked": sealed and request.rerender,
                 **(
                     {
                         "execution_completeness": execution["completeness"],

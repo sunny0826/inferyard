@@ -62,4 +62,3 @@ def add_commands(commands):
     verify = actions.add_parser("verify", help="verify diagnostic or comparison evidence offline")
     verify.set_defaults(command="engine-fit verify")
     verify.add_argument("--path", dest="run", type=Path, required=True)
-    verify.add_argument("--rerender", action="store_true")

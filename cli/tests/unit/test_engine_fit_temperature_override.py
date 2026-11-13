@@ -14,7 +14,6 @@ from inferyard.contracts.json_digest import digest
 from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.analysis.engine_fit_seal import seal_run
 from inferyard.reporting.engine_fit import compare, verify
-from inferyard.analysis.engine_fit_html import render
 from inferyard.analysis.engine_fit_validation import validate_run
 from inferyard.runtime import engine_fit as runtime
 from tests.unit.test_engine_fit_common_evidence import common_data
@@ -294,9 +293,8 @@ def test_v4_temperature_row_reason_rejected_by_seal_and_offline_verify(tmp_path,
     rejected.mkdir()
     with pytest.raises(EvidenceError, match="temperature_override"):
         seal_run(rejected, plan, run, rows)
-    # Hashes and HTML are coherent: the refusal must come from semantic validation.
+    # Hashes are coherent: the refusal must come from semantic validation.
     _replace(sealed, "requests.json", rows)
-    _replace(sealed, "report.html", render([dict(plan=plan, run=run, requests=rows)]).encode())
     with pytest.raises(EvidenceError, match="temperature_override"):
         verify(sealed)
 
@@ -320,7 +318,6 @@ def test_legacy_disabled_limitation_rejected_by_seal_and_offline_verify(tmp_path
     with pytest.raises(EvidenceError, match="temperature_override"):
         seal_run(rejected, plan, run, rows)
     _replace(sealed, "run.json", run)
-    _replace(sealed, "report.html", render([dict(plan=plan, run=run, requests=rows)]).encode())
     with pytest.raises(EvidenceError, match="temperature_override"):
         verify(sealed)
 
@@ -340,10 +337,9 @@ def test_override_pair_seals_compares_and_verifies_copied_sources_offline(tmp_pa
     for path in paths:
         shutil.rmtree(path)
     assert verify(out)["comparison"] == expected
-    html = (out / "report.html").read_text()
-    assert "本次已显式跳过温度停止" in html
-    assert "&lt;script&gt;" in html and "<script>" not in html
-    assert "缺测 · lmstudio_service_version_not_exposed" in html and "<td>None</td>" not in html
+    assert LIMITATION in expected["sides"][0]["run"]["limitations"]
+    assert expected["sides"][1]["run"]["service"]["version"] is None
+    assert not (out / "report.html").exists()
 
 
 @pytest.mark.parametrize("other", ["legacy", "different_reason"])

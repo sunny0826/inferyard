@@ -14,7 +14,6 @@ import pytest
 from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.application.types import CommandRequest, CommandResult
 from inferyard.errors import EvidenceError
-from inferyard.evidence.artifact_seal import seal
 from inferyard.contracts.validation import json_bytes
 from inferyard.runtime import batch_state
 from inferyard.application.execution import execute_async
@@ -65,29 +64,17 @@ def _assert_seal_guards(tmp_path: Path, output: Path) -> None:
     result_path = output / "engine-comparison.json"
     tampered = tmp_path / "v2-tampered"
     shutil.copytree(output, tampered)
-    (tampered / "engine-comparison.json").write_bytes(result_path.read_bytes() + b" ")
-    with pytest.raises(EvidenceError, match="presentation_bytes_changed"):
+    saved = json.loads(result_path.read_text())
+    saved["eligible"] = not saved["eligible"]
+    (tampered / "engine-comparison.json").write_bytes(json_bytes(saved))
+    with pytest.raises(EvidenceError, match="engine_comparison_recomputation_mismatch"):
         verify(CommandRequest("verify", run=tampered))
 
-    resealed = tmp_path / "v2-resealed"
-    shutil.copytree(output, resealed)
-    saved = json.loads((resealed / "engine-comparison.json").read_text())
-    saved["eligible"] = not saved["eligible"]
-    (resealed / "engine-comparison.json").write_bytes(json_bytes(saved))
-    (resealed / "artifact-manifest.json").unlink()
-    seal(resealed, ("engine-comparison.json", "report.html"))
-    with pytest.raises(EvidenceError, match="engine_comparison_recomputation_mismatch"):
-        verify(CommandRequest("verify", run=resealed))
-
-    html_changed = tmp_path / "v2-html-changed"
-    shutil.copytree(output, html_changed)
-    html = (html_changed / "report.html").read_text()
-    (html_changed / "report.html").write_text(html.replace("v2", "v2 changed", 1))
-    (html_changed / "artifact-manifest.json").unlink()
-    seal(html_changed, ("engine-comparison.json", "report.html"))
-    assert verify(CommandRequest("verify", run=html_changed))[0] == 0
-    with pytest.raises(EvidenceError, match="engine_comparison_html_recomputation_mismatch"):
-        verify(CommandRequest("verify", run=html_changed, rerender=True))
+    extra = tmp_path / "v2-extra"
+    shutil.copytree(output, extra)
+    (extra / "report.html").write_text("retired presentation")
+    with pytest.raises(EvidenceError, match="engine_comparison_format_invalid"):
+        verify(CommandRequest("verify", run=extra))
 
 
 def _assert_blocked_guards(
@@ -144,7 +131,6 @@ def _assert_moved_sources(tmp_path: Path, plan_path: Path, batch_path: Path, out
     request = CommandRequest(
         "verify",
         run=output,
-        rerender=True,
         source_roots=[
             f"{old_plan}={moved / 'plan'}",
             f"{old_batch}={moved / 'batch'}",
@@ -254,13 +240,19 @@ def test_twelve_slots_execute_with_handoffs_and_read_back(
     assert code == 0 and derived.status == "derived"
     saved = json.loads((output / "engine-comparison.json").read_text())
     assert saved["definition"] == "engine-comparison.v2"
+    assert saved["schema_version"] == 3
+    assert saved["format_version"] == 2
+    assert set(saved["producer"]) == {"tool_source_sha256"}
     assert saved["eligible"] == all(
         item["eligible"] for item in saved["comparisons"].values()
     )
     assert len(saved["source_runs"]) == 12
-    code, verified = verify(CommandRequest("verify", run=output, rerender=True))
+    assert {path.name for path in output.iterdir()} == {"engine-comparison.json"}
+    code, verified = verify(CommandRequest("verify", run=output))
     assert code == 0 and verified.details["artifact_type"] == "engine-comparison"
-    assert verified.details["render_checked"] is True
+    assert verified.details["verified"] is True
+    assert "render_checked" not in verified.details
+    assert "bytes_verified" not in verified.details
     _assert_v2_report_guards(
         tmp_path,
         plan,
@@ -288,25 +280,21 @@ def test_v2_positive_metrics_render_and_verify(
     assert saved["eligible"] is True
     assert all(item["eligible"] for item in saved["comparisons"].values())
     assert saved["empty_metrics"] == []
-    html = (output / "report.html").read_text()
     comparison = next(iter(saved["comparisons"].values()))
-    metric = next(
-        row for row in comparison["blocks"][0]["medians"].values()
-        if row["difference"] is not None
-    )
-    medians = (
-        f"{metric['left']:.2f} / {metric['right']:.2f} / "
-        f"{metric['difference']:.2f}"
-    )
-    assert "无阻断，可判定。" in html
-    assert "配对请求" in html
-    assert medians in html
-    assert any(
-        verdict["metric_id"] in html
+    assert comparison["verdicts"]
+    assert all(
+        verdict["metric_id"]
         for verdict in comparison["verdicts"].values()
     )
-    assert "<h2>空指标原因</h2>" not in html
+    assert any(
+        row["difference"] is not None
+        for block in comparison["blocks"]
+        for row in block["medians"].values()
+    )
+    assert not (output / "report.html").exists()
     from inferyard.application.verification import execute as verify
 
-    code, verified = verify(CommandRequest("verify", run=output, rerender=True))
-    assert code == 0 and verified.details["render_checked"] is True
+    code, verified = verify(CommandRequest("verify", run=output))
+    assert code == 0
+    assert verified.details["semantic_verified"] is True
+    assert "render_checked" not in verified.details

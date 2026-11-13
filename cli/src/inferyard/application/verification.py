@@ -47,7 +47,7 @@ def verification_options(request: CommandRequest) -> VerificationOptions:
         if any(pair[0].is_relative_to(p[0]) or p[0].is_relative_to(pair[0]) for p in roots):
             raise ContractError("source_root", "overlapping source roots")
         roots.append(pair)
-    return VerificationOptions(tuple(roots), request.rerender)
+    return VerificationOptions(tuple(roots))
 
 
 def _object(root: Path, name: str) -> dict:
@@ -217,8 +217,6 @@ def execute(request: CommandRequest) -> tuple[int, CommandResult]:
         raise ContractError(
             "verify.source_root", "only comparison/engine-comparison accept source roots"
         )
-    if request.rerender and not accepted <= {"engine-comparison", "engine-fit"}:
-        raise ContractError("verify.rerender", "only engine artifacts accept rerender")
     options = verification_options(request)
     try:
         if kinds <= {"run", "batch", "plan", "engine-fit"}:

@@ -32,7 +32,7 @@ DEPENDENCIES = {
         "idna",
     ),
     "scoring": VALIDATION_DEPENDENCIES,
-    "presentation": (*VALIDATION_DEPENDENCIES, "jinja2", "MarkupSafe"),
+    "presentation": VALIDATION_DEPENDENCIES,
 }
 
 
