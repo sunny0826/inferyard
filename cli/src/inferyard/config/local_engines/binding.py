@@ -5,7 +5,9 @@ from inferyard.config.toml_writer import render
 from inferyard.contracts.endpoint import validate_endpoint
 from inferyard.contracts.validation import json_bytes
 from inferyard.platforms.identity import process_start_ticks
-from inferyard.platforms.local_engines import bind_service, verify_bound_service
+from inferyard.platforms.local_engines import bind_service
+from inferyard.platforms.local_engines.assets import bound_json
+from inferyard.platforms.local_engines.service import validate_binding
 from inferyard.provisioning.preparation_io import (
     NewDirectory,
     PreparationError,
@@ -41,7 +43,9 @@ def prepare(request):
     target = output.write("config.toml", content.encode())
     if load_config(target).config.to_dict() != config:
         raise PreparationError("serialization_mismatch", 4)
-    verify_bound_service(config)
+    endpoint = config["endpoint"]
+    binding, _ = bound_json(endpoint["binding_path"], endpoint["binding_sha256"])
+    validate_binding(binding, config)
     return finish(
         output,
         "preparation.json",
