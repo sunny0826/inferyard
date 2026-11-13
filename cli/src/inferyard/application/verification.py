@@ -81,7 +81,7 @@ def _identify(root: Path) -> set[str]:
         found.add("run")
     if "run.json" in names:
         run = _object(root, "run.json")
-        if run.get("kind") == "extension_packet.v1":
+        if str(run.get("kind", "")).startswith("extension_packet."):
             found.add("extension")
         elif str(run.get("definition", "")).startswith("engine_fit_run."):
             fit = True
@@ -166,7 +166,7 @@ def _check_markers(root: Path, kinds: set[str]) -> None:
         # before it reads, including unlisted payloads and child observer files.
         for path in root.rglob("*"):
             local_file(root, str(path.relative_to(root)))
-        for name in ("run.json", "packet.json", "summary.json", "report.html"):
+        for name in ("run.json", "packet.json", "summary.json"):
             local_file(root, name)
 
 

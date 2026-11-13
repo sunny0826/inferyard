@@ -390,6 +390,7 @@ def test_compound_report_verification_is_retired(tmp_path, monkeypatch):
     "filename,value",
     [
         ("run.json", {"kind": "extension_packet.v1"}),
+        ("run.json", {"kind": "extension_packet.v2"}),
         ("manifest.json", {"policy": "public-summary.v5"}),
         ("parent-analysis.json", {}),
     ],

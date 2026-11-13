@@ -96,6 +96,9 @@ def test_canonical_artifact_workflow_is_offline_and_rejects_retired_presentation
             assert generated["command"] == "extension replay"
             assert not generated["details"]["hardware_qualified"]
         root = Path(generated["evidence_dir"]) if kind == "extension" else tmp_path / kind
+        if kind == "extension":
+            assert json.loads((root / "run.json").read_text())["kind"] == "extension_packet.v2"
+            assert not (root / "report.html").exists()
         derived_before = files(root)
         verified = invoke(capsys, ["verify", "--path", root])
         assert verified["command"] == "verify"
