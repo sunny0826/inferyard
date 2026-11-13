@@ -8,7 +8,6 @@ from pathlib import Path
 
 from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_macos as native
-from inferyard.platforms.identity import hash_file
 from inferyard.platforms.local_engines.closure import mapped_native_image, verify_libraries
 from inferyard.platforms.local_engines.startup import check_environment
 from inferyard.platforms.macos_process import lsof_records, mapped_file
@@ -173,10 +172,21 @@ def observe_workers(pid, psutil, runtime_files, environment):
         children = native._children(process)
         states[child] = (parent, state, children, observed_environment)
         pending.extend((item, child) for item in children)
-        identity = hash_file(executable)
-        if not any(
-            item.path == identity.path and item.sha256 == identity.sha256 for item in runtime_files
-        ):
+        try:
+            stat = os.stat(executable)
+        except OSError as exc:
+            raise PreflightError("identity_file_unreadable") from exc
+        identity = next(
+            (
+                item
+                for item in runtime_files
+                if item.path == str(Path(executable).resolve())
+                and item.device == stat.st_dev
+                and item.inode == stat.st_ino
+            ),
+            None,
+        )
+        if identity is None:
             raise PreflightError("local_engine_worker_executable_outside_runtime")
         rows = lsof_records(child, [])
         if not mapped_file(child, identity, rows):
