@@ -122,7 +122,10 @@ def test_observer_requires_stable_worker_environment(tmp_path, monkeypatch, chan
     def environment():
         nonlocal count
         count += 1
-        return {"HF_HUB_OFFLINE": "1", "PATH": "/changed" if changed and count > 1 else "/usr/bin"}
+        stable = {"HF_HUB_OFFLINE": "1", "PATH": "/usr/bin"}
+        if changed and count > 1:
+            return {**stable, "HF_HUB_OFFLINE": "0"}
+        return stable
 
     root = SimpleNamespace(pid=1)
     child = SimpleNamespace(pid=2, ppid=lambda: 1, environ=environment)
@@ -137,7 +140,7 @@ def test_observer_requires_stable_worker_environment(tmp_path, monkeypatch, chan
     monkeypatch.setattr(workers, "mapped_file", lambda *_: True)
     monkeypatch.setattr(workers, "mapped_closure", lambda *_, **__: None)
     if changed:
-        with pytest.raises(PreflightError, match="service_changed"):
+        with pytest.raises(PreflightError, match="environment_mismatch"):
             workers.observe_workers(1, psutil, [identity], {"HF_HUB_OFFLINE": "1"})
     else:
         result = workers.observe_workers(1, psutil, [identity], {"HF_HUB_OFFLINE": "1"})
