@@ -1,4 +1,4 @@
-"""Fail-closed software output comparison with narrow, recorded provenance exceptions."""
+"""Fail-closed software output comparison; the Studio JSON must be identical."""
 
 import hashlib
 import json

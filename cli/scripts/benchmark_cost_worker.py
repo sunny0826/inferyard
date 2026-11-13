@@ -65,7 +65,6 @@ def prepare(out, cases=24, samples=32, svg_chars=65536, svg_cases=4):
             "synthetic": True,
             "model_requests_sent": 0,
             "runs": [str(p) for p in runs],
-            "comparison_run_indices": [0, 1],
             "run_count": len(runs),
             "cases": cases + svg_cases + extra_cases,
             "samples": (cases + svg_cases + extra_cases) * 2 * samples,
@@ -185,17 +184,7 @@ def main():
         },
     )
     if args.operation == "prepare":
-        code = prepare(args.out)
-        from inferyard.reporting.studio_report import write_studio_report
-
-        declaration = json.loads((args.out / "corpus.json").read_text())
-        roots = [Path(p) for p in declaration["runs"]]
-        write_studio_report(
-            [roots[i] for i in declaration["comparison_run_indices"]],
-            args.out / "reference-studio",
-        )
-        write_studio_report(roots, args.out / "reference-studio-multirun")
-        return code
+        return prepare(args.out)
     return workload(args.operation, args.corpus, args.out)
 
 
