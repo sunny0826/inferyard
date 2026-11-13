@@ -179,26 +179,23 @@ def offline(out, signoff):
     signoff["run_id"] = result.get("run_id")
     save(out / "signoff.json", signoff)
     checks = {}
-    for kind in ("report", "export"):
-        target = out / kind
-        checks[f"{kind}_create"] = command(
-            CLI + [kind, "--run", str(run), "--out", str(target)], out, kind
-        )
-        if checks[f"{kind}_create"] == 0:
-            checks[f"{kind}_check"] = command(
-                CLI + [f"{kind}-check", "--run", str(target)], out, f"{kind}-check"
-            )
+    for name, args in (
+        ("report", ["report", "--runs", str(run), "--out", str(out / "report")]),
+        ("export", ["export", "--run", str(run), "--out", str(out / "export")]),
+    ):
+        checks[f"{name}_create"] = command(CLI + args, out, name)
     save(
         out / "automatic-checks.json",
         {
             "checks": checks,
+            "studio_json": str(out / "report/studio.json"),
             "run_status": result.get("status"),
             "completeness": result.get("completeness"),
             "last_stop_reason": result.get("details", {}).get("last_stop_reason"),
             "independent_operator_requirement": "cancelled_by_user",
         },
     )
-    return len(checks) == 4 and all(code == 0 for code in checks.values())
+    return len(checks) == 2 and all(code == 0 for code in checks.values())
 
 
 def main():
@@ -235,8 +232,8 @@ def main():
             run_code = run_service(args, out, packet)
             checked = offline(out, signoff)
             code = 0 if run_code == 0 and checked else 1
-            print(f"自动步骤结束，run 退出码={run_code}，报告/导出核验={checked}。")
-            print(f"本地报告：{out / 'report/report.html'}；另一操作者复现及签收已取消。")
+            print(f"自动步骤结束，run 退出码={run_code}，JSON 报告/导出={checked}。")
+            print(f"本地 Studio JSON：{out / 'report/studio.json'}；另一操作者复现及签收已取消。")
             print("完整度由原始账本决定，自动核验不改写失败或未执行状态。")
     except (Exception, KeyboardInterrupt) as exc:
         code = 130 if isinstance(exc, KeyboardInterrupt) else 1

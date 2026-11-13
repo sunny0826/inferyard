@@ -83,14 +83,15 @@ inferyard config create --workspace "{{WORKSPACE}}" --bundle zh-svg-pelican --en
 默认测评覆盖两个题包；仅当用户显式声明固定题包时可只运行该题包，
 `init --bundle NAME` 导出该范围。
 
-## 6. 汇总与核验
+## 6. 汇总与结束
 
 使用 run 或 progress 返回的实际封存 run 路径：
 
 ```bash
 inferyard report --runs CORE_RUN SVG_RUN --out "{{WORKSPACE}}/reports/summary-1"
-inferyard verify --path "{{WORKSPACE}}/reports/summary-1"
 inferyard progress --workspace "{{WORKSPACE}}"
 ```
 
+报告只写一个 `studio.json`，由 Studio 读取；它不再生成 HTML，也不通过 `verify` 复核。
+`progress` 在报告就绪后返回 `next_action: done`，这就是本轮工作区可以结束的状态。
 报告保留来源血缘。封存的不完整 run 不等于完整测评。保留原始 run 与历史报告，永不覆盖。

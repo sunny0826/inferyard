@@ -1,10 +1,7 @@
 """Fail-closed software output comparison with narrow, recorded provenance exceptions."""
 
 import hashlib
-import html
 import json
-from copy import deepcopy
-from urllib.parse import unquote
 
 
 def digest(path):
@@ -31,96 +28,20 @@ def require_equal(left, right, label):
 
 
 def compare_outputs(left, right, operation):
-    """Never discard arbitrary sha256 keys, rows, metrics, text, or HTML elements."""
+    """Never discard arbitrary sha256 keys, rows, metrics or text."""
     a = json.loads((left / "result.json").read_text())
     b = json.loads((right / "result.json").read_text())
-    changes = []
-    if operation != "report":
+    if operation != "studio_json":
         require_equal(a, b, operation)
-    else:
-        original = deepcopy(b)
-        a_identity = json.loads((left / "identity.json").read_text())["source_sha256"]
-        b_identity = json.loads((right / "identity.json").read_text())["source_sha256"]
-        if a["generator_source_sha256"] != a_identity or b["generator_source_sha256"] != b_identity:
-            raise ValueError("producer_identity_mismatch")
-        changes.append(
-            {
-                "field": "/generator_source_sha256",
-                "baseline": a_identity,
-                "candidate": b_identity,
-                "reason": "actual loaded producer source identity",
-            }
-        )
-        b["generator_source_sha256"] = a_identity
-        replacements = []
-        if len(a["runs"]) != len(b["runs"]):
-            raise ValueError("content_difference:report_run_count")
-        for i, (ar, br) in enumerate(zip(a["runs"], b["runs"], strict=True)):
-            for key in ["source", "evidence"]:
-                fields = ["path"] if key == "source" else list(ar[key])
-                for field in fields:
-                    av, bv = ar[key][field], br[key][field]
-                    ap = (left / "report" / unquote(av)).resolve()
-                    bp = (right / "report" / unquote(bv)).resolve()
-                    if ap != bp:
-                        raise ValueError("report_source_target_changed")
-                    if av != bv:
-                        changes.append(
-                            {
-                                "field": f"/runs/{i}/{key}/{field}",
-                                "baseline": av,
-                                "candidate": bv,
-                                "reason": "same resolved input location",
-                            }
-                        )
-                        if key == "evidence":
-                            replacements.append((bv, av))
-                    br[key][field] = av
-        require_equal(a, b, "report_index")
-        # Compare the saved index too: result.json must not mask a truncated on-disk artifact.
-        require_equal(
-            a, json.loads((left / "report/index.json").read_text()), "baseline_disk_index"
-        )
-        require_equal(
-            original, json.loads((right / "report/index.json").read_text()), "candidate_disk_index"
-        )
-        ah = (left / "report/report.html").read_text()
-        bh = (right / "report/report.html").read_text()
-        if a_identity != b_identity:
-            old = f"报告生成源码<br>{b_identity}</p></footer>"
-            new = f"报告生成源码<br>{a_identity}</p></footer>"
-            if bh.count(old) != 1:
-                raise ValueError("unrecognized_html_producer_location")
-            bh = bh.replace(old, new, 1)
-        for old, new in sorted(set(replacements), key=lambda pair: len(pair[0]), reverse=True):
-            if old != new:
-                bh = bh.replace(
-                    f'href="{html.escape(old, quote=True)}"',
-                    f'href="{html.escape(new, quote=True)}"',
-                )
-        if ah != bh:
-            raise ValueError("content_difference:complete_html")
-        for root in (left, right):
-            seal = json.loads((root / "report/artifact-manifest.json").read_text())
-            require_equal(
-                seal,
-                {
-                    "definition": "presentation-seal.v1",
-                    "files": {
-                        name: digest(root / "report" / name)
-                        for name in ("index.json", "report.html")
-                    },
-                },
-                "report_seal",
-            )
-    # verify CLI diagnostics are part of its result, not just an exit-code check.
-    if operation in ("verify", "rerender", "verify_multirun", "rerender_multirun"):
-        require_equal(
-            json.loads((left / "stdout.txt").read_text()),
-            json.loads((right / "stdout.txt").read_text()),
-            "verify_stdout",
-        )
-    return changes
+        return []
+    # The Studio projection has no producer identity and no presentation seal: it
+    # must be byte-for-byte reproducible from the same inputs. The worker records
+    # its own source identity separately in identity.json.
+    require_equal(a, b, "studio_json")
+    # Compare the saved document too: result.json must not mask a truncated artifact.
+    require_equal(a, json.loads((left / "report/studio.json").read_text()), "baseline_disk_json")
+    require_equal(b, json.loads((right / "report/studio.json").read_text()), "candidate_disk_json")
+    return []
 
 
 def counts(root):
@@ -138,21 +59,13 @@ def counts(root):
         return {
             "runs": len(result["runs"]),
             "rows": sum(len(d["requests"]) for d in result["runs"]),
-            "svg_gallery": sum(len(d["svg_gallery"]) for d in result["runs"]),
-            "answer_utf8_bytes": sum(
-                len(result["contents"][r["content_ref"]].encode())
-                if "content_ref" in r
-                else len(r["content"].encode())
-                for d in result["runs"]
-                for r in d["requests"]
-            ),
         }
     return {"result_bytes": (root / "result.json").stat().st_size}
 
 
 def check_expected(root, corpus, operation):
     """Check independently specified workload size and answer bytes before accepting timings."""
-    if operation not in ("read_trial", "report"):
+    if operation not in ("read_trial", "studio_json"):
         return
     expected = json.loads((corpus / "corpus.json").read_text())
     result = json.loads((root / "result.json").read_text())
@@ -161,28 +74,25 @@ def check_expected(root, corpus, operation):
     ids = [r["run"]["run_id"] if operation == "read_trial" else r["source"]["run_id"] for r in runs]
     if len(set(ids)) != len(ids):
         raise ValueError("duplicate_run_id")
-    answers = [
-        [
-            hashlib.sha256(
-                (
-                    result["contents"][row["content_ref"]]
-                    if operation == "report" and "content_ref" in row
-                    else row.get("content", "")
-                ).encode()
-            ).hexdigest()
-            for row in run["requests"]
-        ]
-        for run in runs
-    ]
-    require_equal(expected["answer_sha256"], answers, "fixture_answer_completeness")
     require_equal(expected["cases"], sum(len(r["requests"]) for r in runs), "row_count")
     if operation == "read_trial":
         require_equal(expected["samples"], sum(len(r["samples"]) for r in runs), "sample_count")
-    else:
-        require_equal(
-            expected["svg_gallery_count"],
-            sum(len(r["svg_gallery"]) for r in runs),
-            "svg_gallery_count",
-        )
-        if expected["run_count"] > 2 and result["comparison"] is not None:
-            raise ValueError("multirun_report_unexpected_comparison")
+        answers = [
+            [
+                hashlib.sha256(row.get("content", "").encode()).hexdigest()
+                for row in run["requests"]
+            ]
+            for run in runs
+        ]
+        require_equal(expected["answer_sha256"], answers, "fixture_answer_completeness")
+        return
+    # The Studio projection must not carry raw answers, SVG galleries or sample rows;
+    # its cost is the remaining JSON write, not the retired presentation work.
+    if result.get("kind") != "studio-report.v1" or "contents" in result:
+        raise ValueError("studio_json_scope")
+    for run in runs:
+        if "svg_gallery" in run or "samples" in run:
+            raise ValueError("studio_json_scope")
+        for row in run["requests"]:
+            if "content" in row or "answer" in row:
+                raise ValueError("studio_json_scope")

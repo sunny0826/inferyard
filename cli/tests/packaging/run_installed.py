@@ -10,14 +10,20 @@ import subprocess
 import sys
 from pathlib import Path
 
+from jsonschema import Draft202012Validator
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from release_common import (  # noqa: E402
-    REPORT_PROBES,
+    COMMANDS,
+    EXIT_CODES,
+    PROBES,
     SCOPE,
+    STUDIO_SCHEMA,
     artifact_files,
+    canonical_sha,
     read_json,
-    report_format_check,
     sha,
+    studio_report_schema,
     validate_installation,
 )
 from release_validation import validate_build  # noqa: E402
@@ -51,6 +57,17 @@ def environment(root):
         }
     )
     return env
+
+
+def validate_studio_document(report, out):
+    """Bind the saved Studio document to the schema the installed CLI actually exports."""
+    schema_raw = (out / "schema-studio-report.stdout").read_bytes()
+    schema = read_json(schema_raw)
+    if schema.get("$id") != studio_report_schema()["$id"]:
+        raise ValueError("installed_studio_schema_identity_mismatch")
+    raw = (report / "studio.json").read_bytes()
+    Draft202012Validator(schema).validate(read_json(raw))
+    return raw, schema_raw, schema
 
 
 def run_matrix(wheel, constraints, inputs, out, manifest):
@@ -114,6 +131,7 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
         ("help", ["--help"]),
         ("versions", ["--versions"]),
         ("schema", ["--schema", "config"]),
+        ("schema-studio-report", ["--schema", STUDIO_SCHEMA]),
         ("catalogue", ["catalogue", "--kind", "methods"]),
         ("engines", ["engine-fit", "engines"]),
         ("init", ["init", "--out", str(out / "中文 workspace")]),
@@ -150,12 +168,32 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
         [cli, "report", "--runs", incoming / "fixtures" / fixture, "--out", out / "report"],
         settings=offline_env,
     )
-    command("verify", [cli, "verify", "--path", out / "report"], settings=offline_env)
-    command(
-        "verify-rerender",
-        [cli, "verify", "--path", out / "report", "--rerender"],
-        settings=offline_env,
+    studio_raw, schema_raw, schema = validate_studio_document(out / "report", out)
+    verify = json.loads(
+        command(
+            "verify",
+            [cli, "verify", "--path", out / "report"],
+            expected=EXIT_CODES["verify"],
+            settings=offline_env,
+        )
     )
+    if verify["limitations"] != ["studio_report_not_verifiable"]:
+        raise ValueError("installed_verify_studio_limitations")
+    retired = out / "retired-report"
+    retired.mkdir()
+    (retired / "index.json").write_text(
+        json.dumps({"schema_version": 3, "report_format_version": 8}), encoding="utf-8"
+    )
+    legacy = json.loads(
+        command(
+            "verify-legacy-report",
+            [cli, "verify", "--path", retired],
+            expected=EXIT_CODES["verify-legacy-report"],
+            settings=offline_env,
+        )
+    )
+    if "unsupported_format" not in legacy["limitations"]:
+        raise ValueError("installed_verify_retired_report")
     command(
         "tool-run",
         [
@@ -303,21 +341,24 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
     assert (
         hashlib.sha256((out / "中文 workspace/preparation.json").read_bytes()).hexdigest() == before
     )
-    expected_formats = report_format_check(files["wheel"].raw)
-    report_checks = {}
-    for name in REPORT_PROBES:
-        probe = read_json((out / f"{name}.stdout").read_bytes())
-        actual = {key: probe.get(key) for key in expected_formats}
-        if actual != expected_formats or any(
-            type(version) is not int
-            for key in ("current_report_formats_verified", "unsupported_report_formats_rejected")
-            for version in actual[key]
-        ):
-            raise ValueError("installation_probe_report_formats")
-        report_checks[name] = actual
+    probe_checks = {}
+    for name in PROBES:
+        raw = (out / f"{name}.stdout").read_bytes()
+        probe = read_json(raw)
+        probe_checks[name] = {
+            "stdout_sha256": sha(raw),
+            "current_studio_report_kind": probe["current_studio_report_kind"],
+            "unsupported_report_formats_rejected": probe[
+                "unsupported_report_formats_rejected"
+            ],
+            "resource_files": probe["resource_files"],
+            "tool_source_hash": probe["tool_source_hash"],
+            "scorer_hash": probe["scorer_hash"],
+        }
+    if [record["name"] for record in records] != list(COMMANDS):
+        raise ValueError("installed_command_order")
     result = {
-        "report_format_checks": report_checks,
-        "kind": "installed_safe_checks.v3",
+        "kind": "installed_safe_checks.v4",
         "status": "passed",
         "completed": True,
         "source_commit": build["source_commit"],
@@ -327,6 +368,22 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
         "scope": SCOPE,
         "checks": [{"name": r["name"], "returncode": r["returncode"]} for r in records],
         "wheel_sha256": files["wheel"].digest,
+        "studio_report_schema": {
+            "$id": schema["$id"],
+            "argv": [str(cli), "--schema", STUDIO_SCHEMA],
+            "stdout_sha256": sha(schema_raw),
+            "canonical_json_sha256": canonical_sha(schema),
+        },
+        "studio_json": {
+            "path": "report/studio.json",
+            "sha256": sha(studio_raw),
+            "schema_validated": True,
+            "verify_exit_code": next(
+                r["returncode"] for r in reversed(records) if r["name"] == "verify"
+            ),
+            "verify_limitations": verify["limitations"],
+        },
+        "probe_checks": probe_checks,
         "commands": len(records),
         "model_requests_sent": 0,
         "host_lock_tests": "not_run",

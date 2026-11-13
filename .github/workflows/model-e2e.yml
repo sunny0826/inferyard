@@ -61,6 +61,14 @@ jobs:
             --model e2e-assets/model.gguf \
             --engine-archive "e2e-assets/engine.$ENGINE_EXT" \
             --out "$RUNNER_TEMP/inferyard-e2e"
+      - name: Assert one Studio JSON and no retired presentation files
+        shell: bash
+        run: |
+          report="$RUNNER_TEMP/inferyard-e2e/bench-work/report"
+          test -f "$report/studio.json"
+          test ! -e "$report/index.json"
+          test ! -e "$report/report.html"
+          test ! -e "$report/artifact-manifest.json"
       - name: Collect e2e output
         if: always()
         shell: bash

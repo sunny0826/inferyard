@@ -9,12 +9,16 @@ from scripts.check_distribution import inspect_sdist, inspect_wheel
 from scripts.export_runtime_constraints import validate
 from scripts.release_common import (
     COMMANDS,
-    REPORT_PROBES,
+    PROBES,
     SCOPE,
+    STUDIO_KIND,
     URLS,
+    canonical_sha,
+    expected_checks,
     file_record,
-    report_format_check,
     sha,
+    studio_report_schema,
+    wheel_resource_files,
 )
 
 COMMIT = "a" * 40
@@ -46,12 +50,10 @@ inferyard = "inferyard.cli:main"
         + "".join(f"Project-URL: {k}, {v}\n" for k, v in URLS.items())
     ).encode()
     init = b'__version__ = "0.0.3"\n'
-    template = b"synthetic current template"
-    resources = {"__init__.py": sha(init), "templates/report.html": sha(template)}
+    resources = {"__init__.py": sha(init)}
     wheel = io.BytesIO()
     with zipfile.ZipFile(wheel, "w") as archive:
         archive.writestr("inferyard/__init__.py", init)
-        archive.writestr("inferyard/templates/report.html", template)
         prefix = f"inferyard-{VERSION}.dist-info/"
         archive.writestr(prefix + "METADATA", metadata)
         archive.writestr(prefix + "licenses/LICENSE", license_raw)
@@ -72,7 +74,6 @@ inferyard = "inferyard.cli:main"
             **source,
             "PKG-INFO": metadata,
             "src/inferyard/__init__.py": init,
-            "src/inferyard/templates/report.html": template,
         }.items():
             item = tarfile.TarInfo(f"inferyard-{VERSION}/{name}")
             item.size = len(raw)
@@ -110,8 +111,31 @@ inferyard = "inferyard.cli:main"
     manifest = root / "manifest.json"
     manifest.write_text(json.dumps(data), encoding="utf-8")
     evidence = dict(
-        kind="installed_safe_checks.v3",
-        report_format_checks={n: report_format_check(wheel.getvalue()) for n in REPORT_PROBES},
+        kind="installed_safe_checks.v4",
+        probe_checks={
+            name: {
+                "stdout_sha256": sha(f"synthetic {name} output".encode()),
+                "current_studio_report_kind": STUDIO_KIND,
+                "unsupported_report_formats_rejected": list(range(1, 9)),
+                "resource_files": wheel_resource_files(wheel.getvalue()),
+                "tool_source_hash": sha(b"synthetic tool identity"),
+                "scorer_hash": sha(b"synthetic scorer identity"),
+            }
+            for name in PROBES
+        },
+        studio_report_schema={
+            "$id": studio_report_schema()["$id"],
+            "argv": ["/synthetic/bin/inferyard", "--schema", "studio_report"],
+            "stdout_sha256": sha(b"synthetic schema stdout"),
+            "canonical_json_sha256": canonical_sha(studio_report_schema()),
+        },
+        studio_json={
+            "path": "report/studio.json",
+            "sha256": sha(b"synthetic studio json"),
+            "schema_validated": True,
+            "verify_exit_code": 4,
+            "verify_limitations": ["studio_report_not_verifiable"],
+        },
         status="passed",
         completed=True,
         source_commit=COMMIT,
@@ -125,7 +149,8 @@ inferyard = "inferyard.cli:main"
         scope=SCOPE,
         model_requests_sent=0,
         host_lock_tests="not_run",
-        checks=[{"name": n, "returncode": 1 if n == "uvx-cold-offline" else 0} for n in COMMANDS],
+        wheel_sha256=sha(wheel.getvalue()),
+        checks=expected_checks(),
     )
     installed = root / "installed.json"
     installed.write_text(json.dumps(evidence), encoding="utf-8")

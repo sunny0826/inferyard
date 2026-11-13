@@ -5,16 +5,17 @@ The script is the single entry used by both local pre-flight and CI: it never
 downloads anything itself (assets arrive as arguments), starts the service the
 way the operator guide prescribes (external process, exact frozen arguments),
 then drives init -> device-check -> platform preparation -> bind -> run ->
-report -> verify for two bundles against the same service: zh-smoke (40
-quality-scored instruction/extraction cases) and zh-svg-pelican (the SVG
-gallery case). It asserts the two-directory layout (bench-ops preparation,
-bench-work holding only the runs and report), verifies the SVG animation
-statistics line, verifies the real scoring pipeline end to end (pass/fail
-quality states and the dashboard denominator), and finally re-verifies the
-report after deleting both bench-ops directories.
+report for two bundles against the same service: zh-smoke (40 quality-scored
+instruction/extraction cases) and zh-svg-pelican (the SVG gallery case). It
+asserts the two-directory layout (bench-ops preparation, bench-work holding only
+the runs and one studio.json), validates that Studio document against the CLI's
+exported schema, verifies the real scoring pipeline end to end (pass/fail
+quality states and the dashboard denominator), and finally proves the saved
+document is unchanged after deleting both bench-ops directories.
 """
 
 import argparse
+import hashlib
 import json
 import platform
 import shutil
@@ -26,6 +27,8 @@ import tomllib
 import urllib.request
 import zipfile
 from pathlib import Path
+
+from jsonschema import Draft202012Validator
 
 from workspace_layout import assert_workspace
 
@@ -302,11 +305,10 @@ def prepare_candidate(root, bench_ops, bundle, *, preflight, model, engine_binar
     raise SystemExit(f"unsupported platform {system}")
 
 
-def assert_scoring(report):
+def assert_scoring(document):
     """Prove the real scoring pipeline ran on real model output, not just wiring."""
-    index = json.loads((report / "index.json").read_text(encoding="utf-8"))
-    smoke = next(run for run in index["runs"] if len(run["requests"]) == SMOKE_CASES)
-    svg = next(run for run in index["runs"] if len(run["requests"]) == 1)
+    smoke = next(run for run in document["runs"] if len(run["requests"]) == SMOKE_CASES)
+    svg = next(run for run in document["runs"] if len(run["requests"]) == 1)
     quality = smoke["dashboard"]["quality"]
     if quality["denominator"] != SMOKE_CASES or quality["complete"] is not True:
         raise SystemExit(f"smoke quality denominator incomplete: {quality}")
@@ -319,15 +321,24 @@ def assert_scoring(report):
         raise SystemExit(
             f"dashboard numerator {quality['numerator']} != pass count {states.count('pass')}"
         )
-    if svg["requests"][0]["quality"] != "not_applicable" or len(svg["svg_gallery"]) != 1:
-        raise SystemExit("svg run lost its not_applicable score or gallery entry")
-    if index.get("comparison") is None:
-        raise SystemExit("two-run report is missing the side-by-side comparison")
+    if svg["requests"][0]["quality"] != "not_applicable":
+        raise SystemExit("svg run lost its not_applicable score")
+    if len(document["runs"]) != 2:
+        raise SystemExit("Studio document must hold exactly the two measured runs")
     return {
         "pass": states.count("pass"),
         "fail": states.count("fail"),
         "denominator": quality["denominator"],
     }
+
+
+def validate_studio(report):
+    """Validate the saved document against the schema the CLI itself exports."""
+    _, schema = cli(["--schema", "studio_report"])
+    raw = (report / "studio.json").read_bytes()
+    document = json.loads(raw)
+    Draft202012Validator(schema).validate(document)
+    return document, hashlib.sha256(raw).hexdigest()
 
 
 def run_leg(bench_ops, candidate, *, pid, url):
@@ -447,11 +458,9 @@ def main():
                     str(bench_work / "report"),
                 ]
             )
-            _, verified = cli(["verify", "--path", str(bench_work / "report"), "--rerender"])
-            if verified["details"].get("verified") is not True:
-                raise SystemExit(f"verify failed: {verified}")
+            document, studio_sha256 = validate_studio(bench_work / "report")
             workspace_files = assert_workspace(bench_work, [smoke_dir, svg_dir])
-            quality = assert_scoring(bench_work / "report")
+            quality = assert_scoring(document)
         finally:
             service.terminate()
             try:
@@ -463,9 +472,11 @@ def main():
 
     shutil.rmtree(bench_ops_smoke)
     shutil.rmtree(bench_ops_svg)
-    code, after = cli(["verify", "--path", str(bench_work / "report")], check=False)
-    if code != 0 or after["details"].get("verified") is not True:
-        raise SystemExit(f"verify after bench-ops cleanup failed: {after}")
+    # The Studio document is self-contained: deleting preparation directories must
+    # not change a single byte of the saved artifact.
+    unchanged = hashlib.sha256((bench_work / "report/studio.json").read_bytes()).hexdigest()
+    if unchanged != studio_sha256:
+        raise SystemExit("studio.json changed after bench-ops cleanup")
 
     summary = {
         "platform": f"{platform.system()}-{platform.machine()}",
@@ -473,8 +484,9 @@ def main():
         "svg_run_dir": svg_dir.name,
         "smoke_quality": quality,
         "workspace_files": workspace_files,
-        "verified_before_cleanup": True,
-        "verified_after_cleanup": True,
+        "studio_json_sha256": studio_sha256,
+        "schema_validated": True,
+        "studio_json_unchanged_after_cleanup": True,
         "bench_ops_deleted": True,
     }
     print(json.dumps(summary, ensure_ascii=False))

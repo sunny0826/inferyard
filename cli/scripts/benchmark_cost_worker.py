@@ -69,6 +69,8 @@ def prepare(out, cases=24, samples=32, svg_chars=65536, svg_cases=4):
             "run_count": len(runs),
             "cases": cases + svg_cases + extra_cases,
             "samples": (cases + svg_cases + extra_cases) * 2 * samples,
+            # The SVG answer is large in the raw run and is deliberately not carried
+            # by the Studio projection; it keeps the measurement workload realistic.
             "svg_gallery_count": svg_cases,
             "svg_characters_per_answer": svg_chars + 24,
             "answer_sha256": [
@@ -93,7 +95,7 @@ def workload(operation, corpus, out):
     from inferyard.analysis.ledger import read_trial
     from inferyard.contracts.validation import json_bytes
     from inferyard.contracts.redaction import Redactor
-    from inferyard.reporting.report import write_report
+    from inferyard.reporting.studio_report import write_studio_report
 
     if operation == "reject":
         return main(["verify", "--path", str(corpus)])
@@ -111,25 +113,8 @@ def workload(operation, corpus, out):
     code = 0
     if operation == "read_trial":
         value = [read_trial(p) for p in roots]
-    elif operation == "report":
-        value = write_report(roots, out / "report")
-    elif operation in ("verify", "rerender", "verify_multirun", "rerender_multirun"):
-        code = main(
-            [
-                "verify",
-                "--path",
-                str(
-                    corpus
-                    / (
-                        "reference-multirun-report"
-                        if operation.endswith("_multirun")
-                        else "reference-report"
-                    )
-                ),
-                *(["--rerender"] if operation.startswith("rerender") else []),
-            ]
-        )
-        value = {"exit_code": code}
+    elif operation == "studio_json":
+        value = write_studio_report(roots, out / "report")
     elif operation == "resources":
         for _ in range(10):
             value = [reduce_resources(d["requests"], d["samples"], d["config"]) for d in loaded]
@@ -201,14 +186,15 @@ def main():
     )
     if args.operation == "prepare":
         code = prepare(args.out)
-        from inferyard.reporting.report import write_report
+        from inferyard.reporting.studio_report import write_studio_report
 
         declaration = json.loads((args.out / "corpus.json").read_text())
         roots = [Path(p) for p in declaration["runs"]]
-        write_report(
-            [roots[i] for i in declaration["comparison_run_indices"]], args.out / "reference-report"
+        write_studio_report(
+            [roots[i] for i in declaration["comparison_run_indices"]],
+            args.out / "reference-studio",
         )
-        write_report(roots, args.out / "reference-multirun-report")
+        write_studio_report(roots, args.out / "reference-studio-multirun")
         return code
     return workload(args.operation, args.corpus, args.out)
 
