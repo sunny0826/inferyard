@@ -7,11 +7,11 @@
 `synthetic_historical_reports`，旧 `validate_installation` 要求 installed_safe_checks.v2。
 这不是可原样保留的当前安装资格。
 
-- 探针改用当前 writer 生成 report7、verify 和显式 rerender；只核验当前模板摘要。
-  对 v1–v6 构造最小旧格式负例，通过 CLI 确认退出 2 / unsupported_format；不打包旧 renderer。
+- 探针改用当前 writer 生成 report8、verify 和显式 rerender；只核验当前模板摘要。
+  对 v1–v7 构造最小旧格式负例，通过 CLI 确认退出 2 / unsupported_format；不打包旧 renderer。
   不以篡改当前 seal 后得到的哈希错误冒充旧版本拒绝。安装/第二环境/回退三个探针都执行新范围。
-- 探针输出改为 `current_report_formats_verified=[7]`、
-  `unsupported_report_formats_rejected=[1,2,3,4,5,6]`、`template_hashes={"7": ...}`；
+- 探针输出改为 `current_report_formats_verified=[8]`、
+  `unsupported_report_formats_rejected=[1,2,3,4,5,6,7]`、`template_hashes={"8": ...}`；
   删除 synthetic_historical_reports_verified，逐版失败不能被总 returncode=0 掩盖。
 - 安装结果 **应升级为 installed_safe_checks.v3**。scope 保留原六项，将
   synthetic_historical_reports 替换为 `current_format_reports` 和 `unsupported_format_rejection`。
