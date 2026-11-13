@@ -37,6 +37,27 @@ def test_source_changes_respect_role_boundaries(source_tree):
     assert third.value["scoring"] != fourth.value["scoring"]
 
 
+def test_shared_studio_schema_binds_every_role(source_tree):
+    original = Path.read_bytes
+    first = identity.IdentityContext(root=source_tree)
+    path = source_tree / "contracts/schemas_studio_report.py"
+    path.write_bytes(original(path) + b"\n")
+    second = identity.IdentityContext(root=source_tree)
+    assert not identity.execution_matches(first.value, second.value)
+    for role in identity.ROLES:
+        assert first.value[role] != second.value[role]
+
+
+def test_studio_projection_change_only_touches_presentation(source_tree):
+    original = Path.read_bytes
+    first = identity.IdentityContext(root=source_tree)
+    path = source_tree / "reporting/studio_report.py"
+    path.write_bytes(original(path) + b"\n")
+    second = identity.IdentityContext(root=source_tree)
+    assert identity.execution_matches(first.value, second.value)
+    assert first.value["presentation"] != second.value["presentation"]
+
+
 def test_runtime_dependency_changes_only_relevant_role(source_tree, monkeypatch):
     first = identity.IdentityContext(root=source_tree)
     old = identity.version
@@ -65,6 +86,20 @@ def test_missing_dependency_is_not_equal_to_itself(source_tree, monkeypatch):
     broken["measurement"]["sha256"] = "a" * 64
     with pytest.raises(ContractError, match="digest mismatch"):
         identity.validate_identity(broken)
+
+
+def test_missing_shared_jsonschema_breaks_every_role(source_tree, monkeypatch):
+    old = identity.version
+
+    def missing(name):
+        if name == "jsonschema":
+            raise identity.PackageNotFoundError(name)
+        return old(name)
+
+    monkeypatch.setattr(identity, "version", missing)
+    value = identity.IdentityContext(root=source_tree).value
+    assert all(identity.role_identity(value, role) is None for role in identity.ROLES)
+    assert not identity.execution_matches(value, value)
 
 
 def test_comparison_v3_scope_dispatch_and_legacy_full_hash(tmp_path):

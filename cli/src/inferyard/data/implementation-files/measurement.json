@@ -156,6 +156,7 @@
   "contracts/schemas_sensors.py",
   "contracts/schemas_service_discovery.py",
   "contracts/schemas_storage.py",
+  "contracts/schemas_studio_report.py",
   "contracts/schemas_summary_cohorts.py",
   "contracts/schemas_summary_context.py",
   "contracts/schemas_summary_metrics.py",

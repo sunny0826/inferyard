@@ -50,6 +50,7 @@ def schemas_for():
     from inferyard.contracts.schemas_memory_check import MEMORY_CHECK
     from inferyard.contracts.schemas_service_discovery import SERVICE_DISCOVERY
     from inferyard.contracts.schemas_storage import MANIFEST, SUMMARY
+    from inferyard.contracts.schemas_studio_report import STUDIO_REPORT
 
     return {
         "context_speed_result": CONTEXT_SPEED_RESULT,
@@ -75,6 +76,7 @@ def schemas_for():
         "analysis": ANALYSIS,
         "manifest": MANIFEST,
         "summary": SUMMARY,
+        "studio_report": _wire_spec(STUDIO_REPORT),
         "closed_concurrency": _wire_spec(CLOSED_CONCURRENCY),
         "native_tools": _wire_spec(NATIVE_TOOLS),
         "total_observer_control": {
