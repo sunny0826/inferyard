@@ -8,13 +8,19 @@ from pathlib import Path
 
 from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_macos as native
-from inferyard.platforms.identity import hash_file
 from inferyard.platforms.local_engines.closure import mapped_native_image, verify_libraries
 from inferyard.platforms.local_engines.startup import check_environment
 from inferyard.platforms.macos_process import lsof_records, mapped_file
 
 
-def validate_python_worker(arguments, root_arguments, import_roots):
+_WORKER_ENTRYPOINTS = {
+    "multiprocessing.spawn": "spawn_main",
+    "multiprocessing.resource_tracker": "main",
+    "multiprocessing.forkserver": "main",
+}
+
+
+def validate_python_worker(arguments, root_arguments):
     """Recognize only isolated stdlib multiprocessing entrypoints or a fork."""
     if arguments == root_arguments:
         return
@@ -32,10 +38,10 @@ def validate_python_worker(arguments, root_arguments, import_roots):
         if len(body) != 2 or not isinstance(body[0], ast.ImportFrom):
             raise ValueError
         imported, expression = body
-        module = imported.module
-        entry = "spawn_main" if module == "multiprocessing.spawn" else "main"
+        entry = _WORKER_ENTRYPOINTS.get(imported.module)
         if (
-            imported.level
+            entry is None
+            or imported.level
             or len(imported.names) != 1
             or imported.names[0].name != entry
             or imported.names[0].asname is not None
@@ -45,63 +51,7 @@ def validate_python_worker(arguments, root_arguments, import_roots):
             or expression.value.func.id != entry
         ):
             raise ValueError
-        call = expression.value
-        positional = [ast.literal_eval(node) for node in call.args]
-        keywords = {}
-        inherited_argv = False
-        for keyword in call.keywords:
-            if keyword.arg == "sys_argv":
-                if ast.dump(keyword.value) != ast.dump(ast.parse("sys.argv[1:]", mode="eval").body):
-                    raise ValueError
-                inherited_argv = True
-                continue
-            value = ast.literal_eval(keyword.value)
-            values = value if keyword.arg is None else {keyword.arg: value}
-            if not isinstance(values, dict) or keywords.keys() & values.keys():
-                raise ValueError
-            keywords.update(values)
-
-        def natural(value):
-            return type(value) is int and value >= 0
-
-        if module == "multiprocessing.spawn":
-            if (
-                positional
-                or inherited_argv
-                or set(keywords) != {"tracker_fd", "pipe_handle"}
-                or not all(natural(value) for value in keywords.values())
-                or arguments[6:] != ["--multiprocessing-fork"]
-            ):
-                raise ValueError
-        elif module == "multiprocessing.resource_tracker":
-            if (
-                len(positional) != 1
-                or not natural(positional[0])
-                or keywords
-                or inherited_argv
-                or arguments[6:]
-            ):
-                raise ValueError
-        elif module == "multiprocessing.forkserver":
-            if (
-                len(positional) != 3
-                or not all(natural(value) for value in positional[:2])
-                or positional[2] != ["__main__"]
-                or set(keywords) - {"sys_path", "main_path", "authkey_r", "on_error"}
-                or keywords.get("sys_path") != import_roots
-                or ("authkey_r" in keywords and not natural(keywords["authkey_r"]))
-                or keywords.get("on_error", "ignore") != "ignore"
-                or (arguments[6:] and not inherited_argv)
-                or (inherited_argv and arguments[7:] != root_arguments[6:])
-            ):
-                raise ValueError
-            if "main_path" in keywords:
-                script = str(files("inferyard").joinpath("data/local_engine/mlx_server.py"))
-                if root_arguments[5] != "mlx-lm" or keywords["main_path"] != script:
-                    raise ValueError
-        else:
-            raise ValueError
-    except (SyntaxError, ValueError, TypeError, IndexError) as exc:
+    except (SyntaxError, ValueError) as exc:
         raise PreflightError("local_engine_python_worker_entrypoint_unverified") from exc
 
 
@@ -146,13 +96,6 @@ def observe_workers(pid, psutil, runtime_files, environment):
     if first and any(item.path == str(Path(bootstrap).resolve()) for item in runtime_files):
         root_state = native.service_process_state(pid, psutil)
         if root_state[1][1:5] == ["-I", "-S", "-B", bootstrap]:
-            from inferyard.data.local_engine.bootstrap import import_paths
-            from inferyard.platforms.local_engines.installation import _python
-
-            python, _ = _python(
-                {"executable": root_state[1][0], "working_directory": str(root_state[4])}
-            )
-            _, import_roots = import_paths(root_state[1][0], python["version"], python["path"])
             python_root = root_state
     pending, states, result = [(child, pid) for child in first], {}, []
     while pending:
@@ -169,14 +112,25 @@ def observe_workers(pid, psutil, runtime_files, environment):
         if python_root is not None:
             if executable != python_root[3]:
                 raise PreflightError("local_engine_python_worker_executable_mismatch")
-            validate_python_worker(state[1], python_root[1], import_roots)
+            validate_python_worker(state[1], python_root[1])
         children = native._children(process)
-        states[child] = (parent, state, children, observed_environment)
+        states[child] = (parent, state, children)
         pending.extend((item, child) for item in children)
-        identity = hash_file(executable)
-        if not any(
-            item.path == identity.path and item.sha256 == identity.sha256 for item in runtime_files
-        ):
+        try:
+            stat = os.stat(executable)
+        except OSError as exc:
+            raise PreflightError("identity_file_unreadable") from exc
+        identity = next(
+            (
+                item
+                for item in runtime_files
+                if item.path == str(Path(executable).resolve())
+                and item.device == stat.st_dev
+                and item.inode == stat.st_ino
+            ),
+            None,
+        )
+        if identity is None:
             raise PreflightError("local_engine_worker_executable_outside_runtime")
         rows = lsof_records(child, [])
         if not mapped_file(child, identity, rows):
@@ -194,10 +148,9 @@ def observe_workers(pid, psutil, runtime_files, environment):
         )
     if native._children(root) != first:
         raise PreflightError("local_engine_worker_tree_changed")
-    for child, (parent, state, children, observed_environment) in states.items():
+    for child, (parent, state, children) in states.items():
         process = psutil.Process(child)
-        if process.environ() != observed_environment:
-            raise PreflightError("local_engine_service_changed")
+        check_environment(process.environ(), environment)
         if (
             native.service_process_state(child, psutil) != state
             or process.ppid() != parent

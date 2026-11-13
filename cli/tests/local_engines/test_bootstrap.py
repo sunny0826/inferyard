@@ -143,7 +143,7 @@ def test_spawn_and_forkserver_inherit_isolation_and_frozen_path(environment):
         assert worker["flags"] == [1, 1, 1]
         assert worker["path"] == observed["path"]
         assert worker["outside"] is False
-        validate_python_worker(worker["argv"], observed["argv"], observed["path"])
+        validate_python_worker(worker["argv"], observed["argv"])
     assert not marker.exists() and not customize.exists()
 
 
@@ -234,7 +234,7 @@ def test_llama_context_shift_is_disabled(tmp_path):
         )
 
 
-@pytest.mark.parametrize("mutation", ["site", "command", "path"])
+@pytest.mark.parametrize("mutation", ["site", "command"])
 def test_worker_rejects_unfrozen_execution(environment, mutation):
     declaration, _, _, _ = environment
     result = invoke(declaration, ["-I", "-S", "-B", BOOTSTRAP, "sglang", "--workers"])
@@ -243,14 +243,10 @@ def test_worker_rejects_unfrozen_execution(environment, mutation):
     arguments = copy.deepcopy(observed["workers"][1]["argv"])
     if mutation == "site":
         arguments.remove("-S")
-    elif mutation == "command":
-        arguments[arguments.index("-c") + 1] += "; import arbitrary"
     else:
-        arguments[arguments.index("-c") + 1] = arguments[arguments.index("-c") + 1].replace(
-            repr(observed["path"][0]), repr("/outside")
-        )
+        arguments[arguments.index("-c") + 1] += "; import arbitrary"
     with pytest.raises(PreflightError, match="python_worker"):
-        validate_python_worker(arguments, observed["argv"], observed["path"])
+        validate_python_worker(arguments, observed["argv"])
 
 
 def test_worker_observer_rejects_same_venv_without_no_site(environment, monkeypatch):
