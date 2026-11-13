@@ -11,7 +11,8 @@ from inferyard.contracts.validation import json_bytes
 from inferyard.errors import EvidenceError
 from inferyard.evidence.source_locations import comparison_locations, resolve_source
 from inferyard.evidence.storage import atomic_bytes, new_output, read_json
-from inferyard.reporting.comparison_report import comparison_input, read_verified_comparison
+from inferyard.analysis.comparison_input import comparison_input
+from inferyard.reporting.comparison_report import read_verified_comparison
 
 
 def filter_candidates(spec, base):

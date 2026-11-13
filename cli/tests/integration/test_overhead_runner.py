@@ -305,11 +305,8 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         from inferyard.platforms.resources import ResourceSampler
 
         # An ABBA arm is not an independent subsequent target.
-        from inferyard.reporting.comparison_report import (
-            build_comparison,
-            comparison_input,
-            verify_comparison,
-        )
+        from inferyard.analysis.comparison_input import comparison_input
+        from inferyard.reporting.comparison_report import build_comparison, verify_comparison
         from inferyard.runtime.trial_runner import run_trial
 
         target = root / trials[1]["path"]
@@ -341,7 +338,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             assert code == 0 and data["summary"]["completeness"] == "complete"
             targets.append(path)
         comparison = build_comparison(
-            *targets, left_overhead=root, right_overhead=root, format_version=4
+            *targets, left_overhead=root, right_overhead=root, format_version=5
         )
         assert comparison["eligibility"]["performance"], comparison["performance_analysis"][
             "blockers"
@@ -373,7 +370,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         from inferyard.application.types import CommandRequest
         from inferyard.application.reporting import execute as write_comparison
 
-        write_comparison(
+        _, compared = write_comparison(
             CommandRequest(
                 "compare",
                 left=targets[0],
@@ -383,24 +380,16 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
                 right_overhead=root,
             )
         )
+        assert compared.details["eligibility"]["performance"]
         assert verify_comparison(out)["verified"]
-        from inferyard.reporting.report import verify_report, write_report
+        from inferyard.reporting.studio_report import write_studio_report
 
         report = output / "linked-performance-report"
-        index = write_report(targets, report, comparison_path=out)
-        assert index["report_format_version"] == 8
-        assert index["comparison"]["eligibility"]["performance"]
-        assert verify_report(report)["verified"]
-        html = (report / "report.html").read_text()
-        assert "获准行数不代表独立题数" in html
-        if mode == "resources":
-            assert "覆盖率是样本时间跨度" in html
-        with pytest.raises(EvidenceError, match="sources_or_order_mismatch"):
-            write_report(list(reversed(targets)), output / "wrong-order", comparison_path=out)
-        with pytest.raises(EvidenceError, match="requires_two_runs"):
-            write_report(targets[:1], output / "wrong-scope", comparison_path=out)
+        document = write_studio_report(targets, report)
+        assert "comparison" not in document and "performance_evidence" not in document
+        assert {p.name for p in report.iterdir()} == {"studio.json"}
         with pytest.raises(EvidenceError, match="inside_original_evidence"):
-            write_report(targets, root / "forbidden-report", comparison_path=out)
+            write_studio_report(targets, targets[0] / "forbidden-report")
         from inferyard.application.candidates import filter_candidates
 
         metric = next(
@@ -462,9 +451,7 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             filter_candidates({**spec, "reference": str(targets[1])}, output)
         comparison["performance_evidence"][0]["eligible"] = False
         (out / "comparison.json").write_bytes(json_bytes(comparison))
-        with pytest.raises(EvidenceError, match="presentation_bytes_changed"):
+        with pytest.raises(EvidenceError, match="recomputation_mismatch"):
             verify_comparison(out)
-        with pytest.raises(EvidenceError, match="presentation_bytes_changed"):
-            verify_report(report)
-        with pytest.raises(EvidenceError, match="presentation_bytes_changed"):
+        with pytest.raises(EvidenceError, match="recomputation_mismatch"):
             filter_candidates(spec, output)

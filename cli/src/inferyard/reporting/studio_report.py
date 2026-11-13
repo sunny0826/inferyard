@@ -5,7 +5,7 @@ from inferyard.analysis.performance import request_timing
 from inferyard.contracts.validation import json_bytes, validate_document
 from inferyard.errors import EvidenceError
 from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json
-from inferyard.reporting.comparison_report import comparison_input
+from inferyard.analysis.comparison_input import comparison_input
 from inferyard.reporting.studio_dashboard import CATEGORIES, dashboard_view
 from inferyard.reporting.studio_profile import profile_view
 from inferyard.reporting.studio_resources import memory_view

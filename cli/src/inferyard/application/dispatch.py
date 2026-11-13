@@ -111,7 +111,7 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         from inferyard.application.reporting import execute
 
         return execute(request)
-    if request.command in ("report", "report-check"):
+    if request.command == "report":
         from inferyard.application.reporting import execute
 
         return execute(request)

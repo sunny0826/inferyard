@@ -15,10 +15,8 @@ from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import EvidenceError, PreflightError
 from inferyard.evidence.storage import read_json, read_jsonl, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.reporting.comparison_report import (
-    comparison_input,
-    verify_comparison,
-)
+from inferyard.analysis.comparison_input import comparison_input
+from inferyard.reporting.comparison_report import verify_comparison
 from inferyard.application.reporting import execute as compare
 from inferyard.reporting.export import (
     existing_analysis,
@@ -27,7 +25,7 @@ from inferyard.reporting.export import (
     write_export,
 )
 from inferyard.reporting.public_package import verify_public, write_public
-from inferyard.reporting.report import verify_report, write_report
+from inferyard.reporting.studio_report import write_studio_report
 from inferyard.reporting.rescore import verify_rescore, write_rescore
 from inferyard.runtime.batch_state import remaining_budget
 from inferyard.runtime.overhead_binding import bind_target, sealed_observation, workload_identity
@@ -69,14 +67,9 @@ def test_external_surface_keeps_source_bytes_and_denominators(sources, tmp_path,
         code, result = execute(CommandRequest("verify", run=root))
         assert code == 0 and result.details["artifact_type"] == "run"
     elif surface == "report":
-        index = write_report([root], out)
-        assert index["report_format_version"] == 8
-        assert {p.name for p in out.iterdir()} == {
-            "index.json",
-            "report.html",
-            "artifact-manifest.json",
-        }
-        assert verify_report(out, options=VerificationOptions(rerender=True))["render_checked"]
+        document = write_studio_report([root], out)
+        assert document["kind"] == "studio-report.v1"
+        assert {p.name for p in out.iterdir()} == {"studio.json"}
     elif surface == "export":
         write_export(out, run=root)
         assert verify_export(out)["verified"]
@@ -253,15 +246,11 @@ def test_mixed_layout_comparison_and_report_resolve_moved_sources(sources, tmp_p
         and result.details["source_runs"][0]["run_id"] != result.details["source_runs"][1]["run_id"]
     )
     assert verify_comparison(out)["verified"]
-    assert verify_report(out)["sources_verified"]
     assert before == {root: tree_bytes(root) for root in (left, right)}
     moved = tmp_path / "moved-family"
     shutil.copytree(parent, moved)
     shutil.rmtree(parent)
     assert verify_comparison(moved / "comparison")["verified"]
-    assert verify_report(moved / "comparison", options=VerificationOptions(rerender=True))[
-        "render_checked"
-    ]
 
 
 def test_target_binding_does_not_downgrade_corrupt_members_to_non_applicability(sources):

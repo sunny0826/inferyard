@@ -31,17 +31,19 @@ def test_capacity_stop_preserves_failure_and_forbids_resume_or_next_repeat(tmp_p
         code, retried = asyncio.run(execute_async(command, deps))
         assert code == 3 and retried.status == "capacity_scan_stopped"
         assert len(scenario[2]) == 7
-    from inferyard.reporting.report import verify_report, write_report
+    from inferyard.reporting.studio_report import write_studio_report
 
     report = tmp_path / "outcome-report"
-    index = write_report([root], report)
-    view = index["runs"][0]["scan_view"]
-    assert [r["state"] for r in view["outputs"]] == ["completed", "failed", "not_executed"]
-    assert view["outputs"][-1]["actual"]["value"] is None
-    assert sum(r["planned"] for r in view["length_bins"]) == 3
-    assert sum(r["outcomes"]["terminal_counts"]["failed"] for r in view["length_bins"]) == 1
-    html = (report / "report.html").read_text()
-    assert "500：1" in html
-    assert "未测档不等于不支持" in html
-    assert verify_report(report)["verified"]
+    document = write_studio_report([root], report)
+    run = document["runs"][0]
+    assert [row["state"] for row in run["requests"]] == [
+        "completed",
+        "failed",
+        "not_executed",
+    ]
+    assert run["summary"]["completion_rate"] == {
+        "numerator": 1,
+        "denominator": 2,
+        "excluded": 1,
+    }
     assert before == {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}

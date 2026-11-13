@@ -1,12 +1,13 @@
 """Identify offline artifacts and retain each dedicated verifier's authority."""
 
-from dataclasses import asdict, replace
+from dataclasses import replace
 from importlib import import_module
 from pathlib import Path
 
 from inferyard import SCHEMA_VERSION
 from inferyard.application.types import CommandRequest, CommandResult
-from inferyard.errors import ContractError, EvidenceError
+from inferyard.contracts.validation import strict_json_loads
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.evidence.storage import local_file, read_json
 from inferyard.evidence.verification_options import VerificationOptions
 
@@ -16,7 +17,7 @@ _MARKERS = {
     "rescore": {"rescore.json", "parent-analysis.json", "parent-lineage.json"},
     "export": {"export.json"},
     "public": {"candidate.json", "redactions.json", "REPRODUCE.md"},
-    "report": {"index.json"},
+    "legacy-report": {"index.json"},
     "comparison": {"comparison.json"},
     "engine-comparison": {"engine-comparison.json"},
     "extension": {"packet.json"},
@@ -27,7 +28,6 @@ _HANDLERS = {
     "rescore": ("inferyard.application.reporting", "rescore-check"),
     "export": ("inferyard.application.reporting", "export-check"),
     "public": ("inferyard.application.reporting", "public-check"),
-    "report": ("inferyard.application.reporting", "report-check"),
     "comparison": ("inferyard.application.reporting", "compare-check"),
     "engine-comparison": (
         "inferyard.application.reporting",
@@ -63,6 +63,12 @@ def _identify(root: Path) -> set[str]:
     if not root.is_dir():
         raise EvidenceError("verify_requires_artifact_directory")
     names = {entry.name for entry in root.iterdir()}
+    # A current Studio document is identified by file name only, owns the whole
+    # directory and is never routable to a verifier.
+    if "studio.json" in names:
+        if names != {"studio.json"}:
+            raise EvidenceError("conflicting_verify_artifacts")
+        return {"studio-report"}
     # File names establish identity even when their contents are malformed.
     found = {kind for kind, markers in _MARKERS.items() if names & markers}
     fit = "checkpoint.json" in names
@@ -82,7 +88,7 @@ def _identify(root: Path) -> set[str]:
         else:
             found.add("run")
     if fit:
-        if found - {"report", "comparison"} or "index.json" in names:
+        if found - {"comparison"} or "index.json" in names:
             raise EvidenceError("conflicting_verify_artifacts")
         return {"engine-fit"}
     if "manifest.json" in names:
@@ -91,12 +97,10 @@ def _identify(root: Path) -> set[str]:
             "public-summary."
         ):
             found.add("public")
-    # The engine comparison HTML is sealed and verified by its own verifier.
+    # A retired layout may be recognized by its HTML alone; the engine
+    # comparison HTML is verified by its own verifier.
     if "report.html" in names and not found & {"extension", "engine-comparison"}:
-        found.add("report")
-    if "comparison" in found:
-        # Every comparison writer also produces an index and HTML report.
-        found.add("report")
+        found.add("legacy-report")
     if "batch.json" in names:
         found.add("batch")
     if "plan.json" in names and not found & {"repeat", "extension", "run", "batch"}:
@@ -105,13 +109,29 @@ def _identify(root: Path) -> set[str]:
         raise EvidenceError("unsupported_verify_artifact:analysis")
     if not found:
         raise EvidenceError("unsupported_verify_artifact")
-    if len(found) > 1 and found != {"comparison", "report"}:
+    if len(found) > 1 and found != {"comparison", "legacy-report"}:
         raise EvidenceError("conflicting_verify_artifacts:" + ",".join(sorted(found)))
     return found
 
 
+def _legacy_report(root: Path) -> None:
+    """Reject a recognizable retired report after checking any exact old seal."""
+    from inferyard.evidence.legacy_presentation_seal import legacy_index_bytes
+
+    raw = legacy_index_bytes(root)
+    if raw is None:
+        raw = local_file(root, "index.json").read_bytes()
+    try:
+        saved = strict_json_loads(raw.decode("utf-8"))
+    except (UnicodeError, ValueError) as exc:
+        raise EvidenceError("invalid_json_evidence") from exc
+    if type(saved) is not dict or type(saved.get("report_format_version")) is not int:
+        raise EvidenceError("invalid_artifact_version")
+    raise UnsupportedFormat("report", saved["report_format_version"], ())
+
+
 def _check_markers(root: Path, kinds: set[str]) -> None:
-    for kind in sorted(kinds):
+    for kind in sorted(kinds - {"legacy-report", "studio-report"}):
         # Ancillary rescore/public files also signal a damaged artifact when its
         # primary marker has disappeared; the primary marker remains required.
         primary = (
@@ -190,17 +210,15 @@ def execute(request: CommandRequest) -> tuple[int, CommandResult]:
             raise ContractError("verify.source_run", "only public artifacts accept source run")
     if request.target_run is not None and "overhead" not in kinds:
         raise ContractError("verify.target_run", "only overhead artifacts accept target run")
-    if request.source_roots and not kinds <= {"report", "comparison", "engine-comparison"}:
+    # A retired comparison layout keeps its comparison identity; its index only
+    # marks the retired presentation files that must be rejected later.
+    accepted = kinds - {"legacy-report"} if "comparison" in kinds else kinds
+    if request.source_roots and not accepted <= {"comparison", "engine-comparison"}:
         raise ContractError(
-            "verify.source_root", "only report/comparison/engine-comparison accept source roots"
+            "verify.source_root", "only comparison/engine-comparison accept source roots"
         )
-    if request.rerender and not kinds <= {
-        "report",
-        "comparison",
-        "engine-comparison",
-        "engine-fit",
-    }:
-        raise ContractError("verify.rerender", "only rendered artifacts accept rerender")
+    if request.rerender and not accepted <= {"engine-comparison", "engine-fit"}:
+        raise ContractError("verify.rerender", "only engine artifacts accept rerender")
     options = verification_options(request)
     try:
         if kinds <= {"run", "batch", "plan", "engine-fit"}:
@@ -209,6 +227,10 @@ def execute(request: CommandRequest) -> tuple[int, CommandResult]:
             kind = next(iter(kinds))
             code, result = raw(request, kind)
             return code, replace(result, details={**(result.details or {}), "artifact_type": kind})
+        if kinds == {"studio-report"}:
+            raise EvidenceError("studio_report_not_verifiable")
+        if kinds == {"legacy-report"}:
+            _legacy_report(request.run)
         _check_markers(request.run, kinds)
         kind = "comparison" if "comparison" in kinds else next(iter(kinds))
         if kind == "public":
@@ -216,22 +238,6 @@ def execute(request: CommandRequest) -> tuple[int, CommandResult]:
         else:
             code, result = _dedicated(request, kind, options=options)
         details = {**(result.details or {}), "artifact_type": kind}
-        if kind == "comparison":
-            report_code, report = _dedicated(request, "report", options=options)
-            details.update(comparison=asdict(result), report=asdict(report))
-            completeness = (
-                "complete"
-                if result.completeness == report.completeness == "complete"
-                else "incomplete"
-            )
-            limitations = tuple(dict.fromkeys((*result.limitations, *report.limitations)))
-            if report_code and not code:
-                code, result = report_code, report
-            result = replace(
-                result,
-                completeness=completeness,
-                limitations=limitations,
-            )
         return code, replace(result, command=request.command, details=details)
     except ContractError as exc:
         if options.source_roots and exc.path == "source_root":

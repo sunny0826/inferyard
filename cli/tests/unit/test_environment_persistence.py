@@ -103,8 +103,8 @@ def test_sealed_old_and_new_runs_rebuild_the_same_context_and_report_profile(tmp
 
     from inferyard.contracts.validation import json_bytes
     from inferyard.evidence.storage import read_json
-    from inferyard.reporting.comparison_report import comparison_input
-    from inferyard.reporting.report_profile import profile_view
+    from inferyard.analysis.comparison_input import comparison_input
+    from inferyard.reporting.studio_profile import profile_view
     from tests.helpers import fixture_run
     from tests.unit.test_run_projection import reseal_file
 

@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 
-from inferyard.reporting.comparison_report import comparison_input
+from inferyard.analysis.comparison_input import comparison_input
 from inferyard.reporting.studio_dashboard import dashboard_view
 from inferyard.reporting.studio_profile import profile_view
 from inferyard.reporting.studio_resources import memory_view

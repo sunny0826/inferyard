@@ -48,19 +48,21 @@ def test_installed_probe_reads_unicode_and_rejects_old_reports_with_cp1252_defau
     monkeypatch.setattr(installed_probe, "tool_source_hash", lambda: "tool")
     monkeypatch.setattr(installed_probe, "scorer_hash", lambda: "scorer")
 
+    document = {"schema_version": 3, "kind": "studio-report.v1", "runs": []}
+
     def current_writer(runs, out):
         out.mkdir()
-        (out / "index.json").write_bytes(
-            json.dumps({"report_format_version": 8, "title": "中文🧪"}, ensure_ascii=False).encode()
+        (out / "studio.json").write_bytes(
+            json.dumps(document, ensure_ascii=False).encode()
         )
-        (out / "report.html").write_bytes("<h1>中文🧪</h1>".encode())
+        return document
 
-    def current_verifier(out, *, options=None):
-        return {"verified": True}
+    def current_reader(out):
+        return document
 
     # Only simulate the probe's text I/O, not Python 3.15's production UTF-8 runtime.
-    monkeypatch.setattr(installed_probe, "write_report", current_writer)
-    monkeypatch.setattr(installed_probe, "verify_report", current_verifier)
+    monkeypatch.setattr(installed_probe, "write_studio_report", current_writer)
+    monkeypatch.setattr(installed_probe, "read_studio_report", current_reader)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -75,9 +77,9 @@ def test_installed_probe_reads_unicode_and_rejects_old_reports_with_cp1252_defau
         ],
     )
     installed_probe.main()
-    for version in range(1, 8):
+    for version in range(1, 9):
         old = tmp_path / f"out/unsupported-report-v{version}"
-        assert not (old / "report.html").exists()
+        assert not (old / "studio.json").exists()
         assert json.loads((old / "index.json").read_bytes())["report_format_version"] == version
 
 

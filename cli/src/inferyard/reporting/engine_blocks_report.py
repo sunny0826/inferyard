@@ -21,7 +21,7 @@ def template_sha256():
 
 def load_blocks(paths):
     from inferyard.analysis.first_body import attach_first_body
-    from inferyard.reporting.comparison_report import comparison_input
+    from inferyard.analysis.comparison_input import comparison_input
 
     if len({path.resolve() for path in paths}) != len(paths):
         raise EvidenceError("duplicate_engine_comparison_run")

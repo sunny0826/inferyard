@@ -91,26 +91,19 @@ def run_records(workspace):
 
 def report_state(workspace, completed):
     from inferyard.evidence.source_locations import resolve_source
-    from inferyard.reporting.report import verify_report
+    from inferyard.reporting.studio_report import read_studio_report
 
     matching = []
-    for marker in artifact_paths(workspace / "reports", "index.json"):
-        saved = read_json(marker)
-        (marker.parent / "report.html").read_bytes()
-        status = "present"
-        if (marker.parent / "artifact-manifest.json").exists():
-            if verify_report(marker.parent).get("verified") is True:
-                status = "verified"
+    for marker in artifact_paths(workspace / "reports", "studio.json"):
+        saved = read_studio_report(marker.parent)
         paths = [str(resolve_source(marker.parent, run["source"]["path"])) for run in saved["runs"]]
         if set(completed).issubset(paths) and completed:
-            matching.append((marker.parent, paths, status))
+            matching.append((marker.parent, paths))
     if not matching:
         return {"status": "missing", "path": None, "runs": []}
-    path = latest([path for path, _, _ in matching])
-    paths, status = next(
-        (paths, status) for candidate, paths, status in matching if candidate == path
-    )
-    return {"status": status, "path": str(path), "runs": paths}
+    path = latest([path for path, _ in matching])
+    paths = next(paths for candidate, paths in matching if candidate == path)
+    return {"status": "present", "path": str(path), "runs": paths}
 
 
 def run_groups(matching):
@@ -310,13 +303,11 @@ def inspect_workspace(path):
         next_command = command(
             "report", "--runs", *completed, "--out", new_output(workspace / "reports", "summary")
         )
-    elif report["status"] == "present":
-        action, next_command = "verify", command("verify", "--path", report["path"])
     else:
         action, next_command = "done", None
     return {
         "kind": "progress",
-        "progress_version": 1,
+        "progress_version": 2,
         "workspace": str(workspace),
         "device_preflight": {
             "status": "ok" if preflight else "missing",

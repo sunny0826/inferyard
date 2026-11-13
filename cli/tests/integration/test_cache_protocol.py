@@ -178,9 +178,7 @@ def test_two_frozen_cache_policies_compare_with_replayed_evidence(scenario, monk
     dest = roots[0].parent / "cache-comparison"
     code, _ = execute(CommandRequest("compare", left=roots[0], right=roots[1], out=dest))
     assert code == 0
-    assert {"comparison.json", "index.json", "report.html", "artifact-manifest.json"} <= {
-        path.name for path in dest.iterdir()
-    }
+    assert {path.name for path in dest.iterdir()} == {"comparison.json"}
     assert verify_comparison(dest)["verified"]
     assert before == {
         str(p): sha256_file(p) for root in roots for p in root.iterdir() if p.is_file()

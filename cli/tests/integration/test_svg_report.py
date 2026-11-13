@@ -1,24 +1,15 @@
 """Diagnostic SVG generation through the existing synthetic transport and real journal."""
 
 import asyncio
-import base64
-import hashlib
-import re
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from inferyard.application.types import CommandRequest
-from inferyard.evidence.verification_options import VerificationOptions
-from inferyard.application.verification import execute
 from inferyard.contracts.validation import Document
-from inferyard.errors import UnsupportedFormat
 from inferyard.evidence.storage import read_json, sha256_file
-from inferyard.reporting.report import build_index, verify_report, write_report
-from inferyard.reporting.report_assets import template_hash
+from inferyard.reporting.studio_report import write_studio_report
 from inferyard.runtime.trial_runner import run_trial
-from tests.helpers import fixture_run
 from tests.integration.test_runner import scenario as runner_scenario
 from tests.integration.test_trial_runner import inputs
 
@@ -29,12 +20,6 @@ SVG = (
     ".wheel{animation:pedal 2s linear infinite;transform-origin:center}</style>"
     '<circle class="wheel" cx="100" cy="120" r="50" fill="orange"/></svg>'
 )
-
-
-def verify_artifact(path):
-    code, result = execute(CommandRequest("verify", run=path))
-    assert code == 0
-    return result.details
 
 
 def svg_inputs(scenario):
@@ -53,9 +38,9 @@ def svg_inputs(scenario):
 
 
 @pytest.mark.parametrize(
-    "answer,status,finish", [(SVG, "ok", "stop"), ("<svg><path", "not_found", "length")]
+    "answer,finish", [(SVG, "stop"), ("<svg><path", "length")]
 )
-def test_diagnostic_svg_report_and_offline_verification(scenario, tmp_path, answer, status, finish):
+def test_diagnostic_svg_studio_projection_is_not_scored(scenario, tmp_path, answer, finish):
     calls = scenario[2]
     scenario[3].update(answer=answer, finish_reason=finish)
     plan, loaded, deps, output = svg_inputs(scenario)
@@ -74,31 +59,18 @@ def test_diagnostic_svg_report_and_offline_verification(scenario, tmp_path, answ
     before = {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
     call_count = len(calls)
     out = tmp_path / "svg-report"
-    index = write_report([root], out)
-    assert index["report_format_version"] == 8
-    assert index["runs"][0]["requests"][0]["svg_view"]["status"] == status
-    (item,) = index["runs"][0]["svg_gallery"]
-    assert item["case_id"] == "svg-pelican-01"
-    assert item["svg_view"]["status"] == status
-    html = (out / "report.html").read_text()
-    assert "SVG 生成展示 · 不评分" in html
-    assert "style-src 'unsafe-inline'" in html
-    assert "script-src 'unsafe-inline'" not in html
-    script = re.findall(r"<script>(.*?)</script>", html, re.S)[-1]
-    digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
-    assert f"script-src 'sha256-{digest}'" in html
-    assert "&lt;svg" in html and "模型原始输出 / SVG 源码" in html
-    if status == "ok":
-        assert SVG not in html
-        assert index["contents"][item["content_ref"]] == SVG
-        assert "动画元素统计（信息性，不构成动画判定、质量评分或资格结论）" in html
-        assert "0 个 SMIL 动画元素 · 1 个 @keyframes 规则 · 1 个 animation 属性声明" in html
-    else:
-        assert '<div class="svg-preview">' not in html
-        assert "未能提取可渲染的 SVG" in html
-        assert "动画元素统计：缺测（not_found · svg_not_extracted）" in html
-    assert verify_report(out, options=VerificationOptions(rerender=True))["render_checked"]
-    assert verify_artifact(out)["verified"]
+    document = write_studio_report([root], out)
+    run = document["runs"][0]
+    (request,) = run["requests"]
+    assert request["case_id"] == "svg-pelican-01"
+    assert request["quality"] == "not_applicable"
+    assert request["category_label"] == data["requests"][0]["category"]
+    raw = (out / "studio.json").read_text()
+    assert "svg_gallery" not in raw and "svg_view" not in raw and "contents" not in raw
+    assert SVG not in raw
+    assert [row["case_id"] for row in run["requests"]] == [
+        row["case_id"] for row in data["requests"]
+    ]
     assert len(calls) == call_count
     assert before == {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
 
@@ -117,19 +89,5 @@ def test_failed_svg_preserves_execution_failure_without_quality_score(scenario, 
     assert data["summary"]["quality"]["Q01"] == {}
     assert data["summary"]["input_lengths"]["bins"][0]["quality_rate"] is None
     out = tmp_path / "failed-report"
-    write_report([root], out)
-    assert verify_report(out)["verified"]
-
-
-def test_current_non_svg_gallery_empty_and_old_renderers_unavailable(tmp_path):
-
-    root = fixture_run(tmp_path / "runs")
-    out = tmp_path / "report"
-    index = write_report([root], out)
-    assert index["runs"][0]["svg_gallery"] == []
-    assert verify_report(out)["verified"]
-    for version in range(1, 8):
-        with pytest.raises(UnsupportedFormat):
-            build_index([root], out, format_version=version)
-        with pytest.raises(UnsupportedFormat):
-            template_hash(version)
+    document = write_studio_report([root], out)
+    assert document["runs"][0]["requests"][0]["quality"] is None

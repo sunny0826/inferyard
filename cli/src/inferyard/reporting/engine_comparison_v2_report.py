@@ -32,7 +32,7 @@ def _source_data(
     document: JSONRecord, runs: list[JSONRecord], out: Path
 ) -> tuple[dict[str, JSONRecord], list[JSONRecord]]:
     from inferyard.analysis.first_body import attach_first_body
-    from inferyard.reporting.comparison_report import comparison_input
+    from inferyard.analysis.comparison_input import comparison_input
 
     by_run_id = {entry["run"]["run_id"]: entry for entry in runs}
     data, refs = {}, []

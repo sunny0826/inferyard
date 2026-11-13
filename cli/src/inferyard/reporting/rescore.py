@@ -13,7 +13,7 @@ from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.formats import require_core
 from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json
 from inferyard.provenance import tool_source_hash
-from inferyard.reporting.comparison_report import comparison_input
+from inferyard.analysis.comparison_input import comparison_input
 from inferyard.reporting.export import trial_analysis
 
 

@@ -1,24 +1,13 @@
-"""Shared offline report rendering and protected output publication."""
+"""Shared engine template environment; presentation HTML is retired."""
 
 import base64
 import hashlib
 import json
-import os
-from pathlib import Path
-from urllib.parse import quote
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 from markupsafe import Markup, escape
 
 from inferyard.reporting.svg_render import animation_stats
-
-
-def evidence_url(source: Path, out: Path) -> str:
-    """Local links may cross Windows drives; such paths have no relative form."""
-    try:
-        return quote(os.path.relpath(source, out), safe="/")
-    except ValueError:
-        return source.resolve().as_uri()
 
 
 def _environment():
@@ -62,14 +51,3 @@ def _environment():
         ),
     )
     return environment
-
-
-def render_report_html(environment, name, index):
-    """Render a report with the CSP hash of the script from the same template version."""
-    from inferyard.reporting.report_content import validate_contents
-
-    validate_contents(index)
-    prefix = name.rsplit("/", 1)[0] + "/" if "/" in name else ""
-    script = environment.get_template(prefix + "report_script.html").render()
-    digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode("ascii")
-    return environment.get_template(name).render(index=index, report_script_sha256=digest)

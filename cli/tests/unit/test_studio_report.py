@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator
 from inferyard.contracts.schemas import export_schema
 from inferyard.contracts.validation import validate_document
 from inferyard.errors import ContractError, EvidenceError
-from inferyard.reporting.comparison_report import comparison_input
+from inferyard.analysis.comparison_input import comparison_input
 from inferyard.reporting.studio_report import (
     build_studio_report,
     read_studio_report,

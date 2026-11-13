@@ -19,7 +19,7 @@ def source_tree(tmp_path):
 def test_source_changes_respect_role_boundaries(source_tree):
     original = Path.read_bytes
     first = identity.IdentityContext(root=source_tree)
-    for name in ("cli/metadata.py", "templates/report.html"):
+    for name in ("cli/metadata.py", "templates/report_script.html"):
         path = source_tree / name
         path.write_bytes(original(path) + b"\n")
     second = identity.IdentityContext(root=source_tree)
@@ -104,7 +104,7 @@ def test_missing_shared_jsonschema_breaks_every_role(source_tree, monkeypatch):
 
 def test_comparison_v3_scope_dispatch_and_legacy_full_hash(tmp_path):
     from inferyard.analysis.comparison import compare_trials
-    from inferyard.reporting.comparison_report import comparison_input
+    from inferyard.analysis.comparison_input import comparison_input
     from tests.helpers import fixture_run
 
     left = comparison_input(
