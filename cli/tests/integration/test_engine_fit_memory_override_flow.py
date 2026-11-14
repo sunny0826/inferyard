@@ -110,9 +110,11 @@ def test_low_or_missing_memory_pair_completes_only_with_frozen_overrides(
     monkeypatch.setattr(fixture["runtime"], "FitClient", no_live_access)
     monkeypatch.setattr(fixture["runtime"], "host_identity", no_live_access)
     assert main(["engine-fit", "verify", "--path", str(comparison)]) == 0
-    html = (comparison / "report.html").read_text()
-    assert "本次已显式跳过内存停止" in html and "本次已显式跳过温度停止" in html
-    assert "&lt;script&gt;reason&lt;/script&gt;" in html and "<script>" not in html
+    saved = read_json(comparison / "comparison.json")
+    limitations = saved["sides"][0]["run"]["limitations"]
+    assert "memory_stop_explicitly_disabled" in limitations
+    assert "temperature_stop_explicitly_disabled" in limitations
+    assert not (comparison / "report.html").exists()
 
 
 def test_memory_only_keeps_temperature_stop(memory_service, capsys):

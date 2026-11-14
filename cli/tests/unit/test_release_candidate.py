@@ -84,14 +84,20 @@ def test_build_refusal(tmp_path, change):
         "commit",
         "manifest",
         "artifact",
+        "wheel",
         "commands",
         "scope",
         "arch",
         "old",
-        "v2",
+        "v3",
         "missing_probe",
         "missing_negative",
-        "wrong_template",
+        "wrong_kind",
+        "probe_stdout",
+        "schema_id",
+        "schema_digest",
+        "studio_verify",
+        "studio_limitations",
     ],
 )
 def test_installation_refusal(tmp_path, change):
@@ -106,22 +112,34 @@ def test_installation_refusal(tmp_path, change):
         evidence["build_manifest_sha256"] = "b" * 64
     elif change == "artifact":
         evidence["artifact_sha256"]["constraints"] = "b" * 64
+    elif change == "wheel":
+        evidence["wheel_sha256"] = "b" * 64
     elif change == "commands":
         evidence["checks"] = evidence["checks"][:-1]
     elif change == "scope":
         evidence["scope"] = ["offline_core"]
     elif change == "arch":
         evidence["architecture"] = "x86_64"
-    elif change == "v2":
-        evidence["kind"] = "installed_safe_checks.v2"
+    elif change == "v3":
+        evidence["kind"] = "installed_safe_checks.v3"
     elif change == "missing_probe":
-        del evidence["report_format_checks"]["probe-rollback"]
+        del evidence["probe_checks"]["probe-rollback"]
     elif change == "missing_negative":
-        evidence["report_format_checks"]["probe-install-b"][
+        evidence["probe_checks"]["probe-install-b"][
             "unsupported_report_formats_rejected"
         ] = [1, 2]
-    elif change == "wrong_template":
-        evidence["report_format_checks"]["probe-install-a"]["template_hashes"]["7"] = "0" * 64
+    elif change == "wrong_kind":
+        evidence["probe_checks"]["probe-install-a"]["current_studio_report_kind"] = "report.v8"
+    elif change == "probe_stdout":
+        evidence["probe_checks"]["probe-install-a"]["stdout_sha256"] = "not-a-digest"
+    elif change == "schema_id":
+        evidence["studio_report_schema"]["$id"] = "urn:local-ai-bench:schema:v3:report"
+    elif change == "schema_digest":
+        evidence["studio_report_schema"]["canonical_json_sha256"] = "b" * 64
+    elif change == "studio_verify":
+        evidence["studio_json"]["verify_exit_code"] = 0
+    elif change == "studio_limitations":
+        evidence["studio_json"]["verify_limitations"] = []
     elif change == "old":
         evidence["kind"] = "installed_safe_checks.v1"
     installed.write_text(json.dumps(evidence), encoding="utf-8")
@@ -181,13 +199,18 @@ def test_synthetic_upgrade_is_next_development_version(tmp_path):
 
 def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch):
     """Simulates subprocess outputs only; not an installed-platform acceptance record."""
+    from tests.helpers import fixture_run
     from tests.packaging import run_installed
 
     manifest, build, _, _ = build_fixture(tmp_path / "original")
     files = artifact_files(manifest.parent, build)
     fixtures = tmp_path / "fixtures"
     fixtures.mkdir()
-    (fixtures / "expected.json").write_text('{"fixture_relative": "run"}', encoding="utf-8")
+    synthetic = fixture_run(fixtures / "synthetic-runs")
+    (fixtures / "expected.json").write_text(
+        json.dumps({"fixture_relative": synthetic.relative_to(fixtures).as_posix()}),
+        encoding="utf-8",
+    )
     out = tmp_path / "installed"
     monkeypatch.setattr(run_installed.shutil, "which", lambda name: sys.executable)
     monkeypatch.setattr(run_installed.sys, "platform", "darwin")
@@ -202,23 +225,59 @@ def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch
     def fake_run(argv, **kwargs):
         name = COMMANDS[len(calls)]
         calls.append(name)
+        args = [str(item) for item in argv]
         if name.startswith("probe-"):
-            from scripts.release_common import report_format_check
-
-            return subprocess.CompletedProcess(
-                argv, 0, json.dumps(report_format_check(files["wheel"].raw)), ""
+            from scripts.release_common import (
+                STUDIO_KIND,
+                sha,
+                wheel_resource_files,
             )
+
+            payload = {
+                "version": "0.0.3",
+                "installed_root": "/synthetic",
+                "tool_source_hash": sha(b"tool"),
+                "scorer_hash": sha(b"scorer"),
+                "resource_files": wheel_resource_files(files["wheel"].raw),
+                "current_studio_report_kind": STUDIO_KIND,
+                "unsupported_report_formats_rejected": list(range(1, 9)),
+            }
+            return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
+        if name == "schema-studio-report":
+            from scripts.release_common import studio_report_schema
+
+            return subprocess.CompletedProcess(argv, 0, json.dumps(studio_report_schema()), "")
         if name == "init":
             (out / "中文 workspace").mkdir()
             (out / "中文 workspace/preparation.json").write_bytes(b"frozen")
-        if name == "different-versions" or name == "persistent-tool-unchanged":
-            result = {**pinned, "dependencies": {**pinned["dependencies"], "idna": "3.10"}}
+        if name == "report":
+            from inferyard.reporting.studio_report import write_studio_report
+
+            roots = [Path(args[args.index("--runs") + 1])]
+            write_studio_report(roots, Path(args[args.index("--out") + 1]))
+        if name == "verify":
+            payload = {
+                "command": "verify",
+                "status": "error",
+                "limitations": ["studio_report_not_verifiable"],
+            }
+        elif name == "verify-legacy-report":
+            payload = {
+                "command": "verify",
+                "status": "blocked",
+                "limitations": ["unsupported_format"],
+            }
+        elif name in ("different-versions", "persistent-tool-unchanged"):
+            payload = {**pinned, "dependencies": {**pinned["dependencies"], "idna": "3.10"}}
         elif name == "synthetic-upgrade-versions":
-            result = {**pinned, "tool_version": "0.0.4.dev0"}
+            payload = {**pinned, "tool_version": "0.0.4.dev0"}
         else:
-            result = pinned
+            payload = pinned
         return subprocess.CompletedProcess(
-            argv, 1 if name == "uvx-cold-offline" else 0, json.dumps(result), ""
+            argv,
+            {"uvx-cold-offline": 1, "verify": 4, "verify-legacy-report": 2}.get(name, 0),
+            json.dumps(payload),
+            "",
         )
 
     monkeypatch.setattr(run_installed.subprocess, "run", fake_run)
@@ -230,9 +289,16 @@ def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch
         manifest,
     )
     result = json.loads((out / "result.json").read_bytes())
+    from scripts.release_common import studio_report_schema
+
+    assert result["kind"] == "installed_safe_checks.v4"
     assert result["status"] == "passed"
     assert result["build_manifest_sha256"] == sha(manifest.read_bytes())
     assert result["artifact_sha256"] == {r: f.digest for r, f in files.items()}
+    assert result["studio_report_schema"]["$id"] == studio_report_schema()["$id"]
+    assert result["studio_json"]["schema_validated"] is True
+    assert result["studio_json"]["verify_limitations"] == ["studio_report_not_verifiable"]
+    assert set(result["probe_checks"]) == {"probe-install-a", "probe-install-b", "probe-rollback"}
     prepare(manifest, [out / "result.json"], tmp_path / "candidate", COMMIT)
 
 

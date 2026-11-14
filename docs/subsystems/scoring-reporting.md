@@ -1,6 +1,6 @@
 # 评分、比较与报告
 
-确定性评分、指标归约、比较资格判定、重评分、离线 HTML 报告与导出的实现子系统，覆盖 `analysis/` 与 `reporting/` 两个包。评分输入是冻结题目、参考答案与 answer policy，输出是带身份哈希的 score 文档与指标观测；本子系统只读取已保存证据，不发送模型请求、不调用模型裁判。运行期评分的调用方在执行子系统（见[运行时执行与引擎适配](runtime-execution.md)），日志与封存在证据子系统（见[证据、封存与离线读取](evidence-storage.md)），离线账本重建属于本子系统的 `analysis/ledger.py`，命令入口在[CLI 与应用分发](cli-dispatch.md)）。
+确定性评分、指标归约、比较资格判定、重评分、studio.json 报告与导出的实现子系统，覆盖 `analysis/` 与 `reporting/` 两个包。评分输入是冻结题目、参考答案与 answer policy，输出是带身份哈希的 score 文档与指标观测；本子系统只读取已保存证据，不发送模型请求、不调用模型裁判。运行期评分的调用方在执行子系统（见[运行时执行与引擎适配](runtime-execution.md)），日志与封存在证据子系统（见[证据、封存与离线读取](evidence-storage.md)），离线账本重建属于本子系统的 `analysis/ledger.py`，命令入口在[CLI 与应用分发](cli-dispatch.md)）。
 
 「职责与事实源」「运行路径」「约束与失败行为」三节正文已移入 `scoring-reporting/` 目录；其余各节保留在本页。
 
@@ -63,11 +63,11 @@ mise exec -- uv run --frozen pytest \
 
 # 报告、SVG 与导出回归
 mise exec -- uv run --frozen pytest \
-  tests/unit/test_report_content.py \
-  tests/unit/test_report_dashboard.py \
-  tests/unit/test_report_facets.py \
-  tests/unit/test_report_resources.py \
-  tests/unit/test_report_scans.py \
+  tests/unit/test_studio_report.py \
+  tests/unit/test_aggregate_report.py \
+  tests/unit/test_cost_reporting.py \
+  tests/unit/test_engine_fit_report.py \
+  tests/unit/test_engine_comparison_v2_report.py \
   tests/unit/test_svg_render.py \
   tests/unit/test_export.py \
   tests/unit/test_export_utf8.py \
@@ -79,4 +79,4 @@ mise exec -- uv run --frozen pytest \
 ## 与既有文档的差异
 
 - [实验设计](../../cli/docs/experiments/design.md) 的比较模式表列出 `device` 模式，但 `compare_trials` 只接受 `model` / `config` / `side-by-side` / `engine`，其余模式抛 `unsupported_comparison_mode`；设备作为被测因素由 engine-fit 比较路径处理。`engine` 模式的门槛与待实现阻断见[跨引擎比较契约](../../cli/docs/contracts/engine-comparison.md)。
-- [报告契约](../../cli/docs/contracts/report-contract.md) 的 CSP 一节描述 `default-src 'none'; style-src 'unsafe-inline'` 与 `script-src` 哈希，实际模板 meta 还含 `img-src data:`、`base-uri 'none'`、`form-action 'none'`；契约只列安全关键指令，语义不冲突。
+- [报告契约](../../cli/docs/contracts/report-contract.md) 自 ADR 059 起描述 studio.json（`studio-report.v1`）；旧的 HTML 报告、CSP 与模板规则已随报告重写移除，报告目录不再是核验产物。

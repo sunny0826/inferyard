@@ -87,31 +87,22 @@ func TestAssetDefaultsApplyOnlyOnce(t *testing.T) {
 	}
 }
 
-func TestReportGuidanceRequiresAllBundlesSealed(t *testing.T) {
+func TestReportPageHasNoVerificationControl(t *testing.T) {
 	s := testState()
 	s.selected = "reports"
-	tt := ui.NewTester(s.view, 1120, 1600)
-	if _, ok := tt.Find("核验"); ok {
-		t.Fatal("premature verify")
-	}
-	s.progress.NextAction = "verify"
-	tt.Frame()
-	if _, ok := tt.Find("核验"); !ok {
-		t.Fatal(tt.Texts())
-	}
-	s.progress.Report.Status = "verified"
-	tt.Frame()
-	if !tt.HasText("已核验") {
-		t.Fatal(tt.Texts())
-	}
-	if _, ok := tt.Find("核验"); ok {
-		t.Fatal("verified report offers verify")
-	}
-	s.progress.Report.Status = "generated"
-	s.progress.NextAction = "report"
-	tt.Frame()
-	if _, ok := tt.Find("核验"); ok {
-		t.Fatal("report action offers verify")
+	for _, progress := range []inferyard.ProgressReport{
+		{Status: "missing", Runs: []string{}},
+		{Status: "present", Path: ptr("/preview/reports/summary"), Runs: []string{"/preview/results/run"}},
+	} {
+		for _, action := range []string{"report", "done"} {
+			s.progress.NextAction, s.progress.Report = action, progress
+			tt := ui.NewTester(s.view, 1120, 1600)
+			for _, label := range []string{"核验", "已核验"} {
+				if _, ok := tt.Find(label); ok {
+					t.Fatalf("%s control exposed for action=%s status=%s", label, action, progress.Status)
+				}
+			}
+		}
 	}
 }
 

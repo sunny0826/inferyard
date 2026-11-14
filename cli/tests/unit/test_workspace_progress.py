@@ -10,7 +10,7 @@ import pytest
 from inferyard.cli import main
 from inferyard.provisioning.preparation_io import json_bytes
 from inferyard.analysis.ledger import read_trial
-from inferyard.reporting.report import write_report
+from inferyard.reporting.studio_report import write_studio_report
 from tests.helpers import fixture_run
 
 
@@ -91,7 +91,7 @@ def test_init_layout_roadmap_and_progress_read_only(workspace, capsys):
     before = snapshot(workspace)
     code, result, error = invoke(capsys, workspace)
     assert code == 0 and not error
-    assert result["kind"] == "progress" and result["progress_version"] == 1
+    assert result["kind"] == "progress" and result["progress_version"] == 2
     assert [b["bundle"] for b in result["bundles"]] == ["zh-core", "zh-svg-pelican"]
     assert all(b["phase"] == "preflight_missing" for b in result["bundles"])
     assert result["next_action"] == "device_check"
@@ -151,29 +151,33 @@ def test_incomplete_and_unsealed_run_are_not_complete(workspace, capsys):
     assert not result["default_scope_complete"]
 
 
-def test_two_runs_report_and_verified_default_scope(workspace, capsys):
+def test_two_runs_report_and_present_default_scope(workspace, capsys):
     preflight(workspace)
     roots = []
     for name in ("zh-core", "zh-svg-pelican"):
         binding(workspace, candidate(workspace, name))
         states = ["completed"] if name == "zh-core" else ["completed", "completed"]
         roots.append(fixture_bundle_run(workspace, name, states))
+    old = workspace / "reports/summary-legacy"
+    old.mkdir(parents=True)
+    (old / "index.json").write_text('{"report_format_version": 8}')
     code, result, _ = invoke(capsys, workspace)
     assert code == 0 and all(b["phase"] == "run_complete" for b in result["bundles"])
     assert result["next_action"] == "report" and not result["default_scope_complete"]
+    assert result["report"] == {"status": "missing", "path": None, "runs": []}
+    arguments = shlex.split(result["next_command"])
+    assert arguments[:4] == ["inferyard", "report", "--runs", str(roots[0])]
+    assert Path(arguments[-1]).name == "summary-1"
     report = workspace / "reports/summary-1"
-    write_report(roots, report)
+    write_studio_report(roots, report)
     before = snapshot(workspace)
     code, result, _ = invoke(capsys, workspace)
-    assert code == 0 and result["report"]["status"] == "verified"
+    assert code == 0 and result["report"]["status"] == "present"
+    assert result["report"]["path"] == str(report)
     assert set(result["report"]["runs"]) == {str(root) for root in roots}
     assert result["next_action"] == "done" and result["next_command"] is None
     assert result["default_scope_complete"] is True
     assert snapshot(workspace) == before
-    (report / "artifact-manifest.json").unlink()
-    code, result, _ = invoke(capsys, workspace)
-    assert code == 0 and result["report"]["status"] == "present"
-    assert result["next_action"] == "verify" and not result["default_scope_complete"]
 
 
 @pytest.mark.parametrize(
@@ -220,8 +224,39 @@ def test_unreadable_artifacts_always_exit_two(workspace, capsys, damage):
     assert code == 2 and result["status"] == "blocked" and error
 
 
-def test_corrupt_report_is_rejected_even_before_runs(workspace, capsys):
-    save(workspace / "reports/broken/index.json", {"runs": []})
+def test_legacy_report_alone_requests_a_new_studio_output(workspace, capsys):
+    preflight(workspace)
+    roots = []
+    for name in ("zh-core", "zh-svg-pelican"):
+        binding(workspace, candidate(workspace, name))
+        roots.append(fixture_bundle_run(workspace, name, ["completed"]))
+    legacy = workspace / "reports/summary-legacy"
+    legacy.mkdir(parents=True)
+    (legacy / "index.json").write_text('{"report_format_version": 8}')
+    (legacy / "report.html").write_text("retired presentation")
+    code, result, _ = invoke(capsys, workspace)
+    assert code == 0 and result["report"] == {"status": "missing", "path": None, "runs": []}
+    assert result["next_action"] == "report"
+    assert "summary-1" in result["next_command"]
+    assert str(legacy) not in result["next_command"]
+
+
+def test_legacy_report_does_not_block_an_unfinished_run(workspace, capsys):
+    preflight(workspace)
+    prepared = candidate(workspace)
+    binding(workspace, prepared)
+    fixture_bundle_run(workspace, "zh-core", ["completed", "not_executed"])
+    legacy = workspace / "reports/summary-legacy"
+    legacy.mkdir(parents=True)
+    (legacy / "index.json").write_text('{"report_format_version": 8}')
+    code, result, _ = invoke(capsys, workspace)
+    assert code == 0 and result["bundles"][0]["phase"] == "run_incomplete"
+    assert result["next_action"] == "run"
+    assert result["report"]["status"] == "missing"
+
+
+def test_corrupt_studio_report_is_rejected_even_before_runs(workspace, capsys):
+    save(workspace / "reports/broken/studio.json", {"kind": "studio-report.v1", "runs": []})
     code, result, error = invoke(capsys, workspace)
     assert code == 2 and result["status"] == "blocked" and error
 

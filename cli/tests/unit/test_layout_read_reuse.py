@@ -6,8 +6,9 @@ import pytest
 
 from inferyard.errors import EvidenceError
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.reporting.comparison_report import comparison_input, verify_metric_references
-from inferyard.reporting.report import verify_report, write_report
+from inferyard.analysis.comparison_input import comparison_input, verify_metric_references
+from inferyard.application.types import CommandRequest
+from inferyard.reporting.comparison_report import write_comparison, verify_comparison
 from tests.unit.test_layout_surfaces import sources as sources
 
 
@@ -30,15 +31,16 @@ def test_read_bound_metric_validation_rejects_wrong_references(sources, layout):
 
 
 @pytest.mark.parametrize("layout", [1, 2])
-def test_next_command_rechecks_changed_original_bytes(sources, tmp_path, layout):
+def test_verification_rechecks_changed_original_bytes(sources, tmp_path, layout):
     root = sources[layout - 1]
-    out = tmp_path / "report"
-    write_report([root], out)
-    assert verify_report(out)["verified"]
+    right = sources[1] if layout == 1 else sources[0]
+    out = tmp_path / "comparison"
+    write_comparison(CommandRequest("compare", left=root, right=right, out=out))
+    assert verify_comparison(out)["verified"]
     with (root / "events.jsonl").open("ab") as stream:
         stream.write(b"\n")
     with pytest.raises(EvidenceError, match="original_evidence_hash_mismatch"):
-        verify_report(out)
+        verify_comparison(out)
 
 
 def test_nested_member_references_share_reader_without_rewriting_paths(sources):

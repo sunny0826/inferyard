@@ -101,15 +101,15 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.17�
   lineage 结论引用 [数据契约](../../cli/docs/data-contract.md#证据血缘与比较结论)，证据布局见
   [run-evidence-layout](../../cli/docs/contracts/run-evidence-layout.md)。
 - **报告**：1–100 个不同来源 run；新目录唯一命名、原始 run 与历史报告永不覆写；报告路径必须
-  留在报告目录内；缺失来源 run 显示为不可用但不阻止打开。单项索引不可读不影响其他报告，
-  列表标记无法读取，打开后可重新读取或返回列表。质量与类别分母直接取自索引，不重算分数；
-  空延迟显示 —。CLI 仍生成 `report.html`，Studio 没有加载 HTML 的控件。实现见
+  留在报告目录内；缺失来源 run 显示为不可用但不阻止打开。单项报告不可读不影响其他报告，
+  列表标记无法读取，打开后可重新读取或返回列表。质量与类别分母直接取自 studio.json，不重算分数；
+  空延迟显示 —。CLI 写出 `studio.json`（`studio-report.v1`），Studio 直接解析该 JSON，不加载 HTML。实现见
   [report_view.go](../../studio/internal/pages/report_view.go)、[report_metrics.go](../../studio/internal/pages/report_metrics.go) 与 [report_tables.go](../../studio/internal/pages/report_tables.go)。macOS 模拟数据的直达、布局与滚动已检查；其他平台和真实测评数据未在本轮验证。
 - **安全**：模型端点仅本地 loopback；token/凭据/完整 session URL 不进日志、设置或用户可见错误；
   向导执行不回传 stdout/stderr；设置文件 0700/0600 且仅在用户保存时替换。CLI 退出码语义
   （0/2/3/4/130）与呈现映射见 [CLI 与应用分发](cli-dispatch.md)。
 - **缺测与单位**：未知测量为带原因的 `null`，不补零、不编百分比；内存以字节、速率以字节/秒
-  存储，展示换算显式；资源曲线保留缺失采样。
+  存储，展示换算显式；运行详情的资源曲线保留缺失采样。
 - **采集节奏**：运行内进度事件以 500ms 间隔轮询生成并合并发布；资源历史按来源各保留最近
   600 个观测。CPU、温度与来源切换规则见[资源投影](studio-panel/runtime.md#资源投影)。
 

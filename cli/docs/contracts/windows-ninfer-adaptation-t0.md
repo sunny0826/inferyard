@@ -1,6 +1,6 @@
 # Windows lab 观测与身份接口
 
-本文规定已实现的客户端解析与原生身份接口；默认 auto 与显式 lab_required 的准入规则见[适配契约](windows-ninfer-adaptation-contract.md)。
+本文规定已实现的客户端解析与原生身份接口；默认 auto 与显式 lab_required 的准入规则见[生成与观测契约](windows-ninfer-generation-observation-contract.md)。
 引擎发布包是否提供 lab 接口须实际探测，不能由客户端实现推定。
 
 ## 公共值与错误

@@ -120,8 +120,8 @@ Keep the build manifest, installation results and candidate originals; never
 hand-edit JSON instead of passing the checks.
 
 Installation checks use synthetic inputs and exercise uv tool/uvx, core
-offline commands, workspace export and report/verify in separate
-environments, producing `installed_safe_checks.v3`; preparing Python and
+offline commands, workspace export and report generation in separate
+environments, producing `installed_safe_checks.v4`; preparing Python and
 dependencies the first time needs network access, and no model requests are
 sent.
 A `community_distribution.v2` candidate can be produced once at least one

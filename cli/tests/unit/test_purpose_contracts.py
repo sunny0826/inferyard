@@ -11,11 +11,8 @@ from inferyard.contracts.bundle_review import approved_cases, case_content_hash
 from inferyard.contracts.environment_admission import admission
 from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import ContractError, PreflightError, UnsupportedFormat
-from inferyard.reporting.comparison_report import (
-    build_comparison,
-    comparison_input,
-    read_verified_comparison,
-)
+from inferyard.analysis.comparison_input import comparison_input
+from inferyard.reporting.comparison_report import build_comparison, read_verified_comparison
 from inferyard.runtime.service_reuse import require_transition
 from tests.helpers import fixture_run
 

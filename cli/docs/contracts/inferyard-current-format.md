@@ -1,9 +1,10 @@
 # InferYard 当前格式与主机状态契约
 
 状态：现行契约。软件检查与原生验证范围见 [backlog](../backlog.md)。
-依据 [ADR 038](../decisions/038-inferyard-current-format.md)（格式边界）与
-[ADR 039](../decisions/039-remove-host-state-migration.md)（主机状态），writer 核查基线为
-`fe1052a41afbddc1b7ceff852e794d6d872977ce`。
+依据 [ADR 038](../decisions/038-inferyard-current-format.md)（格式边界）、
+[ADR 039](../decisions/039-remove-host-state-migration.md)（主机状态）与
+[ADR 059](../decisions/059-studio-json-only-report.md)（报告 JSON 化与呈现核验退役），writer 核查基线为
+`ee90d0973cc2de7045ef0239a4f5c7be2b742023`。
 证据解释沿用[血缘规则](../data-contract.md#证据血缘与比较结论)。
 
 运行文件布局由 [ADR 048](../decisions/048-run-evidence-containers.md) 局部修订；
@@ -22,18 +23,18 @@
 | 核心 config/bundle/experiment/plan/run/selection/event/sample/manifest/summary/analysis | `schema_version=3`；现行 kind、ID、可选字段与定义版本 | 核心 v1/v2 读取与 migrate；`origin=migrated` 运行及 migration.json 递归读取 | [常量](../../src/inferyard/__init__.py)、[planning](../../src/inferyard/config/planning.py)、[Journal](../../src/inferyard/evidence/journal.py) |
 | 运行物理布局 | layout2 容器声明与 core3；现有合法 v3 快照 layout1 严格只读 | 未知布局；新旧权威源混合；inputs/manifest 冲突；原已拒绝来源；不转换、不补写 | [布局字段与接口](run-evidence-layout.md)、[实施状态](../backlog.md#运行证据文件合并) |
 | 题包审核 | 原 review_records、case-review.v1、review_provenance 原字节及验证 | `upgrade_legacy_bundle` 生成入口；旧 bundle 作为活动输入 | [bundle_review](../../src/inferyard/contracts/bundle_review.py)；[zh-smoke](../../bundles/zh-smoke.json) 内嵌 v1 证明，不可连同迁移器删除 |
-| 核心报告 | `report_format_version=8`、presentation-seal.v1、当前根模板；题面、输出、参考答案各存一次并内部引用 | report v1–v7 分派；templates/v2、v3、v4、v5 与根 report_v1.html | [write_report](../../src/inferyard/reporting/report.py)、[模板映射](../../src/inferyard/reporting/report_assets.py)；根模板应保留 |
-| 核心比较 | `format_version=4`，计算 definition=`phase2.v3` | comparison v1–v3 的重算与投影 | [write_comparison](../../src/inferyard/reporting/comparison_report.py)；plan/run 的 comparison 标记仍为 phase2.v1，不改写 |
+| 核心报告 | `studio.json`：`schema_version=3`、`kind=studio-report.v1`；纯展示投影，不可核验 | report v1–v8（index.json/report.html/artifact-manifest.json）全部拒绝；报告模板、presentation-seal 与 `--rerender` 已删除 | [studio_report](../../src/inferyard/reporting/studio_report.py)、[Schema](../../src/inferyard/contracts/schemas_studio_report.py) |
+| 核心比较 | `format_version=5`，计算 definition=`phase2.v3` | comparison v1–v4 的重算与投影 | [write_comparison](../../src/inferyard/reporting/comparison_report.py)；plan/run 的 comparison 标记仍为 phase2.v1，不改写 |
 | engine-fit plan | engine_fit_plan.v1/v2/v3/v4 全部保留 | 未知定义；不删除 v1 全目录模型清单 | [prepare](../../src/inferyard/config/engine_fit.py)：目录且仅 vLLM/SGLang、无覆盖写 v1；普通新引擎/单 GGUF 写 v2；温度覆盖写 v3；内存覆盖写 v4 |
 | engine-fit run | engine_fit_run.v1–v6 全部保留 | 非法 plan/run/platform 组合及未知定义 | [run writer](../../src/inferyard/runtime/engine_fit.py)：plan.v1 在 Linux 写 run.v1、Darwin 写 run.v2；plan.v2/v3/v4 在非 Windows 写 run.v3/v4/v5；Windows 单 GGUF llama.cpp 写 run.v6 |
-| engine-fit 封存/比较/中断 | engine_fit_manifest.v2、engine_fit_comparison.v1、engine_fit_checkpoint.v1 | manifest.v1 重渲染兼容；坏 seal 不可回退 checkpoint | [seal/compare](../../src/inferyard/reporting/engine_fit.py)、[checkpoint](../../src/inferyard/analysis/engine_fit_checkpoint.py)、[partial](../../src/inferyard/reporting/engine_fit_checkpoint.py) |
+| engine-fit 封存/比较/中断 | engine_fit_manifest.v3、engine_fit_comparison.v1、engine_fit_checkpoint.v1 | manifest.v1/v2 识别后拒绝；坏 seal 不可回退 checkpoint | [seal/compare](../../src/inferyard/reporting/engine_fit.py)、[checkpoint](../../src/inferyard/analysis/engine_fit_checkpoint.py)、[partial](../../src/inferyard/reporting/engine_fit_checkpoint.py) |
 | 已退役的独立 observer | 无活动 writer 或 reader；既有原件保持不变 | 独立命令、构建器、流解析与摘要关联全部移除；lab_observer.v1/v2、lab_observer_summary.v2 不再支持 | [ADR 052](../decisions/052-retire-standalone-observer.md) |
 | 公开包/复现 | public-summary.v5 / format 5、public-metrics.v1、核心 v3 复现计划 | public-summary.v1–v4 的投影、核验及 public-plan 回退 | [package](../../src/inferyard/reporting/public_package.py)、[metrics](../../src/inferyard/analysis/public_metrics.py)、[public_plan](../../src/inferyard/config/public_plan.py) |
 | 评分/重评分/导出 | 实时 scorer phase2.v1；显式 rescore 可选 phase2.v1/v2；rescore/export format 1 | 旧格式评分转换；任何隐式重评分 | [scoring](../../src/inferyard/analysis/scoring.py)、[revision](../../src/inferyard/analysis/scoring_revision.py)、[rescore](../../src/inferyard/reporting/rescore.py)、[export](../../src/inferyard/reporting/export.py) |
 | 身份/资产 | implementation-identity.v1、model-assets.v2；plan.v1 当前使用的无 definition 全目录清单 | 仅由历史 plan.v2–v4 触发的无 definition 目录回退；旧比较身份算法 | [IdentityContext](../../src/inferyard/implementation_identity.py)、[assets](../../src/inferyard/platforms/engine_fit_assets.py)、[model_manifest](../../src/inferyard/platforms/engine_fit.py) |
 | token 预算/原始日志 | token-budgets.v2.json / token-budgets.v2；原始 events、样本与请求前身份检查点 | token-budgets.json 位置数组；旧 requests.jsonl 派生副本专用重建/兼容 | [预算 writer](../../src/inferyard/evidence/token_budgets.py)、[ledger](../../src/inferyard/analysis/ledger.py)、[Journal](../../src/inferyard/evidence/journal.py) |
 | 扩展及开销 | closed_concurrency.v1、native_tools.v1、total_observer_control.v1/v2；extension_event.v1、trial_control_baseline.v1；当前开销、重复和谱系定义 | 不按 v1/v2 扫除；此任务不重编独立实验协议 | [freeze/run](../../src/inferyard/extensions/workflow.py)、[extension journal](../../src/inferyard/extensions/extension_evidence.py)、[baseline](../../src/inferyard/extensions/trial_control_baseline.py) |
-| 准备/发行/锁 | community_init/config_assets/config_candidate/config_binding.v1；installed_safe_checks.v3；community_distribution.v2；运行 state 版本 1 | 安装旧 v2 不继承新资格；其他编号不因数字小而删除 | [CLI 字段](../cli-surface.md)、[发行工具](../../scripts/README.md)、[HostLock](../../src/inferyard/runtime/lock.py) |
+| 准备/发行/锁 | community_init/config_assets/config_candidate/config_binding.v1；installed_safe_checks.v4；community_distribution.v2；运行 state 版本 1 | 安装旧 v2/v3 不继承新资格；其他编号不因数字小而删除 | [CLI 字段](../cli-surface.md)、[发行工具](../../scripts/README.md)、[HostLock](../../src/inferyard/runtime/lock.py) |
 | 模型来源记录 | `remote_model_source.v3` 新生产，bytes/sha256 为实测值；原 v1/v2 严格只读，不补写不转换 | 未知定义；v2 缺预算；非法预算和额外字段 | [获取契约](model-acquisition.md)、[ADR 051](../decisions/051-simplified-model-acquisition.md)、[来源读取](../../src/inferyard/provisioning/model_source.py) |
 | 引擎来源记录 | `remote_engine_source.v1` 新生产，bytes/sha256 为实测值 | 未知定义；非法 URL 与额外字段 | [获取契约](engine-acquisition.md)、[来源解析](../../src/inferyard/provisioning/engine_source.py) |
 
@@ -62,13 +63,13 @@
 
 先按各产物既有结构与已声明的大小限制，做严格 JSON、类型及可用封存完整性检查，再确定版本拒绝。
 通用证据 JSON 读取不新增全局 16 MiB 上限；配置与 host state 各自已有或明确冻结的限制保持不变。
-当前报告可由合法输入聚合超过单份配置大小，普通核验及显式 rerender 均应接受；不为核验旧格式而恢复旧评分器/模板。
+当前派生 JSON 可由合法输入聚合超过单份配置大小，结构读取与比较核验均应接受；不为核验旧格式而恢复旧评分器/模板。
 可识别旧封存的哈希损坏仍为 4；无从解释的未知格式只报告 unsupported，不声称其内容完整。
 冻结 plan 的可解释 `plan_sha256`、rescore 的既有自哈希与来源摘要先于版本拒绝核验；
 坏哈希或 plan 内外版本声明冲突为 4，不能因同时带有旧格式标记而降格为 2。
 任何拒绝都不覆盖输入、不生成成功产物、不调用模型或自动 rescore。
-report v8/comparison v4/engine-fit manifest.v2 保持保存字节与显式 `--rerender` 分离；
-普通相对来源与显式根映射保留，携带包继续拒绝路径逃逸与外部映射。
+comparison v5/engine-fit manifest.v3 的来源核验与相对定位、显式根映射保留；
+呈现封存与显式 `--rerender` 已随 ADR 059 退役，携带包继续拒绝路径逃逸与外部映射。
 
 ## 主机状态
 
@@ -105,12 +106,12 @@ report v8/comparison v4/engine-fit manifest.v2 保持保存字节与显式 `--re
 
 ## 安装检查与资格版本
 
-安装结果 v3、当前格式探针及候选消费规则见
+安装结果 v4、当前格式探针及候选消费规则见
 [安装格式契约](current-format-installation.md)。
 
 ## 验证边界
 
-安装结果 v3 与候选外壳 v2 绑定同批源码及产物字节；旧安装资格不自动继承。
+安装结果 v4 与候选外壳 v2 绑定同批源码及产物字节；旧安装资格不自动继承。
 隔离目录进程测试不代替 Windows 原生验证，平台实际覆盖见 [backlog](../backlog.md)。
 
 ## 不变的运行边界

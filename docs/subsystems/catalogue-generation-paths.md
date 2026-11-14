@@ -17,7 +17,7 @@
 1. CLI `catalogue --kind methods|metrics|components` 经 [`application/dispatch.py`](../../cli/src/inferyard/application/dispatch.py) 调用 `catalogue(kind)`（[`registry.py`](../../cli/src/inferyard/registry.py)），后者用 `importlib.resources` 读取包内 JSON；`metrics` 逐项过 `metric_definition` 结构校验，`methods` 查重 `method_id`，结果装入 `CommandResult("catalogue", "listed", "complete", details=...)`（[`types.py`](../../cli/src/inferyard/application/types.py)），details 即 catalogue 文档。
 2. 指标定义被评分/汇总路径惰性加载：`Observations`（[`observations.py`](../../cli/src/inferyard/analysis/observations.py)）、`public_metrics`（[`public_metrics.py`](../../cli/src/inferyard/analysis/public_metrics.py)）从 `catalogue("metrics")` 取 `metric_id → definition` 映射。
 3. `init` / 准备工作区时 `resource_bytes`（[`community_resources.py`](../../cli/src/inferyard/provisioning/community_resources.py)）按 `resources.json` 的 SHA-256 逐个核验包内题包、三平台示例配置与路线图 README 后写出到操作者目录（[`community_workspace.py`](../../cli/src/inferyard/config/community_workspace.py)）；路线图模板中的 `{{WORKSPACE}}` 占位在写出时替换为真实目录。
-4. 生成离线报告时 `template_hash`（[`report_assets.py`](../../cli/src/inferyard/reporting/report_assets.py)）对 `templates/` 下全部 `report*.html` 计算整目录哈希，由 [`report.py`](../../cli/src/inferyard/reporting/report.py) 写入 `template_sha256`，绑定报告呈现身份；报告内容与展示规则见 [报告契约](../../cli/docs/contracts/report-contract.md)。
+4. 生成报告时 `write_studio_report`（[`studio_report.py`](../../cli/src/inferyard/reporting/studio_report.py)）逐 run 归约并原子写出 `studio.json`（`studio-report.v1`），不含模板或呈现身份；报告内容与字段规则见 [报告契约](../../cli/docs/contracts/report-contract.md)。
 5. 离线指标核对（`public_metrics_check` 在 [`public_metrics_check.py`](../../cli/src/inferyard/analysis/public_metrics_check.py)）同样从 `catalogue("metrics")` 取定义，核验派生指标的缺测与口径。
 6. `config create` 绑定 MLX 随包服务脚本时，`engine_fit_assets`（[`engine_fit_assets.py`](../../cli/src/inferyard/platforms/engine_fit_assets.py)）从包内 `data/engine_fit/` 解析 `mlx_server.py` 路径，不读源码检出。
 
@@ -31,11 +31,8 @@
 | 改 [`contracts/`](../../cli/src/inferyard/contracts/schemas.py) 下 schema 定义 | 重跑 `export_schemas.py` | `export_schemas.py --check`（根 `mise run schemas`） |
 | 改 `data/community/` 任何文件 | 同轮重生成 `resources.json`（`generated(None)` 或 `--archives`） | `export_community.py --check` |
 | 改运行依赖或 [`uv.lock`](../../cli/uv.lock) | 重导出 runtime 约束到新 `--out` 路径 | `.validation.json` 随文件走，`.validation.json` 漂移即失败 |
-| 改 `templates/*.html` | 无导出步骤；`template_hash` 在报告时整目录现算 | 报告回归中的 `template_sha256` 与封存核验 |
 | 改 [`data/implementation-files/{role}.json`](../../cli/src/inferyard/data/implementation-files/measurement.json) | 无导出步骤；身份在运行时计算 | `IdentityContext` 相关回归 |
 | 改导出脚本本身的解析或序列化逻辑 | 重跑受影响导出并复核生成物 diff | 对应 `--check` + `ruff check src tests scripts` |
-
-模板没有 `--check` 的原因是其身份没有独立生成物可漂移——`template_hash` 在报告时对包内目录现算，唯一事实是“模板被改”，它直接反映在报告 `template_sha256` 上。
 
 ### 导出脚本行为
 

@@ -180,11 +180,11 @@ def test_abrupt_interruption_keeps_identity_and_completed_answer(fit_service, mo
     assert not (out / "run.json").exists()
     assert len(state["posts"]) == 1
     assert read_json(root / "host.state.json")["dirty"]
-    assert main(["verify", "--path", str(out), "--rerender"]) == 3
+    assert main(["verify", "--path", str(out)]) == 3
     result = json.loads(capsys.readouterr().out)
     assert result["details"]["verified"] is False
     assert result["details"]["sealed"] is False
-    assert result["details"]["render_checked"] is False
+    assert "render_checked" not in result["details"]
     assert result["details"]["integrity"] == "unsealed"
     assert result["details"]["requests"][0]["response"]["text"]
     assert result["details"]["run"]["counts"]["completed"] == 1
@@ -222,9 +222,9 @@ def test_both_engines_compare_and_verify_after_sources_removed(fit_service, caps
     shutil.rmtree(root / "sglang")
     assert main(["engine-fit", "verify", "--path", str(root / "comparison")]) == 0
     assert len(state["posts"]) == 6
-    html = (root / "comparison/report.html").read_text()
-    assert "<script>x</script>" not in html
-    assert "vllm" in html and "sglang" in html
+    comparison = read_json(root / "comparison/comparison.json")
+    assert [side["run"]["engine"] for side in comparison["sides"]] == ["vllm", "sglang"]
+    assert not (root / "comparison/report.html").exists()
 
 
 def test_early_eof_stops_and_does_not_clear_dirty_on_zero_metrics(fit_service, capsys):

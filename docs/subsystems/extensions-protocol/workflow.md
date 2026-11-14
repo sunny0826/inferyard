@@ -17,7 +17,7 @@
    - `total_observer_control.v1`：`execute_total` 经 `run_total` 跑四臂，on 臂用 `total_control_runtime.Observer` 接 ExtensionJournal、`ResourceSampler`、`SafetyGuard`/`SafetyTrace`，off 臂完全不落盘；每臂 close 必须 flush+seal（Observer 细节见本节下文「v1 观测接线」）。
    - `total_observer_control.v2`：`live_complete` 转交 `complete_control_workflow.live_complete`，四臂经 `execute_complete` 各跑一次正式 `run_trial`（on 臂真实封存 trial，off 臂 `BaselineJournal` 在测量臂关闭后才把缓冲写入父容器）；臂间以 `control_checkpoint` 事件持久化臂状态。
 8. **收尾判定**：全部槽位 `wait_idle` 确认排空、守护进程退出码为 0 且未置 unsafe，否则标记 stopped；`reduce_packet` 归约（闭集负载附带 `client_capacity` 证明，v1 附带 guard 证据），不一致即失败。任一停止位或排空未知都抛 `extension_safety_stop_or_drain_incomplete`，走异常收尾。
-9. **封存**：snapshot `run.json`/`plan.json`/`config.frozen.json`/`bundle.json`/`identity.json`（v2 加 `measurement-plan.json`）、`packet.json`、确定性重算的 `summary.json` 与自包含 `report.html`、`child-evidence.json`（绑定每个 observer 子运行的 manifest 哈希），最后 `seal()` 并 `lock.clean()`。
+9. **封存**：snapshot `run.json`/`plan.json`/`config.frozen.json`/`bundle.json`/`identity.json`（v2 加 `measurement-plan.json`）、`packet.json`、确定性重算的 `summary.json`、`child-evidence.json`（绑定每个 observer 子运行的 manifest 哈希），最后 `seal()` 并 `lock.clean()`。
 10. **异常收尾**：未封存时复用正式通路的 dirty 语义——等待排空确认后写 `stop.json`（`completed: false`、`automatic_retries: 0`、保留原始事件），确认排空才清 dirty；守护进程残留会被终止。
 
 ## v1 观测接线（total_control_runtime.Observer）
@@ -28,7 +28,7 @@
 - `before(row)`/`after(row)`：请求边界切换采样 phase、记录 `request_start`/`request_end` 边界，并在前后各执行一次安全 trace 检查；采样或守护任务若已异常结束，在下一请求边界经 `task.result()` 重抛进入该臂的异常路径。
 - `close()`：停止采样、取消两个任务并把非取消异常重新抛出，snapshot `environment.end.json`，`flush(sync=True)` 后 `seal()`；无论成败都在 `finally` 中 `store.close()`。
 
-离线路径：`extension replay` 只接受 `evidence_kind == "fixture"` 的 packet，`save_packet` 经同一 `reduce_packet` 归约后封存（origin 记为 `offline_fixture`）；`verify`（或 `extension-check`）由 `verify_packet` 重算 manifest、核对 live 绑定的 plan/identity/子证据哈希、重放归约并与已存 summary/report 逐字节比对，其 `verified_trials` 可选参数把已核验 trial 数据回填给调用方以避免重复读取。`workflow.guarded` 把每个协议任务与停止位等待竞速：停止位胜出即取消任务并汇合，保证已开始的适配器任务不泄漏。`reduce_packet` 还分派 `conditional_events.v1` 到 [`conditional_events.reduce_import`](../../../cli/src/inferyard/evidence/conditional_events.py)，支持外部条件事件的离线导入。
+离线路径：`extension replay` 只接受 `evidence_kind == "fixture"` 的 packet，`save_packet` 经同一 `reduce_packet` 归约后封存（origin 记为 `offline_fixture`）；`verify`（或 `extension-check`）由 `verify_packet` 重算 manifest、核对 live 绑定的 plan/identity/子证据哈希、重放归约并与已存 `summary.json` 比对，其 `verified_trials` 可选参数把已核验 trial 数据回填给调用方以避免重复读取。`workflow.guarded` 把每个协议任务与停止位等待竞速：停止位胜出即取消任务并汇合，保证已开始的适配器任务不泄漏。`reduce_packet` 还分派 `conditional_events.v1` 到 [`conditional_events.reduce_import`](../../../cli/src/inferyard/evidence/conditional_events.py)，支持外部条件事件的离线导入。
 
 命令分派上，`extension freeze/run/replay` 的双词形式在 [`dispatch.py`](../../../cli/src/inferyard/application/dispatch.py) 映射为 `extension-freeze/run/replay` 后交给 [`application/extensions.py`](../../../cli/src/inferyard/application/extensions.py) 的 `execute`，由它调用本包的 `freeze`/`live`/`read_plan`/`save_packet`；`--help`、schema 等元数据查询不加载本包。命令状态由 `application/extensions.py` 的 `execute` 确定并返回：`extension-check` 为 `verified`、`extension-replay` 为 `software_verified`、live 执行为 `executed`。扩展包本身不返回命令状态，`application/` 是命令结果的唯一构造点。
 

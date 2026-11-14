@@ -1,7 +1,7 @@
 # 同机引擎适配诊断
 
 `engine-fit` 记录同一台机器、同一份模型资产在不同引擎上的协议完成情况、客户端耗时、token 和进程树资源。
-默认三条短请求，生成离线 HTML；不计算正式质量分数或性能赢家。完整基准使用 `run`。
+默认三条短请求，生成结构化 JSON 诊断输出；不计算正式质量分数或性能赢家。完整基准使用 `run`。
 
 Apple Silicon 多引擎准备、固定小模型与 SGLang 本地补丁见
 [小模型准备](engine-fit-small-model.md)；当前通过范围见
@@ -150,7 +150,7 @@ inferyard verify --path reports/fit-comparison
 ```
 
 同计划、同资产、同主机与同测量源码的两个不同引擎才可比较。输出包含来源副本，关服后可离线核验。
-`engine-fit verify` 仍可使用；新 manifest.v2 默认验证封存字节，`--rerender` 显式检查当前渲染。
+`engine-fit verify` 仍可使用；manifest.v3 核验封存 JSON 产物，不再有 HTML 渲染与 `--rerender` 检查。
 未封存取证和旧格式规则见[离线读取契约](contracts/offline-reading-contract.md)。
 
 超时、取消、断流停止余项，无法确认排空时保留 dirty。操作者确认旧服务退出并准备新服务后：

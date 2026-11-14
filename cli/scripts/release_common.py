@@ -17,13 +17,14 @@ COMMANDS = (
     "help",
     "versions",
     "schema",
+    "schema-studio-report",
     "catalogue",
     "engines",
     "init",
     "probe-install-a",
     "report",
     "verify",
-    "verify-rerender",
+    "verify-legacy-report",
     "tool-run",
     "uvx-hot-offline",
     "uvx-cold-offline",
@@ -40,16 +41,25 @@ COMMANDS = (
     "rollback-versions",
     "probe-rollback",
 )
+# Non-zero exits are part of the contract: a cold offline uvx must fail, the current
+# Studio document is deliberately unverifiable, and a retired report layout is rejected.
+EXIT_CODES = {"uvx-cold-offline": 1, "verify": 4, "verify-legacy-report": 2}
 SCOPE = [
     "offline_core",
     "workspace_init",
-    "report_verify",
     "resources_identity",
+    "studio_json_schema",
+    "current_format_json",
+    "unsupported_format_rejection",
     "uv_uvx_isolation",
     "synthetic_upgrade_rollback",
-    "current_format_reports",
-    "unsupported_format_rejection",
 ]
+PROBES = ("probe-install-a", "probe-install-b", "probe-rollback")
+STUDIO_SCHEMA = "studio_report"
+STUDIO_KIND = "studio-report.v1"
+STUDIO_VERIFY_LIMITATION = "studio_report_not_verifiable"
+RETIRED_REPORT_FORMATS = tuple(range(1, 9))
+HEX_DIGEST = re.compile(r"[0-9a-f]{64}")
 
 
 def reject_duplicates(pairs):
@@ -71,6 +81,43 @@ def read_json(raw):
 
 def sha(raw):
     return hashlib.sha256(raw).hexdigest()
+
+
+def canonical_json(value):
+    return json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
+
+
+def canonical_sha(value):
+    return sha(canonical_json(value))
+
+
+def studio_report_schema():
+    """Return the authoritative schema the installed CLI must export."""
+    from inferyard.contracts.schemas import export_schema
+
+    return export_schema(STUDIO_SCHEMA)
+
+
+def expected_checks():
+    return [{"name": name, "returncode": EXIT_CODES.get(name, 0)} for name in COMMANDS]
+
+
+def wheel_resource_files(wheel_raw):
+    with zipfile.ZipFile(io.BytesIO(wheel_raw)) as archive:
+        return sum(
+            1
+            for name in archive.namelist()
+            if name.startswith("inferyard/") and not name.endswith("/")
+        )
+
+
+def expected_probe_check():
+    return {
+        "current_studio_report_kind": STUDIO_KIND,
+        "unsupported_report_formats_rejected": list(RETIRED_REPORT_FORMATS),
+    }
 
 
 @dataclass(frozen=True)
@@ -158,19 +205,100 @@ def platform_target(system, architecture):
     }.get((system, architecture.lower()))
 
 
+def _digest(value):
+    return isinstance(value, str) and HEX_DIGEST.fullmatch(value) is not None
+
+
+def _validate_probe_checks(evidence, files):
+    checks = evidence.get("probe_checks")
+    if type(checks) is not dict or set(checks) != set(PROBES):
+        raise ValueError("installation_evidence_probe_checks")
+    expected = expected_probe_check()
+    resources = wheel_resource_files(files["wheel"].raw)
+    for name in PROBES:
+        row = checks[name]
+        if type(row) is not dict or set(row) != {
+            "stdout_sha256",
+            "current_studio_report_kind",
+            "unsupported_report_formats_rejected",
+            "resource_files",
+            "tool_source_hash",
+            "scorer_hash",
+        }:
+            raise ValueError("installation_evidence_probe_checks")
+        if (
+            not _digest(row["stdout_sha256"])
+            or not _digest(row["tool_source_hash"])
+            or not _digest(row["scorer_hash"])
+            or row["current_studio_report_kind"] != expected["current_studio_report_kind"]
+            or row["unsupported_report_formats_rejected"]
+            != expected["unsupported_report_formats_rejected"]
+            or any(
+                type(version) is not int
+                for version in row["unsupported_report_formats_rejected"]
+            )
+            or type(row["resource_files"]) is not int
+            or row["resource_files"] != resources
+        ):
+            raise ValueError("installation_evidence_probe_checks")
+
+
+def _validate_studio_schema(evidence):
+    schema = studio_report_schema()
+    record = evidence.get("studio_report_schema")
+    if type(record) is not dict or set(record) != {
+        "$id",
+        "argv",
+        "stdout_sha256",
+        "canonical_json_sha256",
+    }:
+        raise ValueError("installation_evidence_studio_schema")
+    argv = record["argv"]
+    if (
+        record["$id"] != schema["$id"]
+        or record["canonical_json_sha256"] != canonical_sha(schema)
+        or not _digest(record["stdout_sha256"])
+        or type(argv) is not list
+        or not argv
+        or any(type(item) is not str for item in argv)
+        or argv[-2:] != ["--schema", STUDIO_SCHEMA]
+    ):
+        raise ValueError("installation_evidence_studio_schema")
+
+
+def _validate_studio_json(evidence):
+    record = evidence.get("studio_json")
+    if type(record) is not dict or set(record) != {
+        "path",
+        "sha256",
+        "schema_validated",
+        "verify_exit_code",
+        "verify_limitations",
+    }:
+        raise ValueError("installation_evidence_studio_json")
+    if (
+        record["path"] != "report/studio.json"
+        or not _digest(record["sha256"])
+        or record["schema_validated"] is not True
+        or record["verify_exit_code"] != EXIT_CODES["verify"]
+        or record["verify_limitations"] != [STUDIO_VERIFY_LIMITATION]
+    ):
+        raise ValueError("installation_evidence_studio_json")
+
+
 def validate_installation(evidence, build, build_sha, files):
     target = platform_target(evidence.get("platform"), evidence.get("architecture", ""))
-    expected = [{"name": n, "returncode": 1 if n == "uvx-cold-offline" else 0} for n in COMMANDS]
     if (
-        evidence.get("kind") != "installed_safe_checks.v3"
+        evidence.get("kind") != "installed_safe_checks.v4"
         or evidence.get("status") != "passed"
         or evidence.get("completed") is not True
         or evidence.get("source_commit") != build["source_commit"]
         or evidence.get("build_manifest_sha256") != build_sha
         or evidence.get("artifact_sha256") != {r: f.digest for r, f in files.items()}
+        or evidence.get("wheel_sha256") != files["wheel"].digest
         or evidence.get("version") != build["version"]
         or evidence.get("scope") != SCOPE
-        or evidence.get("checks") != expected
+        or evidence.get("checks") != expected_checks()
         or any(type(row.get("returncode")) is not int for row in evidence.get("checks", []))
         or type(evidence.get("commands")) is not int
         or evidence["commands"] != len(COMMANDS)
@@ -181,47 +309,7 @@ def validate_installation(evidence, build, build_sha, files):
         or evidence.get("host_lock_tests") != "not_run"
     ):
         raise ValueError("installation_evidence_mismatch")
-    expected_formats = report_format_check(files["wheel"].raw)
-    checks = evidence.get("report_format_checks")
-    if (
-        type(checks) is not dict
-        or set(checks) != set(REPORT_PROBES)
-        or any(checks[name] != expected_formats for name in REPORT_PROBES)
-    ):
-        raise ValueError("installation_evidence_report_formats")
-    for value in checks.values():
-        if any(
-            type(v) is not int
-            for key in ("current_report_formats_verified", "unsupported_report_formats_rejected")
-            for v in value[key]
-        ):
-            raise ValueError("installation_evidence_report_formats")
+    _validate_studio_schema(evidence)
+    _validate_studio_json(evidence)
+    _validate_probe_checks(evidence, files)
     return target
-
-
-REPORT_PROBES = ("probe-install-a", "probe-install-b", "probe-rollback")
-
-
-def report_format_check(wheel_raw):
-    """Derive the current installed template identity from the approved wheel bytes."""
-    digest = hashlib.sha256()
-    with zipfile.ZipFile(io.BytesIO(wheel_raw)) as archive:
-        prefix = "inferyard/templates/"
-        names = sorted(
-            name
-            for name in archive.namelist()
-            if name.startswith(prefix)
-            and "/" not in name[len(prefix) :]
-            and name[len(prefix) :].startswith("report")
-            and name.endswith(".html")
-        )
-        if prefix + "report.html" not in names or prefix + "report_v1.html" in names:
-            raise ValueError("installation_evidence_current_templates_missing")
-        for name in names:
-            digest.update(name[len(prefix) :].encode() + b"\0")
-            digest.update(hashlib.sha256(archive.read(name)).digest())
-    return {
-        "current_report_formats_verified": [8],
-        "unsupported_report_formats_rejected": [1, 2, 3, 4, 5, 6, 7],
-        "template_hashes": {"8": digest.hexdigest()},
-    }

@@ -19,7 +19,7 @@
 | 容器索引 | `observations.jsonl` 单趟扫描建立 kind/stage/key 索引；`request-bodies.jsonl` 缓存身份到字节区间，按区间重读并核对行摘要 | `Observations` 在 [`cli/src/inferyard/evidence/observations.py`](../../cli/src/inferyard/evidence/observations.py)；`PreparedRequests` 在 [`cli/src/inferyard/evidence/prepared.py`](../../cli/src/inferyard/evidence/prepared.py) |
 | 来源引用核验 | 核验物理字节摘要与容器成员绑定，拒绝 projection/跨命令缓存 | `verify_reference` 在 [`cli/src/inferyard/evidence/reference.py`](../../cli/src/inferyard/evidence/reference.py)；`EVIDENCE_REFERENCE` 结构在 [evidence 契约](../../cli/docs/contracts/run-evidence-layout.md#来源引用与外部绑定) |
 | 账本离线重建 | 严格读取 run 目录并归约为 summary/requests/计数，不发模型请求 | `read_trial` 在 [`cli/src/inferyard/analysis/ledger.py`](../../cli/src/inferyard/analysis/ledger.py)；事件归约在 `reduce_events`，见 [`cli/src/inferyard/evidence/event_ledger.py`](../../cli/src/inferyard/evidence/event_ledger.py)；计数与完整度在 `trial_summary`，见 [`cli/src/inferyard/analysis/trial_summary.py`](../../cli/src/inferyard/analysis/trial_summary.py) |
-| 封存 | 全量 flush/fsync 后写 manifest（身份、来源、文件哈希，不含自身）；派生物字节级另封存 | `EvidenceStore.seal` / `verify_manifest` / `verify_manifest_files` 在 [`cli/src/inferyard/evidence/storage.py`](../../cli/src/inferyard/evidence/storage.py)；报告/比较封存在 `artifact_seal.seal` / `read_sealed`，见 [`cli/src/inferyard/evidence/artifact_seal.py`](../../cli/src/inferyard/evidence/artifact_seal.py) |
+| 封存 | 全量 flush/fsync 后写 manifest（身份、来源、文件哈希，不含自身）；报告/比较为纯 JSON 派生物，不再另封存 | `EvidenceStore.seal` / `verify_manifest` / `verify_manifest_files` 在 [`cli/src/inferyard/evidence/storage.py`](../../cli/src/inferyard/evidence/storage.py)；旧封存仅版本识别时只读检查，见 [`cli/src/inferyard/evidence/legacy_presentation_seal.py`](../../cli/src/inferyard/evidence/legacy_presentation_seal.py) |
 | 格式边界 | 当前格式核验：`schema_version=3`、`origin=measured`，拒绝旧格式与历史来源 | `require_core` 在 [`cli/src/inferyard/evidence/formats.py`](../../cli/src/inferyard/evidence/formats.py)，`UnsupportedFormat` 在 [`cli/src/inferyard/errors.py`](../../cli/src/inferyard/errors.py)；历史来源拒绝在 `require_current_sources`，见 [`cli/src/inferyard/evidence/request_snapshots.py`](../../cli/src/inferyard/evidence/request_snapshots.py) |
 | 原生 clean receipt | layout 2 已完成请求必有 receipt；库存与 dirty_token 绑定核验 | `verify_clean_receipts` 在 [`cli/src/inferyard/evidence/native_receipts.py`](../../cli/src/inferyard/evidence/native_receipts.py)；receipt 写入与清 dirty 的次序在 [`cli/src/inferyard/runtime/service_observation.py`](../../cli/src/inferyard/runtime/service_observation.py)（属运行时） |
 | 旁证读取 | 独立 baseline 旁证按自身物理协议读取，不借用放宽识别规则的 `TrialEvidence` | `BaselineEvidence` 在 [`cli/src/inferyard/evidence/baseline_reads.py`](../../cli/src/inferyard/evidence/baseline_reads.py) |
@@ -32,8 +32,7 @@
 （`selected`）与 `scorer_sha256` 在构造期由 selection 文档写入并校验，
 `duration_protocol`、`strict_output`、`cache_protocol` 来自 workload 定义。
 布局与文件语义的权威定义在[运行原件容器契约](../../cli/docs/contracts/run-evidence-layout.md)，
-本页不复制。构造期任何校验或发布失败都会关闭已打开的流并抛错，不留下可继续写入的
-半成品 writer。
+本页不复制。构造期校验或发布失败会关闭已打开的流并抛错，不留半成品 writer。
 
 ## 运行路径
 
@@ -108,10 +107,10 @@
 - 旁证边界：独立 baseline 由 `BaselineEvidence` 读自身协议；缺 run 的任意旁证目录
   不构成合法 run。engine-fit 与 extension 封包、Go observer 各自遵循独立契约，不进入
   layout 2 run 绑定。
-- 呈现封存：报告/比较目录的 `artifact-manifest.json`（`presentation-seal.v1`）由
-  `read_sealed` 逐字节核验，semantic 核验另计；`verify` 经 `check_presentation_seal`
-  触发，渲染一致性只在显式 `--rerender` 下检查。呈现与退出语义见
-  [离线读取契约](../../cli/docs/contracts/offline-reading-contract.md#新呈现封存与定位)。
+- 旧呈现封存：历史报告/比较目录的 `artifact-manifest.json`（`presentation-seal.v1`）只保留
+  只读识别与拒绝路径（`evidence/legacy_presentation_seal.py`），当前 `verify` 不再核验
+  报告/呈现的封存字节，也没有 `--rerender`。派生产物与旧格式的处理见
+  [离线读取契约](../../cli/docs/contracts/offline-reading-contract.md#派生产物核验与旧格式拒绝)。
 - 错误呈现：证据错误原因经 `safe_reason` 归一后进入 stderr 与结果 reason，不回显
   凭据；凭据只在 `Redactor` 落盘前脱敏，脱敏后无法复核的评分输入不给可复现成绩。
 - 序列化边界：`json_bytes` 固定 sort_keys、紧凑分隔符并拒绝非有限数，成员摘要与事件

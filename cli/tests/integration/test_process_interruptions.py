@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from inferyard.analysis.ledger import read_trial as rebuild
-from inferyard.reporting.report import write_report
+from inferyard.reporting.studio_report import write_studio_report
 from tests.helpers import python_worker, readline_timeout
 
 WORKER = r"""
@@ -83,7 +83,7 @@ def test_sigkill_at_persisted_boundaries_rebuilds_without_service(tmp_path, poin
         child.wait(timeout=5)
         run = next((tmp_path / "runs").iterdir())
         before = {p.name: p.read_bytes() for p in run.iterdir() if p.is_file()}
-        write_report([run], tmp_path / "offline-report")
+        write_studio_report([run], tmp_path / "offline-report")
         data = rebuild(run)
         assert data["requests"][0]["execution_state"] == state
         assert data["requests"][0]["quality_state"] == quality

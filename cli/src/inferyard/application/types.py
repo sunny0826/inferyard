@@ -58,7 +58,6 @@ class CommandRequest:
     block_gap_tolerance_ms: float | None = None
     left_overhead: Path | None = None
     right_overhead: Path | None = None
-    comparison_path: Path | None = None
     extension_spec: Path | None = None
     models_roots: list[Path] | None = None
     model_path: Path | None = None
@@ -75,7 +74,6 @@ class CommandRequest:
     fit_temperature_stop_override_reason: str | None = None
     fit_memory_stop_override_reason: str | None = None
     source_roots: list[str] | None = None
-    rerender: bool = False
     community_bundle: str | None = None
     benchmark_profile: str | None = None
     context_size: int | None = None

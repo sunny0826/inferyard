@@ -70,9 +70,7 @@ def source_resources(root):
             continue
         name = path.relative_to(source).as_posix()
         if path.is_symlink() or not (
-            path.suffix == ".py"
-            or (name.startswith("templates/") and path.suffix == ".html")
-            or name in DATA_FILES | COMMUNITY_FILES
+            path.suffix == ".py" or name in DATA_FILES | COMMUNITY_FILES
         ):
             raise ValueError("unexpected_source_resource:" + name)
     return {
@@ -102,9 +100,7 @@ def validate_resources(expected):
     for name, digest_value in expected.items():
         path = relative_path(name)
         if not (
-            path.suffix == ".py"
-            or (name.startswith("templates/") and path.suffix == ".html")
-            or name in DATA_FILES | COMMUNITY_FILES
+            path.suffix == ".py" or name in DATA_FILES | COMMUNITY_FILES
         ):
             raise ValueError("unexpected_package_resource:" + name)
         if not isinstance(digest_value, str) or len(digest_value) != 64:

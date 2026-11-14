@@ -1,7 +1,6 @@
 """Offline, run-bound E01–E05 imports; a certificate hash is not physical calibration proof."""
 
 import argparse
-import html
 import json
 import math
 import statistics
@@ -236,15 +235,6 @@ def build(spec, data):
     }
 
 
-def report(result):
-    document = "<!doctype html><meta charset=utf-8><title>外部测量导入</title><h1>外部测量导入</h1>"
-    document += "<p>来源与声明校准可追溯；实际设备计量和比较资格未验证。</p><pre>"
-    document += (
-        html.escape(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True)) + "</pre>"
-    )
-    return document.encode()
-
-
 def verify_import(out):
     metadata = (
         "artifact-hashes.json" if (out / "artifact-hashes.json").exists() else "verification.json"
@@ -280,16 +270,8 @@ def verify_import(out):
     )
     require(saved == expected, "measurement_recomputation_mismatch")
     require(
-        local_file(out, "report.html").read_bytes() == report(expected),
-        "measurement_report_recomputation_mismatch",
-    )
-    require(
         sha256_file(local_file(out, "analysis.json")) == verification["analysis_sha256"],
         "measurement_analysis_changed",
-    )
-    require(
-        sha256_file(local_file(out, "report.html")) == verification["report_sha256"],
-        "measurement_report_changed",
     )
     return {"verified": True, "model_requests": 0, "physical_measurement_qualification": False}
 
@@ -346,14 +328,12 @@ def main():
         atomic_bytes(args.out / f"calibration-{index}.cert", certificate.read_bytes())
     atomic_bytes(args.out / "input.json", args.spec.read_bytes())
     atomic_bytes(args.out / "analysis.json", json_bytes(result))
-    atomic_bytes(args.out / "report.html", report(result))
     require(sha256_file(manifest) == before, "measurement_source_changed_during_import")
     hashes = {
         "physical_measurement_qualification": False,
         "source_manifest_unchanged": True,
         "model_requests": 0,
         "analysis_sha256": sha256_file(args.out / "analysis.json"),
-        "report_sha256": sha256_file(args.out / "report.html"),
         "importer_sha256": sha256_file(Path(__file__)),
     }
     atomic_bytes(args.out / "artifact-hashes.json", json_bytes(hashes))

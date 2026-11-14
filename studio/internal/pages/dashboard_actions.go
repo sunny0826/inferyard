@@ -47,30 +47,6 @@ func suggestInitDir(path string, exists, initialized bool) string {
 	return path
 }
 
-func (w *viewState) execute(command string, report bool) {
-	if w.preview != nil {
-		if report {
-			w.simulate(previewVerifyReport)
-		} else if w.progress != nil && w.progress.NextAction == "device_check" {
-			w.simulate(previewCheckDevice)
-		} else {
-			w.preview.showNotice()
-		}
-		return
-	}
-	model, engine := w.model, w.engine
-	w.guideWork(func() (string, *core.ApiError) {
-		r, e := w.service.WizardExecute(w.ctx, core.WizardRequest{Command: command, ReportVerify: report, ModelName: model, EngineName: engine})
-		if e != nil {
-			return "", e
-		}
-		if r.ExitCode != 0 {
-			return "", wizardFailure(r)
-		}
-		return executeMessage(r), nil
-	})
-}
-
 // executeMessage separates queued runs (work has just started) from commands
 // that are already done when they return.
 func executeMessage(r core.WizardResult) string {

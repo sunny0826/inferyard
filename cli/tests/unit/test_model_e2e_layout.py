@@ -31,15 +31,14 @@ def workspace(root, system):
             (run / name).touch()
     report = root / "report"
     report.mkdir()
-    for name in ("artifact-manifest.json", "index.json", "report.html"):
-        (report / name).touch()
+    (report / "studio.json").touch()
     return runs
 
 
 @pytest.mark.parametrize("system", ["Darwin", "Linux", "Windows"])
 def test_model_e2e_accepts_current_platform_layout(check_layout, monkeypatch, tmp_path, system):
     monkeypatch.setattr("platform.system", lambda: system)
-    expected_count = 19 if system == "Windows" else 23
+    expected_count = 17 if system == "Windows" else 21
     assert check_layout(tmp_path, workspace(tmp_path, system)) == expected_count
 
 

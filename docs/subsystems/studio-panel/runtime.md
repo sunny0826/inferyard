@@ -11,14 +11,14 @@
 2. **页面刷新**：主窗口的六页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
    取增量事件，六类事件触发全量刷新（`sync.reset`/`report.created`/`run.state`/`engine.state`/
    `download.state`/`device.updated`，见 [`studio/internal/pages/registry_refresh.go`](../../../studio/internal/pages/registry_refresh.go)），其余做局部更新。
-3. **任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次使用先根据资源清单引导准备模型与引擎，原有二进制引擎资源齐备后 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。只有退出 2 且唯一原因为 `no_local_model` 的检查结果视为资源准备提示，其他阻断保留错误。新任务复用模型/引擎选择，默认勾选存在的 zh-core 与 zh-svg-pelican，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`，`ReportVerify=false`，完成区域仅显示「查看报告」，直接打开本次输出目录对应的报告；不展示路径、生成成功文字或已核验状态，核验留在报告页。没有活动任务时从 `progress.v1` 恢复。原有命令仍经 `WizardExecute` 原白名单；本地安装走[本地候选队列](local-engines.md)，全部绑定与证据操作仍由 CLI 执行。
+3. **任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次使用先根据资源清单引导准备模型与引擎，原有二进制引擎资源齐备后 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。只有退出 2 且唯一原因为 `no_local_model` 的检查结果视为资源准备提示，其他阻断保留错误。新任务复用模型/引擎选择，默认勾选存在的 zh-core 与 zh-svg-pelican，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`，完成区域仅显示「查看报告」，直接打开本次输出目录对应的报告（studio.json）；不展示路径或生成成功文字。没有活动任务时从 `progress.v2` 恢复。原有命令仍经 `WizardExecute` 原白名单；本地安装走[本地候选队列](local-engines.md)，全部绑定与证据操作仍由 CLI 执行。
 4. **运行**：`StartRuns` 逐配置读取 bundle 与输出根并做包含/去重准入 → 入队由 `runQueue` 串行执行。
    新任务重置等待 UI 线程确认完成后退出取消循环；`Window.Update` 只负责排队，不能视为
    回调已经执行。等待期间不能启动专项，重置结束后不再取消后续新任务。
    `executeRun` 派生 `inferyard run --config`（取消为 SIGINT + 两秒兜底）；执行循环每
    `ProgressInterval`（500ms）对比运行前后证据索引、tail `events.jsonl` 投影 case 进度与分数、
    投影逐来源资源采样；终态经 `run.state` 事件发布。任务页另经 `Service.Progress` 派生
-   `inferyard progress --workspace` 解析 `progress.v1` 恢复工作区进度。运行实现与取消语义见
+   `inferyard progress --workspace` 解析 `progress.v2` 恢复工作区进度。运行实现与取消语义见
    [运行时执行与引擎适配](../runtime-execution.md)。
    `stageView` 在有非终态运行或活动任务处于未失败的 `run` 阶段时收起正文模型服务卡，
    题包间隙不重新展开；`cornerStatus` 保留引擎与队列状态，不受后台刷新或 busy 覆盖。
@@ -45,12 +45,12 @@
    `run_missing` 与 single 的 `run --config` 在新 PID 下重新绑定；`resume --from-run` 直接传 PID 与 endpoint，不要求预绑定。duration 与未完成 batch 的 `run --plan` 仅显示阻断原因，不放宽执行白名单。
    一切绑定都生成绑定配置并经 CLI 的 PID 与启动时间身份核验；discover 不预判 bind 可行性，
    `startup_arguments_mismatch` 等拒绝原因如实呈现；`BindingAlive` 仅提供存活提示。
-8. **报告**：页面先展示「历史任务」，再展示「报告列表」。进入任务清除详情与续测来源并聚焦所选运行；续测清除详情并设置来源；实时详情打开对应任务，三者都进入任务页。打开报告为主操作；1–100 个来源的生成入口折叠在「从历史运行另做报告」。仅工作区 `next_action=verify` 且报告未核验时显示「核验」，沿用向导并设置 `ReportVerify=true`；`verified` 显示「已核验」。
+8. **报告**：页面先展示「历史任务」，再展示「报告列表」。进入任务清除详情与续测来源并聚焦所选运行；续测清除详情并设置来源；实时详情打开对应任务，三者都进入任务页。打开报告为主操作；1–100 个来源的生成入口折叠在「从历史运行另做报告」。报告不再是可核验产物，页面不提供「核验」入口。
    `CreateReport` 校验 1–100 个位于结果根内的不同 run → 派生 `inferyard report`
-   写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面在主窗口内容区读取 `index.json`，呈现当前所选运行的指标卡、分类表、模型与机器、逐题答案及数据来源。
+   写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面在主窗口内容区读取 `studio.json`，呈现当前所选运行的指标卡、分类表、模型与机器、逐题行（题目、类别、执行终态、质量与耗时）及数据来源。
    指标取自 `runs[].dashboard` 与 `summary.completion_rate`；模型、引擎和机器取自 `profile`、`threads`，题包取自 `facets.bundle_label`，运行 ID 取自 `source.run_id`，逐题行取自 `requests`。
    多运行索引用选择器分别显示，不合并指标。质量和完成率保留分母与排除数；缺测显示 — 并保留已有采样原因。延迟从 ms 转为 s，内存从 bytes 转为 GiB；诊断运行标注「诊断运行」。
-   `ReportIndex` 接受列表 ID 或本次报告绝对目录；绝对目录先规范化并验证位于配置的 reports 根目录内，再经 `ReportFile` 校验索引，越界路径不能按同名目录打开。报告 ID 为 UTC
+   `ReportIndex` 接受列表 ID 或本次报告绝对目录；绝对目录先规范化并验证位于配置的 reports 根目录内，再经 `ReportFile` 校验 studio.json，越界路径不能按同名目录打开。报告 ID 为 UTC
    `report-YYYYMMDDTHHMMSSZ[-N]`，命名冲突追加序号。报告与导出契约
    见 [评分、比较与报告](../scoring-reporting.md) 与
    [report-contract](../../../cli/docs/contracts/report-contract.md)。
@@ -77,7 +77,7 @@
    取消上下文，待专项准备与 runQueue 排空后停止自启动引擎再置 `shutdownDone`；调用方超时（main 为 30
    秒）不抛弃清理、不改变顺序。
 
-任务页的资源引导与活动题包投影由 [`first_use.go`](../../../studio/internal/pages/first_use.go) 从现有清单、下载任务和运行队列派生，不持久化另一套向导状态。活动题包按 bundle 关联非终态 RunTask，展示排队／运行／取消状态；离线 `progress.v1` 的恢复原因仅用于没有活动任务的题包。历史 `no_local_model` 在可用模型出现后不再重复展示，实际候选准备仍执行模型专属设备检查。右上角显示下载任务生命周期，后台 refresh 不产生全局忙碌提示。
+任务页的资源引导与活动题包投影由 [`first_use.go`](../../../studio/internal/pages/first_use.go) 从现有清单、下载任务和运行队列派生，不持久化另一套向导状态。活动题包按 bundle 关联非终态 RunTask，展示排队／运行／取消状态；离线 `progress.v2` 的恢复原因仅用于没有活动任务的题包。历史 `no_local_model` 在可用模型出现后不再重复展示，实际候选准备仍执行模型专属设备检查。右上角显示下载任务生命周期，后台 refresh 不产生全局忙碌提示。
 
 [`header_status.go`](../../../studio/internal/pages/header_status.go) 从 EngineState、RunTask 与专项状态派生图标及悬停面板，
 专项按 task ID 去重计数。面板开启引擎直接调用 `StartEngine`，不进入绑定或测评编排；

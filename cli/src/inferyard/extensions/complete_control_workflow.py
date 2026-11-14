@@ -7,7 +7,7 @@ from inferyard.errors import EvidenceError
 from inferyard.contracts.redaction import Redactor
 from inferyard.evidence.storage import sha256_file
 from inferyard.extensions.complete_trial_control import execute_complete, read_trial_plan
-from inferyard.extensions.extension_evidence import ExtensionJournal, reduce_packet, render
+from inferyard.extensions.extension_evidence import ExtensionJournal, reduce_packet
 from inferyard.extensions.independent_guard import IndependentGuard
 from inferyard.implementation_identity import IdentityContext
 from inferyard.platforms.identity import static_preflight
@@ -40,7 +40,7 @@ async def live_complete(plan, loaded, out, *, identity_context=None):
                 (
                     "run.json",
                     {
-                        "kind": "extension_packet.v1",
+                        "kind": "extension_packet.v2",
                         "origin": "live_driver",
                         "evidence_kind": "live",
                         "tool_source_sha256": identity_context.source,
@@ -88,7 +88,6 @@ async def live_complete(plan, loaded, out, *, identity_context=None):
             summary = reduce_packet(packet)
             store.snapshot("packet.json", packet)
             store.snapshot("summary.json", summary)
-            store.text_snapshot("report.html", render(summary))
             children = [
                 {"path": str(p.parent.relative_to(store.path)), "manifest_sha256": sha256_file(p)}
                 for p in sorted(store.path.glob("observer-arms/*/manifest.json"))

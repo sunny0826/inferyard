@@ -25,7 +25,7 @@ def test_offline_cli_source_chain_keeps_originals_and_report_v8(sources, tmp_pat
     before = {p: tree_bytes(p) for p in originals}
     cwd = Path(__file__).resolve().parents[2]
 
-    def invoke(*arguments):
+    def invoke(*arguments, expect=0):
         result = subprocess.run(
             [sys.executable, "-m", "inferyard", *map(str, arguments)],
             cwd=cwd,
@@ -47,8 +47,9 @@ def test_offline_cli_source_chain_keeps_originals_and_report_v8(sources, tmp_pat
                 )
                 + "\n"
             )
-        assert result.returncode == 0, (arguments, result.stdout, result.stderr)
-        assert not result.stderr
+        assert result.returncode == expect, (arguments, result.stdout, result.stderr)
+        if expect == 0:
+            assert not result.stderr
         assert len(result.stdout.splitlines()) == 1
         return json.loads(result.stdout)
 
@@ -58,13 +59,9 @@ def test_offline_cli_source_chain_keeps_originals_and_report_v8(sources, tmp_pat
         tmp_path / name for name in ("report", "export", "rescore", "public", "compare")
     )
     invoke("report", "--runs", root, "--out", report)
-    assert {p.name for p in report.iterdir()} == {
-        "index.json",
-        "report.html",
-        "artifact-manifest.json",
-    }
-    assert json.loads((report / "index.json").read_text())["report_format_version"] == 8
-    invoke("verify", "--path", report, "--rerender")
+    assert {p.name for p in report.iterdir()} == {"studio.json"}
+    assert json.loads((report / "studio.json").read_text())["kind"] == "studio-report.v1"
+    invoke("verify", "--path", report, expect=4)
     invoke("export", "--run", root, "--out", export)
     invoke("verify", "--path", export)
     invoke(
@@ -83,5 +80,6 @@ def test_offline_cli_source_chain_keeps_originals_and_report_v8(sources, tmp_pat
     verified = invoke("verify", "--path", public, "--source-run", root)
     assert verified["details"]["source_projection_verified"]
     invoke("compare", "--left", root, "--right", peer, "--out", compare)
+    assert {p.name for p in compare.iterdir()} == {"comparison.json"}
     invoke("verify", "--path", compare)
     assert before == {p: tree_bytes(p) for p in originals}

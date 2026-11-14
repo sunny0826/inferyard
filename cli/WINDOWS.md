@@ -83,7 +83,8 @@ KVMem/NInfer `auto` mode can use native OpenAI generation signals, but does
 not infer exact template budgets, effective arguments or engine-internal
 draining.
 Explicit `lab_required` demands the full lab protocol; see the
-[adaptation contract](docs/contracts/windows-ninfer-adaptation-contract.md).
+[adaptation contract](docs/contracts/windows-ninfer-adaptation-contract.md) and its
+[generation and observation contract](docs/contracts/windows-ninfer-generation-observation-contract.md).
 
 ## Locks, persistence and offline evidence
 

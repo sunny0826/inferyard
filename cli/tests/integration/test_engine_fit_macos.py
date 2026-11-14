@@ -239,9 +239,9 @@ def test_native_mac_both_engines_run_compare_and_offline_verify(native_fit, caps
     shutil.rmtree(root / "vllm")
     shutil.rmtree(root / "sglang")
     assert main(["engine-fit", "verify", "--path", str(root / "comparison")]) == 0
-    html = (root / "comparison/report.html").read_text()
-    assert "<script>x</script>" not in html
-    assert "vllm" in html and "sglang" in html
+    comparison = json.loads((root / "comparison/comparison.json").read_text())
+    assert [side["run"]["engine"] for side in comparison["sides"]] == ["vllm", "sglang"]
+    assert not (root / "comparison/report.html").exists()
 
 
 def test_native_wrong_listener_pid_blocks_without_request(native_fit, capsys):

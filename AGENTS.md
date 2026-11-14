@@ -9,13 +9,13 @@ Applies to this repository and its subdirectories. Communicate concisely in Chin
 3. For platform work read [MACOS.md](cli/MACOS.md) / [WINDOWS.md](cli/WINDOWS.md); for configuration and bundle work read the README of the relevant directory. Read [scripts/README.md](cli/scripts/README.md) before running any script and check its arguments and side effects.
 4. Distinguish implementation, simulated verification and real-device evidence. When docs and source disagree, point out the difference and verify it; never silently adopt the looser reading.
 
-本仓库为 monorepo：`cli/` 是 Python CLI 主产品（含独立离线 HTML 报告），`studio/` 是 MyGo 原生桌面面板。 The package name is `inferyard`, the entry points are `inferyard` / `python -m inferyard`; the only active contract is `schema_version = 3`.
+本仓库为 monorepo：`cli/` 是 Python CLI 主产品（输出结构化 JSON 证据与 Studio 消费的 `studio.json` 报告），`studio/` 是 MyGo 原生桌面面板。 The package name is `inferyard`, the entry points are `inferyard` / `python -m inferyard`; the only active contract is `schema_version = 3`.
 
 ## Source boundaries
 
 | 仓库根目录 | 职责 |
 | --- | --- |
-| `cli/` | Python CLI 与离线 HTML 报告 |
+| `cli/` | Python CLI 与 Studio JSON 报告 |
 | `studio/` | MyGo 原生桌面应用（Go，独立 module `inferyard/studio`） |
 
 下表为 CLI 内部源码边界：
@@ -29,7 +29,7 @@ Applies to this repository and its subdirectories. Communicate concisely in Chin
 | `analysis/`, `reporting/` | Scoring, metrics, comparison, rescoring, reports and exports |
 | `platforms/`, `extensions/` | Device and process sampling; the standalone extension protocol |
 | `provisioning/` | Engine/model source acquisition, runtime archives and preparation IO |
-| `data/`, `templates/` | Catalogue data and report templates shipped with the package |
+| `data/` | Catalogue data shipped with the package |
 
 Business modules do not depend on the CLI; application request/result types live only in `application/types.py`. Help, version and schema queries must not load the live backend; installed resources are read from the package, not from the source checkout.
 Modify active source code, not the historical snapshots in the local repository-root `validation/` directory. Follow the Ruff configuration (Python 3.15, 100 columns); keep code files under ~500 lines and split new responsibilities into separate modules.

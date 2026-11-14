@@ -184,7 +184,8 @@ func (p *previewSession) finishBenchmark() {
 			}
 		}
 		s.progress.Report.Path = previewValue(s.task.report)
-		s.progress.Report.Status = "unverified"
+		s.progress.Report.Status = "present"
+		s.progress.Report.Runs = append([]string{}, s.task.runs...)
 	})
 }
 

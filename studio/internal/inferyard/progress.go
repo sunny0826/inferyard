@@ -69,7 +69,7 @@ func ParseProgress(raw []byte) (WorkspaceProgress, error) {
 	if result.Kind != "progress" {
 		return result, errors.New("unsupported progress kind")
 	}
-	if result.ProgressVersion != 1 {
+	if result.ProgressVersion != 2 {
 		return result, errors.New("unsupported progress version")
 	}
 	if result.Workspace == "" {
@@ -87,14 +87,31 @@ func ParseProgress(raw []byte) (WorkspaceProgress, error) {
 	if json.Unmarshal(raw, &obj) != nil || require(obj, "kind", "progress_version", "workspace", "device_preflight", "bundles", "report", "next_action", "next_command", "default_scope_complete") != nil {
 		return result, errors.New("missing progress fields")
 	}
-	if !slices.Contains([]string{"device_check", "prepare_candidate", "bind", "run", "report", "verify", "done"}, result.NextAction) {
+	if !slices.Contains([]string{"device_check", "prepare_candidate", "bind", "run", "report", "done"}, result.NextAction) {
 		return result, errors.New("invalid progress action")
 	}
 	var pre, report map[string]json.RawMessage
 	json.Unmarshal(obj["device_preflight"], &pre)
 	json.Unmarshal(obj["report"], &report)
-	if require(pre, "status", "path") != nil || require(report, "status", "path", "runs") != nil || result.Report.Runs == nil || !slices.Contains([]string{"ok", "missing"}, result.DevicePreflight.Status) || !slices.Contains([]string{"missing", "present", "verified"}, result.Report.Status) {
+	if require(pre, "status", "path") != nil || require(report, "status", "path", "runs") != nil || result.Report.Runs == nil || !slices.Contains([]string{"ok", "missing"}, result.DevicePreflight.Status) || !slices.Contains([]string{"missing", "present"}, result.Report.Status) {
 		return result, errors.New("invalid progress state")
+	}
+	// Version 2 expresses only whether the current report exists: a missing
+	// report always advances to report, and a present report completes the
+	// default scope with no follow-up command.
+	switch result.NextAction {
+	case "report":
+		if result.Report.Status != "missing" || result.Report.Path != nil || len(result.Report.Runs) != 0 || result.DefaultScopeComplete {
+			return result, errors.New("invalid progress state")
+		}
+	case "done":
+		if result.Report.Status != "present" || result.Report.Path == nil || *result.Report.Path == "" || result.NextCommand != nil || !result.DefaultScopeComplete {
+			return result, errors.New("invalid progress state")
+		}
+	default:
+		if result.DefaultScopeComplete {
+			return result, errors.New("invalid progress state")
+		}
 	}
 	var bundles []map[string]json.RawMessage
 	json.Unmarshal(obj["bundles"], &bundles)

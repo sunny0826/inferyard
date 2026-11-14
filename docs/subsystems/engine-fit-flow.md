@@ -43,8 +43,8 @@
    `invalid/request_in_flight` 并标记 dirty，收到完整响应后才改为 `completed`；
    协议完整终止后 `check_service` 复核身份，`_completed_idle` 最多等待 10 秒确认空闲
    指标归零，然后 `lock.clean`；该排空等待不计入请求时限。
-7. 结束时按五终态守恒计算 `counts` 并写入 completeness；`seal_run` 封存四份文件与
-   manifest.v2（manifest 最后写入，已封存目录不可重复封存）；dirty 未清时在结果
+7. 结束时按五终态守恒计算 `counts` 并写入 completeness；`seal_run` 封存 plan/run/requests
+   三份 JSON 与 manifest.v3（manifest 最后写入，已封存目录不可重复封存）；dirty 未清时在结果
    details 中返回 `recovery_token`。
 
 ### `engine-fit compare` 与 `engine-fit verify`（纯离线）

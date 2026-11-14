@@ -1,13 +1,12 @@
 """Separate sealed extension packets and offline reports; never forge serial trials."""
 
-import html
 import time
 from datetime import UTC, datetime
 
 from inferyard import SCHEMA_VERSION
 from inferyard.contracts.schemas import IDENTIFIER, LABEL, NAT, POS, obj
-from inferyard.contracts.validation import validate_value, validate_document, json_bytes
-from inferyard.errors import EvidenceError
+from inferyard.contracts.validation import validate_value, validate_document
+from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.evidence.storage import EvidenceStore, read_json, verify_manifest
 from inferyard.extensions.closed_concurrency import reduce_closed
 from inferyard.extensions.native_tools import reduce_tools
@@ -108,20 +107,6 @@ def reduce_packet(packet):
     raise EvidenceError("extension_definition_not_supported")
 
 
-def render(summary):
-    text = html.escape(json_bytes(summary).decode())
-    return (
-        '<!doctype html><html lang="zh-CN"><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        "<title>扩展协议核验</title><style>body{max-width:900px;margin:40px auto;"
-        "padding:16px;font:18px/1.6 system-ui;background:#f3f6ef}"
-        "pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}</style>"
-        "<h1>扩展协议核验</h1><p>Fixture代表软件验证；真机资格按独立证据标记。</p><pre>"
-        + text
-        + "</pre></html>"
-    )
-
-
 def save_packet(out, packet, *, origin="offline_fixture"):
     summary = reduce_packet(packet)
     with_store = ExtensionJournal(out)
@@ -129,7 +114,7 @@ def save_packet(out, packet, *, origin="offline_fixture"):
         with_store.snapshot(
             "run.json",
             {
-                "kind": "extension_packet.v1",
+                "kind": "extension_packet.v2",
                 "origin": origin,
                 "tool_source_sha256": tool_source_hash(),
                 "evidence_kind": packet["evidence_kind"],
@@ -137,7 +122,6 @@ def save_packet(out, packet, *, origin="offline_fixture"):
         )
         with_store.snapshot("packet.json", packet)
         with_store.snapshot("summary.json", summary)
-        with_store.text_snapshot("report.html", render(summary))
         with_store.seal()
     finally:
         with_store.close()
@@ -149,16 +133,16 @@ def verify_packet(path, *, verified_trials=None):
         raise EvidenceError("extension_packet_unsealed_or_derived_damaged")
     run = read_json(path / "run.json")
     packet = read_json(path / "packet.json")
-    if (
-        run.get("kind") != "extension_packet.v1"
-        or run.get("evidence_kind") != packet["evidence_kind"]
-    ):
+    kind = run.get("kind")
+    if kind not in ("extension_packet.v1", "extension_packet.v2"):
         raise EvidenceError("extension_packet_origin_mismatch")
-    if packet["evidence_kind"] == "live":
+    if run.get("evidence_kind") != packet.get("evidence_kind"):
+        raise EvidenceError("extension_packet_origin_mismatch")
+    if packet.get("evidence_kind") == "live":
         if run.get("origin") != "live_driver":
             raise EvidenceError("extension_live_origin_unverified")
         plan = read_json(path / "plan.json")
-        if plan.get("spec") != packet["spec"] or plan.get("tool_source_sha256") != run.get(
+        if plan.get("spec") != packet.get("spec") or plan.get("tool_source_sha256") != run.get(
             "tool_source_sha256"
         ):
             raise EvidenceError("extension_live_plan_binding_mismatch")
@@ -177,8 +161,12 @@ def verify_packet(path, *, verified_trials=None):
 
             verify_control_rows(path, packet, verified_trials=verified_trials)
     summary = reduce_packet(packet)
-    if summary != read_json(path / "summary.json") or (path / "report.html").read_text() != render(
-        summary
-    ):
+    if summary != read_json(path / "summary.json"):
         raise EvidenceError("extension_packet_does_not_replay")
+    if kind == "extension_packet.v1":
+        # Original evidence and replay are checked first; a complete retired
+        # layout is never replayed as a supported version or converted in place.
+        raise UnsupportedFormat(
+            "extension packet", "extension_packet.v1", ["extension_packet.v2"]
+        )
     return summary

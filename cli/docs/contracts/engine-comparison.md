@@ -8,22 +8,24 @@
 - `compare --mode engine --left RUN --right RUN`：只做单对身份门槛，
   始终阻断 `engine_verdict_requires_block_comparison`，不给出性能资格。
 - `compare-engines --plan PLAN --batch BATCH --out DIR`：
-  从一份完整冻结计划和一个 batch 派生 `engine-comparison.v2`；在新目录写入
-  `engine-comparison.json` 与离线 `report.html`，再以 `artifact-manifest.json`
-  （`presentation-seal.v1`）封存两者字节，stdout 输出同一结果。输出目录必须不存在，
+  从一份完整冻结计划和一个 batch 派生 `engine-comparison.v2`；在新目录写入唯一的
+  `engine-comparison.json`（另含 `schema_version = 3` 与布局 `format_version = 2`），
+  stdout 输出同一结果。输出目录必须不存在，
   且不能位于 plan 或 batch 内。旧 `--left-runs/--right-runs` 输入已移除，不提供
-  `--allow-unplanned`；合法 v1 产物仍可 `verify` 与直接查看。
+  `--allow-unplanned`；可识别的旧 v1/v2 产物被 `verify` 明确拒绝（unsupported_format/2），不迁移。
 - `compare-plan --left-config CFG [--left-config CFG]... --right-config CFG [--right-config CFG]... [--bundle NAME_OR_PATH]... (--out DIR | --dry-run)`：
   离线冻结一份 `engine-comparison-plan.v1`（现有 plan JSON 的受限形状），stdout 输出计划。
   不连接或启动模型服务。默认题包为 `zh-core` 与 `zh-svg-pelican`；单题包必须由
   `--bundle` 显式声明。输出目录必须不存在。
-- `engine-comparison.json` 的 `source_runs[].path` 相对输出目录；`producer` 记录
-  `tool_source_sha256` 与 `template_sha256`，只作来源，不作核验依据。
-- `verify --path DIR` 按 `engine-comparison.json` 识别该产物：先核对封存字节，再按
-  `source_runs` 读取原 run 重算全部结果并逐字节比对（`--source-root OLD=NEW` 定位已移动的来源）。
-  字节改动为 `presentation_bytes_changed`，重算不符为 `engine_comparison_recomputation_mismatch`；
-  `--rerender` 另核对 HTML，不符为 `engine_comparison_html_recomputation_mismatch`。
-  HTML 不含脚本与外部资源。
+- `engine-comparison.json` 的 `source_runs[].path` 相对输出目录；`producer` 恰为
+  `{"tool_source_sha256": ...}`，只作来源，不作核验依据。
+- `verify --path DIR` 按 `engine-comparison.json` 识别该产物：按
+  `source_runs` 读取原 run 并从 plan/batch 重算全部结果，与保存的规范 JSON 逐项比对
+  （`--source-root OLD=NEW` 定位已移动的来源）。
+  元数据/版本/生产者不符为 `engine_comparison_format_invalid`，
+  重算不符为 `engine_comparison_recomputation_mismatch`，来源身份错位为
+  `engine_comparison_sources_mismatch`；均为退出 4。HTML、呈现封存与 `--rerender`
+  已随 [ADR 059](../decisions/059-studio-json-only-report.md) 退役。
 
 ## `engine-comparison-plan.v1`
 
@@ -52,7 +54,9 @@ v2 公开产物沿用同一套原因，本契约不重复定义。
 `engine-comparison.json` 至少包含：
 
 ```text
+schema_version = 3
 definition = engine-comparison.v2
+format_version = 2（产物布局版本；definition 标识算法，不随布局升版）
 plan   = { path（相对输出目录）, sha256 }
 batch  = { path（相对输出目录）, plan_sha256 }
 run_set / handoff / history_stop / bundles / diagnostics
@@ -62,15 +66,14 @@ source_runs = 选中 run 的 trial_id/run_id/path/manifest_sha256
 eligible / blockers / empty_metrics / limitations / producer
 ```
 
-`producer` 记录 `tool_source_sha256` 与 `template_sha256`，只作来源，不作核验依据。
-`eligible=false` 时仍封存：保留阻断原因、完整诊断和 `empty_metrics`（值为 null 及原因），
+`producer` 恰为 `{"tool_source_sha256": ...}`，只作来源，不作核验依据。
+`eligible=false` 时仍写出：保留阻断原因、完整诊断和 `empty_metrics`（值为 null 及原因），
 不把子集写成完整实验。`verify --path` 从 `source_runs` 与 plan/batch 引用重算；
-封存字节改动报 `presentation_bytes_changed`；整体重算不符（含来源数量变化）报
+元数据或版本不符报 `engine_comparison_format_invalid`；整体重算不符（含来源数量变化）报
 `engine_comparison_recomputation_mismatch`；来源 run 身份错位报
-`engine_comparison_sources_mismatch`；
-`--rerender` 不符报 `engine_comparison_html_recomputation_mismatch`。v2 与 v1 按封存后的
-`engine-comparison.json` definition 区分；v1 继续走原核验路径，不追加计划门，也不获得
-v2 资格。`verify --source-root OLD=NEW` 同时映射 plan、batch 和来源 run 位置。
+`engine_comparison_sources_mismatch`。当前产物以 `definition=engine-comparison.v2` 加
+`format_version=2` 识别；无布局版本的旧 v2 与 v1 均为 unsupported_format/2，不追加计划门，
+也不获得资格。`verify --source-root OLD=NEW` 同时映射 plan、batch 和来源 run 位置。
 
 
 ## 比较专用历史停止

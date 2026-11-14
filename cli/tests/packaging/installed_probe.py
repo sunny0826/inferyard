@@ -9,10 +9,8 @@ from pathlib import Path
 
 from inferyard import __version__
 from inferyard.analysis.scoring import scorer_hash
-from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.provenance import tool_source_hash
-from inferyard.reporting.report import verify_report, write_report
-from inferyard.reporting.report_assets import template_hash
+from inferyard.reporting.studio_report import read_studio_report, write_studio_report
 
 
 def main():
@@ -36,11 +34,11 @@ def main():
     args.out.mkdir()
     run = args.fixtures / expected["fixture_relative"]
     current = args.out / "current-report"
-    write_report([run], current)
-    assert verify_report(current)["verified"]
-    assert verify_report(current, options=VerificationOptions(rerender=True))["verified"]
+    saved = write_studio_report([run], current)
+    assert read_studio_report(current) == saved
+    assert {path.name for path in current.iterdir()} == {"studio.json"}
     rejected = []
-    for version in range(1, 8):
+    for version in range(1, 9):
         out = args.out / f"unsupported-report-v{version}"
         out.mkdir()
         (out / "index.json").write_text(
@@ -56,7 +54,6 @@ def main():
         assert result.returncode == 2, (version, result.returncode)
         assert "unsupported_format" in json.loads(result.stdout)["limitations"]
         rejected.append(version)
-    templates = {"8": template_hash(8)}
     print(
         json.dumps(
             {
@@ -65,9 +62,8 @@ def main():
                 "tool_source_hash": tool_source_hash(),
                 "scorer_hash": scorer_hash(),
                 "resource_files": len(resources),
-                "current_report_formats_verified": [8],
+                "current_studio_report_kind": saved["kind"],
                 "unsupported_report_formats_rejected": rejected,
-                "template_hashes": templates,
             }
         )
     )

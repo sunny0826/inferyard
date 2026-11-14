@@ -62,12 +62,12 @@ def test_probe_native_run_report_verify(native_scenario, tmp_path, monkeypatch, 
     out = tmp_path / "report"
     assert main(["report", "--runs", str(root), "--out", str(out)]) == 0
     capsys.readouterr()
-    assert main(["verify", "--path", str(out)]) == 0
+    assert main(["verify", "--path", str(out)]) == 4
     capsys.readouterr()
     assert len(service.calls) == before
-    html = (out / "report.html").read_text()
-    assert "原生信号降级" in html and "进程级证据" in html and "内部全服务排空" in html
-    assert "http_404" in html
+    document = read_json(out / "studio.json")
+    assert document["runs"][0]["diagnostic"] is False
+    assert {path.name for path in out.iterdir()} == {"studio.json"}
 
 
 @pytest.mark.parametrize("option", ["no_signals", "truncated", "old_dirty"])

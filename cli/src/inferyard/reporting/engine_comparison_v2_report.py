@@ -1,38 +1,32 @@
-"""Public engine-comparison.v2 derivation, report and sealed verification."""
+"""Public engine-comparison.v2 derivation and sealed JSON verification."""
 
 from __future__ import annotations
 
-import hashlib
-from importlib.resources import files
 from pathlib import Path
 
-from inferyard.contracts.comparison_types import JSONRecord, JSONValue
 from inferyard.analysis.engine_comparison_v2 import DEFINITION, bundle_comparisons
-from inferyard.runtime.comparison_v2_read import derive_comparison_v2
-from inferyard.evidence.verification_options import VerificationOptions
-from inferyard.contracts.validation import strict_json_loads, json_bytes
-from inferyard.errors import ContractError, EvidenceError
-from inferyard.evidence.artifact_seal import read_sealed, seal
+from inferyard.contracts.comparison_types import JSONRecord, JSONValue
+from inferyard.contracts.format_versions import require_version
+from inferyard.contracts.validation import json_bytes, strict_json_loads
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
+from inferyard.evidence.formats import require_core
 from inferyard.evidence.source_locations import relative_source, resolve_source
-from inferyard.evidence.storage import atomic_bytes, new_output
+from inferyard.evidence.storage import atomic_bytes, local_file, new_output
+from inferyard.evidence.verification_options import VerificationOptions
+from inferyard.runtime.comparison_v2_read import derive_comparison_v2
 
 RESULT = "engine-comparison.json"
 HTML = "report.html"
-TEMPLATE = "engine_comparison_v2.html"
-SEALED = (RESULT, HTML)
+FORMAT_VERSION = 2
 V1_DEFINITION = "engine-comparison.v1"
-
-
-def template_sha256() -> str:
-    raw = files("inferyard").joinpath("templates", TEMPLATE).read_bytes()
-    return hashlib.sha256(raw).hexdigest()
+LEGACY_PRODUCER = {"tool_source_sha256", "template_sha256"}
 
 
 def _source_data(
     document: JSONRecord, runs: list[JSONRecord], out: Path
 ) -> tuple[dict[str, JSONRecord], list[JSONRecord]]:
     from inferyard.analysis.first_body import attach_first_body
-    from inferyard.reporting.comparison_report import comparison_input
+    from inferyard.analysis.comparison_input import comparison_input
 
     by_run_id = {entry["run"]["run_id"]: entry for entry in runs}
     data, refs = {}, []
@@ -122,7 +116,9 @@ def build(
     data, source_runs = _source_data(document, runs, out)
     comparisons, eligible, comparison_blockers = _comparison_state(document, data)
     return {
+        "schema_version": 3,
         "definition": DEFINITION,
+        "format_version": FORMAT_VERSION,
         "plan": {
             "path": relative_source(plan_path, out),
             "sha256": document["plan"]["sha256"],
@@ -144,18 +140,8 @@ def build(
         ),
         "empty_metrics": _empty_metrics(comparisons),
         "limitations": _limitations(comparisons, eligible),
-        "producer": producer
-        or {
-            "tool_source_sha256": tool_source_hash(),
-            "template_sha256": template_sha256(),
-        },
+        "producer": producer or {"tool_source_sha256": tool_source_hash()},
     }
-
-
-def render(result: JSONRecord) -> str:
-    from inferyard.reporting.report_common import _environment
-
-    return _environment().get_template(TEMPLATE).render(result=result)
 
 
 def _hash(value: JSONValue) -> bool:
@@ -182,19 +168,55 @@ def _producer_valid(saved: JSONRecord) -> bool:
     producer = saved.get("producer")
     return (
         type(producer) is dict
-        and set(producer) == {"tool_source_sha256", "template_sha256"}
+        and set(producer) == {"tool_source_sha256"}
         and all(_hash(value) for value in producer.values())
     )
 
 
-def _saved(raw: bytes) -> JSONRecord:
+def _legacy_producer_valid(saved: JSONRecord) -> bool:
+    producer = saved.get("producer")
+    return (
+        type(producer) is dict
+        and set(producer) == LEGACY_PRODUCER
+        and all(_hash(value) for value in producer.values())
+    )
+
+
+def _decode(raw: bytes) -> JSONRecord:
     try:
         saved = strict_json_loads(raw.decode("utf-8"))
     except (UnicodeError, ContractError) as exc:
         raise EvidenceError("engine_comparison_format_invalid") from exc
+    if type(saved) is not dict:
+        raise EvidenceError("engine_comparison_format_invalid")
+    return saved
+
+
+def _reject_legacy_v2(saved: JSONRecord) -> None:
+    """Name a complete old v2 artifact by its old metadata, never recompute it."""
+    from inferyard.reporting.engine_blocks_verify import reject_legacy as reject_v1
+
+    if saved.get("definition") == V1_DEFINITION:
+        reject_v1(saved)
     if (
-        type(saved) is not dict
-        or saved.get("definition") != DEFINITION
+        saved.get("definition") != DEFINITION
+        or not _metadata_valid(saved)
+        or not _legacy_producer_valid(saved)
+        or not saved["source_runs"]
+        or any(
+            type(row) is not dict or type(row.get("run_id")) is not str
+            for row in saved["source_runs"]
+        )
+    ):
+        raise EvidenceError("engine_comparison_format_invalid")
+    raise UnsupportedFormat("engine-comparison", None, (FORMAT_VERSION,))
+
+
+def _current(saved: JSONRecord) -> JSONRecord:
+    require_core(saved, "engine-comparison")
+    require_version(saved, "format_version", (FORMAT_VERSION,), "engine-comparison")
+    if (
+        saved.get("definition") != DEFINITION
         or not _metadata_valid(saved)
         or not _producer_valid(saved)
         or any(
@@ -204,6 +226,12 @@ def _saved(raw: bytes) -> JSONRecord:
     ):
         raise EvidenceError("engine_comparison_format_invalid")
     return saved
+
+
+def _require_only_result(root: Path) -> None:
+    names = {entry.name for entry in root.iterdir()}
+    if names != {RESULT}:
+        raise EvidenceError("engine_comparison_format_invalid")
 
 
 def _restore_list(values: list[JSONValue], stored: list[JSONValue]) -> None:
@@ -249,32 +277,23 @@ def _expected_artifact(
 
 
 def verify(root: Path, *, options: VerificationOptions) -> JSONRecord:
-    """Verify a sealed v2 artifact by rebuilding it from the referenced plan/batch."""
-    from inferyard.reporting.engine_blocks_verify import verify as verify_v1
+    """Verify one JSON artifact by rebuilding it from the referenced plan/batch."""
+    from inferyard.evidence.legacy_presentation_seal import check_seal
 
-    blobs = read_sealed(
-        root,
-        SEALED,
-        retain={RESULT, *([HTML] if options.rerender else [])},
-    )
-    try:
-        marker = strict_json_loads(blobs[RESULT].decode("utf-8"))
-    except (UnicodeError, ContractError) as exc:
-        raise EvidenceError("engine_comparison_format_invalid") from exc
-    if type(marker) is dict and marker.get("definition") == V1_DEFINITION:
-        return verify_v1(root, options=options)
-    saved = _saved(blobs[RESULT])
+    # A known old seal is byte-checked before any version decision.
+    check_seal(root, (RESULT, HTML))
+    saved = _decode(local_file(root, RESULT).read_bytes())
+    if saved.get("definition") != DEFINITION or "format_version" not in saved:
+        _reject_legacy_v2(saved)
+    saved = _current(saved)
+    _require_only_result(root)
     if json_bytes(_expected_artifact(root, saved, options)) != json_bytes(saved):
         raise EvidenceError("engine_comparison_recomputation_mismatch")
-    if options.rerender and render(saved).encode() != blobs[HTML]:
-        raise EvidenceError("engine_comparison_html_recomputation_mismatch")
     return {
         "verified": True,
         "source_runs": len(saved["source_runs"]),
-        "bytes_verified": True,
         "sources_verified": True,
         "semantic_verified": True,
-        "render_checked": options.rerender,
     }
 
 
@@ -286,18 +305,9 @@ def _derivation_targets(request) -> tuple[Path, Path, Path]:
     return request.frozen_plan, request.batch, request.out
 
 
-def _publish(request, result: JSONRecord) -> None:
-    plan_path, batch_root, out = _derivation_targets(request)
-    new_output(out, [plan_path.parent if plan_path.is_file() else plan_path, batch_root])
-    raw = json_bytes(result)
-    atomic_bytes(out / RESULT, raw)
-    # Render the saved form so verify --rerender sees the same key order.
-    atomic_bytes(out / HTML, render(strict_json_loads(raw.decode())).encode())
-    seal(out, SEALED)
-
-
 def write(request):
     plan_path, batch_root, out = _derivation_targets(request)
     result = build(plan_path, batch_root, out)
-    _publish(request, result)
+    new_output(out, [plan_path.parent if plan_path.is_file() else plan_path, batch_root])
+    atomic_bytes(out / RESULT, json_bytes(result))
     return result
