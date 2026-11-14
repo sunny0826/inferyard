@@ -18,8 +18,8 @@ Python 实现/版本与 httpx/httpcore/anyio/h11/certifi/idna、jsonschema 及�
 缺少此字段的旧 schema3 run/batch 仍用全包身份，不补当前摘要。
 measurement/scoring 应匹配，呈现修改不阻断执行；保存身份不改值。
 重跑在工具版本、scorer 或这条身份与父运行不同时仍可启动，比较记下差异且资格不成立。
-当前比较 format4 / phase2.v3 按指标读取对应身份，并包含 `run.tool_version`。
-报告仅接受 v8，隐式比较计算使用 phase2.v3；report v1–v7 和 comparison v1–v3 按 ADR 038 与 ADR 045 拒绝。
+当前比较 format5 / phase2.v3 按指标读取对应身份，并包含 `run.tool_version`。
+报告为 `studio.json`（`studio-report.v1`），不再携带比较或核验语义；report v1–v8 和 comparison v1–v4 按 ADR 038、ADR 045 与 ADR 059 拒绝。
 model-assets.v2 目录清单列相对路径与内容哈希；根路径只用于定位，缓存/README 不属于该资产集合。
 当前 engine_fit_plan.v1 保留无 definition 清单及全目录身份算法；plan.v2–v4 的目录清单应声明
 model-assets.v2，不再接受历史无 definition 的目录回退。
@@ -52,7 +52,7 @@ environment.jsonl 与 schedule.jsonl 保留；删除 sampler.environment 累积�
 
 ## 性能资格与适用域
 
-当前 comparison format4 / phase2.v3 使用 total-observer-applicability.v2：总开销来源包须通过既有完整核验，
+当前 comparison format5 / phase2.v3 使用 total-observer-applicability.v2：总开销来源包须通过既有完整核验，
 live 且 hardware_qualified；明确绑定来源 manifest、控制臂与目标运行。增量 ABBA 可选，
 存在时展示独立诊断状态，不要求与总开销容差相同；原逐指标专项资格仍保留。
 
@@ -105,4 +105,4 @@ engine_fit_plan.v1 的模型清单；plan.v2–v4 的未声明版本目录清单
 引用应为目录内规范相对路径且不能落入排除目录；缺失、越界及非法 index 拒绝，不生成只绑定
 index 而漏掉所引用权重的身份。普通 HF 文件 symlink 仍以最终常规文件字节核验。
 
-报告 v8/comparison v4 的后续封存与定位结构见[离线读取契约](offline-reading-contract.md)，计算语义仍为 phase2.v3。
+studio.json/comparison v5 的读取与来源定位结构见[离线读取契约](offline-reading-contract.md)，计算语义仍为 phase2.v3。

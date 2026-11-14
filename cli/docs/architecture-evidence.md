@@ -18,7 +18,7 @@
 InferYard 按 [ADR 038](decisions/038-inferyard-current-format.md) 的[支持矩阵](contracts/inferyard-current-format.md#格式支持矩阵)核验当前格式，拒绝不支持的旧格式及 `origin=migrated` 运行，不提供历史运行迁移。
 旧数据保留原件并交原项目处理；当前派生产物保留原测量源码、评分身份及来源，遵循[证据血缘规则](data-contract.md#证据血缘与比较结论)，不把重建结果当作新测量。
 
-凭据通过环境变量引用，不进入配置快照、日志和 Git；已知凭据在落盘前脱敏。脱敏后无法复核的评分输入不得给出可复现成绩。HTML 自包含并转义题目、答案、路径和异常信息；v3 的 SVG 提取结果局部原始渲染，脚本限制由 CSP 保证，详见[报告契约](contracts/report-contract.md#v3-svg-展示与-csp)。
+凭据通过环境变量引用，不进入配置快照、日志和 Git；已知凭据在落盘前脱敏。脱敏后无法复核的评分输入不得给出可复现成绩。报告输出为结构化 `studio.json` 供 Studio 展示，不再生成自包含 HTML；SVG 生成结果以原始字节保留在证据与报告中，由 Studio 侧负责展示转义。
 
 ## 方法与证据边界
 

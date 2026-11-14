@@ -29,10 +29,10 @@ budget 保留适配器原记录；lab 严格六键放在 budget 内，不允许�
 `TrialReads` 在一次归约内复用环境起止快照、周期环境、调度和外部 CPU 日志的
 解析结果与原字节摘要。manifest 核验和环境归约消费同一读取，不跳过坏哈希、
 严格 JSON 或末尾截断检查。下一次归约重新读取，不能继承前次成功。
-当前 ledger 的规范 JSON 输出保持等价；report 仅接受 v8，comparison 仅接受 format4 / phase2.v3。
-旧 report v1–v7、comparison format1–3 不再读取或重建，返回 `unsupported_format` / 2。
+当前 ledger 的规范 JSON 输出保持等价；报告为 `studio.json`（`studio-report.v1`），comparison 仅接受 format5 / phase2.v3。
+旧 report v1–v8、comparison format1–4 不再读取或重建，返回 `unsupported_format` / 2。
 命令内复用见 [ADR 034](../decisions/034-command-local-reuse.md)，旧格式支持已由
-[ADR 038](../decisions/038-inferyard-current-format.md) 收窄。
+[ADR 038](../decisions/038-inferyard-current-format.md) 与 [ADR 059](../decisions/059-studio-json-only-report.md) 收窄。
 
 ## 批次历史投影
 

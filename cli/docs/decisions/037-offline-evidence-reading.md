@@ -1,6 +1,7 @@
 # ADR 037：原始证据读取与封存呈现分离
 
 > 局部取代：当前格式读取、历史迁移/模板和主机状态边界以 [ADR 038](038-inferyard-current-format.md) 及其矩阵为准；其余决策与原始理由保留。
+> 局部取代：report v7/comparison v4/engine-fit manifest v2 的 HTML 封存、默认呈现核验与显式 rerender 由 [ADR 059](059-studio-json-only-report.md) 取代；原始产物 verify、partial、坏 seal 不降格、来源映射与携带包边界继续有效。
 
 状态：Accepted
 

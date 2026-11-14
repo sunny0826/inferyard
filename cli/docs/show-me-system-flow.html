@@ -17,7 +17,7 @@
 <section class="flow" aria-label="测评工作流">
 <article class="step"><span class="number">01 / 准备</span><h2>安装与绑定</h2><div class="commands"><code>uv tool install / uvx</code><code>init → device-check</code><code>准备资产 → 外部启动服务</code><code>config bind</code></div><p>使用维护者提供的本地 wheel。模型、引擎与服务由操作者准备。</p></article>
 <article class="step"><span class="number">02 / 执行</span><h2>冻结与运行</h2><div class="commands"><code>run --config CONFIG</code><code>或 plan → run --plan PLAN</code><code>身份预检 → 探测 → 正式题目</code><code>排空 → 评分与证据封存</code></div><p>run 含当次普通/流式探测。独立 probe 用于可选排障，会发送请求。</p></article>
-<article class="step"><span class="number">03 / 离线</span><h2>阅读与核验</h2><div class="commands"><code>report / compare</code><code>打开 report.html</code><code>verify --path ARTIFACT</code><code>可直接核验 run / batch / plan</code></div><p>关闭服务后仍可阅读。迁移、重评分和报告重建都写入新目录。</p></article>
+<article class="step"><span class="number">03 / 离线</span><h2>阅读与核验</h2><div class="commands"><code>report / compare</code><code>Studio 打开 studio.json 报告</code><code>verify --path ARTIFACT</code><code>核验 run / batch / plan（不含报告）</code></div><p>关闭服务后仍可阅读与核验。迁移、重评分和报告重建都写入新目录。</p></article>
 </section>
 <section class="platforms" aria-label="平台准备方式"><div><h3>Linux x64</h3><p><code>config assets</code><br>导出资产，再填写模板。</p></div><div><h3>macOS arm64</h3><p><code>config create --engine</code><br>已有 Prism 引擎，CPU / Metal。</p></div><div><h3>Windows x64</h3><p><code>runtime prepare → config create</code><br>固定归档与回执，CPU / CUDA。</p></div></section>
 <aside class="boundary"><strong>运行边界</strong><p>本机端点 · 资产与进程身份 · 主机锁 / dirty 恢复 · 冻结预算与停止条件 · 取消与排空</p></aside>

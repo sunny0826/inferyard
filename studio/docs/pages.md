@@ -26,9 +26,9 @@ shared engine/model selection without cancelling downloads or deleting evidence.
 lists only workspace bundles and checks both `zh-core` and `zh-svg-pelican` when present.
 Unchecking a bundle explicitly narrows the scope; unchecked bundles do not block the task.
 Reports starts with task history, followed by the report list. Creating another report from
-1–100 historical runs is available in a collapsed section. Verification appears only when
-workspace `next_action` is `verify`; a `verified` report shows its verified status instead.
-Without an active task, the page restores workspace progress from `progress.v1`.
+1–100 historical runs is available in a collapsed section. Reports are not verifiable
+artifacts, so the page has no verification entry.
+Without an active task, the page restores workspace progress from `progress.v2`.
 
 Prepare environment rechecks readiness after installing the CLI, provisioning missing
 model/results directories, and initializing a new workspace. Existing initialized workspaces

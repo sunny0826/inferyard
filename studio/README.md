@@ -147,13 +147,13 @@ are described in the [subsystem reference](../docs/subsystems/studio-panel.md#ui
 | Linux | GTK 3 and OpenGL; MyGo can fall back to CPU rendering |
 
 Reports use native controls inside the main window and do not create a WebView.
-The CLI still generates offline HTML, but Studio reads `index.json`: the existing
+The CLI writes `studio.json` (`studio-report.v1`) and Studio reads it: the existing
 `runs[].dashboard` metrics, `summary.completion_rate`, model/machine `profile`,
 `facets.bundle_label`, `source.run_id`, and `requests`. The detail view has four metric
 cards, category results, model/machine details, per-case answers, and data sources.
 Multiple runs have a selector and remain separate. Studio does not rescore results.
 Missing measurements display as —, with available sampling reasons; milliseconds and
-bytes are displayed as seconds and GiB. An unreadable index is
+bytes are displayed as seconds and GiB. An unreadable report is
 marked in the list without hiding other reports; opening it offers retry and return.
 
 ## Safety and operation rules

@@ -41,8 +41,10 @@
 两个源码树使用同一个固定 Python 环境，输入原件保持不变。准备使用显式 test-only
 LegacyJournal 生成合法 schema-3 快照样本，仅核验旧读取成本，不切换生产 writer。
 
-脚本保存完整 stdout/stderr、退出码、产物摘要和输入计数。产物比较只允许明确的生成器来源摘要与
-等价目标路径差异；缺行、缺 SVG、其他内容变化或拒绝路径变化使检查失败。
+脚本保存完整 stdout/stderr、退出码、产物摘要和输入计数。产物比较是 fail-closed 的：
+studio.json 投影必须逐字节可复现（无生成者身份与呈现封存，见
+[benchmark_cost_compare.py](benchmark_cost_compare.py)），其余 JSON 操作结果逐字段相等；
+任何内容或拒绝路径变化都使检查失败。
 成本包括操作 wall time、子进程启动至退出的 wall time，以及含夹具准备的进程峰值 RSS。
 RSS 单位换算支持 macOS/Linux；不测磁盘 I/O、真实模型成本或原生平台资格，不清空 OS 缓存。
 
@@ -91,7 +93,7 @@ mise exec -- uv run --frozen python scripts/export_community.py --check --archiv
 完整命令顺序见[候选构建与安装检查](../CONTRIBUTING.md#local-candidate-build-and-installation-checks)：
 `build_distribution.py` → `tests.packaging.prepare_inputs` → `tests/packaging/run_installed.py`
 → `prepare_release_candidate.py` → `verify_release_candidate.py`。前两步生成构建和合成输入；
-安装检查必须在源码外新目录实际完成，输出 `installed_safe_checks.v3`。候选生成器接受
+安装检查必须在源码外新目录实际完成，输出 `installed_safe_checks.v4`。候选生成器接受
 `--manifest BUILD/manifest.json --installed RESULT --source-commit SHA --out NEW`，
 `--installed` 可重复，按实际平台汇总为 `community_distribution.v2`。
 至少一个平台通过，其余为 `not_verified`；旧 v1 不能默认为通过新条件。
@@ -110,7 +112,7 @@ dispatch ref 与源码提交一致。PR 运行不满足发布来源条件。核�
 项目采用 [MIT 许可证](../LICENSE)。原生模型准备与性能实验不作为安装检查结果，
 具体候选状态见 [backlog](../docs/backlog.md)。
 
-`tests/packaging` 使用合成证据在源码外检查 uv tool/uvx、资源、离线报告与升级/回退。
+`tests/packaging` 使用合成证据在源码外检查 uv tool/uvx、资源、`studio.json` 报告与升级/回退。
 首次准备解释器和依赖可联网；合成升级不代表历史正式版本兼容。固定主机锁/dirty 的
 `installed_host_state.py` 与 `installed_request_chain.py` 仅用于显式允许的一次性 GitHub-hosted runner，不能在操作者工作机运行。
 `ci_installed.py` 和初始化入口核验 `GITHUB_ACTIONS=true`、`RUNNER_ENVIRONMENT=github-hosted`、

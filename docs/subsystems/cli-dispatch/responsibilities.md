@@ -24,7 +24,7 @@
 - 结果外层的字段语义（`status`/`completeness`/`limitations`/`details` 等）见 [CLI 接口](../../../cli/docs/cli-surface.md) 的 JSON 与共享类型一节，此处不复制。
 - 退出码语义（0/2/3/4/130）见 [CLI 接口](../../../cli/docs/cli-surface.md)；stdout JSON 与诊断分流约定见[架构](../../../cli/docs/architecture.md)的层表。
 - 活跃契约版本常量为 `SCHEMA_VERSION = 3`（[`cli/src/inferyard/__init__.py`](../../../cli/src/inferyard/__init__.py)），`--versions` 与 schema 导出的版本字段都以此为准。
-- `VerificationOptions`（[`cli/src/inferyard/evidence/verification_options.py`](../../../cli/src/inferyard/evidence/verification_options.py)）是报告/比较验证器的领域参数；`application/verification.py` 的 `verification_options` 解析 `--source-root OLD=NEW`：校验非空、解析为绝对路径并拒绝互相包含的重叠映射，与 `rerender` 一起构成选项对象，解析失败抛 `ContractError`。
+- `VerificationOptions`（[`cli/src/inferyard/evidence/verification_options.py`](../../../cli/src/inferyard/evidence/verification_options.py)）是比较验证器的领域参数；`application/verification.py` 的 `verification_options` 解析 `--source-root OLD=NEW`：校验非空、解析为绝对路径并拒绝互相包含的重叠映射，解析失败抛 `ContractError`。
 
 命令注册与分派目标一一对应（注册模块不导入执行器，目标模块只在分派时导入）：
 

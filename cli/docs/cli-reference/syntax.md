@@ -4,7 +4,7 @@
 
 | 规范语法                                              | 已删除的兼容语法                                 | 语义                               |
 | ----------------------------------------------------- | ------------------------------------------------ | ---------------------------------- |
-| `verify --path DIR`                                   | 八个 `*-check --run DIR`                         | 自动识别产物，调用专用验证器       |
+| `verify --path DIR`                                   | 七个 `*-check --run DIR`                         | 自动识别产物，调用专用验证器       |
 | `verify --path PUBLIC --config CFG`                   | `public-config-check --run PUBLIC --config CFG`  | 核验公开包与声明配置               |
 | `verify --path PUBLIC --source-run RUN`               | `public-check --run PUBLIC --from-run RUN`       | 核验公开源投影                     |
 | `verify --path OVERHEAD --target-run RUN`             | `overhead-check --run OVERHEAD --target-run RUN` | 核验开销目标绑定与阈值             |
@@ -22,4 +22,4 @@
 
 报告、评分、导出、公开包及冻结计划的 `--out` 要求新产物目录；新批量运行使用不存在或为空的 `--output-root`，续测绑定同一批次根目录。扩展 run/replay 的 `--out` 是输出根目录，其下创建新的封存子目录，stdout 的 `evidence_dir` 才是可核验的具体目录。
 
-已删除的命令也不再提供帮助。八个 `*-check` 为 `overhead-check`、`repeat-check`、`rescore-check`、`export-check`、`public-check`、`report-check`、`compare-check`、`extension-check`；`public-config-check` 同样由表中的 `verify` 语法取代。
+已删除的命令也不再提供帮助。八个 `*-check` 为 `overhead-check`、`repeat-check`、`rescore-check`、`export-check`、`public-check`、`report-check`、`compare-check`、`extension-check`；`public-config-check` 同样由表中的 `verify` 语法取代。报告改为 studio.json 后不再属于可核验产物（ADR 059），`verify --path` 对报告目录固定退出 4，其余七类仍按上表映射。

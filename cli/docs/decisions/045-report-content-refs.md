@@ -2,6 +2,8 @@
 
 状态：Accepted
 
+> 局部取代：report v8 作为当前报告格式及其内容引用机制由 [ADR 059](059-studio-json-only-report.md) 取代（报告改为 studio.json，旧 v1–v8 报告仍拒绝）；旧事件可读、旧数据不迁移的政策不变。
+
 ## 背景
 
 当前报告格式是 `report_format_version = 7`。工具只接受 v7。
