@@ -62,9 +62,11 @@ health、models、slots、metrics、props 仅在成功探测后成为原生信�
 原生模式记录串行客户端接纳状态，引擎内部排空为 unknown/null。完整响应且连接收尾成功
 只结束当前客户端请求标记，不授予引擎内排空资格；取消、超时、解析和工具异常保留 dirty。
 旧 dirty 仍须既有身份/恢复规则处理，不能凭弱信号清除。正常请求的状态清理明确标注
-client_http 范围，与 lab 模式的引擎释放证据分开。能力矩阵写入封存快照的
-`engine-capabilities.json`、随 manifest 一并哈希，并由 `probe` 输出展示；它不进入
-`studio.json` 报告。进程 PID/FILETIME/文件身份与引擎内证据分列。
+client_http 范围，与 lab 模式的引擎释放证据分开。能力矩阵保存为 `observations.jsonl` 中
+`kind=engine_capabilities`、`stage=pre_idle` 的记录，成员内容有 `payload_sha256`，物理日志由
+manifest 封存，并由 `probe` 输出展示；它不进入 `studio.json` 报告。旧 layout1 的
+`engine-capabilities.json` 仅供既有原件读取，位置见
+[运行原件容器契约](run-evidence-layout.md)。进程 PID/FILETIME/文件身份与引擎内证据分列。
 缺少模板预算/有效参数时为 null+原因，不能伪造已核验。新运行不继承旧实测资格。
 
 `engine.environment` 可选，只允许冻结 `CUDA_VISIBLE_DEVICES` / `CUDA_CACHE_DISABLE`；

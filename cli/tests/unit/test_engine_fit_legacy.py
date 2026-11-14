@@ -47,6 +47,60 @@ def _retired_comparison(tmp_path, plan):
     return _retire_manifest(out)
 
 
+def _promote_run(path):
+    """Rewrite a retired v2 run seal as the current layout, keeping its JSON bytes."""
+    manifest = json.loads((path / "manifest.json").read_text())
+    (path / "report.html").unlink()
+    del manifest["files"]["report.html"]
+    manifest["definition"] = "engine_fit_manifest.v3"
+    (path / "manifest.json").write_bytes(json_bytes(manifest))
+
+
+def _promote_comparison(path, source_indexes=()):
+    """Promote the outer seal and selected sources, rebinding saved source hashes."""
+    saved = json.loads((path / "comparison.json").read_text())
+    for index in source_indexes:
+        source = path / "sources" / str(index)
+        _promote_run(source)
+        saved["source_runs"][index]["manifest_sha256"] = hashlib.sha256(
+            (source / "manifest.json").read_bytes()
+        ).hexdigest()
+    _replace(path, "comparison.json", saved)
+    _promote_run(path)
+    return path
+
+
+@pytest.mark.parametrize("current_sources", [(), (0,)])
+def test_comparison_with_retired_sources_is_unsupported(tmp_path, plan, current_sources):
+    """A current outer seal must not bless complete v2 sources or mixed source layouts."""
+    path = _promote_comparison(_retired_comparison(tmp_path, plan), current_sources)
+    expected = {
+        (): ["engine_fit_manifest.v2", "engine_fit_manifest.v2"],
+        (0,): ["engine_fit_manifest.v3", "engine_fit_manifest.v2"],
+    }
+    source_definitions = [
+        json.loads((path / "sources" / index / "manifest.json").read_text())["definition"]
+        for index in ("0", "1")
+    ]
+    assert source_definitions == expected[current_sources]
+    with pytest.raises(UnsupportedFormat):
+        verify(path)
+
+
+@pytest.mark.parametrize("current_sources", [(), (0,)])
+@pytest.mark.parametrize("damaged", [0, 1])
+def test_damaged_retired_source_in_current_comparison_is_integrity_error(
+    tmp_path, plan, current_sources, damaged
+):
+    layout = "mixed" if current_sources else "v2v2"
+    path = _promote_comparison(
+        _retired_comparison(tmp_path / f"{layout}-{damaged}", plan), current_sources
+    )
+    (path / "sources" / str(damaged) / "run.json").write_bytes(b"{}")
+    with pytest.raises(EvidenceError):
+        verify(path)
+
+
 @pytest.mark.parametrize("definition", ["engine_fit_manifest.v1", "engine_fit_manifest.v2"])
 def test_complete_retired_run_manifest_is_unsupported(tmp_path, plan, definition):
     path = _retire_manifest(_seal(tmp_path / "run", plan), definition)
@@ -115,6 +169,20 @@ def test_compare_rejects_complete_retired_sources_but_reports_damage(tmp_path, p
     _replace(right, "run.json", b"{broken")
     with pytest.raises(EvidenceError):
         compare([right, left], tmp_path / "damaged")
+
+
+def test_compare_source_order_decides_which_error_wins(tmp_path, plan):
+    """compare() reads sources in CLI order, so a retired source seen first stops the read."""
+    left = _retire_manifest(_seal(tmp_path / "left", plan))
+    right = _retire_manifest(_seal(tmp_path / "right", plan, "sglang"))
+    with pytest.raises(UnsupportedFormat):
+        compare([left, right], tmp_path / "retired-first")
+    _replace(right, "run.json", b"{broken")
+    # Damage behind a complete retired source is not read; this is the current contract.
+    with pytest.raises(UnsupportedFormat):
+        compare([left, right], tmp_path / "damaged-later")
+    with pytest.raises(EvidenceError):
+        compare([right, left], tmp_path / "damaged-first")
 
 
 def test_damaged_retired_manifest_is_an_integrity_error(tmp_path, plan):
