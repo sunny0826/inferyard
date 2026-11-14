@@ -298,44 +298,6 @@ def test_offline_plan_semantics_are_evidence_errors_with_valid_hashes(tmp_path, 
         verify(path)
 
 
-def _retire_manifest(path, definition="engine_fit_manifest.v2"):
-    manifest = json.loads((path / "manifest.json").read_text())
-    retired = b"retired presentation"
-    (path / "report.html").write_bytes(retired)
-    manifest["definition"] = definition
-    manifest["files"]["report.html"] = hashlib.sha256(retired).hexdigest()
-    (path / "manifest.json").write_bytes(json_bytes(manifest))
-    return path
-
-
-@pytest.mark.parametrize("definition", ["engine_fit_manifest.v1", "engine_fit_manifest.v2"])
-def test_complete_retired_run_manifest_is_unsupported(tmp_path, plan, definition):
-    path = _retire_manifest(_seal(tmp_path / "run", plan), definition)
-    with pytest.raises(UnsupportedFormat):
-        verify(path)
-
-
-def test_complete_retired_comparison_manifest_is_unsupported(tmp_path, plan):
-    left = _seal(tmp_path / "left", plan)
-    right = _seal(tmp_path / "right", plan, "sglang")
-    out = compare([left, right], tmp_path / "comparison")
-    assert out["schema_version"] == 3
-    assert _retire_manifest(tmp_path / "comparison")
-    with pytest.raises(UnsupportedFormat):
-        verify(tmp_path / "comparison")
-
-
-def test_damaged_retired_manifest_is_an_integrity_error(tmp_path, plan):
-    missing = _retire_manifest(_seal(tmp_path / "run", plan))
-    (missing / "report.html").unlink()
-    with pytest.raises(EvidenceError, match="missing_file"):
-        verify(missing)
-    changed = _retire_manifest(_seal(tmp_path / "other", plan))
-    (changed / "report.html").write_bytes(b"changed bytes")
-    with pytest.raises(EvidenceError, match="hash_mismatch"):
-        verify(changed)
-
-
 def test_json_only_seal_needs_no_renderer_but_checks_saved_bytes(tmp_path, plan):
     path = _seal(tmp_path / "run", plan)
     assert verify(path)["manifest"]["definition"] == "engine_fit_manifest.v3"

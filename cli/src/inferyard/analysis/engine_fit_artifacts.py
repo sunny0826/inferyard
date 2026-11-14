@@ -101,18 +101,18 @@ def load_manifest(root):
     definition = manifest["definition"]
     if type(definition) is not str:
         raise EvidenceError("engine_fit_manifest_definition")
-    if definition != DEFINITION:
-        # A complete retired v2 artifact is recognized by its own file set and
-        # hashes before the version decision, so damage cannot become "old".
-        if definition == LEGACY_V2_DEFINITION:
-            legacy = (
-                _LEGACY_V2_RUN_FILES
-                if manifest["kind"] == "run"
-                else _LEGACY_V2_COMPARISON_FILES
-            )
-            _hashed_blobs(root, manifest, legacy)
+    legacy = definition == LEGACY_V2_DEFINITION
+    if definition == DEFINITION:
+        names = RUN_FILES if manifest["kind"] == "run" else COMPARISON_FILES
+    elif legacy:
+        names = (
+            _LEGACY_V2_RUN_FILES
+            if manifest["kind"] == "run"
+            else _LEGACY_V2_COMPARISON_FILES
+        )
+    else:
         raise UnsupportedFormat("engine-fit manifest", definition, (DEFINITION,))
-    names = RUN_FILES if manifest["kind"] == "run" else COMPARISON_FILES
+    # Byte checks come first so damage cannot be reported as a retired version.
     blobs = _hashed_blobs(root, manifest, names)
     require_core(manifest, "engine-fit manifest")
     return manifest, {**blobs, "manifest.json": content}

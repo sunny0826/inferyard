@@ -19,7 +19,7 @@ def source_tree(tmp_path):
 def test_source_changes_respect_role_boundaries(source_tree):
     original = Path.read_bytes
     first = identity.IdentityContext(root=source_tree)
-    for name in ("cli/metadata.py", "reporting/studio_report.py"):
+    for name in ("cli/metadata.py", "cli/commands/reporting.py"):
         path = source_tree / name
         path.write_bytes(original(path) + b"\n")
     second = identity.IdentityContext(root=source_tree)
@@ -48,14 +48,25 @@ def test_shared_studio_schema_binds_every_role(source_tree):
         assert first.value[role] != second.value[role]
 
 
-def test_studio_projection_change_only_touches_presentation(source_tree):
+@pytest.mark.parametrize(
+    "name",
+    [
+        "reporting/studio_report.py",
+        "reporting/studio_dashboard.py",
+        "reporting/studio_profile.py",
+        "reporting/studio_resources.py",
+    ],
+)
+def test_studio_projection_change_binds_measurement_and_presentation(source_tree, name):
     original = Path.read_bytes
     first = identity.IdentityContext(root=source_tree)
-    path = source_tree / "reporting/studio_report.py"
+    path = source_tree / name
     path.write_bytes(original(path) + b"\n")
     second = identity.IdentityContext(root=source_tree)
-    assert identity.execution_matches(first.value, second.value)
+    assert not identity.execution_matches(first.value, second.value)
+    assert first.value["measurement"] != second.value["measurement"]
     assert first.value["presentation"] != second.value["presentation"]
+    assert first.value["scoring"] == second.value["scoring"]
 
 
 def test_runtime_dependency_changes_only_relevant_role(source_tree, monkeypatch):

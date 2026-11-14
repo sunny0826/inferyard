@@ -3,6 +3,8 @@
 from pathlib import Path
 
 from inferyard.analysis.engine_fit_artifacts import (
+    DEFINITION,
+    LEGACY_V2_DEFINITION,
     decode_json_bytes,
     load_manifest,
     manifest_document,
@@ -14,7 +16,7 @@ from inferyard.analysis.engine_fit_metrics import observations
 from inferyard.analysis.engine_fit_validation import fields, require, validate_run
 from inferyard.config.engine_fit import validate_plan
 from inferyard.contracts.validation import json_bytes
-from inferyard.errors import ContractError, EvidenceError
+from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.evidence.storage import atomic_bytes
 
 LIMITATIONS = [
@@ -27,7 +29,7 @@ LIMITATIONS = [
 ]
 
 
-def _verified_run(root, *, verified=None):
+def _verified_run(root, *, allow_legacy=False, verified=None):
     root = require_directory(root)
     manifest, blobs = verified if verified is not None else load_manifest(root)
     require(manifest["kind"] == "run", "run_required")
@@ -38,6 +40,8 @@ def _verified_run(root, *, verified=None):
     run = decode_json_bytes(blobs["run.json"])
     rows = decode_json_bytes(blobs["requests.json"])
     validate_run(plan, run, rows)
+    if manifest["definition"] == LEGACY_V2_DEFINITION and not allow_legacy:
+        raise UnsupportedFormat("engine-fit manifest", manifest["definition"], (DEFINITION,))
     data = {"kind": "engine_fit_run", "plan": plan, "run": run, "requests": rows}
     return {**data, "manifest": manifest}, blobs
 
@@ -110,17 +114,7 @@ def compare(paths, out):
     return result
 
 
-def verify(path):
-    """Verify hashes, plan/row semantics and copied source seals."""
-    root = require_directory(path)
-    if not manifest_present(root):
-        from inferyard.reporting.engine_fit_checkpoint import read_partial
-
-        return read_partial(root)
-    manifest, blobs = load_manifest(root)
-    # A final manifest is authoritative; the retained in-flight checkpoint is ignored.
-    if manifest["kind"] == "run":
-        return _verified_run(root, verified=(manifest, blobs))[0]
+def _verified_comparison(root, manifest, blobs):
     saved = decode_json_bytes(blobs["comparison.json"])
     require(type(saved) is dict, "comparison_type")
     refs = saved.get("source_runs")
@@ -130,7 +124,7 @@ def verify(path):
     for index, ref in enumerate(refs):
         fields(ref, {"path", "manifest_sha256"}, "source_reference")
         require(ref["path"] == f"sources/{index}", "unsafe_source_reference")
-        data, source_blobs = _verified_run(source_root / str(index))
+        data, source_blobs = _verified_run(source_root / str(index), allow_legacy=True)
         digest = sha256_hex(source_blobs["manifest.json"])
         require(ref["manifest_sha256"] == digest, "source_hash_mismatch")
         runs.append(data)
@@ -139,3 +133,22 @@ def verify(path):
     # Canonical bytes distinguish bool from int (Python structural equality does not).
     require(json_bytes(saved) == json_bytes(rebuilt), "comparison_rebuild_mismatch")
     return {"kind": "engine_fit_comparison", "comparison": rebuilt, "manifest": manifest}
+
+
+def verify(path):
+    """Verify hashes, plan/row semantics and copied source seals before version gates."""
+    root = require_directory(path)
+    if not manifest_present(root):
+        from inferyard.reporting.engine_fit_checkpoint import read_partial
+
+        return read_partial(root)
+    manifest, blobs = load_manifest(root)
+    # A final manifest is authoritative; the retained in-flight checkpoint is ignored.
+    if manifest["kind"] == "run":
+        result = _verified_run(root, allow_legacy=True, verified=(manifest, blobs))[0]
+    else:
+        result = _verified_comparison(root, manifest, blobs)
+    # Only a complete retired layout reaches the version gate; damage raised above.
+    if manifest["definition"] == LEGACY_V2_DEFINITION:
+        raise UnsupportedFormat("engine-fit manifest", manifest["definition"], (DEFINITION,))
+    return result

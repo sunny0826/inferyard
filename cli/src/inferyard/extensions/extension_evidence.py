@@ -133,21 +133,16 @@ def verify_packet(path, *, verified_trials=None):
         raise EvidenceError("extension_packet_unsealed_or_derived_damaged")
     run = read_json(path / "run.json")
     packet = read_json(path / "packet.json")
-    if run.get("kind") != "extension_packet.v2":
-        if run.get("kind") == "extension_packet.v1":
-            # The sealed original is intact, but the retired layout cannot be
-            # replayed by this verifier and is never converted in place.
-            raise UnsupportedFormat(
-                "extension packet", "extension_packet.v1", ["extension_packet.v2"]
-            )
+    kind = run.get("kind")
+    if kind not in ("extension_packet.v1", "extension_packet.v2"):
         raise EvidenceError("extension_packet_origin_mismatch")
-    if run.get("evidence_kind") != packet["evidence_kind"]:
+    if run.get("evidence_kind") != packet.get("evidence_kind"):
         raise EvidenceError("extension_packet_origin_mismatch")
-    if packet["evidence_kind"] == "live":
+    if packet.get("evidence_kind") == "live":
         if run.get("origin") != "live_driver":
             raise EvidenceError("extension_live_origin_unverified")
         plan = read_json(path / "plan.json")
-        if plan.get("spec") != packet["spec"] or plan.get("tool_source_sha256") != run.get(
+        if plan.get("spec") != packet.get("spec") or plan.get("tool_source_sha256") != run.get(
             "tool_source_sha256"
         ):
             raise EvidenceError("extension_live_plan_binding_mismatch")
@@ -168,4 +163,10 @@ def verify_packet(path, *, verified_trials=None):
     summary = reduce_packet(packet)
     if summary != read_json(path / "summary.json"):
         raise EvidenceError("extension_packet_does_not_replay")
+    if kind == "extension_packet.v1":
+        # Original evidence and replay are checked first; a complete retired
+        # layout is never replayed as a supported version or converted in place.
+        raise UnsupportedFormat(
+            "extension packet", "extension_packet.v1", ["extension_packet.v2"]
+        )
     return summary
