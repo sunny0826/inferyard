@@ -80,7 +80,7 @@ func (p *previewSession) createReport(paths []string) string {
 }
 
 func previewReportMetrics(run *core.ReportRun, detail *core.RunTaskDetail) {
-	d := run.Dashboard
+	d := &run.Dashboard
 	d.Latency.Min, d.Latency.P50, d.Latency.P95, d.Latency.Max = nil, nil, nil, nil
 	var durations []float64
 	for _, request := range run.Requests {

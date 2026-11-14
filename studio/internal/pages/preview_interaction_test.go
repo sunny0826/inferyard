@@ -68,6 +68,9 @@ func TestPreviewCompleteWorkflowWithoutSceneSelector(t *testing.T) {
 	if p.state.openedReport.reference != p.state.task.report || !tt.HasText("Preview-Small.gguf") {
 		t.Fatal("task did not open its own generated report", tt.Texts())
 	}
+	if !tt.HasText("120 个有效样本") {
+		t.Fatal("generated report must count every request latency sample", tt.Texts())
+	}
 	click(t, tt, "新任务")
 	if len(p.state.reports) != 1 || len(p.state.historyRuns()) != 2 {
 		t.Fatal("new task erased previous results")
