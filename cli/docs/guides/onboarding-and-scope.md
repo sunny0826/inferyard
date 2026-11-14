@@ -36,7 +36,7 @@ progress 不发送请求，也不启动服务；执行其 run/resume 命令前�
 | 题包 | 范围 | 报告内容 |
 | --- | --- | --- |
 | `zh-core` | 120 题，六类各 20 | 冻结规则评分、时间与资源 |
-| `zh-svg-pelican` | 1 道动画 SVG 鹈鹕题 | 生成原文、SVG 画廊、时间与资源；不计质量分 |
+| `zh-svg-pelican` | 1 道动画 SVG 鹈鹕题 | 执行终态、质量（免评分）、时间与资源；不计质量分 |
 
 这是测评执行范围约定。省略 `inferyard init --bundle` 时，导出 `zh-core` 和
 `zh-svg-pelican` 两个题包；准备与操作产物统一放操作目录，benchmark 工作区只

@@ -72,7 +72,7 @@
 <main>
 <header class="pagehead">
 <div>
-<p>从环境准备到报告核验，跟踪本次双题包测评。</p>
+<p>从环境准备到报告生成，跟踪本次双题包测评。</p>
 </div>
 <span class="badge">交互原型</span>
 </header>
@@ -88,7 +88,7 @@
 <option value="device">设备检查</option>
 <option value="bind">启动与绑定</option>
 <option value="run">运行就绪</option>
-<option value="report">报告核验</option>
+<option value="report">报告</option>
 </select>
 </div>
 <section class="card" id="environment" hidden>
@@ -121,7 +121,7 @@
 <li>
 <b>05</b>运行</li>
 <li>
-<b>06</b>报告核验</li>
+<b>06</b>报告</li>
 </ol>
 <progress id="stage-progress" max="6" value="2" aria-label="六个准备阶段进度">
 </progress>
@@ -253,10 +253,10 @@
 </div>
 </section>
 <section id="report-panel" class="track" data-step="6" hidden>
-<h2>报告核验</h2>
+<h2>报告</h2>
 <p>来源：zh-core + zh-svg-pelican · 各自运行已完成。</p>
 <p class="muted">在新目录生成包含两个题包的报告，保留原始运行和历史报告。</p>
-<button id="report" class="primary">生成并核验新报告</button>
+<button id="report" class="primary">生成新报告</button>
 <p id="report-status" role="status">
 </p>
 </section>
@@ -279,7 +279,7 @@
 <span class="badge">运行结束 · 示例</span>
 </div>
 <p class="meta">run-20261014-01 · zh-core + zh-svg-pelican</p>
-<p>证据已封存 · 报告尚未核验</p>
+<p>证据已封存 · 报告尚未生成</p>
 <details>
 <summary>查看运行详情</summary>
 <dl>

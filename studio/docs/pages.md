@@ -17,7 +17,7 @@ Downloads, Device, and Settings.
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
-| Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and read each report index inside the main window. |
+| Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts with no verification entry. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
 
 The task page keeps the active task's selected bundles and new run paths in memory. New task
@@ -40,8 +40,8 @@ check runs once with `--models-root`
 and no `--model`. A sole available model is selected automatically; multiple models
 require a choice. Engines still require verification. Once a model appears, the old
 `no_local_model` warning clears; candidate preparation rechecks the model with `--model`.
-The task generates `report --runs` for its own sealed runs with verification disabled, displays
-only a “查看报告” button that opens that exact report, and leaves verification on Reports.
+The task generates `report --runs` for its own sealed runs, displays
+only a “查看报告” button that opens that exact report, and leaves report reading on Reports.
 Duration and unfinished batch plans display their blocking reason without an execution button.
 
 Top-right engine and task icons pulse while active, respecting Reduce Motion.

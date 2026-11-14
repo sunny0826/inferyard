@@ -7,10 +7,10 @@
 新 run/batch 保存 implementation_identity，definition=implementation-identity.v1；
 measurement/scoring/presentation 各包含源码清单、摘要、依赖版本与缺测原因。
 measurement 包含实际执行、传输、采集、资产/安全/存储以及所用共享契约与数据；
-scoring 包含评分器、规则、题包解释及结构验证；presentation 包含离线呈现与模板。
+scoring 包含评分器、规则、题包解释及结构验证；presentation 包含 Studio 报告与离线比较产物的读取、归约、旧呈现封存兼容检查及 CLI 展示。
 重叠共享文件同时影响包含它的身份。清单显式保存，不靠目录名前缀作身份判断。
 Python 实现/版本与 httpx/httpcore/anyio/h11/certifi/idna、jsonschema 及其验证依赖、
-平台实际使用的 psutil 按职责记录；jinja2/MarkupSafe 属于呈现，pytest/ruff 仅开发。
+平台实际使用的 psutil 按职责记录；pytest/ruff 仅开发。
 缺依赖版本以 null+原因表达，不将未知与未知判相等，不阻断无关指标的描述读取。
 每命令一个上下文计算一次并显式传给 journal、batch、rerun；原评分上下文计数保持。
 
@@ -71,7 +71,7 @@ live 且 hardware_qualified；明确绑定来源 manifest、控制臂与目标�
 显式清单。measurement 从 run/batch/trial 的实际导入链确认，包含请求适配、采集、存储、
 结束时的 ledger/reducer、动态工厂所选平台模块、共享结构/语义契约及 `data/metrics.json`；
 共享文件作为整体保守绑定。scoring 包含题包解释、评分 v1/v2 与所用共享契约；presentation
-包含报告/离线比较的读取、归约、模板及 CLI 展示。CLI 参数结果已冻结为输入，帮助文本和
+包含 Studio 报告与离线比较产物的读取、归约、旧呈现封存兼容检查及 CLI 展示。CLI 参数结果已冻结为输入，帮助文本和
 HTML 不属于测量源码。清单对静态可见的导入保持闭合；新增导入或包数据需审查清单；
 运行时不扫描 AST。一次读取计算文件摘要并释放原始字节，总包与职责身份复用这些摘要。
 清单成员自身进入相应职责摘要，不把其他职责的列表变化混入该职责。开发测试依赖不记录。

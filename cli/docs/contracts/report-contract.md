@@ -34,6 +34,12 @@
 
 JSON Schema 只证明结构；run/category 唯一性、计数一致性、null/reason 成对与分布约束由 parser 执行。
 
+通用 JSON Schema 校验器与 Go 生产 parser（[studio_report_validate.go](../../../studio/internal/inferyard/studio_report_validate.go)）
+的接收边界不完全等价：Go 的 count 只接受 JSON 整数 token（`1.0`/`1e0` 会被拒绝），且对每个
+单类别 rate 检查 numerator ≤ denominator，而 Python 只检查汇总 quality/completion 的对应关系。
+外部工具重序列化后的展示 JSON 可能通过通用 Schema 校验却被 Go 拒绝；当前 writer 输出普通
+整数 token 且类别率来自已校验 summary，不受此差异影响。这里只描述边界，不改变两端实现。
+
 ## 边界
 
 - 不进入报告的字段：题面/prompt、原始答案、reference answer、reasoning、正文 contents、SVG gallery、

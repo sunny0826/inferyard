@@ -20,7 +20,7 @@ Downloads, Device, and Settings.
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
-| Reports | Browse historical tasks, enter or resume a run, inspect live details, verify the workspace report, and read each report index inside the main window. |
+| Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts and have no verification entry. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
 
 The [pages reference](docs/pages.md) covers the per-page rules: the first-launch flow,
@@ -150,7 +150,8 @@ Reports use native controls inside the main window and do not create a WebView.
 The CLI writes `studio.json` (`studio-report.v1`) and Studio reads it: the existing
 `runs[].dashboard` metrics, `summary.completion_rate`, model/machine `profile`,
 `facets.bundle_label`, `source.run_id`, and `requests`. The detail view has four metric
-cards, category results, model/machine details, per-case answers, and data sources.
+cards, category results, model/machine details, per-case rows (case, category, state,
+quality, latency), and data sources.
 Multiple runs have a selector and remain separate. Studio does not rescore results.
 Missing measurements display as —, with available sampling reasons; milliseconds and
 bytes are displayed as seconds and GiB. An unreadable report is

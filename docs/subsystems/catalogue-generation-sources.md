@@ -51,5 +51,5 @@
 
 ### 导出侧与运行侧的环境分离
 
-导出脚本只活在源码检出中：读取 `docs/`、`cli/bundles/`、`uv.lock` 并写回包内资源，安装用户从不运行它们。运行侧只认安装包：wheel 内的 `data/`、`templates/`、`data/community/` 由 `importlib.resources` 读取，editable 安装与 wheel 安装走同一代码路径（[`community_resources.py`](../../cli/src/inferyard/provisioning/community_resources.py) 的模块 docstring 明确此约定）。因此 `--check` 漂移核对是两边唯一的一致性闸门：生成物手改、生成源改动未重导出、归档派生 profile 过期，都会在核对时暴露，而不会等到运行期。
+导出脚本只活在源码检出中：读取 `docs/`、`cli/bundles/`、`uv.lock` 并写回包内资源，安装用户从不运行它们。运行侧只认安装包：wheel 内的 `data/`、`data/community/` 由 `importlib.resources` 读取，editable 安装与 wheel 安装走同一代码路径（[`community_resources.py`](../../cli/src/inferyard/provisioning/community_resources.py) 的模块 docstring 明确此约定）。因此 `--check` 漂移核对是两边唯一的一致性闸门：生成物手改、生成源改动未重导出、归档派生 profile 过期，都会在核对时暴露，而不会等到运行期。
 

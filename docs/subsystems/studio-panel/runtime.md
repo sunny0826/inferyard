@@ -47,7 +47,7 @@
    `startup_arguments_mismatch` 等拒绝原因如实呈现；`BindingAlive` 仅提供存活提示。
 8. **报告**：页面先展示「历史任务」，再展示「报告列表」。进入任务清除详情与续测来源并聚焦所选运行；续测清除详情并设置来源；实时详情打开对应任务，三者都进入任务页。打开报告为主操作；1–100 个来源的生成入口折叠在「从历史运行另做报告」。报告不再是可核验产物，页面不提供「核验」入口。
    `CreateReport` 校验 1–100 个位于结果根内的不同 run → 派生 `inferyard report`
-   写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面在主窗口内容区读取 `studio.json`，呈现当前所选运行的指标卡、分类表、模型与机器、逐题答案及数据来源。
+   写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面在主窗口内容区读取 `studio.json`，呈现当前所选运行的指标卡、分类表、模型与机器、逐题行（题目、类别、执行终态、质量与耗时）及数据来源。
    指标取自 `runs[].dashboard` 与 `summary.completion_rate`；模型、引擎和机器取自 `profile`、`threads`，题包取自 `facets.bundle_label`，运行 ID 取自 `source.run_id`，逐题行取自 `requests`。
    多运行索引用选择器分别显示，不合并指标。质量和完成率保留分母与排除数；缺测显示 — 并保留已有采样原因。延迟从 ms 转为 s，内存从 bytes 转为 GiB；诊断运行标注「诊断运行」。
    `ReportIndex` 接受列表 ID 或本次报告绝对目录；绝对目录先规范化并验证位于配置的 reports 根目录内，再经 `ReportFile` 校验 studio.json，越界路径不能按同名目录打开。报告 ID 为 UTC

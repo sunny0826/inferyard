@@ -13,7 +13,7 @@ Windows 首版为单文件、串行、fixed quality、无缓存文本；原始 r
 默认 `engine.observation_mode = "auto"`：生成使用 `/v1/chat/completions`，流式请求启用
 `include_usage`。probe 输出端点能力矩阵；`/lab/v1` 缺失时使用实际探测成功的原生信号，
 缺失项记 `null` 和原因，不阻断普通测评。显式设置 `"lab_required"` 才要求完整 lab 能力。
-manifest 与报告披露观测路径；原生路径不授予引擎内部全服务排空证明，进程级证据单列。
+manifest 披露观测路径；报告只含 adapter/backend 与来源定位，不记录观测路径。原生路径不授予引擎内部全服务排空证明，进程级证据单列。
 精确模板预算、实际生效参数与引擎排空无法观测时保持缺测。异常请求保留 dirty 并要求绑定恢复。
 本次直接实现 M2，engine-fit 现有诊断范围不变。
 字段和真实二进制差距见[适配契约](../contracts/windows-ninfer-adaptation-contract.md)，
