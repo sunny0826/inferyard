@@ -6,7 +6,7 @@ import pytest
 from inferyard.errors import UnsupportedFormat
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import sha256_file
-from inferyard.reporting.report import verify_report, write_report
+from inferyard.reporting.studio_report import write_studio_report
 from inferyard.application.execution import execute_async
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_runner import scenario as runner_scenario
@@ -15,9 +15,7 @@ from tests.integration.test_trial_runner import inputs
 scenario = runner_scenario
 
 
-def test_single_and_experiment_report_share_contract_preserve_denominators_and_bytes(
-    scenario, tmp_path
-):
+def test_single_and_experiment_studio_report_preserve_denominators_and_bytes(scenario, tmp_path):
     code, result = asyncio.run(execute_async(scenario[0], scenario[1]))
     assert code == 0
     single = Path(result.evidence_dir)
@@ -32,21 +30,14 @@ def test_single_and_experiment_report_share_contract_preserve_denominators_and_b
     before = {str(p): sha256_file(p) for root in roots for p in root.iterdir() if p.is_file()}
     calls = len(scenario[2])
     out = tmp_path / "mixed"
-    index = write_report(roots, out)
-    assert [r["schema_version"] for r in index["runs"]] == [3, 3]
-    assert [r["summary"]["counts"]["planned"] for r in index["runs"]] == [3, 3]
-    assert not any(index["comparison"]["eligibility"].values())
-    assert index["comparison"]["completion_rate_difference"] is None
-    assert index["runs"][0]["scan_view"]["length_bins"]
-    for run, root in zip(index["runs"], roots, strict=True):
-        assert set(run["evidence"]) == {"inputs.json", "events.jsonl", "manifest.json"}
-        assert all((out / ref).resolve().is_file() for ref in run["evidence"].values())
-        assert (out / run["evidence"]["inputs.json"]).resolve() == root / "inputs.json"
-    assert "metric_observations" in index["runs"][0]["summary"]
-    html = (out / "report.html").read_text()
-    assert "单次" in html and "实验" in html
-    assert [r["execution_mode"] for r in index["runs"]] == ["single", "experiment"]
-    assert verify_report(out)["source_runs"] == 2
+    document = write_studio_report(roots, out)
+    runs = document["runs"]
+    assert [r["source"]["path"] for r in runs] == [str(root.resolve()) for root in roots]
+    assert [r["summary"]["completion_rate"]["denominator"] for r in runs] == [3, 3]
+    assert [r["diagnostic"] for r in runs] == [False, True]
+    assert "comparison" not in document and "scan_view" not in document
+    assert len(runs[0]["requests"]) == runs[0]["summary"]["completion_rate"]["denominator"]
+    assert {p.name for p in out.iterdir()} == {"studio.json"}
     assert calls == len(scenario[2])
     assert before == {
         str(p): sha256_file(p) for root in roots for p in root.iterdir() if p.is_file()
@@ -59,5 +50,5 @@ def test_unknown_source_version_is_not_guessed_as_legacy(tmp_path):
     (source / "run.json").write_bytes(json_bytes({"schema_version": 999}))
 
     with pytest.raises(UnsupportedFormat):
-        write_report([source], tmp_path / "out")
+        write_studio_report([source], tmp_path / "out")
     assert not (tmp_path / "out").exists()

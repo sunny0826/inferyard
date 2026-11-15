@@ -7,11 +7,12 @@
 [ADR035](../decisions/035-purpose-specific-admission.md) 定义新的离线比较、诊断准入、
 评分继续、服务复用与逐题审核边界。
 
-- comparison.json 的 format_version=4、definition=phase2.v3；旧 format1–3 不支持。
+- comparison.json 的 format_version=5、definition=phase2.v3；旧 format1–4 不支持。
   plan/run 的 definition_versions.comparison 保持 phase2.v1。
   observed_differences 与 eligibility 分开：前者描述当前样本，后者仍为受控结论。
   总体质量应同题/同规则/同评分器/同分母且评分完整；性能仍需原逐指标资格。
-- report_format_version=8 使用当前比较定义及根模板；题面、输出、参考答案各存一次。旧报告 1–7 不支持。
+- 报告为 `studio.json`（`kind=studio-report.v1`），只含 Studio 消费的窄投影；题面、原始答案与图表不进入报告。
+  旧报告 v1–v8 不支持。
 - 可选 environment_admission={definition: environment-admission.v2, required_fields: [...]}
   在配置 conditions 或 experiment 声明；字段限定 ac_online/profile/governor/epp/
   macos_power_policy。未声明保持旧正式执行准入；probe/diagnostic 仅记录差异。

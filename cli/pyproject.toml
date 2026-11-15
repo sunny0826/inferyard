@@ -12,7 +12,6 @@ license-files = ["LICENSE"]
 requires-python = "==3.15.*"
 dependencies = [
   "httpx>=0.28,<0.29",
-  "jinja2>=3.1.6,<3.2",
   "jsonschema>=4.25,<5",
   "psutil>=7.2,<8; sys_platform == 'win32'",
   "psutil==7.2.2; sys_platform == 'darwin'",
@@ -43,7 +42,7 @@ build-constraint-dependencies = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/inferyard"]
 include = [
-  "src/inferyard/**/*.py", "src/inferyard/templates/**/*.html",
+  "src/inferyard/**/*.py",
   "src/inferyard/data/*.json",
   "src/inferyard/data/implementation-files/*.json",
   "src/inferyard/data/community/resources.json",
@@ -62,7 +61,7 @@ only-include = [
 ]
 include = [
   "/pyproject.toml", "/uv.lock", "/LICENSE", "/README.md", "/docs/installation.md", "/.gitignore",
-  "src/inferyard/**/*.py", "src/inferyard/templates/**/*.html",
+  "src/inferyard/**/*.py",
   "src/inferyard/data/*.json",
   "src/inferyard/data/implementation-files/*.json",
   "src/inferyard/data/community/resources.json",

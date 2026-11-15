@@ -1,91 +1,63 @@
-# 离线报告展示契约
+# 报告契约（studio.json）
 
-依据 [ADR 011](../decisions/011-report-dashboard.md)、[ADR 033](../decisions/033-svg-generative-category.md)、
-[ADR 037](../decisions/037-offline-evidence-reading.md) 与 [ADR 045](../decisions/045-report-content-refs.md)。
-新建报告 `schema_version = 3`、`report_format_version = 8`；仅接受 v8；历史 v1–v7 返回
-unsupported_format/2，旧 HTML 交原项目处理。
-各版本 `template_sha256` 绑定所用模板目录内排序后的文件名与字节，包含样式、脚本和子模板。
-v7 将模板摘要保留为生成溯源，另封存 HTML 字节并核验来源和数据语义；重渲染是显式选项，
-见[离线读取契约](offline-reading-contract.md)。`script-src` 的 SHA-256 按所渲染模板版本的
-`report_script.html` 现算，快照报告不受后续脚本编辑影响。
+历史依据：[ADR 011](../decisions/011-report-dashboard.md)、[ADR 033](../decisions/033-svg-generative-category.md)、
+[ADR 037](../decisions/037-offline-evidence-reading.md) 与 [ADR 045](../decisions/045-report-content-refs.md)；
+离线 HTML 展示、呈现封存与报告核验由 [ADR 059](../decisions/059-studio-json-only-report.md) 退役。
 
-模型与机器 profile 来源只限通过原 manifest / `read_trial` 核验的配置、identity 与 environment。文件大小仅从与模型 path / SHA 匹配的 identity 记录取得；无匹配为 null。结构参数量不从文件名的 27B 等文本猜测；文件名可作为显示标签，原配置显示名保留。硬件参数属于测评时快照，缺失附来源 / 原因，不用当前机器或 Linux 默认值填充。统一内存不加到 RSS / GPU 内存中。
+报告目录的唯一必需文件是 `studio.json`：`schema_version = 3`、`kind = "studio-report.v1"`，registry key 为
+`studio_report`。结构源在 `contracts/schemas_studio_report.py`，导出产物为 `cli/schemas/studio_report.schema.json`
+（由 `scripts/export_schemas.py` 生成，不手改）。不再使用 `report_format_version`，不生成 `index.json`、
+`report.html` 或 `artifact-manifest.json`。
 
-生成参数分别保留 requested、effective、verification、source；没有实际核验时 effective=null、verification=unknown。冻结执行、采集、线程、上下文、并发、缓存与推理条件完整展示。
+## 字段与语义
 
-六类 Q01 质量率分别展示，不合成总体质量分数。首页仅累计同 run 的已记录通过数 / 有效执行数；任一分类率缺失或不适用时标为未完整观测，并保留原因。完成率使用核心原分母，五种终态分别呈现，不因 UI 筛选改变。耗时 p50/p95 使用最近秩，仅统计 completed 且时间完整的请求，保留样本数与排除数，不把失败耗时混入完成耗时；p95 小样本标为探索性。
+`runs` 为 1–100 项，按 `source.run_id` 唯一；`requests` 可为空数组。所有对象 required 键齐全、
+`additionalProperties = false`；nullable 字段显式写 `null`，缺测不填 0。计数为整数；耗时单位为毫秒，
+内存为字节（由 MiB 换算，可为浮点）。
 
-资源按原来源与窗口独立展示；同指标存在多个来源时首页峰值为 null 并提示查看分图，不取跨来源最大值。采样峰值不能称连续峰值；缺段不连线。逐题展示题目、参考答案、原始输出、评分规则结果、耗时、token 和停止原因，未知仍为 null / —。用户内容自动转义，唯一例外是 v3 起通过下述检查的 SVG 提取结果。显示筛选只隐藏，不重评分、不缩分母。
+- `source.run_id` / `source.path`：来源 run 标识与定位。`source.path` 只是回链定位，不是内嵌证据或完整性承诺。
+- `model`、`threads`、`diagnostic`、`facets.bundle_label`：run 身份与题包标签。
+- `profile`：`title`、`engine`（binary_path/adapter/backend 三键）、`machine`（cpu/logical_cpus/memory_total_bytes 三键）。
+  硬件参数属于测评时快照，缺失为 null，不用当前机器或默认值填充；统一内存不加到 RSS / GPU 内存中。
+- `summary`：完成率 `numerator/denominator/excluded` 与 `stop_reason`；使用核心原分母，不因显示筛选改变。
+- `dashboard.quality`：六类质量计数之和与 `complete`/`reason`；`complete` 只表示展示质量输入是否完整，
+  不是证据 verified；`reason` 恰在不完整时出现。
+- `dashboard.categories[]`：仅六类质量分类（instruction/extraction/qa/math/classification/structured），
+  id 数组内唯一，不合成总体质量分数。
+- `dashboard.latency`：`min/p50/p95/max`（最近秩）与 `sample_count/excluded`；只对完成且计时完整的请求采样，
+  `sample_count + excluded == len(requests)`；不足 20 个样本时 `p95` 为 null；空样本四个分位值均为 null。
+  每题耗时取 `request_timing()` 的 L03 value。
+- `dashboard.sampled_peak_rss_bytes` / `sampled_minimum_available_bytes` 及成对 reason：采样峰值不能称连续峰值；
+  多来源或缺测给出原因，不取跨来源极值。
+- `requests[]`：`case_id`、`category_label`（未知类别回退原标签）、`state`（五种终态）、
+  `quality`（含 `not_applicable`，无 score 时为 null）、`latency_ms`。
 
-## v8 内容引用
+JSON Schema 只证明结构；run/category 唯一性、计数一致性、null/reason 成对与分布约束由 parser 执行。
 
-题面、模型输出、参考答案在一份报告内各保存一次，以内容哈希标识。逐题行、详情、画廊和 HTML
-引用该标识，引用不出文件。显示、CSP、画廊与评分语义仍按下文；画廊与 `svg_view` 从那一份模型输出现算。
+通用 JSON Schema 校验器与 Go 生产 parser（[studio_report_validate.go](../../../studio/internal/inferyard/studio_report_validate.go)）
+的接收边界不完全等价：Go 的 count 只接受 JSON 整数 token（`1.0`/`1e0` 会被拒绝），且对每个
+单类别 rate 检查 numerator ≤ denominator，而 Python 只检查汇总 quality/completion 的对应关系。
+外部工具重序列化后的展示 JSON 可能通过通用 Schema 校验却被 Go 拒绝；当前 writer 输出普通
+整数 token 且类别率来自已校验 summary，不受此差异影响。这里只描述边界，不改变两端实现。
 
-运行证据的容器合并不改变报告三文件结构。layout2 来源链接定位真实 inputs/observations/
-request-bodies 容器，内部成员的内容绑定按 [容器契约](run-evidence-layout.md#来源引用与外部绑定)
-核验；旧 layout1 保留真实旧文件链接。引用不创建副本或虚拟旧路径，报告生成身份仍独立保存。
+## 边界
 
-## v4 SVG 画廊
+- 不进入报告的字段：题面/prompt、原始答案、reference answer、reasoning、正文 contents、SVG gallery、
+  资源曲线/坐标、证据 URL、完整运行配置。相应内容保留在原始证据中，Studio 不借旧字段隐式访问。
+- `studio.json` 是可重建的展示投影，不是可核验产物：`verify --path REPORT` 固定返回
+  `studio_report_not_verifiable` / 退出 4，不写文件。证据权威是原始 run/batch/plan 及其 manifest。
+- 旧版报告（report_format_version v1–v8）明确拒绝、不迁移、不转换：可识别版本返回
+  `unsupported_format` / 退出 2 且 supported 为空；损坏 JSON、坏 hash/seal、身份冲突为退出 4。
+  带已知旧封存的输入先经有限字节检查再拒绝；无封存的可识别版本只作有限识别，不声称完整。
+  规则细节见[离线读取契约](offline-reading-contract.md)。
 
-v4 在运行概览 KPI 之后新增 `svg_gallery` 与「SVG 生成展示 · 不评分」区段：每个 svg 题以
-整栏图形原始渲染，附题面、解析状态、字节数、耗时、输出 token 与题目详情锚点；提取失败
-（`not_found`/`malformed`/`too_large`）降级为状态说明，不渲染。无 svg 题的运行为空列表，
-不渲染该区段。画廊与逐题 `svg_view` 同源自 request 的 `content` 现算，渲染规则与安全
-约束同下节；当前非 SVG 行保留既有语义。
+## 描述性比较
 
-报告渲染时另对同一份模型输出现算信息性动画元素统计，展示于画廊与逐题详情：SMIL 动画
-元素（`animate`/`animateTransform`/`animateMotion`/`set`，含 SVG namespace 形式）计数，
-以及 `<style>` 元素文本中 `@keyframes` 规则与 `animation` 属性声明的静态文本匹配计数
-（不做完整 CSS 解析）。统计仅在渲染 report.html 时计算并标注为信息性观察，不构成动画
-判定、质量评分或资格结论；不写入 index.json、不进入封存证据，不改变
-report_format_version 与 schema_version，同输入下结果确定。静态文本匹配有已知
-边界：CSS 注释中的 `@keyframes` 或 `animation:` 会被计入，带 vendor 前缀的声明
-（如 `-webkit-animation:`）不计入，可能低估实际声明数。SVG 未提取、超限或
-malformed 时计数为 null 并附原因，不以 0 冒充；解析通过而无动画时 0 为真实计数值。
-
-## v3 SVG 展示与 CSP
-
-只对 `category = svg` 行新增 `svg_view`，从 request 的 `content` 现算，非 SVG 行零字段变化。
-优先首个完整的 svg 代码围栏，否则首个闭合的 `<svg ...</svg>` 子串，无匹配为 `not_found`。
-stdlib XML 解析禁止 DTD，根元素须为 SVG；非法 XML 为 `malformed`。
-字符数上限为 512 × 1024（含边界），超限为 `too_large`。`bytes` 单独记录候选文本的 UTF-8
-字节数；未提取时为 0。只有 `ok` 返回原始 `svg` 字符串，其余为 null。
-这些是 informational 观察量，不进入 score 或指标目录。截断、未闭合、超限均降级为源码展示，
-不改变 run 状态。原始输出始终以转义的 `<pre>` 折叠保留。
-
-通过检查的 SVG 局部关闭转义并原始内嵌，不做标签或属性清洗，不重新序列化。
-安全依赖 CSP：`default-src 'none'; style-src 'unsafe-inline'` 允许 SVG 样式和
-`@keyframes` 动画；`script-src` 只允许报告固定脚本的 SHA-256，禁止模型脚本及事件处理器。
-报告不得在无 CSP 环境分发，后续模板修改不得放松 `script-src`。
-原始 CSS 可能影响页面布局；XML 检查不评价图形质量或布局隔离。
-证据资格遵循[总规则](../data-contract.md#证据血缘与比较结论)。
-
-报告完整性、诊断和比较资格继续分别展示；单次资源读数不授予严格比较资格。报告使用已封存数据，来源源码与报告生成源码分别记录。原始 trial 仍由 manifest / `read_trial` 核验，派生报告通过 `inferyard verify --path REPORT`。
-
-比较产物的 `schema_version`、`format_version` 应是整数；离线重建结果按规范 JSON
-逐项核对，嵌套布尔、整数与浮点数不能利用 Python 宽松相等互相冒充。
-`verify --path` 核验比较产物时使用此规则，并同时核验比较报告。
-合法旧产物保持可读，证据资格遵循[血缘总规则](../data-contract.md#证据血缘与比较结论)。
-
-
-## v5 描述性比较
-
-[ADR035](../decisions/035-purpose-specific-admission.md) 新增 comparison format v2 /
-phase2.v2；现由 ADR 038 与 ADR 045 收敛为 comparison4 / phase2.v3 与 report8。旧格式不再重算。
-执行 plan/run 标记保持 phase2.v1。
+比较产物为 `comparison.json`：`schema_version = 3`、`format_version = 5`，计算 definition 保持
+`phase2.v3`，校准适用域见[职责身份契约](scoped-measurement-contract.md)。
 observed_differences 展示同口径完成率/质量观测、逐题记录、条件差异与样本范围。
 质量总体差值要求相同题目内容、答案政策、规则、协议、评分器、分母及完整评分。
 性能先展示匹配定义/来源/单位的双侧值；无开销/环境/逐指标资格时差值仍为 null。
 eligibility 继续表达受控结论资格，不用描述性字段授予因果或性能结论。
-
-## 当前 v8 边界
-
-当前隐式比较采用 comparison4 / phase2.v3，校准适用域见
-[职责身份契约](scoped-measurement-contract.md)。v8 沿用此计算语义及 v7 的呈现封存和来源相对定位；
-comparison v4 同样只改变封存/定位结构。关联比较仅接受 format4。
-
-封存写入可逐文件流式计算摘要。普通核验仍检查全部封存成员的字节摘要，但只保留
-后续重算需要的字节；显式 `--rerender` 使用本次已经核验的 HTML 字节。
-不关联比较且 run 数不为 2 时，报告可逐 run 归约并释放原始样本。
-两 run 的自动比较、来源顺序核验和重复 run 拒绝继续执行。
+`verify` 对 comparison 从来源重算 source ref、hash、performance evidence 与规范 JSON；
+关联比较仅接受 format5，旧 format1–4 返回 unsupported_format / 2。

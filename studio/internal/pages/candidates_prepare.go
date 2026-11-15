@@ -239,7 +239,7 @@ func finishBenchmarkReport(ctx context.Context, backend benchmarkBackend, worksp
 	}
 	args := append([]string{"report", "--runs"}, paths...)
 	args = append(args, "--out", out)
-	r, e := backend.WizardExecute(ctx, core.WizardRequest{Command: commandOf(args), ReportVerify: false})
+	r, e := backend.WizardExecute(ctx, core.WizardRequest{Command: commandOf(args)})
 	if e != nil {
 		return e
 	}

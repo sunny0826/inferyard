@@ -33,7 +33,6 @@ def versions() -> dict:
     for name in (
         "inferyard",
         "httpx",
-        "jinja2",
         "pytest",
         "jsonschema",
         "ruff",
@@ -43,7 +42,6 @@ def versions() -> dict:
         "h11",
         "httpcore",
         "idna",
-        "markupsafe",
         "attrs",
         "jsonschema-specifications",
         "referencing",

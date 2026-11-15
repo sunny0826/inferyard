@@ -10,7 +10,7 @@ from inferyard.errors import EvidenceError
 from inferyard.contracts.format_versions import require_version
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json, sha256_file
-from inferyard.reporting.comparison_report import comparison_input
+from inferyard.analysis.comparison_input import comparison_input
 
 POLICY = "public-summary.v5"
 REMOVED = [

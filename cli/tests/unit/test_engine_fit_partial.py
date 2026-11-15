@@ -49,15 +49,12 @@ def test_unreadable_manifest_entry_is_not_treated_as_missing(tmp_path, plan, rea
         reader(tmp_path)
 
 
-def test_missing_manifest_does_not_claim_requested_rerender(tmp_path, plan, monkeypatch):
-    import inferyard.reporting.engine_fit as reporting
-
+def test_missing_manifest_does_not_claim_verification(tmp_path, plan):
     run, rows = _data(plan)
     seal_run(tmp_path, plan, run, rows)
     (tmp_path / "manifest.json").unlink()
-    monkeypatch.setattr(reporting, "render", lambda *a, **k: pytest.fail("partial rendered"))
-    code, result = execute(CommandRequest("engine-fit verify", run=tmp_path, rerender=True))
+    code, result = execute(CommandRequest("engine-fit verify", run=tmp_path))
     assert code == 3 and result.status == "partial"
     assert result.details["sealed"] is result.details["verified"] is False
-    assert result.details["render_checked"] is False
+    assert "render_checked" not in result.details
     assert read_partial(tmp_path)["requests"] == rows

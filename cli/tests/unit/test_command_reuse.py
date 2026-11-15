@@ -7,7 +7,6 @@ from inferyard.application.types import CommandRequest
 from inferyard.application.reporting import execute as compare
 from inferyard.errors import EvidenceError
 from inferyard.reporting import comparison_report, rescore
-from inferyard.reporting.report import verify_report
 from tests.helpers import fixture_run
 from tests.unit.test_scoring_contract import BUNDLE, POLICY
 
@@ -36,7 +35,8 @@ def test_compare_reduces_each_source_once_and_compares_once(tmp_path):
         CommandRequest("compare", left=roots[0], right=roots[1], out=out)
     )
     assert code == 0
-    assert verify_report(out)["verified"]
+    assert {path.name for path in out.iterdir()} == {"comparison.json"}
+    assert comparison_report.verify_comparison(out)["verified"]
     (roots[0] / "memory.jsonl").write_text("changed")
     with pytest.raises(EvidenceError, match="original_evidence_hash_mismatch"):
         comparison_report.verify_comparison(out)

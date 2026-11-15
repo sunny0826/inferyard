@@ -10,9 +10,9 @@
 4. 对 `run`/`resume`/`plan`/`probe` 打开 `command_validation` 内容哈希验证缓存（其他命令不启用），`build_request`（[`cli/src/inferyard/cli/request.py`](../../../cli/src/inferyard/cli/request.py)）执行跨参数校验、把路径参数解析为绝对路径，并加载 `--config` 得到 `LoadedConfig`；`config create` 带 `--workspace` 时，裸名题包（无后缀、无父目录）解析为 `WORKSPACE/bundles/NAME.json`。
 5. 处理器选择：显式 `handlers` 覆盖优先（测试注入伪后端），否则 `default_backend`（[`cli/src/inferyard/application/dispatch.py`](../../../cli/src/inferyard/application/dispatch.py)）。`default_backend` 是显式 if 链，每个分支在分派时才 `import` 对应执行模块，未知命令抛 `ContractError("command", "unsupported command")`。
 6. 分派要点：`probe` 规范名映射到内部 `check` 后进入 `application/execution.py`（延迟加载 `runtime/runner.py`），结果外层 `command` 还原为规范名；`catalogue` 与 `plan` 在分派内直接调用 `registry.catalogue` 与 `config.planning`，不经过独立执行模块；`prepare-length` 在 Windows 于分派层拒绝（`PreflightError("windows_phase2_live_not_supported")`）；`init`/`runtime prepare`/`config assets/create/bind` 聚合到 `application/community.py`，`engine-fit` 五个动作聚合到 `application/engine_fit.py`；单次与批量执行结果、报告/重评分/导出/比较结果、设备检测与扩展结果分别在 `application/execution.py`、`application/reporting.py`、`application/device.py`、`application/extensions.py` 构造；`verify` 进入产物识别与核验路由（见下）。
-7. `verify` 的执行器（[`cli/src/inferyard/application/verification.py`](../../../cli/src/inferyard/application/verification.py)）按标记文件识别产物类型，run/batch/plan/engine-fit 走原始核验（[`cli/src/inferyard/application/raw_verification.py`](../../../cli/src/inferyard/application/raw_verification.py)），八类派生产物按 `_HANDLERS` 延迟调用各专用验证器并保留其状态、完整性、限制与退出码；comparison 与 report 共存时核验两者并合并 details。识别冲突、损坏标记或不支持的产物类型抛 `EvidenceError`，经入口映射为退出 4；核验选项与产物类型不匹配（如 `--config` 用于非 public）抛 `ContractError`，映射为退出 2。
+7. `verify` 的执行器（[`cli/src/inferyard/application/verification.py`](../../../cli/src/inferyard/application/verification.py)）按标记文件识别产物类型，run/batch/plan/engine-fit 走原始核验（[`cli/src/inferyard/application/raw_verification.py`](../../../cli/src/inferyard/application/raw_verification.py)），八类派生产物按 `_HANDLERS` 延迟调用各专用验证器并保留其状态、完整性、限制与退出码；`studio.json` 报告固定抛 `studio_report_not_verifiable`（退出 4），可识别的旧 HTML 报告抛 `UnsupportedFormat`（退出 2）。识别冲突、损坏标记或不支持的产物类型抛 `EvidenceError`，经入口映射为退出 4；核验选项与产物类型不匹配（如 `--config` 用于非 public）抛 `ContractError`，映射为退出 2。
 8. 处理器返回 `(code, result)` 后，`run` 校验退出码属于 {0, 2, 3, 4, 130} 且 `result.command == request.command`，否则视为后端结果非法；异常按类型映射（见下节）。
-9. `format_result` 转换输出：`progress` 成功时直接输出 `details` 的 `progress.v1`（不套 CommandResult 外层）；`device-check` 默认人类摘要；其余为 `asdict(CommandResult)` 的单行 JSON，`allow_nan=False`。结果打印到 stdout，诊断只走 stderr，`run` 返回退出码。
+9. `format_result` 转换输出：`progress` 成功时直接输出 `details` 的 `progress.v2`（不套 CommandResult 外层）；`device-check` 默认人类摘要；其余为 `asdict(CommandResult)` 的单行 JSON，`allow_nan=False`。结果打印到 stdout，诊断只走 stderr，`run` 返回退出码。
 
 ## 约束与失败行为
 
@@ -25,7 +25,7 @@
 - 输出约束：stdout 恰好一个 JSON 对象（或 device-check 人类摘要），`NaN`/`Infinity` 拒绝；格式参数不进入 `CommandRequest`。后端执行器不向 stdout 写诊断。
 - 凭据安全：净化解析器 `Parser.error` 不回显 argparse 原始诊断（可能含凭据），统一抛 `invalid CLI arguments; use --help`；入口对未预期异常不打印 traceback/repr；stderr 只输出固定脱敏短语。
 - device-check 呈现：人类摘要由 `_human` 生成，status 映射为中文（如 `inspected`/`recommended` → “完成”），容量换算为 GiB，缺测与阻断原因查 `REASONS` 中文表，控制字符经 unicode escape 转义后输出，末尾固定提示“本次未发送模型请求；检测结果不表示服务已就绪”。设备检测本身的规则见[平台采集与设备身份](../platform-sampling.md) 与[设备检测](../../../cli/docs/device-check.md)。显式 `--json`/`--format json` 时保留 CommandResult JSON 外层，便于 Agent 解析；入口用 `getattr(args, "device_format", "json")` 取格式，非 device-check 命令一律回退到 JSON。
-- progress 特化：`progress` 永不报告执行结局，任何非 0/130 的结果在入口重映射为 2（[`cli/src/inferyard/application/progress.py`](../../../cli/src/inferyard/application/progress.py) 同时把准备类异常映射为 2），成功时输出裸 `progress.v1`，信封字段与 next_action 排序见 [CLI 接口](../../../cli/docs/cli-surface.md) 的首次上手进度契约。
+- progress 特化：`progress` 永不报告执行结局，任何非 0/130 的结果在入口重映射为 2（[`cli/src/inferyard/application/progress.py`](../../../cli/src/inferyard/application/progress.py) 同时把准备类异常映射为 2），成功时输出裸 `progress.v2`，信封字段与 next_action 排序见 [CLI 接口](../../../cli/docs/cli-surface.md) 的首次上手进度契约。
 - 错误映射（[`cli/src/inferyard/cli/entrypoint.py`](../../../cli/src/inferyard/cli/entrypoint.py) 的 `run`）：`UnsupportedFormat` → 2 / `unsupported_format`（details 附 artifact、saved_version、supported_versions，stderr 固定提示指向原项目）；`ContractError` 与 `ArgumentError` → 2 / `invalid_input`；`PreflightError` → 2 / `preflight_blocked`（`windows_phase2_live_not_supported` 单独保留原因为 limitation）；`EvidenceError` → 4；`OSError` → 4 / `io_error`；`KeyboardInterrupt` → 130 / `cancelled`；其余异常 → 4 / `internal_error`。limitation 措辞的来源规则见[数据契约](../../../cli/docs/data-contract.md)。
 - 呈现失败兜底：`format_result` 自身抛错时输出 `internal_error` 结果，退出码对 progress 为 2、其余为 4。
 - 结果完整性闸门：后端返回的退出码不在 {0, 2, 3, 4, 130} 或 `result.command != request.command` 时，`run` 抛 `RuntimeError`，落入 `internal_error`（退出 4）；执行器不能把未映射的退出码或冒名的结果外层传出入口。
@@ -52,6 +52,6 @@
 
 ### 输出形态
 
-`format_result` 只有三种形态：普通命令输出 `asdict(CommandResult)` 的单行 JSON；`device-check` 默认输出 `_human` 摘要，显式 JSON 回到 CommandResult 外层；`progress` 成功时输出裸 `progress.v1` 对象，失败沿用 blocked envelope。形态选择只看 `result.command` 与 device-check 的格式参数，后端执行器无法自定义呈现。
+`format_result` 只有三种形态：普通命令输出 `asdict(CommandResult)` 的单行 JSON；`device-check` 默认输出 `_human` 摘要，显式 JSON 回到 CommandResult 外层；`progress` 成功时输出裸 `progress.v2` 对象，失败沿用 blocked envelope。形态选择只看 `result.command` 与 device-check 的格式参数，后端执行器无法自定义呈现。
 
 本参考遵循[子系统设计参考索引](../README.md)的维护约定：已记录的职责、运行路径、状态转换或失败行为变化时，在同一 PR 更新本文。

@@ -16,7 +16,6 @@ const (
 	previewRefreshDevice
 	previewRefreshDiscovery
 	previewReload
-	previewVerifyReport
 )
 
 func (previewStep) previewIntent() {}

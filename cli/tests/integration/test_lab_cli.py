@@ -85,11 +85,12 @@ def test_probe_run_report_verify_and_offline_plan(lab_scenario, tmp_path, monkey
     out = tmp_path / "report"
     assert main(["report", "--runs", str(run_dir), "--out", str(out)]) == 0
     capsys.readouterr()
-    assert main(["verify", "--path", str(out)]) == 0
+    assert main(["verify", "--path", str(out)]) == 4
     capsys.readouterr()
     assert len(service.calls) == before
-    html = (out / "report.html").read_text(encoding="utf-8")
-    assert "北京" in html and config["engine"]["adapter"] in html
+    document = read_json(out / "studio.json")
+    assert document["runs"][0]["profile"]["engine"]["adapter"] == config["engine"]["adapter"]
+    assert {path.name for path in out.iterdir()} == {"studio.json"}
     # Freeze a real offline experiment; native Windows paths survive on this host.
     loaded = load_config(config_path)
     exp = compile_single_plan(loaded.config.to_dict(), loaded.bundle.to_dict())["experiment"]

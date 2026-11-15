@@ -3,7 +3,7 @@
 本页是[CLI 接口](../cli-surface.md) 的子文档，收录「首次上手进度契约」的正文；内容不变，入口保留原节标题与锚点。
 
 `inferyard progress --workspace DIR` 只读扫描显式工作区，不创建文件、不发送模型请求，
-不查询现场硬件或服务。stdout 直接输出 `progress.v1`（不套普通 CommandResult envelope），
+不查询现场硬件或服务。stdout 直接输出 `progress.v2`（不套普通 CommandResult envelope），
 诊断走 stderr；有效且可读时退出 0，无论进度；工作区不存在、缺少 preparation.json、
 产物不可读或核验失败时退出 2，绝不返回 3/4。失败输出沿用 blocked 错误 envelope。
 
@@ -23,7 +23,7 @@ W/preflight/ 递归发现的 device-preflight.json 中修改时间最新者（�
 ```json
 {
   "kind": "progress",
-  "progress_version": 1,
+  "progress_version": 2,
   "workspace": "/absolute/workspace",
   "device_preflight": {"status": "missing", "path": null},
   "bundles": [{
@@ -52,11 +52,14 @@ run 或 batch/runs/run 读取，包含绝对 path、complete 和 sealed；完成
 现有证据语义，不把诊断 run 算入完成。单次运行和固定时窗不能 resume，仍报告 resume
 阶段并给 blocked_reason，操作者按既有规则新建运行，不自动重试。
 
-顶层 next_action 按 device_check → 各题包 prepare_candidate/bind/run → report → verify → done
-排序；未完成 run 的顶层动作是 run，包内动作是 resume。report.status 为 missing / present /
-verified，path 为报告目录绝对路径或 null，runs 为其来源绝对路径列表；verified 必须通过现有
-报告字节、来源和语义核验。所有导出题包的 run_complete 且汇总报告 verified 时，
-default_scope_complete 为 true；固定题包只表示其显式范围完成。
+顶层 next_action 按 device_check → 各题包 prepare_candidate/bind/run → report → done
+排序；未完成 run 的顶层动作是 run，包内动作是 resume。report.status 只有 missing / present，
+path 为报告目录绝对路径或 null，runs 为其来源绝对路径列表；present 要求报告目录含可解析的
+`studio.json` 且覆盖当前全部默认范围的来源 run，损坏的 `studio.json` 显式报错、不降级 missing。
+所有导出题包的 run_complete 且汇总报告 present 时，
+default_scope_complete 为 true，此时 next_command 为 null；固定题包只表示其显式范围完成。
+旧 `progress.v1` 文档明确 unsupported；只有旧版报告（无 `studio.json`）的目录不参与匹配，
+报告状态按 missing 处理并分配新输出目录，不覆盖旧产物。
 
 next_command 是包含绝对工作区路径的 shell 命令，路径按 shell 引号转义；
 准备和绑定时尚未知的本地资产或进程参数使用必须显式设置的 INFERYARD_ENGINE /

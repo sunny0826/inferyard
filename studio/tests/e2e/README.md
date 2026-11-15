@@ -48,7 +48,7 @@ restores the environment after each test and forbids parallel tests; callers of
 | `recorder.go` | Executor middleware: `transcript.jsonl` plus per-call stdout/stderr with sha256 |
 | `schemagate.go` | Validates every schema-covered evidence document against `cli/schemas/` |
 | `blame.go` | Failure attribution from the transcript (see below) |
-| `chain_test.go` | Golden chain: init → device-check → bind → run both bundles → verified report |
+| `chain_test.go` | Golden chain: init → device-check → bind → run both bundles → studio.json report |
 | `scenarios_test.go` | Command guards reject invalid requests before launching CLI work |
 
 ## Blame model

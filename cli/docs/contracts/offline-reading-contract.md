@@ -35,27 +35,29 @@ checkpoint.json 是在途辅助文件，最终封存后固定保留但忽略，�
 此时最终 run.json 是身份与资源权威；checkpoint 缺失或损坏不参与 sealed 读取，也不能
 掩盖 manifest 所列文件损坏。核验不删除或改写 checkpoint，不自动恢复执行。
 
-## 新呈现封存与定位
+## 派生产物核验与旧格式拒绝
 
-report v8 的 artifact-manifest.json 封存 index.json/report.html（比较时另含 comparison.json）。
-comparison v4 保留 phase2.v3 计算语义，使用相对来源定位；旧 v1–v3 不支持。
-engine-fit manifest v2 继续封存原四文件和携带来源；旧 manifest1 返回 unsupported_format/2。
-新验证分别报告 bytes_verified、sources_verified、semantic_verified、render_checked。
-新格式默认不调用 renderer，--rerender 显式请求当前 renderer 一致性；渲染变化不能
-自动改写原报告。摘要一致不独自代替来源和语义核验。
-未重渲染时 render_checked=false，不返回 html_matches_index=true；未封存取证也不
-因传入 --rerender 而声明已渲染核验。旧八类产物的退出语义保持。
+普通报告不再是可核验产物：`studio.json`（`studio-report.v1`）只有结构读取，verify 固定返回
+`studio_report_not_verifiable`/4；呈现封存（`presentation-seal.v1`/`artifact-manifest.json`）、
+`--rerender` 与 `render_checked` 已随 [ADR 059](../decisions/059-studio-json-only-report.md) 退役。
+comparison 唯一必需文件为 `comparison.json`，`format_version = 5`，保留 phase2.v3 计算语义与
+来源重算核验；旧 format1–4 返回 unsupported_format/2。
+engine-fit manifest v3 封存 `plan.json`、`run.json`、`requests.json` 与携带来源，不再含 HTML；
+完整旧 manifest v2 识别后返回 unsupported_format/2，旧 manifest1 同样拒绝，损坏输入为 4。
+engine-comparison 产物为单个 `engine-comparison.json`（definition 仍 `engine-comparison.v2`，
+`format_version = 2`），verify 从 plan/batch/来源重算；可识别旧 v1/旧 v2 返回 unsupported_format/2。
+新验证分别报告实际执行的 bytes/sources/semantic 核验结果，不再有渲染一致性字段。
+摘要一致不独自代替来源和语义核验。原始 run 的退出语义保持。
 
-普通报告 source.path 为相对报告目录的外部定位，可含 ..；manifest 摘要和 run_id 仍是
+comparison 的 source.path 为相对报告目录的外部定位，可含 ..；来源 hash 与 run_id 仍是
 身份。--source-root OLD=NEW 可重复，以明确前缀映射定位，拒绝重复/歧义根，不搜索磁盘。
-原始数据/HTML 字节不改。携带包 sources/N 始终限于包内且拒绝 symlink/逃逸，不应用
+原始数据字节不改。携带包 sources/N 始终限于包内且拒绝 symlink/逃逸，不应用
 外部根映射。旧格式交原项目处理，不追改旧字节。
 
-未封存的原始 run 可生成描述报告：新 source 另存 unsealed_content_sha256，绑定本次
-严格读取所得数据投影；manifest_sha256 保持 null，不把投影摘要称为原始封存。
-显示链接按保存的来源定位确定性重建；显式映射仅改变验证读取的位置，不修改原链接。
-旧报告一律不支持；当前比较中已绑定的总开销源绝对引用可按显式
-根映射定位，原绑定文件字节及 manifest 摘要仍核验。
+可识别旧报告/比较/engine 产物若带已知 `presentation-seal.v1`，先经私有只读检查器核对固定成员、
+路径与 SHA-256，再按版本拒绝：坏 seal、成员缺失或 hash/path 不符为证据错误 4，完整旧字节仍为
+unsupported_format/2，不是 verified；无 seal 的可识别旧版本只作有限识别，不声称完整。
+该检查只服务拒绝路径，不恢复旧格式的成功核验。
 
 ## 共享边界
 

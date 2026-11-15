@@ -14,7 +14,7 @@ from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import read_json, read_jsonl
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.reporting.repetition_report import write_repetition_summary
-from inferyard.reporting.report import write_report
+from inferyard.reporting.studio_report import write_studio_report
 from inferyard.runtime import batch_state
 from inferyard.application.execution import execute_async
 from tests.integration.test_batch_runner import batch
@@ -61,7 +61,7 @@ def test_skipped_timeline_validation_remains_in_verify_and_report(
     for action in (
         lambda: verify(CommandRequest("verify", run=root)),
         lambda: verify(CommandRequest("verify", run=request.output_root)),
-        lambda: write_report([root], tmp_path / "bad-report"),
+        lambda: write_studio_report([root], tmp_path / "bad-report"),
         lambda: write_repetition_summary(request.output_root, tmp_path / "bad-repeat"),
     ):
         with pytest.raises(EvidenceError, match=reason):

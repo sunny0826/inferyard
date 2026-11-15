@@ -18,7 +18,6 @@ type WizardRequest struct {
 	ModelName     string `json:"model_name,omitempty"`
 	EngineName    string `json:"engine_name,omitempty"`
 	Command       string `json:"command"`
-	ReportVerify  bool   `json:"report_verify"`
 }
 type WizardResult struct {
 	Limitations []string             `json:"limitations,omitempty"`
@@ -46,7 +45,7 @@ func wizardArgs(command string) ([]string, map[string][]string, *ApiError) {
 	allowed := map[string]string{
 		"init": "--out", "model acquire": "--source --out --token-env --timeout-seconds", "engine acquire": "--source --out --timeout-seconds",
 		"device-check": "--models-root --out --json", "config create": "--workspace --bundle --engine --runtime-receipt --preflight --results --out --port --model-source --model-repo --model-revision",
-		"config bind": "--candidate --pid --endpoint --out", "run": "--config", "resume": "--from-run --endpoint-url --server-pid", "report": "--runs --out", "verify": "--path",
+		"config bind": "--candidate --pid --endpoint --out", "run": "--config", "resume": "--from-run --endpoint-url --server-pid", "report": "--runs --out",
 	}
 	flags, ok := allowed[key]
 	if !ok {
@@ -78,7 +77,7 @@ func wizardArgs(command string) ([]string, map[string][]string, *ApiError) {
 		"init": {"--out"}, "model acquire": {"--source", "--out"}, "engine acquire": {"--source", "--out"},
 		"device-check": {"--out"}, "config create": {"--bundle", "--out"},
 		"config bind": {"--candidate", "--pid", "--endpoint", "--out"}, "run": {"--config"},
-		"resume": {"--from-run"}, "report": {"--runs", "--out"}, "verify": {"--path"},
+		"resume": {"--from-run"}, "report": {"--runs", "--out"},
 	}
 	for _, flag := range required[key] {
 		if len(values[flag]) == 0 || values[flag][0] == "" {
@@ -141,9 +140,6 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 		args = resourceArg(args, "--preflight", q.PreflightPath)
 	}
 
-	if q.ReportVerify && args[0] != "report" && args[0] != "verify" {
-		return result, Err("invalid_request")
-	}
 	if args[0] == "run" {
 		tasks, e := s.StartRuns(StartRunsRequest{ConfigPaths: []string{value(flags, "--config")}, AllowSingleBundle: ptr(true)})
 		result.Tasks = tasks
@@ -224,16 +220,11 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 	}
 	if args[0] == "report" {
 		path := value(flags, "--out")
+		if !validStudioReport(path) {
+			return result, Err("internal_error")
+		}
 		if report, err := reportSummary(path); err == nil {
 			s.Bus.Publish("report.created", map[string]any{"report": report})
-		}
-		if q.ReportVerify {
-			verified, err := s.exec(ctx, *p.Path, "verify", "--path", path)
-			if err != nil {
-				return result, Err("internal_error")
-			}
-			result.Status = inferyard.MapExitCode(verified.ExitCode)
-			result.ExitCode = verified.ExitCode
 		}
 	}
 	s.Bus.Publish("sync.reset", map[string]string{"reason": "workspace_changed"})

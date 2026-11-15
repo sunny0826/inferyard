@@ -206,7 +206,7 @@ func TestDashboardSelectedRunReportIgnoresUnfinishedPelican(t *testing.T) {
 	}
 	report := f.requests[1]
 	args, err := inferyard.SplitCommand(report.Command)
-	if err != nil || args[0] != "report" || args[1] != "--runs" || args[2] != run || report.ReportVerify {
+	if err != nil || args[0] != "report" || args[1] != "--runs" || args[2] != run {
 		t.Fatal(report)
 	}
 	if strings.Contains(report.Command, "pelican") || strings.Contains(f.requests[0].Command, "pelican") {

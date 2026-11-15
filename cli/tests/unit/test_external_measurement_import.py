@@ -148,9 +148,50 @@ def test_documented_calibration_does_not_mean_physically_verified(importer):
         importer.reduce_channel(spec, (10, 20), "clock", 1)
 
 
-def test_report_escapes_imported_text(importer):
-    text = importer.report({"instrument": "<script>alert(1)</script>"}).decode()
-    assert "<script>" not in text and "&lt;script&gt;" in text
+def test_import_writes_only_structured_json_without_report_hash(importer, tmp_path, monkeypatch):
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "manifest.json").write_text("{}")
+    data = {
+        "run": {"run_id": "run"},
+        "requests": [
+            {
+                "t_send_ns": 10,
+                "t_terminal_ns": 20,
+                "clock_id": "clock",
+                "execution_state": "completed",
+                "quality_state": "pass",
+            }
+        ],
+    }
+    source = tmp_path / "input.json"
+    source.write_text(
+        json.dumps(
+            {
+                "definition": "external_measurements.v1",
+                "run_id": "run",
+                "manifest_sha256": importer.sha256_file(run / "manifest.json"),
+                "window_ns": [10, 20],
+                "channels": [channel()],
+            }
+        )
+    )
+    out = tmp_path / "output"
+    monkeypatch.setattr(importer, "read_trial", lambda _: data)
+    monkeypatch.setattr(
+        sys, "argv", ["import", "--spec", str(source), "--run", str(run), "--out", str(out)]
+    )
+    importer.main()
+    assert {path.name for path in out.iterdir()} == {
+        "input.json",
+        "analysis.json",
+        "artifact-hashes.json",
+        "verification.json",
+    }
+    hashes = json.loads((out / "artifact-hashes.json").read_text())
+    assert "report_sha256" not in hashes
+    assert hashes["analysis_sha256"] == importer.sha256_file(out / "analysis.json")
+    assert importer.verify_import(out)["verified"] is True
 
 
 def test_failed_replay_never_writes_a_pass_marker(importer, tmp_path, monkeypatch):

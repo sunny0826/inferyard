@@ -1,51 +1,87 @@
-"""Sealed reports must reject unsafe paths and verify the consumed HTML bytes."""
+"""Current Studio publication rejects duplicate sources and never links comparisons."""
+
+import json
 
 import pytest
 
-from inferyard.evidence.verification_options import VerificationOptions
 from inferyard.errors import EvidenceError
-from inferyard.evidence.artifact_seal import read_sealed, seal
-from inferyard.reporting import report
-from tests.helpers import fixture_run, symlink_or_skip
+from inferyard.reporting.studio_report import build_studio_report, write_studio_report
+from tests.helpers import fixture_run
 
 
-def test_default_retains_verified_bytes_and_rejects_escaping_paths(tmp_path):
-    (tmp_path / "report.html").write_bytes(b"original")
-    seal(tmp_path, ["report.html"])
-    assert read_sealed(tmp_path, ["report.html"]) == {"report.html": b"original"}
-    with pytest.raises(EvidenceError, match="unsafe_evidence_path"):
-        seal(tmp_path, ["../outside"])
-    outside = tmp_path.parent / (tmp_path.name + "-outside")
-    outside.write_bytes(b"outside")
-    symlink_or_skip(tmp_path / "escape", outside)
-    with pytest.raises(EvidenceError, match="unsafe_evidence_symlink"):
-        seal(tmp_path, ["escape"])
-
-
-def test_multi_run_report_rejects_duplicate_sources(tmp_path):
+def test_multi_run_studio_report_rejects_duplicate_sources(tmp_path):
     roots = [fixture_run(tmp_path / str(i)) for i in range(3)]
     out = tmp_path / "report"
-    index = report.write_report(roots, out)
-    assert len(index["runs"]) == 3 and index["comparison"] is None
-    assert report.verify_report(out)["verified"]
+    document = write_studio_report(roots, out)
+    assert len(document["runs"]) == 3
+    assert {path.name for path in out.iterdir()} == {"studio.json"}
     with pytest.raises(EvidenceError, match="duplicate_report_run"):
-        report.build_index([roots[0], roots[1], roots[0]], tmp_path / "duplicate")
+        build_studio_report([roots[0], roots[1], roots[0]])
 
 
-def test_rerender_consumes_the_verified_html_snapshot(tmp_path, monkeypatch):
-    from inferyard.reporting import sealed_report
+def test_cost_harness_measures_only_the_remaining_json_work():
+    from scripts import benchmark_cost
 
-    root = fixture_run(tmp_path / "source")
-    out = tmp_path / "report"
-    report.write_report([root], out)
-    original = sealed_report.read_sealed
+    assert set(benchmark_cost.OPERATIONS) == {
+        "read_trial",
+        "studio_json",
+        "resources",
+        "redact",
+        "redact_empty",
+        "json",
+        "redact_stream",
+        "redact_stream_empty",
+    }
+    assert not any(
+        token in operation
+        for operation in benchmark_cost.OPERATIONS
+        for token in ("report", "verify", "rerender", "html")
+    )
 
-    def verified_then_changed(*args, **kwargs):
-        blobs = original(*args, **kwargs)
-        (out / "report.html").write_text("changed after byte verification")
-        return blobs
 
-    monkeypatch.setattr(sealed_report, "read_sealed", verified_then_changed)
-    assert report.verify_report(out, options=VerificationOptions(rerender=True))["render_checked"]
-    with pytest.raises(EvidenceError, match="presentation_bytes_changed"):
-        report.verify_report(out)
+def test_cost_compare_requires_exact_studio_json(tmp_path):
+    from scripts import benchmark_cost_compare
+
+    document = {"schema_version": 3, "kind": "studio-report.v1", "runs": []}
+
+    def write(root, value):
+        (root / "report").mkdir(parents=True)
+        raw = json.dumps(value)
+        (root / "result.json").write_text(raw, encoding="utf-8")
+        (root / "report/studio.json").write_text(raw, encoding="utf-8")
+
+    left, right = tmp_path / "left", tmp_path / "right"
+    write(left, document)
+    write(right, document)
+    assert benchmark_cost_compare.compare_outputs(left, right, "studio_json") == []
+
+    changed = {**document, "schema_version": 4}
+    (right / "result.json").write_text(json.dumps(changed), encoding="utf-8")
+    with pytest.raises(ValueError, match="content_difference:studio_json"):
+        benchmark_cost_compare.compare_outputs(left, right, "studio_json")
+
+
+def test_cost_answers_are_not_part_of_the_studio_projection(tmp_path):
+    from scripts import benchmark_cost_compare
+
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (corpus / "corpus.json").write_text(
+        json.dumps({"run_count": 1, "cases": 1, "samples": 2, "answer_sha256": []}),
+        encoding="utf-8",
+    )
+    out = tmp_path / "out"
+    out.mkdir()
+    result = {
+        "schema_version": 3,
+        "kind": "studio-report.v1",
+        "runs": [
+            {
+                "source": {"run_id": "run-1", "path": "/synthetic/run-1"},
+                "requests": [{"case_id": "case-1", "content": "raw answer"}],
+            }
+        ],
+    }
+    (out / "result.json").write_text(json.dumps(result), encoding="utf-8")
+    with pytest.raises(ValueError, match="studio_json_scope"):
+        benchmark_cost_compare.check_expected(out, corpus, "studio_json")

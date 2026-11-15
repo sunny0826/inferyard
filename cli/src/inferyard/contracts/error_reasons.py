@@ -346,6 +346,7 @@ SAFE_REASONS = frozenset(
         "single_execution_requires_one_fixed_trial",
         "single_plan_input_hash_mismatch",
         "startup_first_valid_answer_unverified",
+        "studio_report_not_verifiable",
         "success_with_inflight_request",
         "template_token_inventory_mismatch",
         "terminal_binding_mismatch",

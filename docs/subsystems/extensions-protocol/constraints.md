@@ -23,7 +23,7 @@
 - **有界预算**：工具链调用次数、轮数、case 数与参数 JSON 大小（4096 字节）均有硬上限；SSE 组装字节预算 1 MiB；非流式响应体超过 1 MiB 判证据错误。所有上限在 schema 或 `validate_spec` 处强制。工具 mock 是进程内确定性函数，`limitations` 标注 `deterministic_mock_functions_only`；`reviewed_formal` track 需要 `content_review_sha256` 等于 cases 摘要，CLI 只执行 `capability_diagnostic`。
 - **有效参数核验**：每个请求后核验该槽位可见的 `seed`/`temperature`/`top_k`/`top_p`/`min_p`/`penalty` 与冻结生成参数一致（1e-6 容差），`n_predict`、`stop` 精确相等；工具请求还核验模板 token 计数与 context 预算。答案经 redactor 脱敏，发现凭据即不评分（quality 记 `null`）。
 - **平台限制**：live 在 Windows 直接拒绝（`windows_phase2_live_not_supported`）；守护进程证据不完整或其进程非零退出即整体失败。
-- **报告诚实性**：`report.html` 固定标注「Fixture代表软件验证；真机资格按独立证据标记」；对照归约的 `limitations` 明示共享守护成本未估计、仅声明 case 与单机、非总体置信、方法墙钟占比不是因果减速；闭集归约明示非开放到达负载。
+- **报告诚实性**：packet/summary 以 `evidence_kind`（`fixture`/`live`）与 `hardware_qualified` 区分软件验证与真机资格（`hardware_qualified` 仅在 live 且对照通过时为真）；对照归约的 `limitations` 明示共享守护成本未估计、仅声明 case 与单机、非总体置信、方法墙钟占比不是因果减速；闭集归约明示非开放到达负载。
 - **终态守恒**：闭集负载沿用五个终态（completed/failed/cancelled/invalid/not_executed），`not_executed` 不得携带请求身份或时间戳；工具协议终态不含 `invalid`。答案被判错不视为协议失败，质量不合格只影响 goodput 分子；`reduce_tools` 重算四项检查与 packet 不一致即拒绝（`tool_checks_do_not_replay`）。
 
 归约失败统一抛 `EvidenceError`（退出码 4）；输入/预检阻断抛 `PreflightError` 或 `ContractError`（退出码 2）；协议执行完成但安全停止或排空未证实也按证据错误处理。扩展容器不套用 v2 run 布局规则，独立封存协议保持不变，见 [ADR 048](../../../cli/docs/decisions/048-run-evidence-containers.md)。

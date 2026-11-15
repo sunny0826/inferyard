@@ -11,8 +11,9 @@ from inferyard.analysis.comparison import compare_trials
 from inferyard.errors import EvidenceError
 from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import read_jsonl
-from inferyard.reporting.comparison_report import comparison_input
-from inferyard.reporting.report import verify_report, write_report
+from inferyard.analysis.comparison_input import comparison_input
+from inferyard.reporting.comparison_report import build_comparison
+from inferyard.reporting.studio_report import write_studio_report
 from tests.helpers import fixture_run
 
 
@@ -79,23 +80,24 @@ def test_five_states_remain_distinct_and_incomplete_quality_has_no_rate(tmp_path
     assert data["summary"]["completeness"] == "incomplete"
 
 
-def test_report_autoescaping_readonly_inputs_and_output_protection(tmp_path):
+def test_studio_report_is_readonly_and_protects_sources_and_existing_output(tmp_path):
     root = fixture_run(tmp_path / "runs")
     original = digest_tree(root)
-    index = write_report([root], tmp_path / "report")
-    summary = index["runs"][0]["summary"]
-    assert summary["completeness"] == "complete"
-    assert summary["quality"]["Q01"]["instruction"]["rate"]["value"] == 2 / 3
-    html = (tmp_path / "report/report.html").read_text()
-    assert "<script>alert" not in html and "<img src=x" not in html
-    assert "&lt;script&gt;" in html and "&lt;img" in html and "{{7*7}}" in html
-    assert "fetch(" not in html and "<script src=" not in html
-    assert verify_report(tmp_path / "report")["verified"]
+    document = write_studio_report([root], tmp_path / "report")
+    run = document["runs"][0]
+    assert run["summary"]["completion_rate"] == {
+        "numerator": 2,
+        "denominator": 3,
+        "excluded": 0,
+    }
+    raw = (tmp_path / "report/studio.json").read_text()
+    assert "<script>alert" not in raw and "{{7*7}}" not in raw
+    assert "comparison" not in raw
     assert original == digest_tree(root)
     with pytest.raises(FileExistsError):
-        write_report([root], tmp_path / "report")
+        write_studio_report([root], tmp_path / "report")
     with pytest.raises(EvidenceError, match="inside_original"):
-        write_report([root], root / "new-report")
+        write_studio_report([root], root / "new-report")
 
 
 def test_missing_terminal_and_missing_score_reconstruction(tmp_path):
@@ -158,8 +160,11 @@ def test_frozen_model_comparison_preserves_quality_deltas_without_performance_gr
     quality = next(row for row in result["quality_differences"] if row["metric_id"] == "Q01")
     assert quality["category"] == "instruction" and quality["difference"] == pytest.approx(-1 / 3)
     assert result["completion_rate_difference"] == pytest.approx(1 / 3)
-    index = write_report([a, b], tmp_path / "comparison")
-    comparison = index["comparison"]
+    comparison = build_comparison(
+        a,
+        b,
+        loaded=[comparison_input(a), comparison_input(b)],
+    )
     assert comparison["eligibility"] == {
         "quality": True, "completion": True, "performance": False
     }

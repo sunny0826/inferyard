@@ -3,29 +3,18 @@
 from inferyard.application.types import CommandResult
 
 
-def _verify_reports(request, options):
-    from inferyard.reporting.report import verify_report
-
-    return 0, CommandResult(
-        request.command,
-        "verified",
-        "complete",
-        details=verify_report(request.run, options=options),
-    )
-
-
 def _report(request):
-    from inferyard.reporting.report import write_report
+    from inferyard.reporting.studio_report import write_studio_report
 
     roots = request.report_runs or [request.run]
-    index = write_report(roots, request.out, comparison_path=request.comparison_path)
+    document = write_studio_report(roots, request.out)
     return 0, CommandResult(
         request.command,
-        "rendered",
+        "generated",
         "complete",
         evidence_dir=str(request.out),
-        limitations=tuple(index["limitations"]),
-        details={"runs": len(index["runs"]), "report": str(request.out / "report.html")},
+        limitations=("runs_are_not_pooled", "local_private_report_not_public_export"),
+        details={"runs": len(document["runs"]), "report": str(request.out / "studio.json")},
     )
 
 
@@ -165,13 +154,11 @@ def _engine_comparison(request):
 
 
 def execute(request, *, options=None):
-    if request.command in ("report-check", "compare-check", "engine-compare-check"):
+    if request.command in ("compare-check", "engine-compare-check"):
         if options is None:
             from inferyard.application.verification import verification_options
 
             options = verification_options(request)
-    if request.command == "report-check":
-        return _verify_reports(request, options)
     if request.command == "report":
         return _report(request)
     if request.command == "rescore-check":

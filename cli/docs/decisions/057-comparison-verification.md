@@ -4,6 +4,8 @@
 单份完整计划见 [ADR 057b](057-engine-comparison-plan.md)，专用任务见 [ADR 057a](057-comparison-task.md)。
 本部分只复用现有 run、batch 和 `service_binding` 证据，不新增批次身份字段、第二份顺序日志或通用任务状态系统。
 
+> 局部取代：v2 产物的 presentation-seal 与 `--rerender` 核验由 [ADR 059](059-studio-json-only-report.md) 取代（verify 只重算 JSON）；封存交接链与比较专用停止规则不变。
+
 ## 封存交接链
 
 **事实**：同一计划可在不同空目录创建 batch；`history()` 校验 run 身份后按计划顺序组织结果，不能证明实际交接顺序。

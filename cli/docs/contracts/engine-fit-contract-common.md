@@ -24,8 +24,8 @@ plan.v3 仅对应 run.v4；v4 字段形状沿用 v3，platform 与来源规则�
 应含 `temperature_stop_explicitly_disabled`。不覆盖旧 definition 的读取语义。
 旧运行禁止该覆盖标记；v4 的摘要和逐请求 reason 均禁止温度阈值停止原因。
 Guard 仍采集温度，仅 null 时跳过温度阈值比较；内存、磁盘、身份、预算和 dirty 不变。
-run/compare 的 HTML 顶部显示“本次已显式跳过温度停止”及转义后的冻结原因，
-旧计划生成的 HTML 字节保持原样。comparison.v1 的来源可为新 run.v4，但仍要求
+覆盖标记与冻结原因保存在 run 的 limitations 与比较 JSON 中随产物展示，
+旧产物字节保持原样。comparison.v1 的来源可为新 run.v4，但仍要求
 两个来源完整计划及测量源码一致，不把新旧计划混合比较。
 
 ### CLI 与共享数据
@@ -48,7 +48,7 @@ run.v5 形状沿用 v4，严格对应 plan.v4，应含
 `memory_safety_threshold_reached` 或 `system_memory_unavailable`；温度覆盖继续禁止
 `temperature_safety_threshold_reached`。Guard 在内存下限 null 时跳过内存阈值与缺测阻断，
 仍采集并保存 null/缺测原因；磁盘、身份、主机锁、dirty、时限、取消和排空不受影响。
-HTML 逐项显示覆盖及转义原因；v1–v4 旧运行的渲染字节保持。
+覆盖及原因在 JSON 产物字段中逐项保留；v1–v4 旧运行的字节保持。
 comparison.v1 允许两份同计划 run.v5，仍拒绝混合计划、原因或测量源码。
 
 - `engine-fit engines`：离线 JSON 能力表，无实时后端加载。引擎 ID 为
@@ -74,8 +74,8 @@ macOS extended binding 继续含 cwd_sha256、listener_inode=null 与 listener_i
 [ADR037 的离线契约](offline-reading-contract.md) 去除与上述身份无关的 executable
 basename 限定；下面入口名表示启动协议，允许同内容核验通路下的重命名二进制。
 MLX 脚本摘要、模型加载路径和 LM Studio app/helper 发现约束保留。
-新 manifest.v2 封存保存字节；旧 manifest.v1 仍重渲染核验。未封存中断的最小读取文件、
-partial 状态与损坏拒绝亦见该契约。
+新 manifest.v3 封存保存字节；旧 manifest.v2 经成员与哈希检查后按版本拒绝，v1 同样拒绝。
+未封存中断的最小读取文件、partial 状态与损坏拒绝亦见该契约。
 
 llama-cpp 的入口为 `llama-server -m|--model` 本地单 GGUF；拒绝额外模型、draft、LoRA、
 mmproj、router、HF/URL 下载与歧义参数。model_binding 保留原 engine/path/device/inode/source

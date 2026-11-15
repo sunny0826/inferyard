@@ -10,19 +10,20 @@ from inferyard.contracts.validation import json_bytes
 from tests.helpers import fixture_run
 
 
-def assert_unsupported(out, commands, mapping, version, supported, capsys):
+def assert_unsupported(out, mapping, version, supported, capsys, *, mapping_reason="unsupported_format"):
     before = {p.name: p.read_bytes() for p in out.iterdir()}
-    for command, flag in commands:
-        for options in ([], ["--source-root", mapping]):
-            assert main([command, flag, str(out), *options]) == 2
-            result = json.loads(capsys.readouterr().out)
-            assert result["limitations"] == ["unsupported_format"]
-            assert result["details"]["saved_version"] == version
-            assert result["details"]["supported_versions"] == [supported]
-            assert before == {p.name: p.read_bytes() for p in out.iterdir()}
+    assert main(["verify", "--path", str(out)]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["limitations"] == ["unsupported_format"]
+    assert result["details"]["saved_version"] == version
+    assert result["details"]["supported_versions"] == supported
+    assert main(["verify", "--path", str(out), "--source-root", mapping]) == 2
+    mapping_result = json.loads(capsys.readouterr().out)
+    assert mapping_result["limitations"] == [mapping_reason]
+    assert before == {p.name: p.read_bytes() for p in out.iterdir()}
 
 
-@pytest.mark.parametrize("version", [1, 2, 3])
+@pytest.mark.parametrize("version", [1, 2, 3, 4])
 def test_legacy_comparison_mapping_rejected_by_both_entrypoints(tmp_path, version, capsys):
     out = tmp_path / "comparison"
     out.mkdir()
@@ -30,12 +31,25 @@ def test_legacy_comparison_mapping_rejected_by_both_entrypoints(tmp_path, versio
         json_bytes({"schema_version": 3, "format_version": version})
     )
     (out / "index.json").write_bytes(json_bytes({"schema_version": 3, "report_format_version": 6}))
+    if version == 4:
+        # A retired comparison keeps its own version identity; it is not a report.
+        assert main(["verify", "--path", str(out)]) == 2
+        result = json.loads(capsys.readouterr().out)
+        assert result["details"] == {
+            "artifact": "comparison",
+            "saved_version": 4,
+            "supported_versions": [5],
+        }
+        assert main(
+            ["verify", "--path", str(out), "--source-root", f"{tmp_path}=absent"]
+        ) == 2
+        assert json.loads(capsys.readouterr().out)["limitations"] == ["unsupported_format"]
+        return
     assert_unsupported(
         out,
-        (("verify", "--path"),),
         f"{tmp_path / 'source'}={tmp_path / 'absent'}",
         version,
-        4,
+        [5],
         capsys,
     )
 
@@ -49,11 +63,11 @@ def test_legacy_report_mapping_rejected_by_both_entrypoints(tmp_path, version, c
     )
     assert_unsupported(
         out,
-        (("verify", "--path"),),
         f"{tmp_path / 'source'}={tmp_path / 'absent'}",
         version,
-        8,
+        [],
         capsys,
+        mapping_reason="invalid_input",
     )
 
 

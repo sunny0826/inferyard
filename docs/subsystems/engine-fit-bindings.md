@@ -38,7 +38,7 @@
 （[ADR 016](../../cli/docs/decisions/016-engine-fit-temperature-override.md)、
 [ADR 019](../../cli/docs/decisions/019-engine-fit-memory-override.md)）；run 不接受
 运行时切换。覆盖时对应阈值为 null，`Guard` 跳过该阈值比较与缺测阻断，但温度、内存
-与缺测原因仍采集并保存，HTML 逐项明示转义后的冻结原因；内存覆盖与显式
+与缺测原因仍采集并保存，诊断 JSON 逐项保留冻结原因；内存覆盖与显式
 `--min-free-memory-mib` 互斥，非法原因在资产哈希前拒绝。磁盘、身份、主机锁、dirty、
 时限、取消与排空不受覆盖影响，旧计划保持默认 85°C 与内存下限；新旧计划不可混合
 比较。

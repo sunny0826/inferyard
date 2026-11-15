@@ -45,13 +45,12 @@ inferyard resume --from-run results/BATCH_ID/runs/RUN_ID --endpoint-url http://1
 ```bash
 inferyard report --runs results/A results/B --out reports/A-B-new
 inferyard compare --left results/A --right results/B --out reports/A-B-comparison
-inferyard verify --path reports/A-B-new
 inferyard verify --path reports/A-B-comparison
 ```
 
-离线命令只读原始证据，不发送模型请求；关闭服务、移除凭据后仍可生成自包含 HTML。报告、比较、重评分、导出与公开包的 `--out` 为新目录，不覆盖旧产物。比较分别判断质量、性能和资源资格，缺条件时显示原因，不强制排名。
+离线命令只读原始证据，不发送模型请求；关闭服务、移除凭据后仍可生成 `studio.json` 报告与比较。报告、比较、重评分、导出与公开包的 `--out` 为新目录，不覆盖旧产物。比较分别判断质量、性能和资源资格，缺条件时显示原因，不强制排名。
 
-`verify` 支持原始 run、batch、冻结 plan、engine-fit 及派生产物；单独 analysis 不属于此入口。未封存取证返回 partial/3，封存核验成功返回 0，原执行状态另行保留。新报告默认核验封存字节与来源语义，可用 `--rerender` 检查当前渲染、`--source-root OLD=NEW` 明确定位已移动的来源。旧格式遇到非空来源映射会拒绝，详见[离线读取契约](../contracts/offline-reading-contract.md)。
+`verify` 支持原始 run、batch、冻结 plan、engine-fit 及派生产物；单独 analysis 不属于此入口。未封存取证返回 partial/3，封存核验成功返回 0，原执行状态另行保留。报告目录不是核验入口：`verify --path REPORT` 固定返回 `studio_report_not_verifiable` / 4。比较可用 `--source-root OLD=NEW` 明确定位已移动的来源。旧格式遇到非空来源映射会拒绝，详见[离线读取契约](../contracts/offline-reading-contract.md)。
 
 ## 公开包与扩展
 
@@ -103,8 +102,8 @@ probe 只预算探测输入，0 次预热不预算 warmup，run/resume 只预算
 ## 描述性比较与复用
 
 新离线比较显示口径匹配的本次差值、条件差异和样本范围；受控结论资格另列。
-性能差值仍须对应逐指标证据。报告仅接受 v8，比较仅接受 format4 / phase2.v3；
-旧报告 v1–v7 和旧比较 format1–3 返回 `unsupported_format` / 2，不再核验或重建。
+性能差值仍须对应逐指标证据。报告为 `studio-report.v1`，比较仅接受 format5 / phase2.v3；
+旧报告 v1–v8 和旧比较 format1–4 返回 `unsupported_format` / 2，不再核验或重建。
 probe/diagnostic 对电源、profile、governor、EPP 缺测或差异只记录；资源安全停止不变。
 正式执行的旧配置/计划仍要求原环境匹配。新配置可在 conditions、新实验可在 experiment
 声明 `environment_admission = {definition = "environment-admission.v2", required_fields = []}`；

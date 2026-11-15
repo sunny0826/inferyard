@@ -15,7 +15,7 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-//go:embed testdata/report-index.json
+//go:embed testdata/studio.json
 var previewReportJSON []byte
 
 var previewScenes = []struct {
@@ -136,6 +136,7 @@ func previewRunning(s *viewState) {
 func previewCompleted(s *viewState) {
 	s.task.stage, s.task.report = "done", "preview-report"
 	s.progress.NextAction, s.progress.DefaultScopeComplete = "done", true
+	s.progress.Report = inferyard.ProgressReport{Status: "present", Path: previewValue("preview-report"), Runs: []string{"preview-run"}}
 	for i := range s.progress.Bundles {
 		s.progress.Bundles[i].Phase, s.progress.Bundles[i].NextAction = "run_complete", "none"
 	}
@@ -150,8 +151,8 @@ func previewEmpty(s *viewState) {
 }
 
 func previewReportFixture(reference string) *core.ReportIndex {
-	var index core.ReportIndex
-	if err := json.Unmarshal(previewReportJSON, &index); err != nil {
+	index, err := inferyard.ParseStudioReport(previewReportJSON)
+	if err != nil {
 		panic("invalid bundled UI preview report: " + err.Error())
 	}
 	if reference == "long-report" {
@@ -159,6 +160,8 @@ func previewReportFixture(reference string) *core.ReportIndex {
 		for i := range 40 {
 			run.Requests = append(run.Requests, core.ReportRequest{CaseID: fmt.Sprintf("preview-case-%03d", i), CategoryLabel: "模拟分类", State: "completed"})
 		}
+		// Keep the preview document consistent with the latency-count rule.
+		run.Dashboard.Latency.Excluded = previewValue(int64(len(run.Requests)) - *run.Dashboard.Latency.SampleCount)
 	}
 	return &index
 }

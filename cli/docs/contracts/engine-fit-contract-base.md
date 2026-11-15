@@ -21,7 +21,7 @@ PID 的启动身份在预检读取并持续核验；参数不接受远程 URL �
 `--recovery-confirm TOKEN --recovery-note NOTE` 复用全局 dirty 恢复。
 请求并发固定 1，无隐式重试；重复按固定顺序展开。最大请求预算为 1000。
 响应和请求日志先于汇总保存；完成、失败、取消、工具错误、未执行五终态守恒。
-每次输出到新目录，封存 `plan.json`、`run.json`、`requests.json`、`report.html`。
+每次输出到新目录，封存 `plan.json`、`run.json`、`requests.json`（engine_fit_manifest.v3，不再含 HTML）。
 `requests.json` 是按计划顺序的数组：每项 `request_id, case_id, status, reason,
 response`；发送前把该项持久化为 `status=invalid`、`reason=request_in_flight`，收到完整响应才改为 `completed`。
 response 为 complete 返回的字典或 null；终态不删项。请求 ID 为 `r000001` 起。
@@ -38,8 +38,8 @@ resources, counts, limitations`。resources 保存每次请求边界的快照，
 counts 为 `planned, completed, failed, cancelled, invalid, not_executed`。
 
 `engine-fit compare --runs A B --out NEW` 只读封存产物，应同 plan、
-同主机和模型，每种引擎最多一份。输出比较 JSON、内嵌可核验来源及自包含 HTML。
-`engine-fit verify --path DIR` 离线核验文件哈希、数据语义与按版本要求的呈现；不访问服务。
+同主机和模型，每种引擎最多一份。输出比较 JSON 与内嵌可核验来源（`sources/<index>`）。
+`engine-fit verify --path DIR` 离线核验文件哈希与数据语义；不访问服务。
 通用 `verify --path` 也识别这些产物；新封存与中断语义见[离线读取契约](offline-reading-contract.md)。
 
 ## 模块接口与责任
@@ -80,7 +80,7 @@ completion_tokens, usage_missing_reason`。总截止时间、finish + [DONE] 双
   usage 独立于文本，不把网络 chunk 当 token。`FitTransportError` 携带固定 `reason`。
 
 `config/engine_fit.py` 管理计划；`runtime/engine_fit.py` 管理锁、请求与停止；
-`reporting/engine_fit.py` 管理封存、重建、比较、HTML；各文件宜小于 500 行。
+`reporting/engine_fit.py` 管理封存、重建与比较；各文件宜小于 500 行。
 
 计划入口 `load_plan(path) -> dict` 严格校验并重算计划哈希；
 `request_rows(plan) -> list[dict]` 按 repetitions 外层、cases 内层产生初始未执行行。

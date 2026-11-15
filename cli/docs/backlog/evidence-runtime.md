@@ -102,7 +102,8 @@ GitGuardian 命中的八处值为内存诊断的合成应用分组 ID，来自�
   `host_statistics64` 换页，以及 [ADR 043](../decisions/043-per-request-identity-slim.md)
   的逐请求身份复查减重已实现。`device-check` 未改。
 - [ADR 044](../decisions/044-prompt-content-hash.md) 的消息哈希与原快照核验、
-  [ADR 045](../decisions/045-report-content-refs.md) 的报告 v8 内容引用已实现；旧事件可读，旧报告拒绝。
+  [ADR 045](../decisions/045-report-content-refs.md) 的报告 v8 内容引用已实现（内容引用后随
+  [ADR 059](../decisions/059-studio-json-only-report.md) 与 HTML 报告一并移除）；旧事件可读，旧报告拒绝。
 - [ADR 046](../decisions/046-single-implementation-identity.md) 的唯一执行身份门与
   [ADR 047](../decisions/047-rerun-recorded-comparability.md) 的重跑/比较分工已实现；
   rerun 应更换服务进程，身份差异取消比较资格。

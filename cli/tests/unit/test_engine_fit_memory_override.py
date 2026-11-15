@@ -13,7 +13,6 @@ from inferyard.config.engine_fit import prepare, validate_plan
 from inferyard.errors import ContractError, EvidenceError, PreflightError
 from inferyard.analysis.engine_fit_seal import seal_run
 from inferyard.reporting.engine_fit import compare, verify
-from inferyard.analysis.engine_fit_html import render
 from inferyard.analysis.engine_fit_validation import validate_run
 from tests.unit import test_engine_fit_temperature_override as temperature
 from tests.unit.test_engine_fit_common_evidence import common_data
@@ -239,7 +238,6 @@ def test_disabled_stop_reason_is_refused_even_with_coherent_seal(tmp_path, both,
         seal_run(rejected, plan, run, rows)
     _replace(root, "requests.json", rows)
     _replace(root, "run.json", run)
-    _replace(root, "report.html", render([dict(plan=plan, run=run, requests=rows)]).encode())
     with pytest.raises(EvidenceError, match="memory_override"):
         verify(root)
     rows[-1]["reason"] = "disk_safety_threshold_reached"
@@ -271,12 +269,14 @@ def test_pair_copies_sources_and_displays_escaped_reasons_offline(tmp_path, both
     for path in paths:
         shutil.rmtree(path)
     assert verify(out)["comparison"] == expected
-    html = (out / "report.html").read_text()
-    assert "本次已显式跳过内存停止" in html
-    assert "&lt;script&gt;temporary&lt;/script&gt;" in html and "<script>" not in html
-    assert ("本次已显式跳过温度停止" in html) == both
-    assert ("温度停止上限仍为 85°C" in html) != both
-    assert "缺测 · lmstudio_service_version_not_exposed" in html
+    assert "diagnostic_only_no_performance_qualification" in expected["limitations"]
+    assert expected["sides"][0]["run"]["limitations"].count(LIMITATION) == 1
+    assert (
+        "temperature_stop_explicitly_disabled"
+        in expected["sides"][0]["run"]["limitations"]
+    ) is both
+    assert expected["sides"][1]["run"]["service"]["version"] is None
+    assert not (out / "report.html").exists()
 
 
 @pytest.mark.parametrize("other", ["old", "reason", "temperature"])

@@ -107,11 +107,10 @@ def test_formal_local_run_seals_and_renders_offline(local_run, tmp_path, capsys)
     report = tmp_path / "report"
     assert main(["report", "--runs", str(root), "--out", str(report)]) == 0
     capsys.readouterr()
-    html = (report / "report.html").read_text()
-    assert "None 线程" not in html
-    assert "model asset manifest sha-256" in html
-    assert "runtime snapshot sha-256" in html
-    assert main(["verify", "--path", str(report)]) == 0
+    document = read_json(report / "studio.json")
+    assert document["runs"][0]["threads"] is None
+    assert document["runs"][0]["profile"]["engine"]["adapter"]
+    assert main(["verify", "--path", str(report)]) == 4
     capsys.readouterr()
     assert len(state.posts) == before
 
@@ -381,7 +380,8 @@ def test_second_scope_requires_explicit_handoff_and_new_process(
     ] == [3, 3]
     report = tmp_path / "combined-report"
     assert main(["report", "--runs", *final.details["runs"], "--out", str(report)]) == 0
-    assert main(["verify", "--path", str(report)]) == 0
+    assert len(read_json(report / "studio.json")["runs"]) == 2
+    assert main(["verify", "--path", str(report)]) == 4
     from inferyard.analysis.comparison import compare_trials
 
     comparison = compare_trials(*(read_trial(Path(path)) for path in final.details["runs"]))

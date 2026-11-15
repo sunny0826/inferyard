@@ -45,8 +45,8 @@ func (p *previewSession) createReport(paths []string) string {
 			continue
 		}
 		run := previewReportFixture("").Runs[0]
-		run.Model, run.Profile.Title = emptyText(history.ModelName), emptyText(history.ModelName)
-		run.Profile.Engine.BinaryPath = emptyText(history.Engine)
+		run.Model, run.Profile.Title = emptyText(history.ModelName), history.ModelName
+		run.Profile.Engine.BinaryPath = history.Engine
 		run.Source.RunID, run.Facets.BundleLabel = history.RunId, emptyText(history.Bundle)
 		run.Diagnostic = true
 		if !history.Sealed {
@@ -58,12 +58,16 @@ func (p *previewSession) createReport(paths []string) string {
 			for _, item := range p.Cases {
 				run.Requests = append(run.Requests, core.ReportRequest{CaseID: item.CaseId, CategoryLabel: emptyText(item.Category), State: item.State, Quality: item.QualityState, LatencyMS: item.DurationMs})
 			}
-			rate := core.ReportRate{Numerator: previewValue(float64(p.Done)), Denominator: previewValue(float64(*p.Total)), Excluded: previewValue(0.0), Complete: previewValue(history.Sealed)}
-			run.Summary.CompletionRate, run.Dashboard.Quality = rate, rate
+			counts := core.ReportCounts{Numerator: previewValue(p.Done), Denominator: p.Total, Excluded: previewValue(int64(0))}
+			quality := core.ReportQuality{StudioCounts: counts, Complete: history.Sealed}
+			if !history.Sealed {
+				quality.Reason = previewValue("quality_incomplete_or_not_applicable")
+			}
+			run.Summary.CompletionRate, run.Dashboard.Quality = counts, quality
 			previewReportMetrics(&run, detail)
 			if len(run.Dashboard.Categories) > 0 {
 				run.Dashboard.Categories = run.Dashboard.Categories[:1]
-				run.Dashboard.Categories[0].Label, run.Dashboard.Categories[0].Rate = "模拟分类", rate
+				run.Dashboard.Categories[0].Label, run.Dashboard.Categories[0].Rate = "模拟分类", counts
 			}
 		}
 		index.Runs = append(index.Runs, run)
@@ -76,7 +80,7 @@ func (p *previewSession) createReport(paths []string) string {
 }
 
 func previewReportMetrics(run *core.ReportRun, detail *core.RunTaskDetail) {
-	d := run.Dashboard
+	d := &run.Dashboard
 	d.Latency.Min, d.Latency.P50, d.Latency.P95, d.Latency.Max = nil, nil, nil, nil
 	var durations []float64
 	for _, request := range run.Requests {
@@ -84,8 +88,8 @@ func previewReportMetrics(run *core.ReportRun, detail *core.RunTaskDetail) {
 			durations = append(durations, *request.LatencyMS)
 		}
 	}
-	d.Latency.SampleCount = previewValue(float64(len(durations)))
-	d.Latency.Excluded = previewValue(float64(len(run.Requests) - len(durations)))
+	d.Latency.SampleCount = previewValue(int64(len(durations)))
+	d.Latency.Excluded = previewValue(int64(len(run.Requests) - len(durations)))
 	if len(durations) > 0 {
 		slices.Sort(durations)
 		middle := len(durations) / 2

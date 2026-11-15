@@ -321,10 +321,13 @@ def test_gguf_pair_full_run_compare_then_offline_verify(common_fit_service, monk
     monkeypatch.setattr(fixture["runtime"], "FitClient", forbidden_live_access)
     monkeypatch.setattr(fixture["runtime"], "host_identity", forbidden_live_access)
     assert main(["engine-fit", "verify", "--path", str(root / "comparison")]) == 0
-    html = (root / "comparison/report.html").read_text()
-    assert "llama-cpp" in html and "lmstudio" in html
-    assert "<script>synthetic</script>" not in html
+    comparison = json.loads((root / "comparison/comparison.json").read_text())
+    assert [side["run"]["engine"] for side in comparison["sides"]] == [
+        "llama-cpp",
+        "lmstudio",
+    ]
     assert "omit_me" not in (root / "comparison/comparison.json").read_text()
+    assert not (root / "comparison/report.html").exists()
 
 
 @pytest.mark.parametrize("engine", ["llama-cpp", "lmstudio"])

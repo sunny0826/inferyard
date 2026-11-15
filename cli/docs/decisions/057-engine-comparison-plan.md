@@ -5,6 +5,8 @@
 文中“事实”附源码或样本位置；“推导”是设计判断；“未验证”不当作既有能力。
 `.tools/...` 均指主 checkout 中的只读样本，不是发行或测试依赖。
 
+> 局部取代：v2 产物携带的 `report.html`、封存清单与 `--rerender` 核验由 [ADR 059](059-studio-json-only-report.md) 取代（v2 现为单文件 `engine-comparison.json`，`format_version=2`）；完整计划、槽位与旧产物处理规则不变。
+
 ## 问题
 
 **事实**：`compare-engines` 只接收左右 run 路径，按首事件时间排序，检查交错和每侧至少三块；

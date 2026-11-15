@@ -355,47 +355,28 @@ def test_candidate_filter_public_cli_is_offline_and_empty_is_valid(tmp_path, sce
     assert before == {str(p): sha256_file(p) for p in request.output_root.rglob("*") if p.is_file()}
 
 
-def test_report_is_offline_escaped_and_preserves_denominators(tmp_path, scenario):
-    from inferyard.reporting.report import _environment, verify_report, write_report
+def test_studio_report_is_offline_owned_and_preserves_denominators(tmp_path, scenario):
+    from inferyard.reporting.studio_report import write_studio_report
 
     request, deps = batch(tmp_path, scenario)
     _, result = asyncio.run(execute_async(request, deps))
     paths = [Path(p) for p in result.details["runs"]]
     calls = len(scenario[2])
     before = {str(p): sha256_file(p) for root in paths for p in root.iterdir() if p.is_file()}
-    index = write_report(paths, tmp_path / "report")
-    assert len(index["runs"]) == 3
-    report_root = tmp_path / "report"
-    assert verify_report(report_root)["semantic_verified"]
-    html_path = report_root / "report.html"
-    original_html = html_path.read_bytes()
-    html_path.write_bytes(original_html + b"tampered")
-    with pytest.raises(EvidenceError, match="html_recomputation|presentation_bytes_changed"):
-        verify_report(report_root)
-    html_path.write_bytes(original_html)
-    index_path = report_root / "index.json"
-    saved = json.loads(index_path.read_text())
-    saved["runs"][0]["summary"]["completion_rate"]["value"] = 99
-    index_path.write_text(json.dumps(saved))
-    with pytest.raises(EvidenceError, match="index_recomputation|presentation_bytes_changed"):
-        verify_report(report_root)
-    for run in index["runs"]:
+    document = write_studio_report(paths, tmp_path / "report")
+    assert len(document["runs"]) == 3
+    assert {p.name for p in (tmp_path / "report").iterdir()} == {"studio.json"}
+    for run in document["runs"]:
         assert run["summary"]["completion_rate"]["denominator"] == 3
-        assert run["schema_version"] == 3
-    index["runs"][0]["model"] = "<script>window.pwned=true</script>"
-    index["runs"][0]["requests"][0]["content"] = '<img src=x onerror="window.pwned=true">'
-    html = _environment().get_template("report.html").render(index=index)
-    assert "<script>window.pwned" not in html
-    assert "&lt;script&gt;window.pwned" in html
-    assert "<img src=x" not in html
+        assert len(run["requests"]) == 3
     assert len(scenario[2]) == calls
     assert before == {
         str(p): sha256_file(p) for root in paths for p in root.iterdir() if p.is_file()
     }
     with pytest.raises(EvidenceError, match="duplicate"):
-        write_report([paths[0], paths[0]], tmp_path / "duplicate-report")
+        write_studio_report([paths[0], paths[0]], tmp_path / "duplicate-report")
     with pytest.raises(EvidenceError, match="inside_original"):
-        write_report([paths[0]], paths[0] / "report")
+        write_studio_report([paths[0]], paths[0] / "report")
 
 
 def test_export_replays_formats_and_never_changes_source(tmp_path, scenario):

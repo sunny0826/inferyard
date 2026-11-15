@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -272,9 +273,7 @@ func TestReportCreationAndResumeValidation(t *testing.T) {
 		}
 		dir := args[len(args)-1]
 		os.MkdirAll(dir, 0700)
-		os.WriteFile(filepath.Join(dir, "report.html"), []byte("report"), 0600)
-		raw, _ := json.Marshal(map[string]any{"runs": []any{map[string]any{"source": map[string]any{"run_id": "fixture-run", "path": args[2]}}}})
-		os.WriteFile(filepath.Join(dir, "index.json"), raw, 0600)
+		writeStudioReport(t, dir, "fixture-run", args[2])
 		return result(0), nil
 	})
 	root := t.TempDir()
@@ -309,6 +308,30 @@ func TestReportCreationAndResumeValidation(t *testing.T) {
 	_, rs, e := s.Reports()
 	if e != nil || len(rs) != 2 || rs[0].RunPaths[0] != nil {
 		t.Fatal(rs, e)
+	}
+}
+
+func writeStudioReport(t *testing.T, dir, runID, runPath string) {
+	t.Helper()
+	raw, e := os.ReadFile("../inferyard/testdata/studio-report.json")
+	if e != nil {
+		t.Fatal(e)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var doc map[string]any
+	if e := decoder.Decode(&doc); e != nil {
+		t.Fatal(e)
+	}
+	run := doc["runs"].([]any)[0].(map[string]any)
+	source := run["source"].(map[string]any)
+	source["run_id"], source["path"] = runID, runPath
+	data, e := json.Marshal(doc)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e := os.WriteFile(filepath.Join(dir, "studio.json"), data, 0600); e != nil {
+		t.Fatal(e)
 	}
 }
 

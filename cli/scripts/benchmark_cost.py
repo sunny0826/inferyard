@@ -1,7 +1,10 @@
-"""Synthetic software costs: prepare, baseline-only, then fresh interleaved comparison.
+"""Synthetic software costs for the remaining JSON work only.
 
 Run with the shared pinned venv: mise exec -- uv run --frozen python scripts/benchmark_cost.py.
 All --out directories must be new and under /tmp. No services, models, builds, or original evidence.
+Offline HTML rendering, the presentation seal and verify-rerender no longer exist in
+the product, so this harness measures trial reads, the Studio JSON write, resource
+reduction, redaction and strict JSON round-trips only. Deleting code is not a speed claim.
 """
 
 import argparse
@@ -14,16 +17,15 @@ import sys
 import time
 from pathlib import Path
 
-from benchmark_cost_compare import check_expected, compare_outputs, counts, digest, inventory
+if __package__:
+    from .benchmark_cost_compare import check_expected, compare_outputs, counts, digest, inventory
+else:
+    from benchmark_cost_compare import check_expected, compare_outputs, counts, digest, inventory
 
 WORKER = Path(__file__).with_name("benchmark_cost_worker.py")
 OPERATIONS = (
     "read_trial",
-    "report",
-    "verify",
-    "rerender",
-    "verify_multirun",
-    "rerender_multirun",
+    "studio_json",
     "resources",
     "redact",
     "redact_empty",
@@ -196,12 +198,19 @@ def measure(args):
         {
             "synthetic_software_only": True,
             "comparison_complete": bool(args.candidate),
+            "measurement_scope": (
+                "raw trial reads, Studio JSON projection/write, resource reduction, "
+                "redaction and strict JSON round-trips"
+            ),
+            "excluded_scope": (
+                "offline HTML rendering, presentation seal and verify-rerender were "
+                "removed from the product; their absence is not a measured speedup"
+            ),
             "measurements": summary,
             "limitations": [
                 "not_model_or_device_acceptance",
                 "warm_OS_cache_not_flushed",
                 "peak_RSS_includes_worker_setup",
-                "no_browser_visual_acceptance",
             ],
         },
     )
@@ -235,6 +244,8 @@ def main():
             "python": sys.executable,
             "version": sys.version,
             "scripts": {p.name: digest(p) for p in WORKER.parent.glob("benchmark_cost*.py")},
+            "operations": list(OPERATIONS),
+            "measurement_scope": "remaining JSON work only; no HTML/seal/rerender operations",
         },
     )
     try:

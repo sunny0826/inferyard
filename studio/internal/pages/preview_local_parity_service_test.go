@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -52,7 +53,7 @@ func newLocalParityService(t *testing.T, families ...string) *localParityService
 	}
 	close(f.release["zh-core"])
 	f.ctx, f.cancel = context.WithCancel(t.Context())
-	f.progress = inferyard.WorkspaceProgress{Kind: "progress", ProgressVersion: 1, Workspace: root, NextAction: "run", DevicePreflight: inferyard.ProgressPreflight{Status: "ok"}, Report: inferyard.ProgressReport{Status: "missing", Runs: []string{}}}
+	f.progress = inferyard.WorkspaceProgress{Kind: "progress", ProgressVersion: 2, Workspace: root, NextAction: "run", DevicePreflight: inferyard.ProgressPreflight{Status: "ok"}, Report: inferyard.ProgressReport{Status: "missing", Runs: []string{}}}
 	f.result = startChainResult{workspace: root, existingService: &core.EngineState{Pid: 4001, Endpoint: f.endpoint}, localRequest: &core.LocalCandidateRequest{EngineName: "lmstudio", ModelName: "fixture", ServicePID: 4001, Endpoint: f.endpoint}}
 	if f.family != "lmstudio" {
 		f.result.existingService = nil
@@ -203,9 +204,52 @@ func (f *localParityService) execute(ctx context.Context, _ string, args ...stri
 		f.mu.Unlock()
 		return inferyard.Execution{Stdout: raw}, nil
 	case "report":
+		out := localParityFlag(args, "--out")
+		if err := os.MkdirAll(out, 0700); err != nil {
+			return result(4), err
+		}
+		paths := args[slices.Index(args, "--runs")+1 : slices.Index(args, "--out")]
+		if err := os.WriteFile(filepath.Join(out, "studio.json"), parityStudioReport(paths), 0600); err != nil {
+			return result(4), err
+		}
 		return result(0), nil
 	}
 	return result(4), fmt.Errorf("unexpected command: %v", args)
+}
+
+// parityStudioReport builds the typed document the report command now writes.
+func parityStudioReport(paths []string) []byte {
+	runs := []any{}
+	for _, path := range paths {
+		runs = append(runs, map[string]any{
+			"source":     map[string]any{"run_id": filepath.Base(path), "path": path},
+			"model":      "fixture-model",
+			"threads":    nil,
+			"diagnostic": false,
+			"facets":     map[string]any{"bundle_label": "fixture · 1.0"},
+			"profile": map[string]any{
+				"title":   nil,
+				"engine":  map[string]any{"binary_path": nil, "adapter": "fixture", "backend": "cpu"},
+				"machine": map[string]any{"cpu": nil, "logical_cpus": nil, "memory_total_bytes": nil},
+			},
+			"summary": map[string]any{
+				"completion_rate": map[string]any{"numerator": 0, "denominator": 0, "excluded": 0},
+				"stop_reason":     "plan_finished",
+			},
+			"dashboard": map[string]any{
+				"quality":                         map[string]any{"numerator": 0, "denominator": 0, "excluded": 0, "complete": false, "reason": "quality_incomplete_or_not_applicable"},
+				"categories":                      []any{},
+				"latency":                         map[string]any{"sample_count": 0, "excluded": 0, "min": nil, "p50": nil, "p95": nil, "max": nil},
+				"sampled_peak_rss_bytes":          nil,
+				"sampled_peak_rss_reason":         "no_samples",
+				"sampled_minimum_available_bytes": nil,
+				"minimum_available_reason":        "no_samples",
+			},
+			"requests": []any{},
+		})
+	}
+	raw, _ := json.Marshal(map[string]any{"schema_version": 3, "kind": "studio-report.v1", "runs": runs})
+	return raw
 }
 
 func (f *localParityService) start() {

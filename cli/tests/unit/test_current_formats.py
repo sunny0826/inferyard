@@ -7,35 +7,119 @@ import pytest
 
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
-from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.contracts.validation import json_bytes
+from inferyard.errors import EvidenceError, UnsupportedFormat
 from inferyard.application.reporting import execute as compare
 from inferyard.reporting.public_package import verify_public, write_public
-from inferyard.reporting.report import write_report
+from inferyard.reporting.studio_report import write_studio_report
+from tests.unit.test_legacy_presentation_seal import legacy_layout
 from tests.unit.test_verification import source_fixture as fixture_run
 
 
-@pytest.mark.parametrize("version", [1, 2, 3, 4, 5, 6, 7, 9])
-def test_report_unsupported_is_code_two_in_both_entries(tmp_path, capsys, version):
-    (tmp_path / "index.json").write_bytes(
-        json_bytes({"schema_version": 3, "report_format_version": version})
-    )
-    for args in (["verify", "--path"],):
-        assert main([*args, str(tmp_path)]) == 2
-        result = json.loads(capsys.readouterr().out)
-        assert result["limitations"] == ["unsupported_format"]
-        assert result["details"]["saved_version"] == version
-        assert result["details"]["supported_versions"] == [8]
-    assert {p.name for p in tmp_path.iterdir()} == {"index.json"}
+def directory_files(root):
+    return {p.name for p in root.iterdir()}
+
+
+@pytest.mark.parametrize("version", [1, 2, 3, 4, 5, 6, 7, 8, 9])
+def test_retired_report_is_unsupported_with_empty_support(tmp_path, capsys, version):
+    legacy_layout(tmp_path, version=version, seal=False)
+    before = directory_files(tmp_path)
+    assert main(["verify", "--path", str(tmp_path)]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["limitations"] == ["unsupported_format"]
+    assert result["details"] == {
+        "artifact": "report",
+        "saved_version": version,
+        "supported_versions": [],
+    }
+    assert directory_files(tmp_path) == before
 
 
 @pytest.mark.parametrize("value", [None, True, "7", 7.0])
 def test_malformed_report_version_is_integrity_error(tmp_path, value, capsys):
+    legacy_layout(tmp_path, seal=False)
     (tmp_path / "index.json").write_bytes(
         json_bytes({"schema_version": 3, "report_format_version": value})
     )
     assert main(["verify", "--path", str(tmp_path)]) == 4
     capsys.readouterr()
+
+
+def test_complete_sealed_legacy_report_is_still_only_a_version_rejection(tmp_path, capsys):
+    legacy_layout(tmp_path)
+    assert main(["verify", "--path", str(tmp_path)]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["details"]["supported_versions"] == []
+
+
+def test_legacy_report_missing_html_is_an_integrity_error(tmp_path, capsys):
+    legacy_layout(tmp_path)
+    (tmp_path / "report.html").unlink()
+    assert main(["verify", "--path", str(tmp_path)]) == 4
+    capsys.readouterr()
+
+
+def test_corrupt_legacy_report_json_is_an_integrity_error(tmp_path, capsys):
+    legacy_layout(tmp_path, seal=False)
+    (tmp_path / "index.json").write_bytes(b"{broken")
+    assert main(["verify", "--path", str(tmp_path)]) == 4
+    capsys.readouterr()
+
+
+def test_current_studio_report_is_never_verifiable(tmp_path, capsys):
+    root = fixture_run(tmp_path / "source")
+    out = tmp_path / "report"
+    write_studio_report([root], out)
+    assert main(["verify", "--path", str(out)]) == 4
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "error"
+    assert result["limitations"] == ["studio_report_not_verifiable"]
+    assert directory_files(out) == {"studio.json"}
+
+
+def test_studio_document_must_own_its_directory(tmp_path, capsys):
+    root = fixture_run(tmp_path / "source")
+    out = tmp_path / "report"
+    write_studio_report([root], out)
+    (out / "index.json").write_text("{}")
+    assert main(["verify", "--path", str(out)]) == 4
+    capsys.readouterr()
+
+
+def test_current_comparison_owns_one_file_and_rejects_retired_layout(tmp_path, capsys):
+    left = fixture_run(tmp_path / "left")
+    right = fixture_run(tmp_path / "right")
+    out = tmp_path / "comparison"
+    compare(CommandRequest("compare", left=left, right=right, out=out))
+    assert directory_files(out) == {"comparison.json"}
+    assert main(["verify", "--path", str(out)]) == 0
+    capsys.readouterr()
+    (out / "report.html").write_text("retired presentation")
+    assert main(["verify", "--path", str(out)]) == 4
+    result = json.loads(capsys.readouterr().out)
+    assert result["limitations"] == ["comparison_format_invalid"]
+
+
+def test_retired_comparison_format_is_rejected_by_version(tmp_path, capsys):
+    legacy_layout(tmp_path, seal=False, comparison=True)
+    assert main(["verify", "--path", str(tmp_path)]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["limitations"] == ["unsupported_format"]
+    assert result["details"] == {
+        "artifact": "comparison",
+        "saved_version": 4,
+        "supported_versions": [5],
+    }
+
+
+def test_bad_presentation_seal_precedes_comparison_version_rejection(tmp_path, capsys):
+    legacy_layout(tmp_path, comparison=True)
+    (tmp_path / "comparison.json").write_bytes(
+        json_bytes({"schema_version": 3, "format_version": 4, "changed": True})
+    )
+    assert main(["verify", "--path", str(tmp_path)]) == 4
+    result = json.loads(capsys.readouterr().out)
+    assert result["limitations"] == ["presentation_bytes_changed"]
 
 
 def rewrite_source(root, name, change):
@@ -49,14 +133,11 @@ def rewrite_source(root, name, change):
     (root / "manifest.json").write_bytes(json_bytes(manifest))
 
 
-@pytest.mark.parametrize("artifact", ["run", "report", "comparison", "public"])
+@pytest.mark.parametrize("artifact", ["run", "comparison", "public"])
 def test_migrated_schema_three_rejected_recursively(tmp_path, capsys, artifact):
     root = fixture_run(tmp_path / "source")
     target = root
-    if artifact == "report":
-        target = tmp_path / "report"
-        write_report([root], target)
-    elif artifact == "comparison":
+    if artifact == "comparison":
         target = tmp_path / "comparison"
         compare(
             CommandRequest("compare", left=root, right=fixture_run(tmp_path / "other"), out=target)
@@ -87,16 +168,6 @@ def test_old_core_manifest_hash_checked_before_version(tmp_path, capsys, version
         stream.write(b"broken\n")
     assert main(["verify", "--path", str(root)]) == 4
     capsys.readouterr()
-
-
-def test_bad_presentation_seal_precedes_unsupported(tmp_path, capsys):
-    root = fixture_run(tmp_path / "source")
-    out = tmp_path / "report"
-    index = write_report([root], out)
-    index["report_format_version"] = 2
-    (out / "index.json").write_bytes(json_bytes(index))
-    assert main(["verify", "--path", str(out)]) == 4
-    assert json.loads(capsys.readouterr().out)["limitations"] == ["presentation_bytes_changed"]
 
 
 @pytest.mark.parametrize("version", [1, 2, 3, 4])

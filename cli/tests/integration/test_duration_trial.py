@@ -132,8 +132,8 @@ def test_cancel_duration_retains_interrupted_window(scenario):
     assert data["summary"]["duration"]["reason"] == "interrupted"
 
 
-def test_duration_report_rebuilds_completed_and_interrupted_windows(scenario, tmp_path):
-    from inferyard.reporting.report import verify_report, write_report
+def test_duration_studio_report_keeps_window_requests(scenario, tmp_path):
+    from inferyard.reporting.studio_report import write_studio_report
 
     for limit in (1, 100):
         plan, loaded, deps, output = duration_inputs(scenario, limit=limit)
@@ -148,13 +148,15 @@ def test_duration_report_rebuilds_completed_and_interrupted_windows(scenario, tm
             )
         )
         target = tmp_path / f"report-{limit}"
-        index = write_report([root], target)
-        view = index["runs"][0]["duration_view"]
-        assert view["completed"] == data["summary"]["duration"]["window_completed"]
-        assert len(view["cases"]) == 3
-        assert index["runs"][0]["diagnostic"]
-        assert "持续负载 · 窗口趋势" in (target / "report.html").read_text()
-        assert verify_report(target)["semantic_verified"]
+        document = write_studio_report([root], target)
+        run = document["runs"][0]
+        assert run["diagnostic"]
+        assert len(run["requests"]) == len(data["requests"])
+        assert (
+            run["summary"]["completion_rate"]["denominator"]
+            == data["summary"]["completion_rate"]["denominator"]
+        )
+        assert data["summary"]["duration"]["windows"]
 
 
 def test_runtime_safety_cancels_inflight_and_preserves_incomplete_window(scenario):

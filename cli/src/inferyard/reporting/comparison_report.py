@@ -1,70 +1,17 @@
-"""Offline pair comparison; raw source runs are never changed."""
+"""Offline pair comparison JSON; raw source runs are never changed."""
+
+from copy import deepcopy
 
 from inferyard import SCHEMA_VERSION
 from inferyard.analysis.comparison import compare_trials
-from inferyard.errors import EvidenceError
+from inferyard.analysis.comparison_input import comparison_input
 from inferyard.contracts.format_versions import require_version
-from inferyard.evidence.formats import check_presentation_seal, require_core
-from inferyard.analysis.ledger import read_trial
 from inferyard.contracts.validation import json_bytes
+from inferyard.errors import EvidenceError
+from inferyard.evidence.formats import require_core
 from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json
-from inferyard.evidence.trial_evidence import verify_reference
 
-
-def _reference_identity(ref):
-    if (
-        type(ref) is not dict
-        or set(ref) not in ({"path", "sha256"}, {"path", "sha256", "member"})
-        or type(ref["path"]) is not str
-        or type(ref["sha256"]) is not str
-    ):
-        return json_bytes(ref)
-    physical = (ref["path"], ref["sha256"])
-    if "member" not in ref:
-        return physical
-    member = ref["member"]
-    if type(member) is dict and type(member.get("sha256")) is str:
-        kind = member.get("kind")
-        field = {"input": "name", "observation": "seq", "request": "request_id"}.get(
-            kind if type(kind) is str else None
-        )
-        if field is not None and set(member) == {"kind", field, "sha256"}:
-            value = member[field]
-            if type(value) is (int if kind == "observation" else str):
-                return (*physical, kind, value, member["sha256"])
-    return json_bytes(ref)
-
-
-def verify_metric_references(root, metrics, *, reads=None):
-    """Bind each distinct physical/member reference once within this source read."""
-    checked, member_reads = set(), {}
-    for metric in metrics:
-        for ref in metric["evidence_refs"]:
-            identity = _reference_identity(ref)
-            if identity not in checked:
-                verify_reference(root, ref, reads=reads, readers=member_reads)
-                checked.add(identity)
-
-
-def comparison_input(root, *, bind_unsealed=False, metadata=None):
-    metadata = {} if metadata is None else metadata
-    data = read_trial(root, metadata=metadata)
-    verify_metric_references(
-        root, data["summary"]["metric_observations"], reads=metadata["evidence"]
-    )
-    data.update(
-        {key: metadata[key] for key in ("identity", "environment_start", "first_event_utc")}
-    )
-    ref = {
-        "run_id": data["run"]["run_id"],
-        "path": str(root.resolve()),
-        "manifest_sha256": metadata["manifest_sha256"],
-    }
-    if bind_unsealed and ref["manifest_sha256"] is None:
-        import hashlib
-
-        ref["unsealed_content_sha256"] = hashlib.sha256(json_bytes(data)).hexdigest()
-    return data, ref
+FORMAT_VERSION = 5
 
 
 def build_comparison(
@@ -75,10 +22,10 @@ def build_comparison(
     left_overhead=None,
     right_overhead=None,
     loaded=None,
-    format_version=4,
+    format_version=FORMAT_VERSION,
     source_roots=(),
 ):
-    require_version({"version": format_version}, "version", (4,), "comparison")
+    require_version({"version": format_version}, "version", (FORMAT_VERSION,), "comparison")
     if (left_overhead is None) != (right_overhead is None):
         raise EvidenceError("both_performance_overhead_sources_required")
     loaded = (
@@ -133,36 +80,36 @@ def build_comparison(
     return result
 
 
+def _require_only_comparison(root):
+    """A current comparison owns exactly one file; retired presentation files conflict."""
+    names = {entry.name for entry in root.iterdir()}
+    if names != {"comparison.json"}:
+        raise EvidenceError("comparison_format_invalid")
+
+
 def read_verified_comparison(root, *, loaded=None, source_roots=()):
     saved = read_json(local_file(root, "comparison.json"))
     if (
         type(saved) is not dict
         or type(saved.get("schema_version")) is not int
         or type(saved.get("format_version")) is not int
-        or saved.get("schema_version") != 3
-        or saved.get("format_version") != 4
+        or saved.get("schema_version") != SCHEMA_VERSION
+        or saved.get("format_version") != FORMAT_VERSION
     ):
-        check_presentation_seal(root)
+        # Retired presentation layouts are checked for exact sealed bytes before
+        # their version is rejected; a damaged seal can never become a version error.
+        from inferyard.evidence.legacy_presentation_seal import legacy_index_bytes
+
+        legacy_index_bytes(root)
     require_core(saved, "comparison")
-    require_version(saved, "format_version", (4,), "comparison")
+    require_version(saved, "format_version", (FORMAT_VERSION,), "comparison")
+    _require_only_comparison(root)
     try:
         sources = saved["source_runs"]
-        if (
-            type(saved["schema_version"]) is not int
-            or type(saved["format_version"]) is not int
-            or saved["schema_version"] != SCHEMA_VERSION
-            or saved["format_version"] != 4
-            or len(sources) != 2
-        ):
+        if len(sources) != 2:
             raise EvidenceError("comparison_format_invalid")
-        from inferyard.evidence.artifact_seal import read_sealed
         from inferyard.evidence.source_locations import resolve_source
 
-        blobs = read_sealed(
-            root, ["index.json", "report.html", "comparison.json"], retain={"comparison.json"}
-        )
-        if blobs["comparison.json"] != json_bytes(saved):
-            raise EvidenceError("comparison_changed_during_read")
         paths = [resolve_source(root, ref["path"], source_roots) for ref in sources]
         loaded = (
             loaded
@@ -170,7 +117,7 @@ def read_verified_comparison(root, *, loaded=None, source_roots=()):
             else [comparison_input(path, bind_unsealed=True) for path in paths]
         )
         actual = [{**ref, "path": sources[i]["path"]} for i, (_, ref) in enumerate(loaded)]
-        if actual is not None and sources != actual:
+        if sources != actual:
             raise EvidenceError("report_comparison_sources_or_order_mismatch")
         options = {}
         if "performance_evidence" in saved:
@@ -206,7 +153,7 @@ def verify_comparison(root, *, source_roots=()):
 
 
 def write_comparison(request):
-    """Build, render and seal one pair comparison; returns the comparison document."""
+    """Write one comparison JSON document; no index, HTML or presentation seal."""
     source_metadata = {}
     loaded = [
         comparison_input(
@@ -223,37 +170,14 @@ def write_comparison(request):
         left_overhead=request.left_overhead,
         right_overhead=request.right_overhead,
         loaded=loaded,
-        format_version=4,
+        format_version=FORMAT_VERSION,
     )
-    from inferyard.reporting.report import build_index
-    from inferyard.reporting.report_common import _environment
+    from inferyard.evidence.source_locations import relative_comparison
 
     sources = [request.left, request.right]
     sources.extend(p for p in (request.left_overhead, request.right_overhead) if p is not None)
-    new_output(request.out, sources)
-    from copy import deepcopy
-
-    from inferyard.evidence.source_locations import relative_comparison
-    from inferyard.reporting.sealed_report import portable_index, seal_report
-
     stored = deepcopy(result)
     relative_comparison(stored, request.out)
+    new_output(request.out, sources)
     atomic_bytes(request.out / "comparison.json", json_bytes(stored))
-    index = build_index(
-        [request.left, request.right],
-        request.out,
-        comparison_path=request.out,
-        loaded=loaded,
-        verified_comparison=stored,
-        source_metadata=source_metadata,
-        format_version=8,
-    )
-    index = portable_index(index, request.out, request.out)
-    from inferyard.contracts.validation import strict_json_loads
-
-    index = strict_json_loads(json_bytes(index).decode())
-    html = _environment().get_template("report.html").render(index=index)
-    atomic_bytes(request.out / "index.json", json_bytes(index))
-    atomic_bytes(request.out / "report.html", html.encode())
-    seal_report(request.out, comparison=True)
     return result

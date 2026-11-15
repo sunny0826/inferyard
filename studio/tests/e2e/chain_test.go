@@ -16,8 +16,8 @@ import (
 
 // TestChainBindRunReport is the golden-path chain: real CLI init and
 // device-check, Studio-managed fake engine, real config bind for both default
-// bundles, formal runs, and a verified report. Every CLI call goes through
-// the recording executor, so a failure produces a blame transcript.
+// bundles, formal runs, and a single studio.json report. Every CLI call goes
+// through the recording executor, so a failure produces a blame transcript.
 func TestChainBindRunReport(t *testing.T) {
 	cli := ResolveCLI(t)
 	env := NewEnv(t, cli)
@@ -43,7 +43,7 @@ func TestChainBindRunReport(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	runWizard(t, service, ctx, "inferyard init --out "+quote(env.Workspace), false, env.Recorder)
+	runWizard(t, service, ctx, "inferyard init --out "+quote(env.Workspace), env.Recorder)
 
 	assets := writeFakeAssets(t)
 	binary, err := os.Executable()
@@ -71,7 +71,7 @@ func TestChainBindRunReport(t *testing.T) {
 		t.Logf("step %d: next_action=%s", step, progress.NextAction)
 		switch progress.NextAction {
 		case "device_check":
-			runWizard(t, service, ctx, *progress.NextCommand, false, env.Recorder)
+			runWizard(t, service, ctx, *progress.NextCommand, env.Recorder)
 		case "prepare_candidate":
 			for _, b := range progress.Bundles {
 				if b.CandidatePath == nil {
@@ -90,16 +90,14 @@ func TestChainBindRunReport(t *testing.T) {
 			engine := service.Engine()
 			for _, b := range progress.Bundles {
 				if b.Phase == "bound_missing" && b.NextCommand != nil {
-					runWizard(t, service, ctx, bindCommand(t, *b.NextCommand, engine.Pid, engine.Endpoint), false, env.Recorder)
+					runWizard(t, service, ctx, bindCommand(t, *b.NextCommand, engine.Pid, engine.Endpoint), env.Recorder)
 				}
 			}
 		case "run":
-			runWizard(t, service, ctx, *progress.NextCommand, false, env.Recorder)
+			runWizard(t, service, ctx, *progress.NextCommand, env.Recorder)
 			waitTasksTerminal(t, service, 10*time.Minute, env.Recorder)
 		case "report":
-			runWizard(t, service, ctx, *progress.NextCommand, true, env.Recorder)
-		case "verify":
-			runWizard(t, service, ctx, *progress.NextCommand, false, env.Recorder)
+			runWizard(t, service, ctx, *progress.NextCommand, env.Recorder)
 		default:
 			t.Fatalf("unexpected next_action %q", progress.NextAction)
 		}
@@ -121,9 +119,9 @@ func TestChainBindRunReport(t *testing.T) {
 	assertEvidenceContracts(t, final.Progress.Workspace)
 }
 
-func runWizard(t *testing.T, service *core.Service, ctx context.Context, command string, verify bool, recorder *Recorder) {
+func runWizard(t *testing.T, service *core.Service, ctx context.Context, command string, recorder *Recorder) {
 	t.Helper()
-	result, apiErr := service.WizardExecute(ctx, core.WizardRequest{Command: command, ReportVerify: verify})
+	result, apiErr := service.WizardExecute(ctx, core.WizardRequest{Command: command})
 	if apiErr != nil {
 		t.Fatalf("wizard %q: %+v [%s]", command, apiErr, analyzeFailure(recorder))
 	}
@@ -255,10 +253,12 @@ func assertReportExists(t *testing.T, workspace string) {
 		if !entry.IsDir() {
 			continue
 		}
-		found, _ := filepath.Glob(filepath.Join(reports, entry.Name(), "*.html"))
-		if len(found) > 0 {
+		if _, err := os.Stat(filepath.Join(reports, entry.Name(), "studio.json")); err == nil {
+			if _, err := os.Stat(filepath.Join(reports, entry.Name(), "report.html")); err == nil {
+				t.Fatalf("retired report.html written alongside studio.json")
+			}
 			return
 		}
 	}
-	t.Fatal("no HTML report produced")
+	t.Fatal("no studio.json report produced")
 }

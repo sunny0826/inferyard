@@ -76,11 +76,13 @@ def test_windows_definition_seals_and_reads_without_live_windows(tmp_path, monke
     monkeypatch.setattr("platform.system", lambda: "Linux")
     seal_run(tmp_path, *data)
     assert verify(tmp_path)["run"] == data[1]
-    html = (tmp_path / "report.html").read_text()
+    plan, run, _ = data
     if version >= 3:
-        assert "本次已显式跳过温度停止" in html
+        assert "temperature_stop_explicitly_disabled" in run["limitations"]
+        assert plan["parameters"]["temperature_stop_override_reason"] is not None
     if version == 4:
-        assert "本次已显式跳过内存停止" in html
+        assert "memory_stop_explicitly_disabled" in run["limitations"]
+        assert plan["parameters"]["memory_stop_override_reason"] is not None
 
 
 @pytest.mark.parametrize(

@@ -7,7 +7,7 @@ import pytest
 from inferyard.errors import EvidenceError
 from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.reporting.comparison_report import verify_metric_references
+from inferyard.analysis.comparison_input import verify_metric_references
 from tests.layout_mutations import change_input
 from tests.unit.test_layout_surfaces import sources as sources
 

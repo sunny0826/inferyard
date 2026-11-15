@@ -187,6 +187,10 @@ func human(code string) string {
 		return "绑定的服务进程已不可用，请刷新服务列表后重新选择。"
 	case "binding_progress_changed":
 		return "工作区或候选绑定阶段已变化，绑定链已停止；不会自动重试。"
+	case "report_unreadable":
+		return "报告文件无法读取或格式无效，请重新生成。"
+	case "unsupported_report_format":
+		return "旧格式报告不受支持，请用当前 CLI 重新生成报告。"
 	case "cli_error":
 		return "CLI 执行失败，请检查主窗口诊断后重试。"
 	case "invalid_request":

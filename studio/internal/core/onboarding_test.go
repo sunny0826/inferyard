@@ -30,7 +30,7 @@ func wizardService(t *testing.T, execute Executor) *Service {
 	}
 	return s
 }
-func TestWizardExitMappingAndReportVerify(t *testing.T) {
+func TestWizardExitMappingAndReportCompletion(t *testing.T) {
 	for _, code := range []int{0, 2, 3, 4, 130} {
 		var calls [][]string
 		s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
@@ -38,25 +38,26 @@ func TestWizardExitMappingAndReportVerify(t *testing.T) {
 				return inferyard.Execution{Stdout: []byte("inferyard fixture source=release")}, nil
 			}
 			calls = append(calls, append([]string{}, args...))
+			if args[0] == "report" && code == 0 {
+				out := args[len(args)-1]
+				if e := os.MkdirAll(out, 0700); e != nil {
+					t.Fatal(e)
+				}
+				writeStudioReport(t, out, "fixture-run", args[2])
+			}
 			return inferyard.Execution{ExitCode: code, Stdout: []byte("secret stdout"), Stderr: []byte("secret stderr")}, nil
 		})
 		out := filepath.Join(t.TempDir(), "new-report")
-		result, err := s.WizardExecute(context.Background(), WizardRequest{Command: "inferyard report --runs '/tmp/core' '/tmp/pelican' --out '" + out + "'", ReportVerify: true})
+		result, err := s.WizardExecute(context.Background(), WizardRequest{Command: "inferyard report --runs '/tmp/core' '/tmp/pelican' --out '" + out + "'"})
 		if err != nil || result.ExitCode != code {
 			t.Fatalf("%+v %v", result, err)
 		}
-		want := 1
-		if code == 0 {
-			want = 2
-		}
-		if len(calls) != want {
-			t.Fatalf("calls: %v", calls)
-		}
-		if code == 0 && !reflect.DeepEqual(calls[1], []string{"verify", "--path", out}) {
-			t.Fatal(calls)
+		if len(calls) != 1 || calls[0][0] != "report" {
+			t.Fatalf("report must run exactly once without a second verify: %v", calls)
 		}
 	}
 }
+
 func TestWizardKeepsOriginalOutputsAndFrozenStartup(t *testing.T) {
 	s := wizardService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 		if result, ok := engineFixtureDescription(args); ok {

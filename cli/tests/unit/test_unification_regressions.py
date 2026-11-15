@@ -1,7 +1,6 @@
 """Regressions found while unifying the single and experiment read/write paths."""
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -9,25 +8,21 @@ from inferyard.application.types import CommandRequest
 from inferyard.errors import PreflightError
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import sha256_file
-from inferyard.reporting.report import write_report
-from inferyard.reporting.report_common import evidence_url
+from inferyard.reporting.studio_report import write_studio_report
 from inferyard.runtime.runner import load_rerun
 from tests.helpers import fixture_run
 
 
-def test_report_local_links_support_cross_drive_outputs(tmp_path, monkeypatch):
-    source = tmp_path / "source with spaces" / "manifest.json"
-    out = tmp_path / "report"
-    assert evidence_url(source, out) == "../source%20with%20spaces/manifest.json"
-
-    def different_drive(*args):
-        raise ValueError("path is on mount D:, start on mount C:")
-
-    monkeypatch.setattr("inferyard.reporting.report_common.os.path.relpath", different_drive)
-    assert evidence_url(source, out) == source.resolve().as_uri()
+def test_studio_report_omits_prompt_answer_and_scored_content(tmp_path):
     root = fixture_run(tmp_path / "runs")
-    index = write_report([root], out)
-    assert index["runs"][0]["evidence"]["manifest.json"] == (root / "manifest.json").as_uri()
+    out = tmp_path / "report"
+    document = write_studio_report([root], out)
+    raw = (out / "studio.json").read_text()
+    assert "<script>alert(1)</script>" not in raw
+    assert "reference_answer" not in raw and '"content"' not in raw
+    run_ids = [run["source"]["run_id"] for run in document["runs"]]
+    assert run_ids == [root.name.removeprefix("run-")] or len(run_ids) == 1
+    assert [row["case_id"] for row in document["runs"][0]["requests"]]
 
 
 def test_experiment_parent_cannot_be_reinterpreted_as_single_rerun(tmp_path, monkeypatch):
@@ -52,14 +47,3 @@ def test_experiment_parent_cannot_be_reinterpreted_as_single_rerun(tmp_path, mon
                 "run", from_run=root, server_pid=123, endpoint_url="http://127.0.0.1:9090"
             )
         )
-
-
-def test_report_preserves_escaped_prompt_as_well_as_answer(tmp_path):
-    root = fixture_run(tmp_path / "runs")
-    out = tmp_path / "report"
-    index = write_report([root], out)
-    prompt = index["contents"][index["runs"][0]["requests"][0]["prompt_ref"]]
-    assert "<script>" in prompt
-    html = Path(out / "report.html").read_text()
-    assert "<script>alert" not in html
-    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html

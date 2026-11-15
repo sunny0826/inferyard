@@ -30,10 +30,11 @@ probe 仍发送普通和流式请求；正式题序与分母不随预热次数�
 及顶层 completeness 保留原执行状态。未封存为 partial/3、sealed=false、verified=false；
 坏 seal/坏 JSON 为 4，不能降格 partial。batch 逐 run 披露，计划尚未执行完不等于证据损坏。
 engine-fit 中断后以 plan.json、checkpoint.json 和 requests.json 只读取证，不自动续跑。
-新 report v8/comparison v4/engine-fit manifest v2 默认分开核验字节、来源与语义，
-`verify --rerender` 可选重渲染；`engine-fit verify` 也接受 --rerender。
-新普通报告/比较可用重复的 `--source-root OLD=NEW` 显式映射源根（相对参数按当前目录解析）；
-不修改保存文件、不搜索磁盘。旧 report/comparison 版本按 ADR038 拒绝。详见[离线读取契约](../contracts/offline-reading-contract.md)。
+comparison v5 与 engine-fit manifest v3 分别核验来源与语义；studio.json 报告不是核验入口，
+`verify --path` 对它固定返回 `studio_report_not_verifiable` / 4。
+比较与 engine-comparison 可用重复的 `--source-root OLD=NEW` 显式映射源根（相对参数按当前目录解析）；
+不修改保存文件、不搜索磁盘。旧 report v1–v8、comparison v1–v4、engine-fit manifest v1/v2 与
+旧 engine-comparison 按 ADR038/059 拒绝。详见[离线读取契约](../contracts/offline-reading-contract.md)。
 
 `device-check` 在 macOS/Linux/Windows 只读检测；不指定模型且没有发现模型时返回 `inspected` / 0，显式模型或资源条件不满足仍退出 2。`--out` 要求新目录，保存 JSON，包括模型建议阻断的结果。格式、来源和实时平台边界见[设备检测](../device-check.md)。
 

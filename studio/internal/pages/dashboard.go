@@ -193,8 +193,6 @@ func (s *viewState) stageView(c *ui.Context) {
 				button(c, "查看报告").OnClick(func() { s.selected = "reports" })
 			}
 		})
-	case "verify":
-		stepTrack(c, "6", "报告", func() { ui.Text(c, "请在报告页核验报告。") })
 	case "done":
 		stepTrack(c, "6", "报告", func() {
 			path := s.task.report

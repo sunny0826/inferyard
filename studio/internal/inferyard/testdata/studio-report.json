@@ -1,0 +1,53 @@
+{
+  "schema_version": 3,
+  "kind": "studio-report.v1",
+  "runs": [
+    {
+      "source": {"run_id": "fixture-run", "path": "/synthetic/run"},
+      "model": "fixture-model",
+      "threads": 8,
+      "diagnostic": false,
+      "facets": {"bundle_label": "zh-core · 1.0"},
+      "profile": {
+        "title": "Fixture Model Q4",
+        "engine": {
+          "binary_path": "/synthetic/llama-server",
+          "adapter": "prism_llama_server_v1",
+          "backend": "metal"
+        },
+        "machine": {
+          "cpu": "Fixture CPU",
+          "logical_cpus": 14,
+          "memory_total_bytes": 25769803776
+        }
+      },
+      "summary": {
+        "completion_rate": {"numerator": 2, "denominator": 3, "excluded": 0},
+        "stop_reason": "plan_finished"
+      },
+      "dashboard": {
+        "quality": {
+          "numerator": 1,
+          "denominator": 2,
+          "excluded": 1,
+          "complete": false,
+          "reason": "quality_incomplete_or_not_applicable"
+        },
+        "categories": [
+          {"id": "math", "label": "数学计算", "rate": {"numerator": 0, "denominator": 0, "excluded": 1}},
+          {"id": "qa", "label": "知识问答", "rate": {"numerator": 1, "denominator": 2, "excluded": 0}}
+        ],
+        "latency": {"sample_count": 2, "excluded": 1, "min": 842, "p50": 842, "p95": null, "max": 1204},
+        "sampled_peak_rss_bytes": null,
+        "sampled_peak_rss_reason": "no_samples",
+        "sampled_minimum_available_bytes": null,
+        "minimum_available_reason": "no_samples"
+      },
+      "requests": [
+        {"case_id": "null-case", "category_label": "数学计算", "state": "failed", "quality": null, "latency_ms": null},
+        {"case_id": "timed-case", "category_label": "知识问答", "state": "completed", "quality": "pass", "latency_ms": 842},
+        {"case_id": "failed-answer", "category_label": "知识问答", "state": "completed", "quality": "fail", "latency_ms": 1204}
+      ]
+    }
+  ]
+}

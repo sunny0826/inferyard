@@ -11,7 +11,7 @@ RUN_FILES = (
     "schedule.jsonl",
 )
 RESOURCE_FILES = ("external-cpu.jsonl", "request-environment.jsonl")
-REPORT_FILES = ("artifact-manifest.json", "index.json", "report.html")
+REPORT_FILES = ("studio.json",)
 
 
 def assert_workspace(bench_work, run_dirs):

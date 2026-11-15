@@ -13,7 +13,7 @@ from inferyard.contracts.validation import validate_document, json_bytes
 from inferyard.errors import EvidenceError
 from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json, sha256_file
 from inferyard.provenance import tool_source_hash
-from inferyard.reporting.comparison_report import comparison_input, verify_metric_references
+from inferyard.analysis.comparison_input import comparison_input, verify_metric_references
 
 
 def trial_analysis(root, *, producer=None, loaded=None):

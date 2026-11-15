@@ -29,7 +29,7 @@ flowchart LR
 | 评分器            | 以冻结题目、答案与政策做纯计算；不调用模型裁判，不访问网络                                            |
 | 采集器            | 按来源和窗口输出样本及缺测原因，不改变答案质量；平台能力独立声明                                      |
 | 存储              | 凭据脱敏、追加日志、刷盘、原子快照和封存；文件证据为事实源                                            |
-| 离线              | 从保存事件和评分重建账本，校验来源后生成报告与比较；索引、汇总、HTML 可重新生成                       |
+| 离线              | 从保存事件和评分重建账本，校验来源后生成报告（studio.json）与比较；派生投影可重新生成                   |
 
 活动源码位于 `src/inferyard/`。本机 `validation/` 源码快照仅用于追溯，不随 Git 工作树或发行包交付。Windows 单次及受支持的批量 CPU/CUDA 通路保留进程身份、锁与原生内存采集。macOS 单次和批量共用请求生命周期，通过平台工厂选择原生身份与 `macos-resource.v1` 采集器；Linux `/proc` 采集不进入其他平台的原生通路。实现与验收范围见 [macOS 说明](../MACOS.md)。
 
@@ -40,14 +40,14 @@ flowchart LR
 | `cli/`、`application/`             | 参数、请求构造、输出呈现与错误映射；共享请求/结果类型及延迟命令分派 |
 | `contracts/`、`config/`            | 唯一结构/语义契约；配置、题包、冻结计划与声明绑定                   |
 | `runtime/`、`evidence/`            | 请求、取消、排空与安全控制；日志、封存、来源引用、当前格式核验与旧格式拒绝 |
-| `analysis/`、`reporting/`          | 评分、指标、离线账本重建和比较计算；离线报告、重评分与导出          |
+| `analysis/`、`reporting/`          | 评分、指标、离线账本重建和比较计算；`studio.json` 报告、重评分与导出 |
 | `platforms/`、`extensions/`        | 设备与进程身份、平台采集；独立扩展协议及执行工作流                  |
 | `provisioning/`                    | 引擎/模型来源获取、运行时归档与 profile 核验、准备输出 IO            |
-| `adapters/`、`data/`、`templates/` | 引擎传输和解析；随安装包交付的方法/指标目录与报告模板               |
+| `adapters/`、`data/`              | 引擎传输和解析；随安装包交付的方法/指标目录                           |
 | `errors.py`                        | 只依赖标准库的失败类别叶子，供各层与入口描述错误而不加载其他子系统   |
 
 `registry.py` 和 `provenance.py` 位于根包，分别管理目录注册和源码身份。
-engine-fit 诊断的封存入口与 HTML 渲染位于 `analysis/`（`engine_fit_seal`、`engine_fit_html`），
+engine-fit 诊断的封存入口位于 `analysis/`（`engine_fit_seal`），
 以便运行时在持有主机锁时完成封存；`reporting/engine_fit.py` 只保留离线 compare/verify。
 跨包共享的纯规则（脱敏、模板身份、比较门槛、位置用例、batch envelope、公开原因、命令内审核缓存）
 位于 `contracts/`，CLI 元数据查询只加载这一层与根级轻量模块。
@@ -61,5 +61,5 @@ engine-fit 诊断的封存入口与 HTML 渲染位于 `analysis/`（`engine_fit_
 - 规范命令适配到已有业务动作。旧命令名和参数别名已删除。`application/verification.py` 识别产物并延迟调用专用验证器；CLI 不复制其验证逻辑。
 - 入口统一映射输入、预检、证据、IO、内部异常与取消；退出码保持 0/2/3/4/130，stderr 不回显凭据。
 
-安装包包含所有领域包、`data/` 和 `templates/`；模板和 catalogue 从包内资源读取，不能依赖源码检出目录。完整包摘要保留来源；新运行另按 measurement/scoring/presentation 清单记录职责身份，旧证据按保存版本解释。具体清单与依赖边界见[职责身份契约](contracts/scoped-measurement-contract.md)。
+安装包包含所有领域包与 `data/`；catalogue 从包内资源读取，不能依赖源码检出目录。完整包摘要保留来源；新运行另按 measurement/scoring/presentation 清单记录职责身份，旧证据按保存版本解释。具体清单与依赖边界见[职责身份契约](contracts/scoped-measurement-contract.md)。
 

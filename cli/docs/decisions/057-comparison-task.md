@@ -4,6 +4,8 @@
 本草案采用用户指定的“专用比较任务记录”，不定义通用 Experiment；方案 A 的单份完整计划见 [ADR 057b](057-engine-comparison-plan.md)。
 文中“事实”附源码位置；“推导”是设计判断；“未验证”不当作既有能力。
 
+> 局部取代：比较产物的 HTML 文件与封存呈现字节核验由 [ADR 059](059-studio-json-only-report.md) 取代（verify 改为从 plan/batch 重算单文件 `engine-comparison.json`）；任务职责边界与编排规则不变。
+
 ## 决定
 
 首轮只增加 `EngineComparisonTask` 及 CLI 预注册比较计划；普通测评与长上下文专项保持现入口。

@@ -184,6 +184,11 @@ def validate_semantics(kind, data):
 
         validate_result(data)
         return
+    if kind == "studio_report":
+        from inferyard.contracts.schemas_studio_report import validate_studio_report
+
+        validate_studio_report(data)
+        return
     if kind in ("inputs", "observation_record", "prepared_request"):
         from inferyard.contracts.contracts_layout import validate_layout
 

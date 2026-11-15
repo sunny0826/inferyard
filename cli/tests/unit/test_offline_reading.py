@@ -1,8 +1,6 @@
 """Direct raw reading, sealed bytes and explicit source relocation boundaries."""
 
-import hashlib
 import shutil
-from pathlib import Path
 
 import pytest
 
@@ -12,7 +10,8 @@ from inferyard.application.verification import execute
 from inferyard.errors import EvidenceError
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import read_json
-from inferyard.reporting.report import verify_report, write_report
+from inferyard.reporting.comparison_report import verify_comparison, write_comparison
+from inferyard.reporting.studio_report import read_studio_report, write_studio_report
 from tests.helpers import fixture_run
 
 
@@ -70,21 +69,19 @@ def test_frozen_plan_and_empty_batch_are_read_without_derived_report(tmp_path, c
             execute(CommandRequest("verify", run=batch))
 
 
-def test_comparison_and_linked_report_move_and_keep_source_binding(tmp_path):
-    from inferyard.application.reporting import execute as compare
-
+def test_comparison_moves_and_keeps_source_binding(tmp_path):
     base = tmp_path / "original"
     roots = [fixture_run(base / side) for side in ("left", "right")]
-    compare(CommandRequest("compare", left=roots[0], right=roots[1], out=base / "comparison"))
-    write_report(roots, base / "report", comparison_path=base / "comparison")
+    write_comparison(
+        CommandRequest("compare", left=roots[0], right=roots[1], out=base / "comparison")
+    )
     moved = tmp_path / "moved"
     base.rename(moved)
     assert execute(CommandRequest("verify", run=moved / "comparison"))[0] == 0
-    assert verify_report(moved / "report")["sources_verified"]
     source = moved / roots[0].relative_to(base)
     (source / "events.jsonl").write_bytes(b"{}\n")
     with pytest.raises(EvidenceError):
-        verify_report(moved / "report")
+        verify_comparison(moved / "comparison")
 
 
 def test_corrupt_seal_is_not_downgraded_to_partial(tmp_path):
@@ -103,71 +100,40 @@ def test_capability_definition_is_interpreted_once_from_bound_source(tmp_path):
     assert not result.verified
 
 
-def test_report_moves_with_sources_and_does_not_render_during_verify(tmp_path, monkeypatch):
-    import inferyard.reporting.report_common as common
-
+def test_studio_report_keeps_absolute_sources_and_reads_without_them(tmp_path):
     original = tmp_path / "original"
     original.mkdir()
     root = fixture_run(original)
     out = original / "report"
-    saved = write_report([root], out)
-    assert saved["report_format_version"] == 8
-    assert not Path(saved["runs"][0]["source"]["path"]).is_absolute()
-    before = (out / "report.html").read_bytes()
+    saved = write_studio_report([root], out)
+    assert saved["runs"][0]["source"]["path"] == str(root.resolve())
+    before = (out / "studio.json").read_bytes()
     moved = tmp_path / "moved"
     original.rename(moved)
-
-    def no_render(*args):
-        raise AssertionError("renderer must not be needed")
-
-    monkeypatch.setattr(common, "render_report_html", no_render)
-    checked = verify_report(moved / "report")
-    assert checked["bytes_verified"] and checked["semantic_verified"]
-    assert not checked["render_checked"]
-    assert checked.get("html_matches_index") is not True
-    assert (moved / "report/report.html").read_bytes() == before
+    assert read_studio_report(moved / "report")["kind"] == "studio-report.v1"
+    assert (moved / "report/studio.json").read_bytes() == before
+    with pytest.raises(EvidenceError, match="studio_report_not_verifiable"):
+        execute(CommandRequest("verify", run=moved / "report"))
 
 
 def test_explicit_source_root_mapping_preserves_saved_bytes(tmp_path):
-    root = fixture_run(tmp_path / "original")
-    out = tmp_path / "report"
-    write_report([root], out)
-    before = (out / "index.json").read_bytes()
+    roots = [fixture_run(tmp_path / side) for side in ("left", "right")]
+    out = tmp_path / "comparison"
+    write_comparison(CommandRequest("compare", left=roots[0], right=roots[1], out=out))
+    before = (out / "comparison.json").read_bytes()
     destination = tmp_path / "elsewhere"
-    shutil.move(root, destination)
-    options = VerificationOptions(((root.resolve(), destination.resolve()),))
-    assert verify_report(out, options=options)["sources_verified"]
-    assert (out / "index.json").read_bytes() == before
+    shutil.move(roots[0], destination)
+    options = VerificationOptions(((roots[0].resolve(), destination.resolve()),))
+    assert verify_comparison(out, source_roots=options.source_roots)["verified"]
+    assert (out / "comparison.json").read_bytes() == before
 
 
-@pytest.mark.parametrize("reseal", [False, True])
-def test_changed_report_data_is_rejected_even_with_recomputed_byte_seal(tmp_path, reseal):
-    root = fixture_run(tmp_path)
-    out = tmp_path / "report"
-    write_report([root], out)
-    saved = read_json(out / "index.json")
-    saved["runs"][0]["requests"][0]["content"] = "invented answer"
-    raw = json_bytes(saved)
-    (out / "index.json").write_bytes(raw)
-    if reseal:
-        seal = read_json(out / "artifact-manifest.json")
-        seal["files"]["index.json"] = hashlib.sha256(raw).hexdigest()
-        (out / "artifact-manifest.json").write_bytes(json_bytes(seal))
-    with pytest.raises(EvidenceError, match="presentation_bytes_changed|recomputation_mismatch"):
-        verify_report(out)
-
-
-def test_changed_html_and_explicit_rerender(tmp_path, monkeypatch):
-    import inferyard.reporting.report_common as common
-
-    root = fixture_run(tmp_path)
-    out = tmp_path / "report"
-    write_report([root], out)
-    assert verify_report(out, options=VerificationOptions(rerender=True))["render_checked"]
-    monkeypatch.setattr(common, "render_report_html", lambda *args: "changed renderer")
-    assert verify_report(out)["verified"]
-    with pytest.raises(EvidenceError, match="html_recomputation"):
-        verify_report(out, options=VerificationOptions(rerender=True))
-    (out / "report.html").write_text("corrupt bytes")
-    with pytest.raises(EvidenceError, match="presentation_bytes_changed"):
-        verify_report(out)
+def test_changed_comparison_data_is_rejected_by_recomputation(tmp_path):
+    roots = [fixture_run(tmp_path / side) for side in ("left", "right")]
+    out = tmp_path / "comparison"
+    write_comparison(CommandRequest("compare", left=roots[0], right=roots[1], out=out))
+    saved = read_json(out / "comparison.json")
+    saved["sides"][0]["run_id"] = "invented-run"
+    (out / "comparison.json").write_bytes(json_bytes(saved))
+    with pytest.raises(EvidenceError, match="recomputation_mismatch|sources_or_order"):
+        verify_comparison(out)

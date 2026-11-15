@@ -63,17 +63,13 @@ func (s *viewState) reportView(c *ui.Context) {
 	if run.Diagnostic {
 		statusBadge(c, "诊断运行", stateColor(c, stateWarning))
 	}
-	if run.Dashboard == nil {
-		ui.Text(c, "无法读取 dashboard").TextColor(stateColor(c, stateDanger))
-	} else {
-		reportMetrics(c, run)
-		report.categoryView(c, run)
-	}
+	reportMetrics(c, run)
+	report.categoryView(c, run)
 	reportProfileView(c, run)
 	report.requestView(c, run)
 	card(c, "数据来源", func() {
 		deviceRow(c, "运行", reportText(run.Source.RunID))
-		deviceRow(c, "索引", "index.json")
+		deviceRow(c, "索引", "studio.json")
 		deviceRow(c, "停止原因", reportText(run.Summary.StopReason))
 	})
 }
@@ -103,8 +99,8 @@ func reportRunLabel(run core.ReportRun) string {
 }
 
 func reportModel(run core.ReportRun) string {
-	if run.Profile.Title != "" {
-		return displayValue(run.Profile.Title)
+	if run.Profile.Title != nil && *run.Profile.Title != "" {
+		return displayValue(*run.Profile.Title)
 	}
 	return reportText(run.Model)
 }
@@ -112,7 +108,7 @@ func reportModel(run core.ReportRun) string {
 func reportProfileView(c *ui.Context, run core.ReportRun) {
 	card(c, "模型与机器", func() {
 		deviceRow(c, "模型", reportModel(run))
-		engine := displayName(run.Profile.Engine.BinaryPath)
+		engine := displayName(emptyText(run.Profile.Engine.BinaryPath))
 		if engine == "" {
 			engine = run.Profile.Engine.Adapter
 		}
@@ -122,7 +118,7 @@ func reportProfileView(c *ui.Context, run core.ReportRun) {
 		}
 		deviceRow(c, "引擎", fmt.Sprintf("%s · %s · %s 线程", reportText(engine), reportText(backend), reportNumber(run.Threads)))
 		machine := run.Profile.Machine
-		deviceRow(c, "机器", fmt.Sprintf("%s · %s 核 · %s", reportText(machine.CPU), reportNumber(machine.LogicalCPUs), reportScaled(machine.MemoryTotalBytes, 1<<30, "GiB")))
+		deviceRow(c, "机器", fmt.Sprintf("%s · %s 核 · %s", reportText(emptyText(machine.CPU)), reportNumber(machine.LogicalCPUs), reportScaled(machine.MemoryTotalBytes, 1<<30, "GiB")))
 		deviceRow(c, "题包", reportText(run.Facets.BundleLabel))
 	})
 }

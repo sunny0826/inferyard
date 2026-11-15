@@ -11,9 +11,8 @@
 - **纯计算边界**：评分不执行模型输出中的代码、不扩充同义答案、不先修复再解析；客户端计时用单调时钟事件，指标口径、单位与缺测原因遵循 [指标定义](../../../cli/docs/experiments/metrics.md)，本文件不复述。
 - **分母与 unscorable**：`failed` 请求保留在质量分母中且按未通过计；`completed` 但缺评分或评分结果为 `unscorable` 时分组记 `unscorable` 并使整包质量值为 `null`（reason `incomplete_run`）；分母为零返回 `null` 并标 `zero_denominator`，从不以 0 冒充。取消、invalid、未执行的请求单列 `excluded`。
 - **重评分不可变性**：重评分只改分析产物，不改执行终态、不改原始 run；`redacted_scoring_input` 或内容含 `[REDACTED]` 的请求直接判 `unscorable`，脱敏后无法复核的输入不得给出可复现成绩。评分器身份、父证据哈希或来源绑定不匹配即拒绝（`rescore_scorer_identity_mismatch`、`rescore_parent_recomputation_mismatch` 等）。不同评分规则版本默认禁止直接质量差值，见[证据血缘与比较结论](../../../cli/docs/data-contract.md#证据血缘与比较结论)。
-- **比较资格**：`unknown` 不等于 `unknown`——任一侧未知即记 `unknown` 条件且不计入 `same`；质量、完成率、性能资格分别判定，性能资格在无开销证据时恒为 `False`；`side-by-side` 模式永不产出受控差值或因果结论；量化比较要求可核验的同源 revision；config 模式只放行 `FACTORS` 声明的冻结单因素，声明因素未实际变化记 `declared_factor_did_not_change` 阻断。比较只接受 `format_version = 4` / `phase2.v3`，旧格式不重算。
-- **HTML 安全**：模板经 Jinja `autoescape` 转义题目、答案、路径与异常；唯一例外是通过检查的 SVG 以原始字节局部内嵌。SVG 提取优先完整 svg 代码围栏、否则首个闭合 `<svg>` 子串，禁止 DTD、根元素须为 SVG、上限 512×1024 字符，失败降级为转义源码展示。CSP 为 `default-src 'none'`、`style-src 'unsafe-inline'`、`script-src` 仅限同版本 `report_script.html` 的 SHA-256，禁止模型脚本与事件处理器；模板修改不得放松 `script-src`。动画元素统计（`animation_stats`）在渲染时现算，只进 HTML，不写入 `index.json` 或封存证据，不构成评分或资格结论。
-- **格式与覆盖**：新报告仅接受 `report_format_version = 8`，旧 v1–v7 明确拒绝；比较只接受 format4；重评分记录只接受 format1。报告、重评分、导出、比较全部写入新目录，原件不覆盖。缺失测量显示 `—` 而非 0。
+- **比较资格**：`unknown` 不等于 `unknown`——任一侧未知即记 `unknown` 条件且不计入 `same`；质量、完成率、性能资格分别判定，性能资格在无开销证据时恒为 `False`；`side-by-side` 模式永不产出受控差值或因果结论；量化比较要求可核验的同源 revision；config 模式只放行 `FACTORS` 声明的冻结单因素，声明因素未实际变化记 `declared_factor_did_not_change` 阻断。比较只接受 `format_version = 5` / `phase2.v3`，旧格式不重算。
+- **格式与覆盖**：报告输出为 `studio.json`（`studio-report.v1`），不再参与核验，旧报告 v1–v8 明确拒绝；比较只接受 format5；重评分记录只接受 format1。报告、重评分、导出、比较全部写入新目录，原件不覆盖。缺失测量显示 `—` 而非 0。
 - **导出文本安全**：CSV 单元格对以 `=`、`+`、`-`、`@` 或制表/换行开头的字符串加 `'` 前缀防公式注入，数值不受影响；Markdown 导出转义 HTML 特殊字符与表格元字符。缺失值导出为空，`status` 与 `missing_reason` 保留原语义（`csv_cell`、`markdown_cell` 在 [`reporting/export.py`](../../../cli/src/inferyard/reporting/export.py)）。
 - **资格证据边界**：本子的计算全部为离线软件逻辑；性能与环境资格依赖保存证据中的来源、开销与校准记录，模拟或软件验证不授予真机资格，结论血缘遵循 [数据契约](../../../cli/docs/data-contract.md#证据血缘与比较结论) 与[职责身份契约](../../../cli/docs/contracts/scoped-measurement-contract.md)。
 

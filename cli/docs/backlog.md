@@ -21,14 +21,14 @@
   实际覆盖见[全页面审查](../../studio/docs/design-system-audit.md)。
 - 报告打开失败后，再次打开同一失败报告仍不会重新公告相同错误；可见错误保留。
   后续补此路径的重复操作公告与键盘回归（本轮六条表单修复不覆盖报告打开）。
-- 按规范补三平台原生窗口、键盘、系统偏好、辅助技术及离线报告验收；
+- 按规范补三平台原生窗口、键盘、系统偏好、辅助技术及报告页验收；
   历史内存布局场景和 PNG 目检不替代真窗口证据；固定布局矩阵已按[测试策略](../../docs/testing.md)删除。
 - 测试精简时观察到：CLI 输入框聚焦后首次插入错误，内存 UI 测试会失焦；
   已有错误后的异步更新仍保留焦点。首次报错的原生窗口表现与原因待核查，本轮未改产品代码。
-- Studio 真实 CLI／假引擎链已隔离测试主机锁；双题包 run、report、verify 均成功，
-  后续 `progress` 读取 34.07 MiB 报告索引却被 preparation JSON 的 16 MiB 上限拒绝。
-  需核对[报告读取器](../src/inferyard/application/workspace_progress.py)与报告契约，
-  不通过缩小默认题包或放宽所有 preparation 输入限制规避；本轮未改生产读取逻辑。
+- Studio 真实 CLI／假引擎链已隔离测试主机锁；双题包 run、report 均成功。此前记录的
+  `progress` 读取 34.07 MiB 报告索引被 preparation JSON 16 MiB 上限拒绝的问题，
+  随报告改为 studio.json（读取走无大小上限的 `evidence.read_json`，见
+  [ADR 059](../docs/decisions/059-studio-json-only-report.md)）不再适用；超大报告读取性能不单独宣称。
 - 测试精简后的完整原生 UI 验收两次未通过，现场观察到其他应用／系统设置窗口干扰；
   具体失败原因尚未完全确认。用户已选择暂缓，待桌面可独占时重跑 `mise run test:studio-ui:full`。
 - Toast 位置随 onevra v0.2026.13 改为顶部居中，并已在 `pageShellOptions` 显式固定

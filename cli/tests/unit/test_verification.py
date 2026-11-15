@@ -30,9 +30,6 @@ def marker(root, kind, filename):
             "passed": False,
             "limitations": ["four_completed_runs_required"],
         }
-    elif kind == "comparison":
-        (root / "index.json").write_bytes(json_bytes({"report_format_version": 3}))
-        (root / "report.html").write_text("synthetic report")
     (root / filename).write_bytes(json_bytes(value))
 
 
@@ -73,9 +70,9 @@ def make_artifact(tmp_path, kind):
 
         write_public(root, out)
     elif kind == "report":
-        from inferyard.reporting.report import write_report
+        from inferyard.reporting.studio_report import write_studio_report
 
-        write_report([root], out)
+        write_studio_report([root], out)
     elif kind == "comparison":
         from inferyard.application.reporting import execute as compare
 
@@ -89,9 +86,7 @@ def make_artifact(tmp_path, kind):
     return root, out
 
 
-@pytest.mark.parametrize(
-    "kind", ["export", "rescore", "public", "report", "comparison", "extension"]
-)
+@pytest.mark.parametrize("kind", ["export", "rescore", "public", "comparison", "extension"])
 def test_real_offline_artifacts_replay_without_mutating_any_source(
     tmp_path, kind, monkeypatch, capsys
 ):
@@ -115,8 +110,8 @@ def test_real_offline_artifacts_replay_without_mutating_any_source(
     assert result["completeness"] == "complete"
     assert result["details"]["artifact_type"] == kind
     if kind == "comparison":
-        assert result["details"]["comparison"]["details"]["verified"]
-        assert result["details"]["report"]["details"]["semantic_verified"]
+        assert result["details"]["verified"] is True
+        assert result["details"]["source_runs"] == 2
     elif kind == "extension":
         assert result["details"]["hardware_qualified"] is False
     elif kind == "public":
@@ -130,8 +125,7 @@ def test_real_offline_artifacts_replay_without_mutating_any_source(
         ("export", "metrics.csv"),
         ("rescore", "parent-analysis.json"),
         ("public", "REPRODUCE.md"),
-        ("report", "report.html"),
-        ("comparison", "report.html"),
+        ("comparison", "comparison.json"),
         ("extension", "summary.json"),
     ],
 )
@@ -191,9 +185,9 @@ def test_unrelated_options_are_input_errors(tmp_path, option):
 
 
 @pytest.mark.parametrize("filename", ["index.json", "report.html"])
-def test_comparison_requires_complete_report_even_if_comparison_replays(tmp_path, filename):
+def test_comparison_rejects_retired_layout_files(tmp_path, filename):
     _, out = make_artifact(tmp_path, "comparison")
-    (out / filename).unlink()
+    (out / filename).write_text("{}")
     with pytest.raises(EvidenceError):
         execute(CommandRequest("verify", run=out))
 
@@ -227,7 +221,7 @@ def loaded_source(root):
 
 @pytest.mark.parametrize("policy", ["public-summary.v5"])
 def test_public_source_and_config_preserve_mismatch_and_readiness(tmp_path, policy):
-    from inferyard.reporting.comparison_report import comparison_input
+    from inferyard.analysis.comparison_input import comparison_input
     from inferyard.reporting.public_package import payloads, projection
 
     root = source_fixture(tmp_path / "sources")
@@ -371,7 +365,7 @@ def test_real_repeat_summary_replays_without_requests_or_source_changes(tmp_path
     assert before == digest_tree(tmp_path)
 
 
-def test_compound_result_preserves_both_limitations_and_report_failure(tmp_path, monkeypatch):
+def test_compound_report_verification_is_retired(tmp_path, monkeypatch):
     marker(tmp_path, "comparison", "comparison.json")
     comparison = CommandResult(
         "compare-check",
@@ -380,31 +374,23 @@ def test_compound_result_preserves_both_limitations_and_report_failure(tmp_path,
         limitations=("comparison_limit",),
         details={"verified": True},
     )
-    report = CommandResult(
-        "report-check",
-        "not_passed",
-        "incomplete",
-        limitations=("report_limit",),
-        details={"verified": False},
-    )
-    monkeypatch.setattr(
-        import_module("inferyard.application.reporting"),
-        "execute",
-        lambda request, **kwargs: (0, comparison)
-        if request.command == "compare-check"
-        else (3, report),
-    )
+    seen = []
+
+    def record(request, **kwargs):
+        seen.append(request.command)
+        return 0, comparison
+
+    monkeypatch.setattr(import_module("inferyard.application.reporting"), "execute", record)
     code, result = execute(CommandRequest("verify", run=tmp_path))
-    assert code == 3 and result.status == "not_passed" and result.completeness == "incomplete"
-    assert result.limitations == ("comparison_limit", "report_limit")
-    assert result.details["comparison"]["details"]["verified"]
-    assert not result.details["report"]["details"]["verified"]
+    assert code == 0 and result.details["verified"] is True
+    assert seen == ["compare-check"]
 
 
 @pytest.mark.parametrize(
     "filename,value",
     [
         ("run.json", {"kind": "extension_packet.v1"}),
+        ("run.json", {"kind": "extension_packet.v2"}),
         ("manifest.json", {"policy": "public-summary.v5"}),
         ("parent-analysis.json", {}),
     ],
@@ -428,11 +414,14 @@ def test_path_is_required_and_must_be_a_directory(tmp_path):
 
 
 @pytest.mark.parametrize("filename", ["run.json", "analysis.json"])
-def test_valid_report_cannot_hide_unsupported_root_artifacts(tmp_path, filename):
+def test_studio_report_cannot_hide_other_root_artifacts(tmp_path, filename):
     _, out = make_artifact(tmp_path, "report")
     (out / filename).write_text("{}")
-    with pytest.raises(
-        EvidenceError,
-        match="unsupported_verify_artifact|invalid_|unreadable_|conflicting_verify_artifacts",
-    ):
+    with pytest.raises(EvidenceError, match="conflicting_verify_artifacts"):
+        execute(CommandRequest("verify", run=out))
+
+
+def test_studio_report_is_never_a_verified_artifact(tmp_path):
+    _, out = make_artifact(tmp_path, "report")
+    with pytest.raises(EvidenceError, match="studio_report_not_verifiable"):
         execute(CommandRequest("verify", run=out))

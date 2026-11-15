@@ -34,7 +34,7 @@ func (r *reportViewState) categoryView(c *ui.Context, run core.ReportRun) {
 }
 
 func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
-	card(c, "逐题答案", func() {
+	card(c, "逐题结果", func() {
 		requests := run.Requests
 		if len(requests) == 0 {
 			ui.Text(c, "暂无逐题数据。")
@@ -45,7 +45,7 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 			{Title: "题目", MinWidth: c.Theme().Rem(13)}, {Title: "类别", MinWidth: c.Theme().Rem(9)},
 			{Title: "执行", MinWidth: c.Theme().Rem(6)}, {Title: "质量", MinWidth: c.Theme().Rem(7)}, {Title: "耗时", MinWidth: c.Theme().Rem(7)},
 		}
-		pageTable(c.Key("report-requests"), &r.requests, "逐题答案表", columns, len(requests), func(row, col int) {
+		pageTable(c.Key("report-requests"), &r.requests, "逐题结果表", columns, len(requests), func(row, col int) {
 			request := requests[row]
 			ui.Text(c, []string{reportText(request.CaseID), reportText(request.CategoryLabel), reportText(stateLabel(request.State)), reportQuality(request.Quality), reportScaled(request.LatencyMS, 1000, "s")}[col]).SingleLine()
 		}).Height(c.Theme().Space(8)*float32(min(len(requests), 8)+1) + 2)

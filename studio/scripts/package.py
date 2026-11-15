@@ -44,7 +44,7 @@ def package(root: Path) -> None:
             instructions += 'Run: ./inferyard-studio\nNative UI: GTK 3 with OpenGL rendering. Desktop notifications need a notification service.\n'
         else:
             instructions += 'Run: inferyard-studio.exe\nRequires Windows 10/11; native UI uses Direct3D 11.\n'
-        instructions += '\nConfigure the separately installed inferyard CLI and data directories in Settings.\nDesktop application with MyGo native UI and reports rendered from index.json in the main window.\nGuidance is embedded in the main window. Studio starts and manages the frozen model engine, stops its owned engine on shutdown, and never restarts it automatically.\nUnsigned build; no notarization or publication.\n'
+        instructions += '\nConfigure the separately installed inferyard CLI and data directories in Settings.\nDesktop application with MyGo native UI and reports rendered from studio.json in the main window.\nGuidance is embedded in the main window. Studio starts and manages the frozen model engine, stops its owned engine on shutdown, and never restarts it automatically.\nUnsigned build; no notarization or publication.\n'
         (directory / 'README.txt').write_text(instructions)
         print(f'{directory.relative_to(root)}: packaged')
 

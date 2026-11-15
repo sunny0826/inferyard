@@ -43,7 +43,7 @@ def portable_fixture(monkeypatch):
     return fixture_run
 
 
-def test_canonical_artifact_workflow_is_offline_and_checks_comparison_html(
+def test_canonical_artifact_workflow_is_offline_and_rejects_retired_presentation(
     tmp_path, capsys, monkeypatch, portable_fixture
 ):
     def no_network(*args, **kwargs):
@@ -56,7 +56,6 @@ def test_canonical_artifact_workflow_is_offline_and_checks_comparison_html(
     packet = tmp_path / "fixture-packet.json"
     packet.write_text(json.dumps({"spec": spec(), "rows": rows(), "evidence_kind": "fixture"}))
     operations = [
-        ("report", ["report", "--runs", left, "--out", tmp_path / "report"], "report-check"),
         ("export", ["export", "--run", left, "--out", tmp_path / "export"], "export-check"),
         (
             "rescore",
@@ -97,6 +96,9 @@ def test_canonical_artifact_workflow_is_offline_and_checks_comparison_html(
             assert generated["command"] == "extension replay"
             assert not generated["details"]["hardware_qualified"]
         root = Path(generated["evidence_dir"]) if kind == "extension" else tmp_path / kind
+        if kind == "extension":
+            assert json.loads((root / "run.json").read_text())["kind"] == "extension_packet.v2"
+            assert not (root / "report.html").exists()
         derived_before = files(root)
         verified = invoke(capsys, ["verify", "--path", root])
         assert verified["command"] == "verify"
@@ -105,20 +107,27 @@ def test_canonical_artifact_workflow_is_offline_and_checks_comparison_html(
         assert files(root) == derived_before
     public = invoke(capsys, ["verify", "--path", tmp_path / "public", "--source-run", left])
     assert public["details"]["source_projection_verified"]
-    html = tmp_path / "comparison/report.html"
-    html.write_text(html.read_text() + "<p>tampered</p>")
-    failed = invoke(capsys, ["verify", "--path", html.parent], 4)
-    assert failed["limitations"] == ["presentation_bytes_changed"]
+    report = invoke(capsys, ["report", "--runs", left, "--out", tmp_path / "report"])
+    assert report["status"] == "generated"
+    studio = invoke(capsys, ["verify", "--path", tmp_path / "report"], 4)
+    assert studio["limitations"] == ["studio_report_not_verifiable"]
+    assert invoke(capsys, ["report-check", "--run", tmp_path / "report"], 2)["limitations"] == [
+        "invalid_input"
+    ]
+    saved = json.loads((tmp_path / "comparison/comparison.json").read_text())
+    saved["sides"][0]["run_id"] = "invented-run"
+    (tmp_path / "comparison/comparison.json").write_text(json.dumps(saved))
+    failed = invoke(capsys, ["verify", "--path", tmp_path / "comparison"], 4)
+    assert failed["limitations"] == ["comparison_recomputation_mismatch"]
     assert before == {"left": files(left), "right": files(right)}
 
 
 @pytest.mark.parametrize("mapping", ["missing-equals", "=new", "old="])
-def test_invalid_source_mapping_is_an_input_error(tmp_path, capsys, mapping):
-    from inferyard.reporting.report import write_report
-
-    source = fixture_run(tmp_path / "source")
-    out = tmp_path / "report"
-    write_report([source], out)
+def test_invalid_source_mapping_is_an_input_error(tmp_path, capsys, portable_fixture, mapping):
+    left = portable_fixture(tmp_path / "left", states=["completed"])
+    right = portable_fixture(tmp_path / "right", states=["completed"], model="synthetic-B")
+    out = tmp_path / "comparison"
+    invoke(capsys, ["compare", "--left", left, "--right", right, "--out", out])
     invoke(capsys, ["verify", "--path", out, "--source-root", mapping], 2)
 
 

@@ -190,7 +190,6 @@ type ReportSummary struct {
 	CreatedAt *string   `json:"created_at"`
 	RunIds    []string  `json:"run_ids"`
 	RunPaths  []*string `json:"run_paths"`
-	HtmlUrl   string    `json:"html_url"`
 }
 
 type CreateReportRequest struct {

@@ -55,7 +55,7 @@ Get-FileHash -Algorithm SHA256 -Path '.\inferyard-0.0.2-py3-none-any.whl', '.\ru
 
 Release 还附带源码包与依赖约束验证文件；普通安装只需上述 wheel 和约束。
 该批源码提交、候选摘要、Actions 来源及已验平台见 Release 说明。
-安装结果遵循 `installed_safe_checks.v3`，不表示原生模型准备或性能实验通过。
+安装结果遵循 `installed_safe_checks.v4`，不表示原生模型准备或性能实验通过。
 维护者的[构建与核验步骤](../CONTRIBUTING.md#local-candidate-build-and-installation-checks)保持同批字节不变。
 摘要一致后安装：
 
@@ -198,7 +198,6 @@ CLI 不管理该服务的启动、终止或重启。将实际 PID 和本机端�
 inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
 inferyard run --config bench-ops/bound/service-1/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
-inferyard verify --path bench-work/report
 ```
 
 Linux 的 `--candidate` 换成手工填写的新 TOML。绑定只读取进程身份和 argv，不发送模型请求。
@@ -206,8 +205,8 @@ PID、启动时间或参数不符会阻断；不要修改候选去掩盖观测�
 独立 `probe` 仅用于可选排障且会发送请求。服务恢复、dirty、主机锁、取消和排空仍按原规则执行。
 不要手工删除锁文件，也不要在运行或恢复期间升级工具环境。
 
-用浏览器打开 `bench-work/report/report.html`。报告自包含，服务关闭后仍可离线阅读；
-`verify` 离线检查已有产物。准备 JSON 的 prepared/complete 不表示测评或平台验收完成。
+报告写出为 `bench-work/report/studio.json`，供 Studio 面板读取展示；
+`verify` 离线检查原始 run 证据，不覆盖报告。准备 JSON 的 prepared/complete 不表示测评或平台验收完成。
 Windows/PowerShell 可使用相同 CLI 参数，路径加引号，PID 使用实际数字。
 
 ## 5. 升级、回退和离线

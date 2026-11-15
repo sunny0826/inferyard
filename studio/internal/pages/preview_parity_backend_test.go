@@ -131,9 +131,6 @@ func (b *parityBackend) WizardExecute(_ context.Context, request core.WizardRequ
 		bundle := filepath.Base(filepath.Dir(value("--candidate")))
 		b.configs[filepath.Join(value("--out"), "config.toml")] = bundle
 	case "report":
-		if request.ReportVerify {
-			b.t.Fatal("task reports must not verify implicitly")
-		}
 		paths := args[slices.Index(args, "--runs")+1 : slices.Index(args, "--out")]
 		for _, path := range paths {
 			found := false

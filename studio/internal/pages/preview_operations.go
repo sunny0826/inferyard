@@ -141,15 +141,6 @@ func (p *previewSession) dispatchStep(op previewStep) {
 			s.historyError, s.reportsError = nil, nil
 			p.notice = "模拟页面数据已刷新。"
 		})
-	case previewVerifyReport:
-		if s.progress != nil {
-			if p.takeFailure() {
-				s.failure = &core.ApiError{Code: "preview_verify_failed", Message: "模拟核验失败，可重试。"}
-				return
-			}
-			s.progress.Report.Status = "verified"
-			p.notice = "模拟核验完成。"
-		}
 	default:
 		p.showNotice()
 	}

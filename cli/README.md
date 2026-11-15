@@ -3,14 +3,14 @@
 English | [中文](README.zh-CN.md)
 
 Run frozen task sets against local models, keep the answer, latency and resource
-evidence, and generate a self-contained HTML report that can be read offline.
-Quality, latency and memory are reported separately; when comparison
+evidence, and project a single `studio.json` report read by the Studio desktop
+panel. Quality, latency and memory are reported separately; when comparison
 preconditions are not met, the tool explains why instead of producing a single
 composite score.
 
 **v0.0.2 is published on [PyPI](https://pypi.org/project/inferyard/0.0.2/) and runs with uv / uvx.**
 The project is licensed under [MIT](LICENSE).
-The product is a Python CLI plus a self-contained offline HTML report; the
+The product is a Python CLI whose reports are structured JSON for Studio; the
 package and the command are both named `inferyard`.
 
 The source checkout also includes a macOS/Windows [memory diagnostic](docs/contracts/memory-check-contract.md):
@@ -68,13 +68,12 @@ runs, batches and reports, created automatically by `run` and `report`:
 inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
 inferyard run --config bench-ops/bound/service-1/config.toml
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
-inferyard verify --path bench-work/report
 ```
 
-`RUN_ID` comes from the run output. Open `bench-work/report/report.html` in a
-browser; it stays readable and verifiable after the service is shut down, and
-the SVG gallery shows an informational animation-element count, so a manual
-browser check is optional.
+`RUN_ID` comes from the run output. The report directory holds a single
+`studio.json`, read by [InferYard Studio](../studio/README.md); it is a
+rebuildable projection, not a verifiable artifact — `verify` keeps covering the
+raw runs, which stay the evidence authority after the service is shut down.
 The CLI connects to a local service started by the operator. `run` includes
 the current normal/streaming probes; a standalone `probe` is optional
 troubleshooting. Host state is created automatically on the first live run —
@@ -100,11 +99,12 @@ accounts, auto-submission, multi-host scheduling and multimodal executors are
 out of scope.
 
 The source development version stores a complete ordinary single run in eight
-evidence files and its report in three; these are formal output counts.
+evidence files and its report as a single `studio.json`; these are formal
+output counts.
 Preparation checks, operator scripts and logs live outside the benchmark
 workspace in an operations directory, which the operator may delete entirely
-once every run is sealed and the shared report verifies cleanly. For
-handoff, copy the sealed runs and the shared report into a separate delivery
+once every run is sealed. For
+handoff, copy the sealed runs and the report directory into a separate delivery
 directory; see the
 [usage guide](docs/usage.md#工作区与交付目录组织).
 Existing schema-3 snapshot runs remain

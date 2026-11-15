@@ -10,4 +10,3 @@ def add_commands(commands):
     verify.add_argument("--config", type=Path)
     verify.add_argument("--target-run", type=Path)
     verify.add_argument("--source-root", dest="source_roots", action="append", metavar="OLD=NEW")
-    verify.add_argument("--rerender", action="store_true")

@@ -9,7 +9,7 @@ from inferyard.errors import EvidenceError
 from inferyard.reporting import total_applicability as binding
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import read_json, sha256_file
-from inferyard.reporting.comparison_report import comparison_input
+from inferyard.analysis.comparison_input import comparison_input
 from inferyard.runtime.overhead_runner import request_projection
 from tests.helpers import fixture_run
 

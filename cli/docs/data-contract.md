@@ -47,8 +47,8 @@
 `category = svg` 为 `quality` 协议下的免评分生成题：`rules` 只能为 `{}`，
 `reference_answer` 仍必填。评分记录的 `quality_state = not_applicable`，
 与 `performance` 一样不进入 Q01–Q08 的分子、分母及排除计数；执行终态、生成期性能
-与资源仍按现有管线采集和核验。SVG 解析/大小状态仅为报告观察量，见
-[报告契约](contracts/report-contract.md#v3-svg-展示与-csp)。
+与资源仍按现有管线采集和核验。SVG 原始输出保留在证据中；报告不再展示 SVG
+（[ADR 059](decisions/059-studio-json-only-report.md)）。
 
 - 统一评分器 `score_case(case, answer, policy)`、`unscorable(category, reason)`、`scorer_hash()`；instruction/extraction 算法作为类别函数，不先生成旧 score 再包装。
 - 统一题包入口 `content_hash(bundle)`、`require_review(bundle)`、`validate_bundle(bundle)`；迁移审核证明须核验原哈希、原批准及内容等价。
@@ -111,7 +111,7 @@ Schema 不扩展 CPU/传感器枚举；正式 Prism 批量分派与缺测证据�
 
 公开项目、Python 包和 CLI 名称统一为 `inferyard`。独立监测器已退役，旧监测流与摘要的边界见
 [格式支持矩阵](contracts/inferyard-current-format.md#格式支持矩阵)。核心 Schema 仍为 v3，`urn:local-ai-bench:` 不变；
-题包与审核证明原字节保留。报告仅接受 v8、比较仅接受 format4 / phase2.v3、公开包仅接受 v5。
+题包与审核证明原字节保留。报告为 `studio-report.v1`（单文件 `studio.json`，不作核验入口）、比较仅接受 format5 / phase2.v3、公开包仅接受 v5。
 新锁使用 inferyard-host.*，实时入口首次运行自动初始化，旧工具文件完全忽略，见[当前格式契约](contracts/inferyard-current-format.md)。
 源码与模板变化产生新身份，不继承旧测量、评分或性能资格。
 
@@ -120,7 +120,7 @@ Schema 不扩展 CPU/传感器枚举；正式 Prism 批量分派与缺测证据�
 InferYard 不迁移核心 v1/v2、不接受 origin=migrated（即使 schema3），递归来源也遵循相同集合。
 旧报告、比较、公开包与混合历史来源返回 unsupported_format/2；可核验的坏封存先返回 4。
 旧数据保留原字节并交原项目处理。内嵌题包 source_json 仅用于审核证明，不能作为活动输入。
-engine-fit plan1–4/run1–6 都有现行 writer，继续保留；只删除 manifest1 与历史资产回退。
+engine-fit plan1–4/run1–6 都有现行 writer，继续保留；封存 manifest 只写 v3，旧 v1/v2 识别后拒绝，历史资产回退仍删除。
 通用 verify 可直接核验当前 run/batch/冻结计划及 engine-fit，不改保存字节。
 
 ## 保持的行为
@@ -136,7 +136,7 @@ CLI stdout 为 JSON，`device-check` 默认人类摘要，Agent 使用 `--json` 
 
 [ADR036](decisions/036-scoped-measurement-cost.md) 和[职责身份契约](contracts/scoped-measurement-contract.md)
 定义新 run/batch 的 implementation_identity、目录资产 model-assets.v2，以及
-comparison format4 / phase2.v3、report8。历史重算已由 ADR038 取消，
+comparison format5 / phase2.v3、studio-report.v1。历史重算已由 ADR038 取消，
 plan/run 的 comparison 标记仍为 phase2.v1。新运行不再把 `tool_source_sha256` 当作第二道身份门；
 执行身份只比较 measurement/scoring，未知依赖不能作相等证明。
 没有 `implementation_identity` 的旧运行仍用其 `tool_source_sha256`。

@@ -15,7 +15,6 @@ from inferyard.extensions.closed_concurrency import validate_spec as validate_cl
 from inferyard.extensions.extension_evidence import (
     ExtensionJournal,
     reduce_packet,
-    render,
     save_packet,
     verify_packet,
 )
@@ -153,7 +152,7 @@ async def live(plan, loaded, out, *, identity_context=None):
             store.snapshot(
                 "run.json",
                 {
-                    "kind": "extension_packet.v1",
+                    "kind": "extension_packet.v2",
                     "origin": "live_driver",
                     "evidence_kind": "live",
                     "tool_source_sha256": identity_context.source,
@@ -279,7 +278,6 @@ async def live(plan, loaded, out, *, identity_context=None):
             summary = reduce_packet(packet)
             store.snapshot("packet.json", packet)
             store.snapshot("summary.json", summary)
-            store.text_snapshot("report.html", render(summary))
             # Bind every observer sub-run before sealing the parent packet.
             children = [
                 {"path": str(p.parent.relative_to(store.path)), "manifest_sha256": sha256_file(p)}

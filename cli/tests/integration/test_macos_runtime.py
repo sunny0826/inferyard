@@ -18,7 +18,7 @@ from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import sha256_file, verify_manifest
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.platforms.identity import environment_snapshot, process_start_ticks
-from inferyard.reporting.report import verify_report, write_report
+from inferyard.reporting.studio_report import read_studio_report, write_studio_report
 from inferyard.application.execution import execute_async as batch_execute
 from inferyard.application.execution import execute_async
 from scripts.create_macos_benchmark_config import render_toml
@@ -161,9 +161,9 @@ def test_native_single_probe_run_and_offline_report(native_service, tmp_path):
     process.terminate()
     process.wait(timeout=5)
     report = tmp_path / "offline-report"
-    write_report([path], report)
-    assert (report / "report.html").is_file()
-    assert verify_report(report)["verified"]
+    document = write_studio_report([path], report)
+    assert {p.name for p in report.iterdir()} == {"studio.json"}
+    assert read_studio_report(report) == document
     assert data["summary"]["completeness"] == "incomplete"  # diagnostic stays diagnostic
 
 

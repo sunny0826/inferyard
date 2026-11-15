@@ -2,6 +2,8 @@
 
 状态：Accepted。日期：2026-11-06。设计已采纳，实现、能力实测与真机比较尚未完成。
 
+> 局部取代：比较产物的 HTML 文件集合与呈现核验由 [ADR 059](059-studio-json-only-report.md) 取代（engine-comparison 只写 `engine-comparison.json`，`format_version=2`）；算法、来源绑定、平台限制与资格规则不变。
+
 ## 问题
 
 用户需要回答「换引擎后速度是否改善」。现有 `compare` 只支持 model、config、

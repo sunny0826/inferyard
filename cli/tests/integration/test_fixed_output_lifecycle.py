@@ -63,15 +63,15 @@ def test_strict_diagnostic_replays_requests_parameters_and_missing_formal_accept
     assert m["numerator"] == m["denominator"] == 3
     assert m["value"] == (None if diagnostic else 1.0)
     if tamper is None:
-        from inferyard.reporting.report import verify_report, write_report
+        from inferyard.reporting.studio_report import write_studio_report
 
         report = root.parent / "strict-report"
         before = {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
-        index = write_report([root], report)
-        rows = index["runs"][0]["scan_view"]["strict_output_targets"]
-        assert len(rows) == 1 and rows[0]["value"] == m["value"]
-        assert 'class="strict-output"' in (report / "report.html").read_text()
-        assert verify_report(report)["verified"]
+        document = write_studio_report([root], report)
+        assert [row["state"] for row in document["runs"][0]["requests"]] == [
+            "completed"
+        ] * 3
+        assert {p.name for p in report.iterdir()} == {"studio.json"}
         assert before == {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
         return
     if tamper == "unsealed_engine":

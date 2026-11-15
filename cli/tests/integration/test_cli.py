@@ -146,11 +146,11 @@ def test_report_recovers_tail_and_rejects_middle_corruption(tmp_path, capsys):
         stream.write(b'{"seq":')
     assert main(["report", "--runs", str(root), "--out", str(tmp_path / "partial")]) == 0
     output = json.loads(capsys.readouterr().out)
-    index = json.loads((tmp_path / "partial/index.json").read_text())
-    assert output["status"] == "rendered"
-    summary = index["runs"][0]["summary"]
-    assert summary["completeness"] == "incomplete"
-    assert any("truncated_tail" in reason for reason in summary["limitations"])
+    document = json.loads((tmp_path / "partial/studio.json").read_text())
+    assert output["status"] == "generated"
+    run = document["runs"][0]
+    assert len(run["requests"]) == 3
+    assert run["summary"]["completion_rate"]["denominator"] == 3
     events.write_bytes(events.read_bytes() + b"\nbroken\n")
     assert main(["report", "--runs", str(root), "--out", str(tmp_path / "corrupt")]) == 4
     assert json.loads(capsys.readouterr().out)["limitations"] == ["corrupt_jsonl_evidence"]
@@ -181,9 +181,9 @@ def test_readonly_evidence_with_damaged_derived_files_rebuilds(tmp_path, capsys)
     try:
         assert main(["report", "--runs", str(root), "--out", str(tmp_path / "new-report")]) == 0
         result = json.loads(capsys.readouterr().out)
-        index = json.loads((tmp_path / "new-report/index.json").read_text())
-        assert "derived_evidence_damaged:summary.json" in index["runs"][0]["summary"]["limitations"]
-        assert result["status"] == "rendered"
+        document = json.loads((tmp_path / "new-report/studio.json").read_text())
+        assert document["kind"] == "studio-report.v1"
+        assert result["status"] == "generated"
         assert before == {p.name: p.read_bytes() for p in root.iterdir()}
     finally:
         root.chmod(0o700)
