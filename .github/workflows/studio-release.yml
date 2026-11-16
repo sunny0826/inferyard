@@ -116,6 +116,7 @@ jobs:
         if: matrix.target == 'windows-amd64'
         shell: pwsh
         run: |
+          $PSNativeCommandUseErrorActionPreference = $false
           $installer = (Resolve-Path 'dist/studio-package-windows-amd64/inferyard-studio-v0.0.4-windows-amd64.exe').Path
           $install = Join-Path $env:RUNNER_TEMP 'inferyard-studio-install'
           $evidence = (Resolve-Path 'build/release-evidence').Path
@@ -168,7 +169,8 @@ jobs:
           name: studio-package-${{ matrix.target }}
           path: studio/dist/studio-package-${{ matrix.target }}
           if-no-files-found: error
-      - uses: actions/upload-artifact@v7
+      - if: ${{ always() }}
+        uses: actions/upload-artifact@v7
         with:
           name: studio-command-evidence-${{ matrix.target }}
           path: studio/build/release-evidence/
