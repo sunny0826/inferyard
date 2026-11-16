@@ -60,7 +60,7 @@ final class ReleaseUITests: XCTestCase {
         report.click()
         click("打开报告")
         expectText("各类任务表现", timeout: 20)
-        expectText("返回报告列表")
+        expectExists(app.buttons["返回报告列表"], timeout: 10)
         keepScreenshot("Production real report")
         click("返回报告列表")
     }
