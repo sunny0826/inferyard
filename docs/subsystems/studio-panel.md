@@ -159,11 +159,14 @@ mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct sh scrip
 
 正式 Studio 候选由 `.github/workflows/studio-release.yml` 在 macOS、Windows、Linux runner
 分别原生构建，不以上述本地 `build-all.sh` 交叉构建结果充当 release。`package.py` 绑定
-release build tag、目标平台和 VCS 来源，`prepare_release_candidate.py` 汇总三平台压缩包与
+release build tag、目标平台和 VCS 来源，分别生成 macOS DMG、Windows Inno Setup
+安装版 EXE 和 Linux `tar.gz`。DMG 包含 `.app` 与 `/Applications` 快捷入口；Windows 默认安装到
+当前用户目录并附带卸载器。`prepare_release_candidate.py` 汇总三平台分发文件与
 `SHA256SUMS.studio`，`verify_release_candidate.py` 在统一 publish 前复核原字节。macOS job
-另用 `tests/ui/run_release.py` 启动正式 `.app`，以隔离 HOME 打开真实 CLI／假引擎链产生的
-`studio.json` 并检查五页；这条 production smoke 不运行 preview 后端，也不等于真实模型 UI
-验收。Windows/Linux 只声明原生构建、打包和命令行边界，未声明原生窗口覆盖。
+挂载 DMG、检查命令行边界，再用 `tests/ui/run_release.py` 启动其中的正式 `.app`，以隔离 HOME
+打开真实 CLI／假引擎链产生的 `studio.json` 并检查五页；这条 production smoke 不运行 preview
+后端，也不等于真实模型 UI 验收。Windows job 静默安装 EXE、检查安装后的命令行边界并卸载；
+Linux 只声明原生构建、打包和命令行边界。两者均未声明原生窗口覆盖。
 
 `go test ./...` 包含 `tests/e2e` 边界套件：真实 CLI 执行全部操作（init/device-check/bind/run/
 report/verify），引擎为假引擎（测试二进制自身以 `--params-file` 再入），CLI 调用逐条记录为

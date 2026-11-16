@@ -72,6 +72,14 @@ jobs:
             echo "Expected --debug-ui exit 2, got $status"
             exit 1
           fi
+      - name: Check the Windows installer compiler
+        if: matrix.target == 'windows-amd64'
+        shell: pwsh
+        run: |
+          $compiler = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) {
+            throw "Inno Setup compiler not found: $compiler"
+          }
       - name: Package the native candidate
         shell: bash
         env:
@@ -82,6 +90,54 @@ jobs:
           --target "$TARGET"
           --source-commit "$SOURCE_COMMIT"
           --out "dist/studio-package-$TARGET"
+      - name: Mount and check the macOS disk image
+        if: matrix.target == 'darwin-arm64'
+        shell: bash
+        run: |
+          mount_point="$RUNNER_TEMP/inferyard-studio-release"
+          mkdir -p "$mount_point"
+          hdiutil attach \
+            dist/studio-package-darwin-arm64/inferyard-studio-v0.0.4-darwin-arm64.dmg \
+            -readonly -nobrowse -mountpoint "$mount_point"
+          test -L "$mount_point/Applications"
+          test "$(readlink "$mount_point/Applications")" = "/Applications"
+          binary="$mount_point/InferYard Studio.app/Contents/MacOS/inferyard-studio"
+          "$binary" --help >"build/release-evidence/darwin-arm64-dmg-help.txt" 2>&1
+          set +e
+          "$binary" --debug-ui >"build/release-evidence/darwin-arm64-dmg-debug-ui.txt" 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 2 ]; then
+            cat "build/release-evidence/darwin-arm64-dmg-debug-ui.txt"
+            echo "Expected DMG --debug-ui exit 2, got $status"
+            exit 1
+          fi
+      - name: Install and check the Windows installer
+        if: matrix.target == 'windows-amd64'
+        shell: pwsh
+        run: |
+          $installer = (Resolve-Path 'dist/studio-package-windows-amd64/inferyard-studio-v0.0.4-windows-amd64.exe').Path
+          $install = Join-Path $env:RUNNER_TEMP 'inferyard-studio-install'
+          $evidence = (Resolve-Path 'build/release-evidence').Path
+          $result = Start-Process -FilePath $installer -ArgumentList @(
+            '/SP-', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+            "/DIR=`"$install`"", "/LOG=`"$evidence\windows-amd64-install.log`""
+          ) -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Installer exit code: $($result.ExitCode)" }
+          $binary = Join-Path $install 'inferyard-studio.exe'
+          if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) { throw 'Installed executable is missing' }
+          & $binary --help *> "$evidence/windows-amd64-installer-help.txt"
+          if ($LASTEXITCODE -ne 0) { throw "Installed --help exit code: $LASTEXITCODE" }
+          & $binary --debug-ui *> "$evidence/windows-amd64-installer-debug-ui.txt"
+          if ($LASTEXITCODE -ne 2) { throw "Installed --debug-ui exit code: $LASTEXITCODE" }
+          $uninstaller = Join-Path $install 'unins000.exe'
+          if (-not (Test-Path -LiteralPath $uninstaller -PathType Leaf)) { throw 'Uninstaller is missing' }
+          $result = Start-Process -FilePath $uninstaller -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+            "/LOG=`"$evidence\windows-amd64-uninstall.log`""
+          ) -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Uninstaller exit code: $($result.ExitCode)" }
+          if (Test-Path -LiteralPath $binary) { throw 'Uninstall left the executable behind' }
       - name: Produce a real CLI and fake-engine report for production UI smoke
         if: matrix.target == 'darwin-arm64'
         env:
@@ -93,13 +149,20 @@ jobs:
         if: matrix.target == 'darwin-arm64'
         env:
           INFERYARD_E2E_ROOT: ${{ runner.temp }}/studio-release-e2e
-          RELEASE_APP: dist/studio-package-darwin-arm64/inferyard-studio-v0.0.4-darwin-arm64/InferYard Studio.app
+          RELEASE_APP: ${{ runner.temp }}/inferyard-studio-release/InferYard Studio.app
         run: >-
           mise exec -- python tests/ui/run_release.py
           --app "$RELEASE_APP"
           --e2e-root "$INFERYARD_E2E_ROOT"
           --cli "$GITHUB_WORKSPACE/cli/.venv/bin/inferyard"
           --output-root build/release-ui-e2e
+      - name: Detach the macOS disk image
+        if: ${{ always() && matrix.target == 'darwin-arm64' }}
+        shell: bash
+        run: |
+          if hdiutil info | grep -Fq "$RUNNER_TEMP/inferyard-studio-release"; then
+            hdiutil detach "$RUNNER_TEMP/inferyard-studio-release"
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: studio-package-${{ matrix.target }}

@@ -6,7 +6,7 @@ import plistlib
 import shutil
 import subprocess
 import tarfile
-import zipfile
+import tempfile
 from pathlib import Path
 
 import release_common as common
@@ -76,11 +76,76 @@ def assemble_distribution(directory: Path, version: str, target: str, binary: Pa
     (directory / "README.txt").write_text(instructions)
 
 
+def make_dmg(archive: Path, distribution: Path) -> None:
+    shortcut = distribution / "Applications"
+    shortcut.symlink_to("/Applications")
+    try:
+        subprocess.run([
+            "hdiutil", "create", "-fs", "HFS+", "-format", "UDZO",
+            "-volname", "InferYard Studio", "-srcfolder", str(distribution), str(archive),
+        ], check=True)
+    finally:
+        shortcut.unlink()
+
+
+def inno_path(path: Path) -> str:
+    return str(path.resolve()).replace("/", "\\")
+
+
+def make_windows_installer(archive: Path, distribution: Path) -> None:
+    version = common.studio_version()
+    executable = common.executable_name("windows-amd64")
+    script = f"""[Setup]
+AppName=InferYard Studio
+AppVersion={version}
+AppVerName=InferYard Studio {version}
+AppPublisher=Xudong Guo
+DefaultDirName={{autopf}}\\InferYard Studio
+DefaultGroupName=InferYard Studio
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+OutputDir={inno_path(archive.parent)}
+OutputBaseFilename={archive.stem}
+LicenseFile={inno_path(distribution / "LICENSE")}
+InfoBeforeFile={inno_path(distribution / "README.txt")}
+UninstallDisplayName=InferYard Studio
+UninstallDisplayIcon={{app}}\\inferyard-studio.exe
+VersionInfoVersion={version}.0
+VersionInfoCompany=Xudong Guo
+VersionInfoDescription=InferYard Studio Installer
+VersionInfoProductName=InferYard Studio
+VersionInfoProductVersion={version}.0
+DisableProgramGroupPage=yes
+WizardStyle=modern
+Compression=lzma2
+SolidCompression=yes
+
+[Files]
+Source: "{inno_path(distribution / executable)}"; DestDir: "{{app}}"; Flags: ignoreversion
+Source: "{inno_path(distribution / "LICENSE")}"; DestDir: "{{app}}"; Flags: ignoreversion
+Source: "{inno_path(distribution / "README.txt")}"; DestDir: "{{app}}"; Flags: ignoreversion
+
+[Icons]
+Name: "{{group}}\\InferYard Studio"; Filename: "{{app}}\\inferyard-studio.exe"
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{{app}}"
+"""
+    with tempfile.TemporaryDirectory() as directory:
+        script_path = Path(directory) / "installer.iss"
+        script_path.write_text(script, encoding="utf-8-sig")
+        subprocess.run([
+            r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe", "/Qp", str(script_path)
+        ], check=True)
+
+
 def make_archive(archive: Path, distribution: Path) -> None:
-    if archive.suffix == ".zip":
-        with zipfile.ZipFile(archive, "x", zipfile.ZIP_DEFLATED) as bundle:
-            for path in sorted(distribution.rglob("*")):
-                bundle.write(path, path.relative_to(distribution.parent).as_posix())
+    if archive.suffix == ".dmg":
+        make_dmg(archive, distribution)
+    elif archive.suffix == ".exe":
+        make_windows_installer(archive, distribution)
     else:
         with tarfile.open(archive, "x:gz") as bundle:
             bundle.add(distribution, arcname=distribution.name)
