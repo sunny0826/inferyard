@@ -80,8 +80,8 @@ def execute(command: list[str], env: dict[str, str], output: Path, report: Path)
     print(f"Production UI smoke {status}; build and test: {elapsed:.1f}s", flush=True)
     if exit_code:
         lines = log_text.splitlines()
-        failures = [line for line in lines[:-80] if ": error:" in line]
-        print("\n".join([*failures, *lines[-80:]]))
+        failures = [line for line in lines[:-200] if ": error:" in line]
+        print("\n".join([*failures, *lines[-200:]]))
     return exit_code
 
 

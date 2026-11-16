@@ -78,7 +78,7 @@ final class ReleaseUITests: XCTestCase {
         let element = app.descendants(matching: .any).matching(
             NSPredicate(format: "label == %@ OR value == %@", value, value)
         ).firstMatch
-        expectExists(element, timeout: timeout)
+        wait("Missing text: \(value)", timeout: timeout) { element.exists }
     }
 
     private func expectExists(_ element: XCUIElement, timeout: TimeInterval) {
