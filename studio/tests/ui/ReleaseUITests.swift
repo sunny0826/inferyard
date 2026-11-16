@@ -55,9 +55,7 @@ final class ReleaseUITests: XCTestCase {
     private func openRealReport() {
         let table = app.tables["报告列表"]
         expectExists(table, timeout: 20)
-        let report = table.staticTexts.matching(
-            NSPredicate(format: "value BEGINSWITH %@", "report-")
-        ).firstMatch
+        let report = table.tableRows.element(boundBy: 1)
         expectExists(report, timeout: 20)
         report.click()
         click("打开报告")
