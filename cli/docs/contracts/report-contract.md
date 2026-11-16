@@ -40,6 +40,25 @@ JSON Schema 只证明结构；run/category 唯一性、计数一致性、null/re
 外部工具重序列化后的展示 JSON 可能通过通用 Schema 校验却被 Go 拒绝；当前 writer 输出普通
 整数 token 且类别率来自已校验 summary，不受此差异影响。这里只描述边界，不改变两端实现。
 
+## 吞吐与输出间隔可选节
+
+`dashboard.throughput` 与 `dashboard.output_block_intervals` 是可选节，用于展示 N01/N02/N04 与 L05 pooled 归约结果。
+旧报告缺少这两节时显示「未提供测量」；一旦存在，节内字段必须齐全并通过严格校验，不提供半截读取。
+这两个节不改变 `schema_version = 3`，也不是新的必需字段。
+
+- `throughput`：`requests_per_second`（N01）、`output_tokens_per_second`（N04）、`goodput_per_second`（N02）
+  各自与 `*_reason` 成对；0 是已测值，`null` 必须给出原因。N02 的阈值来自冻结 experiment 的
+  `goodput_thresholds`；缺少阈值为 `thresholds_not_preregistered`，存在不可判请求为
+  `goodput_indeterminable`，质量不适用为 `quality_not_applicable`。三组速率均按串行 trial 批次窗口计算，
+  不能读成并发吞吐或跨 tokenizer 排名。
+- `output_block_intervals`：`interval_count` 为 pooled 块间隔样本数（含零差值），`request_count` 为有逐请求
+  L05 取值的完成请求数。`interval_count = 0` 时四分位全为 `null` 且 `reason` 按归约优先级给出；
+  `interval_count > 0` 时 `min/p50/max` 必填、`reason = null`，`p95` 从 20 个样本起必填，否则
+  `p95_reason = insufficient_samples`。该节描述内容块到达间隔，不是逐 token ITL；N03 的逐 token ITL 与
+  服务排队在无真实事件源时各自显式缺测。
+- 兼容边界：新 reader 读旧 v3 报告时两节缺省；旧 reader 拒绝含新节的新报告。Python 写入端与校验端已按本
+  契约实现，Go 面板的 typed DTO 与 parser 需同版本跟进，不能只放宽写入端。
+
 ## 边界
 
 - 不进入报告的字段：题面/prompt、原始答案、reference answer、reasoning、正文 contents、SVG gallery、

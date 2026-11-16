@@ -4,7 +4,7 @@ import asyncio
 import copy
 import hashlib
 import json
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import pytest
@@ -13,10 +13,11 @@ from inferyard.analysis.scoring import score_case
 from inferyard.application.types import CommandRequest
 from inferyard.cli import main
 from inferyard.config.planning import write_plan
-from inferyard.contracts.validation import Document
+from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import EvidenceError, PreflightError
 from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import sha256_file
+from inferyard.runtime.runner import Dependencies
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.application.execution import execute_async
 from tests.integration.test_runner import scenario as runner_scenario
@@ -24,16 +25,33 @@ from tests.unit.test_phase2_contracts import experiment
 
 scenario = runner_scenario
 
+type JsonScalar = str | int | float | bool | None
+type JsonNode = JsonScalar | list[JsonNode] | dict[str, JsonNode]
+type JsonObject = dict[str, JsonNode]
+type Scenario = tuple[CommandRequest, Dependencies, list[JsonObject], JsonObject]
+
+
+@dataclass(frozen=True)
+class BatchOptions:
+    second: bool = False
+    duration_limit: int | None = None
+    capacity: bool = False
+    performance_policy: dict[str, int | float] | None = None
+    goodput_thresholds: dict[str, str | int | float] | None = None
+
+
+def _apply_definition_options(definition: JsonObject, options: BatchOptions) -> None:
+    if options.performance_policy is not None:
+        definition["performance_environment"] = options.performance_policy
+    if options.goodput_thresholds is not None:
+        definition["goodput_thresholds"] = options.goodput_thresholds
+
 
 def batch(
-    tmp_path,
-    scenario,
-    *,
-    second=False,
-    duration_limit=None,
-    capacity=False,
-    performance_policy=None,
-):
+    tmp_path: Path, scenario: Scenario, options: BatchOptions | None = None
+) -> tuple[CommandRequest, Dependencies]:
+    options = options or BatchOptions()
+    second, duration_limit = options.second, options.duration_limit
     request, deps, _, _ = scenario
     deps.scorer = score_case
     inputs = tmp_path / "inputs"
@@ -41,8 +59,7 @@ def batch(
     config, corpus = request.config.config.to_dict(), request.config.bundle.to_dict()
     config["bundle"]["path"] = "bundle.json"
     definition = experiment()
-    if performance_policy is not None:
-        definition["performance_environment"] = performance_policy
+    _apply_definition_options(definition, options)
     definition["definition_versions"] = dict.fromkeys(
         ["measurement", "scoring", "comparison"], "phase2.v1"
     )
@@ -63,19 +80,19 @@ def batch(
             min_completed_per_case_per_window=1,
             drain_timeout_seconds=workload["timeout_seconds"],
         )
-    if capacity:
+    if options.capacity:
         definition["capacity_stop"] = "first_failed_request"
         workload.update(purpose="performance", input_target_tokens=1)
     if second:
         workload["repeats"] = 1
     for kind, data in [("config", config), ("bundle", corpus)]:
-        raw = json.dumps(data).encode()
+        raw = json_bytes(data)
         (inputs / f"{kind}.json").write_bytes(raw)
         workload[kind] = dict(path=f"{kind}.json", sha256=hashlib.sha256(raw).hexdigest())
     if second:
         definition["workloads"].append({**copy.deepcopy(workload), "workload_id": "w2"})
     source = inputs / "experiment.json"
-    source.write_text(json.dumps(definition))
+    source.write_bytes(json_bytes(definition))
     frozen = tmp_path / "frozen"
     write_plan(source, frozen)
     return CommandRequest(
@@ -155,8 +172,8 @@ def test_cancel_resume_only_unexecuted_then_next_planned_repetitions(
 
 
 def test_workload_handoff_cold_policy_requires_binding_and_new_process(
-    tmp_path, scenario, monkeypatch
-):
+    tmp_path: Path, scenario: Scenario, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import inferyard.runtime.batch_state as state
 
     config = scenario[0].config.config.to_dict()
@@ -167,7 +184,7 @@ def test_workload_handoff_cold_policy_requires_binding_and_new_process(
         ),
         *scenario[1:],
     )
-    request, deps = batch(tmp_path, scenario, second=True)
+    request, deps = batch(tmp_path, scenario, BatchOptions(second=True))
     code, first = asyncio.run(execute_async(request, deps))
     assert code == 3 and first.status == "awaiting_handoff" and len(scenario[2]) == 8
     code, waiting = asyncio.run(execute_async(request, deps))
@@ -180,12 +197,12 @@ def test_workload_handoff_cold_policy_requires_binding_and_new_process(
         endpoint_url=old["url"],
         handoff_note="synthetic operator handoff",
     )
-    monkeypatch.setattr(state, "process_start_ticks", lambda pid: old["process_start_ticks"])
+    monkeypatch.setattr(state, "process_start_ticks", lambda _: old["process_start_ticks"])
     with pytest.raises(PreflightError, match="new_service_process"):
         asyncio.run(execute_async(same, deps))
     new_pid = old["server_pid"] + 100_000
 
-    def ticks(pid):
+    def ticks(pid: int) -> int:
         if pid == old["server_pid"]:
             raise PreflightError("service_process_unavailable")
         assert pid == new_pid
@@ -217,8 +234,10 @@ def test_batch_identity_changes_block_without_generation(tmp_path, scenario):
     assert len(scenario[2]) == 24
 
 
-def test_duration_batch_finishes_without_implicit_repeat(tmp_path, scenario):
-    request, deps = batch(tmp_path, scenario, duration_limit=20)
+def test_duration_batch_finishes_without_implicit_repeat(
+    tmp_path: Path, scenario: Scenario
+) -> None:
+    request, deps = batch(tmp_path, scenario, BatchOptions(duration_limit=20))
     code, result = asyncio.run(execute_async(request, deps))
     assert code == 0
     trial = read_trial(Path(result.details["runs"][0]))
@@ -228,8 +247,10 @@ def test_duration_batch_finishes_without_implicit_repeat(tmp_path, scenario):
     assert code == 0 and len(scenario[2]) == count
 
 
-def test_incomplete_duration_cannot_implicitly_resume(tmp_path, scenario):
-    request, deps = batch(tmp_path, scenario, duration_limit=1)
+def test_incomplete_duration_cannot_implicitly_resume(
+    tmp_path: Path, scenario: Scenario
+) -> None:
+    request, deps = batch(tmp_path, scenario, BatchOptions(duration_limit=1))
     code, result = asyncio.run(execute_async(request, deps))
     assert code == 3
     count = len(scenario[2])

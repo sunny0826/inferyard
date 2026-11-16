@@ -27,7 +27,25 @@
         "sampled_peak_rss_bytes": 1932735283.2,
         "sampled_peak_rss_reason": null,
         "sampled_minimum_available_bytes": 10093173145.6,
-        "minimum_available_reason": null
+        "minimum_available_reason": null,
+        "throughput": {
+          "requests_per_second": 1.5,
+          "requests_per_second_reason": null,
+          "output_tokens_per_second": 12.25,
+          "output_tokens_per_second_reason": null,
+          "goodput_per_second": 0,
+          "goodput_per_second_reason": null
+        },
+        "output_block_intervals": {
+          "interval_count": 25,
+          "request_count": 2,
+          "min": 0,
+          "p50": 120.5,
+          "p95": 400,
+          "p95_reason": null,
+          "max": 900.25,
+          "reason": null
+        }
       },
       "requests": [
         {"case_id": "null-case", "category_label": "数学计算", "state": "failed", "quality": null, "latency_ms": null},

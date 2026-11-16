@@ -611,6 +611,26 @@
         "first_failed_request"
       ]
     },
+    "goodput_thresholds": {
+      "type": "object",
+      "properties": {
+        "quality_state": {
+          "type": "string",
+          "enum": [
+            "pass"
+          ]
+        },
+        "e2e_latency_ms_max": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "quality_state",
+        "e2e_latency_ms_max"
+      ],
+      "additionalProperties": false
+    },
     "resource_comparison": {
       "type": "object",
       "properties": {

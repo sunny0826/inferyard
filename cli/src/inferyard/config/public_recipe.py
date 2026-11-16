@@ -1,14 +1,38 @@
 """Bounded public reproduction conditions; unknown text remains locally required."""
 
 import hashlib
+from collections.abc import Callable
 
 from inferyard.config.startup_portability import portable_startup
 from inferyard.errors import EvidenceError
 from inferyard.contracts.validation import json_bytes
 
+type JsonScalar = str | int | float | bool | None
+type JsonNode = JsonScalar | list[JsonNode] | dict[str, JsonNode]
+type JsonObject = dict[str, JsonNode]
+type Number = Callable[[int | float | None], int | float | None]
+
 
 def fingerprint(value):
     return hashlib.sha256(json_bytes(value)).hexdigest()
+
+
+def _definitions(run: JsonObject) -> JsonObject:
+    return {
+        key: value
+        for key, value in run["definition_versions"].items()
+        if value in ("phase2.v1", "phase2.v2")
+    }
+
+
+def _goodput_thresholds(experiment: JsonObject, numeric: Number) -> JsonObject | None:
+    thresholds = experiment.get("goodput_thresholds")
+    if thresholds is None:
+        return None
+    return {
+        "quality_state": thresholds["quality_state"],
+        "e2e_latency_ms_max": numeric(thresholds["e2e_latency_ms_max"]),
+    }
 
 
 def reproduction_recipe(data, numeric):
@@ -126,6 +150,9 @@ def reproduction_recipe(data, numeric):
         )
     if "capacity_stop" in experiment:
         result["capacity_stop"] = experiment["capacity_stop"]
+    thresholds = _goodput_thresholds(experiment, numeric)
+    if thresholds is not None:
+        result["goodput_thresholds"] = thresholds
     if "safety" in experiment:
         safety = experiment["safety"]
         result["safety"] = {
@@ -144,11 +171,7 @@ def reproduction_recipe(data, numeric):
         for t in data["plan"]["trials"]
         if t["workload_id"] == trial["workload_id"]
     ]
-    result["definitions"] = {
-        k: v
-        for k, v in data["run"]["definition_versions"].items()
-        if v in ("phase2.v1", "phase2.v2")
-    }
+    result["definitions"] = _definitions(data["run"])
     result["workload"]["position_cases"] = [
         {
             **{k: v for k, v in r.items() if k not in ("case_id", "family_id")},

@@ -239,39 +239,46 @@ func TestParseStudioReportRejectsInvariantViolations(t *testing.T) {
 // are parser-owned, mirroring cli/contracts/schemas_studio_report.py.
 func TestStudioReportParserMatchesExportedSchema(t *testing.T) {
 	schema := compileStudioSchema(t)
-	valid := studioDocument(t, studioReportFixture)
-	samples := map[string]map[string]any{"valid fixture": valid}
-	mutations := map[string]func(map[string]any){
-		"unknown run field": func(doc map[string]any) { studioRun(t, doc)["extra"] = 1 },
-		"missing facets":    func(doc map[string]any) { delete(studioRun(t, doc), "facets") },
-		"null model":        func(doc map[string]any) { studioRun(t, doc)["model"] = nil },
-		"bool threads":      func(doc map[string]any) { studioRun(t, doc)["threads"] = true },
-		"bad backend": func(doc map[string]any) {
-			studioRun(t, doc)["profile"].(map[string]any)["engine"].(map[string]any)["backend"] = "gpu"
-		},
-		"bad state": func(doc map[string]any) {
-			studioRun(t, doc)["requests"].([]any)[0].(map[string]any)["state"] = "unknown"
-		},
-		"unknown root field": func(doc map[string]any) { doc["extra"] = 1 },
-	}
-	for name, mutate := range mutations {
-		doc := studioDocument(t, studioReportFixture)
-		mutate(doc)
-		samples[name] = doc
-	}
-	for name, doc := range samples {
+	for name, raw := range studioSchemaSamples(t) {
 		t.Run(name, func(t *testing.T) {
-			raw := studioBytes(t, doc)
-			var generic any
-			if err := json.Unmarshal(raw, &generic); err != nil {
-				t.Fatal(err)
-			}
+			generic := studioDocument(t, raw)
 			schemaErr := schema.Validate(generic)
 			_, parseErr := ParseStudioReport(raw)
 			if (schemaErr == nil) != (parseErr == nil) {
 				t.Fatalf("schema err=%v parser err=%v", schemaErr, parseErr)
 			}
 		})
+	}
+}
+
+// studioSchemaSamples returns every fixture probe as encoded JSON. Optional
+// cases start from the document that already carries both sections.
+func studioSchemaSamples(t *testing.T) map[string]json.RawMessage {
+	t.Helper()
+	samples := map[string]json.RawMessage{
+		"valid fixture":           studioReportFixture,
+		"valid optional sections": studioDocumentWithSections(t),
+	}
+	for _, probe := range studioSchemaMutations() {
+		samples[probe.name] = probe.document(t)
+	}
+	return samples
+}
+
+func studioSchemaMutations() []studioProbe {
+	return []studioProbe{
+		{"unknown run field", []string{"runs", "0", "extra"}, studioRaw("1"), false},
+		{"missing facets", []string{"runs", "0", "facets"}, nil, false},
+		{"null model", []string{"runs", "0", "model"}, studioRaw("null"), false},
+		{"bool threads", []string{"runs", "0", "threads"}, studioRaw("true"), false},
+		{"bad backend", []string{"runs", "0", "profile", "engine", "backend"}, studioRaw(`"gpu"`), false},
+		{"bad state", []string{"runs", "0", "requests", "0", "state"}, studioRaw(`"unknown"`), false},
+		{"unknown root field", []string{"extra"}, studioRaw("1"), false},
+		{"unknown throughput field", studioDashboardPath("throughput", "excluded_count"), studioRaw("0"), true},
+		{"missing throughput reason", studioDashboardPath("throughput", "goodput_per_second_reason"), nil, true},
+		{"null throughput section", studioDashboardPath("throughput"), studioRaw("null"), false},
+		{"unknown interval field", studioDashboardPath("output_block_intervals", "excluded_interval_count"), studioRaw("0"), true},
+		{"fractional interval count", studioDashboardPath("output_block_intervals", "interval_count"), studioRaw("1.5"), true},
 	}
 }
 

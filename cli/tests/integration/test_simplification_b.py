@@ -130,7 +130,7 @@ def test_preflight_diagnostic_flag_is_forwarded(scenario, monkeypatch):
 
 def test_batch_scoring_failures_do_not_drop_later_trials(tmp_path, scenario):
     from inferyard.runtime import batch_runner
-    from tests.integration.test_batch_runner import batch
+    from tests.integration.test_batch_runner import BatchOptions, batch
 
     request, deps = batch(tmp_path, scenario)
 
@@ -150,9 +150,9 @@ def test_batch_scoring_failures_do_not_drop_later_trials(tmp_path, scenario):
 
 def test_applicable_handoff_reuses_clean_service(tmp_path, scenario, monkeypatch):
     from inferyard.runtime import batch_runner, batch_state
-    from tests.integration.test_batch_runner import batch
+    from tests.integration.test_batch_runner import BatchOptions, batch
 
-    request, deps = batch(tmp_path, scenario, second=True)
+    request, deps = batch(tmp_path, scenario, BatchOptions(second=True))
     code, first = asyncio.run(execute_async(request, deps))
     assert code == 3 and first.status == "awaiting_handoff"
     endpoint = scenario[0].config.config.to_dict()["endpoint"]

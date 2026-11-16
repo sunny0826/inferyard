@@ -13,6 +13,10 @@ from inferyard.contracts.schemas_common import (
 )
 from inferyard.errors import ContractError
 
+type JsonScalar = str | int | float | bool | None
+type JsonNode = JsonScalar | list[JsonNode] | dict[str, JsonNode]
+type JsonObject = dict[str, JsonNode]
+
 KIND = "studio-report.v1"
 CATEGORY = enum("instruction", "extraction", "qa", "math", "classification", "structured")
 REQUEST_QUALITY = enum("pass", "fail", "unscorable", "not_applicable", "not_scored")
@@ -60,6 +64,31 @@ DASHBOARD = obj(
         "minimum_available_reason": nullable(LABEL),
     }
 )
+THROUGHPUT = obj(
+    {
+        "requests_per_second": nullable(NONNEGATIVE),
+        "requests_per_second_reason": nullable(LABEL),
+        "output_tokens_per_second": nullable(NONNEGATIVE),
+        "output_tokens_per_second_reason": nullable(LABEL),
+        "goodput_per_second": nullable(NONNEGATIVE),
+        "goodput_per_second_reason": nullable(LABEL),
+    }
+)
+OUTPUT_BLOCK_INTERVALS = obj(
+    {
+        "interval_count": NAT,
+        "request_count": NAT,
+        "min": nullable(NONNEGATIVE),
+        "p50": nullable(NONNEGATIVE),
+        "p95": nullable(NONNEGATIVE),
+        "p95_reason": nullable(LABEL),
+        "max": nullable(NONNEGATIVE),
+        "reason": nullable(LABEL),
+    }
+)
+# Optional sections keep old reports readable; when present their fields are complete.
+DASHBOARD["properties"]["throughput"] = THROUGHPUT
+DASHBOARD["properties"]["output_block_intervals"] = OUTPUT_BLOCK_INTERVALS
 REQUEST = obj(
     {
         "case_id": IDENTIFIER,
@@ -90,8 +119,7 @@ STUDIO_REPORT = obj(
 )
 
 
-def _validate_run(run, path):
-    dashboard = run["dashboard"]
+def _validate_categories(run: JsonObject, dashboard: JsonObject, path: str) -> None:
     categories = dashboard["categories"]
     ids = [category["id"] for category in categories]
     if len(ids) != len(set(ids)):
@@ -108,23 +136,38 @@ def _validate_run(run, path):
     if completion["numerator"] > completion["denominator"]:
         raise ContractError(path + ".summary.completion_rate.numerator", "exceeds denominator")
 
-    latency = dashboard["latency"]
+
+def _validate_latency_counts(run: JsonObject, latency: JsonObject, path: str) -> None:
     if latency["sample_count"] + latency["excluded"] != len(run["requests"]):
         raise ContractError(path + ".latency", "counts must cover every request")
-    quantiles = [latency[key] for key in ("min", "p50", "p95", "max")]
-    if latency["sample_count"] == 0:
-        if any(value is not None for value in quantiles):
-            raise ContractError(path + ".latency", "empty samples require null quantiles")
-    else:
-        if any(latency[key] is None for key in ("min", "p50", "max")):
-            raise ContractError(path + ".latency", "samples require min, p50 and max")
-        if (latency["p95"] is None) != (latency["sample_count"] < 20):
-            raise ContractError(path + ".latency.p95", "required from twenty samples")
-        if not latency["min"] <= latency["p50"] <= latency["max"]:
-            raise ContractError(path + ".latency", "quantiles are not ordered")
-        if latency["p95"] is not None and not latency["p50"] <= latency["p95"] <= latency["max"]:
-            raise ContractError(path + ".latency.p95", "quantiles are not ordered")
 
+
+def _validate_empty_latency(latency: JsonObject, path: str) -> None:
+    quantiles = [latency[key] for key in ("min", "p50", "p95", "max")]
+    if any(value is not None for value in quantiles):
+        raise ContractError(path + ".latency", "empty samples require null quantiles")
+
+
+def _validate_latency_quantiles(latency: JsonObject, path: str) -> None:
+    if latency["sample_count"] == 0:
+        _validate_empty_latency(latency, path)
+        return
+    if any(latency[key] is None for key in ("min", "p50", "max")):
+        raise ContractError(path + ".latency", "samples require min, p50 and max")
+    if (latency["p95"] is None) != (latency["sample_count"] < 20):
+        raise ContractError(path + ".latency.p95", "required from twenty samples")
+    if not latency["min"] <= latency["p50"] <= latency["max"]:
+        raise ContractError(path + ".latency", "quantiles are not ordered")
+    if latency["p95"] is not None and not latency["p50"] <= latency["p95"] <= latency["max"]:
+        raise ContractError(path + ".latency.p95", "quantiles are not ordered")
+
+
+def _validate_latency(run: JsonObject, latency: JsonObject, path: str) -> None:
+    _validate_latency_counts(run, latency, path)
+    _validate_latency_quantiles(latency, path)
+
+
+def _validate_memory(dashboard: JsonObject, path: str) -> None:
     for value_key, reason_key in (
         ("sampled_peak_rss_bytes", "sampled_peak_rss_reason"),
         ("sampled_minimum_available_bytes", "minimum_available_reason"),
@@ -133,7 +176,83 @@ def _validate_run(run, path):
             raise ContractError(f"{path}.{reason_key}", "required exactly when the value is missing")
 
 
-def validate_studio_report(data):
+def _validate_throughput(dashboard: JsonObject, path: str) -> None:
+    throughput = dashboard.get("throughput")
+    if throughput is None:
+        return
+    for value_key, reason_key in (
+        ("requests_per_second", "requests_per_second_reason"),
+        ("output_tokens_per_second", "output_tokens_per_second_reason"),
+        ("goodput_per_second", "goodput_per_second_reason"),
+    ):
+        if (throughput[value_key] is None) != (throughput[reason_key] is not None):
+            raise ContractError(
+                f"{path}.throughput.{reason_key}",
+                "required exactly when the value is missing",
+            )
+
+
+def _validate_interval_p95(intervals: JsonObject, count: int, path: str) -> None:
+    name = path + ".output_block_intervals.p95"
+    if count < 20:
+        if intervals["p95"] is not None or intervals["p95_reason"] != "insufficient_samples":
+            raise ContractError(name, "requires null with a sample reason below twenty")
+    elif (
+        intervals["p95"] is None
+        or intervals["p95_reason"] is not None
+        or not intervals["p50"] <= intervals["p95"] <= intervals["max"]
+    ):
+        raise ContractError(name, "required and ordered from twenty samples")
+
+
+def _validate_empty_intervals(intervals: JsonObject, path: str) -> None:
+    quantiles = [intervals[key] for key in ("min", "p50", "p95", "max")]
+    if any(value is not None for value in quantiles) or intervals["reason"] is None:
+        raise ContractError(
+            path + ".output_block_intervals",
+            "empty intervals require null quantiles and a reason",
+        )
+    _validate_interval_p95(intervals, 0, path)
+
+
+def _validate_measured_intervals(intervals: JsonObject, count: int, path: str) -> None:
+    if any(intervals[key] is None for key in ("min", "p50", "max")):
+        raise ContractError(path + ".output_block_intervals", "samples require min, p50 and max")
+    if intervals["reason"] is not None:
+        raise ContractError(
+            path + ".output_block_intervals.reason", "measured intervals have no reason"
+        )
+    if not intervals["min"] <= intervals["p50"] <= intervals["max"]:
+        raise ContractError(path + ".output_block_intervals", "quantiles are not ordered")
+    _validate_interval_p95(intervals, count, path)
+
+
+def _validate_intervals(dashboard: JsonObject, path: str) -> None:
+    intervals = dashboard.get("output_block_intervals")
+    if intervals is None:
+        return
+    count = intervals["interval_count"]
+    if count == 0:
+        _validate_empty_intervals(intervals, path)
+    else:
+        _validate_measured_intervals(intervals, count, path)
+
+
+def _validate_run(run: JsonObject, path: str) -> None:
+    dashboard = run["dashboard"]
+    _validate_categories(run, dashboard, path)
+
+    latency = dashboard["latency"]
+    _validate_latency(run, latency, path)
+
+    _validate_memory(dashboard, path)
+
+    _validate_throughput(dashboard, path)
+
+    _validate_intervals(dashboard, path)
+
+
+def validate_studio_report(data: JsonObject) -> None:
     """Enforce cross-field rules that JSON Schema cannot express."""
     run_ids = [run["source"]["run_id"] for run in data["runs"]]
     if len(run_ids) != len(set(run_ids)):

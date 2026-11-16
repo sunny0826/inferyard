@@ -112,7 +112,9 @@ func validateStudioDashboard(raw json.RawMessage, requests int) error {
 	if err != nil {
 		return err
 	}
-	if err := studioClosed(dashboard, "quality", "categories", "latency", "sampled_peak_rss_bytes", "sampled_peak_rss_reason", "sampled_minimum_available_bytes", "minimum_available_reason"); err != nil {
+	required := []string{"quality", "categories", "latency", "sampled_peak_rss_bytes", "sampled_peak_rss_reason", "sampled_minimum_available_bytes", "minimum_available_reason"}
+	optional := []string{"throughput", "output_block_intervals"}
+	if err := studioClosedOptional(dashboard, required, optional); err != nil {
 		return err
 	}
 	quality, err := studioObject(dashboard["quality"])
@@ -192,6 +194,16 @@ func validateStudioDashboard(raw json.RawMessage, requests int) error {
 		}
 		if (value == nil) != (reason != nil) {
 			return errors.New("studio report resource reason must appear exactly when the value is missing")
+		}
+	}
+	if raw, ok := dashboard["throughput"]; ok {
+		if err := validateStudioThroughput(raw); err != nil {
+			return err
+		}
+	}
+	if raw, ok := dashboard["output_block_intervals"]; ok {
+		if err := validateStudioIntervals(raw); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -308,13 +320,26 @@ func studioArray(raw json.RawMessage) ([]json.RawMessage, error) {
 // the schema's additionalProperties:false. Presence is checked separately from
 // nullability so explicit null stays meaningful for nullable fields.
 func studioClosed(obj map[string]json.RawMessage, required ...string) error {
+	return studioClosedOptional(obj, required, nil)
+}
+
+// studioClosedOptional keeps optional sections in the closed key set; a
+// present optional key is validated by its own section rules.
+func studioClosedOptional(obj map[string]json.RawMessage, required, optional []string) error {
+	allowed := make(map[string]bool, len(required)+len(optional))
 	for _, name := range required {
+		allowed[name] = true
 		if _, ok := obj[name]; !ok {
 			return errors.New("missing studio report field")
 		}
 	}
-	if len(obj) != len(required) {
-		return errors.New("unknown studio report field")
+	for _, name := range optional {
+		allowed[name] = true
+	}
+	for name := range obj {
+		if !allowed[name] {
+			return errors.New("unknown studio report field")
+		}
 	}
 	return nil
 }

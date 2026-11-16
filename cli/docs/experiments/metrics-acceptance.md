@@ -19,6 +19,15 @@
 | 本地预检拒绝超长输入；另一合法请求发出后服务返回 413                         | 前者 not_executed，后者 F/http_error，后者进入完成/质量分母；二者分别展示拒绝原因                            |
 | 失败请求留下合法且正确 JSON 后断流                                            | Q03/Q04/Q05 正式成功贡献均为 0；部分输出解析结果只在诊断区展示                                               |
 | 5 个延迟样本                                                                 | 展示样本和中位/范围，P95=null/insufficient_samples；不靠插值生成 P99                                        |
+| 3 完成 1 失败，发送 0/1/2/3s，终态 1/2/3/4s                                     | N01=3/4=0.75 request/s；失败留在批次窗口，分母不是完成请求耗时之和                                          |
+| 仅 1 个失败请求，发送 0、终态 1s                                                | N01=0（已测零）；无正式发送为 null/no_formal_requests，有发送无终态或窗口非正为 terminal_window_unavailable |
+| 同上 4 请求，3 个完成各 10/20/30 输出 token                                      | N04=60/4=15 token/s；任一应计完成请求缺 usage 时 null/output_token_counts_incomplete，excluded=缺计数请求数   |
+| 阈值 500ms；2 个完成请求均 pass，E2E 100ms/400ms                                 | N02=2/窗口秒；unscorable+600ms 计未达标，unscorable+400ms 使整节 null/goodput_indeterminable                |
+| 纯性能或 svg workload                                                          | N02=null/quality_not_applicable；质量不适用不写成失败，也不用 0 冒充                                        |
+| 1 个完成请求的块到达 0/400/400ms                                                | L05 pooled 样本 2、min=0、max=400，零差保留并标 arrival_timestamps_batched；仍不是逐 token ITL             |
+| 2 完成 1 失败，块证据齐全                                                       | L05 pooled 只含 2 个完成请求，limits 记 missing:failed:1；N03 token_itl 与 service_queue_delay 均 null      |
+| 完成请求均无 arrival_capture                                                    | L05 pooled 四统计 null/arrival_capture_missing，p95 另标 insufficient_samples                              |
+| 有 capture 但全部非流式 / 流式但仅 1 块                                          | 整节 reason 分别 not_streaming / insufficient_blocks；优先级为无完成→缺 capture→非流式→块不足               |
 | 计量能量计数从 95 到 5、量程 100μJ 且确定最多一次回绕                            | 增量 10μJ；无法排除多次回绕或重置时为缺测，不直接算−90μJ                                                    |
 | 2 成功 1 失败消耗总 30J，计量窗口均完整                                         | 15J/成功任务；若 0 成功则 null，失败能量不能剔除                                                              |
 | 采样有预热 99GiB 极值、正式 8GiB、结束后 99GiB                                  | 正式 RSS 观测峰值 8GiB；边界跨越样本不偷算入正式窗口                                                          |
