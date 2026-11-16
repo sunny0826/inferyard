@@ -73,6 +73,7 @@ jobs:
             exit 1
           fi
       - name: Package the native candidate
+        shell: bash
         env:
           TARGET: ${{ matrix.target }}
           SOURCE_COMMIT: ${{ github.sha }}

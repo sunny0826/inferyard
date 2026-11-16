@@ -146,7 +146,10 @@ The real E2E report must exist at `workspace/reports/report-*/studio.json`.
 
 The smoke opens the real report and visits Reports, Models, Downloads, Device and
 Settings. It does not start or bind an engine, download assets, run a real model,
-save into the user's actual HOME, or claim the Full preview coverage. The runner
+save into the user's actual HOME, or claim the Full preview coverage. Preview-only
+runs skip `ReleaseUITests` because they do not supply the production app and isolated
+HOME. The release runner requires an explicit passing XCTest result in the log, so a
+skip or an unlaunched app cannot produce a green release smoke. The runner
 creates a new `build/release-ui-e2e/run-*` directory with `run.json`,
 `xcodebuild.log` and `Results.xcresult`; screenshots and the accessibility tree
 stay in the Xcode result. The workflow uploads those results separately from the

@@ -9,8 +9,7 @@ final class ReleaseUITests: XCTestCase {
         let environment = ProcessInfo.processInfo.environment
         guard let appPath = environment["INFERYARD_RELEASE_APP"],
               let home = environment["INFERYARD_RELEASE_HOME"], !appPath.isEmpty, !home.isEmpty else {
-            XCTFail("Production app path and isolated HOME are required")
-            return
+            throw XCTSkip("Production package smoke requires run_release.py")
         }
         app = XCUIApplication(url: URL(fileURLWithPath: appPath))
         app.launchEnvironment["HOME"] = home

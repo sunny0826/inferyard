@@ -168,9 +168,6 @@ jobs:
         os: [ubuntu-24.04, windows-2025, macos-15]
     permissions:
       contents: read
-    env:
-      UV_TOOL_DIR: ${{ runner.temp }}/inferyard-published-tools
-      UV_TOOL_BIN_DIR: ${{ runner.temp }}/inferyard-published-bin
     steps:
       - uses: actions/checkout@v7
         with:
@@ -179,6 +176,9 @@ jobs:
       - uses: jdx/mise-action@v5.2.4
       - name: Install the published CLI and exercise its real entry points
         shell: bash
+        env:
+          UV_TOOL_DIR: ${{ runner.temp }}/inferyard-published-tools
+          UV_TOOL_BIN_DIR: ${{ runner.temp }}/inferyard-published-bin
         run: |
           mise exec -- uv tool install --managed-python --python 3.15.2 inferyard==0.0.4
           binary="$UV_TOOL_BIN_DIR/inferyard"

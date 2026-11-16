@@ -61,22 +61,28 @@ def execute(command: list[str], env: dict[str, str], output: Path, report: Path)
             command, stdout=stream, stderr=subprocess.STDOUT, check=False, env=env
         )
         elapsed = time.perf_counter() - started
+    log_text = log.read_text(errors="replace")
+    exit_code = result.returncode
+    pass_marker = "Test Case '-[PreviewUITests.ReleaseUITests testProductionPagesAndRealReport]' passed"
+    if exit_code == 0 and pass_marker not in log_text:
+        exit_code = 65
+        print("ReleaseUITests did not report a passing result", flush=True)
     manifest = {
         "suite": "release",
         "elapsed_seconds": elapsed,
-        "exit_code": result.returncode,
-        "app": env["INFERYARD_RELEASE_APP"],
+        "exit_code": exit_code,
+        "app": env["TEST_RUNNER_INFERYARD_RELEASE_APP"],
         "report": str(report),
     }
     with (output / "run.json").open("w", encoding="utf-8") as stream, contextlib.redirect_stdout(stream):
         print(json.dumps(manifest, indent=2))
-    status = "passed" if result.returncode == 0 else "failed"
+    status = "passed" if exit_code == 0 else "failed"
     print(f"Production UI smoke {status}; build and test: {elapsed:.1f}s", flush=True)
-    if result.returncode:
-        lines = log.read_text(errors="replace").splitlines()
+    if exit_code:
+        lines = log_text.splitlines()
         failures = [line for line in lines[:-80] if ": error:" in line]
         print("\n".join([*failures, *lines[-80:]]))
-    return result.returncode
+    return exit_code
 
 
 def main() -> int:
@@ -106,12 +112,12 @@ def main() -> int:
     home, workspace = prepare_home(output, e2e_root, cli)
     env = dict(
         os.environ,
-        INFERYARD_RELEASE_APP=str(app),
-        INFERYARD_RELEASE_HOME=str(home),
-        INFERYARD_RELEASE_CLI=str(cli),
-        INFERYARD_RELEASE_WORKSPACE=str(workspace),
-        INFERYARD_RELEASE_RESULTS=str(workspace / "results"),
-        INFERYARD_RELEASE_MODELS=str(e2e_root / "models"),
+        TEST_RUNNER_INFERYARD_RELEASE_APP=str(app),
+        TEST_RUNNER_INFERYARD_RELEASE_HOME=str(home),
+        TEST_RUNNER_INFERYARD_RELEASE_CLI=str(cli),
+        TEST_RUNNER_INFERYARD_RELEASE_WORKSPACE=str(workspace),
+        TEST_RUNNER_INFERYARD_RELEASE_RESULTS=str(workspace / "results"),
+        TEST_RUNNER_INFERYARD_RELEASE_MODELS=str(e2e_root / "models"),
     )
     return execute(xcode_command(output), env, output, reports[0])
 

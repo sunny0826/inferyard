@@ -9,9 +9,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from typing import TextIO
 from unittest.mock import Mock, patch
 
 import run_release
+
+
+RELEASE_PASS = "Test Case '-[PreviewUITests.ReleaseUITests testProductionPagesAndRealReport]' passed"
 
 
 class TestReleaseRunner(unittest.TestCase):
@@ -26,16 +30,20 @@ class TestReleaseRunner(unittest.TestCase):
         cli.write_text("")
         return app, report.parents[3], cli
 
-    def invoke(self, argv: list[str], exit_code: int = 0) -> tuple[int, Mock]:
+    def invoke(
+        self, argv: list[str], exit_code: int = 0, log_text: str = RELEASE_PASS
+    ) -> tuple[int, Mock]:
+        def fake_run(
+            command: list[str], stdout: TextIO, **_: str | int | bool | Path | dict[str, str]
+        ) -> subprocess.CompletedProcess:
+            stdout.write(log_text)
+            return subprocess.CompletedProcess(command, exit_code)
+
         with (
             patch.object(sys, "argv", argv),
             patch.object(run_release.sys, "platform", "darwin"),
             patch.object(run_release, "require_unlocked_desktop"),
-            patch.object(
-                run_release.subprocess,
-                "run",
-                return_value=subprocess.CompletedProcess([], exit_code),
-            ) as launch,
+            patch.object(run_release.subprocess, "run", side_effect=fake_run) as launch,
             contextlib.redirect_stdout(io.StringIO()),
         ):
             result = run_release.main()
@@ -58,7 +66,7 @@ class TestReleaseRunner(unittest.TestCase):
             self.assertIn("-only-testing:PreviewUITests/ReleaseUITests", command)
             self.assertNotIn("--debug-ui", command)
             env = launch.call_args.kwargs["env"]
-            home = Path(env["INFERYARD_RELEASE_HOME"])
+            home = Path(env["TEST_RUNNER_INFERYARD_RELEASE_HOME"])
             self.assertTrue(home.is_relative_to(output.resolve()))
             settings = json.loads(
                 (home / "Library/Application Support/InferYard Studio/settings.json").read_text()
@@ -69,9 +77,22 @@ class TestReleaseRunner(unittest.TestCase):
                 settings["results_root"], str((e2e_root / "workspace/results").resolve())
             )
             self.assertEqual(settings["models_root"], str((e2e_root / "models").resolve()))
-            self.assertEqual(env["INFERYARD_RELEASE_APP"], str(app.resolve()))
+            self.assertEqual(env["TEST_RUNNER_INFERYARD_RELEASE_APP"], str(app.resolve()))
             run = next(output.iterdir()) / "run.json"
             self.assertEqual(json.loads(run.read_text())["suite"], "release")
+
+    def test_missing_pass_receipt_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app, e2e_root, cli = self.make_inputs(root)
+            result, _ = self.invoke([
+                "run_release.py",
+                "--app", str(app),
+                "--e2e-root", str(e2e_root),
+                "--cli", str(cli),
+                "--output-root", str(root / "output"),
+            ], log_text="")
+            self.assertEqual(result, 65)
 
     def test_missing_e2e_report_fails_before_xcodebuild(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -99,6 +120,7 @@ class TestReleaseRunner(unittest.TestCase):
 
 _TEST_METHODS = (
     TestReleaseRunner.test_release_runner_isolates_home_and_binds_e2e_report,
+    TestReleaseRunner.test_missing_pass_receipt_is_rejected,
     TestReleaseRunner.test_missing_e2e_report_fails_before_xcodebuild,
 )
 
