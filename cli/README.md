@@ -8,7 +8,7 @@ panel. Quality, latency and memory are reported separately; when comparison
 preconditions are not met, the tool explains why instead of producing a single
 composite score.
 
-**v0.0.2 is published on [PyPI](https://pypi.org/project/inferyard/0.0.2/) and runs with uv / uvx.**
+**v0.0.4 is published on [PyPI](https://pypi.org/project/inferyard/0.0.4/) and runs with uv / uvx.**
 The project is licensed under [MIT](LICENSE).
 The product is a Python CLI whose reports are structured JSON for Studio; the
 package and the command are both named `inferyard`.
@@ -24,14 +24,14 @@ Included since the 0.0.2 PyPI build (the 0.0.1 build did not ship it).
 Install the pinned version from PyPI:
 
 ```bash
-uv tool install --managed-python --python 3.15.2 inferyard==0.0.2
+uv tool install --managed-python --python 3.15.2 inferyard==0.0.4
 inferyard --help
 ```
 
 Or run it directly with `uvx`, without a persistent install:
 
 ```bash
-uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.2 --help
+uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.4 --help
 ```
 
 No source checkout or mise is needed. Preparing Python and dependencies on the

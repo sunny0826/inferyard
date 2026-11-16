@@ -119,7 +119,7 @@ result, under the failing activity. No simulator clock is accelerated.
 Runner argument and failure-reporting checks require no native window:
 
 ```sh
-mise exec -- python -m unittest discover -s tests/ui -p test_run.py
+mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
 ```
 
 The context-speed preview tests drive the existing task form through tier selection,
@@ -132,3 +132,23 @@ Production CLI integration is implemented; the user has approved the UI design.
 Native execution and the real CLI/model workflow
 remain separate verification steps. Result and history tables show the model and engine
 recorded for each task. See the [context-speed reference](../../../docs/subsystems/studio-panel/context-speed.md).
+
+## Production package smoke
+
+The [Studio release candidate workflow](../../../.github/workflows/studio-release.yml)
+runs `ReleaseUITests` on macOS after native packaging. This is a different path from
+the preview suites above: `run_release.py` launches the exact packaged
+`InferYard Studio.app` through `XCUIApplication(url:)`, without `--debug-ui`, and
+injects an isolated HOME. The workflow first runs `TestChainBindRunReport` with a
+preserved `INFERYARD_E2E_ROOT`; the runner then writes settings that point the
+production app at that chain's CLI, workspace, results and models directories.
+The real E2E report must exist at `workspace/reports/report-*/studio.json`.
+
+The smoke opens the real report and visits Reports, Models, Downloads, Device and
+Settings. It does not start or bind an engine, download assets, run a real model,
+save into the user's actual HOME, or claim the Full preview coverage. The runner
+creates a new `build/release-ui-e2e/run-*` directory with `run.json`,
+`xcodebuild.log` and `Results.xcresult`; screenshots and the accessibility tree
+stay in the Xcode result. The workflow uploads those results separately from the
+release archives. Windows/Linux candidate jobs stop at native build, packaging
+and command-line boundary checks, so no native UI claim is made there.

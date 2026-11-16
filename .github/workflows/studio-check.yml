@@ -66,7 +66,7 @@ jobs:
       - uses: jdx/mise-action@v5.2.4
       - name: Native UI runner checks
         working-directory: studio
-        run: mise exec -- python -m unittest discover -s tests/ui -p test_run.py
+        run: mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
       - name: Full native preview UI e2e
         run: mise run test:studio-ui:full
       - name: Upload native UI test results

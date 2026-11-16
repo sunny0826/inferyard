@@ -1,0 +1,169 @@
+name: Studio release candidate
+on:
+  pull_request:
+    paths:
+      - "studio/**"
+      - "cli/src/**"
+      - "cli/schemas/**"
+      - "cli/pyproject.toml"
+      - "cli/uv.lock"
+      - "mise.toml"
+      - ".github/workflows/studio-release.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  CGO_ENABLED: "0"
+defaults:
+  run:
+    working-directory: studio
+jobs:
+  package:
+    name: package (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: darwin-arm64
+          - os: windows-2025
+            target: windows-amd64
+          - os: ubuntu-24.04
+            target: linux-amd64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Sync the CLI used by the production UI smoke
+        if: matrix.target == 'darwin-arm64'
+        working-directory: cli
+        run: mise exec -- uv sync --frozen
+      - name: Check release packaging and debug exclusion
+        run: |
+          mise exec -- go test -tags ui_debug,release . -count=1
+          mise exec -- python -m unittest discover -s scripts -p 'test_*.py'
+          mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
+      - name: Build the native release binary
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          binary="build/$TARGET/inferyard-studio"
+          if [ "$TARGET" = windows-amd64 ]; then binary="$binary.exe"; fi
+          mkdir -p "$(dirname "$binary")" build/release-evidence
+          mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 \
+            go build -tags release -o "$binary" .
+      - name: Check the packaged command boundary
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          binary="build/$TARGET/inferyard-studio"
+          if [ "$TARGET" = windows-amd64 ]; then binary="$binary.exe"; fi
+          "$binary" --help >"build/release-evidence/$TARGET-help.txt" 2>&1
+          set +e
+          "$binary" --debug-ui >"build/release-evidence/$TARGET-debug-ui.txt" 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 2 ]; then
+            cat "build/release-evidence/$TARGET-debug-ui.txt"
+            echo "Expected --debug-ui exit 2, got $status"
+            exit 1
+          fi
+      - name: Package the native candidate
+        env:
+          TARGET: ${{ matrix.target }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: >-
+          mise exec -- python scripts/package.py
+          --target "$TARGET"
+          --source-commit "$SOURCE_COMMIT"
+          --out "dist/studio-package-$TARGET"
+      - name: Produce a real CLI and fake-engine report for production UI smoke
+        if: matrix.target == 'darwin-arm64'
+        env:
+          INFERYARD_E2E_ROOT: ${{ runner.temp }}/studio-release-e2e
+        run: >-
+          mise exec -- go test ./tests/e2e/
+          -run '^TestChainBindRunReport$' -count=1 -timeout 900s -v
+      - name: Exercise the packaged production app without debug UI
+        if: matrix.target == 'darwin-arm64'
+        env:
+          INFERYARD_E2E_ROOT: ${{ runner.temp }}/studio-release-e2e
+          RELEASE_APP: dist/studio-package-darwin-arm64/inferyard-studio-v0.0.4-darwin-arm64/InferYard Studio.app
+        run: >-
+          mise exec -- python tests/ui/run_release.py
+          --app "$RELEASE_APP"
+          --e2e-root "$INFERYARD_E2E_ROOT"
+          --cli "$GITHUB_WORKSPACE/cli/.venv/bin/inferyard"
+          --output-root build/release-ui-e2e
+      - uses: actions/upload-artifact@v7
+        with:
+          name: studio-package-${{ matrix.target }}
+          path: studio/dist/studio-package-${{ matrix.target }}
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: studio-command-evidence-${{ matrix.target }}
+          path: studio/build/release-evidence/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload production UI smoke evidence
+        if: ${{ always() && matrix.target == 'darwin-arm64' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: studio-production-ui-evidence
+          path: |
+            studio/build/release-ui-e2e/run-*/run.json
+            studio/build/release-ui-e2e/run-*/xcodebuild.log
+            studio/build/release-ui-e2e/run-*/Results.xcresult
+            ${{ runner.temp }}/studio-release-e2e/transcript/**
+            ${{ runner.temp }}/studio-release-e2e/workspace/reports/*/studio.json
+          if-no-files-found: warn
+          retention-days: 7
+  candidate:
+    name: Assemble and verify the Studio candidate
+    needs: package
+    runs-on: ubuntu-24.04
+    outputs:
+      manifest_sha256: ${{ steps.prepare.outputs.manifest_sha256 }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: studio-package-*
+          path: studio/dist/inputs
+      - name: Prepare the three-platform candidate
+        id: prepare
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          mise exec -- python scripts/prepare_release_candidate.py \
+            --input dist/inputs/studio-package-darwin-arm64 \
+            --input dist/inputs/studio-package-linux-amd64 \
+            --input dist/inputs/studio-package-windows-amd64 \
+            --source-commit "$SOURCE_COMMIT" \
+            --out dist/studio-release-candidate
+          digest=$(mise exec -- python -c 'import hashlib; print(hashlib.sha256(open("dist/studio-release-candidate/studio-release-manifest.json", "rb").read()).hexdigest())')
+          echo "manifest_sha256=$digest" >> "$GITHUB_OUTPUT"
+          echo "Studio candidate manifest SHA-256: $digest" >> "$GITHUB_STEP_SUMMARY"
+      - name: Re-verify the exact candidate bytes
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+          EXPECTED_MANIFEST: ${{ steps.prepare.outputs.manifest_sha256 }}
+        run: >-
+          mise exec -- python scripts/verify_release_candidate.py
+          --manifest dist/studio-release-candidate/studio-release-manifest.json
+          --manifest-sha256 "$EXPECTED_MANIFEST"
+          --source-commit "$SOURCE_COMMIT"
+          --stage dist/studio-verified
+      - uses: actions/upload-artifact@v7
+        with:
+          name: studio-release-candidate
+          path: studio/dist/studio-release-candidate
+          if-no-files-found: error

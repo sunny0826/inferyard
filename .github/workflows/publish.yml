@@ -7,7 +7,15 @@ on:
         required: true
         type: string
       manifest_sha256:
-        description: Reviewed v2 candidate manifest SHA256
+        description: Reviewed v2 CLI candidate manifest SHA256
+        required: true
+        type: string
+      studio_run_id:
+        description: Successful manual Studio release candidate run ID in this repository
+        required: true
+        type: string
+      studio_manifest_sha256:
+        description: Reviewed Studio candidate manifest SHA256
         required: true
         type: string
       source_commit:
@@ -39,6 +47,12 @@ jobs:
           source-commit: ${{ inputs.source_commit }}
           manifest-sha256: ${{ inputs.manifest_sha256 }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/check-studio-release
+        with:
+          run-id: ${{ inputs.studio_run_id }}
+          source-commit: ${{ inputs.source_commit }}
+          manifest-sha256: ${{ inputs.studio_manifest_sha256 }}
+          token: ${{ secrets.GITHUB_TOKEN }}
   github-release:
     needs: verify
     if: inputs.destination == 'github-release' || inputs.destination == 'both'
@@ -60,6 +74,12 @@ jobs:
           source-commit: ${{ inputs.source_commit }}
           manifest-sha256: ${{ inputs.manifest_sha256 }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/check-studio-release
+        with:
+          run-id: ${{ inputs.studio_run_id }}
+          source-commit: ${{ inputs.source_commit }}
+          manifest-sha256: ${{ inputs.studio_manifest_sha256 }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Refuse a release tag pointing at another source
         uses: actions/github-script@v9
         env:
@@ -68,7 +88,7 @@ jobs:
           script: |
             let ref;
             try {
-              ref = (await github.rest.git.getRef({ ...context.repo, ref: 'tags/v0.0.3' })).data;
+              ref = (await github.rest.git.getRef({ ...context.repo, ref: 'tags/v0.0.4' })).data;
             } catch (error) {
               if (error.status === 404) return;
               throw error;
@@ -80,17 +100,31 @@ jobs:
             if (object.type !== 'commit' || object.sha !== process.env.SOURCE_COMMIT) {
               throw new Error('Release tag points at another source commit');
             }
-      - name: Create a draft Release with the verified bytes
+      - name: Create a draft Release with all verified CLI and Studio bytes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           SOURCE_COMMIT: ${{ inputs.source_commit }}
           CANDIDATE_SHA: ${{ inputs.manifest_sha256 }}
           SOURCE_RUN: ${{ inputs.run_id }}
+          STUDIO_CANDIDATE_SHA: ${{ inputs.studio_manifest_sha256 }}
+          STUDIO_SOURCE_RUN: ${{ inputs.studio_run_id }}
         run: >-
-          gh release create v0.0.3 approved-files/*
-          --target "$SOURCE_COMMIT" --draft --title 'v0.0.3'
-          --notes "Source $SOURCE_COMMIT; candidate SHA256 $CANDIDATE_SHA; installation evidence in package-check run $SOURCE_RUN. Installation checks do not establish native model or performance qualification."
+          gh release create v0.0.4 approved-files/* studio-approved-files/*
+          --target "$SOURCE_COMMIT" --draft --title 'v0.0.4'
+          --notes "Source $SOURCE_COMMIT; CLI candidate SHA256 $CANDIDATE_SHA (package-check run $SOURCE_RUN); Studio candidate SHA256 $STUDIO_CANDIDATE_SHA (Studio release run $STUDIO_SOURCE_RUN). Installation checks do not establish native model or performance qualification."
+      - name: Re-download the draft and compare every uploaded byte
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir downloaded
+          gh release download v0.0.4 --dir downloaded
+          test "$(find downloaded -maxdepth 1 -type f | wc -l)" -eq 9
+          for file in approved-files/* studio-approved-files/*; do
+            name=${file##*/}
+            cmp -- "$file" "downloaded/$name"
+          done
   pypi:
     needs: verify
     if: inputs.destination == 'pypi' || inputs.destination == 'both'
@@ -123,3 +157,34 @@ jobs:
         with:
           packages-dir: approved-files/
           attestations: true
+  pypi-smoke:
+    name: PyPI install smoke (${{ matrix.os }})
+    needs: pypi
+    if: inputs.destination == 'pypi' || inputs.destination == 'both'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    permissions:
+      contents: read
+    env:
+      UV_TOOL_DIR: ${{ runner.temp }}/inferyard-published-tools
+      UV_TOOL_BIN_DIR: ${{ runner.temp }}/inferyard-published-bin
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source_commit }}
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Install the published CLI and exercise its real entry points
+        shell: bash
+        run: |
+          mise exec -- uv tool install --managed-python --python 3.15.2 inferyard==0.0.4
+          binary="$UV_TOOL_BIN_DIR/inferyard"
+          if [ "${{ matrix.os }}" = windows-2025 ]; then binary="$binary.exe"; fi
+          "$binary" --help
+          "$binary" --versions > versions.json
+          "$binary" --schema studio_report > studio-report.schema.json
+          mise exec -- python -c 'import json; data=json.load(open("versions.json")); schema=json.load(open("studio-report.schema.json")); assert data["tool_version"] == "0.0.4"; assert data["python"].startswith("3.15."); assert schema["$id"]'
+          mise exec -- uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.4 --help

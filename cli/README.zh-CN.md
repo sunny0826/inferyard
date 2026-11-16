@@ -5,7 +5,7 @@
 用本地模型完成冻结题目，保存答案、耗时和资源证据，再投影出供 Studio 桌面面板读取的单份 `studio.json` 报告。
 质量、等待时间和内存分别展示；比较条件不足时说明原因，不合成一个总分。
 
-**v0.0.2 已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.2/)，支持 uv / uvx 安装运行。**
+**v0.0.4 已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.4/)，支持 uv / uvx 安装运行。**
 项目采用 [MIT 许可证](LICENSE)。
 产品为 Python CLI，报告是供 Studio 读取的结构化 JSON，包名 `inferyard`，命令为 `inferyard`。
 
@@ -19,14 +19,14 @@
 从 PyPI 安装固定版本：
 
 ```bash
-uv tool install --managed-python --python 3.15.2 inferyard==0.0.2
+uv tool install --managed-python --python 3.15.2 inferyard==0.0.4
 inferyard --help
 ```
 
 也可直接通过 `uvx` 运行，无须持久安装：
 
 ```bash
-uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.2 --help
+uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.4 --help
 ```
 
 无需克隆源码或安装 mise。首次准备 Python 和依赖需要联网；模型和引擎由操作者另行准备。
