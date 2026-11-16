@@ -138,7 +138,11 @@ jobs:
             "/LOG=`"$evidence\windows-amd64-uninstall.log`""
           ) -Wait -PassThru
           if ($result.ExitCode -ne 0) { throw "Uninstaller exit code: $($result.ExitCode)" }
-          if (Test-Path -LiteralPath $binary) { throw 'Uninstall left the executable behind' }
+          $deadline = [DateTime]::UtcNow.AddSeconds(30)
+          while ((Test-Path -LiteralPath $install) -and ([DateTime]::UtcNow -lt $deadline)) {
+            Start-Sleep -Milliseconds 100
+          }
+          if (Test-Path -LiteralPath $install) { throw 'Uninstall did not remove the application directory within 30 seconds' }
       - name: Produce a real CLI and fake-engine report for production UI smoke
         if: matrix.target == 'darwin-arm64'
         env:
