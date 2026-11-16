@@ -143,6 +143,7 @@ jobs:
             Start-Sleep -Milliseconds 100
           }
           if (Test-Path -LiteralPath $install) { throw 'Uninstall did not remove the application directory within 30 seconds' }
+          exit 0
       - name: Produce a real CLI and fake-engine report for production UI smoke
         if: matrix.target == 'darwin-arm64'
         env:
