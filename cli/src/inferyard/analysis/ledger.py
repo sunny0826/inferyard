@@ -11,6 +11,7 @@ from inferyard.analysis.input_lengths import (
     check_input_target,
     input_length_summary,
 )
+from inferyard.analysis.inter_token_observations import inter_token_observations
 from inferyard.analysis.observations import build_observations
 from inferyard.analysis.output_budget import output_budget_observations
 from inferyard.analysis.performance import summarize_performance
@@ -18,6 +19,7 @@ from inferyard.analysis.position import position_summary
 from inferyard.analysis.quality import summarize_quality
 from inferyard.analysis.resource_observations import build_resource_observations
 from inferyard.analysis.stability_observations import latency_drift_observations
+from inferyard.analysis.throughput_observations import ThroughputInput, throughput_observations
 from inferyard.config.plan_inputs import validate_workload_inputs
 from inferyard.contracts.validation import strict_json_loads, validate_document, json_bytes
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
@@ -339,6 +341,23 @@ def read_trial(root: Path, *, metadata=None):
             complete=complete,
         )
         summary["metric_observations"].extend(idle_observations)
+    summary["metric_observations"].extend(
+        throughput_observations(
+            ThroughputInput(
+                run=run,
+                workload_id=trial["workload_id"],
+                evidence=evidence,
+                complete=complete,
+                thresholds=documents["plan"]["experiment"].get("goodput_thresholds"),
+            ),
+            requests,
+        )
+    )
+    summary["metric_observations"].extend(
+        inter_token_observations(
+            run, trial["workload_id"], requests, evidence, complete=complete
+        )
+    )
     token_counts, token_evidence = {}, list(evidence)
     template_source = (
         "/lab/v1/token-budget"

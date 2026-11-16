@@ -83,14 +83,41 @@ type StudioLatency struct {
 	P95         *float64 `json:"p95"`
 	Max         *float64 `json:"max"`
 }
+
+// StudioThroughput mirrors the optional throughput section; a missing section
+// means the report predates it, and a present section carries values or reasons.
+type StudioThroughput struct {
+	RequestsPerSecond           *float64 `json:"requests_per_second"`
+	RequestsPerSecondReason     *string  `json:"requests_per_second_reason"`
+	OutputTokensPerSecond       *float64 `json:"output_tokens_per_second"`
+	OutputTokensPerSecondReason *string  `json:"output_tokens_per_second_reason"`
+	GoodputPerSecond            *float64 `json:"goodput_per_second"`
+	GoodputPerSecondReason      *string  `json:"goodput_per_second_reason"`
+}
+
+// StudioOutputBlockIntervals mirrors the optional pooled block-arrival
+// distribution in milliseconds. It is not a per-token ITL measurement.
+type StudioOutputBlockIntervals struct {
+	IntervalCount int64    `json:"interval_count"`
+	RequestCount  int64    `json:"request_count"`
+	Min           *float64 `json:"min"`
+	P50           *float64 `json:"p50"`
+	P95           *float64 `json:"p95"`
+	P95Reason     *string  `json:"p95_reason"`
+	Max           *float64 `json:"max"`
+	Reason        *string  `json:"reason"`
+}
+
 type StudioDashboard struct {
-	Quality                      StudioQuality    `json:"quality"`
-	Categories                   []StudioCategory `json:"categories"`
-	Latency                      StudioLatency    `json:"latency"`
-	SampledPeakRSSBytes          *float64         `json:"sampled_peak_rss_bytes"`
-	SampledPeakRSSReason         *string          `json:"sampled_peak_rss_reason"`
-	SampledMinimumAvailableBytes *float64         `json:"sampled_minimum_available_bytes"`
-	MinimumAvailableReason       *string          `json:"minimum_available_reason"`
+	Quality                      StudioQuality               `json:"quality"`
+	Categories                   []StudioCategory            `json:"categories"`
+	Latency                      StudioLatency               `json:"latency"`
+	SampledPeakRSSBytes          *float64                    `json:"sampled_peak_rss_bytes"`
+	SampledPeakRSSReason         *string                     `json:"sampled_peak_rss_reason"`
+	SampledMinimumAvailableBytes *float64                    `json:"sampled_minimum_available_bytes"`
+	MinimumAvailableReason       *string                     `json:"minimum_available_reason"`
+	Throughput                   *StudioThroughput           `json:"throughput"`
+	OutputBlockIntervals         *StudioOutputBlockIntervals `json:"output_block_intervals"`
 }
 type StudioRequest struct {
 	CaseID        string   `json:"case_id"`

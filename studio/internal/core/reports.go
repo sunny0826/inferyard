@@ -29,6 +29,12 @@ type (
 	ReportRequest   = inferyard.StudioRequest
 )
 
+// Optional report sections read from studio.json when the report provides them.
+type (
+	ReportThroughput           = inferyard.StudioThroughput
+	ReportOutputBlockIntervals = inferyard.StudioOutputBlockIntervals
+)
+
 func reportSummary(path string) (ReportSummary, error) {
 	r := ReportSummary{ReportId: filepath.Base(path), Path: path, RunIds: []string{}, RunPaths: []*string{}}
 	info, e := os.Stat(path)

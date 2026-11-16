@@ -5,14 +5,14 @@ from pathlib import Path
 from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.storage import sha256_file
 from inferyard.application.execution import execute_async
-from tests.integration.test_batch_runner import batch
+from tests.integration.test_batch_runner import BatchOptions, batch
 from tests.integration.test_runner import scenario
 
 __all__ = ["scenario"]
 
 
 def test_capacity_stop_preserves_failure_and_forbids_resume_or_next_repeat(tmp_path, scenario):
-    request, deps = batch(tmp_path, scenario, capacity=True)
+    request, deps = batch(tmp_path, scenario, BatchOptions(capacity=True))
     scenario[3]["fail_index"] = 6
     code, result = asyncio.run(execute_async(request, deps))
     assert code == 3

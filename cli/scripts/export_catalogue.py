@@ -23,8 +23,9 @@ IMPLEMENTED = {
     for i in range(1, count + 1)
 }
 IMPLEMENTED |= {"S01", "S02", "S03", "S04", "X01", "X02", "X03"}
-IMPLEMENTED |= {"E01", "E02", "E03", "E04", "E05", "N01", "N02", "N03", "U01"}
+IMPLEMENTED |= {"E01", "E02", "E03", "E04", "E05", "N01", "N02", "N03", "N04", "U01"}
 IMPLEMENTED |= {"L08", "L09"}
+SOURCES = {"N04": "endpoint_usage_batch_window"}
 UNITS = {
     **{
         f"{prefix}{i:02}": "ratio"
@@ -53,6 +54,7 @@ UNITS = {
     "N01": "request/s",
     "N02": "request/s",
     "N03": "ms",
+    "N04": "token/s",
     "U01": "s",
 }
 LAYERS = {
@@ -127,6 +129,7 @@ def metrics():
             "N": "load_and_token_events",
             "U": "verified_lifecycle_events",
         }[key[0]]
+        source = SOURCES.get(key, source)
         if key in ("L06", "L07"):
             source = "verified_engine_timings"
         items.append(
@@ -210,6 +213,22 @@ def metrics():
                 )
                 + (
                     [
+                        reference(ROOT / "src/inferyard/analysis/throughput_observations.py"),
+                        reference(ROOT / "tests/unit/test_throughput_observations.py"),
+                    ]
+                    if key in ("N01", "N02", "N04")
+                    else []
+                )
+                + (
+                    [
+                        reference(ROOT / "src/inferyard/analysis/inter_token_observations.py"),
+                        reference(ROOT / "tests/unit/test_inter_token_observations.py"),
+                    ]
+                    if key == "N03"
+                    else []
+                )
+                + (
+                    [
                         reference(ROOT / "src/inferyard/analysis/repetition_metrics.py"),
                         reference(ROOT / "src/inferyard/analysis/repetition_analysis.py"),
                         reference(ROOT / "tests/unit/test_repetition_metrics.py"),
@@ -220,8 +239,8 @@ def metrics():
                 ),
             }
         )
-    if len(items) != 45 or len({i["metric_id"] for i in items}) != 45:
-        raise ValueError("expected 36 core and 9 conditional groups")
+    if len(items) != 46 or len({i["metric_id"] for i in items}) != 46:
+        raise ValueError("expected 36 core and 10 conditional groups")
     return {"catalogue_version": "phase2.v1", "items": items}
 
 

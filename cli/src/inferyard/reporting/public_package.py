@@ -133,7 +133,9 @@ def payloads(candidate):
     instructions += (
         "\n## Reproduction conditions\n\n"
         "The reproduction section includes cache/reasoning mode, power policy, "
-        "execution and telemetry settings, workload timing, order and budgets. "
+        "execution and telemetry settings, workload timing, order and budgets, "
+        "and the frozen goodput thresholds when the experiment declared them. "
+        "Absence means no thresholds were preregistered, not a default. "
         "case_order uses zero-based indices into the hash-matched bundle; verify "
         "each case_sha256 using canonical JSON before running.\n\n"
         "locally_required_sha256 lists redacted values that must be supplied from "

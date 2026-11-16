@@ -115,6 +115,12 @@ EXPERIMENT["properties"]["performance_environment"] = obj(
     }
 )
 EXPERIMENT["properties"]["capacity_stop"] = enum("first_failed_request")
+EXPERIMENT["properties"]["goodput_thresholds"] = obj(
+    {
+        "quality_state": enum("pass"),
+        "e2e_latency_ms_max": {"type": "number", "exclusiveMinimum": 0},
+    }
+)
 EXPERIMENT["properties"]["resource_comparison"] = obj(
     {
         "min_coverage_ratio": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},

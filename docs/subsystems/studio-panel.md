@@ -103,8 +103,14 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.17�
 - **报告**：1–100 个不同来源 run；新目录唯一命名、原始 run 与历史报告永不覆写；报告路径必须
   留在报告目录内；缺失来源 run 显示为不可用但不阻止打开。单项报告不可读不影响其他报告，
   列表标记无法读取，打开后可重新读取或返回列表。质量与类别分母直接取自 studio.json，不重算分数；
-  空延迟显示 —。CLI 写出 `studio.json`（`studio-report.v1`），Studio 直接解析该 JSON，不加载 HTML。实现见
-  [report_view.go](../../studio/internal/pages/report_view.go)、[report_metrics.go](../../studio/internal/pages/report_metrics.go) 与 [report_tables.go](../../studio/internal/pages/report_tables.go)。macOS 模拟数据的直达、布局与滚动已检查；其他平台和真实测评数据未在本轮验证。
+  空延迟显示 —。吞吐与输出间隔卡片直接读取 studio.json 的可选节：节缺失显示未提供测量，
+  缺测保留原因、0 视为已测，20–99 个样本的 p95 标为探索性，输出间隔是内容块到达间隔而非逐 token ITL。
+  CLI 写出 `studio.json`（`studio-report.v1`），Studio 直接解析该 JSON，不加载 HTML。实现见
+  [report_view.go](../../studio/internal/pages/report_view.go)、
+  [report_metrics.go](../../studio/internal/pages/report_metrics.go) 与
+  [report_tables.go](../../studio/internal/pages/report_tables.go)。macOS 模拟数据的直达、布局与滚动
+  已在历史版本检查；本次新增的吞吐与输出间隔卡片未做本轮原生窗口验收（T5 后更新），其他平台和
+  真实测评数据未在本轮验证。
 - **安全**：模型端点仅本地 loopback；token/凭据/完整 session URL 不进日志、设置或用户可见错误；
   向导执行不回传 stdout/stderr；设置文件 0700/0600 且仅在用户保存时替换。CLI 退出码语义
   （0/2/3/4/130）与呈现映射见 [CLI 与应用分发](cli-dispatch.md)。

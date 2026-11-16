@@ -64,6 +64,8 @@ func (s *viewState) reportView(c *ui.Context) {
 		statusBadge(c, "诊断运行", stateColor(c, stateWarning))
 	}
 	reportMetrics(c, run)
+	reportThroughput(c, run)
+	reportOutputIntervals(c, run)
 	report.categoryView(c, run)
 	reportProfileView(c, run)
 	report.requestView(c, run)

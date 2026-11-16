@@ -271,7 +271,7 @@ def test_second_scope_requires_explicit_handoff_and_new_process(
 ):
     from inferyard.runtime import batch_state
     from inferyard.application.execution import execute_async as execute_batch
-    from tests.integration.test_batch_runner import batch
+    from tests.integration.test_batch_runner import BatchOptions, batch
 
     command, deps, state = local_run
     from tests.integration import test_batch_runner
@@ -311,7 +311,7 @@ def test_second_scope_requires_explicit_handoff_and_new_process(
         command, config=replace(command.config, config=Document.parse("config", config))
     )
     monkeypatch.setattr(test_batch_runner, "experiment", experiment)
-    request, deps = batch(tmp_path, (command, deps, state.posts, {}), second=True)
+    request, deps = batch(tmp_path, (command, deps, state.posts, {}), BatchOptions(second=True))
     code, first = asyncio.run(execute_batch(request, deps))
     assert code == 3 and first.status == "awaiting_handoff", first
     assert len(state.posts) == 5

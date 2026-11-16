@@ -1,4 +1,5 @@
 import asyncio
+from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 
@@ -6,13 +7,14 @@ import pytest
 
 from inferyard.config.public_config_check import check_config
 from inferyard.config.public_plan import materialize
+from inferyard.config.public_recipe import reproduction_recipe
 from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import EvidenceError
 from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.analysis.comparison_input import comparison_input
-from inferyard.reporting.public_package import projection, verify_public, write_public
+from inferyard.reporting.public_package import number, projection, verify_public, write_public
 from inferyard.application.execution import execute_async
-from tests.integration.test_batch_runner import batch
+from tests.integration.test_batch_runner import BatchOptions, Scenario, batch
 from tests.integration.test_runner import scenario as runner_scenario
 
 scenario = runner_scenario
@@ -25,7 +27,7 @@ def test_public_summary_omits_private_text_and_preserves_denominators(tmp_path, 
     loaded = replace(original_request.config, config=Document.parse("config", config))
     scenario = (replace(original_request, config=loaded), *scenario[1:])
     policy = {"max_external_cpu_percent": 10, "max_external_interval_seconds": 1}
-    request, deps = batch(tmp_path, scenario, performance_policy=policy)
+    request, deps = batch(tmp_path, scenario, BatchOptions(performance_policy=policy))
     _, result = asyncio.run(execute_async(request, deps))
     root = Path(result.details["runs"][0])
     before = {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
@@ -96,3 +98,34 @@ def test_public_summary_omits_private_text_and_preserves_denominators(tmp_path, 
         verify_public(out)
     assert len(scenario[2]) == calls
     assert before == {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
+
+
+def test_public_recipe_and_reproduction_keep_goodput_thresholds(
+    tmp_path: Path, scenario: Scenario
+) -> None:
+    original_request = scenario[0]
+    config = original_request.config.config.to_dict()
+    config["engine"]["startup_args"] += ["-m", config["model"]["local_path"]]
+    loaded = replace(original_request.config, config=Document.parse("config", config))
+    scenario = (replace(original_request, config=loaded), *scenario[1:])
+    thresholds = {"quality_state": "pass", "e2e_latency_ms_max": 500}
+    request, deps = batch(tmp_path, scenario, BatchOptions(goodput_thresholds=thresholds))
+    code, result = asyncio.run(execute_async(request, deps))
+    assert code == 0
+    root = Path(result.details["runs"][0])
+    data, source = comparison_input(root)
+    public = projection(data, source)
+    assert public["reproduction"]["goodput_thresholds"] == thresholds
+
+    out = tmp_path / "public-thresholds"
+    write_public(root, out)
+    assert verify_public(out, root)["source_projection_verified"]
+    assert check_config(out, loaded)["declared_configuration_matches"]
+    rebuilt = tmp_path / "reproduced-thresholds"
+    materialize(out, loaded, rebuilt)
+    plan = read_json(rebuilt / "frozen/plan.json")
+    assert plan["experiment"]["goodput_thresholds"] == thresholds
+
+    without = deepcopy(data)
+    without["plan"]["experiment"].pop("goodput_thresholds")
+    assert "goodput_thresholds" not in reproduction_recipe(without, number)

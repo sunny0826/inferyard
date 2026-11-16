@@ -10,6 +10,10 @@ from inferyard.errors import EvidenceError
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json, sha256_file
 
+type JsonScalar = str | int | float | bool | None
+type JsonNode = JsonScalar | list[JsonNode] | dict[str, JsonNode]
+type JsonObject = dict[str, JsonNode]
+
 
 def require_declared_config(package, loaded):
     """Reject a local configuration that differs from the published declaration."""
@@ -26,6 +30,14 @@ def materialize(package, loaded, out):
     """Validate the declaration, then materialize the published recipe."""
     require_declared_config(package, loaded)
     return build_reproduction(package, loaded, read_candidate(package), out)
+
+
+def _apply_optional_sections(experiment: JsonObject, reproduction: JsonObject) -> None:
+    for key in ("performance_environment", "capacity_stop", "goodput_thresholds"):
+        if key in reproduction:
+            experiment[key] = deepcopy(reproduction[key])
+    if reproduction["safety"] is not None:
+        experiment["safety"] = reproduction["safety"]
 
 
 def build_reproduction(package, loaded, candidate, out):
@@ -103,12 +115,7 @@ def build_reproduction(package, loaded, candidate, out):
         "budget": reproduction["budget"],
         "workloads": [workload],
     }
-    if "performance_environment" in reproduction:
-        experiment["performance_environment"] = reproduction["performance_environment"]
-    if "capacity_stop" in reproduction:
-        experiment["capacity_stop"] = reproduction["capacity_stop"]
-    if reproduction["safety"] is not None:
-        experiment["safety"] = reproduction["safety"]
+    _apply_optional_sections(experiment, reproduction)
     compile_plan(experiment)
     new_output(out, [package, loaded.source.parent])
     inputs = out / "input"
