@@ -8,6 +8,8 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
+from inferyard.contracts.comparison_types import JSONRecord
+
 TARGETS = {"linux-x64", "windows-x64", "macos-arm64"}
 ROLES = {"wheel", "sdist", "constraints", "constraints_validation"}
 REPOSITORY = "https://github.com/sunny0826/inferyard"
@@ -188,12 +190,12 @@ def artifact_files(root, data, reader=checked_file):
     return files
 
 
-def source_identity(data, commit):
+def source_identity(data: JSONRecord, commit: str) -> None:
     if not re.fullmatch(r"[0-9a-f]{40}", commit) or data.get("source_commit") != commit:
         raise ValueError("candidate_commit_mismatch")
     if data.get("source_dirty") is not False:
         raise ValueError("candidate_source_dirty")
-    if data.get("version") != "0.0.3":
+    if data.get("version") != "0.0.4":
         raise ValueError("development_or_unfrozen_version")
 
 

@@ -3,7 +3,7 @@
 本页是[CLI 接口](../cli-surface.md) 的子文档，收录「长上下文速度专项」的正文；内容不变，入口保留原节标题与锚点。
 
 `init --bundle zh-context-speed --out NEW_DIR` 选择随包专项副本，默认双题库不变。
-当前题库仍待人工审核，正式 init/create/plan 继续拒绝；隔离测试的受控审核响应不改变批准状态。
+随包题库已于 2026-10-18 完成[人工批准](../../bundles/CONTEXT-SPEED-APPROVAL-20261018.md)，可正式导出；未获批准的新生成语料仍会拒绝。批准不证明真实模型的上下文容量或性能。
 
 - `config create ... --profile context-speed --context-size 65536|131072|262144`：两个选项须同时提供。
   macOS 先刷新推荐再应用固定配方；Windows 保留 runtime receipt、设备选择和完整 argv 核验。

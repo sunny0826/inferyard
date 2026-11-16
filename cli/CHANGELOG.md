@@ -1,113 +1,103 @@
 # Changelog
 
-## Unreleased
+## 0.0.4
 
 ### Added
 
-- Controlled engine comparison (ADR 056). `compare --mode engine` checks the
-  identity gates for one block pair and never returns a performance verdict.
-  `compare-engines --left-runs ... --right-runs ...` judges at least three
-  interleaved blocks per side. It requires a fresh service per block, matched
-  prompt tokens and proven cold caches. A metric gets a winner only when every
-  block pair's median difference points the same way. Supported pairs are
-  llama-cpp with lmstudio (same GGUF) and llama-cpp with mlx-lm (different
-  model formats, scope `engine_and_model_format`). For the cross-format pair,
-  only the client decode interval (L08) and the first body text latency (L09,
-  measured after a leading `<think>` tag) decide; first content, E2E and
-  throughput are display only. The output directory holds
-  `engine-comparison.json` and an offline `report.html`, both sealed. `verify`
-  recomputes the result from the source runs; `--rerender` also checks the
-  HTML. The metric catalogue grows from 43 to 45 entries; existing IDs are
-  unchanged.
+- InferYard Studio is now a native six-page desktop application: task
+  preparation, Reports, Models, Downloads, Device and Settings. It drives the
+  separately installed CLI, manages only the model-service processes it owns,
+  and renders `studio.json` inside the main window without a WebView. The
+  context-speed workflow supports preparation, cancellation, six-column
+  results and history; report pages include N01–N04 throughput and L05 output
+  interval cards with explicit missing-measurement reasons.
+- Added the `zh-context-speed` bundle and the context-speed CLI workflow:
+  `config create --profile context-speed`, `plan --preset context-speed`,
+  `run --plan`, and read-only `speed-results`. The shipped corpus has an
+  explicit human approval; unapproved generated corpora remain blocked.
+- Controlled engine comparison (ADR 056/057). `compare --mode engine` checks
+  one block pair without issuing a performance verdict. `compare-plan` freezes
+  an interleaved plan, and `compare-engines --plan ... --batch ...` derives an
+  `engine-comparison.v2` result from the sealed handoff chain and complete
+  history. Supported pairs are llama-cpp with lmstudio (same GGUF) and
+  llama-cpp with mlx-lm (different model formats). The LM Studio pair cannot
+  produce a verdict while cold caches are unverifiable. The cross-format pair
+  judges only L08 client decode interval and L09 first body text latency;
+  first content, E2E and throughput are display only, and its conclusion scope
+  is `engine_and_model_format`, not the engine alone.
 - A new read-only `service discover` command enumerates TCP loopback listeners
-  and probes each endpoint with `GET /health` and `GET /v1/models` (2s timeout),
-  reporting the owning process PID, executable name and start ticks per listener
-  without filtering by process name. It never sends model requests, records only
-  status-code classes and model id lists, marks ports owned by multiple
-  processes as ambiguous instead of picking one, and exits 3 with limitations
-  when enumeration is partial. Discovery does not establish bind eligibility:
-  `config bind` still requires an explicit `--pid` and performs the full
-  identity and argv checks. Output schema is registered as
-  `--schema service_discovery`; it covers all four result shapes, including
-  the cancellation shape (exit 130, `status=interrupted`, details null).
-- A new read-only `engine check` command re-verifies a local engine with the
-  same checks as `config create`: the bounded `--version` subprocess query
-  against the frozen version pattern (30s timeout; macOS exec-time validation
-  of freshly extracted ad-hoc-signed binaries can reach ~12s), the macOS dylib
-  manifest rules and the Windows runtime receipt verification. It never
-  creates directories, writes files, starts services or sends model requests.
-  The input surface is platform-asymmetric: macOS requires `--engine FILE`
-  and Windows requires `--runtime-receipt FILE`; mismatched or conflicting
-  arguments exit 2. Eligible and ineligible outcomes both exit 0 — an explicit
-  deviation from the device-check family's blocked→2 semantics, because this
-  query blocks nothing and `config create` remains the final authority — with
-  ineligibility reported as one fixed reason from the contract table; tool
-  errors exit 4 with redacted diagnostics. On macOS, where no device preflight
-  selects a mode, details report per-mode results `modes: {cpu, metal}` (metal
-  requires the metal dylib in the manifest); Windows reports the verified
-  receipt profile `mode` (`cpu`/`cuda`). `reported_version` carries the
-  engine's own measured version line while `expected_release` is honestly
-  labeled as the expected constant. Receipt paths are handed to the shared
-  verifier unresolved, so a symlinked receipt is rejected exactly like
-  `config create`. A passing check never confers candidate
-  eligibility. Output schema is registered as `--schema engine_check`.
+  and probes `GET /health` and `GET /v1/models`, reporting process identity
+  without sending model requests. Partial enumeration exits 3. Discovery does
+  not establish bind eligibility: `config bind` still requires `--pid` and the
+  full identity checks. The `service_discovery` schema covers all outcomes.
+- A new read-only `engine check` command repeats the local engine version,
+  macOS dylib manifest and Windows runtime-receipt checks without writing
+  files or starting services. Eligible and ineligible outcomes both exit 0;
+  malformed inputs exit 2 and tool errors exit 4. A passing check does not
+  confer candidate eligibility.
+- The metric catalogue grows from 43 to 46 entries: L08 client decode
+  interval, L09 first body text latency and N04 aggregate output-token
+  throughput are new; existing IDs are unchanged. `studio.json` adds optional
+  throughput and output-block-interval projections, and Studio displays the
+  N01–N04 cards without filling unavailable measurements with zero.
+- Studio now has a GitHub Actions release-candidate workflow with native
+  macOS arm64, Windows x64 and Linux x64 builds, a checked manifest and
+  `SHA256SUMS.studio`. The unified publish workflow verifies both CLI and
+  Studio candidates before creating a GitHub draft and runs post-PyPI install
+  smoke checks on all three platforms.
 
 ### Changed
 
-- Internal: reading a frozen plan now validates each distinct bundle once
-  per read and reuses the immutable Document across bindings, and `read_trial`
-  now reads and verifies each request body once per read, sharing the verified
-  row with the message, strict-output and cache proofs instead of re-reading
-  per proof. The first access to a prepared body still re-reads and checks
-  the verified row digest, so tampering after the scan is still rejected on
-  first access, and a fresh read re-verifies. Commands that re-read frozen
-  plans without the command-local validation cache (`verify`,
-  `speed-results`, `compare-engines`, `compare-plan`, `repeat-summary`,
-  `overhead`, `progress`) benefit most; in a synthetic default two-bundle
-  plan the measured read drops from about 447 ms to about 45 ms median. The
-  measurement implementation identity changes again within this unreleased
-  series; runs made between these entries are not comparable as the same
-  implementation.
-- Internal: removed redundant checks found by a simplification review: a
-  hand-written command metavar (help now lists all 29 top-level commands, adding
-  `speed-results` and `compare-engines`), a test-only application wrapper for
-  engine-block reports, an unreachable `macos_live_not_supported` next-step
-  branch, duplicate manifest container checks in `read_trial`, duplicate
-  layout 2 message-structure checks, a redundant prepared-request ordinal set
-  and unused host-lock created-path state. `verify_lab` now returns the
-  already-verified engine observation so `read_trial` and `read_run_projection`
-  reuse it instead of re-verifying. Whole-bundle review no longer re-evaluates
-  inherited proofs when a current approval already covers a validated
-  Document (mutable dict inputs keep full validation), and context-speed
-  freezing reviews the loaded Document directly. The five execution states
-  derive from a single contracts source. The `device-check` human summary no
-  longer claims Windows batch live experiments are unsupported; it now states
-  the adapter whitelist. The measurement and scoring implementation identity
-  and the scorer hash change, so runs created before this change cannot be
-  resumed or compared as the same implementation by runs created after it.
-  Subsystem docs were corrected for stale paths and over-broad wording, and
-  `experiment.json` is documented as a rebuildable convenience copy.
-- Internal: moved shared exception types to `inferyard.errors`, made cross-package
-  helpers public, and moved pure contract rules (canonical JSON, lab observation
-  parsing, engine timing mapping, plan math, context-speed profile constants,
-  power policy shape and bundle semantics) into `inferyard.contracts`. The
-  measurement/scoring implementation identity and the scorer hash change, so runs
-  created before this change cannot be resumed or compared as the same
-  implementation by runs created after it. Command handlers now return domain data
-  and the application layer builds command results. Trial ledger reconstruction moved
-  from `inferyard.evidence` to `inferyard.analysis`; evidence keeps storage, sealing,
-  journals and format checks. Provisioning (engine/model source download, runtime archive/profiles/verification) moved from `platforms` and `config` into `inferyard.provisioning`. The remaining package-level import cycles were removed; help, version and schema queries no longer import live backend packages. The responsibility file lists moved to per-role JSON files and now close under static imports. Studio now reads the frozen context-speed constants from their new CLI locations.
+- Ordinary reports now contain only `studio.json` (`studio-report.v1`). This
+  is a rebuildable display projection, not verifiable evidence; the original
+  run, batch and frozen plan remain the evidence authority. Studio no longer
+  offers a report-verification action or depends on HTML files.
+- `progress` now emits `progress.v2`: report state is only `missing` or
+  `present`, with no verify stage. `run` accepts explicit `--service-binding`
+  and `--output-root` inputs for frozen batch execution and handoff evidence.
+- Installation verification is now `installed_safe_checks.v4`, binding the
+  installed Studio JSON schema, current JSON layouts and old-format rejection
+  to the wheel and source commit. Jinja2 and MarkupSafe are no longer runtime
+  dependencies.
+- Frozen-plan reads validate each distinct bundle once per read and reuse
+  verified request rows across message, strict-output and cache proofs. In a
+  synthetic default two-bundle plan, the measured read dropped from about
+  447 ms to about 45 ms median; this scoped measurement is not a claim about
+  model execution or every report workload.
+- Internal: command handlers return domain data and the application layer
+  builds command results. Pure rules moved into contracts, provisioning and
+  analysis responsibilities were separated, package import cycles were
+  removed, and redundant reads and validation branches were simplified. The
+  measurement/scoring implementation identities changed; affected runs do not
+  inherit resume or comparison eligibility across those identities.
 
 ### Removed
 
-- Retired the standalone `inferyard-observer` project, its build and offline
-  analysis scripts, and its dedicated tests. Existing monitoring logs remain
-  untouched; current source no longer reads or writes the standalone format.
-  CLI resource sampling, safety checks, overhead experiments, and Studio
-  retain their existing behavior.
-- Removed unused Studio headless configuration, Vite setup, CLI wrappers, and
-  obsolete Web-era helpers. Removed ignored internal CLI report-version,
-  Windows binding, and rerun-context arguments without changing validation.
+- Retired product-level offline HTML reports, `report-check`, `report
+  --comparison`, `--rerender`, presentation-seal writing and HTML/template
+  identity. `verify --path <studio-report-dir>` returns
+  `studio_report_not_verifiable` with exit 4 instead of treating display JSON
+  as sealed evidence.
+- Retired the standalone `inferyard-observer` project and obsolete Web-era
+  Studio helpers. Existing monitoring logs remain untouched, and current
+  source does not read or write the standalone observer format.
+
+### Compatibility and evidence boundaries
+
+- The public envelope remains `schema_version = 3`, but artifact layouts are
+  not uniformly backward compatible. Ordinary old reports are not read by the
+  new Studio; comparison v1–v4, engine-fit manifest v2, old engine-comparison
+  layouts, extension packets v1 and progress v1 are rejected under their
+  respective contracts. No automatic migration or conversion is provided.
+  Valid original runs can be used to derive new outputs in new directories.
+- Engine comparisons now use `engine-comparison.json` (`format_version=2`)
+  without HTML or presentation seals. Verification recomputes the JSON from
+  the frozen plan, batch and source runs. A cancelled, failed or unplanned
+  history blocks a verdict instead of silently reducing the planned scope.
+- Corrupt JSON, bad hashes or seals, and source mismatches remain evidence
+  errors rather than normal unsupported-version outcomes. Missing
+  measurements stay null with reasons. `quality.complete` and a readable
+  `studio.json` do not mean `verified`.
 
 ## 0.0.3
 

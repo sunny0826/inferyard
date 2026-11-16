@@ -65,17 +65,28 @@ version while lacking newer source features. The specialist task requires engine
 verification and the context-speed result schema; an older CLI shows a settings action
 instead of claiming that an unverified engine is ready.
 
-To cross-build macOS arm64, Windows amd64, and Linux amd64 and assemble unsigned distributions:
+For development, cross-build macOS arm64, Windows amd64, and Linux amd64 and assemble
+unsigned distributions:
 
 ```sh
 mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct sh scripts/build-all.sh
 ```
 
 [build-all.sh](scripts/build-all.sh) compiles the three binaries into `build/<os>-<arch>/`
-and invokes [package.py](scripts/package.py), using mise-managed Python, to assemble
-`dist/inferyard-studio-v<version>-<os>-<arch>/`. Packaging copies binaries and writes launch
-instructions; it does not sign, notarize, or publish. On macOS, launch the packaged app with
+and invokes [package.py](scripts/package.py), using mise-managed Python, to assemble new
+`dist/inferyard-studio-v<version>-<os>-<arch>/` directories. Packaging copies the binaries,
+MIT LICENSE and launch instructions, and refuses to overwrite an existing distribution.
+It does not sign, notarize, or publish. On macOS, launch the packaged app with
 `open "InferYard Studio.app"` to use desktop notifications.
+
+Formal release packages are built and uploaded by
+[Studio release candidate](../.github/workflows/studio-release.yml), not by this local
+cross-build. Its macOS, Windows and Linux jobs each build natively with `-tags release`
+and call `package.py --target TARGET --source-commit SHA --out NEW_DIR`. The workflow
+checks build provenance, creates tar.gz/zip archives and a three-platform manifest, and
+generates `SHA256SUMS.studio`. The unified
+[publish workflow](../.github/workflows/publish.yml) verifies both CLI and Studio
+candidates before creating a GitHub draft with all nine attachments.
 
 The version's single source is [mygo.config.ts](mygo.config.ts). It carries only the MyGo
 embed metadata and is not a web frontend build configuration; there is no frontend install
@@ -223,6 +234,15 @@ binding. Logs, suite metadata, failure screenshots and the Xcode result stay in 
 requirements and the coverage matrix. CI runs Full on macOS; Windows/Linux
 native UI coverage is not claimed.
 
+The release-candidate workflow runs a separate production package smoke on macOS.
+`ReleaseUITests` launches the exact packaged `.app` without `--debug-ui`, injects
+an isolated HOME, visits Reports, Models, Downloads, Device and Settings, and opens
+the `studio.json` produced by the real CLI/fake-engine chain. Its runner, logs,
+screenshots and Xcode result are retained separately from the preview evidence.
+This checks the production package and report-reading path; it does not start a
+real model or replace the Full preview suite. Windows/Linux release jobs verify
+native compilation, packaging and the command-line boundary only, not native UI.
+
 Keep checks that demonstrate product or logical invariants, or protect packaging
 and release; follow the [test policy](../docs/testing.md). `go test` includes compilation
 and its default vet checks; there is no separate broad vet gate.
@@ -237,7 +257,8 @@ Also check the development preview and the release override:
 ```sh
 mise exec -- go test -tags ui_debug . ./internal/pages
 mise exec -- go test -tags ui_debug,release .
-mise exec -- python -m unittest discover -s scripts -p test_package.py
+mise exec -- python -m unittest discover -s scripts -p 'test_*.py'
+mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
 ```
 
 The tagged page tests include `TestPreviewBenchmarkParity`: shared scenarios compare

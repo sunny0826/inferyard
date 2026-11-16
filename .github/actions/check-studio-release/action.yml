@@ -1,0 +1,59 @@
+name: Check a fixed Studio release candidate
+description: Validate the manual source run and stage the exact reviewed Studio bytes
+inputs:
+  run-id:
+    required: true
+    description: Successful manually dispatched Studio release candidate run ID
+  source-commit:
+    required: true
+    description: Full source SHA matching this dispatch ref
+  manifest-sha256:
+    required: true
+    description: Reviewed Studio candidate manifest SHA256
+  token:
+    required: true
+    description: Read-only Actions access for the source artifact
+runs:
+  using: composite
+  steps:
+    - name: Bind download to the requested source and trusted workflow
+      uses: actions/github-script@v9
+      env:
+        SOURCE_RUN: ${{ inputs.run-id }}
+        SOURCE_COMMIT: ${{ inputs.source-commit }}
+        MANIFEST_SHA: ${{ inputs.manifest-sha256 }}
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const { SOURCE_RUN, SOURCE_COMMIT, MANIFEST_SHA } = process.env;
+          if (!/^[0-9]+$/.test(SOURCE_RUN) || !/^[0-9a-f]{40}$/.test(SOURCE_COMMIT)
+              || !/^[0-9a-f]{64}$/.test(MANIFEST_SHA) || context.sha !== SOURCE_COMMIT) {
+            throw new Error('Dispatch ref, source SHA or Studio digest is invalid');
+          }
+          const { data: run } = await github.rest.actions.getWorkflowRun({
+            ...context.repo, run_id: Number(SOURCE_RUN)
+          });
+          if (run.head_sha !== SOURCE_COMMIT || run.conclusion !== 'success'
+              || run.event !== 'workflow_dispatch'
+              || run.path !== '.github/workflows/studio-release.yml'
+              || run.head_repository.full_name !== `${context.repo.owner}/${context.repo.repo}`) {
+            throw new Error('Studio candidate run origin does not match the reviewed source');
+          }
+    - uses: actions/download-artifact@v8
+      with:
+        name: studio-release-candidate
+        run-id: ${{ inputs.run-id }}
+        repository: ${{ github.repository }}
+        github-token: ${{ inputs.token }}
+        path: studio-candidate
+    - name: Verify Studio candidate snapshots and stage exact bytes
+      shell: bash
+      env:
+        EXPECTED_MANIFEST: ${{ inputs.manifest-sha256 }}
+        EXPECTED_COMMIT: ${{ inputs.source-commit }}
+      run: |
+        mise exec -- python studio/scripts/verify_release_candidate.py \
+          --manifest studio-candidate/studio-release-manifest.json \
+          --manifest-sha256 "$EXPECTED_MANIFEST" \
+          --source-commit "$EXPECTED_COMMIT" \
+          --stage studio-approved-files

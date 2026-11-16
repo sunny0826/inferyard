@@ -111,7 +111,7 @@ mise exec -- uv run --frozen python scripts/prepare_release_candidate.py --manif
 mise exec -- uv run --frozen python scripts/verify_release_candidate.py --manifest CANDIDATE/manifest.json --manifest-sha256 PRODUCER_OUTPUT_SHA --source-commit INTEGRATED_SHA --stage STAGE
 ```
 
-Use `BUILD/packages/inferyard-0.0.1-py3-none-any.whl` for `WHEEL` and
+Use `BUILD/packages/inferyard-0.0.4-py3-none-any.whl` for `WHEEL` and
 `BUILD/attachments/runtime-constraints.txt` for `CONSTRAINTS`. The build also
 verifies the sdist rebuild and the constraint-check file.
 `PRODUCER_OUTPUT_SHA` comes from the `manifest_sha256` field of
@@ -134,8 +134,8 @@ Verification binds source, version, license, manifest and artifact digests;
 staging uses the verified byte snapshot. `--packages-only` stages only the
 wheel/sdist while still running the full candidate verification. None of the
 commands above upload anything; the manual publish workflow defaults to
-`verify-only` mode and requires the source package-check run, the source
-commit and the candidate digest — see the
+`verify-only` mode and requires both candidate runs, both candidate digests
+and their shared source commit — see the
 [scripts README](scripts/README.md#社区资源与发行检查).
 See the [backlog](docs/backlog.md) for current candidate work and the
 remaining pre-release items.
@@ -144,36 +144,52 @@ scope; create a local commit after the relevant checks pass, and do not push.
 
 ## Preparing a release with GitHub Actions
 
+All formal release packages and uploads are produced by GitHub Actions. Local
+candidate commands above are development checks, not a release-upload path.
+
 1. Merge release docs and fixes through a PR first, freezing a clean final
    commit and version. Manually trigger
    [Package checks](https://github.com/sunny0826/inferyard/actions/workflows/package-check.yml)
-   on the `main` commit. The workflow runs the full regressions, build,
-   three-platform installation and candidate generation; a regular PR run
-   cannot serve as a release source.
-2. Download that `release-candidate` artifact and inspect `manifest.json`.
-   Record the `manifest_sha256` from the generation output, the full
-   `source_commit` and the source `run_id`; you can verify and stage locally
-   with the commands from the previous section.
-3. Trigger the
+   on the `main` commit. It runs the full regressions, build, three-platform
+   installation and CLI candidate generation. Trigger
+   [Studio checks](https://github.com/sunny0826/inferyard/actions/workflows/studio-check.yml)
+   for the native preview and real-CLI/fake-engine boundaries, and
+   [Model e2e](https://github.com/sunny0826/inferyard/actions/workflows/model-e2e.yml)
+   when its separately approved real-model scope is required.
+2. On the same source commit, manually trigger
+   [Studio release candidate](https://github.com/sunny0826/inferyard/actions/workflows/studio-release.yml).
+   Native macOS, Windows and Linux jobs build with `-tags release`, check the
+   packaged command boundary, and produce three archives. The macOS job also
+   launches the packaged production app with an isolated HOME and a real
+   CLI/fake-engine report. The assemble job writes
+   `studio-release-manifest.json` and `SHA256SUMS.studio`, then re-verifies the
+   exact bytes. A regular PR run of either candidate workflow cannot serve as
+   a release source.
+3. Inspect the two candidate manifests and generation output in Actions.
+   Record the CLI `run_id` and `manifest_sha256`, the Studio `studio_run_id`
+   and `studio_manifest_sha256`, and their shared full `source_commit`.
+4. Trigger the
    [publish workflow](https://github.com/sunny0826/inferyard/actions/workflows/publish.yml)
-   with a dispatch ref matching `source_commit`, passing those three values,
-   first using `destination=verify-only`. The verifier checks the manual-run
-   provenance, the manifest, the same-batch build/installation bytes, and
-   generates the attachment `SHA256SUMS`.
-4. After the rehearsal passes, use the same inputs with
+   with a dispatch ref matching `source_commit`, passing all five values and
+   first using `destination=verify-only`. The verifier checks both manual-run
+   origins, both manifests, and the same-batch bytes without publishing.
+5. After the rehearsal passes, use the same inputs with
    `destination=github-release`. The workflow verifies again and creates the
-   `v0.0.1` draft with the wheel, sdist, runtime constraints, the constraint
-   verification file and `SHA256SUMS`. Add the version's features, legacy-data
-   handling, installation methods, actual platform coverage, sources and
-   digests, then publish the draft separately.
+   `v0.0.4` draft with nine attachments: five CLI files, three Studio
+   archives, and `SHA256SUMS.studio`. The same job re-downloads every draft
+   attachment and compares it with the verified candidate bytes. Edit the
+   release notes on GitHub with features, compatibility boundaries,
+   installation methods, actual platform coverage, sources and digests.
+6. With explicit publication approval, use `destination=pypi` with the same
+   inputs. The workflow publishes the verified wheel and sdist, then runs the
+   `pypi-smoke` installation matrix on Linux, Windows and macOS. After those
+   checks pass and the draft is reviewed, publish the draft on GitHub.
 
-Before publishing, re-download the draft attachments and confirm their
-digests match the verified candidate. Do not rebuild and replace uploaded
-files after the candidate is prepared; rebuild the candidate and installation
-results instead when package content must change. Actions artifacts have a
-retention period, so release records should keep the sources and digests.
-The source tag must point at the candidate's full `source_commit`; the
-publish workflow refuses if it already exists and points elsewhere.
+Do not rebuild and replace uploaded files after either candidate is prepared;
+rebuild the candidates and their evidence instead when package content must
+change. Actions artifacts have a retention period, so release records should
+keep the sources and digests. The source tag must point at the candidates'
+full `source_commit`; the publish workflow refuses if it points elsewhere.
 
 `pypi` / `both` actually upload to PyPI; configure the project name and a
 Trusted Publisher matching this repository's `publish.yml` and `pypi`

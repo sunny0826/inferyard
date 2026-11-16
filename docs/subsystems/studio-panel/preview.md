@@ -6,6 +6,9 @@
 不注册 `--debug-ui`，帮助不列出它，显式传入时退出 2。`build-all.sh` 固定 `-tags release`，
 覆盖环境传入的标签；`package.py` 在写入分发目录前读取全部二进制的 Go build info，
 拒绝缺少 `release` 标签的产物。`release` 与 `ui_debug` 同时存在时仍排除预览。
+正式候选工作流另核验目标平台和 VCS 来源，三平台分别原生构建；`ReleaseUITests`
+直接启动正式 `.app` 并注入隔离 HOME，不经过本文的 preview 分派。两种窗口证据
+分别保存，不能用 production smoke 代替 Full preview，也不能用 preview 代替正式包验收。
 
 `--debug-ui` 在 `core.New` 之前分流至 `pages.NewPreview`，只创建原生窗口及内存
 `previewSession`，不创建真实服务、运行队列、事件订阅或桌面通知，不读取用户设置与工作区证据。

@@ -1,15 +1,98 @@
 """Release rejection paths use synthetic packages and never install or contact services."""
 
+import io
 import json
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+from inferyard.contracts.comparison_types import JSONRecord
 
 from scripts.prepare_release_candidate import prepare
-from scripts.release_common import COMMANDS, artifact_files, sha
+from scripts.release_common import (
+    COMMANDS,
+    EXIT_CODES,
+    STUDIO_KIND,
+    ApprovedFile,
+    artifact_files,
+    sha,
+    studio_report_schema,
+    wheel_resource_files,
+)
 from tests.unit.test_release_fixture import COMMIT, build_fixture
+
+
+def _json_text(payload: JSONRecord) -> str:
+    buffer = io.StringIO()
+    json.dump(payload, buffer)
+    return buffer.getvalue()
+
+
+def _pinned_environment() -> JSONRecord:
+    return {
+        "python": "3.15.2",
+        "tool_version": "0.0.4",
+        "dependencies": {"pytest": None, "ruff": None, "idna": "3.20"},
+    }
+
+
+def _probe_process(argv: list[str], files: dict[str, ApprovedFile]) -> subprocess.CompletedProcess:
+    payload = {
+        "version": "0.0.4",
+        "installed_root": "/synthetic",
+        "tool_source_hash": sha(b"tool"),
+        "scorer_hash": sha(b"scorer"),
+        "resource_files": wheel_resource_files(files["wheel"].raw),
+        "current_studio_report_kind": STUDIO_KIND,
+        "unsupported_report_formats_rejected": list(range(1, 9)),
+    }
+    return subprocess.CompletedProcess(argv, 0, _json_text(payload), "")
+
+
+def _schema_process(argv: list[str]) -> subprocess.CompletedProcess:
+    return subprocess.CompletedProcess(argv, 0, _json_text(studio_report_schema()), "")
+
+
+def _command_payload(name: str, pinned: JSONRecord) -> JSONRecord:
+    if name == "verify":
+        return {
+            "command": "verify",
+            "status": "error",
+            "limitations": ["studio_report_not_verifiable"],
+        }
+    if name == "verify-legacy-report":
+        return {"command": "verify", "status": "blocked", "limitations": ["unsupported_format"]}
+    if name in ("different-versions", "persistent-tool-unchanged"):
+        return {**pinned, "dependencies": {**pinned["dependencies"], "idna": "3.10"}}
+    if name == "synthetic-upgrade-versions":
+        return {**pinned, "tool_version": "0.0.5.dev0"}
+    return pinned
+
+
+def _drifted_member(name: str, raw: bytes, change: str) -> bytes:
+    if name.endswith("/licenses/LICENSE") and change == "license_bytes":
+        return b"changed license"
+    if name.endswith("/METADATA") and change == "license_metadata":
+        return raw.replace(b"License-Expression: MIT", b"License-Expression: Apache-2.0")
+    if name.endswith("/METADATA") and change == "version_metadata":
+        return raw.replace(b"Version: 0.0.4", b"Version: 0.0.5")
+    if name.endswith("/entry_points.txt") and change == "entrypoint":
+        return raw.replace(b"inferyard =", b"wrong-command =")
+    return raw
+
+
+def _assert_completed_matrix(
+    result: JSONRecord, manifest: Path, files: dict[str, ApprovedFile]
+) -> None:
+    assert result["kind"] == "installed_safe_checks.v4"
+    assert result["status"] == "passed"
+    assert result["build_manifest_sha256"] == sha(manifest.read_bytes())
+    assert result["artifact_sha256"] == {r: f.digest for r, f in files.items()}
+    assert result["studio_report_schema"]["$id"] == studio_report_schema()["$id"]
+    assert result["studio_json"]["schema_validated"] is True
+    assert result["studio_json"]["verify_limitations"] == ["studio_report_not_verifiable"]
+    assert set(result["probe_checks"]) == {"probe-install-a", "probe-install-b", "probe-rollback"}
 
 
 def test_prepare_cli_and_verify_cli(tmp_path):
@@ -53,12 +136,12 @@ def test_prepare_cli_and_verify_cli(tmp_path):
 
 
 @pytest.mark.parametrize("change", ["dirty", "dev", "commit", "old", "checks", "license", "urls"])
-def test_build_refusal(tmp_path, change):
+def test_build_refusal(tmp_path: Path, change: str) -> None:
     manifest, data, installed, _ = build_fixture(tmp_path / "original")
     if change == "dirty":
         data["source_dirty"] = True
     elif change == "dev":
-        data["version"] = "0.0.3.dev0"
+        data["version"] = "0.0.4.dev0"
     elif change == "commit":
         data["source_commit"] = "b" * 40
     elif change == "old":
@@ -69,7 +152,8 @@ def test_build_refusal(tmp_path, change):
         data["license"] = "Apache-2.0"
     else:
         data["project_urls"] = {}
-    manifest.write_text(json.dumps(data), encoding="utf-8")
+    with manifest.open("w", encoding="utf-8") as stream:
+        json.dump(data, stream)
     with pytest.raises(ValueError):
         prepare(manifest, [installed], tmp_path / "candidate", COMMIT)
     assert not (tmp_path / "candidate").exists()
@@ -183,7 +267,7 @@ def test_run_installed_failure_cannot_write_passed_result(tmp_path, monkeypatch)
     assert not (tmp_path / "installed/result.json").exists()
 
 
-def test_synthetic_upgrade_is_next_development_version(tmp_path):
+def test_synthetic_upgrade_is_next_development_version(tmp_path: Path) -> None:
     import zipfile
 
     from tests.packaging.fixture_wheel import make_upgrade_fixture
@@ -191,13 +275,15 @@ def test_synthetic_upgrade_is_next_development_version(tmp_path):
     manifest, build, _, _ = build_fixture(tmp_path / "original")
     wheel = next(r for r in build["artifacts"] if r["role"] == "wheel")
     upgraded = make_upgrade_fixture(manifest.parent / wheel["path"], tmp_path)
-    assert upgraded.name == "inferyard-0.0.4.dev0-py3-none-any.whl"
+    assert upgraded.name == "inferyard-0.0.5.dev0-py3-none-any.whl"
     with zipfile.ZipFile(upgraded) as archive:
-        assert b'__version__ = "0.0.4.dev0"' in archive.read("inferyard/__init__.py")
-        assert b"Version: 0.0.4.dev0" in archive.read("inferyard-0.0.4.dev0.dist-info/METADATA")
+        assert b'__version__ = "0.0.5.dev0"' in archive.read("inferyard/__init__.py")
+        assert b"Version: 0.0.5.dev0" in archive.read("inferyard-0.0.5.dev0.dist-info/METADATA")
 
 
-def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch):
+def test_simulated_completed_matrix_binds_actual_snapshots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Simulates subprocess outputs only; not an installed-platform acceptance record."""
     from tests.helpers import fixture_run
     from tests.packaging import run_installed
@@ -207,46 +293,20 @@ def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch
     fixtures = tmp_path / "fixtures"
     fixtures.mkdir()
     synthetic = fixture_run(fixtures / "synthetic-runs")
-    (fixtures / "expected.json").write_text(
-        json.dumps({"fixture_relative": synthetic.relative_to(fixtures).as_posix()}),
-        encoding="utf-8",
-    )
+    with (fixtures / "expected.json").open("w", encoding="utf-8") as stream:
+        json.dump({"fixture_relative": synthetic.relative_to(fixtures).as_posix()}, stream)
     out = tmp_path / "installed"
-    monkeypatch.setattr(run_installed.shutil, "which", lambda name: sys.executable)
-    monkeypatch.setattr(run_installed.sys, "platform", "darwin")
-    monkeypatch.setattr(run_installed.platform, "machine", lambda: "arm64")
-    pinned = {
-        "python": "3.15.2",
-        "tool_version": "0.0.3",
-        "dependencies": {"pytest": None, "ruff": None, "idna": "3.20"},
-    }
-    calls = []
+    calls: list[str] = []
+    pinned = _pinned_environment()
 
-    def fake_run(argv, **kwargs):
+    def fake_run(argv: list[str], **_: str | int | bool | Path | dict[str, str]) -> subprocess.CompletedProcess:
         name = COMMANDS[len(calls)]
         calls.append(name)
         args = [str(item) for item in argv]
         if name.startswith("probe-"):
-            from scripts.release_common import (
-                STUDIO_KIND,
-                sha,
-                wheel_resource_files,
-            )
-
-            payload = {
-                "version": "0.0.3",
-                "installed_root": "/synthetic",
-                "tool_source_hash": sha(b"tool"),
-                "scorer_hash": sha(b"scorer"),
-                "resource_files": wheel_resource_files(files["wheel"].raw),
-                "current_studio_report_kind": STUDIO_KIND,
-                "unsupported_report_formats_rejected": list(range(1, 9)),
-            }
-            return subprocess.CompletedProcess(argv, 0, json.dumps(payload), "")
+            return _probe_process(argv, files)
         if name == "schema-studio-report":
-            from scripts.release_common import studio_report_schema
-
-            return subprocess.CompletedProcess(argv, 0, json.dumps(studio_report_schema()), "")
+            return _schema_process(argv)
         if name == "init":
             (out / "中文 workspace").mkdir()
             (out / "中文 workspace/preparation.json").write_bytes(b"frozen")
@@ -255,31 +315,12 @@ def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch
 
             roots = [Path(args[args.index("--runs") + 1])]
             write_studio_report(roots, Path(args[args.index("--out") + 1]))
-        if name == "verify":
-            payload = {
-                "command": "verify",
-                "status": "error",
-                "limitations": ["studio_report_not_verifiable"],
-            }
-        elif name == "verify-legacy-report":
-            payload = {
-                "command": "verify",
-                "status": "blocked",
-                "limitations": ["unsupported_format"],
-            }
-        elif name in ("different-versions", "persistent-tool-unchanged"):
-            payload = {**pinned, "dependencies": {**pinned["dependencies"], "idna": "3.10"}}
-        elif name == "synthetic-upgrade-versions":
-            payload = {**pinned, "tool_version": "0.0.4.dev0"}
-        else:
-            payload = pinned
-        return subprocess.CompletedProcess(
-            argv,
-            {"uvx-cold-offline": 1, "verify": 4, "verify-legacy-report": 2}.get(name, 0),
-            json.dumps(payload),
-            "",
-        )
+        payload = _command_payload(name, pinned)
+        return subprocess.CompletedProcess(argv, EXIT_CODES.get(name, 0), _json_text(payload), "")
 
+    monkeypatch.setattr(run_installed.shutil, "which", lambda _: sys.executable)
+    monkeypatch.setattr(run_installed.sys, "platform", "darwin")
+    monkeypatch.setattr(run_installed.platform, "machine", lambda: "arm64")
     monkeypatch.setattr(run_installed.subprocess, "run", fake_run)
     run_installed.run_matrix(
         manifest.parent / files["wheel"].path,
@@ -289,24 +330,14 @@ def test_simulated_completed_matrix_binds_actual_snapshots(tmp_path, monkeypatch
         manifest,
     )
     result = json.loads((out / "result.json").read_bytes())
-    from scripts.release_common import studio_report_schema
-
-    assert result["kind"] == "installed_safe_checks.v4"
-    assert result["status"] == "passed"
-    assert result["build_manifest_sha256"] == sha(manifest.read_bytes())
-    assert result["artifact_sha256"] == {r: f.digest for r, f in files.items()}
-    assert result["studio_report_schema"]["$id"] == studio_report_schema()["$id"]
-    assert result["studio_json"]["schema_validated"] is True
-    assert result["studio_json"]["verify_limitations"] == ["studio_report_not_verifiable"]
-    assert set(result["probe_checks"]) == {"probe-install-a", "probe-install-b", "probe-rollback"}
+    _assert_completed_matrix(result, manifest, files)
     prepare(manifest, [out / "result.json"], tmp_path / "candidate", COMMIT)
 
 
 @pytest.mark.parametrize(
     "change", ["license_bytes", "license_metadata", "version_metadata", "entrypoint"]
 )
-def test_wheel_metadata_and_license_drift_are_rejected(tmp_path, change):
-    import io
+def test_wheel_metadata_and_license_drift_are_rejected(tmp_path: Path, change: str) -> None:
     import zipfile
 
     manifest, data, installed, _ = build_fixture(tmp_path / "original")
@@ -315,19 +346,11 @@ def test_wheel_metadata_and_license_drift_are_rejected(tmp_path, change):
     output = io.BytesIO()
     with zipfile.ZipFile(path) as source, zipfile.ZipFile(output, "w") as target:
         for name in source.namelist():
-            raw = source.read(name)
-            if name.endswith("/licenses/LICENSE") and change == "license_bytes":
-                raw = b"changed license"
-            elif name.endswith("/METADATA") and change == "license_metadata":
-                raw = raw.replace(b"License-Expression: MIT", b"License-Expression: Apache-2.0")
-            elif name.endswith("/METADATA") and change == "version_metadata":
-                raw = raw.replace(b"Version: 0.0.3", b"Version: 0.0.4")
-            elif name.endswith("/entry_points.txt") and change == "entrypoint":
-                raw = raw.replace(b"inferyard =", b"wrong-command =")
-            target.writestr(name, raw)
+            target.writestr(name, _drifted_member(name, source.read(name), change))
     path.write_bytes(output.getvalue())
     record.update(bytes=len(output.getvalue()), sha256=sha(output.getvalue()))
-    manifest.write_text(json.dumps(data), encoding="utf-8")
+    with manifest.open("w", encoding="utf-8") as stream:
+        json.dump(data, stream)
     with pytest.raises(ValueError, match="license|metadata|entry_point"):
         prepare(manifest, [installed], tmp_path / "candidate", COMMIT)
 
@@ -343,7 +366,9 @@ def test_symlink_artifact_is_rejected(tmp_path):
         prepare(manifest, [installed], tmp_path / "candidate", COMMIT)
 
 
-def test_check_distribution_cli_produces_bound_v2_build(tmp_path, monkeypatch, capsys):
+def test_check_distribution_cli_produces_bound_v2_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
     import tarfile
 
     from scripts import check_distribution
@@ -355,11 +380,11 @@ def test_check_distribution_cli_produces_bound_v2_build(tmp_path, monkeypatch, c
     sdist = next(r for r in data["artifacts"] if r["role"] == "sdist")
     with tarfile.open(manifest.parent / sdist["path"]) as archive:
         archive.extractall(checkout, filter="data")
-    monkeypatch.setattr(check_distribution, "ROOT", checkout / "inferyard-0.0.3")
+    monkeypatch.setattr(check_distribution, "ROOT", checkout / "inferyard-0.0.4")
     monkeypatch.setattr(
         check_distribution.subprocess,
         "check_output",
-        lambda argv, **kw: COMMIT if "rev-parse" in argv else b"",
+        lambda argv, **_: COMMIT if "rev-parse" in argv else b"",
     )
     proof = manifest.parent / "constraints.txt.validation.json"
     proof.write_bytes((manifest.parent / "constraints.json").read_bytes())
@@ -384,7 +409,8 @@ def test_check_distribution_cli_produces_bound_v2_build(tmp_path, monkeypatch, c
     check_distribution.main()
     assert json.loads(capsys.readouterr().out)["candidate_status"] == "build_checked"
     evidence["build_manifest_sha256"] = sha(output.read_bytes())
-    installed.write_text(json.dumps(evidence), encoding="utf-8")
+    with installed.open("w", encoding="utf-8") as stream:
+        json.dump(evidence, stream)
     prepare(output, [installed], tmp_path / "candidate", COMMIT)
 
 
