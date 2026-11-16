@@ -37,7 +37,7 @@ final class ReleaseUITests: XCTestCase {
         click("模型")
         expectText("选择模型与引擎")
         click("下载")
-        expectText("测量单位")
+        expectText("新建下载任务")
         click("设备")
         expectExists(app.buttons["刷新设备"], timeout: 10)
         click("设置")
