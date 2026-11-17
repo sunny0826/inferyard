@@ -196,3 +196,20 @@ func stepTrack(c *ui.Context, number, title string, fn func()) {
 		})
 	})
 }
+
+// selectField is a dropdown named after its field. MyGo exports the trigger as
+// an accessibility leaf, so a field name passed as its Label replaces the
+// visible option as the whole accessible description; the current option is
+// exported as the trigger's value so assistive technology still reads it.
+func selectField[T comparable](c *ui.Context, name string, selected *T, options []components.NativeSelectOption[T]) ui.Element {
+	return ui.Field(c, name, func() {
+		current := ""
+		for _, option := range options {
+			if option.Value == *selected {
+				current = option.Label
+				break
+			}
+		}
+		components.NativeSelect(c, selected, options).Trigger.Label(name).Value(current)
+	})
+}

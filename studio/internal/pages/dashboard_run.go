@@ -64,16 +64,8 @@ func (w *viewState) candidateView(c *ui.Context) {
 	if !w.checks.Supported {
 		engineHint = "当前 CLI 不支持引擎核验；列表中的引擎尚未核验。"
 	}
-	// NativeSelect names its trigger after the current option, so the field
-	// label would otherwise not name the control. Passing it as the trigger's
-	// accessible label keeps the control findable while the chosen value stays
-	// the visible text.
-	ui.Field(c, termCandidateEngine, func() {
-		components.NativeSelect(c, &w.engine, engineOptions).Trigger.Label(termCandidateEngine)
-	}).Description(engineHint)
-	ui.Field(c, "测评模型", func() {
-		components.NativeSelect(c, &w.model, modelOptions).Trigger.Label("测评模型")
-	}).Description("这里是选择本次测评模型的唯一入口；模型页只读展示已安装资源。")
+	selectField(c, termCandidateEngine, &w.engine, engineOptions).Description(engineHint)
+	selectField(c, "测评模型", &w.model, modelOptions).Description("这里是选择本次测评模型的唯一入口；模型页只读展示已安装资源。")
 	if w.checks.Checking > 0 {
 		ui.Text(c, fmt.Sprintf("正在核验 %d 个引擎…", w.checks.Checking)).TextColor(c.Theme().TextMuted)
 	}
@@ -212,9 +204,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 		for _, p := range w.processes {
 			options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
 		}
-		ui.Field(c, "已启动的本机进程", func() {
-			components.NativeSelect(c, &w.process, nativeOptions(options)).Trigger.Label("已启动的本机进程")
-		}).Description("请选择已启动的服务进程；绑定仍会核验身份。")
+		selectField(c, "已启动的本机进程", &w.process, nativeOptions(options)).Description("请选择已启动的服务进程；绑定仍会核验身份。")
 		field(c, "endpoint", &w.bindEndpoint).Description("必填；本机服务的 http 或 https URL。").Error(urlError(w.bindEndpoint))
 		if button(c, "连接并核验进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
 			if message := urlError(w.bindEndpoint); message != "" {

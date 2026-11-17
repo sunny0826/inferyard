@@ -81,20 +81,16 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		return false
 	}
 	w := s.speed
-	ui.Field(c, "测评类型", func() {
-		components.NativeSelect(c, &w.selected, []components.NativeSelectOption[bool]{
-			{Value: false, Label: "常规测评"}, {Value: true, Label: "长上下文速度"},
-		}).Trigger.Label("测评类型")
+	selectField(c, "测评类型", &w.selected, []components.NativeSelectOption[bool]{
+		{Value: false, Label: "常规测评"}, {Value: true, Label: "长上下文速度"},
 	})
 	if !w.selected {
 		return false
 	}
-	ui.Field(c, "上下文档位", func() {
-		components.NativeSelect(c, &w.context, []components.NativeSelectOption[int]{
-			{Value: inferyard.ContextSpeed64K, Label: "64k"},
-			{Value: inferyard.ContextSpeed128K, Label: "128k"},
-			{Value: inferyard.ContextSpeed256K, Label: "256k"},
-		}).Trigger.Label("上下文档位")
+	selectField(c, "上下文档位", &w.context, []components.NativeSelectOption[int]{
+		{Value: inferyard.ContextSpeed64K, Label: "64k"},
+		{Value: inferyard.ContextSpeed128K, Label: "128k"},
+		{Value: inferyard.ContextSpeed256K, Label: "256k"},
 	})
 	ui.Text(c, fmt.Sprintf("%s · %d 次测量 · 每次输出 256 tokens", inferyard.ContextSpeedBundleID, inferyard.ContextSpeedSamples))
 	ui.Text(c, "5 次正式测量；另含探测、预热与排空。墙钟预算由固定配方生成。")

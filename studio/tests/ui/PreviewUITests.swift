@@ -354,9 +354,10 @@ final class PreviewUITests: XCTestCase {
 
     private func localDirectoryEngineRunsBothScopes() {
         // The select's accessible name is the field label; the current option is
-        // its visible text.
-        expectExists(app.menuButtons["测评模型"], timeout: 5)
-        expectText("local-weights · 目录模型")
+        // its accessibility value, as a screen reader reads it.
+        let model = app.menuButtons["测评模型"].firstMatch
+        expectExists(model, timeout: 5)
+        XCTAssertEqual(model.value as? String, "local-weights · 目录模型")
         revealInContent(app.buttons["开始测评"])
         keepScreenshot("Local directory model and registered engine")
         click("开始测评")
