@@ -60,11 +60,10 @@ func TestReportViewReadsStudioJSONOnly(t *testing.T) {
 		t.Fatal("legacy report did not explain its unsupported format", e)
 	}
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportsView(c) }) }, 1120, 1200)
-	if !tt.HasText("good") || !tt.HasText("无法读取") || tt.HasText("legacy") {
+	if !tt.HasText("Fixture Model Q4") || !tt.HasText("无法读取") || tt.HasText("legacy") {
 		t.Fatal(tt.Texts())
 	}
-	click(t, tt, "good")
-	click(t, tt, "打开报告")
+	click(t, tt, "打开报告 · good")
 	tt.Frame()
 	for _, want := range []string{"各类别不构成综合评分", "数学计算", "知识问答", "2 个有效样本", "排除 1", "null-case", "timed-case", "索引", "studio.json"} {
 		if !tt.HasText(want) {
@@ -72,8 +71,7 @@ func TestReportViewReadsStudioJSONOnly(t *testing.T) {
 		}
 	}
 	click(t, tt, "返回报告列表")
-	click(t, tt, "bad")
-	tt.Key(0, ui.KeyEnter)
+	click(t, tt, "打开报告 · bad")
 	tt.Frame()
 	if !tt.HasText("报告 bad") || !tt.HasText("无法读取") {
 		t.Fatal(tt.Texts())

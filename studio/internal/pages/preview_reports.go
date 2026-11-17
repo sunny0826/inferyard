@@ -39,7 +39,7 @@ func (p *previewSession) createReport(paths []string) string {
 	s := p.state
 	id := p.nextID("report")
 	index := &core.ReportIndex{}
-	summary := core.ReportSummary{ReportId: id, Path: "/preview/reports/" + id, CreatedAt: previewValue(p.timestamp())}
+	summary := core.ReportSummary{ReportId: id, Path: "/preview/reports/" + id, ModifiedAt: previewValue(p.timestamp())}
 	for _, history := range s.historyRuns() {
 		if !slices.Contains(paths, history.Path) {
 			continue
@@ -73,6 +73,10 @@ func (p *previewSession) createReport(paths []string) string {
 		index.Runs = append(index.Runs, run)
 		summary.RunIds = append(summary.RunIds, history.RunId)
 		summary.RunPaths = append(summary.RunPaths, previewValue(history.Path))
+		summary.RunSummaries = append(summary.RunSummaries, core.ReportListRun{
+			RunID: history.RunId, Model: run.Model, BundleLabel: emptyText(history.Bundle),
+			Title: run.Profile.Title, Quality: run.Dashboard.Quality,
+		})
 	}
 	p.indexes[id] = index
 	s.reports = append(s.reports, summary)

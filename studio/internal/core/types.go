@@ -184,12 +184,28 @@ type RunTaskDetail struct {
 	Resources []ResourceSample `json:"resources"`
 }
 
+// ReportListRun is Studio's display projection of one run inside a report. It
+// is derived from the same studio.json parse as the rest of the summary; it is
+// not a report format field and never adds a composite score.
+type ReportListRun struct {
+	RunID       string  `json:"run_id"`
+	Model       string  `json:"model"`
+	BundleLabel string  `json:"bundle_label"`
+	Title       *string `json:"title"`
+	Quality     ReportQuality
+}
+
 type ReportSummary struct {
-	ReportId  string    `json:"report_id"`
-	Path      string    `json:"path"`
-	CreatedAt *string   `json:"created_at"`
-	RunIds    []string  `json:"run_ids"`
-	RunPaths  []*string `json:"run_paths"`
+	ReportId string `json:"report_id"`
+	Path     string `json:"path"`
+	// ModifiedAt is the studio.json file modification time. It is not the run
+	// start or the generation time, and the page labels it as such.
+	ModifiedAt   *string         `json:"modified_at"`
+	RunIds       []string        `json:"run_ids"`
+	RunPaths     []*string       `json:"run_paths"`
+	RunSummaries []ReportListRun `json:"run_summaries"`
+	// Unreadable keeps the entry visible when studio.json cannot be parsed.
+	Unreadable bool `json:"unreadable"`
 }
 
 type CreateReportRequest struct {

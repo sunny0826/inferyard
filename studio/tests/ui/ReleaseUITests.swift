@@ -53,12 +53,9 @@ final class ReleaseUITests: XCTestCase {
     }
 
     private func openRealReport() {
-        let table = app.tables["报告列表"]
-        expectExists(table, timeout: 20)
-        let report = table.tableRows.element(boundBy: 1)
-        expectExists(report, timeout: 20)
-        report.click()
-        click("打开报告")
+        let open = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "打开报告 · ")).firstMatch
+        expectExists(open, timeout: 20)
+        open.click()
         expectText("各类任务表现", timeout: 20)
         expectExists(app.buttons["返回报告列表"], timeout: 10)
         keepScreenshot("Production real report")

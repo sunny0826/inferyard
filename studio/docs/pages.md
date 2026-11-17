@@ -25,8 +25,14 @@ cancels binding and all non-terminal runs, waits for them to finish, and returns
 shared engine/model selection without cancelling downloads or deleting evidence. The form
 lists only workspace evaluation sets and checks both `zh-core` and `zh-svg-pelican` when present.
 Unchecking a set explicitly narrows the scope; unchecked sets do not block the task.
-Reports starts with task history, followed by the report list. Creating another report from
-1–100 historical runs is available in a collapsed section. Reports are not verifiable
+Reports starts with a compact task history table (model, evaluation set, state, score, start
+time) whose selected detail carries the run id, batch and paths; a missing model, start time or
+score reads 未记录 instead of being invented. Below it, each report is a card led by the
+recorded model, with its evaluation set, one line per run (`答案通过 x / y`), the run count, and
+the report file's modification time — the file time, not a run or generation time. Runs are
+never added together and a missing count keeps 未记录 instead of 0; the card's 打开报告 open
+button targets that card's report, and report id, source runs and paths live in 报告详情.
+Create another report from 1–100 historical runs is available in a collapsed section. Reports are not verifiable
 artifacts, so the page has no verification entry.
 Without an active task, the page restores workspace progress from `progress.v2`.
 

@@ -97,7 +97,7 @@ final class PreviewUITests: XCTestCase {
         click("新任务")
         click("报告")
         expectText("历史任务")
-        let report = app.tables["报告列表"].staticTexts.matching(NSPredicate(format: "value BEGINSWITH %@", "preview-report-")).firstMatch
+        let report = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "打开报告 · preview-report-")).firstMatch
         XCTAssertTrue(report.exists, "New task must preserve the generated report")
     }
 
