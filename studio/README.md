@@ -132,9 +132,9 @@ Models. Settings are saved in memory and download directory names affect later t
 task while retaining settings, downloads and results. “重置场景” restores all fixture data,
 form values, table selection and collapsed sections, and discards pending simulation steps.
 
-The approved context-speed page now calls the CLI through the serial queue. The corpus
-still requires human review: production init currently refuses with
-`human_corpus_review_required`; no approval is fabricated. After preparing the
+The approved context-speed page now calls the CLI through the serial queue. The bundled
+`zh-context-speed` corpus carries its human approval of 2026-10-18; init still refuses an
+unapproved or changed corpus with `human_corpus_review_required`. After preparing the
 environment, choose “长上下文速度” in “测评类型”, select 64K, 128K or 256K, and click
 “开始专项测评”. The same native page builders show progress, cancellation and six-column
 results: model / engine, Context, Prompt length, Time, Prefill and Decode. Results and
