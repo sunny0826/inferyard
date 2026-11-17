@@ -164,11 +164,12 @@ func (s *viewState) historyView(c *ui.Context) {
 		ui.Text(c, "暂无运行记录。")
 		return
 	}
-	// Five primary columns fit the content width; the run id, batch and paths
-	// stay in the selected detail instead of widening the table.
+	// Five primary columns, 730 DIP in all, fit the table viewport of a 1024 DIP
+	// window, so the start time shows without scrolling sideways; the run id,
+	// batch and paths stay in the selected detail instead of widening the table.
 	selectableTable(&s.historyTable, func(i int) any { return runs[i].Path }, func(i int) string { return runs[i].RunId })
 	c.Key("history-table")
-	pageTable(c, &s.historyTable, "运行历史表", []ui.TableColumn{{Title: "模型", Width: 220}, {Title: "测评题集", Width: 180}, {Title: "状态", Width: 110}, {Title: "评分", Width: 180}, {Title: "开始时间", Width: 220}}, len(runs), func(row, col int) {
+	pageTable(c, &s.historyTable, "运行历史表", []ui.TableColumn{{Title: "模型", Width: 190}, {Title: "测评题集", Width: 130}, {Title: "状态", Width: 70}, {Title: "评分", Width: 170}, {Title: "开始时间", Width: 170}}, len(runs), func(row, col int) {
 		r := runs[row]
 		ui.Text(c, []string{historyModel(r), text(r.Bundle), stateLabel(r.Status), runScore(r), historyStarted(r)}[col])
 	}).Height(240).Label("运行历史表")
