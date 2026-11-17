@@ -2,6 +2,8 @@ package pages
 
 import (
 	"encoding/json"
+	"path/filepath"
+
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 )
@@ -38,16 +40,16 @@ func (s *viewState) settingsView(c *ui.Context) {
 	card(c, "路径设置", func() {
 		fields := func() {
 			field(c, "CLI", &s.cliPath).Description("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。").Error(pathError(s.cliPath))
-			field(c, "工作区目录", &s.workspace).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)))
-			field(c, "结果目录", &s.results).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot)))
-			field(c, "模型目录", &s.models).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot)))
+			field(c, "工作区目录", &s.workspace).Description(directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)))
+			field(c, "结果目录", &s.results).Description(directoryState(s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot)))
+			field(c, "模型目录", &s.models).Description(directoryState(s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot)))
 		}
 		if compactLayout(c) {
 			fields()
 		} else {
 			ui.Form(c, fields)
 		}
-		ui.Text(c, "保存设置不创建目录。目录缺失仍可浏览所有页面。")
+		ui.Text(c, "保存设置不创建目录，目录缺失仍可浏览所有页面。")
 		if primaryButton(c, "保存").AlignSelf(ui.Start).Disabled(s.busy || !s.settingsLoaded).Clicked() {
 			if !s.validateSettings() {
 				return
@@ -132,4 +134,30 @@ func defaultDownloadName(name, fallback string) string {
 		return fallback
 	}
 	return name
+}
+
+// directoryState describes what the settings field currently points at, so the
+// user does not have to save and reopen to learn that a path is missing.
+func directoryState(value string, readiness core.DirectoryReadiness, previous string) string {
+	switch {
+	case value == "" && previous == "":
+		return "尚未配置，保存时使用默认值"
+	case value == "":
+		return "当前为空；已配置的目录不能清空"
+	}
+	state := "路径已修改，保存后生效"
+	if samePath(value, previous) {
+		state = "目录不存在"
+		if readiness.Exists {
+			state = "目录已存在"
+			if readiness.Initialized {
+				state = "目录已存在，工作区已初始化"
+			}
+		}
+	}
+	return state
+}
+
+func samePath(value, previous string) bool {
+	return previous != "" && filepath.Clean(value) == filepath.Clean(previous)
 }

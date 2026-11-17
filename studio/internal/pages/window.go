@@ -390,8 +390,8 @@ func field(c *ui.Context, label string, value *string) ui.Element {
 	return ui.Field(c, label, func() { components.TextBox(c, value, components.TextBoxOptions{}) })
 }
 func text(p *string) string {
-	if p == nil {
-		return "未知"
+	if p == nil || *p == "" {
+		return "缺测"
 	}
 	return *p
 }

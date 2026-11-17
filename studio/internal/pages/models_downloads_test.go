@@ -74,10 +74,10 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				}
 			}
 			if task.Kind == "engine" {
-				if !tt.HasText("已下载 缺测 · 速率 缺测 · 归档获取接口未提供字节读数") || tt.HasText("已下载 0 bytes") {
+				if !tt.HasText("归档获取接口未提供字节读数。") || tt.HasText("已下载 0 bytes") {
 					t.Fatal(tt.Texts())
 				}
-			} else if !tt.HasText("1.50 MiB") || !tt.HasText("2.0 KiB/s") || !tt.HasText("速率 2,048 bytes/s") || !tt.HasText("已下载 1572864 bytes") {
+			} else if !tt.HasText("1.50 MiB") || !tt.HasText("2.0 KiB/s") {
 				t.Fatal(tt.Texts())
 			}
 			enabled := false
@@ -106,9 +106,16 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				if state != "failed" && tt.HasText("重新创建下载任务") {
 					t.Fatal("recreate is only for failed tasks", tt.Texts())
 				}
-				if state != "done" && !tt.HasText("输出目录保留；再次下载自动使用新目录名。") {
+			}
+			s.downloads[0].State = task.State
+			tt.Frame()
+			click(t, tt, "观测依据与输出")
+			if task.Kind == "engine" {
+				if !tt.HasText("已下载 缺测 · 速率 缺测") || tt.HasText("已下载 0 bytes") {
 					t.Fatal(tt.Texts())
 				}
+			} else if !tt.HasText("速率 2,048 bytes/s") || !tt.HasText("已下载 1572864 bytes") {
+				t.Fatal(tt.Texts())
 			}
 		})
 	}

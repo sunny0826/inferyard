@@ -12,7 +12,10 @@ When the workspace, results, and model paths are all unset in settings, Studio o
 on the task page with environment preparation. Once any of these paths has been saved,
 launching without an explicit page opens Reports. The sidebar lists Reports, Models,
 Downloads, Device, and Settings.
-“新任务” (New task) opens the task page with no sidebar selection.
+“新任务” (New task) opens the task page with no sidebar selection. While a run, a
+specialist measurement, or a pending operation is in flight, the entry asks for one
+confirmation and states that the work is cancelled after a safe drain while the evidence
+already written stays in the results directory.
 
 | Page | Purpose |
 | --- | --- |
@@ -128,8 +131,10 @@ switch pages while work continues; “查看报告” opens that task's model an
 
 Downloads can complete, be cancelled, or fail and be retried; completed assets appear in
 Models. Settings are saved in memory and download directory names affect later tasks.
-“下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务” cancels the current
-task while retaining settings, downloads and results. “重置场景” restores all fixture data,
+“下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务” asks for
+confirmation before it cancels the current task, while retaining settings, downloads and
+results; “取消运行”, “取消任务”, “停止服务” and “取消下载” show the same inline
+confirmation in the preview window. “重置场景” restores all fixture data,
 form values, table selection and collapsed sections, and discards pending simulation steps.
 
 The approved context-speed page now calls the CLI through the serial queue. The bundled

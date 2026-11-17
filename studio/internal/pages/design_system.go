@@ -30,12 +30,16 @@ func configuredValue(value string) string {
 	return value
 }
 
+// button and primaryButton give every page action the same geometry: the
+// button hugs its label instead of stretching to the column width, so a card
+// action never reads as a full-width banner. A caller that needs a wide button
+// asks for FillWidth explicitly.
 func button(c *ui.Context, label string) ui.Element {
-	return components.Button(c, label, components.ButtonSecondary).MaxWidthPercent(100)
+	return components.Button(c, label, components.ButtonSecondary).MaxWidthPercent(100).AlignSelf(ui.Start)
 }
 
 func primaryButton(c *ui.Context, label string) ui.Element {
-	return components.Button(c, label, components.ButtonPrimary).MaxWidthPercent(100)
+	return components.Button(c, label, components.ButtonPrimary).MaxWidthPercent(100).AlignSelf(ui.Start)
 }
 
 // dangerButton marks an action that cancels or discards work. It shares the

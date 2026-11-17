@@ -77,7 +77,7 @@ func (s *viewState) refreshDevice() {
 	s.work(func() (string, *core.ApiError) { return "正在采集设备信息…", s.service.RefreshDevice() })
 }
 func (s *viewState) deviceRefreshButton(c *ui.Context, label string) {
-	if primaryButton(c, label).AlignSelf(ui.Start).Disabled(s.busy || s.device.Refreshing).Clicked() {
+	if button(c, label).Disabled(s.busy || s.device.Refreshing).Clicked() {
 		s.refreshDevice()
 	}
 }
@@ -129,7 +129,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 		ui.Column(c).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Card.EmptyPadding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Children(func() {
 			heading(c, "尚无设备快照", 2)
 			ui.Text(c, "设备检查会采集硬件、GPU 与本地模型信息，不会向模型发送请求。")
-			if button(c, "前往设置配置模型目录").Clicked() {
+			if button(c, "前往设置配置模型目录").AlignSelf(ui.Start).Clicked() {
 				s.selected = "settings"
 			}
 		})

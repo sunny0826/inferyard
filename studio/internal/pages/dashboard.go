@@ -63,7 +63,8 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		ui.Text(c, "正在取消并等待安全收尾…")
 		return
 	}
-	ui.Text(c, "配置、运行与跟踪本地模型测评。")
+	s.header(c, "任务")
+	ui.Text(c, "配置、运行与跟踪本地模型测评。").TextColor(c.Theme().TextMuted)
 	if s.environmentMissing() {
 		s.setupGuide(c)
 		return

@@ -60,7 +60,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		case "orphaned":
 			color = stateColor(c, stateWarning)
 		}
-		statusPanel(c, "engine-status", "引擎 · "+stateLabel(state), lucide.Cpu, color, animated, func() {
+		statusPanel(c, "engine-status", "引擎 · "+stateLabel(state), engineStatusText(state), lucide.Cpu, color, animated, func() {
 			s.engineStatusPanel(c, q.active())
 		})
 		label := "任务 · 空闲"
@@ -73,7 +73,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		if q.active() || s.busy {
 			queueColor = stateColor(c, stateActive)
 		}
-		statusPanel(c, "queue-status", label, lucide.ListTodo, queueColor, q.active() || s.busy, func() {
+		statusPanel(c, "queue-status", label, queueStatusText(q, s.busy), lucide.ListTodo, queueColor, q.active() || s.busy, func() {
 			heading(c, "任务队列", 3)
 			ui.Text(c, label)
 			for _, task := range s.tasks {
@@ -88,7 +88,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		})
 		if n := s.activeDownloadCount(); n > 0 {
 			label := fmt.Sprintf("下载中 %d 项", n)
-			statusPanel(c, "download-status", label, lucide.Download, stateColor(c, stateActive), true, func() {
+			statusPanel(c, "download-status", label, fmt.Sprintf("下载 %d", n), lucide.Download, stateColor(c, stateActive), true, func() {
 				ui.Text(c, label)
 			})
 		}
@@ -100,20 +100,26 @@ type statusPanelState struct {
 	lastInside    time.Time
 }
 
-func statusPanel(c *ui.Context, key, label string, icon func() *ui.SVG, color ui.Color, animated bool, content func()) {
+// statusPanel is a header status control: an icon plus a word or count, so the
+// meaning is readable without hovering. label stays the accessible name used by
+// the popover and focus order; visible is the short text beside the icon.
+func statusPanel(c *ui.Context, key, label, visible string, icon func() *ui.SVG, color ui.Color, animated bool, content func()) {
 	c.Key(key)
 	ui.Column(c).Children(func() {
 		t := c.Theme()
 		anchor := components.Button(c, "", components.ButtonGhost).
-			Size(t.Space(9), t.Space(9)).Padding(0).Radius(t.Space(4.5)).
+			Padding(t.Space(.75), t.Space(1.5)).Radius(t.Space(4.5)).
 			Label(label).Description("悬停或按 Enter 查看详情")
 		local := ui.Local(anchor, "status-panel", func() statusPanelState { return statusPanelState{} })
 		anchor.Children(func() {
-			el := components.Icon(c, icon).Size(t.Space(5), t.Space(5)).TextColor(color)
-			if animated && !c.Preferences().ReduceMotion {
-				phase := el.Loop("status-activity", 1400*time.Millisecond, ui.Linear)
-				el.Opacity(.65 + .35*float32((math.Sin(float64(phase)*2*math.Pi)+1)/2))
-			}
+			ui.Row(c).AlignItems(ui.Center).Gap(t.Space(.75)).Children(func() {
+				el := components.Icon(c, icon).Size(t.Space(4.5), t.Space(4.5)).TextColor(color)
+				if animated && !c.Preferences().ReduceMotion {
+					phase := el.Loop("status-activity", 1400*time.Millisecond, ui.Linear)
+					el.Opacity(.65 + .35*float32((math.Sin(float64(phase)*2*math.Pi)+1)/2))
+				}
+				ui.Text(c, visible).FontSize(tokens(c).Type.Caption).SingleLine().TextColor(color)
+			})
 		})
 		hovered := anchor.Hovered()
 		if hovered && !local.hovered || anchor.Clicked() {
@@ -134,6 +140,36 @@ func statusPanel(c *ui.Context, key, label string, icon func() *ui.SVG, color ui
 			panel.Children(content)
 		})
 	})
+}
+
+// engineStatusText is the short visible word for the engine status control.
+func engineStatusText(state string) string {
+	switch state {
+	case "running":
+		return "运行中"
+	case "starting":
+		return "启动中"
+	case "stopping":
+		return "停止中"
+	case "failed":
+		return "失败"
+	case "orphaned":
+		return "遗留服务"
+	default:
+		return "已停止"
+	}
+}
+
+// queueStatusText shows the running and waiting counts in the header instead of
+// hiding them inside the panel.
+func queueStatusText(q queueActivity, busy bool) string {
+	if q.active() {
+		return fmt.Sprintf("执行 %d · 等待 %d", q.running, q.waiting)
+	}
+	if busy {
+		return "准备中"
+	}
+	return "空闲"
 }
 
 func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool) {

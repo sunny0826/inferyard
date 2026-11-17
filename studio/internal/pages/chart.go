@@ -184,13 +184,15 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				})
 			})
 		}
-		s.resourceTable(c, selected)
+		componentFold(c, "原始采样数值", func() {
+			s.resourceTable(c, selected)
+		})
 	})
 }
 
 func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) {
 	sort.SliceStable(samples, func(i, j int) bool { return samples[i].Seq < samples[j].Seq })
-	heading(c, "当前来源数值（内存原始单位 bytes）", 3)
+	heading(c, "采样数值", 3)
 	const pageSize = 50
 	pages := max(1, (len(samples)+pageSize-1)/pageSize)
 	s.resourceTablePage = min(max(0, s.resourceTablePage), pages-1)

@@ -158,6 +158,7 @@ func TestDownloadTaskCardsAndDetails(t *testing.T) {
 	}
 	s.downloads = []core.DownloadTask{b}
 	tt.Frame()
+	click(t, tt, "观测依据与输出")
 	for _, text := range []string{"实际目录名：model-b", "model.gguf", "1048576", "fixture-sha", "下载失败", "输出目录保留"} {
 		if !tt.HasText(text) {
 			t.Fatal("missing", text, tt.Texts())
