@@ -130,20 +130,6 @@ func (s *viewState) conclusionView(c *ui.Context) {
 		}
 	})
 }
-func (s *viewState) setupGuide(c *ui.Context) {
-	card(c, "环境准备", func() {
-		ui.Text(c, "欢迎使用 InferYard Studio。先准备环境，再获取模型与引擎，最后开始测评。")
-		ui.Text(c, "检查并安装 CLI。")
-		ui.Text(c, "建立结果目录、模型目录和工作区。")
-		ui.Text(c, "已完成的步骤会跳过。")
-		if primaryButton(c, "准备环境").Disabled(s.busy).Clicked() {
-			s.prepareEnvironment()
-		}
-		if s.cliInstallStatus != "" {
-			ui.Text(c, s.cliInstallStatus)
-		}
-	})
-}
 func (s *viewState) stageView(c *ui.Context) {
 	action := ""
 	if s.progress != nil {

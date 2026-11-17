@@ -30,8 +30,15 @@ Reports starts with task history, followed by the report list. Creating another 
 artifacts, so the page has no verification entry.
 Without an active task, the page restores workspace progress from `progress.v2`.
 
-Prepare environment rechecks readiness after installing the CLI, provisioning missing
-model/results directories, and initializing a new workspace. Existing initialized workspaces
+Prepare environment first states what the step does: it reuses an existing CLI and uv,
+downloads a pinned standalone uv only when none exists, installs the CLI with its managed
+Python into the uv tool directory without touching shell configuration, and then creates or
+reuses the workspace, results and model directories. It names the write targets by directory
+name (full paths stay on Settings) and says plainly that download size and duration cannot be
+predicted, so it shows neither an estimated size nor a progress percentage; the installer's
+15-minute CLI timeout is not presented as a duration estimate. Core owns the path facts in a
+read-only projection; the step then rechecks readiness after installing the CLI, provisioning
+missing model/results directories, and initializing a new workspace. Existing initialized workspaces
 skip `init`; new workspaces omit `--bundle`. Missing models or engines lead to a resource
 guide with Downloads and Settings actions; other blockers remain visible.
 During preparation, Downloads places resource forms first and offers Return to task.

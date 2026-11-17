@@ -79,7 +79,7 @@
    取消上下文，待专项准备与 runQueue 排空后停止自启动引擎再置 `shutdownDone`；调用方超时（main 为 30
    秒）不抛弃清理、不改变顺序。
 
-任务页的资源引导与活动题包投影由 [`first_use.go`](../../../studio/internal/pages/first_use.go) 从现有清单、下载任务和运行队列派生，不持久化另一套向导状态。活动题包按 bundle 关联非终态 RunTask，展示排队／运行／取消状态；离线 `progress.v2` 的恢复原因仅用于没有活动任务的题包。历史 `no_local_model` 在可用模型出现后不再重复展示，实际候选准备仍执行模型专属设备检查。右上角显示下载任务生命周期，后台 refresh 不产生全局忙碌提示。
+任务页的资源引导与活动测评题集投影由 [`first_use.go`](../../../studio/internal/pages/first_use.go) 从现有清单、下载任务和运行队列派生，不持久化另一套向导状态。活动题包按 bundle 关联非终态 RunTask，展示排队／运行／取消状态；离线 `progress.v2` 的恢复原因仅用于没有活动任务的题包。历史 `no_local_model` 在可用模型出现后不再重复展示，实际候选准备仍执行模型专属设备检查。右上角显示下载任务生命周期，后台 refresh 不产生全局忙碌提示。
 
 [`header_status.go`](../../../studio/internal/pages/header_status.go) 从 EngineState、RunTask 与专项状态派生图标、文字与计数，悬停面板展示同一状态；
 专项按 task ID 去重计数。引擎状态直接显示「运行中／启动中／已停止」等文字，任务状态显示执行与等待数量，
