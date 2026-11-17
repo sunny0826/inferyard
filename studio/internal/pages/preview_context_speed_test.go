@@ -89,19 +89,39 @@ func TestPreviewSpeedCompleteAndReopen(t *testing.T) {
 			if p.state.speed.context != tc.context || !p.state.speed.selected || len(p.state.speed.history) != 1 {
 				t.Fatal("new task discarded history or selection")
 			}
-			click(t, tt, "停止当前服务")
-			click(t, tt, "确认停止当前服务")
-			p.advance(time.Second)
-			tt.Frame()
-			click(t, tt, "开始专项测评")
-			p.advance(10 * time.Second)
-			if p.state.speed.current.id == r.id || len(p.state.speed.history) != 2 || r.summary == nil {
-				t.Fatal("rerun overwrote original")
-			}
+			rerunSpecialty(t, p, tt, r)
 			if p.state.service != nil || p.state.taskCancel != nil {
 				t.Fatal("simulation reached a real service")
 			}
 		})
+	}
+}
+
+// confirmSpecialtyCancel cancels the measurement, drains it, then starts a new
+// task through its own confirmation.
+func confirmSpecialtyCancel(t *testing.T, p *previewSession, tt *ui.Tester, r *speedTask) {
+	t.Helper()
+	click(t, tt, "取消专项测评")
+	click(t, tt, "确认取消专项测评")
+	if r.stage != speedCancelling || !p.state.busy {
+		t.Fatal("cancellation skipped draining")
+	}
+	click(t, tt, "新任务")
+	click(t, tt, "确认开始新任务")
+}
+
+// rerunSpecialty stops the current service (with its confirmation) and starts a
+// second measurement without overwriting the first.
+func rerunSpecialty(t *testing.T, p *previewSession, tt *ui.Tester, first *speedTask) {
+	t.Helper()
+	click(t, tt, "停止当前服务")
+	click(t, tt, "确认停止当前服务")
+	p.advance(time.Second)
+	tt.Frame()
+	click(t, tt, "开始专项测评")
+	p.advance(10 * time.Second)
+	if p.state.speed.current.id == first.id || len(p.state.speed.history) != 2 || first.summary == nil {
+		t.Fatal("rerun overwrote original")
 	}
 }
 
@@ -114,13 +134,7 @@ func TestPreviewSpeedCancellationAndReset(t *testing.T) {
 			tt.Frame()
 			r := p.state.speed.current
 			count := len(r.samples)
-			click(t, tt, "取消专项测评")
-			click(t, tt, "确认取消专项测评")
-			if r.stage != speedCancelling || !p.state.busy {
-				t.Fatal("cancellation skipped draining")
-			}
-			click(t, tt, "新任务")
-			click(t, tt, "确认开始新任务")
+			confirmSpecialtyCancel(t, p, tt, r)
 			p.advance(20 * time.Second)
 			tt.Frame()
 			if r.stage != speedCancelled || len(r.samples) != count || r.summary != nil || len(p.state.speed.history) != 1 || p.state.speed.current != nil || p.state.busy || p.state.newTaskPending {

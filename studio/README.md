@@ -10,12 +10,14 @@ There is no browser UI, headless mode, REST/SSE server, or generated JavaScript.
 
 When the workspace, results, and model paths are all unset in settings, Studio opens
 on the task page with environment preparation. Once any of these paths has been saved,
-launching without an explicit page opens Reports. The sidebar lists Reports, Models,
-Downloads, Device, and Settings.
-“新任务” (New task) opens the task page with no sidebar selection. While a run, a
-specialist measurement, or a pending operation is in flight, the entry asks for one
-confirmation and states that the work is cancelled after a safe drain while the evidence
-already written stays in the results directory.
+launching without an explicit page opens Reports. The sidebar lists Tasks, Reports,
+Models, Downloads, Device, and Settings.
+The sidebar's “任务” (Task) entry switches to the current task page without resetting,
+cancelling or confirming: an active run keeps its progress, and an idle task page keeps
+the chosen model, engine and evaluation sets. “新任务” (New task) also opens the task
+page but resets the round: while a run, a specialist measurement, or a pending operation
+is in flight, “新任务” asks for one confirmation and states that the work is cancelled
+after a safe drain while the evidence already written stays in the results directory.
 
 | Page | Purpose |
 | --- | --- |

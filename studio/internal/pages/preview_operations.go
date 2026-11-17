@@ -30,12 +30,7 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	case previewCancelDownload:
 		p.cancelDownload(op.id)
 	case previewRetryDownload:
-		for _, task := range s.downloads {
-			if task.TaskId == op.id && terminal(task.State) {
-				p.startDownload(previewDownload{kind: task.Kind, source: task.SourceUrl})
-				break
-			}
-		}
+		p.retryDownload(op.id)
 	case previewBrowsePath:
 		p.browse(op.key)
 	case previewSettings:
@@ -45,17 +40,7 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	case previewLocalBinding:
 		p.bindLocal(op)
 	case previewCreateReport:
-		fail := p.takeFailure()
-		s.busy = true
-		p.after("report", 600*time.Millisecond, func() {
-			s.busy = false
-			if fail {
-				s.failure = core.Err("report_unreadable")
-				return
-			}
-			p.createReport(op.paths)
-			p.notice = "模拟报告已生成。"
-		})
+		p.createReportLater(op.paths)
 	case previewStartRun:
 		s.resumeSource = nil
 		p.beginBenchmark(previewBenchmark{model: s.model, engine: s.engine, bundles: []string{op.bundle}, resumePath: op.resumePath})
@@ -66,6 +51,33 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	default:
 		p.showNotice()
 	}
+}
+
+// retryDownload restarts a failed download from its original source.
+func (p *previewSession) retryDownload(id string) {
+	for _, task := range p.state.downloads {
+		if task.TaskId == id && terminal(task.State) {
+			p.startDownload(previewDownload{kind: task.Kind, source: task.SourceUrl})
+			return
+		}
+	}
+}
+
+// createReportLater finishes the simulated report after the same delay the
+// real flow needs, honouring the injected one-shot failure.
+func (p *previewSession) createReportLater(paths []string) {
+	s := p.state
+	fail := p.takeFailure()
+	s.busy = true
+	p.after("report", 600*time.Millisecond, func() {
+		s.busy = false
+		if fail {
+			s.failure = core.Err("report_unreadable")
+			return
+		}
+		p.createReport(paths)
+		p.notice = "模拟报告已生成。"
+	})
 }
 
 func (p *previewSession) dispatchStep(op previewStep) {

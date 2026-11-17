@@ -28,7 +28,11 @@ func reportListService(t *testing.T, root, results string) *Service {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { service.Shutdown(context.Background()) })
+	t.Cleanup(func() {
+		if err := service.Shutdown(context.Background()); err != nil {
+			t.Error(err)
+		}
+	})
 	return service
 }
 

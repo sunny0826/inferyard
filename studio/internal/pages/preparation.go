@@ -38,14 +38,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 		return
 	}
 	card(c, "路径设置", func() {
-		fields := func() {
-			ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
-				s.pathField(c, "CLI", &s.cliPath, browseCLI).Description("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。").Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
-				s.pathField(c, "工作区目录", &s.workspace, browseWorkspace).Description(directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(s.browseError(browseWorkspace.key, settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot))))
-				s.pathField(c, "结果目录", &s.results, browseResults).Description(directoryState(s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(s.browseError(browseResults.key, settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot))))
-				s.pathField(c, "模型目录", &s.models, browseModels).Description(directoryState(s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(s.browseError(browseModels.key, settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot))))
-			})
-		}
+		fields := func() { s.pathFields(c) }
 		if compactLayout(c) {
 			fields()
 		} else {
@@ -101,6 +94,16 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 		s.loadSettings(value)
 		s.settingsLoaded = true
 	}
+}
+
+// pathFields renders the four path inputs with their browse buttons.
+func (s *viewState) pathFields(c *ui.Context) {
+	ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
+		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。").Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
+		s.pathField(c, "工作区目录", &s.workspace, browseWorkspace).Description(directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(s.browseError(browseWorkspace.key, settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot))))
+		s.pathField(c, "结果目录", &s.results, browseResults).Description(directoryState(s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(s.browseError(browseResults.key, settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot))))
+		s.pathField(c, "模型目录", &s.models, browseModels).Description(directoryState(s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(s.browseError(browseModels.key, settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot))))
+	})
 }
 
 func (s *viewState) downloadNamesView(c *ui.Context) {

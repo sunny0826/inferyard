@@ -20,6 +20,7 @@ var navigation = []struct {
 	id, label string
 	icon      func() *ui.SVG
 }{
+	{"dashboard", "任务", lucide.Play},
 	{"reports", "报告", lucide.FileText},
 	{"models", "模型", lucide.Layers},
 	{"downloads", "下载", lucide.Download},

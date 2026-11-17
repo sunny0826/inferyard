@@ -92,15 +92,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		}
 		theme := c.Theme()
 		ui.Text(c, "各曲线按自己的采样时间显示，采样点等距排列；缺测保留断点。").TextColor(theme.TextMuted)
-		metrics := []struct {
-			id, label string
-			color     ui.Color
-		}{
-			{"system_mem_available", "可用内存 GiB", theme.Accent},
-			{"service_rss", "服务 RSS GiB", theme.Success},
-			{"service_cpu_percent", "服务 CPU %", theme.Warning},
-			{"temperature", "传感器温度 °C", theme.Danger},
-		}
+		metrics := resourceMetrics(theme)
 		selected := []core.ResourceSample{}
 		for _, metric := range metrics {
 			c.Key(metric.id)
@@ -184,10 +176,29 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				})
 			})
 		}
-		componentFold(c, "原始采样数值", func() {
-			s.resourceTable(c, selected)
-		})
+		s.resourceSampleFold(c, selected)
 	})
+}
+
+// resourceMetric is one plotted metric and its accent color.
+type resourceMetric struct {
+	id, label string
+	color     ui.Color
+}
+
+func resourceMetrics(theme *ui.Theme) []resourceMetric {
+	return []resourceMetric{
+		{"system_mem_available", "可用内存 GiB", theme.Accent},
+		{"service_rss", "服务 RSS GiB", theme.Success},
+		{"service_cpu_percent", "服务 CPU %", theme.Warning},
+		{"temperature", "传感器温度 °C", theme.Danger},
+	}
+}
+
+// resourceSampleFold keeps the raw sample table under a disclosure so the
+// curves stay the primary reading.
+func (s *viewState) resourceSampleFold(c *ui.Context, selected []core.ResourceSample) {
+	componentFold(c, "原始采样数值", func() { s.resourceTable(c, selected) })
 }
 
 func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) {

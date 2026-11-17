@@ -46,45 +46,53 @@ func (s *viewState) detailView(c *ui.Context) {
 				return "已请求取消，等待安全收尾。", e
 			})
 		}
-		componentFold(c, "运行原始字段", func() {
-			ui.Text(c, "原始状态："+t.State).Selectable()
-			ui.Text(c, "任务类型："+t.Kind).Selectable()
-			ui.Text(c, "运行 ID："+text(t.RunId)).Selectable()
-			if t.Exit != nil {
-				kvview(c, "kv-exit", t.Exit)
-			}
-		})
+		componentFold(c, "运行原始字段", func() { detailRawFields(c, t) })
 	})
-	card(c, "实时进度", func() {
-		p := d.Progress
-		if p == nil {
-			ui.Text(c, "等待本次固定的题目与进度数据…")
-			return
-		}
-		progressLabel := fmt.Sprintf("%d / %s 题", p.Done, progressTotal(p.Total))
-		if phase := emptyText(p.Phase); phase != "" {
-			progressLabel = stateLabel(phase) + " · " + progressLabel
-		}
-		ui.Text(c, progressLabel)
-		progressBar(c, progressValue(p.Done, p.Total), "运行题目进度")
-		denominator := bundleScopeText(false)
-		if t.Kind == "resume" {
-			denominator = bundleScopeText(true)
-		}
-		ui.Text(c, fmt.Sprintf("%s当前题：%s", denominator, text(p.CurrentCaseId)))
-		columns := []ui.TableColumn{{Title: "题目", Width: 180}, {Title: "状态", Width: 160}, {Title: "类别", Width: 100}, {Title: "质量", Width: 100}, {Title: "耗时 ms", Width: 100}, {Title: "错误类别", Width: 160}}
-		s.casesTable.Key = func(i int) any { return p.Cases[i].CaseId }
-		pageTable(c, &s.casesTable, "题目进度表", columns, len(p.Cases), func(row, col int) {
-			item := p.Cases[row]
-			values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), optionalText(item.QualityState), number(item.DurationMs), optionalText(item.ErrorCategory)}
-			ui.Text(c, values[col]).Selectable()
-		}).Height(240).Label("题目进度表")
-		componentFold(c, "进度原始字段", func() {
-			ui.Text(c, fmt.Sprintf("阶段：%s · 序号：%d · 当前题：%s", optionalText(p.Phase), p.LastSeq, text(p.CurrentCaseId))).Selectable()
-		})
-	})
+	card(c, "实时进度", func() { s.detailProgress(c, d, t) })
 	s.resourceView(c, d.Resources)
 }
+
+// detailRawFields keeps the unchanged identifiers out of the primary reading.
+func detailRawFields(c *ui.Context, t core.RunTask) {
+	ui.Text(c, "原始状态："+t.State).Selectable()
+	ui.Text(c, "任务类型："+t.Kind).Selectable()
+	ui.Text(c, "运行 ID："+text(t.RunId)).Selectable()
+	if t.Exit != nil {
+		kvview(c, "kv-exit", t.Exit)
+	}
+}
+
+// detailProgress renders the live case table and its scope note.
+func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail, t core.RunTask) {
+	p := d.Progress
+	if p == nil {
+		ui.Text(c, "等待本次固定的题目与进度数据…")
+		return
+	}
+	ui.Text(c, progressHeadline(p))
+	progressBar(c, progressValue(p.Done, p.Total), "运行题目进度")
+	ui.Text(c, fmt.Sprintf("%s当前题：%s", detailScope(t), text(p.CurrentCaseId)))
+	columns := []ui.TableColumn{{Title: "题目", Width: 180}, {Title: "状态", Width: 160}, {Title: "类别", Width: 100}, {Title: "质量", Width: 100}, {Title: "耗时 ms", Width: 100}, {Title: "错误类别", Width: 160}}
+	s.casesTable.Key = func(i int) any { return p.Cases[i].CaseId }
+	pageTable(c, &s.casesTable, "题目进度表", columns, len(p.Cases), func(row, col int) {
+		item := p.Cases[row]
+		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), optionalText(item.QualityState), number(item.DurationMs), optionalText(item.ErrorCategory)}
+		ui.Text(c, values[col]).Selectable()
+	}).Height(240).Label("题目进度表")
+	componentFold(c, "进度原始字段", func() {
+		ui.Text(c, fmt.Sprintf("阶段：%s · 序号：%d · 当前题：%s", optionalText(p.Phase), p.LastSeq, text(p.CurrentCaseId))).Selectable()
+	})
+}
+
+func progressHeadline(p *core.RunProgress) string {
+	label := fmt.Sprintf("%d / %s 题", p.Done, progressTotal(p.Total))
+	if phase := emptyText(p.Phase); phase != "" {
+		return stateLabel(phase) + " · " + label
+	}
+	return label
+}
+
+func detailScope(t core.RunTask) string { return bundleScopeText(t.Kind == "resume") }
 
 // optionalText renders an optional record field. A missing value is a missing
 // measurement, so it reads "缺测" instead of "未知", which suggested that an

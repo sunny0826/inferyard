@@ -148,6 +148,25 @@ func cancelRunPrompt(lastRound bool) string {
 	return scope + "本轮不会生成完整报告；取消证据不等同于完整测评结果。"
 }
 
+// cancelRunGate renders the run-cancel confirmation for one active task.
+func (w *viewState) cancelRunGate(c *ui.Context, id, state string) bool {
+	return w.destructiveAction(c, destructiveOption{
+		kind: destructiveCancelRun, id: id, label: "取消运行", confirmLabel: "确认取消运行",
+		prompt:   cancelRunPrompt(w.task.stage != ""),
+		disabled: (w.busy && w.task.stage == "") || state == "cancelling",
+	})
+}
+
+// stopEngineGate renders the engine-stop confirmation; a replacement process
+// opened while the prompt was pending is rejected by the identity check.
+func (w *viewState) stopEngineGate(c *ui.Context) bool {
+	return w.destructiveAction(c, destructiveOption{
+		kind: destructiveStopEngine, label: "停止服务", confirmLabel: "确认停止服务",
+		prompt:   "将停止 Studio 启动的模型服务；正在加载的模型会中断，之后需要重新启动并绑定。",
+		disabled: w.busy || w.running() != nil,
+	})
+}
+
 // stopEngineCall is the engine-stop boundary; tests inject a recorder to prove
 // a stale confirmation never stops a replacement process.
 func (s *viewState) stopEngineCall() (core.EngineState, *core.ApiError) {

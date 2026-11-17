@@ -74,10 +74,11 @@ final class PreviewUITests: XCTestCase {
         let downloadedModel = "model · SmolLM2-135M-Instruct-Q4_K_M.gguf"
         expectText(downloadedModel)
         XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must stay read-only")
-        // The sidebar has no "任务" entry; the task page is reached through
-        // "新任务" and the pair is chosen there.
-        click("新任务")
+        // The sidebar task entry switches to the current task without resetting
+        // or confirming; the pair is chosen on the task page.
+        click("任务")
         chooseModel(downloadedModel)
+        XCTAssertFalse(app.buttons["确认开始新任务"].exists, "Task nav must not ask to confirm")
         expectExists(app.buttons["查看实时详情"], timeout: 10)
         keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
@@ -137,7 +138,7 @@ final class PreviewUITests: XCTestCase {
         toggleTaskDetails("model-2")
         expectText("实际目录名：model-2")
         expectText("错误码：download_failed")
-        click("新任务")
+        click("任务")
         click("下载")
         toggleTaskDetails("model-2")
         expectText("实际目录名：model-2")

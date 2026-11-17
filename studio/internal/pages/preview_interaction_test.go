@@ -91,10 +91,7 @@ func TestPreviewCancellationPreservesOtherWork(t *testing.T) {
 	for _, elapsed := range []time.Duration{600 * time.Millisecond, 2 * time.Second} {
 		t.Run(elapsed.String(), func(t *testing.T) {
 			p, tt := preparePreview(t)
-			click(t, tt, "设置")
-			p.state.modelName = "kept-model"
-			tt.Frame()
-			click(t, tt, "保存下载目录名")
+			saveDownloadName(t, p, tt, "kept-model")
 			click(t, tt, "下载")
 			click(t, tt, "下载模型")
 			click(t, tt, "新任务")
@@ -102,12 +99,10 @@ func TestPreviewCancellationPreservesOtherWork(t *testing.T) {
 			p.advance(elapsed)
 			tt.Frame()
 			if elapsed < time.Second {
-				click(t, tt, "新任务")
-				click(t, tt, "确认开始新任务")
+				confirmLabels(t, tt, "新任务", "确认开始新任务")
 			} else {
 				click(t, tt, "查看实时详情")
-				click(t, tt, "取消任务")
-				click(t, tt, "确认取消任务")
+				confirmLabels(t, tt, "取消任务", "确认取消任务")
 			}
 			if !p.state.newTaskPending {
 				t.Fatal("cancel skipped draining")
@@ -129,14 +124,29 @@ func TestPreviewCancellationPreservesOtherWork(t *testing.T) {
 	}
 }
 
+// saveDownloadName enters the settings page, types a name and saves it.
+func saveDownloadName(t *testing.T, p *previewSession, tt *ui.Tester, name string) {
+	t.Helper()
+	click(t, tt, "设置")
+	p.state.modelName = name
+	tt.Frame()
+	click(t, tt, "保存下载目录名")
+}
+
+// confirmLabels presses an entry and then its inline confirmation.
+func confirmLabels(t *testing.T, tt *ui.Tester, entry, confirm string) {
+	t.Helper()
+	click(t, tt, entry)
+	click(t, tt, confirm)
+}
+
 func TestPreviewDownloadsCancelRetryAndPopulateModels(t *testing.T) {
 	p, tt := preparePreview(t)
 	click(t, tt, "下载")
 	click(t, tt, "下载模型")
 	click(t, tt, "下载模型")
 	first, second := p.state.downloads[0].TaskId, p.state.downloads[1].TaskId
-	click(t, tt, "取消下载")
-	click(t, tt, "确认取消下载")
+	confirmLabels(t, tt, "取消下载", "确认取消下载")
 	p.advance(3 * time.Second)
 	tt.Frame()
 	if p.state.downloads[0].TaskId != first || p.state.downloads[0].State != "cancelled" || p.state.downloads[1].TaskId != second || p.state.downloads[1].State != "done" {
@@ -166,25 +176,24 @@ func TestPreviewDownloadsCancelRetryAndPopulateModels(t *testing.T) {
 		t.Fatal("retry did not preserve old download and allocate a new result")
 	}
 	click(t, tt, "模型")
-	name := retry.OutName + " · " + emptyText(retry.FileName)
+	assertModelsInventory(t, tt, retry.OutName+" · "+emptyText(retry.FileName))
+}
+
+// assertModelsInventory checks the read-only listing: the completed download is
+// present and no selection control remains.
+func assertModelsInventory(t *testing.T, tt *ui.Tester, name string) {
+	t.Helper()
 	if !tt.HasText(name) {
 		t.Fatal("completed download is not listed on the read-only models page", tt.Texts())
 	}
-	for _, texts := range [][]string{tt.Texts()} {
-		for _, text := range texts {
-			if text == "请选择模型" {
-				t.Fatal("models page still offers a selection control")
-			}
-		}
+	if tt.HasText("请选择模型") {
+		t.Fatal("models page still offers a selection control")
 	}
 }
 
 func TestPreviewSettingsDeviceAndReportRecovery(t *testing.T) {
 	p, tt := preparePreview(t)
-	click(t, tt, "设置")
-	p.state.modelName = "saved-model"
-	tt.Frame()
-	click(t, tt, "保存下载目录名")
+	saveDownloadName(t, p, tt, "saved-model")
 	click(t, tt, "报告")
 	click(t, tt, "设置")
 	if p.state.settings.Settings.ModelDownloadName != "saved-model" {
@@ -239,8 +248,7 @@ func TestPreviewNewTaskFinishesServiceStop(t *testing.T) {
 	p.advance(20 * time.Second)
 	tt.Frame()
 	click(t, tt, "引擎 · 运行中")
-	click(t, tt, "停止引擎")
-	click(t, tt, "确认停止引擎")
+	confirmLabels(t, tt, "停止引擎", "确认停止引擎")
 	click(t, tt, "新任务")
 	p.advance(time.Second)
 	tt.Frame()
@@ -255,9 +263,7 @@ func TestPreviewNewTaskCancelsPendingHistoricalReport(t *testing.T) {
 	p.advance(20 * time.Second)
 	tt.Frame()
 	p.dispatch(previewCreateReport{paths: p.state.task.runs})
-	tt.Frame()
-	click(t, tt, "新任务")
-	click(t, tt, "确认开始新任务")
+	confirmLabels(t, tt, "新任务", "确认开始新任务")
 	p.advance(400 * time.Millisecond)
 	tt.Frame()
 	click(t, tt, "开始测评")

@@ -7,9 +7,12 @@ preview and verification rules.
 
 When the workspace, results, and model paths are all unset in settings, Studio opens
 on the task page with environment preparation. Once any of these paths has been saved,
-launching without an explicit page opens Reports. The sidebar lists Reports, Models,
-Downloads, Device, and Settings.
-“新任务” (New task) opens the task page with no sidebar selection.
+launching without an explicit page opens Reports. The sidebar lists Tasks, Reports,
+Models, Downloads, Device, and Settings.
+The sidebar's “任务” (Task) entry switches to the current task page without resetting,
+cancelling or confirming: an active run keeps its progress, and an idle task page keeps
+the chosen model, engine and evaluation sets. “新任务” (New task) also opens the task
+page but resets the round: it cancels and drains in-flight work after one confirmation.
 
 | Page | Purpose |
 | --- | --- |
