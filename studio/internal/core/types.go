@@ -56,10 +56,16 @@ type DeviceResponse struct {
 	LastError  *ApiError       `json:"last_error"`
 }
 
+// RunScore mirrors the CLI quality reduction. Valid counts every scored case,
+// including unscorable ones, so a scoring failure never shrinks the
+// denominator; Unscorable records how many of those could not be judged. Rate
+// stays nil while any case is unscorable, because the CLI reports the same
+// quality section as incomplete rather than computing a smaller ratio.
 type RunScore struct {
-	Passed int64    `json:"passed"`
-	Valid  int64    `json:"valid"`
-	Rate   *float64 `json:"rate"`
+	Passed     int64    `json:"passed"`
+	Valid      int64    `json:"valid"`
+	Unscorable int64    `json:"unscorable"`
+	Rate       *float64 `json:"rate"`
 }
 
 type RunSummary struct {

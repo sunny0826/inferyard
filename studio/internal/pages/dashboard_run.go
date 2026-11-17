@@ -234,7 +234,7 @@ func (w *viewState) runView(c *ui.Context) {
 		})
 		if w.destructiveAction(c, destructiveOption{
 			kind: destructiveCancelRun, id: id, label: "取消运行", confirmLabel: "确认取消运行",
-			prompt:   "将取消本测评题集的运行并等待安全收尾；已写入结果目录的进度保留，本次不会完成证据收尾或生成报告。",
+			prompt:   cancelRunPrompt(w.task.stage != ""),
 			disabled: (w.busy && w.task.stage == "") || task.State == "cancelling",
 		}) {
 			if w.task.stage != "" {
@@ -245,7 +245,7 @@ func (w *viewState) runView(c *ui.Context) {
 				return
 			}
 			w.guideWork(func() (string, *core.ApiError) {
-				_, e := w.service.CancelRun(id)
+				_, e := w.cancelRunTask(id)
 				return "已请求取消，等待安全收尾。", e
 			})
 		}

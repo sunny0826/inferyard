@@ -99,6 +99,7 @@ type viewState struct {
 	refreshing                                                                          bool
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
 	openDialog                                                                          func(mygo.OpenDialogOptions) ([]string, error)
+	cancelRun                                                                           func(string) (core.RunTask, *core.ApiError)
 	browseFailures                                                                      map[string]string
 	assetsPreset                                                                        bool
 	engineState                                                                         core.EngineState
@@ -140,7 +141,7 @@ type viewState struct {
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                string
-	historyTable, reportsTable                                                          pageTableState
+	historyTable                                                                        pageTableState
 	reportSources                                                                       components.ListState
 	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState

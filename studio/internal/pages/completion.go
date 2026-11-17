@@ -59,13 +59,15 @@ func (s *viewState) completedReportPath() string {
 }
 
 // completionRuns matches the run history against the runs this task produced.
-// The task keeps run paths; the workspace report keeps run ids.
+// The task keeps run paths; only when this task recorded none does it fall back
+// to the workspace report's run ids. Mixing both would attribute earlier runs
+// to this round.
 func (s *viewState) completionRuns() []core.RunSummary {
 	keys := map[string]bool{}
 	for _, path := range s.task.runs {
 		keys[path] = true
 	}
-	if s.progress != nil {
+	if len(keys) == 0 && s.progress != nil {
 		for _, id := range s.progress.Report.Runs {
 			keys[id] = true
 		}
@@ -92,12 +94,17 @@ func completionRunTitle(run core.RunSummary) string {
 
 // runPassRate reports the recorded pass count and rate. A nil score means the
 // run did not record one; a zero denominator means there was nothing scorable.
+// An unscorable case stays in the denominator, so a run with three passes and
+// one unscorable case reads 3 / 4 with the rate missing, never 100%.
 func runPassRate(run core.RunSummary) string {
 	if run.Score == nil {
 		return "缺测 — 未记录分数"
 	}
 	if run.Score.Valid == 0 {
 		return "缺测 — 没有有效题"
+	}
+	if run.Score.Unscorable > 0 {
+		return fmt.Sprintf("%d / %d · 缺测 — %d 题不可评分，分母不缩", run.Score.Passed, run.Score.Valid, run.Score.Unscorable)
 	}
 	if run.Score.Rate == nil {
 		return fmt.Sprintf("%d / %d · 缺测 — 未记录通过率", run.Score.Passed, run.Score.Valid)

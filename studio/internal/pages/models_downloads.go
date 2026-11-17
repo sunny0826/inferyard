@@ -76,7 +76,8 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 }
 
 func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
-	if task.State == "downloading" {
+	pendingHere := s.pendingDestructive.kind == string(destructiveCancelDownload) && s.pendingDestructive.id == task.TaskId
+	if task.State == "downloading" || pendingHere {
 		if s.destructiveAction(c, destructiveOption{
 			kind: destructiveCancelDownload, id: task.TaskId, label: "取消下载", confirmLabel: "确认取消下载",
 			prompt:   "将取消本次下载；已写入的输出目录保留，再次下载会使用新的目录名。",

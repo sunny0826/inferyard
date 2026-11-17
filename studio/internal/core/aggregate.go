@@ -166,26 +166,39 @@ func summarize(r evidence.Run, host string) (RunSummary, *aggregate, error) {
 		return v, a, e
 	}
 	v.Status = evidence.RunStatus(v.Sealed, str(v.Completeness), str(a.stop), dirty)
-	score := RunScore{}
-	observed := false
-	for _, c := range a.Progress.Cases {
-		if c.QualityState != nil {
-			observed = true
-		}
-		if str(c.QualityState) == "pass" {
-			score.Passed++
-		}
-		if str(c.QualityState) == "pass" || str(c.QualityState) == "fail" {
-			score.Valid++
-		}
-	}
-	if observed {
-		if score.Valid > 0 {
-			score.Rate = ptr(float64(score.Passed) / float64(score.Valid))
-		}
+	if score, ok := runScore(a.Progress.Cases); ok {
 		v.Score = &score
 	}
 	return v, a, nil
+}
+
+// runScore reduces judged cases to the shared score. Valid counts every case
+// that reached a quality state, including unscorable ones, so a scoring failure
+// never shrinks the denominator; the rate stays nil until every case is judged.
+func runScore(cases []CaseProgress) (RunScore, bool) {
+	score, observed := RunScore{}, false
+	for _, c := range cases {
+		if c.QualityState != nil {
+			observed = true
+		}
+		switch str(c.QualityState) {
+		case "pass":
+			score.Passed++
+			score.Valid++
+		case "fail":
+			score.Valid++
+		case "unscorable":
+			score.Unscorable++
+			score.Valid++
+		}
+	}
+	if !observed {
+		return RunScore{}, false
+	}
+	if score.Valid > 0 && score.Unscorable == 0 {
+		score.Rate = ptr(float64(score.Passed) / float64(score.Valid))
+	}
+	return score, true
 }
 func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 	h := RunHistoryResponse{ResultsRoot: u.ResultsRoot, ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}

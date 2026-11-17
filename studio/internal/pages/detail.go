@@ -30,7 +30,7 @@ func (s *viewState) detailView(c *ui.Context) {
 		errorView(c, t.Error)
 		if s.destructiveAction(c, destructiveOption{
 			kind: destructiveCancelRun, id: t.TaskId, label: "取消任务", confirmLabel: "确认取消任务",
-			prompt:   "将取消该运行并等待安全收尾；已写入结果目录的进度保留，本次不会完成证据收尾或生成报告。",
+			prompt:   cancelRunPrompt(s.task.stage != ""),
 			disabled: (s.busy && s.task.stage == "") || terminal(t.State) || t.State == "cancelling",
 		}) {
 			if s.task.stage != "" {
@@ -42,7 +42,7 @@ func (s *viewState) detailView(c *ui.Context) {
 				return
 			}
 			s.work(func() (string, *core.ApiError) {
-				_, e := s.service.CancelRun(id)
+				_, e := s.cancelRunTask(id)
 				return "已请求取消，等待安全收尾。", e
 			})
 		}

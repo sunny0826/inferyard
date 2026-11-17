@@ -61,8 +61,8 @@ func TestCancelRunRequiresConfirmation(t *testing.T) {
 	if s.task.stage != "run" || !tt.HasText("确认取消运行") {
 		t.Fatal("cancel ran on the first click or the prompt is missing", tt.Texts())
 	}
-	if !tt.HasText("已写入结果目录的进度保留") {
-		t.Fatal("prompt does not state what is kept", tt.Texts())
+	if !tt.HasText("已写入结果目录的进度和已取消的证据会被保存") || !tt.HasText("本轮不会生成完整报告") {
+		t.Fatal("prompt does not state the real scope and what is kept", tt.Texts())
 	}
 	click(t, tt, "确认取消运行")
 	if s.task.stage == "run" || s.pendingDestructive != (destructiveRequest{}) {
