@@ -121,6 +121,7 @@ func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark
 			progress.Cases = append(progress.Cases, core.CaseProgress{CaseId: fmt.Sprintf("preview-case-%03d", i+1), State: "completed", Category: previewValue("模拟分类"), QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)})
 		}
 		progress.Done, progress.LastSeq = end, end
+		p.scoreHistoryRun(id)
 		progress.CurrentCaseId = previewValue(fmt.Sprintf("preview-case-%03d", min(end+1, *progress.Total)))
 		detail.Resources = append(detail.Resources, previewResourceSamples(int64(len(detail.Resources)+1), p.timestamp(), int64(10<<30)-end*(1<<20), int64(2<<30)+end*(1<<20), 120+float64(end%40))...)
 		if end < *progress.Total {
@@ -156,19 +157,56 @@ func (p *previewSession) terminalRun(id, state string) {
 		if detail := p.details[id]; detail != nil {
 			detail.Task = *task
 		}
-		for j := range s.history.StandaloneRuns {
-			run := &s.history.StandaloneRuns[j]
-			if run.RunId == id {
-				run.FinishedAt, run.Status = task.FinishedAt, state
-				if state == "done" {
-					run.Status, run.Sealed = "complete", true
-					run.Completeness = previewValue("complete")
-				} else if state == "cancelled" {
-					run.StopReason = previewValue("user_cancelled")
-				}
+		if run := p.historyRun(id); run != nil {
+			run.FinishedAt, run.Status = task.FinishedAt, state
+			if state == "done" {
+				run.Status, run.Sealed = "complete", true
+				run.Completeness = previewValue("complete")
+			} else if state == "cancelled" {
+				run.StopReason = previewValue("user_cancelled")
 			}
+			p.scoreHistoryRun(id)
 		}
 	}
+}
+
+// historyRun returns the history row of a simulated run, or nil.
+func (p *previewSession) historyRun(id string) *core.RunSummary {
+	for i := range p.state.history.StandaloneRuns {
+		if run := &p.state.history.StandaloneRuns[i]; run.RunId == id {
+			return run
+		}
+	}
+	return nil
+}
+
+// scoreHistoryRun gives a simulated run's history row the score the history
+// scan derives from its evidence: every executed case takes a slot as soon as it
+// finishes, and the rate appears only once the run is complete.
+func (p *previewSession) scoreHistoryRun(id string) {
+	run, detail := p.historyRun(id), p.details[id]
+	if run == nil || detail == nil || detail.Progress == nil {
+		return
+	}
+	score := core.RunScore{}
+	for _, c := range detail.Progress.Cases {
+		if c.State != "completed" && c.State != "failed" {
+			continue
+		}
+		score.Valid++
+		if c.State == "failed" {
+			score.Failed++
+		} else if emptyText(c.QualityState) == "pass" {
+			score.Passed++
+		}
+	}
+	if score.Valid == 0 {
+		return
+	}
+	if emptyText(run.Completeness) == "complete" {
+		score.Rate = previewValue(float64(score.Passed) / float64(score.Valid))
+	}
+	run.Score = &score
 }
 
 func (p *previewSession) finishBenchmark() {

@@ -113,7 +113,11 @@ func previewBase(ctx context.Context) *viewState {
 		reports: []core.ReportSummary{previewReportSummary("preview-report")},
 	}
 	s.loadSettings(s.settings)
-	s.history.StandaloneRuns = []core.RunSummary{{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true}}
+	// A complete run carries the completeness and score the history scan reads
+	// from its evidence; the numbers match the bundled report of the same run.
+	seeded := core.RunSummary{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true, Completeness: previewValue("complete")}
+	seeded.Score = &core.RunScore{Passed: 7, Valid: 13, Rate: previewValue(7.0 / 13)}
+	s.history.StandaloneRuns = []core.RunSummary{seeded}
 	s.downloads = []core.DownloadTask{
 		{TaskId: "preview-engine", Kind: "engine", State: "downloading", OutName: "preview-engine", OutDir: "/preview/engines/preview-engine"},
 		{TaskId: "preview-model", Kind: "model", State: "failed", OutName: "preview-model", OutDir: "/preview/models/preview-model", SourceUrl: "https://example.invalid/preview.gguf", Error: core.Err("download_failed")},
