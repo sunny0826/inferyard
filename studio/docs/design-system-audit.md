@@ -74,14 +74,14 @@ Windows 与 Linux 的位置表现未验证。
 | 公共外壳 | onevra Shell 侧栏与主题、命名控件、首次加载、刷新状态、一次性公告 | [window.go](../internal/pages/window.go)、[design_system.go](../internal/pages/design_system.go) |
 | 任务页 | 阶段进度名称、中文阻断原因、当前下一步；准备与绑定字段说明、有限进度、历史层级、续测字段错误 | [dashboard.go](../internal/pages/dashboard.go)、[dashboard_run.go](../internal/pages/dashboard_run.go)、[dashboard_tasks.go](../internal/pages/dashboard_tasks.go) |
 | 设备 | 标题、紧凑键值排版、解析失败恢复入口 | [device.go](../internal/pages/device.go) |
-| 模型 | 选择区双向联动标注、运行区状态与归因、只读服务卡、缺测语义 | [models.go](../internal/pages/models.go)、[models_picker.go](../internal/pages/models_picker.go)、[models_run.go](../internal/pages/models_run.go) |
+| 模型 | 只读的已安装模型/引擎与核验结论、只读服务卡；选择在任务页 | [models.go](../internal/pages/models.go)、[service_state.go](../internal/pages/service_state.go) |
 | 下载 | 任务清单、取消/重试、实际目录名展示与新建表单 | [downloads.go](../internal/pages/downloads.go)、[models_downloads.go](../internal/pages/models_downloads.go) |
 | 运行详情 | 失败与加载分离、重试和返回、表格名称、换行图例 | [detail.go](../internal/pages/detail.go)、[chart.go](../internal/pages/chart.go) |
-| 报告 | 来源列表名称化展示、空态下一步、键盘打开 | [reports.go](../internal/pages/reports.go)、[reports_table.go](../internal/pages/reports_table.go) |
-| 设置 | 字段关联、路径保存与下载目录名 | [preparation.go](../internal/pages/preparation.go)、[form_validation.go](../internal/pages/form_validation.go) |
+| 报告 | 紧凑历史表与选中详情、报告卡片与逐 run 质量、卡片内打开 | [reports.go](../internal/pages/reports.go)、[reports_table.go](../internal/pages/reports_table.go)、[dashboard_tasks.go](../internal/pages/dashboard_tasks.go) |
+| 设置 | 字段关联、路径手输与原生浏览、保存与下载目录名 | [preparation.go](../internal/pages/preparation.go)、[form_validation.go](../internal/pages/form_validation.go) |
 | 报告视图 | 完成按钮直达对应报告；四指标卡、分类表、模型与机器、逐题表和来源；多运行独立切换、缺测、重读与返回列表 | [report_view.go](../internal/pages/report_view.go) |
 
-设备页展示硬件快照；模型列表与推荐在模型页。未将历史 HTML 原型当成已经实现的原生页面。
+设备页展示硬件快照，推荐在模型页。历史 HTML 原型不作为已实现页面。
 报告视图读取本地 `studio.json`，字段映射见[子系统参考](../../docs/subsystems/studio-panel.md#运行路径)；重读重新执行路径校验。
 报告损坏只在该列表项及打开后的视图显示无法读取，不影响其他报告，不修改历史报告文件。
 
