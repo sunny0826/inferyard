@@ -152,7 +152,7 @@ func summarize(r evidence.Run, host string) (RunSummary, *aggregate, error) {
 	}
 	if a.stop != nil {
 		v.Completeness = ptr("incomplete")
-		if runComplete(a.Progress, r, run) {
+		if runComplete(a.Progress, r, run, a.stop) {
 			v.Completeness = ptr("complete")
 		}
 	}

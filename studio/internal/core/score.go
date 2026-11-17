@@ -124,7 +124,10 @@ func caseCategories(inputs []byte) map[string]string {
 // and be an ordinary initial run, and every case must carry a final quality
 // verdict. A failed execution is a verdict — the CLI records it as "fail" —
 // while a completed case without a score, or an unscorable one, is not.
-func runComplete(progress RunProgress, r evidence.Run, run object) bool {
+func runComplete(progress RunProgress, r evidence.Run, run object, stop *string) bool {
+	if str(stop) != "plan_finished" {
+		return false
+	}
 	if str(text(run["kind"])) != "run" || run["diagnostic"] == true || str(text(run["relation"])) == "resume" {
 		return false
 	}
