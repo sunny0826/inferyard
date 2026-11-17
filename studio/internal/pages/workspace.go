@@ -123,6 +123,9 @@ func (s *viewState) newBenchmark() {
 // runTasksAll is the whole-round queue boundary; tests inject a recorder to
 // observe the reset loop without a real service.
 func (s *viewState) runTasksAll() []core.RunTask {
+	if s.runTasks != nil {
+		return s.runTasks()
+	}
 	if s.cancelRound != nil {
 		return cloneTasks(s.tasks)
 	}

@@ -103,6 +103,7 @@ type viewState struct {
 	cancelRun                                                                           func(string) (core.RunTask, *core.ApiError)
 	stopEngineAPI                                                                       func() (core.EngineState, *core.ApiError)
 	cancelRound                                                                         func(string) (core.RunTask, *core.ApiError)
+	runTasks                                                                            func() []core.RunTask
 	updateWindow                                                                        func(func())
 	browseFailures                                                                      map[string]string
 	assetsPreset                                                                        bool
