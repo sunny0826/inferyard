@@ -89,28 +89,28 @@
 <div class="twocol">
 <div class="field">
 <label for="workspace_root">工作区</label>
-<input id="workspace_root" value="/Users/demo/InferYard/workspace-demo" aria-describedby="workspace_root-help workspace_root-error">
+<div class="row"><input id="workspace_root" value="/Users/demo/InferYard/workspace-demo" aria-describedby="workspace_root-help workspace_root-error"><button type="button" aria-label="浏览… · 工作区目录">浏览…</button></div>
 <small id="workspace_root-help">新的工作区需在任务页初始化。</small>
 <p id="workspace_root-error" class="error" hidden>
 </p>
 </div>
 <div class="field">
 <label for="inferyard_path">InferYard CLI</label>
-<input id="inferyard_path" value="/Users/demo/.local/bin/inferyard" aria-describedby="inferyard_path-help inferyard_path-error">
-<small id="inferyard_path-help">使用本机已安装的 CLI 可执行文件。</small>
+<div class="row"><input id="inferyard_path" value="/Users/demo/.local/bin/inferyard" aria-describedby="inferyard_path-help inferyard_path-error"><button type="button" aria-label="浏览… · CLI">浏览…</button></div>
+<small id="inferyard_path-help">使用本机已安装的 CLI 可执行文件；也可点「浏览…」选择。</small>
 <p id="inferyard_path-error" class="error" hidden>
 </p>
 </div>
 <div class="field">
 <label for="results_root">结果目录</label>
-<input id="results_root" value="/Users/demo/InferYard/results" aria-describedby="results_root-help results_root-error">
+<div class="row"><input id="results_root" value="/Users/demo/InferYard/results" aria-describedby="results_root-help results_root-error"><button type="button" aria-label="浏览… · 结果目录">浏览…</button></div>
 <small id="results_root-help">缺失目录在任务页环境准备中处理。</small>
 <p id="results_root-error" class="error" hidden>
 </p>
 </div>
 <div class="field">
 <label for="models_root">模型目录</label>
-<input id="models_root" value="/Users/demo/InferYard/models" aria-describedby="models_root-help models_root-error">
+<div class="row"><input id="models_root" value="/Users/demo/InferYard/models" aria-describedby="models_root-help models_root-error"><button type="button" aria-label="浏览… · 模型目录">浏览…</button></div>
 <small id="models_root-help">缺失目录在任务页环境准备中处理。</small>
 <p id="models_root-error" class="error" hidden>
 </p>
