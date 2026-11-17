@@ -159,3 +159,33 @@ func TestStopConfirmationHeaderDropsReplacedEngine(t *testing.T) {
 		t.Fatalf("a replaced engine was stopped %d times", stopped)
 	}
 }
+
+// A stop prompt left open when the engine stops or fails is forgotten even
+// though no stop entry renders while the engine is down. Otherwise an engine
+// that comes back with the same snapshot, as the preview's simulated engine
+// does on every start, would reopen the header already armed to stop it.
+func TestStopPromptClearsWhenEngineGoesDown(t *testing.T) {
+	for _, down := range []string{"stopped", "failed"} {
+		t.Run(down, func(t *testing.T) {
+			s := engineStopState()
+			s.task.stage = ""
+			tt := ui.NewTester(s.view, 1120, 800)
+			click(t, tt, "引擎 · 运行中")
+			click(t, tt, "停止引擎")
+			if _, ok := tt.Find("确认停止引擎"); !ok {
+				t.Fatal("header prompt did not open", tt.Texts())
+			}
+			running := s.engineState
+			s.engineState = core.EngineState{State: down, Pid: running.Pid, StartTicks: running.StartTicks}
+			tt.Frame()
+			s.engineState = running
+			tt.Frame()
+			if _, ok := tt.Find("确认停止引擎"); ok {
+				t.Fatal("a prompt from before the engine went down came back armed")
+			}
+			if _, ok := tt.Find("停止引擎"); !ok {
+				t.Fatal("the header must offer a fresh stop entry", tt.Texts())
+			}
+		})
+	}
+}

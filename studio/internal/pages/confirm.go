@@ -95,13 +95,17 @@ func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) b
 	return confirmed
 }
 
-// dropStaleStopPrompt forgets an engine-stop prompt whose process is gone. A
-// replacement instance can never satisfy the recorded snapshot, so keeping the
-// request would only leave a dead prompt armed; clearing it here reports the
-// truth the moment the change is observed, instead of hiding it.
+// dropStaleStopPrompt forgets an engine-stop prompt whose process is gone:
+// the engine stopped or failed, or a replacement instance took over. Keeping
+// the request would only leave a dead prompt armed, ready to reappear if an
+// engine with the same snapshot comes back. contentView calls it every frame,
+// because once the engine is gone no stop entry renders to notice the change.
 func (s *viewState) dropStaleStopPrompt() {
 	pending := s.pendingDestructive
-	if destructiveKind(pending.kind) != destructiveStopEngine || pending.matchesEngine(s.currentEngine()) {
+	if destructiveKind(pending.kind) != destructiveStopEngine {
+		return
+	}
+	if live := s.engineState.State == "starting" || s.engineState.State == "running"; live && pending.matchesEngine(s.currentEngine()) {
 		return
 	}
 	s.pendingDestructive = destructiveRequest{}
