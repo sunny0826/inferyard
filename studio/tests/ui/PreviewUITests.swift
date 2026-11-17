@@ -101,7 +101,8 @@ final class PreviewUITests: XCTestCase {
         click("新任务")
         click("报告")
         expectText("历史任务")
-        let report = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "打开报告 · preview-report-")).firstMatch
+        // MyGo exports a button's name as its accessibility title, never its label.
+        let report = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "打开报告 · preview-report-")).firstMatch
         XCTAssertTrue(report.exists, "New task must preserve the generated report")
     }
 
