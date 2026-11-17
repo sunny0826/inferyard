@@ -69,6 +69,7 @@ func (s *viewState) checkedBundles() []string {
 }
 
 func (s *viewState) newBenchmark() {
+	s.pendingDestructive = destructiveRequest{}
 	if s.preview != nil {
 		s.preview.resetTask(s.model, s.engine)
 		return

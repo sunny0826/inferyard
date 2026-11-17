@@ -156,7 +156,13 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool) {
 	errorView(c, state.Error)
 	switch state.State {
 	case "starting", "running", "stopping":
-		button(c, "停止引擎").Disabled(!s.stopEnabled(true, runActive)).OnClick(s.stopEngine)
+		if s.destructiveAction(c, destructiveOption{
+			kind: destructiveStopEngine, label: "停止引擎", confirmLabel: "确认停止引擎",
+			prompt:   "将停止 Studio 启动的模型服务；正在加载的模型会中断，之后需要重新启动并绑定。",
+			disabled: !s.stopEnabled(true, runActive),
+		}) {
+			s.stopEngine()
+		}
 		if runActive {
 			ui.Text(c, "请先结束或取消测评任务，再停止引擎。").TextColor(c.Theme().TextMuted)
 		}

@@ -55,7 +55,11 @@ func (s *viewState) downloadsView(c *ui.Context) {
 					{"已观测", amount, reason}, {"速率", rate, rateReason}, {"总量", "总量未知", "总量未知"},
 				}, actions: func() {
 					if task.State == "downloading" {
-						button(c, "取消下载").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {
+						if s.destructiveAction(c, destructiveOption{
+							kind: destructiveCancelDownload, id: task.TaskId, label: "取消下载", confirmLabel: "确认取消下载",
+							prompt:   "将取消本次下载；已写入的输出目录保留，再次下载会使用新的目录名。",
+							disabled: s.busy,
+						}) {
 							if s.simulate(previewCancelDownload{id: task.TaskId}) {
 								return
 							}
@@ -63,7 +67,7 @@ func (s *viewState) downloadsView(c *ui.Context) {
 								_, e := s.service.CancelDownload(task.TaskId)
 								return "已请求取消下载。", e
 							})
-						})
+						}
 					}
 					if task.State == "failed" {
 						button(c, "重新创建下载任务").AlignSelf(ui.Start).Disabled(s.busy).OnClick(func() {

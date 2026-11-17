@@ -116,6 +116,9 @@ final class PreviewUITests: XCTestCase {
         click("运行 benchmark")
         click("查看实时详情", timeout: 10)
         click("取消任务")
+        expectExists(app.buttons["确认取消任务"], timeout: 5)
+        keepScreenshot("Cancel asks before discarding the run")
+        click("确认取消任务")
         click("运行 benchmark", timeout: 10)
         click("查看报告", timeout: 25)
         expectText("各类任务表现")
@@ -172,6 +175,8 @@ final class PreviewUITests: XCTestCase {
         click("用此组合新开任务")
         expectText("先停止当前受管服务，再按所选上下文启动新任务。")
         click("停止当前服务")
+        expectExists(app.buttons["确认停止当前服务"], timeout: 5)
+        click("确认停止当前服务")
         click("开始专项测评")
         expectText("已完成 1 / 5 次测量")
     }
@@ -180,6 +185,8 @@ final class PreviewUITests: XCTestCase {
         prepareSpeed()
         click("开始专项测评")
         click("取消专项测评")
+        expectExists(app.buttons["确认取消专项测评"], timeout: 5)
+        click("确认取消专项测评")
         click("查看结果", timeout: 10)
         expectText("有效 0/5 · 未形成完整汇总")
         expectText("任务已取消。已完成的测量已保留；未完成项显示为 —。")
@@ -325,6 +332,8 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(app.buttons["查看实时详情"].exists, "Engine startup must not start a benchmark")
         keepScreenshot("Engine running icon and hover controls")
         click("停止引擎")
+        expectExists(app.buttons["确认停止引擎"], timeout: 5)
+        click("确认停止引擎")
         expectExists(app.buttons["引擎 · 已停止"], timeout: 5)
     }
 

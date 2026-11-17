@@ -30,7 +30,11 @@ func (s *viewState) detailView(c *ui.Context) {
 		ui.Text(c, "运行目录："+displayName(text(t.RunPath))).Selectable()
 		ui.Text(c, "任务类型："+t.Kind+" · 运行 ID："+text(t.RunId))
 		errorView(c, t.Error)
-		if button(c, "取消任务").AlignSelf(ui.Start).Disabled((s.busy && s.task.stage == "") || terminal(t.State) || t.State == "cancelling").Clicked() {
+		if s.destructiveAction(c, destructiveOption{
+			kind: destructiveCancelRun, id: t.TaskId, label: "取消任务", confirmLabel: "确认取消任务",
+			prompt:   "将取消该运行并等待安全收尾；已写入结果目录的进度保留，本次不会封存或生成报告。",
+			disabled: (s.busy && s.task.stage == "") || terminal(t.State) || t.State == "cancelling",
+		}) {
 			if s.task.stage != "" {
 				s.newBenchmark()
 				return

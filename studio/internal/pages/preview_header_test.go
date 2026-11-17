@@ -37,6 +37,7 @@ func TestPreviewHeaderStartsOnlyEngineAndStopsIt(t *testing.T) {
 		}
 		click(t, tt, "引擎 · 运行中")
 		click(t, tt, "停止引擎")
+		click(t, tt, "确认停止引擎")
 		if s.engineState.State != "stopping" {
 			t.Fatal("stop control did not dispatch")
 		}
@@ -59,6 +60,7 @@ func TestPreviewHeaderCanStopDuringEngineStartup(t *testing.T) {
 		t.Fatal("starting engine cannot be stopped after startup request returns")
 	}
 	click(t, tt, "停止引擎")
+	click(t, tt, "确认停止引擎")
 	p.advance(2 * time.Second)
 	tt.Frame()
 	if s.engineState.State != "stopped" || len(s.tasks) != 0 {

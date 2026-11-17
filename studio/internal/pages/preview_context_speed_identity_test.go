@@ -83,6 +83,7 @@ func TestPreviewSpeedHistoricalIdentity(t *testing.T) {
 		t.Fatal("rerun form did not restore recorded combination", tt.Texts())
 	}
 	click(t, tt, "停止当前服务")
+	click(t, tt, "确认停止当前服务")
 	p.advance(time.Second)
 	tt.Frame()
 	click(t, tt, "开始专项测评")

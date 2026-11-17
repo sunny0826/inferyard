@@ -105,9 +105,11 @@ func TestPreviewCancellationPreservesOtherWork(t *testing.T) {
 			tt.Frame()
 			if elapsed < time.Second {
 				click(t, tt, "新任务")
+				click(t, tt, "确认开始新任务")
 			} else {
 				click(t, tt, "查看实时详情")
 				click(t, tt, "取消任务")
+				click(t, tt, "确认取消任务")
 			}
 			if !p.state.newTaskPending {
 				t.Fatal("cancel skipped draining")
@@ -136,6 +138,7 @@ func TestPreviewDownloadsCancelRetryAndPopulateModels(t *testing.T) {
 	click(t, tt, "下载模型")
 	first, second := p.state.downloads[0].TaskId, p.state.downloads[1].TaskId
 	click(t, tt, "取消下载")
+	click(t, tt, "确认取消下载")
 	p.advance(3 * time.Second)
 	tt.Frame()
 	if p.state.downloads[0].TaskId != first || p.state.downloads[0].State != "cancelled" || p.state.downloads[1].TaskId != second || p.state.downloads[1].State != "done" {
@@ -234,6 +237,7 @@ func TestPreviewNewTaskFinishesServiceStop(t *testing.T) {
 	tt.Frame()
 	click(t, tt, "引擎 · 运行中")
 	click(t, tt, "停止引擎")
+	click(t, tt, "确认停止引擎")
 	click(t, tt, "新任务")
 	p.advance(time.Second)
 	tt.Frame()
@@ -248,7 +252,9 @@ func TestPreviewNewTaskCancelsPendingHistoricalReport(t *testing.T) {
 	p.advance(20 * time.Second)
 	tt.Frame()
 	p.dispatch(previewCreateReport{paths: p.state.task.runs})
+	tt.Frame()
 	click(t, tt, "新任务")
+	click(t, tt, "确认开始新任务")
 	p.advance(400 * time.Millisecond)
 	tt.Frame()
 	click(t, tt, "运行 benchmark")

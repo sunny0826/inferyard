@@ -254,6 +254,7 @@ func TestPreviewContextSpeedCancelParity(t *testing.T) {
 				t.Fatal("not queued")
 			}
 			click(t, tt, "取消专项测评")
+			click(t, tt, "确认取消专项测评")
 			if p.state.speed.current.stage != speedCancelling || !p.state.busy {
 				t.Fatal("skipped draining")
 			}

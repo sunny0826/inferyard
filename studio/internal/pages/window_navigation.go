@@ -37,9 +37,20 @@ func (s *viewState) leftNav(c *ui.Context) {
 						Padding(0, t.Density.Row, t.Density.Row, t.Density.Row)
 				}
 			}
-			button(c, "新任务").OnClick(func() { s.newBenchmark() })
+			if s.workInFlight() {
+				if s.destructiveAction(c, destructiveOption{
+					kind: destructiveNewTask, label: "新任务", confirmLabel: "确认开始新任务",
+					prompt:  "将取消正在进行的测评并等待安全收尾；已完成题目的证据保留在结果目录，本轮不会生成报告。",
+					compact: true,
+				}) {
+					s.newBenchmark()
+				}
+			} else {
+				button(c, "新任务").OnClick(func() { s.newBenchmark() })
+			}
 			for _, n := range navigation {
 				if components.SidebarItem(c, n.label, n.icon(), s.selected == n.id).Clicked() {
+					s.pendingDestructive = destructiveRequest{}
 					s.selectPage(n.id)
 				}
 			}

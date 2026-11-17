@@ -107,7 +107,13 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	}
 	reason := s.speedStartBlockReason()
 	if engineLocked(s.engineState.State) {
-		button(c, "停止当前服务").Disabled(s.busy || s.engineState.State == "stopping").OnClick(s.stopEngine)
+		if s.destructiveAction(c, destructiveOption{
+			kind: destructiveStopEngine, label: "停止当前服务", confirmLabel: "确认停止当前服务",
+			prompt:   "将停止 Studio 启动的模型服务；长上下文专项测评需要重新启动服务后才能开始。",
+			disabled: s.busy || s.engineState.State == "stopping",
+		}) {
+			s.stopEngine()
+		}
 	}
 	if reason != "" {
 		ui.Text(c, reason).TextColor(stateColor(c, stateWarning))
@@ -203,7 +209,13 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 		}
 		switch {
 		case r.active():
-			button(c, "取消专项测评").Disabled(r.stage == speedCancelling).OnClick(s.cancelSpeed)
+			if s.destructiveAction(c, destructiveOption{
+				kind: destructiveCancelRun, id: r.id, label: "取消专项测评", confirmLabel: "确认取消专项测评",
+				prompt:   "将取消本次专项测评并等待安全收尾；已写入的测量记录保留，不形成完整汇总。",
+				disabled: r.stage == speedCancelling,
+			}) {
+				s.cancelSpeed()
+			}
 		default:
 			primaryButton(c, "查看结果").OnClick(func() { s.openSpeed(r.id) })
 			button(c, "用此组合新开任务").OnClick(func() { s.newSpeedTask(r) })

@@ -78,6 +78,9 @@ func TestPreviewLocalCancelStopsOnlyOwnedServiceParity(t *testing.T) {
 			if err := tt.Click("取消运行"); err != nil {
 				t.Fatal(err, tt.Texts())
 			}
+			if err := tt.Click("确认取消运行"); err != nil {
+				t.Fatal(err, tt.Texts())
+			}
 			resetCtx, stop := context.WithTimeout(t.Context(), 5*time.Second)
 			defer stop()
 			awaitBenchmarkReset(resetCtx, f.service.RunTasks, f.service.CancelRun, func(apply func()) { apply() }, func(e *core.ApiError) bool {

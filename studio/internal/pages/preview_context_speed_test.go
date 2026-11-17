@@ -90,6 +90,7 @@ func TestPreviewSpeedCompleteAndReopen(t *testing.T) {
 				t.Fatal("new task discarded history or selection")
 			}
 			click(t, tt, "停止当前服务")
+			click(t, tt, "确认停止当前服务")
 			p.advance(time.Second)
 			tt.Frame()
 			click(t, tt, "开始专项测评")
@@ -114,10 +115,12 @@ func TestPreviewSpeedCancellationAndReset(t *testing.T) {
 			r := p.state.speed.current
 			count := len(r.samples)
 			click(t, tt, "取消专项测评")
+			click(t, tt, "确认取消专项测评")
 			if r.stage != speedCancelling || !p.state.busy {
 				t.Fatal("cancellation skipped draining")
 			}
 			click(t, tt, "新任务")
+			click(t, tt, "确认开始新任务")
 			p.advance(20 * time.Second)
 			tt.Frame()
 			if r.stage != speedCancelled || len(r.samples) != count || r.summary != nil || len(p.state.speed.history) != 1 || p.state.speed.current != nil || p.state.busy || p.state.newTaskPending {

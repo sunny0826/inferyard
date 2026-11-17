@@ -176,7 +176,12 @@ func (w *viewState) serviceView(c *ui.Context) {
 			}
 		}
 		if w.engineState.State == "starting" || w.engineState.State == "running" {
-			if button(c, "停止服务").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil).Clicked() {
+			stopDisabled := w.busy || w.running() != nil
+			if w.destructiveAction(c, destructiveOption{
+				kind: destructiveStopEngine, label: "停止服务", confirmLabel: "确认停止服务",
+				prompt:   "将停止 Studio 启动的模型服务；正在加载的模型会中断，之后需要重新启动并绑定。",
+				disabled: stopDisabled,
+			}) {
 				w.stopEngine()
 			}
 		}
@@ -224,8 +229,14 @@ func (w *viewState) runView(c *ui.Context) {
 		}
 		ui.Text(c, label)
 		id := task.TaskId
-		button(c, "查看实时详情").AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) })
-		if button(c, "取消运行").AlignSelf(ui.Start).Disabled((w.busy && w.task.stage == "") || task.State == "cancelling").Clicked() {
+		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
+			button(c, "查看实时详情").AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) })
+		})
+		if w.destructiveAction(c, destructiveOption{
+			kind: destructiveCancelRun, id: id, label: "取消运行", confirmLabel: "确认取消运行",
+			prompt:   "将取消本题包的运行并等待安全收尾；已写入结果目录的进度保留，本次不会封存或生成报告。",
+			disabled: (w.busy && w.task.stage == "") || task.State == "cancelling",
+		}) {
 			if w.task.stage != "" {
 				w.newBenchmark()
 				return

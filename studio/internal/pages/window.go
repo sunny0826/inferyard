@@ -138,6 +138,7 @@ type viewState struct {
 	taskCancel                                                                          context.CancelFunc
 	deviceChecked                                                                       string
 	newTaskPending                                                                      bool
+	pendingDestructive                                                                  destructiveRequest
 	resumeSource                                                                        *core.RunSummary
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
