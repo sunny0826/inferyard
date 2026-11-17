@@ -53,7 +53,7 @@ final class ReleaseUITests: XCTestCase {
     }
 
     private func openRealReport() {
-        let open = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "打开报告 · ")).firstMatch
+        let open = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "打开报告 · ")).firstMatch
         expectExists(open, timeout: 20)
         open.click()
         expectText("各类任务表现", timeout: 20)
