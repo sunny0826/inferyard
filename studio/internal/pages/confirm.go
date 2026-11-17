@@ -21,6 +21,24 @@ const (
 
 type destructiveRequest struct {
 	kind, id string
+	// pid and startTicks snapshot the engine process the prompt was opened
+	// for; a confirm whose snapshot no longer matches must not stop anything.
+	pid, startTicks int64
+}
+
+// engineSnapshot records enough identity to distinguish one engine process
+// from a replacement while a stop prompt stays open.
+type engineSnapshot struct {
+	pid, startTicks int64
+}
+
+func (s *viewState) currentEngine() engineSnapshot {
+	return engineSnapshot{pid: s.engineState.Pid, startTicks: s.engineState.StartTicks}
+}
+
+// matchesEngine reports whether the recorded process is still the one running.
+func (r destructiveRequest) matchesEngine(current engineSnapshot) bool {
+	return r.pid == current.pid && r.startTicks == current.startTicks
 }
 
 type destructiveOption struct {
@@ -39,6 +57,9 @@ type destructiveOption struct {
 func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) bool {
 	t := tokens(c)
 	request := destructiveRequest{kind: string(option.kind), id: option.id}
+	if option.kind == destructiveStopEngine {
+		request.pid, request.startTicks = s.engineState.Pid, s.engineState.StartTicks
+	}
 	pending := s.pendingDestructive == request
 	if !pending {
 		if dangerButton(c, option.label).AlignSelf(ui.Start).Disabled(option.disabled).Clicked() {
@@ -85,7 +106,10 @@ func (s *viewState) destructiveTargetValid(request destructiveRequest) bool {
 	case destructiveCancelRun:
 		return s.cancelTargetActive(request.id)
 	case destructiveStopEngine:
-		return s.engineStoppable()
+		if !s.engineStoppable() {
+			return false
+		}
+		return request.matchesEngine(s.currentEngine())
 	case destructiveStopOrphan:
 		return s.engineState.State == "orphaned" && s.idleForEngineStop()
 	case destructiveCancelDownload:
@@ -122,6 +146,18 @@ func cancelRunPrompt(lastRound bool) string {
 		scope = "将取消本轮所有未结束的运行并等待安全收尾；已写入结果目录的进度和已取消的证据会被保存。"
 	}
 	return scope + "本轮不会生成完整报告；取消证据不等同于完整测评结果。"
+}
+
+// stopEngineCall is the engine-stop boundary; tests inject a recorder to prove
+// a stale confirmation never stops a replacement process.
+func (s *viewState) stopEngineCall() (core.EngineState, *core.ApiError) {
+	if s.stopEngineAPI != nil {
+		return s.stopEngineAPI()
+	}
+	if s.service == nil {
+		return core.EngineState{}, core.Err("internal_error")
+	}
+	return s.service.StopEngine()
 }
 
 // cancelRunTask is the service boundary for a run cancel. Tests inject a

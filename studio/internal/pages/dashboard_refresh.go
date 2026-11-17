@@ -85,5 +85,5 @@ func (s *viewState) applyDashboard(v dashboardSnapshot, e *core.ApiError) {
 			s.bindEndpoint = "http://" + net.JoinHostPort(host, port)
 		}
 	}
-	s.startup, s.processes, s.bindingStale, s.bindingUnknown = v.startup, v.processes, v.stale, v.unknown
+	s.startup, s.processes, s.bindingStale = v.startup, v.processes, v.stale
 }

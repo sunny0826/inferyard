@@ -137,15 +137,15 @@ func selectedRow(state *pageTableState, count int) int {
 }
 
 // runScore names a missing or reduced rate instead of printing a smaller ratio:
-// unscorable cases stay in the denominator and remove the rate.
+// failed and unscorable cases stay in the denominator and remove the rate.
 func runScore(r core.RunSummary) string {
 	if r.Score == nil {
 		return "未记录评分"
 	}
 	rate := "无有效题"
-	switch {
-	case r.Score.Unscorable > 0:
-		rate = fmt.Sprintf("含 %d 题不可评分", r.Score.Unscorable)
+	switch gap := r.Score.RateGap(); {
+	case gap != "":
+		rate = "含 " + gapDescription(*r.Score, gap)
 	case r.Score.Rate != nil:
 		rate = fmt.Sprintf("%.1f%%", *r.Score.Rate*100)
 	}

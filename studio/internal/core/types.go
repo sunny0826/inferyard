@@ -56,16 +56,34 @@ type DeviceResponse struct {
 	LastError  *ApiError       `json:"last_error"`
 }
 
-// RunScore mirrors the CLI quality reduction. Valid counts every scored case,
-// including unscorable ones, so a scoring failure never shrinks the
-// denominator; Unscorable records how many of those could not be judged. Rate
-// stays nil while any case is unscorable, because the CLI reports the same
-// quality section as incomplete rather than computing a smaller ratio.
+// RunScore mirrors the CLI quality reduction. Valid counts every case that
+// executed (completed or failed) and is not exempt, so neither a scoring
+// failure nor a failed execution shrinks the denominator. Failed and
+// MissingScore split the gaps by cause: an execution failure never produces a
+// score, and a completed case may still lack one. Rate stays nil while any gap
+// exists, because the CLI reports the same quality section as incomplete
+// rather than computing a smaller ratio.
 type RunScore struct {
 	Passed     int64    `json:"passed"`
 	Valid      int64    `json:"valid"`
 	Unscorable int64    `json:"unscorable"`
+	Failed     int64    `json:"failed"`
+	Missing    int64    `json:"missing_score"`
 	Rate       *float64 `json:"rate"`
+}
+
+// RateGap reports why a rate is absent, or empty when every counted case was
+// judged. Counts stay available so the page can name the cause.
+func (s RunScore) RateGap() string {
+	switch {
+	case s.Failed > 0:
+		return "执行失败"
+	case s.Unscorable > 0:
+		return "不可评分"
+	case s.Missing > 0:
+		return "缺评分"
+	}
+	return ""
 }
 
 type RunSummary struct {

@@ -93,9 +93,9 @@ func completionRunTitle(run core.RunSummary) string {
 }
 
 // runPassRate reports the recorded pass count and rate. A nil score means the
-// run did not record one; a zero denominator means there was nothing scorable.
-// An unscorable case stays in the denominator, so a run with three passes and
-// one unscorable case reads 3 / 4 with the rate missing, never 100%.
+// run did not record one; a zero denominator means nothing executed. A failed
+// or unscorable or unscored case stays in the denominator, so three passes plus
+// one such case read 3 / 4 with the cause named, never 100%.
 func runPassRate(run core.RunSummary) string {
 	if run.Score == nil {
 		return "缺测 — 未记录分数"
@@ -103,13 +103,22 @@ func runPassRate(run core.RunSummary) string {
 	if run.Score.Valid == 0 {
 		return "缺测 — 没有有效题"
 	}
-	if run.Score.Unscorable > 0 {
-		return fmt.Sprintf("%d / %d · 缺测 — %d 题不可评分，分母不缩", run.Score.Passed, run.Score.Valid, run.Score.Unscorable)
-	}
-	if run.Score.Rate == nil {
-		return fmt.Sprintf("%d / %d · 缺测 — 未记录通过率", run.Score.Passed, run.Score.Valid)
+	if gap := run.Score.RateGap(); gap != "" {
+		return fmt.Sprintf("%d / %d · 缺测 — %s，分母不缩", run.Score.Passed, run.Score.Valid, gapDescription(*run.Score, gap))
 	}
 	return fmt.Sprintf("%d / %d · %.1f%%", run.Score.Passed, run.Score.Valid, *run.Score.Rate*100)
+}
+
+// gapDescription names how many counted cases fall into the gap and why.
+func gapDescription(score core.RunScore, gap string) string {
+	switch gap {
+	case "执行失败":
+		return fmt.Sprintf("%d 题执行失败", score.Failed)
+	case "不可评分":
+		return fmt.Sprintf("%d 题不可评分", score.Unscorable)
+	default:
+		return fmt.Sprintf("%d 题缺评分", score.Missing)
+	}
 }
 
 // runDuration derives the run wall time from its recorded start and finish.

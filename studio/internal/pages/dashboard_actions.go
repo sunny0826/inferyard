@@ -201,7 +201,7 @@ func (w *viewState) stopEngine() {
 		return
 	}
 	w.guideWork(func() (string, *core.ApiError) {
-		_, e := w.service.StopEngine()
+		_, e := w.stopEngineCall()
 		return "已请求停止服务。", e
 	})
 }

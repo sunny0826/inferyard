@@ -46,8 +46,8 @@ memory were used, and shows the results as a report in the same window.
    missing) and creates the results folder, model folder and workspace. The
    first run downloads a Python runtime and can take a few minutes.
 3. Get a model and an engine from **下载** (Downloads).
-4. Pick the model, engine and task sets, then click **运行 benchmark** (Run
-   benchmark).
+4. Pick the model, engine and task sets on the task page, then click
+   **开始测评** (Start benchmark).
 5. Open the result from **报告** (Reports).
 
 The Studio interface is currently in Chinese. The [Studio guide](studio/README.md)

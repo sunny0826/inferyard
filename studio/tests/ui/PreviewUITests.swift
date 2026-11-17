@@ -74,8 +74,10 @@ final class PreviewUITests: XCTestCase {
         let downloadedModel = "model · SmolLM2-135M-Instruct-Q4_K_M.gguf"
         expectText(downloadedModel)
         XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must stay read-only")
-        click("任务")
-        click("开始测评")
+        // The sidebar has no "任务" entry; the task page is reached through
+        // "新任务" and the pair is chosen there.
+        click("新任务")
+        chooseModel(downloadedModel)
         expectExists(app.buttons["查看实时详情"], timeout: 10)
         keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
@@ -366,7 +368,7 @@ final class PreviewUITests: XCTestCase {
     private func lmStudioBindingFailureKeepsCompletedScope() {
         revealInContent(app.buttons["开始测评"])
         click("开始测评")
-        expectText("zh-svg-pelican · 等待绑定 LM Studio", timeout: 15)
+        expectText("zh-svg-pelican · 等待连接 LM Studio", timeout: 15)
         let pid = app.textFields["新的后台 PID"]
         expectExists(pid, timeout: 5)
         revealInContent(pid)

@@ -100,6 +100,9 @@ type viewState struct {
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
 	openDialog                                                                          func(mygo.OpenDialogOptions) ([]string, error)
 	cancelRun                                                                           func(string) (core.RunTask, *core.ApiError)
+	stopEngineAPI                                                                       func() (core.EngineState, *core.ApiError)
+	cancelRound                                                                         func(string) (core.RunTask, *core.ApiError)
+	updateWindow                                                                        func(func())
 	browseFailures                                                                      map[string]string
 	assetsPreset                                                                        bool
 	engineState                                                                         core.EngineState
@@ -129,7 +132,6 @@ type viewState struct {
 	failure                                                                             *core.ApiError
 	workspace, cliPath, results, models                                                 string
 	bindingStale                                                                        bool
-	bindingUnknown                                                                      bool
 	task                                                                                benchmarkTask
 	selectedBundles                                                                     map[string]bool
 	focusedRun                                                                          string

@@ -172,31 +172,50 @@ func summarize(r evidence.Run, host string) (RunSummary, *aggregate, error) {
 	return v, a, nil
 }
 
-// runScore reduces judged cases to the shared score. Valid counts every case
-// that reached a quality state, including unscorable ones, so a scoring failure
-// never shrinks the denominator; the rate stays nil until every case is judged.
+// runScore reduces executed cases to the shared score, following the CLI rule
+// that the denominator is the executed case set: completed and failed cases
+// both count, so an answer that failed to execute still occupies its slot. A
+// case that never executed (cancelled, invalid, pending) or whose category is
+// outside quality stays out of the denominator. The rate is present only when
+// every counted case was judged.
 func runScore(cases []CaseProgress) (RunScore, bool) {
 	score, observed := RunScore{}, false
 	for _, c := range cases {
-		if c.QualityState != nil {
-			observed = true
-		}
-		switch str(c.QualityState) {
-		case "pass":
-			score.Passed++
-			score.Valid++
-		case "fail":
-			score.Valid++
-		case "unscorable":
-			score.Unscorable++
-			score.Valid++
-		}
+		score, observed = foldCase(score, c, observed)
 	}
 	if !observed {
 		return RunScore{}, false
 	}
-	if score.Valid > 0 && score.Unscorable == 0 {
+	if score.Valid > 0 && score.Failed == 0 && score.Unscorable == 0 && score.Missing == 0 {
 		score.Rate = ptr(float64(score.Passed) / float64(score.Valid))
+	}
+	return score, true
+}
+
+// foldCase adds one case's slot unless it never executed or its category is
+// outside quality; failed execution and unscored completion each get their own
+// bucket while still occupying the denominator.
+func foldCase(score RunScore, c CaseProgress, observed bool) (RunScore, bool) {
+	switch c.State {
+	case "completed", "failed":
+	default:
+		return score, observed
+	}
+	if str(c.QualityState) == "not_applicable" {
+		return score, observed
+	}
+	score.Valid++
+	if c.State == "failed" {
+		score.Failed++
+		return score, true
+	}
+	switch str(c.QualityState) {
+	case "pass":
+		score.Passed++
+	case "unscorable":
+		score.Unscorable++
+	case "":
+		score.Missing++
 	}
 	return score, true
 }

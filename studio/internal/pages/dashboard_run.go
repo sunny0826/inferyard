@@ -57,7 +57,7 @@ func (w *viewState) candidateView(c *ui.Context) {
 		engineHint = "当前 CLI 不支持引擎核验；列表中的引擎尚未核验。"
 	}
 	ui.Field(c, termCandidateEngine, func() { components.NativeSelect(c, &w.engine, engineOptions) }).Description(engineHint)
-	ui.Field(c, "测评模型", func() { components.NativeSelect(c, &w.model, modelOptions) }).Description("与模型页的选择框是同一选择。")
+	ui.Field(c, "测评模型", func() { components.NativeSelect(c, &w.model, modelOptions) }).Description("这里是选择本次测评模型的唯一入口；模型页只读展示已安装资源。")
 	if w.checks.Checking > 0 {
 		ui.Text(c, fmt.Sprintf("正在核验 %d 个引擎…", w.checks.Checking)).TextColor(c.Theme().TextMuted)
 	}

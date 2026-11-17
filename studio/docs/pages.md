@@ -53,8 +53,10 @@ check runs once with `--models-root`
 and no `--model`. A sole available model is selected automatically; multiple models
 require a choice. Engines still require verification. Once a model appears, the old
 `no_local_model` warning clears; candidate preparation rechecks the model with `--model`.
-The task generates `report --runs` for its own sealed runs, displays
-only a “查看报告” button that opens that exact report, and leaves report reading on Reports.
+The task generates `report --runs` for its own sealed runs. The completion step
+shows only this round's runs, a “查看报告” button that opens that exact report and a
+“再次测评” entry that starts a new task; report reading stays on Reports.
+The completion summary never mixes in earlier workspace runs.
 Duration and unfinished batch plans display their blocking reason without an execution button.
 
 Top-right engine and task icons pulse while active, respecting Reduce Motion.

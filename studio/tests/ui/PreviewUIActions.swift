@@ -84,6 +84,19 @@ extension PreviewUITests {
         }
     }
 
+    /// chooseModel picks one entry from the task page's 测评模型 dropdown, the
+    /// only place the pair is chosen. The dropdown lists installed models.
+    func chooseModel(_ label: String) {
+        let trigger = app.menuButtons["测评模型"].firstMatch
+        expectExists(trigger, timeout: 10)
+        revealInContent(trigger)
+        trigger.click()
+        let item = app.menuItems[label].firstMatch
+        expectExists(item, timeout: 5)
+        item.click()
+        wait("model selection closes", timeout: 5) { !item.exists }
+    }
+
     func openMenu(_ label: String) {
         let button = app.menuButtons[label].firstMatch
         wait("menu button \(label) is enabled", timeout: 5) { button.exists && button.isEnabled }
