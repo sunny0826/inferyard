@@ -158,10 +158,12 @@ candidate commands above are development checks, not a release-upload path.
    when its separately approved real-model scope is required.
 2. On the same source commit, manually trigger
    [Studio release candidate](https://github.com/sunny0826/inferyard/actions/workflows/studio-release.yml).
-   Native macOS, Windows and Linux jobs build with `-tags release`, check the
-   packaged command boundary, and produce three archives. The macOS job also
-   launches the packaged production app with an isolated HOME and a real
-   CLI/fake-engine report. The assemble job writes
+   Native macOS, Windows and Linux jobs build with `-tags release` and check the
+   packaged command boundary. They produce a macOS DMG, a Windows Inno Setup
+   installer and a Linux tar.gz. The macOS job mounts the DMG and launches its
+   production app with an isolated HOME and a real CLI/fake-engine report. The
+   Windows job installs the application, checks the installed command boundary
+   and uninstalls it. The assemble job writes
    `studio-release-manifest.json` and `SHA256SUMS.studio`, then re-verifies the
    exact bytes. A regular PR run of either candidate workflow cannot serve as
    a release source.
@@ -175,9 +177,9 @@ candidate commands above are development checks, not a release-upload path.
    origins, both manifests, and the same-batch bytes without publishing.
 5. After the rehearsal passes, use the same inputs with
    `destination=github-release`. The workflow verifies again and creates the
-   `v0.0.4` draft with nine attachments: five CLI files, three Studio
-   archives, and `SHA256SUMS.studio`. The same job re-downloads every draft
-   attachment and compares it with the verified candidate bytes. Edit the
+   `v0.0.4` draft with nine attachments: five CLI files, the Studio DMG,
+   Windows installer and Linux tar.gz, and `SHA256SUMS.studio`. The same job
+   re-downloads every draft attachment and compares it with the verified candidate bytes. Edit the
    release notes on GitHub with features, compatibility boundaries,
    installation methods, actual platform coverage, sources and digests.
 6. With explicit publication approval, use `destination=pypi` with the same

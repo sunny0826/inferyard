@@ -42,7 +42,18 @@ def make_input(directory: str, target: str, commit: str = SHA, name: str | None 
     binary.parent.mkdir(parents=True, exist_ok=True)
     binary.write_bytes(f"binary-{label}-{commit[:1]}".encode())
     out = Path(directory) / "packages" / label
-    with patch("package.subprocess.run", return_value=fake_run(target)):
+
+    def run(
+        command: list[str], **_: str | int | bool | Path | dict[str, str]
+    ) -> subprocess.CompletedProcess[str]:
+        if command[0] == "hdiutil":
+            Path(command[-1]).write_bytes(b"test-dmg")
+        elif command[0].endswith("ISCC.exe"):
+            archive = out / common.archive_name(common.studio_version(), target)
+            archive.write_bytes(b"test-installer")
+        return fake_run(target)
+
+    with patch("package.subprocess.run", side_effect=run):
         package_target(target, commit, out, root=root)
     return out
 

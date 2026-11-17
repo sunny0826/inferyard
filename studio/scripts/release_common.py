@@ -41,8 +41,8 @@ def distribution_name(version: str, target: str) -> str:
 
 
 def archive_name(version: str, target: str) -> str:
-    suffix = ".zip" if target.startswith("windows") else ".tar.gz"
-    return f"{distribution_name(version, target)}{suffix}"
+    suffixes = {"darwin-arm64": ".dmg", "linux-amd64": ".tar.gz", "windows-amd64": ".exe"}
+    return f"{distribution_name(version, target)}{suffixes[target]}"
 
 
 def reject_duplicates(pairs: list[tuple[str, JsonData]]) -> dict[str, JsonData]:

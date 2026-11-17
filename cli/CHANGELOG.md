@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Studio now ships a macOS `.dmg` containing the app and an `/Applications`
+  shortcut, and a Windows `.exe` installer with per-user installation by default
+  and an uninstaller. Linux remains a `.tar.gz` archive. Release CI mounts the
+  DMG, installs and removes the Windows application, and checks the packaged
+  command boundaries on their native runners.
+
 ## 0.0.4
 
 ### Added

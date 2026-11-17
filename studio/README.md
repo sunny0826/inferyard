@@ -83,10 +83,14 @@ Formal release packages are built and uploaded by
 [Studio release candidate](../.github/workflows/studio-release.yml), not by this local
 cross-build. Its macOS, Windows and Linux jobs each build natively with `-tags release`
 and call `package.py --target TARGET --source-commit SHA --out NEW_DIR`. The workflow
-checks build provenance, creates tar.gz/zip archives and a three-platform manifest, and
-generates `SHA256SUMS.studio`. The unified
-[publish workflow](../.github/workflows/publish.yml) verifies both CLI and Studio
-candidates before creating a GitHub draft with all nine attachments.
+checks build provenance and generates a three-platform manifest and
+`SHA256SUMS.studio`. macOS is distributed as a `.dmg` containing the app and an
+`/Applications` shortcut. Windows is distributed as an Inno Setup `.exe` installer
+with per-user installation by default and an uninstaller. Linux remains a `.tar.gz`
+archive. The macOS job mounts the disk image before testing the packaged app; the
+Windows job installs the application, checks its command boundary and uninstalls it.
+The unified [publish workflow](../.github/workflows/publish.yml) verifies both CLI
+and Studio candidates before creating a GitHub draft with all nine attachments.
 
 The version's single source is [mygo.config.ts](mygo.config.ts). It carries only the MyGo
 embed metadata and is not a web frontend build configuration; there is no frontend install

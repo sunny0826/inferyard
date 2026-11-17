@@ -137,7 +137,8 @@ recorded for each task. See the [context-speed reference](../../../docs/subsyste
 
 The [Studio release candidate workflow](../../../.github/workflows/studio-release.yml)
 runs `ReleaseUITests` on macOS after native packaging. This is a different path from
-the preview suites above: `run_release.py` launches the exact packaged
+the preview suites above: the workflow mounts the DMG, checks its `/Applications`
+shortcut and command boundary, then `run_release.py` launches the mounted
 `InferYard Studio.app` through `XCUIApplication(url:)`, without `--debug-ui`, and
 injects an isolated HOME. The workflow first runs `TestChainBindRunReport` with a
 preserved `INFERYARD_E2E_ROOT`; the runner then writes settings that point the
@@ -153,5 +154,6 @@ skip or an unlaunched app cannot produce a green release smoke. The runner
 creates a new `build/release-ui-e2e/run-*` directory with `run.json`,
 `xcodebuild.log` and `Results.xcresult`; screenshots and the accessibility tree
 stay in the Xcode result. The workflow uploads those results separately from the
-release archives. Windows/Linux candidate jobs stop at native build, packaging
-and command-line boundary checks, so no native UI claim is made there.
+release archives. The Windows candidate job installs the EXE, checks the installed
+command boundary and runs the uninstaller. The Linux job checks native build,
+packaging and command-line boundaries. Neither job claims native UI coverage.
