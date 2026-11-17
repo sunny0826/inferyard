@@ -32,34 +32,52 @@ func reportListService(t *testing.T, root, results string) *Service {
 	return service
 }
 
-// The list projection comes from the same studio.json parse: model, bundle and
-// quality per run, with the file modification time rather than a run or
-// generation time.
-func TestReportSummaryProjectsRunsAndFileTime(t *testing.T) {
-	root := t.TempDir()
-	results := filepath.Join(root, "results")
-	dir := filepath.Join(root, "reports", "projected")
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		t.Fatal(err)
-	}
+// writeReportFixture writes the bundled report under one directory, optionally
+// backdating its file time so ordering is deterministic.
+func writeReportFixture(t *testing.T, dir string, stamp time.Time) {
+	t.Helper()
 	raw, err := os.ReadFile("../inferyard/testdata/studio-report.json")
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		t.Fatal(err)
 	}
 	file := filepath.Join(dir, "studio.json")
 	if err := os.WriteFile(file, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	stamp := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
-	if err := os.Chtimes(file, stamp, stamp); err != nil {
-		t.Fatal(err)
+	if !stamp.IsZero() {
+		if err := os.Chtimes(file, stamp, stamp); err != nil {
+			t.Fatal(err)
+		}
 	}
+}
+
+// The list projection comes from the same studio.json parse: model, bundle and
+// quality per run, with the file modification time rather than a run or
+// generation time.
+func TestReportSummaryProjectsRunsAndFileTime(t *testing.T) {
+	root := t.TempDir()
+	results := filepath.Join(root, "results")
+	stamp := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
+	writeReportFixture(t, filepath.Join(root, "reports", "projected"), stamp)
+	report := onlyReport(t, root, results)
+	assertProjectedRun(t, report, stamp)
+}
+
+func onlyReport(t *testing.T, root, results string) ReportSummary {
+	t.Helper()
 	service := reportListService(t, root, results)
 	_, reports, apiErr := service.Reports()
 	if apiErr != nil || len(reports) != 1 {
 		t.Fatalf("%v %v", reports, apiErr)
 	}
-	report := reports[0]
+	return reports[0]
+}
+
+func assertProjectedRun(t *testing.T, report ReportSummary, stamp time.Time) {
+	t.Helper()
 	if report.Unreadable {
 		t.Fatal("readable report marked unreadable")
 	}
@@ -83,69 +101,48 @@ func TestReportSummaryProjectsRunsAndFileTime(t *testing.T) {
 func TestReportSummaryKeepsUnreadableEntry(t *testing.T) {
 	root := t.TempDir()
 	results := filepath.Join(root, "results")
-	good := filepath.Join(root, "reports", "good")
-	bad := filepath.Join(root, "reports", "bad")
-	for _, dir := range []string{good, bad} {
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	raw, err := os.ReadFile("../inferyard/testdata/studio-report.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(good, "studio.json"), raw, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(bad, "studio.json"), []byte("{broken"), 0600); err != nil {
-		t.Fatal(err)
-	}
+	writeReportFixture(t, filepath.Join(root, "reports", "good"), time.Time{})
+	writeBrokenReport(t, filepath.Join(root, "reports", "bad"))
 	service := reportListService(t, root, results)
 	_, reports, apiErr := service.Reports()
-	if apiErr != nil {
-		t.Fatal(apiErr)
+	if apiErr != nil || len(reports) != 2 {
+		t.Fatalf("%v %v", reports, apiErr)
 	}
-	var broken *ReportSummary
-	for i := range reports {
-		if reports[i].ReportId == "bad" {
-			broken = &reports[i]
-		}
-	}
-	if len(reports) != 2 || broken == nil {
-		t.Fatalf("unreadable report was dropped: %+v", reports)
-	}
-	if !broken.Unreadable || len(broken.RunSummaries) != 0 {
+	broken := reports[reportIndex(reports, "bad")]
+	if !broken.Unreadable || len(broken.RunSummaries) != 0 || broken.ModifiedAt == nil {
 		t.Fatalf("unreadable projection %+v", broken)
 	}
-	if broken.ModifiedAt == nil {
-		t.Fatal("unreadable report lost its file time")
+}
+
+func writeBrokenReport(t *testing.T, dir string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, "studio.json"), []byte("{broken"), 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func reportIndex(reports []ReportSummary, id string) int {
+	for i := range reports {
+		if reports[i].ReportId == id {
+			return i
+		}
+	}
+	return -1
 }
 
 // The summary sorts by the file time it reports, newest first.
 func TestReportSummarySortsByFileTime(t *testing.T) {
 	root := t.TempDir()
 	results := filepath.Join(root, "results")
-	raw, err := os.ReadFile("../inferyard/testdata/studio-report.json")
-	if err != nil {
-		t.Fatal(err)
-	}
 	times := map[string]time.Time{
 		"older": time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 		"newer": time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
 	}
 	for id, stamp := range times {
-		dir := filepath.Join(root, "reports", id)
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			t.Fatal(err)
-		}
-		file := filepath.Join(dir, "studio.json")
-		if err := os.WriteFile(file, raw, 0600); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Chtimes(file, stamp, stamp); err != nil {
-			t.Fatal(err)
-		}
+		writeReportFixture(t, filepath.Join(root, "reports", id), stamp)
 	}
 	service := reportListService(t, root, results)
 	_, reports, apiErr := service.Reports()

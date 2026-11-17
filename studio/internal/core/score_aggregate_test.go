@@ -1,73 +1,39 @@
 package core
 
 import (
-	"encoding/json"
+	"fmt"
 	"testing"
 
 	"inferyard/studio/internal/evidence"
 )
 
-// scoreSelectionDocument is the minimal selection document the aggregate reads.
-type scoreSelectionDocument struct {
-	Documents struct {
-		Selection struct {
-			Payload struct {
-				CaseIDs []string `json:"case_ids"`
-			} `json:"payload"`
-		} `json:"selection"`
-	} `json:"documents"`
+// scoreInputsJSON declares two cases; the aggregate only needs the selection
+// document to seed its progress list.
+const scoreInputsJSON = `{"documents":{"selection":{"payload":{"case_ids":["case-0","case-1"]}}}}`
+
+// scoreEvent is one events.jsonl line the aggregate consumes.
+type scoreEvent struct {
+	seq, caseIndex int
+	kind, value    string
 }
 
-// scoreRecord is one events.jsonl record with the fields the aggregate reads.
-type scoreRecord struct {
-	Seq       int64  `json:"seq"`
-	Phase     string `json:"phase"`
-	EventType string `json:"event_type"`
-	Data      struct {
-		CaseID         string `json:"case_id"`
-		ExecutionState string `json:"execution_state,omitempty"`
-		Category       string `json:"category,omitempty"`
-		QualityState   string `json:"quality_state,omitempty"`
-	} `json:"data"`
+// scoreLine renders one event exactly as the CLI writer lays it out.
+func (e scoreEvent) scoreLine() string {
+	base := fmt.Sprintf(`{"seq":%d,"phase":"formal","event_type":%q,"data":{"case_id":"case-%d"`, e.seq, e.kind, e.caseIndex)
+	switch e.kind {
+	case "request_finished":
+		return base + fmt.Sprintf(`,"execution_state":%q}}`, e.value)
+	case "score":
+		return base + fmt.Sprintf(`,"category":"qa","quality_state":%q}}`, e.value)
+	}
+	return base + "}}"
 }
 
 // The event path feeds the same reduction: an unscorable case keeps its slot in
 // the denominator, so one pass plus one unscorable case is 1 / 2 with no rate.
 func TestAggregateKeepsUnscorableCaseInDenominator(t *testing.T) {
-	inputs := scoreSelectionDocument{}
-	inputs.Documents.Selection.Payload.CaseIDs = []string{"case-0", "case-1"}
-	raw, err := json.Marshal(inputs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	a := newAggregate(raw)
-	qualities := []string{"pass", "unscorable"}
-	records := make([]evidence.Record, 0, len(qualities)*3)
-	seq := 0
-	for i, quality := range qualities {
-		id := inputs.Documents.Selection.Payload.CaseIDs[i]
-		for _, event := range []struct{ kind, state string }{
-			{"request_started", ""},
-			{"request_finished", "completed"},
-			{"score", quality},
-		} {
-			seq++
-			record := scoreRecord{Seq: int64(seq), Phase: "formal", EventType: event.kind}
-			record.Data.CaseID = id
-			if event.kind == "request_finished" {
-				record.Data.ExecutionState = event.state
-			}
-			if event.kind == "score" {
-				record.Data.Category, record.Data.QualityState = "qa", event.state
-			}
-			line, err := json.Marshal(record)
-			if err != nil {
-				t.Fatal(err)
-			}
-			records = append(records, evidence.Record{Seq: int64(seq), Phase: "formal", EventType: event.kind, Raw: line})
-		}
-	}
-	a.events(records)
+	a := newAggregate([]byte(scoreInputsJSON))
+	a.events(scoreRecords([]string{"pass", "unscorable"}))
 	score, ok := runScore(a.Progress.Cases)
 	if !ok || score.Valid != 2 || score.Passed != 1 || score.Unscorable != 1 {
 		t.Fatalf("aggregate score = %+v ok=%v", score, ok)
@@ -75,7 +41,24 @@ func TestAggregateKeepsUnscorableCaseInDenominator(t *testing.T) {
 	if score.Rate != nil {
 		t.Fatalf("aggregate produced rate %v for an unscorable case", *score.Rate)
 	}
-	if got := len(inputs.Documents.Selection.Payload.CaseIDs); got != 2 {
-		t.Fatalf("fixture declared %d cases", got)
+}
+
+// scoreRecords builds the started/finished/score sequence, one triple per case.
+func scoreRecords(qualities []string) []evidence.Record {
+	records := make([]evidence.Record, 0, len(qualities)*3)
+	seq := 0
+	for i, quality := range qualities {
+		for _, event := range []scoreEvent{
+			{caseIndex: i, kind: "request_started"},
+			{caseIndex: i, kind: "request_finished", value: "completed"},
+			{caseIndex: i, kind: "score", value: quality},
+		} {
+			seq++
+			event.seq = seq
+			records = append(records, evidence.Record{
+				Seq: int64(seq), Phase: "formal", EventType: event.kind, Raw: []byte(event.scoreLine()),
+			})
+		}
 	}
+	return records
 }

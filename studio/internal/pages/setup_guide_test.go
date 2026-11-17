@@ -35,15 +35,24 @@ func TestSetupGuideExplainsBeforeStarting(t *testing.T) {
 	s.service = service
 	s.ready = core.Readiness{CLI: core.InferyardProbe{Status: "not_found"}}
 	tt := ui.NewTester(s.view, 1120, 2400)
+	assertSetupGuideSections(t, tt)
+	if _, err := os.Stat(root); err != nil {
+		t.Fatal(err)
+	}
+	entries, _ := os.ReadDir(root)
+	if len(entries) != 1 {
+		t.Fatalf("the guide created files: %v", entries)
+	}
+}
+
+// assertSetupGuideSections checks the required explanation and the banned
+// invented estimates. It is shared by both setup-guide cases.
+func assertSetupGuideSections(t *testing.T, tt *ui.Tester) {
+	t.Helper()
 	for _, want := range []string{
-		"这一步会做什么",
-		"不会修改 shell 配置",
-		"会写到哪里",
+		"这一步会做什么", "不会修改 shell 配置", "会写到哪里",
 		"工作区：", "结果目录：", "模型目录：", "uv 工具：",
-		"下载量与耗时",
-		"无法可靠预估",
-		"15 分钟超时，这不是整个准备过程的预计耗时",
-		"准备环境",
+		"下载量与耗时", "无法可靠预估", "15 分钟超时，这不是整个准备过程的预计耗时", "准备环境",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
@@ -57,13 +66,6 @@ func TestSetupGuideExplainsBeforeStarting(t *testing.T) {
 		if strings.Contains(texts, banned) {
 			t.Fatalf("invented estimate %q: %s", banned, texts)
 		}
-	}
-	if _, err := os.Stat(root); err != nil {
-		t.Fatal(err)
-	}
-	entries, _ := os.ReadDir(root)
-	if len(entries) != 1 {
-		t.Fatalf("the guide created files: %v", entries)
 	}
 }
 
