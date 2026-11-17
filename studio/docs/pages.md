@@ -18,7 +18,7 @@ Downloads, Device, and Settings.
 | Models | Read-only inventory of installed models and engines (format, architecture, size, verification verdict) plus running services. Choosing the pair happens only on the task page. Empty inventories offer Go to Downloads; orphaned engines show a warning; no absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts with no verification entry. |
-| Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
+| Settings | Configure the CLI path, workspace, results directory, model directory, and the local installation declaration — the only page that shows full paths — plus the model/engine download directory names. Each path field keeps manual entry and adds Browse…, which opens the native file or directory picker for an existing target; a workspace that does not exist yet is still typed, and saving never creates directories. |
 
 The task page keeps the active task's selected bundles and new run paths in memory. New task
 cancels binding and all non-terminal runs, waits for them to finish, and returns to the

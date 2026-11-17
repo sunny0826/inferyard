@@ -46,6 +46,12 @@ func (previewRetryDownload) previewIntent() {}
 
 type previewSettings struct{ patch map[string]json.RawMessage }
 
+// previewBrowsePath stands in for the native path picker. It writes a value from
+// the simulated machine only and never opens a dialog or touches the filesystem.
+type previewBrowsePath struct{ key string }
+
+func (previewBrowsePath) previewIntent() {}
+
 func (previewSettings) previewIntent() {}
 
 type previewInstallation struct{ action, path string }

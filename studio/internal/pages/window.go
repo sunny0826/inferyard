@@ -98,6 +98,8 @@ type viewState struct {
 	announcedErrors                                                                     map[string]bool
 	refreshing                                                                          bool
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
+	openDialog                                                                          func(mygo.OpenDialogOptions) ([]string, error)
+	browseFailures                                                                      map[string]string
 	assetsPreset                                                                        bool
 	engineState                                                                         core.EngineState
 	startup                                                                             core.Startup

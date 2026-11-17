@@ -36,6 +36,8 @@ func (p *previewSession) dispatch(intent previewIntent) {
 				break
 			}
 		}
+	case previewBrowsePath:
+		p.browse(op.key)
 	case previewSettings:
 		p.saveSettings(op.patch)
 	case previewInstallation:
@@ -188,6 +190,33 @@ func (p *previewSession) checkDevice() {
 		s.progress.DevicePreflight.Path = previewValue(filepath.Join(s.workspace, "preflight"))
 		p.notice = "模拟环境与设备检查已完成。"
 	})
+}
+
+// browse answers a path field from the simulated machine. The choice is written
+// into the draft only; saving still goes through the simulated settings intent.
+func (p *previewSession) browse(key string) {
+	s := p.state
+	root := emptyText(s.settings.Effective.WorkspaceRoot)
+	if root == "" {
+		root = emptyText(s.settings.Settings.WorkspaceRoot)
+	}
+	var current *string
+	switch key {
+	case browseCLI.key:
+		current = &s.cliPath
+	case browseInstallation.key:
+		current = &s.installationPath
+	case browseWorkspace.key:
+		current = &s.workspace
+	case browseResults.key:
+		current = &s.results
+	case browseModels.key:
+		current = &s.models
+	default:
+		s.failure = &core.ApiError{Code: "preview_unsupported", Message: previewNotice}
+		return
+	}
+	*current = browseChoice(root, key, *current)
 }
 
 func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {

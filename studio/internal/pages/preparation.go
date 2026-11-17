@@ -39,10 +39,12 @@ func (s *viewState) settingsView(c *ui.Context) {
 	}
 	card(c, "路径设置", func() {
 		fields := func() {
-			field(c, "CLI", &s.cliPath).Description("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。").Error(pathError(s.cliPath))
-			field(c, "工作区目录", &s.workspace).Description(directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)))
-			field(c, "结果目录", &s.results).Description(directoryState(s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot)))
-			field(c, "模型目录", &s.models).Description(directoryState(s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot)))
+			ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
+				s.pathField(c, "CLI", &s.cliPath, browseCLI).Description("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。").Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
+				s.pathField(c, "工作区目录", &s.workspace, browseWorkspace).Description(directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(s.browseError(browseWorkspace.key, settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot))))
+				s.pathField(c, "结果目录", &s.results, browseResults).Description(directoryState(s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(s.browseError(browseResults.key, settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot))))
+				s.pathField(c, "模型目录", &s.models, browseModels).Description(directoryState(s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(s.browseError(browseModels.key, settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot))))
+			})
 		}
 		if compactLayout(c) {
 			fields()
@@ -50,6 +52,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 			ui.Form(c, fields)
 		}
 		ui.Text(c, "保存设置不创建目录，目录缺失仍可浏览所有页面。")
+		ui.Text(c, "「浏览…」选择已有文件或目录；尚不存在的新工作区仍需手动输入完整路径。").TextColor(c.Theme().TextMuted)
 		if primaryButton(c, "保存").AlignSelf(ui.Start).Disabled(s.busy || !s.settingsLoaded).Clicked() {
 			if !s.validateSettings() {
 				return
