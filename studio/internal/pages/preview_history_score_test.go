@@ -3,6 +3,7 @@
 package pages
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -34,5 +35,31 @@ func TestPreviewHistoryScoresSimulatedRuns(t *testing.T) {
 	}
 	if scored != 2 || tt.HasText(termNoScore) {
 		t.Fatal("finished scopes must show their scores", tt.Texts())
+	}
+}
+
+// Entering the running scene reuses the seeded run id: its history row must
+// immediately reflect the 42 in-flight cases without inheriting the seeded
+// pass rate, keep withholding the rate as ticks advance, and still withhold it
+// if the run is cancelled.
+func TestPreviewRunningSceneScoresHistoryWithoutRate(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	p.loadScene(previewSceneIndex(t, "任务 · 运行中"))
+	tt := previewTester(p, 1120, 1200)
+	click(t, tt, "报告")
+	if !tt.HasText("42/42 · 含 本次运行未完整执行全部题目") {
+		t.Fatal("running scene inherited the seeded complete score", tt.Texts())
+	}
+	p.advance(500 * time.Millisecond)
+	tt.Frame()
+	if !tt.HasText("52/52 · 含 本次运行未完整执行全部题目") {
+		t.Fatal("running tick showed a pass rate before completion", tt.Texts())
+	}
+	click(t, tt, "任务")
+	confirmLabels(t, tt, "取消运行", "确认取消运行")
+	p.advance(500 * time.Millisecond)
+	click(t, tt, "报告")
+	if !tt.HasText("已取消") || !tt.HasText("52/52 · 含 本次运行未完整执行全部题目") {
+		t.Fatal("cancelled scene run did not keep its incomplete score", tt.Texts())
 	}
 }

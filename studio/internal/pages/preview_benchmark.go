@@ -157,17 +157,24 @@ func (p *previewSession) terminalRun(id, state string) {
 		if detail := p.details[id]; detail != nil {
 			detail.Task = *task
 		}
-		if run := p.historyRun(id); run != nil {
-			run.FinishedAt, run.Status = task.FinishedAt, state
-			if state == "done" {
-				run.Status, run.Sealed = "complete", true
-				run.Completeness = previewValue("complete")
-			} else if state == "cancelled" {
-				run.StopReason = previewValue("user_cancelled")
-			}
-			p.scoreHistoryRun(id)
-		}
+		p.finishHistoryRun(id, state, task.FinishedAt)
 	}
+}
+
+func (p *previewSession) finishHistoryRun(id, state string, finishedAt *string) {
+	run := p.historyRun(id)
+	if run == nil {
+		return
+	}
+	run.FinishedAt, run.Status = finishedAt, state
+	run.Completeness = previewValue("incomplete")
+	if state == "done" {
+		run.Status, run.Sealed = "complete", true
+		run.Completeness = previewValue("complete")
+	} else if state == "cancelled" {
+		run.StopReason = previewValue("user_cancelled")
+	}
+	p.scoreHistoryRun(id)
 }
 
 // historyRun returns the history row of a simulated run, or nil.
@@ -188,25 +195,32 @@ func (p *previewSession) scoreHistoryRun(id string) {
 	if run == nil || detail == nil || detail.Progress == nil {
 		return
 	}
-	score := core.RunScore{}
-	for _, c := range detail.Progress.Cases {
-		if c.State != "completed" && c.State != "failed" {
-			continue
-		}
-		score.Valid++
-		if c.State == "failed" {
-			score.Failed++
-		} else if emptyText(c.QualityState) == "pass" {
-			score.Passed++
-		}
-	}
+	score := tallyPreviewCases(detail.Progress.Cases)
 	if score.Valid == 0 {
+		run.Score = nil
 		return
 	}
 	if emptyText(run.Completeness) == "complete" {
 		score.Rate = previewValue(float64(score.Passed) / float64(score.Valid))
 	}
 	run.Score = &score
+}
+
+func tallyPreviewCases(cases []core.CaseProgress) core.RunScore {
+	score := core.RunScore{}
+	for _, c := range cases {
+		switch c.State {
+		case "failed":
+			score.Valid++
+			score.Failed++
+		case "completed":
+			score.Valid++
+			if emptyText(c.QualityState) == "pass" {
+				score.Passed++
+			}
+		}
+	}
+	return score
 }
 
 func (p *previewSession) finishBenchmark() {

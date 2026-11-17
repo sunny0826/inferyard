@@ -311,10 +311,9 @@ func (p *previewSession) activateScene() {
 		if s.detailID == task.TaskId {
 			s.detail = detail
 		}
-		for i := range s.history.StandaloneRuns {
-			if s.history.StandaloneRuns[i].RunId == task.TaskId {
-				s.history.StandaloneRuns[i].Status, s.history.StandaloneRuns[i].Sealed = "partial", false
-			}
+		if run := p.historyRun(task.TaskId); run != nil {
+			run.Status, run.Sealed, run.Completeness = "partial", false, nil
+			p.scoreHistoryRun(task.TaskId)
 		}
 		s.task.bundles = []string{emptyText(task.Bundle)}
 		s.busy = true
