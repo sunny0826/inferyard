@@ -3,7 +3,6 @@ package pages
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -54,10 +53,10 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 		qualityNote += " · 仅已记录通过数"
 	}
 	metrics := []struct{ label, value, detail, note string }{
-		{"答案通过数", reportRate(d.Quality.StudioCounts), qualityNote, "质量排除数 " + reportNumber(d.Quality.Excluded)},
-		{"请求完成率", reportRate(run.Summary.CompletionRate), "完成 / 有效执行", "排除 " + reportNumber(run.Summary.CompletionRate.Excluded)},
-		{"完成请求中位耗时", reportScaled(d.Latency.P50, 1000, "s"), reportNumber(d.Latency.SampleCount) + " 个有效样本", "排除 " + reportNumber(d.Latency.Excluded)},
-		{"服务采样峰值 RSS", reportScaled(d.SampledPeakRSSBytes, 1<<30, "GiB"), "系统最低可用 " + reportScaled(d.SampledMinimumAvailableBytes, 1<<30, "GiB"), reportMemoryReason(d.SampledPeakRSSReason)},
+		{"答案通过", reportRate(d.Quality.StudioCounts), "通过 / 评分题", qualityNote},
+		{"请求完成", reportRate(run.Summary.CompletionRate), "完成 / 发出", "排除 " + reportNumber(run.Summary.CompletionRate.Excluded)},
+		{"完成请求耗时（中位）", reportScaled(d.Latency.P50, 1000, "s"), reportNumber(d.Latency.SampleCount) + " 个有效样本", "排除 " + reportNumber(d.Latency.Excluded)},
+		{"服务进程内存（采样峰值）", reportScaled(d.SampledPeakRSSBytes, 1<<30, "GiB"), "采样期间系统最少可用 " + reportScaled(d.SampledMinimumAvailableBytes, 1<<30, "GiB"), reportMemoryReason(d.SampledPeakRSSReason)},
 	}
 	columns := 4
 	if compactLayout(c) {
@@ -71,6 +70,42 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 	if reason := reportMemoryReason(d.MinimumAvailableReason); reason != "" {
 		ui.Text(c, "系统可用内存："+reason).TextColor(c.Theme().TextMuted)
 	}
+	reportFactSummary(c, run)
+}
+
+// reportFactSummary states only what this run recorded, in one sentence per
+// fact, so a reader does not have to decode the cards. It never fills a missing
+// value and never concludes that the model suits a workload.
+func reportFactSummary(c *ui.Context, run core.ReportRun) {
+	d := run.Dashboard
+	type fact struct{ text string }
+	var facts []fact
+	if n, den := d.Quality.Numerator, d.Quality.Denominator; n != nil && den != nil {
+		sentence := fmt.Sprintf("%d 道评分题中通过 %d 道。", *den, *n)
+		if !d.Quality.Complete {
+			sentence = fmt.Sprintf("已记录的评分题中通过 %d 道（质量结论不完整）。", *n)
+		}
+		facts = append(facts, fact{sentence})
+	}
+	if n, den := run.Summary.CompletionRate.Numerator, run.Summary.CompletionRate.Denominator; n != nil && den != nil {
+		facts = append(facts, fact{fmt.Sprintf("%d / %d 个请求完成。", *n, *den)})
+	}
+	if p50 := d.Latency.P50; p50 != nil {
+		facts = append(facts, fact{fmt.Sprintf("完成请求的中位耗时 %.2f 秒。", *p50/1000)})
+	}
+	if d.SampledPeakRSSBytes != nil {
+		facts = append(facts, fact{fmt.Sprintf("采样期间服务进程内存峰值 %.2f GiB。", *d.SampledPeakRSSBytes/(1<<30))})
+	}
+	if len(facts) == 0 {
+		ui.Text(c, "本次运行没有可汇总的指标；下方各区说明各自缺测原因。").TextColor(c.Theme().TextMuted)
+		return
+	}
+	ui.Column(c).Gap(tokens(c).Density.Tight).Children(func() {
+		for _, f := range facts {
+			ui.Text(c, f.text).Selectable()
+		}
+		ui.Text(c, "以上只描述本次记录；机器总内存、质量与耗时分别展示，不代表模型适合其他上下文或并发。").TextColor(c.Theme().TextMuted)
+	})
 }
 
 // reportThroughput renders the batch-window rates. Null values keep their
@@ -81,11 +116,12 @@ func reportThroughput(c *ui.Context, run core.ReportRun) {
 		if throughput == nil {
 			ui.Text(c, "未提供测量").TextColor(c.Theme().TextMuted)
 		} else {
-			deviceRow(c, "请求/秒", reportPerSecond(throughput.RequestsPerSecond, throughput.RequestsPerSecondReason))
+			deviceRow(c, "完成请求/秒", reportPerSecond(throughput.RequestsPerSecond, throughput.RequestsPerSecondReason))
 			deviceRow(c, "输出 token/秒", reportPerSecond(throughput.OutputTokensPerSecond, throughput.OutputTokensPerSecondReason))
-			deviceRow(c, "goodput/秒", reportPerSecond(throughput.GoodputPerSecond, throughput.GoodputPerSecondReason))
+			deviceRow(c, "达标请求/秒", reportPerSecond(throughput.GoodputPerSecond, throughput.GoodputPerSecondReason))
 		}
-		ui.Text(c, "串行批次口径，不代表并发服务能力").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "依次执行本批请求的观测值，不代表并发服务能力").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "达标请求使用本次预先固定的门槛；未预注册门槛时无法判定。").TextColor(c.Theme().TextMuted)
 	})
 }
 
@@ -133,32 +169,29 @@ func reportThroughputReason(reason *string) string {
 // They are not per-token ITLs, and the card says so.
 func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 	intervals := run.Dashboard.OutputBlockIntervals
-	card(c, "输出间隔", func() {
-		ui.Text(c, "内容块到达间隔，非逐 token ITL").TextColor(c.Theme().TextMuted)
+	card(c, "输出内容块到达间隔", func() {
+		ui.Text(c, "内容块不等于真实 token；没有逐 token 事件源，因此未测逐 token 间隔。").TextColor(c.Theme().TextMuted)
 		if intervals == nil {
 			ui.Text(c, "未提供测量").TextColor(c.Theme().TextMuted)
-		} else {
+			return
+		}
+		deviceRow(c, "中位", reportMilliseconds("", intervals.P50, ""))
+		deviceRow(c, "P95", reportMilliseconds("", intervals.P95, reportP95Reason(intervals.P95Reason)))
+		if intervals.P95 != nil {
+			ui.Text(c, "约 95% 的已观测间隔不超过 P95。").TextColor(c.Theme().TextMuted)
+		}
+		if reportP95Exploratory(intervals) {
+			ui.Text(c, "样本较少，仅供观察。").TextColor(c.Theme().TextMuted)
+		}
+		if reason := reportIntervalReason(intervals.Reason); reason != "" {
+			ui.Text(c, "缺测原因："+reason).TextColor(c.Theme().TextMuted)
+		}
+		componentFoldKeyed(c, "interval-details", "间隔详情", func() {
 			deviceRow(c, "间隔数", fmt.Sprintf("%d 个", intervals.IntervalCount))
 			deviceRow(c, "贡献请求数", fmt.Sprintf("%d 个请求", intervals.RequestCount))
-			deviceRow(c, "间隔分位", reportIntervalQuantiles(intervals))
-			if reportP95Exploratory(intervals) {
-				ui.Text(c, "p95 为探索性估计（样本少于 100）").TextColor(c.Theme().TextMuted)
-			}
-			if reason := reportIntervalReason(intervals.Reason); reason != "" {
-				ui.Text(c, "缺测原因："+reason).TextColor(c.Theme().TextMuted)
-			}
-		}
-		ui.Text(c, "逐 token ITL 未测：无逐 token 事件源").TextColor(c.Theme().TextMuted)
+			deviceRow(c, "最小 / 最大", reportMilliseconds("min", intervals.Min, "")+" · "+reportMilliseconds("max", intervals.Max, ""))
+		})
 	})
-}
-
-func reportIntervalQuantiles(intervals *core.ReportOutputBlockIntervals) string {
-	return strings.Join([]string{
-		reportMilliseconds("min", intervals.Min, ""),
-		reportMilliseconds("p50", intervals.P50, ""),
-		reportMilliseconds("p95", intervals.P95, reportP95Reason(intervals.P95Reason)),
-		reportMilliseconds("max", intervals.Max, ""),
-	}, " · ")
 }
 
 // reportP95Exploratory follows the presentation rule: twenty samples allow a
@@ -168,10 +201,13 @@ func reportP95Exploratory(intervals *core.ReportOutputBlockIntervals) bool {
 }
 
 func reportMilliseconds(label string, value *float64, missing string) string {
-	if value == nil {
-		return label + " —" + missing
+	if label != "" {
+		label += " "
 	}
-	return fmt.Sprintf("%s %s ms", label, reportDecimal(*value))
+	if value == nil {
+		return label + "—" + missing
+	}
+	return fmt.Sprintf("%s%s ms", label, reportDecimal(*value))
 }
 
 func reportP95Reason(reason *string) string {
