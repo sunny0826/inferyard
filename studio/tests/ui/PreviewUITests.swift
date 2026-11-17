@@ -130,20 +130,25 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(text("错误码：download_failed").exists, "Raw code stays folded")
         click("重新创建下载任务")
         expectText("已结束")
-        click("观测依据与输出")
+        // Folds belong to one task card; never click a label that only happens to
+        // exist on another card.
+        toggleTaskDetails("model-2")
         expectText("实际目录名：model-2")
         expectText("错误码：download_failed")
         click("新任务")
         click("下载")
-        click("观测依据与输出")
+        toggleTaskDetails("model-2")
         expectText("实际目录名：model-2")
         click("重置场景")
         click("下载")
-        click("观测依据与输出")
+        // The reset scene has no download tasks, so the fold must not be
+        // expected at all; the empty state is the observable result.
+        expectText("暂无下载任务。")
         XCTAssertFalse(app.staticTexts["实际目录名：model-2"].exists)
         XCTAssertFalse(text("错误码：download_failed").exists)
         click("下载模型")
         expectText("已结束")
+        toggleTaskDetails("model")
         expectText("实际目录名：model")
     }
 
@@ -311,7 +316,11 @@ final class PreviewUITests: XCTestCase {
         let chart = text("传感器温度 °C曲线")
         revealInContent(chart)
         XCTAssertTrue(chart.isHittable)
-        XCTAssertTrue(app.tables["资源采样数值表"].staticTexts.matching(NSPredicate(format: "value == %@", "AppleSMC:Tp0C")).firstMatch.exists)
+        // The sample table lives inside a fold; expand it before asserting rows.
+        expandFold("原始采样数值")
+        let table = app.tables["资源采样数值表"]
+        expectExists(table, timeout: 5)
+        XCTAssertTrue(table.staticTexts.matching(NSPredicate(format: "value == %@", "AppleSMC:Tp0C")).firstMatch.exists)
         keepScreenshot("Selected temperature source with its own measurements")
     }
 

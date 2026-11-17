@@ -37,6 +37,39 @@ extension PreviewUITests {
         XCTAssertTrue(element.isHittable, "The control must be operable after scrolling")
     }
 
+    /// taskCard scopes fold lookups to one card so a label shared by several
+    /// cards never targets the wrong task.
+    func taskCard(_ name: String) -> XCUIElement {
+        app.otherElements.containing(.staticText, identifier: name).firstMatch
+    }
+
+    /// toggleTaskDetails expands the details fold of the named task card.
+    func toggleTaskDetails(_ name: String, fold: String = "观测依据与输出") {
+        let card = taskCard(name)
+        expectExists(card, timeout: 5)
+        let triangle = card.disclosureTriangles[fold]
+        if triangle.exists {
+            triangle.click()
+            return
+        }
+        let button = card.buttons[fold]
+        expectExists(button, timeout: 5)
+        revealInContent(button)
+        button.click()
+    }
+
+    /// expandFold opens a disclosure that is part of the page rather than a
+    /// card, such as the resource sample table.
+    func expandFold(_ label: String) {
+        let triangle = app.disclosureTriangles[label]
+        if triangle.exists {
+            revealInContent(triangle)
+            triangle.click()
+            return
+        }
+        click(label)
+    }
+
     func keepScreenshot(_ name: String) {
         let attachment = XCTAttachment(screenshot: app.windows["InferYard Studio · UI 调试"].screenshot())
         attachment.name = name
