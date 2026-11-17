@@ -194,18 +194,7 @@ func (s *viewState) stageView(c *ui.Context) {
 			}
 		})
 	case "done":
-		stepTrack(c, "6", "报告", func() {
-			path := s.task.report
-			if path == "" && s.progress != nil {
-				path = emptyText(s.progress.Report.Path)
-			}
-			if path != "" {
-				button(c, "查看报告").AlignSelf(ui.Start).OnClick(func() { s.openReport(path) })
-			} else {
-				ui.Text(c, "运行已完成，可在报告页查看。")
-				button(c, "查看报告列表").AlignSelf(ui.Start).OnClick(func() { s.selected = "reports" })
-			}
-		})
+		stepTrack(c, "6", "报告", func() { s.completionView(c) })
 	default:
 		if s.progress == nil {
 			ui.Text(c, "无法读取工作区进度，请刷新重试")
