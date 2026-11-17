@@ -35,7 +35,7 @@ final class ReleaseUITests: XCTestCase {
         expectText("历史任务")
         openRealReport()
         click("模型")
-        expectText("选择模型与引擎")
+        expectText("已安装的模型")
         click("下载")
         expectText("新建下载任务")
         click("设备")

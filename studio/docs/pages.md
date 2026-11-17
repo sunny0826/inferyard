@@ -13,9 +13,9 @@ Downloads, Device, and Settings.
 
 | Page | Purpose |
 | --- | --- |
-| Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
+| Task page | Prepare the environment with one action, choose workspace evaluation sets and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
-| Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
+| Models | Read-only inventory of installed models and engines (format, architecture, size, verification verdict) plus running services. Choosing the pair happens only on the task page. Empty inventories offer Go to Downloads; orphaned engines show a warning; no absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts with no verification entry. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
@@ -23,8 +23,8 @@ Downloads, Device, and Settings.
 The task page keeps the active task's selected bundles and new run paths in memory. New task
 cancels binding and all non-terminal runs, waits for them to finish, and returns to the
 shared engine/model selection without cancelling downloads or deleting evidence. The form
-lists only workspace bundles and checks both `zh-core` and `zh-svg-pelican` when present.
-Unchecking a bundle explicitly narrows the scope; unchecked bundles do not block the task.
+lists only workspace evaluation sets and checks both `zh-core` and `zh-svg-pelican` when present.
+Unchecking a set explicitly narrows the scope; unchecked sets do not block the task.
 Reports starts with task history, followed by the report list. Creating another report from
 1–100 historical runs is available in a collapsed section. Reports are not verifiable
 artifacts, so the page has no verification entry.
@@ -50,7 +50,7 @@ The engine panel shows status and start/stop controls on every page. Starting re
 a prepared candidate and only starts the service; it does not bind or run a benchmark.
 The task panel separates executing and waiting tasks. Active downloads have a separate
 icon and count in their panel. Background refresh does not change activity.
-Active bundles show live state; interrupted bundles retain recovery guidance.
+Active evaluation sets show live state; interrupted ones retain recovery guidance.
 The service card stays collapsed throughout an active benchmark, then exposes
 recovery controls in the run/resume stage. Stop is available for a starting or running engine
 when no non-terminal run exists and Studio is neither busy nor resetting a task.
@@ -68,7 +68,7 @@ against the release checksum, without touching shell configuration — and insta
 `inferyard` matching the Studio version from PyPI via `uv tool install`. Manual path
 configuration in Settings remains available.
 
-Run benchmark creates fresh candidates for the checked bundles. Direct services start and
+“开始测评” creates a fresh evaluation configuration for the checked sets. Direct services start and
 bind automatically; LM Studio requires an operator-provided service identity. Binding has
 its own cancellation context. The original binary-engine workflow offers binding retry
 and an advanced manual binding fold. Existing single-config runs rebind the new PID before

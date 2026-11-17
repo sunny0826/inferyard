@@ -47,7 +47,7 @@ extension PreviewUITests {
     func prepare() {
         click("准备环境")
         wait("benchmark becomes available", timeout: 10) {
-            self.app.buttons["运行 benchmark"].exists && self.app.buttons["运行 benchmark"].isEnabled
+            self.app.buttons["开始测评"].exists && self.app.buttons["开始测评"].isEnabled
         }
     }
 

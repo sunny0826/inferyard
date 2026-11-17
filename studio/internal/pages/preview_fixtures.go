@@ -89,8 +89,7 @@ func previewBase(ctx context.Context) *viewState {
 		speed: &speedWorkspace{context: inferyard.ContextSpeed64K},
 		ctx:   ctx, selected: "dashboard", loaded: true, settingsLoaded: true,
 		denied: map[string]bool{}, model: model, engine: engine, discoveryLoaded: true,
-		candidateMatches: func(string, string, string) (bool, bool) { return true, true },
-		engineState:      core.EngineState{State: "stopped"},
+		engineState: core.EngineState{State: "stopped"},
 		ready: core.Readiness{
 			CLI:       core.InferyardProbe{Status: "ok", Version: previewValue("preview")},
 			Workspace: core.DirectoryReadiness{Path: settings.WorkspaceRoot, Exists: true, Initialized: true},

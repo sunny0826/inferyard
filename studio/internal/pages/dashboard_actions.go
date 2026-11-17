@@ -51,7 +51,7 @@ func suggestInitDir(path string, exists, initialized bool) string {
 // that are already done when they return.
 func executeMessage(r core.WizardResult) string {
 	if len(r.Tasks) > 0 {
-		return "运行已开始，封存后进入下一步。"
+		return "运行已开始，证据收尾完成后进入下一步。"
 	}
 	return "操作完成，已更新工作区进度。"
 }

@@ -79,8 +79,8 @@ func (s *viewState) dashboardView(c *ui.Context) {
 	s.stageView(c)
 	s.awaitingLocalServiceView(c)
 	if len(s.task.start.localCandidates) > 0 && s.task.failure != nil && !s.busy {
-		ui.Text(c, "已完成的题包会保留；确认停止原因已解决后，仅重试未完成的题包。")
-		button(c, "重试未完成的题包").OnClick(s.retryBenchmark)
+		ui.Text(c, "已完成的测评题集会保留；确认停止原因已解决后，仅重试未完成的测评题集。")
+		button(c, "重试未完成的测评题集").OnClick(s.retryBenchmark)
 	}
 	for _, task := range s.tasks {
 		if task.Kind != "context_speed" && emptyText(task.RunPath) == "" {
@@ -105,7 +105,7 @@ func (s *viewState) conclusionView(c *ui.Context) {
 	card(c, "工作区进度", func() {
 		step := s.step()
 		phaseProgress(c, phaseProgressOptions{
-			Labels:      []string{"准备", "设备检查", "benchmark", "启动与绑定", "运行", "报告"},
+			Labels:      []string{"准备", "设备检查", termBenchmarkStage, "连接并核验服务", "运行", "报告"},
 			Current:     step,
 			RowLabel:    "六阶段进度",
 			BarLabel:    "工作区六阶段准备进度",
@@ -175,9 +175,9 @@ func (s *viewState) stageView(c *ui.Context) {
 			button(c, "查看设备页明细").OnClick(func() { s.selected = "device" })
 		})
 	case "prepare_candidate":
-		stepTrack(c, "3", "benchmark", func() { s.candidateView(c) })
+		stepTrack(c, "3", termBenchmarkStage, func() { s.candidateView(c) })
 	case "bind":
-		stepTrack(c, "4", "启动与绑定", func() { s.serviceView(c) })
+		stepTrack(c, "4", "连接并核验服务", func() { s.serviceView(c) })
 	case "run", "resume":
 		if s.running() == nil && (s.task.stage == "" || s.task.failure != nil) {
 			if b := s.active(); b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil) {

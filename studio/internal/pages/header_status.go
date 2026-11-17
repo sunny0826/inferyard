@@ -181,7 +181,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool) {
 	heading(c, "模型引擎", 3)
 	ui.Text(c, stateLabel(label))
 	if state.Candidate != "" {
-		ui.Text(c, "候选 · "+displayName(state.Candidate))
+		ui.Text(c, "测评配置："+displayName(state.Candidate))
 	}
 	if state.Pid > 0 {
 		ui.Text(c, fmt.Sprintf("PID %d", state.Pid))
@@ -208,7 +208,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool) {
 	default:
 		primaryButton(c, "开启引擎").Disabled(!s.canStartManagedEngine()).OnClick(s.startManagedEngine)
 		if s.managedEngineCandidate() == "" {
-			ui.Text(c, "先在任务页选择模型并准备候选配置。").TextColor(c.Theme().TextMuted)
+			ui.Text(c, "先在任务页选择模型并创建测评配置。").TextColor(c.Theme().TextMuted)
 			button(c, "前往任务").OnClick(func() { s.selected, s.detailID = "dashboard", "" })
 		}
 	}

@@ -51,7 +51,7 @@ func (r *speedTask) active() bool {
 }
 
 func (r *speedTask) label() string {
-	return [...]string{"准备专项", "启动与绑定", "冻结计划", "测量", "读取结果", "执行完成", "取消中 · 等待收尾", "已取消", "未完成", "部分完成", "等待测量"}[r.stage]
+	return [...]string{"准备专项", "连接并核验服务", "固定计划", "测量", "读取结果", "执行完成", "取消中 · 等待收尾", "已取消", "未完成", "部分完成", "等待测量"}[r.stage]
 }
 
 func (r *speedTask) validCount() int {
@@ -97,7 +97,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		}).Trigger.Label("上下文档位")
 	})
 	ui.Text(c, fmt.Sprintf("%s · %d 次测量 · 每次输出 256 tokens", inferyard.ContextSpeedBundleID, inferyard.ContextSpeedSamples))
-	ui.Text(c, "5 次正式测量；另含探测、预热与排空。墙钟预算由冻结配方生成。")
+	ui.Text(c, "5 次正式测量；另含探测、预热与排空。墙钟预算由固定配方生成。")
 	componentFold(c, "查看配方与停止条件", func() {
 		ui.Text(c, "并发 1 · 固定输入 · 关闭输入缓存与投机解码")
 		ui.Text(c, "超时、内存、磁盘及设备限制由 CLI 核验；容量不足或题库尚未批准时拒绝执行。")
@@ -129,7 +129,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 
 func (s *viewState) speedStartBlockReason() string {
 	if s.localEngine() != nil {
-		return "安装声明引擎暂不支持长上下文速度；可运行普通 benchmark。"
+		return "安装声明引擎暂不支持长上下文速度；可运行普通测评。"
 	}
 	switch {
 	case s.environmentMissing():
@@ -145,7 +145,7 @@ func (s *viewState) speedStartBlockReason() string {
 	case s.model == "":
 		return "请选择测评模型。"
 	case s.engine == "":
-		return "请选择候选引擎。"
+		return "请选择引擎。"
 	case s.engineState.State == "orphaned":
 		return "请先处理遗留服务记录，再开始专项测评。"
 	case engineLocked(s.engineState.State):
@@ -182,11 +182,11 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 	}
 	ui.Text(c, label+r.id).TextColor(c.Theme().TextMuted)
 	if r.budget > 0 {
-		ui.Text(c, fmt.Sprintf("冻结墙钟预算 %.0f 秒（含准备与排空）", r.budget))
+		ui.Text(c, fmt.Sprintf("固定墙钟预算 %.0f 秒（含准备与排空）", r.budget))
 	}
 	card(c, "任务进度", func() {
 		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
-			for i, label := range []string{"准备", "启动与绑定", "冻结计划", "测量", "读取结果"} {
+			for i, label := range []string{"准备", "连接并核验服务", "固定计划", "测量", "读取结果"} {
 				if speedStage(i) == r.stage {
 					statusBadge(c, label, stateColor(c, stateActive))
 				} else {

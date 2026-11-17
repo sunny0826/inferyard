@@ -25,7 +25,7 @@ func preparePreview(t *testing.T) (*previewSession, *ui.Tester) {
 	}
 	p.advance(600 * time.Millisecond)
 	tt.Frame()
-	if p.state.busy || !p.state.preflightReady() || !tt.HasText("运行 benchmark") {
+	if p.state.busy || !p.state.preflightReady() || !tt.HasText("开始测评") {
 		t.Fatal("environment preparation did not unlock benchmark", tt.Texts())
 	}
 	return p, tt
@@ -33,14 +33,12 @@ func preparePreview(t *testing.T) (*previewSession, *ui.Tester) {
 
 func TestPreviewCompleteWorkflowWithoutSceneSelector(t *testing.T) {
 	p, tt := preparePreview(t)
-	click(t, tt, "模型")
-	click(t, tt, "Preview-Model-Q4.gguf")
-	click(t, tt, "Preview-Small.gguf")
-	click(t, tt, "用这个组合新开任务")
-	click(t, tt, "运行 benchmark")
+	p.state.model = "Preview-Small.gguf"
+	tt.Frame()
+	click(t, tt, "开始测评")
 	p.advance(400 * time.Millisecond)
 	tt.Frame()
-	if !tt.HasText("启动与绑定") || p.state.engineState.State != "starting" {
+	if !tt.HasText("连接并核验服务") || p.state.engineState.State != "starting" {
 		t.Fatal("missing service startup transition")
 	}
 	p.advance(1300 * time.Millisecond)
@@ -100,7 +98,7 @@ func TestPreviewCancellationPreservesOtherWork(t *testing.T) {
 			click(t, tt, "下载")
 			click(t, tt, "下载模型")
 			click(t, tt, "新任务")
-			click(t, tt, "运行 benchmark")
+			click(t, tt, "开始测评")
 			p.advance(elapsed)
 			tt.Frame()
 			if elapsed < time.Second {
@@ -168,11 +166,16 @@ func TestPreviewDownloadsCancelRetryAndPopulateModels(t *testing.T) {
 		t.Fatal("retry did not preserve old download and allocate a new result")
 	}
 	click(t, tt, "模型")
-	click(t, tt, p.state.model)
 	name := retry.OutName + " · " + emptyText(retry.FileName)
-	click(t, tt, name)
-	if p.state.model != name {
-		t.Fatal("completed download could not be selected")
+	if !tt.HasText(name) {
+		t.Fatal("completed download is not listed on the read-only models page", tt.Texts())
+	}
+	for _, texts := range [][]string{tt.Texts()} {
+		for _, text := range texts {
+			if text == "请选择模型" {
+				t.Fatal("models page still offers a selection control")
+			}
+		}
 	}
 }
 
@@ -212,7 +215,7 @@ func TestPreviewSettingsDeviceAndReportRecovery(t *testing.T) {
 
 func TestPreviewResetAndCloseInvalidatePendingEvents(t *testing.T) {
 	p, tt := preparePreview(t)
-	click(t, tt, "运行 benchmark")
+	click(t, tt, "开始测评")
 	stale := p.jobs[0]
 	p.loadScene(previewSceneIndex(t, "空数据"))
 	p.jobs = append(p.jobs, stale)
@@ -232,7 +235,7 @@ func TestPreviewResetAndCloseInvalidatePendingEvents(t *testing.T) {
 
 func TestPreviewNewTaskFinishesServiceStop(t *testing.T) {
 	p, tt := preparePreview(t)
-	click(t, tt, "运行 benchmark")
+	click(t, tt, "开始测评")
 	p.advance(20 * time.Second)
 	tt.Frame()
 	click(t, tt, "引擎 · 运行中")
@@ -248,7 +251,7 @@ func TestPreviewNewTaskFinishesServiceStop(t *testing.T) {
 
 func TestPreviewNewTaskCancelsPendingHistoricalReport(t *testing.T) {
 	p, tt := preparePreview(t)
-	click(t, tt, "运行 benchmark")
+	click(t, tt, "开始测评")
 	p.advance(20 * time.Second)
 	tt.Frame()
 	p.dispatch(previewCreateReport{paths: p.state.task.runs})
@@ -257,7 +260,7 @@ func TestPreviewNewTaskCancelsPendingHistoricalReport(t *testing.T) {
 	click(t, tt, "确认开始新任务")
 	p.advance(400 * time.Millisecond)
 	tt.Frame()
-	click(t, tt, "运行 benchmark")
+	click(t, tt, "开始测评")
 	p.advance(200 * time.Millisecond)
 	tt.Frame()
 	if !p.state.busy || len(p.state.reports) != 1 {

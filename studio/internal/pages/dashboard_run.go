@@ -56,7 +56,7 @@ func (w *viewState) candidateView(c *ui.Context) {
 	if !w.checks.Supported {
 		engineHint = "当前 CLI 不支持引擎核验；列表中的引擎尚未核验。"
 	}
-	ui.Field(c, "候选引擎", func() { components.NativeSelect(c, &w.engine, engineOptions) }).Description(engineHint)
+	ui.Field(c, termCandidateEngine, func() { components.NativeSelect(c, &w.engine, engineOptions) }).Description(engineHint)
 	ui.Field(c, "测评模型", func() { components.NativeSelect(c, &w.model, modelOptions) }).Description("与模型页的选择框是同一选择。")
 	if w.checks.Checking > 0 {
 		ui.Text(c, fmt.Sprintf("正在核验 %d 个引擎…", w.checks.Checking)).TextColor(c.Theme().TextMuted)
@@ -116,7 +116,7 @@ func (w *viewState) candidateView(c *ui.Context) {
 	if w.engineState.State == "orphaned" {
 		w.stopOrphanButton(c)
 	}
-	if primaryButton(c, "运行 benchmark").AlignSelf(ui.Start).Disabled(createDisabled).Clicked() {
+	if primaryButton(c, termStartBenchmark).AlignSelf(ui.Start).Disabled(createDisabled).Clicked() {
 		w.startBenchmark()
 	}
 }
@@ -125,7 +125,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 	if w.bindingStale {
 		ui.Text(c, "旧绑定已失效，请重启服务并重新绑定").TextColor(stateColor(c, stateDanger))
 	}
-	ui.Text(c, "Studio 启动冻结候选中的引擎并管理其生命周期；退出 Studio 时自动停止。绑定时 CLI 校验 PID、启动时间与实际参数。")
+	ui.Text(c, "Studio 启动本次固定测评配置中的引擎并管理其生命周期；退出 Studio 时自动停止。连接时 CLI 校验 PID、启动时间与实际参数。")
 	switch w.engineState.State {
 	case "orphaned":
 		ui.Text(c, "遗留引擎：请先处理上次 Studio 留下的服务或无效记录。").TextColor(stateColor(c, stateWarning))
@@ -145,10 +145,10 @@ func (w *viewState) serviceView(c *ui.Context) {
 	}
 	candidateReady := w.candidate != "" || w.task.start.candidate != ""
 	if !candidateReady {
-		ui.Text(c, "请先创建候选，再启动服务。")
+		ui.Text(c, "请先创建测评配置，再启动服务。")
 	}
 	if w.running() != nil {
-		ui.Text(c, "测评运行期间不能停止或重新绑定服务。")
+		ui.Text(c, "测评运行期间不能停止或重新连接服务。")
 	}
 	startable := w.engineState.State == "" || w.engineState.State == "stopped" || w.engineState.State == "failed"
 	ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
@@ -161,9 +161,9 @@ func (w *viewState) serviceView(c *ui.Context) {
 			w.startEngine()
 		}
 		if w.engineState.State == "running" && w.failure != nil {
-			label := "重新绑定失败的题包"
+			label := "重新连接失败的测评题集"
 			if b := w.active(); b != nil && b.BoundPath != nil {
-				label = "重新绑定"
+				label = "重新连接"
 			}
 			if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil).Clicked() {
 				if w.task.stage == "bind" {
@@ -187,7 +187,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 		}
 	})
 
-	ui.Text(c, "健康检查通过后按顺序绑定全部待绑题包。任一失败即停止，不自动重试。")
+	ui.Text(c, "健康检查通过后按顺序连接并核验全部待连接的测评题集。任一失败即停止，不自动重试。")
 	if w.binding {
 		ui.Text(c, displayName(w.bindingBundle)+" · 绑定中…")
 	}
@@ -195,15 +195,15 @@ func (w *viewState) serviceView(c *ui.Context) {
 		return
 	}
 	w.discoveryView(c, true)
-	componentFold(c, "高级：手动绑定", func() {
-		heading(c, "绑定已有进程", 3)
+	componentFold(c, "高级：手动连接", func() {
+		heading(c, "连接已有进程", 3)
 		options := []string{}
 		for _, p := range w.processes {
 			options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
 		}
 		ui.Field(c, "已启动的本机进程", func() { components.NativeSelect(c, &w.process, nativeOptions(options)) }).Description("请选择已启动的服务进程；绑定仍会核验身份。")
 		field(c, "endpoint", &w.bindEndpoint).Description("必填；本机服务的 http 或 https URL。").Error(urlError(w.bindEndpoint))
-		if button(c, "绑定进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
+		if button(c, "连接并核验进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
 			if message := urlError(w.bindEndpoint); message != "" {
 				w.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
 				return
@@ -214,7 +214,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 	})
 }
 func (w *viewState) runView(c *ui.Context) {
-	heading(c, "运行当前题包", 3)
+	heading(c, "运行当前测评题集", 3)
 	if task := w.running(); task != nil {
 		value := -1.0
 		label := "正在运行，等待进度…（总量未知）"
@@ -222,8 +222,8 @@ func (w *viewState) runView(c *ui.Context) {
 			value = progressValue(p.Done, p.Total)
 			label = fmt.Sprintf("%d / %d 题", p.Done, *p.Total)
 		}
-		progressBar(c, value, "当前题包运行进度")
-		ui.Text(c, "分母为冻结选中题集合；续测时为冻结续测子集。")
+		progressBar(c, value, "当前测评题集运行进度")
+		ui.Text(c, bundleScopeText(false))
 		if task.State == "cancelling" {
 			ui.Text(c, "取消中／等待安全收尾。")
 		}
@@ -234,7 +234,7 @@ func (w *viewState) runView(c *ui.Context) {
 		})
 		if w.destructiveAction(c, destructiveOption{
 			kind: destructiveCancelRun, id: id, label: "取消运行", confirmLabel: "确认取消运行",
-			prompt:   "将取消本题包的运行并等待安全收尾；已写入结果目录的进度保留，本次不会封存或生成报告。",
+			prompt:   "将取消本测评题集的运行并等待安全收尾；已写入结果目录的进度保留，本次不会完成证据收尾或生成报告。",
 			disabled: (w.busy && w.task.stage == "") || task.State == "cancelling",
 		}) {
 			if w.task.stage != "" {
@@ -251,7 +251,7 @@ func (w *viewState) runView(c *ui.Context) {
 		}
 		return
 	}
-	ui.Text(c, "运行前请核对设备、预算与停止条件。完成封存后进入下一步；有剩余题包时需同样创建候选并绑定。")
+	ui.Text(c, "运行前请核对设备、预算与停止条件。证据收尾完成后进入下一步；有剩余测评题集时需同样创建测评配置并连接服务。")
 	for _, task := range w.tasks {
 		if task.State == "failed" || task.State == "cancelled" {
 			ui.Text(c, "上次运行未完成，请检查停止原因后重试。")
@@ -316,7 +316,7 @@ func (s *viewState) bundleSelection(c *ui.Context) {
 		}
 	}
 	if len(s.checkedBundles()) == 0 {
-		ui.Text(c, "至少选择一个题包。")
+		ui.Text(c, "至少选择一个测评题集。")
 	}
 }
 

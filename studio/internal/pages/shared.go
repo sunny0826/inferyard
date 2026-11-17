@@ -28,7 +28,7 @@ func errorView(c *ui.Context, e *core.ApiError) {
 }
 func taskLabel(t core.RunTask) string {
 	if !terminal(t.State) && t.PreparationStage != "" {
-		if label, ok := map[string]string{"awaiting_service": "等待绑定 LM Studio", "switching_service": "正在切换题包服务", "starting_engine": "正在启动题包服务", "binding": "正在校验服务绑定"}[t.PreparationStage]; ok {
+		if label, ok := map[string]string{"awaiting_service": "等待连接 LM Studio", "switching_service": "正在切换测评题集服务", "starting_engine": "正在启动测评题集服务", "binding": "正在核验服务连接"}[t.PreparationStage]; ok {
 			return label
 		}
 	}
@@ -52,7 +52,7 @@ func taskLabel(t core.RunTask) string {
 	return stateLabel(t.State)
 }
 func stateLabel(v string) string {
-	labels := map[string]string{"orphaned": "遗留引擎", "": "缺测", "stopped": "已停止", "stopping": "停止中", "starting": "启动中", "running": "运行中", "cancelling": "取消中", "done": "已结束", "failed": "失败", "cancelled": "已取消", "downloading": "下载中", "complete": "完整", "partial": "不完整", "dirty": "未排空", "pending": "待执行（聚合态）", "completed": "已完成", "invalid": "无效", "probe": "探测", "warmup": "预热", "baseline": "基线", "formal": "正式运行", "scoring": "评分", "residual": "残留检测", "finalizing": "收尾", "candidate_missing": "待创建候选", "bound_missing": "待绑定服务", "run_missing": "待运行", "run_incomplete": "运行未完成", "run_complete": "已封存", "preflight_missing": "待检查设备"}
+	labels := map[string]string{"orphaned": "遗留引擎", "": "缺测", "stopped": "已停止", "stopping": "停止中", "starting": "启动中", "running": "运行中", "cancelling": "取消中", "done": "已结束", "failed": "失败", "cancelled": "已取消", "downloading": "下载中", "complete": "完整", "partial": "不完整", "dirty": "未排空", "pending": "待执行（聚合态）", "completed": "已完成", "invalid": "无效", "probe": "探测", "warmup": "预热", "baseline": "基线", "formal": "正式运行", "scoring": "评分", "residual": "残留检测", "finalizing": "收尾", "candidate_missing": "待创建测评配置", "bound_missing": "待连接服务", "run_missing": "待运行", "run_incomplete": "运行未完成", "run_complete": "证据已收尾", "preflight_missing": "待检查设备"}
 	if label, ok := labels[v]; ok {
 		return label
 	}

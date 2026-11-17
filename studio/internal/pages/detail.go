@@ -30,7 +30,7 @@ func (s *viewState) detailView(c *ui.Context) {
 		errorView(c, t.Error)
 		if s.destructiveAction(c, destructiveOption{
 			kind: destructiveCancelRun, id: t.TaskId, label: "取消任务", confirmLabel: "确认取消任务",
-			prompt:   "将取消该运行并等待安全收尾；已写入结果目录的进度保留，本次不会封存或生成报告。",
+			prompt:   "将取消该运行并等待安全收尾；已写入结果目录的进度保留，本次不会完成证据收尾或生成报告。",
 			disabled: (s.busy && s.task.stage == "") || terminal(t.State) || t.State == "cancelling",
 		}) {
 			if s.task.stage != "" {
@@ -58,7 +58,7 @@ func (s *viewState) detailView(c *ui.Context) {
 	card(c, "实时进度", func() {
 		p := d.Progress
 		if p == nil {
-			ui.Text(c, "等待冻结题目与进度数据…")
+			ui.Text(c, "等待本次固定的题目与进度数据…")
 			return
 		}
 		progressLabel := fmt.Sprintf("%d / %s 题", p.Done, progressTotal(p.Total))
@@ -67,11 +67,11 @@ func (s *viewState) detailView(c *ui.Context) {
 		}
 		ui.Text(c, progressLabel)
 		progressBar(c, progressValue(p.Done, p.Total), "运行题目进度")
-		denominator := "分母为冻结选中题集合"
+		denominator := bundleScopeText(false)
 		if t.Kind == "resume" {
-			denominator = "分母为冻结续测子集"
+			denominator = bundleScopeText(true)
 		}
-		ui.Text(c, fmt.Sprintf("%s；未读取时不猜测。当前题：%s", denominator, text(p.CurrentCaseId)))
+		ui.Text(c, fmt.Sprintf("%s当前题：%s", denominator, text(p.CurrentCaseId)))
 		columns := []ui.TableColumn{{Title: "题目", Width: 180}, {Title: "状态", Width: 160}, {Title: "类别", Width: 100}, {Title: "质量", Width: 100}, {Title: "耗时 ms", Width: 100}, {Title: "错误类别", Width: 160}}
 		s.casesTable.Key = func(i int) any { return p.Cases[i].CaseId }
 		pageTable(c, &s.casesTable, "题目进度表", columns, len(p.Cases), func(row, col int) {

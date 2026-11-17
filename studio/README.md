@@ -21,7 +21,7 @@ already written stays in the results directory.
 | --- | --- |
 | Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
-| Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
+| Models | Read-only inventory of installed models and engines (format, architecture, size, verification verdict) plus running services. Choosing the pair happens only on the task page. Empty inventories offer Go to Downloads; orphaned engines show a warning; no absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts and have no verification entry. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
@@ -125,7 +125,7 @@ The sidebar's “模拟场景” selector provides task preparation, running, co
 live run details; report list, details, long tables and read errors; empty data; models;
 downloads; device measurements; settings; a specialist history fixture; and the five
 local-engine preparation scenes. Pages use the same components as normal Studio. The selector is a shortcut; normal page buttons drive the workflow. Start with
-“准备环境”, select the model and bundles, and click “运行 benchmark”. Simulated startup,
+“准备环境”, select the model and evaluation sets, and click “开始测评”. Simulated startup,
 per-bundle progress and report generation advance automatically. Open live details or
 switch pages while work continues; “查看报告” opens that task's model and run results.
 

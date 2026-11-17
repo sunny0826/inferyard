@@ -121,6 +121,6 @@ func reportProfileView(c *ui.Context, run core.ReportRun) {
 		deviceRow(c, "引擎", fmt.Sprintf("%s · %s · %s 线程", reportText(engine), reportText(backend), reportNumber(run.Threads)))
 		machine := run.Profile.Machine
 		deviceRow(c, "机器", fmt.Sprintf("%s · %s 核 · %s", reportText(emptyText(machine.CPU)), reportNumber(machine.LogicalCPUs), reportScaled(machine.MemoryTotalBytes, 1<<30, "GiB")))
-		deviceRow(c, "题包", reportText(run.Facets.BundleLabel))
+		deviceRow(c, "测评题集", reportText(run.Facets.BundleLabel))
 	})
 }

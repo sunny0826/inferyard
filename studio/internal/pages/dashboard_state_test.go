@@ -143,7 +143,7 @@ func TestDashboardNewTaskClearsDetailKeepsSelection(t *testing.T) {
 		t.Fatal(s.task)
 	}
 	tt := ui.NewTester(s.dashboardView, 1120, 1800)
-	if !tt.HasText("运行 benchmark") || !s.selectedBundles["zh-core"] {
+	if !tt.HasText("开始测评") || !s.selectedBundles["zh-core"] {
 		t.Fatal(tt.Texts())
 	}
 }

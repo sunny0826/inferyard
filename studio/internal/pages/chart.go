@@ -151,7 +151,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 					ui.Text(c, sourceLabel(options[current].source)).TextColor(theme.TextMuted)
 				}
 				if metric.id == "service_cpu_percent" {
-					ui.Text(c, "单核等效：100% 为占满一个逻辑核，可超过 100%；仅绑定服务进程，不含子进程。").TextColor(theme.TextMuted)
+					ui.Text(c, "CPU 占用（1 个逻辑核 = 100%）：可超过 100%；只统计已连接的服务进程，不含子进程。").TextColor(theme.TextMuted)
 				}
 				chosen := options[current]
 				selected = append(selected, chosen.points...)

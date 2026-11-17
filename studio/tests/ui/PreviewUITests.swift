@@ -71,13 +71,11 @@ final class PreviewUITests: XCTestCase {
         click("下载模型")
         expectText("已结束")
         click("模型")
-        let picker = app.popUpButtons["模型"]
-        expectExists(picker, timeout: 5)
-        picker.click()
         let downloadedModel = "model · SmolLM2-135M-Instruct-Q4_K_M.gguf"
-        text(downloadedModel).click()
-        click("用这个组合新开任务")
-        click("运行 benchmark")
+        expectText(downloadedModel)
+        XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must stay read-only")
+        click("任务")
+        click("开始测评")
         expectExists(app.buttons["查看实时详情"], timeout: 10)
         keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
@@ -105,7 +103,7 @@ final class PreviewUITests: XCTestCase {
 
     private func failureCanRetryThroughNormalControls() {
         app.checkBoxes["下次操作模拟失败"].click()
-        click("运行 benchmark")
+        click("开始测评")
         click("启动服务", timeout: 10)
         click("查看报告", timeout: 25)
         expectText("Preview-Model-Q4.gguf")
@@ -113,13 +111,13 @@ final class PreviewUITests: XCTestCase {
     }
 
     private func cancellationAllowsAnotherTask() {
-        click("运行 benchmark")
+        click("开始测评")
         click("查看实时详情", timeout: 10)
         click("取消任务")
         expectExists(app.buttons["确认取消任务"], timeout: 5)
         keepScreenshot("Cancel asks before discarding the run")
         click("确认取消任务")
-        click("运行 benchmark", timeout: 10)
+        click("开始测评", timeout: 10)
         click("查看报告", timeout: 25)
         expectText("各类任务表现")
     }
@@ -266,13 +264,13 @@ final class PreviewUITests: XCTestCase {
         click("下载模型")
         click("返回任务")
         wait("downloaded resources unlock benchmark", timeout: 15) {
-            self.app.buttons["运行 benchmark"].exists && self.app.buttons["运行 benchmark"].isEnabled
+            self.app.buttons["开始测评"].exists && self.app.buttons["开始测评"].isEnabled
         }
         XCTAssertEqual(String(describing: app.checkBoxes["zh-core"].value ?? ""), "1")
         XCTAssertEqual(String(describing: app.checkBoxes["zh-svg-pelican"].value ?? ""), "1")
-        revealInContent(app.buttons["运行 benchmark"])
+        revealInContent(app.buttons["开始测评"])
         keepScreenshot("First use ready to benchmark")
-        click("运行 benchmark")
+        click("开始测评")
         expectText("zh-core · 运行中")
         expectText("zh-svg-pelican · 排队中")
         XCTAssertFalse(text("单次运行不支持断点续跑；请重新运行该配置。").exists)
@@ -343,9 +341,9 @@ final class PreviewUITests: XCTestCase {
 
     private func localDirectoryEngineRunsBothScopes() {
         expectExists(app.menuButtons["local-weights · 目录模型"], timeout: 5)
-        revealInContent(app.buttons["运行 benchmark"])
+        revealInContent(app.buttons["开始测评"])
         keepScreenshot("Local directory model and registered engine")
-        click("运行 benchmark")
+        click("开始测评")
         expectText("zh-core · 运行中")
         expectText("zh-svg-pelican · 排队中")
         keepScreenshot("Local first scope and queued second scope")
@@ -357,8 +355,8 @@ final class PreviewUITests: XCTestCase {
     }
 
     private func lmStudioBindingFailureKeepsCompletedScope() {
-        revealInContent(app.buttons["运行 benchmark"])
-        click("运行 benchmark")
+        revealInContent(app.buttons["开始测评"])
+        click("开始测评")
         expectText("zh-svg-pelican · 等待绑定 LM Studio", timeout: 15)
         let pid = app.textFields["新的后台 PID"]
         expectExists(pid, timeout: 5)
@@ -367,13 +365,13 @@ final class PreviewUITests: XCTestCase {
         pid.click()
         pid.typeText("4002")
         app.checkBoxes["下次操作模拟失败"].click()
-        click("绑定并继续此题包")
-        click("重试未完成的题包", timeout: 10)
+        click("连接并继续此测评题集")
+        click("重试未完成的测评题集", timeout: 10)
         expectExists(pid, timeout: 5)
         revealInContent(pid)
         pid.click()
         pid.typeText("4003")
-        click("绑定并继续此题包")
+        click("连接并继续此测评题集")
         expectText("zh-svg-pelican · 运行中")
         XCTAssertFalse(text("zh-core · 运行中").exists, "A completed scope must not run again")
         keepScreenshot("LM Studio retries only the unfinished scope")

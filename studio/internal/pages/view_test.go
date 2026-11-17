@@ -42,10 +42,10 @@ func TestExplicitSingleBundleConfirmation(t *testing.T) {
 		t.Fatal(got)
 	}
 	click(t, tt, "zh-core")
-	if len(s.checkedBundles()) != 0 || !tt.HasText("至少选择一个题包。") {
+	if len(s.checkedBundles()) != 0 || !tt.HasText("至少选择一个测评题集。") {
 		t.Fatal(tt.Texts())
 	}
-	click(t, tt, "运行 benchmark")
+	click(t, tt, "开始测评")
 	if s.busy {
 		t.Fatal("empty scope started")
 	}
@@ -56,7 +56,7 @@ func TestDetailTableAndResourcesRender(t *testing.T) {
 	s.detailID = "fixture"
 	s.detail = &core.RunTaskDetail{Task: core.RunTask{TaskId: "fixture", Kind: "resume", State: "done", Exit: &core.RunExit{ExitCode: 3}}, Progress: &core.RunProgress{Done: 1, Total: ptr(int64(2)), Phase: ptr("formal"), Cases: []core.CaseProgress{{CaseId: "case-pelican", State: "failed", ErrorCategory: ptr("fixture-failure")}}}, Resources: chartSamples()}
 	tt := ui.NewTester(s.view, 1120, 1800)
-	for _, want := range []string{"运行不完整", "1 / 2", "分母为冻结续测子集", "case-pelican", "fixture-failure"} {
+	for _, want := range []string{"运行不完整", "1 / 2", "本次续测的题以开始运行时固定", "case-pelican", "fixture-failure"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}

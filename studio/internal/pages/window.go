@@ -92,13 +92,8 @@ type viewState struct {
 	discovering, discoveryLoaded                                                        bool
 	registry                                                                            core.Registry
 	checks                                                                              core.EngineCheckOverview
-	attributionKey                                                                      string
 	installationPath, localPID, localEndpoint, localBindingTask                         string
-	attributionMatch, attributionKnown                                                  bool
-	candidateMatches                                                                    func(candidate, model, engine string) (bool, bool)
 	model                                                                               string
-	modelQuery, engineQuery                                                             string
-	modelList, engineList                                                               components.ListState
 	announcedPage                                                                       string
 	announcedErrors                                                                     map[string]bool
 	refreshing                                                                          bool

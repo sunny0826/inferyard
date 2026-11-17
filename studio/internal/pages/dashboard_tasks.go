@@ -24,9 +24,9 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 		ui.Text(c, r.RunId+" · "+stateLabel(r.Status)).Bold()
 		ui.Text(c, text(r.ModelName)+" · "+text(r.Bundle)+" · "+text(r.Engine))
 		ui.Text(c, displayName(r.Path)).Selectable()
-		sealed := "未封存"
+		sealed := "证据未收尾"
 		if r.Sealed {
-			sealed = "已封存（不代表已核验）"
+			sealed = termSealed
 		}
 		ui.Text(c, sealed+" · 完整度："+stateLabel(text(r.Completeness)))
 		if r.StopReason != nil {

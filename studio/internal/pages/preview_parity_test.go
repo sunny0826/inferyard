@@ -57,10 +57,10 @@ func TestPreviewBenchmarkParity(t *testing.T) {
 }
 
 func parityExpectation(s parityScenario) []parityFrame {
-	bind := parityFrame{Checkpoint: "bind", Heading: "启动与绑定"}
+	bind := parityFrame{Checkpoint: "bind", Heading: "连接并核验服务"}
 	want := []parityFrame{bind}
 	if s.failStart {
-		want = append(want, parityFrame{Checkpoint: "failed", Heading: "启动与绑定", Error: "engine_start_failed", Controls: []string{"启动服务"}}, bind)
+		want = append(want, parityFrame{Checkpoint: "failed", Heading: "连接并核验服务", Error: "engine_start_failed", Controls: []string{"启动服务"}}, bind)
 	}
 	if s.cancelAt == "bind" {
 		return append(want, parityFrame{Checkpoint: "cancelled"})
@@ -114,7 +114,7 @@ func observeParity(s *viewState, checkpoint string, report []string) parityFrame
 		}
 	}
 	tt := ui.NewTester(s.stageView, 1120, 1800)
-	for _, heading := range []string{"启动与绑定", "运行", "报告"} {
+	for _, heading := range []string{"连接并核验服务", "运行", "报告"} {
 		if slices.Contains(tt.Texts(), heading) {
 			frame.Heading = heading
 		}

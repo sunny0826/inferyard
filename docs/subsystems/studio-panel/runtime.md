@@ -31,7 +31,7 @@
 
    以下候选准备和预先绑定全部题包描述原有二进制引擎；本地安装使用[逐题包准备与绑定](local-engines.md#串行执行与所有权)。
 
-6. **候选准备链**：任务页候选阶段的「运行 benchmark」调用准备编排（`prepareCombination`）：所选模型 ≠ 最新 preflight 推荐时先重跑
+6. **候选准备链**：任务页配置测评阶段的「开始测评」调用准备编排（`prepareCombination`）：所选模型 ≠ 最新 preflight 推荐时先重跑
    `device-check --model`（blocked 即停并呈现固定原因）→ 逐题包经 CLI `config describe` 取得模型与引擎路径做 canonical 比对，仅为不匹配的题包各执行一次
    `config create`（题包处于 `prepare_candidate` 且有 next_command 时复用该命令，否则按
    `config create` 的参数面组装 `--workspace`/`--bundle`/`--out`；引擎参数按平台注入 registry
