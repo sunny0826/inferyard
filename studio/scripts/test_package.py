@@ -238,13 +238,12 @@ class SingleTargetPackageTests(unittest.TestCase):
             self.assertFalse((dist / "Applications").is_symlink())
 
     def test_windows_uses_inno_setup_with_user_install(self) -> None:
-        import os
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=Path.cwd()) as directory:
             root = Path(directory) / "src"
             binary = root / "build/windows-amd64/inferyard-studio.exe"
             binary.parent.mkdir(parents=True)
             binary.write_bytes(b"release-binary")
-            out = Path(os.path.relpath(Path(directory) / "out"))
+            out = Path(directory).relative_to(Path.cwd()) / "out"
             scripts = []
             commands = self.run_installer_package("windows-amd64", root, out, scripts)
             self.assertTrue(any(command[0].endswith("ISCC.exe") for command in commands))
