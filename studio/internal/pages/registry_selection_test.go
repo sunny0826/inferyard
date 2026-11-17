@@ -80,7 +80,7 @@ func TestCandidateEngineDropdownThreeStates(t *testing.T) {
 	s.checks = eligibleChecks()
 	s.engine = "release · inference-engine"
 	tt = ui.NewTester(func(c *ui.Context) { s.candidateView(c) }, 1000, 900)
-	for _, want := range []string{"当前选择不可用", "引擎运行库不完整或库链接无效", "到模型页重选"} {
+	for _, want := range []string{"当前选择不可用", "引擎运行库不完整或库链接无效", "请在上方「引擎」下拉中重新选择可用引擎", "查看已安装引擎"} {
 		if !tt.HasText(want) {
 			t.Fatal(want, tt.Texts())
 		}
@@ -89,7 +89,9 @@ func TestCandidateEngineDropdownThreeStates(t *testing.T) {
 	if s.busy {
 		t.Fatal("create reached the CLI with a revoked engine")
 	}
-	click(t, tt, "到模型页重选")
+	// The models page is read-only, so the guidance points at the task page's
+	// own engine dropdown; the inventory link only explains why.
+	click(t, tt, "查看已安装引擎")
 	if s.selected != "models" {
 		t.Fatal(s.selected)
 	}

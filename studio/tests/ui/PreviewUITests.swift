@@ -79,6 +79,7 @@ final class PreviewUITests: XCTestCase {
         click("任务")
         chooseModel(downloadedModel)
         XCTAssertFalse(app.buttons["确认开始新任务"].exists, "Task nav must not ask to confirm")
+        click("开始测评")
         expectExists(app.buttons["查看实时详情"], timeout: 10)
         keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
@@ -352,7 +353,10 @@ final class PreviewUITests: XCTestCase {
     }
 
     private func localDirectoryEngineRunsBothScopes() {
-        expectExists(app.menuButtons["local-weights · 目录模型"], timeout: 5)
+        // The select's accessible name is the field label; the current option is
+        // its visible text.
+        expectExists(app.menuButtons["测评模型"], timeout: 5)
+        expectText("local-weights · 目录模型")
         revealInContent(app.buttons["开始测评"])
         keepScreenshot("Local directory model and registered engine")
         click("开始测评")

@@ -59,6 +59,7 @@ func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) b
 	request := destructiveRequest{kind: string(option.kind), id: option.id}
 	if option.kind == destructiveStopEngine {
 		request.pid, request.startTicks = s.engineState.Pid, s.engineState.StartTicks
+		s.dropStaleStopPrompt()
 	}
 	pending := s.pendingDestructive == request
 	if !pending {
@@ -92,6 +93,18 @@ func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) b
 		s.pendingDestructive = destructiveRequest{}
 	}
 	return confirmed
+}
+
+// dropStaleStopPrompt forgets an engine-stop prompt whose process is gone. A
+// replacement instance can never satisfy the recorded snapshot, so keeping the
+// request would only leave a dead prompt armed; clearing it here reports the
+// truth the moment the change is observed, instead of hiding it.
+func (s *viewState) dropStaleStopPrompt() {
+	pending := s.pendingDestructive
+	if destructiveKind(pending.kind) != destructiveStopEngine || pending.matchesEngine(s.currentEngine()) {
+		return
+	}
+	s.pendingDestructive = destructiveRequest{}
 }
 
 // destructiveTargetValid re-reads the live state when the confirm click

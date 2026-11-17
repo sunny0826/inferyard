@@ -40,7 +40,7 @@ func TestSpeedAdmissionExplainsBlockingCondition(t *testing.T) {
 		{"ineligible", "所选引擎不可用：引擎运行库不完整或库链接无效。请重新选择。", func(s *viewState) {
 			s.checks.Engines[s.engine] = core.EngineEligibility{State: core.EngineCheckIneligible, Reason: "invalid_library_manifest"}
 		}},
-		{"unknown", "所选引擎尚未通过核验，请到模型页查看原因。", func(s *viewState) {
+		{"unknown", "所选引擎尚未通过核验，请在任务页的「引擎」下拉中重新选择。", func(s *viewState) {
 			s.checks.Engines[s.engine] = core.EngineEligibility{State: core.EngineCheckUnknown}
 		}},
 		{"preflight", "请先完成工作区设备检查。", func(s *viewState) { s.progress.DevicePreflight.Path = nil }},

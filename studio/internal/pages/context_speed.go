@@ -168,7 +168,7 @@ func (s *viewState) speedStartBlockReason() string {
 		if e.Reason == "cli_outdated" {
 			return "当前 CLI 不支持引擎核验；请在设置中选择支持长上下文速度的 CLI。"
 		}
-		return "所选引擎尚未通过核验，请到模型页查看原因。"
+		return "所选引擎尚未通过核验，请在任务页的「引擎」下拉中重新选择。"
 	}
 }
 

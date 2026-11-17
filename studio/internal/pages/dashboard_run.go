@@ -11,22 +11,14 @@ import (
 	"time"
 )
 
-func (w *viewState) candidateView(c *ui.Context) {
-	w.verifyTaskEngines()
-	w.adoptDownloadedEngine()
-	w.adoptOnlyModel()
-
-	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: "请选择模型"}}
-	for _, m := range w.registry.Models {
-		if m.Available {
-			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m), Disabled: !w.compatibleModel(m)})
-		}
-	}
-
-	// The engine dropdown lists verified engines only; while the CLI is too
-	// old to verify, every engine stays listed and config create is the final
-	// gate. A selected engine revoked by re-verification stays visible as a
-	// disabled option next to the warning.
+// engineChoices builds the engine dropdown and reports whether the selected
+// engine was revoked by re-verification.
+//
+// The dropdown lists verified engines only; while the CLI is too old to verify,
+// every engine stays listed and config create is the final gate. A selected
+// engine revoked by re-verification stays visible as a disabled option next to
+// the warning.
+func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bool, bool) {
 	eligible := []string{}
 	for _, e := range w.registry.Engines {
 		el := w.eligibility(e.Name)
@@ -34,10 +26,10 @@ func (w *viewState) candidateView(c *ui.Context) {
 			eligible = append(eligible, e.Name)
 		}
 	}
-	engineOptions := []components.NativeSelectOption[string]{}
+	options := []components.NativeSelectOption[string]{}
 	listed := false
 	for _, name := range eligible {
-		engineOptions = append(engineOptions, components.NativeSelectOption[string]{Value: name, Label: name})
+		options = append(options, components.NativeSelectOption[string]{Value: name, Label: name})
 		if name == w.engine {
 			listed = true
 		}
@@ -50,14 +42,38 @@ func (w *viewState) candidateView(c *ui.Context) {
 			suffix = " · 不可用，请重新选择"
 			revoked = true
 		}
-		engineOptions = append(engineOptions, components.NativeSelectOption[string]{Value: w.engine, Label: w.engine + suffix, Disabled: true})
+		options = append(options, components.NativeSelectOption[string]{Value: w.engine, Label: w.engine + suffix, Disabled: true})
 	}
+	return options, revoked, len(eligible) > 0
+}
+
+func (w *viewState) candidateView(c *ui.Context) {
+	w.verifyTaskEngines()
+	w.adoptDownloadedEngine()
+	w.adoptOnlyModel()
+
+	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: "请选择模型"}}
+	for _, m := range w.registry.Models {
+		if m.Available {
+			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m), Disabled: !w.compatibleModel(m)})
+		}
+	}
+
+	engineOptions, revoked, hasEligible := w.engineChoices()
 	engineHint := "仅列出核验可用的引擎；默认选中其中最新下载的引擎。"
 	if !w.checks.Supported {
 		engineHint = "当前 CLI 不支持引擎核验；列表中的引擎尚未核验。"
 	}
-	ui.Field(c, termCandidateEngine, func() { components.NativeSelect(c, &w.engine, engineOptions) }).Description(engineHint)
-	ui.Field(c, "测评模型", func() { components.NativeSelect(c, &w.model, modelOptions) }).Description("这里是选择本次测评模型的唯一入口；模型页只读展示已安装资源。")
+	// NativeSelect names its trigger after the current option, so the field
+	// label would otherwise not name the control. Passing it as the trigger's
+	// accessible label keeps the control findable while the chosen value stays
+	// the visible text.
+	ui.Field(c, termCandidateEngine, func() {
+		components.NativeSelect(c, &w.engine, engineOptions).Trigger.Label(termCandidateEngine)
+	}).Description(engineHint)
+	ui.Field(c, "测评模型", func() {
+		components.NativeSelect(c, &w.model, modelOptions).Trigger.Label("测评模型")
+	}).Description("这里是选择本次测评模型的唯一入口；模型页只读展示已安装资源。")
 	if w.checks.Checking > 0 {
 		ui.Text(c, fmt.Sprintf("正在核验 %d 个引擎…", w.checks.Checking)).TextColor(c.Theme().TextMuted)
 	}
@@ -93,11 +109,11 @@ func (w *viewState) candidateView(c *ui.Context) {
 		el := w.eligibility(w.engine)
 		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
 			statusBadge(c, "当前选择不可用", stateColor(c, stateWarning))
-			ui.Text(c, w.engine+" · "+human(el.Reason)+"。请重新选择可用引擎。")
+			ui.Text(c, w.engine+" · "+human(el.Reason)+"。请在上方「引擎」下拉中重新选择可用引擎。")
 		})
-		button(c, "到模型页重选").AlignSelf(ui.Start).OnClick(func() { w.selected = "models" })
+		button(c, "查看已安装引擎").AlignSelf(ui.Start).OnClick(func() { w.selected = "models" })
 		createDisabled = true
-	} else if len(eligible) == 0 {
+	} else if !hasEligible {
 		// 核验完成前不误报无可用引擎；创建保持禁用。
 		if w.checks.Checking == 0 {
 			ui.Text(c, "llama-server")
@@ -196,7 +212,9 @@ func (w *viewState) serviceView(c *ui.Context) {
 		for _, p := range w.processes {
 			options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
 		}
-		ui.Field(c, "已启动的本机进程", func() { components.NativeSelect(c, &w.process, nativeOptions(options)) }).Description("请选择已启动的服务进程；绑定仍会核验身份。")
+		ui.Field(c, "已启动的本机进程", func() {
+			components.NativeSelect(c, &w.process, nativeOptions(options)).Trigger.Label("已启动的本机进程")
+		}).Description("请选择已启动的服务进程；绑定仍会核验身份。")
 		field(c, "endpoint", &w.bindEndpoint).Description("必填；本机服务的 http 或 https URL。").Error(urlError(w.bindEndpoint))
 		if button(c, "连接并核验进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
 			if message := urlError(w.bindEndpoint); message != "" {
