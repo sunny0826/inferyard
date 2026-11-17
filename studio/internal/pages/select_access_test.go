@@ -97,7 +97,11 @@ func TestTaskSelectsExportFieldNameAndCurrentOption(t *testing.T) {
 func TestSpeedSelectsExportFieldNameAndCurrentOption(t *testing.T) {
 	s := testState()
 	s.speed = &speedWorkspace{selected: true, context: inferyard.ContextSpeed128K}
-	tt := ui.NewTester(func(c *ui.Context) { s.speedSelection(c) }, 1000, 700)
+	var active bool
+	tt := ui.NewTester(func(c *ui.Context) { active = s.speedSelection(c) }, 1000, 700)
+	if !active {
+		t.Fatal("speed mode did not stay selected")
+	}
 	tree := accessTree(t, tt)
 	if kind := menuButton(t, tree, "测评类型"); kind.value != "长上下文速度" {
 		t.Fatalf("kind dropdown value = %q", kind.value)

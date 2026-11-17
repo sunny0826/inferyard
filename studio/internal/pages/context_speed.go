@@ -81,13 +81,13 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		return false
 	}
 	w := s.speed
-	selectField(c, "测评类型", &w.selected, []components.NativeSelectOption[bool]{
+	selectField(c, "测评类型", "", &w.selected, []components.NativeSelectOption[bool]{
 		{Value: false, Label: "常规测评"}, {Value: true, Label: "长上下文速度"},
 	})
 	if !w.selected {
 		return false
 	}
-	selectField(c, "上下文档位", &w.context, []components.NativeSelectOption[int]{
+	selectField(c, "上下文档位", "", &w.context, []components.NativeSelectOption[int]{
 		{Value: inferyard.ContextSpeed64K, Label: "64k"},
 		{Value: inferyard.ContextSpeed128K, Label: "128k"},
 		{Value: inferyard.ContextSpeed256K, Label: "256k"},

@@ -330,27 +330,7 @@ func (s *viewState) contentView(c *ui.Context) {
 			ui.Column(c).Gap(tokens(c).Density.Section).Children(func() {
 				s.feedback(c)
 				if !s.loaded {
-					title := "首次上手"
-					if s.selected == "dashboard" {
-						title = ""
-						if s.detailID != "" {
-							title = "运行详情"
-						}
-					}
-					for _, n := range navigation {
-						if n.id == s.selected {
-							title = n.label
-						}
-					}
-					if title != "" {
-						s.header(c, title)
-					}
-					if s.failure != nil || s.refreshFailure != "" {
-						button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
-					} else {
-						ui.Text(c, "正在读取页面数据…")
-						progressBar(c, -1, "页面数据加载进度")
-					}
+					s.loadingView(c)
 					return
 				}
 				switch s.selected {
@@ -376,6 +356,30 @@ func (s *viewState) contentView(c *ui.Context) {
 			})
 		})
 	})
+}
+
+func (s *viewState) loadingView(c *ui.Context) {
+	title := "首次上手"
+	if s.selected == "dashboard" {
+		title = ""
+		if s.detailID != "" {
+			title = "运行详情"
+		}
+	}
+	for _, n := range navigation {
+		if n.id == s.selected {
+			title = n.label
+		}
+	}
+	if title != "" {
+		s.header(c, title)
+	}
+	if s.failure != nil || s.refreshFailure != "" {
+		button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
+		return
+	}
+	ui.Text(c, "正在读取页面数据…")
+	progressBar(c, -1, "页面数据加载进度")
 }
 
 func (s *viewState) refreshAction() {
