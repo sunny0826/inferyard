@@ -2,6 +2,7 @@ package pages
 
 import (
 	"context"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ type roundHarness struct {
 	mu        sync.Mutex
 	queue     []core.RunTask
 	cancelled []string
+	updates   int
 	ui        chan func()
 }
 
@@ -50,12 +52,21 @@ func (h *roundHarness) cancelledIDs() []string {
 	return append([]string(nil), h.cancelled...)
 }
 
+func (h *roundHarness) uiUpdates() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.updates
+}
+
 // install wires the page to the harness; update runs the callback on the test
-// goroutine, and the first completion closes done.
+// goroutine and counts every asynchronous UI callback the page schedules.
 func (h *roundHarness) install(s *viewState) {
 	s.runTasks = h.tasks
 	s.cancelRound = h.cancel
 	s.updateWindow = func(fn func()) {
+		h.mu.Lock()
+		h.updates++
+		h.mu.Unlock()
 		select {
 		case h.ui <- fn:
 		case <-s.ctx.Done():
@@ -91,30 +102,40 @@ func TestWholeRoundCancelBoundary(t *testing.T) {
 		core.RunTask{TaskId: "a", Kind: "run", State: "running", Bundle: ptr("zh-core")},
 		core.RunTask{TaskId: "b", Kind: "run", State: "starting", Queued: true, Bundle: ptr("zh-svg-pelican")},
 	)
-	s := harnessState(h)
+	s := harnessState(t, h)
 	tt := ui.NewTester(s.runView, 1120, 900)
 	click(t, tt, "取消运行")
 	tt.Frame()
-	tt.Click("返回")
+	click(t, tt, "返回")
 	tt.Frame()
-	// newBenchmark marks the page pending before it starts any goroutine, so an
-	// untouched flag and recorder prove the dismiss spawned no reset.
-	if s.newTaskPending || s.task.stage != "run" || s.pendingDestructive != (destructiveRequest{}) {
-		t.Fatalf("dismiss changed the page: pending=%v stage=%q", s.newTaskPending, s.task.stage)
-	}
-	if got := h.cancelledIDs(); len(got) != 0 {
-		t.Fatalf("dismiss reached the whole-round boundary %d times", len(got))
-	}
-	select {
-	case fn := <-h.ui:
-		fn()
-		t.Fatal("dismiss started an asynchronous reset")
-	default:
+	assertDismissSettled(t, h, s)
+	if s.task.stage != "run" || s.pendingDestructive != (destructiveRequest{}) {
+		t.Fatalf("dismiss changed the page: stage=%q", s.task.stage)
 	}
 
 	confirmRunCancel(t, tt)
-	h.runUI(t, func() bool { return resetFinished(&s) })
-	assertRoundCancelled(t, h, &s)
+	h.runUI(t, func() bool { return resetFinished(s) })
+	assertRoundCancelled(t, h, s)
+}
+
+// assertDismissSettled round-trips a sentinel callback through the UI queue
+// and drains until quiet, proving that dismissing neither mutated state
+// synchronously nor spawned an asynchronous whole-round cancel.
+func assertDismissSettled(t *testing.T, h *roundHarness, s *viewState) {
+	t.Helper()
+	runtime.Gosched()
+	sentinel := false
+	go func() { h.ui <- func() { sentinel = true } }()
+	h.runUI(t, func() bool { return sentinel })
+	if got := h.uiUpdates(); got != 0 {
+		t.Fatalf("dismiss scheduled %d unexpected UI callbacks", got)
+	}
+	if s.newTaskPending || s.busy {
+		t.Fatalf("dismiss started work: pending=%v busy=%v", s.newTaskPending, s.busy)
+	}
+	if got := h.cancelledIDs(); len(got) != 0 {
+		t.Fatalf("dismiss reached the whole-round boundary for %v", got)
+	}
 }
 
 // confirmRunCancel presses the run-cancel entry and its confirmation.
@@ -122,7 +143,7 @@ func confirmRunCancel(t *testing.T, tt *ui.Tester) {
 	t.Helper()
 	click(t, tt, "取消运行")
 	tt.Frame()
-	tt.Click("确认取消运行")
+	click(t, tt, "确认取消运行")
 	tt.Frame()
 }
 
@@ -147,13 +168,16 @@ func assertRoundCancelled(t *testing.T, h *roundHarness, s *viewState) {
 }
 
 // harnessState mounts a running task page wired to the harness queue.
-func harnessState(h *roundHarness) viewState {
+func harnessState(t *testing.T, h *roundHarness) *viewState {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
 	s := testState()
 	s.selected, s.task.stage = "dashboard", "run"
-	s.ctx = context.Background()
+	s.ctx = ctx
 	s.tasks = h.tasks()
 	h.install(&s)
-	return s
+	return &s
 }
 
 // resetFinished reports whether the page reached a terminal reset state.
@@ -165,13 +189,14 @@ func resetFinished(s *viewState) bool {
 // page later re-renders with a fresh queue.
 func TestWholeRoundDismissLeavesQueueUntouched(t *testing.T) {
 	h := newRoundHarness(core.RunTask{TaskId: "only", Kind: "run", State: "running", Bundle: ptr("zh-core")})
-	s := harnessState(h)
+	s := harnessState(t, h)
 	tt := ui.NewTester(s.leftNav, 240, 900)
 	click(t, tt, "新任务")
 	tt.Frame()
-	tt.Click("返回")
+	click(t, tt, "返回")
 	tt.Frame()
-	if s.newTaskPending || h.tasks()[0].State != "running" || len(h.cancelledIDs()) != 0 {
-		t.Fatalf("dismiss changed the queue or the pending state: %+v", h.tasks())
+	assertDismissSettled(t, h, s)
+	if h.tasks()[0].State != "running" {
+		t.Fatalf("dismiss changed the queue: %+v", h.tasks())
 	}
 }
