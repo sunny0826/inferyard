@@ -10,12 +10,12 @@ function candidateState(scene){
  $('engine').disabled=scene==='empty';$('engine').selectedIndex=scene==='ready'?0:-1;
  $('candidate').disabled=scene!=='ready';
  const warning=$('candidate-warning');warning.hidden=scene==='ready';warning.replaceChildren();
- if(scene==='empty')warning.append('没有可用的引擎，请到模型页下载推荐引擎');
+ if(scene==='empty')warning.append('没有可用的引擎，请到下载页下载推荐引擎。');
  if(scene==='revoked'){
   const badge=document.createElement('span');badge.className='badge invalid-choice';badge.textContent='当前选择不可用';warning.append(badge);
-  const reason=document.createElement('p');reason.textContent='llama-server b6800 · 引擎运行库不完整。请重新选择可用引擎。';warning.append(reason);
+  const reason=document.createElement('p');reason.textContent='llama-server b6800 · 引擎运行库不完整。请在上方「引擎」下拉中重新选择可用引擎。';warning.append(reason);
  }
- if(scene!=='ready'){const link=document.createElement('a');link.href='models-page.html';link.textContent='到模型页'+(scene==='empty'?'下载推荐引擎':'重选');warning.append(' ',link)}
+ if(scene!=='ready'){const link=document.createElement('a');link.href=scene==='empty'?'downloads-page.html':'models-page.html';link.textContent=scene==='empty'?'到下载页':'查看已安装引擎';warning.append(' ',link)}
 }
 document.querySelectorAll('[data-candidate-scene]').forEach(b=>b.onclick=()=>candidateState(b.dataset.candidateScene));
 $('checking-demo').onchange=()=>{$('engine-checking').hidden=!$('checking-demo').checked};

@@ -11,7 +11,7 @@
 2. **页面刷新**：主窗口的六页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
    取增量事件，六类事件触发全量刷新（`sync.reset`/`report.created`/`run.state`/`engine.state`/
    `download.state`/`device.updated`，见 [`studio/internal/pages/registry_refresh.go`](../../../studio/internal/pages/registry_refresh.go)），其余做局部更新。
-3. **任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次使用先根据资源清单引导准备模型与引擎，原有二进制引擎资源齐备后 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。只有退出 2 且唯一原因为 `no_local_model` 的检查结果视为资源准备提示，其他阻断保留错误。新任务复用模型/引擎选择，默认勾选存在的 zh-core 与 zh-svg-pelican，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`；完成摘要只用本轮记录的 run 路径，仅在本轮没有记录时回退到工作区报告，质量口径见[报告视图](../../../studio/docs/design-system-measurement.md#报告视图)。完成区域仅显示「查看报告」，直接打开本次输出目录对应的报告（studio.json）；不展示路径或生成成功文字。没有活动任务时从 `progress.v2` 恢复。原有命令仍经 `WizardExecute` 原白名单；本地安装走[本地候选队列](local-engines.md)，全部绑定与证据操作仍由 CLI 执行。
+3. **任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次使用先根据资源清单引导准备模型与引擎，原有二进制引擎资源齐备后 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。只有退出 2 且唯一原因为 `no_local_model` 的检查结果视为资源准备提示，其他阻断保留错误。新任务复用模型/引擎选择，默认勾选存在的 zh-core 与 zh-svg-pelican，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`；完成步骤的摘要范围与操作入口见下文「报告」条。没有活动任务时从 `progress.v2` 恢复。原有命令仍经 `WizardExecute` 原白名单；本地安装走[本地候选队列](local-engines.md)，全部绑定与证据操作仍由 CLI 执行。
 4. **运行**：`StartRuns` 逐配置读取 bundle 与输出根并做包含/去重准入 → 入队由 `runQueue` 串行执行。
    新任务重置等待 UI 线程确认完成后退出取消循环；`Window.Update` 只负责排队，不能视为
    回调已经执行。等待期间不能启动专项，重置结束后不再取消后续新任务。
@@ -22,7 +22,7 @@
    [运行时执行与引擎适配](../runtime-execution.md)。
    `stageView` 在有非终态运行或活动任务处于未失败的 `run` 阶段时收起正文模型服务卡，
    题包间隙不重新展开；`cornerStatus` 保留引擎与队列状态，不受后台刷新或 busy 覆盖。
-   无非终态运行且任务失败或回到工作区进度时，run/resume 阶段恢复服务操作；绑定阶段仍显示启动与绑定操作。
+   无非终态运行且任务失败或回到工作区进度时，run/resume 阶段恢复服务操作；绑定阶段（页面显示「连接并核验服务」）仍提供启动服务与连接核验操作。
 5. **引擎服务**：任务页（绑定或运行阶段）`StartEngine` → `Startup` 经 CLI `config describe` 取冻结启动描述 →
    监听端口预检 → 拉起引擎子进程（stdout/stderr 写入 workspace `logs/engine-*.log`）→
    持久化 `engine-owner.json` 所有权记录（写失败即中止启动）→
@@ -46,7 +46,7 @@
    一切绑定都生成绑定配置并经 CLI 的 PID 与启动时间身份核验；discover 不预判 bind 可行性，
    `startup_arguments_mismatch` 等拒绝原因如实呈现；`BindingAlive` 仅提供存活提示。
 8. **报告**：先展示五列紧凑「历史任务」与报告卡片列表。进入任务、续测与实时详情都进入任务页；1–100 个来源的生成入口折叠在「从历史运行另做报告」；报告不可核验，页面无「核验」入口。
-   完成步骤（`task.stage == "done"`）显示本轮每次运行的题包、通过率、墙钟耗时与状态，缺测带原因且不显示为 0；「查看报告」为主按钮，「再次测评」复用「新任务」入口。
+   完成步骤（`task.stage == "done"`）只用本轮记录的 run 路径（仅在本轮无记录时回退工作区报告，质量口径见[报告视图](../../../studio/docs/design-system-measurement.md#报告视图)），显示本轮每次运行的题包、通过率、墙钟耗时与状态，缺测带原因且不显示为 0；主按钮「查看报告」直接打开本次输出目录对应的报告（`studio.json`），「再次测评」复用「新任务」入口，不展示输出路径或生成成功文字。
    页面上的破坏性操作（侧栏「新任务」在途时、「取消运行」「取消任务」「停止服务」「取消下载」「停止遗留服务」，以及长上下文页的取消与停止服务）先展开一次内联确认并说明取消后果；确认点击时重读目标状态，失效则丢弃请求且不执行动作；确认后走原有取消/收尾路径，CLI 保存已取消的证据但不生成完整报告。危险样式与文案规则见 [Studio 页面](../../../studio/docs/pages.md)。
    `CreateReport` 校验 1–100 个位于结果根内的不同 run → 派生 `inferyard report`
    写入结果根同级 `reports/` 下的新唯一目录 → 发布 `report.created`；页面在主窗口内容区读取 `studio.json`，呈现当前所选运行的指标卡、分类表、模型与机器、逐题行（题目、类别、执行终态、质量与耗时）及数据来源。
@@ -75,7 +75,7 @@
    自定义地址、版本与 SHA256 默认折叠；手填其他平台的目录 URL 显示警告。仅参考资源在
    「其他准备方式」折叠区列出地址、原因与准备说明，不提供会进入不支持下载通道的填入按钮。
    目录平台匹配不授予设备或模型运行资格；正式设备检查及下载校验保持原契约。
-9. **关停**：`Shutdown` 立即关闭准入，未终态队列任务标 cancelled、活动任务标 cancelling 并
+10. **关停**：`Shutdown` 立即关闭准入，未终态队列任务标 cancelled、活动任务标 cancelling 并
    取消上下文，待专项准备与 runQueue 排空后停止自启动引擎再置 `shutdownDone`；调用方超时（main 为 30
    秒）不抛弃清理、不改变顺序。
 
@@ -97,7 +97,7 @@ Studio 的 [`resources.go`](../../../studio/internal/core/resources.go) 只读�
 按指标、collector、来源、时钟、单位、语义各保留最近 600 点，多个温度来源不会挤掉 CPU 历史。
 
 CPU 只对 periodic 行做差分，使用读取区间中点差和声明的 `clock_ticks_per_second`：
-`100 × Δticks / ticks_per_second / Δseconds`。显示单核等效占用率，可超过 100%，
+`100 × Δticks / ticks_per_second / Δseconds`。页面按「1 个逻辑核 = 100%」显示 CPU 占用率，可超过 100%，
 范围为绑定 PID 全线程、不含子进程，连续采样允许跨阶段和请求。首次计数、缺测、进程/启动/boot/
 时钟/来源/尺度变化、总量或 user/system 分量回退、读取区间重叠，以及超过配置两周期的缺段
 均保留缺测原因并断线。它是实时显示口径，不代替 CLI 的请求窗口指标或性能资格。

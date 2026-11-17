@@ -22,10 +22,10 @@ after a safe drain while the evidence already written stays in the results direc
 | Page | Purpose |
 | --- | --- |
 | Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
-| Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
+| Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts and have no verification entry. |
 | Models | Read-only inventory of installed models and engines (format, architecture, size, verification verdict) plus running services. Choosing the pair happens only on the task page. Empty inventories offer Go to Downloads; orphaned engines show a warning; no absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
-| Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts and have no verification entry. |
+| Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
 
 The [pages reference](docs/pages.md) covers the per-page rules: the first-launch flow,
@@ -38,7 +38,7 @@ The [Studio Design System](docs/design-system.md) defines shared layout, theme, 
 components, feedback, accessibility, and verification rules against the onevra v0.2026.17
 component library on MyGo v0.7.4, including its collapsible, resizable sidebar shell and
 component mapping.
-The [page audit](docs/design-system-audit.md) records implementation gaps across all five
+The [page audit](docs/design-system-audit.md) records implementation gaps across all six
 pages, the run detail view, and the report view. These documents define the target and
 review scope; they do not establish native desktop acceptance.
 
@@ -287,7 +287,7 @@ side; see [tests/e2e/README.md](tests/e2e/README.md) for the layout, fixture bou
 the `INFERYARD_E2E_CLI` / `INFERYARD_E2E_ROOT` knobs. CI runs it on macOS and Windows via
 `.github/workflows/studio-check.yml`.
 
-Native view tests, the e2e suite, and fixtures do not establish real-device acceptance. Verify all five
+Native view tests, the e2e suite, and fixtures do not establish real-device acceptance. Verify all six
 pages, the task page's stage navigation and restored progress, resource curves, and the
 report index view on actual desktop windows. Cross-compilation is not Windows/Linux runtime evidence.
 The native UI migration requires fresh acceptance; historical Web UI checks do not qualify
