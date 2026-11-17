@@ -145,19 +145,14 @@ func summarize(r evidence.Run, host string) (RunSummary, *aggregate, error) {
 	}
 	a.events(rows)
 	run, config, bundle := payload(r.Inputs, "run"), payload(r.Inputs, "config"), payload(r.Inputs, "bundle")
+	categories := caseCategories(r.Inputs)
 	v := RunSummary{RunId: r.ID, Path: r.Path, Status: "partial", Sealed: r.State == evidence.Sealed, StopReason: a.stop, StartedAt: a.started, FinishedAt: a.finished, Relation: text(run["relation"]), ParentRunId: text(run["parent_run_id"]), ModelName: text(obj(config["model"])["display_name"]), ModelPath: text(obj(config["model"])["local_path"]), Engine: text(obj(config["engine"])["adapter"]), Bundle: text(bundle["bundle_id"])}
 	if r.BatchPath != "" {
 		v.BatchId = ptr(filepath.Base(r.BatchPath))
 	}
 	if a.stop != nil {
 		v.Completeness = ptr("incomplete")
-		complete := *a.stop == "plan_finished" && a.Progress.Total != nil && a.Progress.Done == *a.Progress.Total && r.State == evidence.Sealed && run["relation"] != "resume" && run["diagnostic"] != true && run["kind"] == "run"
-		for _, c := range a.Progress.Cases {
-			if (c.State != "completed" && c.State != "failed") || (str(c.QualityState) != "pass" && str(c.QualityState) != "fail" && str(c.QualityState) != "not_applicable") {
-				complete = false
-			}
-		}
-		if complete {
+		if runComplete(a.Progress, r, run) {
 			v.Completeness = ptr("complete")
 		}
 	}
@@ -166,59 +161,12 @@ func summarize(r evidence.Run, host string) (RunSummary, *aggregate, error) {
 		return v, a, e
 	}
 	v.Status = evidence.RunStatus(v.Sealed, str(v.Completeness), str(a.stop), dirty)
-	if score, ok := runScore(a.Progress.Cases); ok {
+	if score, ok := runScore(a.Progress.Cases, categories, str(v.Completeness) == "complete"); ok {
 		v.Score = &score
 	}
 	return v, a, nil
 }
 
-// runScore reduces executed cases to the shared score, following the CLI rule
-// that the denominator is the executed case set: completed and failed cases
-// both count, so an answer that failed to execute still occupies its slot. A
-// case that never executed (cancelled, invalid, pending) or whose category is
-// outside quality stays out of the denominator. The rate is present only when
-// every counted case was judged.
-func runScore(cases []CaseProgress) (RunScore, bool) {
-	score, observed := RunScore{}, false
-	for _, c := range cases {
-		score, observed = foldCase(score, c, observed)
-	}
-	if !observed {
-		return RunScore{}, false
-	}
-	if score.Valid > 0 && score.Failed == 0 && score.Unscorable == 0 && score.Missing == 0 {
-		score.Rate = ptr(float64(score.Passed) / float64(score.Valid))
-	}
-	return score, true
-}
-
-// foldCase adds one case's slot unless it never executed or its category is
-// outside quality; failed execution and unscored completion each get their own
-// bucket while still occupying the denominator.
-func foldCase(score RunScore, c CaseProgress, observed bool) (RunScore, bool) {
-	switch c.State {
-	case "completed", "failed":
-	default:
-		return score, observed
-	}
-	if str(c.QualityState) == "not_applicable" {
-		return score, observed
-	}
-	score.Valid++
-	if c.State == "failed" {
-		score.Failed++
-		return score, true
-	}
-	switch str(c.QualityState) {
-	case "pass":
-		score.Passed++
-	case "unscorable":
-		score.Unscorable++
-	case "":
-		score.Missing++
-	}
-	return score, true
-}
 func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 	h := RunHistoryResponse{ResultsRoot: u.ResultsRoot, ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}
 	if u.ResultsRoot == nil {

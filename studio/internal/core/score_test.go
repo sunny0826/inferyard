@@ -5,91 +5,68 @@ import (
 	"testing"
 )
 
-// runScoreCases reduces one case per quality/state pair the same way the event
-// aggregate does, without needing a run directory. States default to completed
-// so quality-only entries also exercise the execution path.
-func runScoreCases(pairs [][2]string) (RunScore, bool) {
-	cases := make([]CaseProgress, len(pairs))
-	for i, pair := range pairs {
-		state, quality := pair[0], pair[1]
-		if state == "" {
-			state = "completed"
+// scoreCase is one synthetic case for the reduction table. Category is the
+// frozen bundle category; leaving it empty exercises the fallback to the
+// score's own verdict.
+type scoreCase struct {
+	id, state, quality, category string
+}
+
+// reduceCases builds the case list and the frozen category map the reduction
+// needs, then calls the same function the aggregate uses.
+func reduceCases(t *testing.T, complete bool, cases ...scoreCase) (RunScore, bool) {
+	t.Helper()
+	progress := make([]CaseProgress, len(cases))
+	categories := map[string]string{}
+	for i, c := range cases {
+		id := c.id
+		if id == "" {
+			id = fmt.Sprintf("case-%d", i)
 		}
-		cases[i] = CaseProgress{CaseId: fmt.Sprintf("case-%d", i), State: state}
-		if quality != "" {
-			cases[i].QualityState = ptr(quality)
+		progress[i] = CaseProgress{CaseId: id, State: c.state}
+		if c.state == "" {
+			progress[i].State = "completed"
+		}
+		if c.quality != "" {
+			progress[i].QualityState = ptr(c.quality)
+		}
+		if c.category != "" {
+			categories[id] = c.category
 		}
 	}
-	return runScore(cases)
+	return runScore(progress, categories, complete)
 }
 
-// An unscorable case counts as a valid case, so the denominator does not
-// shrink, and the rate stays missing instead of reporting a smaller ratio.
-// Three passes and one unscorable case therefore read 3 / 4 without a rate.
-func TestRunScoreKeepsUnscorableCasesInDenominator(t *testing.T) {
-	score, ok := runScoreCases([][2]string{{"", "pass"}, {"", "pass"}, {"", "pass"}, {"", "unscorable"}})
-	if !ok || score.Passed != 3 || score.Valid != 4 || score.Unscorable != 1 {
-		t.Fatalf("score = %+v ok=%v", score, ok)
-	}
-	if score.Rate != nil {
-		t.Fatalf("unscorable case still produced rate %v", *score.Rate)
-	}
-	if score.RateGap() != "不可评分" {
-		t.Fatalf("gap = %q", score.RateGap())
-	}
-}
-
-// A fully judged run keeps the ordinary ratio, and failures stay in it.
-func TestRunScoreCountsFailuresAndKeepsRate(t *testing.T) {
-	score, ok := runScoreCases([][2]string{{"", "pass"}, {"", "fail"}, {"", "pass"}, {"", "fail"}})
-	if !ok || score.Passed != 2 || score.Valid != 4 || score.Unscorable != 0 {
-		t.Fatalf("score = %+v ok=%v", score, ok)
-	}
-	if score.Rate == nil || *score.Rate != 0.5 {
-		t.Fatalf("rate = %v", score.Rate)
-	}
-}
-
-// Not-applicable categories are outside quality and do not enter any count.
-func TestRunScoreIgnoresNotApplicable(t *testing.T) {
-	score, ok := runScoreCases([][2]string{{"", "pass"}, {"", "not_applicable"}})
-	if !ok || score.Passed != 1 || score.Valid != 1 || score.Unscorable != 0 {
-		t.Fatalf("score = %+v ok=%v", score, ok)
-	}
-}
-
-// A case that failed to execute still occupies its slot in the denominator:
-// three passes and one failed case read 3 / 4 without a rate, never 100%.
-func TestRunScoreKeepsFailedExecutionInDenominator(t *testing.T) {
-	score, ok := runScoreCases([][2]string{{"", "pass"}, {"", "pass"}, {"", "pass"}, {"failed", ""}})
+// A complete run with failures keeps its rate: the failed case occupies its
+// slot and counts as not passed, exactly as the CLI's event ledger maps a
+// failed execution to quality_state "fail".
+func TestRunScoreCountsFailedExecutionAsNotPassed(t *testing.T) {
+	score, ok := reduceCases(t, true,
+		scoreCase{state: "completed", quality: "pass", category: "qa"},
+		scoreCase{state: "completed", quality: "pass", category: "qa"},
+		scoreCase{state: "completed", quality: "pass", category: "qa"},
+		scoreCase{state: "failed", category: "qa"},
+	)
 	if !ok || score.Passed != 3 || score.Valid != 4 || score.Failed != 1 {
 		t.Fatalf("score = %+v ok=%v", score, ok)
 	}
-	if score.Rate != nil {
-		t.Fatalf("failed execution still produced rate %v", *score.Rate)
+	if score.Rate == nil || *score.Rate != 0.75 {
+		t.Fatalf("rate = %v, want 0.75", score.Rate)
 	}
-	if score.RateGap() != "执行失败" {
-		t.Fatalf("gap = %q", score.RateGap())
-	}
-}
-
-// A completed case with a missing score is counted but gaps the rate.
-func TestRunScoreKeepsMissingScoreInDenominator(t *testing.T) {
-	score, ok := runScoreCases([][2]string{{"", "pass"}, {"", ""}})
-	if !ok || score.Passed != 1 || score.Valid != 2 || score.Missing != 1 {
-		t.Fatalf("score = %+v ok=%v", score, ok)
-	}
-	if score.Rate != nil {
-		t.Fatalf("missing score still produced rate %v", *score.Rate)
-	}
-	if score.RateGap() != "缺评分" {
-		t.Fatalf("gap = %q", score.RateGap())
+	if score.RateGap() != "" {
+		t.Fatalf("failed execution withheld the rate: %q", score.RateGap())
 	}
 }
 
-// A case that never executed stays out of the score entirely.
-func TestRunScoreIgnoresNotExecuted(t *testing.T) {
-	score, ok := runScoreCases([][2]string{{"", "pass"}, {"pending", ""}, {"cancelled", ""}})
+// A failed case in an exempt category never enters the denominator, because the
+// category comes from the frozen bundle and not from a score the failure never
+// produced.
+func TestRunScoreExcludesExemptCategoriesByFrozenCategory(t *testing.T) {
+	score, ok := reduceCases(t, true,
+		scoreCase{state: "completed", quality: "pass", category: "qa"},
+		scoreCase{state: "failed", category: "svg"},
+		scoreCase{state: "failed", category: "performance"},
+	)
 	if !ok || score.Passed != 1 || score.Valid != 1 || score.Failed != 0 {
 		t.Fatalf("score = %+v ok=%v", score, ok)
 	}
@@ -98,9 +75,77 @@ func TestRunScoreIgnoresNotExecuted(t *testing.T) {
 	}
 }
 
+// Without a frozen category the score's own verdict is the only evidence;
+// not_applicable still means "outside quality".
+func TestRunScoreFallsBackToNotApplicable(t *testing.T) {
+	score, ok := reduceCases(t, true,
+		scoreCase{state: "completed", quality: "pass"},
+		scoreCase{state: "completed", quality: "not_applicable"},
+	)
+	if !ok || score.Passed != 1 || score.Valid != 1 {
+		t.Fatalf("score = %+v ok=%v", score, ok)
+	}
+}
+
+// An unscorable case keeps its slot and withholds the rate.
+func TestRunScoreWithholdsRateForUnscorable(t *testing.T) {
+	score, ok := reduceCases(t, true,
+		scoreCase{state: "completed", quality: "pass", category: "qa"},
+		scoreCase{state: "completed", quality: "unscorable", category: "qa"},
+	)
+	if !ok || score.Passed != 1 || score.Valid != 2 || score.Unscorable != 1 {
+		t.Fatalf("score = %+v ok=%v", score, ok)
+	}
+	if score.Rate != nil || score.RateGap() != "不可评分" {
+		t.Fatalf("rate = %v gap = %q", score.Rate, score.RateGap())
+	}
+}
+
+// A completed case whose score is missing keeps its slot and withholds the rate.
+func TestRunScoreWithholdsRateForMissingScore(t *testing.T) {
+	score, ok := reduceCases(t, true,
+		scoreCase{state: "completed", quality: "pass", category: "qa"},
+		scoreCase{state: "completed", category: "qa"},
+	)
+	if !ok || score.Passed != 1 || score.Valid != 2 || score.Missing != 1 {
+		t.Fatalf("score = %+v ok=%v", score, ok)
+	}
+	if score.Rate != nil || score.RateGap() != "缺评分" {
+		t.Fatalf("rate = %v gap = %q", score.Rate, score.RateGap())
+	}
+}
+
+// An incomplete run withholds the rate even when every counted case passed,
+// because the CLI reports the quality section as incomplete.
+func TestRunScoreWithholdsRateForIncompleteRun(t *testing.T) {
+	score, ok := reduceCases(t, false,
+		scoreCase{state: "completed", quality: "pass", category: "qa"},
+		scoreCase{state: "completed", quality: "pass", category: "qa"},
+	)
+	if !ok || score.Passed != 2 || score.Valid != 2 {
+		t.Fatalf("score = %+v ok=%v", score, ok)
+	}
+	if score.Rate != nil || score.RateGap() != "运行不完整" {
+		t.Fatalf("rate = %v gap = %q", score.Rate, score.RateGap())
+	}
+}
+
+// Cases that never executed stay out of every count.
+func TestRunScoreIgnoresUnexecuted(t *testing.T) {
+	score, ok := reduceCases(t, false,
+		scoreCase{state: "completed", quality: "pass", category: "qa"},
+		scoreCase{state: "cancelled", category: "qa"},
+		scoreCase{state: "invalid", category: "qa"},
+		scoreCase{state: "not_executed", category: "qa"},
+	)
+	if !ok || score.Passed != 1 || score.Valid != 1 || score.Failed != 0 {
+		t.Fatalf("score = %+v ok=%v", score, ok)
+	}
+}
+
 // Without any executed case there is no score at all, rather than zeros.
 func TestRunScoreWithoutExecutedCasesIsAbsent(t *testing.T) {
-	if _, ok := runScoreCases([][2]string{{"pending", ""}, {"cancelled", ""}}); ok {
+	if _, ok := reduceCases(t, false, scoreCase{state: "cancelled", category: "qa"}); ok {
 		t.Fatal("unexecuted cases produced a score")
 	}
 }

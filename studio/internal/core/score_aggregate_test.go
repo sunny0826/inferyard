@@ -7,9 +7,16 @@ import (
 	"inferyard/studio/internal/evidence"
 )
 
-// scoreInputsJSON declares two cases; the aggregate only needs the selection
-// document to seed its progress list.
-const scoreInputsJSON = `{"documents":{"selection":{"payload":{"case_ids":["case-0","case-1"]}}}}`
+// scoreInputsJSON declares three cases: two quality cases and one svg case that
+// the frozen bundle marks outside quality. The aggregate seeds its progress from
+// the selection document and reads categories from the bundle document.
+const scoreInputsJSON = `{"documents":{
+	"selection":{"payload":{"case_ids":["case-0","case-1","case-2"]}},
+	"bundle":{"payload":{"cases":[
+		{"case_id":"case-0","category":"qa"},
+		{"case_id":"case-1","category":"qa"},
+		{"case_id":"case-2","category":"svg"}
+	]}}}}`
 
 // scoreEvent is one events.jsonl line the aggregate consumes.
 type scoreEvent struct {
@@ -29,38 +36,55 @@ func (e scoreEvent) scoreLine() string {
 	return base + "}}"
 }
 
-// The event path feeds the same reduction: an unscorable case keeps its slot in
-// the denominator, so one pass plus one unscorable case is 1 / 2 with no rate.
+// The event path feeds the same reduction and reads the category from the frozen
+// bundle: a failed svg case produces no score, yet must stay out of the quality
+// denominator because the bundle says it is exempt.
+func TestAggregateExcludesFailedExemptCaseFromDenominator(t *testing.T) {
+	a := newAggregate([]byte(scoreInputsJSON))
+	a.events(scoreRecords([][2]string{{"completed", "pass"}, {"completed", "pass"}, {"failed", ""}}))
+	score, ok := runScore(a.Progress.Cases, caseCategories([]byte(scoreInputsJSON)), true)
+	if !ok || score.Passed != 2 || score.Valid != 2 || score.Failed != 0 {
+		t.Fatalf("aggregate score = %+v ok=%v", score, ok)
+	}
+	if score.Rate == nil || *score.Rate != 1 {
+		t.Fatalf("rate = %v", score.Rate)
+	}
+}
+
+// A failed quality case stays in the denominator and the rate survives, which is
+// the CLI's 3-of-4 behaviour for one execution failure.
+func TestAggregateCountsFailedQualityCaseAndKeepsRate(t *testing.T) {
+	a := newAggregate([]byte(scoreInputsJSON))
+	a.events(scoreRecords([][2]string{{"completed", "pass"}, {"completed", "pass"}, {"failed", ""}}))
+	// Re-label case-2 as a quality case by replacing the frozen bundle.
+	quality := `{"documents":{
+		"selection":{"payload":{"case_ids":["case-0","case-1","case-2"]}},
+		"bundle":{"payload":{"cases":[
+			{"case_id":"case-0","category":"qa"},
+			{"case_id":"case-1","category":"qa"},
+			{"case_id":"case-2","category":"qa"}
+		]}}}}`
+	score, ok := runScore(a.Progress.Cases, caseCategories([]byte(quality)), true)
+	if !ok || score.Passed != 2 || score.Valid != 3 || score.Failed != 1 {
+		t.Fatalf("aggregate score = %+v ok=%v", score, ok)
+	}
+	if score.Rate == nil || *score.Rate != 2.0/3.0 {
+		t.Fatalf("rate = %v, want 2/3", score.Rate)
+	}
+}
+
+// An unscorable case keeps its slot in the denominator end to end.
 func TestAggregateKeepsUnscorableCaseInDenominator(t *testing.T) {
 	a := newAggregate([]byte(scoreInputsJSON))
 	a.events(scoreRecords([][2]string{{"completed", "pass"}, {"completed", "unscorable"}}))
-	assertAggregateScore(t, a, RunScore{Passed: 1, Valid: 2, Unscorable: 1})
-}
-
-// A failed execution still occupies its slot in the denominator end to end.
-func TestAggregateKeepsFailedExecutionInDenominator(t *testing.T) {
-	a := newAggregate([]byte(scoreInputsJSON))
-	a.events(scoreRecords([][2]string{{"completed", "pass"}, {"failed", ""}, {"completed", "pass"}}))
-	assertAggregateScore(t, a, RunScore{Passed: 2, Valid: 3, Failed: 1})
-}
-
-func assertAggregateScore(t *testing.T, a *aggregate, want RunScore) {
-	t.Helper()
-	score, ok := runScore(a.Progress.Cases)
-	if !ok || score != want {
-		t.Fatalf("aggregate score = %+v ok=%v want %+v", score, ok, want)
-	}
-	if want.Failed == 0 && want.Unscorable == 0 && want.Missing == 0 {
-		if score.Rate == nil {
-			t.Fatalf("fully judged score has no rate: %+v", score)
-		}
-	} else if score.Rate != nil {
-		t.Fatalf("gapped score still produced rate %v", *score.Rate)
+	score, ok := runScore(a.Progress.Cases, caseCategories([]byte(scoreInputsJSON)), true)
+	if !ok || score.Passed != 1 || score.Valid != 2 || score.Unscorable != 1 || score.Rate != nil {
+		t.Fatalf("aggregate score = %+v ok=%v", score, ok)
 	}
 }
 
 // scoreRecords builds the started/finished/score sequence, one triple per case;
-// an empty state value emits no score event, and "failed" marks execution.
+// an empty state value emits no score event.
 func scoreRecords(states [][2]string) []evidence.Record {
 	records := make([]evidence.Record, 0, len(states)*3)
 	seq := 0

@@ -56,13 +56,13 @@ type DeviceResponse struct {
 	LastError  *ApiError       `json:"last_error"`
 }
 
-// RunScore mirrors the CLI quality reduction. Valid counts every case that
-// executed (completed or failed) and is not exempt, so neither a scoring
-// failure nor a failed execution shrinks the denominator. Failed and
-// MissingScore split the gaps by cause: an execution failure never produces a
-// score, and a completed case may still lack one. Rate stays nil while any gap
-// exists, because the CLI reports the same quality section as incomplete
-// rather than computing a smaller ratio.
+// RunScore mirrors the CLI quality reduction. Valid counts every case in a
+// quality category that executed (completed or failed), so a failed execution
+// occupies its slot and counts as not passed instead of shrinking the
+// denominator. Unscorable and Missing split the remaining gaps: a completed
+// case that could not be judged, or that has no score at all. The rate is
+// present only when the CLI would compute one: a complete run with no
+// unscorable or missing case.
 type RunScore struct {
 	Passed     int64    `json:"passed"`
 	Valid      int64    `json:"valid"`
@@ -72,18 +72,20 @@ type RunScore struct {
 	Rate       *float64 `json:"rate"`
 }
 
-// RateGap reports why a rate is absent, or empty when every counted case was
-// judged. Counts stay available so the page can name the cause.
+// RateGap reports why a rate is absent, or empty when one was reported. A
+// failed execution is not a gap: it stays in the denominator as a failure, so
+// the rate survives. A withheld rate with no unscorable and no missing case
+// means the run itself is incomplete, which is how the CLI reasons.
 func (s RunScore) RateGap() string {
 	switch {
-	case s.Failed > 0:
-		return "执行失败"
+	case s.Rate != nil:
+		return ""
 	case s.Unscorable > 0:
 		return "不可评分"
 	case s.Missing > 0:
 		return "缺评分"
 	}
-	return ""
+	return "运行不完整"
 }
 
 type RunSummary struct {

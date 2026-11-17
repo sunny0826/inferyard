@@ -136,8 +136,9 @@ func selectedRow(state *pageTableState, count int) int {
 	return *state.Selected
 }
 
-// runScore names a missing or reduced rate instead of printing a smaller ratio:
-// failed and unscorable cases stay in the denominator and remove the rate.
+// runScore names a missing or withheld rate instead of printing a smaller
+// ratio: failed executions stay in the denominator as failures, while an
+// unscorable or unscored case withholds the rate.
 func runScore(r core.RunSummary) string {
 	if r.Score == nil {
 		return "未记录评分"
@@ -148,6 +149,9 @@ func runScore(r core.RunSummary) string {
 		rate = "含 " + gapDescription(*r.Score, gap)
 	case r.Score.Rate != nil:
 		rate = fmt.Sprintf("%.1f%%", *r.Score.Rate*100)
+	}
+	if r.Score.Failed > 0 {
+		rate += fmt.Sprintf("，含 %d 题执行失败", r.Score.Failed)
 	}
 	return fmt.Sprintf("%d/%d · %s", r.Score.Passed, r.Score.Valid, rate)
 }
