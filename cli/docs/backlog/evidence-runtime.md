@@ -14,14 +14,13 @@ Go vet、Ruff 与 Schema/catalogue 检查通过。独立审查发现的 CPU 跨�
 后通过的回归修复。本机原生采集经模拟 HTTP 服务跑通 single 的 probe/run/封存，
 新原件包含 CPU 与 57 路温度来源，Studio 投影读回通过；没有启动真实模型。
 
-剩余验收：原生窗口 E2E 被 macOS 锁屏前置检查阻断，解锁后须重跑
-`mise run test:studio-ui`。Linux 原生设备、Windows CPU/温度能力、真实模型与完整采集成本
+本次原生窗口 E2E 因 macOS 锁屏未执行。后续 macOS 模拟窗口套件与发布候选的覆盖见 [Studio 验证记录](../backlog.md#inferyard-studio-后续工作)。Linux 原生设备、Windows CPU/温度能力、真实模型与完整采集成本
 尚未验证；本轮不继承旧成本资格。Windows 普通 single 仍仅采内存。
 
 ## 运行证据文件合并
 
 2026-10-11 文件合并的软件实施与验收已完成；随后按用户要求收回范围扩展，
-当前修改在 `fix/remove-layout-scope-expansion`；用户已授权提交 PR，提交前合入最新 main。
+下表记录当时源码与报告格式的验收。
 [ADR 048](../decisions/048-run-evidence-containers.md) 与[共享接口契约](../contracts/run-evidence-layout.md)
 定义当前结构；已完成的实施计划移除。PR1 读取方基线为 `e9d71a5`，最终软件验证源码为 `71b414d`。
 共享 writer、运行调用方和故障回归由三个独立 owner 在隔离树实现，再由 root 集成；

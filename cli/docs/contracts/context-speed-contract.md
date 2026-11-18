@@ -1,6 +1,6 @@
 # 长上下文速度共享契约
 
-本参考定义冻结的纯规则、结构、语义校验及 CLI 原始证据读取。Studio 消费另行接入；
+本参考定义冻结的纯规则、结构、语义校验及 CLI 原始证据读取。Studio 的调用与历史读回见[专项运行路径](../../../docs/subsystems/studio-panel/context-speed.md)；
 结构通过不代表题库获人工批准、服务已核验或真实模型性能通过。
 来源结论遵循[证据血缘规则](../data-contract.md#证据血缘与比较结论)，
 格式支持遵循[当前格式契约](inferyard-current-format.md)。不接受历史格式迁移。
@@ -33,7 +33,7 @@ draft/lookup/ngram 或未知选项。固定输出复用既有 `config.fixed_outp
 `--device` 与 `--log-verbosity` 的合法值、参数形式和拒绝顺序见
 [可选启动参数](context-speed-startup.md)；实际绑定仍核验完整 argv。
 
-Prism 实际构建仍须在 B 阶段通过现有 `/props` 的固定 `build_info` 核验，
+Prism 实际构建须通过现有 `/props` 的固定 `build_info` 核验，
 release 显示字符串本身不证明构建已验证。
 模板原件哈希与该 build 的服务表示分别按 [Prism 模板身份契约](prism-template-contract.md) 核验。
 
@@ -225,4 +225,4 @@ not_executed/unknown。预算在创建 run 后、发送正式请求前阻断时�
 
 `analysis/context_speed.py` 按冻结 trial 顺序投影五项，并调用共享语义及 binding 校验后返回。
 结果读取不写文件、不请求模型；接口语法见 [CLI](../cli-surface.md#长上下文速度专项)。
-本接入不表示 B2 通用消费者旁路、Studio、原生平台或真实模型已验收。
+各档位真实模型、原生窗口与通用消费者检查的覆盖范围见[专项 backlog](../backlog/context-speed.md)。

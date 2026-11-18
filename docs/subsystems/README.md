@@ -23,6 +23,7 @@
 - [架构](../../cli/docs/architecture.md)：层与领域包总览；[文档导航](../../cli/docs/README.md)：全部入口。
 - [数据契约](../../cli/docs/data-contract.md) 与 [主题契约](../../cli/docs/contracts/README.md)：字段语义、格式与主题规则的唯一事实源。
 - [ADR](../../cli/docs/decisions/README.md)：长期设计理由。
+- [平台状态](../../cli/docs/platforms.md)与 [backlog](../../cli/docs/backlog.md)：按平台、版本和任务区分已有证据与剩余验收。
 - 本目录：跨包子系统的当前职责边界、运行路径、状态转换、关键约束与验证命令。上述事实只留一处，链接而不复制。
 
 ## 维护参考

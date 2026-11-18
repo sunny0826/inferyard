@@ -3,11 +3,11 @@
 本页是[CLI 接口](../cli-surface.md) 的子文档，收录「verify 的核验范围」的正文；内容不变，入口保留原节标题与锚点。
 
 `engine-fit verify` 专用于[引擎适配诊断](../engine-fit-common.md)的 run/比较产物；
-普通 `verify` 支持下面七类派生产物，以及原始 run/batch、冻结 plan 和 engine-fit 产物。
+普通 `verify` 支持下列派生产物，以及原始 run/batch、冻结 plan 和 engine-fit 产物。
 规划、执行、比较的全部新选项见 `engine-fit <动作> --help`。
 
-七类产物为开销对照（overhead）、重复分析（repeat）、重评分（rescore）、指标导出（export）、
-公开包（public）、比较（comparison）和扩展包（extension）。普通报告不是核验入口。
+包括开销对照（overhead）、重复分析（repeat）、重评分（rescore）、指标导出（export）、
+公开包（public）、比较（comparison）、跨引擎比较（engine-comparison）和扩展包（extension）。普通报告不是核验入口。
 
 - 使用特有文件及必要元数据识别；损坏、无法识别或类型冲突均拒绝，不回退到只核验 manifest。
 - 原始 run/batch、冻结 plan 由原读取器核验；单独 analysis 仍不属于此入口。

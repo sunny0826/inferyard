@@ -18,7 +18,7 @@ inferyard --schema service_discovery
 bind 仍核验当前身份与候选启动参数。空列表退出 0；枚举不全退出 3 并带 limitations。
 字段、固定原因及平台边界见[服务发现契约](../cli-surface.md#本机服务发现契约)。
 
-模型服务由操作者外部启动。按[配置说明](../../configs/README.md)准备候选配置，核对模型、引擎、模板、启动参数和凭据引用，再绑定当前进程：
+在终端工作流中，操作者负责启动服务。Studio 可以管理自己启动的进程，见[服务所有权](../../../docs/subsystems/studio-panel.md#约束与失败行为)。按[配置说明](../../configs/README.md)准备候选配置，核对模型、引擎、模板、启动参数和凭据引用，再绑定当前进程：
 
 ```bash
 inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1

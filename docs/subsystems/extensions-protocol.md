@@ -62,11 +62,11 @@
 
 ## 验证
 
-以下命令在仓库根执行；live 通路需要操作者已启动并绑定真实服务，模拟验证使用 fixture：
+以下命令在仓库的 `cli/` 目录内执行；live 通路需要操作者已启动并绑定真实服务，模拟验证使用 fixture：
 
 ```sh
 # 扩展协议单元测试（含 fixture 级 freeze/replay/live 编排演练）
-cd cli && mise exec -- uv run --frozen pytest -q \
+mise exec -- uv run --frozen pytest -q \
   tests/unit/test_closed_concurrency.py \
   tests/unit/test_extension_evidence.py \
   tests/unit/test_extension_transport.py \
@@ -74,17 +74,17 @@ cd cli && mise exec -- uv run --frozen pytest -q \
   tests/unit/test_total_observer_control.py
 
 # lint
-cd cli && mise exec -- uv run --frozen ruff check src tests scripts
+mise exec -- uv run --frozen ruff check src tests scripts
 
 # 扩展 wire schema 的生成物核对（closed_concurrency / native_tools / total_observer_control）
-cd cli && mise exec -- uv run --frozen python scripts/export_schemas.py --check
+mise exec -- uv run --frozen python scripts/export_schemas.py --check
 
 # 全量测试（影响面较大时；仓库根任务 mise run test 的等价命令）
-cd cli && mise exec -- uv run --frozen pytest
+mise exec -- uv run --frozen pytest
 ```
 
 测试与行为的对应：`test_closed_concurrency.py` 演练 goodput/窗口归约与超时分母守恒；`test_extension_evidence.py` 演练封存重放篡改拒绝与 fixture 不继承 live 资格；`test_extension_transport.py` 演练预检 fail-closed；`test_native_tools.py` 演练白名单工具与确定性工具评分；`test_total_observer_control.py` 演练封存耗时纳入总开销预算。
 
-端到端手工路径（需真实 llama.cpp 固定构建服务，不属于默认验证）：`inferyard extension freeze --spec SPEC.json --config CONFIG.toml --out EXT_PLAN`、`inferyard extension run --plan EXT_PLAN/plan.json --config CONFIG.toml --out EXT_RUNS`，离线核验用 `inferyard verify --path EXT_RUNS/<evidence_dir>`（重放归约并比对 `summary.json`），语法见 [使用指南](../../cli/docs/usage.md)。
+端到端手工路径（需真实 llama.cpp 固定构建服务，不属于默认验证）：`inferyard extension freeze --spec SPEC.json --config CONFIG.toml --out EXT_PLAN`、`inferyard extension run --plan EXT_PLAN/plan.json --config CONFIG.toml --out EXT_RUNS`，离线核验用 `inferyard verify --path EVIDENCE_DIR`。将 EVIDENCE_DIR 换成 stdout 返回的 `evidence_dir`，即可重放归约并比对 `summary.json`，语法见 [使用指南](../../cli/docs/usage.md)。
 
-核对方式：pytest 测试文件均存在于 `cli/tests/unit/`；ruff 与 pytest 由 `cli/pyproject.toml` 的依赖组提供，`--frozen` 与 `uv` 版本由 [mise.toml](../../mise.toml) 固定；`export_schemas.py --check` 覆盖 `schemas.py` 惰性引入的 `schemas_extensions.py` 三个 wire schema；仓库根的 `mise run test`/`lint`/`schemas` 任务分别是上述三条命令的封装。live 通路（步骤 3-9 的真实服务执行）在本机未经真机演练，真机资格以独立证据标记为准。
+核对方式：pytest 测试文件均存在于 `cli/tests/unit/`；ruff 与 pytest 由 `cli/pyproject.toml` 的依赖组提供，`--frozen` 与 `uv` 版本由 [mise.toml](../../mise.toml) 固定；`export_schemas.py --check` 覆盖 `schemas.py` 惰性引入的 `schemas_extensions.py` 三个 wire schema；仓库根的 `mise run test`/`lint`/`schemas` 任务分别运行全量测试、lint 和 Schema 核对。live 通路（步骤 3-9 的真实服务执行）在本机未经真机演练，真机资格以独立证据标记为准。

@@ -1,7 +1,7 @@
 # ADR 057a：跨引擎比较专用任务与职责边界
 
 状态：Accepted（2026-11-07 用户批准 D1，原话「D1 全批准」）。日期：2026-11-07。原始基线：`6783414ccd73e8f2991adae7d3e1d707bfba9ff7`；本轮基线：`b12eb1b0cee2c34c07ddf3d8b7e651cb310351e2`。
-本草案采用用户指定的“专用比较任务记录”，不定义通用 Experiment；方案 A 的单份完整计划见 [ADR 057b](057-engine-comparison-plan.md)。
+本决策采用用户指定的“专用比较任务记录”，不定义通用 Experiment；方案 A 的单份完整计划见 [ADR 057b](057-engine-comparison-plan.md)。
 文中“事实”附源码位置；“推导”是设计判断；“未验证”不当作既有能力。
 
 > 局部取代：比较产物的 HTML 文件与封存呈现字节核验由 [ADR 059](059-studio-json-only-report.md) 取代（verify 改为从 plan/batch 重算单文件 `engine-comparison.json`）；任务职责边界与编排规则不变。
@@ -83,7 +83,7 @@ T6 只接入专用比较任务，复用队列、取消、服务所有权和原�
 | 首轮模型 | 用户已决定专用比较任务记录；通用 Experiment 为被拒绝备选。 |
 | 职责 | Studio 管服务与编排；CLI 管协议、门槛、产物与核验，符合根 `AGENTS.md:100-109`。 |
 | D2 | 首轮不迁移长上下文专项；第二条真实流程迁移时再评估通用抽象。 |
-| D1 收尾 | 仍需用户批准方案 A、失败政策和旧产物政策，见 ADR 057b。 |
+| D1 收尾 | 用户于 2026-11-07 批准方案 A、失败政策和当时的旧产物政策，见 [ADR 057b](057-engine-comparison-plan.md)。 |
 
 ## 未验证项
 

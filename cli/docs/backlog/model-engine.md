@@ -24,10 +24,10 @@ CLI 查询回归 46 项通过。
 
 macOS 原生模拟 UI 已通过（12/12，无跳过），覆盖目录模型双题包和 LM 重绑、失败重试与报告；
 耗时 304.922 秒是单次观测，不代表稳定提速或真实模型、其他平台验收。
-完整 CLI／假引擎套件因真实 CLI 使用全机 host 状态暂未运行；温停 dirty 原件未改。
+当时完整 CLI／假引擎套件因全机 host 状态被阻断，温停 dirty 原件保留。后来双题包边界套件已隔离测试主机锁，见 [Studio 验证记录](../backlog.md#inferyard-studio-后续工作)；该套件的覆盖范围见[边界 E2E](../../../studio/tests/e2e/README.md)。
 五引擎双题包与 Studio 真机闭环仍待验收：需稳定温度条件及既有 LM 后台管理授权。
 
-当前规则见[契约](../contracts/local-engines.md)，剩余事项见[实施计划](../plans/local-engines.md)。
+后续在授权设备上逐引擎冻结正式预算、完成双题包并保留停止原件和分母；另验收真实 Studio → CLI → 五种模型服务。短请求诊断不计入题包完成。现行准入与清理规则见[本地引擎契约](../contracts/local-engines.md)。
 
 CLI 全量回归 5902 passed、54 skipped（平台限定及 opt-in 真机测试）；
 Ruff、schema/catalogue 导出一致性和 362 个本地文档链接检查通过。
@@ -102,6 +102,8 @@ pass 1（135M 模型低分非 CLI 失败）。硬件安全停止保留为 incomp
 
 ## 模型 e2e 三平台接入
 
+以下为各次脚本与报告格式的历史回执。当时的 HTML 核验和文件数只适用于对应提交；当前发行批次见[发布记录](release.md#v005-发布记录)，现行验收范围见[平台状态](../platforms.md)。
+
 2026-10-11 新增 `tests/packaging/ci_model_e2e.py` 与 `model-e2e` workflow（分支
 ci/model-e2e，基于 #31 分支）：以 SmolLM2-135M-Instruct Q4_K_M（105MB）+ Prism
 b10743 归档驱动真实模型全链路——init（zh-svg-pelican 单题包，用户显式固定）→
@@ -142,8 +144,7 @@ numerator 与 pass 数一致、SVG 题 not_applicable、报告含「答案通过
 bench-ops 目录后 verify 仍退出 0。操作目录改为 bench-ops-smoke /
 bench-ops-svg，Linux 候选的 bundle 版本改为从题包文件读取。macOS arm64
 （Metal）本机实跑全绿：SmolLM2-135M 得 1/40（小模型预期低分，验证的是
-评分链路而非模型质量），总耗时约 3 分钟。Windows/Linux 两条腿尚未以新
-流程实跑（CI 将覆盖 Windows；Linux 仍需本机 omarchy 复跑确认）。
+评分链路而非模型质量），总耗时约 3 分钟。当时 Windows/Linux 尚未以新流程实跑。后续 macOS 与 Windows 的真实双题包 CI 回执见[配置审计](../audits/config-cleanup.md#实施顺序与验收)与[发行源码覆盖](../platforms.md#当前候选验证与未验项)；Linux 仍待以更新后的流程复验。
 
 2026-10-13 首次上手引导落地（分支 feat/first-run-onboarding，commit 1ea41cd）：
 新增只读 `progress --workspace`（progress.v1，退出码仅 0/2）、`config create
@@ -165,18 +166,4 @@ report+verify，`default_scope_complete: true`，两 run 封存、报告 verifie
 profile 的 10 秒不动（改 profile 需固定归档重生成资源）；契约文档同步，新增
 回归断言预算 ≥30 秒且超时仍映射 engine_version_query_failed。
 
-2026-10-13 向导改为 MyGo 原生 UI 窗口（阶段二，分支 feat/first-run-onboarding）：
-用户手动验收结论 web 向导交互差（裸命令 textarea、阶段枚举直出、无整体进度
-感），方向确认为原生 UI。新增 `studio/internal/wizard`（Manager + viewState
-直调 core，六站步骤轨：准备/设备检查/候选/启动与绑定/运行/报告核验；命令仅
-在服务启动步出现且只读可复制；阶段全部人话；失败给重试不自动重试；token 只
-接受环境变量名）；main.go 在 readiness 未完成或 CLI 未安装时自动开向导窗口，
-`mygo.Bind(WizardBridge)` + `mygo generate` 产出 TS client（bindings 路径
-web/src/mygo.ts，新增 mygo-runtime 依赖）；web 向导页降级为入口卡（进度人话
-摘要 + 打开向导按钮，mock 模式不打包 mygo 代码），移除命令/进程/endpoint 表
-单。协调者修正：Go 侧不再改写 progress next_command 的 --out（CLI new_output
-已保证新目录，改写破坏 stem-N 产物命名），Bind 移至 App.Run 前顶层（generate
-模式不执行 WhenReady）。验证：go vet/test（含 ui.NewTester 五状态 view 测试）、
-build:web、verify.mjs（mock 与 wire 全过）、mock 产物无 mygo 代码、首跑/配置后
-两态桌面冒烟进程稳定。未验证（留给用户手动验收）：原生窗口视觉呈现、入口卡
-点击聚焦向导、完整真机向导流程重跑。
+2026-10-13 的中间版本曾由 Web 入口打开独立 MyGo 向导，当时只做了 mock/wire 与两种启动状态的进程冒烟。当前 Studio 在单个原生主窗口内打开任务页，见[运行路径](../../../docs/subsystems/studio-panel/runtime.md)。当前 macOS 原生窗口、假引擎链路与仍待完成的三平台验收见 [Studio backlog](../backlog.md#inferyard-studio-后续工作)。

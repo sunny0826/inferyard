@@ -10,7 +10,7 @@ tracked in [platform status](docs/platforms.md).
 Install following the [installation guide](docs/installation.md), then export
 an operations directory and detect an existing model; preparation stays in
 `bench-ops/` while the benchmark workspace `bench-work/` holds only runs,
-batches and reports:
+batches and reports. This example explicitly selects the smoke bundle. For a standard run, follow the [two-bundle workflow](docs/guides/onboarding-and-scope.md#默认测评范围).
 
 ```bash
 inferyard init --out bench-ops --bundle zh-smoke
@@ -18,7 +18,7 @@ inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/dev
 inferyard config create --preflight bench-ops/preflight/device-1/device-preflight.json --engine /path/to/llama-server --bundle bench-ops/bundles/zh-smoke.json --results bench-work/results --out bench-ops/candidate
 ```
 
-Candidate generation currently requires Prism `prism-b10743-adfffbe`, with the
+This `--engine` example requires Prism `prism-b10743-adfffbe`, with the
 engine and its dynamic libraries in the same directory; nothing is downloaded
 or built automatically.
 It runs one bounded `--version` pass, re-checks capacity and AC, and reads
@@ -33,12 +33,11 @@ Do not reuse historical PIDs; bind with the actual PID and endpoint:
 ```bash
 inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
 inferyard run --config bench-ops/bound/service-1/config.toml
+inferyard verify --path bench-work/results/RUN_ID
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
-inferyard verify --path bench-work/report
 ```
 
-The tool does not change power policies or manage model services; the
-operator shuts the service down after the run.
+Use the source run directory from the CLI output in place of `bench-work/results/RUN_ID`. Studio reads the generated report. In this terminal workflow the operator shuts down the service after the run. For the separate macOS local-installation path, see [local engines](docs/cli-reference/local-engines.md).
 See the [usage guide](docs/usage.md) for batch plans, cancellation and dirty
 recovery.
 

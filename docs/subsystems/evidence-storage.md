@@ -133,7 +133,7 @@
 
 ```sh
 cd cli
-uv run --frozen pytest -q \
+mise exec -- uv run --frozen pytest -q \
   tests/unit/test_storage.py \
   tests/unit/test_storage_sync.py \
   tests/unit/test_layout_consumers.py \
@@ -141,7 +141,7 @@ uv run --frozen pytest -q \
   tests/unit/test_ledger.py \
   tests/unit/test_offline_reading.py \
   tests/unit/test_current_formats.py
-uv run --frozen ruff check src tests scripts
+mise exec -- uv run --frozen ruff check src tests scripts
 # 全量回归（与根目录 mise task test 相同）：
-uv run --frozen pytest
+mise exec -- uv run --frozen pytest
 ```

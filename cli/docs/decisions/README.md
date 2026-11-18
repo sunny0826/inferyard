@@ -50,8 +50,8 @@ Accepted 表示采纳设计，不代表所有平台已验证。
 | [ADR 053：分别核验模板原件与 Prism 服务表示](053-prism-template-source-verification.md) | Accepted |
 | [ADR 054：普通运行采集 CPU 与温度](054-single-resource-collection.md) | Accepted；替代 ADR 048 的 single 默认内存范围 |
 | [ADR 055：本地五引擎正式串行测评](055-local-engine-formal.md) | Accepted；实施与原生验收分阶段 |
-| [ADR 056：同一 GGUF 的跨引擎受控比较](056-engine-comparison.md) | Accepted；实施未开始；产物 HTML 与呈现核验由 ADR 059 局部取代 |
-| [ADR 057：专用比较任务](057-comparison-task.md)、[完整比较计划](057-engine-comparison-plan.md)与[v2 核验](057-comparison-verification.md) | Accepted（2026-11-07 用户批准 D1）；实施未开始；产物 HTML 与呈现核验由 ADR 059 局部取代 |
+| [ADR 056：同一 GGUF 的跨引擎受控比较](056-engine-comparison.md) | Accepted；产物 HTML 与呈现核验由 ADR 059 局部取代 |
+| [ADR 057：专用比较任务](057-comparison-task.md)、[完整比较计划](057-engine-comparison-plan.md)与[v2 核验](057-comparison-verification.md) | Accepted（2026-11-07 用户批准 D1）；产物 HTML 与呈现核验由 ADR 059 局部取代 |
 | [ADR 058：本地引擎 worker 入口核验从协议复刻改为形状识别](058-local-worker-entry-shape.md) | Accepted；已实施 |
 | [ADR 059：移除产品级离线 HTML 报告，保留原始证据和结构化 JSON 核验](059-studio-json-only-report.md) | Accepted；已实施 |
 

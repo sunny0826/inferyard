@@ -55,11 +55,11 @@ Studio 不接受缺少该身份字段的 `.v1` 查询响应，须使用配套 CL
 
 ## 绑定、运行与交接
 
-服务启动并加载本地模型后，用新目录保存完整绑定：
+服务启动并加载本地模型后，把示例 PID 1234 和端点替换为实测值，用新目录保存完整绑定：
 
 ```sh
 inferyard config bind --candidate /absolute/candidate-core/candidate.toml \
-  --pid PID --endpoint http://127.0.0.1:48857 --out /absolute/bound-core
+  --pid 1234 --endpoint http://127.0.0.1:48857 --out /absolute/bound-core
 inferyard run --config /absolute/bound-core/config.toml
 ```
 
@@ -68,7 +68,7 @@ inferyard run --config /absolute/bound-core/config.toml
 跨题包必须确认旧主进程和全部已绑定 worker 退出，再启动、绑定新服务。
 分开执行两个 `run` 也受到主机持久 scope 记录限制。
 
-冻结批次的显式 handoff，或带 `--from-run` 的重跑，需要在 endpoint/PID 参数之外
+冻结批次的显式 handoff，或 `run --rerun-from` 重跑，需要在 endpoint/PID 参数之外
 传入 `--service-binding NEW_BINDING_JSON`。绑定原件必须属于该配置的安装和模型，
 不能只更新 PID；旧主进程消失但 worker 仍存活时阻断。dirty 恢复继续要求一次性
 recovery token 和说明，且确认旧进程树退出；队列计数为零不能代替这一步。

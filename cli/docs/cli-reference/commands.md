@@ -4,11 +4,12 @@
 
 | 用途 | 命令 | 请求范围 |
 | --- | --- | --- |
-| 安装与配置 | `init`、`runtime prepare`、`config assets/create/bind` | 本地准备；prepare/create 有界查询引擎版本，无模型请求 |
+| 安装与配置 | `init`、`runtime prepare`、`config assets/create/describe/bind` | 本地准备；prepare/create 有界查询引擎版本，无模型请求 |
+| 资产获取 | `model acquire`、`engine acquire` | 显式从指定来源下载到新目录，见[准备接口](community-preparation.md) |
 | 设备与目录 | `progress`、`device-check`、`memory-check`、`catalogue`、`engine check` | 本地设备、进程、文件或已安装目录数据；engine check 另有有界引擎版本查询子进程，无网络请求 |
 | 实验准备 | `plan`、`compare-plan` | 离线预览或冻结实验；`compare-plan` 冻结单份六块跨引擎比较计划，不连接服务 |
 | 服务诊断与执行 | `service discover`、`probe`、`overhead`、`prepare-length`、`run`、`resume` | discover 对 loopback 监听端点发送只读 GET；其他诊断和执行可能发送模型请求 |
-| 派生分析 | `repeat-summary`、`rescore`、`export`、`filter-candidates` | 离线读取已有证据或分析 |
+| 派生分析 | `speed-results`、`repeat-summary`、`rescore`、`export`、`filter-candidates` | 离线读取已有证据或分析 |
 | 报告与证据 | `report`、`compare`、`compare-engines`、`verify` | 离线生成新产物、核验；`compare-engines --plan --batch --out` 派生 v2，见[跨引擎比较契约](../contracts/engine-comparison.md) |
 | 公开包 | `public package`、`public plan` | 本地打包和冻结复现计划 |
 | 扩展协议 | `extension freeze`、`extension run`、`extension replay` | freeze / replay 离线；run 连接真实服务 |

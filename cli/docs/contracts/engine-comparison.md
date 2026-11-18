@@ -1,18 +1,18 @@
 # 跨引擎受控比较契约
 
 本契约对应 [ADR 056](../decisions/056-engine-comparison.md)。
-实施进度见[实施计划](../plans/engine-comparison.md)。
+实现、历史真机记录和待验组合见[跨引擎比较 backlog](../backlog/engine-comparison.md)。
 
 ## 命令
 
-- `compare --mode engine --left RUN --right RUN`：只做单对身份门槛，
+- `compare --mode engine --left RUN --right RUN --out NEW`：只做单对身份门槛，
   始终阻断 `engine_verdict_requires_block_comparison`，不给出性能资格。
 - `compare-engines --plan PLAN --batch BATCH --out DIR`：
   从一份完整冻结计划和一个 batch 派生 `engine-comparison.v2`；在新目录写入唯一的
   `engine-comparison.json`（另含 `schema_version = 3` 与布局 `format_version = 2`），
   stdout 输出同一结果。输出目录必须不存在，
   且不能位于 plan 或 batch 内。旧 `--left-runs/--right-runs` 输入已移除，不提供
-  `--allow-unplanned`；可识别的旧 v1/v2 产物被 `verify` 明确拒绝（unsupported_format/2），不迁移。
+  `--allow-unplanned`；可识别的 v1 与无布局版本的旧 v2 产物被 `verify` 明确拒绝（unsupported_format/2），不迁移。
 - `compare-plan --left-config CFG [--left-config CFG]... --right-config CFG [--right-config CFG]... [--bundle NAME_OR_PATH]... (--out DIR | --dry-run)`：
   离线冻结一份 `engine-comparison-plan.v1`（现有 plan JSON 的受限形状），stdout 输出计划。
   不连接或启动模型服务。默认题包为 `zh-core` 与 `zh-svg-pelican`；单题包必须由

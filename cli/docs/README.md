@@ -4,9 +4,9 @@
 
 | 入口 | 内容 |
 | --- | --- |
-| [项目说明](../README.md) | 产品、安装和最短工作流 |
+| [项目说明](../README.md) | CLI 简介与终端操作入口 |
 | [安装指南](installation.md) | uv tool/uvx、操作目录、资产准备、外部服务和绑定 |
-| [使用指南](usage.md) · [CLI 参考](cli-surface.md) | 计划、运行、恢复、比较、迁移及参数 |
+| [使用指南](usage.md) · [CLI 参考](cli-surface.md) | 计划、运行、恢复、比较、旧格式读取边界及参数 |
 | [平台状态](platforms.md) · [macOS](../MACOS.md) · [Windows](../WINDOWS.md) | 已实现范围、原生覆盖与操作限制 |
 | [配置说明](../configs/README.md) · [设备检测](device-check.md) | 配置字段、容量推荐与身份 |
 | [应用内存诊断](contracts/memory-check-contract.md) | macOS/Windows 只读应用/进程清单与保护判断 |
@@ -26,7 +26,7 @@
 | [实验设计](experiments/design.md) · [指标](experiments/metrics.md) | 冻结协议、分母和计量定义 |
 | [方法目录](reference/methods-matrix.md) · [执行说明](reference/methods-guide.md) · [术语](reference/glossary.md) | 方法适用前提与解释 |
 | [ADR](decisions/README.md) | 长期设计理由 |
-| [backlog](backlog.md) · [变更记录](../CHANGELOG.md) | 当前剩余工作与候选范围 |
+| [backlog](backlog.md) · [实施计划](plans/README.md) · [变更记录](../CHANGELOG.md) | 未完成事项、验收证据与版本记录 |
 | [配置清理审计](audits/config-cleanup.md) | 独立 Observer 退役、无效参数与旧 Studio 接口的证据和 CPU 测量 |
 | [脚本](../scripts/README.md) · [Schema](../schemas/README.md) | 工程工具与生成文件 |
 

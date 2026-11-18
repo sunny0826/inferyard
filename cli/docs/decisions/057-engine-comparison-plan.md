@@ -1,7 +1,7 @@
 # ADR 057b：单份完整比较计划与旧产物
 
 状态：Accepted（2026-11-07 用户批准 D1，原话「D1 全批准」）。日期：2026-11-07。原始基线：`6783414ccd73e8f2991adae7d3e1d707bfba9ff7`；本轮基线：`b12eb1b0cee2c34c07ddf3d8b7e651cb310351e2`。
-本草案扩展 [ADR 056](056-engine-comparison.md)；专用任务与 D2 见 [ADR 057a](057-comparison-task.md)，交接链和失败停止规则见 [ADR 057c](057-comparison-verification.md)。
+本决策扩展 [ADR 056](056-engine-comparison.md)；专用任务与 D2 见 [ADR 057a](057-comparison-task.md)，交接链和失败停止规则见 [ADR 057c](057-comparison-verification.md)。
 文中“事实”附源码或样本位置；“推导”是设计判断；“未验证”不当作既有能力。
 `.tools/...` 均指主 checkout 中的只读样本，不是发行或测试依赖。
 
@@ -134,15 +134,13 @@ T6/T7 覆盖取消清理、绑定/替换失败、原子恢复和模拟一致性�
 - **未验证**：`.tools/engine-compare-mlx-20261106/blocks-e1/` 实际是 6 份双 trial 计划，不是 A 的单份 12 槽位计划；
   单份 12 槽位计划尚未生成与核验，现有样本只支持既有机制判断。
 - **未验证**：`require_fresh_process=true` 的 Studio 全链路和逐槽位服务替换未做真实引擎验收。
-- **事实（文档与源码分歧）**：CLI 帮助仍称 same-GGUF，代码已支持 llama-cpp 对 mlx-lm 跨格式
-  （`cli/src/inferyard/cli/commands/comparison.py:16-18`，`contracts/engine_comparison.py:9-13`）。
-- **事实（文档状态分歧）**：决策索引称 ADR 056“实施未开始”，实施计划和 backlog 已记录实现及真机结果
-  （`cli/docs/decisions/README.md:53`，`plans/engine-comparison.md:42-66`，`backlog/engine-comparison.md:18-26`）。
 
-## 剩余问题
+以上观测对应本 ADR 的原始基线。现行接口见[比较契约](../contracts/engine-comparison.md)，实施与真机进度见[比较记录](../backlog/engine-comparison.md)。
+
+## D1 批准时的取舍
 
 | 问题 | 建议 |
 | --- | --- |
 | D1 是否批准方案 A？ | 批准；无需改变 run 语义，不退回 C。 |
 | 失败块整体无判定的成本是否接受？ | 接受；展示/派生失败只重新派生，不重跑测量。 |
-| v1、`compare-e5`、`compare-e1` 政策是否批准？ | e5 等合法 v1 保留读取；e1 仅作历史材料，均不获得 v2 资格。 |
+| 当时如何处理 v1、`compare-e5`、`compare-e1`？ | e5 等合法 v1 保留读取；e1 仅作历史材料，均不获得 v2 资格。 |

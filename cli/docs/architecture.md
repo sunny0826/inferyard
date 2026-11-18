@@ -6,10 +6,10 @@
 - [请求、运行与计量](architecture-runtime.md)
 - [保存、离线读取与方法边界](architecture-evidence.md)
 
-本文件描述活动源码的职责、执行和证据边界。数据格式见[数据契约](data-contract.md)，用户语法见 [CLI 接口](cli-surface.md)，平台能力与实测范围见 [README](../README.md)。
+本文件描述活动源码的职责、执行和证据边界。数据格式见[数据契约](data-contract.md)，用户语法见 [CLI 接口](cli-surface.md)，平台能力与实测范围见[平台状态](platforms.md)。
 
 产品测量本地 AI 在冻结任务上的质量、等待时间和资源需求，使用确定性评分和可核验证据。
-不包含自动模型下载、服务编排、模型裁判、社区账号或多机调度。通路见[流程图](show-me-system-flow.html)。
+CLI 的测评命令连接已启动的服务。终端操作者负责启停；Studio 可按用户操作下载资产、启动和关闭自有服务，绑定仍由 CLI 核验。见 [Studio 运行路径](../../docs/subsystems/studio-panel/runtime.md)。通路见[流程图](show-me-system-flow.html)。
 
 ## 一条证据通路
 
