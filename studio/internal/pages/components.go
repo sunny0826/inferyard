@@ -129,7 +129,7 @@ type taskCardOptions struct {
 
 func taskCard(c *ui.Context, options taskCardOptions) {
 	t := tokens(c)
-	ui.Column(c).Gap(t.Density.Stack).Padding(t.Card.Padding).Radius(t.Radius.Surface).Border(t.Card.Border, c.Theme().Border).Children(func() {
+	ui.Column(c).Label(options.name).Gap(t.Density.Stack).Padding(t.Card.Padding).Radius(t.Radius.Surface).Border(t.Card.Border, c.Theme().Border).Children(func() {
 		ui.Row(c).Wrap().Gap(t.Density.CardGap).Children(func() {
 			ui.Column(c).Grow(1).Gap(t.Density.Tight).Children(func() {
 				ui.Text(c, options.kind).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)

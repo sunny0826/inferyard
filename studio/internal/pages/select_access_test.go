@@ -2,16 +2,19 @@ package pages
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 	"unsafe"
 
 	"github.com/egoist/mygo/ui"
+	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
 
 // accessNode is the part of one node of MyGo's accessibility tree a screen
-// reader receives for a control: its role, name and value.
+// reader receives for a control: its parent index, role, name and value.
 type accessNode struct {
+	parent       int
 	role         uint64
 	label, value string
 }
@@ -46,7 +49,12 @@ func accessTree(t *testing.T, tt *ui.Tester) []accessNode {
 	out := make([]accessNode, nodes.Len())
 	for i := range out {
 		n := nodes.Index(i)
-		out[i] = accessNode{role: n.FieldByName("Role").Uint(), label: n.FieldByName("Label").String(), value: n.FieldByName("Value").String()}
+		out[i] = accessNode{
+			parent: int(n.FieldByName("Parent").Int()),
+			role:   n.FieldByName("Role").Uint(),
+			label:  n.FieldByName("Label").String(),
+			value:  n.FieldByName("Value").String(),
+		}
 	}
 	return out
 }
@@ -109,4 +117,51 @@ func TestSpeedSelectsExportFieldNameAndCurrentOption(t *testing.T) {
 	if context := menuButton(t, tree, "上下文档位"); context.value != "128k" {
 		t.Fatalf("context dropdown value = %q", context.value)
 	}
+}
+
+// Download task cards export separate RoleGroup containers named after each
+// task's output directory, so repeated "观测依据与输出" folds stay scoped to their
+// own card instead of flattening under the page container.
+func TestDownloadTaskCardsExportDistinctAccessibleGroups(t *testing.T) {
+	s := testState()
+	s.downloads = []core.DownloadTask{
+		{TaskId: "dl-1", Kind: "model", State: "failed", OutName: "model", OutDir: "/models/model", Error: core.Err("download_failed")},
+		{TaskId: "dl-2", Kind: "model", State: "done", OutName: "model-2", OutDir: "/models/model-2"},
+	}
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1024, 681)
+	tree := accessTree(t, tt)
+	groupRole := uint64(ui.RoleGroup - ui.RoleGroup)
+	groups := map[string]int{}
+	for i, n := range tree {
+		if n.role == groupRole && (n.label == "model" || n.label == "model-2") {
+			groups[n.label] = i
+		}
+	}
+	if len(groups) != 2 || groups["model"] == groups["model-2"] {
+		t.Errorf("card RoleGroups = %v, want distinct groups for model and model-2", groups)
+	}
+	owners := disclosureGroupOwners(tree, "观测依据与输出")
+	if len(groups) != 2 || !slices.Equal(owners, []int{groups["model"], groups["model-2"]}) {
+		t.Errorf("disclosure group owners = %v, want distinct card groups %v", owners, groups)
+	}
+}
+
+func disclosureGroupOwners(tree []accessNode, label string) []int {
+	disclosureRole := uint64(ui.RoleDisclosure - ui.RoleGroup)
+	groupRole := uint64(ui.RoleGroup - ui.RoleGroup)
+	var owners []int
+	for _, n := range tree {
+		if n.role != disclosureRole || n.label != label {
+			continue
+		}
+		owner := -1
+		for p := n.parent; p >= 0; p = tree[p].parent {
+			if tree[p].role == groupRole && tree[p].label != "" {
+				owner = p
+				break
+			}
+		}
+		owners = append(owners, owner)
+	}
+	return owners
 }
