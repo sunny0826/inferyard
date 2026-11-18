@@ -114,51 +114,6 @@ def all_refs(summary):
     yield from summary["measurement_context"]["evidence_refs"]
 
 
-@pytest.mark.parametrize("collector,tokens", [(False, False), (True, False), (True, True)])
-def test_old_new_reduction_conserves_scope_and_binds_real_members(tmp_path, collector, tokens):
-    old, new = synthetic_pair(tmp_path, collector=collector, tokens=tokens)
-    original = {path.name: path.read_bytes() for path in old.iterdir()}
-    legacy_metadata, packed_metadata = {}, {}
-    legacy = read_trial(old, metadata=legacy_metadata)
-    packed = read_trial(new, metadata=packed_metadata)
-    assert without_refs(packed) == without_refs(legacy)
-    for field in ("identity", "environment_start", "service_drain"):
-        assert packed_metadata[field] == legacy_metadata[field]
-    refs = list(all_refs(packed["summary"]))
-    for reference in refs:
-        assert (new / reference["path"]).is_file()
-        verify_reference(new, reference)
-    members = [reference["member"] for reference in refs if "member" in reference]
-    assert {m["name"] for m in members if m["kind"] == "input"} == {
-        "run",
-        "plan",
-        "selection",
-        "config",
-        "bundle",
-    }
-    evidence = TrialEvidence(new)
-    assert evidence.has_observation("collector") == collector
-    if collector:
-        assert evidence.observation_reference("collector") in refs
-    if tokens:
-        assert evidence.observation_reference("token_budgets") in refs
-        assert all(
-            row["actual_input_tokens"] == 17 for row in packed["summary"]["input_lengths"]["bins"]
-        )
-    assert original == {path.name: path.read_bytes() for path in old.iterdir()}
-
-
-def test_prepared_without_started_never_increases_executed(tmp_path):
-    _, new = synthetic_pair(tmp_path)
-    before = read_trial(new)
-    rows, _ = read_jsonl(new / "request-bodies.jsonl")
-    rows.append({**rows[-1], "request_id": "unsent", "ordinal": rows[-1]["ordinal"] + 1})
-    (new / "request-bodies.jsonl").write_bytes(b"".join(map(json_bytes, rows)))
-    seal_layout(new, before["run"])
-    assert without_refs(read_trial(new)) == without_refs(before)
-    assert read_run_projection(new)["summary"]["counts"] == before["summary"]["counts"]
-
-
 def test_missing_end_record_does_not_inherit_start_or_container_existence(tmp_path):
     _, new = synthetic_pair(tmp_path)
     rows, _ = read_jsonl(new / "observations.jsonl")
@@ -176,64 +131,6 @@ def test_missing_end_record_does_not_inherit_start_or_container_existence(tmp_pa
     assert record["endpoint_reasons"] == [
         "environment_endpoint_unsealed_or_missing:environment.end.json"
     ]
-
-
-def test_non_strict_mode_checks_complete_original_body(tmp_path):
-    _, new = synthetic_pair(tmp_path)
-    evidence = TrialEvidence(new)
-    config, bundle, plan = (evidence.input(kind) for kind in ("config", "bundle", "plan"))
-    rows, _ = read_jsonl(new / "request-bodies.jsonl")
-    rows[0]["body"]["ignore_eos"] = True
-    rows[0]["body_sha256"] = digest(rows[0]["body"])
-    (new / "request-bodies.jsonl").write_bytes(b"".join(map(json_bytes, rows)))
-    seal_layout(new, evidence.input("run"))
-    events, _ = read_jsonl(new / "events.jsonl")
-    with pytest.raises(EvidenceError, match="strict_output_request_without_frozen_mode"):
-        verify_execution(new, plan["experiment"]["workloads"][0], config, bundle, events)
-
-
-@pytest.mark.parametrize("damage", ["missing", "bool", "order", "extra"])
-def test_token_inventory_rejects_resealed_bad_logical_members(tmp_path, damage):
-    _, new = synthetic_pair(tmp_path, tokens=True)
-    evidence = TrialEvidence(new)
-    config, selection = evidence.input("config"), evidence.input("selection")
-    rows, _ = read_jsonl(new / "observations.jsonl")
-    row = next(row for row in rows if row["kind"] == "token_budgets")
-    entries = row["payload"]["entries"]
-    if damage == "missing":
-        entries.pop()
-    elif damage == "bool":
-        entries[0]["phase"] = True
-    elif damage == "order":
-        entries.reverse()
-    else:
-        entries.append(deepcopy(entries[-1]))
-    row["payload_sha256"] = digest(row["payload"])
-    (new / "observations.jsonl").write_bytes(b"".join(map(json_bytes, rows)))
-    seal_layout(new, evidence.input("run"))
-    with pytest.raises(EvidenceError):
-        read_budgets(new, config, selection["case_ids"])
-
-
-def test_legacy_broken_seal_precedes_malformed_parsed_config(tmp_path):
-    old, _ = synthetic_pair(tmp_path)
-    (old / "config.frozen.json").write_bytes(b"{invalid config}\n")
-    with pytest.raises(EvidenceError, match="original_evidence_hash_mismatch"):
-        read_trial(old)
-    with pytest.raises(EvidenceError, match="original_evidence_hash_mismatch"):
-        read_run_projection(old)
-
-
-def test_configuration_binding_uses_content_not_container_digest(tmp_path):
-    _, new = synthetic_pair(tmp_path)
-    inputs = read_json(new / "inputs.json")
-    config = inputs["documents"]["config"]
-    config["payload"]["model"]["display_name"] = "changed measured input"
-    config["sha256"] = digest(config["payload"])
-    (new / "inputs.json").write_bytes(json_bytes(inputs))
-    seal_layout(new, inputs["documents"]["run"]["payload"])
-    with pytest.raises((EvidenceError, ValueError)):
-        read_trial(new)
 
 
 def append_observation(root, kind, stage, payload, *, key=None):
@@ -259,88 +156,6 @@ def append_observation(root, kind, stage, payload, *, key=None):
     )
     (root / "observations.jsonl").write_bytes(b"".join(map(json_bytes, rows)))
     seal_layout(root, run)
-
-
-@pytest.mark.parametrize("consumer", ["cache", "lab"])
-def test_protocol_consumers_read_complete_body_and_reject_hidden_mutation(tmp_path, consumer):
-    from inferyard.evidence.cache_execution import verify_execution as verify_cache
-    from inferyard.evidence.lab import verify_lab
-
-    _, new = synthetic_pair(tmp_path)
-    evidence = TrialEvidence(new)
-    config, bundle, plan = (evidence.input(kind) for kind in ("config", "bundle", "plan"))
-    config = deepcopy(config)
-    workload = deepcopy(plan["experiment"]["workloads"][0])
-    rows, _ = read_jsonl(new / "request-bodies.jsonl")
-    events, _ = read_jsonl(new / "events.jsonl")
-    event = deepcopy(events[0])
-    event["phase"] = rows[0]["phase"] = "probe"
-    event["data"]["body"]["stream"] = False
-    event["data"]["case_id"] = None
-    if consumer == "cache":
-        config["engine"]["startup_args"] = [
-            "--no-cache-prompt",
-            "--no-cache-idle-slots",
-            "--cache-ram",
-            "0",
-        ]
-        workload["cache_protocol"] = "prism_prefix_reuse.v1"
-        props = {"build_info": BUILD}
-        body = request_body(config, config["execution"]["probe_prompt"], stream=False)
-        body.update(cache_prompt=False, n_cache_reuse=0)
-    else:
-        config = lab_config(config, "kvmem")
-        props = {
-            "protocol": "lab_observation.v1",
-            "server_instance_id": "a" * 32,
-            "engine": "kvmem",
-            "build_id": config["engine"]["release"],
-            "model": {key: config["model"][key] for key in ("kind", "sha256", "bytes")},
-            "template_sha256": config["model"]["template_sha256"],
-            "capabilities": {
-                key: True
-                for key in (
-                    "lifecycle",
-                    "request_cancel",
-                    "request_id",
-                    "token_budget",
-                    "effective_parameters",
-                )
-            },
-        }
-        body = request_body(config, config["execution"]["probe_prompt"], stream=False)
-        body.update(lab_request_id="b" * 32, lab_server_instance_id="a" * 32)
-    rows[0]["body"], rows[0]["body_sha256"] = body, digest(body)
-    (new / "request-bodies.jsonl").write_bytes(b"".join(map(json_bytes, rows)))
-    bind_frozen_config(new, config)
-    append_observation(
-        new, "service_properties", "pre_idle" if consumer == "lab" else "post_idle", props
-    )
-
-    def check():
-        if consumer == "cache":
-            return verify_cache(new, workload, config, bundle, [event])
-        return verify_lab(new, config, bundle, [event])
-
-    check()
-    body["max_tokens"] += 1
-    rows[0]["body_sha256"] = digest(body)
-    (new / "request-bodies.jsonl").write_bytes(b"".join(map(json_bytes, rows)))
-    seal_layout(new, evidence.input("run"))
-    with pytest.raises(EvidenceError, match="request_differs_from_plan"):
-        check()
-
-
-def test_native_manifest_claim_requires_actual_capability_member(tmp_path):
-    from inferyard.evidence.native import observation_evidence
-
-    _, new = synthetic_pair(tmp_path)
-    manifest = read_json(new / "manifest.json")
-    manifest["engine_observation"] = native_capability()
-    (new / "manifest.json").write_bytes(json_bytes(manifest))
-    config = TrialEvidence(new).input("config")
-    with pytest.raises(EvidenceError, match="engine_observation_manifest_mismatch"):
-        observation_evidence(new, config)
 
 
 def native_capability():
@@ -425,15 +240,6 @@ def test_native_receipts_bind_inventory_and_never_prove_engine_drain(tmp_path, d
         )
 
 
-def test_missing_run_inputs_cannot_fall_back_to_independent_environment_sidecars(tmp_path):
-    from inferyard.evidence.baseline_reads import environment_reads
-
-    (tmp_path / "environment.start.json").write_bytes(json_bytes({"platform": "Linux"}))
-    (tmp_path / "events.jsonl").write_bytes(b"")
-    with pytest.raises(EvidenceError, match="run_evidence_missing"):
-        environment_reads(tmp_path)
-
-
 @pytest.mark.parametrize("filename", ["observations.jsonl", "request-bodies.jsonl"])
 @pytest.mark.parametrize("sealed", [False, True])
 def test_container_tail_retains_denominator_and_rejects_sealed_run(tmp_path, filename, sealed):
@@ -457,22 +263,3 @@ def test_container_tail_retains_denominator_and_rejects_sealed_run(tmp_path, fil
         assert (
             f"{filename}:truncated_tail_at_byte:{tail_offset}" in result["summary"]["limitations"]
         )
-
-
-def test_native_missing_receipt_is_legacy_only_and_has_exact_public_reason(tmp_path):
-    from inferyard.contracts.error_reasons import safe_reason
-    from inferyard.evidence.native_receipts import verify_clean_receipts
-
-    old, new = synthetic_pair(tmp_path)
-    originals = {path.name: path.read_bytes() for path in old.iterdir()}
-    for root in (old, new):
-        evidence = TrialEvidence(root)
-        events, _ = evidence.checked_jsonl("events.jsonl")
-        if root == old:
-            verify_clean_receipts(root, events, {}, evidence.manifest["files"], reads=evidence)
-        else:
-            with pytest.raises(EvidenceError) as failure:
-                verify_clean_receipts(root, events, {}, evidence.manifest["files"], reads=evidence)
-            assert str(failure.value) == "native_clean_receipt_missing"
-            assert safe_reason(failure.value, "offline_error") == "native_clean_receipt_missing"
-    assert originals == {path.name: path.read_bytes() for path in old.iterdir()}

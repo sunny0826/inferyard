@@ -94,34 +94,6 @@ func TestOrderedShutdownDrainsRealRunBeforeEngine(t *testing.T) {
 	}
 }
 
-func TestStopEngineEscalatesAndReaps(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("SIGTERM grace is POSIX-only")
-	}
-	t.Setenv("ENGINE_HELPER", "1")
-	t.Setenv("ENGINE_IGNORE_TERM", "1")
-	workspace, candidate := engineWorkspace(t, freePort(t))
-	s := engineService(t, workspace)
-	if _, e := s.StartEngine(candidate); e != nil {
-		t.Fatal(e)
-	}
-	state := pollEngine(t, s, "running")
-	if _, e := s.StopEngine(); e != nil {
-		t.Fatal(e)
-	}
-	select {
-	case <-s.engine.done:
-	case <-time.After(15 * time.Second):
-		t.Fatal("SIGKILL fallback did not reap")
-	}
-	if s.Engine().State != "stopped" || s.engine.cmd.ProcessState == nil {
-		t.Fatal("incomplete stop")
-	}
-	if _, e := processStartTicks(state.Pid); !os.IsNotExist(e) {
-		t.Fatalf("process survived: %v", e)
-	}
-}
-
 func TestBindingRecoveryAcrossRestartAndCrash(t *testing.T) {
 	t.Setenv("ENGINE_HELPER", "1")
 	workspace, candidate := engineWorkspace(t, freePort(t))

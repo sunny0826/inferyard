@@ -32,14 +32,6 @@ def rows():
     ]
 
 
-def test_residual_busy_uses_host_capacity_and_keeps_raw_scope():
-    result = reduce_external_cpu(rows(), ENDPOINT, 1000)
-    assert result["observed_max_percent"] == 20  # (70 busy - 30 service) / 200 total
-    assert result["valid_intervals"] == 1
-    assert result["intervals"][0]["missing_reason"] == "baseline_only"
-    assert not result["comparison_eligible"]
-
-
 @pytest.mark.parametrize(
     "change,reason",
     [

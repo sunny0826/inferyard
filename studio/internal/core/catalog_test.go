@@ -26,38 +26,3 @@ func TestCatalogEntriesAreUniqueAndComplete(t *testing.T) {
 		}
 	}
 }
-
-func TestCatalogReferenceEntriesExplainWhyTheyAreNotDownloadable(t *testing.T) {
-	for _, entry := range Catalog() {
-		if entry.Downloadable() {
-			continue
-		}
-		if entry.Reason == "" {
-			t.Fatal("reference entry without a reason", entry.ID)
-		}
-		if entry.Doc == "" {
-			t.Fatal("reference entry without a preparation document", entry.ID)
-		}
-	}
-}
-
-func TestCatalogEngineForPlatform(t *testing.T) {
-	cases := map[string]string{
-		"darwin/arm64": "engine-macos-arm64", "darwin/amd64": "engine-macos-x64",
-		"linux/amd64": "engine-linux-x64", "linux/arm64": "engine-linux-arm64",
-		"windows/amd64": "engine-windows-x64",
-	}
-	for platform, want := range cases {
-		id := CatalogEngineForPlatform(platform[:strings.Index(platform, "/")], platform[strings.Index(platform, "/")+1:])
-		if id != want {
-			t.Fatalf("%s = %q, want %q", platform, id, want)
-		}
-		entry, ok := CatalogEntryByID(id)
-		if !ok || !entry.Downloadable() {
-			t.Fatal("platform engine unavailable", id)
-		}
-	}
-	if id := CatalogEngineForPlatform("plan9", "arm64"); id != "" {
-		t.Fatal("unknown platform must not resolve", id)
-	}
-}

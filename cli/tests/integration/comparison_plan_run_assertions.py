@@ -87,7 +87,6 @@ def assert_stop_priority(
         assert comparison_stop["detail"] == "subsequent_run_present"
 
 
-
 def _duplicate_copy(
     tmp_path: Path,
     plan: JSONRecord,

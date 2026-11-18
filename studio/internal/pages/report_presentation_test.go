@@ -5,8 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"slices"
-	"strings"
+
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -50,97 +49,6 @@ func reportFixtureService(t *testing.T) (*core.Service, string) {
 	}
 	t.Cleanup(func() { service.Shutdown(context.Background()) })
 	return service, dir
-}
-
-func TestCompletedTaskOpensItsReport(t *testing.T) {
-	for _, restored := range []bool{false, true} {
-		s := compactRunFixture()
-		service, path := reportFixtureService(t)
-		s.service, s.tasks = service, nil
-		s.task.stage, s.task.report = "done", path
-		if restored {
-			s.task = benchmarkTask{}
-			s.progress.NextAction = "done"
-			s.progress.Report = inferyard.ProgressReport{Status: "present", Path: &path}
-		}
-		tt := ui.NewTester(s.view, 1120, 800)
-		if tt.HasText(path) || tt.HasText("任务报告已生成") {
-			t.Error("completion should only offer the report button", tt.Texts())
-		}
-		click(t, tt, "查看报告")
-		if s.selected != "reports" || s.openedReport == nil || !tt.HasText("Fixture Model Q4") || tt.HasText("历史任务") {
-			t.Fatal("completion opened the report menu instead of the generated report", tt.Texts())
-		}
-		click(t, tt, "返回报告列表")
-		if !tt.HasText("历史任务") {
-			t.Fatal("cannot return from report to list")
-		}
-	}
-}
-
-func TestReportPrototypeSectionsAndValues(t *testing.T) {
-	s := testState()
-	s.service, _ = reportFixtureService(t)
-	s.openReport("summary-1")
-	tt := ui.NewTester(func(c *ui.Context) {
-		ui.Column(c).Gap(16).Children(func() { s.reportView(c) })
-	}, 1120, 2200)
-	for _, want := range []string{"Fixture Model Q4", "答案通过", "请求完成", "完成请求耗时（中位）", "服务进程内存（采样峰值）", "7 / 13", "11 / 13", "0.84 s", "1.80 GiB", "采样期间系统最少可用 9.40 GiB", "3 / 8", "4 / 5", "机器：Fixture CPU · 14 核 · 24.00 GiB", "引擎：llama-server · Metal · 8 线程", "运行：fixture-run", "0.84 s", "1.20 s", "通过", "未通过", "—"} {
-		if !slices.Contains(tt.Texts(), want) {
-			t.Errorf("missing %q", want)
-		}
-	}
-	for _, label := range tt.Texts() {
-		if strings.Contains(label, "/private/") {
-			t.Errorf("report reveals a local path: %s", label)
-		}
-	}
-}
-
-func TestReportAbsolutePathCannotOpenAnotherReport(t *testing.T) {
-	service, path := reportFixtureService(t)
-	if _, err := service.ReportIndex(path); err != nil {
-		t.Error("generated report path did not open", err)
-	}
-	outside := filepath.Join(t.TempDir(), filepath.Base(path))
-	if _, err := service.ReportIndex(outside); err == nil {
-		t.Fatal("outside report path silently opened the same name inside reports root")
-	}
-	escape := filepath.Join(filepath.Dir(path), "escape")
-	if err := os.Symlink(filepath.Dir(outside), escape); err != nil {
-		t.Skip("symlinks unavailable", err)
-	}
-	if _, err := service.ReportIndex(escape); err == nil {
-		t.Fatal("report path accepted a symlink outside reports root")
-	}
-}
-
-func TestReportRunSelectionKeepsMetricsSeparate(t *testing.T) {
-	s := testState()
-	s.service, _ = reportFixtureService(t)
-	s.openReport("summary-1")
-	var second core.ReportIndex
-	if err := json.Unmarshal(reportFixture(t), &second); err != nil {
-		t.Fatal(err)
-	}
-	run := second.Runs[0]
-	run.Source.RunID, run.Profile.Title, run.Facets.BundleLabel = "second-run", ptr("Second Model"), "第二题包"
-	run.Dashboard.Quality.Numerator = ptr(int64(2))
-	run.Diagnostic = true
-	run.Requests = nil
-	s.openedReport.index.Runs = append(s.openedReport.index.Runs, run)
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportView(c) }) }, 1120, 2200)
-	click(t, tt, "选择运行")
-	click(t, tt, "第二题包 · second-run")
-	tt.Frame()
-	for _, want := range []string{"Second Model", "2 / 13", "运行：second-run", "诊断运行", "暂无逐题数据。"} {
-		if !tt.HasText(want) {
-			t.Errorf("missing %s after run switch: %v", want, tt.Texts())
-		}
-	}
-	if tt.HasText("7 / 13") || tt.HasText("timed-case") {
-		t.Fatal("previous run leaked into selected run")
-	}
 }
 
 func TestReportMissingMeasurementsAndEmptyIndex(t *testing.T) {

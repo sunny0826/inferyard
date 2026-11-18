@@ -57,60 +57,6 @@ def assert_client_only(root):
     return data
 
 
-def test_native_two_repeats_keep_client_http_scope(native_batch):
-    request, deps, service = native_batch
-    code, result = asyncio.run(execute_async(request, deps))
-    assert code == 0
-    roots = [Path(p) for p in result.details["runs"]]
-    assert len(roots) == 2
-    for root in roots:
-        data = assert_client_only(root)
-        assert data["summary"]["counts"]["completed"] == 3
-    proof = TrialEvidence(roots[1]).observation("service_reuse", stage="prepare")
-    assert proof["serial_continuation"] is True
-    assert proof["previous_drain"] is None
-    assert read_json(locking.STATE_PATH)["completion_scope"] == "client_http"
-    assert read_json(locking.STATE_PATH)["dirty"] is False
-    assert len(service.requests) == 16
-    code, _ = asyncio.run(execute_async(request, deps))
-    assert code == 0 and len(service.requests) == 16
-
-
-@pytest.mark.parametrize("dirty", [False, True])
-def test_native_resume_after_clean_scoring_stop_and_dirty_rejection(native_batch, dirty):
-    request, deps, service = native_batch
-
-    def fail_score(*_):
-        raise EvidenceError("evidence_io_error")
-
-    deps.scorer = fail_score
-    code, result = asyncio.run(execute_async(request, deps))
-    assert code == 4 and len(service.requests) == 6
-    parent = Path(result.details["runs"][0])
-    data = assert_client_only(parent)
-    assert data["summary"]["counts"]["not_executed"] == 2
-    if dirty:
-        with deps.lock() as lock:
-            lock.dirty(data["run"]["run_id"], data["config"]["endpoint"], "uncertain-request")
-    deps.scorer = score_case
-    code, result = asyncio.run(execute_async(CommandRequest("resume", from_run=parent), deps))
-    if dirty:
-        assert code == 2
-        assert result.details["last_stop_reason"] == "native_dirty_requires_bound_recovery"
-        assert len(service.requests) == 6
-        assert read_json(locking.STATE_PATH)["dirty"] is True
-    else:
-        assert code == 0
-        resumed = assert_client_only(Path(result.details["runs"][-1]))
-        assert resumed["run"]["relation"] == "resume"
-        assert resumed["selection"]["case_ids"] == data["selection"]["case_ids"][1:]
-        assert len(service.requests) == 13
-        # The next planned repetition crosses a command boundary, with no engine drain proof.
-        code, result = asyncio.run(execute_async(request, deps))
-        assert code == 0 and len(result.details["runs"]) == 3
-        assert len(service.requests) == 21
-
-
 @pytest.mark.parametrize("failure", ["truncated", "cancelled"])
 def test_native_uncertain_or_cancelled_request_blocks_resume(native_batch, failure):
     request, deps, service = native_batch

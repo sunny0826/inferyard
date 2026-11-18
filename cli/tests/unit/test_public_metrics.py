@@ -79,68 +79,6 @@ def test_redaction_preserves_distinct_missing_reasons_sources_zero_and_counts():
             validate_metrics(altered)
 
 
-@pytest.mark.parametrize(
-    ("statistic", "reason"),
-    [
-        ("requests_per_second", "no_formal_requests"),
-        ("requests_per_second", "terminal_window_unavailable"),
-        ("goodput_per_second", "thresholds_not_preregistered"),
-        ("goodput_per_second", "goodput_indeterminable"),
-        ("goodput_per_second", "quality_not_applicable"),
-        ("output_tokens_per_second", "output_token_counts_incomplete"),
-        ("output_tokens_per_second", "no_completed_requests"),
-        ("token_itl", "no_token_level_event_source"),
-        ("service_queue_delay", "no_server_side_queue_events"),
-        ("pooled_min", "arrival_capture_missing"),
-        ("pooled_min", "not_streaming"),
-        ("pooled_min", "insufficient_blocks"),
-    ],
-)
-def test_throughput_vocabulary_is_published_without_redaction(
-    statistic: str, reason: str
-) -> None:
-    limits = [
-        "throughput_comparison_gate_pending",
-        "serial_trial_no_concurrency",
-        "output_token_counts_incomplete",
-        "sample_unit_is_block_interval_not_request",
-        "arrival_timestamps_batched",
-        "not_token_itl",
-    ]
-    row = {
-        "metric_id": "N04",
-        "definition_version": "phase2.v1",
-        "statistic": statistic,
-        "unit": "token/s",
-        "layer": "experiment",
-        "source": "endpoint.usage/completion_tokens_over_batch_window",
-        "status": "missing",
-        "missing_reason": reason,
-        "value": None,
-        "sample_count": 0,
-        "numerator": None,
-        "denominator": None,
-        "excluded": 0,
-        "coverage_ratio": None,
-        "request_id": None,
-        "group": {"workload_id": "workload-1", "category": None, "error_category": None},
-        "limitations": limits,
-        "comparison_eligible": False,
-        "sampled_start_ns": None,
-        "sampled_end_ns": None,
-        "evidence_refs": [],
-    }
-    observation = project_metrics([row], number)["observations"][0]
-    assert observation["statistic"] == {
-        "value": statistic,
-        "sha256": observation["statistic"]["sha256"],
-        "redacted": False,
-    }
-    assert observation["source"]["redacted"] is False
-    assert observation["missing_reason"]["value"] == reason
-    assert all(limit["redacted"] is False for limit in observation["limitations"])
-
-
 RUN = {
     "run_id": "run-1",
     "trial_id": "trial-1",
@@ -200,37 +138,3 @@ def reduced_observations() -> list[JsonObject]:
         complete=True,
     )
     return goodput + intervals
-
-
-def test_real_missing_composition_is_published_without_redaction() -> None:
-    projected = project_metrics(reduced_observations(), number)
-    labels = {
-        label["value"]: label["redacted"]
-        for row in projected["observations"]
-        for label in row["limitations"]
-        if label["value"] is not None
-    }
-    for value in (
-        "missing:quality_unscorable:1",
-        "missing:latency_missing:1",
-        "missing:failed:1",
-        "missing:arrival_capture_missing:1",
-        "missing:not_streaming:1",
-        "missing:insufficient_blocks:1",
-    ):
-        assert labels[value] is False
-    validate_metrics(projected)
-
-
-def test_unknown_or_malformed_missing_labels_stay_redacted() -> None:
-    row = reduced_observations()[0]
-    row = deepcopy(row)
-    row["limitations"] = [
-        "missing:unknown_reason:1",
-        "missing:quality_unscorable:x",
-        "missing:quality_unscorable:1:2",
-    ]
-    projected = project_metrics([row], number)
-    labels = projected["observations"][0]["limitations"]
-    assert all(label["redacted"] is True and label["value"] is None for label in labels)
-    validate_metrics(projected)

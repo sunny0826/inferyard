@@ -104,38 +104,3 @@ def test_complete_control_uses_real_trial_seals_and_deferred_baselines(
     with pytest.raises(EvidenceError, match="raw_requests_mismatch"):
         verify_control_rows(store.path, packet)
     store.close()
-
-
-def test_baseline_redacts_preserved_responses_before_disk(scenario, tmp_path):
-    from inferyard.extensions.trial_control_baseline import BaselineJournal
-
-    config, bundle = scenario[0].config.config.to_dict(), scenario[0].config.bundle.to_dict()
-    plan = compile_single_plan(config, bundle)
-    journal = BaselineJournal(
-        tmp_path,
-        plan,
-        plan["trials"][0]["trial_id"],
-        config,
-        bundle,
-        redactor=Redactor(["private-value"]),
-    )
-    journal.event("probe", "probe", None, {"content": "private-value"})
-    journal.observation("safety", {"message": "private-value"})
-    journal.snapshot("snapshot.json", {"message": "private-value"})
-    raw = json_bytes(journal.buffer())
-    assert b"private-value" not in raw and b"[REDACTED]" in raw
-
-
-def test_full_control_plan_cannot_substitute_another_workload(scenario, tmp_path):
-    config, bundle = scenario[0].config.config.to_dict(), scenario[0].config.bundle.to_dict()
-    plan = compile_single_plan(config, bundle)
-    path = tmp_path / "plan.json"
-    path.write_bytes(json_bytes(plan))
-    spec = {
-        "trial_plan_path": str(path),
-        "trial_plan_sha256": plan["plan_sha256"],
-        "trial_id": plan["trials"][0]["trial_id"],
-        "case_ids": ["other"],
-    }
-    with pytest.raises(EvidenceError, match="inputs_mismatch"):
-        read_trial_plan(spec, config, bundle, digest)

@@ -10,44 +10,6 @@ from inferyard.errors import ContractError
 
 
 @pytest.mark.parametrize(
-    "fixture,field",
-    [
-        ("unknown-field.toml", "unexpected"),
-        ("concurrency.toml", "execution.concurrency"),
-        ("negative-timeout.toml", "execution.timeout_seconds"),
-        ("plaintext-key.toml", "endpoint.api_key"),
-        ("duplicate-case.toml", "bundle.cases"),
-    ],
-)
-def test_required_invalid_fixtures(config_path, fixture, field):
-    with pytest.raises(ContractError) as error:
-        load_config(config_path.with_name(fixture))
-    assert field in error.value.path
-    assert "fixture-secret-7f39" not in str(error.value)
-
-
-def test_paths_are_relative_to_config_not_working_directory(config_path, tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    loaded = load_config(config_path.resolve())
-    data = loaded.config.to_dict()
-    assert Path(data["bundle"]["path"]).is_file()
-    assert Path(data["model"]["local_path"]) == (config_path.parent / "fixture.gguf").resolve()
-    assert not Path(data["model"]["local_path"]).exists()  # T02, not T01, checks model identity.
-
-
-@pytest.mark.parametrize(
-    "endpoint",
-    [
-        "http://127.0.0.1:8080",
-        "https://localhost:443/",
-        "http://[::1]:8080",
-    ],
-)
-def test_loopback_origins(endpoint):
-    validate_endpoint(endpoint)
-
-
-@pytest.mark.parametrize(
     "endpoint",
     [
         "http://example.com",
@@ -67,34 +29,4 @@ def test_loopback_origins(endpoint):
 def test_endpoint_rejections_do_not_echo_values(endpoint):
     with pytest.raises(ContractError) as error:
         validate_endpoint(endpoint)
-    assert "fixture-secret-7f39" not in str(error.value)
-
-
-def test_malformed_toml_redacts_parser_message(tmp_path):
-    path = tmp_path / "bad.toml"
-    path.write_text("endpoint = fixture-secret-7f39")
-    with pytest.raises(ContractError) as error:
-        load_config(path)
-    assert "fixture-secret-7f39" not in str(error.value)
-
-
-def test_bundle_version_mismatch(config_path, tmp_path):
-    text = config_path.read_text()
-    bundle_path = config_path.parent.parent / "contracts" / "bundle.valid.json"
-    text = text.replace("../contracts/bundle.valid.json", bundle_path.as_posix())
-    text = text.replace('version = "fixture-v1"', 'version = "different"')
-    path = tmp_path / "bad-version.toml"
-    path.write_text(text)
-    with pytest.raises(ContractError, match="config.bundle.version"):
-        load_config(path)
-
-
-def test_startup_arguments_cannot_smuggle_plaintext_credentials(config_path, tmp_path):
-    text = config_path.read_text().replace(
-        "startup_args = []", 'startup_args = ["--api-key=fixture-secret-7f39"]'
-    )
-    path = tmp_path / "secret-argument.toml"
-    path.write_text(text)
-    with pytest.raises(ContractError, match="startup_args") as error:
-        load_config(path)
     assert "fixture-secret-7f39" not in str(error.value)

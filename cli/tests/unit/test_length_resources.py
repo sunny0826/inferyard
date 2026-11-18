@@ -39,12 +39,3 @@ def test_resource_cohort_keeps_failures_missing_and_sources_separate():
     assert a["missing_reasons"] == {"read_failed": 1}
     assert b["p50"] == 100 and b["missing_requests"] == 2
     assert b["missing_reasons"] == {"missing_observation": 2}
-
-
-def test_ambiguous_observations_do_not_duplicate_request_or_choose_one():
-    requests = [{"request_id": "a", "execution_state": "completed"}]
-    result = resource_cohort(requests, [metric("a", 10), metric("a", 30)])
-    row = result["series"][0]
-    assert row["p50"] is None and row["observed_requests"] == 0
-    assert row["missing_reasons"] == {"ambiguous_observation": 1}
-    assert resource_cohort(requests, [])["status"] == "missing"

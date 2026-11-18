@@ -49,23 +49,21 @@
 以下命令在仓库根的 `cli/` 目录内执行（与 [mise 任务](../../mise.toml) `test`/`lint` 同一形式）。单元测试全部使用 fixtures 与模拟服务，属软件级回归，不授予真机资格。`cli/scripts/` 下的 `verify_*` 脚本可能启动服务或发送真实请求，本子系统的常规验证不依赖它们，故不列入。
 
 ```sh
-# 主机锁、dirty 恢复与状态兼容
-uv run --frozen pytest tests/unit/test_lock.py tests/unit/test_host_lock_compatibility.py
+# 主机锁与 dirty 恢复
+uv run --frozen pytest tests/unit/test_lock.py
 
 # 请求生命周期、trial 编排、duration 窗口与排空、安全停止、服务 drain
-uv run --frozen pytest tests/integration/test_trial_requests.py \
+uv run --frozen pytest tests/integration/test_runner.py \
   tests/integration/test_trial_runner.py \
-  tests/unit/test_duration_driver.py tests/unit/test_duration_send_admission.py \
-  tests/unit/test_safety.py tests/unit/test_safety_trace.py tests/unit/test_service_drain.py
+  tests/unit/test_duration_windows.py \
+  tests/unit/test_safety.py tests/unit/test_service_drain.py
 
-# 适配器解析：Prism SSE、lab 生成/观察/参数、native 观察
-uv run --frozen pytest tests/unit/test_prism.py tests/unit/test_lab_generation.py \
-  tests/unit/test_lab_generation_plain.py tests/unit/test_lab_observation.py \
-  tests/unit/test_lab_observation_tracker.py tests/unit/test_lab_adapters.py \
+# 适配器解析：Prism、lab 与 native 身份/观察边界
+uv run --frozen pytest tests/unit/test_prism.py tests/unit/test_lab_adapters.py \
   tests/unit/test_native_adapters.py
 
-# 长度准备与固定输出
-uv run --frozen pytest tests/unit/test_length_builder.py tests/unit/test_fixed_output.py \
+# 长度观测与固定输出
+uv run --frozen pytest tests/unit/test_fixed_output.py \
   tests/unit/test_input_lengths.py
 
 # 批量执行编排与容量/缓存协议（集成级，含模拟服务）
@@ -73,7 +71,7 @@ uv run --frozen pytest tests/integration/test_batch_runner.py \
   tests/integration/test_capacity_stop.py tests/integration/test_cache_protocol.py \
   tests/integration/test_batch_process_interruptions.py
 
-# 样式与全量回归
+# 运行缺陷检查与全量回归
 uv run --frozen ruff check src tests scripts
 uv run --frozen pytest
 ```

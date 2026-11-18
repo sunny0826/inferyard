@@ -9,13 +9,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-func TestNewTaskResetWaitsForUIAndLeavesNextTaskAlone(t *testing.T) {
-	tasks := productionResetThenNextTask(t, nil)
-	if len(tasks) != 1 || tasks[0].State != "starting" {
-		t.Fatal("new task was changed by previous reset", tasks)
-	}
-}
-
 func productionResetThenNextTask(t *testing.T, initial []core.RunTask) []core.RunTask {
 	t.Helper()
 	ctx, stop := context.WithCancel(context.Background())

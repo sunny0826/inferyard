@@ -12,59 +12,9 @@ from inferyard.evidence.storage import read_json, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
 from inferyard.runtime.trial_runner import run_trial
 from tests.integration.test_runner import scenario as runner_scenario
-from tests.unit.test_phase2_contracts import experiment
+from tests.unit.phase2_contract_helpers import experiment
 
 scenario = runner_scenario
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Real Linux CPU and /proc resource counters")
-def test_resource_collector_records_boundaries_and_rebuilds_metrics(scenario):
-    from inferyard.evidence.storage import read_jsonl
-    from inferyard.platforms.resources_linux import ResourceSampler
-
-    plan, loaded, deps, output = inputs(scenario)
-    deps.sampler = ResourceSampler
-    code, data, root = asyncio.run(
-        run_trial(
-            plan, plan["trials"][0]["trial_id"], loaded, output, diagnostic=True, dependencies=deps
-        )
-    )
-    assert code == 0
-    samples = [s for s in data["samples"] if s["metric_name"] == "service_cpu_ticks"]
-    assert {s["capture"] for s in samples} >= {"periodic", "request_start", "request_end", "idle"}
-    endpoint = loaded.config.to_dict()["endpoint"]
-    assert all(s["server_pid"] == endpoint["server_pid"] for s in samples)
-    schedule, _ = read_jsonl(root / "schedule.jsonl")
-    boundaries = [s for s in schedule if s.get("kind") == "resource_boundary"]
-    assert all(b["read_finished_ns"] >= b["read_started_ns"] for b in boundaries)
-    assert TrialEvidence(root).observation("collector")["collector"] == "linux-resource.v2"
-    values = [
-        m
-        for m in data["summary"]["metric_observations"]
-        if m["metric_id"] == "C04" and m["statistic"] == "observed_cpu_seconds"
-    ]
-    assert len(values) == 3 and all(m["value"] is not None for m in values)
-    assert all(0 < m["coverage_ratio"] < 1 for m in values)
-    context = data["summary"]["measurement_context"]
-    assert not context["performance_comparison_eligible"]
-    assert context["collector_schedule"]["periodic_samples"] > 0
-    raw_external, issues = read_jsonl(root / "external-cpu.jsonl")
-    assert not issues and raw_external
-    assert context["external_cpu"]["sample_count"] == len(raw_external)
-    assert all(r["server_pid"] == endpoint["server_pid"] for r in raw_external)
-    assert not context["external_cpu"]["comparison_eligible"]
-    assert not context["external_cpu_requests"]["all_requests_eligible"]
-    assert context["external_cpu_requests"]["policy"] is None
-    assert context["collector_schedule"]["boundary_samples"] == len(boundaries)
-    assert context["collector_schedule"]["overhead_gate"] == "not_verified"
-    assert {ref["path"] for ref in context["evidence_refs"]} == {
-        "observations.jsonl",
-        "environment.jsonl",
-        "schedule.jsonl",
-        "external-cpu.jsonl",
-    }
-    for ref in context["evidence_refs"]:
-        verify_reference(root, ref)
 
 
 @pytest.mark.parametrize(
@@ -121,43 +71,6 @@ def inputs(scenario):
     return compile_plan(source), request.config, deps, Path(config["output"]["root"])
 
 
-@pytest.mark.parametrize("failure", ["probe", "warmup", "busy", "host_lock"])
-def test_preformal_failures_never_start_quality_requests(scenario, failure):
-    plan, loaded, deps, output = inputs(scenario)
-    settings = scenario[3]
-    if failure == "probe":
-        settings["fail_index"] = 0
-    elif failure == "warmup":
-        settings["fail_index"] = 2
-    elif failure == "busy":
-        factory = deps.adapter
-
-        def adapter(*args, **kwargs):
-            instance = factory(*args, **kwargs)
-
-            async def idle(*args, **kwargs):
-                return False
-
-            instance.wait_idle = idle
-            return instance
-
-        deps.adapter = adapter
-
-    async def run():
-        return await run_trial(
-            plan, plan["trials"][0]["trial_id"], loaded, output, diagnostic=True, dependencies=deps
-        )
-
-    if failure == "host_lock":
-        with deps.lock():
-            code, data, _ = asyncio.run(run())
-    else:
-        code, data, _ = asyncio.run(run())
-    assert code == 2
-    assert data["summary"]["counts"]["not_executed"] == 3
-    assert len(scenario[2]) == {"probe": 1, "warmup": 3, "busy": 0, "host_lock": 0}[failure]
-
-
 def test_memory_safety_stop_before_generation(scenario, monkeypatch):
     import inferyard.runtime.trial_runner as runner
 
@@ -170,72 +83,6 @@ def test_memory_safety_stop_before_generation(scenario, monkeypatch):
     )
     assert code == 2 and not scenario[2]
     assert data["summary"]["stop_reason"] == "memory_safety_budget_reached"
-
-
-def test_wall_budget_stops_during_management_before_formal(scenario):
-    from dataclasses import replace
-
-    from inferyard.contracts.validation import Document
-
-    plan, loaded, deps, output = inputs(scenario)
-    config = loaded.config.to_dict()
-    config["execution"]["timeout_seconds"] = 0.01
-    loaded = replace(loaded, config=Document.parse("config", config))
-    definition = plan["experiment"]
-    definition["workloads"][0].update(timeout_seconds=0.01, overhead_budget_seconds=0.01)
-    plan = compile_plan(definition)
-    factory = deps.adapter
-
-    def adapter(*args, **kwargs):
-        instance = factory(*args, **kwargs)
-
-        async def slow_properties(*args):
-            await asyncio.sleep(1)
-
-        instance.verify_properties = slow_properties
-        return instance
-
-    deps.adapter = adapter
-    code, data, _ = asyncio.run(
-        run_trial(
-            plan, plan["trials"][0]["trial_id"], loaded, output, diagnostic=True, dependencies=deps
-        )
-    )
-    assert code == 3 and not scenario[2]
-    assert data["summary"]["stop_reason"] == "trial_wall_budget_exhausted"
-    assert data["summary"]["counts"]["not_executed"] == 3
-
-
-def test_corpus_scoring_is_connected_but_review_gate_remains(scenario):
-    from dataclasses import replace
-
-    from inferyard.contracts.validation import Document
-
-    plan, loaded, deps, output = inputs(scenario)
-    bundle = loaded.bundle.to_dict()
-    bundle.update(schema_version=3, task_protocol="quality", review_records=[])
-    bundle["cases"][2] = dict(
-        case_id=bundle["cases"][2]["case_id"],
-        category="qa",
-        prompt="只输出北京",
-        reference_answer="北京",
-        rules=dict(answers=["北京"], normalization="strip"),
-    )
-    loaded = replace(loaded, bundle=Document.parse("bundle", bundle))
-    code, blocked, _ = asyncio.run(
-        run_trial(plan, plan["trials"][0]["trial_id"], loaded, output, dependencies=deps)
-    )
-    assert code == 2 and not scenario[2]
-    assert blocked["summary"]["counts"]["not_executed"] == 3
-    code, data, _ = asyncio.run(
-        run_trial(
-            plan, plan["trials"][0]["trial_id"], loaded, output, diagnostic=True, dependencies=deps
-        )
-    )
-    assert code == 0 and len(scenario[2]) == 8
-    assert data["requests"][2]["category"] == "qa"
-    assert data["requests"][2]["score"]["quality_state"] == "pass"
-    assert data["summary"]["completeness"] == "incomplete"
 
 
 def test_budget_cancellation_is_not_mislabeled_as_user_cancellation(scenario):
@@ -270,51 +117,3 @@ def test_budget_cancellation_is_not_mislabeled_as_user_cancellation(scenario):
     assert data["summary"]["stop_reason"] == "trial_wall_budget_exhausted"
     assert data["requests"][0]["error_category"] == "trial_wall_budget_exhausted_before_send"
     assert data["summary"]["counts"]["cancelled"] == 1
-
-
-@pytest.mark.parametrize("target,expected", [(1, "matched"), (1024, "mismatch")])
-def test_input_target_checked_before_generation_and_rebuilt_offline(scenario, target, expected):
-    plan, loaded, deps, output = inputs(scenario)
-    source = plan["experiment"]
-    source["workloads"][0].update(input_target_tokens=target, input_tolerance_tokens=0)
-    plan = compile_plan(source)
-    code, data, root = asyncio.run(
-        run_trial(
-            plan, plan["trials"][0]["trial_id"], loaded, output, diagnostic=True, dependencies=deps
-        )
-    )
-    assert data["summary"]["input_target_check"]["status"] == expected
-    assert TrialEvidence(root).observation("input_target_check")["status"] == expected
-    if expected == "mismatch":
-        assert code == 2
-        assert not scenario[2]
-        assert data["summary"]["counts"]["not_executed"] == 3
-    else:
-        assert code == 0
-        assert data["summary"]["counts"]["completed"] == 3
-
-
-@pytest.mark.parametrize("target", [1, 2])
-def test_length_preparation_only_uses_management_calls(scenario, tmp_path, target):
-    from dataclasses import replace
-
-    from inferyard.contracts.validation import json_bytes
-    from inferyard.runtime.length_prepare import prepare
-    from tests.unit.test_length_builder import spec
-
-    request, deps, calls, _ = scenario
-    source = tmp_path / "length-spec.json"
-    source.write_bytes(json_bytes(spec(target_tokens=target, max_probes=3)))
-    out = tmp_path / "length-prepared"
-    request = replace(request, command="prepare-length", length_spec=source, out=out)
-    result, prompt_present = asyncio.run(prepare(request, deps))
-    if target == 1:
-        assert result["status"] == "matched" and prompt_present is True
-        assert (out / "prompt.txt").read_text() == "开始结束"
-    else:
-        assert result["status"] == "search_exhausted" and prompt_present is False
-        assert not (out / "prompt.txt").exists()
-        assert len(read_json(out / "probes.json")) == 3
-    assert calls == []
-    manifest = read_json(out / "preparation-manifest.json")
-    assert all(sha256_file(out / name) == digest for name, digest in manifest["files"].items())

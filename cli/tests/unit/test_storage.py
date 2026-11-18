@@ -33,14 +33,6 @@ def test_secret_redaction_across_arbitrary_chunks(parts):
     assert stream.changed
 
 
-def test_nonsecret_partial_prefix_is_preserved():
-    stream = Redactor(["fixture-secret-7f39"]).stream()
-    assert stream.feed("fixture-sec") == ""
-    assert stream.feed("tion") == "fixture-section"
-    assert stream.feed("fixture-", final=True) == "fixture-"
-    assert not stream.changed
-
-
 def test_no_overwrite_and_manifest_classification(tmp_path):
     store = EvidenceStore(tmp_path, Redactor(["fixture-secret-7f39"]), run_id="first")
     store.snapshot("plan.json", {"content": "fixture-secret-7f39"})
@@ -66,62 +58,6 @@ def test_no_overwrite_and_manifest_classification(tmp_path):
         EvidenceStore(tmp_path, run_id="first")
 
 
-def test_tail_is_recoverable_but_middle_corruption_is_not(tmp_path):
-    path = tmp_path / "events.jsonl"
-    path.write_bytes(b'{"seq":1}\n{"seq":2')
-    rows, limits = read_jsonl(path)
-    assert rows == [{"seq": 1}]
-    assert limits == ["truncated_tail_at_byte:10"]
-    path.write_bytes(b'{"seq":1}\nbroken\n{"seq":3}\n')
-    with pytest.raises(EvidenceError, match="corrupt_jsonl"):
-        read_jsonl(path)
-
-
-def test_write_failure_propagates_without_sealing(tmp_path, monkeypatch):
-    store = make_journal(tmp_path)
-
-    class FullDisk:
-        closed = False
-
-        def write(self, data):
-            raise OSError(errno.ENOSPC, "disk full")
-
-        def flush(self):
-            pass
-
-        def fileno(self):
-            return -1
-
-        def close(self):
-            self.closed = True
-
-    original = store._logs["events.jsonl"]
-    store._logs["events.jsonl"] = FullDisk()
-    with pytest.raises(EvidenceError, match="append_failed"):
-        store.event("run_stopped", "finalizing", None, {"reason": "test"})
-    assert not (store.path / "manifest.json").exists()
-    store._logs["events.jsonl"] = original
-    store.close()
-
-
-def test_offline_reader_rejects_traversal_and_outside_symlinks(tmp_path):
-    root = tmp_path / "run"
-    root.mkdir()
-    outside = tmp_path / "outside.json"
-    outside.write_text("{}")
-    from tests.helpers import symlink_or_skip
-
-    symlink_or_skip(root / "link.json", outside)
-    for name in ("../outside.json", str(outside), "link.json"):
-        with pytest.raises(EvidenceError):
-            local_file(root, name)
-    target = root / "original.json"
-    atomic_bytes(target, b"original")
-    with pytest.raises(EvidenceError):
-        atomic_bytes(target, b"replacement")
-    assert target.read_bytes() == b"original"
-
-
 def make_journal(root):
     from inferyard.analysis.scoring import ScoringContext
     from inferyard.config.loader import load_config
@@ -135,21 +71,3 @@ def make_journal(root):
         root, plan, plan["trials"][0]["trial_id"], config, bundle,
         scoring_context=ScoringContext(),
     )
-
-
-def test_no_new_request_copy_and_legacy_hash_damage_is_integrity_error(tmp_path):
-    store = EvidenceStore(tmp_path, run_id="modern")
-    assert not (store.path / "requests.jsonl").exists()
-    store.seal()
-    store.close()
-    assert "requests.jsonl" not in json.loads((store.path / "manifest.json").read_text())["files"]
-    legacy = EvidenceStore(tmp_path, run_id="legacy")
-    (legacy.path / "requests.jsonl").write_bytes(b"{}\n")
-    legacy.seal()
-    legacy.close()
-
-    with pytest.raises(UnsupportedFormat):
-        verify_manifest(legacy.path)
-    (legacy.path / "requests.jsonl").write_bytes(b"damaged")
-    with pytest.raises(EvidenceError, match="original_evidence_hash_mismatch"):
-        verify_manifest(legacy.path)

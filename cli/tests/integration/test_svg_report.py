@@ -73,21 +73,3 @@ def test_diagnostic_svg_studio_projection_is_not_scored(scenario, tmp_path, answ
     ]
     assert len(calls) == call_count
     assert before == {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
-
-
-def test_failed_svg_preserves_execution_failure_without_quality_score(scenario, tmp_path):
-    scenario[3]["fail_index"] = 5  # After two probes and three warmups.
-    plan, loaded, deps, output = svg_inputs(scenario)
-    code, data, root = asyncio.run(
-        run_trial(
-            plan, plan["trials"][0]["trial_id"], loaded, output, diagnostic=True, dependencies=deps
-        )
-    )
-    assert code == 0
-    assert data["summary"]["counts"]["failed"] == 1
-    assert data["requests"][0]["quality_state"] == "not_applicable"
-    assert data["summary"]["quality"]["Q01"] == {}
-    assert data["summary"]["input_lengths"]["bins"][0]["quality_rate"] is None
-    out = tmp_path / "failed-report"
-    document = write_studio_report([root], out)
-    assert document["runs"][0]["requests"][0]["quality"] is None

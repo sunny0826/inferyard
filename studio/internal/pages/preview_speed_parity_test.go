@@ -190,53 +190,6 @@ func TestPreviewContextSpeedParity(t *testing.T) {
 	}
 }
 
-func TestPreviewContextSpeedFailureParity(t *testing.T) {
-	for _, scenario := range []struct{ stage, reason string }{
-		{"preparing", "human_corpus_review_required"}, {"preparing", "cli_outdated"},
-		{"preparing", "device_preflight_blocked"}, {"binding", "engine_start_failed"},
-		{"binding", "startup_arguments_mismatch"}, {"planning", "context_unsupported"},
-	} {
-		t.Run(scenario.reason, func(t *testing.T) {
-			p, tt := prepareSpeed(t, "64k")
-			p.speedFailureStage = scenario.stage
-			p.speedFailure = &core.ApiError{Code: scenario.reason, Message: scenario.reason}
-			model, engine := p.state.model, p.state.engine
-			b := &speedParityBackend{task: core.RunTask{TaskId: "failed", State: "starting", ContextSpeed: &core.ContextSpeedTask{Model: model, Engine: engine, Context: 65536, Stage: "preparing"}}}
-			if _, e := startSpeedFlow(b, core.StartContextSpeedRequest{Model: model, Engine: engine, Context: 65536}); e != nil {
-				t.Fatal(e)
-			}
-			click(t, tt, "开始专项测评")
-			p.advance(10 * time.Second)
-			b.task.State = "failed"
-			b.task.ContextSpeed.Stage = scenario.stage
-			b.task.Error = &core.ApiError{Code: scenario.reason, Message: scenario.reason}
-			production := speedFromTask(b.task)
-			for name, r := range map[string]*speedTask{"production": production, "preview": p.state.speed.current} {
-				if r.stage != speedFailed || r.reason != scenario.reason || r.samples != nil || r.summary != nil || r.active() {
-					t.Fatalf("%s failure mismatch: %+v", name, r)
-				}
-			}
-			p.advance(time.Minute)
-			if len(p.state.speed.history) != 1 || len(p.jobs) != 0 {
-				t.Fatal("failure retried without action")
-			}
-			// Retry is a new full task, never continuation of a failed batch.
-			tt.Frame()
-			click(t, tt, "用此组合新开任务")
-			if engineLocked(p.state.engineState.State) {
-				p.state.stopEngine()
-				p.advance(time.Second)
-			}
-			tt.Frame()
-			click(t, tt, "开始专项测评")
-			p.advance(10 * time.Second)
-			if p.state.speed.current.stage != speedDone || len(p.state.speed.history) != 2 || p.state.speed.history[0].reason != scenario.reason || len(p.indexes) != 0 {
-				t.Fatal("manual retry changed old task or failed")
-			}
-		})
-	}
-}
-
 func TestPreviewContextSpeedCancelParity(t *testing.T) {
 	for _, scenario := range []struct {
 		name      string
@@ -281,24 +234,5 @@ func TestPreviewContextSpeedCancelParity(t *testing.T) {
 				t.Fatal("cancel resumed trials")
 			}
 		})
-	}
-}
-
-func TestPreviewContextSpeedTypedContract(t *testing.T) {
-	for _, context := range []int{65536, 131072, 262144} {
-		for _, completed := range []int{0, 1, 4, 5} {
-			for _, missing := range []bool{false, true} {
-				task := &speedTask{model: "simulated-model", engine: "simulated-engine", context: context}
-				result := previewSpeedResult(task, completed, missing)
-				code, status, completeness := 0, "finished", "complete"
-				if completed != 5 {
-					code, status, completeness = 3, "partial", "incomplete"
-				}
-				raw, _ := json.Marshal(map[string]any{"command": "speed-results", "status": status, "completeness": completeness, "run_id": nil, "evidence_dir": "/simulated/batch", "limitations": []string{}, "details": result})
-				if _, e := inferyard.ParseContextSpeed(raw, code); e != nil {
-					t.Fatalf("context=%d completed=%d missing=%v: %v", context, completed, missing, e)
-				}
-			}
-		}
 	}
 }

@@ -196,7 +196,7 @@ Python 与后续 Go 只消费同一份
 从 `cli/` 运行：
 
 ```bash
-mise exec -- uv run --frozen pytest -q tests/unit/test_context_speed_contracts.py tests/unit/test_context_speed_profile.py
+mise exec -- uv run --frozen pytest -q tests/unit/test_context_speed_contracts.py tests/integration/test_context_speed_cli.py
 mise exec -- uv run --frozen python scripts/export_schemas.py --check
 ```
 

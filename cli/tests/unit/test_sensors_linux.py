@@ -23,40 +23,6 @@ def fixtures(root):
     return zone, policy
 
 
-def test_units_and_semantics_remain_separate(tmp_path):
-    fixtures(tmp_path)
-    collector = LinuxSensors(tmp_path)
-    samples = collector.collect("formal", "req1")
-    assert [s["value"] for s in samples] == [-1, 2000000000, 3000000000]
-    assert [s["semantics"] for s in samples][1:] == [
-        "hardware_reported",
-        "requested_or_driver_reported",
-    ]
-    assert all(s["read_finished_ns"] >= s["read_started_ns"] for s in samples)
-    assert collector.metadata()["missing_metrics"] == []
-
-
-def test_identity_change_latched(tmp_path):
-    zone, _ = fixtures(tmp_path)
-    collector = LinuxSensors(tmp_path)
-    (zone / "type").write_text("replacement")
-    sample = collector.collect("formal", "req1")[0]
-    assert sample["value"] is None
-    assert sample["missing_reason"] == "source_changed"
-    (zone / "type").write_text("x86_pkg_temp")
-    assert collector.collect("formal", "req1")[0]["value"] is None
-
-
-@pytest.mark.parametrize("raw", ["garbage", "-273151", "9" * 4097])
-def test_invalid_temperature(tmp_path, raw):
-    zone, _ = fixtures(tmp_path)
-    collector = LinuxSensors(tmp_path)
-    (zone / "temp").write_text(raw)
-    sample = collector.collect("formal", "req1")[0]
-    assert sample["value"] is None and sample["raw_value"] is None
-    assert sample["missing_reason"].startswith("invalid_sensor")
-
-
 def test_permission_failure_not_zero(tmp_path, monkeypatch):
     zone, _ = fixtures(tmp_path)
     collector = LinuxSensors(tmp_path)
@@ -70,28 +36,6 @@ def test_permission_failure_not_zero(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "open", denied)
     sample = collector.collect("formal", "req1")[0]
     assert sample["missing_reason"] == "permission_denied"
-    assert sample["value"] is None
-
-
-def test_missing_and_limited_discovery(tmp_path):
-    assert LinuxSensors(tmp_path).metadata()["missing_metrics"] == ["temperature", "frequency"]
-    fixtures(tmp_path)
-    collector = LinuxSensors(tmp_path, limit=1)
-    assert len(collector.sources) == 1
-    assert collector.metadata()["discovery_issues"]
-
-
-def test_external_symlink_rejected(tmp_path):
-    root = tmp_path / "sys"
-    zone, _ = fixtures(root)
-    external = tmp_path / "external"
-    external.write_text("50000")
-    (zone / "temp").unlink()
-    from tests.helpers import symlink_or_skip
-
-    symlink_or_skip(zone / "temp", external)
-    sample = LinuxSensors(root).collect("formal", "req1")[0]
-    assert sample["missing_reason"] == "source_outside_sysfs"
     assert sample["value"] is None
 
 

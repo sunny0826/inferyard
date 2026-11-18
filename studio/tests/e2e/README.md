@@ -49,7 +49,7 @@ restores the environment after each test and forbids parallel tests; callers of
 | `schemagate.go` | Validates every schema-covered evidence document against `cli/schemas/` |
 | `blame.go` | Failure attribution from the transcript (see below) |
 | `chain_test.go` | Golden chain: init → device-check → bind → run both bundles → studio.json report |
-| `scenarios_test.go` | Command guards reject invalid requests before launching CLI work |
+| `context_speed_test.go` | Real CLI `zh-context-speed` five-trial execution and Studio result projection |
 
 ## Blame model
 

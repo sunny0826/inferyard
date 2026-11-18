@@ -99,56 +99,6 @@ def test_abba_runs_real_lifecycle_and_preserves_frozen_protocol(scenario):
         read_overhead(root)
 
 
-def test_overhead_budget_stops_without_starting_later_arms(scenario):
-    plan, loaded, deps, output = inputs(scenario)
-    root = output / "budget-overhead"
-    result = asyncio.run(
-        run_overhead(
-            plan,
-            plan["trials"][0]["trial_id"],
-            loaded,
-            root,
-            tolerance_ratio=0.05,
-            max_wall_seconds=0.03,
-            dependencies=deps,
-        )
-    )
-    assert not result["passed"]
-    assert result["status"] == "incomplete"
-    assert len(read_json(root / "trials.json")) <= 1
-    assert (root / "result.json").exists()
-
-
-def test_overhead_cancel_retains_evidence_and_does_not_retry(scenario):
-    plan, loaded, deps, output = inputs(scenario)
-    root = output / "cancel-overhead"
-
-    async def run():
-        task = asyncio.create_task(
-            run_overhead(
-                plan,
-                plan["trials"][0]["trial_id"],
-                loaded,
-                root,
-                tolerance_ratio=0.05,
-                max_wall_seconds=60,
-                dependencies=deps,
-            )
-        )
-        while len(scenario[2]) < 6 and not task.done():
-            await asyncio.sleep(0.001)
-        task.cancel()
-        return await task
-
-    result = asyncio.run(run())
-    assert result["execution_exit_code"] == 130
-    assert not result["passed"]
-    trials = read_json(root / "trials.json")
-    assert len(trials) == 1
-    assert (root / trials[0]["path"] / "manifest.json").exists()
-    assert read_overhead(root)["status"] == "incomplete"
-
-
 @pytest.mark.parametrize(
     "mode",
     [

@@ -1,0 +1,234 @@
+{
+  "group": "packaging-release",
+  "kept_count": 38,
+  "kept": [
+    {
+      "path": "cli/tests/integration/test_closed_loop_download_e2e.py",
+      "test": "test_real_downloads_drive_the_full_benchmark_chain",
+      "category": "packaging_release",
+      "reason": "验证真实资产下载（model/engine acquire）的 SHA256 记录绑定及打包端到端测评、报告、离线核验全链路。"
+    },
+    {
+      "path": "cli/tests/local_engines/test_bootstrap.py",
+      "test": "test_spawn_and_forkserver_inherit_isolation_and_frozen_path",
+      "category": "packaging_release",
+      "reason": "在真实虚拟环境子进程中验证随包分发的 bootstrap.py 能屏蔽 .pth 与 sitecustomize 外部注入，并将 -I -S -B 隔离传递给 spawn 和 forkserver 子进程。"
+    },
+    {
+      "path": "cli/tests/unit/test_cli_surface.py",
+      "test": "test_all_help_and_metadata_are_cold_starts",
+      "category": "packaging_release",
+      "reason": "验证所有 --help、--versions 与 --schema 查询均为冷启动且绝不导入实时执行后端。"
+    },
+    {
+      "path": "cli/tests/unit/test_community_preparation.py",
+      "test": "test_init_preserves_authoritative_bytes_and_review",
+      "category": "packaging_release",
+      "reason": "验证 init 导出的全部随包社区测评集字节与仓库权威 bundles/*.json 一致，且拒绝覆盖已存在输出目录。"
+    },
+    {
+      "path": "cli/tests/unit/test_context_speed_corpus.py",
+      "test": "test_repeatable_bytes_and_checked_in_artifacts",
+      "category": "packaging_release",
+      "reason": "验证仓库检入并用于发行打包的 zh-context-speed 题包及审阅产物与确定性生成器逐字节一致且通过审阅校验。"
+    },
+    {
+      "path": "cli/tests/unit/test_contracts.py",
+      "test": "test_all_published_schemas_are_valid",
+      "category": "packaging_release",
+      "reason": "验证所有已发布的契约 JSON Schema 均符合 Draft 2020-12 元规范。"
+    },
+    {
+      "path": "cli/tests/unit/test_distribution_gate.py",
+      "test": "test_constraint_export_rejects_missing_transitive_and_marker_overlaps",
+      "category": "packaging_release",
+      "reason": "验证运行时依赖约束校验器基于真实 uv.lock 拒绝缺失传递依赖、重叠标记与非仓库 URL。"
+    },
+    {
+      "path": "cli/tests/unit/test_distribution_gate.py",
+      "test": "test_package_source_allowlist_rejects_accidental_credentials",
+      "category": "packaging_release",
+      "reason": "验证包源码白名单扫描拒绝 src/inferyard 下意外混入的 .env 凭据或非白名单文件进入发行包。"
+    },
+    {
+      "path": "cli/tests/unit/test_distribution_gate.py",
+      "test": "test_package_source_includes_context_speed_bundle",
+      "category": "packaging_release",
+      "reason": "验证当前仓库 src/inferyard 打包资源白名单完整通过且随包社区测评集与根 bundles/ 字节一致。"
+    },
+    {
+      "path": "cli/tests/unit/test_engine_check.py",
+      "test": "test_contract_golden_samples_match_the_schema",
+      "category": "packaging_release",
+      "reason": "验证随包导出的 engine_check JSON Schema 与 Studio 共享的黄金契约样本完全一致，防止跨端发行契约漂移。"
+    },
+    {
+      "path": "cli/tests/unit/test_engine_fit_mlx_server.py",
+      "test": "test_script_retains_python312_grammar",
+      "category": "packaging_release",
+      "reason": "验证随包发行的独立脚本 mlx_server.py 保持目标外部引擎环境所需的 Python 3.12 语法兼容性。"
+    },
+    {
+      "path": "cli/tests/unit/test_export_utf8.py",
+      "test": "test_export_and_check_ignore_gbk_default",
+      "category": "packaging_release",
+      "reason": "验证 export_schemas.py 与 export_catalogue.py 在非 UTF-8 默认编码下生成一致 UTF-8 资源且 --check 能阻断陈旧漂移。"
+    },
+    {
+      "path": "cli/tests/unit/test_local_mlx_server.py",
+      "test": "test_standalone_python312_and_context_required_before_load",
+      "category": "packaging_release",
+      "reason": "验证随包分发的独立 mlx_server.py 保持目标引擎环境所需的 Python 3.12 语法兼容性并在加载模型前校验上下文参数。"
+    },
+    {
+      "path": "cli/tests/unit/test_local_mlx_server.py",
+      "test": "test_standalone_entry_works_outside_checkout_without_pythonpath",
+      "category": "packaging_release",
+      "reason": "验证随包分发的 mlx_server.py 在隔离模式（python -I）及脱离源码仓库目录与 PYTHONPATH 时仍可独立启动。"
+    },
+    {
+      "path": "cli/tests/unit/test_registry.py",
+      "test": "test_catalogue_cli_preserves_unicode_with_cp1252_default",
+      "category": "packaging_release",
+      "reason": "保障安装后的 CLI 在默认 cp1252 编码环境（如 Windows）下仍按 UTF-8 正确读取包内 catalogue 资源。"
+    },
+    {
+      "path": "cli/tests/unit/test_release_candidate.py",
+      "test": "test_prepare_cli_and_verify_cli",
+      "category": "packaging_release",
+      "reason": "端到端验证 prepare_release_candidate.py 与 verify_release_candidate.py 生成、核验并暂存发布候选产物。"
+    },
+    {
+      "path": "cli/tests/unit/test_release_candidate.py",
+      "test": "test_build_refusal",
+      "category": "packaging_release",
+      "reason": "验证发布候选准备门禁拒绝脏源码、开发版本号、提交不匹配、缺少 sdist 重建 wheel 校验或许可证漂移的构建清单。"
+    },
+    {
+      "path": "cli/tests/unit/test_release_candidate.py",
+      "test": "test_wheel_metadata_and_license_drift_are_rejected",
+      "category": "packaging_release",
+      "reason": "验证即使重新计算清单哈希，prepare_release_candidate 仍检出 wheel 包内 METADATA、LICENSE 或 entry_points.txt 漂移并拒绝发布。"
+    },
+    {
+      "path": "cli/tests/unit/test_release_candidate.py",
+      "test": "test_check_distribution_cli_produces_bound_v2_build",
+      "category": "packaging_release",
+      "reason": "验证 check_distribution.py 对 wheel、sdist、重建 wheel 与依赖约束完成核验并生成可供发布候选消费的绑定清单。"
+    },
+    {
+      "path": "cli/tests/unit/test_release_snapshots.py",
+      "test": "test_acceptance_swap_before_hash_refuses_staging",
+      "category": "packaging_release",
+      "reason": "验证 verify_release_candidate.py 在候选产物字节与清单 SHA256 不一致时拒绝放行且不创建暂存目录。"
+    },
+    {
+      "path": "cli/tests/unit/test_studio_report.py",
+      "test": "test_exported_schema_matches_document_and_rejects_forbidden_shapes",
+      "category": "packaging_release",
+      "reason": "验证 `studio_report` 导出的 JSON Schema 与实际生成的报告结构一致并能拦截非法结构。"
+    },
+    {
+      "path": "studio/development_disabled_test.go",
+      "test": "TestDevelopmentFlagsRejected",
+      "category": "packaging_release",
+      "reason": "验证普通构建与 release 构建均拒绝所有 --dev-* 开发入口参数且不在 --help 中暴露开发开关。"
+    },
+    {
+      "path": "studio/internal/core/catalog_test.go",
+      "test": "TestCatalogEntriesAreUniqueAndComplete",
+      "category": "packaging_release",
+      "reason": "保障 Studio 内置随包资源目录的 ID 唯一性、HTTPS 来源与 SHA256 摘要完整性。"
+    },
+    {
+      "path": "studio/internal/core/install_test.go",
+      "test": "TestInstallCLIViaUV",
+      "category": "packaging_release",
+      "reason": "保障 Studio 安装 CLI 时固定使用受管 Python 并精确锁定与当前面板一致的 `inferyard==<Version>` 发行版本。"
+    },
+    {
+      "path": "studio/internal/core/install_test.go",
+      "test": "TestDownloadUVChecksumMismatch",
+      "category": "packaging_release",
+      "reason": "保障引导下载 `uv` 安装器时强制校验 SHA256 摘要，摘要不一致时拒绝解包使用。"
+    },
+    {
+      "path": "studio/internal/inferyard/context_speed_test.go",
+      "test": "TestContextSpeedSchemaCapability",
+      "category": "packaging_release",
+      "reason": "验证 Studio 的 SupportsContextSpeedSchema 能力门禁与仓库导出的 cli/schemas/context_speed_result.schema.json 保持跨端契约一致。"
+    },
+    {
+      "path": "studio/internal/inferyard/studio_report_test.go",
+      "test": "TestStudioReportParserMatchesExportedSchema",
+      "category": "packaging_release",
+      "reason": "验证 Studio 的 Go studio.json 解析器与 CLI 导出的 studio_report.schema.json 在合法文档及结构拒绝样本上严格一致。"
+    },
+    {
+      "path": "studio/options_release_test.go",
+      "test": "TestReleaseDoesNotExposeDebugUI",
+      "category": "packaging_release",
+      "reason": "验证普通构建与 ui_debug,release 正式构建均不在 --help 暴露 debug-ui 且拒绝 --debug-ui 参数。"
+    },
+    {
+      "path": "studio/scripts/test_package.py",
+      "test": "SingleTargetPackageTests.test_darwin_package_receipt_and_archive",
+      "category": "packaging_release",
+      "reason": "验证 macOS 正式单目标打包生成合法 .app/Info.plist、DMG 归档及绑定二进制与归档 SHA256 的收据。"
+    },
+    {
+      "path": "studio/scripts/test_package.py",
+      "test": "SingleTargetPackageTests.test_windows_uses_inno_setup_with_user_install",
+      "category": "packaging_release",
+      "reason": "验证 Windows 正式单目标打包调用 Inno Setup 生成普通用户权限安装器并绑定许可证与输出路径。"
+    },
+    {
+      "path": "studio/scripts/test_package.py",
+      "test": "SingleTargetPackageTests.test_rejects_non_release_dirty_or_mismatched_build",
+      "category": "packaging_release",
+      "reason": "验证正式打包拒绝 ui_debug 非发布标签、脏工作区或源码提交不一致的构建产物且不写出目录。"
+    },
+    {
+      "path": "studio/scripts/test_release_candidate.py",
+      "test": "PrepareReleaseCandidateTests.test_prepares_manifest_checksums_and_reports_manifest_sha",
+      "category": "packaging_release",
+      "reason": "端到端验证三平台发布包组装生成 studio-release-manifest.json、SHA256SUMS.studio 及完整哈希绑定。"
+    },
+    {
+      "path": "studio/scripts/test_release_candidate.py",
+      "test": "VerifyReleaseCandidateTests.test_stages_only_archives_and_checksums",
+      "category": "packaging_release",
+      "reason": "验证发布候选核验通过后仅原字节暂存三平台归档与 SHA256SUMS.studio，不混入内部清单也不重新打包。"
+    },
+    {
+      "path": "studio/scripts/test_release_candidate.py",
+      "test": "VerifyReleaseCandidateTests.test_rejects_bad_manifest_sha",
+      "category": "packaging_release",
+      "reason": "验证发布候选核验强制绑定外部传入的 manifest SHA256，防止清单本身被替换篡改。"
+    },
+    {
+      "path": "studio/scripts/test_release_candidate.py",
+      "test": "VerifyReleaseCandidateTests.test_rejects_tampered_archive",
+      "category": "packaging_release",
+      "reason": "验证发布候选归档字节被篡改时 SHA256 核验立即拒绝，防止损坏或被调包的产物进入发布阶段。"
+    },
+    {
+      "path": "studio/tests/ui/ReleaseUITests.swift",
+      "test": "testProductionPagesAndRealReport",
+      "category": "packaging_release",
+      "reason": "对打包后的正式 InferYard Studio.app（无 --debug-ui、隔离 HOME）执行原生冒烟，验证真实 CLI/E2E 生成的 studio.json 报告读取与正式页面导航。"
+    },
+    {
+      "path": "studio/tests/ui/test_run_release.py",
+      "test": "TestReleaseRunner.test_release_runner_isolates_home_and_binds_e2e_report",
+      "category": "packaging_release",
+      "reason": "验证正式包冒烟运行器不传 --debug-ui、隔离测试 HOME 目录并将配置绑定到真实 CLI 与 E2E 报告目录。"
+    },
+    {
+      "path": "studio/tests/ui/test_run_release.py",
+      "test": "TestReleaseRunner.test_missing_pass_receipt_is_rejected",
+      "category": "packaging_release",
+      "reason": "验证正式包冒烟运行器在缺少 ReleaseUITests 显式通过标记时拒绝返回 0，防止跳过或未启动的测试误放行发布候选。"
+    }
+  ]
+}

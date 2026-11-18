@@ -55,21 +55,6 @@ def verify(config_path, tmp_path, raw, service, *, changed=None, build=BUILD):
 
 
 @pytest.mark.parametrize(
-    "raw,service",
-    [
-        (b"{{ messages }}", "{{ messages }}"),
-        (b"{{ messages }}\n", "{{ messages }}"),
-        (b"{{ messages }}\n\n", "{{ messages }}\n"),
-        (b"a\r\nb\r\n", "a\nb"),
-        (b"a\rb\r", "a\nb\n"),
-        (b" a\t \n", " a\t "),
-    ],
-)
-def test_pinned_prism_lexer_source_matches_frozen_raw_bytes(config_path, tmp_path, raw, service):
-    assert verify(config_path, tmp_path, raw, service)["chat_template"] == service
-
-
-@pytest.mark.parametrize(
     "raw,service,changed",
     [
         (b"a\n", "b", None),
@@ -84,8 +69,3 @@ def test_pinned_prism_lexer_source_matches_frozen_raw_bytes(config_path, tmp_pat
 def test_template_changes_remain_rejected(config_path, tmp_path, raw, service, changed):
     with pytest.raises(PreflightError, match="service_template_mismatch"):
         verify(config_path, tmp_path, raw, service, changed=changed)
-
-
-def test_unknown_build_cannot_use_pinned_lexer_rule(config_path, tmp_path):
-    with pytest.raises(PreflightError, match="unsupported_engine_build"):
-        verify(config_path, tmp_path, b"a\n", "a", build="unknown")

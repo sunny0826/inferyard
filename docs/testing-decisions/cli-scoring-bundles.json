@@ -1,0 +1,180 @@
+{
+  "group": "cli-scoring-bundles",
+  "kept_count": 29,
+  "kept": [
+    {
+      "path": "cli/tests/integration/test_context_speed_cli.py",
+      "test": "test_public_five_trials_and_readonly_results",
+      "category": "product_hypothesis",
+      "reason": "端到端验证 zh-context-speed 五轮冻结执行不伪造质量分或 HTML 报告、汇总预填充与解码速率准确且离线读取完全只读。"
+    },
+    {
+      "path": "cli/tests/integration/test_context_speed_cli.py",
+      "test": "test_actual_public_review_gate",
+      "category": "product_hypothesis",
+      "reason": "验证正式长上下文速度计划对未通过人工审阅的题包在创建输出和请求服务前即予以阻断。"
+    },
+    {
+      "path": "cli/tests/integration/test_context_speed_results.py",
+      "test": "test_measurement_gaps",
+      "category": "product_hypothesis",
+      "reason": "验证缺失引擎计时、命中缓存、输出不足或跨轮 token 不一致时保持 summary 为 null 并记录缺测原因而不伪造零值或汇总。"
+    },
+    {
+      "path": "cli/tests/integration/test_context_speed_runtime.py",
+      "test": "test_cancelled_formal_remains_readable_and_never_resumable",
+      "category": "product_hypothesis",
+      "reason": "验证运行取消时立即停止后续请求派发，保留可读部分证据与五轮冻结分母计数且不伪造汇总。"
+    },
+    {
+      "path": "cli/tests/integration/test_context_speed_sources.py",
+      "test": "test_semantic_source_mismatch",
+      "category": "product_hypothesis",
+      "reason": "验证离线读取在文件 manifest 哈希被重算的恶意篡改场景下仍能识破跨记录请求归属、构建身份与协议版本伪造并拒绝输出旧样本。"
+    },
+    {
+      "path": "cli/tests/integration/test_rescore_lineage.py",
+      "test": "test_multigeneration_replay_uses_immediate_parent_and_rejects_forgery",
+      "category": "product_hypothesis",
+      "reason": "验证多代离线重评分仅写入新目录、不修改原始运行字节或发请求、绑定直接父级分数并拒绝伪造谱系。"
+    },
+    {
+      "path": "cli/tests/unit/test_aggregate_observations.py",
+      "test": "test_full_repeat_group_builds_typed_numeric_analyses",
+      "category": "product_hypothesis",
+      "reason": "验证多轮重复组聚合计算 `S03` 合并分母质量率与 `S04` 轮次中位数极差时不丢失样本分母且归属到多源运行。"
+    },
+    {
+      "path": "cli/tests/unit/test_cache_observations.py",
+      "test": "test_unknown_never_becomes_zero_or_verified",
+      "category": "product_hypothesis",
+      "reason": "验证缺失、构建未校验或异常的提示词缓存观测值始终保持为 null 并附带缺失原因，绝不伪造为 0 或已校验状态。"
+    },
+    {
+      "path": "cli/tests/unit/test_context_speed_contracts.py",
+      "test": "test_shared_golden",
+      "category": "product_hypothesis",
+      "reason": "校验 CLI 与 Studio 共享的 context_speed_contract.json 正负黄金样例，防止跨端结果投影契约漂移并确保非法结果外壳被拒绝。"
+    },
+    {
+      "path": "cli/tests/unit/test_input_lengths.py",
+      "test": "test_missing_counts_never_produce_measured_length_cohort",
+      "category": "product_hypothesis",
+      "reason": "证明缺少实测输入 token 计数时长度分箱与指标保持 None，绝不拿声明的目标长度或 0 冒充实测值。"
+    },
+    {
+      "path": "cli/tests/unit/test_inter_token_observations.py",
+      "test": "test_n03_has_one_token_itl_placeholder_per_completed_request_and_one_queue_row",
+      "category": "product_hypothesis",
+      "reason": "证明缺少逐 token 事件源与服务端队列事件时 N03 指标保持 None 并标注缺失原因，绝不用客户端分块到达间隔冒充。"
+    },
+    {
+      "path": "cli/tests/unit/test_length_outcomes.py",
+      "test": "test_failures_never_become_inferred_rejections_or_capacity_limits",
+      "category": "product_hypothesis",
+      "reason": "证明长度结果分箱守恒五种终态计数，且缺少明确 HTTP 拒绝证据时 rejected_requests 保持 None 而非伪造为 0 或容量上限。"
+    },
+    {
+      "path": "cli/tests/unit/test_observations.py",
+      "test": "test_four_attempts_keep_failures_and_budget_exhaustion_in_denominator",
+      "category": "product_hypothesis",
+      "reason": "证明错误答案、超时失败与预算耗尽均保留在冻结分母中计算质量分与完成率，绝不因失败缩小分母虚增得分。"
+    },
+    {
+      "path": "cli/tests/unit/test_observations.py",
+      "test": "test_cancelled_attempt_never_improves_quality_or_budget_rate",
+      "category": "product_hypothesis",
+      "reason": "证明含取消请求的未完成运行不产出整体质量分（Q01 为 None）且全部指标标记为不可比。"
+    },
+    {
+      "path": "cli/tests/unit/test_observations.py",
+      "test": "test_absent_attempts_have_zero_denominator_not_zero_score",
+      "category": "product_hypothesis",
+      "reason": "证明全部未执行时指标分母为 0 且观测值保持 None，绝不将未执行伪造为 0 分或 0 延迟。"
+    },
+    {
+      "path": "cli/tests/unit/test_output_budget.py",
+      "test": "test_missing_tokens_never_become_zero_or_target_failure",
+      "category": "product_hypothesis",
+      "reason": "证明完成请求缺少 completion_tokens 时实际输出长度与达标观测均保持 None（missing），绝不伪造为 0 或未达标。"
+    },
+    {
+      "path": "cli/tests/unit/test_position.py",
+      "test": "test_frozen_positions_and_families_do_not_count_variants_as_questions",
+      "category": "product_hypothesis",
+      "reason": "验证同一问题族的前/中/后位置变体按族分母 1 聚合而非当作独立题目虚增分母，且失败变体计为 0。"
+    },
+    {
+      "path": "cli/tests/unit/test_repetition_metrics.py",
+      "test": "test_all_k_passes_use_unique_case_denominator",
+      "category": "product_hypothesis",
+      "reason": "验证多轮重复实验的一致性通过率 S03 以唯一冻结题目数（40）为分母，而非将 k 轮请求混算为新题目。"
+    },
+    {
+      "path": "cli/tests/unit/test_rescore.py",
+      "test": "test_rescoring_changes_only_scores_and_keeps_failed_attempts",
+      "category": "product_hypothesis",
+      "reason": "验证重评分仅更新已完成回答的评分，绝不改动五种终态或将失败/取消/未执行请求提升为有效得分。"
+    },
+    {
+      "path": "cli/tests/unit/test_scoring.py",
+      "test": "test_independently_prespecified_scoring_examples",
+      "category": "product_hypothesis",
+      "reason": "通过独立预置真值表验证 instruction 与 extraction 确定性规则评分及严格 JSON 解析（拒绝重复键、布尔冒充数值、NaN/Inf 与代码块包裹）。"
+    },
+    {
+      "path": "cli/tests/unit/test_scoring_contract.py",
+      "test": "test_numeric_tolerance_and_hostile_exponents",
+      "category": "product_hypothesis",
+      "reason": "验证 math 题型确定性数值容差与单位匹配规则，并安全拒绝 NaN、布尔值和超大/超小恶意指数。"
+    },
+    {
+      "path": "cli/tests/unit/test_scoring_contract.py",
+      "test": "test_parse_failure_and_partial_correct_fields_keep_denominators",
+      "category": "product_hypothesis",
+      "reason": "验证结构化输出在 JSON 解析失败或部分字段正确时完整保留冻结字段总分母，防止解析失败缩小分母虚高质量分。"
+    },
+    {
+      "path": "cli/tests/unit/test_scoring_contract.py",
+      "test": "test_failed_partial_answer_never_passes_quality",
+      "category": "product_hypothesis",
+      "reason": "验证执行状态为 failed 的请求即使携带合法部分 JSON 也绝不计为通过，且仍计入冻结分母。"
+    },
+    {
+      "path": "cli/tests/unit/test_scoring_contract.py",
+      "test": "test_classification_macro_f1_includes_invalid_and_failed_answers",
+      "category": "product_hypothesis",
+      "reason": "验证分类任务 Macro-F1 将非法标签回答与执行失败请求一并保留在冻结分母中，防止异常输出虚高 F1。"
+    },
+    {
+      "path": "cli/tests/unit/test_scoring_contract.py",
+      "test": "test_inherited_approval_is_preserved_but_new_composition_needs_review",
+      "category": "product_hypothesis",
+      "reason": "验证人工审核记录与题包内容哈希严格绑定，新增题目或修改提示词后必须重新人工审核而不能复用旧批准。"
+    },
+    {
+      "path": "cli/tests/unit/test_stability_observations.py",
+      "test": "test_send_cohort_retains_slow_request_and_failure_denominator",
+      "category": "product_hypothesis",
+      "reason": "验证持续负载按发送窗口保留跨边界慢请求与失败请求分母，且未跑满的窗口指标置为 null。"
+    },
+    {
+      "path": "cli/tests/unit/test_throughput_contracts.py",
+      "test": "test_dashboard_projects_throughput_and_pooled_intervals",
+      "category": "product_hypothesis",
+      "reason": "验证 studio.json 看板准确投影实测吞吐率，同时在未配置阈值或缺少块到达采集时保持 null 与明确原因（绝不伪造为 0）。"
+    },
+    {
+      "path": "cli/tests/unit/test_throughput_observations.py",
+      "test": "test_n04_partial_token_counts_make_the_total_null_and_count_exclusions",
+      "category": "product_hypothesis",
+      "reason": "验证部分请求缺失服务端 token 计数或混入客户端估算来源时 N04 置为 null 并记录排除数，绝不低估伪造吞吐或混同不同计量来源。"
+    },
+    {
+      "path": "cli/tests/unit/test_throughput_observations.py",
+      "test": "test_n02_mixed_accepted_and_failed_requests_keep_the_measured_rate",
+      "category": "product_hypothesis",
+      "reason": "验证预注册阈值下 N02 goodput 仅计入同时满足质量通过与延迟上限的请求，且失败请求保留在总时间窗内不虚高有效吞吐。"
+    }
+  ]
+}

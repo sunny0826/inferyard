@@ -52,9 +52,8 @@ CommandResult。progress 的专项建议由 config 层分派，仍保持裸 prog
 # 全量单元与集成回归（等价 mise task：mise run test）
 mise exec -- uv run --frozen pytest
 
-# 本分派面相关回归：冷启动不加载执行后端、规范命令映射、参数拒绝、progress 输出
+# 本分派面相关回归：冷启动不加载执行后端、progress 默认范围只读核验
 mise exec -- uv run --frozen pytest \
-  tests/unit/test_cli_architecture.py \
   tests/unit/test_cli_surface.py \
   tests/unit/test_workspace_progress.py
 
@@ -73,7 +72,7 @@ mise exec -- uv run --frozen python scripts/export_schemas.py --check
 mise exec -- uv run --frozen inferyard --versions
 ```
 
-`test_cli_architecture.py` 用 import hook 断言 `--help`/`--versions`/`--schema` 不导入执行后端；`test_cli_surface.py` 断言已删除命令名与参数别名的显式拒绝；`test_verification.py` 与 `test_offline_reading.py` 覆盖产物识别、专用验证器权威保留与核验选项约束。
+`test_cli_surface.py` 用 import hook 断言 `--help`/`--versions`/`--schema` 不导入执行后端；`test_verification.py` 与 `test_offline_reading.py` 覆盖封存产物载荷防篡改核验与不完整运行状态边界。
 
 测试保留标准见[测试策略](../testing.md)。实际命令链由集成测试与安装后检查验证，不保留只复述 mock 分派接线的测试。
 

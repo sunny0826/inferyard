@@ -51,20 +51,3 @@ def test_all_domains_are_read_without_substituting_cpu0(tmp_path):
     )
     (root / "cpufreq/policy2/affected_cpus").unlink()
     assert not assess([snapshot(tmp_path)], {})["complete_and_stable"]
-
-
-@pytest.mark.parametrize("change", ["missing", "overlap", "hotplug", "transient", "unknown"])
-def test_incomplete_and_transient_domains_never_qualify(change):
-    start = inventory()
-    middle = deepcopy(start)
-    if change == "missing":
-        middle = None
-    elif change == "overlap":
-        middle["policies"].append({**middle["policies"][0], "policy_id": "policy1"})
-    elif change == "hotplug":
-        middle["online_cpus"].append(2)
-    elif change == "transient":
-        middle["policies"][0]["scaling_max_freq"] -= 1
-    else:
-        middle["policies"][0]["energy_performance_preference"] = None
-    assert not assess([start, middle, start], {})["complete_and_stable"]

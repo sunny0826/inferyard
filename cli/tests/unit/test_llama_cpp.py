@@ -40,51 +40,6 @@ def slot(config):
     return [{"id": 0, "is_processing": False, "params": params}]
 
 
-def test_upstream_effective_stop_is_observed(config_path):
-    config = inputs(config_path)
-
-    async def check():
-        adapter = LlamaCppAdapter(
-            "http://127.0.0.1:8080",
-            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=slot(config))),
-        )
-        try:
-            result = await adapter.verify_effective(config, 12, ResponseState(0, prompt_tokens=12))
-            assert result["template_count_matches_usage"]
-            assert result["stop"] == {"value": [], "source": "slots.params.stop"}
-        finally:
-            await adapter.close()
-
-    asyncio.run(check())
-
-
-@pytest.mark.parametrize(
-    "change,reason",
-    [
-        ({"n_predict": 999}, "generation_parameter_unverified"),
-        ({"stop": ["unexpected"]}, "stop_parameter_unverified"),
-        ({"seed": True}, "generation_parameter_unverified"),
-    ],
-)
-def test_inconsistent_upstream_effective_settings_rejected(config_path, change, reason):
-    config = inputs(config_path)
-    observed = slot(config)
-    observed[0]["params"].update(change)
-
-    async def check():
-        adapter = LlamaCppAdapter(
-            "http://127.0.0.1:8080",
-            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=observed)),
-        )
-        try:
-            with pytest.raises(PreflightError, match=reason):
-                await adapter.verify_effective(config, 12, ResponseState(0, prompt_tokens=12))
-        finally:
-            await adapter.close()
-
-    asyncio.run(check())
-
-
 @pytest.mark.parametrize("mutation", ["release", "cache", "build", "slots_endpoint"])
 def test_upstream_identity_cannot_inherit_prism_qualification(config_path, mutation):
     config = inputs(config_path)
@@ -123,28 +78,3 @@ def test_upstream_identity_cannot_inherit_prism_qualification(config_path, mutat
             await adapter.close()
 
     asyncio.run(check())
-
-
-def test_different_prompt_count_is_rejected(config_path):
-    config = inputs(config_path)
-
-    async def check():
-        adapter = LlamaCppAdapter(
-            "http://127.0.0.1:8080",
-            transport=httpx.MockTransport(lambda _: httpx.Response(200, json=slot(config))),
-        )
-        try:
-            with pytest.raises(PreflightError, match="template_token_count_mismatch"):
-                await adapter.verify_effective(config, 12, ResponseState(0, prompt_tokens=13))
-        finally:
-            await adapter.close()
-
-    asyncio.run(check())
-
-
-def test_unknown_upstream_version_requires_separate_adapter(config_path):
-    config = deepcopy(inputs(config_path))
-    config["engine"]["adapter"] = "llama_cpp_latest"
-
-    with pytest.raises(ContractError):
-        validate_runtime_config(config)

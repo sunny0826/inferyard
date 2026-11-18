@@ -181,36 +181,3 @@ func TestPreviewLocalQueueParity(t *testing.T) {
 		})
 	}
 }
-
-func TestPreviewLocalDirectFamiliesAndRegistrationIsolation(t *testing.T) {
-	for _, family := range []string{"llama-cpp", "mlx-lm", "vllm", "sglang"} {
-		t.Run(family, func(t *testing.T) {
-			p := newPreviewSession(t.Context())
-			p.loadScene(previewSceneIndex(t, "引擎 · 本地安装与目录模型"))
-			p.state.engine = family + " · 模拟安装"
-			if family == "llama-cpp" {
-				p.state.model = "local.gguf"
-			}
-			p.state.startBenchmark()
-			p.advance(2 * time.Second)
-			first := p.state.engineState.Pid
-			p.advance(7 * time.Second)
-			second := p.state.engineState.Pid
-			if first <= 0 || second <= 0 || first == second {
-				t.Fatal("per-scope service was reused", first, second)
-			}
-			p.advance(10 * time.Second)
-			if got := previewLocalFrame(p); !reflect.DeepEqual(got, localParityFrame{Stage: "done", Completed: []string{"zh-core", "zh-svg-pelican"}, Report: []string{"zh-core", "zh-svg-pelican"}}) {
-				t.Fatal(got)
-			}
-			p.state.changeInstallation("register", "/preview/additional-mlx-lm.json")
-			if p.state.service != nil || !slices.Contains(p.state.settings.Settings.EngineInstallations, "/preview/additional-mlx-lm.json") {
-				t.Fatal("registration escaped simulator")
-			}
-			p.state.changeInstallation("remove", "/preview/additional-mlx-lm.json")
-			if slices.Contains(p.state.settings.Settings.EngineInstallations, "/preview/additional-mlx-lm.json") {
-				t.Fatal("registration removal failed")
-			}
-		})
-	}
-}

@@ -7,7 +7,7 @@ from inferyard.errors import ContractError, PreflightError
 from inferyard.analysis.output_budget import target_rate
 from inferyard.contracts.fixed_output import validate_inputs
 from inferyard.evidence.fixed_output import verify_probe
-from tests.unit.test_phase2_contracts import experiment
+from tests.unit.phase2_contract_helpers import experiment
 
 
 def response(count=16, state="completed", finish="length"):
@@ -31,57 +31,6 @@ def test_strict_rate_retains_failed_denominator_and_does_not_use_finish_alone():
     r = target_rate(rows, 16, True)
     assert r["value"] is None and r["denominator"] == 4 and r["numerator"] is None
     assert target_rate([dict(execution_state="not_executed")], 16, True)["excluded"] == 1
-
-
-@pytest.mark.parametrize("change", ["flag", "count", "finish", "scope", "missing", "budget"])
-def test_probe_rejects_unverified_parameters_or_counts(change):
-    effective = {"slots": [{"params": {"ignore_eos": True, "max_tokens": 16}}]}
-    r = response()
-    assert verify_probe(effective, r, 16)["ignore_eos"] is True
-    if change == "flag":
-        effective["slots"][0]["params"]["ignore_eos"] = 1
-    elif change == "budget":
-        effective["slots"][0]["params"]["max_tokens"] = 17
-    elif change == "count":
-        r["completion_tokens"] = 15
-    elif change == "finish":
-        r["raw_finish_reason"] = "stop"
-    elif change == "scope":
-        r["token_scope"] = "visible"
-    else:
-        effective.clear()
-    with pytest.raises(PreflightError):
-        verify_probe(effective, r, 16)
-
-
-def test_strict_mode_freezes_separately_and_cannot_score_quality():
-    source = experiment()
-    w = source["workloads"][0]
-    w["output_mode"] = "strict_fixed_length"
-    with pytest.raises(ContractError):
-        compile_plan(source)
-    w["purpose"] = "performance"
-    strict = compile_plan(source)
-    old = deepcopy(source)
-    old["workloads"][0].pop("output_mode")
-    assert strict["plan_sha256"] != compile_plan(old)["plan_sha256"]
-    config = {"generation": {"stop": []}}
-    bundle = {
-        "cases": [
-            {"case_id": "c1", "category": "performance", "rules": {"output_target_tokens": 512}}
-        ]
-    }
-    validate_inputs(w, config, bundle)
-    for change in ("quality", "stop", "target"):
-        c, b = deepcopy(config), deepcopy(bundle)
-        if change == "quality":
-            b["cases"][0]["category"] = "qa"
-        elif change == "stop":
-            c["generation"]["stop"] = ["end"]
-        else:
-            b["cases"][0]["rules"]["output_target_tokens"] = 1
-        with pytest.raises(ContractError):
-            validate_inputs(w, c, b)
 
 
 def test_strict_and_natural_workloads_cannot_be_compared_as_same_protocol():

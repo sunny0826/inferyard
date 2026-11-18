@@ -57,7 +57,6 @@ mise exec -- uv run --frozen pytest \
   tests/unit/test_comparison.py \
   tests/unit/test_performance_comparison.py \
   tests/unit/test_quantization_comparison.py \
-  tests/unit/test_cache_comparison.py \
   tests/unit/test_observations.py \
   tests/unit/test_repetition_metrics.py
 
@@ -65,10 +64,8 @@ mise exec -- uv run --frozen pytest \
 mise exec -- uv run --frozen pytest \
   tests/unit/test_studio_report.py \
   tests/unit/test_aggregate_report.py \
-  tests/unit/test_cost_reporting.py \
   tests/unit/test_engine_fit_report.py \
-  tests/unit/test_engine_comparison_v2_report.py \
-  tests/unit/test_svg_render.py \
+  tests/integration/test_svg_report.py \
   tests/unit/test_export.py \
   tests/unit/test_export_utf8.py \
   tests/unit/test_public_metrics.py

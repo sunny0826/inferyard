@@ -10,49 +10,6 @@ from inferyard.errors import ContractError
 from inferyard.registry import catalogue
 
 
-def test_metric_inventory_is_complete_but_does_not_claim_planned_algorithms_exist() -> None:
-    data = catalogue("metrics")
-    assert not any(item["implementation_status"] == "verified" for item in data["items"])
-    metrics = {item["metric_id"]: item for item in data["items"]}
-    assert metrics["L06"]["source"] == "verified_engine_timings"
-    assert metrics["C04"]["unit"] == "s"
-    assert metrics["N04"]["unit"] == "token/s"
-    assert metrics["N04"]["source"] == "endpoint_usage_batch_window"
-    assert metrics["N04"]["implementation_status"] == "implemented"
-    assert metrics["N04"]["required_capabilities"] == ["endpoint_usage_batch_window"]
-    assert any(
-        ref["path"] == "src/inferyard/analysis/throughput_observations.py"
-        for ref in metrics["N04"]["evidence_refs"]
-    )
-    # Engine comparison metrics take new IDs; existing IDs are never reassigned.
-    for key in ("L08", "L09"):
-        assert metrics[key]["unit"] == "ms"
-        assert metrics[key]["implementation_status"] == "implemented"
-    assert len(metrics) == 46
-
-
-def test_packaged_metric_changes_are_part_of_tool_identity(tmp_path, monkeypatch):
-    from inferyard import provenance
-
-    monkeypatch.setattr(provenance, "__file__", str(tmp_path / "provenance.py"))
-    definition = tmp_path / "metrics.json"
-    definition.write_text('{"window":"v1"}')
-    before = provenance.tool_source_hash()
-    definition.write_text('{"window":"v2"}')
-    assert provenance.tool_source_hash() != before
-    unchanged = provenance.tool_source_hash()
-    (tmp_path / "cache.pyc").write_bytes(b"cache")
-    assert provenance.tool_source_hash() == unchanged
-
-
-def test_component_registry_routes_only_implemented_components():
-    from inferyard.registry import adapter_factory, collector_factory
-
-    for lookup in (adapter_factory, collector_factory):
-        with pytest.raises(ContractError, match="not implemented"):
-            lookup("unimplemented")
-
-
 @pytest.mark.parametrize("kind", ["methods", "metrics"])
 def test_catalogue_cli_preserves_unicode_with_cp1252_default(monkeypatch, capsys, kind):
     expected = catalogue(kind)

@@ -29,7 +29,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -61,7 +61,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -93,7 +93,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -125,7 +125,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -157,7 +157,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -189,7 +189,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -221,7 +221,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -253,7 +253,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -285,7 +285,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -317,7 +317,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -349,7 +349,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -381,7 +381,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -413,7 +413,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -445,7 +445,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -477,7 +477,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -509,7 +509,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -541,7 +541,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -573,7 +573,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/contracts/engine_timing.py",
@@ -581,7 +581,7 @@
         },
         {
           "path": "tests/unit/test_engine_timing.py",
-          "sha256": "f3d55d0c682bfe03cbc305e3407e757764f6ef57a27c1a4a6af26be2100a1a49"
+          "sha256": "e6a22072995bfcefbdaa1d9fd4c7dcb0bd1f61dd71490e72496b786feda1c0bc"
         }
       ]
     },
@@ -613,7 +613,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/contracts/engine_timing.py",
@@ -621,7 +621,7 @@
         },
         {
           "path": "tests/unit/test_engine_timing.py",
-          "sha256": "f3d55d0c682bfe03cbc305e3407e757764f6ef57a27c1a4a6af26be2100a1a49"
+          "sha256": "e6a22072995bfcefbdaa1d9fd4c7dcb0bd1f61dd71490e72496b786feda1c0bc"
         }
       ]
     },
@@ -657,7 +657,7 @@
         },
         {
           "path": "tests/unit/test_engine_blocks.py",
-          "sha256": "9cb671b5582040416e19773d66736e7997ea0dd832561fb9de18eb75ec9ab718"
+          "sha256": "b1b2788fee645d418bebdd8753c0360acdc9d5c18bf2ddd439bd70dc93966686"
         }
       ]
     },
@@ -693,7 +693,7 @@
         },
         {
           "path": "tests/unit/test_engine_blocks.py",
-          "sha256": "9cb671b5582040416e19773d66736e7997ea0dd832561fb9de18eb75ec9ab718"
+          "sha256": "b1b2788fee645d418bebdd8753c0360acdc9d5c18bf2ddd439bd70dc93966686"
         }
       ]
     },
@@ -725,7 +725,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
@@ -749,7 +749,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
+          "sha256": "25553f94f787f7ae81180c6dd20975942b32d22b46d7661bc15277344ac56703"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -757,7 +757,7 @@
         },
         {
           "path": "tests/unit/test_resources.py",
-          "sha256": "605e9e126f7762341c28d21746e58b487bc3d12401fabc46a52ae73ee68ac707"
+          "sha256": "0b99f9108301351b9b5d10792ba837e1606588eeb9e68bfea042deac7b1c8f33"
         },
         {
           "path": "src/inferyard/platforms/resources_windows.py",
@@ -765,7 +765,7 @@
         },
         {
           "path": "tests/unit/test_windows_resources.py",
-          "sha256": "fc1d341db12099a1a69e0fac3e217ed3466aa58cf2a77346db769a78bafc7141"
+          "sha256": "8a5e1d11d7c583646183b17d0c0cb1c8c8cf10f674e735273dd92c07d89a6f4e"
         }
       ]
     },
@@ -797,7 +797,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
@@ -821,7 +821,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
+          "sha256": "25553f94f787f7ae81180c6dd20975942b32d22b46d7661bc15277344ac56703"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -829,7 +829,7 @@
         },
         {
           "path": "tests/unit/test_resources.py",
-          "sha256": "605e9e126f7762341c28d21746e58b487bc3d12401fabc46a52ae73ee68ac707"
+          "sha256": "0b99f9108301351b9b5d10792ba837e1606588eeb9e68bfea042deac7b1c8f33"
         },
         {
           "path": "src/inferyard/platforms/resources_windows.py",
@@ -837,7 +837,7 @@
         },
         {
           "path": "tests/unit/test_windows_resources.py",
-          "sha256": "fc1d341db12099a1a69e0fac3e217ed3466aa58cf2a77346db769a78bafc7141"
+          "sha256": "8a5e1d11d7c583646183b17d0c0cb1c8c8cf10f674e735273dd92c07d89a6f4e"
         }
       ]
     },
@@ -869,7 +869,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
@@ -893,7 +893,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
+          "sha256": "25553f94f787f7ae81180c6dd20975942b32d22b46d7661bc15277344ac56703"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -901,7 +901,7 @@
         },
         {
           "path": "tests/unit/test_resources.py",
-          "sha256": "605e9e126f7762341c28d21746e58b487bc3d12401fabc46a52ae73ee68ac707"
+          "sha256": "0b99f9108301351b9b5d10792ba837e1606588eeb9e68bfea042deac7b1c8f33"
         },
         {
           "path": "src/inferyard/platforms/resources_windows.py",
@@ -909,7 +909,7 @@
         },
         {
           "path": "tests/unit/test_windows_resources.py",
-          "sha256": "fc1d341db12099a1a69e0fac3e217ed3466aa58cf2a77346db769a78bafc7141"
+          "sha256": "8a5e1d11d7c583646183b17d0c0cb1c8c8cf10f674e735273dd92c07d89a6f4e"
         }
       ]
     },
@@ -941,7 +941,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
@@ -965,7 +965,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
+          "sha256": "25553f94f787f7ae81180c6dd20975942b32d22b46d7661bc15277344ac56703"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -973,7 +973,7 @@
         },
         {
           "path": "tests/unit/test_resources.py",
-          "sha256": "605e9e126f7762341c28d21746e58b487bc3d12401fabc46a52ae73ee68ac707"
+          "sha256": "0b99f9108301351b9b5d10792ba837e1606588eeb9e68bfea042deac7b1c8f33"
         }
       ]
     },
@@ -1005,7 +1005,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
@@ -1029,7 +1029,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
+          "sha256": "25553f94f787f7ae81180c6dd20975942b32d22b46d7661bc15277344ac56703"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -1037,7 +1037,7 @@
         },
         {
           "path": "tests/unit/test_resources.py",
-          "sha256": "605e9e126f7762341c28d21746e58b487bc3d12401fabc46a52ae73ee68ac707"
+          "sha256": "0b99f9108301351b9b5d10792ba837e1606588eeb9e68bfea042deac7b1c8f33"
         }
       ]
     },
@@ -1069,7 +1069,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
@@ -1093,7 +1093,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
+          "sha256": "25553f94f787f7ae81180c6dd20975942b32d22b46d7661bc15277344ac56703"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -1101,7 +1101,7 @@
         },
         {
           "path": "tests/unit/test_resources.py",
-          "sha256": "605e9e126f7762341c28d21746e58b487bc3d12401fabc46a52ae73ee68ac707"
+          "sha256": "0b99f9108301351b9b5d10792ba837e1606588eeb9e68bfea042deac7b1c8f33"
         }
       ]
     },
@@ -1133,7 +1133,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
@@ -1157,7 +1157,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
+          "sha256": "25553f94f787f7ae81180c6dd20975942b32d22b46d7661bc15277344ac56703"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -1165,11 +1165,11 @@
         },
         {
           "path": "tests/unit/test_resources.py",
-          "sha256": "605e9e126f7762341c28d21746e58b487bc3d12401fabc46a52ae73ee68ac707"
+          "sha256": "0b99f9108301351b9b5d10792ba837e1606588eeb9e68bfea042deac7b1c8f33"
         },
         {
           "path": "tests/unit/test_sensor_observations.py",
-          "sha256": "3d14ad0a4302437c7f0797f32afa8d3123b27eaf86979648c98db3728d61e146"
+          "sha256": "05ced764c6b97e269a7e63d2e849df367aa57adeb39f1f12d3f684ca00932d0d"
         }
       ]
     },
@@ -1201,7 +1201,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/platforms/resources_linux.py",
@@ -1225,7 +1225,7 @@
         },
         {
           "path": "tests/unit/test_sensors_linux.py",
-          "sha256": "ae7bb38782d4062ad90ab2ffc6307c337c1bd35f7fabd05811d7b0c5c918f38f"
+          "sha256": "25553f94f787f7ae81180c6dd20975942b32d22b46d7661bc15277344ac56703"
         },
         {
           "path": "src/inferyard/analysis/resource_metrics.py",
@@ -1233,11 +1233,11 @@
         },
         {
           "path": "tests/unit/test_resources.py",
-          "sha256": "605e9e126f7762341c28d21746e58b487bc3d12401fabc46a52ae73ee68ac707"
+          "sha256": "0b99f9108301351b9b5d10792ba837e1606588eeb9e68bfea042deac7b1c8f33"
         },
         {
           "path": "tests/unit/test_sensor_observations.py",
-          "sha256": "3d14ad0a4302437c7f0797f32afa8d3123b27eaf86979648c98db3728d61e146"
+          "sha256": "05ced764c6b97e269a7e63d2e849df367aa57adeb39f1f12d3f684ca00932d0d"
         }
       ]
     },
@@ -1269,7 +1269,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -1301,7 +1301,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -1333,7 +1333,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -1365,7 +1365,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/analysis/duration_windows.py",
@@ -1381,7 +1381,7 @@
         },
         {
           "path": "tests/unit/test_stability_observations.py",
-          "sha256": "b2f7945bf0953eedcaa8c1dc221fc5853e721ef2454e78c0c5c66736d1bd4646"
+          "sha256": "2c4c084078e4825eec7c2a2c59f84dc2a5b8642eaedb2da4de157d385731bae7"
         }
       ]
     },
@@ -1413,7 +1413,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/analysis/duration_windows.py",
@@ -1429,7 +1429,7 @@
         },
         {
           "path": "tests/unit/test_stability_observations.py",
-          "sha256": "b2f7945bf0953eedcaa8c1dc221fc5853e721ef2454e78c0c5c66736d1bd4646"
+          "sha256": "2c4c084078e4825eec7c2a2c59f84dc2a5b8642eaedb2da4de157d385731bae7"
         }
       ]
     },
@@ -1461,7 +1461,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/analysis/repetition_metrics.py",
@@ -1473,11 +1473,11 @@
         },
         {
           "path": "tests/unit/test_repetition_metrics.py",
-          "sha256": "e4d78a6c6a0b7a4bc7238bff8a81f0b6b030ecf2e62bc86c7cbe25da768e3b04"
+          "sha256": "df2874e4d409460f3f338742407d159dabef02c3997ffd482bb35c283ef11793"
         },
         {
           "path": "tests/unit/test_aggregate_observations.py",
-          "sha256": "50da4644307f3facfd49b09bce87ade083721fbb551e6aa679f749116440128d"
+          "sha256": "c36bfb51cbd18aec2a3709736600bb7bf4af1d740b99de7ae36ea16747d0c940"
         }
       ]
     },
@@ -1509,7 +1509,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/analysis/repetition_metrics.py",
@@ -1521,11 +1521,11 @@
         },
         {
           "path": "tests/unit/test_repetition_metrics.py",
-          "sha256": "e4d78a6c6a0b7a4bc7238bff8a81f0b6b030ecf2e62bc86c7cbe25da768e3b04"
+          "sha256": "df2874e4d409460f3f338742407d159dabef02c3997ffd482bb35c283ef11793"
         },
         {
           "path": "tests/unit/test_aggregate_observations.py",
-          "sha256": "50da4644307f3facfd49b09bce87ade083721fbb551e6aa679f749116440128d"
+          "sha256": "c36bfb51cbd18aec2a3709736600bb7bf4af1d740b99de7ae36ea16747d0c940"
         }
       ]
     },
@@ -1557,7 +1557,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -1589,7 +1589,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -1621,7 +1621,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -1653,7 +1653,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -1685,7 +1685,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     },
@@ -1717,7 +1717,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/analysis/throughput_observations.py",
@@ -1725,7 +1725,7 @@
         },
         {
           "path": "tests/unit/test_throughput_observations.py",
-          "sha256": "113f7dfdf6dc8bd34503c5d17cc6e49dcb6223bb4c315657f0ab41270ee9c918"
+          "sha256": "a8b6765a68992edf2cc4fbab1bce16f6694d5bbfb6926d236ef2906980ff0e6c"
         }
       ]
     },
@@ -1757,7 +1757,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/analysis/throughput_observations.py",
@@ -1765,7 +1765,7 @@
         },
         {
           "path": "tests/unit/test_throughput_observations.py",
-          "sha256": "113f7dfdf6dc8bd34503c5d17cc6e49dcb6223bb4c315657f0ab41270ee9c918"
+          "sha256": "a8b6765a68992edf2cc4fbab1bce16f6694d5bbfb6926d236ef2906980ff0e6c"
         }
       ]
     },
@@ -1797,7 +1797,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/analysis/inter_token_observations.py",
@@ -1805,7 +1805,7 @@
         },
         {
           "path": "tests/unit/test_inter_token_observations.py",
-          "sha256": "6a241087305f0e2f3fe75a89fab285737b273b06c30cdf81c0f24e2d83383287"
+          "sha256": "66a838c3aad9819a79ca0739d5819ad4389c5b26e79144d30270ee3585bdbe57"
         }
       ]
     },
@@ -1837,7 +1837,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         },
         {
           "path": "src/inferyard/analysis/throughput_observations.py",
@@ -1845,7 +1845,7 @@
         },
         {
           "path": "tests/unit/test_throughput_observations.py",
-          "sha256": "113f7dfdf6dc8bd34503c5d17cc6e49dcb6223bb4c315657f0ab41270ee9c918"
+          "sha256": "a8b6765a68992edf2cc4fbab1bce16f6694d5bbfb6926d236ef2906980ff0e6c"
         }
       ]
     },
@@ -1877,7 +1877,7 @@
         },
         {
           "path": "tests/unit/test_observations.py",
-          "sha256": "9ea544ab22b4f86974768a2ecf0773f40cdb5510d4545520ed687d2f4e563ceb"
+          "sha256": "7e9137a3a6684b76e0cba48289761e67960cbc9ecd340efc616eea37e959c9ce"
         }
       ]
     }

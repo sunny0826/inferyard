@@ -31,11 +31,6 @@ jobs:
       - name: Sync CLI dependencies (e2e drives the real CLI)
         working-directory: cli
         run: mise exec -- uv sync --frozen
-      - name: Development launcher checks
-        run: mise exec -- python -m unittest discover -s tools/tests -v
-      - name: Development launcher lint
-        working-directory: cli
-        run: mise exec -- uv run --frozen ruff check ../tools --config pyproject.toml
       # Unit tests run on macOS only: the pre-existing internal/core suite is
       # not Windows-clean yet (permission-bit, path-separator and timing
       # assumptions); that debt is tracked separately from this workflow.

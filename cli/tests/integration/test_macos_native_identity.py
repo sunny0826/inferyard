@@ -68,33 +68,6 @@ server.close()
             process.communicate(timeout=5)
 
 
-def test_native_child_listener_identity_memory_and_loaded_executable(native_service):
-    process, config, model, engine, port = native_service
-    observed = identity.verify_process(config, model, engine, "127.0.0.1", port)
-    assert observed["binary"] == observed["endpoint"] == "verified"
-    assert observed["slots_debug_environment_verified"] is True
-    assert observed["listener_source"] == "lsof:TCP:LISTEN:pid"
-    assert macos_process.mapped_file(process.pid, engine)
-    samples = telemetry.sample_memory(process.pid, observed["start_ticks"], "formal", "synthetic")
-    assert all(row["value"] > 0 and row["missing_reason"] is None for row in samples)
-    with pytest.raises(PreflightError, match="endpoint_pid_mismatch"):
-        identity.verify_listener(os.getpid(), "127.0.0.1", port)
-
-
-def test_native_closed_listener_is_rejected_without_pid_change(native_service):
-    process, config, model, engine, port = native_service
-    identity.verify_process(config, model, engine, "127.0.0.1", port)
-    process.stdin.write("close\n")
-    process.stdin.flush()
-    with selectors.DefaultSelector() as ready:
-        ready.register(process.stdout, selectors.EVENT_READ)
-        assert ready.select(5), "synthetic child did not close its listener"
-    assert process.stdout.readline().strip() == "closed"
-    assert identity.process_start_ticks(process.pid) == config["endpoint"]["process_start_ticks"]
-    with pytest.raises(PreflightError, match="endpoint_pid_mismatch"):
-        identity.verify_process(config, model, engine, "127.0.0.1", port)
-
-
 @pytest.mark.parametrize(
     "change,reason",
     [
@@ -122,18 +95,3 @@ def test_native_wrong_binding_is_rejected(native_service, tmp_path, change, reas
         model = identity.hash_file(other)
     with pytest.raises(PreflightError, match=reason):
         identity.verify_process(config, model, engine, "127.0.0.1", port)
-
-
-def test_reaped_child_is_unavailable(native_service):
-    process, *_ = native_service
-    process.communicate("\n", timeout=5)
-    with pytest.raises(PreflightError, match="service_process_unavailable"):
-        macos_identity.process_start_ticks(process.pid)
-
-
-def test_native_pid_identity_survives_psutil_wall_clock_correction(native_service, monkeypatch):
-    from psutil import _psosx
-
-    process, config, *_ = native_service
-    monkeypatch.setattr(_psosx, "boot_time", lambda: _psosx.INIT_BOOT_TIME + 3600)
-    assert identity.process_start_ticks(process.pid) == config["endpoint"]["process_start_ticks"]

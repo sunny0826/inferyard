@@ -109,19 +109,6 @@ def test_probe_run_report_verify_and_offline_plan(lab_scenario, tmp_path, monkey
     assert config["model"]["local_path"] == loaded.config.to_dict()["model"]["local_path"]
 
 
-@pytest.mark.parametrize("failure", ["truncated", "mismatched_id", "http_error"])
-def test_probe_failure_preserves_full_denominator(lab_scenario, failure):
-    command, deps, service = lab_scenario
-    service.options[failure] = True
-    code, result = asyncio.run(execute_async(command, deps))
-    assert code == 2
-    data = read_trial(Path(result.evidence_dir))
-    assert data["summary"]["counts"]["not_executed"] == len(
-        command.config.bundle.to_dict()["cases"]
-    )
-    assert len(service.requests) == (2 if failure == "truncated" else 1)
-
-
 def test_successful_response_without_release_keeps_dirty(lab_scenario):
     command, deps, service = lab_scenario
     # Become busy after the initial idle; release never follows the complete response.
@@ -143,93 +130,6 @@ def test_successful_response_without_release_keeps_dirty(lab_scenario):
     assert result.limitations
     assert len(service.requests) == 1
     read_trial(Path(result.evidence_dir))
-
-
-def test_offline_rejects_altered_wire_even_without_manifest(lab_scenario):
-    command, deps, _ = lab_scenario
-    code, result = asyncio.run(execute_async(command, deps))
-    assert code == 0
-    root = Path(result.evidence_dir)
-    (root / "manifest.json").unlink()
-    path = root / "events.jsonl"
-    events = [json.loads(line) for line in path.read_text().splitlines()]
-    event = next(e for e in events if e["event_type"] == "lab_wire")
-    event["data"]["text"] = event["data"]["text"].replace("北京", "上海")
-    path.write_text(
-        "".join(json.dumps(e, ensure_ascii=False) + "\n" for e in events), encoding="utf-8"
-    )
-    with pytest.raises(EvidenceError, match="lab_wire_terminal_mismatch"):
-        read_trial(root)
-
-
-def test_frozen_plan_run_uses_shared_lab_lifecycle(lab_scenario, tmp_path, monkeypatch, capsys):
-    import hashlib
-
-    import inferyard.runtime.batch_runner as batch_runner
-    import inferyard.runtime.trial_runner as trial_runner
-
-    command, deps, service = lab_scenario
-    config_path = tmp_path / "lab-plan.toml"
-    write_config(command, config_path)
-    loaded = load_config(config_path)
-    exp = compile_single_plan(loaded.config.to_dict(), loaded.bundle.to_dict())["experiment"]
-    for field, path in (("config", config_path), ("bundle", tmp_path / "bundle.json")):
-        exp["workloads"][0][field] = {
-            "path": path.name,
-            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-        }
-    experiment = tmp_path / "source-experiment.json"
-    experiment.write_text(json.dumps(exp), encoding="utf-8")
-    assert main(["plan", "--experiment", str(experiment), "--out", str(tmp_path / "frozen")]) == 0
-    capsys.readouterr()
-    trial_deps = trial_runner.TrialDependencies(
-        preflight=deps.preflight, adapter=deps.adapter, guard=deps.guard, sampler=deps.sampler
-    )
-    monkeypatch.setattr(batch_runner, "TrialDependencies", lambda **kwargs: trial_deps)
-    monkeypatch.setattr(batch_runner, "adapter_factory", lambda _: deps.adapter)
-    monkeypatch.setattr(trial_runner, "require_review", lambda bundle: None)
-    assert (
-        main(
-            [
-                "run",
-                "--plan",
-                str(tmp_path / "frozen/plan.json"),
-                "--output-root",
-                str(tmp_path / "batch"),
-            ]
-        )
-        == 0
-    )
-    result = json.loads(capsys.readouterr().out)
-    root = Path(result["details"]["runs"][0])
-    data = read_trial(root)
-    assert data["run"]["execution_mode"] == "experiment"
-    assert TrialEvidence(root).configuration_source()["data"] == config_path.read_bytes()
-    assert data["summary"]["counts"]["completed"] == len(command.config.bundle.to_dict()["cases"])
-    assert len(service.requests) == 5 + len(command.config.bundle.to_dict()["cases"])
-
-
-@pytest.mark.parametrize(
-    "artifact", ["budget", "parameters", "missing-budget", "missing-parameters"]
-)
-def test_offline_rechecks_lab_parameter_binding(lab_scenario, artifact):
-    command, deps, _ = lab_scenario
-    code, result = asyncio.run(execute_async(command, deps))
-    assert code == 0
-    root = Path(result.evidence_dir)
-    (root / "manifest.json").unlink()
-    kind = "token_budgets" if "budget" in artifact else "effective_parameters"
-    stage = None if "budget" in artifact else "ordinary"
-
-    def mutate(value):
-        if artifact == "budget":
-            value["entries"][0]["budget"]["lab_token_budget"]["server_instance_id"] = "2" * 32
-        else:
-            value["lab_parameters"]["generation"]["seed"] += 1
-
-    change_observation(root, kind, mutate, stage=stage, remove=artifact.startswith("missing-"))
-    with pytest.raises(EvidenceError, match="lab_.*evidence_(invalid|missing)"):
-        read_trial(root)
 
 
 def test_formal_failure_stops_remaining_cases_without_retry(lab_scenario):

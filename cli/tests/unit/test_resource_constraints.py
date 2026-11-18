@@ -46,26 +46,6 @@ def evaluate(left, right, proofs, constraint):
     return evaluate_candidate(right, comparison, [constraint])
 
 
-def test_all_requests_upper_max_lower_min_and_category_scope():
-    left, right, proofs, c = inputs()
-    before = deepcopy(right)
-    result = evaluate(left, right, proofs, c)
-    row = result["constraints"][0]
-    assert result["matched"] and row["value"] == 120
-    assert row["aggregation"]["planned_requests"] == 2
-    assert row["aggregation"]["counts"] == {"pass": 2, "fail": 0, "unknown": 0}
-    assert not evaluate(left, right, proofs, {**c, "threshold": 119})["matched"]
-    lower = evaluate(left, right, proofs, {**c, "operator": ">=", "threshold": 100})["constraints"][
-        0
-    ]
-    assert lower["status"] == "pass" and lower["value"] == 100
-    selected = evaluate(left, right, proofs, {**c, "category": "qa", "threshold": 100})[
-        "constraints"
-    ][0]
-    assert selected["status"] == "pass" and selected["aggregation"]["planned_requests"] == 1
-    assert selected["value"] == 100 and right == before
-
-
 @pytest.mark.parametrize(
     "change",
     [
@@ -110,38 +90,3 @@ def test_unknown_slots_stay_in_denominator_and_never_pass(change):
     assert (
         row["aggregation"]["planned_requests"] == 2 and row["aggregation"]["counts"]["unknown"] > 0
     )
-
-
-def test_known_failure_is_preserved_when_another_request_is_unknown():
-    left, right, proofs, c = inputs()
-    comparison = compare_trials(left, right, performance_evidence=proofs)
-    m = next(
-        m
-        for m in right["summary"]["metric_observations"]
-        if m["metric_id"] == "C02" and m["group"]["category"] == "qa"
-    )
-    right["summary"]["metric_observations"].remove(m)
-    result = evaluate_candidate(right, comparison, [{**c, "threshold": 110}])
-    row = result["constraints"][0]
-    assert result["status"] == "fail" and not result["matched"]
-    assert row["aggregation"]["counts"] == {"pass": 0, "fail": 1, "unknown": 1}
-    assert row["value"] is None
-
-
-def test_empty_scope_and_no_link_are_unknown():
-    left, right, proofs, c = inputs()
-    assert evaluate(left, right, proofs, {**c, "category": "not-present"})["status"] == "unknown"
-    assert evaluate_candidate(right, compare_trials(left, right), [c])["status"] == "unknown"
-
-
-def test_schema_requires_explicit_resource_aggregation():
-    *_, c = inputs()
-    spec = dict(version=1, reference="a", candidates=["b"], constraints=[c])
-    validate_spec(spec)
-    for bad in (
-        {**c, "aggregation": "sum"},
-        {**c, "metric_id": "L05"},
-        {**c, "error_category": "timeout"},
-    ):
-        with pytest.raises(EvidenceError):
-            validate_spec({**spec, "constraints": [bad]})

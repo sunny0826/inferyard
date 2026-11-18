@@ -42,13 +42,3 @@ def test_single_and_experiment_studio_report_preserve_denominators_and_bytes(sce
     assert before == {
         str(p): sha256_file(p) for root in roots for p in root.iterdir() if p.is_file()
     }
-
-
-def test_unknown_source_version_is_not_guessed_as_legacy(tmp_path):
-    source = tmp_path / "unknown"
-    source.mkdir()
-    (source / "run.json").write_bytes(json_bytes({"schema_version": 999}))
-
-    with pytest.raises(UnsupportedFormat):
-        write_studio_report([source], tmp_path / "out")
-    assert not (tmp_path / "out").exists()

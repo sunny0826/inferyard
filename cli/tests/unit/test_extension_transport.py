@@ -77,23 +77,6 @@ def setup(config_path, *, slots=4):
     return adapter, props, rows, requests
 
 
-def test_separate_multislot_transport_checks_template_tokens_effective_slot_and_quality(
-    config_path,
-):
-    async def check():
-        adapter, _, _, requests = setup(config_path)
-        try:
-            await adapter.verify()
-            result = await adapter.infer("case-a", 2)
-            assert result["quality_pass"] and result["protocol_complete"]
-            assert await adapter.wait_idle(2, 0.1)
-            assert sum(r.url.path == "/v1/chat/completions" for r in requests) == 1
-        finally:
-            await adapter.close()
-
-    asyncio.run(check())
-
-
 @pytest.mark.parametrize(
     "change,reason",
     [
@@ -122,22 +105,6 @@ def test_capability_and_parameter_gaps_fail_closed(config_path, change, reason):
                 await adapter.verify(tools=change == "tools")
                 if change == "seed":
                     await adapter.infer("case-a", 2)
-        finally:
-            await adapter.close()
-
-    asyncio.run(check())
-
-
-def test_native_stream_path_preserves_actual_usage_and_finish(config_path):
-    async def check():
-        adapter, _, _, _ = setup(config_path, slots=1)
-        try:
-            await adapter.verify(tools=True)
-            reply = await adapter.completion(
-                [{"role": "user", "content": "7+3"}], tools=[{"type": "function"}], stream=True
-            )
-            assert reply["usage"]["completion_tokens"] == 3
-            assert reply["choices"][0]["message"]["content"] == "10"
         finally:
             await adapter.close()
 

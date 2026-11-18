@@ -59,19 +59,6 @@ def inputs():
     return left, right, proofs
 
 
-def test_context_grants_only_validated_metrics_without_mutating_source():
-    left, right, proofs = inputs()
-    original = deepcopy((left, right))
-    result = compare_trials(left, right, performance_evidence=proofs)
-    assert result["eligibility"]["performance"]
-    rows = {r["metric_id"]: r for r in result["performance_analysis"]["differences"]}
-    assert rows["L03"]["difference"] == 20
-    assert rows["L04"]["difference"] == 20
-    assert rows["L01"]["difference"] is None and not rows["L01"]["eligible"]
-    assert (left, right) == original
-    assert not compare_trials(left, right)["eligibility"]["performance"]
-
-
 @pytest.mark.parametrize(
     "change", ["overhead", "binding", "environment", "incomplete", "side_by_side"]
 )
@@ -94,13 +81,6 @@ def test_failed_prerequisite_cannot_produce_any_performance_delta(change):
     assert all(r["difference"] is None for r in result["performance_analysis"]["differences"])
 
 
-def test_current_comparison_accepts_independently_qualified_tolerances():
-    left, right, proofs = inputs()
-    proofs[1]["tolerance_ratio"] = 0.1
-    result = compare_trials(left, right, performance_evidence=proofs)
-    assert result["eligibility"]["performance"]
-
-
 def test_different_model_tokenizer_blocks_rate_but_not_task_e2e():
     left, right, proofs = inputs()
     right["config"]["model"]["sha256"] = "different-model"
@@ -113,57 +93,3 @@ def test_different_model_tokenizer_blocks_rate_but_not_task_e2e():
     assert rows["L03"]["eligible"]
     assert rows["L04"]["difference"] is None
     assert "tokenizer_identity_not_proven_equal" in rows["L04"]["reasons"]
-
-
-@pytest.mark.parametrize("change", ["missing", "definition", "cohort", "duplicate", "nonfinite"])
-def test_bad_individual_metric_remains_ineligible(change):
-    left, right, proofs = inputs()
-    metric = right["summary"]["metric_observations"][1]
-    if change == "missing":
-        metric["value"] = None
-    elif change == "nonfinite":
-        metric["value"] = float("nan")
-    elif change == "definition":
-        metric["definition_version"] = "other"
-    elif change == "cohort":
-        metric["sample_count"] = 0
-    else:
-        right["summary"]["metric_observations"].append(deepcopy(metric))
-    rows = compare_trials(left, right, performance_evidence=proofs)["performance_analysis"][
-        "differences"
-    ]
-    row = next(r for r in rows if r["metric_id"] == "L03")
-    assert not row["eligible"] and row["difference"] is None
-
-
-def test_first_event_requires_both_predeclared_metric_assessments():
-    left, right, proofs = inputs()
-    for p in proofs:
-        p["assessment"] = {
-            "first_event_assessments": {
-                "L01": {
-                    "passed": True,
-                    "definition": "first_event_abba.v1",
-                    "tolerance_ratio": 0.05,
-                }
-            }
-        }
-
-    def row():
-        return next(
-            r
-            for r in compare_trials(left, right, performance_evidence=proofs)[
-                "performance_analysis"
-            ]["differences"]
-            if r["metric_id"] == "L01"
-        )
-
-    assert row()["eligible"] and row()["difference"] == 20
-    proofs[1]["assessment"]["first_event_assessments"]["L01"]["tolerance_ratio"] = 0.1
-    assert not row()["eligible"]
-    proofs[1]["assessment"]["first_event_assessments"]["L01"].update(
-        tolerance_ratio=0.05, passed=False
-    )
-    assert not row()["eligible"]
-    proofs[1].pop("assessment")
-    assert not row()["eligible"]

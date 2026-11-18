@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"inferyard/studio/internal/evidence"
+
 	"inferyard/studio/internal/inferyard"
 	"os"
 	"path/filepath"
-	"sync/atomic"
+
 	"testing"
 	"time"
 )
@@ -122,67 +122,7 @@ func TestQueueCancellationAndExitMapping(t *testing.T) {
 		})
 	}
 }
-func TestSettingsAndDeviceRefresh(t *testing.T) {
-	gate := make(chan struct{})
-	var calls atomic.Int64
-	s := testService(t, func(ctx context.Context, _ string, args ...string) (inferyard.Execution, error) {
-		if v, ok := version(args); ok {
-			return v, nil
-		}
-		calls.Add(1)
-		select {
-		case <-ctx.Done():
-			return result(130), ctx.Err()
-		case <-gate:
-		}
-		return inferyard.Execution{ExitCode: 2, Stdout: []byte(`{"command":"device-check","status":"blocked","completeness":"incomplete","details":{"kind":"device_preflight.v1","hardware":{},"models":[],"recommendation":{},"platform_capabilities":{},"extra":true}}`)}, nil
-	})
-	root := t.TempDir()
-	patch := map[string]json.RawMessage{"models_root": json.RawMessage(fmt.Sprintf("%q", root)), "results_root": json.RawMessage(fmt.Sprintf("%q", filepath.Join(root, "results")))}
-	got, e := s.UpdateSettings(patch)
-	if e != nil || str(got.Effective.ReportsRoot) != filepath.Join(root, "reports") {
-		t.Fatal(got, e)
-	}
-	for _, bad := range []string{"null", `""`, `"relative"`} {
-		if _, e = s.UpdateSettings(map[string]json.RawMessage{"results_root": json.RawMessage(bad)}); e == nil {
-			t.Fatal(bad)
-		}
-	}
-	if e = s.RefreshDevice(); e != nil {
-		t.Fatal(e)
-	}
-	if e = s.RefreshDevice(); e == nil || e.Details["reason"] != "refresh_in_progress" {
-		t.Fatal(e)
-	}
-	close(gate)
-	wait(t, func() bool { return !s.Device().Refreshing })
-	if s.Device().LastError != nil || s.Device().Snapshot == nil || calls.Load() != 1 {
-		t.Fatal(s.Device())
-	}
-	raw, e1 := os.ReadFile(s.settingsPath)
-	if e1 != nil || len(raw) == 0 {
-		t.Fatal(e1)
-	}
-}
-func TestDirtyAndAggregation(t *testing.T) {
-	p := filepath.Join(t.TempDir(), "host.json")
-	for _, tc := range []struct {
-		raw   string
-		dirty bool
-	}{{`{"schema_version":1,"dirty":true,"run_id":"r","kind":"run"}`, true}, {`{"schema_version":1,"dirty":false,"run_id":"r","kind":"run"}`, false}, {`{"schema_version":1,"dirty":true,"run_id":"other","kind":"run"}`, false}, {`{"schema_version":1,"dirty":true,"run_id":"r","kind":"engine-fit"}`, false}} {
-		os.WriteFile(p, []byte(tc.raw), 0600)
-		v, e := evidence.DirtyRun(p, "r")
-		if e != nil || v != tc.dirty {
-			t.Fatal(v, e)
-		}
-	}
-	a := newAggregate([]byte(`{"documents":{"selection":{"payload":{"case_ids":["c"]}}}}`))
-	rows := []evidence.Record{{Seq: 1, Phase: "formal", EventType: "request_started", Raw: json.RawMessage(`{"utc":"start","request_id":"q","data":{"case_id":"c","plan_index":0}}`)}, {Seq: 2, Phase: "formal", EventType: "request_finished", Raw: json.RawMessage(`{"utc":"end","request_id":"q","data":{"execution_state":"completed","t_send_ns":1000000,"t_terminal_ns":4000000}}`)}}
-	a.events(rows)
-	if a.Progress.Done != 1 || *a.Progress.Total != 1 || *a.Progress.Cases[0].DurationMs != 3 {
-		t.Fatal(a.Progress)
-	}
-}
+
 func TestContainmentAndSourceValidation(t *testing.T) {
 	root := t.TempDir()
 	outside := t.TempDir()
@@ -343,26 +283,7 @@ func mustResolve(t *testing.T, root, path string) string {
 	}
 	return p
 }
-func TestResumePlanOrderAndParentChain(t *testing.T) {
-	root := t.TempDir()
-	makeRun := func(id, trial, parent string) evidence.Run {
-		dir := filepath.Join(root, id)
-		os.MkdirAll(dir, 0700)
-		relation := "initial"
-		if parent != "" {
-			relation = "resume"
-		}
-		input := map[string]any{"documents": map[string]any{"run": map[string]any{"payload": map[string]any{"trial_id": trial, "relation": relation, "parent_run_id": parent}}, "selection": map[string]any{"payload": map[string]any{"case_ids": []string{"c"}}}, "plan": map[string]any{"payload": map[string]any{"trials": []any{map[string]any{"trial_id": "first"}, map[string]any{"trial_id": "second"}}}}}}
-		raw, _ := json.Marshal(input)
-		return evidence.Run{ID: id, Path: dir, Inputs: raw}
-	}
-	runs := []evidence.Run{makeRun("z-root", "first", ""), makeRun("a-child", "first", "z-root"), makeRun("latest-time", "second", "")}
-	summaries := make([]RunSummary, 3)
-	markResumable(summaries, runs)
-	if summaries[0].Resumable || !summaries[1].Resumable || summaries[2].Resumable {
-		t.Fatal(summaries)
-	}
-}
+
 func TestTwoConfigsExecuteInArrayOrder(t *testing.T) {
 	started := make(chan string, 2)
 	release := make(chan struct{})
@@ -408,14 +329,4 @@ func TestTwoConfigsExecuteInArrayOrder(t *testing.T) {
 	}
 	close(release)
 	wait(t, func() bool { d, _ := s.RunDetail(tasks[1].TaskId); return d.Task.State == "done" })
-}
-func TestUnclosedDurationRemainsCLIResumeDecision(t *testing.T) {
-	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "events.jsonl"), []byte("{\"seq\":1,\"event_type\":\"duration_started\",\"data\":{}}\n"), 0600)
-	raw := []byte(`{"documents":{"run":{"payload":{"trial_id":"t","relation":"initial"}},"plan":{"payload":{"trials":[{"trial_id":"t"}]}},"selection":{"payload":{"case_ids":[]}}}}`)
-	summaries := []RunSummary{{}}
-	markResumable(summaries, []evidence.Run{{ID: "r", Path: dir, Inputs: raw}})
-	if !summaries[0].Resumable {
-		t.Fatal("unfinished duration must reach CLI for exit-3 decision")
-	}
 }

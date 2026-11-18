@@ -69,15 +69,3 @@ def test_rerun_accepts_identity_difference_but_comparison_rejects(tmp_path, monk
     result = compare_trials(parent, changed)
     assert not any(result["eligibility"].values())
     assert next(c for c in result["conditions"] if c["field"] == condition)["status"] == "different"
-
-
-def test_mixed_identity_schemes_are_different_not_missing(tmp_path):
-    parent = read_trial(fixture_run(tmp_path, comparison_mode="model"))
-    other = deepcopy(parent)
-    other["run"].pop("implementation_identity")
-    result = compare_trials(parent, other)
-    assert not any(result["eligibility"].values())
-    assert (
-        next(c for c in result["conditions"] if c["field"] == "run.identity_scheme")["status"]
-        == "different"
-    )

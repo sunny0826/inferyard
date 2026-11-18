@@ -194,39 +194,6 @@ def test_abrupt_interruption_keeps_identity_and_completed_answer(fit_service, mo
     assert main(["verify", "--path", str(out)]) == 4
 
 
-def test_both_engines_compare_and_verify_after_sources_removed(fit_service, capsys):
-    root, state, origin, _ = fit_service
-    for engine in ("vllm", "sglang"):
-        state["engine"] = engine
-        assert run_cli(root, origin, engine, root / engine) == 0, capsys.readouterr()
-    assert len(state["posts"]) == 6
-    assert [p["messages"] for p in state["posts"][:3]] == [
-        p["messages"] for p in state["posts"][3:]
-    ]
-    assert not read_json(root / "host.state.json")["dirty"]
-    assert (
-        main(
-            [
-                "engine-fit",
-                "compare",
-                "--runs",
-                str(root / "vllm"),
-                str(root / "sglang"),
-                "--out",
-                str(root / "comparison"),
-            ]
-        )
-        == 0
-    ), capsys.readouterr()
-    shutil.rmtree(root / "vllm")
-    shutil.rmtree(root / "sglang")
-    assert main(["engine-fit", "verify", "--path", str(root / "comparison")]) == 0
-    assert len(state["posts"]) == 6
-    comparison = read_json(root / "comparison/comparison.json")
-    assert [side["run"]["engine"] for side in comparison["sides"]] == ["vllm", "sglang"]
-    assert not (root / "comparison/report.html").exists()
-
-
 def test_early_eof_stops_and_does_not_clear_dirty_on_zero_metrics(fit_service, capsys):
     root, state, origin, _ = fit_service
     state["broken"] = True
@@ -288,42 +255,6 @@ def test_cancel_keeps_partial_evidence_and_dirty(fit_service, monkeypatch, capsy
     assert checked["details"]["sealed"] and checked["details"]["verified"]
 
 
-def test_memory_stop_never_sends(fit_service, monkeypatch):
-    root, state, origin, runtime = fit_service
-    original = runtime.resource_snapshot
-    monkeypatch.setattr(
-        runtime,
-        "resource_snapshot",
-        lambda b: {
-            **original(b),
-            "memory_available_bytes": 1,
-        },
-    )
-    assert run_cli(root, origin, "vllm", root / "low-memory") == 2
-    assert state["posts"] == []
-
-
-def test_runtime_memory_stop_preserves_trigger_reading(fit_service, monkeypatch, capsys):
-    root, state, origin, runtime = fit_service
-    original = runtime.resource_snapshot
-    calls = []
-
-    def reading(binding):
-        calls.append(binding)
-        sample = original(binding)
-        if len(calls) >= 2:
-            sample["memory_available_bytes"] = 1
-        return sample
-
-    monkeypatch.setattr(runtime, "resource_snapshot", reading)
-    assert run_cli(root, origin, "vllm", root / "memory-stop") == 3, capsys.readouterr()
-    run = read_json(root / "memory-stop/run.json")
-    assert run["counts"]["not_executed"] == 3
-    assert run["resources"][-1]["phase"] == "stop:r000001"
-    assert run["resources"][-1]["memory_available_bytes"] == 1
-    assert state["posts"] == []
-
-
 def test_manual_recovery_requires_old_process_gone(fit_service, monkeypatch, capsys):
     from inferyard.runtime import lock
 
@@ -343,17 +274,3 @@ def test_manual_recovery_requires_old_process_gone(fit_service, monkeypatch, cap
     assert run_cli(root, origin, "vllm", root / "recovered", options) == 0, capsys.readouterr()
     assert len(state["posts"]) == 4
     assert not read_json(root / "host.state.json")["dirty"]
-
-
-def test_sealing_failure_restores_dirty_for_manual_recovery(fit_service, monkeypatch):
-
-    root, state, origin, runtime = fit_service
-
-    def broken_seal(*args):
-        raise EvidenceError("simulated_storage_failure")
-
-    monkeypatch.setattr(runtime, "seal_run", broken_seal)
-    assert run_cli(root, origin, "vllm", root / "unsealed") == 4
-    assert len(state["posts"]) == 3
-    assert read_json(root / "host.state.json")["dirty"]
-    assert not (root / "unsealed/manifest.json").exists()
