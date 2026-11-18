@@ -110,7 +110,7 @@ func (p *previewSession) startRun(bundleIndex int, op previewBenchmark, ids []st
 }
 
 func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark, ids []string) {
-	p.after("task", 500*time.Millisecond, func() {
+	p.after("task", p.tickDelay(id), func() {
 		s := p.state
 		detail := p.details[id]
 		if detail == nil || detail.Task.State != "running" {
@@ -206,6 +206,13 @@ func (p *previewSession) scoreHistoryRun(id string) {
 		score.Rate = previewValue(float64(score.Passed) / float64(score.Valid))
 	}
 	run.Score = &score
+}
+
+func (p *previewSession) tickDelay(id string) time.Duration {
+	if detail := p.details[id]; detail != nil && emptyText(detail.Task.Bundle) == inferyard.DefaultBundlePelican {
+		return 1500 * time.Millisecond
+	}
+	return 500 * time.Millisecond
 }
 
 func previewBundleTotal(bundle string) int64 {

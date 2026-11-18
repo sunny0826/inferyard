@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"inferyard/studio/internal/core"
 )
 
 func preparePreview(t *testing.T) (*previewSession, *ui.Tester) {
@@ -77,13 +78,20 @@ func TestPreviewCompleteWorkflowWithoutSceneSelector(t *testing.T) {
 	if err != nil || len(index.Runs) != 2 {
 		t.Fatal("generated report does not contain both runs", err)
 	}
-	for _, run := range index.Runs {
-		if run.Model != "Preview-Small.gguf" || len(run.Requests) != int(previewBundleTotal(run.Facets.BundleLabel)) || run.Source.RunID == "preview-run" {
-			t.Fatal("generated report did not use the actual simulated run", run.Model, run.Source.RunID)
-		}
-	}
+	assertSimulatedReportRuns(t, index.Runs)
 	if p.state.service != nil || p.state.taskCancel != nil {
 		t.Fatal("simulation reached real runtime")
+	}
+}
+
+func assertSimulatedReportRuns(t *testing.T, runs []core.ReportRun) {
+	t.Helper()
+	wantRequests := map[string]int{"zh-core": 120, "zh-svg-pelican": 1}
+	for _, run := range runs {
+		want, ok := wantRequests[run.Facets.BundleLabel]
+		if !ok || run.Model != "Preview-Small.gguf" || len(run.Requests) != want || run.Source.RunID == "preview-run" {
+			t.Fatal("generated report did not use the actual simulated run", run.Model, run.Facets.BundleLabel, len(run.Requests), run.Source.RunID)
+		}
 	}
 }
 
