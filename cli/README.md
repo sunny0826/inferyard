@@ -1,39 +1,45 @@
-# InferYard
+# InferYard CLI
 
 English | [中文](README.zh-CN.md)
 
-Run frozen task sets against local models, keep the answer, latency, and resource
-evidence, and project a single `studio.json` report read by the
-[InferYard Studio](../studio/README.md) desktop app. Quality, latency, and memory
-are reported separately; when comparison preconditions are not met, the CLI
-explains why instead of producing a single composite score.
+`inferyard` is the command-line execution subproject of
+[InferYard Studio](../README.md). Studio provides the desktop interface and
+manages model services; it invokes `inferyard` to run frozen task sets against
+local models, record answer, latency, and resource evidence, and project the
+`studio.json` report displayed in Studio. Quality, latency, and memory are
+reported separately; when comparison preconditions are not met, the CLI explains
+why instead of producing a single composite score.
 
-**v0.0.4 is published on [PyPI](https://pypi.org/project/inferyard/0.0.4/) and runs with `uv` / `uvx`.**
-The package and command are both named `inferyard`, and the project is licensed
-under [MIT](LICENSE).
+For normal desktop benchmarking, start with [InferYard Studio](../README.md) and
+the [Studio guide](../studio/README.md). Studio's **准备环境** (Prepare
+environment) step installs and manages the matching `inferyard` CLI
+automatically. Use `inferyard` directly only when you want to drive runs from a
+terminal or develop on the CLI subproject.
 
-## Installation
+## Direct CLI setup
 
-Install the pinned version from PyPI:
+If you have already prepared the environment in Studio, `inferyard` is installed
+in the `uv` user tool directory. To install or run the CLI directly with `uv`:
 
 ```bash
-uv tool install --managed-python --python 3.15.2 inferyard==0.0.4
+uv tool install --managed-python --python 3.15.2 inferyard
 inferyard --help
 ```
 
-Or run it directly with `uvx` without a persistent install:
+Or run it with `uvx` without a persistent install:
 
 ```bash
-uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.4 --help
+uvx --isolated --managed-python --python 3.15.2 inferyard --help
 ```
 
-No source checkout or `mise` is needed. Preparing Python and dependencies on the
-first run requires network access; models and engines are provided by the
-operator (or downloaded and managed through Studio). The
-[installation guide](docs/installation.md) covers `uv` installs, Release asset
-installs, per-platform asset preparation, service binding, and offline use.
+For source development from this monorepo, run `mise exec -- uv sync --frozen`
+in `cli/`. Preparing Python and dependencies on the first run requires network
+access; models and engines are downloaded through Studio or provided by the
+operator. The [installation guide](docs/installation.md) covers `uv` setup,
+Release asset verification, per-platform asset preparation, service binding, and
+offline use.
 
-## Shortest workflow
+## Command-line workflow
 
 A standard benchmark covers `zh-core` and `zh-svg-pelican` by default; a single
 bundle runs only when you explicitly pin it (see the
@@ -50,7 +56,8 @@ inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/dev
 2. Prepare a candidate per the
    [installation guide](docs/installation.md#3-%E5%87%86%E5%A4%87%E5%80%99%E9%80%89),
    start the declared model service yourself in a separate terminal, and bind its
-   live PID and endpoint. The CLI never starts, stops, or restarts model services:
+   live PID and endpoint. Unlike Studio, the CLI never starts, stops, or restarts
+   model services:
 
 ```bash
 inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
@@ -112,17 +119,11 @@ live run without an explicit initialization step.
   [memory diagnostic contract](docs/contracts/memory-check-contract.md)). Windows
   separates working set from private commit and keeps executable groups
   conservative. It never closes applications or promises how much memory an exit
-  will release. Shipped since the `0.0.2` PyPI build (`0.0.1` did not include it).
-
-## InferYard Studio
-
-[InferYard Studio](../studio/README.md) is the native desktop app built with MyGo
-and Go. It invokes the `inferyard` CLI for environment preparation, downloads,
-engine verification, benchmark runs, and `studio.json` report projection, and
-can install the matching CLI into the `uv` user tool directory on first launch.
+  will release.
 
 ## Read more
 
+[InferYard Studio](../README.md) · [Studio guide](../studio/README.md) ·
 [Usage guide](docs/usage.md) · [CLI reference](docs/cli-surface.md) ·
 [Reports](docs/reports.md) · [Documentation map](docs/README.md) ·
 [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
@@ -135,3 +136,4 @@ original runs, model assets, and the source project's history are not
 distributed. Redacted public evidence can be produced with `public package`;
 conclusion scope follows the
 [evidence lineage rules](docs/data-contract.md#%E8%AF%81%E6%8D%AE%E8%A1%80%E7%BC%98%E4%B8%8E%E6%AF%94%E8%BE%83%E7%BB%93%E8%AE%BA).
+Licensed under [MIT](LICENSE).

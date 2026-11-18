@@ -3,7 +3,7 @@
 InferYard Studio evaluates local models through a native Go UI using
 [onevra](https://github.com/oneo-me/onevra) (MIT) and MyGo v0.7.4.
 Pages call `core.Service` and refresh through in-process events.
-The separately installed [CLI](../cli/README.md) executes operations and owns evidence.
+Its [CLI subproject](../cli/README.md) executes benchmark operations and owns evidence.
 There is no browser UI, headless mode, REST/SSE server, or generated JavaScript.
 
 ## Pages and first launch

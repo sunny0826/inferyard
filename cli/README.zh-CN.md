@@ -1,34 +1,37 @@
-# InferYard
+# InferYard CLI
 
 [English](README.md) | 中文
 
-用本地模型完成冻结题集，保存答案、耗时和资源原始证据，并投影出供
-[InferYard Studio](../studio/README.md) 桌面应用读取的单份 `studio.json` 报告。
-质量、等待时间和内存分别展示；比较条件不足时说明原因，不合成一个总分。
+`inferyard` 是 [InferYard Studio](../README.zh-CN.md) 的命令行执行子项目。Studio
+提供桌面界面并管理模型服务，通过调用 `inferyard` 执行冻结题集、保存答案与延迟/资源原始证据，
+并生成供 Studio 展示的 `studio.json` 报告。质量、等待时间和内存分别展示；比较条件不足时说明原因，
+不合成一个总分。
 
-**v0.0.4 已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.4/)，支持 `uv` / `uvx` 安装运行。**
-包名与命令均为 `inferyard`，采用 [MIT 许可证](LICENSE)。
+日常桌面测评请直接从 [InferYard Studio](../README.zh-CN.md) 与 [Studio 说明](../studio/README.md)
+开始。Studio 的 **准备环境** 会自动安装并管理同版本 `inferyard` CLI；仅在需要通过终端直接运行
+或开发 CLI 子项目时才直接使用 `inferyard` 命令。
 
-## 安装
+## 命令行独立准备
 
-从 PyPI 安装固定版本：
+如果已在 Studio 中完成环境准备，`inferyard` 已安装在 `uv` 用户工具目录中。需要在终端单独安装或运行时，
+可通过 `uv` 执行：
 
 ```bash
-uv tool install --managed-python --python 3.15.2 inferyard==0.0.4
+uv tool install --managed-python --python 3.15.2 inferyard
 inferyard --help
 ```
 
-也可直接通过 `uvx` 运行，无须持久安装：
+也可通过 `uvx` 直接运行，无须持久安装：
 
 ```bash
-uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.4 --help
+uvx --isolated --managed-python --python 3.15.2 inferyard --help
 ```
 
-无需克隆源码或安装 `mise`。首次准备 Python 和依赖需要联网；模型和引擎由操作者准备（也可通过
-Studio 下载与管理）。[安装指南](docs/installation.md)包含 `uv` 安装、Release 附件安装、
-三平台资产准备、服务绑定及离线使用。
+在本仓库源码开发时，在 `cli/` 目录下执行 `mise exec -- uv sync --frozen`。首次准备 Python
+和依赖需要联网；模型和引擎可通过 Studio 下载管理或由操作者准备。[安装指南](docs/installation.md)
+包含 `uv` 配置、Release 附件核验、三平台资产准备、服务绑定及离线使用。
 
-## 最短工作流
+## 命令行工作流
 
 常规测评默认覆盖 `zh-core` 和 `zh-svg-pelican`，仅在明确声明固定题包时单独运行指定题包（见
 [默认测评范围](docs/usage.md#默认测评范围)）。下面以固定 `zh-smoke` 为例进行快速检查。
@@ -41,7 +44,7 @@ inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/dev
 ```
 
 2. 按[安装指南](docs/installation.md#3-准备候选)生成候选配置，在独立终端自行启动其中声明的模型服务，
-   再绑定实际 PID 和端点。CLI 从不自行启动、停止或重启模型服务：
+   再绑定实际 PID 和端点。与 Studio 不同，CLI 从不自行启动、停止或重启模型服务：
 
 ```bash
 inferyard config bind --candidate bench-ops/candidate/candidate.toml --pid 1234 --endpoint http://127.0.0.1:48857 --out bench-ops/bound/service-1
@@ -86,16 +89,11 @@ inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 - **应用内存诊断：** macOS 与 Windows 提供 `inferyard memory-check`（见
   [应用内存诊断契约](docs/contracts/memory-check-contract.md)），输出进程内存与判断依据；Windows 区分
   working set 与 private commit，可执行文件分组保持保守 unknown 供用户确认用途。该命令不会关闭应用，
-  也不保证退出后释放多少内存，自 PyPI `0.0.2` 构建起包含（`0.0.1` 构建不含）。
-
-## InferYard Studio
-
-[InferYard Studio](../studio/README.md) 是基于 MyGo 与 Go 构建的原生桌面面板。它调用 `inferyard`
-CLI 完成环境准备、资源下载、引擎核验、测评运行和 `studio.json` 报告投影，并支持在首次启动时将同版本 CLI
-安装到 `uv` 用户工具目录。
+  也不保证退出后释放多少内存。
 
 ## 继续阅读
 
+[InferYard Studio](../README.zh-CN.md) · [Studio 说明](../studio/README.md) ·
 [使用指南](docs/usage.md) · [CLI 参考](docs/cli-surface.md) ·
 [报告](docs/reports.md) · [文档导航](docs/README.md) ·
 [贡献指南](CONTRIBUTING.md) · [变更记录](CHANGELOG.md)
@@ -105,3 +103,4 @@ CLI 开发命令在本仓库的 `cli/` 目录内执行；根级 `mise` tasks 已
 本仓库以 InferYard 当前源码建立全新 Git 历史；原始运行、模型资产与源项目历史不随仓库或安装包分发。
 公开证据可通过 `public package` 生成脱敏包，结论范围见
 [证据血缘规则](docs/data-contract.md#证据血缘与比较结论)。
+项目采用 [MIT 许可证](LICENSE)。

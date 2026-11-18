@@ -14,8 +14,9 @@ CPU and memory usage, then displays the report in the same window.
 
 ## What you can do in Studio
 
-- **Prepare in one step.** Set up the CLI, workspace, results folder, and model
-  folder from the task page, then choose evaluation sets and a model/engine pair.
+- **Prepare in one step.** Set up the environment, workspace, results folder,
+  and model folder from the task page, then choose evaluation sets and a
+  model/engine pair.
 - **Download or register models and engines.** Create, cancel, and retry
   downloads on the Downloads page, or register an existing local installation
   declaration on the Settings page.
@@ -48,11 +49,10 @@ CPU and memory usage, then displays the report in the same window.
    the `.tar.gz` archive on Linux (earlier releases ship as archives). On macOS,
    open the app with `open "InferYard Studio.app"`.
 2. On first launch, Studio opens the task page. Click **准备环境** (Prepare
-   environment). Studio reuses an existing `inferyard` CLI and `uv` when
-   present, or downloads a pinned standalone `uv` and installs the matching CLI
-   and managed Python into the `uv` user tool directory without changing your
-   shell configuration. It then creates or reuses the workspace, results folder,
-   and model folder.
+   environment). Studio prepares its CLI runner (reusing an existing
+   installation when present) and creates or reuses the workspace, results
+   folder, and model folder. Preparing the runtime on the first launch can take
+   a few minutes.
 3. Download a model and an engine from **下载** (Downloads), or register an
    existing local installation declaration in **设置** (Settings).
 4. Return to the task page, select the model, engine, and **测评题集**
