@@ -11,6 +11,7 @@ import (
 )
 
 func (p *previewSession) dispatch(intent previewIntent) {
+	intent.previewIntent()
 	s := p.state
 	s.failure, p.notice = nil, ""
 	switch op := intent.(type) {

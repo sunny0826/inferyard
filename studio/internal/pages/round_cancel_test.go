@@ -118,9 +118,10 @@ func TestWholeRoundCancelBoundary(t *testing.T) {
 	assertRoundCancelled(t, h, s)
 }
 
-// assertDismissSettled round-trips a sentinel callback through the UI queue
-// and drains until quiet, proving that dismissing neither mutated state
-// synchronously nor spawned an asynchronous whole-round cancel.
+// assertDismissSettled verifies that the dismiss frame left newTaskPending and
+// busy unset, made no synchronous cancel call, and scheduled zero immediate UI
+// callbacks across a sentinel round-trip; Gosched and the quiet drain do not
+// act as a barrier for arbitrary suspended background workers.
 func assertDismissSettled(t *testing.T, h *roundHarness, s *viewState) {
 	t.Helper()
 	runtime.Gosched()

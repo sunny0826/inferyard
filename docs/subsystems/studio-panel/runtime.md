@@ -40,7 +40,7 @@
    候选匹配（不匹配报 `candidate_mismatch`）→ `runBenchmarkFlow` 启动引擎并等待健康检查。新任务强制为所选题包重建候选；任一步失败即停，不自动重试。
 7. **绑定**：`runBenchmarkFlow` 在健康通过后按所选题包顺序依次执行 `config bind`（同引擎同 endpoint、显式 PID），
    全部成功才进 run 阶段，任一失败即停、显示 CLI 固定原因、不自动重试；外部服务从
-   `service discover` 清单一键绑定（显式传发现的 PID 与 endpoint），绑定失败后折叠的「高级：手动绑定」保留
+   `service discover` 清单一键绑定（显式传发现的 PID 与 endpoint），绑定失败后折叠的「高级：手动连接」保留
    `Processes` 进程枚举 + endpoint 手输兜底（`Processes` 只暴露 PID 与可执行名，argv 可能带凭据）。
    `run_missing` 与 single 的 `run --config` 在新 PID 下重新绑定；`resume --from-run` 直接传 PID 与 endpoint，不要求预绑定。duration 与未完成 batch 的 `run --plan` 仅显示阻断原因，不放宽执行白名单。
    一切绑定都生成绑定配置并经 CLI 的 PID 与启动时间身份核验；discover 不预判 bind 可行性，
