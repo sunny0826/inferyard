@@ -14,6 +14,31 @@ REASON = 'explicit short diagnostic <script>reason</script> & "approval"'
 common_fit_service = common_fixtures.common_fit_service
 
 
+def _run(fixture, plan, engine, name):
+    fixture["state"]["engine"] = engine
+    arguments = [
+        "engine-fit",
+        "run",
+        "--plan",
+        str(plan),
+        "--engine",
+        engine,
+        "--endpoint-url",
+        fixture["origin"],
+        "--server-pid",
+        "42",
+        "--served-model",
+        "synthetic",
+        "--out",
+        str(fixture["root"] / name),
+    ]
+    if engine == "lmstudio":
+        arguments.extend(
+            ["--lms-path", str(fixture["lms_path"]), "--models-root", str(fixture["models_root"])]
+        )
+    return main(arguments)
+
+
 @pytest.fixture
 def override_service(common_fit_service, monkeypatch):
     from inferyard.platforms import sensors_macos
