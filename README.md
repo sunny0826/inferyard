@@ -1,38 +1,40 @@
 # InferYard
 
+[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/inferyard-studio)
+
 English | [中文](README.zh-CN.md)
 
-**InferYard is a local LLM benchmarking suite built around the InferYard Studio
-desktop app and its command-line execution subproject.**
+**Benchmark local LLMs on your own hardware—with reproducible scores, real
+resource curves, and every piece of raw evidence preserved.**
 
-It runs frozen Chinese task sets and long-context speed tests against models
-running on your own machine, records per-case answers, latency, and system
-resource telemetry, and keeps the raw evidence on disk alongside native
-reports.
-
-[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/inferyard-studio)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+Public leaderboards tell you how a model scored on someone else's cluster, not
+how it runs on your desk. InferYard brings deterministic evaluation into a
+native desktop app (**InferYard Studio**) powered by its **CLI** execution
+subproject: test locally served models against frozen Chinese task sets and
+long-context speed workloads, watch CPU, memory, and temperature telemetry in
+real time, and inspect every answer, latency breakdown, and hardware constraint
+in one place—with zero cloud uploads, no LLM-as-a-judge, and no single magic
+number hiding real trade-offs.
 
 ## What InferYard does
 
-- **Deterministic local evaluation.** Evaluates locally served models against
-  frozen, human-reviewed task sets and scores quality with fixed rules rather
-  than another model.
-- **Separated, honest metrics.** Reports quality, request latency, throughput,
-  and CPU, memory, and available temperature telemetry separately instead of
-  collapsing them into a single composite score. Missing measurements stay
-  `null` with a stated reason, never `0`.
-- **Reproducible raw evidence.** Preserves per-case outputs, execution metadata,
-  and resource samples on disk so runs can be verified offline later and
-  projected into `studio.json` reports.
-- **Desktop management with Studio.** [InferYard Studio](studio/README.md)
-  provides a native Go/MyGo desktop interface to check device readiness,
-  download or register models and engines, manage local service lifecycles,
-  watch live progress curves, and inspect reports.
-- **CLI subproject for execution and automation.** The [CLI](cli/README.md)
-  subproject (`inferyard`) owns the benchmark runner, host locking, evidence
-  sealing, offline verification, and report projection. Studio invokes it under
-  the hood, and operators can also run it directly from a terminal.
+- **Reproducible, rule-based evaluation.** Run frozen, human-reviewed task sets
+  on your local models and grade outputs with fixed deterministic rules instead
+  of another model's opinion.
+- **No magic composite score.** Quality, latency, throughput, and memory/thermal
+  telemetry stay separate so you can see real speed-vs-accuracy trade-offs.
+  Anything that cannot be measured stays `null` with an explicit reason, never `0`.
+- **Evidence you can verify later.** Every answer, timing sample, and system
+  reading is saved and sealed on disk for offline verification, then projected
+  into clean `studio.json` reports.
+- **Native desktop workbench.** [InferYard Studio](studio/README.md) gives you
+  a Go/MyGo desktop window to check device readiness, download or register
+  models and engines, manage local service lifecycles, watch live resource
+  curves, and browse model-grouped reports.
+- **Scriptable CLI subproject.** The [CLI](cli/README.md) subproject
+  (`inferyard`) handles preflight checks, host locking, frozen execution,
+  evidence sealing, and report projection—invoked automatically by Studio or
+  directly from your terminal.
 
 ## Project structure
 
@@ -76,14 +78,11 @@ Supported engines and native verification status differ by platform. Check
   single cross-dimension ranking, schedule across multiple machines, or test
   image/audio models.
 
-## Documentation and downloads
+## Documentation
 
-Prebuilt Studio packages (`.dmg` for macOS, `.exe` installer for Windows, and
-`.tar.gz` for Linux; currently Chinese UI, unsigned) are published on
-[GitHub Releases](https://github.com/sunny0826/inferyard/releases/latest).
-
-| Topic | Document |
+| Topic | Link |
 | --- | --- |
+| Download Studio builds | [GitHub Releases](https://github.com/sunny0826/inferyard/releases/latest) |
 | Studio pages, usage, and builds | [Studio guide](studio/README.md) |
 | Report structure and metrics | [Reports](cli/docs/reports.md) |
 | CLI subproject and terminal workflow | [CLI guide](cli/README.md) |

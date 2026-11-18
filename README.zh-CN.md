@@ -1,21 +1,20 @@
 # InferYard
 
+[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/inferyard-studio)
+
 [English](README.md) | 中文
 
-**InferYard 是一套以 InferYard Studio 桌面应用为核心、配套命令行执行子项目的本地大模型测评工具。**
+**在自己的硬件上测本地大模型：结果可复现、资源曲线实时可见、每份原始证据都留得住。**
 
-它使用冻结的中文测评题集与长上下文速度测试，在本机运行的模型上执行测评，记录逐题答案、请求耗时与系统资源采样，并将原始证据保留在本地磁盘，生成可在应用内查看的原生报告。
-
-[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/inferyard-studio)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+公开榜单只能反映模型在别人集群上的表现，说明不了某款量化模型在你手头的电脑和推理引擎上到底答得准不准、跑得快不快、吃多少内存。InferYard 将确定性测评放进原生桌面应用（**InferYard Studio**），由配套 **CLI** 执行子项目驱动：用人工审核并冻结的中文题集和长上下文速度测试跑本地服务，实时记录 CPU、内存和可用温度曲线，把每道题的答案、耗时和硬件口径完整留在本地磁盘，生成清晰直观的原生报告——没有云端上传，不用模型当裁判，也不用单一总分掩盖真实取舍。
 
 ## 项目核心能力
 
-- **确定性本地测评。** 使用人工审核后冻结的题集测试本地模型服务，按固定规则评分，不依赖其他模型充当裁判。
-- **分维度可信指标。** 将回答质量、请求延迟、吞吐以及 CPU、内存和可用温度传感器的采样分开展示，不合成单一“总分”；无法测量的指标保持为 `null` 并标明原因，绝不记为 `0`。
-- **可核验的原始证据。** 在本机持久化保存逐题输出、执行元数据与资源采样，支持离线核验，并投影出供 Studio 展示的 `studio.json` 报告。
-- **Studio 桌面端管理。** [InferYard Studio](studio/README.md) 基于 Go 与 MyGo 构建原生桌面界面，提供设备硬件检查、模型与引擎下载或本机安装登记、模型服务生命周期管理、实时进度与资源曲线展示以及多维度报告阅读。
-- **CLI 执行子项目。** [CLI 子项目](cli/README.zh-CN.md)（`inferyard`）负责设备预检、冻结执行、主机互斥锁、证据封存、离线核验与报告投影。Studio 在底层调用它完成测评，操作者也可在终端中独立运行。
+- **结果可复现，不靠模型当裁判。** 用冻结且经过人工审核的题集测试本地模型，全部按固定规则评分，避免裁判模型波动带来的不确定性。
+- **不做虚假“总分”，直面真实取舍。** 质量、请求延迟、吞吐以及 CPU、内存和可用温度采集分维度独立呈现；无法测量的指标保持为 `null` 并标明原因，绝不补 `0`。
+- **完整保留原始证据。** 逐题答案、执行元数据与资源采样均落盘封存，服务关闭后依然可以离线复核，并投影出供 Studio 展示的 `studio.json` 报告。
+- **原生桌面工作台。** [InferYard Studio](studio/README.md) 基于 Go 与 MyGo 构建原生桌面界面，一站式完成设备硬件检查、模型与引擎下载或本机登记、服务启停管理、实时采样曲线监控与按模型汇总的报告浏览。
+- **可独立调用的 CLI 子项目。** [CLI 子项目](cli/README.zh-CN.md)（`inferyard`）负责设备预检、主机互斥锁、冻结执行、证据封存、离线核验与报告投影，既在 Studio 底层自动运转，也支持终端与脚本直接调用。
 
 ## 项目结构
 
@@ -52,12 +51,11 @@
 - **受控的服务所有权。** Studio 仅启动并停止自己拉起的本机模型服务（从不自动重启），也支持在 PID 与启动时间核验后绑定你手动启动的本机服务。
 - **明确的边界。** InferYard 不用模型当裁判，不把质量、速度和内存合成单一排名，不做多机调度，也不测试图像或音频模型。
 
-## 获取与文档
+## 文档
 
-预构建的 Studio 安装包（macOS `.dmg`、Windows `.exe` 安装器与 Linux `.tar.gz` 压缩包；界面目前为中文，尚未签名公证）发布在 [GitHub Releases](https://github.com/sunny0826/inferyard/releases/latest)。
-
-| 主题 | 文档 |
+| 主题 | 链接 |
 | --- | --- |
+| 下载 Studio 安装包 | [GitHub Releases](https://github.com/sunny0826/inferyard/releases/latest) |
 | Studio 各页面说明与构建方式 | [Studio 说明](studio/README.md) |
 | 报告结构与指标口径 | [报告](cli/docs/reports.md) |
 | CLI 子项目与命令行用法 | [CLI 说明](cli/README.zh-CN.md) |
