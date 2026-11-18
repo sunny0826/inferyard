@@ -6,6 +6,7 @@ import (
 	"inferyard/studio/internal/core"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func aggregateStatus(runs []core.RunSummary) string {
@@ -196,11 +197,17 @@ func historyModel(r core.RunSummary) string {
 	return *r.ModelName
 }
 
+// historyStarted formats ISO-8601/RFC3339 timestamps as compact UTC seconds so
+// the start time fits the 170 DIP table cell; the raw value stays in detail.
 func historyStarted(r core.RunSummary) string {
-	if emptyText(r.StartedAt) == "" {
+	raw := emptyText(r.StartedAt)
+	if raw == "" {
 		return "未记录"
 	}
-	return *r.StartedAt
+	if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return parsed.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	return raw
 }
 
 // historyIdentity shows the identifiers that no longer occupy table columns.

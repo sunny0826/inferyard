@@ -19,25 +19,41 @@ func naturalWidth(t *testing.T, s string) float32 {
 }
 
 // At the window size the native suite uses, every history column shows in full
-// inside the table viewport: no header or cell is cut at the right edge, so the
-// start time reads without scrolling sideways.
+// inside the table viewport: a CLI microsecond timestamp renders as compact UTC
+// in the cell without clipping, while the selected row's raw detail keeps the
+// original bytes.
 func TestHistoryTableFitsDefaultWindow(t *testing.T) {
 	s := testState()
 	s.selected = "reports"
-	run := core.RunSummary{RunId: "r", Path: "/r", ModelName: ptr("model · SmolLM2-135M-Instruct-Q4_K_M.gguf"), Bundle: ptr("zh-svg-pelican"), Status: "partial", StartedAt: ptr("2026-10-17T00:00:13Z"), Score: &core.RunScore{Passed: 120, Valid: 120, Rate: ptr(1.0)}}
+	rawStarted := "2026-11-18T00:00:13.123456+00:00"
+	run := core.RunSummary{RunId: "run-1", Path: "/r", ModelName: ptr("model · SmolLM2-135M-Instruct-Q4_K_M.gguf"), Bundle: ptr("zh-core"), Status: "partial", StartedAt: &rawStarted, Score: &core.RunScore{Passed: 120, Valid: 120, Rate: ptr(1.0)}}
 	s.history.StandaloneRuns = []core.RunSummary{run}
 	tt := ui.NewTester(s.view, 1024, 681)
 	viewport, ok := tt.Find("运行历史表")
 	if !ok {
 		t.Fatal("history table missing", tt.Texts())
 	}
-	for _, text := range []string{"模型", "测评题集", "状态", "评分", "开始时间", "zh-svg-pelican", "不完整", runScore(run), *run.StartedAt} {
+	startedCell := historyStarted(run)
+	if startedCell != "2026-11-18T00:00:13Z" {
+		t.Errorf("historyStarted(%q) = %q, want %q", rawStarted, startedCell, "2026-11-18T00:00:13Z")
+	}
+	for _, text := range []string{"模型", "测评题集", "状态", "评分", "开始时间", "zh-core", "不完整", runScore(run), startedCell} {
 		got, ok := tt.Find(text)
 		if !ok {
-			t.Fatalf("%q missing from the history table", text)
+			t.Fatalf("%q missing from the history table: %v", text, tt.Texts())
 		}
 		if want := naturalWidth(t, text); got.W < want-0.5 || got.X+got.W > viewport.X+viewport.W-0.5 {
 			t.Errorf("%q is cut: shows %.1f of %.1f DIP, ends at %.1f, viewport ends at %.1f", text, got.W, want, got.X+got.W, viewport.X+viewport.W)
 		}
+	}
+	assertRawHistoryTimestamp(t, tt, &s.history.StandaloneRuns[0], rawStarted)
+}
+
+func assertRawHistoryTimestamp(t *testing.T, tt *ui.Tester, run *core.RunSummary, want string) {
+	t.Helper()
+	click(t, tt, run.RunId)
+	click(t, tt, "运行原始详情")
+	if emptyText(run.StartedAt) != want || !tt.HasText("开始："+want) {
+		t.Fatalf("selected raw detail lost original StartedAt %q: %v", want, tt.Texts())
 	}
 }
