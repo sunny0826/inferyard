@@ -39,8 +39,8 @@
 - Studio CI 已有 `studio-check.yml`，macOS/Windows 执行模拟引擎边界 e2e（含编译及 `go test` 默认检查）；
   单测暂仅在 macOS 执行，Windows 单测的路径、权限位和时序假设仍待清理。
   v0.0.4 起 `studio-release.yml` 已能生成三平台原生候选与 macOS production package smoke；
-  本地脚本和 runner 检查已实现，正式发布仍须在同一最终 SHA 实跑 Actions。
-  系统通知及正式分发签名/公证仍需分别验收。
+  v0.0.5 已在合并提交 `4cd8587` 实跑（run `44281981002`），macOS DMG 挂载冒烟与 Windows 安装/卸载
+  均通过。系统通知及正式分发签名/公证仍需分别验收；Windows/Linux 原生 UI 仍未覆盖。
 - macOS 系统通知权限：T10 验收唯一未通过项为通知实际到达；系统拦截通知权限弹窗，
   非产品缺陷。随仓库迁移继续挂账，待系统设置授权或后续签名后复验。
 
@@ -51,6 +51,10 @@
 ## InferYard 首次公开准备
 
 正文见[InferYard 首次公开准备](backlog/release.md#inferyard-首次公开准备)。
+
+### v0.0.5 发布记录
+
+正文见[v0.0.5 发布记录](backlog/release.md#v005-发布记录)。
 
 ### v0.0.2 发布记录
 

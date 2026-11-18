@@ -46,6 +46,11 @@ Windows 的 live 开销、实时扩展和 prepare-length 等入口仍有平台�
 - `0.0.2` 的手动 [package-check 运行](https://github.com/sunny0826/inferyard/actions/runs/38215582766)
   完成三平台安装检查并生成候选；publish workflow 核验同一字节后发布。安装检查仍不构成原生模型
   准备或性能资格。
+- `0.0.5` 的 [package-check](https://github.com/sunny0826/inferyard/actions/runs/44281969167)、
+  [Studio release candidate](https://github.com/sunny0826/inferyard/actions/runs/44281981002) 与
+  [publish](https://github.com/sunny0826/inferyard/actions/runs/44285309031) 在同一源提交
+  `4cd8587` 完成三平台安装检查、原生打包、草稿逐字节复验和 PyPI 安装 smoke；Linux 真机真实模型、
+  Windows/Linux 原生 UI、签名/公证和长上下文真实模型仍未验证。
 - 同一 CI 在一次性原生 runner 上验证固定路径的自动初始化、合成请求成功、进程中断后 dirty 持久化及拒绝。
   没有使用真实模型。
 - Windows 的 ACL/reparse/多账户/卷变化及原生 runtime prepare/create 仍待专项验证。

@@ -13,6 +13,20 @@
 `f390507672ff60b191550e14c0da9d687a0448b607a5e1d789787c5cdf8624b8`。
 后续候选仍须从集成后的干净提交手动生成，不能把 PR 运行改标为发布来源。
 
+### v0.0.5 发布记录
+
+2026-11-18 发布 `v0.0.5`。版本冻结 PR #104（合并提交
+`4cd85875ffe042a8b8d3352cd03b2f0170ef20fe`，CLI 与 Studio 版本源、候选冻结校验和两个发布
+workflow 同步升级）。同一 SHA 手动触发三平台检查：package-check
+`44281969167`（`installed_safe_checks.v4` 三平台 passed，候选 manifest SHA-256
+`1750e47e…ee0be`）、Studio release candidate `44281981002`（studio-release-manifest
+SHA-256 `a90000677c1ae4ea66f7c89e1e72828e8a3f20eec67d09a302a2aa10e6cd0dcb`）、Studio
+checks `44281975286` 与 Model e2e `44281990202`。publish workflow verify-only
+`44284364888` 通过后，`44284795905` 创建九附件草稿并逐字节复验，`44285309031` 以
+`destination=pypi` 发布 `0.0.5` 并完成 Linux/Windows/macOS 安装 smoke；草稿随后补写说明并
+公开，`v0.0.5` tag 指向上述源提交。macOS DMG 与 Windows 安装版 EXE 取代旧归档格式，
+安装检查仍不构成原生模型准备或严格性能资格。
+
 ### v0.0.2 发布记录
 
 2026-10-12 发布 `v0.0.2`。版本冻结 PR #37（源提交 `d3761bb`，冻结版本校验、publish workflow
