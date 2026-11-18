@@ -78,7 +78,7 @@ func TestPreviewCompleteWorkflowWithoutSceneSelector(t *testing.T) {
 		t.Fatal("generated report does not contain both runs", err)
 	}
 	for _, run := range index.Runs {
-		if run.Model != "Preview-Small.gguf" || len(run.Requests) != 120 || run.Source.RunID == "preview-run" {
+		if run.Model != "Preview-Small.gguf" || len(run.Requests) != int(previewBundleTotal(run.Facets.BundleLabel)) || run.Source.RunID == "preview-run" {
 			t.Fatal("generated report did not use the actual simulated run", run.Model, run.Source.RunID)
 		}
 	}

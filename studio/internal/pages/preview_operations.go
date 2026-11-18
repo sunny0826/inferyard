@@ -4,7 +4,6 @@ package pages
 
 import (
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"time"
 
@@ -305,7 +304,7 @@ func (p *previewSession) activateScene() {
 		detail.Task = *task
 		detail.Progress = s.runProgress
 		for i := int64(0); i < detail.Progress.Done; i++ {
-			detail.Progress.Cases = append(detail.Progress.Cases, core.CaseProgress{CaseId: fmt.Sprintf("preview-case-%03d", i+1), State: "completed", Category: previewValue("模拟分类"), QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)})
+			detail.Progress.Cases = append(detail.Progress.Cases, previewSimulatedCase(emptyText(task.Bundle), i+1))
 		}
 		p.details[task.TaskId] = detail
 		if s.detailID == task.TaskId {

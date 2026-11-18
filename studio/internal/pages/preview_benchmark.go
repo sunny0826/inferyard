@@ -94,7 +94,8 @@ func (p *previewSession) startRun(bundleIndex int, op previewBenchmark, ids []st
 			break
 		}
 	}
-	s.runProgress = &core.RunProgress{Phase: previewValue("formal"), Total: previewValue(int64(120)), CurrentCaseId: previewValue("preview-case-001")}
+	total := previewBundleTotal(bundle)
+	s.runProgress = &core.RunProgress{Phase: previewValue("formal"), Total: previewValue(total), CurrentCaseId: previewValue(previewSimulatedCase(bundle, 1).CaseId)}
 	p.details[id] = &core.RunTaskDetail{Task: task, Progress: s.runProgress}
 	s.history.StandaloneRuns = append(s.history.StandaloneRuns, core.RunSummary{RunId: id, Path: path, ModelName: previewValue(op.model), Engine: previewValue(op.engine), Bundle: previewValue(bundle), Status: "partial", StartedAt: task.StartedAt})
 	for i := range s.progress.Bundles {
@@ -115,14 +116,15 @@ func (p *previewSession) tickRun(id string, bundleIndex int, op previewBenchmark
 		if detail == nil || detail.Task.State != "running" {
 			return
 		}
+		bundle := emptyText(detail.Task.Bundle)
 		progress := detail.Progress
 		end := min(progress.Done+10, *progress.Total)
 		for i := progress.Done; i < end; i++ {
-			progress.Cases = append(progress.Cases, core.CaseProgress{CaseId: fmt.Sprintf("preview-case-%03d", i+1), State: "completed", Category: previewValue("模拟分类"), QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)})
+			progress.Cases = append(progress.Cases, previewSimulatedCase(bundle, i+1))
 		}
 		progress.Done, progress.LastSeq = end, end
 		p.scoreHistoryRun(id)
-		progress.CurrentCaseId = previewValue(fmt.Sprintf("preview-case-%03d", min(end+1, *progress.Total)))
+		progress.CurrentCaseId = previewValue(previewSimulatedCase(bundle, min(end+1, *progress.Total)).CaseId)
 		detail.Resources = append(detail.Resources, previewResourceSamples(int64(len(detail.Resources)+1), p.timestamp(), int64(10<<30)-end*(1<<20), int64(2<<30)+end*(1<<20), 120+float64(end%40))...)
 		if end < *progress.Total {
 			p.tickRun(id, bundleIndex, op, ids)
@@ -206,9 +208,46 @@ func (p *previewSession) scoreHistoryRun(id string) {
 	run.Score = &score
 }
 
+func previewBundleTotal(bundle string) int64 {
+	if bundle == inferyard.DefaultBundlePelican {
+		return 1
+	}
+	return 120
+}
+
+func previewSimulatedCase(bundle string, seq int64) core.CaseProgress {
+	if bundle == inferyard.DefaultBundlePelican {
+		return core.CaseProgress{
+			CaseId:       fmt.Sprintf("svg-pelican-%02d", seq),
+			State:        "completed",
+			Category:     previewValue("svg"),
+			QualityState: previewValue("not_applicable"),
+			DurationMs:   previewValue(1240.0),
+		}
+	}
+	return core.CaseProgress{
+		CaseId:       fmt.Sprintf("preview-case-%03d", seq),
+		State:        "completed",
+		Category:     previewValue("模拟分类"),
+		QualityState: previewValue("pass"),
+		DurationMs:   previewValue(1240.0),
+	}
+}
+
+func previewQualityExempt(c core.CaseProgress) bool {
+	category := emptyText(c.Category)
+	if category != "" {
+		return category == "svg" || category == "performance"
+	}
+	return emptyText(c.QualityState) == "not_applicable"
+}
+
 func tallyPreviewCases(cases []core.CaseProgress) core.RunScore {
 	score := core.RunScore{}
 	for _, c := range cases {
+		if previewQualityExempt(c) {
+			continue
+		}
 		switch c.State {
 		case "failed":
 			score.Valid++

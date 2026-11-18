@@ -6,12 +6,15 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/egoist/mygo/ui"
+	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
-// The history table reads a simulated run's score the way it reads a real one:
-// executed cases count while the run is still going, with the rate withheld,
-// and a finished run shows every case passed with its rate. A run with a
-// generated report must never read as unscored.
+// The history table and report cards read simulated runs by the CLI's quality
+// rules: zh-core counts executed cases and earns a pass rate on completion,
+// while svg-only zh-svg-pelican stays out of the quality denominator.
 func TestPreviewHistoryScoresSimulatedRuns(t *testing.T) {
 	p, tt := preparePreview(t)
 	p.state.model = "Preview-Small.gguf"
@@ -27,14 +30,73 @@ func TestPreviewHistoryScoresSimulatedRuns(t *testing.T) {
 	if len(p.state.historyRuns()) != 2 || p.state.task.report == "" {
 		t.Fatal("simulated workflow did not finish both scopes", len(p.state.historyRuns()))
 	}
-	scored := 0
-	for _, text := range tt.Texts() {
-		if text == "120/120 · 100.0%" {
-			scored++
+	assertSimulatedHistoryScores(t, p.state.historyRuns(), tt)
+	assertSimulatedReportQuality(t, p, tt)
+}
+
+func assertSimulatedHistoryScores(t *testing.T, runs []core.RunSummary, tt *ui.Tester) {
+	t.Helper()
+	for _, run := range runs {
+		switch emptyText(run.Bundle) {
+		case inferyard.DefaultBundleCore:
+			if run.Score == nil || runScore(run) != "120/120 · 100.0%" {
+				t.Errorf("zh-core history score = %q, want 120/120 · 100.0%%", runScore(run))
+			}
+		case inferyard.DefaultBundlePelican:
+			if run.Score != nil || runScore(run) != termNoScore {
+				t.Errorf("zh-svg-pelican history score = %+v (%q), want nil (%q)", run.Score, runScore(run), termNoScore)
+			}
 		}
 	}
-	if scored != 2 || tt.HasText(termNoScore) {
-		t.Fatal("finished scopes must show their scores", tt.Texts())
+	if !tt.HasText("120/120 · 100.0%") || !tt.HasText(termNoScore) {
+		t.Errorf("reports page did not show zh-core rate and pelican %q: %v", termNoScore, tt.Texts())
+	}
+}
+
+func assertSimulatedReportQuality(t *testing.T, p *previewSession, tt *ui.Tester) {
+	t.Helper()
+	for _, want := range []string{
+		"Preview-Small.gguf · zh-core · 答案通过 120 / 120",
+		"Preview-Small.gguf · zh-svg-pelican · 答案通过 0 / 0（质量结论不完整）",
+	} {
+		if !tt.HasText(want) {
+			t.Errorf("report card missing %q: %v", want, tt.Texts())
+		}
+	}
+	index, err := p.report(p.state.task.report)
+	if err != nil || len(index.Runs) != 2 {
+		t.Fatalf("generated report missing both runs: %v", err)
+	}
+	pelican := index.Runs[1]
+	if emptyText(pelican.Dashboard.Quality.Reason) != "quality_incomplete_or_not_applicable" || pelican.Dashboard.Quality.Complete || len(pelican.Dashboard.Categories) != 0 {
+		t.Errorf("pelican dashboard quality = %+v categories=%v", pelican.Dashboard.Quality, pelican.Dashboard.Categories)
+	}
+	if *pelican.Summary.CompletionRate.Numerator != 1 || *pelican.Summary.CompletionRate.Denominator != 1 {
+		t.Errorf("pelican completion rate = %s, want 1 / 1", reportRate(pelican.Summary.CompletionRate))
+	}
+}
+
+// Quality-exempt categories (svg, performance) and untyped not_applicable
+// verdicts stay out of the preview quality denominator whether completed or failed.
+func TestTallyPreviewCasesSkipsQualityExemptCategories(t *testing.T) {
+	for _, category := range []string{"svg", "performance"} {
+		t.Run(category, func(t *testing.T) {
+			got := tallyPreviewCases([]core.CaseProgress{
+				{CaseId: "c1", State: "completed", Category: previewValue(category), QualityState: previewValue("not_applicable")},
+				{CaseId: "c2", State: "failed", Category: previewValue(category)},
+			})
+			if got != (core.RunScore{}) {
+				t.Fatalf("%s cases entered quality denominator: %+v", category, got)
+			}
+		})
+	}
+	got := tallyPreviewCases([]core.CaseProgress{
+		{CaseId: "legacy", State: "completed", QualityState: previewValue("not_applicable")},
+		{CaseId: "qa-pass", State: "completed", Category: previewValue("qa"), QualityState: previewValue("pass")},
+		{CaseId: "qa-fail", State: "failed", Category: previewValue("qa")},
+	})
+	if got.Valid != 2 || got.Passed != 1 || got.Failed != 1 {
+		t.Fatalf("mixed cases tallied as %+v, want Valid=2 Passed=1 Failed=1", got)
 	}
 }
 
