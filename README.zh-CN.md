@@ -1,86 +1,66 @@
 # InferYard
 
+[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/inferyard-studio)
+
 [English](README.md) | 中文
 
-**InferYard Studio 是一款桌面应用，用来测评你在自己电脑上运行的模型，并保留完整证据。**
+**在自己的硬件上测本地大模型：结果可复现、资源曲线实时可见、每份原始证据都留得住。**
 
-选好模型和引擎，点击运行，Studio 就会用一组固定题目测试模型，记录每道题的答案、耗时以及
-CPU 和内存占用，并在同一个窗口里以报告形式展示结果。
+公开榜单只能反映模型在别人集群上的表现，说明不了某款量化模型在你手头的电脑和推理引擎上到底答得准不准、跑得快不快、吃多少内存。InferYard 将确定性测评放进原生桌面应用（**InferYard Studio**），由配套 **CLI** 执行子项目驱动：用人工审核并冻结的中文题集和长上下文速度测试跑本地服务，实时记录 CPU、内存和可用温度曲线，把每道题的答案、耗时和硬件口径完整留在本地磁盘，生成清晰直观的原生报告——没有云端上传，不用模型当裁判，也不用单一总分掩盖真实取舍。
 
-[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/inferyard-studio)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+## 项目核心能力
 
-## Studio 能做什么
+- **结果可复现，不靠模型当裁判。** 用冻结且经过人工审核的题集测试本地模型，全部按固定规则评分，避免裁判模型波动带来的不确定性。
+- **不做虚假“总分”，直面真实取舍。** 质量、请求延迟、吞吐以及 CPU、内存和可用温度采集分维度独立呈现；无法测量的指标保持为 `null` 并标明原因，绝不补 `0`。
+- **完整保留原始证据。** 逐题答案、执行元数据与资源采样均落盘封存，服务关闭后依然可以离线复核，并投影出供 Studio 展示的 `studio.json` 报告。
+- **原生桌面工作台。** [InferYard Studio](studio/README.md) 基于 Go 与 MyGo 构建原生桌面界面，一站式完成设备硬件检查、模型与引擎下载或本机登记、服务启停管理、实时采样曲线监控与按模型汇总的报告浏览。
+- **可独立调用的 CLI 子项目。** [CLI 子项目](cli/README.zh-CN.md)（`inferyard`）负责设备预检、主机互斥锁、冻结执行、证据封存、离线核验与报告投影，既在 Studio 底层自动运转，也支持终端与脚本直接调用。
 
-- **一步准备。** 在任务页准备工作区，选择题包和模型/引擎组合。
-- **下载模型和引擎。** 在下载页新建、取消和重试下载。
-- **由 Studio 管理引擎。** Studio 启动所需的模型服务，并在 Studio 关闭时停止它；
-  不会自行重启服务。
-- **实时查看运行。** 测评进行时查看逐题进度和 CPU/内存曲线。
-- **阅读报告。** 不离开应用即可浏览历史任务并打开每份报告；包含多次运行的报告可切换查看。
-- **检查设备。** 查看硬件快照，无法测量的数值会显示原因。
+## 项目结构
 
-## 为什么用 InferYard
-
-- **本地优先。** 模型在你自己的电脑上运行，运行记录和报告保存在本机磁盘。InferYard
-  没有账号体系，也不会把结果提交到任何地方。
-- **数字可信。** 质量、延迟和内存分开展示，不合成一个"总分"。缺失的测量显示为缺失，
-  不会记为 0。
-- **可重复。** 题目集合是冻结的，按固定规则评分，不用另一个模型当裁判。每次运行都保留
-  原始证据，之后可以再次核验。
-
-## 快速开始
-
-1. 从[最新 Release](https://github.com/sunny0826/inferyard/releases/latest)
-   下载适合你系统的 Studio 并解压。macOS 上执行 `open "InferYard Studio.app"` 打开。
-2. 首次启动时 Studio 会打开任务页。点击 **准备环境**，Studio 会安装所需的 InferYard CLI
-   （缺少 uv 时一并下载），并创建结果目录、模型目录和工作区。首次准备需要下载 Python
-   运行时，可能需要几分钟。
-3. 在 **下载** 中获取模型和引擎。
-4. 在任务页选择模型、引擎和测评题集，点击 **开始测评**。
-5. 在 **报告** 中打开结果。
-
-Studio 界面目前为中文。各页面说明见 [Studio 说明](studio/README.md)。
-
-> Studio 构建尚未签名或公证，首次打开时系统可能会弹出警告。
+| 组件 | 职责 | 技术栈 |
+| --- | --- | --- |
+| [InferYard Studio](studio/README.md)（`studio/`） | 原生桌面应用，负责测评配置、资源下载与本机引擎管理、过程监控及报告浏览 | Go、MyGo、onevra |
+| [InferYard CLI](cli/README.zh-CN.md)（`cli/`） | Studio 调用的命令行执行与证据子项目（也支持终端直调），负责预检、冻结运行、证据封存核验与 `studio.json` 生成 | Python |
 
 ## 现有题包
 
 | 题包 | 内容 |
 | --- | --- |
 | `zh-core` | 120 道中文题：指令遵循、信息抽取、依据问答、数学与逻辑、分类和结构化输出，各 20 道 |
-| `zh-svg-pelican` | 1 道 SVG 绘图题，只展示结果，不评分 |
+| `zh-svg-pelican` | 1 道 SVG 绘图题，仅展示生成结果，不评质量分 |
 | `zh-smoke` | 40 道题（指令遵循和信息抽取），用于快速检查 |
-| `zh-context-speed` | 3 段长提示词（64K / 128K / 256K），测量长上下文速度，不评质量。测评类型选择 **长上下文速度** |
+| `zh-context-speed` | 3 段长提示词（64K / 128K / 256K），测量长上下文预填充与解码速度，不评质量分 |
 
 常规测评同时运行 `zh-core` 和 `zh-svg-pelican`。每个题包发布前都经过人工审核，详见[题包说明](cli/bundles/README.md)。
 
 ## 支持平台
 
-| 平台 | 系统要求 |
-| --- | --- |
-| macOS（Apple Silicon） | macOS 12+ |
-| Windows x64 | Windows 10/11 |
-| Linux x64 | GTK 3 和 OpenGL |
+| 平台 | Studio 界面后端 | 测评与采集范围 |
+| --- | --- | --- |
+| macOS（Apple Silicon，12+） | Metal | 单次与批量运行、CPU/Metal 核验、CPU/RSS/换页及 AppleSMC 温度采集 |
+| Windows x64（10/11） | Direct3D 11（支持 WARP 回退） | Prism/KVMem/NInfer 串行文本运行、原生身份与内存采集 |
+| Linux x64 | GTK 3 与 OpenGL（支持 CPU 渲染回退） | 单次与批量运行、CPU/内存采集 |
 
 各平台支持的引擎和验证状态不同。依赖测评结果之前，请查看[平台状态](cli/docs/platforms.md)、
 [macOS](cli/MACOS.md) 和 [Windows](cli/WINDOWS.md)。
 
-## InferYard 不做什么
+## 设计原则与边界
 
-- 不用模型当裁判。
-- 不把质量、速度和内存合成一个排名。
-- 不上传结果，也不提供社区账号。
-- 不做多机调度，不测试图像或音频模型。
+- **本地优先。** 模型、运行记录与报告均保存在本机磁盘。InferYard 没有账号体系，也不会向外部上传任何结果。
+- **受控的服务所有权。** Studio 仅启动并停止自己拉起的本机模型服务（从不自动重启），也支持在 PID 与启动时间核验后绑定你手动启动的本机服务。
+- **明确的边界。** InferYard 不用模型当裁判，不把质量、速度和内存合成单一排名，不做多机调度，也不测试图像或音频模型。
 
 ## 文档
 
-| 我想… | 阅读 |
+| 主题 | 链接 |
 | --- | --- |
-| 了解 Studio 各页面 | [Studio 说明](studio/README.md) |
-| 看懂报告 | [报告](cli/docs/reports.md) |
-| 用命令行测评 | [CLI 说明](cli/README.zh-CN.md) |
-| 浏览全部文档 | [文档地图](cli/docs/README.md) |
+| 下载 Studio 安装包 | [GitHub Releases](https://github.com/sunny0826/inferyard/releases/latest) |
+| Studio 各页面说明与构建方式 | [Studio 说明](studio/README.md) |
+| 报告结构与指标口径 | [报告](cli/docs/reports.md) |
+| CLI 子项目与命令行用法 | [CLI 说明](cli/README.zh-CN.md) |
+| 本地源码开发与调试命令 | [本地开发命令](tools/README.md) |
+| 全部文档索引 | [文档地图](cli/docs/README.md) |
 
 ## 许可证
 

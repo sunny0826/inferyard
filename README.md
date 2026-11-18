@@ -1,100 +1,93 @@
 # InferYard
 
+[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/inferyard-studio)
+
 English | [中文](README.zh-CN.md)
 
-**InferYard Studio is a desktop app for benchmarking the models you run on your
-own machine — and keeping the evidence.**
+**Benchmark local LLMs on your own hardware—with reproducible scores, real
+resource curves, and every piece of raw evidence preserved.**
 
-Pick a model and an engine, click run, and Studio tests the model with a fixed set
-of tasks. It records every answer, how long each one took and how much CPU and
-memory were used, and shows the results as a report in the same window.
+Public leaderboards tell you how a model scored on someone else's cluster, not
+how it runs on your desk. InferYard brings deterministic evaluation into a
+native desktop app (**InferYard Studio**) powered by its **CLI** execution
+subproject: test locally served models against frozen Chinese task sets and
+long-context speed workloads, watch CPU, memory, and temperature telemetry in
+real time, and inspect every answer, latency breakdown, and hardware constraint
+in one place—with zero cloud uploads, no LLM-as-a-judge, and no single magic
+number hiding real trade-offs.
 
-[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/inferyard-studio)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+## What InferYard does
 
-## What you can do in Studio
+- **Reproducible, rule-based evaluation.** Run frozen, human-reviewed task sets
+  on your local models and grade outputs with fixed deterministic rules instead
+  of another model's opinion.
+- **No magic composite score.** Quality, latency, throughput, and memory/thermal
+  telemetry stay separate so you can see real speed-vs-accuracy trade-offs.
+  Anything that cannot be measured stays `null` with an explicit reason, never `0`.
+- **Evidence you can verify later.** Every answer, timing sample, and system
+  reading is saved and sealed on disk for offline verification, then projected
+  into clean `studio.json` reports.
+- **Native desktop workbench.** [InferYard Studio](studio/README.md) gives you
+  a Go/MyGo desktop window to check device readiness, download or register
+  models and engines, manage local service lifecycles, watch live resource
+  curves, and browse model-grouped reports.
+- **Scriptable CLI subproject.** The [CLI](cli/README.md) subproject
+  (`inferyard`) handles preflight checks, host locking, frozen execution,
+  evidence sealing, and report projection—invoked automatically by Studio or
+  directly from your terminal.
 
-- **Prepare in one step.** Set up the workspace, choose task sets and a
-  model/engine pair from the task page.
-- **Download models and engines.** Create, cancel and retry downloads from the
-  Downloads page.
-- **Let Studio run the engine.** Studio starts the model service it needs and
-  stops it when Studio shuts down. It never restarts a service on its own.
-- **Watch runs live.** Follow case progress and CPU/memory curves while the
-  benchmark runs.
-- **Read reports.** Browse past tasks and open each report without leaving the
-  app. A report with several runs lets you switch between them.
-- **Check your device.** See a hardware snapshot, with a reason shown for every
-  value that could not be measured.
+## Project structure
 
-## Why InferYard
-
-- **Local first.** Models run on your own machine, and runs and reports stay
-  on your disk. InferYard has no accounts and does not submit results anywhere.
-- **Honest numbers.** Quality, latency and memory are shown separately. There is
-  no single "magic score". A missing measurement is shown as missing, never as 0.
-- **Repeatable.** Task sets are frozen and scored by fixed rules, not by another
-  model. Each run keeps its raw evidence, so you can check it again later.
-
-## Quick start
-
-1. Download Studio for your system from the
-   [latest release](https://github.com/sunny0826/inferyard/releases/latest)
-   and unpack it. On macOS, open it with `open "InferYard Studio.app"`.
-2. On first launch Studio opens the task page. Click **准备环境** (Prepare
-   environment). Studio installs the InferYard CLI it needs (and uv, if it is
-   missing) and creates the results folder, model folder and workspace. The
-   first run downloads a Python runtime and can take a few minutes.
-3. Get a model and an engine from **下载** (Downloads).
-4. Pick the model, engine and task sets on the task page, then click
-   **开始测评** (Start benchmark).
-5. Open the result from **报告** (Reports).
-
-The Studio interface is currently in Chinese. The [Studio guide](studio/README.md)
-describes every page.
-
-> Studio builds are not signed or notarized yet. Your system may warn you the
-> first time you open it.
+| Component | Role | Language / Stack |
+| --- | --- | --- |
+| [InferYard Studio](studio/README.md) (`studio/`) | Native desktop app for configuring runs, managing downloads and local engines, monitoring execution, and viewing reports | Go, MyGo, onevra |
+| [InferYard CLI](cli/README.md) (`cli/`) | Execution and evidence subproject invoked by Studio (or directly via terminal) for preflight checks, frozen runs, verification, and `studio.json` reports | Python |
 
 ## Available task sets
 
 | Task set | What it contains |
 | --- | --- |
-| `zh-core` | 120 Chinese tasks: instruction following, extraction, grounded Q&A, math and logic, classification and structured output (20 each) |
-| `zh-svg-pelican` | 1 SVG drawing task. The result is shown, not scored |
+| `zh-core` | 120 Chinese tasks: instruction following, extraction, grounded Q&A, math and logic, classification, and structured output (20 each) |
+| `zh-svg-pelican` | 1 SVG drawing task. The generated result is shown without a quality score |
 | `zh-smoke` | 40 tasks (instruction following and extraction) for a quick check |
-| `zh-context-speed` | 3 long prompts (64K / 128K / 256K) that measure long-context speed, without a quality score. Choose **长上下文速度** (Long-context speed) as the test type |
+| `zh-context-speed` | 3 long prompts (64K / 128K / 256K) that measure prefill and decode speed without a quality score |
 
-A standard benchmark runs `zh-core` and `zh-svg-pelican` together. Each task set
-is reviewed by a person before release; see [task sets](cli/bundles/README.md).
+A standard benchmark runs `zh-core` and `zh-svg-pelican` together. Every task
+set is reviewed by a person before release; see [task sets](cli/bundles/README.md).
 
 ## Supported platforms
 
-| Platform | Requirements |
-| --- | --- |
-| macOS (Apple Silicon) | macOS 12+ |
-| Windows x64 | Windows 10/11 |
-| Linux x64 | GTK 3 and OpenGL |
+| Platform | Studio UI backend | Benchmark & telemetry scope |
+| --- | --- | --- |
+| macOS (Apple Silicon, 12+) | Metal | Single and batch runs, CPU/Metal verification, CPU/RSS/paging and AppleSMC temperature sampling |
+| Windows x64 (10/11) | Direct3D 11 (WARP fallback) | Prism/KVMem/NInfer serial text runs, native identity and memory sampling |
+| Linux x64 | GTK 3 and OpenGL (CPU fallback) | Single and batch runs, CPU/memory sampling |
 
-Supported engines and verification status differ by platform. Check
-[platform status](cli/docs/platforms.md), [macOS](cli/MACOS.md) and
-[Windows](cli/WINDOWS.md) before you rely on a result.
+Supported engines and native verification status differ by platform. Check
+[platform status](cli/docs/platforms.md), [macOS](cli/MACOS.md), and
+[Windows](cli/WINDOWS.md) before relying on a result.
 
-## What InferYard does not do
+## Design principles and boundaries
 
-- It does not use a model as a judge.
-- It does not combine quality, speed and memory into one ranking.
-- It does not upload results or offer community accounts.
-- It does not schedule across several machines or test image/audio models.
+- **Local first.** Models, runs, and reports stay on your machine. InferYard
+  has no user accounts and never submits results remotely.
+- **Controlled service ownership.** Studio starts and stops only the local
+  model services it launches (without auto-restarting them) and can bind a
+  local service you started yourself after PID and start-time checks.
+- **Explicit non-goals.** InferYard does not use a model as a judge, produce a
+  single cross-dimension ranking, schedule across multiple machines, or test
+  image/audio models.
 
 ## Documentation
 
-| I want to… | Read |
+| Topic | Link |
 | --- | --- |
-| Learn every Studio page | [Studio guide](studio/README.md) |
-| Understand the report | [Reports](cli/docs/reports.md) |
-| Benchmark from the command line | [CLI guide](cli/README.md) |
-| Browse everything | [Documentation map](cli/docs/README.md) |
+| Download Studio builds | [GitHub Releases](https://github.com/sunny0826/inferyard/releases/latest) |
+| Studio pages, usage, and builds | [Studio guide](studio/README.md) |
+| Report structure and metrics | [Reports](cli/docs/reports.md) |
+| CLI subproject and terminal workflow | [CLI guide](cli/README.md) |
+| Local monorepo development | [Development commands](tools/README.md) |
+| Full documentation index | [Documentation map](cli/docs/README.md) |
 
 ## License
 
