@@ -195,7 +195,7 @@ def source_identity(data: JSONRecord, commit: str) -> None:
         raise ValueError("candidate_commit_mismatch")
     if data.get("source_dirty") is not False:
         raise ValueError("candidate_source_dirty")
-    if data.get("version") != "0.0.4":
+    if data.get("version") != "0.0.5":
         raise ValueError("development_or_unfrozen_version")
 
 

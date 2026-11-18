@@ -60,7 +60,7 @@ CHANGELOG。未保留无法执行的兼容 stub。独立监测流的支持边界
 | CLI 开销实验 | `total_observer_control` 的 `off/on/on/off`，`collector_overhead` 的 common/boundary 配方 | 开关是被测实验因子；移除任一臂会改变实验与安全协议 |
 | CLI 协议接口 | `_check_ids`、`CommonGuardSafety.check`、duration request callback 等未使用的形参 | 子类覆写/注入回调的共同签名；不能按函数体单独删参 |
 | CLI 原生绑定 | `startup_binding` 的 `executable` 形参 | Linux 实参包含 `resolve(strict=True)` 的身份路径校验副作用；本轮保留该签名与求值 |
-| Studio 配置 | `mygo.config.ts` 的 `version='0.0.4'` | `main.go` 通过 `go:embed` 读取，`scripts/package.py` 同源读版本；删除 Vite 不影响它 |
+| Studio 配置 | `mygo.config.ts` 的 `version='0.0.5'` | `main.go` 通过 `go:embed` 读取，`scripts/package.py` 同源读版本；删除 Vite 不影响它 |
 | Studio 运行 | 设置默认目录名 `model` / `engine`、原生状态枚举、固定下载资产与页内事件 | 均有实际调用/用户覆盖或平台分支；不因默认固定而删除 |
 | CI | 手动发布 `destination=verify-only` 默认值及显式发布选项 | 是发布边界，不能据默认值消除其他路径或自动开启发布 |
 | 资源与模板 | methods/metrics、community profile/bundle、JSON Schema、13 个报告模板片段 | 属于活动契约、身份或审核材料；导出一致性检查核对，未手改生成 JSON |

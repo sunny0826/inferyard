@@ -38,8 +38,8 @@
 
 - Studio CI 已有 `studio-check.yml`，macOS/Windows 执行模拟引擎边界 e2e（含编译及 `go test` 默认检查）；
   单测暂仅在 macOS 执行，Windows 单测的路径、权限位和时序假设仍待清理。
-  v0.0.4 准备新增 `studio-release.yml` 三平台原生候选与 macOS production package smoke；
-  本地脚本和 runner 检查已实现，Actions 实跑仍须通过 PR 与最终发布 run。
+  v0.0.4 起 `studio-release.yml` 已能生成三平台原生候选与 macOS production package smoke；
+  本地脚本和 runner 检查已实现，正式发布仍须在同一最终 SHA 实跑 Actions。
   系统通知及正式分发签名/公证仍需分别验收。
 - macOS 系统通知权限：T10 验收唯一未通过项为通知实际到达；系统拦截通知权限弹窗，
   非产品缺陷。随仓库迁移继续挂账，待系统设置授权或后续签名后复验。
