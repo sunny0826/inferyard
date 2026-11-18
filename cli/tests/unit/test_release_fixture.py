@@ -26,13 +26,13 @@ from scripts.release_common import (
 )
 
 COMMIT = "a" * 40
-VERSION = "0.0.4"
+VERSION = "0.0.5"
 
 
 def _fixture_texts() -> tuple[str, str]:
     project_text = """[project]
 name = "inferyard"
-version = "0.0.4"
+version = "0.0.5"
 requires-python = "==3.15.*"
 dependencies = []
 license = "MIT"
@@ -41,7 +41,7 @@ license-files = ["LICENSE"]
 inferyard = "inferyard.cli:main"
 [project.urls]
 """ + "\n".join(f'{k} = "{v}"' for k, v in URLS.items())
-    lock_text = '[[package]]\nname = "inferyard"\nversion = "0.0.4"\ndependencies = []\n'
+    lock_text = '[[package]]\nname = "inferyard"\nversion = "0.0.5"\ndependencies = []\n'
     return project_text, lock_text
 
 
@@ -179,7 +179,7 @@ def build_fixture(root: Path) -> tuple[Path, JSONRecord, Path, JSONRecord]:
     project = tomllib.loads(project_text)["project"]
     lock = tomllib.loads(lock_text)
     license_raw = b"Synthetic license bytes for tests only, not a license grant.\n"
-    init = b'__version__ = "0.0.4"\n'
+    init = b'__version__ = "0.0.5"\n'
     metadata = _metadata_bytes()
     source = {
         "pyproject.toml": project_text.encode(),

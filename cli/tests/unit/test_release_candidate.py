@@ -32,14 +32,14 @@ def _json_text(payload: JSONRecord) -> str:
 def _pinned_environment() -> JSONRecord:
     return {
         "python": "3.15.2",
-        "tool_version": "0.0.4",
+        "tool_version": "0.0.5",
         "dependencies": {"pytest": None, "ruff": None, "idna": "3.20"},
     }
 
 
 def _probe_process(argv: list[str], files: dict[str, ApprovedFile]) -> subprocess.CompletedProcess:
     payload = {
-        "version": "0.0.4",
+        "version": "0.0.5",
         "installed_root": "/synthetic",
         "tool_source_hash": sha(b"tool"),
         "scorer_hash": sha(b"scorer"),
@@ -66,7 +66,7 @@ def _command_payload(name: str, pinned: JSONRecord) -> JSONRecord:
     if name in ("different-versions", "persistent-tool-unchanged"):
         return {**pinned, "dependencies": {**pinned["dependencies"], "idna": "3.10"}}
     if name == "synthetic-upgrade-versions":
-        return {**pinned, "tool_version": "0.0.5.dev0"}
+        return {**pinned, "tool_version": "0.0.6.dev0"}
     return pinned
 
 
@@ -76,7 +76,7 @@ def _drifted_member(name: str, raw: bytes, change: str) -> bytes:
     if name.endswith("/METADATA") and change == "license_metadata":
         return raw.replace(b"License-Expression: MIT", b"License-Expression: Apache-2.0")
     if name.endswith("/METADATA") and change == "version_metadata":
-        return raw.replace(b"Version: 0.0.4", b"Version: 0.0.5")
+        return raw.replace(b"Version: 0.0.5", b"Version: 0.0.6")
     if name.endswith("/entry_points.txt") and change == "entrypoint":
         return raw.replace(b"inferyard =", b"wrong-command =")
     return raw
@@ -141,7 +141,7 @@ def test_build_refusal(tmp_path: Path, change: str) -> None:
     if change == "dirty":
         data["source_dirty"] = True
     elif change == "dev":
-        data["version"] = "0.0.4.dev0"
+        data["version"] = "0.0.5.dev0"
     elif change == "commit":
         data["source_commit"] = "b" * 40
     elif change == "old":
@@ -194,7 +194,7 @@ def test_check_distribution_cli_produces_bound_v2_build(
     sdist = next(r for r in data["artifacts"] if r["role"] == "sdist")
     with tarfile.open(manifest.parent / sdist["path"]) as archive:
         archive.extractall(checkout, filter="data")
-    monkeypatch.setattr(check_distribution, "ROOT", checkout / "inferyard-0.0.4")
+    monkeypatch.setattr(check_distribution, "ROOT", checkout / "inferyard-0.0.5")
     monkeypatch.setattr(
         check_distribution.subprocess,
         "check_output",

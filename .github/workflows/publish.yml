@@ -88,7 +88,7 @@ jobs:
           script: |
             let ref;
             try {
-              ref = (await github.rest.git.getRef({ ...context.repo, ref: 'tags/v0.0.4' })).data;
+              ref = (await github.rest.git.getRef({ ...context.repo, ref: 'tags/v0.0.5' })).data;
             } catch (error) {
               if (error.status === 404) return;
               throw error;
@@ -110,8 +110,8 @@ jobs:
           STUDIO_CANDIDATE_SHA: ${{ inputs.studio_manifest_sha256 }}
           STUDIO_SOURCE_RUN: ${{ inputs.studio_run_id }}
         run: >-
-          gh release create v0.0.4 approved-files/* studio-approved-files/*
-          --target "$SOURCE_COMMIT" --draft --title 'v0.0.4'
+          gh release create v0.0.5 approved-files/* studio-approved-files/*
+          --target "$SOURCE_COMMIT" --draft --title 'v0.0.5'
           --notes "Source $SOURCE_COMMIT; CLI candidate SHA256 $CANDIDATE_SHA (package-check run $SOURCE_RUN); Studio candidate SHA256 $STUDIO_CANDIDATE_SHA (Studio release run $STUDIO_SOURCE_RUN). Installation checks do not establish native model or performance qualification."
       - name: Re-download the draft and compare every uploaded byte
         env:
@@ -119,7 +119,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           mkdir downloaded
-          gh release download v0.0.4 --dir downloaded
+          gh release download v0.0.5 --dir downloaded
           test "$(find downloaded -maxdepth 1 -type f | wc -l)" -eq 9
           for file in approved-files/* studio-approved-files/*; do
             name=${file##*/}
@@ -180,11 +180,11 @@ jobs:
           UV_TOOL_DIR: ${{ runner.temp }}/inferyard-published-tools
           UV_TOOL_BIN_DIR: ${{ runner.temp }}/inferyard-published-bin
         run: |
-          mise exec -- uv tool install --managed-python --python 3.15.2 inferyard==0.0.4
+          mise exec -- uv tool install --managed-python --python 3.15.2 inferyard==0.0.5
           binary="$UV_TOOL_BIN_DIR/inferyard"
           if [ "${{ matrix.os }}" = windows-2025 ]; then binary="$binary.exe"; fi
           "$binary" --help
           "$binary" --versions > versions.json
           "$binary" --schema studio_report > studio-report.schema.json
-          mise exec -- python -c 'import json; data=json.load(open("versions.json")); schema=json.load(open("studio-report.schema.json")); assert data["tool_version"] == "0.0.4"; assert data["python"].startswith("3.15."); assert schema["$id"]'
-          mise exec -- uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.4 --help
+          mise exec -- python -c 'import json; data=json.load(open("versions.json")); schema=json.load(open("studio-report.schema.json")); assert data["tool_version"] == "0.0.5"; assert data["python"].startswith("3.15."); assert schema["$id"]'
+          mise exec -- uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.5 --help

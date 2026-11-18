@@ -148,7 +148,7 @@ class SingleTargetPackageTests(unittest.TestCase):
             archive = out / common.archive_name(common.studio_version(), "windows-amd64")
             self.assertEqual(archive.suffix, ".exe")
             script = scripts[0]
-            self.assertIn("AppVersion=0.0.4", script)
+            self.assertIn(f"AppVersion={common.studio_version()}", script)
             self.assertIn("PrivilegesRequired=lowest", script)
             self.assertIn("UninstallDisplayName=", script)
             self.assertIn("{autopf}", script)

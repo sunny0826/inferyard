@@ -111,7 +111,7 @@ mise exec -- uv run --frozen python scripts/prepare_release_candidate.py --manif
 mise exec -- uv run --frozen python scripts/verify_release_candidate.py --manifest CANDIDATE/manifest.json --manifest-sha256 PRODUCER_OUTPUT_SHA --source-commit INTEGRATED_SHA --stage STAGE
 ```
 
-Use `BUILD/packages/inferyard-0.0.4-py3-none-any.whl` for `WHEEL` and
+Use `BUILD/packages/inferyard-0.0.5-py3-none-any.whl` for `WHEEL` and
 `BUILD/attachments/runtime-constraints.txt` for `CONSTRAINTS`. The build also
 verifies the sdist rebuild and the constraint-check file.
 `PRODUCER_OUTPUT_SHA` comes from the `manifest_sha256` field of
@@ -177,7 +177,7 @@ candidate commands above are development checks, not a release-upload path.
    origins, both manifests, and the same-batch bytes without publishing.
 5. After the rehearsal passes, use the same inputs with
    `destination=github-release`. The workflow verifies again and creates the
-   `v0.0.4` draft with nine attachments: five CLI files, the Studio DMG,
+   `v0.0.5` draft with nine attachments: five CLI files, the Studio DMG,
    Windows installer and Linux tar.gz, and `SHA256SUMS.studio`. The same job
    re-downloads every draft attachment and compares it with the verified candidate bytes. Edit the
    release notes on GitHub with features, compatibility boundaries,

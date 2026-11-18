@@ -1,7 +1,7 @@
 # 平台状态
 
-本页区分实现、历史原生覆盖与发行物验证。`v0.0.4` 发布状态见
-[PyPI](https://pypi.org/project/inferyard/0.0.4/) 与
+本页区分实现、历史原生覆盖与发行物验证。`v0.0.5` 发布状态见
+[PyPI](https://pypi.org/project/inferyard/0.0.5/) 与
 [Releases](https://github.com/sunny0826/inferyard/releases)，安装及本次真机检查由 [backlog](backlog.md)跟踪。
 历史覆盖来自 2026-10-02 至 10-07 的已保存运行，
 不自动转移到新源码或候选 wheel，解释规则见[证据血缘](data-contract.md#证据血缘与比较结论)。
