@@ -90,7 +90,7 @@ func (p *previewSession) left(c *ui.Context) {
 				heading(c, "UI 调试", 2)
 				ui.Field(c, "模拟场景", func() {
 					choice := components.Select(c, &p.scene)
-					choice.Trigger.Label("模拟场景").Children(func() { ui.Text(c, previewScenes[p.scene].label).SingleLine() })
+					choice.Trigger.Label("模拟场景").Value(previewScenes[p.scene].label).Children(func() { ui.Text(c, previewScenes[p.scene].label).SingleLine() })
 					choice.Popup(func(ui.Element) {
 						components.ScrollView(c, components.ScrollViewOptions{}).Label("模拟场景列表").MaxHeight(240).Children(func() {
 							for i, scene := range previewScenes {
@@ -122,7 +122,7 @@ func (p *previewSession) left(c *ui.Context) {
 func (p *previewSession) candidatePicker(c *ui.Context) {
 	ui.Field(c, "视觉候选", func() {
 		choice := components.Select(c, &p.candidate)
-		choice.Trigger.Label("视觉候选").Children(func() { ui.Text(c, previewCandidates[p.candidate].label).SingleLine() })
+		choice.Trigger.Label("视觉候选").Value(previewCandidates[p.candidate].label).Children(func() { ui.Text(c, previewCandidates[p.candidate].label).SingleLine() })
 		choice.Popup(func(ui.Element) {
 			components.ScrollView(c, components.ScrollViewOptions{}).Label("视觉候选列表").MaxHeight(240).Children(func() {
 				for i, candidate := range previewCandidates {

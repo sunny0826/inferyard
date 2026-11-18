@@ -123,7 +123,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				}
 				if len(options) > 1 {
 					picker := components.Select(c, &state.source)
-					picker.Trigger.Label(metric.label + "来源").Children(func() {
+					picker.Trigger.Label(metric.label + "来源").Value(sourceLabel(options[current].source)).Children(func() {
 						ui.Text(c, sourceLabel(options[current].source)).SingleLine()
 					})
 					picker.Popup(func(ui.Element) {

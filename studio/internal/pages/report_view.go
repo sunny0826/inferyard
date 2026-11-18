@@ -79,7 +79,7 @@ func (s *viewState) reportView(c *ui.Context) {
 func (r *reportViewState) runPicker(c *ui.Context) {
 	ui.Field(c, "选择运行", func() {
 		selectRun := components.Select(c, &r.run)
-		selectRun.Trigger.Label("选择运行").Children(func() {
+		selectRun.Trigger.Label("选择运行").Value(reportRunLabel(r.index.Runs[r.run])).Children(func() {
 			ui.Text(c, reportRunLabel(r.index.Runs[r.run])).SingleLine()
 		})
 		selectRun.Popup(func(panel ui.Element) {

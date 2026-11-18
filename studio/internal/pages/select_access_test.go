@@ -59,11 +59,21 @@ func accessTree(t *testing.T, tt *ui.Tester) []accessNode {
 	return out
 }
 
-// menuButton returns the exported dropdown trigger named name.
+// menuButton returns the exported native dropdown trigger named name.
 func menuButton(t *testing.T, tree []accessNode, name string) accessNode {
 	t.Helper()
+	return controlByRole(t, tree, uint64(ui.RoleMenuButton-ui.RoleGroup), name)
+}
+
+// popUpButton returns the exported custom select trigger named name.
+func popUpButton(t *testing.T, tree []accessNode, name string) accessNode {
+	t.Helper()
+	return controlByRole(t, tree, uint64(ui.RolePopUpButton-ui.RoleGroup), name)
+}
+
+func controlByRole(t *testing.T, tree []accessNode, role uint64, name string) accessNode {
+	t.Helper()
 	// Platform roles start at RoleGroup; RoleAuto and RoleNone never export.
-	role := uint64(ui.RoleMenuButton - ui.RoleGroup)
 	var named []string
 	for _, n := range tree {
 		if n.role == role {
@@ -73,7 +83,7 @@ func menuButton(t *testing.T, tree []accessNode, name string) accessNode {
 			named = append(named, n.label)
 		}
 	}
-	t.Fatalf("no dropdown named %q; dropdowns: %q", name, named)
+	t.Fatalf("no control with role %d named %q; found: %q", role, name, named)
 	return accessNode{}
 }
 
@@ -164,4 +174,35 @@ func disclosureGroupOwners(tree []accessNode, label string) []int {
 		owners = append(owners, owner)
 	}
 	return owners
+}
+
+// Custom Select triggers (RolePopUpButton) export their fixed field label as
+// the accessible name and the human-readable option label — never the internal
+// JSON key or slice index — as the accessible value.
+func TestPopUpSelectsExportFieldNameAndCurrentOption(t *testing.T) {
+	s := testState()
+	chartTester := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.resourceView(c, chartSamples()) }) }, 1120, 2300)
+	if got := popUpButton(t, accessTree(t, chartTester), "传感器温度 °C来源").value; got != "AppleSMC:Tg0C" {
+		t.Errorf("initial temperature source value = %q, want %q", got, "AppleSMC:Tg0C")
+	}
+	click(t, chartTester, "传感器温度 °C来源")
+	click(t, chartTester, "AppleSMC:Tp0C")
+	if got := popUpButton(t, accessTree(t, chartTester), "传感器温度 °C来源").value; got != "AppleSMC:Tp0C" {
+		t.Errorf("selected temperature source value = %q, want %q", got, "AppleSMC:Tp0C")
+	}
+
+	runs := []core.ReportRun{
+		{Facets: inferyard.StudioFacets{BundleLabel: "zh-core"}, Source: inferyard.StudioSource{RunID: "run-1"}},
+		{Facets: inferyard.StudioFacets{BundleLabel: "zh-svg-pelican"}, Source: inferyard.StudioSource{RunID: "run-2"}},
+	}
+	rv := reportViewState{index: &core.ReportIndex{Runs: runs}}
+	reportTester := ui.NewTester(func(c *ui.Context) { rv.runPicker(c) }, 900, 400)
+	if got, want := popUpButton(t, accessTree(t, reportTester), "选择运行").value, reportRunLabel(runs[0]); got != want {
+		t.Errorf("initial run picker value = %q, want %q", got, want)
+	}
+	click(t, reportTester, "选择运行")
+	click(t, reportTester, reportRunLabel(runs[1]))
+	if got, want := popUpButton(t, accessTree(t, reportTester), "选择运行").value, reportRunLabel(runs[1]); got != want {
+		t.Errorf("selected run picker value = %q, want %q", got, want)
+	}
 }
