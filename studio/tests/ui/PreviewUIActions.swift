@@ -40,7 +40,7 @@ extension PreviewUITests {
     /// taskCard scopes fold lookups to one card so a label shared by several
     /// cards never targets the wrong task.
     func taskCard(_ name: String) -> XCUIElement {
-        app.otherElements.containing(.staticText, identifier: name).firstMatch
+        app.groups[name].firstMatch
     }
 
     /// toggleTaskDetails expands the details fold of the named task card.
@@ -49,6 +49,7 @@ extension PreviewUITests {
         expectExists(card, timeout: 5)
         let triangle = card.disclosureTriangles[fold]
         if triangle.exists {
+            revealInContent(triangle)
             triangle.click()
             return
         }

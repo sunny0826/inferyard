@@ -139,6 +139,8 @@ final class PreviewUITests: XCTestCase {
         // exist on another card.
         toggleTaskDetails("model-2")
         expectText("实际目录名：model-2")
+        XCTAssertFalse(text("错误码：download_failed").exists, "Opening model-2 must not expand model")
+        toggleTaskDetails("model")
         expectText("错误码：download_failed")
         click("任务")
         click("下载")
@@ -175,7 +177,7 @@ final class PreviewUITests: XCTestCase {
         XCTAssertTrue(text("128k").exists)
         XCTAssertFalse(text("131072").exists)
         keepScreenshot("Context speed result")
-        app.disclosureTriangles["查看逐次测量"].click()
+        expandFold("查看逐次测量")
         let measurements = app.tables["专项逐次测量"]
         expectExists(measurements, timeout: 5)
         click("返回历史任务")
