@@ -6,7 +6,11 @@ import (
 )
 
 func (s *viewState) stopOrphanButton(c *ui.Context) {
-	button(c, "停止遗留服务").AlignSelf(ui.Start).Disabled(s.busy || s.running() != nil).OnClick(func() {
+	if s.destructiveAction(c, destructiveOption{
+		kind: destructiveStopOrphan, label: "停止遗留服务", confirmLabel: "确认停止遗留服务",
+		prompt:   "将终止上次 Studio 留下的服务进程；Studio 不再跟踪该进程的输出。",
+		disabled: s.busy || s.running() != nil,
+	}) {
 		if s.simulate(previewStopEngine) {
 			return
 		}
@@ -17,10 +21,10 @@ func (s *viewState) stopOrphanButton(c *ui.Context) {
 			}
 			return "已请求停止遗留服务，等待收尾。", e
 		})
-	})
+	}
 	if orphanRecordRecoverable(s.engineState) {
 		ui.Text(c, "仅移除工作区 logs/engine-owner.json；原进程可能仍在运行，请自行确认。")
-		button(c, "仅删除记录（不终止进程）").AlignSelf(ui.Start).Disabled(s.busy || s.running() != nil).OnClick(func() {
+		if dangerButton(c, "仅删除记录（不终止进程）").Disabled(s.busy || s.running() != nil).Clicked() {
 			if s.simulate(previewStopEngine) {
 				return
 			}
@@ -28,7 +32,7 @@ func (s *viewState) stopOrphanButton(c *ui.Context) {
 				_, e := s.service.DiscardOrphanRecord()
 				return "已删除遗留记录，未终止任何进程。", e
 			})
-		})
+		}
 	}
 }
 

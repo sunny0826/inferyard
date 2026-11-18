@@ -121,3 +121,15 @@ func TestPreviewBindWithoutScenarioIsExplicit(t *testing.T) {
 		t.Fatal("unsupported bind did not report", s.failure)
 	}
 }
+
+func TestPreviewSelectsExportFieldNameAndCurrentOption(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	tt := previewTester(p, 1120, 900)
+	tree := accessTree(t, tt)
+	if got, want := popUpButton(t, tree, "模拟场景").value, previewScenes[0].label; got != want {
+		t.Errorf("preview scene value = %q, want %q", got, want)
+	}
+	if got, want := popUpButton(t, tree, "视觉候选").value, previewCandidates[0].label; got != want {
+		t.Errorf("preview candidate value = %q, want %q", got, want)
+	}
+}

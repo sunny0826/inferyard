@@ -61,7 +61,7 @@ func (s *viewState) modelDownloadForm(c *ui.Context) {
 		field(c, "凭据环境变量名（可选）", &s.tokenEnv).Description("仅填写变量名称，不填写凭据值。").Error(tokenNameError(s.tokenEnv))
 		ui.Text(c, "凭据由启动 Studio 的环境提供。")
 	})
-	if button(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || strings.TrimSpace(s.modelURL) == "").Clicked() {
+	if primaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || strings.TrimSpace(s.modelURL) == "").Clicked() {
 		s.acquireModel()
 	}
 }

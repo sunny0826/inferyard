@@ -31,7 +31,7 @@ func TestFirstUseMissingAssetsOffersNextStep(t *testing.T) {
 					t.Fatalf("missing %q: %v", label, tt.Texts())
 				}
 			}
-			for _, label := range []string{"尚未识别的原因码", "工作区进度", "运行 benchmark", "使用 CLI 推荐模型"} {
+			for _, label := range []string{"尚未识别的原因码", "工作区进度", "开始测评", "使用 CLI 推荐模型"} {
 				if tt.HasText(label) {
 					t.Fatalf("unprepared workspace exposed %q: %v", label, tt.Texts())
 				}

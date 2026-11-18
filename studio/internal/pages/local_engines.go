@@ -85,7 +85,7 @@ func (s *viewState) localSelectionError() string {
 
 func (s *viewState) localSelectionView(c *ui.Context) {
 	if e := s.localEngine(); e != nil {
-		ui.Text(c, e.Family+" · 每个题包单独绑定服务；完成后再进入下一题包。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, e.Family+" · 每个测评题集单独连接服务；完成后再进入下一测评题集。").TextColor(c.Theme().TextMuted)
 		if e.Family == "lmstudio" {
 			ui.Text(c, "先在 LM Studio 启动后台服务并加载所选模型。Studio 只绑定已有服务；请使用后台服务 PID。")
 			field(c, "LM Studio 后台 PID", &s.localPID)
@@ -102,7 +102,7 @@ func (s *viewState) localSelectionView(c *ui.Context) {
 func (s *viewState) localInstallationsView(c *ui.Context) {
 	card(c, "已有本地引擎", func() {
 		ui.Text(c, "注册 CLI 安装声明后，可选择 llama.cpp、MLX、vLLM、SGLang 或 LM Studio。核验安装不代表模型已通过测评。")
-		field(c, "安装声明 JSON 路径", &s.installationPath).Description("已有 installation.json 的绝对路径；引擎、环境和模型不会自动下载。")
+		s.pathField(c, "安装声明 JSON 路径", &s.installationPath, browseInstallation).Description("已有 installation.json 的绝对路径；引擎、环境和模型不会自动下载。").Error(s.browseError(browseInstallation.key, ""))
 		button(c, "注册引擎").Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").OnClick(func() { s.changeInstallation("register", s.installationPath) })
 		for _, path := range s.settings.Settings.EngineInstallations {
 			ui.Row(c.Key(path)).Wrap().Children(func() {
@@ -142,12 +142,12 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 		if s.localBindingTask != task.TaskId {
 			s.localBindingTask, s.localPID = task.TaskId, ""
 		}
-		card(c, "绑定下一题包的 LM Studio 服务", func() {
-			ui.Text(c, emptyText(task.Bundle)+" · 请结束上一题包的服务，重新启动后台服务并加载同一模型。CLI 将重新校验身份。")
+		card(c, "连接下一测评题集的 LM Studio 服务", func() {
+			ui.Text(c, emptyText(task.Bundle)+" · 请结束上一测评题集的服务，重新启动后台服务并加载同一模型。CLI 将重新校验身份。")
 			field(c, "新的后台 PID", &s.localPID)
 			field(c, "本机 endpoint", &s.localEndpoint)
 			pid, err := strconv.ParseInt(s.localPID, 10, 64)
-			button(c, "绑定并继续此题包").Disabled(err != nil || pid <= 0 || s.localEndpoint == "" || urlError(s.localEndpoint) != "").OnClick(func() {
+			button(c, "连接并继续此测评题集").Disabled(err != nil || pid <= 0 || s.localEndpoint == "" || urlError(s.localEndpoint) != "").OnClick(func() {
 				if s.simulate(previewLocalBinding{taskID: task.TaskId, pid: pid, endpoint: s.localEndpoint}) {
 					return
 				}

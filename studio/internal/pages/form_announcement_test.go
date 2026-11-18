@@ -31,7 +31,7 @@ func TestFormFailureAnnouncedOnEverySubmission(t *testing.T) {
 			case "binding":
 				s.failure = core.Err("cli_error")
 				s.process, s.bindEndpoint = "42 · fixture", "invalid"
-				render, submit = s.serviceView, "绑定进程"
+				render, submit = s.serviceView, "连接并核验进程"
 			case "initialize":
 				s.ready.Workspace.Path = ptr("relative/workspace")
 				s.ready.CLI.Status = "ok"
@@ -44,7 +44,7 @@ func TestFormFailureAnnouncedOnEverySubmission(t *testing.T) {
 			}, 1120, 2400)
 			if name == "binding" {
 				tt.SetPreferences(ui.Preferences{ReduceMotion: true})
-				click(t, tt, "高级：手动绑定")
+				click(t, tt, "高级：手动连接")
 			}
 			tt.Announcements()
 			for attempt := 1; attempt <= 2; attempt++ {

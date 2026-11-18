@@ -145,19 +145,14 @@ func summarize(r evidence.Run, host string) (RunSummary, *aggregate, error) {
 	}
 	a.events(rows)
 	run, config, bundle := payload(r.Inputs, "run"), payload(r.Inputs, "config"), payload(r.Inputs, "bundle")
+	categories := caseCategories(r.Inputs)
 	v := RunSummary{RunId: r.ID, Path: r.Path, Status: "partial", Sealed: r.State == evidence.Sealed, StopReason: a.stop, StartedAt: a.started, FinishedAt: a.finished, Relation: text(run["relation"]), ParentRunId: text(run["parent_run_id"]), ModelName: text(obj(config["model"])["display_name"]), ModelPath: text(obj(config["model"])["local_path"]), Engine: text(obj(config["engine"])["adapter"]), Bundle: text(bundle["bundle_id"])}
 	if r.BatchPath != "" {
 		v.BatchId = ptr(filepath.Base(r.BatchPath))
 	}
 	if a.stop != nil {
 		v.Completeness = ptr("incomplete")
-		complete := *a.stop == "plan_finished" && a.Progress.Total != nil && a.Progress.Done == *a.Progress.Total && r.State == evidence.Sealed && run["relation"] != "resume" && run["diagnostic"] != true && run["kind"] == "run"
-		for _, c := range a.Progress.Cases {
-			if (c.State != "completed" && c.State != "failed") || (str(c.QualityState) != "pass" && str(c.QualityState) != "fail" && str(c.QualityState) != "not_applicable") {
-				complete = false
-			}
-		}
-		if complete {
+		if runComplete(a.Progress, r, run, a.stop) {
 			v.Completeness = ptr("complete")
 		}
 	}
@@ -166,27 +161,12 @@ func summarize(r evidence.Run, host string) (RunSummary, *aggregate, error) {
 		return v, a, e
 	}
 	v.Status = evidence.RunStatus(v.Sealed, str(v.Completeness), str(a.stop), dirty)
-	score := RunScore{}
-	observed := false
-	for _, c := range a.Progress.Cases {
-		if c.QualityState != nil {
-			observed = true
-		}
-		if str(c.QualityState) == "pass" {
-			score.Passed++
-		}
-		if str(c.QualityState) == "pass" || str(c.QualityState) == "fail" {
-			score.Valid++
-		}
-	}
-	if observed {
-		if score.Valid > 0 {
-			score.Rate = ptr(float64(score.Passed) / float64(score.Valid))
-		}
+	if score, ok := runScore(a.Progress.Cases, categories, str(v.Completeness) == "complete"); ok {
 		v.Score = &score
 	}
 	return v, a, nil
 }
+
 func (s *Service) scan(u UserSettings) (RunHistoryResponse, *ApiError) {
 	h := RunHistoryResponse{ResultsRoot: u.ResultsRoot, ScannedAt: now(), Batches: []BatchSummary{}, StandaloneRuns: []RunSummary{}}
 	if u.ResultsRoot == nil {

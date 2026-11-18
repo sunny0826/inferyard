@@ -44,7 +44,7 @@ func TestDiscoveryManagedServiceIndependentOfScan(t *testing.T) {
 					s.discovery.Services = []inferyard.DiscoveredService{{PID: 42, ProcessName: "fake-engine", Endpoints: []inferyard.DiscoveredEndpoint{{URL: s.engineState.Endpoint, Health: ptr("2xx")}}}}
 				}
 				tt := discoveryTester(&s, false)
-				for _, want := range []string{"Studio 启动的服务", "状态：" + stateLabel(state), "候选：frozen-core", "PID 42", "http://127.0.0.1:18957"} {
+				for _, want := range []string{"Studio 启动的服务", "状态：" + stateLabel(state), "测评配置：frozen-core", "PID 42", "http://127.0.0.1:18957"} {
 					if !tt.HasText(want) {
 						t.Fatal(want, tt.Texts())
 					}

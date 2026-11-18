@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/inferyard"
 )
 
 func (p *previewSession) report(reference string) (*core.ReportIndex, *core.ApiError) {
@@ -39,7 +40,7 @@ func (p *previewSession) createReport(paths []string) string {
 	s := p.state
 	id := p.nextID("report")
 	index := &core.ReportIndex{}
-	summary := core.ReportSummary{ReportId: id, Path: "/preview/reports/" + id, CreatedAt: previewValue(p.timestamp())}
+	summary := core.ReportSummary{ReportId: id, Path: "/preview/reports/" + id, ModifiedAt: previewValue(p.timestamp())}
 	for _, history := range s.historyRuns() {
 		if !slices.Contains(paths, history.Path) {
 			continue
@@ -53,30 +54,56 @@ func (p *previewSession) createReport(paths []string) string {
 			run.Summary.StopReason = emptyText(history.StopReason)
 		}
 		if detail := p.details[history.RunId]; detail != nil && detail.Progress != nil {
-			p := detail.Progress
-			run.Requests = nil
-			for _, item := range p.Cases {
-				run.Requests = append(run.Requests, core.ReportRequest{CaseID: item.CaseId, CategoryLabel: emptyText(item.Category), State: item.State, Quality: item.QualityState, LatencyMS: item.DurationMs})
-			}
-			counts := core.ReportCounts{Numerator: previewValue(p.Done), Denominator: p.Total, Excluded: previewValue(int64(0))}
-			quality := core.ReportQuality{StudioCounts: counts, Complete: history.Sealed}
-			if !history.Sealed {
-				quality.Reason = previewValue("quality_incomplete_or_not_applicable")
-			}
-			run.Summary.CompletionRate, run.Dashboard.Quality = counts, quality
+			applyPreviewProgress(&run, detail, emptyText(history.Bundle), history.Sealed)
 			previewReportMetrics(&run, detail)
-			if len(run.Dashboard.Categories) > 0 {
-				run.Dashboard.Categories = run.Dashboard.Categories[:1]
-				run.Dashboard.Categories[0].Label, run.Dashboard.Categories[0].Rate = "模拟分类", counts
-			}
 		}
 		index.Runs = append(index.Runs, run)
 		summary.RunIds = append(summary.RunIds, history.RunId)
 		summary.RunPaths = append(summary.RunPaths, previewValue(history.Path))
+		summary.RunSummaries = append(summary.RunSummaries, core.ReportListRun{
+			RunID: history.RunId, Model: run.Model, BundleLabel: emptyText(history.Bundle),
+			Title: run.Profile.Title, Quality: run.Dashboard.Quality,
+		})
 	}
 	p.indexes[id] = index
 	s.reports = append(s.reports, summary)
 	return id
+}
+
+func applyPreviewProgress(run *core.ReportRun, detail *core.RunTaskDetail, bundle string, sealed bool) {
+	p := detail.Progress
+	run.Requests = nil
+	var completed int64
+	for _, item := range p.Cases {
+		if item.State == "completed" {
+			completed++
+		}
+		run.Requests = append(run.Requests, core.ReportRequest{CaseID: item.CaseId, CategoryLabel: emptyText(item.Category), State: item.State, Quality: item.QualityState, LatencyMS: item.DurationMs})
+	}
+	total := p.Done
+	if p.Total != nil {
+		total = *p.Total
+	}
+	run.Summary.CompletionRate = core.ReportCounts{Numerator: previewValue(completed), Denominator: previewValue(total), Excluded: previewValue(max(total-p.Done, 0))}
+	run.Dashboard.Quality, run.Dashboard.Categories = previewReportQuality(tallyPreviewCases(p.Cases), total, bundle, sealed)
+}
+
+func previewReportQuality(score core.RunScore, total int64, bundle string, sealed bool) (core.ReportQuality, []core.ReportCategory) {
+	if score.Valid == 0 {
+		zero := core.ReportCounts{Numerator: previewValue(int64(0)), Denominator: previewValue(int64(0)), Excluded: previewValue(int64(0))}
+		return core.ReportQuality{StudioCounts: zero, Complete: false, Reason: previewValue("quality_incomplete_or_not_applicable")}, []core.ReportCategory{}
+	}
+	excluded := int64(0)
+	if bundle != inferyard.DefaultBundlePelican && total > int64(score.Valid) {
+		excluded = total - int64(score.Valid)
+	}
+	counts := core.ReportCounts{Numerator: previewValue(int64(score.Passed)), Denominator: previewValue(int64(score.Valid)), Excluded: previewValue(excluded)}
+	complete := sealed && excluded == 0
+	quality := core.ReportQuality{StudioCounts: counts, Complete: complete}
+	if !complete {
+		quality.Reason = previewValue("quality_incomplete_or_not_applicable")
+	}
+	return quality, []core.ReportCategory{{ID: "math", Label: "模拟分类", Rate: counts}}
 }
 
 func previewReportMetrics(run *core.ReportRun, detail *core.RunTaskDetail) {

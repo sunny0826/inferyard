@@ -87,7 +87,7 @@ func TestDesignDetailRetryAndLoading(t *testing.T) {
 }
 
 func TestDesignPageLoadingErrorEmpty(t *testing.T) {
-	for _, page := range []string{"dashboard", "device", "models", "downloads", "reports", "settings"} {
+	for _, page := range []string{"dashboard", "reports", "models", "downloads", "device", "settings"} {
 		s := testState()
 		s.selected = page
 		s.loaded = false

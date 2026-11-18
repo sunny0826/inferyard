@@ -31,10 +31,10 @@ func TestDashboardRunningDisablesQuickRunAndOpensDetail(t *testing.T) {
 	s.runProgress = &core.RunProgress{Done: 2, Total: ptr(int64(8))}
 	s.ctx = refreshContext{context.Background(), make(chan struct{}, 10)}
 	tt := ui.NewTester(s.view, 1120, 3200)
-	if !tt.HasText("2 / 8 题") || tt.HasText("运行 benchmark") {
+	if !tt.HasText("2 / 8 题") || tt.HasText("开始测评") || tt.HasText("运行 benchmark") {
 		t.Fatal(tt.Texts())
 	}
-	_ = tt.Click("运行 benchmark")
+	_ = tt.Click("开始测评")
 	if s.busy {
 		t.Fatal("quick run started during an active task")
 	}
@@ -43,7 +43,7 @@ func TestDashboardRunningDisablesQuickRunAndOpensDetail(t *testing.T) {
 		t.Fatal(tt.Texts())
 	}
 	click(t, tt, "返回运行")
-	if s.detailID != "" || !tt.HasText("运行当前题包") {
+	if s.detailID != "" || !tt.HasText("运行当前测评题集") {
 		t.Fatal(tt.Texts())
 	}
 }

@@ -15,7 +15,7 @@ func TestCandidateUsesRegistryNames(t *testing.T) {
 	if s.engine != s.registry.DefaultEngine {
 		t.Fatal(s.engine)
 	}
-	if !tt.HasText("候选引擎") || !tt.HasText("测评模型") || tt.HasText("引擎文件绝对路径") {
+	if !tt.HasText("引擎") || !tt.HasText("测评模型") || tt.HasText("引擎文件绝对路径") {
 		t.Fatal(tt.Texts())
 	}
 	click(t, tt, s.registry.DefaultEngine)
@@ -65,7 +65,7 @@ func TestCandidateEngineDropdownThreeStates(t *testing.T) {
 	if !tt.HasText("没有可用的引擎，请到下载页下载推荐引擎。") {
 		t.Fatal(tt.Texts())
 	}
-	click(t, tt, "运行 benchmark")
+	click(t, tt, "开始测评")
 	if s.busy {
 		t.Fatal("create reached the CLI without a usable engine")
 	}
@@ -80,16 +80,18 @@ func TestCandidateEngineDropdownThreeStates(t *testing.T) {
 	s.checks = eligibleChecks()
 	s.engine = "release · inference-engine"
 	tt = ui.NewTester(func(c *ui.Context) { s.candidateView(c) }, 1000, 900)
-	for _, want := range []string{"当前选择不可用", "引擎运行库不完整或库链接无效", "到模型页重选"} {
+	for _, want := range []string{"当前选择不可用", "引擎运行库不完整或库链接无效", "请在上方「引擎」下拉中重新选择可用引擎", "查看已安装引擎"} {
 		if !tt.HasText(want) {
 			t.Fatal(want, tt.Texts())
 		}
 	}
-	click(t, tt, "运行 benchmark")
+	click(t, tt, "开始测评")
 	if s.busy {
 		t.Fatal("create reached the CLI with a revoked engine")
 	}
-	click(t, tt, "到模型页重选")
+	// The models page is read-only, so the guidance points at the task page's
+	// own engine dropdown; the inventory link only explains why.
+	click(t, tt, "查看已安装引擎")
 	if s.selected != "models" {
 		t.Fatal(s.selected)
 	}
@@ -104,7 +106,7 @@ func TestCandidateModelSelectSharesSelection(t *testing.T) {
 		t.Fatal(s.model)
 	}
 	click(t, tt, "请选择模型")
-	if err := tt.ChooseMenuItem("model.gguf"); err != nil {
+	if err := tt.ChooseMenuItem("model.gguf · GGUF"); err != nil {
 		t.Fatal(err)
 	}
 	if s.model != "model.gguf" {
@@ -126,8 +128,8 @@ func TestRunAndServiceViewsHidePaths(t *testing.T) {
 			t.Fatal("path leaked", v)
 		}
 	}
-	click(t, tt, "高级：手动绑定")
-	if !tt.HasText("绑定进程") {
+	click(t, tt, "高级：手动连接")
+	if !tt.HasText("连接并核验进程") {
 		t.Fatal("manual binding fallback missing")
 	}
 }

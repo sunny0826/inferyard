@@ -33,13 +33,13 @@ func TestPreviewFirstUseAcquiresAssetsBeforeDeviceCheck(t *testing.T) {
 	tt.Frame()
 	p.advance(time.Second)
 	tt.Frame()
-	if !p.state.preflightReady() || !tt.HasText("运行 benchmark") || p.state.model == "" || p.state.engine == "" {
+	if !p.state.preflightReady() || !tt.HasText("开始测评") || p.state.model == "" || p.state.engine == "" {
 		t.Fatal("downloaded assets did not unlock setup", tt.Texts())
 	}
 	if len(p.state.checkedBundles()) != 2 {
 		t.Fatal("first benchmark omitted a default bundle")
 	}
-	click(t, tt, "运行 benchmark")
+	click(t, tt, "开始测评")
 	p.advance(2 * time.Second)
 	tt.Frame()
 	if !tt.HasText("zh-core · 运行中") || !tt.HasText("zh-svg-pelican · 排队中") || tt.HasText("单次运行不支持断点续跑") {

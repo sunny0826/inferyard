@@ -20,6 +20,7 @@ var navigation = []struct {
 	id, label string
 	icon      func() *ui.SVG
 }{
+	{"dashboard", "任务", lucide.Play},
 	{"reports", "报告", lucide.FileText},
 	{"models", "模型", lucide.Layers},
 	{"downloads", "下载", lucide.Download},
@@ -92,17 +93,19 @@ type viewState struct {
 	discovering, discoveryLoaded                                                        bool
 	registry                                                                            core.Registry
 	checks                                                                              core.EngineCheckOverview
-	attributionKey                                                                      string
 	installationPath, localPID, localEndpoint, localBindingTask                         string
-	attributionMatch, attributionKnown                                                  bool
-	candidateMatches                                                                    func(candidate, model, engine string) (bool, bool)
 	model                                                                               string
-	modelQuery, engineQuery                                                             string
-	modelList, engineList                                                               components.ListState
 	announcedPage                                                                       string
 	announcedErrors                                                                     map[string]bool
 	refreshing                                                                          bool
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
+	openDialog                                                                          func(mygo.OpenDialogOptions) ([]string, error)
+	cancelRun                                                                           func(string) (core.RunTask, *core.ApiError)
+	stopEngineAPI                                                                       func() (core.EngineState, *core.ApiError)
+	cancelRound                                                                         func(string) (core.RunTask, *core.ApiError)
+	runTasks                                                                            func() []core.RunTask
+	updateWindow                                                                        func(func())
+	browseFailures                                                                      map[string]string
 	assetsPreset                                                                        bool
 	engineState                                                                         core.EngineState
 	startup                                                                             core.Startup
@@ -131,18 +134,18 @@ type viewState struct {
 	failure                                                                             *core.ApiError
 	workspace, cliPath, results, models                                                 string
 	bindingStale                                                                        bool
-	bindingUnknown                                                                      bool
 	task                                                                                benchmarkTask
 	selectedBundles                                                                     map[string]bool
 	focusedRun                                                                          string
 	taskCancel                                                                          context.CancelFunc
 	deviceChecked                                                                       string
 	newTaskPending                                                                      bool
+	pendingDestructive                                                                  destructiveRequest
 	resumeSource                                                                        *core.RunSummary
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
 	modelURL, modelName, tokenEnv, engineURL, engineName                                string
-	historyTable, reportsTable                                                          pageTableState
+	historyTable                                                                        pageTableState
 	reportSources                                                                       components.ListState
 	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState
@@ -320,33 +323,14 @@ func (s *viewState) view(c *ui.Context) {
 // toast appears.
 func (s *viewState) contentView(c *ui.Context) {
 	s.consumeFeedback(c)
+	s.dropStaleStopPrompt()
 	ui.Column(c).Grow(1).MinWidth(0).Fill().Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
 		s.cornerStatus(c)
 		ui.Scroll(c.Key(s.selected)).Grow(1).TrackScroll(s.pageScroll()).Padding(tokens(c).Density.Page).Children(func() {
 			ui.Column(c).Gap(tokens(c).Density.Section).Children(func() {
 				s.feedback(c)
 				if !s.loaded {
-					title := "首次上手"
-					if s.selected == "dashboard" {
-						title = ""
-						if s.detailID != "" {
-							title = "运行详情"
-						}
-					}
-					for _, n := range navigation {
-						if n.id == s.selected {
-							title = n.label
-						}
-					}
-					if title != "" {
-						s.header(c, title)
-					}
-					if s.failure != nil || s.refreshFailure != "" {
-						button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
-					} else {
-						ui.Text(c, "正在读取页面数据…")
-						progressBar(c, -1, "页面数据加载进度")
-					}
+					s.loadingView(c)
 					return
 				}
 				switch s.selected {
@@ -374,6 +358,30 @@ func (s *viewState) contentView(c *ui.Context) {
 	})
 }
 
+func (s *viewState) loadingView(c *ui.Context) {
+	title := "首次上手"
+	if s.selected == "dashboard" {
+		title = ""
+		if s.detailID != "" {
+			title = "运行详情"
+		}
+	}
+	for _, n := range navigation {
+		if n.id == s.selected {
+			title = n.label
+		}
+	}
+	if title != "" {
+		s.header(c, title)
+	}
+	if s.failure != nil || s.refreshFailure != "" {
+		button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
+		return
+	}
+	ui.Text(c, "正在读取页面数据…")
+	progressBar(c, -1, "页面数据加载进度")
+}
+
 func (s *viewState) refreshAction() {
 	if s.simulate(previewReload) {
 		return
@@ -389,8 +397,8 @@ func field(c *ui.Context, label string, value *string) ui.Element {
 	return ui.Field(c, label, func() { components.TextBox(c, value, components.TextBoxOptions{}) })
 }
 func text(p *string) string {
-	if p == nil {
-		return "未知"
+	if p == nil || *p == "" {
+		return "缺测"
 	}
 	return *p
 }

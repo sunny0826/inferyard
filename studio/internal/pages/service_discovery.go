@@ -63,7 +63,7 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 		return
 	}
 	if state.Candidate != "" {
-		ui.Text(c, "候选："+displayName(state.Candidate))
+		ui.Text(c, "测评配置："+displayName(state.Candidate))
 	}
 	if state.Pid > 0 {
 		ui.Text(c, fmt.Sprintf("PID %d", state.Pid))

@@ -75,9 +75,7 @@ func TestPreviewLocalCancelStopsOnlyOwnedServiceParity(t *testing.T) {
 				t.Fatal("preview run never started")
 			}
 			tt := ui.NewTester(p.state.runView, 1120, 900)
-			if err := tt.Click("取消运行"); err != nil {
-				t.Fatal(err, tt.Texts())
-			}
+			confirmCancelRun(t, tt)
 			resetCtx, stop := context.WithTimeout(t.Context(), 5*time.Second)
 			defer stop()
 			awaitBenchmarkReset(resetCtx, f.service.RunTasks, f.service.CancelRun, func(apply func()) { apply() }, func(e *core.ApiError) bool {
@@ -110,6 +108,16 @@ func TestPreviewLocalCancelStopsOnlyOwnedServiceParity(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// confirmCancelRun presses the run-cancel entry and its confirmation.
+func confirmCancelRun(t *testing.T, tt *ui.Tester) {
+	t.Helper()
+	for _, label := range []string{"取消运行", "确认取消运行"} {
+		if err := tt.Click(label); err != nil {
+			t.Fatal(err, tt.Texts())
+		}
 	}
 }
 

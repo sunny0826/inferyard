@@ -122,12 +122,14 @@ type taskCardOptions struct {
 	color             ui.Color // 与 state 对应的状态色。
 	active            bool
 	metrics           []taskMetric
+	note              string // 卡片级的缺测或口径说明，只出现一次。
+	notice            func() // 失败摘要，保持可见而不藏进折叠区。
 	actions, details  func()
 }
 
 func taskCard(c *ui.Context, options taskCardOptions) {
 	t := tokens(c)
-	ui.Column(c).Gap(t.Density.Stack).Padding(t.Card.Padding).Radius(t.Radius.Surface).Border(t.Card.Border, c.Theme().Border).Children(func() {
+	ui.Column(c).Label(options.name).Gap(t.Density.Stack).Padding(t.Card.Padding).Radius(t.Radius.Surface).Border(t.Card.Border, c.Theme().Border).Children(func() {
 		ui.Row(c).Wrap().Gap(t.Density.CardGap).Children(func() {
 			ui.Column(c).Grow(1).Gap(t.Density.Tight).Children(func() {
 				ui.Text(c, options.kind).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
@@ -143,7 +145,7 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 				"已取消": "下载任务已取消，输出目录保留。",
 			}[options.state])
 		})
-		columns := 3
+		columns := max(1, min(3, len(options.metrics)))
 		width, _ := c.Size()
 		if width < 900 || c.Preferences().TextScale > 1 {
 			columns = 1
@@ -159,12 +161,17 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 				})
 			}
 		})
+		if options.note != "" {
+			ui.Text(c, options.note).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
+		}
 		if options.active {
 			progressBar(c, -1, "下载任务活动").Height(t.Density.Tight)
 		}
+		if options.notice != nil {
+			options.notice()
+		}
 		options.actions()
-		ui.Text(c, "观测依据与输出").FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
-		options.details()
+		componentFold(c, "观测依据与输出", func() { options.details() })
 	})
 }
 
@@ -188,4 +195,24 @@ func stepTrack(c *ui.Context, number, title string, fn func()) {
 			fn()
 		})
 	})
+}
+
+// selectField is a dropdown named after its field. MyGo exports the trigger as
+// an accessibility leaf, so a field name passed as its Label replaces the
+// visible option as the whole accessible description; the current option is
+// exported as the trigger's value so assistive technology still reads it.
+func selectField[T comparable](c *ui.Context, name, description string, selected *T, options []components.NativeSelectOption[T]) {
+	f := ui.Field(c, name, func() {
+		current := ""
+		for _, option := range options {
+			if option.Value == *selected {
+				current = option.Label
+				break
+			}
+		}
+		components.NativeSelect(c, selected, options).Trigger.Label(name).Value(current)
+	})
+	if description != "" {
+		f.Description(description)
+	}
 }

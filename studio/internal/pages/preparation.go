@@ -2,6 +2,8 @@ package pages
 
 import (
 	"encoding/json"
+	"path/filepath"
+
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 )
@@ -36,18 +38,14 @@ func (s *viewState) settingsView(c *ui.Context) {
 		return
 	}
 	card(c, "路径设置", func() {
-		fields := func() {
-			field(c, "CLI", &s.cliPath).Description("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。").Error(pathError(s.cliPath))
-			field(c, "工作区目录", &s.workspace).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)))
-			field(c, "结果目录", &s.results).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot)))
-			field(c, "模型目录", &s.models).Description("绝对路径；保存不创建目录。").Error(settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot)))
-		}
+		fields := func() { s.pathFields(c) }
 		if compactLayout(c) {
 			fields()
 		} else {
 			ui.Form(c, fields)
 		}
-		ui.Text(c, "保存设置不创建目录。目录缺失仍可浏览所有页面。")
+		ui.Text(c, "保存设置不创建目录，目录缺失仍可浏览所有页面。")
+		ui.Text(c, "「浏览…」选择已有文件或目录；尚不存在的新工作区仍需手动输入完整路径。").TextColor(c.Theme().TextMuted)
 		if primaryButton(c, "保存").AlignSelf(ui.Start).Disabled(s.busy || !s.settingsLoaded).Clicked() {
 			if !s.validateSettings() {
 				return
@@ -98,6 +96,16 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 	}
 }
 
+// pathFields renders the four path inputs with their browse buttons.
+func (s *viewState) pathFields(c *ui.Context) {
+	ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
+		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。").Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
+		s.pathField(c, "工作区目录", &s.workspace, browseWorkspace).Description(directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(s.browseError(browseWorkspace.key, settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot))))
+		s.pathField(c, "结果目录", &s.results, browseResults).Description(directoryState(s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(s.browseError(browseResults.key, settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot))))
+		s.pathField(c, "模型目录", &s.models, browseModels).Description(directoryState(s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(s.browseError(browseModels.key, settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot))))
+	})
+}
+
 func (s *viewState) downloadNamesView(c *ui.Context) {
 	card(c, "下载目录名", func() {
 		ui.Text(c, "新下载任务自动使用基础名，无需每次填写。")
@@ -132,4 +140,30 @@ func defaultDownloadName(name, fallback string) string {
 		return fallback
 	}
 	return name
+}
+
+// directoryState describes what the settings field currently points at, so the
+// user does not have to save and reopen to learn that a path is missing.
+func directoryState(value string, readiness core.DirectoryReadiness, previous string) string {
+	switch {
+	case value == "" && previous == "":
+		return "尚未配置，保存时使用默认值"
+	case value == "":
+		return "当前为空；已配置的目录不能清空"
+	}
+	state := "路径已修改，保存后生效"
+	if samePath(value, previous) {
+		state = "目录不存在"
+		if readiness.Exists {
+			state = "目录已存在"
+			if readiness.Initialized {
+				state = "目录已存在，工作区已初始化"
+			}
+		}
+	}
+	return state
+}
+
+func samePath(value, previous string) bool {
+	return previous != "" && filepath.Clean(value) == filepath.Clean(previous)
 }

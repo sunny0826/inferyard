@@ -63,7 +63,8 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		ui.Text(c, "正在取消并等待安全收尾…")
 		return
 	}
-	ui.Text(c, "配置、运行与跟踪本地模型测评。")
+	s.header(c, "任务")
+	ui.Text(c, "配置、运行与跟踪本地模型测评。").TextColor(c.Theme().TextMuted)
 	if s.environmentMissing() {
 		s.setupGuide(c)
 		return
@@ -78,8 +79,8 @@ func (s *viewState) dashboardView(c *ui.Context) {
 	s.stageView(c)
 	s.awaitingLocalServiceView(c)
 	if len(s.task.start.localCandidates) > 0 && s.task.failure != nil && !s.busy {
-		ui.Text(c, "已完成的题包会保留；确认停止原因已解决后，仅重试未完成的题包。")
-		button(c, "重试未完成的题包").OnClick(s.retryBenchmark)
+		ui.Text(c, "已完成的测评题集会保留；确认停止原因已解决后，仅重试未完成的测评题集。")
+		button(c, "重试未完成的测评题集").OnClick(s.retryBenchmark)
 	}
 	for _, task := range s.tasks {
 		if task.Kind != "context_speed" && emptyText(task.RunPath) == "" {
@@ -104,7 +105,7 @@ func (s *viewState) conclusionView(c *ui.Context) {
 	card(c, "工作区进度", func() {
 		step := s.step()
 		phaseProgress(c, phaseProgressOptions{
-			Labels:      []string{"准备", "设备检查", "benchmark", "启动与绑定", "运行", "报告"},
+			Labels:      []string{"准备", "设备检查", termBenchmarkStage, "连接并核验服务", "运行", "报告"},
 			Current:     step,
 			RowLabel:    "六阶段进度",
 			BarLabel:    "工作区六阶段准备进度",
@@ -126,20 +127,6 @@ func (s *viewState) conclusionView(c *ui.Context) {
 				}
 				ui.Text(c, human(*b.BlockedReason)).TextColor(color)
 			}
-		}
-	})
-}
-func (s *viewState) setupGuide(c *ui.Context) {
-	card(c, "环境准备", func() {
-		ui.Text(c, "欢迎使用 InferYard Studio。先准备环境，再获取模型与引擎，最后开始测评。")
-		ui.Text(c, "检查并安装 CLI。")
-		ui.Text(c, "建立结果目录、模型目录和工作区。")
-		ui.Text(c, "已完成的步骤会跳过。")
-		if primaryButton(c, "准备环境").Disabled(s.busy).Clicked() {
-			s.prepareEnvironment()
-		}
-		if s.cliInstallStatus != "" {
-			ui.Text(c, s.cliInstallStatus)
 		}
 	})
 }
@@ -174,9 +161,9 @@ func (s *viewState) stageView(c *ui.Context) {
 			button(c, "查看设备页明细").OnClick(func() { s.selected = "device" })
 		})
 	case "prepare_candidate":
-		stepTrack(c, "3", "benchmark", func() { s.candidateView(c) })
+		stepTrack(c, "3", termBenchmarkStage, func() { s.candidateView(c) })
 	case "bind":
-		stepTrack(c, "4", "启动与绑定", func() { s.serviceView(c) })
+		stepTrack(c, "4", "连接并核验服务", func() { s.serviceView(c) })
 	case "run", "resume":
 		if s.running() == nil && (s.task.stage == "" || s.task.failure != nil) {
 			if b := s.active(); b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil) {
@@ -194,18 +181,7 @@ func (s *viewState) stageView(c *ui.Context) {
 			}
 		})
 	case "done":
-		stepTrack(c, "6", "报告", func() {
-			path := s.task.report
-			if path == "" && s.progress != nil {
-				path = emptyText(s.progress.Report.Path)
-			}
-			if path != "" {
-				button(c, "查看报告").AlignSelf(ui.Start).OnClick(func() { s.openReport(path) })
-			} else {
-				ui.Text(c, "运行已完成，可在报告页查看。")
-				button(c, "查看报告列表").AlignSelf(ui.Start).OnClick(func() { s.selected = "reports" })
-			}
-		})
+		stepTrack(c, "6", "报告", func() { s.completionView(c) })
 	default:
 		if s.progress == nil {
 			ui.Text(c, "无法读取工作区进度，请刷新重试")

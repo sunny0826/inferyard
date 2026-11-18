@@ -51,7 +51,7 @@ func (r *speedTask) active() bool {
 }
 
 func (r *speedTask) label() string {
-	return [...]string{"准备专项", "启动与绑定", "冻结计划", "测量", "读取结果", "执行完成", "取消中 · 等待收尾", "已取消", "未完成", "部分完成", "等待测量"}[r.stage]
+	return [...]string{"准备专项", "连接并核验服务", "固定计划", "测量", "读取结果", "执行完成", "取消中 · 等待收尾", "已取消", "未完成", "部分完成", "等待测量"}[r.stage]
 }
 
 func (r *speedTask) validCount() int {
@@ -81,23 +81,19 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		return false
 	}
 	w := s.speed
-	ui.Field(c, "测评类型", func() {
-		components.NativeSelect(c, &w.selected, []components.NativeSelectOption[bool]{
-			{Value: false, Label: "常规测评"}, {Value: true, Label: "长上下文速度"},
-		}).Trigger.Label("测评类型")
+	selectField(c, "测评类型", "", &w.selected, []components.NativeSelectOption[bool]{
+		{Value: false, Label: "常规测评"}, {Value: true, Label: "长上下文速度"},
 	})
 	if !w.selected {
 		return false
 	}
-	ui.Field(c, "上下文档位", func() {
-		components.NativeSelect(c, &w.context, []components.NativeSelectOption[int]{
-			{Value: inferyard.ContextSpeed64K, Label: "64k"},
-			{Value: inferyard.ContextSpeed128K, Label: "128k"},
-			{Value: inferyard.ContextSpeed256K, Label: "256k"},
-		}).Trigger.Label("上下文档位")
+	selectField(c, "上下文档位", "", &w.context, []components.NativeSelectOption[int]{
+		{Value: inferyard.ContextSpeed64K, Label: "64k"},
+		{Value: inferyard.ContextSpeed128K, Label: "128k"},
+		{Value: inferyard.ContextSpeed256K, Label: "256k"},
 	})
 	ui.Text(c, fmt.Sprintf("%s · %d 次测量 · 每次输出 256 tokens", inferyard.ContextSpeedBundleID, inferyard.ContextSpeedSamples))
-	ui.Text(c, "5 次正式测量；另含探测、预热与排空。墙钟预算由冻结配方生成。")
+	ui.Text(c, "5 次正式测量；另含探测、预热与排空。墙钟预算由固定配方生成。")
 	componentFold(c, "查看配方与停止条件", func() {
 		ui.Text(c, "并发 1 · 固定输入 · 关闭输入缓存与投机解码")
 		ui.Text(c, "超时、内存、磁盘及设备限制由 CLI 核验；容量不足或题库尚未批准时拒绝执行。")
@@ -107,7 +103,13 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	}
 	reason := s.speedStartBlockReason()
 	if engineLocked(s.engineState.State) {
-		button(c, "停止当前服务").Disabled(s.busy || s.engineState.State == "stopping").OnClick(s.stopEngine)
+		if s.destructiveAction(c, destructiveOption{
+			kind: destructiveStopEngine, label: "停止当前服务", confirmLabel: "确认停止当前服务",
+			prompt:   "将停止 Studio 启动的模型服务；长上下文专项测评需要重新启动服务后才能开始。",
+			disabled: s.busy || s.engineState.State == "stopping",
+		}) {
+			s.stopEngine()
+		}
 	}
 	if reason != "" {
 		ui.Text(c, reason).TextColor(stateColor(c, stateWarning))
@@ -123,7 +125,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 
 func (s *viewState) speedStartBlockReason() string {
 	if s.localEngine() != nil {
-		return "安装声明引擎暂不支持长上下文速度；可运行普通 benchmark。"
+		return "安装声明引擎暂不支持长上下文速度；可运行普通测评。"
 	}
 	switch {
 	case s.environmentMissing():
@@ -139,7 +141,7 @@ func (s *viewState) speedStartBlockReason() string {
 	case s.model == "":
 		return "请选择测评模型。"
 	case s.engine == "":
-		return "请选择候选引擎。"
+		return "请选择引擎。"
 	case s.engineState.State == "orphaned":
 		return "请先处理遗留服务记录，再开始专项测评。"
 	case engineLocked(s.engineState.State):
@@ -162,7 +164,7 @@ func (s *viewState) speedStartBlockReason() string {
 		if e.Reason == "cli_outdated" {
 			return "当前 CLI 不支持引擎核验；请在设置中选择支持长上下文速度的 CLI。"
 		}
-		return "所选引擎尚未通过核验，请到模型页查看原因。"
+		return "所选引擎尚未通过核验，请在任务页的「引擎」下拉中重新选择。"
 	}
 }
 
@@ -176,11 +178,11 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 	}
 	ui.Text(c, label+r.id).TextColor(c.Theme().TextMuted)
 	if r.budget > 0 {
-		ui.Text(c, fmt.Sprintf("冻结墙钟预算 %.0f 秒（含准备与排空）", r.budget))
+		ui.Text(c, fmt.Sprintf("固定墙钟预算 %.0f 秒（含准备与排空）", r.budget))
 	}
 	card(c, "任务进度", func() {
 		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
-			for i, label := range []string{"准备", "启动与绑定", "冻结计划", "测量", "读取结果"} {
+			for i, label := range []string{"准备", "连接并核验服务", "固定计划", "测量", "读取结果"} {
 				if speedStage(i) == r.stage {
 					statusBadge(c, label, stateColor(c, stateActive))
 				} else {
@@ -203,7 +205,13 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 		}
 		switch {
 		case r.active():
-			button(c, "取消专项测评").Disabled(r.stage == speedCancelling).OnClick(s.cancelSpeed)
+			if s.destructiveAction(c, destructiveOption{
+				kind: destructiveCancelRun, id: r.id, label: "取消专项测评", confirmLabel: "确认取消专项测评",
+				prompt:   "将取消本次专项测评并等待安全收尾；已写入的测量记录保留，不形成完整汇总。",
+				disabled: r.stage == speedCancelling,
+			}) {
+				s.cancelSpeed()
+			}
 		default:
 			primaryButton(c, "查看结果").OnClick(func() { s.openSpeed(r.id) })
 			button(c, "用此组合新开任务").OnClick(func() { s.newSpeedTask(r) })

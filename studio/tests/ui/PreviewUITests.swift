@@ -71,13 +71,15 @@ final class PreviewUITests: XCTestCase {
         click("下载模型")
         expectText("已结束")
         click("模型")
-        let picker = app.popUpButtons["模型"]
-        expectExists(picker, timeout: 5)
-        picker.click()
         let downloadedModel = "model · SmolLM2-135M-Instruct-Q4_K_M.gguf"
-        text(downloadedModel).click()
-        click("用这个组合新开任务")
-        click("运行 benchmark")
+        expectText(downloadedModel)
+        XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must stay read-only")
+        // The sidebar task entry switches to the current task without resetting
+        // or confirming; the pair is chosen on the task page.
+        click("任务")
+        chooseModel(downloadedModel)
+        XCTAssertFalse(app.buttons["确认开始新任务"].exists, "Task nav must not ask to confirm")
+        click("开始测评")
         expectExists(app.buttons["查看实时详情"], timeout: 10)
         keepScreenshot("Task running without obsolete title")
         click("查看实时详情", timeout: 10)
@@ -92,20 +94,21 @@ final class PreviewUITests: XCTestCase {
         expectText("120 个有效样本")
         expectText("各类任务表现")
         expectText("吞吐")
-        expectText("输出间隔")
-        revealInContent(text("输出间隔"))
-        revealInContent(text("p95 为探索性估计（样本少于 100）"))
+        expectText("输出内容块到达间隔")
+        revealInContent(text("输出内容块到达间隔"))
+        revealInContent(text("样本较少，仅供观察。"))
         keepScreenshot("Report throughput and output-interval cards")
         click("新任务")
         click("报告")
         expectText("历史任务")
-        let report = app.tables["报告列表"].staticTexts.matching(NSPredicate(format: "value BEGINSWITH %@", "preview-report-")).firstMatch
+        // MyGo exports a button's name as its accessibility title, never its label.
+        let report = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "打开报告 · preview-report-")).firstMatch
         XCTAssertTrue(report.exists, "New task must preserve the generated report")
     }
 
     private func failureCanRetryThroughNormalControls() {
         app.checkBoxes["下次操作模拟失败"].click()
-        click("运行 benchmark")
+        click("开始测评")
         click("启动服务", timeout: 10)
         click("查看报告", timeout: 25)
         expectText("Preview-Model-Q4.gguf")
@@ -113,10 +116,13 @@ final class PreviewUITests: XCTestCase {
     }
 
     private func cancellationAllowsAnotherTask() {
-        click("运行 benchmark")
+        click("开始测评")
         click("查看实时详情", timeout: 10)
         click("取消任务")
-        click("运行 benchmark", timeout: 10)
+        expectExists(app.buttons["确认取消任务"], timeout: 5)
+        keepScreenshot("Cancel asks before discarding the run")
+        click("确认取消任务")
+        click("开始测评", timeout: 10)
         click("查看报告", timeout: 25)
         expectText("各类任务表现")
     }
@@ -125,20 +131,34 @@ final class PreviewUITests: XCTestCase {
         click("下载")
         app.checkBoxes["下次操作模拟失败"].click()
         click("下载模型")
-        expectText("下载失败，请检查网络后重试。 · download_failed")
+        expectText("下载失败，请检查网络后重试。")
+        XCTAssertFalse(text("错误码：download_failed").exists, "Raw code stays folded")
         click("重新创建下载任务")
         expectText("已结束")
+        // Folds belong to one task card; never click a label that only happens to
+        // exist on another card.
+        toggleTaskDetails("model-2")
         expectText("实际目录名：model-2")
-        expectText("下载失败，请检查网络后重试。 · download_failed")
-        click("新任务")
+        XCTAssertFalse(text("错误码：download_failed").exists, "Opening model-2 must not expand model")
+        toggleTaskDetails("model")
+        expectText("错误码：download_failed")
+        click("任务")
         click("下载")
+        toggleTaskDetails("model-2")
         expectText("实际目录名：model-2")
         click("重置场景")
         click("下载")
+        // An empty downloads page omits the task card and keeps only the
+        // new-download form (studio/docs/pages.md:144, downloads.go:29-31).
+        expectText("新建下载任务")
+        XCTAssertFalse(text("下载任务").exists, "Empty downloads page omits the task card")
+        XCTAssertFalse(taskCard("model").exists)
+        XCTAssertFalse(taskCard("model-2").exists)
         XCTAssertFalse(app.staticTexts["实际目录名：model-2"].exists)
-        XCTAssertFalse(text("下载失败，请检查网络后重试。 · download_failed").exists)
+        XCTAssertFalse(text("错误码：download_failed").exists)
         click("下载模型")
         expectText("已结束")
+        toggleTaskDetails("model")
         expectText("实际目录名：model")
     }
 
@@ -160,7 +180,7 @@ final class PreviewUITests: XCTestCase {
         XCTAssertTrue(text("128k").exists)
         XCTAssertFalse(text("131072").exists)
         keepScreenshot("Context speed result")
-        app.disclosureTriangles["查看逐次测量"].click()
+        expandFold("查看逐次测量")
         let measurements = app.tables["专项逐次测量"]
         expectExists(measurements, timeout: 5)
         click("返回历史任务")
@@ -172,6 +192,8 @@ final class PreviewUITests: XCTestCase {
         click("用此组合新开任务")
         expectText("先停止当前受管服务，再按所选上下文启动新任务。")
         click("停止当前服务")
+        expectExists(app.buttons["确认停止当前服务"], timeout: 5)
+        click("确认停止当前服务")
         click("开始专项测评")
         expectText("已完成 1 / 5 次测量")
     }
@@ -180,6 +202,8 @@ final class PreviewUITests: XCTestCase {
         prepareSpeed()
         click("开始专项测评")
         click("取消专项测评")
+        expectExists(app.buttons["确认取消专项测评"], timeout: 5)
+        click("确认取消专项测评")
         click("查看结果", timeout: 10)
         expectText("有效 0/5 · 未形成完整汇总")
         expectText("任务已取消。已完成的测量已保留；未完成项显示为 —。")
@@ -255,13 +279,13 @@ final class PreviewUITests: XCTestCase {
         click("下载模型")
         click("返回任务")
         wait("downloaded resources unlock benchmark", timeout: 15) {
-            self.app.buttons["运行 benchmark"].exists && self.app.buttons["运行 benchmark"].isEnabled
+            self.app.buttons["开始测评"].exists && self.app.buttons["开始测评"].isEnabled
         }
         XCTAssertEqual(String(describing: app.checkBoxes["zh-core"].value ?? ""), "1")
         XCTAssertEqual(String(describing: app.checkBoxes["zh-svg-pelican"].value ?? ""), "1")
-        revealInContent(app.buttons["运行 benchmark"])
+        revealInContent(app.buttons["开始测评"])
         keepScreenshot("First use ready to benchmark")
-        click("运行 benchmark")
+        click("开始测评")
         expectText("zh-core · 运行中")
         expectText("zh-svg-pelican · 排队中")
         XCTAssertFalse(text("单次运行不支持断点续跑；请重新运行该配置。").exists)
@@ -302,7 +326,11 @@ final class PreviewUITests: XCTestCase {
         let chart = text("传感器温度 °C曲线")
         revealInContent(chart)
         XCTAssertTrue(chart.isHittable)
-        XCTAssertTrue(app.tables["资源采样数值表"].staticTexts.matching(NSPredicate(format: "value == %@", "AppleSMC:Tp0C")).firstMatch.exists)
+        // The sample table lives inside a fold; expand it before asserting rows.
+        expandFold("原始采样数值")
+        let table = app.tables["资源采样数值表"]
+        expectExists(table, timeout: 5)
+        XCTAssertTrue(table.staticTexts.matching(NSPredicate(format: "value == %@", "AppleSMC:Tp0C")).firstMatch.exists)
         keepScreenshot("Selected temperature source with its own measurements")
     }
 
@@ -325,14 +353,20 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(app.buttons["查看实时详情"].exists, "Engine startup must not start a benchmark")
         keepScreenshot("Engine running icon and hover controls")
         click("停止引擎")
+        expectExists(app.buttons["确认停止引擎"], timeout: 5)
+        click("确认停止引擎")
         expectExists(app.buttons["引擎 · 已停止"], timeout: 5)
     }
 
     private func localDirectoryEngineRunsBothScopes() {
-        expectExists(app.menuButtons["local-weights · 目录模型"], timeout: 5)
-        revealInContent(app.buttons["运行 benchmark"])
+        // The select's accessible name is the field label; the current option is
+        // its accessibility value, as a screen reader reads it.
+        let model = app.menuButtons["测评模型"].firstMatch
+        expectExists(model, timeout: 5)
+        XCTAssertEqual(model.value as? String, "local-weights · 目录模型")
+        revealInContent(app.buttons["开始测评"])
         keepScreenshot("Local directory model and registered engine")
-        click("运行 benchmark")
+        click("开始测评")
         expectText("zh-core · 运行中")
         expectText("zh-svg-pelican · 排队中")
         keepScreenshot("Local first scope and queued second scope")
@@ -344,9 +378,9 @@ final class PreviewUITests: XCTestCase {
     }
 
     private func lmStudioBindingFailureKeepsCompletedScope() {
-        revealInContent(app.buttons["运行 benchmark"])
-        click("运行 benchmark")
-        expectText("zh-svg-pelican · 等待绑定 LM Studio", timeout: 15)
+        revealInContent(app.buttons["开始测评"])
+        click("开始测评")
+        expectText("zh-svg-pelican · 等待连接 LM Studio", timeout: 15)
         let pid = app.textFields["新的后台 PID"]
         expectExists(pid, timeout: 5)
         revealInContent(pid)
@@ -354,13 +388,13 @@ final class PreviewUITests: XCTestCase {
         pid.click()
         pid.typeText("4002")
         app.checkBoxes["下次操作模拟失败"].click()
-        click("绑定并继续此题包")
-        click("重试未完成的题包", timeout: 10)
+        click("连接并继续此测评题集")
+        click("重试未完成的测评题集", timeout: 10)
         expectExists(pid, timeout: 5)
         revealInContent(pid)
         pid.click()
         pid.typeText("4003")
-        click("绑定并继续此题包")
+        click("连接并继续此测评题集")
         expectText("zh-svg-pelican · 运行中")
         XCTAssertFalse(text("zh-core · 运行中").exists, "A completed scope must not run again")
         keepScreenshot("LM Studio retries only the unfinished scope")

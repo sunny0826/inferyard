@@ -56,10 +56,36 @@ type DeviceResponse struct {
 	LastError  *ApiError       `json:"last_error"`
 }
 
+// RunScore mirrors the CLI quality reduction. Valid counts every case in a
+// quality category that executed (completed or failed), so a failed execution
+// occupies its slot and counts as not passed instead of shrinking the
+// denominator. Unscorable and Missing split the remaining gaps: a completed
+// case that could not be judged, or that has no score at all. The rate is
+// present only when the CLI would compute one: a complete run with no
+// unscorable or missing case.
 type RunScore struct {
-	Passed int64    `json:"passed"`
-	Valid  int64    `json:"valid"`
-	Rate   *float64 `json:"rate"`
+	Passed     int64    `json:"passed"`
+	Valid      int64    `json:"valid"`
+	Unscorable int64    `json:"unscorable"`
+	Failed     int64    `json:"failed"`
+	Missing    int64    `json:"missing_score"`
+	Rate       *float64 `json:"rate"`
+}
+
+// RateGap reports why a rate is absent, or empty when one was reported. A
+// failed execution is not a gap: it stays in the denominator as a failure, so
+// the rate survives. A withheld rate with no unscorable and no missing case
+// means the run itself is incomplete, which is how the CLI reasons.
+func (s RunScore) RateGap() string {
+	switch {
+	case s.Rate != nil:
+		return ""
+	case s.Unscorable > 0:
+		return "不可评分"
+	case s.Missing > 0:
+		return "缺评分"
+	}
+	return "运行不完整"
 }
 
 type RunSummary struct {
@@ -184,12 +210,28 @@ type RunTaskDetail struct {
 	Resources []ResourceSample `json:"resources"`
 }
 
+// ReportListRun is Studio's display projection of one run inside a report. It
+// is derived from the same studio.json parse as the rest of the summary; it is
+// not a report format field and never adds a composite score.
+type ReportListRun struct {
+	RunID       string  `json:"run_id"`
+	Model       string  `json:"model"`
+	BundleLabel string  `json:"bundle_label"`
+	Title       *string `json:"title"`
+	Quality     ReportQuality
+}
+
 type ReportSummary struct {
-	ReportId  string    `json:"report_id"`
-	Path      string    `json:"path"`
-	CreatedAt *string   `json:"created_at"`
-	RunIds    []string  `json:"run_ids"`
-	RunPaths  []*string `json:"run_paths"`
+	ReportId string `json:"report_id"`
+	Path     string `json:"path"`
+	// ModifiedAt is the studio.json file modification time. It is not the run
+	// start or the generation time, and the page labels it as such.
+	ModifiedAt   *string         `json:"modified_at"`
+	RunIds       []string        `json:"run_ids"`
+	RunPaths     []*string       `json:"run_paths"`
+	RunSummaries []ReportListRun `json:"run_summaries"`
+	// Unreadable keeps the entry visible when studio.json cannot be parsed.
+	Unreadable bool `json:"unreadable"`
 }
 
 type CreateReportRequest struct {

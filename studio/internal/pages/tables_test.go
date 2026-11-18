@@ -127,22 +127,19 @@ func TestReportMultiSelectionAndLimit(t *testing.T) {
 func TestReportTableSelection(t *testing.T) {
 	s := testState()
 	s.reports = []core.ReportSummary{{ReportId: "report-a", Path: "/reports/a", RunIds: []string{"source-a"}, RunPaths: []*string{nil}}, {ReportId: "report-b", Path: "/reports/b", RunIds: []string{"source-b"}, RunPaths: []*string{ptr("/runs/b")}}}
-	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportsTableView(c) }) }, 1000, 700)
-	click(t, tt, "打开报告")
-	if s.failure != nil {
-		t.Fatal("unselected open activated")
-	}
-	click(t, tt, "report-a")
-	if !tt.HasText("来源不可达") {
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportsTableView(c) }) }, 1000, 900)
+	click(t, tt, "报告详情")
+	if !tt.HasText("来源运行：source-a") || !tt.HasText("来源路径：来源不可达") {
 		t.Fatal(tt.Texts())
 	}
-	click(t, tt, "report-b")
-	if !tt.HasText("source-b · b") || tt.HasText("来源不可达") {
-		t.Fatal(tt.Texts())
-	}
-	click(t, tt, "打开报告")
+	click(t, tt, "打开报告 · report-b")
 	if s.openedReport == nil || s.openedReport.reference != "report-b" || s.openedReport.failure == nil {
-		t.Fatal("selected open not invoked")
+		t.Fatal("card open not invoked")
+	}
+	s.openedReport = nil
+	click(t, tt, "打开报告 · report-a")
+	if s.openedReport == nil || s.openedReport.reference != "report-a" {
+		t.Fatal("first card did not open its own report")
 	}
 }
 
@@ -158,6 +155,7 @@ func TestDownloadTaskCardsAndDetails(t *testing.T) {
 	}
 	s.downloads = []core.DownloadTask{b}
 	tt.Frame()
+	click(t, tt, "观测依据与输出")
 	for _, text := range []string{"实际目录名：model-b", "model.gguf", "1048576", "fixture-sha", "下载失败", "输出目录保留"} {
 		if !tt.HasText(text) {
 			t.Fatal("missing", text, tt.Texts())

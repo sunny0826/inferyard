@@ -54,7 +54,7 @@ func (s *viewState) needsTaskAssets() bool {
 func (s *viewState) taskAssetsView(c *ui.Context) {
 	assets := s.availableTaskAssets()
 	card(c, "准备模型与引擎", func() {
-		ui.Text(c, "开始测评前，需要一个本地模型和运行它的引擎。")
+		ui.Text(c, "测评开始前，需要一个本地模型和运行它的引擎。")
 		ui.Text(c, "可在下载页获取推荐资源；已有资源可在设置中指定目录。")
 		for _, asset := range []struct {
 			kind, label string

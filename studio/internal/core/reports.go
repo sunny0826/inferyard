@@ -37,20 +37,30 @@ type (
 
 func reportSummary(path string) (ReportSummary, error) {
 	r := ReportSummary{ReportId: filepath.Base(path), Path: path, RunIds: []string{}, RunPaths: []*string{}}
-	info, e := os.Stat(path)
-	if e != nil {
+	if _, e := os.Stat(path); e != nil {
 		return r, e
 	}
-	r.CreatedAt = ptr(info.ModTime().UTC().Format(time.RFC3339Nano))
+	file, e := os.Stat(filepath.Join(path, "studio.json"))
+	if e != nil {
+		r.Unreadable = true
+		return r, e
+	}
+	r.ModifiedAt = ptr(file.ModTime().UTC().Format(time.RFC3339Nano))
 	raw, e := os.ReadFile(filepath.Join(path, "studio.json"))
 	if e != nil {
+		r.Unreadable = true
 		return r, e
 	}
 	report, e := inferyard.ParseStudioReport(raw)
 	if e != nil {
+		r.Unreadable = true
 		return r, e
 	}
 	for _, run := range report.Runs {
+		r.RunSummaries = append(r.RunSummaries, ReportListRun{
+			RunID: run.Source.RunID, Model: run.Model, BundleLabel: run.Facets.BundleLabel,
+			Title: run.Profile.Title, Quality: run.Dashboard.Quality,
+		})
 		r.RunIds = append(r.RunIds, run.Source.RunID)
 		var p *string
 		if run.Source.Path != "" {
@@ -91,7 +101,7 @@ func (s *Service) Reports() (*string, []ReportSummary, *ApiError) {
 		r, _ := reportSummary(path)
 		out = append(out, r)
 	}
-	sort.Slice(out, func(i, j int) bool { return str(out[i].CreatedAt) > str(out[j].CreatedAt) })
+	sort.Slice(out, func(i, j int) bool { return str(out[i].ModifiedAt) > str(out[j].ModifiedAt) })
 	return root, out, nil
 }
 func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiError) {

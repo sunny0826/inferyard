@@ -13,7 +13,7 @@ func TestLocalCandidateFormatAndSpeedAdmission(t *testing.T) {
 			if s.compatibleModel(core.ModelAsset{Format: "gguf"}) != gguf || s.compatibleModel(core.ModelAsset{Format: "directory"}) == gguf {
 				t.Fatal("format admission changed")
 			}
-			if s.speedStartBlockReason() != "安装声明引擎暂不支持长上下文速度；可运行普通 benchmark。" {
+			if s.speedStartBlockReason() != "安装声明引擎暂不支持长上下文速度；可运行普通测评。" {
 				t.Fatal(s.speedStartBlockReason())
 			}
 		})

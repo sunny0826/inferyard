@@ -89,8 +89,7 @@ func previewBase(ctx context.Context) *viewState {
 		speed: &speedWorkspace{context: inferyard.ContextSpeed64K},
 		ctx:   ctx, selected: "dashboard", loaded: true, settingsLoaded: true,
 		denied: map[string]bool{}, model: model, engine: engine, discoveryLoaded: true,
-		candidateMatches: func(string, string, string) (bool, bool) { return true, true },
-		engineState:      core.EngineState{State: "stopped"},
+		engineState: core.EngineState{State: "stopped"},
 		ready: core.Readiness{
 			CLI:       core.InferyardProbe{Status: "ok", Version: previewValue("preview")},
 			Workspace: core.DirectoryReadiness{Path: settings.WorkspaceRoot, Exists: true, Initialized: true},
@@ -111,10 +110,14 @@ func previewBase(ctx context.Context) *viewState {
 				{Bundle: inferyard.DefaultBundleCore, Phase: "candidate_missing", NextAction: "prepare_candidate"},
 				{Bundle: inferyard.DefaultBundlePelican, Phase: "candidate_missing", NextAction: "prepare_candidate"},
 			}},
-		reports: []core.ReportSummary{{ReportId: "preview-report", Path: "/preview/reports/preview-report", RunIds: []string{"preview-run"}}},
+		reports: []core.ReportSummary{previewReportSummary("preview-report")},
 	}
 	s.loadSettings(s.settings)
-	s.history.StandaloneRuns = []core.RunSummary{{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true}}
+	// A complete run carries the completeness and score the history scan reads
+	// from its evidence; the numbers match the bundled report of the same run.
+	seeded := core.RunSummary{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true, Completeness: previewValue("complete")}
+	seeded.Score = &core.RunScore{Passed: 7, Valid: 13, Rate: previewValue(7.0 / 13)}
+	s.history.StandaloneRuns = []core.RunSummary{seeded}
 	s.downloads = []core.DownloadTask{
 		{TaskId: "preview-engine", Kind: "engine", State: "downloading", OutName: "preview-engine", OutDir: "/preview/engines/preview-engine"},
 		{TaskId: "preview-model", Kind: "model", State: "failed", OutName: "preview-model", OutDir: "/preview/models/preview-model", SourceUrl: "https://example.invalid/preview.gguf", Error: core.Err("download_failed")},
@@ -148,6 +151,24 @@ func previewEmpty(s *viewState) {
 	s.reports, s.downloads, s.device.Snapshot = nil, nil, nil
 	s.model, s.engine = "", ""
 	s.ready = core.Readiness{CLI: core.InferyardProbe{Status: "not_found"}}
+}
+
+// previewReportSummary mirrors the core projection: one parse of the bundled
+// report supplies the model, bundle and quality shown on each card.
+func previewReportSummary(id string) core.ReportSummary {
+	index := previewReportFixture("")
+	summary := core.ReportSummary{
+		ReportId: id, Path: "/preview/reports/" + id,
+		ModifiedAt: previewValue("2026-01-01T00:00:00Z"),
+		RunIds:     []string{"preview-run"}, RunPaths: []*string{previewValue("/preview/results/preview-run")},
+	}
+	for _, run := range index.Runs {
+		summary.RunSummaries = append(summary.RunSummaries, core.ReportListRun{
+			RunID: run.Source.RunID, Model: run.Model, BundleLabel: run.Facets.BundleLabel,
+			Title: run.Profile.Title, Quality: run.Dashboard.Quality,
+		})
+	}
+	return summary
 }
 
 func previewReportFixture(reference string) *core.ReportIndex {

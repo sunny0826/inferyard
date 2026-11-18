@@ -1,10 +1,22 @@
 package pages
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
+	"inferyard/studio/internal/core"
 )
+
+// scrollReports gives the list enough cards to exceed one viewport.
+func scrollReports(count int) []core.ReportSummary {
+	out := make([]core.ReportSummary, count)
+	for i := range count {
+		qualified := fmt.Sprintf("report-%02d", i)
+		out[i] = core.ReportSummary{ReportId: qualified, Path: "/reports/" + qualified}
+	}
+	return out
+}
 
 // The keyed scroll container keeps the page's own scroll state, so the
 // offset survives the page switch that rebuilds the tree.
@@ -18,6 +30,7 @@ func TestScrollStateFollowsTheSelectedPage(t *testing.T) {
 		t.Fatalf("settings page did not scroll: %v", settingsOffset)
 	}
 
+	s.reports = scrollReports(12)
 	s.selected = "reports"
 	tt.Frame()
 	tt.Scroll(700, 500, 0, 300)
@@ -45,6 +58,7 @@ func TestScrollStateFollowsTheSelectedPage(t *testing.T) {
 func TestOpenedReportScrollIsSeparateFromTheList(t *testing.T) {
 	s := testState()
 	s.service, _ = reportFixtureService(t)
+	s.reports = scrollReports(12)
 	s.selected = "reports"
 	tt := ui.NewTester(s.view, 1120, 800)
 	tt.Scroll(700, 500, 0, 400)

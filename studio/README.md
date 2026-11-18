@@ -10,17 +10,22 @@ There is no browser UI, headless mode, REST/SSE server, or generated JavaScript.
 
 When the workspace, results, and model paths are all unset in settings, Studio opens
 on the task page with environment preparation. Once any of these paths has been saved,
-launching without an explicit page opens Reports. The sidebar lists Reports, Models,
-Downloads, Device, and Settings.
-“新任务” (New task) opens the task page with no sidebar selection.
+launching without an explicit page opens Reports. The sidebar lists Tasks, Reports,
+Models, Downloads, Device, and Settings.
+The sidebar's “任务” (Task) entry switches to the current task page without resetting,
+cancelling or confirming: an active run keeps its progress, and an idle task page keeps
+the chosen model, engine and evaluation sets. “新任务” (New task) also opens the task
+page but resets the round: while a run, a specialist measurement, or a pending operation
+is in flight, “新任务” asks for one confirmation and states that the work is cancelled
+after a safe drain while the evidence already written stays in the results directory.
 
 | Page | Purpose |
 | --- | --- |
 | Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
-| Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
-| Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
-| Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts and have no verification entry. |
+| Models | Read-only inventory of installed models and engines (format, architecture, size, verification verdict) plus running services. Choosing the pair happens only on the task page. Empty inventories offer Go to Downloads; orphaned engines show a warning; no absolute paths. |
+| Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
+| Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
 
 The [pages reference](docs/pages.md) covers the per-page rules: the first-launch flow,
@@ -33,7 +38,7 @@ The [Studio Design System](docs/design-system.md) defines shared layout, theme, 
 components, feedback, accessibility, and verification rules against the onevra v0.2026.17
 component library on MyGo v0.7.4, including its collapsible, resizable sidebar shell and
 component mapping.
-The [page audit](docs/design-system-audit.md) records implementation gaps across all five
+The [page audit](docs/design-system-audit.md) records implementation gaps across all six
 pages, the run detail view, and the report view. These documents define the target and
 review scope; they do not establish native desktop acceptance.
 
@@ -122,14 +127,16 @@ The sidebar's “模拟场景” selector provides task preparation, running, co
 live run details; report list, details, long tables and read errors; empty data; models;
 downloads; device measurements; settings; a specialist history fixture; and the five
 local-engine preparation scenes. Pages use the same components as normal Studio. The selector is a shortcut; normal page buttons drive the workflow. Start with
-“准备环境”, select the model and bundles, and click “运行 benchmark”. Simulated startup,
+“准备环境”, select the model and evaluation sets, and click “开始测评”. Simulated startup,
 per-bundle progress and report generation advance automatically. Open live details or
 switch pages while work continues; “查看报告” opens that task's model and run results.
 
 Downloads can complete, be cancelled, or fail and be retried; completed assets appear in
 Models. Settings are saved in memory and download directory names affect later tasks.
-“下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务” cancels the current
-task while retaining settings, downloads and results. “重置场景” restores all fixture data,
+“下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务” asks for
+confirmation before it cancels the current task, while retaining settings, downloads and
+results; “取消运行”, “取消任务”, “停止服务” and “取消下载” show the same inline
+confirmation in the preview window. “重置场景” restores all fixture data,
 form values, table selection and collapsed sections, and discards pending simulation steps.
 
 The approved context-speed page now calls the CLI through the serial queue. The bundled
@@ -280,7 +287,7 @@ side; see [tests/e2e/README.md](tests/e2e/README.md) for the layout, fixture bou
 the `INFERYARD_E2E_CLI` / `INFERYARD_E2E_ROOT` knobs. CI runs it on macOS and Windows via
 `.github/workflows/studio-check.yml`.
 
-Native view tests, the e2e suite, and fixtures do not establish real-device acceptance. Verify all five
+Native view tests, the e2e suite, and fixtures do not establish real-device acceptance. Verify all six
 pages, the task page's stage navigation and restored progress, resource curves, and the
 report index view on actual desktop windows. Cross-compilation is not Windows/Linux runtime evidence.
 The native UI migration requires fresh acceptance; historical Web UI checks do not qualify

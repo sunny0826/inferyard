@@ -30,12 +30,35 @@ func configuredValue(value string) string {
 	return value
 }
 
+// button and primaryButton give every page action the same geometry: the
+// button hugs its label instead of stretching to the column width, so a card
+// action never reads as a full-width banner. A caller that needs a wide button
+// asks for FillWidth explicitly.
 func button(c *ui.Context, label string) ui.Element {
-	return components.Button(c, label, components.ButtonSecondary).MaxWidthPercent(100)
+	return components.Button(c, label, components.ButtonSecondary).MaxWidthPercent(100).AlignSelf(ui.Start)
 }
 
 func primaryButton(c *ui.Context, label string) ui.Element {
-	return components.Button(c, label, components.ButtonPrimary).MaxWidthPercent(100)
+	return components.Button(c, label, components.ButtonPrimary).MaxWidthPercent(100).AlignSelf(ui.Start)
+}
+
+// dangerButton marks an action that cancels or discards work. It shares the
+// button geometry of the quiet variant and takes its colour from the danger
+// state token, so pages never carry their own red styling.
+func dangerButton(c *ui.Context, label string) ui.Element {
+	theme := c.Theme()
+	danger := tokens(c).State.Danger
+	b := components.Button(c, label, components.ButtonOutline).MaxWidthPercent(100).AlignSelf(ui.Start)
+	background := theme.Surface.Mix(danger, .10)
+	if !b.IsDisabled() {
+		switch {
+		case b.Pressed():
+			background = theme.Surface.Mix(danger, .28)
+		case b.Hovered():
+			background = theme.Surface.Mix(danger, .18)
+		}
+	}
+	return b.Background(background).TextColor(danger.Mix(theme.Text, .2)).Border(1, danger.Alpha(.7))
 }
 
 func activitySpinner(c *ui.Context, label string) ui.Element {

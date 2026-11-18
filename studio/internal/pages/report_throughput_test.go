@@ -21,13 +21,11 @@ func TestReportThroughputAndIntervalCards(t *testing.T) {
 	s.openReport("summary-1")
 	tt := renderReport(t, s)
 	for _, want := range []string{
-		"吞吐", "请求/秒", "输出 token/秒", "goodput/秒",
+		"吞吐", "完成请求/秒", "输出 token/秒", "达标请求/秒",
 		"1.5", "12.25", "0（已测）",
-		"串行批次口径，不代表并发服务能力",
-		"输出间隔", "内容块到达间隔，非逐 token ITL",
-		"25 个", "2 个请求",
-		"min 0 ms", "p50 120.5 ms", "p95 400 ms", "max 900.25 ms",
-		"逐 token ITL 未测：无逐 token 事件源",
+		"依次执行本批请求的观测值，不代表并发服务能力",
+		"输出内容块到达间隔", "内容块不等于真实 token；没有逐 token 事件源，因此未测逐 token 间隔。",
+		"中位", "120.5 ms", "P95", "400 ms", "约 95% 的已观测间隔不超过 P95。",
 	} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q: %v", want, tt.Texts())
@@ -54,7 +52,7 @@ func TestReportThroughputMissingReasonsAndZero(t *testing.T) {
 	tt := renderReport(t, s)
 	for _, want := range []string{
 		"无可用终态窗口", "输出 token 计数不完整", "无法判定（不可判请求存在）",
-		"0 个", "1 个请求", "缺测原因：非流式请求", "p95 —（样本少于 20）", "min —", "max —",
+		"缺测原因：非流式请求", "P95", "—（样本少于 20）",
 	} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q: %v", want, tt.Texts())
@@ -84,12 +82,12 @@ func TestReportWithoutOptionalSectionsShowsUnmeasured(t *testing.T) {
 	if count != 2 {
 		t.Fatalf("both optional cards must report missing measurement, got %d: %v", count, tt.Texts())
 	}
-	for _, want := range []string{"串行批次口径，不代表并发服务能力", "内容块到达间隔，非逐 token ITL", "逐 token ITL 未测：无逐 token 事件源"} {
+	for _, want := range []string{"依次执行本批请求的观测值，不代表并发服务能力", "内容块不等于真实 token；没有逐 token 事件源，因此未测逐 token 间隔。"} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	if tt.HasText("1.5") || tt.HasText("25 个") {
+	if tt.HasText("1.5") || tt.HasText("120.5 ms") {
 		t.Fatal("absent sections rendered measurements")
 	}
 }
@@ -113,7 +111,7 @@ func TestReportOutputIntervalP95Exploration(t *testing.T) {
 			intervals := s.openedReport.index.Runs[0].Dashboard.OutputBlockIntervals
 			intervals.IntervalCount, intervals.P95, intervals.P95Reason = tc.count, tc.p95, nil
 			tt := renderReport(t, s)
-			if got := tt.HasText("p95 为探索性估计（样本少于 100）"); got != tc.want {
+			if got := tt.HasText("样本较少，仅供观察。"); got != tc.want {
 				t.Fatalf("exploratory note = %v, want %v: %v", got, tc.want, tt.Texts())
 			}
 		})
@@ -147,12 +145,12 @@ func TestReportRunSelectionKeepsThroughputSeparate(t *testing.T) {
 	click(t, tt, "选择运行")
 	click(t, tt, "第二题包 · second-run")
 	tt.Frame()
-	for _, want := range []string{"Second Model", "3.25", "64.5", "2.5", "4 个请求", "p95 30 ms"} {
+	for _, want := range []string{"Second Model", "3.25", "64.5", "2.5", "20 ms", "30 ms"} {
 		if !tt.HasText(want) {
 			t.Errorf("missing %q after run switch: %v", want, tt.Texts())
 		}
 	}
-	if tt.HasText("1.5") || tt.HasText("2 个请求") {
+	if tt.HasText("1.5") || tt.HasText("120.5 ms") {
 		t.Fatal("previous run throughput leaked into the selected run")
 	}
 }

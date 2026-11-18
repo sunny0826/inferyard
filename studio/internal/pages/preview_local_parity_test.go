@@ -79,7 +79,7 @@ func assertLocalFrames(t *testing.T, f *localParityService, p *previewSession, w
 	}
 	if want.Continue {
 		tt := ui.NewTester(p.state.awaitingLocalServiceView, 1120, 1000)
-		if !tt.HasText("绑定并继续此题包") {
+		if !tt.HasText("连接并继续此测评题集") {
 			t.Fatal(tt.Texts())
 		}
 	}

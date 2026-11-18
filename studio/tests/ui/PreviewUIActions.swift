@@ -37,6 +37,40 @@ extension PreviewUITests {
         XCTAssertTrue(element.isHittable, "The control must be operable after scrolling")
     }
 
+    /// taskCard scopes fold lookups to one card so a label shared by several
+    /// cards never targets the wrong task.
+    func taskCard(_ name: String) -> XCUIElement {
+        app.groups[name].firstMatch
+    }
+
+    /// toggleTaskDetails expands the details fold of the named task card.
+    func toggleTaskDetails(_ name: String, fold: String = "观测依据与输出") {
+        let card = taskCard(name)
+        expectExists(card, timeout: 5)
+        let triangle = card.disclosureTriangles[fold]
+        if triangle.exists {
+            revealInContent(triangle)
+            triangle.click()
+            return
+        }
+        let button = card.buttons[fold]
+        expectExists(button, timeout: 5)
+        revealInContent(button)
+        button.click()
+    }
+
+    /// expandFold opens a disclosure that is part of the page rather than a
+    /// card, such as the resource sample table.
+    func expandFold(_ label: String) {
+        let triangle = app.disclosureTriangles[label]
+        if triangle.exists {
+            revealInContent(triangle)
+            triangle.click()
+            return
+        }
+        click(label)
+    }
+
     func keepScreenshot(_ name: String) {
         let attachment = XCTAttachment(screenshot: app.windows["InferYard Studio · UI 调试"].screenshot())
         attachment.name = name
@@ -47,8 +81,21 @@ extension PreviewUITests {
     func prepare() {
         click("准备环境")
         wait("benchmark becomes available", timeout: 10) {
-            self.app.buttons["运行 benchmark"].exists && self.app.buttons["运行 benchmark"].isEnabled
+            self.app.buttons["开始测评"].exists && self.app.buttons["开始测评"].isEnabled
         }
+    }
+
+    /// chooseModel picks one entry from the task page's 测评模型 dropdown, the
+    /// only place the pair is chosen. The dropdown lists installed models.
+    func chooseModel(_ label: String) {
+        let trigger = app.menuButtons["测评模型"].firstMatch
+        expectExists(trigger, timeout: 10)
+        revealInContent(trigger)
+        trigger.click()
+        let item = app.menuItems[label].firstMatch
+        expectExists(item, timeout: 5)
+        item.click()
+        wait("model selection closes", timeout: 5) { !item.exists }
     }
 
     func openMenu(_ label: String) {

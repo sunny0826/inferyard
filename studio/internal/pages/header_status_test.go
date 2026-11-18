@@ -9,7 +9,7 @@ import (
 )
 
 func statusControlEnabled(tt *ui.Tester, label string) bool {
-	for range 12 {
+	for range 16 {
 		tt.Key(0, ui.KeyTab)
 		if tt.Focused(label) {
 			return true

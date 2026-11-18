@@ -85,7 +85,7 @@ func TestReportPrototypeSectionsAndValues(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Column(c).Gap(16).Children(func() { s.reportView(c) })
 	}, 1120, 2200)
-	for _, want := range []string{"Fixture Model Q4", "答案通过数", "请求完成率", "完成请求中位耗时", "服务采样峰值 RSS", "7 / 13", "11 / 13", "0.84 s", "1.80 GiB", "系统最低可用 9.40 GiB", "3 / 8", "4 / 5", "机器：Fixture CPU · 14 核 · 24.00 GiB", "引擎：llama-server · Metal · 8 线程", "运行：fixture-run", "0.84 s", "1.20 s", "通过", "未通过", "—"} {
+	for _, want := range []string{"Fixture Model Q4", "答案通过", "请求完成", "完成请求耗时（中位）", "服务进程内存（采样峰值）", "7 / 13", "11 / 13", "0.84 s", "1.80 GiB", "采样期间系统最少可用 9.40 GiB", "3 / 8", "4 / 5", "机器：Fixture CPU · 14 核 · 24.00 GiB", "引擎：llama-server · Metal · 8 线程", "运行：fixture-run", "0.84 s", "1.20 s", "通过", "未通过", "—"} {
 		if !slices.Contains(tt.Texts(), want) {
 			t.Errorf("missing %q", want)
 		}
@@ -154,7 +154,7 @@ func TestReportMissingMeasurementsAndEmptyIndex(t *testing.T) {
 	run.Dashboard.MinimumAvailableReason = ptr("multiple_sources")
 	run.Dashboard.Latency.P50 = nil
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportView(c) }) }, 1120, 2200)
-	for _, want := range []string{"缺少资源采样", "系统最低可用 —", "系统可用内存：多个采样来源，未合并"} {
+	for _, want := range []string{"缺少资源采样", "采样期间系统最少可用 —", "系统可用内存：多个采样来源，未合并"} {
 		if !tt.HasText(want) {
 			t.Error("missing", want)
 		}

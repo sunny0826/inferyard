@@ -92,15 +92,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		}
 		theme := c.Theme()
 		ui.Text(c, "各曲线按自己的采样时间显示，采样点等距排列；缺测保留断点。").TextColor(theme.TextMuted)
-		metrics := []struct {
-			id, label string
-			color     ui.Color
-		}{
-			{"system_mem_available", "可用内存 GiB", theme.Accent},
-			{"service_rss", "服务 RSS GiB", theme.Success},
-			{"service_cpu_percent", "服务 CPU %", theme.Warning},
-			{"temperature", "传感器温度 °C", theme.Danger},
-		}
+		metrics := resourceMetrics(theme)
 		selected := []core.ResourceSample{}
 		for _, metric := range metrics {
 			c.Key(metric.id)
@@ -131,7 +123,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				}
 				if len(options) > 1 {
 					picker := components.Select(c, &state.source)
-					picker.Trigger.Label(metric.label + "来源").Children(func() {
+					picker.Trigger.Label(metric.label + "来源").Value(sourceLabel(options[current].source)).Children(func() {
 						ui.Text(c, sourceLabel(options[current].source)).SingleLine()
 					})
 					picker.Popup(func(ui.Element) {
@@ -151,7 +143,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 					ui.Text(c, sourceLabel(options[current].source)).TextColor(theme.TextMuted)
 				}
 				if metric.id == "service_cpu_percent" {
-					ui.Text(c, "单核等效：100% 为占满一个逻辑核，可超过 100%；仅绑定服务进程，不含子进程。").TextColor(theme.TextMuted)
+					ui.Text(c, "CPU 占用（1 个逻辑核 = 100%）：可超过 100%；只统计已连接的服务进程，不含子进程。").TextColor(theme.TextMuted)
 				}
 				chosen := options[current]
 				selected = append(selected, chosen.points...)
@@ -184,13 +176,34 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				})
 			})
 		}
-		s.resourceTable(c, selected)
+		s.resourceSampleFold(c, selected)
 	})
+}
+
+// resourceMetric is one plotted metric and its accent color.
+type resourceMetric struct {
+	id, label string
+	color     ui.Color
+}
+
+func resourceMetrics(theme *ui.Theme) []resourceMetric {
+	return []resourceMetric{
+		{"system_mem_available", "可用内存 GiB", theme.Accent},
+		{"service_rss", "服务 RSS GiB", theme.Success},
+		{"service_cpu_percent", "服务 CPU %", theme.Warning},
+		{"temperature", "传感器温度 °C", theme.Danger},
+	}
+}
+
+// resourceSampleFold keeps the raw sample table under a disclosure so the
+// curves stay the primary reading.
+func (s *viewState) resourceSampleFold(c *ui.Context, selected []core.ResourceSample) {
+	componentFold(c, "原始采样数值", func() { s.resourceTable(c, selected) })
 }
 
 func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) {
 	sort.SliceStable(samples, func(i, j int) bool { return samples[i].Seq < samples[j].Seq })
-	heading(c, "当前来源数值（内存原始单位 bytes）", 3)
+	heading(c, "采样数值", 3)
 	const pageSize = 50
 	pages := max(1, (len(samples)+pageSize-1)/pageSize)
 	s.resourceTablePage = min(max(0, s.resourceTablePage), pages-1)

@@ -60,7 +60,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		case "orphaned":
 			color = stateColor(c, stateWarning)
 		}
-		statusPanel(c, "engine-status", "引擎 · "+stateLabel(state), lucide.Cpu, color, animated, func() {
+		statusPanelParts(c, statusPanelOptions{key: "engine-status", label: "引擎 · " + stateLabel(state), visible: engineStatusText(state), icon: lucide.Cpu, color: color, animated: animated}, func() {
 			s.engineStatusPanel(c, q.active())
 		})
 		label := "任务 · 空闲"
@@ -73,7 +73,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		if q.active() || s.busy {
 			queueColor = stateColor(c, stateActive)
 		}
-		statusPanel(c, "queue-status", label, lucide.ListTodo, queueColor, q.active() || s.busy, func() {
+		statusPanelParts(c, statusPanelOptions{key: "queue-status", label: label, visible: queueStatusText(q, s.busy), icon: lucide.ListTodo, color: queueColor, animated: q.active() || s.busy}, func() {
 			heading(c, "任务队列", 3)
 			ui.Text(c, label)
 			for _, task := range s.tasks {
@@ -88,7 +88,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		})
 		if n := s.activeDownloadCount(); n > 0 {
 			label := fmt.Sprintf("下载中 %d 项", n)
-			statusPanel(c, "download-status", label, lucide.Download, stateColor(c, stateActive), true, func() {
+			statusPanelParts(c, statusPanelOptions{key: "download-status", label: label, visible: fmt.Sprintf("下载 %d", n), icon: lucide.Download, color: stateColor(c, stateActive), animated: true}, func() {
 				ui.Text(c, label)
 			})
 		}
@@ -100,20 +100,36 @@ type statusPanelState struct {
 	lastInside    time.Time
 }
 
-func statusPanel(c *ui.Context, key, label string, icon func() *ui.SVG, color ui.Color, animated bool, content func()) {
-	c.Key(key)
+// statusPanel is a header status control: an icon plus a word or count, so the
+// meaning is readable without hovering. label stays the accessible name used by
+// the popover and focus order; visible is the short text beside the icon.
+// statusPanelOptions carries every display field so the control stays under the
+// size policy; key keeps the identity, label the accessible name, visible the
+// short text, icon the glyph, color the accent and animated the activity pulse.
+type statusPanelOptions struct {
+	key, label, visible string
+	icon                func() *ui.SVG
+	color               ui.Color
+	animated            bool
+}
+
+func statusPanelParts(c *ui.Context, o statusPanelOptions, content func()) {
+	c.Key(o.key)
 	ui.Column(c).Children(func() {
 		t := c.Theme()
 		anchor := components.Button(c, "", components.ButtonGhost).
-			Size(t.Space(9), t.Space(9)).Padding(0).Radius(t.Space(4.5)).
-			Label(label).Description("悬停或按 Enter 查看详情")
+			Padding(t.Space(.75), t.Space(1.5)).Radius(t.Space(4.5)).
+			Label(o.label).Description("悬停或按 Enter 查看详情")
 		local := ui.Local(anchor, "status-panel", func() statusPanelState { return statusPanelState{} })
 		anchor.Children(func() {
-			el := components.Icon(c, icon).Size(t.Space(5), t.Space(5)).TextColor(color)
-			if animated && !c.Preferences().ReduceMotion {
-				phase := el.Loop("status-activity", 1400*time.Millisecond, ui.Linear)
-				el.Opacity(.65 + .35*float32((math.Sin(float64(phase)*2*math.Pi)+1)/2))
-			}
+			ui.Row(c).AlignItems(ui.Center).Gap(t.Space(.75)).Children(func() {
+				el := components.Icon(c, o.icon).Size(t.Space(4.5), t.Space(4.5)).TextColor(o.color)
+				if o.animated && !c.Preferences().ReduceMotion {
+					phase := el.Loop("status-activity", 1400*time.Millisecond, ui.Linear)
+					el.Opacity(.65 + .35*float32((math.Sin(float64(phase)*2*math.Pi)+1)/2))
+				}
+				ui.Text(c, o.visible).FontSize(tokens(c).Type.Caption).SingleLine().TextColor(o.color)
+			})
 		})
 		hovered := anchor.Hovered()
 		if hovered && !local.hovered || anchor.Clicked() {
@@ -123,7 +139,7 @@ func statusPanel(c *ui.Context, key, label string, icon func() *ui.SVG, color ui
 		local.hovered = hovered
 		components.Popover(c, anchor, &local.open, func(panel ui.Element) {
 			panel.AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).
-				Width(t.Space(78)).MaxWidthPercent(100).Label(label + "面板")
+				Width(t.Space(78)).MaxWidthPercent(100).Label(o.label + "面板")
 			if hovered || panel.Hovered() || panel.FocusWithin() || anchor.Focused() {
 				local.lastInside = c.Now()
 			} else if c.Now().Sub(local.lastInside) >= 220*time.Millisecond {
@@ -136,6 +152,36 @@ func statusPanel(c *ui.Context, key, label string, icon func() *ui.SVG, color ui
 	})
 }
 
+// engineStatusText is the short visible word for the engine status control.
+func engineStatusText(state string) string {
+	switch state {
+	case "running":
+		return "运行中"
+	case "starting":
+		return "启动中"
+	case "stopping":
+		return "停止中"
+	case "failed":
+		return "失败"
+	case "orphaned":
+		return "遗留服务"
+	default:
+		return "已停止"
+	}
+}
+
+// queueStatusText shows the running and waiting counts in the header instead of
+// hiding them inside the panel.
+func queueStatusText(q queueActivity, busy bool) string {
+	if q.active() {
+		return fmt.Sprintf("执行 %d · 等待 %d", q.running, q.waiting)
+	}
+	if busy {
+		return "准备中"
+	}
+	return "空闲"
+}
+
 func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool) {
 	state := s.engineState
 	label := state.State
@@ -145,7 +191,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool) {
 	heading(c, "模型引擎", 3)
 	ui.Text(c, stateLabel(label))
 	if state.Candidate != "" {
-		ui.Text(c, "候选 · "+displayName(state.Candidate))
+		ui.Text(c, "测评配置："+displayName(state.Candidate))
 	}
 	if state.Pid > 0 {
 		ui.Text(c, fmt.Sprintf("PID %d", state.Pid))
@@ -156,7 +202,13 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool) {
 	errorView(c, state.Error)
 	switch state.State {
 	case "starting", "running", "stopping":
-		button(c, "停止引擎").Disabled(!s.stopEnabled(true, runActive)).OnClick(s.stopEngine)
+		if s.destructiveAction(c, destructiveOption{
+			kind: destructiveStopEngine, label: "停止引擎", confirmLabel: "确认停止引擎",
+			prompt:   "将停止 Studio 启动的模型服务；正在加载的模型会中断，之后需要重新启动并绑定。",
+			disabled: !s.stopEnabled(true, runActive),
+		}) {
+			s.stopEngine()
+		}
 		if runActive {
 			ui.Text(c, "请先结束或取消测评任务，再停止引擎。").TextColor(c.Theme().TextMuted)
 		}
@@ -166,7 +218,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool) {
 	default:
 		primaryButton(c, "开启引擎").Disabled(!s.canStartManagedEngine()).OnClick(s.startManagedEngine)
 		if s.managedEngineCandidate() == "" {
-			ui.Text(c, "先在任务页选择模型并准备候选配置。").TextColor(c.Theme().TextMuted)
+			ui.Text(c, "先在任务页选择模型并创建测评配置。").TextColor(c.Theme().TextMuted)
 			button(c, "前往任务").OnClick(func() { s.selected, s.detailID = "dashboard", "" })
 		}
 	}

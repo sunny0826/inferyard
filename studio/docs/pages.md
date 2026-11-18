@@ -7,31 +7,47 @@ preview and verification rules.
 
 When the workspace, results, and model paths are all unset in settings, Studio opens
 on the task page with environment preparation. Once any of these paths has been saved,
-launching without an explicit page opens Reports. The sidebar lists Reports, Models,
-Downloads, Device, and Settings.
-“新任务” (New task) opens the task page with no sidebar selection.
+launching without an explicit page opens Reports. The sidebar lists Tasks, Reports,
+Models, Downloads, Device, and Settings.
+The sidebar's “任务” (Task) entry switches to the current task page without resetting,
+cancelling or confirming: an active run keeps its progress, and an idle task page keeps
+the chosen model, engine and evaluation sets. “新任务” (New task) also opens the task
+page but resets the round: it cancels and drains in-flight work after one confirmation.
 
 | Page | Purpose |
 | --- | --- |
-| Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
-| Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
-| Models | Select an engine, then a model, and open a prefilled task through the same entry as New task. Active services or runs show the pair as text. Empty registries offer only Go to Downloads. Service cards are read-only; orphaned engines show a warning and hide the new-task action. No absolute paths. |
-| Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
+| Task page | Prepare the environment with one action, choose workspace evaluation sets and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts with no verification entry. |
-| Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
+| Models | Read-only inventory of installed models and engines (format, architecture, size, verification verdict) plus running services. Choosing the pair happens only on the task page. Empty inventories offer Go to Downloads; orphaned engines show a warning; no absolute paths. |
+| Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
+| Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
+| Settings | Configure the CLI path, workspace, results directory, model directory, and the local installation declaration — the only page that shows full paths — plus the model/engine download directory names. Each path field keeps manual entry and adds Browse…, which opens the native file or directory picker for an existing target; a workspace that does not exist yet is still typed, and saving never creates directories. |
 
 The task page keeps the active task's selected bundles and new run paths in memory. New task
 cancels binding and all non-terminal runs, waits for them to finish, and returns to the
 shared engine/model selection without cancelling downloads or deleting evidence. The form
-lists only workspace bundles and checks both `zh-core` and `zh-svg-pelican` when present.
-Unchecking a bundle explicitly narrows the scope; unchecked bundles do not block the task.
-Reports starts with task history, followed by the report list. Creating another report from
-1–100 historical runs is available in a collapsed section. Reports are not verifiable
+lists only workspace evaluation sets and checks both `zh-core` and `zh-svg-pelican` when present.
+Unchecking a set explicitly narrows the scope; unchecked sets do not block the task.
+Reports starts with a compact task history table (model, evaluation set, state, score, start
+time) whose selected detail carries the run id, batch and paths; a missing model, start time or
+score reads 未记录 instead of being invented. Below it, each report is a card led by the
+recorded model, with its evaluation set, one line per run (`答案通过 x / y`), the run count, and
+the report file's modification time — the file time, not a run or generation time. Runs are
+never added together and a missing count keeps 未记录 instead of 0; the card's 打开报告 open
+button targets that card's report, and report id, source runs and paths live in 报告详情.
+Create another report from 1–100 historical runs is available in a collapsed section. Reports are not verifiable
 artifacts, so the page has no verification entry.
 Without an active task, the page restores workspace progress from `progress.v2`.
 
-Prepare environment rechecks readiness after installing the CLI, provisioning missing
-model/results directories, and initializing a new workspace. Existing initialized workspaces
+Prepare environment first states what the step does: it reuses an existing CLI and uv,
+downloads a pinned standalone uv only when none exists, installs the CLI with its managed
+Python into the uv tool directory without touching shell configuration, and then creates or
+reuses the workspace, results and model directories. It names the write targets by directory
+name (full paths stay on Settings) and says plainly that download size and duration cannot be
+predicted, so it shows neither an estimated size nor a progress percentage; the installer's
+15-minute CLI timeout is not presented as a duration estimate. Core owns the path facts in a
+read-only projection; the step then rechecks readiness after installing the CLI, provisioning
+missing model/results directories, and initializing a new workspace. Existing initialized workspaces
 skip `init`; new workspaces omit `--bundle`. Missing models or engines lead to a resource
 guide with Downloads and Settings actions; other blockers remain visible.
 During preparation, Downloads places resource forms first and offers Return to task.
@@ -40,8 +56,10 @@ check runs once with `--models-root`
 and no `--model`. A sole available model is selected automatically; multiple models
 require a choice. Engines still require verification. Once a model appears, the old
 `no_local_model` warning clears; candidate preparation rechecks the model with `--model`.
-The task generates `report --runs` for its own sealed runs, displays
-only a “查看报告” button that opens that exact report, and leaves report reading on Reports.
+The task generates `report --runs` for its own sealed runs. The completion step
+shows only this round's runs, a “查看报告” button that opens that exact report and a
+“再次测评” entry that starts a new task; report reading stays on Reports.
+The completion summary never mixes in earlier workspace runs.
 Duration and unfinished batch plans display their blocking reason without an execution button.
 
 Top-right engine and task icons pulse while active, respecting Reduce Motion.
@@ -50,7 +68,7 @@ The engine panel shows status and start/stop controls on every page. Starting re
 a prepared candidate and only starts the service; it does not bind or run a benchmark.
 The task panel separates executing and waiting tasks. Active downloads have a separate
 icon and count in their panel. Background refresh does not change activity.
-Active bundles show live state; interrupted bundles retain recovery guidance.
+Active evaluation sets show live state; interrupted ones retain recovery guidance.
 The service card stays collapsed throughout an active benchmark, then exposes
 recovery controls in the run/resume stage. Stop is available for a starting or running engine
 when no non-terminal run exists and Studio is neither busy nor resetting a task.
@@ -68,7 +86,7 @@ against the release checksum, without touching shell configuration — and insta
 `inferyard` matching the Studio version from PyPI via `uv tool install`. Manual path
 configuration in Settings remains available.
 
-Run benchmark creates fresh candidates for the checked bundles. Direct services start and
+“开始测评” creates a fresh evaluation configuration for the checked sets. Direct services start and
 bind automatically; LM Studio requires an operator-provided service identity. Binding has
 its own cancellation context. The original binary-engine workflow offers binding retry
 and an advanced manual binding fold. Existing single-config runs rebind the new PID before

@@ -4,7 +4,6 @@ package pages
 
 import (
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 )
 
 func (p *previewSession) dispatch(intent previewIntent) {
+	intent.previewIntent()
 	s := p.state
 	s.failure, p.notice = nil, ""
 	switch op := intent.(type) {
@@ -30,12 +30,9 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	case previewCancelDownload:
 		p.cancelDownload(op.id)
 	case previewRetryDownload:
-		for _, task := range s.downloads {
-			if task.TaskId == op.id && terminal(task.State) {
-				p.startDownload(previewDownload{kind: task.Kind, source: task.SourceUrl})
-				break
-			}
-		}
+		p.retryDownload(op.id)
+	case previewBrowsePath:
+		p.browse(op.key)
 	case previewSettings:
 		p.saveSettings(op.patch)
 	case previewInstallation:
@@ -43,17 +40,7 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	case previewLocalBinding:
 		p.bindLocal(op)
 	case previewCreateReport:
-		fail := p.takeFailure()
-		s.busy = true
-		p.after("report", 600*time.Millisecond, func() {
-			s.busy = false
-			if fail {
-				s.failure = core.Err("report_unreadable")
-				return
-			}
-			p.createReport(op.paths)
-			p.notice = "模拟报告已生成。"
-		})
+		p.createReportLater(op.paths)
 	case previewStartRun:
 		s.resumeSource = nil
 		p.beginBenchmark(previewBenchmark{model: s.model, engine: s.engine, bundles: []string{op.bundle}, resumePath: op.resumePath})
@@ -64,6 +51,33 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	default:
 		p.showNotice()
 	}
+}
+
+// retryDownload restarts a failed download from its original source.
+func (p *previewSession) retryDownload(id string) {
+	for _, task := range p.state.downloads {
+		if task.TaskId == id && terminal(task.State) {
+			p.startDownload(previewDownload{kind: task.Kind, source: task.SourceUrl})
+			return
+		}
+	}
+}
+
+// createReportLater finishes the simulated report after the same delay the
+// real flow needs, honouring the injected one-shot failure.
+func (p *previewSession) createReportLater(paths []string) {
+	s := p.state
+	fail := p.takeFailure()
+	s.busy = true
+	p.after("report", 600*time.Millisecond, func() {
+		s.busy = false
+		if fail {
+			s.failure = core.Err("report_unreadable")
+			return
+		}
+		p.createReport(paths)
+		p.notice = "模拟报告已生成。"
+	})
 }
 
 func (p *previewSession) dispatchStep(op previewStep) {
@@ -190,6 +204,33 @@ func (p *previewSession) checkDevice() {
 	})
 }
 
+// browse answers a path field from the simulated machine. The choice is written
+// into the draft only; saving still goes through the simulated settings intent.
+func (p *previewSession) browse(key string) {
+	s := p.state
+	root := emptyText(s.settings.Effective.WorkspaceRoot)
+	if root == "" {
+		root = emptyText(s.settings.Settings.WorkspaceRoot)
+	}
+	var current *string
+	switch key {
+	case browseCLI.key:
+		current = &s.cliPath
+	case browseInstallation.key:
+		current = &s.installationPath
+	case browseWorkspace.key:
+		current = &s.workspace
+	case browseResults.key:
+		current = &s.results
+	case browseModels.key:
+		current = &s.models
+	default:
+		s.failure = &core.ApiError{Code: "preview_unsupported", Message: previewNotice}
+		return
+	}
+	*current = browseChoice(root, key, *current)
+}
+
 func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	s := p.state
 	data, _ := json.Marshal(s.settings.Settings)
@@ -264,16 +305,15 @@ func (p *previewSession) activateScene() {
 		detail.Task = *task
 		detail.Progress = s.runProgress
 		for i := int64(0); i < detail.Progress.Done; i++ {
-			detail.Progress.Cases = append(detail.Progress.Cases, core.CaseProgress{CaseId: fmt.Sprintf("preview-case-%03d", i+1), State: "completed", Category: previewValue("模拟分类"), QualityState: previewValue("pass"), DurationMs: previewValue(1240.0)})
+			detail.Progress.Cases = append(detail.Progress.Cases, previewSimulatedCase(emptyText(task.Bundle), i+1))
 		}
 		p.details[task.TaskId] = detail
 		if s.detailID == task.TaskId {
 			s.detail = detail
 		}
-		for i := range s.history.StandaloneRuns {
-			if s.history.StandaloneRuns[i].RunId == task.TaskId {
-				s.history.StandaloneRuns[i].Status, s.history.StandaloneRuns[i].Sealed = "partial", false
-			}
+		if run := p.historyRun(task.TaskId); run != nil {
+			run.Status, run.Sealed, run.Completeness = "partial", false, nil
+			p.scoreHistoryRun(task.TaskId)
 		}
 		s.task.bundles = []string{emptyText(task.Bundle)}
 		s.busy = true

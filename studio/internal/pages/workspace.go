@@ -15,7 +15,7 @@ func (s *viewState) resetWorkspace() {
 	s.deviceChecked = ""
 	s.model, s.registry = "", core.Registry{}
 	s.initDir, s.engine, s.process, s.bindEndpoint, s.candidate = "", "", "", "", ""
-	s.assetsPreset, s.bindingStale, s.bindingUnknown = false, false, false
+	s.assetsPreset, s.bindingStale = false, false
 	s.engineState, s.startup, s.processes = core.EngineState{}, core.Startup{}, nil
 	s.cliInstallStatus, s.refreshFailure = "", ""
 	s.runProgress, s.progress, s.resumeSource, s.detail = nil, nil, nil, nil
@@ -69,6 +69,7 @@ func (s *viewState) checkedBundles() []string {
 }
 
 func (s *viewState) newBenchmark() {
+	s.pendingDestructive = destructiveRequest{}
 	if s.preview != nil {
 		s.preview.resetTask(s.model, s.engine)
 		return
@@ -94,24 +95,63 @@ func (s *viewState) newBenchmark() {
 		s.failure = nil
 		s.selected = "dashboard"
 	}
-	if s.service == nil {
+	if s.service == nil && s.cancelRound == nil {
 		finish()
 		return
 	}
+	tasks := func() []core.RunTask { return s.runTasksAll() }
+	update := s.win.Update
+	if s.updateWindow != nil {
+		update = s.updateWindow
+	}
 
-	go awaitBenchmarkReset(s.ctx, s.service.RunTasks, s.service.CancelRun, s.win.Update, func(e *core.ApiError) bool {
+	go awaitBenchmarkReset(s.ctx, tasks, s.cancelRoundTask, update, func(e *core.ApiError) bool {
 		if e != nil {
 			s.newTaskPending = false
 			s.failure = e
 			return true
 		}
-		if benchmarkResetReady(s.busy, s.service.RunTasks()) {
+		if benchmarkResetReady(s.busy, tasks()) {
 			finish()
 			return true
 		}
 		return false
 	})
 
+}
+
+// runTasksAll is the whole-round queue boundary; tests inject a recorder to
+// observe the reset loop without a real service.
+func (s *viewState) runTasksAll() []core.RunTask {
+	if s.runTasks != nil {
+		return s.runTasks()
+	}
+	if s.cancelRound != nil {
+		return cloneTasks(s.tasks)
+	}
+	if s.service == nil {
+		return nil
+	}
+	return s.service.RunTasks()
+}
+
+// cloneTasks copies the current page-visible queue so callers get a stable view.
+func cloneTasks(tasks []core.RunTask) []core.RunTask {
+	out := make([]core.RunTask, len(tasks))
+	copy(out, tasks)
+	return out
+}
+
+// cancelRoundTask routes the whole-round cancel to the service boundary; tests
+// inject a recorder so the queue state and call count are observable.
+func (s *viewState) cancelRoundTask(id string) (core.RunTask, *core.ApiError) {
+	if s.cancelRound != nil {
+		return s.cancelRound(id)
+	}
+	if s.service == nil {
+		return core.RunTask{}, core.Err("internal_error")
+	}
+	return s.service.CancelRun(id)
 }
 
 func cancelBenchmarkRuns(ctx context.Context, tasks func() []core.RunTask, cancel func(string) (core.RunTask, *core.ApiError)) *core.ApiError {

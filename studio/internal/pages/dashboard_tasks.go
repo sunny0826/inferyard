@@ -6,6 +6,7 @@ import (
 	"inferyard/studio/internal/core"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func aggregateStatus(runs []core.RunSummary) string {
@@ -24,9 +25,9 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 		ui.Text(c, r.RunId+" · "+stateLabel(r.Status)).Bold()
 		ui.Text(c, text(r.ModelName)+" · "+text(r.Bundle)+" · "+text(r.Engine))
 		ui.Text(c, displayName(r.Path)).Selectable()
-		sealed := "未封存"
+		sealed := "证据未收尾"
 		if r.Sealed {
-			sealed = "已封存（不代表已核验）"
+			sealed = termSealed
 		}
 		ui.Text(c, sealed+" · 完整度："+stateLabel(text(r.Completeness)))
 		if r.StopReason != nil {
@@ -136,13 +137,22 @@ func selectedRow(state *pageTableState, count int) int {
 	return *state.Selected
 }
 
+// runScore names a missing or withheld rate instead of printing a smaller
+// ratio: failed executions stay in the denominator as failures, while an
+// unscorable or unscored case withholds the rate.
 func runScore(r core.RunSummary) string {
 	if r.Score == nil {
-		return "证据不足"
+		return "未记录评分"
 	}
 	rate := "无有效题"
-	if r.Score.Rate != nil {
+	switch gap := r.Score.RateGap(); {
+	case gap != "":
+		rate = "含 " + gapDescription(*r.Score, gap)
+	case r.Score.Rate != nil:
 		rate = fmt.Sprintf("%.1f%%", *r.Score.Rate*100)
+	}
+	if r.Score.Failed > 0 {
+		rate += fmt.Sprintf("，含 %d 题执行失败", r.Score.Failed)
 	}
 	return fmt.Sprintf("%d/%d · %s", r.Score.Passed, r.Score.Valid, rate)
 }
@@ -153,19 +163,20 @@ func (s *viewState) historyView(c *ui.Context) {
 	runs := s.historyRuns()
 	if len(runs) == 0 && s.historyError == nil && s.loaded {
 		ui.Text(c, "暂无运行记录。")
+		return
 	}
+	// Five primary columns, 730 DIP in all, fit the table viewport of a 1024 DIP
+	// window, so the start time shows without scrolling sideways; the run id,
+	// batch and paths stay in the selected detail instead of widening the table.
 	selectableTable(&s.historyTable, func(i int) any { return runs[i].Path }, func(i int) string { return runs[i].RunId })
 	c.Key("history-table")
-	pageTable(c, &s.historyTable, "运行历史表", []ui.TableColumn{{Title: "RunId", Width: 230}, {Title: "模型", Width: 180}, {Title: "题包", Width: 160}, {Title: "状态", Width: 100}, {Title: "得分", Width: 160}, {Title: "开始时间", Width: 220}, {Title: "批次", Width: 200}}, len(runs), func(row, col int) {
+	pageTable(c, &s.historyTable, "运行历史表", []ui.TableColumn{{Title: "模型", Width: 190}, {Title: "测评题集", Width: 130}, {Title: "状态", Width: 70}, {Title: "评分", Width: 170}, {Title: "开始时间", Width: 170}}, len(runs), func(row, col int) {
 		r := runs[row]
-		batch := "独立运行"
-		if r.BatchId != nil {
-			batch = *r.BatchId
-		}
-		ui.Text(c, []string{r.RunId, text(r.ModelName), text(r.Bundle), stateLabel(r.Status), runScore(r), text(r.StartedAt), batch}[col])
+		ui.Text(c, []string{historyModel(r), text(r.Bundle), stateLabel(r.Status), runScore(r), historyStarted(r)}[col])
 	}).Height(240).Label("运行历史表")
 	if i := selectedRow(&s.historyTable, len(runs)); i >= 0 {
 		r := runs[i]
+		s.historyIdentity(c, r)
 		for _, batch := range s.history.Batches {
 			for _, run := range batch.Runs {
 				if run.Path == r.Path {
@@ -177,4 +188,35 @@ func (s *viewState) historyView(c *ui.Context) {
 		}
 		s.historyRow(c, r)
 	}
+}
+
+func historyModel(r core.RunSummary) string {
+	if r.ModelName == nil || *r.ModelName == "" {
+		return "未记录模型"
+	}
+	return *r.ModelName
+}
+
+// historyStarted formats ISO-8601/RFC3339 timestamps as compact UTC seconds so
+// the start time fits the 170 DIP table cell; the raw value stays in detail.
+func historyStarted(r core.RunSummary) string {
+	raw := emptyText(r.StartedAt)
+	if raw == "" {
+		return "未记录"
+	}
+	if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return parsed.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	return raw
+}
+
+// historyIdentity shows the identifiers that no longer occupy table columns.
+func (s *viewState) historyIdentity(c *ui.Context, r core.RunSummary) {
+	line := "运行 ID：" + r.RunId
+	if r.BatchId != nil {
+		line += " · 批次：" + *r.BatchId
+	} else {
+		line += " · 独立运行"
+	}
+	ui.Text(c, line).Selectable().TextColor(c.Theme().TextMuted)
 }

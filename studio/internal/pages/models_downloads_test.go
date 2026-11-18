@@ -74,21 +74,13 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				}
 			}
 			if task.Kind == "engine" {
-				if !tt.HasText("已下载 缺测 · 速率 缺测 · 归档获取接口未提供字节读数") || tt.HasText("已下载 0 bytes") {
+				if !tt.HasText("归档获取接口未提供字节读数。") || tt.HasText("已下载 0 bytes") {
 					t.Fatal(tt.Texts())
 				}
-			} else if !tt.HasText("1.50 MiB") || !tt.HasText("2.0 KiB/s") || !tt.HasText("速率 2,048 bytes/s") || !tt.HasText("已下载 1572864 bytes") {
+			} else if !tt.HasText("1.50 MiB") || !tt.HasText("2.0 KiB/s") {
 				t.Fatal(tt.Texts())
 			}
-			enabled := false
-			for i := 0; i < 12; i++ {
-				tt.Key(0, ui.KeyTab)
-				if tt.Focused("取消下载") {
-					enabled = true
-					break
-				}
-			}
-			if !enabled {
+			if !keyboardReaches(tt, "取消下载", 16) {
 				t.Fatal("cancel is not keyboard accessible")
 			}
 			for _, state := range []string{"failed", "cancelled", "done"} {
@@ -106,11 +98,37 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				if state != "failed" && tt.HasText("重新创建下载任务") {
 					t.Fatal("recreate is only for failed tasks", tt.Texts())
 				}
-				if state != "done" && !tt.HasText("输出目录保留；再次下载自动使用新目录名。") {
-					t.Fatal(tt.Texts())
-				}
 			}
+			s.downloads[0].State = task.State
+			tt.Frame()
+			click(t, tt, "观测依据与输出")
+			assertDownloadDetails(t, tt, task.Kind)
 		})
+	}
+}
+
+// keyboardReaches tabs until the label holds focus or the limit is reached.
+func keyboardReaches(tt *ui.Tester, label string, limit int) bool {
+	for i := 0; i < limit; i++ {
+		tt.Key(0, ui.KeyTab)
+		if tt.Focused(label) {
+			return true
+		}
+	}
+	return false
+}
+
+// assertDownloadDetails checks the expanded per-kind measurement wording.
+func assertDownloadDetails(t *testing.T, tt *ui.Tester, kind string) {
+	t.Helper()
+	if kind == "engine" {
+		if !tt.HasText("已下载 缺测 · 速率 缺测") || tt.HasText("已下载 0 bytes") {
+			t.Fatal(tt.Texts())
+		}
+		return
+	}
+	if !tt.HasText("速率 2,048 bytes/s") || !tt.HasText("已下载 1572864 bytes") {
+		t.Fatal(tt.Texts())
 	}
 }
 
