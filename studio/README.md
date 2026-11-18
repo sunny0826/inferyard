@@ -21,15 +21,15 @@ after a safe drain while the evidence already written stays in the results direc
 
 | Page | Purpose |
 | --- | --- |
-| Task page | Prepare the environment with one action, choose workspace bundles and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
-| Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts and have no verification entry. |
+| Task page | Prepare the environment with one action (reusing an existing `inferyard` CLI and `uv`, or installing them into the `uv` user tool directory), choose workspace evaluation sets and a model/engine pair, then create evaluation configurations, start and bind the service, run, and review the completion summary or open the report. Inspect per-case progress, view CPU, memory, and available temperature curves, and resume eligible runs opened from Reports. |
+| Reports | Browse compact task history, enter or resume a run, inspect live details, and open model-led report cards inside the main window. Reports are display artifacts with no verification entry. |
 | Models | Read-only inventory of installed models and engines (format, architecture, size, verification verdict) plus running services. Choosing the pair happens only on the task page. Empty inventories offer Go to Downloads; orphaned engines show a warning; no absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
-| Settings | Configure the CLI path, workspace, results directory, and model directory — the only page that shows full paths — plus the model/engine download directory names and registered local installation declarations. |
+| Settings | Configure the CLI path, workspace, results directory, model directory, and registered local installation declarations — the only page that shows full paths — plus the model/engine download directory names. Each path field keeps manual entry and adds `Browse…` to open the native file or directory picker for an existing target; a workspace that does not exist yet is typed by hand, and saving never creates directories. |
 
 The [pages reference](docs/pages.md) covers the per-page rules: the first-launch flow,
-preparation, bundle selection, engine and model binding, local installation
+preparation, evaluation-set selection, engine and model binding, local installation
 registration, service discovery, download directory naming, and workspace initialization.
 
 ## Design and page review
@@ -47,8 +47,8 @@ review scope; they do not establish native desktop acceptance.
 For paired development from the current checkout, run `mise run dev` from the
 repository root. Use `mise run dev:rebuild` for fresh development settings and a new
 workspace while retaining previous evidence and model/engine assets. The
-[development commands](../tools/README.md) describe startup, shutdown, isolation and
-verification. On macOS the launcher creates a separate `InferYard Studio Dev.app`.
+[development commands](../tools/README.md) describe startup, shutdown, isolation, and
+verification. On macOS, the launcher creates a separate `InferYard Studio Dev.app`.
 This real CLI workflow is separate from the simulated UI preview below.
 
 Use the repository's mise-managed Go 1.27.3. Run these commands from `studio/`:
@@ -59,48 +59,51 @@ mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENAB
 ```
 
 On Windows, build with `-o build/inferyard-studio.exe` and launch that executable.
-Development also works with `mise exec -- go run .`. The app uses a plain Go build;
-there is no frontend installation or build step. Environment overrides above apply only
+Development also works with `mise exec -- go run .`. The app uses a plain Go build with
+no frontend installation or build step. The environment overrides above apply only
 to the command, not to global configuration.
 
 For source development, prepare the CLI with `mise exec -- uv sync --frozen` in `cli/`,
 then set Studio's CLI path to the absolute path of `cli/.venv/bin/inferyard`
 (`cli/.venv/Scripts/inferyard.exe` on Windows). An installed CLI can report the same
-version while lacking newer source features. The specialist task requires engine
+version while lacking newer source features. Specialist tasks require engine
 verification and the context-speed result schema; an older CLI shows a settings action
 instead of claiming that an unverified engine is ready.
 
-For development, cross-build macOS arm64, Windows amd64, and Linux amd64 and assemble
-unsigned distributions:
+To cross-build macOS arm64, Windows amd64, and Linux amd64 for local development and
+assemble unsigned distributions:
 
 ```sh
 mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct sh scripts/build-all.sh
 ```
 
 [build-all.sh](scripts/build-all.sh) compiles the three binaries into `build/<os>-<arch>/`
-and invokes [package.py](scripts/package.py), using mise-managed Python, to assemble new
+and invokes [package.py](scripts/package.py) with mise-managed Python to assemble new
 `dist/inferyard-studio-v<version>-<os>-<arch>/` directories. Packaging copies the binaries,
-MIT LICENSE and launch instructions, and refuses to overwrite an existing distribution.
+MIT LICENSE, and launch instructions, and refuses to overwrite an existing distribution.
 It does not sign, notarize, or publish. On macOS, launch the packaged app with
 `open "InferYard Studio.app"` to use desktop notifications.
 
 Formal release packages are built and uploaded by
 [Studio release candidate](../.github/workflows/studio-release.yml), not by this local
-cross-build. Its macOS, Windows and Linux jobs each build natively with `-tags release`
+cross-build. Its macOS, Windows, and Linux jobs each build natively with `-tags release`
 and call `package.py --target TARGET --source-commit SHA --out NEW_DIR`. The workflow
 checks build provenance and generates a three-platform manifest and
-`SHA256SUMS.studio`. macOS is distributed as a `.dmg` containing the app and an
-`/Applications` shortcut. Windows is distributed as an Inno Setup `.exe` installer
-with per-user installation by default and an uninstaller. Linux remains a `.tar.gz`
-archive. The macOS job mounts the disk image before testing the packaged app; the
-Windows job installs the application, checks its command boundary and uninstalls it.
-The unified [publish workflow](../.github/workflows/publish.yml) verifies both CLI
-and Studio candidates before creating a GitHub draft with all nine attachments.
+`SHA256SUMS.studio`:
+
+- **macOS:** `.dmg` disk image containing `InferYard Studio.app` and an `/Applications` shortcut.
+- **Windows:** Inno Setup `.exe` installer with per-user installation by default and an uninstaller.
+- **Linux:** `.tar.gz` archive.
+
+The macOS job mounts the disk image before testing the packaged app; the Windows job
+installs the application, checks its command boundary, and uninstalls it. The unified
+[publish workflow](../.github/workflows/publish.yml) verifies both CLI and Studio
+candidates before creating a GitHub draft with all nine attachments.
 
 The version's single source is [mygo.config.ts](mygo.config.ts). It carries only the MyGo
-embed metadata and is not a web frontend build configuration; there is no frontend install
-or build step. Go embeds the configuration, so an ordinary rebuild picks up version changes
-without generated files or linker flags. The packaging script reads the same version.
+embed metadata and is not a web frontend build configuration. Go embeds the file directly,
+so an ordinary rebuild picks up version changes without generated files or linker flags.
+The packaging script reads the same version.
 
 ## UI debug preview
 
@@ -118,44 +121,46 @@ mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENAB
 ./build/inferyard-studio --debug-ui
 ```
 
-Normal builds and packaged releases omit the switch, preview UI and embedded fixtures.
+Normal builds and packaged releases omit the switch, preview UI, and embedded fixtures.
 Their help does not list `--debug-ui`, and passing it is an input error. The `release` tag
 disables preview even when combined with `ui_debug`; `build-all.sh` always sets `release`,
 and packaging rejects binaries without that tag before writing distributions.
 
-The sidebar's “模拟场景” selector provides task preparation, running, completion and failure;
-live run details; report list, details, long tables and read errors; empty data; models;
+The sidebar's “模拟场景” selector provides task preparation, running, completion, and failure;
+live run details; report list, details, long tables, and read errors; empty data; models;
 downloads; device measurements; settings; a specialist history fixture; and the five
-local-engine preparation scenes. Pages use the same components as normal Studio. The selector is a shortcut; normal page buttons drive the workflow. Start with
-“准备环境”, select the model and evaluation sets, and click “开始测评”. Simulated startup,
-per-bundle progress and report generation advance automatically. Open live details or
-switch pages while work continues; “查看报告” opens that task's model and run results.
+local-engine preparation scenes. Pages use the same components as normal Studio. The
+selector is a shortcut to set a starting state, while normal page buttons drive the workflow:
 
-Downloads can complete, be cancelled, or fail and be retried; completed assets appear in
-Models. Settings are saved in memory and download directory names affect later tasks.
-“下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务” asks for
-confirmation before it cancels the current task, while retaining settings, downloads and
-results; “取消运行”, “取消任务”, “停止服务” and “取消下载” show the same inline
-confirmation in the preview window. “重置场景” restores all fixture data,
-form values, table selection and collapsed sections, and discards pending simulation steps.
+- **Standard benchmark flow:** Start with “准备环境”, select the model and evaluation sets,
+  and click “开始测评”. Simulated startup, per-bundle progress, and report generation advance
+  automatically. Open live details or switch pages while work continues; “查看报告” opens
+  that task's model and run results.
+- **Downloads, settings, and recovery:** Downloads can complete, be cancelled, or fail and be
+  retried; completed assets appear in Models. Settings are saved in memory, `Browse…` writes a
+  simulated path without opening a native dialog, and download directory names affect later
+  tasks. “下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务”, “取消运行”,
+  “取消任务”, “停止服务”, and “取消下载” open the same inline confirmation as production before
+  cancelling work, while retaining settings, downloads, and existing results. “重置场景”
+  restores all fixture data, form values, table selection, and collapsed sections, and discards
+  pending simulation steps.
+- **Long-context speed flow:** The bundled `zh-context-speed` corpus carries its human approval
+  of 2026-10-18 (`init` still refuses an unapproved or modified corpus with
+  `human_corpus_review_required`). After preparing the environment, choose “长上下文速度” in
+  “测评类型”, select 64K, 128K, or 256K, and click “开始专项测评”. The same native page builders
+  show progress, cancellation, and six-column results: model / engine, Context, Prompt length,
+  Time, Prefill, and Decode. Results and history show the recorded model and engine together,
+  independent of the current selection; GPU model and memory are not shown in specialist
+  results. “下次专项模拟缺测” makes the fifth sample lack timing; “下次操作模拟失败” applies to
+  startup or opening results. Reading again does not rerun measurements. The Reports page keeps
+  specialist history for this window only; “专项 · 历史恢复示例” shows a fixed history fixture,
+  not evidence restored from disk. Production history reads task records and frozen batches,
+  and opening a result invokes `speed-results`. See the
+  [context-speed reference](../docs/subsystems/studio-panel/context-speed.md).
 
-The approved context-speed page now calls the CLI through the serial queue. The bundled
-`zh-context-speed` corpus carries its human approval of 2026-10-18; init still refuses an
-unapproved or changed corpus with `human_corpus_review_required`. After preparing the
-environment, choose “长上下文速度” in “测评类型”, select 64K, 128K or 256K, and click
-“开始专项测评”. The same native page builders show progress, cancellation and six-column
-results: model / engine, Context, Prompt length, Time, Prefill and Decode. Results and
-history show the recorded model and engine together, independent of the current selection.
-GPU model and memory are not shown in specialist results. “下次专项模拟缺测” makes the fifth sample lack timing; “下次操作模拟失败” applies
-to startup or opening results. Reading again does not rerun measurements. The Reports page
-keeps specialist history for this window only; “专项 · 历史恢复示例” shows a fixed history
-fixture, not evidence restored from disk. Production history reads task records and frozen
-batches; opening a result always invokes `speed-results`. See the
-[context-speed reference](../docs/subsystems/studio-panel/context-speed.md).
-
-The window remains labelled “UI 调试 · 模拟数据”. It does not create `core.Service`, read
+The preview window is labelled “UI 调试 · 模拟数据”. It does not create `core.Service`, read
 user settings or workspace evidence, persist window layout, execute the CLI, start models,
-download files, or save settings to disk. Progress, resource samples and results are simulated.
+download files, or save settings to disk. Progress, resource samples, and results are simulated.
 Restart the command after changing source code; there is no hot reload. Previewing a native
 window verifies its presentation, not the real model workflow. Implementation boundaries
 are described in the [subsystem reference](../docs/subsystems/studio-panel.md#ui-调试预览).
@@ -168,36 +173,36 @@ are described in the [subsystem reference](../docs/subsystems/studio-panel.md#ui
 | Windows 10/11 | Direct3D 11 (WARP fallback) |
 | Linux | GTK 3 and OpenGL; MyGo can fall back to CPU rendering |
 
-Reports use native controls inside the main window and do not create a WebView.
-The CLI writes `studio.json` (`studio-report.v1`) and Studio reads it: the existing
-`runs[].dashboard` metrics, `summary.completion_rate`, model/machine `profile`,
-`facets.bundle_label`, `source.run_id`, and `requests`. The detail view has four metric
-cards, category results, model/machine details, per-case rows (case, category, state,
-quality, latency), and data sources.
-Multiple runs have a selector and remain separate. Studio does not rescore results.
-Missing measurements display as —, with available sampling reasons; milliseconds and
-bytes are displayed as seconds and GiB. An unreadable report is
-marked in the list without hiding other reports; opening it offers retry and return.
+Reports render with native controls inside the main window and never create a WebView.
+The CLI writes `studio.json` (`studio-report.v1`), and Studio reads `runs[].dashboard`
+metrics, `summary.completion_rate`, model/machine `profile`, `facets.bundle_label`,
+`source.run_id`, and `requests`. The detail view presents a factual run summary, four
+headline metric cards, throughput and output-block interval cards, category results,
+model/machine details, per-case rows (case, category, state, quality, latency), and data
+sources. Multiple runs provide a selector and remain separate; Studio never rescores
+results. Missing measurements display as — with available sampling reasons; milliseconds
+and bytes are displayed as seconds and GiB. An unreadable report is marked in the list
+without hiding other reports, and opening it offers retry and return.
 
 ## Safety and operation rules
 
-Model endpoints remain local loopback endpoints. Reports and evidence can contain private
-local paths and must not be exposed on the LAN. Tokens, credentials, signed URLs, and full
-session URLs must never enter logs, persisted settings, or user-facing errors. Show fixed
-error summaries and structured CLI limitation reasons rather than raw stderr.
-
-Settings are stored in the system user configuration directory under
-`InferYard Studio/settings.json` (POSIX directory mode 0700, file mode 0600). Invalid JSON
-or field types fall back to defaults with a diagnostic; the file is replaced only when
-the user saves. Historical scans skip damaged runs and log the skipped count. Evidence
-directories remain the source of truth. Ordinary task lists are in memory; context-speed
-identity, lifecycle and references survive restart in separate atomic task records, without
-caching result values. Unreadable batches remain visible for retry.
-
-Runs execute serially and retain CLI host locking, identity checks, cancellation, and
-draining. The default benchmark includes both `zh-core` and `zh-svg-pelican`; a single
-bundle requires an explicit choice. Bound configuration output roots must stay inside the
-configured results root; duplicate queued configurations are rejected.
+- **Local endpoints and privacy:** Model endpoints remain local loopback endpoints. Reports
+  and evidence can contain private local paths and must not be exposed on the LAN. Tokens,
+  credentials, signed URLs, and full session URLs never enter logs, persisted settings, or
+  user-facing errors. Studio shows fixed error summaries and structured CLI limitation
+  reasons rather than raw stderr.
+- **Settings and history storage:** Settings live in the system user configuration directory
+  under `InferYard Studio/settings.json` (POSIX directory mode `0700`, file mode `0600`).
+  Invalid JSON or field types fall back to defaults with a diagnostic; the file is replaced
+  only when the user saves. Historical scans skip damaged runs and log the skipped count.
+  Evidence directories remain the source of truth. Ordinary task lists stay in memory;
+  context-speed identity, lifecycle, and references survive restart in separate atomic task
+  records without caching result values. Unreadable batches remain visible for retry.
+- **Serial execution queue:** Runs execute serially and retain CLI host locking, identity
+  checks, cancellation, and draining. The default benchmark includes both `zh-core` and
+  `zh-svg-pelican`; running a single bundle requires an explicit choice. Bound configuration
+  output roots must stay inside the configured results root, and duplicate queued
+  configurations are rejected.
 
 | CLI exit | Studio meaning |
 | --- | --- |
@@ -207,31 +212,29 @@ configured results root; duplicate queued configurations are rejected.
 | 4 | Tool/evidence failure. |
 | 130 | Cancelled task. |
 
-Cancelling a queued task requires no child process or exit code. Cancelling an active task
-requests interruption and waits for exit. Terminal states are final. History preserves the
-priority `cancelled` > `dirty` > `partial` > `complete`; sealing alone is not verification.
-An unreadable host-state marker must not be treated as clean. Resume is limited to eligible
-unfinished batch runs, with the CLI making the final decision; standalone runs cannot resume.
-Endpoint and PID overrides must be provided together. Fixed-window workloads may require a
-new window instead of resume. Progress uses the frozen selected-case denominator, including
-the frozen resume subset when applicable.
-
-Unknown measurements remain `null` with a reason, never zero or fabricated percentages.
-Memory is stored in bytes and rates in bytes/s; display conversions are explicit. Resource
-curves retain missing samples. Downloads without a known total do not show a percentage.
-Downloads may run concurrently with the serial run queue. Failed or cancelled download
-directories remain occupied; CLI owns cleanup of temporary `.part` files.
-
-Report generation validates 1–100 distinct run paths within the results root and writes a
-new uniquely named directory under the derived sibling `reports` directory. Original runs
-and reports are never overwritten. Report paths must remain within that report directory;
-missing source runs are shown as unavailable without preventing the report from opening.
-Evidence interpretation follows the CLI's
-[lineage rules](../cli/docs/data-contract.md#证据血缘与比较结论).
-
-Desktop notifications announce terminal run/download states and completed reports with
-fixed text and no task paths. Denied notification permission or delivery failures do not
-change task outcomes.
+- **Cancellation, state priority, and resume:** Cancelling a queued task requires no child
+  process or exit code. Cancelling an active task requests interruption and waits for exit.
+  Terminal states are final. History preserves the priority
+  `cancelled` > `dirty` > `partial` > `complete`; sealing alone is not verification, and an
+  unreadable host-state marker is never treated as clean. Resume is limited to eligible
+  unfinished batch runs, with the CLI making the final decision; standalone runs cannot
+  resume. Endpoint and PID overrides must be provided together. Fixed-window workloads may
+  require a new window instead of resume. Progress uses the frozen selected-case denominator,
+  including the frozen resume subset when applicable.
+- **Measurements and downloads:** Unknown measurements remain `null` with a reason, never zero
+  or fabricated percentages. Memory is stored in bytes and rates in bytes/s, with explicit
+  display conversions. Resource curves retain missing samples. Downloads without a known
+  total do not show a percentage. Downloads may run concurrently with the serial run queue;
+  failed or cancelled download directories remain occupied, and the CLI owns cleanup of
+  temporary `.part` files.
+- **Reports and notifications:** Report generation validates 1–100 distinct run paths within
+  the results root and writes a new uniquely named directory under the derived sibling
+  `reports` directory. Original runs and reports are never overwritten. Report paths must
+  remain within that report directory; missing source runs are shown as unavailable without
+  preventing the report from opening. Evidence interpretation follows the CLI's
+  [lineage rules](../cli/docs/data-contract.md#证据血缘与比较结论). Desktop notifications
+  announce terminal run/download states and completed reports with fixed text and no task
+  paths; denied permission or delivery failures do not change task outcomes.
 
 ## Verification boundaries
 
