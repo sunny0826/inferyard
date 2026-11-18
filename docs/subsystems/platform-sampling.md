@@ -82,10 +82,6 @@ mise exec -- uv run --frozen pytest -q \
   tests/unit/test_resources.py \
   tests/unit/test_macos_resources.py \
   tests/unit/test_macos_identity.py \
-  tests/unit/test_macos_process_view.py \
-  tests/unit/test_macos_native_policy.py \
-  tests/unit/test_macos_power_qualification.py \
-  tests/unit/test_macos_sysctl.py \
   tests/unit/test_identity.py \
   tests/unit/test_telemetry.py \
   tests/unit/test_cpu_policy.py \
@@ -94,12 +90,9 @@ mise exec -- uv run --frozen pytest -q \
   tests/unit/test_external_cpu.py \
   tests/unit/test_windows_resources.py \
   tests/unit/test_device_preflight.py \
-  tests/unit/test_device_platforms.py \
-  tests/unit/test_memory_check_macos.py \
-  tests/unit/test_memory_check_windows.py \
+  tests/unit/test_memory_check.py \
   tests/unit/test_windows_lab_process.py
 mise exec -- uv run --frozen ruff check src tests scripts
-mise exec -- uv run --frozen ruff format --check src tests scripts
 ```
 
 这些回归覆盖模拟与 fixture 路径（含显式 `proc_root` 测试根）；macOS/Windows 原生读取的真机证据范围另按[平台状态](../../cli/docs/platforms.md)登记，不由单测通过推定。

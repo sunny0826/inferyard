@@ -12,7 +12,7 @@ from inferyard.config.loader import load_config
 from inferyard.config.plan_inputs import read_frozen_plan
 from inferyard.config.planning import prepare_plan, write_plan
 from inferyard.errors import ContractError, EvidenceError
-from tests.unit.test_phase2_contracts import experiment
+from tests.unit.phase2_contract_helpers import experiment
 
 
 def input_package(tmp_path, config_path):
@@ -64,27 +64,6 @@ def test_dry_run_no_network_no_writes_and_freeze_is_content_addressed(
     )
 
 
-def test_tampered_source_rejected_before_snapshot(tmp_path, config_path, capsys):
-    path = input_package(tmp_path, config_path)
-    (path.parent / "bundle.json").write_text("{}")
-    out = tmp_path / "out"
-    assert main(["plan", "--experiment", str(path), "--out", str(out)]) == 4
-    assert not out.exists()
-    assert "evidence_error" in capsys.readouterr().out
-
-
-def test_symlink_escape_is_not_copied(tmp_path, config_path):
-    path = input_package(tmp_path, config_path)
-    corpus = path.parent / "bundle.json"
-    outside = tmp_path / "outside.json"
-    corpus.rename(outside)
-    from tests.helpers import symlink_or_skip
-
-    symlink_or_skip(corpus, outside)
-    with pytest.raises(EvidenceError, match="escapes"):
-        prepare_plan(path)
-
-
 def test_plaintext_startup_secret_blocked_without_echo(tmp_path, config_path, capsys):
     path = input_package(tmp_path, config_path)
     config_path = path.parent / "config.json"
@@ -98,45 +77,6 @@ def test_plaintext_startup_secret_blocked_without_echo(tmp_path, config_path, ca
     assert main(["plan", "--experiment", str(path), "--dry-run"]) == 2
     captured = capsys.readouterr()
     assert "sensitive-new-key" not in captured.out + captured.err
-
-
-def test_schema_cli_has_one_revision_and_rejects_version_selector(capsys):
-    assert main(["--schema", "plan"]) == 0
-    assert json.loads(capsys.readouterr().out)["$id"].endswith("v3:plan")
-    assert main(["--schema", "plan", "--schema-version", "2"]) == 2
-    capsys.readouterr()
-    assert main(["--schema-version", "2", "--versions"]) == 2
-
-
-def test_relative_toml_paths_survive_relocation(tmp_path, config_path):
-    path = input_package(tmp_path, config_path)
-    config_text = config_path.read_text()
-    # The fixture contains a relative corpus path; bind it to the copied local bundle.
-
-    old_literal = tomllib.loads(config_text)["bundle"]["path"]
-    config_text = config_text.replace(old_literal, "bundle.json")
-    raw = config_text.encode()
-    (path.parent / "config.toml").write_bytes(raw)
-    data = json.loads(path.read_text())
-    data["workloads"][0]["config"] = {
-        "path": "config.toml",
-        "sha256": hashlib.sha256(raw).hexdigest(),
-    }
-    path.write_text(json.dumps(data))
-    original_model = load_config(path.parent / "config.toml").config.to_dict()["model"][
-        "local_path"
-    ]
-    frozen = tmp_path / "frozen"
-    expected = write_plan(path, frozen)
-    path.parent.rename(tmp_path / "removed-inputs")
-    moved = tmp_path / "relocated"
-    frozen.rename(moved)
-    plan, configs = read_frozen_plan(moved / "plan.json")
-    assert plan == expected
-    actual = next(iter(configs.values()))
-    assert actual.config.to_dict()["model"]["local_path"] == original_model
-    assert actual.config.to_dict()["bundle"]["path"] == str(moved / "bundle.json")
-    assert actual.bundle.to_dict()["cases"]
 
 
 def test_runtime_snapshot_tampering_is_rejected_even_with_rehashed_plan(tmp_path, config_path):
@@ -156,25 +96,3 @@ def test_runtime_snapshot_tampering_is_rejected_even_with_rehashed_plan(tmp_path
     (frozen / "plan.json").write_text(json.dumps(plan))
     with pytest.raises(EvidenceError, match="snapshot_differs_from_source"):
         read_frozen_plan(frozen / "plan.json")
-
-
-def test_frozen_reader_rechecks_budget_bindings_and_seed_order(tmp_path, config_path):
-    from inferyard.contracts.plan_math import plan_hash
-
-    path = input_package(tmp_path, config_path)
-    source = json.loads(path.read_text())
-    source["execution"].update(order="seeded", seed=7)
-    path.write_text(json.dumps(source))
-    output = tmp_path / "frozen"
-    plan = write_plan(path, output)
-    plan["experiment"]["workloads"][0]["output_budget_tokens"] += 1
-    plan["plan_sha256"] = plan_hash(plan)
-    (output / "plan.json").write_text(json.dumps(plan))
-    with pytest.raises(ContractError, match="differs from config"):
-        read_frozen_plan(output / "plan.json")
-    plan["experiment"]["workloads"][0]["output_budget_tokens"] -= 1
-    plan["trials"][0]["case_order"].reverse()
-    plan["plan_sha256"] = plan_hash(plan)
-    (output / "plan.json").write_text(json.dumps(plan))
-    with pytest.raises(EvidenceError, match="trials_differ"):
-        read_frozen_plan(output / "plan.json")

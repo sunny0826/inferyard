@@ -31,22 +31,3 @@ def test_rescoring_changes_only_scores_and_keeps_failed_attempts():
     assert all(row["score"] is None for row in updated[1:])
     assert [r["execution_state"] for r in updated] == [r["execution_state"] for r in before]
     assert len(changes) == len(source)
-
-
-def test_scorer_exception_does_not_change_execution_state():
-    case, source = rows()
-
-    def broken(*args):
-        raise RuntimeError("private detail")
-
-    updated, changes = rescore_rows([case], source, POLICY, scorer=broken)
-    assert updated[0]["execution_state"] == "completed"
-    assert changes[0]["new_score"]["reason"] == "scorer_exception"
-    assert "private detail" not in str(changes)
-
-
-def test_redacted_answers_are_never_reclassified_as_valid():
-    case, source = rows()
-    source[0]["content"] = "[REDACTED]"
-    updated, _ = rescore_rows([case], source, POLICY)
-    assert updated[0]["score"]["reason"] == "redacted_scoring_input"

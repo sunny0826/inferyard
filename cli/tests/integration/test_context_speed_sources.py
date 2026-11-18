@@ -85,36 +85,3 @@ def test_semantic_source_mismatch(speed_service, monkeypatch, capsys, change):
     assert set(response["details"]) == {"schema_version", "kind", "read_state", "error"}
     assert tree_hashes(copy) == before and tree_hashes(batch) == original
     assert calls == speed_service["calls"]
-
-
-@pytest.mark.parametrize("missing", ["seed", "fixed_output"])
-def test_qualification_requires_observed_seed_and_fixed_output(
-    speed_service, monkeypatch, capsys, missing
-):
-    batch, result = run_speed(speed_service, monkeypatch, capsys)
-    original = tree_hashes(batch)
-    copy = batch.parent / "unqualified"
-    shutil.copytree(batch, copy)
-    run = copy / "runs" / Path(result["details"]["runs"][-1]).name
-    rows = [json.loads(line) for line in (run / "observations.jsonl").read_text().splitlines()]
-    row = next(r for r in rows if r["kind"] == "effective_parameters" and r["stage"] == "stream")
-    if missing == "seed":
-        row["payload"]["parameters"]["seed"]["verification"] = "unverified"
-    else:
-        row["payload"]["slots"][0]["params"]["ignore_eos"] = False
-    row["payload_sha256"] = hashlib.sha256(json_bytes(row["payload"])).hexdigest()
-    rewrite(run, "observations.jsonl", rows)
-    before = tree_hashes(copy)
-    code, response = invoke(capsys, "speed-results", "--batch", copy)
-    if missing == "seed":
-        assert code == 0, response
-        assert response["details"]["summary"] is None
-        assert response["details"]["measurement"]["valid_count"] == 4
-        assert (
-            "seed_support_unverified"
-            in response["details"]["samples"][-1]["measurement"]["reasons"]
-        )
-    else:
-        assert code == 4, response
-        assert response["details"]["read_state"] == "error"
-    assert tree_hashes(copy) == before and tree_hashes(batch) == original

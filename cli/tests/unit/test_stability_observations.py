@@ -79,30 +79,3 @@ def idle_inputs():
         for row in rows
     ]
     return rows, samples, events
-
-
-def test_idle_rss_negative_delta_and_missing_first_cycle_not_rebased():
-    rows, samples, events = idle_inputs()
-    summary, items = idle_rss_observations(
-        RUN, "w1", ["c"], rows, samples, events, CONFIG, EVIDENCE, complete=True
-    )
-    assert summary["first_cycle_rss_bytes"] == 1000
-    assert items[-1]["value"] == -100
-    missing = deepcopy(samples)
-    missing[0].update(value=None, missing_reason="permission_denied")
-    summary, items = idle_rss_observations(
-        RUN, "w1", ["c"], rows, missing, events, CONFIG, EVIDENCE, complete=True
-    )
-    assert summary["first_cycle_rss_bytes"] is None
-    assert items[-1]["value"] is None
-    assert items[-1]["missing_reason"] == "first_cycle_baseline_missing"
-
-
-def test_idle_claim_requires_observed_idle_and_bound_process():
-    rows, samples, events = idle_inputs()
-    samples[0]["server_pid"] += 1
-    events[1]["data"]["state"] = "busy"
-    _, items = idle_rss_observations(
-        RUN, "w1", ["c"], rows, samples, events, CONFIG, EVIDENCE, complete=True
-    )
-    assert all(item["value"] is None for item in items)

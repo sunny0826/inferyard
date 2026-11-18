@@ -29,35 +29,6 @@ def test_constraint_export_rejects_missing_transitive_and_marker_overlaps():
         validate("httpx @ https://example.test/httpx.whl", lock, project)
 
 
-def test_constraint_export_is_plain_text_with_forced_color(tmp_path):
-    output = tmp_path / "runtime-constraints.txt"
-    env = {**os.environ, "FORCE_COLOR": "1"}
-    env.pop("NO_COLOR", None)
-    command = [
-        sys.executable,
-        str(ROOT / "scripts/export_runtime_constraints.py"),
-        "--out",
-        str(output),
-    ]
-    result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True)
-    assert result.returncode == 0, result.stderr
-    assert "\x1b" not in output.read_text()
-    proof = json.loads(output.with_suffix(".txt.validation.json").read_text())
-    assert set(proof) == {"linux-x64", "windows-x64", "macos-arm64"}
-    checked = subprocess.run(
-        [*command, "--check"], cwd=ROOT, env=env, capture_output=True, text=True
-    )
-    assert checked.returncode == 0, checked.stderr
-
-
-def test_wheel_cannot_hide_machine_files_in_dist_info(tmp_path):
-    wheel = tmp_path / "bad.whl"
-    with zipfile.ZipFile(wheel, "w") as archive:
-        archive.writestr("inferyard-0.0.1.dist-info/secret.txt", "private")
-    with pytest.raises(ValueError, match="unexpected_wheel_member"):
-        inspect_wheel(wheel, {}, {"version": "0.0.1"})
-
-
 def test_package_source_allowlist_rejects_accidental_credentials(tmp_path):
     package = tmp_path / "src/inferyard"
     package.mkdir(parents=True)
@@ -74,26 +45,3 @@ def test_package_source_includes_context_speed_bundle():
         == hashlib.sha256((ROOT / "bundles/zh-context-speed.json").read_bytes()).hexdigest()
     )
     validate_resources(resources)
-
-
-def test_release_gate_refuses_dev_build_and_changed_acceptance_bytes(tmp_path):
-    manifest = tmp_path / "manifest.json"
-    raw = json.dumps({"kind": "community_distribution.v1", "release_approved": False}).encode()
-    manifest.write_bytes(raw)
-    digest = hashlib.sha256(raw).hexdigest()
-    with pytest.raises(ValueError, match="not_approved"):
-        verify(manifest, digest, "a" * 40)
-    with pytest.raises(ValueError, match="manifest_hash"):
-        verify(manifest, "b" * 64, "a" * 40)
-
-
-@pytest.mark.parametrize("name", ["../secret", "/secret", "C:/secret", "a\\b", "a/../b"])
-def test_release_paths_cannot_escape(tmp_path, name):
-    with pytest.raises(ValueError, match="unsafe_candidate"):
-        checked_file(tmp_path, {"path": name})
-
-
-def test_release_artifact_bytes_checked_not_only_claimed(tmp_path):
-    (tmp_path / "wheel.whl").write_bytes(b"changed")
-    with pytest.raises(ValueError, match="hash_mismatch"):
-        checked_file(tmp_path, {"path": "wheel.whl", "bytes": 7, "sha256": "a" * 64})

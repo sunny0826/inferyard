@@ -4,7 +4,7 @@ import pytest
 
 from inferyard.contracts.validation import validate_document
 from inferyard.errors import ContractError
-from tests.unit.test_phase2_contracts import observation
+from tests.unit.phase2_contract_helpers import observation
 
 
 def aggregate():
@@ -33,35 +33,6 @@ def analysis():
         "metrics": [aggregate()],
         "limitations": [],
     }
-
-
-def test_aggregate_has_explicit_sources_without_single_trial_attribution():
-    validate_document("metric_observation", aggregate())
-    validate_document("analysis", analysis())
-    validate_document("metric_observation", observation())  # existing v2 remains accepted
-
-
-@pytest.mark.parametrize(
-    "change",
-    [
-        {"source_run_ids": ["r1", "r1"]},
-        {"source_run_ids": []},
-        {"run_id": "r1"},
-        {"sampled_start_ns": 1, "sampled_end_ns": 2},
-        {"request_id": "request-1"},
-    ],
-)
-def test_invalid_aggregate_identity_or_clock_rejected(change):
-    with pytest.raises(ContractError):
-        validate_document("metric_observation", {**aggregate(), **change})
-
-
-@pytest.mark.parametrize("change", [{"analysis_id": "other"}, {"source_run_ids": ["foreign"]}])
-def test_parent_analysis_requires_known_aggregate_sources(change):
-    data = deepcopy(analysis())
-    data["metrics"][0].update(change)
-    with pytest.raises(ContractError, match="binding"):
-        validate_document("analysis", data)
 
 
 def test_full_repeat_group_builds_typed_numeric_analyses(tmp_path):

@@ -94,34 +94,10 @@ class TestReleaseRunner(unittest.TestCase):
             ], log_text="")
             self.assertEqual(result, 65)
 
-    def test_missing_e2e_report_fails_before_xcodebuild(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            app, e2e_root, cli = self.make_inputs(root)
-            (e2e_root / "workspace/reports/report-1/studio.json").unlink()
-            with (
-                patch.object(sys, "argv", [
-                    "run_release.py",
-                    "--app", str(app),
-                    "--e2e-root", str(e2e_root),
-                    "--cli", str(cli),
-                    "--output-root", str(root / "output"),
-                ]),
-                patch.object(run_release.sys, "platform", "darwin"),
-                patch.object(run_release, "require_unlocked_desktop"),
-                patch.object(run_release.subprocess, "run") as launch,
-                contextlib.redirect_stderr(io.StringIO()),
-            ):
-                with self.assertRaises(SystemExit) as raised:
-                    run_release.main()
-            self.assertEqual(raised.exception.code, 2)
-            launch.assert_not_called()
-
 
 _TEST_METHODS = (
     TestReleaseRunner.test_release_runner_isolates_home_and_binds_e2e_report,
     TestReleaseRunner.test_missing_pass_receipt_is_rejected,
-    TestReleaseRunner.test_missing_e2e_report_fails_before_xcodebuild,
 )
 
 

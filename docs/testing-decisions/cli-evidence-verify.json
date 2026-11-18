@@ -1,0 +1,132 @@
+{
+  "group": "cli-evidence-verify",
+  "kept_count": 21,
+  "kept": [
+    {
+      "path": "cli/tests/integration/test_cli_verification_workflow.py",
+      "test": "test_canonical_artifact_workflow_is_offline_and_rejects_retired_presentation",
+      "category": "product_hypothesis",
+      "reason": "验证 export/rescore/public/compare/extension/report 与 verify 全流程纯离线执行、不修改源证据字节、拒绝将 studio.json 当作可核验产物并拒绝篡改后的对比结果。"
+    },
+    {
+      "path": "cli/tests/integration/test_cli_verification_workflow.py",
+      "test": "test_public_configuration_verification_keeps_match_and_mismatch_semantics",
+      "category": "product_hypothesis",
+      "reason": "验证公开复现包与本地配置核对时能检出线程数等关键条件不一致（退出码 3），且离线核对绝不误标为 ready_to_run。"
+    },
+    {
+      "path": "cli/tests/integration/test_fixed_output_lifecycle.py",
+      "test": "test_strict_diagnostic_replays_requests_parameters_and_missing_formal_acceptance",
+      "category": "product_hypothesis",
+      "reason": "验证纯性能固定输出负载不伪造质量分（not_applicable），且离线读取拒绝重封存后的请求与参数篡改。"
+    },
+    {
+      "path": "cli/tests/integration/test_layout_rerun.py",
+      "test": "test_container_rerun_writes_actual_source_or_preserves_missing",
+      "category": "product_hypothesis",
+      "reason": "验证 `rerun` 生成新目录与新 `run_id`、绑定父运行血缘且绝不覆盖原运行字节，同时在配置源缺失时保留 `null` 与 `not_persisted` 原因而不伪造文件。"
+    },
+    {
+      "path": "cli/tests/unit/test_collector_overhead.py",
+      "test": "test_exact_tolerance_and_independent_pairs",
+      "category": "product_hypothesis",
+      "reason": "验证 ABBA 采集器开销判定按独立配对取绝对中位变化，防止正负相反方向的扰动相互抵消而误放行超差采集器。"
+    },
+    {
+      "path": "cli/tests/unit/test_current_formats.py",
+      "test": "test_migrated_schema_three_rejected_recursively",
+      "category": "product_hypothesis",
+      "reason": "验证标记为迁移来源的历史运行即使重封存为 schema_version 3 也会在直接校验及衍生比较、公开包中被递归拒绝。"
+    },
+    {
+      "path": "cli/tests/unit/test_extension_evidence.py",
+      "test": "test_sealed_extension_replay_rejects_raw_and_derived_tampering",
+      "category": "product_hypothesis",
+      "reason": "验证已封存扩展证据包在离线校验时拒绝被篡改的衍生 summary.json 且绝不改动原始文件字节。"
+    },
+    {
+      "path": "cli/tests/unit/test_extension_evidence.py",
+      "test": "test_cli_fixture_reports_never_inherit_live_qualification",
+      "category": "product_hypothesis",
+      "reason": "验证夹具扩展证据包绝不继承真机硬件合格结论，且离线 replay 拒绝伪造为 live 来源的输入包。"
+    },
+    {
+      "path": "cli/tests/unit/test_fixed_output.py",
+      "test": "test_strict_rate_retains_failed_denominator_and_does_not_use_finish_alone",
+      "category": "product_hypothesis",
+      "reason": "证明严格定长输出达标率将失败请求保留在冻结分母内，且缺 token 计数时返回 None 而非虚增比率。"
+    },
+    {
+      "path": "cli/tests/unit/test_fixed_output.py",
+      "test": "test_strict_and_natural_workloads_cannot_be_compared_as_same_protocol",
+      "category": "product_hypothesis",
+      "reason": "证明严格定长负载与自然结束负载因任务协议不同而拒绝比较，防止混淆不同生成约束的性能结论。"
+    },
+    {
+      "path": "cli/tests/unit/test_layout_consumers.py",
+      "test": "test_missing_end_record_does_not_inherit_start_or_container_existence",
+      "category": "product_hypothesis",
+      "reason": "验证容器内缺失结束态环境观测时如实标记缺失原因并取消环境合格性，绝不继承起始态观测或因容器文件存在而伪造结果。"
+    },
+    {
+      "path": "cli/tests/unit/test_layout_consumers.py",
+      "test": "test_native_receipts_bind_inventory_and_never_prove_engine_drain",
+      "category": "product_hypothesis",
+      "reason": "验证原生模式下客户端 HTTP 完成回执严格绑定已完成请求，且在缺乏原生生命周期观测时绝不伪造服务端内部排空（`service_drain` 保持 `None`）。"
+    },
+    {
+      "path": "cli/tests/unit/test_layout_consumers.py",
+      "test": "test_container_tail_retains_denominator_and_rejects_sealed_run",
+      "category": "product_hypothesis",
+      "reason": "验证未封存 JSONL 尾部截断保留冻结分母并标记运行不完整，而一旦运行声明已封存则拒绝任何截断 JSONL 证据。"
+    },
+    {
+      "path": "cli/tests/unit/test_ledger.py",
+      "test": "test_five_terminal_counts_conserve_planned_cases",
+      "category": "product_hypothesis",
+      "reason": "验证冻结计划的五种终态（`completed`/`failed`/`cancelled`/`invalid`/`not_executed`）严格守恒分母、准确计算完成率与缺测原因且仅允许续跑未执行用例。"
+    },
+    {
+      "path": "cli/tests/unit/test_ledger.py",
+      "test": "test_resume_cannot_replace_failure_or_claim_continuous_complete_trial",
+      "category": "product_hypothesis",
+      "reason": "验证 `resume` 不修改父运行原件、禁止重跑已失败用例刷高分数（`only_unexecuted`），且分段恢复的运行绝不冒充连续完整试验或伪造质量总分。"
+    },
+    {
+      "path": "cli/tests/unit/test_offline_reading.py",
+      "test": "test_sealed_partial_run_verifies_without_promoting_execution",
+      "category": "product_hypothesis",
+      "reason": "证明已封存的中断或无效运行通过完整性核验时仍保持 incomplete 状态，绝不将部分运行升级为完整执行。"
+    },
+    {
+      "path": "cli/tests/unit/test_offline_reading.py",
+      "test": "test_corrupt_seal_is_not_downgraded_to_partial",
+      "category": "product_hypothesis",
+      "reason": "证明已封存运行的事件流被篡改时直接报证据错误，绝不静默降级为未封存的部分运行。"
+    },
+    {
+      "path": "cli/tests/unit/test_storage.py",
+      "test": "test_secret_redaction_across_arbitrary_chunks",
+      "category": "product_hypothesis",
+      "reason": "验证流式脱敏器 `Redactor.stream` 在任意分块边界切分敏感凭据时仍能彻底替换为 `[REDACTED]`，防止流式写入泄漏密钥。"
+    },
+    {
+      "path": "cli/tests/unit/test_storage.py",
+      "test": "test_no_overwrite_and_manifest_classification",
+      "category": "product_hypothesis",
+      "reason": "验证 `EvidenceStore` 禁止覆盖已有快照与复用 `run_id`、持久化时脱敏密钥，且即使恶意将原始证据篡改为 `derived: True` 仍会被封存校验拒绝。"
+    },
+    {
+      "path": "cli/tests/unit/test_storage_sync.py",
+      "test": "test_failed_fsync_preserves_prefix_and_blocks_same_writer_retry",
+      "category": "product_hypothesis",
+      "reason": "验证证据刷盘 `fsync` 失败后保留已写入前缀并永久阻断同一写入器后续写入与 `seal()`，确保未落盘证据绝不会生成封存清单。"
+    },
+    {
+      "path": "cli/tests/unit/test_verification.py",
+      "test": "test_real_payload_corruption_is_rejected",
+      "category": "product_hypothesis",
+      "reason": "验证离线 `verify` 能检出并拒绝 `export`、`rescore`、`public`、`comparison` 与 `extension` 五类封存派生产物的载荷篡改且不修改任何文件。"
+    }
+  ]
+}

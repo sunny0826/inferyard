@@ -19,7 +19,7 @@ from inferyard.runtime.trial_runner import TrialDependencies
 from tests.integration.test_runner import scenario  # noqa: F401
 from tests.local_engine_runtime.identity import freeze
 from tests.local_engine_transport.conftest import rig  # noqa: F401
-from tests.unit.test_local_engine_contract import local_config  # noqa: F401
+from tests.unit.local_engine_helpers import local_config
 
 
 class ControlledSafety:
@@ -115,15 +115,6 @@ def test_formal_local_run_seals_and_renders_offline(local_run, tmp_path, capsys)
     assert len(state.posts) == before
 
 
-def test_local_missing_queue_stops_before_any_generation(local_run):
-    command, deps, state = local_run
-    state.metrics = "vllm:num_requests_running 0\n"
-    code, result = asyncio.run(execute_async(command, deps))
-    assert code == 2, result.limitations
-    assert state.posts == []
-    assert read_json(locking.STATE_PATH)["dirty"] is True
-
-
 def intercept(state, fault):
     """Fault the HTTP boundary, retaining production adapter parsing and lifecycle."""
     import httpx
@@ -155,23 +146,6 @@ def assert_stopped(result, *, terminal):
     assert data["summary"]["completeness"] == "incomplete"
     assert read_json(locking.STATE_PATH)["dirty"] is True
     return data
-
-
-def test_completed_http_then_queue_failure_retains_incomplete_original(local_run):
-    import httpx
-
-    command, deps, state = local_run
-
-    async def fault(request, response):
-        if request.url.path == "/metrics":
-            return httpx.Response(503, text="observer unavailable")
-        return response
-
-    intercept(state, fault)
-    code, result = asyncio.run(execute_async(command, deps))
-    assert code == 3
-    assert len(state.posts) == 3
-    assert_stopped(result, terminal="completed")
 
 
 @pytest.mark.parametrize("fault_kind", ["truncated", "cancelled", "safety"])

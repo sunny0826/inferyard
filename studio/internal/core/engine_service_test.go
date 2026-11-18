@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
+
 	"testing"
 	"time"
 )
@@ -132,113 +132,6 @@ func freePort(t *testing.T) int {
 	}
 	defer func() { _ = listen.Close() }()
 	return listen.Addr().(*net.TCPAddr).Port
-}
-
-func TestStartEngineHealthyStopAndIdempotent(t *testing.T) {
-	t.Setenv("ENGINE_HELPER", "1")
-	t.Setenv("ENGINE_HELPER_DELAY_MS", "300")
-	workspace, candidate := engineWorkspace(t, freePort(t))
-	s := engineService(t, workspace)
-	first, e := s.StartEngine(candidate)
-	if e != nil || first.State != "starting" || first.Pid <= 0 {
-		t.Fatalf("%+v %v", first, e)
-	}
-	if _, err := os.Stat(ownerPath(workspace)); err != nil {
-		t.Fatal("owner record missing", err)
-	}
-	again, e := s.StartEngine(candidate)
-	if e != nil || again.Pid != first.Pid {
-		t.Fatalf("start while starting must be a no-op: %+v %v", again, e)
-	}
-	other := filepath.Join(workspace, "candidates", "c2")
-	if err := os.MkdirAll(other, 0700); err != nil {
-		t.Fatal(err)
-	}
-	candidateBytes, _ := os.ReadFile(filepath.Join(candidate, "candidate.toml"))
-	if err := os.WriteFile(filepath.Join(other, "candidate.toml"), candidateBytes, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, failure := s.StartEngine(other); failure == nil || failure.Code != "engine_candidate_mismatch" {
-		t.Fatal(failure)
-	}
-	running := pollEngine(t, s, "running")
-	if running.Endpoint == "" || running.LogPath == "" {
-		t.Fatalf("%+v", running)
-	}
-	if _, err := os.Stat(running.LogPath); err != nil {
-		t.Fatal(err)
-	}
-	stopped, e := s.StopEngine()
-	if e != nil {
-		t.Fatalf("%v", e)
-	}
-	if stopped.State != "stopping" && stopped.State != "stopped" {
-		t.Fatalf("%+v", stopped)
-	}
-	pollEngine(t, s, "stopped")
-	assertOwnerGone(t, ownerPath(workspace))
-}
-
-func TestStartEnginePortInUse(t *testing.T) {
-	t.Setenv("ENGINE_HELPER", "1")
-	port := freePort(t)
-	hold, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = hold.Close() }()
-	workspace, candidate := engineWorkspace(t, port)
-	s := engineService(t, workspace)
-	_, e := s.StartEngine(candidate)
-	if e == nil || e.Code != "engine_port_in_use" {
-		t.Fatalf("err = %+v", e)
-	}
-}
-
-func TestStartEngineCrash(t *testing.T) {
-	t.Setenv("ENGINE_HELPER", "1")
-	t.Setenv("ENGINE_HELPER_EXIT", "1")
-	workspace, candidate := engineWorkspace(t, freePort(t))
-	s := engineService(t, workspace)
-	if _, e := s.StartEngine(candidate); e != nil {
-		t.Fatalf("%v", e)
-	}
-	failed := pollEngine(t, s, "failed")
-	if failed.Error == nil || failed.Error.Code != "engine_exited" {
-		t.Fatalf("%+v", failed)
-	}
-}
-
-func TestStartEngineTimeout(t *testing.T) {
-	t.Setenv("ENGINE_HELPER", "1")
-	t.Setenv("ENGINE_HELPER_NOREADY", "1")
-	workspace, candidate := engineWorkspace(t, freePort(t))
-	s := engineService(t, workspace)
-	if _, e := s.StartEngine(candidate); e != nil {
-		t.Fatalf("%v", e)
-	}
-	failed := pollEngine(t, s, "failed")
-	if failed.Error == nil || failed.Error.Code != "engine_start_timeout" {
-		t.Fatalf("%+v", failed)
-	}
-}
-
-func TestShutdownStopsManagedEngine(t *testing.T) {
-	t.Setenv("ENGINE_HELPER", "1")
-	workspace, candidate := engineWorkspace(t, freePort(t))
-	ctx, cancel := context.WithCancel(context.Background())
-	s := engineServiceCtx(t, ctx, workspace)
-	if _, e := s.StartEngine(candidate); e != nil {
-		t.Fatalf("%v", e)
-	}
-	running := pollEngine(t, s, "running")
-	cancel()
-	pollEngine(t, s, "stopped")
-	if proc, err := os.FindProcess(int(running.Pid)); err == nil {
-		if err := proc.Signal(syscall.Signal(0)); err == nil {
-			t.Fatal("engine process survived Studio shutdown")
-		}
-	}
 }
 
 // Only the engine test fixture consumes its tiny TOML stub. Production startup

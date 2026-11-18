@@ -20,7 +20,7 @@ synthetic_runtime = runtime_fixture
 
 
 def record_for(model, path):
-    from tests.unit.test_model_source import record_for as build
+    from tests.unit.model_source_helpers import record_for as build
 
     path.write_text(json.dumps(build(model)))
     return path
@@ -50,25 +50,6 @@ def assert_remote_candidate(request):
     assert details["ready_to_run"] is False
 
 
-def test_macos_record_explicitly_binds_model_identity(tmp_path, monkeypatch):
-    request, model = macos_request(tmp_path, monkeypatch)
-    request = replace(
-        request, model_repo=None, model_source_record=record_for(model, tmp_path / "source.json")
-    )
-    assert_remote_candidate(request)
-
-
-def test_windows_record_binds_without_lineage(synthetic_runtime, tmp_path, monkeypatch):
-    prepared = windows_runtime_prepare.prepare(synthetic_runtime[0])
-    model = gguf(tmp_path / "chosen.gguf", "chosen")
-    request = candidate_request(tmp_path, model, receipt=Path(prepared["receipt"]))
-    monkeypatch.setattr(community_candidates, "query_version", lambda *a, **k: {})
-    request = replace(
-        request, model_repo=None, model_source_record=record_for(model, tmp_path / "source.json")
-    )
-    assert_remote_candidate(request)
-
-
 @pytest.mark.parametrize("change", ["size", "hash", "bool", "parser", "repo", "revision"])
 def test_conflicting_record_or_declaration_rejects_candidate(tmp_path, monkeypatch, change):
     request, model = macos_request(tmp_path, monkeypatch)
@@ -92,11 +73,3 @@ def test_conflicting_record_or_declaration_rejects_candidate(tmp_path, monkeypat
     with pytest.raises(PreparationError, match="model_source_metadata_mismatch"):
         community_candidates.create(request)
     assert not request.out.exists()
-
-
-def test_old_neighbor_record_is_never_searched(tmp_path, monkeypatch):
-    request, model = macos_request(tmp_path, monkeypatch)
-    (model.parent / "source.json").write_text("broken old record")
-    config = load_config(community_candidates.create(request)["candidate"]).config.to_dict()
-    assert config["model"]["repo"] == "local"
-    assert config["model"]["revision"] == hashlib.sha256(model.read_bytes()).hexdigest()

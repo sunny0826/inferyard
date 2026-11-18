@@ -1,0 +1,162 @@
+{
+  "group": "studio-core-e2e",
+  "kept_count": 26,
+  "kept": [
+    {
+      "path": "studio/development_session_test.go",
+      "test": "TestDevelopmentStopIdentityAndOwner",
+      "category": "product_hypothesis",
+      "reason": "保留单一开发会话关停进程安全检查：核验 PID、启动 ticks、可执行文件路径及未释放的 engine-owner.json，防止 PID 复用误操作或掩盖残留引擎。"
+    },
+    {
+      "path": "studio/internal/core/context_speed_boundaries_test.go",
+      "test": "TestContextSpeedZeroBatchExcludedFromOrdinaryHistory",
+      "category": "product_hypothesis",
+      "reason": "验证非评分专项负载 `context-speed.v1` 绝不会混入普通基准测试历史记录与报告范围。"
+    },
+    {
+      "path": "studio/internal/core/core_test.go",
+      "test": "TestQueueCancellationAndExitMapping",
+      "category": "product_hypothesis",
+      "reason": "验证取消排队或运行中任务会阻止后续派发，并准确映射 CLI 退出码（含 exit 3 不完整运行语义）。"
+    },
+    {
+      "path": "studio/internal/core/core_test.go",
+      "test": "TestContainmentAndSourceValidation",
+      "category": "product_hypothesis",
+      "reason": "验证路径解析拒绝目录穿越与符号链接逃逸，且模型下载源要求固定提交哈希并拒绝 URL 携带明文 token。"
+    },
+    {
+      "path": "studio/internal/core/core_test.go",
+      "test": "TestParallelDownloadsAndProgress",
+      "category": "product_hypothesis",
+      "reason": "验证 Studio 支持模型并发下载与独立取消，且拒绝覆盖已存在的下载输出目录。"
+    },
+    {
+      "path": "studio/internal/core/core_test.go",
+      "test": "TestReportCreationAndResumeValidation",
+      "category": "product_hypothesis",
+      "reason": "验证重复创建报告始终写入新目录而不覆盖历史报告，并拒绝重复运行输入与不可恢复运行。"
+    },
+    {
+      "path": "studio/internal/core/core_test.go",
+      "test": "TestTwoConfigsExecuteInArrayOrder",
+      "category": "product_hypothesis",
+      "reason": "验证运行队列严格按数组顺序串行执行，前序任务未完成时后续保持排队并拒绝重复配置入队。"
+    },
+    {
+      "path": "studio/internal/core/engine_downloads_test.go",
+      "test": "TestEngineDownloadLifecycle",
+      "category": "product_hypothesis",
+      "reason": "验证引擎下载解压全流程在缺少传输进度时保持字节与速率为 `null` 并附带原因（绝不伪造为 0），且不覆盖已有目录。"
+    },
+    {
+      "path": "studio/internal/core/engine_lifecycle_test.go",
+      "test": "TestOrderedShutdownDrainsRealRunBeforeEngine",
+      "category": "product_hypothesis",
+      "reason": "验证活跃运行期间拒绝停引擎，且 Studio 关闭时先中断并排空运行请求，再停止并回收其启动的引擎进程。"
+    },
+    {
+      "path": "studio/internal/core/engine_lifecycle_test.go",
+      "test": "TestBindingRecoveryAcrossRestartAndCrash",
+      "category": "product_hypothesis",
+      "reason": "验证重启恢复后孤儿引擎不被自动接管或被普通停止误杀，且绑定存活校验 `PID + process_start_ticks` 拒绝 PID 复用与覆盖原配置。"
+    },
+    {
+      "path": "studio/internal/core/engine_lifecycle_test.go",
+      "test": "TestStartValidationRejectsBeforeLaunch",
+      "category": "product_hypothesis",
+      "reason": "验证引擎启动前拒绝非环回监听地址与明文密钥参数，且错误消息脱敏并不启动受拒进程。"
+    },
+    {
+      "path": "studio/internal/core/engine_owner_test.go",
+      "test": "TestOrphanExplicitStopAndRecheck",
+      "category": "product_hypothesis",
+      "reason": "验证 `engine-owner.json` 恢复与显式停止全过程校验 `PID + start_ticks`，发生 PID 复用时绝不向无关进程发送信号。"
+    },
+    {
+      "path": "studio/internal/core/engine_service_test.go",
+      "test": "TestMain",
+      "category": "product_hypothesis",
+      "reason": "作为 `package core` 假引擎、运行排空及本地队列子进程的统一 `TestMain` 测试入口，支撑保留的引擎排空回收与多题包隔离测试。"
+    },
+    {
+      "path": "studio/internal/core/local_runs_test.go",
+      "test": "TestLocalQueueStartsFreshProcessPerBundle",
+      "category": "product_hypothesis",
+      "reason": "验证默认双题包（`zh-core` 与 `zh-svg-pelican`）候选队列按序为每个题包启动独立新引擎进程并在切换时回收旧进程。"
+    },
+    {
+      "path": "studio/internal/core/local_runs_test.go",
+      "test": "TestLocalQueueLMStudioRequiresFreshExternalIdentity",
+      "category": "product_hypothesis",
+      "reason": "验证外部管理的服务（如 LM Studio）跨题包不可复用旧进程身份，且绝不被 Studio 误纳入自有进程所有权。"
+    },
+    {
+      "path": "studio/internal/core/report_list_test.go",
+      "test": "TestReportSummaryProjectsRunsAndFileTime",
+      "category": "product_hypothesis",
+      "reason": "验证 Studio 直接投影 `studio.json` 中的模型、运行 ID 与质量分母而不调用任何 CLI 重新评分。"
+    },
+    {
+      "path": "studio/internal/core/resources_test.go",
+      "test": "TestResourceObservationsPreserveSourcesAndTailBoundaries",
+      "category": "product_hypothesis",
+      "reason": "验证资源遥测保持不同传感器来源独立不混同，单点计数不伪造 CPU 比率，且缺测样本保持 `null` 与原因。"
+    },
+    {
+      "path": "studio/internal/core/score_aggregate_test.go",
+      "test": "TestAggregateExcludesFailedExemptCaseFromDenominator",
+      "category": "product_hypothesis",
+      "reason": "验证冻结题包中的非质量评分题型（如 `svg`）即使执行失败也不计入质量分母，绝不虚构或污染质量分。"
+    },
+    {
+      "path": "studio/internal/core/score_aggregate_test.go",
+      "test": "TestAggregateCountsFailedQualityCaseAndKeepsRate",
+      "category": "product_hypothesis",
+      "reason": "验证执行失败的质量题保留在冻结分母中并计为未通过，防止因剔除失败样本而虚高质量分。"
+    },
+    {
+      "path": "studio/internal/core/score_history_test.go",
+      "test": "TestHistoryTreatsAbnormalStopAfterLastCaseAsIncomplete",
+      "category": "product_hypothesis",
+      "reason": "验证即使全部题目已执行，只要因采样器或清理异常等非 `plan_finished` 原因停止，历史运行仍判为不完整且不给出完整质量率。"
+    },
+    {
+      "path": "studio/internal/inferyard/client_test.go",
+      "test": "TestCancellation",
+      "category": "product_hypothesis",
+      "reason": "验证取消 CLI 子进程时先发送 SIGINT 保留排空输出与 130 退出码、超时忽略信号后强制终止不挂起的核心执行隔离边界。"
+    },
+    {
+      "path": "studio/internal/inferyard/client_test.go",
+      "test": "TestCancellationProcess",
+      "category": "product_hypothesis",
+      "reason": "作为 TestCancellation 通过 -test.run 拉起的真实子进程入口，提供信号捕获与忽略两种操作系统级行为验证。"
+    },
+    {
+      "path": "studio/internal/inferyard/studio_report_test.go",
+      "test": "TestParseStudioReportRejectsInvariantViolations",
+      "category": "product_hypothesis",
+      "reason": "验证 Studio 解析 studio.json 时强制校验 JSON Schema 之外的核心领域不变量（分母守恒、不完整质量分必须带原因、缺测内存必须为 null 且附原因、禁止重复运行）。"
+    },
+    {
+      "path": "studio/tests/e2e/chain_test.go",
+      "test": "TestChainBindRunReport",
+      "category": "product_hypothesis",
+      "reason": "端到端验证 Studio 驱动真实 CLI 完成 init、device-check、受管假引擎启动与身份绑定、默认双套件（zh-core 与 zh-svg-pelican）正式运行、全部证据 Schema 门禁及单一 studio.json 报告生成。"
+    },
+    {
+      "path": "studio/tests/e2e/context_speed_test.go",
+      "test": "TestContextSpeedPublicCLI",
+      "category": "product_hypothesis",
+      "reason": "端到端验证真实 CLI 执行 zh-context-speed（含拒绝未人工审核语料库门禁与不生成 HTML）后，Studio 准确投影 5 次试验及预填充/解码中位数而不重算评分。"
+    },
+    {
+      "path": "studio/tests/e2e/main_test.go",
+      "test": "TestMain",
+      "category": "product_hypothesis",
+      "reason": "作为 studio/tests/e2e 测试二进制入口，在收到 --params-file 时复用自身进程充当受管假引擎服务以支撑 TestChainBindRunReport。"
+    }
+  ]
+}

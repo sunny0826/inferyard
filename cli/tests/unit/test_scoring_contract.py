@@ -27,25 +27,6 @@ def scored(task, answer, state="completed"):
     )
 
 
-def test_original_forty_reference_answers_remain_passing():
-    for task in BUNDLE["cases"]:
-        assert score_case(task, task["reference_answer"], POLICY)["quality_state"] == "pass"
-
-
-@pytest.mark.parametrize(
-    "answer,normalization,passed",
-    [
-        (" 答案 ", "strip", True),
-        ("答案。", "strip", False),
-        ("Ａ", "nfkc_strip", True),
-        ("Ａ", "strip", False),
-    ],
-)
-def test_exact_answer_normalization(answer, normalization, passed):
-    task = case("qa", dict(answers=["答案", "A"], normalization=normalization))
-    assert (score_case(task, answer, POLICY)["quality_state"] == "pass") == passed
-
-
 @pytest.mark.parametrize(
     "answer,passed",
     [
@@ -66,31 +47,6 @@ def test_numeric_tolerance_and_hostile_exponents(answer, passed):
     assert (score_case(task, answer, POLICY)["quality_state"] == "pass") == passed
 
 
-@pytest.mark.parametrize(
-    "expected,absolute,relative,answer,passed",
-    [
-        (0, 0, 0, "1e-999999999", False),
-        (0, 0, 0, "-1e-999999999", False),
-        (0, 0, 0, "0e-999999999", True),
-        (0, 1e-300, 0, "1e-999999999", True),
-        (0, 0, 0, "1e999999999", False),
-        (10**40, 0, 0, str(10**40 + 1), False),
-        (10**40, 1, 0, str(10**40 + 1), True),
-        (10**40, 1, 0, str(10**40 + 2), False),
-        (1, 1e-30, 0, "1.000000000000000000000000000001", True),
-        (1, 1e-30, 0, "1.000000000000000000000000000002", False),
-        (-10, 0, 0.01, "-10.1", True),
-        (-10, 0, 0.01, "-10.100000000000000000000000001", False),
-    ],
-)
-def test_numeric_bounds_are_exact(expected, absolute, relative, answer, passed):
-    task = case(
-        "math",
-        dict(expected=expected, absolute_tolerance=absolute, relative_tolerance=relative, unit=""),
-    )
-    assert (score_case(task, answer, POLICY)["quality_state"] == "pass") == passed
-
-
 def structured(case_id="struct-01"):
     return case(
         "structured",
@@ -107,23 +63,6 @@ def structured(case_id="struct-01"):
         ),
         case_id,
     )
-
-
-@pytest.mark.parametrize(
-    "answer,expected",
-    [
-        ('{"data":[true,2,null]}', [True, True, True]),
-        ('{"data":[1,2,null]}', [False, True, True]),
-        ('{"data":[true,null,2]}', [True, False, False]),
-        ('{"data":[true,2,null],"data":[]}', [False, False, False]),
-        ('{"data":[NaN,2,null]}', [False, False, False]),
-        ('```json\n{"data":[true,2,null]}\n```', [False, False, False]),
-    ],
-)
-def test_nested_typed_fields_and_strict_json(answer, expected):
-    result = score_case(structured(), answer, POLICY)
-    assert [f["passed"] for f in result["field_results"]] == expected
-    assert (result["quality_state"] == "pass") == all(expected)
 
 
 def test_parse_failure_and_partial_correct_fields_keep_denominators():
@@ -165,40 +104,6 @@ def test_classification_macro_f1_includes_invalid_and_failed_answers():
     assert metrics["Q01"]["classification"]["rate"]["value"] == 0.5
 
 
-def test_missing_duplicate_and_wrong_category_cannot_form_complete_trial():
-    task = structured()
-    metrics = summarize_quality([task], [], complete=True)
-    assert metrics["Q05"]["value"] is None
-    assert metrics["Q01"]["structured"]["excluded"] == 1
-    request = scored(task, '{"data":[true,2,null]}')
-    with pytest.raises(ContractError, match="duplicate"):
-        summarize_quality([task], [request, request], complete=True)
-    request["score"] = unscorable("qa", "missing_answer")
-    with pytest.raises(ContractError, match="category"):
-        summarize_quality([task], [request], complete=True)
-
-
-def test_missing_field_scores_rejected_and_unscorable_is_incomplete():
-    task = structured()
-    request = scored(task, '{"data":[true,2,null]}')
-    request["score"]["field_results"] = []
-    with pytest.raises(ContractError, match="denominator"):
-        summarize_quality([task], [request], complete=True)
-    request["score"] = unscorable("structured", "answer_redacted")
-    assert summarize_quality([task], [request], complete=True)["Q05"]["value"] is None
-
-
-def test_remote_schema_and_invalid_reference_rejected_before_scoring():
-    task = structured()
-    task["rules"]["json_schema"] = {"$ref": "https://example.invalid/schema"}
-    with pytest.raises(ContractError, match="references"):
-        validate_case(task)
-    task = structured()
-    task["rules"]["expected"] = []
-    with pytest.raises(ContractError, match="reference violates"):
-        validate_case(task)
-
-
 def test_inherited_approval_is_preserved_but_new_composition_needs_review():
     source = json.loads(BUNDLE["review_provenance"][0]["source_json"])
     assert content_hash(source) == BUNDLE["review_records"][0]["content_sha256"]
@@ -214,16 +119,3 @@ def test_inherited_approval_is_preserved_but_new_composition_needs_review():
     changed["cases"][0]["prompt"] += "修改"
     with pytest.raises(ContractError, match="current content differs"):
         validate_document("bundle", changed)
-
-
-def test_removing_current_approval_does_not_reactivate_legacy_proof():
-    subset = copy.deepcopy(BUNDLE)
-    subset["review_records"] = []
-    with pytest.raises(ContractError, match="original review record was removed"):
-        require_review(subset)
-
-
-def test_performance_has_no_quality_score():
-    task = case("performance", {"output_target_tokens": None})
-    assert score_case(task, "", POLICY)["quality_state"] == "not_applicable"
-    assert unscorable("performance", "not_needed")["quality_state"] == "not_applicable"

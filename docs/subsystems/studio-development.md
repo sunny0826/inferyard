@@ -102,14 +102,9 @@ stop 意图也不保证任意旧程序未来重放都被阻止。来源不明或
 
 ## 验证边界
 
-[启动器行为回归](../../tools/tests/test_dev_lifecycle.py) 检查失败不切换、历史与资产保留、
-实例归属和 pending 恢复；[状态回归](../../tools/tests/test_dev_state.py) 检查源码变化、
-分支隔离、重复执行、符号链接与 JSON 拒绝路径。它们使用受控进程边界，不证明原生窗口。
-
-Go 开发测试覆盖协议、固定绑定和关停路径；普通、`studio_dev`、`ui_debug`、
+Go 开发测试覆盖协议、进程身份核验与关停路径（[`development_disabled_test.go`](../../studio/development_disabled_test.go)、[`development_session_test.go`](../../studio/development_session_test.go)）；普通、`studio_dev`、`ui_debug`、
 `studio_dev,release` 与 `ui_debug,release` 分别验证入口边界。真实开发窗口需要在已登录桌面
 启动并检查来源和 CLI 调用；预览原生 E2E 使用模拟数据，其通过不等于开发链路或实模验收。
 平台与实际执行结果按本轮验证证据报告，不从交叉编译推导原生平台资格。
-恢复测试还覆盖严格 JSON 证明、legacy stop 路由、迟到 session、原生子进程状态和另一个
-真实进程持有 owner 锁时的有限等待。原生 UI runner 在构建前检查已登录且未锁屏的 console，
+原生 UI runner 在构建前检查已登录且未锁屏的 console，
 执行中桌面仍须保持解锁；该预检不跳过 XCTest 或截图断言。

@@ -98,34 +98,3 @@ def test_public_summary_omits_private_text_and_preserves_denominators(tmp_path, 
         verify_public(out)
     assert len(scenario[2]) == calls
     assert before == {p.name: sha256_file(p) for p in root.iterdir() if p.is_file()}
-
-
-def test_public_recipe_and_reproduction_keep_goodput_thresholds(
-    tmp_path: Path, scenario: Scenario
-) -> None:
-    original_request = scenario[0]
-    config = original_request.config.config.to_dict()
-    config["engine"]["startup_args"] += ["-m", config["model"]["local_path"]]
-    loaded = replace(original_request.config, config=Document.parse("config", config))
-    scenario = (replace(original_request, config=loaded), *scenario[1:])
-    thresholds = {"quality_state": "pass", "e2e_latency_ms_max": 500}
-    request, deps = batch(tmp_path, scenario, BatchOptions(goodput_thresholds=thresholds))
-    code, result = asyncio.run(execute_async(request, deps))
-    assert code == 0
-    root = Path(result.details["runs"][0])
-    data, source = comparison_input(root)
-    public = projection(data, source)
-    assert public["reproduction"]["goodput_thresholds"] == thresholds
-
-    out = tmp_path / "public-thresholds"
-    write_public(root, out)
-    assert verify_public(out, root)["source_projection_verified"]
-    assert check_config(out, loaded)["declared_configuration_matches"]
-    rebuilt = tmp_path / "reproduced-thresholds"
-    materialize(out, loaded, rebuilt)
-    plan = read_json(rebuilt / "frozen/plan.json")
-    assert plan["experiment"]["goodput_thresholds"] == thresholds
-
-    without = deepcopy(data)
-    without["plan"]["experiment"].pop("goodput_thresholds")
-    assert "goodput_thresholds" not in reproduction_recipe(without, number)

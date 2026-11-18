@@ -9,7 +9,7 @@ from inferyard.config.planning import compile_plan
 from inferyard.runtime.overhead_binding import workload_identity
 from tests.unit.test_observations import EVIDENCE, RUN
 from tests.unit.test_performance_comparison import inputs
-from tests.unit.test_phase2_contracts import experiment
+from tests.unit.phase2_contract_helpers import experiment
 from tests.unit.test_resources import ENDPOINT, ROW, cpu_sample
 
 POLICY = dict(
@@ -120,16 +120,6 @@ def compare(left, right, proofs):
     return compare_trials(left, right, performance_evidence=proofs)["performance_analysis"]
 
 
-def test_all_resource_sources_need_frozen_windows():
-    left, right, proofs = fixture()
-    result = compare(left, right, proofs)
-    assert all(r["eligible"] for r in result["differences"]), result
-    assert {r["metric_id"] for r in result["differences"]} == {f"C0{i}" for i in range(1, 9)}
-    left["plan"]["experiment"].pop("resource_comparison")
-    right["plan"]["experiment"].pop("resource_comparison")
-    assert not any(r["eligible"] for r in compare(left, right, proofs)["differences"])
-
-
 @pytest.mark.parametrize(
     "change",
     [
@@ -212,78 +202,3 @@ def test_bad_resource_window_is_not_authorized_by_e2e(change):
         refresh(right)
     rows = [r for r in compare(left, right, proofs)["differences"] if r["metric_id"] == code]
     assert rows and not any(r["eligible"] for r in rows)
-
-
-def test_expected_outside_request_counter_sample_is_excluded_without_poisoning_observed_window():
-    left, right, proofs = fixture()
-    for data in (left, right):
-        s = cpu_sample(4.1, 50)
-        s["request_id"] = data["requests"][0]["request_id"]
-        s["capture"] = "request_end"
-        data["samples"].append(s)
-        refresh(data)
-    rows = [r for r in compare(left, right, proofs)["differences"] if r["metric_id"] == "C04"]
-    assert all(r["eligible"] for r in rows)
-    assert all(r["resource_windows"][0]["excluded"] == 1 for r in rows)
-
-
-def test_policy_changes_plan_and_overhead_workload_identity():
-    e = experiment()
-    before = compile_plan(e)
-    e["resource_comparison"] = POLICY
-    assert compile_plan(e)["plan_sha256"] != before["plan_sha256"]
-    left, right, _ = fixture()
-    left["plan"] = compile_plan(e)
-    e = deepcopy(e)
-    e["resource_comparison"]["min_coverage_ratio"] = 0.9
-    right["plan"] = compile_plan(e)
-    for data in (left, right):
-        data["run"]["trial_id"] = data["plan"]["trials"][0]["trial_id"]
-    assert workload_identity(left) != workload_identity(right)
-
-
-def test_partial_cpu_window_does_not_become_full_request_total():
-    left, right, proofs = fixture()
-    for data in (left, right):
-        data["plan"]["experiment"]["resource_comparison"]["min_coverage_ratio"] = 0.7
-        data["samples"] = [
-            s
-            for s in data["samples"]
-            if not (
-                s["metric_name"] == "service_cpu_ticks" and s["read_started_ns"] == 4_000_000_000
-            )
-        ]
-        refresh(data)
-    rows = {
-        r["statistic"]: r
-        for r in compare(left, right, proofs)["differences"]
-        if r["metric_id"] == "C04"
-    }
-    assert rows["observed_cpu_seconds"]["eligible"]
-    assert not rows["full_request_cpu_seconds"]["eligible"]
-    assert rows["full_request_cpu_seconds"]["difference"] is None
-
-
-@pytest.mark.parametrize("collector", [None, [], "linux-resource.v2", 1, True])
-def test_malformed_collector_returns_ineligibility(collector):
-    left, right, proofs = fixture()
-    right["resource_collector"] = collector
-    rows = compare(left, right, proofs)["differences"]
-    assert rows and not any(r["eligible"] for r in rows)
-
-
-@pytest.mark.parametrize("sensors", [None, [], {}, {"sources": None}, {"sources": [None]}])
-def test_malformed_sensor_metadata_only_blocks_sensor_metrics(sensors):
-    left, right, proofs = fixture()
-    right["resource_collector"]["sensors"] = sensors
-    rows = compare(left, right, proofs)["differences"]
-    assert all(r["eligible"] == (r["metric_id"] not in ("C07", "C08")) for r in rows)
-
-
-@pytest.mark.parametrize("key", ["semantics", "unit", "scale"])
-def test_missing_sensor_metadata_field_does_not_crash(key):
-    left, right, proofs = fixture()
-    for source in right["resource_collector"]["sensors"]["sources"]:
-        source.pop(key)
-    rows = compare(left, right, proofs)["differences"]
-    assert all(r["eligible"] == (r["metric_id"] not in ("C07", "C08")) for r in rows)

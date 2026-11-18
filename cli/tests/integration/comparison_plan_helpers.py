@@ -49,8 +49,6 @@ Scenario = tuple[CommandRequest, TrialDependencies, list[JSONRecord], JSONRecord
 RigFactory = Callable[[str], SimpleNamespace]
 
 
-
-
 def _write_identity(
     root: Path, name: str, value: JSONRecord, files: list[FileIdentity]
 ) -> tuple[str, str]:
@@ -406,8 +404,6 @@ def assert_family_dispatch(sides: dict[str, list[Path]]) -> None:
         assert collector_factory(adapter_collector_id(config["engine"]["adapter"], batch=True))
     assert load_config(sides["a"][0]).config.to_dict()["engine"]["family"] == "llama-cpp"
     assert load_config(sides["b"][0]).config.to_dict()["engine"]["family"] == "lmstudio"
-
-
 
 
 def assert_read_back(tmp_path: Path, slots: tuple[Slot, ...]) -> None:

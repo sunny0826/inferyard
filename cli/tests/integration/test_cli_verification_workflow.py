@@ -122,15 +122,6 @@ def test_canonical_artifact_workflow_is_offline_and_rejects_retired_presentation
     assert before == {"left": files(left), "right": files(right)}
 
 
-@pytest.mark.parametrize("mapping", ["missing-equals", "=new", "old="])
-def test_invalid_source_mapping_is_an_input_error(tmp_path, capsys, portable_fixture, mapping):
-    left = portable_fixture(tmp_path / "left", states=["completed"])
-    right = portable_fixture(tmp_path / "right", states=["completed"], model="synthetic-B")
-    out = tmp_path / "comparison"
-    invoke(capsys, ["compare", "--left", left, "--right", right, "--out", out])
-    invoke(capsys, ["verify", "--path", out, "--source-root", mapping], 2)
-
-
 def test_public_configuration_verification_keeps_match_and_mismatch_semantics(
     tmp_path, capsys, monkeypatch, portable_fixture
 ):

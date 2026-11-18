@@ -7,12 +7,9 @@
 在仓库根 `cd cli` 后执行；测试使用 fixtures 与模拟服务，不发送真实模型请求。
 
 ```sh
-mise exec -- uv run --frozen pytest -q tests/unit/test_engine_fit_common_plan.py tests/unit/test_engine_fit_plan.py tests/unit/test_engine_fit_common_identity.py tests/unit/test_engine_fit_identity.py tests/unit/test_engine_fit_transport.py tests/unit/test_engine_fit_common_transport.py tests/unit/test_engine_fit_common_evidence.py
-mise exec -- uv run --frozen pytest -q tests/unit/test_engine_fit_temperature_override.py tests/unit/test_engine_fit_memory_override.py tests/unit/test_engine_fit_report.py tests/unit/test_engine_fit_partial.py tests/unit/test_engine_fit_native_evidence.py tests/unit/test_engine_fit_async_guard.py
-mise exec -- uv run --frozen pytest -q tests/unit/test_engine_fit_lmstudio.py tests/unit/test_engine_fit_lmstudio_files.py tests/unit/test_engine_fit_macos_listener.py tests/unit/test_engine_fit_macos_identity.py
-mise exec -- uv run --frozen pytest -q tests/unit/test_engine_fit_mlx_server.py tests/unit/test_engine_fit_mlx_stream.py tests/unit/test_engine_fit_mlx_context.py
-mise exec -- uv run --frozen pytest -q tests/unit/test_engine_fit_windows_identity.py tests/unit/test_engine_fit_windows_file_hash.py tests/unit/test_engine_fit_windows_temperature.py tests/unit/test_engine_fit_windows_evidence.py
-mise exec -- uv run --frozen pytest -q tests/integration/test_engine_fit.py tests/integration/test_engine_fit_common.py tests/integration/test_engine_fit_macos.py tests/integration/test_engine_fit_temperature_override_flow.py tests/integration/test_engine_fit_memory_override_flow.py tests/integration/test_engine_fit_windows.py
+mise exec -- uv run --frozen pytest -q tests/unit/test_engine_fit_common_plan.py tests/unit/test_engine_fit_common_identity.py tests/unit/test_engine_fit_identity.py tests/unit/test_engine_fit_transport.py
+mise exec -- uv run --frozen pytest -q tests/unit/test_engine_fit_report.py tests/unit/test_engine_fit_native_evidence.py tests/unit/test_engine_fit_lmstudio.py tests/unit/test_engine_fit_lmstudio_files.py tests/unit/test_engine_fit_mlx_server.py
+mise exec -- uv run --frozen pytest -q tests/integration/test_engine_fit.py tests/integration/test_engine_fit_common.py tests/integration/test_engine_fit_macos.py tests/integration/test_engine_fit_memory_override_flow.py
 mise exec -- uv run --frozen ruff check src tests scripts
 mise exec -- uv run --frozen inferyard engine-fit engines
 ```

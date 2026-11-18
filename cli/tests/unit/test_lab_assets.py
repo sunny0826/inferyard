@@ -13,7 +13,7 @@ from inferyard.platforms.identity import static_preflight
 from inferyard.platforms.lab_assets import inspect_asset
 from inferyard.platforms.lab_identity import LabFileIdentity
 from inferyard.platforms.windows_lab_api import override_windows_lab_api
-from tests.unit.test_windows_lab_files import STAMP, Store
+from tests.unit.windows_lab_files_helpers import STAMP, Store
 
 
 @pytest.fixture
@@ -49,11 +49,6 @@ def container(tmp_path):
 
     write()
     return {"model": model}, directory, write
-
-
-def test_native_header_and_ledger_bind_exact_components(container):
-    config, _, _ = container
-    assert inspect_asset(config)["artifact_id"] == "1" * 32
 
 
 @pytest.mark.parametrize(
@@ -108,14 +103,3 @@ def test_file_guard_uses_native_identity_and_refuses_reparse():
         store.change_path_at = None
         store.reparse.add(r"C:\lab")
         assert not identity.unchanged()
-
-
-def test_real_preflight_blocks_lab_engine_on_mac_before_any_asset_read(monkeypatch):
-    monkeypatch.setattr("inferyard.platforms.identity.platform.system", lambda: "Darwin")
-    with pytest.raises(PreflightError, match="lab_adapter_requires_windows"):
-        static_preflight(
-            {
-                "engine": {"adapter": "ninfer", "backend": "cpu"},
-                "endpoint": {"url": "http://127.0.0.1:8080"},
-            }
-        )

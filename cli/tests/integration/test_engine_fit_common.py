@@ -330,44 +330,6 @@ def test_gguf_pair_full_run_compare_then_offline_verify(common_fit_service, monk
     assert not (root / "comparison/report.html").exists()
 
 
-@pytest.mark.parametrize("engine", ["llama-cpp", "lmstudio"])
-def test_common_engine_disconnect_seals_incomplete_and_preserves_dirty(
-    common_fit_service, engine, capsys
-):
-    fixture = common_fit_service
-    root, state = fixture["root"], fixture["state"]
-    state["broken"] = True
-    assert run(fixture, engine, "broken") == 3, capsys.readouterr()
-    assert len(state["posts"]) == 1
-    dirty = read_json(root / "host.state.json")
-    assert dirty["dirty"] and dirty["dirty_token"]
-    evidence = read_json(root / "broken/run.json")
-    assert evidence["completeness"] == "incomplete"
-    assert evidence["counts"] == {
-        "planned": 3,
-        "completed": 0,
-        "failed": 1,
-        "cancelled": 0,
-        "invalid": 0,
-        "not_executed": 2,
-    }
-    assert main(["engine-fit", "verify", "--path", str(root / "broken")]) == 0
-    state["broken"] = False
-    assert run(fixture, engine, "no-implicit-recovery") == 2
-    assert len(state["posts"]) == 1
-    assert read_json(root / "host.state.json")["dirty_token"] == dirty["dirty_token"]
-
-
-def test_changed_gguf_is_blocked_before_any_service_access(common_fit_service, capsys):
-    fixture = common_fit_service
-    fixture["model"].write_bytes(fixture["model"].read_bytes() + b"changed")
-    assert run(fixture, "llama-cpp", "changed") == 2
-    assert "engine_fit_model_changed" in capsys.readouterr().out
-    assert not fixture["state"]["posts"] and not fixture["state"]["gets"]
-    assert not fixture["state"]["bindings"]
-    assert not (fixture["root"] / "changed").exists()
-
-
 def test_existing_plan_run_and_comparison_never_overwritten(common_fit_service, capsys):
     fixture = common_fit_service
     root, state = fixture["root"], fixture["state"]

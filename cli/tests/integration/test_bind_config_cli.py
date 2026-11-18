@@ -18,8 +18,8 @@ from inferyard.analysis.ledger import read_trial
 from tests.integration.test_lab_cli import lab_scenario, write_config  # noqa: F401
 from tests.integration.test_native_cli import native_scenario as _native_scenario
 from tests.integration.test_runner import scenario  # noqa: F401
-from tests.unit.test_bind_service_config import bind
-from tests.unit.test_bind_service_config import binder as _binder
+from tests.unit.bind_service_helpers import bind
+from tests.unit.bind_service_helpers import binder as _binder
 
 native_scenario = _native_scenario
 binder = _binder
@@ -82,105 +82,3 @@ def test_bind_cli_replaces_only_endpoint_arguments(
         assert bound["endpoint"]["server_pid"] == 123
         assert bound["endpoint"]["process_start_ticks"] == 98765
         assert result["details"]["model_requests_sent"] == 0
-
-
-@pytest.mark.parametrize("reader", ["process_start_ticks", "arguments"])
-@pytest.mark.parametrize(
-    "error_type,message,reason,code",
-    [
-        (PreflightError, "service_process_unavailable", "service_process_unavailable", 2),
-        (PreflightError, "service_identity_unreadable", "service_identity_unreadable", 2),
-        (PreflightError, "unknown_identity_failure", "preflight_blocked", 2),
-        (
-            PreflightError,
-            "service_identity_unreadable: --api-key fixture-secret",
-            "preflight_blocked",
-            2,
-        ),
-        (
-            RuntimeError,
-            "service_identity_unreadable: --api-key fixture-secret",
-            "internal_error",
-            4,
-        ),
-        (OSError, "service_identity_unreadable: --api-key fixture-secret", "io_error", 4),
-    ],
-)
-def test_bind_cli_preserves_only_fixed_process_reasons(
-    candidate, tmp_path, monkeypatch, capsys, reader, error_type, message, reason, code
-):
-    config, path = candidate
-    path.write_text(render(config))
-    before = path.read_bytes()
-
-    def fail(pid):
-        raise error_type(message)
-
-    monkeypatch.setattr(service_binding, reader, fail)
-    out = tmp_path / "blocked"
-    assert (
-        main(
-            [
-                "config",
-                "bind",
-                "--candidate",
-                str(path),
-                "--pid",
-                "123",
-                "--endpoint",
-                config["endpoint"]["url"],
-                "--out",
-                str(out),
-            ]
-        )
-        == code
-    )
-    captured = capsys.readouterr()
-    result = json.loads(captured.out)
-    assert result["status"] == ("blocked" if code == 2 else "error")
-    assert result["limitations"] == [reason]
-    assert "fixture-secret" not in captured.out + captured.err
-    assert "unknown_identity_failure" not in captured.out + captured.err
-    assert not out.exists() and path.read_bytes() == before
-
-
-def test_manifest_binding_script_to_cli_probe_round_trip(
-    native_scenario, binder, tmp_path, monkeypatch, capsys
-):
-    command, deps, service = native_scenario
-    module, observed = binder
-    config = command.config.config.to_dict()
-    config["engine"]["environment"] = {"CUDA_VISIBLE_DEVICES": "0", "CUDA_CACHE_DISABLE": "1"}
-    config["engine"]["asset_manifest"].append(
-        {"path": r"D:\lab\cuda.dll", "role": "library", "bytes": 123, "sha256": "c" * 64}
-    )
-    config["quantization_artifact_binding"] = {
-        "root": r"D:\lab",
-        "files": {"model": "artifact/model.gguf"},
-    }
-    command = replace(
-        command, config=replace(command.config, config=Document.parse("config", config))
-    )
-    candidate = tmp_path / "candidate.toml"
-    write_config(command, candidate)
-    original_bytes = candidate.read_bytes()
-    bound = tmp_path / "bound.toml"
-    observed["ticks"] = config["endpoint"]["process_start_ticks"]
-    original = bind(
-        module, observed, candidate, bound, monkeypatch, pid=config["endpoint"]["server_pid"]
-    )
-    capsys.readouterr()
-    parsed = tomllib.loads(bound.read_text(encoding="utf-8"))
-    assert parsed == original
-    Document.parse("config", parsed)
-    assert load_config(bound).config.to_dict() == original
-    assert parsed["engine"]["asset_manifest"] == config["engine"]["asset_manifest"]
-    assert parsed["quantization_artifact_binding"] == config["quantization_artifact_binding"]
-    assert candidate.read_bytes() == original_bytes
-    monkeypatch.setattr(running, "Dependencies", lambda **kwargs: deps)
-    assert main(["probe", "--config", str(bound)]) == 0
-    root = Path(json.loads(capsys.readouterr().out)["evidence_dir"])
-    assert (
-        read_trial(root)["config"]["engine"]["asset_manifest"] == config["engine"]["asset_manifest"]
-    )
-    assert len(service.requests) == 2

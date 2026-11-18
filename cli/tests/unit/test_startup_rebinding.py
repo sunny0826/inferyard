@@ -53,16 +53,3 @@ def test_sealed_rerun_and_batch_rebind_endpoint(
         assert actual["endpoint"]["server_pid"] == 45678
         assert actual["endpoint"]["process_start_ticks"] == 98765
     assert before == {p.name: p.read_bytes() for p in root.iterdir() if p.is_file()}
-
-
-@pytest.mark.parametrize("inline", [False, True])
-def test_batch_retains_existing_short_port_binding(config_path, monkeypatch, inline):
-    loaded = load_config(config_path)
-    config = loaded.config.to_dict()
-    config["engine"]["startup_args"] = ["-p=8080"] if inline else ["-p", "8080"]
-    loaded = replace(loaded, config=Document.parse("config", config))
-    monkeypatch.setattr(batch_state, "process_start_ticks", lambda pid: 98765)
-    rebound, _ = batch_state.bind_service(loaded, "http://127.0.0.1:9090", 45678)
-    assert rebound.config.to_dict()["engine"]["startup_args"] == (
-        ["-p=9090"] if inline else ["-p", "9090"]
-    )

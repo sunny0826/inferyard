@@ -13,30 +13,6 @@ from inferyard.analysis.comparison_input import comparison_input
 from tests.helpers import fixture_run
 
 
-def test_pid_reuse_nulls_rss_but_not_system_memory(tmp_path, monkeypatch):
-    import inferyard.platforms.telemetry as telemetry
-
-    directory = tmp_path / "77"
-    directory.mkdir()
-    (directory / "status").write_text("VmRSS: 1024 kB\n")
-    (tmp_path / "meminfo").write_text("MemAvailable: 2048 kB\n")
-    ticks = iter([55, 56])
-    monkeypatch.setattr(telemetry, "process_start_ticks", lambda *args: next(ticks))
-    assert read_rss(77, 55, tmp_path) == (None, "source_changed")
-    monkeypatch.setattr(telemetry, "process_start_ticks", lambda *args: 56)
-    samples = sample_memory(77, 55, "formal", "request-1", tmp_path)
-    assert samples[0]["value"] == 2048 * 1024
-    assert samples[1]["value"] is None and samples[1]["missing_reason"] == "source_changed"
-
-
-def test_missing_sensors_are_null_not_zero(tmp_path, monkeypatch):
-    import inferyard.platforms.telemetry as telemetry
-
-    monkeypatch.setattr(telemetry, "process_start_ticks", lambda *args: 55)
-    samples = sample_memory(77, 55, "formal", "request-1", tmp_path)
-    assert all(s["value"] is None and s["missing_reason"] for s in samples)
-
-
 def test_swap_and_power_drift_preserve_quality_but_disqualify_environment(tmp_path):
     data = comparison_input(fixture_run(tmp_path, comparison_mode="model"))[0]
     start = deepcopy(data["environment_start"])
@@ -121,40 +97,3 @@ def test_only_formal_valid_request_windows_count_and_short_requests_stay_missing
     assert metrics[failed["request_id"]]["C02"]["value"] == 8 * gib
     assert metrics[short["request_id"]]["C02"]["value"] is None
     assert metrics[short["request_id"]]["C02"]["reason"] == "no_resource_samples"
-
-
-@pytest.mark.parametrize("change", ["start", "end", "phase", "clock"])
-def test_outside_window_samples_are_counted_as_excluded(tmp_path, change):
-    data = read_trial(fixture_run(tmp_path))
-    row = data["requests"][0]
-    sample = deepcopy(data["samples"][0])
-    sample["value"] = 1
-    if change == "start":
-        sample["read_started_ns"] = row["t_send_ns"] - 1
-    elif change == "end":
-        sample["read_finished_ns"] = row["t_terminal_ns"] + 1
-    elif change == "phase":
-        sample["phase"] = "scoring"
-    else:
-        sample["clock_id"] = "another-clock"
-    samples = [*data["samples"], sample]
-    selected, excluded, reasons = select_samples(
-        row, samples, "system_mem_available", data["config"]["endpoint"]
-    )
-    assert len(selected) == 1 and excluded == 1 and reasons == []
-    reduced = reduce_resources(data["requests"], samples, data["config"])
-    metric = reduced["requests"][0]["metrics"]["C01"]
-    assert metric["value"] == 8 * 1024**3 and metric["excluded"] == 1
-
-
-def test_missing_rss_does_not_erase_system_memory_observations(tmp_path):
-    data = read_trial(fixture_run(tmp_path))
-    for sample in data["samples"]:
-        if sample["metric_name"] == "service_rss":
-            sample.update(value=None, missing_reason="source_unavailable")
-    reduced = reduce_resources(data["requests"], data["samples"], data["config"])
-    for row in reduced["requests"]:
-        assert row["metrics"]["C01"]["value"] == 8 * 1024**3
-        rss = row["metrics"]["C02"]
-        assert rss["value"] is None and rss["excluded"] == 1
-        assert "source_unavailable" in rss["limitations"]

@@ -306,7 +306,6 @@ def _assert_unplanned(
         assert result.details["comparison_stop"]["detail"] == "rejection_outside_planned_slots"
 
 
-
 def _assert_wrong_plan(tmp_path: Path, plan: JSONRecord, second_trial: str) -> None:
     def wrong_plan(run: JSONRecord, _: JSONRecord) -> None:
         run["plan_sha256"] = "f" * 64

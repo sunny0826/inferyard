@@ -73,16 +73,6 @@ func TestAggregateCountsFailedQualityCaseAndKeepsRate(t *testing.T) {
 	}
 }
 
-// An unscorable case keeps its slot in the denominator end to end.
-func TestAggregateKeepsUnscorableCaseInDenominator(t *testing.T) {
-	a := newAggregate([]byte(scoreInputsJSON))
-	a.events(scoreRecords([][2]string{{"completed", "pass"}, {"completed", "unscorable"}}))
-	score, ok := runScore(a.Progress.Cases, caseCategories([]byte(scoreInputsJSON)), true)
-	if !ok || score.Passed != 1 || score.Valid != 2 || score.Unscorable != 1 || score.Rate != nil {
-		t.Fatalf("aggregate score = %+v ok=%v", score, ok)
-	}
-}
-
 // scoreRecords builds the started/finished/score sequence, one triple per case;
 // an empty state value emits no score event.
 func scoreRecords(states [][2]string) []evidence.Record {

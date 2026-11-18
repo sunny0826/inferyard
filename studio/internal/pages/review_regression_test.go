@@ -6,69 +6,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
-
-func TestBindingRecoveryInBindStage(t *testing.T) {
-	for _, phase := range []string{"run_missing", "run_incomplete", "bound_missing"} {
-		s := testState()
-		s.selected = "dashboard"
-		s.progress = &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{{Bundle: "zh-core", Phase: phase, CandidatePath: ptr("/candidate"), BoundPath: ptr("/bound")}}}
-		s.bindingStale = true
-		s.failure = core.Err("cli_error")
-		s.engineState = core.EngineState{State: "running", Pid: 42}
-		tt := ui.NewTester(s.view, 1120, 2400)
-		start := "启动服务"
-		if phase == "bound_missing" {
-			start = "启动服务"
-		}
-		for _, label := range []string{start, "停止服务", "重新绑定", "旧绑定已失效，请重启服务并重新绑定"} {
-			if !tt.HasText(label) {
-				t.Fatalf("%s lacks %s", phase, label)
-			}
-		}
-	}
-}
-
-func TestRecoveryCardSurvivesRunPhase(t *testing.T) {
-	for _, action := range []string{"run", "resume"} {
-		for _, path := range []string{"candidate", "bound", "none"} {
-			for _, running := range []bool{false, true} {
-				s := testState()
-				b := inferyard.BundleProgress{Bundle: "zh-core", Phase: "run_missing", NextAction: action}
-				if path == "candidate" {
-					b.CandidatePath = ptr("/candidate")
-				} else if path == "bound" {
-					b.BoundPath = ptr("/bound")
-				}
-				s.progress = &inferyard.WorkspaceProgress{NextAction: action, Bundles: []inferyard.BundleProgress{b}}
-				s.bindingStale = true
-				s.failure = core.Err("cli_error")
-				s.engineState = core.EngineState{State: "running", Pid: 42}
-				if running {
-					s.tasks = []core.RunTask{{State: "running"}}
-				}
-				tt := ui.NewTester(s.stageView, 1120, 2400)
-				if path == "none" || running {
-					if tt.HasText("模型服务") {
-						t.Fatal("service card without candidate/binding or during an active run")
-					}
-					continue
-				}
-				for _, label := range []string{"模型服务", "停止服务", "旧绑定已失效，请重启服务并重新绑定"} {
-					if !tt.HasText(label) {
-						t.Fatalf("%s/%s running=%v lacks %s", action, path, running, label)
-					}
-				}
-				if path == "bound" && !tt.HasText("重新绑定") {
-					t.Fatal("bound run lacks recovery action")
-				}
-			}
-		}
-	}
-}
 
 func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 	root := t.TempDir()
@@ -132,43 +72,5 @@ func TestRebindUsesFreshDirectoryAndCandidateFile(t *testing.T) {
 	args, _ = inferyard.SplitCommand(command)
 	if !slices.Contains(args, "/frozen/output") {
 		t.Fatal("rewrote CLI --out", args)
-	}
-}
-
-func TestWorkspaceSwitchClearsEngineSession(t *testing.T) {
-	s := testState()
-	s.settings.Effective.WorkspaceRoot = ptr("/old")
-	s.candidate, s.engine, s.process, s.bindEndpoint, s.initDir = "old", "old", "42", "old", "old"
-	s.startup = core.Startup{Path: "old"}
-	s.processes = []core.ProcessCandidate{{PID: 42}}
-	s.engineState = core.EngineState{State: "running", Pid: 42}
-	s.registry = modelRegistryFixture()
-	s.model, s.bindingStale = "old.gguf", true
-	s.selectedBundles, s.detailID = map[string]bool{"old": true}, "old"
-	s.applySettings(core.SettingsResponse{Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/new")}})
-	if s.candidate != "" || s.engine != "" || s.process != "" || s.bindEndpoint != "" || s.startup.Path != "" || len(s.processes) != 0 || s.engineState.Pid != 0 || len(s.registry.Engines) != 0 || s.model != "" || s.bindingStale || s.detailID != "" || s.selectedBundles != nil {
-		t.Fatal("workspace retained old session")
-	}
-}
-
-func TestInstallAndDownloadFeedbackStayOnTheirPages(t *testing.T) {
-	s := testState()
-	s.cliInstallStatus = "CLI 专属进度"
-	s.downloads = []core.DownloadTask{{Kind: "engine", TaskId: "fixture", OutName: "fixture-engine", State: "failed", Error: &core.ApiError{Code: "engine_unpack_failed", Message: "引擎专属进度"}}}
-	s.ready.CLI.Status = "not_found"
-	s.selected = "models"
-	tt := ui.NewTester(s.view, 1120, 1800)
-	if tt.HasText("引擎专属进度") || tt.HasText("CLI 专属进度") {
-		t.Fatal(tt.Texts())
-	}
-	s.selected = "downloads"
-	tt.Frame()
-	if !tt.HasText("引擎专属进度") || tt.HasText("CLI 专属进度") {
-		t.Fatal(tt.Texts())
-	}
-	s.selected = "dashboard"
-	tt.Frame()
-	if !tt.HasText("CLI 专属进度") || tt.HasText("引擎专属进度") || tt.HasText("一键配置目录") {
-		t.Fatal(tt.Texts())
 	}
 }

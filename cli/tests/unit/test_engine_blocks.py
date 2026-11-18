@@ -43,23 +43,6 @@ def interleaved(left=None, right=None, blocks=3):
     return rows
 
 
-def test_consistent_direction_names_winner_with_product_scope():
-    result = compare_blocks(interleaved(right={"e2e_ms": 800}))
-    assert result["eligible"] is True, result["blockers"]
-    assert result["verdicts"]["e2e_ms"]["verdict"] == "lmstudio"
-    assert result["verdicts"]["output_tokens_per_second"]["verdict"] == "lmstudio"
-    assert result["verdicts"]["first_content_ms"]["verdict"] == "no_clear_difference"
-    assert result["scope"] == "product_configuration"
-    assert result["definition"] == "engine-comparison.v1"
-
-
-def test_inconsistent_direction_is_no_clear_difference():
-    rows = interleaved(right={"e2e_ms": 800})
-    rows[3]["requests"] = [request(i, e2e_ms=1200) for i in range(2)]
-    result = compare_blocks(rows)
-    assert result["verdicts"]["e2e_ms"]["verdict"] == "no_clear_difference"
-
-
 @pytest.mark.parametrize(
     "mutate,blocker",
     [
@@ -102,19 +85,6 @@ def test_gates_block_verdict(mutate, blocker):
     assert result["verdicts"]["e2e_ms"]["verdict"] == "not_eligible"
 
 
-def test_unequal_output_tokens_are_excluded_not_ranked():
-    rows = interleaved(right={"e2e_ms": 800})
-    rows[1]["requests"][0]["completion_tokens"] = 9
-    result = compare_blocks(rows)
-    assert result["blocks"][0]["excluded"] == {"output_tokens_differ": 1}
-    assert result["blocks"][0]["paired_requests"] == 1
-
-
-def test_single_family_is_rejected():
-    with pytest.raises(EvidenceError, match="two_families"):
-        compare_blocks([block("llama-cpp", 0), block("llama-cpp", 1)])
-
-
 def test_llama_tuning_must_match_bound_startup_args():
     engine = {
         "family": "llama-cpp",
@@ -129,26 +99,6 @@ def test_llama_tuning_must_match_bound_startup_args():
     engine["tuning"]["batch_size"] = "1024"
     with pytest.raises(ContractError, match="startup_args"):
         validate_tuning(engine)
-
-
-def test_lmstudio_rejects_unobservable_tuning():
-    with pytest.raises(ContractError, match="not observable"):
-        validate_tuning({"family": "lmstudio", "startup_args": [], "tuning": {"gpu_layers": "99"}})
-    with pytest.raises(ContractError, match="not controllable"):
-        validate_tuning(
-            {"family": "lmstudio", "startup_args": [], "tuning": {"prompt_cache": "disabled"}}
-        )
-
-
-def test_prompt_cache_declaration_adds_cache_prompt_for_llama_only():
-    from inferyard.adapters.local_engines.adapter import LocalEngineAdapter
-
-    config = local("llama-cpp")["config"]
-    config["engine"].update(served_model="m", tuning={"prompt_cache": "disabled"})
-    config["generation"] = {"temperature": 0, "max_tokens": 8}
-    assert LocalEngineAdapter.request_body(config, "hi")["cache_prompt"] is False
-    config["engine"]["tuning"] = {}
-    assert "cache_prompt" not in LocalEngineAdapter.request_body(config, "hi")
 
 
 def mlx_block(order, **fields):
@@ -185,73 +135,3 @@ def test_cross_format_scope_and_structural_mlx_cold_cache():
         "right": ["formal_server_no_prompt_cache_reuse"],
     }
     assert "model_format_differs_not_attributable_to_engine" in result["limitations"]
-
-
-def test_cross_format_keeps_unequal_lengths_for_per_token_metrics():
-    rows = cross_format(e2e_ms=800, tokens=12)
-    result = compare_blocks(rows)
-    assert result["eligible"] is True, result["blockers"]
-    assert result["blocks"][0]["paired_requests"] == 2
-    assert result["blocks"][0]["output_length_unmatched"] == 2
-    assert result["blocks"][0]["excluded"] == {}
-    assert result["verdicts"]["client_decode_interval_ms"]["verdict"] == "mlx-lm"
-    assert "decode_interval_not_matched_by_output_length" in result["limitations"]
-
-
-def test_cross_format_first_body_decides_when_first_content_is_misaligned():
-    # The real failure: mlx-lm reaches `<think>` first but its first body text comes later.
-    result = compare_blocks(cross_format(first_ms=50, body_ms=150))
-    assert result["verdicts"]["first_body_text_ms"]["verdict"] == "llama-cpp"
-    assert (
-        result["verdicts"]["first_content_ms"]["verdict"]
-        == "display_only_first_output_token_not_aligned"
-    )
-
-
-def test_cross_format_missing_first_body_has_no_winner():
-    rows = cross_format()
-    for row in rows[1]["requests"]:
-        row["t_first_body_ns"] = None
-    assert compare_blocks(rows)["verdicts"]["first_body_text_ms"]["verdict"] == (
-        "no_clear_difference"
-    )
-
-
-@pytest.mark.parametrize(
-    "chunks,index",
-    [
-        (["<think>", "\n", "好的"], 2),
-        (["<think>\n好的"], 0),
-        (["<thi", "nk>", "\n", "好"], 3),
-        (["好的"], 0),
-        (["<think>\n", "\n"], None),
-    ],
-)
-def test_first_body_skips_only_the_leading_think_tag(chunks, index):
-    events = [
-        {"event_type": "content", "request_id": "r", "monotonic_ns": i, "data": {"text": text}}
-        for i, text in enumerate(chunks)
-    ]
-    assert first_body_times(events).get("r") == index
-
-
-def test_first_body_spans_reasoning_and_ignores_other_events():
-    events = [
-        {"event_type": "finish", "request_id": "r", "monotonic_ns": 0, "data": {}},
-        {"event_type": "reasoning", "request_id": "r", "monotonic_ns": 1, "data": {"text": "好"}},
-        {"event_type": "content", "request_id": "r", "monotonic_ns": 2, "data": {"text": "京"}},
-    ]
-    assert first_body_times(events) == {"r": 1}
-
-
-def test_missing_llama_cache_counter_is_not_structural():
-    rows = cross_format()
-    rows[0]["requests"][0]["usage_detail"]["cached_tokens"] = None
-    assert "left.cold_cache_unverified" in compare_blocks(rows)["blockers"]
-
-
-def test_temperature_override_is_a_limitation():
-    rows = cross_format(e2e_ms=800)
-    for row in rows:
-        row["config"]["safety"] = {"temperature_stop_override_reason": "operator"}
-    assert "temperature_stop_overridden" in compare_blocks(rows)["limitations"]

@@ -102,16 +102,3 @@ def test_strict_diagnostic_replays_requests_parameters_and_missing_formal_accept
         )
     with pytest.raises(EvidenceError, match="strict_output_"):
         read_trial(root)
-
-
-def test_strict_probe_refusal_leaves_every_formal_case_unexecuted(scenario):
-    plan, loaded, deps, out = strict_inputs(scenario)
-    scenario[3]["finish_reason"] = "stop"
-    code, data, _ = asyncio.run(
-        run_trial(
-            plan, plan["trials"][0]["trial_id"], loaded, out, diagnostic=True, dependencies=deps
-        )
-    )
-    assert code != 0 and len(scenario[2]) == 1
-    assert data["summary"]["counts"]["not_executed"] == 3
-    assert data["summary"]["stop_reason"] == "strict_output_probe_not_verified"

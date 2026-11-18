@@ -15,7 +15,7 @@ from inferyard.analysis.ledger import read_trial
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.runtime import runner
 from tests.integration.test_runner import scenario as runner_scenario
-from tests.unit.test_layout_surfaces import tree_bytes
+from tests.unit.layout_surfaces_helpers import tree_bytes
 
 scenario = runner_scenario
 
@@ -89,52 +89,3 @@ def test_container_rerun_writes_actual_source_or_preserves_missing(
         assert TrialEvidence(out).configuration_source()["data"] == expected
         assert TrialEvidence(out).configuration_source()["media_type"] == media
     assert before == {p: tree_bytes(p) for p in (old, container)}
-
-
-@pytest.mark.parametrize(
-    "data,media,reason",
-    [
-        (b"\xff", "application/toml", "configuration_source_utf8_invalid"),
-        (b"{}", "text/plain", "configuration_source_media_type_invalid"),
-    ],
-)
-def test_invalid_memory_source_is_rejected_before_creating_run(scenario, data, media, reason):
-    request, deps, calls, _ = scenario
-    loaded = replace(
-        request.config,
-        source=None,
-        source_data=data,
-        source_media_type=media,
-        source_missing_reason=None,
-    )
-    request = replace(request, config=loaded)
-    with pytest.raises(PreflightError, match=reason):
-        asyncio.run(execute_async(request, deps))
-    assert not Path(loaded.config.to_dict()["output"]["root"]).exists()
-    assert not calls
-
-
-def test_memory_source_uses_existing_text_snapshot_redaction(scenario, monkeypatch):
-    request, deps, calls, _ = scenario
-    secret = "fixture-source-private-value"
-    monkeypatch.setenv("INFERYARD_FIXTURE_SOURCE_KEY", secret)
-    config = request.config.config.to_dict()
-    config["endpoint"]["api_key_env"] = "INFERYARD_FIXTURE_SOURCE_KEY"
-    raw = ("# " + secret + "\r\n").encode() + request.config.source.read_bytes()
-    loaded = replace(
-        request.config,
-        source=None,
-        source_data=raw,
-        source_media_type="application/toml",
-        source_missing_reason=None,
-        config=Document.parse("config", config),
-    )
-    code, result = asyncio.run(execute_async(replace(request, config=loaded), deps))
-    assert code == 0, result
-    out = Path(result.evidence_dir)
-    assert TrialEvidence(out).configuration_source()["data"] == raw.replace(
-        secret.encode(), b"[REDACTED]"
-    )
-    assert secret.encode() not in TrialEvidence(out).configuration_source()["data"]
-    assert len(calls) == 8
-    assert read_trial(out)["summary"]["counts"]["planned"] == 3

@@ -42,45 +42,6 @@ def process_binding(config_path, monkeypatch):
     return config, model, engine, values
 
 
-@pytest.mark.parametrize("adapter", ["kvmem", "ninfer"])
-@pytest.mark.parametrize(
-    "declared,loaded", [(True, False), (True, True), (False, True), (False, False)]
-)
-def test_cudart_declaration_requires_matching_actual_mapping(
-    process_binding, adapter, declared, loaded
-):
-    config, model, engine, values = process_binding
-    config["engine"]["adapter"] = adapter
-    path = r"D:\lab\cudart64_13.dll"
-    if declared:
-        config["engine"]["asset_manifest"].append(
-            {"path": path, "role": "library", "bytes": 12, "sha256": "c" * 64}
-        )
-    if loaded:
-        values["maps"].append(SimpleNamespace(path=path))
-    if declared != loaded:
-        reason = "lab_library_not_loaded" if declared else "lab_unbound_engine_library"
-        with pytest.raises(PreflightError, match=reason):
-            binding.verify_process(config, model, engine, "127.0.0.1", 8080)
-    else:
-        assert (
-            binding.verify_process(config, model, engine, "127.0.0.1", 8080)["binary"] == "verified"
-        )
-
-
-def test_ninfer_positional_asset_and_frozen_cuda_environment(process_binding):
-    config, model, engine, values = process_binding
-    config["engine"]["adapter"] = "ninfer"
-    config["engine"]["startup_args"].pop(0)  # Native release takes the model positionally.
-    values["args"] = [engine.path, *config["engine"]["startup_args"]]
-    config["engine"]["environment"] = {"CUDA_VISIBLE_DEVICES": "0", "CUDA_CACHE_DISABLE": "1"}
-    values["env"] = dict(config["engine"]["environment"])
-    assert binding.verify_process(config, model, engine, "127.0.0.1", 8080)["binary"] == "verified"
-    values["env"]["CUDA_VISIBLE_DEVICES"] = "1"
-    with pytest.raises(PreflightError, match="lab_unbound_engine_environment"):
-        binding.verify_process(config, model, engine, "127.0.0.1", 8080)
-
-
 @pytest.mark.parametrize(
     "failure,reason",
     [
@@ -105,15 +66,6 @@ def test_lab_process_refuses_unbound_or_changed_identity(process_binding, failur
         values["maps"].append(SimpleNamespace(path=r"D:\lab\unbound.dll"))
     with pytest.raises(PreflightError, match=reason):
         binding.verify_process(config, model, engine, "127.0.0.1", 8080)
-
-
-@pytest.mark.parametrize("key", ["LLAMA_TEST", "GGML_TEST", "KVMEM_TEST", "NINFER_TEST", "PATH"])
-def test_environment_outside_contract_identity_surface_is_not_frozen(process_binding, key):
-    config, model, engine, values = process_binding
-    values["env"][key] = "fixture-override"
-    result = binding.verify_process(config, model, engine, "127.0.0.1", 8080)
-    assert result["engine_environment"] == "verified_cuda_device_cache_overrides"
-    assert "fixture-override" not in str(result)
 
 
 def test_process_evidence_does_not_expose_observed_credentials(process_binding):

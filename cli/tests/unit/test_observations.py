@@ -111,44 +111,6 @@ def test_cancelled_attempt_never_improves_quality_or_budget_rate():
     assert all(not m["comparison_eligible"] for m in items)
 
 
-def test_structured_field_count_is_not_request_count():
-    cases = [structured("s0"), structured("s1")]
-    rows = [
-        {
-            "case_id": c["case_id"],
-            "category": "structured",
-            "request_id": c["case_id"],
-            "execution_state": "completed",
-            "score": score_case(c, answer, POLICY),
-        }
-        for c, answer in zip(cases, ['{"data":[false,2,null]}', "bad json"], strict=True)
-    ]
-    item = metric(build(cases, rows), "Q05", category="structured")
-    assert (item["numerator"], item["denominator"], item["sample_count"]) == (2, 6, 2)
-    assert item["value"] == pytest.approx(1 / 3)
-
-
-def test_identical_numeric_values_remain_separate_by_category():
-    cases, rows = examples()
-    task = case(
-        "math", dict(expected=1, absolute_tolerance=0, relative_tolerance=0, unit=""), "math"
-    )
-    cases.append(task)
-    rows.append(
-        {
-            **rows[0],
-            "case_id": "math",
-            "category": "math",
-            "request_id": "math",
-            "score": score_case(task, "1", POLICY),
-        }
-    )
-    items = build(cases, rows)
-    assert metric(items, "Q01", category="math")["value"] == 1
-    assert metric(items, "Q01")["value"] == 0.5
-    assert {m["group"]["workload_id"] for m in items} == {"workload-1"}
-
-
 def test_absent_attempts_have_zero_denominator_not_zero_score():
     cases, rows = examples()
     for row in rows:

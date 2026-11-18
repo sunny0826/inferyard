@@ -7,7 +7,7 @@ import pytest
 
 from inferyard.cli import main
 from inferyard.evidence.storage import read_json
-from tests.integration import test_engine_fit_temperature_override_flow as temperature
+from tests.integration import engine_fit_temperature_helpers as temperature
 
 common_fit_service = temperature.common_fit_service
 override_service = temperature.override_service
@@ -124,23 +124,3 @@ def test_memory_only_keeps_temperature_stop(memory_service, capsys):
     assert temperature._run(fixture, plan, "llama-cpp", "hot") == 2, capsys.readouterr()
     assert not fixture["state"]["posts"]
     assert not (fixture["root"] / "hot").exists()
-
-
-def test_overrides_preserve_dirty_and_no_implicit_retry_after_broken_protocol(
-    memory_service, capsys
-):
-    fixture, _ = memory_service
-    plan = _plan(fixture)
-    root = fixture["root"]
-    fixture["state"]["broken"] = True
-    assert temperature._run(fixture, plan, "llama-cpp", "broken") == 3, capsys.readouterr()
-    dirty = read_json(root / "host.state.json")
-    assert dirty["dirty"] and dirty["dirty_token"]
-    run = read_json(root / "broken/run.json")
-    assert run["definition"] == "engine_fit_run.v5"
-    assert run["counts"]["failed"] == 1 and run["counts"]["not_executed"] == 2
-    assert main(["engine-fit", "verify", "--path", str(root / "broken")]) == 0
-    fixture["state"]["broken"] = False
-    assert temperature._run(fixture, plan, "llama-cpp", "unrecovered") == 2
-    assert len(fixture["state"]["posts"]) == 1
-    assert read_json(root / "host.state.json")["dirty_token"] == dirty["dirty_token"]

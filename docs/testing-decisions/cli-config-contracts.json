@@ -1,0 +1,258 @@
+{
+  "group": "cli-config-contracts",
+  "kept_count": 42,
+  "kept": [
+    {
+      "path": "cli/tests/integration/test_bind_config_cli.py",
+      "test": "test_bind_cli_replaces_only_endpoint_arguments",
+      "category": "product_hypothesis",
+      "reason": "验证 `config bind` 仅允许替换回环端点参数并绑定进程 PID 与启动时钟（零模型推理请求），非端点启动参数漂移时拒绝输出且不修改原候选文件。"
+    },
+    {
+      "path": "cli/tests/integration/test_lab_cli.py",
+      "test": "test_probe_run_report_verify_and_offline_plan",
+      "category": "product_hypothesis",
+      "reason": "覆盖 probe、run、report、verify 与离线 plan 的端到端契约边界及报告不可冒充可验证证据。"
+    },
+    {
+      "path": "cli/tests/integration/test_lab_cli.py",
+      "test": "test_successful_response_without_release_keeps_dirty",
+      "category": "product_hypothesis",
+      "reason": "验证响应完成后若服务端未排空释放，运行会保留 dirty 脏标记阻断后续混入旧状态。"
+    },
+    {
+      "path": "cli/tests/integration/test_lab_cli.py",
+      "test": "test_formal_failure_stops_remaining_cases_without_retry",
+      "category": "product_hypothesis",
+      "reason": "验证正式测评单题失败后立即停止派发、不隐式重试且将剩余用例计入冻结分母。"
+    },
+    {
+      "path": "cli/tests/integration/test_phase2_plan.py",
+      "test": "test_dry_run_no_network_no_writes_and_freeze_is_content_addressed",
+      "category": "product_hypothesis",
+      "reason": "验证 plan --dry-run 不联网不写入、plan --out 生成可迁移自包含冻结目录且拒绝覆盖已有输出目录的核心证据不可变性假设。"
+    },
+    {
+      "path": "cli/tests/integration/test_phase2_plan.py",
+      "test": "test_plaintext_startup_secret_blocked_without_echo",
+      "category": "product_hypothesis",
+      "reason": "验证启动参数携带明文密钥时 CLI 拒绝执行且不在 stdout/stderr 回显敏感凭据。"
+    },
+    {
+      "path": "cli/tests/integration/test_phase2_plan.py",
+      "test": "test_runtime_snapshot_tampering_is_rejected_even_with_rehashed_plan",
+      "category": "product_hypothesis",
+      "reason": "验证即使重算配置与计划哈希，离线读取冻结计划仍能识别并拒绝被篡改的运行时配置快照。"
+    },
+    {
+      "path": "cli/tests/integration/test_simplification_b.py",
+      "test": "test_isolated_score_failure_collects_following_answers",
+      "category": "product_hypothesis",
+      "reason": "验证单题评分器抛出异常时仍继续收集后续答案、保留冻结分母且绝不虚高质量得分或泄漏异常文本。"
+    },
+    {
+      "path": "cli/tests/integration/test_simplification_b.py",
+      "test": "test_rerun_same_service_is_always_refused",
+      "category": "product_hypothesis",
+      "reason": "验证重跑始终拒绝复用原服务端进程 PID 且不会向原服务发请求或改动原始证据。"
+    },
+    {
+      "path": "cli/tests/unit/test_candidate_filter.py",
+      "test": "test_unknown_and_incomparable_never_pass",
+      "category": "product_hypothesis",
+      "reason": "验证未完成运行、缺失/`null` 指标或不可比候选在筛选时绝不会静默通过，而是保持 `unknown` 并记录明确原因。"
+    },
+    {
+      "path": "cli/tests/unit/test_community_candidates.py",
+      "test": "test_binding_mismatch_does_not_write",
+      "category": "product_hypothesis",
+      "reason": "验证服务绑定在进程启动时刻（process_start_ticks）变化或启动参数不匹配时中止绑定且不写出配置。"
+    },
+    {
+      "path": "cli/tests/unit/test_community_preparation.py",
+      "test": "test_omitted_bundle_exports_documented_default_scope",
+      "category": "product_hypothesis",
+      "reason": "验证未显式指定单测评集时默认导出 zh-core 与 zh-svg-pelican 双测评集范围而不误用单测评集或 smoke。"
+    },
+    {
+      "path": "cli/tests/unit/test_community_runtime.py",
+      "test": "test_receipt_cannot_authorize_changed_assets",
+      "category": "product_hypothesis",
+      "reason": "验证引擎二进制、动态库清单或收据摘要被篡改后 verify_receipt 拒绝授权，保障绑定引擎资产身份完整。"
+    },
+    {
+      "path": "cli/tests/unit/test_conditional_events.py",
+      "test": "test_content_chunks_and_missing_lifecycle_never_substitute_true_events",
+      "category": "product_hypothesis",
+      "reason": "验证普通内容分块与缺失生命周期事件保持 null，绝不冒充真实服务端逐 token、排队或启动延迟。"
+    },
+    {
+      "path": "cli/tests/unit/test_config.py",
+      "test": "test_endpoint_rejections_do_not_echo_values",
+      "category": "product_hypothesis",
+      "reason": "验证模型端点严格拒绝非回环地址及内嵌凭据/查询令牌 URL，且错误输出不回显敏感秘密。"
+    },
+    {
+      "path": "cli/tests/unit/test_engine_check.py",
+      "test": "test_windows_tampered_manifest_is_ineligible",
+      "category": "product_hypothesis",
+      "reason": "证明 inferyard engine check 会核验已准备运行时的库清单完整性，拒绝被篡改的引擎运行时资产。"
+    },
+    {
+      "path": "cli/tests/unit/test_engine_timing.py",
+      "test": "test_known_engine_timeline_uses_uncached_tokens_and_excludes_first_generated_token",
+      "category": "product_hypothesis",
+      "reason": "验证引擎预填充与解码速率分别扣除缓存命中 token 和首个生成 token，防止混算虚高速率。"
+    },
+    {
+      "path": "cli/tests/unit/test_engine_timing.py",
+      "test": "test_no_final_no_evidence_and_failure_never_infer_decode_from_e2e",
+      "category": "product_hypothesis",
+      "reason": "验证缺少终态引擎计时、引擎构建未核实或请求失败时速率保持 null 与原因，绝不用客户端端到端耗时冒充。"
+    },
+    {
+      "path": "cli/tests/unit/test_environment.py",
+      "test": "test_unknown_reset_swap_and_frozen_conditions",
+      "category": "product_hypothesis",
+      "reason": "验证环境遥测未知、发生系统 swap 换页或与冻结环境条件不一致时明确记录原因并拒绝比较资格。"
+    },
+    {
+      "path": "cli/tests/unit/test_environment_qualification.py",
+      "test": "test_each_incomplete_or_conflicting_prerequisite_blocks_environment",
+      "category": "product_hypothesis",
+      "reason": "证明运行期 CPU 策略漂移、外部 CPU 干扰超限、覆盖缺失或未完成请求会阻断环境与性能可比性结论。"
+    },
+    {
+      "path": "cli/tests/unit/test_epp_requirement.py",
+      "test": "test_runtime_epp_change_does_not_stop_but_ac_condition_still_does",
+      "category": "product_hypothesis",
+      "reason": "证明显式放宽 EPP 匹配时仍如实记录 EPP 观测值，且绝不连带放宽外接电源断开（ac_online=False）的安全停机条件。"
+    },
+    {
+      "path": "cli/tests/unit/test_external_measurement_import.py",
+      "test": "test_missing_energy_and_zero_success_do_not_become_zero",
+      "category": "product_hypothesis",
+      "reason": "证明能耗观测缺失或成功任务数为零时能耗指标保持 None 且标注 no_successful_tasks，绝不伪造为 0。"
+    },
+    {
+      "path": "cli/tests/unit/test_identity.py",
+      "test": "test_adapter_rechecks_dns_after_listener_resolution",
+      "category": "product_hypothesis",
+      "reason": "证明适配器在解析监听地址后重检 DNS，防止 localhost 重绑定到非回环地址导致请求发往外部网络。"
+    },
+    {
+      "path": "cli/tests/unit/test_identity.py",
+      "test": "test_resource_limits_and_memavailable_source",
+      "category": "product_hypothesis",
+      "reason": "证明预检强制执行可用内存与磁盘下限安全阈值，且缺 MemAvailable 时拒绝用 MemTotal 冒充。"
+    },
+    {
+      "path": "cli/tests/unit/test_lab_assets.py",
+      "test": "test_native_asset_refusal_paths",
+      "category": "product_hypothesis",
+      "reason": "证明原生模型容器魔数损坏、分片模型、对象越界重叠或组件账本哈希不匹配时拒绝预检绑定。"
+    },
+    {
+      "path": "cli/tests/unit/test_lab_assets.py",
+      "test": "test_file_guard_uses_native_identity_and_refuses_reparse",
+      "category": "product_hypothesis",
+      "reason": "证明 Windows 模型文件守卫基于原生卷与文件标识检测路径替换及重解析点（符号链接/目录联接），防止运行期偷换模型。"
+    },
+    {
+      "path": "cli/tests/unit/test_lab_identity.py",
+      "test": "test_lab_process_refuses_unbound_or_changed_identity",
+      "category": "product_hypothesis",
+      "reason": "证明 Windows 服务绑定在模型标识、启动参数、CUDA 环境或运行库映射任一失配时拒绝执行。"
+    },
+    {
+      "path": "cli/tests/unit/test_lab_identity.py",
+      "test": "test_process_evidence_does_not_expose_observed_credentials",
+      "category": "product_hypothesis",
+      "reason": "证明服务进程命令行中的 --api-key 密钥绝不会泄露到持久化的进程身份证据中。"
+    },
+    {
+      "path": "cli/tests/unit/test_local_mlx_lifecycle.py",
+      "test": "test_tcp_disconnect_preserves_running_until_sync_and_poison_after_idle",
+      "category": "product_hypothesis",
+      "reason": "证明客户端断连取消后服务保持 running 直至 GPU 同步排空完成，并在排空后置为 poisoned 阻断后续请求。"
+    },
+    {
+      "path": "cli/tests/unit/test_local_mlx_server.py",
+      "test": "test_nonlocal_server_and_model_rejected",
+      "category": "product_hypothesis",
+      "reason": "证明本地 MLX 服务强制要求回环地址绑定与本地模型目录，拒绝暴露到 0.0.0.0 非本地网络。"
+    },
+    {
+      "path": "cli/tests/unit/test_model_acquire_cli.py",
+      "test": "test_invalid_source_uses_fixed_reason_without_echo",
+      "category": "product_hypothesis",
+      "reason": "证明 model acquire 拒绝非 HTTPS、未固定提交及携带凭据/查询令牌的模型 URL，且绝不在输出中回显敏感令牌。"
+    },
+    {
+      "path": "cli/tests/unit/test_model_source_candidates.py",
+      "test": "test_conflicting_record_or_declaration_rejects_candidate",
+      "category": "product_hypothesis",
+      "reason": "验证模型来源记录的文件大小、SHA256 或声明与实际模型字节冲突时拒绝生成候选配置，防止模型身份与血缘归属错误。"
+    },
+    {
+      "path": "cli/tests/unit/test_performance.py",
+      "test": "test_missing_evidence_empty_answer_and_ordinary_response",
+      "category": "product_hypothesis",
+      "reason": "验证非流式响应、空回答或缺失采集证据时客户端计时指标保持 null 并附明确原因而非变成 0。"
+    },
+    {
+      "path": "cli/tests/unit/test_rerun_policy.py",
+      "test": "test_rerun_accepts_identity_difference_but_comparison_rejects",
+      "category": "product_hypothesis",
+      "reason": "验证重跑在评分器或测量实现变更后仍写出带血缘的新目录，而比较流程严格拒绝不同实现来源的证据。"
+    },
+    {
+      "path": "cli/tests/unit/test_resource_constraints.py",
+      "test": "test_unknown_slots_stay_in_denominator_and_never_pass",
+      "category": "product_hypothesis",
+      "reason": "验证缺测、失败或未执行的请求槽位保留在候选资源约束的计划分母中，绝不因缩减分母而误判通过。"
+    },
+    {
+      "path": "cli/tests/unit/test_service_discovery.py",
+      "test": "test_models_and_multiple_owners_including_dual_stack",
+      "category": "product_hypothesis",
+      "reason": "验证服务发现仅执行零模型推理开销的回环只读探测、剥离响应头与载荷中的无关/敏感字段，并标记同端口多监听归属歧义。"
+    },
+    {
+      "path": "cli/tests/unit/test_service_discovery.py",
+      "test": "test_only_loopback_probe_targets",
+      "category": "product_hypothesis",
+      "reason": "验证监听地址归一化仅保留回环目标并剔除非回环地址，防止服务发现向局域网或外部网络发送 HTTP 探测请求。"
+    },
+    {
+      "path": "cli/tests/unit/test_startup_rebinding.py",
+      "test": "test_sealed_rerun_and_batch_rebind_endpoint",
+      "category": "product_hypothesis",
+      "reason": "验证从已封存运行重跑或批处理重绑重启后的服务进程时更新回环端点、PID 与启动时钟，同时严格保持原封存证据目录字节不变。"
+    },
+    {
+      "path": "cli/tests/unit/test_studio_dashboard.py",
+      "test": "test_multiple_sources_are_never_pooled",
+      "category": "product_hypothesis",
+      "reason": "验证来自多个不同采集源的内存观测样本绝不混池聚合，保持 `None` 并显式标注 `multiple_sources`。"
+    },
+    {
+      "path": "cli/tests/unit/test_studio_dashboard.py",
+      "test": "test_missing_rss_reason_does_not_reuse_available_memory",
+      "category": "product_hypothesis",
+      "reason": "验证缺失 RSS 采样时保持 `None` 与明确原因而不冒用可用内存或变成零，且正常可用内存准确执行 MiB 到字节单位换算。"
+    },
+    {
+      "path": "cli/tests/unit/test_template_identity.py",
+      "test": "test_offline_recomputes_original_and_service_identity",
+      "category": "product_hypothesis",
+      "reason": "验证服务聊天模板核验同时绑定原始文件哈希与服务端归一化模板，缺少绑定凭证时拒绝换行差异。"
+    },
+    {
+      "path": "cli/tests/unit/test_workspace_progress.py",
+      "test": "test_two_runs_report_and_present_default_scope",
+      "category": "product_hypothesis",
+      "reason": "验证默认测评范围必须同时完成 `zh-core` 与 `zh-svg-pelican` 的封存运行并生成有效 `studio.json` 报告才算完成（拒绝采信旧版报告且建议新目录），且 `progress` 全程只读不改动工作区。"
+    }
+  ]
+}

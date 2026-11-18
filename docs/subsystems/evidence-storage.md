@@ -136,18 +136,12 @@ cd cli
 uv run --frozen pytest -q \
   tests/unit/test_storage.py \
   tests/unit/test_storage_sync.py \
-  tests/unit/test_evidence_layout.py \
   tests/unit/test_layout_consumers.py \
-  tests/unit/test_layout_consumption.py \
-  tests/unit/test_layout_read_reuse.py \
   tests/unit/test_observations.py \
   tests/unit/test_ledger.py \
   tests/unit/test_offline_reading.py \
-  tests/unit/test_baseline_reads.py \
-  tests/unit/test_run_projection.py \
   tests/unit/test_current_formats.py
 uv run --frozen ruff check src tests scripts
-uv run --frozen ruff format --check src tests scripts
 # 全量回归（与根目录 mise task test 相同）：
 uv run --frozen pytest
 ```

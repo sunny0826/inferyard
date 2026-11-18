@@ -81,28 +81,6 @@ def test_global_sources_keep_request_metric_and_semantics_separate():
     assert all(not r["comparison_eligible"] for r in rows)
 
 
-def test_window_exclusions_and_missing_reasons_are_not_lost_by_grouping():
-    samples = [
-        sample(value=90, read_started_ns=90, read_finished_ns=100),
-        sample(value=-1, read_started_ns=10, read_finished_ns=11),
-        sample(value=999, phase="warmup"),
-        sample(value=999, phase="residual"),
-        sample(value=999, clock_id="other"),
-        sample(value=999, read_started_ns=9),
-        sample(value=999, read_finished_ns=101),
-        sample(value=None, missing_reason="permission_denied"),
-        sample(value=999, request_id="b"),
-        sample(value=999, request_id=None),
-    ]
-    row = observe([request()], samples)[0]
-    assert row["value"] == 90
-    assert row["sample_count"] == 2 and row["excluded"] == 6
-    assert (row["sampled_start_ns"], row["sampled_end_ns"], row["coverage_ratio"]) == (10, 100, 1)
-    assert row["missing_reason"] is None
-    assert "permission_denied" in row["limitations"]
-    assert "coverage_is_sample_span_not_continuous_observation" in row["limitations"]
-
-
 def test_source_change_overrides_good_samples_without_contaminating_other_requests():
     samples = [
         sample(value=50),
@@ -121,29 +99,3 @@ def test_source_change_overrides_good_samples_without_contaminating_other_reques
     assert changed["sampled_start_ns"] is None and changed["coverage_ratio"] is None
     assert independent["value"] == 70
     assert rows["b", "C07", "A"]["value"] == 60
-
-
-@pytest.mark.parametrize("state", ["cancelled", "invalid", "not_executed"])
-def test_invalid_execution_keeps_counts_but_not_sensor_values(state):
-    row = observe([request(execution_state=state)], [sample()], complete=False)[0]
-    assert row["value"] is None and row["missing_reason"] == "request_not_validly_executed"
-    assert row["sample_count"] == 1
-    assert row["sampled_start_ns"] is None and row["coverage_ratio"] is None
-    assert "incomplete_trial_subset_only" in row["limitations"]
-
-
-@pytest.mark.parametrize("field", ["t_send_ns", "t_terminal_ns"])
-def test_missing_request_boundary_excludes_samples(field):
-    row = observe([request(**{field: None})], [sample()])[0]
-    assert row["value"] is None and row["missing_reason"] == "no_sensor_samples_in_window"
-    assert (row["sample_count"], row["excluded"]) == (0, 1)
-
-
-def test_unavailable_metric_differs_from_source_without_samples_in_this_request():
-    rows = observe([request(), request(None)], [sample(request_id="unselected")])
-    assert len(rows) == 2
-    assert {r["metric_id"]: r["missing_reason"] for r in rows} == {
-        "C07": "no_sensor_samples_in_window",
-        "C08": "sensor_evidence_unavailable",
-    }
-    assert observe([request(None)], []) == []

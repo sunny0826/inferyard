@@ -1,0 +1,144 @@
+{
+  "group": "studio-pages-ui",
+  "kept_count": 23,
+  "kept": [
+    {
+      "path": "studio/internal/pages/candidates_prepare_test.go",
+      "test": "TestDashboardPreparationFreezesSelectedModel",
+      "category": "product_hypothesis",
+      "reason": "验证工作区存在旧设备预检报告时切换模型准备候选配置，会按所选模型重跑预检并冻结新模型而非沿用旧推荐模型，防止测评证据归错模型。"
+    },
+    {
+      "path": "studio/internal/pages/chart_test.go",
+      "test": "TestResourceLineDataPreservesSourceGapsAndUnits",
+      "category": "product_hypothesis",
+      "reason": "验证资源曲线数据保留不同传感器来源不混同、缺测样本转为 NaN 断点而不填零、拒绝非有限数并准确换算内存单位。"
+    },
+    {
+      "path": "studio/internal/pages/completion_scope_test.go",
+      "test": "TestCompletionKeepsUnscorableCasesInDenominator",
+      "category": "product_hypothesis",
+      "reason": "验证评分失败题目保留在完成页与历史列表的分母中且不输出虚高的百分比得分。"
+    },
+    {
+      "path": "studio/internal/pages/completion_scope_test.go",
+      "test": "TestCompletionDoesNotMixInEarlierWorkspaceRuns",
+      "category": "product_hypothesis",
+      "reason": "验证本轮完成页仅汇总当前任务的运行结果，不会把工作区早期运行混入本轮结论。"
+    },
+    {
+      "path": "studio/internal/pages/confirm_engine_test.go",
+      "test": "TestStopConfirmationDoesNotStopReplacement",
+      "category": "product_hypothesis",
+      "reason": "证明停止确认框打开期间若原引擎已退出并被新进程替换，点击确认不会调用停止接口误杀替代引擎进程。"
+    },
+    {
+      "path": "studio/internal/pages/dashboard_binding_test.go",
+      "test": "TestDashboardSelectedRunReportIgnoresUnfinishedPelican",
+      "category": "product_hypothesis",
+      "reason": "验证显式单题集运行仅申报并汇总本次完成且已封存（Sealed）的运行证据，不混入未完成的 pelican 题集且拒绝为未封存运行生成报告。"
+    },
+    {
+      "path": "studio/internal/pages/dashboard_state_test.go",
+      "test": "TestDashboardCancelTerminalRaceStillCancelsRemaining",
+      "category": "product_hypothesis",
+      "reason": "证明本轮取消时若当前运行任务恰好自然结束并返回状态冲突，仍会继续取消后续排队任务，防止残留排队请求在取消后继续派发。"
+    },
+    {
+      "path": "studio/internal/pages/models_chain_test.go",
+      "test": "TestStartChainPreservesCompletedBundleOnCombinationChange",
+      "category": "product_hypothesis",
+      "reason": "证明工作区中 zh-core 已完成封存（run_complete）时，补齐缺失的 zh-svg-pelican 配置不会覆盖或重建已完成的 zh-core 原始候选与证据。"
+    },
+    {
+      "path": "studio/internal/pages/models_downloads_test.go",
+      "test": "TestModelsUnifiedDownloadMeasurements",
+      "category": "product_hypothesis",
+      "reason": "验证引擎归档下载缺少字节读数（engine_transfer_progress_unavailable）时界面忠实展示“缺测”与原因，绝不将 Go 零值渲染成“已下载 0 bytes”。"
+    },
+    {
+      "path": "studio/internal/pages/preview_local_cancel_parity_test.go",
+      "test": "TestLocalParityEngineHelper",
+      "category": "product_hypothesis",
+      "reason": "本地引擎取消一致性测试的子进程假引擎入口，供 core.Service 拉起受管本地进程以验证进程所有权停止边界。"
+    },
+    {
+      "path": "studio/internal/pages/preview_local_cancel_parity_test.go",
+      "test": "TestPreviewLocalCancelStopsOnlyOwnedServiceParity",
+      "category": "product_hypothesis",
+      "reason": "验证本地引擎取消评测时仅终止 Studio 自启动进程、绝不向外部算子拥有的 LM Studio 发信号，且正式与预览均取消双题包并不产出报告。"
+    },
+    {
+      "path": "studio/internal/pages/preview_local_parity_test.go",
+      "test": "TestPreviewLocalQueueParity",
+      "category": "product_hypothesis",
+      "reason": "验证本地引擎多题包队列在正式与预览两侧均强制逐题包更换服务实例（拒绝复用旧 PID）、保留已完成题包并支持失败重试与等待期取消。"
+    },
+    {
+      "path": "studio/internal/pages/preview_parity_reset_test.go",
+      "test": "TestPreviewResetLeavesNextTaskAloneParity",
+      "category": "product_hypothesis",
+      "reason": "验证正式与预览在异步重置活动及排队任务时保留已完成项、取消未完成项，且绝不误取消随后新启动的任务。"
+    },
+    {
+      "path": "studio/internal/pages/preview_parity_test.go",
+      "test": "TestPreviewBenchmarkParity",
+      "category": "product_hypothesis",
+      "reason": "验证正式编排与预览模拟在单双题包串行队列、启动失败不自动重试、绑定或运行期取消及报告排除无关运行上均符合独立契约预期。"
+    },
+    {
+      "path": "studio/internal/pages/preview_speed_parity_test.go",
+      "test": "TestPreviewContextSpeedParity",
+      "category": "product_hypothesis",
+      "reason": "验证长上下文速度专项在正式与预览两侧的阶段推进、缺测样本不伪造中位数汇总、冻结模型引擎身份及只读重试不重跑行为一致。"
+    },
+    {
+      "path": "studio/internal/pages/preview_speed_parity_test.go",
+      "test": "TestPreviewContextSpeedCancelParity",
+      "category": "product_hypothesis",
+      "reason": "验证长上下文速度专项在等待与测量中取消时进入排空收尾、保留已完成样本数且停止后续测量并抑制报告生成。"
+    },
+    {
+      "path": "studio/internal/pages/preview_test.go",
+      "test": "TestPreviewOutOfBandActionsStayInMemory",
+      "category": "product_hypothesis",
+      "reason": "验证调试预览模式的核心内存隔离兜底：拒绝执行真实工作闭包，且引擎、绑定与刷新入口均不创建真实服务或后台取消句柄。"
+    },
+    {
+      "path": "studio/internal/pages/report_list_test.go",
+      "test": "TestReportCardsKeepRunsSeparateAndNeverZeroFill",
+      "category": "product_hypothesis",
+      "reason": "验证多运行报告卡片将不同题包结果分别展示不合并成绩，且无评分题包绝不填零或伪造通过率。"
+    },
+    {
+      "path": "studio/internal/pages/report_presentation_test.go",
+      "test": "TestReportMissingMeasurementsAndEmptyIndex",
+      "category": "product_hypothesis",
+      "reason": "验证报告页对 studio.json 缺测耗时、缺测内存及多传感器未合并原因如实展示，绝不渲染为零值。"
+    },
+    {
+      "path": "studio/internal/pages/report_view_test.go",
+      "test": "TestReportViewReadsStudioJSONOnly",
+      "category": "product_hypothesis",
+      "reason": "验证 Studio 仅离线读取并投影 studio.json（不调用 CLI 重算）、拒绝旧格式报告且不改写磁盘原始字节并阻断路径穿越。"
+    },
+    {
+      "path": "studio/internal/pages/review_regression_test.go",
+      "test": "TestRebindUsesFreshDirectoryAndCandidateFile",
+      "category": "product_hypothesis",
+      "reason": "验证重新绑定从候选配置生成全新的 bound 子目录，绝不覆盖已有绑定配置证据或篡改原命令。"
+    },
+    {
+      "path": "studio/internal/pages/view_test.go",
+      "test": "TestExplicitSingleBundleConfirmation",
+      "category": "product_hypothesis",
+      "reason": "验证默认测评范围同时勾选 zh-core 与 zh-svg-pelican，仅在用户显式取消时单跑题包并阻断空范围提交。"
+    },
+    {
+      "path": "studio/tests/ui/PreviewUITests.swift",
+      "test": "testPreviewWorkflowsInOneWindow",
+      "category": "product_hypothesis",
+      "reason": "在真实 macOS 原生窗口中端到端验证模拟隔离、默认双包测评与运行期引擎禁停保护、取消与重试、长上下文非评分工作负载与缺测诊断、多路传感器缺测忠实展示及 LM Studio 仅重跑未完成题集。"
+    }
+  ]
+}

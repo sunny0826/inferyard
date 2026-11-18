@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
+
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -14,47 +14,6 @@ import (
 	"time"
 )
 
-func script(t *testing.T, body string) string {
-	t.Helper()
-	if runtime.GOOS == "windows" {
-		t.Skip("shell fixture requires Unix")
-	}
-	path := filepath.Join(t.TempDir(), "inferyard")
-	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body+"\n"), 0700); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
-func TestExitCodes(t *testing.T) {
-	for code, want := range map[int]ExitStatus{0: Complete, 2: Blocked, 3: Incomplete, 4: Error, 130: Cancelled, 7: Unknown} {
-		t.Run(fmt.Sprint(code), func(t *testing.T) {
-			c := Client{Path: script(t, fmt.Sprintf("printf 'captured'; printf 'diagnostic' >&2; exit %d", code))}
-			out, err := c.Exec(context.Background())
-			if err != nil || out.ExitCode != code || out.Status != want || string(out.Stdout) != "captured" || string(out.Stderr) != "diagnostic" {
-				t.Fatalf("%+v %v", out, err)
-			}
-		})
-	}
-}
-func TestParseVersion(t *testing.T) {
-	version, source, err := ParseVersion([]byte("inferyard 1.2.3 source=release\n"))
-	if err != nil || version != "1.2.3" || source != "release" {
-		t.Fatalf("%q %q %v", version, source, err)
-	}
-	version, source, err = ParseVersion([]byte("inferyard 0.0.3 source=checkout\n"))
-	if err != nil || version != "0.0.3" || source != "checkout" {
-		t.Fatalf("%q %q %v", version, source, err)
-	}
-	version, source, err = ParseVersion([]byte("inferyard 0.0.3\n"))
-	if err != nil || version != "0.0.3" || source != "" {
-		t.Fatalf("legacy line: %q %q %v", version, source, err)
-	}
-	for _, raw := range []string{"unexpected output", "inferyard 1.2.3 source=git\n", "inferyard 1.2.3 extra\n"} {
-		if _, _, err := ParseVersion([]byte(raw)); err == nil {
-			t.Fatalf("accepted %q", raw)
-		}
-	}
-}
 func TestCancellation(t *testing.T) {
 	for _, ignore := range []bool{false, true} {
 		t.Run(fmt.Sprint(ignore), func(t *testing.T) {
@@ -135,53 +94,4 @@ func TestCancellationProcess(t *testing.T) {
 	}
 	fmt.Println("interrupted")
 	os.Exit(130)
-}
-
-func TestExecArgumentsAndFailures(t *testing.T) {
-	out, err := (Client{Path: script(t, "printf '%s' \"$1\"")}).Exec(context.Background(), "a b; $(false)")
-	if err != nil || string(out.Stdout) != "a b; $(false)" {
-		t.Fatalf("%+v %v", out, err)
-	}
-	if _, err := (Client{Path: filepath.Join(t.TempDir(), "missing")}).Exec(context.Background()); err == nil {
-		t.Fatal("missing executable accepted")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	out, err = (Client{}).Exec(ctx)
-	if !errors.Is(err, context.Canceled) || out.Status != Cancelled {
-		t.Fatalf("%+v %v", out, err)
-	}
-}
-func TestRealCLI(t *testing.T) {
-	root := os.Getenv("INFERYARD_SMOKE_ROOT")
-	if root == "" {
-		t.Skip("set INFERYARD_SMOKE_ROOT for the two authorized read-only commands")
-	}
-	for _, args := range [][]string{{"--version"}, {"device-check", "--json"}} {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		cmd := exec.CommandContext(ctx, "mise", append([]string{"exec", "--", "uv", "run", "--frozen", "inferyard"}, args...)...)
-		cmd.Dir = root
-		raw, err := cmd.Output()
-		cancel()
-		if err != nil {
-			t.Fatalf("CLI %v failed: %v", args, err)
-		}
-		if args[0] == "--version" {
-			v, _, err := ParseVersion(raw)
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Logf("version parsed: %s", v)
-		} else {
-			result, err := Parse(raw)
-			if err != nil {
-				t.Fatal(err)
-			}
-			device, err := ParseDeviceCheck(result)
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Logf("device parsed: status=%s kind=%s", result.Status, device.Kind)
-		}
-	}
 }

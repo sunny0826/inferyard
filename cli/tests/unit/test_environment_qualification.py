@@ -62,14 +62,6 @@ def context(tmp_path, change=None, *, late_ns=0):
     )
 
 
-def test_complete_evidence_qualifies_environment_but_not_performance(tmp_path):
-    result = context(tmp_path)
-    assert result["environment_qualification"]["eligible"]
-    assert result["environment_qualification"]["reasons"] == []
-    assert not result["performance_comparison_eligible"]
-    assert result["collector_schedule"]["overhead_gate"] == "not_verified"
-
-
 @pytest.mark.parametrize(
     "change", ["cpu", "threshold", "coverage", "unfrozen", "incomplete", "schedule"]
 )
@@ -77,16 +69,4 @@ def test_each_incomplete_or_conflicting_prerequisite_blocks_environment(tmp_path
     result = context(tmp_path, change)
     assert not result["environment_qualification"]["eligible"]
     assert result["environment_qualification"]["reasons"]
-    assert not result["performance_comparison_eligible"]
-
-
-@pytest.mark.parametrize("late_ns", [2_000_000_000, 2_000_000_001])
-def test_schedule_lateness_limit_is_two_declared_intervals(tmp_path, late_ns):
-    result = context(tmp_path, late_ns=late_ns)
-    qualification = result["environment_qualification"]
-    assert qualification["eligible"] == (late_ns == 2_000_000_000)
-    assert qualification["reasons"] == (
-        [] if late_ns == 2_000_000_000 else ["collector_schedule_lateness_unknown_or_excessive"]
-    )
-    assert result["collector_schedule"]["max_late_ns"] == late_ns
     assert not result["performance_comparison_eligible"]

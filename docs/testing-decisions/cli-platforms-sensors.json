@@ -1,0 +1,204 @@
+{
+  "group": "cli-platforms-sensors",
+  "kept_count": 33,
+  "kept": [
+    {
+      "path": "cli/tests/integration/test_macos_native_identity.py",
+      "test": "test_native_wrong_binding_is_rejected",
+      "category": "product_hypothesis",
+      "reason": "在真实 macOS 子进程上验证 PID、启动时间、可执行文件、启动参数或模型摘要不一致时拒绝服务绑定。"
+    },
+    {
+      "path": "cli/tests/integration/test_macos_runtime.py",
+      "test": "test_native_single_probe_run_and_offline_report",
+      "category": "product_hypothesis",
+      "reason": "端到端验证 macOS 原生服务探测、封存采样证据、诊断非正式运行标记及服务停止后的离线 studio.json 报告生成。"
+    },
+    {
+      "path": "cli/tests/integration/test_memory_check_cli.py",
+      "test": "test_output_does_not_leak_internal_paths_or_sentinels_or_signal_user_processes",
+      "category": "product_hypothesis",
+      "reason": "验证只读诊断不向用户进程发信号或改动主机状态，且输出与落盘证据脱敏私有路径和环境变量。"
+    },
+    {
+      "path": "cli/tests/integration/test_memory_check_windows_cli.py",
+      "test": "test_partial_reaches_public_cli",
+      "category": "product_hypothesis",
+      "reason": "验证 memory-check 在缺测或截断时返回退出码 3（incomplete）并将进程决策保持为 unknown，不伪造安全结论。"
+    },
+    {
+      "path": "cli/tests/integration/test_native_batch_continuation.py",
+      "test": "test_native_uncertain_or_cancelled_request_blocks_resume",
+      "category": "product_hypothesis",
+      "reason": "验证原生请求取消或流截断后停止派发、保守统计终态、写入 dirty 标记并阻断后续对未排空服务的 resume。"
+    },
+    {
+      "path": "cli/tests/integration/test_native_cli.py",
+      "test": "test_probe_native_run_report_verify",
+      "category": "product_hypothesis",
+      "reason": "验证原生引擎下 probe、run、离线 report 全流程将不可观测的 lab 端点与内部排空保持为 null 并附原因，不伪造观测。"
+    },
+    {
+      "path": "cli/tests/integration/test_native_cli.py",
+      "test": "test_native_stop_reason_keeps_actual_failure_and_denominator",
+      "category": "product_hypothesis",
+      "reason": "验证原生请求截断、HTTP 错误与超时均保留在冻结的五态分母内且将宿主状态标记为 dirty。"
+    },
+    {
+      "path": "cli/tests/integration/test_native_usage_null.py",
+      "test": "test_cli_stream_usage",
+      "category": "product_hypothesis",
+      "reason": "验证流式响应中缺失或为 null 的 token usage 保持为 None 并记录 not_reported 原因，绝不伪造为 0。"
+    },
+    {
+      "path": "cli/tests/integration/test_windows_platform.py",
+      "test": "test_wrong_native_identity_blocks",
+      "category": "product_hypothesis",
+      "reason": "在真实 Windows 子进程上验证 PID、FILETIME 启动时间、引擎二进制、启动参数或模型摘要不匹配时阻断服务绑定。"
+    },
+    {
+      "path": "cli/tests/unit/test_cpu_policy.py",
+      "test": "test_all_domains_are_read_without_substituting_cpu0",
+      "category": "product_hypothesis",
+      "reason": "验证多簇 CPU 调频策略逐域独立采集而不用 cpu0 冒充全局，并能检出局部簇与声明策略不一致。"
+    },
+    {
+      "path": "cli/tests/unit/test_device_output.py",
+      "test": "test_recommendation_distinguishes_missing_and_insufficient_capacity",
+      "category": "product_hypothesis",
+      "reason": "验证主机内存或磁盘容量缺测（None）与容量不足均阻断推荐且保留各自明确原因，绝不将缺测当作零或充足容量。"
+    },
+    {
+      "path": "cli/tests/unit/test_device_preflight.py",
+      "test": "test_metal_capacity_uses_shared_host_memory_without_fabricating_vram",
+      "category": "product_hypothesis",
+      "reason": "验证 Apple Silicon 统一内存推荐 metal 时绝不伪造独立显存数值，主机内存不足则阻断、缺少 Metal 支持则回退 CPU。"
+    },
+    {
+      "path": "cli/tests/unit/test_device_preflight.py",
+      "test": "test_device_check_cli_is_read_only_and_selects_a_local_model",
+      "category": "product_hypothesis",
+      "reason": "验证 device-check CLI 端到端发现并推荐本地模型的同时保持零模型请求且不修改模型文件字节。"
+    },
+    {
+      "path": "cli/tests/unit/test_duration_windows.py",
+      "test": "test_missing_first_window_never_borrows_later_baseline",
+      "category": "product_hypothesis",
+      "reason": "验证持续负载缺少首窗口基线时后续窗口漂移比保持为 None 并记录原因，绝不借用后续窗口伪造基线。"
+    },
+    {
+      "path": "cli/tests/unit/test_duration_windows.py",
+      "test": "test_missing_or_invalid_terminal_timing_preserves_all_execution_states",
+      "category": "product_hypothesis",
+      "reason": "验证持续负载窗口统计完整守恒完成、失败、取消、非法及时钟异常请求，且异常请求不污染有效中位延迟。"
+    },
+    {
+      "path": "cli/tests/unit/test_external_cpu.py",
+      "test": "test_invalid_interval_is_missing_not_clamped_zero",
+      "category": "product_hypothesis",
+      "reason": "证明计数器回退、进程/主机计数偏斜、采样断档或 boot_id 变化时结果保持 None 并记录原因，绝不截断伪造为 0。"
+    },
+    {
+      "path": "cli/tests/unit/test_external_cpu.py",
+      "test": "test_source_capture_and_pid_reuse",
+      "category": "product_hypothesis",
+      "reason": "证明 /proc 采样遇到 process_start_ticks 变化（PID 复用）时记为缺失而非误采无关进程，并拒绝篡改的 server_pid 绑定。"
+    },
+    {
+      "path": "cli/tests/unit/test_length_resources.py",
+      "test": "test_resource_cohort_keeps_failures_missing_and_sources_separate",
+      "category": "product_hypothesis",
+      "reason": "证明资源分箱保留真实 0 值与缺测 None 的区分、纳入失败请求而排除 invalid，且绝不混同不同传感器来源。"
+    },
+    {
+      "path": "cli/tests/unit/test_macos_identity.py",
+      "test": "test_unknown_opt_in_never_hides_observed_mismatch_or_offline_unknown",
+      "category": "product_hypothesis",
+      "reason": "验证允许未知平台环境字段时仍保留 null、不伪造稳定性能环境资格，且已观测到的环境不匹配仍被拒绝。"
+    },
+    {
+      "path": "cli/tests/unit/test_macos_identity.py",
+      "test": "test_metal_library_must_be_manifest_bound_and_actually_mapped",
+      "category": "product_hypothesis",
+      "reason": "验证声明 Metal 后端时必须绑定库清单哈希且进程实际映射该动态库，文件被篡改时立即阻断绑定。"
+    },
+    {
+      "path": "cli/tests/unit/test_macos_resources.py",
+      "test": "test_cpu_checks_process_identity_after_read_and_stays_missing",
+      "category": "product_hypothesis",
+      "reason": "验证进程启动时间变化（PID 复用）时将进程 CPU 计数永久置为 None（source_changed），不伪造数值且不污染宿主计数。"
+    },
+    {
+      "path": "cli/tests/unit/test_memory_check.py",
+      "test": "test_declared_protection_reaches_descendants_and_entire_app_not_siblings",
+      "category": "product_hypothesis",
+      "reason": "验证显式 --protect-pid 保护覆盖目标进程、子孙进程及同应用组实例，且不会误标无关未知进程。"
+    },
+    {
+      "path": "cli/tests/unit/test_resources.py",
+      "test": "test_linux_counters_bind_pid_and_do_not_include_child_cpu",
+      "category": "product_hypothesis",
+      "reason": "验证服务 CPU 计数绑定 PID 与启动 ticks（不含子进程），进程身份变化时置为 null 附原因且不影响宿主机独立指标。"
+    },
+    {
+      "path": "cli/tests/unit/test_resources.py",
+      "test": "test_cpu_uses_observed_wall_interval_not_whole_request",
+      "category": "product_hypothesis",
+      "reason": "验证 CPU 使用率按实际观测采样窗口而非整段请求耗时折算，且未覆盖完整请求边界的指标保持 null 并附原因。"
+    },
+    {
+      "path": "cli/tests/unit/test_sensor_observations.py",
+      "test": "test_global_sources_keep_request_metric_and_semantics_separate",
+      "category": "product_hypothesis",
+      "reason": "验证不同传感器来源、指标与上报语义按请求窗口严格隔离不混同，且窗口内无样本时保持 null 与原因而非零值。"
+    },
+    {
+      "path": "cli/tests/unit/test_sensor_observations.py",
+      "test": "test_source_change_overrides_good_samples_without_contaminating_other_requests",
+      "category": "product_hypothesis",
+      "reason": "验证请求期间传感器身份变化（source_changed）会作废该源观测值并记为 null，同时不污染其他传感器或其他请求。"
+    },
+    {
+      "path": "cli/tests/unit/test_sensors_linux.py",
+      "test": "test_permission_failure_not_zero",
+      "category": "product_hypothesis",
+      "reason": "验证 Linux 温度传感器权限不足不可读时保持 value 为 None 并附原因，绝不伪造为 0。"
+    },
+    {
+      "path": "cli/tests/unit/test_sensors_linux.py",
+      "test": "test_schema_and_reductions_respect_sensor_and_window",
+      "category": "product_hypothesis",
+      "reason": "验证硬件上报频率、驱动请求频率与温度传感器观测保持严格分离不混同，且排除预热与窗口外样本。"
+    },
+    {
+      "path": "cli/tests/unit/test_sensors_macos.py",
+      "test": "test_smc_temperature_still_enforces_90_degree_stop",
+      "category": "product_hypothesis",
+      "reason": "验证 macOS SMC 温度达到 90°C 安全阈值或必需温度源不可读时立即触发安全停机阻断。"
+    },
+    {
+      "path": "cli/tests/unit/test_telemetry.py",
+      "test": "test_swap_and_power_drift_preserve_quality_but_disqualify_environment",
+      "category": "product_hypothesis",
+      "reason": "验证运行期间发生 swap 或电源状态漂移会取消性能比较资格（差异置 null），但保留确定性质量结论。"
+    },
+    {
+      "path": "cli/tests/unit/test_telemetry.py",
+      "test": "test_only_formal_valid_request_windows_count_and_short_requests_stay_missing",
+      "category": "product_hypothesis",
+      "reason": "验证资源极值仅统计正式请求窗口内的样本（排除预热/评分/残留阶段），无样本短请求保持 null 而非 0。"
+    },
+    {
+      "path": "cli/tests/unit/test_windows_lab_process.py",
+      "test": "test_details_scan_cannot_hide_pid_reuse_exit_or_file_replacement",
+      "category": "product_hypothesis",
+      "reason": "验证 Windows 服务绑定检查期间若发生 PID 复用、进程退出或可执行文件被替换，均会阻断绑定。"
+    },
+    {
+      "path": "cli/tests/unit/test_windows_resources.py",
+      "test": "test_memory_sources_units_identity_and_missing_metadata",
+      "category": "product_hypothesis",
+      "reason": "验证 Windows 资源采集器将进程 RSS 绑定到 PID 与启动时间，并将平台不支持的指标显式记录为 None 与缺测原因。"
+    }
+  ]
+}

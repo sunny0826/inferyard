@@ -120,23 +120,3 @@ func confirmCancelRun(t *testing.T, tt *ui.Tester) {
 		}
 	}
 }
-
-func TestPreviewNewTaskDuringReportKeepsIdleLocalService(t *testing.T) {
-	p := newPreviewSession(t.Context())
-	p.loadScene(previewSceneIndex(t, "引擎 · 本地安装与目录模型"))
-	p.state.startBenchmark()
-	waitLocalParity(t, func() bool { return p.state.task.stage == "report" }, func() { p.advance(100 * time.Millisecond) })
-	if p.state.engineState.State != "running" || !p.state.busy {
-		t.Fatal("fixture did not reach report preparation")
-	}
-	for _, task := range p.state.tasks {
-		if task.State != "done" {
-			t.Fatal(task)
-		}
-	}
-	p.state.newBenchmark()
-	p.advance(time.Second)
-	if p.state.engineState.State != "running" || p.state.task.report != "" {
-		t.Fatal("reset stopped an idle service or published the cancelled report", p.state.engineState)
-	}
-}

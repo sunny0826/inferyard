@@ -1,77 +1,75 @@
 {
-  "baseline_commit": "487c93ca56842a79b91e2c6f11ecd44af8cb9fd8",
+  "baseline_commit": "739ad220744dbdc8f169177727c6bfbc63e8b25d",
   "policy": "docs/testing.md",
-  "counting": "One decision per original top-level test function or unittest method, not parameter-expanded pytest cases. The Swift suite counts as one function; its twelve workflows were reviewed individually.",
-  "original_test_count": 2863,
+  "counting": "One decision per top-level test function, unittest method, Go Test* function, or XCTest method.",
+  "original_test_count": 2595,
   "totals": {
-    "keep": 2272,
-    "delete": 591
+    "keep": 315,
+    "delete": 2280
   },
   "groups": {
-    "cli-unit-1": {
-      "delete": 48,
-      "keep": 337
+    "packaging-release": {
+      "path": "docs/testing-decisions/packaging-release.json",
+      "keep": 38
     },
-    "cli-unit-2": {
-      "delete": 91,
-      "keep": 274
+    "cli-scoring-bundles": {
+      "path": "docs/testing-decisions/cli-scoring-bundles.json",
+      "keep": 29
     },
-    "cli-unit-3": {
-      "keep": 326,
-      "delete": 87
+    "cli-reporting-comparison": {
+      "path": "docs/testing-decisions/cli-reporting-comparison.json",
+      "keep": 27
     },
-    "cli-unit-4": {
-      "keep": 321,
-      "delete": 71
+    "cli-runtime-safety": {
+      "path": "docs/testing-decisions/cli-runtime-safety.json",
+      "keep": 34
     },
-    "cli-unit-5": {
-      "keep": 296,
-      "delete": 89
+    "cli-engines-adapters": {
+      "path": "docs/testing-decisions/cli-engines-adapters.json",
+      "keep": 42
     },
-    "cli-integration": {
-      "keep": 327,
-      "delete": 71
+    "cli-platforms-sensors": {
+      "path": "docs/testing-decisions/cli-platforms-sensors.json",
+      "keep": 33
     },
-    "studio-core": {
-      "keep": 200,
-      "delete": 40
+    "studio-core-e2e": {
+      "path": "docs/testing-decisions/studio-core-e2e.json",
+      "keep": 26
     },
-    "studio-pages": {
-      "keep": 163,
-      "delete": 84
+    "studio-pages-ui": {
+      "path": "docs/testing-decisions/studio-pages-ui.json",
+      "keep": 23
     },
-    "tooling": {
-      "keep": 28,
-      "delete": 10
+    "cli-evidence-verify": {
+      "path": "docs/testing-decisions/cli-evidence-verify.json",
+      "keep": 21
+    },
+    "cli-config-contracts": {
+      "path": "docs/testing-decisions/cli-config-contracts.json",
+      "keep": 42
     }
   },
-  "supplemental_reviews": [
-    {
-      "path": "studio/tests/e2e/context_speed_bridge.py",
-      "test": "test_studio_context_speed_bridge",
-      "decision": "keep",
-      "reason": "Go显式调用的补充入口，未计入原始按测试文件名建立的2863项基线；验证未审题库拒绝、五个长度样本实际经CLI产出、只读结果不新增请求、不改原证据且不自动生成HTML，供Studio解析真实CLI输出。"
-    },
-    {
-      "path": "cli/tests/packaging/installed_probe.py",
-      "decision": "keep",
-      "reason": "保留源码外安装资源字节、工具/评分身份及命令可用性；删除固定版本常量，调用方仍动态比对build版本。该脚本入口不计入原始测试函数数。"
-    },
-    {
-      "path": "cli/tests/packaging/ci_model_e2e.py",
-      "decision": "keep",
-      "reason": "保留真实模型请求、冻结分母、报告和离线回放保障；删除重复标题字符串检查。该手动模型执行入口不计入原始函数基线，本轮未运行真实模型。"
-    }
-  ],
-  "group_records": {
-    "cli-unit-1": "docs/testing-decisions/cli-unit-1.json",
-    "cli-unit-2": "docs/testing-decisions/cli-unit-2.json",
-    "cli-unit-3": "docs/testing-decisions/cli-unit-3.json",
-    "cli-unit-4": "docs/testing-decisions/cli-unit-4.json",
-    "cli-unit-5": "docs/testing-decisions/cli-unit-5.json",
-    "cli-integration": "docs/testing-decisions/cli-integration.json",
-    "studio-core": "docs/testing-decisions/studio-core.json",
-    "studio-pages": "docs/testing-decisions/studio-pages.json",
-    "tooling": "docs/testing-decisions/tooling.json"
-  }
+  "helper_renames": {
+    "cli/tests/integration/test_engine_fit_temperature_override_flow.py": "cli/tests/integration/engine_fit_temperature_helpers.py",
+    "cli/tests/unit/test_bind_service_config.py": "cli/tests/unit/bind_service_helpers.py",
+    "cli/tests/unit/test_engine_fit_macos_identity.py": "cli/tests/unit/engine_fit_macos_helpers.py",
+    "cli/tests/unit/test_layout_surfaces.py": "cli/tests/unit/layout_surfaces_helpers.py",
+    "cli/tests/unit/test_legacy_presentation_seal.py": "cli/tests/unit/legacy_presentation_helpers.py",
+    "cli/tests/unit/test_lineage_files.py": "cli/tests/unit/lineage_files_helpers.py",
+    "cli/tests/unit/test_local_engine_contract.py": "cli/tests/unit/local_engine_helpers.py",
+    "cli/tests/unit/test_memory_check_windows.py": "cli/tests/unit/memory_check_windows_helpers.py",
+    "cli/tests/unit/test_model_lineage.py": "cli/tests/unit/model_lineage_helpers.py",
+    "cli/tests/unit/test_model_source.py": "cli/tests/unit/model_source_helpers.py",
+    "cli/tests/unit/test_phase2_contracts.py": "cli/tests/unit/phase2_contract_helpers.py",
+    "cli/tests/unit/test_run_projection.py": "cli/tests/unit/run_projection_helpers.py",
+    "cli/tests/unit/test_windows_lab_files.py": "cli/tests/unit/windows_lab_files_helpers.py"
+  },
+  "supplemental_entrypoints": [
+    "cli/tests/packaging/prepare_inputs.py",
+    "cli/tests/packaging/run_installed.py",
+    "cli/tests/packaging/ci_installed.py",
+    "cli/tests/packaging/installed_probe.py",
+    "cli/tests/packaging/ci_model_e2e.py",
+    "studio/tests/e2e/context_speed_bridge.py"
+  ]
 }

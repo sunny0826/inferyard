@@ -58,9 +58,7 @@ progress 推荐专项结果读取或新计划/batch。见
 
 ## 验证
 
-契约/配置/题包/复用回归：`pytest -q tests/unit/test_contract_validation.py
-tests/unit/test_unified_contract.py tests/unit/test_config.py
-tests/unit/test_validation_reuse.py tests/unit/test_bundle_migration.py`。
+契约/配置/题包回归：`pytest -q tests/unit/test_contracts.py tests/unit/test_config.py tests/integration/test_phase2_plan.py`。
 schema 与社区资源导出检查及完整命令约定见
 [CONTRIBUTING.md](../../cli/CONTRIBUTING.md#changes-and-verification)；Agent 以 `rtk proxy` 包裹。
 
