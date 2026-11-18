@@ -148,9 +148,12 @@ final class PreviewUITests: XCTestCase {
         expectText("实际目录名：model-2")
         click("重置场景")
         click("下载")
-        // The reset scene has no download tasks, so the fold must not be
-        // expected at all; the empty state is the observable result.
-        expectText("暂无下载任务。")
+        // An empty downloads page omits the task card and keeps only the
+        // new-download form (studio/docs/pages.md:144, downloads.go:29-31).
+        expectText("新建下载任务")
+        XCTAssertFalse(text("下载任务").exists, "Empty downloads page omits the task card")
+        XCTAssertFalse(taskCard("model").exists)
+        XCTAssertFalse(taskCard("model-2").exists)
         XCTAssertFalse(app.staticTexts["实际目录名：model-2"].exists)
         XCTAssertFalse(text("错误码：download_failed").exists)
         click("下载模型")
