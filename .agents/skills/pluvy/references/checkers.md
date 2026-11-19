@@ -36,8 +36,8 @@ five `size.*` IDs. Fully disabled bundles skip parsing, and a disabled checker
 never permits broken plugin registration. Changing an enable flag is a policy
 change subject to the same full audit and review as changing a threshold.
 
-The equivalent facts appear in `docs/checker-configuration.md`, the maintenance
-note kept with this repository for its own development, while
+The equivalent facts appear in `docs/checker-configuration.md`, the user-facing
+configuration reference published in the documentation, while
 [comment suppressions](comment-suppressions.md) covers suppression directives in
 depth. Keep this index, the checker pages and `docs/checker-configuration.md` in
 the same batch when either side changes, and treat the implementation as the
@@ -45,7 +45,7 @@ final authority.
 
 ## Coverage
 
-Six analyzers cover seven languages: Python (`.py`, `.pyi`), Go (`.go`), Java
+Six analyzers cover five languages (including JSX and TSX syntax): Python (`.py`, `.pyi`), Go (`.go`), Java
 (`.java`), JavaScript and JSX (`.js`, `.jsx`, `.mjs`, `.cjs`), TypeScript
 (`.ts`, `.mts`, `.cts`) and TSX (`.tsx`).
 

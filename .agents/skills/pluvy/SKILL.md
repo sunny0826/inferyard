@@ -1,42 +1,37 @@
 ---
 name: pluvy
-description: Run the pluvy gate after code tasks only in repositories with a project policy or an explicit project requirement, or when the user explicitly requests a run. Use also to adopt, install, configure, or explain pluvy, edit `.pluvy/pluvy.json`, triage findings, inspect checker coverage and options, or use approved line suppression with a reason in every supported language. Global installation or skill availability does not enable a repository; without project adoption or an explicit run request, skip automatic runs and gate reporting.
+description: Run the pluvy gate after code tasks only in repositories with a project policy or an explicit project requirement, or when the user explicitly requests a run. Use also to adopt, install, configure or explain pluvy, edit `.pluvy/pluvy.json`, triage findings, inspect checker coverage and options, or use approved line suppression with a reason in every supported language. A global installation or skill availability alone does not enable a repository; without adoption or an explicit run request, skip the run and the gate notice.
 ---
 
 # pluvy
 
-pluvy is a read-only, parse-based architecture policy gate. It audits this
-repository's sources against the policy in `.pluvy/pluvy.json` and
-reports findings without fixing anything: no mode modifies, stashes, stages,
-restores, deletes, or rewrites source files, and the tool never changes Git
-configuration.
+pluvy is a parse-based architecture policy gate: it audits this repository's
+sources against the policy in `.pluvy/pluvy.json` and reports findings.
 
 ## Decide whether the gate applies
 
-Before any automatic post-task run or gate report, check the target repository
-(the explicit `--root`, or the repository being worked on). The gate applies when
-at least one of these is true:
+Check the target repository (the explicit `--root`, or the repository being
+worked on). The gate applies when at least one is true:
 
 - The repository has `.pluvy/pluvy.json`.
 - Project instructions, scripts or CI explicitly require the gate, including a
-  policy selected through `--config`. Use that project's root and config path.
+  policy selected through `--config`; use that project's root and config path.
 - The user explicitly requests a gate run for this task.
 
-A globally installed executable, a discoverable skill, an example policy or a
-skill pointer alone does not enable the gate. Do not run the CLI to discover
-whether the repository has adopted it. If none of the conditions applies, stop
-this gate workflow silently: do not run it, create a policy, suggest setup, or
-include a skipped, missing-config or "not counted as passed" gate notice in the
-task report. Continue the project's own checks normally.
+If none applies, stop silently: do not run the gate, create a policy, suggest
+setup, or include a skipped, missing-config or "not counted as passed" gate
+notice in the task report; continue the project's own checks. A globally
+installed executable, a discoverable skill, an example policy or a skill
+pointer alone does not enable the gate, and the CLI must not be run just to
+test adoption.
 
-Keep missing or invalid configuration distinct from non-adoption. If the project
-requires the gate or the user requests a run, missing configuration remains a
-failure. An invalid or unreadable policy also remains a failure; do not silently
-skip it or change the CLI's exit-code semantics.
+Non-adoption is silent; failure is not. When the gate applies, missing
+configuration is a failure, and an invalid or unreadable policy is a failure:
+keep the CLI's exit-code semantics and never skip silently.
 
-Use this skill for adoption, installation, configuration, explanation and triage
-when requested, even before adoption. Loading it for those purposes does not by
-itself require a gate run or authorize creating a project policy.
+This skill also covers adoption, installation, configuration, explanation and
+triage when requested, even before adoption; loading it for those purposes
+neither requires a gate run nor authorizes creating a project policy.
 
 ## Gate policy (binding)
 
@@ -48,10 +43,10 @@ itself require a gate run or authorize creating a project policy.
 
 | Situation | Command | Notes |
 |---|---|---|
-| Task changes are uncommitted (working tree, staged/unstaged/untracked) | `pluvy --base HEAD` | Compares HEAD with the working tree, including untracked files (new files get a full audit) |
-| The task produced commits | `pluvy --base <task start commit>` (the parent of the task's first commit) | On a clean tree, `pluvy --base HEAD` audits 0 files and exits 0 — a silent false pass that must be avoided |
-| The task start commit is unknown | `pluvy --all`, and state that this is a full audit that may include pre-existing debt | Prefer over-reporting to under-reporting |
-| `--staged` | Not used for post-task gating | It only reads index blobs, which does not match the agent workflow boundary |
+| Task changes are uncommitted | `pluvy --base HEAD` | Working tree vs HEAD, untracked included (new files get a full audit) |
+| The task produced commits | `pluvy --base <task start commit>` (the parent of the task's first commit) | On a clean tree `--base HEAD` audits 0 files and exits 0 — a false pass to avoid |
+| Task start commit unknown | `pluvy --all`, and state that this is a full audit that may include pre-existing debt | Prefer over-reporting to under-reporting |
+| `--staged` | Not used for post-task gating | Reads index blobs only, which does not match the agent workflow boundary |
 
 Canonical commands:
 
@@ -64,8 +59,8 @@ pluvy --all --format json
 ```
 
 `--root` defaults to the current directory (Git modes require the repository
-root); `--config` defaults to `.pluvy/pluvy.json`, resolved relative
-to the root.
+root); `--config` defaults to `.pluvy/pluvy.json`, resolved relative to the
+root.
 
 ## Exit codes
 
@@ -73,51 +68,64 @@ to the root.
 |---|---|
 | `0` | No error-severity findings (warnings do not affect it) |
 | `1` | Error-severity findings are present |
-| `2` | Configuration/encoding/filesystem/Git failure (including a staged policy change, until a separate `--all` full audit passes and the change is committed) |
+| `2` | Configuration/encoding/filesystem/Git failure (including `--staged` while a policy change is staged) |
 
 ## Post-run checks
 
-1. The gate output ends with a line like `Architecture base: N files`. If N is 0
-   while the task really changed code, the base choice is wrong: reselect the
-   base and rerun; do not treat the run as a pass.
-2. If the task changed the policy file, do not judge the task by a `--base` run
-   alone: run a separate `pluvy --all` and have the policy change reviewed.
-3. Unrelated dirty changes that existed before the task are swept into
-   `pluvy --base HEAD` runs: list them truthfully in the report; do not
-   filter them silently.
+1. The gate output ends with a line like `Architecture base: N files; M findings.`.
+   If N is 0 while the task really changed code, the base choice is wrong:
+   reselect it and rerun; do not treat the run as a pass.
+2. If the task changed the policy file, judge it with a separate `pluvy --all`,
+   not a `--base` run alone, and have the policy change reviewed.
+3. Unrelated dirty changes that predate the task are swept into `--base HEAD`
+   runs: list them truthfully; do not filter them silently.
 
 ## Report format
 
-Apply this section only when the gate applies under the decision above. Report
-the mode you ran, the exit code, and the findings (error/warning counts plus the
-key items). If an applicable gate was not run, exited with code 2, or the tool is
-not installed, state that explicitly — never report the task as gated or passed.
-For a repository where the gate does not apply, omit gate status entirely. Keep
-test-suite execution and its reporting independent of gate applicability.
+Applies only when the gate applies. Report the mode, the exit code and the
+findings (error/warning counts plus key items). If an applicable gate was not
+run, exited with code 2, or the tool is not installed, state that explicitly —
+never report the task as gated or passed. Where the gate does not apply, omit
+gate status entirely. Test-suite execution and its reporting stay independent
+of gate applicability.
 
 ## Triage
 
 1. Fix the code first: findings are evidence of policy violations.
-2. Every supported language (Python, Go, Java and the JavaScript family): a
-   standalone next-line suppression comment naming the exact rule id is allowed
-   only for an exception that received explicit (human) approval beforehand —
-   the approval precedes and is independent of the reason; the written reason
-   only records that approval. Use the language's own line-comment marker: `#`
-   in Python, `//` in Go, Java and the JavaScript family. Block-comment forms,
-   wildcards, lists, `type.suppression` itself and a missing reason are invalid
-   and report `type.suppression`. Syntax and validation rules:
+2. A standalone next-line suppression comment naming the exact rule id is
+   allowed, in every supported language, only for an exception explicitly
+   approved by a human beforehand; the written reason only records that
+   approval. Use the language's own line-comment marker: `#` in Python, `//`
+   in Go, Java and the JavaScript family. Block-comment forms, wildcards,
+   lists, `type.suppression` itself and a missing reason are invalid and
+   report `type.suppression`. Syntax and validation rules:
    [approved next-line diagnostic exceptions](references/comment-suppressions.md).
-3. Policy changes (thresholds, excludes, owners, boundaries) are architecture
-   decisions: they require a separate `--all` full audit and review. Never
-   weaken the policy to force a green report (policy item 3).
+3. Policy changes (thresholds, excludes, owners, boundaries, enable flags) are
+   architecture decisions: they require a separate `--all` full audit and
+   review. Never weaken the policy to force a green report (policy item 3).
 
 ## Capability boundaries and language support
 
-The gate is read-only and parse-based: it parses the selected sources with
-tree-sitter, collects syntax evidence and applies the policy. No mode fixes,
-stashes, stages, restores, deletes or rewrites source files.
+The gate parses the selected sources with tree-sitter, collects syntactic
+evidence and applies the policy. What it does not do:
 
-Six analyzers cover seven languages:
+- It does not infer types: broad markers, annotations and conversions are
+  syntactic evidence, not resolved types or compiler proofs.
+- It does not resolve package aliases, build-system aliases, dynamic imports,
+  reflection or computed members, and it does not prove runtime ownership or
+  which implementation a call reaches.
+- It does not detect all unused code, prove validators or logging safety, or
+  measure coverage; unused findings describe the checked snapshot view and
+  unresolved external usage, not a repository-wide proof.
+- It is not a linter, formatter, type checker or coverage tool: keep the
+  language formatter, type checker, tests, branch coverage and semantic
+  architecture review as separate required checks.
+- JavaScript and JSX carry no type annotations: type safety needs a configured
+  type-aware checker, while usage, boundary and encoding analysis still run on
+  those files.
+- A passing syntax gate does not certify compliance with every policy rule.
+
+Six analyzers cover five languages (including JSX and TSX syntax):
 
 | Analyzer | Source suffixes |
 |---|---|
@@ -128,36 +136,25 @@ Six analyzers cover seven languages:
 | TypeScript | `.ts`, `.mts`, `.cts` |
 | TSX | `.tsx` |
 
-Every checker is enabled by default for every selected file. `enabled: false`
-turns one checker off for all selected files; there is no `enabled` flag scoped
-to one language or one file. The global `include` and `exclude` lists drop files
-from every checker at once, except that changed snapshot paths reported by the
-run-level `test.deletion` gate follow the changed set instead (see [its checker
-page](references/checkers/test.deletion.md)). Architecture `placements`,
-`boundaries` and `paths` only select where that one architecture check applies.
-`owners` is not a file selector: once owners are configured and the checker is
-enabled, every selected
-file must match exactly one owner, so an unmatched or doubly matched file is a
-finding. Coverage differences therefore come from the diagnostics each analyzer
-registers.
+Selection and enablement:
 
-What the gate does not do:
+- Every checker is enabled by default for every selected file; `enabled: false`
+  turns one checker off for all selected files, and there is no `enabled` flag
+  scoped to one language or one file.
+- The global `include` and `exclude` lists drop files from every checker at
+  once, except that changed snapshot paths reported by the run-level
+  `test.deletion` gate follow the changed set instead
+  ([its checker page](references/checkers/test.deletion.md)).
+- Architecture `placements`, `boundaries` and `paths` (under
+  `architecture.object_model`) only select where that one architecture check
+  applies.
+- `owners` is not a file selector: once owners are configured and the checker
+  is enabled, every selected file must match exactly one owner, so an unmatched
+  or doubly matched file is a finding.
 
-- It does not infer types. Broad markers, annotations and conversions are
-  syntactic evidence, not resolved types or compiler proofs.
-- It does not resolve package aliases, build-system aliases, dynamic imports,
-  reflection or computed members, and it does not prove runtime ownership or
-  which implementation a call reaches.
-- It does not detect all unused code, prove validators or logging safety, or
-  measure coverage. Unused findings describe the checked snapshot view and
-  unresolved external usage, not a repository-wide proof.
-- It is not a linter, formatter, type checker or coverage tool. Keep the
-  language formatter, type checker, tests, branch coverage and semantic
-  architecture review as separate required checks.
-- JavaScript and JSX have no type annotations to check: type safety needs a
-  configured type-aware checker, even though usage, boundary and encoding
-  analysis still run on those files.
-- A passing syntax gate does not certify compliance with every policy rule.
+Coverage does not promise complete evidence for every construct: resolution
+limits for boundaries, usage, encodings and guarded projections are recorded on
+the corresponding checker pages and remain review obligations.
 
 ## Checkers and per-language coverage
 
@@ -199,11 +196,9 @@ Every analyzer registers the same base set of 19 diagnostic IDs:
 `size.complexity`, `size.nesting`, `size.parameters`, `architecture.owner`,
 `architecture.structure`, `architecture.import`, `architecture.dispatch`,
 `architecture.object_model`, `structure.guarded_projection`, `test.tautology`
-and `test.vacuous`.
-
-`test.deletion` is not part of that per-language set: no analyzer registers it,
-and it is produced by the run-level deletion gate only in `--base` and `--staged`
-mode.
+and `test.vacuous`. `test.deletion` is not part of that set: no analyzer
+registers it, and it is produced by the run-level deletion gate only in
+`--base` and `--staged` mode.
 
 The remaining nine diagnostic IDs are registered per language, and a registered
 diagnostic can only report for the analyzer that registered it:
@@ -235,7 +230,8 @@ Key differences:
   not export status. Go receiver methods and Java files produce no findings.
 - `type.broad` markers differ per language: `typing.Any`,
   `typing_extensions.Any` and `pydantic.JsonValue` references plus internal
-  `json.dumps` results in Python; `any`, empty interfaces and imported
+  `json.dumps` results and pydantic `dump_json`/`model_dump_json` results in
+  Python; `any`, empty interfaces and imported
   `encoding/json` results in Go; `java.lang.Object`, unbounded wildcards and
   recognized raw collections plus Gson/Jackson results in Java; `JSON.stringify`
   results in JavaScript and JSX; `any`, `unknown`, `object` and empty object
@@ -243,19 +239,14 @@ Key differences:
 - One Python annotation can report twice: `typing.Any` triggers both
   `type.annotation` and `type.broad`.
 
-Coverage does not promise complete evidence for every construct. The resolution
-limits for boundaries, usage, encodings and guarded projections are recorded on
-the corresponding checker pages and remain review obligations.
-
 Full detail for every checker — role, language differences, options, defaults,
 types and correct/incorrect configuration — is on its own page linked from the
 [checker index](references/checkers.md).
 
 ## Checker configuration
 
-Each repository commits its policy at `.pluvy/pluvy.json`; the gate
-never changes it. The policy separates global file selection from checker
-options:
+Each repository commits its policy at `.pluvy/pluvy.json`; the gate never
+changes it. The policy separates global file selection from checker options:
 
 ```json
 {
@@ -277,20 +268,16 @@ Rules that apply to every checker:
 - `enabled` is a strict boolean, defaulting to `true`. JSON `true` or `false`
   only: `"false"`, `0` and `null` are errors. Omit `enabled: true` and entries
   that only repeat defaults.
-- Unknown checker IDs and unknown options are errors, including when the checker
-  is disabled. The same rejection applies inside nested option objects.
-- `function_size` is one checker with one switch: it owns `size.lines`,
-  `size.statements`, `size.complexity`, `size.nesting` and `size.parameters`.
-  Suppression comments name those diagnostic IDs, not the checker key.
-- `include` and `exclude` are the only global file selectors and must stay at the
-  top level. Architecture `placements`, `boundaries` and `paths` select where
-  that one architecture check applies, not which files other checkers read.
-  `owners` instead declares the required responsibility mapping: when it is
-  configured and the checker is enabled, every selected file must match exactly
-  one owner.
-- `third_party_modules` is a top-level list of exact import specifiers. It grants
-  a directional library-input exception for erased dictionaries, not a file or
-  checker exemption.
+- Unknown checker IDs and unknown options are errors, including when the
+  checker is disabled. The same rejection applies inside nested option objects.
+- `function_size` is one checker with one switch owning the five `size.*`
+  diagnostics; suppression comments name those diagnostic IDs, not the checker
+  key.
+- `include` and `exclude` are the only global file selectors and must stay at
+  the top level.
+- `third_party_modules` is a top-level list of exact import specifiers. It
+  grants a directional library-input exception for erased dictionaries, not a
+  file or checker exemption.
 - `type.broad.encoding` holds four lists, all empty by default: `encoders`,
   `decoders`, `outputs` and `instance_outputs`. They extend built-in
   serialization recognition; they never exempt broad annotations, casts or
@@ -330,17 +317,19 @@ option, and `syntax.invalid` is not a checker. Malformed configuration fails
 closed with exit code 2.
 
 Thresholds, excludes, owners, boundaries and enable flags are architecture
-decisions. Changing any of them requires a separate full audit and review, and a
-staged policy change stays blocked until that audit passes and the change is
-committed. Disabling a checker or raising a limit is never remediation. The full
-option list, defaults, types and examples for each checker are on the page
+decisions: changing any of them requires a separate full audit and review
+before the change is committed. `--staged` refuses with exit code 2 while a
+policy change is staged, but the gate does not record whether the audit ran, so
+the audit and review are the committer's obligation. Disabling a checker or
+raising a limit is never remediation. The
+full option list, defaults, types and examples for each checker are on the page
 linked from the [checker index](references/checkers.md).
 
 ## Pointing other agents at this skill
 
 For agents that take their instructions from a repository instruction file
-(such as AGENTS.md), paste this pointer into that file (manual paste only; do
-not auto-rewrite a user's instruction file):
+(such as AGENTS.md), paste this pointer into that file — manual paste only;
+never auto-rewrite a user's instruction file:
 
 ```markdown
 <!-- pluvy skill pointer -->
@@ -353,9 +342,8 @@ first read `.agents/skills/pluvy/SKILL.md` and follow it.
 - [Agent integration notes](references/agent-integration.md) — integration
   paths for any agent and the limits that apply.
 - [Checker index](references/checkers.md) — the 22 checkers and the 29
-  diagnostic IDs, with coverage tables and one page per checker for its role,
-  language differences, options, defaults, types and configuration examples.
+  diagnostic IDs, with coverage tables and one page per checker.
 - [Approved next-line diagnostic exceptions](references/comment-suppressions.md)
-  — the suppression directive syntax, validation rules and their snapshot scope.
+  — suppression directive syntax, validation rules and snapshot scope.
 - [Policy sample](references/policy-sample.md) — a compact policy covering file
   selection, owners, import boundaries and function-size thresholds.
