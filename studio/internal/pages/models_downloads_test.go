@@ -35,6 +35,9 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				if got := exactTextCount(tt.Texts(), "下载中"); got != 1 {
 					t.Fatalf("activity indicators = %d: %v", got, tt.Texts())
 				}
+				if got := exactTextCount(tt.Texts(), "下载任务活动"); got != 1 {
+					t.Fatalf("engine activity bars = %d: %v", got, tt.Texts())
+				}
 			} else if !tt.HasText("已观测") || !tt.HasText("速率") || !tt.HasText("总量") || !tt.HasText("总量未知") ||
 				!tt.HasText("1.50 MiB") || !tt.HasText("2.0 KiB/s") {
 				t.Fatal(tt.Texts())

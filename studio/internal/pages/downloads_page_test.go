@@ -66,8 +66,76 @@ func TestDownloadGuideFollowsTaskCards(t *testing.T) {
 	}
 }
 
+// TestDownloadGuideClearsFailureAfterRetrySucceeds keeps the historical failed
+// card in the list but stops asking for a retry once that source or asset is
+// resolved by a newer download.
+func TestDownloadGuideClearsFailureAfterRetrySucceeds(t *testing.T) {
+	failed := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", SourceUrl: "https://example.test/model.gguf", State: "failed"}
+	s := preparingDownloadsState()
+	s.downloads = []core.DownloadTask{failed}
+	if got := s.downloadGuideStatus(); got != "有 1 项下载任务失败，可在下方重新创建。" {
+		t.Fatalf("unresolved failure is hidden: %q", got)
+	}
+
+	retry := failed
+	retry.TaskId, retry.OutName, retry.State = "model-2", "model-2", "downloading"
+	s.downloads = append(s.downloads, retry)
+	if got := s.downloadGuideStatus(); got != "正在下载 1 项资源…" {
+		t.Fatalf("running retry still counted as a failure: %q", got)
+	}
+
+	s.downloads[1].State = "done"
+	if got := s.downloadGuideStatus(); got != "下载所需引擎与模型后返回任务页。" {
+		t.Fatalf("retried-away failure still asks for a retry: %q", got)
+	}
+	if unresolved := s.unresolvedDownloadFailures(); unresolved != 0 {
+		t.Fatalf("resolved failure still counts: %d", unresolved)
+	}
+	// The historical card stays in the list; only the retry prompt is gone.
+	if len(s.downloads) != 2 {
+		t.Fatal(s.downloads)
+	}
+
+	// A later available asset resolves its own failed record as well.
+	s.downloads = s.downloads[:1]
+	s.registry.Models = []core.ModelAsset{{Name: "model", Available: true}}
+	if got := s.downloadGuideStatus(); got != "下载所需引擎与模型后返回任务页。" {
+		t.Fatalf("available model did not resolve the failure: %q", got)
+	}
+}
+
+// TestBannerClearsRetryPromptAfterRetry renders the page so the banner text is
+// what the operator reads: the retired failure card stays, its retry prompt
+// does not.
+func TestBannerClearsRetryPromptAfterRetry(t *testing.T) {
+	failed := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", SourceUrl: "https://example.test/model.gguf", State: "failed"}
+	retry := failed
+	retry.TaskId, retry.OutName = "model-2", "model-2"
+	s := preparingDownloadsState()
+	s.downloads = []core.DownloadTask{failed, retry}
+
+	retry.State = "downloading"
+	s.downloads[1] = retry
+	tt := ui.NewTester(s.downloadsPageView, 1120, 2400)
+	if !tt.HasText("正在下载 1 项资源…") || tt.HasText("可在下方重新创建") {
+		t.Fatal(tt.Texts())
+	}
+
+	retry.State = "done"
+	s.downloads[1] = retry
+	s.registry.Engines = []core.EngineAsset{{Name: "llama"}}
+	s.registry.Models = []core.ModelAsset{{Name: "model", Available: true}}
+	tt = ui.NewTester(s.downloadsPageView, 1120, 2400)
+	if tt.HasText("可在下方重新创建") || !tt.HasText("可返回任务页开始测评") {
+		t.Fatal(tt.Texts())
+	}
+	if !tt.HasText("重新创建下载任务") {
+		t.Fatal("historical failed card left the list")
+	}
+}
+
 // TestDownloadGuideBannerKeepsTheWayBack checks the banner still returns to the
-// task page and no longer presents a second filled primary action.
+// task page.
 func TestDownloadGuideBannerKeepsTheWayBack(t *testing.T) {
 	s := preparingDownloadsState()
 	tt := ui.NewTester(s.downloadsPageView, 1120, 2000)
@@ -77,5 +145,82 @@ func TestDownloadGuideBannerKeepsTheWayBack(t *testing.T) {
 	click(t, tt, "返回任务")
 	if s.selected != "dashboard" {
 		t.Fatal(s.selected)
+	}
+}
+
+// buttonFill reports whether the button showing label paints the theme accent,
+// which is what separates primaryButton from button in the rendered frame.
+func buttonFill(tt *ui.Tester, label string, accent ui.Color) (bool, bool) {
+	r, ok := tt.Find(label)
+	if !ok {
+		return false, false
+	}
+	img := tt.Image()
+	y := int(r.Y + r.H/2)
+	for _, x := range []int{int(r.X) + 4, int(r.X+r.W) - 4} {
+		o := img.PixOffset(x, y)
+		if img.Pix[o] == accent.R && img.Pix[o+1] == accent.G && img.Pix[o+2] == accent.B {
+			return true, true
+		}
+	}
+	return false, true
+}
+
+// TestNewDownloadCardKeepsOnePrimaryAction proves the form highlights at most
+// one download action and that the guide stays a secondary control.
+func TestNewDownloadCardKeepsOnePrimaryAction(t *testing.T) {
+	cases := []struct {
+		name          string
+		engines       []core.EngineAsset
+		models        []core.ModelAsset
+		downloads     []core.DownloadTask
+		primaryEngine bool
+		primaryModel  bool
+	}{
+		{name: "missing both", primaryEngine: true},
+		{name: "missing model", engines: []core.EngineAsset{{Name: "llama"}}, primaryModel: true},
+		{name: "missing engine", models: []core.ModelAsset{{Name: "model", Available: true}}, primaryEngine: true},
+		{
+			name: "both ready", engines: []core.EngineAsset{{Name: "llama"}},
+			models: []core.ModelAsset{{Name: "model", Available: true}},
+		},
+		{
+			name: "engine downloading", downloads: []core.DownloadTask{
+				{TaskId: "engine", Kind: "engine", State: "downloading"},
+				{TaskId: "model", Kind: "model", State: "downloading"},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := testState()
+			s.progress.NextAction = "prepare_candidate"
+			s.registry.Engines, s.registry.Models, s.downloads = tc.engines, tc.models, tc.downloads
+			var accent ui.Color
+			tt := ui.NewTester(func(c *ui.Context) {
+				accent = c.Theme().Accent
+				s.downloadsPageView(c)
+			}, 1120, 2400)
+
+			for _, probe := range []struct {
+				label string
+				want  bool
+			}{
+				{"返回任务", false},
+				{"下载引擎", tc.primaryEngine},
+				{"下载模型", tc.primaryModel},
+			} {
+				filled, found := buttonFill(tt, probe.label, accent)
+				if !found {
+					t.Fatalf("%s button missing: %v", probe.label, tt.Texts())
+				}
+				if filled != probe.want {
+					t.Fatalf("%s filled = %v, want %v", probe.label, filled, probe.want)
+				}
+			}
+			if tc.primaryEngine && tc.primaryModel {
+				t.Fatal("fixture asks for two primary download actions")
+			}
+		})
 	}
 }

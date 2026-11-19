@@ -41,6 +41,39 @@ func (s *viewState) newDownloadsView(c *ui.Context) {
 	})
 }
 
+// downloadPrimaryKind names the one download action inside 新建下载任务 that
+// keeps the filled primary style. Highlighting the missing asset first keeps a
+// single visual focal point; with nothing missing or a download already running
+// for it, both actions stay secondary.
+func (s *viewState) downloadPrimaryKind() string {
+	assets := s.availableTaskAssets()
+	if !assets.engine && !s.downloadActive("engine") {
+		return "engine"
+	}
+	if !assets.model && !s.downloadActive("model") {
+		return "model"
+	}
+	return ""
+}
+
+func (s *viewState) downloadActive(kind string) bool {
+	for _, task := range s.downloads {
+		if task.Kind == kind && task.State == "downloading" {
+			return true
+		}
+	}
+	return false
+}
+
+// downloadAction renders one download submit control with the emphasis chosen
+// by downloadPrimaryKind.
+func (s *viewState) downloadAction(c *ui.Context, kind, label string) ui.Element {
+	if s.downloadPrimaryKind() == kind {
+		return primaryButton(c, label)
+	}
+	return button(c, label)
+}
+
 func (s *viewState) modelAssetsView(c *ui.Context) {
 	heading(c, "模型", 3)
 	s.catalogChoices(c, core.CatalogModel, core.CurrentPlatform())
@@ -55,7 +88,7 @@ func (s *viewState) modelDownloadForm(c *ui.Context) {
 	componentFold(c, "需要凭据时", func() {
 		field(c, "凭据环境变量名（可选）", &s.tokenEnv).Description("仅填写变量名称，不填写凭据值。").Error(tokenNameError(s.tokenEnv))
 	})
-	if primaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || strings.TrimSpace(s.modelURL) == "").Clicked() {
+	if s.downloadAction(c, "model", "下载模型").AlignSelf(ui.Start).Disabled(s.busy || strings.TrimSpace(s.modelURL) == "").Clicked() {
 		s.acquireModel()
 	}
 }
@@ -86,7 +119,7 @@ func (s *viewState) engineDownloadView(c *ui.Context) {
 		field(c, "引擎 URL", &s.engineURL).Description("必填；引擎归档下载地址。").Error(downloadURLError(s.engineURL))
 	})
 	catalogDetails(c, s.engineURL)
-	primaryButton(c, "下载引擎").AlignSelf(ui.Start).Disabled(s.busy || strings.TrimSpace(s.engineURL) == "").OnClick(func() {
+	s.downloadAction(c, "engine", "下载引擎").AlignSelf(ui.Start).Disabled(s.busy || strings.TrimSpace(s.engineURL) == "").OnClick(func() {
 		s.acquireEngine(strings.TrimSpace(s.engineURL), "")
 	})
 }

@@ -98,10 +98,6 @@ func (s *viewState) activeDownloadCount() int {
 	return s.countDownloads("downloading")
 }
 
-func (s *viewState) failedDownloadCount() int {
-	return s.countDownloads("failed")
-}
-
 func (s *viewState) countDownloads(state string) int {
 	count := 0
 	for _, task := range s.downloads {
@@ -110,6 +106,40 @@ func (s *viewState) countDownloads(state string) int {
 		}
 	}
 	return count
+}
+
+// unresolvedDownloadFailures counts failed tasks that still need the operator.
+// Historical failure cards stay in the list, so a failed task stops counting
+// once its asset is available, a download of that kind is running, or a newer
+// task for the same source succeeded.
+func (s *viewState) unresolvedDownloadFailures() int {
+	assets := s.availableTaskAssets()
+	count := 0
+	for _, task := range s.downloads {
+		if task.State != "failed" || s.downloadResolved(task, assets) {
+			continue
+		}
+		count++
+	}
+	return count
+}
+
+func (s *viewState) downloadResolved(failed core.DownloadTask, assets taskAssets) bool {
+	if (failed.Kind == "engine" && assets.engine) || (failed.Kind == "model" && assets.model) {
+		return true
+	}
+	if s.downloadActive(failed.Kind) {
+		return true
+	}
+	for _, task := range s.downloads {
+		if task.Kind != failed.Kind || task.SourceUrl != failed.SourceUrl || task.TaskId == failed.TaskId {
+			continue
+		}
+		if task.State == "downloading" || task.State == "done" {
+			return true
+		}
+	}
+	return false
 }
 
 // downloadTaskGuide is a lightweight banner above the download cards. It keeps
@@ -130,12 +160,13 @@ func (s *viewState) downloadTaskGuide(c *ui.Context) {
 }
 
 // downloadGuideStatus reports the reason the task page still needs resources.
-// Active and failed downloads take precedence over the readiness sentence so the
-// banner never contradicts the task cards it sits above.
+// Active downloads and unresolved failures take precedence over the readiness
+// sentence so the banner never contradicts the task cards it sits above; a
+// failure already retried successfully no longer asks for another retry.
 func (s *viewState) downloadGuideStatus() string {
 	assets := s.availableTaskAssets()
 	active := s.activeDownloadCount()
-	failed := s.failedDownloadCount()
+	failed := s.unresolvedDownloadFailures()
 	switch {
 	case active > 0 && failed > 0:
 		return fmt.Sprintf("正在下载 %d 项资源，另有 %d 项下载失败。", active, failed)
