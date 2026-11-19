@@ -149,7 +149,7 @@ final class PreviewUITests: XCTestCase {
         click("重置场景")
         click("下载")
         // An empty downloads page omits the task card and keeps only the
-        // new-download form (studio/docs/pages.md:144, downloads.go:29-31).
+        // new-download form (studio/docs/pages.md, downloads.go).
         expectText("新建下载任务")
         XCTAssertFalse(text("下载任务").exists, "Empty downloads page omits the task card")
         XCTAssertFalse(taskCard("model").exists)

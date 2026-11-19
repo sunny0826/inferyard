@@ -122,7 +122,7 @@ type taskCardOptions struct {
 	color             ui.Color // 与 state 对应的状态色。
 	active            bool
 	metrics           []taskMetric
-	note              string // 卡片级的缺测或口径说明，只出现一次。
+	status            string // 无遥测时替代指标网格的单行状态。
 	notice            func() // 失败摘要，保持可见而不藏进折叠区。
 	actions, details  func()
 }
@@ -137,9 +137,6 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 					ui.Text(c, options.kind).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 				}
 			})
-			if options.active {
-				activitySpinner(c, "下载中")
-			}
 			statusBadge(c, options.state, options.color).Tooltip(map[string]string{
 				"下载中": "任务正在下载，总量未知。",
 				"已结束": "下载任务已结束。",
@@ -147,25 +144,28 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 				"已取消": "下载任务已取消，输出目录保留。",
 			}[options.state])
 		})
-		columns := max(1, min(3, len(options.metrics)))
-		width, _ := c.Size()
-		if width < 900 || c.Preferences().TextScale > 1 {
-			columns = 1
-		}
-		ui.Grid(c).Columns(columns).Gap(t.Density.Stack).Children(func() {
-			for _, metric := range options.metrics {
-				ui.Column(c).Gap(t.Density.Tight).Children(func() {
-					ui.Text(c, metric.label).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted).Tooltip(metric.reason)
-					ui.Text(c, metric.value).Bold().FontSize(t.Type.Metric)
-					if metric.reason != "" {
-						ui.Text(c, metric.reason).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
-					}
-				})
+		if options.status != "" {
+			ui.Text(c, options.status).TextColor(c.Theme().TextMuted)
+		} else {
+			columns := max(1, min(3, len(options.metrics)))
+			width, _ := c.Size()
+			if width < 900 || c.Preferences().TextScale > 1 {
+				columns = 1
 			}
-		})
-		if options.note != "" {
-			ui.Text(c, options.note).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
+			ui.Grid(c).Columns(columns).Gap(t.Density.Stack).Children(func() {
+				for _, metric := range options.metrics {
+					ui.Column(c).Gap(t.Density.Tight).Children(func() {
+						ui.Text(c, metric.label).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted).Tooltip(metric.reason)
+						ui.Text(c, metric.value).Bold().FontSize(t.Type.Metric)
+						if metric.reason != "" {
+							ui.Text(c, metric.reason).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
+						}
+					})
+				}
+			})
 		}
+		// The indeterminate bar already marks the task as in progress; a second
+		// spinner beside the name would repeat the same signal.
 		if options.active {
 			progressBar(c, -1, "下载任务活动").Height(t.Density.Tight)
 		}

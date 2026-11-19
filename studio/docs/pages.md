@@ -150,7 +150,11 @@ Fixed catalogue addresses and the download channel validators remain authoritati
 engine channel downloads and unpacks llama.cpp archives, preserving sibling libraries and
 only in-archive relative symlinks; the model channel accepts a single GGUF at a fixed revision.
 
-Empty pages omit the task card; existing tasks list engines before models. Download directory
+Empty pages omit the task card; existing tasks keep their card above the new-download form and
+list engines before models. A lightweight return banner above the cards follows the task states:
+it never claims the assets are ready while a download is running or has failed. Engine archive
+tasks report neither bytes nor rate, so their card shows one status line and one activity bar;
+raw values stay in the task's observation fold. Download directory
 names come from Settings (defaults `model` / `engine`); occupied names gain a `-2`/`-3` suffix.
 Task details show the actual directory. Allocation stops after 1,000 occupied candidates with
 `output_name_exhausted`; new binding directories use the same limit. Existing files are never

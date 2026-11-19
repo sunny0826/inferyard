@@ -23,15 +23,12 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 	}
 	s.header(c, "下载")
 	s.downloadTaskGuide(c)
-	if s.preparingTask() {
-		s.newDownloadsView(c)
-	}
+	// 下载任务 stays pinned above the new-download form whenever any task
+	// exists, so the page order never depends on whether the task is preparing.
 	if len(s.downloads) > 0 {
 		card(c, "下载任务", func() { s.downloadsView(c) })
 	}
-	if !s.preparingTask() {
-		s.newDownloadsView(c)
-	}
+	s.newDownloadsView(c)
 	s.catalogView(c)
 }
 
