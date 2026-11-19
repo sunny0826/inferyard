@@ -18,7 +18,7 @@ For a first benchmark:
 2. On Tasks, select the model and engine. Keep both default task sets for a standard benchmark and choose **开始测评** (Start benchmark). Studio can start its own local service or bind a service you started. The CLI checks the live identity before running.
 3. Open **查看报告** (View report) after the runs finish. The report shows each run separately. To check evidence integrity later, use the CLI on the [original run directories](../cli/docs/guides/onboarding-and-scope.md#默认测评范围).
 
-Choose **任务** to return to the current task with its progress and selections. **新任务** starts a new round and asks for confirmation when work is in flight.
+Choose **任务** to return to the current task with its progress and selections. **新任务** starts a new round; it is disabled with a hint while work is in flight, during environment setup, or on the idle setup page itself, so cancelling and restarting happen on the task page.
 
 | Page | Purpose |
 | --- | --- |
@@ -140,7 +140,8 @@ selector is a shortcut to set a starting state, while normal page buttons drive 
 - **Downloads, settings, and recovery:** Downloads can complete, be cancelled, or fail and be
   retried; completed assets appear in Models. Settings are saved in memory, `Browse…` writes a
   simulated path without opening a native dialog, and download directory names affect later
-  tasks. “下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务”, “取消运行”,
+  tasks. “下次操作模拟失败” injects a one-shot failure for testing recovery. “新任务” stays disabled
+  while work is in flight, like production, so cancelling happens on the task page. “取消运行”,
   “取消任务”, “停止服务”, and “取消下载” open the same inline confirmation as production before
   cancelling work, while retaining settings, downloads, and existing results. “重置场景”
   restores all fixture data, form values, table selection, and collapsed sections, and discards

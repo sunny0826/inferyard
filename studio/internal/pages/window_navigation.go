@@ -6,12 +6,22 @@ import (
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 
+// navigateTo is the single page-switch entry: it drops an armed confirmation,
+// because a prompt belongs to the page that opened it. Sidebar items and every
+// header popover jump go through it, so a jump never leaves an armed click on
+// the page that appears next.
+func (s *viewState) navigateTo(page, detail string) {
+	s.pendingDestructive = destructiveRequest{}
+	s.selected, s.detailID = page, detail
+	s.promptPage = page
+}
+
 // Page navigation also requests engine verification on an otherwise quiet workspace.
 func (s *viewState) selectPage(id string) {
 	if s.selected == id {
 		return
 	}
-	s.selected = id
+	s.navigateTo(id, s.detailID)
 	if id != "models" || s.service == nil {
 		return
 	}
@@ -50,39 +60,31 @@ func (s *viewState) leftNav(c *ui.Context) {
 	})
 }
 
-// newTaskEntry keeps the sidebar creation entry at one full-width geometry in
-// every state. Starting a task while work is in flight still asks for
-// confirmation, but the confirm prompt never reshapes the entry into a
-// half-width outline button inside the 205px sidebar. The idle setup screen
-// already offers the same start, so the entry stays disabled there instead of
-// duplicating it.
+// newTaskEntry draws the sidebar creation entry at one full-width geometry in
+// every state and never turns it into a destructive control. The 205 DIP column
+// cannot host an inline confirmation without pushing the navigation items down,
+// so a state that has nothing to create disables the entry with a hint instead:
+// environment setup happens on the task page, and an active run is cancelled
+// there before a new round starts.
 func (s *viewState) newTaskEntry(c *ui.Context) {
-	if s.newTaskEntryDisabled() {
-		button(c, "新任务").FillWidth().Disabled(true).
-			Description("当前已在任务准备页，请在页面内开始测评")
-		return
-	}
-	if s.workInFlight() {
-		if s.destructiveAction(c, destructiveOption{
-			kind: destructiveNewTask, label: "新任务", confirmLabel: "确认开始新任务",
-			prompt:  "将取消正在进行的测评；证据保留在结果目录，本轮不会生成报告。",
-			compact: true, fillWidth: true, persist: true,
-		}) {
-			s.newBenchmark()
-		}
+	if hint := s.newTaskEntryHint(); hint != "" {
+		button(c, "新任务").FillWidth().Disabled(true).Description(hint)
 		return
 	}
 	button(c, "新任务").FillWidth().OnClick(func() { s.newBenchmark() })
 }
 
-// newTaskEntryDisabled reports whether the entry has nothing to create: the
-// idle setup screen is already open and is the place to start the task.
-func (s *viewState) newTaskEntryDisabled() bool {
-	if s.workInFlight() || s.selected != "dashboard" || s.detailID != "" || s.resumeSource != nil {
-		return false
+// newTaskEntryHint explains why the entry cannot start a round right now; an
+// empty hint means it can.
+func (s *viewState) newTaskEntryHint() string {
+	switch {
+	case s.environmentMissing():
+		return "先完成环境准备，才能进行测评"
+	case s.workInFlight():
+		return "测评进行中，请在任务页取消后再新建任务"
+	case s.selected == "dashboard" && s.detailID == "" && s.resumeSource == nil &&
+		(s.speed == nil || s.speed.current == nil) && s.preparingTask():
+		return "已在任务准备页，请在页面内开始测评"
 	}
-	if s.speed != nil && s.speed.current != nil {
-		return false
-	}
-	return s.preparingTask()
+	return ""
 }

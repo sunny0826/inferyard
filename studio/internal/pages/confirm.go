@@ -12,7 +12,6 @@ import (
 type destructiveKind string
 
 const (
-	destructiveNewTask        destructiveKind = "new_task"
 	destructiveCancelRun      destructiveKind = "cancel_run"
 	destructiveStopEngine     destructiveKind = "stop_engine"
 	destructiveStopOrphan     destructiveKind = "stop_orphan"
@@ -48,23 +47,6 @@ type destructiveOption struct {
 	confirmLabel string
 	prompt       string
 	disabled     bool
-	compact      bool
-	// fillWidth keeps the action and its inline prompt at the width of the
-	// column that holds them, for a sidebar entry that must not change shape
-	// when it turns into a confirmation.
-	fillWidth bool
-	// persist keeps the action visible while its prompt is open, so a compact
-	// column such as the sidebar shows the prompt below a stable entry instead
-	// of replacing it.
-	persist bool
-}
-
-// fullWidth stretches an action to its column when the caller asks for it.
-func fullWidth(e ui.Element, fill bool) ui.Element {
-	if fill {
-		return e.FillWidth()
-	}
-	return e
 }
 
 // destructiveAction renders a danger-styled action and asks for one more
@@ -78,39 +60,20 @@ func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) b
 		s.dropStaleStopPrompt()
 	}
 	pending := s.pendingDestructive == request
-	entry := func() ui.Element {
-		return fullWidth(dangerButton(c, option.label), option.fillWidth).AlignSelf(ui.Start).Disabled(option.disabled)
-	}
 	if !pending {
-		if entry().Clicked() {
+		if dangerButton(c, option.label).AlignSelf(ui.Start).Disabled(option.disabled).Clicked() {
 			s.pendingDestructive = request
 		}
 		return false
 	}
-	if option.persist {
-		// A compact column keeps its entry in place: the prompt renders below a
-		// stable control instead of replacing it. A second press closes the
-		// prompt, like 返回.
-		if entry().Clicked() {
-			s.pendingDestructive = destructiveRequest{}
-			return false
-		}
-	}
 	confirmed, cancelled := false, false
-	panel := ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Inset).Background(c.Theme().SurfaceHover).Radius(t.Radius.Inset)
-	if option.fillWidth {
-		panel.FillWidth()
-	}
-	panel.Children(func() {
-		prompt := ui.Text(c, option.prompt)
-		if option.compact {
-			prompt.FontSize(t.Type.Caption)
-		}
+	ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Inset).Background(c.Theme().SurfaceHover).Radius(t.Radius.Inset).Children(func() {
+		ui.Text(c, option.prompt)
 		ui.Row(c).Wrap().Gap(t.Density.Row).Children(func() {
-			if fullWidth(primaryButton(c, option.confirmLabel), option.fillWidth).AlignSelf(ui.Start).Clicked() {
+			if primaryButton(c, option.confirmLabel).AlignSelf(ui.Start).Clicked() {
 				confirmed = true
 			}
-			if fullWidth(button(c, "返回"), option.fillWidth).AlignSelf(ui.Start).Clicked() {
+			if button(c, "返回").AlignSelf(ui.Start).Clicked() {
 				cancelled = true
 			}
 		})
@@ -150,8 +113,6 @@ func (s *viewState) dropStaleStopPrompt() {
 // at each call site, so every gate gets the same re-check.
 func (s *viewState) destructiveTargetValid(request destructiveRequest) bool {
 	switch destructiveKind(request.kind) {
-	case destructiveNewTask:
-		return s.workInFlight()
 	case destructiveCancelRun:
 		return s.cancelTargetActive(request.id)
 	case destructiveStopEngine:
@@ -259,6 +220,22 @@ func (s *viewState) downloadDownloading(id string) bool {
 		}
 	}
 	return false
+}
+
+// clearPromptOnNavigation drops an armed confirmation when the visible page
+// changes. A prompt belongs to the page that opened it: a sidebar click, a
+// header popover jump or a run-detail switch must not leave it clickable on
+// whatever page appears next.
+func (s *viewState) clearPromptOnNavigation() {
+	page := s.selected
+	if s.selected == "dashboard" && s.detailID != "" {
+		page += "/" + s.detailID
+	}
+	if page == s.promptPage {
+		return
+	}
+	s.promptPage = page
+	s.pendingDestructive = destructiveRequest{}
 }
 
 // workInFlight reports whether starting a new task would cancel work the user

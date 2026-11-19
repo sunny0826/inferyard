@@ -63,7 +63,7 @@ The completion summary never mixes in earlier workspace runs.
 Duration and unfinished batch plans display their blocking reason without an execution button.
 
 Top-right engine and task icons pulse while active, respecting Reduce Motion.
-Hover, click, or press Enter to open their panels; Escape dismisses them.
+Click or press Enter to open their panels; Escape or an outside click dismisses them.
 The engine panel shows status and start/stop controls on every page. Starting requires
 a prepared candidate and only starts the service; it does not bind or run a benchmark.
 The task panel separates executing and waiting tasks. Active downloads have a separate

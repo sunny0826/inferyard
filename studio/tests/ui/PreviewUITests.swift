@@ -298,6 +298,7 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(stop.isEnabled, "Running tasks must protect the engine")
         keepScreenshot("Engine panel remains available during benchmark")
         engine.click()
+        wait("engine panel closed after a second click", timeout: 5) { !self.app.buttons["停止引擎"].exists }
         let queue = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "任务 · 执行 1 · 等待 ")).firstMatch
         XCTAssertTrue(queue.exists)
         queue.click()
@@ -345,14 +346,11 @@ final class PreviewUITests: XCTestCase {
         engine.click()
         expectExists(app.buttons["开启引擎"], timeout: 5)
         keepScreenshot("Engine panel opened by clicking the status control")
-        engine.click()
-        wait("second click closes the panel", timeout: 5) { !self.app.buttons["开启引擎"].exists }
-        engine.click()
-        expectExists(app.buttons["开启引擎"], timeout: 5)
         click("开启引擎")
         let running = app.buttons["引擎 · 运行中"]
         expectExists(running, timeout: 5)
-        running.click()
+        // The panel stays open across the status change, so it already shows
+        // the stop control; closing and reopening it would hide that.
         expectExists(app.buttons["停止引擎"], timeout: 5)
         XCTAssertFalse(app.buttons["查看实时详情"].exists, "Engine startup must not start a benchmark")
         keepScreenshot("Engine running icon and click controls")

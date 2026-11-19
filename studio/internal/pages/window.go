@@ -97,7 +97,7 @@ type viewState struct {
 	checks                                                                              core.EngineCheckOverview
 	installationPath, localPID, localEndpoint, localBindingTask                         string
 	model                                                                               string
-	announcedPage                                                                       string
+	announcedPage, promptPage                                                           string
 	announcedErrors                                                                     map[string]bool
 	refreshing                                                                          bool
 	initDir, engine, process, bindEndpoint, candidate, cliInstallStatus, refreshFailure string
@@ -326,6 +326,7 @@ func (s *viewState) view(c *ui.Context) {
 func (s *viewState) contentView(c *ui.Context) {
 	s.consumeFeedback(c)
 	s.dropStaleStopPrompt()
+	s.clearPromptOnNavigation()
 	ui.Column(c).Grow(1).MinWidth(0).Fill().Padding(sidebar.HeaderHeight(c), 0, 0, 0).Children(func() {
 		s.cornerStatus(c)
 		ui.Scroll(c.Key(s.selected)).Grow(1).TrackScroll(s.pageScroll()).Padding(tokens(c).Density.Page).Children(func() {
