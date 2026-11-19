@@ -63,15 +63,22 @@ func (s *viewState) leftNav(c *ui.Context) {
 // newTaskEntry draws the sidebar creation entry at one full-width geometry in
 // every state and never turns it into a destructive control. The 205 DIP column
 // cannot host an inline confirmation without pushing the navigation items down,
-// so a state that has nothing to create disables the entry with a hint instead:
-// environment setup happens on the task page, and an active run is cancelled
-// there before a new round starts.
+// so a state that cannot start a round disables the entry with a hint instead.
+// A failed binding is the exception: nothing is running, so the entry stays
+// enabled and one click abandons the failed round and returns to setup.
 func (s *viewState) newTaskEntry(c *ui.Context) {
-	if hint := s.newTaskEntryHint(); hint != "" {
-		button(c, "新任务").FillWidth().Disabled(true).Description(hint)
+	hint := s.newTaskEntryHint()
+	if hint == "" {
+		button(c, "新任务").FillWidth().OnClick(func() { s.newBenchmark() })
 		return
 	}
-	button(c, "新任务").FillWidth().OnClick(func() { s.newBenchmark() })
+	// A disabled control takes no pointer and no focus, and MyGo shows a tip
+	// only for an enabled anchor: the hint lives on the wrapping row, so a mouse
+	// user reads the reason on hover and a reader gets the same words as the
+	// entry's description. The row keeps the column width, so nothing shifts.
+	ui.Column(c).FillWidth().Tooltip(hint).Children(func() {
+		button(c, "新任务").FillWidth().Disabled(true).Description(hint)
+	})
 }
 
 // newTaskEntryHint explains why the entry cannot start a round right now; an
@@ -80,6 +87,8 @@ func (s *viewState) newTaskEntryHint() string {
 	switch {
 	case s.environmentMissing():
 		return "先完成环境准备，才能进行测评"
+	case s.abandonableBinding():
+		return ""
 	case s.workInFlight():
 		return "测评进行中，请在任务页取消后再新建任务"
 	case s.selected == "dashboard" && s.detailID == "" && s.resumeSource == nil &&
@@ -87,4 +96,18 @@ func (s *viewState) newTaskEntryHint() string {
 		return "已在任务准备页，请在页面内开始测评"
 	}
 	return ""
+}
+
+// abandonableBinding reports a round halted at the binding stage with nothing
+// left to cancel: the service or the binding failed, no run is in flight and no
+// speciality measurement is active. Starting a new task then only returns to
+// model and engine selection, which is the only way out of that dead end.
+func (s *viewState) abandonableBinding() bool {
+	if s.task.stage != "bind" || s.busy || s.newTaskPending || s.running() != nil {
+		return false
+	}
+	if s.speed != nil && s.speed.current != nil && s.speed.current.active() {
+		return false
+	}
+	return s.task.failure != nil || s.engineState.State == "failed"
 }

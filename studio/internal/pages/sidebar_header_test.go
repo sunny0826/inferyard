@@ -2,6 +2,7 @@ package pages
 
 import (
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -101,6 +102,65 @@ func TestSidebarNewTaskDisabledStatesDoNotReset(t *testing.T) {
 		if resets != 0 || s.newTaskPending || s.selected != before || tt.HasText("确认开始新任务") {
 			t.Fatalf("%s: disabled entry acted: resets=%d pending=%v page=%q %v", name, resets, s.newTaskPending, s.selected, tt.Texts())
 		}
+	}
+}
+
+// A disabled entry must still explain itself to a mouse user: the hint lives
+// on the wrapping column, because a disabled control takes no pointer.
+func TestSidebarNewTaskDisabledHintShowsOnHover(t *testing.T) {
+	s := readyState("dashboard")
+	s.progress = &inferyard.WorkspaceProgress{NextAction: "prepare_candidate"}
+	tt := sidebarHeaderState(s)
+	tt.Frame()
+	r := taskLabelBox(t, tt)
+	tt.Move(r.X+r.W/2, r.Y+r.H/2)
+	tt.Advance(time.Second)
+	tt.Frame()
+	if !tt.HasText("已在任务准备页") {
+		t.Fatalf("disabled entry showed no hover hint: %v", tt.Texts())
+	}
+	if r2 := taskLabelBox(t, tt); r2 != r {
+		t.Fatalf("hint shifted the entry: %+v then %+v", r, r2)
+	}
+}
+
+// A round halted at binding has nothing left to cancel: the entry must stay
+// enabled so one click abandons it and returns to model and engine selection.
+func TestSidebarNewTaskAbandonsFailedBinding(t *testing.T) {
+	s := readyState("dashboard")
+	s.task = benchmarkTask{stage: "bind", failure: core.Err("engine_start_failed")}
+	s.engineState = core.EngineState{State: "failed"}
+	tt := sidebarHeaderState(s)
+	tt.Frame()
+
+	if err := tt.Click("新任务"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if s.newTaskPending || s.task.stage != "prepare_candidate" || s.selected != "dashboard" || s.detailID != "" {
+		t.Fatalf("failed binding was not abandoned: pending=%v stage=%q page=%q", s.newTaskPending, s.task.stage, s.selected)
+	}
+	if !tt.HasText("开始测评") && s.task.stage != "prepare_candidate" {
+		t.Fatalf("abandon did not return to setup: %v", tt.Texts())
+	}
+}
+
+// The same entry stays disabled while the failed round still has something to
+// cancel, so abandoning never hides in-flight work.
+func TestSidebarNewTaskStaysDisabledWhileBindingStillRuns(t *testing.T) {
+	s := readyState("dashboard")
+	s.task = benchmarkTask{stage: "bind", failure: core.Err("engine_start_failed")}
+	s.tasks = []core.RunTask{{TaskId: "run", State: "running"}}
+	tt := sidebarHeaderState(s)
+	if s.newTaskEntryHint() == "" {
+		t.Fatal("running round left the entry enabled")
+	}
+	if err := tt.Click("新任务"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if s.newTaskPending || s.task.stage != "bind" {
+		t.Fatalf("entry acted while a run was in flight: %+v", s.task.stage)
 	}
 }
 

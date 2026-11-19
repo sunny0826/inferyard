@@ -12,7 +12,12 @@ Models, Downloads, Device, and Settings.
 The sidebar's “任务” (Task) entry switches to the current task page without resetting,
 cancelling or confirming: an active run keeps its progress, and an idle task page keeps
 the chosen model, engine and evaluation sets. “新任务” (New task) also opens the task
-page but resets the round: it cancels and drains in-flight work after one confirmation.
+page but resets the round. It keeps one full-width secondary style and never asks for
+confirmation inside the 205 DIP sidebar: while a run, a preparation or a specialty
+measurement is in flight, during environment setup, and on the idle setup page it is
+disabled and names the reason on hover, so cancelling happens on the task page. A round
+halted at binding with nothing left to cancel keeps the entry enabled: one click abandons
+that failed round and returns to model and engine selection.
 
 | Page | Purpose |
 | --- | --- |
