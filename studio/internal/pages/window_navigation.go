@@ -100,9 +100,14 @@ func (s *viewState) newTaskEntryHint() string {
 // service transition, a queued or cancelling task, a page action or an active
 // specialty measurement. A round halted by a failure is not active work: the
 // stage stays set after the run, the binding or the report failed, and the
-// entry must stay usable so the user can always leave that dead end.
+// entry must stay usable so the user can always leave that dead end. A failed
+// round whose engine is still starting or stopping is not halted yet: the
+// transition owns the entry until it settles.
 func (s *viewState) roundWorkActive() bool {
 	if s.busy || s.newTaskPending || s.binding || s.running() != nil || s.queueActivity().active() {
+		return true
+	}
+	if s.engineState.State == "starting" || s.engineState.State == "stopping" {
 		return true
 	}
 	if s.speed != nil && s.speed.current != nil && s.speed.current.active() {

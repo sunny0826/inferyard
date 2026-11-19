@@ -176,6 +176,28 @@ func TestSidebarNewTaskExitsFailedRound(t *testing.T) {
 	}
 }
 
+// A failed round whose engine is still starting or stopping is not halted yet:
+// the transition owns the entry, so a click cannot interrupt engine startup or
+// shutdown from another page.
+func TestSidebarNewTaskDisabledWhileEngineTransitions(t *testing.T) {
+	for _, state := range []string{"starting", "stopping"} {
+		s := readyState("reports")
+		s.task = benchmarkTask{stage: "bind", failure: core.Err("engine_start_failed")}
+		s.engineState = core.EngineState{State: state, Pid: 42}
+		if s.newTaskEntryHint() == "" {
+			t.Fatalf("%s engine left the entry enabled", state)
+		}
+		tt := sidebarHeaderState(s)
+		if err := tt.Click("新任务"); err != nil {
+			t.Fatal(state, err)
+		}
+		tt.Frame()
+		if s.newTaskPending || s.selected != "reports" || s.task.stage != "bind" {
+			t.Fatalf("%s engine: entry acted: pending=%v page=%q stage=%q", state, s.newTaskPending, s.selected, s.task.stage)
+		}
+	}
+}
+
 // Active work keeps the entry disabled: a run, a queued or cancelling task, a
 // page action, a binding in progress, and an active specialty measurement.
 func TestSidebarNewTaskDisabledWhileWorkRuns(t *testing.T) {
