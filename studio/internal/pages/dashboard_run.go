@@ -124,12 +124,50 @@ func (w *viewState) candidateView(c *ui.Context) {
 		w.startBenchmark()
 	}
 }
+
+// activeTaskFailure is the error that best explains the blocked step. The task
+// carries the failure of its own chain; the supervisor reports engine failures.
+func (s *viewState) activeTaskFailure() *core.ApiError {
+	if s.task.failure != nil {
+		return s.task.failure
+	}
+	return s.engineState.Error
+}
+
+// stepFailed reports a failed step even when neither the task nor the engine
+// recorded a cause code, so the failure is never silently hidden.
+func (s *viewState) stepFailed() bool {
+	return s.task.failure != nil || s.engineState.State == "failed"
+}
+
+// failureView renders the cause of the blocked step and the recovery path. It
+// never invents a cause: a failed state without a recorded error says so.
+func failureView(c *ui.Context, title string, e *core.ApiError, next string) {
+	ui.Text(c, title).Bold().TextColor(stateColor(c, stateDanger))
+	if e != nil {
+		errorView(c, e)
+	} else {
+		ui.Text(c, "未返回原因码。").TextColor(stateColor(c, stateDanger))
+	}
+	if next != "" {
+		ui.Text(c, next).TextColor(c.Theme().TextMuted)
+	}
+}
+
 func (w *viewState) serviceView(c *ui.Context) {
 	heading(c, "启动模型服务并绑定", 3)
 	if w.bindingStale {
 		ui.Text(c, "旧绑定已失效，请重启服务并重新绑定").TextColor(stateColor(c, stateDanger))
 	}
 	ui.Text(c, "由 Studio 托管模型服务，退出时自动停止。").TextColor(c.Theme().TextMuted)
+	if w.stepFailed() {
+		title := "模型服务失败"
+		if w.step() == 3 {
+			title = "连接并核验服务失败"
+		}
+		failureView(c, title, w.activeTaskFailure(),
+			"可重新启动服务；若进程已在本机运行，请展开「连接已有本机服务」选择，或用「高级：手动连接」填写 PID 与地址。")
+	}
 	switch w.engineState.State {
 	case "orphaned":
 		ui.Text(c, "遗留引擎：请先处理上次 Studio 留下的服务或无效记录。").TextColor(stateColor(c, stateWarning))
@@ -142,10 +180,6 @@ func (w *viewState) serviceView(c *ui.Context) {
 		ui.Text(c, fmt.Sprintf("运行中 · PID %d · %s", w.engineState.Pid, w.engineState.Endpoint)).TextColor(stateColor(c, stateSuccess))
 	case "stopping":
 		ui.Text(c, "正在停止服务…")
-	case "failed":
-		if w.engineState.Error != nil {
-			ui.Text(c, w.engineState.Error.Message).TextColor(stateColor(c, stateDanger))
-		}
 	}
 	candidateReady := w.candidate != "" || w.task.start.candidate != ""
 	if !candidateReady {
@@ -189,10 +223,9 @@ func (w *viewState) serviceView(c *ui.Context) {
 	if w.binding {
 		ui.Text(c, displayName(w.bindingBundle)+" · 绑定中…")
 	}
-	if w.failure == nil {
-		return
-	}
-	w.discoveryView(c, true)
+	// Local service binding stays reachable at every point of the bind stage; a
+	// failure is never a precondition for choosing an already running service.
+	componentFoldKeyed(c, "bind-discovered-services", "连接已有本机服务", func() { w.discoveryBody(c, true) })
 	componentFold(c, "高级：手动连接", func() {
 		heading(c, "连接已有进程", 3)
 		options := []string{}
@@ -213,6 +246,9 @@ func (w *viewState) serviceView(c *ui.Context) {
 }
 func (w *viewState) runView(c *ui.Context) {
 	heading(c, "运行当前测评题集", 3)
+	if w.stepFailed() && w.running() == nil {
+		failureView(c, "运行未完成", w.activeTaskFailure(), "处理原因后重试未完成的测评题集；已完成的题集结果会保留。")
+	}
 	if task := w.running(); task != nil {
 		value := -1.0
 		label := "正在运行，等待进度…（总量未知）"

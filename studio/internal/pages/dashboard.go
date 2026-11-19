@@ -115,6 +115,13 @@ func (s *viewState) conclusionView(c *ui.Context) {
 				ui.Text(c, b.Bundle+" · "+taskLabel(*task))
 				continue
 			}
+			// A failed task chain explains the active step; the recorded progress
+			// phase may still describe the pre-failure stage and would contradict
+			// Step 4. Report the failure instead of the stale phase.
+			if s.taskFailedBundle(b.Bundle) {
+				ui.Text(c, b.Bundle+" · 失败").TextColor(stateColor(c, stateDanger))
+				continue
+			}
 			ui.Text(c, b.Bundle+" · "+stateLabel(b.Phase))
 			if b.BlockedReason != nil {
 				if *b.BlockedReason == "no_local_model" && s.availableTaskAssets().model && s.preparingTask() {
@@ -127,7 +134,37 @@ func (s *viewState) conclusionView(c *ui.Context) {
 				ui.Text(c, human(*b.BlockedReason)).TextColor(color)
 			}
 		}
+		if s.task.failure != nil {
+			ui.Text(c, "当前任务已中止："+human(s.task.failure.Code)+"。原因与恢复操作见下方当前阶段。").TextColor(stateColor(c, stateDanger))
+		}
 	})
+}
+
+// serviceCardVisible keeps the model-service panel in the run step whenever no
+// run is active and the bound plan is actionable, including after a failure so
+// the service can be re-bound without leaving the page.
+func (s *viewState) serviceCardVisible() bool {
+	if s.running() != nil || (s.task.stage != "" && s.task.failure == nil) {
+		return false
+	}
+	b := s.active()
+	return b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil)
+}
+
+// taskFailedBundle reports whether bundle belongs to the failed task chain.
+func (s *viewState) taskFailedBundle(bundle string) bool {
+	if s.task.failure == nil {
+		return false
+	}
+	if len(s.task.bundles) == 0 {
+		return true
+	}
+	for _, name := range s.task.bundles {
+		if name == bundle {
+			return true
+		}
+	}
+	return false
 }
 func (s *viewState) stageView(c *ui.Context) {
 	action := ""
@@ -160,14 +197,17 @@ func (s *viewState) stageView(c *ui.Context) {
 			button(c, "查看设备页明细").OnClick(func() { s.selected = "device" })
 		})
 	case "prepare_candidate":
-		stepTrack(c, "3", termBenchmarkStage, func() { s.candidateView(c) })
+		stepTrack(c, "3", termBenchmarkStage, func() {
+			if s.stepFailed() {
+				failureView(c, termBenchmarkStage+"失败", s.activeTaskFailure(), "原因解决后可从本阶段重新开始；已完成的测评题集结果会保留。")
+			}
+			s.candidateView(c)
+		})
 	case "bind":
 		stepTrack(c, "4", "连接并核验服务", func() { s.serviceView(c) })
 	case "run", "resume":
-		if s.running() == nil && (s.task.stage == "" || s.task.failure != nil) {
-			if b := s.active(); b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil) {
-				card(c, "模型服务", func() { s.serviceView(c) })
-			}
+		if s.serviceCardVisible() {
+			card(c, "模型服务", func() { s.serviceView(c) })
 		}
 		stepTrack(c, "5", "运行", func() { s.runView(c) })
 	case "report":

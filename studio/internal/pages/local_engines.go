@@ -83,13 +83,56 @@ func (s *viewState) localSelectionError() string {
 	return ""
 }
 
+// localServiceChoice is one discovered endpoint that can fill the LM Studio
+// manual binding fields. Discovery never grants process ownership; the CLI
+// still re-verifies the identity during binding.
+type localServiceChoice struct {
+	pid      int64
+	name     string
+	endpoint string
+	models   int
+}
+
+// localServiceChoices lists discovered endpoints that expose a model catalogue
+// and have an unambiguous owner, so a one-click fill cannot paste an unknown
+// listener.
+func (s *viewState) localServiceChoices() []localServiceChoice {
+	choices := []localServiceChoice{}
+	for _, service := range s.discovery.Services {
+		if service.PID <= 0 {
+			continue
+		}
+		for _, endpoint := range service.Endpoints {
+			if endpoint.Models == nil || endpoint.AmbiguousListener || endpoint.URL == "" {
+				continue
+			}
+			choices = append(choices, localServiceChoice{pid: service.PID, name: service.ProcessName, endpoint: endpoint.URL, models: len(endpoint.Models)})
+		}
+	}
+	return choices
+}
+
+func (s *viewState) useDiscoveredService(choice localServiceChoice) {
+	s.localPID, s.localEndpoint = strconv.FormatInt(choice.pid, 10), choice.endpoint
+}
+
 func (s *viewState) localSelectionView(c *ui.Context) {
 	if e := s.localEngine(); e != nil {
 		ui.Text(c, e.Family+" · 每个测评题集单独连接服务；完成后再进入下一测评题集。").TextColor(c.Theme().TextMuted)
 		if e.Family == "lmstudio" {
 			ui.Text(c, "先在 LM Studio 启动后台服务并加载所选模型。Studio 只绑定已有服务；请使用后台服务 PID。")
-			field(c, "LM Studio 后台 PID", &s.localPID)
-			field(c, "LM Studio endpoint", &s.localEndpoint).Description("例如 http://127.0.0.1:1234")
+			if choices := s.localServiceChoices(); len(choices) > 0 {
+				ui.Text(c, "已发现的本机服务（点击填入 PID 与 endpoint）：").TextColor(c.Theme().TextMuted)
+				for _, choice := range choices {
+					label := fmt.Sprintf("PID %d · %s · %d 个模型", choice.pid, choice.endpoint, choice.models)
+					if name := displayName(choice.name); name != "" {
+						label += " · " + name
+					}
+					button(c, label).OnClick(func() { s.useDiscoveredService(choice) })
+				}
+			}
+			field(c, "LM Studio 后台 PID", &s.localPID).MaxWidth(360)
+			field(c, "LM Studio endpoint", &s.localEndpoint).MaxWidth(360).Description("例如 http://127.0.0.1:1234")
 		} else {
 			ui.Text(c, "Studio 管理本次启动的服务；退出时停止其进程树。")
 		}
@@ -144,8 +187,18 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 		}
 		card(c, "连接下一测评题集的 LM Studio 服务", func() {
 			ui.Text(c, emptyText(task.Bundle)+" · 请结束上一测评题集的服务，重新启动后台服务并加载同一模型。CLI 将重新校验身份。")
-			field(c, "新的后台 PID", &s.localPID)
-			field(c, "本机 endpoint", &s.localEndpoint)
+			if choices := s.localServiceChoices(); len(choices) > 0 {
+				ui.Text(c, "已发现的本机服务（点击填入 PID 与 endpoint）：").TextColor(c.Theme().TextMuted)
+				for _, choice := range choices {
+					label := fmt.Sprintf("PID %d · %s · %d 个模型", choice.pid, choice.endpoint, choice.models)
+					if name := displayName(choice.name); name != "" {
+						label += " · " + name
+					}
+					button(c, label).OnClick(func() { s.useDiscoveredService(choice) })
+				}
+			}
+			field(c, "新的后台 PID", &s.localPID).MaxWidth(360)
+			field(c, "本机 endpoint", &s.localEndpoint).MaxWidth(360)
 			pid, err := strconv.ParseInt(s.localPID, 10, 64)
 			button(c, "连接并继续此测评题集").Disabled(err != nil || pid <= 0 || s.localEndpoint == "" || urlError(s.localEndpoint) != "").OnClick(func() {
 				if s.simulate(previewLocalBinding{taskID: task.TaskId, pid: pid, endpoint: s.localEndpoint}) {

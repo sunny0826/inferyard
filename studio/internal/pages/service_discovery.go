@@ -78,6 +78,12 @@ func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
 	if bindable {
 		heading(c, "本机运行的服务", 3)
 	}
+	s.discoveryBody(c, bindable)
+}
+
+// discoveryBody renders the discovered services without a heading, so the task
+// page can carry the title on a disclosure that is always available.
+func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 	s.managedServiceView(c)
 	button(c, "刷新服务列表").Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
 	if s.discovering {
