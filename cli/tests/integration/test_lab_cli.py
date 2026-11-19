@@ -109,7 +109,7 @@ def test_probe_run_report_verify_and_offline_plan(lab_scenario, tmp_path, monkey
     assert config["model"]["local_path"] == loaded.config.to_dict()["model"]["local_path"]
 
 
-def test_successful_response_without_release_keeps_dirty(lab_scenario):
+def test_successful_response_without_release_keeps_dirty(lab_scenario, monkeypatch):
     command, deps, service = lab_scenario
     # Become busy after the initial idle; release never follows the complete response.
     original = service.__call__
@@ -121,7 +121,17 @@ def test_successful_response_without_release_keeps_dirty(lab_scenario):
         return result
 
     engine = command.config.config.to_dict()["engine"]["adapter"]
-    deps.adapter = lambda origin, secret: adapter_factory(engine)(
+    adapter_class = adapter_factory(engine)
+    original_wait = adapter_class.wait_idle
+    # Clamp this test's drain wait; the never-released service still fails the run.
+    monkeypatch.setattr(
+        adapter_class,
+        "wait_idle",
+        lambda self, seconds=5, observe=None: original_wait(
+            self, min(seconds, 0.05), observe=observe
+        ),
+    )
+    deps.adapter = lambda origin, secret: adapter_class(
         origin, secret=secret, transport=httpx.MockTransport(busy_after_send)
     )
     code, result = asyncio.run(execute_async(command, deps))

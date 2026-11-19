@@ -136,7 +136,9 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
 
     plan, loaded, deps, output = inputs(scenario)
     config = loaded.config.to_dict()
-    config["telemetry"]["interval_ms"] = 250 if mode == "resources" else 1000
+    # A short cadence keeps real wall-clock sampling waits small in every branch; logical
+    # time still governs the resource branches and schedule gates scale with interval_ms.
+    config["telemetry"]["interval_ms"] = 250
     if mode == "resources":
         # Three logical intervals per window; native IO duration is not under test.
         config["telemetry"]["baseline_seconds"] = 0.75
@@ -332,6 +334,9 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         )
         assert compared.details["eligibility"]["performance"]
         assert verify_comparison(out)["verified"]
+    # Downstream report/filter contracts are independent of the observer window except
+    # for the C02 resource aggregation; run them once instead of per parameter branch.
+    if mode == "resources" and not collector_pause:
         from inferyard.reporting.studio_report import write_studio_report
 
         report = output / "linked-performance-report"
@@ -363,25 +368,22 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             "constraints": [constraint],
             "comparisons": {str(targets[1]): str(out)},
         }
-        if mode == "resources":
-            rss = [m for m in data["summary"]["metric_observations"] if m["metric_id"] == "C02"]
-            resource_constraint = {
-                k: rss[0][k]
-                for k in ("metric_id", "statistic", "source", "unit", "definition_version")
-            }
-            resource_constraint.update(
-                category=None,
-                error_category=None,
-                operator="<=",
-                threshold=max(m["value"] for m in rss),
-                aggregation="all_requests",
-            )
-            spec["constraints"].append(resource_constraint)
+        rss = [m for m in data["summary"]["metric_observations"] if m["metric_id"] == "C02"]
+        resource_constraint = {
+            k: rss[0][k] for k in ("metric_id", "statistic", "source", "unit", "definition_version")
+        }
+        resource_constraint.update(
+            category=None,
+            error_category=None,
+            operator="<=",
+            threshold=max(m["value"] for m in rss),
+            aggregation="all_requests",
+        )
+        spec["constraints"].append(resource_constraint)
         filtered = filter_candidates(spec, output)
         assert filtered["schema_version"] == 3 and filtered["format_version"] == 1
-        if mode == "resources":
-            aggregate = filtered["candidates"][0]["constraints"][1]["aggregation"]
-            assert aggregate["planned_requests"] == 3
+        aggregate = filtered["candidates"][0]["constraints"][1]["aggregation"]
+        assert aggregate["planned_requests"] == 3
         from inferyard.application.candidates import execute as execute_filter
         from inferyard.application.types import CommandRequest
 
