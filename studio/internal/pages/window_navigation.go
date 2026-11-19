@@ -38,17 +38,7 @@ func (s *viewState) leftNav(c *ui.Context) {
 				}
 			}
 			ui.Column(c).FillWidth().Padding(t.Density.Tight, t.Density.Row, t.Density.Row, t.Density.Row).Children(func() {
-				if s.workInFlight() {
-					if s.destructiveAction(c, destructiveOption{
-						kind: destructiveNewTask, label: "新任务", confirmLabel: "确认开始新任务",
-						prompt:  "将取消正在进行的测评并等待安全收尾；已完成题目的证据保留在结果目录，本轮不会生成报告。",
-						compact: true,
-					}) {
-						s.newBenchmark()
-					}
-				} else {
-					button(c, "新任务").FillWidth().OnClick(func() { s.newBenchmark() })
-				}
+				s.newTaskEntry(c)
 			})
 			for _, n := range navigation {
 				if components.SidebarItem(c, n.label, n.icon(), s.selected == n.id).Clicked() {
@@ -58,4 +48,41 @@ func (s *viewState) leftNav(c *ui.Context) {
 			}
 		})
 	})
+}
+
+// newTaskEntry keeps the sidebar creation entry at one full-width geometry in
+// every state. Starting a task while work is in flight still asks for
+// confirmation, but the confirm prompt never reshapes the entry into a
+// half-width outline button inside the 205px sidebar. The idle setup screen
+// already offers the same start, so the entry stays disabled there instead of
+// duplicating it.
+func (s *viewState) newTaskEntry(c *ui.Context) {
+	if s.newTaskEntryDisabled() {
+		button(c, "新任务").FillWidth().Disabled(true).
+			Description("当前已在任务准备页，请在页面内开始测评")
+		return
+	}
+	if s.workInFlight() {
+		if s.destructiveAction(c, destructiveOption{
+			kind: destructiveNewTask, label: "新任务", confirmLabel: "确认开始新任务",
+			prompt:  "将取消正在进行的测评；证据保留在结果目录，本轮不会生成报告。",
+			compact: true, fillWidth: true, persist: true,
+		}) {
+			s.newBenchmark()
+		}
+		return
+	}
+	button(c, "新任务").FillWidth().OnClick(func() { s.newBenchmark() })
+}
+
+// newTaskEntryDisabled reports whether the entry has nothing to create: the
+// idle setup screen is already open and is the place to start the task.
+func (s *viewState) newTaskEntryDisabled() bool {
+	if s.workInFlight() || s.selected != "dashboard" || s.detailID != "" || s.resumeSource != nil {
+		return false
+	}
+	if s.speed != nil && s.speed.current != nil {
+		return false
+	}
+	return s.preparingTask()
 }

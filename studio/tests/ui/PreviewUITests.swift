@@ -292,11 +292,12 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("Active benchmark without recovery warning")
         let engine = app.buttons["引擎 · 运行中"]
         expectExists(engine, timeout: 10)
-        engine.hover()
+        engine.click()
         let stop = app.buttons["停止引擎"]
         expectExists(stop, timeout: 3)
         XCTAssertFalse(stop.isEnabled, "Running tasks must protect the engine")
         keepScreenshot("Engine panel remains available during benchmark")
+        engine.click()
         let queue = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "任务 · 执行 1 · 等待 ")).firstMatch
         XCTAssertTrue(queue.exists)
         queue.click()
@@ -337,21 +338,24 @@ final class PreviewUITests: XCTestCase {
     private func engineStatusPanel() {
         let engine = app.buttons["引擎 · 失败"]
         expectExists(engine, timeout: 5)
+        // The header panel opens on click only, so a pointer crossing the
+        // header cannot cover the page's own top-right actions.
         engine.hover()
-        expectExists(app.buttons["开启引擎"], timeout: 5)
-        keepScreenshot("Engine hover panel before startup")
-        app.windows["InferYard Studio · UI 调试"].hover()
-        wait("hover panel closes after pointer leaves", timeout: 5) { !self.app.buttons["开启引擎"].exists }
+        XCTAssertFalse(app.buttons["开启引擎"].exists, "Hover must not open the status panel")
         engine.click()
         expectExists(app.buttons["开启引擎"], timeout: 5)
-        keepScreenshot("Engine panel opened by clicking status icon")
+        keepScreenshot("Engine panel opened by clicking the status control")
+        engine.click()
+        wait("second click closes the panel", timeout: 5) { !self.app.buttons["开启引擎"].exists }
+        engine.click()
+        expectExists(app.buttons["开启引擎"], timeout: 5)
         click("开启引擎")
         let running = app.buttons["引擎 · 运行中"]
         expectExists(running, timeout: 5)
-        running.hover()
+        running.click()
         expectExists(app.buttons["停止引擎"], timeout: 5)
         XCTAssertFalse(app.buttons["查看实时详情"].exists, "Engine startup must not start a benchmark")
-        keepScreenshot("Engine running icon and hover controls")
+        keepScreenshot("Engine running icon and click controls")
         click("停止引擎")
         expectExists(app.buttons["确认停止引擎"], timeout: 5)
         click("确认停止引擎")

@@ -24,6 +24,8 @@ var navigation = []struct {
 	{"reports", "报告", lucide.FileText},
 	{"models", "模型", lucide.Layers},
 	{"downloads", "下载", lucide.Download},
+	// The device entry keeps lucide.Cpu; the header engine status uses
+	// lucide.Server so the two controls never share a glyph.
 	{"device", "设备", lucide.Cpu},
 	{"settings", "设置", lucide.Settings},
 }
