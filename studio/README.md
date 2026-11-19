@@ -12,16 +12,17 @@ When the workspace, results, and model paths are all unset in settings, Studio o
 on the task page with environment preparation. Once any of these paths has been saved,
 launching without an explicit page opens Reports. The sidebar lists Tasks, Reports,
 Models, Downloads, Device, and Settings.
-The sidebar's “任务” (Task) entry switches to the current task page without resetting,
-cancelling or confirming: an active run keeps its progress, and an idle task page keeps
-the chosen model, engine and evaluation sets. “新任务” (New task) also opens the task
-page but resets the round: while a run, a specialist measurement, or a pending operation
-is in flight, “新任务” asks for one confirmation and states that the work is cancelled
-after a safe drain while the evidence already written stays in the results directory.
+For a first benchmark:
+
+1. Open Tasks and choose **准备环境** (Prepare environment). Studio checks the CLI and workspace. If assets are missing, open Downloads to prepare a model and a compatible engine.
+2. On Tasks, select the model and engine. Keep both default task sets for a standard benchmark and choose **开始测评** (Start benchmark). Studio can start its own local service or bind a service you started. The CLI checks the live identity before running.
+3. Open **查看报告** (View report) after the runs finish. The report shows each run separately. To check evidence integrity later, use the CLI on the [original run directories](../cli/docs/guides/onboarding-and-scope.md#默认测评范围).
+
+Choose **任务** to return to the current task with its progress and selections. **新任务** starts a new round and asks for confirmation when work is in flight.
 
 | Page | Purpose |
 | --- | --- |
-| Task page | Prepare the environment with one action (reusing an existing `inferyard` CLI and `uv`, or installing them into the `uv` user tool directory), choose workspace evaluation sets and a model/engine pair, then create evaluation configurations, start and bind the service, run, and review the completion summary or open the report. Inspect per-case progress, view CPU, memory, and available temperature curves, and resume eligible runs opened from Reports. |
+| Task page | Prepare the environment with one action (reusing the configured CLI when available), choose workspace evaluation sets and a model/engine pair, then create evaluation configurations, start and bind the service, run, and review the completion summary or open the report. Inspect per-case progress, view CPU, memory, and available temperature curves, and resume eligible runs opened from Reports. |
 | Reports | Browse compact task history, enter or resume a run, inspect live details, and open model-led report cards inside the main window. Reports are display artifacts with no verification entry. |
 | Models | Read-only inventory of installed models and engines (format, architecture, size, verification verdict) plus running services. Choosing the pair happens only on the task page. Empty inventories offer Go to Downloads; orphaned engines show a warning; no absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
@@ -173,68 +174,13 @@ are described in the [subsystem reference](../docs/subsystems/studio-panel.md#ui
 | Windows 10/11 | Direct3D 11 (WARP fallback) |
 | Linux | GTK 3 and OpenGL; MyGo can fall back to CPU rendering |
 
-Reports render with native controls inside the main window and never create a WebView.
-The CLI writes `studio.json` (`studio-report.v1`), and Studio reads `runs[].dashboard`
-metrics, `summary.completion_rate`, model/machine `profile`, `facets.bundle_label`,
-`source.run_id`, and `requests`. The detail view presents a factual run summary, four
-headline metric cards, throughput and output-block interval cards, category results,
-model/machine details, per-case rows (case, category, state, quality, latency), and data
-sources. Multiple runs provide a selector and remain separate; Studio never rescores
-results. Missing measurements display as — with available sampling reasons; milliseconds
-and bytes are displayed as seconds and GiB. An unreadable report is marked in the list
-without hiding other reports, and opening it offers retry and return.
+## Reports, services and recovery
 
-## Safety and operation rules
+Reports open in the main window. Select a run to inspect its completion, timing, memory and per-case rows. Missing measurements display as — with available reasons. An unreadable report stays visible for retry. The [report reference](../cli/docs/reports.md) describes the fields and how to locate raw answers.
 
-- **Local endpoints and privacy:** Model endpoints remain local loopback endpoints. Reports
-  and evidence can contain private local paths and must not be exposed on the LAN. Tokens,
-  credentials, signed URLs, and full session URLs never enter logs, persisted settings, or
-  user-facing errors. Studio shows fixed error summaries and structured CLI limitation
-  reasons rather than raw stderr.
-- **Settings and history storage:** Settings live in the system user configuration directory
-  under `InferYard Studio/settings.json` (POSIX directory mode `0700`, file mode `0600`).
-  Invalid JSON or field types fall back to defaults with a diagnostic; the file is replaced
-  only when the user saves. Historical scans skip damaged runs and log the skipped count.
-  Evidence directories remain the source of truth. Ordinary task lists stay in memory;
-  context-speed identity, lifecycle, and references survive restart in separate atomic task
-  records without caching result values. Unreadable batches remain visible for retry.
-- **Serial execution queue:** Runs execute serially and retain CLI host locking, identity
-  checks, cancellation, and draining. The default benchmark includes both `zh-core` and
-  `zh-svg-pelican`; running a single bundle requires an explicit choice. Bound configuration
-  output roots must stay inside the configured results root, and duplicate queued
-  configurations are rejected.
+Studio binds local endpoints and stops the services it starts on shutdown. When binding an existing service, its owner remains responsible for stopping it. Runs execute serially. Cancelling an active run waits for it to exit; resume is available only for eligible unfinished batches. Check the [service ownership rules](../docs/subsystems/studio-panel.md#约束与失败行为) and [queue and history states](../docs/subsystems/studio-panel/preview.md#关键状态转换) when diagnosing a blocked task.
 
-| CLI exit | Studio meaning |
-| --- | --- |
-| 0 | Completed task. |
-| 2 | Blocked/failed task with the CLI's limitation reasons. |
-| 3 | Finished task with incomplete evidence; display partial status, not an execution error. |
-| 4 | Tool/evidence failure. |
-| 130 | Cancelled task. |
-
-- **Cancellation, state priority, and resume:** Cancelling a queued task requires no child
-  process or exit code. Cancelling an active task requests interruption and waits for exit.
-  Terminal states are final. History preserves the priority
-  `cancelled` > `dirty` > `partial` > `complete`; sealing alone is not verification, and an
-  unreadable host-state marker is never treated as clean. Resume is limited to eligible
-  unfinished batch runs, with the CLI making the final decision; standalone runs cannot
-  resume. Endpoint and PID overrides must be provided together. Fixed-window workloads may
-  require a new window instead of resume. Progress uses the frozen selected-case denominator,
-  including the frozen resume subset when applicable.
-- **Measurements and downloads:** Unknown measurements remain `null` with a reason, never zero
-  or fabricated percentages. Memory is stored in bytes and rates in bytes/s, with explicit
-  display conversions. Resource curves retain missing samples. Downloads without a known
-  total do not show a percentage. Downloads may run concurrently with the serial run queue;
-  failed or cancelled download directories remain occupied, and the CLI owns cleanup of
-  temporary `.part` files.
-- **Reports and notifications:** Report generation validates 1–100 distinct run paths within
-  the results root and writes a new uniquely named directory under the derived sibling
-  `reports` directory. Original runs and reports are never overwritten. Report paths must
-  remain within that report directory; missing source runs are shown as unavailable without
-  preventing the report from opening. Evidence interpretation follows the CLI's
-  [lineage rules](../cli/docs/data-contract.md#证据血缘与比较结论). Desktop notifications
-  announce terminal run/download states and completed reports with fixed text and no task
-  paths; denied permission or delivery failures do not change task outcomes.
+Settings live under `InferYard Studio/settings.json` in the system user configuration directory. Reports and raw evidence can include private local paths. Keep them local or follow the CLI's [public package procedure](../cli/docs/guides/operations.md#公开包与扩展) when sharing redacted results. The [Studio subsystem reference](../docs/subsystems/studio-panel/responsibilities.md) identifies the components responsible for settings, downloads, evidence and notifications.
 
 ## Verification boundaries
 

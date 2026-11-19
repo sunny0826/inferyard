@@ -1,15 +1,6 @@
 # Current plans
 
-- [专项指标证据修复](context-speed-metric-fix.md)：输入计数与模板证明回归、独立审核及真实 64k 复验。
+- [Studio 比较任务](studio-experiment-architecture.md) · 词表归属、任务编排、模拟一致性与真机验收。
+- [应用内存诊断后续平台](memory-check.md) · Linux 采集与原生验收、Windows 剩余场景与源码外安装。
 
-- [长上下文速度专项测评](context-speed.md)：CLI 结构化采集与 Studio 六列结果闭环的规划；实施状态见 backlog。
-- [长上下文速度专项：CLI 与 Studio 的边界](context-speed-boundaries.md)：入口准入、结果契约、取消与恢复规则及实施所有权。
-- [跨引擎受控比较](engine-comparison.md)：同一 GGUF 下 llama.cpp 对 LM Studio 的能力实测、契约、比较器与真机验收。
-- [Studio 实验模型与设计层重构](studio-experiment-architecture.md)：比较预注册计划、设计 token 层、跨引擎比较接入与视觉方案的任务拆分。
-- [应用内存诊断后续平台](memory-check.md)：macOS 已实施；Linux、Windows 各自独立实施和验收。
-
-运行证据文件合并的软件实施与验收已完成，规则保留在
-[容器契约](../contracts/run-evidence-layout.md)。
-
-当前进度及未完成工作见 [backlog](../backlog.md)。
-长期设计理由见 [ADR](../decisions/README.md)，接口规则见[主题契约](../contracts/README.md)。
+[Backlog](../backlog.md) 汇总待办及已验证范围。[长上下文配方](context-speed.md#专项题库与运行协议)仍供题包审核材料引用，现行接口见[专项契约](../contracts/context-speed-contract.md)。

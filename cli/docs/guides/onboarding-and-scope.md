@@ -5,7 +5,7 @@
 ## 首次上手与断点续接
 
 onboarding 工作区把准备和执行产物放入各自子目录；下文的双目录 benchmark 布局仍可使用。
-CLI 不选择隐式默认目录。先显式初始化，再随时查询下一步：
+以下示例在 macOS 上使用现有 Prism 引擎。Windows 的引擎核验与候选创建改用 runtime 回执，Linux 手工准备候选，见[各平台步骤](../installation.md#3-准备候选)。先显式初始化工作区，再查询下一步：
 
 ```bash
 inferyard init --out onboarding
@@ -23,7 +23,7 @@ inferyard progress --workspace onboarding
 
 按导出的 README 路线图由操作者启动服务，使用真实 PID/endpoint 绑定，再 run。
 核心包完成后同样准备并运行 zh-svg-pelican，两个 run 均封存后在 reports/ 的新子目录
-生成汇总并 verify。已有完整核心结果时只补跑缺少的鹈鹕；保留原件。
+生成汇总；用 `verify --path` 分别核验两个原始 run。已有完整核心结果时只补跑缺少的鹈鹕；保留原件。
 progress 只读输出进度，退出 0 不表示测评完成；查看 default_scope_complete 与 blocked_reason。
 未完成 run 显示 resume；单次运行或固定时窗不支持续测时明确阻断，按既有规则创建新运行。
 progress 不发送请求，也不启动服务；执行其 run/resume 命令前仍核对设备、预算与停止条件。
@@ -53,9 +53,11 @@ inferyard init --out bench-ops
 候选与绑定产物分别使用新目录。`run --config` 每次只执行配置中的一个题包，CLI 不会自动连续
 运行两个题包。各自冻结输出预算、上下文、截止时间及服务参数；SVG 长输出不能直接沿用核心示例的 512 token 预算。调整上下文时同步候选声明和实际服务启动参数，在发送请求前通过预算与身份预检。
 
-两个 run 都封存后，使用 stdout 返回的实际证据目录生成新报告：
+两个 run 都封存后，用 stdout 返回的实际证据目录替换 CORE_RUN 和 SVG_RUN，分别核验后生成新报告：
 
 ```bash
+inferyard verify --path CORE_RUN
+inferyard verify --path SVG_RUN
 inferyard report --runs CORE_RUN SVG_RUN --out bench-work/report
 ```
 
@@ -90,7 +92,7 @@ run 目录自含冻结输入与封存证据，`run --config` 接受任意路径�
 
 需要对外交付时，新建独立交付目录，只复制两个封存 run 目录与共享报告目录
 （上述配置共十七个文件），保持三者相对布局不变；原始工作区与历史报告一律保留原字节，不移动、不改写、不删除。
-重组后在交付目录上逐个核验两个封存 run：
+报告中的 `source.path` 记录生成报告时的绝对路径。若接收方需要从报告定位到新位置的 run，使用交付副本在新目录重新生成报告。重组后逐个核验交付副本中的两个封存 run：
 
 ```bash
 inferyard verify --path DELIVERY/RUN_DIR
@@ -102,8 +104,7 @@ inferyard verify --path DELIVERY/RUN_DIR
 交付树内同样不得出现。准备检查与操作员证据保留在原操作目录分开
 存放，不并入交付树。
 
-benchmark 执行与评分不使用浏览器：SVG 题不做质量评分，CLI 仅做 XML 语法与
-大小检查。报告由 Studio 原生页面阅读；任何情况
+SVG 题的原始输出保存在 run 中，免予质量评分。报告由 Studio 原生页面阅读；任何情况
 下都不在 benchmark 工作区或操作目录内创建或存放浏览器用户数据，包括以 `--user-data-dir`
 等参数指向工作区内部目录的任何浏览器调用。确需隔离浏览器环境时，优先使用浏览器自带的访客/隐身窗口，或用一次性
 `--user-data-dir` 指向系统临时目录，检查后回收本次任务自建数据，同样不编写

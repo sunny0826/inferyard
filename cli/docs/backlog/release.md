@@ -117,4 +117,4 @@ PR 提交 `83def2565f9d057621411e2cc4ab41752e7cb9c5`，已合入 `ce221771e426e1
 | 早期本机验收 | 来源 `2fcb180` 的离线 HTML 桌面/手机渲染与 macOS 隔离根迁移检查已保存；原件保留，不改标为新候选证据 |
 
 后续源码或发行物变化应建立新候选；最终清单与安装结果随 Actions artifact 保留，Release 记录其准确来源。
-Windows ACL/reparse/多账户/卷变化、真实 runtime 准备和模型性能仍未验证。
+该次安装检查未覆盖 Windows ACL/reparse/多账户/卷变化、真实 runtime 准备或模型性能。后续 Windows CPU runtime 和真实模型冒烟的覆盖见[平台状态](../platforms.md#当前候选验证与未验项)。

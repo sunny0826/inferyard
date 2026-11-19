@@ -49,11 +49,11 @@ Windows 的 live 开销、实时扩展和 prepare-length 等入口仍有平台�
 - `0.0.5` 的 [package-check](https://github.com/sunny0826/inferyard/actions/runs/44281969167)、
   [Studio release candidate](https://github.com/sunny0826/inferyard/actions/runs/44281981002) 与
   [publish](https://github.com/sunny0826/inferyard/actions/runs/44285309031) 在同一源提交
-  `4cd8587` 完成三平台安装检查、原生打包、草稿逐字节复验和 PyPI 安装 smoke；Linux 真机真实模型、
-  Windows/Linux 原生 UI、签名/公证和长上下文真实模型仍未验证。
-- 同一 CI 在一次性原生 runner 上验证固定路径的自动初始化、合成请求成功、进程中断后 dirty 持久化及拒绝。
-  没有使用真实模型。
-- Windows 的 ACL/reparse/多账户/卷变化及原生 runtime prepare/create 仍待专项验证。
+  `4cd8587` 完成三平台安装检查、原生打包、草稿逐字节复验和 PyPI 安装 smoke；该发行批次尚缺 Linux 真实模型、
+  Windows/Linux 原生 UI、签名/公证和长上下文真实模型的验收。开发源码在 macOS 上有 [64K 配置的真实模型记录](backlog/context-speed.md)，128K/256K 待验。
+- 同一源提交的 [Model e2e](https://github.com/sunny0826/inferyard/actions/runs/44281990202) 在 macOS 和 Windows runner 上通过，使用 SmolLM2-135M、Prism、`zh-smoke` 和 `zh-svg-pelican`。Windows 路径包含 CPU 归档的 `runtime prepare` 和基于回执的 `config create`。这是源码链路的真实模型冒烟；该工作流没有 Linux 作业。
+- 安装检查另用合成请求验证首次主机状态初始化、中断后的 dirty 持久化及拒绝。
+- Windows 的 ACL/reparse/多账户/卷变化仍待专项验证；上述 CPU 归档回执仅覆盖该 runner 和配置。
 - 第二架构、所有模型、长时负载、并发和严格性能资格均不由现有安装检查推定。
 
 使用入口：[安装](installation.md) · [macOS](../MACOS.md) · [Windows](../WINDOWS.md) · [配置](../configs/README.md)。

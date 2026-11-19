@@ -69,7 +69,7 @@ PowerShell 将 `./...whl` 换为 `'.\inferyard-0.0.5-py3-none-any.whl'`；路径
 时加引号。uv 管理 Python 和工具环境，缺解释器时首次安装需联网。首批目标为 Linux x64、
 Windows x64、macOS arm64；纯 Python wheel 标签不证明所有平台的原生采集和引擎能力已验收。
 当前开发与安装工具基线为 Python 3.15.2 / uv 0.13.6，不宣称 uv 最低支持版本。
-发行候选仍须完成下方独立安装检查；工具升级不继承历史候选的验收结果。
+发行候选仍须完成[源码外安装检查](../CONTRIBUTING.md#local-candidate-build-and-installation-checks)；工具升级不继承历史候选的验收结果。
 
 临时试用同一 wheel：
 
@@ -90,7 +90,7 @@ inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/dev
 
 省略 `--bundle` 时导出默认范围 `zh-core` 和 `zh-svg-pelican`。明确固定题包时可选
 `zh-smoke`、`zh-core`、`zh-svg-pelican` 或 `zh-context-speed`，并只导出该题包。导出题包保留权威原字节和
-内嵌人工审核；SVG 题只展示生成结果、不评分。`init` 导出的目录作为操作目录，
+内嵌人工审核；SVG 原始输出保存在 run 中，不评质量分。`init` 导出的目录作为操作目录，
 含三个平台的未绑定示例、所选题包、空 `assets/`、`results/`、`preflight/`、`candidates/`、`bound/`、`reports/` 及含绝对路径的路线图；
 准备与操作产物都留在操作目录。骨架中的空 `results/` 在双目录布局下不使用，
 `config create --results` 应指向 benchmark 工作区（如 `bench-work/results`）。
@@ -98,7 +98,7 @@ benchmark 工作区（如 `bench-work/`）只存放
 run/batch 与报告，由 `run` 和 `report` 自动创建，
 见[工作区与交付目录组织](usage.md#工作区与交付目录组织)。模板中的 `REPLACE`
 项应填完，不直接 run。
-Windows 用实际盘符路径替换模型路径；所有系统均只读取已有模型，不自动下载。
+Windows 用实际盘符路径替换模型路径；此处的设备预检读取已有模型。需要下载时，见[模型与引擎获取接口](cli-reference/community-preparation.md)。
 
 下文候选示例使用 `zh-core`。完整默认测评还须为 `zh-svg-pelican` 分别准备候选和绑定产物，
 各自使用新目录，并按[默认测评范围](usage.md#默认测评范围)冻结适合 SVG 的预算、运行并汇总报告。
@@ -119,10 +119,10 @@ inferyard progress --workspace bench-ops
 inferyard config create --workspace bench-ops --bundle zh-core --engine /path/to/llama-server --out bench-ops/candidates/zh-core-1
 ```
 
-Windows 用 --runtime-receipt FILE 替代 --engine FILE；Linux 仍手工准备候选。
+上述候选命令适用于 macOS。Windows 先按下节准备 runtime，再用 `--runtime-receipt FILE` 替代 `--engine FILE`；Linux 按下节手工准备候选。
 workspace 模式默认选择 preflight/ 下最新 device-preflight.json，并冻结 bench-ops/results；
 显式 --preflight、完整 --bundle 路径和 --results 优先。--out 始终必填且不能已存在。
-随后由操作者外部启动服务，绑定到 bound/ 的新子目录，执行两个题包并生成汇总报告。
+随后按各题包候选的启动参数在另一终端启动服务，绑定到 `bound/` 的新子目录。单工作区示例的首个候选为 `bench-ops/candidates/zh-core-1/candidate.toml`，两个 run 都位于 `bench-ops/results/`。
 随时运行 progress 断点续接；字段和退出码见[进度契约](cli-surface.md#首次上手进度契约)，
 例子见[首次上手与断点续接](usage.md#首次上手与断点续接)。原有显式参数和双目录布局仍可使用。
 
@@ -190,6 +190,8 @@ inferyard config assets --model /path/to/model.gguf --engine /path/to/llama-serv
 
 ## 4. 外部启动、绑定、运行与报告
 
+以下命令延续第 3 节的双目录示例，仅运行核心包。PID、端点和 RUN_ID 换成实际值。
+
 首次实时操作自动初始化主机状态，不需要显式初始化步骤。
 操作者按照候选 `engine.binary_path` 和完整 `engine.startup_args` 在外部终端启动服务。
 CLI 不管理该服务的启动、终止或重启。将实际 PID 和本机端点代入：
@@ -205,7 +207,7 @@ PID、启动时间或参数不符会阻断；不要修改候选去掩盖观测�
 独立 `probe` 仅用于可选排障且会发送请求。服务恢复、dirty、主机锁、取消和排空仍按原规则执行。
 不要手工删除锁文件，也不要在运行或恢复期间升级工具环境。
 
-报告写出为 `bench-work/report/studio.json`，供 Studio 面板读取展示；
+以上命令生成单个 run 的报告。完成默认测评时，按[双题包步骤](guides/onboarding-and-scope.md#默认测评范围)补齐鹈鹕 run，核验两个来源，并在新目录生成包含两者的 `studio.json`。
 `verify` 离线检查原始 run 证据，不覆盖报告。准备 JSON 的 prepared/complete 不表示测评或平台验收完成。
 Windows/PowerShell 可使用相同 CLI 参数，路径加引号，PID 使用实际数字。
 

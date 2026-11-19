@@ -10,29 +10,27 @@
 
 ## 项目核心能力
 
-- **结果可复现，不靠模型当裁判。** 用冻结且经过人工审核的题集测试本地模型，全部按固定规则评分，避免裁判模型波动带来的不确定性。
+- **结果可复现，不靠模型当裁判。** 用冻结且经过人工审核的题集测试本地模型，按各题适用的固定规则评分，避免裁判模型波动带来的不确定性。
 - **不做虚假“总分”，直面真实取舍。** 质量、请求延迟、吞吐以及 CPU、内存和可用温度采集分维度独立呈现；无法测量的指标保持为 `null` 并标明原因，绝不补 `0`。
 - **完整保留原始证据。** 逐题答案、执行元数据与资源采样均落盘封存，服务关闭后依然可以离线复核，并投影出供 Studio 展示的 `studio.json` 报告。
 - **原生桌面工作台。** [InferYard Studio](studio/README.md) 基于 Go 与 MyGo 构建原生桌面界面，一站式完成设备硬件检查、模型与引擎下载或本机登记、服务启停管理、实时采样曲线监控与按模型汇总的报告浏览。
 - **可独立调用的 CLI 子项目。** [CLI 子项目](cli/README.zh-CN.md)（`inferyard`）负责设备预检、主机互斥锁、冻结执行、证据封存、离线核验与报告投影，既在 Studio 底层自动运转，也支持终端与脚本直接调用。
 
-## 项目结构
+## 开始使用
 
-| 组件 | 职责 | 技术栈 |
-| --- | --- | --- |
-| [InferYard Studio](studio/README.md)（`studio/`） | 原生桌面应用，负责测评配置、资源下载与本机引擎管理、过程监控及报告浏览 | Go、MyGo、onevra |
-| [InferYard CLI](cli/README.zh-CN.md)（`cli/`） | Studio 调用的命令行执行与证据子项目（也支持终端直调），负责预检、冻结运行、证据封存核验与 `studio.json` 生成 | Python |
+- **桌面测评**　从 [Releases](https://github.com/sunny0826/inferyard/releases/latest) 下载对应平台的 Studio。启动后在任务页选择「准备环境」，再按 [Studio 首次使用说明](studio/README.md#pages-and-first-launch) 选择模型、引擎和题包。
+- **终端测评**　从[安装与候选准备](cli/docs/installation.md)开始。按候选参数启动服务，绑定实际 PID 和端点，再按[默认双题包流程](cli/docs/guides/onboarding-and-scope.md#默认测评范围)分别运行、核验并生成汇总报告。
 
 ## 现有题包
 
 | 题包 | 内容 |
 | --- | --- |
 | `zh-core` | 120 道中文题：指令遵循、信息抽取、依据问答、数学与逻辑、分类和结构化输出，各 20 道 |
-| `zh-svg-pelican` | 1 道 SVG 绘图题，仅展示生成结果，不评质量分 |
+| `zh-svg-pelican` | 1 道 SVG 绘图题，原始证据保留生成内容，不评质量分 |
 | `zh-smoke` | 40 道题（指令遵循和信息抽取），用于快速检查 |
-| `zh-context-speed` | 3 段长提示词（64K / 128K / 256K），测量长上下文预填充与解码速度，不评质量分 |
+| `zh-context-speed` | 3 段固定提示词，分别对应 64K / 128K / 256K 上下文容量，测量长上下文预填充与解码速度，不评质量分 |
 
-常规测评同时运行 `zh-core` 和 `zh-svg-pelican`。每个题包发布前都经过人工审核，详见[题包说明](cli/bundles/README.md)。
+常规测评分别运行 `zh-core` 和 `zh-svg-pelican`。每个题包发布前都经过人工审核，详见[题包说明](cli/bundles/README.md)。
 
 ## 支持平台
 
@@ -42,7 +40,7 @@
 | Windows x64（10/11） | Direct3D 11（支持 WARP 回退） | Prism/KVMem/NInfer 串行文本运行、原生身份与内存采集 |
 | Linux x64 | GTK 3 与 OpenGL（支持 CPU 渲染回退） | 单次与批量运行、CPU/内存采集 |
 
-各平台支持的引擎和验证状态不同。依赖测评结果之前，请查看[平台状态](cli/docs/platforms.md)、
+表中列出实现范围。v0.0.5 的 Windows 和 Linux 原生窗口交互仍待验收。依赖测评结果之前，请查看[平台状态](cli/docs/platforms.md)、
 [macOS](cli/MACOS.md) 和 [Windows](cli/WINDOWS.md)。
 
 ## 设计原则与边界

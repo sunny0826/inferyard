@@ -1,6 +1,6 @@
 # ADR 056：同一 GGUF 的跨引擎受控比较
 
-状态：Accepted。日期：2026-11-06。设计已采纳，实现、能力实测与真机比较尚未完成。
+状态：Accepted。日期：2026-11-06。能力探测后的修订见下文。
 
 > 局部取代：比较产物的 HTML 文件集合与呈现核验由 [ADR 059](059-studio-json-only-report.md) 取代（engine-comparison 只写 `engine-comparison.json`，`format_version=2`）；算法、来源绑定、平台限制与资格规则不变。
 
@@ -110,5 +110,5 @@ Studio 侧的接管需另行设计；ADR 055 中「Studio 不能停掉用户原�
 
 比较模式枚举新增取值，比较结果新增 `engine-comparison.v1` 定义；
 既有 run、比较与报告证据按原定义读取，不获得新资格。
-字段与拒绝路径以后续契约为准，进度见[实施计划](../plans/engine-comparison.md)。
+字段与拒绝路径见[现行契约](../contracts/engine-comparison.md)，真机范围见[比较记录](../backlog/engine-comparison.md)。
 证据解释遵循[血缘规则](../data-contract.md#证据血缘与比较结论)。

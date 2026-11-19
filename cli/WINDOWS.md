@@ -7,9 +7,9 @@ Implementation and historical native coverage are tracked in
 
 ## Device preflight and single runs
 
-After installing uv and the local wheel, use the installed `inferyard` in
+After [installing the CLI](docs/installation.md), use `inferyard` in
 PowerShell; no repository scripts or D: drive are required.
-Full CPU/CUDA archive preparation is in the
+This example explicitly selects the smoke bundle. For a standard run, follow the [two-bundle workflow](docs/guides/onboarding-and-scope.md#默认测评范围). CPU/CUDA archive preparation is in the
 [installation guide](docs/installation.md#windows-x64先准备固定-runtime).
 
 ```powershell
@@ -38,8 +38,8 @@ Start the service in another terminal with the candidate's full
 inferyard config bind --candidate 'bench-ops\candidate\candidate.toml' `
   --pid 1234 --endpoint http://127.0.0.1:48857 --out 'bench-ops\bound\service-1'
 inferyard run --config 'bench-ops\bound\service-1\config.toml'
+inferyard verify --path 'bench-work\results\RUN_ID'
 inferyard report --runs 'bench-work\results\RUN_ID' --out 'bench-work\report'
-inferyard verify --path 'bench-work\report'
 ```
 
 `RUN_ID` comes from the run output. Quote paths containing spaces; replace
@@ -98,10 +98,7 @@ locations) are neither read nor locked; leftover
 contention, state conflicts and permission errors still block.
 Files reject reparse points and keep file fsync plus
 MoveFileExW(WRITE_THROUGH); directory fsync is unavailable.
-Windows-native ACL, volume changes and persistence are not yet verified;
-temporary-directory simulations and Go cross-builds do not count as native
-evidence. Known boundaries are in the
-[current format contract](docs/contracts/inferyard-current-format.md).
+The installation CI exercised dirty-state persistence after process interruption on a disposable Windows runner. Native ACL, reparse-point, multi-account and volume-change scenarios still need separate checks. See [platform status](docs/platforms.md#当前候选验证与未验项) and the [host-state contract](docs/contracts/inferyard-current-format.md#主机状态).
 
 `report`, `compare` and `verify` work offline; only current formats are
 accepted, and old evidence stays with the original project.

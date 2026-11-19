@@ -1,12 +1,16 @@
 # Backlog
 
-更新于 2026-11-16。当前进度集中在本页；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
+本页按主题索引待办和各版本的验证记录；证据解释见[血缘规则](data-contract.md#证据血缘与比较结论)。
 
 ## 长上下文速度专项测评
 
 正文见[长上下文速度专项测评](backlog/context-speed.md#长上下文速度专项测评)。
 
 ## InferYard Studio 后续工作
+
+- [跨引擎比较](backlog/engine-comparison.md#剩余工作) · Studio 比较专用任务、交互与单计划真机验收待完成。
+- [本地五引擎](backlog/model-engine.md#本地五引擎正式适配) · 已有诊断、绑定与模拟窗口记录，正式双题包和 Studio 真机链仍待验。
+- [普通运行 CPU 与温度采集](backlog/evidence-runtime.md#普通运行-cpu-与温度采集) · 原生采样、模拟服务与窗口验收记录。
 
 - 普通任务页及加载占位已移除旧英文页顶标题，进入时读屏播报「任务」；当前文档和原型名称同步。
   页面回归、Go vet 通过，macOS 原生模拟回归 `run-eaiay3ib` 6 项通过，运行中截图已核对。
@@ -28,7 +32,7 @@
 - Studio 真实 CLI／假引擎链已隔离测试主机锁；双题包 run、report 均成功。此前记录的
   `progress` 读取 34.07 MiB 报告索引被 preparation JSON 16 MiB 上限拒绝的问题，
   随报告改为 studio.json（读取走无大小上限的 `evidence.read_json`，见
-  [ADR 059](../docs/decisions/059-studio-json-only-report.md)）不再适用；超大报告读取性能不单独宣称。
+  [ADR 059](decisions/059-studio-json-only-report.md)）不再适用；超大报告读取性能不单独宣称。
 - macOS 原生预览完整套件已在 PR #97 CI 通过；发布候选仍须在同一最终 SHA 重跑，
   不能把该 PR 结果改标为正式发布证据。历史桌面干扰记录保留为排障背景，不再写成当前失败状态。
 - Toast 位置随 onevra v0.2026.13 改为顶部居中，并已在 `pageShellOptions` 显式固定
@@ -98,7 +102,11 @@
 
 ## 跨引擎受控比较
 
-正文见[跨引擎受控比较](backlog/engine-comparison.md#跨引擎受控比较)。
+见[已有证据与剩余工作](backlog/engine-comparison.md)。
+
+## 小模型多引擎接入
+
+[短请求诊断、原生覆盖与阻断项](backlog/model-engine.md#小模型多引擎接入)。
 
 ## 模型获取简化
 
