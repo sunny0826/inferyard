@@ -7,7 +7,7 @@
     "tools/*",
     "studio/*"
   ],
-  "exclude": ["studio/build/*"],
+  "exclude": ["studio/build/*", "studio/dist/*"],
   "third_party_modules": [],
   "checkers": {
     "architecture.owner": {
@@ -17,6 +17,7 @@
           "cli/src/inferyard/__main__.py",
           "cli/src/inferyard/implementation_identity.py",
           "cli/src/inferyard/provenance.py",
+          "cli/src/inferyard/errors.py",
           "cli/src/inferyard/registry.py"
         ]},
         {"name": "cli-application", "paths": ["cli/src/inferyard/cli/*", "cli/src/inferyard/application/*"]},
@@ -25,7 +26,8 @@
         {"name": "cli-evidence", "paths": ["cli/src/inferyard/evidence/*"]},
         {"name": "cli-analysis", "paths": ["cli/src/inferyard/analysis/*", "cli/src/inferyard/reporting/*"]},
         {"name": "cli-platform", "paths": ["cli/src/inferyard/platforms/*", "cli/src/inferyard/extensions/*"]},
-        {"name": "cli-resources", "paths": ["cli/src/inferyard/data/*", "cli/src/inferyard/templates/*"]},
+        {"name": "cli-provisioning", "paths": ["cli/src/inferyard/provisioning/*"]},
+        {"name": "cli-resources", "paths": ["cli/src/inferyard/data/*"]},
         {"name": "cli-tests", "paths": ["cli/tests/*"]},
         {"name": "cli-scripts", "paths": ["cli/scripts/*"]},
         {"name": "dev-tools", "paths": ["tools/*"]},
@@ -34,23 +36,18 @@
           "studio/debug_ui.go",
           "studio/debug_ui_release.go",
           "studio/development.go",
-          "studio/development_control_test.go",
           "studio/development_disabled.go",
           "studio/development_disabled_test.go",
           "studio/development_json.go",
           "studio/development_manifest.go",
           "studio/development_recovery.go",
-          "studio/development_recovery_test.go",
           "studio/development_session.go",
           "studio/development_session_test.go",
-          "studio/development_starting_test.go",
           "studio/development_stop_request.go",
           "studio/development_test.go",
           "studio/main.go",
           "studio/options.go",
-          "studio/options_debug_test.go",
-          "studio/options_release_test.go",
-          "studio/options_test.go"
+          "studio/options_release_test.go"
         ]},
         {"name": "studio-core", "paths": ["studio/internal/core/*"]},
         {"name": "studio-pages", "paths": ["studio/internal/pages/*"]},
@@ -75,7 +72,8 @@
             "cli/src/inferyard/analysis/*",
             "cli/src/inferyard/reporting/*",
             "cli/src/inferyard/platforms/*",
-            "cli/src/inferyard/extensions/*"
+            "cli/src/inferyard/extensions/*",
+            "cli/src/inferyard/provisioning/*"
           ],
           "forbidden_imports": ["inferyard.cli", "inferyard.cli.*"]
         }
