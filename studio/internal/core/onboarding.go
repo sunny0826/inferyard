@@ -220,12 +220,11 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 	}
 	if args[0] == "report" {
 		path := value(flags, "--out")
-		if !validStudioReport(path) {
+		report, err := reportSummary(path)
+		if err != nil {
 			return result, Err("internal_error")
 		}
-		if report, err := reportSummary(path); err == nil {
-			s.Bus.Publish("report.created", map[string]any{"report": report})
-		}
+		s.Bus.Publish("report.created", map[string]any{"report": report})
 	}
 	s.Bus.Publish("sync.reset", map[string]string{"reason": "workspace_changed"})
 	return result, nil

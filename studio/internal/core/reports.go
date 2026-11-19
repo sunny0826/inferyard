@@ -191,17 +191,6 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 	return r, nil
 }
 
-// validStudioReport checks that a created directory holds the single typed
-// document Studio consumes. Old index.json/report.html output is not accepted.
-func validStudioReport(path string) bool {
-	raw, e := os.ReadFile(filepath.Join(path, "studio.json"))
-	if e != nil {
-		return false
-	}
-	_, e = inferyard.ParseStudioReport(raw)
-	return e == nil
-}
-
 func (s *Service) ReportFile(relative string) (string, *ApiError) {
 	root := reportsRoot(s.userSettings())
 	if root == nil {
