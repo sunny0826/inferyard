@@ -28,6 +28,29 @@ func (w *viewState) active() *inferyard.BundleProgress {
 	}
 	return nil
 }
+
+// bindTarget is the bundle a manual connection applies to: the first selected
+// bundle that still needs binding. An earlier bundle that is already bound and
+// merely waits to run must not capture the manual form, or the unbound bundle
+// behind it can never leave the bind step.
+func (w *viewState) bindTarget() *inferyard.BundleProgress {
+	if w.progress == nil {
+		return nil
+	}
+	for i := range w.progress.Bundles {
+		b := &w.progress.Bundles[i]
+		if len(w.task.bundles) > 0 && !slices.Contains(w.task.bundles, b.Bundle) {
+			continue
+		}
+		if b.Phase == "run_complete" {
+			continue
+		}
+		if b.NextAction == "bind" || b.BoundPath == nil {
+			return b
+		}
+	}
+	return w.active()
+}
 func (w *viewState) running() *core.RunTask {
 	for i := range w.tasks {
 		if !terminal(w.tasks[i].State) {
@@ -104,13 +127,13 @@ func (w *viewState) bindCommand(pid, endpoint string) (string, *core.ApiError) {
 	if w.preview != nil {
 		// The preview never builds a real argv: a modeled bind is dispatched in
 		// memory, and anything the simulator does not represent stays an error.
-		if w.progress == nil || w.active() == nil {
+		if w.progress == nil || w.bindTarget() == nil {
 			return "", core.Err("preview_unsupported")
 		}
 		w.simulate(previewBind)
 		return "", nil
 	}
-	b := w.active()
+	b := w.bindTarget()
 	if b == nil || w.progress == nil {
 		return "", core.Err("invalid_request")
 	}
@@ -147,14 +170,11 @@ func (w *viewState) startEngine() {
 		w.retryBenchmark()
 		return
 	}
-	if w.busy || w.running() != nil || w.candidate == "" {
+	if !w.beginStart() {
 		return
 	}
-	candidate := w.candidate
 	b := w.active()
-	if b == nil {
-		return
-	}
+	candidate := w.candidate
 	bundle, workspace := *b, w.progress.Workspace
 	ctx, cancel := context.WithCancel(w.ctx)
 	w.taskCancel = cancel
@@ -271,7 +291,29 @@ func (w *viewState) updateView(fn func()) {
 // stepConnection marks the task as actively connecting, so the step does not
 // show the previous rejected connection while the new attempt runs.
 func (w *viewState) stepConnection() {
-	w.bindFailure = nil
+	w.bindFailure, w.failedBundle = nil, ""
+}
+
+// beginStart gates a managed-engine start and, when it can proceed, begins a
+// fresh attempt. A refused click must not discard the cause the user sees.
+func (w *viewState) beginStart() bool {
+	if w.busy || w.running() != nil || w.candidate == "" || w.active() == nil {
+		return false
+	}
+	w.beginAttempt()
+	return true
+}
+
+// beginAttempt starts a fresh start, retry or reconnect attempt. The previous
+// attempt's rejected connection must not outrank whatever this one reports, so
+// its cause, its bundle and its handoff error are dropped first. The page banner
+// may carry the same rejection; that copy goes with it, while an unrelated page
+// error stays.
+func (w *viewState) beginAttempt() {
+	if w.bindFailure != nil && w.failure != nil && w.failure.Code == w.bindFailure.Code {
+		w.failure = nil
+	}
+	w.bindFailure, w.failedBundle, w.handoffFailure = nil, "", nil
 }
 
 // failBinding attributes a rejected connection to the bind step: the step shows
@@ -316,6 +358,10 @@ func executeExistingBundle(ctx context.Context, b inferyard.BundleProgress, work
 		}
 		args = setArg(args, "--endpoint-url", state.Endpoint)
 		args = setArg(args, "--server-pid", strconv.FormatInt(state.Pid, 10))
+	case b.NextAction == "run" && b.BoundPath != nil:
+		// The binding already names the verified external service; run its frozen
+		// config as-is. A managed engine that happens to be running belongs to
+		// another bundle and must not rebind this one.
 	case state.State == "running":
 		command, out, e := benchmarkBindCommand(workspace, b, state)
 		if e != nil {
@@ -329,9 +375,6 @@ func executeExistingBundle(ctx context.Context, b inferyard.BundleProgress, work
 			return wizardFailure(r)
 		}
 		args = []string{"run", "--config", filepath.Join(out, "config.toml")}
-	case b.NextAction == "run" && b.BoundPath != nil:
-		// The binding already names the verified external service; run its frozen
-		// config without a managed engine.
 	default:
 		return core.Err("invalid_request")
 	}

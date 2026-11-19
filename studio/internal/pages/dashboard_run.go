@@ -224,6 +224,14 @@ func (s *viewState) stepOwnsError(e *core.ApiError) bool {
 	return cause.Message == e.Message || cause.Message == "" || e.Message == ""
 }
 
+// handoffOwnsError reports whether the handoff card already renders this task's
+// rejection. The card is the place a handoff failure belongs; the task list must
+// not repeat it. A task error with no recorded handoff failure stays in the list,
+// because then the list is the only place that shows it.
+func (s *viewState) handoffOwnsError(task core.RunTask) bool {
+	return task.Error != nil && s.handoffFailure != nil && task.Error.Code == s.handoffFailure.Code
+}
+
 // failureView renders the cause of the blocked step and the recovery path. It
 // never invents a cause: a failed state without a recorded error says so.
 func failureView(c *ui.Context, title string, e *core.ApiError, next string) {
@@ -284,7 +292,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 		}
 		if w.engineState.State == "running" && w.failure != nil {
 			label := "重新连接失败的测评题集"
-			if b := w.active(); b != nil && b.BoundPath != nil {
+			if b := w.bindTarget(); b != nil && b.BoundPath != nil {
 				label = "重新连接"
 			}
 			if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil).Clicked() {

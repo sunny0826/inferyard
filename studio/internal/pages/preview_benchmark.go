@@ -26,6 +26,8 @@ func (p *previewSession) beginBenchmark(op previewBenchmark) {
 	p.cancelEvents("task")
 	s.model, s.engine = op.model, op.engine
 	s.busy, s.failure = true, nil
+	// A new attempt drops the previous rejected connection, mirroring production.
+	s.bindFailure, s.failedBundle, s.handoffFailure = nil, "", nil
 	s.task = benchmarkTask{stage: "prepare_candidate", bundles: slices.Clone(op.bundles)}
 	s.progress.DefaultScopeComplete = false
 	s.progress.Report = inferyard.ProgressReport{}

@@ -86,6 +86,11 @@ func (s *viewState) dashboardView(c *ui.Context) {
 			if task.Queued && task.Bundle != nil && task.Error == nil {
 				continue
 			}
+			// The active step or handoff card already renders this rejection; the task
+			// list must not repeat the same diagnostic a second time.
+			if s.handoffOwnsError(task) {
+				continue
+			}
 			ui.Text(c, taskLabel(task))
 			errorView(c, task.Error)
 		}
@@ -154,7 +159,7 @@ func (s *viewState) serviceCardVisible() bool {
 	if s.running() != nil || (s.task.stage != "" && s.task.failure == nil) {
 		return false
 	}
-	b := s.active()
+	b := s.bindTarget()
 	return b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil)
 }
 

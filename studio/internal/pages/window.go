@@ -157,9 +157,12 @@ type viewState struct {
 	// recovered from by connecting another service. A later, different engine
 	// failure is keyed differently and still reports.
 	engineFailureCleared string
-	// localUsedPIDs records LM Studio services this window already connected, so
-	// the next handoff never offers to reuse them.
+	// localUsedPIDs records LM Studio services whose CLI verification succeeded,
+	// so the next handoff never offers to reuse them. A PID accepted by the
+	// service but still being verified stays in localPendingPIDs: it is reserved
+	// while in flight, and released again if verification fails.
 	localUsedPIDs                                        map[int64]bool
+	localPendingPIDs                                     map[string]int64
 	modelURL, modelName, tokenEnv, engineURL, engineName string
 	historyTable                                         pageTableState
 	reportSources                                        components.ListState
@@ -233,6 +236,9 @@ func (s *viewState) refresh(full bool) {
 		}
 		s.refreshing = false
 		s.device, s.tasks, s.downloads = device, tasks, downloads
+		// A handoff service counts as consumed only once its task left the binding
+		// stage without a verification error.
+		s.reconcileLocalPIDs(tasks)
 		if speedHistoryError == nil {
 			s.syncSpeedTasks(speedTasks)
 		}

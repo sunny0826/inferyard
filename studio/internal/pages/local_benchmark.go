@@ -85,6 +85,9 @@ func runLocalBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result
 				if task.State == "done" && task.Error == nil && task.Exit != nil && task.Exit.ExitCode == 0 && emptyText(task.Exit.Completeness) == "complete" && emptyText(task.RunPath) != "" {
 					bindings.completed[bundle] = *task.RunPath
 				} else if stopped == nil {
+					// Attribute the stop to the bundle that actually stopped, so the
+					// progress card does not blame an already completed bundle.
+					bindings.failedBundle = bundle
 					stopped = task.Error
 					if stopped == nil {
 						stopped = core.Err("run_incomplete")

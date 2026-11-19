@@ -191,6 +191,12 @@ func (p *previewSession) bindLocal(op previewLocalBinding) {
 		return
 	}
 	p.state.handoffFailure = nil
+	// Accepted, not yet verified: reserve the service so the form does not offer it
+	// again while the CLI checks identity. A failed verification releases it.
+	if p.state.localPendingPIDs == nil {
+		p.state.localPendingPIDs = map[string]int64{}
+	}
+	p.state.localPendingPIDs[op.taskID] = op.pid
 	l.fail = p.takeFailure()
 	p.startLocalBinding(op.pid)
 }
@@ -209,11 +215,15 @@ func (p *previewSession) startLocalBinding(pid int64) {
 			// A rejected attempt does not consume the PID: the user may retry it
 			// once the service is actually ready.
 			s.handoffFailure = core.Err("cli_blocked")
+			// The rejected attempt releases the reservation: the same PID can be
+			// retried once the service is verified.
+			delete(s.localPendingPIDs, id)
 			p.failLocalScope(core.Err("cli_blocked"))
 			return
 		}
 		l.usedPIDs[pid] = true
 		s.markServiceUsed(pid)
+		delete(s.localPendingPIDs, id)
 		// A successful handoff leaves the bind step clean: no stale error and no
 		// stale bind failure, matching the production outcome.
 		s.handoffFailure, s.bindFailure, s.failure = nil, nil, nil
