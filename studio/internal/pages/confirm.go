@@ -12,7 +12,6 @@ import (
 type destructiveKind string
 
 const (
-	destructiveNewTask        destructiveKind = "new_task"
 	destructiveCancelRun      destructiveKind = "cancel_run"
 	destructiveStopEngine     destructiveKind = "stop_engine"
 	destructiveStopOrphan     destructiveKind = "stop_orphan"
@@ -48,7 +47,6 @@ type destructiveOption struct {
 	confirmLabel string
 	prompt       string
 	disabled     bool
-	compact      bool
 }
 
 // destructiveAction renders a danger-styled action and asks for one more
@@ -70,10 +68,7 @@ func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) b
 	}
 	confirmed, cancelled := false, false
 	ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Inset).Background(c.Theme().SurfaceHover).Radius(t.Radius.Inset).Children(func() {
-		prompt := ui.Text(c, option.prompt)
-		if option.compact {
-			prompt.FontSize(t.Type.Caption)
-		}
+		ui.Text(c, option.prompt)
 		ui.Row(c).Wrap().Gap(t.Density.Row).Children(func() {
 			if primaryButton(c, option.confirmLabel).AlignSelf(ui.Start).Clicked() {
 				confirmed = true
@@ -118,8 +113,6 @@ func (s *viewState) dropStaleStopPrompt() {
 // at each call site, so every gate gets the same re-check.
 func (s *viewState) destructiveTargetValid(request destructiveRequest) bool {
 	switch destructiveKind(request.kind) {
-	case destructiveNewTask:
-		return s.workInFlight()
 	case destructiveCancelRun:
 		return s.cancelTargetActive(request.id)
 	case destructiveStopEngine:
@@ -229,19 +222,18 @@ func (s *viewState) downloadDownloading(id string) bool {
 	return false
 }
 
-// workInFlight reports whether starting a new task would cancel work the user
-// has not finished. Idle preparation screens keep the single-click entry.
-func (s *viewState) workInFlight() bool {
-	if s.running() != nil || s.busy || s.newTaskPending {
-		return true
+// clearPromptOnNavigation drops an armed confirmation when the visible page
+// changes. A prompt belongs to the page that opened it: a sidebar click, a
+// header popover jump or a run-detail switch must not leave it clickable on
+// whatever page appears next.
+func (s *viewState) clearPromptOnNavigation() {
+	page := s.selected
+	if s.selected == "dashboard" && s.detailID != "" {
+		page += "/" + s.detailID
 	}
-	if s.speed != nil && s.speed.current != nil && s.speed.current.active() {
-		return true
+	if page == s.promptPage {
+		return
 	}
-	switch s.task.stage {
-	case "", "prepare_candidate", "done":
-		return false
-	default:
-		return true
-	}
+	s.promptPage = page
+	s.pendingDestructive = destructiveRequest{}
 }

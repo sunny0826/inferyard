@@ -60,8 +60,10 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		case "orphaned":
 			color = stateColor(c, stateWarning)
 		}
-		statusPanelParts(c, statusPanelOptions{key: "engine-status", label: "引擎 · " + stateLabel(state), visible: engineStatusText(state), icon: lucide.Cpu, color: color, animated: animated}, func() {
-			s.engineStatusPanel(c, q.active())
+		// The engine glyph differs from the 设备 nav entry's lucide.Cpu, and the
+		// visible word names its subject so "已停止" never reads as the device.
+		statusPanelParts(c, statusPanelOptions{key: "engine-status", label: "引擎 · " + stateLabel(state), visible: "引擎 · " + engineStatusText(state), icon: lucide.Server, color: color, animated: animated, onClose: s.closeEngineStatusPanel}, func(close func()) {
+			s.engineStatusPanel(c, q.active(), close)
 		})
 		label := "任务 · 空闲"
 		if q.active() {
@@ -73,7 +75,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		if q.active() || s.busy {
 			queueColor = stateColor(c, stateActive)
 		}
-		statusPanelParts(c, statusPanelOptions{key: "queue-status", label: label, visible: queueStatusText(q, s.busy), icon: lucide.ListTodo, color: queueColor, animated: q.active() || s.busy}, func() {
+		statusPanelParts(c, statusPanelOptions{key: "queue-status", label: label, visible: label, icon: lucide.ListTodo, color: queueColor, animated: q.active() || s.busy}, func(close func()) {
 			heading(c, "任务队列", 3)
 			ui.Text(c, label)
 			for _, task := range s.tasks {
@@ -85,19 +87,34 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 					ui.Text(c, name+" · "+taskLabel(task))
 				}
 			}
+			button(c, "查看当前任务").AlignSelf(ui.Start).OnClick(func() {
+				s.navigateTo("dashboard", "")
+				close()
+			})
 		})
 		if n := s.activeDownloadCount(); n > 0 {
 			label := fmt.Sprintf("下载中 %d 项", n)
-			statusPanelParts(c, statusPanelOptions{key: "download-status", label: label, visible: fmt.Sprintf("下载 %d", n), icon: lucide.Download, color: stateColor(c, stateActive), animated: true}, func() {
+			statusPanelParts(c, statusPanelOptions{key: "download-status", label: label, visible: label, icon: lucide.Download, color: stateColor(c, stateActive), animated: true}, func(close func()) {
 				ui.Text(c, label)
+				button(c, "前往下载页").AlignSelf(ui.Start).OnClick(func() {
+					s.navigateTo("downloads", "")
+					close()
+				})
 			})
 		}
 	})
 }
 
 type statusPanelState struct {
-	open, hovered bool
-	lastInside    time.Time
+	open, wasOpen bool
+}
+
+// closeEngineStatusPanel disarms a stop confirmation that was opened inside the
+// engine panel: a panel that closed must not leave an armed click behind it.
+func (s *viewState) closeEngineStatusPanel() {
+	if destructiveKind(s.pendingDestructive.kind) == destructiveStopEngine {
+		s.pendingDestructive = destructiveRequest{}
+	}
 }
 
 // statusPanel is a header status control: an icon plus a word or count, so the
@@ -111,15 +128,22 @@ type statusPanelOptions struct {
 	icon                func() *ui.SVG
 	color               ui.Color
 	animated            bool
+	// onClose runs when the panel closes, so a caller can drop state that only
+	// made sense while the panel was open.
+	onClose func()
 }
 
-func statusPanelParts(c *ui.Context, o statusPanelOptions, content func()) {
+// statusPanelParts opens its popover on click or Enter only. Pointer movement
+// across the header no longer opens a panel that would cover the page's own
+// top-right actions, and MyGo closes it on Escape or a press outside. content
+// receives close so a navigation action can dismiss the panel it came from.
+func statusPanelParts(c *ui.Context, o statusPanelOptions, content func(close func())) {
 	c.Key(o.key)
 	ui.Column(c).Children(func() {
 		t := c.Theme()
 		anchor := components.Button(c, "", components.ButtonGhost).
 			Padding(t.Space(.75), t.Space(1.5)).Radius(t.Space(4.5)).
-			Label(o.label).Description("悬停或按 Enter 查看详情")
+			Label(o.label).Description("点击或按 Enter 查看详情")
 		local := ui.Local(anchor, "status-panel", func() statusPanelState { return statusPanelState{} })
 		anchor.Children(func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(t.Space(.75)).Children(func() {
@@ -131,24 +155,20 @@ func statusPanelParts(c *ui.Context, o statusPanelOptions, content func()) {
 				ui.Text(c, o.visible).FontSize(tokens(c).Type.Caption).SingleLine().TextColor(o.color)
 			})
 		})
-		hovered := anchor.Hovered()
-		if hovered && !local.hovered || anchor.Clicked() {
-			local.open = true
-			local.lastInside = c.Now()
+		if anchor.Clicked() {
+			local.open = !local.open
 		}
-		local.hovered = hovered
 		components.Popover(c, anchor, &local.open, func(panel ui.Element) {
 			panel.AttachTo(anchor, ui.AnchorBottomRight, ui.AnchorTopRight).
 				Width(t.Space(78)).MaxWidthPercent(100).Label(o.label + "面板")
-			if hovered || panel.Hovered() || panel.FocusWithin() || anchor.Focused() {
-				local.lastInside = c.Now()
-			} else if c.Now().Sub(local.lastInside) >= 220*time.Millisecond {
-				local.open = false
-			} else {
-				c.After(220 * time.Millisecond)
-			}
-			panel.Children(content)
+			panel.Children(func() { content(func() { local.open = false }) })
 		})
+		// Escape, an outside press or a second click close a panel MyGo owns;
+		// report the transition once so the caller can disarm its contents.
+		if local.wasOpen && !local.open && o.onClose != nil {
+			o.onClose()
+		}
+		local.wasOpen = local.open
 	})
 }
 
@@ -170,19 +190,7 @@ func engineStatusText(state string) string {
 	}
 }
 
-// queueStatusText shows the running and waiting counts in the header instead of
-// hiding them inside the panel.
-func queueStatusText(q queueActivity, busy bool) string {
-	if q.active() {
-		return fmt.Sprintf("执行 %d · 等待 %d", q.running, q.waiting)
-	}
-	if busy {
-		return "准备中"
-	}
-	return "空闲"
-}
-
-func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool) {
+func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func()) {
 	state := s.engineState
 	label := state.State
 	if label == "" {
@@ -214,12 +222,12 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool) {
 		}
 	case "orphaned":
 		ui.Text(c, "遗留服务状态尚未确认，请到任务页处理。")
-		button(c, "前往任务").OnClick(func() { s.selected, s.detailID = "dashboard", "" })
+		button(c, "前往任务").OnClick(func() { s.navigateTo("dashboard", ""); close() })
 	default:
 		primaryButton(c, "开启引擎").Disabled(!s.canStartManagedEngine()).OnClick(s.startManagedEngine)
 		if s.managedEngineCandidate() == "" {
 			ui.Text(c, "先在任务页选择模型并创建测评配置。").TextColor(c.Theme().TextMuted)
-			button(c, "前往任务").OnClick(func() { s.selected, s.detailID = "dashboard", "" })
+			button(c, "前往任务").OnClick(func() { s.navigateTo("dashboard", ""); close() })
 		}
 	}
 }

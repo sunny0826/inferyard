@@ -11,7 +11,7 @@
 2. **页面刷新**：主窗口的六页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
    取增量事件，六类事件触发全量刷新（`sync.reset`/`report.created`/`run.state`/`engine.state`/
    `download.state`/`device.updated`，见 [`studio/internal/pages/registry_refresh.go`](../../../studio/internal/pages/registry_refresh.go)），其余做局部更新。
-3. **任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次使用先根据资源清单引导准备模型与引擎，原有二进制引擎资源齐备后 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。只有退出 2 且唯一原因为 `no_local_model` 的检查结果视为资源准备提示，其他阻断保留错误。新任务复用模型/引擎选择，默认勾选存在的 zh-core 与 zh-svg-pelican，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`；完成步骤的摘要范围与操作入口见下文「报告」条。没有活动任务时从 `progress.v2` 恢复。原有命令仍经 `WizardExecute` 原白名单；本地安装走[本地候选队列](local-engines.md)，全部绑定与证据操作仍由 CLI 执行。
+3. **任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次使用先根据资源清单引导准备模型与引擎，原有二进制引擎资源齐备后 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。只有退出 2 且唯一原因为 `no_local_model` 的检查结果视为资源准备提示，其他阻断保留错误。新任务复用模型/引擎选择，默认勾选存在的 zh-core 与 zh-svg-pelican，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务在真实在途工作时禁用；失败且无在途工作时用于放弃该轮。下载不受影响。所选新 run 封存后执行 `report --runs`；完成步骤的摘要范围与操作入口见下文「报告」条。没有活动任务时从 `progress.v2` 恢复。原有命令仍经 `WizardExecute` 原白名单；本地安装走[本地候选队列](local-engines.md)，全部绑定与证据操作仍由 CLI 执行。
 4. **运行**：`StartRuns` 逐配置读取 bundle 与输出根并做包含/去重准入 → 入队由 `runQueue` 串行执行。
    新任务重置等待 UI 线程确认完成后退出取消循环；`Window.Update` 只负责排队，不能视为
    回调已经执行。等待期间不能启动专项，重置结束后不再取消后续新任务。
@@ -81,9 +81,9 @@
 
 任务页的资源引导与活动测评题集投影由 [`first_use.go`](../../../studio/internal/pages/first_use.go) 从现有清单、下载任务和运行队列派生，不持久化另一套向导状态。活动题包按 bundle 关联非终态 RunTask，展示排队／运行／取消状态；离线 `progress.v2` 的恢复原因仅用于没有活动任务的题包。历史 `no_local_model` 在可用模型出现后不再重复展示，实际候选准备仍执行模型专属设备检查。右上角显示下载任务生命周期，后台 refresh 不产生全局忙碌提示。
 
-[`header_status.go`](../../../studio/internal/pages/header_status.go) 从 EngineState、RunTask 与专项状态派生图标、文字与计数，悬停面板展示同一状态；
-专项按 task ID 去重计数。引擎状态直接显示「运行中／启动中／已停止」等文字，任务状态显示执行与等待数量，
-下载状态显示进行中的任务数，不依赖悬停才知含义。面板开启引擎直接调用 `StartEngine`，不进入绑定或测评编排；
+[`header_status.go`](../../../studio/internal/pages/header_status.go) 从 EngineState、RunTask 与专项状态派生图标、文字与计数，点击或 Enter 打开面板；面板收起与页面切换都丢弃已挂起的确认。
+专项按 task ID 去重计数。引擎状态用 `lucide.Server` 并显示带主语文字，任务状态显示执行与等待数量，
+下载状态显示进行中的任务数，面板内可直达任务页与下载页。面板开启引擎直接调用 `StartEngine`，不进入绑定或测评编排；
 模拟通过 `previewManagedEngine` 分流，只推进内存中的服务状态，不改变工作区进度。
 启动依赖已准备的候选且无活动任务，停止沿用服务层的活动任务保护；遗留服务仍到任务页核验处理。
 

@@ -12,7 +12,12 @@ Models, Downloads, Device, and Settings.
 The sidebar's “任务” (Task) entry switches to the current task page without resetting,
 cancelling or confirming: an active run keeps its progress, and an idle task page keeps
 the chosen model, engine and evaluation sets. “新任务” (New task) also opens the task
-page but resets the round: it cancels and drains in-flight work after one confirmation.
+page but resets the round. It keeps one full-width secondary style and never asks for
+confirmation inside the 205 DIP sidebar: while a run, a preparation or a specialty
+measurement is in flight, during environment setup, and on the idle setup page it is
+disabled and names the reason on hover, so cancelling happens on the task page. A round
+halted at binding with nothing left to cancel keeps the entry enabled: one click abandons
+that failed round and returns to model and engine selection.
 
 | Page | Purpose |
 | --- | --- |
@@ -24,8 +29,12 @@ page but resets the round: it cancels and drains in-flight work after one confir
 | Settings | Configure the CLI path, workspace, results directory, model directory, and the local installation declaration — the only page that shows full paths — plus the model/engine download directory names. Each path field keeps manual entry and adds Browse…, which opens the native file or directory picker for an existing target; a workspace that does not exist yet is still typed, and saving never creates directories. |
 
 The task page keeps the active task's selected bundles and new run paths in memory. New task
-cancels binding and all non-terminal runs, waits for them to finish, and returns to the
-shared engine/model selection without cancelling downloads or deleting evidence. The form
+returns to the shared engine/model selection without cancelling downloads or deleting
+evidence. It is disabled while real work is in flight — a run, a queued or cancelling task,
+a binding or service transition, a page action, or an active specialty measurement — so
+that work is cancelled on the task page instead. A round halted by a failure at binding,
+run or report keeps the entry enabled: one click leaves that failed round and starts from
+the model and engine selection again. The form
 lists only workspace evaluation sets and checks both `zh-core` and `zh-svg-pelican` when present.
 Unchecking a set explicitly narrows the scope; unchecked sets do not block the task.
 Reports starts with a compact task history table (model, evaluation set, state, score, start
@@ -63,7 +72,7 @@ The completion summary never mixes in earlier workspace runs.
 Duration and unfinished batch plans display their blocking reason without an execution button.
 
 Top-right engine and task icons pulse while active, respecting Reduce Motion.
-Hover, click, or press Enter to open their panels; Escape dismisses them.
+Click or press Enter to open their panels; Escape or an outside click dismisses them.
 The engine panel shows status and start/stop controls on every page. Starting requires
 a prepared candidate and only starts the service; it does not bind or run a benchmark.
 The task panel separates executing and waiting tasks. Active downloads have a separate
