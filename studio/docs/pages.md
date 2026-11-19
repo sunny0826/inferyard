@@ -29,8 +29,12 @@ that failed round and returns to model and engine selection.
 | Settings | Configure the CLI path, workspace, results directory, model directory, and the local installation declaration — the only page that shows full paths — plus the model/engine download directory names. Each path field keeps manual entry and adds Browse…, which opens the native file or directory picker for an existing target; a workspace that does not exist yet is still typed, and saving never creates directories. |
 
 The task page keeps the active task's selected bundles and new run paths in memory. New task
-cancels binding and all non-terminal runs, waits for them to finish, and returns to the
-shared engine/model selection without cancelling downloads or deleting evidence. The form
+returns to the shared engine/model selection without cancelling downloads or deleting
+evidence. It is disabled while real work is in flight — a run, a queued or cancelling task,
+a binding or service transition, a page action, or an active specialty measurement — so
+that work is cancelled on the task page instead. A round halted by a failure at binding,
+run or report keeps the entry enabled: one click leaves that failed round and starts from
+the model and engine selection again. The form
 lists only workspace evaluation sets and checks both `zh-core` and `zh-svg-pelican` when present.
 Unchecking a set explicitly narrows the scope; unchecked sets do not block the task.
 Reports starts with a compact task history table (model, evaluation set, state, score, start

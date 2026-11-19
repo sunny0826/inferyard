@@ -87,9 +87,7 @@ func (s *viewState) newTaskEntryHint() string {
 	switch {
 	case s.environmentMissing():
 		return "先完成环境准备，才能进行测评"
-	case s.abandonableBinding():
-		return ""
-	case s.workInFlight():
+	case s.roundWorkActive():
 		return "测评进行中，请在任务页取消后再新建任务"
 	case s.selected == "dashboard" && s.detailID == "" && s.resumeSource == nil &&
 		(s.speed == nil || s.speed.current == nil) && s.preparingTask():
@@ -98,16 +96,21 @@ func (s *viewState) newTaskEntryHint() string {
 	return ""
 }
 
-// abandonableBinding reports a round halted at the binding stage with nothing
-// left to cancel: the service or the binding failed, no run is in flight and no
-// speciality measurement is active. Starting a new task then only returns to
-// model and engine selection, which is the only way out of that dead end.
-func (s *viewState) abandonableBinding() bool {
-	if s.task.stage != "bind" || s.busy || s.newTaskPending || s.running() != nil {
-		return false
+// roundWorkActive reports work a new round would interrupt: a run, a binding or
+// service transition, a queued or cancelling task, a page action or an active
+// specialty measurement. A round halted by a failure is not active work: the
+// stage stays set after the run, the binding or the report failed, and the
+// entry must stay usable so the user can always leave that dead end.
+func (s *viewState) roundWorkActive() bool {
+	if s.busy || s.newTaskPending || s.binding || s.running() != nil || s.queueActivity().active() {
+		return true
 	}
 	if s.speed != nil && s.speed.current != nil && s.speed.current.active() {
+		return true
+	}
+	switch s.task.stage {
+	case "", "prepare_candidate", "done":
 		return false
 	}
-	return s.task.failure != nil || s.engineState.State == "failed"
+	return s.task.failure == nil && s.engineState.State != "failed"
 }

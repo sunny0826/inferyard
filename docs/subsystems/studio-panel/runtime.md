@@ -11,7 +11,7 @@
 2. **页面刷新**：主窗口的六页面共用一个 `viewState`；后台 goroutine 订阅 `EventBus`，按游标
    取增量事件，六类事件触发全量刷新（`sync.reset`/`report.created`/`run.state`/`engine.state`/
    `download.state`/`device.updated`，见 [`studio/internal/pages/registry_refresh.go`](../../../studio/internal/pages/registry_refresh.go)），其余做局部更新。
-3. **任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次使用先根据资源清单引导准备模型与引擎，原有二进制引擎资源齐备后 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。只有退出 2 且唯一原因为 `no_local_model` 的检查结果视为资源准备提示，其他阻断保留错误。新任务复用模型/引擎选择，默认勾选存在的 zh-core 与 zh-svg-pelican，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务取消绑定和所有非终态运行并等待结束，下载不受影响。所选新 run 封存后执行 `report --runs`；完成步骤的摘要范围与操作入口见下文「报告」条。没有活动任务时从 `progress.v2` 恢复。原有命令仍经 `WizardExecute` 原白名单；本地安装走[本地候选队列](local-engines.md)，全部绑定与证据操作仍由 CLI 执行。
+3. **任务执行**：准备环境按最新 readiness 依次补 CLI、结果/模型目录、工作区；已初始化就跳过 `init`，新工作区不传 `--bundle`。首次使用先根据资源清单引导准备模型与引擎，原有二进制引擎资源齐备后 workspace device-check 自动执行一次，保留 `--models-root`、`ModelName` 为空。只有退出 2 且唯一原因为 `no_local_model` 的检查结果视为资源准备提示，其他阻断保留错误。新任务复用模型/引擎选择，默认勾选存在的 zh-core 与 zh-svg-pelican，按勾选题包创建新候选并自动启动、绑定和运行；活动阶段与本次返回的 run 路径归任务内存所有，未选题包不阻挡。绑定使用独立取消上下文；新任务在真实在途工作时禁用；失败且无在途工作时用于放弃该轮。下载不受影响。所选新 run 封存后执行 `report --runs`；完成步骤的摘要范围与操作入口见下文「报告」条。没有活动任务时从 `progress.v2` 恢复。原有命令仍经 `WizardExecute` 原白名单；本地安装走[本地候选队列](local-engines.md)，全部绑定与证据操作仍由 CLI 执行。
 4. **运行**：`StartRuns` 逐配置读取 bundle 与输出根并做包含/去重准入 → 入队由 `runQueue` 串行执行。
    新任务重置等待 UI 线程确认完成后退出取消循环；`Window.Update` 只负责排队，不能视为
    回调已经执行。等待期间不能启动专项，重置结束后不再取消后续新任务。

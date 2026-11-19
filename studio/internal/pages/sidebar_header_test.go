@@ -124,43 +124,92 @@ func TestSidebarNewTaskDisabledHintShowsOnHover(t *testing.T) {
 	}
 }
 
-// A round halted at binding has nothing left to cancel: the entry must stay
-// enabled so one click abandons it and returns to model and engine selection.
-func TestSidebarNewTaskAbandonsFailedBinding(t *testing.T) {
-	s := readyState("dashboard")
-	s.task = benchmarkTask{stage: "bind", failure: core.Err("engine_start_failed")}
-	s.engineState = core.EngineState{State: "failed"}
-	tt := sidebarHeaderState(s)
-	tt.Frame()
-
-	if err := tt.Click("新任务"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if s.newTaskPending || s.task.stage != "prepare_candidate" || s.selected != "dashboard" || s.detailID != "" {
-		t.Fatalf("failed binding was not abandoned: pending=%v stage=%q page=%q", s.newTaskPending, s.task.stage, s.selected)
-	}
-	if !tt.HasText("开始测评") && s.task.stage != "prepare_candidate" {
-		t.Fatalf("abandon did not return to setup: %v", tt.Texts())
+// Every failed round must stay exit-able: the stage stays set after the
+// binding, the run or the report failed, and no run is left to cancel. A new
+// task then only returns to model and engine selection.
+func TestSidebarNewTaskExitsFailedRound(t *testing.T) {
+	done := ptr("zh-core")
+	failed := ptr("zh-svg-pelican")
+	for name, s := range map[string]*viewState{
+		"binding failed": func() *viewState {
+			s := readyState("dashboard")
+			s.task = benchmarkTask{stage: "bind", failure: core.Err("engine_start_failed")}
+			s.engineState = core.EngineState{State: "failed"}
+			return s
+		}(),
+		"run failed": func() *viewState {
+			s := readyState("dashboard")
+			s.task = benchmarkTask{stage: "run", failure: core.Err("cli_blocked")}
+			s.tasks = []core.RunTask{{TaskId: "run", State: "failed", Bundle: done}}
+			return s
+		}(),
+		// The LM Studio second-bundle failure keeps the engine running while the
+		// first bundle already completed, so only the task failure marks the stop.
+		"lmstudio second bundle failed": func() *viewState {
+			s := readyState("dashboard")
+			s.task = benchmarkTask{stage: "run", failure: core.Err("cli_blocked")}
+			s.engineState = core.EngineState{State: "running", Pid: 77, Endpoint: "http://127.0.0.1:48857"}
+			s.tasks = []core.RunTask{
+				{TaskId: "first", State: "done", Bundle: done},
+				{TaskId: "second", State: "failed", Bundle: failed},
+			}
+			return s
+		}(),
+		"report failed": func() *viewState {
+			s := readyState("dashboard")
+			s.task = benchmarkTask{stage: "report", failure: core.Err("report_failed")}
+			s.tasks = []core.RunTask{{TaskId: "run", State: "done", Bundle: done}}
+			return s
+		}(),
+	} {
+		if hint := s.newTaskEntryHint(); hint != "" {
+			t.Fatalf("%s: entry disabled with %q", name, hint)
+		}
+		tt := sidebarHeaderState(s)
+		if err := tt.Click("新任务"); err != nil {
+			t.Fatal(name, err)
+		}
+		tt.Frame()
+		if s.task.stage != "prepare_candidate" || s.newTaskPending || s.selected != "dashboard" {
+			t.Fatalf("%s: failed round not abandoned: stage=%q pending=%v page=%q", name, s.task.stage, s.newTaskPending, s.selected)
+		}
 	}
 }
 
-// The same entry stays disabled while the failed round still has something to
-// cancel, so abandoning never hides in-flight work.
-func TestSidebarNewTaskStaysDisabledWhileBindingStillRuns(t *testing.T) {
-	s := readyState("dashboard")
-	s.task = benchmarkTask{stage: "bind", failure: core.Err("engine_start_failed")}
-	s.tasks = []core.RunTask{{TaskId: "run", State: "running"}}
-	tt := sidebarHeaderState(s)
-	if s.newTaskEntryHint() == "" {
-		t.Fatal("running round left the entry enabled")
+// Active work keeps the entry disabled: a run, a queued or cancelling task, a
+// page action, a binding in progress, and an active specialty measurement.
+func TestSidebarNewTaskDisabledWhileWorkRuns(t *testing.T) {
+	newState := func() *viewState {
+		s := readyState("reports")
+		s.speed = &speedWorkspace{current: &speedTask{id: "speed"}}
+		return s
 	}
-	if err := tt.Click("新任务"); err != nil {
-		t.Fatal(err)
+	cases := map[string]func(*viewState){
+		"running": func(s *viewState) { s.tasks = []core.RunTask{{TaskId: "run", State: "running"}} },
+		"queued":  func(s *viewState) { s.tasks = []core.RunTask{{TaskId: "run", State: "starting", Queued: true}} },
+		"cancelling": func(s *viewState) {
+			s.tasks = []core.RunTask{{TaskId: "run", State: "cancelling"}}
+		},
+		"busy":         func(s *viewState) { s.busy = true },
+		"binding":      func(s *viewState) { s.binding = true },
+		"speed active": func(s *viewState) { s.speed.current.stage = speedMeasuring },
+		// A stage without a recorded failure is still moving.
+		"stage in progress": func(s *viewState) { s.task = benchmarkTask{stage: "run"} },
 	}
-	tt.Frame()
-	if s.newTaskPending || s.task.stage != "bind" {
-		t.Fatalf("entry acted while a run was in flight: %+v", s.task.stage)
+	for name, apply := range cases {
+		s := newState()
+		apply(s)
+		if s.newTaskEntryHint() == "" {
+			t.Fatalf("%s: entry stayed enabled", name)
+		}
+		tt := sidebarHeaderState(s)
+		if err := tt.Click("新任务"); err != nil {
+			t.Fatal(name, err)
+		}
+		tt.Frame()
+		if s.newTaskPending || s.selected != "reports" {
+			t.Fatalf("%s: entry acted: pending=%v page=%q", name, s.newTaskPending, s.selected)
+		}
 	}
 }
 

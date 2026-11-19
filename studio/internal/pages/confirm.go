@@ -237,20 +237,3 @@ func (s *viewState) clearPromptOnNavigation() {
 	s.promptPage = page
 	s.pendingDestructive = destructiveRequest{}
 }
-
-// workInFlight reports whether starting a new task would cancel work the user
-// has not finished. Idle preparation screens keep the single-click entry.
-func (s *viewState) workInFlight() bool {
-	if s.running() != nil || s.busy || s.newTaskPending {
-		return true
-	}
-	if s.speed != nil && s.speed.current != nil && s.speed.current.active() {
-		return true
-	}
-	switch s.task.stage {
-	case "", "prepare_candidate", "done":
-		return false
-	default:
-		return true
-	}
-}
