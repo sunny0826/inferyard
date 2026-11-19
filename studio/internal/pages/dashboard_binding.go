@@ -48,16 +48,13 @@ func (s *viewState) bindDiscovered(pid int64, endpoint string) {
 	s.taskCancel = cancel
 	s.guideWork(func() (string, *core.ApiError) {
 		defer cancel()
-		e := runBindingChain(ctx, workspace, jobs, pid, endpoint, s.service.Progress, s.service.WizardExecute,
+		failedBundle, e := runBindingChain(ctx, workspace, jobs, pid, endpoint, s.service.Progress, s.service.WizardExecute,
 			func(bundle string) {
-				s.updateView(func() {
-					s.bindingBundle = bundle
-					s.markServiceUsed(pid)
-				})
+				s.updateView(func() { s.bindingBundle = bundle })
 			})
 		s.updateView(func() {
 			s.binding, s.bindingBundle = false, ""
-			s.bindingOutcome(e)
+			s.applyBinding(failedBundle, e, pid)
 		})
 		if e != nil {
 			return "", e
@@ -66,14 +63,26 @@ func (s *viewState) bindDiscovered(pid int64, endpoint string) {
 	})
 }
 
+// applyBinding records a finished connection attempt: the rejected bundle and
+// cause, or, on success, the service the round consumed.
+func (s *viewState) applyBinding(failedBundle string, e *core.ApiError, pid int64) {
+	s.bindingOutcome(failedBundle, e)
+	if e == nil {
+		s.markServiceUsed(pid)
+	}
+}
+
 // bindingOutcome applies a connection result. A rejection is attributed to the
-// bind step; a success clears the stale bind stage and failure, so refreshed
-// workspace progress decides the step instead of the old failure.
-func (s *viewState) bindingOutcome(e *core.ApiError) {
+// bind step and to the bundle that actually failed; a success clears the stale
+// bind stage and failure, so refreshed workspace progress decides the step
+// instead of the old failure.
+func (s *viewState) bindingOutcome(failedBundle string, e *core.ApiError) {
 	if e != nil {
+		s.failedBundle = failedBundle
 		s.failBinding(e)
 		return
 	}
+	s.failedBundle = ""
 	s.clearRecoveredBinding()
 }
 
@@ -89,32 +98,32 @@ func (s *viewState) markServiceUsed(pid int64) {
 	s.localUsedPIDs[pid] = true
 }
 
-// Re-read each candidate's phase and command before binding; never reuse the
-// first bundle's output or derive eligibility from discovery/health results.
+// runBindingChain re-reads each candidate's phase and command before binding and
+// returns the bundle whose connection failed, so only that bundle is reported.
 func runBindingChain(ctx context.Context, workspace string, jobs []bindingJob, pid int64, endpoint string,
 	progress func(context.Context) (core.ProgressResponse, *core.ApiError),
 	execute func(context.Context, core.WizardRequest) (core.WizardResult, *core.ApiError),
 	announce func(string),
-) *core.ApiError {
+) (string, *core.ApiError) {
 	for _, job := range jobs {
 		if ctx.Err() != nil {
-			return core.Err("cancelled")
+			return "", core.Err("cancelled")
 		}
 		current, e := progress(ctx)
 		if e != nil {
-			return e
+			return job.bundle, e
 		}
 		p := current.Progress
 		if current.ExitCode != 0 || p == nil || p.Workspace != workspace ||
 			(p.NextAction != "bind" && p.NextAction != "run") {
-			return core.Err("binding_progress_changed")
+			return job.bundle, core.Err("binding_progress_changed")
 		}
 		var command string
 		for _, b := range p.Bundles {
 			if b.Bundle == job.bundle && b.Phase == "bound_missing" && b.NextAction == "bind" &&
 				emptyText(b.CandidatePath) == job.candidate && job.candidate != "" {
 				if _, err := inferyard.SplitCommand(emptyText(b.NextCommand)); err != nil {
-					return core.Err("binding_progress_changed")
+					return job.bundle, core.Err("binding_progress_changed")
 				}
 				// Reuse the same bind command builder as advanced manual binding.
 				one := *p
@@ -122,24 +131,24 @@ func runBindingChain(ctx context.Context, workspace string, jobs []bindingJob, p
 				view := viewState{progress: &one, candidate: job.candidate}
 				command, e = view.bindCommand(strconv.FormatInt(pid, 10), endpoint)
 				if e != nil {
-					return e
+					return job.bundle, e
 				}
 				break
 			}
 		}
 		if command == "" {
-			return core.Err("binding_progress_changed")
+			return job.bundle, core.Err("binding_progress_changed")
 		}
 		announce(job.bundle)
 		r, e := execute(ctx, core.WizardRequest{Command: command})
 		if e != nil {
-			return e
+			return job.bundle, e
 		}
 		if r.ExitCode != 0 {
-			return wizardFailure(r)
+			return job.bundle, wizardFailure(r)
 		}
 	}
-	return nil
+	return "", nil
 }
 
 func wizardFailure(r core.WizardResult) *core.ApiError {

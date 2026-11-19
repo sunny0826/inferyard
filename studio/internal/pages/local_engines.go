@@ -111,7 +111,7 @@ func (s *viewState) localServiceChoices() []localServiceChoice {
 	choices := []localServiceChoice{}
 	expected := s.localExpectedEndpoint()
 	for _, service := range s.discovery.Services {
-		if service.PID <= 0 || s.localUsedPIDs[service.PID] {
+		if service.PID <= 0 || s.localPIDUsed(service.PID) {
 			continue
 		}
 		for _, endpoint := range service.Endpoints {
@@ -163,7 +163,9 @@ func (s *viewState) localSelectionInvalid(pid int64, err error) bool {
 // a compatible discovered service, and the manual PID and endpoint inputs.
 func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel string) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-		button(c, "刷新服务列表").Disabled(s.busy || s.discovering).OnClick(s.refreshDiscovery)
+		// Discovery is independent of the service work in flight: while awaiting
+		// the next bundle's service, busy describes the run queue, not discovery.
+		button(c, "刷新服务列表").Disabled(s.discovering).OnClick(s.refreshDiscovery)
 		if s.discovering {
 			ui.Text(c, "正在发现本机服务…").TextColor(c.Theme().TextMuted)
 		}
@@ -238,29 +240,41 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 			continue
 		}
 		if s.localBindingTask != task.TaskId {
-			s.localBindingTask, s.localPID = task.TaskId, ""
+			s.localBindingTask, s.localPID, s.handoffFailure = task.TaskId, "", nil
 		}
 		card(c, "连接下一测评题集的 LM Studio 服务", func() {
 			ui.Text(c, emptyText(task.Bundle)+" · 请结束上一测评题集的服务，重新启动后台服务并加载同一模型。CLI 将重新校验身份。")
+			// The handoff owns its own diagnostic: the error appears here, next to
+			// the form, and never only in the page banner.
+			if s.handoffFailure != nil {
+				failureView(c, "连接此测评题集失败", s.handoffFailure, "服务就绪后可用同一 PID 重试。")
+			}
 			s.localServicePicker(c, "新的后台 PID", "本机 endpoint")
 			pid, err := strconv.ParseInt(s.localPID, 10, 64)
 			if err == nil && pid > 0 && s.localPIDUsed(pid) {
 				ui.Text(c, human("local_engine_service_reused")).TextColor(stateColor(c, stateWarning))
 			}
 			button(c, "连接并继续此测评题集").Disabled(s.localSelectionInvalid(pid, err)).OnClick(func() {
-				if s.simulate(previewLocalBinding{taskID: task.TaskId, pid: pid, endpoint: s.localEndpoint}) {
-					return
-				}
-				e := s.service.BindCandidateService(task.TaskId, pid, s.localEndpoint)
-				if e != nil {
-					s.failBinding(e)
-					s.failure = e
-					return
-				}
-				s.markServiceUsed(pid)
-				s.bindFailure = nil
+				s.connectHandoffService(task.TaskId, pid)
 			})
 		})
 		ui.Text(c, fmt.Sprintf("等待服务 · %s", task.TaskId)).TextColor(c.Theme().TextMuted)
 	}
+}
+
+// connectHandoffService connects the next bundle's service. A rejected attempt
+// keeps the PID available for retry: only an accepted connection is recorded as
+// used.
+func (s *viewState) connectHandoffService(taskID string, pid int64) {
+	if s.simulate(previewLocalBinding{taskID: taskID, pid: pid, endpoint: s.localEndpoint}) {
+		return
+	}
+	if e := s.service.BindCandidateService(taskID, pid, s.localEndpoint); e != nil {
+		s.handoffFailure = e
+		s.failure = e
+		return
+	}
+	s.handoffFailure = nil
+	s.failure = nil
+	s.markServiceUsed(pid)
 }

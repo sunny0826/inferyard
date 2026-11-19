@@ -45,12 +45,28 @@ func TestHandoffAcceptanceMatchesPreview(t *testing.T) {
 				t.Fatalf("page disabled=%v, want %v", disabled, scenario.wantPageDisabled)
 			}
 			p.dispatch(previewLocalBinding{taskID: id, pid: scenario.pid, endpoint: scenario.endpoint})
+			p.advance(time.Second)
 			got := ""
 			if s.failure != nil {
 				got = s.failure.Code
 			}
 			if got != scenario.wantCode {
 				t.Fatalf("preview failure %q, want %q", got, scenario.wantCode)
+			}
+			// The handoff card owns the rejection, so the preview must attribute it
+			// the same way the production card does.
+			handoff := ""
+			if s.handoffFailure != nil {
+				handoff = s.handoffFailure.Code
+			}
+			if handoff != scenario.wantCode {
+				t.Fatalf("preview handoff failure %q, want %q", handoff, scenario.wantCode)
+			}
+			// The production page consumes only an accepted service; the preview must
+			// account for it the same way, so a rejected PID stays retryable.
+			wantUsed := scenario.wantCode == "" || scenario.used[scenario.pid]
+			if got := s.localPIDUsed(scenario.pid); got != wantUsed {
+				t.Fatalf("preview used PID=%v after %q, want %v", got, scenario.wantCode, wantUsed)
 			}
 		})
 	}

@@ -183,13 +183,14 @@ func (p *previewSession) bindLocal(op previewLocalBinding) {
 	// address, and a service already used by this group is reused, not attached.
 	expected := p.state.localExpectedEndpoint()
 	if op.pid <= 0 || expected != "" && op.endpoint != expected {
-		p.state.failure = core.Err("candidate_endpoint_mismatch")
+		p.state.failure, p.state.handoffFailure = core.Err("candidate_endpoint_mismatch"), core.Err("candidate_endpoint_mismatch")
 		return
 	}
 	if l.usedPIDs[op.pid] {
-		p.state.failure = core.Err("local_engine_service_reused")
+		p.state.failure, p.state.handoffFailure = core.Err("local_engine_service_reused"), core.Err("local_engine_service_reused")
 		return
 	}
+	p.state.handoffFailure = nil
 	l.fail = p.takeFailure()
 	p.startLocalBinding(op.pid)
 }
@@ -201,19 +202,21 @@ func (p *previewSession) startLocalBinding(pid int64) {
 	task.AwaitingService, task.PreparationStage = false, "binding"
 	if l.family != "lmstudio" {
 		s.engineState.State = "running"
-	} else {
-		if s.localUsedPIDs == nil {
-			s.localUsedPIDs = map[int64]bool{}
-		}
-		s.localUsedPIDs[pid] = true
 	}
 	p.copyLocalTask(id)
 	p.after("task", 400*time.Millisecond, func() {
 		if l.fail {
+			// A rejected attempt does not consume the PID: the user may retry it
+			// once the service is actually ready.
+			s.handoffFailure = core.Err("cli_blocked")
 			p.failLocalScope(core.Err("cli_blocked"))
 			return
 		}
 		l.usedPIDs[pid] = true
+		s.markServiceUsed(pid)
+		// A successful handoff leaves the bind step clean: no stale error and no
+		// stale bind failure, matching the production outcome.
+		s.handoffFailure, s.bindFailure, s.failure = nil, nil, nil
 		task.PreparationStage = ""
 		p.copyLocalTask(id)
 		p.startRun(l.index, l.op, l.ids)

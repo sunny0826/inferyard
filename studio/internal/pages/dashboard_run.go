@@ -145,21 +145,20 @@ func (s *viewState) engineFailureBlocks() bool {
 	return key != "" && key != s.engineFailureCleared
 }
 
-// stepDiagnosis is the failure the active step owns: the task chain's failure,
-// a rejected bind-stage connection, or a failed engine state. Only the
-// configuration, bind and run steps own diagnostics, and the configuration step
-// owns only this task's failure, so a previous round's engine error never
-// reappears on a fresh task. The cause may be nil even when failed, for example
-// a failed engine state without an error code.
+// stepDiagnosis is the failure the active step owns. The most recent connection
+// rejection wins, because it is the cause the user just triggered; then the task
+// chain's failure; then a failed supervised engine. Only the configuration, bind
+// and run steps own diagnostics, and the configuration step owns only this
+// task's failure, so a previous round's engine error never reappears on a fresh
+// task. The cause may be nil even when failed, for example a failed engine state
+// without an error code.
 func (s *viewState) stepDiagnosis() (cause *core.ApiError, failed bool) {
 	step := s.step()
 	if step < 2 || step > 4 {
 		return nil, false
 	}
-	if s.task.failure != nil {
-		return s.task.failure, true
-	}
-	if step < 3 {
+	// The handoff card owns the connection error while it is on screen.
+	if s.awaitingLocalService() {
 		return nil, false
 	}
 	// A rejected manual, discovered or handoff connection is owned by the step
@@ -169,10 +168,26 @@ func (s *viewState) stepDiagnosis() (cause *core.ApiError, failed bool) {
 	if s.bindFailure != nil {
 		return s.bindFailure, true
 	}
+	if s.task.failure != nil {
+		return s.task.failure, true
+	}
+	if step < 3 {
+		return nil, false
+	}
 	if s.engineFailureBlocks() {
 		return s.engineState.Error, true
 	}
 	return nil, false
+}
+
+// awaitingLocalService reports an LM Studio handoff card on screen.
+func (s *viewState) awaitingLocalService() bool {
+	for _, task := range s.tasks {
+		if task.AwaitingService && !terminal(task.State) {
+			return true
+		}
+	}
+	return false
 }
 
 // stepFailed reports a blocked step even when no cause code was recorded, so the
@@ -188,12 +203,16 @@ func (s *viewState) activeTaskFailure() *core.ApiError {
 	return cause
 }
 
-// stepOwnsError reports whether the active step already renders e, so the page
-// banner does not repeat the same diagnostic. The page and the task chain may
-// carry separate copies of the same error, so the comparison is by content.
+// stepOwnsError reports whether the visible step already renders e, so the page
+// banner does not repeat the same diagnostic. Only an error the step actually
+// displays counts: the handoff card renders its own message, everything else
+// stays in the banner.
 func (s *viewState) stepOwnsError(e *core.ApiError) bool {
 	if e == nil || s.selected != "dashboard" || s.detailID != "" {
 		return false
+	}
+	if s.awaitingLocalService() {
+		return s.handoffFailure == e
 	}
 	cause, _ := s.stepDiagnosis()
 	if cause == nil || cause.Code != e.Code {
@@ -311,7 +330,9 @@ func (w *viewState) serviceView(c *ui.Context) {
 }
 func (w *viewState) runView(c *ui.Context) {
 	heading(c, "运行当前测评题集", 3)
-	if w.stepFailed() && w.running() == nil {
+	// The model-service card above already renders the blocked-step diagnosis;
+	// repeating it here would show the same cause twice on one step.
+	if w.stepFailed() && w.running() == nil && !w.serviceCardVisible() {
 		failureView(c, "运行未完成", w.activeTaskFailure(), "处理原因后重试未完成的测评题集；已完成的题集结果会保留。")
 	}
 	if task := w.running(); task != nil {
@@ -364,7 +385,9 @@ func (w *viewState) runView(c *ui.Context) {
 	if b.NextAction == "resume" {
 		label = "继续未完成的运行"
 	}
-	if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || w.engineState.State != "running").Clicked() {
+	// A managed engine must be running; an externally started or discovered
+	// service that the CLI already verified into this bundle's binding is enough.
+	if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || !w.runServiceReady(*b)).Clicked() {
 		if w.simulate(previewStartRun{bundle: b.Bundle}) {
 			return
 		}
@@ -379,6 +402,17 @@ func (w *viewState) runView(c *ui.Context) {
 		})
 	}
 
+}
+
+// runServiceReady reports whether the run step can start. A managed running
+// engine always qualifies. A bundle the CLI already bound to an external or
+// discovered service also qualifies for a fresh run, because the binding carries
+// the verified process identity; resuming still needs the live managed endpoint.
+func (w *viewState) runServiceReady(b inferyard.BundleProgress) bool {
+	if w.engineState.State == "running" {
+		return true
+	}
+	return b.NextAction == "run" && b.BoundPath != nil
 }
 
 func nativeOptions(values []string) []components.NativeSelectOption[string] {

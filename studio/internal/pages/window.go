@@ -147,6 +147,12 @@ type viewState struct {
 	// bindFailure is the rejected manual or discovered connection the bind step
 	// owns; it is separate from other page-level failures such as refreshes.
 	bindFailure *core.ApiError
+	// failedBundle is the bundle the rejected connection belonged to, so the
+	// progress card marks only that bundle.
+	failedBundle string
+	// handoffFailure is the rejected LM Studio handoff connection; the handoff
+	// card renders it next to its form.
+	handoffFailure *core.ApiError
 	// engineFailureCleared records the failed engine state the user already
 	// recovered from by connecting another service. A later, different engine
 	// failure is keyed differently and still reports.

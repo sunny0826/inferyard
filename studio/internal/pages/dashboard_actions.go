@@ -276,12 +276,13 @@ func (w *viewState) stepConnection() {
 
 // failBinding attributes a rejected connection to the bind step: the step shows
 // the cause and its recovery guidance instead of leaving it only in the page
-// banner.
+// banner, and the banner carries the same newest cause rather than an older one.
 func (w *viewState) failBinding(e *core.ApiError) {
 	if e == nil {
 		return
 	}
 	w.bindFailure = e
+	w.failure = e
 }
 
 // clearRecoveredBinding drops the stale bind stage and failure after a
@@ -297,18 +298,25 @@ func (w *viewState) clearRecoveredBinding() {
 	w.failure = nil
 }
 
+// executeExistingBundle reuses the workspace's own next command. A fresh run
+// needs only the frozen binding when the CLI verified an external service; a
+// managed engine is still required to resume or to (re)bind.
 func executeExistingBundle(ctx context.Context, b inferyard.BundleProgress, workspace string, state core.EngineState, execute func(context.Context, core.WizardRequest) (core.WizardResult, *core.ApiError)) *core.ApiError {
-	if blockedPlan(b) || b.NextAction == "none" || state.State != "running" {
+	if blockedPlan(b) || b.NextAction == "none" {
 		return core.Err("invalid_request")
 	}
 	args, err := inferyard.SplitCommand(emptyText(b.NextCommand))
 	if err != nil {
 		return core.Err("invalid_request")
 	}
-	if b.NextAction == "resume" {
+	switch {
+	case b.NextAction == "resume":
+		if state.State != "running" {
+			return core.Err("invalid_request")
+		}
 		args = setArg(args, "--endpoint-url", state.Endpoint)
 		args = setArg(args, "--server-pid", strconv.FormatInt(state.Pid, 10))
-	} else {
+	case state.State == "running":
 		command, out, e := benchmarkBindCommand(workspace, b, state)
 		if e != nil {
 			return e
@@ -321,6 +329,11 @@ func executeExistingBundle(ctx context.Context, b inferyard.BundleProgress, work
 			return wizardFailure(r)
 		}
 		args = []string{"run", "--config", filepath.Join(out, "config.toml")}
+	case b.NextAction == "run" && b.BoundPath != nil:
+		// The binding already names the verified external service; run its frozen
+		// config without a managed engine.
+	default:
+		return core.Err("invalid_request")
 	}
 	if ctx.Err() != nil {
 		return core.Err("cancelled")

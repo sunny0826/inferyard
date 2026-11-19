@@ -76,7 +76,7 @@ func TestStartupFailureRendersOnce(t *testing.T) {
 // bindingOutcome, which is what the chain reports back.
 func TestRecoveredBindingAdvancesPastStaleBindStage(t *testing.T) {
 	s := bindingState(core.Err("engine_start_failed"))
-	s.bindingOutcome(nil)
+	s.bindingOutcome("", nil)
 	if s.task.stage != "" || s.task.failure != nil || s.bindFailure != nil {
 		t.Fatalf("stale bind state survived recovery: %+v", s.task)
 	}
@@ -170,7 +170,7 @@ func TestDiscoveredBindingFailureIsOwnedByStepFour(t *testing.T) {
 	s := testState()
 	s.progress.NextAction = "bind"
 	e := core.Err("service_process_unavailable")
-	s.bindingOutcome(e)
+	s.bindingOutcome("zh-svg-pelican", e)
 	tt := ui.NewTester(s.view, 1120, 1800)
 	if !tt.HasText("service_process_unavailable") || !tt.HasText("已连接的服务进程不可用") {
 		t.Fatalf("discovered failure not shown in the step: %v", tt.Texts())
@@ -183,7 +183,7 @@ func TestDiscoveredBindingFailureIsOwnedByStepFour(t *testing.T) {
 // Recovering from one engine failure must not hide a later, different failure.
 func TestRecoveryClearsOnlyTheResolvedEngineFailure(t *testing.T) {
 	s := bindingState(core.Err("engine_start_failed"))
-	s.bindingOutcome(nil)
+	s.bindingOutcome("", nil)
 	if s.stepFailed() {
 		t.Fatal("recovered failure still blocks the step")
 	}

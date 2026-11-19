@@ -136,8 +136,13 @@ func (s *viewState) conclusionView(c *ui.Context) {
 				ui.Text(c, human(*b.BlockedReason)).TextColor(color)
 			}
 		}
-		if s.task.failure != nil {
-			ui.Text(c, "当前任务已中止："+human(s.task.failure.Code)+"。原因与恢复操作见下方当前阶段。").TextColor(stateColor(c, stateDanger))
+		if s.task.failure != nil || s.bindFailure != nil {
+			cause, _ := s.stepDiagnosis()
+			code := ""
+			if cause != nil {
+				code = cause.Code
+			}
+			ui.Text(c, "当前任务已中止："+human(code)+"。原因与恢复操作见下方当前阶段。").TextColor(stateColor(c, stateDanger))
 		}
 	})
 }
@@ -153,18 +158,21 @@ func (s *viewState) serviceCardVisible() bool {
 	return b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil)
 }
 
-// failedBundles lists the bundles the active failure blocks. Completed bundles
-// keep their status, and a step that has an identifiable bundle marks only that
-// one; other pending bundles are merely waiting, not failed.
+// failedBundles lists the bundles the active failure blocks. A recorded binding
+// failure marks exactly that bundle; otherwise only the bundle the step is about
+// is marked. Completed bundles always keep their status.
 func (s *viewState) failedBundles() map[string]bool {
 	failed := map[string]bool{}
 	if !s.stepFailed() {
 		return failed
 	}
 	var names []string
-	if b := s.active(); b != nil {
-		names = []string{b.Bundle}
-	} else {
+	switch {
+	case s.failedBundle != "":
+		names = []string{s.failedBundle}
+	case s.active() != nil:
+		names = []string{s.active().Bundle}
+	default:
 		names = s.task.bundles
 	}
 	for _, name := range names {
