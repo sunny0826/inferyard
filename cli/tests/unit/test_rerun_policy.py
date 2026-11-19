@@ -77,7 +77,7 @@ def test_rerun_accepts_identity_difference_but_comparison_rejects(tmp_path, monk
     assert next(c for c in result["conditions"] if c["field"] == condition)["status"] == "different"
 
 
-def test_default_identity_context_reuses_cache_without_sharing_state():
+def test_default_identity_context_reuses_cache_without_sharing_state() -> None:
     first = IdentityContext()
     first.value["measurement"]["sha256"] = "0" * 64
     second = IdentityContext()
@@ -86,7 +86,7 @@ def test_default_identity_context_reuses_cache_without_sharing_state():
     assert second.value == IdentityContext().value
 
 
-def test_trial_inputs_revalidates_changed_bundle_inside_command_cache():
+def test_trial_inputs_revalidates_changed_bundle_inside_command_cache() -> None:
     loaded = load_config(Path(__file__).parents[1] / "fixtures/config/valid.toml")
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
     plan = compile_single_plan(config, bundle)

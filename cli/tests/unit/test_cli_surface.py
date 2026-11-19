@@ -1,9 +1,9 @@
 """Public rejection behavior and metadata access without the live backend."""
 
-import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 CASES = [
     ["--help"],
@@ -57,12 +57,17 @@ CASES = [
     ],
 ]
 
+# The directory that holds the importable `tests` package for the child process.
+CLI_ROOT = Path(__file__).resolve().parents[2]
+
 SCRIPT = """
 import contextlib
 import importlib.abc
 import io
 import json
 import sys
+
+sys.path.insert(0, sys.argv[1])
 
 BLOCKED = ("inferyard.runtime", "inferyard.extensions", "inferyard.adapters")
 
@@ -76,8 +81,10 @@ class RejectLiveImports(importlib.abc.MetaPathFinder):
 sys.meta_path.insert(0, RejectLiveImports())
 from inferyard.cli import main
 
+from tests.unit.test_cli_surface import CASES
+
 failures = []
-for arguments in json.loads(sys.argv[1]):
+for arguments in CASES:
     out, err = io.StringIO(), io.StringIO()
     try:
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
@@ -85,26 +92,26 @@ for arguments in json.loads(sys.argv[1]):
     except SystemExit as exc:
         code = exc.code if exc.code is not None else 0
     except BaseException as exc:  # Cold-start violation or parser failure.
-        failures.append([arguments, type(exc).__name__ + ": " + str(exc)])
+        failures.append(" ".join([*arguments, type(exc).__name__ + ": " + str(exc)]))
         continue
     if code != 0 or err.getvalue():
-        failures.append([arguments, code, err.getvalue()])
+        failures.append(" ".join([*arguments, str(code), err.getvalue()]))
     elif "--help" not in arguments and not isinstance(json.loads(out.getvalue()), dict):
-        failures.append([arguments, "non_dict_json"])
+        failures.append(" ".join([*arguments, "non_dict_json"]))
 
-sys.stdout.write(json.dumps(failures))
+sys.stdout.write("\\n".join(failures))
 """
 
 
-def test_all_help_and_metadata_are_cold_starts():
+def test_all_help_and_metadata_are_cold_starts() -> None:
     """One isolated interpreter covers every command; no live backend may be imported."""
     result = subprocess.run(
-        [sys.executable, "-c", SCRIPT, json.dumps(CASES)],
+        [sys.executable, "-c", SCRIPT, str(CLI_ROOT)],
         capture_output=True,
         text=True,
         check=False,
         env={**os.environ, "NO_COLOR": "1", "PYTHON_COLORS": "0"},
     )
     assert result.returncode == 0, (result.stdout, result.stderr)
-    assert json.loads(result.stdout) == []
+    assert result.stdout == ""
     assert result.stderr == ""
