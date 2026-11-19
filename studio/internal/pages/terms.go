@@ -22,7 +22,7 @@ const (
 // "denominator" as primary wording.
 func bundleScopeText(resume bool) string {
 	if resume {
-		return "本次续测的题以开始运行时固定；未读取时不猜测。"
+		return "续测题目范围已在开始时固定。"
 	}
-	return "本次测评的题以开始运行时固定；未读取时不猜测。"
+	return "测评题目范围已在开始时固定。"
 }

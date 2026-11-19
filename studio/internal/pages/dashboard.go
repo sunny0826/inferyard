@@ -64,7 +64,6 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		return
 	}
 	s.header(c, "任务")
-	ui.Text(c, "配置、运行与跟踪本地模型测评。").TextColor(c.Theme().TextMuted)
 	if s.environmentMissing() {
 		s.setupGuide(c)
 		return
@@ -79,7 +78,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 	s.stageView(c)
 	s.awaitingLocalServiceView(c)
 	if len(s.task.start.localCandidates) > 0 && s.task.failure != nil && !s.busy {
-		ui.Text(c, "已完成的测评题集会保留；确认停止原因已解决后，仅重试未完成的测评题集。")
+		ui.Text(c, "已完成题集将保留，确认问题解决后仅重试未完成项。")
 		button(c, "重试未完成的测评题集").OnClick(s.retryBenchmark)
 	}
 	for _, task := range s.tasks {
@@ -156,7 +155,7 @@ func (s *viewState) stageView(c *ui.Context) {
 	switch action {
 	case "device_check":
 		stepTrack(c, "2", "设备检查", func() {
-			ui.Text(c, "正在准备设备检查；检查结果可在设备页查看。")
+			ui.Text(c, "正在检查设备，结果可在设备页查看。")
 			s.checkWorkspaceDevice()
 			button(c, "查看设备页明细").OnClick(func() { s.selected = "device" })
 		})

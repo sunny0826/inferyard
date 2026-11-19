@@ -6,7 +6,6 @@ import (
 	"inferyard/studio/internal/core"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func aggregateStatus(runs []core.RunSummary) string {
@@ -35,7 +34,7 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 		}
 		ui.Text(c, "得分："+runScore(r))
 		componentFold(c, "运行原始详情", func() {
-			ui.Text(c, "关系："+text(r.Relation)+" · 来源："+text(r.ParentRunId)+" · 开始："+text(r.StartedAt)+" · 结束："+text(r.FinishedAt)).Selectable()
+			ui.Text(c, "关系："+text(r.Relation)+" · 来源："+text(r.ParentRunId)+" · 开始："+formatTimestampOrMissing(r.StartedAt)+" · 结束："+formatTimestampOrMissing(r.FinishedAt)).Selectable()
 		})
 		ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
 			button(c, "进入任务").OnClick(func() {
@@ -72,10 +71,9 @@ func (s *viewState) resumeView(c *ui.Context) {
 	card(c, "续测 "+s.resumeSource.RunId, func() {
 		ui.Text(c, displayName(s.resumeSource.Path)).Selectable()
 		endpointError, pidError := resumeErrors(s.endpoint, s.pid)
-		field(c, "endpoint_url（可选）", &s.endpoint).Description("本机服务 URL；与 PID 同时填写或同时省略。").Error(endpointError)
-		field(c, "server_pid（与 endpoint 同给同省）", &s.pid).Description("正整数；不填写时沿用来源配置。").Error(pidError)
-		ui.Text(c, "不填写时沿用来源配置；来源是否可续测由 CLI 最终裁决。")
-		ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
+		field(c, "服务地址（可选）", &s.endpoint).Description("本机服务 URL，留空则沿用原配置").Error(endpointError)
+		field(c, "服务 PID（可选）", &s.pid).Description("正整数，须与服务地址同时填写或留空").Error(pidError)
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.CardGap).Children(func() {
 			if primaryButton(c, "确认续测").AlignSelf(ui.Start).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
 				s.resume()
 			}
@@ -159,7 +157,7 @@ func runScore(r core.RunSummary) string {
 
 func (s *viewState) historyView(c *ui.Context) {
 	ui.Text(c, "结果目录："+configuredValue(displayName(emptyText(s.history.ResultsRoot))))
-	ui.Text(c, "扫描时间："+configuredValue(s.history.ScannedAt))
+	ui.Text(c, "扫描时间："+configuredValue(formatTimestamp(s.history.ScannedAt)))
 	runs := s.historyRuns()
 	if len(runs) == 0 && s.historyError == nil && s.loaded {
 		ui.Text(c, "暂无运行记录。")
@@ -198,16 +196,20 @@ func historyModel(r core.RunSummary) string {
 }
 
 // historyStarted formats ISO-8601/RFC3339 timestamps as compact UTC seconds so
-// the start time fits the 170 DIP table cell; the raw value stays in detail.
+// the start time fits the 170 DIP table cell.
 func historyStarted(r core.RunSummary) string {
 	raw := emptyText(r.StartedAt)
 	if raw == "" {
 		return "未记录"
 	}
-	if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
-		return parsed.UTC().Format("2006-01-02T15:04:05Z")
+	return formatTimestamp(raw)
+}
+
+func formatTimestampOrMissing(p *string) string {
+	if p == nil || *p == "" {
+		return "缺测"
 	}
-	return raw
+	return formatTimestamp(*p)
 }
 
 // historyIdentity shows the identifiers that no longer occupy table columns.

@@ -32,8 +32,8 @@ var (
 // draft untouched, and failures appear next to this field only.
 func (s *viewState) pathField(c *ui.Context, label string, value *string, spec browseSpec) ui.Element {
 	return ui.Field(c, label, func() {
-		ui.Row(c).Gap(tokens(c).Density.Row).Children(func() {
-			components.TextBox(c, value, components.TextBoxOptions{})
+		ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			components.TextBox(c, value, components.TextBoxOptions{}).Grow(1)
 			button(c, "浏览…").Label("浏览… · " + label).Disabled(s.busy || !s.canBrowse()).OnClick(func() {
 				s.browsePath(value, spec)
 			})

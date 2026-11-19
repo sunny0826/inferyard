@@ -44,8 +44,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 		} else {
 			ui.Form(c, fields)
 		}
-		ui.Text(c, "保存设置不创建目录，目录缺失仍可浏览所有页面。")
-		ui.Text(c, "「浏览…」选择已有文件或目录；尚不存在的新工作区仍需手动输入完整路径。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "保存不会自动创建目录；新建工作区请手动输入完整路径。").TextColor(c.Theme().TextMuted)
 		if primaryButton(c, "保存").AlignSelf(ui.Start).Disabled(s.busy || !s.settingsLoaded).Clicked() {
 			if !s.validateSettings() {
 				return
@@ -99,7 +98,7 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 // pathFields renders the four path inputs with their browse buttons.
 func (s *viewState) pathFields(c *ui.Context) {
 	ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
-		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description("空值使用发现到的可执行文件，顺序是 PATH、~/.local/bin，macOS 还有 /opt/homebrew/bin 和 /usr/local/bin。").Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
+		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description("留空则自动从 PATH 及常用本地目录查找。").Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
 		s.pathField(c, "工作区目录", &s.workspace, browseWorkspace).Description(directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot))).Error(s.browseError(browseWorkspace.key, settingsPathError(s.workspace, emptyText(s.settings.Effective.WorkspaceRoot))))
 		s.pathField(c, "结果目录", &s.results, browseResults).Description(directoryState(s.results, s.ready.Results, emptyText(s.settings.Settings.ResultsRoot))).Error(s.browseError(browseResults.key, settingsPathError(s.results, emptyText(s.settings.Settings.ResultsRoot))))
 		s.pathField(c, "模型目录", &s.models, browseModels).Description(directoryState(s.models, s.ready.Models, emptyText(s.settings.Settings.ModelsRoot))).Error(s.browseError(browseModels.key, settingsPathError(s.models, emptyText(s.settings.Settings.ModelsRoot))))
@@ -108,24 +107,24 @@ func (s *viewState) pathFields(c *ui.Context) {
 
 func (s *viewState) downloadNamesView(c *ui.Context) {
 	card(c, "下载目录名", func() {
-		ui.Text(c, "新下载任务自动使用基础名，无需每次填写。")
 		field(c, "模型下载目录名", &s.modelName).Error(downloadNameError(s.modelName))
 		field(c, "引擎下载目录名", &s.engineName).Error(downloadNameError(s.engineName))
-		ui.Text(c, "仅允许字母、数字、点、下划线、连字符；不能为空，也不能全为点。默认 model / engine。")
-		ui.Text(c, "名称被占用时自动追加 -2、-3；实际名称显示在下载任务详情中。")
-		button(c, "保存下载目录名").Disabled(s.busy || !validName(s.modelName) || !validName(s.engineName)).OnClick(func() {
-			patch := map[string]json.RawMessage{}
-			patch["model_download_name"], _ = json.Marshal(s.modelName)
-			patch["engine_download_name"], _ = json.Marshal(s.engineName)
-			if s.simulate(previewSettings{patch: patch}) {
-				return
-			}
-			s.work(func() (string, *core.ApiError) {
-				_, e := s.service.UpdateSettings(patch)
-				return "下载目录名已保存。", e
+		ui.Text(c, "仅允许字母、数字、.、_、-；重名时自动追加序号（默认 model / engine）。").TextColor(c.Theme().TextMuted)
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			button(c, "保存下载目录名").Disabled(s.busy || !validName(s.modelName) || !validName(s.engineName)).OnClick(func() {
+				patch := map[string]json.RawMessage{}
+				patch["model_download_name"], _ = json.Marshal(s.modelName)
+				patch["engine_download_name"], _ = json.Marshal(s.engineName)
+				if s.simulate(previewSettings{patch: patch}) {
+					return
+				}
+				s.work(func() (string, *core.ApiError) {
+					_, e := s.service.UpdateSettings(patch)
+					return "下载目录名已保存。", e
+				})
 			})
+			button(c, "恢复默认值").OnClick(func() { s.modelName, s.engineName = "model", "engine" })
 		})
-		button(c, "恢复默认值").OnClick(func() { s.modelName, s.engineName = "model", "engine" })
 	})
 }
 func downloadNameError(name string) string {

@@ -40,15 +40,13 @@ func (s *viewState) newDownloadsView(c *ui.Context) {
 		ui.Text(c, "推荐资源 · "+core.PlatformLabel(core.CurrentPlatform())).TextColor(c.Theme().TextMuted)
 		s.engineDownloadView(c)
 		s.modelAssetsView(c)
-		ui.Text(c, "目录名取自设置，占用自动加序号；实际目录名见任务详情。")
-		button(c, "打开设置").AlignSelf(ui.Start).OnClick(func() { s.selected = "settings" })
+		button(c, "设置下载目录名").AlignSelf(ui.Start).OnClick(func() { s.selected = "settings" })
 	})
 }
 
 func (s *viewState) modelAssetsView(c *ui.Context) {
 	heading(c, "模型", 3)
 	s.catalogChoices(c, core.CatalogModel, core.CurrentPlatform())
-	ui.Text(c, "先用小模型跑通流程；实际运行条件会在测评前检查。").TextColor(c.Theme().TextMuted)
 	s.modelDownloadForm(c)
 }
 
@@ -59,7 +57,6 @@ func (s *viewState) modelDownloadForm(c *ui.Context) {
 	catalogDetails(c, s.modelURL)
 	componentFold(c, "需要凭据时", func() {
 		field(c, "凭据环境变量名（可选）", &s.tokenEnv).Description("仅填写变量名称，不填写凭据值。").Error(tokenNameError(s.tokenEnv))
-		ui.Text(c, "凭据由启动 Studio 的环境提供。")
 	})
 	if primaryButton(c, "下载模型").AlignSelf(ui.Start).Disabled(s.busy || strings.TrimSpace(s.modelURL) == "").Clicked() {
 		s.acquireModel()

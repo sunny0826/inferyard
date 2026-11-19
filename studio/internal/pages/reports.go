@@ -24,7 +24,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 }
 
 func (s *viewState) reportSourcesView(c *ui.Context) {
-	componentFold(c, "从历史运行另做报告", func() {
+	componentFold(c, "从历史运行生成报告", func() {
 		errorView(c, s.historyError)
 		ui.Text(c, "选择来源 run（1–100 个）")
 		runs := s.historyRuns()

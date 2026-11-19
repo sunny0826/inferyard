@@ -105,7 +105,7 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 		s.pathField(c, "安装声明 JSON 路径", &s.installationPath, browseInstallation).Description("已有 installation.json 的绝对路径；引擎、环境和模型不会自动下载。").Error(s.browseError(browseInstallation.key, ""))
 		button(c, "注册引擎").Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").OnClick(func() { s.changeInstallation("register", s.installationPath) })
 		for _, path := range s.settings.Settings.EngineInstallations {
-			ui.Row(c.Key(path)).Wrap().Children(func() {
+			ui.Row(c.Key(path)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				ui.Text(c, path)
 				button(c, "移除注册").Disabled(s.busy).OnClick(func() { s.changeInstallation("remove", path) })
 			})

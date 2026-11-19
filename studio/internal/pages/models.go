@@ -57,7 +57,6 @@ func (s *viewState) modelsView(c *ui.Context) {
 		}
 		s.discoveryView(c, false)
 	})
-	ui.Text(c, "在任务页选择本次测评使用的模型与引擎；此页只展示已安装资源和本机服务。").TextColor(c.Theme().TextMuted)
 }
 
 // modelDetails describes one installed model without inventing missing values.

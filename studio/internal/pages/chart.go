@@ -85,13 +85,13 @@ func sourceLabel(source core.ResourceSource) string {
 func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 	card(c, "资源曲线", func() {
 		series := resourceSeriesData(samples)
-		ui.Text(c, fmt.Sprintf("采样记录：%d · 每个来源保留最近 600 点", len(samples)))
+		ui.Text(c, fmt.Sprintf("采样点：%d（每来源保留最近 600 点）", len(samples)))
 		if len(series) == 0 {
 			ui.Text(c, "等待资源采样，缺测不补零。")
 			return
 		}
 		theme := c.Theme()
-		ui.Text(c, "各曲线按自己的采样时间显示，采样点等距排列；缺测保留断点。").TextColor(theme.TextMuted)
+		ui.Text(c, "横轴为等距采样点，缺测保留断点。").TextColor(theme.TextMuted)
 		metrics := resourceMetrics(theme)
 		selected := []core.ResourceSample{}
 		for _, metric := range metrics {
@@ -169,7 +169,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 								if point.MissingReason != nil {
 									value = "缺测：" + *point.MissingReason
 								}
-								ui.Text(c, point.Utc+" · "+value+" "+chosen.source.Unit).Selectable()
+								ui.Text(c, formatTimestamp(point.Utc)+" · "+value+" "+chosen.source.Unit).Selectable()
 							}
 						})
 					},
@@ -207,7 +207,7 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 	const pageSize = 50
 	pages := max(1, (len(samples)+pageSize-1)/pageSize)
 	s.resourceTablePage = min(max(0, s.resourceTablePage), pages-1)
-	ui.Row(c).Gap(tokens(c).Density.Row).Children(func() {
+	ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 		if button(c, "上一页采样").Disabled(s.resourceTablePage == 0).Clicked() {
 			s.resourceTablePage--
 		}
@@ -226,7 +226,7 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 		if p.Value != nil && p.Source.Unit == "bytes" {
 			value = fmt.Sprintf("%.0f", *p.Value)
 		}
-		values := []string{p.Utc, sourceLabel(p.Source), value, p.Source.Unit, emptyText(p.MissingReason)}
+		values := []string{formatTimestamp(p.Utc), sourceLabel(p.Source), value, p.Source.Unit, emptyText(p.MissingReason)}
 		ui.Text(c, values[col]).Selectable()
 	}).Height(180).Label("资源采样数值表")
 }

@@ -157,10 +157,10 @@ func runDuration(run core.RunSummary) string {
 }
 
 func formatDuration(d time.Duration) string {
-	d = d.Round(time.Second)
 	if d < time.Minute {
-		return fmt.Sprintf("%d 秒", int(d.Seconds()))
+		return fmt.Sprintf("%.2f 秒", d.Seconds())
 	}
+	d = d.Round(time.Second)
 	hours := int(d / time.Hour)
 	minutes := int(d/time.Minute) % 60
 	seconds := int(d/time.Second) % 60
