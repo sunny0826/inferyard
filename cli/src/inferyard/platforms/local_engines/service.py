@@ -15,6 +15,69 @@ from inferyard.platforms.macos_identity import _listener_identity
 from inferyard.platforms.macos_process import lsof_records, mapped_file
 
 DEFINITION = "local-engine-binding.v1"
+_CACHE_LIMIT = 8
+_ASSET_CACHE = {}
+
+
+def _asset_key(config):
+    engine, model = config["engine"], config["model"]
+    return (
+        engine["installation_path"],
+        engine["installation_sha256"],
+        model["local_path"],
+        model["kind"],
+        model["assets_path"],
+        model["assets_sha256"],
+        model["content_sha256"],
+        model["template_path"],
+        model["template_sha256"],
+    )
+
+
+def _stamp(path):
+    info = Path(path).stat()
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+
+
+def _stamps(identities):
+    """Record ctimes and parent directories; FileIdentity alone misses both."""
+    try:
+        files = [(item.path, _stamp(item.path)) for item in identities]
+        parents = sorted({str(Path(item.path).parent) for item in identities})
+        directories = [(path, _stamp(path)) for path in parents]
+    except OSError:
+        return None
+    return tuple(files), tuple(directories)
+
+
+def _stamps_unchanged(stamps):
+    if not stamps:
+        return False
+    try:
+        return all(_stamp(path) == expected for group in stamps for path, expected in group)
+    except OSError:
+        return False
+
+
+def _remember(config, runtime, runtime_files, asset_files):
+    identities = (*runtime_files, *asset_files)
+    if not all(item.unchanged() for item in identities):
+        return
+    stamps = _stamps(identities)
+    if stamps is None:
+        return
+    key = _asset_key(config)
+    _ASSET_CACHE.pop(key, None)
+    _ASSET_CACHE[key] = (runtime, runtime_files, asset_files, stamps)
+    while len(_ASSET_CACHE) > _CACHE_LIMIT:
+        _ASSET_CACHE.pop(next(iter(_ASSET_CACHE)))
+
+
+def _cached(config):
+    value = _ASSET_CACHE.get(_asset_key(config))
+    if value is None or not _stamps_unchanged(value[3]):
+        return None
+    return value
 
 
 def validate_binding(binding, config):
@@ -73,9 +136,7 @@ def _direct(config, declaration, runtime_files, psutil):
     }
 
 
-def bind_service(config):
-    darwin()
-    runtime, runtime_files, _ = assets(config)
+def _bind(config, runtime, runtime_files):
     declaration, engine, endpoint = runtime["installation"], config["engine"], config["endpoint"]
     worker_environment = declaration.get("worker_environment", engine["environment"])
     psutil = native.psutil_module()
@@ -110,9 +171,6 @@ def bind_service(config):
         service["workers"] = observe_workers(
             endpoint["server_pid"], psutil, runtime_files, worker_environment
         )
-        from inferyard.platforms.local_engines.installation import verify_installation
-
-        verify_installation(runtime)
         result = {
             "schema_version": 3,
             "definition": DEFINITION,
@@ -125,13 +183,31 @@ def bind_service(config):
         raise PreflightError("local_engine_service_unavailable") from exc
 
 
+def bind_service(config):
+    darwin()
+    runtime, runtime_files, asset_files = assets(config)
+    result = _bind(config, runtime, runtime_files)
+    _remember(config, runtime, runtime_files, asset_files)
+    return result
+
+
 def verify_bound_service(config, *, bound_files=None):
     endpoint = config["endpoint"]
     binding, _ = bound_json(endpoint["binding_path"], endpoint["binding_sha256"])
     validate_binding(binding, config)
     if bound_files is not None and any(not item.unchanged() for item in bound_files):
         raise PreflightError("local_engine_bound_file_changed")
-    current = bind_service(config)
+    if bound_files is None:
+        current = bind_service(config)
+    else:
+        darwin()
+        cached = _cached(config)
+        if cached is None:
+            runtime, runtime_files, asset_files = assets(config)
+            _remember(config, runtime, runtime_files, asset_files)
+        else:
+            runtime, runtime_files, _, _ = cached
+        current = _bind(config, runtime, runtime_files)
     if current != binding:
         raise PreflightError("local_engine_bound_service_changed")
     return current["service"]

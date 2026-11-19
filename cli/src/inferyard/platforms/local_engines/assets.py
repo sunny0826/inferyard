@@ -1,27 +1,37 @@
 """Hash-bound manifests retain the existing model-assets.v2 byte algorithm."""
 
+import hashlib
 from pathlib import Path
 
 from inferyard.errors import PreflightError
-from inferyard.contracts.validation import json_bytes
+from inferyard.contracts.validation import json_bytes, strict_json_loads
 from inferyard.platforms.identity import hash_file
-from inferyard.platforms.local_engines.installation import read_json, verify_installation
+from inferyard.platforms.local_engines.installation import verify_installation
 from inferyard.platforms.local_engines.model_snapshot import snapshot as model_snapshot
+
+
+def _parse(raw):
+    try:
+        return strict_json_loads(raw.decode("utf-8"))
+    except (UnicodeError, ValueError) as exc:
+        raise PreflightError("local_engine_json_unreadable") from exc
 
 
 def bound_json(path, digest):
     identity = hash_file(Path(path), digest)
-    value = read_json(path)
     try:
-        if Path(path).read_bytes() != json_bytes(value):
-            raise PreflightError("local_engine_frozen_json_not_canonical")
+        raw = Path(path).read_bytes()
     except OSError as exc:
         raise PreflightError("local_engine_json_unreadable") from exc
-    hash_file(Path(path), digest)
+    if hashlib.sha256(raw).hexdigest() != identity.sha256:
+        raise PreflightError("identity_file_changed_during_hash")
+    value = _parse(raw)
+    if raw != json_bytes(value):
+        raise PreflightError("local_engine_frozen_json_not_canonical")
     return value, identity
 
 
-def assets(config):
+def _inspect(config):
     engine, model = config["engine"], config["model"]
     runtime, runtime_file = bound_json(engine["installation_path"], engine["installation_sha256"])
     runtime_files = verify_installation(runtime)
@@ -39,18 +49,22 @@ def assets(config):
     ):
         raise PreflightError("local_engine_model_assets_changed")
     template_file = hash_file(Path(model["template_path"]), model["template_sha256"])
-    return runtime, runtime_files, [runtime_file, manifest_file, template_file, *model_files]
+    files = [runtime_file, manifest_file, template_file, *model_files]
+    return runtime, runtime_files, files, frozen
+
+
+def assets(config):
+    runtime, runtime_files, files, _ = _inspect(config)
+    return runtime, runtime_files, files
 
 
 def preflight_assets(config):
     from inferyard.platforms.local_engines.service import validate_binding
 
-    runtime, _, files = assets(config)
+    runtime, _, files, model_assets = _inspect(config)
     endpoint = config["endpoint"]
     binding, binding_file = bound_json(endpoint["binding_path"], endpoint["binding_sha256"])
     validate_binding(binding, config)
-    model = config["model"]
-    model_assets, _ = bound_json(model["assets_path"], model["assets_sha256"])
     return {
         "local_engine": {"runtime": runtime, "binding": binding, "model_assets": model_assets}
     }, [*files, binding_file]
