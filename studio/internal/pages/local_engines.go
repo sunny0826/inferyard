@@ -93,17 +93,32 @@ type localServiceChoice struct {
 	models   int
 }
 
-// localServiceChoices lists discovered endpoints that expose a model catalogue
-// and have an unambiguous owner, so a one-click fill cannot paste an unknown
-// listener.
+// localExpectedEndpoint is the endpoint frozen into the current candidates. A
+// connection to another address would be rejected with
+// candidate_endpoint_mismatch, so it is never offered.
+func (s *viewState) localExpectedEndpoint() string {
+	if s.task.start.localRequest != nil && s.task.start.localRequest.Endpoint != "" {
+		return s.task.start.localRequest.Endpoint
+	}
+	return s.startup.Endpoint
+}
+
+// localServiceChoices lists discovered endpoints that expose a model catalogue,
+// have an unambiguous owner, are not already connected, and match the frozen
+// candidate endpoint. A one-click fill therefore cannot paste an unknown
+// listener, reuse the previous bundle's service or an incompatible address.
 func (s *viewState) localServiceChoices() []localServiceChoice {
 	choices := []localServiceChoice{}
+	expected := s.localExpectedEndpoint()
 	for _, service := range s.discovery.Services {
-		if service.PID <= 0 {
+		if service.PID <= 0 || s.localUsedPIDs[service.PID] {
 			continue
 		}
 		for _, endpoint := range service.Endpoints {
 			if endpoint.Models == nil || endpoint.AmbiguousListener || endpoint.URL == "" {
+				continue
+			}
+			if expected != "" && endpoint.URL != expected {
 				continue
 			}
 			choices = append(choices, localServiceChoice{pid: service.PID, name: service.ProcessName, endpoint: endpoint.URL, models: len(endpoint.Models)})
@@ -116,23 +131,63 @@ func (s *viewState) useDiscoveredService(choice localServiceChoice) {
 	s.localPID, s.localEndpoint = strconv.FormatInt(choice.pid, 10), choice.endpoint
 }
 
+// localPIDUsed reports an LM Studio service this task already connected. The
+// service also rejects reuse, but the form should not invite it.
+func (s *viewState) localPIDUsed(pid int64) bool {
+	if s.localUsedPIDs[pid] {
+		return true
+	}
+	// The first bundle connects the service frozen into its candidate rather than
+	// through the handoff card; that PID is used as well.
+	if request := s.task.start.localRequest; request != nil && request.ServicePID == pid {
+		return true
+	}
+	return false
+}
+
+// localSelectionInvalid disables the handoff connect button for the same
+// reasons the service rejects the request: a missing PID, an invalid endpoint,
+// a mismatched frozen endpoint or an already connected service.
+func (s *viewState) localSelectionInvalid(pid int64, err error) bool {
+	if err != nil || pid <= 0 || s.localEndpoint == "" || urlError(s.localEndpoint) != "" {
+		return true
+	}
+	if expected := s.localExpectedEndpoint(); expected != "" && s.localEndpoint != expected {
+		return true
+	}
+	return s.localPIDUsed(pid)
+}
+
+// localServicePicker is the single LM Studio binding form used by the task page
+// and the multi-bundle handoff: an in-place service refresh, one-click fill from
+// a compatible discovered service, and the manual PID and endpoint inputs.
+func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel string) {
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+		button(c, "刷新服务列表").Disabled(s.busy || s.discovering).OnClick(s.refreshDiscovery)
+		if s.discovering {
+			ui.Text(c, "正在发现本机服务…").TextColor(c.Theme().TextMuted)
+		}
+	})
+	if choices := s.localServiceChoices(); len(choices) > 0 {
+		ui.Text(c, "已发现的本机服务（点击填入 PID 与 endpoint）：").TextColor(c.Theme().TextMuted)
+		for _, choice := range choices {
+			label := fmt.Sprintf("PID %d · %s · %d 个模型", choice.pid, choice.endpoint, choice.models)
+			if name := displayName(choice.name); name != "" {
+				label += " · " + name
+			}
+			button(c, label).OnClick(func() { s.useDiscoveredService(choice) })
+		}
+	}
+	field(c, pidLabel, &s.localPID).MaxWidth(360)
+	field(c, endpointLabel, &s.localEndpoint).MaxWidth(360).Description("例如 http://127.0.0.1:1234")
+}
+
 func (s *viewState) localSelectionView(c *ui.Context) {
 	if e := s.localEngine(); e != nil {
 		ui.Text(c, e.Family+" · 每个测评题集单独连接服务；完成后再进入下一测评题集。").TextColor(c.Theme().TextMuted)
 		if e.Family == "lmstudio" {
 			ui.Text(c, "先在 LM Studio 启动后台服务并加载所选模型。Studio 只绑定已有服务；请使用后台服务 PID。")
-			if choices := s.localServiceChoices(); len(choices) > 0 {
-				ui.Text(c, "已发现的本机服务（点击填入 PID 与 endpoint）：").TextColor(c.Theme().TextMuted)
-				for _, choice := range choices {
-					label := fmt.Sprintf("PID %d · %s · %d 个模型", choice.pid, choice.endpoint, choice.models)
-					if name := displayName(choice.name); name != "" {
-						label += " · " + name
-					}
-					button(c, label).OnClick(func() { s.useDiscoveredService(choice) })
-				}
-			}
-			field(c, "LM Studio 后台 PID", &s.localPID).MaxWidth(360)
-			field(c, "LM Studio endpoint", &s.localEndpoint).MaxWidth(360).Description("例如 http://127.0.0.1:1234")
+			s.localServicePicker(c, "LM Studio 后台 PID", "LM Studio endpoint")
 		} else {
 			ui.Text(c, "Studio 管理本次启动的服务；退出时停止其进程树。")
 		}
@@ -187,24 +242,23 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 		}
 		card(c, "连接下一测评题集的 LM Studio 服务", func() {
 			ui.Text(c, emptyText(task.Bundle)+" · 请结束上一测评题集的服务，重新启动后台服务并加载同一模型。CLI 将重新校验身份。")
-			if choices := s.localServiceChoices(); len(choices) > 0 {
-				ui.Text(c, "已发现的本机服务（点击填入 PID 与 endpoint）：").TextColor(c.Theme().TextMuted)
-				for _, choice := range choices {
-					label := fmt.Sprintf("PID %d · %s · %d 个模型", choice.pid, choice.endpoint, choice.models)
-					if name := displayName(choice.name); name != "" {
-						label += " · " + name
-					}
-					button(c, label).OnClick(func() { s.useDiscoveredService(choice) })
-				}
-			}
-			field(c, "新的后台 PID", &s.localPID).MaxWidth(360)
-			field(c, "本机 endpoint", &s.localEndpoint).MaxWidth(360)
+			s.localServicePicker(c, "新的后台 PID", "本机 endpoint")
 			pid, err := strconv.ParseInt(s.localPID, 10, 64)
-			button(c, "连接并继续此测评题集").Disabled(err != nil || pid <= 0 || s.localEndpoint == "" || urlError(s.localEndpoint) != "").OnClick(func() {
+			if err == nil && pid > 0 && s.localPIDUsed(pid) {
+				ui.Text(c, human("local_engine_service_reused")).TextColor(stateColor(c, stateWarning))
+			}
+			button(c, "连接并继续此测评题集").Disabled(s.localSelectionInvalid(pid, err)).OnClick(func() {
 				if s.simulate(previewLocalBinding{taskID: task.TaskId, pid: pid, endpoint: s.localEndpoint}) {
 					return
 				}
-				s.failure = s.service.BindCandidateService(task.TaskId, pid, s.localEndpoint)
+				e := s.service.BindCandidateService(task.TaskId, pid, s.localEndpoint)
+				if e != nil {
+					s.failBinding(e)
+					s.failure = e
+					return
+				}
+				s.markServiceUsed(pid)
+				s.bindFailure = nil
 			})
 		})
 		ui.Text(c, fmt.Sprintf("等待服务 · %s", task.TaskId)).TextColor(c.Theme().TextMuted)

@@ -109,7 +109,7 @@ func (p *previewSession) beginLocalBenchmark(op previewBenchmark, retry bool) {
 	}
 	s.busy, s.failure, s.task.failure = true, nil, nil
 	s.task.stage, s.task.bundles = "prepare_candidate", allBundles
-	s.task.start = startChainResult{workspace: s.workspace, localRequest: &core.LocalCandidateRequest{ModelName: op.model, EngineName: op.engine, Bundles: allBundles}}
+	s.task.start = startChainResult{workspace: s.workspace, localRequest: &core.LocalCandidateRequest{ModelName: op.model, EngineName: op.engine, Bundles: allBundles, ServicePID: pid, Endpoint: s.localEndpoint}}
 	for _, bundle := range allBundles {
 		s.task.start.localCandidates = append(s.task.start.localCandidates, core.CandidateRun{Bundle: bundle, Family: family, CandidatePath: filepath.Join(s.workspace, "candidates", p.nextID("candidate"))})
 	}
@@ -179,7 +179,10 @@ func (p *previewSession) bindLocal(op previewLocalBinding) {
 		p.state.failure = core.Conflict("invalid_state")
 		return
 	}
-	if op.pid <= 0 || op.endpoint != p.state.localEndpoint {
+	// Mirror the service: the frozen candidate endpoint is the only accepted
+	// address, and a service already used by this group is reused, not attached.
+	expected := p.state.localExpectedEndpoint()
+	if op.pid <= 0 || expected != "" && op.endpoint != expected {
 		p.state.failure = core.Err("candidate_endpoint_mismatch")
 		return
 	}
@@ -198,6 +201,11 @@ func (p *previewSession) startLocalBinding(pid int64) {
 	task.AwaitingService, task.PreparationStage = false, "binding"
 	if l.family != "lmstudio" {
 		s.engineState.State = "running"
+	} else {
+		if s.localUsedPIDs == nil {
+			s.localUsedPIDs = map[int64]bool{}
+		}
+		s.localUsedPIDs[pid] = true
 	}
 	p.copyLocalTask(id)
 	p.after("task", 400*time.Millisecond, func() {

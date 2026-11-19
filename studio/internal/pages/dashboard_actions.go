@@ -232,25 +232,69 @@ func (w *viewState) executeBinding(command string, e *core.ApiError) {
 		return
 	}
 	if e != nil {
-		w.submissionFailed(e)
+		w.failBinding(e)
 		return
 	}
 	if w.busy {
 		return
 	}
+	w.stepConnection()
 	ctx, cancel := context.WithCancel(w.ctx)
 	w.taskCancel = cancel
 	w.guideWork(func() (string, *core.ApiError) {
 		defer cancel()
 		r, e := w.service.WizardExecute(ctx, core.WizardRequest{Command: command})
 		if e != nil {
+			w.updateView(func() { w.failBinding(e) })
 			return "", e
 		}
 		if r.ExitCode != 0 {
-			return "", wizardFailure(r)
+			e := wizardFailure(r)
+			w.updateView(func() { w.failBinding(e) })
+			return "", e
 		}
+		w.updateView(w.clearRecoveredBinding)
 		return "绑定完成。", nil
 	})
+}
+
+// updateView applies a state change on the window's update queue when the view
+// is mounted; in-memory tests apply it directly.
+func (w *viewState) updateView(fn func()) {
+	if w.win == nil {
+		fn()
+		return
+	}
+	w.win.Update(fn)
+}
+
+// stepConnection marks the task as actively connecting, so the step does not
+// show the previous rejected connection while the new attempt runs.
+func (w *viewState) stepConnection() {
+	w.bindFailure = nil
+}
+
+// failBinding attributes a rejected connection to the bind step: the step shows
+// the cause and its recovery guidance instead of leaving it only in the page
+// banner.
+func (w *viewState) failBinding(e *core.ApiError) {
+	if e == nil {
+		return
+	}
+	w.bindFailure = e
+}
+
+// clearRecoveredBinding drops the stale bind stage and failure after a
+// successful connection, so refreshed workspace progress decides the step again
+// instead of the old failure being repeated forever.
+func (w *viewState) clearRecoveredBinding() {
+	w.engineFailureCleared = w.engineFailureKey()
+	w.bindFailure = nil
+	if w.task.stage == "bind" {
+		w.task.stage = ""
+	}
+	w.task.failure = nil
+	w.failure = nil
 }
 
 func executeExistingBundle(ctx context.Context, b inferyard.BundleProgress, workspace string, state core.EngineState, execute func(context.Context, core.WizardRequest) (core.WizardResult, *core.ApiError)) *core.ApiError {

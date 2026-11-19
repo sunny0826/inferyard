@@ -144,13 +144,23 @@ type viewState struct {
 	resumeSource                                                                        *core.RunSummary
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
-	modelURL, modelName, tokenEnv, engineURL, engineName                                string
-	historyTable                                                                        pageTableState
-	reportSources                                                                       components.ListState
-	reportChoices                                                                       ui.Selection[any]
-	scrolls                                                                             map[string]*ui.ScrollState
-	casesTable, samplesTable                                                            pageTableState
-	resourceTablePage                                                                   int
+	// bindFailure is the rejected manual or discovered connection the bind step
+	// owns; it is separate from other page-level failures such as refreshes.
+	bindFailure *core.ApiError
+	// engineFailureCleared records the failed engine state the user already
+	// recovered from by connecting another service. A later, different engine
+	// failure is keyed differently and still reports.
+	engineFailureCleared string
+	// localUsedPIDs records LM Studio services this window already connected, so
+	// the next handoff never offers to reuse them.
+	localUsedPIDs                                        map[int64]bool
+	modelURL, modelName, tokenEnv, engineURL, engineName string
+	historyTable                                         pageTableState
+	reportSources                                        components.ListState
+	reportChoices                                        ui.Selection[any]
+	scrolls                                              map[string]*ui.ScrollState
+	casesTable, samplesTable                             pageTableState
+	resourceTablePage                                    int
 }
 
 func (s *viewState) refresh(full bool) {

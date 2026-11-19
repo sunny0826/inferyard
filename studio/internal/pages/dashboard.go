@@ -110,15 +110,17 @@ func (s *viewState) conclusionView(c *ui.Context) {
 			BarLabel:    "工作区六阶段准备进度",
 			Description: "六个准备阶段，不表示样本完成率。",
 		})
+		failed := s.failedBundles()
 		for _, b := range s.taskBundles() {
 			if task := s.liveBundleTask(b.Bundle); task != nil {
 				ui.Text(c, b.Bundle+" · "+taskLabel(*task))
 				continue
 			}
-			// A failed task chain explains the active step; the recorded progress
-			// phase may still describe the pre-failure stage and would contradict
-			// Step 4. Report the failure instead of the stale phase.
-			if s.taskFailedBundle(b.Bundle) {
+			// A failed step reports only the bundles it actually blocks. Bundles
+			// that already finished keep their completed status, and the recorded
+			// progress phase may still describe the pre-failure stage, which would
+			// contradict Step 4.
+			if failed[b.Bundle] {
 				ui.Text(c, b.Bundle+" · 失败").TextColor(stateColor(c, stateDanger))
 				continue
 			}
@@ -151,20 +153,30 @@ func (s *viewState) serviceCardVisible() bool {
 	return b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil)
 }
 
-// taskFailedBundle reports whether bundle belongs to the failed task chain.
-func (s *viewState) taskFailedBundle(bundle string) bool {
-	if s.task.failure == nil {
-		return false
+// failedBundles lists the bundles the active failure blocks. Completed bundles
+// keep their status, and a step that has an identifiable bundle marks only that
+// one; other pending bundles are merely waiting, not failed.
+func (s *viewState) failedBundles() map[string]bool {
+	failed := map[string]bool{}
+	if !s.stepFailed() {
+		return failed
 	}
-	if len(s.task.bundles) == 0 {
-		return true
+	var names []string
+	if b := s.active(); b != nil {
+		names = []string{b.Bundle}
+	} else {
+		names = s.task.bundles
 	}
-	for _, name := range s.task.bundles {
-		if name == bundle {
-			return true
+	for _, name := range names {
+		failed[name] = true
+	}
+	// Never downgrade a bundle that already completed: its evidence stands.
+	for _, b := range s.taskBundles() {
+		if failed[b.Bundle] && b.Phase == "run_complete" {
+			delete(failed, b.Bundle)
 		}
 	}
-	return false
+	return failed
 }
 func (s *viewState) stageView(c *ui.Context) {
 	action := ""
@@ -198,8 +210,10 @@ func (s *viewState) stageView(c *ui.Context) {
 		})
 	case "prepare_candidate":
 		stepTrack(c, "3", termBenchmarkStage, func() {
-			if s.stepFailed() {
-				failureView(c, termBenchmarkStage+"失败", s.activeTaskFailure(), "原因解决后可从本阶段重新开始；已完成的测评题集结果会保留。")
+			// Only a failure of this task's chain is shown here; a previous
+			// round's engine error stays off the fresh configuration step.
+			if s.task.failure != nil {
+				failureView(c, termBenchmarkStage+"失败", s.task.failure, "原因解决后可从本阶段重新开始；已完成的测评题集结果会保留。")
 			}
 			s.candidateView(c)
 		})

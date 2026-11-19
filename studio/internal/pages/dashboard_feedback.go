@@ -226,9 +226,14 @@ func (s *viewState) guideWork(fn func() (string, *core.ApiError)) {
 		return message, nil
 	})
 }
+
+// feedback renders the page-level banner. A failure that the active step already
+// renders stays inside the step, so the same diagnostic never appears twice.
 func (s *viewState) feedback(c *ui.Context) {
 	if s.failure != nil {
-		errorView(c, s.failure)
+		if !s.stepOwnsError(s.failure) {
+			errorView(c, s.failure)
+		}
 	} else if s.refreshFailure != "" {
 		ui.Text(c, s.refreshFailure).TextColor(stateColor(c, stateDanger))
 	}

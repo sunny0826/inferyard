@@ -125,19 +125,84 @@ func (w *viewState) candidateView(c *ui.Context) {
 	}
 }
 
-// activeTaskFailure is the error that best explains the blocked step. The task
-// carries the failure of its own chain; the supervisor reports engine failures.
-func (s *viewState) activeTaskFailure() *core.ApiError {
-	if s.task.failure != nil {
-		return s.task.failure
+// engineFailureKey identifies one failed engine state, so recovering from it
+// does not also hide a later, different failure.
+func (s *viewState) engineFailureKey() string {
+	if s.engineState.State != "failed" {
+		return ""
 	}
-	return s.engineState.Error
+	code := ""
+	if s.engineState.Error != nil {
+		code = s.engineState.Error.Code
+	}
+	return fmt.Sprintf("%s|%d|%s|%s", s.engineState.State, s.engineState.Pid, s.engineState.Endpoint, code)
 }
 
-// stepFailed reports a failed step even when neither the task nor the engine
-// recorded a cause code, so the failure is never silently hidden.
+// engineFailureBlocks reports whether the current engine failure still explains
+// the step. A successful connection during this task clears exactly that state.
+func (s *viewState) engineFailureBlocks() bool {
+	key := s.engineFailureKey()
+	return key != "" && key != s.engineFailureCleared
+}
+
+// stepDiagnosis is the failure the active step owns: the task chain's failure,
+// a rejected bind-stage connection, or a failed engine state. Only the
+// configuration, bind and run steps own diagnostics, and the configuration step
+// owns only this task's failure, so a previous round's engine error never
+// reappears on a fresh task. The cause may be nil even when failed, for example
+// a failed engine state without an error code.
+func (s *viewState) stepDiagnosis() (cause *core.ApiError, failed bool) {
+	step := s.step()
+	if step < 2 || step > 4 {
+		return nil, false
+	}
+	if s.task.failure != nil {
+		return s.task.failure, true
+	}
+	if step < 3 {
+		return nil, false
+	}
+	// A rejected manual, discovered or handoff connection is owned by the step
+	// even though the page-level banner may carry the same error; unrelated page
+	// operations keep their banner, so they are never mislabeled as a binding
+	// failure.
+	if s.bindFailure != nil {
+		return s.bindFailure, true
+	}
+	if s.engineFailureBlocks() {
+		return s.engineState.Error, true
+	}
+	return nil, false
+}
+
+// stepFailed reports a blocked step even when no cause code was recorded, so the
+// failure is never silently hidden.
 func (s *viewState) stepFailed() bool {
-	return s.task.failure != nil || s.engineState.State == "failed"
+	_, failed := s.stepDiagnosis()
+	return failed
+}
+
+// activeTaskFailure is the cause the step should show, if one was recorded.
+func (s *viewState) activeTaskFailure() *core.ApiError {
+	cause, _ := s.stepDiagnosis()
+	return cause
+}
+
+// stepOwnsError reports whether the active step already renders e, so the page
+// banner does not repeat the same diagnostic. The page and the task chain may
+// carry separate copies of the same error, so the comparison is by content.
+func (s *viewState) stepOwnsError(e *core.ApiError) bool {
+	if e == nil || s.selected != "dashboard" || s.detailID != "" {
+		return false
+	}
+	cause, _ := s.stepDiagnosis()
+	if cause == nil || cause.Code != e.Code {
+		return false
+	}
+	// The task chain and the page may carry separate copies whose empty message
+	// was normalized to a human string; the code alone already identifies the
+	// same diagnostic.
+	return cause.Message == e.Message || cause.Message == "" || e.Message == ""
 }
 
 // failureView renders the cause of the blocked step and the recovery path. It

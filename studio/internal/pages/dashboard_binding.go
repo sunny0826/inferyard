@@ -43,18 +43,50 @@ func (s *viewState) bindDiscovered(pid int64, endpoint string) {
 	}
 	workspace, jobs := s.progress.Workspace, bindingJobs(selectedProgressForTask(s))
 	s.binding = true
+	s.stepConnection()
 	ctx, cancel := context.WithCancel(s.ctx)
 	s.taskCancel = cancel
 	s.guideWork(func() (string, *core.ApiError) {
 		defer cancel()
 		e := runBindingChain(ctx, workspace, jobs, pid, endpoint, s.service.Progress, s.service.WizardExecute,
-			func(bundle string) { s.win.Update(func() { s.bindingBundle = bundle }) })
-		s.win.Update(func() { s.binding, s.bindingBundle = false, "" })
+			func(bundle string) {
+				s.updateView(func() {
+					s.bindingBundle = bundle
+					s.markServiceUsed(pid)
+				})
+			})
+		s.updateView(func() {
+			s.binding, s.bindingBundle = false, ""
+			s.bindingOutcome(e)
+		})
 		if e != nil {
 			return "", e
 		}
 		return "全部待连接的测评题集已连接并核验，可开始运行。", nil
 	})
+}
+
+// bindingOutcome applies a connection result. A rejection is attributed to the
+// bind step; a success clears the stale bind stage and failure, so refreshed
+// workspace progress decides the step instead of the old failure.
+func (s *viewState) bindingOutcome(e *core.ApiError) {
+	if e != nil {
+		s.failBinding(e)
+		return
+	}
+	s.clearRecoveredBinding()
+}
+
+// markServiceUsed records a connected LM Studio service so the handoff form
+// never offers it again.
+func (s *viewState) markServiceUsed(pid int64) {
+	if pid <= 0 {
+		return
+	}
+	if s.localUsedPIDs == nil {
+		s.localUsedPIDs = map[int64]bool{}
+	}
+	s.localUsedPIDs[pid] = true
 }
 
 // Re-read each candidate's phase and command before binding; never reuse the
