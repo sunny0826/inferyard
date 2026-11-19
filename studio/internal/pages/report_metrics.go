@@ -104,7 +104,7 @@ func reportFactSummary(c *ui.Context, run core.ReportRun) {
 		for _, f := range facts {
 			ui.Text(c, f.text).Selectable()
 		}
-		ui.Text(c, "以上只描述本次记录；机器总内存、质量与耗时分别展示，不代表模型适合其他上下文或并发。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "仅反映本次实测记录，不代表其他上下文或并发场景表现。").TextColor(c.Theme().TextMuted)
 	})
 }
 
@@ -120,8 +120,7 @@ func reportThroughput(c *ui.Context, run core.ReportRun) {
 			deviceRow(c, "输出 token/秒", reportPerSecond(throughput.OutputTokensPerSecond, throughput.OutputTokensPerSecondReason))
 			deviceRow(c, "达标请求/秒", reportPerSecond(throughput.GoodputPerSecond, throughput.GoodputPerSecondReason))
 		}
-		ui.Text(c, "依次执行本批请求的观测值，不代表并发服务能力").TextColor(c.Theme().TextMuted)
-		ui.Text(c, "达标请求使用本次预先固定的门槛；未预注册门槛时无法判定。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "依次执行本批请求的观测值，不代表并发服务能力。").TextColor(c.Theme().TextMuted)
 	})
 }
 
@@ -135,9 +134,13 @@ func reportPerSecond(value *float64, reason *string) string {
 	return reportDecimal(*value)
 }
 
-// reportDecimal keeps small non-zero measurements from rendering as zero.
+// reportDecimal rounds normal values to two decimals and keeps small non-zero
+// measurements from rendering as zero.
 func reportDecimal(value float64) string {
-	return strconv.FormatFloat(value, 'f', -1, 64)
+	if value >= 0.01 || value <= -0.01 {
+		return fmt.Sprintf("%.2f", value)
+	}
+	return strconv.FormatFloat(value, 'f', 4, 64)
 }
 
 func reportThroughputReason(reason *string) string {
@@ -177,9 +180,6 @@ func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 		}
 		deviceRow(c, "中位", reportMilliseconds("", intervals.P50, ""))
 		deviceRow(c, "P95", reportMilliseconds("", intervals.P95, reportP95Reason(intervals.P95Reason)))
-		if intervals.P95 != nil {
-			ui.Text(c, "约 95% 的已观测间隔不超过 P95。").TextColor(c.Theme().TextMuted)
-		}
 		if reportP95Exploratory(intervals) {
 			ui.Text(c, "样本较少，仅供观察。").TextColor(c.Theme().TextMuted)
 		}
@@ -207,7 +207,7 @@ func reportMilliseconds(label string, value *float64, missing string) string {
 	if value == nil {
 		return label + "—" + missing
 	}
-	return fmt.Sprintf("%s%s ms", label, reportDecimal(*value))
+	return fmt.Sprintf("%s%.2f ms", label, *value)
 }
 
 func reportP95Reason(reason *string) string {

@@ -49,7 +49,7 @@ func (r *reportViewState) requestView(c *ui.Context, run core.ReportRun) {
 			request := requests[row]
 			ui.Text(c, []string{reportText(request.CaseID), reportText(request.CategoryLabel), reportText(stateLabel(request.State)), reportQuality(request.Quality), reportScaled(request.LatencyMS, 1000, "s")}[col]).SingleLine()
 		}).Height(c.Theme().Space(8)*float32(min(len(requests), 8)+1) + 2)
-		ui.Text(c, fmt.Sprintf("共 %d 题 · — 表示缺测，不当作 0。耗时由 ms 转为 s。", len(requests))).TextColor(c.Theme().TextMuted)
+		ui.Text(c, fmt.Sprintf("共 %d 题 · — 表示缺测", len(requests))).TextColor(c.Theme().TextMuted)
 	})
 }
 

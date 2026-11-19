@@ -45,7 +45,7 @@ type phaseProgressOptions struct {
 // bounded progress bar. It never expresses sample completion.
 func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 	t := tokens(c)
-	ui.Row(c).Wrap().Gap(t.Density.Row).Label(o.RowLabel).Children(func() {
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Label(o.RowLabel).Children(func() {
 		for i, label := range o.Labels {
 			switch {
 			case i < o.Current:
@@ -68,7 +68,7 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 func metricCard(c *ui.Context, label, value, detail, note string) {
 	t := tokens(c)
 	ui.Column(c).MinWidth(0).Gap(t.Metric.Gap).Padding(t.Metric.PaddingY, t.Metric.PaddingX).
-		Background(c.Theme().Surface).Radius(t.Radius.Surface).Children(func() {
+		Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() {
 		ui.Text(c, label)
 		ui.Text(c, value).Bold().FontSize(t.Type.MetricLarge).Selectable()
 		ui.Text(c, detail).TextColor(c.Theme().TextMuted)
@@ -129,11 +129,13 @@ type taskCardOptions struct {
 
 func taskCard(c *ui.Context, options taskCardOptions) {
 	t := tokens(c)
-	ui.Column(c).Label(options.name).Gap(t.Density.Stack).Padding(t.Card.Padding).Radius(t.Radius.Surface).Border(t.Card.Border, c.Theme().Border).Children(func() {
-		ui.Row(c).Wrap().Gap(t.Density.CardGap).Children(func() {
-			ui.Column(c).Grow(1).Gap(t.Density.Tight).Children(func() {
-				ui.Text(c, options.kind).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
+	ui.Column(c).Label(options.name).Gap(t.Density.Stack).Padding(t.Card.Padding).Radius(t.Radius.Inset).Border(t.Card.Border, c.Theme().Border).Children(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
+			ui.Row(c).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, options.name).Bold().FontSize(t.Type.Section)
+				if options.kind != "" {
+					ui.Text(c, options.kind).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
+				}
 			})
 			if options.active {
 				activitySpinner(c, "下载中")
@@ -191,7 +193,9 @@ func stepTrack(c *ui.Context, number, title string, fn func()) {
 			ui.Box(c).Width(theme.Space(.5)).Grow(1).Background(theme.Border)
 		})
 		ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.CardGap).Children(func() {
-			heading(c, title, 2)
+			ui.Row(c).MinHeight(size).AlignItems(ui.Center).Children(func() {
+				heading(c, title, 2)
+			})
 			fn()
 		})
 	})

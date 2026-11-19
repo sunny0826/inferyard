@@ -99,7 +99,7 @@ func parseDeviceSnapshot(raw json.RawMessage) (deviceObject, error) {
 
 func (s *viewState) deviceView(c *ui.Context) {
 	t := tokens(c)
-	ui.Row(c).Wrap().Children(func() {
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		heading(c, "设备", 1).Grow(1)
 		if s.device.Refreshing {
 			ui.Text(c, "正在采集设备信息…").TextColor(c.Theme().TextMuted)
@@ -112,7 +112,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 	}
 	errorView(c, s.device.LastError)
 	if s.device.LastError != nil {
-		ui.Row(c).Wrap().Gap(t.Density.CardGap).Children(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
 			s.deviceRefreshButton(c, "重试")
 			if button(c, "前往设置").Clicked() {
 				s.selected = "settings"
@@ -120,15 +120,17 @@ func (s *viewState) deviceView(c *ui.Context) {
 		})
 	}
 	if parseError != nil {
-		ui.Text(c, "设备快照无法读取。请重新采集；仍然失败时检查设置。").TextColor(stateColor(c, stateDanger))
-		s.deviceRefreshButton(c, "重新采集设备")
-		button(c, "检查设备设置").AlignSelf(ui.Start).OnClick(func() { s.selected = "settings" })
+		ui.Text(c, "设备快照无法读取，请重新采集或检查设置。").TextColor(stateColor(c, stateDanger))
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+			s.deviceRefreshButton(c, "重新采集设备")
+			button(c, "检查设备设置").OnClick(func() { s.selected = "settings" })
+		})
 		return
 	}
 	if snapshot == nil && s.device.LastError == nil && !s.device.Refreshing {
-		ui.Column(c).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Card.EmptyPadding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Children(func() {
+		ui.Column(c).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Card.EmptyPadding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() {
 			heading(c, "尚无设备快照", 2)
-			ui.Text(c, "设备检查会采集硬件、GPU 与本地模型信息，不会向模型发送请求。")
+			ui.Text(c, "采集本机硬件与 GPU 信息，不向模型发送请求。").TextColor(c.Theme().TextMuted)
 			if button(c, "前往设置配置模型目录").AlignSelf(ui.Start).Clicked() {
 				s.selected = "settings"
 			}

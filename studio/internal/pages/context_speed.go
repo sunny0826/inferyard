@@ -93,7 +93,6 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		{Value: inferyard.ContextSpeed256K, Label: "256k"},
 	})
 	ui.Text(c, fmt.Sprintf("%s · %d 次测量 · 每次输出 256 tokens", inferyard.ContextSpeedBundleID, inferyard.ContextSpeedSamples))
-	ui.Text(c, "5 次正式测量；另含探测、预热与排空。墙钟预算由固定配方生成。")
 	componentFold(c, "查看配方与停止条件", func() {
 		ui.Text(c, "并发 1 · 固定输入 · 关闭输入缓存与投机解码")
 		ui.Text(c, "超时、内存、磁盘及设备限制由 CLI 核验；容量不足或题库尚未批准时拒绝执行。")
@@ -181,7 +180,7 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 		ui.Text(c, fmt.Sprintf("固定墙钟预算 %.0f 秒（含准备与排空）", r.budget))
 	}
 	card(c, "任务进度", func() {
-		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 			for i, label := range []string{"准备", "连接并核验服务", "固定计划", "测量", "读取结果"} {
 				if speedStage(i) == r.stage {
 					statusBadge(c, label, stateColor(c, stateActive))
@@ -203,19 +202,24 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 		if r.reason != "" {
 			ui.Text(c, r.reason).TextColor(stateColor(c, stateWarning))
 		}
-		switch {
-		case r.active():
-			if s.destructiveAction(c, destructiveOption{
-				kind: destructiveCancelRun, id: r.id, label: "取消专项测评", confirmLabel: "确认取消专项测评",
-				prompt:   "将取消本次专项测评并等待安全收尾；已写入的测量记录保留，不形成完整汇总。",
-				disabled: r.stage == speedCancelling,
-			}) {
-				s.cancelSpeed()
-			}
-		default:
-			primaryButton(c, "查看结果").OnClick(func() { s.openSpeed(r.id) })
-			button(c, "用此组合新开任务").OnClick(func() { s.newSpeedTask(r) })
+		s.speedTaskActions(c, r)
+	})
+}
+
+func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
+	if r.active() {
+		if s.destructiveAction(c, destructiveOption{
+			kind: destructiveCancelRun, id: r.id, label: "取消专项测评", confirmLabel: "确认取消专项测评",
+			prompt:   "将取消本次专项测评并等待安全收尾；已写入的测量记录保留，不形成完整汇总。",
+			disabled: r.stage == speedCancelling,
+		}) {
+			s.cancelSpeed()
 		}
+		return
+	}
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+		primaryButton(c, "查看结果").OnClick(func() { s.openSpeed(r.id) })
+		button(c, "用此组合新开任务").OnClick(func() { s.newSpeedTask(r) })
 	})
 }
 
@@ -311,8 +315,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 				speedTable(c.Key("speed-partial"), &w.table, "专项已完成测量", r, r.samples)
 			}
 		}
-		ui.Text(c, "Time 为输入处理耗时，包含首采样；不是完整请求耗时。")
-		ui.Text(c, "Prompt length 为模板后实际输入。— 表示缺测，不计为 0。")
+		ui.Text(c, "Time 为输入处理耗时（含首采样）；Prompt length 为模板后实际输入；— 表示缺测。").TextColor(c.Theme().TextMuted)
 	})
 	if r.summary == nil || r.reason != "" {
 		componentFold(c.Key(r.id), "查看诊断详情", func() {
@@ -331,7 +334,6 @@ func (s *viewState) speedResultView(c *ui.Context) {
 	}
 	if r.summary != nil {
 		componentFold(c, "查看逐次测量", func() {
-			ui.Text(c, "按第 1 至第 5 次测量顺序排列。")
 			speedTable(c.Key("speed-samples"), &w.samples, "专项逐次测量", r, r.samples)
 		})
 	}

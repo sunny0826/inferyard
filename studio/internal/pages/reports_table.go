@@ -21,7 +21,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		return
 	}
 	if len(s.reports) == 0 {
-		ui.Text(c, "暂无报告。请新建任务，或从历史运行另做报告。")
+		ui.Text(c, "暂无报告。可新建任务，或从历史运行生成报告。")
 		button(c, "新任务").AlignSelf(ui.Start).OnClick(s.newBenchmark)
 		return
 	}
@@ -33,7 +33,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 	t := tokens(c)
 	ui.Column(c.Key(report.ReportId)).MinWidth(0).Gap(t.Density.Row).Padding(t.Density.CardGap).
-		Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() {
+		Background(c.Theme().Surface).Radius(t.Radius.Inset).Border(t.Card.Edge, c.Theme().Border).Children(func() {
 		ui.Text(c, reportHeading(report)).Bold()
 		ui.Text(c, reportSubheading(report)).TextColor(c.Theme().TextMuted)
 		if report.Unreadable {
@@ -46,7 +46,7 @@ func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 		button(c, "打开报告").Label("打开报告 · " + report.ReportId).AlignSelf(ui.Start).OnClick(open)
 		componentFoldKeyed(c, "report-"+report.ReportId, "报告详情", func() {
 			ui.Text(c, "报告 ID："+report.ReportId).Selectable()
-			ui.Text(c, "报告文件修改时间："+configuredValue(text(report.ModifiedAt))).Selectable()
+			ui.Text(c, "报告文件修改时间："+configuredValue(formatTimestamp(emptyText(report.ModifiedAt)))).Selectable()
 			for _, id := range report.RunIds {
 				ui.Text(c, "来源运行："+id).Selectable()
 			}
@@ -75,7 +75,7 @@ func reportHeading(report core.ReportSummary) string {
 func reportSubheading(report core.ReportSummary) string {
 	modified := "报告文件修改时间未记录"
 	if report.ModifiedAt != nil {
-		modified = "报告文件修改时间 " + displayValue(*report.ModifiedAt)
+		modified = "报告文件修改时间 " + displayValue(formatTimestamp(*report.ModifiedAt))
 	}
 	runs := fmt.Sprintf("%d 次运行", len(report.RunIds))
 	if len(report.RunSummaries) > 1 {

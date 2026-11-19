@@ -76,7 +76,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail, t core.
 	s.casesTable.Key = func(i int) any { return p.Cases[i].CaseId }
 	pageTable(c, &s.casesTable, "题目进度表", columns, len(p.Cases), func(row, col int) {
 		item := p.Cases[row]
-		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), optionalText(item.QualityState), number(item.DurationMs), optionalText(item.ErrorCategory)}
+		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), optionalText(item.QualityState), formatDurationMs(item.DurationMs), optionalText(item.ErrorCategory)}
 		ui.Text(c, values[col]).Selectable()
 	}).Height(240).Label("题目进度表")
 	componentFold(c, "进度原始字段", func() {

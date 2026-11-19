@@ -36,9 +36,9 @@ func (s *viewState) downloadsView(c *ui.Context) {
 }
 
 func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
-	kind := "模型任务"
+	kind := "模型"
 	if task.Kind == "engine" {
-		kind = "引擎任务"
+		kind = "引擎"
 	}
 	metrics := []taskMetric{{"已观测", "缺测", ""}, {"速率", "缺测", ""}, {"总量", "总量未知", ""}}
 	note := "归档获取接口未提供字节读数。"

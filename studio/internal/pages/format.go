@@ -1,6 +1,9 @@
 package pages
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 func formatBytes(value *int64) string {
 	if value == nil {
@@ -15,4 +18,21 @@ func formatBytes(value *int64) string {
 	default:
 		return fmt.Sprintf("%d bytes", v)
 	}
+}
+
+func formatDurationMs(value *float64) string {
+	if value == nil {
+		return "缺测"
+	}
+	return fmt.Sprintf("%.2f", *value)
+}
+
+func formatTimestamp(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return parsed.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	return raw
 }

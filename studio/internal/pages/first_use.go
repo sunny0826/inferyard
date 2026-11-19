@@ -54,8 +54,7 @@ func (s *viewState) needsTaskAssets() bool {
 func (s *viewState) taskAssetsView(c *ui.Context) {
 	assets := s.availableTaskAssets()
 	card(c, "准备模型与引擎", func() {
-		ui.Text(c, "测评开始前，需要一个本地模型和运行它的引擎。")
-		ui.Text(c, "可在下载页获取推荐资源；已有资源可在设置中指定目录。")
+		ui.Text(c, "测评前需准备本地模型与推理引擎。")
 		for _, asset := range []struct {
 			kind, label string
 			available   bool
@@ -88,11 +87,10 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 		if s.engineState.State == "orphaned" {
 			s.stopOrphanButton(c)
 		}
-		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 			primaryButton(c, "到下载页").OnClick(func() { s.selected = "downloads" })
 			button(c, "使用已有资源").OnClick(func() { s.selected = "settings" })
 		})
-		ui.Text(c, "资源就绪后返回任务，继续选择模型和测评内容。").TextColor(c.Theme().TextMuted)
 	})
 }
 
@@ -114,11 +112,11 @@ func (s *viewState) downloadTaskGuide(c *ui.Context) {
 		assets := s.availableTaskAssets()
 		switch {
 		case assets.model && assets.engine:
-			ui.Text(c, "已发现模型与引擎，可以返回任务选择测评。引擎仍需通过核验。")
+			ui.Text(c, "模型与引擎已就绪，可返回任务页开始测评。")
 		case s.activeDownloadCount() > 0:
-			ui.Text(c, fmt.Sprintf("正在下载 %d 项资源，完成后可返回任务继续。", s.activeDownloadCount()))
+			ui.Text(c, fmt.Sprintf("正在下载 %d 项资源…", s.activeDownloadCount()))
 		default:
-			ui.Text(c, "下载缺少的引擎与模型，然后返回任务。")
+			ui.Text(c, "下载所需引擎与模型后返回任务页。")
 		}
 		primaryButton(c, "返回任务").AlignSelf(ui.Start).OnClick(func() { s.selected = "dashboard" })
 	})

@@ -163,9 +163,17 @@ func typeTokensFor(t *ui.Theme) typeTokens {
 	}
 }
 
+// concentricRadius computes the inner corner radius of a nested container so
+// its corners stay concentric with the outer surface (R_inner = R_outer - pad).
+func concentricRadius(outer, padding float32) float32 {
+	return max(2, outer-padding)
+}
+
 func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
-	radius := radiusTokens{Surface: t.Space(2), Inset: t.Space(1)}
-	card := cardTokens{Padding: t.Space(3.5), Border: 1, Edge: 1, EmptyPadding: 32}
+	padding := t.Space(3)
+	surface := t.Space(4)
+	radius := radiusTokens{Surface: surface, Inset: concentricRadius(surface, padding)}
+	card := cardTokens{Padding: padding, Border: 1, Edge: 1, EmptyPadding: 32}
 	metric := metricTokens{PaddingX: t.Space(3), PaddingY: t.Space(2.5), Gap: t.Space(1)}
 	return radius, card, metric
 }

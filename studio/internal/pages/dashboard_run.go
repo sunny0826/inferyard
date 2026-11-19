@@ -60,12 +60,12 @@ func (w *viewState) candidateView(c *ui.Context) {
 	}
 
 	engineOptions, revoked, hasEligible := w.engineChoices()
-	engineHint := "仅列出核验可用的引擎；默认选中其中最新下载的引擎。"
+	engineHint := ""
 	if !w.checks.Supported {
-		engineHint = "当前 CLI 不支持引擎核验；列表中的引擎尚未核验。"
+		engineHint = "当前 CLI 不支持引擎核验，列表中的引擎尚未核验。"
 	}
 	selectField(c, termCandidateEngine, engineHint, &w.engine, engineOptions)
-	selectField(c, "测评模型", "这里是选择本次测评模型的唯一入口；模型页只读展示已安装资源。", &w.model, modelOptions)
+	selectField(c, "测评模型", "", &w.model, modelOptions)
 	if w.checks.Checking > 0 {
 		ui.Text(c, fmt.Sprintf("正在核验 %d 个引擎…", w.checks.Checking)).TextColor(c.Theme().TextMuted)
 	}
@@ -87,9 +87,6 @@ func (w *viewState) candidateView(c *ui.Context) {
 		}
 	}
 	ui.Text(c, summary)
-	if w.eligibility(w.engine).State == core.EngineCheckEligible {
-		ui.Text(c, "引擎版本已核验；模型架构与引擎的适配在启动时验证。").TextColor(c.Theme().TextMuted)
-	}
 
 	if w.speedSelection(c) {
 		return
@@ -99,27 +96,26 @@ func (w *viewState) candidateView(c *ui.Context) {
 	createDisabled := w.environmentMissing() || !w.preflightReady() || w.busy || w.engine == "" || w.model == "" || revoked || len(w.checkedBundles()) == 0 || w.engineState.State == "orphaned" || w.localSelectionError() != ""
 	if revoked {
 		el := w.eligibility(w.engine)
-		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 			statusBadge(c, "当前选择不可用", stateColor(c, stateWarning))
-			ui.Text(c, w.engine+" · "+human(el.Reason)+"。请在上方「引擎」下拉中重新选择可用引擎。")
+			ui.Text(c, w.engine+" · "+human(el.Reason)+"，请在上方重新选择。")
 		})
 		button(c, "查看已安装引擎").AlignSelf(ui.Start).OnClick(func() { w.selected = "models" })
 		createDisabled = true
 	} else if !hasEligible {
 		// 核验完成前不误报无可用引擎；创建保持禁用。
 		if w.checks.Checking == 0 {
-			ui.Text(c, "llama-server")
-			ui.Text(c, "没有可用的引擎，请到下载页下载推荐引擎。")
-			button(c, "到下载页").AlignSelf(ui.Start).OnClick(func() { w.selected = "downloads" })
-			button(c, "注册已有引擎").AlignSelf(ui.Start).OnClick(func() { w.selected = "settings" })
+			ui.Text(c, "暂无可用引擎。")
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+				button(c, "到下载页").OnClick(func() { w.selected = "downloads" })
+				button(c, "注册已有引擎").OnClick(func() { w.selected = "settings" })
+			})
 		}
 		createDisabled = true
 	}
-	if w.model == "" {
-		ui.Text(c, "请选择本次测评使用的模型。")
-		if len(modelOptions) == 1 {
-			button(c, "下载模型").OnClick(func() { w.selected = "downloads" })
-		}
+	if w.model == "" && len(modelOptions) == 1 {
+		ui.Text(c, "暂无可用模型。")
+		button(c, "下载模型").OnClick(func() { w.selected = "downloads" })
 	}
 	if w.engineState.State == "orphaned" {
 		w.stopOrphanButton(c)
@@ -133,7 +129,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 	if w.bindingStale {
 		ui.Text(c, "旧绑定已失效，请重启服务并重新绑定").TextColor(stateColor(c, stateDanger))
 	}
-	ui.Text(c, "Studio 启动本次固定测评配置中的引擎并管理其生命周期；退出 Studio 时自动停止。连接时 CLI 校验 PID、启动时间与实际参数。")
+	ui.Text(c, "由 Studio 托管模型服务，退出时自动停止。").TextColor(c.Theme().TextMuted)
 	switch w.engineState.State {
 	case "orphaned":
 		ui.Text(c, "遗留引擎：请先处理上次 Studio 留下的服务或无效记录。").TextColor(stateColor(c, stateWarning))
@@ -190,7 +186,6 @@ func (w *viewState) serviceView(c *ui.Context) {
 		}
 	})
 
-	ui.Text(c, "健康检查通过后按顺序连接并核验全部待连接的测评题集。任一失败即停止，不自动重试。")
 	if w.binding {
 		ui.Text(c, displayName(w.bindingBundle)+" · 绑定中…")
 	}
@@ -204,8 +199,8 @@ func (w *viewState) serviceView(c *ui.Context) {
 		for _, p := range w.processes {
 			options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
 		}
-		selectField(c, "已启动的本机进程", "请选择已启动的服务进程；绑定仍会核验身份。", &w.process, nativeOptions(options))
-		field(c, "endpoint", &w.bindEndpoint).Description("必填；本机服务的 http 或 https URL。").Error(urlError(w.bindEndpoint))
+		selectField(c, "已启动的本机进程", "", &w.process, nativeOptions(options))
+		field(c, "服务地址", &w.bindEndpoint).Description("本机 http 或 https URL").Error(urlError(w.bindEndpoint))
 		if button(c, "连接并核验进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
 			if message := urlError(w.bindEndpoint); message != "" {
 				w.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
@@ -248,7 +243,6 @@ func (w *viewState) runView(c *ui.Context) {
 		}
 		return
 	}
-	ui.Text(c, "运行前请核对设备、预算与停止条件。证据收尾完成后进入下一步；有剩余测评题集时需同样创建测评配置并连接服务。")
 	for _, task := range w.tasks {
 		if task.State == "failed" || task.State == "cancelled" {
 			ui.Text(c, "上次运行未完成，请检查停止原因后重试。")

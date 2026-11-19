@@ -36,7 +36,7 @@ func tokenNameError(value string) string {
 func resumeErrors(endpoint, pid string) (string, string) {
 	endpoint, pid = strings.TrimSpace(endpoint), strings.TrimSpace(pid)
 	if (endpoint == "") != (pid == "") {
-		return "endpoint 与 PID 必须同给同省。", "endpoint 与 PID 必须同给同省。"
+		return "服务地址与 PID 需同时填写或同时留空。", "服务地址与 PID 需同时填写或同时留空。"
 	}
 	pe := ""
 	if pid != "" {
