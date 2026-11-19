@@ -1,6 +1,23 @@
 name: Package checks
 on:
   pull_request:
+    paths:
+      - "cli/src/**"
+      - "cli/tests/**"
+      - "cli/scripts/**"
+      - "cli/bundles/**"
+      - "cli/configs/**"
+      - "cli/schemas/**"
+      - "cli/docs/experiments/metrics.md"
+      - "cli/docs/experiments/metrics-resources.md"
+      - "cli/docs/reference/methods-matrix.md"
+      - "cli/pyproject.toml"
+      - "cli/uv.lock"
+      - "cli/README.md"
+      - "cli/docs/installation.md"
+      - "LICENSE"
+      - "mise.toml"
+      - ".github/workflows/package-check.yml"
   workflow_dispatch:
 permissions:
   contents: read
@@ -63,6 +80,7 @@ jobs:
           retention-days: 7
   candidate:
     needs: installed
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7

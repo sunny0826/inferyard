@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "studio/**"
+      - "!studio/README.md"
+      - "!studio/docs/**"
       - "tools/**"
       - "cli/src/**"
       - "cli/schemas/**"
