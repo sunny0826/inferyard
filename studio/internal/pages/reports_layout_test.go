@@ -36,22 +36,80 @@ func TestReportsDefaultsToReportListTab(t *testing.T) {
 	}
 }
 
-// Returning from a report detail lands on the tab the user left, not silently on
-// the default list.
-func TestReportsKeepsChosenTabAcrossDetail(t *testing.T) {
+// Returning from a report detail lands on the report list, even when the user
+// last left Reports on another tab: the task page opens a report directly, so
+// the detail cannot assume where the user came from.
+func TestReportBackLinkReturnsToReportListTab(t *testing.T) {
 	s := testState()
+	s.service, _ = reportFixtureService(t)
+	_, s.reports, s.reportsError = s.service.Reports()
+	if s.reportsError != nil || len(s.reports) == 0 {
+		t.Fatal("fixture report is missing", s.reportsError)
+	}
 	s.history.StandaloneRuns = []core.RunSummary{{RunId: "run-1", Path: "/results/run-1"}}
-	tt := ui.NewTester(s.reportsView, 1120, 1200)
+	s.selected = "reports"
+	tt := ui.NewTester(s.view, 1120, 1600)
 	click(t, tt, "运行历史")
 	if !tt.HasText("运行历史表") {
 		t.Fatalf("history tab did not open: %v", tt.Texts())
 	}
-	s.openedReport = &reportViewState{reference: "gone", failure: core.Err("not_found")}
+	// The task page's 查看报告 opens a report from outside the Reports page.
+	s.selected, s.task.stage, s.task.report = "dashboard", "done", "summary-1"
+	s.task.runs = []string{"/results/run-1"}
+	tt.Frame()
+	click(t, tt, "查看报告")
 	tt.Frame()
 	click(t, tt, "返回报告列表")
+	if !tt.HasText("打开报告 · summary-1") || tt.HasText("运行历史表") {
+		t.Fatalf("back link kept another tab: %v", tt.Texts())
+	}
+}
+
+// A specialty result opened from the task page returns to its own tab, not to
+// whichever tab Reports last showed.
+func TestSpeedResultBackLinkReturnsToSpecialtyTab(t *testing.T) {
+	s := testState()
+	task := &speedTask{id: "speed-1", model: "Preview-Model-Q4.gguf", engine: "preview-engine", stage: speedDone}
+	s.speed = &speedWorkspace{history: []*speedTask{task}, current: task}
+	s.selected = "dashboard"
+	// A busy window keeps the read-on-open in flight: the test drives the page
+	// transitions, not the specialty measurement.
+	s.busy = true
+	tt := ui.NewTester(s.view, 1120, 1600)
+	click(t, tt, "查看结果")
 	tt.Frame()
-	if !tt.HasText("运行历史表") {
-		t.Fatalf("returning fell back to another tab: %v", tt.Texts())
+	if !tt.HasText("长上下文速度 · 结果") {
+		t.Fatalf("result view did not open: %v", tt.Texts())
+	}
+	click(t, tt, "返回历史任务")
+	tt.Frame()
+	if !tt.HasText("专项历史任务") || tt.HasText("打开报告 · ") {
+		t.Fatalf("back link left the specialty tab: %v", tt.Texts())
+	}
+}
+
+// A new workspace or reset preview scene starts on the default report list, so a
+// stale tab and an open detail never outlive the data they described.
+func TestResetWorkspaceRestoresReportListTab(t *testing.T) {
+	s := testState()
+	s.reportsTab = reportsTabHistory
+	s.openedReport = &reportViewState{reference: "gone", failure: core.Err("not_found")}
+	s.resetWorkspace()
+	if s.reportsTab != reportsTabList || s.openedReport != nil {
+		t.Fatalf("reset kept tab=%d opened=%v", s.reportsTab, s.openedReport != nil)
+	}
+}
+
+// The tab lives on the view state, so selecting it once survives re-frames but
+// does not depend on an element that a scene reset discards.
+func TestReportsTabSurvivesReframe(t *testing.T) {
+	s := testState()
+	s.history.StandaloneRuns = []core.RunSummary{{RunId: "run-1", Path: "/results/run-1"}}
+	tt := ui.NewTester(s.reportsView, 1120, 1200)
+	click(t, tt, "运行历史")
+	tt.Frame()
+	if !tt.HasText("运行历史表") || s.reportsTab != reportsTabHistory {
+		t.Fatalf("tab did not survive a frame: %d", s.reportsTab)
 	}
 }
 
@@ -69,6 +127,19 @@ func TestHistoryTabNamesRowInteraction(t *testing.T) {
 	click(t, tt, "run-1")
 	if tt.HasText("点击某行查看详情与操作。") {
 		t.Fatal("row hint stayed after a row was selected")
+	}
+}
+
+// A failed scan with no rows has nothing to click, so it states the failure
+// without offering the row hint.
+func TestHistoryHintOnlyWhenRowsExist(t *testing.T) {
+	s := testState()
+	s.loaded, s.historyError = true, core.Err("history_unreadable")
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Children(func() { s.historyView(c) })
+	}, 1120, 900)
+	if tt.HasText("点击某行查看详情与操作。") {
+		t.Fatalf("row hint appeared without rows: %v", tt.Texts())
 	}
 }
 

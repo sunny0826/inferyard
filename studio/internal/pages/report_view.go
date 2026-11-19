@@ -37,9 +37,13 @@ func (s *viewState) openReport(reference string) {
 }
 
 // reportBackLink returns to the report list from the top of the detail, above
-// the title, so leaving never requires scrolling past the report body.
+// the title, so leaving never requires scrolling past the report body. It
+// chooses the report-list tab explicitly: the detail may have been opened from
+// another tab or from the task page.
 func (s *viewState) reportBackLink(c *ui.Context) {
-	button(c, "返回报告列表").OnClick(func() { s.openedReport = nil })
+	button(c, "返回报告列表").OnClick(func() {
+		s.openedReport, s.reportsTab = nil, reportsTabList
+	})
 }
 
 func (s *viewState) reportView(c *ui.Context) {

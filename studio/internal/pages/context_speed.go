@@ -288,7 +288,12 @@ func (s *viewState) speedResultView(c *ui.Context) {
 	}
 	ui.Text(c, prefix+r.id+" · "+r.label()).TextColor(stateColor(c, stateWarning))
 	ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
-		button(c, "返回历史任务").OnClick(func() { w.opened = nil; w.readError = "" })
+		// The result can be opened from the task page, so returning names its own
+		// tab instead of relying on whichever tab was last chosen.
+		button(c, "返回历史任务").OnClick(func() {
+			w.opened, w.readError = nil, ""
+			s.reportsTab = reportsTabSpeed
+		})
 		button(c, "用此组合新开任务").Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
 	if w.readError != "" {

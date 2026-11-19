@@ -42,10 +42,14 @@ Completing an evaluation, Reports groups its three lists behind top tabs: 测评
 1–100 historical runs stays in the collapsed 从历史运行生成报告 section below the cards. The
 运行历史 tab is the compact task history table (model, evaluation set, state, score, start time)
 whose selected detail carries the run id, batch and paths; a missing model, start time or
-score reads 未记录 instead of being invented, and while no row is selected the tab says
-点击某行查看详情与操作. The table keeps the height of its rows up to eight, so one run does not
+score reads 未记录 instead of being invented, and while rows exist and none is selected the tab
+says 点击某行查看详情与操作. The table keeps the height of its rows up to eight, so one run does not
 sit under a blank panel. 长上下文专项 holds the specialty history, and an empty one points to the
-task page. Each report is a card led by the recorded model, with its evaluation set, one line
+task page. The chosen tab lives on the page state, so returning within a session keeps it, while
+a new task round, another workspace and a reset preview scene start again on 测评报告; because the
+task page can open a report or a specialty result directly, 返回报告列表 and 返回历史任务 name their
+own destination tab instead of reusing the last one. Each report is a card led by the recorded model,
+with its evaluation set, one line
 per run (`答案通过 x / y`), the run count, and the report file's modification time — the file
 time, not a run or generation time. Runs are never added together and a missing count keeps
 未记录 instead of 0; the card's primary 打开报告 button targets that card's report, and a

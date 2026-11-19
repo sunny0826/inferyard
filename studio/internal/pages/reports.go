@@ -27,11 +27,12 @@ func (s *viewState) reportsView(c *ui.Context) {
 		return
 	}
 	s.header(c, "报告")
-	tab := reportsTabState(c)
-	box := ui.Column(c.Key("reports-tabs")).Gap(tokens(c).Density.Row)
-	box.Children(func() {
-		components.Tabs(c, tab, components.TabsSegmented, "测评报告", "长上下文专项", "运行历史")
-		switch *tab {
+	if s.reportsTab < reportsTabList || s.reportsTab > reportsTabHistory {
+		s.reportsTab = reportsTabList
+	}
+	ui.Column(c.Key("reports-tabs")).Gap(tokens(c).Density.Row).Children(func() {
+		components.Tabs(c, &s.reportsTab, components.TabsSegmented, "测评报告", "长上下文专项", "运行历史")
+		switch s.reportsTab {
 		case reportsTabSpeed:
 			s.speedReportsTabView(c)
 		case reportsTabHistory:
@@ -41,12 +42,6 @@ func (s *viewState) reportsView(c *ui.Context) {
 			s.reportSourcesView(c)
 		}
 	})
-}
-
-// reportsTabState keeps the chosen tab on the window root, so returning from a
-// report detail or a specialty result comes back to the tab the user left.
-func reportsTabState(c *ui.Context) *int {
-	return ui.Local(c.Root(), "reports-tab", func() int { return reportsTabList })
 }
 
 // speedReportsTabView keeps the specialty history in its own tab and states

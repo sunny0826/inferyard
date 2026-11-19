@@ -175,7 +175,7 @@ func (s *viewState) historyView(c *ui.Context) {
 		ui.Text(c, []string{historyModel(r), text(r.Bundle), stateLabel(r.Status), runScore(r), historyStarted(r)}[col])
 	}).Height(c.Theme().Space(8)*float32(min(len(runs), 8)+1) + 2).Label("运行历史表")
 	// Rows reveal their actions only after selection, so the page names that
-	// interaction while nothing is selected.
+	// interaction while rows exist and none is selected.
 	if i := selectedRow(&s.historyTable, len(runs)); i >= 0 {
 		r := runs[i]
 		s.historyIdentity(c, r)
@@ -189,7 +189,7 @@ func (s *viewState) historyView(c *ui.Context) {
 			}
 		}
 		s.historyRow(c, r)
-	} else {
+	} else if len(runs) > 0 {
 		ui.Text(c, "点击某行查看详情与操作。").TextColor(c.Theme().TextMuted)
 	}
 }
