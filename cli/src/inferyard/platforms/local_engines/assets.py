@@ -5,19 +5,23 @@ from pathlib import Path
 
 from inferyard.errors import PreflightError
 from inferyard.contracts.validation import json_bytes, strict_json_loads
-from inferyard.platforms.identity import hash_file
+from inferyard.platforms.identity import FileIdentity, hash_file
 from inferyard.platforms.local_engines.installation import verify_installation
 from inferyard.platforms.local_engines.model_snapshot import snapshot as model_snapshot
 
+type JsonScalar = str | int | float | bool | None
+type JsonTree = JsonScalar | list[JsonTree] | dict[str, JsonTree]
+type JsonObject = dict[str, JsonTree]
 
-def _parse(raw):
+
+def _parse(raw: bytes) -> JsonObject:
     try:
         return strict_json_loads(raw.decode("utf-8"))
     except (UnicodeError, ValueError) as exc:
         raise PreflightError("local_engine_json_unreadable") from exc
 
 
-def bound_json(path, digest):
+def bound_json(path: str | Path, digest: str | None = None) -> tuple[JsonObject, FileIdentity]:
     identity = hash_file(Path(path), digest)
     try:
         raw = Path(path).read_bytes()
@@ -31,7 +35,9 @@ def bound_json(path, digest):
     return value, identity
 
 
-def _inspect(config):
+def _inspect(
+    config: JsonObject,
+) -> tuple[JsonObject, list[FileIdentity], list[FileIdentity], JsonObject]:
     engine, model = config["engine"], config["model"]
     runtime, runtime_file = bound_json(engine["installation_path"], engine["installation_sha256"])
     runtime_files = verify_installation(runtime)
@@ -53,12 +59,12 @@ def _inspect(config):
     return runtime, runtime_files, files, frozen
 
 
-def assets(config):
+def assets(config: JsonObject) -> tuple[JsonObject, list[FileIdentity], list[FileIdentity]]:
     runtime, runtime_files, files, _ = _inspect(config)
     return runtime, runtime_files, files
 
 
-def preflight_assets(config):
+def preflight_assets(config: JsonObject) -> tuple[JsonObject, list[FileIdentity]]:
     from inferyard.platforms.local_engines.service import validate_binding
 
     runtime, _, files, model_assets = _inspect(config)

@@ -9,6 +9,7 @@ from copy import deepcopy
 from functools import cache
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from typing import Protocol
 
 from inferyard.errors import ContractError
 from inferyard.provenance import tool_source_hash
@@ -36,6 +37,15 @@ DEPENDENCIES = {
     "scoring": VALIDATION_DEPENDENCIES,
     "presentation": VALIDATION_DEPENDENCIES,
 }
+
+
+class SourceHasher(Protocol):
+    def __call__(self, *, file_hashes: dict[str, str] | None = None) -> str: ...
+
+
+type JsonScalar = str | int | float | bool | None
+type JsonTree = JsonScalar | list[JsonTree] | dict[str, JsonTree]
+type IdentityPayload = dict[str, JsonTree]
 
 
 def digest(value):
@@ -68,7 +78,7 @@ def dependency_versions(role):
     return sorted(result, key=lambda item: item["name"])
 
 
-def _build_identity(root, source_hash):
+def _build_identity(root: Path, source_hash: SourceHasher) -> tuple[str, IdentityPayload]:
     """Scan one root; callers own any reuse of the resulting identity."""
     hashes, lists = {}, {}
     for path in sorted(root.rglob("*")):
@@ -81,7 +91,7 @@ def _build_identity(root, source_hash):
             role = name.removeprefix(LISTS_ROOT).removesuffix(".json")
             lists[role] = json.loads(raw)
     source = source_hash(file_hashes=hashes)
-    value = {"definition": DEFINITION}
+    value: IdentityPayload = {"definition": DEFINITION}
     for role in ROLES:
         contents = {
             "files": [{"path": name, "sha256": hashes[name]} for name in lists[role]],
@@ -92,13 +102,18 @@ def _build_identity(root, source_hash):
 
 
 @cache
-def _default_identity():
+def _default_identity() -> tuple[str, IdentityPayload]:
     """Installed package identity is constant for the life of this process."""
     return _build_identity(Path(__file__).parent, tool_source_hash)
 
 
 class IdentityContext:
-    def __init__(self, *, root=None, source_hash=tool_source_hash):
+    source: str
+    value: IdentityPayload
+
+    def __init__(
+        self, *, root: Path | None = None, source_hash: SourceHasher = tool_source_hash
+    ) -> None:
         if root is None and source_hash is tool_source_hash:
             source, value = _default_identity()
             # Each caller owns its copy; in-place edits must not poison the cache.

@@ -2,12 +2,14 @@
 
 import hashlib
 import os
+from collections.abc import Sequence
 from pathlib import Path
+from types import ModuleType
 
 from inferyard.errors import PreflightError
 from inferyard.platforms import engine_fit_macos as native
-from inferyard.platforms.identity import hash_file, service_origin
-from inferyard.platforms.local_engines.assets import assets, bound_json
+from inferyard.platforms.identity import FileIdentity, hash_file, service_origin
+from inferyard.platforms.local_engines.assets import JsonObject, assets, bound_json
 from inferyard.platforms.local_engines.installation import darwin
 from inferyard.platforms.local_engines.startup import check_environment, validate_startup
 from inferyard.platforms.local_engines.workers import mapped_closure, observe_workers
@@ -16,10 +18,16 @@ from inferyard.platforms.macos_process import lsof_records, mapped_file
 
 DEFINITION = "local-engine-binding.v1"
 _CACHE_LIMIT = 8
-_ASSET_CACHE = {}
+
+type Stamp = tuple[int, int, int, int, int]
+type StampGroup = tuple[tuple[tuple[str, Stamp], ...], tuple[tuple[str, Stamp], ...]]
+type AssetKey = tuple[str, str, str, str, str, str, str, str, str]
+type CachedAssets = tuple[JsonObject, list[FileIdentity], list[FileIdentity], StampGroup]
+
+_ASSET_CACHE: dict[AssetKey, CachedAssets] = {}
 
 
-def _asset_key(config):
+def _asset_key(config: JsonObject) -> AssetKey:
     engine, model = config["engine"], config["model"]
     return (
         engine["installation_path"],
@@ -34,12 +42,12 @@ def _asset_key(config):
     )
 
 
-def _stamp(path):
+def _stamp(path: Path | str) -> Stamp:
     info = Path(path).stat()
     return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
 
 
-def _stamps(identities):
+def _stamps(identities: Sequence[FileIdentity]) -> StampGroup | None:
     """Record ctimes and parent directories; FileIdentity alone misses both."""
     try:
         files = [(item.path, _stamp(item.path)) for item in identities]
@@ -50,7 +58,7 @@ def _stamps(identities):
     return tuple(files), tuple(directories)
 
 
-def _stamps_unchanged(stamps):
+def _stamps_unchanged(stamps: StampGroup | None) -> bool:
     if not stamps:
         return False
     try:
@@ -59,7 +67,12 @@ def _stamps_unchanged(stamps):
         return False
 
 
-def _remember(config, runtime, runtime_files, asset_files):
+def _remember(
+    config: JsonObject,
+    runtime: JsonObject,
+    runtime_files: list[FileIdentity],
+    asset_files: list[FileIdentity],
+) -> None:
     identities = (*runtime_files, *asset_files)
     if not all(item.unchanged() for item in identities):
         return
@@ -73,20 +86,37 @@ def _remember(config, runtime, runtime_files, asset_files):
         _ASSET_CACHE.pop(next(iter(_ASSET_CACHE)))
 
 
-def _cached(config):
+def _cached(config: JsonObject) -> CachedAssets | None:
     value = _ASSET_CACHE.get(_asset_key(config))
     if value is None or not _stamps_unchanged(value[3]):
         return None
     return value
 
 
-def validate_binding(binding, config):
+def validate_binding(binding: JsonObject, config: JsonObject) -> JsonObject:
     from inferyard.platforms.local_engines.binding_schema import validate
 
     return validate(binding, config)
 
 
-def _direct(config, declaration, runtime_files, psutil):
+def _binding_model(family: str, model: Path, info: os.stat_result) -> JsonObject:
+    return {
+        "engine": family,
+        "path": str(model),
+        "device": info.st_dev,
+        "inode": info.st_ino,
+        "source": "verified_startup_directory_identity"
+        if model.is_dir()
+        else "verified_startup_file_identity",
+    }
+
+
+def _direct(
+    config: JsonObject,
+    declaration: JsonObject,
+    runtime_files: list[FileIdentity],
+    psutil: ModuleType,
+) -> JsonObject:
     endpoint = config["endpoint"]
     pid = endpoint["server_pid"]
     state = native.service_process_state(pid, psutil)
@@ -124,19 +154,13 @@ def _direct(config, declaration, runtime_files, psutil):
         "listener_inode": None,
         "listener_identity": listener,
         "listener_source": "lsof:TCP:LISTEN:pid",
-        "model_binding": {
-            "engine": config["engine"]["family"],
-            "path": str(model),
-            "device": info.st_dev,
-            "inode": info.st_ino,
-            "source": "verified_startup_directory_identity"
-            if model.is_dir()
-            else "verified_startup_file_identity",
-        },
+        "model_binding": _binding_model(config["engine"]["family"], model, info),
     }
 
 
-def _bind(config, runtime, runtime_files):
+def _bind(
+    config: JsonObject, runtime: JsonObject, runtime_files: list[FileIdentity]
+) -> JsonObject:
     declaration, engine, endpoint = runtime["installation"], config["engine"], config["endpoint"]
     worker_environment = declaration.get("worker_environment", engine["environment"])
     psutil = native.psutil_module()
@@ -183,7 +207,7 @@ def _bind(config, runtime, runtime_files):
         raise PreflightError("local_engine_service_unavailable") from exc
 
 
-def bind_service(config):
+def bind_service(config: JsonObject) -> JsonObject:
     darwin()
     runtime, runtime_files, asset_files = assets(config)
     result = _bind(config, runtime, runtime_files)
@@ -191,7 +215,9 @@ def bind_service(config):
     return result
 
 
-def verify_bound_service(config, *, bound_files=None):
+def verify_bound_service(
+    config: JsonObject, *, bound_files: Sequence[FileIdentity] | None = None
+) -> JsonObject:
     endpoint = config["endpoint"]
     binding, _ = bound_json(endpoint["binding_path"], endpoint["binding_sha256"])
     validate_binding(binding, config)
