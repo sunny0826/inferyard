@@ -5,6 +5,8 @@ import json
 import platform
 import sys
 import unicodedata
+from copy import deepcopy
+from functools import cache
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
@@ -66,27 +68,43 @@ def dependency_versions(role):
     return sorted(result, key=lambda item: item["name"])
 
 
+def _build_identity(root, source_hash):
+    """Scan one root; callers own any reuse of the resulting identity."""
+    hashes, lists = {}, {}
+    for path in sorted(root.rglob("*")):
+        if path.suffix not in (".py", ".html", ".json"):
+            continue
+        raw = path.read_bytes()
+        name = path.relative_to(root).as_posix()
+        hashes[name] = hashlib.sha256(raw).hexdigest()
+        if name.startswith(LISTS_ROOT) and name.endswith(".json"):
+            role = name.removeprefix(LISTS_ROOT).removesuffix(".json")
+            lists[role] = json.loads(raw)
+    source = source_hash(file_hashes=hashes)
+    value = {"definition": DEFINITION}
+    for role in ROLES:
+        contents = {
+            "files": [{"path": name, "sha256": hashes[name]} for name in lists[role]],
+            "dependencies": dependency_versions(role),
+        }
+        value[role] = {**contents, "sha256": digest(contents)}
+    return source, value
+
+
+@cache
+def _default_identity():
+    """Installed package identity is constant for the life of this process."""
+    return _build_identity(Path(__file__).parent, tool_source_hash)
+
+
 class IdentityContext:
     def __init__(self, *, root=None, source_hash=tool_source_hash):
-        root = root or Path(__file__).parent
-        hashes, lists = {}, {}
-        for path in sorted(root.rglob("*")):
-            if path.suffix not in (".py", ".html", ".json"):
-                continue
-            raw = path.read_bytes()
-            name = path.relative_to(root).as_posix()
-            hashes[name] = hashlib.sha256(raw).hexdigest()
-            if name.startswith(LISTS_ROOT) and name.endswith(".json"):
-                role = name.removeprefix(LISTS_ROOT).removesuffix(".json")
-                lists[role] = json.loads(raw)
-        self.source = source_hash(file_hashes=hashes)
-        self.value = {"definition": DEFINITION}
-        for role in ROLES:
-            contents = {
-                "files": [{"path": name, "sha256": hashes[name]} for name in lists[role]],
-                "dependencies": dependency_versions(role),
-            }
-            self.value[role] = {**contents, "sha256": digest(contents)}
+        if root is None and source_hash is tool_source_hash:
+            source, value = _default_identity()
+            # Each caller owns its copy; in-place edits must not poison the cache.
+            self.source, self.value = source, deepcopy(value)
+            return
+        self.source, self.value = _build_identity(root or Path(__file__).parent, source_hash)
 
 
 def validate_identity(value):

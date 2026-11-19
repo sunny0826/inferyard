@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 
 from inferyard import SCHEMA_VERSION, __version__
 from inferyard.contracts.validation import validate_document, json_bytes
-from inferyard.contracts.validation_cache import command_validation
 from inferyard.errors import EvidenceError
 from inferyard.evidence.run_inputs import frozen_inputs
 from inferyard.evidence.run_records import RunRecords
@@ -35,10 +34,9 @@ def trial_inputs(
     """Frozen scope checks; config-dependent workload rules stay with the caller."""
     if rerun_parent and (parent or resume_case_ids):
         raise EvidenceError("rerun_parent_conflicts_with_trial_parent")
-    with command_validation(enabled=False):
-        trial = trial_for(plan, trial_id)
-        validate_document("config", config)
-        validate_document("bundle", bundle)
+    trial = trial_for(plan, trial_id)
+    validate_document("config", config)
+    validate_document("bundle", bundle)
     workload = next(
         w for w in plan["experiment"]["workloads"] if w["workload_id"] == trial["workload_id"]
     )

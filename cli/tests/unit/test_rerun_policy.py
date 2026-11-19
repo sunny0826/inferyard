@@ -1,14 +1,20 @@
 """Rerun entry accepts implementation changes; comparison records differences."""
 
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
 from inferyard.analysis.comparison import compare_trials
-from inferyard.application.types import CommandRequest
-from inferyard.errors import PreflightError
 from inferyard.analysis.ledger import read_trial
+from inferyard.application.types import CommandRequest
+from inferyard.config.loader import load_config
+from inferyard.config.single_plan import compile_single_plan
+from inferyard.contracts.validation_cache import command_validation, validation_key
+from inferyard.errors import ContractError, PreflightError
+from inferyard.evidence.journal import trial_inputs
 from inferyard.evidence.storage import read_json
+from inferyard.implementation_identity import IdentityContext
 from inferyard.runtime import runner
 from tests.helpers import fixture_run
 from tests.legacy_journal import LegacyJournal
@@ -69,3 +75,30 @@ def test_rerun_accepts_identity_difference_but_comparison_rejects(tmp_path, monk
     result = compare_trials(parent, changed)
     assert not any(result["eligibility"].values())
     assert next(c for c in result["conditions"] if c["field"] == condition)["status"] == "different"
+
+
+def test_default_identity_context_reuses_cache_without_sharing_state():
+    first = IdentityContext()
+    first.value["measurement"]["sha256"] = "0" * 64
+    second = IdentityContext()
+    assert second.source == IdentityContext().source
+    assert second.value["measurement"]["sha256"] != "0" * 64
+    assert second.value == IdentityContext().value
+
+
+def test_trial_inputs_revalidates_changed_bundle_inside_command_cache():
+    loaded = load_config(Path(__file__).parents[1] / "fixtures/config/valid.toml")
+    config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
+    plan = compile_single_plan(config, bundle)
+    trial_id = plan["trials"][0]["trial_id"]
+    with command_validation():
+        trial, workload = trial_inputs(plan, trial_id, config, bundle)
+        assert trial["trial_id"] == trial_id
+        assert workload["workload_id"] == trial["workload_id"]
+        # The unchanged documents entered the command-scoped cache.
+        cache, key = validation_key("bundle", bundle)
+        assert cache is not None and key in cache
+        tampered = deepcopy(bundle)
+        tampered["cases"][0]["case_id"] = 1
+        with pytest.raises(ContractError):
+            trial_inputs(plan, trial_id, config, tampered)
