@@ -336,7 +336,10 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         assert verify_comparison(out)["verified"]
     # Downstream report/filter contracts are independent of the observer window except
     # for the C02 resource aggregation; run them once instead of per parameter branch.
-    if mode == "resources" and not collector_pause:
+    # Windows skips the "resources" branch, so fall back to "boundary" there to keep
+    # the generic downstream assertions covered on every platform.
+    downstream_mode = "resources" if sys.platform in ("linux", "darwin") else "boundary"
+    if mode == downstream_mode and not collector_pause:
         from inferyard.reporting.studio_report import write_studio_report
 
         report = output / "linked-performance-report"
@@ -368,22 +371,25 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
             "constraints": [constraint],
             "comparisons": {str(targets[1]): str(out)},
         }
-        rss = [m for m in data["summary"]["metric_observations"] if m["metric_id"] == "C02"]
-        resource_constraint = {
-            k: rss[0][k] for k in ("metric_id", "statistic", "source", "unit", "definition_version")
-        }
-        resource_constraint.update(
-            category=None,
-            error_category=None,
-            operator="<=",
-            threshold=max(m["value"] for m in rss),
-            aggregation="all_requests",
-        )
-        spec["constraints"].append(resource_constraint)
+        if mode == "resources":
+            rss = [m for m in data["summary"]["metric_observations"] if m["metric_id"] == "C02"]
+            resource_constraint = {
+                k: rss[0][k]
+                for k in ("metric_id", "statistic", "source", "unit", "definition_version")
+            }
+            resource_constraint.update(
+                category=None,
+                error_category=None,
+                operator="<=",
+                threshold=max(m["value"] for m in rss),
+                aggregation="all_requests",
+            )
+            spec["constraints"].append(resource_constraint)
         filtered = filter_candidates(spec, output)
         assert filtered["schema_version"] == 3 and filtered["format_version"] == 1
-        aggregate = filtered["candidates"][0]["constraints"][1]["aggregation"]
-        assert aggregate["planned_requests"] == 3
+        if mode == "resources":
+            aggregate = filtered["candidates"][0]["constraints"][1]["aggregation"]
+            assert aggregate["planned_requests"] == 3
         from inferyard.application.candidates import execute as execute_filter
         from inferyard.application.types import CommandRequest
 
