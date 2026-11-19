@@ -164,9 +164,8 @@ candidate commands above are development checks, not a release-upload path.
    production app with an isolated HOME and a real CLI/fake-engine report. The
    Windows job installs the application, checks the installed command boundary
    and uninstalls it. The assemble job writes
-   `studio-release-manifest.json` and `SHA256SUMS.studio`, then re-verifies the
-   exact bytes. A regular PR run of either candidate workflow cannot serve as
-   a release source.
+   `studio-release-manifest.json` and `SHA256SUMS.studio`. A regular PR run of
+   either candidate workflow cannot serve as a release source.
 3. Inspect the two candidate manifests and generation output in Actions.
    Record the CLI `run_id` and `manifest_sha256`, the Studio `studio_run_id`
    and `studio_manifest_sha256`, and their shared full `source_commit`.
@@ -176,12 +175,12 @@ candidate commands above are development checks, not a release-upload path.
    first using `destination=verify-only`. The verifier checks both manual-run
    origins, both manifests, and the same-batch bytes without publishing.
 5. After the rehearsal passes, use the same inputs with
-   `destination=github-release`. The workflow verifies again and creates the
-   `v0.0.5` draft with nine attachments: five CLI files, the Studio DMG,
-   Windows installer and Linux tar.gz, and `SHA256SUMS.studio`. The same job
-   re-downloads every draft attachment and compares it with the verified candidate bytes. Edit the
-   release notes on GitHub with features, compatibility boundaries,
-   installation methods, actual platform coverage, sources and digests.
+   `destination=github-release`. The `verify` job checks both candidates and
+   the release job creates the `v0.0.5` draft from those verified bytes with
+   nine attachments: five CLI files, the Studio DMG, Windows installer and
+   Linux tar.gz, and `SHA256SUMS.studio`. Edit the release notes on GitHub
+   with features, compatibility boundaries, installation methods, actual
+   platform coverage, sources and digests.
 6. With explicit publication approval, use `destination=pypi` with the same
    inputs. The workflow publishes the verified wheel and sdist, then runs the
    `pypi-smoke` installation matrix on Linux, Windows and macOS. After those
