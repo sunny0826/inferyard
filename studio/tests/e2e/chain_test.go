@@ -116,7 +116,6 @@ func TestChainBindRunReport(t *testing.T) {
 		}
 	}
 	assertReportExists(t, final.Progress.Workspace)
-	assertEvidenceContracts(t, final.Progress.Workspace)
 }
 
 func runWizard(t *testing.T, service *core.Service, ctx context.Context, command string, recorder *Recorder) {

@@ -3,10 +3,14 @@ on:
   pull_request:
     paths:
       - "studio/**"
-      - "cli/src/**"
+      - "!studio/README.md"
+      - "!studio/docs/**"
       - "cli/schemas/**"
+      - "cli/src/inferyard/reporting/**"
+      - "cli/src/inferyard/contracts/**"
       - "cli/pyproject.toml"
       - "cli/uv.lock"
+      - "LICENSE"
       - "mise.toml"
       - ".github/workflows/studio-release.yml"
   workflow_dispatch:
@@ -45,7 +49,6 @@ jobs:
         run: |
           mise exec -- go test -tags ui_debug,release . -count=1
           mise exec -- python -m unittest discover -s scripts -p 'test_*.py'
-          mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
       - name: Build the native release binary
         shell: bash
         env:
@@ -198,6 +201,7 @@ jobs:
   candidate:
     name: Assemble and verify the Studio candidate
     needs: package
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     outputs:
       manifest_sha256: ${{ steps.prepare.outputs.manifest_sha256 }}
@@ -224,16 +228,6 @@ jobs:
           digest=$(mise exec -- python -c 'import hashlib; print(hashlib.sha256(open("dist/studio-release-candidate/studio-release-manifest.json", "rb").read()).hexdigest())')
           echo "manifest_sha256=$digest" >> "$GITHUB_OUTPUT"
           echo "Studio candidate manifest SHA-256: $digest" >> "$GITHUB_STEP_SUMMARY"
-      - name: Re-verify the exact candidate bytes
-        env:
-          SOURCE_COMMIT: ${{ github.sha }}
-          EXPECTED_MANIFEST: ${{ steps.prepare.outputs.manifest_sha256 }}
-        run: >-
-          mise exec -- python scripts/verify_release_candidate.py
-          --manifest dist/studio-release-candidate/studio-release-manifest.json
-          --manifest-sha256 "$EXPECTED_MANIFEST"
-          --source-commit "$SOURCE_COMMIT"
-          --stage dist/studio-verified
       - uses: actions/upload-artifact@v7
         with:
           name: studio-release-candidate

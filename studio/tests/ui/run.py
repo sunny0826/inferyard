@@ -19,7 +19,7 @@ def require_unlocked_desktop() -> None:
     if isinstance(state, list) and len(state) == 1:
         state = state[0]
     if not isinstance(state, dict) or not isinstance(state.get("IOConsoleUsers"), list):
-        raise ValueError("cannot determine the active macOS desktop session")
+        raise TypeError("cannot determine the active macOS desktop session")
     sessions = [
         item
         for item in state["IOConsoleUsers"]
@@ -31,9 +31,22 @@ def require_unlocked_desktop() -> None:
         raise ValueError("unlock the macOS desktop and keep it unlocked during native UI e2e")
 
 
+def resolve_derived_data(output_root: Path, override: Path | None) -> Path:
+    """Return the shared DerivedData cache, kept outside the per-run artifact directory."""
+    if override is not None:
+        return override.resolve()
+    return output_root.resolve().parent / "ui-derived-data"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-root", type=Path, default=Path("build/ui-e2e"))
+    parser.add_argument(
+        "--derived-data",
+        type=Path,
+        default=None,
+        help="shared build cache outside --output-root (default: ui-derived-data beside it)",
+    )
     parser.add_argument(
         "--suite",
         choices=("daily", "full"),
@@ -45,11 +58,20 @@ def main() -> int:
         parser.error("native UI e2e requires macOS, a logged-in desktop session, and Xcode")
     try:
         require_unlocked_desktop()
-    except (OSError, ValueError, plistlib.InvalidFileException, subprocess.SubprocessError) as exc:
+    except (
+        OSError,
+        TypeError,
+        ValueError,
+        plistlib.InvalidFileException,
+        subprocess.SubprocessError,
+    ) as exc:
         parser.error(f"desktop preflight failed: {exc}")
     args.output_root.mkdir(parents=True, exist_ok=True)
     output = Path(tempfile.mkdtemp(prefix="run-", dir=args.output_root.resolve()))
+    derived_data = resolve_derived_data(args.output_root, args.derived_data)
+    derived_data.mkdir(parents=True, exist_ok=True)
     print(f"UI e2e artifacts: {output}", flush=True)
+    print(f"UI e2e derived data: {derived_data}", flush=True)
     print(f"UI e2e suite: {args.suite}", flush=True)
     command = [
         "xcodebuild",
@@ -61,7 +83,7 @@ def main() -> int:
         "-destination",
         "platform=macOS",
         "-derivedDataPath",
-        str(output / "DerivedData"),
+        str(derived_data),
         "-resultBundlePath",
         str(output / "Results.xcresult"),
         "-parallel-testing-enabled",

@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import argparse
-import contextlib
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import time
+from pathlib import Path
 
-from run import require_unlocked_desktop
+from run import require_unlocked_desktop, resolve_derived_data
 
 
 def prepare_home(output: Path, e2e_root: Path, cli: Path) -> tuple[Path, Path]:
@@ -30,19 +29,18 @@ def prepare_home(output: Path, e2e_root: Path, cli: Path) -> tuple[Path, Path]:
         "engine_download_name": "engine",
     }
     settings_path = settings_dir / "settings.json"
-    with settings_path.open("w", encoding="utf-8") as stream, contextlib.redirect_stdout(stream):
-        print(json.dumps(settings, indent=2))
+    settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
     settings_path.chmod(0o600)
     return home, workspace
 
 
-def xcode_command(output: Path) -> list[str]:
+def xcode_command(output: Path, derived_data: Path) -> list[str]:
     return [
         "xcodebuild", "test",
         "-project", str(Path(__file__).parent / "PreviewUI.xcodeproj"),
         "-scheme", "PreviewUI",
         "-destination", "platform=macOS",
-        "-derivedDataPath", str(output / "DerivedData"),
+        "-derivedDataPath", str(derived_data),
         "-resultBundlePath", str(output / "Results.xcresult"),
         "-parallel-testing-enabled", "NO",
         "-only-testing:PreviewUITests/ReleaseUITests",
@@ -74,8 +72,7 @@ def execute(command: list[str], env: dict[str, str], output: Path, report: Path)
         "app": env["TEST_RUNNER_INFERYARD_RELEASE_APP"],
         "report": str(report),
     }
-    with (output / "run.json").open("w", encoding="utf-8") as stream, contextlib.redirect_stdout(stream):
-        print(json.dumps(manifest, indent=2))
+    (output / "run.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     status = "passed" if exit_code == 0 else "failed"
     print(f"Production UI smoke {status}; build and test: {elapsed:.1f}s", flush=True)
     if exit_code:
@@ -91,6 +88,12 @@ def main() -> int:
     parser.add_argument("--e2e-root", type=Path, required=True)
     parser.add_argument("--cli", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, default=Path("build/release-ui-e2e"))
+    parser.add_argument(
+        "--derived-data",
+        type=Path,
+        default=None,
+        help="shared build cache outside --output-root (default: ui-derived-data beside it)",
+    )
     args = parser.parse_args()
     if sys.platform != "darwin":
         parser.error("production UI smoke requires macOS, a logged-in desktop, and Xcode")
@@ -109,6 +112,8 @@ def main() -> int:
 
     args.output_root.mkdir(parents=True, exist_ok=True)
     output = Path(tempfile.mkdtemp(prefix="run-", dir=args.output_root.resolve()))
+    derived_data = resolve_derived_data(args.output_root, args.derived_data)
+    derived_data.mkdir(parents=True, exist_ok=True)
     home, workspace = prepare_home(output, e2e_root, cli)
     env = dict(
         os.environ,
@@ -119,7 +124,7 @@ def main() -> int:
         TEST_RUNNER_INFERYARD_RELEASE_RESULTS=str(workspace / "results"),
         TEST_RUNNER_INFERYARD_RELEASE_MODELS=str(e2e_root / "models"),
     )
-    return execute(xcode_command(output), env, output, reports[0])
+    return execute(xcode_command(output, derived_data), env, output, reports[0])
 
 
 if __name__ == "__main__":

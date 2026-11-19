@@ -284,11 +284,12 @@ downloads, or every error path. See the [preview test boundaries](../docs/subsys
 
 `go test ./...` includes the boundary e2e suite under `tests/e2e`: the real CLI executes
 every operation against a fake engine (the test binary re-executing itself), each CLI call
-is recorded to a blame transcript, and workspace evidence is validated against the exported
-schemas in `cli/schemas/`. The suite attributes every failure to the CLI side or the Studio
-side; see [tests/e2e/README.md](tests/e2e/README.md) for the layout, fixture boundaries, and
-the `INFERYARD_E2E_CLI` / `INFERYARD_E2E_ROOT` knobs. CI runs it on macOS and Windows via
-`.github/workflows/studio-check.yml`.
+is recorded to a blame transcript, and the chain proves the cross-process command sequence
+and the `studio.json` report contract that Studio consumes. The CLI's own evidence
+journals and ledgers stay covered by the CLI test suite. The e2e suite attributes every
+failure to the CLI side or the Studio side; see [tests/e2e/README.md](tests/e2e/README.md)
+for the layout, fixture boundaries, and the `INFERYARD_E2E_CLI` / `INFERYARD_E2E_ROOT`
+knobs. CI runs it on macOS and Windows via `.github/workflows/studio-check.yml`.
 
 Native view tests, the e2e suite, and fixtures do not establish real-device acceptance. Verify all six
 pages, the task page's stage navigation and restored progress, resource curves, and the

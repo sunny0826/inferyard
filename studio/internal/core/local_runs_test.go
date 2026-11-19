@@ -2,17 +2,23 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
 	"runtime"
 	"testing"
+
+	"inferyard/studio/internal/inferyard"
 )
 
 func TestLocalQueueStartsFreshProcessPerBundle(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("local process isolation is unavailable on Windows")
 	}
-	for _, family := range []string{"llama-cpp", "mlx-lm", "vllm", "sglang"} {
+	// llama-cpp covers the gguf model asset; mlx-lm covers the directory asset.
+	// The remaining families share the identical direct_process path, so they add
+	// runtime without a distinct branch.
+	for _, family := range []string{"llama-cpp", "mlx-lm"} {
 		t.Run(family, func(t *testing.T) {
 			f := newLocalQueueFixture(t, family)
 			tasks, failure := f.s.StartCandidateRuns(CandidateRunsRequest{Candidates: f.candidates})
@@ -38,6 +44,37 @@ func TestLocalQueueStartsFreshProcessPerBundle(t *testing.T) {
 				t.Fatal(f.s.Engine())
 			}
 		})
+	}
+}
+
+// TestProbeReusesVersionForSameExecutable guards the operator-visible latency of
+// a single action: a settings read chain probes many times, and each miss spawns
+// an `inferyard --version` subprocess.
+func TestProbeReusesVersionForSameExecutable(t *testing.T) {
+	var calls int
+	s := testService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+		if v, ok := version(args); ok {
+			calls++
+			return v, nil
+		}
+		return inferyard.Execution{}, fmt.Errorf("unexpected fixture command %v", args)
+	})
+	s.settings.InferyardPath = ptr(os.Args[0])
+	u := s.userSettings()
+	for i := 0; i < 3; i++ {
+		p := s.probe(u)
+		if p.Status != "ok" || str(p.Path) != os.Args[0] || str(p.Version) != "1.0" {
+			t.Fatal(p)
+		}
+	}
+	if calls != 1 {
+		t.Fatalf("version probe ran %d times, want 1", calls)
+	}
+	// Callers must not be able to corrupt the cached pointers.
+	p := s.probe(u)
+	*p.Version = "tampered"
+	if again := s.probe(u); str(again.Version) != "1.0" {
+		t.Fatalf("cache aliased caller pointer: %+v", again)
 	}
 }
 

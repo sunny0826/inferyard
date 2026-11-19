@@ -53,6 +53,22 @@ jobs:
           source-commit: ${{ inputs.source_commit }}
           manifest-sha256: ${{ inputs.studio_manifest_sha256 }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Hand the verified CLI bytes to the publishing jobs
+        if: inputs.destination != 'verify-only'
+        uses: actions/upload-artifact@v7
+        with:
+          name: verified-cli-files
+          path: approved-files
+          retention-days: 1
+          if-no-files-found: error
+      - name: Hand the verified Studio bytes to the release job
+        if: inputs.destination == 'github-release' || inputs.destination == 'both'
+        uses: actions/upload-artifact@v7
+        with:
+          name: verified-studio-files
+          path: studio-approved-files
+          retention-days: 1
+          if-no-files-found: error
   github-release:
     needs: verify
     if: inputs.destination == 'github-release' || inputs.destination == 'both'
@@ -62,24 +78,14 @@ jobs:
       contents: write
       actions: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
-          ref: ${{ inputs.source_commit }}
-          persist-credentials: false
-      - uses: jdx/mise-action@v5.2.4
-      - run: mise exec -- uv --directory cli sync --frozen
-      - uses: ./.github/actions/check-release
+          name: verified-cli-files
+          path: approved-files
+      - uses: actions/download-artifact@v8
         with:
-          run-id: ${{ inputs.run_id }}
-          source-commit: ${{ inputs.source_commit }}
-          manifest-sha256: ${{ inputs.manifest_sha256 }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: ./.github/actions/check-studio-release
-        with:
-          run-id: ${{ inputs.studio_run_id }}
-          source-commit: ${{ inputs.source_commit }}
-          manifest-sha256: ${{ inputs.studio_manifest_sha256 }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          name: verified-studio-files
+          path: studio-approved-files
       - name: Refuse a release tag pointing at another source
         uses: actions/github-script@v9
         env:
@@ -100,6 +106,10 @@ jobs:
             if (object.type !== 'commit' || object.sha !== process.env.SOURCE_COMMIT) {
               throw new Error('Release tag points at another source commit');
             }
+      - name: Require all nine verified attachments before publication
+        shell: bash
+        run: |
+          test "$(find approved-files studio-approved-files -maxdepth 1 -type f | wc -l)" -eq 9
       - name: Create a draft Release with all verified CLI and Studio bytes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -113,18 +123,6 @@ jobs:
           gh release create v0.0.5 approved-files/* studio-approved-files/*
           --target "$SOURCE_COMMIT" --draft --title 'v0.0.5'
           --notes "Source $SOURCE_COMMIT; CLI candidate SHA256 $CANDIDATE_SHA (package-check run $SOURCE_RUN); Studio candidate SHA256 $STUDIO_CANDIDATE_SHA (Studio release run $STUDIO_SOURCE_RUN). Installation checks do not establish native model or performance qualification."
-      - name: Re-download the draft and compare every uploaded byte
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          mkdir downloaded
-          gh release download v0.0.5 --dir downloaded
-          test "$(find downloaded -maxdepth 1 -type f | wc -l)" -eq 9
-          for file in approved-files/* studio-approved-files/*; do
-            name=${file##*/}
-            cmp -- "$file" "downloaded/$name"
-          done
   pypi:
     needs: verify
     if: inputs.destination == 'pypi' || inputs.destination == 'both'
@@ -137,25 +135,22 @@ jobs:
       actions: read
       id-token: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
-          ref: ${{ inputs.source_commit }}
-          persist-credentials: false
-      - uses: jdx/mise-action@v5.2.4
-      - run: mise exec -- uv --directory cli sync --frozen
-      - uses: ./.github/actions/check-release
-        with:
-          run-id: ${{ inputs.run_id }}
-          source-commit: ${{ inputs.source_commit }}
-          manifest-sha256: ${{ inputs.manifest_sha256 }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          packages-only: 'true'
+          name: verified-cli-files
+          path: approved-files
+      - name: Select the verified wheel and sdist for PyPI
+        shell: bash
+        run: |
+          mkdir pypi-packages
+          cp approved-files/*.whl approved-files/*.tar.gz pypi-packages/
+          test "$(find pypi-packages -maxdepth 1 -type f | wc -l)" -eq 2
       # Maintainer setup: reserve project name, configure the pypi environment and Trusted Publisher.
       # This workflow is preparation only until explicitly dispatched for publication.
       - name: Publish verified wheel and sdist using Trusted Publishing
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: approved-files/
+          packages-dir: pypi-packages/
           attestations: true
   pypi-smoke:
     name: PyPI install smoke (${{ matrix.os }})
@@ -169,10 +164,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - name: Fetch only the mise version source
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_commit }}
           persist-credentials: false
+          sparse-checkout: mise.toml
+          sparse-checkout-cone-mode: false
       - uses: jdx/mise-action@v5.2.4
       - name: Install the published CLI and exercise its real entry points
         shell: bash

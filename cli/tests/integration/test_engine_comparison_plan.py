@@ -4,11 +4,10 @@ import asyncio
 import hashlib
 import json
 import shutil
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
-import httpx
 import pytest
 
 from inferyard.contracts.comparison_types import JSONRecord
@@ -151,42 +150,14 @@ def _assert_v2_report_guards(
     _assert_moved_sources(tmp_path, plan_path, batch_path, output)
 
 
-async def _cached_completion(request: httpx.Request) -> httpx.Response:
-    body = json.loads(request.content)
-    usage = {
-        "prompt_tokens": 2,
-        "completion_tokens": 1,
-        "total_tokens": 3,
-        "prompt_tokens_details": {"cached_tokens": 0},
-    }
-    choice = {"index": 0, "finish_reason": "stop"}
-    if body["stream"]:
-        chunks = [
-            {"choices": [{"index": 0, "delta": {"content": "ok"}, "finish_reason": None}]},
-            {"choices": [{**choice, "delta": {}}]},
-            {"choices": [], "usage": usage},
-        ]
-        raw = (
-            "".join("data: " + json_bytes(c).decode("utf-8") + "\n\n" for c in chunks)
-            + "data: [DONE]\n\n"
-        )
-        return httpx.Response(200, text=raw, headers={"content-type": "text/event-stream"})
-    return httpx.Response(
-        200,
-        json={"choices": [{**choice, "message": {"content": "ok"}}], "usage": usage},
-    )
-
-
 def _run_twelve_slots(
     tmp_path: Path,
     batch_scenario: helpers.Scenario,
     rig: Callable[[str], SimpleNamespace],
     monkeypatch: pytest.MonkeyPatch,
-    completion: Callable[[httpx.Request], Awaitable[httpx.Response]] | None = None,
 ) -> tuple[helpers.SlotExecution, JSONRecord]:
     _, deps, calls, _ = batch_scenario
-    factory = rig if completion is None else lambda family: rig(family, completion=completion)
-    plan, sides, states, identities, identity_files = helpers.local_inputs(tmp_path, factory)
+    plan, sides, states, identities, identity_files = helpers.local_inputs(tmp_path, rig)
     slots, bindings = helpers.slot_inputs(plan, identities, tmp_path)
     assert len(slots) == 12
     helpers.assert_family_dispatch(sides)

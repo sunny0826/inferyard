@@ -181,26 +181,14 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 	if _, e := inferyard.Parse(out.Stdout); e != nil {
 		return ReportSummary{}, Err("internal_error")
 	}
-	if !validStudioReport(path) {
-		return ReportSummary{}, Err("internal_error")
-	}
+	// reportSummary re-reads and validates studio.json itself, so a separate
+	// validStudioReport pass here would duplicate the disk read and parse.
 	r, err := reportSummary(path)
 	if err != nil {
-		return r, Err("internal_error")
+		return ReportSummary{}, Err("internal_error")
 	}
 	s.Bus.Publish("report.created", map[string]any{"report": r})
 	return r, nil
-}
-
-// validStudioReport checks that a created directory holds the single typed
-// document Studio consumes. Old index.json/report.html output is not accepted.
-func validStudioReport(path string) bool {
-	raw, e := os.ReadFile(filepath.Join(path, "studio.json"))
-	if e != nil {
-		return false
-	}
-	_, e = inferyard.ParseStudioReport(raw)
-	return e == nil
 }
 
 func (s *Service) ReportFile(relative string) (string, *ApiError) {

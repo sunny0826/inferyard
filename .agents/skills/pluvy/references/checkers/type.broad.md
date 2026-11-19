@@ -11,7 +11,7 @@ outside a proven output or a permitted library input.
 
 | Language | Markers |
 | --- | --- |
-| Python | `typing.Any`, `typing_extensions.Any` and `pydantic.JsonValue` references, plus internal `json.dumps` results |
+| Python | `typing.Any`, `typing_extensions.Any` and `pydantic.JsonValue` references, plus internal `json.dumps`, `dump_json` and `model_dump_json` results |
 | Go | `any` and empty interfaces, plus imported `encoding/json` `Marshal`/`MarshalIndent` results |
 | Java | `java.lang.Object`, unbounded wildcards and recognized raw collections, plus recognized Gson/Jackson results |
 | JavaScript and JSX | `JSON.stringify` results only; JavaScript has no type annotations to check |
@@ -42,7 +42,9 @@ generic declarations.
 **Options**: `enabled` (boolean, default `true`); `encoding` (object, default all
 four lists empty):
 
-- `encoders`: exact qualified API identities whose result is serialized data.
+- `encoders`: exact qualified API identities whose result is serialized data, or
+  the restricted receiver-agnostic member form `*.member`. A bare method name
+  remains an exact qualified identity.
 - `decoders`: exact qualified reconstruction functions. Passing an encoding into
   one remains a finding, including through callable aliases or forwarded locals.
 - `outputs`: declared output calls, each `{"call": ..., "arguments": [...],
@@ -56,9 +58,17 @@ four lists empty):
   zero-based nonnegative indexes.
 
 API identities are non-empty strings without whitespace or the characters `*`,
-`?`, `[` and `]`; names are exact and case-sensitive and use resolved import
+`?`, `[` and `]`; the sole exception is the `*.member` encoder form, which uses
+a `*.` prefix followed by one ASCII identifier. Names are exact and case-sensitive
+and use resolved import
 identities rather than local spellings, so `from orjson import dumps as pack`
-matches `orjson.dumps`. Boolean, string and fractional indexes are rejected.
+matches `orjson.dumps`. A `*.member` entry matches explicit-receiver member calls
+by member name; bare calls and Java implicit-receiver calls do not match.
+Member-level recognition (built-in pydantic entry points and `*.member` entries)
+matches only the explicit member name at the call site and does not follow
+aliases or parenthesized callees; `dump = ADAPTER.dump_json; dump(item)` and
+`(item.model_dump_json)()` are not recognized. Boolean,
+string and fractional indexes are rejected.
 These lists extend built-in recognition; they never remove built-in encoders,
 decoders or output checks, and they never exempt `Any`, casts or incoming library
 results.
@@ -81,8 +91,9 @@ Correct:
 }
 ```
 
-Incorrect — an output without a payload selector, a wildcard encoder identity,
-and the superseded `type.erasure` key are all rejected:
+Incorrect — an output without a payload selector, an unrestricted wildcard
+encoder identity (`orjson.*`; only the `*.member` form is accepted), and the
+superseded `type.erasure` key are all rejected:
 
 ```json
 {

@@ -74,6 +74,12 @@ type Service struct {
 	checkSupported    bool
 	checkSem          chan struct{}
 	checkRetry        time.Duration
+	probeMu           sync.Mutex
+	probePath         string
+	probeSize         int64
+	probeModTime      int64
+	probeCheckedAt    time.Time
+	probeResult       InferyardProbe
 }
 
 func New(ctx context.Context, o Options) (*Service, error) {
@@ -192,6 +198,16 @@ func (s *Service) userSettings() UserSettings {
 	defer s.mu.Unlock()
 	return clone(s.settings)
 }
+
+// probeTTL bounds reuse of a successful version probe even when the resolved
+// executable's size and mtime stay unchanged, so editable installs that only
+// rewrite their entry script are re-probed shortly.
+const probeTTL = 10 * time.Second
+
+// probe resolves and versions the CLI once per binary identity instead of
+// spawning `inferyard --version` on every settings read. Only successful
+// probes are cached: a failure must be retried immediately after the operator
+// installs or fixes the CLI.
 func (s *Service) probe(u UserSettings) InferyardProbe {
 	path := str(u.InferyardPath)
 	if s.paths != nil {
@@ -209,6 +225,10 @@ func (s *Service) probe(u UserSettings) InferyardProbe {
 		return InferyardProbe{Status: status}
 	}
 	p, _ = filepath.Abs(p)
+	st, statErr := os.Stat(p)
+	if cached, ok := s.cachedProbe(p, st, statErr); ok {
+		return cached
+	}
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 	out, e := s.exec(ctx, p, "--version")
@@ -219,7 +239,49 @@ func (s *Service) probe(u UserSettings) InferyardProbe {
 	if e != nil {
 		return InferyardProbe{Path: &p, Status: "version_failed"}
 	}
-	return InferyardProbe{Path: &p, Version: &v, Source: source, Status: "ok"}
+	result := InferyardProbe{Path: &p, Version: &v, Source: source, Status: "ok"}
+	s.rememberProbe(p, st, statErr, result)
+	return result
+}
+
+func (s *Service) cachedProbe(p string, st os.FileInfo, statErr error) (InferyardProbe, bool) {
+	if statErr != nil {
+		return InferyardProbe{}, false
+	}
+	s.probeMu.Lock()
+	defer s.probeMu.Unlock()
+	if s.probeResult.Status != "ok" || s.probePath != p || s.probeSize != st.Size() || s.probeModTime != st.ModTime().UnixNano() {
+		return InferyardProbe{}, false
+	}
+	if time.Since(s.probeCheckedAt) >= probeTTL {
+		return InferyardProbe{}, false
+	}
+	return copyProbe(s.probeResult), true
+}
+
+func (s *Service) rememberProbe(p string, st os.FileInfo, statErr error, result InferyardProbe) {
+	if statErr != nil || result.Status != "ok" {
+		return
+	}
+	s.probeMu.Lock()
+	defer s.probeMu.Unlock()
+	s.probePath = p
+	s.probeSize = st.Size()
+	s.probeModTime = st.ModTime().UnixNano()
+	s.probeCheckedAt = time.Now()
+	s.probeResult = copyProbe(result)
+}
+
+// copyProbe detaches the string pointers so callers cannot mutate the cache.
+func copyProbe(v InferyardProbe) InferyardProbe {
+	c := InferyardProbe{Source: v.Source, Status: v.Status}
+	if v.Path != nil {
+		c.Path = ptr(*v.Path)
+	}
+	if v.Version != nil {
+		c.Version = ptr(*v.Version)
+	}
+	return c
 }
 func reportsRoot(u UserSettings) *string {
 	if u.ResultsRoot == nil {

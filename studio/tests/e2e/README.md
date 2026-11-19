@@ -46,7 +46,6 @@ restores the environment after each test and forbids parallel tests; callers of
 | `env.go` | Isolated settings and shared per-test CLI host files, CLI resolution, `INFERYARD_E2E_ROOT` |
 | `cli_bootstrap.py` | Test-only Python startup injection for the real CLI host paths |
 | `recorder.go` | Executor middleware: `transcript.jsonl` plus per-call stdout/stderr with sha256 |
-| `schemagate.go` | Validates every schema-covered evidence document against `cli/schemas/` |
 | `blame.go` | Failure attribution from the transcript (see below) |
 | `chain_test.go` | Golden chain: init → device-check → bind → run both bundles → studio.json report |
 | `context_speed_test.go` | Real CLI `zh-context-speed` five-trial execution and Studio result projection |
@@ -61,10 +60,13 @@ step from the last transcript record:
 - exit 0 with valid JSON but wrong downstream behavior → **studio**;
 - no CLI call recorded → Studio failed before reaching the boundary.
 
-`assertEvidenceContracts` adds the artifact half of the gate: a contract
-violation in workspace evidence is CLI-side by construction, because Studio
-never writes those files. Roughly 1.8k documents and journal lines are
-checked in the golden chain.
+The report contract is asserted at Studio's own boundary: the golden chain
+requires a `studio.json` report (and no retired `report.html` beside it). The
+CLI's internal evidence files (`events.jsonl`, `observations.jsonl`,
+`memory.jsonl`, `request-bodies.jsonl`, and the rest of the workspace journals)
+are written only by the CLI, so their contracts stay with the CLI's own schema
+and sealing tests. This suite verifies the cross-process command chain and
+Studio's consumption of the report it reads.
 
 ## Fixture boundaries and non-goals
 

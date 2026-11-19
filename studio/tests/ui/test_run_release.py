@@ -4,16 +4,15 @@ import contextlib
 import fnmatch
 import io
 import json
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from typing import TextIO
 from unittest.mock import Mock, patch
 
 import run_release
-
 
 RELEASE_PASS = "Test Case '-[PreviewUITests.ReleaseUITests testProductionPagesAndRealReport]' passed"
 
@@ -78,8 +77,34 @@ class TestReleaseRunner(unittest.TestCase):
             )
             self.assertEqual(settings["models_root"], str((e2e_root / "models").resolve()))
             self.assertEqual(env["TEST_RUNNER_INFERYARD_RELEASE_APP"], str(app.resolve()))
-            run = next(output.iterdir()) / "run.json"
+            derived_index = command.index("-derivedDataPath") + 1
+            self.assertEqual(
+                Path(command[derived_index]), output.resolve().parent / "ui-derived-data"
+            )
+            entries = list(output.iterdir())
+            self.assertEqual(len(entries), 1)
+            self.assertTrue(entries[0].name.startswith("run-"))
+            run = entries[0] / "run.json"
             self.assertEqual(json.loads(run.read_text())["suite"], "release")
+            self.assertFalse((entries[0] / "DerivedData").exists())
+
+    def test_derived_data_override_is_used(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app, e2e_root, cli = self.make_inputs(root)
+            override = root / "cache/derived"
+            result, launch = self.invoke([
+                "run_release.py",
+                "--app", str(app),
+                "--e2e-root", str(e2e_root),
+                "--cli", str(cli),
+                "--output-root", str(root / "output"),
+                "--derived-data", str(override),
+            ])
+            self.assertEqual(result, 0)
+            command = launch.call_args.args[0]
+            derived_index = command.index("-derivedDataPath") + 1
+            self.assertEqual(Path(command[derived_index]), override.resolve())
 
     def test_missing_pass_receipt_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -97,6 +122,7 @@ class TestReleaseRunner(unittest.TestCase):
 
 _TEST_METHODS = (
     TestReleaseRunner.test_release_runner_isolates_home_and_binds_e2e_report,
+    TestReleaseRunner.test_derived_data_override_is_used,
     TestReleaseRunner.test_missing_pass_receipt_is_rejected,
 )
 
