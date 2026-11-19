@@ -114,6 +114,15 @@ extension PreviewUITests {
         button.click()
     }
 
+    /// selectTab chooses a page tab. MyGo exports RoleTab as AXRadioButton on
+    /// macOS, so a tab is never reachable through app.buttons. Callers assert the
+    /// chosen tab's content, which proves the choice took effect.
+    func selectTab(_ label: String, timeout: TimeInterval = 5) {
+        let tab = app.radioButtons[label].firstMatch
+        wait("tab \(label) exists", timeout: timeout) { tab.exists }
+        tab.click()
+    }
+
     func expectText(_ text: String, timeout: TimeInterval = 10) {
         let element = self.text(text)
         wait("Missing text: \(text)", timeout: timeout) { element.exists }

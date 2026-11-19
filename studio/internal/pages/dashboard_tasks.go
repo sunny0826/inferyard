@@ -167,11 +167,15 @@ func (s *viewState) historyView(c *ui.Context) {
 	// window, so the start time shows without scrolling sideways; the run id,
 	// batch and paths stay in the selected detail instead of widening the table.
 	selectableTable(&s.historyTable, func(i int) any { return runs[i].Path }, func(i int) string { return runs[i].RunId })
+	// The table hugs its rows up to eight, so one run no longer sits under a
+	// fixed-height blank panel.
 	c.Key("history-table")
 	pageTable(c, &s.historyTable, "运行历史表", []ui.TableColumn{{Title: "模型", Width: 190}, {Title: "测评题集", Width: 130}, {Title: "状态", Width: 70}, {Title: "评分", Width: 170}, {Title: "开始时间", Width: 170}}, len(runs), func(row, col int) {
 		r := runs[row]
 		ui.Text(c, []string{historyModel(r), text(r.Bundle), stateLabel(r.Status), runScore(r), historyStarted(r)}[col])
-	}).Height(240).Label("运行历史表")
+	}).Height(c.Theme().Space(8)*float32(min(len(runs), 8)+1) + 2).Label("运行历史表")
+	// Rows reveal their actions only after selection, so the page names that
+	// interaction while nothing is selected.
 	if i := selectedRow(&s.historyTable, len(runs)); i >= 0 {
 		r := runs[i]
 		s.historyIdentity(c, r)
@@ -185,6 +189,8 @@ func (s *viewState) historyView(c *ui.Context) {
 			}
 		}
 		s.historyRow(c, r)
+	} else {
+		ui.Text(c, "点击某行查看详情与操作。").TextColor(c.Theme().TextMuted)
 	}
 }
 

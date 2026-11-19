@@ -103,7 +103,7 @@ InferYard Studio 是面向本地模型评测的桌面应用：onevra v0.2026.17�
 - **报告**：1–100 个不同来源 run；新目录唯一命名、原始 run 与历史报告永不覆写；报告路径必须
   留在报告目录内；缺失来源 run 显示为不可用但不阻止打开。单项报告不可读不影响其他报告，
   列表标记无法读取，打开后可重新读取或返回列表。质量与类别分母直接取自 studio.json，不重算分数；
-  空延迟显示 —。事实摘要、吞吐与块间隔口径见[报告视图](../../studio/docs/design-system-measurement.md#报告视图)。
+  空延迟显示 —。页签结构与摘要行口径见[报告视图](../../studio/docs/design-system-measurement.md#报告视图)。
   CLI 写出 `studio.json`（`studio-report.v1`），Studio 直接解析该 JSON，不加载 HTML。实现见
   [report_view.go](../../studio/internal/pages/report_view.go)、
   [report_metrics.go](../../studio/internal/pages/report_metrics.go) 与

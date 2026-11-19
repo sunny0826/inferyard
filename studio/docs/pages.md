@@ -37,14 +37,20 @@ run or report keeps the entry enabled: one click leaves that failed round and st
 the model and engine selection again. The form
 lists only workspace evaluation sets and checks both `zh-core` and `zh-svg-pelican` when present.
 Unchecking a set explicitly narrows the scope; unchecked sets do not block the task.
-Reports starts with a compact task history table (model, evaluation set, state, score, start
-time) whose selected detail carries the run id, batch and paths; a missing model, start time or
-score reads 未记录 instead of being invented. Below it, each report is a card led by the
-recorded model, with its evaluation set, one line per run (`答案通过 x / y`), the run count, and
-the report file's modification time — the file time, not a run or generation time. Runs are
-never added together and a missing count keeps 未记录 instead of 0; the card's 打开报告 open
-button targets that card's report, and report id, source runs and paths live in 报告详情.
-Create another report from 1–100 historical runs is available in a collapsed section. Reports are not verifiable
+Completing an evaluation, Reports groups its three lists behind top tabs: 测评报告 (the default),
+长上下文专项 and 运行历史. The 测评报告 tab lists report cards; creating another report from
+1–100 historical runs stays in the collapsed 从历史运行生成报告 section below the cards. The
+运行历史 tab is the compact task history table (model, evaluation set, state, score, start time)
+whose selected detail carries the run id, batch and paths; a missing model, start time or
+score reads 未记录 instead of being invented, and while no row is selected the tab says
+点击某行查看详情与操作. The table keeps the height of its rows up to eight, so one run does not
+sit under a blank panel. 长上下文专项 holds the specialty history, and an empty one points to the
+task page. Each report is a card led by the recorded model, with its evaluation set, one line
+per run (`答案通过 x / y`), the run count, and the report file's modification time — the file
+time, not a run or generation time. Runs are never added together and a missing count keeps
+未记录 instead of 0; the card's primary 打开报告 button targets that card's report, and a
+single-run line does not repeat the model or evaluation set already shown above it. Report id,
+source runs and paths live in 报告详情. Reports are not verifiable
 artifacts, so the page has no verification entry.
 Without an active task, the page restores workspace progress from `progress.v2`.
 

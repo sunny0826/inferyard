@@ -53,7 +53,7 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 		qualityNote += " · 仅已记录通过数"
 	}
 	metrics := []struct{ label, value, detail, note string }{
-		{"答案通过", reportRate(d.Quality.StudioCounts), "通过 / 评分题", qualityNote},
+		{"答案通过", reportPassRate(d.Quality), "通过 / 评分题", qualityNote},
 		{"请求完成", reportRate(run.Summary.CompletionRate), "完成 / 发出", "排除 " + reportNumber(run.Summary.CompletionRate.Excluded)},
 		{"完成请求耗时（中位）", reportScaled(d.Latency.P50, 1000, "s"), reportNumber(d.Latency.SampleCount) + " 个有效样本", "排除 " + reportNumber(d.Latency.Excluded)},
 		{"服务进程内存（采样峰值）", reportScaled(d.SampledPeakRSSBytes, 1<<30, "GiB"), "采样期间系统最少可用 " + reportScaled(d.SampledMinimumAvailableBytes, 1<<30, "GiB"), reportMemoryReason(d.SampledPeakRSSReason)},
@@ -73,39 +73,31 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 	reportFactSummary(c, run)
 }
 
-// reportFactSummary states only what this run recorded, in one sentence per
-// fact, so a reader does not have to decode the cards. It never fills a missing
-// value and never concludes that the model suits a workload.
+// reportPassRate adds the pass-rate percentage to the pass count when the
+// quality conclusion is complete and the denominator is positive, matching the
+// completion and history views. An incomplete conclusion or a zero denominator
+// keeps the bare count instead of inventing a rate.
+func reportPassRate(quality core.ReportQuality) string {
+	rate := reportRate(quality.StudioCounts)
+	if !quality.Complete || quality.Numerator == nil || quality.Denominator == nil || *quality.Denominator <= 0 {
+		return rate
+	}
+	return fmt.Sprintf("%s · %.1f%%", rate, float64(*quality.Numerator)*100/float64(*quality.Denominator))
+}
+
+// reportFactSummary adds only what the four KPI cards cannot carry: the scope
+// disclaimer. It never repeats the card numbers, never fills a missing value
+// and never concludes that the model suits a workload. When every KPI is
+// missing it keeps the fallback that names the missing measurements.
 func reportFactSummary(c *ui.Context, run core.ReportRun) {
 	d := run.Dashboard
-	type fact struct{ text string }
-	var facts []fact
-	if n, den := d.Quality.Numerator, d.Quality.Denominator; n != nil && den != nil {
-		sentence := fmt.Sprintf("%d 道评分题中通过 %d 道。", *den, *n)
-		if !d.Quality.Complete {
-			sentence = fmt.Sprintf("已记录的评分题中通过 %d 道（质量结论不完整）。", *n)
-		}
-		facts = append(facts, fact{sentence})
-	}
-	if n, den := run.Summary.CompletionRate.Numerator, run.Summary.CompletionRate.Denominator; n != nil && den != nil {
-		facts = append(facts, fact{fmt.Sprintf("%d / %d 个请求完成。", *n, *den)})
-	}
-	if p50 := d.Latency.P50; p50 != nil {
-		facts = append(facts, fact{fmt.Sprintf("完成请求的中位耗时 %.2f 秒。", *p50/1000)})
-	}
-	if d.SampledPeakRSSBytes != nil {
-		facts = append(facts, fact{fmt.Sprintf("采样期间服务进程内存峰值 %.2f GiB。", *d.SampledPeakRSSBytes/(1<<30))})
-	}
-	if len(facts) == 0 {
+	if d.Quality.Numerator == nil && d.Quality.Denominator == nil &&
+		run.Summary.CompletionRate.Numerator == nil && run.Summary.CompletionRate.Denominator == nil &&
+		d.Latency.P50 == nil && d.SampledPeakRSSBytes == nil {
 		ui.Text(c, "本次运行没有可汇总的指标；下方各区说明各自缺测原因。").TextColor(c.Theme().TextMuted)
 		return
 	}
-	ui.Column(c).Gap(tokens(c).Density.Tight).Children(func() {
-		for _, f := range facts {
-			ui.Text(c, f.text).Selectable()
-		}
-		ui.Text(c, "仅反映本次实测记录，不代表其他上下文或并发场景表现。").TextColor(c.Theme().TextMuted)
-	})
+	ui.Text(c, "仅反映本次实测记录，不代表其他上下文或并发场景表现。").TextColor(c.Theme().TextMuted)
 }
 
 // reportThroughput renders the batch-window rates. Null values keep their

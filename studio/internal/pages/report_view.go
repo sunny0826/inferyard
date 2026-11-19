@@ -36,26 +36,30 @@ func (s *viewState) openReport(reference string) {
 	s.selected = "reports"
 }
 
+// reportBackLink returns to the report list from the top of the detail, above
+// the title, so leaving never requires scrolling past the report body.
+func (s *viewState) reportBackLink(c *ui.Context) {
+	button(c, "返回报告列表").OnClick(func() { s.openedReport = nil })
+}
+
 func (s *viewState) reportView(c *ui.Context) {
 	report := s.openedReport
 	id := displayName(report.reference)
+	s.reportBackLink(c)
 	if report.failure != nil {
 		s.header(c, "报告 "+id)
-		button(c, "返回报告列表").AlignSelf(ui.Start).OnClick(func() { s.openedReport = nil })
 		ui.Text(c, "无法读取").TextColor(stateColor(c, stateDanger))
 		button(c, "重新读取报告").AlignSelf(ui.Start).OnClick(func() { s.openReport(report.reference) })
 		return
 	}
 	if len(report.index.Runs) == 0 {
 		s.header(c, "报告 "+id)
-		button(c, "返回报告列表").AlignSelf(ui.Start).OnClick(func() { s.openedReport = nil })
 		ui.Text(c, "报告中暂无运行数据。")
 		return
 	}
 	run := report.index.Runs[report.run]
 	s.header(c, reportModel(run))
 	ui.Text(c, id+" · "+reportText(run.Facets.BundleLabel)).TextColor(c.Theme().TextMuted)
-	button(c, "返回报告列表").AlignSelf(ui.Start).OnClick(func() { s.openedReport = nil })
 	if len(report.index.Runs) > 1 {
 		report.runPicker(c)
 		run = report.index.Runs[report.run]
@@ -64,11 +68,37 @@ func (s *viewState) reportView(c *ui.Context) {
 		statusBadge(c, "诊断运行", stateColor(c, stateWarning))
 	}
 	reportMetrics(c, run)
-	reportThroughput(c, run)
-	reportOutputIntervals(c, run)
+	reportSummaryGrid(c,
+		func(c *ui.Context) { reportThroughput(c, run) },
+		func(c *ui.Context) { reportOutputIntervals(c, run) },
+	)
 	report.categoryView(c, run)
-	reportProfileView(c, run)
+	// 数据来源 joins 模型与机器 in the summary grid: both are short identity cards.
+	reportSummaryGrid(c,
+		func(c *ui.Context) { reportProfileView(c, run) },
+		func(c *ui.Context) { reportSourceView(c, run) },
+	)
 	report.requestView(c, run)
+}
+
+// reportSummaryGrid lays compact cards two per row on wide viewports and in one
+// column when the layout is compact, so short three-row cards stop spanning the
+// full width.
+func reportSummaryGrid(c *ui.Context, cards ...func(*ui.Context)) {
+	if compactLayout(c) {
+		for _, build := range cards {
+			build(c)
+		}
+		return
+	}
+	ui.Grid(c).Columns(2).Gap(tokens(c).Density.Stack).Children(func() {
+		for _, build := range cards {
+			build(c)
+		}
+	})
+}
+
+func reportSourceView(c *ui.Context, run core.ReportRun) {
 	card(c, "数据来源", func() {
 		deviceRow(c, "运行", reportText(run.Source.RunID))
 		deviceRow(c, "索引", "studio.json")

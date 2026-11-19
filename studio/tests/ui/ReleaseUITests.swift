@@ -32,7 +32,7 @@ final class ReleaseUITests: XCTestCase {
     }
 
     func testProductionPagesAndRealReport() {
-        expectText("历史任务")
+        expectText("测评报告")
         openRealReport()
         click("模型")
         expectText("已安装的模型")

@@ -2,9 +2,19 @@ package pages
 
 import (
 	"fmt"
+
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
+)
+
+// The Reports page groups three heterogeneous lists behind one tab row. The
+// evaluator report list comes first because reading a report is the common
+// action; the specialty history and the run history are separate tasks.
+const (
+	reportsTabList = iota
+	reportsTabSpeed
+	reportsTabHistory
 )
 
 func (s *viewState) reportsView(c *ui.Context) {
@@ -17,10 +27,45 @@ func (s *viewState) reportsView(c *ui.Context) {
 		return
 	}
 	s.header(c, "报告")
+	tab := reportsTabState(c)
+	box := ui.Column(c.Key("reports-tabs")).Gap(tokens(c).Density.Row)
+	box.Children(func() {
+		components.Tabs(c, tab, components.TabsSegmented, "测评报告", "长上下文专项", "运行历史")
+		switch *tab {
+		case reportsTabSpeed:
+			s.speedReportsTabView(c)
+		case reportsTabHistory:
+			s.historyReportsTabView(c)
+		default:
+			s.reportsTableView(c)
+			s.reportSourcesView(c)
+		}
+	})
+}
+
+// reportsTabState keeps the chosen tab on the window root, so returning from a
+// report detail or a specialty result comes back to the tab the user left.
+func reportsTabState(c *ui.Context) *int {
+	return ui.Local(c.Root(), "reports-tab", func() int { return reportsTabList })
+}
+
+// speedReportsTabView keeps the specialty history in its own tab and states
+// where a specialty measurement starts when none has finished yet.
+func (s *viewState) speedReportsTabView(c *ui.Context) {
+	if s.speed == nil || len(s.speed.history) == 0 {
+		card(c, "长上下文专项", func() {
+			ui.Text(c, "暂无专项历史任务。在任务页选择「长上下文速度」后开始专项测评。")
+		})
+		return
+	}
 	s.speedHistoryView(c)
-	card(c, "历史任务", func() { errorView(c, s.historyError); s.historyView(c) })
-	card(c, "报告列表", func() { s.reportsTableView(c) })
-	s.reportSourcesView(c)
+}
+
+// historyReportsTabView shows the run history alone; run details still open
+// from the selected row.
+func (s *viewState) historyReportsTabView(c *ui.Context) {
+	errorView(c, s.historyError)
+	s.historyView(c)
 }
 
 func (s *viewState) reportSourcesView(c *ui.Context) {
