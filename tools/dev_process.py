@@ -369,11 +369,35 @@ def launch_studio(
         "log": str(log_path),
     }
     atomic_write_json(session_file, pending_record)
+    proc: subprocess.Popen[bytes] | None = None
     try:
         with log_path.open("ab") as stream:
             proc = subprocess.Popen(args, stdout=stream, stderr=subprocess.STDOUT, **kwargs)
+    except OSError:
+        if proc is None:
+            session_file.unlink(missing_ok=True)
+        raise
     except BaseException:
-        session_file.unlink(missing_ok=True)
+        if proc is not None:
+            partial: dict[str, object] = {
+                **pending_record,
+                "state": "starting",
+                "pid": proc.pid,
+                "start_id": "",
+            }
+
+            def _sync_partial() -> None:
+                ident = process_identity(proc.pid)
+                if ident is not None:
+                    partial["binary"], partial["start_id"] = ident
+                    atomic_write_json(session_file, partial)
+
+            try:
+                _reclaim_unready_child(
+                    proc, session_file, partial, _sync_partial, stop_timeout=stop_timeout
+                )
+            except DevError:
+                pass
         raise
     record: dict[str, object] = {
         **pending_record,
