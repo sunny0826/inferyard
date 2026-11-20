@@ -47,14 +47,19 @@ func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bo
 	return options, revoked, len(eligible) > 0
 }
 
+// candidateView is the configuration step on its own: the benchmark-type switch
+// and every field it reshapes. The stage card wraps only candidateFields, so the
+// switch keeps one position while the card around the fields changes.
 func (w *viewState) candidateView(c *ui.Context) {
+	w.speedTypeSwitch(c)
+	w.candidateFields(c)
+}
+
+// candidateFields renders the fields below the benchmark type.
+func (w *viewState) candidateFields(c *ui.Context) {
 	w.verifyTaskEngines()
 	w.adoptDownloadedEngine()
 	w.adoptOnlyModel()
-
-	// The benchmark type changes the whole form and progress model, so it stays
-	// above the fields it reshapes.
-	w.speedTypeSwitch(c)
 
 	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: "请选择模型"}}
 	for _, m := range w.registry.Models {

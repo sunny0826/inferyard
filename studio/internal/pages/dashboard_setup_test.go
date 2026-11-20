@@ -117,3 +117,42 @@ func TestSetupGuideOffersSettingsAndMilestones(t *testing.T) {
 		t.Fatalf("前往设置 did not open settings: %q", s.selected)
 	}
 }
+
+// The type switch keeps its place in both types, so the arrow key that chose a
+// type leaves the focus on the switch and the next arrow key switches back.
+func TestSpeedTypeArrowKeysKeepFocus(t *testing.T) {
+	s := candidateState()
+	tt := ui.NewTester(s.stageView, 1120, 1800)
+	if err := tt.Click("常规测评"); err != nil {
+		t.Fatal(err)
+	}
+	if !tt.Focused("常规测评") {
+		t.Fatalf("clicking the type did not focus it: %v", tt.Texts())
+	}
+	tt.Key(0, ui.KeyRight)
+	if !s.speed.selected || !tt.Focused("长上下文速度") {
+		t.Fatalf("Right chose specialty=%v, focus lost: %v", s.speed.selected, tt.Texts())
+	}
+	tt.Key(0, ui.KeyLeft)
+	if s.speed.selected || !tt.Focused("常规测评") {
+		t.Fatalf("Left chose specialty=%v, focus lost: %v", s.speed.selected, tt.Texts())
+	}
+}
+
+// 新任务 returns production to the regular benchmark, while 用此组合新开任务
+// still reopens the specialty round it was started from. The preview's matching
+// behaviour lives in preview_benchmark_type_parity_test.go.
+func TestNewTaskResetsBenchmarkType(t *testing.T) {
+	specialty := &speedTask{id: "speed", model: "Model-A", engine: "Engine-A", context: inferyard.ContextSpeed128K, selectionModel: "Model-A", selectionEngine: "Engine-A"}
+	production := candidateState()
+	production.speed.selected = true
+	production.newBenchmark()
+	if production.speed.selected {
+		t.Fatal("新任务 kept the specialty type")
+	}
+	production.speed.selected = true
+	production.newSpeedTask(specialty)
+	if !production.speed.selected || production.speed.context != inferyard.ContextSpeed128K {
+		t.Fatalf("用此组合新开任务 lost the specialty type: %v %d", production.speed.selected, production.speed.context)
+	}
+}

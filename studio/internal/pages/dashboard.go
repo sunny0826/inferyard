@@ -235,13 +235,20 @@ func (s *viewState) stageView(c *ui.Context) {
 			button(c, "查看设备页明细").OnClick(func() { s.selected = "device" })
 		})
 	case "prepare_candidate":
-		s.configStage(c, func() {
-			// Only a failure of this task's chain is shown here; a previous
-			// round's engine error stays off the fresh configuration step.
-			if s.task.failure != nil {
-				failureView(c, termBenchmarkStage+"失败", s.task.failure, "原因解决后可从本阶段重新开始；已完成的测评题集结果会保留。")
-			}
-			s.candidateView(c)
+		// The benchmark-type switch sits in a stable column above the card, so
+		// choosing a type only replaces the card below it. Rendering it inside
+		// stepTrack or card would give it a different parent per mode and drop
+		// the keyboard focus on the arrow key that switched the type.
+		ui.Column(c.Key("config-stage")).Gap(tokens(c).Density.CardGap).Children(func() {
+			s.speedTypeSwitch(c)
+			s.configStage(c, func() {
+				// Only a failure of this task's chain is shown here; a previous
+				// round's engine error stays off the fresh configuration step.
+				if s.task.failure != nil {
+					failureView(c, termBenchmarkStage+"失败", s.task.failure, "原因解决后可从本阶段重新开始；已完成的测评题集结果会保留。")
+				}
+				s.candidateFields(c)
+			})
 		})
 	case "bind":
 		stepTrack(c, "4", "连接并核验服务", func() { s.serviceView(c) })
