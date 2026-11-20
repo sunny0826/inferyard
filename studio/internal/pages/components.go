@@ -2,7 +2,6 @@ package pages
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -67,37 +66,6 @@ func metricCard(c *ui.Context, label, value, detail, note string) {
 		if note != "" {
 			ui.Text(c, note).TextColor(c.Theme().TextMuted)
 		}
-	})
-}
-
-type pairedBarValue struct {
-	Label string
-	Value float64
-	Text  string
-}
-
-func pairedBar(c *ui.Context, title string, a, b pairedBarValue) {
-	t := tokens(c)
-	ui.Column(c).Gap(t.Density.Tight).Label(title).Children(func() {
-		ui.Text(c, title)
-		pairedBarRow(c, sideA, a)
-		pairedBarRow(c, sideB, b)
-	})
-}
-
-func pairedBarRow(c *ui.Context, side sideKind, value pairedBarValue) {
-	t := tokens(c)
-	fraction := value.Value
-	if math.IsNaN(fraction) || math.IsInf(fraction, 0) {
-		fraction = 0
-	}
-	fraction = max(0, min(1, fraction))
-	ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Label(value.Label).Children(func() {
-		ui.Text(c, value.Label).Width(t.Density.Page * 2)
-		ui.Box(c).Grow(1).Height(8).Radius(4).Background(c.Theme().Border).Children(func() {
-			ui.Box(c).WidthPercent(float32(fraction) * 100).Height(8).Radius(4).Background(sideColor(c, side))
-		})
-		ui.Text(c, value.Text).TextColor(stateColor(c, stateNeutral))
 	})
 }
 

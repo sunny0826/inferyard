@@ -16,7 +16,7 @@ func TestDeviceEmptyStateCollectionRespectsBusy(t *testing.T) {
 	s.selected = "device"
 	s.device.Snapshot, s.device.Refreshing, s.device.LastError, s.busy = nil, false, nil, true
 	tt := ui.NewTester(func(c *ui.Context) {
-		c.SetTheme(p.theme(c))
+		c.SetTheme(studioTheme(c))
 		ui.Column(c).Children(func() { s.deviceView(c) })
 	}, 1120, 1200)
 	tt.Frame()
