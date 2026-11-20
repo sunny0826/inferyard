@@ -20,11 +20,8 @@ func (s *viewState) modelsView(c *ui.Context) {
 		errorView(c, s.registry.ModelError)
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.CardGap).Children(func() {
 			button(c, "下载更多").OnClick(func() { s.selected = "downloads" })
-			button(c, "刷新").Disabled(s.registry.Refreshing || s.busy).OnClick(s.refreshAction)
+			refreshButton(c, "刷新", s.registry.Refreshing || s.refreshing).Disabled(s.registry.Refreshing || s.busy).OnClick(s.refreshAction)
 		})
-		if s.registry.Refreshing {
-			ui.Text(c, "正在读取本地资源…")
-		}
 		if len(s.registry.Models) == 0 {
 			ui.Text(c, "尚未发现本地模型。")
 			button(c, "到下载页").OnClick(func() { s.selected = "downloads" })

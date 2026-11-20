@@ -72,6 +72,7 @@ type speedWorkspace struct {
 	selected                     bool
 	typeTab, typeTabSeen         int
 	context                      int
+	reading                      bool
 	current, opened              *speedTask
 	history                      []*speedTask
 	readError                    string
@@ -218,7 +219,17 @@ func (s *viewState) speedTaskView(c *ui.Context) {
 		step = "✓"
 	}
 	stepTrack(c, step, r.label(), func() {
-		ui.Text(c, fmt.Sprintf("已完成 %d / 5 次测量", r.completed))
+		row := ui.Row(c.Key("speed-eta-" + r.id)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
+		eta := ""
+		if r.stage == speedMeasuring {
+			eta = formatETA(c, row, "speed-"+r.id, int64(r.completed), 5)
+		}
+		row.Children(func() {
+			ui.Text(c, fmt.Sprintf("已完成 %d / 5 次测量", r.completed))
+			if eta != "" {
+				ui.Text(c, "· "+eta).TextColor(c.Theme().TextMuted)
+			}
+		})
 		progressBar(c, float64(r.completed)/5, "专项五次测量进度")
 		if r.reason != "" {
 			ui.Text(c, r.reason).TextColor(stateColor(c, stateWarning))
@@ -278,13 +289,14 @@ func (s *viewState) openSpeed(id string) {
 		return
 	}
 	selected.samples, selected.summary, selected.result = nil, nil, nil
-	s.speed.opened, s.speed.readError = selected, ""
+	s.speed.opened, s.speed.readError, s.speed.reading = selected, "", true
 	s.work(func() (string, *core.ApiError) {
 		result, e := readSpeedFlow(s.ctx, s.service, selected)
 		s.win.Update(func() {
 			if s.speed.opened == nil || s.speed.opened.id != id {
 				return
 			}
+			s.speed.reading = false
 			if e != nil {
 				s.speed.readError = e.Message
 				if s.speed.readError == "" {
@@ -312,11 +324,21 @@ func (s *viewState) speedResultView(c *ui.Context) {
 	ui.Text(c, prefix+r.id+" · "+r.label()).TextColor(stateColor(c, stateWarning))
 	ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
 		button(c, "返回历史任务").OnClick(func() {
-			w.opened, w.readError = nil, ""
+			w.opened, w.readError, w.reading = nil, "", false
 			s.reportsTab = reportsTabSpeed
 		})
 		button(c, "用此组合新开任务").Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
+	if w.reading {
+		host := ui.Column(c.Key("speed-result-loading-" + r.id)).FillWidth()
+		show := delayedVisible(c, host, "speed-read", true)
+		host.Children(func() {
+			if show {
+				skeletonCard(c, "测量结果", 3, "正在读取专项测量结果")
+			}
+		})
+		return
+	}
 	if w.readError != "" {
 		ui.Text(c, w.readError).TextColor(stateColor(c, stateDanger))
 		primaryButton(c, "重新读取结果").OnClick(func() { s.openSpeed(r.id) })

@@ -78,7 +78,7 @@ func (s *viewState) resumeView(c *ui.Context) {
 		field(c, "服务地址（可选）", &s.endpoint).Description("本机服务 URL，留空则沿用原配置").Error(endpointError)
 		field(c, "服务 PID（可选）", &s.pid).Description("正整数，须与服务地址同时填写或留空").Error(pidError)
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.CardGap).Children(func() {
-			if primaryButton(c, "确认续测").AlignSelf(ui.Start).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
+			if primaryActionButton(c, "确认续测", s.actionBusy("resume-run")).AlignSelf(ui.Start).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
 				s.resume()
 			}
 			if button(c, "关闭续测设置").AlignSelf(ui.Start).Clicked() {
@@ -108,7 +108,7 @@ func (s *viewState) resume() {
 		req.EndpointUrl = &endpoint
 		req.ServerPid = &value
 	}
-	s.work(func() (string, *core.ApiError) {
+	s.workAs("resume-run", func() (string, *core.ApiError) {
 		task, e := s.service.Resume(req)
 		s.win.Update(func() {
 			if e != nil {

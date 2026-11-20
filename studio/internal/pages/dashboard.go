@@ -60,7 +60,17 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		return
 	}
 	if s.newTaskPending {
-		ui.Text(c, "正在取消并等待安全收尾…")
+		s.header(c, "任务")
+		host := ui.Column(c.Key("new-task-pending")).FillWidth()
+		show := delayedVisible(c, host, "new-task-pending", true)
+		host.Children(func() {
+			if show {
+				card(c, "正在取消当前任务", func() {
+					ui.Text(c, "正在等待安全收尾，完成后将进入新任务准备…").TextColor(c.Theme().TextMuted)
+					progressBar(c, -1, "等待任务收尾")
+				})
+			}
+		})
 		return
 	}
 	s.header(c, "任务")

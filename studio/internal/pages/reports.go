@@ -104,7 +104,7 @@ func (s *viewState) reportSourcesView(c *ui.Context) {
 			ui.Text(c, "请选择 1–100 个来源运行。")
 		}
 		ui.Text(c, fmt.Sprintf("已选 %d / 100", count))
-		if button(c, "生成报告").AlignSelf(ui.Start).Disabled(s.busy || count < 1 || count > 100).Clicked() {
+		if secondaryActionButton(c, "生成报告", s.actionBusy("create-report")).AlignSelf(ui.Start).Disabled(s.busy || count < 1 || count > 100).Clicked() {
 			paths := []string{}
 			for _, r := range runs {
 				if s.reportChoices.Has(r.Path) {
@@ -114,7 +114,7 @@ func (s *viewState) reportSourcesView(c *ui.Context) {
 			if s.simulate(previewCreateReport{paths: paths}) {
 				return
 			}
-			s.work(func() (string, *core.ApiError) {
+			s.workAs("create-report", func() (string, *core.ApiError) {
 				report, e := s.service.CreateReport(core.CreateReportRequest{RunPaths: paths})
 				return "已生成 " + report.ReportId, e
 			})

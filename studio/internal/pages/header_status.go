@@ -205,7 +205,7 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 		ui.Text(c, "遗留服务状态尚未确认，请到任务页处理。")
 		button(c, "前往任务").OnClick(func() { s.navigateTo("dashboard", ""); close() })
 	default:
-		primaryButton(c, "开启引擎").Disabled(!s.canStartManagedEngine()).OnClick(s.startManagedEngine)
+		primaryActionButton(c, "开启引擎", s.actionBusy("start-engine")).Disabled(!s.canStartManagedEngine()).OnClick(s.startManagedEngine)
 		if s.managedEngineCandidate() == "" {
 			ui.Text(c, "先在任务页选择模型并创建测评配置。").TextColor(c.Theme().TextMuted)
 			button(c, "前往任务").OnClick(func() { s.navigateTo("dashboard", ""); close() })
@@ -234,7 +234,7 @@ func (s *viewState) startManagedEngine() {
 	if s.simulate(previewManagedEngine{candidate: candidate}) {
 		return
 	}
-	s.guideWork(func() (string, *core.ApiError) {
+	s.guideWorkAs("start-engine", func() (string, *core.ApiError) {
 		_, e := s.service.StartEngine(candidate)
 		return "已请求开启引擎。", e
 	})

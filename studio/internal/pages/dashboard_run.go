@@ -140,8 +140,17 @@ func (w *viewState) serviceView(c *ui.Context) {
 		errorView(c, w.engineState.Error)
 		w.stopOrphanButton(c)
 	case "starting":
-		ui.Text(c, fmt.Sprintf("正在启动（PID %d）——模型加载可能需要几分钟…", w.engineState.Pid))
-		progressBar(c, -1, "模型服务启动进度")
+		host := ui.Column(c.Key("engine-starting")).FillWidth().Gap(tokens(c).Density.Tight)
+		showBar, elapsed := delayedElapsed(c, host, "engine-starting", true)
+		host.Children(func() {
+			ui.Text(c, fmt.Sprintf("正在启动（PID %d）——模型加载可能需要几分钟…", w.engineState.Pid))
+			if showBar {
+				progressBar(c, -1, "模型服务启动进度")
+				if elapsed >= loadingSlowThreshold {
+					ui.Text(c, "模型加载耗时较长，可先切换其他页面，右上角状态会持续更新。").TextColor(c.Theme().TextMuted)
+				}
+			}
+		})
 	case "running":
 		ui.Text(c, fmt.Sprintf("运行中 · PID %d · %s", w.engineState.Pid, w.engineState.Endpoint)).TextColor(stateColor(c, stateSuccess))
 	case "stopping":
@@ -200,7 +209,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 		}
 		searchableSelectField(c, "已启动的本机进程", "", "输入 PID 或进程名搜索…", "未找到匹配 %q 的本机进程", &w.process, options)
 		field(c, "服务地址", &w.bindEndpoint).Description("本机 http 或 https URL").Error(urlError(w.bindEndpoint))
-		if button(c, "连接并核验进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
+		if secondaryActionButton(c, "连接并核验进程", w.binding).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
 			if message := urlError(w.bindEndpoint); message != "" {
 				w.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
 				return
@@ -220,15 +229,27 @@ func (w *viewState) runView(c *ui.Context) {
 	if task := w.running(); task != nil {
 		value := -1.0
 		label := "正在运行，等待进度…（总量未知）"
+		var done, total int64
 		if p := w.runProgress; p != nil && p.Total != nil && *p.Total > 0 {
 			value = progressValue(p.Done, p.Total)
+			done, total = p.Done, *p.Total
 			label = fmt.Sprintf("%d / %d 题", p.Done, *p.Total)
 		}
 		progressBar(c, value, "当前测评题集运行进度")
 		if task.State == "cancelling" {
 			ui.Text(c, "取消中／等待安全收尾。")
 		}
-		ui.Text(c, label)
+		row := ui.Row(c.Key("run-eta-" + task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
+		eta := ""
+		if total > 0 && task.State != "cancelling" {
+			eta = formatETA(c, row, "run-"+task.TaskId, done, total)
+		}
+		row.Children(func() {
+			ui.Text(c, label)
+			if eta != "" {
+				ui.Text(c, "· "+eta).TextColor(c.Theme().TextMuted)
+			}
+		})
 		id := task.TaskId
 		ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() { button(c, "查看实时详情").AlignSelf(ui.Start).OnClick(func() { w.selectTask(id) }) })
 		if w.cancelRunGate(c, id, task.State) {

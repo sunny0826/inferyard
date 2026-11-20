@@ -127,6 +127,7 @@ type viewState struct {
 	detail                                                                              *core.RunTaskDetail
 	historyError, reportsError, detailError                                             *core.ApiError
 	loaded, busy, settingsLoaded                                                        bool
+	busyAction                                                                          string
 	pendingToast                                                                        string
 	failure                                                                             *core.ApiError
 	workspace, cliPath, results, models                                                 string
@@ -312,6 +313,10 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 }
 
 func (s *viewState) work(fn func() (string, *core.ApiError)) {
+	s.workAs("", fn)
+}
+
+func (s *viewState) workAs(action string, fn func() (string, *core.ApiError)) {
 	if s.previewAction() {
 		return
 	}
@@ -319,6 +324,7 @@ func (s *viewState) work(fn func() (string, *core.ApiError)) {
 		return
 	}
 	s.busy = true
+	s.busyAction = action
 	s.failure = nil
 	s.pendingToast = ""
 	go func() {
@@ -330,8 +336,14 @@ func (s *viewState) work(fn func() (string, *core.ApiError)) {
 		s.refresh(true)
 	}()
 }
+
+func (s *viewState) actionBusy(action string) bool {
+	return s.busy && action != "" && s.busyAction == action
+}
+
 func (s *viewState) finishWork(message string, e *core.ApiError) {
 	s.busy = false
+	s.busyAction = ""
 	s.failure = e
 	s.pendingToast = ""
 	if e == nil {
@@ -418,8 +430,13 @@ func (s *viewState) loadingView(c *ui.Context) {
 		button(c, "重试读取页面").AlignSelf(ui.Start).OnClick(s.refreshAction)
 		return
 	}
-	ui.Text(c, "正在读取页面数据…")
-	progressBar(c, -1, "页面数据加载进度")
+	host := ui.Column(c.Key("page-loading")).FillWidth().Gap(tokens(c).Density.Section)
+	show := delayedVisible(c, host, "page-load", !s.loaded)
+	host.Children(func() {
+		if show {
+			pageLoadingSkeleton(c)
+		}
+	})
 }
 
 func (s *viewState) refreshAction() {

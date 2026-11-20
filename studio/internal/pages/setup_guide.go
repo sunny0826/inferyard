@@ -15,12 +15,21 @@ func (s *viewState) setupGuide(c *ui.Context) {
 			setupTargets(c, locations)
 		}
 		ui.Text(c, "首次准备需联网下载组件，耗时视网络环境而定；也可在设置页手动指定 CLI 路径。").TextColor(c.Theme().TextMuted)
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			if primaryButton(c, "准备环境").Disabled(s.busy).Clicked() {
+		preparing := s.actionBusy("prepare-env")
+		row := ui.Row(c.Key("setup-actions")).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
+		showProgress, elapsed := delayedElapsed(c, row, "prepare-env", preparing)
+		row.Children(func() {
+			if primaryActionButton(c, "准备环境", preparing).Disabled(s.busy).Clicked() {
 				s.prepareEnvironment()
 			}
 			button(c, "前往设置").Disabled(s.busy).OnClick(func() { s.selected = "settings" })
 		})
+		if showProgress {
+			progressBar(c, -1, "环境准备进度")
+			if elapsed >= loadingSlowThreshold {
+				ui.Text(c, "网络下载或环境初始化耗时较长，仍在继续…").TextColor(c.Theme().TextMuted)
+			}
+		}
 		if s.cliInstallStatus != "" {
 			ui.Text(c, s.cliInstallStatus)
 		}
