@@ -24,10 +24,10 @@ mise exec -- uv run --frozen python scripts/export_schemas.py --check
 mise exec -- uv run --frozen python scripts/export_catalogue.py --check
 mise exec -- uv run --frozen python scripts/export_community.py --check
 
-# Studio（在 studio/ 执行，或根级 mise run test:studio / mise run test:studio:e2e）
-mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test . ./internal/... -count=1
-mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -tags ui_debug . ./internal/pages -count=1
-mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./tests/e2e/ -count=1
+# Studio（在仓库根执行跨平台 mise tasks，自动切换 studio/ 与环境）
+mise run test:studio
+mise run test:studio:preview
+mise run test:studio:e2e
 
 # macOS 原生 UI E2E（需已登录桌面与完整 Xcode，在仓库根执行）
 mise run test:studio-ui

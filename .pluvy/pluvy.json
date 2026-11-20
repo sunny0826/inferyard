@@ -1,16 +1,9 @@
 {
   "version": 2,
   "include": [
-    "cli/src/*",
-    "studio/*.go",
-    "studio/internal/*"
+    "cli/src/*"
   ],
-  "exclude": [
-    "studio/build/*",
-    "studio/dist/*",
-    "studio/*_test.go",
-    "studio/internal/*_test.go"
-  ],
+  "exclude": [],
   "third_party_modules": [],
   "checkers": {
     "structure.guarded_projection": {"enabled": false},
@@ -39,6 +32,7 @@
         {
           "name": "business modules do not depend on the CLI layer",
           "sources": [
+            "cli/src/inferyard/application/*",
             "cli/src/inferyard/contracts/*",
             "cli/src/inferyard/config/*",
             "cli/src/inferyard/runtime/*",
