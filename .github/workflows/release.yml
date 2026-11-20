@@ -18,6 +18,8 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
+      allow_release: ${{ steps.version.outputs.allow_release }}
+      is_tag_push: ${{ steps.version.outputs.is_tag_push }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -27,10 +29,12 @@ jobs:
         id: version
         shell: bash
         env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
         run: |
-          version=$(mise exec -- python -c '
+          mise exec -- python -c '
           import os, re, tomllib
           from pathlib import Path
           cli_version = tomllib.loads(Path("cli/pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
@@ -40,14 +44,27 @@ jobs:
           studio_version = match.group(1)
           if cli_version != studio_version:
               raise SystemExit(f"version mismatch: cli={cli_version} studio={studio_version}")
+          expected_tag = f"v{cli_version}"
+          event_name = os.environ.get("EVENT_NAME", "")
+          ref = os.environ.get("REF", "")
           ref_type = os.environ.get("REF_TYPE", "")
           ref_name = os.environ.get("REF_NAME", "")
-          if ref_type == "tag" and ref_name != f"v{cli_version}":
-              raise SystemExit(f"tag mismatch: ref={ref_name} expected=v{cli_version}")
-          print(cli_version)
-          ')
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          if ref_type == "tag" and ref_name != expected_tag:
+              raise SystemExit(f"tag mismatch: ref={ref_name} expected={expected_tag}")
+          is_release_tag = ref == f"refs/tags/{expected_tag}"
+          is_main_branch = ref == "refs/heads/main"
+          is_tag_push = event_name == "push" and is_release_tag
+          allow_release = is_tag_push or (
+              event_name == "workflow_dispatch" and (is_main_branch or is_release_tag)
+          )
+          if event_name == "push" and not is_tag_push:
+              raise SystemExit(f"unexpected push ref: {ref} expected=refs/tags/{expected_tag}")
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as out:
+              out.write(f"version={cli_version}\n")
+              out.write(f"tag={expected_tag}\n")
+              out.write(f"allow_release={str(allow_release).lower()}\n")
+              out.write(f"is_tag_push={str(is_tag_push).lower()}\n")
+          '
 
   cli:
     needs: metadata
@@ -244,9 +261,7 @@ jobs:
 
   github-release:
     needs: [metadata, cli, studio]
-    if: >-
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
-      (github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
+    if: needs.metadata.outputs.allow_release == 'true'
     runs-on: ubuntu-24.04
     environment: github-release
     permissions:
@@ -312,8 +327,9 @@ jobs:
   pypi:
     needs: [metadata, cli, github-release]
     if: >-
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
-      (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
+      needs.metadata.outputs.allow_release == 'true' &&
+      (needs.metadata.outputs.is_tag_push == 'true' ||
+        (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true))
     runs-on: ubuntu-24.04
     environment:
       name: pypi
