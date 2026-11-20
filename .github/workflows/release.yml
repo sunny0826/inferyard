@@ -40,8 +40,10 @@ jobs:
           studio_version = match.group(1)
           if cli_version != studio_version:
               raise SystemExit(f"version mismatch: cli={cli_version} studio={studio_version}")
-          if os.environ.get("REF_TYPE") == "tag" and os.environ.get("REF_NAME") != f"v{cli_version}":
-              raise SystemExit(f"tag mismatch: ref={os.environ.get(\"REF_NAME\")} expected=v{cli_version}")
+          ref_type = os.environ.get("REF_TYPE", "")
+          ref_name = os.environ.get("REF_NAME", "")
+          if ref_type == "tag" and ref_name != f"v{cli_version}":
+              raise SystemExit(f"tag mismatch: ref={ref_name} expected=v{cli_version}")
           print(cli_version)
           ')
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -219,10 +221,17 @@ jobs:
           & $binary --debug-ui *> $null
           if ($LASTEXITCODE -ne 2) { throw "Installed --debug-ui exit code: $LASTEXITCODE" }
           $uninstaller = Join-Path $install 'unins000.exe'
+          if (-not (Test-Path -LiteralPath $uninstaller -PathType Leaf)) { throw 'Uninstaller is missing' }
           $result = Start-Process -FilePath $uninstaller -ArgumentList @(
             '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
           ) -Wait -PassThru
           if ($result.ExitCode -ne 0) { throw "Uninstaller exit code: $($result.ExitCode)" }
+          $deadline = [DateTime]::UtcNow.AddSeconds(30)
+          while ((Test-Path -LiteralPath $install) -and ([DateTime]::UtcNow -lt $deadline)) {
+            Start-Sleep -Milliseconds 100
+          }
+          if (Test-Path -LiteralPath $install) { throw 'Uninstall did not remove the application directory within 30 seconds' }
+          exit 0
       - uses: actions/upload-artifact@v7
         with:
           name: studio-dist-${{ matrix.target }}
@@ -235,6 +244,9 @@ jobs:
 
   github-release:
     needs: [metadata, cli, studio]
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
     runs-on: ubuntu-24.04
     environment: github-release
     permissions:
@@ -298,8 +310,10 @@ jobs:
           --generate-notes
 
   pypi:
-    needs: [metadata, cli]
-    if: startsWith(github.ref, 'refs/tags/v') || inputs.publish_pypi == true
+    needs: [metadata, cli, github-release]
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
     runs-on: ubuntu-24.04
     environment:
       name: pypi
