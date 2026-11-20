@@ -82,6 +82,47 @@ func TestSyncSavedGroupsKeepsOtherDraft(t *testing.T) {
 	}
 }
 
+// applySettingsSnapshot drops a refresh snapshot read before a save landed, so
+// the older values cannot revert the newly saved workspace and names.
+func TestStaleRefreshSnapshotDoesNotRevertSave(t *testing.T) {
+	s := settingsState()
+	// A refresh reads the old values, then a save applies while it is in flight.
+	staleEpoch := s.settingsSequence()
+	stale := core.SettingsResponse{
+		Settings:  core.UserSettings{WorkspaceRoot: ptr("/saved/workspace"), ResultsRoot: ptr("/saved/results"), ModelsRoot: ptr("/saved/models"), ModelDownloadName: "saved-model", EngineDownloadName: "saved-engine"},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/saved/workspace")},
+	}
+	s.workspace, s.modelName = "/next/workspace", "next-model"
+	patch := map[string]json.RawMessage{}
+	patch["workspace_root"], _ = json.Marshal(s.workspace)
+	patch["model_download_name"], _ = json.Marshal(s.modelName)
+	s.syncSavedGroups(patch, s.settingsDraft(), core.SettingsResponse{
+		Settings:  core.UserSettings{WorkspaceRoot: ptr("/next/workspace"), ResultsRoot: ptr("/saved/results"), ModelsRoot: ptr("/saved/models"), ModelDownloadName: "next-model", EngineDownloadName: "saved-engine"},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/next/workspace")},
+	})
+
+	s.applySettingsSnapshot(staleEpoch, stale)
+	if s.workspace != "/next/workspace" {
+		t.Fatalf("stale snapshot reverted the saved workspace: %q", s.workspace)
+	}
+	if s.modelName != "next-model" {
+		t.Fatalf("stale snapshot reverted the saved name: %q", s.modelName)
+	}
+	if root := emptyText(s.settings.Effective.WorkspaceRoot); root != "/next/workspace" {
+		t.Fatalf("stale snapshot reverted the baseline: %q", root)
+	}
+
+	// A snapshot taken after the save still applies, as the follow-up refresh does.
+	fresh := s.settingsSequence()
+	s.applySettingsSnapshot(fresh, core.SettingsResponse{
+		Settings:  core.UserSettings{WorkspaceRoot: ptr("/later/workspace")},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/later/workspace")},
+	})
+	if s.workspace != "/later/workspace" {
+		t.Fatalf("fresh snapshot was dropped: %q", s.workspace)
+	}
+}
+
 // persistSettings is the production save boundary; both groups keep the other
 // card's draft after the real UpdateSettings round trip.
 func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {

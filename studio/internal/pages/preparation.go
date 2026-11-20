@@ -81,12 +81,27 @@ func savedDownloadNames(v core.SettingsResponse) (modelName, engineName string) 
 	return defaultDownloadName(v.Settings.ModelDownloadName, "model"), defaultDownloadName(v.Settings.EngineDownloadName, "engine")
 }
 
+// applySettingsSnapshot applies a refresh's settings read only if no save was
+// applied after the snapshot was taken. A save already refreshed the form from
+// the response it wrote, so a stale read would only revert it.
+func (s *viewState) applySettingsSnapshot(epoch uint64, value core.SettingsResponse) {
+	if epoch != s.settingsSequence() {
+		return
+	}
+	s.applySettings(value)
+}
+
 // syncSavedGroups records the saved response as the new baseline and writes
 // back only the group the patch saved. Within that group, a field keeps the
 // user's newer value when they typed into it while the save was in flight.
 func (s *viewState) syncSavedGroups(patch map[string]json.RawMessage, submitted settingDraft, value core.SettingsResponse) {
 	previousWorkspace := emptyText(s.settings.Effective.WorkspaceRoot)
 	s.settings = value
+	// A refresh that read its settings snapshot before this save must not
+	// apply it afterwards: the counter invalidates that snapshot.
+	s.settingsEpochMu.Lock()
+	s.settingsEpoch++
+	s.settingsEpochMu.Unlock()
 	paths, names := settingsPatchGroups(patch)
 	if paths {
 		cliPath, workspace, results, models := savedPathFields(value)

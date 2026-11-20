@@ -173,6 +173,19 @@ type viewState struct {
 	scrolls                                              map[string]*ui.ScrollState
 	casesTable, samplesTable                             pageTableState
 	resourceTablePage                                    int
+	// settingsEpoch counts applied saves. A refresh reads it before asking the
+	// service for settings and drops that snapshot when a save landed first,
+	// so a stale read cannot revert freshly saved values.
+	settingsEpochMu sync.Mutex
+	settingsEpoch   uint64
+}
+
+// settingsSequence reads the save counter under its lock: refresh runs on a
+// goroutine while a save applies on the main thread.
+func (s *viewState) settingsSequence() uint64 {
+	s.settingsEpochMu.Lock()
+	defer s.settingsEpochMu.Unlock()
+	return s.settingsEpoch
 }
 
 func (s *viewState) refresh(full bool) {
@@ -215,6 +228,7 @@ func (s *viewState) refresh(full bool) {
 			break
 		}
 	}
+	settingsEpoch := s.settingsSequence()
 	settings = s.service.Settings()
 	if full {
 		history, he = s.service.History()
@@ -252,7 +266,9 @@ func (s *viewState) refresh(full bool) {
 			}
 			s.detailError = de
 		}
-		s.applySettings(settings)
+		// A save that landed after this snapshot was read already applied the
+		// saved values; the older snapshot must not revert them.
+		s.applySettingsSnapshot(settingsEpoch, settings)
 		if full {
 			if he == nil {
 				s.history = history
