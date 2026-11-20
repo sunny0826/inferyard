@@ -315,6 +315,7 @@ class DevLauncherTests(unittest.TestCase):
                 spawned.append(p.pid)
                 return p
 
+            # Case A: write fails before Popen -> child is never spawned.
             with (
                 mock.patch.object(dev_process.subprocess, "Popen", side_effect=record_popen),
                 mock.patch.object(
@@ -325,8 +326,31 @@ class DevLauncherTests(unittest.TestCase):
                     dev.launch_studio(
                         root, state, slow_bin, Path("/bin/echo"), profile, assets, "test"
                     )
+            self.assertEqual(spawned, [])
+            self.assertFalse((state / "session.json").exists())
+
+            # Case B: pending record succeeds, post-Popen write fails -> child is terminated cleanly.
+            real_write = dev_process.atomic_write_json
+            writes = 0
+
+            def fail_after_pending(path: Path, value: dict[str, object]) -> None:
+                nonlocal writes
+                writes += 1
+                if writes >= 2:
+                    raise dev.DevError("disk full")
+                real_write(path, value)
+
+            with (
+                mock.patch.object(dev_process.subprocess, "Popen", side_effect=record_popen),
+                mock.patch.object(dev_process, "atomic_write_json", side_effect=fail_after_pending),
+            ):
+                with self.assertRaises(dev.DevError):
+                    dev.launch_studio(
+                        root, state, slow_bin, Path("/bin/echo"), profile, assets, "test"
+                    )
             self.assertEqual(len(spawned), 1)
             self.assertIsNone(dev_process.process_identity(spawned[0]))
+            self.assertFalse((state / "session.json").exists())
 
     def test_early_exit_with_shutdown_failed_retains_session(self) -> None:
         if os.name == "nt":
@@ -393,7 +417,7 @@ class DevLauncherTests(unittest.TestCase):
             def fail_once(path: Path, value: dict[str, object]) -> None:
                 nonlocal attempts
                 attempts += 1
-                if attempts == 1:
+                if attempts == 2:
                     deadline = dev_process.time.monotonic() + 5.0
                     while not armed.exists() and dev_process.time.monotonic() < deadline:
                         dev_process.time.sleep(0.02)
@@ -441,6 +465,58 @@ class DevLauncherTests(unittest.TestCase):
                 os.waitpid(pid, 0)
             except (OSError, ChildProcessError):
                 pass
+            session_path.unlink(missing_ok=True)
+
+            # Case 3: persistent ENOSPC after pending write + stubborn child keeps pending session blocking stop/switch.
+            armed.unlink(missing_ok=True)
+            spawned_stubborn: list[int] = []
+            real_popen = dev_process.subprocess.Popen
+
+            def track_popen(*args, **kwargs):
+                p = real_popen(*args, **kwargs)
+                spawned_stubborn.append(p.pid)
+                return p
+
+            persist_calls = 0
+
+            def fail_all_after_pending(path: Path, value: dict[str, object]) -> None:
+                nonlocal persist_calls
+                persist_calls += 1
+                if persist_calls >= 2:
+                    deadline = dev_process.time.monotonic() + 5.0
+                    while not armed.exists() and dev_process.time.monotonic() < deadline:
+                        dev_process.time.sleep(0.02)
+                    raise dev.DevError("ENOSPC")
+                real_write(path, value)
+
+            with (
+                mock.patch.object(dev_process.subprocess, "Popen", side_effect=track_popen),
+                mock.patch.object(
+                    dev_process, "atomic_write_json", side_effect=fail_all_after_pending
+                ),
+            ):
+                with self.assertRaises(dev.DevError):
+                    dev.launch_studio(
+                        root,
+                        state,
+                        stubborn,
+                        Path("/bin/echo"),
+                        profile,
+                        assets,
+                        "test",
+                        stop_timeout=0.2,
+                    )
+            self.assertTrue(session_path.is_file())
+            self.assertEqual(json.loads(session_path.read_text(encoding="utf-8"))["state"], "pending")
+            with self.assertRaises(dev.DevError):
+                dev.stop_recorded(state)
+            self.assertTrue(session_path.is_file())
+            for pid in spawned_stubborn:
+                try:
+                    os.kill(pid, 9)
+                    os.waitpid(pid, 0)
+                except (OSError, ChildProcessError):
+                    pass
 
     def test_resolve_profile_rejects_junction_branch_dir(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

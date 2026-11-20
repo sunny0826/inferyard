@@ -229,9 +229,15 @@ def stop_recorded(state_dir: Path, *, timeout: float = 30.0) -> bool:
         data = json.loads(session_file.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             raise ValueError("session record is not an object")
+        if data.get("state") == "pending" and (not data.get("pid") or not data.get("start_id")):
+            raise DevError(
+                f"Unfinished development launch recorded at {session_file}; inspect {data.get('log', '')} and confirm no dev Studio is running before clearing it"
+            )
         pid = int(data["pid"])
         binary = str(data.get("binary", ""))
         start_id = str(data.get("start_id", ""))
+    except DevError:
+        raise
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise DevError(f"Invalid development session record: {session_file}") from exc
     if not identity_matches(pid, binary, start_id):
@@ -353,18 +359,27 @@ def launch_studio(
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     else:
         kwargs["start_new_session"] = True
-    with log_path.open("ab") as stream:
-        proc = subprocess.Popen(args, stdout=stream, stderr=subprocess.STDOUT, **kwargs)
-    record: dict[str, object] = {
-        "state": "starting",
-        "pid": proc.pid,
+    pending_record: dict[str, object] = {
+        "state": "pending",
         "binary": normalize_exe_path(str(binary)),
-        "start_id": "",
         "cli": str(cli),
         "profile": str(profile),
         "assets": str(assets),
         "status_file": str(status_file),
         "log": str(log_path),
+    }
+    atomic_write_json(session_file, pending_record)
+    try:
+        with log_path.open("ab") as stream:
+            proc = subprocess.Popen(args, stdout=stream, stderr=subprocess.STDOUT, **kwargs)
+    except BaseException:
+        session_file.unlink(missing_ok=True)
+        raise
+    record: dict[str, object] = {
+        **pending_record,
+        "state": "starting",
+        "pid": proc.pid,
+        "start_id": "",
     }
     session_persisted = False
 
