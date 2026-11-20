@@ -45,8 +45,21 @@ type destructiveOption struct {
 	id           string
 	label        string
 	confirmLabel string
+	// dismissLabel names the way out of the prompt in the words of the action
+	// it would discard ("保持运行", "继续下载"). Empty falls back to a neutral
+	// "暂不操作": an inline confirmation never navigated anywhere, so a
+	// "返回" button would describe a move the user did not make.
+	dismissLabel string
 	prompt       string
 	disabled     bool
+}
+
+// destructiveDismissLabel is the cancel copy for one confirmation.
+func destructiveDismissLabel(option destructiveOption) string {
+	if option.dismissLabel != "" {
+		return option.dismissLabel
+	}
+	return "暂不操作"
 }
 
 // destructiveAction renders a danger-styled action and asks for one more
@@ -73,7 +86,7 @@ func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) b
 			if primaryButton(c, option.confirmLabel).AlignSelf(ui.Start).Clicked() {
 				confirmed = true
 			}
-			if button(c, "返回").AlignSelf(ui.Start).Clicked() {
+			if button(c, destructiveDismissLabel(option)).AlignSelf(ui.Start).Clicked() {
 				cancelled = true
 			}
 		})
@@ -162,8 +175,9 @@ func cancelRunPrompt(lastRound bool) string {
 func (w *viewState) cancelRunGate(c *ui.Context, id, state string) bool {
 	return w.destructiveAction(c, destructiveOption{
 		kind: destructiveCancelRun, id: id, label: "取消运行", confirmLabel: "确认取消运行",
-		prompt:   cancelRunPrompt(w.task.stage != ""),
-		disabled: (w.busy && w.task.stage == "") || state == "cancelling",
+		dismissLabel: "保持运行",
+		prompt:       cancelRunPrompt(w.task.stage != ""),
+		disabled:     (w.busy && w.task.stage == "") || state == "cancelling",
 	})
 }
 
@@ -172,8 +186,9 @@ func (w *viewState) cancelRunGate(c *ui.Context, id, state string) bool {
 func (w *viewState) stopEngineGate(c *ui.Context) bool {
 	return w.destructiveAction(c, destructiveOption{
 		kind: destructiveStopEngine, label: "停止服务", confirmLabel: "确认停止服务",
-		prompt:   "将停止 Studio 启动的模型服务；正在加载的模型会中断，之后需要重新启动并绑定。",
-		disabled: w.busy || w.running() != nil,
+		dismissLabel: "保持服务运行",
+		prompt:       "将停止 Studio 启动的模型服务；正在加载的模型会中断，之后需要重新启动并绑定。",
+		disabled:     w.busy || w.running() != nil,
 	})
 }
 

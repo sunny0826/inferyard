@@ -6,10 +6,36 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
 )
 
+// stateBanner draws a semantic banner: a tinted surface with a 2 DIP state bar
+// on the leading edge and a state icon before the content. High contrast keeps
+// the plain surface and draws a full outline instead of a tint. The callback
+// receives the foreground colour that stays readable on the tint.
+func stateBanner(c *ui.Context, kind stateKind, icon func() *ui.SVG, fn func(foreground ui.Color)) {
+	t := tokens(c)
+	theme := c.Theme()
+	color := stateColor(c, kind)
+	banner := ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Inset).Radius(t.Radius.Inset)
+	if c.Preferences().HighContrast {
+		banner.Background(theme.Surface).Border(1, color)
+	} else {
+		banner.Background(theme.Surface.Mix(color, .07)).BorderWidth(0, 0, 0, 2).BorderColor(color)
+	}
+	foreground := color.Mix(theme.Text, .2)
+	banner.Children(func() {
+		ui.Row(c).AlignItems(ui.Start).Gap(t.Density.Row).Children(func() {
+			components.Icon(c, icon).Size(t.Type.Body, t.Type.Body).TextColor(foreground)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() { fn(foreground) })
+		})
+	})
+}
+
+// errorView renders a failure as a danger-tinted banner with an alert icon, so
+// it never reads as plain body text and colour is not the only signal.
 func errorView(c *ui.Context, e *core.ApiError) {
 	if e == nil {
 		return
@@ -27,18 +53,20 @@ func errorView(c *ui.Context, e *core.ApiError) {
 			}
 		}
 	}
-	ui.Text(c, message+" · "+e.Code).TextColor(stateColor(c, stateDanger))
-	for _, v := range e.Limitations {
-		ui.Text(c, human(v)+" · "+v)
-	}
-	// Raw machine details stay behind a closed fold: the primary text already
-	// names what happened and what to do, so a code such as not_resumable is
-	// available for diagnosis without pushing onto the first reading.
-	if len(e.Details) > 0 {
-		componentFoldKeyed(c, "error-details-"+e.Code, "错误详情", func() {
-			kvview(c, "kv-error-details", e.Details)
-		})
-	}
+	stateBanner(c, stateDanger, lucide.CircleAlert, func(foreground ui.Color) {
+		ui.Text(c, message+" · "+e.Code).TextColor(foreground)
+		for _, v := range e.Limitations {
+			ui.Text(c, human(v)+" · "+v).TextColor(foreground)
+		}
+		// Raw machine details stay behind a closed fold: the primary text already
+		// names what happened and what to do, so a code such as not_resumable is
+		// available for diagnosis without pushing onto the first reading.
+		if len(e.Details) > 0 {
+			componentFoldKeyed(c, "error-details-"+e.Code, "错误详情", func() {
+				kvview(c, "kv-error-details", e.Details)
+			})
+		}
+	})
 }
 
 // conflictReasonLabel names the conflict reasons users hit on page actions. An
@@ -63,6 +91,18 @@ func conflictReasonLabel(reason string) string {
 	default:
 		return ""
 	}
+}
+
+// warningBanner renders a limitation that needs handling but is not a failure.
+// It shares the banner geometry with errors and differs by hue and icon, so a
+// warning still carries text and a shape instead of colour alone.
+func warningBanner(c *ui.Context, message string) {
+	if message == "" {
+		return
+	}
+	stateBanner(c, stateWarning, lucide.TriangleAlert, func(foreground ui.Color) {
+		ui.Text(c, message).Role(ui.RoleStatus).TextColor(foreground)
+	})
 }
 func taskLabel(t core.RunTask) string {
 	if !terminal(t.State) && t.PreparationStage != "" {

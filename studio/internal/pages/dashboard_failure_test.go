@@ -96,6 +96,27 @@ func TestConclusionViewMarksFailedTask(t *testing.T) {
 	}
 }
 
+// The ambiguous-listener warning renders as a tinted warning banner, sharing
+// the discovery view's own presentation instead of plain coloured text.
+func TestAmbiguousListenerRendersWarningBanner(t *testing.T) {
+	s := testState()
+	s.discoveryLoaded = true
+	s.discovery = inferyard.ServiceDiscovery{Services: []inferyard.DiscoveredService{
+		{PID: 4100, ProcessName: "proxy", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:9999", Models: []string{"other.gguf"}, AmbiguousListener: true}}},
+	}}
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.discoveryBody(c, false) }) }, 1120, 900)
+	tt.Frame()
+	if !tt.HasText("待确认的兼容接口") {
+		t.Fatalf("compatible endpoint fold missing: %v", tt.Texts())
+	}
+	// The fold is collapsed by default; opening it reveals the banner text.
+	click(t, tt, "待确认的兼容接口")
+	tt.Frame()
+	if !tt.HasText("归属存在歧义") {
+		t.Fatalf("ambiguous listener warning hidden in the fold: %v", tt.Texts())
+	}
+}
+
 // One click fills the LM Studio fields from an unambiguous discovered service.
 func TestLocalSelectionFillsDiscoveredService(t *testing.T) {
 	s := testState()
