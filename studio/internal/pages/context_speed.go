@@ -251,7 +251,10 @@ func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
 	}
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 		primaryButton(c, "查看结果").OnClick(func() { s.openSpeed(r.id) })
-		button(c, "用此组合新开任务").OnClick(func() { s.newSpeedTask(r) })
+		// A reset while another action is in flight would race that action's
+		// delayed update and lose the restored model, engine and tier; the
+		// result view disables the same entry for the same reason.
+		button(c, "用此组合新开任务").Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
 }
 

@@ -156,3 +156,27 @@ func TestNewTaskResetsBenchmarkType(t *testing.T) {
 		t.Fatalf("用此组合新开任务 lost the specialty type: %v %d", production.speed.selected, production.speed.context)
 	}
 }
+
+// A busy page must not start the reset from the finished specialty task: its
+// delayed update would overwrite the restored model, engine and tier. The
+// result view already disables the same entry, so the task view must too.
+func TestSpeedTaskNewCombinationIsDisabledWhileBusy(t *testing.T) {
+	specialty := func() *speedTask {
+		return &speedTask{id: "speed", stage: speedDone, model: "Model-A", engine: "Engine-A", context: inferyard.ContextSpeed128K, selectionModel: "Model-B", selectionEngine: "Engine-B"}
+	}
+	s := testState()
+	s.speed = &speedWorkspace{context: inferyard.ContextSpeed64K}
+	s.busy = true
+	r := specialty()
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.speedTaskActions(c, r) }) }, 900, 300)
+	click(t, tt, "用此组合新开任务")
+	if s.model == "Model-B" || s.engine == "Engine-B" || s.speed.selected {
+		t.Fatalf("a busy page started the reset: model=%q engine=%q specialty=%v", s.model, s.engine, s.speed.selected)
+	}
+	s.busy = false
+	tt.Frame()
+	click(t, tt, "用此组合新开任务")
+	if s.model != "Model-B" || s.engine != "Engine-B" || !s.speed.selected || s.speed.context != inferyard.ContextSpeed128K {
+		t.Fatalf("an idle page ignored the entry: model=%q engine=%q specialty=%v tier=%d", s.model, s.engine, s.speed.selected, s.speed.context)
+	}
+}
