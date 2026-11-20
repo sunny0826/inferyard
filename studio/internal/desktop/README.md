@@ -9,6 +9,6 @@ Delivery errors and replay overruns are logged without changing task outcomes.
 `TestEventNotifications` publishes events through the real bus and checks terminal
 messages, ignored nonterminal events, redaction and delivery failures. It does not
 prove OS notification delivery. macOS notification arrival and native Windows/Linux
-execution remain separate acceptance work in the [backlog](../../../cli/docs/backlog.md).
+execution remain separate acceptance work.
 
 Current build and verification commands live in the [Studio README](../../README.md).

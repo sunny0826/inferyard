@@ -10,17 +10,13 @@ owns binding, identity checks, evidence validation, resume eligibility and bench
 execution. Core reads evidence for presentation and preserves missing measurements as
 `null`; it does not certify a run or recalculate scores.
 
-The [Studio subsystem reference](../../../docs/subsystems/studio-panel.md) is the
-source for responsibilities, state transitions, path rules and current interfaces.
 Build, test and native acceptance boundaries are documented in the
-[Studio README](../../README.md). Historical Web server handoffs are superseded by
-these references.
+[Studio README](../../README.md).
 
 Context-speed preparation creates one frozen plan and a distinct batch reference, then
 uses the same serial run queue. Atomic task records store identity and lifecycle without
 result values. Every open invokes the CLI's read-only `speed-results`; preparation failure
-and cancellation before batch creation remain in history. See the
-[context-speed reference](../../../docs/subsystems/studio-panel/context-speed.md).
+and cancellation before batch creation remain in history.
 
 The built-in address catalogue lives in `catalog.go` and `catalog_data.go`. Each entry
 pins one asset: kind, title, canonical platform key, URL, measured byte count and

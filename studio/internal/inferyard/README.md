@@ -14,8 +14,6 @@ The sibling `evidence` package indexes layout2 runs and tails append-only JSONL
 records. It does not certify evidence, infer benchmark scores or own downloads.
 The service observes model download files together with task state in `core/downloads.go`.
 
-Current responsibilities and verification boundaries live in the
-[Studio subsystem reference](../../../docs/subsystems/studio-panel.md).
 Run the checks documented in the [Studio README](../../README.md).
 
 `ParseContextSpeed` strictly validates the versioned result and exit-code relationship;

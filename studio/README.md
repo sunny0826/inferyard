@@ -16,7 +16,7 @@ For a first benchmark:
 
 1. Open Tasks and choose **准备环境** (Prepare environment). Studio checks the CLI and workspace. If assets are missing, open Downloads to prepare a model and a compatible engine.
 2. On Tasks, select the model and engine. Keep both default task sets for a standard benchmark and choose **开始测评** (Start benchmark). Studio can start its own local service or bind a service you started. The CLI checks the live identity before running.
-3. Open **查看报告** (View report) after the runs finish. The report shows each run separately. To check evidence integrity later, use the CLI on the [original run directories](../cli/docs/guides/onboarding-and-scope.md#默认测评范围).
+3. Open **查看报告** (View report) after the runs finish. The report shows each run separately. To check evidence integrity later, use the CLI on the original run directories.
 
 Choose **任务** to return to the current task with its progress and selections. **新任务** starts a new round; it is disabled with a hint while work is in flight, during environment setup, or on the idle setup page itself, so cancelling and restarting happen on the task page.
 
@@ -28,20 +28,6 @@ Choose **任务** to return to the current task with its progress and selections
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
 | Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
 | Settings | Configure the CLI path, workspace, results directory, model directory, and registered local installation declarations — the only page that shows full paths — plus the model/engine download directory names. Each path field keeps manual entry and adds `Browse…` to open the native file or directory picker for an existing target; a workspace that does not exist yet is typed by hand, and saving never creates directories. |
-
-The [pages reference](docs/pages.md) covers the per-page rules: the first-launch flow,
-preparation, evaluation-set selection, engine and model binding, local installation
-registration, service discovery, download directory naming, and workspace initialization.
-
-## Design and page review
-
-The [Studio Design System](docs/design-system.md) defines shared layout, theme, typography,
-components, feedback, accessibility, and verification rules against the onevra v0.2026.17
-component library on MyGo v0.7.4, including its collapsible, resizable sidebar shell and
-component mapping.
-The [page audit](docs/design-system-audit.md) records implementation gaps across all six
-pages, the run detail view, and the report view. These documents define the target and
-review scope; they do not establish native desktop acceptance.
 
 ## Build and run
 
@@ -157,15 +143,13 @@ selector is a shortcut to set a starting state, while normal page buttons drive 
   startup or opening results. Reading again does not rerun measurements. The Reports page keeps
   specialist history for this window only; “专项 · 历史恢复示例” shows a fixed history fixture,
   not evidence restored from disk. Production history reads task records and frozen batches,
-  and opening a result invokes `speed-results`. See the
-  [context-speed reference](../docs/subsystems/studio-panel/context-speed.md).
+  and opening a result invokes `speed-results`.
 
 The preview window is labelled “UI 调试 · 模拟数据”. It does not create `core.Service`, read
 user settings or workspace evidence, persist window layout, execute the CLI, start models,
 download files, or save settings to disk. Progress, resource samples, and results are simulated.
 Restart the command after changing source code; there is no hot reload. Previewing a native
-window verifies its presentation, not the real model workflow. Implementation boundaries
-are described in the [subsystem reference](../docs/subsystems/studio-panel.md#ui-调试预览).
+window verifies its presentation, not the real model workflow.
 
 ## Platform dependencies
 
@@ -177,11 +161,11 @@ are described in the [subsystem reference](../docs/subsystems/studio-panel.md#ui
 
 ## Reports, services and recovery
 
-Reports open in the main window. Select a run to inspect its completion, timing, memory and per-case rows. Missing measurements display as — with available reasons. An unreadable report stays visible for retry. The [report reference](../cli/docs/reports.md) describes the fields and how to locate raw answers.
+Reports open in the main window. Select a run to inspect its completion, timing, memory and per-case rows. Missing measurements display as — with available reasons. An unreadable report stays visible for retry.
 
-Studio binds local endpoints and stops the services it starts on shutdown. When binding an existing service, its owner remains responsible for stopping it. Runs execute serially. Cancelling an active run waits for it to exit; resume is available only for eligible unfinished batches. Check the [service ownership rules](../docs/subsystems/studio-panel.md#约束与失败行为) and [queue and history states](../docs/subsystems/studio-panel/preview.md#关键状态转换) when diagnosing a blocked task.
+Studio binds local endpoints and stops the services it starts on shutdown. When binding an existing service, its owner remains responsible for stopping it. Runs execute serially. Cancelling an active run waits for it to exit; resume is available only for eligible unfinished batches.
 
-Settings live under `InferYard Studio/settings.json` in the system user configuration directory. Reports and raw evidence can include private local paths. Keep them local or follow the CLI's [public package procedure](../cli/docs/guides/operations.md#公开包与扩展) when sharing redacted results. The [Studio subsystem reference](../docs/subsystems/studio-panel/responsibilities.md) identifies the components responsible for settings, downloads, evidence and notifications.
+Settings live under `InferYard Studio/settings.json` in the system user configuration directory. Reports and raw evidence can include private local paths; keep them local or use `inferyard public package` when sharing redacted results.
 
 ## Verification boundaries
 
@@ -205,7 +189,7 @@ real model or replace the Full preview suite. Windows/Linux release jobs verify
 native compilation, packaging and the command-line boundary only, not native UI.
 
 Keep checks that demonstrate product or logical invariants, or protect packaging
-and release; follow the [test policy](../docs/testing.md). `go test` includes compilation
+and release. `go test` includes compilation
 and its default vet checks; there is no separate broad vet gate.
 From `studio/`, run:
 
@@ -227,7 +211,7 @@ the production benchmark orchestration with scripted service responses against t
 preview simulator. Both must satisfy explicit expectations for stages, available
 controls, serial queue states, cancellation, startup retry, and report scope. These
 tests start with prepared candidates and do not establish parity for real CLI events,
-downloads, or every error path. See the [preview test boundaries](../docs/subsystems/studio-panel.md#ui-调试预览).
+downloads, or every error path.
 
 `go test ./...` includes the boundary e2e suite under `tests/e2e`: the real CLI executes
 every operation against a fake engine (the test binary re-executing itself), each CLI call
@@ -242,6 +226,5 @@ Native view tests, the e2e suite, and fixtures do not establish real-device acce
 pages, the task page's stage navigation and restored progress, resource curves, and the
 report index view on actual desktop windows. Cross-compilation is not Windows/Linux runtime evidence.
 The native UI migration requires fresh acceptance; historical Web UI checks do not qualify
-it. Original diagnostic artifacts under `docs/evidence/` are retained as historical evidence,
-not as current build instructions. Signing, notarization, publication, and the full real
+it. Signing, notarization, publication, and the full real
 model workflow require separate verification.

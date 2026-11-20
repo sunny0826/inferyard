@@ -131,7 +131,7 @@ cancellation and missing-measurement diagnostics, retaining screenshots before a
 Production CLI integration is implemented; the user has approved the UI design.
 Native execution and the real CLI/model workflow
 remain separate verification steps. Result and history tables show the model and engine
-recorded for each task. See the [context-speed reference](../../../docs/subsystems/studio-panel/context-speed.md).
+recorded for each task.
 
 ## Production package smoke
 

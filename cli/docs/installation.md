@@ -130,8 +130,7 @@ workspace 模式默认选择 preflight/ 下最新 device-preflight.json，并冻
 
 ### Windows x64：先准备固定 runtime
 
-操作者从 Prism 上游的固定 release `prism-b10743-adfffbe` 下载归档；固定来源、文件名、大小和
-SHA256 见 [Windows profile](contracts/windows-prism-batch-contract.md#社区安装的离线运行时准备)。
+操作者从 Prism 上游的固定 release `prism-b10743-adfffbe` 下载归档；固定来源与校验信息以社区资源清单为准。
 `runtime prepare` 不下载、不启动服务；它在完成全部资产核验后执行一次 `--version`（10 秒超时）。
 不需要旧仓库回执，不要求 D 盘，普通用户的新目录即可。
 
