@@ -108,7 +108,7 @@ final class PreviewUITests: XCTestCase {
         selectTab("测评报告")
         // MyGo exports a button's name as its accessibility title, never its label.
         let report = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "打开报告 · preview-report-")).firstMatch
-        XCTAssertTrue(report.exists, "New task must preserve the generated report")
+        wait("New task must preserve the generated report", timeout: 5) { report.exists }
     }
 
     private func failureCanRetryThroughNormalControls() {
@@ -301,7 +301,7 @@ final class PreviewUITests: XCTestCase {
         engine.click()
         wait("engine panel closed after a second click", timeout: 5) { !self.app.buttons["停止引擎"].exists }
         let queue = app.buttons.matching(NSPredicate(format: "title BEGINSWITH %@", "任务 · 执行 1 · 等待 ")).firstMatch
-        XCTAssertTrue(queue.exists)
+        expectExists(queue, timeout: 5)
         queue.click()
         expectText("任务队列", timeout: 3)
         keepScreenshot("Task icon opens live queue panel")

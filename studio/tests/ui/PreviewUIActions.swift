@@ -129,7 +129,9 @@ extension PreviewUITests {
     func click(_ label: String, timeout: TimeInterval = 5) {
         let contentButton = app.scrollViews.element(boundBy: 1).buttons[label].firstMatch
         let button = contentButton.exists ? contentButton : app.buttons[label].firstMatch
-        wait("button \(label) is enabled", timeout: timeout) { button.exists && button.isEnabled }
+        wait("button \(label) is enabled", timeout: timeout) {
+            button.exists && button.isEnabled && (contentButton.exists || button.isHittable)
+        }
         if contentButton.exists {
             revealInContent(button)
         }
@@ -141,7 +143,9 @@ extension PreviewUITests {
     /// radio button. Callers assert the chosen tab's content, which proves the
     /// choice took effect.
     func selectTab(_ name: String, timeout: TimeInterval = 5) {
-        waitForTab(name, timeout: timeout).click()
+        let tab = waitForTab(name, timeout: timeout)
+        wait("Tab \(name) is hittable", timeout: timeout) { tab.exists && tab.isHittable }
+        tab.click()
     }
 
     /// expectTab waits for a page tab, which expectText cannot find because a
