@@ -5,16 +5,17 @@ import (
 	_ "embed"
 	"errors"
 	"flag"
-	"github.com/egoist/mygo"
-	"inferyard/studio/internal/core"
-	"inferyard/studio/internal/desktop"
-	"inferyard/studio/internal/pages"
 	"log"
 	"os"
 	"os/signal"
 	"regexp"
 	"syscall"
 	"time"
+
+	"github.com/egoist/mygo"
+	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/desktop"
+	"inferyard/studio/internal/pages"
 )
 
 //go:embed mygo.config.ts
@@ -36,17 +37,15 @@ func main() {
 	core.Version = version[0][1]
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	if handled, err := runDevelopment(ctx, cancel, options); handled {
-		if err != nil {
-			log.Print(err)
-			os.Exit(2)
-		}
-		return
-	}
 	if runDebugUI(ctx, options) {
 		return
 	}
-	service, err := core.New(ctx, core.Options{})
+	boundPaths, windowStates, err := developmentBindings(options)
+	if err != nil {
+		log.Print(err)
+		os.Exit(2)
+	}
+	service, err := core.New(ctx, core.Options{Paths: boundPaths})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,6 +56,9 @@ func main() {
 			log.Printf("Studio shutdown: %v", err)
 		}
 	}()
+	if windowStates != nil {
+		mygo.App.SetWindowStateStore(windowStates)
+	}
 	runApp(ctx, func() {
 		desktop.Subscribe(ctx, service.Bus, func(message desktop.Message) error {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()

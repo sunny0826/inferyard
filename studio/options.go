@@ -7,9 +7,11 @@ import (
 )
 
 type startupOptions struct {
-	debugUI                                  bool
-	devManifest, devCheck, devStop           string
-	devRecoveryController, devRecoveryTarget string
+	debugUI    bool
+	devProfile string
+	devAssets  string
+	devCLI     string
+	devLabel   string
 }
 
 func parseOptions(args []string, output io.Writer) (startupOptions, error) {
@@ -21,32 +23,15 @@ func parseOptions(args []string, output io.Writer) (startupOptions, error) {
 	if err := flags.Parse(args); err != nil {
 		return options, err
 	}
-	emptyDevelopment := false
-	flags.Visit(func(f *flag.Flag) {
-		if (f.Name == "dev-manifest" || f.Name == "dev-check" || f.Name == "dev-stop" || f.Name == "dev-recovery-controller" || f.Name == "dev-recovery-target") && f.Value.String() == "" {
-			emptyDevelopment = true
-		}
-	})
-	if emptyDevelopment {
-		return options, fmt.Errorf("development manifest path is required")
-	}
 	if flags.NArg() != 0 {
 		return options, fmt.Errorf("unexpected argument: %s", flags.Arg(0))
 	}
-	count := 0
-	if (options.devRecoveryController == "") != (options.devRecoveryTarget == "") {
-		return options, fmt.Errorf("recovery controller and target are both required")
+	hasDev := options.devProfile != "" || options.devAssets != "" || options.devCLI != "" || options.devLabel != ""
+	if hasDev && options.debugUI {
+		return options, fmt.Errorf("development flags and --debug-ui are mutually exclusive")
 	}
-	if options.devRecoveryController != "" {
-		count++
-	}
-	for _, path := range []string{options.devManifest, options.devCheck, options.devStop} {
-		if path != "" {
-			count++
-		}
-	}
-	if count > 1 || (count > 0 && options.debugUI) {
-		return options, fmt.Errorf("development modes and UI preview are mutually exclusive")
+	if hasDev && (options.devProfile == "" || options.devCLI == "") {
+		return options, fmt.Errorf("--dev-profile and --dev-cli are both required for development mode")
 	}
 	return options, nil
 }

@@ -10,7 +10,7 @@ mise exec -- go test ./tests/e2e/ -count=1 -timeout 900s -v
 
 Environment variables:
 
-- `INFERYARD_E2E_CLI`: explicit `inferyard` executable path (otherwise resolved from `PATH`, `cli/.venv`, or `uv run`).
+- `INFERYARD_E2E_CLI`: explicit `inferyard` executable path (otherwise resolved from `cli/.venv`, `PATH`, or `uv run`).
 - `INFERYARD_E2E_ROOT`: fresh directory to retain workspace, host state, and `transcript.jsonl` after the run.
 - `STUDIO_SPEED_E2E_ROOT`: fresh directory to retain `TestContextSpeedPublicCLI` fixtures and output.
 
