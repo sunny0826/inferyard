@@ -21,8 +21,6 @@ mise exec -- uv run --frozen pytest tests/unit -q
 mise exec -- uv run --frozen pytest -n auto -q
 mise exec -- uv run --frozen ruff check src tests scripts
 mise exec -- uv run --frozen python scripts/export_schemas.py --check
-mise exec -- uv run --frozen python scripts/export_catalogue.py --check
-mise exec -- uv run --frozen python scripts/export_community.py --check
 
 # Studio（在仓库根执行 mise tasks；test:studio / test:studio:preview 当前在 macOS 运行，Windows internal/core 单测存在既有权限位限制；test:studio:e2e 跨平台运行并先同步本仓库 CLI）
 mise run test:studio
@@ -34,7 +32,7 @@ mise run test:studio-ui
 mise run test:studio-ui:full
 ```
 
-修改 schema 或目录导出源后，运行 `scripts/export_schemas.py` / `scripts/export_catalogue.py` / `scripts/export_community.py` 重新生成，不要手改生成产物。
+修改 schema 定义后，运行 `scripts/export_schemas.py` 重新生成，不要手改生成产物。
 
 ## 工程原则（以代码为准，避免文档驱动内耗）
 

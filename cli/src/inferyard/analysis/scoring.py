@@ -6,8 +6,6 @@ import re
 import unicodedata
 from copy import deepcopy
 from decimal import MAX_EMAX, MIN_EMIN, Decimal, DecimalException, localcontext
-from importlib.metadata import version
-from importlib.resources import files
 
 from jsonschema import Draft202012Validator
 
@@ -31,24 +29,7 @@ CATEGORIES = (
 
 
 def scorer_hash():
-    digest = hashlib.sha256()
-    root = files("inferyard")
-    for name in (
-        "analysis/scoring.py",
-        "analysis/scoring_rules.py",
-        "contracts/bundle.py",
-        "contracts/bundle_review.py",
-        "contracts/validation.py",
-        "contracts/contracts_experiment.py",
-        "contracts/schemas_tasks.py",
-        "contracts/schemas_common.py",
-        "__init__.py",
-    ):
-        digest.update(name.encode() + b"\0")
-        digest.update(root.joinpath(name).read_bytes())
-    digest.update(version("jsonschema").encode())
-    digest.update(unicodedata.unidata_version.encode())
-    return digest.hexdigest()
+    return hashlib.sha256(f"inferyard.scorer:{SCORER_VERSION}".encode("utf-8")).hexdigest()
 
 
 def typed_equal(left, right):

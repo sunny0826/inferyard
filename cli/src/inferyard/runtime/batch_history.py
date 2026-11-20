@@ -25,7 +25,6 @@ class HistoryLoader(Protocol):
 @dataclass(frozen=True, slots=True)
 class HistoryLoadOptions:
     source_identity: str
-    implementation_identity: JSONRecord
     history_loader: HistoryLoader
 
 
@@ -45,7 +44,6 @@ def load_plan_history(
                 plan,
                 loaded,
                 source_identity=options.source_identity,
-                implementation_identity=options.implementation_identity,
             ),
             None,
         )
@@ -55,7 +53,6 @@ def load_plan_history(
         loaded,
         HistoryOptions(
             source_identity=options.source_identity,
-            implementation_identity=options.implementation_identity,
             full_verification=False,
         ),
     )

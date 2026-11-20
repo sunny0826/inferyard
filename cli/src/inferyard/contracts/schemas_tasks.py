@@ -106,7 +106,17 @@ BUNDLE = obj(
         ),
         "cases": array(CASE, 1),
         "task_protocol": enum("quality", "performance"),
-    }
+    },
+    required=[
+        "schema_version",
+        "bundle_id",
+        "version",
+        "language",
+        "license_note",
+        "answer_policy",
+        "cases",
+        "task_protocol",
+    ],
 )
 
 

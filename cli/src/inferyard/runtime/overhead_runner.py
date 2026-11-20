@@ -99,12 +99,8 @@ async def run_overhead(
     protocol retain the complete input identities before any workload requests.
     """
     from inferyard.analysis.scoring import ScoringContext
-    from inferyard.implementation_identity import IdentityContext
 
-    identity_context, scoring_context = (
-        IdentityContext(source_hash=tool_source_hash),
-        ScoringContext(),
-    )
+    source_identity, scoring_context = tool_source_hash(), ScoringContext()
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
     deps = dependencies or TrialDependencies(adapter=adapter_factory(config["engine"]["adapter"]))
     trial = trial_for(plan, trial_id)
@@ -121,7 +117,7 @@ async def run_overhead(
         max_wall_seconds=max_wall_seconds,
         config_sha256=hashlib.sha256(json_bytes(config)).hexdigest(),
         bundle_sha256=hashlib.sha256(json_bytes(bundle)).hexdigest(),
-        tool_source_sha256=identity_context.source,
+        tool_source_sha256=source_identity,
         common_observer=common_observer,
         boundary_observer=boundary_observer,
         first_event_tolerance_ratio=first_event_tolerance_ratio,
@@ -154,8 +150,7 @@ async def run_overhead(
                     dependencies=local_deps,
                     host_lock=lock,
                     wall_budget_seconds=remaining,
-                    source_identity=identity_context.source,
-                    implementation_identity=identity_context.value,
+                    source_identity=source_identity,
                     scoring_context=scoring_context,
                 )
                 row = {

@@ -9,7 +9,6 @@ from inferyard.evidence.performance_evidence import clock_span
 from inferyard.evidence.storage import local_file, read_json, sha256_file
 from inferyard.evidence.trial_evidence import TrialEvidence
 from inferyard.extensions.extension_evidence import verify_packet
-from inferyard.implementation_identity import role_identity
 from inferyard.runtime.overhead_binding import workload_identity
 from inferyard.runtime.overhead_runner import read_overhead, request_projection
 
@@ -57,11 +56,10 @@ def workload_domain(data):
 
 def domain_reasons(control, data, control_metadata):
     reasons = []
-    identities = [
-        role_identity(d["run"].get("implementation_identity"), "measurement")
-        for d in (control, data)
+    versions = [
+        d["run"].get("definition_versions", {}).get("measurement") for d in (control, data)
     ]
-    if identities[0] is None or identities[0] != identities[1]:
+    if versions[0] is None or versions[0] != versions[1]:
         reasons.append("total_control_measurement_identity_unknown_or_different")
     if config_domain(control["config"]) != config_domain(data["config"]):
         reasons.append("total_control_target_loading_or_request_config_mismatch")

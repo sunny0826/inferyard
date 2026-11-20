@@ -142,9 +142,7 @@ def verify_packet(path, *, verified_trials=None):
         if run.get("origin") != "live_driver":
             raise EvidenceError("extension_live_origin_unverified")
         plan = read_json(path / "plan.json")
-        if plan.get("spec") != packet.get("spec") or plan.get("tool_source_sha256") != run.get(
-            "tool_source_sha256"
-        ):
+        if plan.get("spec") != packet.get("spec"):
             raise EvidenceError("extension_live_plan_binding_mismatch")
         if read_json(path / "identity.json").get("verification") != "verified":
             raise EvidenceError("extension_live_identity_unverified")

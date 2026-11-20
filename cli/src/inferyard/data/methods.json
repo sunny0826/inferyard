@@ -1,8 +1,7 @@
 {
   "catalogue_version": "2026-09-29.v1",
   "source": {
-    "path": "docs/reference/methods-matrix.md",
-    "sha256": "c84b93d1226ce0ff133e99d775db158dcfcf103992d08dc8c14d99a59f5197a5"
+    "path": "docs/reference/methods-matrix.md"
   },
   "items": [
     {

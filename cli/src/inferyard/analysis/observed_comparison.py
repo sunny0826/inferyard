@@ -49,16 +49,7 @@ def observed_differences(left, right, comparison):
     )
     definitions = [d["run"]["definition_versions"] for d in pair]
     measurement = definitions[0]["measurement"] == definitions[1]["measurement"]
-    scoring = (
-        definitions[0]["scoring"] == definitions[1]["scoring"]
-        and left["selection"]["scorer_sha256"] == right["selection"]["scorer_sha256"]
-    )
-    if comparison.get("definition") == "phase2.v3" and any(
-        "implementation_identity" in d["run"] for d in pair
-    ):
-        scoped = {c["field"]: c["status"] == "same" for c in comparison["conditions"]}
-        measurement = measurement and scoped.get("run.implementation_identity.measurement", False)
-        scoring = scoring and scoped.get("run.implementation_identity.scoring", False)
+    scoring = definitions[0]["scoring"] == definitions[1]["scoring"]
     protocol_match = all(
         c["status"] == "same" for c in comparison["conditions"] if c["field"] == "task_protocol"
     )

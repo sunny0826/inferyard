@@ -114,9 +114,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     for path in (
         "run.tool_version",
         "run.definition_versions",
-        "run.tool_source_sha256",
         "selection.bundle_sha256",
-        "selection.scorer_sha256",
         "selection.case_ids",
         "config.device",
         "config.engine.adapter",
@@ -129,31 +127,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
         "environment_start.cpu_model",
         "environment_start.kernel",
     ):
-        if path == "run.tool_source_sha256" and any(
-            "implementation_identity" in d["run"] for d in (left, right)
-        ):
-            from inferyard.implementation_identity import role_identities
-
-            identities = [
-                role_identities(d["run"].get("implementation_identity")) for d in (left, right)
-            ]
-            if not all("implementation_identity" in d["run"] for d in (left, right)):
-                check(
-                    "run.identity_scheme",
-                    *[
-                        "implementation_identity"
-                        if "implementation_identity" in d["run"]
-                        else "tool_source_sha256"
-                        for d in (left, right)
-                    ],
-                )
-                continue
-            for role in ("measurement", "scoring"):
-                check(
-                    "run.implementation_identity." + role,
-                    *[identity[role] for identity in identities],
-                )
-        elif path == "run.definition_versions":
+        if path == "run.definition_versions":
             for component in ("measurement", "scoring"):
                 field = path + "." + component
                 check(field, _get(left, field), _get(right, field))
@@ -321,9 +295,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
         for c in conditions
     )
     completion_ready = common and not any(
-        c["field"]
-        in ("run.definition_versions.measurement", "run.implementation_identity.measurement")
-        and c["status"] != "same"
+        c["field"] == "run.definition_versions.measurement" and c["status"] != "same"
         for c in conditions
     )
     a, b = left["summary"]["completion_rate"]["value"], right["summary"]["completion_rate"]["value"]

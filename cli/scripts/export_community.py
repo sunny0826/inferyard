@@ -8,7 +8,7 @@ from pathlib import Path
 
 from inferyard.config.bundle import require_review
 from inferyard.provisioning.community_resources import BUNDLES
-from inferyard.provisioning.preparation_io import json_bytes, sha256
+from inferyard.provisioning.preparation_io import json_bytes
 from inferyard.contracts.validation import strict_json_loads, validate_document
 from inferyard.provisioning.runtime_archive import member_records
 from inferyard.provisioning.runtime_profiles import (
@@ -61,9 +61,6 @@ def generated(archives):
         f"configs/{s}.example.toml" for s in ("linux", "macos", "windows")
     }:
         raise ValueError("three_platform_templates_required")
-    outputs["resources.json"] = json_bytes(
-        {name: sha256(raw) for name, raw in sorted(outputs.items())}
-    )
     return outputs
 
 

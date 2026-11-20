@@ -28,17 +28,9 @@ def _replay(request):
 
 def _run(request):
     from inferyard.extensions.workflow import live, read_plan
-    from inferyard.implementation_identity import IdentityContext
-    from inferyard.provenance import tool_source_hash
 
-    identity_context = IdentityContext(source_hash=tool_source_hash)
-    plan = read_plan(
-        request.extension_spec, request.config, source_identity=identity_context.source
-    )
-    return (
-        asyncio.run(live(plan, request.config, request.out, identity_context=identity_context)),
-        "executed",
-    )
+    plan = read_plan(request.extension_spec, request.config)
+    return asyncio.run(live(plan, request.config, request.out)), "executed"
 
 
 def execute(request):

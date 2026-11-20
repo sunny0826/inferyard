@@ -35,12 +35,12 @@ def read_trial_plan(spec, config, bundle, digest):
 
 
 async def execute_complete(
-    spec, plan, loaded, parent_store, lock, guard, *, dependencies=None, identity_context=None
+    spec, plan, loaded, parent_store, lock, guard, *, dependencies=None, source_identity=None
 ):
     from inferyard.analysis.scoring import ScoringContext
-    from inferyard.implementation_identity import IdentityContext
+    from inferyard.provenance import tool_source_hash
 
-    identity_context = identity_context or IdentityContext()
+    source_identity = source_identity or tool_source_hash()
     scoring_context = ScoringContext()
     deps = dependencies or TrialDependencies()
     pending = []
@@ -98,8 +98,7 @@ async def execute_complete(
             dependencies=local,
             host_lock=lock,
             wall_budget_seconds=spec["max_wall_seconds"],
-            source_identity=identity_context.source,
-            implementation_identity=identity_context.value,
+            source_identity=source_identity,
             scoring_context=scoring_context,
         )
         if arm.mode == "on":

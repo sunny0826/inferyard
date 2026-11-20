@@ -21,17 +21,26 @@ speed_service = speed_service_fixture
 def test_studio_context_speed_bridge(speed_service, monkeypatch, capsys):
     output = Path(os.environ["STUDIO_BRIDGE_OUTPUT"])
     output.mkdir(parents=True, exist_ok=False)
-    refused = speed_service["root"] / "review-refused"
+    accepted = speed_service["root"] / "draft-accepted"
     with monkeypatch.context() as draft:
         draft.setattr(
             "inferyard.config.community_workspace.resource_bytes", lambda _: outputs()[BUNDLE_NAME]
         )
+        code, response = invoke(capsys, "init", "--bundle", "zh-context-speed", "--out", accepted)
+    assert code == 0 and accepted.exists() and response["status"] == "prepared"
+    refused = speed_service["root"] / "invalid-refused"
+    broken = json.loads(outputs()[BUNDLE_NAME])
+    broken["cases"] = []
+    with monkeypatch.context() as invalid:
+        invalid.setattr(
+            "inferyard.config.community_workspace.resource_bytes",
+            lambda _: json.dumps(broken).encode("utf-8"),
+        )
         code, response = invoke(capsys, "init", "--bundle", "zh-context-speed", "--out", refused)
-    (output / "review-rejection.json").write_text(
+    (output / "validation-rejection.json").write_text(
         json.dumps({"exit_code": code, "response": response})
     )
     assert code == 4 and not refused.exists()
-    assert response["limitations"] == ["human_corpus_review_required"]
     assert response["status"] == "error" and response["details"] is None
     batch, _ = run_speed(speed_service, monkeypatch, capsys)
     before = tree_hashes(batch)

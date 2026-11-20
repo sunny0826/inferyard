@@ -11,7 +11,6 @@ from inferyard.contracts.validation import Document
 from inferyard.errors import EvidenceError, PreflightError
 from inferyard.analysis.ledger import resume_selection
 from inferyard.evidence.storage import read_json
-from inferyard.implementation_identity import IdentityContext
 from inferyard.provenance import tool_source_hash
 from inferyard.registry import (
     WINDOWS_BATCH_ADAPTERS,
@@ -114,8 +113,7 @@ async def execute_async(
 ) -> BatchOutcome:
     deps = dependencies or TrialDependencies(scorer=registered_score)
     scoring_context = ScoringContext()
-    identity_context = IdentityContext(source_hash=tool_source_hash)
-    source_identity = identity_context.source
+    source_identity = tool_source_hash()
     resume = request.command == "resume"
     root = request.from_run.parent.parent if resume else request.output_root
     if root is None:
@@ -128,7 +126,6 @@ async def execute_async(
             None if resume else request.frozen_plan,
             diagnostic,
             source_identity=source_identity,
-            implementation_identity=identity_context.value,
         )
         require_execution_support(plan, loaded)
         if (
@@ -146,7 +143,6 @@ async def execute_async(
             loaded,
             options=HistoryLoadOptions(
                 source_identity,
-                identity_context.value,
                 history,
             ),
         )
@@ -289,7 +285,6 @@ async def execute_async(
                 wall_budget_seconds=wall,
                 scoring_context=scoring_context,
                 source_identity=source_identity,
-                implementation_identity=identity_context.value,
             )
             data["path"] = path
             runs.append(data)

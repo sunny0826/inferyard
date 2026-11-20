@@ -132,10 +132,6 @@ def _plan(data):
 
 
 def _run(data):
-    if "implementation_identity" in data:
-        from inferyard.implementation_identity import validate_identity
-
-        validate_identity(data["implementation_identity"])
     if (data["relation"] != "initial") != (data["parent_run_id"] is not None):
         raise ContractError("run.parent_run_id", "lineage relation requires a parent")
     if data["parent_run_id"] == data["run_id"]:

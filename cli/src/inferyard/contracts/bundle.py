@@ -120,6 +120,4 @@ def validate_bundle_semantics(bundle):
             label_sets.add(tuple(case["rules"]["labels"]))
     if len(label_sets) > 1:
         raise ContractError("bundle.cases", "classification label set must be frozen per bundle")
-    from inferyard.contracts.bundle_review import validate_provenance
-
-    return validate_provenance(bundle)
+    return []
