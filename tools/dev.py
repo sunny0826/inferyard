@@ -295,7 +295,7 @@ def ensure_workspace(cli: Path, profile: Path) -> Path:
 
 def develop(root: Path, action: str, *, prepare_only: bool = False) -> None:
     root = root.resolve()
-    state_dir = (root / STATE_DIR_NAME).resolve()
+    state_dir = _safe_subdir(root, STATE_DIR_NAME)
     with launcher_lock(state_dir):
         check_legacy_active(state_dir)
         if action == "stop":

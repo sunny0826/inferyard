@@ -275,6 +275,90 @@ class DevLauncherTests(unittest.TestCase):
                     with dev.launcher_lock(state):
                         pass
 
+    def test_develop_rejects_symlink_state_root(self) -> None:
+        if os.name == "nt":
+            self.skipTest("POSIX symlink test")
+        with tempfile.TemporaryDirectory() as tmp:
+            root_a = Path(tmp) / "checkout-a"
+            root_b = Path(tmp) / "checkout-b"
+            (root_b / ".inferyard-dev").mkdir(parents=True)
+            root_a.mkdir()
+            (root_a / ".inferyard-dev").symlink_to(root_b / ".inferyard-dev")
+            with self.assertRaises(dev.DevError):
+                dev.develop(root_a, "stop")
+
+    def test_launch_terminates_child_if_initial_session_write_fails(self) -> None:
+        if os.name == "nt":
+            self.skipTest("POSIX executable script test")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = root / ".inferyard-dev"
+            state.mkdir()
+            profile = state / "profile"
+            assets = state / "assets"
+            profile.mkdir()
+            assets.mkdir()
+            slow_bin = root / "slow.py"
+            slow_bin.write_text(
+                f"#!{sys.executable}\n"
+                "import signal, sys, time\n"
+                "signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))\n"
+                "time.sleep(30)\n",
+                encoding="utf-8",
+            )
+            slow_bin.chmod(0o755)
+            spawned: list[int] = []
+            real_popen = dev_process.subprocess.Popen
+
+            def record_popen(*args, **kwargs):
+                p = real_popen(*args, **kwargs)
+                spawned.append(p.pid)
+                return p
+
+            with (
+                mock.patch.object(dev_process.subprocess, "Popen", side_effect=record_popen),
+                mock.patch.object(
+                    dev_process, "atomic_write_json", side_effect=dev.DevError("disk full")
+                ),
+            ):
+                with self.assertRaises(dev.DevError):
+                    dev.launch_studio(
+                        root, state, slow_bin, Path("/bin/echo"), profile, assets, "test"
+                    )
+            self.assertEqual(len(spawned), 1)
+            self.assertIsNone(dev_process.process_identity(spawned[0]))
+
+    def test_early_exit_with_shutdown_failed_retains_session(self) -> None:
+        if os.name == "nt":
+            self.skipTest("POSIX executable script test")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = root / ".inferyard-dev"
+            state.mkdir()
+            profile = state / "profile"
+            assets = state / "assets"
+            profile.mkdir()
+            assets.mkdir()
+            bad_bin = root / "bad_shutdown.py"
+            bad_bin.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys\n"
+                "status_path = sys.argv[sys.argv.index('--dev-status') + 1]\n"
+                "with open(status_path, 'w') as f:\n"
+                "    json.dump({'state': 'shutdown_failed', 'pid': os.getpid(), 'error': 'boom'}, f)\n"
+                "sys.exit(42)\n",
+                encoding="utf-8",
+            )
+            bad_bin.chmod(0o755)
+            with self.assertRaises(dev.DevError):
+                dev.launch_studio(
+                    root, state, bad_bin, Path("/bin/echo"), profile, assets, "test"
+                )
+            self.assertTrue((state / "session.json").is_file())
+            with self.assertRaises(dev.DevError):
+                dev.stop_recorded(state)
+            self.assertTrue((state / "session.json").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

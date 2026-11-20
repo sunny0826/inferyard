@@ -266,6 +266,20 @@ def _read_status(status_file: Path) -> dict[str, object] | None:
     return data if isinstance(data, dict) else None
 
 
+def _cleanup_exited_session(session_file: Path, record: dict[str, object]) -> None:
+    """Remove session_file only if no shutdown_failed / engine-owner failure remains."""
+    try:
+        verify_clean_shutdown(record)
+    except DevError:
+        if not session_file.exists():
+            try:
+                atomic_write_json(session_file, record)
+            except DevError:
+                pass
+        raise
+    session_file.unlink(missing_ok=True)
+
+
 def launch_studio(
     root: Path,
     state_dir: Path,
@@ -315,21 +329,26 @@ def launch_studio(
         "status_file": str(status_file),
         "log": str(log_path),
     }
+    session_persisted = False
 
     def _sync_starting_session() -> None:
+        nonlocal session_persisted
         ident = process_identity(proc.pid)
-        if ident is not None and (ident[0] != record["binary"] or ident[1] != record["start_id"]):
+        if ident is not None and (
+            not session_persisted or ident[0] != record["binary"] or ident[1] != record["start_id"]
+        ):
             record["binary"], record["start_id"] = ident
             atomic_write_json(session_file, record)
+            session_persisted = True
 
-    _sync_starting_session()
     deadline = time.monotonic() + ready_timeout
     ready = False
     try:
+        _sync_starting_session()
         while time.monotonic() < deadline:
             code = proc.poll()
             if code is not None:
-                session_file.unlink(missing_ok=True)
+                _cleanup_exited_session(session_file, record)
                 raise DevError(
                     f"Development Studio exited early with code {code}; inspect {log_path}"
                 )
@@ -341,10 +360,17 @@ def launch_studio(
             time.sleep(0.1)
     except BaseException:
         if proc.poll() is None:
-            try:
-                _sync_starting_session()
-            except DevError:
-                pass
+            if not session_persisted:
+                try:
+                    proc.terminate()
+                    proc.wait(timeout=5)
+                except (OSError, subprocess.TimeoutExpired):
+                    pass
+            else:
+                try:
+                    _sync_starting_session()
+                except DevError:
+                    pass
         raise
     if not ready:
         if proc.poll() is None:
@@ -354,7 +380,7 @@ def launch_studio(
             except (OSError, subprocess.TimeoutExpired):
                 pass
         if proc.poll() is not None:
-            session_file.unlink(missing_ok=True)
+            _cleanup_exited_session(session_file, record)
         else:
             try:
                 _sync_starting_session()
@@ -365,7 +391,7 @@ def launch_studio(
         )
     identity = process_identity(proc.pid)
     if identity is None:
-        session_file.unlink(missing_ok=True)
+        _cleanup_exited_session(session_file, record)
         raise DevError(
             f"Development Studio (PID {proc.pid}) exited immediately after ready; inspect {log_path}"
         )
