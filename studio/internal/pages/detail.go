@@ -8,7 +8,7 @@ import (
 
 func (s *viewState) detailView(c *ui.Context) {
 	s.header(c, "运行详情")
-	if button(c, "返回运行").Clicked() {
+	if button(c, "← 返回任务").Clicked() {
 		s.detailID = ""
 	}
 	errorView(c, s.detailError)
@@ -72,11 +72,11 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail, t core.
 	ui.Text(c, progressHeadline(p))
 	progressBar(c, progressValue(p.Done, p.Total), "运行题目进度")
 	ui.Text(c, fmt.Sprintf("%s当前题：%s", detailScope(t), text(p.CurrentCaseId)))
-	columns := []ui.TableColumn{{Title: "题目", Width: 180}, {Title: "状态", Width: 160}, {Title: "类别", Width: 100}, {Title: "质量", Width: 100}, {Title: "耗时 ms", Width: 100}, {Title: "错误类别", Width: 160}}
+	columns := []ui.TableColumn{{Title: "题目", Width: 180}, {Title: "状态", Width: 160}, {Title: "类别", Width: 100}, {Title: "质量", Width: 100}, {Title: "耗时", Width: 100}, {Title: "错误类别", Width: 160}}
 	s.casesTable.Key = func(i int) any { return p.Cases[i].CaseId }
 	pageTable(c, &s.casesTable, "题目进度表", columns, len(p.Cases), func(row, col int) {
 		item := p.Cases[row]
-		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), optionalText(item.QualityState), formatDurationMs(item.DurationMs), optionalText(item.ErrorCategory)}
+		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), reportQuality(item.QualityState), formatDurationMs(item.DurationMs), caseErrorCategory(item)}
 		ui.Text(c, values[col]).Selectable()
 	}).Height(240).Label("题目进度表")
 	componentFold(c, "进度原始字段", func() {
@@ -93,6 +93,20 @@ func progressHeadline(p *core.RunProgress) string {
 }
 
 func detailScope(t core.RunTask) string { return bundleScopeText(t.Kind == "resume") }
+
+// caseErrorCategory separates "not applicable" from "missing": a case that
+// finished without a failure has no error category by definition and reads
+// "—", while a failed case without a recorded category is a missing
+// measurement and keeps "缺测".
+func caseErrorCategory(item core.CaseProgress) string {
+	if item.ErrorCategory != nil && *item.ErrorCategory != "" {
+		return *item.ErrorCategory
+	}
+	if item.State == "failed" {
+		return "缺测"
+	}
+	return "—"
+}
 
 // optionalText renders an optional record field. A missing value is a missing
 // measurement, so it reads "缺测" instead of "未知", which suggested that an

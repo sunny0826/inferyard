@@ -66,7 +66,7 @@ func (s *viewState) historyReportsTabView(c *ui.Context) {
 func (s *viewState) reportSourcesView(c *ui.Context) {
 	componentFold(c, "从历史运行生成报告", func() {
 		errorView(c, s.historyError)
-		ui.Text(c, "选择来源 run（1–100 个）")
+		ui.Text(c, "选择来源运行（1–100 个）")
 		runs := s.historyRuns()
 		if s.historyError != nil {
 			button(c, "重试读取来源").AlignSelf(ui.Start).OnClick(s.refreshAction)
@@ -97,7 +97,7 @@ func (s *viewState) reportSourcesView(c *ui.Context) {
 		}).Label("报告来源运行列表").Height(220).Disabled(s.busy)
 		count := s.reportChoices.Len()
 		if count < 1 || count > 100 {
-			ui.Text(c, "请选择 1–100 个来源 run。")
+			ui.Text(c, "请选择 1–100 个来源运行。")
 		}
 		ui.Text(c, fmt.Sprintf("已选 %d / 100", count))
 		if button(c, "生成报告").AlignSelf(ui.Start).Disabled(s.busy || count < 1 || count > 100).Clicked() {

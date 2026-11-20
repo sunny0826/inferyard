@@ -131,9 +131,16 @@ func (s *viewState) deviceView(c *ui.Context) {
 		ui.Column(c).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Card.EmptyPadding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() {
 			heading(c, "尚无设备快照", 2)
 			ui.Text(c, "采集本机硬件与 GPU 信息，不向模型发送请求。").TextColor(c.Theme().TextMuted)
-			if button(c, "前往设置配置模型目录").AlignSelf(ui.Start).Clicked() {
-				s.selected = "settings"
-			}
+			// Collecting is the action this empty state exists for, so it is the
+			// primary control; configuring the model directory stays secondary.
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
+				if primaryButton(c, "采集设备信息").Clicked() {
+					s.refreshDevice()
+				}
+				if button(c, "前往设置").Clicked() {
+					s.selected = "settings"
+				}
+			})
 		})
 	}
 }

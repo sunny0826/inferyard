@@ -20,14 +20,34 @@ func formatBytes(value *int64) string {
 	}
 }
 
+// formatDurationMs keeps short cases in integer milliseconds and switches to
+// seconds from one second on, so a case table never shows a bare "1240.00".
+// A missing measurement stays "缺测"; it is not the same as "不适用" ("—").
 func formatDurationMs(value *float64) string {
 	if value == nil {
 		return "缺测"
 	}
-	return fmt.Sprintf("%.2f", *value)
+	if *value < 1000 {
+		return fmt.Sprintf("%.0f ms", *value)
+	}
+	return fmt.Sprintf("%.2f s", *value/1000)
 }
 
+// formatTimestamp renders a recorded UTC timestamp in the local timezone for
+// primary UI text. Raw evidence tables keep formatTimestampUTC.
 func formatTimestamp(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return parsed.Local().Format("2006-01-02 15:04:05")
+	}
+	return raw
+}
+
+// formatTimestampUTC keeps the UTC instant and its trailing Z for raw evidence
+// tables, where the time basis must stay explicit.
+func formatTimestampUTC(raw string) string {
 	if raw == "" {
 		return ""
 	}

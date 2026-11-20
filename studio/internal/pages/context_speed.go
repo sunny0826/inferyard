@@ -311,7 +311,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 			ui.Text(c, "有效 5/5 · 中位数")
 			if r.result != nil && r.result.Summary != nil {
 				v := r.result.Summary.Columns
-				ui.Text(c, fmt.Sprintf("范围：Time %.2f–%.2f s · Prefill %.2f–%.2f tok/s · Decode %.2f–%.2f tok/s", v.Time.Min, v.Time.Max, v.Prefill.Min, v.Prefill.Max, v.Decode.Min, v.Decode.Max))
+				ui.Text(c, fmt.Sprintf("范围：输入处理 %.2f–%.2f s · Prefill %.2f–%.2f tok/s · Decode %.2f–%.2f tok/s", v.Time.Min, v.Time.Max, v.Prefill.Min, v.Prefill.Max, v.Decode.Min, v.Decode.Max))
 			}
 			speedTable(c.Key("speed-summary"), &w.table, "专项六项指标", r, []speedSample{*r.summary})
 		} else {
@@ -320,7 +320,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 				speedTable(c.Key("speed-partial"), &w.table, "专项已完成测量", r, r.samples)
 			}
 		}
-		ui.Text(c, "Time 为输入处理耗时（含首采样）；Prompt length 为模板后实际输入；— 表示缺测。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "输入处理为从请求发出到首个采样的耗时；输入长度为模板化后的实际 token 数；Prefill 与 Decode 为 token/s；— 表示缺测。").TextColor(c.Theme().TextMuted)
 	})
 	if r.summary == nil || r.reason != "" {
 		componentFold(c.Key(r.id), "查看诊断详情", func() {
@@ -347,11 +347,11 @@ func (s *viewState) speedResultView(c *ui.Context) {
 func speedTable(c *ui.Context, state *pageTableState, label string, task *speedTask, rows []speedSample) {
 	columns := []ui.TableColumn{
 		{Title: "模型 / 引擎", MinWidth: c.Theme().Rem(14)},
-		{Title: "Context", MinWidth: c.Theme().Rem(6)},
-		{Title: "Prompt length (tokens)", MinWidth: c.Theme().Rem(13)},
-		{Title: "Time (s)", MinWidth: c.Theme().Rem(6)},
-		{Title: "Prefill (tok/s)", MinWidth: c.Theme().Rem(8.5)},
-		{Title: "Decode (tok/s)", MinWidth: c.Theme().Rem(9)},
+		{Title: "上下文（tokens）", MinWidth: c.Theme().Rem(9)},
+		{Title: "输入长度（tokens）", MinWidth: c.Theme().Rem(11)},
+		{Title: "输入处理（s）", MinWidth: c.Theme().Rem(9)},
+		{Title: "Prefill（tok/s）", MinWidth: c.Theme().Rem(9)},
+		{Title: "Decode（tok/s）", MinWidth: c.Theme().Rem(9)},
 	}
 	selectableTable(state, func(i int) any { return i }, func(i int) string { return fmt.Sprintf("测量行 %d", i+1) })
 	pageTable(c, state, label, columns, len(rows), func(row, col int) {
