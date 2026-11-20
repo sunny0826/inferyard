@@ -114,13 +114,27 @@ extension PreviewUITests {
         button.click()
     }
 
-    /// selectTab chooses a page tab. MyGo exports RoleTab as AXRadioButton on
-    /// macOS, so a tab is never reachable through app.buttons. Callers assert the
-    /// chosen tab's content, which proves the choice took effect.
-    func selectTab(_ label: String, timeout: TimeInterval = 5) {
-        let tab = app.radioButtons[label].firstMatch
-        wait("tab \(label) exists", timeout: timeout) { tab.exists }
-        tab.click()
+    /// selectTab chooses a page tab. MyGo exports RoleTab as an AXTabButton, so
+    /// macOS reports a `Tab` element whose name is its title, not a button or a
+    /// radio button, and neither label nor value carries the name. Callers
+    /// assert the chosen tab's content, which proves the choice took effect.
+    func selectTab(_ name: String, timeout: TimeInterval = 5) {
+        let control = tab(name)
+        wait("tab \(name) exists", timeout: timeout) { control.exists }
+        control.click()
+    }
+
+    /// expectTab waits for a page tab, which expectText cannot find because a
+    /// tab's name is its title and its value is only the chosen flag.
+    func expectTab(_ name: String, timeout: TimeInterval = 5) {
+        let control = tab(name)
+        wait("Missing tab: \(name)", timeout: timeout) { control.exists }
+    }
+
+    func tab(_ name: String) -> XCUIElement {
+        let predicate = NSPredicate(format: "title == %@ OR label == %@", name, name)
+        let element = app.tabs.matching(predicate).firstMatch
+        return element.exists ? element : app.radioButtons.matching(predicate).firstMatch
     }
 
     func expectText(_ text: String, timeout: TimeInterval = 10) {

@@ -260,6 +260,10 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		p.resetTask(s.model, s.engine)
 		s.progress, s.task.stage = nil, ""
 		s.ready.Workspace.Initialized = false
+		// Production applies a workspace switch through resetWorkspace, which
+		// drops the Reports tab and the open detail: their data belonged to the
+		// previous workspace. Preview keeps the same behaviour.
+		s.reportsTab, s.openedReport = reportsTabList, nil
 	}
 	p.notice = "设置已保存到本次模拟会话。"
 }
