@@ -213,6 +213,14 @@ func dsComponentsSection(c *ui.Context, st *dsShowcaseState) {
 			stateBanner(c, stateDanger, lucide.CircleAlert, func(fg ui.Color) {
 				ui.Text(c, "错误（Danger）：服务连接已断开 · engine_unreachable").TextColor(fg)
 			})
+			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
+				ui.Text(c, "进度条（进行中 · 钢蓝 62%）").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				progressBar(c, 0.62, "进行中进度")
+				ui.Text(c, "进度条（已完成 · 松绿 100%）").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				progressBar(c, 1.0, "已完成进度")
+				ui.Text(c, "进度条（总量未知 · 不确定脉冲）").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				progressBar(c, -1, "不确定进度")
+			})
 		})
 		section(c, "表单与选择控件", func() {
 			segmentedField(c, "上下文档位（Segmented · R=12 → 8）", "", &st.segment, []components.NativeSelectOption[string]{

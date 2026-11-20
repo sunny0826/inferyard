@@ -71,10 +71,40 @@ func progressValue(done int64, total *int64) float64 {
 }
 
 func progressBar(c *ui.Context, value float64, label string) ui.Element {
-	if math.IsNaN(value) || math.IsInf(value, 0) || value > 1 {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		value = -1
+	} else if value > 1 {
 		value = -1
 	}
-	return components.Progress(c, value).Label(label)
+	t := tokens(c)
+	reduced := c.Preferences().ReduceMotion
+	trackColor := t.Color.BorderSubtle
+	fillColor := t.Color.Active.Solid
+	if value >= 1 {
+		fillColor = t.Color.Success.Solid
+	}
+	e := ui.Box(c).Height(c.Theme().Space(1.5)).FillWidth().Role(ui.RoleProgress).Range(0, 1, value).Label(label)
+	e.Draw(func(p *ui.Painter, r ui.Rect) {
+		if r.W <= 0 || r.H <= 0 {
+			return
+		}
+		rad := r.H / 2
+		p.Fill(r, trackColor, rad)
+		x, w := r.X, r.W*float32(value)
+		if value < 0 {
+			phase := 0.25
+			if !reduced {
+				p.AnimationFrame()
+				phase = float64(p.Now().UnixMilli()%1400) / 1400
+			}
+			w = r.W * 0.3
+			x = r.X + (r.W-w)*float32((1-math.Cos(phase*2*math.Pi))/2)
+		}
+		if w > 0 {
+			p.Clip(r, rad, func() { p.Fill(ui.Rect{X: x, Y: r.Y, W: w, H: r.H}, fillColor, rad) })
+		}
+	})
+	return e
 }
 
 func errorAnnouncement(e *core.ApiError) string {

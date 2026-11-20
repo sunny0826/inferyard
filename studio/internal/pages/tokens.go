@@ -207,15 +207,15 @@ func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
 func elevationTokensFor(dark bool) elevationTokens {
 	if dark {
 		return elevationTokens{
-			XS: shadowSpec{X: 0, Y: 1, Blur: 2, Spread: 0, Color: ui.RGBA(0, 0, 0, 61)},
-			MD: shadowSpec{X: 0, Y: 8, Blur: 20, Spread: -2, Color: ui.RGBA(0, 0, 0, 107)},
-			LG: shadowSpec{X: 0, Y: 18, Blur: 36, Spread: -4, Color: ui.RGBA(0, 0, 0, 148)},
+			XS: shadowSpec{X: 0, Y: 1, Blur: 2, Spread: 0, Color: ui.RGBA(0, 0, 0, 24)},
+			MD: shadowSpec{X: 0, Y: 5, Blur: 12, Spread: -2, Color: ui.RGBA(0, 0, 0, 56)},
+			LG: shadowSpec{X: 0, Y: 10, Blur: 24, Spread: -4, Color: ui.RGBA(0, 0, 0, 84)},
 		}
 	}
 	return elevationTokens{
-		XS: shadowSpec{X: 0, Y: 1, Blur: 2, Spread: 0, Color: ui.RGBA(0, 0, 0, 13)},
-		MD: shadowSpec{X: 0, Y: 6, Blur: 16, Spread: -2, Color: ui.RGBA(0, 0, 0, 26)},
-		LG: shadowSpec{X: 0, Y: 14, Blur: 32, Spread: -4, Color: ui.RGBA(0, 0, 0, 41)},
+		XS: shadowSpec{X: 0, Y: 1, Blur: 2, Spread: 0, Color: ui.RGBA(0, 0, 0, 8)},
+		MD: shadowSpec{X: 0, Y: 4, Blur: 10, Spread: -2, Color: ui.RGBA(0, 0, 0, 16)},
+		LG: shadowSpec{X: 0, Y: 10, Blur: 22, Spread: -4, Color: ui.RGBA(0, 0, 0, 26)},
 	}
 }
 
@@ -238,7 +238,7 @@ func applyMaterial(c *ui.Context, el ui.Element, kind materialKind) ui.Element {
 	case materialInset:
 		return el.Background(t.Color.Surface).Radius(t.Radius.LG).Border(t.Card.Border, t.Color.BorderSubtle).NoShadow()
 	case materialControl:
-		return applyShadow(el.Background(t.Color.Surface).Radius(t.Radius.MD).Border(1, t.Color.BorderDefault), t.Elevation.XS)
+		return el.Background(t.Color.Surface).Radius(t.Radius.MD).Border(1, t.Color.BorderDefault).NoShadow()
 	case materialFloating:
 		return applyShadow(el.Background(t.Color.Elevated).Radius(t.Radius.LG).Border(1, t.Color.BorderDefault), t.Elevation.MD)
 	case materialModal:

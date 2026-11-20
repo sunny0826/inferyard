@@ -21,6 +21,7 @@ type previewSession struct {
 	win                *mygo.Window
 	scene              int
 	themeMode          int
+	appliedThemeMode   int
 	generation         int
 	notice             string
 	failNext           bool
@@ -53,7 +54,23 @@ func newPreviewSession(ctx context.Context) *previewSession {
 	return p
 }
 
+func (p *previewSession) syncNativeTheme() {
+	if p.win == nil || p.appliedThemeMode == p.themeMode {
+		return
+	}
+	p.appliedThemeMode = p.themeMode
+	switch p.themeMode {
+	case 1:
+		mygo.Theme.SetSource(mygo.ThemeLight)
+	case 2:
+		mygo.Theme.SetSource(mygo.ThemeDark)
+	default:
+		mygo.Theme.SetSource(mygo.ThemeSystem)
+	}
+}
+
 func (p *previewSession) themeFor(c *ui.Context) *ui.Theme {
+	p.syncNativeTheme()
 	switch p.themeMode {
 	case 1:
 		return studioThemeFor(c, false)
