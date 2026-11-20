@@ -61,6 +61,7 @@ var previewScenes = []struct {
 			{PID: 4001, ProcessName: "LM Studio", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:48857", Models: []string{"local.gguf", "local-weights"}}}},
 		}}
 	}},
+	{"设计系统 · Token 与材质", func(s *viewState) { s.selected = "design_system" }},
 }
 
 func previewDenseResources(s *viewState) {

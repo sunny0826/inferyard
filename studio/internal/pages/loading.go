@@ -147,8 +147,7 @@ func secondaryActionButton(c *ui.Context, label string, active bool) ui.Element 
 
 func skeletonCard(c *ui.Context, title string, lines int, label string) {
 	t := tokens(c)
-	ui.Column(c).MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding).
-		Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).
+	applyMaterial(c, ui.Column(c).MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).
 		Children(func() {
 			if title != "" {
 				heading(c, title, 2)

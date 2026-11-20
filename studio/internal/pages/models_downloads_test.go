@@ -100,7 +100,7 @@ func TestEngineActivityBarStaysIndeterminate(t *testing.T) {
 	s.downloads = []core.DownloadTask{{TaskId: "engine", Kind: "engine", OutName: "engine-fixture", State: "downloading"}}
 	var accent ui.Color
 	tt := ui.NewTester(func(c *ui.Context) {
-		accent = c.Theme().Accent
+		accent = stateColor(c, stateActive)
 		ui.Column(c).Children(func() { s.downloadsView(c) })
 	}, 1000, 1200)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})

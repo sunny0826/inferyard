@@ -13,19 +13,17 @@ import (
 
 func stateBanner(c *ui.Context, kind stateKind, icon func() *ui.SVG, fn func(foreground ui.Color)) {
 	t := tokens(c)
-	theme := c.Theme()
-	color := stateColor(c, kind)
-	banner := ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Inset).Radius(t.Radius.Inset)
+	scale := stateScale(c, kind)
+	banner := ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Stack).Radius(t.Radius.LG)
 	if c.Preferences().HighContrast {
-		banner.Background(theme.Surface).Border(1, color)
+		banner.Background(scale.SubtleBg).Border(1, scale.Border)
 	} else {
-		banner.Background(theme.Surface.Mix(color, .07)).BorderWidth(0, 0, 0, 2).BorderColor(color)
+		banner.Background(scale.SubtleBg).BorderWidth(0, 0, 0, 3).BorderColor(scale.Solid)
 	}
-	foreground := color.Mix(theme.Text, .2)
 	banner.Children(func() {
 		ui.Row(c).AlignItems(ui.Start).Gap(t.Density.Row).Children(func() {
-			components.Icon(c, icon).Size(t.Type.Body, t.Type.Body).TextColor(foreground)
-			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() { fn(foreground) })
+			components.Icon(c, icon).Size(t.Type.Body, t.Type.Body).TextColor(scale.Fg)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() { fn(scale.Fg) })
 		})
 	})
 }

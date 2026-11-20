@@ -55,7 +55,7 @@ func hueDistance(a, b float64) float64 {
 func TestStudioPaletteStateColorsMeetContrastFloor(t *testing.T) {
 	for name, p := range map[string]paletteColors{"light": studioLightPalette, "dark": studioDarkPalette} {
 		surfaces := map[string]ui.Color{"background": p.background, "surface": p.surface, "surfaceHover": p.surfaceHover}
-		for label, color := range map[string]ui.Color{"success": p.success, "warning": p.warning, "danger": p.danger} {
+		for label, color := range map[string]ui.Color{"info": p.info, "success": p.success, "warning": p.warning, "danger": p.danger} {
 			for surface, background := range surfaces {
 				if got := contrastRatio(color, background); got < 4.5 {
 					t.Errorf("%s %s on %s: contrast %.2f < 4.5", name, label, surface, got)
@@ -65,10 +65,33 @@ func TestStudioPaletteStateColorsMeetContrastFloor(t *testing.T) {
 	}
 }
 
+func TestStudioPaletteMonochromeAccentAndNeutralGray(t *testing.T) {
+	for name, p := range map[string]paletteColors{"light": studioLightPalette, "dark": studioDarkPalette} {
+		neutrals := map[string]ui.Color{
+			"background": p.background, "sunken": p.sunken, "surface": p.surface,
+			"surfaceHover": p.surfaceHover, "surfacePressed": p.surfacePressed,
+			"elevated": p.elevated, "borderSubtle": p.borderSubtle, "border": p.border,
+			"borderStrong": p.borderStrong, "text": p.text, "muted": p.muted, "tertiary": p.tertiary,
+			"accent": p.accent, "accentHover": p.accentHover, "accentPressed": p.accentPressed, "accentText": p.accentText,
+		}
+		for label, color := range neutrals {
+			if color.R != color.G || color.G != color.B {
+				t.Errorf("%s %s (%d,%d,%d) is not pure neutral", name, label, color.R, color.G, color.B)
+			}
+		}
+		if got := contrastRatio(p.accent, p.accentText); got < 12.0 {
+			t.Errorf("%s accent/accentText contrast %.2f < 12.0", name, got)
+		}
+	}
+}
+
 func TestStudioPaletteSemanticHuesStayDistinct(t *testing.T) {
 	for name, p := range map[string]paletteColors{"light": studioLightPalette, "dark": studioDarkPalette} {
-		colors := map[string]ui.Color{"accent": p.accent, "warning": p.warning, "danger": p.danger}
-		pairs := [][2]string{{"accent", "warning"}, {"accent", "danger"}, {"warning", "danger"}}
+		colors := map[string]ui.Color{"info": p.info, "success": p.success, "warning": p.warning, "danger": p.danger}
+		pairs := [][2]string{
+			{"info", "success"}, {"info", "warning"}, {"info", "danger"},
+			{"success", "warning"}, {"success", "danger"}, {"warning", "danger"},
+		}
 		for _, pair := range pairs {
 			a, b := hue(colors[pair[0]]), hue(colors[pair[1]])
 			if got := hueDistance(a, b); got < 15 {
@@ -79,13 +102,52 @@ func TestStudioPaletteSemanticHuesStayDistinct(t *testing.T) {
 }
 
 func TestStudioBannerTextContrast(t *testing.T) {
-	for name, p := range map[string]paletteColors{"light": studioLightPalette, "dark": studioDarkPalette} {
-		for label, color := range map[string]ui.Color{"danger": p.danger, "warning": p.warning} {
-			background := p.surface.Mix(color, .07)
-			foreground := color.Mix(p.text, .2)
-			if got := contrastRatio(foreground, background); got < 4.5 {
+	for _, dark := range []bool{false, true} {
+		name := "light"
+		if dark {
+			name = "dark"
+		}
+		p := paletteFor(dark)
+		for label, color := range map[string]ui.Color{"info": p.info, "success": p.success, "warning": p.warning, "danger": p.danger} {
+			scale := stateScaleFor(p.surface, p.text, color, dark, false)
+			if got := contrastRatio(scale.Fg, scale.SubtleBg); got < 4.5 {
 				t.Errorf("%s %s banner: contrast %.2f < 4.5", name, label, got)
 			}
 		}
+	}
+}
+
+func TestStudioSpacingAndConcentricRadius(t *testing.T) {
+	theme := &ui.Theme{Spacing: 4, Radius: 8, FontSize: 14}
+	space := spacingTokensFor(theme)
+	if space.Page != 24 || space.Section != 16 || space.CardGap != 12 || space.Row != 8 || space.Tight != 4 || space.Hairline != 2 {
+		t.Fatalf("unexpected 4px spacing scale: %+v", space)
+	}
+	radius, card, _ := surfaceTokensFor(theme)
+	if radius.Control != 8 || radius.Floating != 12 || radius.Surface != 16 || radius.Modal != 20 || card.Padding != 16 {
+		t.Fatalf("unexpected soft rounded radius/card scale: radius=%+v card=%+v", radius, card)
+	}
+	if got := concentricRadius(radius.LG, space.Tight); got != 8 {
+		t.Fatalf("concentricRadius(12, 4) = %v, want 8", got)
+	}
+	if got := concentricRadius(radius.MD, space.Stack); got != 4 {
+		t.Fatalf("concentricRadius(8, 12) = %v, want floor 4", got)
+	}
+}
+
+func TestStudioShadowsStaySubtle(t *testing.T) {
+	light := elevationTokensFor(false)
+	if light.XS.Color.A == 0 || light.XS.Color.A > 16 {
+		t.Fatalf("light XS shadow alpha = %d, want subtle (1..16)", light.XS.Color.A)
+	}
+	if light.LG.Color.A > 40 {
+		t.Fatalf("light LG shadow alpha = %d, want <= 40", light.LG.Color.A)
+	}
+	dark := elevationTokensFor(true)
+	if dark.XS.Color.A == 0 || dark.XS.Color.A > 42 {
+		t.Fatalf("dark XS shadow alpha = %d, want subtle (1..42)", dark.XS.Color.A)
+	}
+	if dark.LG.Color.A > 96 {
+		t.Fatalf("dark LG shadow alpha = %d, want <= 96", dark.LG.Color.A)
 	}
 }

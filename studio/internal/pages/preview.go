@@ -20,6 +20,8 @@ type previewSession struct {
 	state              *viewState
 	win                *mygo.Window
 	scene              int
+	themeMode          int
+	appliedThemeMode   int
 	generation         int
 	notice             string
 	failNext           bool
@@ -52,8 +54,36 @@ func newPreviewSession(ctx context.Context) *previewSession {
 	return p
 }
 
+func (p *previewSession) syncNativeTheme() {
+	if p.win == nil || p.appliedThemeMode == p.themeMode {
+		return
+	}
+	p.appliedThemeMode = p.themeMode
+	switch p.themeMode {
+	case 1:
+		mygo.Theme.SetSource(mygo.ThemeLight)
+	case 2:
+		mygo.Theme.SetSource(mygo.ThemeDark)
+	default:
+		mygo.Theme.SetSource(mygo.ThemeSystem)
+	}
+}
+
+func (p *previewSession) themeFor(c *ui.Context) *ui.Theme {
+	p.syncNativeTheme()
+	switch p.themeMode {
+	case 1:
+		return studioThemeFor(c, false)
+	case 2:
+		return studioThemeFor(c, true)
+	default:
+		return studioTheme(c)
+	}
+}
+
 func (p *previewSession) shellOptions() sidebar.ShellOptions {
 	options := pageShellOptions("InferYard Studio · UI 调试", "", p.left, p.content)
+	options.Theme = p.themeFor
 	options.ContentTitle = func(c *ui.Context) {
 		ui.Text(c, "UI 调试 · 模拟数据").SingleLine().TextColor(stateColor(c, stateWarning))
 	}
@@ -97,6 +127,11 @@ func (p *previewSession) left(c *ui.Context) {
 					}
 				})
 				button(c, "重置场景").OnClick(func() { p.loadScene(p.scene) })
+				segmentedField(c, "外观预览", "", &p.themeMode, []components.NativeSelectOption[int]{
+					{Label: "系统", Value: 0},
+					{Label: "浅色", Value: 1},
+					{Label: "深灰", Value: 2},
+				})
 				components.Checkbox(c, &p.failNext, "下次操作模拟失败")
 				if p.state.speed != nil && (p.state.speed.selected || p.state.speed.current != nil) {
 					components.Checkbox(c, &p.speedMissingTiming, "下次专项模拟缺测")
@@ -111,6 +146,10 @@ func (p *previewSession) left(c *ui.Context) {
 }
 
 func (p *previewSession) content(c *ui.Context) {
+	if p.state.selected == "design_system" {
+		ui.Column(c.Key(p.generation)).Fill().Children(func() { p.designSystemView(c) })
+		return
+	}
 	ui.Column(c.Key(p.generation)).Fill().Children(func() { p.state.contentView(c) })
 }
 func (p *previewSession) showNotice() {

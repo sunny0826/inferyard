@@ -40,10 +40,13 @@ func TestTimeFormattingRoundsToTwoDecimals(t *testing.T) {
 }
 
 func TestConcentricRadiusComputation(t *testing.T) {
-	if got := concentricRadius(12, 9); got != 3 {
-		t.Fatalf("concentricRadius(12, 9) = %v, want 3", got)
+	if got := concentricRadius(16, 8); got != 8 {
+		t.Fatalf("concentricRadius(16, 8) = %v, want 8", got)
 	}
-	if got := concentricRadius(6, 10); got != 2 {
-		t.Fatalf("concentricRadius(6, 10) = %v, want floor 2", got)
+	if got := concentricRadius(12, 4); got != 8 {
+		t.Fatalf("concentricRadius(12, 4) = %v, want 8", got)
+	}
+	if got := concentricRadius(6, 10); got != 4 {
+		t.Fatalf("concentricRadius(6, 10) = %v, want floor 4", got)
 	}
 }
