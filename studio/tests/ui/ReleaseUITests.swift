@@ -78,14 +78,16 @@ final class ReleaseUITests: XCTestCase {
 
     /// expectTab waits for a page tab. AppKit exposes the tab as a `Tab`
     /// element whose name is its title, so neither the text matcher (label or
-    /// value) nor app.radioButtons finds it.
+    /// value) nor app.radioButtons finds it. The tab can render a few frames
+    /// after its page data loads, so both roles are polled until one appears
+    /// instead of choosing a query once.
     private func expectTab(_ name: String, timeout: TimeInterval = 10) {
         let predicate = NSPredicate(format: "title == %@ OR label == %@", name, name)
-        var control = app.tabs.matching(predicate).firstMatch
-        if !control.exists {
-            control = app.radioButtons.matching(predicate).firstMatch
+        let tabElement = app.tabs.matching(predicate).firstMatch
+        let radioElement = app.radioButtons.matching(predicate).firstMatch
+        wait("Missing tab: \(name)", timeout: timeout) {
+            tabElement.exists || radioElement.exists
         }
-        wait("Missing tab: \(name)", timeout: timeout) { control.exists }
     }
 
     private func expectExists(_ element: XCUIElement, timeout: TimeInterval) {
