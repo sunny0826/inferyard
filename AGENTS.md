@@ -16,16 +16,18 @@ CLI 源码位于 `cli/src/inferyard/`：业务模块不依赖 `cli/` 入口；�
 版本由 [mise.toml](mise.toml) 固定，勿混用系统 Python 或全局 pip。CLI 命令在 `cli/` 目录执行，Studio 命令在 `studio/` 目录执行（根级 `mise` tasks 已内置目录切换）：
 
 ```bash
-# CLI（在 cli/ 执行）
-mise exec -- uv run --frozen pytest -q
+# CLI（在 cli/ 执行，或根级 mise run test:unit / mise run test）
+mise exec -- uv run --frozen pytest tests/unit -q
+mise exec -- uv run --frozen pytest -n auto -q
 mise exec -- uv run --frozen ruff check src tests scripts
 mise exec -- uv run --frozen python scripts/export_schemas.py --check
 mise exec -- uv run --frozen python scripts/export_catalogue.py --check
 mise exec -- uv run --frozen python scripts/export_community.py --check
 
-# Studio（在 studio/ 执行）
-mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./...
+# Studio（在 studio/ 执行，或根级 mise run test:studio / mise run test:studio:e2e）
+mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test . ./internal/... -count=1
 mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test -tags ui_debug . ./internal/pages -count=1
+mise exec -- env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./tests/e2e/ -count=1
 
 # macOS 原生 UI E2E（需已登录桌面与完整 Xcode，在仓库根执行）
 mise run test:studio-ui

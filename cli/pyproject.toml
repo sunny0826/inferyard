@@ -26,7 +26,13 @@ inferyard = "inferyard.cli:main"
 
 [dependency-groups]
 # Cross-platform test doubles import native helpers on Linux as well.
-dev = ["pytest>=8.4,<10", "jsonschema>=4.25,<5", "psutil==7.2.2", "ruff>=0.12,<1"]
+dev = [
+    "pytest>=8.4,<10",
+    "jsonschema>=4.25,<5",
+    "psutil==7.2.2",
+    "ruff>=0.12,<1",
+    "pytest-xdist>=3.8,<4",
+]
 
 [tool.uv]
 build-constraint-dependencies = [

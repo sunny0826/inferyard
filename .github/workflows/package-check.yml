@@ -23,7 +23,7 @@ defaults:
   run:
     working-directory: cli
 jobs:
-  build:
+  check:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -31,11 +31,21 @@ jobs:
           persist-credentials: false
       - uses: jdx/mise-action@v5.2.4
       - run: mise exec -- uv sync --frozen
-      - run: mise exec -- uv run --frozen pytest -q
+      - run: mise exec -- uv run --frozen pytest -n auto -q
       - run: mise exec -- uv run --frozen ruff check src tests scripts
       - run: mise exec -- uv run --frozen python scripts/export_schemas.py --check
       - run: mise exec -- uv run --frozen python scripts/export_catalogue.py --check
       - run: mise exec -- uv run --frozen python scripts/export_community.py --check
+  build:
+    needs: check
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - run: mise exec -- uv sync --frozen
       - run: mise exec -- uv run --frozen python scripts/build_distribution.py --out dist/package-check
       - run: mise exec -- uv run --frozen python -m tests.packaging.prepare_inputs --out dist/package-inputs
       - uses: actions/upload-artifact@v7
@@ -47,6 +57,7 @@ jobs:
           if-no-files-found: error
   installed:
     needs: build
+    if: github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:

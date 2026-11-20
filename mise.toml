@@ -16,7 +16,20 @@ description = "Gracefully stop only this checkout's recorded development Studio"
 run = "python tools/dev.py stop"
 
 [tasks.test]
-run = "cd cli && uv run --frozen pytest"
+description = "Run full CLI test suite in parallel"
+run = "cd cli && uv run --frozen pytest -n auto -q"
+
+[tasks."test:unit"]
+description = "Run fast CLI unit tests"
+run = "cd cli && uv run --frozen pytest tests/unit -q"
+
+[tasks."test:studio"]
+description = "Run Studio Go unit tests (excluding e2e)"
+run = "cd studio && env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test . ./internal/... -count=1"
+
+[tasks."test:studio:e2e"]
+description = "Run Studio Go e2e tests"
+run = "cd studio && env GOTOOLCHAIN=go1.27.3 GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 go test ./tests/e2e/ -count=1"
 
 [tasks.lint]
 run = "cd cli && uv run --frozen ruff check src tests scripts"

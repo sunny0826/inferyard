@@ -1,17 +1,5 @@
 name: Studio release candidate
 on:
-  pull_request:
-    paths:
-      - "studio/**"
-      - "!studio/README.md"
-      - "cli/schemas/**"
-      - "cli/src/inferyard/reporting/**"
-      - "cli/src/inferyard/contracts/**"
-      - "cli/pyproject.toml"
-      - "cli/uv.lock"
-      - "LICENSE"
-      - "mise.toml"
-      - ".github/workflows/studio-release.yml"
   workflow_dispatch:
 permissions:
   contents: read
