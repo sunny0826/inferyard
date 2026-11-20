@@ -32,18 +32,18 @@ type colorTokens struct {
 
 var (
 	studioLightPalette = paletteColors{
-		background:     ui.Hex("#f7f7f7"),
-		sunken:         ui.Hex("#efefef"),
+		background:     ui.Hex("#fafafa"),
+		sunken:         ui.Hex("#f4f4f4"),
 		surface:        ui.Hex("#ffffff"),
-		surfaceHover:   ui.Hex("#f2f2f2"),
-		surfacePressed: ui.Hex("#e6e6e6"),
+		surfaceHover:   ui.Hex("#f4f4f4"),
+		surfacePressed: ui.Hex("#ebebeb"),
 		elevated:       ui.Hex("#ffffff"),
-		borderSubtle:   ui.Hex("#ebebeb"),
-		border:         ui.Hex("#dcdcdc"),
-		borderStrong:   ui.Hex("#b8b8b8"),
-		text:           ui.Hex("#141414"),
-		muted:          ui.Hex("#595959"),
-		tertiary:       ui.Hex("#8c8c8c"),
+		borderSubtle:   ui.Hex("#efefef"),
+		border:         ui.Hex("#e5e5e5"),
+		borderStrong:   ui.Hex("#cfcfcf"),
+		text:           ui.Hex("#171717"),
+		muted:          ui.Hex("#666666"),
+		tertiary:       ui.Hex("#999999"),
 		accent:         ui.Hex("#171717"),
 		accentHover:    ui.Hex("#2e2e2e"),
 		accentPressed:  ui.Hex("#454545"),
@@ -62,33 +62,33 @@ var (
 		},
 	}
 	studioDarkPalette = paletteColors{
-		background:     ui.Hex("#161616"),
-		sunken:         ui.Hex("#111111"),
-		surface:        ui.Hex("#1e1e1e"),
-		surfaceHover:   ui.Hex("#272727"),
-		surfacePressed: ui.Hex("#303030"),
-		elevated:       ui.Hex("#252525"),
-		borderSubtle:   ui.Hex("#282828"),
-		border:         ui.Hex("#343434"),
-		borderStrong:   ui.Hex("#4e4e4e"),
-		text:           ui.Hex("#f2f2f2"),
-		muted:          ui.Hex("#a3a3a3"),
-		tertiary:       ui.Hex("#6e6e6e"),
-		accent:         ui.Hex("#f2f2f2"),
-		accentHover:    ui.Hex("#dedede"),
-		accentPressed:  ui.Hex("#c7c7c7"),
-		accentText:     ui.Hex("#111111"),
-		info:           ui.Hex("#6ba4e8"),
-		success:        ui.Hex("#4cc38a"),
-		warning:        ui.Hex("#e5a93c"),
-		danger:         ui.Hex("#f27d86"),
+		background:     ui.Hex("#212121"),
+		sunken:         ui.Hex("#1a1a1a"),
+		surface:        ui.Hex("#2a2a2a"),
+		surfaceHover:   ui.Hex("#333333"),
+		surfacePressed: ui.Hex("#3d3d3d"),
+		elevated:       ui.Hex("#303030"),
+		borderSubtle:   ui.Hex("#353535"),
+		border:         ui.Hex("#424242"),
+		borderStrong:   ui.Hex("#5a5a5a"),
+		text:           ui.Hex("#f5f5f5"),
+		muted:          ui.Hex("#b4b4b4"),
+		tertiary:       ui.Hex("#808080"),
+		accent:         ui.Hex("#ffffff"),
+		accentHover:    ui.Hex("#e8e8e8"),
+		accentPressed:  ui.Hex("#d6d6d6"),
+		accentText:     ui.Hex("#171717"),
+		info:           ui.Hex("#7cb3f0"),
+		success:        ui.Hex("#5cd198"),
+		warning:        ui.Hex("#edb84d"),
+		danger:         ui.Hex("#f78c94"),
 		chart: [6]ui.Color{
-			ui.Hex("#6ba4e8"),
-			ui.Hex("#4cc38a"),
-			ui.Hex("#e5a93c"),
-			ui.Hex("#a88ce2"),
-			ui.Hex("#f27d86"),
-			ui.Hex("#9e9e9e"),
+			ui.Hex("#7cb3f0"),
+			ui.Hex("#5cd198"),
+			ui.Hex("#edb84d"),
+			ui.Hex("#b59be8"),
+			ui.Hex("#f78c94"),
+			ui.Hex("#a8a8a8"),
 		},
 	}
 )
@@ -121,11 +121,11 @@ func applyPalette(t *ui.Theme, p paletteColors) {
 	t.Accent, t.AccentText = p.accent, p.accentText
 	t.AccentHover, t.AccentPressed = p.accentHover, p.accentPressed
 	if t.Dark {
-		t.Selection, t.Focus = p.accent.Alpha(.14), p.accent.Alpha(.80)
-		t.Scrollbar = p.text.Alpha(.30)
+		t.Selection, t.Focus = p.accent.Alpha(.14), p.accent.Alpha(.75)
+		t.Scrollbar = p.text.Alpha(.28)
 	} else {
-		t.Selection, t.Focus = p.accent.Alpha(.10), p.accent.Alpha(.75)
-		t.Scrollbar = p.text.Alpha(.26)
+		t.Selection, t.Focus = p.accent.Alpha(.08), p.accent.Alpha(.65)
+		t.Scrollbar = p.text.Alpha(.24)
 	}
 	t.Success, t.Warning, t.Danger = p.success, p.warning, p.danger
 }
@@ -152,9 +152,9 @@ func stateScaleFor(surface, text, solid ui.Color, dark, highContrast bool) state
 			Border:   solid,
 		}
 	}
-	bgMix, fgMix, borderAlpha := float32(.08), float32(.20), float32(.35)
+	bgMix, fgMix, borderAlpha := float32(.07), float32(.18), float32(.30)
 	if dark {
-		bgMix, fgMix, borderAlpha = .13, .12, .45
+		bgMix, fgMix, borderAlpha = .12, .10, .42
 	}
 	return stateColorScale{
 		Solid:    solid,
@@ -170,18 +170,18 @@ func colorTokensFor(t *ui.Theme, highContrast bool) colorTokens {
 	borderDefault := t.Border
 	borderStrong := p.borderStrong
 	fgTertiary := p.tertiary
-	subtleBgAlpha := float32(.06)
-	backdrop := ui.RGBA(0, 0, 0, 71)
+	subtleBgAlpha := float32(.05)
+	backdrop := ui.RGBA(0, 0, 0, .24)
 	if t.Dark {
-		subtleBgAlpha = .10
-		backdrop = ui.RGBA(0, 0, 0, 133)
+		subtleBgAlpha = .09
+		backdrop = ui.RGBA(0, 0, 0, .45)
 	}
 	accentSubtleBg := p.accent.Alpha(subtleBgAlpha)
 	if highContrast {
 		borderSubtle = borderDefault
 		borderStrong = t.Text
 		fgTertiary = fgTertiary.Mix(t.Text, .25)
-		backdrop = ui.RGBA(0, 0, 0, 184)
+		backdrop = ui.RGBA(0, 0, 0, .68)
 		accentSubtleBg = t.Surface
 	}
 	infoScale := stateScaleFor(t.Surface, t.Text, p.info, t.Dark, highContrast)

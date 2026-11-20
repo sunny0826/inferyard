@@ -134,3 +134,20 @@ func TestStudioSpacingAndConcentricRadius(t *testing.T) {
 		t.Fatalf("concentricRadius(8, 12) = %v, want floor 4", got)
 	}
 }
+
+func TestStudioShadowsStaySubtle(t *testing.T) {
+	light := elevationTokensFor(false)
+	if light.XS.Color.A == 0 || light.XS.Color.A > 16 {
+		t.Fatalf("light XS shadow alpha = %d, want subtle (1..16)", light.XS.Color.A)
+	}
+	if light.LG.Color.A > 40 {
+		t.Fatalf("light LG shadow alpha = %d, want <= 40", light.LG.Color.A)
+	}
+	dark := elevationTokensFor(true)
+	if dark.XS.Color.A == 0 || dark.XS.Color.A > 42 {
+		t.Fatalf("dark XS shadow alpha = %d, want subtle (1..42)", dark.XS.Color.A)
+	}
+	if dark.LG.Color.A > 96 {
+		t.Fatalf("dark LG shadow alpha = %d, want <= 96", dark.LG.Color.A)
+	}
+}

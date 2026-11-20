@@ -207,15 +207,15 @@ func surfaceTokensFor(t *ui.Theme) (radiusTokens, cardTokens, metricTokens) {
 func elevationTokensFor(dark bool) elevationTokens {
 	if dark {
 		return elevationTokens{
-			XS: shadowSpec{X: 0, Y: 1, Blur: 2, Spread: 0, Color: ui.RGBA(0, 0, 0, 24)},
-			MD: shadowSpec{X: 0, Y: 5, Blur: 12, Spread: -2, Color: ui.RGBA(0, 0, 0, 56)},
-			LG: shadowSpec{X: 0, Y: 10, Blur: 24, Spread: -4, Color: ui.RGBA(0, 0, 0, 84)},
+			XS: shadowSpec{X: 0, Y: 1, Blur: 2, Spread: 0, Color: ui.RGBA(0, 0, 0, .14)},
+			MD: shadowSpec{X: 0, Y: 5, Blur: 14, Spread: -2, Color: ui.RGBA(0, 0, 0, .24)},
+			LG: shadowSpec{X: 0, Y: 12, Blur: 28, Spread: -4, Color: ui.RGBA(0, 0, 0, .34)},
 		}
 	}
 	return elevationTokens{
-		XS: shadowSpec{X: 0, Y: 1, Blur: 2, Spread: 0, Color: ui.RGBA(0, 0, 0, 8)},
-		MD: shadowSpec{X: 0, Y: 4, Blur: 10, Spread: -2, Color: ui.RGBA(0, 0, 0, 16)},
-		LG: shadowSpec{X: 0, Y: 10, Blur: 22, Spread: -4, Color: ui.RGBA(0, 0, 0, 26)},
+		XS: shadowSpec{X: 0, Y: 1, Blur: 2, Spread: 0, Color: ui.RGBA(0, 0, 0, .04)},
+		MD: shadowSpec{X: 0, Y: 4, Blur: 12, Spread: -2, Color: ui.RGBA(0, 0, 0, .08)},
+		LG: shadowSpec{X: 0, Y: 10, Blur: 24, Spread: -4, Color: ui.RGBA(0, 0, 0, .12)},
 	}
 }
 
