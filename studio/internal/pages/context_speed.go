@@ -320,7 +320,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 				speedTable(c.Key("speed-partial"), &w.table, "专项已完成测量", r, r.samples)
 			}
 		}
-		ui.Text(c, "输入处理为从请求发出到首个采样的耗时；输入长度为模板化后的实际 token 数；Prefill 与 Decode 为 token/s；— 表示缺测。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "输入处理为引擎报告的输入处理耗时（prompt_ms）；输入长度为模板化后的实际 token 数；Prefill 与 Decode 为 token/s；— 表示缺测。").TextColor(c.Theme().TextMuted)
 	})
 	if r.summary == nil || r.reason != "" {
 		componentFold(c.Key(r.id), "查看诊断详情", func() {

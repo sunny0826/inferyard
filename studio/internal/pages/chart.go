@@ -177,20 +177,18 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				})
 			})
 		}
-		// Wide viewports place the four short curves in a 2×2 grid instead of
-		// stacking them in one tall column; compact layouts keep the single
-		// column so each plot keeps a readable width.
+		// One grid container in every viewport keeps the chart widget tree and
+		// its ui.Local state stable, so resizing never resets a selected
+		// temperature source; only the column count changes.
+		cols := 2
 		if compactLayout(c) {
+			cols = 1
+		}
+		ui.Grid(c).Columns(cols).Gap(tokens(c).Density.Stack).Children(func() {
 			for _, metric := range metrics {
 				draw(metric)
 			}
-		} else {
-			ui.Grid(c).Columns(2).Gap(tokens(c).Density.Stack).Children(func() {
-				for _, metric := range metrics {
-					draw(metric)
-				}
-			})
-		}
+		})
 		s.resourceSampleFold(c, selected)
 	})
 }

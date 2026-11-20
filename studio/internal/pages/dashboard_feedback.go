@@ -75,6 +75,8 @@ func human(code string) string {
 		return "运行证据尚未收尾，请检查停止原因后继续运行。"
 	case "single_run_resume_not_supported":
 		return "单次运行不支持断点续跑；请重新运行该配置。"
+	case "not_resumable":
+		return "当前运行不可续测；请用「新任务」重新测评。"
 	case "duration_resume_requires_new_window":
 		return "时长型任务不支持续跑；请按固定计划重新开窗运行。"
 	case "batch_plan_not_finished":

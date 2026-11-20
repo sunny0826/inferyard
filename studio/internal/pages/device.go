@@ -76,8 +76,13 @@ func (s *viewState) refreshDevice() {
 	// 因此这里用中性提示，不能承诺"已更新"。
 	s.work(func() (string, *core.ApiError) { return "正在采集设备信息…", s.service.RefreshDevice() })
 }
+
+// deviceCollectionBlocked is the single guard for every entry that starts a
+// device snapshot: a page action or an in-flight collection owns the boundary.
+func (s *viewState) deviceCollectionBlocked() bool { return s.busy || s.device.Refreshing }
+
 func (s *viewState) deviceRefreshButton(c *ui.Context, label string) {
-	if button(c, label).Disabled(s.busy || s.device.Refreshing).Clicked() {
+	if button(c, label).Disabled(s.deviceCollectionBlocked()).Clicked() {
 		s.refreshDevice()
 	}
 }
@@ -133,8 +138,10 @@ func (s *viewState) deviceView(c *ui.Context) {
 			ui.Text(c, "采集本机硬件与 GPU 信息，不向模型发送请求。").TextColor(c.Theme().TextMuted)
 			// Collecting is the action this empty state exists for, so it is the
 			// primary control; configuring the model directory stays secondary.
+			// It shares the guard of every other collection entry, so a busy page
+			// or an in-flight collection never starts a second one.
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-				if primaryButton(c, "采集设备信息").Clicked() {
+				if primaryButton(c, "采集设备信息").Disabled(s.deviceCollectionBlocked()).Clicked() {
 					s.refreshDevice()
 				}
 				if button(c, "前往设置").Clicked() {

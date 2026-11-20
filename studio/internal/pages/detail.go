@@ -76,7 +76,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail, t core.
 	s.casesTable.Key = func(i int) any { return p.Cases[i].CaseId }
 	pageTable(c, &s.casesTable, "题目进度表", columns, len(p.Cases), func(row, col int) {
 		item := p.Cases[row]
-		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), reportQuality(item.QualityState), formatDurationMs(item.DurationMs), caseErrorCategory(item)}
+		values := []string{item.CaseId, stateLabel(item.State), optionalText(item.Category), caseQuality(item), formatDurationMs(item.DurationMs), caseErrorCategory(item)}
 		ui.Text(c, values[col]).Selectable()
 	}).Height(240).Label("题目进度表")
 	componentFold(c, "进度原始字段", func() {
@@ -93,6 +93,17 @@ func progressHeadline(p *core.RunProgress) string {
 }
 
 func detailScope(t core.RunTask) string { return bundleScopeText(t.Kind == "resume") }
+
+// caseQuality keeps a missing quality verdict distinct from "not applicable".
+// A request can finish before scoring is recorded, so an absent quality state
+// is a missing measurement ("缺测") and must not borrow the report table's "—",
+// which means the value does not apply.
+func caseQuality(item core.CaseProgress) string {
+	if item.QualityState == nil || *item.QualityState == "" {
+		return "缺测"
+	}
+	return reportQuality(item.QualityState)
+}
 
 // caseErrorCategory separates "not applicable" from "missing": a case that
 // finished without a failure has no error category by definition and reads

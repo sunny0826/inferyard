@@ -130,6 +130,8 @@ func stopReasonLabel(raw string) string {
 		return "仅检查，无正式题目"
 	case "unscorable_case":
 		return "存在无法评分的题目"
+	case "service_stop_unconfirmed":
+		return "服务停止未确认"
 	default:
 		return "未识别停止原因：" + raw
 	}

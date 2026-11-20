@@ -31,8 +31,29 @@ func TestDetailCaseTableSeparatesNotApplicableFromMissing(t *testing.T) {
 	if exactTextCount(tt.Texts(), "pass") != 0 || exactTextCount(tt.Texts(), "unscorable") != 0 {
 		t.Fatalf("raw quality enum leaked: %v", tt.Texts())
 	}
-	if got := exactTextCount(tt.Texts(), "—"); got != 1 {
-		t.Fatalf("— count = %d, want only the passing case's error category: %v", got, tt.Texts())
+	// A request may finish before scoring is recorded: the quality column then
+	// reads 缺测 (missing measurement), never the report table's 不适用 "—".
+	s.detail.Progress.Cases = append(s.detail.Progress.Cases,
+		core.CaseProgress{CaseId: "case-unscored", State: "completed", DurationMs: ptr(500.0)})
+	tt.Frame()
+	if got := caseQuality(core.CaseProgress{CaseId: "unscored", State: "completed"}); got != "缺测" {
+		t.Fatalf("caseQuality(nil) = %q, want 缺测", got)
+	}
+	if got := caseQuality(core.CaseProgress{State: "completed", QualityState: ptr("")}); got != "缺测" {
+		t.Fatalf("caseQuality(empty) = %q, want 缺测", got)
+	}
+	if got := caseQuality(core.CaseProgress{State: "completed", QualityState: ptr("pass")}); got != "通过" {
+		t.Fatalf("caseQuality(pass) = %q, want 通过", got)
+	}
+	if got := caseQuality(core.CaseProgress{State: "completed", QualityState: ptr("not_applicable")}); got != "不适用" {
+		t.Fatalf("caseQuality(not_applicable) = %q, want 不适用", got)
+	}
+	if !tt.HasText("case-unscored") {
+		t.Fatalf("unscored case row missing: %v", tt.Texts())
+	}
+	// Both finished cases have no error category; only the failed case is 缺测.
+	if got := exactTextCount(tt.Texts(), "—"); got != 2 {
+		t.Fatalf("— count = %d, want the two finished cases: %v", got, tt.Texts())
 	}
 	for _, item := range []core.CaseProgress{
 		{CaseId: "pass", State: "completed"},
@@ -87,6 +108,32 @@ func TestResourceChartsUseTwoColumnsWhenWide(t *testing.T) {
 	}
 }
 
+// TestResourceChartSourceSurvivesResize guards the selection path: both layouts
+// now use one grid container, so shrinking the window must not rebuild the
+// chart widget tree and reset the chosen temperature sensor.
+func TestResourceChartSourceSurvivesResize(t *testing.T) {
+	s := testState()
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.resourceView(c, chartSamples()) }) }, 1400, 2400)
+	tt.Frame()
+	click(t, tt, "传感器温度 °C来源")
+	tt.Frame()
+	click(t, tt, "AppleSMC:Tp0C")
+	tt.Frame()
+	if !tt.HasText("AppleSMC:Tp0C") {
+		t.Fatalf("selected sensor is not shown: %v", tt.Texts())
+	}
+	tt.SetSize(1000, 2400)
+	tt.Frame()
+	if !tt.HasText("AppleSMC:Tp0C") {
+		t.Fatalf("resize reset the selected sensor: %v", tt.Texts())
+	}
+	first, _ := tt.Find("可用内存 GiB曲线")
+	second, _ := tt.Find("服务 RSS GiB曲线")
+	if second.Y <= first.Y {
+		t.Fatalf("resized layout did not fall back to one column: first=%+v second=%+v", first, second)
+	}
+}
+
 // TestDeviceEmptyStateOffersCollection proves the empty state leads with the
 // action that fills it instead of sending the user to settings.
 func TestDeviceEmptyStateOffersCollection(t *testing.T) {
@@ -104,6 +151,27 @@ func TestDeviceEmptyStateOffersCollection(t *testing.T) {
 	if s.selected != "settings" {
 		t.Fatalf("secondary action did not open settings: %q", s.selected)
 	}
+
+	// The primary collection button shares the busy / refreshing guard of every
+	// other collection entry, so a busy page never starts a second collection.
+	s.selected = "device"
+	s.busy, s.device.Refreshing = true, false
+	tt.Frame()
+	if err := tt.Click("采集设备信息"); err != nil {
+		t.Fatalf("collection button missing: %v", err)
+	}
+	if s.selected != "device" {
+		t.Fatalf("busy page started a device collection")
+	}
+	s.busy, s.device.Refreshing = false, true
+	if !s.deviceCollectionBlocked() {
+		t.Fatal("an in-flight collection must block another one")
+	}
+	s.device.Refreshing = false
+	if s.deviceCollectionBlocked() {
+		t.Fatal("idle page must allow collection")
+	}
+	s.selected = "device"
 }
 
 // TestStopReasonAndQualityLabelsStayChinese pins the translations that used to
@@ -131,6 +199,24 @@ func TestStopReasonAndQualityLabelsStayChinese(t *testing.T) {
 	}
 	if got := reportQuality(nil); got != "—" {
 		t.Errorf("reportQuality(nil) = %q, want —", got)
+	}
+	if got := stopReasonLabel("service_stop_unconfirmed"); got != "服务停止未确认" {
+		t.Errorf("stopReasonLabel(service_stop_unconfirmed) = %q", got)
+	}
+	// A denied resume carries conflict/not_resumable: the primary message must be
+	// Chinese, and an unmapped reason keeps the generic conflict text.
+	s := testState()
+	s.failure = core.Conflict("not_resumable")
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.feedback(c) }) }, 1120, 400)
+	tt.Frame()
+	if !tt.HasText("当前运行不可续测") {
+		t.Fatalf("not_resumable stayed raw: %v", tt.Texts())
+	}
+	if tt.HasText("not_resumable ·") {
+		t.Fatalf("raw reason leaked into the banner: %v", tt.Texts())
+	}
+	if got := conflictReasonLabel("unmapped_reason"); got != "" {
+		t.Fatalf("unknown conflict reason = %q, want empty fallback", got)
 	}
 }
 
