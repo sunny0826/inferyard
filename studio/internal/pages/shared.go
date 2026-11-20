@@ -18,12 +18,50 @@ func errorView(c *ui.Context, e *core.ApiError) {
 	if message == "" {
 		message = human(e.Code)
 	}
+	// A conflict carries its machine reason in the details fold. Name the known
+	// reasons in primary text so the message is not just "操作与当前状态冲突".
+	if e.Code == "conflict" {
+		if reason, ok := e.Details["reason"].(string); ok {
+			if label := conflictReasonLabel(reason); label != "" {
+				message = label
+			}
+		}
+	}
 	ui.Text(c, message+" · "+e.Code).TextColor(stateColor(c, stateDanger))
 	for _, v := range e.Limitations {
 		ui.Text(c, human(v)+" · "+v)
 	}
+	// Raw machine details stay behind a closed fold: the primary text already
+	// names what happened and what to do, so a code such as not_resumable is
+	// available for diagnosis without pushing onto the first reading.
 	if len(e.Details) > 0 {
-		kvview(c, "kv-error-details", e.Details)
+		componentFoldKeyed(c, "error-details-"+e.Code, "错误详情", func() {
+			kvview(c, "kv-error-details", e.Details)
+		})
+	}
+}
+
+// conflictReasonLabel names the conflict reasons users hit on page actions. An
+// unknown reason returns empty so the caller keeps the generic conflict text,
+// and the raw code stays visible in the error details fold.
+func conflictReasonLabel(reason string) string {
+	switch reason {
+	case "not_resumable":
+		return "当前运行不可续测；请用「新任务」重新测评。"
+	case "run_active", "engine_active":
+		return "已有任务或服务在运行，请先取消并等待收尾后重试。"
+	case "engine_stopping":
+		return "引擎正在停止，请等待回收后再运行。"
+	case "engine_orphaned":
+		return "存在遗留服务记录，请先在任务页处理后再运行。"
+	case "settings_incomplete":
+		return "目录配置缺项，请先在设置中补全路径。"
+	case "output_exists":
+		return "输出目录已存在，请选择新目录。"
+	case "invalid_state":
+		return "当前状态不支持该操作，请刷新进度后重试。"
+	default:
+		return ""
 	}
 }
 func taskLabel(t core.RunTask) string {

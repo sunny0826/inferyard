@@ -48,7 +48,7 @@ func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 		primaryButton(c, "打开报告").Label("打开报告 · " + report.ReportId).OnClick(open)
 		componentFoldKeyed(c, "report-"+report.ReportId, "报告详情", func() {
 			ui.Text(c, "报告 ID："+report.ReportId).Selectable()
-			ui.Text(c, "报告文件修改时间："+configuredValue(formatTimestamp(emptyText(report.ModifiedAt)))).Selectable()
+			ui.Text(c, "报告文件修改时间："+configuredValue(formatTimestampUTC(emptyText(report.ModifiedAt)))).Selectable()
 			for _, id := range report.RunIds {
 				ui.Text(c, "来源运行："+id).Selectable()
 			}

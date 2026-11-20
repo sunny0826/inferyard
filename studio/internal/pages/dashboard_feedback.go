@@ -28,7 +28,7 @@ func human(code string) string {
 	case "candidate_binding_invalid":
 		return "连接产物与本次测评题集或结果目录不一致，运行已停止。"
 	case "local_engine_context_speed_unsupported", "local_engine_requires_explicit_candidate":
-		return "此安装声明引擎需要使用普通 benchmark 的本地引擎流程。"
+		return "此安装声明引擎需要使用常规测评的本地引擎流程。"
 	case "engine_working_directory_invalid", "engine_environment_invalid", "engine_process_isolation_failed":
 		return "引擎工作目录或进程隔离设置无效，启动已停止。"
 	case "engine_candidate_mismatch":
@@ -75,6 +75,8 @@ func human(code string) string {
 		return "运行证据尚未收尾，请检查停止原因后继续运行。"
 	case "single_run_resume_not_supported":
 		return "单次运行不支持断点续跑；请重新运行该配置。"
+	case "not_resumable":
+		return "当前运行不可续测；请用「新任务」重新测评。"
 	case "duration_resume_requires_new_window":
 		return "时长型任务不支持续跑；请按固定计划重新开窗运行。"
 	case "batch_plan_not_finished":
@@ -110,7 +112,7 @@ func human(code string) string {
 	case "cli_outdated":
 		return "CLI 不可用或缺少所需命令，请安装或升级 CLI 后重试。"
 	case "engine_check_error":
-		return "引擎核验执行失败，请检查诊断后重试。"
+		return "引擎核验执行失败，请检查引擎路径后重试。"
 	case "engine_check_invalid_response":
 		return "CLI 引擎核验结果格式无效，请升级 CLI 后重试。"
 	case "invalid_library_manifest":
@@ -148,7 +150,7 @@ func human(code string) string {
 	case "service_discovery_invalid_response":
 		return "CLI 服务发现结果格式无效，请升级 CLI 后重试。"
 	case "service_discovery_error":
-		return "本机服务发现失败，请检查诊断后手动刷新。"
+		return "本机服务发现失败，请检查权限后手动刷新。"
 	case "service_discovery_unsupported_platform":
 		return "当前平台不支持本机服务发现。"
 	case "listener_enumeration_failed":
@@ -192,7 +194,7 @@ func human(code string) string {
 	case "unsupported_report_format":
 		return "旧格式报告不受支持，请用当前 CLI 重新生成报告。"
 	case "cli_error":
-		return "CLI 执行失败，请检查主窗口诊断后重试。"
+		return "CLI 执行失败，请检查下方错误详情与运行状态后重试。"
 	case "invalid_request":
 		return "输入不符合要求，请检查路径、URL 和环境变量名。"
 	case "not_found":
@@ -200,13 +202,13 @@ func human(code string) string {
 	case "conflict":
 		return "操作与当前状态冲突，请刷新进度后重试。"
 	case "internal_error":
-		return "Studio 内部错误，请查看主窗口诊断后重试。"
+		return "Studio 内部错误，请检查下方错误详情后重试。"
 	case "error":
-		return "CLI 报告工具或证据错误，请检查主窗口诊断与工作区证据后重试。"
+		return "CLI 报告工具或证据错误，请检查下方错误详情与工作区证据后重试。"
 	case "unknown":
-		return "CLI 异常退出，请检查主窗口诊断后重试。"
+		return "CLI 异常退出，请检查下方错误详情与运行状态后重试。"
 	default:
-		return "尚未识别的原因码：" + code + "。请检查诊断与工作区证据后重试。"
+		return "尚未识别的原因码：" + code + "。请检查下方错误详情与工作区证据后重试。"
 	}
 }
 

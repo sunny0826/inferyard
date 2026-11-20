@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -94,7 +95,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		ui.Text(c, "横轴为等距采样点，缺测保留断点。").TextColor(theme.TextMuted)
 		metrics := resourceMetrics(theme)
 		selected := []core.ResourceSample{}
-		for _, metric := range metrics {
+		draw := func(metric resourceMetric) {
 			c.Key(metric.id)
 			var options []resourceSeries
 			for _, source := range series {
@@ -104,7 +105,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 			}
 			if len(options) == 0 {
 				ui.Text(c, metric.label+" · 此运行未记录该指标").TextColor(theme.TextMuted)
-				continue
+				return
 			}
 			container := ui.Column(c).FillWidth().Gap(tokens(c).Density.Row)
 			state := ui.Local(container, "resource-chart", func() resourceChartState {
@@ -140,7 +141,7 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 						s.resourceTablePage = 0
 					}
 				} else {
-					ui.Text(c, sourceLabel(options[current].source)).TextColor(theme.TextMuted)
+					ui.Text(c, secondarySourceLabel(metric.id, options[current].source)).TextColor(theme.TextMuted)
 				}
 				if metric.id == "service_cpu_percent" {
 					ui.Text(c, "CPU 占用（1 个逻辑核 = 100%）：可超过 100%；只统计已连接的服务进程，不含子进程。").TextColor(theme.TextMuted)
@@ -169,15 +170,38 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 								if point.MissingReason != nil {
 									value = "缺测：" + *point.MissingReason
 								}
-								ui.Text(c, formatTimestamp(point.Utc)+" · "+value+" "+chosen.source.Unit).Selectable()
+								ui.Text(c, formatTimestampUTC(point.Utc)+" · "+value+" "+chosen.source.Unit).Selectable()
 							}
 						})
 					},
 				})
 			})
 		}
+		// One grid container in every viewport keeps the chart widget tree and
+		// its ui.Local state stable, so resizing never resets a selected
+		// temperature source; only the column count changes.
+		cols := 2
+		if compactLayout(c) {
+			cols = 1
+		}
+		ui.Grid(c).Columns(cols).Gap(tokens(c).Density.Stack).Children(func() {
+			for _, metric := range metrics {
+				draw(metric)
+			}
+		})
 		s.resourceSampleFold(c, selected)
 	})
+}
+
+// secondarySourceLabel keeps raw "collector:metric" identifiers out of the
+// single-source caption while still naming a temperature sensor, whose name is
+// the only way to tell probes apart.
+func secondarySourceLabel(metricID string, source core.ResourceSource) string {
+	name := sourceLabel(source)
+	if metricID == "temperature" || !strings.Contains(name, ":") {
+		return name
+	}
+	return "单一采样来源"
 }
 
 // resourceMetric is one plotted metric and its accent color.
@@ -226,7 +250,7 @@ func (s *viewState) resourceTable(c *ui.Context, samples []core.ResourceSample) 
 		if p.Value != nil && p.Source.Unit == "bytes" {
 			value = fmt.Sprintf("%.0f", *p.Value)
 		}
-		values := []string{formatTimestamp(p.Utc), sourceLabel(p.Source), value, p.Source.Unit, emptyText(p.MissingReason)}
+		values := []string{formatTimestampUTC(p.Utc), sourceLabel(p.Source), value, p.Source.Unit, emptyText(p.MissingReason)}
 		ui.Text(c, values[col]).Selectable()
 	}).Height(180).Label("资源采样数值表")
 }

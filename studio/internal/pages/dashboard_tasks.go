@@ -30,11 +30,15 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 		}
 		ui.Text(c, sealed+" · 完整度："+stateLabel(text(r.Completeness)))
 		if r.StopReason != nil {
-			ui.Text(c, "停止原因："+human(*r.StopReason)+" · "+*r.StopReason)
+			ui.Text(c, "停止原因："+stopReasonLabel(*r.StopReason))
 		}
 		ui.Text(c, "得分："+runScore(r))
 		componentFold(c, "运行原始详情", func() {
-			ui.Text(c, "关系："+text(r.Relation)+" · 来源："+text(r.ParentRunId)+" · 开始："+formatTimestampOrMissing(r.StartedAt)+" · 结束："+formatTimestampOrMissing(r.FinishedAt)).Selectable()
+			ui.Text(c, "时钟基准：UTC · 开始："+formatTimestampOrMissingUTC(r.StartedAt)+" · 结束："+formatTimestampOrMissingUTC(r.FinishedAt)).Selectable()
+			if r.StopReason != nil {
+				ui.Text(c, "原始停止原因："+*r.StopReason).Selectable()
+			}
+			ui.Text(c, "关系："+text(r.Relation)+" · 来源："+text(r.ParentRunId)).Selectable()
 		})
 		ui.Row(c).Wrap().Gap(tokens(c).Density.CardGap).Children(func() {
 			button(c, "进入任务").OnClick(func() {
@@ -62,7 +66,7 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 		if r.BatchId == nil {
 			ui.Text(c, "独立运行不支持续测。")
 		} else if !r.Resumable || s.denied[r.Path] {
-			ui.Text(c, "当前来源不可续测（not_resumable）。")
+			ui.Text(c, "当前来源不可续测；请回到任务页检查服务连接，或用「新任务」重新测评。")
 		}
 
 	})
@@ -201,8 +205,8 @@ func historyModel(r core.RunSummary) string {
 	return *r.ModelName
 }
 
-// historyStarted formats ISO-8601/RFC3339 timestamps as compact UTC seconds so
-// the start time fits the 170 DIP table cell.
+// historyStarted renders a recorded timestamp in the local timezone, which is
+// what a person compares against their own clock; the raw fold keeps UTC.
 func historyStarted(r core.RunSummary) string {
 	raw := emptyText(r.StartedAt)
 	if raw == "" {
@@ -211,11 +215,13 @@ func historyStarted(r core.RunSummary) string {
 	return formatTimestamp(raw)
 }
 
-func formatTimestampOrMissing(p *string) string {
+// formatTimestampOrMissingUTC keeps the evidence instant in UTC for the raw
+// details fold, where the time basis must not be ambiguous.
+func formatTimestampOrMissingUTC(p *string) string {
 	if p == nil || *p == "" {
 		return "缺测"
 	}
-	return formatTimestamp(*p)
+	return formatTimestampUTC(*p)
 }
 
 // historyIdentity shows the identifiers that no longer occupy table columns.

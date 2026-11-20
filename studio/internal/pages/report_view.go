@@ -106,8 +106,35 @@ func reportSourceView(c *ui.Context, run core.ReportRun) {
 	card(c, "数据来源", func() {
 		deviceRow(c, "运行", reportText(run.Source.RunID))
 		deviceRow(c, "索引", "studio.json")
-		deviceRow(c, "停止原因", reportText(run.Summary.StopReason))
+		deviceRow(c, "停止原因", stopReasonLabel(run.Summary.StopReason))
 	})
+}
+
+// stopReasonLabel translates the recorded stop reason for primary UI text. Raw
+// codes stay in raw folds; an unmapped code is named rather than hidden.
+func stopReasonLabel(raw string) string {
+	switch raw {
+	case "":
+		return "—"
+	case "plan_finished", "completed":
+		return "已完成"
+	case "user_cancelled", "cancelled":
+		return "用户取消"
+	case "run_in_progress":
+		return "运行进行中"
+	case "interrupted_checkpoint":
+		return "中断后恢复的检查点"
+	case "diagnostic_run_not_formal":
+		return "诊断运行，不进入正式测评"
+	case "check_only_no_formal_cases":
+		return "仅检查，无正式题目"
+	case "unscorable_case":
+		return "存在无法评分的题目"
+	case "service_stop_unconfirmed":
+		return "服务停止未确认"
+	default:
+		return "未识别停止原因：" + raw
+	}
 }
 
 func (r *reportViewState) runPicker(c *ui.Context) {

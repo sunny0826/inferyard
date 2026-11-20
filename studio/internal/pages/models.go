@@ -14,13 +14,19 @@ var environmentName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 func validName(s string) bool { return core.ValidDownloadName(s) }
 func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 
-// modelsView lists installed resources and running services. Choosing the
-// model/engine pair happens only on the task page, so this page stays read-only:
-// it reports what exists and whether it is verified, never a second editor.
+// modelsView lists installed resources and running services. The task page owns
+// the model/engine pair and the verification checks; this page only offers
+// shortcuts into that flow, never a second editor.
 func (s *viewState) modelsView(c *ui.Context) {
 	s.header(c, "模型")
 	card(c, "已安装的模型", func() {
 		errorView(c, s.registry.ModelError)
+		// The action loop stays available with assets installed: refresh the
+		// on-disk list or go add more, instead of a dead-end read-only page.
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.CardGap).Children(func() {
+			button(c, "下载更多").OnClick(func() { s.selected = "downloads" })
+			button(c, "刷新").Disabled(s.registry.Refreshing || s.busy).OnClick(s.refreshAction)
+		})
 		if s.registry.Refreshing {
 			ui.Text(c, "正在读取本地资源…")
 		}
@@ -33,6 +39,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 			ui.Column(c.Key(model.Name)).Gap(tokens(c).Density.Hairline).Children(func() {
 				ui.Text(c, modelLabel(model)).SingleLine()
 				ui.Text(c, modelDetails(model)).FontSize(tokens(c).Type.Caption).TextColor(c.Theme().TextMuted)
+				modelTaskAction(c, s, model)
 			})
 		}
 	})
@@ -57,6 +64,26 @@ func (s *viewState) modelsView(c *ui.Context) {
 		}
 		s.discoveryView(c, false)
 	})
+}
+
+// modelTaskAction offers a direct loop back into the task page: choose this
+// model for a new round. It is hidden for unavailable models and disabled while
+// a round owns the page, so it can never abandon active work.
+func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
+	if !model.Available {
+		return
+	}
+	label := "用此模型测评"
+	hint := "测评进行中，请在任务页取消后再新建任务"
+	blocked := s.busy || s.roundWorkActive()
+	b := button(c, label).Label(label + " · " + model.Name).Disabled(blocked)
+	if blocked {
+		b = b.Description(hint).Tooltip(hint)
+	}
+	if b.Clicked() && !blocked {
+		s.model = model.Name
+		s.newBenchmark()
+	}
 }
 
 // modelDetails describes one installed model without inventing missing values.
