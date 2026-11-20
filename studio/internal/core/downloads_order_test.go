@@ -11,7 +11,9 @@ import (
 )
 
 // TestDownloadsNewestFirst pins the ordering the pages rely on: a later task
-// comes first, and its StartedAt is not older than the one it follows.
+// comes first. The assertion uses task IDs rather than StartedAt strings,
+// because RFC3339Nano drops trailing zeros and two nearby timestamps can
+// compare out of order lexicographically.
 func TestDownloadsNewestFirst(t *testing.T) {
 	gate := make(chan struct{})
 	done := make(chan struct{}, 2)
@@ -34,19 +36,23 @@ func TestDownloadsNewestFirst(t *testing.T) {
 	s.settings.ModelsRoot = &root
 	source := "https://huggingface.co/o/r/blob/0123456789012345678901234567890123456789/model.gguf"
 
+	var created []DownloadTask
 	for range 2 {
-		if _, e := s.CreateModelDownload(CreateDownloadRequest{SourceUrl: source, OutName: uniqueName(t)}, ""); e != nil {
+		task, e := s.CreateModelDownload(CreateDownloadRequest{SourceUrl: source, OutName: uniqueName(t)}, "")
+		if e != nil {
 			t.Fatal(e)
 		}
+		created = append(created, task)
 		<-done
 	}
 	tasks := s.Downloads()
 	if len(tasks) != 2 {
 		t.Fatalf("downloads = %d", len(tasks))
 	}
-	newer, older := tasks[0], tasks[1]
-	if newer.StartedAt < older.StartedAt {
-		t.Fatalf("newest task is not first: %q then %q", newer.StartedAt, older.StartedAt)
+	first, second := created[0], created[1]
+	if tasks[0].TaskId != second.TaskId || tasks[1].TaskId != first.TaskId {
+		t.Fatalf("downloads are not newest-first: got %q then %q, want %q then %q",
+			tasks[0].TaskId, tasks[1].TaskId, second.TaskId, first.TaskId)
 	}
 }
 
