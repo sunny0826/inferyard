@@ -102,10 +102,16 @@ func (p *previewSession) beginLocalBenchmark(op previewBenchmark, retry bool) {
 	}
 	p.cancelEvents("task")
 	p.local = &previewLocalTask{op: op, family: family, usedPIDs: used, fail: p.takeFailure()}
-	pid, _ := strconv.ParseInt(s.localPID, 10, 64)
+	// A retry does not reuse the form's PID as the initial service: the previous
+	// attempt may have been rejected, and the waiting bundle must supply a
+	// freshly verified service through the handoff card.
+	pid := int64(0)
 	if !retry {
+		pid, _ = strconv.ParseInt(s.localPID, 10, 64)
 		p.local.pid = pid
 		s.task.runs = nil
+	} else {
+		s.localPID = ""
 	}
 	s.busy, s.failure, s.task.failure = true, nil, nil
 	s.task.stage, s.task.bundles = "prepare_candidate", allBundles
@@ -155,6 +161,8 @@ func (p *previewSession) advanceLocalRun(index int) {
 	s.task.stage = "run"
 	if l.family == "lmstudio" {
 		if index == 0 && l.pid > 0 {
+			// The form's service is reserved, not consumed, until it verifies.
+			s.reserveLocalPID(id, l.pid)
 			p.startLocalBinding(l.pid)
 			return
 		}

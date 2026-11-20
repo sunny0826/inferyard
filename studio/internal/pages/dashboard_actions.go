@@ -242,7 +242,24 @@ func commandOf(args []string) string {
 	return "inferyard " + strings.Join(out, " ")
 }
 
+// executeBinding runs a bind command for the bundle the manual form currently
+// targets.
 func (w *viewState) executeBinding(command string, e *core.ApiError) {
+	w.executeBindingFor(w.bindTargetBundle(), command, e)
+}
+
+// bindTargetBundle names the bundle a manual connection would apply to.
+func (w *viewState) bindTargetBundle() string {
+	if b := w.bindTarget(); b != nil {
+		return b.Bundle
+	}
+	return ""
+}
+
+// executeBindingFor runs a manual or managed bind command for an explicit target.
+// The caller captures the bundle before the command is built, so a rejection
+// marks that bundle instead of whichever bundle refreshed progress lists first.
+func (w *viewState) executeBindingFor(target, command string, e *core.ApiError) {
 	if w.preview != nil {
 		// bindCommand already dispatched a modeled bind in memory. Only a
 		// refused attempt arrives here with an error.
@@ -252,7 +269,7 @@ func (w *viewState) executeBinding(command string, e *core.ApiError) {
 		return
 	}
 	if e != nil {
-		w.failBinding(e)
+		w.failBindingFor(target, e)
 		return
 	}
 	if w.busy {
@@ -265,12 +282,12 @@ func (w *viewState) executeBinding(command string, e *core.ApiError) {
 		defer cancel()
 		r, e := w.service.WizardExecute(ctx, core.WizardRequest{Command: command})
 		if e != nil {
-			w.updateView(func() { w.failBinding(e) })
+			w.updateView(func() { w.failBindingFor(target, e) })
 			return "", e
 		}
 		if r.ExitCode != 0 {
 			e := wizardFailure(r)
-			w.updateView(func() { w.failBinding(e) })
+			w.updateView(func() { w.failBindingFor(target, e) })
 			return "", e
 		}
 		w.updateView(w.clearRecoveredBinding)
@@ -327,6 +344,18 @@ func (w *viewState) failBinding(e *core.ApiError) {
 	w.failure = e
 }
 
+// failBindingFor attributes a rejection to the bundle the attempt targeted. The
+// progress card then marks that bundle instead of whichever bundle is first.
+func (w *viewState) failBindingFor(bundle string, e *core.ApiError) {
+	if e == nil {
+		return
+	}
+	if bundle != "" {
+		w.failedBundle = bundle
+	}
+	w.failBinding(e)
+}
+
 // clearRecoveredBinding drops the stale bind stage and failure after a
 // successful connection, so refreshed workspace progress decides the step again
 // instead of the old failure being repeated forever.
@@ -338,6 +367,18 @@ func (w *viewState) clearRecoveredBinding() {
 	}
 	w.task.failure = nil
 	w.failure = nil
+}
+
+// managedOwnsBundle reports whether the running managed engine is the service
+// for this bundle. Studio records the candidate it started, so a restart for the
+// same candidate must re-verify the binding instead of trusting an older config;
+// an engine started for another candidate belongs elsewhere and must not hijack
+// this bundle.
+func managedOwnsBundle(b inferyard.BundleProgress, state core.EngineState) bool {
+	if state.State != "running" || state.Candidate == "" || b.CandidatePath == nil {
+		return false
+	}
+	return state.Candidate == *b.CandidatePath
 }
 
 // executeExistingBundle reuses the workspace's own next command. A fresh run
@@ -358,11 +399,10 @@ func executeExistingBundle(ctx context.Context, b inferyard.BundleProgress, work
 		}
 		args = setArg(args, "--endpoint-url", state.Endpoint)
 		args = setArg(args, "--server-pid", strconv.FormatInt(state.Pid, 10))
-	case b.NextAction == "run" && b.BoundPath != nil:
-		// The binding already names the verified external service; run its frozen
-		// config as-is. A managed engine that happens to be running belongs to
-		// another bundle and must not rebind this one.
-	case state.State == "running":
+	case managedOwnsBundle(b, state):
+		// Studio's own engine is the service for this bundle (for example after a
+		// restart), so the binding must be re-verified against it rather than
+		// reusing a config that may name an earlier process.
 		command, out, e := benchmarkBindCommand(workspace, b, state)
 		if e != nil {
 			return e
@@ -375,6 +415,10 @@ func executeExistingBundle(ctx context.Context, b inferyard.BundleProgress, work
 			return wizardFailure(r)
 		}
 		args = []string{"run", "--config", filepath.Join(out, "config.toml")}
+	case b.NextAction == "run" && b.BoundPath != nil:
+		// The binding already names the verified external service; run its frozen
+		// config as-is. A managed engine that is not running belongs to no bundle,
+		// or one that names a different candidate, must not rebind this one.
 	default:
 		return core.Err("invalid_request")
 	}

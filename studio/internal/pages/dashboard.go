@@ -88,7 +88,7 @@ func (s *viewState) dashboardView(c *ui.Context) {
 			}
 			// The active step or handoff card already renders this rejection; the task
 			// list must not repeat the same diagnostic a second time.
-			if s.handoffOwnsError(task) {
+			if s.stepOwnsTaskError(task) {
 				continue
 			}
 			ui.Text(c, taskLabel(task))

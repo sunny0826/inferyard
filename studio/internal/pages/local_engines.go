@@ -131,9 +131,10 @@ func (s *viewState) useDiscoveredService(choice localServiceChoice) {
 	s.localPID, s.localEndpoint = strconv.FormatInt(choice.pid, 10), choice.endpoint
 }
 
-// localPIDUsed reports an LM Studio service this task already verified, or one
+// localPIDUsed reports an LM Studio service this round already verified, or one
 // whose verification is still in flight. The service also rejects reuse, but the
-// form should not invite it.
+// form should not invite it. Submitting the form is not verification: a rejected
+// first bundle releases its service so the same PID can be retried.
 func (s *viewState) localPIDUsed(pid int64) bool {
 	if s.localUsedPIDs[pid] {
 		return true
@@ -143,12 +144,32 @@ func (s *viewState) localPIDUsed(pid int64) bool {
 			return true
 		}
 	}
-	// The first bundle connects the service frozen into its candidate rather than
-	// through the handoff card; that PID is used as well.
-	if request := s.task.start.localRequest; request != nil && request.ServicePID == pid {
-		return true
+	return s.initialPIDHeld(pid)
+}
+
+// initialPIDHeld reports whether the first bundle's form service is still in
+// play. It belongs to the round's first bundle until the CLI rejects it; a
+// failed attempt returns it to the user.
+func (s *viewState) initialPIDHeld(pid int64) bool {
+	request := s.task.start.localRequest
+	if request == nil || request.ServicePID != pid || len(request.Bundles) == 0 {
+		return false
 	}
-	return false
+	bundle := request.Bundles[0]
+	var task *core.RunTask
+	for i := range s.tasks {
+		t := &s.tasks[i]
+		if t.Kind == "run" && emptyText(t.Bundle) == bundle {
+			task = t
+		}
+	}
+	if task == nil {
+		return false
+	}
+	if task.Error != nil || task.AwaitingService {
+		return false
+	}
+	return true
 }
 
 // localSelectionInvalid disables the handoff connect button for the same
@@ -297,20 +318,13 @@ func (s *viewState) reserveLocalPID(taskID string, pid int64) {
 	s.localPendingPIDs[taskID] = pid
 }
 
-// reconcileLocalPIDs settles reserved handoff services against the current task
-// states: a task that passed binding keeps its service for the rest of the
-// round, and a failed attempt releases it. Verification failure is reported as a
-// task error, so only a task that left the binding stage without an error
-// consumes the PID.
+// reconcileLocalPIDs settles reserved services against the current task states:
+// a task that passed binding keeps its service for the rest of the round, and a
+// failed attempt releases it. Verification failure is reported as a task error,
+// so only a task that left the binding stage without an error consumes the PID.
 func (s *viewState) reconcileLocalPIDs(tasks []core.RunTask) {
 	for taskID, pid := range s.localPendingPIDs {
-		var task *core.RunTask
-		for i := range tasks {
-			if tasks[i].TaskId == taskID {
-				task = &tasks[i]
-				break
-			}
-		}
+		task := localPendingTask(tasks, taskID)
 		switch {
 		case task == nil || task.Error != nil:
 			delete(s.localPendingPIDs, taskID)
@@ -319,4 +333,14 @@ func (s *viewState) reconcileLocalPIDs(tasks []core.RunTask) {
 			delete(s.localPendingPIDs, taskID)
 		}
 	}
+}
+
+// localPendingTask resolves the task a reservation belongs to.
+func localPendingTask(tasks []core.RunTask, taskID string) *core.RunTask {
+	for i := range tasks {
+		if tasks[i].TaskId == taskID {
+			return &tasks[i]
+		}
+	}
+	return nil
 }
