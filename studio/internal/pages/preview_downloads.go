@@ -40,7 +40,9 @@ func (p *previewSession) startDownload(op previewDownload) {
 		filename = "llama-server"
 	}
 	task := core.DownloadTask{TaskId: id, Kind: op.kind, State: "downloading", SourceUrl: op.source, OutName: name, OutDir: filepath.Join(s.models, name), FileName: previewValue(filename), StartedAt: p.timestamp()}
-	s.downloads = append(s.downloads, task)
+	// Newest first, matching Service.Downloads(); the pages read this order to
+	// tell a newer task from an older one for the same source.
+	s.downloads = append([]core.DownloadTask{task}, s.downloads...)
 	p.tickDownload(id, p.takeFailure(), 0)
 	p.notice = "模拟下载已开始。"
 }

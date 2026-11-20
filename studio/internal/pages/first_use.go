@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -110,12 +111,12 @@ func (s *viewState) countDownloads(state string) int {
 
 // unresolvedDownloadFailures counts failed tasks that still need the operator.
 // Historical failure cards stay in the list, so a failure stops counting only
-// when a later task for the same source succeeded or is running; an unrelated
-// asset or a download of another source never resolves it.
+// when a newer task for the same source succeeded or is running; an unrelated
+// asset, a download of another source, or an older success never resolves it.
 func (s *viewState) unresolvedDownloadFailures() int {
 	count := 0
-	for _, task := range s.downloads {
-		if task.State != "failed" || s.downloadResolved(task) {
+	for i, task := range s.downloads {
+		if task.State != "failed" || s.downloadResolved(task, i) {
 			continue
 		}
 		count++
@@ -123,16 +124,30 @@ func (s *viewState) unresolvedDownloadFailures() int {
 	return count
 }
 
-func (s *viewState) downloadResolved(failed core.DownloadTask) bool {
-	for _, task := range s.downloads {
+// downloadResolved reports whether a later task superseded the failure. The
+// list is newest first in both the core service and the preview window, so a
+// success that happened before the failure cannot hide it.
+func (s *viewState) downloadResolved(failed core.DownloadTask, failedIndex int) bool {
+	for i, task := range s.downloads {
 		if task.Kind != failed.Kind || task.SourceUrl != failed.SourceUrl || task.TaskId == failed.TaskId {
 			continue
 		}
-		if task.State == "downloading" || task.State == "done" {
+		if (task.State == "downloading" || task.State == "done") && downloadNewer(task, failed, i, failedIndex) {
 			return true
 		}
 	}
 	return false
+}
+
+// downloadNewer orders two downloads of the same source. Timestamps decide when
+// both parse; list position breaks ties for tasks started in the same second.
+func downloadNewer(candidate, failed core.DownloadTask, candidateIndex, failedIndex int) bool {
+	c, errC := time.Parse(time.RFC3339Nano, candidate.StartedAt)
+	f, errF := time.Parse(time.RFC3339Nano, failed.StartedAt)
+	if errC == nil && errF == nil && !c.Equal(f) {
+		return c.After(f)
+	}
+	return candidateIndex < failedIndex
 }
 
 // downloadTaskGuide is a lightweight banner above the download cards. It keeps
