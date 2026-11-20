@@ -12,6 +12,7 @@ type startupOptions struct {
 	devAssets  string
 	devCLI     string
 	devLabel   string
+	devStatus  string
 }
 
 func parseOptions(args []string, output io.Writer) (startupOptions, error) {
@@ -26,12 +27,25 @@ func parseOptions(args []string, output io.Writer) (startupOptions, error) {
 	if flags.NArg() != 0 {
 		return options, fmt.Errorf("unexpected argument: %s", flags.Arg(0))
 	}
-	hasDev := options.devProfile != "" || options.devAssets != "" || options.devCLI != "" || options.devLabel != ""
-	if hasDev && options.debugUI {
+	devVisited := false
+	emptyDevStatus := false
+	flags.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "dev-profile", "dev-assets", "dev-cli", "dev-label", "dev-status":
+			devVisited = true
+			if f.Name == "dev-status" && f.Value.String() == "" {
+				emptyDevStatus = true
+			}
+		}
+	})
+	if devVisited && options.debugUI {
 		return options, fmt.Errorf("development flags and --debug-ui are mutually exclusive")
 	}
-	if hasDev && (options.devProfile == "" || options.devCLI == "") {
+	if devVisited && (options.devProfile == "" || options.devCLI == "") {
 		return options, fmt.Errorf("--dev-profile and --dev-cli are both required for development mode")
+	}
+	if emptyDevStatus {
+		return options, fmt.Errorf("--dev-status path must not be empty")
 	}
 	return options, nil
 }

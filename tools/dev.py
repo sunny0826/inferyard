@@ -9,19 +9,39 @@ import json
 import os
 import plistlib
 import re
-import signal
 import subprocess
 import sys
-import time
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from dev_process import (  # noqa: E402
+    DevError,
+    atomic_write_json,
+    launch_studio,
+    process_identity,
+    stop_recorded,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE_DIR_NAME = ".inferyard-dev"
 
-
-class DevError(RuntimeError):
-    pass
+__all__ = [
+    "DevError",
+    "atomic_write_json",
+    "branch_key",
+    "check_legacy_active",
+    "develop",
+    "ensure_workspace",
+    "launch_studio",
+    "launcher_lock",
+    "main",
+    "process_identity",
+    "resolve_profile",
+    "stop_recorded",
+    "workspace_ready",
+]
 
 
 def _run(
@@ -53,6 +73,69 @@ def _run(
     return result
 
 
+def _inside(path: Path, root: Path) -> Path | None:
+    base = root.resolve()
+    try:
+        parts = path.absolute().relative_to(base).parts
+    except ValueError:
+        return None
+    if not parts:
+        return None
+    cursor = base
+    for part in parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            return None
+    resolved = path.resolve()
+    if not resolved.is_relative_to(base) or resolved == base:
+        return None
+    return resolved
+
+
+@contextmanager
+def launcher_lock(state_dir: Path):
+    state_dir.mkdir(parents=True, exist_ok=True)
+    lock_path = state_dir / "launcher.lock"
+    if lock_path.is_symlink():
+        raise DevError(f"Unsafe launcher lock symlink: {lock_path}")
+    with lock_path.open("a+b") as stream:
+        if os.name == "nt":
+            import msvcrt
+
+            if not lock_path.stat().st_size:
+                stream.write(b"\0")
+                stream.flush()
+            stream.seek(0)
+            try:
+                msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                raise DevError("Another development launcher command is already running") from exc
+        else:
+            import fcntl
+
+            try:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                raise DevError("Another development launcher command is already running") from exc
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                stream.seek(0)
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
+def check_legacy_active(state_dir: Path) -> None:
+    for name in ("active.json", "pending.json"):
+        legacy = state_dir / name
+        if legacy.exists() or legacy.is_symlink():
+            raise DevError(
+                f"Legacy development state found at {legacy}; stop the previous dev instance and remove stale legacy records before continuing"
+            )
+
+
 def current_branch(root: Path) -> str:
     res = subprocess.run(
         ["git", "-C", str(root), "symbolic-ref", "--quiet", "--short", "HEAD"],
@@ -74,15 +157,16 @@ def current_branch(root: Path) -> str:
 
 
 def branch_key(branch: str) -> str:
-    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", branch).strip("-") or "branch"
-    digest = hashlib.sha256(branch.encode("utf-8")).hexdigest()[:8]
-    return f"{slug[:32]}-{digest}"
+    """Match legacy profile key so existing branch profiles continue seamlessly."""
+    return hashlib.sha256(branch.encode("utf-8")).hexdigest()[:20]
 
 
 def studio_version(root: Path) -> str:
     config = root / "studio" / "mygo.config.ts"
     if config.is_file():
-        match = re.search(r"^\s*version:\s*['\"]([^'\"]+)['\"]", config.read_text(encoding="utf-8"), re.M)
+        match = re.search(
+            r"^\s*version:\s*['\"]([^'\"]+)['\"]", config.read_text(encoding="utf-8"), re.M
+        )
         if match:
             return match.group(1)
     return "0.0.0-dev"
@@ -130,180 +214,97 @@ def sync_cli(root: Path) -> Path:
     return cli
 
 
-def build_studio(root: Path, state_dir: Path) -> Path:
+def build_studio_staged(root: Path, state_dir: Path) -> tuple[Path, Path]:
+    """Build into a sibling staged binary so a running executable is untouched."""
     print("Building InferYard Studio...", flush=True)
-    binary = studio_binary_path(state_dir)
-    ensure_macos_bundle(binary, studio_version(root))
+    final_binary = studio_binary_path(state_dir)
+    ensure_macos_bundle(final_binary, studio_version(root))
+    staged = final_binary.with_name(f"{final_binary.stem}.next{final_binary.suffix}")
     env = os.environ.copy()
     env.setdefault("GOPROXY", "https://goproxy.cn,direct")
     env["CGO_ENABLED"] = "0"
     env["GOWORK"] = "off"
     env["GOFLAGS"] = "-mod=readonly"
-    _run(["go", "build", "-o", str(binary), "."], cwd=root / "studio", env=env)
-    return binary.resolve()
+    _run(["go", "build", "-o", str(staged), "."], cwd=root / "studio", env=env)
+    _run([str(staged), "--help"], cwd=root, capture=True, timeout=15)
+    return staged.resolve(), final_binary
 
 
-def resolve_profile(state_dir: Path, branch: str, *, rebuild: bool, commit_pointer: bool) -> tuple[Path, Path]:
-    profiles_root = state_dir / "profiles" / branch_key(branch)
+def resolve_profile(state_dir: Path, branch: str, *, rebuild: bool) -> tuple[Path, Path]:
+    profiles_root = (state_dir / "profiles" / branch_key(branch)).resolve()
     profiles_root.mkdir(parents=True, exist_ok=True)
     pointer = profiles_root / "current.json"
-    if not rebuild and pointer.is_file():
+    if not rebuild and pointer.is_file() and not pointer.is_symlink():
         try:
             saved = json.loads(pointer.read_text(encoding="utf-8")).get("profile_root")
             if isinstance(saved, str) and saved:
-                candidate = Path(saved)
-                if candidate.is_dir():
-                    return candidate.resolve(), pointer
+                candidate = _inside(Path(saved), profiles_root)
+                if candidate is not None and candidate.is_dir():
+                    return candidate, pointer
         except (OSError, ValueError):
             pass
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     profile = (profiles_root / f"profile-{stamp}").resolve()
     profile.mkdir(parents=True, exist_ok=True)
-    if commit_pointer:
-        pointer.write_text(json.dumps({"profile_root": str(profile)}, indent=2) + "\n", encoding="utf-8")
     return profile, pointer
+
+
+def workspace_ready(workspace: Path) -> bool:
+    prep = workspace / "preparation.json"
+    if not prep.is_file() or prep.is_symlink():
+        return False
+    try:
+        data = json.loads(prep.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(data, dict) and data.get("kind") == "community_init.v1"
 
 
 def ensure_workspace(cli: Path, profile: Path) -> Path:
     workspace = profile / "workspace"
-    if (workspace / "preparation.json").is_file():
+    if workspace_ready(workspace):
         return workspace
-    if workspace.exists() and any(workspace.iterdir()):
-        raise DevError(f"Development workspace exists without preparation.json: {workspace}; run `mise run dev:rebuild`")
-    _run([str(cli), "init", "--out", str(workspace)], cwd=profile, capture=True)
-    return workspace
-
-
-def _process_matches(pid: int, expected_binary: str) -> bool:
-    if not expected_binary:
-        return False
-    if os.name == "nt":
-        res = subprocess.run(
-            ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
-            capture_output=True,
-            text=True,
-            check=False,
+    if workspace.exists() or workspace.is_symlink():
+        raise DevError(
+            f"Development workspace is not initialized: {workspace}; run `mise run dev:rebuild`"
         )
-        exe = Path(expected_binary).name.lower()
-        return res.returncode == 0 and f'"{pid}"' in res.stdout and exe in res.stdout.lower()
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    res = subprocess.run(
-        ["ps", "-p", str(pid), "-o", "command="],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if res.returncode != 0:
-        return False
-    cmd = res.stdout.strip()
-    return bool(cmd) and expected_binary in cmd
-
-
-def stop_recorded(state_dir: Path, *, timeout: float = 30.0) -> bool:
-    session_file = state_dir / "session.json"
-    if not session_file.is_file():
-        return False
-    try:
-        data = json.loads(session_file.read_text(encoding="utf-8"))
-        pid = int(data["pid"])
-        binary = str(data.get("binary", ""))
-    except (OSError, ValueError, KeyError, TypeError):
-        session_file.unlink(missing_ok=True)
-        return False
-    if not _process_matches(pid, binary):
-        session_file.unlink(missing_ok=True)
-        return False
-    if os.name == "nt":
-        subprocess.run(["taskkill", "/PID", str(pid)], capture_output=True, check=False)
-    else:
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            session_file.unlink(missing_ok=True)
-            return True
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if not _process_matches(pid, binary):
-            session_file.unlink(missing_ok=True)
-            return True
-        time.sleep(0.2)
-    log_path = data.get("log", "")
-    raise DevError(f"Development Studio (PID {pid}) did not exit within {int(timeout)}s; inspect {log_path}")
-
-
-def launch_studio(
-    root: Path, state_dir: Path, binary: Path, cli: Path, profile: Path, assets: Path, label: str
-) -> dict[str, object]:
-    logs_dir = state_dir / "logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    log_path = logs_dir / f"studio-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}.log"
-    args = [
-        str(binary),
-        "--dev-profile",
-        str(profile),
-        "--dev-assets",
-        str(assets),
-        "--dev-cli",
-        str(cli),
-        "--dev-label",
-        label,
-    ]
-    kwargs: dict[str, object] = {"cwd": root}
-    if os.name == "nt":
-        kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-    else:
-        kwargs["start_new_session"] = True
-    with log_path.open("ab") as stream:
-        proc = subprocess.Popen(args, stdout=stream, stderr=subprocess.STDOUT, **kwargs)
-    record: dict[str, object] = {
-        "pid": proc.pid,
-        "binary": str(binary),
-        "cli": str(cli),
-        "profile": str(profile),
-        "assets": str(assets),
-        "log": str(log_path),
-    }
-    (state_dir / "session.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
-    return record
+    _run([str(cli), "init", "--out", str(workspace)], cwd=profile, capture=True)
+    if not workspace_ready(workspace):
+        raise DevError(f"CLI init did not produce a valid workspace: {workspace}")
+    return workspace
 
 
 def develop(root: Path, action: str, *, prepare_only: bool = False) -> None:
     root = root.resolve()
     state_dir = (root / STATE_DIR_NAME).resolve()
-    state_dir.mkdir(parents=True, exist_ok=True)
-    if action == "stop":
-        stopped = stop_recorded(state_dir)
-        print("Stopped development Studio." if stopped else "No running development Studio recorded.")
-        return
-    branch = current_branch(root)
-    cli = sync_cli(root)
-    binary = build_studio(root, state_dir)
-    _run([str(binary), "--help"], cwd=root, capture=True, timeout=15)
-    assets = (state_dir / "assets").resolve()
-    (assets / "models").mkdir(parents=True, exist_ok=True)
-    (assets / "engines").mkdir(parents=True, exist_ok=True)
-    profile, pointer = resolve_profile(
-        state_dir,
-        branch,
-        rebuild=(action == "rebuild"),
-        commit_pointer=not prepare_only,
-    )
-    workspace = ensure_workspace(cli, profile)
-    if prepare_only:
-        print(f"Prepared development build without launching Studio: {binary}")
+    with launcher_lock(state_dir):
+        check_legacy_active(state_dir)
+        if action == "stop":
+            stopped = stop_recorded(state_dir)
+            print("Stopped development Studio." if stopped else "No running development Studio recorded.")
+            return
+        branch = current_branch(root)
+        cli = sync_cli(root)
+        staged_binary, final_binary = build_studio_staged(root, state_dir)
+        assets = (state_dir / "assets").resolve()
+        (assets / "models").mkdir(parents=True, exist_ok=True)
+        (assets / "engines").mkdir(parents=True, exist_ok=True)
+        profile, pointer = resolve_profile(state_dir, branch, rebuild=(action == "rebuild"))
+        workspace = ensure_workspace(cli, profile)
+        if prepare_only:
+            print(f"Prepared development build without launching Studio: {staged_binary}")
+            print(f"CLI: {cli}")
+            print(f"Workspace: {workspace}")
+            return
+        stop_recorded(state_dir)
+        os.replace(staged_binary, final_binary)
+        binary = final_binary.resolve()
+        session = launch_studio(root, state_dir, binary, cli, profile, assets, branch)
+        atomic_write_json(pointer, {"profile_root": str(profile)})
+        print(f"Development Studio started (PID {session['pid']}) [{branch}]")
         print(f"CLI: {cli}")
         print(f"Workspace: {workspace}")
-        return
-    stop_recorded(state_dir)
-    session = launch_studio(root, state_dir, binary, cli, profile, assets, branch)
-    pointer.write_text(json.dumps({"profile_root": str(profile)}, indent=2) + "\n", encoding="utf-8")
-    print(f"Development Studio started (PID {session['pid']}) [{branch}]")
-    print(f"CLI: {cli}")
-    print(f"Workspace: {workspace}")
-    print(f"Log: {session['log']}")
+        print(f"Log: {session['log']}")
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -18,4 +18,4 @@ mise run dev:stop
 - **`mise run dev:stop`**: sends a graceful shutdown signal to the recorded dev Studio process (which drains active work and stops its owned engine).
 - **`mise run dev -- --prepare-only`**: syncs the CLI, builds Studio, verifies `--help`, and initializes the workspace without opening a window.
 
-Development flags (`--dev-profile`, `--dev-assets`, `--dev-cli`, `--dev-label`) are excluded from `-tags release` builds.
+Development flags (`--dev-profile`, `--dev-assets`, `--dev-cli`, `--dev-label`, `--dev-status`) are excluded from `-tags release` builds.

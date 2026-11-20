@@ -9,8 +9,12 @@ import (
 	"inferyard/studio/internal/core"
 )
 
+type devStatusReporter struct{}
+
+func (devStatusReporter) report(string, string) {}
+
 func registerDevelopment(*flag.FlagSet, *startupOptions) {}
 
-func developmentBindings(startupOptions) (*core.BoundPaths, mygo.WindowStateStore, error) {
-	return nil, nil, nil
+func developmentBindings(startupOptions) (*core.BoundPaths, mygo.WindowStateStore, devStatusReporter, error) {
+	return nil, nil, devStatusReporter{}, nil
 }
