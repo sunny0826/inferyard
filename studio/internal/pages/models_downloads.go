@@ -10,7 +10,8 @@ import (
 
 // downloadsView lists download tasks. Units and progress semantics stay under
 // one fold at the top; each card keeps one observation line plus, at most, one
-// explanation of what the source cannot report.
+// explanation of what the source cannot report. A source without byte or rate
+// telemetry (engine archives) states that in one line instead of empty metrics.
 func (s *viewState) downloadsView(c *ui.Context) {
 	if len(s.downloads) == 0 {
 		ui.Text(c, "暂无下载任务。")
@@ -40,18 +41,19 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 	if task.Kind == "engine" {
 		kind = "引擎"
 	}
-	metrics := []taskMetric{{"已观测", "缺测", ""}, {"速率", "缺测", ""}, {"总量", "总量未知", ""}}
-	note := "归档获取接口未提供字节读数。"
-	if task.Kind != "engine" {
-		note = ""
-		metrics = []taskMetric{
-			{"已观测", fmt.Sprintf("%.2f MiB", float64(task.DownloadedBytes)/1048576), ""},
-			{"速率", "缺测", "无速率读数"},
-			{"总量", "总量未知", ""},
-		}
-		if task.BytesPerSecond != nil {
-			metrics[1] = taskMetric{"速率", formatRate(*task.BytesPerSecond), ""}
-		}
+	metrics := []taskMetric{
+		{"已观测", fmt.Sprintf("%.2f MiB", float64(task.DownloadedBytes)/1048576), ""},
+		{"速率", "缺测", "无速率读数"},
+		{"总量", "总量未知", ""},
+	}
+	if task.BytesPerSecond != nil {
+		metrics[1] = taskMetric{"速率", formatRate(*task.BytesPerSecond), ""}
+	}
+	status := ""
+	if task.Kind == "engine" {
+		// The archive source reports neither bytes nor rate, so three 缺测
+		// columns would only add noise; one line states the same fact.
+		metrics, status = nil, engineTaskStatus(task)
 	}
 	color := stateColor(c, stateNeutral)
 	switch task.State {
@@ -67,12 +69,28 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 			kind: kind, name: task.OutName, state: stateLabel(task.State), color: color,
 			active:  task.State == "downloading",
 			metrics: metrics,
-			note:    note,
+			status:  status,
 			notice:  func() { downloadErrorView(c, task.Error) },
 			actions: func() { s.downloadActions(c, task) },
 			details: func() { downloadDetails(c, task) },
 		})
 	})
+}
+
+// engineTaskStatus is the single line an engine archive card shows instead of
+// the byte and rate metrics its source cannot report.
+func engineTaskStatus(task core.DownloadTask) string {
+	switch task.State {
+	case "downloading":
+		return "正在下载引擎归档（来源未提供大小与速率）"
+	case "done":
+		return "引擎归档下载完成（来源未提供大小与速率）"
+	case "failed":
+		return "引擎归档下载失败。"
+	case "cancelled":
+		return "引擎归档下载已取消。"
+	}
+	return "引擎归档状态未知。"
 }
 
 func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {

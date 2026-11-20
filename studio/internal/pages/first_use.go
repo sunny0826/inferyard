@@ -95,31 +95,90 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 }
 
 func (s *viewState) activeDownloadCount() int {
+	return s.countDownloads("downloading")
+}
+
+func (s *viewState) countDownloads(state string) int {
 	count := 0
 	for _, task := range s.downloads {
-		if task.State == "downloading" {
+		if task.State == state {
 			count++
 		}
 	}
 	return count
 }
 
+// unresolvedDownloadFailures counts failed tasks that still need the operator.
+// Historical failure cards stay in the list, so a failure stops counting only
+// when a newer task for the same source succeeded or is running; an unrelated
+// asset, a download of another source, or an older success never resolves it.
+func (s *viewState) unresolvedDownloadFailures() int {
+	count := 0
+	for i, task := range s.downloads {
+		if task.State != "failed" || s.downloadResolved(task, i) {
+			continue
+		}
+		count++
+	}
+	return count
+}
+
+// downloadResolved reports whether a task created after the failure superseded
+// it. Both the core service and the preview window keep the list newest first,
+// so list position decides; wall-clock timestamps do not, because a clock step
+// backward between downloads would invert them.
+func (s *viewState) downloadResolved(failed core.DownloadTask, failedIndex int) bool {
+	for i, task := range s.downloads {
+		if i >= failedIndex {
+			break
+		}
+		if task.Kind != failed.Kind || task.SourceUrl != failed.SourceUrl || task.TaskId == failed.TaskId {
+			continue
+		}
+		if task.State == "downloading" || task.State == "done" {
+			return true
+		}
+	}
+	return false
+}
+
+// downloadTaskGuide is a lightweight banner above the download cards. It keeps
+// the way back visible without competing with the filled download actions, and
+// its status follows the task cards below instead of claiming the assets are
+// ready while a download is still running or has failed.
 func (s *viewState) downloadTaskGuide(c *ui.Context) {
 	if !s.preparingTask() || s.environmentMissing() {
 		return
 	}
-	card(c, "准备测评资源", func() {
-		assets := s.availableTaskAssets()
-		switch {
-		case assets.model && assets.engine:
-			ui.Text(c, "模型与引擎已就绪，可返回任务页开始测评。")
-		case s.activeDownloadCount() > 0:
-			ui.Text(c, fmt.Sprintf("正在下载 %d 项资源…", s.activeDownloadCount()))
-		default:
-			ui.Text(c, "下载所需引擎与模型后返回任务页。")
-		}
-		primaryButton(c, "返回任务").AlignSelf(ui.Start).OnClick(func() { s.selected = "dashboard" })
-	})
+	t := tokens(c)
+	ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.CardGap).
+		Padding(t.Density.Stack, t.Card.Padding).Radius(t.Radius.Inset).Border(t.Card.Border, c.Theme().Border).
+		Children(func() {
+			ui.Text(c, s.downloadGuideStatus()).Grow(1).MinWidth(0).TextColor(c.Theme().TextMuted)
+			button(c, "返回任务").Shrink(0).OnClick(func() { s.selected = "dashboard" })
+		})
+}
+
+// downloadGuideStatus reports the reason the task page still needs resources.
+// Active downloads and unresolved failures take precedence over the readiness
+// sentence so the banner never contradicts the task cards it sits above; a
+// failure already retried successfully no longer asks for another retry.
+func (s *viewState) downloadGuideStatus() string {
+	assets := s.availableTaskAssets()
+	active := s.activeDownloadCount()
+	failed := s.unresolvedDownloadFailures()
+	switch {
+	case active > 0 && failed > 0:
+		return fmt.Sprintf("正在下载 %d 项资源，另有 %d 项下载失败。", active, failed)
+	case active > 0:
+		return fmt.Sprintf("正在下载 %d 项资源…", active)
+	case failed > 0:
+		return fmt.Sprintf("有 %d 项下载任务失败，可在下方重新创建。", failed)
+	case assets.model && assets.engine:
+		return "模型与引擎已就绪，可返回任务页开始测评。"
+	default:
+		return "下载所需引擎与模型后返回任务页。"
+	}
 }
 
 func (s *viewState) liveBundleTask(bundle string) *core.RunTask {
