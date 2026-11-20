@@ -131,7 +131,7 @@ func (s *viewState) deviceView(c *ui.Context) {
 	if snapshot == nil && s.device.LastError == nil && !s.device.Refreshing {
 		ui.Column(c).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Card.EmptyPadding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() {
 			heading(c, "尚无设备快照", 2)
-			ui.Text(c, "采集本机硬件与 GPU 信息，不向模型发送请求。").TextColor(c.Theme().TextMuted)
+			ui.Text(c, "采集本机硬件与 GPU 信息。").TextColor(c.Theme().TextMuted)
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
 				if primaryButton(c, "采集设备信息").Disabled(s.deviceCollectionBlocked()).Clicked() {
 					s.refreshDevice()

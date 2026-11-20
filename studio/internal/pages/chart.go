@@ -88,11 +88,10 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 		series := resourceSeriesData(samples)
 		ui.Text(c, fmt.Sprintf("采样点：%d（每来源保留最近 600 点）", len(samples)))
 		if len(series) == 0 {
-			ui.Text(c, "等待资源采样，缺测不补零。")
+			ui.Text(c, "等待资源采样…")
 			return
 		}
 		theme := c.Theme()
-		ui.Text(c, "横轴为等距采样点，缺测保留断点。").TextColor(theme.TextMuted)
 		metrics := resourceMetrics(theme)
 		selected := []core.ResourceSample{}
 		draw := func(metric resourceMetric) {
@@ -142,9 +141,6 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 					}
 				} else {
 					ui.Text(c, secondarySourceLabel(metric.id, options[current].source)).TextColor(theme.TextMuted)
-				}
-				if metric.id == "service_cpu_percent" {
-					ui.Text(c, "CPU 占用（1 个逻辑核 = 100%）：可超过 100%；只统计已连接的服务进程，不含子进程。").TextColor(theme.TextMuted)
 				}
 				chosen := options[current]
 				selected = append(selected, chosen.points...)

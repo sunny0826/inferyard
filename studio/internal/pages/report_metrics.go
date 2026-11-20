@@ -48,9 +48,9 @@ func reportMemoryReason(reason *string) string {
 
 func reportMetrics(c *ui.Context, run core.ReportRun) {
 	d := run.Dashboard
-	qualityNote := "各类别不构成综合评分"
+	qualityNote := ""
 	if !d.Quality.Complete {
-		qualityNote += " · 仅已记录通过数"
+		qualityNote = "仅已记录通过数"
 	}
 	metrics := []struct{ label, value, detail, note string }{
 		{"答案通过", reportPassRate(d.Quality), "通过 / 评分题", qualityNote},
@@ -86,10 +86,8 @@ func reportFactSummary(c *ui.Context, run core.ReportRun) {
 	if d.Quality.Numerator == nil && d.Quality.Denominator == nil &&
 		run.Summary.CompletionRate.Numerator == nil && run.Summary.CompletionRate.Denominator == nil &&
 		d.Latency.P50 == nil && d.SampledPeakRSSBytes == nil {
-		ui.Text(c, "本次运行没有可汇总的指标；下方各区说明各自缺测原因。").TextColor(c.Theme().TextMuted)
-		return
+		ui.Text(c, "本次运行暂无可汇总的指标。").TextColor(c.Theme().TextMuted)
 	}
-	ui.Text(c, "仅反映本次实测记录，不代表其他上下文或并发场景表现。").TextColor(c.Theme().TextMuted)
 }
 
 func reportThroughput(c *ui.Context, run core.ReportRun) {
@@ -102,7 +100,6 @@ func reportThroughput(c *ui.Context, run core.ReportRun) {
 			deviceRow(c, "输出 token/秒", reportPerSecond(throughput.OutputTokensPerSecond, throughput.OutputTokensPerSecondReason))
 			deviceRow(c, "达标请求/秒", reportPerSecond(throughput.GoodputPerSecond, throughput.GoodputPerSecondReason))
 		}
-		ui.Text(c, "依次执行本批请求的观测值，不代表并发服务能力。").TextColor(c.Theme().TextMuted)
 	})
 }
 
@@ -151,16 +148,12 @@ func reportThroughputReason(reason *string) string {
 func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 	intervals := run.Dashboard.OutputBlockIntervals
 	card(c, "输出内容块到达间隔", func() {
-		ui.Text(c, "内容块不等于真实 token；没有逐 token 事件源，因此未测逐 token 间隔。").TextColor(c.Theme().TextMuted)
 		if intervals == nil {
 			ui.Text(c, "未提供测量").TextColor(c.Theme().TextMuted)
 			return
 		}
 		deviceRow(c, "中位", reportMilliseconds("", intervals.P50, ""))
 		deviceRow(c, "P95", reportMilliseconds("", intervals.P95, reportP95Reason(intervals.P95Reason)))
-		if reportP95Exploratory(intervals) {
-			ui.Text(c, "样本较少，仅供观察。").TextColor(c.Theme().TextMuted)
-		}
 		if reason := reportIntervalReason(intervals.Reason); reason != "" {
 			ui.Text(c, "缺测原因："+reason).TextColor(c.Theme().TextMuted)
 		}
@@ -170,10 +163,6 @@ func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 			deviceRow(c, "最小 / 最大", reportMilliseconds("min", intervals.Min, "")+" · "+reportMilliseconds("max", intervals.Max, ""))
 		})
 	})
-}
-
-func reportP95Exploratory(intervals *core.ReportOutputBlockIntervals) bool {
-	return intervals.P95 != nil && intervals.IntervalCount >= 20 && intervals.IntervalCount < 100
 }
 
 func reportMilliseconds(label string, value *float64, missing string) string {

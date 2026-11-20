@@ -18,7 +18,7 @@ func TestCompletionKeepsUnscorableCasesInDenominator(t *testing.T) {
 		Score: &core.RunScore{Passed: 3, Valid: 4, Unscorable: 1},
 	}}
 	tt := ui.NewTester(s.completionView, 1120, 1600)
-	if !tt.HasText("3 / 4 · 缺测 — 1 题不可评分，分母不缩") {
+	if !tt.HasText("3 / 4（1 题不可评分）") {
 		t.Fatalf("unscorable case shrank the denominator: %v", tt.Texts())
 	}
 	for _, label := range tt.Texts() {

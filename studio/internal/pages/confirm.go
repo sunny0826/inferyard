@@ -130,11 +130,10 @@ func (s *viewState) engineStoppable() bool {
 }
 
 func cancelRunPrompt(lastRound bool) string {
-	scope := "将取消本测评题集的运行并等待安全收尾；已写入结果目录的进度和已取消的证据会被保存。"
 	if lastRound {
-		scope = "将取消本轮所有未结束的运行并等待安全收尾；已写入结果目录的进度和已取消的证据会被保存。"
+		return "将取消本轮所有未结束的运行并等待安全收尾，已完成的进度会保留。"
 	}
-	return scope + "本轮不会生成完整报告；取消证据不等同于完整测评结果。"
+	return "将取消当前测评题集的运行并等待安全收尾，已完成的进度会保留。"
 }
 
 func (w *viewState) cancelRunGate(c *ui.Context, id, state string) bool {

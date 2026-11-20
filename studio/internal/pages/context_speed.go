@@ -341,7 +341,6 @@ func (s *viewState) speedResultView(c *ui.Context) {
 				speedTable(c.Key("speed-partial"), &w.table, "专项已完成测量", r, r.samples)
 			}
 		}
-		ui.Text(c, "输入处理为引擎报告的输入处理耗时（prompt_ms）；输入长度为模板化后的实际 token 数；Prefill 与 Decode 为 token/s；— 表示缺测。").TextColor(c.Theme().TextMuted)
 	})
 	if r.summary == nil || r.reason != "" {
 		componentFold(c.Key(r.id), "查看诊断详情", func() {
@@ -415,8 +414,6 @@ func (s *viewState) speedHistoryView(c *ui.Context) {
 	card(c, "专项历史任务", func() {
 		if s.preview != nil {
 			ui.Text(c, "本窗口的模拟记录；关闭窗口后清空。").TextColor(c.Theme().TextMuted)
-		} else {
-			ui.Text(c, "打开时重新核验原始批次；不会重新测量。").TextColor(c.Theme().TextMuted)
 		}
 		selectableTable(&w.historyTable, func(i int) any { return w.history[i].id }, func(i int) string { return w.history[i].id })
 		pageTable(c.Key("speed-history"), &w.historyTable, "专项历史表", []ui.TableColumn{

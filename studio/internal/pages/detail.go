@@ -69,7 +69,7 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail, t core.
 	}
 	ui.Text(c, progressHeadline(p))
 	progressBar(c, progressValue(p.Done, p.Total), "运行题目进度")
-	ui.Text(c, fmt.Sprintf("%s当前题：%s", detailScope(t), text(p.CurrentCaseId)))
+	ui.Text(c, fmt.Sprintf("当前题：%s", text(p.CurrentCaseId)))
 	columns := []ui.TableColumn{{Title: "题目", Width: 180}, {Title: "状态", Width: 160}, {Title: "类别", Width: 100}, {Title: "质量", Width: 100}, {Title: "耗时", Width: 100}, {Title: "错误类别", Width: 160}}
 	s.casesTable.Key = func(i int) any { return p.Cases[i].CaseId }
 	pageTable(c, &s.casesTable, "题目进度表", columns, len(p.Cases), func(row, col int) {
@@ -89,8 +89,6 @@ func progressHeadline(p *core.RunProgress) string {
 	}
 	return label
 }
-
-func detailScope(t core.RunTask) string { return bundleScopeText(t.Kind == "resume") }
 
 func caseQuality(item core.CaseProgress) string {
 	if item.QualityState == nil || *item.QualityState == "" {
