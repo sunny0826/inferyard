@@ -72,9 +72,10 @@ HTML 原型与样式对照使用 Studio 调色板实际值（来源：`studio_th
 不能都落在暖棕红区间；正文对比度在 `Background`、`Surface` 与 `SurfaceHover` 上不低于
 4.5:1，由 `studio_theme_test.go` 按 WCAG 相对亮度计算校验。
 
-错误用 danger 色底的横幅呈现：`Surface` 混入 danger 7% 作背景，左侧 2 DIP danger 竖条，
-文字为 danger 混向 `Text` 20%；高对比度下改用主题表面加 1 DIP 全边框。
-横幅文字在其自身底色上仍须不低于 4.5:1。
+错误与警告共用 `stateBanner`：`Surface` 混入语义色 7% 作背景，左侧 2 DIP 语义色竖条，
+行首图标（错误 `lucide.CircleAlert`、警告 `lucide.TriangleAlert`），文字为语义色混向
+`Text` 20%；高对比度下改用主题表面加 1 DIP 全边框。横幅文字在其自身底色上仍须不低于
+4.5:1。服务发现限制等“需处理但非失败”的信息走警告横幅，不用正文色文字承担。
 
 沿用模型页的低饱和背景：状态面板可用 `color.Mix(t.Surface, 0.93)`。
 徽章使用不透明的 tint 背景（`Surface` 混入状态色 12%）并把文字混向 `Text` 30%，

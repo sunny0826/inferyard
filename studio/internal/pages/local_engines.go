@@ -76,7 +76,7 @@ func (s *viewState) localSelectionError() string {
 		}
 		if e.Family == "lmstudio" {
 			if pid, err := strconv.ParseInt(s.localPID, 10, 64); err != nil || pid <= 0 || urlError(s.localEndpoint) != "" || s.localEndpoint == "" {
-				return "请填写已启动的 LM Studio 后台进程 PID 与本机 endpoint。"
+				return "请填写已启动的 LM Studio 后台进程 PID 与本机服务地址。"
 			}
 		}
 	}
@@ -221,7 +221,7 @@ func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel st
 		}
 	})
 	if choices := s.localServiceChoices(); len(choices) > 0 {
-		ui.Text(c, "已发现的本机服务（点击填入 PID 与 endpoint）：").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "已发现的本机服务（点击填入 PID 与服务地址）：").TextColor(c.Theme().TextMuted)
 		for _, choice := range choices {
 			label := fmt.Sprintf("PID %d · %s · %d 个模型", choice.pid, choice.endpoint, choice.models)
 			if name := displayName(choice.name); name != "" {
@@ -239,7 +239,7 @@ func (s *viewState) localSelectionView(c *ui.Context) {
 		ui.Text(c, e.Family+" · 每个测评题集单独连接服务；完成后再进入下一测评题集。").TextColor(c.Theme().TextMuted)
 		if e.Family == "lmstudio" {
 			ui.Text(c, "先在 LM Studio 启动后台服务并加载所选模型。Studio 只绑定已有服务；请使用后台服务 PID。")
-			s.localServicePicker(c, "LM Studio 后台 PID", "LM Studio endpoint")
+			s.localServicePicker(c, "LM Studio 后台 PID", "LM Studio 服务地址")
 		} else {
 			ui.Text(c, "Studio 管理本次启动的服务；退出时停止其进程树。")
 		}
@@ -252,7 +252,7 @@ func (s *viewState) localSelectionView(c *ui.Context) {
 func (s *viewState) localInstallationsView(c *ui.Context) {
 	card(c, "已有本地引擎", func() {
 		ui.Text(c, "注册 CLI 安装声明后，可选择 llama.cpp、MLX、vLLM、SGLang 或 LM Studio。核验安装不代表模型已通过测评。")
-		ui.Text(c, "installation.json 是 CLI 的安装声明（local-engine-installation.v1），供 engine check 与 config create 使用；Studio 只读取核验，不生成该文件。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "installation.json 需自行准备：按 CLI 的 local-engine-installation.v1 声明模板，填写 executable、working_directory、runtime_roots 和 environment 等本机绝对路径后，交给 engine check 与 config create 使用。Studio 只读取核验，不生成该文件。").TextColor(c.Theme().TextMuted)
 		s.pathField(c, "安装声明 JSON 路径", &s.installationPath, browseInstallation).
 			Description("已有 installation.json 的绝对路径；引擎、环境和模型不会自动下载。").
 			Error(s.browseError(browseInstallation.key, ""))
@@ -310,7 +310,7 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 			if s.handoffFailure != nil {
 				failureView(c, "连接此测评题集失败", s.handoffFailure, "服务就绪后可用同一 PID 重试。")
 			}
-			s.localServicePicker(c, "新的后台 PID", "本机 endpoint")
+			s.localServicePicker(c, "新的后台 PID", "本机服务地址")
 			pid, err := strconv.ParseInt(s.localPID, 10, 64)
 			if err == nil && pid > 0 && s.localPIDUsed(pid) {
 				ui.Text(c, human("local_engine_service_reused")).TextColor(stateColor(c, stateWarning))

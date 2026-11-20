@@ -92,7 +92,7 @@ func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 	errorView(c, s.discoveryError)
 	if s.discoveryError == nil {
 		for _, code := range s.discovery.Limitations {
-			ui.Text(c, human(code)+" · "+code).TextColor(stateColor(c, stateWarning))
+			warningBanner(c, human(code)+" · "+code)
 		}
 	}
 	compatible, other := 0, 0

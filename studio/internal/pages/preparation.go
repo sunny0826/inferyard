@@ -9,6 +9,14 @@ import (
 )
 
 func (s *viewState) loadSettings(v core.SettingsResponse) {
+	s.loadPathSettings(v)
+	s.loadDownloadNames(v)
+}
+
+// loadPathSettings copies the saved paths into the path card only. The two
+// Settings cards save independently, so syncing one must not discard a draft
+// the user typed in the other.
+func (s *viewState) loadPathSettings(v core.SettingsResponse) {
 	s.cliPath = emptyText(v.Settings.InferyardPath)
 	s.workspace = emptyText(v.Settings.WorkspaceRoot)
 	if s.workspace == "" {
@@ -16,6 +24,10 @@ func (s *viewState) loadSettings(v core.SettingsResponse) {
 	}
 	s.results = emptyText(v.Settings.ResultsRoot)
 	s.models = emptyText(v.Settings.ModelsRoot)
+}
+
+// loadDownloadNames copies the saved download names into their card only.
+func (s *viewState) loadDownloadNames(v core.SettingsResponse) {
 	s.modelName, s.engineName = v.Settings.ModelDownloadName, v.Settings.EngineDownloadName
 	if s.modelName == "" {
 		s.modelName = "model"
@@ -23,6 +35,59 @@ func (s *viewState) loadSettings(v core.SettingsResponse) {
 	if s.engineName == "" {
 		s.engineName = "engine"
 	}
+}
+
+// Settings save in two independent groups. A response syncs only the group it
+// wrote, so the other card keeps its unsaved draft.
+func settingsPatchGroups(patch map[string]json.RawMessage) (paths, names bool) {
+	for _, key := range []string{"inferyard_path", "workspace_root", "results_root", "models_root"} {
+		if _, ok := patch[key]; ok {
+			paths = true
+		}
+	}
+	for _, key := range []string{"model_download_name", "engine_download_name"} {
+		if _, ok := patch[key]; ok {
+			names = true
+		}
+	}
+	return paths, names
+}
+
+// syncSavedGroups applies a successful save response to the written group and
+// leaves the other card's draft untouched.
+func (s *viewState) syncSavedGroups(patch map[string]json.RawMessage, value core.SettingsResponse) {
+	paths, names := settingsPatchGroups(patch)
+	if paths {
+		s.loadPathSettings(value)
+	}
+	if names {
+		s.loadDownloadNames(value)
+	}
+}
+
+// applySavedGroups runs syncSavedGroups on the window's update queue when a
+// window exists, so production and in-memory tests share one code path.
+func (s *viewState) applySavedGroups(patch map[string]json.RawMessage, value core.SettingsResponse) {
+	update := s.win.Update
+	if s.updateWindow != nil {
+		update = s.updateWindow
+	}
+	if s.win == nil && s.updateWindow == nil {
+		s.syncSavedGroups(patch, value)
+		return
+	}
+	update(func() { s.syncSavedGroups(patch, value) })
+}
+
+// persistSettings writes one Settings group and syncs only that group, so the
+// other card's draft survives the save. It is the production boundary shared
+// with the preview, which reaches the same sync through saveSettings.
+func (s *viewState) persistSettings(patch map[string]json.RawMessage, message string) (string, *core.ApiError) {
+	v, e := s.service.UpdateSettings(patch)
+	if e == nil {
+		s.applySavedGroups(patch, v)
+	}
+	return message, e
 }
 func (s *viewState) settingsView(c *ui.Context) {
 	s.header(c, "设置")
@@ -61,13 +126,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 			if s.simulate(previewSettings{patch: patch}) {
 				return
 			}
-			s.work(func() (string, *core.ApiError) {
-				v, e := s.service.UpdateSettings(patch)
-				if e == nil {
-					s.win.Update(func() { s.loadSettings(v) })
-				}
-				return "设置已保存。", e
-			})
+			s.work(func() (string, *core.ApiError) { return s.persistSettings(patch, "设置已保存。") })
 		}
 	})
 	s.localInstallationsView(c)
@@ -92,7 +151,27 @@ func (s *viewState) downloadNamesEdited() bool {
 }
 
 func (s *viewState) canSavePaths() bool {
-	return s.settingsLoaded && !s.busy && s.pathsEdited()
+	return s.settingsLoaded && !s.busy && s.pathsEdited() && s.pathsValid()
+}
+
+// pathsValid applies the same checks as validateSettings without reporting a
+// failure: an invalid draft keeps the save disabled instead of failing a click.
+func (s *viewState) pathsValid() bool {
+	for _, entry := range [][3]string{
+		{s.cliPath, emptyText(s.settings.Settings.InferyardPath), ""},
+		{s.workspace, emptyText(s.settings.Effective.WorkspaceRoot), "workspace"},
+		{s.results, emptyText(s.settings.Settings.ResultsRoot), "workspace"},
+		{s.models, emptyText(s.settings.Settings.ModelsRoot), "workspace"},
+	} {
+		message := pathError(entry[0])
+		if entry[2] != "" {
+			message = settingsPathError(entry[0], entry[1])
+		}
+		if message != "" {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *viewState) canSaveDownloadNames() bool {
@@ -154,10 +233,7 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 				if s.simulate(previewSettings{patch: patch}) {
 					return
 				}
-				s.work(func() (string, *core.ApiError) {
-					_, e := s.service.UpdateSettings(patch)
-					return "下载目录名已保存。", e
-				})
+				s.work(func() (string, *core.ApiError) { return s.persistSettings(patch, "下载目录名已保存。") })
 			}
 			button(c, "恢复默认值").Disabled(s.busy).OnClick(func() { s.modelName, s.engineName = "model", "engine" })
 		})

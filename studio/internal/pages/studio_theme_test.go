@@ -88,15 +88,17 @@ func TestStudioPaletteSemanticHuesStayDistinct(t *testing.T) {
 	}
 }
 
-// The danger banner text must stay readable on its own tinted surface, not just
-// on the plain card background. The call site mixes the state color toward the
-// text color, which is the foreground this checks.
-func TestStudioErrorBannerTextContrast(t *testing.T) {
+// The error and warning banner text must stay readable on its own tinted
+// surface, not just on the plain card background. stateBanner mixes each state
+// color toward the text color, which is the foreground this checks.
+func TestStudioBannerTextContrast(t *testing.T) {
 	for name, p := range map[string]paletteColors{"light": studioLightPalette, "dark": studioDarkPalette} {
-		background := p.surface.Mix(p.danger, .07)
-		foreground := p.danger.Mix(p.text, .2)
-		if got := contrastRatio(foreground, background); got < 4.5 {
-			t.Errorf("%s error banner: contrast %.2f < 4.5", name, got)
+		for label, color := range map[string]ui.Color{"danger": p.danger, "warning": p.warning} {
+			background := p.surface.Mix(color, .07)
+			foreground := color.Mix(p.text, .2)
+			if got := contrastRatio(foreground, background); got < 4.5 {
+				t.Errorf("%s %s banner: contrast %.2f < 4.5", name, label, got)
+			}
 		}
 	}
 }
