@@ -55,7 +55,7 @@ func TestSettingsSaveKeepsOtherCardDraftParity(t *testing.T) {
 	preview.workspace, preview.modelName = firstPath, "draft-model"
 	patch := map[string]json.RawMessage{}
 	patch["workspace_root"], _ = json.Marshal(firstPath)
-	if _, e := production.persistSettings(patch, "设置已保存。"); e != nil {
+	if _, e := production.persistSettings(patch, production.settingsDraft(), "设置已保存。"); e != nil {
 		t.Fatal(e)
 	}
 	click(t, tt, "保存")
@@ -75,7 +75,7 @@ func TestSettingsSaveKeepsOtherCardDraftParity(t *testing.T) {
 	tt.Frame()
 	names := map[string]json.RawMessage{}
 	names["model_download_name"], _ = json.Marshal("saved-again")
-	if _, e := production.persistSettings(names, "下载目录名已保存。"); e != nil {
+	if _, e := production.persistSettings(names, production.settingsDraft(), "下载目录名已保存。"); e != nil {
 		t.Fatal(e)
 	}
 	click(t, tt, "保存下载目录名")

@@ -254,8 +254,9 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	s.settings.Settings = value
 	s.settings.Effective = core.EffectiveSettings{WorkspaceRoot: value.WorkspaceRoot, ResultsRoot: value.ResultsRoot, ModelsRoot: value.ModelsRoot, InferyardPath: value.InferyardPath}
 	// Only the card that saved loses its draft. The other Settings card keeps
-	// whatever the user typed, exactly as production does.
-	s.syncSavedGroups(patch, s.settings)
+	// whatever the user typed, exactly as production does. The preview save is
+	// synchronous, so the current form is the submitted snapshot.
+	s.syncSavedGroups(patch, s.settingsDraft(), s.settings)
 	s.ready.Workspace.Path, s.ready.Results.Path, s.ready.Models.Path = value.WorkspaceRoot, value.ResultsRoot, value.ModelsRoot
 	if workspaceChanged {
 		p.cancelEvents("environment")

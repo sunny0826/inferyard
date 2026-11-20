@@ -63,7 +63,7 @@ func TestSyncSavedGroupsKeepsOtherDraft(t *testing.T) {
 
 	paths := settingsState()
 	paths.workspace, paths.modelName = "/draft/workspace", "draft-model"
-	paths.syncSavedGroups(map[string]json.RawMessage{"workspace_root": json.RawMessage(`"/draft/workspace"`)}, respond)
+	paths.syncSavedGroups(map[string]json.RawMessage{"workspace_root": json.RawMessage(`"/draft/workspace"`)}, paths.settingsDraft(), respond)
 	if paths.workspace != "/saved/workspace" {
 		t.Fatalf("saved path not synced: %q", paths.workspace)
 	}
@@ -73,7 +73,7 @@ func TestSyncSavedGroupsKeepsOtherDraft(t *testing.T) {
 
 	names := settingsState()
 	names.workspace, names.modelName = "/draft/workspace", "draft-model"
-	names.syncSavedGroups(map[string]json.RawMessage{"model_download_name": json.RawMessage(`"saved-model"`)}, respond)
+	names.syncSavedGroups(map[string]json.RawMessage{"model_download_name": json.RawMessage(`"saved-model"`)}, names.settingsDraft(), respond)
 	if names.modelName != "saved-model" {
 		t.Fatalf("saved name not synced: %q", names.modelName)
 	}
@@ -113,7 +113,7 @@ func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
 
 	patch := map[string]json.RawMessage{}
 	patch["workspace_root"], _ = json.Marshal(workspace)
-	if _, e := s.persistSettings(patch, "设置已保存。"); e != nil {
+	if _, e := s.persistSettings(patch, s.settingsDraft(), "设置已保存。"); e != nil {
 		t.Fatal(e)
 	}
 	if s.workspace != workspace {
@@ -127,7 +127,7 @@ func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
 	s.workspace = next
 	names := map[string]json.RawMessage{}
 	names["model_download_name"], _ = json.Marshal("saved-again")
-	if _, e := s.persistSettings(names, "下载目录名已保存。"); e != nil {
+	if _, e := s.persistSettings(names, s.settingsDraft(), "下载目录名已保存。"); e != nil {
 		t.Fatal(e)
 	}
 	if s.modelName != "saved-again" {
@@ -135,5 +135,81 @@ func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
 	}
 	if s.workspace != next {
 		t.Fatalf("name save wiped the path draft: %q", s.workspace)
+	}
+}
+
+// Saving updates the baseline as well as the form: immediately after success
+// the card is no longer dirty, so the Save button disables without waiting for
+// a refresh.
+func TestSettingsSaveClearsDirtyImmediately(t *testing.T) {
+	s := settingsState()
+	s.workspace = "/next/workspace"
+	if !s.canSavePaths() {
+		t.Fatal("edited path did not enable Save")
+	}
+	patch := map[string]json.RawMessage{}
+	patch["workspace_root"], _ = json.Marshal(s.workspace)
+	submitted := s.settingsDraft()
+	s.syncSavedGroups(patch, submitted, core.SettingsResponse{
+		Settings:  core.UserSettings{WorkspaceRoot: ptr(s.workspace)},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr(s.workspace)},
+	})
+	if s.pathsEdited() || s.canSavePaths() {
+		t.Fatalf("saved path still reads as a draft: %q", s.workspace)
+	}
+	if s.settings.Effective.WorkspaceRoot == nil || *s.settings.Effective.WorkspaceRoot != "/next/workspace" {
+		t.Fatal("saved settings baseline was not updated")
+	}
+	tt := settingsTester(s)
+	tt.Frame()
+	click(t, tt, "保存")
+	if s.busy || s.failure != nil {
+		t.Fatalf("disabled Save still submitted: busy=%v failure=%+v", s.busy, s.failure)
+	}
+}
+
+// Typing into a field while its save is in flight keeps the newer value; only
+// the untouched fields of the saved group take the response.
+func TestSettingsSavePreservesTypingDuringSave(t *testing.T) {
+	s := settingsState()
+	s.workspace, s.results = "/submitted/workspace", "/submitted/results"
+	submitted := s.settingsDraft()
+	// The user keeps typing after the request left.
+	s.workspace = "/typed/during-save"
+	patch := map[string]json.RawMessage{}
+	patch["workspace_root"], _ = json.Marshal(submitted.workspace)
+	patch["results_root"], _ = json.Marshal(submitted.results)
+	s.syncSavedGroups(patch, submitted, core.SettingsResponse{
+		Settings:  core.UserSettings{WorkspaceRoot: ptr(submitted.workspace), ResultsRoot: ptr(submitted.results)},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr(submitted.workspace), ResultsRoot: ptr(submitted.results)},
+	})
+	if s.workspace != "/typed/during-save" {
+		t.Fatalf("post-submit typing was overwritten: %q", s.workspace)
+	}
+	if s.results != "/submitted/results" {
+		t.Fatalf("untouched field was not synced: %q", s.results)
+	}
+	if !s.pathsEdited() || !s.canSavePaths() {
+		t.Fatal("newer draft did not keep the card dirty and Save enabled")
+	}
+
+	names := settingsState()
+	names.modelName, names.engineName = "submitted-model", "submitted-engine"
+	submitted = names.settingsDraft()
+	names.modelName = "typed-model"
+	namePatch := map[string]json.RawMessage{}
+	namePatch["model_download_name"], _ = json.Marshal(submitted.modelName)
+	namePatch["engine_download_name"], _ = json.Marshal(submitted.engineName)
+	names.syncSavedGroups(namePatch, submitted, core.SettingsResponse{Settings: core.UserSettings{
+		ModelDownloadName: submitted.modelName, EngineDownloadName: submitted.engineName,
+	}})
+	if names.modelName != "typed-model" {
+		t.Fatalf("post-submit name typing was overwritten: %q", names.modelName)
+	}
+	if names.engineName != "submitted-engine" {
+		t.Fatalf("untouched name was not synced: %q", names.engineName)
+	}
+	if !names.canSaveDownloadNames() {
+		t.Fatal("newer name draft did not keep Save enabled")
 	}
 }

@@ -149,7 +149,7 @@ func (s *viewState) compatibleEndpointView(c *ui.Context, service inferyard.Disc
 			ui.Text(c, "健康检查："+*endpoint.Health)
 		}
 		if endpoint.AmbiguousListener {
-			ui.Text(c, "多个进程监听同一端口，归属存在歧义 · ambiguous_listener").TextColor(stateColor(c, stateWarning))
+			warningBanner(c, "多个进程监听同一端口，归属存在歧义 · ambiguous_listener")
 		}
 		if endpoint.Reason != nil {
 			ui.Text(c, human(*endpoint.Reason)+" · "+*endpoint.Reason)

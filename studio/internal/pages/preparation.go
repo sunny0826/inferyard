@@ -53,39 +53,94 @@ func settingsPatchGroups(patch map[string]json.RawMessage) (paths, names bool) {
 	return paths, names
 }
 
-// syncSavedGroups applies a successful save response to the written group and
-// leaves the other card's draft untouched.
-func (s *viewState) syncSavedGroups(patch map[string]json.RawMessage, value core.SettingsResponse) {
+// settingDraft snapshots both Settings cards when a save starts. A response
+// only writes back the fields the user has not typed into since, so typing
+// during the save is never overwritten by stale submitted values.
+type settingDraft struct {
+	cliPath, workspace, results, models, modelName, engineName string
+}
+
+func (s *viewState) settingsDraft() settingDraft {
+	return settingDraft{
+		cliPath: s.cliPath, workspace: s.workspace, results: s.results, models: s.models,
+		modelName: s.modelName, engineName: s.engineName,
+	}
+}
+
+// savedPathFields reads the four saved paths out of a response.
+func savedPathFields(v core.SettingsResponse) (cliPath, workspace, results, models string) {
+	workspace = emptyText(v.Settings.WorkspaceRoot)
+	if workspace == "" {
+		workspace = emptyText(v.Effective.WorkspaceRoot)
+	}
+	return emptyText(v.Settings.InferyardPath), workspace, emptyText(v.Settings.ResultsRoot), emptyText(v.Settings.ModelsRoot)
+}
+
+// savedDownloadNames reads the saved names, defaulting an unset name.
+func savedDownloadNames(v core.SettingsResponse) (modelName, engineName string) {
+	return defaultDownloadName(v.Settings.ModelDownloadName, "model"), defaultDownloadName(v.Settings.EngineDownloadName, "engine")
+}
+
+// syncSavedGroups records the saved response as the new baseline and writes
+// back only the group the patch saved. Within that group, a field keeps the
+// user's newer value when they typed into it while the save was in flight.
+func (s *viewState) syncSavedGroups(patch map[string]json.RawMessage, submitted settingDraft, value core.SettingsResponse) {
+	previousWorkspace := emptyText(s.settings.Effective.WorkspaceRoot)
+	s.settings = value
 	paths, names := settingsPatchGroups(patch)
 	if paths {
-		s.loadPathSettings(value)
+		cliPath, workspace, results, models := savedPathFields(value)
+		if s.cliPath == submitted.cliPath {
+			s.cliPath = cliPath
+		}
+		if s.workspace == submitted.workspace {
+			s.workspace = workspace
+		}
+		if s.results == submitted.results {
+			s.results = results
+		}
+		if s.models == submitted.models {
+			s.models = models
+		}
+		// The baseline now carries the new workspace, so the next refresh's
+		// applySettings no longer sees the switch. Drop the old workspace's
+		// round state here, exactly as the preview save does.
+		if emptyText(value.Effective.WorkspaceRoot) != previousWorkspace {
+			s.resetWorkspace()
+		}
 	}
 	if names {
-		s.loadDownloadNames(value)
+		modelName, engineName := savedDownloadNames(value)
+		if s.modelName == submitted.modelName {
+			s.modelName = modelName
+		}
+		if s.engineName == submitted.engineName {
+			s.engineName = engineName
+		}
 	}
 }
 
 // applySavedGroups runs syncSavedGroups on the window's update queue when a
 // window exists, so production and in-memory tests share one code path.
-func (s *viewState) applySavedGroups(patch map[string]json.RawMessage, value core.SettingsResponse) {
+func (s *viewState) applySavedGroups(patch map[string]json.RawMessage, submitted settingDraft, value core.SettingsResponse) {
 	update := s.win.Update
 	if s.updateWindow != nil {
 		update = s.updateWindow
 	}
 	if s.win == nil && s.updateWindow == nil {
-		s.syncSavedGroups(patch, value)
+		s.syncSavedGroups(patch, submitted, value)
 		return
 	}
-	update(func() { s.syncSavedGroups(patch, value) })
+	update(func() { s.syncSavedGroups(patch, submitted, value) })
 }
 
 // persistSettings writes one Settings group and syncs only that group, so the
-// other card's draft survives the save. It is the production boundary shared
-// with the preview, which reaches the same sync through saveSettings.
-func (s *viewState) persistSettings(patch map[string]json.RawMessage, message string) (string, *core.ApiError) {
+// other card's draft survives the save. submitted is the snapshot taken before
+// the request left, which keeps later typing intact.
+func (s *viewState) persistSettings(patch map[string]json.RawMessage, submitted settingDraft, message string) (string, *core.ApiError) {
 	v, e := s.service.UpdateSettings(patch)
 	if e == nil {
-		s.applySavedGroups(patch, v)
+		s.applySavedGroups(patch, submitted, v)
 	}
 	return message, e
 }
@@ -126,7 +181,8 @@ func (s *viewState) settingsView(c *ui.Context) {
 			if s.simulate(previewSettings{patch: patch}) {
 				return
 			}
-			s.work(func() (string, *core.ApiError) { return s.persistSettings(patch, "设置已保存。") })
+			submitted := s.settingsDraft()
+			s.work(func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, "设置已保存。") })
 		}
 	})
 	s.localInstallationsView(c)
@@ -233,7 +289,10 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 				if s.simulate(previewSettings{patch: patch}) {
 					return
 				}
-				s.work(func() (string, *core.ApiError) { return s.persistSettings(patch, "下载目录名已保存。") })
+				submitted := s.settingsDraft()
+				s.work(func() (string, *core.ApiError) {
+					return s.persistSettings(patch, submitted, "下载目录名已保存。")
+				})
 			}
 			button(c, "恢复默认值").Disabled(s.busy).OnClick(func() { s.modelName, s.engineName = "model", "engine" })
 		})
