@@ -11,6 +11,7 @@ import (
 // retry.
 func (s *viewState) setupGuide(c *ui.Context) {
 	card(c, "环境准备", func() {
+		ui.Text(c, "首次使用流程：1. 准备运行环境 → 2. 获取引擎与模型 → 3. 开始首次测评").TextColor(c.Theme().TextMuted)
 		ui.Text(c, "自动安装或复用本地 CLI、uv 与工作区目录，已完成步骤将跳过。")
 		locations, known := s.preparationLocations()
 		setupActions(c, locations, known)
@@ -18,9 +19,12 @@ func (s *viewState) setupGuide(c *ui.Context) {
 			setupTargets(c, locations)
 		}
 		ui.Text(c, "首次准备需联网下载组件，耗时视网络环境而定；也可在设置页手动指定 CLI 路径。").TextColor(c.Theme().TextMuted)
-		if primaryButton(c, "准备环境").Disabled(s.busy).Clicked() {
-			s.prepareEnvironment()
-		}
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			if primaryButton(c, "准备环境").Disabled(s.busy).Clicked() {
+				s.prepareEnvironment()
+			}
+			button(c, "前往设置").Disabled(s.busy).OnClick(func() { s.selected = "settings" })
+		})
 		if s.cliInstallStatus != "" {
 			ui.Text(c, s.cliInstallStatus)
 		}

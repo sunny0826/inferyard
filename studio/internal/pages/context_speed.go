@@ -68,7 +68,11 @@ func (r *speedTask) validCount() int {
 }
 
 type speedWorkspace struct {
-	selected                     bool
+	selected bool
+	// typeTab is the switch's own index; typeTabSeen remembers the selected
+	// value it was seeded from, so a click and a direct assignment to selected
+	// (reopening a specialty round) can each update the switch.
+	typeTab, typeTabSeen         int
 	context                      int
 	current, opened              *speedTask
 	history                      []*speedTask
@@ -76,14 +80,42 @@ type speedWorkspace struct {
 	table, samples, historyTable pageTableState
 }
 
+// speedTypeSwitch renders the benchmark type above every field it reshapes: the
+// choice decides whether the six-stage workspace flow or the specialty flow
+// drives the page. A segmented switch, not a dropdown, matches what the choice
+// changes. It reports whether the specialty type is chosen.
+func (s *viewState) speedTypeSwitch(c *ui.Context) bool {
+	if s.speed == nil {
+		return false
+	}
+	w := s.speed
+	if want := boolIndex(w.selected); w.typeTabSeen != want {
+		w.typeTab, w.typeTabSeen = want, want
+	}
+	var tabs ui.TabsParts
+	ui.Field(c, "测评类型", func() {
+		tabs = components.Tabs(c, &w.typeTab, components.TabsSegmented, "常规测评", "长上下文速度")
+	}).Description("测评类型决定下方的表单和进度模型")
+	if tabs.List.Changed() {
+		w.selected, w.typeTabSeen = w.typeTab == 1, w.typeTab
+	}
+	return w.selected
+}
+
+func boolIndex(on bool) int {
+	if on {
+		return 1
+	}
+	return 0
+}
+
+// speedSelection renders the specialty setup only. The type switch itself lives
+// above the shared fields because it also selects the progress model.
 func (s *viewState) speedSelection(c *ui.Context) bool {
 	if s.speed == nil {
 		return false
 	}
 	w := s.speed
-	selectField(c, "测评类型", "", &w.selected, []components.NativeSelectOption[bool]{
-		{Value: false, Label: "常规测评"}, {Value: true, Label: "长上下文速度"},
-	})
 	if !w.selected {
 		return false
 	}

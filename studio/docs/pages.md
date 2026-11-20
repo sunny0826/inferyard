@@ -36,6 +36,12 @@ that work is cancelled on the task page instead. A round halted by a failure at 
 run or report keeps the entry enabled: one click leaves that failed round and starts from
 the model and engine selection again. The form
 lists only workspace evaluation sets and checks both `zh-core` and `zh-svg-pelican` when present.
+The 测评类型 switch leads the form because it decides which progress model the page uses: 常规测评
+keeps the six-stage rail, while 长上下文速度 replaces it with a card and no step number of its own.
+The model dropdown already names the chosen model, so the line under it carries only recorded
+metadata (`架构 llama · 约 4.0 GiB`) and stays absent when none was recorded. 测评题集 labels the
+checkbox group and each set carries a short Chinese description (中文基础能力, SVG 绘图专项);
+the checkbox itself keeps the bare id as its accessible name.
 Unchecking a set explicitly narrows the scope; unchecked sets do not block the task.
 Completing an evaluation, Reports groups its three lists behind top tabs: 测评报告 (the default),
 长上下文专项 and 运行历史. The 测评报告 tab lists report cards; creating another report from
@@ -62,7 +68,9 @@ Without an active task, the page restores workspace progress from `progress.v2`.
 Prepare environment first states what the step does: it reuses an existing CLI and uv,
 downloads a pinned standalone uv only when none exists, installs the CLI with its managed
 Python into the uv tool directory without touching shell configuration, and then creates or
-reuses the workspace, results and model directories. It names the write targets by directory
+reuses the workspace, results and model directories. The card opens with the three first-use
+milestones (准备运行环境 → 获取引擎与模型 → 开始首次测评) and keeps 前往设置 beside 准备环境, so the
+manual CLI path stays one click away. It names the write targets by directory
 name (full paths stay on Settings) and says plainly that download size and duration cannot be
 predicted, so it shows neither an estimated size nor a progress percentage; the installer's
 15-minute CLI timeout is not presented as a duration estimate. Core owns the path facts in a

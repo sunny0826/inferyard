@@ -191,6 +191,19 @@ func (s *viewState) failedBundles() map[string]bool {
 	}
 	return failed
 }
+
+// configStage renders the configuration step. Under the specialty benchmark the
+// six-stage flow is replaced by the specialty's own progress, so the numbered
+// rail would leave a lone "3" with no steps 1 and 2; a plain card carries the
+// same title instead.
+func (s *viewState) configStage(c *ui.Context, body func()) {
+	if s.speed != nil && s.speed.selected {
+		card(c, termBenchmarkStage, body)
+		return
+	}
+	stepTrack(c, "3", termBenchmarkStage, body)
+}
+
 func (s *viewState) stageView(c *ui.Context) {
 	action := ""
 	if s.progress != nil {
@@ -222,7 +235,7 @@ func (s *viewState) stageView(c *ui.Context) {
 			button(c, "查看设备页明细").OnClick(func() { s.selected = "device" })
 		})
 	case "prepare_candidate":
-		stepTrack(c, "3", termBenchmarkStage, func() {
+		s.configStage(c, func() {
 			// Only a failure of this task's chain is shown here; a previous
 			// round's engine error stays off the fresh configuration step.
 			if s.task.failure != nil {
