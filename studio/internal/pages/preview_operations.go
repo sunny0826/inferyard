@@ -290,10 +290,18 @@ func (p *previewSession) startService(bind bool, candidate string) {
 			s.progress.NextAction = "run"
 			for i := range s.progress.Bundles {
 				b := &s.progress.Bundles[i]
-				if b.Phase != "run_complete" {
-					b.Phase, b.NextAction = "run_missing", "run"
+				// Only the bundle that still needs binding is (re)bound; an earlier
+				// bundle the CLI already verified keeps its binding untouched.
+				if b.Phase == "run_complete" || (b.NextAction != "bind" && b.BoundPath != nil) {
+					continue
 				}
+				b.Phase, b.NextAction = "run_missing", "run"
+				b.BoundPath = previewValue(filepath.Join(s.workspace, "bound", b.Bundle))
 			}
+			// A successful connection leaves the bind stage and drops its failure,
+			// exactly as the production binding outcome does.
+			s.clearRecoveredBinding()
+			s.failedBundle = ""
 		}
 	})
 }

@@ -86,6 +86,11 @@ func (s *viewState) dashboardView(c *ui.Context) {
 			if task.Queued && task.Bundle != nil && task.Error == nil {
 				continue
 			}
+			// The active step or handoff card already renders this rejection; the task
+			// list must not repeat the same diagnostic a second time.
+			if s.stepOwnsTaskError(task) {
+				continue
+			}
 			ui.Text(c, taskLabel(task))
 			errorView(c, task.Error)
 		}
@@ -110,9 +115,18 @@ func (s *viewState) conclusionView(c *ui.Context) {
 			BarLabel:    "工作区六阶段准备进度",
 			Description: "六个准备阶段，不表示样本完成率。",
 		})
+		failed := s.failedBundles()
 		for _, b := range s.taskBundles() {
 			if task := s.liveBundleTask(b.Bundle); task != nil {
 				ui.Text(c, b.Bundle+" · "+taskLabel(*task))
+				continue
+			}
+			// A failed step reports only the bundles it actually blocks. Bundles
+			// that already finished keep their completed status, and the recorded
+			// progress phase may still describe the pre-failure stage, which would
+			// contradict Step 4.
+			if failed[b.Bundle] {
+				ui.Text(c, b.Bundle+" · 失败").TextColor(stateColor(c, stateDanger))
 				continue
 			}
 			ui.Text(c, b.Bundle+" · "+stateLabel(b.Phase))
@@ -127,7 +141,55 @@ func (s *viewState) conclusionView(c *ui.Context) {
 				ui.Text(c, human(*b.BlockedReason)).TextColor(color)
 			}
 		}
+		if s.task.failure != nil || s.bindFailure != nil {
+			cause, _ := s.stepDiagnosis()
+			code := ""
+			if cause != nil {
+				code = cause.Code
+			}
+			ui.Text(c, "当前任务已中止："+human(code)+"。原因与恢复操作见下方当前阶段。").TextColor(stateColor(c, stateDanger))
+		}
 	})
+}
+
+// serviceCardVisible keeps the model-service panel in the run step whenever no
+// run is active and the bound plan is actionable, including after a failure so
+// the service can be re-bound without leaving the page.
+func (s *viewState) serviceCardVisible() bool {
+	if s.running() != nil || (s.task.stage != "" && s.task.failure == nil) {
+		return false
+	}
+	b := s.bindTarget()
+	return b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil)
+}
+
+// failedBundles lists the bundles the active failure blocks. A recorded binding
+// failure marks exactly that bundle; otherwise only the bundle the step is about
+// is marked. Completed bundles always keep their status.
+func (s *viewState) failedBundles() map[string]bool {
+	failed := map[string]bool{}
+	if !s.stepFailed() {
+		return failed
+	}
+	var names []string
+	switch {
+	case s.failedBundle != "":
+		names = []string{s.failedBundle}
+	case s.active() != nil:
+		names = []string{s.active().Bundle}
+	default:
+		names = s.task.bundles
+	}
+	for _, name := range names {
+		failed[name] = true
+	}
+	// Never downgrade a bundle that already completed: its evidence stands.
+	for _, b := range s.taskBundles() {
+		if failed[b.Bundle] && b.Phase == "run_complete" {
+			delete(failed, b.Bundle)
+		}
+	}
+	return failed
 }
 func (s *viewState) stageView(c *ui.Context) {
 	action := ""
@@ -160,14 +222,19 @@ func (s *viewState) stageView(c *ui.Context) {
 			button(c, "查看设备页明细").OnClick(func() { s.selected = "device" })
 		})
 	case "prepare_candidate":
-		stepTrack(c, "3", termBenchmarkStage, func() { s.candidateView(c) })
+		stepTrack(c, "3", termBenchmarkStage, func() {
+			// Only a failure of this task's chain is shown here; a previous
+			// round's engine error stays off the fresh configuration step.
+			if s.task.failure != nil {
+				failureView(c, termBenchmarkStage+"失败", s.task.failure, "原因解决后可从本阶段重新开始；已完成的测评题集结果会保留。")
+			}
+			s.candidateView(c)
+		})
 	case "bind":
 		stepTrack(c, "4", "连接并核验服务", func() { s.serviceView(c) })
 	case "run", "resume":
-		if s.running() == nil && (s.task.stage == "" || s.task.failure != nil) {
-			if b := s.active(); b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil) {
-				card(c, "模型服务", func() { s.serviceView(c) })
-			}
+		if s.serviceCardVisible() {
+			card(c, "模型服务", func() { s.serviceView(c) })
 		}
 		stepTrack(c, "5", "运行", func() { s.runView(c) })
 	case "report":

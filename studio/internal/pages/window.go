@@ -147,13 +147,32 @@ type viewState struct {
 	resumeSource                                                                        *core.RunSummary
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
-	modelURL, modelName, tokenEnv, engineURL, engineName                                string
-	historyTable                                                                        pageTableState
-	reportSources                                                                       components.ListState
-	reportChoices                                                                       ui.Selection[any]
-	scrolls                                                                             map[string]*ui.ScrollState
-	casesTable, samplesTable                                                            pageTableState
-	resourceTablePage                                                                   int
+	// bindFailure is the rejected manual or discovered connection the bind step
+	// owns; it is separate from other page-level failures such as refreshes.
+	bindFailure *core.ApiError
+	// failedBundle is the bundle the rejected connection belonged to, so the
+	// progress card marks only that bundle.
+	failedBundle string
+	// handoffFailure is the rejected LM Studio handoff connection; the handoff
+	// card renders it next to its form.
+	handoffFailure *core.ApiError
+	// engineFailureCleared records the failed engine state the user already
+	// recovered from by connecting another service. A later, different engine
+	// failure is keyed differently and still reports.
+	engineFailureCleared string
+	// localUsedPIDs records LM Studio services whose CLI verification succeeded,
+	// so the next handoff never offers to reuse them. A PID accepted by the
+	// service but still being verified stays in localPendingPIDs: it is reserved
+	// while in flight, and released again if verification fails.
+	localUsedPIDs                                        map[int64]bool
+	localPendingPIDs                                     map[string]int64
+	modelURL, modelName, tokenEnv, engineURL, engineName string
+	historyTable                                         pageTableState
+	reportSources                                        components.ListState
+	reportChoices                                        ui.Selection[any]
+	scrolls                                              map[string]*ui.ScrollState
+	casesTable, samplesTable                             pageTableState
+	resourceTablePage                                    int
 }
 
 func (s *viewState) refresh(full bool) {
@@ -220,6 +239,9 @@ func (s *viewState) refresh(full bool) {
 		}
 		s.refreshing = false
 		s.device, s.tasks, s.downloads = device, tasks, downloads
+		// A handoff service counts as consumed only once its task left the binding
+		// stage without a verification error.
+		s.reconcileLocalPIDs(tasks)
 		if speedHistoryError == nil {
 			s.syncSpeedTasks(speedTasks)
 		}

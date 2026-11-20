@@ -102,14 +102,20 @@ func (p *previewSession) beginLocalBenchmark(op previewBenchmark, retry bool) {
 	}
 	p.cancelEvents("task")
 	p.local = &previewLocalTask{op: op, family: family, usedPIDs: used, fail: p.takeFailure()}
-	pid, _ := strconv.ParseInt(s.localPID, 10, 64)
+	// A retry does not reuse the form's PID as the initial service: the previous
+	// attempt may have been rejected, and the waiting bundle must supply a
+	// freshly verified service through the handoff card.
+	pid := int64(0)
 	if !retry {
+		pid, _ = strconv.ParseInt(s.localPID, 10, 64)
 		p.local.pid = pid
 		s.task.runs = nil
+	} else {
+		s.localPID = ""
 	}
 	s.busy, s.failure, s.task.failure = true, nil, nil
 	s.task.stage, s.task.bundles = "prepare_candidate", allBundles
-	s.task.start = startChainResult{workspace: s.workspace, localRequest: &core.LocalCandidateRequest{ModelName: op.model, EngineName: op.engine, Bundles: allBundles}}
+	s.task.start = startChainResult{workspace: s.workspace, localRequest: &core.LocalCandidateRequest{ModelName: op.model, EngineName: op.engine, Bundles: allBundles, ServicePID: pid, Endpoint: s.localEndpoint}}
 	for _, bundle := range allBundles {
 		s.task.start.localCandidates = append(s.task.start.localCandidates, core.CandidateRun{Bundle: bundle, Family: family, CandidatePath: filepath.Join(s.workspace, "candidates", p.nextID("candidate"))})
 	}
@@ -155,6 +161,8 @@ func (p *previewSession) advanceLocalRun(index int) {
 	s.task.stage = "run"
 	if l.family == "lmstudio" {
 		if index == 0 && l.pid > 0 {
+			// The form's service is reserved, not consumed, until it verifies.
+			s.reserveLocalPID(id, l.pid)
 			p.startLocalBinding(l.pid)
 			return
 		}
@@ -179,14 +187,24 @@ func (p *previewSession) bindLocal(op previewLocalBinding) {
 		p.state.failure = core.Conflict("invalid_state")
 		return
 	}
-	if op.pid <= 0 || op.endpoint != p.state.localEndpoint {
-		p.state.failure = core.Err("candidate_endpoint_mismatch")
+	// Mirror the service: the frozen candidate endpoint is the only accepted
+	// address, and a service already used by this group is reused, not attached.
+	expected := p.state.localExpectedEndpoint()
+	if op.pid <= 0 || expected != "" && op.endpoint != expected {
+		p.state.failure, p.state.handoffFailure = core.Err("candidate_endpoint_mismatch"), core.Err("candidate_endpoint_mismatch")
 		return
 	}
 	if l.usedPIDs[op.pid] {
-		p.state.failure = core.Err("local_engine_service_reused")
+		p.state.failure, p.state.handoffFailure = core.Err("local_engine_service_reused"), core.Err("local_engine_service_reused")
 		return
 	}
+	p.state.handoffFailure = nil
+	// Accepted, not yet verified: reserve the service so the form does not offer it
+	// again while the CLI checks identity. A failed verification releases it.
+	if p.state.localPendingPIDs == nil {
+		p.state.localPendingPIDs = map[string]int64{}
+	}
+	p.state.localPendingPIDs[op.taskID] = op.pid
 	l.fail = p.takeFailure()
 	p.startLocalBinding(op.pid)
 }
@@ -202,10 +220,21 @@ func (p *previewSession) startLocalBinding(pid int64) {
 	p.copyLocalTask(id)
 	p.after("task", 400*time.Millisecond, func() {
 		if l.fail {
+			// A rejected attempt does not consume the PID: the user may retry it
+			// once the service is actually ready.
+			s.handoffFailure = core.Err("cli_blocked")
+			// The rejected attempt releases the reservation: the same PID can be
+			// retried once the service is verified.
+			delete(s.localPendingPIDs, id)
 			p.failLocalScope(core.Err("cli_blocked"))
 			return
 		}
 		l.usedPIDs[pid] = true
+		s.markServiceUsed(pid)
+		delete(s.localPendingPIDs, id)
+		// A successful handoff leaves the bind step clean: no stale error and no
+		// stale bind failure, matching the production outcome.
+		s.handoffFailure, s.bindFailure, s.failure = nil, nil, nil
 		task.PreparationStage = ""
 		p.copyLocalTask(id)
 		p.startRun(l.index, l.op, l.ids)

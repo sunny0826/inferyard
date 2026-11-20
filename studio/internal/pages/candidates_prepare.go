@@ -56,6 +56,7 @@ func (s *viewState) startBenchmark() {
 	if s.environmentMissing() || !s.preflightReady() || s.busy || len(names) == 0 || s.model == "" || s.engine == "" || s.engineState.State == "orphaned" || s.localSelectionError() != "" {
 		return
 	}
+	s.beginAttempt()
 	if s.simulate(previewBenchmark{model: s.model, engine: s.engine, bundles: names}) {
 		return
 	}
@@ -78,7 +79,12 @@ func (s *viewState) startBenchmark() {
 			s.win.Update(func() { s.task.start = result })
 			e = s.runBenchmark(ctx, result, names, announce)
 		}
-		s.win.Update(func() { s.task.failure = e })
+		s.win.Update(func() {
+			s.task.failure = e
+			if e != nil {
+				s.failedBundle = s.task.bindings.failedBundle
+			}
+		})
 		return "任务报告已生成。", e
 	})
 }
@@ -90,6 +96,9 @@ type benchmarkBindings struct {
 	candidates map[string]string
 	localTasks map[string]string
 	completed  map[string]string
+	// failedBundle is the bundle whose automatic binding failed, so the progress
+	// card marks that bundle instead of the first one.
+	failedBundle string
 }
 
 type benchmarkBackend interface {
@@ -112,6 +121,11 @@ func (s *viewState) runBenchmark(ctx context.Context, result startChainResult, n
 func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result startChainResult, names []string, bindings *benchmarkBindings, announce func(string), queued func([]string), report func([]string, string)) *core.ApiError {
 	if ctx.Err() != nil {
 		return core.Err("cancelled")
+	}
+	if bindings != nil {
+		// Attribution belongs to this attempt only; a previous retry's failing
+		// bundle must not leak into the next one.
+		bindings.failedBundle = ""
 	}
 	if len(result.localCandidates) > 0 {
 		return runLocalBenchmarkFlow(ctx, backend, result, names, bindings, announce, queued, report)
@@ -167,13 +181,16 @@ func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result star
 		}
 		command, out, e := benchmarkBindCommand(p.Workspace, b, state)
 		if e != nil {
+			bindings.failedBundle = b.Bundle
 			return e
 		}
 		r, e := backend.WizardExecute(ctx, core.WizardRequest{Command: command})
 		if e != nil {
+			bindings.failedBundle = b.Bundle
 			return e
 		}
 		if r.ExitCode != 0 {
+			bindings.failedBundle = b.Bundle
 			return wizardFailure(r)
 		}
 		bindings.configs[b.Bundle] = filepath.Join(out, "config.toml")
@@ -205,9 +222,11 @@ func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result star
 			}
 			if terminal(task.State) {
 				if task.Error != nil {
+					bindings.failedBundle = emptyText(task.Bundle)
 					return task.Error
 				}
 				if task.State != "done" || emptyText(task.RunPath) == "" {
+					bindings.failedBundle = emptyText(task.Bundle)
 					return core.Err("run_incomplete")
 				}
 				paths = append(paths, *task.RunPath)
@@ -302,11 +321,21 @@ func benchmarkBindCommand(workspace string, b inferyard.BundleProgress, state co
 	return commandOf(args), out, nil
 }
 
+// beginRetry gates a retry and, when it can proceed, begins a fresh attempt so
+// the previous attempt's rejected connection cannot outrank the new result.
+func (s *viewState) beginRetry() bool {
+	if s.busy || (s.task.stage != "bind" && len(s.task.start.localCandidates) == 0) || s.task.failure == nil {
+		return false
+	}
+	s.beginAttempt()
+	return true
+}
+
 func (s *viewState) retryBenchmark() {
 	if s.simulate(previewRetryBenchmark) {
 		return
 	}
-	if s.busy || (s.task.stage != "bind" && len(s.task.start.localCandidates) == 0) || s.task.failure == nil {
+	if !s.beginRetry() {
 		return
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -315,7 +344,12 @@ func (s *viewState) retryBenchmark() {
 	s.guideWork(func() (string, *core.ApiError) {
 		defer cancel()
 		e := s.runBenchmark(ctx, result, names, func(stage string) { s.win.Update(func() { s.task.stage = stage }) })
-		s.win.Update(func() { s.task.failure = e })
+		s.win.Update(func() {
+			s.task.failure = e
+			if e != nil {
+				s.failedBundle = s.task.bindings.failedBundle
+			}
+		})
 		return "任务报告已生成。", e
 	})
 }

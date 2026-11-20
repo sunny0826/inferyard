@@ -56,6 +56,10 @@ var previewScenes = []struct {
 		previewLocalEngines(s)
 		s.engine, s.model = "lmstudio · 模拟安装", "local.gguf"
 		s.localPID, s.localEndpoint = "4001", "http://127.0.0.1:48857"
+		s.discoveryLoaded = true
+		s.discovery = inferyard.ServiceDiscovery{Status: "complete", Services: []inferyard.DiscoveredService{
+			{PID: 4001, ProcessName: "LM Studio", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:48857", Models: []string{"local.gguf", "local-weights"}}}},
+		}}
 	}},
 }
 

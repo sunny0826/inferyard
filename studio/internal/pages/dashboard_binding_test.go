@@ -12,11 +12,13 @@ import (
 )
 
 type taskBackendFixture struct {
-	failBind   bool
-	p          *inferyard.WorkspaceProgress
-	requests   []core.WizardRequest
-	runRequest core.StartRunsRequest
-	tasks      []core.RunTask
+	failBind     bool
+	failBindExit bool
+	failBundle   string
+	p            *inferyard.WorkspaceProgress
+	requests     []core.WizardRequest
+	runRequest   core.StartRunsRequest
+	tasks        []core.RunTask
 }
 
 func (f *taskBackendFixture) StartEngine(string) (core.EngineState, *core.ApiError) {
@@ -33,6 +35,10 @@ func (f *taskBackendFixture) WizardExecute(_ context.Context, q core.WizardReque
 	if f.failBind && strings.Contains(q.Command, "zh-svg-pelican") {
 		f.failBind = false
 		return core.WizardResult{}, core.Err("cli_error")
+	}
+	if f.failBindExit && strings.Contains(q.Command, emptyText(&f.failBundle)) {
+		f.failBindExit = false
+		return core.WizardResult{ExitCode: 2, Status: "blocked"}, nil
 	}
 	return core.WizardResult{}, nil
 }

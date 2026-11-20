@@ -48,6 +48,11 @@ func (s *viewState) clearBenchmark() {
 	s.selectedBundles = nil
 	s.focusedRun = ""
 	s.newTaskPending = false
+	// A new round must not inherit a rejected connection, its bundle, the handoff
+	// error or the services the previous round already connected.
+	s.bindFailure, s.failedBundle, s.handoffFailure = nil, "", nil
+	s.localUsedPIDs, s.localPendingPIDs = nil, nil
+	s.localBindingTask, s.localPID = "", ""
 }
 
 func (s *viewState) checkedBundles() []string {
