@@ -24,10 +24,9 @@ def verify_message_snapshots(root, events, reads):
             continue
         body = event["data"]["body"]
         if "messages_sha256" not in body and evidence.layout_version == 1:
-            continue  # Old inline events retain their original reading policy.
+            continue
         snapshot = evidence.request_body(event)
         if evidence.layout_version == 1:
-            # Layout 2 prepared bodies already passed the prepared_request contract.
             if type(snapshot) is not dict or "messages" not in snapshot:
                 raise EvidenceError("request_snapshot_messages_invalid")
             try:
@@ -65,7 +64,6 @@ def snapshot_name_for_event(root, event, manifest=None):
         request_id,
     )
     if match is None:
-        # Opaque schema-valid event IDs do not invent an original request body.
         return "unbound-" + hashlib.sha256(request_id.encode()).hexdigest() + ".request.json"
     return snapshot_filename(run_id, phase, int(match[2]))
 

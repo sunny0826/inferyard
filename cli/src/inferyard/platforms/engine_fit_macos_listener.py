@@ -58,8 +58,6 @@ def unique_listener(pid, address, port, *, timeout=2):
         if result.returncode == 1 and result.stdout.strip():
             raise ValueError
         records = _records(result.stdout)
-        # A second family or bound address is deliberately ambiguous: lsof does
-        # not expose whether an IPv6 socket also accepts the IPv4 destination.
         if (
             len(records) != 1
             or records[0]["p"] != pid

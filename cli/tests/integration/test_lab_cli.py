@@ -66,7 +66,6 @@ def test_probe_run_report_verify_and_offline_plan(lab_scenario, tmp_path, monkey
     monkeypatch.setattr(running, "Dependencies", lambda **kwargs: deps)
     config_path = tmp_path / "lab.toml"
     config = write_config(command, config_path)
-    # Every canonical invocation goes through real CLI parsing/application dispatch.
     assert main(["probe", "--config", str(config_path)]) == 0
     probe = json.loads(capsys.readouterr().out)
     probe_dir = Path(probe["evidence_dir"])
@@ -91,7 +90,6 @@ def test_probe_run_report_verify_and_offline_plan(lab_scenario, tmp_path, monkey
     document = read_json(out / "studio.json")
     assert document["runs"][0]["profile"]["engine"]["adapter"] == config["engine"]["adapter"]
     assert {path.name for path in out.iterdir()} == {"studio.json"}
-    # Freeze a real offline experiment; native Windows paths survive on this host.
     loaded = load_config(config_path)
     exp = compile_single_plan(loaded.config.to_dict(), loaded.bundle.to_dict())["experiment"]
     for field, path in (("config", config_path), ("bundle", tmp_path / "bundle.json")):
@@ -111,7 +109,6 @@ def test_probe_run_report_verify_and_offline_plan(lab_scenario, tmp_path, monkey
 
 def test_successful_response_without_release_keeps_dirty(lab_scenario, monkeypatch):
     command, deps, service = lab_scenario
-    # Become busy after the initial idle; release never follows the complete response.
     original = service.__call__
 
     def busy_after_send(request):
@@ -123,7 +120,6 @@ def test_successful_response_without_release_keeps_dirty(lab_scenario, monkeypat
     engine = command.config.config.to_dict()["engine"]["adapter"]
     adapter_class = adapter_factory(engine)
     original_wait = adapter_class.wait_idle
-    # Clamp this test's drain wait; the never-released service still fails the run.
     monkeypatch.setattr(
         adapter_class,
         "wait_idle",
@@ -162,4 +158,4 @@ def test_formal_failure_stops_remaining_cases_without_retry(lab_scenario):
     assert counts["failed"] == 1
     assert counts["not_executed"] == counts["planned"] - 1
     assert len(service.requests) == 6
-    assert read_json(locking.STATE_PATH)["dirty"] is False  # Actual release was observed.
+    assert read_json(locking.STATE_PATH)["dirty"] is False

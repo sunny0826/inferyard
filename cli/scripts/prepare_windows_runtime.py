@@ -53,7 +53,6 @@ def verified_download(url, path, expected_size, expected_sha256):
         if offset == expected_size:
             break
         headers = {"Range": f"bytes={offset}-", "Accept-Encoding": "identity"} if offset else {}
-        # A fresh resolver query avoids reuse of expired signed CDN redirects.
         request_url = url + ("&" if "?" in url else "?") + f"download=true&request={time.time_ns()}"
         try:
             with (
@@ -73,7 +72,7 @@ def verified_download(url, path, expected_size, expected_sha256):
                     ):
                         raise ValueError("download_range_mismatch")
                 elif response.status_code == 200:
-                    offset = 0  # The server ignored Range; restart instead of appending.
+                    offset = 0
                 else:
                     raise ValueError("unexpected_download_status")
                 advertised = response.headers.get("content-length")
@@ -141,7 +140,6 @@ def unpack(archive, destination):
         if not destination.exists():
             destination.mkdir(parents=True)
             package.extractall(destination)
-        # Existing installations are accepted only when every packaged file matches.
         for entry in entries:
             if entry.is_dir():
                 continue

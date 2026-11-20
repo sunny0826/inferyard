@@ -18,7 +18,6 @@ class MacSensors:
                 raise SMCError("smc_temperature_inventory_unavailable")
             for key in keys:
                 info = self.client.info(key)
-                # These namespaces are chip thermal sensors; do not infer a core.
                 if info["type"] != "flt " or info["size"] != 4:
                     self.issues.append({"key": key, "reason": "smc_temperature_encoding_unknown"})
                     continue

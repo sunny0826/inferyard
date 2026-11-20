@@ -40,7 +40,6 @@ def load_config(path):
 
 
 def _request(args: argparse.Namespace) -> CommandRequest:
-    # Resolve the public hook at call time for existing load_config injection.
     return build_request(args, config_loader=load_config)
 
 

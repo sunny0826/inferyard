@@ -1,4 +1,3 @@
-// Package evidence reads evidence without modifying or certifying its contents.
 package evidence
 
 import (
@@ -35,10 +34,6 @@ type ResultIndex struct {
 	Error   error
 }
 
-// Index recognizes layout2 runs and batch.json/runs containers, including when
-// root itself is a run or batch. Sealed is a declaration, not hash verification.
-// Missing roots and malformed runs/batches are skipped and counted.
-// Filesystem traversal failures are counted and also reported in Error.
 func Index(root string) ResultIndex {
 	index := ResultIndex{}
 	var walk func(string, string)

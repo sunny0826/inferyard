@@ -8,10 +8,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// completionView is the report step after a completed scope. It summarises the
-// runs this task produced from data Studio already holds (the run history), so
-// it never rescans evidence. Missing measurements keep an explicit reason
-// instead of rendering as zero.
 func (s *viewState) completionView(c *ui.Context) {
 	runs := s.completionRuns()
 	path := s.completedReportPath()
@@ -46,8 +42,6 @@ func (s *viewState) completionActions(c *ui.Context, path string) {
 	})
 }
 
-// completedReportPath is the report this task wrote, or the workspace report
-// that already covers the default scope.
 func (s *viewState) completedReportPath() string {
 	if s.task.report != "" {
 		return s.task.report
@@ -58,10 +52,6 @@ func (s *viewState) completedReportPath() string {
 	return ""
 }
 
-// completionRuns matches the run history against the runs this task produced.
-// The task keeps run paths; only when this task recorded none does it fall back
-// to the workspace report's run ids. Mixing both would attribute earlier runs
-// to this round.
 func (s *viewState) completionRuns() []core.RunSummary {
 	keys := map[string]bool{}
 	for _, path := range s.task.runs {
@@ -92,11 +82,6 @@ func completionRunTitle(run core.RunSummary) string {
 	return name
 }
 
-// runPassRate reports the recorded pass count and rate. A nil score means the
-// run did not record one; a zero denominator means nothing executed. A failed
-// execution stays in the denominator as a failure, so three passes plus one
-// failed case read 3 / 4 · 75%. An unscorable or unscored case also stays, and
-// only then is the rate withheld with its cause named.
 func runPassRate(run core.RunSummary) string {
 	if run.Score == nil {
 		return "缺测 — 未记录分数"
@@ -114,9 +99,6 @@ func runPassRate(run core.RunSummary) string {
 	return line + failedNote(*run.Score)
 }
 
-// failedNote appends how many counted cases failed to execute. They stay in the
-// denominator and are not passes, so the rate already accounts for them; naming
-// the count keeps the cause visible next to it.
 func failedNote(score core.RunScore) string {
 	if score.Failed == 0 {
 		return ""
@@ -124,7 +106,6 @@ func failedNote(score core.RunScore) string {
 	return fmt.Sprintf(" · 含 %d 题执行失败", score.Failed)
 }
 
-// gapDescription names how many counted cases fall into the gap and why.
 func gapDescription(score core.RunScore, gap string) string {
 	switch gap {
 	case "运行不完整":
@@ -136,7 +117,6 @@ func gapDescription(score core.RunScore, gap string) string {
 	}
 }
 
-// runDuration derives the run wall time from its recorded start and finish.
 func runDuration(run core.RunSummary) string {
 	start, finish := emptyText(run.StartedAt), emptyText(run.FinishedAt)
 	if start == "" || finish == "" {

@@ -14,7 +14,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// Env is an isolated Studio environment rooted in temporary directories.
 type Env struct {
 	Workspace string
 	Results   string
@@ -28,27 +27,18 @@ type Env struct {
 //go:embed cli_bootstrap.py
 var cliBootstrap []byte
 
-// NewEnv isolates settings and the real CLI's host files, then records CLI calls.
-// It changes the process environment, so callers must not use t.Parallel.
 func NewEnv(t *testing.T, cliPath string) *Env {
 	t.Helper()
 	root := t.TempDir()
-	// INFERYARD_E2E_ROOT swaps the throwaway root for a caller-managed one so
-	// the workspace and blame transcript survive for post-mortem inspection.
 	if keep := os.Getenv("INFERYARD_E2E_ROOT"); keep != "" {
 		root = keep
 		if err := os.MkdirAll(root, 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	// The CLI resolves config paths with Path.resolve(); keep every fixture path
-	// symlink-free so model_path comparisons see identical strings on macOS
-	// (/var/folders is a symlink to /private/var/folders).
 	if resolved, err := filepath.EvalSymlinks(root); err == nil {
 		root = resolved
 	}
-	// All CLI processes in this test share one host state. Keep it unique even
-	// when INFERYARD_E2E_ROOT retains several tests in the same directory.
 	hostRoot, err := os.MkdirTemp(root, "host-")
 	if err != nil {
 		t.Fatal(err)
@@ -81,21 +71,15 @@ func NewEnv(t *testing.T, cliPath string) *Env {
 	return env
 }
 
-// repoRoot locates the repository root from this source file.
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot resolve source path")
 	}
-	// studio/tests/e2e/env.go -> repo root is three levels up.
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
 }
 
-// ResolveCLI finds a usable inferyard CLI: explicit override, a PATH entry that
-// still accepts config describe, the in-repo uv environment created by `uv sync`,
-// then a uv wrapper. Tests skip when none works. An older installed CLI can shadow
-// PATH without the commands this suite drives.
 func ResolveCLI(t *testing.T) string {
 	t.Helper()
 	if override := os.Getenv("INFERYARD_E2E_CLI"); override != "" {
@@ -111,8 +95,6 @@ func ResolveCLI(t *testing.T) string {
 		}
 	}
 	project := filepath.Join(repoRoot(t), "cli")
-	// The synced project environment carries a native entry point on every
-	// platform, including Windows where a shell wrapper cannot execute.
 	for _, rel := range []string{
 		filepath.Join(".venv", "bin", "inferyard"),
 		filepath.Join(".venv", "Scripts", "inferyard.exe"),

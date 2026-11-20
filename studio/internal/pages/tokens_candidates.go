@@ -7,10 +7,6 @@ import (
 	"github.com/oneo-me/onevra/source/theme"
 )
 
-// previewCandidate is one selectable visual scheme in the debug window. A
-// candidate pairs a MyGo theme with token overrides, so switching one changes
-// density, radii, type hierarchy, card edges and A/B side colors — not just
-// hues. Only the debug window installs candidates.
 type previewCandidate struct {
 	id, label, summary string
 	theme              func(*ui.Context) *ui.Theme
@@ -60,14 +56,12 @@ var (
 	}
 )
 
-// candidateVariant describes a comparison scheme's palette and metrics.
 type candidateVariant struct {
 	light, dark     paletteColors
 	spacing, radius float32
 	fontScale       float32
 }
 
-// variantTheme builds a candidate palette on top of the production helpers.
 func variantTheme(c *ui.Context, v candidateVariant) *ui.Theme {
 	t := theme.Palette(c.Theme().Dark)
 	t.Dark = c.Theme().Dark
@@ -115,9 +109,6 @@ func legacyTokens(t *ui.Theme, set designTokens) designTokens {
 	return set
 }
 
-// candidateStyle ties a token tweak to the exact theme pointer that installed
-// it, so the production window and in-memory tests that use the stock theme
-// never inherit a candidate.
 var candidateStyle struct {
 	theme *ui.Theme
 	apply func(*ui.Theme, designTokens) designTokens
@@ -133,8 +124,6 @@ func previewTokenStyle(c *ui.Context, base designTokens) designTokens {
 	return candidateStyle.apply(t, base)
 }
 
-// candidateTheme returns the theme for one candidate and activates its token
-// tweak for the current frame. The first candidate is the production theme.
 func candidateTheme(index int, c *ui.Context) *ui.Theme {
 	cand := previewCandidates[candidateIndex(index)]
 	t := cand.theme(c)
@@ -142,7 +131,6 @@ func candidateTheme(index int, c *ui.Context) *ui.Theme {
 	return t
 }
 
-// candidateIndex clamps an index to the candidate list.
 func candidateIndex(index int) int {
 	if index < 0 || index >= len(previewCandidates) {
 		return 0

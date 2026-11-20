@@ -33,7 +33,6 @@ class Deadline:
         try:
             now = self.clock()
         except (ClockError, OSError) as exc:
-            # bool、倒退和 QueryPerformanceCounter 失败都永久停用。不在这里恢复执行。
             self._stick(exc)
             raise
         self.sampled = now

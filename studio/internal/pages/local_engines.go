@@ -83,9 +83,6 @@ func (s *viewState) localSelectionError() string {
 	return ""
 }
 
-// localServiceChoice is one discovered endpoint that can fill the LM Studio
-// manual binding fields. Discovery never grants process ownership; the CLI
-// still re-verifies the identity during binding.
 type localServiceChoice struct {
 	pid      int64
 	name     string
@@ -93,9 +90,6 @@ type localServiceChoice struct {
 	models   int
 }
 
-// localExpectedEndpoint is the endpoint frozen into the current candidates. A
-// connection to another address would be rejected with
-// candidate_endpoint_mismatch, so it is never offered.
 func (s *viewState) localExpectedEndpoint() string {
 	if s.task.start.localRequest != nil && s.task.start.localRequest.Endpoint != "" {
 		return s.task.start.localRequest.Endpoint
@@ -103,11 +97,6 @@ func (s *viewState) localExpectedEndpoint() string {
 	return s.startup.Endpoint
 }
 
-// localServiceChoices lists discovered endpoints that expose a model catalogue,
-// have an unambiguous owner and are not already connected. During the handoff
-// they must also match the frozen candidate endpoint, because any other address
-// would be rejected. Fresh task setup has no frozen candidate yet, so a leftover
-// endpoint from an earlier round must not hide a newly started service.
 func (s *viewState) localServiceChoices() []localServiceChoice {
 	choices := []localServiceChoice{}
 	expected := ""
@@ -135,10 +124,6 @@ func (s *viewState) useDiscoveredService(choice localServiceChoice) {
 	s.localPID, s.localEndpoint = strconv.FormatInt(choice.pid, 10), choice.endpoint
 }
 
-// localPIDUsed reports an LM Studio service this round already verified, or one
-// whose verification is still in flight. The service also rejects reuse, but the
-// form should not invite it. Submitting the form is not verification: a rejected
-// first bundle releases its service so the same PID can be retried.
 func (s *viewState) localPIDUsed(pid int64) bool {
 	if s.localUsedPIDs[pid] {
 		return true
@@ -151,12 +136,6 @@ func (s *viewState) localPIDUsed(pid int64) bool {
 	return s.initialPIDHeld(pid)
 }
 
-// initialPIDHeld reports whether the first bundle's form service still belongs
-// to this round. It is resolved through the round's own task id, never by bundle
-// name: RunTasks is newest-first, so a previous round's task for the same bundle
-// would otherwise answer for this one. Once the CLI verified the binding
-// (ConfigPath) the service stays consumed even if the run later fails; a task
-// that ended without a verified binding returns it to the user.
 func (s *viewState) initialPIDHeld(pid int64) bool {
 	request := s.task.start.localRequest
 	if request == nil || request.ServicePID != pid || len(request.Bundles) == 0 {
@@ -172,8 +151,6 @@ func (s *viewState) initialPIDHeld(pid int64) bool {
 	return task.State != "failed" && task.State != "cancelled"
 }
 
-// currentRoundTask resolves this round's task for one bundle by id, so tasks
-// from earlier rounds never stand in for it.
 func (s *viewState) currentRoundTask(bundle string) *core.RunTask {
 	var id string
 	for taskID, name := range s.roundTaskIds() {
@@ -187,7 +164,6 @@ func (s *viewState) currentRoundTask(bundle string) *core.RunTask {
 	return localPendingTask(s.tasks, id)
 }
 
-// roundTaskIds maps this round's local task ids to their bundles.
 func (s *viewState) roundTaskIds() map[string]string {
 	if s.task.bindings == nil || len(s.task.bindings.localTasks) == 0 {
 		return nil
@@ -195,9 +171,6 @@ func (s *viewState) roundTaskIds() map[string]string {
 	return s.task.bindings.localTasks
 }
 
-// localSelectionInvalid disables the handoff connect button for the same
-// reasons the service rejects the request: a missing PID, an invalid endpoint,
-// a mismatched frozen endpoint or an already connected service.
 func (s *viewState) localSelectionInvalid(pid int64, err error) bool {
 	if err != nil || pid <= 0 || s.localEndpoint == "" || urlError(s.localEndpoint) != "" {
 		return true
@@ -208,13 +181,8 @@ func (s *viewState) localSelectionInvalid(pid int64, err error) bool {
 	return s.localPIDUsed(pid)
 }
 
-// localServicePicker is the single LM Studio binding form used by the task page
-// and the multi-bundle handoff: an in-place service refresh, one-click fill from
-// a compatible discovered service, and the manual PID and endpoint inputs.
 func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel string) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-		// Discovery is independent of the service work in flight: while awaiting
-		// the next bundle's service, busy describes the run queue, not discovery.
 		button(c, "刷新服务列表").Disabled(s.discovering).OnClick(s.refreshDiscovery)
 		if s.discovering {
 			ui.Text(c, "正在发现本机服务…").TextColor(c.Theme().TextMuted)
@@ -257,8 +225,6 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 			Description("已有 installation.json 的绝对路径；引擎、环境和模型不会自动下载。").
 			Error(s.browseError(browseInstallation.key, ""))
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			// One primary action per group: registering changes state, while a
-			// re-check only refreshes cached verification of the same list.
 			if primaryButton(c, "注册引擎").Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
 				s.changeInstallation("register", s.installationPath)
 			}
@@ -305,8 +271,6 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 		}
 		card(c, "连接下一测评题集的 LM Studio 服务", func() {
 			ui.Text(c, emptyText(task.Bundle)+" · 请结束上一测评题集的服务，重新启动后台服务并加载同一模型。CLI 将重新校验身份。")
-			// The handoff owns its own diagnostic: the error appears here, next to
-			// the form, and never only in the page banner.
 			if s.handoffFailure != nil {
 				failureView(c, "连接此测评题集失败", s.handoffFailure, "服务就绪后可用同一 PID 重试。")
 			}
@@ -323,9 +287,6 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 	}
 }
 
-// connectHandoffService connects the next bundle's service. A PID accepted by
-// the service is only reserved: the CLI verifies the process identity
-// afterwards, and only a verified task consumes the service.
 func (s *viewState) connectHandoffService(taskID string, pid int64) {
 	if s.simulate(previewLocalBinding{taskID: taskID, pid: pid, endpoint: s.localEndpoint}) {
 		return
@@ -340,8 +301,6 @@ func (s *viewState) connectHandoffService(taskID string, pid int64) {
 	s.reserveLocalPID(taskID, pid)
 }
 
-// reserveLocalPID keeps an in-flight verification from being offered again while
-// still leaving the PID retryable if that verification fails.
 func (s *viewState) reserveLocalPID(taskID string, pid int64) {
 	if taskID == "" || pid <= 0 {
 		return
@@ -352,10 +311,6 @@ func (s *viewState) reserveLocalPID(taskID string, pid int64) {
 	s.localPendingPIDs[taskID] = pid
 }
 
-// reconcileLocalPIDs settles reserved services against the current task states.
-// A verified binding (ConfigPath written by the CLI) consumes the service for the
-// rest of the round even if the run that follows fails before the next refresh;
-// only an attempt that ended without a verified binding releases the PID.
 func (s *viewState) reconcileLocalPIDs(tasks []core.RunTask) {
 	for taskID, pid := range s.localPendingPIDs {
 		task := localPendingTask(tasks, taskID)
@@ -374,7 +329,6 @@ func (s *viewState) reconcileLocalPIDs(tasks []core.RunTask) {
 	}
 }
 
-// localPendingTask resolves the task a reservation belongs to.
 func localPendingTask(tasks []core.RunTask, taskID string) *core.RunTask {
 	for i := range tasks {
 		if tasks[i].TaskId == taskID {

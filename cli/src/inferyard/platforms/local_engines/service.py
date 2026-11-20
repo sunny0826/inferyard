@@ -166,7 +166,6 @@ def _bind(
     psutil = native.psutil_module()
     try:
         if engine["family"] == "lmstudio":
-            # The existing observer verifies the loaded instance and mapped GGUF.
             service = native.bind_service(
                 "lmstudio",
                 config["model"]["local_path"],

@@ -47,7 +47,6 @@ def zip_entries(package):
         parts = folded.split("/")
         if any("/".join(parts[:i]) in files for i in range(1, len(parts))):
             raise PreparationError("unsafe_archive_entry")
-    # Also reject spelling aliases of implicit parent directories.
     parents = {}
     for name in names.values():
         parts = name.split("/")

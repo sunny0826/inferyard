@@ -216,8 +216,6 @@ def assess_overhead(protocol, trials):
                 "median_relative_latency_change": median(changes),
             }
         )
-    # Positive and negative distortions both fail: a faster run can indicate cache
-    # or drift. Opposite signs must not cancel into an apparently negligible effect.
     worst = max(abs(pair["median_relative_latency_change"]) for pair in result["pairs"])
     result.update(
         status="evaluated",

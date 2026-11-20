@@ -92,8 +92,6 @@ class Observer:
 async def execute_total(spec, adapter, root, config, bundle, guard, sink):
     async def workload(observer):
         adapter.record = observer.emit
-        # Equal three warmups in each arm; they consume the full-lifecycle budget
-        # but never enter the per-case request comparison denominator.
         first = spec["case_ids"][0]
         for _ in range(config["execution"]["warmup_count"]):
             if guard.stopped():

@@ -124,7 +124,6 @@ def test_cross_format_scope_and_structural_mlx_cold_cache():
     assert result["verdicts"]["client_decode_interval_ms"]["verdict"] == "mlx-lm"
     for metric in ("e2e_ms", "output_tokens_per_second"):
         assert result["verdicts"][metric]["verdict"] == "display_only_output_length_unmatched"
-    # mlx-lm streams `<think>` as text and llama-server parses it away: different tokens.
     assert (
         result["verdicts"]["first_content_ms"]["verdict"]
         == "display_only_first_output_token_not_aligned"

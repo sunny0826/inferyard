@@ -28,7 +28,6 @@ def generated(archives):
         raw = (ROOT / f"bundles/{name}.json").read_bytes()
         bundle = strict_json_loads(raw.decode())
         if name == "zh-context-speed":
-            # Distribute frozen draft bytes; formal init/create retain require_review.
             validate_document("bundle", bundle)
         else:
             require_review(bundle)
@@ -36,7 +35,6 @@ def generated(archives):
     for name in PROFILES:
         profile = profile_header(name)
         if archives is None:
-            # No archive trust is derived here: only revalidate already generated package data.
             raw = (TARGET / f"profile/{name}.json").read_bytes()
             validate_profile(strict_json_loads(raw.decode()), name)
         else:

@@ -7,9 +7,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// reportsTableView lists reports as compact cards. Each card leads with the
-// recorded model, states what the report measured, and opens that report
-// directly; identifiers, source runs and paths live in an expandable detail.
 func (s *viewState) reportsTableView(c *ui.Context) {
 	errorView(c, s.reportsError)
 	if s.reportsError != nil {
@@ -43,8 +40,6 @@ func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 				ui.Text(c, reportRunLine(report, run)).Selectable()
 			}
 		}
-		// Opening is the card's primary action, so it carries the primary style
-		// instead of competing with the quiet actions around it.
 		primaryButton(c, "打开报告").Label("打开报告 · " + report.ReportId).OnClick(open)
 		componentFoldKeyed(c, "report-"+report.ReportId, "报告详情", func() {
 			ui.Text(c, "报告 ID："+report.ReportId).Selectable()
@@ -98,11 +93,6 @@ func reportBundleLabel(report core.ReportSummary) string {
 	return ""
 }
 
-// reportRunLine states the recorded quality for one run. A missing or
-// incomplete count keeps its reason and never becomes 0 or a percentage.
-// A single-run card already shows the model in its heading and the evaluation
-// set in its subheading, so the line repeats neither verbatim; cards with
-// several runs keep both, because each line then stands for a different run.
 func reportRunLine(report core.ReportSummary, run core.ReportListRun) string {
 	prefix := ""
 	if run.Model != "" && (len(report.RunSummaries) > 1 || reportText(run.Model) != reportHeading(report)) {

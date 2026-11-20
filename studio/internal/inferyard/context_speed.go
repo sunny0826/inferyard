@@ -15,8 +15,6 @@ var errSpeedResult = errors.New("invalid context speed result")
 var speedHash = regexp.MustCompile(`^[a-f0-9]{64}$`)
 var speedID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$`)
 
-// ParseContextSpeed rejects malformed projections before any rows are displayed.
-// A readable partial batch is data (exit 3); command cancellation is not a batch.
 func ParseContextSpeed(raw []byte, exitCode int) (ContextSpeedResult, error) {
 	fail := func() (ContextSpeedResult, error) { return ContextSpeedResult{}, errSpeedResult }
 	if !utf8.Valid(raw) {
@@ -82,7 +80,6 @@ func ParseContextSpeed(raw []byte, exitCode int) (ContextSpeedResult, error) {
 	return value, nil
 }
 
-// Requiredness is checked before decoding: absent fields must never become zero values.
 func speedShape(raw json.RawMessage, typ reflect.Type) bool {
 	if typ == reflect.TypeOf(json.RawMessage{}) {
 		return len(raw) != 0

@@ -13,10 +13,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// Saving one Settings card must not wipe the other card's draft. Production
-// reaches the same boundary through persistSettings, the function the Save
-// button's work calls; preview goes through the real Save buttons. Each side is
-// checked against its own explicit expectation, not against the other's output.
 func TestSettingsSaveKeepsOtherCardDraftParity(t *testing.T) {
 	root := t.TempDir()
 	settings := filepath.Join(root, "settings.json")
@@ -50,7 +46,6 @@ func TestSettingsSaveKeepsOtherCardDraftParity(t *testing.T) {
 	firstPath := filepath.Join(root, "first-workspace")
 	secondPath := filepath.Join(root, "second-workspace")
 
-	// The path card saves while the download-name card carries a draft.
 	production.workspace, production.modelName = firstPath, "draft-model"
 	preview.workspace, preview.modelName = firstPath, "draft-model"
 	patch := map[string]json.RawMessage{}
@@ -69,7 +64,6 @@ func TestSettingsSaveKeepsOtherCardDraftParity(t *testing.T) {
 		}
 	}
 
-	// The name card saves while the path card carries a new draft.
 	production.workspace, production.modelName = secondPath, "saved-again"
 	preview.workspace, preview.modelName = secondPath, "saved-again"
 	tt.Frame()

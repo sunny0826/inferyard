@@ -31,7 +31,6 @@ def config_domain(config):
     value.pop("endpoint", None)
     binding = value.get("quantization_artifact_binding")
     if binding is not None:
-        # Lineage content is in the frozen workload; mounted paths are locators.
         value.pop("quantization_artifact_binding")
     from inferyard.analysis.comparison_helpers import comparable_arguments
 
@@ -52,7 +51,6 @@ def workload_domain(data):
     workload = value["workload"]
     for key in ("config", "bundle"):
         workload.pop(key, None)
-    # Comparison policy does not change collection; keep measurement/scoring definitions.
     value["definition_versions"].pop("comparison", None)
     return value
 
@@ -185,8 +183,6 @@ def load_performance_evidence_v3(root, target, *, data, reference, source_roots=
     incremental = {"status": "not_supplied"}
     assessment = {}
     if (root / "protocol.json").exists():
-        # Independently validate diagnostic evidence, without re-reading the target or
-        # using an incremental estimate to grant total-observer qualification.
         assessment = read_overhead(root, target=target, target_data=data)
         incremental = {
             "status": "passed" if assessment["passed"] else "limited",

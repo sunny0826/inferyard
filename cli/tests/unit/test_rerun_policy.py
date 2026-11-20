@@ -43,7 +43,6 @@ def test_rerun_accepts_identity_difference_but_comparison_rejects(tmp_path, monk
     else:
         changed["run"]["tool_version"] = "older"
         condition = "run.tool_version"
-    # Isolate the rerun gate after the normal sealed-evidence reader.
     monkeypatch.setattr(runner, "read_trial", lambda *a, **kw: changed)
     old_pid = parent["config"]["endpoint"]["server_pid"]
 
@@ -95,7 +94,6 @@ def test_trial_inputs_revalidates_changed_bundle_inside_command_cache() -> None:
         trial, workload = trial_inputs(plan, trial_id, config, bundle)
         assert trial["trial_id"] == trial_id
         assert workload["workload_id"] == trial["workload_id"]
-        # The unchanged documents entered the command-scoped cache.
         cache, key = validation_key("bundle", bundle)
         assert cache is not None and key in cache
         tampered = deepcopy(bundle)

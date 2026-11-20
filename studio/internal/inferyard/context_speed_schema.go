@@ -23,8 +23,6 @@ type speedSchema struct {
 	MaxItems   int                    `json:"maxItems"`
 }
 
-// SupportsContextSpeedSchema checks the advertised wire shape, not the CLI version.
-// Each operation queries again, so a replaced executable cannot inherit support.
 func SupportsContextSpeedSchema(raw []byte) bool {
 	d := json.NewDecoder(bytes.NewReader(raw))
 	if uniqueJSON(d) != nil {

@@ -40,7 +40,6 @@ def test_strict_diagnostic_replays_requests_parameters_and_missing_formal_accept
     scenario, monkeypatch, diagnostic, tamper
 ):
     plan, loaded, deps, out = strict_inputs(scenario)
-    # Synthetic lifecycle only: this bypass is not a human corpus review record.
     if not diagnostic:
         monkeypatch.setattr("inferyard.runtime.trial_runner.require_review", lambda bundle: None)
     code, data, root = asyncio.run(
@@ -79,7 +78,6 @@ def test_strict_diagnostic_replays_requests_parameters_and_missing_formal_accept
         with pytest.raises(EvidenceError, match="strict_output_engine_evidence_unsealed"):
             read_trial(root)
         return
-    # Even with repaired file hashes, an altered parameter snapshot fails semantic replay.
     first_start = next(
         event
         for event in read_jsonl(root / "events.jsonl")[0]

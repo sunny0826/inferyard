@@ -10,8 +10,6 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// kvDecoded caches the decode of one kvview's JSON input between frames:
-// re-renders from scrolling or hovering reuse it while the bytes are unchanged.
 type kvDecoded struct {
 	raw  []byte
 	data any

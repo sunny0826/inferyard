@@ -37,7 +37,6 @@ func localInstallationReason(reason string) string {
 	}
 }
 
-// Only display metadata is read here. CLI validation owns runtime eligibility.
 func installationBytes(path string) ([]byte, error) {
 	info, err := os.Stat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() > maxInstallationBytes {
@@ -143,7 +142,6 @@ func (s *Service) RegisterEngineInstallation(ctx context.Context, path string) (
 	return s.saveSettings(u)
 }
 
-// RemoveEngineInstallation removes only the reference, never runtime files.
 func (s *Service) RemoveEngineInstallation(path string) (SettingsResponse, *ApiError) {
 	path, failure := installationPath(path)
 	if failure != nil {
@@ -156,8 +154,6 @@ func (s *Service) RemoveEngineInstallation(path string) (SettingsResponse, *ApiE
 	return s.saveSettings(u)
 }
 
-// InvalidateEngineChecks explicitly rechecks runtime changes that cannot be
-// inferred from a declaration edit. A verdict never grants model support.
 func (s *Service) InvalidateEngineChecks() {
 	s.checkMu.Lock()
 	s.checkGeneration++

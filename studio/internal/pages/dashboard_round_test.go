@@ -9,8 +9,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// runStepState is the run step whose bundle the CLI already bound to an
-// external service, with no managed engine running.
 func runStepState(bound string) *viewState {
 	s := testState()
 	s.task.stage = "run"
@@ -20,8 +18,6 @@ func runStepState(bound string) *viewState {
 	return &s
 }
 
-// An external/discovered binding that the CLI verified is enough to start the
-// run step, without Studio's managed engine.
 func TestRunStepStartsFromVerifiedExternalBinding(t *testing.T) {
 	s := runStepState("/w/bound/zh-svg-pelican-1/config.toml")
 	if s.engineState.State == "running" {
@@ -48,7 +44,6 @@ func TestRunStepStartsFromVerifiedExternalBinding(t *testing.T) {
 	}
 }
 
-// The run button itself must be reachable, not only the gate behind it.
 func TestRunButtonReachableWithVerifiedBinding(t *testing.T) {
 	s := runStepState("/w/bound/zh-svg-pelican-1/config.toml")
 	tt := ui.NewTester(s.view, 1120, 2000)
@@ -68,8 +63,6 @@ func TestRunButtonReachableWithVerifiedBinding(t *testing.T) {
 	}
 }
 
-// Without a managed engine and without a verified binding, the run step stays
-// blocked.
 func TestRunStepRequiresServiceOrVerifiedBinding(t *testing.T) {
 	s := runStepState("/w/bound/zh-svg-pelican-1/config.toml")
 	s.progress.Bundles[0].BoundPath = nil
@@ -87,7 +80,6 @@ func TestRunStepRequiresServiceOrVerifiedBinding(t *testing.T) {
 	}
 }
 
-// The latest connection rejection wins over the older auto-start failure.
 func TestStepDiagnosisPrefersLatestBindingRejection(t *testing.T) {
 	s := bindingState(core.Err("engine_start_failed"))
 	latest := core.Err("service_identity_unavailable")
@@ -108,8 +100,6 @@ func TestStepDiagnosisPrefersLatestBindingRejection(t *testing.T) {
 	}
 }
 
-// A handoff rejection is rendered by the handoff card and never swallowed: the
-// page banner suppresses only the copy the card shows.
 func TestHandoffFailureStaysVisible(t *testing.T) {
 	s := testState()
 	s.task.start = startChainResult{localRequest: &core.LocalCandidateRequest{Endpoint: "http://127.0.0.1:48857"}}
@@ -127,14 +117,11 @@ func TestHandoffFailureStaysVisible(t *testing.T) {
 	}
 }
 
-// A new round clears the rejected connection, its bundle and the used services.
 func TestClearBenchmarkDropsBindingState(t *testing.T) {
 	s := bindingState(core.Err("engine_start_failed"))
 	s.failedBundle, s.handoffFailure = "zh-svg-pelican", core.Err("service_identity_unavailable")
 	s.localUsedPIDs = map[int64]bool{4001: true}
 	s.localBindingTask, s.localPID = "second", "4001"
-	// No service is mounted, so starting a new round resets synchronously, as it
-	// does before the first round.
 	s.newBenchmark()
 	if s.bindFailure != nil || s.failedBundle != "" || s.handoffFailure != nil {
 		t.Fatalf("binding state survived reset: %+v", s.bindFailure)
@@ -147,8 +134,6 @@ func TestClearBenchmarkDropsBindingState(t *testing.T) {
 	}
 }
 
-// Only the bundle whose connection failed is marked, even when an earlier bundle
-// is still awaiting its binding.
 func TestFailedBundleNamesTheActualFailure(t *testing.T) {
 	s := testState()
 	s.task = benchmarkTask{stage: "bind", bundles: []string{"zh-core", "zh-svg-pelican"}}
@@ -166,7 +151,6 @@ func TestFailedBundleNamesTheActualFailure(t *testing.T) {
 	}
 }
 
-// The handoff refresh works while the queue is busy awaiting the next service.
 func TestHandoffRefreshAvailableWhileBusy(t *testing.T) {
 	s := testState()
 	s.task.start = startChainResult{localRequest: &core.LocalCandidateRequest{Endpoint: "http://127.0.0.1:48857", ServicePID: 4001}}
@@ -176,8 +160,6 @@ func TestHandoffRefreshAvailableWhileBusy(t *testing.T) {
 	if !tt.HasText("刷新服务列表") {
 		t.Fatalf("refresh missing: %v", tt.Texts())
 	}
-	// A disabled button cannot take focus, so focus reaching it while busy proves
-	// the queue does not block discovery.
 	focused := false
 	for range 40 {
 		tt.Key(0, ui.KeyTab)
@@ -197,8 +179,6 @@ func TestHandoffRefreshAvailableWhileBusy(t *testing.T) {
 	}
 }
 
-// A blocked run step whose model-service card is on screen renders the cause
-// once: the card owns it and the run step does not repeat it.
 func TestRunStepDoesNotDuplicateServiceFailure(t *testing.T) {
 	s := testState()
 	s.progress = &inferyard.WorkspaceProgress{Workspace: "/w", NextAction: "run", Bundles: []inferyard.BundleProgress{
@@ -218,12 +198,9 @@ func TestRunStepDoesNotDuplicateServiceFailure(t *testing.T) {
 	}
 }
 
-// A rejected handoff does not consume the PID, so the same service can be retried.
 func TestRejectedHandoffKeepsPIDAvailable(t *testing.T) {
 	s := testState()
 	s.task.start = startChainResult{localRequest: &core.LocalCandidateRequest{Endpoint: "http://127.0.0.1:48857"}}
-	// No service is mounted, so the attempt is rejected; it must still leave the
-	// PID available for a retry once the service is ready.
 	s.connectHandoffService("second", 4002)
 	if s.handoffFailure == nil {
 		t.Fatal("rejected attempt recorded no failure")

@@ -43,8 +43,6 @@ COMMANDS = (
     "rollback-versions",
     "probe-rollback",
 )
-# Non-zero exits are part of the contract: a cold offline uvx must fail, the current
-# Studio document is deliberately unverifiable, and a retired report layout is rejected.
 EXIT_CODES = {"uvx-cold-offline": 1, "verify": 4, "verify-legacy-report": 2}
 SCOPE = [
     "offline_core",
@@ -155,7 +153,6 @@ def relative_path(name):
 def checked_file(root, record):
     path = relative_path(record.get("path"))
     target = root.joinpath(*path.parts)
-    # Resolve the root (macOS /tmp may itself be a symlink), reject links inside the bundle.
     if root.is_symlink() or any(
         p.is_symlink() for p in [target, *target.parents] if p == root or p.is_relative_to(root)
     ):

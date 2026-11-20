@@ -130,6 +130,5 @@ SUMMARY = obj(
     ],
 )
 
-# Compatible optional disclosure; old sealed records have no observation envelope.
 MANIFEST["properties"]["engine_observation"] = OBSERVATION
 SUMMARY["properties"]["engine_observation"] = OBSERVATION

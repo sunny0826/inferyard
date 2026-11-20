@@ -150,8 +150,6 @@ def startup_binding(engine, arguments, executable, cwd):
         raise PreflightError("engine_fit_arguments_unavailable")
     extras = {}
     if engine == "llama-cpp":
-        # The OS executable digest, frozen GGUF, argv and server protocol bind identity.
-        # A filename supplies none of that authority, including on Windows.
         model = _options(arguments[1:], _LLAMA_VALUES, _LLAMA_FLAGS, {"-m", "--model"})
         source = "verified_startup_file_identity"
     else:

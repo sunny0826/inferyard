@@ -45,7 +45,6 @@ class LabFileIdentity:
 def bind_files(config, library_manifest):
     """Bind declared lab assets; the caller passes the already-read library manifest."""
     entries = config["engine"]["asset_manifest"]
-    # Large-model hashing has a fixed preparation deadline, never refreshed per file.
     verified = verify_file_manifest(
         entries, deadline=time.monotonic() + manifest_hash_seconds(entries)
     )

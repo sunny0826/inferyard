@@ -117,8 +117,6 @@ CONFIG = obj(
     }
 )
 
-# Missing retains the historical strict EPP requirement. This opt-out is explicit
-# in the frozen config and therefore participates in plan/source identity.
 CONFIG["properties"]["execution"]["properties"]["require_fresh_process"] = BOOL
 
 ENVIRONMENT_ADMISSION = obj(
@@ -154,7 +152,6 @@ CONFIG["properties"]["quantization_artifact_binding"] = obj(
     }
 )
 
-# Optional for legacy v3 records; required for lab adapters by semantic validation.
 CONFIG["properties"]["model"]["properties"].update(
     {
         "kind": enum("gguf", "ninfer"),

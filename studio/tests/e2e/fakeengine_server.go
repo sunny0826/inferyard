@@ -8,9 +8,6 @@ import (
 	"os"
 )
 
-// serveFakeEngine runs the prism_llama_server_v1 contract surface. Every
-// endpoint is deterministic; prompt token counts are byte lengths so the
-// /tokenize count and the completion usage always agree by construction.
 func serveFakeEngine(paramsPath string) {
 	raw, err := os.ReadFile(paramsPath)
 	if err != nil {

@@ -130,7 +130,6 @@ def _verified_comparison(root, manifest, blobs):
         runs.append(data)
         hashes.append(digest)
     rebuilt = _comparison(runs, hashes)
-    # Canonical bytes distinguish bool from int (Python structural equality does not).
     require(json_bytes(saved) == json_bytes(rebuilt), "comparison_rebuild_mismatch")
     result = {"kind": "engine_fit_comparison", "comparison": rebuilt, "manifest": manifest}
     return result, [data["manifest"] for data in runs]
@@ -144,14 +143,11 @@ def verify(path):
 
         return read_partial(root)
     manifest, blobs = load_manifest(root)
-    # A final manifest is authoritative; the retained in-flight checkpoint is ignored.
     if manifest["kind"] == "run":
         result = _verified_run(root, allow_legacy=True, verified=(manifest, blobs))[0]
         sources = []
     else:
         result, sources = _verified_comparison(root, manifest, blobs)
-    # Only complete retired layouts reach the version gate; damage raised above.
-    # Every participating manifest counts, so a current outer seal cannot bless a v2 source.
     for participant in (manifest, *sources):
         if participant["definition"] == LEGACY_V2_DEFINITION:
             raise UnsupportedFormat("engine-fit manifest", participant["definition"], (DEFINITION,))

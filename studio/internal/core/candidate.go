@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 )
 
-// CandidateAssets is a projection of the CLI's verified candidate description.
 type CandidateAssets struct {
 	ModelPath          string `json:"model_path"`
 	EnginePath         string `json:"engine_path"`
@@ -61,10 +60,6 @@ func (s *Service) CandidateMatchesCombination(candidate, modelName, engineName s
 	return false, false
 }
 
-// PreflightModelPath returns the canonical model path recommended by one
-// device-preflight.json. A preflight without a runnable recommendation maps
-// to device_preflight_blocked, carrying the fixed recommendation reason as
-// the first limitation; the file must stay inside the workspace.
 func (s *Service) PreflightModelPath(preflight string) (string, *ApiError) {
 	w := workspaceRoot(s.userSettings())
 	if w == nil {
@@ -113,9 +108,6 @@ func (s *Service) PreflightModelPath(preflight string) (string, *ApiError) {
 	return model, nil
 }
 
-// PreflightMatchesModel reports whether the preflight recommends exactly the
-// model behind modelName. Preflight failures propagate so the start chain can
-// stop with the real reason.
 func (s *Service) PreflightMatchesModel(preflight, modelName string) (bool, *ApiError) {
 	recommended, e := s.PreflightModelPath(preflight)
 	if e != nil {

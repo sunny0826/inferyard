@@ -96,7 +96,6 @@ def checked_file(root: Path, record: dict[str, JsonData]) -> ApprovedFile:
     """Bind a descriptor to the actual bytes under root; reject links and mismatches."""
     path = relative_path(record.get("path"))
     target = root.joinpath(*path.parts)
-    # Allow symlinked ancestors such as macOS /tmp; reject links at or below the bundle root.
     if root.is_symlink() or any(
         p.is_symlink() for p in [target, *target.parents] if p == root or p.is_relative_to(root)
     ):

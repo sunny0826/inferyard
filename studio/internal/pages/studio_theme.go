@@ -5,8 +5,6 @@ import (
 	"github.com/oneo-me/onevra/source/theme"
 )
 
-// paletteColors is one appearance's Studio palette. The page shell installs
-// it on top of the onevra base, which keeps the fields Studio does not set.
 type paletteColors struct {
 	background, surface, surfaceHover, surfacePressed ui.Color
 	border, text, muted                               ui.Color
@@ -14,12 +12,6 @@ type paletteColors struct {
 	success, warning, danger                          ui.Color
 }
 
-// studioLightPalette and studioDarkPalette are the selected scheme A: warm
-// near-neutral surfaces, a terracotta accent and muted text held above the
-// body-text contrast floor in both appearances. Warning keeps an amber hue and
-// Danger a crimson one, so a warning never reads as the primary action and a
-// failure never reads as a warning; each stays above 4.5:1 against the plain
-// page and card surfaces (see studio_theme_test.go).
 var (
 	studioLightPalette = paletteColors{
 		background: ui.Hex("#f8f7f3"), surface: ui.Hex("#ffffff"), surfaceHover: ui.Hex("#f0eee8"), surfacePressed: ui.Hex("#e3e0d8"),
@@ -35,8 +27,6 @@ var (
 	}
 )
 
-// studioTheme installs the production scheme. The debug window reuses the
-// same helpers to build its comparison candidates.
 func studioTheme(c *ui.Context) *ui.Theme {
 	t := theme.Palette(c.Theme().Dark)
 	t.Dark = c.Theme().Dark
@@ -51,8 +41,6 @@ func studioTheme(c *ui.Context) *ui.Theme {
 	return t
 }
 
-// applyPalette overrides the Studio-owned colors and derives the interaction,
-// selection and focus colors from the accent.
 func applyPalette(t *ui.Theme, p paletteColors) {
 	black, white := ui.RGB(0, 0, 0), ui.RGB(255, 255, 255)
 	t.Background, t.Surface = p.background, p.surface
@@ -71,8 +59,6 @@ func applyPalette(t *ui.Theme, p paletteColors) {
 	t.Success, t.Warning, t.Danger = p.success, p.warning, p.danger
 }
 
-// applyThemePreferences mirrors theme.Onevra's high-contrast and text-scale
-// adjustments so Studio follows the same desktop preferences.
 func applyThemePreferences(t *ui.Theme, c *ui.Context) {
 	p := c.Preferences()
 	if p.HighContrast {

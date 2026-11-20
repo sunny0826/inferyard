@@ -211,7 +211,6 @@ def run_build(argv, *, environment, out, wall_seconds, rss_bytes, interval, chec
             result["stop_evidence"] = exc.evidence
         raise
     finally:
-        # Suppress a second termination signal while owned descendants are cleaned.
         for sig in previous:
             signal.signal(sig, signal.SIG_IGN)
         try:

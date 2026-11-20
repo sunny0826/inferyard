@@ -15,24 +15,18 @@ def require_review(bundle):
     cache = review_cache()
     digest = None
     if type(bundle) is Document and bundle.kind == "bundle":
-        # The immutable snapshot already passed structure, semantics and proof checks.
-        # Include approval records/proofs, unlike the human-review content_hash().
         snapshot = bundle._json.encode()
         if cache is not None:
             digest = hashlib.sha256(snapshot).hexdigest()
             if digest in cache:
                 return
         bundle = bundle.to_dict()
-        # A current whole-bundle approval already covers proof verification; the snapshot
-        # cannot have changed since construction. Only an unapproved snapshot needs the
-        # inherited-approval evaluation.
         if not (approved(bundle) or any(validate_provenance(bundle))):
             raise ContractError("bundle.review_records", "human_corpus_review_required")
         if digest is not None:
             cache.add(digest)
         return
     else:
-        # Public mutable inputs always receive complete validation.
         inherited = validate_bundle(bundle)
         if cache is not None:
             digest = hashlib.sha256(

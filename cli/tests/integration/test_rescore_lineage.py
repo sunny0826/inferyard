@@ -41,7 +41,6 @@ def test_multigeneration_replay_uses_immediate_parent_and_rejects_forgery(tmp_pa
     with pytest.raises(EvidenceError, match="parent_recomputation"):
         verify_rescore(third)
     (third / "parent-lineage.json").write_bytes(json_bytes(lineage))
-    # Copied lineage is sufficient even after the previous derived directories move.
     first.rename(tmp_path / "moved-first")
     second.rename(tmp_path / "moved-second")
     assert verify_rescore(third)["verified"]

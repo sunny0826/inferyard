@@ -117,8 +117,6 @@ func previewBase(ctx context.Context) *viewState {
 		reports: []core.ReportSummary{previewReportSummary("preview-report")},
 	}
 	s.loadSettings(s.settings)
-	// A complete run carries the completeness and score the history scan reads
-	// from its evidence; the numbers match the bundled report of the same run.
 	seeded := core.RunSummary{RunId: "preview-run", Path: "/preview/results/preview-run", ModelName: previewValue(model), Bundle: previewValue(inferyard.DefaultBundleCore), Status: "complete", Sealed: true, Completeness: previewValue("complete")}
 	seeded.Score = &core.RunScore{Passed: 7, Valid: 13, Rate: previewValue(7.0 / 13)}
 	s.history.StandaloneRuns = []core.RunSummary{seeded}
@@ -157,8 +155,6 @@ func previewEmpty(s *viewState) {
 	s.ready = core.Readiness{CLI: core.InferyardProbe{Status: "not_found"}}
 }
 
-// previewReportSummary mirrors the core projection: one parse of the bundled
-// report supplies the model, bundle and quality shown on each card.
 func previewReportSummary(id string) core.ReportSummary {
 	index := previewReportFixture("")
 	summary := core.ReportSummary{
@@ -185,7 +181,6 @@ func previewReportFixture(reference string) *core.ReportIndex {
 		for i := range 40 {
 			run.Requests = append(run.Requests, core.ReportRequest{CaseID: fmt.Sprintf("preview-case-%03d", i), CategoryLabel: "模拟分类", State: "completed"})
 		}
-		// Keep the preview document consistent with the latency-count rule.
 		run.Dashboard.Latency.Excluded = previewValue(int64(len(run.Requests)) - *run.Dashboard.Latency.SampleCount)
 	}
 	return &index

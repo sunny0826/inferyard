@@ -67,7 +67,6 @@ def build_studio_report(roots, *, loaded=None, source_metadata=None):
             raise EvidenceError("duplicate_report_run")
         ids.add(source["run_id"])
         runs.append(_run_view(data, source))
-        # Presentation owns its derived fields; do not retain raw samples across runs.
         del data, source
     document = {"schema_version": SCHEMA_VERSION, "kind": KIND, "runs": runs}
     validate_document("studio_report", document)

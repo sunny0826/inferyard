@@ -13,8 +13,6 @@ type chainCall struct {
 	command, model, engine string
 }
 
-// chainHarness drives runStartChain with a mutable fake progress; every
-// WizardExecute advances the fake the way the real CLI would.
 type chainHarness struct {
 	progress       *inferyard.WorkspaceProgress
 	preflightMatch bool
@@ -80,7 +78,6 @@ func (h *chainHarness) run(t *testing.T, model, engine string) (startChainResult
 			!h.preflightMatch || q.PreflightPath != *h.progress.DevicePreflight.Path {
 			return core.WizardResult{ExitCode: 2}, nil
 		}
-		// A successful config create freezes the selected combination at its --out.
 		for _, b := range []string{"zh-core", "zh-svg-pelican"} {
 			if strings.Contains(q.Command, "--bundle '"+b+"'") || strings.Contains(q.Command, "--bundle "+b+" ") {
 				for i := range h.progress.Bundles {

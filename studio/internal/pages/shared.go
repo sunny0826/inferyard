@@ -11,10 +11,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// stateBanner draws a semantic banner: a tinted surface with a 2 DIP state bar
-// on the leading edge and a state icon before the content. High contrast keeps
-// the plain surface and draws a full outline instead of a tint. The callback
-// receives the foreground colour that stays readable on the tint.
 func stateBanner(c *ui.Context, kind stateKind, icon func() *ui.SVG, fn func(foreground ui.Color)) {
 	t := tokens(c)
 	theme := c.Theme()
@@ -34,8 +30,6 @@ func stateBanner(c *ui.Context, kind stateKind, icon func() *ui.SVG, fn func(for
 	})
 }
 
-// errorView renders a failure as a danger-tinted banner with an alert icon, so
-// it never reads as plain body text and colour is not the only signal.
 func errorView(c *ui.Context, e *core.ApiError) {
 	if e == nil {
 		return
@@ -44,8 +38,6 @@ func errorView(c *ui.Context, e *core.ApiError) {
 	if message == "" {
 		message = human(e.Code)
 	}
-	// A conflict carries its machine reason in the details fold. Name the known
-	// reasons in primary text so the message is not just "操作与当前状态冲突".
 	if e.Code == "conflict" {
 		if reason, ok := e.Details["reason"].(string); ok {
 			if label := conflictReasonLabel(reason); label != "" {
@@ -58,9 +50,6 @@ func errorView(c *ui.Context, e *core.ApiError) {
 		for _, v := range e.Limitations {
 			ui.Text(c, human(v)+" · "+v).TextColor(foreground)
 		}
-		// Raw machine details stay behind a closed fold: the primary text already
-		// names what happened and what to do, so a code such as not_resumable is
-		// available for diagnosis without pushing onto the first reading.
 		if len(e.Details) > 0 {
 			componentFoldKeyed(c, "error-details-"+e.Code, "错误详情", func() {
 				kvview(c, "kv-error-details", e.Details)
@@ -69,9 +58,6 @@ func errorView(c *ui.Context, e *core.ApiError) {
 	})
 }
 
-// conflictReasonLabel names the conflict reasons users hit on page actions. An
-// unknown reason returns empty so the caller keeps the generic conflict text,
-// and the raw code stays visible in the error details fold.
 func conflictReasonLabel(reason string) string {
 	switch reason {
 	case "not_resumable":
@@ -93,9 +79,6 @@ func conflictReasonLabel(reason string) string {
 	}
 }
 
-// warningBanner renders a limitation that needs handling but is not a failure.
-// It shares the banner geometry with errors and differs by hue and icon, so a
-// warning still carries text and a shape instead of colour alone.
 func warningBanner(c *ui.Context, message string) {
 	if message == "" {
 		return
@@ -192,16 +175,12 @@ func componentFold(c *ui.Context, title string, fn func()) {
 	componentFoldKeyed(c, title, title, fn)
 }
 
-// componentFoldKeyed is a fold whose key differs from its title, so the same
-// title can appear under one parent more than once.
 func componentFoldKeyed(c *ui.Context, key, title string, fn func()) {
 	container := ui.Column(c.Key(key))
 	open := ui.Local(container, "open", func() bool { return false })
 	container.Children(func() { components.Collapsible(c, title, open, components.CollapsibleOptions{}, fn) })
 }
 
-// componentFoldOpen is a fold that starts expanded, for content the user
-// needs to read without an extra click.
 func componentFoldOpen(c *ui.Context, key, title string, fn func()) {
 	container := ui.Column(c.Key(key))
 	open := ui.Local(container, "open", func() bool { return true })

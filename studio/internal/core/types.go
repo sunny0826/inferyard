@@ -56,13 +56,6 @@ type DeviceResponse struct {
 	LastError  *ApiError       `json:"last_error"`
 }
 
-// RunScore mirrors the CLI quality reduction. Valid counts every case in a
-// quality category that executed (completed or failed), so a failed execution
-// occupies its slot and counts as not passed instead of shrinking the
-// denominator. Unscorable and Missing split the remaining gaps: a completed
-// case that could not be judged, or that has no score at all. The rate is
-// present only when the CLI would compute one: a complete run with no
-// unscorable or missing case.
 type RunScore struct {
 	Passed     int64    `json:"passed"`
 	Valid      int64    `json:"valid"`
@@ -72,10 +65,6 @@ type RunScore struct {
 	Rate       *float64 `json:"rate"`
 }
 
-// RateGap reports why a rate is absent, or empty when one was reported. A
-// failed execution is not a gap: it stays in the denominator as a failure, so
-// the rate survives. A withheld rate with no unscorable and no missing case
-// means the run itself is incomplete, which is how the CLI reasons.
 func (s RunScore) RateGap() string {
 	switch {
 	case s.Rate != nil:
@@ -210,9 +199,6 @@ type RunTaskDetail struct {
 	Resources []ResourceSample `json:"resources"`
 }
 
-// ReportListRun is Studio's display projection of one run inside a report. It
-// is derived from the same studio.json parse as the rest of the summary; it is
-// not a report format field and never adds a composite score.
 type ReportListRun struct {
 	RunID       string  `json:"run_id"`
 	Model       string  `json:"model"`
@@ -222,16 +208,13 @@ type ReportListRun struct {
 }
 
 type ReportSummary struct {
-	ReportId string `json:"report_id"`
-	Path     string `json:"path"`
-	// ModifiedAt is the studio.json file modification time. It is not the run
-	// start or the generation time, and the page labels it as such.
+	ReportId     string          `json:"report_id"`
+	Path         string          `json:"path"`
 	ModifiedAt   *string         `json:"modified_at"`
 	RunIds       []string        `json:"run_ids"`
 	RunPaths     []*string       `json:"run_paths"`
 	RunSummaries []ReportListRun `json:"run_summaries"`
-	// Unreadable keeps the entry visible when studio.json cannot be parsed.
-	Unreadable bool `json:"unreadable"`
+	Unreadable   bool            `json:"unreadable"`
 }
 
 type CreateReportRequest struct {
@@ -266,8 +249,6 @@ type CreateDownloadRequest struct {
 	OutName   string `json:"out_name"`
 }
 
-// MarshalJSON preserves the native model counters while representing unobserved
-// engine transfer measurements as null on the event and JSON boundary.
 func (t DownloadTask) MarshalJSON() ([]byte, error) {
 	type task DownloadTask
 	var downloaded *int64

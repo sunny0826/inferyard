@@ -46,7 +46,6 @@ class Observations:
             limitations.append("frozen_definition_differs_from_reducer")
             comparison = False
         if code.startswith(("L", "C")):
-            # Pair comparability also needs environment, token scope and adapter checks.
             limitations.append("performance_comparison_gate_pending")
             comparison = False
         item = {
@@ -83,8 +82,6 @@ class Observations:
             "limitations": list(dict.fromkeys(limitations)),
             "evidence_refs": self.evidence,
         }
-        # Structural validation happens once on the assembled summary, which fully
-        # covers every metric_observation item; validating each item here would repeat it.
         self.items.append(item)
         return item
 

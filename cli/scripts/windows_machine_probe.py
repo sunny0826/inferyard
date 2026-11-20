@@ -19,7 +19,6 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from uuid import UUID
 
-# Same checkout root as collect_windows_machine.py: this file lives in scripts/.
 ROOT = Path(__file__).resolve().parents[1]
 CACHE_KEYS = (
     "UV_CACHE_DIR",
@@ -221,14 +220,12 @@ def executable_command(arguments, *, timeout=15):
     executable = shutil.which(arguments[0])
     if executable is None:
         raise FileNotFoundError("optional_tool_not_installed")
-    # Native Windows tools already present on C: are read/executed, never installed there.
     process = subprocess.run(
         [executable, *arguments[1:]],
         capture_output=True,
         timeout=timeout,
         creationflags=subprocess.CREATE_NO_WINDOW,
     )
-    # Keep text from localized tools intact without depending on PowerShell console encoding.
     import locale
 
     encoding = locale.getencoding()

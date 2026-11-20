@@ -170,7 +170,6 @@ def project(snapshot, protect_pids):
         else:
             owner_reason = owner_reason or "caller_ownership_unavailable"
         image = row["image"]
-        # Neither display-name equality nor a parent PID alone proves common ownership.
         key = (
             f"{image['key']}:{row['owner']}:{row['session']}"
             if image and relation != "unknown" and not owner_reason

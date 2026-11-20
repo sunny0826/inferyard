@@ -68,7 +68,6 @@ func validateStartup(startup Startup) (string, int, *ApiError) {
 	if host != "127.0.0.1" && host != "::1" && host != "localhost" {
 		return "", 0, Err("engine_host_not_loopback")
 	}
-	// Reject every host occurrence, including a conflicting earlier argument.
 	for i, arg := range startup.Args {
 		key, value, inline := strings.Cut(arg, "=")
 		if key != "--host" {

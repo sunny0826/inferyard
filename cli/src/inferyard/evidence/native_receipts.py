@@ -29,7 +29,7 @@ def verify_clean_receipts(root, events, client_ids, manifest, *, reads=None, all
     for key, event in completed.items():
         if key not in actual:
             if reads.layout_version == 1 or allow_pending:
-                continue  # Pre-receipt v3 records retain their reading semantics.
+                continue
             raise EvidenceError("native_clean_receipt_missing")
         if manifest is not None and not observation_sealed(
             reads, "native_clean_receipt", manifest, stage="client_complete", key=key

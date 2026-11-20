@@ -17,11 +17,6 @@ import (
 	"time"
 )
 
-// Engine eligibility states shown by the models page picker and the Dashboard
-// candidate stage. "unknown" covers an outdated CLI, a failed check and a
-// check that has not finished yet; it never claims the engine is unusable,
-// and only an outdated CLI leaves the engine selectable (config create is the
-// final gate).
 const (
 	EngineCheckChecking   = "checking"
 	EngineCheckEligible   = "eligible"
@@ -41,8 +36,6 @@ type EngineEligibility struct {
 	Mode              string          `json:"mode,omitempty"`
 }
 
-// EngineCheckOverview is the UI-facing snapshot of the verification pipeline.
-// Engines is keyed by registry display name; paths never leave core.
 type EngineCheckOverview struct {
 	Supported bool                         `json:"supported"`
 	Checking  int                          `json:"checking"`
@@ -63,10 +56,6 @@ type engineCheckTarget struct {
 	generation               uint64
 }
 
-// engineCheckArgs builds the CLI-C invocation for the platform: macOS checks
-// the engine binary, Windows checks the runtime receipt of the prepared
-// runtime (see cli-surface 引擎核验契约). Other platforms still invoke with
-// --engine so the CLI can answer unsupported_platform honestly.
 func engineCheckArgs(path, receipt string) []string {
 	if runtime.GOOS == "windows" {
 		return []string{"engine", "check", "--runtime-receipt", receipt}
@@ -74,10 +63,6 @@ func engineCheckArgs(path, receipt string) []string {
 	return []string{"engine", "check", "--engine", path}
 }
 
-// libraryFingerprint hashes the sibling dynamic-library set (name, size,
-// mtime). The CLI library-manifest rules are sensitive to sibling files, so a
-// verdict cached on the engine mtime alone would misjudge a repaired engine
-// forever. darwin uses *.dylib, windows *.dll, other platforms *.so*.
 func libraryFingerprint(enginePath string) string {
 	entries, err := os.ReadDir(filepath.Dir(enginePath))
 	if err != nil {
@@ -169,7 +154,6 @@ func (s *Service) checkEngineArgsWithCLI(ctx context.Context, cliPath string, ar
 		var header struct {
 			Command string `json:"command"`
 		}
-		// Old CLIs reject the unknown command with command "unknown".
 		if json.Unmarshal(out.Stdout, &header) != nil || header.Command != "engine check" {
 			return inferyard.EngineCheck{}, Err("cli_outdated")
 		}
@@ -193,12 +177,6 @@ func (s *Service) checkEngineArgsWithCLI(ctx context.Context, cliPath string, ar
 	return result, nil
 }
 
-// VerifyEngines reconciles the check cache with a fresh registry scan:
-// engines whose cache key (path + engine mtime + sibling library fingerprint
-// + receipt) has no definitive verdict are checked in the background with
-// bounded concurrency and a per-check timeout. Results arrive over the
-// "engine.check" bus event. An outdated CLI flips Supported off instead of
-// flooding errors.
 func (s *Service) VerifyEngines() {
 	data := s.registry()
 	p := s.probe(s.userSettings())
@@ -235,9 +213,6 @@ func (s *Service) VerifyEngines() {
 		for _, t := range targets {
 			entry, ok := s.checks[t.path]
 			if ok && entry.key == t.key {
-				// Definitive verdicts are final for this key; transient
-				// failures retry only after the backoff so a failing engine
-				// cannot spin the verify → event → refresh loop.
 				if entry.verified || time.Since(entry.failedAt) < s.checkRetry {
 					continue
 				}
@@ -272,8 +247,6 @@ func (s *Service) runEngineCheck(t engineCheckTarget) {
 	eligibility := EngineEligibility{State: EngineCheckUnknown, Reason: "engine_check_error"}
 	verified := false
 	if t.installation == "" && runtime.GOOS == "windows" && t.receipt == "" {
-		// Windows checks verify the runtime receipt; a bare binary directory
-		// without one cannot be checked (real-machine behavior unverified).
 		eligibility.Reason = "runtime_receipt_missing"
 	} else {
 		timeout := 30 * time.Second
@@ -322,8 +295,6 @@ func (s *Service) runEngineCheck(t engineCheckTarget) {
 		s.checkSupported = false
 	}
 	delete(s.checkInflight, t.path)
-	// A binary or sibling library replaced during the check changes the key on
-	// the next scan, which schedules a fresh verification.
 	if eligibility.Reason != "cli_outdated" {
 		entry := engineCheckEntry{key: t.key, verified: verified, result: eligibility}
 		if !verified {
@@ -335,7 +306,6 @@ func (s *Service) runEngineCheck(t engineCheckTarget) {
 	s.Bus.Publish("engine.check", map[string]any{"engine": t.name, "eligibility": eligibility})
 }
 
-// EngineChecks snapshots the current overview without touching the filesystem.
 func (s *Service) EngineChecks() EngineCheckOverview {
 	s.checkMu.Lock()
 	defer s.checkMu.Unlock()

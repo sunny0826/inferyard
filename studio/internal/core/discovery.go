@@ -25,7 +25,6 @@ func (s *Service) Discover(ctx context.Context) (inferyard.ServiceDiscovery, *Ap
 		var header struct {
 			Command string `json:"command"`
 		}
-		// Like progress, old CLIs reject unknown arguments with command "unknown".
 		if json.Unmarshal(out.Stdout, &header) != nil || header.Command != "service discover" {
 			return inferyard.ServiceDiscovery{}, Err("cli_outdated")
 		}

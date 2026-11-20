@@ -111,7 +111,6 @@ def observe(pid, psutil):
     if row["missing_reason"]:
         row["rss"] = reading(None, RSS_SOURCE, row["missing_reason"])
         row["bundle"] = None
-        # Inconsistent identity must never establish a parent edge or protection request.
         row["start_identity"] = None
         row["parent_start_identity"] = None
         row["parent_identity_missing_reason"] = None
@@ -140,7 +139,6 @@ def _worker(connection, max_processes):
             connection.send(("process", observe(pid, psutil)))
         connection.send(("done", "process_limit" if len(pids) > max_processes else None))
     except Exception:
-        # The parent maps failure without persisting exception text or local paths.
         connection.send(("error", None))
     finally:
         connection.close()

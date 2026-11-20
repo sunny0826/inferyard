@@ -29,7 +29,6 @@ class NativeObservation:
         required = config["engine"].get("observation_mode", "auto") == "lab_required"
         for path in PATHS:
             if path == "/lab/v1/lifecycle" and self.binding is None:
-                # Discovery still records this endpoint; it cannot bind lifecycle evidence.
                 if required:
                     raise PreflightError(
                         "lab_contract_http_error: required_lab_observation_unavailable"
@@ -122,7 +121,6 @@ class NativeObservation:
         }
 
     async def wait_ready(self, seconds=5, observe=None):
-        # Serial admission is a client state, never an engine-wide idle assertion.
         snapshots = {}
         deadline = time.monotonic() + seconds
         for path in ("/health", "/v1/models", "/slots", "/metrics"):
@@ -170,7 +168,6 @@ class NativeObservation:
 
 class OpenAIGenerationDecoder(GenerationDecoder):
     def _check_ids(self, payload):
-        # OpenAI's response id is server-generated; it is not a lab/client binding.
         pass
 
     def _accept_message(self, message, now):

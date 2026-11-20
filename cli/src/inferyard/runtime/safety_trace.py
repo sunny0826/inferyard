@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 from inferyard.errors import PreflightError
 
 
-
 class SafetyTrace:
     def __init__(self, store, interval_seconds, *, clock=time.monotonic_ns):
         self.store = store
@@ -23,7 +22,6 @@ class SafetyTrace:
                 gap = started - self.previous_periodic_start
             self.previous_periodic_start = started
         self.sequence += 1
-        # A failed prerequisite must not inherit the preceding sensor observation.
         safety.last = None
         error = None
         try:

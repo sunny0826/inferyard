@@ -38,7 +38,6 @@ def description(value):
             path = Path(result[key])
             if not path.is_absolute():
                 raise PreflightError("local_engine_absolute_path_required")
-            # Preserve launcher symlinks: venv prefix depends on their lexical path.
             result[key] = (
                 os.path.normpath(str(path))
                 if key == "executable"
@@ -109,7 +108,6 @@ def _python(description):
     executable = Path(description["executable"])
     if not (executable.parent.parent / "pyvenv.cfg").is_file():
         raise PreflightError("local_engine_python_venv_required")
-    # -S prevents site/.pth execution; only Python's stdlib is imported.
     code = (
         "import sys,sysconfig,json;print(json.dumps({'path':sys.path,"
         "'prefix':sys.prefix,'base_prefix':sys.base_prefix,"
@@ -142,7 +140,6 @@ def _python(description):
 def _roots(declaration, python_roots):
     paths = [Path(p) for p in declaration["runtime_roots"]]
     paths += [Path(declaration["executable"]), *python_roots]
-    # Keep lexical launcher and resolved target as separate assets.
     paths += [Path(declaration["executable"]).resolve(strict=True)]
     if declaration["family"] in DIRECTORY_FAMILIES:
         from importlib.resources import files

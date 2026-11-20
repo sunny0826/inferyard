@@ -45,7 +45,6 @@ def path_fields(config):
 
 
 def read_document(path: Path) -> bytes:
-    # Bound config/corpus reads; model files are not read in this module.
     with path.open("rb") as stream:
         raw = stream.read(MAX_DOCUMENT_BYTES + 1)
     if len(raw) > MAX_DOCUMENT_BYTES:
@@ -110,7 +109,6 @@ def load_config(path: str | Path) -> LoadedConfig:
     try:
         incoming = tomllib.loads(raw.decode("utf-8"))
     except (tomllib.TOMLDecodeError, UnicodeError) as exc:
-        # TOMLDecodeError messages may contain rejected values (including secrets).
         raise ContractError("config", "invalid UTF-8 TOML syntax") from exc
     from inferyard.evidence.formats import require_input
 
@@ -128,7 +126,6 @@ def load_config(path: str | Path) -> LoadedConfig:
         from pathlib import PureWindowsPath
 
         if os.name != "nt":
-            # Offline plans may freeze Windows config on another platform.
             paths = [
                 (section, key)
                 for section, key in path_fields(normalized)

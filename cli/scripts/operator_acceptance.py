@@ -132,7 +132,6 @@ def ready(process):
 
 
 def run_service(args, out, packet):
-    # Refuse occupied ports; runtime additionally verifies the supplied service PID.
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 48857))
     record_start_temperature(out)
@@ -248,7 +247,6 @@ def main():
 if __name__ == "__main__":
 
     def interrupted(_signum, _frame):
-        # Ignore further signals while child processes are being cleaned up.
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         raise KeyboardInterrupt

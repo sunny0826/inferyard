@@ -173,7 +173,6 @@ class Sampler:
                 self.store.observation("schedule.jsonl", schedule)
                 due += interval
                 if due < loop.time():
-                    # Do not manufacture samples for missed scheduled instants.
                     due += (int((loop.time() - due) // interval) + 1) * interval
                 await self.wait(max(0, due - loop.time()))
         except Exception as exc:

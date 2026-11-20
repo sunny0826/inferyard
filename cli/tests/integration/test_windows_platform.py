@@ -50,7 +50,6 @@ def service(tmp_path):
             },
             "engine": {"startup_args": arguments},
         }
-        # venv launchers can use a different interpreter executable internally.
         import psutil
 
         engine = hash_file(Path(psutil.Process(process.pid).exe()))

@@ -24,8 +24,6 @@ def test_export_and_check_ignore_gbk_default(tmp_path, monkeypatch, script, stal
         output = tmp_path / "data"
         module.OUTPUT = output
 
-    # pathlib resolves an omitted encoding through io.text_encoding. Explicit
-    # UTF-8 remains intact; this models cp936 without changing the host locale.
     def gbk_default(encoding, stacklevel=2):
         return "cp936" if encoding is None else encoding
 

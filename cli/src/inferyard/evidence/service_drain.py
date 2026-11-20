@@ -24,7 +24,7 @@ def _idle(data, latest, observation):
 
 def service_drain(events, *, sealed, truncated, observation):
     if not sealed or truncated or (observation and observation["mode"] == "native"):
-        return None  # Native client HTTP completion is not engine-wide drain.
+        return None
     latest, proof = None, None
     for event in events:
         kind, data = event["event_type"], event["data"]

@@ -26,7 +26,6 @@ func (p *previewSession) beginBenchmark(op previewBenchmark) {
 	p.cancelEvents("task")
 	s.model, s.engine = op.model, op.engine
 	s.busy, s.failure = true, nil
-	// A new attempt drops the previous rejected connection, mirroring production.
 	s.bindFailure, s.failedBundle, s.handoffFailure = nil, "", nil
 	s.task = benchmarkTask{stage: "prepare_candidate", bundles: slices.Clone(op.bundles)}
 	s.progress.DefaultScopeComplete = false
@@ -181,7 +180,6 @@ func (p *previewSession) finishHistoryRun(id, state string, finishedAt *string) 
 	p.scoreHistoryRun(id)
 }
 
-// historyRun returns the history row of a simulated run, or nil.
 func (p *previewSession) historyRun(id string) *core.RunSummary {
 	for i := range p.state.history.StandaloneRuns {
 		if run := &p.state.history.StandaloneRuns[i]; run.RunId == id {
@@ -191,9 +189,6 @@ func (p *previewSession) historyRun(id string) *core.RunSummary {
 	return nil
 }
 
-// scoreHistoryRun gives a simulated run's history row the score the history
-// scan derives from its evidence: every executed case takes a slot as soon as it
-// finishes, and the rate appears only once the run is complete.
 func (p *previewSession) scoreHistoryRun(id string) {
 	run, detail := p.historyRun(id), p.details[id]
 	if run == nil || detail == nil || detail.Progress == nil {

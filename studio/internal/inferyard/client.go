@@ -1,4 +1,3 @@
-// Package inferyard implements the CLI boundary without interpreting benchmark results.
 package inferyard
 
 import (
@@ -21,8 +20,6 @@ const (
 	Unknown    ExitStatus = "unknown"
 )
 
-// CLI exit codes. Studio maps them to task states and user-facing labels.
-// See studio/README.md ("CLI exit") for the product meaning.
 const (
 	ExitComplete   = 0
 	ExitBlocked    = 2
@@ -67,20 +64,17 @@ func ParseVersion(data []byte) (string, string, error) {
 }
 
 type Client struct {
-	Path string
-	Dir  string
-	// GracePeriod defaults to two seconds. No shell is used to construct commands.
+	Path        string
+	Dir         string
 	GracePeriod time.Duration
 }
 type Execution struct {
 	Stdout   []byte
 	Stderr   []byte
-	ExitCode int // Actual process exit code; -1 for a signal or failure to start.
+	ExitCode int
 	Status   ExitStatus
 }
 
-// Exec returns nonzero CLI exits as data. Errors indicate launch, I/O, or context failures.
-// Captured output remains available even when cancellation prevents a final JSON result.
 func (c Client) Exec(ctx context.Context, args ...string) (Execution, error) {
 	out := Execution{ExitCode: -1, Status: Unknown}
 	if err := ctx.Err(); err != nil {
@@ -105,7 +99,6 @@ func (c Client) Exec(ctx context.Context, args ...string) (Execution, error) {
 	select {
 	case waitErr = <-done:
 	case <-ctx.Done():
-		// Prefer an already completed process over a concurrent cancellation.
 		select {
 		case waitErr = <-done:
 		default:

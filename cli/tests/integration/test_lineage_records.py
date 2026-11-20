@@ -80,7 +80,6 @@ def test_receipts_survive_relocation_and_trial_offline_replay(tmp_path, config_p
         replay["plan"]["experiment"]["workloads"][0]["model_lineage_records"]
         == (expected["experiment"]["workloads"][0]["model_lineage_records"])
     )
-    # Rehash the containing plan/run too: internal chain checks still reject it.
     record = plan["experiment"]["workloads"][0]["model_lineage_records"]["quantization"]
     payload = json.loads(record["text"])
     payload["input_sha256"] = "8" * 64

@@ -37,7 +37,6 @@ def process_binding(config_path, monkeypatch):
     monkeypatch.setattr(binding, "verify_process_binding", verify)
     monkeypatch.setattr(binding.psutil, "Process", lambda pid: process)
     monkeypatch.setattr(binding, "current_windows_lab_api", lambda: api)
-    # Exercise native path semantics on this non-Windows unit-test host.
     monkeypatch.setattr(binding, "Path", PureWindowsPath)
     return config, model, engine, values
 

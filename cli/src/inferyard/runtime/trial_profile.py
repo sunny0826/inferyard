@@ -10,7 +10,6 @@ from inferyard.evidence.journal import TrialJournal
 
 @dataclass(frozen=True)
 class SingleProfile:
-    # The single entry creates its journal and frozen inputs before taking the lock.
     store: TrialJournal
     kind: str
     secret: str | None
@@ -46,7 +45,6 @@ class TrialDeadline:
         clock = self.profile.monotonic if self.profile else time.monotonic
         sleep = self.profile.sleep if self.profile else asyncio.sleep
         await sleep(max(0, self.allowed_seconds - (clock() - self.started_at)))
-        # Only single runs retain a user cancellation already draining at deadline expiry.
         if self.profile is None or self.current.cancelling() == self.prior_cancellations:
             self.expire()
             self.current.cancel()

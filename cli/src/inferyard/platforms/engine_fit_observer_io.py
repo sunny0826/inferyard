@@ -53,8 +53,6 @@ def read_process(command, *, deadline, limit, prefix, capture_stderr=False):
                 code = process.wait(timeout=remaining(deadline, prefix=prefix))
                 return code, bytes(output), bytes(errors)
             finally:
-                # Target only the private observer group. Some sandbox policies
-                # forbid killpg even for our children, while permitting kill.
                 try:
                     os.killpg(process.pid, signal.SIGKILL)
                 except ProcessLookupError:

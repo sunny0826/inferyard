@@ -14,10 +14,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// TestChainBindRunReport is the golden-path chain: real CLI init and
-// device-check, Studio-managed fake engine, real config bind for both default
-// bundles, formal runs, and a single studio.json report. Every CLI call goes
-// through the recording executor, so a failure produces a blame transcript.
 func TestChainBindRunReport(t *testing.T) {
 	cli := ResolveCLI(t)
 	env := NewEnv(t, cli)
@@ -51,7 +47,6 @@ func TestChainBindRunReport(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeJSONFile(t, assets.Manifest, map[string]string{filepath.Base(binary): sha256File(t, binary)})
-	// device-check discovers local GGUFs under the configured models root.
 	placeFakeModel(t, env.Models, assets.Model)
 	port := freePort(t)
 	engineRunning := false
@@ -138,8 +133,6 @@ func lastStderr(recorder *Recorder) string {
 	return strings.TrimSpace(string(data))
 }
 
-// placeFakeModel copies the fake GGUF into the models root so the real
-// device-check discovers one available local model.
 func placeFakeModel(t *testing.T, modelsRoot, modelPath string) {
 	t.Helper()
 	if err := os.MkdirAll(modelsRoot, 0o700); err != nil {
@@ -176,9 +169,6 @@ func bindCommand(t *testing.T, nextCommand string, pid int64, endpoint string) s
 	return commandOf(args)
 }
 
-// quote and commandOf mirror the dashboard's command rendering (pages.quote,
-// pages.commandOf): single-quote every argument and restore the inferyard
-// prefix that SplitCommand strips.
 func quote(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 
 func commandOf(args []string) string {

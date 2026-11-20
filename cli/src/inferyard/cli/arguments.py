@@ -37,7 +37,6 @@ class Parser(argparse.ArgumentParser):
         super().__init__(*args, **kwargs)
 
     def error(self, message):
-        # argparse's default diagnostics echo raw arguments, potentially credentials.
         raise ArgumentError("invalid CLI arguments; use --help")
 
 

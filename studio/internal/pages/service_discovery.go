@@ -43,7 +43,6 @@ func (s *viewState) managedServiceActive() bool {
 	}
 }
 
-// Only suppress a duplicate display; discovery never grants process ownership.
 func (s *viewState) managedEndpoint(service inferyard.DiscoveredService, endpoint inferyard.DiscoveredEndpoint) bool {
 	return s.managedServiceActive() && s.engineState.Pid > 0 && service.PID == s.engineState.Pid &&
 		s.engineState.Endpoint != "" && endpoint.URL == s.engineState.Endpoint && !endpoint.AmbiguousListener
@@ -73,7 +72,6 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 	}
 }
 
-// The Models card supplies its own title. Only Dashboard exposes binding.
 func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
 	if bindable {
 		heading(c, "本机运行的服务", 3)
@@ -81,8 +79,6 @@ func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
 	s.discoveryBody(c, bindable)
 }
 
-// discoveryBody renders the discovered services without a heading, so the task
-// page can carry the title on a disclosure that is always available.
 func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 	s.managedServiceView(c)
 	button(c, "刷新服务列表").Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)

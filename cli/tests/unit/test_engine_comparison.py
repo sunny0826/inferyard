@@ -51,7 +51,6 @@ def test_engine_mode_rejections(left, right, blocker):
 
 
 def real_local_shape(family, **model):
-    # The local schema never fills these; real runs carry None or "unknown".
     data = local(family, **model)
     data["identity"]["runtime_library_hashes"] = None
     data["config"]["model"]["sha256"] = None

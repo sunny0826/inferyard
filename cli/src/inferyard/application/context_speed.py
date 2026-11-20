@@ -27,7 +27,6 @@ def execute(request):
         from inferyard.application.context_speed_evidence import read_inputs
         from inferyard.analysis.ledger import plan_progress
 
-        # Reuse the complete raw batch verifier, including metadata and saved identities.
         verify(replace(request, run=request.batch), "batch")
         plan, loaded, runs = read_inputs(request.batch)
         details = project(request.batch, plan, loaded, runs)

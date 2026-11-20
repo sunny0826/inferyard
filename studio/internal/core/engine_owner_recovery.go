@@ -5,8 +5,6 @@ import (
 	"os"
 )
 
-// DiscardOrphanRecord never signals a process. Re-read the on-disk record so a
-// repaired/replaced record cannot bypass the normal stop path via stale UI state.
 func (s *Service) DiscardOrphanRecord() (EngineState, *ApiError) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -42,19 +40,15 @@ func (s *Service) DiscardOrphanRecord() (EngineState, *ApiError) {
 		if identityErr == nil && same {
 			return clone(e.state), &ApiError{Code: "engine_orphaned", Message: "logs/engine-owner.json 的进程身份仍匹配，请使用「停止遗留服务」。"}
 		}
-		// Compare-and-delete: a concurrent Studio instance may have written a
-		// fresh record after our read; only remove the exact record we checked.
 		if err := removeEngineOwnerLocked(e.path, owner); err != nil {
 			return clone(e.state), ownerRemovalError()
 		}
 	} else if err == nil {
-		// The cross-process lock protects the corrupt-record read and deletion.
 		if err := os.Remove(e.path); err != nil && !os.IsNotExist(err) {
 			return clone(e.state), ownerRemovalError()
 		}
 	}
 	s.orphan = nil
-	// A managed engine may have exited with an owner-record cleanup failure.
 	if s.engine != nil && (s.engine.state.State == "failed" || s.engine.state.State == "stopped") {
 		s.engine = nil
 	}

@@ -59,8 +59,6 @@ class StreamRedactor:
         self._partial = self._complete
         if self.max_secret_length > 1:
             starts = re.escape("".join(sorted({secret[0] for secret in redactor.secrets})))
-            # Complete matches come first, including a shorter complete secret when
-            # a longer one is incomplete. Only the bounded tail can be a prefix.
             self._partial = re.compile(
                 f"(?P<secret>{alternatives})|[{starts}]"
                 rf"(?=[\s\S]{{0,{self.max_secret_length - 2}}}\Z)"

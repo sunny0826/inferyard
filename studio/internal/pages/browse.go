@@ -6,14 +6,10 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 )
 
-// browseSpec describes which native picker a path field opens. Manual typing
-// stays available: some targets (a workspace that does not exist yet) cannot be
-// expressed by picking an existing entry.
 type browseSpec struct {
-	key    string
-	title  string
-	folder bool
-	// extensions restricts file pickers only; an empty list accepts any file.
+	key        string
+	title      string
+	folder     bool
 	extensions []string
 }
 
@@ -27,9 +23,6 @@ var (
 	browseModels       = browseSpec{key: "models", title: "选择模型目录", folder: true}
 )
 
-// pathField renders a path input with a native Browse button. The button opens a
-// picker attached to the window; picking writes the field, cancelling leaves the
-// draft untouched, and failures appear next to this field only.
 func (s *viewState) pathField(c *ui.Context, label string, value *string, spec browseSpec) ui.Element {
 	return ui.Field(c, label, func() {
 		ui.Row(c).AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
@@ -41,8 +34,6 @@ func (s *viewState) pathField(c *ui.Context, label string, value *string, spec b
 	})
 }
 
-// canBrowse reports whether a picker can be opened: production has a window, and
-// the preview answers through its in-memory intent instead.
 func (s *viewState) canBrowse() bool {
 	if s.preview != nil {
 		return true
@@ -77,8 +68,6 @@ func (s *viewState) browsePath(value *string, spec browseSpec) {
 		Directory: spec.folder, CreateDirectories: spec.folder,
 		Filters: spec.filters(),
 	}
-	// A real sheet needs the window and reports back on the UI thread. Without
-	// one (tests and headless callers) the picker result applies in place.
 	if win == nil {
 		paths, err := open(options)
 		apply(paths, err)

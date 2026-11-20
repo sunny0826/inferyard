@@ -12,7 +12,6 @@ type JsonNode = JsonScalar | list[JsonNode] | dict[str, JsonNode]
 type JsonObject = dict[str, JsonNode]
 type Number = Callable[[int | float | None], int | float | None]
 
-# Reviewed missing-composition labels only. Unknown reasons keep full redaction.
 MISSING_REASONS = frozenset(
     {
         "quality_unscorable",
@@ -25,8 +24,6 @@ MISSING_REASONS = frozenset(
 )
 MISSING_LIMIT = re.compile(r"missing:([a-z_]+):([0-9]+)\Z")
 
-# Only reviewed, fixed vocabulary is published. Unknown strings remain distinguishable
-# by hash, but are not disclosed merely because they look like harmless identifiers.
 VOCABULARY = frozenset(
     "instruction extraction qa math classification structured performance "
     "observed derived missing not_applicable experiment request engine process system "

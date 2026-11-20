@@ -162,9 +162,6 @@ func localEndpointPort(endpoint string) (string, *ApiError) {
 	return strconv.Itoa(port), nil
 }
 
-// NextOutput picks a fresh "<category>/<prefix>-N" child inside workspace.
-// Resolve rejects paths that escape the workspace, including through symlinked
-// ancestors of a not-yet-created directory.
 func NextOutput(workspace, category, prefix string) (string, *ApiError) {
 	if workspace == "" || !ValidDownloadName(prefix) {
 		return "", Err("invalid_request")
@@ -183,7 +180,6 @@ func NextOutput(workspace, category, prefix string) (string, *ApiError) {
 	return "", Err("output_name_exhausted")
 }
 
-// Each SGLang service receives a new metrics directory, outside its immutable runtime inventory.
 func scopedSGLangInstallation(workspace, path, key string) (string, *ApiError) {
 	raw, err := installationBytes(path)
 	if err != nil || "installation|"+fmt.Sprintf("%x", sha256.Sum256(raw)) != key {

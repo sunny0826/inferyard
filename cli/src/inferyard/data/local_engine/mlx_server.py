@@ -136,7 +136,6 @@ class Handler(legacy.Handler):
         finally:
             if not completed:
                 job.cancelled.set()
-                # HTTP delivery can fail after the worker has already synchronized.
                 with self.server.generations.lock:
                     self.server.generations.poisoned = True
 

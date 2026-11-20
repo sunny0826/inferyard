@@ -9,8 +9,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// candidateState is the fresh configuration step: the device preflight is
-// recorded and the workspace asks to prepare a candidate.
 func candidateState() viewState {
 	s := testState()
 	s.speed = &speedWorkspace{context: inferyard.ContextSpeed64K}
@@ -24,8 +22,6 @@ func candidateState() viewState {
 	return s
 }
 
-// The specialty benchmark replaces the six-stage flow, so the configuration
-// step must not keep the numbered rail that only makes sense inside it.
 func TestSpeedTypeDropsOrphanedStepNumber(t *testing.T) {
 	s := candidateState()
 	tt := ui.NewTester(s.stageView, 1120, 1800)
@@ -48,7 +44,6 @@ func TestSpeedTypeDropsOrphanedStepNumber(t *testing.T) {
 	}
 }
 
-// The benchmark type sits above the fields it reshapes.
 func TestSpeedTypeSwitchPrecedesModelFields(t *testing.T) {
 	s := candidateState()
 	tt := ui.NewTester(s.candidateView, 1120, 1800)
@@ -65,7 +60,6 @@ func TestSpeedTypeSwitchPrecedesModelFields(t *testing.T) {
 	}
 }
 
-// The dropdown names the model, so the line under it carries metadata only.
 func TestModelMetadataDoesNotRepeatTheName(t *testing.T) {
 	s := candidateState()
 	tt := ui.NewTester(s.candidateView, 1120, 1400)
@@ -84,8 +78,6 @@ func TestModelMetadataDoesNotRepeatTheName(t *testing.T) {
 	}
 }
 
-// Evaluation sets are a labeled field with plain-language descriptions; the
-// checkbox keeps its own accessible name.
 func TestBundleSelectionIsLabeledAndDescribed(t *testing.T) {
 	s := candidateState()
 	tt := ui.NewTester(s.candidateView, 1120, 1400)
@@ -100,8 +92,6 @@ func TestBundleSelectionIsLabeledAndDescribed(t *testing.T) {
 	}
 }
 
-// The preparation card offers the settings shortcut its copy mentions and
-// states the three milestones a first run goes through.
 func TestSetupGuideOffersSettingsAndMilestones(t *testing.T) {
 	s := testState()
 	s.ready.CLI.Status = "not_found"
@@ -118,8 +108,6 @@ func TestSetupGuideOffersSettingsAndMilestones(t *testing.T) {
 	}
 }
 
-// The type switch keeps its place in both types, so the arrow key that chose a
-// type leaves the focus on the switch and the next arrow key switches back.
 func TestSpeedTypeArrowKeysKeepFocus(t *testing.T) {
 	s := candidateState()
 	tt := ui.NewTester(s.stageView, 1120, 1800)
@@ -139,9 +127,6 @@ func TestSpeedTypeArrowKeysKeepFocus(t *testing.T) {
 	}
 }
 
-// 新任务 returns production to the regular benchmark, while 用此组合新开任务
-// still reopens the specialty round it was started from. The preview's matching
-// behaviour lives in preview_benchmark_type_parity_test.go.
 func TestNewTaskResetsBenchmarkType(t *testing.T) {
 	specialty := &speedTask{id: "speed", model: "Model-A", engine: "Engine-A", context: inferyard.ContextSpeed128K, selectionModel: "Model-A", selectionEngine: "Engine-A"}
 	production := candidateState()
@@ -157,9 +142,6 @@ func TestNewTaskResetsBenchmarkType(t *testing.T) {
 	}
 }
 
-// A busy page must not start the reset from the finished specialty task: its
-// delayed update would overwrite the restored model, engine and tier. The
-// result view already disables the same entry, so the task view must too.
 func TestSpeedTaskNewCombinationIsDisabledWhileBusy(t *testing.T) {
 	specialty := func() *speedTask {
 		return &speedTask{id: "speed", stage: speedDone, model: "Model-A", engine: "Engine-A", context: inferyard.ContextSpeed128K, selectionModel: "Model-B", selectionEngine: "Engine-B"}

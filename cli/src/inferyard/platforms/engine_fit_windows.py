@@ -39,7 +39,6 @@ def _listener(pid, address, port):
         if row.family == family and row.laddr.ip in (address, "::", "0.0.0.0"):
             matches.append(row)
         elif family == socket.AF_INET and row.family == socket.AF_INET6 and row.laddr.ip == "::":
-            # IPv6 wildcard can also accept IPv4; its v6-only flag is not observed.
             matches.append(row)
     if len(matches) != 1 or matches[0].pid != pid or matches[0].family != family:
         raise PreflightError("endpoint_pid_mismatch")
@@ -84,7 +83,6 @@ def _environment(pid):
 
     environment = psutil.Process(pid).environ()
     reject_llama_environment(environment)
-    # Windows names are case-insensitive; values are never returned or persisted.
     if any(key.upper().startswith("LLAMA_ARG_") for key in environment):
         raise PreflightError("engine_fit_llama_environment_requires_explicit_args")
 

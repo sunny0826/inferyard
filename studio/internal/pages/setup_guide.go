@@ -5,10 +5,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// setupGuide explains what preparation does before the user starts it: whether
-// it needs the network, what it writes and where, and that sizes cannot be
-// predicted. Installed components are reused; the same idempotent chain runs on
-// retry.
 func (s *viewState) setupGuide(c *ui.Context) {
 	card(c, "环境准备", func() {
 		ui.Text(c, "首次使用流程：1. 准备运行环境 → 2. 获取引擎与模型 → 3. 开始首次测评").TextColor(c.Theme().TextMuted)
@@ -31,7 +27,6 @@ func (s *viewState) setupGuide(c *ui.Context) {
 	})
 }
 
-// setupActions states what preparation reuses and downloads.
 func setupActions(c *ui.Context, locations core.PreparationLocations, known bool) {
 	if known && locations.CLI != nil {
 		ui.Text(c, "CLI：复用 "+displayName(*locations.CLI))
@@ -45,8 +40,6 @@ func setupActions(c *ui.Context, locations core.PreparationLocations, known bool
 	}
 }
 
-// setupTargets names every write target by directory or file name, never by a
-// full path; the settings page remains the only place that shows those.
 func setupTargets(c *ui.Context, locations core.PreparationLocations) {
 	deviceRow(c, "工作区", configuredPath(locations.Workspace))
 	deviceRow(c, "结果目录", configuredPath(locations.Results))
@@ -62,8 +55,6 @@ func setupTargets(c *ui.Context, locations core.PreparationLocations) {
 	}
 }
 
-// preparationLocations reads the core-owned path projection. The preview has no
-// service and therefore no path facts; it shows the explanation without paths.
 func (s *viewState) preparationLocations() (core.PreparationLocations, bool) {
 	if s.service == nil {
 		return core.PreparationLocations{}, false
@@ -78,8 +69,6 @@ func managedPythonLabel(known bool, locations core.PreparationLocations) string 
 	return "运行时"
 }
 
-// configuredPath names a target without exposing the full path: the settings
-// page stays the only place that shows absolute paths.
 func configuredPath(value *string) string {
 	if value == nil || *value == "" {
 		return "尚未配置（准备时使用默认值）"

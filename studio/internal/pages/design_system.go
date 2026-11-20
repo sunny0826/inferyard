@@ -30,10 +30,6 @@ func configuredValue(value string) string {
 	return value
 }
 
-// button and primaryButton give every page action the same geometry: the
-// button hugs its label instead of stretching to the column width, so a card
-// action never reads as a full-width banner. A caller that needs a wide button
-// asks for FillWidth explicitly.
 func button(c *ui.Context, label string) ui.Element {
 	return components.Button(c, label, components.ButtonSecondary).MaxWidthPercent(100).AlignSelf(ui.Start)
 }
@@ -42,9 +38,6 @@ func primaryButton(c *ui.Context, label string) ui.Element {
 	return components.Button(c, label, components.ButtonPrimary).MaxWidthPercent(100).AlignSelf(ui.Start)
 }
 
-// dangerButton marks an action that cancels or discards work. It shares the
-// button geometry of the quiet variant and takes its colour from the danger
-// state token, so pages never carry their own red styling.
 func dangerButton(c *ui.Context, label string) ui.Element {
 	theme := c.Theme()
 	danger := tokens(c).State.Danger
@@ -93,10 +86,6 @@ func (s *viewState) submissionFailed(e *core.ApiError) {
 	delete(s.announcedErrors, errorAnnouncement(e))
 }
 
-// consumeFeedback shows the pending completion message as a toast and
-// announces what changed to assistive technology. It runs where the page
-// content is built, so that the production window and the preview window
-// behave the same.
 func (s *viewState) consumeFeedback(c *ui.Context) {
 	if s.pendingToast != "" {
 		message := s.pendingToast
@@ -165,8 +154,6 @@ func (s *viewState) announceChanges(c *ui.Context) {
 	}
 	if s.progress != nil && (s.selected == "dashboard" && s.detailID == "") {
 		for _, bundle := range s.progress.Bundles {
-			// Guidance reasons (why resume is not offered on an unfinished
-			// run) are not announced as errors; see the dashboard banner.
 			if bundle.BlockedReason != nil && bundle.Phase != "run_incomplete" {
 				errors = append(errors, bundle.Bundle+"："+human(*bundle.BlockedReason))
 			}
@@ -185,8 +172,6 @@ func (s *viewState) announceChanges(c *ui.Context) {
 	s.announcedErrors = current
 }
 
-// runColor maps a run task to its status color. A queued task already reads
-// "排队中", so it keeps the neutral waiting color instead of the active one.
 func runColor(c *ui.Context, task core.RunTask) ui.Color {
 	if task.Queued && task.State == "starting" {
 		return stateColor(c, stateNeutral)

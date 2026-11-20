@@ -8,8 +8,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// The Reports page opens on the report list, not on a history table, and each
-// list keeps its own tab.
 func TestReportsDefaultsToReportListTab(t *testing.T) {
 	s := testState()
 	s.reports = []core.ReportSummary{{
@@ -36,9 +34,6 @@ func TestReportsDefaultsToReportListTab(t *testing.T) {
 	}
 }
 
-// Returning from a report detail lands on the report list, even when the user
-// last left Reports on another tab: the task page opens a report directly, so
-// the detail cannot assume where the user came from.
 func TestReportBackLinkReturnsToReportListTab(t *testing.T) {
 	s := testState()
 	s.service, _ = reportFixtureService(t)
@@ -53,7 +48,6 @@ func TestReportBackLinkReturnsToReportListTab(t *testing.T) {
 	if !tt.HasText("运行历史表") {
 		t.Fatalf("history tab did not open: %v", tt.Texts())
 	}
-	// The task page's 查看报告 opens a report from outside the Reports page.
 	s.selected, s.task.stage, s.task.report = "dashboard", "done", "summary-1"
 	s.task.runs = []string{"/results/run-1"}
 	tt.Frame()
@@ -65,15 +59,11 @@ func TestReportBackLinkReturnsToReportListTab(t *testing.T) {
 	}
 }
 
-// A specialty result opened from the task page returns to its own tab, not to
-// whichever tab Reports last showed.
 func TestSpeedResultBackLinkReturnsToSpecialtyTab(t *testing.T) {
 	s := testState()
 	task := &speedTask{id: "speed-1", model: "Preview-Model-Q4.gguf", engine: "preview-engine", stage: speedDone}
 	s.speed = &speedWorkspace{history: []*speedTask{task}, current: task}
 	s.selected = "dashboard"
-	// A busy window keeps the read-on-open in flight: the test drives the page
-	// transitions, not the specialty measurement.
 	s.busy = true
 	tt := ui.NewTester(s.view, 1120, 1600)
 	click(t, tt, "查看结果")
@@ -88,8 +78,6 @@ func TestSpeedResultBackLinkReturnsToSpecialtyTab(t *testing.T) {
 	}
 }
 
-// A new workspace or reset preview scene starts on the default report list, so a
-// stale tab and an open detail never outlive the data they described.
 func TestResetWorkspaceRestoresReportListTab(t *testing.T) {
 	s := testState()
 	s.reportsTab = reportsTabHistory
@@ -100,8 +88,6 @@ func TestResetWorkspaceRestoresReportListTab(t *testing.T) {
 	}
 }
 
-// The tab lives on the view state, so selecting it once survives re-frames but
-// does not depend on an element that a scene reset discards.
 func TestReportsTabSurvivesReframe(t *testing.T) {
 	s := testState()
 	s.history.StandaloneRuns = []core.RunSummary{{RunId: "run-1", Path: "/results/run-1"}}
@@ -113,8 +99,6 @@ func TestReportsTabSurvivesReframe(t *testing.T) {
 	}
 }
 
-// Rows reveal their actions only after selection, so the history tab names that
-// interaction while nothing is selected and drops the hint once one is.
 func TestHistoryTabNamesRowInteraction(t *testing.T) {
 	s := testState()
 	s.history.StandaloneRuns = []core.RunSummary{{RunId: "run-1", Path: "/results/run-1"}}
@@ -130,8 +114,6 @@ func TestHistoryTabNamesRowInteraction(t *testing.T) {
 	}
 }
 
-// A failed scan with no rows has nothing to click, so it states the failure
-// without offering the row hint.
 func TestHistoryHintOnlyWhenRowsExist(t *testing.T) {
 	s := testState()
 	s.loaded, s.historyError = true, core.Err("history_unreadable")
@@ -143,8 +125,6 @@ func TestHistoryHintOnlyWhenRowsExist(t *testing.T) {
 	}
 }
 
-// The pass card carries the percentage beside the count when the conclusion is
-// complete, and keeps the bare count when it is not.
 func TestReportPassRateMatchesCompletionView(t *testing.T) {
 	complete := core.ReportQuality{
 		StudioCounts: core.ReportCounts{Numerator: ptr(int64(7)), Denominator: ptr(int64(13))},
@@ -167,8 +147,6 @@ func TestReportPassRateMatchesCompletionView(t *testing.T) {
 	}
 }
 
-// The summary below the KPI cards adds only the scope disclaimer: repeating the
-// numbers, or naming them twice, made the reader decode the same facts again.
 func TestReportSummaryDoesNotRepeatKpiNumbers(t *testing.T) {
 	s := testState()
 	s.service, _ = reportFixtureService(t)
@@ -186,8 +164,6 @@ func TestReportSummaryDoesNotRepeatKpiNumbers(t *testing.T) {
 	}
 }
 
-// Widening the window pairs the short cards; a compact layout keeps them in one
-// column.
 func TestReportSummaryGridFollowsViewport(t *testing.T) {
 	s := testState()
 	s.service, _ = reportFixtureService(t)
@@ -212,8 +188,6 @@ func TestReportSummaryGridFollowsViewport(t *testing.T) {
 	}
 }
 
-// The back link sits above the report title so leaving needs no scrolling, and a
-// single-run card does not repeat the model or the evaluation set.
 func TestReportDetailBackLinkAndCardDedup(t *testing.T) {
 	s := testState()
 	s.service, _ = reportFixtureService(t)

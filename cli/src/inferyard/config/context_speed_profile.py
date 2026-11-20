@@ -99,7 +99,6 @@ def _startup(config):
         require_profile(
             [v for _, _, v in argument_values(args, names)] == [expected], "startup_recipe_mismatch"
         )
-    # Closed supported startup vocabulary excludes draft/lookup/ngram routes.
     valued = {
         "-m",
         "--model",

@@ -13,9 +13,6 @@ func (s *viewState) loadSettings(v core.SettingsResponse) {
 	s.loadDownloadNames(v)
 }
 
-// loadPathSettings copies the saved paths into the path card only. The two
-// Settings cards save independently, so syncing one must not discard a draft
-// the user typed in the other.
 func (s *viewState) loadPathSettings(v core.SettingsResponse) {
 	s.cliPath = emptyText(v.Settings.InferyardPath)
 	s.workspace = emptyText(v.Settings.WorkspaceRoot)
@@ -26,7 +23,6 @@ func (s *viewState) loadPathSettings(v core.SettingsResponse) {
 	s.models = emptyText(v.Settings.ModelsRoot)
 }
 
-// loadDownloadNames copies the saved download names into their card only.
 func (s *viewState) loadDownloadNames(v core.SettingsResponse) {
 	s.modelName, s.engineName = v.Settings.ModelDownloadName, v.Settings.EngineDownloadName
 	if s.modelName == "" {
@@ -37,8 +33,6 @@ func (s *viewState) loadDownloadNames(v core.SettingsResponse) {
 	}
 }
 
-// Settings save in two independent groups. A response syncs only the group it
-// wrote, so the other card keeps its unsaved draft.
 func settingsPatchGroups(patch map[string]json.RawMessage) (paths, names bool) {
 	for _, key := range []string{"inferyard_path", "workspace_root", "results_root", "models_root"} {
 		if _, ok := patch[key]; ok {
@@ -53,9 +47,6 @@ func settingsPatchGroups(patch map[string]json.RawMessage) (paths, names bool) {
 	return paths, names
 }
 
-// settingDraft snapshots both Settings cards when a save starts. A response
-// only writes back the fields the user has not typed into since, so typing
-// during the save is never overwritten by stale submitted values.
 type settingDraft struct {
 	cliPath, workspace, results, models, modelName, engineName string
 }
@@ -67,7 +58,6 @@ func (s *viewState) settingsDraft() settingDraft {
 	}
 }
 
-// savedPathFields reads the four saved paths out of a response.
 func savedPathFields(v core.SettingsResponse) (cliPath, workspace, results, models string) {
 	workspace = emptyText(v.Settings.WorkspaceRoot)
 	if workspace == "" {
@@ -76,27 +66,17 @@ func savedPathFields(v core.SettingsResponse) (cliPath, workspace, results, mode
 	return emptyText(v.Settings.InferyardPath), workspace, emptyText(v.Settings.ResultsRoot), emptyText(v.Settings.ModelsRoot)
 }
 
-// savedDownloadNames reads the saved names, defaulting an unset name.
 func savedDownloadNames(v core.SettingsResponse) (modelName, engineName string) {
 	return defaultDownloadName(v.Settings.ModelDownloadName, "model"), defaultDownloadName(v.Settings.EngineDownloadName, "engine")
 }
 
-// refreshBatchCurrent reports whether a refresh batch read at epoch still
-// describes the settings in force. A save increments the counter, so a batch
-// read before it must not paint the previous workspace's readiness, progress,
-// reports or settings over the saved workspace.
 func (s *viewState) refreshBatchCurrent(epoch uint64) bool {
 	return epoch == s.settingsSequence()
 }
 
-// syncSavedGroups records the saved response as the new baseline and writes
-// back only the group the patch saved. Within that group, a field keeps the
-// user's newer value when they typed into it while the save was in flight.
 func (s *viewState) syncSavedGroups(patch map[string]json.RawMessage, submitted settingDraft, value core.SettingsResponse) {
 	previousWorkspace := emptyText(s.settings.Effective.WorkspaceRoot)
 	s.settings = value
-	// A refresh that read its settings snapshot before this save must not
-	// apply it afterwards: the counter invalidates that snapshot.
 	s.settingsEpochMu.Lock()
 	s.settingsEpoch++
 	s.settingsEpochMu.Unlock()
@@ -115,9 +95,6 @@ func (s *viewState) syncSavedGroups(patch map[string]json.RawMessage, submitted 
 		if s.models == submitted.models {
 			s.models = models
 		}
-		// The baseline now carries the new workspace, so the next refresh's
-		// applySettings no longer sees the switch. Drop the old workspace's
-		// round state here, exactly as the preview save does.
 		if emptyText(value.Effective.WorkspaceRoot) != previousWorkspace {
 			s.resetWorkspace()
 		}
@@ -133,8 +110,6 @@ func (s *viewState) syncSavedGroups(patch map[string]json.RawMessage, submitted 
 	}
 }
 
-// applySavedGroups runs syncSavedGroups on the window's update queue when a
-// window exists, so production and in-memory tests share one code path.
 func (s *viewState) applySavedGroups(patch map[string]json.RawMessage, submitted settingDraft, value core.SettingsResponse) {
 	update := s.win.Update
 	if s.updateWindow != nil {
@@ -147,9 +122,6 @@ func (s *viewState) applySavedGroups(patch map[string]json.RawMessage, submitted
 	update(func() { s.syncSavedGroups(patch, submitted, value) })
 }
 
-// persistSettings writes one Settings group and syncs only that group, so the
-// other card's draft survives the save. submitted is the snapshot taken before
-// the request left, which keeps later typing intact.
 func (s *viewState) persistSettings(patch map[string]json.RawMessage, submitted settingDraft, message string) (string, *core.ApiError) {
 	v, e := s.service.UpdateSettings(patch)
 	if e == nil {
@@ -171,9 +143,6 @@ func (s *viewState) settingsView(c *ui.Context) {
 		return
 	}
 	card(c, "路径设置", func() {
-		// All Settings cards stack their fields the same way: label above the
-		// control. The form alignment stays identical at any window width and
-		// text scale, instead of switching between inline and stacked layouts.
 		s.pathFields(c)
 		ui.Text(c, "保存不会自动创建目录；新建工作区请手动输入完整路径。").TextColor(c.Theme().TextMuted)
 		settingsNotice(c, s.pathsEdited(), "路径有未保存的修改，点击保存后生效。")
@@ -202,8 +171,6 @@ func (s *viewState) settingsView(c *ui.Context) {
 	s.downloadNamesView(c)
 }
 
-// pathsEdited reports whether the path form differs from the saved settings,
-// so the path card only offers a save when there is something to write.
 func (s *viewState) pathsEdited() bool {
 	return s.cliPath != emptyText(s.settings.Settings.InferyardPath) ||
 		s.workspace != emptyText(s.settings.Effective.WorkspaceRoot) ||
@@ -211,9 +178,6 @@ func (s *viewState) pathsEdited() bool {
 		s.models != emptyText(s.settings.Settings.ModelsRoot)
 }
 
-// downloadNamesEdited reports whether the download names differ from the
-// saved values. An unset saved name means the default, so the defaults alone
-// are not an edit.
 func (s *viewState) downloadNamesEdited() bool {
 	return s.modelName != defaultDownloadName(s.settings.Settings.ModelDownloadName, "model") ||
 		s.engineName != defaultDownloadName(s.settings.Settings.EngineDownloadName, "engine")
@@ -223,8 +187,6 @@ func (s *viewState) canSavePaths() bool {
 	return s.settingsLoaded && !s.busy && s.pathsEdited() && s.pathsValid()
 }
 
-// pathsValid applies the same checks as validateSettings without reporting a
-// failure: an invalid draft keeps the save disabled instead of failing a click.
 func (s *viewState) pathsValid() bool {
 	for _, entry := range [][3]string{
 		{s.cliPath, emptyText(s.settings.Settings.InferyardPath), ""},
@@ -267,8 +229,6 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 	}
 }
 
-// settingsNotice explains that edits are only in the form, not yet persisted.
-// It renders nothing while the fields match the saved values.
 func settingsNotice(c *ui.Context, dirty bool, message string) {
 	if !dirty {
 		return
@@ -276,7 +236,6 @@ func settingsNotice(c *ui.Context, dirty bool, message string) {
 	ui.Text(c, message).Role(ui.RoleStatus).TextColor(stateColor(c, stateWarning))
 }
 
-// pathFields renders the four path inputs with their browse buttons.
 func (s *viewState) pathFields(c *ui.Context) {
 	ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
 		s.pathField(c, "CLI", &s.cliPath, browseCLI).Description("留空则自动从 PATH 及常用本地目录查找。").Error(s.browseError(browseCLI.key, pathError(s.cliPath)))
@@ -312,8 +271,6 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 	})
 }
 
-// downloadNamesNotice states that reverting or editing the names only filled
-// the form: the defaults are not persisted until the save button runs.
 func downloadNamesNotice(modelName, engineName string) string {
 	if modelName == "model" && engineName == "engine" {
 		return "已填入默认值，请点击保存生效。"
@@ -335,8 +292,6 @@ func defaultDownloadName(name, fallback string) string {
 	return name
 }
 
-// directoryState describes what the settings field currently points at, so the
-// user does not have to save and reopen to learn that a path is missing.
 func directoryState(value string, readiness core.DirectoryReadiness, previous string) string {
 	switch {
 	case value == "" && previous == "":
@@ -346,10 +301,6 @@ func directoryState(value string, readiness core.DirectoryReadiness, previous st
 	}
 	state := "路径已修改，保存后生效"
 	if samePath(value, previous) {
-		// The saved path matches, but the probe may still describe the path it
-		// replaced, or one that was never configured: a save updates the settings
-		// before the next refresh reads readiness. Never show a directory result
-		// that does not belong to this exact path.
 		if readiness.Path == nil || !samePath(value, *readiness.Path) {
 			return "等待检查"
 		}

@@ -44,7 +44,6 @@ def test_skipped_timeline_validation_remains_in_verify_and_report(
     path = root / name
     original = path.read_bytes()
     assert original
-    # Same byte count isolates the intentionally deferred hash/semantic checks.
     path.write_bytes(b"{}" + b" " * (len(original) - 3) + b"\n")
     if repair_seal:
         reseal_file(root, name)

@@ -173,7 +173,6 @@ class ExtensionTransport(PrismAdapter):
         usage = reply.get("usage", {})
         if usage.get("prompt_tokens") != count["input_tokens"]:
             raise PreflightError("extension_template_count_mismatch")
-        # Effective numeric/stop parameters must be visible for this particular slot.
         params = await self.verify_slot_parameters(slot)
         answer = message["content"]
         redacted = self.redactor.text(answer)

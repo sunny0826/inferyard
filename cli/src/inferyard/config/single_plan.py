@@ -21,7 +21,6 @@ def local_safety(safety):
 
 def compile_single_plan(config, bundle, *, experiment_id=None):
     """Freeze an in-memory single workload before any service request is sent."""
-    # Document inputs contain no new information; raw public inputs still validate fully.
     config = validated_dict("config", config)
     bundle = validated_dict("bundle", bundle)
     count = len(bundle["cases"])

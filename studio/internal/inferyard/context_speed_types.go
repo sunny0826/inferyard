@@ -2,7 +2,6 @@ package inferyard
 
 import "encoding/json"
 
-// ContextSpeedResult is an offline projection. Only the CLI authenticates evidence bytes.
 type ContextSpeedResult struct {
 	ReadError     *SpeedReadError  `json:"-"`
 	SchemaVersion int              `json:"schema_version"`

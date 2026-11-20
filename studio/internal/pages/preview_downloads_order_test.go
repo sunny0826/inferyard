@@ -10,9 +10,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// TestPreviewDownloadsStayNewestFirst aligns the simulated list with
-// Service.Downloads: a later task comes first, so the guide can tell a newer
-// retry from an older success of the same source.
 func TestPreviewDownloadsStayNewestFirst(t *testing.T) {
 	p := newPreviewSession(context.Background())
 	p.loadScene(previewSceneIndex(t, "模型 · 可用组合"))
@@ -29,14 +26,11 @@ func TestPreviewDownloadsStayNewestFirst(t *testing.T) {
 		t.Fatalf("later task is not first: %q then %q", newer.StartedAt, older.StartedAt)
 	}
 
-	// The older task fails after the newer one started: the newer task resolves
-	// it, and the failure does not reopen the retry prompt.
 	p.state.downloads[1].State = "failed"
 	if got := p.state.unresolvedDownloadFailures(); got != 0 {
 		t.Fatalf("newer task did not resolve the older failure: %d", got)
 	}
 
-	// The reverse order keeps the failure: an older success cannot hide it.
 	done := core.DownloadTask{TaskId: "older", Kind: "model", State: "done", SourceUrl: "https://example.test/other.gguf", StartedAt: "2026-10-17T00:00:00Z"}
 	failed := core.DownloadTask{TaskId: "later", Kind: "model", State: "failed", SourceUrl: done.SourceUrl, StartedAt: "2026-10-17T00:01:00Z"}
 	p.state.downloads = []core.DownloadTask{failed, done}

@@ -46,12 +46,12 @@ def test_engine_timings_rebuild_offline_with_bound_build_and_unchanged_evidence(
     ]
     assert len(metrics) == 3
     for item in metrics:
-        assert not item["comparison_eligible"]  # diagnostic trial
+        assert not item["comparison_eligible"]
         assert item["value"] == (500 if "predicted_n" in timings else None)
         assert item["missing_reason"] == (
             None if "predicted_n" in timings else "invalid_engine_timings"
         )
-        assert item["sampled_start_ns"] is None  # engine phase clock is not client wall clock
+        assert item["sampled_start_ns"] is None
         for ref in item["evidence_refs"]:
             verify_reference(root, ref)
     assert TrialEvidence(root).has_observation("service_properties")

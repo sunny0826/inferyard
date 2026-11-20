@@ -139,9 +139,6 @@ func selectedRow(state *pageTableState, count int) int {
 	return *state.Selected
 }
 
-// runScore names a missing or withheld rate instead of printing a smaller
-// ratio: failed executions stay in the denominator as failures, while an
-// unscorable or unscored case withholds the rate.
 func runScore(r core.RunSummary) string {
 	if r.Score == nil {
 		return "未记录评分"
@@ -167,19 +164,12 @@ func (s *viewState) historyView(c *ui.Context) {
 		ui.Text(c, "暂无运行记录。")
 		return
 	}
-	// Five primary columns, 730 DIP in all, fit the table viewport of a 1024 DIP
-	// window, so the start time shows without scrolling sideways; the run id,
-	// batch and paths stay in the selected detail instead of widening the table.
 	selectableTable(&s.historyTable, func(i int) any { return runs[i].Path }, func(i int) string { return runs[i].RunId })
-	// The table hugs its rows up to eight, so one run no longer sits under a
-	// fixed-height blank panel.
 	c.Key("history-table")
 	pageTable(c, &s.historyTable, "运行历史表", []ui.TableColumn{{Title: "模型", Width: 190}, {Title: "测评题集", Width: 130}, {Title: "状态", Width: 70}, {Title: "评分", Width: 170}, {Title: "开始时间", Width: 170}}, len(runs), func(row, col int) {
 		r := runs[row]
 		ui.Text(c, []string{historyModel(r), text(r.Bundle), stateLabel(r.Status), runScore(r), historyStarted(r)}[col])
 	}).Height(c.Theme().Space(8)*float32(min(len(runs), 8)+1) + 2).Label("运行历史表")
-	// Rows reveal their actions only after selection, so the page names that
-	// interaction while rows exist and none is selected.
 	if i := selectedRow(&s.historyTable, len(runs)); i >= 0 {
 		r := runs[i]
 		s.historyIdentity(c, r)
@@ -205,8 +195,6 @@ func historyModel(r core.RunSummary) string {
 	return *r.ModelName
 }
 
-// historyStarted renders a recorded timestamp in the local timezone, which is
-// what a person compares against their own clock; the raw fold keeps UTC.
 func historyStarted(r core.RunSummary) string {
 	raw := emptyText(r.StartedAt)
 	if raw == "" {
@@ -215,8 +203,6 @@ func historyStarted(r core.RunSummary) string {
 	return formatTimestamp(raw)
 }
 
-// formatTimestampOrMissingUTC keeps the evidence instant in UTC for the raw
-// details fold, where the time basis must not be ambiguous.
 func formatTimestampOrMissingUTC(p *string) string {
 	if p == nil || *p == "" {
 		return "缺测"
@@ -224,7 +210,6 @@ func formatTimestampOrMissingUTC(p *string) string {
 	return formatTimestampUTC(*p)
 }
 
-// historyIdentity shows the identifiers that no longer occupy table columns.
 func (s *viewState) historyIdentity(c *ui.Context, r core.RunSummary) {
 	line := "运行 ID：" + r.RunId
 	if r.BatchId != nil {

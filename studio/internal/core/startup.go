@@ -41,7 +41,6 @@ func (s *Service) Startup(candidate string) (Startup, *ApiError) {
 	return result, nil
 }
 func (s *Service) Processes(ctx context.Context) ([]ProcessCandidate, *ApiError) {
-	// Only executable names are exposed; process argv may contain credentials.
 	result := []ProcessCandidate{}
 	if runtime.GOOS == "windows" {
 		raw, err := exec.CommandContext(ctx, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "Get-Process | Select-Object Id,ProcessName | ConvertTo-Json -Compress").Output()

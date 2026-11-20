@@ -9,8 +9,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// sidebarHeaderState mounts the sidebar entry and the header status bar the
-// production window and the preview share.
 func sidebarHeaderState(s *viewState) *ui.Tester {
 	return ui.NewTester(func(c *ui.Context) {
 		ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
@@ -20,16 +18,12 @@ func sidebarHeaderState(s *viewState) *ui.Tester {
 	}, 1120, 700)
 }
 
-// readyState reports a ready workspace, so only the state under test decides
-// whether the sidebar entry is disabled.
 func readyState(selected string) *viewState {
 	return &viewState{selected: selected, loaded: true, denied: map[string]bool{},
 		ready: core.Readiness{CLI: core.InferyardProbe{Status: "ok"}, Workspace: core.DirectoryReadiness{Initialized: true},
 			Results: core.DirectoryReadiness{Exists: true}, Models: core.DirectoryReadiness{Exists: true}}}
 }
 
-// taskLabelBox is the "新任务" text box; its x position shows whether the
-// entry is centered in the full-width sidebar column or shrunk to the start.
 func taskLabelBox(t *testing.T, tt *ui.Tester) ui.Rect {
 	t.Helper()
 	r, ok := tt.Find("新任务")
@@ -39,7 +33,6 @@ func taskLabelBox(t *testing.T, tt *ui.Tester) ui.Rect {
 	return r
 }
 
-// settingsBox pins the navigation stack: no entry above it may shift.
 func settingsBox(t *testing.T, tt *ui.Tester) ui.Rect {
 	t.Helper()
 	r, ok := tt.Find("设置")
@@ -74,8 +67,6 @@ func TestSidebarNewTaskKeepsOneGeometry(t *testing.T) {
 	}
 }
 
-// A disabled entry explains itself and never resets the round behind the user's
-// back: environment setup, an active run and the idle setup page all disable it.
 func TestSidebarNewTaskDisabledStatesDoNotReset(t *testing.T) {
 	firstRun := readyState("dashboard")
 	firstRun.ready = core.Readiness{}
@@ -85,8 +76,6 @@ func TestSidebarNewTaskDisabledStatesDoNotReset(t *testing.T) {
 	running.tasks = []core.RunTask{{TaskId: "run", State: "running"}}
 
 	for name, s := range map[string]*viewState{"first run": firstRun, "idle setup": setup, "running": running} {
-		// The reset boundary runs in a goroutine, so it records a hit instead of
-		// failing there; the assertion reads it once the frame settles.
 		resets := 0
 		s.cancelRound = func(string) (core.RunTask, *core.ApiError) {
 			resets++
@@ -105,8 +94,6 @@ func TestSidebarNewTaskDisabledStatesDoNotReset(t *testing.T) {
 	}
 }
 
-// A disabled entry must still explain itself to a mouse user: the hint lives
-// on the wrapping column, because a disabled control takes no pointer.
 func TestSidebarNewTaskDisabledHintShowsOnHover(t *testing.T) {
 	s := readyState("dashboard")
 	s.progress = &inferyard.WorkspaceProgress{NextAction: "prepare_candidate"}
@@ -124,9 +111,6 @@ func TestSidebarNewTaskDisabledHintShowsOnHover(t *testing.T) {
 	}
 }
 
-// Every failed round must stay exit-able: the stage stays set after the
-// binding, the run or the report failed, and no run is left to cancel. A new
-// task then only returns to model and engine selection.
 func TestSidebarNewTaskExitsFailedRound(t *testing.T) {
 	done := ptr("zh-core")
 	failed := ptr("zh-svg-pelican")
@@ -143,8 +127,6 @@ func TestSidebarNewTaskExitsFailedRound(t *testing.T) {
 			s.tasks = []core.RunTask{{TaskId: "run", State: "failed", Bundle: done}}
 			return s
 		}(),
-		// The LM Studio second-bundle failure keeps the engine running while the
-		// first bundle already completed, so only the task failure marks the stop.
 		"lmstudio second bundle failed": func() *viewState {
 			s := readyState("dashboard")
 			s.task = benchmarkTask{stage: "run", failure: core.Err("cli_blocked")}
@@ -176,9 +158,6 @@ func TestSidebarNewTaskExitsFailedRound(t *testing.T) {
 	}
 }
 
-// A failed round whose engine is still starting or stopping is not halted yet:
-// the transition owns the entry, so a click cannot interrupt engine startup or
-// shutdown from another page.
 func TestSidebarNewTaskDisabledWhileEngineTransitions(t *testing.T) {
 	for _, state := range []string{"starting", "stopping"} {
 		s := readyState("reports")
@@ -198,8 +177,6 @@ func TestSidebarNewTaskDisabledWhileEngineTransitions(t *testing.T) {
 	}
 }
 
-// Active work keeps the entry disabled: a run, a queued or cancelling task, a
-// page action, a binding in progress, and an active specialty measurement.
 func TestSidebarNewTaskDisabledWhileWorkRuns(t *testing.T) {
 	newState := func() *viewState {
 		s := readyState("reports")
@@ -212,10 +189,9 @@ func TestSidebarNewTaskDisabledWhileWorkRuns(t *testing.T) {
 		"cancelling": func(s *viewState) {
 			s.tasks = []core.RunTask{{TaskId: "run", State: "cancelling"}}
 		},
-		"busy":         func(s *viewState) { s.busy = true },
-		"binding":      func(s *viewState) { s.binding = true },
-		"speed active": func(s *viewState) { s.speed.current.stage = speedMeasuring },
-		// A stage without a recorded failure is still moving.
+		"busy":              func(s *viewState) { s.busy = true },
+		"binding":           func(s *viewState) { s.binding = true },
+		"speed active":      func(s *viewState) { s.speed.current.stage = speedMeasuring },
 		"stage in progress": func(s *viewState) { s.task = benchmarkTask{stage: "run"} },
 	}
 	for name, apply := range cases {
@@ -235,8 +211,6 @@ func TestSidebarNewTaskDisabledWhileWorkRuns(t *testing.T) {
 	}
 }
 
-// A prompt armed on one page must not survive navigation. The header popover
-// jump is the case a user hits: open the queue panel, then jump to the task page.
 func TestArmedPromptClearsOnNavigation(t *testing.T) {
 	s := readyState("reports")
 	s.tasks = []core.RunTask{{TaskId: "run", State: "running", Bundle: ptr("zh-core")}}
@@ -260,8 +234,6 @@ func TestArmedPromptClearsOnNavigation(t *testing.T) {
 	}
 }
 
-// Closing the engine panel must disarm the stop confirmation it holds: the next
-// opening starts from the panel's entry, never from a stale confirm button.
 func TestEnginePanelCloseDisarmsStopPrompt(t *testing.T) {
 	s := readyState("reports")
 	s.engineState = core.EngineState{State: "running", Pid: 42, StartTicks: 9, Endpoint: "http://127.0.0.1:48857"}

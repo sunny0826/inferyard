@@ -188,7 +188,6 @@ def build_current_original(root, config_path=None, *, diagnostic=False):
     config["execution"]["warmup_count"] = 0
     config["conditions"].update(cache_policy="disabled", model_loaded=True)
     config["generation"]["seed_support"] = "supported"
-    # This public old-v3 fixture binds its startup model, as public recipes require.
     startup = config["engine"]["startup_args"]
     if not any(arg.partition("=")[0] in ("-m", "--model") for arg in startup):
         startup += ["-m", config["model"]["local_path"]]

@@ -128,7 +128,6 @@ def read_frozen_plan(path):
     plan = strict_json_loads(read_document(path).decode())
     if type(plan) is not dict or type(plan.get("schema_version")) is not int:
         raise EvidenceError("invalid_artifact_version")
-    # This canonical self-hash is interpretable without loading an old schema.
     if "plan_sha256" in plan:
         from inferyard.contracts.plan_math import plan_hash
 
@@ -158,7 +157,6 @@ def read_frozen_plan(path):
     workloads = {w["workload_id"]: w for w in plan["experiment"]["workloads"]}
     loaded = {}
     position_families = {}
-    # Same verified bundle bytes are reused across bindings within this one read.
     bundle_documents: dict[str, Document] = {}
     from inferyard.contracts.position_cases import register_position_families
 
@@ -179,9 +177,6 @@ def read_frozen_plan(path):
             raw, workload["config"]["path"], binding["source_directory"], workload["bundle"]["path"]
         )
         if json_bytes(snapshot) != json_bytes(expected):
-            # Earlier v3 snapshots retained this one optional source path verbatim.
-            # Accept only that exact, hash-bound old projection, then resolve the
-            # runtime value against its frozen origin rather than today's cwd.
             legacy = deepcopy(expected)
             source = (
                 tomllib.loads(raw.decode())

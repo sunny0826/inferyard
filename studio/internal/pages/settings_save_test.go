@@ -11,7 +11,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// settingsTestService mounts a real service over a throwaway settings file.
 func settingsTestService(t *testing.T, root string) *core.Service {
 	t.Helper()
 	settings := filepath.Join(root, "settings.json")
@@ -29,10 +28,6 @@ func settingsTestService(t *testing.T, root string) *core.Service {
 	return service
 }
 
-// The two Settings cards save independently. A successful response must sync
-// only the fields the patch wrote, so the other card keeps its draft.
-
-// Invalid path drafts keep the save disabled instead of failing on click.
 func TestSettingsPathSaveRejectsInvalidDraft(t *testing.T) {
 	for name, apply := range map[string]func(*viewState){
 		"relative_workspace": func(s *viewState) { s.workspace = "relative/path" },
@@ -57,7 +52,6 @@ func TestSettingsPathSaveRejectsInvalidDraft(t *testing.T) {
 	}
 }
 
-// settingsPatchGroups tells which card a patch belongs to.
 func TestSettingsPatchGroupsSplitTheTwoCards(t *testing.T) {
 	paths, names := settingsPatchGroups(map[string]json.RawMessage{"workspace_root": json.RawMessage(`"/w"`)})
 	if !paths || names {
@@ -69,7 +63,6 @@ func TestSettingsPatchGroupsSplitTheTwoCards(t *testing.T) {
 	}
 }
 
-// syncSavedGroups keeps the untouched card's draft in both directions.
 func TestSyncSavedGroupsKeepsOtherDraft(t *testing.T) {
 	respond := core.SettingsResponse{
 		Settings: core.UserSettings{
@@ -100,18 +93,14 @@ func TestSyncSavedGroupsKeepsOtherDraft(t *testing.T) {
 	}
 }
 
-// A refresh batch read before a save landed is dropped whole: the saved
-// workspace, names, readiness, progress and reports all survive.
 func TestStaleRefreshBatchDoesNotRevertSave(t *testing.T) {
 	s := settingsState()
-	// The batch reads the old values, then a save lands while it is in flight.
 	stale := refreshBatch{epoch: s.settingsSequence()}
 	stale.settings = core.SettingsResponse{
 		Settings:  core.UserSettings{WorkspaceRoot: ptr("/saved/workspace"), ResultsRoot: ptr("/saved/results"), ModelsRoot: ptr("/saved/models"), ModelDownloadName: "saved-model", EngineDownloadName: "saved-engine"},
 		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/saved/workspace")},
 	}
 	stale.ready.Workspace = core.DirectoryReadiness{Path: ptr("/saved/workspace"), Exists: true, Initialized: true}
-	// Readiness for the saved workspace, which the stale batch must not replace.
 	s.ready.Workspace = core.DirectoryReadiness{Path: ptr("/next/workspace"), Exists: true}
 	s.workspace, s.modelName = "/next/workspace", "next-model"
 	patch := map[string]json.RawMessage{}
@@ -138,18 +127,14 @@ func TestStaleRefreshBatchDoesNotRevertSave(t *testing.T) {
 		t.Fatalf("stale batch painted the old directory readiness: %q", got)
 	}
 
-	// A batch taken after the save still applies, as the follow-up refresh does.
 	fresh := refreshBatch{epoch: s.settingsSequence()}
 	fresh.settings = core.SettingsResponse{
 		Settings:  core.UserSettings{WorkspaceRoot: ptr("/later/workspace")},
 		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/later/workspace")},
 	}
 	fresh.ready.Workspace = core.DirectoryReadiness{Path: ptr("/later/workspace"), Exists: true}
-	// The fresh batch paints through the service: mount one so the paint is
-	// observable end to end.
 	s.service = settingsTestService(t, t.TempDir())
 	s.ctx = context.Background()
-	// Service discovery is not what this test observes; keep it from starting.
 	s.discoveryLoaded = true
 	if !s.applyRefreshBatch(fresh) {
 		t.Fatal("fresh batch was dropped")
@@ -162,9 +147,6 @@ func TestStaleRefreshBatchDoesNotRevertSave(t *testing.T) {
 	}
 }
 
-// Saving a new workspace path updates the settings before the next refresh
-// reads readiness. Until that refresh arrives the path card must say the check
-// is still pending instead of showing the replaced directory's result.
 func TestSavedPathShowsPendingUntilReadinessArrives(t *testing.T) {
 	s := settingsState()
 	s.ready.Workspace = core.DirectoryReadiness{Path: ptr("/saved/workspace"), Exists: true, Initialized: true}
@@ -188,16 +170,12 @@ func TestSavedPathShowsPendingUntilReadinessArrives(t *testing.T) {
 		t.Fatalf("pending check not shown: %v", tt.Texts())
 	}
 
-	// The follow-up refresh reports the new path, and the card settles.
 	s.ready.Workspace = core.DirectoryReadiness{Path: ptr("/next/workspace"), Exists: true, Initialized: true}
 	if got := directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot)); got != "目录已存在，工作区已初始化" {
 		t.Fatalf("new readiness not shown: %q", got)
 	}
 }
 
-// First-time configuration of Results or Models has no prior probe at all, so
-// the card must say the check is pending instead of claiming the new directory
-// does not exist before the post-save refresh runs.
 func TestFirstTimeDirectorySaveShowsPending(t *testing.T) {
 	for _, name := range []string{"results", "models"} {
 		s := settingsState()
@@ -205,7 +183,7 @@ func TestFirstTimeDirectorySaveShowsPending(t *testing.T) {
 		patch := map[string]json.RawMessage{}
 		if name == "results" {
 			s.settings.Settings.ResultsRoot, s.results = nil, value
-			s.ready.Results = core.DirectoryReadiness{} // never probed: no recorded path
+			s.ready.Results = core.DirectoryReadiness{}
 			patch["results_root"], _ = json.Marshal(value)
 		} else {
 			s.settings.Settings.ModelsRoot, s.models = nil, value
@@ -229,7 +207,6 @@ func TestFirstTimeDirectorySaveShowsPending(t *testing.T) {
 			t.Errorf("%s: first-time save claimed a directory result: %q", name, got)
 		}
 
-		// The post-save refresh supplies readiness for the new path.
 		fresh := core.DirectoryReadiness{Path: ptr(value), Exists: true}
 		if got := directoryState(value, fresh, saved); got != "目录已存在" {
 			t.Errorf("%s: refreshed readiness not shown: %q", name, got)
@@ -237,8 +214,6 @@ func TestFirstTimeDirectorySaveShowsPending(t *testing.T) {
 	}
 }
 
-// persistSettings is the production save boundary; both groups keep the other
-// card's draft after the real UpdateSettings round trip.
 func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
 	root := t.TempDir()
 	settings := filepath.Join(root, "settings.json")
@@ -293,9 +268,6 @@ func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
 	}
 }
 
-// Saving updates the baseline as well as the form: immediately after success
-// the card is no longer dirty, so the Save button disables without waiting for
-// a refresh.
 func TestSettingsSaveClearsDirtyImmediately(t *testing.T) {
 	s := settingsState()
 	s.workspace = "/next/workspace"
@@ -323,13 +295,10 @@ func TestSettingsSaveClearsDirtyImmediately(t *testing.T) {
 	}
 }
 
-// Typing into a field while its save is in flight keeps the newer value; only
-// the untouched fields of the saved group take the response.
 func TestSettingsSavePreservesTypingDuringSave(t *testing.T) {
 	s := settingsState()
 	s.workspace, s.results = "/submitted/workspace", "/submitted/results"
 	submitted := s.settingsDraft()
-	// The user keeps typing after the request left.
 	s.workspace = "/typed/during-save"
 	patch := map[string]json.RawMessage{}
 	patch["workspace_root"], _ = json.Marshal(submitted.workspace)

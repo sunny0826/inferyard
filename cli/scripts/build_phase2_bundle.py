@@ -98,7 +98,6 @@ def new_cases():
             str(expected) + unit,
             dict(expected=expected, unit=unit, absolute_tolerance=tolerance, relative_tolerance=0),
         )
-    # Interleave labels to avoid a contiguous category-answer pattern.
     for index in range(5):
         for label in LABELS:
             add(
@@ -216,7 +215,6 @@ def main():
     for name, text in outputs.items():
         path = ROOT / name
         if args.check:
-            # Review records are human-owned; regeneration cannot remove or invent them.
             if name.endswith("zh-core.json"):
                 existing = json.loads(path.read_text())
                 existing["review_records"] = []

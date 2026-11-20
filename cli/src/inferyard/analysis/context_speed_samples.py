@@ -114,7 +114,6 @@ def sample(root, trial, data):
     if len(starts) != 1 or starts[0]["data"]["case_id"] != trial["case_order"][0]:
         raise EvidenceError("context_speed_request_scope_mismatch")
     request_ref = ref(reads.request_reference(starts[0]))
-    # Current layout2 supplies an authenticated request member, not a synthetic reference.
     if request_ref.get("member", {}).get("request_id") != row["request_id"]:
         raise EvidenceError("context_speed_request_member_required")
     final = [

@@ -74,7 +74,6 @@ def _capture(path, config, policy, shutdown, unsafe, ready):
             ready.set()
             if final:
                 break
-            # One final sample after the arm's close brackets the complete lifecycle.
             final = shutdown.wait(policy["interval_seconds"])
             if final:
                 remaining = policy["interval_seconds"] - (time.monotonic_ns() - started) / 1e9

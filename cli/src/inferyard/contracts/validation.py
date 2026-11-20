@@ -43,7 +43,6 @@ class QualityState(StrEnum):
 
 @lru_cache(maxsize=1024)
 def _field_suffix(key: str) -> str:
-    # Unknown keys can themselves contain untrusted text. Keep diagnostics bounded.
     return "." + key if _FIELD_NAME.fullmatch(key) else ".<unknown-field>"
 
 
@@ -101,7 +100,6 @@ def _compile_union(spec, alternatives, nodes):
             for branch in alternatives
         )
         dispatch = {}
-        # Only string enums use hashing; other values retain Python membership semantics.
         if all(type(item) is str for values in enums for item in values):
             for values, branch in zip(enums, branches, strict=True):
                 for item in dict.fromkeys(values):
@@ -137,7 +135,7 @@ def _compile_union(spec, alternatives, nodes):
                     try:
                         validate_value(value, selected_branch, path)
                     except ContractError:
-                        pass  # Preserve the original union diagnostic for rejected variants.
+                        pass
                     else:
                         return
         successes = 0
@@ -231,7 +229,6 @@ def _compile_node(spec, nodes):
 
 @cache
 def _compiled_nodes():
-    # Keep runtime acceleration separate from the exported schema dictionaries.
     nodes = {}
     for spec in schemas_for().values():
         _compile(spec, nodes)
@@ -363,8 +360,6 @@ def validate_document(kind: str, data: Any) -> None:
 
         spec = spec["oneOf"][int(is_local(data))]
     if kind == "run":
-        # Identity presence selects the compatible wire variant; keep field-level
-        # errors precise instead of hiding required fields behind a union error.
         spec = spec["oneOf"][int("implementation_identity" in data)]
     validate_value(data, spec, kind)
     from inferyard.contracts.contracts_experiment import validate_semantics
@@ -415,7 +410,6 @@ class Document:
     _json: str
 
     def __post_init__(self):
-        # Direct construction must establish the same trust as parse().
         validate_document(self.kind, strict_json_loads(self._json))
 
     @classmethod

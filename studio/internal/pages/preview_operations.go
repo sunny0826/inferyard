@@ -53,7 +53,6 @@ func (p *previewSession) dispatch(intent previewIntent) {
 	}
 }
 
-// retryDownload restarts a failed download from its original source.
 func (p *previewSession) retryDownload(id string) {
 	for _, task := range p.state.downloads {
 		if task.TaskId == id && terminal(task.State) {
@@ -63,8 +62,6 @@ func (p *previewSession) retryDownload(id string) {
 	}
 }
 
-// createReportLater finishes the simulated report after the same delay the
-// real flow needs, honouring the injected one-shot failure.
 func (p *previewSession) createReportLater(paths []string) {
 	s := p.state
 	fail := p.takeFailure()
@@ -204,8 +201,6 @@ func (p *previewSession) checkDevice() {
 	})
 }
 
-// browse answers a path field from the simulated machine. The choice is written
-// into the draft only; saving still goes through the simulated settings intent.
 func (p *previewSession) browse(key string) {
 	s := p.state
 	root := emptyText(s.settings.Effective.WorkspaceRoot)
@@ -253,9 +248,6 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 	}
 	s.settings.Settings = value
 	s.settings.Effective = core.EffectiveSettings{WorkspaceRoot: value.WorkspaceRoot, ResultsRoot: value.ResultsRoot, ModelsRoot: value.ModelsRoot, InferyardPath: value.InferyardPath}
-	// Only the card that saved loses its draft. The other Settings card keeps
-	// whatever the user typed, exactly as production does. The preview save is
-	// synchronous, so the current form is the submitted snapshot.
 	s.syncSavedGroups(patch, s.settingsDraft(), s.settings)
 	s.ready.Workspace.Path, s.ready.Results.Path, s.ready.Models.Path = value.WorkspaceRoot, value.ResultsRoot, value.ModelsRoot
 	if workspaceChanged {
@@ -263,9 +255,6 @@ func (p *previewSession) saveSettings(patch map[string]json.RawMessage) {
 		p.resetTask(s.model, s.engine)
 		s.progress, s.task.stage = nil, ""
 		s.ready.Workspace.Initialized = false
-		// Production applies a workspace switch through resetWorkspace, which
-		// drops the Reports tab and the open detail: their data belonged to the
-		// previous workspace. Preview keeps the same behaviour.
 		s.reportsTab, s.openedReport = reportsTabList, nil
 	}
 	p.notice = "设置已保存到本次模拟会话。"
@@ -293,16 +282,12 @@ func (p *previewSession) startService(bind bool, candidate string) {
 			s.progress.NextAction = "run"
 			for i := range s.progress.Bundles {
 				b := &s.progress.Bundles[i]
-				// Only the bundle that still needs binding is (re)bound; an earlier
-				// bundle the CLI already verified keeps its binding untouched.
 				if b.Phase == "run_complete" || (b.NextAction != "bind" && b.BoundPath != nil) {
 					continue
 				}
 				b.Phase, b.NextAction = "run_missing", "run"
 				b.BoundPath = previewValue(filepath.Join(s.workspace, "bound", b.Bundle))
 			}
-			// A successful connection leaves the bind stage and drops its failure,
-			// exactly as the production binding outcome does.
 			s.clearRecoveredBinding()
 			s.failedBundle = ""
 		}

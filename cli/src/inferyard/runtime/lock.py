@@ -27,8 +27,6 @@ else:
     _HOST_ROOT = Path("/var/tmp")
 LOCK_PATH = _HOST_ROOT / "inferyard-host.lock"
 STATE_PATH = _HOST_ROOT / "inferyard-host.state.json"
-# Host mutex state is not a measurement document. Keep its persisted format so
-# an upgrade cannot forget an existing dirty service or bypass manual recovery.
 LOCK_FORMAT_VERSION = 1
 
 
@@ -162,7 +160,6 @@ class HostLock:
             old["process_start_ticks"],
         ):
             raise PreflightError("recovery_requires_new_process")
-        # Caller still must verify new process ownership and its idle slots before clean().
         return {
             "dirty_token": token,
             "note": note,
@@ -174,8 +171,6 @@ class HostLock:
         error = None
         try:
             for fd in reversed(self._fds):
-                # Enter may fail after opening a file but before acquiring its
-                # lock. Unlock only successful acquisitions, before any close.
                 if fd in self._locked_fds:
                     try:
                         _lock(fd, release=True)

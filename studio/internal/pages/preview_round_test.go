@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-// After an auto-start failure, a successful connection must advance the preview
-// out of Step 4 and drop the old error, exactly like the production outcome.
 func TestPreviewBindingSuccessAdvancesPastStepFour(t *testing.T) {
 	p := newPreviewSession(t.Context())
 	p.loadScene(previewSceneIndex(t, "任务 · 失败"))
@@ -35,15 +33,11 @@ func TestPreviewBindingSuccessAdvancesPastStepFour(t *testing.T) {
 	if !tt.HasText("运行当前测评题集") {
 		t.Fatalf("preview did not advance to the run step: %v", tt.Texts())
 	}
-	// The preview continues into the run itself, so the step advanced instead of
-	// staying disabled on the bind stage.
 	if !tt.HasText("当前测评题集运行进度") {
 		t.Fatalf("preview did not start the run: %v", tt.Texts())
 	}
 }
 
-// While the queue is busy awaiting the next service, the in-place refresh still
-// discovers services.
 func TestPreviewHandoffRefreshWorksWhileBusy(t *testing.T) {
 	p := newPreviewSession(t.Context())
 	p.loadScene(previewSceneIndex(t, "引擎 · LM Studio 手动绑定"))
@@ -71,8 +65,6 @@ func TestPreviewHandoffRefreshWorksWhileBusy(t *testing.T) {
 	}
 }
 
-// A handoff failure in the preview is rendered by the handoff card, and a retry
-// with the same PID is allowed once the failure is cleared.
 func TestPreviewHandoffFailureVisibleAndRetryable(t *testing.T) {
 	p := newPreviewSession(t.Context())
 	p.loadScene(previewSceneIndex(t, "引擎 · LM Studio 手动绑定"))

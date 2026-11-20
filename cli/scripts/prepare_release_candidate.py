@@ -42,7 +42,6 @@ def prepare(manifest, installations, out, source_commit):
         evidence.append((target, raw))
     if not evidence:
         raise ValueError("installation_evidence_missing")
-    # Complete validation before creating output. Every subsequent write uses these snapshots.
     out.mkdir()
 
     def write(name, raw):

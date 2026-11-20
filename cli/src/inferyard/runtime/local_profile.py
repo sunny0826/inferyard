@@ -2,10 +2,7 @@ from inferyard.errors import PreflightError
 """Admission for the initial serial local-engine profile."""
 
 
-
 def _temperature_admitted(policy, required):
-    # Only a frozen operator override reason permits a null stop threshold;
-    # the temperature source stays mandatory either way.
     if "temperature_stop_override_reason" in required:
         return policy["max_temperature_celsius"] is None
     return (

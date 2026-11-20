@@ -32,7 +32,6 @@ class LlamaCppAdapter(PrismAdapter):
     async def verify_effective(self, config, expected_input_tokens, state):
         result = await super().verify_effective(config, expected_input_tokens, state)
         params = result["slots"][0].get("params", {})
-        # b11146 keeps both spellings; reject inconsistent or missing evidence.
         if params.get("n_predict") != config["generation"]["max_tokens"]:
             raise PreflightError("generation_parameter_unverified")
         if params.get("stop") != config["generation"]["stop"]:

@@ -13,7 +13,6 @@ from inferyard.evidence.formats import require_core
 RUN_FILES = ("plan.json", "run.json", "requests.json")
 COMPARISON_FILES = ("comparison.json",)
 DEFINITION = "engine_fit_manifest.v3"
-# Retired layouts are only named so they can be rejected after byte checks.
 LEGACY_V2_DEFINITION = "engine_fit_manifest.v2"
 _LEGACY_V2_RUN_FILES = (*RUN_FILES, "report.html")
 _LEGACY_V2_COMPARISON_FILES = (*COMPARISON_FILES, "report.html")
@@ -112,7 +111,6 @@ def load_manifest(root):
         )
     else:
         raise UnsupportedFormat("engine-fit manifest", definition, (DEFINITION,))
-    # Byte checks come first so damage cannot be reported as a retired version.
     blobs = _hashed_blobs(root, manifest, names)
     require_core(manifest, "engine-fit manifest")
     return manifest, {**blobs, "manifest.json": content}

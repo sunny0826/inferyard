@@ -2,7 +2,6 @@ package core
 
 import "inferyard/studio/internal/inferyard"
 
-// Plan and batch references cannot be mistaken for a single run path.
 type SpeedPlanRef struct {
 	Path           string   `json:"path"`
 	SHA256         string   `json:"sha256"`
@@ -15,7 +14,6 @@ type SpeedBatchRef struct {
 	Runs []inferyard.SpeedRunRef `json:"runs"`
 }
 
-// ContextSpeedTask persists identity and lifecycle only, never numerical results.
 type ContextSpeedTask struct {
 	DisplayModel  string         `json:"display_model,omitempty"`
 	DisplayEngine string         `json:"display_engine,omitempty"`

@@ -170,7 +170,6 @@ def recommend(hardware, models, *, model_loaded=False):
         if model.get("status") != "available" or model.get("chat_template_available") is False:
             continue
         size = model["size_bytes"]
-        # This is a conservative screening estimate, never a promised runtime footprint.
         gpu_estimate = int(size * 1.2) + GPU_RESERVE
         startup = size + GIB
         reserve = max(GIB, min(8 * GIB, (available or 0) - startup - GIB // 2))

@@ -19,8 +19,6 @@ def process_start_ticks(pid):
     try:
         return process_start(pid)
     except OSError as exc:
-        # ERROR_INVALID_PARAMETER means that this PID does not exist. Access
-        # denial is uncertainty, and must never authorize dirty-state recovery.
         reason = (
             "service_process_unavailable" if exc.winerror == 87 else "service_identity_unreadable"
         )
@@ -56,7 +54,6 @@ def verify_listener(pid, address, port):
             and row.laddr.ip in (address, "::" if family == socket.AF_INET6 else "0.0.0.0")
         ]
         if len(matches) == 1 and matches[0].pid == pid:
-            # Windows has no socket inode; persist the actual ownership source.
             return f"windows:tcp:{address}:{port}:pid:{pid}"
     except (OSError, psutil.Error) as exc:
         raise PreflightError("listener_identity_unavailable") from exc

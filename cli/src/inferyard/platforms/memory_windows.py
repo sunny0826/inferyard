@@ -186,10 +186,6 @@ def _worker(max_processes):
 
 
 def _worker_command(max_processes):
-    # Windows venv python.exe is a redirector that can outlive/be outlived by its
-    # interpreter child. Own the actual interpreter handle so timeout/cancel
-    # cannot leave the real collector running. Preserve the current environment's
-    # imports (including editable installs) without shell expansion or activation.
     bootstrap = (
         f"import runpy, sys; sys.path = {sys.path!r}; "
         f"sys.argv = [{__name__!r}, {str(max_processes)!r}]; "
@@ -213,7 +209,7 @@ def collect(*, deadline_seconds, max_processes, command=None):
             output, _ = process.communicate(timeout=remaining)
         except subprocess.TimeoutExpired:
             timed_out = True
-            process.kill()  # Only this owned inventory worker, never an observed PID.
+            process.kill()
             output, _ = process.communicate(timeout=0.5)
     finally:
         if process.poll() is None:
@@ -221,7 +217,6 @@ def collect(*, deadline_seconds, max_processes, command=None):
             process.wait(timeout=0.5)
         process.stdout.close()
     host, rows, done, truncation = None, [], False, "deadline" if timed_out else None
-    # Timeout can leave a partial final JSON line; only complete records are evidence.
     for line in output.splitlines(keepends=True):
         if not line.endswith(b"\n") and timed_out:
             break

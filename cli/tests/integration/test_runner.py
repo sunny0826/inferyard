@@ -27,7 +27,6 @@ from inferyard.runtime.runner import Dependencies
 
 @pytest.fixture
 def scenario(tmp_path, monkeypatch, config_path, *, initialize_host=True):
-    # Synthetic orchestration must not depend on the developer's free RAM.
     monkeypatch.setattr("inferyard.runtime.trial_runner.memory_available", lambda: 16 * 1024**3)
     monkeypatch.setattr(locking, "LOCK_PATH", tmp_path / "host.lock")
     monkeypatch.setattr(locking, "STATE_PATH", tmp_path / "host.state.json")
@@ -39,9 +38,6 @@ def scenario(tmp_path, monkeypatch, config_path, *, initialize_host=True):
     config = loaded.config.to_dict()
     config["endpoint"].pop("api_key_env")
     config["endpoint"]["server_pid"] = os.getpid()
-    # This fixture tests orchestration with a mock endpoint, not OS process identity.
-    # Linux/Windows/macOS keep their native sampler; an unsupported developer host has
-    # an explicit synthetic process identity rather than requiring /proc.
     if sys.platform not in ("linux", "win32", "darwin"):
         ticks = 123456
         monkeypatch.setattr(running, "process_start_ticks", lambda pid: ticks)
@@ -178,7 +174,6 @@ def scenario(tmp_path, monkeypatch, config_path, *, initialize_host=True):
         ),
         guard=lambda config, files: None,
     )
-    # F07's small synthetic plan exercises orchestration, not formal corpus admission.
     monkeypatch.setattr(running, "require_review", lambda bundle: None)
     return CommandRequest("run", config=loaded), deps, calls, settings
 
@@ -188,7 +183,7 @@ def test_f07_full_pipeline_warmups_failed_case_and_no_retries(scenario):
     settings["fail_index"] = 6
     code, result = asyncio.run(execute_async(request, deps))
     assert code == 0, result
-    assert len(calls) == 8  # two probes, three warmups, three formal cases
+    assert len(calls) == 8
     data = rebuild(Path(result.evidence_dir))
     assert [r["execution_state"] for r in data["requests"]] == ["completed", "failed", "completed"]
     assert data["summary"]["counts"]["planned"] == 3

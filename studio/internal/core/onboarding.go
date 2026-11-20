@@ -196,7 +196,6 @@ func (s *Service) WizardExecute(ctx context.Context, q WizardRequest) (WizardRes
 	}
 	result.Status = inferyard.MapExitCode(out.ExitCode)
 	result.ExitCode = out.ExitCode
-	// Never return stdout/stderr: they may contain credential-bearing diagnostics.
 	if out.ExitCode != 0 {
 		if parsed, err := inferyard.Parse(out.Stdout); err == nil {
 			for _, reason := range parsed.Limitations {

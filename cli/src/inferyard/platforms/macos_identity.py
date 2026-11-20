@@ -27,14 +27,10 @@ def process_start_ticks(pid):
     try:
         if type(pid) is not int or pid <= 0:
             raise PreflightError("service_process_unavailable")
-        # psutil's public create_time() applies wall-clock corrections on Darwin.
-        # Use the same raw kernel start time as psutil's own PID identity (7.2.2).
-        # This private API is intentionally pinned and covered by native tests.
         return microseconds(psutil.Process(pid)._proc.create_time(monotonic=True))
     except psutil.NoSuchProcess as exc:
         raise PreflightError("service_process_unavailable") from exc
     except (AttributeError, OSError, ValueError, psutil.Error) as exc:
-        # Permission failure is uncertainty, never proof of process disappearance.
         raise PreflightError("service_identity_unreadable") from exc
 
 
@@ -178,7 +174,6 @@ def verify_process(config, model, engine, address, port, *, bound_files=None):
         actual_exe = Path(process.exe()).stat()
         if (actual_exe.st_dev, actual_exe.st_ino) != (engine.device, engine.inode):
             raise PreflightError("service_binary_mismatch")
-        # One fresh PID view per complete check; never retain it across calls.
         rows = lsof_records(pid, [])
         if process_start_ticks(pid) != expected:
             raise PreflightError("service_process_identity_changed")

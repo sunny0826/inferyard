@@ -15,8 +15,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// This CLI fake freezes the model from the supplied preflight, never from the
-// selected UI name. WizardExecute and the real resource registry are exercised.
 func TestDashboardPreparationFreezesSelectedModel(t *testing.T) {
 	for _, selected := range []string{"B.gguf", ""} {
 		t.Run("selected_"+selected, func(t *testing.T) {

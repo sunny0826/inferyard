@@ -46,7 +46,6 @@ class TrialReads:
         return self.documents[name]
 
     def jsonl(self, name):
-        # Retain parsed records only until the caller finishes this run; never cache raw logs.
         if name in self.logs:
             return self.logs[name]
         records, tails, digest, size = [], [], hashlib.sha256(), 0
@@ -77,7 +76,6 @@ class TrialReads:
         return {name: (self.sizes[name], digest) for name, digest in self.hashes.items()}
 
     def check_input_errors(self):
-        # Sidecar parse failures retain the original measurement-context error order.
         for name, error in self.errors.items():
             if name not in SIDECARS:
                 raise error

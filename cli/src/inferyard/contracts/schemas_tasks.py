@@ -23,7 +23,6 @@ INSTRUCTION_RULES = obj(
         "nonempty_line_count": nullable(NAT),
     }
 )
-# JSON scalar references are enough for v1 flat field extraction cases.
 JSON_SCALAR = {"type": ["string", "integer", "number", "boolean", "null"]}
 FIELD = obj(
     {

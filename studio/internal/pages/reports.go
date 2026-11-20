@@ -8,9 +8,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// The Reports page groups three heterogeneous lists behind one tab row. The
-// evaluator report list comes first because reading a report is the common
-// action; the specialty history and the run history are separate tasks.
 const (
 	reportsTabList = iota
 	reportsTabSpeed
@@ -44,8 +41,6 @@ func (s *viewState) reportsView(c *ui.Context) {
 	})
 }
 
-// speedReportsTabView keeps the specialty history in its own tab and states
-// where a specialty measurement starts when none has finished yet.
 func (s *viewState) speedReportsTabView(c *ui.Context) {
 	if s.speed == nil || len(s.speed.history) == 0 {
 		card(c, "长上下文专项", func() {
@@ -56,8 +51,6 @@ func (s *viewState) speedReportsTabView(c *ui.Context) {
 	s.speedHistoryView(c)
 }
 
-// historyReportsTabView shows the run history alone; run details still open
-// from the selected row.
 func (s *viewState) historyReportsTabView(c *ui.Context) {
 	errorView(c, s.historyError)
 	s.historyView(c)

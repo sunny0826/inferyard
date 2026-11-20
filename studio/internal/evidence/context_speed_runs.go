@@ -5,8 +5,6 @@ import (
 	"errors"
 )
 
-// ContextSpeedRuns checks local ownership for progress only. The CLI must still
-// authenticate bytes and seals before exposing measurements.
 func ContextSpeedRuns(root, planHash string, trials []string) ([]Run, error) {
 	index := Index(root)
 	if index.Error != nil {

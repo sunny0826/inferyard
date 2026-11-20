@@ -8,7 +8,6 @@ import (
 	"slices"
 )
 
-// prepareCombination creates candidates for the task's selected model and engine.
 func prepareCombination(ctx context.Context, service *core.Service, model, engine string, selection ...[]string) (startChainResult, *core.ApiError) {
 	if model == "" {
 		current, e := service.Progress(ctx)
@@ -90,14 +89,12 @@ func (s *viewState) startBenchmark() {
 }
 
 type benchmarkBindings struct {
-	pid        int64
-	startTicks int64
-	configs    map[string]string
-	candidates map[string]string
-	localTasks map[string]string
-	completed  map[string]string
-	// failedBundle is the bundle whose automatic binding failed, so the progress
-	// card marks that bundle instead of the first one.
+	pid          int64
+	startTicks   int64
+	configs      map[string]string
+	candidates   map[string]string
+	localTasks   map[string]string
+	completed    map[string]string
 	failedBundle string
 }
 
@@ -123,8 +120,6 @@ func runBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result star
 		return core.Err("cancelled")
 	}
 	if bindings != nil {
-		// Attribution belongs to this attempt only; a previous retry's failing
-		// bundle must not leak into the next one.
 		bindings.failedBundle = ""
 	}
 	if len(result.localCandidates) > 0 {
@@ -321,8 +316,6 @@ func benchmarkBindCommand(workspace string, b inferyard.BundleProgress, state co
 	return commandOf(args), out, nil
 }
 
-// beginRetry gates a retry and, when it can proceed, begins a fresh attempt so
-// the previous attempt's rejected connection cannot outrank the new result.
 func (s *viewState) beginRetry() bool {
 	if s.busy || (s.task.stage != "bind" && len(s.task.start.localCandidates) == 0) || s.task.failure == nil {
 		return false

@@ -9,7 +9,6 @@ import (
 	"reflect"
 )
 
-// engineOwner contains identity and display metadata only, never startup argv.
 type engineOwner struct {
 	Local        bool                    `json:"local,omitempty"`
 	ProcessGroup int64                   `json:"process_group,omitempty"`

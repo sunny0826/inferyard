@@ -39,7 +39,6 @@ class LocalEngineAdapter(LabAdapter):
             "max_tokens": config["generation"]["max_tokens"],
             "stream": stream,
             **({"stream_options": {"include_usage": True}} if stream else {}),
-            # Only a frozen llama-server tuning declaration adds this field.
             **({"cache_prompt": False} if prompt_cache_disabled(config) else {}),
         }
 
@@ -186,7 +185,6 @@ class LocalEngineAdapter(LabAdapter):
                 snapshot["observation"] = None
                 snapshot["missing_reason"] = "local_engine_queue_unverified"
                 self.native_uncertain = True
-                # Evidence keeps the fixed reason; stderr names the failed check for operators.
                 cause = exc.__cause__
                 print(
                     "local_engine_queue_unverified: "

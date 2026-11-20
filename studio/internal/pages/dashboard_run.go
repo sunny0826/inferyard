@@ -11,13 +11,6 @@ import (
 	"time"
 )
 
-// engineChoices builds the engine dropdown and reports whether the selected
-// engine was revoked by re-verification.
-//
-// The dropdown lists verified engines only; while the CLI is too old to verify,
-// every engine stays listed and config create is the final gate. A selected
-// engine revoked by re-verification stays visible as a disabled option next to
-// the warning.
 func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bool, bool) {
 	eligible := []string{}
 	for _, e := range w.registry.Engines {
@@ -47,15 +40,11 @@ func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bo
 	return options, revoked, len(eligible) > 0
 }
 
-// candidateView is the configuration step on its own: the benchmark-type switch
-// and every field it reshapes. The stage card wraps only candidateFields, so the
-// switch keeps one position while the card around the fields changes.
 func (w *viewState) candidateView(c *ui.Context) {
 	w.speedTypeSwitch(c)
 	w.candidateFields(c)
 }
 
-// candidateFields renders the fields below the benchmark type.
 func (w *viewState) candidateFields(c *ui.Context) {
 	w.verifyTaskEngines()
 	w.adoptDownloadedEngine()
@@ -79,8 +68,6 @@ func (w *viewState) candidateFields(c *ui.Context) {
 		ui.Text(c, fmt.Sprintf("正在核验 %d 个引擎…", w.checks.Checking)).TextColor(c.Theme().TextMuted)
 	}
 
-	// The dropdown already names the model, so the line below adds metadata
-	// only. Repeating 测评模型：<name> read as a second, conflicting field.
 	if meta := w.modelMetadata(w.model); meta != "" {
 		ui.Text(c, meta).TextColor(c.Theme().TextMuted)
 	}
@@ -100,7 +87,6 @@ func (w *viewState) candidateFields(c *ui.Context) {
 		button(c, "查看已安装引擎").AlignSelf(ui.Start).OnClick(func() { w.selected = "models" })
 		createDisabled = true
 	} else if !hasEligible {
-		// 核验完成前不误报无可用引擎；创建保持禁用。
 		if w.checks.Checking == 0 {
 			ui.Text(c, "暂无可用引擎。")
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
@@ -122,8 +108,6 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	}
 }
 
-// failureView renders the cause of the blocked step and the recovery path. It
-// never invents a cause: a failed state without a recorded error says so.
 func failureView(c *ui.Context, title string, e *core.ApiError, next string) {
 	ui.Text(c, title).Bold().TextColor(stateColor(c, stateDanger))
 	if e != nil {
@@ -207,8 +191,6 @@ func (w *viewState) serviceView(c *ui.Context) {
 	if w.binding {
 		ui.Text(c, displayName(w.bindingBundle)+" · 绑定中…")
 	}
-	// Local service binding stays reachable at every point of the bind stage; a
-	// failure is never a precondition for choosing an already running service.
 	componentFoldKeyed(c, "bind-discovered-services", "连接已有本机服务", func() { w.discoveryBody(c, true) })
 	componentFold(c, "高级：手动连接", func() {
 		heading(c, "连接已有进程", 3)
@@ -224,8 +206,6 @@ func (w *viewState) serviceView(c *ui.Context) {
 				return
 			}
 			pid, _, _ := strings.Cut(w.process, " · ")
-			// Capture the target before building the command; a refresh may reorder
-			// the plan while the command is prepared.
 			target := w.bindTargetBundle()
 			command, e := w.bindCommand(pid, w.bindEndpoint)
 			w.executeBindingFor(target, command, e)
@@ -234,8 +214,6 @@ func (w *viewState) serviceView(c *ui.Context) {
 }
 func (w *viewState) runView(c *ui.Context) {
 	heading(c, "运行当前测评题集", 3)
-	// The model-service card above already renders the blocked-step diagnosis;
-	// repeating it here would show the same cause twice on one step.
 	if w.stepFailed() && w.running() == nil && !w.serviceCardVisible() {
 		failureView(c, "运行未完成", w.activeTaskFailure(), "处理原因后重试未完成的测评题集；已完成的题集结果会保留。")
 	}
@@ -289,8 +267,6 @@ func (w *viewState) runView(c *ui.Context) {
 	if b.NextAction == "resume" {
 		label = "继续未完成的运行"
 	}
-	// A managed engine must be running; an externally started or discovered
-	// service that the CLI already verified into this bundle's binding is enough.
 	if primaryButton(c, label).AlignSelf(ui.Start).Disabled(w.busy || !w.runServiceReady(*b)).Clicked() {
 		if w.simulate(previewStartRun{bundle: b.Bundle}) {
 			return
@@ -308,10 +284,6 @@ func (w *viewState) runView(c *ui.Context) {
 
 }
 
-// runServiceReady reports whether the run step can start. A managed running
-// engine always qualifies. A bundle the CLI already bound to an external or
-// discovered service also qualifies for a fresh run, because the binding carries
-// the verified process identity; resuming still needs the live managed endpoint.
 func (w *viewState) runServiceReady(b inferyard.BundleProgress) bool {
 	if w.engineState.State == "running" {
 		return true
@@ -327,9 +299,6 @@ func nativeOptions(values []string) []components.NativeSelectOption[string] {
 	return options
 }
 
-// modelMetadata describes the chosen model in one short line: architecture and
-// size when the registry recorded them, and nothing at all otherwise. The
-// dropdown above already shows the name.
 func (w *viewState) modelMetadata(name string) string {
 	for _, m := range w.registry.Models {
 		if m.Name != name {
@@ -347,8 +316,6 @@ func (w *viewState) modelMetadata(name string) string {
 	return ""
 }
 
-// bundleDescription names what each evaluation set covers, so the bare
-// workspace ids are not the only thing a newcomer sees.
 func bundleDescription(bundle string) string {
 	switch bundle {
 	case inferyard.DefaultBundleCore:

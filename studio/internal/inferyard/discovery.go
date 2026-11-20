@@ -44,7 +44,6 @@ var discoveryLimitations = []string{
 	"listener_enumeration_failed", "service_discovery_unsupported_platform", "service_discovery_error",
 }
 
-// ParseServiceDiscovery validates the CLI wire contract, without inferring bind eligibility.
 func ParseServiceDiscovery(raw []byte, exitCode int) (ServiceDiscovery, error) {
 	var result ServiceDiscovery
 	invalid := errors.New("invalid service discovery result")

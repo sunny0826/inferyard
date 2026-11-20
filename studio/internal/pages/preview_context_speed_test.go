@@ -12,8 +12,6 @@ func prepareSpeed(t *testing.T, tier string) (*previewSession, *ui.Tester) {
 	t.Helper()
 	p, _ := preparePreview(t)
 	tt := speedTester(p, 1120, 2200)
-	// 测评类型 is a segmented switch, so the specialty type is one click away
-	// rather than a menu item.
 	click(t, tt, "长上下文速度")
 	if tier != "64k" {
 		click(t, tt, "上下文档位")

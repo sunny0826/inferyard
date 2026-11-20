@@ -41,7 +41,7 @@ def descriptor_stamp(descriptor):
     handle = msvcrt.get_osfhandle(descriptor)
     library = _kernel()
     get_type = _function(library, "GetFileType", [wintypes.HANDLE], ctypes.c_uint32)
-    if get_type(handle) != 1:  # FILE_TYPE_DISK
+    if get_type(handle) != 1:
         raise PreflightError("engine_fit_not_regular_file")
     query = _function(
         library,
@@ -56,8 +56,6 @@ def descriptor_stamp(descriptor):
         raise PreflightError("engine_fit_not_regular_file")
     if standard.delete_pending:
         raise PreflightError("engine_fit_file_changed")
-    # FileIdInfo retains the full 128-bit ID; BasicInfo uses actual ChangeTime.
-    # Access time can change because of this read and is intentionally excluded.
     return (
         identity.volume,
         bytes(identity.identifier),

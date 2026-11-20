@@ -69,7 +69,7 @@ def child(mode):
         )
         print("dirty-persisted", flush=True)
         assert sys.stdin.readline().strip() == "crash"
-        os._exit(77)  # Deliberate process crash; never remove host state or lock files.
+        os._exit(77)
 
 
 def main():

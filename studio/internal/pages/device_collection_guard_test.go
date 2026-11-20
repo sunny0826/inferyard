@@ -10,11 +10,6 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// TestDeviceEmptyStateCollectionRespectsBusy drives the real empty-state button
-// through the preview dispatcher, which starts a collection regardless of the
-// service layer. A busy page must therefore refuse the click on the button
-// itself; without `.Disabled(...)` the dispatcher would set Refreshing and this
-// test fails.
 func TestDeviceEmptyStateCollectionRespectsBusy(t *testing.T) {
 	p := newPreviewSession(context.Background())
 	s := p.state
@@ -35,7 +30,6 @@ func TestDeviceEmptyStateCollectionRespectsBusy(t *testing.T) {
 		t.Fatal("busy page started a device collection")
 	}
 
-	// Idle: the same button starts collection, and the simulated job completes.
 	s.busy = false
 	tt.Frame()
 	click(t, tt, "采集设备信息")

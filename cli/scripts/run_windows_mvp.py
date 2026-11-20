@@ -34,7 +34,6 @@ def json_file(path, value):
 def prelaunch_budget(config, available):
     minimum = config["output"]["min_available_memory_bytes"]
     model_bytes = Path(config["model"]["local_path"]).stat().st_size
-    # Preserve the frozen loaded-model floor and reserve 1 GiB for context/work buffers.
     required = minimum + model_bytes + 1024**3
     return {
         "available_bytes": available,
@@ -52,8 +51,6 @@ def cli_command(arguments):
         f"import site,sys; site.addsitedir({str(packages)!r}); "
         "from inferyard.cli import main; raise SystemExit(main(sys.argv[1:]))"
     )
-    # Use the base interpreter so the returned PID is the actual CLI worker,
-    # avoiding a venv redirector between this owner and the cancellable child.
     return [sys._base_executable, "-c", bootstrap, *arguments]
 
 
@@ -139,7 +136,6 @@ def operate(config_path, out, *, formal=False, max_wall_seconds=1800):
         hash_file(Path(config[section][field]), config[section][digest_field])
     origin, _, _ = resolve_loopback_origin(config["endpoint"]["url"])
     out.mkdir(parents=True, exist_ok=False)
-    # Capture the full preparation reference even when the later memory gate blocks startup.
     machine = collect_machine(out / "preparation", config_path=loaded.source)
     if gpu_index is not None:
         json_file(out / "gpu.before.json", nvidia_snapshot())
@@ -264,7 +260,6 @@ def operate(config_path, out, *, formal=False, max_wall_seconds=1800):
             record.update(status="cancelled", reason="operator_cancelled")
         finally:
             if service.poll() is None:
-                # This helper owns the process handle. No unrelated service is stopped.
                 service.terminate()
                 service.wait(timeout=10)
             record["owned_server_closed"] = True

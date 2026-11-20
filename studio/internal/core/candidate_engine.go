@@ -1,6 +1,5 @@
 package core
 
-// candidateEngineArgs resolves both binary and receipt from the same registry entry.
 func (s *Service) candidateEngineArgs(args []string, name, platform string) ([]string, *ApiError) {
 	for _, entry := range s.registry().engines {
 		if entry.engine.Name != name {

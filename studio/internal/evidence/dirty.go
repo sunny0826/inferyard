@@ -6,8 +6,6 @@ import (
 	"os"
 )
 
-// DirtyRun reads the current crash-persistent host marker without acquiring or
-// changing the CLI host lock. An unreadable marker is an error, not proof of clean.
 func DirtyRun(path, runID string) (bool, error) {
 	raw, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
@@ -34,7 +32,6 @@ func DirtyRun(path, runID string) (bool, error) {
 	return *state.Dirty && state.RunID == runID && state.Kind == "run", nil
 }
 
-// RunStatus preserves the contract's precedence; sealing alone is not completion.
 func RunStatus(sealed bool, completeness, stopReason string, dirty bool) string {
 	if stopReason == "user_cancelled" {
 		return "cancelled"

@@ -11,17 +11,12 @@ import (
 	"testing"
 )
 
-// Fake engine behavior constants proven by the dist/e2e-spike experiments:
-// token accounting is byte-length based so /tokenize and usage always agree.
 const (
 	fakeBuildInfo = "b10743-adfffbe41"
 	fakeAnswer    = "假引擎固定应答"
 	fakeNCtx      = 4096
 )
 
-// FakeAssets are the on-disk declarations a candidate references: dummy model
-// weights, a chat template, the params file the fake engine serves back, and
-// the runtime library manifest. All hashes are real.
 type FakeAssets struct {
 	Dir            string
 	Model          string
@@ -32,10 +27,8 @@ type FakeAssets struct {
 	TemplateSHA256 string
 }
 
-// DisplayName is the single model id the fake engine serves.
 const DisplayName = "Fake E2E Model"
 
-// DefaultGeneration mirrors the candidate's frozen generation block.
 func DefaultGeneration() map[string]any {
 	return map[string]any{
 		"seed": 42, "temperature": 0.7, "top_k": 20, "top_p": 0.8,
@@ -43,8 +36,6 @@ func DefaultGeneration() map[string]any {
 	}
 }
 
-// StartupArgs returns the exact argv the candidate must declare; only --host
-// and --port values may be rewritten by config bind.
 func StartupArgs(modelPath, paramsPath, port string) []string {
 	return []string{
 		"-m", modelPath,

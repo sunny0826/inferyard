@@ -8,11 +8,6 @@ import (
 	"testing"
 )
 
-// WriteCandidate fabricates the config_candidate.v1 artifact pair
-// (candidate.toml + preparation.json) that CLI `config create` would produce.
-// This is the deliberate fixture boundary of the chain test: candidate
-// production needs real engine assets and is covered separately; the chain
-// under test is bind -> run -> report.
 func WriteCandidate(t *testing.T, workspace, bundle string, assets *FakeAssets, binaryPath, port string) string {
 	t.Helper()
 	bundlePath := filepath.Join(workspace, "bundles", bundle+".json")

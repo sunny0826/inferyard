@@ -14,9 +14,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// Record is one CLI invocation captured at the Executor boundary. It is the
-// blame-attribution artifact: argv is Studio's output, exit code and streams
-// are the CLI's output, and both sides are pinned to files.
 type Record struct {
 	Seq          int      `json:"seq"`
 	Argv         []string `json:"argv"`
@@ -29,7 +26,6 @@ type Record struct {
 	StderrSHA256 string   `json:"stderr_sha256"`
 }
 
-// Recorder wraps a core Executor and appends one JSONL record per call.
 type Recorder struct {
 	mu   sync.Mutex
 	dir  string
@@ -45,7 +41,6 @@ func NewRecorder(t *testing.T, dir string, next func(context.Context, string, ..
 	return &Recorder{dir: dir, next: next}
 }
 
-// Exec is the executor middleware; it never alters the wrapped result.
 func (r *Recorder) Exec(ctx context.Context, path string, args ...string) (inferyard.Execution, error) {
 	started := time.Now()
 	out, err := r.next(ctx, path, args...)
@@ -73,7 +68,6 @@ func (r *Recorder) Exec(ctx context.Context, path string, args ...string) (infer
 	return out, err
 }
 
-// Records returns every recorded call in order.
 func (r *Recorder) Records() []Record {
 	r.mu.Lock()
 	defer r.mu.Unlock()

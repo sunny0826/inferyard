@@ -8,9 +8,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// downloadsPageView is the S8 downloads page: download task cards (with the
-// failed-task "create again" entry) and the new-download forms moved off the
-// models page.
 func (s *viewState) downloadsPageView(c *ui.Context) {
 	if !s.assetsPreset {
 		s.assetsPreset = true
@@ -23,8 +20,6 @@ func (s *viewState) downloadsPageView(c *ui.Context) {
 	}
 	s.header(c, "下载")
 	s.downloadTaskGuide(c)
-	// 下载任务 stays pinned above the new-download form whenever any task
-	// exists, so the page order never depends on whether the task is preparing.
 	if len(s.downloads) > 0 {
 		card(c, "下载任务", func() { s.downloadsView(c) })
 	}
@@ -41,10 +36,6 @@ func (s *viewState) newDownloadsView(c *ui.Context) {
 	})
 }
 
-// downloadPrimaryKind names the one download action inside 新建下载任务 that
-// keeps the filled primary style. Highlighting the missing asset first keeps a
-// single visual focal point; with nothing missing or a download already running
-// for it, both actions stay secondary.
 func (s *viewState) downloadPrimaryKind() string {
 	assets := s.availableTaskAssets()
 	if !assets.engine && !s.downloadActive("engine") {
@@ -65,8 +56,6 @@ func (s *viewState) downloadActive(kind string) bool {
 	return false
 }
 
-// downloadAction renders one download submit control with the emphasis chosen
-// by downloadPrimaryKind.
 func (s *viewState) downloadAction(c *ui.Context, kind, label string) ui.Element {
 	if s.downloadPrimaryKind() == kind {
 		return primaryButton(c, label)

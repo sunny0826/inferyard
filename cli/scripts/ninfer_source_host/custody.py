@@ -66,7 +66,6 @@ def _is_sha256(value: object) -> bool:
 
 
 def _check_identity_fields(identity: dict) -> None:
-    # RunIdentity 七字段严格类型与值域;前提:键集合已校验。bool 冒充整数在此拒绝。
     if (
         identity["protocol"] != PROTOCOL
         or not _is_uuid(identity["host_id"])
@@ -133,7 +132,6 @@ class Custodian:
         self._last_ticks: int | None = None
 
     def _tick(self, job: _Job | None) -> int | None:
-        # 采样一次时钟;类型/回退错误记入未关闭 job(稳定,不可恢复成功)并返回 None。
         now = self._now_ticks()
         if (
             type(now) is not int
@@ -147,7 +145,6 @@ class Custodian:
         return now
 
     def _sample_now(self) -> int:
-        # busy 守卫保证未关闭 job 至多一个;坏时钟下不做任何 Backend 调用。
         active = next((j for j in self._jobs if j.state != "closed"), None)
         now = self._tick(active)
         if now is None:
@@ -164,7 +161,6 @@ class Custodian:
         task = job["task_end_ticks"]
         if type(task) is not int or task <= now or task > self._identity["work_end_ticks"]:
             raise HostError("host_job")
-        # 身份投影先满足 RunIdentity 严格类型(拒绝 float/bool 冒充),再逐键相等比对。
         _check_identity_fields(job)
         if any(job[key] != self._identity[key] for key in _IDENTITY_KEYS):
             raise HostError("host_identity")
@@ -183,7 +179,6 @@ class Custodian:
             try:
                 width += len(item.encode("utf-16-le")) // 2
             except UnicodeEncodeError:
-                # 未配对 surrogate 无法编码 UTF-16,稳定拒绝而非泄漏 UnicodeEncodeError。
                 raise HostError("host_job") from None
         if width > ARGV_UTF16_LIMIT:
             raise HostError("host_job")
@@ -203,7 +198,6 @@ class Custodian:
             job.cleanup_errors.append(code)
 
     def _backend_failed(self, job: _Job) -> None:
-        # pump/exit_code 轮询失败只在首次进入 unknown 时记一次,之后轮询不再重复记。
         if job.state != "unknown":
             job.state = "unknown"
             self._note_error(job, "host_backend")
@@ -225,7 +219,6 @@ class Custodian:
         self._signal(job, "kill")
 
     def _append_output(self, job: _Job, stream: str, data: bytes) -> None:
-        # 只记账:截断保存前缀并置超限标志;记错与停止信号由 _review 统一处理。
         buf = job.stdout if stream == "stdout" else job.stderr
         if len(buf) + len(data) <= OUTPUT_LIMIT:
             buf += data
@@ -269,8 +262,6 @@ class Custodian:
             job.state = "exited"
 
     def _record_limits(self, job: _Job, now: int) -> None:
-        # 纯内存记账(到 total 也执行):任务工作期限取 min(task, work);已确认退出后的
-        # 收尾只用 total 期限,退出采样点早于工作期限不记任务超期。
         if job.exit_confirmed and job.exit_ticks is None:
             job.exit_ticks = now
         work_end = min(job.task_end_ticks, self._identity["work_end_ticks"])
@@ -283,7 +274,6 @@ class Custodian:
             self._note_error(job, "host_output_limit")
 
     def _stop_if_needed(self, job: _Job, now: int) -> bool:
-        # 停止信号与记账分离:已确认退出或已发信号的对象不再 terminate。
         if (
             not job.exit_confirmed
             and not job.terminate_called
@@ -297,7 +287,6 @@ class Custodian:
         return True
 
     def _review(self, job: _Job) -> bool:
-        # 每个 Backend 调用返回后的统一边界:复核时钟、期限记账,到 total 停止本轮后续调用。
         now = self._tick(job)
         if now is None:
             return False
@@ -307,8 +296,6 @@ class Custodian:
         return self._stop_if_needed(job, now)
 
     def _close(self, job: _Job) -> None:
-        # close_pipes/close_handle 各至多尝试一次;失败不重试、不释放引用、不称成功;
-        # pipes 返回后跨原总期限时不再发起 handle,保留已入账事实与原引用。
         if not job.pipes_attempted:
             job.pipes_attempted = True
             job.close_attempts += 1
@@ -333,14 +320,12 @@ class Custodian:
             else:
                 job.handle_succeeded = True
                 job.close_successes += 1
-            # 关闭事实已入账;时钟/期限错误记入快照但不阻止已知成功关闭释放引用。
             self._review(job)
         if job.pipes_succeeded and job.handle_succeeded:
             job.state = "closed"
             job.ref = None
 
     def _advance(self, job: _Job, now: int) -> None:
-        # 原总期限不重置:到 total 后保留对象与未知状态,不再开始任何自动 Backend 调用。
         if now >= self._identity["total_end_ticks"]:
             return
         self._record_limits(job, now)
@@ -356,7 +341,6 @@ class Custodian:
             self._kill(job)
             if not self._review(job):
                 return
-        # 先确认退出再排空:已确认退出后的输出超限只记错,不再 terminate。
         if not job.exit_confirmed:
             self._poll_exit(job)
             if not self._review(job):

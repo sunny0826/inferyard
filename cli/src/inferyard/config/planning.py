@@ -54,7 +54,6 @@ def compile_plan(experiment):
         if entries > 100_000:
             raise ContractError("experiment.workloads", "plan case expansion limit exceeded")
         limit, seconds, total = workload_budget(workload)
-        # Bound allocation before expansion, even when repeats is maliciously huge.
         if (
             sum(t["request_limit"] for t in trials) + limit * workload["repeats"]
             > experiment["budget"]["max_requests"]
@@ -178,6 +177,5 @@ def write_plan(source: Path, destination: Path):
         path.parent.mkdir(parents=True, exist_ok=True)
         atomic_bytes(path, content)
     atomic_bytes(destination / "experiment.json", json_bytes(plan["experiment"]))
-    # Publishing the plan last is the completion marker; incomplete output is not executable.
     atomic_bytes(destination / "plan.json", json_bytes(plan))
     return plan

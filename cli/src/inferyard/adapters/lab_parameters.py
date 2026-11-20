@@ -151,7 +151,6 @@ def validate_parameters(value, config):
         )
     except ContractError as exc:
         raise PreflightError("lab_effective_parameter_invalid") from exc
-    # JSON real-valued settings may be integer or float; integer counts remain strict.
     expected = {
         "generation": config["generation"],
         "conditions": {key: config["conditions"][key] for key in CONDITIONS},

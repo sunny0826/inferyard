@@ -64,7 +64,6 @@ def test_upstream_identity_cannot_inherit_prism_qualification(config_path, mutat
         )
         if mutation == "cache":
             adapter.cache_protocol = "prism_prefix_reuse.v1"
-        # Deliberately stop before the fixture's absent template fingerprint.
         if mutation == "slots_endpoint":
             import hashlib
 

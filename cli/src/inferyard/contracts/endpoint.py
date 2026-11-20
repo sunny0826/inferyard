@@ -25,7 +25,6 @@ def validate_endpoint(url: str) -> None:
             or port == 0
         ):
             raise ValueError
-        # A future transport must pin localhost resolution to loopback too.
         if host != "localhost" and not ipaddress.ip_address(host).is_loopback:
             raise ValueError
     except ValueError as exc:

@@ -19,8 +19,6 @@ def paths(tmp_path, monkeypatch):
 
     initialize()
     if sys.platform not in ("linux", "win32", "darwin"):
-        # Keep real kernel-lock/dirty-state coverage where the production process
-        # identity reader is unavailable; only its service identity is synthetic.
         def fixture_start_ticks(pid):
             if pid == os.getpid():
                 return 456

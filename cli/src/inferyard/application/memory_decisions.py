@@ -98,8 +98,6 @@ def project(snapshot, protect_pids, uid):
     for pid, row in rows.items():
         if reason := _protected_reason(row, uid):
             protected.setdefault(pid, reason)
-    # Descendants inherit protection, never siblings sharing a common ancestor.
-    # Caller ancestors are protected themselves but do not protect all their children.
     for pid in rows:
         ancestors = _ancestors(pid, rows) - {pid}
         if any(

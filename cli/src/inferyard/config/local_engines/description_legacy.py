@@ -10,7 +10,6 @@ def describe(config):
         "launch": {
             "kind": "direct_process",
             "argv": [engine["binary_path"], *engine["startup_args"]],
-            # Studio's legacy startup inherits both from its own process.
             "working_directory": None,
             "environment": None,
             "ownership": "operator",

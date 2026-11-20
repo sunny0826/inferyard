@@ -76,7 +76,6 @@ func TestReportViewReadsStudioJSONOnly(t *testing.T) {
 	if !tt.HasText("报告 bad") || !tt.HasText("无法读取") {
 		t.Fatal(tt.Texts())
 	}
-	// Retry re-reads studio.json; no report bytes are modified by opening it.
 	if e := os.WriteFile(filepath.Join(root, "reports", "bad", "studio.json"), []byte(fixture), 0600); e != nil {
 		t.Fatal(e)
 	}

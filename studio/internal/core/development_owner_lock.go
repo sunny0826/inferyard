@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// Use the permanent owner lock without leaving a blocked waiter after cancellation.
 func DevelopmentLockEngineOwner(ctx context.Context, workspace string) (func(), error) {
 	check := func(path string, directory bool) error {
 		resolved, err := Resolve(path, path)

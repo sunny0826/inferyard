@@ -9,7 +9,6 @@ from statistics import median
 from inferyard.errors import EvidenceError
 
 
-
 def summarize_windows(protocol, case_order, start_ns, requests):
     width = int(protocol["window_seconds"] * 1e9)
     duration = int(protocol["duration_seconds"] * 1e9)
@@ -44,7 +43,6 @@ def summarize_windows(protocol, case_order, start_ns, requests):
             latency = (
                 median(r["t_terminal_ns"] - r["t_send_ns"] for r in completed) if enough else None
             )
-            # Never move the baseline to a later, more convenient window.
             if index == 0:
                 baseline[case] = latency
             reference = baseline.get(case)
@@ -60,8 +58,6 @@ def summarize_windows(protocol, case_order, start_ns, requests):
                     "valid_executed": sum(
                         r["execution_state"] in ("completed", "failed") for r in candidates
                     ),
-                    # Timing eligibility must not remove interrupted attempts
-                    # from the execution ledger for this send-time cohort.
                     "execution_states": dict(Counter(r["execution_state"] for r in candidates)),
                     "median_latency_ns": latency,
                     "baseline_latency_ns": reference,

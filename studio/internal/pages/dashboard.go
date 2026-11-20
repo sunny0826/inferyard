@@ -86,8 +86,6 @@ func (s *viewState) dashboardView(c *ui.Context) {
 			if task.Queued && task.Bundle != nil && task.Error == nil {
 				continue
 			}
-			// The active step or handoff card already renders this rejection; the task
-			// list must not repeat the same diagnostic a second time.
 			if s.stepOwnsTaskError(task) {
 				continue
 			}
@@ -121,10 +119,6 @@ func (s *viewState) conclusionView(c *ui.Context) {
 				ui.Text(c, b.Bundle+" · "+taskLabel(*task))
 				continue
 			}
-			// A failed step reports only the bundles it actually blocks. Bundles
-			// that already finished keep their completed status, and the recorded
-			// progress phase may still describe the pre-failure stage, which would
-			// contradict Step 4.
 			if failed[b.Bundle] {
 				ui.Text(c, b.Bundle+" · 失败").TextColor(stateColor(c, stateDanger))
 				continue
@@ -152,9 +146,6 @@ func (s *viewState) conclusionView(c *ui.Context) {
 	})
 }
 
-// serviceCardVisible keeps the model-service panel in the run step whenever no
-// run is active and the bound plan is actionable, including after a failure so
-// the service can be re-bound without leaving the page.
 func (s *viewState) serviceCardVisible() bool {
 	if s.running() != nil || (s.task.stage != "" && s.task.failure == nil) {
 		return false
@@ -163,9 +154,6 @@ func (s *viewState) serviceCardVisible() bool {
 	return b != nil && !blockedPlan(*b) && (b.CandidatePath != nil || b.BoundPath != nil)
 }
 
-// failedBundles lists the bundles the active failure blocks. A recorded binding
-// failure marks exactly that bundle; otherwise only the bundle the step is about
-// is marked. Completed bundles always keep their status.
 func (s *viewState) failedBundles() map[string]bool {
 	failed := map[string]bool{}
 	if !s.stepFailed() {
@@ -183,7 +171,6 @@ func (s *viewState) failedBundles() map[string]bool {
 	for _, name := range names {
 		failed[name] = true
 	}
-	// Never downgrade a bundle that already completed: its evidence stands.
 	for _, b := range s.taskBundles() {
 		if failed[b.Bundle] && b.Phase == "run_complete" {
 			delete(failed, b.Bundle)
@@ -192,10 +179,6 @@ func (s *viewState) failedBundles() map[string]bool {
 	return failed
 }
 
-// configStage renders the configuration step. Under the specialty benchmark the
-// six-stage flow is replaced by the specialty's own progress, so the numbered
-// rail would leave a lone "3" with no steps 1 and 2; a plain card carries the
-// same title instead.
 func (s *viewState) configStage(c *ui.Context, body func()) {
 	if s.speed != nil && s.speed.selected {
 		card(c, termBenchmarkStage, body)
@@ -235,15 +218,9 @@ func (s *viewState) stageView(c *ui.Context) {
 			button(c, "查看设备页明细").OnClick(func() { s.selected = "device" })
 		})
 	case "prepare_candidate":
-		// The benchmark-type switch sits in a stable column above the card, so
-		// choosing a type only replaces the card below it. Rendering it inside
-		// stepTrack or card would give it a different parent per mode and drop
-		// the keyboard focus on the arrow key that switched the type.
 		ui.Column(c.Key("config-stage")).Gap(tokens(c).Density.CardGap).Children(func() {
 			s.speedTypeSwitch(c)
 			s.configStage(c, func() {
-				// Only a failure of this task's chain is shown here; a previous
-				// round's engine error stays off the fresh configuration step.
 				if s.task.failure != nil {
 					failureView(c, termBenchmarkStage+"失败", s.task.failure, "原因解决后可从本阶段重新开始；已完成的测评题集结果会保留。")
 				}

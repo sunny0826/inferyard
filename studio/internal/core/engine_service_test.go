@@ -15,10 +15,6 @@ import (
 	"time"
 )
 
-// TestMain doubles the test binary as a fake llama-server: with ENGINE_HELPER
-// set it parses --port, serves /health (503 until ENGINE_HELPER_DELAY_MS has
-// elapsed, or always when ENGINE_HELPER_NOREADY), or exits immediately when
-// ENGINE_HELPER_EXIT is set.
 func TestMain(m *testing.M) {
 	if len(os.Args) > 1 && os.Args[1] == "local-queue-helper" {
 		runLocalQueueHelper(os.Args[2:])
@@ -134,8 +130,6 @@ func freePort(t *testing.T) int {
 	return listen.Addr().(*net.TCPAddr).Port
 }
 
-// Only the engine test fixture consumes its tiny TOML stub. Production startup
-// always obtains and validates the structured CLI description.
 func engineFixtureDescription(args []string) (inferyard.Execution, bool) {
 	if len(args) != 4 || args[0] != "config" || args[1] != "describe" || args[2] != "--candidate" {
 		return inferyard.Execution{}, false

@@ -135,7 +135,6 @@ async def run_trial(
         if single:
             deadline.check()
         if single and not is_local(config):
-            # P1: single guard keeps its existing identity scope; no disk/memory safety gate.
             deadline.check()
             deps.guard(config, files)
             deadline.check()
@@ -183,7 +182,6 @@ async def run_trial(
                 store.observe("service_binding", service_binding, stage="prepare")
             if not diagnostic:
                 require_review(loaded.bundle)
-            # Journal has verified this frozen workload's repeat/resume parent.
             record_reuse(store, parent, config, lock, serial_continuation=True)
             if (
                 service_binding

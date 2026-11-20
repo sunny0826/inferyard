@@ -9,8 +9,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// bindingState is a bind-stage task whose engine auto-start failed; the page
-// failure and the task failure can both be present.
 func bindingState(cause *core.ApiError) *viewState {
 	s := testState()
 	s.task = benchmarkTask{
@@ -34,14 +32,11 @@ func countText(tt *ui.Tester, want string) int {
 	return count
 }
 
-// A rejected manual connection must be attributed to Step 4, not only to the
-// page banner, and its cause must not render twice.
 func TestManualBindingFailureIsOwnedByStepFour(t *testing.T) {
 	s := testState()
 	s.candidate = "/w/candidates/zh-svg-pelican.toml"
 	e := core.Err("candidate_endpoint_mismatch")
 	s.executeBinding("inferyard config bind --pid 1 --endpoint http://127.0.0.1:1", e)
-	// The page-level banner collects the same error from guideWork.
 	s.failure = e
 	if s.bindFailure != e {
 		t.Fatalf("binding failure not attributed to the step: %+v", s.bindFailure)
@@ -58,8 +53,6 @@ func TestManualBindingFailureIsOwnedByStepFour(t *testing.T) {
 	}
 }
 
-// When the page and the task carry the same startup failure, the step owns it
-// and the top banner does not repeat it.
 func TestStartupFailureRendersOnce(t *testing.T) {
 	s := bindingState(core.Err("engine_start_failed"))
 	tt := ui.NewTester(s.view, 1120, 1800)
@@ -71,9 +64,6 @@ func TestStartupFailureRendersOnce(t *testing.T) {
 	}
 }
 
-// A recovered connection clears the stale bind stage, so refreshed progress
-// decides the step instead of the old failure. Both binding entry points share
-// bindingOutcome, which is what the chain reports back.
 func TestRecoveredBindingAdvancesPastStaleBindStage(t *testing.T) {
 	s := bindingState(core.Err("engine_start_failed"))
 	s.bindingOutcome("", nil)
@@ -93,8 +83,6 @@ func TestRecoveredBindingAdvancesPastStaleBindStage(t *testing.T) {
 	}
 }
 
-// A fresh task's configuration step never surfaces the previous round's engine
-// failure.
 func TestFreshTaskDoesNotShowPreviousEngineFailure(t *testing.T) {
 	s := bindingState(core.Err("engine_start_failed"))
 	s.clearBenchmark()
@@ -111,8 +99,6 @@ func TestFreshTaskDoesNotShowPreviousEngineFailure(t *testing.T) {
 	}
 }
 
-// A failed engine explains Step 4 even though progress still reports the bundle
-// as waiting to connect.
 func TestConclusionViewMarksBlockedBundleOnEngineFailure(t *testing.T) {
 	s := testState()
 	s.engineState = core.EngineState{State: "failed", Error: core.Err("engine_start_failed")}
@@ -129,7 +115,6 @@ func TestConclusionViewMarksBlockedBundleOnEngineFailure(t *testing.T) {
 	}
 }
 
-// A failure in the second bundle keeps the completed first bundle's status.
 func TestConclusionViewKeepsCompletedBundleOnSecondBindingFailure(t *testing.T) {
 	s := testState()
 	s.task = benchmarkTask{stage: "bind", bundles: []string{"zh-core", "zh-svg-pelican"}, failure: core.Err("candidate_endpoint_mismatch")}
@@ -146,8 +131,6 @@ func TestConclusionViewKeepsCompletedBundleOnSecondBindingFailure(t *testing.T) 
 	}
 }
 
-// The LM Studio picker keeps only usable endpoints: used PIDs are always
-// omitted, and the frozen-candidate filter applies only during the handoff.
 func TestLocalServiceChoicesExcludeUsedAndMismatched(t *testing.T) {
 	s := testState()
 	s.task.start = startChainResult{localRequest: &core.LocalCandidateRequest{Endpoint: "http://127.0.0.1:48857"}}
@@ -158,13 +141,10 @@ func TestLocalServiceChoicesExcludeUsedAndMismatched(t *testing.T) {
 		{PID: 4003, ProcessName: "LM Studio", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:48857", Models: []string{"local.gguf"}}}},
 	}}
 	s.localUsedPIDs = map[int64]bool{4001: true}
-	// Fresh task setup: no frozen candidate yet, so a leftover endpoint must not
-	// hide the service the user just started.
 	choices := s.localServiceChoices()
 	if len(choices) != 2 || choices[0].pid != 4002 || choices[1].pid != 4003 {
 		t.Fatalf("step-3 choices: %+v", choices)
 	}
-	// Handoff: the frozen endpoint is the only address the CLI will accept.
 	s.tasks = []core.RunTask{{TaskId: "second", Kind: "run", State: "starting", Bundle: ptr("zh-svg-pelican"), AwaitingService: true}}
 	choices = s.localServiceChoices()
 	if len(choices) != 1 || choices[0].pid != 4003 {
@@ -172,8 +152,6 @@ func TestLocalServiceChoicesExcludeUsedAndMismatched(t *testing.T) {
 	}
 }
 
-// The discovered binding path reports the same Step 4 diagnostics through the
-// shared bindingOutcome helper.
 func TestDiscoveredBindingFailureIsOwnedByStepFour(t *testing.T) {
 	s := testState()
 	s.progress.NextAction = "bind"
@@ -188,7 +166,6 @@ func TestDiscoveredBindingFailureIsOwnedByStepFour(t *testing.T) {
 	}
 }
 
-// Recovering from one engine failure must not hide a later, different failure.
 func TestRecoveryClearsOnlyTheResolvedEngineFailure(t *testing.T) {
 	s := bindingState(core.Err("engine_start_failed"))
 	s.bindingOutcome("", nil)
@@ -201,8 +178,6 @@ func TestRecoveryClearsOnlyTheResolvedEngineFailure(t *testing.T) {
 	}
 }
 
-// The handoff card offers an in-place refresh and rejects a used PID or a
-// mismatched endpoint before the service does.
 func TestLocalHandoffOffersRefreshAndRejectsReuse(t *testing.T) {
 	s := testState()
 	s.task.start = startChainResult{localRequest: &core.LocalCandidateRequest{Endpoint: "http://127.0.0.1:48857"}}

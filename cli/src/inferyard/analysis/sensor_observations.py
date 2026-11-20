@@ -14,8 +14,6 @@ def add_sensor_observations(output, requests, samples):
             identity = (sample["source"], sample["semantics"])
             by_request = grouped[metric].setdefault(identity, {})
             by_request.setdefault(sample["request_id"], []).append(sample)
-    # Discover sources across the whole timeline, even when a request has no
-    # samples for one source. Keep input order inside each bucket for selection.
     sources_by_metric = {metric: sorted(sources) for metric, sources in grouped.items()}
     for row in requests:
         for metric, code, unit in (("temperature", "C07", "celsius"), ("frequency", "C08", "Hz")):

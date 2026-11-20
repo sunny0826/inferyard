@@ -57,7 +57,6 @@ CASES = [
     ],
 ]
 
-# The directory that holds the importable `tests` package for the child process.
 CLI_ROOT = Path(__file__).resolve().parents[2]
 
 SCRIPT = """

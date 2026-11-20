@@ -15,9 +15,6 @@ func TestLocalQueueStartsFreshProcessPerBundle(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("local process isolation is unavailable on Windows")
 	}
-	// llama-cpp covers the gguf model asset; mlx-lm covers the directory asset.
-	// The remaining families share the identical direct_process path, so they add
-	// runtime without a distinct branch.
 	for _, family := range []string{"llama-cpp", "mlx-lm"} {
 		t.Run(family, func(t *testing.T) {
 			f := newLocalQueueFixture(t, family)
@@ -47,9 +44,6 @@ func TestLocalQueueStartsFreshProcessPerBundle(t *testing.T) {
 	}
 }
 
-// TestProbeReusesVersionForSameExecutable guards the operator-visible latency of
-// a single action: a settings read chain probes many times, and each miss spawns
-// an `inferyard --version` subprocess.
 func TestProbeReusesVersionForSameExecutable(t *testing.T) {
 	var calls int
 	s := testService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
@@ -70,7 +64,6 @@ func TestProbeReusesVersionForSameExecutable(t *testing.T) {
 	if calls != 1 {
 		t.Fatalf("version probe ran %d times, want 1", calls)
 	}
-	// Callers must not be able to corrupt the cached pointers.
 	p := s.probe(u)
 	*p.Version = "tampered"
 	if again := s.probe(u); str(again.Version) != "1.0" {

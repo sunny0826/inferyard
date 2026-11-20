@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-// ContextSpeedBatchPaths discovers frozen profile declarations. It does not
-// authenticate them; opening each entry must invoke the CLI reader.
 func ContextSpeedBatchPaths(root string) ([]string, error) {
 	paths := []string{}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {

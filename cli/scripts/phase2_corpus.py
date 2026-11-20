@@ -31,7 +31,6 @@ QA = [
     ("会议原定14:00，后推迟30分钟。最终开始时间是什么？用24小时制HH:MM回答。", "14:30"),
     ("名册中小周负责摄影，小吴负责剪辑，小郑负责配音。谁负责剪辑？", "小吴"),
 ]
-# Prompt, exact numerical reference, required unit, absolute tolerance.
 MATH = [
     ("仓库有17盒彩笔，收到8盒又发出9盒，剩几盒？", 16, "盒", 0),
     ("每袋6颗糖，4袋共几颗？", 24, "颗", 0),
@@ -90,7 +89,6 @@ CLASSIFICATION = {
         "我希望下次推出绿色款式。",
     ],
 }
-# Each scenario specifies its entire output shape; no keys or facts are left implicit.
 STRUCTURED = [
     (
         "联系人叫林青，城市为杭州，邮编未知。输出name字符串和address对象；address含city字符串、zip空值。",

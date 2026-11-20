@@ -40,8 +40,6 @@ def main():
         receipts.append(dict(name=name, size=size, sha256=sha256, url=url))
     destination = ROOT / "artifacts/windows/prism-b10743-cuda12.4"
     server, manifest, _ = unpack(ROOT / ".tools/downloads" / ASSETS[0][0], destination)
-    # Runtime ZIPs contain DLLs without a server executable. Validate every path
-    # before extraction; preserve previously verified files rather than overwrite.
     runtime = require_destination(ROOT / ".tools/cuda12.4-runtime")
     with zipfile.ZipFile(ROOT / ".tools/downloads" / ASSETS[1][0]) as package:
         entries = package.infolist()

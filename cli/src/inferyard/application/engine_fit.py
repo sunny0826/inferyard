@@ -23,7 +23,6 @@ def execute(request):
         try:
             outcome = run(request)
         except PreflightError as exc:
-            # PreflightError contains fixed categories only, never OS/service response text.
             return 2, CommandResult(command, "blocked", limitations=(str(exc),))
         return outcome.code, CommandResult(
             command,

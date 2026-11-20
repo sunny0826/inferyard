@@ -116,7 +116,6 @@ class IdentityContext:
     ) -> None:
         if root is None and source_hash is tool_source_hash:
             source, value = _default_identity()
-            # Each caller owns its copy; in-place edits must not poison the cache.
             self.source, self.value = source, deepcopy(value)
             return
         self.source, self.value = _build_identity(root or Path(__file__).parent, source_hash)

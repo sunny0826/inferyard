@@ -7,9 +7,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// sequenceLocalBackend is a local benchmark backend whose queue is scripted: the
-// first bundle fails with the given error and the blocked later bundle reports
-// previous_scope_incomplete, and RunTasks returns newest-first like the service.
 type sequenceLocalBackend struct {
 	tasks  []core.RunTask
 	starts int
@@ -45,8 +42,6 @@ func (b *sequenceLocalBackend) StartCandidateRuns(core.CandidateRunsRequest) ([]
 	return b.tasks, nil
 }
 
-// RunTasks mirrors the service: newest-first, so the blocked second bundle comes
-// before the first bundle that actually failed.
 func (b *sequenceLocalBackend) RunTasks() []core.RunTask {
 	out := make([]core.RunTask, 0, len(b.tasks))
 	for i := len(b.tasks) - 1; i >= 0; i-- {
@@ -55,11 +50,7 @@ func (b *sequenceLocalBackend) RunTasks() []core.RunTask {
 	return out
 }
 
-// A first-bundle rejection stays the reported root cause even though the blocked
-// second bundle is seen first, and the progress card marks the first bundle.
 func TestFirstBundleErrorOutranksPreviousScopeIncomplete(t *testing.T) {
-	// Execution order: zh-core then zh-svg-pelican. RunTasks yields the second
-	// one first, as the real service does.
 	root := core.Err("candidate_binding_invalid")
 	blocked := core.Err("previous_scope_incomplete")
 	b := &sequenceLocalBackend{tasks: []core.RunTask{
@@ -85,12 +76,9 @@ func TestFirstBundleErrorOutranksPreviousScopeIncomplete(t *testing.T) {
 	}
 }
 
-// Even when the blocked bundle is the only task the page saw first, the reported
-// cause is the earlier bundle's own error once it is visible.
 func TestBlockedLaterBundleDoesNotMaskRootCause(t *testing.T) {
 	root := core.Err("service_identity_unavailable")
 	blocked := core.Err("previous_scope_incomplete")
-	// Newest-first order: pelican (blocked) before core (root cause).
 	b := &sequenceLocalBackend{tasks: []core.RunTask{
 		{TaskId: "pelican", Kind: "run", State: "failed", Bundle: ptr("zh-svg-pelican"), Error: blocked},
 		{TaskId: "core", Kind: "run", State: "failed", Bundle: ptr("zh-core"), Error: root},

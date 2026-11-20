@@ -13,8 +13,6 @@ import (
 
 var ErrTruncated = errors.New("evidence stream truncated; restart with an empty cursor")
 
-// Cursor commits only complete validated lines. Persist both fields to resume.
-// It belongs to one append-only file and must not be shared between streams.
 type Cursor struct {
 	Offset int64
 	Seq    int64
@@ -26,8 +24,6 @@ type Record struct {
 	Raw       json.RawMessage `json:"-"`
 }
 
-// Tail reads events.jsonl or memory.jsonl. A half-written final line is left for
-// the next call. On error, returned records and cursor cover the valid prefix.
 func Tail(path string, cursor Cursor) ([]Record, Cursor, error) {
 	if cursor.Offset < 0 || cursor.Seq < 0 {
 		return nil, cursor, errors.New("negative cursor")

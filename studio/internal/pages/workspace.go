@@ -48,8 +48,6 @@ func (s *viewState) clearBenchmark() {
 	s.selectedBundles = nil
 	s.focusedRun = ""
 	s.newTaskPending = false
-	// A new round must not inherit a rejected connection, its bundle, the handoff
-	// error or the services the previous round already connected.
 	s.bindFailure, s.failedBundle, s.handoffFailure = nil, "", nil
 	s.localUsedPIDs, s.localPendingPIDs = nil, nil
 	s.localBindingTask, s.localPID = "", ""
@@ -76,9 +74,6 @@ func (s *viewState) checkedBundles() []string {
 
 func (s *viewState) newBenchmark() {
 	s.pendingDestructive = destructiveRequest{}
-	// 新任务 starts from the regular benchmark, as the preview does. The type is
-	// cleared here rather than in finish, because 用此组合新开任务 sets it right
-	// after this call and the asynchronous reset must not overwrite that choice.
 	if s.speed != nil {
 		s.speed.selected = false
 	}
@@ -132,8 +127,6 @@ func (s *viewState) newBenchmark() {
 
 }
 
-// runTasksAll is the whole-round queue boundary; tests inject a recorder to
-// observe the reset loop without a real service.
 func (s *viewState) runTasksAll() []core.RunTask {
 	if s.runTasks != nil {
 		return s.runTasks()
@@ -147,15 +140,12 @@ func (s *viewState) runTasksAll() []core.RunTask {
 	return s.service.RunTasks()
 }
 
-// cloneTasks copies the current page-visible queue so callers get a stable view.
 func cloneTasks(tasks []core.RunTask) []core.RunTask {
 	out := make([]core.RunTask, len(tasks))
 	copy(out, tasks)
 	return out
 }
 
-// cancelRoundTask routes the whole-round cancel to the service boundary; tests
-// inject a recorder so the queue state and call count are observable.
 func (s *viewState) cancelRoundTask(id string) (core.RunTask, *core.ApiError) {
 	if s.cancelRound != nil {
 		return s.cancelRound(id)

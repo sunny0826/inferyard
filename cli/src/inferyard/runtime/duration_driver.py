@@ -10,7 +10,6 @@ import time
 from inferyard.errors import EvidenceError
 
 
-
 async def run_duration(protocol, case_order, request, emit, *, clock=time.monotonic_ns):
     if protocol["kind"] != "duration" or not case_order:
         raise EvidenceError("duration_protocol_required")
@@ -60,8 +59,6 @@ async def run_duration(protocol, case_order, request, emit, *, clock=time.monoto
         else:
             reason = "duration_elapsed"
     finally:
-        # started counts returned attempts, not a cancellation in flight; durable
-        # request_started events are the authoritative attempted-request count.
         emit(
             "duration_closed",
             {

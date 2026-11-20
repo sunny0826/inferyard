@@ -8,8 +8,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// failedBindState is the bind stage after the task chain reported a failure;
-// the engine state alone has no error code, as the issue describes.
 func failedBindState() *viewState {
 	s := testState()
 	s.task = benchmarkTask{
@@ -60,7 +58,6 @@ func TestServiceViewReportsFailedStateWithoutCause(t *testing.T) {
 	}
 }
 
-// The manual and discovered bindings must stay reachable before any failure.
 func TestServiceViewKeepsManualBindingWithoutFailure(t *testing.T) {
 	s := testState()
 	if !s.bindingPhase() {
@@ -80,7 +77,6 @@ func TestServiceViewKeepsManualBindingWithoutFailure(t *testing.T) {
 	}
 }
 
-// The progress summary must not keep describing the pre-failure phase.
 func TestConclusionViewMarksFailedTask(t *testing.T) {
 	s := failedBindState()
 	s.progress = &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: []inferyard.BundleProgress{
@@ -96,8 +92,6 @@ func TestConclusionViewMarksFailedTask(t *testing.T) {
 	}
 }
 
-// The ambiguous-listener warning renders as a tinted warning banner, sharing
-// the discovery view's own presentation instead of plain coloured text.
 func TestAmbiguousListenerRendersWarningBanner(t *testing.T) {
 	s := testState()
 	s.discoveryLoaded = true
@@ -109,7 +103,6 @@ func TestAmbiguousListenerRendersWarningBanner(t *testing.T) {
 	if !tt.HasText("待确认的兼容接口") {
 		t.Fatalf("compatible endpoint fold missing: %v", tt.Texts())
 	}
-	// The fold is collapsed by default; opening it reveals the banner text.
 	click(t, tt, "待确认的兼容接口")
 	tt.Frame()
 	if !tt.HasText("归属存在歧义") {
@@ -117,7 +110,6 @@ func TestAmbiguousListenerRendersWarningBanner(t *testing.T) {
 	}
 }
 
-// One click fills the LM Studio fields from an unambiguous discovered service.
 func TestLocalSelectionFillsDiscoveredService(t *testing.T) {
 	s := testState()
 	s.discoveryLoaded = true

@@ -46,7 +46,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
 
     def check(field, a, b, *, allowed=False, impact="common"):
         if engine_mode and local_profile and field in LEGACY_ENGINE_FIELDS:
-            return  # Checked through its local-profile replacement (engine_comparison).
+            return
         allowed = allowed or field in engine_allowed
         if field == "run.definition_versions.scoring":
             impact = "quality"
@@ -87,7 +87,6 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
             "verified" if quantization_gate["eligible"] else None,
             "verified",
         )
-    # Null thresholds explicitly disable individual checks; they are not missing evidence.
     policies = [
         {
             k: "disabled" if v is None else v
@@ -138,7 +137,6 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
             identities = [
                 role_identities(d["run"].get("implementation_identity")) for d in (left, right)
             ]
-            # Different identity schemes are a difference, not a missing measurement.
             if not all("implementation_identity" in d["run"] for d in (left, right)):
                 check(
                     "run.identity_scheme",
@@ -192,8 +190,6 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
                 and darwin
                 and key in ("governor", "epp", "require_epp_match")
             ):
-                # These Linux fields remain unknown. The native policy below
-                # and the observed environment qualification are still mandatory.
                 continue
             path = section + "." + key
             impact = (
@@ -268,15 +264,12 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
         if side == "left":
             left_workload = data["comparison_workload"]
         else:
-            # Null input target is an explicit protocol choice, not unknown evidence.
             a, b = dict(left_workload), dict(data["comparison_workload"])
             for record in (a, b):
                 if record["input_target_tokens"] is None:
                     record["input_target_tokens"] = "not_targeted"
             check("task_protocol", a, b)
         effective = _get(data, "identity.effective_parameters.parameters") or {}
-        # Native local services expose no effective parameters (ADR 055); engine mode
-        # compares the frozen generation config and reports the gap as a limitation.
         for key in () if engine_mode and local_profile else (
             "seed",
             "temperature",

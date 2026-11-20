@@ -30,8 +30,6 @@ def resolved_within(path, root):
 def open_nofollow(path, flags, mode=0o600):
     if os.name != "nt":
         return os.open(path, flags | os.O_NOFOLLOW, mode)
-    # Exclusive creation cannot follow an existing reparse point. For existing
-    # files, CreateFileW opens the reparse point itself and checks its attributes.
     from inferyard.platforms.windows_api import open_file
 
     return open_file(Path(path), flags)
@@ -43,9 +41,6 @@ def is_reparse(info):
 
 def sync_directory(path):
     if os.name == "nt":
-        # Windows does not expose POSIX directory fsync. All file contents are
-        # fsynced; snapshots use MoveFileExW(WRITE_THROUGH). Do not claim identical
-        # metadata crash durability to the Linux directory-fsync implementation.
         return
     fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
     try:

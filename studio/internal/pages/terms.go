@@ -1,8 +1,5 @@
 package pages
 
-// Display terms for internal concepts. Internal identifiers, evidence fields and
-// CLI contracts keep their technical names; only user-facing pages use these
-// words. Each entry states what stays available in the advanced details.
 const (
 	termBenchmarkStage  = "配置测评"
 	termStartBenchmark  = "开始测评"
@@ -18,8 +15,6 @@ const (
 	termNoScore         = "未记录评分"
 )
 
-// bundleScopeText names the counted case set without exposing "frozen" or
-// "denominator" as primary wording.
 func bundleScopeText(resume bool) string {
 	if resume {
 		return "续测题目范围已在开始时固定。"

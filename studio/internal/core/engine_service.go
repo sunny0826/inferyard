@@ -114,8 +114,6 @@ func (s *Service) StartEngine(candidate string) (EngineState, *ApiError) {
 	entry := &engineEntry{cmd: cmd, logFile: logFile, stop: make(chan struct{}), done: make(chan struct{}), state: EngineState{State: "starting", Local: startup.Local, Pid: int64(cmd.Process.Pid), Endpoint: endpoint, LogPath: logPath, Candidate: candidate}}
 	if failure := s.persistEngineOwner(entry, *w); failure != nil {
 		if entry.state.Local {
-			// A failed owner write must still clean already spawned workers. Never
-			// replace a competing record while rolling this startup back.
 			if cleanupErr := s.terminateOwnedTree(&entry.owner, ""); cleanupErr != nil {
 				_ = writeEngineOwner(entry.ownerPath, entry.owner)
 				orphanState := clone(entry.state)
@@ -162,8 +160,6 @@ func (s *Service) publishEngineLocked(e *engineEntry) {
 	s.Bus.Publish("engine.state", map[string]any{"engine": clone(e.state)})
 }
 
-// The monitor is the only waiter and terminator. It deliberately does not
-// share the run cancellation context: Shutdown must finish run cleanup first.
 func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 	defer close(e.done)
 	defer e.logFile.Close()
@@ -232,7 +228,6 @@ func (s *Service) monitorEngine(e *engineEntry, endpoint string) {
 				s.mu.Unlock()
 				continue
 			}
-			// During shutdown even a start timeout must wait for run cleanup.
 			timedOut := time.Now().After(deadline) && !s.closing
 			if timedOut {
 				s.stopEngineLocked(e)
@@ -287,7 +282,6 @@ func engineHealthPath(local bool) string {
 	return "/health"
 }
 
-// Called only by the serial run queue between CLI children.
 func (s *Service) stopEngineForHandoff(ctx context.Context) *ApiError {
 	s.mu.Lock()
 	if s.orphan != nil {

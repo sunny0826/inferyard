@@ -25,7 +25,6 @@ def saved_manifest(state: Path, pointer: Path) -> Path | None:
 
 
 def executable(state: Path, manifest: Path) -> Path:
-    # The path itself participates in the launch identity.
     if manifest != inside(manifest, state / "launches") or manifest.name != "manifest.json":
         raise DevError("Invalid development manifest path")
     data = read_json(manifest)
@@ -139,7 +138,6 @@ def launch(state: Path, manifest: Path, cli: Path, *, timeout: float = 45) -> di
             try:
                 stop_manifest(state, manifest, controller=manifest)
             except DevError:
-                # Keep pending ownership so the next command cannot hide this instance.
                 raise DevError(f"Startup did not shut down cleanly; retained {pending}") from None
         pending.unlink(missing_ok=True)
         raise

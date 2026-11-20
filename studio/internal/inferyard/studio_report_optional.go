@@ -5,8 +5,6 @@ import (
 	"errors"
 )
 
-// studioIntervalValues is a present output interval section after structural
-// decoding; the section rules consume it instead of re-reading raw JSON.
 type studioIntervalValues struct {
 	count     int64
 	min       *float64
@@ -17,8 +15,6 @@ type studioIntervalValues struct {
 	p95Reason *string
 }
 
-// validateStudioThroughput checks one present throughput section. A section
-// absent from an older report is valid; a present section must be complete.
 func validateStudioThroughput(raw json.RawMessage) error {
 	throughput, err := studioObject(raw)
 	if err != nil {
@@ -47,9 +43,6 @@ func validateStudioThroughput(raw json.RawMessage) error {
 	return nil
 }
 
-// validateStudioIntervals checks pooled block-arrival quantiles. Empty samples
-// stay null with a reason; measured samples require ordered min/p50/max and a
-// p95 only from twenty samples.
 func validateStudioIntervals(raw json.RawMessage) error {
 	intervals, err := studioIntervalValuesFrom(raw)
 	if err != nil {
@@ -61,8 +54,6 @@ func validateStudioIntervals(raw json.RawMessage) error {
 	return validateStudioMeasuredIntervals(intervals)
 }
 
-// studioIntervalValuesFrom decodes the closed interval section without applying
-// the sample-count rules; those belong to the empty and measured branches.
 func studioIntervalValuesFrom(raw json.RawMessage) (studioIntervalValues, error) {
 	var intervals studioIntervalValues
 	obj, err := studioObject(raw)
@@ -141,9 +132,6 @@ func validateStudioIntervalOrder(intervals studioIntervalValues) error {
 	return nil
 }
 
-// validateStudioP95Samples applies one low-sample rule to empty, partial and
-// measured sections: below twenty samples p95 is null with the insufficient
-// sample reason, from twenty samples it is required without a reason.
 func validateStudioP95Samples(intervals studioIntervalValues) error {
 	if intervals.count < 20 {
 		if intervals.p95 != nil || intervals.p95Reason == nil || *intervals.p95Reason != "insufficient_samples" {

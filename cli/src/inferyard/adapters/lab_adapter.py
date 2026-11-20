@@ -81,7 +81,6 @@ class LabAdapter(LabParameters, NativeObservation, LabTransport):
             if self.pending_request is not None:
                 request = await self.request_status(self.pending_request, deadline=deadline)
             snapshot = await self.lifecycle(deadline=deadline)
-            # Read identity again: an instance change during the observation is a refusal.
             await self.identity(deadline=deadline)
             idle = is_idle(snapshot) and (request is None or request["phase"] == "released")
             evidence = {
@@ -303,7 +302,7 @@ class LabAdapter(LabParameters, NativeObservation, LabTransport):
                 try:
                     await self.cancel(request_id)
                 except PreflightError:
-                    pass  # Pending ID remains; wait_idle must independently prove release.
+                    pass
             raise
         if error is not None:
             sync(time.monotonic_ns(), final=True)

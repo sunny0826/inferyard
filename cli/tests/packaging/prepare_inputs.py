@@ -32,7 +32,6 @@ def main():
         "synthetic": True,
         "pytest_version": importlib.metadata.version("pytest"),
     }
-    # CI-only request harness reuses the established synthetic scenario, never source runtime code.
     test_root = Path(__file__).parents[1]
     target = args.out / "ci-tests/tests"
     for relative in (

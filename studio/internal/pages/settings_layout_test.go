@@ -8,8 +8,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// settingsState mounts the Settings page with saved paths and download names
-// distinct from the form defaults, so "dirty" is meaningful.
 func settingsState() *viewState {
 	s := testState()
 	s.selected = "settings"
@@ -29,8 +27,6 @@ func settingsTester(s *viewState) *ui.Tester {
 	return ui.NewTester(s.settingsView, 1120, 1800)
 }
 
-// The path card only offers a save after an edit; an unchanged or still-loading
-// form must not enable it.
 func TestSettingsPathSaveRequiresEdit(t *testing.T) {
 	s := settingsState()
 	if s.pathsEdited() || s.canSavePaths() {
@@ -50,7 +46,6 @@ func TestSettingsPathSaveRequiresEdit(t *testing.T) {
 	}
 }
 
-// The download-name save follows its own edit and validity, not the path form.
 func TestSettingsDownloadSaveRequiresEditAndValidNames(t *testing.T) {
 	s := settingsState()
 	if s.downloadNamesEdited() || s.canSaveDownloadNames() {
@@ -78,8 +73,6 @@ func TestSettingsDownloadSaveRequiresEditAndValidNames(t *testing.T) {
 	}
 }
 
-// Reverting to the defaults only fills the form; the card must say that the
-// defaults are not persisted yet, and the save becomes available.
 func TestSettingsRevertDefaultsShowsUnsavedNotice(t *testing.T) {
 	s := settingsState()
 	tt := settingsTester(s)
@@ -100,8 +93,6 @@ func TestSettingsRevertDefaultsShowsUnsavedNotice(t *testing.T) {
 	}
 }
 
-// Editing only the download names must not claim that the paths changed, and
-// the reverse holds for path edits; each card reports its own draft.
 func TestSettingsNoticesFollowTheirOwnCard(t *testing.T) {
 	s := settingsState()
 	s.modelName = "renamed-model"
@@ -128,8 +119,6 @@ func TestSettingsNoticesFollowTheirOwnCard(t *testing.T) {
 	}
 }
 
-// Both engine actions sit on one row, and the card explains where the
-// installation declaration comes from.
 func TestLocalInstallationsActionsShareOneRow(t *testing.T) {
 	s := settingsState()
 	tt := settingsTester(s)
@@ -153,8 +142,6 @@ func TestLocalInstallationsActionsShareOneRow(t *testing.T) {
 	}
 }
 
-// Dismissing an inline stop confirmation leaves the engine running and clears
-// the prompt, so a later click starts over instead of acting.
 func TestStopEngineConfirmDismissKeepsRunning(t *testing.T) {
 	s := engineStopState()
 	stops := 0
@@ -184,8 +171,6 @@ func TestStopEngineConfirmDismissKeepsRunning(t *testing.T) {
 	}
 }
 
-// A destructive confirmation never says "返回": nothing navigated anywhere, so
-// the dismiss copy names the action it leaves alone.
 func TestDestructiveConfirmationDismissCopy(t *testing.T) {
 	s := testState()
 	confirm := func(option destructiveOption) *ui.Tester {
@@ -214,7 +199,6 @@ func TestDestructiveConfirmationDismissCopy(t *testing.T) {
 	}
 }
 
-// The gate builders pass their own dismiss copy through to the prompt.
 func TestDestructiveGatesUseContextDismissCopy(t *testing.T) {
 	if got := destructiveDismissLabel(destructiveOption{}); got != "暂不操作" {
 		t.Fatalf("default dismiss label = %q", got)

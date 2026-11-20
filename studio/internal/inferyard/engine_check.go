@@ -9,10 +9,6 @@ import (
 	"unicode/utf8"
 )
 
-// EngineCheck is the parsed verdict of `engine check` for one engine binary.
-// Eligible and ineligible verdicts are both successful checks (exit 0); the
-// CLI never starts the service for this command, and a passing check never
-// confers candidate eligibility (config create decides).
 type EngineCheck struct {
 	Eligible          bool
 	Reason            *string
@@ -27,15 +23,11 @@ type EngineCheck struct {
 	VerificationScope string
 }
 
-// EngineCheckModes carries the per-mode macOS verdict; Windows checks report
-// the receipt profile in Mode instead and leave Modes nil.
 type EngineCheckModes struct {
 	CPU   bool `json:"cpu"`
 	Metal bool `json:"metal"`
 }
 
-// engineCheckReasons and engineCheckLimitations mirror the fixed value tables
-// in cli/src/inferyard/contracts/schemas_engine_check.py.
 var engineCheckReasons = []string{
 	"invalid_library_manifest",
 	"unsupported_engine_build_requires_adapter_validation",
@@ -55,12 +47,6 @@ var engineCheckLimitations = []string{
 	"cancelled",
 }
 
-// ParseEngineCheck validates the CLI wire contract of `engine check`.
-// Contract (CLI-C, reviewed): exit 0 is a completed verification with
-// status "checked" — details {eligible, reason, reported_version,
-// expected_release, modes {cpu, metal}|null (macOS), mode cpu|cuda|null
-// (Windows)}; exit 2 blocked input, exit 4 tool error, 130 cancelled, all
-// with details null.
 func ParseEngineCheck(raw []byte, exitCode int) (EngineCheck, error) {
 	var result EngineCheck
 	invalid := errors.New("invalid engine check result")
@@ -157,8 +143,6 @@ func ParseEngineCheck(raw []byte, exitCode int) (EngineCheck, error) {
 		if details.Reason != nil || details.ReportedVersion == nil || *details.ReportedVersion == "" {
 			return result, invalid
 		}
-		// macOS reports per-mode results (mode null); Windows reports the
-		// receipt profile mode (modes null). Exactly one shape is allowed.
 		switch {
 		case details.Modes != nil && details.Mode == nil:
 		case details.Modes == nil && details.Mode != nil && slices.Contains([]string{"cpu", "cuda"}, *details.Mode):

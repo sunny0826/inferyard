@@ -45,8 +45,6 @@ type ProgressReport struct {
 	Runs   []string `json:"runs"`
 }
 
-// Check the wire structure, including required nullable fields, before decoding.
-// This adapter does not derive phases or interpret benchmark evidence.
 func ParseProgress(raw []byte) (WorkspaceProgress, error) {
 	var result WorkspaceProgress
 	raw = bytes.TrimSpace(raw)
@@ -96,9 +94,6 @@ func ParseProgress(raw []byte) (WorkspaceProgress, error) {
 	if require(pre, "status", "path") != nil || require(report, "status", "path", "runs") != nil || result.Report.Runs == nil || !slices.Contains([]string{"ok", "missing"}, result.DevicePreflight.Status) || !slices.Contains([]string{"missing", "present"}, result.Report.Status) {
 		return result, errors.New("invalid progress state")
 	}
-	// Version 2 expresses only whether the current report exists: a missing
-	// report always advances to report, and a present report completes the
-	// default scope with no follow-up command.
 	switch result.NextAction {
 	case "report":
 		if result.Report.Status != "missing" || result.Report.Path != nil || len(result.Report.Runs) != 0 || result.DefaultScopeComplete {

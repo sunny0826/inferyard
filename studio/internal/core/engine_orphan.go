@@ -26,7 +26,6 @@ func (s *Service) StopOrphanEngine() (EngineState, *ApiError) {
 	if !validOwner(e.owner) {
 		return clone(e.state), e.state.Error
 	}
-	// Recheck immediately before requesting termination, not only at launch.
 	same, err := s.orphanIdentity(e)
 	if err != nil {
 		e.state.Error = orphanIdentityError()

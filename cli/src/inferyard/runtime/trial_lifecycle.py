@@ -57,7 +57,6 @@ async def prepare_service(
         idle_state.pending = False
     if recovery:
         store.observe("recovery", recovery, stage="post_idle")
-    # Single historically re-queries falsey native properties; batch only re-queries None.
     if single_kind is not None:
         props = pre_idle_props or await adapter.verify_properties(config)
         if pre_idle_props is None:

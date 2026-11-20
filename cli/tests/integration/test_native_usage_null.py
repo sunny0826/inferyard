@@ -24,7 +24,6 @@ def test_cli_stream_usage(native_scenario, phase, mode, tmp_path, monkeypatch, c
     monkeypatch.setattr(running, "Dependencies", lambda **kwargs: deps)
     service.options["usage_mode"] = mode
     if phase == "run":
-        # Allow both preflight probes and warmups; exercise the first formal request.
         service.options["fail_at"] = (
             3 + command.config.config.to_dict()["execution"]["warmup_count"]
         )
@@ -35,7 +34,7 @@ def test_cli_stream_usage(native_scenario, phase, mode, tmp_path, monkeypatch, c
     invalid = mode == "invalid"
     assert code == ((2 if phase == "probe" else 3) if invalid else 0)
     root = Path(result["evidence_dir"])
-    data = read_trial(root)  # Offline wire replay checks the same usage evidence.
+    data = read_trial(root)
     events, _ = read_jsonl(root / "events.jsonl")
     target = next(
         e

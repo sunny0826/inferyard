@@ -32,7 +32,6 @@ def main():
     version = json.loads((args.inputs / "expected.json").read_text(encoding="utf-8"))[
         "pytest_version"
     ]
-    # Test-only environment: runtime pins stay fixed; pytest is the frozen repository test version.
     env.update(UV_TOOL_DIR=str(out / "tools-test"), UV_TOOL_BIN_DIR=str(out / "bin-test"))
     subprocess.run(
         [
