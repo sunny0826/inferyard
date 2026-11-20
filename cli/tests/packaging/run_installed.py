@@ -125,7 +125,6 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
     command("install", [uv, "tool", "install", *base, "--constraints", constraint_copy, wheel_copy])
     cli = out / "bin" / ("inferyard.exe" if os.name == "nt" else "inferyard")
     python = out / "tools/inferyard" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-    # Once installed, all direct commands below run with uv's network disabled too.
     offline_env = dict(env, UV_OFFLINE="1", UV_PYTHON_DOWNLOADS="never")
     for name, args in [
         ("help", ["--help"]),
@@ -285,7 +284,6 @@ def run_matrix(wheel, constraints, inputs, out, manifest):
     )
     assert isolated["dependencies"] == pinned["dependencies"]
     assert json.loads(command("persistent-tool-unchanged", [cli, "--versions"])) == different
-    # A second physical installation must preserve every resource and identity.
     second = dict(env, UV_TOOL_DIR=str(out / "tools-b"), UV_TOOL_BIN_DIR=str(out / "bin-b"))
     command(
         "install-b",

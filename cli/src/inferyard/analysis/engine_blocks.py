@@ -14,7 +14,6 @@ from inferyard.errors import EvidenceError
 
 DEFINITION = "engine-comparison.v1"
 MIN_BLOCKS = 3
-# metric -> True when a larger value is better
 METRICS = {
     "first_content_ms": False,
     "first_body_text_ms": False,
@@ -30,12 +29,7 @@ METRIC_IDS = {
     "client_decode_interval_ms": "L08",
 }
 SIDE_SCOPE = ("model", "engine", "generation", "conditions", "execution", "safety")
-# The formal MLX server (bound by source hash at service inspection) calls
-# mlx_lm.stream_generate without a prompt_cache, so every request starts empty.
 STRUCTURAL_COLD_CACHE = {"mlx-lm": "formal_server_no_prompt_cache_reuse"}
-# Different model formats rarely produce equal greedy output lengths, so E2E and
-# throughput only display. First content is not aligned: mlx-lm streams `<think>` as
-# text and llama-server parses it away, so first_body_text_ms decides instead.
 CROSS_FORMAT_JUDGED = ("first_body_text_ms", "client_decode_interval_ms")
 CROSS_FORMAT_DISPLAY = {
     "first_content_ms": "display_only_first_output_token_not_aligned",
@@ -147,7 +141,6 @@ def _pair_requests(left, right, blockers, mismatches, cache_evidence, cross_form
             if not cross_format:
                 excluded["output_tokens_differ"] = excluded.get("output_tokens_differ", 0) + 1
                 continue
-            # Per-token metrics stay comparable; length-dependent ones become display only.
             unmatched["output_length_unmatched"] += 1
         pairs.append((_metrics(a), _metrics(b)))
     return pairs, excluded

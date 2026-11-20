@@ -83,9 +83,8 @@ def process_start_ticks(pid: int, proc_root: Path = Path("/proc")) -> int:
 
         return windows_start(pid)
     try:
-        # comm is parenthesized and may itself contain spaces or ')'.
         fields = (proc_root / str(pid) / "stat").read_text().rsplit(")", 1)[1].split()
-        return int(fields[19])  # field 22; fields starts at field 3 (state).
+        return int(fields[19])
     except (OSError, ValueError, IndexError) as exc:
         raise PreflightError("service_process_unavailable") from exc
 
@@ -355,7 +354,6 @@ def verify_process(
         if sanitized_arguments(args) != config["engine"]["startup_args"]:
             raise PreflightError("service_startup_arguments_mismatch")
         if config["engine"].get("slots_debug") is True:
-            # Read only the one declared flag into evidence; never persist environ.
             values = [
                 item.partition(b"=")[2]
                 for item in (directory / "environ").read_bytes().split(b"\0")

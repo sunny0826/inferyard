@@ -12,7 +12,6 @@ from inferyard.contracts.schemas_tasks import BUNDLE, CASE
 from inferyard.contracts.validation import bundle_invariants, validate_value
 from inferyard.errors import ContractError
 
-# Default benchmark scope: every formal benchmark covers both shipped bundles.
 DEFAULT_BUNDLES = ("zh-core", "zh-svg-pelican")
 
 
@@ -71,7 +70,6 @@ def validate_case(case):
 def _validate_case_semantics(case):
     category, rules = case["category"], case["rules"]
     if category == "svg":
-        # CASE requires reference_answer and an empty rules object; no quality rules apply.
         return
     if category in ("instruction", "extraction"):
         bundle_invariants({"cases": [case]})
@@ -112,7 +110,6 @@ def validate_bundle_semantics(bundle):
     by_id = {}
     label_sets = set()
     for case in bundle["cases"]:
-        # BUNDLE already validates every CASE; no new data enters this traversal.
         _validate_case_semantics(case)
         if case["case_id"] in by_id:
             raise ContractError("bundle.cases", "duplicate case_id")

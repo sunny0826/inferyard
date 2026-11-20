@@ -101,7 +101,6 @@ def test_real_downloads_drive_the_full_benchmark_chain(tmp_path):
         assert summary["verified_after_cleanup"] is True
         assert summary["smoke_quality"]["denominator"] == 40
         return
-    # A native hardware stop keeps its incomplete evidence and is never retried.
     if any(stop in chain.stdout + chain.stderr for stop in HARDWARE_STOPS):
         pytest.skip(f"hardware safety stop retained as incomplete evidence: {chain.stderr.strip()}")
     raise AssertionError(

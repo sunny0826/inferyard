@@ -67,8 +67,6 @@ func reportQuality(value *string) string {
 	case "not_scored":
 		return "未评分"
 	case "not_applicable":
-		// A case that carries no quality verdict (an SVG or performance task)
-		// is not applicable rather than missing; never leak the raw enum.
 		return "不适用"
 	default:
 		return reportText(*value)

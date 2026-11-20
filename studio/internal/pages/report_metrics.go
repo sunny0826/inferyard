@@ -73,10 +73,6 @@ func reportMetrics(c *ui.Context, run core.ReportRun) {
 	reportFactSummary(c, run)
 }
 
-// reportPassRate adds the pass-rate percentage to the pass count when the
-// quality conclusion is complete and the denominator is positive, matching the
-// completion and history views. An incomplete conclusion or a zero denominator
-// keeps the bare count instead of inventing a rate.
 func reportPassRate(quality core.ReportQuality) string {
 	rate := reportRate(quality.StudioCounts)
 	if !quality.Complete || quality.Numerator == nil || quality.Denominator == nil || *quality.Denominator <= 0 {
@@ -85,10 +81,6 @@ func reportPassRate(quality core.ReportQuality) string {
 	return fmt.Sprintf("%s · %.1f%%", rate, float64(*quality.Numerator)*100/float64(*quality.Denominator))
 }
 
-// reportFactSummary adds only what the four KPI cards cannot carry: the scope
-// disclaimer. It never repeats the card numbers, never fills a missing value
-// and never concludes that the model suits a workload. When every KPI is
-// missing it keeps the fallback that names the missing measurements.
 func reportFactSummary(c *ui.Context, run core.ReportRun) {
 	d := run.Dashboard
 	if d.Quality.Numerator == nil && d.Quality.Denominator == nil &&
@@ -100,8 +92,6 @@ func reportFactSummary(c *ui.Context, run core.ReportRun) {
 	ui.Text(c, "仅反映本次实测记录，不代表其他上下文或并发场景表现。").TextColor(c.Theme().TextMuted)
 }
 
-// reportThroughput renders the batch-window rates. Null values keep their
-// recorded reason; a measured zero is shown as measured, not as missing.
 func reportThroughput(c *ui.Context, run core.ReportRun) {
 	throughput := run.Dashboard.Throughput
 	card(c, "吞吐", func() {
@@ -126,8 +116,6 @@ func reportPerSecond(value *float64, reason *string) string {
 	return reportDecimal(*value)
 }
 
-// reportDecimal rounds normal values to two decimals and keeps small non-zero
-// measurements from rendering as zero.
 func reportDecimal(value float64) string {
 	if value >= 0.01 || value <= -0.01 {
 		return fmt.Sprintf("%.2f", value)
@@ -160,8 +148,6 @@ func reportThroughputReason(reason *string) string {
 	}
 }
 
-// reportOutputIntervals renders pooled block-arrival intervals in milliseconds.
-// They are not per-token ITLs, and the card says so.
 func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 	intervals := run.Dashboard.OutputBlockIntervals
 	card(c, "输出内容块到达间隔", func() {
@@ -186,8 +172,6 @@ func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 	})
 }
 
-// reportP95Exploratory follows the presentation rule: twenty samples allow a
-// pooled p95, but it stays exploratory below one hundred samples.
 func reportP95Exploratory(intervals *core.ReportOutputBlockIntervals) bool {
 	return intervals.P95 != nil && intervals.IntervalCount >= 20 && intervals.IntervalCount < 100
 }

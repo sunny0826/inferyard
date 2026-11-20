@@ -83,7 +83,6 @@ class LabTransport:
         return value
 
     async def management(self, path, body=None, *, timeout=5):
-        # Kept for the common adapter interface; lab adapters never guess legacy routes.
         from inferyard.contracts.lab_observation_json import load_strict
 
         return load_strict(

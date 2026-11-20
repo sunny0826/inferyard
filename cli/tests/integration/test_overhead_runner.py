@@ -74,7 +74,6 @@ def test_abba_runs_real_lifecycle_and_preserves_frozen_protocol(scenario):
                 dependencies=deps,
             )
         )
-    # A self-consistent rewritten protocol/index cannot relabel the observed interval.
     from inferyard.runtime.collector_overhead import freeze_protocol
 
     keys = (
@@ -136,11 +135,8 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
 
     plan, loaded, deps, output = inputs(scenario)
     config = loaded.config.to_dict()
-    # A short cadence keeps real wall-clock sampling waits small in every branch; logical
-    # time still governs the resource branches and schedule gates scale with interval_ms.
     config["telemetry"]["interval_ms"] = 250
     if mode == "resources":
-        # Three logical intervals per window; native IO duration is not under test.
         config["telemetry"]["baseline_seconds"] = 0.75
         scenario[3]["stream_delay"] = 0.75
     loaded = replace(loaded, config=Document.parse("config", config))
@@ -256,7 +252,6 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         from inferyard.reporting.total_applicability import load_performance_evidence_v3
         from inferyard.platforms.resources import ResourceSampler
 
-        # An ABBA arm is not an independent subsequent target.
         from inferyard.analysis.comparison_input import comparison_input
         from inferyard.reporting.comparison_report import build_comparison, verify_comparison
         from inferyard.runtime.trial_runner import run_trial
@@ -267,13 +262,10 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         assert not circular["eligible"]
         assert circular["assessment"] == {}
         assert "formal_trial_total_observer_evidence_missing" in circular["reasons"]
-        # Isolate incremental per-metric gates in this synthetic fixture.
-        # The actual full-trial path and missing-proof rejection have separate regressions.
         monkeypatch.setattr(
             "inferyard.reporting.total_applicability.load_total_applicability",
             lambda *args, **kwargs: {"eligible": True, "reasons": [], "tolerance_ratio": 0.99},
         )
-        # Only this synthetic test bypasses human corpus admission.
         monkeypatch.setattr("inferyard.runtime.trial_runner.require_review", lambda bundle: None)
         deps.sampler = ResourceSampler
         targets = []
@@ -334,10 +326,6 @@ def test_observers_can_qualify_all_four_environment_windows(scenario, monkeypatc
         )
         assert compared.details["eligibility"]["performance"]
         assert verify_comparison(out)["verified"]
-    # Downstream report/filter contracts are independent of the observer window except
-    # for the C02 resource aggregation; run them once instead of per parameter branch.
-    # Windows skips the "resources" branch, so fall back to "boundary" there to keep
-    # the generic downstream assertions covered on every platform.
     downstream_mode = "resources" if sys.platform in ("linux", "darwin") else "boundary"
     if mode == downstream_mode and not collector_pause:
         from inferyard.reporting.studio_report import write_studio_report

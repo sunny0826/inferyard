@@ -37,8 +37,6 @@ def portable_fixture(monkeypatch):
         config["engine"]["startup_args"] += ["-m", config["model"]["local_path"]]
         return replace(loaded, config=Document.parse("config", config))
 
-    # Bind the synthetic model before sealing; public policy requires this
-    # declaration without reading a real model or starting its service.
     monkeypatch.setattr("tests.helpers.load_config", portable_config)
     return fixture_run
 

@@ -16,8 +16,6 @@ from tests.legacy_journal import LegacyJournal
 
 def python_worker(script, *arguments):
     if sys.platform == "win32":
-        # The venv python.exe is a redirector that spawns another PID. Use the
-        # base interpreter so kill() reaches the actual worker holding the lock.
         packages = str(Path(sys.prefix) / "Lib/site-packages")
         script = f"import site; site.addsitedir({packages!r});\n" + script
         return [sys._base_executable, "-c", script, *arguments]

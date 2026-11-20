@@ -50,9 +50,6 @@ func (s *Service) Readiness() Readiness {
 	return Readiness{CLI: s.probe(u), Workspace: w, Results: directoryReadiness(u.ResultsRoot, u.ResultsRoot != nil), Models: directoryReadiness(u.ModelsRoot, u.ModelsRoot != nil)}
 }
 
-// FirstRun reports whether the three path settings are still unset. It does not
-// probe the CLI or touch the filesystem; window creation reads it before the
-// first paint, and the background refresh probes separately.
 func (s *Service) FirstRun() bool {
 	return firstRun(s.userSettings())
 }

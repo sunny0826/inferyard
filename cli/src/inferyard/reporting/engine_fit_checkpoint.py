@@ -32,7 +32,6 @@ def read_partial(root):
             run["completeness"] == "incomplete" and run["stop_reason"] == "run_in_progress",
             "checkpoint_state",
         )
-        # This is a read projection, never a rewrite or a claim of observed final resources.
         run = {**run, "counts": request_counts(rows), "stop_reason": "interrupted_checkpoint"}
     else:
         run = decode_json_bytes(read_entry(root, "run.json"))

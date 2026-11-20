@@ -78,8 +78,6 @@ def freeze(spec, loaded, out):
     }:
         raise EvidenceError("extension_case_absent_from_reviewed_bundle")
     if spec["definition"] == "native_tools.v1" and spec["track"] != "capability_diagnostic":
-        # Formal tool content has a new review boundary: a hash alone is not a
-        # recorded human approval. This CLI only executes capability diagnostics.
         raise EvidenceError("formal_tool_scenarios_require_separate_reviewed_bundle")
     plan = {
         "kind": "extension_plan.v1",
@@ -278,7 +276,6 @@ async def live(plan, loaded, out, *, identity_context=None):
             summary = reduce_packet(packet)
             store.snapshot("packet.json", packet)
             store.snapshot("summary.json", summary)
-            # Bind every observer sub-run before sealing the parent packet.
             children = [
                 {"path": str(p.parent.relative_to(store.path)), "manifest_sha256": sha256_file(p)}
                 for p in sorted(store.path.glob("observer-arms/*/manifest.json"))

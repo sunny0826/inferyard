@@ -316,15 +316,10 @@ func studioArray(raw json.RawMessage) ([]json.RawMessage, error) {
 	return arr, nil
 }
 
-// studioClosed enforces required presence and rejects unknown keys, matching
-// the schema's additionalProperties:false. Presence is checked separately from
-// nullability so explicit null stays meaningful for nullable fields.
 func studioClosed(obj map[string]json.RawMessage, required ...string) error {
 	return studioClosedOptional(obj, required, nil)
 }
 
-// studioClosedOptional keeps optional sections in the closed key set; a
-// present optional key is validated by its own section rules.
 func studioClosedOptional(obj map[string]json.RawMessage, required, optional []string) error {
 	allowed := make(map[string]bool, len(required)+len(optional))
 	for _, name := range required {

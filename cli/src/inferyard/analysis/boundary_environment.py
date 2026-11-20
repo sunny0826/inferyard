@@ -95,8 +95,6 @@ def qualify_boundary_environment(root, data, sealed, *, reads=None):
             for r in pair
         )
         if policy is not None:
-            # The baseline has no periodic sampler. Its allowed interval comes
-            # exclusively from the frozen bracketing-width policy, not telemetry.
             interval_ms = max(1, int(policy["max_external_interval_seconds"] * 500))
             reduction = reduce_external_cpu(
                 [r["cpu"] for r in pair], data["config"]["endpoint"], interval_ms

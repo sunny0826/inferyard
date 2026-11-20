@@ -14,13 +14,9 @@ def unique(values, path):
 
 def validate_artifact_reference(ref, path):
     name = ref["path"]
-    # PurePosixPath.parts discards empty segments and standalone '.', not '..'.
     parts = tuple(part for part in name.split("/") if part and part != ".")
-    # POSIX absolute paths start with '/'. Every Windows drive/UNC spelling
-    # contains ':' or '\\', or starts with '/', so these checks cover .drive too.
     if name.startswith("/") or ".." in parts or "\\" in name or ":" in name:
         raise ContractError(path, "requires a relative contained artifact path")
-    # Match the normalized empty-parts and dot-prefixed-segment checks in order.
     if not parts or any(part.startswith(".") for part in parts):
         raise ContractError(path, "invalid artifact path")
 
@@ -250,7 +246,6 @@ def validate_semantics(kind, data):
     if kind == "bundle":
         from inferyard.contracts.bundle import validate_bundle_semantics
 
-        # validate_document has already checked this exact bundle's structure.
         validate_bundle_semantics(data)
         return
     if kind == "score":

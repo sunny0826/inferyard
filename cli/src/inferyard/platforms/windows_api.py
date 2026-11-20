@@ -38,7 +38,7 @@ def process_start(pid):
     get_times = _function(
         library, "GetProcessTimes", [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4
     )
-    handle = open_process(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    handle = open_process(0x1000, False, pid)
     if not handle:
         raise _error()
     try:
@@ -87,13 +87,12 @@ def open_file(path, flags):
     inspect = _function(
         library, "GetFileInformationByHandle", [wintypes.HANDLE, ctypes.POINTER(_FileInfo)]
     )
-    access = 0x80000000  # GENERIC_READ
+    access = 0x80000000
     if flags & os.O_RDWR:
         access |= 0x40000000
     elif flags & os.O_WRONLY:
         access = 0x40000000
     disposition = 1 if flags & os.O_EXCL else 4 if flags & os.O_CREAT else 3
-    # FILE_SHARE_READ|WRITE|DELETE, FILE_FLAG_OPEN_REPARSE_POINT|BACKUP_SEMANTICS.
     handle = create(_long_path(path), access, 7, None, disposition, 0x02200000, None)
     if handle == ctypes.c_void_p(-1).value:
         raise _error()
@@ -101,13 +100,13 @@ def open_file(path, flags):
         info = _FileInfo()
         if not inspect(handle, ctypes.byref(info)):
             raise _error()
-        if info.attributes & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
+        if info.attributes & 0x400:
             raise OSError("reparse_point_rejected")
         fd = msvcrt.open_osfhandle(handle, (flags & (os.O_WRONLY | os.O_RDWR)) | os.O_BINARY)
     except BaseException:
         close(handle)
         raise
-    return fd  # The CRT descriptor now owns the handle.
+    return fd
 
 
 def move_file(temporary, path, overwrite):

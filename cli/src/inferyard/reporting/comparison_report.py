@@ -96,8 +96,6 @@ def read_verified_comparison(root, *, loaded=None, source_roots=()):
         or saved.get("schema_version") != SCHEMA_VERSION
         or saved.get("format_version") != FORMAT_VERSION
     ):
-        # Retired presentation layouts are checked for exact sealed bytes before
-        # their version is rejected; a damaged seal can never become a version error.
         from inferyard.evidence.legacy_presentation_seal import legacy_index_bytes
 
         legacy_index_bytes(root)

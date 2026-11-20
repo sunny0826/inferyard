@@ -7,9 +7,6 @@ import (
 	"inferyard/studio/internal/evidence"
 )
 
-// scoreInputsJSON declares three cases: two quality cases and one svg case that
-// the frozen bundle marks outside quality. The aggregate seeds its progress from
-// the selection document and reads categories from the bundle document.
 const scoreInputsJSON = `{"documents":{
 	"selection":{"payload":{"case_ids":["case-0","case-1","case-2"]}},
 	"bundle":{"payload":{"cases":[
@@ -18,13 +15,11 @@ const scoreInputsJSON = `{"documents":{
 		{"case_id":"case-2","category":"svg"}
 	]}}}}`
 
-// scoreEvent is one events.jsonl line the aggregate consumes.
 type scoreEvent struct {
 	seq, caseIndex int
 	kind, value    string
 }
 
-// scoreLine renders one event exactly as the CLI writer lays it out.
 func (e scoreEvent) scoreLine() string {
 	base := fmt.Sprintf(`{"seq":%d,"phase":"formal","event_type":%q,"data":{"case_id":"case-%d"`, e.seq, e.kind, e.caseIndex)
 	switch e.kind {
@@ -36,9 +31,6 @@ func (e scoreEvent) scoreLine() string {
 	return base + "}}"
 }
 
-// The event path feeds the same reduction and reads the category from the frozen
-// bundle: a failed svg case produces no score, yet must stay out of the quality
-// denominator because the bundle says it is exempt.
 func TestAggregateExcludesFailedExemptCaseFromDenominator(t *testing.T) {
 	a := newAggregate([]byte(scoreInputsJSON))
 	a.events(scoreRecords([][2]string{{"completed", "pass"}, {"completed", "pass"}, {"failed", ""}}))
@@ -51,12 +43,9 @@ func TestAggregateExcludesFailedExemptCaseFromDenominator(t *testing.T) {
 	}
 }
 
-// A failed quality case stays in the denominator and the rate survives, which is
-// the CLI's 3-of-4 behaviour for one execution failure.
 func TestAggregateCountsFailedQualityCaseAndKeepsRate(t *testing.T) {
 	a := newAggregate([]byte(scoreInputsJSON))
 	a.events(scoreRecords([][2]string{{"completed", "pass"}, {"completed", "pass"}, {"failed", ""}}))
-	// Re-label case-2 as a quality case by replacing the frozen bundle.
 	quality := `{"documents":{
 		"selection":{"payload":{"case_ids":["case-0","case-1","case-2"]}},
 		"bundle":{"payload":{"cases":[
@@ -73,8 +62,6 @@ func TestAggregateCountsFailedQualityCaseAndKeepsRate(t *testing.T) {
 	}
 }
 
-// scoreRecords builds the started/finished/score sequence, one triple per case;
-// an empty state value emits no score event.
 func scoreRecords(states [][2]string) []evidence.Record {
 	records := make([]evidence.Record, 0, len(states)*3)
 	seq := 0

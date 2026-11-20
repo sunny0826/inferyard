@@ -26,8 +26,6 @@ def prepare_scan(preparations, output_budgets, repeats, out):
     if len(set(targets)) != len(targets):
         raise EvidenceError("length_scan_duplicate_target")
     for item in prepared:
-        # Runtime binding varies between preparation sessions; model/template,
-        # startup and sampling conditions must be identical for this grid.
         for key in ("model", "conditions", "generation", "execution"):
             if item["config"][key] != first[key]:
                 raise EvidenceError("length_scan_preparation_conditions_differ")

@@ -134,7 +134,7 @@ class TrialEvidence:
                 return None
             stage = None
         elif kind == "identity":
-            stage = None  # Legacy identity has one authoritative slot without stage metadata.
+            stage = None
         name = OBSERVATION_FILES.get((kind, stage))
         if name is None:
             raise EvidenceError("ambiguous_observation_query")

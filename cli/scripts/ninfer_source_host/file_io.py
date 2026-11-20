@@ -206,7 +206,6 @@ class _Runner:
         return result
 
     def _seal(self, result):
-        # 正文编码和结果 JSON 都在原 task 期限之内。跨期不再保留成功正文。
         self._note_deadline()
         if self.primary is None:
             return result

@@ -52,7 +52,6 @@ func (m *devManifest) readSession() (devSession, error) {
 	return s, nil
 }
 
-// The callback returns only after any created Service has completed shutdown.
 func (m *devManifest) runSession(ctx context.Context, cancel context.CancelFunc, run func(*devSession) error) (result error) {
 	if _, err := os.Lstat(m.sessionPath()); !os.IsNotExist(err) {
 		return fmt.Errorf("launch already has session evidence: %s", m.sessionPath())

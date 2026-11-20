@@ -13,7 +13,6 @@ from inferyard.platforms.environment_observer import EnvironmentObserver
 
 
 def read_cpu(pid, ticks, proc_root):
-    # /proc/PID/stat comm may contain ')' or spaces; fields start at field 3.
     raw = (proc_root / str(pid) / "stat").read_text().rsplit(")", 1)[1].split()
     if int(raw[19]) != ticks:
         raise PreflightError("source_changed")

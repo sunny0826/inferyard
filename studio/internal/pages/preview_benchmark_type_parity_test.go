@@ -10,8 +10,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// 新任务 returns the preview to the regular benchmark, matching production, and
-// 用此组合新开任务 still reopens the specialty round it was started from.
 func TestPreviewNewTaskResetsBenchmarkTypeParity(t *testing.T) {
 	p := newPreviewSession(context.Background())
 	p.loadScene(previewSceneIndex(t, "模型 · 可用组合"))

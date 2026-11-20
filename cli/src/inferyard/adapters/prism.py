@@ -219,7 +219,6 @@ class PrismAdapter:
     request_body = staticmethod(request_body)
 
     def __init__(self, origin: str, *, secret: str | None = None, transport=None):
-        # Re-resolve and pin for real requests; MockTransport still uses a validated numeric URL.
         self.origin, _, _ = resolve_loopback_origin(origin)
         self.redactor = Redactor([secret] if secret else [])
         self.client = httpx.AsyncClient(
@@ -468,7 +467,6 @@ class PrismAdapter:
         except httpx.HTTPError:
             error = "transport_error"
         except ProtocolError as exc:
-            # These are fixed adapter-owned categories, never service error text.
             error = str(exc)
         except ContractError, UnicodeError, ValueError, KeyError, TypeError:
             error = "protocol_error"

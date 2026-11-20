@@ -32,7 +32,6 @@ def resolve_sources(python, declaration, roots):
             package = directory / part
             regular = package / "__init__.py"
             source = directory / (part + ".py")
-            # Do not infer opaque extension/zip entrypoints from version strings.
             if regular.is_file():
                 selected = regular
                 locations = [package]

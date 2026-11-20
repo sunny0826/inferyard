@@ -67,7 +67,6 @@ def preload_inputs(reads):
         except EvidenceError as exc:
             if exc not in reads.errors.values():
                 raise
-            # Defer physical parse failures until the original seal has been checked.
 
 
 def _inputs(root, reads, limits):
@@ -75,7 +74,6 @@ def _inputs(root, reads, limits):
     for kind in ("run", "plan", "selection", "config", "bundle"):
         data = reads.input(kind)
         require_core(data, kind)
-        # TrialEvidence validates every layout 2 document in the inputs envelope.
         if reads.layout_version == 1:
             try:
                 validate_document(kind, data)
@@ -421,7 +419,6 @@ def read_trial(root: Path, *, metadata=None):
         summary["cache_observations"] = cache_series(
             events, documents["config"], requests, build_verified=engine_verified
         )
-    # Reducers may use tuple intervals internally; the public summary is JSON data.
     summary = strict_json_loads(json_bytes(summary).decode())
     validate_document("summary", summary)
     return {

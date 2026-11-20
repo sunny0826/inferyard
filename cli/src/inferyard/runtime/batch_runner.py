@@ -193,8 +193,6 @@ async def execute_async(
             for t in plan["trials"]
         )
         if source is not None or same_workload:
-            # Resume keeps the most recently verified service binding, while corpus relocation
-            # uses the current package. Immutable fields were checked against the frozen plan.
             prior = source or previous
             config = prior["config"].copy()
             config["bundle"] = base.config.to_dict()["bundle"]
@@ -295,7 +293,6 @@ async def execute_async(
             )
             data["path"] = path
             runs.append(data)
-            # Recovery tokens are one-time and bound to a dirty marker, not to all repetitions.
             scoring_partial = (
                 code == 3
                 and data["summary"]["scope_complete"]

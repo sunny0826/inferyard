@@ -2,8 +2,6 @@ package core
 
 import "context"
 
-// Shutdown closes admission immediately, drains cancelled runs, then reaps the
-// owned engine. A caller timeout does not abandon cleanup or change its order.
 func (s *Service) Shutdown(ctx context.Context) error {
 	s.beginShutdown()
 	select {

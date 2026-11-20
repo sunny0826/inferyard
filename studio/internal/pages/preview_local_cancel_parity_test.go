@@ -111,7 +111,6 @@ func TestPreviewLocalCancelStopsOnlyOwnedServiceParity(t *testing.T) {
 	}
 }
 
-// confirmCancelRun presses the run-cancel entry and its confirmation.
 func confirmCancelRun(t *testing.T, tt *ui.Tester) {
 	t.Helper()
 	for _, label := range []string{"取消运行", "确认取消运行"} {

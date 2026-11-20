@@ -49,7 +49,6 @@ def _query(observer, command, address, port, deadline):
     path = Path(observer["path"])
     if _cli_hash(path) != observer["sha256"]:
         raise PreflightError("engine_fit_lms_cli_changed")
-    # Omitting host selects local CLI authentication; an explicit port skips discovery/startup.
     result = _run(
         [
             str(path),
@@ -86,7 +85,6 @@ def _model_row(value, observer, model_path):
         raise PreflightError("engine_fit_lms_model_path_unverified")
     root = Path(observer["models_root"])
     local = (root / relative).resolve(strict=True)
-    # File symlinks can name the frozen asset, but cannot escape the declared model root.
     if not local.is_relative_to(root) or not local.is_file() or not local.samefile(model_path):
         raise PreflightError("engine_fit_lms_model_path_unverified")
     if (

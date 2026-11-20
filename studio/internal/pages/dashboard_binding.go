@@ -63,8 +63,6 @@ func (s *viewState) bindDiscovered(pid int64, endpoint string) {
 	})
 }
 
-// applyBinding records a finished connection attempt: the rejected bundle and
-// cause, or, on success, the service the round consumed.
 func (s *viewState) applyBinding(failedBundle string, e *core.ApiError, pid int64) {
 	s.bindingOutcome(failedBundle, e)
 	if e == nil {
@@ -72,10 +70,6 @@ func (s *viewState) applyBinding(failedBundle string, e *core.ApiError, pid int6
 	}
 }
 
-// bindingOutcome applies a connection result. A rejection is attributed to the
-// bind step and to the bundle that actually failed; a success clears the stale
-// bind stage and failure, so refreshed workspace progress decides the step
-// instead of the old failure.
 func (s *viewState) bindingOutcome(failedBundle string, e *core.ApiError) {
 	if e != nil {
 		s.failedBundle = failedBundle
@@ -86,8 +80,6 @@ func (s *viewState) bindingOutcome(failedBundle string, e *core.ApiError) {
 	s.clearRecoveredBinding()
 }
 
-// markServiceUsed records a connected LM Studio service so the handoff form
-// never offers it again.
 func (s *viewState) markServiceUsed(pid int64) {
 	if pid <= 0 {
 		return
@@ -98,8 +90,6 @@ func (s *viewState) markServiceUsed(pid int64) {
 	s.localUsedPIDs[pid] = true
 }
 
-// runBindingChain re-reads each candidate's phase and command before binding and
-// returns the bundle whose connection failed, so only that bundle is reported.
 func runBindingChain(ctx context.Context, workspace string, jobs []bindingJob, pid int64, endpoint string,
 	progress func(context.Context) (core.ProgressResponse, *core.ApiError),
 	execute func(context.Context, core.WizardRequest) (core.WizardResult, *core.ApiError),
@@ -125,7 +115,6 @@ func runBindingChain(ctx context.Context, workspace string, jobs []bindingJob, p
 				if _, err := inferyard.SplitCommand(emptyText(b.NextCommand)); err != nil {
 					return job.bundle, core.Err("binding_progress_changed")
 				}
-				// Reuse the same bind command builder as advanced manual binding.
 				one := *p
 				one.Bundles = []inferyard.BundleProgress{b}
 				view := viewState{progress: &one, candidate: job.candidate}

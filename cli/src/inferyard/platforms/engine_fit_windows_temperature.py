@@ -57,10 +57,9 @@ def _read_query(executable):
         raise PreflightError("nvidia_temperature_query_timeout") from exc
     finally:
         if process.poll() is None:
-            process.kill()  # Only our private read-only query, never a model service.
+            process.kill()
         process.wait(timeout=1.0)
         reader.join(timeout=1.0)
-        # Do not block on a pipe inherited by an unexpected descendant.
         if not reader.is_alive():
             process.stdout.close()
 

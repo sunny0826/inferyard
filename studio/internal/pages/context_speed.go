@@ -68,10 +68,7 @@ func (r *speedTask) validCount() int {
 }
 
 type speedWorkspace struct {
-	selected bool
-	// typeTab is the switch's own index; typeTabSeen remembers the selected
-	// value it was seeded from, so a click and a direct assignment to selected
-	// (reopening a specialty round) can each update the switch.
+	selected                     bool
 	typeTab, typeTabSeen         int
 	context                      int
 	current, opened              *speedTask
@@ -80,10 +77,6 @@ type speedWorkspace struct {
 	table, samples, historyTable pageTableState
 }
 
-// speedTypeSwitch renders the benchmark type above every field it reshapes: the
-// choice decides whether the six-stage workspace flow or the specialty flow
-// drives the page. A segmented switch, not a dropdown, matches what the choice
-// changes. It reports whether the specialty type is chosen.
 func (s *viewState) speedTypeSwitch(c *ui.Context) bool {
 	if s.speed == nil {
 		return false
@@ -109,8 +102,6 @@ func boolIndex(on bool) int {
 	return 0
 }
 
-// speedSelection renders the specialty setup only. The type switch itself lives
-// above the shared fields because it also selects the progress model.
 func (s *viewState) speedSelection(c *ui.Context) bool {
 	if s.speed == nil {
 		return false
@@ -251,9 +242,6 @@ func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
 	}
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 		primaryButton(c, "查看结果").OnClick(func() { s.openSpeed(r.id) })
-		// A reset while another action is in flight would race that action's
-		// delayed update and lose the restored model, engine and tier; the
-		// result view disables the same entry for the same reason.
 		button(c, "用此组合新开任务").Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
 }
@@ -323,8 +311,6 @@ func (s *viewState) speedResultView(c *ui.Context) {
 	}
 	ui.Text(c, prefix+r.id+" · "+r.label()).TextColor(stateColor(c, stateWarning))
 	ui.Row(c).Wrap().Gap(tokens(c).Density.Row).Children(func() {
-		// The result can be opened from the task page, so returning names its own
-		// tab instead of relying on whichever tab was last chosen.
 		button(c, "返回历史任务").OnClick(func() {
 			w.opened, w.readError = nil, ""
 			s.reportsTab = reportsTabSpeed

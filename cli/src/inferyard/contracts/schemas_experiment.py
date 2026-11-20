@@ -59,7 +59,6 @@ WORKLOAD["properties"]["cache_protocol"] = enum("prism_prefix_reuse.v1")
 WORKLOAD["properties"]["model_lineage"] = LINEAGE
 WORKLOAD["properties"]["model_lineage_records"] = RECORDS
 WORKLOAD["properties"]["repeat_case_orders"] = array(array(IDENTIFIER, 1), 1)
-# Optional for existing quality/performance plans; required by position semantics.
 WORKLOAD["properties"]["position_cases"] = array(
     obj(
         {
@@ -197,7 +196,7 @@ RUN = obj(
 
 RUN = {
     "oneOf": [
-        RUN,  # Original schema3 records keep their saved whole-source identity.
+        RUN,
         obj(
             {**RUN["properties"], "implementation_identity": IMPLEMENTATION_IDENTITY},
             [key for key in RUN["required"] if key != "tool_source_sha256"]

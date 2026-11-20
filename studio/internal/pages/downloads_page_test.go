@@ -7,8 +7,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// preparingDownloadsState is the downloads page while the workspace still has
-// to prepare its assets, with one active engine download.
 func preparingDownloadsState() *viewState {
 	s := testState()
 	s.progress.NextAction = "prepare_candidate"
@@ -29,9 +27,6 @@ func downloadsOrder(t *testing.T, tt *ui.Tester) (tasks, create float32) {
 	return taskBox.Y, createBox.Y
 }
 
-// TestDownloadsTasksStayAboveTheForm pins the section order: as soon as any
-// download task exists, its card stays above the new-download form whether or
-// not the workspace is still preparing assets.
 func TestDownloadsTasksStayAboveTheForm(t *testing.T) {
 	s := preparingDownloadsState()
 	tt := ui.NewTester(s.downloadsPageView, 1120, 2000)
@@ -43,8 +38,6 @@ func TestDownloadsTasksStayAboveTheForm(t *testing.T) {
 	}
 }
 
-// TestDownloadGuideFollowsTaskCards keeps the top guide from announcing ready
-// assets while a download is still active or has failed.
 func TestDownloadGuideFollowsTaskCards(t *testing.T) {
 	s := preparingDownloadsState()
 	if got := s.downloadGuideStatus(); got != "正在下载 1 项资源…" {
@@ -66,9 +59,6 @@ func TestDownloadGuideFollowsTaskCards(t *testing.T) {
 	}
 }
 
-// TestDownloadGuideClearsFailureAfterRetrySucceeds keeps the historical failed
-// card in the list but stops asking for a retry once a newer download for that
-// source is running or done.
 func TestDownloadGuideClearsFailureAfterRetrySucceeds(t *testing.T) {
 	failed := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", SourceUrl: "https://example.test/model.gguf", State: "failed", StartedAt: "2026-10-17T00:00:00Z"}
 	s := preparingDownloadsState()
@@ -80,7 +70,6 @@ func TestDownloadGuideClearsFailureAfterRetrySucceeds(t *testing.T) {
 	retry := failed
 	retry.TaskId, retry.OutName, retry.State = "model-2", "model-2", "downloading"
 	retry.StartedAt = "2026-10-17T00:01:00Z"
-	// Newest first, as Service.Downloads and the preview window return them.
 	s.downloads = append([]core.DownloadTask{retry}, s.downloads...)
 	if got := s.downloadGuideStatus(); got != "正在下载 1 项资源…" {
 		t.Fatalf("running retry still counted as a failure: %q", got)
@@ -93,20 +82,16 @@ func TestDownloadGuideClearsFailureAfterRetrySucceeds(t *testing.T) {
 	if unresolved := s.unresolvedDownloadFailures(); unresolved != 0 {
 		t.Fatalf("resolved failure still counts: %d", unresolved)
 	}
-	// The historical card stays in the list; only the retry prompt is gone.
 	if len(s.downloads) != 2 {
 		t.Fatal(s.downloads)
 	}
 }
 
-// TestUnresolvedFailureSurvivesUnrelatedAssets keeps a never-retried failure in
-// the banner even when another asset is available or another download runs.
 func TestUnresolvedFailureSurvivesUnrelatedAssets(t *testing.T) {
 	failed := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", State: "failed", SourceUrl: "https://example.test/other.gguf", StartedAt: "2026-10-17T00:00:00Z"}
 	active := core.DownloadTask{TaskId: "model-2", Kind: "model", State: "downloading", SourceUrl: "https://example.test/another.gguf", StartedAt: "2026-10-17T00:01:00Z"}
 	s := preparingDownloadsState()
 	s.downloads = append(s.downloads, active, failed)
-	// Another model already exists and an unrelated model source is running.
 	s.registry.Models = []core.ModelAsset{{Name: "existing", Available: true}}
 
 	if got := s.unresolvedDownloadFailures(); got != 1 {
@@ -116,7 +101,6 @@ func TestUnresolvedFailureSurvivesUnrelatedAssets(t *testing.T) {
 		t.Fatalf("banner dropped the unresolved failure: %q", got)
 	}
 
-	// A newer same-source success resolves only that failure.
 	resolved := core.DownloadTask{TaskId: "model-3", Kind: "model", State: "done", SourceUrl: failed.SourceUrl, StartedAt: "2026-10-17T00:02:00Z"}
 	s.downloads = append([]core.DownloadTask{resolved}, s.downloads...)
 	if got := s.unresolvedDownloadFailures(); got != 0 {
@@ -124,9 +108,6 @@ func TestUnresolvedFailureSurvivesUnrelatedAssets(t *testing.T) {
 	}
 }
 
-// TestBannerClearsRetryPromptAfterRetry renders the page so the banner text is
-// what the operator reads: the retired failure card stays, its retry prompt
-// does not.
 func TestBannerClearsRetryPromptAfterRetry(t *testing.T) {
 	failed := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", SourceUrl: "https://example.test/model.gguf", State: "failed", StartedAt: "2026-10-17T00:00:00Z"}
 	retry := failed
@@ -154,8 +135,6 @@ func TestBannerClearsRetryPromptAfterRetry(t *testing.T) {
 	}
 }
 
-// TestOlderSuccessDoesNotMaskNewerFailure keeps an older success from hiding a
-// later failure of the same source: only a newer task resolves a failure.
 func TestOlderSuccessDoesNotMaskNewerFailure(t *testing.T) {
 	source := "https://example.test/same.gguf"
 	done := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", SourceUrl: source, State: "done", StartedAt: "2026-10-17T00:00:00Z"}
@@ -194,8 +173,6 @@ func TestOlderSuccessDoesNotMaskNewerFailure(t *testing.T) {
 	}
 }
 
-// TestNewerSuccessResolvesOlderFailure is the mirror case: a success that comes
-// after the failure does retire its retry prompt.
 func TestNewerSuccessResolvesOlderFailure(t *testing.T) {
 	source := "https://example.test/same.gguf"
 	failed := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", SourceUrl: source, State: "failed", StartedAt: "2026-10-17T00:00:00Z"}
@@ -208,12 +185,8 @@ func TestNewerSuccessResolvesOlderFailure(t *testing.T) {
 	}
 }
 
-// TestDownloadOrderBeatsClockRollback pins the ordering source: list position,
-// not StartedAt, decides which task is newer, so a clock step backward between
-// downloads neither revives a resolved failure nor hides a later one.
 func TestDownloadOrderBeatsClockRollback(t *testing.T) {
 	source := "https://example.test/same.gguf"
-	// Newest first: the later task carries an earlier wall-clock stamp.
 	newerDone := core.DownloadTask{TaskId: "model-2", Kind: "model", OutName: "model-2", SourceUrl: source, State: "done", StartedAt: "2026-10-16T23:59:00Z"}
 	olderFailed := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", SourceUrl: source, State: "failed", StartedAt: "2026-10-17T00:01:00Z"}
 
@@ -224,7 +197,6 @@ func TestDownloadOrderBeatsClockRollback(t *testing.T) {
 		t.Fatalf("rolled-back success did not resolve the older failure: %d", got)
 	}
 
-	// Newest first again: the later task failed after the older success.
 	newerFailed := core.DownloadTask{TaskId: "model-4", Kind: "model", OutName: "model-4", SourceUrl: source, State: "failed", StartedAt: "2026-10-16T22:00:00Z"}
 	olderDone := core.DownloadTask{TaskId: "model-3", Kind: "model", OutName: "model-3", SourceUrl: source, State: "done", StartedAt: "2026-10-17T00:05:00Z"}
 	s.downloads = []core.DownloadTask{newerFailed, olderDone}
@@ -236,8 +208,6 @@ func TestDownloadOrderBeatsClockRollback(t *testing.T) {
 	}
 }
 
-// TestDownloadGuideBannerKeepsTheWayBack checks the banner still returns to the
-// task page.
 func TestDownloadGuideBannerKeepsTheWayBack(t *testing.T) {
 	s := preparingDownloadsState()
 	tt := ui.NewTester(s.downloadsPageView, 1120, 2000)
@@ -250,8 +220,6 @@ func TestDownloadGuideBannerKeepsTheWayBack(t *testing.T) {
 	}
 }
 
-// buttonFill reports whether the button showing label paints the theme accent,
-// which is what separates primaryButton from button in the rendered frame.
 func buttonFill(tt *ui.Tester, label string, accent ui.Color) (bool, bool) {
 	r, ok := tt.Find(label)
 	if !ok {
@@ -268,8 +236,6 @@ func buttonFill(tt *ui.Tester, label string, accent ui.Color) (bool, bool) {
 	return false, true
 }
 
-// TestNewDownloadCardKeepsOnePrimaryAction proves the form highlights at most
-// one download action and that the guide stays a secondary control.
 func TestNewDownloadCardKeepsOnePrimaryAction(t *testing.T) {
 	cases := []struct {
 		name          string

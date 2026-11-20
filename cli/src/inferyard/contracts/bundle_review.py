@@ -75,7 +75,6 @@ def _legacy_source(source, *, inherited=False):
         raise ContractError(PROOF_PATH, "legacy inheritance must be an array")
     from inferyard.contracts.bundle import validate_bundle_semantics
 
-    # The normalized proof passed BUNDLE above and has not changed since.
     validate_bundle_semantics(current)
     by_id = {case["case_id"]: case for case in current["cases"]}
     seen = set()

@@ -100,8 +100,8 @@ def test_linux_counters_bind_pid_and_do_not_include_child_cpu(tmp_path):
     proc(tmp_path)
     assert (
         sampler.counters(77, 55)[0]["value"] is None
-    )  # invalidated identity cannot recover silently
-    assert sampler.counters(77, 55)[1]["value"] == 3  # host source remains independently available
+    )
+    assert sampler.counters(77, 55)[1]["value"] == 3
 
 
 def test_cpu_uses_observed_wall_interval_not_whole_request():
@@ -112,7 +112,7 @@ def test_cpu_uses_observed_wall_interval_not_whole_request():
     metrics = reduced["requests"][0]["metrics"]
     assert metrics["C04"]["value"] == 1
     assert metrics["C04"]["coverage"] == 0.5
-    assert metrics["C05"]["value"] == 100  # not 50% from dividing by the two-second request
+    assert metrics["C05"]["value"] == 100
     full = next(m for m in observations if m["statistic"] == "full_request_cpu_seconds")
     assert full["value"] is None and full["missing_reason"] == "request_boundaries_not_covered"
     assert (full["sampled_start_ns"], full["sampled_end_ns"]) == (500_000_000, 1_500_000_000)

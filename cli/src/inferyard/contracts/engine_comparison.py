@@ -8,14 +8,8 @@ from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.contracts.engine_profiles import is_local
 
 SAME_ASSET = frozenset(("llama-cpp", "lmstudio"))
-# Different model formats of one upstream model: the verdict covers the
-# engine together with its model format and cannot be attributed to the engine.
 CROSS_FORMAT = frozenset(("llama-cpp", "mlx-lm"))
 SUPPORTED_PAIRS = (SAME_ASSET, CROSS_FORMAT)
-# Fields the local profile never fills, each checked through its replacement:
-# installation_sha256 (release, binary, runtime closure), content_sha256 or
-# assets_sha256 (model bytes), and the per-request cold-cache gate in
-# engine_blocks (the local schema freezes cache_policy as "unknown").
 LEGACY_ENGINE_FIELDS = (
     "config.engine.release",
     "config.engine.binary_sha256",
@@ -23,7 +17,6 @@ LEGACY_ENGINE_FIELDS = (
     "config.model.sha256",
     "config.conditions.cache_policy",
 )
-# Fields that legitimately differ between engines in this mode.
 ENGINE_DIFFERENCES = (
     "config.engine.family",
     "config.engine.installation_sha256",
@@ -40,8 +33,6 @@ MODEL_FORMAT_DIFFERENCES = (
     "config.model.packing",
     "config.model.template_sha256",
 )
-# A single pair never carries a verdict; compare-engines evaluates the
-# per-request and block gates across interleaved runs.
 PENDING = ("engine_verdict_requires_block_comparison",)
 
 

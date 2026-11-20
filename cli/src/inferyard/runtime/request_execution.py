@@ -175,7 +175,6 @@ class TrialRequests:
                 )
             raise
         except BaseException:
-            # No invented model terminal on tool/IO failure. Leave the durable attempt invalid.
             generation.cancel()
             await asyncio.gather(generation, return_exceptions=True)
             raise
@@ -195,7 +194,6 @@ class TrialRequests:
         self.sampler.set_phase("residual", key)
         idle = await self.idle("residual", key)
         if native(self.adapter) and terminal["execution_state"] == "failed":
-            # Native observations cannot confirm release, but must not erase the model failure.
             raise PreflightError("native_generation_failed:" + terminal["error_category"])
         if not idle:
             raise PreflightError("service_stop_unconfirmed")

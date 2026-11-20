@@ -10,7 +10,7 @@ THINK_OPEN = "<think>"
 
 def _has_body(text):
     stripped = text.lstrip()
-    if THINK_OPEN.startswith(stripped):  # Nothing yet, or a tag split across chunks.
+    if THINK_OPEN.startswith(stripped):
         return False
     return bool(stripped.removeprefix(THINK_OPEN).strip())
 

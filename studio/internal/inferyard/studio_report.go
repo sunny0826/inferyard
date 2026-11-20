@@ -14,10 +14,6 @@ const (
 	StudioReportSchemaVersion = 3
 )
 
-// StudioReport is the single JSON projection Studio reads from a report
-// directory. The typed shape mirrors cli/schemas/studio_report.schema.json;
-// parsing validates the wire structure and the cross-field rules JSON Schema
-// cannot express. It never rescores or re-reads run evidence.
 type StudioReport struct {
 	SchemaVersion int         `json:"schema_version"`
 	Kind          string      `json:"kind"`
@@ -84,8 +80,6 @@ type StudioLatency struct {
 	Max         *float64 `json:"max"`
 }
 
-// StudioThroughput mirrors the optional throughput section; a missing section
-// means the report predates it, and a present section carries values or reasons.
 type StudioThroughput struct {
 	RequestsPerSecond           *float64 `json:"requests_per_second"`
 	RequestsPerSecondReason     *string  `json:"requests_per_second_reason"`
@@ -95,8 +89,6 @@ type StudioThroughput struct {
 	GoodputPerSecondReason      *string  `json:"goodput_per_second_reason"`
 }
 
-// StudioOutputBlockIntervals mirrors the optional pooled block-arrival
-// distribution in milliseconds. It is not a per-token ITL measurement.
 type StudioOutputBlockIntervals struct {
 	IntervalCount int64    `json:"interval_count"`
 	RequestCount  int64    `json:"request_count"`
@@ -135,7 +127,6 @@ var (
 	studioQualities   = []string{"pass", "fail", "unscorable", "not_applicable", "not_scored"}
 )
 
-// Check the wire structure, including required nullable fields, before decoding.
 func ParseStudioReport(raw []byte) (StudioReport, error) {
 	var result StudioReport
 	raw = bytes.TrimSpace(raw)

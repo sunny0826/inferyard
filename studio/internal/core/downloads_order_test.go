@@ -10,10 +10,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// TestDownloadsNewestFirst pins the ordering the pages rely on: a later task
-// comes first. The assertion uses task IDs rather than StartedAt strings,
-// because RFC3339Nano drops trailing zeros and two nearby timestamps can
-// compare out of order lexicographically.
 func TestDownloadsNewestFirst(t *testing.T) {
 	gate := make(chan struct{})
 	done := make(chan struct{}, 2)
@@ -56,7 +52,6 @@ func TestDownloadsNewestFirst(t *testing.T) {
 	}
 }
 
-// uniqueName keeps each task off the occupied-name path without sleeping.
 func uniqueName(t *testing.T) string {
 	t.Helper()
 	return "task-" + time.Now().Format("150405.000000000")

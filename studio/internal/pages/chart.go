@@ -177,9 +177,6 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 				})
 			})
 		}
-		// One grid container in every viewport keeps the chart widget tree and
-		// its ui.Local state stable, so resizing never resets a selected
-		// temperature source; only the column count changes.
 		cols := 2
 		if compactLayout(c) {
 			cols = 1
@@ -193,9 +190,6 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 	})
 }
 
-// secondarySourceLabel keeps raw "collector:metric" identifiers out of the
-// single-source caption while still naming a temperature sensor, whose name is
-// the only way to tell probes apart.
 func secondarySourceLabel(metricID string, source core.ResourceSource) string {
 	name := sourceLabel(source)
 	if metricID == "temperature" || !strings.Contains(name, ":") {
@@ -204,7 +198,6 @@ func secondarySourceLabel(metricID string, source core.ResourceSource) string {
 	return "单一采样来源"
 }
 
-// resourceMetric is one plotted metric and its accent color.
 type resourceMetric struct {
 	id, label string
 	color     ui.Color
@@ -219,8 +212,6 @@ func resourceMetrics(theme *ui.Theme) []resourceMetric {
 	}
 }
 
-// resourceSampleFold keeps the raw sample table under a disclosure so the
-// curves stay the primary reading.
 func (s *viewState) resourceSampleFold(c *ui.Context, selected []core.ResourceSample) {
 	componentFold(c, "原始采样数值", func() { s.resourceTable(c, selected) })
 }

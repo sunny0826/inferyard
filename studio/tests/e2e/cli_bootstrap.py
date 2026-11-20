@@ -9,5 +9,4 @@ try:
     locking.LOCK_PATH = root / "host.lock"
     locking.STATE_PATH = root / "host-state.json"
 except Exception:
-    # site normally reports import errors and continues; never run unisolated.
     raise SystemExit("Studio E2E could not isolate CLI host files") from None

@@ -1,4 +1,3 @@
-// Package desktop adapts application events to best-effort desktop notifications.
 package desktop
 
 import (
@@ -9,8 +8,6 @@ import (
 
 type Message struct{ Title, Body string }
 
-// Subscribe registers synchronously so events published after it returns are
-// observed. Delivery runs separately from publishers, including permission UI.
 func Subscribe(ctx context.Context, bus *core.EventBus, show func(Message) error, logf func(string, ...any)) {
 	wake, unsubscribe, cursor := bus.Subscribe()
 	go func() {

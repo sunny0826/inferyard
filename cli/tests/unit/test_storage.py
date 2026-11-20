@@ -48,7 +48,6 @@ def test_no_overwrite_and_manifest_classification(tmp_path):
     assert "manifest.json" not in manifest["files"]
     (store.path / "summary.json").write_text("tampered")
     assert verify_manifest(store.path) == ["derived_evidence_damaged:summary.json"]
-    # A malicious derived flag must not turn original damage into repairable damage.
     manifest["files"]["plan.json"]["derived"] = True
     (store.path / "manifest.json").write_text(json.dumps(manifest))
     (store.path / "plan.json").write_text("tampered")

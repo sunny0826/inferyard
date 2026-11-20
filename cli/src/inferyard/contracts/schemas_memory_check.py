@@ -83,8 +83,6 @@ MEMORY_CHECK = obj(
     }
 )
 
-# Keep the complete macOS v1 branch byte-for-byte compatible. Windows has its own
-# kind because ownership and completeness add measurement requirements.
 WINDOWS_PROCESS = obj(
     {
         **PROCESS_FIELDS,

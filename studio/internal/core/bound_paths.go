@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 )
 
-// BoundPaths is an immutable launch policy, separate from editable user settings.
 type BoundPaths struct {
 	CLI, Workspace, Results, Models, Engines, Settings string
 	Source, WindowTitle, SourceLabel                   string

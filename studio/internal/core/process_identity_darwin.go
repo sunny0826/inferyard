@@ -28,7 +28,6 @@ func processStartTicks(pid int64) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	// Darwin proc_bsdinfo (PROC_PIDTBSDINFO=3), as declared by sys/proc_info.h.
 	var info struct {
 		Flags, Status, ExitStatus, PID, PPID, UID, GID, RUID, RGID, SVUID, SVGID, Reserved uint32
 		Comm                                                                               [16]byte
@@ -46,7 +45,6 @@ func processStartTicks(pid int64) (int64, error) {
 	}
 	if info.Status == 5 {
 		return 0, os.ErrNotExist
-	} // SZOMB
-	// Match CLI's pinned psutil raw create_time and microseconds rounding.
+	}
 	return int64(math.RoundToEven((float64(info.Seconds) + float64(info.Microseconds)/1e6) * 1e6)), nil
 }

@@ -18,7 +18,6 @@ class EngineSource:
 
     @property
     def download_url(self):
-        # A replaceable seam for loopback tests, mirroring ModelSource.
         return self.url
 
 

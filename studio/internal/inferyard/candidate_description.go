@@ -15,7 +15,6 @@ import (
 	"unicode/utf8"
 )
 
-// CandidateDescription is a read-only CLI description, never run eligibility.
 type CandidateDescription struct {
 	Definition string              `json:"definition"`
 	Family     string              `json:"family"`
@@ -101,8 +100,6 @@ func candidatePath(value string) bool {
 	return candidateText(value) && (filepath.IsAbs(value) || candidateWindowsPath.MatchString(value))
 }
 
-// candidateObject requires named fields and forbids null values. Optional fields
-// are explicit, so an unknown field cannot accidentally select another branch.
 func candidateObject(raw []byte, required, optional []string) (map[string]json.RawMessage, bool) {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(raw, &fields) != nil || fields == nil {
@@ -121,8 +118,6 @@ func candidateObject(raw []byte, required, optional []string) (map[string]json.R
 	return fields, true
 }
 
-// ParseCandidateDescription validates the consumed CLI contract before any
-// caller uses argv or asset identity. All failure envelopes are rejected.
 func ParseCandidateDescription(raw []byte, exitCode int) (CandidateDescription, error) {
 	var result CandidateDescription
 	invalid := errors.New("invalid candidate description")
@@ -231,7 +226,6 @@ func validCandidateLaunch(raw []byte, launch CandidateLaunch, local bool, family
 			return false
 		}
 	}
-	// encoding/json decodes a null string element as ""; inspect the wire too.
 	var fields map[string]json.RawMessage
 	_ = json.Unmarshal(raw, &fields)
 	key := "argv"

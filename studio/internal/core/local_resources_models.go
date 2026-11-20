@@ -11,8 +11,6 @@ import (
 const modelDiscoveryEntries = 4096
 const modelDiscoveryDepth = 4
 
-// Discovery only offers directory candidates. CLI freezes and validates their
-// complete assets when preparing a candidate; unknown measurements stay nil.
 func scanDirectoryModels(root string) ([]registryEntry, *ApiError) {
 	root, err := canonical(root)
 	if err != nil || !filepath.IsAbs(root) {

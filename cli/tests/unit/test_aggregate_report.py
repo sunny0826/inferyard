@@ -60,7 +60,7 @@ def test_exact_ledger_preserves_failures_and_uses_active_latency_definition(tmp_
     assert quality["rate"]["value"] == 2 / 7
     latency = summary["performance"]["instruction"]["metrics"]["L03"]
     assert latency["sample_count"] == 4 and latency["excluded"] == 3
-    assert latency["p50"] == 2000  # The active protocol uses nearest-rank p50 in ms.
+    assert latency["p50"] == 2000
     assert latency["max"] == 4000
     assert latency["quantile_method"] == "nearest_rank.phase2.v1"
     assert summary["completeness"] == "complete"

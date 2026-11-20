@@ -78,7 +78,6 @@ class LinuxSensors:
         return resolved
 
     def read(self, path):
-        # Bounded reads also reject malformed or unexpectedly large attributes.
         with self.safe_path(path).open() as stream:
             value = stream.read(4097).strip()
         if not value or len(value) > 4096:

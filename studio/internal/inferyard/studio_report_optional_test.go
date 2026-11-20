@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-// studioRaw keeps exact JSON bytes so probes can carry nulls, fractional
-// numbers and unknown keys without decoding into a broad value.
 func studioRaw(value string) json.RawMessage {
 	return json.RawMessage(value)
 }
@@ -30,8 +28,6 @@ func studioRawArray(t *testing.T, raw json.RawMessage) []json.RawMessage {
 	return items
 }
 
-// studioPatch returns the document with one value replaced at an object-key and
-// array-index path; a nil value deletes the addressed object key.
 func studioPatch(t *testing.T, raw json.RawMessage, path []string, value json.RawMessage) json.RawMessage {
 	t.Helper()
 	patched := studioRewrite(t, raw, path, value)
@@ -68,7 +64,6 @@ func studioDashboardPath(keys ...string) []string {
 	return append([]string{"runs", "0", "dashboard"}, keys...)
 }
 
-// studioProbe is one malformed-document edit applied to a fixture variant.
 type studioProbe struct {
 	name     string
 	path     []string
@@ -108,8 +103,6 @@ func studioIntervalsSection() map[string]json.RawMessage {
 	}
 }
 
-// studioIntervalsAt builds a measured section for one sample count; zero
-// samples keep null quantiles and a reason.
 func studioIntervalsAt(t *testing.T, count int64, p95, p95Reason string) map[string]json.RawMessage {
 	t.Helper()
 	section := studioIntervalsSection()

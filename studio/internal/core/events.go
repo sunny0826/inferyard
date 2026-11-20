@@ -16,8 +16,6 @@ type Event struct {
 	Data json.RawMessage
 }
 
-// Subscribers receive wakeups, then read the shared ring. Slow consumers get a
-// reset instead of silently losing individual events.
 type EventBus struct {
 	mu   sync.Mutex
 	next uint64

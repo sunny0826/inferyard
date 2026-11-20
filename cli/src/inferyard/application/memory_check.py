@@ -10,7 +10,6 @@ from inferyard.errors import ContractError
 from inferyard.contracts.validation import json_bytes
 from inferyard.evidence.storage import atomic_bytes
 
-# Defaults are frozen after the MC-1a native observation; see the diagnostic contract.
 DEADLINE_SECONDS = 5
 MAX_PROCESSES = 4096
 LIMITATIONS = (

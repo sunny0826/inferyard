@@ -56,7 +56,6 @@ def test_dry_run_no_network_no_writes_and_freeze_is_content_addressed(
     frozen = json.loads(capsys.readouterr().out)
     assert frozen["details"] == preview["details"]
     assert json.loads((output / "plan.json").read_text()) == preview["details"]
-    # The frozen package remains loadable after its original input directory disappears.
     path.parent.rename(tmp_path / "moved-input")
     assert read_frozen_plan(output / "plan.json")[0] == frozen["details"]
     assert (

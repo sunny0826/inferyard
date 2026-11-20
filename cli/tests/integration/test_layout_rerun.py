@@ -62,7 +62,6 @@ def test_container_rerun_writes_actual_source_or_preserves_missing(
     assert TrialEvidence(container).layout_version == 2
     before = {p: tree_bytes(p) for p in (old, container)}
     ticks = request.config.config.to_dict()["endpoint"]["process_start_ticks"]
-    # Synthetic process replacement only; real process qualification is separate.
     monkeypatch.setattr(runner, "process_start_ticks", lambda pid: ticks + 1)
     rerun = CommandRequest(
         "run", from_run=container, server_pid=os.getpid(), endpoint_url="http://127.0.0.1:9090"

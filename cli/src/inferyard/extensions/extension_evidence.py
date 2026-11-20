@@ -164,8 +164,6 @@ def verify_packet(path, *, verified_trials=None):
     if summary != read_json(path / "summary.json"):
         raise EvidenceError("extension_packet_does_not_replay")
     if kind == "extension_packet.v1":
-        # Original evidence and replay are checked first; a complete retired
-        # layout is never replayed as a supported version or converted in place.
         raise UnsupportedFormat(
             "extension packet", "extension_packet.v1", ["extension_packet.v2"]
         )

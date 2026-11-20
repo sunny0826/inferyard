@@ -17,7 +17,6 @@ def bind_token_counts(selected, budgets, output_budget, *, source=TOKEN_SOURCE):
     if budgets is None:
         return {}
     result = {}
-    # The archived inventory is probe, warmup, then frozen selected case order.
     for cid, budget in zip(selected, formal_budgets(budgets, selected), strict=True):
         if not isinstance(budget, dict):
             raise EvidenceError("invalid_template_token_record")
@@ -119,7 +118,7 @@ def input_length_summary(
         }
         bins.append(row)
         if actual is None:
-            continue  # No inferred bucket from configured target length.
+            continue
         for statistic, value, numerator in (
             ("completion_rate", row["completion_rate"], len(completed)),
             ("quality_rate", row["quality_rate"], passed),

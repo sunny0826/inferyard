@@ -66,7 +66,7 @@ def test_complete_control_uses_real_trial_seals_and_deferred_baselines(
             execute_complete(spec, plan, loaded, store, lock, guard, dependencies=dependencies)
         )
     assert [a["mode"] for a in arms] == ["off", "on", "on", "off"]
-    assert len(scenario[2]) == 32  # each arm: two probes, three warmups, three cases
+    assert len(scenario[2]) == 32
     assert all(a["finalized"] and a["measurement_path"] == "run_trial.v1" for a in arms)
     original_bytes = {}
     for arm in arms:

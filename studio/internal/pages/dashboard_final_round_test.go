@@ -10,8 +10,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// runnablePlan is a task whose only bundle the CLI already bound, with a frozen
-// run command.
 func runnablePlan() *viewState {
 	s := testState()
 	s.task = benchmarkTask{stage: "run", bundles: []string{"zh-core"}}
@@ -24,8 +22,6 @@ func runnablePlan() *viewState {
 	return &s
 }
 
-// Restarting Studio's own engine for this bundle must re-verify the binding: the
-// frozen config may name the previous process.
 func TestRestartedManagedEngineRebindsBundle(t *testing.T) {
 	s := runnablePlan()
 	s.engineState = core.EngineState{State: "running", Local: true, Pid: 9001, Endpoint: "http://127.0.0.1:48857", Candidate: "/w/c/zh-core.toml"}
@@ -57,8 +53,6 @@ func TestRestartedManagedEngineRebindsBundle(t *testing.T) {
 	}
 }
 
-// An engine started for another bundle must not hijack this one: the verified
-// binding is used as-is.
 func TestForeignManagedEngineDoesNotRebindBundle(t *testing.T) {
 	s := runnablePlan()
 	s.engineState = core.EngineState{State: "running", Local: true, Pid: 9002, Endpoint: "http://127.0.0.1:48857", Candidate: "/w/c/zh-svg-pelican.toml"}
@@ -82,7 +76,6 @@ func TestForeignManagedEngineDoesNotRebindBundle(t *testing.T) {
 	}
 }
 
-// An engine that is not running leaves a verified binding untouched.
 func TestStoppedEngineUsesVerifiedBinding(t *testing.T) {
 	s := runnablePlan()
 	s.engineState = core.EngineState{State: "stopped"}
@@ -106,8 +99,6 @@ func TestStoppedEngineUsesVerifiedBinding(t *testing.T) {
 	}
 }
 
-// A manual bind rejection marks the bundle the form targeted, not whichever
-// bundle refreshed progress lists first.
 func TestManualBindFailureMarksTargetBundle(t *testing.T) {
 	s := twoBundlePlan()
 	if target := s.bindTargetBundle(); target != "zh-svg-pelican" {

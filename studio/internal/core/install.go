@@ -19,14 +19,10 @@ import (
 	"time"
 )
 
-// installPython pins the managed Python build the CLI contract requires; keep
-// it in sync with cli/docs/installation.md.
 const installPython = "3.15.2"
 
-// uvRelease pins the standalone uv build downloaded when no uv is found.
 const uvRelease = "0.13.6"
 
-// Replaceable in tests.
 var (
 	installHTTPDo        = http.DefaultClient.Do
 	installLookPath      = exec.LookPath
@@ -51,8 +47,6 @@ func uvBinaryName() string {
 	return "uv"
 }
 
-// extraBinDirs covers tool locations outside the minimal PATH of GUI-launched
-// desktop apps (Homebrew on Apple Silicon is the common case on macOS).
 func extraBinDirs() []string {
 	if runtime.GOOS == "darwin" {
 		return []string{"/opt/homebrew/bin", "/usr/local/bin"}
@@ -60,8 +54,6 @@ func extraBinDirs() []string {
 	return nil
 }
 
-// FindCLI locates an existing inferyard executable: PATH first, then the
-// default uv tools bin directory.
 func FindCLI() string {
 	if p, err := installLookPath(cliBinaryName()); err == nil {
 		return p
@@ -81,8 +73,6 @@ func FindCLI() string {
 	return ""
 }
 
-// FindUV locates a uv executable: the Studio tools directory, PATH, then the
-// default per-user install locations.
 func FindUV(toolsDir string) string {
 	candidates := []string{filepath.Join(toolsDir, uvBinaryName())}
 	if p, err := installLookPath(uvBinaryName()); err == nil {
@@ -126,8 +116,6 @@ func uvAsset() (string, *ApiError) {
 
 const maxFetchBytes = 64 << 20
 
-// httpGet opens a GET request and checks the status, so every download path
-// reports the same failure for a dead or refused URL.
 func httpGet(ctx context.Context, url string) (*http.Response, *ApiError) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -163,8 +151,6 @@ func fetchURL(ctx context.Context, url string) ([]byte, *ApiError) {
 	return body, nil
 }
 
-// downloadUV fetches the pinned standalone uv archive plus its release
-// checksum, verifies it, and unpacks the uv binary into toolsDir.
 func downloadUV(ctx context.Context, toolsDir string) (string, *ApiError) {
 	asset, e := uvAsset()
 	if e != nil {
@@ -251,9 +237,6 @@ func writeBinary(src io.Reader, target string) *ApiError {
 	return writeBinaryTo(src, target, "install_unpack_failed", "写入工具目录失败。")
 }
 
-// writeBinaryTo writes a binary file into place: it writes a temporary file
-// first and renames it, so a half-written file is never visible under the
-// target name.
 func writeBinaryTo(src io.Reader, target, code, message string) *ApiError {
 	tmp := target + ".tmp"
 	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
@@ -273,12 +256,6 @@ func writeBinaryTo(src io.Reader, target, code, message string) *ApiError {
 	return nil
 }
 
-// InstallCLI installs inferyard==Version through uv and records the installed
-// path in the settings. A configured executable is kept; otherwise an existing
-// installation is reused. When uv is missing
-// a pinned standalone build is downloaded into the Studio tools directory;
-// user shell configuration is never modified. onStatus receives progress lines
-// for the wizard UI.
 func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string, *ApiError) {
 	if s.paths != nil {
 		if p := s.probe(s.userSettings()); p.Status != "ok" || p.Path == nil || *p.Path != s.paths.CLI {
@@ -337,8 +314,6 @@ func (s *Service) InstallCLI(ctx context.Context, onStatus func(string)) (string
 	return s.finishInstall(installed, onStatus)
 }
 
-// finishInstall records the CLI path so readiness flips and the wizard
-// advances through the settings bus event.
 func (s *Service) finishInstall(path string, onStatus func(string)) (string, *ApiError) {
 	raw, _ := json.Marshal(path)
 	if _, e := s.UpdateSettings(map[string]json.RawMessage{"inferyard_path": raw}); e != nil {

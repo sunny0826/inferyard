@@ -48,7 +48,6 @@ def synthetic_runtime(tmp_path, monkeypatch):
     server, manifest, libraries, _ = output_files(members)
     profile.update(engine_binary=server, runtime_library_manifest=manifest, libraries=libraries)
     digest = hashlib.sha256(json_bytes(profile)).hexdigest()
-    # Inject only in this fixture; the actual profile loader still rejects these synthetic roots.
     for module in (windows_runtime_prepare, runtime_verification):
         monkeypatch.setattr(module, "load_profile", lambda _: (copy.deepcopy(profile), digest))
     monkeypatch.setattr(

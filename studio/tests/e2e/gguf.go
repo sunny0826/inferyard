@@ -5,20 +5,14 @@ import (
 	"encoding/binary"
 )
 
-// fakeGGUF builds the smallest GGUF file the CLI's metadata reader accepts
-// (cli/src/inferyard/platforms/gguf_metadata.py): real magic and version, a
-// nonzero tensor count, and just the metadata keys device-check inspects —
-// general.name, general.architecture, <arch>.context_length, general.file_type
-// and tokenizer.chat_template. Tensor infos are never read by the parser, so
-// they are legitimately absent.
 func fakeGGUF() []byte {
 	var buf bytes.Buffer
 	buf.WriteString("GGUF")
-	_ = binary.Write(&buf, binary.LittleEndian, uint32(3)) // version
-	_ = binary.Write(&buf, binary.LittleEndian, uint64(1)) // tensor_count (must be nonzero)
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(3))
+	_ = binary.Write(&buf, binary.LittleEndian, uint64(1))
 	kvs := []struct {
 		key  string
-		kind uint32 // 4 = uint32, 8 = string
+		kind uint32
 		str  string
 		num  uint32
 	}{

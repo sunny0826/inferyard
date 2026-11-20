@@ -7,8 +7,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// Multiple runs stay separate; a missing quality count keeps a reason and never
-// becomes zero or a percentage.
 func TestReportCardsKeepRunsSeparateAndNeverZeroFill(t *testing.T) {
 	s := testState()
 	s.reports = []core.ReportSummary{{

@@ -108,10 +108,6 @@ func (s *viewState) countDownloads(state string) int {
 	return count
 }
 
-// unresolvedDownloadFailures counts failed tasks that still need the operator.
-// Historical failure cards stay in the list, so a failure stops counting only
-// when a newer task for the same source succeeded or is running; an unrelated
-// asset, a download of another source, or an older success never resolves it.
 func (s *viewState) unresolvedDownloadFailures() int {
 	count := 0
 	for i, task := range s.downloads {
@@ -123,10 +119,6 @@ func (s *viewState) unresolvedDownloadFailures() int {
 	return count
 }
 
-// downloadResolved reports whether a task created after the failure superseded
-// it. Both the core service and the preview window keep the list newest first,
-// so list position decides; wall-clock timestamps do not, because a clock step
-// backward between downloads would invert them.
 func (s *viewState) downloadResolved(failed core.DownloadTask, failedIndex int) bool {
 	for i, task := range s.downloads {
 		if i >= failedIndex {
@@ -142,10 +134,6 @@ func (s *viewState) downloadResolved(failed core.DownloadTask, failedIndex int) 
 	return false
 }
 
-// downloadTaskGuide is a lightweight banner above the download cards. It keeps
-// the way back visible without competing with the filled download actions, and
-// its status follows the task cards below instead of claiming the assets are
-// ready while a download is still running or has failed.
 func (s *viewState) downloadTaskGuide(c *ui.Context) {
 	if !s.preparingTask() || s.environmentMissing() {
 		return
@@ -159,10 +147,6 @@ func (s *viewState) downloadTaskGuide(c *ui.Context) {
 		})
 }
 
-// downloadGuideStatus reports the reason the task page still needs resources.
-// Active downloads and unresolved failures take precedence over the readiness
-// sentence so the banner never contradicts the task cards it sits above; a
-// failure already retried successfully no longer asks for another retry.
 func (s *viewState) downloadGuideStatus() string {
 	assets := s.availableTaskAssets()
 	active := s.activeDownloadCount()

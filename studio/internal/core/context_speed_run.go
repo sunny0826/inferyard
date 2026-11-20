@@ -104,7 +104,6 @@ waitLoop:
 		t.Task.ContextSpeed.Stage = "reading"
 		s.state(t)
 		s.mu.Unlock()
-		// Cancellation of execution must not cancel the new offline read.
 		s.mu.Lock()
 		readingTask := clone(t.Task.ContextSpeed)
 		s.mu.Unlock()

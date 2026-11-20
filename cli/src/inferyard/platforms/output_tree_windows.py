@@ -67,8 +67,6 @@ class WindowsTree:
             except FileExistsError:
                 if exclusive:
                     raise
-        # FILE_READ_ATTRIBUTES, FILE_SHARE_READ, OPEN_EXISTING,
-        # FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT.
         handle = self.api.CreateFileW(str(path), 0x80, 1, None, 3, 0x02200000, None)
         if handle == ctypes.c_void_p(-1).value:
             raise ctypes.WinError(ctypes.get_last_error())
@@ -84,7 +82,6 @@ class WindowsTree:
         return info.volume, (info.index_high << 32) | info.index_low
 
     def check(self):
-        # Each handle denies replacement and reparse writes until close().
         pass
 
     def file(self, parent, name):

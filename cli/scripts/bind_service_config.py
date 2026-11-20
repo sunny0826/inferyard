@@ -76,7 +76,6 @@ def main():
         comment="Bound to an external service. Run performs current probes.",
         writer=table_lines,
     )
-    # Exclusive creation: never overwrite a previously frozen config.
     with args.out.open("x", encoding="utf-8", newline="\n") as stream:
         stream.write(content)
     print(json.dumps({"config": str(args.out), "pid": args.pid, "start_ticks": start}))

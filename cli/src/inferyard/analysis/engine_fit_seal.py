@@ -23,7 +23,6 @@ def seal_run(out, plan, run, rows):
         "run.json": json_bytes(run),
         "requests.json": json_bytes(rows),
     }
-    # The runtime atomically checkpoints these JSON files before final sealing.
     for name in blobs:
         entry_path(root, name)
     for name, content in blobs.items():

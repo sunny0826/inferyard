@@ -22,8 +22,8 @@ def row(raw=RAW, *, final=True, state="completed"):
 
 def test_known_engine_timeline_uses_uncached_tokens_and_excludes_first_generated_token():
     result = engine_rates(row())
-    assert result["L06"]["value"] == 200  # 80 actually processed / 0.4 s; not 100 / 0.4 s
-    assert result["L07"]["value"] == 20  # 10 decode steps / 0.5 s; not 11 / 0.5 s
+    assert result["L06"]["value"] == 200
+    assert result["L07"]["value"] == 20
     assert result["L07"]["processed_tokens"] == 10
     assert result["L06"]["cache_tokens"] == 20
 

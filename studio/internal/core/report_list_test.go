@@ -11,7 +11,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// reportListService lists from the report root without running the CLI.
 func reportListService(t *testing.T, root, results string) *Service {
 	t.Helper()
 	settings := filepath.Join(root, "settings.json")
@@ -36,8 +35,6 @@ func reportListService(t *testing.T, root, results string) *Service {
 	return service
 }
 
-// writeReportFixture writes the bundled report under one directory, optionally
-// backdating its file time so ordering is deterministic.
 func writeReportFixture(t *testing.T, dir string, stamp time.Time) {
 	t.Helper()
 	raw, err := os.ReadFile("../inferyard/testdata/studio-report.json")
@@ -58,9 +55,6 @@ func writeReportFixture(t *testing.T, dir string, stamp time.Time) {
 	}
 }
 
-// The list projection comes from the same studio.json parse: model, bundle and
-// quality per run, with the file modification time rather than a run or
-// generation time.
 func TestReportSummaryProjectsRunsAndFileTime(t *testing.T) {
 	root := t.TempDir()
 	results := filepath.Join(root, "results")

@@ -60,8 +60,6 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		case "orphaned":
 			color = stateColor(c, stateWarning)
 		}
-		// The engine glyph differs from the 设备 nav entry's lucide.Cpu, and the
-		// visible word names its subject so "已停止" never reads as the device.
 		statusPanelParts(c, statusPanelOptions{key: "engine-status", label: "引擎 · " + stateLabel(state), visible: "引擎 · " + engineStatusText(state), icon: lucide.Server, color: color, animated: animated, onClose: s.closeEngineStatusPanel}, func(close func()) {
 			s.engineStatusPanel(c, q.active(), close)
 		})
@@ -109,34 +107,20 @@ type statusPanelState struct {
 	open, wasOpen bool
 }
 
-// closeEngineStatusPanel disarms a stop confirmation that was opened inside the
-// engine panel: a panel that closed must not leave an armed click behind it.
 func (s *viewState) closeEngineStatusPanel() {
 	if destructiveKind(s.pendingDestructive.kind) == destructiveStopEngine {
 		s.pendingDestructive = destructiveRequest{}
 	}
 }
 
-// statusPanel is a header status control: an icon plus a word or count, so the
-// meaning is readable without hovering. label stays the accessible name used by
-// the popover and focus order; visible is the short text beside the icon.
-// statusPanelOptions carries every display field so the control stays under the
-// size policy; key keeps the identity, label the accessible name, visible the
-// short text, icon the glyph, color the accent and animated the activity pulse.
 type statusPanelOptions struct {
 	key, label, visible string
 	icon                func() *ui.SVG
 	color               ui.Color
 	animated            bool
-	// onClose runs when the panel closes, so a caller can drop state that only
-	// made sense while the panel was open.
-	onClose func()
+	onClose             func()
 }
 
-// statusPanelParts opens its popover on click or Enter only. Pointer movement
-// across the header no longer opens a panel that would cover the page's own
-// top-right actions, and MyGo closes it on Escape or a press outside. content
-// receives close so a navigation action can dismiss the panel it came from.
 func statusPanelParts(c *ui.Context, o statusPanelOptions, content func(close func())) {
 	c.Key(o.key)
 	ui.Column(c).Children(func() {
@@ -163,8 +147,6 @@ func statusPanelParts(c *ui.Context, o statusPanelOptions, content func(close fu
 				Width(t.Space(78)).MaxWidthPercent(100).Label(o.label + "面板")
 			panel.Children(func() { content(func() { local.open = false }) })
 		})
-		// Escape, an outside press or a second click close a panel MyGo owns;
-		// report the transition once so the caller can disarm its contents.
 		if local.wasOpen && !local.open && o.onClose != nil {
 			o.onClose()
 		}
@@ -172,7 +154,6 @@ func statusPanelParts(c *ui.Context, o statusPanelOptions, content func(close fu
 	})
 }
 
-// engineStatusText is the short visible word for the engine status control.
 func engineStatusText(state string) string {
 	switch state {
 	case "running":

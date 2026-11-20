@@ -144,7 +144,6 @@ def load_rerun(request) -> tuple[LoadedConfig, dict]:
     original = evidence.configuration_source()
     source = None
     if evidence.layout_version == 1:
-        # These are actual legacy source bytes, never a virtual container member path.
         source = root / "config.input.toml"
         if not source.exists():
             source = root / "config.input.json"

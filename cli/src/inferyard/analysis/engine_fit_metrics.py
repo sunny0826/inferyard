@@ -17,7 +17,6 @@ def _median(values):
     middle = len(ordered) // 2
     if len(ordered) % 2:
         return ordered[middle]
-    # Avoid overflowing when both finite durations are very large.
     return ordered[middle - 1] / 2 + ordered[middle] / 2
 
 

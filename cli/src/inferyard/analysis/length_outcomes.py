@@ -4,7 +4,6 @@ from collections import Counter
 
 from inferyard.contracts.schemas_common import EXECUTION_STATES
 
-# Report table order keeps invalid before cancelled; membership comes from the contract.
 _DISPLAY_ORDER = ("completed", "failed", "invalid", "cancelled", "not_executed")
 STATES = tuple(sorted(EXECUTION_STATES, key=_DISPLAY_ORDER.index))
 

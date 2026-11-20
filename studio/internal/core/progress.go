@@ -28,9 +28,6 @@ func (s *Service) Progress(ctx context.Context) (ProgressResponse, *ApiError) {
 	}
 	result := ProgressResponse{Status: inferyard.MapExitCode(out.ExitCode), ExitCode: out.ExitCode}
 	if out.ExitCode == inferyard.ExitBlocked {
-		// A CLI without the progress command (released 0.0.2 predates it)
-		// rejects the arguments with command "unknown"; a capable CLI reports
-		// command "progress" even for blocked queries.
 		if !strings.Contains(string(out.Stdout), `"command": "progress"`) {
 			return result, &ApiError{Code: "cli_outdated", Message: "CLI 版本缺少 progress 命令，请升级 CLI。"}
 		}

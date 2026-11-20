@@ -9,9 +9,6 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// Retrying the second bundle through the page button must not treat the PID from
-// the rejected form as used: the retry waits for a freshly verified service and
-// the same PID can be connected.
 func TestPreviewSecondBundleRetryAcceptsRejectedPID(t *testing.T) {
 	p := newPreviewSession(t.Context())
 	p.loadScene(previewSceneIndex(t, "引擎 · LM Studio 手动绑定"))
@@ -35,7 +32,6 @@ func TestPreviewSecondBundleRetryAcceptsRejectedPID(t *testing.T) {
 	if s.localPIDUsed(4002) {
 		t.Fatal("rejected attempt consumed the form PID")
 	}
-	// The page button retries the unfinished bundle.
 	tt := ui.NewTester(s.view, 1120, 2200)
 	if err := tt.Click("重试未完成的测评题集"); err != nil {
 		t.Fatal(err)

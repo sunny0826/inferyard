@@ -36,10 +36,6 @@ func (s *viewState) openReport(reference string) {
 	s.selected = "reports"
 }
 
-// reportBackLink returns to the report list from the top of the detail, above
-// the title, so leaving never requires scrolling past the report body. It
-// chooses the report-list tab explicitly: the detail may have been opened from
-// another tab or from the task page.
 func (s *viewState) reportBackLink(c *ui.Context) {
 	button(c, "返回报告列表").OnClick(func() {
 		s.openedReport, s.reportsTab = nil, reportsTabList
@@ -77,7 +73,6 @@ func (s *viewState) reportView(c *ui.Context) {
 		func(c *ui.Context) { reportOutputIntervals(c, run) },
 	)
 	report.categoryView(c, run)
-	// 数据来源 joins 模型与机器 in the summary grid: both are short identity cards.
 	reportSummaryGrid(c,
 		func(c *ui.Context) { reportProfileView(c, run) },
 		func(c *ui.Context) { reportSourceView(c, run) },
@@ -85,9 +80,6 @@ func (s *viewState) reportView(c *ui.Context) {
 	report.requestView(c, run)
 }
 
-// reportSummaryGrid lays compact cards two per row on wide viewports and in one
-// column when the layout is compact, so short three-row cards stop spanning the
-// full width.
 func reportSummaryGrid(c *ui.Context, cards ...func(*ui.Context)) {
 	if compactLayout(c) {
 		for _, build := range cards {
@@ -110,8 +102,6 @@ func reportSourceView(c *ui.Context, run core.ReportRun) {
 	})
 }
 
-// stopReasonLabel translates the recorded stop reason for primary UI text. Raw
-// codes stay in raw folds; an unmapped code is named rather than hidden.
 func stopReasonLabel(raw string) string {
 	switch raw {
 	case "":

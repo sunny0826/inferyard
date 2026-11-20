@@ -11,10 +11,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// Switching the workspace root drops the Reports tab and the open detail in
-// both paths, because that data belonged to the previous workspace. Production
-// reaches resetWorkspace from applySettings; preview must do the same from its
-// simulated Settings 保存.
 func TestWorkspaceSwitchResetsReportsTabParity(t *testing.T) {
 	previous, next := "/previous/workspace", "/next/workspace"
 	production := testState()

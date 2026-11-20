@@ -16,21 +16,18 @@ import (
 	"time"
 )
 
-// Version is set from the embedded desktop configuration before serving requests.
 var Version = "dev"
 
 type Executor func(context.Context, string, ...string) (inferyard.Execution, error)
 type Options struct {
-	ValidateCLI       func(context.Context) error
-	Paths             *BoundPaths
-	ProcessStartTicks func(int64) (int64, error)
-	SignalProcess     func(int64, os.Signal) error
-	OrphanStopTimeout time.Duration
-	SettingsPath      string
-	Execute           Executor
-	HostStatePath     string
-	// EngineStartTimeout bounds the managed engine's health wait; tests set a
-	// short value, zero means ten minutes.
+	ValidateCLI        func(context.Context) error
+	Paths              *BoundPaths
+	ProcessStartTicks  func(int64) (int64, error)
+	SignalProcess      func(int64, os.Signal) error
+	OrphanStopTimeout  time.Duration
+	SettingsPath       string
+	Execute            Executor
+	HostStatePath      string
 	EngineStartTimeout time.Duration
 }
 type Service struct {
@@ -199,15 +196,8 @@ func (s *Service) userSettings() UserSettings {
 	return clone(s.settings)
 }
 
-// probeTTL bounds reuse of a successful version probe even when the resolved
-// executable's size and mtime stay unchanged, so editable installs that only
-// rewrite their entry script are re-probed shortly.
 const probeTTL = 10 * time.Second
 
-// probe resolves and versions the CLI once per binary identity instead of
-// spawning `inferyard --version` on every settings read. Only successful
-// probes are cached: a failure must be retried immediately after the operator
-// installs or fixes the CLI.
 func (s *Service) probe(u UserSettings) InferyardProbe {
 	path := str(u.InferyardPath)
 	if s.paths != nil {
@@ -272,7 +262,6 @@ func (s *Service) rememberProbe(p string, st os.FileInfo, statErr error, result 
 	s.probeResult = copyProbe(result)
 }
 
-// copyProbe detaches the string pointers so callers cannot mutate the cache.
 func copyProbe(v InferyardProbe) InferyardProbe {
 	c := InferyardProbe{Source: v.Source, Status: v.Status}
 	if v.Path != nil {
@@ -467,7 +456,6 @@ func (s *Service) RefreshDevice() *ApiError {
 	return nil
 }
 
-// Resolve includes symlink resolution for existing ancestors of new outputs.
 func Resolve(root, path string) (string, error) {
 	if root == "" || path == "" || strings.ContainsRune(path, 0) {
 		return "", errors.New("invalid path")

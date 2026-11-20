@@ -76,7 +76,7 @@ def test_global_sources_keep_request_metric_and_semantics_separate():
         for request_id, value in (("a", a_value), ("b", b_value)):
             reason = "no_sensor_samples_in_window" if value is None else None
             expected[request_id, metric, source, meaning, statistic] = (value, reason)
-    assert len(rows) == len(actual)  # Duplicate observations must not inflate the evidence.
+    assert len(rows) == len(actual)
     assert actual == expected
     assert all(not r["comparison_eligible"] for r in rows)
 

@@ -76,7 +76,6 @@ def create(preflight, engine_path, out, *, repo="local", revision=None, port=488
         raise ValueError("device_preflight_blocked")
     if selected["mode"] not in ("cpu", "metal"):
         raise ValueError("unsupported_macos_backend")
-    # The saved estimate is not permission to use stale free-memory observations.
     hardware = hardware_snapshot(existing_ancestor(out.parent))
     models = discover_models([], selected["model_path"])
     fresh = recommend(hardware, models)
@@ -99,7 +98,6 @@ def create(preflight, engine_path, out, *, repo="local", revision=None, port=488
     libraries = {path.name: hash_file(path).sha256 for path in engine_path.parent.glob("*.dylib")}
     if not libraries or (current["mode"] == "metal" and "libggml-metal.dylib" not in libraries):
         raise ValueError("dynamic_runtime_libraries_required")
-    # Include the executable so a CPU-only dynamic build still has a nonempty manifest.
     libraries[engine_path.name] = engine.sha256
     from inferyard.config.community_candidates_macos import build_config
 

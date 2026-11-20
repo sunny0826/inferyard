@@ -57,7 +57,6 @@ func speedFrame(r *speedTask) speedParityFrame {
 	return f
 }
 
-// Production fixtures originate from the frozen contract, not the simulator.
 func speedParityResult(t *testing.T, model, engine string, missing bool) inferyard.ContextSpeedResult {
 	t.Helper()
 	raw, e := os.ReadFile("../inferyard/testdata/context_speed_contract.json")

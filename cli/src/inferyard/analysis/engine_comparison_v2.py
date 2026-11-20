@@ -36,9 +36,6 @@ from inferyard.errors import ContractError, EvidenceError
 DEFINITION = "engine-comparison.v2"
 PLAN_REQUIRED = "comparison_plan_required"
 
-# Retired/duplicate names are intentionally absent: comparison_unplanned_trial
-# covers unplanned_run_present, and actual continuity is proven by the handoff
-# chain, so execution_order_differs is never emitted.
 __all__ = [
     "DEFINITION",
     "DUPLICATE_ATTEMPT",

@@ -189,7 +189,6 @@ class GenerationDecoder:
             raise LabProtocolError(CHOICES_REASON)
         if choices:
             self._accept_chunk_choice(require_object(choices[0], CHOICES_REASON), observed_ns)
-        # OpenAI streams report null until the optional include_usage object arrives.
         if chunk.get("usage") is not None:
             self._merge_usage(require_object(chunk["usage"], USAGE_REASON))
 

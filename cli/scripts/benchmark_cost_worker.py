@@ -57,8 +57,6 @@ def prepare(out, cases=24, samples=32, svg_chars=65536, svg_cases=4):
                 )
             )
         runs.append(helpers.fixture_run(out / "fixed-extra", states=["completed"] * extra_cases))
-    # Original journal hashes are retained. These are diagnostic synthetic records,
-    # never real-device or human-reviewed benchmark evidence.
     dump(
         out / "corpus.json",
         {
@@ -68,8 +66,6 @@ def prepare(out, cases=24, samples=32, svg_chars=65536, svg_cases=4):
             "run_count": len(runs),
             "cases": cases + svg_cases + extra_cases,
             "samples": (cases + svg_cases + extra_cases) * 2 * samples,
-            # The SVG answer is large in the raw run and is deliberately not carried
-            # by the Studio projection; it keeps the measurement workload realistic.
             "svg_gallery_count": svg_cases,
             "svg_characters_per_answer": svg_chars + 24,
             "answer_sha256": [
@@ -99,7 +95,6 @@ def workload(operation, corpus, out):
     if operation == "reject":
         return main(["verify", "--path", str(corpus)])
     roots = [Path(p) for p in json.loads((corpus / "corpus.json").read_text())["runs"]]
-    # Setup for microbenchmarks is explicitly outside their operation timer.
     loaded = (
         [read_trial(p) for p in roots]
         if operation in ("resources", "redact", "redact_empty", "json")

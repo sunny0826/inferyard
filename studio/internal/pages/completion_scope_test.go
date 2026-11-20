@@ -9,8 +9,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// A scoring failure stays in the denominator: three passes and one unscorable
-// case read 3 / 4 without a rate, never 100%.
 func TestCompletionKeepsUnscorableCasesInDenominator(t *testing.T) {
 	s := testState()
 	s.task.stage = "done"
@@ -36,8 +34,6 @@ func TestCompletionKeepsUnscorableCasesInDenominator(t *testing.T) {
 	}
 }
 
-// Only runs from this task are summarised: a workspace report that also lists
-// earlier runs must not add them to this round.
 func TestCompletionDoesNotMixInEarlierWorkspaceRuns(t *testing.T) {
 	s := testState()
 	s.task.stage, s.task.report = "done", "/reports/round-2"

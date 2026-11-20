@@ -37,7 +37,6 @@ type previewSession struct {
 	local              *previewLocalTask
 }
 
-// NewPreview opens the real page builders with in-memory fixtures and no Service.
 func NewPreview(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	p := newPreviewSession(ctx)
@@ -63,7 +62,6 @@ func (p *previewSession) shellOptions() sidebar.ShellOptions {
 	return options
 }
 
-// theme installs the selected visual candidate for the preview window only.
 func (p *previewSession) theme(c *ui.Context) *ui.Theme { return candidateTheme(p.candidate, c) }
 
 func (p *previewSession) loadScene(index int) {
@@ -117,8 +115,6 @@ func (p *previewSession) left(c *ui.Context) {
 	})
 }
 
-// candidatePicker switches the visual scheme and shows the A/B side colors
-// through the same paired-bar component the comparison view uses.
 func (p *previewSession) candidatePicker(c *ui.Context) {
 	ui.Field(c, "视觉候选", func() {
 		choice := components.Select(c, &p.candidate)
@@ -149,6 +145,4 @@ func (p *previewSession) showNotice() {
 	p.state.failure = &core.ApiError{Code: "preview_unsupported", Message: previewNotice}
 }
 
-// selectCandidate switches the preview-only visual scheme without touching
-// page data, settings or any service.
 func (p *previewSession) selectCandidate(index int) { p.candidate = candidateIndex(index) }

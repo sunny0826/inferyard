@@ -86,7 +86,6 @@ OUTPUT_BLOCK_INTERVALS = obj(
         "reason": nullable(LABEL),
     }
 )
-# Optional sections keep old reports readable; when present their fields are complete.
 DASHBOARD["properties"]["throughput"] = THROUGHPUT
 DASHBOARD["properties"]["output_block_intervals"] = OUTPUT_BLOCK_INTERVALS
 REQUEST = obj(

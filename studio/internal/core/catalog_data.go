@@ -1,13 +1,5 @@
 package core
 
-// The built-in address data. Each entry pins one asset with its measured
-// size and digest; the downloadability of an entry is derived from the
-// validators in catalog.go rather than declared here, so the data cannot
-// claim a download the transfer path would refuse.
-
-// catalogEntries is the built-in address list. Engine archives carry the
-// measured size and digest of the pinned release assets; model files carry
-// the measured digest of the pinned repository revisions.
 var catalogEntries = []CatalogEntry{
 	{
 		ID: "engine-macos-arm64", Kind: CatalogEngine, Title: "llama-server",

@@ -58,7 +58,6 @@ func (b *boundedProcessOutput) Write(p []byte) (int, error) {
 	return b.Buffer.Write(p)
 }
 
-// Read numerical process metadata only, with bounded time, bytes and tree size.
 func engineProcessTable() ([]engineProcessRow, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -90,8 +89,6 @@ func engineProcessTable() ([]engineProcessRow, error) {
 	return rows, nil
 }
 
-// Sandwich the group observation between identity reads so a PID recycled
-// after the process-table snapshot cannot be adopted as an owned worker.
 func (s *Service) confirmEngineGroupMember(p engineProcessIdentity, group int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -133,9 +130,6 @@ func ownerProcesses(owner engineOwner) []engineProcessIdentity {
 	return append([]engineProcessIdentity{{owner.PID, owner.StartTicks}}, owner.Workers...)
 }
 
-// Adopt new group members only while the root or a recorded member still
-// anchors its identity. An unanchored group may have been reused: keep the
-// record and refuse signals rather than infer ownership from a group number.
 func (s *Service) refreshEngineTree(owner *engineOwner, path string) error {
 	if !owner.Local {
 		return nil
@@ -268,7 +262,6 @@ func (s *Service) signalEngineTree(owner *engineOwner, path string, sig os.Signa
 	if err := s.refreshEngineTree(owner, path); err != nil {
 		return err
 	}
-	// Validate every known member before sending the first signal.
 	for _, p := range ownerProcesses(*owner) {
 		if _, err := s.sameEngineProcess(p); err != nil {
 			return err

@@ -46,8 +46,6 @@ def cli(args, *, check=True):
         check=False,
     )
     if check and completed.returncode != 0:
-        # stdout carries the result JSON whose limitations hold the stop reason
-        # of a legitimate hardware stop; stderr alone drops it.
         raise SystemExit(
             f"inferyard {' '.join(args)} failed with {completed.returncode}\n"
             f"stdout: {completed.stdout.strip()}\n"
@@ -83,9 +81,6 @@ def extract_engine(archive, destination):
     if len(servers) != 1:
         raise SystemExit(f"expected exactly one llama-server binary, found {servers}")
     binary = servers[0].resolve()
-    # First execution on macOS can take >10s while the signed binary plus its
-    # dylib chain is validated, which would exceed the CLI's version-query
-    # timeout; run one warm-up --version outside that timeout budget.
     subprocess.run(
         [str(binary), "--version"],
         cwd=binary.parent,
@@ -118,8 +113,6 @@ def prepare_runtime(root, preflight, engine_archive, runtime_archive):
     else:
         raise SystemExit(f"unsupported recommended runtime mode: {recommended}")
     assets = root / "assets"
-    # The preparation contract requires an existing, writable parent directory;
-    # unlike the other platforms nothing else creates root/assets on Windows.
     assets.mkdir(parents=True, exist_ok=True)
     prepare_args = [
         "runtime",
@@ -168,10 +161,6 @@ def fill_linux_template(template, out_dir, *, bundle, assets, results):
         "0",
         "--slots",
     ]
-    # The Linux environment admission is strict by design: "unknown" literals
-    # never pass (the allowed-unknown exemption covers Windows and Darwin only)
-    # and missing sysfs values are blockers, so freeze the observed values the
-    # same way the CLI's own snapshot does.
     from inferyard.platforms.identity import environment_snapshot
 
     observed = environment_snapshot()
@@ -211,16 +200,10 @@ def fill_linux_template(template, out_dir, *, bundle, assets, results):
         'profile = "unknown"': f'profile = "{required["profile"]}"',
         'governor = "unknown"': f'governor = "{required["governor"]}"',
         'epp = "unknown"': (
-            # TOML has no null literal; keep the string and skip the match.
             f'epp = "{epp}"' if epp is not None else 'epp = "unknown"\nrequire_epp_match = false'
         ),
         "\nac_online = true": f"\nac_online = {str(required['ac_online']).lower()}",
-        # seed 42 makes this model's CPU-quantized Linux path emit output with
-        # an invalid UTF-8 byte that the engine's peg-native chat parser
-        # rejects with HTTP 500; verified seeds 1/7/123/2024 all return 200.
         "\nseed = 42": "\nseed = 1",
-        # The lab contract freezes seed only when the config declares
-        # supported; macOS/Windows candidates write this explicitly.
         'seed_support = "unknown"': 'seed_support = "supported"',
     }
     text = template.read_text(encoding="utf-8")
@@ -261,8 +244,6 @@ def prepare_candidate(root, bench_ops, bundle, *, preflight, model, engine_binar
         )
         return out / "candidate.toml"
     if system == "Windows":
-        # The CLI requires the runtime profile to match the preflight's
-        # recommended mode; a CUDA machine must not fall back to CPU.
         cli(
             [
                 "config",
@@ -472,8 +453,6 @@ def main():
 
     shutil.rmtree(bench_ops_smoke)
     shutil.rmtree(bench_ops_svg)
-    # The Studio document is self-contained: deleting preparation directories must
-    # not change a single byte of the saved artifact.
     unchanged = hashlib.sha256((bench_work / "report/studio.json").read_bytes()).hexdigest()
     if unchanged != studio_sha256:
         raise SystemExit("studio.json changed after bench-ops cleanup")

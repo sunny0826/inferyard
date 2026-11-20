@@ -44,7 +44,6 @@ def verify(manifest, expected_sha, expected_commit):
     files = artifact_files(manifest.parent, data, checked_file)
     build_file = checked_file(manifest.parent, data["build_manifest"])
     build = read_json(build_file.raw)
-    # Bind original descriptors to the snapshots already read above; never reopen artifacts.
     seen = set()
     for record in build.get("artifacts", []):
         role = record.get("role")

@@ -7,8 +7,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// waitingBackend is a local benchmark backend whose queue changes on each read,
-// so a double read in one iteration observes different snapshots.
 type waitingBackend struct {
 	tasks    []core.RunTask
 	reads    int
@@ -46,8 +44,6 @@ func (b *waitingBackend) Engine() core.EngineState {
 	return core.EngineState{State: "running", Pid: 71, Endpoint: "http://127.0.0.1:8080"}
 }
 
-// RunTasks returns newest-first and lets the fixture advance state after the
-// snapshot is taken, so a second read in the same iteration would observe it.
 func (b *waitingBackend) RunTasks() []core.RunTask {
 	b.reads++
 	out := make([]core.RunTask, 0, len(b.tasks))
@@ -60,8 +56,6 @@ func (b *waitingBackend) RunTasks() []core.RunTask {
 	return out
 }
 
-// A second-bundle binding that succeeded and then failed during the run must keep
-// its PID: the verified ConfigPath is checked before the error.
 func TestReconcileKeepsPIDForVerifiedBindingThatLaterFails(t *testing.T) {
 	s := testState()
 	s.reserveLocalPID("second", 4002)
@@ -81,7 +75,6 @@ func TestReconcileKeepsPIDForVerifiedBindingThatLaterFails(t *testing.T) {
 	}
 }
 
-// An attempt that failed before writing a binding releases the PID.
 func TestReconcileReleasesPIDWithoutVerifiedBinding(t *testing.T) {
 	s := testState()
 	s.reserveLocalPID("second", 4002)
@@ -96,13 +89,9 @@ func TestReconcileReleasesPIDWithoutVerifiedBinding(t *testing.T) {
 	}
 }
 
-// A task that finishes between two reads of the queue must not be missed: the
-// iteration uses one snapshot, so the real error survives.
 func TestRunQueueReadsOneSnapshotPerIteration(t *testing.T) {
 	root := core.Err("service_identity_unavailable")
 	b := &waitingBackend{}
-	// First read: both tasks still running. Second read (the same iteration) would
-	// see them terminal if it happened.
 	b.tasks = []core.RunTask{
 		{TaskId: "core", Kind: "run", State: "running", Bundle: ptr("zh-core")},
 		{TaskId: "pelican", Kind: "run", State: "running", Bundle: ptr("zh-svg-pelican")},
@@ -115,7 +104,6 @@ func TestRunQueueReadsOneSnapshotPerIteration(t *testing.T) {
 			}
 		}
 	}
-	// Ensure the loop terminates if it ignores the first snapshot.
 	bindings := &benchmarkBindings{}
 	e := runLocalBenchmarkFlow(context.Background(), b, startChainResult{
 		workspace: "/w",

@@ -7,18 +7,12 @@ import (
 	"strings"
 )
 
-// Blame verdicts for a failed chain step. The boundary rule is strict: the
-// CLI owns everything up to and including its stdout bytes; Studio owns what
-// it does with a well-formed answer.
 const (
-	BlameCLI    = "cli"    // non-zero exit, or stdout Studio cannot parse
-	BlameStudio = "studio" // boundary honored; failure is downstream in Studio
-	BlameNone   = "none"   // no CLI call was even recorded
+	BlameCLI    = "cli"
+	BlameStudio = "studio"
+	BlameNone   = "none"
 )
 
-// BlameReport is the failure-attribution summary printed into test output.
-// With INFERYARD_E2E_ROOT set, the referenced stream files survive for
-// inspection; otherwise the printed fields carry the same content.
 type BlameReport struct {
 	Verdict     string
 	Command     string
@@ -29,8 +23,6 @@ type BlameReport struct {
 	StderrFile  string
 }
 
-// analyzeFailure inspects the last recorded CLI call at the moment of
-// failure and attributes the step to the CLI side or the Studio side.
 func analyzeFailure(recorder *Recorder) BlameReport {
 	records := recorder.Records()
 	if len(records) == 0 {
@@ -57,8 +49,6 @@ func analyzeFailure(recorder *Recorder) BlameReport {
 		}
 		return report
 	}
-	// Exit 0: Studio's contract says stdout is JSON. If it is not, the CLI
-	// broke the wire; if it is, the boundary held and the failure is ours.
 	var probe any
 	if json.Unmarshal(stdout, &probe) != nil {
 		report.Verdict = BlameCLI

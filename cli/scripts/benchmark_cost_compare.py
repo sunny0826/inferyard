@@ -34,11 +34,7 @@ def compare_outputs(left, right, operation):
     if operation != "studio_json":
         require_equal(a, b, operation)
         return []
-    # The Studio projection has no producer identity and no presentation seal: it
-    # must be byte-for-byte reproducible from the same inputs. The worker records
-    # its own source identity separately in identity.json.
     require_equal(a, b, "studio_json")
-    # Compare the saved document too: result.json must not mask a truncated artifact.
     require_equal(a, json.loads((left / "report/studio.json").read_text()), "baseline_disk_json")
     require_equal(b, json.loads((right / "report/studio.json").read_text()), "candidate_disk_json")
     return []
@@ -86,8 +82,6 @@ def check_expected(root, corpus, operation):
         ]
         require_equal(expected["answer_sha256"], answers, "fixture_answer_completeness")
         return
-    # The Studio projection must not carry raw answers, SVG galleries or sample rows;
-    # its cost is the remaining JSON write, not the retired presentation work.
     if result.get("kind") != "studio-report.v1" or "contents" in result:
         raise ValueError("studio_json_scope")
     for run in runs:

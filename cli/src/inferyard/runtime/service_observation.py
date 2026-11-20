@@ -52,7 +52,6 @@ def clean_observed(lock, adapter, store, *, run_id=None, key=None, recovery=None
             or getattr(adapter, "queue_ready", False)
         )
     ):
-        # This receipt finishes only the owned, validated HTTP roundtrip.
         store.observe(
             "native_clean_receipt",
             {

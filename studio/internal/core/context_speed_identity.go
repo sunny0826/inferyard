@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 )
 
-// Frozen labels are an index hint only. ReadContextSpeed authenticates via CLI.
 func (s *Service) speedFrozenIdentity(batch string, task *ContextSpeedTask) {
 	path, err := Resolve(batch, filepath.Join(batch, "frozen-plan", "config.json"))
 	if err != nil {

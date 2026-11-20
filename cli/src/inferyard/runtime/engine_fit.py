@@ -122,18 +122,14 @@ async def _guarded_completion(client, prompt, parameters, guard):
         while not task.done():
             done, _ = await asyncio.wait({task}, timeout=0.5)
             if not done:
-                # Native identity observation must not block the HTTP deadline or cancellation.
                 checking = asyncio.create_task(asyncio.to_thread(guard.check, "in_flight"))
                 await asyncio.shield(checking)
         return await task
     finally:
         if not task.done():
             task.cancel()
-        # Also consume an already-failed HTTP task when native validation failed first.
         await asyncio.gather(task, return_exceptions=True)
         if checking is not None:
-            # A cancelled await cannot stop a native read. Drain its bounded observation
-            # before another check or evidence sealing touches guard.last_sample.
             await asyncio.gather(checking, return_exceptions=True)
 
 
@@ -189,7 +185,6 @@ async def _run(request, plan, key, lock):
     elif request.recovery_confirm:
         raise PreflightError("unexpected_recovery_confirmation")
     redactor = Redactor([key] if key else [])
-    # Reject a secret inside immutable inputs instead of changing their frozen hashes.
     if (
         redactor.clean(plan) != plan
         or redactor.clean(request.fit_served_model) != request.fit_served_model
@@ -219,7 +214,6 @@ async def _run(request, plan, key, lock):
         check_service(binding)
         if recovering:
             lock.clean()
-        # Out must not be in the model tree: snapshots would change the frozen model.
         request.out.parent.mkdir(parents=True, exist_ok=True)
         guard = Guard(binding, plan, request.out.parent)
         initial_sample = guard.check("before_run")
@@ -303,7 +297,6 @@ async def _run(request, plan, key, lock):
                 if redactor.changed and "output_credential_redacted" not in run["limitations"]:
                     run["limitations"].append("output_credential_redacted")
                 _snapshot(request.out, rows)
-                # Only a complete terminal protocol permits clearing our own request.
                 check_service(binding)
                 idle_after = await _completed_idle(client, guard)
                 lock.clean()
@@ -333,7 +326,6 @@ async def _run(request, plan, key, lock):
             if current and current["reason"] == "request_in_flight":
                 current.update(status="cancelled", reason=str(exc))
         except EvidenceError, OSError:
-            # No further traffic, and the last durable request marker stays dirty.
             code, run["stop_reason"] = 4, "evidence_or_io_error"
             if current and current["reason"] == "request_in_flight":
                 current.update(status="invalid", reason="evidence_or_io_error")

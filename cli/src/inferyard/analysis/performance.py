@@ -97,7 +97,6 @@ def summarize_performance(requests):
                     Counter(t[code]["reason"] for t in timings if t[code]["reason"])
                 ),
             }
-        # Per-request block distributions retain equal request identity and weighting.
         metrics["L05"] = [
             {"request_id": r["request_id"], **t["L05"]}
             for r, t in zip(completed, timings, strict=True)

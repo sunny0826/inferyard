@@ -7,10 +7,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// TestDetailCaseTableSeparatesNotApplicableFromMissing pins the two different
-// readings: a finished case without a failure has no error category ("—"), a
-// failed case without a recorded category is a missing measurement ("缺测"),
-// quality reuses the report vocabulary, and the duration carries its unit.
 func TestDetailCaseTableSeparatesNotApplicableFromMissing(t *testing.T) {
 	s := testState()
 	s.detailID = "detail-1"
@@ -31,8 +27,6 @@ func TestDetailCaseTableSeparatesNotApplicableFromMissing(t *testing.T) {
 	if exactTextCount(tt.Texts(), "pass") != 0 || exactTextCount(tt.Texts(), "unscorable") != 0 {
 		t.Fatalf("raw quality enum leaked: %v", tt.Texts())
 	}
-	// A request may finish before scoring is recorded: the quality column then
-	// reads 缺测 (missing measurement), never the report table's 不适用 "—".
 	s.detail.Progress.Cases = append(s.detail.Progress.Cases,
 		core.CaseProgress{CaseId: "case-unscored", State: "completed", DurationMs: ptr(500.0)})
 	tt.Frame()
@@ -51,7 +45,6 @@ func TestDetailCaseTableSeparatesNotApplicableFromMissing(t *testing.T) {
 	if !tt.HasText("case-unscored") {
 		t.Fatalf("unscored case row missing: %v", tt.Texts())
 	}
-	// Both finished cases have no error category; only the failed case is 缺测.
 	if got := exactTextCount(tt.Texts(), "—"); got != 2 {
 		t.Fatalf("— count = %d, want the two finished cases: %v", got, tt.Texts())
 	}
@@ -70,9 +63,6 @@ func TestDetailCaseTableSeparatesNotApplicableFromMissing(t *testing.T) {
 	}
 }
 
-// TestResourceChartsUseTwoColumnsWhenWide checks the layout rule directly: on a
-// wide viewport the second curve sits beside the first, while the compact
-// layout keeps one column.
 func TestResourceChartsUseTwoColumnsWhenWide(t *testing.T) {
 	render := func(width int) *ui.Tester {
 		s := testState()
@@ -108,9 +98,6 @@ func TestResourceChartsUseTwoColumnsWhenWide(t *testing.T) {
 	}
 }
 
-// TestResourceChartSourceSurvivesResize guards the selection path: both layouts
-// now use one grid container, so shrinking the window must not rebuild the
-// chart widget tree and reset the chosen temperature sensor.
 func TestResourceChartSourceSurvivesResize(t *testing.T) {
 	s := testState()
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.resourceView(c, chartSamples()) }) }, 1400, 2400)
@@ -134,8 +121,6 @@ func TestResourceChartSourceSurvivesResize(t *testing.T) {
 	}
 }
 
-// TestDeviceEmptyStateOffersCollection proves the empty state leads with the
-// action that fills it instead of sending the user to settings.
 func TestDeviceEmptyStateOffersCollection(t *testing.T) {
 	s := testState()
 	s.device.Snapshot = nil
@@ -152,8 +137,6 @@ func TestDeviceEmptyStateOffersCollection(t *testing.T) {
 		t.Fatalf("secondary action did not open settings: %q", s.selected)
 	}
 
-	// The primary collection button shares the busy / refreshing guard of every
-	// other collection entry, so a busy page never starts a second collection.
 	s.selected = "device"
 	s.busy, s.device.Refreshing = true, false
 	tt.Frame()
@@ -174,8 +157,6 @@ func TestDeviceEmptyStateOffersCollection(t *testing.T) {
 	s.selected = "device"
 }
 
-// TestStopReasonAndQualityLabelsStayChinese pins the translations that used to
-// leak raw enums into primary text.
 func TestStopReasonAndQualityLabelsStayChinese(t *testing.T) {
 	for raw, want := range map[string]string{
 		"completed":       "已完成",
@@ -203,8 +184,6 @@ func TestStopReasonAndQualityLabelsStayChinese(t *testing.T) {
 	if got := stopReasonLabel("service_stop_unconfirmed"); got != "服务停止未确认" {
 		t.Errorf("stopReasonLabel(service_stop_unconfirmed) = %q", got)
 	}
-	// A denied resume carries conflict/not_resumable: the primary message must be
-	// Chinese, and an unmapped reason keeps the generic conflict text.
 	s := testState()
 	s.failure = core.Conflict("not_resumable")
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.feedback(c) }) }, 1120, 400)
@@ -212,7 +191,6 @@ func TestStopReasonAndQualityLabelsStayChinese(t *testing.T) {
 	if !tt.HasText("当前运行不可续测") {
 		t.Fatalf("not_resumable stayed raw: %v", tt.Texts())
 	}
-	// The machine reason lives only behind the closed "错误详情" fold.
 	if exactTextCount(tt.Texts(), "not_resumable") != 0 {
 		t.Fatalf("raw reason leaked before the fold opened: %v", tt.Texts())
 	}
@@ -226,8 +204,6 @@ func TestStopReasonAndQualityLabelsStayChinese(t *testing.T) {
 	}
 }
 
-// TestModelsActionsLoopIntoTaskAndDownloads covers the actions that were
-// missing once assets exist, including the guard that keeps an active round.
 func TestModelsActionsLoopIntoTaskAndDownloads(t *testing.T) {
 	s := testState()
 	s.model = ""
@@ -258,7 +234,6 @@ func TestModelsActionsLoopIntoTaskAndDownloads(t *testing.T) {
 		t.Fatalf("task action did not start a fresh round: %q", s.task.stage)
 	}
 
-	// An active round owns the page: the shortcut stays visible but disabled.
 	s.selected, s.model = "models", ""
 	s.tasks = []core.RunTask{{TaskId: "run", State: "running"}}
 	tt.Frame()

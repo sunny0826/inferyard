@@ -425,11 +425,9 @@ def _process_information(ctypes, wintypes):
 
 
 def _basic_limits(ctypes):
-    # Windows DWORD 固定 32 位。macOS 上 wintypes.DWORD 随 C long 变成 8 字节，不能拿来套这个结构。
     dword = ctypes.c_uint32
 
     class BasicLimits(ctypes.Structure):
-        # 64 位 JOBOBJECT_BASIC_LIMIT_INFORMATION。本波不在 Windows 上执行。
         _fields_ = [
             ("PerProcessUserTimeLimit", ctypes.c_int64),
             ("PerJobUserTimeLimit", ctypes.c_int64),

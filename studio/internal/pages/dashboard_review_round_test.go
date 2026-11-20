@@ -10,8 +10,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// twoBundlePlan is a task over both default bundles after the first one is
-// already bound while the second still needs a connection.
 func twoBundlePlan() *viewState {
 	s := testState()
 	s.task = benchmarkTask{stage: "bind", bundles: []string{"zh-core", "zh-svg-pelican"}}
@@ -23,8 +21,6 @@ func twoBundlePlan() *viewState {
 	return &s
 }
 
-// Manual binding must target the bundle that still needs it, not the already
-// bound first bundle that merely waits to run.
 func TestManualBindTargetsUnboundBundle(t *testing.T) {
 	s := twoBundlePlan()
 	if got := s.active().Bundle; got != "zh-core" {
@@ -50,8 +46,6 @@ func TestManualBindTargetsUnboundBundle(t *testing.T) {
 	}
 }
 
-// A managed engine that belongs to another bundle must not steal a run that the
-// CLI already bound to an external service.
 func TestRunKeepsVerifiedBindingOverManagedEngine(t *testing.T) {
 	s := twoBundlePlan()
 	s.progress.NextAction = "run"
@@ -63,8 +57,6 @@ func TestRunKeepsVerifiedBindingOverManagedEngine(t *testing.T) {
 	if b == nil {
 		t.Fatal("no run target")
 	}
-	// The unbound bundle is gone, so the run target is the first bundle that still
-	// has pending work.
 	s.progress.Bundles[0].Phase = "run_complete"
 	for i := range s.progress.Bundles {
 		if s.progress.Bundles[i].Bundle == "zh-core" {
@@ -83,7 +75,6 @@ func TestRunKeepsVerifiedBindingOverManagedEngine(t *testing.T) {
 	if len(ran) != 1 {
 		t.Fatalf("expected one command, got %v", ran)
 	}
-	// The frozen binding is reused verbatim: no rebind to the managed PID.
 	if slices.Contains(ran, "config") {
 		t.Fatalf("run rebound to the managed engine: %v", ran)
 	}
@@ -93,8 +84,6 @@ func TestRunKeepsVerifiedBindingOverManagedEngine(t *testing.T) {
 	}
 }
 
-// A fresh attempt clears the older rejected connection so it cannot outrank a
-// newly reported failure.
 func TestFreshAttemptClearsStaleBindFailure(t *testing.T) {
 	s := bindingState(core.Err("engine_start_failed"))
 	stale := core.Err("service_identity_unavailable")
@@ -107,8 +96,6 @@ func TestFreshAttemptClearsStaleBindFailure(t *testing.T) {
 	if s.bindFailure != nil || s.failedBundle != "" || s.handoffFailure != nil {
 		t.Fatalf("stale attempt survived: %+v %q", s.bindFailure, s.failedBundle)
 	}
-	// The retry starts a managed engine again; its own failure must be the cause,
-	// not the rejected connection from before it.
 	fresh := core.Err("engine_start_timeout")
 	s.task.failure = fresh
 	s.engineState = core.EngineState{State: "failed", Error: fresh}
@@ -125,9 +112,6 @@ func TestFreshAttemptClearsStaleBindFailure(t *testing.T) {
 	}
 }
 
-// The page's start and retry entry points both begin a fresh attempt, so the
-// rejected connection of the previous attempt cannot survive them. A refused
-// click, on the other hand, keeps the cause the user is looking at.
 func TestStartAndRetryBeginFreshAttempt(t *testing.T) {
 	prepare := func() *viewState {
 		s := bindingState(core.Err("engine_start_failed"))
@@ -135,7 +119,6 @@ func TestStartAndRetryBeginFreshAttempt(t *testing.T) {
 		s.failedBundle, s.handoffFailure = "zh-svg-pelican", core.Err("cli_blocked")
 		return s
 	}
-	// A start that cannot run (busy) leaves the current diagnosis intact.
 	blocked := prepare()
 	blocked.busy = true
 	if blocked.beginStart() {
@@ -144,7 +127,6 @@ func TestStartAndRetryBeginFreshAttempt(t *testing.T) {
 	if blocked.bindFailure == nil || blocked.failedBundle == "" {
 		t.Fatal("refused start discarded the visible cause")
 	}
-	// A start that can run begins a fresh attempt.
 	s := prepare()
 	s.candidate = "/w/candidate.toml"
 	if !s.beginStart() {
@@ -153,7 +135,6 @@ func TestStartAndRetryBeginFreshAttempt(t *testing.T) {
 	if s.bindFailure != nil || s.failedBundle != "" || s.handoffFailure != nil {
 		t.Fatalf("previous attempt survived the start: %+v %q %+v", s.bindFailure, s.failedBundle, s.handoffFailure)
 	}
-	// The same holds for a retry.
 	r := prepare()
 	if !r.beginRetry() {
 		t.Fatal("retry refused")
@@ -163,9 +144,6 @@ func TestStartAndRetryBeginFreshAttempt(t *testing.T) {
 	}
 }
 
-// An automatic binding failure names the bundle that failed, so the progress
-// card does not blame the already bound bundle. Both rejection shapes are
-// covered: a returned error and a non-zero exit.
 func TestAutoBindingFailureNamesFailedBundle(t *testing.T) {
 	for _, scenario := range []struct {
 		name    string
@@ -191,7 +169,6 @@ func TestAutoBindingFailureNamesFailedBundle(t *testing.T) {
 			if bindings.failedBundle != "zh-svg-pelican" {
 				t.Fatalf("failed bundle: %q", bindings.failedBundle)
 			}
-			// The page records that attribution, and only that bundle is marked.
 			s := testState()
 			s.task = benchmarkTask{stage: "bind", bundles: []string{"zh-core", "zh-svg-pelican"}}
 			s.progress = &inferyard.WorkspaceProgress{NextAction: "bind", Bundles: f.p.Bundles}
@@ -208,7 +185,6 @@ func TestAutoBindingFailureNamesFailedBundle(t *testing.T) {
 	}
 }
 
-// bundleFor resolves one bundle of the plan by name.
 func (s *viewState) bundleFor(name string, bundles []inferyard.BundleProgress) *inferyard.BundleProgress {
 	for i := range bundles {
 		if bundles[i].Bundle == name {

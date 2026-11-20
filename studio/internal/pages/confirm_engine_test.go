@@ -7,7 +7,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// engineStopState mounts a running engine whose confirm opens on demand.
 func engineStopState() *viewState {
 	s := testState()
 	s.task.stage = "bind"
@@ -15,8 +14,6 @@ func engineStopState() *viewState {
 	return &s
 }
 
-// The confirm click itself must not reach the engine-stop boundary when the
-// process changed; the counter is the proof.
 func TestStopConfirmationDoesNotStopReplacement(t *testing.T) {
 	s := engineStopState()
 	stops := 0

@@ -13,10 +13,6 @@ import (
 	"strings"
 )
 
-// The built-in address list lives in catalog.go; these two helpers keep the
-// prefilled download URLs pointing at it, so one pinned asset is described
-// in exactly one place.
-
 func engineBinaryName() string {
 	if runtime.GOOS == "windows" {
 		return "llama-server.exe"
@@ -37,13 +33,6 @@ func validEngineSource(source string) bool {
 	return !strings.Contains(u.Path, "..")
 }
 
-// FetchEngine downloads a Prism engine archive into outDir, unpacks it keeping
-// the sibling shared libraries the engine needs, and returns the llama-server
-// path. Plain single-file URLs are stored unpacked. macOS has no CLI-side
-// runtime prepare, so the Studio side owns archive fetching there.
-//
-// The archive is streamed to disk and unpacked from there, so a large pinned
-// archive costs disk space rather than the whole file in memory.
 func (s *Service) FetchEngine(ctx context.Context, source, outDir string, onStatus func(string)) (string, *ApiError) {
 	if !validEngineSource(source) {
 		return "", &ApiError{Code: "invalid_request", Message: "引擎 URL 不符合要求。"}
@@ -64,9 +53,6 @@ func (s *Service) FetchEngine(ctx context.Context, source, outDir string, onStat
 		return "", Err("internal_error")
 	}
 	base := filepath.Base(source)
-	// A plain file is only an engine when it is the engine binary itself.
-	// Anything else — a Python wheel, a runtime archive — is not an engine,
-	// and fetching it would only leave a file that cannot be registered.
 	if !isEngineArchive(base) && base != engineBinaryName() {
 		return "", &ApiError{
 			Code:    "engine_binary_missing",
@@ -74,9 +60,6 @@ func (s *Service) FetchEngine(ctx context.Context, source, outDir string, onStat
 		}
 	}
 	onStatus("正在下载引擎…")
-	// The archive cannot live inside outDir: that directory must not exist
-	// until the download succeeded. It sits in a hidden sibling instead, so
-	// it never mixes with the engines the registry scans.
 	staging, mkErr := os.MkdirTemp(filepath.Dir(outDir), ".engine-download-")
 	if mkErr != nil {
 		return "", Err("internal_error")
@@ -131,15 +114,10 @@ func (s *Service) FetchEngine(ctx context.Context, source, outDir string, onStat
 	return enginePath, nil
 }
 
-// isEngineArchive reports whether a file name is an archive shape the engine
-// unpack path understands.
 func isEngineArchive(base string) bool {
 	return strings.HasSuffix(base, ".tar.gz") || strings.HasSuffix(base, ".tgz") || strings.HasSuffix(base, ".zip")
 }
 
-// EngineRoots returns the directories that may hold fetched engines, most
-// specific first: the workspace engines directory (FetchEngine's target),
-// then the user-level InferYard engine directory.
 func EngineRoots(workspace string) []string {
 	roots := []string{}
 	if workspace != "" {
@@ -151,8 +129,6 @@ func EngineRoots(workspace string) []string {
 	return roots
 }
 
-// cleanEntryName rejects absolute paths and traversal in archive entries. The
-// root "." entry is reported as skip, not as an error.
 func cleanEntryName(name string) (clean string, skip, ok bool) {
 	name = filepath.Clean(strings.TrimPrefix(name, "/"))
 	if name == "." {
@@ -164,13 +140,10 @@ func cleanEntryName(name string) (clean string, skip, ok bool) {
 	return name, false, true
 }
 
-// safeLinkTarget permits only relative symlinks that stay inside the archive.
 func safeLinkTarget(target string) bool {
 	return target != "" && !filepath.IsAbs(target) && !strings.Contains(target, "..") && !strings.ContainsRune(target, 0)
 }
 
-// unpackEngineTarGz unpacks a gzipped tar archive from disk, keeping the
-// sibling shared libraries the engine needs.
 func unpackEngineTarGz(ctx context.Context, archivePath, destDir string) (string, *ApiError) {
 	file, err := os.Open(archivePath)
 	if err != nil {
@@ -209,9 +182,6 @@ func unpackEngineTarGz(ctx context.Context, archivePath, destDir string) (string
 				return "", Err("internal_error")
 			}
 		case tar.TypeSymlink:
-			// Versioned shared libraries (libX.0.dylib -> libX.0.2.0.dylib)
-			// are required by the engine loader; only in-archive relative
-			// links are recreated.
 			if !safeLinkTarget(h.Linkname) {
 				return "", &ApiError{Code: "engine_unpack_failed", Message: "引擎归档包含非法链接，已中止。"}
 			}
@@ -233,13 +203,11 @@ func unpackEngineTarGz(ctx context.Context, archivePath, destDir string) (string
 				enginePath = target
 			}
 		default:
-			// Device entries and other special files are not extracted.
 		}
 	}
 	return enginePath, nil
 }
 
-// unpackEngineZip unpacks a zip archive from disk.
 func unpackEngineZip(ctx context.Context, archivePath, destDir string) (string, *ApiError) {
 	zr, err := zip.OpenReader(archivePath)
 	if err != nil {
@@ -296,9 +264,6 @@ func (r engineContextReader) Read(p []byte) (int, error) {
 	return r.reader.Read(p)
 }
 
-// fetchURLToFile streams a URL into a temporary file in dir and returns its
-// path. The archive is never held in memory, so a large pinned archive costs
-// disk space instead.
 func fetchURLToFile(ctx context.Context, source, dir string) (string, *ApiError) {
 	resp, e := httpGet(ctx, source)
 	if e != nil {

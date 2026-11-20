@@ -25,7 +25,6 @@ func TestCancellation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// Readiness follows signal registration, with no shell/child startup race.
 			grace := time.Duration(0)
 			if ignore {
 				grace = 100 * time.Millisecond
@@ -72,7 +71,6 @@ func TestCancellation(t *testing.T) {
 	}
 }
 
-// TestCancellationProcess runs only when explicitly selected as a subprocess.
 func TestCancellationProcess(t *testing.T) {
 	args := os.Args
 	if len(args) < 4 || args[len(args)-3] != "--" {

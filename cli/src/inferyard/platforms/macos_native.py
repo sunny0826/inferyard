@@ -56,8 +56,6 @@ def sysctl_string(key):
 
 
 def boot_id():
-    # A process spawn per CPU/swap boundary would itself disturb short windows.
-    # sysctlbyname is the same native source, read afresh without a subprocess.
     import ctypes
 
     try:

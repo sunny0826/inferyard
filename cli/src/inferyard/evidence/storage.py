@@ -118,7 +118,7 @@ class EvidenceStore:
             raise EvidenceError("invalid_run_id")
         filesystem_path(root).mkdir(parents=True, exist_ok=True)
         self.path = root / self.run_id
-        filesystem_path(self.path).mkdir(mode=0o700)  # never append to an older run.
+        filesystem_path(self.path).mkdir(mode=0o700)
         fsync_directory(root)
         self.clock_id = "clock-" + uuid.uuid4().hex
         self._seq = {"events.jsonl": 0, "memory.jsonl": 0}
@@ -270,7 +270,6 @@ def verify_manifest_files(root: Path, manifest, *, observed=None) -> list[str]:
             valid = path.is_file() and path.stat().st_size == info.get("bytes")
             valid = valid and sha256_file(path) == info.get("sha256")
         if not valid:
-            # Classification is code-owned; do not trust a tampered 'derived' flag.
             if name in ("summary.json", "report.html"):
                 limitations.append(f"derived_evidence_damaged:{name}")
             else:

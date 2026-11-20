@@ -125,7 +125,6 @@ func validSpeedResult(r ContextSpeedResult) bool {
 			values = append(values, *v)
 		}
 		slices.Sort(values)
-		// Validate the supplied statistic, never replace it with a locally computed result.
 		if stat.Min != values[0] || stat.Median != values[2] || stat.Max != values[4] {
 			return false
 		}

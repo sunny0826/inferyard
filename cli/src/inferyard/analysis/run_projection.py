@@ -33,7 +33,6 @@ def _manifest(root, reads):
         if name == "manifest.json" or type(info) is not dict:
             raise EvidenceError("invalid_manifest_entry")
         path = local_file(root, name)
-        # Keep inventory/path checks, but do not open every original to hash it.
         if name not in ("summary.json", "report.html") and (
             not path.is_file() or path.stat().st_size != info.get("bytes")
         ):
@@ -64,9 +63,6 @@ def _events(root, reads, retained, tails):
                     except UnicodeError, ContractError:
                         corrupt = True
                     else:
-                        # All lines are parsed strictly; only consumed kinds get semantic
-                        # validation. The reducer sees original line positions, not renumbered
-                        # selected events. No content/wire chunks survive this iteration.
                         if not corrupt:
                             if (
                                 type(record.get("event_type")) is str
@@ -79,8 +75,6 @@ def _events(root, reads, retained, tails):
         raise EvidenceError("corrupt_jsonl_evidence") from exc
     reads.hashes["events.jsonl"] = digest.hexdigest()
     if corrupt:
-        # read_trial gives a broken original seal precedence over JSON errors.
-        # Reuse the digest already required for parent lineage; no second file read.
         info = (reads.manifest or {}).get("files", {}).get("events.jsonl")
         if info and (info["sha256"] != digest.hexdigest() or info["bytes"] != size):
             raise EvidenceError("original_evidence_hash_mismatch")
@@ -88,8 +82,6 @@ def _events(root, reads, retained, tails):
 
 
 def _memory_tail(root):
-    # read_trial completeness includes memory's truncated-tail flag. Inspect only
-    # that flag, never parse/hash the samples or reconstruct resource observations.
     try:
         with local_file(root, "memory.jsonl").open("rb") as stream:
             size = stream.seek(0, os.SEEK_END)
@@ -140,8 +132,6 @@ def read_run_projection(root):
     window = (
         duration_summary(duration, selection["case_ids"], retained, requests) if duration else None
     )
-    # Batch writers do not persist summary.json. Even when present it is a derived,
-    # replaceable file: read_trial reconstructs it, so history must do the same.
     summary = trial_summary(
         run, requests, stopped, limits + tails + _memory_tail(root), window, duration
     )

@@ -183,8 +183,6 @@ class ResourceSampler(EnvironmentObserver):
         ]
 
     def counters(self, pid, ticks, *, capture="periodic"):
-        # The two swap values come from one fresh host_statistics64 read and share
-        # its actual read/validation interval; no snapshot survives this call.
         return [self._cpu_counter(pid, ticks, capture), *self._swap_counters(capture)]
 
     def collect(self, pid, ticks):

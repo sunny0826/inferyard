@@ -53,8 +53,6 @@ func (m *devManifest) recoverySession(pid int64) (devSession, bool, error) {
 	return s, true, nil
 }
 
-// This mode proves only that a single managed child can no longer execute.
-// A valid session is handed back to its original, identity-checking controller.
 func recoverDevelopment(ctx context.Context, controller, target *devManifest, reader devRecoveryReader) (devRecoveryResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()

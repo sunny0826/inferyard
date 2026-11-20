@@ -38,7 +38,7 @@ def verify_parameters(root, config, props, events, bodies, usage, manifest, *, r
             if not reads.has_observation("effective_parameters", stage=stage):
                 if successful:
                     raise EvidenceError("lab_parameter_evidence_missing")
-                continue  # A completed probe can still fail its parameter preflight.
+                continue
             if manifest is not None and not observation_sealed(
                 reads, "effective_parameters", manifest, stage=stage
             ):

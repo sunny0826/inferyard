@@ -22,11 +22,6 @@ func pageShellOptions(title, stateKey string, left, content func(*ui.Context)) s
 	}
 }
 
-// studioToasts builds the Studio toast viewport. The main window and the
-// preview window get it from the shell, which places the toasts at the top
-// center and clears the floating header for them. The in-memory test view
-// renders the same content without the shell, so it builds the same viewport
-// here; otherwise the tests would show the toasts where the window does not.
 func studioToasts(c *ui.Context) {
 	o := components.ToastOptions{Placement: components.ToastTop}
 	if o.Placement.Top() {

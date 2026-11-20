@@ -19,8 +19,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// The executor supplies CLI boundary responses; admission, queueing, binding,
-// cancellation, evidence polling and the page's report orchestration are real.
 type localParityService struct {
 	service                        *core.Service
 	ctx                            context.Context
@@ -217,7 +215,6 @@ func (f *localParityService) execute(ctx context.Context, _ string, args ...stri
 	return result(4), fmt.Errorf("unexpected command: %v", args)
 }
 
-// parityStudioReport builds the typed document the report command now writes.
 func parityStudioReport(paths []string) []byte {
 	runs := []any{}
 	for _, path := range paths {

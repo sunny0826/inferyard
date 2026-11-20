@@ -74,7 +74,6 @@ def run_child(tree, operation, out, corpus=None, expected=0):
     if corpus is not None:
         args += ["--corpus", str(corpus)]
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONHASHSEED": "0"}
-    # Worker owns its new directory. Logs are retained even if it fails before mkdir.
     out.parent.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter_ns()
     try:
@@ -147,7 +146,6 @@ def measure(args):
     dump(args.out / "sources.json", identities)
     records, exceptions = [], []
     for iteration in range(args.repeats):
-        # AB then BA prevents one tree always inheriting the first/warm cache position.
         labels = list(trees) if iteration % 2 == 0 else list(reversed(trees))
         for operation in OPERATIONS:
             pair = {}

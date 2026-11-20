@@ -70,7 +70,6 @@ def batch(
     if duration_limit is not None:
         workload["purpose"] = "stability"
         workload["repeats"] = 1
-        # Keep the request cap ahead of the duration deadline even with a slow response.
         duration_seconds = 2 * workload["timeout_seconds"] if duration_limit == 1 else 0.5
         workload["protocol"].update(
             kind="duration",
@@ -127,7 +126,7 @@ def test_cancel_resume_only_unexecuted_then_next_planned_repetitions(
         checked_code, checked = verify(CommandRequest("verify", run=request.output_root))
     assert checked_code == 0 and checked.status == "verified"
     assert checked.completeness == "incomplete"
-    assert checked.details["sealed"] is False  # No whole-batch seal.
+    assert checked.details["sealed"] is False
     assert len(checked.details["missing_trials"]) == 2
     assert checked.details["trials"][0]["sealed"]
     assert checked.details["trials"][0]["execution_completeness"] == "incomplete"
@@ -142,7 +141,7 @@ def test_cancel_resume_only_unexecuted_then_next_planned_repetitions(
     resume = CommandRequest("resume", from_run=parent_path)
     code, resumed = asyncio.run(execute_async(resume, deps))
     assert code == 0 and resumed.status == "resumed_subset"
-    assert len(scenario[2]) == 13  # five non-formal + exactly two remaining cases
+    assert len(scenario[2]) == 13
     child = read_trial(Path(resumed.details["runs"][-1]))
     assert child["selection"]["case_ids"] == read_trial(parent_path)["selection"]["case_ids"][1:]
     assert child["summary"]["scope_complete"] and child["summary"]["completeness"] == "incomplete"

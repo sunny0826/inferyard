@@ -7,8 +7,6 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// relativeLuminance computes the WCAG 2.x relative luminance of an opaque sRGB
-// color, so contrast claims about the palette are checked rather than stated.
 func relativeLuminance(c ui.Color) float64 {
 	channel := func(v uint8) float64 {
 		s := float64(v) / 255
@@ -26,8 +24,6 @@ func contrastRatio(a, b ui.Color) float64 {
 	return (hi + 0.05) / (lo + 0.05)
 }
 
-// hue returns the HSL hue in degrees, the axis that tells a terracotta accent
-// from amber warning and crimson danger.
 func hue(c ui.Color) float64 {
 	r, g, b := float64(c.R)/255, float64(c.G)/255, float64(c.B)/255
 	hi, lo := max(r, g, b), min(r, g, b)
@@ -56,9 +52,6 @@ func hueDistance(a, b float64) float64 {
 	return min(d, 360-d)
 }
 
-// The semantic colors must stay readable on the page and card surfaces in both
-// appearances. The tinted banner and badge surfaces are derived from these, so
-// a palette edit that drops below the body-text floor fails here.
 func TestStudioPaletteStateColorsMeetContrastFloor(t *testing.T) {
 	for name, p := range map[string]paletteColors{"light": studioLightPalette, "dark": studioDarkPalette} {
 		surfaces := map[string]ui.Color{"background": p.background, "surface": p.surface, "surfaceHover": p.surfaceHover}
@@ -72,9 +65,6 @@ func TestStudioPaletteStateColorsMeetContrastFloor(t *testing.T) {
 	}
 }
 
-// Accent, warning and danger carry different meanings; they must also read as
-// different hues, not three warm browns. Each pairing stays at least 15° apart
-// on the hue circle.
 func TestStudioPaletteSemanticHuesStayDistinct(t *testing.T) {
 	for name, p := range map[string]paletteColors{"light": studioLightPalette, "dark": studioDarkPalette} {
 		colors := map[string]ui.Color{"accent": p.accent, "warning": p.warning, "danger": p.danger}
@@ -88,9 +78,6 @@ func TestStudioPaletteSemanticHuesStayDistinct(t *testing.T) {
 	}
 }
 
-// The error and warning banner text must stay readable on its own tinted
-// surface, not just on the plain card background. stateBanner mixes each state
-// color toward the text color, which is the foreground this checks.
 func TestStudioBannerTextContrast(t *testing.T) {
 	for name, p := range map[string]paletteColors{"light": studioLightPalette, "dark": studioDarkPalette} {
 		for label, color := range map[string]ui.Color{"danger": p.danger, "warning": p.warning} {

@@ -107,7 +107,6 @@ def _verify(root, config, bundle, events, starts, props, *, reads=None, _project
                 "lab_server_instance_id": instance,
             }
             if "cache_policy" in body:
-                # Strict-lab records sealed before release-binary support keep their wire shape.
                 expected.update(
                     cache_policy="disabled", reasoning_mode=config["generation"]["reasoning_mode"]
                 )
@@ -128,7 +127,6 @@ def _verify(root, config, bundle, events, starts, props, *, reads=None, _project
                     continue
                 decoders[key].feed(data["text"].encode("utf-8"), observed_ns=event["monotonic_ns"])
             except LabProtocolError:
-                # An abnormal wire response is retained evidence, never rewritten as success.
                 decoders[key] = None
         elif kind == "lab_usage":
             usage[key] = data

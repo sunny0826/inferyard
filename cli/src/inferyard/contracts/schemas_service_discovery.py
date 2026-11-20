@@ -58,8 +58,6 @@ DETAILS = obj(
 SERVICE_DISCOVERY = obj(
     {
         "command": enum("service discover"),
-        # "interrupted" is the Ctrl-C path: details null, completeness incomplete.
-        # Error keeps the partially collected details.
         "status": enum("discovered", "partial", "error", "interrupted"),
         "completeness": enum("complete", "incomplete"),
         "run_id": {"type": "null"},
@@ -77,9 +75,6 @@ SERVICE_DISCOVERY["allOf"] = [
                 "details": {"type": "null"},
             }
         },
-        # Non-cancelled results always carry the details object; only Ctrl-C
-        # nulls it, so a discovered/partial/error shell without details is
-        # rejected instead of sliding through the nullable details.
         "else": {"properties": {"details": DETAILS}},
     }
 ]

@@ -37,10 +37,9 @@ def test_windows_prism_batch_reaches_collector_and_seals_mock_requests(
     monkeypatch.setattr(resources, "sys", SimpleNamespace(platform="win32"))
     monkeypatch.setattr(batch_runner, "TrialDependencies", lambda **kwargs: deps)
     monkeypatch.setattr(batch_runner, "adapter_factory", lambda identifier: deps.adapter)
-    # No dependencies argument: execute the actual Windows gate and collector factory.
     code, result = asyncio.run(execute_async(request))
     assert code == 0 and result.status == "finished"
-    assert len(scenario[2]) == 24  # Three repetitions: probe/warmup/formal fixture protocol.
+    assert len(scenario[2]) == 24
     for path in result.details["runs"]:
         data = read_trial(Path(path))
         assert data["summary"]["counts"]["completed"] == 3

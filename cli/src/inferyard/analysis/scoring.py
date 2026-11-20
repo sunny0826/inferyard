@@ -135,8 +135,6 @@ def _math(case, answer, result):
             actual, expected = Decimal(match[1]), Decimal(str(rules["expected"]))
             absolute = Decimal(str(rules["absolute_tolerance"]))
             relative = Decimal(str(rules["relative_tolerance"]))
-            # Size arithmetic from frozen constants, never an answer's hostile exponent.
-            # Comparing exact bounds avoids rounding tiny nonzero answers down to zero.
             with localcontext() as context:
                 context.prec = 32 + 2 * sum(
                     len(value.as_tuple().digits) + abs(value.as_tuple().exponent)

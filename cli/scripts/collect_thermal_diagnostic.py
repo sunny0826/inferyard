@@ -65,7 +65,6 @@ def host_stat(proc):
     if not isinstance(raw, str):
         return raw
     try:
-        # guest and guest_nice are already included in user and nice.
         fields = [int(x) for x in raw.splitlines()[0].split()[1:9]]
         return {"total": sum(fields), "idle": fields[3] + fields[4]}
     except ValueError, IndexError:
@@ -123,7 +122,6 @@ def derive(previous, current, channels, ticks_per_second):
         if a is None or b is None:
             reason = "missing_counter"
         elif b < a:
-            # Counter wrap and reset cannot be distinguished from two observations.
             reason = "counter_decreased_wrap_or_reset"
         elif kind == "energy_uj":
             value = (b - a) / 1_000_000 / elapsed

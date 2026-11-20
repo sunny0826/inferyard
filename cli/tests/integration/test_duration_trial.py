@@ -21,7 +21,6 @@ def duration_inputs(scenario, limit=100):
     workload = source["workloads"][0]
     workload["purpose"] = "stability"
     workload["repeats"] = 1
-    # A request-cap scenario must leave time for a full request before the window closes.
     duration_seconds = 2 * workload["timeout_seconds"] if limit == 1 else 0.5
     workload["protocol"].update(
         kind="duration",
@@ -40,7 +39,6 @@ def test_duration_cycles_requests_and_rebuilds_window(scenario, monkeypatch, str
     plan, loaded, deps, output = duration_inputs(scenario)
     from inferyard.platforms.resources_linux import ResourceSampler
 
-    # The duration lifecycle uses synthetic idle RSS so it is independent of /proc.
     monkeypatch.setattr("inferyard.platforms.resources_linux.read_rss", lambda *args: (1024, None))
     deps.sampler = ResourceSampler
     code, data, root = asyncio.run(

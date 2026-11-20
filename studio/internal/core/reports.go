@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-// ReportIndex aliases the typed studio.json projection. The CLI contract lives
-// in inferyard so Studio never rescans evidence or recomputes presentation.
 type (
 	ReportIndex     = inferyard.StudioReport
 	ReportRun       = inferyard.StudioRun
@@ -29,7 +27,6 @@ type (
 	ReportRequest   = inferyard.StudioRequest
 )
 
-// Optional report sections read from studio.json when the report provides them.
 type (
 	ReportThroughput           = inferyard.StudioThroughput
 	ReportOutputBlockIntervals = inferyard.StudioOutputBlockIntervals
@@ -181,8 +178,6 @@ func (s *Service) CreateReport(req CreateReportRequest) (ReportSummary, *ApiErro
 	if _, e := inferyard.Parse(out.Stdout); e != nil {
 		return ReportSummary{}, Err("internal_error")
 	}
-	// reportSummary re-reads and validates studio.json itself, so a separate
-	// validStudioReport pass here would duplicate the disk read and parse.
 	r, err := reportSummary(path)
 	if err != nil {
 		return ReportSummary{}, Err("internal_error")
@@ -260,9 +255,6 @@ func (s *Service) ReportIndex(reference string) (*ReportIndex, *ApiError) {
 	return &report, nil
 }
 
-// legacyReport reports whether a directory still holds the retired HTML/JSON
-// presentation. Such directories stay hidden from batch discovery but an
-// explicit open explains that the format is unsupported.
 func (s *Service) legacyReport(reference string) bool {
 	for _, name := range []string{"index.json", "report.html"} {
 		if _, e := s.ReportFile(reference + "/" + name); e == nil {

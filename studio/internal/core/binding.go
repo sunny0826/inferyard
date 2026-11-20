@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-// BindingAlive is a read-only liveness hint, never an identity acceptance gate
-// or a claim of ownership. CLI bind/run still perform all identity checks.
 func (s *Service) BindingAlive(bound string) (bool, *ApiError) {
 	w := workspaceRoot(s.userSettings())
 	if w == nil {

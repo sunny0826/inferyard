@@ -56,10 +56,6 @@ def test_windows_tampered_manifest_is_ineligible(synthetic_runtime, monkeypatch,
 
 
 def test_contract_golden_samples_match_the_schema():
-    # The same physical samples drive the Studio parser test
-    # (studio/internal/inferyard/engine_check_golden_test.go): the CLI schema
-    # must accept exactly the valid samples and reject every invalid one, so
-    # neither side drifts from the shared contract.
     samples = json.loads(
         (
             Path(__file__).resolve().parents[3]

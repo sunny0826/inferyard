@@ -103,7 +103,6 @@ async def live_complete(plan, loaded, out, *, identity_context=None):
             if guard and guard.process.is_alive():
                 guard.close()
             if not store.sealed:
-                # Preserve the ordinary dirty/recovery protocol on any uncertain drain.
                 adapter = adapter_type(config["endpoint"]["url"], secret=secret)
                 try:
                     drained = await adapter.wait_idle(5)

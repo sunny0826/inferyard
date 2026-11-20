@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-// Registry exposes display names only. Paths stay in registryEntry and are
-// resolved again at the command boundary.
 type Registry struct {
 	ModelError    *ApiError
 	Refreshing    bool
@@ -94,7 +92,6 @@ func scanEngineBinaries(roots ...string) []registryEntry {
 	return entries
 }
 
-// engineReceipt supports both Studio sibling and CLI ROOT/engine layouts.
 func engineReceipt(enginePath string) string {
 	dir := filepath.Dir(enginePath)
 	for _, root := range []string{dir, filepath.Dir(dir)} {

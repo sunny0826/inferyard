@@ -33,7 +33,6 @@ def stable_file_digest(path):
     before, link = path.stat(), path.lstat()
     if not stat.S_ISREG(before.st_mode):
         raise PreflightError("engine_fit_not_regular_file")
-    # Nonblocking open avoids hanging if a regular file is replaced by a FIFO.
     descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
     with os.fdopen(descriptor, "rb") as stream:
         expected = file_stamp(before)

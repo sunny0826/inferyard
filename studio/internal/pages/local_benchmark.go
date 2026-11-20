@@ -73,8 +73,6 @@ func runLocalBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result
 			ids = append(ids, task.TaskId)
 		}
 		queued(ids)
-		// One snapshot per iteration: reading the queue twice could miss a task
-		// that finishes in between and lose the real error of this attempt.
 		order := make(map[string]int, len(names))
 		for i, name := range names {
 			order[name] = i
@@ -83,9 +81,6 @@ func runLocalBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result
 			tasks := backend.RunTasks()
 			remaining := len(bindings.localTasks)
 			stopped, stoppedBundle, stoppedOrder := (*core.ApiError)(nil), "", 0
-			// RunTasks is newest-first and a blocked later bundle reports
-			// previous_scope_incomplete before the real rejection of the earlier one.
-			// Attribute the stop by the round's bundle order, so the root cause wins.
 			for _, task := range tasks {
 				bundle, found := bindings.localTasks[task.TaskId]
 				if !found || !terminal(task.State) {
@@ -100,9 +95,6 @@ func runLocalBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result
 				if e == nil {
 					e = core.Err("run_incomplete")
 				}
-				// A real rejection outranks a later bundle's previous_scope_incomplete,
-				// which is only its consequence; among comparable causes the earlier
-				// bundle in execution order is the root cause.
 				rank, best := causeRank(e), 0
 				if stopped != nil {
 					best = causeRank(stopped)
@@ -135,9 +127,6 @@ func runLocalBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result
 	return finishBenchmarkReport(ctx, backend, result.workspace, names, paths, announce, report)
 }
 
-// causeRank orders a stop by how much it explains: a bundle's own rejection is
-// the root cause, previous_scope_incomplete only reports a blocked follower, and
-// a placeholder still keeps an earlier terminal state.
 func causeRank(e *core.ApiError) int {
 	switch {
 	case e == nil:

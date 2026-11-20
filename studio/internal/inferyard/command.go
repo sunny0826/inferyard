@@ -6,7 +6,6 @@ import (
 	"unicode"
 )
 
-// SplitCommand handles quoted CLI arguments without evaluating a shell.
 func SplitCommand(command string) ([]string, error) {
 	var args []string
 	var word strings.Builder

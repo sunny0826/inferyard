@@ -40,7 +40,6 @@ def verify_files(root, profile, *, metadata=False):
             if linked(path):
                 raise PreparationError("runtime_asset_mismatch")
         actual.update((Path(parent) / n).relative_to(root).as_posix() for n in files)
-    # The receipt is absent until success; all asset/manifest paths must be exact.
     required = set(expected) | ({manifest} if metadata else set())
     if not required <= actual or actual - allowed:
         raise PreparationError("runtime_asset_mismatch")
@@ -51,10 +50,6 @@ def verify_files(root, profile, *, metadata=False):
 
 
 def query_version(engine, pattern, *, timeout=30):
-    # macOS exec-time validation of freshly extracted ad-hoc-signed binaries and
-    # their dylib chain stalls past 10s (observed ~12s in onboarding acceptance);
-    # keep the budget bounded but above that. Windows runtime prepare passes the
-    # timeout frozen in its profile instead of this default.
     try:
         result = subprocess.run(
             [str(engine), "--version"],

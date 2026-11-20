@@ -24,7 +24,6 @@ def common_service(engine, payload, served_model, error):
     """Persist only documented version fields, never the complete props response."""
     if engine == "llama-cpp":
         version = payload.get("build_info")
-        # Upstream /props exposes llama_build_info(), formatted b<build>-<commit>.
         pattern = r"b[0-9]{1,12}-(?:[a-fA-F0-9]{7,40}|unknown)"
         source = "/props"
     else:

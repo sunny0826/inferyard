@@ -78,7 +78,6 @@ def _labels(raw: str | None) -> tuple:
         match = _LABEL.match(remaining)
         if not match or match[1] in values:
             raise FitTransportError("invalid_metrics_labels")
-        # Prometheus escapes are narrower than JSON escapes.
         values[match[1]] = re.sub(r'\\([\\"n])', lambda m: "\n" if m[1] == "n" else m[1], match[2])
         remaining = remaining[match.end() :]
         if remaining:
@@ -231,7 +230,6 @@ async def _chunks(response):
         received += len(chunk)
         if received > MAX_RESPONSE_BYTES:
             raise FitTransportError("response_too_large")
-        # Buffered transports must also allow deadline/cancellation callbacks to run.
         await asyncio.sleep(0)
         yield chunk
 
@@ -320,7 +318,6 @@ class FitClient:
                 async with self._client.stream(method, path, timeout=timeout, **kwargs) as response:
                     if response.status_code != 200:
                         raise FitTransportError("http_status_error")
-                    # Avoid unbounded allocation inside compression decoders.
                     if response.headers.get("content-encoding", "identity").lower() != "identity":
                         raise FitTransportError("unsupported_content_encoding")
                     yield response

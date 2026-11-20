@@ -56,8 +56,6 @@ def assess_environment(start, end, observations, conditions, requests):
             reasons.add("swap_counter_reset:" + field)
         elif values[-1] > values[0]:
             reasons.add("system_swap_activity:" + field)
-    # One-second environmental polling cannot prove absence of faster changes.
-    # Require observations no farther than two polling periods from each request edge.
     gaps = []
     for row in requests:
         left, right = row.get("t_send_ns"), row.get("t_terminal_ns")

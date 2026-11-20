@@ -14,9 +14,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// These scenarios begin with a prepared candidate. The production driver runs
-// runBenchmarkFlow against scripted service responses; the preview driver runs
-// the independent simulator. Neither driver supplies the expected observations.
 type parityScenario struct {
 	name      string
 	bundles   []string

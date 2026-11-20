@@ -73,6 +73,5 @@ def _index_paths(root, selected):
                 or any(p in ("", ".", "..") or p in IGNORED_DIRECTORIES for p in value.split("/"))
             ):
                 raise PreflightError("engine_fit_model_index_invalid")
-            # Index paths are relative to the index directory, not the command cwd.
             references.add((PurePosixPath(name).parent / value).as_posix())
     return references

@@ -44,7 +44,6 @@ def test_frozen_prefix_reuse_trial_and_offline_replay(scenario, policy):
         == policy
     )
     assert data["summary"]["counts"]["completed"] == 3
-    # Rehash the sealed request too: raw policy still must match the frozen protocol.
     change_request(
         root,
         lambda body: body.update(cache_prompt=not body["cache_prompt"]),

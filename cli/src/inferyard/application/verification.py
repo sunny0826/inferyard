@@ -63,13 +63,10 @@ def _identify(root: Path) -> set[str]:
     if not root.is_dir():
         raise EvidenceError("verify_requires_artifact_directory")
     names = {entry.name for entry in root.iterdir()}
-    # A current Studio document is identified by file name only, owns the whole
-    # directory and is never routable to a verifier.
     if "studio.json" in names:
         if names != {"studio.json"}:
             raise EvidenceError("conflicting_verify_artifacts")
         return {"studio-report"}
-    # File names establish identity even when their contents are malformed.
     found = {kind for kind, markers in _MARKERS.items() if names & markers}
     fit = "checkpoint.json" in names
     if "manifest.json" in names:
@@ -97,8 +94,6 @@ def _identify(root: Path) -> set[str]:
             "public-summary."
         ):
             found.add("public")
-    # A retired layout may be recognized by its HTML alone; the engine
-    # comparison HTML is verified by its own verifier.
     if "report.html" in names and not found & {"extension", "engine-comparison"}:
         found.add("legacy-report")
     if "batch.json" in names:
@@ -132,8 +127,6 @@ def _legacy_report(root: Path) -> None:
 
 def _check_markers(root: Path, kinds: set[str]) -> None:
     for kind in sorted(kinds - {"legacy-report", "studio-report"}):
-        # Ancillary rescore/public files also signal a damaged artifact when its
-        # primary marker has disappeared; the primary marker remains required.
         primary = (
             next(iter(_MARKERS[kind]))
             if len(_MARKERS[kind]) == 1
@@ -162,8 +155,6 @@ def _check_markers(root: Path, kinds: set[str]) -> None:
         ):
             raise EvidenceError("invalid_overhead_result_marker")
     if "extension" in kinds:
-        # The legacy packet verifier reads some paths directly. Check containment
-        # before it reads, including unlisted payloads and child observer files.
         for path in root.rglob("*"):
             local_file(root, str(path.relative_to(root)))
         for name in ("run.json", "packet.json", "summary.json"):
@@ -184,7 +175,6 @@ def _public(request: CommandRequest) -> tuple[int, CommandResult]:
         if request.config is None:
             return code, result
         source_result = result
-    # Source projection must fail before a declared configuration can match.
     module = import_module("inferyard.application.public_plan")
     code, result = module.execute(replace(request, command="public-config-check"))
     if source_result is not None:
@@ -210,8 +200,6 @@ def execute(request: CommandRequest) -> tuple[int, CommandResult]:
             raise ContractError("verify.source_run", "only public artifacts accept source run")
     if request.target_run is not None and "overhead" not in kinds:
         raise ContractError("verify.target_run", "only overhead artifacts accept target run")
-    # A retired comparison layout keeps its comparison identity; its index only
-    # marks the retired presentation files that must be rejected later.
     accepted = kinds - {"legacy-report"} if "comparison" in kinds else kinds
     if request.source_roots and not accepted <= {"comparison", "engine-comparison"}:
         raise ContractError(

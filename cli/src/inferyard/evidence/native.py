@@ -157,4 +157,4 @@ def verify_native(root, config, bundle, events, observation, *, reads=None):
     verify_clean_receipts(
         root, events, usages, manifest, reads=reads, allow_pending=is_local(config)
     )
-    return False  # Native observations never inherit lab/template/engine-timings qualification.
+    return False

@@ -38,10 +38,10 @@ def owner_session(pid):
         raise _error()
     token = wintypes.HANDLE()
     try:
-        if not open_token(handle, 0x0008, ctypes.byref(token)):  # TOKEN_QUERY
+        if not open_token(handle, 0x0008, ctypes.byref(token)):
             raise _error()
         size = wintypes.DWORD()
-        token_info(token, 1, None, 0, ctypes.byref(size))  # TokenUser
+        token_info(token, 1, None, 0, ctypes.byref(size))
         if not 0 < size.value <= 65536:
             raise OSError("token_size_unavailable")
         buffer = ctypes.create_string_buffer(size.value)

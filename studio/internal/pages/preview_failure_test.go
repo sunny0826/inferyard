@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// The failed preview scene must show the failure inside the active step.
 func TestPreviewFailedSceneShowsDiagnostics(t *testing.T) {
 	p := newPreviewSession(t.Context())
 	p.loadScene(previewSceneIndex(t, "任务 · 失败"))
@@ -19,8 +18,6 @@ func TestPreviewFailedSceneShowsDiagnostics(t *testing.T) {
 	}
 }
 
-// The LM Studio preview scene lists the discovered service and fills the
-// fields from it, never creating a real service.
 func TestPreviewLocalSceneFillsDiscoveredService(t *testing.T) {
 	p := newPreviewSession(t.Context())
 	p.loadScene(previewSceneIndex(t, "引擎 · LM Studio 手动绑定"))

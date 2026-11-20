@@ -9,8 +9,6 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// A chain over two unbound bundles reports the bundle whose connection failed,
-// not the first one it saw, and stops there.
 func TestBindingChainReportsFailingBundle(t *testing.T) {
 	frames := []inferyard.WorkspaceProgress{
 		{Workspace: "/w", NextAction: "bind", Bundles: []inferyard.BundleProgress{bindable("zh-core", "/w/c/zh-core.toml")}},
@@ -49,7 +47,6 @@ func TestBindingChainReportsFailingBundle(t *testing.T) {
 	}
 }
 
-// bindable is the progress row the chain requires before it derives a bind command.
 func bindable(bundle, candidate string) inferyard.BundleProgress {
 	return inferyard.BundleProgress{
 		Bundle: bundle, Phase: "bound_missing", NextAction: "bind",
@@ -58,8 +55,6 @@ func bindable(bundle, candidate string) inferyard.BundleProgress {
 	}
 }
 
-// A finished connection records the service only when it was accepted, and the
-// rejection keeps the bundle and the cause together.
 func TestApplyBindingRecordsServiceOnlyOnSuccess(t *testing.T) {
 	s := bindingState(nil)
 	s.applyBinding("zh-svg-pelican", core.Err("service_process_unavailable"), 4001)
@@ -78,7 +73,6 @@ func TestApplyBindingRecordsServiceOnlyOnSuccess(t *testing.T) {
 	}
 }
 
-// The bind step renders the rejection once: the page banner does not repeat it.
 func TestDiscoveredBindingFailureRenderedOnce(t *testing.T) {
 	s := bindingState(nil)
 	s.progress.NextAction = "bind"

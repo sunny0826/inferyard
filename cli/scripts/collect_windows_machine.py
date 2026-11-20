@@ -31,9 +31,7 @@ if __package__:
     )
     from .windows_machine_report import null_fields, render_report
 else:
-    # Direct execution and spec loading do not put this directory on sys.path.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    # decode_power/parse_cpu_sets are re-exported for the machine inventory tests.
     from windows_machine_probe import (
         cpu_sets,
         decode_power,
@@ -89,7 +87,6 @@ def observe(source, read):
         data = read()
         result = {"status": "empty" if data == [] else "ok", "data": data, "missing_reason": None}
     except Exception as exc:
-        # Each optional provider fails independently; incomplete evidence remains explicit.
         result = {"status": "unavailable", "data": None, "missing_reason": type(exc).__name__}
     return {"source": source, "started_utc": started, "finished_utc": utc(), **result}
 
@@ -301,7 +298,6 @@ def collect_machine(out, *, config_path=None):
             "background_load": observe(
                 "psutil 1-second CPU sample and process working sets", dynamic_inventory
             ),
-            # Take memory last: CIM/tool collection itself consumes temporary memory.
             "memory": observe("GetPerformanceInfo (pages multiplied by PageSize)", memory_status),
         }
     )

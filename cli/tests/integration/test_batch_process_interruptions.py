@@ -120,7 +120,6 @@ def test_killed_controller_rebuilds_and_resumes_without_overwriting(
         parent = read_trial(parent_path)
         assert parent["requests"][0]["execution_state"] == state
         assert not parent["summary"]["evidence_complete"]
-        # Synthetic service replacement is explicit; HostLock verifies the actual old worker died.
         fixture = scenario.__wrapped__(
             tmp_path, monkeypatch, Path("tests/fixtures/config/valid.toml")
         )

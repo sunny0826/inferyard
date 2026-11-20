@@ -12,8 +12,6 @@ from inferyard.provisioning.runtime_profiles import RELEASE
 
 
 def _reported(version):
-    # The first non-empty output line is the engine's own version report; the
-    # frozen pattern only judges it, it never fabricates a value.
     for line in (*version["stdout"].splitlines(), *version["stderr"].splitlines()):
         if line.strip():
             return line.strip()
@@ -21,10 +19,6 @@ def _reported(version):
 
 
 def _input_file(path, *, resolve):
-    # The engine path is resolved exactly like config create resolves it; the
-    # receipt path is handed to the shared verifier unresolved so the symlink
-    # policy (runtime_verification.linked) stays in one place instead of being
-    # silently bypassed by a pre-resolved path.
     try:
         resolved = path.resolve(strict=True)
         if not stat.S_ISREG(resolved.stat().st_mode):
@@ -59,10 +53,6 @@ def _verify(request):
         mode = profile["mode"]
     version = runtime_verification.query_version(engine_path, VERSION_PATTERN)
     if system == "Darwin":
-        # Without a device preflight there is no selected mode (model size can
-        # flip the device-check recommendation), so each mode gets its own
-        # result; the metal requirement stays a per-mode outcome here and the
-        # final decision stays with config create.
         modes = {"cpu": True, "metal": "libggml-metal.dylib" in library_map}
     return {
         "eligible": True,
@@ -122,10 +112,6 @@ def execute(request):
         details = _verify(request)
     except PreparationError as exc:
         if exc.code == 2 and exc.reason in REASONS:
-            # Ineligibility is a successful verification, not an input block:
-            # unlike the device-check family (blocked -> exit 2), this query
-            # never blocks follow-up operations; config create is the final
-            # authority.
             print(f"engine ineligible: {exc.reason}", file=sys.stderr)
             return 0, CommandResult(
                 request.command,

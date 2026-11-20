@@ -8,10 +8,6 @@ import (
 	"inferyard/studio/internal/core"
 )
 
-// downloadsView lists download tasks. Units and progress semantics stay under
-// one fold at the top; each card keeps one observation line plus, at most, one
-// explanation of what the source cannot report. A source without byte or rate
-// telemetry (engine archives) states that in one line instead of empty metrics.
 func (s *viewState) downloadsView(c *ui.Context) {
 	if len(s.downloads) == 0 {
 		ui.Text(c, "暂无下载任务。")
@@ -51,8 +47,6 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 	}
 	status := ""
 	if task.Kind == "engine" {
-		// The archive source reports neither bytes nor rate, so three 缺测
-		// columns would only add noise; one line states the same fact.
 		metrics, status = nil, engineTaskStatus(task)
 	}
 	color := stateColor(c, stateNeutral)
@@ -77,8 +71,6 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 	})
 }
 
-// engineTaskStatus is the single line an engine archive card shows instead of
-// the byte and rate metrics its source cannot report.
 func engineTaskStatus(task core.DownloadTask) string {
 	switch task.State {
 	case "downloading":
@@ -129,8 +121,6 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 	})
 }
 
-// downloadDetails holds the raw values and output paths; the card keeps the
-// readable sentence outside.
 func downloadDetails(c *ui.Context, task core.DownloadTask) {
 	ui.Text(c, "实际目录名："+task.OutName).Selectable()
 	ui.Text(c, "文件："+displayName(text(task.FileName)))
@@ -156,8 +146,6 @@ func downloadDetails(c *ui.Context, task core.DownloadTask) {
 	}
 }
 
-// downloadErrorView keeps the operator-facing sentence and the readable
-// limitation text; the raw code stays in the folded details.
 func downloadErrorView(c *ui.Context, e *core.ApiError) {
 	if e == nil {
 		return

@@ -2,7 +2,6 @@ package inferyard
 
 import "testing"
 
-// studioIntervalTier is one sample-count boundary case for the interval rules.
 type studioIntervalTier struct {
 	name      string
 	count     int64

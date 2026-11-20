@@ -19,13 +19,10 @@ type candidateRunState struct {
 	attach                   chan EngineState
 	initial                  *EngineState
 	bound                    *EngineState
-	// description is the parsed `config describe` result captured while the
-	// candidate was admitted. size and modTime fingerprint candidate.toml so the
-	// queued run can reuse it unless the file changed in the meantime.
-	description   inferyard.CandidateDescription
-	size          int64
-	modTime       int64
-	fingerprinted bool
+	description              inferyard.CandidateDescription
+	size                     int64
+	modTime                  int64
+	fingerprinted            bool
 }
 
 func (s *Service) StartCandidateRuns(req CandidateRunsRequest) ([]RunTask, *ApiError) {
@@ -51,8 +48,6 @@ func (s *Service) StartCandidateRuns(req CandidateRunsRequest) ([]RunTask, *ApiE
 		if failure != nil {
 			return nil, failure
 		}
-		// Fingerprint before describing so a concurrent rewrite can only make
-		// the queued run re-describe, never reuse a stale description.
 		size, modTime, fingerprinted := int64(0), int64(0), false
 		if st, err := os.Stat(path); err == nil {
 			size, modTime, fingerprinted = st.Size(), st.ModTime().UnixNano(), true
@@ -186,8 +181,6 @@ func (s *Service) prepareCandidateRun(ctx context.Context, t *runEntry) (failure
 	description := t.local.description
 	st, statErr := os.Stat(t.local.candidate)
 	if !t.local.fingerprinted || statErr != nil || st.Size() != t.local.size || st.ModTime().UnixNano() != t.local.modTime {
-		// The candidate changed after admission; re-describe to keep the
-		// original error behavior for missing or rewritten files.
 		var failure *ApiError
 		description, failure = s.DescribeCandidate(ctx, t.local.candidate)
 		if failure != nil {

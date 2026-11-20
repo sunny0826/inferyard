@@ -48,7 +48,6 @@ def source_fixture(root, **kwargs):
         config["engine"]["startup_args"] = ["-m", config["model"]["local_path"]]
         return replace(loaded, config=Document.parse("config", config))
 
-    # Supply a valid declared model binding before the journal is constructed.
     with pytest.MonkeyPatch.context() as patched:
         patched.setattr("tests.helpers.load_config", portable_config)
         return fixture_run(root, **kwargs)

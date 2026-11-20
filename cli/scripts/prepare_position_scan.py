@@ -79,7 +79,6 @@ def prepare(corpus, configs, out):
         root = out / f"model-{model_index + 1}"
         inputs = root / "input"
         inputs.mkdir(parents=True)
-        # Preserve the supplied corpus bytes exactly, including actual review records.
         atomic_bytes(inputs / "bundle.json", (corpus / "bundle.json").read_bytes())
         config = deepcopy(config)
         config["bundle"] = {"path": str(inputs / "bundle.json"), "version": bundle["version"]}

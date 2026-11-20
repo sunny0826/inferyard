@@ -17,14 +17,12 @@ from inferyard.runtime.safety_trace import SafetyTrace
 
 
 def use_logical_time(monkeypatch, *, collector_pause=0):
-    # Load default clock arguments before patching the shared time module.
     native = "macos" if sys.platform == "darwin" else "linux"
     importlib.import_module(f"inferyard.platforms.resources_{native}")
     now = time.monotonic_ns()
 
     def monotonic_ns():
         nonlocal now
-        # Preserve ordering between synchronous reads without measuring host work.
         now += 1_000
         return now
 

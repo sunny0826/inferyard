@@ -43,7 +43,6 @@ def common_fit_service(tmp_path, monkeypatch):
     models_root = tmp_path / "models"
     models_root.mkdir()
     model = models_root / "synthetic.gguf"
-    # Only a bounded metadata header; deliberately not executable model weights.
     model.write_bytes(b"GGUF" + struct.pack("<IQQ", 3, 1, 0) + b"synthetic tensor bytes")
     lms_path = tmp_path / "synthetic-lms"
     lms_path.write_text("Never executed: observer is simulated in this test.")
@@ -83,7 +82,6 @@ def common_fit_service(tmp_path, monkeypatch):
             if self.path == "/v1/models":
                 data = [{"id": "synthetic"}]
                 if state["engine"] == "lmstudio":
-                    # LM Studio lists cached candidates as well as loaded instances.
                     data.append({"id": "cached-but-not-loaded"})
                 raw = json.dumps({"object": "list", "data": data}).encode()
                 mime = "application/json"

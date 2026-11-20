@@ -3,7 +3,6 @@
 import asyncio
 
 _RUN_STATUS = {0: "finished", 130: "interrupted", 2: "blocked"}
-# Domain batch states map one-to-one to the CLI status vocabulary.
 _BATCH_STATUS = {
     "finished": "finished",
     "resumed_subset": "resumed_subset",

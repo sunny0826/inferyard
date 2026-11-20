@@ -103,8 +103,6 @@ func TestParseStudioReportRejectsInvariantViolations(t *testing.T) {
 	}
 }
 
-// The repository Schema is the structural authority; cross-field rules above
-// are parser-owned, mirroring cli/contracts/schemas_studio_report.py.
 func TestStudioReportParserMatchesExportedSchema(t *testing.T) {
 	schema := compileStudioSchema(t)
 	for name, raw := range studioSchemaSamples(t) {
@@ -119,8 +117,6 @@ func TestStudioReportParserMatchesExportedSchema(t *testing.T) {
 	}
 }
 
-// studioSchemaSamples returns every fixture probe as encoded JSON. Optional
-// cases start from the document that already carries both sections.
 func studioSchemaSamples(t *testing.T) map[string]json.RawMessage {
 	t.Helper()
 	samples := map[string]json.RawMessage{

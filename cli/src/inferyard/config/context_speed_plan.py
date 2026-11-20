@@ -27,7 +27,6 @@ def experiment_for(config, bundle):
         output_mode="strict_fixed_length",
         protocol={"kind": "fixed", "case_ids": [CASES[context]]},
     )
-    # Three preparation requests and five idle/drain allowances per trial.
     timeout = config["execution"]["timeout_seconds"]
     overhead = 3 * timeout + 5 * config["execution"]["idle_wait_seconds"]
     overhead += config["telemetry"]["baseline_seconds"]
@@ -42,7 +41,6 @@ def freeze(loaded, destination=None):
     require_review(loaded.bundle)
     experiment = experiment_for(config, bundle)
     workload = experiment["workloads"][0]
-    # Preserve resolved host assets; only the copied bundle is package relative.
     config["bundle"]["path"] = "bundle.json"
     with TemporaryDirectory(prefix="inferyard-context-speed-") as temporary:
         root = Path(temporary)

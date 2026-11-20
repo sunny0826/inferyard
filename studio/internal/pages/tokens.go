@@ -2,9 +2,6 @@ package pages
 
 import "github.com/egoist/mygo/ui"
 
-// designTokens is the single source of shared page styling. Every default
-// resolves to the value the page code used before this layer existed, so
-// introducing tokens does not change the rendered pages.
 type designTokens struct {
 	Density spacingTokens
 	Type    typeTokens
@@ -15,42 +12,34 @@ type designTokens struct {
 	Sides   sideColors
 }
 
-// spacingTokens holds the DIP sizes pages share. Widget-specific widths and
-// heights stay at their call sites.
 type spacingTokens struct {
-	Page     float32 // page content inset
-	Section  float32 // gap between page sections
-	CardGap  float32 // gap inside a card
-	Stack    float32 // task card and metric grid gap
-	Row      float32 // inline row gap
-	Inset    float32 // list and popup inset
-	Tight    float32 // label/value gap
-	Hairline float32 // minimal separation inside a list row
+	Page     float32
+	Section  float32
+	CardGap  float32
+	Stack    float32
+	Row      float32
+	Inset    float32
+	Tight    float32
+	Hairline float32
 }
 
-// typeTokens holds the font hierarchy, expressed through the theme's Rem so
-// the desktop text scale still applies.
 type typeTokens struct {
-	PageTitle   float32 // first-level page heading
-	CardTitle   float32 // card heading
-	Section     float32 // subsection heading and task name
-	Metric      float32 // compact metric value
-	MetricLarge float32 // report metric value
-	Body        float32 // default text
-	Caption     float32 // secondary text, at least 12 DIP
-	ShellLabel  float32 // development environment label
-	ShellDetail float32 // development environment detail
+	PageTitle   float32
+	CardTitle   float32
+	Section     float32
+	Metric      float32
+	MetricLarge float32
+	Body        float32
+	Caption     float32
+	ShellLabel  float32
+	ShellDetail float32
 }
 
-// radiusTokens holds the surface radii shared by cards and inset rows.
 type radiusTokens struct {
-	Surface float32 // cards, metric cards and empty panels
-	Inset   float32 // nested rows inside a surface
+	Surface float32
+	Inset   float32
 }
 
-// cardTokens describes the card surface and its empty-state variant. Border
-// outlines task cards and rows; Edge adds an optional hairline to the plain
-// page surface so a scheme can define distinct card structure, not just color.
 type cardTokens struct {
 	Padding      float32
 	Border       float32
@@ -58,15 +47,12 @@ type cardTokens struct {
 	EmptyPadding float32
 }
 
-// metricTokens describes the report metric card.
 type metricTokens struct {
 	PaddingX float32
 	PaddingY float32
 	Gap      float32
 }
 
-// stateKind names the semantic status a color expresses. Neutral is shared by
-// secondary text and idle states.
 type stateKind int
 
 const (
@@ -100,7 +86,6 @@ func (s stateColors) forKind(kind stateKind) ui.Color {
 	}
 }
 
-// sideKind names one side of an A/B comparison.
 type sideKind int
 
 const (
@@ -108,8 +93,6 @@ const (
 	sideB
 )
 
-// sideColors distinguishes the two sides of an A/B comparison. The values are
-// the selected scheme's blue/amber pair, ready for the comparison view.
 type sideColors struct {
 	A ui.Color
 	B ui.Color
@@ -163,8 +146,6 @@ func typeTokensFor(t *ui.Theme) typeTokens {
 	}
 }
 
-// concentricRadius computes the inner corner radius of a nested container so
-// its corners stay concentric with the outer surface (R_inner = R_outer - pad).
 func concentricRadius(outer, padding float32) float32 {
 	return max(2, outer-padding)
 }

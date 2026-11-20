@@ -280,7 +280,6 @@ def verify(root: Path, *, options: VerificationOptions) -> JSONRecord:
     """Verify one JSON artifact by rebuilding it from the referenced plan/batch."""
     from inferyard.evidence.legacy_presentation_seal import check_seal
 
-    # A known old seal is byte-checked before any version decision.
     check_seal(root, (RESULT, HTML))
     saved = _decode(local_file(root, RESULT).read_bytes())
     if saved.get("definition") != DEFINITION or "format_version" not in saved:

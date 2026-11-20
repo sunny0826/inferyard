@@ -166,8 +166,6 @@ func TestPreviewLocalQueueParity(t *testing.T) {
 				waitLocalParity(t, func() bool { return f.frame().Awaiting != "" }, func() { time.Sleep(10 * time.Millisecond) })
 				waitLocalParity(t, func() bool { return previewLocalFrame(p).Awaiting != "" }, func() { p.advance(100 * time.Millisecond) })
 				assertLocalFrames(t, f, p, waiting)
-				// The rejected attempt did not consume its PID: the same service is
-				// retried and accepted once the CLI verifies it.
 				if e := f.service.BindCandidateService(productionAwaiting(f), 4002, f.endpoint); e != nil {
 					t.Fatal(e)
 				}

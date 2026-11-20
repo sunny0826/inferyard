@@ -26,8 +26,6 @@ type runEntry struct {
 	local         *candidateRunState
 }
 
-// Bound config artifacts are emitted by inferyard's TOML writer: one JSON
-// scalar per line. Read only the four frozen fields required for admission.
 func readConfig(path string) (string, string, string, error) {
 	if !filepath.IsAbs(path) {
 		return "", "", "", os.ErrInvalid

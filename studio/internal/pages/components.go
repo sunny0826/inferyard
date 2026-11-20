@@ -7,17 +7,11 @@ import (
 	"github.com/oneo-me/onevra/source/components"
 )
 
-// card is the shared surface card: a second-level heading with related content
-// and nearby actions. Edge draws the card hairline defined by the scheme.
 func card(c *ui.Context, title string, fn func()) {
 	t := tokens(c)
 	ui.Column(c).MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() { heading(c, title, 2); fn() })
 }
 
-// statusBadge renders a state label; the color comes from the semantic state
-// tokens at the call site. The badge is opaque and mixes the label toward the
-// theme text, so it stays readable on dark surfaces instead of relying on a
-// translucent tint.
 func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {
 	t := c.Theme()
 	background, foreground := badgeSurfaceColors(t, color)
@@ -32,7 +26,6 @@ func badgeSurfaceColors(t *ui.Theme, tint ui.Color) (background, foreground ui.C
 	return t.Surface.Mix(tint, .12), tint.Mix(t.Text, .3)
 }
 
-// phaseProgressOptions describes a labeled phase sequence.
 type phaseProgressOptions struct {
 	Labels      []string
 	Current     int
@@ -41,8 +34,6 @@ type phaseProgressOptions struct {
 	Description string
 }
 
-// phaseProgress renders a labeled phase sequence with one current phase and a
-// bounded progress bar. It never expresses sample completion.
 func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 	t := tokens(c)
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Label(o.RowLabel).Children(func() {
@@ -64,7 +55,6 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 	progressBar(c, value, o.BarLabel).Description(o.Description)
 }
 
-// metricCard shows one report metric with its value, source detail and note.
 func metricCard(c *ui.Context, label, value, detail, note string) {
 	t := tokens(c)
 	ui.Column(c).MinWidth(0).Gap(t.Metric.Gap).Padding(t.Metric.PaddingY, t.Metric.PaddingX).
@@ -78,16 +68,12 @@ func metricCard(c *ui.Context, label, value, detail, note string) {
 	})
 }
 
-// pairedBarValue is one side of an A/B metric comparison. Value is a 0–1
-// fraction and Text is the displayed measurement.
 type pairedBarValue struct {
 	Label string
 	Value float64
 	Text  string
 }
 
-// pairedBar renders both sides of one metric. Pages do not use it yet; the
-// experiment comparison view renders through it.
 func pairedBar(c *ui.Context, title string, a, b pairedBarValue) {
 	t := tokens(c)
 	ui.Column(c).Gap(t.Density.Tight).Label(title).Children(func() {
@@ -119,11 +105,11 @@ type taskMetric struct {
 
 type taskCardOptions struct {
 	kind, name, state string
-	color             ui.Color // 与 state 对应的状态色。
+	color             ui.Color
 	active            bool
 	metrics           []taskMetric
-	status            string // 无遥测时替代指标网格的单行状态。
-	notice            func() // 失败摘要，保持可见而不藏进折叠区。
+	status            string
+	notice            func()
 	actions, details  func()
 }
 
@@ -164,8 +150,6 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 				}
 			})
 		}
-		// The indeterminate bar already marks the task as in progress; a second
-		// spinner beside the name would repeat the same signal.
 		if options.active {
 			progressBar(c, -1, "下载任务活动").Height(t.Density.Tight)
 		}
@@ -177,10 +161,6 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 	})
 }
 
-// stepTrack places a numbered rail beside content on the page background. The
-// number badge stays round and follows the desktop text scale: the diameter is
-// derived from the same rem the number is drawn with, because MyGo exposes no
-// measured line height while building, and 1.6 rem leaves room for it.
 func stepTrack(c *ui.Context, number, title string, fn func()) {
 	t := tokens(c)
 	theme := c.Theme()
@@ -201,10 +181,6 @@ func stepTrack(c *ui.Context, number, title string, fn func()) {
 	})
 }
 
-// selectField is a dropdown named after its field. MyGo exports the trigger as
-// an accessibility leaf, so a field name passed as its Label replaces the
-// visible option as the whole accessible description; the current option is
-// exported as the trigger's value so assistive technology still reads it.
 func selectField[T comparable](c *ui.Context, name, description string, selected *T, options []components.NativeSelectOption[T]) {
 	f := ui.Field(c, name, func() {
 		current := ""

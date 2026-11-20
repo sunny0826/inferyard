@@ -217,7 +217,6 @@ def prepare(request):
     from inferyard.platforms.engine_fit import host_identity, model_manifest
 
     _require(not request.out.exists() and not request.out.is_symlink(), "out")
-    # Validate cheap input before hashing potentially large model weights.
     cases = read_json(request.fit_prompts) if request.fit_prompts else DEFAULT_CASES
     validate_cases(cases)
     _require(_integer(request.fit_max_tokens, 1, 8192), "max_tokens")

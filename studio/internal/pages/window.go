@@ -1,4 +1,3 @@
-// Package pages implements the Studio desktop views directly over core.Service.
 package pages
 
 import (
@@ -24,15 +23,10 @@ var navigation = []struct {
 	{"reports", "报告", lucide.FileText},
 	{"models", "模型", lucide.Layers},
 	{"downloads", "下载", lucide.Download},
-	// The device entry keeps lucide.Cpu; the header engine status uses
-	// lucide.Server so the two controls never share a glyph.
 	{"device", "设备", lucide.Cpu},
 	{"settings", "设置", lucide.Settings},
 }
 
-// New opens the main window on the Onevra sidebar shell: a collapsible,
-// resizable navigation sidebar, a floating window header and the Onevra theme.
-// The navigation and content builders are shared with the in-memory test view.
 func New(ctx context.Context, service *core.Service, page string) {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, speed: &speedWorkspace{context: inferyard.ContextSpeed64K}}
@@ -147,41 +141,23 @@ type viewState struct {
 	resumeSource                                                                        *core.RunSummary
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
-	// bindFailure is the rejected manual or discovered connection the bind step
-	// owns; it is separate from other page-level failures such as refreshes.
-	bindFailure *core.ApiError
-	// failedBundle is the bundle the rejected connection belonged to, so the
-	// progress card marks only that bundle.
-	failedBundle string
-	// handoffFailure is the rejected LM Studio handoff connection; the handoff
-	// card renders it next to its form.
-	handoffFailure *core.ApiError
-	// engineFailureCleared records the failed engine state the user already
-	// recovered from by connecting another service. A later, different engine
-	// failure is keyed differently and still reports.
-	engineFailureCleared string
-	// localUsedPIDs records LM Studio services whose CLI verification succeeded,
-	// so the next handoff never offers to reuse them. A PID accepted by the
-	// service but still being verified stays in localPendingPIDs: it is reserved
-	// while in flight, and released again if verification fails.
-	localUsedPIDs                                        map[int64]bool
-	localPendingPIDs                                     map[string]int64
-	modelURL, modelName, tokenEnv, engineURL, engineName string
-	historyTable                                         pageTableState
-	reportSources                                        components.ListState
-	reportChoices                                        ui.Selection[any]
-	scrolls                                              map[string]*ui.ScrollState
-	casesTable, samplesTable                             pageTableState
-	resourceTablePage                                    int
-	// settingsEpoch counts applied saves. A refresh reads it before asking the
-	// service for settings and drops that snapshot when a save landed first,
-	// so a stale read cannot revert freshly saved values.
-	settingsEpochMu sync.Mutex
-	settingsEpoch   uint64
+	bindFailure                                                                         *core.ApiError
+	failedBundle                                                                        string
+	handoffFailure                                                                      *core.ApiError
+	engineFailureCleared                                                                string
+	localUsedPIDs                                                                       map[int64]bool
+	localPendingPIDs                                                                    map[string]int64
+	modelURL, modelName, tokenEnv, engineURL, engineName                                string
+	historyTable                                                                        pageTableState
+	reportSources                                                                       components.ListState
+	reportChoices                                                                       ui.Selection[any]
+	scrolls                                                                             map[string]*ui.ScrollState
+	casesTable, samplesTable                                                            pageTableState
+	resourceTablePage                                                                   int
+	settingsEpochMu                                                                     sync.Mutex
+	settingsEpoch                                                                       uint64
 }
 
-// settingsSequence reads the save counter under its lock: refresh runs on a
-// goroutine while a save applies on the main thread.
 func (s *viewState) settingsSequence() uint64 {
 	s.settingsEpochMu.Lock()
 	defer s.settingsEpochMu.Unlock()
@@ -197,10 +173,6 @@ func (s *viewState) refresh(full bool) {
 	if s.ctx == nil || s.ctx.Err() != nil {
 		return
 	}
-	// Every value below belongs to the settings snapshot in force when the
-	// batch started. A save that lands meanwhile makes the whole batch stale:
-	// its readiness, progress and reports describe the previous workspace, so
-	// the batch is dropped instead of painted over the saved one.
 	settingsEpoch := s.settingsSequence()
 	s.win.Update(func() { s.refreshing = true })
 	device, tasks, downloads := s.service.Device(), s.service.RunTasks(), s.service.Downloads()
@@ -274,9 +246,6 @@ func (s *viewState) refresh(full bool) {
 	}
 }
 
-// refreshBatch is one refresh read, captured together with the settings epoch
-// it started from. Readiness, progress and reports all describe the workspace
-// in force at that epoch.
 type refreshBatch struct {
 	epoch                      uint64
 	full                       bool
@@ -300,18 +269,11 @@ type refreshBatch struct {
 	registry                   core.Registry
 }
 
-// applyRefreshBatch paints a whole refresh read, unless a settings save landed
-// after the batch started. Then the batch describes the previous workspace and
-// is dropped whole: painting even one field would show old directory readiness
-// such as "目录已存在，工作区已初始化" beside a newly saved workspace. The save
-// triggers its own refresh, which reads the new workspace.
 func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	if !s.refreshBatchCurrent(b.epoch) {
 		return false
 	}
 	s.device, s.tasks, s.downloads = b.device, b.tasks, b.downloads
-	// A handoff service counts as consumed only once its task left the binding
-	// stage without a verification error.
 	s.reconcileLocalPIDs(b.tasks)
 	if b.speedHistoryError == nil {
 		s.syncSpeedTasks(b.speedTasks)
@@ -336,7 +298,6 @@ func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
 	}
 	s.ready, s.progress = b.ready, b.progress.Progress
 	s.applyDashboard(b.dashboard, b.progressError)
-	// engine.state wakes this refresh; read the latest state after slow scans.
 	s.engineState = s.service.Engine()
 	s.checks = s.service.EngineChecks()
 	s.adoptDownloadedEngine()
@@ -392,8 +353,6 @@ func (s *viewState) selectTask(id string) {
 	go s.refresh(false)
 }
 
-// view builds the in-memory test view of the same pages the window shows.
-// It has no shell around it, so it builds the toast viewport itself.
 func (s *viewState) view(c *ui.Context) {
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
 		ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
@@ -402,13 +361,6 @@ func (s *viewState) view(c *ui.Context) {
 	studioToasts(c)
 }
 
-// contentView builds the page area below the shell's floating header: the
-// corner status stays fixed while page content scrolls beneath it.
-//
-// The completion toast and the assistive-technology announcements are consumed
-// here, so that both the production shell and the preview window show them.
-// The shell builds its toast viewport around this content, which is where the
-// toast appears.
 func (s *viewState) contentView(c *ui.Context) {
 	s.consumeFeedback(c)
 	s.dropStaleStopPrompt()
@@ -516,7 +468,6 @@ func (s *viewState) pageScroll() *ui.ScrollState {
 	return s.scrolls[key]
 }
 
-// Called under refreshMu; progress ticks reuse the current verification targets.
 func (s *viewState) shouldVerifyEngines(full, visible bool, now time.Time) bool {
 	if !visible || (!full && !s.lastEngineVerification.IsZero() && now.Sub(s.lastEngineVerification) < 5*time.Second) {
 		return false

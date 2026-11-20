@@ -52,7 +52,6 @@ func (s *viewState) detailView(c *ui.Context) {
 	s.resourceView(c, d.Resources)
 }
 
-// detailRawFields keeps the unchanged identifiers out of the primary reading.
 func detailRawFields(c *ui.Context, t core.RunTask) {
 	ui.Text(c, "原始状态："+t.State).Selectable()
 	ui.Text(c, "任务类型："+t.Kind).Selectable()
@@ -62,7 +61,6 @@ func detailRawFields(c *ui.Context, t core.RunTask) {
 	}
 }
 
-// detailProgress renders the live case table and its scope note.
 func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail, t core.RunTask) {
 	p := d.Progress
 	if p == nil {
@@ -94,10 +92,6 @@ func progressHeadline(p *core.RunProgress) string {
 
 func detailScope(t core.RunTask) string { return bundleScopeText(t.Kind == "resume") }
 
-// caseQuality keeps a missing quality verdict distinct from "not applicable".
-// A request can finish before scoring is recorded, so an absent quality state
-// is a missing measurement ("缺测") and must not borrow the report table's "—",
-// which means the value does not apply.
 func caseQuality(item core.CaseProgress) string {
 	if item.QualityState == nil || *item.QualityState == "" {
 		return "缺测"
@@ -105,10 +99,6 @@ func caseQuality(item core.CaseProgress) string {
 	return reportQuality(item.QualityState)
 }
 
-// caseErrorCategory separates "not applicable" from "missing": a case that
-// finished without a failure has no error category by definition and reads
-// "—", while a failed case without a recorded category is a missing
-// measurement and keeps "缺测".
 func caseErrorCategory(item core.CaseProgress) string {
 	if item.ErrorCategory != nil && *item.ErrorCategory != "" {
 		return *item.ErrorCategory
@@ -119,9 +109,6 @@ func caseErrorCategory(item core.CaseProgress) string {
 	return "—"
 }
 
-// optionalText renders an optional record field. A missing value is a missing
-// measurement, so it reads "缺测" instead of "未知", which suggested that an
-// unknown state had been observed.
 func optionalText(value *string) string {
 	if value == nil || *value == "" {
 		return "缺测"

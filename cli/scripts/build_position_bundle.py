@@ -52,7 +52,6 @@ def build(sizes=(256, 1024, 3072)):
         for position, fractions in POSITIONS.items():
             for family in FAMILIES:
                 cid = f"{family['family_id']}-{size}-{position}"
-                # Fixed background and fixed total character length within each size.
                 body = ""
                 spans = []
                 for text, fraction in zip(family["evidence"], fractions, strict=False):

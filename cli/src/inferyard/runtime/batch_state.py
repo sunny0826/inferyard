@@ -132,7 +132,6 @@ def open_batch(
     return _create_batch(root, source, diagnostic, source_identity, implementation_identity)
 
 
-
 def bind_service(
     loaded, endpoint_url=None, server_pid=None, api_key_env=None, service_binding_path=None
 ):
@@ -195,7 +194,6 @@ def require_replaced_service(previous, config, *, serial_continuation=False):
     )
 
 
-
 def remaining_budget(plan, runs):
     spent = 0
     for data in runs:
@@ -206,7 +204,6 @@ def remaining_budget(plan, runs):
             continue
         value = evidence.observation("execution_budget", stage="finalizing")
         if value is None:
-            # Crash elapsed time is unknown: reserve its whole declared allocation.
             spent += trial["total_budget_seconds"]
             continue
         seconds = value.get("elapsed_seconds")

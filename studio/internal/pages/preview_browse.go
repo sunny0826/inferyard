@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 )
 
-// browseChoice returns the simulated destination for a path field. Directories
-// stay inside the preview root so unrelated real paths are never adopted.
 func browseChoice(root, key string, current string) string {
 	if current != "" {
 		return filepath.Join(filepath.Dir(current), "selected", filepath.Base(current))

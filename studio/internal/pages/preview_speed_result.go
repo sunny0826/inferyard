@@ -9,7 +9,6 @@ import (
 	"strings"
 )
 
-// Synthetic evidence exists only in the debug window; these references are never IO paths.
 func previewSpeedResult(r *speedTask, completed int, missing bool) inferyard.ContextSpeedResult {
 	hash := strings.Repeat("a", 64)
 	ref := func(path string) inferyard.SpeedRef { return inferyard.SpeedRef{Path: path, SHA256: hash} }

@@ -21,8 +21,6 @@ func downloadNameDefaults(u UserSettings) UserSettings {
 	return u
 }
 
-// downloadOutputLocked reserves names through the task list, including failed
-// and cancelled tasks whose downloader has not created a directory yet.
 func (s *Service) downloadOutputLocked(root, explicit, base string) (string, string, *ApiError) {
 	auto := explicit == ""
 	if !auto {

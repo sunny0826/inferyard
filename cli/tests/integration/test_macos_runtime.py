@@ -164,4 +164,4 @@ def test_native_single_probe_run_and_offline_report(native_service, tmp_path):
     document = write_studio_report([path], report)
     assert {p.name for p in report.iterdir()} == {"studio.json"}
     assert read_studio_report(report) == document
-    assert data["summary"]["completeness"] == "incomplete"  # diagnostic stays diagnostic
+    assert data["summary"]["completeness"] == "incomplete"

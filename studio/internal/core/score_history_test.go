@@ -8,9 +8,6 @@ import (
 	"testing"
 )
 
-// writeFinishedRun lays out a sealed layout2 run whose two quality cases both
-// executed and passed, then stopped with reason. Only the stop reason varies,
-// so every other completeness condition holds.
 func writeFinishedRun(t *testing.T, root, reason string) {
 	t.Helper()
 	dir := filepath.Join(root, reason)
@@ -42,10 +39,6 @@ func writeFinishedRun(t *testing.T, root, reason string) {
 	}
 }
 
-// A run that finished every case but stopped for any reason other than
-// plan_finished is incomplete under the CLI rule (trial_summary.py). The CLI can
-// stop with sampler_failed or adapter_cleanup_failed after the last case and
-// still seal the run, so the history must not call it complete or give a rate.
 func TestHistoryTreatsAbnormalStopAfterLastCaseAsIncomplete(t *testing.T) {
 	s := testService(t, nil)
 	root, err := canonical(t.TempDir())
@@ -74,11 +67,8 @@ func TestHistoryTreatsAbnormalStopAfterLastCaseAsIncomplete(t *testing.T) {
 	}
 }
 
-// historyVerdict is what the history must report for one finished run.
 type historyVerdict struct{ completeness, status string }
 
-// check asserts the verdict, that both executed cases are counted, and that a
-// rate appears only for a complete run.
 func (v historyVerdict) check(t *testing.T, run RunSummary) {
 	t.Helper()
 	reason := str(run.StopReason)

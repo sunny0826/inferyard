@@ -3,8 +3,6 @@
 from inferyard.contracts.engine_profiles import LOCAL_FAMILIES
 from inferyard.contracts.schemas_common import BOOL, HASH, LABEL, array, enum, nullable, obj
 
-# Ineligibility reuses the fixed PreparationError reasons from config create;
-# a passing check never confers candidate eligibility (config create decides).
 REASONS = (
     "invalid_library_manifest",
     "unsupported_engine_build_requires_adapter_validation",
@@ -38,8 +36,6 @@ DETAILS["allOf"] = [
         "if": {"properties": {"eligible": {"const": True}}},
         "then": {
             "properties": {"reason": {"type": "null"}, "reported_version": LABEL},
-            # macOS reports per-mode results (mode stays null); Windows reports
-            # the receipt profile mode (modes stays null).
             "allOf": [
                 {
                     "if": {"properties": {"mode": {"type": "null"}}},

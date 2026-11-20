@@ -78,7 +78,6 @@ def scalar(value):
 
 def csv_cell(value):
     text = scalar(value)
-    # Numeric negatives remain numeric. Untrusted text is explicitly textual.
     if isinstance(value, str) and (
         text.lstrip().startswith(("=", "+", "-", "@")) or text.startswith(("\t", "\r", "\n"))
     ):
