@@ -58,9 +58,9 @@ func TestHandoffPIDConsumedOnlyAfterVerification(t *testing.T) {
 	if !s.localSelectionInvalid(4002, nil) {
 		t.Fatal("PID is not retryable after a failed verification")
 	}
-	// The retry is accepted; once it progresses past binding, the PID is used.
+	// The retry is accepted; once the CLI verified the binding, the PID is used.
 	s.reserveLocalPID("second", 4002)
-	verified := []core.RunTask{{TaskId: "second", State: "running", Bundle: ptr("zh-svg-pelican")}}
+	verified := []core.RunTask{{TaskId: "second", State: "running", Bundle: ptr("zh-svg-pelican"), ConfigPath: ptr("/w/bound/second/config.toml")}}
 	s.reconcileLocalPIDs(verified)
 	if !s.localUsedPIDs[4002] {
 		t.Fatal("verified service not recorded")

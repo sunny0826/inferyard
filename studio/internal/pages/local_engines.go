@@ -341,18 +341,23 @@ func (s *viewState) reserveLocalPID(taskID string, pid int64) {
 	s.localPendingPIDs[taskID] = pid
 }
 
-// reconcileLocalPIDs settles reserved services against the current task states:
-// a task that passed binding keeps its service for the rest of the round, and a
-// failed attempt releases it. Verification failure is reported as a task error,
-// so only a task that left the binding stage without an error consumes the PID.
+// reconcileLocalPIDs settles reserved services against the current task states.
+// A verified binding (ConfigPath written by the CLI) consumes the service for the
+// rest of the round even if the run that follows fails before the next refresh;
+// only an attempt that ended without a verified binding releases the PID.
 func (s *viewState) reconcileLocalPIDs(tasks []core.RunTask) {
 	for taskID, pid := range s.localPendingPIDs {
 		task := localPendingTask(tasks, taskID)
-		switch {
-		case task == nil || task.Error != nil:
+		if task == nil {
 			delete(s.localPendingPIDs, taskID)
-		case !task.AwaitingService && task.PreparationStage == "":
+			continue
+		}
+		if task.ConfigPath != nil && *task.ConfigPath != "" {
 			s.markServiceUsed(pid)
+			delete(s.localPendingPIDs, taskID)
+			continue
+		}
+		if task.Error != nil || (!task.AwaitingService && task.PreparationStage == "") {
 			delete(s.localPendingPIDs, taskID)
 		}
 	}
