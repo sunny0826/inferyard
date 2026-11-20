@@ -25,7 +25,6 @@ from inferyard.analysis.ledger import read_trial
 from inferyard.contracts.redaction import Redactor
 from inferyard.evidence.storage import sha256_file, verify_manifest
 from inferyard.evidence.trial_evidence import TrialEvidence
-from inferyard.implementation_identity import IdentityContext
 from inferyard.platforms.identity import environment_snapshot, process_start_ticks, service_origin, static_preflight, verify_process
 from inferyard.platforms.telemetry import Sampler
 from inferyard.provenance import tool_source_hash
@@ -161,7 +160,7 @@ def load_rerun(request) -> tuple[LoadedConfig, dict]:
 
 async def execute_async(request, dependencies: Dependencies | None = None):
     scoring_context = ScoringContext()
-    identity_context = IdentityContext(source_hash=tool_source_hash)
+    source_identity = tool_source_hash()
     loaded, parent = load_rerun(request) if request.from_run else (request.config, None)
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
     if request.command == "run":
@@ -203,8 +202,7 @@ async def execute_async(request, dependencies: Dependencies | None = None):
         kind=request.command,
         execution_mode="single",
         scoring_context=scoring_context,
-        source_identity=identity_context.source,
-        implementation_identity=identity_context.value,
+        source_identity=source_identity,
         configuration_source=configuration_source,
     )
     if parent:

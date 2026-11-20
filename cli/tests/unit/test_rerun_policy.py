@@ -1,4 +1,4 @@
-"""Rerun entry accepts implementation changes; comparison records differences."""
+"""Rerun entry accepts version changes; comparison compares explicit versions."""
 
 from copy import deepcopy
 from pathlib import Path
@@ -14,32 +14,19 @@ from inferyard.contracts.validation_cache import command_validation, validation_
 from inferyard.errors import ContractError, PreflightError
 from inferyard.evidence.journal import trial_inputs
 from inferyard.evidence.storage import read_json
-from inferyard.implementation_identity import IdentityContext
 from inferyard.runtime import runner
 from tests.helpers import fixture_run
 from tests.legacy_journal import LegacyJournal
 
 
-@pytest.mark.parametrize("field", ["tool_version", "scorer", "measurement", "scoring", "legacy"])
-def test_rerun_accepts_identity_difference_but_comparison_rejects(tmp_path, monkeypatch, field):
+@pytest.mark.parametrize("field", ["tool_version", "measurement", "scoring"])
+def test_rerun_accepts_version_difference_and_comparison_tracks_it(tmp_path, monkeypatch, field):
     root = fixture_run(tmp_path / "parent", states=["completed"] * 3, comparison_mode="model")
     parent = read_trial(root)
     changed = deepcopy(parent)
-    if field == "scorer":
-        changed["selection"]["scorer_sha256"] = "0" * 64
-        condition = "selection.scorer_sha256"
-    elif field in ("measurement", "scoring"):
-        from inferyard.implementation_identity import digest
-
-        role = changed["run"]["implementation_identity"][field]
-        role["files"][0]["sha256"] = "0" * 64
-        role["sha256"] = digest({k: v for k, v in role.items() if k != "sha256"})
-        condition = "run.implementation_identity." + field
-    elif field == "legacy":
-        for data in (parent, changed):
-            data["run"].pop("implementation_identity")
-        changed["run"]["tool_source_sha256"] = "0" * 64
-        condition = "run.tool_source_sha256"
+    if field in ("measurement", "scoring"):
+        changed["run"]["definition_versions"][field] = "changed.v99"
+        condition = "run.definition_versions." + field
     else:
         changed["run"]["tool_version"] = "older"
         condition = "run.tool_version"
@@ -72,17 +59,25 @@ def test_rerun_accepts_identity_difference_but_comparison_rejects(tmp_path, monk
     finally:
         journal.close()
     result = compare_trials(parent, changed)
-    assert not any(result["eligibility"].values())
     assert next(c for c in result["conditions"] if c["field"] == condition)["status"] == "different"
+    if field == "tool_version":
+        assert not any(result["eligibility"].values())
+    elif field == "measurement":
+        assert not result["eligibility"]["completion"]
+    else:
+        assert not result["eligibility"]["quality"]
 
 
-def test_default_identity_context_reuses_cache_without_sharing_state() -> None:
-    first = IdentityContext()
-    first.value["measurement"]["sha256"] = "0" * 64
-    second = IdentityContext()
-    assert second.source == IdentityContext().source
-    assert second.value["measurement"]["sha256"] != "0" * 64
-    assert second.value == IdentityContext().value
+def test_source_hash_difference_alone_does_not_block_comparison(tmp_path):
+    root = fixture_run(tmp_path / "parent", states=["completed"] * 3, comparison_mode="model")
+    parent = read_trial(root)
+    changed = deepcopy(parent)
+    changed["run"]["tool_source_sha256"] = "0" * 64
+    baseline = compare_trials(parent, parent)
+    result = compare_trials(parent, changed)
+    assert result["eligibility"] == baseline["eligibility"]
+    assert result["blockers"] == baseline["blockers"]
+    assert all(c["field"] != "run.tool_source_sha256" for c in result["conditions"])
 
 
 def test_trial_inputs_revalidates_changed_bundle_inside_command_cache() -> None:

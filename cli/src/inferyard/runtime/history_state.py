@@ -15,7 +15,6 @@ from inferyard.contracts.comparison_types import JSONRecord
 from inferyard.config.loader import LoadedConfig
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.evidence.storage import read_json
-from inferyard.provenance import tool_source_hash
 from inferyard.contracts.batch_envelope import validate_batch_envelope
 from inferyard.runtime.history_read import (
     HistoryContext,
@@ -26,23 +25,15 @@ from inferyard.runtime.history_read import (
 )
 
 
-def _history_scope(
-    root: Path, allow_tool_change: bool, source_identity: str | None
-) -> tuple[JSONRecord, str]:
+def _history_scope(root: Path) -> JSONRecord:
     metadata = read_json(root / "batch.json")
     validate_batch_envelope(metadata)
-    expected_tool = (
-        metadata.get("tool_source_sha256")
-        if allow_tool_change
-        else source_identity or tool_source_hash()
-    )
-    return metadata, expected_tool
+    return metadata
 
 
 @dataclass(frozen=True, slots=True)
 class HistoryOptions:
     source_identity: str | None = None
-    implementation_identity: JSONRecord | None = None
     full_verification: bool = True
 
 
@@ -255,18 +246,15 @@ def history(
     *,
     allow_tool_change: bool = False,
     source_identity: str | None = None,
-    implementation_identity: JSONRecord | None = None,
     full_verification: bool = False,
 ) -> list[JSONRecord]:
-    metadata, expected_tool = _history_scope(root, allow_tool_change, source_identity)
+    del allow_tool_change, source_identity
+    metadata = _history_scope(root)
     context = HistoryContext(
         root,
         plan,
         loaded,
         metadata,
-        expected_tool,
-        allow_tool_change,
-        implementation_identity,
         full_verification,
         False,
     )
@@ -281,20 +269,12 @@ def history_diagnostics(
 ) -> tuple[list[JSONRecord], list[JSONRecord]]:
     """Collect per-run rejection reasons for comparison readers (fail-fast stays in history)."""
     options = options or HistoryOptions()
-    metadata, expected_tool = _history_scope(root, False, options.source_identity)
-    implementation_identity = options.implementation_identity
-    if implementation_identity is None:
-        from inferyard.implementation_identity import IdentityContext
-
-        implementation_identity = IdentityContext(source_hash=tool_source_hash).value
+    metadata = _history_scope(root)
     context = HistoryContext(
         root,
         plan,
         loaded,
         metadata,
-        expected_tool,
-        False,
-        implementation_identity,
         options.full_verification,
         True,
     )

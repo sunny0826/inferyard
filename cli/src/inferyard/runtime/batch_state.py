@@ -16,7 +16,6 @@ from inferyard.contracts.validation import Document, json_bytes
 from inferyard.errors import ContractError, EvidenceError, PreflightError, UnsupportedFormat
 from inferyard.evidence.storage import atomic_bytes, read_json
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
-from inferyard.implementation_identity import execution_matches
 from inferyard.provenance import tool_source_hash
 from inferyard.platforms.identity import hash_file, process_start_ticks
 
@@ -27,8 +26,6 @@ def _open_existing_batch(
     root: Path,
     source: Path | None,
     diagnostic: bool,
-    source_identity: str,
-    implementation_identity: JSONRecord | None,
 ) -> tuple[JSONRecord, dict[str, LoadedConfig]]:
     meta = read_json(root / "batch.json")
     try:
@@ -52,11 +49,6 @@ def _open_existing_batch(
         meta.get("schema_version") != SCHEMA_VERSION
         or meta.get("plan_sha256") != plan["plan_sha256"]
         or meta.get("diagnostic") != diagnostic
-        or (
-            not execution_matches(meta["implementation_identity"], implementation_identity)
-            if "implementation_identity" in meta
-            else meta.get("tool_source_sha256") != source_identity
-        )
     ):
         raise EvidenceError("batch_identity_or_tool_changed")
     if source and read_frozen_plan(source)[0]["plan_sha256"] != plan["plan_sha256"]:
@@ -69,7 +61,6 @@ def _create_batch(
     source: Path | None,
     diagnostic: bool,
     source_identity: str,
-    implementation_identity: JSONRecord | None,
 ) -> tuple[JSONRecord, dict[str, LoadedConfig]]:
     if source is None:
         raise EvidenceError("batch_source_plan_required")
@@ -99,11 +90,6 @@ def _create_batch(
                 plan_sha256=plan["plan_sha256"],
                 diagnostic=diagnostic,
                 tool_source_sha256=source_identity,
-                **(
-                    {"implementation_identity": implementation_identity}
-                    if implementation_identity
-                    else {}
-                ),
             )
         ),
     )
@@ -116,20 +102,11 @@ def open_batch(
     diagnostic: bool,
     *,
     source_identity: str | None = None,
-    implementation_identity: JSONRecord | None = None,
 ) -> tuple[JSONRecord, dict[str, LoadedConfig]]:
-    if implementation_identity is None:
-        from inferyard.implementation_identity import IdentityContext
-
-        context = IdentityContext(source_hash=tool_source_hash)
-        implementation_identity = context.value
-        source_identity = source_identity or context.source
     source_identity = source_identity or tool_source_hash()
     if (root / "batch.json").exists():
-        return _open_existing_batch(
-            root, source, diagnostic, source_identity, implementation_identity
-        )
-    return _create_batch(root, source, diagnostic, source_identity, implementation_identity)
+        return _open_existing_batch(root, source, diagnostic)
+    return _create_batch(root, source, diagnostic, source_identity)
 
 
 def bind_service(

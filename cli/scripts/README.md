@@ -6,8 +6,7 @@ Run all commands below from `cli/` (`mise exec -- uv run --frozen python scripts
 
 ```bash
 mise exec -- uv run --frozen python scripts/export_schemas.py        # --check to verify
-mise exec -- uv run --frozen python scripts/export_catalogue.py      # --check to verify
-mise exec -- uv run --frozen python scripts/export_community.py      # pass --archives DIR when refreshing Windows ZIP profiles
+mise exec -- uv run --frozen python scripts/export_community.py      # optional helper to sync bundles or refresh Windows ZIP profiles (--archives DIR)
 ```
 
 ## Distribution & release checks

@@ -39,7 +39,6 @@ DATA_FILES = {
 COMMUNITY_FILES = {
     "data/community/" + name
     for name in (
-        "resources.json",
         "README.md",
         "configs/linux.example.toml",
         "configs/macos.example.toml",

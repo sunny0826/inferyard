@@ -19,7 +19,6 @@ from inferyard.contracts.schemas_common import (
 )
 from inferyard.contracts.schemas_config import ENVIRONMENT_ADMISSION
 from inferyard.contracts.schemas_evidence_reference import EVIDENCE_REFERENCE
-from inferyard.contracts.schemas_identity import IMPLEMENTATION_IDENTITY
 from inferyard.contracts.schemas_lineage import LINEAGE, RECORDS
 
 SECONDS = {"type": "number", "exclusiveMinimum": 0}
@@ -174,7 +173,7 @@ PLAN = obj(
         "limitations": STRING_LIST,
     }
 )
-RUN = obj(
+_RUN_BASE = obj(
     {
         "schema_version": VERSION,
         "run_id": IDENTIFIER,
@@ -193,13 +192,12 @@ RUN = obj(
         "diagnostic": BOOL,
     }
 )
-
 RUN = {
     "oneOf": [
-        RUN,
+        _RUN_BASE,
         obj(
-            {**RUN["properties"], "implementation_identity": IMPLEMENTATION_IDENTITY},
-            [key for key in RUN["required"] if key != "tool_source_sha256"]
+            {**_RUN_BASE["properties"], "implementation_identity": {"type": "object"}},
+            [key for key in _RUN_BASE["required"] if key != "tool_source_sha256"]
             + ["implementation_identity"],
         ),
     ]

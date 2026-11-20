@@ -56,14 +56,8 @@ class LegacyJournal(EvidenceStore):
         rerun_parent=None,
         scoring_context=None,
         source_identity=None,
-        implementation_identity=None,
     ):
-        if implementation_identity is None:
-            from inferyard.implementation_identity import IdentityContext
-
-            identity_context = IdentityContext(source_hash=tool_source_hash)
-            source_identity = source_identity or identity_context.source
-            implementation_identity = identity_context.value
+        source_identity = source_identity or tool_source_hash()
         if rerun_parent and (parent or resume_case_ids):
             raise EvidenceError("rerun_parent_conflicts_with_trial_parent")
         with command_validation(enabled=False):
@@ -136,10 +130,8 @@ class LegacyJournal(EvidenceStore):
             definition_versions=plan["experiment"]["definition_versions"],
             resumed_case_ids=list(resume_case_ids),
             diagnostic=diagnostic,
+            tool_source_sha256=source_identity,
         )
-        run["implementation_identity"] = implementation_identity
-        if source_identity is not None:
-            run["tool_source_sha256"] = source_identity
         config_bytes, bundle_bytes = json_bytes(config), json_bytes(bundle)
         selection = dict(
             schema_version=SCHEMA_VERSION,

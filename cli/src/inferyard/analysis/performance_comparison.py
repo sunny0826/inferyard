@@ -29,10 +29,12 @@ def metric_index(data):
     return indexed
 
 
-def performance_comparison(left, right, comparison, evidence, *, definition="phase2.v3"):
+def performance_comparison(left, right, comparison, evidence, *, definition="phase2.v4"):
     from inferyard.contracts.format_versions import require_version
 
-    require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
+    require_version(
+        {"definition": definition}, "definition", ("phase2.v3", "phase2.v4"), "comparison"
+    )
     reasons = list(comparison["blockers"])
     for condition in comparison["conditions"]:
         if condition["impact"] == "performance" and condition["status"] not in (

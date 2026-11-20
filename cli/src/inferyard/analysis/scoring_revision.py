@@ -1,7 +1,6 @@
 """Offline-only scoring revision: separate numeric syntax and value diagnostics."""
 
 import hashlib
-from pathlib import Path
 
 from inferyard.analysis import scoring as original
 from inferyard.contracts.validation import validate_document
@@ -11,9 +10,8 @@ VERSION = "phase2.v2"
 
 
 def scorer_hash(*, original_hash=None):
-    digest = hashlib.sha256((original_hash or original.scorer_hash()).encode())
-    digest.update(Path(__file__).read_bytes())
-    return digest.hexdigest()
+    del original_hash
+    return hashlib.sha256(f"inferyard.scorer:{VERSION}".encode("utf-8")).hexdigest()
 
 
 def identify(result, identity):

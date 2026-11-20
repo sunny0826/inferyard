@@ -6,7 +6,19 @@ import json
 from pathlib import Path
 
 from inferyard.contracts.bundle import content_hash, validate_bundle
-from inferyard.contracts.bundle_review import case_content_hash
+
+
+def case_content_hash(bundle: dict, case: dict) -> str:
+    value = {
+        "definition": "case-review.v1",
+        **case,
+        "task_protocol": bundle["task_protocol"],
+        "answer_policy": bundle["answer_policy"],
+    }
+    raw = json.dumps(
+        value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+    ).encode()
+    return hashlib.sha256(raw).hexdigest()
 
 if __package__:
     from .context_speed_corpus import GENERATOR_VERSION, SEED, SPECS, TOPICS, prompt

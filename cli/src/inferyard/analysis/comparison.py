@@ -2,7 +2,12 @@
 
 import math
 
-from inferyard.analysis.comparison_helpers import _get, _known, comparable_arguments
+from inferyard.analysis.comparison_helpers import (
+    _get,
+    _known,
+    comparable_arguments,
+    legacy_role_identities,
+)
 from inferyard.contracts.engine_profiles import is_local
 from inferyard.errors import EvidenceError
 
@@ -29,10 +34,13 @@ def normalized_args(args, excluded=()):
     return result
 
 
-def compare_trials(left, right, *, mode=None, performance_evidence=None, definition="phase2.v3"):
+def compare_trials(left, right, *, mode=None, performance_evidence=None, definition="phase2.v4"):
     from inferyard.contracts.format_versions import require_version
 
-    require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
+    require_version(
+        {"definition": definition}, "definition", ("phase2.v3", "phase2.v4"), "comparison"
+    )
+    legacy_v3 = definition == "phase2.v3"
     declared = [d["plan"]["experiment"]["comparison"] for d in (left, right)]
     chosen = mode or (declared[0]["mode"] if declared[0] == declared[1] else "side-by-side")
     if chosen not in ("model", "config", "side-by-side", "engine"):
@@ -111,13 +119,25 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     resource_policies = [d["plan"]["experiment"].get("resource_comparison") for d in (left, right)]
     if any(p is not None for p in resource_policies):
         check("resource_window_policy", *resource_policies, impact="performance")
+    identity_paths = (
+        (
+            "run.tool_version",
+            "run.definition_versions",
+            "run.tool_source_sha256",
+            "selection.bundle_sha256",
+            "selection.scorer_sha256",
+            "selection.case_ids",
+        )
+        if legacy_v3
+        else (
+            "run.tool_version",
+            "run.definition_versions",
+            "selection.bundle_sha256",
+            "selection.case_ids",
+        )
+    )
     for path in (
-        "run.tool_version",
-        "run.definition_versions",
-        "run.tool_source_sha256",
-        "selection.bundle_sha256",
-        "selection.scorer_sha256",
-        "selection.case_ids",
+        *identity_paths,
         "config.device",
         "config.engine.adapter",
         "config.engine.release",
@@ -129,13 +149,14 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
         "environment_start.cpu_model",
         "environment_start.kernel",
     ):
-        if path == "run.tool_source_sha256" and any(
-            "implementation_identity" in d["run"] for d in (left, right)
+        if (
+            legacy_v3
+            and path == "run.tool_source_sha256"
+            and any("implementation_identity" in d["run"] for d in (left, right))
         ):
-            from inferyard.implementation_identity import role_identities
-
             identities = [
-                role_identities(d["run"].get("implementation_identity")) for d in (left, right)
+                legacy_role_identities(d["run"].get("implementation_identity"))
+                for d in (left, right)
             ]
             if not all("implementation_identity" in d["run"] for d in (left, right)):
                 check(
@@ -322,7 +343,11 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     )
     completion_ready = common and not any(
         c["field"]
-        in ("run.definition_versions.measurement", "run.implementation_identity.measurement")
+        in (
+            ("run.definition_versions.measurement", "run.implementation_identity.measurement")
+            if legacy_v3
+            else ("run.definition_versions.measurement",)
+        )
         and c["status"] != "same"
         for c in conditions
     )

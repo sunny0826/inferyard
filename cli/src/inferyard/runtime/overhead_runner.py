@@ -99,12 +99,8 @@ async def run_overhead(
     protocol retain the complete input identities before any workload requests.
     """
     from inferyard.analysis.scoring import ScoringContext
-    from inferyard.implementation_identity import IdentityContext
 
-    identity_context, scoring_context = (
-        IdentityContext(source_hash=tool_source_hash),
-        ScoringContext(),
-    )
+    source_identity, scoring_context = tool_source_hash(), ScoringContext()
     config, bundle = loaded.config.to_dict(), loaded.bundle.to_dict()
     deps = dependencies or TrialDependencies(adapter=adapter_factory(config["engine"]["adapter"]))
     trial = trial_for(plan, trial_id)
@@ -121,7 +117,7 @@ async def run_overhead(
         max_wall_seconds=max_wall_seconds,
         config_sha256=hashlib.sha256(json_bytes(config)).hexdigest(),
         bundle_sha256=hashlib.sha256(json_bytes(bundle)).hexdigest(),
-        tool_source_sha256=identity_context.source,
+        tool_source_sha256=source_identity,
         common_observer=common_observer,
         boundary_observer=boundary_observer,
         first_event_tolerance_ratio=first_event_tolerance_ratio,
@@ -154,8 +150,7 @@ async def run_overhead(
                     dependencies=local_deps,
                     host_lock=lock,
                     wall_budget_seconds=remaining,
-                    source_identity=identity_context.source,
-                    implementation_identity=identity_context.value,
+                    source_identity=source_identity,
                     scoring_context=scoring_context,
                 )
                 row = {
@@ -188,7 +183,7 @@ async def run_overhead(
     return result
 
 
-def read_overhead(root, *, target=None, target_data=None):
+def read_overhead(root, *, target=None, target_data=None, legacy_source_binding=False):
     """Recompute from sealed trials; do not trust cached request projections/results."""
     from inferyard.analysis.overhead_environment import assess_environments, environment_record
     from inferyard.analysis.ledger import read_trial
@@ -206,6 +201,7 @@ def read_overhead(root, *, target=None, target_data=None):
     index = read_json(local_file(root, "trials.json"))
     trials, seen = [], set()
     arm_identity = None
+    arm_tool_version = None
     environments = []
     for entry in index:
         path = local_file(root, entry["path"])
@@ -225,6 +221,10 @@ def read_overhead(root, *, target=None, target_data=None):
         if arm_identity is not None and identity != arm_identity:
             raise EvidenceError("overhead_arm_workload_mismatch")
         arm_identity = identity
+        tool_version = data["run"].get("tool_version")
+        if not tool_version or (arm_tool_version is not None and tool_version != arm_tool_version):
+            raise EvidenceError("overhead_tool_mismatch")
+        arm_tool_version = tool_version
         if data["config"]["telemetry"]["interval_ms"] != protocol["interval_ms"]:
             raise EvidenceError("overhead_interval_mismatch")
         run_id = data["run"]["run_id"]
@@ -293,6 +293,8 @@ def read_overhead(root, *, target=None, target_data=None):
             result,
             sealed_observation(evidence, "collector"),
             reads=evidence,
+            arm_tool_version=arm_tool_version,
+            legacy_source_binding=legacy_source_binding,
         )
         result["environment_binding"] = assess_environments(
             environments,

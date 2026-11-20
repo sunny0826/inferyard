@@ -359,8 +359,6 @@ def validate_document(kind: str, data: Any) -> None:
         from inferyard.contracts.engine_profiles import is_local
 
         spec = spec["oneOf"][int(is_local(data))]
-    if kind == "run":
-        spec = spec["oneOf"][int("implementation_identity" in data)]
     validate_value(data, spec, kind)
     from inferyard.contracts.contracts_experiment import validate_semantics
 

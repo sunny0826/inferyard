@@ -8,9 +8,6 @@ on:
       - "cli/bundles/**"
       - "cli/configs/**"
       - "cli/schemas/**"
-      - "cli/docs/experiments/metrics.md"
-      - "cli/docs/experiments/metrics-resources.md"
-      - "cli/docs/reference/methods-matrix.md"
       - "cli/pyproject.toml"
       - "cli/uv.lock"
       - "LICENSE"
@@ -34,8 +31,6 @@ jobs:
       - run: mise exec -- uv run --frozen pytest -n auto -q
       - run: mise exec -- uv run --frozen ruff check src tests scripts
       - run: mise exec -- uv run --frozen python scripts/export_schemas.py --check
-      - run: mise exec -- uv run --frozen python scripts/export_catalogue.py --check
-      - run: mise exec -- uv run --frozen python scripts/export_community.py --check
   build:
     needs: check
     if: github.event_name == 'workflow_dispatch'

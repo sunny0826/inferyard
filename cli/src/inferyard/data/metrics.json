@@ -18,12 +18,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -42,12 +37,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -66,12 +56,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -90,12 +75,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -114,12 +94,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -138,12 +113,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -162,12 +132,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -186,12 +151,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -210,12 +170,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -234,12 +189,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -258,12 +208,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -282,12 +227,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -306,12 +246,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -330,12 +265,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -354,12 +284,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -378,12 +303,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -402,12 +322,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -426,12 +341,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -450,12 +360,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -474,12 +379,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -498,12 +398,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics.md",
-          "sha256": "c42b5a6f79cb186089a47e15f0f9b5e2f9dd3766cc6442657fe0e40f2ace60c3"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -522,12 +417,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -546,12 +436,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -570,12 +455,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -594,12 +474,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -618,12 +493,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -642,12 +512,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -666,12 +531,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -690,12 +550,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -714,12 +569,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -738,12 +588,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -762,12 +607,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -786,12 +626,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -810,12 +645,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -834,12 +664,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -858,12 +683,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "core",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -882,12 +702,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -906,12 +721,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -930,12 +740,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -954,12 +759,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -978,12 +778,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -1002,12 +797,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -1026,12 +816,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -1050,12 +835,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -1074,12 +854,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     },
     {
       "schema_version": 3,
@@ -1098,12 +873,7 @@
       "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
       "implementation_status": "implemented",
       "scope": "conditional",
-      "evidence_refs": [
-        {
-          "path": "docs/experiments/metrics-resources.md",
-          "sha256": "5ddd94aeb88b3b35b81fe5de607fc07f4c83bc1285956407f9aaa96d0d39f67e"
-        }
-      ]
+      "evidence_refs": []
     }
   ]
 }

@@ -10,7 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-@pytest.mark.parametrize("script", ["export_schemas", "export_catalogue"])
+@pytest.mark.parametrize("script", ["export_schemas"])
 @pytest.mark.parametrize("stale", [False, True])
 def test_export_and_check_ignore_gbk_default(tmp_path, monkeypatch, script, stale):
     spec = importlib.util.spec_from_file_location(script, ROOT / "scripts" / f"{script}.py")

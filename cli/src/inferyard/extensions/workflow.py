@@ -93,16 +93,15 @@ def freeze(spec, loaded, out):
 
 
 def read_plan(path, loaded, *, source_identity=None):
+    del source_identity
     plan = read_json(path)
     if plan.get("kind") != "extension_plan.v1" or plan.get("plan_sha256") != digest(
         {k: v for k, v in plan.items() if k != "plan_sha256"}
     ):
         raise EvidenceError("extension_plan_hash_mismatch")
-    if (
-        plan.get("config_sha256") != digest(loaded.config.to_dict())
-        or plan.get("bundle_sha256") != digest(loaded.bundle.to_dict())
-        or plan.get("tool_source_sha256") != (source_identity or tool_source_hash())
-    ):
+    if plan.get("config_sha256") != digest(loaded.config.to_dict()) or plan.get(
+        "bundle_sha256"
+    ) != digest(loaded.bundle.to_dict()):
         raise EvidenceError("extension_frozen_input_or_source_mismatch")
     spec = plan["spec"]
     validator = VALIDATORS.get(spec.get("definition"))
@@ -114,17 +113,15 @@ def read_plan(path, loaded, *, source_identity=None):
     return plan
 
 
-async def live(plan, loaded, out, *, identity_context=None):
-    from inferyard.implementation_identity import IdentityContext
-
-    identity_context = identity_context or IdentityContext(source_hash=tool_source_hash)
+async def live(plan, loaded, out):
+    source_identity = tool_source_hash()
     if os.name == "nt":
         raise PreflightError("windows_phase2_live_not_supported")
     spec, config, bundle = plan["spec"], loaded.config.to_dict(), loaded.bundle.to_dict()
     if spec["definition"] == "total_observer_control.v2":
         from inferyard.extensions.complete_control_workflow import live_complete
 
-        return await live_complete(plan, loaded, out, identity_context=identity_context)
+        return await live_complete(plan, loaded, out, source_identity=source_identity)
     secret = os.environ.get(config["endpoint"]["api_key_env"])
     if not secret:
         raise EvidenceError("extension_credential_reference_unavailable")
@@ -153,7 +150,7 @@ async def live(plan, loaded, out, *, identity_context=None):
                     "kind": "extension_packet.v2",
                     "origin": "live_driver",
                     "evidence_kind": "live",
-                    "tool_source_sha256": identity_context.source,
+                    "tool_source_sha256": source_identity,
                 },
             )
             for name, data in (

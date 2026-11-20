@@ -18,7 +18,6 @@ from inferyard.contracts.validation import validate_document
 from inferyard.analysis.ledger import read_run_projection, read_trial
 from inferyard.errors import ContractError, EvidenceError, UnsupportedFormat
 from inferyard.evidence.trial_evidence import TrialEvidence, verify_reference
-from inferyard.implementation_identity import execution_matches
 
 
 def _args_without_endpoint(args: list[str]) -> list[str]:
@@ -48,9 +47,6 @@ class HistoryContext:
     plan: JSONRecord
     loaded: dict[str, LoadedConfig]
     metadata: JSONRecord
-    expected_tool: str
-    allow_tool_change: bool
-    implementation_identity: JSONRecord | None
     full_verification: bool
     retain_binding: bool
 
@@ -58,7 +54,6 @@ class HistoryContext:
 @dataclass(frozen=True, slots=True)
 class HistoryOptions:
     source_identity: str | None = None
-    implementation_identity: JSONRecord | None = None
     full_verification: bool = True
 
 
@@ -158,22 +153,16 @@ def _load_run(path: Path, context: HistoryContext) -> tuple[JSONRecord, JSONReco
 
 def _identity_code(data: JSONRecord, context: HistoryContext) -> str | None:
     run = data["run"]
+    experiment = context.plan["experiment"]
     if context.metadata["plan_sha256"] != context.plan["plan_sha256"]:
         return "batch_plan_identity_mismatch"
-    if run["plan_sha256"] != context.plan["plan_sha256"] or run["trial_id"] not in {
-        trial["trial_id"] for trial in context.plan["trials"]
-    }:
+    if (
+        run["plan_sha256"] != context.plan["plan_sha256"]
+        or run["experiment_id"] != experiment["experiment_id"]
+        or run["definition_versions"] != experiment["definition_versions"]
+        or run["trial_id"] not in {trial["trial_id"] for trial in context.plan["trials"]}
+    ):
         return "batch_run_identity_mismatch"
-    if "implementation_identity" in context.metadata:
-        expected_identity = (
-            context.metadata["implementation_identity"]
-            if context.allow_tool_change
-            else context.implementation_identity
-        )
-        if not execution_matches(run.get("implementation_identity"), expected_identity):
-            return "batch_run_tool_changed"
-    elif run.get("tool_source_sha256") != context.expected_tool:
-        return "batch_run_tool_changed"
     if run["diagnostic"] != context.metadata["diagnostic"]:
         return "batch_diagnostic_mode_changed"
     return None

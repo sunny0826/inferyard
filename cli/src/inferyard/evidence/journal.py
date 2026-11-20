@@ -73,15 +73,9 @@ class TrialJournal(RunRecords, EvidenceStore):
         rerun_parent=None,
         scoring_context,
         source_identity=None,
-        implementation_identity=None,
         configuration_source=None,
     ):
-        if implementation_identity is None:
-            from inferyard.implementation_identity import IdentityContext
-
-            identity_context = IdentityContext(source_hash=tool_source_hash)
-            source_identity = source_identity or identity_context.source
-            implementation_identity = identity_context.value
+        source_identity = source_identity or tool_source_hash()
         trial, workload = trial_inputs(
             plan,
             trial_id,
@@ -149,13 +143,11 @@ class TrialJournal(RunRecords, EvidenceStore):
             if parent
             else "initial",
             tool_version=__version__,
+            tool_source_sha256=source_identity,
             definition_versions=plan["experiment"]["definition_versions"],
             resumed_case_ids=list(resume_case_ids),
             diagnostic=diagnostic,
         )
-        run["implementation_identity"] = implementation_identity
-        if source_identity is not None:
-            run["tool_source_sha256"] = source_identity
         config_bytes, bundle_bytes = json_bytes(config), json_bytes(bundle)
         selection = dict(
             schema_version=SCHEMA_VERSION,

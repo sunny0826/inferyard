@@ -65,7 +65,6 @@ async def run_trial(
     wall_budget_seconds=None,
     scoring_context=None,
     source_identity=None,
-    implementation_identity=None,
     profile: SingleProfile | None = None,
 ):
     single = profile is not None
@@ -118,7 +117,6 @@ async def run_trial(
             diagnostic=diagnostic,
             scoring_context=scoring_context or ScoringContext(),
             source_identity=source_identity,
-            implementation_identity=implementation_identity,
             configuration_source=configuration_source,
         )
     lock, locked = host_lock or deps.lock(), False
