@@ -1,6 +1,18 @@
 name: Studio checks
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "studio/**"
+      - "!studio/README.md"
+      - "tools/**"
+      - "cli/src/**"
+      - "cli/schemas/**"
+      - "cli/pyproject.toml"
+      - "cli/uv.lock"
+      - "mise.toml"
+      - ".github/workflows/studio-check.yml"
   pull_request:
     paths:
       - "studio/**"
@@ -17,8 +29,28 @@ permissions:
 env:
   CGO_ENABLED: "0"
 jobs:
-  test:
-    name: studio (${{ matrix.os }})
+  unit:
+    name: studio unit (macos-15)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Unit tests
+        working-directory: studio
+        run: mise exec -- go test . ./internal/... -count=1
+      - name: UI preview and release boundary
+        working-directory: studio
+        run: |
+          mise exec -- go test -tags ui_debug . ./internal/pages -count=1
+          mise exec -- go test -tags ui_debug,release . -count=1
+          mise exec -- go test -tags studio_dev . -count=1
+          mise exec -- go test -tags studio_dev,release . -count=1
+          mise exec -- python -m unittest discover -s scripts -p test_package.py
+  e2e:
+    name: studio e2e (${{ matrix.os }})
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -32,27 +64,12 @@ jobs:
       - name: Sync CLI dependencies (e2e drives the real CLI)
         working-directory: cli
         run: mise exec -- uv sync --frozen
-      # Unit tests run on macOS only: the pre-existing internal/core suite is
-      # not Windows-clean yet (permission-bit, path-separator and timing
-      # assumptions); that debt is tracked separately from this workflow.
-      - name: Unit tests
-        if: matrix.os == 'macos-15'
-        working-directory: studio
-        run: mise exec -- go test . ./internal/... -count=1
-      - name: UI preview and release boundary
-        if: matrix.os == 'macos-15'
-        working-directory: studio
-        run: |
-          mise exec -- go test -tags ui_debug . ./internal/pages -count=1
-          mise exec -- go test -tags ui_debug,release . -count=1
-          mise exec -- go test -tags studio_dev . ./internal/core ./internal/pages -count=1
-          mise exec -- go test -tags studio_dev,release . -count=1
-          mise exec -- python -m unittest discover -s scripts -p test_package.py
       - name: e2e (fake engine, recorded CLI boundary)
         working-directory: studio
         run: mise exec -- go test ./tests/e2e/ -count=1 -timeout 900s -v
   native-ui:
     name: native preview UI (macOS)
+    if: github.event_name != 'pull_request'
     runs-on: macos-15
     timeout-minutes: 10
     steps:
@@ -63,8 +80,13 @@ jobs:
       - name: Native UI runner checks
         working-directory: studio
         run: mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
-      - name: Full native preview UI e2e
-        run: mise run test:studio-ui:full
+      - name: Native preview UI e2e
+        run: >-
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            mise run test:studio-ui:full
+          else
+            mise run test:studio-ui
+          fi
       - name: Upload native UI test results
         if: always()
         uses: actions/upload-artifact@v7

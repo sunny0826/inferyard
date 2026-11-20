@@ -15,19 +15,54 @@ run = "python tools/dev.py rebuild"
 description = "Gracefully stop only this checkout's recorded development Studio"
 run = "python tools/dev.py stop"
 
+[tasks."cli:sync"]
+description = "Sync locked CLI dependencies into cli/.venv"
+dir = "cli"
+run = "uv sync --frozen"
+
 [tasks.test]
-run = "cd cli && uv run --frozen pytest"
+description = "Run full CLI test suite in parallel"
+dir = "cli"
+run = "uv run --frozen pytest -n auto -q"
+
+[tasks."test:unit"]
+description = "Run fast CLI unit tests"
+dir = "cli"
+run = "uv run --frozen pytest tests/unit -q"
+
+[tasks."test:studio"]
+description = "Run Studio Go unit tests (macOS; Windows internal/core has pre-existing permission-bit debt)"
+dir = "studio"
+env = { GOTOOLCHAIN = "go1.27.3", GOPROXY = "https://goproxy.cn,direct", CGO_ENABLED = "0" }
+run = "go test . ./internal/... -count=1"
+
+[tasks."test:studio:preview"]
+description = "Run Studio UI debug preview Go tests (macOS)"
+dir = "studio"
+env = { GOTOOLCHAIN = "go1.27.3", GOPROXY = "https://goproxy.cn,direct", CGO_ENABLED = "0" }
+run = "go test -tags ui_debug . ./internal/pages -count=1"
+
+[tasks."test:studio:e2e"]
+description = "Run Studio Go e2e tests (ensures CLI environment is synced first)"
+depends = ["cli:sync"]
+dir = "studio"
+env = { GOTOOLCHAIN = "go1.27.3", GOPROXY = "https://goproxy.cn,direct", CGO_ENABLED = "0" }
+run = "go test ./tests/e2e/ -count=1"
 
 [tasks.lint]
-run = "cd cli && uv run --frozen ruff check src tests scripts"
+dir = "cli"
+run = "uv run --frozen ruff check src tests scripts"
 
 [tasks.schemas]
-run = "cd cli && uv run --frozen python scripts/export_schemas.py --check"
+dir = "cli"
+run = "uv run --frozen python scripts/export_schemas.py --check"
 
 [tasks."test:studio-ui"]
 description = "Run the daily macOS native UI checks (3 key workflows)"
-run = "cd studio && python tests/ui/run.py"
+dir = "studio"
+run = "python tests/ui/run.py"
 
 [tasks."test:studio-ui:full"]
 description = "Run all 12 macOS native UI workflows with the simulated Studio backend"
-run = "cd studio && python tests/ui/run.py --suite full"
+dir = "studio"
+run = "python tests/ui/run.py --suite full"
