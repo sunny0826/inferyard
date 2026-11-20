@@ -11,6 +11,24 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
+// settingsTestService mounts a real service over a throwaway settings file.
+func settingsTestService(t *testing.T, root string) *core.Service {
+	t.Helper()
+	settings := filepath.Join(root, "settings.json")
+	raw, _ := json.Marshal(core.UserSettings{WorkspaceRoot: ptr(filepath.Join(root, "workspace"))})
+	if err := os.WriteFile(settings, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	service, e := core.New(context.Background(), core.Options{SettingsPath: settings, Execute: func(context.Context, string, ...string) (inferyard.Execution, error) {
+		return inferyard.Execution{Stdout: []byte(`{"command":"probe","status":"ok"}`)}, nil
+	}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Cleanup(func() { _ = service.Shutdown(context.Background()) })
+	return service
+}
+
 // The two Settings cards save independently. A successful response must sync
 // only the fields the patch wrote, so the other card keeps its draft.
 
@@ -82,16 +100,19 @@ func TestSyncSavedGroupsKeepsOtherDraft(t *testing.T) {
 	}
 }
 
-// applySettingsSnapshot drops a refresh snapshot read before a save landed, so
-// the older values cannot revert the newly saved workspace and names.
-func TestStaleRefreshSnapshotDoesNotRevertSave(t *testing.T) {
+// A refresh batch read before a save landed is dropped whole: the saved
+// workspace, names, readiness, progress and reports all survive.
+func TestStaleRefreshBatchDoesNotRevertSave(t *testing.T) {
 	s := settingsState()
-	// A refresh reads the old values, then a save applies while it is in flight.
-	staleEpoch := s.settingsSequence()
-	stale := core.SettingsResponse{
+	// The batch reads the old values, then a save lands while it is in flight.
+	stale := refreshBatch{epoch: s.settingsSequence()}
+	stale.settings = core.SettingsResponse{
 		Settings:  core.UserSettings{WorkspaceRoot: ptr("/saved/workspace"), ResultsRoot: ptr("/saved/results"), ModelsRoot: ptr("/saved/models"), ModelDownloadName: "saved-model", EngineDownloadName: "saved-engine"},
 		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/saved/workspace")},
 	}
+	stale.ready.Workspace = core.DirectoryReadiness{Path: ptr("/saved/workspace"), Exists: true, Initialized: true}
+	// Readiness for the saved workspace, which the stale batch must not replace.
+	s.ready.Workspace = core.DirectoryReadiness{Path: ptr("/next/workspace"), Exists: true}
 	s.workspace, s.modelName = "/next/workspace", "next-model"
 	patch := map[string]json.RawMessage{}
 	patch["workspace_root"], _ = json.Marshal(s.workspace)
@@ -101,25 +122,43 @@ func TestStaleRefreshSnapshotDoesNotRevertSave(t *testing.T) {
 		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/next/workspace")},
 	})
 
-	s.applySettingsSnapshot(staleEpoch, stale)
+	if s.applyRefreshBatch(stale) {
+		t.Fatal("stale batch was painted")
+	}
 	if s.workspace != "/next/workspace" {
-		t.Fatalf("stale snapshot reverted the saved workspace: %q", s.workspace)
+		t.Fatalf("stale batch reverted the saved workspace: %q", s.workspace)
 	}
 	if s.modelName != "next-model" {
-		t.Fatalf("stale snapshot reverted the saved name: %q", s.modelName)
+		t.Fatalf("stale batch reverted the saved name: %q", s.modelName)
 	}
 	if root := emptyText(s.settings.Effective.WorkspaceRoot); root != "/next/workspace" {
-		t.Fatalf("stale snapshot reverted the baseline: %q", root)
+		t.Fatalf("stale batch reverted the baseline: %q", root)
+	}
+	if got := emptyText(s.ready.Workspace.Path); got != "/next/workspace" {
+		t.Fatalf("stale batch painted the old directory readiness: %q", got)
 	}
 
-	// A snapshot taken after the save still applies, as the follow-up refresh does.
-	fresh := s.settingsSequence()
-	s.applySettingsSnapshot(fresh, core.SettingsResponse{
+	// A batch taken after the save still applies, as the follow-up refresh does.
+	fresh := refreshBatch{epoch: s.settingsSequence()}
+	fresh.settings = core.SettingsResponse{
 		Settings:  core.UserSettings{WorkspaceRoot: ptr("/later/workspace")},
 		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/later/workspace")},
-	})
+	}
+	fresh.ready.Workspace = core.DirectoryReadiness{Path: ptr("/later/workspace"), Exists: true}
+	// The fresh batch paints through the service: mount one so the paint is
+	// observable end to end.
+	s.service = settingsTestService(t, t.TempDir())
+	s.ctx = context.Background()
+	// Service discovery is not what this test observes; keep it from starting.
+	s.discoveryLoaded = true
+	if !s.applyRefreshBatch(fresh) {
+		t.Fatal("fresh batch was dropped")
+	}
 	if s.workspace != "/later/workspace" {
-		t.Fatalf("fresh snapshot was dropped: %q", s.workspace)
+		t.Fatalf("fresh batch did not apply: %q", s.workspace)
+	}
+	if emptyText(s.ready.Workspace.Path) != "/later/workspace" {
+		t.Fatalf("fresh readiness did not apply: %+v", s.ready.Workspace)
 	}
 }
 

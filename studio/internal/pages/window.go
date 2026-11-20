@@ -197,6 +197,11 @@ func (s *viewState) refresh(full bool) {
 	if s.ctx == nil || s.ctx.Err() != nil {
 		return
 	}
+	// Every value below belongs to the settings snapshot in force when the
+	// batch started. A save that lands meanwhile makes the whole batch stale:
+	// its readiness, progress and reports describe the previous workspace, so
+	// the batch is dropped instead of painted over the saved one.
+	settingsEpoch := s.settingsSequence()
 	s.win.Update(func() { s.refreshing = true })
 	device, tasks, downloads := s.service.Device(), s.service.RunTasks(), s.service.Downloads()
 	speedTasks, speedHistoryError := s.service.ContextSpeedHistory()
@@ -228,7 +233,6 @@ func (s *viewState) refresh(full bool) {
 			break
 		}
 	}
-	settingsEpoch := s.settingsSequence()
 	settings = s.service.Settings()
 	if full {
 		history, he = s.service.History()
@@ -252,58 +256,101 @@ func (s *viewState) refresh(full bool) {
 			return
 		}
 		s.refreshing = false
-		s.device, s.tasks, s.downloads = device, tasks, downloads
-		// A handoff service counts as consumed only once its task left the binding
-		// stage without a verification error.
-		s.reconcileLocalPIDs(tasks)
-		if speedHistoryError == nil {
-			s.syncSpeedTasks(speedTasks)
+		batch := refreshBatch{
+			epoch: settingsEpoch, full: full, device: device, tasks: tasks, downloads: downloads,
+			speedTasks: speedTasks, speedHistoryError: speedHistoryError, runProgress: runProgress,
+			id: id, detail: detail, detailError: de, settings: settings,
+			history: history, reports: reports, historyError: he, reportsError: re,
+			ready: ready, progress: progress, progressError: pe, dashboard: dashboard, registry: registry,
 		}
-		s.runProgress = runProgress
-		if s.detailID == id {
-			if de == nil {
-				s.detail = detail
-			}
-			s.detailError = de
+		if !s.applyRefreshBatch(batch) {
+			return
 		}
-		// A save that landed after this snapshot was read already applied the
-		// saved values; the older snapshot must not revert them.
-		s.applySettingsSnapshot(settingsEpoch, settings)
-		if full {
-			if he == nil {
-				s.history = history
-			}
-			if re == nil {
-				s.reports = reports
-			}
-			s.historyError, s.reportsError = he, re
-		}
-		s.ready, s.progress = ready, progress.Progress
-		s.applyDashboard(dashboard, pe)
-		// engine.state wakes this refresh; read the latest state after slow scans.
-		s.engineState = s.service.Engine()
-		if full {
-			s.registry = registry
-		}
-		s.checks = s.service.EngineChecks()
-		s.adoptDownloadedEngine()
-		s.loaded = true
-		// Engine verification runs only while the models page or the Dashboard
-		// candidate stage is visible.
 		verifyVisible = s.selected == "models" ||
 			(s.selected == "dashboard" && s.progress != nil && !s.progress.DefaultScopeComplete && s.progress.NextAction == "prepare_candidate")
-		cliKey := emptyText(ready.CLI.Path) + "|" + emptyText(ready.CLI.Version) + "|" + ready.CLI.Status
-		if cliKey != s.discoveryCLI {
-			s.discoveryCLI, s.discoveryLoaded = cliKey, false
-		}
-		if !s.discoveryLoaded && !s.discovering {
-			s.refreshDiscovery()
-		}
 	})
 	if s.shouldVerifyEngines(full, verifyVisible, time.Now()) {
 		s.service.VerifyEngines()
 	}
 }
+
+// refreshBatch is one refresh read, captured together with the settings epoch
+// it started from. Readiness, progress and reports all describe the workspace
+// in force at that epoch.
+type refreshBatch struct {
+	epoch                      uint64
+	full                       bool
+	device                     core.DeviceResponse
+	tasks                      []core.RunTask
+	downloads                  []core.DownloadTask
+	speedTasks                 []core.RunTask
+	speedHistoryError          *core.ApiError
+	runProgress                *core.RunProgress
+	id                         string
+	detail                     *core.RunTaskDetail
+	detailError                *core.ApiError
+	settings                   core.SettingsResponse
+	history                    core.RunHistoryResponse
+	reports                    []core.ReportSummary
+	historyError, reportsError *core.ApiError
+	ready                      core.Readiness
+	progress                   core.ProgressResponse
+	progressError              *core.ApiError
+	dashboard                  dashboardSnapshot
+	registry                   core.Registry
+}
+
+// applyRefreshBatch paints a whole refresh read, unless a settings save landed
+// after the batch started. Then the batch describes the previous workspace and
+// is dropped whole: painting even one field would show old directory readiness
+// such as "目录已存在，工作区已初始化" beside a newly saved workspace. The save
+// triggers its own refresh, which reads the new workspace.
+func (s *viewState) applyRefreshBatch(b refreshBatch) bool {
+	if !s.refreshBatchCurrent(b.epoch) {
+		return false
+	}
+	s.device, s.tasks, s.downloads = b.device, b.tasks, b.downloads
+	// A handoff service counts as consumed only once its task left the binding
+	// stage without a verification error.
+	s.reconcileLocalPIDs(b.tasks)
+	if b.speedHistoryError == nil {
+		s.syncSpeedTasks(b.speedTasks)
+	}
+	s.runProgress = b.runProgress
+	if s.detailID == b.id {
+		if b.detailError == nil {
+			s.detail = b.detail
+		}
+		s.detailError = b.detailError
+	}
+	s.applySettings(b.settings)
+	if b.full {
+		if b.historyError == nil {
+			s.history = b.history
+		}
+		if b.reportsError == nil {
+			s.reports = b.reports
+		}
+		s.historyError, s.reportsError = b.historyError, b.reportsError
+		s.registry = b.registry
+	}
+	s.ready, s.progress = b.ready, b.progress.Progress
+	s.applyDashboard(b.dashboard, b.progressError)
+	// engine.state wakes this refresh; read the latest state after slow scans.
+	s.engineState = s.service.Engine()
+	s.checks = s.service.EngineChecks()
+	s.adoptDownloadedEngine()
+	s.loaded = true
+	cliKey := emptyText(b.ready.CLI.Path) + "|" + emptyText(b.ready.CLI.Version) + "|" + b.ready.CLI.Status
+	if cliKey != s.discoveryCLI {
+		s.discoveryCLI, s.discoveryLoaded = cliKey, false
+	}
+	if !s.discoveryLoaded && !s.discovering {
+		s.refreshDiscovery()
+	}
+	return true
+}
+
 func (s *viewState) work(fn func() (string, *core.ApiError)) {
 	if s.previewAction() {
 		return

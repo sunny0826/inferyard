@@ -81,14 +81,12 @@ func savedDownloadNames(v core.SettingsResponse) (modelName, engineName string) 
 	return defaultDownloadName(v.Settings.ModelDownloadName, "model"), defaultDownloadName(v.Settings.EngineDownloadName, "engine")
 }
 
-// applySettingsSnapshot applies a refresh's settings read only if no save was
-// applied after the snapshot was taken. A save already refreshed the form from
-// the response it wrote, so a stale read would only revert it.
-func (s *viewState) applySettingsSnapshot(epoch uint64, value core.SettingsResponse) {
-	if epoch != s.settingsSequence() {
-		return
-	}
-	s.applySettings(value)
+// refreshBatchCurrent reports whether a refresh batch read at epoch still
+// describes the settings in force. A save increments the counter, so a batch
+// read before it must not paint the previous workspace's readiness, progress,
+// reports or settings over the saved workspace.
+func (s *viewState) refreshBatchCurrent(epoch uint64) bool {
+	return epoch == s.settingsSequence()
 }
 
 // syncSavedGroups records the saved response as the new baseline and writes
