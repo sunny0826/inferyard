@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dev_process import (  # noqa: E402
     DevError,
     atomic_write_json,
+    is_link,
     launch_studio,
     process_identity,
     stop_recorded,
@@ -84,10 +85,10 @@ def _inside(path: Path, root: Path) -> Path | None:
     cursor = base
     for part in parts:
         cursor = cursor / part
-        if cursor.is_symlink():
+        if is_link(cursor):
             return None
     resolved = path.resolve()
-    if not resolved.is_relative_to(base) or resolved == base:
+    if resolved != base.joinpath(*parts) or not resolved.is_relative_to(base) or resolved == base:
         return None
     return resolved
 
@@ -241,12 +242,13 @@ def _safe_subdir(root: Path, *parts: str) -> Path:
     cursor = base
     for part in parts:
         cursor = cursor / part
-        if cursor.is_symlink():
-            raise DevError(f"Refusing to traverse symlink in development state: {cursor}")
+        if is_link(cursor):
+            raise DevError(f"Refusing to traverse link in development state: {cursor}")
     cursor.mkdir(parents=True, exist_ok=True)
     resolved = cursor.resolve()
-    if not resolved.is_relative_to(base) or resolved == base:
-        raise DevError(f"Development directory escapes checkout state root: {cursor}")
+    expected = base.joinpath(*parts)
+    if resolved != expected or not resolved.is_relative_to(base) or resolved == base:
+        raise DevError(f"Development directory escapes expected state path: {cursor}")
     return resolved
 
 

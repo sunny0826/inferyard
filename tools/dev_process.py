@@ -20,8 +20,12 @@ class DevError(RuntimeError):
     pass
 
 
+def is_link(path: Path) -> bool:
+    return path.is_symlink() or (hasattr(path, "is_junction") and path.is_junction())
+
+
 def atomic_write_json(path: Path, value: dict[str, object]) -> None:
-    if path.is_symlink():
+    if is_link(path):
         raise DevError(f"Refusing to write through symlink: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}-", dir=path.parent)
@@ -280,6 +284,38 @@ def _cleanup_exited_session(session_file: Path, record: dict[str, object]) -> No
     session_file.unlink(missing_ok=True)
 
 
+def _terminate_and_wait(proc: subprocess.Popen[bytes], timeout: float) -> bool:
+    if proc.poll() is not None:
+        return True
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(proc.pid)], capture_output=True, check=False)
+        else:
+            proc.terminate()
+    except OSError:
+        pass
+    try:
+        proc.wait(timeout=timeout)
+        return True
+    except subprocess.TimeoutExpired:
+        return proc.poll() is not None
+
+
+def _reclaim_unready_child(
+    proc: subprocess.Popen[bytes],
+    session_file: Path,
+    record: dict[str, object],
+    sync_fn,
+    *,
+    stop_timeout: float,
+) -> None:
+    exited = _terminate_and_wait(proc, stop_timeout)
+    if exited:
+        _cleanup_exited_session(session_file, record)
+    else:
+        sync_fn()
+
+
 def launch_studio(
     root: Path,
     state_dir: Path,
@@ -290,6 +326,7 @@ def launch_studio(
     label: str,
     *,
     ready_timeout: float = 15.0,
+    stop_timeout: float = 30.0,
 ) -> dict[str, object]:
     logs_dir = state_dir / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
@@ -359,33 +396,23 @@ def launch_studio(
                 break
             time.sleep(0.1)
     except BaseException:
-        if proc.poll() is None:
-            if not session_persisted:
-                try:
-                    proc.terminate()
-                    proc.wait(timeout=5)
-                except (OSError, subprocess.TimeoutExpired):
-                    pass
-            else:
-                try:
-                    _sync_starting_session()
-                except DevError:
-                    pass
-        raise
-    if not ready:
-        if proc.poll() is None:
+        if not session_persisted:
             try:
-                proc.terminate()
-                proc.wait(timeout=5)
-            except (OSError, subprocess.TimeoutExpired):
+                _reclaim_unready_child(
+                    proc, session_file, record, _sync_starting_session, stop_timeout=stop_timeout
+                )
+            except DevError:
                 pass
-        if proc.poll() is not None:
-            _cleanup_exited_session(session_file, record)
-        else:
+        elif proc.poll() is None:
             try:
                 _sync_starting_session()
             except DevError:
                 pass
+        raise
+    if not ready:
+        _reclaim_unready_child(
+            proc, session_file, record, _sync_starting_session, stop_timeout=stop_timeout
+        )
         raise DevError(
             f"Development Studio (PID {proc.pid}) did not become ready within {int(ready_timeout)}s; inspect {log_path}"
         )

@@ -359,6 +359,119 @@ class DevLauncherTests(unittest.TestCase):
                 dev.stop_recorded(state)
             self.assertTrue((state / "session.json").is_file())
 
+    def test_initial_write_failure_preserves_shutdown_failed_and_timeout_session(self) -> None:
+        if os.name == "nt":
+            self.skipTest("POSIX executable script test")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = root / ".inferyard-dev"
+            state.mkdir()
+            profile = state / "profile"
+            assets = state / "assets"
+            profile.mkdir()
+            assets.mkdir()
+            # Case 1: first write fails after child installs SIGTERM handler; child writes shutdown_failed on SIGTERM.
+            armed = root / "armed.flag"
+            fail_shutdown = root / "fail_on_term.py"
+            fail_shutdown.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, pathlib, signal, sys, time\n"
+                "status_path = sys.argv[sys.argv.index('--dev-status') + 1]\n"
+                "def handle(*_):\n"
+                "    with open(status_path, 'w') as f:\n"
+                "        json.dump({'state': 'shutdown_failed', 'pid': os.getpid(), 'error': 'cleanup_err'}, f)\n"
+                "    sys.exit(1)\n"
+                "signal.signal(signal.SIGTERM, handle)\n"
+                f"pathlib.Path({str(armed)!r}).write_text('ok')\n"
+                "time.sleep(30)\n",
+                encoding="utf-8",
+            )
+            fail_shutdown.chmod(0o755)
+            real_write = dev_process.atomic_write_json
+            attempts = 0
+
+            def fail_once(path: Path, value: dict[str, object]) -> None:
+                nonlocal attempts
+                attempts += 1
+                if attempts == 1:
+                    deadline = dev_process.time.monotonic() + 5.0
+                    while not armed.exists() and dev_process.time.monotonic() < deadline:
+                        dev_process.time.sleep(0.02)
+                    raise dev.DevError("transient write error")
+                real_write(path, value)
+
+            with mock.patch.object(dev_process, "atomic_write_json", side_effect=fail_once):
+                with self.assertRaises(dev.DevError):
+                    dev.launch_studio(
+                        root, state, fail_shutdown, Path("/bin/echo"), profile, assets, "test"
+                    )
+            self.assertTrue((state / "session.json").is_file())
+            (state / "session.json").unlink()
+
+            # Case 2: first write fails after child ignores SIGTERM beyond stop_timeout; session is saved for stop.
+            armed.unlink(missing_ok=True)
+            stubborn = root / "stubborn.py"
+            stubborn.write_text(
+                f"#!{sys.executable}\n"
+                "import pathlib, signal, time\n"
+                "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+                f"pathlib.Path({str(armed)!r}).write_text('ok')\n"
+                "time.sleep(30)\n",
+                encoding="utf-8",
+            )
+            stubborn.chmod(0o755)
+            attempts = 0
+            with mock.patch.object(dev_process, "atomic_write_json", side_effect=fail_once):
+                with self.assertRaises(dev.DevError):
+                    dev.launch_studio(
+                        root,
+                        state,
+                        stubborn,
+                        Path("/bin/echo"),
+                        profile,
+                        assets,
+                        "test",
+                        stop_timeout=0.2,
+                    )
+            session_path = state / "session.json"
+            self.assertTrue(session_path.is_file())
+            pid = json.loads(session_path.read_text(encoding="utf-8"))["pid"]
+            try:
+                os.kill(pid, 9)
+                os.waitpid(pid, 0)
+            except (OSError, ChildProcessError):
+                pass
+
+    def test_resolve_profile_rejects_junction_branch_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp) / ".inferyard-dev"
+            branch_b = state / "profiles" / dev.branch_key("branch-b")
+            branch_b.mkdir(parents=True)
+            branch_a = state / "profiles" / dev.branch_key("branch-a")
+            if os.name == "nt":
+                subprocess.run(
+                    ["cmd", "/c", "mklink", "/J", str(branch_a), str(branch_b)],
+                    check=True,
+                    capture_output=True,
+                )
+                with self.assertRaises(dev.DevError):
+                    dev.resolve_profile(state, "branch-a", rebuild=False)
+                with self.assertRaises(dev.DevError):
+                    dev.resolve_profile(state, "branch-a", rebuild=True)
+            else:
+                branch_a.mkdir(parents=True)
+                target_junction = branch_a.resolve()
+                orig = Path.is_junction
+
+                def fake_junction(self: Path) -> bool:
+                    return self.resolve() == target_junction or orig(self)
+
+                with mock.patch.object(Path, "is_junction", fake_junction):
+                    with self.assertRaises(dev.DevError):
+                        dev.resolve_profile(state, "branch-a", rebuild=False)
+                    with self.assertRaises(dev.DevError):
+                        dev.resolve_profile(state, "branch-a", rebuild=True)
+
 
 if __name__ == "__main__":
     unittest.main()
