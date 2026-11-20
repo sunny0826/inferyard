@@ -31,8 +31,13 @@ func errorView(c *ui.Context, e *core.ApiError) {
 	for _, v := range e.Limitations {
 		ui.Text(c, human(v)+" · "+v)
 	}
+	// Raw machine details stay behind a closed fold: the primary text already
+	// names what happened and what to do, so a code such as not_resumable is
+	// available for diagnosis without pushing onto the first reading.
 	if len(e.Details) > 0 {
-		kvview(c, "kv-error-details", e.Details)
+		componentFoldKeyed(c, "error-details-"+e.Code, "错误详情", func() {
+			kvview(c, "kv-error-details", e.Details)
+		})
 	}
 }
 

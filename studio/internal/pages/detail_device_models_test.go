@@ -212,8 +212,14 @@ func TestStopReasonAndQualityLabelsStayChinese(t *testing.T) {
 	if !tt.HasText("当前运行不可续测") {
 		t.Fatalf("not_resumable stayed raw: %v", tt.Texts())
 	}
-	if tt.HasText("not_resumable ·") {
-		t.Fatalf("raw reason leaked into the banner: %v", tt.Texts())
+	// The machine reason lives only behind the closed "错误详情" fold.
+	if exactTextCount(tt.Texts(), "not_resumable") != 0 {
+		t.Fatalf("raw reason leaked before the fold opened: %v", tt.Texts())
+	}
+	click(t, tt, "错误详情")
+	tt.Frame()
+	if exactTextCount(tt.Texts(), "not_resumable") == 0 {
+		t.Fatalf("opening 错误详情 did not reveal the raw reason: %v", tt.Texts())
 	}
 	if got := conflictReasonLabel("unmapped_reason"); got != "" {
 		t.Fatalf("unknown conflict reason = %q, want empty fallback", got)
