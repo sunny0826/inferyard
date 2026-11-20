@@ -24,6 +24,7 @@ func (s *viewState) resetWorkspace() {
 	s.requestedDetail = ""
 	s.detailMu.Unlock()
 	s.reportChoices.Clear()
+	s.reportsTab, s.openedReport = reportsTabList, nil
 	s.denied = map[string]bool{}
 }
 

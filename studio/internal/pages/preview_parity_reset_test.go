@@ -11,6 +11,41 @@ import (
 	"inferyard/studio/internal/core"
 )
 
+// Switching the workspace root drops the Reports tab and the open detail in
+// both paths, because that data belonged to the previous workspace. Production
+// reaches resetWorkspace from applySettings; preview must do the same from its
+// simulated Settings 保存.
+func TestWorkspaceSwitchResetsReportsTabParity(t *testing.T) {
+	previous, next := "/previous/workspace", "/next/workspace"
+	production := testState()
+	production.settings = core.SettingsResponse{
+		Settings:  core.UserSettings{WorkspaceRoot: ptr(previous)},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr(previous)},
+	}
+	production.loadSettings(production.settings)
+	production.reportsTab, production.openedReport = reportsTabHistory, &reportViewState{reference: "gone"}
+	production.applySettings(core.SettingsResponse{
+		Settings:  core.UserSettings{WorkspaceRoot: ptr(next)},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr(next)},
+	})
+
+	p := newPreviewSession(context.Background())
+	p.loadScene(previewSceneIndex(t, "设置 · 路径与目录名"))
+	p.state.reportsTab, p.state.openedReport = reportsTabHistory, &reportViewState{reference: "gone"}
+	p.state.workspace = next
+	tt := previewTester(p, 1120, 1600)
+	click(t, tt, "保存")
+
+	for name, s := range map[string]*viewState{"production": &production, "preview": p.state} {
+		if s.reportsTab != reportsTabList || s.openedReport != nil {
+			t.Errorf("%s: tab=%d opened=%v", name, s.reportsTab, s.openedReport != nil)
+		}
+	}
+	if p.state.settings.Effective.WorkspaceRoot == nil || *p.state.settings.Effective.WorkspaceRoot != next {
+		t.Error("preview did not save the new workspace root")
+	}
+}
+
 func TestPreviewResetLeavesNextTaskAloneParity(t *testing.T) {
 	for _, scenario := range []struct {
 		name    string

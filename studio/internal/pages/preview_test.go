@@ -32,6 +32,32 @@ func previewSceneIndex(t *testing.T, label string) int {
 	return -1
 }
 
+// Resetting a preview scene discards the data the Reports tab described, so the
+// tab returns to the default report list instead of surviving on the window root.
+func TestPreviewResetReturnsReportsToDefaultTab(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	p.loadScene(previewSceneIndex(t, "模型 · 可用组合"))
+	p.state.selected = "reports"
+	tt := previewTester(p, 1120, 1400)
+	tt.Frame()
+	click(t, tt, "运行历史")
+	if !tt.HasText("运行历史表") {
+		t.Fatalf("history tab did not open: %v", tt.Texts())
+	}
+	click(t, tt, "重置场景")
+	tt.Frame()
+	if p.state.reportsTab != reportsTabList {
+		t.Fatalf("reset kept tab %d", p.state.reportsTab)
+	}
+	// The reset scene starts on the task page; opening Reports proves the tab
+	// itself also reset, not just that another page is showing.
+	p.state.selected = "reports"
+	tt.Frame()
+	if !tt.HasText("打开报告") || tt.HasText("运行历史表") {
+		t.Fatalf("reset kept the history tab: %v", tt.Texts())
+	}
+}
+
 func TestPreviewOutOfBandActionsStayInMemory(t *testing.T) {
 	p := newPreviewSession(context.Background())
 	p.loadScene(previewSceneIndex(t, "模型 · 可用组合"))

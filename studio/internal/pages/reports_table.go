@@ -40,10 +40,12 @@ func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 			ui.Text(c, "无法读取；打开后可重试或返回列表。").TextColor(stateColor(c, stateDanger))
 		} else {
 			for _, run := range report.RunSummaries {
-				ui.Text(c, reportRunLine(run)).Selectable()
+				ui.Text(c, reportRunLine(report, run)).Selectable()
 			}
 		}
-		button(c, "打开报告").Label("打开报告 · " + report.ReportId).AlignSelf(ui.Start).OnClick(open)
+		// Opening is the card's primary action, so it carries the primary style
+		// instead of competing with the quiet actions around it.
+		primaryButton(c, "打开报告").Label("打开报告 · " + report.ReportId).OnClick(open)
 		componentFoldKeyed(c, "report-"+report.ReportId, "报告详情", func() {
 			ui.Text(c, "报告 ID："+report.ReportId).Selectable()
 			ui.Text(c, "报告文件修改时间："+configuredValue(formatTimestamp(emptyText(report.ModifiedAt)))).Selectable()
@@ -98,12 +100,15 @@ func reportBundleLabel(report core.ReportSummary) string {
 
 // reportRunLine states the recorded quality for one run. A missing or
 // incomplete count keeps its reason and never becomes 0 or a percentage.
-func reportRunLine(run core.ReportListRun) string {
+// A single-run card already shows the model in its heading and the evaluation
+// set in its subheading, so the line repeats neither verbatim; cards with
+// several runs keep both, because each line then stands for a different run.
+func reportRunLine(report core.ReportSummary, run core.ReportListRun) string {
 	prefix := ""
-	if run.Model != "" {
+	if run.Model != "" && (len(report.RunSummaries) > 1 || reportText(run.Model) != reportHeading(report)) {
 		prefix = reportText(run.Model) + " · "
 	}
-	if run.BundleLabel != "" {
+	if run.BundleLabel != "" && len(report.RunSummaries) > 1 {
 		prefix += displayValue(run.BundleLabel) + " · "
 	}
 	quality := run.Quality

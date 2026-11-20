@@ -117,6 +117,7 @@ type viewState struct {
 	service                                                                             *core.Service
 	win                                                                                 *mygo.Window
 	openedReport                                                                        *reportViewState
+	reportsTab                                                                          int
 	refreshMu                                                                           sync.Mutex
 	detailMu                                                                            sync.Mutex
 	requestedDetail                                                                     string
