@@ -173,7 +173,7 @@ PLAN = obj(
         "limitations": STRING_LIST,
     }
 )
-RUN = obj(
+_RUN_BASE = obj(
     {
         "schema_version": VERSION,
         "run_id": IDENTIFIER,
@@ -192,6 +192,16 @@ RUN = obj(
         "diagnostic": BOOL,
     }
 )
+RUN = {
+    "oneOf": [
+        _RUN_BASE,
+        obj(
+            {**_RUN_BASE["properties"], "implementation_identity": {"type": "object"}},
+            [key for key in _RUN_BASE["required"] if key != "tool_source_sha256"]
+            + ["implementation_identity"],
+        ),
+    ]
+}
 
 METRIC_DEFINITION = obj(
     {

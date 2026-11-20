@@ -29,10 +29,31 @@ def normalized_args(args, excluded=()):
     return result
 
 
-def compare_trials(left, right, *, mode=None, performance_evidence=None, definition="phase2.v3"):
+def _legacy_role_identities(value):
+    if not isinstance(value, dict):
+        return {"measurement": None, "scoring": None}
+    out = {}
+    for role in ("measurement", "scoring"):
+        entry = value.get(role)
+        if not isinstance(entry, dict) or not isinstance(entry.get("sha256"), str):
+            out[role] = None
+        elif any(
+            isinstance(dep, dict) and dep.get("version") is None
+            for dep in entry.get("dependencies", ())
+        ):
+            out[role] = None
+        else:
+            out[role] = entry["sha256"]
+    return out
+
+
+def compare_trials(left, right, *, mode=None, performance_evidence=None, definition="phase2.v4"):
     from inferyard.contracts.format_versions import require_version
 
-    require_version({"definition": definition}, "definition", ("phase2.v3",), "comparison")
+    require_version(
+        {"definition": definition}, "definition", ("phase2.v3", "phase2.v4"), "comparison"
+    )
+    legacy_v3 = definition == "phase2.v3"
     declared = [d["plan"]["experiment"]["comparison"] for d in (left, right)]
     chosen = mode or (declared[0]["mode"] if declared[0] == declared[1] else "side-by-side")
     if chosen not in ("model", "config", "side-by-side", "engine"):
@@ -111,11 +132,25 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
     resource_policies = [d["plan"]["experiment"].get("resource_comparison") for d in (left, right)]
     if any(p is not None for p in resource_policies):
         check("resource_window_policy", *resource_policies, impact="performance")
+    identity_paths = (
+        (
+            "run.tool_version",
+            "run.definition_versions",
+            "run.tool_source_sha256",
+            "selection.bundle_sha256",
+            "selection.scorer_sha256",
+            "selection.case_ids",
+        )
+        if legacy_v3
+        else (
+            "run.tool_version",
+            "run.definition_versions",
+            "selection.bundle_sha256",
+            "selection.case_ids",
+        )
+    )
     for path in (
-        "run.tool_version",
-        "run.definition_versions",
-        "selection.bundle_sha256",
-        "selection.case_ids",
+        *identity_paths,
         "config.device",
         "config.engine.adapter",
         "config.engine.release",
@@ -127,7 +162,32 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
         "environment_start.cpu_model",
         "environment_start.kernel",
     ):
-        if path == "run.definition_versions":
+        if (
+            legacy_v3
+            and path == "run.tool_source_sha256"
+            and any("implementation_identity" in d["run"] for d in (left, right))
+        ):
+            identities = [
+                _legacy_role_identities(d["run"].get("implementation_identity"))
+                for d in (left, right)
+            ]
+            if not all("implementation_identity" in d["run"] for d in (left, right)):
+                check(
+                    "run.identity_scheme",
+                    *[
+                        "implementation_identity"
+                        if "implementation_identity" in d["run"]
+                        else "tool_source_sha256"
+                        for d in (left, right)
+                    ],
+                )
+                continue
+            for role in ("measurement", "scoring"):
+                check(
+                    "run.implementation_identity." + role,
+                    *[identity[role] for identity in identities],
+                )
+        elif path == "run.definition_versions":
             for component in ("measurement", "scoring"):
                 field = path + "." + component
                 check(field, _get(left, field), _get(right, field))
@@ -295,7 +355,13 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
         for c in conditions
     )
     completion_ready = common and not any(
-        c["field"] == "run.definition_versions.measurement" and c["status"] != "same"
+        c["field"]
+        in (
+            ("run.definition_versions.measurement", "run.implementation_identity.measurement")
+            if legacy_v3
+            else ("run.definition_versions.measurement",)
+        )
+        and c["status"] != "same"
         for c in conditions
     )
     a, b = left["summary"]["completion_rate"]["value"], right["summary"]["completion_rate"]["value"]

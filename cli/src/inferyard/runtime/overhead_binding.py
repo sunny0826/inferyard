@@ -33,7 +33,18 @@ def workload_identity(data):
     return result
 
 
-def bind_target(root, data, protocol, arm_identity, arm_requests, result, collector, *, reads=None):
+def bind_target(
+    root,
+    data,
+    protocol,
+    arm_identity,
+    arm_requests,
+    result,
+    collector,
+    *,
+    reads=None,
+    arm_tool_version=None,
+):
     """Caller supplies independently replayed target and ABBA evidence."""
     from inferyard.runtime.overhead_runner import request_projection
 
@@ -47,7 +58,10 @@ def bind_target(root, data, protocol, arm_identity, arm_requests, result, collec
         verify_reference(root, evidence.input_reference(kind), reads=evidence)
         if evidence.input_digest(kind) != protocol[kind + "_sha256"]:
             reasons.append("target_" + kind + "_mismatch")
-    if data["run"].get("tool_source_sha256") != protocol["tool_source_sha256"]:
+    target_tool_version = data["run"].get("tool_version")
+    if not target_tool_version or (
+        arm_tool_version is not None and target_tool_version != arm_tool_version
+    ):
         reasons.append("target_tool_mismatch")
     if workload_identity(data) != arm_identity:
         reasons.append("target_workload_mismatch")

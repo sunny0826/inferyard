@@ -14,12 +14,21 @@ def make_analysis(group, runs, versions, evidence, *, producer=None):
     if not ids:
         return None
     selected = [by_id[rid] for rid in ids]
+    scoring_versions = {
+        d["run"].get("definition_versions", versions)["scoring"] for d in selected
+    }
     scorers = {d["selection"]["scorer_sha256"] for d in selected}
     policies = {
         hashlib.sha256(json_bytes(d["bundle"]["answer_policy"])).hexdigest() for d in selected
     }
-    if len(scorers) != 1 or len(policies) != 1:
+    if len(scoring_versions) != 1 or len(policies) != 1:
         raise EvidenceError("repeat_scoring_definition_mismatch")
+    if len(scorers) == 1:
+        scorer_digest = next(iter(scorers))
+    else:
+        from inferyard.analysis.scoring import ScoringContext
+
+        scorer_digest = ScoringContext().identity(next(iter(scoring_versions)))
     from inferyard.evidence.storage import sha256_file
 
     sources = [
@@ -132,7 +141,7 @@ def make_analysis(group, runs, versions, evidence, *, producer=None):
         "reason": "frozen_repetition_summary",
         "definition_versions": versions,
         "scorer_id": versions["scoring"],
-        "scorer_sha256": next(iter(scorers)),
+        "scorer_sha256": scorer_digest,
         "answer_policy_sha256": next(iter(policies)),
         "metrics": metrics,
         "limitations": group["limitations"],

@@ -11,7 +11,9 @@ from inferyard.errors import EvidenceError
 from inferyard.evidence.formats import require_core
 from inferyard.evidence.storage import atomic_bytes, local_file, new_output, read_json
 
-FORMAT_VERSION = 5
+FORMAT_VERSION = 6
+_FORMAT_DEFINITIONS = {5: "phase2.v3", 6: "phase2.v4"}
+SUPPORTED_FORMAT_VERSIONS = tuple(_FORMAT_DEFINITIONS)
 
 
 def build_comparison(
@@ -25,7 +27,7 @@ def build_comparison(
     format_version=FORMAT_VERSION,
     source_roots=(),
 ):
-    require_version({"version": format_version}, "version", (FORMAT_VERSION,), "comparison")
+    require_version({"version": format_version}, "version", SUPPORTED_FORMAT_VERSIONS, "comparison")
     if (left_overhead is None) != (right_overhead is None):
         raise EvidenceError("both_performance_overhead_sources_required")
     loaded = (
@@ -58,7 +60,7 @@ def build_comparison(
         right,
         mode=mode,
         performance_evidence=evidence,
-        definition="phase2.v3",
+        definition=_FORMAT_DEFINITIONS[format_version],
     )
     result["schema_version"] = SCHEMA_VERSION
     result["format_version"] = format_version
@@ -94,13 +96,13 @@ def read_verified_comparison(root, *, loaded=None, source_roots=()):
         or type(saved.get("schema_version")) is not int
         or type(saved.get("format_version")) is not int
         or saved.get("schema_version") != SCHEMA_VERSION
-        or saved.get("format_version") != FORMAT_VERSION
+        or saved.get("format_version") not in SUPPORTED_FORMAT_VERSIONS
     ):
         from inferyard.evidence.legacy_presentation_seal import legacy_index_bytes
 
         legacy_index_bytes(root)
     require_core(saved, "comparison")
-    require_version(saved, "format_version", (FORMAT_VERSION,), "comparison")
+    require_version(saved, "format_version", SUPPORTED_FORMAT_VERSIONS, "comparison")
     _require_only_comparison(root)
     try:
         sources = saved["source_runs"]

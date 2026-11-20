@@ -201,6 +201,7 @@ def read_overhead(root, *, target=None, target_data=None):
     index = read_json(local_file(root, "trials.json"))
     trials, seen = [], set()
     arm_identity = None
+    arm_tool_version = None
     environments = []
     for entry in index:
         path = local_file(root, entry["path"])
@@ -220,6 +221,10 @@ def read_overhead(root, *, target=None, target_data=None):
         if arm_identity is not None and identity != arm_identity:
             raise EvidenceError("overhead_arm_workload_mismatch")
         arm_identity = identity
+        tool_version = data["run"].get("tool_version")
+        if not tool_version or (arm_tool_version is not None and tool_version != arm_tool_version):
+            raise EvidenceError("overhead_tool_mismatch")
+        arm_tool_version = tool_version
         if data["config"]["telemetry"]["interval_ms"] != protocol["interval_ms"]:
             raise EvidenceError("overhead_interval_mismatch")
         run_id = data["run"]["run_id"]
@@ -288,6 +293,7 @@ def read_overhead(root, *, target=None, target_data=None):
             result,
             sealed_observation(evidence, "collector"),
             reads=evidence,
+            arm_tool_version=arm_tool_version,
         )
         result["environment_binding"] = assess_environments(
             environments,

@@ -47,9 +47,22 @@ def observed_differences(left, right, comparison):
     denominator_match = all(
         counts[0].get(key) == counts[1].get(key) for key in ("planned", "valid_executed")
     )
+    legacy_v3 = comparison.get("definition") == "phase2.v3"
     definitions = [d["run"]["definition_versions"] for d in pair]
+    tool_match = True
+    if not legacy_v3:
+        tool_versions = [d["run"].get("tool_version") for d in pair]
+        tool_match = bool(tool_versions[0]) and tool_versions[0] == tool_versions[1]
     measurement = definitions[0]["measurement"] == definitions[1]["measurement"]
     scoring = definitions[0]["scoring"] == definitions[1]["scoring"]
+    if legacy_v3:
+        scoring = (
+            scoring and left["selection"]["scorer_sha256"] == right["selection"]["scorer_sha256"]
+        )
+        if any("implementation_identity" in d["run"] for d in pair):
+            scoped = {c["field"]: c["status"] == "same" for c in comparison["conditions"]}
+            measurement = measurement and scoped.get("run.implementation_identity.measurement", False)
+            scoring = scoring and scoped.get("run.implementation_identity.scoring", False)
     protocol_match = all(
         c["status"] == "same" for c in comparison["conditions"] if c["field"] == "task_protocol"
     )
@@ -58,23 +71,25 @@ def observed_differences(left, right, comparison):
     completion_allowed = (
         task_match
         and protocol_match
+        and tool_match
         and measurement
         and denominator_match
         and all(c["value"] is not None for c in completion)
     )
-    quality_allowed = task_match and protocol_match and scoring and denominator_match and complete
-    reasons = [
-        name
-        for name, matched in (
-            ("task_content_mismatch", task_match),
-            ("task_protocol_mismatch", protocol_match),
-            ("denominator_mismatch", denominator_match),
-            ("measurement_definition_mismatch", measurement),
-            ("scoring_identity_mismatch", scoring),
-            ("quality_incomplete", complete),
-        )
-        if not matched
+    quality_allowed = (
+        task_match and protocol_match and tool_match and scoring and denominator_match and complete
+    )
+    checks = [
+        ("task_content_mismatch", task_match),
+        ("task_protocol_mismatch", protocol_match),
+        ("denominator_mismatch", denominator_match),
+        ("measurement_definition_mismatch", measurement),
+        ("scoring_identity_mismatch", scoring),
+        ("quality_incomplete", complete),
     ]
+    if not legacy_v3:
+        checks.insert(3, ("tool_version_mismatch", tool_match))
+    reasons = [name for name, matched in checks if not matched]
     return {
         "scope": "observed_samples_only_no_causal_attribution",
         "sample_scope": [

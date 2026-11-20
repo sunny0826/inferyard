@@ -8,18 +8,16 @@ Run CLI commands from `cli/` using the `mise`-pinned Python and `uv` environment
 
 ```bash
 mise exec -- uv sync --frozen
-mise exec -- uv run --frozen pytest -q
+mise exec -- uv run --frozen pytest -n auto -q
 mise exec -- uv run --frozen ruff check src tests scripts
 mise exec -- uv run --frozen python scripts/export_schemas.py --check
-mise exec -- uv run --frozen python scripts/export_catalogue.py --check
-mise exec -- uv run --frozen python scripts/export_community.py --check
 ```
 
-Re-run the corresponding exporter (without `--check`) when changing schemas in `src/inferyard/contracts/`, metric tables in `docs/experiments/`, or community templates in `src/inferyard/data/community/`.
+Re-run `scripts/export_schemas.py` (without `--check`) when changing schemas in `src/inferyard/contracts/`. Catalogues in `src/inferyard/data/methods.json` and `src/inferyard/data/metrics.json` and community resources in `src/inferyard/data/community/` are maintained directly in-package.
 
-## Per-case bundle review
+## Benchmark bundles
 
-Modified or new benchmark cases require manual human review (`case-review.v1`) bound to `case_content_hash(bundle, case)` from `inferyard.contracts.bundle_review` before `require_review` admits the bundle.
+Modified or new benchmark bundles are validated structurally and semantically by `validate_bundle` (`inferyard.contracts.bundle`). Optional `review_records` remain accepted for compatibility with existing bundles.
 
 ## Local candidate build and installation checks
 

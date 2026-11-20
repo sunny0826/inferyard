@@ -17,6 +17,14 @@ from inferyard.analysis.comparison_input import comparison_input
 from inferyard.reporting.export import trial_analysis
 
 
+def _hex_digest(value):
+    return (
+        type(value) is str
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
 def rescore_rows(
     cases,
     requests,
@@ -27,6 +35,7 @@ def rescore_rows(
     missing=unscorable,
     context=None,
     version="phase2.v1",
+    recorded_identity=None,
 ):
     context = context or ScoringContext()
     functions = resolve(version)
@@ -70,6 +79,8 @@ def rescore_rows(
                     new = missing(row["category"], "scorer_exception")
                 if new["category"] != row["category"] or new["scorer_sha256"] != identity_value:
                     raise EvidenceError("rescore_scorer_identity_mismatch")
+            if recorded_identity is not None:
+                new["scorer_sha256"] = recorded_identity
             row["score"] = new
         changes.append(
             {
@@ -152,8 +163,11 @@ def build_rescore(
         scores = {r["request_id"]: r["new_score"] for r in previous["rescore.json"]["changes"]}
         for row in requests:
             row["score"] = scores[row["request_id"]]
-    if saved_record is not None and saved_record["scorer_sha256"] != context.identity(scorer_id):
+    if saved_record is not None and not _hex_digest(saved_record.get("scorer_sha256")):
         raise EvidenceError("rescore_scorer_identity_changed")
+    scorer_digest = (
+        saved_record["scorer_sha256"] if saved_record is not None else context.identity(scorer_id)
+    )
     rows, changes = rescore_rows(
         data["bundle"]["cases"],
         requests,
@@ -163,6 +177,7 @@ def build_rescore(
         missing=missing,
         context=context,
         version=scorer_id,
+        recorded_identity=saved_record["scorer_sha256"] if saved_record is not None else None,
     )
     record = {
         "schema_version": SCHEMA_VERSION,
@@ -170,7 +185,7 @@ def build_rescore(
         "source": source,
         "producer": producer,
         "scorer_id": scorer_id,
-        "scorer_sha256": context.identity(scorer_id),
+        "scorer_sha256": scorer_digest,
         "reason": reason,
         "parent_analysis_id": parent["analysis_id"],
         "changes": changes,
@@ -209,7 +224,7 @@ def build_rescore(
         "reason": reason,
         "definition_versions": run["definition_versions"],
         "scorer_id": scorer_id,
-        "scorer_sha256": context.identity(scorer_id),
+        "scorer_sha256": scorer_digest,
         "metrics": observations.items,
         "limitations": [
             "quality_only_revision_execution_unchanged",

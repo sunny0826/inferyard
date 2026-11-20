@@ -56,6 +56,9 @@ def workload_domain(data):
 
 def domain_reasons(control, data, control_metadata):
     reasons = []
+    tool_versions = [d["run"].get("tool_version") for d in (control, data)]
+    if not tool_versions[0] or tool_versions[0] != tool_versions[1]:
+        reasons.append("total_control_tool_version_unknown_or_different")
     versions = [
         d["run"].get("definition_versions", {}).get("measurement") for d in (control, data)
     ]
