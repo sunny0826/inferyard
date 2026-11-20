@@ -19,4 +19,4 @@ mise exec -- python -m unittest discover -s tests/ui -p 'test_*.py'
 
 ## Production package smoke
 
-[studio-release.yml](../../../.github/workflows/studio-release.yml) mounts the packaged macOS DMG and runs `tests/ui/run_release.py` (`ReleaseUITests`) against `InferYard Studio.app` without `--debug-ui`, reading a `studio.json` produced by `TestChainBindRunReport` in an isolated `HOME`.
+[release.yml](../../../.github/workflows/release.yml) mounts the packaged macOS DMG and verifies `InferYard Studio.app` (`--help` exits 0 and `--debug-ui` exits 2). For local native release-app UI checks, run `tests/ui/run_release.py` (`ReleaseUITests`) against a mounted `InferYard Studio.app` without `--debug-ui`, reading a `studio.json` produced by `TestChainBindRunReport` in an isolated `HOME`.

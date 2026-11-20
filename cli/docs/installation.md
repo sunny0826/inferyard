@@ -1,21 +1,21 @@
 # 使用 uv 安装与准备测评
 
-项目采用 [MIT 许可证](../LICENSE)。以下每条命令也可用 `uvx --isolated --managed-python --python 3.15.2 inferyard ...` 单次运行；详细参数通过 `inferyard --help` 查询。
+项目采用 [MIT 许可证](../LICENSE)。以下每条命令也可用 `uvx --isolated --managed-python --python 3.15 inferyard ...` 单次运行；详细参数通过 `inferyard --help` 查询。
 
 ## 1. 安装 uv 与 CLI
 
 从 [uv 官方安装页](https://docs.astral.sh/uv/getting-started/installation/)安装 `uv`，随后安装 `inferyard`：
 
 ```bash
-uv tool install --managed-python --python 3.15.2 inferyard
+uv tool install --managed-python --python 3.15 inferyard
 inferyard --versions
 inferyard --help
 ```
 
-若使用 GitHub Releases 离线附件，在核对 `SHA256SUMS` 后指定同批约束安装：
+若使用 GitHub Releases 离线附件，在核对 `SHA256SUMS` 后直接安装 wheel：
 
 ```bash
-uv tool install --managed-python --python 3.15.2 --constraints runtime-constraints.txt ./inferyard-*.whl
+uv tool install --managed-python --python 3.15 ./inferyard-*.whl
 ```
 
 在已缓存相同解释器与依赖的环境可附加 `--offline` 运行。

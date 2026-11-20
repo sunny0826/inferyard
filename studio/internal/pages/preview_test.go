@@ -77,3 +77,21 @@ func TestPreviewOutOfBandActionsStayInMemory(t *testing.T) {
 		t.Fatal("preview bind did not stay in memory", s.busy, s.engineState.State)
 	}
 }
+
+func TestPreviewPrepareAndContextSpeedSmoke(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	tt := previewTester(p, 1120, 2200)
+	click(t, tt, "准备环境")
+	p.advance(600 * time.Millisecond)
+	tt.Frame()
+	p.advance(600 * time.Millisecond)
+	tt.Frame()
+	if p.state.busy || !p.state.preflightReady() || !tt.HasText("开始测评") {
+		t.Fatalf("environment preparation did not unlock benchmark: %v", tt.Texts())
+	}
+	click(t, tt, "长上下文速度")
+	tt.Frame()
+	if !tt.HasText("上下文档位") {
+		t.Fatalf("context-speed view did not render: %v", tt.Texts())
+	}
+}

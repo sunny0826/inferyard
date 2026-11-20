@@ -7,17 +7,6 @@ resolution-markers = [
     "sys_platform != 'darwin' and sys_platform != 'win32'",
 ]
 
-[manifest]
-build-constraints = [
-    { name = "editables", specifier = "==0.6" },
-    { name = "hatchling", specifier = "==1.32.4" },
-    { name = "packaging", specifier = "==26.3" },
-    { name = "pathspec", specifier = "==1.1.1" },
-    { name = "pluggy", specifier = "==1.7.0" },
-    { name = "tomlkit", specifier = "==0.15.2" },
-    { name = "trove-classifiers", specifier = "==2026.9.21.13" },
-]
-
 [[package]]
 name = "anyio"
 version = "4.15.1"
@@ -135,14 +124,14 @@ dev = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28,<0.29" },
     { name = "jsonschema", specifier = ">=4.25,<5" },
-    { name = "psutil", marker = "sys_platform == 'darwin'", specifier = "==7.2.2" },
+    { name = "psutil", marker = "sys_platform == 'darwin'", specifier = ">=7.2,<8" },
     { name = "psutil", marker = "sys_platform == 'win32'", specifier = ">=7.2,<8" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "jsonschema", specifier = ">=4.25,<5" },
-    { name = "psutil", specifier = "==7.2.2" },
+    { name = "psutil", specifier = ">=7.2,<8" },
     { name = "pytest", specifier = ">=8.4,<10" },
     { name = "pytest-xdist", specifier = ">=3.8,<4" },
     { name = "ruff", specifier = ">=0.12,<1" },
