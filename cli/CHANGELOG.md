@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.6
+
+- Streamlined Studio UI, lightweight editable dev mode (`mise run dev`), version-based identity without forced source/corpus/resource hash locks, and a single tag-triggered `release.yml` workflow.
+
 ## 0.0.5
 
 ### Added
