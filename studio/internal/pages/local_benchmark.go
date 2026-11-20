@@ -75,27 +75,45 @@ func runLocalBenchmarkFlow(ctx context.Context, backend benchmarkBackend, result
 		queued(ids)
 		for {
 			remaining := len(bindings.localTasks)
-			var stopped *core.ApiError
-			for _, task := range backend.RunTasks() {
-				bundle, found := bindings.localTasks[task.TaskId]
-				if !found || !terminal(task.State) {
-					continue
-				}
-				remaining--
-				if task.State == "done" && task.Error == nil && task.Exit != nil && task.Exit.ExitCode == 0 && emptyText(task.Exit.Completeness) == "complete" && emptyText(task.RunPath) != "" {
-					bindings.completed[bundle] = *task.RunPath
-				} else if stopped == nil {
-					// Attribute the stop to the bundle that actually stopped, so the
-					// progress card does not blame an already completed bundle.
-					bindings.failedBundle = bundle
-					stopped = task.Error
+			stopped, stoppedBundle := (*core.ApiError)(nil), ""
+			// RunTasks is newest-first and a blocked later bundle reports
+			// previous_scope_incomplete before the real rejection of the first one.
+			// Collect by the round's bundle order so the root cause is reported.
+			for _, name := range names {
+				for _, task := range backend.RunTasks() {
+					bundle, found := bindings.localTasks[task.TaskId]
+					if !found || bundle != name || !terminal(task.State) {
+						continue
+					}
+					if task.State == "done" && task.Error == nil && task.Exit != nil && task.Exit.ExitCode == 0 && emptyText(task.Exit.Completeness) == "complete" && emptyText(task.RunPath) != "" {
+						bindings.completed[bundle] = *task.RunPath
+						continue
+					}
 					if stopped == nil {
-						stopped = core.Err("run_incomplete")
+						// Attribute the stop to the bundle that actually stopped, so the
+						// progress card does not blame an already completed bundle.
+						stopped, stoppedBundle = task.Error, bundle
+						if stopped == nil {
+							stopped = core.Err("run_incomplete")
+						}
+						continue
+					}
+					// A later bundle's previous_scope_incomplete is a consequence of the
+					// earlier stop, not a second root cause.
+					if stopped.Code == "previous_scope_incomplete" && task.Error != nil && task.Error.Code != "previous_scope_incomplete" {
+						stopped, stoppedBundle = task.Error, bundle
 					}
 				}
 			}
+			for _, task := range backend.RunTasks() {
+				if _, found := bindings.localTasks[task.TaskId]; found && terminal(task.State) {
+					remaining--
+				}
+			}
+			remaining = max(remaining, 0)
 			if remaining == 0 {
 				if stopped != nil {
+					bindings.failedBundle = stoppedBundle
 					return stopped
 				}
 				break

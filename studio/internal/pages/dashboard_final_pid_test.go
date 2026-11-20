@@ -8,29 +8,43 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
-// The first bundle's form PID belongs to the round until the CLI rejects that
-// attempt; a rejection releases it so the same service can be retried.
-func TestInitialBundleFailureReleasesPID(t *testing.T) {
-	s := testState()
-	s.task = benchmarkTask{stage: "run", bundles: []string{"zh-core", "zh-svg-pelican"},
-		start: startChainResult{localRequest: &core.LocalCandidateRequest{ServicePID: 4000, Bundles: []string{"zh-core", "zh-svg-pelican"}}}}
-	s.tasks = []core.RunTask{{TaskId: "first", Kind: "run", State: "starting", Bundle: ptr("zh-core")}}
-	if !s.localPIDUsed(4000) {
-		t.Fatal("first bundle's service is not held while it is verifying")
+// The first bundle's PID is resolved through this round's own task id, never by
+// bundle name: RunTasks is newest-first, so an older round's completed task for
+// the same bundle must not answer for this one.
+func TestInitialBundlePIDTracksCurrentRoundTask(t *testing.T) {
+	newState := func() *viewState {
+		s := testState()
+		s.task = benchmarkTask{stage: "run", bundles: []string{"zh-core", "zh-svg-pelican"},
+			bindings: &benchmarkBindings{localTasks: map[string]string{"round2-core": "zh-core", "round2-pelican": "zh-svg-pelican"}},
+			start:    startChainResult{localRequest: &core.LocalCandidateRequest{ServicePID: 4000, Bundles: []string{"zh-core", "zh-svg-pelican"}}}}
+		// An older round finished this bundle with the same (now rejected) PID.
+		s.tasks = []core.RunTask{
+			{TaskId: "round2-core", Kind: "run", State: "starting", Bundle: ptr("zh-core")},
+			{TaskId: "round1-core", Kind: "run", State: "done", Bundle: ptr("zh-core"), ConfigPath: ptr("/w/bound/round1/config.toml"), RunPath: ptr("/w/results/round1")},
+		}
+		return &s
 	}
-	// The CLI rejected it mid-verification: the service returns to the user.
-	failed := []core.RunTask{{TaskId: "first", Kind: "run", State: "failed", Bundle: ptr("zh-core"), Error: core.Err("candidate_binding_invalid")}}
-	s.tasks = failed
+
+	s := newState()
+	if !s.localPIDUsed(4000) {
+		t.Fatal("current round's in-flight service is not held")
+	}
+	// The CLI rejected it during verification: the service returns to the user,
+	// even though the older round's task succeeded.
+	s.tasks[0] = core.RunTask{TaskId: "round2-core", Kind: "run", State: "failed", Bundle: ptr("zh-core"), Error: core.Err("candidate_binding_invalid")}
 	if s.localPIDUsed(4000) {
-		t.Fatal("rejected first-bundle service still counts as used")
+		t.Fatal("rejected current-round service still counts as used")
 	}
 	if !s.localSelectionInvalid(4000, nil) {
-		t.Fatal("rejected first-bundle PID is not retryable")
+		t.Fatal("rejected current-round PID is not retryable")
 	}
-	// A retried attempt verifies it; then it belongs to the round.
-	s.tasks = []core.RunTask{{TaskId: "first-retry", Kind: "run", State: "running", Bundle: ptr("zh-core")}}
-	if !s.localPIDUsed(4000) {
-		t.Fatal("verified first-bundle service was not held")
+
+	// A verified binding stays consumed even if the run that follows it fails.
+	verified := newState()
+	verified.tasks[0] = core.RunTask{TaskId: "round2-core", Kind: "run", State: "failed", Bundle: ptr("zh-core"),
+		ConfigPath: ptr("/w/bound/round2/config.toml"), Error: core.Err("run_incomplete")}
+	if !verified.localPIDUsed(4000) {
+		t.Fatal("verified binding was released because the run failed")
 	}
 }
 

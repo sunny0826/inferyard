@@ -104,12 +104,16 @@ func (s *viewState) localExpectedEndpoint() string {
 }
 
 // localServiceChoices lists discovered endpoints that expose a model catalogue,
-// have an unambiguous owner, are not already connected, and match the frozen
-// candidate endpoint. A one-click fill therefore cannot paste an unknown
-// listener, reuse the previous bundle's service or an incompatible address.
+// have an unambiguous owner and are not already connected. During the handoff
+// they must also match the frozen candidate endpoint, because any other address
+// would be rejected. Fresh task setup has no frozen candidate yet, so a leftover
+// endpoint from an earlier round must not hide a newly started service.
 func (s *viewState) localServiceChoices() []localServiceChoice {
 	choices := []localServiceChoice{}
-	expected := s.localExpectedEndpoint()
+	expected := ""
+	if s.awaitingLocalService() {
+		expected = s.localExpectedEndpoint()
+	}
 	for _, service := range s.discovery.Services {
 		if service.PID <= 0 || s.localPIDUsed(service.PID) {
 			continue
@@ -147,29 +151,48 @@ func (s *viewState) localPIDUsed(pid int64) bool {
 	return s.initialPIDHeld(pid)
 }
 
-// initialPIDHeld reports whether the first bundle's form service is still in
-// play. It belongs to the round's first bundle until the CLI rejects it; a
-// failed attempt returns it to the user.
+// initialPIDHeld reports whether the first bundle's form service still belongs
+// to this round. It is resolved through the round's own task id, never by bundle
+// name: RunTasks is newest-first, so a previous round's task for the same bundle
+// would otherwise answer for this one. Once the CLI verified the binding
+// (ConfigPath) the service stays consumed even if the run later fails; a task
+// that ended without a verified binding returns it to the user.
 func (s *viewState) initialPIDHeld(pid int64) bool {
 	request := s.task.start.localRequest
 	if request == nil || request.ServicePID != pid || len(request.Bundles) == 0 {
 		return false
 	}
-	bundle := request.Bundles[0]
-	var task *core.RunTask
-	for i := range s.tasks {
-		t := &s.tasks[i]
-		if t.Kind == "run" && emptyText(t.Bundle) == bundle {
-			task = t
+	task := s.currentRoundTask(request.Bundles[0])
+	if task == nil || task.AwaitingService {
+		return false
+	}
+	if task.ConfigPath != nil && *task.ConfigPath != "" {
+		return true
+	}
+	return task.State != "failed" && task.State != "cancelled"
+}
+
+// currentRoundTask resolves this round's task for one bundle by id, so tasks
+// from earlier rounds never stand in for it.
+func (s *viewState) currentRoundTask(bundle string) *core.RunTask {
+	var id string
+	for taskID, name := range s.roundTaskIds() {
+		if name == bundle {
+			id = taskID
 		}
 	}
-	if task == nil {
-		return false
+	if id == "" {
+		return nil
 	}
-	if task.Error != nil || task.AwaitingService {
-		return false
+	return localPendingTask(s.tasks, id)
+}
+
+// roundTaskIds maps this round's local task ids to their bundles.
+func (s *viewState) roundTaskIds() map[string]string {
+	if s.task.bindings == nil || len(s.task.bindings.localTasks) == 0 {
+		return nil
 	}
-	return true
+	return s.task.bindings.localTasks
 }
 
 // localSelectionInvalid disables the handoff connect button for the same

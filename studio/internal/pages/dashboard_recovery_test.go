@@ -146,8 +146,8 @@ func TestConclusionViewKeepsCompletedBundleOnSecondBindingFailure(t *testing.T) 
 	}
 }
 
-// The LM Studio picker omits used PIDs and endpoints that would mismatch the
-// frozen candidate, and keeps a manual entry path.
+// The LM Studio picker keeps only usable endpoints: used PIDs are always
+// omitted, and the frozen-candidate filter applies only during the handoff.
 func TestLocalServiceChoicesExcludeUsedAndMismatched(t *testing.T) {
 	s := testState()
 	s.task.start = startChainResult{localRequest: &core.LocalCandidateRequest{Endpoint: "http://127.0.0.1:48857"}}
@@ -158,9 +158,17 @@ func TestLocalServiceChoicesExcludeUsedAndMismatched(t *testing.T) {
 		{PID: 4003, ProcessName: "LM Studio", Endpoints: []inferyard.DiscoveredEndpoint{{URL: "http://127.0.0.1:48857", Models: []string{"local.gguf"}}}},
 	}}
 	s.localUsedPIDs = map[int64]bool{4001: true}
+	// Fresh task setup: no frozen candidate yet, so a leftover endpoint must not
+	// hide the service the user just started.
 	choices := s.localServiceChoices()
+	if len(choices) != 2 || choices[0].pid != 4002 || choices[1].pid != 4003 {
+		t.Fatalf("step-3 choices: %+v", choices)
+	}
+	// Handoff: the frozen endpoint is the only address the CLI will accept.
+	s.tasks = []core.RunTask{{TaskId: "second", Kind: "run", State: "starting", Bundle: ptr("zh-svg-pelican"), AwaitingService: true}}
+	choices = s.localServiceChoices()
 	if len(choices) != 1 || choices[0].pid != 4003 {
-		t.Fatalf("unexpected choices: %+v", choices)
+		t.Fatalf("handoff choices: %+v", choices)
 	}
 }
 
