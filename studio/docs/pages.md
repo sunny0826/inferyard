@@ -154,9 +154,9 @@ Empty pages omit the task card; existing tasks keep their card above the new-dow
 list engines before models. A lightweight return banner above the cards follows the task states:
 it never claims the assets are ready while a download is running or has failed, and keeps
 reporting a failure that no newer task for the same source resolved; that historical card stays in
-the list. Tasks are ordered newest first in both the service and the preview window, so an older
-success never hides a later failure. The new-download card highlights at most one filled download
-action — the
+the list. Tasks are ordered newest first in both the service and the preview window, and that
+creation order alone decides which task is newer, so a clock step backward changes nothing. The
+new-download card highlights at most one filled download action — the
 missing asset first, none once both are available or already downloading. Engine archive
 tasks report neither bytes nor rate, so their card shows one status line and one activity bar;
 raw values stay in the task's observation fold. Download directory

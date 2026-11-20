@@ -208,6 +208,34 @@ func TestNewerSuccessResolvesOlderFailure(t *testing.T) {
 	}
 }
 
+// TestDownloadOrderBeatsClockRollback pins the ordering source: list position,
+// not StartedAt, decides which task is newer, so a clock step backward between
+// downloads neither revives a resolved failure nor hides a later one.
+func TestDownloadOrderBeatsClockRollback(t *testing.T) {
+	source := "https://example.test/same.gguf"
+	// Newest first: the later task carries an earlier wall-clock stamp.
+	newerDone := core.DownloadTask{TaskId: "model-2", Kind: "model", OutName: "model-2", SourceUrl: source, State: "done", StartedAt: "2026-10-16T23:59:00Z"}
+	olderFailed := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", SourceUrl: source, State: "failed", StartedAt: "2026-10-17T00:01:00Z"}
+
+	s := testState()
+	s.progress.NextAction = "prepare_candidate"
+	s.downloads = []core.DownloadTask{newerDone, olderFailed}
+	if got := s.unresolvedDownloadFailures(); got != 0 {
+		t.Fatalf("rolled-back success did not resolve the older failure: %d", got)
+	}
+
+	// Newest first again: the later task failed after the older success.
+	newerFailed := core.DownloadTask{TaskId: "model-4", Kind: "model", OutName: "model-4", SourceUrl: source, State: "failed", StartedAt: "2026-10-16T22:00:00Z"}
+	olderDone := core.DownloadTask{TaskId: "model-3", Kind: "model", OutName: "model-3", SourceUrl: source, State: "done", StartedAt: "2026-10-17T00:05:00Z"}
+	s.downloads = []core.DownloadTask{newerFailed, olderDone}
+	if got := s.unresolvedDownloadFailures(); got != 1 {
+		t.Fatalf("rolled-back older success masked the newer failure: %d", got)
+	}
+	if got := s.downloadGuideStatus(); got != "有 1 项下载任务失败，可在下方重新创建。" {
+		t.Fatalf("banner = %q", got)
+	}
+}
+
 // TestDownloadGuideBannerKeepsTheWayBack checks the banner still returns to the
 // task page.
 func TestDownloadGuideBannerKeepsTheWayBack(t *testing.T) {

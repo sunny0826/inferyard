@@ -2,7 +2,6 @@ package pages
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -124,30 +123,23 @@ func (s *viewState) unresolvedDownloadFailures() int {
 	return count
 }
 
-// downloadResolved reports whether a later task superseded the failure. The
-// list is newest first in both the core service and the preview window, so a
-// success that happened before the failure cannot hide it.
+// downloadResolved reports whether a task created after the failure superseded
+// it. Both the core service and the preview window keep the list newest first,
+// so list position decides; wall-clock timestamps do not, because a clock step
+// backward between downloads would invert them.
 func (s *viewState) downloadResolved(failed core.DownloadTask, failedIndex int) bool {
 	for i, task := range s.downloads {
+		if i >= failedIndex {
+			break
+		}
 		if task.Kind != failed.Kind || task.SourceUrl != failed.SourceUrl || task.TaskId == failed.TaskId {
 			continue
 		}
-		if (task.State == "downloading" || task.State == "done") && downloadNewer(task, failed, i, failedIndex) {
+		if task.State == "downloading" || task.State == "done" {
 			return true
 		}
 	}
 	return false
-}
-
-// downloadNewer orders two downloads of the same source. Timestamps decide when
-// both parse; list position breaks ties for tasks started in the same second.
-func downloadNewer(candidate, failed core.DownloadTask, candidateIndex, failedIndex int) bool {
-	c, errC := time.Parse(time.RFC3339Nano, candidate.StartedAt)
-	f, errF := time.Parse(time.RFC3339Nano, failed.StartedAt)
-	if errC == nil && errF == nil && !c.Equal(f) {
-		return c.After(f)
-	}
-	return candidateIndex < failedIndex
 }
 
 // downloadTaskGuide is a lightweight banner above the download cards. It keeps
