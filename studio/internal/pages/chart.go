@@ -188,6 +188,9 @@ func (s *viewState) resourceView(c *ui.Context, samples []core.ResourceSample) {
 
 func secondarySourceLabel(metricID string, source core.ResourceSource) string {
 	name := sourceLabel(source)
+	if metricID == "service_cpu_percent" {
+		return "单核 100% · 仅服务主进程"
+	}
 	if metricID == "temperature" || !strings.Contains(name, ":") {
 		return name
 	}

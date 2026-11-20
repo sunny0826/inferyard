@@ -75,9 +75,6 @@ func catalogReferences(c *ui.Context, platform string) {
 				ui.Text(c, entry.Title).Bold()
 				ui.Text(c, entry.Reason).TextColor(c.Theme().TextMuted)
 				ui.Text(c, entry.URL).Selectable().TextColor(c.Theme().TextMuted)
-				if entry.Doc != "" {
-					ui.Text(c, "准备说明："+entry.Doc).Selectable().TextColor(c.Theme().TextMuted)
-				}
 			})
 		}
 	})

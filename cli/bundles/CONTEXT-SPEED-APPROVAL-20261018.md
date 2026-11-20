@@ -28,4 +28,3 @@
 [原审核说明](CONTEXT-SPEED-REVIEW.md)与[生成时哈希及分词记录](zh-context-speed.review.json)
 保留原样，其中 pending 和未注册等描述是生成时快照。本记录是后续人工批准。
 生成器仍只产生未批准草案，不能复制本次批准到修改过的内容。
-当前运行规则见[专项契约](../docs/contracts/context-speed-contract.md)。

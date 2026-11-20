@@ -48,7 +48,7 @@ func (s *viewState) detailView(c *ui.Context) {
 		}
 		componentFold(c, "运行原始字段", func() { detailRawFields(c, t) })
 	})
-	card(c, "实时进度", func() { s.detailProgress(c, d, t) })
+	card(c, "实时进度", func() { s.detailProgress(c, d) })
 	s.resourceView(c, d.Resources)
 }
 
@@ -61,10 +61,10 @@ func detailRawFields(c *ui.Context, t core.RunTask) {
 	}
 }
 
-func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail, t core.RunTask) {
+func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 	p := d.Progress
 	if p == nil {
-		ui.Text(c, "等待本次固定的题目与进度数据…")
+		ui.Text(c, "等待题目与进度数据…")
 		return
 	}
 	ui.Text(c, progressHeadline(p))

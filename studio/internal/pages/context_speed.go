@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
@@ -292,7 +293,9 @@ func (s *viewState) openSpeed(id string) {
 				if s.speed.readError == "" {
 					s.speed.readError = e.Code
 				}
-				s.speed.readError += " · " + fmt.Sprint(e.Limitations)
+				if len(e.Limitations) > 0 {
+					s.speed.readError += " · " + strings.Join(e.Limitations, "、")
+				}
 			} else {
 				s.speed.opened = result
 			}
@@ -342,6 +345,10 @@ func (s *viewState) speedResultView(c *ui.Context) {
 			}
 		}
 	})
+	speedResultFolds(c, w, r)
+}
+
+func speedResultFolds(c *ui.Context, w *speedWorkspace, r *speedTask) {
 	if r.summary == nil || r.reason != "" {
 		componentFold(c.Key(r.id), "查看诊断详情", func() {
 			if r.reason != "" {
@@ -362,6 +369,9 @@ func (s *viewState) speedResultView(c *ui.Context) {
 			speedTable(c.Key("speed-samples"), &w.samples, "专项逐次测量", r, r.samples)
 		})
 	}
+	componentFold(c, "指标口径说明", func() {
+		ui.Text(c, "输入长度为套用聊天模板后的实际 token 数；输入处理为引擎报告的输入处理耗时（prompt_ms）。")
+	})
 }
 
 func speedTable(c *ui.Context, state *pageTableState, label string, task *speedTask, rows []speedSample) {

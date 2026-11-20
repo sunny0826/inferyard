@@ -28,9 +28,8 @@ inferyard run --config bench-ops/bound/service-1/config.toml
 
 - `execution.warmup_count` 为整数 0..3，省略时 3；选择在运行前冻结。
 - 容量、温度、磁盘及其他停止条件来自实际设备和协议，不降低阈值以掩盖阻断。
-- 环境准入、冷启动和 clean 复用规则见[使用指南](../docs/usage.md#描述性比较与复用)。
 - 模型、模板、引擎、动态库、启动参数、PID 和启动时间均须重新核验；历史配置不继承新服务身份。
-- 非 KVMem/NInfer 的可选 `model.component_ledger_path` 按配置来源目录解析；冻结包移动后使用封存来源，旧投影兼容见[数据契约](../docs/data-contract.md)。
+- 非 KVMem/NInfer 的可选 `model.component_ledger_path` 按配置来源目录解析；冻结包移动后使用封存来源。
 - 正式题包须有匹配的人工审核；改题、答案或规则后重审受影响项，`--diagnostic` 不代替审核。
 
 Prism 手工配置可参考 [Windows 示例](qwen3-4b.windows.example.toml)；它是占位资产声明，不携带可复用的实机身份。
@@ -41,10 +40,9 @@ Prism 手工配置可参考 [Windows 示例](qwen3-4b.windows.example.toml)；�
 用于固定质量、串行文本配置。NInfer 需组件账本，全部资产需实际字节/哈希及完整 argv/cwd/PID/FILETIME。
 默认 `observation_mode = "auto"`，缺 lab 协议时披露原生信号；`lab_required` 要求完整协议。
 库清单与进程实际映射双向核验，不能把发行目录的全部 DLL 直接当作运行依赖。
-字段、支持范围及错误处理见[适配契约](../docs/contracts/windows-ninfer-adaptation-contract.md#版本身份与参数)。
 
 ## 公开包与复现
 
 `public package` 只创建本地脱敏包。`verify --path PUBLIC --config LOCAL.toml` 核对本地声明，
 可加 `--source-run RUN` 核对原运行投影；声明匹配仍为 `ready_to_run: false`。
-`public plan` 冻结复现计划，实际 run 仍须通过实时预检。命令见[使用指南](../docs/usage.md#公开包与扩展)。
+`public plan` 冻结复现计划，实际 run 仍须通过实时预检。

@@ -2,15 +2,13 @@
 
 The target is Apple Silicon (arm64). Native single and batch execution,
 CPU/Metal identity verification and resource sampling are supported.
-Historical model coverage and the current candidate's unverified items are
-tracked in [platform status](docs/platforms.md).
 
 ## Candidate preparation and external services
 
 Install following the [installation guide](docs/installation.md), then export
 an operations directory and detect an existing model; preparation stays in
 `bench-ops/` while the benchmark workspace `bench-work/` holds only runs,
-batches and reports. This example explicitly selects the smoke bundle. For a standard run, follow the [two-bundle workflow](docs/guides/onboarding-and-scope.md#默认测评范围).
+batches and reports. This example explicitly selects the smoke bundle. For a standard run, execute `zh-core` and `zh-svg-pelican` separately and combine them in one report.
 
 ```bash
 inferyard init --out bench-ops --bundle zh-smoke
@@ -37,9 +35,7 @@ inferyard verify --path bench-work/results/RUN_ID
 inferyard report --runs bench-work/results/RUN_ID --out bench-work/report
 ```
 
-Use the source run directory from the CLI output in place of `bench-work/results/RUN_ID`. Studio reads the generated report. In this terminal workflow the operator shuts down the service after the run. For the separate macOS local-installation path, see [local engines](docs/cli-reference/local-engines.md).
-See the [usage guide](docs/usage.md) for batch plans, cancellation and dirty
-recovery.
+Use the source run directory from the CLI output in place of `bench-work/results/RUN_ID`. Studio reads the generated report. In this terminal workflow the operator shuts down the service after the run. For the separate macOS local-installation path, see [local engine installation declarations](docs/installation.md#macos-本地安装声明installationjson).
 
 ## Native sampling boundaries
 
@@ -71,10 +67,9 @@ kept; do not delete the lock or state to bypass recovery.
 
 ## Engine diagnostics and development
 
-Same-host engine diagnostics follow the [engine-fit guide](docs/engine-fit-common.md);
+Same-host engine diagnostics use `inferyard engine-fit`;
 MLX-LM/LM Studio services are still started by the operator.
 The MLX controlled-service script path can be queried with
 `inferyard engine-fit engines`; do not guess paths from the source directory.
 See the [contributing guide](CONTRIBUTING.md) for the development environment
-and source commands, and the [macOS contract](docs/contracts/macos-contract.md)
-for implementation details.
+and source commands.

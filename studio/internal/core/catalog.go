@@ -23,7 +23,6 @@ type CatalogEntry struct {
 	Revision string
 	Platform string
 	Reason   string
-	Doc      string
 	Note     string
 }
 

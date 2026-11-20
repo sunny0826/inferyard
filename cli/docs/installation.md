@@ -3,8 +3,7 @@
 本页适用于已发布到 [PyPI](https://pypi.org/project/inferyard/0.0.5/) 的 `0.0.5`。
 也可使用 [Releases](https://github.com/sunny0826/inferyard/releases) 中的同批附件安装。
 项目采用 [MIT 许可证](../LICENSE)。安装文件应来自同一发行批次；
-平台实现与未验项见[平台状态](platforms.md)，接口见 [CLI](cli-surface.md)。
-证据与比较结论遵循[证据血缘规则](data-contract.md#证据血缘与比较结论)。
+命令与参数说明可通过 `inferyard --help` 查询。
 
 ## 1. 安装 uv 和工具
 
@@ -30,8 +29,7 @@ uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.5 --help
 
 后文每条 `inferyard ...` 都可替换为
 `uvx --isolated --managed-python --python 3.15.2 inferyard==0.0.5 ...`，
-包括 init、设备检测、配置准备、run、report 和 verify。完整 benchmark 按
-[默认测评范围](usage.md#默认测评范围)分别运行 120 题核心包和 1 题鹈鹕包，再生成汇总报告。
+包括 init、设备检测、配置准备、run、report 和 verify。完整测评分别运行 120 题核心包（`zh-core`）和 1 题鹈鹕包（`zh-svg-pelican`），再生成汇总报告。
 `uvx inferyard` 会选择可用版本；正式测评固定版本，并在整个运行和恢复期间保持环境不变。
 首次运行需要联网准备 Python 和依赖；普通索引安装不会读取维护者仓库的 `uv.lock`。
 需要固定发行批次的依赖时，添加该批 `--constraints runtime-constraints.txt`。
@@ -95,13 +93,12 @@ inferyard device-check --model /path/to/model.gguf --out bench-ops/preflight/dev
 准备与操作产物都留在操作目录。骨架中的空 `results/` 在双目录布局下不使用，
 `config create --results` 应指向 benchmark 工作区（如 `bench-work/results`）。
 benchmark 工作区（如 `bench-work/`）只存放
-run/batch 与报告，由 `run` 和 `report` 自动创建，
-见[工作区与交付目录组织](usage.md#工作区与交付目录组织)。模板中的 `REPLACE`
+run/batch 与报告，由 `run` 和 `report` 自动创建。模板中的 `REPLACE`
 项应填完，不直接 run。
-Windows 用实际盘符路径替换模型路径；此处的设备预检读取已有模型。需要下载时，见[模型与引擎获取接口](cli-reference/community-preparation.md)。
+Windows 用实际盘符路径替换模型路径；此处的设备预检读取已有模型。需要下载单文件 GGUF 模型或引擎归档时，可使用 `inferyard model acquire` / `inferyard engine acquire`（见 `--help`）。
 
 下文候选示例使用 `zh-core`。完整默认测评还须为 `zh-svg-pelican` 分别准备候选和绑定产物，
-各自使用新目录，并按[默认测评范围](usage.md#默认测评范围)冻结适合 SVG 的预算、运行并汇总报告。
+各自使用新目录，冻结适合 SVG 的预算、运行并汇总报告。
 `run --config` 每次只执行配置中的一个题包，CLI 不会自动连续运行两个题包。
 
 五个准备命令的 `--out` 都是**不存在的新目录**，其父目录应存在。已有空目录、文件和链接
@@ -123,8 +120,7 @@ inferyard config create --workspace bench-ops --bundle zh-core --engine /path/to
 workspace 模式默认选择 preflight/ 下最新 device-preflight.json，并冻结 bench-ops/results；
 显式 --preflight、完整 --bundle 路径和 --results 优先。--out 始终必填且不能已存在。
 随后按各题包候选的启动参数在另一终端启动服务，绑定到 `bound/` 的新子目录。单工作区示例的首个候选为 `bench-ops/candidates/zh-core-1/candidate.toml`，两个 run 都位于 `bench-ops/results/`。
-随时运行 progress 断点续接；字段和退出码见[进度契约](cli-surface.md#首次上手进度契约)，
-例子见[首次上手与断点续接](usage.md#首次上手与断点续接)。原有显式参数和双目录布局仍可使用。
+可随时运行 `inferyard progress --workspace bench-ops` 查看阶段状态与下一步命令。原有显式参数和双目录布局仍可使用。
 
 ## 3. 准备候选
 
@@ -173,6 +169,28 @@ inferyard config create --preflight bench-ops/preflight/device-1/device-prefligh
 `--model-repo` 默认为 local，`--model-revision` 默认为模型文件 SHA256，`--port` 默认为 48857。
 本地 SHA256 不冒充上游模型 revision。macOS 不接受 Windows 回执。
 
+### macOS 本地安装声明（installation.json）
+
+在 Apple Silicon macOS 上接入独立安装的 `llama-cpp`、`mlx-lm`、`vllm`、`sglang` 或 `lmstudio` 时，准备一份绝对路径声明 `installation.json`（完整结构见 `inferyard schema --kind local_engine_installation`）：
+
+```json
+{
+  "schema_version": 3,
+  "definition": "local-engine-installation.v1",
+  "family": "mlx-lm",
+  "executable": "/abs/path/to/venv/bin/python3",
+  "working_directory": "/abs/path/to/workdir",
+  "runtime_roots": ["/abs/path/to/venv"],
+  "environment": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1"
+  }
+}
+```
+
+可用 `inferyard engine check --installation /abs/path/to/installation.json --json` 核验安装声明，或在 Studio「设置 → 已有本地引擎」中直接注册该文件路径。
+
 ### Linux x64
 
 ```bash
@@ -206,8 +224,8 @@ PID、启动时间或参数不符会阻断；不要修改候选去掩盖观测�
 独立 `probe` 仅用于可选排障且会发送请求。服务恢复、dirty、主机锁、取消和排空仍按原规则执行。
 不要手工删除锁文件，也不要在运行或恢复期间升级工具环境。
 
-以上命令生成单个 run 的报告。完成默认测评时，按[双题包步骤](guides/onboarding-and-scope.md#默认测评范围)补齐鹈鹕 run，核验两个来源，并在新目录生成包含两者的 `studio.json`。
-`verify` 离线检查原始 run 证据，不覆盖报告。准备 JSON 的 prepared/complete 不表示测评或平台验收完成。
+以上命令生成单个 run 的报告。完成默认测评时，补齐鹈鹕 run（`zh-svg-pelican`），核验两个来源，并在新目录生成包含两者的 `studio.json`。
+`verify` 离线检查原始 run 证据，不覆盖报告。
 Windows/PowerShell 可使用相同 CLI 参数，路径加引号，PID 使用实际数字。
 
 ## 5. 升级、回退和离线
@@ -231,5 +249,4 @@ uvx 缓存可清理，外部长期 MLX 服务使用持久安装提供的脚本�
 下载/证书/代理问题按 [uv 网络配置](https://docs.astral.sh/uv/concepts/configuration-files/)排查；
 安装失败与模型/设备不支持分开报告。记录报错及 `uv --version`，不要将凭据写入 CLI 参数或日志。
 
-准备命令 stdout 为 JSON、stderr 为脱敏诊断；0 准备完成、2 输入/身份阻断、4 IO/工具错误、
-130 取消。正式 run 不完整可退出 3，模型答错不等于 CLI 失败。完整语义见 CLI 契约。
+准备命令 stdout 为 JSON、stderr 为脱敏诊断；退出码 `0` 表示完成、`2` 表示输入或身份阻断、`3` 表示运行不完整、`4` 表示 IO 或工具错误、`130` 表示取消。

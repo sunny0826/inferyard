@@ -1,8 +1,6 @@
 # Contributing
 
-Read the [product README](README.md), the [architecture](docs/architecture.md)
-and the relevant [topic contracts](docs/contracts/README.md) first.
-File boundaries and safety requirements for agents are in [AGENTS.md](../AGENTS.md).
+Read the [product README](README.md) and [AGENTS.md](../AGENTS.md) first.
 The project uses the [MIT license](LICENSE); release status is on
 [PyPI](https://pypi.org/project/inferyard/) and
 [GitHub Releases](https://github.com/sunny0826/inferyard/releases).
@@ -38,7 +36,7 @@ complete. User installation and source development are separate: the
 
 Inspect the working-tree diff first and preserve existing changes. Keep tests
 only when they demonstrate a product or logical invariant, or protect packaging,
-installation and release; see the [test policy](../docs/testing.md).
+installation and release.
 Behavior fixes cover the real failure path; contract changes cover rejection
 paths and old-data reading. Remove redundant assertions and implementation-shape
 tests instead of preserving them under a new name.
@@ -75,21 +73,19 @@ changing them.
 
 ## Documentation and evidence
 
-- README, AGENTS.md, CHANGELOG.md, CONTRIBUTING.md, MACOS.md, WINDOWS.md, Git
+- README, CHANGELOG.md, CONTRIBUTING.md, MACOS.md, WINDOWS.md, Git
   commits and PRs use English; a Chinese README is available at
-  [README.zh-CN.md](README.zh-CN.md). All other docs stay Chinese for now.
-- The README is the product entry point; operational steps live in the
-  installation and usage guides, interface rules in the data/topic contracts.
-- ADRs record long-term design rationale; plans keep only unfinished work,
-  and current progress is centralized in the [backlog](docs/backlog.md).
+  [README.zh-CN.md](README.zh-CN.md). Repository agent rules live in
+  [AGENTS.md](../AGENTS.md).
+- Source code and exported schemas/catalogues are the source of truth; update
+  user-facing README and installation docs only when user workflows change.
 - Never commit session handovers, stage logs, real device configurations,
   models, engines, caches, credentials or original runs.
 - `validation/` is an ignored local evidence directory, not used by default
   tests or builds. Extract minimal, publishable fixtures when regression
   samples are needed.
 - Never overwrite original evidence; migration, rescoring and report rebuilds
-  write to new directories, following the
-  [evidence lineage rules](docs/data-contract.md#证据血缘与比较结论).
+  write to new directories.
 
 ## Local candidate build and installation checks
 
@@ -137,8 +133,6 @@ commands above upload anything; the manual publish workflow defaults to
 `verify-only` mode and requires both candidate runs, both candidate digests
 and their shared source commit — see the
 [scripts README](scripts/README.md#社区资源与发行检查).
-See the [backlog](docs/backlog.md) for current candidate work and the
-remaining pre-release items.
 Commits should state the changes, the checks actually run and the unverified
 scope; create a local commit after the relevant checks pass, and do not push.
 
@@ -245,5 +239,4 @@ after editing their content; changing a shared protocol or answer policy
 affects all cases. When a matching per-case record exists, presentation-only
 version and license-note changes do not require content re-review. Old
 whole-bundle hashes and original files are preserved; old migration proofs
-that no longer apply cannot be used for edited copies — handling rules are in
-the [data contract](docs/data-contract.md#按用途分派).
+that no longer apply cannot be used for edited copies.

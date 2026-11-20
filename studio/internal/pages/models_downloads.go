@@ -74,9 +74,9 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 func engineTaskStatus(task core.DownloadTask) string {
 	switch task.State {
 	case "downloading":
-		return "正在下载引擎归档（来源未提供大小与速率）"
+		return "正在下载引擎归档…"
 	case "done":
-		return "引擎归档下载完成（来源未提供大小与速率）"
+		return "引擎归档下载完成。"
 	case "failed":
 		return "引擎归档下载失败。"
 	case "cancelled":

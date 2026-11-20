@@ -107,7 +107,7 @@ func reportRunLine(report core.ReportSummary, run core.ReportListRun) string {
 	}
 	line := prefix + fmt.Sprintf("答案通过 %s", reportRate(quality.StudioCounts))
 	if !quality.Complete {
-		line += "（质量结论不完整）"
+		line += "（仅已记录通过数）"
 	}
 	return line
 }

@@ -334,7 +334,7 @@ actual release state and assets.
   point. Existing dirty state must go through the original recovery flow; it
   cannot be cleared by deleting locks or re-running the migration. (Removed in
   the Unreleased changes above — live entries now initialize automatically.)
-- Only the [current format set](docs/contracts/inferyard-current-format.md) is
+- Only the current `schema_version = 3` format set is
   accepted. Old runs, old report formats and `origin=migrated` are explicitly
   rejected; old evidence stays with the original project and is not converted
   in InferYard.
@@ -373,5 +373,3 @@ actual release state and assets.
 Installation checks use synthetic inputs; native model preparation, full
 bundles and strict performance qualification for the current version are not
 proven by these checks.
-See [platform status](docs/platforms.md) and the [backlog](docs/backlog.md)
-for verified scope and remaining items.

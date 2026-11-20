@@ -2,14 +2,12 @@
 
 The target is Windows x64. The formal serial text entry points support Prism,
 KVMem and NInfer; the latter two are limited to fixed-quality plans.
-Implementation and historical native coverage are tracked in
-[platform status](docs/platforms.md).
 
 ## Device preflight and single runs
 
 After [installing the CLI](docs/installation.md), use `inferyard` in
 PowerShell; no repository scripts or D: drive are required.
-This example explicitly selects the smoke bundle. For a standard run, follow the [two-bundle workflow](docs/guides/onboarding-and-scope.md#默认测评范围). CPU/CUDA archive preparation is in the
+This example explicitly selects the smoke bundle. For a standard run, execute `zh-core` and `zh-svg-pelican` separately and combine them in one report. CPU/CUDA archive preparation is in the
 [installation guide](docs/installation.md#windows-x64先准备固定-runtime).
 
 ```powershell
@@ -61,9 +59,7 @@ their decisions remain protected or unknown, never a termination recommendation.
 No applications or services are closed. Only the diagnostic's own worker is reclaimed
 on timeout/cancellation. Missing values retain reasons and normally produce exit 3.
 Use a new output directory; existing evidence is refused. This capability is not in
-the published 0.0.1 build. Native scope and remaining cases are recorded in
-[backlog](docs/backlog.md#新功能应用内存诊断); the full
-[memory contract](docs/contracts/memory-check-contract.md) defines the output.
+the published 0.0.1 build.
 
 Identity verification uses same-account processes, full creation FILETIME,
 EXE/DLL, argv/cwd, model files and a unique loopback listener.
@@ -82,9 +78,7 @@ prepare-length remain restricted.
 KVMem/NInfer `auto` mode can use native OpenAI generation signals, but does
 not infer exact template budgets, effective arguments or engine-internal
 draining.
-Explicit `lab_required` demands the full lab protocol; see the
-[adaptation contract](docs/contracts/windows-ninfer-adaptation-contract.md) and its
-[generation and observation contract](docs/contracts/windows-ninfer-generation-observation-contract.md).
+Explicit `lab_required` demands the full lab protocol.
 
 ## Locks, persistence and offline evidence
 
@@ -98,7 +92,7 @@ locations) are neither read nor locked; leftover
 contention, state conflicts and permission errors still block.
 Files reject reparse points and keep file fsync plus
 MoveFileExW(WRITE_THROUGH); directory fsync is unavailable.
-The installation CI exercised dirty-state persistence after process interruption on a disposable Windows runner. Native ACL, reparse-point, multi-account and volume-change scenarios still need separate checks. See [platform status](docs/platforms.md#当前候选验证与未验项) and the [host-state contract](docs/contracts/inferyard-current-format.md#主机状态).
+The installation CI exercised dirty-state persistence after process interruption on a disposable Windows runner. Native ACL, reparse-point, multi-account and volume-change scenarios still need separate checks.
 
 `report`, `compare` and `verify` work offline; only current formats are
 accepted, and old evidence stays with the original project.
@@ -109,11 +103,8 @@ not be reported as evidence-integrity success.
 
 `engine-fit run` supports single-GGUF llama.cpp only, using the separate
 run.v6; other Windows engines are rejected before any request.
-Planning, external services and the full commands are in the
-[engine guide](docs/engine-fit-common.md).
 It records the native process-tree working set/CPU seconds, host memory and
 available NVIDIA temperatures; CPU temperature is a missing measurement.
-These diagnostics are separate from formal quality runs; see the
-[Windows engine-fit contract](docs/contracts/engine-fit-contract-platforms.md#windows-原生来源).
+These diagnostics are separate from formal quality runs.
 Source development uses the mise/uv commands in the
 [contributing guide](CONTRIBUTING.md).

@@ -108,7 +108,7 @@ func reportPerSecond(value *float64, reason *string) string {
 		return reportThroughputReason(reason)
 	}
 	if *value == 0 {
-		return "0（已测）"
+		return "0"
 	}
 	return reportDecimal(*value)
 }
@@ -153,7 +153,7 @@ func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 			return
 		}
 		deviceRow(c, "中位", reportMilliseconds("", intervals.P50, ""))
-		deviceRow(c, "P95", reportMilliseconds("", intervals.P95, reportP95Reason(intervals.P95Reason)))
+		deviceRow(c, "P95", reportIntervalP95(intervals))
 		if reason := reportIntervalReason(intervals.Reason); reason != "" {
 			ui.Text(c, "缺测原因："+reason).TextColor(c.Theme().TextMuted)
 		}
@@ -163,6 +163,14 @@ func reportOutputIntervals(c *ui.Context, run core.ReportRun) {
 			deviceRow(c, "最小 / 最大", reportMilliseconds("min", intervals.Min, "")+" · "+reportMilliseconds("max", intervals.Max, ""))
 		})
 	})
+}
+
+func reportIntervalP95(intervals *core.ReportOutputBlockIntervals) string {
+	value := reportMilliseconds("", intervals.P95, reportP95Reason(intervals.P95Reason))
+	if intervals.P95 != nil && intervals.IntervalCount >= 20 && intervals.IntervalCount < 100 {
+		return fmt.Sprintf("%s（n=%d）", value, intervals.IntervalCount)
+	}
+	return value
 }
 
 func reportMilliseconds(label string, value *float64, missing string) string {

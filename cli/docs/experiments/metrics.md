@@ -1,6 +1,6 @@
 # 指标定义与验收
 
-本文件与[资源、稳定性与条件指标](metrics-resources.md)共同定义 36 组核心与 10 组条件指标，两者都是 catalogue 的生成源；手算用例见[指标验收用例](metrics-acceptance.md)。指标定义版本 `phase2.v1` 与活动数据格式 `schema_version = 3` 分别管理；定义存在不表示每个平台均可采集或已实测。任务规则见[实验设计](design.md)，平台与证据见 [README](../../README.md)。
+本文件与[资源、稳定性与条件指标](metrics-resources.md)共同定义 36 组核心与 10 组条件指标，两者都是 catalogue 的生成源。指标定义版本 `phase2.v1` 与活动数据格式 `schema_version = 3` 分别管理；定义存在不表示每个平台均可采集或已实测。平台与证据见 [README](../../README.md)。
 
 目标不是凑指标数量，而是每个启用指标都能回答一个问题、给出证据、重算并判断可比性。两份文件的表格共 36 组核心指标、10 组条件指标；同一指标的 P50/P95 或分组曲线不重复计数。
 
@@ -8,8 +8,7 @@
 
 每个指标定义至少包含：`metric_id / definition_version / unit / layer / source / window / applicability / required_capabilities / aggregation / comparison_policy`。观测/汇总附 `value / status / missing_reason / sample_count / numerator / denominator / excluded / evidence_refs`；不适用的字段可省略，禁止使用含义不明的 0 或空字符串。
 
-`evidence_refs` 的外层绑定真实物理文件字节；layout2 的输入、观测和请求另带成员定位及内容摘要，
-见[运行原件容器契约](../contracts/run-evidence-layout.md#来源引用与外部绑定)。文件合并不改变
+`evidence_refs` 的外层绑定真实物理文件字节；layout2 的输入、观测和请求另带成员定位及内容摘要。文件合并不改变
 指标 ID、单位、样本范围或比较资格；旧 layout1 引用按保存的原物理含义核验。
 
 层次区分请求、进程、设备、引擎与整机；缺测原因至少覆盖未支持、权限不足、传感器缺失、窗口无样本、边界不可识别、原证据缺失、计数来源改变和样本不足。支持状态、模型能力和本次是否纳入分别记录。
@@ -86,4 +85,4 @@ v1 测评落盘的 content/reasoning 文本可能经脱敏缓冲延后、拆分�
 | 设备、身份、统计、证据         | 所有指标的资格、来源和谱系              |
 | 能耗、并发、启动维护           | E01–05、N01–04、U01；N02 阈值经冻结计划预注册，分别验收的条件项 |
 
-通用计量背景见[方法执行说明 P2–P5/P9](../reference/methods-guide.md)，活动执行与质量语义以[数据契约](../data-contract.md)及本文件为准。模型答错与执行失败分开，不能为得到有利结果改变分母。
+活动执行与质量语义以源码实现及本文件为准。模型答错与执行失败分开，不能为得到有利结果改变分母。

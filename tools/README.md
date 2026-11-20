@@ -73,6 +73,5 @@ compiled only with `studio_dev` and excluded by `release`.
 Launch the development executable through the mise task. Opening its `.app` or
 binary without a launch manifest is rejected instead of loading normal user settings.
 
-The [development subsystem reference](../docs/subsystems/studio-development.md) owns
-the runtime contract and failure behavior. Native checks remain documented in the
+Native checks remain documented in the
 [Studio README](../studio/README.md#verification-boundaries).

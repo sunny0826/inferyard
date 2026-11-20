@@ -26,12 +26,10 @@
 `patches/sglang-e262b44-mlx.patch` 仅供固定 SGLang 源码在 macOS 独立环境中使用，
 不修改 InferYard 的运行时。它修复 MLX stub 误入 Torch graph 初始化以及
 `setproctitle` 导入破坏主进程 argv 的问题。应用前须核对源码提交并执行
-`git apply --check --unidiff-zero`；准备与启动见
-[小模型接入指南](../docs/engine-fit-small-model.md#sglang-固定源码补丁)。
+`git apply --check --unidiff-zero`。
 
 正式 profile 另有 SGLang/vLLM worker 身份、SGLang run ID 和 OpenCV Darwin
 环境补丁；它们仅用于固定外部安装的独立副本，应用后必须重冻运行时。
-版本、应用顺序及环境声明见[正式安装准备](../docs/local-engine-native-preparation.md)。
 
 ## 软件成本对比
 
@@ -109,8 +107,7 @@ dispatch ref 与源码提交一致。PR 运行不满足发布来源条件。核�
 显式选择 `github-release` 上传附件并创建草稿 Release，公开草稿是独立操作；
 `pypi` 或 `both` 使用相同核验字节实际上传 PyPI，并要求预先配置 Trusted Publisher。
 完整操作见[Actions 发布步骤](../CONTRIBUTING.md#preparing-a-release-with-github-actions)。
-项目采用 [MIT 许可证](../LICENSE)。原生模型准备与性能实验不作为安装检查结果，
-具体候选状态见 [backlog](../docs/backlog.md)。
+项目采用 [MIT 许可证](../LICENSE)。原生模型准备与性能实验不作为安装检查结果。
 
 `tests/packaging` 使用合成证据在源码外检查 uv tool/uvx、资源、`studio.json` 报告与升级/回退。
 首次准备解释器和依赖可联网；合成升级不代表历史正式版本兼容。固定主机锁/dirty 的
@@ -128,7 +125,6 @@ dispatch ref 与源码提交一致。PR 运行不满足发布来源条件。核�
 `ninfer_source_host/` 的 custody 保存原进程引用并推进期限，Windows backend 负责原子入 Job、
 非阻塞管道与句柄。文件 I/O 只在直接子进程或注入测试中执行；控制宿主不执行文件 I/O。
 `file_io.py`、`probe_host.py`、`probe_fixture.py` 的真实 CLI 入口仍拒绝运行，不提供下载或模型入口。
-库接口与待接手状态见[宿主契约](../docs/contracts/windows-source-host-contract.md)，未接入事项见 [backlog](../docs/backlog.md)。
 
 ## Context-speed corpus generator
 
@@ -154,6 +150,6 @@ It reproduces frozen offline token observations bound to exact prompt hashes;
 changed text rejects stale counts. The observations use raw prompts without chat
 templates or BOS, and the reference model has only an 8K native context.
 Runtime input counts and context suitability still require separate verification.
-Both approval arrays remain empty. The five-trial execution recipe belongs to the
-[context-speed plan](../docs/plans/context-speed.md#专项题库与运行协议), not this generator.
+Both approval arrays remain empty. The five-trial execution recipe is enforced by the
+`context-speed` profile/plan, not this generator.
 Full-text pointers, limitations and pending checks are in the generated review files.
