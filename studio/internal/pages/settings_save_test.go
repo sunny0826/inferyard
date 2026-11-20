@@ -195,6 +195,48 @@ func TestSavedPathShowsPendingUntilReadinessArrives(t *testing.T) {
 	}
 }
 
+// First-time configuration of Results or Models has no prior probe at all, so
+// the card must say the check is pending instead of claiming the new directory
+// does not exist before the post-save refresh runs.
+func TestFirstTimeDirectorySaveShowsPending(t *testing.T) {
+	for _, name := range []string{"results", "models"} {
+		s := settingsState()
+		value := "/first/" + name
+		patch := map[string]json.RawMessage{}
+		if name == "results" {
+			s.settings.Settings.ResultsRoot, s.results = nil, value
+			s.ready.Results = core.DirectoryReadiness{} // never probed: no recorded path
+			patch["results_root"], _ = json.Marshal(value)
+		} else {
+			s.settings.Settings.ModelsRoot, s.models = nil, value
+			s.ready.Models = core.DirectoryReadiness{}
+			patch["models_root"], _ = json.Marshal(value)
+		}
+		if !s.pathsEdited() {
+			t.Fatalf("%s: first-time entry did not register as an edit", name)
+		}
+		s.syncSavedGroups(patch, s.settingsDraft(), core.SettingsResponse{
+			Settings:  core.UserSettings{ResultsRoot: ptr(value), ModelsRoot: ptr(value)},
+			Effective: core.EffectiveSettings{ResultsRoot: ptr(value), ModelsRoot: ptr(value)},
+		})
+		saved := emptyText(s.settings.Settings.ResultsRoot)
+		readiness := s.ready.Results
+		if name == "models" {
+			saved = emptyText(s.settings.Settings.ModelsRoot)
+			readiness = s.ready.Models
+		}
+		if got := directoryState(value, readiness, saved); got != "等待检查" {
+			t.Errorf("%s: first-time save claimed a directory result: %q", name, got)
+		}
+
+		// The post-save refresh supplies readiness for the new path.
+		fresh := core.DirectoryReadiness{Path: ptr(value), Exists: true}
+		if got := directoryState(value, fresh, saved); got != "目录已存在" {
+			t.Errorf("%s: refreshed readiness not shown: %q", name, got)
+		}
+	}
+}
+
 // persistSettings is the production save boundary; both groups keep the other
 // card's draft after the real UpdateSettings round trip.
 func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
