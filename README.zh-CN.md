@@ -19,7 +19,7 @@
 ## 开始使用
 
 - **桌面测评**　从 [Releases](https://github.com/sunny0826/inferyard/releases/latest) 下载对应平台的 Studio。启动后在任务页选择「准备环境」，再按 [Studio 首次使用说明](studio/README.md#pages-and-first-launch) 选择模型、引擎和题包。
-- **终端测评**　从[安装与候选准备](cli/docs/installation.md)开始。按候选参数启动服务，绑定实际 PID 和端点，再按[默认双题包流程](cli/docs/guides/onboarding-and-scope.md#默认测评范围)分别运行、核验并生成汇总报告。
+- **终端测评**　从[安装与候选准备](cli/docs/installation.md)开始。按候选参数启动服务，绑定实际 PID 和端点，分别运行题包并生成汇总报告。
 
 ## 现有题包
 
@@ -40,8 +40,7 @@
 | Windows x64（10/11） | Direct3D 11（支持 WARP 回退） | Prism/KVMem/NInfer 串行文本运行、原生身份与内存采集 |
 | Linux x64 | GTK 3 与 OpenGL（支持 CPU 渲染回退） | 单次与批量运行、CPU/内存采集 |
 
-表中列出实现范围。v0.0.5 的 Windows 和 Linux 原生窗口交互仍待验收。依赖测评结果之前，请查看[平台状态](cli/docs/platforms.md)、
-[macOS](cli/MACOS.md) 和 [Windows](cli/WINDOWS.md)。
+表中列出实现范围。v0.0.5 的 Windows 和 Linux 原生窗口交互仍待验收。各平台准备方式见[安装指南](cli/docs/installation.md)。
 
 ## 设计原则与边界
 
@@ -55,10 +54,9 @@
 | --- | --- |
 | 下载 Studio 安装包 | [GitHub Releases](https://github.com/sunny0826/inferyard/releases/latest) |
 | Studio 各页面说明与构建方式 | [Studio 说明](studio/README.md) |
-| 报告结构与指标口径 | [报告](cli/docs/reports.md) |
 | CLI 子项目与命令行用法 | [CLI 说明](cli/README.zh-CN.md) |
+| CLI 安装与候选准备 | [安装指南](cli/docs/installation.md) |
 | 本地源码开发与调试命令 | [本地开发命令](tools/README.md) |
-| 全部文档索引 | [文档地图](cli/docs/README.md) |
 
 ## 许可证
 

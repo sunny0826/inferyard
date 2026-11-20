@@ -26,7 +26,6 @@ SDIST_FILES = {
     "pyproject.toml",
     "uv.lock",
     "README.md",
-    "docs/installation.md",
     "PKG-INFO",
     ".gitignore",
 }
@@ -35,9 +34,6 @@ DATA_FILES = {
     for name in (
         "metrics.json",
         "methods.json",
-        "implementation-files/measurement.json",
-        "implementation-files/scoring.json",
-        "implementation-files/presentation.json",
     )
 }
 COMMUNITY_FILES = {
@@ -52,7 +48,6 @@ COMMUNITY_FILES = {
         "bundles/zh-context-speed.json",
         "bundles/zh-smoke.json",
         "bundles/zh-svg-pelican.json",
-        "bundles/zh-context-speed.json",
         "profile/prism-b10743-adfffbe-win-cpu-x64.json",
         "profile/prism-b10743-adfffbe-win-cuda-12.4-x64.json",
     )
@@ -184,7 +179,7 @@ def inspect_sdist(path, expected, *, project=None, license_raw=None):
     return {"files": len(seen), "resources": len(resources)}
 
 
-def main():
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--wheel", type=Path, required=True)
     parser.add_argument("--sdist", type=Path, required=True)
@@ -193,18 +188,57 @@ def main():
         "--out", type=Path, required=True, help="new manifest, never a release approval"
     )
     parser.add_argument("--rebuilt-wheel", type=Path)
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def _sdist_source_files(
+    sdist_raw: bytes, version: str, license_raw: bytes | None
+) -> dict[str, str]:
+    source_files: dict[str, str] = {}
+    names = (
+        "pyproject.toml",
+        "uv.lock",
+        "README.md",
+        ".gitignore",
+        *(("LICENSE",) if license_raw is not None else ()),
+    )
+    with tarfile.open(fileobj=BytesIO(sdist_raw), mode="r:gz") as archive:
+        for name in names:
+            raw = (ROOT / name).read_bytes()
+            extracted = archive.extractfile(f"inferyard-{version}/{name}")
+            if extracted is None or extracted.read() != raw:
+                raise ValueError("sdist_source_drift:" + name)
+            source_files[name] = digest(raw)
+    return source_files
+
+
+def _artifact_records(
+    paths: dict[str, Path], snapshots: dict[str, bytes], out_dir: Path
+) -> list[dict[str, str | int]]:
+    artifacts: list[dict[str, str | int]] = []
+    for role, path in paths.items():
+        relative = path.resolve().relative_to(out_dir.resolve()).as_posix()
+        raw = snapshots[role]
+        artifacts.append({"role": role, "path": relative, "bytes": len(raw), "sha256": digest(raw)})
+    return artifacts
+
+
+def _git_source_state() -> tuple[str, bool]:
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT))
+    return commit, dirty
+
+
+def main() -> None:
+    args = _parse_args()
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     expected = source_resources(ROOT)
     license_raw = (ROOT / "LICENSE").read_bytes() if project.get("license") else None
-    paths = dict(
-        wheel=args.wheel,
-        sdist=args.sdist,
-        constraints=args.constraints,
-        constraints_validation=args.constraints.with_suffix(
-            args.constraints.suffix + ".validation.json"
-        ),
-    )
+    validation = args.constraints.with_suffix(args.constraints.suffix + ".validation.json")
+    paths = {
+        "wheel": args.wheel, "sdist": args.sdist,
+        "constraints": args.constraints, "constraints_validation": validation,
+    }
     snapshots = {role: path.read_bytes() for role, path in paths.items()}
     checks = {
         "wheel": inspect_wheel(BytesIO(snapshots["wheel"]), expected, project, license_raw),
@@ -213,51 +247,29 @@ def main():
         ),
     }
     if args.rebuilt_wheel:
-        checks["rebuilt_wheel"] = inspect_wheel(
-            BytesIO(args.rebuilt_wheel.read_bytes()), expected, project, license_raw
-        )
+        rebuilt = BytesIO(args.rebuilt_wheel.read_bytes())
+        checks["rebuilt_wheel"] = inspect_wheel(rebuilt, expected, project, license_raw)
     lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
     proof = validate(snapshots["constraints"].decode("utf-8"), lock, project)
     if read_json(snapshots["constraints_validation"]) != proof:
         raise ValueError("constraints_validation_drift")
     checks["constraints"] = proof
-    source_files = {}
-    with tarfile.open(fileobj=BytesIO(snapshots["sdist"]), mode="r:gz") as archive:
-        for name in (
-            "pyproject.toml",
-            "uv.lock",
-            "README.md",
-            "docs/installation.md",
-            ".gitignore",
-            *(("LICENSE",) if license_raw is not None else ()),
-        ):
-            raw = (ROOT / name).read_bytes()
-            archived = archive.extractfile(f"inferyard-{project['version']}/{name}").read()
-            if archived != raw:
-                raise ValueError("sdist_source_drift:" + name)
-            source_files[name] = digest(raw)
-    artifacts = []
-    for role, path in paths.items():
-        relative = path.resolve().relative_to(args.out.parent.resolve()).as_posix()
-        raw = snapshots[role]
-        artifacts.append({"role": role, "path": relative, "bytes": len(raw), "sha256": digest(raw)})
+    commit, dirty = _git_source_state()
+    artifacts = _artifact_records(paths, snapshots, args.out.parent)
+    platforms = ("linux-x64", "windows-x64", "macos-arm64")
     manifest = {
         "kind": "community_distribution.v2",
         "version": project["version"],
         "candidate_status": "build_checked",
-        "source_commit": subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-        ).strip(),
-        "source_dirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT)),
+        "source_commit": commit,
+        "source_dirty": dirty,
         "artifacts": artifacts,
         "checks": checks,
         "resources": expected,
-        "source_files": source_files,
+        "source_files": _sdist_source_files(snapshots["sdist"], project["version"], license_raw),
         "license": project.get("license"),
         "project_urls": project.get("urls", {}),
-        "platform_coverage": {
-            p: "not_verified" for p in ("linux-x64", "windows-x64", "macos-arm64")
-        },
+        "platform_coverage": dict.fromkeys(platforms, "not_verified"),
     }
     with args.out.open("x", encoding="utf-8") as stream:
         json.dump(manifest, stream, indent=2, ensure_ascii=False)

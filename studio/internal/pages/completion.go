@@ -90,7 +90,7 @@ func runPassRate(run core.RunSummary) string {
 		return "缺测 — 没有有效题"
 	}
 	if gap := run.Score.RateGap(); gap != "" {
-		return fmt.Sprintf("%d / %d · 缺测 — %s，分母不缩", run.Score.Passed, run.Score.Valid, gapDescription(*run.Score, gap))
+		return fmt.Sprintf("%d / %d（%s）", run.Score.Passed, run.Score.Valid, gapDescription(*run.Score, gap))
 	}
 	line := fmt.Sprintf("%d / %d", run.Score.Passed, run.Score.Valid)
 	if run.Score.Rate != nil {

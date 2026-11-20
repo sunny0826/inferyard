@@ -137,7 +137,7 @@ func TestLocalInstallationsActionsShareOneRow(t *testing.T) {
 	if recheck.X <= register.X {
 		t.Fatalf("recheck action does not follow register: %+v / %+v", register, recheck)
 	}
-	if !tt.HasText("installation.json") || !tt.HasText("不生成该文件") {
+	if !tt.HasText("installation.json") {
 		t.Fatalf("missing installation.json hint: %v", tt.Texts())
 	}
 }

@@ -156,9 +156,6 @@ func TestReportSummaryDoesNotRepeatKpiNumbers(t *testing.T) {
 	if strings.Contains(frame, "13 道评分题中通过 7 道") || strings.Contains(frame, "11 / 13 个请求完成") {
 		t.Fatalf("summary repeated the KPI numbers: %v", tt.Texts())
 	}
-	if !tt.HasText("仅反映本次实测记录，不代表其他上下文或并发场景表现。") {
-		t.Fatal("scope disclaimer is missing")
-	}
 	if !tt.HasText("7 / 13 · 53.8%") {
 		t.Fatalf("pass card lacks its rate: %v", tt.Texts())
 	}

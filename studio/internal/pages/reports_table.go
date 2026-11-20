@@ -76,7 +76,7 @@ func reportSubheading(report core.ReportSummary) string {
 	}
 	runs := fmt.Sprintf("%d 次运行", len(report.RunIds))
 	if len(report.RunSummaries) > 1 {
-		return runs + " · 各次分别展示，不合并成绩 · " + modified
+		return runs + " · " + modified
 	}
 	if label := reportBundleLabel(report); label != "" {
 		return label + " · " + runs + " · " + modified
@@ -107,7 +107,7 @@ func reportRunLine(report core.ReportSummary, run core.ReportListRun) string {
 	}
 	line := prefix + fmt.Sprintf("答案通过 %s", reportRate(quality.StudioCounts))
 	if !quality.Complete {
-		line += "（质量结论不完整）"
+		line += "（仅已记录通过数）"
 	}
 	return line
 }

@@ -10,8 +10,8 @@ inferyard progress --workspace "{{WORKSPACE}}"
 ```
 
 `progress` 只读取、不写入文件。JSON 会给出每个题包的阶段、阻断原因和下一步命令。
-退出 0 只代表工作区可读，不代表测评完成。需要引擎、运行时回执、PID 或端点的命令
-使用显式 shell 变量占位；执行前把它们设置为真实本地资产和已由你启动的服务。
+需要引擎、运行时回执、PID 或端点的命令使用显式 shell 变量占位；
+执行前把它们设置为真实本地资产和已由你启动的服务。
 
 ## Context-speed workspace
 
@@ -92,6 +92,6 @@ inferyard report --runs CORE_RUN SVG_RUN --out "{{WORKSPACE}}/reports/summary-1"
 inferyard progress --workspace "{{WORKSPACE}}"
 ```
 
-报告只写一个 `studio.json`，由 Studio 读取；它不再生成 HTML，也不通过 `verify` 复核。
-`progress` 在报告就绪后返回 `next_action: done`，这就是本轮工作区可以结束的状态。
-报告保留来源血缘。封存的不完整 run 不等于完整测评。保留原始 run 与历史报告，永不覆盖。
+报告写出 `studio.json`，供 Studio 直接打开。
+`progress` 在报告就绪后返回 `next_action: done`。
+请一并保留原始 run 目录与历史报告，勿覆盖原始证据。

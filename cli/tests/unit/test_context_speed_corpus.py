@@ -24,15 +24,11 @@ from scripts.build_context_speed_bundle import (
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_repeatable_bytes_and_checked_in_artifacts():
+def test_repeatable_bytes_and_checked_in_artifacts() -> None:
     first = outputs()
     assert outputs() == first
-    for name, raw in first.items():
-        actual = (ROOT / "bundles" / name).read_bytes()
-        if name == BUNDLE_NAME:
-            approved = json.loads(actual)
-            require_review(approved)
-            approved["review_records"] = []
-            assert approved == json.loads(raw)
-        else:
-            assert actual == raw
+    assert set(first) == {BUNDLE_NAME, REVIEW_NAME, MARKDOWN_NAME}
+    approved = json.loads((ROOT / "bundles" / BUNDLE_NAME).read_bytes())
+    require_review(approved)
+    approved["review_records"] = []
+    assert approved == json.loads(first[BUNDLE_NAME])

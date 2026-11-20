@@ -22,7 +22,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				}
 			}
 			if task.Kind == "engine" {
-				if !tt.HasText("正在下载引擎归档（来源未提供大小与速率）") || tt.HasText("总量未知") || tt.HasText("缺测") {
+				if !tt.HasText("正在下载引擎归档…") || tt.HasText("总量未知") || tt.HasText("缺测") {
 					t.Fatal(tt.Texts())
 				}
 				if tt.HasText("已下载 0 bytes") {
@@ -52,7 +52,7 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 				}
 				if task.Kind == "engine" {
 					want := map[string]string{
-						"done":      "引擎归档下载完成（来源未提供大小与速率）",
+						"done":      "引擎归档下载完成。",
 						"failed":    "引擎归档下载失败。",
 						"cancelled": "引擎归档下载已取消。",
 					}[state]

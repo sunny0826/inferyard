@@ -17,7 +17,7 @@ func TestReportCardsKeepRunsSeparateAndNeverZeroFill(t *testing.T) {
 		},
 	}}
 	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.reportsTableView(c) }) }, 1120, 1200)
-	for _, want := range []string{"2 次运行 · 各次分别展示，不合并成绩", "Model-A · zh-core · 答案通过 3 / 5", "Model-B · zh-svg-pelican · 答案通过未记录"} {
+	for _, want := range []string{"2 次运行", "Model-A · zh-core · 答案通过 3 / 5", "Model-B · zh-svg-pelican · 答案通过未记录"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %q: %v", want, tt.Texts())
 		}

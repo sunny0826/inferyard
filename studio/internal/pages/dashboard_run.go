@@ -225,7 +225,6 @@ func (w *viewState) runView(c *ui.Context) {
 			label = fmt.Sprintf("%d / %d 题", p.Done, *p.Total)
 		}
 		progressBar(c, value, "当前测评题集运行进度")
-		ui.Text(c, bundleScopeText(false))
 		if task.State == "cancelling" {
 			ui.Text(c, "取消中／等待安全收尾。")
 		}

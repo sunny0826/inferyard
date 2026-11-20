@@ -65,7 +65,7 @@ func TestReportViewReadsStudioJSONOnly(t *testing.T) {
 	}
 	click(t, tt, "打开报告 · good")
 	tt.Frame()
-	for _, want := range []string{"各类别不构成综合评分", "数学计算", "知识问答", "2 个有效样本", "排除 1", "null-case", "timed-case", "索引", "studio.json"} {
+	for _, want := range []string{"数学计算", "知识问答", "2 个有效样本", "排除 1", "null-case", "timed-case", "索引", "studio.json"} {
 		if !tt.HasText(want) {
 			t.Fatalf("missing %s: %v", want, tt.Texts())
 		}

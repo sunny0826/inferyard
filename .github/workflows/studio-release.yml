@@ -4,7 +4,6 @@ on:
     paths:
       - "studio/**"
       - "!studio/README.md"
-      - "!studio/docs/**"
       - "cli/schemas/**"
       - "cli/src/inferyard/reporting/**"
       - "cli/src/inferyard/contracts/**"

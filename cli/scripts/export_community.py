@@ -67,15 +67,11 @@ def generated(archives):
     return outputs
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archives", type=Path, help="directory containing all three fixed ZIPs")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    if not args.check and args.archives is None:
-        parser.error(
-            "generation requires --archives; --check without archives checks committed resources"
-        )
     outputs = generated(args.archives)
     if args.check:
         for name, raw in outputs.items():

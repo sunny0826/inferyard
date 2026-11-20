@@ -25,7 +25,25 @@ IMPLEMENTED = {
 IMPLEMENTED |= {"S01", "S02", "S03", "S04", "X01", "X02", "X03"}
 IMPLEMENTED |= {"E01", "E02", "E03", "E04", "E05", "N01", "N02", "N03", "N04", "U01"}
 IMPLEMENTED |= {"L08", "L09"}
-SOURCES = {"N04": "endpoint_usage_batch_window"}
+type MetricItem = dict[str, str | int | list[str] | list[dict[str, str]]]
+type MetricsCatalogue = dict[str, str | list[MetricItem]]
+
+SOURCES = {
+    "N04": "endpoint_usage_batch_window",
+    "L06": "verified_engine_timings",
+    "L07": "verified_engine_timings",
+}
+PREFIX_SOURCES = {
+    "Q": "versioned_scorer",
+    "L": "stream_events",
+    "C": "platform_resource_collector",
+    "R": "request_ledger",
+    "S": "trial_and_window_ledger",
+    "X": "length_case_ledger",
+    "E": "verified_sensor_or_instrument",
+    "N": "load_and_token_events",
+    "U": "verified_lifecycle_events",
+}
 UNITS = {
     **{
         f"{prefix}{i:02}": "ratio"
@@ -103,142 +121,38 @@ def methods():
     return {"catalogue_version": "2026-09-29.v1", "source": reference(MATRIX), "items": items}
 
 
-def metrics():
-    items = []
-    rows = [
-        (path, line)
-        for path in METRICS
-        for line in path.read_text(encoding="utf-8").splitlines()
-    ]
-    for path, line in rows:
-        if not re.match(r"^\| [RQLCX SEN U]\d{2} \|", line):
-            continue
-        cells = [cell.strip() for cell in line.strip("|").split("|")]
-        key, name = cells[:2]
-        conditional = key[0] in "ENU"
-        if len(cells) != (3 if conditional else 4):
-            raise ValueError("metric table column count changed")
-        source = {
-            "Q": "versioned_scorer",
-            "L": "stream_events",
-            "C": "platform_resource_collector",
-            "R": "request_ledger",
-            "S": "trial_and_window_ledger",
-            "X": "length_case_ledger",
-            "E": "verified_sensor_or_instrument",
-            "N": "load_and_token_events",
-            "U": "verified_lifecycle_events",
-        }[key[0]]
-        source = SOURCES.get(key, source)
-        if key in ("L06", "L07"):
-            source = "verified_engine_timings"
-        items.append(
-            {
-                "schema_version": 3,
-                "metric_id": key,
-                "name": name.split(" / ")[0],
-                "definition_version": "phase2.v1",
-                "unit": UNITS[key],
-                "layer": LAYERS.get(key, "request" if key.startswith("L") else "experiment"),
-                "source": source,
-                "window": "frozen_protocol_and_declared_statistic",
-                "applicability": cells[-1],
-                "required_capabilities": [source],
-                "aggregation": cells[2],
-                "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
-                "implementation_status": "implemented" if key in IMPLEMENTED else "planned",
-                "scope": "conditional" if conditional else "core",
-                "evidence_refs": [reference(path)]
-                + (
-                    [
-                        reference(ROOT / "src/inferyard/analysis/observations.py"),
-                        reference(ROOT / "tests/unit/test_observations.py"),
-                    ]
-                    if key in IMPLEMENTED and key not in ("L08", "L09")
-                    else []
-                )
-                + (
-                    [
-                        reference(ROOT / "src/inferyard/analysis/engine_blocks.py"),
-                        reference(ROOT / "src/inferyard/analysis/first_body.py"),
-                        reference(ROOT / "tests/unit/test_engine_blocks.py"),
-                    ]
-                    if key in ("L08", "L09")
-                    else []
-                )
-                + (
-                    [
-                        reference(ROOT / "src/inferyard/contracts/engine_timing.py"),
-                        reference(ROOT / "tests/unit/test_engine_timing.py"),
-                    ]
-                    if key in ("L06", "L07")
-                    else []
-                )
-                + (
-                    [
-                        reference(ROOT / "src/inferyard/platforms/resources_linux.py"),
-                        reference(ROOT / "src/inferyard/platforms/resources_macos.py"),
-                        reference(ROOT / "src/inferyard/platforms/environment_observer.py"),
-                        reference(ROOT / "src/inferyard/platforms/sensors_linux.py"),
-                        reference(ROOT / "src/inferyard/analysis/sensor_observations.py"),
-                        reference(ROOT / "tests/unit/test_sensors_linux.py"),
-                        reference(ROOT / "src/inferyard/analysis/resource_metrics.py"),
-                        reference(ROOT / "tests/unit/test_resources.py"),
-                    ]
-                    if key.startswith("C") and key in IMPLEMENTED
-                    else []
-                )
-                + (
-                    [
-                        reference(ROOT / "src/inferyard/platforms/resources_windows.py"),
-                        reference(ROOT / "tests/unit/test_windows_resources.py"),
-                    ]
-                    if key in ("C01", "C02", "C03")
-                    else []
-                )
-                + (
-                    [reference(ROOT / "tests/unit/test_sensor_observations.py")]
-                    if key in ("C07", "C08")
-                    else []
-                )
-                + (
-                    [
-                        reference(ROOT / "src/inferyard/analysis/duration_windows.py"),
-                        reference(ROOT / "src/inferyard/analysis/stability_observations.py"),
-                        reference(ROOT / "src/inferyard/analysis/idle_rss.py"),
-                        reference(ROOT / "tests/unit/test_stability_observations.py"),
-                    ]
-                    if key in ("S01", "S02")
-                    else []
-                )
-                + (
-                    [
-                        reference(ROOT / "src/inferyard/analysis/throughput_observations.py"),
-                        reference(ROOT / "tests/unit/test_throughput_observations.py"),
-                    ]
-                    if key in ("N01", "N02", "N04")
-                    else []
-                )
-                + (
-                    [
-                        reference(ROOT / "src/inferyard/analysis/inter_token_observations.py"),
-                        reference(ROOT / "tests/unit/test_inter_token_observations.py"),
-                    ]
-                    if key == "N03"
-                    else []
-                )
-                + (
-                    [
-                        reference(ROOT / "src/inferyard/analysis/repetition_metrics.py"),
-                        reference(ROOT / "src/inferyard/analysis/repetition_analysis.py"),
-                        reference(ROOT / "tests/unit/test_repetition_metrics.py"),
-                        reference(ROOT / "tests/unit/test_aggregate_observations.py"),
-                    ]
-                    if key in ("S03", "S04")
-                    else []
-                ),
-            }
-        )
+def _metric_item(path: Path, line: str) -> MetricItem:
+    cells = [cell.strip() for cell in line.strip("|").split("|")]
+    key, name = cells[:2]
+    conditional = key[0] in "ENU"
+    if len(cells) != (3 if conditional else 4):
+        raise ValueError("metric table column count changed")
+    source = SOURCES.get(key, PREFIX_SOURCES[key[0]])
+    return {
+        "schema_version": 3,
+        "metric_id": key,
+        "name": name.split(" / ")[0],
+        "definition_version": "phase2.v1",
+        "unit": UNITS[key],
+        "layer": LAYERS.get(key, "request" if key.startswith("L") else "experiment"),
+        "source": source,
+        "window": "frozen_protocol_and_declared_statistic",
+        "applicability": cells[-1],
+        "required_capabilities": [source],
+        "aggregation": cells[2],
+        "comparison_policy": "same_definition_source_window_and_complete_frozen_protocol",
+        "implementation_status": "implemented" if key in IMPLEMENTED else "planned",
+        "scope": "conditional" if conditional else "core",
+        "evidence_refs": [reference(path)],
+    }
+
+
+def metrics() -> MetricsCatalogue:
+    items: list[MetricItem] = []
+    for path in METRICS:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if re.match(r"^\| [RQLCX SEN U]\d{2} \|", line):
+                items.append(_metric_item(path, line))
     if len(items) != 46 or len({i["metric_id"] for i in items}) != 46:
         raise ValueError("expected 36 core and 10 conditional groups")
     return {"catalogue_version": "phase2.v1", "items": items}

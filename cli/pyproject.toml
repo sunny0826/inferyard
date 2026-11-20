@@ -44,7 +44,6 @@ packages = ["src/inferyard"]
 include = [
   "src/inferyard/**/*.py",
   "src/inferyard/data/*.json",
-  "src/inferyard/data/implementation-files/*.json",
   "src/inferyard/data/community/resources.json",
   "src/inferyard/data/community/README.md",
   "src/inferyard/data/community/configs/*.example.toml",
@@ -56,14 +55,13 @@ exclude = ["**/__pycache__", "**/*.pyc", "**/*.pyo"]
 [tool.hatch.build.targets.sdist]
 # Explicit build inputs only; no real device configurations, evidence, caches or model assets.
 only-include = [
-  "pyproject.toml", "uv.lock", "LICENSE", "README.md", "docs/installation.md", ".gitignore",
+  "pyproject.toml", "uv.lock", "LICENSE", "README.md", ".gitignore",
   "src/inferyard",
 ]
 include = [
-  "/pyproject.toml", "/uv.lock", "/LICENSE", "/README.md", "/docs/installation.md", "/.gitignore",
+  "/pyproject.toml", "/uv.lock", "/LICENSE", "/README.md", "/.gitignore",
   "src/inferyard/**/*.py",
   "src/inferyard/data/*.json",
-  "src/inferyard/data/implementation-files/*.json",
   "src/inferyard/data/community/resources.json",
   "src/inferyard/data/community/README.md",
   "src/inferyard/data/community/configs/*.example.toml",

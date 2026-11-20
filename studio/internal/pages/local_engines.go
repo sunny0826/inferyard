@@ -219,10 +219,12 @@ func (s *viewState) localSelectionView(c *ui.Context) {
 
 func (s *viewState) localInstallationsView(c *ui.Context) {
 	card(c, "已有本地引擎", func() {
-		ui.Text(c, "注册 CLI 安装声明后，可选择 llama.cpp、MLX、vLLM、SGLang 或 LM Studio。核验安装不代表模型已通过测评。")
-		ui.Text(c, "installation.json 需自行准备：按 CLI 的 local-engine-installation.v1 声明模板，填写 executable、working_directory、runtime_roots 和 environment 等本机绝对路径后，交给 engine check 与 config create 使用。Studio 只读取核验，不生成该文件。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "注册本地引擎安装声明（支持 llama.cpp、MLX、vLLM、SGLang、LM Studio）。")
+		componentFold(c, "installation.json 字段说明", func() {
+			ui.Text(c, "声明 definition 为 local-engine-installation.v1，填写 family、executable、working_directory、runtime_roots 与 environment 绝对路径。")
+		})
 		s.pathField(c, "安装声明 JSON 路径", &s.installationPath, browseInstallation).
-			Description("已有 installation.json 的绝对路径；引擎、环境和模型不会自动下载。").
+			Description("已准备好的 installation.json 绝对路径。").
 			Error(s.browseError(browseInstallation.key, ""))
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 			if primaryButton(c, "注册引擎").Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {

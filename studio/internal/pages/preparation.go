@@ -144,7 +144,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 	}
 	card(c, "路径设置", func() {
 		s.pathFields(c)
-		ui.Text(c, "保存不会自动创建目录；新建工作区请手动输入完整路径。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "新建工作区请手动输入完整路径；保存后在任务页点击「准备环境」创建。").TextColor(c.Theme().TextMuted)
 		settingsNotice(c, s.pathsEdited(), "路径有未保存的修改，点击保存后生效。")
 		if primaryButton(c, "保存").Disabled(!s.canSavePaths()).Clicked() {
 			if !s.validateSettings() {

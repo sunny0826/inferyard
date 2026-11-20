@@ -144,7 +144,6 @@ func (r *reportViewState) runPicker(c *ui.Context) {
 			r.categories, r.requests = pageTableState{}, pageTableState{}
 		}
 	})
-	ui.Text(c, "各次运行分别展示，不合并成绩。").TextColor(c.Theme().TextMuted)
 }
 
 func reportRunLabel(run core.ReportRun) string {
