@@ -152,9 +152,9 @@ only in-archive relative symlinks; the model channel accepts a single GGUF at a 
 
 Empty pages omit the task card; existing tasks keep their card above the new-download form and
 list engines before models. A lightweight return banner above the cards follows the task states:
-it never claims the assets are ready while a download is running or has failed, and a failure that
-a later task for the same asset resolved no longer asks for another retry while its historical
-card stays in the list. The new-download card highlights at most one filled download action — the
+it never claims the assets are ready while a download is running or has failed, and keeps
+reporting a failure that no later task for the same source resolved; that historical card stays in
+the list. The new-download card highlights at most one filled download action — the
 missing asset first, none once both are available or already downloading. Engine archive
 tasks report neither bytes nor rate, so their card shows one status line and one activity bar;
 raw values stay in the task's observation fold. Download directory

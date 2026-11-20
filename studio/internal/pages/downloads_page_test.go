@@ -95,12 +95,29 @@ func TestDownloadGuideClearsFailureAfterRetrySucceeds(t *testing.T) {
 	if len(s.downloads) != 2 {
 		t.Fatal(s.downloads)
 	}
+}
 
-	// A later available asset resolves its own failed record as well.
-	s.downloads = s.downloads[:1]
-	s.registry.Models = []core.ModelAsset{{Name: "model", Available: true}}
-	if got := s.downloadGuideStatus(); got != "下载所需引擎与模型后返回任务页。" {
-		t.Fatalf("available model did not resolve the failure: %q", got)
+// TestUnresolvedFailureSurvivesUnrelatedAssets keeps a never-retried failure in
+// the banner even when another asset is available or another download runs.
+func TestUnresolvedFailureSurvivesUnrelatedAssets(t *testing.T) {
+	failed := core.DownloadTask{TaskId: "model-1", Kind: "model", OutName: "model", SourceUrl: "https://example.test/other.gguf", State: "failed"}
+	s := preparingDownloadsState()
+	s.downloads = append(s.downloads, failed)
+	// Another model already exists and an unrelated model source is running.
+	s.registry.Models = []core.ModelAsset{{Name: "existing", Available: true}}
+	s.downloads = append(s.downloads, core.DownloadTask{TaskId: "model-2", Kind: "model", State: "downloading", SourceUrl: "https://example.test/another.gguf"})
+
+	if got := s.unresolvedDownloadFailures(); got != 1 {
+		t.Fatalf("unrelated asset/download hid the failure: %d", got)
+	}
+	if got := s.downloadGuideStatus(); got != "正在下载 2 项资源，另有 1 项下载失败。" {
+		t.Fatalf("banner dropped the unresolved failure: %q", got)
+	}
+
+	// The same source retried successfully resolves only that failure.
+	s.downloads = append(s.downloads, core.DownloadTask{TaskId: "model-3", Kind: "model", State: "done", SourceUrl: failed.SourceUrl})
+	if got := s.unresolvedDownloadFailures(); got != 0 {
+		t.Fatalf("same-source success did not resolve: %d", got)
 	}
 }
 

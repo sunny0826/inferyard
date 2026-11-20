@@ -109,14 +109,13 @@ func (s *viewState) countDownloads(state string) int {
 }
 
 // unresolvedDownloadFailures counts failed tasks that still need the operator.
-// Historical failure cards stay in the list, so a failed task stops counting
-// once its asset is available, a download of that kind is running, or a newer
-// task for the same source succeeded.
+// Historical failure cards stay in the list, so a failure stops counting only
+// when a later task for the same source succeeded or is running; an unrelated
+// asset or a download of another source never resolves it.
 func (s *viewState) unresolvedDownloadFailures() int {
-	assets := s.availableTaskAssets()
 	count := 0
 	for _, task := range s.downloads {
-		if task.State != "failed" || s.downloadResolved(task, assets) {
+		if task.State != "failed" || s.downloadResolved(task) {
 			continue
 		}
 		count++
@@ -124,13 +123,7 @@ func (s *viewState) unresolvedDownloadFailures() int {
 	return count
 }
 
-func (s *viewState) downloadResolved(failed core.DownloadTask, assets taskAssets) bool {
-	if (failed.Kind == "engine" && assets.engine) || (failed.Kind == "model" && assets.model) {
-		return true
-	}
-	if s.downloadActive(failed.Kind) {
-		return true
-	}
+func (s *viewState) downloadResolved(failed core.DownloadTask) bool {
 	for _, task := range s.downloads {
 		if task.Kind != failed.Kind || task.SourceUrl != failed.SourceUrl || task.TaskId == failed.TaskId {
 			continue

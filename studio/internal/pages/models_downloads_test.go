@@ -79,6 +79,63 @@ func TestModelsUnifiedDownloadMeasurements(t *testing.T) {
 	}
 }
 
+// activityBarSegments finds the accent-filled stretches on the mid row of the
+// element labeled label. An indeterminate bar draws a centered moving segment;
+// a determinate bar starts at the left edge.
+func activityBarSegments(tt *ui.Tester, label string, accent ui.Color) (rect ui.Rect, start, end int) {
+	r, ok := tt.Find(label)
+	if !ok {
+		panic("missing activity bar: " + label)
+	}
+	img := tt.Image()
+	y := int(r.Y + r.H/2)
+	start, end = -1, -1
+	for x := int(r.X); x < int(r.X+r.W); x++ {
+		o := img.PixOffset(x, y)
+		if img.Pix[o] == accent.R && img.Pix[o+1] == accent.G && img.Pix[o+2] == accent.B {
+			if start < 0 {
+				start = x - int(r.X)
+			}
+			end = x - int(r.X)
+		}
+	}
+	return r, start, end
+}
+
+// TestEngineActivityBarStaysIndeterminate pins the progress mode: an engine
+// download has no total, so the bar must animate a centered segment instead of
+// showing a fixed completion fraction.
+func TestEngineActivityBarStaysIndeterminate(t *testing.T) {
+	s := testState()
+	s.downloads = []core.DownloadTask{{TaskId: "engine", Kind: "engine", OutName: "engine-fixture", State: "downloading"}}
+	var accent ui.Color
+	tt := ui.NewTester(func(c *ui.Context) {
+		accent = c.Theme().Accent
+		ui.Column(c).Children(func() { s.downloadsView(c) })
+	}, 1000, 1200)
+	// Reduce Motion freezes the moving segment at a known phase.
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
+	tt.Frame()
+
+	rect, start, end := activityBarSegments(tt, "下载任务活动", accent)
+	if start < 0 || end < 0 {
+		t.Fatalf("activity bar drew no accent segment: %v", rect)
+	}
+	width := int(rect.W)
+	leftGap, rightGap := start, width-1-end
+	// A determinate value fills from the left edge; an indeterminate segment is
+	// centered and leaves both edges empty.
+	if leftGap < width/10 || rightGap < width/10 {
+		t.Fatalf("bar is not indeterminate: left %d, right %d of %d", leftGap, rightGap, width)
+	}
+	if diff := leftGap - rightGap; diff < -2 || diff > 2 {
+		t.Fatalf("indeterminate segment is not centered: left %d, right %d", leftGap, rightGap)
+	}
+	if filled := end - start + 1; float64(filled)/float64(width) < .25 || float64(filled)/float64(width) > .35 {
+		t.Fatalf("indeterminate segment width = %d/%d", filled, width)
+	}
+}
+
 // keyboardReaches tabs until the label holds focus or the limit is reached.
 func keyboardReaches(tt *ui.Tester, label string, limit int) bool {
 	for i := 0; i < limit; i++ {
