@@ -183,7 +183,7 @@ async def run_overhead(
     return result
 
 
-def read_overhead(root, *, target=None, target_data=None):
+def read_overhead(root, *, target=None, target_data=None, legacy_source_binding=False):
     """Recompute from sealed trials; do not trust cached request projections/results."""
     from inferyard.analysis.overhead_environment import assess_environments, environment_record
     from inferyard.analysis.ledger import read_trial
@@ -294,6 +294,7 @@ def read_overhead(root, *, target=None, target_data=None):
             sealed_observation(evidence, "collector"),
             reads=evidence,
             arm_tool_version=arm_tool_version,
+            legacy_source_binding=legacy_source_binding,
         )
         result["environment_binding"] = assess_environments(
             environments,

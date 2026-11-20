@@ -54,16 +54,26 @@ def workload_domain(data):
     return value
 
 
-def domain_reasons(control, data, control_metadata):
+def domain_reasons(control, data, control_metadata, *, legacy_source_binding=False):
     reasons = []
-    tool_versions = [d["run"].get("tool_version") for d in (control, data)]
-    if not tool_versions[0] or tool_versions[0] != tool_versions[1]:
-        reasons.append("total_control_tool_version_unknown_or_different")
-    versions = [
-        d["run"].get("definition_versions", {}).get("measurement") for d in (control, data)
-    ]
-    if versions[0] is None or versions[0] != versions[1]:
-        reasons.append("total_control_measurement_identity_unknown_or_different")
+    if legacy_source_binding:
+        from inferyard.analysis.comparison_helpers import legacy_role_identities
+
+        identities = [
+            legacy_role_identities(d["run"].get("implementation_identity"))["measurement"]
+            for d in (control, data)
+        ]
+        if identities[0] is None or identities[0] != identities[1]:
+            reasons.append("total_control_measurement_identity_unknown_or_different")
+    else:
+        tool_versions = [d["run"].get("tool_version") for d in (control, data)]
+        if not tool_versions[0] or tool_versions[0] != tool_versions[1]:
+            reasons.append("total_control_tool_version_unknown_or_different")
+        versions = [
+            d["run"].get("definition_versions", {}).get("measurement") for d in (control, data)
+        ]
+        if versions[0] is None or versions[0] != versions[1]:
+            reasons.append("total_control_measurement_identity_unknown_or_different")
     if config_domain(control["config"]) != config_domain(data["config"]):
         reasons.append("total_control_target_loading_or_request_config_mismatch")
     if control["bundle"] != data["bundle"] or workload_domain(control) != workload_domain(data):
@@ -98,7 +108,9 @@ def domain_reasons(control, data, control_metadata):
     return reasons
 
 
-def load_total_applicability(overhead, target, *, data, source_roots=()):
+def load_total_applicability(
+    overhead, target, *, data, source_roots=(), legacy_source_binding=False
+):
     path = local_file(overhead, "total-control-binding.json")
     if not path.is_file():
         return {"eligible": False, "reasons": ["formal_trial_total_observer_evidence_missing"]}
@@ -148,7 +160,11 @@ def load_total_applicability(overhead, target, *, data, source_roots=()):
     if len(verified_trials) != 2:
         reasons.append("total_control_verified_on_arms_required")
     for relative, (control, metadata) in verified_trials.items():
-        reasons.extend(domain_reasons(control, data, metadata))
+        reasons.extend(
+            domain_reasons(
+                control, data, metadata, legacy_source_binding=legacy_source_binding
+            )
+        )
         collector = TrialEvidence(root / relative).observation("collector")
         if collector is None:
             raise EvidenceError("total_control_arm_collector_missing")
@@ -177,14 +193,25 @@ def load_total_applicability(overhead, target, *, data, source_roots=()):
     }
 
 
-def load_performance_evidence_v3(root, target, *, data, reference, source_roots=()):
+def load_performance_evidence_v3(
+    root, target, *, data, reference, source_roots=(), legacy_source_binding=False
+):
     total = load_total_applicability(
-        root, target, data=data, **({"source_roots": source_roots} if source_roots else {})
+        root,
+        target,
+        data=data,
+        legacy_source_binding=legacy_source_binding,
+        **({"source_roots": source_roots} if source_roots else {}),
     )
     incremental = {"status": "not_supplied"}
     assessment = {}
     if (root / "protocol.json").exists():
-        assessment = read_overhead(root, target=target, target_data=data)
+        assessment = read_overhead(
+            root,
+            target=target,
+            target_data=data,
+            legacy_source_binding=legacy_source_binding,
+        )
         incremental = {
             "status": "passed" if assessment["passed"] else "limited",
             "assessment": assessment,

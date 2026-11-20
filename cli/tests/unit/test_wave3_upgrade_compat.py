@@ -14,7 +14,7 @@ from inferyard.analysis.scoring_revision import VERSION as REVISION_VERSION
 from inferyard.analysis.scoring_revision import scorer_hash as revision_scorer_hash
 from inferyard.contracts.batch_envelope import validate_batch_envelope
 from inferyard.contracts.validation import json_bytes, validate_document
-from inferyard.errors import EvidenceError
+from inferyard.errors import ContractError, EvidenceError
 from inferyard.evidence.storage import atomic_bytes, read_json
 from inferyard.reporting.comparison_report import (
     build_comparison,
@@ -220,3 +220,58 @@ def test_overhead_bind_target_uses_tool_version_not_source_hash(tmp_path: Path) 
     )
     assert not mismatched["applicable"]
     assert "target_tool_mismatch" in mismatched["reasons"]
+
+    # Legacy v5 replay retains source-hash binding check so v5 reports recompute identically
+    legacy_v5 = bind_target(
+        root,
+        data,
+        protocol,
+        workload_identity(data),
+        arm_requests,
+        {"passed": True},
+        {"collector": "linux-resource.v2"},
+        arm_tool_version=data["run"]["tool_version"],
+        legacy_source_binding=True,
+    )
+    assert not legacy_v5["applicable"]
+    assert "target_tool_mismatch" in legacy_v5["reasons"]
+
+
+def _valid_legacy_identity(file_sha: str) -> dict:
+    roles = {}
+    for role in ("measurement", "scoring", "presentation"):
+        body = {
+            "files": [{"path": f"{role}.py", "sha256": file_sha}],
+            "dependencies": [{"name": "jsonschema", "version": "4.26.0", "reason": None}],
+        }
+        roles[role] = {**body, "sha256": hashlib.sha256(json_bytes(body)).hexdigest()}
+    return {"definition": "implementation-identity.v1", **roles}
+
+
+def test_legacy_v5_comparison_and_total_applicability_validate_archived_role_digests(
+    tmp_path: Path,
+) -> None:
+    root = fixture_run(tmp_path / "base", states=["completed"] * 3, comparison_mode="model")
+    left = read_trial(root)
+    right = deepcopy(left)
+    identity = _valid_legacy_identity("a" * 64)
+    left["run"]["implementation_identity"] = deepcopy(identity)
+    right["run"]["implementation_identity"] = deepcopy(identity)
+
+    valid_v5 = compare_trials(left, right, definition="phase2.v3")
+    assert (
+        next(c for c in valid_v5["conditions"] if c["field"] == "run.implementation_identity.measurement")[
+            "status"
+        ]
+        == "same"
+    )
+    assert "total_control_measurement_identity_unknown_or_different" not in domain_reasons(
+        left, right, {}, legacy_source_binding=True
+    )
+
+    # Tampering inner measurement.files while keeping outer sha256 must fail validation
+    right["run"]["implementation_identity"]["measurement"]["files"][0]["sha256"] = "b" * 64
+    with pytest.raises(ContractError, match="content digest mismatch"):
+        compare_trials(left, right, definition="phase2.v3")
+    with pytest.raises(ContractError, match="content digest mismatch"):
+        domain_reasons(left, right, {}, legacy_source_binding=True)

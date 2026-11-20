@@ -2,7 +2,12 @@
 
 import math
 
-from inferyard.analysis.comparison_helpers import _get, _known, comparable_arguments
+from inferyard.analysis.comparison_helpers import (
+    _get,
+    _known,
+    comparable_arguments,
+    legacy_role_identities,
+)
 from inferyard.contracts.engine_profiles import is_local
 from inferyard.errors import EvidenceError
 
@@ -27,24 +32,6 @@ def normalized_args(args, excluded=()):
         else:
             result.append(arg)
     return result
-
-
-def _legacy_role_identities(value):
-    if not isinstance(value, dict):
-        return {"measurement": None, "scoring": None}
-    out = {}
-    for role in ("measurement", "scoring"):
-        entry = value.get(role)
-        if not isinstance(entry, dict) or not isinstance(entry.get("sha256"), str):
-            out[role] = None
-        elif any(
-            isinstance(dep, dict) and dep.get("version") is None
-            for dep in entry.get("dependencies", ())
-        ):
-            out[role] = None
-        else:
-            out[role] = entry["sha256"]
-    return out
 
 
 def compare_trials(left, right, *, mode=None, performance_evidence=None, definition="phase2.v4"):
@@ -168,7 +155,7 @@ def compare_trials(left, right, *, mode=None, performance_evidence=None, definit
             and any("implementation_identity" in d["run"] for d in (left, right))
         ):
             identities = [
-                _legacy_role_identities(d["run"].get("implementation_identity"))
+                legacy_role_identities(d["run"].get("implementation_identity"))
                 for d in (left, right)
             ]
             if not all("implementation_identity" in d["run"] for d in (left, right)):

@@ -46,6 +46,7 @@ def build_comparison(
                 target,
                 data=data,
                 reference=reference,
+                legacy_source_binding=format_version == 5,
                 **({"source_roots": source_roots} if source_roots else {}),
             )
             for root, target, (data, reference) in zip(
