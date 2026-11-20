@@ -9,7 +9,6 @@ type designTokens struct {
 	Card    cardTokens
 	Metric  metricTokens
 	State   stateColors
-	Sides   sideColors
 }
 
 type spacingTokens struct {
@@ -86,37 +85,17 @@ func (s stateColors) forKind(kind stateKind) ui.Color {
 	}
 }
 
-type sideKind int
-
-const (
-	sideA sideKind = iota
-	sideB
-)
-
-type sideColors struct {
-	A ui.Color
-	B ui.Color
-}
-
-func (s sideColors) forSide(side sideKind) ui.Color {
-	if side == sideB {
-		return s.B
-	}
-	return s.A
-}
-
 func tokens(c *ui.Context) designTokens {
 	t := c.Theme()
 	radius, card, metric := surfaceTokensFor(t)
-	return styledTokens(c, designTokens{
+	return designTokens{
 		Density: spacingTokensFor(t),
 		Type:    typeTokensFor(t),
 		Radius:  radius,
 		Card:    card,
 		Metric:  metric,
 		State:   stateColorsFor(t),
-		Sides:   sideColorsFor(t),
-	})
+	}
 }
 
 func spacingTokensFor(t *ui.Theme) spacingTokens {
@@ -163,17 +142,6 @@ func stateColorsFor(t *ui.Theme) stateColors {
 	return stateColors{Neutral: t.TextMuted, Active: t.Accent, Success: t.Success, Warning: t.Warning, Danger: t.Danger}
 }
 
-func sideColorsFor(t *ui.Theme) sideColors {
-	if t.Dark {
-		return sideColors{A: ui.Hex("#7cb2ff"), B: ui.Hex("#e6b567")}
-	}
-	return sideColors{A: ui.Hex("#2563eb"), B: ui.Hex("#b45309")}
-}
-
 func stateColor(c *ui.Context, kind stateKind) ui.Color {
 	return tokens(c).State.forKind(kind)
-}
-
-func sideColor(c *ui.Context, side sideKind) ui.Color {
-	return tokens(c).Sides.forSide(side)
 }

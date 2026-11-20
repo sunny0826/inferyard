@@ -292,3 +292,24 @@ func TestNewDownloadCardKeepsOnePrimaryAction(t *testing.T) {
 		})
 	}
 }
+
+func TestCatalogChoicesUseRadioGroupWithCustomOption(t *testing.T) {
+	s := testState()
+	tt := ui.NewTester(s.downloadsPageView, 1120, 2400)
+	qwen := "Qwen3-0.6B-Q8_0（GGUF）"
+	if !tt.HasText(qwen) || !tt.HasText("自定义模型地址") {
+		t.Fatalf("catalog radios missing: %v", tt.Texts())
+	}
+	click(t, tt, qwen)
+	entry, ok := core.CatalogEntryByURL(s.modelURL)
+	if !ok || entry.Title != qwen {
+		t.Fatalf("modelURL = %q, want %s", s.modelURL, qwen)
+	}
+	click(t, tt, "自定义模型地址")
+	if s.modelURL != "" {
+		t.Fatalf("custom radio kept preset URL: %q", s.modelURL)
+	}
+	if !tt.HasText("模型 URL（固定 40 位 revision 的 GGUF）") {
+		t.Fatalf("custom URL field did not appear: %v", tt.Texts())
+	}
+}

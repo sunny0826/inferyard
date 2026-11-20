@@ -1,7 +1,8 @@
 package pages
 
 import (
-	"math"
+	"fmt"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
@@ -68,37 +69,6 @@ func metricCard(c *ui.Context, label, value, detail, note string) {
 	})
 }
 
-type pairedBarValue struct {
-	Label string
-	Value float64
-	Text  string
-}
-
-func pairedBar(c *ui.Context, title string, a, b pairedBarValue) {
-	t := tokens(c)
-	ui.Column(c).Gap(t.Density.Tight).Label(title).Children(func() {
-		ui.Text(c, title)
-		pairedBarRow(c, sideA, a)
-		pairedBarRow(c, sideB, b)
-	})
-}
-
-func pairedBarRow(c *ui.Context, side sideKind, value pairedBarValue) {
-	t := tokens(c)
-	fraction := value.Value
-	if math.IsNaN(fraction) || math.IsInf(fraction, 0) {
-		fraction = 0
-	}
-	fraction = max(0, min(1, fraction))
-	ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Label(value.Label).Children(func() {
-		ui.Text(c, value.Label).Width(t.Density.Page * 2)
-		ui.Box(c).Grow(1).Height(8).Radius(4).Background(c.Theme().Border).Children(func() {
-			ui.Box(c).WidthPercent(float32(fraction) * 100).Height(8).Radius(4).Background(sideColor(c, side))
-		})
-		ui.Text(c, value.Text).TextColor(stateColor(c, stateNeutral))
-	})
-}
-
 type taskMetric struct {
 	label, value, reason string
 }
@@ -123,7 +93,8 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 					ui.Text(c, options.kind).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 				}
 			})
-			statusBadge(c, options.state, options.color).Tooltip(map[string]string{
+			badge := statusBadge(c, options.state, options.color)
+			components.Tooltip(c, badge, map[string]string{
 				"下载中": "任务正在下载，总量未知。",
 				"已结束": "下载任务已结束。",
 				"失败":  "下载任务失败，输出目录保留。",
@@ -141,7 +112,10 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 			ui.Grid(c).Columns(columns).Gap(t.Density.Stack).Children(func() {
 				for _, metric := range options.metrics {
 					ui.Column(c).Gap(t.Density.Tight).Children(func() {
-						ui.Text(c, metric.label).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted).Tooltip(metric.reason)
+						metricLabel := ui.Text(c, metric.label).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
+						if metric.reason != "" {
+							components.Tooltip(c, metricLabel, metric.reason)
+						}
 						ui.Text(c, metric.value).Bold().FontSize(t.Type.Metric)
 						if metric.reason != "" {
 							ui.Text(c, metric.reason).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
@@ -191,6 +165,166 @@ func selectField[T comparable](c *ui.Context, name, description string, selected
 			}
 		}
 		components.NativeSelect(c, selected, options).Trigger.Label(name).Value(current)
+	})
+	if description != "" {
+		f.Description(description)
+	}
+}
+
+func segmentedField[T comparable](c *ui.Context, name, description string, selected *T, options []components.NativeSelectOption[T]) {
+	if len(options) == 0 {
+		return
+	}
+	f := ui.Field(c, name, func() {
+		t := tokens(c)
+		theme := c.Theme()
+		idx := 0
+		for i, option := range options {
+			if option.Value == *selected {
+				idx = i
+				break
+			}
+		}
+		seg := ui.SegmentedBase(c, &idx, len(options))
+		seg.Track.AlignSelf(ui.Start).AlignItems(ui.Center).Gap(theme.Space(.5)).
+			Padding(theme.Space(.75)).Radius(t.Radius.Inset).
+			Background(theme.SurfaceHover).Border(1, theme.Border).Label(name).
+			Children(func() {
+				for i, option := range options {
+					active := i == idx
+					item := seg.Segment(i).
+						Padding(theme.Space(1.25), theme.Space(3)).
+						Radius(max(2, t.Radius.Inset-2)).
+						Label(option.Label).
+						Disabled(option.Disabled)
+					if active {
+						border := theme.Border
+						if c.Preferences().HighContrast {
+							border = stateColor(c, stateActive)
+						}
+						item.Background(theme.Surface).Border(1, border)
+					} else if item.Hovered() && !option.Disabled {
+						item.Background(theme.Surface.Alpha(.6))
+					}
+					item.Children(func() {
+						label := ui.Text(c, option.Label).SingleLine()
+						if active {
+							label.Bold().TextColor(theme.Text)
+						} else {
+							label.TextColor(theme.TextMuted)
+						}
+					})
+				}
+			})
+		if seg.Track.Changed() && idx >= 0 && idx < len(options) && !options[idx].Disabled {
+			*selected = options[idx].Value
+		}
+	})
+	if description != "" {
+		f.Description(description)
+	}
+}
+
+type searchableSelectState struct {
+	query        string
+	lastSelected string
+	wasOpen      bool
+}
+
+func filterSearchableOptions(options []string, query string) []string {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return options
+	}
+	prefix := make([]string, 0, len(options))
+	contains := make([]string, 0, len(options))
+	for _, opt := range options {
+		lower := strings.ToLower(opt)
+		if strings.HasPrefix(lower, q) {
+			prefix = append(prefix, opt)
+		} else if strings.Contains(lower, q) {
+			contains = append(contains, opt)
+		}
+	}
+	return append(prefix, contains...)
+}
+
+func searchableSelectField(c *ui.Context, name, description, placeholder, emptyFormat string, selected *string, options []string) {
+	f := ui.Field(c, name, func() {
+		t := tokens(c)
+		theme := c.Theme()
+		container := ui.Column(c).FillWidth().MaxWidth(420)
+		state := ui.Local(container, "searchable-select", func() searchableSelectState {
+			return searchableSelectState{query: *selected, lastSelected: *selected}
+		})
+		if state.lastSelected != *selected {
+			state.query = *selected
+			state.lastSelected = *selected
+		}
+		container.Children(func() {
+			cb := ui.ComboboxBase(c, &state.query)
+			border := theme.Border
+			if cb.Input.Focused() {
+				border = theme.Accent
+			}
+			cb.Input.FillWidth().Label(name).Placeholder(placeholder).
+				Padding(theme.Space(1.75), theme.Space(2.5)).
+				Radius(t.Radius.Inset).Background(theme.Surface).Border(1, border)
+
+			visible := options
+			if cb.Filtering() {
+				visible = filterSearchableOptions(options, state.query)
+			}
+			cb.Popup(func(panel ui.Element) {
+				panel.FillWidth().MinWidth(260).MaxHeight(260).
+					Padding(theme.Space(1)).Radius(t.Radius.Inset).
+					Background(theme.Surface).Border(1, theme.Border).
+					Children(func() {
+						ui.Scroll(c).MaxHeight(248).Children(func() {
+							ui.Column(c).FillWidth().Gap(theme.Space(.5)).Children(func() {
+								if len(visible) == 0 {
+									msg := "暂无可选项"
+									if len(options) > 0 {
+										msg = fmt.Sprintf(emptyFormat, strings.TrimSpace(state.query))
+									}
+									ui.Text(c, msg).TextColor(theme.TextMuted).Padding(theme.Space(1.5), theme.Space(2))
+									return
+								}
+								for _, opt := range visible {
+									item := cb.Item(opt).FillWidth().Label(opt).
+										Padding(theme.Space(1.5), theme.Space(2)).
+										Radius(max(2, t.Radius.Inset-2))
+									if item.Highlighted() {
+										item.Background(theme.SurfaceHover)
+									}
+									picked := opt == *selected
+									item.Children(func() {
+										ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(theme.Space(1.5)).Children(func() {
+											mark := "  "
+											if picked {
+												mark = "✓ "
+											}
+											ui.Text(c, mark).TextColor(theme.Accent)
+											label := ui.Text(c, opt).SingleLine().Grow(1).MinWidth(0)
+											if picked {
+												label.Bold()
+											}
+										})
+									})
+								}
+							})
+						})
+					})
+			})
+			if chosen, ok := cb.Chosen(); ok {
+				*selected = chosen
+				state.query = chosen
+				state.lastSelected = chosen
+			} else if state.wasOpen && !cb.Open() {
+				state.query = *selected
+			}
+			state.wasOpen = cb.Open()
+		})
 	})
 	if description != "" {
 		f.Description(description)

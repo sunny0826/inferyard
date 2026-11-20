@@ -19,7 +19,13 @@ func (s *viewState) detailView(c *ui.Context) {
 		}
 	}
 	if s.detail == nil {
-		ui.Text(c, "正在读取任务详情…")
+		host := ui.Column(c.Key("detail-loading-" + s.detailID)).FillWidth().Gap(tokens(c).Density.Section)
+		show := delayedVisible(c, host, "detail-load", true)
+		host.Children(func() {
+			if show {
+				detailLoadingSkeleton(c)
+			}
+		})
 		return
 	}
 	d := s.detail
@@ -67,7 +73,19 @@ func (s *viewState) detailProgress(c *ui.Context, d *core.RunTaskDetail) {
 		ui.Text(c, "等待题目与进度数据…")
 		return
 	}
-	ui.Text(c, progressHeadline(p))
+	headline := progressHeadline(p)
+	if !terminal(d.Task.State) && p.Total != nil && *p.Total > 0 {
+		host := ui.Row(c.Key("detail-eta-" + d.Task.TaskId)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row)
+		eta := formatETA(c, host, "detail-"+d.Task.TaskId, p.Done, *p.Total)
+		host.Children(func() {
+			ui.Text(c, headline)
+			if eta != "" {
+				ui.Text(c, "· "+eta).TextColor(c.Theme().TextMuted)
+			}
+		})
+	} else {
+		ui.Text(c, headline)
+	}
 	progressBar(c, progressValue(p.Done, p.Total), "运行题目进度")
 	ui.Text(c, fmt.Sprintf("当前题：%s", text(p.CurrentCaseId)))
 	columns := []ui.TableColumn{{Title: "题目", Width: 180}, {Title: "状态", Width: 160}, {Title: "类别", Width: 100}, {Title: "质量", Width: 100}, {Title: "耗时", Width: 100}, {Title: "错误类别", Width: 160}}

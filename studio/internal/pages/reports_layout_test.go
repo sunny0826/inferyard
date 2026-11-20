@@ -3,6 +3,7 @@ package pages
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -96,6 +97,29 @@ func TestReportsTabSurvivesReframe(t *testing.T) {
 	tt.Frame()
 	if !tt.HasText("运行历史表") || s.reportsTab != reportsTabHistory {
 		t.Fatalf("tab did not survive a frame: %d", s.reportsTab)
+	}
+}
+
+func TestReportSourcesUseCheckboxesForMultiSelect(t *testing.T) {
+	s := testState()
+	s.history.StandaloneRuns = []core.RunSummary{
+		{RunId: "run-1", Path: "/results/run-1"},
+		{RunId: "run-2", Path: "/results/run-2"},
+	}
+	tt := ui.NewTester(s.reportsView, 1120, 1600)
+	click(t, tt, "从历史运行生成报告")
+	tt.Advance(time.Second)
+	click(t, tt, "run-1")
+	click(t, tt, "run-2")
+	if s.reportChoices.Len() != 2 {
+		t.Fatalf("expected 2 checked runs, got %d", s.reportChoices.Len())
+	}
+	if !tt.HasText("已选 2 / 100") {
+		t.Fatalf("count not updated: %v", tt.Texts())
+	}
+	click(t, tt, "run-1")
+	if s.reportChoices.Len() != 1 || !s.reportChoices.Has("/results/run-2") {
+		t.Fatalf("unchecking run-1 failed: len=%d", s.reportChoices.Len())
 	}
 }
 

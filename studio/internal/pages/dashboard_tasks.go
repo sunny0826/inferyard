@@ -2,10 +2,12 @@ package pages
 
 import (
 	"fmt"
-	"github.com/egoist/mygo/ui"
-	"inferyard/studio/internal/core"
 	"strconv"
 	"strings"
+
+	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
+	"inferyard/studio/internal/core"
 )
 
 func aggregateStatus(runs []core.RunSummary) string {
@@ -48,10 +50,9 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 				s.selected = "dashboard"
 			})
 			if button(c, "续测").AlignSelf(ui.Start).Disabled(s.busy || r.BatchId == nil || !r.Resumable || s.denied[r.Path]).Clicked() {
-				s.detailID = ""
-				s.selected = "dashboard"
 				source := r
 				s.resumeSource = &source
+				s.resumeDiscardConfirm = false
 				s.endpoint = ""
 				s.pid = ""
 			}
@@ -71,22 +72,63 @@ func (s *viewState) historyRow(c *ui.Context, r core.RunSummary) {
 
 	})
 }
-func (s *viewState) resumeView(c *ui.Context) {
-	card(c, "续测 "+s.resumeSource.RunId, func() {
-		ui.Text(c, displayName(s.resumeSource.Path)).Selectable()
-		endpointError, pidError := resumeErrors(s.endpoint, s.pid)
-		field(c, "服务地址（可选）", &s.endpoint).Description("本机服务 URL，留空则沿用原配置").Error(endpointError)
-		field(c, "服务 PID（可选）", &s.pid).Description("正整数，须与服务地址同时填写或留空").Error(pidError)
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.CardGap).Children(func() {
-			if primaryButton(c, "确认续测").AlignSelf(ui.Start).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
-				s.resume()
-			}
-			if button(c, "关闭续测设置").AlignSelf(ui.Start).Clicked() {
-				s.resumeSource = nil
-			}
-		})
+func (s *viewState) resumeDirty() bool {
+	return strings.TrimSpace(s.endpoint) != "" || strings.TrimSpace(s.pid) != ""
+}
 
+func (s *viewState) closeResumeDialog() {
+	s.resumeSource = nil
+	s.resumeDiscardConfirm = false
+	s.endpoint = ""
+	s.pid = ""
+}
+
+func (s *viewState) resumeDialog(c *ui.Context) {
+	open := s.resumeSource != nil
+	dirty := open && s.resumeDirty()
+	c.Key("resume-dialog")
+	components.Dialog(c, &open, components.DialogOptions{
+		Label:                "续测设置",
+		DisableBackdropClose: dirty,
+		DisableEscapeClose:   dirty,
+	}, func(panel ui.Element) {
+		if s.resumeSource == nil {
+			return
+		}
+		panel.Width(c.Theme().Space(115)).MaxWidthPercent(90).Children(func() {
+			ui.Column(c).Gap(tokens(c).Density.CardGap).Children(func() {
+				heading(c, "续测 "+s.resumeSource.RunId, 2)
+				ui.Text(c, displayName(s.resumeSource.Path)).Selectable().TextColor(c.Theme().TextMuted)
+				endpointError, pidError := resumeErrors(s.endpoint, s.pid)
+				field(c, "服务地址（可选）", &s.endpoint).Description("本机服务 URL，留空则沿用原配置").Error(endpointError)
+				field(c, "服务 PID（可选）", &s.pid).Description("正整数，须与服务地址同时填写或留空").Error(pidError)
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.CardGap).Children(func() {
+					if primaryActionButton(c, "确认续测", s.actionBusy("resume-run")).AlignSelf(ui.Start).Disabled(s.busy || s.denied[s.resumeSource.Path]).Clicked() {
+						s.resume()
+					}
+					if button(c, "关闭续测设置").AlignSelf(ui.Start).Clicked() {
+						if s.resumeDirty() {
+							s.resumeDiscardConfirm = true
+						} else {
+							open = false
+						}
+					}
+				})
+			})
+		})
 	})
+	if !open && s.resumeSource != nil {
+		s.closeResumeDialog()
+	}
+	if components.AlertDialog(c, &s.resumeDiscardConfirm, components.AlertDialogOptions{
+		DialogOptions: components.DialogOptions{Label: "放弃未保存的续测设置"},
+		Title:         "放弃未保存的修改？",
+		Message:       "已填写的服务地址或 PID 尚未提交，关闭后将清空。",
+		ConfirmLabel:  "放弃修改",
+		CancelLabel:   "继续编辑",
+	}) == components.DialogConfirmed {
+		s.closeResumeDialog()
+	}
 }
 func (s *viewState) resume() {
 	ee, pe := resumeErrors(s.endpoint, s.pid)
@@ -108,7 +150,7 @@ func (s *viewState) resume() {
 		req.EndpointUrl = &endpoint
 		req.ServerPid = &value
 	}
-	s.work(func() (string, *core.ApiError) {
+	s.workAs("resume-run", func() (string, *core.ApiError) {
 		task, e := s.service.Resume(req)
 		s.win.Update(func() {
 			if e != nil {
@@ -117,7 +159,8 @@ func (s *viewState) resume() {
 				}
 				return
 			}
-			s.resumeSource = nil
+			s.closeResumeDialog()
+			s.selected = "dashboard"
 			s.selectTask(task.TaskId)
 		})
 		return "续测已加入队列。", e

@@ -213,10 +213,14 @@ func human(code string) string {
 }
 
 func (s *viewState) guideWork(fn func() (string, *core.ApiError)) {
+	s.guideWorkAs("", fn)
+}
+
+func (s *viewState) guideWorkAs(action string, fn func() (string, *core.ApiError)) {
 	if s.busy {
 		return
 	}
-	s.work(func() (string, *core.ApiError) {
+	s.workAs(action, func() (string, *core.ApiError) {
 		message, e := fn()
 		if e != nil {
 			mapped := *e

@@ -146,7 +146,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 		s.pathFields(c)
 		ui.Text(c, "新建工作区请手动输入完整路径；保存后在任务页点击「准备环境」创建。").TextColor(c.Theme().TextMuted)
 		settingsNotice(c, s.pathsEdited(), "路径有未保存的修改，点击保存后生效。")
-		if primaryButton(c, "保存").Disabled(!s.canSavePaths()).Clicked() {
+		if primaryActionButton(c, "保存", s.actionBusy("save-paths")).Disabled(!s.canSavePaths()).Clicked() {
 			if !s.validateSettings() {
 				return
 			}
@@ -164,7 +164,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 				return
 			}
 			submitted := s.settingsDraft()
-			s.work(func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, "设置已保存。") })
+			s.workAs("save-paths", func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, "设置已保存。") })
 		}
 	})
 	s.localInstallationsView(c)
@@ -254,7 +254,7 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 		ui.Text(c, "仅允许字母、数字、.、_、-；重名时自动追加序号（默认 model / engine）。").TextColor(c.Theme().TextMuted)
 		settingsNotice(c, s.downloadNamesEdited(), downloadNamesNotice(s.modelName, s.engineName))
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			if primaryButton(c, "保存下载目录名").Disabled(!s.canSaveDownloadNames()).Clicked() {
+			if primaryActionButton(c, "保存下载目录名", s.actionBusy("save-download-names")).Disabled(!s.canSaveDownloadNames()).Clicked() {
 				patch := map[string]json.RawMessage{}
 				patch["model_download_name"], _ = json.Marshal(s.modelName)
 				patch["engine_download_name"], _ = json.Marshal(s.engineName)
@@ -262,7 +262,7 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 					return
 				}
 				submitted := s.settingsDraft()
-				s.work(func() (string, *core.ApiError) {
+				s.workAs("save-download-names", func() (string, *core.ApiError) {
 					return s.persistSettings(patch, submitted, "下载目录名已保存。")
 				})
 			}

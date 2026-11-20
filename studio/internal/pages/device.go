@@ -72,13 +72,13 @@ func (s *viewState) refreshDevice() {
 	if s.simulate(previewRefreshDevice) {
 		return
 	}
-	s.work(func() (string, *core.ApiError) { return "正在采集设备信息…", s.service.RefreshDevice() })
+	s.workAs("refresh-device", func() (string, *core.ApiError) { return "设备信息已更新。", s.service.RefreshDevice() })
 }
 
 func (s *viewState) deviceCollectionBlocked() bool { return s.busy || s.device.Refreshing }
 
 func (s *viewState) deviceRefreshButton(c *ui.Context, label string) {
-	if button(c, label).Disabled(s.deviceCollectionBlocked()).Clicked() {
+	if refreshButton(c, label, s.device.Refreshing || s.actionBusy("refresh-device")).Disabled(s.deviceCollectionBlocked()).Clicked() {
 		s.refreshDevice()
 	}
 }
@@ -102,9 +102,6 @@ func (s *viewState) deviceView(c *ui.Context) {
 	t := tokens(c)
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 		heading(c, "设备", 1).Grow(1)
-		if s.device.Refreshing {
-			ui.Text(c, "正在采集设备信息…").TextColor(c.Theme().TextMuted)
-		}
 		s.deviceRefreshButton(c, "刷新设备")
 	})
 	snapshot, parseError := parseDeviceSnapshot(s.device.Snapshot)

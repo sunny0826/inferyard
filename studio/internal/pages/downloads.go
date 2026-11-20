@@ -65,14 +65,13 @@ func (s *viewState) downloadAction(c *ui.Context, kind, label string) ui.Element
 
 func (s *viewState) modelAssetsView(c *ui.Context) {
 	heading(c, "模型", 3)
-	s.catalogChoices(c, core.CatalogModel, core.CurrentPlatform())
+	s.catalogChoices(c, core.CatalogModel, core.CurrentPlatform(), "自定义模型地址", func() {
+		field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL).Description("必填；使用固定 revision 的 GGUF 下载地址。").Error(downloadURLError(s.modelURL))
+	})
 	s.modelDownloadForm(c)
 }
 
 func (s *viewState) modelDownloadForm(c *ui.Context) {
-	componentFold(c, "自定义模型地址", func() {
-		field(c, "模型 URL（固定 40 位 revision 的 GGUF）", &s.modelURL).Description("必填；使用固定 revision 的 GGUF 下载地址。").Error(downloadURLError(s.modelURL))
-	})
 	catalogDetails(c, s.modelURL)
 	componentFold(c, "需要凭据时", func() {
 		field(c, "凭据环境变量名（可选）", &s.tokenEnv).Description("仅填写变量名称，不填写凭据值。").Error(tokenNameError(s.tokenEnv))
@@ -103,8 +102,7 @@ func (s *viewState) acquireModel() {
 
 func (s *viewState) engineDownloadView(c *ui.Context) {
 	heading(c, "引擎", 3)
-	s.catalogChoices(c, core.CatalogEngine, core.CurrentPlatform())
-	componentFold(c, "自定义引擎地址", func() {
+	s.catalogChoices(c, core.CatalogEngine, core.CurrentPlatform(), "自定义引擎地址", func() {
 		field(c, "引擎 URL", &s.engineURL).Description("必填；引擎归档下载地址。").Error(downloadURLError(s.engineURL))
 	})
 	catalogDetails(c, s.engineURL)

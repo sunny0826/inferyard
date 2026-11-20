@@ -81,10 +81,7 @@ func (s *viewState) discoveryView(c *ui.Context, bindable bool) {
 
 func (s *viewState) discoveryBody(c *ui.Context, bindable bool) {
 	s.managedServiceView(c)
-	button(c, "刷新服务列表").Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
-	if s.discovering {
-		ui.Text(c, "正在发现本机服务…")
-	}
+	refreshButton(c, "刷新服务列表", s.discovering).Disabled(s.discovering || s.busy).OnClick(s.refreshDiscovery)
 	errorView(c, s.discoveryError)
 	if s.discoveryError == nil {
 		for _, code := range s.discovery.Limitations {

@@ -183,10 +183,7 @@ func (s *viewState) localSelectionInvalid(pid int64, err error) bool {
 
 func (s *viewState) localServicePicker(c *ui.Context, pidLabel, endpointLabel string) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-		button(c, "刷新服务列表").Disabled(s.discovering).OnClick(s.refreshDiscovery)
-		if s.discovering {
-			ui.Text(c, "正在发现本机服务…").TextColor(c.Theme().TextMuted)
-		}
+		refreshButton(c, "刷新服务列表", s.discovering).Disabled(s.discovering).OnClick(s.refreshDiscovery)
 	})
 	if choices := s.localServiceChoices(); len(choices) > 0 {
 		ui.Text(c, "已发现的本机服务（点击填入 PID 与服务地址）：").TextColor(c.Theme().TextMuted)
@@ -227,17 +224,23 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 			Description("已准备好的 installation.json 绝对路径。").
 			Error(s.browseError(browseInstallation.key, ""))
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			if primaryButton(c, "注册引擎").Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
+			if primaryActionButton(c, "注册引擎", s.actionBusy("install-register")).Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
 				s.changeInstallation("register", s.installationPath)
 			}
-			if button(c, "重新核验引擎").Disabled(s.busy).Clicked() {
+			if secondaryActionButton(c, "重新核验引擎", s.actionBusy("install-recheck")).Disabled(s.busy).Clicked() {
 				s.changeInstallation("recheck", "")
 			}
 		})
 		for _, path := range s.settings.Settings.EngineInstallations {
 			ui.Row(c.Key(path)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				ui.Text(c, path)
-				button(c, "移除注册").Disabled(s.busy).OnClick(func() { s.changeInstallation("remove", path) })
+				if s.destructiveAction(c, destructiveOption{
+					kind: destructiveRemoveInstallation, id: path, label: "移除注册", confirmLabel: "确认移除注册",
+					prompt:   "将从设置中移除该本地引擎安装声明（不删除磁盘文件）；如需再次使用需重新注册。",
+					disabled: s.busy,
+				}) {
+					s.changeInstallation("remove", path)
+				}
 			})
 		}
 	})
@@ -247,7 +250,11 @@ func (s *viewState) changeInstallation(action, path string) {
 	if s.simulate(previewInstallation{action: action, path: path}) {
 		return
 	}
-	s.work(func() (string, *core.ApiError) {
+	key := "install-" + action
+	if action == "remove" {
+		key = "install-remove-" + path
+	}
+	s.workAs(key, func() (string, *core.ApiError) {
 		var err *core.ApiError
 		switch action {
 		case "register":

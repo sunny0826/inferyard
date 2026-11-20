@@ -423,7 +423,7 @@ func (s *viewState) prepareEnvironment() {
 	if s.simulate(previewPrepareEnvironment) {
 		return
 	}
-	s.guideWork(func() (string, *core.ApiError) {
+	s.guideWorkAs("prepare-env", func() (string, *core.ApiError) {
 		if paths := s.service.BoundPaths(); paths != nil && !s.service.Readiness().Workspace.Initialized {
 			result, e := s.service.WizardExecute(s.ctx, core.WizardRequest{Command: commandOf([]string{"init", "--out", paths.Workspace})})
 			if e != nil {

@@ -4,44 +4,83 @@ import (
 	"fmt"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 )
 
-func (s *viewState) catalogChoices(c *ui.Context, kind core.CatalogKind, platform string) {
+const customCatalogChoice = "__custom__"
+
+type catalogChoiceState struct {
+	custom    bool
+	customURL string
+}
+
+func (s *viewState) catalogChoices(c *ui.Context, kind core.CatalogKind, platform, customLabel string, customField func()) {
 	t := tokens(c)
 	target := &s.engineURL
+	groupLabel := "推荐引擎"
 	if kind == core.CatalogModel {
 		target = &s.modelURL
+		groupLabel = "推荐模型"
 	}
-	count := 0
+	entries := []core.CatalogEntry{}
+	matchesPreset := false
 	for _, entry := range core.CatalogForPlatform(platform) {
 		if entry.Kind != kind || !entry.Downloadable() {
 			continue
 		}
-		count++
-		selected := *target == entry.URL
-		border := c.Theme().Border
-		if selected {
-			border = stateColor(c, stateActive)
+		entries = append(entries, entry)
+		if *target == entry.URL {
+			matchesPreset = true
 		}
-		ui.Row(c.Key(entry.ID)).FillWidth().AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Density.Stack).Radius(t.Radius.Inset).Border(t.Card.Border, border).Children(func() {
-			ui.Column(c).Grow(1).MinWidth(0).Gap(t.Density.Tight).Children(func() {
-				ui.Text(c, entry.Title).Bold()
-				ui.Text(c, core.PlatformLabel(entry.Platform)+" · "+catalogHumanSize(entry.Bytes)).TextColor(c.Theme().TextMuted)
-				if entry.Note != "" {
-					ui.Text(c, entry.Note).TextColor(stateColor(c, stateWarning))
+	}
+	container := ui.Column(c.Key("catalog-" + string(kind))).FillWidth().Gap(t.Density.Stack)
+	state := ui.Local(container, "catalog-choice", func() catalogChoiceState { return catalogChoiceState{} })
+	if !matchesPreset && *target != "" {
+		state.custom = true
+		state.customURL = *target
+	}
+	selected := *target
+	if state.custom || !matchesPreset {
+		selected = customCatalogChoice
+	}
+	container.Children(func() {
+		if len(entries) == 0 {
+			ui.Text(c, "当前平台没有可直接下载的推荐资源，请使用自定义地址或查看其他准备方式。").TextColor(c.Theme().TextMuted)
+			customField()
+			return
+		}
+		ui.RadioGroup(c, func() {
+			for _, entry := range entries {
+				entry := entry
+				ui.Column(c.Key(entry.ID)).FillWidth().Gap(t.Density.Hairline).Children(func() {
+					if components.Radio(c, &selected, entry.URL, entry.Title).Changed() {
+						state.custom = false
+						*target = entry.URL
+					}
+					ui.Column(c).Padding(0, 0, 0, c.Theme().Space(6)).Gap(t.Density.Hairline).Children(func() {
+						ui.Text(c, core.PlatformLabel(entry.Platform)+" · "+catalogHumanSize(entry.Bytes)).
+							FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
+						if entry.Note != "" {
+							ui.Text(c, entry.Note).FontSize(t.Type.Caption).TextColor(stateColor(c, stateWarning))
+						}
+					})
+				})
+			}
+			ui.Column(c.Key("custom")).FillWidth().Gap(t.Density.Tight).Children(func() {
+				if components.Radio(c, &selected, customCatalogChoice, customLabel).Changed() {
+					state.custom = true
+					*target = state.customURL
+				}
+				if selected == customCatalogChoice {
+					ui.Column(c).Padding(0, 0, 0, c.Theme().Space(6)).Children(func() {
+						customField()
+						state.customURL = *target
+					})
 				}
 			})
-			label := "选择"
-			if selected {
-				label = "已选择"
-			}
-			button(c, label).Label(label + " · " + entry.DisplayName()).Shrink(0).Disabled(selected).OnClick(func() { *target = entry.URL })
-		})
-	}
-	if count == 0 {
-		ui.Text(c, "当前平台没有可直接下载的推荐资源，请使用自定义地址或查看其他准备方式。").TextColor(c.Theme().TextMuted)
-	}
+		}).Gap(t.Density.Stack).Label(groupLabel)
+	})
 }
 
 func catalogDetails(c *ui.Context, source string) {
