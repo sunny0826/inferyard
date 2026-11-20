@@ -186,7 +186,6 @@ def build_fixture(root: Path) -> tuple[Path, JSONRecord, Path, JSONRecord]:
         "uv.lock": lock_text.encode(),
         "LICENSE": license_raw,
         "README.md": b"fixture",
-        "docs/installation.md": b"fixture",
         ".gitignore": b"dist/\n",
     }
     wheel = _wheel_bytes(metadata, license_raw, init)

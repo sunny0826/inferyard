@@ -16,7 +16,13 @@ from inferyard.provenance import tool_source_hash
 
 DEFINITION = "implementation-identity.v1"
 ROLES = ("measurement", "scoring", "presentation")
-LISTS_ROOT = "data/implementation-files/"
+SCORING_MODULES = {
+    "__init__.py",
+    "config/bundle.py",
+    "errors.py",
+    "implementation_identity.py",
+    "provenance.py",
+}
 VALIDATION_DEPENDENCIES = (
     "jsonschema",
     "attrs",
@@ -78,23 +84,37 @@ def dependency_versions(role):
     return sorted(result, key=lambda item: item["name"])
 
 
+def _role_files(role: str, names: list[str]) -> list[str]:
+    if role == "scoring":
+        return [
+            name
+            for name in names
+            if name in SCORING_MODULES or name.startswith(("analysis/scoring", "contracts/"))
+        ]
+    if role == "measurement":
+        return [name for name in names if not name.startswith("cli/")]
+    return names
+
+
 def _build_identity(root: Path, source_hash: SourceHasher) -> tuple[str, IdentityPayload]:
     """Scan one root; callers own any reuse of the resulting identity."""
-    hashes, lists = {}, {}
+    hashes: dict[str, str] = {}
     for path in sorted(root.rglob("*")):
         if path.suffix not in (".py", ".html", ".json"):
             continue
-        raw = path.read_bytes()
         name = path.relative_to(root).as_posix()
-        hashes[name] = hashlib.sha256(raw).hexdigest()
-        if name.startswith(LISTS_ROOT) and name.endswith(".json"):
-            role = name.removeprefix(LISTS_ROOT).removesuffix(".json")
-            lists[role] = json.loads(raw)
+        hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+    candidates = [
+        name
+        for name in sorted(hashes)
+        if (name.endswith(".py") or name == "data/metrics.json")
+        and not name.startswith("data/community/")
+    ]
     source = source_hash(file_hashes=hashes)
     value: IdentityPayload = {"definition": DEFINITION}
     for role in ROLES:
-        contents = {
-            "files": [{"path": name, "sha256": hashes[name]} for name in lists[role]],
+        contents: IdentityPayload = {
+            "files": [{"path": name, "sha256": hashes[name]} for name in _role_files(role, candidates)],
             "dependencies": dependency_versions(role),
         }
         value[role] = {**contents, "sha256": digest(contents)}

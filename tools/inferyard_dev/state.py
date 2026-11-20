@@ -132,7 +132,6 @@ SOURCE_PATHS = (
     "cli/src",
     "cli/pyproject.toml",
     "cli/uv.lock",
-    "cli/README.md",
     "cli/LICENSE",
     "studio/*.go",
     "studio/internal",

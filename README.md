@@ -60,7 +60,7 @@ set is reviewed by a person before release; see [task sets](cli/bundles/README.m
 | Windows x64 (10/11) | Direct3D 11 (WARP fallback) | Prism/KVMem/NInfer serial text runs, native identity and memory sampling |
 | Linux x64 | GTK 3 and OpenGL (CPU fallback) | Single and batch runs, CPU/memory sampling |
 
-The table describes implementation scope. Native Windows and Linux window interaction remains unverified for v0.0.5. Check [macOS](cli/MACOS.md) and [Windows](cli/WINDOWS.md) before relying on a result.
+The table describes implementation scope. Native Windows and Linux window interaction remains unverified for v0.0.5. See [CLI installation and platform setup](cli/docs/installation.md) before relying on a result.
 
 ## Design principles and boundaries
 

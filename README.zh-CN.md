@@ -40,7 +40,7 @@
 | Windows x64（10/11） | Direct3D 11（支持 WARP 回退） | Prism/KVMem/NInfer 串行文本运行、原生身份与内存采集 |
 | Linux x64 | GTK 3 与 OpenGL（支持 CPU 渲染回退） | 单次与批量运行、CPU/内存采集 |
 
-表中列出实现范围。v0.0.5 的 Windows 和 Linux 原生窗口交互仍待验收。依赖测评结果之前，请查看 [macOS](cli/MACOS.md) 和 [Windows](cli/WINDOWS.md)。
+表中列出实现范围。v0.0.5 的 Windows 和 Linux 原生窗口交互仍待验收。各平台准备方式见[安装指南](cli/docs/installation.md)。
 
 ## 设计原则与边界
 

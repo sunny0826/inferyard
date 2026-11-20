@@ -13,8 +13,6 @@ on:
       - "cli/docs/reference/methods-matrix.md"
       - "cli/pyproject.toml"
       - "cli/uv.lock"
-      - "cli/README.md"
-      - "cli/docs/installation.md"
       - "LICENSE"
       - "mise.toml"
       - ".github/workflows/package-check.yml"

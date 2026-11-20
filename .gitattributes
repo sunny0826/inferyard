@@ -6,11 +6,10 @@ validation/** -text -whitespace
 # Sealed migration packets and protocol captures must survive Windows checkout unchanged.
 cli/tests/fixtures/legacy/** -text -whitespace
 cli/tests/fixtures/prism/** -text -whitespace
-cli/tests/fixtures/legacy/README.md text eol=lf
-cli/tests/fixtures/prism/README.md text eol=lf
 cli/src/inferyard/data/community/bundles/zh-context-speed.json linguist-generated=true
 cli/bundles/zh-context-speed.json linguist-generated=true
 # Exported from runtime definitions by cli/scripts/export_schemas.py.
 cli/schemas/*.schema.json linguist-generated=true
-# Exported from metric definitions and source bindings by cli/scripts/export_catalogue.py.
+# Exported from method and metric definitions by cli/scripts/export_catalogue.py.
+cli/src/inferyard/data/methods.json linguist-generated=true
 cli/src/inferyard/data/metrics.json linguist-generated=true

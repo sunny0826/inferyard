@@ -22,7 +22,7 @@ The desktop workflow starts on the [Studio task page](../studio/README.md#pages-
 ## Read more
 
 [InferYard Studio](../README.md) · [Studio guide](../studio/README.md) ·
-[Installation](docs/installation.md) · [macOS](MACOS.md) · [Windows](WINDOWS.md) ·
+[Installation](docs/installation.md) ·
 [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
 Run CLI development commands from `cli/` in this monorepo; root `mise` tasks

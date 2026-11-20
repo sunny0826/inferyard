@@ -19,7 +19,7 @@
 ## 继续阅读
 
 [InferYard Studio](../README.zh-CN.md) · [Studio 说明](../studio/README.md) ·
-[安装指南](docs/installation.md) · [macOS](MACOS.md) · [Windows](WINDOWS.md) ·
+[安装指南](docs/installation.md) ·
 [贡献指南](CONTRIBUTING.md) · [变更记录](CHANGELOG.md)
 
 CLI 开发命令在本仓库的 `cli/` 目录内执行；根级 `mise` tasks 已内置切换目录。
