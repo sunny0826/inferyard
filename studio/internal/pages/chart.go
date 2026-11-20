@@ -203,11 +203,12 @@ type resourceMetric struct {
 }
 
 func resourceMetrics(theme *ui.Theme) []resourceMetric {
+	colors := colorTokensFor(theme, false).Chart
 	return []resourceMetric{
-		{"system_mem_available", "可用内存 GiB", theme.Accent},
-		{"service_rss", "服务 RSS GiB", theme.Success},
-		{"service_cpu_percent", "服务 CPU %", theme.Warning},
-		{"temperature", "传感器温度 °C", theme.Danger},
+		{"system_mem_available", "可用内存 GiB", colors[0]},
+		{"service_rss", "服务 RSS GiB", colors[1]},
+		{"service_cpu_percent", "服务 CPU %", colors[2]},
+		{"temperature", "传感器温度 °C", colors[4]},
 	}
 }
 

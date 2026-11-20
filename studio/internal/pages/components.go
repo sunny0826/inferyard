@@ -10,7 +10,8 @@ import (
 
 func card(c *ui.Context, title string, fn func()) {
 	t := tokens(c)
-	ui.Column(c).MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() { heading(c, title, 2); fn() })
+	applyMaterial(c, ui.Column(c).MinWidth(0).Gap(t.Density.CardGap).Padding(t.Card.Padding), materialCard).
+		Children(func() { heading(c, title, 2); fn() })
 }
 
 func statusBadge(c *ui.Context, label string, color ui.Color) ui.Element {
@@ -58,15 +59,15 @@ func phaseProgress(c *ui.Context, o phaseProgressOptions) {
 
 func metricCard(c *ui.Context, label, value, detail, note string) {
 	t := tokens(c)
-	ui.Column(c).MinWidth(0).Gap(t.Metric.Gap).Padding(t.Metric.PaddingY, t.Metric.PaddingX).
-		Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() {
-		ui.Text(c, label)
-		ui.Text(c, value).Bold().FontSize(t.Type.MetricLarge).Selectable()
-		ui.Text(c, detail).TextColor(c.Theme().TextMuted)
-		if note != "" {
-			ui.Text(c, note).TextColor(c.Theme().TextMuted)
-		}
-	})
+	applyMaterial(c, ui.Column(c).MinWidth(0).Gap(t.Metric.Gap).Padding(t.Metric.PaddingY, t.Metric.PaddingX), materialCard).
+		Children(func() {
+			ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Text(c, value).Bold().FontSize(t.Type.MetricLarge).FontFeatures("tnum").Selectable()
+			ui.Text(c, detail).TextColor(t.Color.FgSecondary)
+			if note != "" {
+				ui.Text(c, note).TextColor(t.Color.FgSecondary)
+			}
+		})
 }
 
 type taskMetric struct {
@@ -85,7 +86,7 @@ type taskCardOptions struct {
 
 func taskCard(c *ui.Context, options taskCardOptions) {
 	t := tokens(c)
-	ui.Column(c).Label(options.name).Gap(t.Density.Stack).Padding(t.Card.Padding).Radius(t.Radius.Inset).Border(t.Card.Border, c.Theme().Border).Children(func() {
+	applyMaterial(c, ui.Column(c).Label(options.name).Gap(t.Density.Stack).Padding(t.Card.Padding), materialInset).Children(func() {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
 			ui.Row(c).Grow(1).MinWidth(0).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				ui.Text(c, options.name).Bold().FontSize(t.Type.Section)
@@ -177,7 +178,6 @@ func segmentedField[T comparable](c *ui.Context, name, description string, selec
 	}
 	f := ui.Field(c, name, func() {
 		t := tokens(c)
-		theme := c.Theme()
 		idx := 0
 		for i, option := range options {
 			if option.Value == *selected {
@@ -186,32 +186,33 @@ func segmentedField[T comparable](c *ui.Context, name, description string, selec
 			}
 		}
 		seg := ui.SegmentedBase(c, &idx, len(options))
-		seg.Track.AlignSelf(ui.Start).AlignItems(ui.Center).Gap(theme.Space(.5)).
-			Padding(theme.Space(.75)).Radius(t.Radius.Inset).
-			Background(theme.SurfaceHover).Border(1, theme.Border).Label(name).
+		trackPad := t.Density.Tight
+		itemRadius := concentricRadius(t.Radius.LG, trackPad)
+		applyMaterial(c, seg.Track.AlignSelf(ui.Start).AlignItems(ui.Center).Gap(t.Density.Tight).
+			Padding(trackPad).Label(name), materialSunken).
 			Children(func() {
 				for i, option := range options {
 					active := i == idx
 					item := seg.Segment(i).
-						Padding(theme.Space(1.25), theme.Space(3)).
-						Radius(max(2, t.Radius.Inset-2)).
+						Padding(t.Density.Tight, t.Density.Stack).
+						Radius(itemRadius).
 						Label(option.Label).
 						Disabled(option.Disabled)
 					if active {
-						border := theme.Border
+						border := t.Color.BorderSubtle
 						if c.Preferences().HighContrast {
 							border = stateColor(c, stateActive)
 						}
-						item.Background(theme.Surface).Border(1, border)
+						applyShadow(item.Background(t.Color.Surface).Border(1, border), t.Elevation.XS)
 					} else if item.Hovered() && !option.Disabled {
-						item.Background(theme.Surface.Alpha(.6))
+						item.Background(t.Color.Surface.Alpha(.6))
 					}
 					item.Children(func() {
 						label := ui.Text(c, option.Label).SingleLine()
 						if active {
-							label.Bold().TextColor(theme.Text)
+							label.Bold().TextColor(t.Color.FgPrimary)
 						} else {
-							label.TextColor(theme.TextMuted)
+							label.TextColor(t.Color.FgSecondary)
 						}
 					})
 				}
@@ -252,7 +253,6 @@ func filterSearchableOptions(options []string, query string) []string {
 func searchableSelectField(c *ui.Context, name, description, placeholder, emptyFormat string, selected *string, options []string) {
 	f := ui.Field(c, name, func() {
 		t := tokens(c)
-		theme := c.Theme()
 		container := ui.Column(c).FillWidth().MaxWidth(420)
 		state := ui.Local(container, "searchable-select", func() searchableSelectState {
 			return searchableSelectState{query: *selected, lastSelected: *selected}
@@ -263,48 +263,48 @@ func searchableSelectField(c *ui.Context, name, description, placeholder, emptyF
 		}
 		container.Children(func() {
 			cb := ui.ComboboxBase(c, &state.query)
-			border := theme.Border
+			border := t.Color.BorderDefault
 			if cb.Input.Focused() {
-				border = theme.Accent
+				border = t.Color.BorderFocus
 			}
-			cb.Input.FillWidth().Label(name).Placeholder(placeholder).
-				Padding(theme.Space(1.75), theme.Space(2.5)).
-				Radius(t.Radius.Inset).Background(theme.Surface).Border(1, border)
+			applyMaterial(c, cb.Input.FillWidth().Label(name).Placeholder(placeholder).
+				Padding(t.Density.Inset, t.Density.Stack), materialControl).Border(1, border)
 
 			visible := options
 			if cb.Filtering() {
 				visible = filterSearchableOptions(options, state.query)
 			}
 			cb.Popup(func(panel ui.Element) {
-				panel.FillWidth().MinWidth(260).MaxHeight(260).
-					Padding(theme.Space(1)).Radius(t.Radius.Inset).
-					Background(theme.Surface).Border(1, theme.Border).
+				popupPad := t.Density.Tight
+				itemRadius := concentricRadius(t.Radius.Floating, popupPad)
+				applyMaterial(c, panel.FillWidth().MinWidth(260).MaxHeight(260).
+					Padding(popupPad), materialFloating).
 					Children(func() {
 						ui.Scroll(c).MaxHeight(248).Children(func() {
-							ui.Column(c).FillWidth().Gap(theme.Space(.5)).Children(func() {
+							ui.Column(c).FillWidth().Gap(t.Density.Hairline).Children(func() {
 								if len(visible) == 0 {
 									msg := "暂无可选项"
 									if len(options) > 0 {
 										msg = fmt.Sprintf(emptyFormat, strings.TrimSpace(state.query))
 									}
-									ui.Text(c, msg).TextColor(theme.TextMuted).Padding(theme.Space(1.5), theme.Space(2))
+									ui.Text(c, msg).TextColor(t.Color.FgSecondary).Padding(t.Density.Inset, t.Density.Row)
 									return
 								}
 								for _, opt := range visible {
 									item := cb.Item(opt).FillWidth().Label(opt).
-										Padding(theme.Space(1.5), theme.Space(2)).
-										Radius(max(2, t.Radius.Inset-2))
+										Padding(t.Density.Inset, t.Density.Row).
+										Radius(itemRadius)
 									if item.Highlighted() {
-										item.Background(theme.SurfaceHover)
+										item.Background(t.Color.SurfaceHover)
 									}
 									picked := opt == *selected
 									item.Children(func() {
-										ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(theme.Space(1.5)).Children(func() {
+										ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 											mark := "  "
 											if picked {
 												mark = "✓ "
 											}
-											ui.Text(c, mark).TextColor(theme.Accent)
+											ui.Text(c, mark).TextColor(t.Color.FgPrimary)
 											label := ui.Text(c, opt).SingleLine().Grow(1).MinWidth(0)
 											if picked {
 												label.Bold()

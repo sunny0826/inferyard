@@ -13,7 +13,7 @@ import (
 
 func previewTester(p *previewSession, width, height int) *ui.Tester {
 	return ui.NewTester(func(c *ui.Context) {
-		c.SetTheme(studioTheme(c))
+		c.SetTheme(p.themeFor(c))
 		ui.Row(c).Fill().Children(func() {
 			ui.Column(c).Width(205).Shrink(0).Children(func() { p.left(c) })
 			p.content(c)
@@ -93,5 +93,21 @@ func TestPreviewPrepareAndContextSpeedSmoke(t *testing.T) {
 	tt.Frame()
 	if !tt.HasText("上下文档位") {
 		t.Fatalf("context-speed view did not render: %v", tt.Texts())
+	}
+}
+
+func TestPreviewDesignSystemShowcaseLightAndDark(t *testing.T) {
+	p := newPreviewSession(context.Background())
+	p.loadScene(previewSceneIndex(t, "设计系统 · Token 与材质"))
+	p.themeMode = 1
+	tt := previewTester(p, 1120, 2200)
+	tt.Frame()
+	if !tt.HasText("InferYard Studio 设计系统") || !tt.HasText("浅色模式") {
+		t.Fatalf("light design system showcase did not render: %v", tt.Texts())
+	}
+	p.themeMode = 2
+	tt.Frame()
+	if !tt.HasText("柔和深灰模式") || !tt.HasText("7 种 Surface 材质对比") {
+		t.Fatalf("dark design system showcase did not render: %v", tt.Texts())
 	}
 }
