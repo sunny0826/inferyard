@@ -76,6 +76,12 @@ func (s *viewState) checkedBundles() []string {
 
 func (s *viewState) newBenchmark() {
 	s.pendingDestructive = destructiveRequest{}
+	// 新任务 starts from the regular benchmark, as the preview does. The type is
+	// cleared here rather than in finish, because 用此组合新开任务 sets it right
+	// after this call and the asynchronous reset must not overwrite that choice.
+	if s.speed != nil {
+		s.speed.selected = false
+	}
 	if s.preview != nil {
 		s.preview.resetTask(s.model, s.engine)
 		return

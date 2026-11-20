@@ -66,6 +66,8 @@ final class PreviewUITests: XCTestCase {
 
     private func benchmarkFromPreparationToReport() {
         prepare()
+        expectText("架构 llama · 约 4.0 GiB")
+        expectBundleLabels()
         keepScreenshot("Benchmark setup with single stage heading")
         click("下载")
         click("下载模型")
@@ -73,7 +75,7 @@ final class PreviewUITests: XCTestCase {
         click("模型")
         let downloadedModel = "model · SmolLM2-135M-Instruct-Q4_K_M.gguf"
         expectText(downloadedModel)
-        XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must stay read-only")
+        XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must not offer an inline pair selector")
         // The sidebar task entry switches to the current task without resetting
         // or confirming; the pair is chosen on the task page.
         click("任务")
@@ -88,7 +90,7 @@ final class PreviewUITests: XCTestCase {
         expectExists(progress, timeout: 5)
         let before = progress.value as? String
         wait("detail progress changes", timeout: 10) { (progress.value as? String) != before }
-        click("返回运行")
+        click("← 返回任务")
         click("查看报告", timeout: 25)
         expectText(downloadedModel)
         expectText("120 个有效样本")
@@ -176,7 +178,7 @@ final class PreviewUITests: XCTestCase {
         click("查看结果", timeout: 15)
         expectText("有效 5/5 · 中位数")
         expectText("106294")
-        for column in ["模型 / 引擎", "Context", "Prompt length (tokens)", "Time (s)", "Prefill (tok/s)", "Decode (tok/s)"] {
+        for column in ["模型 / 引擎", "上下文（tokens）", "输入长度（tokens）", "输入处理（s）", "Prefill（tok/s）", "Decode（tok/s）"] {
             expectText(column)
         }
         XCTAssertFalse(text("各类任务表现").exists)
@@ -251,13 +253,8 @@ final class PreviewUITests: XCTestCase {
         expectText("有效 4/5 · 未形成完整汇总")
     }
 
-    private func prepareSpeed() {
-        openMenu("测评类型")
-        app.menuItems["长上下文速度"].click()
-        expectText("zh-context-speed · 5 次测量 · 每次输出 256 tokens")
-    }
-
     private func firstUseWithoutLocalAssets() {
+        expectFirstUseGuide()
         click("准备环境")
         expectText("准备模型与引擎")
         XCTAssertFalse(text("工作区进度").exists)
@@ -286,6 +283,7 @@ final class PreviewUITests: XCTestCase {
         }
         XCTAssertEqual(String(describing: app.checkBoxes["zh-core"].value ?? ""), "1")
         XCTAssertEqual(String(describing: app.checkBoxes["zh-svg-pelican"].value ?? ""), "1")
+        expectBundleLabels()
         revealInContent(app.buttons["开始测评"])
         keepScreenshot("First use ready to benchmark")
         click("开始测评")

@@ -47,7 +47,16 @@ func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bo
 	return options, revoked, len(eligible) > 0
 }
 
+// candidateView is the configuration step on its own: the benchmark-type switch
+// and every field it reshapes. The stage card wraps only candidateFields, so the
+// switch keeps one position while the card around the fields changes.
 func (w *viewState) candidateView(c *ui.Context) {
+	w.speedTypeSwitch(c)
+	w.candidateFields(c)
+}
+
+// candidateFields renders the fields below the benchmark type.
+func (w *viewState) candidateFields(c *ui.Context) {
 	w.verifyTaskEngines()
 	w.adoptDownloadedEngine()
 	w.adoptOnlyModel()
@@ -70,23 +79,11 @@ func (w *viewState) candidateView(c *ui.Context) {
 		ui.Text(c, fmt.Sprintf("正在核验 %d 个引擎…", w.checks.Checking)).TextColor(c.Theme().TextMuted)
 	}
 
-	summary := "测评模型：" + configuredModel(w.model)
-	for _, m := range w.registry.Models {
-		if m.Name != w.model {
-			continue
-		}
-		parts := []string{}
-		if m.Architecture != "" {
-			parts = append(parts, "架构 "+m.Architecture)
-		}
-		if m.SizeBytes != nil {
-			parts = append(parts, fmt.Sprintf("约 %.1f GiB", float64(*m.SizeBytes)/(1<<30)))
-		}
-		if len(parts) > 0 {
-			summary += "（" + strings.Join(parts, " · ") + "）"
-		}
+	// The dropdown already names the model, so the line below adds metadata
+	// only. Repeating 测评模型：<name> read as a second, conflicting field.
+	if meta := w.modelMetadata(w.model); meta != "" {
+		ui.Text(c, meta).TextColor(c.Theme().TextMuted)
 	}
-	ui.Text(c, summary)
 
 	if w.speedSelection(c) {
 		return
@@ -330,11 +327,37 @@ func nativeOptions(values []string) []components.NativeSelectOption[string] {
 	return options
 }
 
-func configuredModel(name string) string {
-	if name == "" {
-		return "尚未选择"
+// modelMetadata describes the chosen model in one short line: architecture and
+// size when the registry recorded them, and nothing at all otherwise. The
+// dropdown above already shows the name.
+func (w *viewState) modelMetadata(name string) string {
+	for _, m := range w.registry.Models {
+		if m.Name != name {
+			continue
+		}
+		parts := []string{}
+		if m.Architecture != "" {
+			parts = append(parts, "架构 "+m.Architecture)
+		}
+		if m.SizeBytes != nil {
+			parts = append(parts, fmt.Sprintf("约 %.1f GiB", float64(*m.SizeBytes)/(1<<30)))
+		}
+		return strings.Join(parts, " · ")
 	}
-	return name
+	return ""
+}
+
+// bundleDescription names what each evaluation set covers, so the bare
+// workspace ids are not the only thing a newcomer sees.
+func bundleDescription(bundle string) string {
+	switch bundle {
+	case inferyard.DefaultBundleCore:
+		return "中文基础能力"
+	case inferyard.DefaultBundlePelican:
+		return "SVG 绘图专项"
+	default:
+		return ""
+	}
 }
 
 func (s *viewState) bundleSelection(c *ui.Context) {
@@ -342,12 +365,22 @@ func (s *viewState) bundleSelection(c *ui.Context) {
 	if s.progress == nil {
 		return
 	}
-	for _, b := range s.progress.Bundles {
-		checked := s.selectedBundles[b.Bundle]
-		if components.Checkbox(c, &checked, b.Bundle).Changed() {
-			s.selectedBundles[b.Bundle] = checked
-		}
-	}
+	t := tokens(c)
+	ui.Field(c, termBundle, func() {
+		ui.Column(c).Gap(t.Density.Tight).Children(func() {
+			for _, b := range s.progress.Bundles {
+				checked := s.selectedBundles[b.Bundle]
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+					if components.Checkbox(c, &checked, b.Bundle).Changed() {
+						s.selectedBundles[b.Bundle] = checked
+					}
+					if description := bundleDescription(b.Bundle); description != "" {
+						ui.Text(c, "· "+description).TextColor(c.Theme().TextMuted)
+					}
+				})
+			}
+		})
+	})
 	if len(s.checkedBundles()) == 0 {
 		ui.Text(c, "至少选择一个测评题集。")
 	}

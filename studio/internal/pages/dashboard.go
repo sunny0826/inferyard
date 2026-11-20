@@ -191,6 +191,19 @@ func (s *viewState) failedBundles() map[string]bool {
 	}
 	return failed
 }
+
+// configStage renders the configuration step. Under the specialty benchmark the
+// six-stage flow is replaced by the specialty's own progress, so the numbered
+// rail would leave a lone "3" with no steps 1 and 2; a plain card carries the
+// same title instead.
+func (s *viewState) configStage(c *ui.Context, body func()) {
+	if s.speed != nil && s.speed.selected {
+		card(c, termBenchmarkStage, body)
+		return
+	}
+	stepTrack(c, "3", termBenchmarkStage, body)
+}
+
 func (s *viewState) stageView(c *ui.Context) {
 	action := ""
 	if s.progress != nil {
@@ -222,13 +235,20 @@ func (s *viewState) stageView(c *ui.Context) {
 			button(c, "查看设备页明细").OnClick(func() { s.selected = "device" })
 		})
 	case "prepare_candidate":
-		stepTrack(c, "3", termBenchmarkStage, func() {
-			// Only a failure of this task's chain is shown here; a previous
-			// round's engine error stays off the fresh configuration step.
-			if s.task.failure != nil {
-				failureView(c, termBenchmarkStage+"失败", s.task.failure, "原因解决后可从本阶段重新开始；已完成的测评题集结果会保留。")
-			}
-			s.candidateView(c)
+		// The benchmark-type switch sits in a stable column above the card, so
+		// choosing a type only replaces the card below it. Rendering it inside
+		// stepTrack or card would give it a different parent per mode and drop
+		// the keyboard focus on the arrow key that switched the type.
+		ui.Column(c.Key("config-stage")).Gap(tokens(c).Density.CardGap).Children(func() {
+			s.speedTypeSwitch(c)
+			s.configStage(c, func() {
+				// Only a failure of this task's chain is shown here; a previous
+				// round's engine error stays off the fresh configuration step.
+				if s.task.failure != nil {
+					failureView(c, termBenchmarkStage+"失败", s.task.failure, "原因解决后可从本阶段重新开始；已完成的测评题集结果会保留。")
+				}
+				s.candidateFields(c)
+			})
 		})
 	case "bind":
 		stepTrack(c, "4", "连接并核验服务", func() { s.serviceView(c) })

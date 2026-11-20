@@ -23,9 +23,9 @@ that failed round and returns to model and engine selection.
 | --- | --- |
 | Task page | Prepare the environment with one action, choose workspace evaluation sets and a model/engine pair, then create candidates, start and bind the service, run, and generate a task report. Inspect case progress, view CPU/memory curves, and resume eligible runs opened from Reports. |
 | Reports | Browse historical tasks, enter or resume a run, inspect live details, and read each report index inside the main window. Reports are display artifacts with no verification entry. |
-| Models | Read-only inventory of installed models and engines (format, architecture, size, verification verdict) plus running services. Choosing the pair happens only on the task page. Empty inventories offer Go to Downloads; orphaned engines show a warning; no absolute paths. |
+| Models | Inventory of installed models and engines (format, architecture, size, verification verdict) plus running services. Refresh, Download more, and Use this model for a benchmark link into the task flow, where the pair and binding are chosen; the last one is disabled during active work. Empty inventories offer Go to Downloads; orphaned engines show a warning; no absolute paths. |
 | Downloads | Inspect, cancel, and retry download tasks (with their actual directory names), and create new model/engine downloads into settings-configured directory names. Platform-filtered resource rows show pinned engines and models beside their download controls. Reference resources stay collapsed with their preparation instructions. |
-| Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. |
+| Device | Inspect and refresh the hardware snapshot with inline missing-measurement reasons. The empty state leads with Collect device info and offers Settings as the secondary path. |
 | Settings | Configure the CLI path, workspace, results directory, model directory, and the local installation declaration — the only page that shows full paths — plus the model/engine download directory names. Each path field keeps manual entry and adds Browse…, which opens the native file or directory picker for an existing target; a workspace that does not exist yet is still typed, and saving never creates directories. |
 
 The task page keeps the active task's selected bundles and new run paths in memory. New task
@@ -36,6 +36,12 @@ that work is cancelled on the task page instead. A round halted by a failure at 
 run or report keeps the entry enabled: one click leaves that failed round and starts from
 the model and engine selection again. The form
 lists only workspace evaluation sets and checks both `zh-core` and `zh-svg-pelican` when present.
+The 测评类型 switch leads the form because it decides which progress model the page uses: 常规测评
+keeps the six-stage rail, while 长上下文速度 replaces it with a card and no step number of its own.
+The model dropdown already names the chosen model, so the line under it carries only recorded
+metadata (`架构 llama · 约 4.0 GiB`) and stays absent when none was recorded. 测评题集 labels the
+checkbox group and each set carries a short Chinese description (中文基础能力, SVG 绘图专项);
+the checkbox itself keeps the bare id as its accessible name.
 Unchecking a set explicitly narrows the scope; unchecked sets do not block the task.
 Completing an evaluation, Reports groups its three lists behind top tabs: 测评报告 (the default),
 长上下文专项 and 运行历史. The 测评报告 tab lists report cards; creating another report from
@@ -62,7 +68,9 @@ Without an active task, the page restores workspace progress from `progress.v2`.
 Prepare environment first states what the step does: it reuses an existing CLI and uv,
 downloads a pinned standalone uv only when none exists, installs the CLI with its managed
 Python into the uv tool directory without touching shell configuration, and then creates or
-reuses the workspace, results and model directories. It names the write targets by directory
+reuses the workspace, results and model directories. The card opens with the three first-use
+milestones (准备运行环境 → 获取引擎与模型 → 开始首次测评) and keeps 前往设置 beside 准备环境, so the
+manual CLI path stays one click away. It names the write targets by directory
 name (full paths stay on Settings) and says plainly that download size and duration cannot be
 predicted, so it shows neither an estimated size nor a progress percentage; the installer's
 15-minute CLI timeout is not presented as a duration estimate. Core owns the path facts in a
@@ -131,7 +139,9 @@ state, not the current model selection.
 
 Other endpoints appear under “待确认的兼容接口” (Unconfirmed compatible interfaces).
 They may be proxies; a model directory does not prove that a model is loaded locally.
-Only the task page offers external binding; Models remains read-only. Binding always
+Only the task page offers external binding. Models shows the installed inventory and only
+links into that flow (refresh, download more, use this model for a benchmark), so its
+binding and pair selection stay on the task page. Binding always
 uses CLI PID and start-time checks, with rejection reasons preserved. See the
 [service discovery contract](../../cli/docs/cli-surface.md#本机服务发现契约).
 

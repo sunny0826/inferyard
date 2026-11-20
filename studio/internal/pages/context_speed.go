@@ -68,7 +68,11 @@ func (r *speedTask) validCount() int {
 }
 
 type speedWorkspace struct {
-	selected                     bool
+	selected bool
+	// typeTab is the switch's own index; typeTabSeen remembers the selected
+	// value it was seeded from, so a click and a direct assignment to selected
+	// (reopening a specialty round) can each update the switch.
+	typeTab, typeTabSeen         int
 	context                      int
 	current, opened              *speedTask
 	history                      []*speedTask
@@ -76,14 +80,42 @@ type speedWorkspace struct {
 	table, samples, historyTable pageTableState
 }
 
+// speedTypeSwitch renders the benchmark type above every field it reshapes: the
+// choice decides whether the six-stage workspace flow or the specialty flow
+// drives the page. A segmented switch, not a dropdown, matches what the choice
+// changes. It reports whether the specialty type is chosen.
+func (s *viewState) speedTypeSwitch(c *ui.Context) bool {
+	if s.speed == nil {
+		return false
+	}
+	w := s.speed
+	if want := boolIndex(w.selected); w.typeTabSeen != want {
+		w.typeTab, w.typeTabSeen = want, want
+	}
+	var tabs ui.TabsParts
+	ui.Field(c, "测评类型", func() {
+		tabs = components.Tabs(c, &w.typeTab, components.TabsSegmented, "常规测评", "长上下文速度")
+	}).Description("测评类型决定下方的表单和进度模型")
+	if tabs.List.Changed() {
+		w.selected, w.typeTabSeen = w.typeTab == 1, w.typeTab
+	}
+	return w.selected
+}
+
+func boolIndex(on bool) int {
+	if on {
+		return 1
+	}
+	return 0
+}
+
+// speedSelection renders the specialty setup only. The type switch itself lives
+// above the shared fields because it also selects the progress model.
 func (s *viewState) speedSelection(c *ui.Context) bool {
 	if s.speed == nil {
 		return false
 	}
 	w := s.speed
-	selectField(c, "测评类型", "", &w.selected, []components.NativeSelectOption[bool]{
-		{Value: false, Label: "常规测评"}, {Value: true, Label: "长上下文速度"},
-	})
 	if !w.selected {
 		return false
 	}
@@ -219,7 +251,10 @@ func (s *viewState) speedTaskActions(c *ui.Context, r *speedTask) {
 	}
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 		primaryButton(c, "查看结果").OnClick(func() { s.openSpeed(r.id) })
-		button(c, "用此组合新开任务").OnClick(func() { s.newSpeedTask(r) })
+		// A reset while another action is in flight would race that action's
+		// delayed update and lose the restored model, engine and tier; the
+		// result view disables the same entry for the same reason.
+		button(c, "用此组合新开任务").Disabled(s.busy).OnClick(func() { s.newSpeedTask(r) })
 	})
 }
 
@@ -311,7 +346,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 			ui.Text(c, "有效 5/5 · 中位数")
 			if r.result != nil && r.result.Summary != nil {
 				v := r.result.Summary.Columns
-				ui.Text(c, fmt.Sprintf("范围：Time %.2f–%.2f s · Prefill %.2f–%.2f tok/s · Decode %.2f–%.2f tok/s", v.Time.Min, v.Time.Max, v.Prefill.Min, v.Prefill.Max, v.Decode.Min, v.Decode.Max))
+				ui.Text(c, fmt.Sprintf("范围：输入处理 %.2f–%.2f s · Prefill %.2f–%.2f tok/s · Decode %.2f–%.2f tok/s", v.Time.Min, v.Time.Max, v.Prefill.Min, v.Prefill.Max, v.Decode.Min, v.Decode.Max))
 			}
 			speedTable(c.Key("speed-summary"), &w.table, "专项六项指标", r, []speedSample{*r.summary})
 		} else {
@@ -320,7 +355,7 @@ func (s *viewState) speedResultView(c *ui.Context) {
 				speedTable(c.Key("speed-partial"), &w.table, "专项已完成测量", r, r.samples)
 			}
 		}
-		ui.Text(c, "Time 为输入处理耗时（含首采样）；Prompt length 为模板后实际输入；— 表示缺测。").TextColor(c.Theme().TextMuted)
+		ui.Text(c, "输入处理为引擎报告的输入处理耗时（prompt_ms）；输入长度为模板化后的实际 token 数；Prefill 与 Decode 为 token/s；— 表示缺测。").TextColor(c.Theme().TextMuted)
 	})
 	if r.summary == nil || r.reason != "" {
 		componentFold(c.Key(r.id), "查看诊断详情", func() {
@@ -347,11 +382,11 @@ func (s *viewState) speedResultView(c *ui.Context) {
 func speedTable(c *ui.Context, state *pageTableState, label string, task *speedTask, rows []speedSample) {
 	columns := []ui.TableColumn{
 		{Title: "模型 / 引擎", MinWidth: c.Theme().Rem(14)},
-		{Title: "Context", MinWidth: c.Theme().Rem(6)},
-		{Title: "Prompt length (tokens)", MinWidth: c.Theme().Rem(13)},
-		{Title: "Time (s)", MinWidth: c.Theme().Rem(6)},
-		{Title: "Prefill (tok/s)", MinWidth: c.Theme().Rem(8.5)},
-		{Title: "Decode (tok/s)", MinWidth: c.Theme().Rem(9)},
+		{Title: "上下文（tokens）", MinWidth: c.Theme().Rem(9)},
+		{Title: "输入长度（tokens）", MinWidth: c.Theme().Rem(11)},
+		{Title: "输入处理（s）", MinWidth: c.Theme().Rem(9)},
+		{Title: "Prefill（tok/s）", MinWidth: c.Theme().Rem(9)},
+		{Title: "Decode（tok/s）", MinWidth: c.Theme().Rem(9)},
 	}
 	selectableTable(state, func(i int) any { return i }, func(i int) string { return fmt.Sprintf("测量行 %d", i+1) })
 	pageTable(c, state, label, columns, len(rows), func(row, col int) {
