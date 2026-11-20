@@ -66,6 +66,8 @@ final class PreviewUITests: XCTestCase {
 
     private func benchmarkFromPreparationToReport() {
         prepare()
+        expectText("架构 llama · 约 4.0 GiB")
+        expectBundleLabels()
         keepScreenshot("Benchmark setup with single stage heading")
         click("下载")
         click("下载模型")
@@ -251,13 +253,8 @@ final class PreviewUITests: XCTestCase {
         expectText("有效 4/5 · 未形成完整汇总")
     }
 
-    private func prepareSpeed() {
-        openMenu("测评类型")
-        app.menuItems["长上下文速度"].click()
-        expectText("zh-context-speed · 5 次测量 · 每次输出 256 tokens")
-    }
-
     private func firstUseWithoutLocalAssets() {
+        expectFirstUseGuide()
         click("准备环境")
         expectText("准备模型与引擎")
         XCTAssertFalse(text("工作区进度").exists)
@@ -286,6 +283,7 @@ final class PreviewUITests: XCTestCase {
         }
         XCTAssertEqual(String(describing: app.checkBoxes["zh-core"].value ?? ""), "1")
         XCTAssertEqual(String(describing: app.checkBoxes["zh-svg-pelican"].value ?? ""), "1")
+        expectBundleLabels()
         revealInContent(app.buttons["开始测评"])
         keepScreenshot("First use ready to benchmark")
         click("开始测评")

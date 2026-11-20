@@ -78,6 +78,28 @@ extension PreviewUITests {
         add(attachment)
     }
 
+    /// expectBundleLabels checks the labeled evaluation-set group and each
+    /// set's description.
+    func expectBundleLabels() {
+        expectText("测评题集")
+        expectText("· 中文基础能力")
+        expectText("· SVG 绘图专项")
+    }
+
+    /// prepareSpeed chooses the specialty benchmark, a segmented switch that
+    /// stays one click away instead of a dropdown.
+    func prepareSpeed() {
+        selectTab("长上下文速度")
+        expectText("zh-context-speed · 5 次测量 · 每次输出 256 tokens")
+    }
+
+    /// expectFirstUseGuide checks the preparation card's milestones and its
+    /// settings shortcut.
+    func expectFirstUseGuide() {
+        expectText("首次使用流程：1. 准备运行环境 → 2. 获取引擎与模型 → 3. 开始首次测评")
+        expectExists(app.buttons["前往设置"], timeout: 5)
+    }
+
     func prepare() {
         click("准备环境")
         wait("benchmark becomes available", timeout: 10) {
