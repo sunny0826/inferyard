@@ -25,7 +25,7 @@ func main() {
 	os.Exit(runMain())
 }
 
-func runMain() int {
+func runMain() (exitCode int) {
 	options, err := parseOptions(os.Args[1:], os.Stderr)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -55,7 +55,6 @@ func runMain() int {
 		log.Print(err)
 		return 1
 	}
-	exitCode := 0
 	defer func() {
 		shutdownCtx, stop := context.WithTimeout(context.Background(), 30*time.Second)
 		defer stop()

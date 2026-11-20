@@ -42,7 +42,7 @@ def normalize_exe_path(path_text: str) -> str:
 
 
 def process_identity(pid: int) -> tuple[str, str] | None:
-    """Return (canonical_executable_path, start_id) for pid, or None if exited."""
+    """Return (canonical_executable_path, numeric_start_id) for pid, or None if exited."""
     if pid <= 0:
         return None
     if os.name == "nt":
@@ -52,6 +52,33 @@ def process_identity(pid: int) -> tuple[str, str] | None:
     return _process_identity_linux(pid)
 
 
+class _DarwinProcBSDInfo(ctypes.Structure):
+    _fields_ = [
+        ("flags", ctypes.c_uint32),
+        ("status", ctypes.c_uint32),
+        ("xstatus", ctypes.c_uint32),
+        ("pid", ctypes.c_uint32),
+        ("ppid", ctypes.c_uint32),
+        ("uid", ctypes.c_uint32),
+        ("gid", ctypes.c_uint32),
+        ("ruid", ctypes.c_uint32),
+        ("rgid", ctypes.c_uint32),
+        ("svuid", ctypes.c_uint32),
+        ("svgid", ctypes.c_uint32),
+        ("reserved", ctypes.c_uint32),
+        ("comm", ctypes.c_char * 16),
+        ("name", ctypes.c_char * 32),
+        ("nfiles", ctypes.c_uint32),
+        ("pgid", ctypes.c_uint32),
+        ("pjobc", ctypes.c_uint32),
+        ("e_tdev", ctypes.c_uint32),
+        ("e_tpgid", ctypes.c_uint32),
+        ("nice", ctypes.c_int32),
+        ("start_tvsec", ctypes.c_uint64),
+        ("start_tvusec", ctypes.c_uint64),
+    ]
+
+
 def _process_identity_macos(pid: int) -> tuple[str, str] | None:
     try:
         os.kill(pid, 0)
@@ -59,7 +86,27 @@ def _process_identity_macos(pid: int) -> tuple[str, str] | None:
         return None
     except PermissionError as exc:
         raise DevError(f"Cannot inspect process {pid}: permission denied") from exc
-    lib = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+    lib = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
+    info = _DarwinProcBSDInfo()
+    info_size = ctypes.sizeof(info)
+    got = lib.proc_pidinfo(
+        ctypes.c_int(pid),
+        ctypes.c_int(3),  # PROC_PIDTBSDINFO
+        ctypes.c_uint64(0),
+        ctypes.byref(info),
+        ctypes.c_int(info_size),
+    )
+    if got != info_size:
+        err = ctypes.get_errno()
+        if err == errno.ESRCH:
+            return None
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return None
+        raise DevError(f"Cannot query kernel process info for PID {pid} (errno {err})")
+    if info.status == 5:  # SZOMB
+        return None
     buf = ctypes.create_string_buffer(4096)
     size = lib.proc_pidpath(ctypes.c_int(pid), buf, ctypes.c_uint32(len(buf)))
     if size <= 0:
@@ -68,19 +115,8 @@ def _process_identity_macos(pid: int) -> tuple[str, str] | None:
             return None
         raise DevError(f"Cannot resolve executable path for PID {pid} (errno {err})")
     exe = normalize_exe_path(buf.value.decode("utf-8", errors="strict"))
-    ps = subprocess.run(
-        ["ps", "-p", str(pid), "-o", "lstart="],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if ps.returncode != 0 or not ps.stdout.strip():
-        try:
-            os.kill(pid, 0)
-        except ProcessLookupError:
-            return None
-        raise DevError(f"Cannot inspect start time for PID {pid}")
-    return exe, ps.stdout.strip()
+    start_us = int(info.start_tvsec) * 1_000_000 + int(info.start_tvusec)
+    return exe, str(start_us)
 
 
 def _process_identity_linux(pid: int) -> tuple[str, str] | None:
@@ -146,18 +182,29 @@ def identity_matches(pid: int, expected_binary: str, expected_start_id: str) -> 
 
 
 def verify_clean_shutdown(data: dict[str, object]) -> None:
+    pid = int(data["pid"])
     status_path_raw = data.get("status_file")
     if isinstance(status_path_raw, str) and status_path_raw:
         status_path = Path(status_path_raw)
-        if status_path.is_file() and not status_path.is_symlink():
+        if status_path.is_symlink():
+            raise DevError(f"Refusing to read symlink shutdown status: {status_path}")
+        if not status_path.is_file():
+            if data.get("state") != "starting":
+                raise DevError(
+                    f"Missing Studio shutdown confirmation at {status_path}; inspect {data.get('log', '')}"
+                )
+        else:
             try:
                 status = json.loads(status_path.read_text(encoding="utf-8"))
             except (OSError, ValueError) as exc:
                 raise DevError(f"Unreadable Studio shutdown status: {status_path}") from exc
-            if isinstance(status, dict) and status.get("state") == "shutdown_failed":
-                detail = status.get("error", "unknown shutdown error")
+            if not isinstance(status, dict) or status.get("pid") != pid:
+                raise DevError(f"Shutdown status PID mismatch at {status_path}")
+            state = status.get("state")
+            if state != "stopped":
+                detail = status.get("error") or f"state={state!r}"
                 raise DevError(
-                    f"Previous development Studio failed to shut down cleanly ({detail}); inspect {data.get('log', '')}"
+                    f"Previous development Studio did not shut down cleanly ({detail}); inspect {data.get('log', '')}"
                 )
     profile_raw = data.get("profile")
     if isinstance(profile_raw, str) and profile_raw:
@@ -236,6 +283,7 @@ def launch_studio(
     token = secrets.token_hex(4)
     log_path = logs_dir / f"studio-{stamp}-{token}.log"
     status_file = logs_dir / f"studio-{stamp}-{token}.status.json"
+    session_file = state_dir / "session.json"
     args = [
         str(binary),
         "--dev-profile",
@@ -256,17 +304,48 @@ def launch_studio(
         kwargs["start_new_session"] = True
     with log_path.open("ab") as stream:
         proc = subprocess.Popen(args, stdout=stream, stderr=subprocess.STDOUT, **kwargs)
+    record: dict[str, object] = {
+        "state": "starting",
+        "pid": proc.pid,
+        "binary": normalize_exe_path(str(binary)),
+        "start_id": "",
+        "cli": str(cli),
+        "profile": str(profile),
+        "assets": str(assets),
+        "status_file": str(status_file),
+        "log": str(log_path),
+    }
+
+    def _sync_starting_session() -> None:
+        ident = process_identity(proc.pid)
+        if ident is not None and (ident[0] != record["binary"] or ident[1] != record["start_id"]):
+            record["binary"], record["start_id"] = ident
+            atomic_write_json(session_file, record)
+
+    _sync_starting_session()
     deadline = time.monotonic() + ready_timeout
     ready = False
-    while time.monotonic() < deadline:
-        code = proc.poll()
-        if code is not None:
-            raise DevError(f"Development Studio exited early with code {code}; inspect {log_path}")
-        status = _read_status(status_file)
-        if status and status.get("state") == "ready" and status.get("pid") == proc.pid:
-            ready = True
-            break
-        time.sleep(0.1)
+    try:
+        while time.monotonic() < deadline:
+            code = proc.poll()
+            if code is not None:
+                session_file.unlink(missing_ok=True)
+                raise DevError(
+                    f"Development Studio exited early with code {code}; inspect {log_path}"
+                )
+            _sync_starting_session()
+            status = _read_status(status_file)
+            if status and status.get("state") == "ready" and status.get("pid") == proc.pid:
+                ready = True
+                break
+            time.sleep(0.1)
+    except BaseException:
+        if proc.poll() is None:
+            try:
+                _sync_starting_session()
+            except DevError:
+                pass
+        raise
     if not ready:
         if proc.poll() is None:
             try:
@@ -274,24 +353,23 @@ def launch_studio(
                 proc.wait(timeout=5)
             except (OSError, subprocess.TimeoutExpired):
                 pass
+        if proc.poll() is not None:
+            session_file.unlink(missing_ok=True)
+        else:
+            try:
+                _sync_starting_session()
+            except DevError:
+                pass
         raise DevError(
             f"Development Studio (PID {proc.pid}) did not become ready within {int(ready_timeout)}s; inspect {log_path}"
         )
     identity = process_identity(proc.pid)
     if identity is None:
+        session_file.unlink(missing_ok=True)
         raise DevError(
             f"Development Studio (PID {proc.pid}) exited immediately after ready; inspect {log_path}"
         )
-    exe, start_id = identity
-    record: dict[str, object] = {
-        "pid": proc.pid,
-        "binary": exe,
-        "start_id": start_id,
-        "cli": str(cli),
-        "profile": str(profile),
-        "assets": str(assets),
-        "status_file": str(status_file),
-        "log": str(log_path),
-    }
-    atomic_write_json(state_dir / "session.json", record)
+    record["state"] = "ready"
+    record["binary"], record["start_id"] = identity
+    atomic_write_json(session_file, record)
     return record

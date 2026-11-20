@@ -146,7 +146,7 @@ def current_branch(root: Path) -> str:
     if res.returncode == 0 and res.stdout.strip():
         return res.stdout.strip()
     commit = subprocess.run(
-        ["git", "-C", str(root), "rev-parse", "--short", "HEAD"],
+        ["git", "-C", str(root), "rev-parse", "HEAD"],
         capture_output=True,
         text=True,
         check=False,
@@ -154,6 +154,12 @@ def current_branch(root: Path) -> str:
     if commit.returncode == 0 and commit.stdout.strip():
         return f"detached-{commit.stdout.strip()}"
     return "local"
+
+
+def branch_label(branch: str) -> str:
+    if branch.startswith("detached-") and len(branch) > 19:
+        return branch[:19]
+    return branch
 
 
 def branch_key(branch: str) -> str:
@@ -230,9 +236,22 @@ def build_studio_staged(root: Path, state_dir: Path) -> tuple[Path, Path]:
     return staged.resolve(), final_binary
 
 
+def _safe_subdir(root: Path, *parts: str) -> Path:
+    base = root.resolve()
+    cursor = base
+    for part in parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise DevError(f"Refusing to traverse symlink in development state: {cursor}")
+    cursor.mkdir(parents=True, exist_ok=True)
+    resolved = cursor.resolve()
+    if not resolved.is_relative_to(base) or resolved == base:
+        raise DevError(f"Development directory escapes checkout state root: {cursor}")
+    return resolved
+
+
 def resolve_profile(state_dir: Path, branch: str, *, rebuild: bool) -> tuple[Path, Path]:
-    profiles_root = (state_dir / "profiles" / branch_key(branch)).resolve()
-    profiles_root.mkdir(parents=True, exist_ok=True)
+    profiles_root = _safe_subdir(state_dir, "profiles", branch_key(branch))
     pointer = profiles_root / "current.json"
     if not rebuild and pointer.is_file() and not pointer.is_symlink():
         try:
@@ -286,9 +305,9 @@ def develop(root: Path, action: str, *, prepare_only: bool = False) -> None:
         branch = current_branch(root)
         cli = sync_cli(root)
         staged_binary, final_binary = build_studio_staged(root, state_dir)
-        assets = (state_dir / "assets").resolve()
-        (assets / "models").mkdir(parents=True, exist_ok=True)
-        (assets / "engines").mkdir(parents=True, exist_ok=True)
+        assets = _safe_subdir(state_dir, "assets")
+        _safe_subdir(state_dir, "assets", "models")
+        _safe_subdir(state_dir, "assets", "engines")
         profile, pointer = resolve_profile(state_dir, branch, rebuild=(action == "rebuild"))
         workspace = ensure_workspace(cli, profile)
         if prepare_only:
@@ -299,9 +318,10 @@ def develop(root: Path, action: str, *, prepare_only: bool = False) -> None:
         stop_recorded(state_dir)
         os.replace(staged_binary, final_binary)
         binary = final_binary.resolve()
-        session = launch_studio(root, state_dir, binary, cli, profile, assets, branch)
+        label = branch_label(branch)
+        session = launch_studio(root, state_dir, binary, cli, profile, assets, label)
         atomic_write_json(pointer, {"profile_root": str(profile)})
-        print(f"Development Studio started (PID {session['pid']}) [{branch}]")
+        print(f"Development Studio started (PID {session['pid']}) [{label}]")
         print(f"CLI: {cli}")
         print(f"Workspace: {workspace}")
         print(f"Log: {session['log']}")

@@ -24,6 +24,25 @@ class DevLauncherTests(unittest.TestCase):
             hashlib.sha256(b"main").hexdigest()[:20],
         )
 
+    def test_detached_head_uses_full_commit_sha(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.email", "t@example.invalid"], cwd=repo, check=True)
+            (repo / "a.txt").write_text("hi\n", encoding="utf-8")
+            subprocess.run(["git", "add", "a.txt"], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=repo, check=True)
+            full_sha = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=repo, text=True
+            ).strip()
+            subprocess.run(["git", "checkout", "-q", "--detach", full_sha], cwd=repo, check=True)
+            self.assertEqual(dev.current_branch(repo), f"detached-{full_sha}")
+            self.assertEqual(
+                dev.branch_key(dev.current_branch(repo)),
+                hashlib.sha256(f"detached-{full_sha}".encode()).hexdigest()[:20],
+            )
+
     def test_resolve_profile_rejects_foreign_checkout_pointer(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = Path(tmp) / "checkout-b" / ".inferyard-dev"
@@ -37,6 +56,20 @@ class DevLauncherTests(unittest.TestCase):
             profile, _ = dev.resolve_profile(state, "main", rebuild=False)
             self.assertNotEqual(profile, foreign.resolve())
             self.assertTrue(profile.is_relative_to(branch_dir.resolve()))
+
+    def test_resolve_profile_rejects_symlink_branch_dir(self) -> None:
+        if os.name == "nt":
+            self.skipTest("POSIX symlink test")
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp) / ".inferyard-dev"
+            branch_b = state / "profiles" / dev.branch_key("branch-b")
+            branch_b.mkdir(parents=True)
+            branch_a = state / "profiles" / dev.branch_key("branch-a")
+            branch_a.symlink_to(branch_b)
+            with self.assertRaises(dev.DevError):
+                dev.resolve_profile(state, "branch-a", rebuild=False)
+            with self.assertRaises(dev.DevError):
+                dev.resolve_profile(state, "branch-a", rebuild=True)
 
     def test_resolve_profile_reuses_valid_and_rebuild_preserves_history(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -75,6 +108,23 @@ class DevLauncherTests(unittest.TestCase):
             with self.assertRaises(dev.DevError):
                 dev.check_legacy_active(state)
 
+    def test_process_identity_is_timezone_invariant(self) -> None:
+        if os.name == "nt":
+            self.skipTest("POSIX timezone check")
+        old_tz = os.environ.get("TZ")
+        try:
+            os.environ["TZ"] = "UTC0"
+            a = dev_process.process_identity(os.getpid())
+            os.environ["TZ"] = "JST-9"
+            b = dev_process.process_identity(os.getpid())
+            self.assertIsNotNone(a)
+            self.assertEqual(a, b)
+        finally:
+            if old_tz is None:
+                os.environ.pop("TZ", None)
+            else:
+                os.environ["TZ"] = old_tz
+
     def test_stop_does_not_signal_other_process_with_same_arg(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = Path(tmp)
@@ -101,34 +151,20 @@ class DevLauncherTests(unittest.TestCase):
                 proc.terminate()
                 proc.wait(timeout=5)
 
-    def test_stop_blocks_when_engine_owner_or_shutdown_failed_remains(self) -> None:
+    def test_stop_requires_stopped_status_and_no_engine_owner(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = Path(tmp)
             profile = state / "profile"
             owner = profile / "workspace" / "logs" / "engine-owner.json"
             owner.parent.mkdir(parents=True)
             owner.write_text('{"pid": 123}', encoding="utf-8")
+            status_file = state / "status.json"
+            dev.atomic_write_json(status_file, {"state": "stopped", "pid": 999999})
             session = state / "session.json"
             dev.atomic_write_json(
                 session,
                 {
-                    "pid": 999999,
-                    "binary": str(state / "bin" / "inferyard-studio"),
-                    "start_id": "start-1",
-                    "profile": str(profile),
-                },
-            )
-            with mock.patch.object(dev_process, "process_identity", return_value=None):
-                with self.assertRaises(dev.DevError):
-                    dev.stop_recorded(state)
-            self.assertTrue(session.exists())
-
-            owner.unlink()
-            status_file = state / "status.json"
-            dev.atomic_write_json(status_file, {"state": "shutdown_failed", "error": "timeout"})
-            dev.atomic_write_json(
-                session,
-                {
+                    "state": "ready",
                     "pid": 999999,
                     "binary": str(state / "bin" / "inferyard-studio"),
                     "start_id": "start-1",
@@ -141,7 +177,79 @@ class DevLauncherTests(unittest.TestCase):
                     dev.stop_recorded(state)
             self.assertTrue(session.exists())
 
+            owner.unlink()
+            # Still "ready" (e.g., abnormal exit without clean shutdown) must fail and keep session.
+            dev.atomic_write_json(status_file, {"state": "ready", "pid": 999999})
+            with mock.patch.object(dev_process, "process_identity", return_value=None):
+                with self.assertRaises(dev.DevError):
+                    dev.stop_recorded(state)
+            self.assertTrue(session.exists())
+
+            # Shutdown failure must also fail and keep session.
+            dev.atomic_write_json(status_file, {"state": "shutdown_failed", "pid": 999999, "error": "timeout"})
+            with mock.patch.object(dev_process, "process_identity", return_value=None):
+                with self.assertRaises(dev.DevError):
+                    dev.stop_recorded(state)
+            self.assertTrue(session.exists())
+
+            # Matching PID "stopped" confirmation allows cleanup.
+            dev.atomic_write_json(status_file, {"state": "stopped", "pid": 999999})
+            with mock.patch.object(dev_process, "process_identity", return_value=None):
+                dev.stop_recorded(state)
+            self.assertFalse(session.exists())
+
+    def test_launch_studio_retains_session_on_interrupt_so_stop_can_reclaim(self) -> None:
+        if os.name == "nt":
+            self.skipTest("POSIX signal test")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = root / ".inferyard-dev"
+            state.mkdir()
+            profile = state / "profile"
+            assets = state / "assets"
+            profile.mkdir()
+            assets.mkdir()
+            slow_bin = root / "slow.py"
+            slow_bin.write_text(
+                f"#!{sys.executable}\n"
+                "import signal, sys, time\n"
+                "signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))\n"
+                "time.sleep(30)\n",
+                encoding="utf-8",
+            )
+            slow_bin.chmod(0o755)
+            calls = 0
+            real_sleep = dev_process.time.sleep
+
+            def staged_interrupt(_seconds: float) -> None:
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    real_sleep(0.05)
+                    return
+                raise KeyboardInterrupt
+
+            with mock.patch.object(dev_process.time, "sleep", side_effect=staged_interrupt):
+                with self.assertRaises(KeyboardInterrupt):
+                    dev.launch_studio(
+                        root, state, slow_bin, Path("/bin/echo"), profile, assets, "test"
+                    )
+            session_path = state / "session.json"
+            self.assertTrue(session_path.is_file())
+            pid = json.loads(session_path.read_text(encoding="utf-8"))["pid"]
+            try:
+                stopped = dev.stop_recorded(state)
+                self.assertTrue(stopped)
+                self.assertFalse(session_path.exists())
+            finally:
+                try:
+                    os.waitpid(pid, 0)
+                except ChildProcessError:
+                    pass
+
     def test_launch_studio_fails_on_early_exit_without_writing_session(self) -> None:
+        if os.name == "nt":
+            self.skipTest("POSIX executable script test")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             state = root / ".inferyard-dev"
@@ -152,13 +260,12 @@ class DevLauncherTests(unittest.TestCase):
             assets.mkdir()
             failing_bin = root / "fail.py"
             failing_bin.write_text("#!/usr/bin/env python3\nimport sys\nsys.exit(42)\n", encoding="utf-8")
-            if os.name != "nt":
-                failing_bin.chmod(0o755)
-                with self.assertRaises(dev.DevError):
-                    dev.launch_studio(
-                        root, state, failing_bin, Path("/bin/echo"), profile, assets, "test"
-                    )
-                self.assertFalse((state / "session.json").exists())
+            failing_bin.chmod(0o755)
+            with self.assertRaises(dev.DevError):
+                dev.launch_studio(
+                    root, state, failing_bin, Path("/bin/echo"), profile, assets, "test"
+                )
+            self.assertFalse((state / "session.json").exists())
 
     def test_launcher_lock_rejects_concurrent_holder(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
