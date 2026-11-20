@@ -1,7 +1,9 @@
 package pages
 
 import (
+	"fmt"
 	"math"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
@@ -191,6 +193,166 @@ func selectField[T comparable](c *ui.Context, name, description string, selected
 			}
 		}
 		components.NativeSelect(c, selected, options).Trigger.Label(name).Value(current)
+	})
+	if description != "" {
+		f.Description(description)
+	}
+}
+
+func segmentedField[T comparable](c *ui.Context, name, description string, selected *T, options []components.NativeSelectOption[T]) {
+	if len(options) == 0 {
+		return
+	}
+	f := ui.Field(c, name, func() {
+		t := tokens(c)
+		theme := c.Theme()
+		idx := 0
+		for i, option := range options {
+			if option.Value == *selected {
+				idx = i
+				break
+			}
+		}
+		seg := ui.SegmentedBase(c, &idx, len(options))
+		seg.Track.AlignSelf(ui.Start).AlignItems(ui.Center).Gap(theme.Space(.5)).
+			Padding(theme.Space(.75)).Radius(t.Radius.Inset).
+			Background(theme.SurfaceHover).Border(1, theme.Border).Label(name).
+			Children(func() {
+				for i, option := range options {
+					active := i == idx
+					item := seg.Segment(i).
+						Padding(theme.Space(1.25), theme.Space(3)).
+						Radius(max(2, t.Radius.Inset-2)).
+						Label(option.Label).
+						Disabled(option.Disabled)
+					if active {
+						border := theme.Border
+						if c.Preferences().HighContrast {
+							border = stateColor(c, stateActive)
+						}
+						item.Background(theme.Surface).Border(1, border)
+					} else if item.Hovered() && !option.Disabled {
+						item.Background(theme.Surface.Alpha(.6))
+					}
+					item.Children(func() {
+						label := ui.Text(c, option.Label).SingleLine()
+						if active {
+							label.Bold().TextColor(theme.Text)
+						} else {
+							label.TextColor(theme.TextMuted)
+						}
+					})
+				}
+			})
+		if seg.Track.Changed() && idx >= 0 && idx < len(options) && !options[idx].Disabled {
+			*selected = options[idx].Value
+		}
+	})
+	if description != "" {
+		f.Description(description)
+	}
+}
+
+type searchableSelectState struct {
+	query        string
+	lastSelected string
+	wasOpen      bool
+}
+
+func filterSearchableOptions(options []string, query string) []string {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return options
+	}
+	prefix := make([]string, 0, len(options))
+	contains := make([]string, 0, len(options))
+	for _, opt := range options {
+		lower := strings.ToLower(opt)
+		if strings.HasPrefix(lower, q) {
+			prefix = append(prefix, opt)
+		} else if strings.Contains(lower, q) {
+			contains = append(contains, opt)
+		}
+	}
+	return append(prefix, contains...)
+}
+
+func searchableSelectField(c *ui.Context, name, description, placeholder, emptyFormat string, selected *string, options []string) {
+	f := ui.Field(c, name, func() {
+		t := tokens(c)
+		theme := c.Theme()
+		container := ui.Column(c).FillWidth().MaxWidth(420)
+		state := ui.Local(container, "searchable-select", func() searchableSelectState {
+			return searchableSelectState{query: *selected, lastSelected: *selected}
+		})
+		if state.lastSelected != *selected {
+			state.query = *selected
+			state.lastSelected = *selected
+		}
+		container.Children(func() {
+			cb := ui.ComboboxBase(c, &state.query)
+			border := theme.Border
+			if cb.Input.Focused() {
+				border = theme.Accent
+			}
+			cb.Input.FillWidth().Label(name).Placeholder(placeholder).
+				Padding(theme.Space(1.75), theme.Space(2.5)).
+				Radius(t.Radius.Inset).Background(theme.Surface).Border(1, border)
+
+			visible := options
+			if cb.Filtering() {
+				visible = filterSearchableOptions(options, state.query)
+			}
+			cb.Popup(func(panel ui.Element) {
+				panel.FillWidth().MinWidth(260).MaxHeight(260).
+					Padding(theme.Space(1)).Radius(t.Radius.Inset).
+					Background(theme.Surface).Border(1, theme.Border).
+					Children(func() {
+						ui.Scroll(c).MaxHeight(248).Children(func() {
+							ui.Column(c).FillWidth().Gap(theme.Space(.5)).Children(func() {
+								if len(visible) == 0 {
+									msg := "暂无可选项"
+									if len(options) > 0 {
+										msg = fmt.Sprintf(emptyFormat, strings.TrimSpace(state.query))
+									}
+									ui.Text(c, msg).TextColor(theme.TextMuted).Padding(theme.Space(1.5), theme.Space(2))
+									return
+								}
+								for _, opt := range visible {
+									item := cb.Item(opt).FillWidth().Label(opt).
+										Padding(theme.Space(1.5), theme.Space(2)).
+										Radius(max(2, t.Radius.Inset-2))
+									if item.Highlighted() {
+										item.Background(theme.SurfaceHover)
+									}
+									picked := opt == *selected
+									item.Children(func() {
+										ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(theme.Space(1.5)).Children(func() {
+											mark := "  "
+											if picked {
+												mark = "✓ "
+											}
+											ui.Text(c, mark).TextColor(theme.Accent)
+											label := ui.Text(c, opt).SingleLine().Grow(1).MinWidth(0)
+											if picked {
+												label.Bold()
+											}
+										})
+									})
+								}
+							})
+						})
+					})
+			})
+			if chosen, ok := cb.Chosen(); ok {
+				*selected = chosen
+				state.query = chosen
+				state.lastSelected = chosen
+			} else if state.wasOpen && !cb.Open() {
+				state.query = *selected
+			}
+			state.wasOpen = cb.Open()
+		})
 	})
 	if description != "" {
 		f.Description(description)

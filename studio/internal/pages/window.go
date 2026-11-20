@@ -149,7 +149,6 @@ type viewState struct {
 	localPendingPIDs                                                                    map[string]int64
 	modelURL, modelName, tokenEnv, engineURL, engineName                                string
 	historyTable                                                                        pageTableState
-	reportSources                                                                       components.ListState
 	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState
 	casesTable, samplesTable                                                            pageTableState

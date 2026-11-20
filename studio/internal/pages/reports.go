@@ -28,7 +28,7 @@ func (s *viewState) reportsView(c *ui.Context) {
 		s.reportsTab = reportsTabList
 	}
 	ui.Column(c.Key("reports-tabs")).Gap(tokens(c).Density.Row).Children(func() {
-		components.Tabs(c, &s.reportsTab, components.TabsSegmented, "测评报告", "长上下文专项", "运行历史")
+		components.Tabs(c, &s.reportsTab, components.TabsUnderline, "测评报告", "长上下文专项", "运行历史")
 		switch s.reportsTab {
 		case reportsTabSpeed:
 			s.speedReportsTabView(c)
@@ -78,16 +78,27 @@ func (s *viewState) reportSourcesView(c *ui.Context) {
 				s.reportChoices.Remove(path)
 			}
 		}
-		s.reportSources.Label = func(i int) string { return runs[i].RunId + " · " + displayName(runs[i].Path) }
-		c.Key("report-sources")
-		s.reportSources.Key = func(i int) any { return runs[i].Path }
-		s.reportSources.Selection = &s.reportChoices
-		components.List(c, &s.reportSources, len(runs), func(i int) {
-			ui.Column(c).Padding(tokens(c).Density.Inset).Gap(tokens(c).Density.Hairline).Children(func() {
-				ui.Text(c, runs[i].RunId)
-				ui.Text(c, displayName(runs[i].Path)).FontSize(tokens(c).Type.Caption)
+		if len(runs) > 0 {
+			ui.Scroll(c.Key("report-sources")).FillWidth().Height(220).
+				Border(1, c.Theme().Border).Radius(tokens(c).Radius.Inset).
+				Label("报告来源运行列表").Children(func() {
+				ui.Column(c).FillWidth().Gap(tokens(c).Density.Tight).Padding(tokens(c).Density.Inset).Children(func() {
+					for _, r := range runs {
+						checked := s.reportChoices.Has(r.Path)
+						ui.Column(c.Key(r.Path)).FillWidth().Gap(tokens(c).Density.Hairline).Children(func() {
+							if components.Checkbox(c, &checked, r.RunId).Disabled(s.busy).Changed() {
+								if checked {
+									s.reportChoices.Add(r.Path)
+								} else {
+									s.reportChoices.Remove(r.Path)
+								}
+							}
+							ui.Text(c, displayName(r.Path)).FontSize(tokens(c).Type.Caption).TextColor(c.Theme().TextMuted)
+						})
+					}
+				})
 			})
-		}).Label("报告来源运行列表").Height(220).Disabled(s.busy)
+		}
 		count := s.reportChoices.Len()
 		if count < 1 || count > 100 {
 			ui.Text(c, "请选择 1–100 个来源运行。")

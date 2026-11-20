@@ -86,10 +86,7 @@ func (s *viewState) speedTypeSwitch(c *ui.Context) bool {
 	if want := boolIndex(w.selected); w.typeTabSeen != want {
 		w.typeTab, w.typeTabSeen = want, want
 	}
-	var tabs ui.TabsParts
-	ui.Field(c, "测评类型", func() {
-		tabs = components.Tabs(c, &w.typeTab, components.TabsSegmented, "常规测评", "长上下文速度")
-	}).Description("测评类型决定下方的表单和进度模型")
+	tabs := components.Tabs(c, &w.typeTab, components.TabsUnderline, "常规测评", "长上下文速度")
 	if tabs.List.Changed() {
 		w.selected, w.typeTabSeen = w.typeTab == 1, w.typeTab
 	}
@@ -111,7 +108,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	if !w.selected {
 		return false
 	}
-	selectField(c, "上下文档位", "", &w.context, []components.NativeSelectOption[int]{
+	segmentedField(c, "上下文档位", "", &w.context, []components.NativeSelectOption[int]{
 		{Value: inferyard.ContextSpeed64K, Label: "64k"},
 		{Value: inferyard.ContextSpeed128K, Label: "128k"},
 		{Value: inferyard.ContextSpeed256K, Label: "256k"},

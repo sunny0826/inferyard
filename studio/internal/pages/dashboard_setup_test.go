@@ -47,16 +47,50 @@ func TestSpeedTypeDropsOrphanedStepNumber(t *testing.T) {
 func TestSpeedTypeSwitchPrecedesModelFields(t *testing.T) {
 	s := candidateState()
 	tt := ui.NewTester(s.candidateView, 1120, 1800)
-	typeAt, ok := tt.Find("测评类型")
+	typeAt, ok := tt.Find("常规测评")
 	if !ok {
-		t.Fatalf("no 测评类型 label: %v", tt.Texts())
+		t.Fatalf("no 常规测评 tab: %v", tt.Texts())
 	}
 	modelAt, ok := tt.Find("测评模型")
 	if !ok {
 		t.Fatalf("no 测评模型 field: %v", tt.Texts())
 	}
 	if typeAt.Y >= modelAt.Y {
-		t.Fatalf("测评类型 at %v is not above 测评模型 at %v", typeAt.Y, modelAt.Y)
+		t.Fatalf("常规测评 tab at %v is not above 测评模型 at %v", typeAt.Y, modelAt.Y)
+	}
+}
+
+func TestContextSpeedUsesSegmentedContextControl(t *testing.T) {
+	s := candidateState()
+	s.speed.selected = true
+	tt := ui.NewTester(s.candidateView, 1120, 1800)
+	for _, want := range []string{"64k", "128k", "256k"} {
+		if !tt.HasText(want) {
+			t.Fatalf("segmented option %q is not visible: %v", want, tt.Texts())
+		}
+	}
+	click(t, tt, "128k")
+	if s.speed.context != inferyard.ContextSpeed128K {
+		t.Fatalf("context = %d, want %d", s.speed.context, inferyard.ContextSpeed128K)
+	}
+	click(t, tt, "256k")
+	if s.speed.context != inferyard.ContextSpeed256K {
+		t.Fatalf("context = %d, want %d", s.speed.context, inferyard.ContextSpeed256K)
+	}
+}
+
+func TestFilterSearchableOptions(t *testing.T) {
+	options := []string{"102 · python3", "205 · llama-server", "301 · lmstudio"}
+	got := filterSearchableOptions(options, "llama")
+	if len(got) != 1 || got[0] != "205 · llama-server" {
+		t.Fatalf("filter mismatch: %v", got)
+	}
+	got = filterSearchableOptions(options, "205")
+	if len(got) != 1 || got[0] != "205 · llama-server" {
+		t.Fatalf("prefix filter mismatch: %v", got)
+	}
+	if empty := filterSearchableOptions(options, "not-running"); len(empty) != 0 {
+		t.Fatalf("expected empty match, got %v", empty)
 	}
 }
 

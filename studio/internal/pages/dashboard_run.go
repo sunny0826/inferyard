@@ -198,7 +198,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 		for _, p := range w.processes {
 			options = append(options, fmt.Sprintf("%d · %s", p.PID, p.Name))
 		}
-		selectField(c, "已启动的本机进程", "", &w.process, nativeOptions(options))
+		searchableSelectField(c, "已启动的本机进程", "", "输入 PID 或进程名搜索…", "未找到匹配 %q 的本机进程", &w.process, options)
 		field(c, "服务地址", &w.bindEndpoint).Description("本机 http 或 https URL").Error(urlError(w.bindEndpoint))
 		if button(c, "连接并核验进程").AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
 			if message := urlError(w.bindEndpoint); message != "" {
@@ -288,14 +288,6 @@ func (w *viewState) runServiceReady(b inferyard.BundleProgress) bool {
 		return true
 	}
 	return b.NextAction == "run" && b.BoundPath != nil
-}
-
-func nativeOptions(values []string) []components.NativeSelectOption[string] {
-	options := make([]components.NativeSelectOption[string], len(values))
-	for i, value := range values {
-		options[i] = components.NativeSelectOption[string]{Value: value, Label: value}
-	}
-	return options
 }
 
 func (w *viewState) modelMetadata(name string) string {

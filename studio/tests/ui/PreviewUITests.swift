@@ -169,8 +169,9 @@ final class PreviewUITests: XCTestCase {
 
     private func contextSpeedResultAndHistory() {
         prepareSpeed()
-        openMenu("上下文档位")
-        app.menuItems["128k"].click()
+        let context128 = app.radioButtons["128k"]
+        expectExists(context128, timeout: 3)
+        context128.click()
         keepScreenshot("Context speed setup")
         click("开始专项测评")
         expectText("已完成 1 / 5 次测量")
@@ -271,10 +272,14 @@ final class PreviewUITests: XCTestCase {
         keepScreenshot("Recommendations for this Mac")
         let qwen = "Qwen3-0.6B-Q8_0（GGUF）"
         let smol = "SmolLM2-135M-Instruct-Q4_K_M（GGUF）"
-        click("选择 · " + qwen)
-        expectExists(app.buttons["已选择 · " + qwen], timeout: 3)
+        let qwenRadio = app.radioButtons[qwen]
+        revealInContent(qwenRadio)
+        qwenRadio.click()
+        XCTAssertEqual(String(describing: qwenRadio.value ?? ""), "1")
         keepScreenshot("Model recommendations and selected Qwen")
-        click("选择 · " + smol)
+        let smolRadio = app.radioButtons[smol]
+        revealInContent(smolRadio)
+        smolRadio.click()
         click("下载引擎")
         click("下载模型")
         click("返回任务")
