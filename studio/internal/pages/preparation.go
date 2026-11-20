@@ -346,6 +346,12 @@ func directoryState(value string, readiness core.DirectoryReadiness, previous st
 	}
 	state := "路径已修改，保存后生效"
 	if samePath(value, previous) {
+		// The saved path matches, but the probe may still describe the path it
+		// replaced: a save updates the settings before the next refresh reads
+		// readiness. Never show one directory's result under another path.
+		if readiness.Path != nil && !samePath(value, *readiness.Path) {
+			return "等待检查"
+		}
 		state = "目录不存在"
 		if readiness.Exists {
 			state = "目录已存在"

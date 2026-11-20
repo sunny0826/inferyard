@@ -162,6 +162,39 @@ func TestStaleRefreshBatchDoesNotRevertSave(t *testing.T) {
 	}
 }
 
+// Saving a new workspace path updates the settings before the next refresh
+// reads readiness. Until that refresh arrives the path card must say the check
+// is still pending instead of showing the replaced directory's result.
+func TestSavedPathShowsPendingUntilReadinessArrives(t *testing.T) {
+	s := settingsState()
+	s.ready.Workspace = core.DirectoryReadiness{Path: ptr("/saved/workspace"), Exists: true, Initialized: true}
+	s.workspace = "/next/workspace"
+	patch := map[string]json.RawMessage{}
+	patch["workspace_root"], _ = json.Marshal(s.workspace)
+	s.syncSavedGroups(patch, s.settingsDraft(), core.SettingsResponse{
+		Settings:  core.UserSettings{WorkspaceRoot: ptr("/next/workspace")},
+		Effective: core.EffectiveSettings{WorkspaceRoot: ptr("/next/workspace")},
+	})
+
+	if got := directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot)); got != "等待检查" {
+		t.Fatalf("saved path reused the old readiness: %q", got)
+	}
+	tt := settingsTester(s)
+	tt.Frame()
+	if tt.HasText("目录已存在，工作区已初始化") {
+		t.Fatalf("old workspace readiness shown under the new path: %v", tt.Texts())
+	}
+	if !tt.HasText("等待检查") {
+		t.Fatalf("pending check not shown: %v", tt.Texts())
+	}
+
+	// The follow-up refresh reports the new path, and the card settles.
+	s.ready.Workspace = core.DirectoryReadiness{Path: ptr("/next/workspace"), Exists: true, Initialized: true}
+	if got := directoryState(s.workspace, s.ready.Workspace, emptyText(s.settings.Effective.WorkspaceRoot)); got != "目录已存在，工作区已初始化" {
+		t.Fatalf("new readiness not shown: %q", got)
+	}
+}
+
 // persistSettings is the production save boundary; both groups keep the other
 // card's draft after the real UpdateSettings round trip.
 func TestSettingsSaveKeepsOtherGroupDraft(t *testing.T) {
