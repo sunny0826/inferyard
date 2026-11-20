@@ -31,13 +31,13 @@ dir = "cli"
 run = "uv run --frozen pytest tests/unit -q"
 
 [tasks."test:studio"]
-description = "Run Studio Go unit tests (excluding e2e)"
+description = "Run Studio Go unit tests (macOS; Windows internal/core has pre-existing permission-bit debt)"
 dir = "studio"
 env = { GOTOOLCHAIN = "go1.27.3", GOPROXY = "https://goproxy.cn,direct", CGO_ENABLED = "0" }
 run = "go test . ./internal/... -count=1"
 
 [tasks."test:studio:preview"]
-description = "Run Studio UI debug preview Go tests"
+description = "Run Studio UI debug preview Go tests (macOS)"
 dir = "studio"
 env = { GOTOOLCHAIN = "go1.27.3", GOPROXY = "https://goproxy.cn,direct", CGO_ENABLED = "0" }
 run = "go test -tags ui_debug . ./internal/pages -count=1"

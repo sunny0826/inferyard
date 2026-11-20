@@ -24,7 +24,7 @@ mise exec -- uv run --frozen python scripts/export_schemas.py --check
 mise exec -- uv run --frozen python scripts/export_catalogue.py --check
 mise exec -- uv run --frozen python scripts/export_community.py --check
 
-# Studio（在仓库根执行跨平台 mise tasks，自动切换 studio/ 与环境）
+# Studio（在仓库根执行 mise tasks；test:studio / test:studio:preview 当前在 macOS 运行，Windows internal/core 单测存在既有权限位限制；test:studio:e2e 跨平台运行并先同步本仓库 CLI）
 mise run test:studio
 mise run test:studio:preview
 mise run test:studio:e2e

@@ -89,11 +89,6 @@ func ResolveCLI(t *testing.T) string {
 		}
 		return abs
 	}
-	if path, err := resolvePath("inferyard"); err == nil {
-		if _, helpErr := exec.Command(path, "config", "describe", "--help").CombinedOutput(); helpErr == nil {
-			return path
-		}
-	}
 	project := filepath.Join(repoRoot(t), "cli")
 	for _, rel := range []string{
 		filepath.Join(".venv", "bin", "inferyard"),
@@ -102,6 +97,11 @@ func ResolveCLI(t *testing.T) string {
 		candidate := filepath.Join(project, rel)
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate
+		}
+	}
+	if path, err := resolvePath("inferyard"); err == nil {
+		if _, helpErr := exec.Command(path, "config", "describe", "--help").CombinedOutput(); helpErr == nil {
+			return path
 		}
 	}
 	uv, err := resolvePath("uv")
