@@ -24,6 +24,8 @@ func (s *viewState) resetWorkspace() {
 	s.requestedDetail = ""
 	s.detailMu.Unlock()
 	s.reportChoices.Clear()
+	s.reportDialogOpen, s.reportDiscardConfirm = false, false
+	s.resumeDiscardConfirm = false
 	s.reportsTab, s.openedReport = reportsTabList, nil
 	s.denied = map[string]bool{}
 }

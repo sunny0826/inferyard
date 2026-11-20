@@ -60,9 +60,16 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 		case "orphaned":
 			color = stateColor(c, stateWarning)
 		}
-		statusPanelParts(c, statusPanelOptions{key: "engine-status", label: "引擎 · " + stateLabel(state), visible: "引擎 · " + engineStatusText(state), icon: lucide.Server, color: color, animated: animated, onClose: s.closeEngineStatusPanel}, func(close func()) {
+		statusPanelParts(c, statusPanelOptions{key: "engine-status", label: "引擎 · " + stateLabel(state), visible: "引擎 · " + engineStatusText(state), icon: lucide.Server, color: color, animated: animated}, func(close func()) {
 			s.engineStatusPanel(c, q.active(), close)
 		})
+		if s.destructiveDialogModal(c, destructiveOption{
+			kind: destructiveStopEngine, id: "header", label: "停止引擎", confirmLabel: "确认停止引擎",
+			prompt:   "将停止 Studio 启动的模型服务；正在加载的模型会中断，之后需要重新启动并绑定。",
+			disabled: !s.stopEnabled(true, q.active()),
+		}) {
+			s.stopEngine()
+		}
 		label := "任务 · 空闲"
 		if q.active() {
 			label = fmt.Sprintf("任务 · 执行 %d · 等待 %d", q.running, q.waiting)
@@ -191,12 +198,9 @@ func (s *viewState) engineStatusPanel(c *ui.Context, runActive bool, close func(
 	errorView(c, state.Error)
 	switch state.State {
 	case "starting", "running", "stopping":
-		if s.destructiveAction(c, destructiveOption{
-			kind: destructiveStopEngine, label: "停止引擎", confirmLabel: "确认停止引擎",
-			prompt:   "将停止 Studio 启动的模型服务；正在加载的模型会中断，之后需要重新启动并绑定。",
-			disabled: !s.stopEnabled(true, runActive),
-		}) {
-			s.stopEngine()
+		if dangerButton(c, "停止引擎").AlignSelf(ui.Start).Disabled(!s.stopEnabled(true, runActive)).Clicked() {
+			s.pendingDestructive = s.destructiveRequestFor(destructiveOption{kind: destructiveStopEngine, id: "header"})
+			close()
 		}
 		if runActive {
 			ui.Text(c, "请先结束或取消测评任务，再停止引擎。").TextColor(c.Theme().TextMuted)

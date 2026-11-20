@@ -61,9 +61,11 @@ func (s *viewState) newTaskEntry(c *ui.Context) {
 		button(c, "新任务").FillWidth().OnClick(func() { s.newBenchmark() })
 		return
 	}
-	ui.Column(c).FillWidth().Tooltip(hint).Children(func() {
+	wrap := ui.Column(c).FillWidth()
+	wrap.Children(func() {
 		button(c, "新任务").FillWidth().Disabled(true).Description(hint)
 	})
+	components.Tooltip(c, wrap, hint)
 }
 
 func (s *viewState) newTaskEntryHint() string {

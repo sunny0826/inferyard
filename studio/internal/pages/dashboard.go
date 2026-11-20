@@ -55,10 +55,6 @@ func (s *viewState) dashboardView(c *ui.Context) {
 		s.speedTaskView(c)
 		return
 	}
-	if s.resumeSource != nil {
-		s.resumeView(c)
-		return
-	}
 	if s.newTaskPending {
 		s.header(c, "任务")
 		host := ui.Column(c.Key("new-task-pending")).FillWidth()

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 )
 
@@ -67,7 +68,8 @@ func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {
 	blocked := s.busy || s.roundWorkActive()
 	b := button(c, label).Label(label + " · " + model.Name).Disabled(blocked)
 	if blocked {
-		b = b.Description(hint).Tooltip(hint)
+		components.Tooltip(c, b, hint)
+		b = b.Description(hint)
 	}
 	if b.Clicked() && !blocked {
 		s.model = model.Name

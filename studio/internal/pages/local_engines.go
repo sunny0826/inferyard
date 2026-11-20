@@ -234,7 +234,13 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 		for _, path := range s.settings.Settings.EngineInstallations {
 			ui.Row(c.Key(path)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				ui.Text(c, path)
-				secondaryActionButton(c, "移除注册", s.actionBusy("install-remove-"+path)).Disabled(s.busy).OnClick(func() { s.changeInstallation("remove", path) })
+				if s.destructiveAction(c, destructiveOption{
+					kind: destructiveRemoveInstallation, id: path, label: "移除注册", confirmLabel: "确认移除注册",
+					prompt:   "将从设置中移除该本地引擎安装声明（不删除磁盘文件）；如需再次使用需重新注册。",
+					disabled: s.busy,
+				}) {
+					s.changeInstallation("remove", path)
+				}
 			})
 		}
 	})

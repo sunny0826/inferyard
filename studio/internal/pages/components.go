@@ -125,7 +125,8 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 					ui.Text(c, options.kind).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 				}
 			})
-			statusBadge(c, options.state, options.color).Tooltip(map[string]string{
+			badge := statusBadge(c, options.state, options.color)
+			components.Tooltip(c, badge, map[string]string{
 				"下载中": "任务正在下载，总量未知。",
 				"已结束": "下载任务已结束。",
 				"失败":  "下载任务失败，输出目录保留。",
@@ -143,7 +144,10 @@ func taskCard(c *ui.Context, options taskCardOptions) {
 			ui.Grid(c).Columns(columns).Gap(t.Density.Stack).Children(func() {
 				for _, metric := range options.metrics {
 					ui.Column(c).Gap(t.Density.Tight).Children(func() {
-						ui.Text(c, metric.label).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted).Tooltip(metric.reason)
+						metricLabel := ui.Text(c, metric.label).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
+						if metric.reason != "" {
+							components.Tooltip(c, metricLabel, metric.reason)
+						}
 						ui.Text(c, metric.value).Bold().FontSize(t.Type.Metric)
 						if metric.reason != "" {
 							ui.Text(c, metric.reason).FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)

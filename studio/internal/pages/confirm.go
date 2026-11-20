@@ -2,16 +2,19 @@ package pages
 
 import (
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 )
 
 type destructiveKind string
 
 const (
-	destructiveCancelRun      destructiveKind = "cancel_run"
-	destructiveStopEngine     destructiveKind = "stop_engine"
-	destructiveStopOrphan     destructiveKind = "stop_orphan"
-	destructiveCancelDownload destructiveKind = "cancel_download"
+	destructiveCancelRun          destructiveKind = "cancel_run"
+	destructiveStopEngine         destructiveKind = "stop_engine"
+	destructiveStopOrphan         destructiveKind = "stop_orphan"
+	destructiveDiscardOrphan      destructiveKind = "discard_orphan"
+	destructiveCancelDownload     destructiveKind = "cancel_download"
+	destructiveRemoveInstallation destructiveKind = "remove_installation"
 )
 
 type destructiveRequest struct {
@@ -55,33 +58,87 @@ func (s *viewState) destructiveAction(c *ui.Context, option destructiveOption) b
 		request.pid, request.startTicks = s.engineState.Pid, s.engineState.StartTicks
 		s.dropStaleStopPrompt()
 	}
-	pending := s.pendingDestructive == request
-	if !pending {
-		if dangerButton(c, option.label).AlignSelf(ui.Start).Disabled(option.disabled).Clicked() {
+	c.Key("popconfirm-" + string(option.kind) + "-" + option.id)
+	trigger := dangerButton(c, option.label).AlignSelf(ui.Start).Disabled(option.disabled)
+	if trigger.Clicked() {
+		if s.pendingDestructive == request {
+			s.pendingDestructive = destructiveRequest{}
+		} else {
 			s.pendingDestructive = request
 		}
-		return false
 	}
-	confirmed, cancelled := false, false
-	ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Inset).Background(c.Theme().SurfaceHover).Radius(t.Radius.Inset).Children(func() {
-		ui.Text(c, option.prompt)
-		ui.Row(c).Wrap().Gap(t.Density.Row).Children(func() {
-			if primaryButton(c, option.confirmLabel).AlignSelf(ui.Start).Clicked() {
-				confirmed = true
-			}
-			if button(c, destructiveDismissLabel(option)).AlignSelf(ui.Start).Clicked() {
-				cancelled = true
-			}
+	open := s.pendingDestructive == request
+	confirmed := false
+	components.Popover(c, trigger, &open, func(panel ui.Element) {
+		panel.Width(c.Theme().Space(78)).MaxWidthPercent(100).Label(option.confirmLabel)
+		panel.Children(func() {
+			ui.Column(c).Gap(t.Density.Row).Children(func() {
+				ui.Text(c, option.prompt)
+				ui.Row(c).Wrap().Gap(t.Density.Row).Children(func() {
+					if primaryButton(c, option.confirmLabel).AlignSelf(ui.Start).Clicked() {
+						confirmed = true
+						open = false
+					}
+					if button(c, destructiveDismissLabel(option)).AlignSelf(ui.Start).Clicked() {
+						open = false
+					}
+				})
+			})
 		})
 	})
+	if !open && s.pendingDestructive == request {
+		s.pendingDestructive = destructiveRequest{}
+	}
 	if confirmed && (option.disabled || !s.destructiveTargetValid(request)) {
 		s.pendingDestructive = destructiveRequest{}
 		return false
 	}
-	if confirmed || cancelled {
+	if confirmed {
 		s.pendingDestructive = destructiveRequest{}
 	}
 	return confirmed
+}
+
+func (s *viewState) destructiveDialog(c *ui.Context, option destructiveOption) bool {
+	request := s.destructiveRequestFor(option)
+	c.Key("alertdialog-" + string(option.kind) + "-" + option.id)
+	if dangerButton(c, option.label).AlignSelf(ui.Start).Disabled(option.disabled).Clicked() {
+		s.pendingDestructive = request
+	}
+	return s.destructiveDialogModal(c, option)
+}
+
+func (s *viewState) destructiveRequestFor(option destructiveOption) destructiveRequest {
+	request := destructiveRequest{kind: string(option.kind), id: option.id}
+	if option.kind == destructiveStopEngine {
+		request.pid, request.startTicks = s.engineState.Pid, s.engineState.StartTicks
+		s.dropStaleStopPrompt()
+	}
+	return request
+}
+
+func (s *viewState) destructiveDialogModal(c *ui.Context, option destructiveOption) bool {
+	request := s.destructiveRequestFor(option)
+	open := s.pendingDestructive == request
+	result := components.AlertDialog(c, &open, components.AlertDialogOptions{
+		DialogOptions: components.DialogOptions{Label: option.label},
+		Title:         option.label,
+		Message:       option.prompt,
+		ConfirmLabel:  option.confirmLabel,
+		CancelLabel:   destructiveDismissLabel(option),
+	})
+	if !open && s.pendingDestructive == request {
+		s.pendingDestructive = destructiveRequest{}
+	}
+	if result != components.DialogConfirmed {
+		return false
+	}
+	if option.disabled || !s.destructiveTargetValid(request) {
+		s.pendingDestructive = destructiveRequest{}
+		return false
+	}
+	s.pendingDestructive = destructiveRequest{}
+	return true
 }
 
 func (s *viewState) dropStaleStopPrompt() {
@@ -104,7 +161,7 @@ func (s *viewState) destructiveTargetValid(request destructiveRequest) bool {
 			return false
 		}
 		return request.matchesEngine(s.currentEngine())
-	case destructiveStopOrphan:
+	case destructiveStopOrphan, destructiveDiscardOrphan:
 		return s.engineState.State == "orphaned" && s.idleForEngineStop()
 	case destructiveCancelDownload:
 		return s.downloadDownloading(request.id) && !s.busy
