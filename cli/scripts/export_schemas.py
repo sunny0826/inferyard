@@ -1,10 +1,19 @@
-"""Export the exact runtime contract as portable JSON Schema, or check for drift."""
+"""Export external/cross-process JSON Schema contracts, or check for drift."""
 
 import argparse
 import json
 from pathlib import Path
 
-from inferyard.contracts.schemas import export_schema, schemas_for
+from inferyard.contracts.schemas import export_schema
+
+EXPORTED_SCHEMAS = (
+    "bundle",
+    "config_input",
+    "context_speed_result",
+    "engine_check",
+    "manifest",
+    "studio_report",
+)
 
 
 def main():
@@ -13,7 +22,7 @@ def main():
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1] / "schemas"
     stale = []
-    expected_paths = {root / f"{name}.schema.json" for name in schemas_for()}
+    expected_paths = {root / f"{name}.schema.json" for name in EXPORTED_SCHEMAS}
     obsolete = set(root.rglob("*.schema.json")) - expected_paths
     if args.check:
         stale.extend(str(path.relative_to(root)) for path in sorted(obsolete))
@@ -23,7 +32,7 @@ def main():
         for path in sorted(root.iterdir()):
             if path.is_dir() and not any(path.iterdir()):
                 path.rmdir()
-    for name in sorted(schemas_for()):
+    for name in sorted(EXPORTED_SCHEMAS):
         path = root / f"{name}.schema.json"
         expected = json.dumps(export_schema(name), ensure_ascii=False, indent=2) + "\n"
         if args.check:

@@ -1,0 +1,318 @@
+name: Release
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish_pypi:
+        description: Also publish CLI wheel and sdist to PyPI via Trusted Publishing
+        type: boolean
+        default: false
+permissions: {}
+jobs:
+  metadata:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Read and validate CLI and Studio versions
+        id: version
+        shell: bash
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version=$(mise exec -- python -c '
+          import os, re, tomllib
+          from pathlib import Path
+          cli_version = tomllib.loads(Path("cli/pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          match = re.search(r"^\s*version:\s*[\x27\"]([^\x27\"]+)[\x27\"]", Path("studio/mygo.config.ts").read_text(encoding="utf-8"), re.M)
+          if not match:
+              raise SystemExit("studio version missing in studio/mygo.config.ts")
+          studio_version = match.group(1)
+          if cli_version != studio_version:
+              raise SystemExit(f"version mismatch: cli={cli_version} studio={studio_version}")
+          if os.environ.get("REF_TYPE") == "tag" and os.environ.get("REF_NAME") != f"v{cli_version}":
+              raise SystemExit(f"tag mismatch: ref={os.environ.get(\"REF_NAME\")} expected=v{cli_version}")
+          print(cli_version)
+          ')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+  cli:
+    needs: metadata
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - run: mise exec -- uv sync --frozen
+      - run: mise exec -- uv run --frozen pytest -n auto -q
+      - run: mise exec -- uv run --frozen ruff check src tests scripts
+      - run: mise exec -- uv run --frozen python scripts/export_schemas.py --check
+      - name: Build CLI wheel and sdist
+        run: mise exec -- uv build --out-dir dist/cli
+      - name: Smoke-test installed wheel in a clean environment
+        shell: bash
+        env:
+          EXPECTED_VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          smoke_venv="$RUNNER_TEMP/inferyard-cli-smoke"
+          mise exec -- uv venv "$smoke_venv"
+          mise exec -- uv pip install --python "$smoke_venv/bin/python" dist/cli/*.whl
+          "$smoke_venv/bin/inferyard" --help > /dev/null
+          "$smoke_venv/bin/inferyard" --versions > "$RUNNER_TEMP/versions.json"
+          "$smoke_venv/bin/inferyard" --schema studio_report > "$RUNNER_TEMP/studio_report.schema.json"
+          mise exec -- python -c '
+          import json, os
+          from pathlib import Path
+          tmp = Path(os.environ["RUNNER_TEMP"])
+          versions = json.loads((tmp / "versions.json").read_text(encoding="utf-8"))
+          schema = json.loads((tmp / "studio_report.schema.json").read_text(encoding="utf-8"))
+          assert versions["tool_version"] == os.environ["EXPECTED_VERSION"], versions
+          assert schema.get("$id"), schema
+          '
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cli-dist
+          path: |
+            cli/dist/cli/*.whl
+            cli/dist/cli/*.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+  studio:
+    name: Studio (${{ matrix.target }})
+    needs: metadata
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    env:
+      CGO_ENABLED: "0"
+    defaults:
+      run:
+        working-directory: studio
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: darwin-arm64
+          - os: windows-2025
+            target: windows-amd64
+          - os: ubuntu-24.04
+            target: linux-amd64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5.2.4
+      - name: Check release packaging and debug exclusion
+        shell: bash
+        run: |
+          mise exec -- go test -tags ui_debug,release . -count=1
+          mise exec -- python -m unittest discover -s scripts -p 'test_*.py'
+      - name: Build native release binary
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          binary="build/$TARGET/inferyard-studio"
+          if [ "$TARGET" = windows-amd64 ]; then binary="$binary.exe"; fi
+          mkdir -p "$(dirname "$binary")"
+          mise exec -- go build -tags release -o "$binary" .
+      - name: Verify release binary rejects --debug-ui
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          binary="build/$TARGET/inferyard-studio"
+          if [ "$TARGET" = windows-amd64 ]; then binary="$binary.exe"; fi
+          "$binary" --help > /dev/null
+          set +e
+          "$binary" --debug-ui > /dev/null 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 2 ]; then
+            echo "Expected --debug-ui exit 2, got $status"
+            exit 1
+          fi
+      - name: Check Windows installer compiler
+        if: matrix.target == 'windows-amd64'
+        shell: pwsh
+        run: |
+          $compiler = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) {
+            throw "Inno Setup compiler not found: $compiler"
+          }
+      - name: Package Studio archive
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: >-
+          mise exec -- python scripts/package.py
+          --target "$TARGET"
+          --source-commit "$SOURCE_COMMIT"
+          --out "dist/studio-$TARGET"
+      - name: Mount and check macOS DMG
+        if: matrix.target == 'darwin-arm64'
+        shell: bash
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          mount_point="$RUNNER_TEMP/inferyard-studio-release"
+          mkdir -p "$mount_point"
+          hdiutil attach \
+            "dist/studio-darwin-arm64/inferyard-studio-v${VERSION}-darwin-arm64.dmg" \
+            -readonly -nobrowse -mountpoint "$mount_point"
+          test -L "$mount_point/Applications"
+          test "$(readlink "$mount_point/Applications")" = "/Applications"
+          binary="$mount_point/InferYard Studio.app/Contents/MacOS/inferyard-studio"
+          "$binary" --help > /dev/null
+          set +e
+          "$binary" --debug-ui > /dev/null 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 2 ]; then
+            echo "Expected DMG --debug-ui exit 2, got $status"
+            exit 1
+          fi
+      - name: Detach macOS DMG
+        if: ${{ always() && matrix.target == 'darwin-arm64' }}
+        shell: bash
+        run: |
+          if hdiutil info | grep -Fq "$RUNNER_TEMP/inferyard-studio-release"; then
+            hdiutil detach "$RUNNER_TEMP/inferyard-studio-release"
+          fi
+      - name: Install and check Windows installer
+        if: matrix.target == 'windows-amd64'
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.metadata.outputs.version }}
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $false
+          $installer = (Resolve-Path "dist/studio-windows-amd64/inferyard-studio-v$($env:VERSION)-windows-amd64.exe").Path
+          $install = Join-Path $env:RUNNER_TEMP 'inferyard-studio-install'
+          $result = Start-Process -FilePath $installer -ArgumentList @(
+            '/SP-', '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$install`""
+          ) -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Installer exit code: $($result.ExitCode)" }
+          $binary = Join-Path $install 'inferyard-studio.exe'
+          if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) { throw 'Installed executable is missing' }
+          & $binary --help *> $null
+          if ($LASTEXITCODE -ne 0) { throw "Installed --help exit code: $LASTEXITCODE" }
+          & $binary --debug-ui *> $null
+          if ($LASTEXITCODE -ne 2) { throw "Installed --debug-ui exit code: $LASTEXITCODE" }
+          $uninstaller = Join-Path $install 'unins000.exe'
+          $result = Start-Process -FilePath $uninstaller -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
+          ) -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw "Uninstaller exit code: $($result.ExitCode)" }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: studio-dist-${{ matrix.target }}
+          path: |
+            studio/dist/studio-${{ matrix.target }}/inferyard-studio-v${{ needs.metadata.outputs.version }}-${{ matrix.target }}.dmg
+            studio/dist/studio-${{ matrix.target }}/inferyard-studio-v${{ needs.metadata.outputs.version }}-${{ matrix.target }}.exe
+            studio/dist/studio-${{ matrix.target }}/inferyard-studio-v${{ needs.metadata.outputs.version }}-${{ matrix.target }}.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+  github-release:
+    needs: [metadata, cli, studio]
+    runs-on: ubuntu-24.04
+    environment: github-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: cli-dist
+          path: release-assets
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: studio-dist-*
+          path: release-assets
+          merge-multiple: true
+      - name: Generate SHA256SUMS and verify artifact set
+        shell: bash
+        run: |
+          python3 -c '
+          import hashlib
+          from pathlib import Path
+          root = Path("release-assets")
+          files = sorted(p for p in root.iterdir() if p.is_file() and p.name != "SHA256SUMS")
+          if len(files) != 5:
+              raise SystemExit(f"expected 5 release assets, got {[p.name for p in files]}")
+          lines = [f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n" for p in files]
+          (root / "SHA256SUMS").write_text("".join(lines), encoding="utf-8")
+          '
+      - name: Refuse a release tag pointing at another source commit
+        uses: actions/github-script@v9
+        env:
+          TAG: ${{ needs.metadata.outputs.tag }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        with:
+          script: |
+            let ref;
+            try {
+              ref = (await github.rest.git.getRef({ ...context.repo, ref: `tags/${process.env.TAG}` })).data;
+            } catch (error) {
+              if (error.status === 404) return;
+              throw error;
+            }
+            let object = ref.object;
+            while (object.type === 'tag') {
+              object = (await github.rest.git.getTag({ ...context.repo, tag_sha: object.sha })).data.object;
+            }
+            if (object.type !== 'commit' || object.sha !== process.env.SOURCE_COMMIT) {
+              throw new Error(`Release tag ${process.env.TAG} points at another commit (${object.sha})`);
+            }
+      - name: Create Draft GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.metadata.outputs.tag }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: >-
+          gh release create "$TAG" release-assets/*
+          --target "$SOURCE_COMMIT"
+          --draft
+          --title "$TAG"
+          --generate-notes
+
+  pypi:
+    needs: [metadata, cli]
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.publish_pypi == true
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/inferyard
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: cli-dist
+          path: pypi-packages
+      - name: Publish CLI wheel and sdist using Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: pypi-packages/
+          attestations: true

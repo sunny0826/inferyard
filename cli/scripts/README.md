@@ -5,14 +5,9 @@ Run all commands below from `cli/` (`mise exec -- uv run --frozen python scripts
 ## Exporters
 
 ```bash
-mise exec -- uv run --frozen python scripts/export_schemas.py        # --check to verify
+mise exec -- uv run --frozen python scripts/export_schemas.py        # --check to verify the 6 exported boundary schemas
 mise exec -- uv run --frozen python scripts/export_community.py      # optional helper to sync bundles or refresh Windows ZIP profiles (--archives DIR)
 ```
-
-## Distribution & release checks
-
-- `build_distribution.py` / `check_distribution.py` / `export_runtime_constraints.py`: build wheel & sdist in a fresh directory, rebuild wheel from sdist, and verify package resources.
-- `prepare_release_candidate.py` / `verify_release_candidate.py`: bind build manifests with out-of-tree installation results (`tests/packaging/run_installed.py`) without uploading. See [CONTRIBUTING.md](../CONTRIBUTING.md#local-candidate-build-and-installation-checks).
 
 ## Corpus & external patches
 
