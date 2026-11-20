@@ -1,6 +1,7 @@
 """Upgrade compatibility and version-based consistency tests for Wave 3."""
 
 import hashlib
+import json
 from copy import deepcopy
 from pathlib import Path
 
@@ -244,7 +245,10 @@ def _valid_legacy_identity(file_sha: str) -> dict:
             "files": [{"path": f"{role}.py", "sha256": file_sha}],
             "dependencies": [{"name": "jsonschema", "version": "4.26.0", "reason": None}],
         }
-        roles[role] = {**body, "sha256": hashlib.sha256(json_bytes(body)).hexdigest()}
+        encoded = json.dumps(
+            body, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode()
+        roles[role] = {**body, "sha256": hashlib.sha256(encoded).hexdigest()}
     return {"definition": "implementation-identity.v1", **roles}
 
 

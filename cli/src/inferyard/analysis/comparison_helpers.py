@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
-from inferyard.contracts.validation import json_bytes
 from inferyard.errors import ContractError
 
 _LEGACY_IDENTITY_ROLES = ("measurement", "scoring", "presentation")
@@ -73,7 +73,12 @@ def legacy_role_identities(value):
         if any(".." in name.split("/") or name.startswith("/") or "\\" in name for name in names):
             raise ContractError("implementation_identity", "invalid relative path")
         expected = hashlib.sha256(
-            json_bytes({k: v for k, v in entry.items() if k != "sha256"})
+            json.dumps(
+                {k: v for k, v in entry.items() if k != "sha256"},
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ).encode()
         ).hexdigest()
         if entry["sha256"] != expected:
             raise ContractError("implementation_identity", "content digest mismatch")
