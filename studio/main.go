@@ -5,64 +5,78 @@ import (
 	_ "embed"
 	"errors"
 	"flag"
-	"github.com/egoist/mygo"
-	"inferyard/studio/internal/core"
-	"inferyard/studio/internal/desktop"
-	"inferyard/studio/internal/pages"
 	"log"
 	"os"
 	"os/signal"
 	"regexp"
 	"syscall"
 	"time"
+
+	"github.com/egoist/mygo"
+	"inferyard/studio/internal/core"
+	"inferyard/studio/internal/desktop"
+	"inferyard/studio/internal/pages"
 )
 
 //go:embed mygo.config.ts
 var desktopConfig string
 
 func main() {
+	os.Exit(runMain())
+}
+
+func runMain() (exitCode int) {
 	options, err := parseOptions(os.Args[1:], os.Stderr)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			return
+			return 0
 		}
 		log.Print(err)
-		os.Exit(2)
+		return 2
 	}
 	version := regexp.MustCompile(`(?m)^\s*version:\s*['"]([^'"]+)['"],?\s*$`).FindAllStringSubmatch(desktopConfig, -1)
 	if len(version) != 1 {
-		log.Fatal("desktop configuration must contain one version")
+		log.Print("desktop configuration must contain one version")
+		return 1
 	}
 	core.Version = version[0][1]
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	if handled, err := runDevelopment(ctx, cancel, options); handled {
-		if err != nil {
-			log.Print(err)
-			os.Exit(2)
-		}
-		return
-	}
 	if runDebugUI(ctx, options) {
-		return
+		return 0
 	}
-	service, err := core.New(ctx, core.Options{})
+	boundPaths, windowStates, status, err := developmentBindings(options)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return 2
+	}
+	service, err := core.New(ctx, core.Options{Paths: boundPaths})
+	if err != nil {
+		log.Print(err)
+		return 1
 	}
 	defer func() {
 		shutdownCtx, stop := context.WithTimeout(context.Background(), 30*time.Second)
 		defer stop()
 		if err := service.Shutdown(shutdownCtx); err != nil {
 			log.Printf("Studio shutdown: %v", err)
+			status.report("shutdown_failed", err.Error())
+			exitCode = 1
+			return
 		}
+		status.report("stopped", "")
 	}()
+	if windowStates != nil {
+		mygo.App.SetWindowStateStore(windowStates)
+	}
 	runApp(ctx, func() {
 		desktop.Subscribe(ctx, service.Bus, func(message desktop.Message) error {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
 		}, log.Printf)
 		pages.New(ctx, service, "")
+		status.report("ready", "")
 	})
+	return exitCode
 }
 
 func runApp(ctx context.Context, ready func()) {

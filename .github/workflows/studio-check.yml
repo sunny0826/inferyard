@@ -45,9 +45,8 @@ jobs:
         run: |
           mise exec -- go test -tags ui_debug . ./internal/pages -count=1
           mise exec -- go test -tags ui_debug,release . -count=1
-          mise exec -- go test -tags studio_dev . -count=1
-          mise exec -- go test -tags studio_dev,release . -count=1
           mise exec -- python -m unittest discover -s scripts -p test_package.py
+          mise exec -- python -m unittest discover -s ../tools -p 'test_*.py'
   e2e:
     name: studio e2e (${{ matrix.os }})
     if: github.event_name != 'pull_request'

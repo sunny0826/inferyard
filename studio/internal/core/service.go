@@ -20,7 +20,6 @@ var Version = "dev"
 
 type Executor func(context.Context, string, ...string) (inferyard.Execution, error)
 type Options struct {
-	ValidateCLI        func(context.Context) error
 	Paths              *BoundPaths
 	ProcessStartTicks  func(int64) (int64, error)
 	SignalProcess      func(int64, os.Signal) error
@@ -84,12 +83,6 @@ func New(ctx context.Context, o Options) (*Service, error) {
 		copy := *o.Paths
 		o.Paths = &copy
 		if err := o.Paths.validate(); err != nil {
-			return nil, err
-		}
-		if o.ValidateCLI == nil {
-			return nil, errors.New("bound CLI requires startup validation")
-		}
-		if err := o.ValidateCLI(ctx); err != nil {
 			return nil, err
 		}
 		o.SettingsPath = o.Paths.Settings
