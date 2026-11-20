@@ -10,21 +10,36 @@ import (
 	"inferyard/studio/internal/inferyard"
 )
 
+// errorView renders a failure as a danger-tinted banner: a left accent bar and
+// a faint danger wash on the surface separate it from plain body text, while
+// the message keeps its own colour so it never relies on the tint alone. High
+// contrast keeps the plain surface and draws the whole outline instead.
 func errorView(c *ui.Context, e *core.ApiError) {
 	if e == nil {
 		return
 	}
+	t := tokens(c)
+	theme := c.Theme()
+	danger := stateColor(c, stateDanger)
 	message := e.Message
 	if message == "" {
 		message = human(e.Code)
 	}
-	ui.Text(c, message+" · "+e.Code).TextColor(stateColor(c, stateDanger))
-	for _, v := range e.Limitations {
-		ui.Text(c, human(v)+" · "+v)
+	banner := ui.Column(c).Gap(t.Density.Tight).Padding(t.Density.Inset).Radius(t.Radius.Inset)
+	if c.Preferences().HighContrast {
+		banner.Background(theme.Surface).Border(1, danger)
+	} else {
+		banner.Background(theme.Surface.Mix(danger, .07)).BorderWidth(0, 0, 0, 2).BorderColor(danger)
 	}
-	if len(e.Details) > 0 {
-		kvview(c, "kv-error-details", e.Details)
-	}
+	banner.Children(func() {
+		ui.Text(c, message+" · "+e.Code).TextColor(danger.Mix(theme.Text, .2))
+		for _, v := range e.Limitations {
+			ui.Text(c, human(v)+" · "+v).TextColor(danger.Mix(theme.Text, .2))
+		}
+		if len(e.Details) > 0 {
+			kvview(c, "kv-error-details", e.Details)
+		}
+	})
 }
 func taskLabel(t core.RunTask) string {
 	if !terminal(t.State) && t.PreparationStage != "" {

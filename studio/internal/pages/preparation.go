@@ -38,14 +38,13 @@ func (s *viewState) settingsView(c *ui.Context) {
 		return
 	}
 	card(c, "路径设置", func() {
-		fields := func() { s.pathFields(c) }
-		if compactLayout(c) {
-			fields()
-		} else {
-			ui.Form(c, fields)
-		}
+		// All Settings cards stack their fields the same way: label above the
+		// control. The form alignment stays identical at any window width and
+		// text scale, instead of switching between inline and stacked layouts.
+		s.pathFields(c)
 		ui.Text(c, "保存不会自动创建目录；新建工作区请手动输入完整路径。").TextColor(c.Theme().TextMuted)
-		if primaryButton(c, "保存").AlignSelf(ui.Start).Disabled(s.busy || !s.settingsLoaded).Clicked() {
+		settingsNotice(c, s.pathsEdited(), "路径有未保存的修改，点击保存后生效。")
+		if primaryButton(c, "保存").Disabled(!s.canSavePaths()).Clicked() {
 			if !s.validateSettings() {
 				return
 			}
@@ -75,12 +74,37 @@ func (s *viewState) settingsView(c *ui.Context) {
 	s.downloadNamesView(c)
 }
 
-func (s *viewState) settingsEdited() bool {
+// pathsEdited reports whether the path form differs from the saved settings,
+// so the path card only offers a save when there is something to write.
+func (s *viewState) pathsEdited() bool {
 	return s.cliPath != emptyText(s.settings.Settings.InferyardPath) ||
 		s.workspace != emptyText(s.settings.Effective.WorkspaceRoot) ||
 		s.results != emptyText(s.settings.Settings.ResultsRoot) ||
-		s.models != emptyText(s.settings.Settings.ModelsRoot) ||
-		s.modelName != defaultDownloadName(s.settings.Settings.ModelDownloadName, "model") || s.engineName != defaultDownloadName(s.settings.Settings.EngineDownloadName, "engine")
+		s.models != emptyText(s.settings.Settings.ModelsRoot)
+}
+
+// downloadNamesEdited reports whether the download names differ from the
+// saved values. An unset saved name means the default, so the defaults alone
+// are not an edit.
+func (s *viewState) downloadNamesEdited() bool {
+	return s.modelName != defaultDownloadName(s.settings.Settings.ModelDownloadName, "model") ||
+		s.engineName != defaultDownloadName(s.settings.Settings.EngineDownloadName, "engine")
+}
+
+func (s *viewState) canSavePaths() bool {
+	return s.settingsLoaded && !s.busy && s.pathsEdited()
+}
+
+func (s *viewState) canSaveDownloadNames() bool {
+	return s.settingsLoaded && !s.busy && s.downloadNamesEdited() && s.downloadNamesValid()
+}
+
+func (s *viewState) downloadNamesValid() bool {
+	return validName(s.modelName) && validName(s.engineName)
+}
+
+func (s *viewState) settingsEdited() bool {
+	return s.pathsEdited() || s.downloadNamesEdited()
 }
 
 func (s *viewState) applySettings(value core.SettingsResponse) {
@@ -95,6 +119,15 @@ func (s *viewState) applySettings(value core.SettingsResponse) {
 	}
 }
 
+// settingsNotice explains that edits are only in the form, not yet persisted.
+// It renders nothing while the fields match the saved values.
+func settingsNotice(c *ui.Context, dirty bool, message string) {
+	if !dirty {
+		return
+	}
+	ui.Text(c, message).Role(ui.RoleStatus).TextColor(stateColor(c, stateWarning))
+}
+
 // pathFields renders the four path inputs with their browse buttons.
 func (s *viewState) pathFields(c *ui.Context) {
 	ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
@@ -107,11 +140,14 @@ func (s *viewState) pathFields(c *ui.Context) {
 
 func (s *viewState) downloadNamesView(c *ui.Context) {
 	card(c, "下载目录名", func() {
-		field(c, "模型下载目录名", &s.modelName).Error(downloadNameError(s.modelName))
-		field(c, "引擎下载目录名", &s.engineName).Error(downloadNameError(s.engineName))
+		ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
+			field(c, "模型下载目录名", &s.modelName).Error(downloadNameError(s.modelName))
+			field(c, "引擎下载目录名", &s.engineName).Error(downloadNameError(s.engineName))
+		})
 		ui.Text(c, "仅允许字母、数字、.、_、-；重名时自动追加序号（默认 model / engine）。").TextColor(c.Theme().TextMuted)
+		settingsNotice(c, s.downloadNamesEdited(), downloadNamesNotice(s.modelName, s.engineName))
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			button(c, "保存下载目录名").Disabled(s.busy || !validName(s.modelName) || !validName(s.engineName)).OnClick(func() {
+			if primaryButton(c, "保存下载目录名").Disabled(!s.canSaveDownloadNames()).Clicked() {
 				patch := map[string]json.RawMessage{}
 				patch["model_download_name"], _ = json.Marshal(s.modelName)
 				patch["engine_download_name"], _ = json.Marshal(s.engineName)
@@ -122,11 +158,21 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 					_, e := s.service.UpdateSettings(patch)
 					return "下载目录名已保存。", e
 				})
-			})
-			button(c, "恢复默认值").OnClick(func() { s.modelName, s.engineName = "model", "engine" })
+			}
+			button(c, "恢复默认值").Disabled(s.busy).OnClick(func() { s.modelName, s.engineName = "model", "engine" })
 		})
 	})
 }
+
+// downloadNamesNotice states that reverting or editing the names only filled
+// the form: the defaults are not persisted until the save button runs.
+func downloadNamesNotice(modelName, engineName string) string {
+	if modelName == "model" && engineName == "engine" {
+		return "已填入默认值，请点击保存生效。"
+	}
+	return "下载目录名已修改，请点击保存生效。"
+}
+
 func downloadNameError(name string) string {
 	if !validName(name) {
 		return "请输入有效目录名，不能为空或全为点。"

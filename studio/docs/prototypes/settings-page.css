@@ -1,4 +1,4 @@
-:root{color-scheme:light;--bg:#f8f7f3;--surface:#ffffff;--hover:#f0eee8;--pressed:#e3e0d8;--border:#d6d3c9;--text:#26261f;--muted:#5c5c53;--accent:#b3401a;--success:#047857;--warning:#a34a06;--danger:#a63a42;--focus:rgba(179,64,26,.55);--radius:6px}
+:root{color-scheme:light;--bg:#f8f7f3;--surface:#ffffff;--hover:#f0eee8;--pressed:#e3e0d8;--border:#d6d3c9;--text:#26261f;--muted:#5c5c53;--accent:#b3401a;--success:#047857;--warning:#87590a;--danger:#a81a2f;--focus:rgba(179,64,26,.55);--radius:6px}
 
 /* Studio scheme A (studio_theme.go). Dark reference: Background #1b1a17,
 Surface #24221e, Text #efeae2, TextMuted #c6bfb3, Accent #e88d64, AccentText #291b14.
@@ -94,6 +94,7 @@ progress::-webkit-progress-value{background:var(--accent)}
 .flow span{font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:var(--radius)}
 .flow [aria-current]{color:var(--accent);border-color:var(--accent)}
 .twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fields{display:grid;gap:12px}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);max-width:min(430px,90vw);background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--success);padding:12px 18px;border-radius:var(--radius);z-index:5}
 .toast:empty{display:none}
 .footer{font-size:12px;color:var(--muted);margin-top:20px}

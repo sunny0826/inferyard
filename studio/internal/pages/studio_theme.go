@@ -16,19 +16,22 @@ type paletteColors struct {
 
 // studioLightPalette and studioDarkPalette are the selected scheme A: warm
 // near-neutral surfaces, a terracotta accent and muted text held above the
-// body-text contrast floor in both appearances.
+// body-text contrast floor in both appearances. Warning keeps an amber hue and
+// Danger a crimson one, so a warning never reads as the primary action and a
+// failure never reads as a warning; each stays above 4.5:1 against the plain
+// page and card surfaces (see studio_theme_test.go).
 var (
 	studioLightPalette = paletteColors{
 		background: ui.Hex("#f8f7f3"), surface: ui.Hex("#ffffff"), surfaceHover: ui.Hex("#f0eee8"), surfacePressed: ui.Hex("#e3e0d8"),
 		border: ui.Hex("#d6d3c9"), text: ui.Hex("#26261f"), muted: ui.Hex("#5c5c53"),
 		accent: ui.Hex("#b3401a"), accentText: ui.Hex("#ffffff"),
-		success: ui.Hex("#047857"), warning: ui.Hex("#a34a06"), danger: ui.Hex("#a63a42"),
+		success: ui.Hex("#047857"), warning: ui.Hex("#87590a"), danger: ui.Hex("#a81a2f"),
 	}
 	studioDarkPalette = paletteColors{
 		background: ui.Hex("#1b1a17"), surface: ui.Hex("#24221e"), surfaceHover: ui.Hex("#2e2b26"), surfacePressed: ui.Hex("#38342e"),
 		border: ui.Hex("#47433c"), text: ui.Hex("#efeae2"), muted: ui.Hex("#c6bfb3"),
 		accent: ui.Hex("#e88d64"), accentText: ui.Hex("#291b14"),
-		success: ui.Hex("#6fbfa2"), warning: ui.Hex("#dfa95f"), danger: ui.Hex("#dd878d"),
+		success: ui.Hex("#6fbfa2"), warning: ui.Hex("#f2b95f"), danger: ui.Hex("#ff9498"),
 	}
 )
 

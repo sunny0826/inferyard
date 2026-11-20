@@ -252,15 +252,26 @@ func (s *viewState) localSelectionView(c *ui.Context) {
 func (s *viewState) localInstallationsView(c *ui.Context) {
 	card(c, "已有本地引擎", func() {
 		ui.Text(c, "注册 CLI 安装声明后，可选择 llama.cpp、MLX、vLLM、SGLang 或 LM Studio。核验安装不代表模型已通过测评。")
-		s.pathField(c, "安装声明 JSON 路径", &s.installationPath, browseInstallation).Description("已有 installation.json 的绝对路径；引擎、环境和模型不会自动下载。").Error(s.browseError(browseInstallation.key, ""))
-		button(c, "注册引擎").Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").OnClick(func() { s.changeInstallation("register", s.installationPath) })
+		ui.Text(c, "installation.json 是 CLI 的安装声明（local-engine-installation.v1），供 engine check 与 config create 使用；Studio 只读取核验，不生成该文件。").TextColor(c.Theme().TextMuted)
+		s.pathField(c, "安装声明 JSON 路径", &s.installationPath, browseInstallation).
+			Description("已有 installation.json 的绝对路径；引擎、环境和模型不会自动下载。").
+			Error(s.browseError(browseInstallation.key, ""))
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+			// One primary action per group: registering changes state, while a
+			// re-check only refreshes cached verification of the same list.
+			if primaryButton(c, "注册引擎").Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
+				s.changeInstallation("register", s.installationPath)
+			}
+			if button(c, "重新核验引擎").Disabled(s.busy).Clicked() {
+				s.changeInstallation("recheck", "")
+			}
+		})
 		for _, path := range s.settings.Settings.EngineInstallations {
 			ui.Row(c.Key(path)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				ui.Text(c, path)
 				button(c, "移除注册").Disabled(s.busy).OnClick(func() { s.changeInstallation("remove", path) })
 			})
 		}
-		button(c, "重新核验引擎").Disabled(s.busy).OnClick(func() { s.changeInstallation("recheck", "") })
 	})
 }
 
