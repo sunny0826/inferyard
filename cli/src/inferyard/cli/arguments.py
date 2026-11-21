@@ -3,6 +3,7 @@
 import argparse
 
 from inferyard.cli.commands import (
+    assets,
     candidates,
     community,
     comparison,
@@ -73,5 +74,6 @@ def parser() -> Parser:
     engine_fit.add_commands(commands)
     model.add_commands(commands)
     engine.add_commands(commands)
+    assets.add_commands(commands)
     service.add_commands(commands)
     return result

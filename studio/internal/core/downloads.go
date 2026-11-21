@@ -180,7 +180,6 @@ loop:
 		}
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.finishDownloadLocked(ctx, d, r.out, r.err, func(cr inferyard.CommandResult, parseErr error) bool {
 		var result DownloadResult
 		e := parseErr
@@ -202,6 +201,11 @@ loop:
 		d.Task.DownloadedBytes = result.Bytes
 		return true
 	})
+	doneOK := d.Task.State == "done"
+	s.mu.Unlock()
+	if doneOK {
+		_ = s.RefreshAssets()
+	}
 }
 
 func (s *Service) finishDownloadLocked(ctx context.Context, d *downloadEntry, out inferyard.Execution, execErr error, apply func(inferyard.CommandResult, error) bool) {
@@ -301,7 +305,6 @@ func (s *Service) downloadEngine(ctx context.Context, binary string, d *download
 	})
 	out, execErr := s.exec(ctx, binary, enginePrepareArgs(d.Task.SourceUrl, d.Task.OutDir)...)
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.finishDownloadLocked(ctx, d, out, execErr, func(cr inferyard.CommandResult, parseErr error) bool {
 		if parseErr != nil {
 			return false
@@ -318,4 +321,9 @@ func (s *Service) downloadEngine(ctx context.Context, binary string, d *download
 		d.Task.Result = &DownloadResult{Bytes: details.Bytes, Sha256: details.Sha256}
 		return true
 	})
+	doneOK := d.Task.State == "done"
+	s.mu.Unlock()
+	if doneOK {
+		go s.VerifyEngines()
+	}
 }

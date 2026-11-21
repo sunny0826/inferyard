@@ -8,6 +8,12 @@ from datetime import UTC, datetime
 
 import httpx
 
+from inferyard.provisioning.acquire_errors import (
+    classify_http_status,
+    classify_httpx_error,
+    classify_os_error,
+    failure_details,
+)
 from inferyard.provisioning.preparation_io import NewDirectory, PreparationError, new_path
 from inferyard.provisioning.engine_source import DEFINITION, PARSER, parse_engine_source
 from inferyard.platforms.platform_io import sync_directory
@@ -54,16 +60,25 @@ def download_to_stream(client, url, stream, *, expected_sha256=None):
     digest, size = hashlib.sha256(), 0
     with client.stream("GET", url, headers={"Accept-Encoding": "identity"}) as opened:
         if opened.status_code != 200:
-            raise PreparationError(INCOMPLETE)
+            raise PreparationError(
+                INCOMPLETE,
+                details=failure_details("download_open", classify_http_status(opened.status_code)),
+            )
         if opened.headers.get("content-encoding", "identity").lower() != "identity":
-            raise PreparationError(INCOMPLETE)
+            raise PreparationError(
+                INCOMPLETE,
+                details=failure_details("download_open", "unexpected_content_encoding"),
+            )
         for chunk in opened.iter_raw():
             stream.write(chunk)
             digest.update(chunk)
             size += len(chunk)
     actual = digest.hexdigest()
     if expected is not None and actual != expected:
-        raise PreparationError("engine_checksum_mismatch")
+        raise PreparationError(
+            "engine_checksum_mismatch",
+            details=failure_details("verify", "engine_checksum_mismatch"),
+        )
     return size, actual
 
 
@@ -77,10 +92,17 @@ def run_with_client(timeout_seconds, client, action):
             return action(owned)
     except PreparationError:
         raise
-    except httpx.HTTPError:
-        raise PreparationError(INCOMPLETE) from None
-    except OSError:
-        raise PreparationError("io_error", 4) from None
+    except httpx.HTTPError as exc:
+        raise PreparationError(
+            INCOMPLETE,
+            details=failure_details("download_body", classify_httpx_error(exc)),
+        ) from None
+    except OSError as exc:
+        raise PreparationError(
+            "io_error",
+            4,
+            details=failure_details("disk_write", classify_os_error(exc)),
+        ) from None
 
 
 def _download(client, source, out):

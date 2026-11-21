@@ -33,6 +33,8 @@ CASES = [
     ["service", "discover", "--help"],
     ["--schema", "service_discovery"],
     ["engine", "check", "--help"],
+    ["engine", "prepare", "--help"],
+    ["assets", "scan", "--help"],
     ["--schema", "engine_check"],
     ["progress", "--help"],
     ["speed-results", "--help"],

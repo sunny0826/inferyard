@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -51,17 +52,24 @@ func enginePrepareResult(enginePath string, bytes int64, sha256 string) inferyar
 }
 
 func TestEngineDownloadLifecycleAndCatalogArgs(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	entry, ok := CatalogEntryByID("engine-macos-arm64")
 	if !ok {
 		t.Fatal("missing catalog entry engine-macos-arm64")
 	}
 	gate := make(chan struct{})
+	var mu sync.Mutex
 	var gotArgs []string
 	s := testService(t, func(ctx context.Context, _ string, args ...string) (inferyard.Execution, error) {
 		if v, ok := version(args); ok {
 			return v, nil
 		}
+		if len(args) >= 2 && args[0] == "engine" && args[1] == "check" {
+			return result(inferyard.ExitBlocked), nil
+		}
+		mu.Lock()
 		gotArgs = slices.Clone(args)
+		mu.Unlock()
 		select {
 		case <-gate:
 		case <-ctx.Done():
@@ -98,8 +106,11 @@ func TestEngineDownloadLifecycleAndCatalogArgs(t *testing.T) {
 		"--out", expectedDir,
 		"--expected-sha256", entry.SHA256,
 	}
-	if !slices.Equal(gotArgs, wantArgs) {
-		t.Fatalf("cli args = %v, want %v", gotArgs, wantArgs)
+	mu.Lock()
+	actualArgs := slices.Clone(gotArgs)
+	mu.Unlock()
+	if !slices.Equal(actualArgs, wantArgs) {
+		t.Fatalf("cli args = %v, want %v", actualArgs, wantArgs)
 	}
 	task = s.Downloads()[0]
 	assertEngineNullProgress(t, task)
@@ -145,16 +156,23 @@ func TestEngineDownloadLifecycleAndCatalogArgs(t *testing.T) {
 }
 
 func TestEngineDownloadWindowsCUDAArgsAndCustomURL(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	cuda, ok := CatalogEntryByID("engine-windows-cuda-x64")
 	if !ok {
 		t.Fatal("missing catalog entry engine-windows-cuda-x64")
 	}
+	var mu sync.Mutex
 	recorded := map[string][]string{}
 	s := testService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
 		if v, ok := version(args); ok {
 			return v, nil
 		}
+		if len(args) >= 2 && args[0] == "engine" && args[1] == "check" {
+			return result(inferyard.ExitBlocked), nil
+		}
+		mu.Lock()
 		recorded[args[3]] = slices.Clone(args)
+		mu.Unlock()
 		return enginePrepareResult(filepath.Join(args[5], "llama-server.exe"), 123, strings.Repeat("b", 64)), nil
 	})
 	workspace := t.TempDir()

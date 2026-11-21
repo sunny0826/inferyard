@@ -173,7 +173,11 @@ func (s *viewState) engineStateLine(engine core.EngineAsset) string {
 	case core.EngineCheckChecking:
 		parts = append(parts, "核验中…")
 	case core.EngineCheckIneligible:
-		parts = append(parts, "不可用："+human(el.Reason))
+		reason := "不可用：" + human(el.Reason)
+		if el.Release != "" {
+			reason += "（需要 " + el.Release + "）"
+		}
+		parts = append(parts, reason)
 	default:
 		if !s.checks.Supported {
 			parts = append(parts, "未核验（CLI 过旧）")

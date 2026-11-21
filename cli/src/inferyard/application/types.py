@@ -60,6 +60,7 @@ class CommandRequest:
     right_overhead: Path | None = None
     extension_spec: Path | None = None
     models_roots: list[Path] | None = None
+    engine_roots: list[Path] | None = None
     model_path: Path | None = None
     fit_engines: list[str] | None = None
     fit_engine: str | None = None
@@ -99,6 +100,9 @@ class CommandRequest:
     model_timeout_seconds: float = 1800
     model_source_record: Path | None = None
     engine_source_url: str | None = None
+    expected_sha256: str | None = None
+    runtime_source_url: str | None = None
+    runtime_expected_sha256: str | None = None
     engine_timeout_seconds: float = 1800
     protect_pids: list[int] | None = None
     workspace: Path | None = None

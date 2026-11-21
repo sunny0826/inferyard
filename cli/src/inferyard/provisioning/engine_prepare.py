@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 from inferyard.platforms.platform_io import sync_directory
 from inferyard.provisioning import runtime_profiles, windows_runtime_prepare
+from inferyard.provisioning.acquire_errors import classify_os_error, failure_details
 from inferyard.provisioning.engine_source import DEFINITION, PARSER, parse_engine_source
 from inferyard.provisioning.engine_source_download import (
     _timeout,
@@ -67,13 +68,19 @@ def _validate_runtime_profile(
         raise PreparationError("runtime_archive_forbidden")
     by_role = {archive["role"]: archive for archive in profile["archives"]}
     if expected_sha256 is not None and expected_sha256 != by_role["engine"]["sha256"]:
-        raise PreparationError("engine_checksum_mismatch")
+        raise PreparationError(
+            "engine_checksum_mismatch",
+            details=failure_details("verify", "engine_checksum_mismatch"),
+        )
     if (
         runtime_expected_sha256 is not None
         and "runtime" in by_role
         and runtime_expected_sha256 != by_role["runtime"]["sha256"]
     ):
-        raise PreparationError("engine_checksum_mismatch")
+        raise PreparationError(
+            "engine_checksum_mismatch",
+            details=failure_details("verify", "engine_checksum_mismatch"),
+        )
     return profile
 
 
@@ -350,8 +357,12 @@ def prepare(
     _timeout(timeout_seconds)
     try:
         out = new_path(out)
-    except OSError:
-        raise PreparationError("io_error", 4) from None
+    except OSError as exc:
+        raise PreparationError(
+            "io_error",
+            4,
+            details=failure_details("prepare", classify_os_error(exc)),
+        ) from None
     kind = None
     if runtime_profile is not None:
         _validate_runtime_profile(
