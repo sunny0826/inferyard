@@ -146,6 +146,47 @@ func downloadDetails(c *ui.Context, task core.DownloadTask) {
 	}
 }
 
+func downloadFailureStageLabel(stage string) string {
+	switch stage {
+	case "token":
+		return "读取访问凭据"
+	case "download_open":
+		return "建立下载连接"
+	case "download_body":
+		return "传输下载数据"
+	case "disk_write":
+		return "写入本地文件"
+	case "checksum", "verify":
+		return "校验文件完整性"
+	default:
+		return stage
+	}
+}
+
+func remainingDownloadErrorDetails(details map[string]any) map[string]any {
+	if len(details) == 0 {
+		return nil
+	}
+	extra := map[string]any{}
+	for k, v := range details {
+		if k == "failure_cause" || k == "failure_stage" {
+			continue
+		}
+		if k == "reason" {
+			if reason, ok := v.(string); ok && reason != "" {
+				if label := conflictReasonLabel(reason); label != "" {
+					extra["原因"] = label
+				} else {
+					extra["原因"] = human(reason)
+				}
+				continue
+			}
+		}
+		extra[k] = v
+	}
+	return extra
+}
+
 func downloadErrorView(c *ui.Context, e *core.ApiError) {
 	if e == nil {
 		return
@@ -158,7 +199,15 @@ func downloadErrorView(c *ui.Context, e *core.ApiError) {
 	for _, v := range e.Limitations {
 		ui.Text(c, human(v)).TextColor(stateColor(c, stateDanger))
 	}
-	if len(e.Details) > 0 {
-		kvview(c, "kv-error-details", e.Details)
+	if cause, ok := e.Details["failure_cause"].(string); ok && cause != "" {
+		ui.Text(c, human(cause)).TextColor(stateColor(c, stateDanger))
+	}
+	if stage, ok := e.Details["failure_stage"].(string); ok && stage != "" {
+		ui.Text(c, "失败阶段："+downloadFailureStageLabel(stage)).
+			FontSize(tokens(c).Type.Caption).
+			TextColor(tokens(c).Color.FgSecondary)
+	}
+	if extra := remainingDownloadErrorDetails(e.Details); len(extra) > 0 {
+		kvview(c, "kv-error-details", extra)
 	}
 }

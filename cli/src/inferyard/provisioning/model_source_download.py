@@ -7,6 +7,12 @@ from datetime import UTC, datetime
 
 import httpx
 
+from inferyard.provisioning.acquire_errors import (
+    classify_http_status,
+    classify_httpx_error,
+    classify_os_error,
+    failure_details,
+)
 from inferyard.provisioning.preparation_io import NewDirectory, PreparationError, new_path
 from inferyard.provisioning.model_source import DEFINITION_V3, PARSER, parse_source, validate_token_env
 from inferyard.platforms.platform_io import sync_directory
@@ -30,7 +36,10 @@ def _token(name):
         return None
     value = os.environ.get(name)
     if not value or not value.isascii() or any(ord(c) < 33 or ord(c) == 127 for c in value):
-        raise PreparationError(INCOMPLETE)
+        raise PreparationError(
+            INCOMPLETE,
+            details=failure_details("token", "token_env_missing"),
+        )
     return value
 
 
@@ -64,9 +73,17 @@ def _download(client, source, out, token):
     try:
         with client.stream("GET", source.download_url, headers=headers) as opened:
             if opened.status_code != 200:
-                raise PreparationError(INCOMPLETE)
+                raise PreparationError(
+                    INCOMPLETE,
+                    details=failure_details(
+                        "download_open", classify_http_status(opened.status_code)
+                    ),
+                )
             if opened.headers.get("content-encoding", "identity").lower() != "identity":
-                raise PreparationError(INCOMPLETE)
+                raise PreparationError(
+                    INCOMPLETE,
+                    details=failure_details("download_open", "unexpected_content_encoding"),
+                )
             with output.stream(temporary) as stream:
                 for chunk in opened.iter_raw():
                     stream.write(chunk)
@@ -106,7 +123,14 @@ def acquire(url, out, token_env=None, *, timeout_seconds=1800, client=None):
             return _download(owned, source, out, token)
     except PreparationError:
         raise
-    except httpx.HTTPError:
-        raise PreparationError(INCOMPLETE) from None
-    except OSError:
-        raise PreparationError("io_error", 4) from None
+    except httpx.HTTPError as exc:
+        raise PreparationError(
+            INCOMPLETE,
+            details=failure_details("download_body", classify_httpx_error(exc)),
+        ) from None
+    except OSError as exc:
+        raise PreparationError(
+            "io_error",
+            4,
+            details=failure_details("disk_write", classify_os_error(exc)),
+        ) from None

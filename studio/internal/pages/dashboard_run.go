@@ -2,14 +2,18 @@ package pages
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 	"inferyard/studio/internal/inferyard"
+	"path/filepath"
 	"strings"
 	"time"
 )
+
+var openLogPathFunc = core.OpenPathInOS
 
 func (w *viewState) engineChoices() ([]components.NativeSelectOption[string], bool, bool) {
 	eligible := []string{}
@@ -103,9 +107,33 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	if w.engineState.State == "orphaned" {
 		w.stopOrphanButton(c)
 	}
+	if macOSBatteryWarning(w.device.Snapshot) {
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateWarning,
+			Size:    bannerCompact,
+			Message: "当前使用电池供电，macOS 测评需接通电源后开始。",
+		})
+	}
 	if primaryButton(c, termStartBenchmark).AlignSelf(ui.Start).Disabled(createDisabled).Clicked() {
 		w.startBenchmark()
 	}
+}
+
+func macOSBatteryWarning(raw json.RawMessage) bool {
+	snapshot, err := parseDeviceSnapshot(raw)
+	if err != nil || snapshot == nil {
+		return false
+	}
+	hw := snapshot.object("hardware")
+	if hw == nil {
+		return false
+	}
+	platform, _ := hw["platform"].(string)
+	if platform != "Darwin" {
+		return false
+	}
+	online, ok := hw["ac_online"].(bool)
+	return ok && !online
 }
 
 func failureView(c *ui.Context, title string, e *core.ApiError, next string) {
@@ -118,6 +146,55 @@ func failureView(c *ui.Context, title string, e *core.ApiError, next string) {
 	if next != "" {
 		ui.Text(c, next).TextColor(tokens(c).Color.FgSecondary)
 	}
+}
+
+func (w *viewState) engineLogDiagnosticsView(c *ui.Context) {
+	t := tokens(c)
+	logPath := w.engineState.LogPath
+	ui.Column(c.Key("engine-log-diagnostics")).FillWidth().Gap(t.Density.Tight).Children(func() {
+		componentFoldKeyed(c, "engine-log-tail", "查看引擎日志尾部", func() {
+			if w.preview != nil {
+				ui.Text(c, "预览模式不读取本地日志文件。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				return
+			}
+			var tail string
+			var err error
+			if w.service != nil {
+				tail, err = w.service.EngineLogTail(logPath, 20)
+			} else {
+				tail, err = core.ReadLogTail(logPath, 20)
+			}
+			if err != nil {
+				ui.Text(c, "无法读取引擎日志："+err.Error()).FontSize(t.Type.Caption).TextColor(stateColor(c, stateDanger))
+				return
+			}
+			if tail == "" {
+				ui.Text(c, "引擎日志文件暂无内容。").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+				return
+			}
+			applyMaterial(c, ui.Scroll(c.Key("engine-log-tail-scroll")).FillWidth().MaxHeight(260), materialSunken).
+				Label("引擎日志尾部").Children(func() {
+				ui.Column(c).FillWidth().Padding(t.Density.Inset).Children(func() {
+					ui.Text(c, tail).FontSize(t.Type.Caption).TextColor(t.Color.FgPrimary).Selectable()
+				})
+			})
+		})
+		outlineButton(c, "打开日志文件").OnClick(func() {
+			if w.preview != nil {
+				return
+			}
+			target := logPath
+			if w.service != nil && !filepath.IsAbs(target) {
+				if resolved, err := w.service.ResolveEngineLogPath(target); err == nil {
+					target = resolved
+				}
+			}
+			if err := openLogPathFunc(target); err != nil {
+				w.failure = &core.ApiError{Code: "io_error", Message: "无法打开日志文件：" + err.Error()}
+				w.failurePage = w.selected
+			}
+		})
+	})
 }
 
 func (w *viewState) serviceView(c *ui.Context) {
@@ -133,6 +210,9 @@ func (w *viewState) serviceView(c *ui.Context) {
 		}
 		failureView(c, title, w.activeTaskFailure(),
 			"可重新启动服务；若进程已在本机运行，请展开「连接已有本机服务」选择，或用「高级：手动连接」填写 PID 与地址。")
+	}
+	if (w.stepFailed() || w.engineState.State == "failed") && w.engineState.LogPath != "" {
+		w.engineLogDiagnosticsView(c)
 	}
 	switch w.engineState.State {
 	case "orphaned":
