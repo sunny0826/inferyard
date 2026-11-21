@@ -1,21 +1,25 @@
-"""In-process streaming acquisition: one pinned URL, one new directory, one rename."""
+"""In-process streaming acquisition: one pinned URL, one directory, atomic rename."""
 
-import hashlib
 import math
 import os
 from datetime import UTC, datetime
+from pathlib import Path
 
 import httpx
 
+from inferyard.platforms.platform_io import sync_directory
 from inferyard.provisioning.acquire_errors import (
-    classify_http_status,
     classify_httpx_error,
     classify_os_error,
     failure_details,
 )
-from inferyard.provisioning.preparation_io import NewDirectory, PreparationError, new_path
 from inferyard.provisioning.model_source import DEFINITION_V3, PARSER, parse_source, validate_token_env
-from inferyard.platforms.platform_io import sync_directory
+from inferyard.provisioning.preparation_io import PreparationError, new_path
+from inferyard.provisioning.transfer_progress import (
+    ProgressEmitter,
+    download_resumable_part,
+    open_output_directory,
+)
 
 INCOMPLETE = "model_acquire_incomplete"
 
@@ -62,38 +66,36 @@ def _publish(output, temporary, final):
     sync_directory(output.path)
 
 
-def _download(client, source, out, token):
-    output = NewDirectory(out)
+def _download(client, source, out, token, *, emitter, resume):
     name = source.path.rsplit("/", 1)[-1]
     temporary = name + ".part"
-    digest, size = hashlib.sha256(), 0
+    output = open_output_directory(
+        out,
+        resume=resume,
+        allowed_parts={temporary, "source.json.part"},
+        final_names={name, "source.json"},
+    )
     headers = {"Accept-Encoding": "identity"}
     if token is not None:
         headers["Authorization"] = f"Bearer {token}"
     try:
-        with client.stream("GET", source.download_url, headers=headers) as opened:
-            if opened.status_code != 200:
-                raise PreparationError(
-                    INCOMPLETE,
-                    details=failure_details(
-                        "download_open", classify_http_status(opened.status_code)
-                    ),
-                )
-            if opened.headers.get("content-encoding", "identity").lower() != "identity":
-                raise PreparationError(
-                    INCOMPLETE,
-                    details=failure_details("download_open", "unexpected_content_encoding"),
-                )
-            with output.stream(temporary) as stream:
-                for chunk in opened.iter_raw():
-                    stream.write(chunk)
-                    digest.update(chunk)
-                    size += len(chunk)
+        size, digest = download_resumable_part(
+            client,
+            source.download_url,
+            output,
+            temporary,
+            incomplete_reason=INCOMPLETE,
+            headers=headers,
+            resume=resume,
+            emitter=emitter,
+        )
+        emitter.update("preparing", size, size)
         _publish(output, temporary, name)
-        output.json("source.json.part", _record(source, size, digest.hexdigest()))
+        output.json("source.json.part", _record(source, size, digest))
         _publish(output, "source.json.part", "source.json")
     except BaseException:
-        for part in (temporary, "source.json.part"):
+        cleanup = ("source.json.part",) if resume else (temporary, "source.json.part")
+        for part in cleanup:
             try:
                 (output.path / part).unlink()
             except OSError:
@@ -104,23 +106,33 @@ def _download(client, source, out, token):
         "model": str(output.path / name),
         "source_record": str(output.path / "source.json"),
         "bytes": size,
-        "sha256": digest.hexdigest(),
+        "sha256": digest,
         "ready_to_run": False,
         "model_requests_sent": 0,
     }
 
 
-def acquire(url, out, token_env=None, *, timeout_seconds=1800, client=None):
+def acquire(
+    url,
+    out,
+    token_env=None,
+    *,
+    timeout_seconds=1800,
+    client=None,
+    progress_stream=False,
+    resume=False,
+):
     source = parse_source(url)
     token = _token(token_env)
-    out = new_path(out)
+    out = Path(out).absolute() if resume else new_path(out)
+    emitter = ProgressEmitter(enabled=progress_stream)
     try:
         if client is not None:
-            return _download(client, source, out, token)
+            return _download(client, source, out, token, emitter=emitter, resume=resume)
         with httpx.Client(
             trust_env=False, follow_redirects=True, timeout=_timeout(timeout_seconds)
         ) as owned:
-            return _download(owned, source, out, token)
+            return _download(owned, source, out, token, emitter=emitter, resume=resume)
     except PreparationError:
         raise
     except httpx.HTTPError as exc:

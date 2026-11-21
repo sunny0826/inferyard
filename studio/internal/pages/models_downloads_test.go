@@ -155,3 +155,62 @@ func assertDownloadDetails(t *testing.T, tt *ui.Tester, kind string) {
 		t.Fatal(tt.Texts())
 	}
 }
+
+func TestDownloadCardDisplaysReadableNameProgressBarStagesAndETA(t *testing.T) {
+	total := int64(104857600)
+	s := testState()
+	s.downloads = []core.DownloadTask{
+		{
+			TaskId:          "engine-1",
+			Kind:            "engine",
+			DisplayName:     "llama-server · macOS arm64",
+			OutName:         "llama-prism-b10743",
+			State:           "downloading",
+			Stage:           "downloading",
+			DownloadedBytes: 52428800,
+			TotalBytes:      &total,
+			BytesPerSecond:  ptr(10485760.0),
+		},
+		{
+			TaskId:          "model-1",
+			Kind:            "model",
+			DisplayName:     "SmolLM2-135M-Instruct-Q4_K_M（GGUF）",
+			OutName:         "SmolLM2-135M-Instruct-Q4_K_M",
+			State:           "downloading",
+			Stage:           "verifying",
+			DownloadedBytes: total,
+			TotalBytes:      &total,
+		},
+		{
+			TaskId:          "model-cancelled",
+			Kind:            "model",
+			DisplayName:     "Qwen3-0.6B-Q8_0（GGUF）",
+			OutName:         "Qwen3-0.6B-Q8_0",
+			State:           "cancelled",
+			DownloadedBytes: 1024,
+			TotalBytes:      &total,
+		},
+	}
+	tt := ui.NewTester(func(c *ui.Context) { ui.Column(c).Children(func() { s.downloadsView(c) }) }, 1000, 1400)
+	for _, want := range []string{
+		"llama-server · macOS arm64",
+		"50.00 MiB / 100.00 MiB",
+		"50.0%",
+		"10.00 MiB/s",
+		"剩余 5s",
+		"SmolLM2-135M-Instruct-Q4_K_M（GGUF）",
+		"校验中",
+		"Qwen3-0.6B-Q8_0（GGUF）",
+		"继续下载",
+	} {
+		if !tt.HasText(want) {
+			t.Fatalf("missing %q in %v", want, tt.Texts())
+		}
+	}
+	if _, ok := tt.Find("下载进度"); !ok {
+		t.Fatalf("determinate progress bar missing: %v", tt.Texts())
+	}
+	if _, ok := tt.Find("下载任务活动"); ok {
+		t.Fatalf("unexpected indeterminate bar when total_bytes is known: %v", tt.Texts())
+	}
+}

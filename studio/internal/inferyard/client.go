@@ -1,9 +1,11 @@
 package inferyard
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os/exec"
 	"strings"
 	"time"
@@ -76,6 +78,14 @@ type Execution struct {
 }
 
 func (c Client) Exec(ctx context.Context, args ...string) (Execution, error) {
+	return c.run(ctx, nil, args...)
+}
+
+func (c Client) ExecStream(ctx context.Context, onStderrLine func(string), args ...string) (Execution, error) {
+	return c.run(ctx, onStderrLine, args...)
+}
+
+func (c Client) run(ctx context.Context, onStderrLine func(string), args ...string) (Execution, error) {
 	out := Execution{ExitCode: -1, Status: Unknown}
 	if err := ctx.Err(); err != nil {
 		out.Status = Cancelled
@@ -89,8 +99,33 @@ func (c Client) Exec(ctx context.Context, args ...string) (Execution, error) {
 	cmd.Dir = c.Dir
 	prepareProcess(cmd)
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	cmd.Stdout = &stdout
+	var pw *io.PipeWriter
+	var scanDone chan struct{}
+	if onStderrLine != nil {
+		var pr *io.PipeReader
+		pr, pw = io.Pipe()
+		cmd.Stderr = pw
+		scanDone = make(chan struct{})
+		go func() {
+			defer close(scanDone)
+			tee := io.TeeReader(pr, &stderr)
+			scanner := bufio.NewScanner(tee)
+			scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+			for scanner.Scan() {
+				onStderrLine(scanner.Text())
+			}
+			_, _ = io.Copy(io.Discard, tee)
+			_ = pr.Close()
+		}()
+	} else {
+		cmd.Stderr = &stderr
+	}
 	if err := cmd.Start(); err != nil {
+		if pw != nil {
+			_ = pw.Close()
+			<-scanDone
+		}
 		return out, err
 	}
 	done := make(chan error, 1)
@@ -120,6 +155,10 @@ func (c Client) Exec(ctx context.Context, args ...string) (Execution, error) {
 			}
 			timer.Stop()
 		}
+	}
+	if pw != nil {
+		_ = pw.Close()
+		<-scanDone
 	}
 	out.Stdout, out.Stderr = stdout.Bytes(), stderr.Bytes()
 	out.ExitCode = cmd.ProcessState.ExitCode()

@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"math"
 	"slices"
 
 	"github.com/egoist/mygo/ui"
@@ -32,22 +33,102 @@ func (s *viewState) downloadsView(c *ui.Context) {
 	}
 }
 
+func downloadDisplayName(task core.DownloadTask) string {
+	if task.DisplayName != "" {
+		return task.DisplayName
+	}
+	return task.OutName
+}
+
+func downloadStageLabel(stage string) string {
+	switch stage {
+	case "downloading":
+		return "下载中"
+	case "verifying":
+		return "校验中"
+	case "extracting":
+		return "解压中"
+	case "preparing":
+		return "准备中"
+	}
+	return ""
+}
+
+func formatDownloadBytes(v int64) string {
+	switch {
+	case v >= 1073741824:
+		return fmt.Sprintf("%.2f GiB", float64(v)/1073741824)
+	case v >= 1048576:
+		return fmt.Sprintf("%.2f MiB", float64(v)/1048576)
+	case v >= 1024:
+		return fmt.Sprintf("%.1f KiB", float64(v)/1024)
+	default:
+		return fmt.Sprintf("%d B", v)
+	}
+}
+
+func formatDownloadETA(seconds float64) string {
+	if math.IsNaN(seconds) || math.IsInf(seconds, 0) || seconds < 1 {
+		return "即将完成"
+	}
+	total := int64(math.Round(seconds))
+	if total < 60 {
+		return fmt.Sprintf("%ds", total)
+	}
+	if total < 3600 {
+		return fmt.Sprintf("%dm %ds", total/60, total%60)
+	}
+	return fmt.Sprintf("%dh %dm", total/3600, (total%3600)/60)
+}
+
 func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 	kind := "模型"
 	if task.Kind == "engine" {
 		kind = "引擎"
 	}
-	metrics := []taskMetric{
-		{"已观测", fmt.Sprintf("%.2f MiB", float64(task.DownloadedBytes)/1048576), ""},
-		{"速率", "缺测", "无速率读数"},
-		{"总量", "总量未知", ""},
-	}
-	if task.BytesPerSecond != nil {
-		metrics[1] = taskMetric{"速率", formatRate(*task.BytesPerSecond), ""}
-	}
-	status := ""
-	if task.Kind == "engine" {
-		metrics, status = nil, engineTaskStatus(task)
+	engineIndeterminate := task.Kind == "engine" && task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil && task.Stage == ""
+	var metrics []taskMetric
+	var status string
+	active := task.State == "downloading"
+	switch {
+	case engineIndeterminate:
+		status = engineTaskStatus(task)
+	case task.TotalBytes != nil:
+		total := *task.TotalBytes
+		pct := progressValue(task.DownloadedBytes, task.TotalBytes) * 100
+		if pct < 0 {
+			pct = 0
+		}
+		stageText := downloadStageLabel(task.Stage)
+		if stageText == "" {
+			stageText = stateLabel(task.State)
+		}
+		rateVal, rateReason := "缺测", "无速率读数"
+		if task.BytesPerSecond != nil {
+			rateVal = formatRate(*task.BytesPerSecond)
+			rateReason = ""
+			if task.State == "downloading" && *task.BytesPerSecond > 0 && task.DownloadedBytes < total && (task.Stage == "" || task.Stage == "downloading") {
+				rateReason = "剩余 " + formatDownloadETA(float64(total-task.DownloadedBytes)/(*task.BytesPerSecond))
+			}
+		} else if task.State == "downloading" && task.Stage != "" && task.Stage != "downloading" {
+			rateVal, rateReason = stageText, ""
+		}
+		metrics = []taskMetric{
+			{"进度", fmt.Sprintf("%s / %s", formatDownloadBytes(task.DownloadedBytes), formatDownloadBytes(total)), fmt.Sprintf("%.1f%%", pct)},
+			{"速率", rateVal, rateReason},
+			{"阶段", stageText, ""},
+		}
+		active = false
+	default:
+		stageReason := downloadStageLabel(task.Stage)
+		metrics = []taskMetric{
+			{"已观测", formatDownloadBytes(task.DownloadedBytes), stageReason},
+			{"速率", "缺测", "无速率读数"},
+			{"总量", "总量未知", ""},
+		}
+		if task.BytesPerSecond != nil {
+			metrics[1] = taskMetric{"速率", formatRate(*task.BytesPerSecond), ""}
+		}
 	}
 	color := stateColor(c, stateNeutral)
 	switch task.State {
@@ -60,11 +141,16 @@ func (s *viewState) downloadTaskCard(c *ui.Context, task core.DownloadTask) {
 	}
 	ui.Column(c.Key(task.TaskId)).Children(func() {
 		taskCard(c, taskCardOptions{
-			kind: kind, name: task.OutName, state: stateLabel(task.State), color: color,
-			active:  task.State == "downloading",
+			kind: kind, name: downloadDisplayName(task), state: stateLabel(task.State), color: color,
+			active:  active,
 			metrics: metrics,
 			status:  status,
-			notice:  func() { downloadErrorView(c, task.Error) },
+			notice: func() {
+				if task.State == "downloading" && task.TotalBytes != nil {
+					progressBar(c, progressValue(task.DownloadedBytes, task.TotalBytes), "下载进度").Height(tokens(c).Density.Tight)
+				}
+				downloadErrorView(c, task.Error)
+			},
 			actions: func() { s.downloadActions(c, task) },
 			details: func() { downloadDetails(c, task) },
 		})
@@ -102,6 +188,18 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 			})
 		}
 	}
+	if task.State == "cancelled" {
+		button(c, "继续下载").Disabled(s.busy).OnClick(func() {
+			if s.simulate(previewRetryDownload{id: task.TaskId}) {
+				return
+			}
+			s.work(func() (string, *core.ApiError) {
+				_, e := s.service.RetryDownload(task.TaskId)
+				return "已继续下载任务", e
+			})
+		})
+		return
+	}
 	if task.State != "failed" {
 		return
 	}
@@ -110,12 +208,7 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 			return
 		}
 		s.work(func() (string, *core.ApiError) {
-			var e *core.ApiError
-			if task.Kind == "engine" {
-				_, e = s.service.CreateEngineDownload(task.SourceUrl, "")
-			} else {
-				_, e = s.service.CreateModelDownload(core.CreateDownloadRequest{SourceUrl: task.SourceUrl}, "")
-			}
+			_, e := s.service.RetryDownload(task.TaskId)
 			return "已重新创建下载任务", e
 		})
 	})
@@ -124,10 +217,14 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 func downloadDetails(c *ui.Context, task core.DownloadTask) {
 	ui.Text(c, "实际目录名："+task.OutName).Selectable()
 	ui.Text(c, "文件："+displayName(text(task.FileName)))
-	if task.Kind == "engine" {
+	if task.Kind == "engine" && task.TotalBytes == nil && task.DownloadedBytes == 0 && task.BytesPerSecond == nil {
 		ui.Text(c, "已下载 缺测 · 速率 缺测")
 	} else {
-		ui.Text(c, fmt.Sprintf("已下载 %d bytes", task.DownloadedBytes))
+		if task.TotalBytes != nil {
+			ui.Text(c, fmt.Sprintf("已下载 %d / %d bytes", task.DownloadedBytes, *task.TotalBytes))
+		} else {
+			ui.Text(c, fmt.Sprintf("已下载 %d bytes", task.DownloadedBytes))
+		}
 		if task.BytesPerSecond != nil {
 			ui.Text(c, fmt.Sprintf("速率 %s bytes/s", groupedInt(int64(*task.BytesPerSecond))))
 		}
@@ -142,7 +239,7 @@ func downloadDetails(c *ui.Context, task core.DownloadTask) {
 		ui.Text(c, "错误码："+task.Error.Code).Selectable()
 	}
 	if task.State == "failed" || task.State == "cancelled" {
-		ui.Text(c, "输出目录保留；再次下载自动使用新目录名。")
+		ui.Text(c, "输出目录与未完成分片保留；重试时将自动续传或使用新目录名。")
 	}
 }
 

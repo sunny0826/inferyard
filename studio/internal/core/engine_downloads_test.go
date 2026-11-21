@@ -3,12 +3,15 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"inferyard/studio/internal/inferyard"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 const engineSource = "https://example.test/engine.tar.gz"
@@ -105,6 +108,7 @@ func TestEngineDownloadLifecycleAndCatalogArgs(t *testing.T) {
 		"--source", entry.URL,
 		"--out", expectedDir,
 		"--expected-sha256", entry.SHA256,
+		"--progress-stream",
 	}
 	mu.Lock()
 	actualArgs := slices.Clone(gotArgs)
@@ -199,6 +203,7 @@ func TestEngineDownloadWindowsCUDAArgsAndCustomURL(t *testing.T) {
 		"--profile", cuda.Profile,
 		"--runtime-source", cuda.RuntimeURL,
 		"--runtime-expected-sha256", cuda.RuntimeSHA256,
+		"--progress-stream",
 	}
 	if !slices.Equal(recorded[cuda.URL], wantCUDA) {
 		t.Fatalf("cuda args = %v, want %v", recorded[cuda.URL], wantCUDA)
@@ -207,6 +212,7 @@ func TestEngineDownloadWindowsCUDAArgsAndCustomURL(t *testing.T) {
 		"engine", "prepare",
 		"--source", engineSource,
 		"--out", t2.OutDir,
+		"--progress-stream",
 	}
 	if !slices.Equal(recorded[engineSource], wantCustom) {
 		t.Fatalf("custom args = %v, want %v", recorded[engineSource], wantCustom)
@@ -265,4 +271,182 @@ func TestEngineDownloadCancellationBlockedAndCLIUnavailable(t *testing.T) {
 	if _, e := unavailable.CreateEngineDownload(engineSource, "no-cli"); e == nil || e.Code != "cli_unavailable" {
 		t.Fatalf("cli_unavailable = %+v", e)
 	}
+}
+
+func TestStreamProgressAndDownloadNaming(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	entry, ok := CatalogEntryByID("engine-macos-arm64")
+	if !ok {
+		t.Fatal("missing catalog entry engine-macos-arm64")
+	}
+	modelEntry, ok := CatalogEntryByID("model-smollm2-135m")
+	if !ok {
+		t.Fatal("missing catalog entry model-smollm2-135m")
+	}
+	if got := SuggestDownloadSlug("model", modelEntry.URL); got != "SmolLM2-135M-Instruct-Q4_K_M" {
+		t.Fatalf("model slug = %q", got)
+	}
+	if got := SuggestDownloadSlug("engine", entry.URL); got != "llama-prism-b10743" {
+		t.Fatalf("engine slug = %q", got)
+	}
+	if got := ResolveDownloadDisplayName("model", modelEntry.URL); got != modelEntry.DisplayName() {
+		t.Fatalf("model display name = %q", got)
+	}
+
+	gate := make(chan struct{})
+	s, err := New(context.Background(), Options{
+		SettingsPath: filepath.Join(t.TempDir(), "settings.json"),
+		Execute: func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+			if v, ok := version(args); ok {
+				return v, nil
+			}
+			return result(inferyard.ExitBlocked), nil
+		},
+		ExecStream: func(ctx context.Context, onLine func(string), _ string, args ...string) (inferyard.Execution, error) {
+			if len(args) >= 2 && args[0] == "engine" && args[1] == "prepare" {
+				outDir := ""
+				for i := 0; i+1 < len(args); i++ {
+					if args[i] == "--out" {
+						outDir = args[i+1]
+					}
+				}
+				onLine(`{"event":"transfer.progress","stage":"downloading","downloaded_bytes":500,"total_bytes":1000,"bytes_per_second":250.5}`)
+				<-gate
+				onLine(`{"event":"transfer.progress","stage":"extracting","downloaded_bytes":1000,"total_bytes":1000,"bytes_per_second":null}`)
+				engPath := filepath.Join(outDir, "dist", "llama-server")
+				_ = os.MkdirAll(filepath.Dir(engPath), 0o755)
+				_ = os.WriteFile(engPath, []byte("#!/bin/sh\n"), 0o755)
+				return enginePrepareResult(engPath, 1000, strings.Repeat("a", 64)), nil
+			}
+			return inferyard.Execution{}, nil
+		},
+		HostStatePath: filepath.Join(t.TempDir(), "host.json"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Shutdown(context.Background()) })
+	s.settings.InferyardPath = ptr(os.Args[0])
+	ws := t.TempDir()
+	s.settings.WorkspaceRoot = &ws
+
+	task, apiErr := s.CreateEngineDownload(entry.URL, "")
+	if apiErr != nil {
+		t.Fatal(apiErr)
+	}
+	if task.OutName != "llama-prism-b10743" || task.DisplayName != entry.DisplayName() {
+		t.Fatalf("task naming = %+v", task)
+	}
+	wait(t, func() bool {
+		ds := s.Downloads()
+		return len(ds) == 1 && ds[0].DownloadedBytes == 500 && ds[0].ProgressReason == nil
+	})
+	mid := s.Downloads()[0]
+	raw, _ := json.Marshal(mid)
+	var obj map[string]any
+	_ = json.Unmarshal(raw, &obj)
+	if obj["downloaded_bytes"] != float64(500) || obj["total_bytes"] != float64(1000) || obj["bytes_per_second"] != float64(250.5) || obj["stage"] != "downloading" {
+		t.Fatalf("marshaled engine progress = %s", raw)
+	}
+	close(gate)
+	wait(t, func() bool { return s.Downloads()[0].State == "done" })
+
+	reg := s.Registry()
+	if len(reg.Engines) == 0 || reg.Engines[0].Name != "llama-prism-b10743 · llama-server" {
+		t.Fatalf("registry engines = %+v", reg.Engines)
+	}
+}
+
+func TestRetryDownloadPreservesTokenEnvAndResumesPart(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	source := "https://huggingface.co/unsloth/SmolLM2-135M-Instruct-GGUF/blob/9e6855bc4be717fca1ef21360a1db4b29d5c559a/SmolLM2-135M-Instruct-Q4_K_M.gguf"
+	var mu sync.Mutex
+	calls := [][]string{}
+	attempt := 0
+	s := testService(t, func(_ context.Context, _ string, args ...string) (inferyard.Execution, error) {
+		if v, ok := version(args); ok {
+			return v, nil
+		}
+		mu.Lock()
+		attempt++
+		cur := attempt
+		calls = append(calls, slices.Clone(args))
+		mu.Unlock()
+		outDir := args[len(args)-1]
+		_ = os.MkdirAll(outDir, 0o700)
+		part := filepath.Join(outDir, "SmolLM2-135M-Instruct-Q4_K_M.gguf.part")
+		if cur == 1 {
+			_ = os.WriteFile(part, []byte("partial-123"), 0o600)
+			return inferyard.Execution{
+				ExitCode: inferyard.ExitBlocked,
+				Stdout:   []byte(`{"command":"model acquire","status":"blocked","limitations":["model_acquire_incomplete"]}`),
+			}, nil
+		}
+		_ = os.Remove(part)
+		payload := `{"command":"model acquire","status":"prepared","completeness":"complete","details":{"bytes":20,"sha256":"` + strings.Repeat("a", 64) + `"}}`
+		return inferyard.Execution{ExitCode: inferyard.ExitComplete, Stdout: []byte(payload)}, nil
+	})
+	models := t.TempDir()
+	s.settings.ModelsRoot = &models
+
+	first, e := s.CreateModelDownload(CreateDownloadRequest{SourceUrl: source}, "MY_HF_TOKEN")
+	if e != nil {
+		t.Fatal(e)
+	}
+	wait(t, func() bool { return s.Downloads()[0].State == "failed" })
+
+	retried, e := s.RetryDownload(first.TaskId)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if retried.OutDir != first.OutDir || retried.DownloadedBytes != 11 {
+		t.Fatalf("retried = %+v, first = %+v", retried, first)
+	}
+	wait(t, func() bool { return s.Downloads()[0].State == "done" })
+
+	mu.Lock()
+	retryArgs := slices.Clone(calls[1])
+	mu.Unlock()
+	if !slices.Contains(retryArgs, "--resume") || !slices.Contains(retryArgs, "--token-env") || !slices.Contains(retryArgs, "MY_HF_TOKEN") {
+		t.Fatalf("retry args missing resume/token: %v", retryArgs)
+	}
+	if _, e := s.RetryDownload(retried.TaskId); e == nil || e.Details["reason"] != "invalid_state" {
+		t.Fatalf("retry done task = %+v", e)
+	}
+	if _, e := s.RetryDownload("missing-id"); e == nil || e.Code != "not_found" {
+		t.Fatalf("retry missing = %+v", e)
+	}
+}
+
+func TestInferyardClientExecStreamRealProcess(t *testing.T) {
+	path, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var lines []string
+	out, err := (inferyard.Client{Path: path}).ExecStream(ctx, func(line string) {
+		lines = append(lines, line)
+	}, "-test.run=^TestExecStreamHelperProcess$", "--", "stream-helper")
+	if err != nil || out.ExitCode != 0 {
+		t.Fatalf("ExecStream failed: out=%+v err=%v", out, err)
+	}
+	if !slices.Equal(lines, []string{`{"event":"transfer.progress","stage":"downloading"}`, `{"event":"transfer.progress","stage":"verifying"}`}) {
+		t.Fatalf("lines = %v", lines)
+	}
+	if !strings.Contains(string(out.Stderr), "verifying") || strings.TrimSpace(string(out.Stdout)) != "stdout-ok" {
+		t.Fatalf("stdout=%q stderr=%q", out.Stdout, out.Stderr)
+	}
+}
+
+func TestExecStreamHelperProcess(t *testing.T) {
+	args := os.Args
+	if len(args) < 2 || args[len(args)-1] != "stream-helper" {
+		return
+	}
+	fmt.Fprintln(os.Stderr, `{"event":"transfer.progress","stage":"downloading"}`)
+	fmt.Fprintln(os.Stderr, `{"event":"transfer.progress","stage":"verifying"}`)
+	fmt.Fprintln(os.Stdout, "stdout-ok")
+	os.Exit(0)
 }

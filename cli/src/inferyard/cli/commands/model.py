@@ -22,3 +22,15 @@ def add_commands(commands):
         default=1800,
         help="positive finite seconds per network operation (default: 1800)",
     )
+    acquire.add_argument(
+        "--progress-stream",
+        dest="progress_stream",
+        action="store_true",
+        help="emit single-line JSON transfer progress events on stderr",
+    )
+    acquire.add_argument(
+        "--resume",
+        dest="resume_transfer",
+        action="store_true",
+        help="resume an incomplete .part download when present",
+    )

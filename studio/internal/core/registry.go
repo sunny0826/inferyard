@@ -40,7 +40,7 @@ type EngineAsset struct {
 type registryEntry struct {
 	path, source         string
 	installation, family string
-	receipt              string
+	receipt, displayName string
 	model                ModelAsset
 	engine               EngineAsset
 	modified, downloaded time.Time
@@ -85,12 +85,73 @@ func scanEngineBinaries(roots ...string) []registryEntry {
 				return nil
 			}
 			seen[identity] = true
-			entries = append(entries, registryEntry{path: path, source: root, receipt: engineReceipt(path), modified: info.ModTime()})
+			entries = append(entries, registryEntry{path: path, source: root, receipt: engineReceipt(path), displayName: engineReadableName(path, "", ""), modified: info.ModTime()})
 			return nil
 		})
 	}
 	sort.SliceStable(entries, func(i, j int) bool { return entries[i].modified.After(entries[j].modified) })
 	return entries
+}
+
+func engineReadableName(enginePath, folder, sourceURL string) string {
+	dir := filepath.Dir(enginePath)
+	var mode, release, prepareOut, prepareURL string
+	for _, root := range []string{dir, filepath.Dir(dir)} {
+		if raw, err := os.ReadFile(filepath.Join(root, "runtime-receipt.json")); err == nil {
+			var doc struct {
+				Mode          string `json:"mode"`
+				EngineRelease string `json:"engine_release"`
+			}
+			if json.Unmarshal(raw, &doc) == nil && (doc.Mode != "" || doc.EngineRelease != "") {
+				mode, release = doc.Mode, doc.EngineRelease
+				if folder == "" {
+					folder = filepath.Base(root)
+				}
+			}
+		}
+		if raw, err := os.ReadFile(filepath.Join(root, "engine-prepare.json")); err == nil {
+			var doc struct {
+				SourceURL string `json:"source_url"`
+				Out       string `json:"out"`
+			}
+			if json.Unmarshal(raw, &doc) == nil && (doc.SourceURL != "" || doc.Out != "") {
+				prepareURL, prepareOut = doc.SourceURL, doc.Out
+				if folder == "" {
+					if prepareOut != "" {
+						folder = filepath.Base(prepareOut)
+					} else {
+						folder = filepath.Base(root)
+					}
+				}
+			}
+		}
+	}
+	if sourceURL == "" {
+		sourceURL = prepareURL
+	}
+	if folder == "" && sourceURL == "" {
+		return ""
+	}
+	entry, inCatalog := CatalogEntryByURL(sourceURL)
+	prefix := folder
+	if prefix == "" || prefix == "engine" {
+		switch {
+		case release != "":
+			prefix = release
+		case inCatalog && entry.Revision != "":
+			prefix = entry.Revision
+		case sourceURL != "":
+			prefix = SuggestDownloadSlug("engine", sourceURL)
+		}
+	}
+	if prefix == "" {
+		return ""
+	}
+	bin := filepath.Base(enginePath)
+	if strings.EqualFold(mode, "cuda") || (inCatalog && entry.RuntimeURL != "") {
+		return prefix + " · CUDA · " + bin
+	}
+	return prefix + " · " + bin
 }
 
 func engineReceipt(enginePath string) string {
@@ -257,7 +318,7 @@ func (s *Service) registry() registryData {
 				continue
 			}
 			completed, _ := time.Parse(time.RFC3339Nano, str(task.FinishedAt))
-			entry := registryEntry{path: path, source: "引擎下载 · " + filepath.Base(task.OutDir), receipt: engineReceipt(path), modified: info.ModTime(), downloaded: completed}
+			entry := registryEntry{path: path, source: "引擎下载 · " + filepath.Base(task.OutDir), receipt: engineReceipt(path), displayName: engineReadableName(path, filepath.Base(task.OutDir), task.SourceUrl), modified: info.ModTime(), downloaded: completed}
 			if i, found := engines[path]; found {
 				data.engines[i] = entry
 			} else {
@@ -318,6 +379,9 @@ func nameEntries(entries []registryEntry, engine bool) {
 		name := filepath.Base(e.path)
 		if engine {
 			name = filepath.Base(filepath.Dir(e.path)) + " · " + name
+			if e.displayName != "" {
+				name = e.displayName
+			}
 			if e.installation != "" {
 				name = e.family + " · " + filepath.Base(e.installation)
 			}
