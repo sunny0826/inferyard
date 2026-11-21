@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -379,8 +380,26 @@ def test_real_python_venv_init_installation_verifies_via_freeze(
         )
     )
     assert code == 0, res
-    assert res.details["verified"] is True
+    expected_verified = platform.system() == "Darwin" and platform.machine() == "arm64"
+    assert res.details["verified"] is expected_verified
     assert out_json.is_file()
+
+    monkeypatch.setattr("platform.system", lambda: "Linux")
+    linux_json = tmp_path / "mlx-linux.json"
+    linux_code, linux_res = execute(
+        SimpleNamespace(
+            command="engine init-installation",
+            family="mlx-lm",
+            executable=venv / "bin" / "python",
+            out=linux_json,
+            working_directory=None,
+            runtime_roots=None,
+            models_root=None,
+        )
+    )
+    assert linux_code == 0, linux_res
+    assert linux_res.details["verified"] is False
+    assert linux_json.is_file()
 
 
 def test_cold_import_safety() -> None:
