@@ -45,7 +45,8 @@ func (s *Service) RefreshAssets() *ApiError {
 		return Conflict("refresh_in_progress")
 	}
 	u := clone(s.settings)
-	if u.ModelsRoot == nil {
+	roots := allModelsRoots(u)
+	if len(roots) == 0 {
 		s.mu.Unlock()
 		return Conflict("settings_incomplete")
 	}
@@ -61,7 +62,8 @@ func (s *Service) RefreshAssets() *ApiError {
 		if p.Status != "ok" {
 			failure = Err("cli_unavailable")
 		} else {
-			out, e := s.exec(s.ctx, *p.Path, "assets", "scan", "--models-root", *u.ModelsRoot)
+			scanArgs := append([]string{"assets", "scan"}, modelsRootCLIArgs(roots)...)
+			out, e := s.exec(s.ctx, *p.Path, scanArgs...)
 			if e != nil {
 				if errors.Is(e, os.ErrNotExist) || errors.Is(e, exec.ErrNotFound) {
 					outdated = true

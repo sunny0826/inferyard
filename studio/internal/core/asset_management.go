@@ -16,8 +16,7 @@ type SuggestedModelDir struct {
 }
 
 func extraModelsRootsOf(u UserSettings) []string {
-	_ = u
-	return nil
+	return append([]string(nil), u.ExtraModelsRoots...)
 }
 
 func (s *Service) extraModelsRoots() []string {

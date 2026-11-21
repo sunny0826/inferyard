@@ -11,7 +11,7 @@ import (
 
 var resolvableRepoPart = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
-func (s *Service) downloadProxy() string { return "" }
+func (s *Service) downloadProxy() string { return str(s.userSettings().DownloadProxy) }
 
 func ValidateDownloadProxy(raw string) bool {
 	if raw == "" {

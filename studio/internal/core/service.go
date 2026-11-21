@@ -313,15 +313,31 @@ func reportsRoot(u UserSettings) *string {
 func (s *Service) Settings() SettingsResponse {
 	u := s.userSettings()
 	p := s.probe(u)
-	return SettingsResponse{u, EffectiveSettings{workspaceRoot(u), p.Path, p.Version, p.Status, u.ResultsRoot, u.ModelsRoot, reportsRoot(u)}}
+	return SettingsResponse{u, EffectiveSettings{
+		WorkspaceRoot:    workspaceRoot(u),
+		InferyardPath:    p.Path,
+		InferyardVersion: p.Version,
+		InferyardStatus:  p.Status,
+		ResultsRoot:      u.ResultsRoot,
+		ModelsRoot:       u.ModelsRoot,
+		ExtraModelsRoots: append([]string(nil), u.ExtraModelsRoots...),
+		DownloadProxy:    u.DownloadProxy,
+		ReportsRoot:      reportsRoot(u),
+	}}
 }
 func (s *Service) UpdateSettings(patch map[string]json.RawMessage) (SettingsResponse, *ApiError) {
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
 	u := s.userSettings()
 	for k, v := range patch {
-		if s.paths != nil && k != "model_download_name" && k != "engine_download_name" {
+		if s.paths != nil && k != "model_download_name" && k != "engine_download_name" && k != "download_proxy" {
 			return SettingsResponse{}, Conflict("paths_bound")
+		}
+		if handled, apiErr := applySettingsPatchExtra(&u, k, v); handled {
+			if apiErr != nil {
+				return SettingsResponse{}, apiErr
+			}
+			continue
 		}
 		if k == "model_download_name" || k == "engine_download_name" {
 			var name string
@@ -391,7 +407,7 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 	}
 	s.mu.Lock()
 	changed := str(u.ResultsRoot) != str(s.settings.ResultsRoot)
-	modelsChanged := str(u.ModelsRoot) != str(s.settings.ModelsRoot)
+	modelsChanged := str(u.ModelsRoot) != str(s.settings.ModelsRoot) || !slicesEqualStrings(u.ExtraModelsRoots, s.settings.ExtraModelsRoots)
 	if modelsChanged {
 		s.deviceGeneration++
 		s.device.Snapshot = nil
@@ -415,7 +431,7 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 	if changed {
 		go s.rebuild(u)
 	}
-	if modelsChanged && u.ModelsRoot != nil {
+	if modelsChanged && len(allModelsRoots(u)) > 0 {
 		s.RefreshAssets()
 		s.RefreshDevice()
 	}
@@ -446,7 +462,8 @@ func (s *Service) RefreshDevice() *ApiError {
 		return Conflict("refresh_in_progress")
 	}
 	u := clone(s.settings)
-	if u.ModelsRoot == nil {
+	roots := allModelsRoots(u)
+	if len(roots) == 0 {
 		s.mu.Unlock()
 		return Conflict("settings_incomplete")
 	}
@@ -460,7 +477,8 @@ func (s *Service) RefreshDevice() *ApiError {
 		if p.Status != "ok" {
 			failure = Err("cli_unavailable")
 		} else {
-			out, e := s.exec(s.ctx, *p.Path, "device-check", "--json", "--models-root", *u.ModelsRoot)
+			deviceArgs := append([]string{"device-check", "--json"}, modelsRootCLIArgs(roots)...)
+			out, e := s.exec(s.ctx, *p.Path, deviceArgs...)
 			if e != nil {
 				failure = Err("internal_error")
 			} else if out.ExitCode != 0 && out.ExitCode != 2 {

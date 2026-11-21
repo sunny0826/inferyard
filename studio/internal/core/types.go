@@ -28,20 +28,24 @@ type UserSettings struct {
 	EngineInstallations []string `json:"engine_installations,omitempty"`
 	ModelDownloadName   string   `json:"model_download_name"`
 	EngineDownloadName  string   `json:"engine_download_name"`
+	DownloadProxy       *string  `json:"download_proxy,omitempty"`
 	WorkspaceRoot       *string  `json:"workspace_root"`
 	InferyardPath       *string  `json:"inferyard_path"`
 	ResultsRoot         *string  `json:"results_root"`
 	ModelsRoot          *string  `json:"models_root"`
+	ExtraModelsRoots    []string `json:"extra_models_roots,omitempty"`
 }
 
 type EffectiveSettings struct {
-	WorkspaceRoot    *string `json:"workspace_root"`
-	InferyardPath    *string `json:"inferyard_path"`
-	InferyardVersion *string `json:"inferyard_version"`
-	InferyardStatus  string  `json:"inferyard_status"`
-	ResultsRoot      *string `json:"results_root"`
-	ModelsRoot       *string `json:"models_root"`
-	ReportsRoot      *string `json:"reports_root"`
+	WorkspaceRoot    *string  `json:"workspace_root"`
+	InferyardPath    *string  `json:"inferyard_path"`
+	InferyardVersion *string  `json:"inferyard_version"`
+	InferyardStatus  string   `json:"inferyard_status"`
+	ResultsRoot      *string  `json:"results_root"`
+	ModelsRoot       *string  `json:"models_root"`
+	ExtraModelsRoots []string `json:"extra_models_roots,omitempty"`
+	DownloadProxy    *string  `json:"download_proxy,omitempty"`
+	ReportsRoot      *string  `json:"reports_root"`
 }
 
 type SettingsResponse struct {

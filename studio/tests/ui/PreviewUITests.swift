@@ -73,7 +73,7 @@ final class PreviewUITests: XCTestCase {
         click("下载模型")
         expectText("已结束")
         click("模型")
-        let downloadedModel = "model · SmolLM2-135M-Instruct-Q4_K_M.gguf"
+        let downloadedModel = "model · Qwen3-0.6B-Q8_0.gguf"
         expectText(downloadedModel)
         XCTAssertFalse(app.popUpButtons["模型"].exists, "Models must not offer an inline pair selector")
         // The sidebar task entry switches to the current task without resetting

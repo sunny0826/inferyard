@@ -91,6 +91,28 @@ func (s *viewState) addExtraModelsRoot(dir string) {
 	if s.service == nil {
 		return
 	}
+	if s.win != nil {
+		s.workAs("add-models-root", func() (string, *core.ApiError) {
+			v, err := s.service.AddExtraModelsRoot(dir)
+			if err != nil {
+				return "", err
+			}
+			s.win.Update(func() {
+				s.settings = v
+				if !slices.ContainsFunc(s.registry.ModelRoots, func(r string) bool { return sameModelRoot(r, dir) }) {
+					s.registry.ModelRoots = append(s.registry.ModelRoots, dir)
+				}
+			})
+			return "已记录目录：" + dir, nil
+		})
+		return
+	}
+	v, err := s.service.AddExtraModelsRoot(dir)
+	if err != nil {
+		s.submissionFailed(err)
+		return
+	}
+	s.settings = v
 	if !slices.ContainsFunc(s.registry.ModelRoots, func(r string) bool { return sameModelRoot(r, dir) }) {
 		s.registry.ModelRoots = append(s.registry.ModelRoots, dir)
 	}
@@ -112,6 +134,28 @@ func (s *viewState) removeExtraModelsRoot(dir string) {
 	if s.service == nil {
 		return
 	}
+	if s.win != nil {
+		s.workAs("remove-models-root", func() (string, *core.ApiError) {
+			v, err := s.service.RemoveExtraModelsRoot(dir)
+			if err != nil {
+				return "", err
+			}
+			s.win.Update(func() {
+				s.settings = v
+				s.registry.ModelRoots = slices.DeleteFunc(s.registry.ModelRoots, func(r string) bool {
+					return sameModelRoot(r, dir)
+				})
+			})
+			return "已移除目录：" + dir, nil
+		})
+		return
+	}
+	v, err := s.service.RemoveExtraModelsRoot(dir)
+	if err != nil {
+		s.submissionFailed(err)
+		return
+	}
+	s.settings = v
 	s.registry.ModelRoots = slices.DeleteFunc(s.registry.ModelRoots, func(r string) bool {
 		return sameModelRoot(r, dir)
 	})
