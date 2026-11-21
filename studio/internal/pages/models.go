@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
 
@@ -18,37 +19,70 @@ func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''")
 func (s *viewState) modelsView(c *ui.Context) {
 	s.header(c, "模型")
 	card(c, "已安装的模型", func() {
+		t := tokens(c)
 		errorView(c, s.registry.ModelError)
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.CardGap).Children(func() {
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
 			button(c, "下载更多").OnClick(func() { s.selected = "downloads" })
 			refreshButton(c, "刷新", s.registry.Refreshing || s.refreshing).Disabled(s.registry.Refreshing || s.busy).OnClick(s.refreshAction)
 		})
 		if len(s.registry.Models) == 0 {
-			ui.Text(c, "尚未发现本地模型。")
-			button(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+			emptyGuideCard(c, emptyGuideOptions{
+				Icon:    lucide.Layers,
+				Title:   "尚未发现本地模型。",
+				Surface: emptySunken,
+				Action: func() {
+					button(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+				},
+			})
 			return
 		}
-		for _, model := range s.registry.Models {
-			ui.Column(c.Key(model.Name)).Gap(tokens(c).Density.Hairline).Children(func() {
-				ui.Text(c, modelLabel(model)).SingleLine()
-				ui.Text(c, modelDetails(model)).FontSize(tokens(c).Type.Caption).TextColor(c.Theme().TextMuted)
-				modelTaskAction(c, s, model)
-			})
-		}
+		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
+			for _, model := range s.registry.Models {
+				m := model
+				c.Key(m.Name)
+				listRow(c, listRowOptions{
+					Title:    modelLabel(m),
+					Subtitle: modelDetails(m),
+					Trailing: func() {
+						ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+							if !m.Available {
+								badge(c, "不可用", stateWarning, badgeOptions{Style: badgeDot, Size: sizeSM})
+							}
+							modelTaskAction(c, s, m)
+						})
+					},
+				})
+			}
+		})
 	})
 	card(c, "已安装的引擎", func() {
+		t := tokens(c)
 		if len(s.registry.Engines) == 0 {
-			ui.Text(c, "尚未发现可用引擎。")
-			button(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+			emptyGuideCard(c, emptyGuideOptions{
+				Icon:    lucide.Cpu,
+				Title:   "尚未发现可用引擎。",
+				Surface: emptySunken,
+				Action: func() {
+					button(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+				},
+			})
 			return
 		}
-		ui.Text(c, s.engineFit()).TextColor(c.Theme().TextMuted)
-		for _, engine := range s.registry.Engines {
-			ui.Column(c.Key(engine.Name)).Gap(tokens(c).Density.Hairline).Children(func() {
-				ui.Text(c, engine.Name).SingleLine()
-				ui.Text(c, s.engineStateLine(engine)).FontSize(tokens(c).Type.Caption).TextColor(c.Theme().TextMuted)
-			})
-		}
+		ui.Text(c, s.engineFit()).TextColor(t.Color.FgSecondary)
+		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
+			for _, engine := range s.registry.Engines {
+				eng := engine
+				c.Key(eng.Name)
+				listRow(c, listRowOptions{
+					Title:    eng.Name,
+					Subtitle: s.engineStateLine(eng),
+					Trailing: func() {
+						label, kind := s.engineBadgeState(eng)
+						badge(c, label, kind, badgeOptions{Style: badgeDot, Size: sizeSM})
+					},
+				})
+			}
+		})
 	})
 	card(c, "本机运行的服务", func() {
 		if len(s.registry.Models) == 0 || len(s.registry.Engines) == 0 {
@@ -102,6 +136,19 @@ func modelDetails(model core.ModelAsset) string {
 		return "未记录额外信息"
 	}
 	return joinParts(parts)
+}
+
+func (s *viewState) engineBadgeState(engine core.EngineAsset) (string, stateKind) {
+	switch s.eligibility(engine.Name).State {
+	case core.EngineCheckEligible:
+		return "已核验", stateSuccess
+	case core.EngineCheckChecking:
+		return "核验中", stateActive
+	case core.EngineCheckIneligible:
+		return "不可用", stateDanger
+	default:
+		return "未核验", stateNeutral
+	}
 }
 
 func (s *viewState) engineStateLine(engine core.EngineAsset) string {

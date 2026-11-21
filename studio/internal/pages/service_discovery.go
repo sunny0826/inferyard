@@ -56,19 +56,23 @@ func (s *viewState) managedServiceView(c *ui.Context) {
 		ui.Text(c, "状态："+stateLabel(state.State))
 	case state.State == "orphaned":
 		heading(c, "遗留服务记录（状态未确认）", 3)
-		ui.Text(c, "上次 Studio 留下的服务或记录，尚不能确认运行状态。").TextColor(stateColor(c, stateWarning))
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateWarning,
+			Size:    bannerCompact,
+			Message: "上次 Studio 留下的服务或记录，尚不能确认运行状态。",
+		})
 	default:
-		ui.Text(c, "暂无 Studio 启动的活动服务。")
+		ui.Text(c, "暂无 Studio 启动的活动服务。").TextColor(tokens(c).Color.FgSecondary)
 		return
 	}
 	if state.Candidate != "" {
-		ui.Text(c, "测评配置："+displayName(state.Candidate))
+		keyValueRow(c, "测评配置", displayName(state.Candidate), false)
 	}
 	if state.Pid > 0 {
-		ui.Text(c, fmt.Sprintf("PID %d", state.Pid))
+		keyValueRow(c, "PID", fmt.Sprintf("%d", state.Pid), true)
 	}
 	if state.Endpoint != "" {
-		ui.Text(c, loopbackEndpoint(state.Endpoint))
+		keyValueRow(c, "服务地址", loopbackEndpoint(state.Endpoint), false)
 	}
 }
 

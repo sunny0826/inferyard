@@ -3,6 +3,7 @@ package pages
 import (
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"github.com/oneo-me/onevra/source/shells/sidebar"
 )
 
@@ -55,15 +56,37 @@ func (s *viewState) leftNav(c *ui.Context) {
 	})
 }
 
+func newTaskButton(c *ui.Context, disabled bool) ui.Element {
+	t := tokens(c)
+	variant := components.ButtonPrimary
+	fg := t.Color.FgOnAccent
+	if disabled {
+		variant = components.ButtonOutline
+		fg = t.Color.FgSecondary
+	}
+	b := components.Button(c, "", variant).FillWidth().Label("新任务").
+		Padding(t.Density.Row, t.Density.Stack).Radius(t.Radius.MD)
+	if disabled {
+		b.Background(t.Color.Surface.Alpha(.65)).Border(1, t.Color.BorderDefault).Disabled(true)
+	}
+	b.Children(func() {
+		ui.Row(c).AlignItems(ui.Center).Justify(ui.Center).Gap(t.Density.Tight + 2).Children(func() {
+			components.Icon(c, lucide.Plus).Size(14, 14).TextColor(fg)
+			ui.Text(c, "新任务").Bold().FontSize(t.Type.Body).TextColor(fg).SingleLine()
+		})
+	})
+	return b
+}
+
 func (s *viewState) newTaskEntry(c *ui.Context) {
 	hint := s.newTaskEntryHint()
 	if hint == "" {
-		button(c, "新任务").FillWidth().OnClick(func() { s.newBenchmark() })
+		newTaskButton(c, false).OnClick(func() { s.newBenchmark() })
 		return
 	}
 	wrap := ui.Column(c).FillWidth()
 	wrap.Children(func() {
-		button(c, "新任务").FillWidth().Disabled(true).Description(hint)
+		newTaskButton(c, true).Description(hint)
 	})
 	components.Tooltip(c, wrap, hint)
 }
