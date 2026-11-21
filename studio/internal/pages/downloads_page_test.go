@@ -309,7 +309,7 @@ func TestCatalogChoicesUseRadioGroupWithCustomOption(t *testing.T) {
 	if s.modelURL != "" {
 		t.Fatalf("custom radio kept preset URL: %q", s.modelURL)
 	}
-	if !tt.HasText("模型 URL（固定 40 位 revision 的 GGUF）") {
+	if !tt.HasText("模型 URL（支持 HF / ModelScope /resolve 或 /blob）") {
 		t.Fatalf("custom URL field did not appear: %v", tt.Texts())
 	}
 }

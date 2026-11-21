@@ -5,6 +5,7 @@ from __future__ import annotations
 import errno
 import json
 import os
+import shutil
 import stat
 from collections.abc import Iterator
 from pathlib import Path
@@ -230,9 +231,43 @@ def _gguf_asset(path: Path, stem: str) -> dict:
     }
 
 
+def _disk_free_bytes(root: Path) -> int | None:
+    try:
+        resolved = root.resolve(strict=True)
+        if not resolved.is_dir():
+            return None
+        return int(shutil.disk_usage(resolved).free)
+    except OSError:
+        return None
+
+
+def _unique_roots(raw_roots) -> list[tuple[Path, str]]:
+    items: list[tuple[Path, str]] = []
+    seen: set[str] = set()
+    for raw in raw_roots or ():
+        if not raw:
+            continue
+        text = str(raw)
+        if not text.strip():
+            continue
+        path = Path(text)
+        key = _safe_resolve_text(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append((path, key))
+    return items
+
+
 def _scan_models_root(
-    root: Path, hub_roots: tuple[Path, ...], seen_paths: set[str], models: list[dict]
-) -> None:
+    root: Path,
+    hub_roots: tuple[Path, ...],
+    seen_paths: set[str],
+    models: list[dict],
+    model_sizes: dict[str, int],
+) -> int:
+    usage = 0
+    counted: set[str] = set()
     for root_real, current_dir, entries in _walk_bounded(root, MODEL_SCAN_DEPTH):
         allowed_roots = _allowed_roots_for_dir(current_dir, root_real, hub_roots)
         has_config = False
@@ -252,6 +287,10 @@ def _scan_models_root(
                 if asset["path"] not in seen_paths:
                     seen_paths.add(asset["path"])
                     models.append(asset)
+                    model_sizes[asset["path"]] = asset["size_bytes"] or 0
+                if asset["path"] not in counted:
+                    counted.add(asset["path"])
+                    usage += model_sizes.get(asset["path"], 0)
                 continue
             if entry.name.startswith("."):
                 continue
@@ -288,6 +327,11 @@ def _scan_models_root(
                         "reason": None if chat_ok else "chat_template_unavailable",
                     }
                 )
+                model_sizes[dir_key] = dir_size
+            if dir_key not in counted:
+                counted.add(dir_key)
+                usage += model_sizes.get(dir_key, 0)
+    return usage
 
 
 def _find_receipt(entry_path: Path, target_path: Path, root_real: Path) -> str | None:
@@ -306,7 +350,11 @@ def _find_receipt(entry_path: Path, target_path: Path, root_real: Path) -> str |
     return None
 
 
-def _scan_engine_root(root: Path, seen_paths: set[str], engines: list[dict]) -> None:
+def _scan_engine_root(
+    root: Path, seen_paths: set[str], engines: list[dict], engine_sizes: dict[str, int]
+) -> int:
+    usage = 0
+    counted: set[str] = set()
     for root_real, current_dir, entries in _walk_bounded(root, ENGINE_SCAN_DEPTH):
         for entry in entries:
             if entry.name.lower() not in ENGINE_BINARY_NAMES:
@@ -324,16 +372,20 @@ def _scan_engine_root(root: Path, seen_paths: set[str], engines: list[dict]) -> 
             if os.name != "nt" and (file_stat.st_mode & 0o111) == 0:
                 continue
             binary_path = _safe_resolve_text(resolved)
-            if binary_path in seen_paths:
-                continue
-            seen_paths.add(binary_path)
-            engines.append(
-                {
-                    "path": binary_path,
-                    "receipt": _find_receipt(entry_path, resolved, root_real),
-                    "modified_ns": int(file_stat.st_mtime_ns),
-                }
-            )
+            if binary_path not in seen_paths:
+                seen_paths.add(binary_path)
+                engine_sizes[binary_path] = int(file_stat.st_size)
+                engines.append(
+                    {
+                        "path": binary_path,
+                        "receipt": _find_receipt(entry_path, resolved, root_real),
+                        "modified_ns": int(file_stat.st_mtime_ns),
+                    }
+                )
+            if binary_path not in counted:
+                counted.add(binary_path)
+                usage += engine_sizes.get(binary_path, 0)
+    return usage
 
 
 def scan_assets(models_roots, engine_roots=()):
@@ -341,19 +393,39 @@ def scan_assets(models_roots, engine_roots=()):
     hub_roots = _hf_hub_cache_roots()
     models: list[dict] = []
     seen_models: set[str] = set()
-    for raw_root in models_roots or ():
-        if raw_root:
-            _scan_models_root(Path(raw_root), hub_roots, seen_models, models)
+    model_sizes: dict[str, int] = {}
+    roots: list[dict] = []
+    for root_path, root_text in _unique_roots(models_roots):
+        usage = _scan_models_root(root_path, hub_roots, seen_models, models, model_sizes)
+        roots.append(
+            {
+                "path": root_text,
+                "kind": "models",
+                "disk_usage_bytes": usage,
+                "disk_free_bytes": _disk_free_bytes(root_path),
+            }
+        )
     engines: list[dict] = []
     seen_engines: set[str] = set()
-    for raw_root in engine_roots or ():
-        if raw_root:
-            _scan_engine_root(Path(raw_root), seen_engines, engines)
+    engine_sizes: dict[str, int] = {}
+    for root_path, root_text in _unique_roots(engine_roots):
+        usage = _scan_engine_root(root_path, seen_engines, engines, engine_sizes)
+        roots.append(
+            {
+                "path": root_text,
+                "kind": "engines",
+                "disk_usage_bytes": usage,
+                "disk_free_bytes": _disk_free_bytes(root_path),
+            }
+        )
     models.sort(key=lambda item: item["path"])
     engines.sort(key=lambda item: (-item["modified_ns"], item["path"]))
+    total_model_bytes = sum((item["size_bytes"] or 0) for item in models)
     return {
         "definition": "asset-scan.v1",
         "models": models,
         "engines": engines,
+        "roots": roots,
+        "total_model_bytes": total_model_bytes,
         "model_requests_sent": 0,
     }

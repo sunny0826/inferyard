@@ -34,3 +34,28 @@ def add_commands(commands):
         action="store_true",
         help="resume an incomplete .part download when present",
     )
+    acquire.add_argument(
+        "--proxy-origin",
+        dest="proxy_origin",
+        help="explicit http(s) proxy origin (scheme://host[:port])",
+    )
+    resolve = actions.add_parser(
+        "resolve", help="resolve one HF/ModelScope GGUF URL to a pinned revision"
+    )
+    resolve.set_defaults(command="model resolve")
+    resolve.add_argument("--source", dest="model_source_url", required=True)
+    resolve.add_argument(
+        "--token-env", dest="model_token_env", help="environment variable name only"
+    )
+    resolve.add_argument(
+        "--timeout-seconds",
+        dest="model_timeout_seconds",
+        type=float,
+        default=30,
+        help="positive finite seconds per network operation (default: 30)",
+    )
+    resolve.add_argument(
+        "--proxy-origin",
+        dest="proxy_origin",
+        help="explicit http(s) proxy origin (scheme://host[:port])",
+    )

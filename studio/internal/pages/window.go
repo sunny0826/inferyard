@@ -165,7 +165,7 @@ type viewState struct {
 	engineFailureCleared                                                                string
 	localUsedPIDs                                                                       map[int64]bool
 	localPendingPIDs                                                                    map[string]int64
-	modelURL, modelName, tokenEnv, engineURL, engineName                                string
+	modelURL, modelName, tokenEnv, engineURL, engineName, downloadProxy                   string
 	historyTable                                                                        pageTableState
 	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState

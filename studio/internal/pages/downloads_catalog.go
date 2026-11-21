@@ -15,6 +15,10 @@ type catalogChoiceState struct {
 	customURL string
 }
 
+func matchesCatalogEntry(entry core.CatalogEntry, target string) bool {
+	return target == entry.URL || (entry.MirrorURL != "" && target == entry.MirrorURL)
+}
+
 func (s *viewState) catalogChoices(c *ui.Context, kind core.CatalogKind, platform, customLabel string, customField func()) {
 	t := tokens(c)
 	target := &s.engineURL
@@ -24,24 +28,28 @@ func (s *viewState) catalogChoices(c *ui.Context, kind core.CatalogKind, platfor
 		groupLabel = "推荐模型"
 	}
 	entries := []core.CatalogEntry{}
-	matchesPreset := false
+	var matchedEntry *core.CatalogEntry
 	for _, entry := range core.CatalogForPlatform(platform) {
 		if entry.Kind != kind || !entry.Downloadable() {
 			continue
 		}
 		entries = append(entries, entry)
-		if *target == entry.URL {
-			matchesPreset = true
+		if matchesCatalogEntry(entry, *target) {
+			matched := entry
+			matchedEntry = &matched
 		}
 	}
 	container := ui.Column(c.Key("catalog-" + string(kind))).FillWidth().Gap(t.Density.Stack)
 	state := ui.Local(container, "catalog-choice", func() catalogChoiceState { return catalogChoiceState{} })
-	if !matchesPreset && *target != "" {
+	if matchedEntry == nil && *target != "" {
 		state.custom = true
 		state.customURL = *target
 	}
 	selected := *target
-	if state.custom || !matchesPreset {
+	if matchedEntry != nil {
+		selected = matchedEntry.URL
+	}
+	if state.custom || matchedEntry == nil {
 		selected = customCatalogChoice
 	}
 	container.Children(func() {
@@ -97,7 +105,15 @@ func catalogDetails(c *ui.Context, source string) {
 		})
 	}
 	componentFoldKeyed(c, "catalog-details-"+string(entry.Kind), "版本与校验 · "+entry.Title, func() {
-		ui.Text(c, "版本 "+entry.Revision).Selectable()
+		if entry.MirrorURL != "" && source == entry.MirrorURL {
+			label := entry.MirrorLabel
+			if label == "" {
+				label = "镜像源"
+			}
+			ui.Text(c, "镜像源："+label+"（下载前自动解析最新提交版本）")
+		} else {
+			ui.Text(c, "版本 "+entry.Revision).Selectable()
+		}
 		ui.Text(c, catalogSize(entry.Bytes)).TextColor(c.Theme().TextMuted)
 		ui.Text(c, "SHA256 "+entry.SHA256).Selectable().TextColor(c.Theme().TextMuted)
 	})

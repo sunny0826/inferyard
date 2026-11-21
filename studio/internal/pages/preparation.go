@@ -13,6 +13,7 @@ import (
 func (s *viewState) loadSettings(v core.SettingsResponse) {
 	s.loadPathSettings(v)
 	s.loadDownloadNames(v)
+	s.loadProxySettings(v)
 }
 
 func (s *viewState) loadPathSettings(v core.SettingsResponse) {
@@ -50,13 +51,13 @@ func settingsPatchGroups(patch map[string]json.RawMessage) (paths, names bool) {
 }
 
 type settingDraft struct {
-	cliPath, workspace, results, models, modelName, engineName string
+	cliPath, workspace, results, models, modelName, engineName, downloadProxy string
 }
 
 func (s *viewState) settingsDraft() settingDraft {
 	return settingDraft{
 		cliPath: s.cliPath, workspace: s.workspace, results: s.results, models: s.models,
-		modelName: s.modelName, engineName: s.engineName,
+		modelName: s.modelName, engineName: s.engineName, downloadProxy: s.downloadProxy,
 	}
 }
 
@@ -110,6 +111,7 @@ func (s *viewState) syncSavedGroups(patch map[string]json.RawMessage, submitted 
 			s.engineName = engineName
 		}
 	}
+	s.syncSavedProxy(patch, submitted, value)
 }
 
 func (s *viewState) applySavedGroups(patch map[string]json.RawMessage, submitted settingDraft, value core.SettingsResponse) {
@@ -145,6 +147,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 		})
 		s.localInstallationsView(c)
 		s.downloadNamesView(c)
+		s.proxySettingsView(c)
 		return
 	}
 	settingsFormSection(c, settingsFormOptions{
@@ -180,6 +183,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 	})
 	s.localInstallationsView(c)
 	s.downloadNamesView(c)
+	s.proxySettingsView(c)
 }
 
 func (s *viewState) pathsEdited() bool {
@@ -225,7 +229,7 @@ func (s *viewState) downloadNamesValid() bool {
 }
 
 func (s *viewState) settingsEdited() bool {
-	return s.pathsEdited() || s.downloadNamesEdited()
+	return s.pathsEdited() || s.downloadNamesEdited() || s.proxyEdited()
 }
 
 func (s *viewState) settingsUnsaved() bool {
@@ -233,7 +237,7 @@ func (s *viewState) settingsUnsaved() bool {
 		return false
 	}
 	if s.service != nil && s.service.BoundPaths() != nil {
-		return s.downloadNamesEdited()
+		return s.downloadNamesEdited() || s.proxyEdited()
 	}
 	return s.settingsEdited()
 }

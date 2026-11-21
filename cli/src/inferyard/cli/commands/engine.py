@@ -33,6 +33,11 @@ def add_commands(commands):
         action="store_true",
         help="resume an incomplete .part download when present",
     )
+    acquire.add_argument(
+        "--proxy-origin",
+        dest="proxy_origin",
+        help="explicit http(s) proxy origin (scheme://host[:port])",
+    )
     prepare = actions.add_parser(
         "prepare",
         help="download, verify, and unpack one engine archive into a new directory",
@@ -62,6 +67,11 @@ def add_commands(commands):
         dest="resume_transfer",
         action="store_true",
         help="resume an incomplete .part download when present",
+    )
+    prepare.add_argument(
+        "--proxy-origin",
+        dest="proxy_origin",
+        help="explicit http(s) proxy origin (scheme://host[:port])",
     )
     check = actions.add_parser(
         "check",

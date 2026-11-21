@@ -112,6 +112,7 @@ class CommandRequest:
     engine_timeout_seconds: float = 1800
     progress_stream: bool = False
     resume_transfer: bool = False
+    proxy_origin: str | None = None
     protect_pids: list[int] | None = None
     workspace: Path | None = None
     temperature_stop_override_reason: str | None = None

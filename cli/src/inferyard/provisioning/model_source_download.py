@@ -13,7 +13,13 @@ from inferyard.provisioning.acquire_errors import (
     classify_os_error,
     failure_details,
 )
-from inferyard.provisioning.model_source import DEFINITION_V3, PARSER, parse_source, validate_token_env
+from inferyard.provisioning.http_client import open_http_client, origin_of, validate_proxy_origin
+from inferyard.provisioning.model_source import (
+    DEFINITION_V3,
+    PARSER,
+    parse_source,
+    validate_token_env,
+)
 from inferyard.provisioning.preparation_io import PreparationError, new_path
 from inferyard.provisioning.transfer_progress import (
     ProgressEmitter,
@@ -121,16 +127,22 @@ def acquire(
     client=None,
     progress_stream=False,
     resume=False,
+    proxy_origin=None,
 ):
     source = parse_source(url)
+    validate_proxy_origin(proxy_origin)
     token = _token(token_env)
     out = Path(out).absolute() if resume else new_path(out)
     emitter = ProgressEmitter(enabled=progress_stream)
     try:
         if client is not None:
             return _download(client, source, out, token, emitter=emitter, resume=resume)
-        with httpx.Client(
-            trust_env=False, follow_redirects=True, timeout=_timeout(timeout_seconds)
+        auth_origin = origin_of(source.download_url) if token is not None else None
+        with open_http_client(
+            timeout_seconds,
+            proxy_origin=proxy_origin,
+            auth_origin=auth_origin,
+            timeout_factory=_timeout,
         ) as owned:
             return _download(owned, source, out, token, emitter=emitter, resume=resume)
     except PreparationError:

@@ -98,3 +98,75 @@ func TestParseAssetScanRejectsInvalidInputs(t *testing.T) {
 		})
 	}
 }
+
+func TestParseAssetScanExtendedRootsAndTotals(t *testing.T) {
+	sixKey := []byte(`{
+		"definition": "asset-scan.v1",
+		"models": [],
+		"engines": [],
+		"roots": [
+			{"path": "/models", "kind": "models", "disk_usage_bytes": 5120, "disk_free_bytes": 1048576},
+			{"path": "/engines", "kind": "engines", "disk_usage_bytes": 0, "disk_free_bytes": null}
+		],
+		"total_model_bytes": 5120,
+		"model_requests_sent": 0
+	}`)
+	scan, err := ParseAssetScan(sixKey)
+	if err != nil {
+		t.Fatalf("ParseAssetScan(sixKey) unexpected error: %v", err)
+	}
+	if len(scan.Roots) != 2 || scan.TotalModelBytes == nil || *scan.TotalModelBytes != 5120 {
+		t.Fatalf("unexpected extended scan: %+v", scan)
+	}
+	if scan.Roots[0].Path != "/models" || scan.Roots[0].Kind != "models" || scan.Roots[0].DiskUsageBytes != 5120 ||
+		scan.Roots[0].DiskFreeBytes == nil || *scan.Roots[0].DiskFreeBytes != 1048576 {
+		t.Fatalf("unexpected root[0]: %+v", scan.Roots[0])
+	}
+	if scan.Roots[1].Path != "/engines" || scan.Roots[1].Kind != "engines" || scan.Roots[1].DiskFreeBytes != nil {
+		t.Fatalf("unexpected root[1]: %+v", scan.Roots[1])
+	}
+
+	wrapped := []byte(`{
+		"command": "assets scan",
+		"status": "scanned",
+		"completeness": "complete",
+		"run_id": null,
+		"evidence_dir": null,
+		"limitations": [],
+		"details": ` + string(sixKey) + `
+	}`)
+	wrappedScan, err := ParseAssetScan(wrapped)
+	if err != nil || len(wrappedScan.Roots) != 2 || wrappedScan.TotalModelBytes == nil {
+		t.Fatalf("wrapped extended scan failed: scan=%+v err=%v", wrappedScan, err)
+	}
+
+	fiveKeyRoots, err := ParseAssetScan([]byte(`{"definition":"asset-scan.v1","models":[],"engines":[],"roots":[],"model_requests_sent":0}`))
+	if err != nil || fiveKeyRoots.Roots == nil || fiveKeyRoots.TotalModelBytes != nil {
+		t.Fatalf("fiveKeyRoots failed: scan=%+v err=%v", fiveKeyRoots, err)
+	}
+	fiveKeyTotal, err := ParseAssetScan([]byte(`{"definition":"asset-scan.v1","models":[],"engines":[],"total_model_bytes":0,"model_requests_sent":0}`))
+	if err != nil || fiveKeyTotal.Roots != nil || fiveKeyTotal.TotalModelBytes == nil || *fiveKeyTotal.TotalModelBytes != 0 {
+		t.Fatalf("fiveKeyTotal failed: scan=%+v err=%v", fiveKeyTotal, err)
+	}
+
+	invalidCases := map[string]string{
+		"null_total":          `{"definition":"asset-scan.v1","models":[],"engines":[],"total_model_bytes":null,"model_requests_sent":0}`,
+		"negative_total":      `{"definition":"asset-scan.v1","models":[],"engines":[],"total_model_bytes":-1,"model_requests_sent":0}`,
+		"null_roots":          `{"definition":"asset-scan.v1","models":[],"engines":[],"roots":null,"model_requests_sent":0}`,
+		"root_extra_key":      `{"definition":"asset-scan.v1","models":[],"engines":[],"roots":[{"path":"/m","kind":"models","disk_usage_bytes":0,"extra":1}],"model_requests_sent":0}`,
+		"root_empty_path":     `{"definition":"asset-scan.v1","models":[],"engines":[],"roots":[{"path":"  ","kind":"models","disk_usage_bytes":0}],"model_requests_sent":0}`,
+		"root_bad_kind":       `{"definition":"asset-scan.v1","models":[],"engines":[],"roots":[{"path":"/m","kind":"other","disk_usage_bytes":0}],"model_requests_sent":0}`,
+		"root_neg_usage":      `{"definition":"asset-scan.v1","models":[],"engines":[],"roots":[{"path":"/m","kind":"models","disk_usage_bytes":-1}],"model_requests_sent":0}`,
+		"root_null_usage":     `{"definition":"asset-scan.v1","models":[],"engines":[],"roots":[{"path":"/m","kind":"models","disk_usage_bytes":null}],"model_requests_sent":0}`,
+		"root_neg_free":       `{"definition":"asset-scan.v1","models":[],"engines":[],"roots":[{"path":"/m","kind":"models","disk_usage_bytes":0,"disk_free_bytes":-5}],"model_requests_sent":0}`,
+		"root_missing_kind":   `{"definition":"asset-scan.v1","models":[],"engines":[],"roots":[{"path":"/m","disk_usage_bytes":0}],"model_requests_sent":0}`,
+		"extra_with_extended": `{"definition":"asset-scan.v1","models":[],"engines":[],"roots":[],"total_model_bytes":0,"model_requests_sent":0,"extra":true}`,
+	}
+	for name, payload := range invalidCases {
+		t.Run(name, func(t *testing.T) {
+			if _, err := ParseAssetScan([]byte(payload)); err == nil {
+				t.Fatalf("%s: expected error, got nil", name)
+			}
+		})
+	}
+}

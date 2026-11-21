@@ -17,6 +17,7 @@ from inferyard.provisioning.acquire_errors import (
     failure_details,
 )
 from inferyard.provisioning.engine_source import DEFINITION, PARSER, parse_engine_source
+from inferyard.provisioning.http_client import open_http_client, validate_proxy_origin
 from inferyard.provisioning.preparation_io import PreparationError, new_path
 from inferyard.provisioning.transfer_progress import (
     ProgressEmitter,
@@ -108,12 +109,15 @@ def download_to_stream(
     return size, actual
 
 
-def run_with_client(timeout_seconds, client, action):
+def run_with_client(timeout_seconds, client, action, *, proxy_origin=None):
+    validate_proxy_origin(proxy_origin)
     try:
         if client is not None:
             return action(client)
-        with httpx.Client(
-            trust_env=False, follow_redirects=True, timeout=_timeout(timeout_seconds)
+        with open_http_client(
+            timeout_seconds,
+            proxy_origin=proxy_origin,
+            timeout_factory=_timeout,
         ) as owned:
             return action(owned)
     except PreparationError:
@@ -172,12 +176,23 @@ def _download(client, source, out, *, emitter, resume):
     }
 
 
-def acquire(url, out, *, timeout_seconds=1800, client=None, progress_stream=False, resume=False):
+def acquire(
+    url,
+    out,
+    *,
+    timeout_seconds=1800,
+    client=None,
+    progress_stream=False,
+    resume=False,
+    proxy_origin=None,
+):
     source = parse_engine_source(url)
+    validate_proxy_origin(proxy_origin)
     out = Path(out).absolute() if resume else new_path(out)
     emitter = ProgressEmitter(enabled=progress_stream)
     return run_with_client(
         timeout_seconds,
         client,
         lambda active: _download(active, source, out, emitter=emitter, resume=resume),
+        proxy_origin=proxy_origin,
     )

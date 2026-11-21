@@ -11,7 +11,7 @@ def execute(request):
 
     try:
         result = scan_assets(
-            request.models_roots or [],
+            getattr(request, "models_roots", None) or (),
             getattr(request, "engine_roots", None) or (),
         )
     except OSError:

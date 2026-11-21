@@ -20,6 +20,7 @@ def execute(request):
             timeout_seconds=request.engine_timeout_seconds,
             progress_stream=getattr(request, "progress_stream", False),
             resume=getattr(request, "resume_transfer", False),
+            proxy_origin=getattr(request, "proxy_origin", None),
         )
     except PreparationError as exc:
         cause = exc.details.get("failure_cause") if isinstance(exc.details, dict) else None
