@@ -18,7 +18,12 @@ from inferyard.provisioning.acquire_errors import (
     failure_details,
 )
 from inferyard.provisioning.http_client import open_http_client, origin_of, validate_proxy_origin
-from inferyard.provisioning.model_source import PLATFORMS, parse_source, validate_token_env
+from inferyard.provisioning.model_source import (
+    PLATFORMS,
+    parse_directory_source,
+    parse_source,
+    validate_token_env,
+)
 from inferyard.provisioning.preparation_io import PreparationError
 from inferyard.provisioning.transfer_progress import parse_content_length
 
@@ -33,6 +38,7 @@ class ResolvableModelSource:
     repository: str
     ref: str
     path: str
+    kind: str = "gguf"
 
     @property
     def host(self) -> str:
@@ -81,8 +87,50 @@ def _extract_segments(host: str, decoded: list[str]) -> tuple[str, str, str, lis
     return decoded[0], decoded[1], decoded[3], decoded[4:]
 
 
-def parse_resolvable_source(raw_url: str) -> ResolvableModelSource:
-    """Parse one HuggingFace or ModelScope GGUF URL with branch/tag or commit revision."""
+def _extract_directory_segments(
+    host: str, decoded: list[str]
+) -> tuple[str, str, str, list[str]]:
+    if host == "modelscope.cn" and len(decoded) >= 3 and decoded[0] == "models":
+        owner, repo = decoded[1], decoded[2]
+        if len(decoded) == 3 or (len(decoded) == 4 and decoded[3] in ("files", "summary")):
+            return owner, repo, "master", []
+        if len(decoded) >= 5 and decoded[3] == "tree":
+            return owner, repo, decoded[4], decoded[5:]
+        if len(decoded) >= 6 and decoded[3] in ("blob", "resolve"):
+            return owner, repo, decoded[4], decoded[5:-1]
+        raise ValueError
+    owner, repo = decoded[0], decoded[1]
+    if len(decoded) == 2:
+        return owner, repo, "main" if host == "huggingface.co" else "master", []
+    if len(decoded) >= 4 and decoded[2] == "tree":
+        return owner, repo, decoded[3], decoded[4:]
+    if len(decoded) >= 5 and decoded[2] in ("blob", "resolve"):
+        return owner, repo, decoded[3], decoded[4:-1]
+    raise ValueError
+
+
+def _validate_decoded_parts(parts: list[str]) -> list[str]:
+    if len(parts) < 3 or parts[0] != "":
+        raise ValueError
+    for part in parts[1:]:
+        if re.search(r"%(?![0-9a-fA-F]{2})", part):
+            raise ValueError
+    decoded = [unquote(part, errors="strict") for part in parts[1:]]
+    for part in decoded:
+        if (
+            part in ("", ".", "..")
+            or not part.isascii()
+            or any(ord(c) < 32 or ord(c) == 127 or c in "/\\:" for c in part)
+            or part != part.strip()
+        ):
+            raise ValueError
+    return decoded
+
+
+def parse_resolvable_source(raw_url: str, *, kind: str = "auto") -> ResolvableModelSource:
+    """Parse one HuggingFace or ModelScope GGUF or directory URL."""
+    if kind not in ("auto", "gguf", "directory"):
+        raise PreparationError("invalid_model_source")
     try:
         if (
             not isinstance(raw_url, str)
@@ -105,22 +153,18 @@ def parse_resolvable_source(raw_url: str) -> ResolvableModelSource:
             query_items = parse_qsl(parsed.query, keep_blank_values=True)
             if query_items not in ([("download", "true")], [("download", "1")]):
                 raise ValueError
-        parts = parsed.path.split("/")
-        if len(parts) < 6 or parts[0] != "":
-            raise ValueError
-        for part in parts[1:]:
-            if re.search(r"%(?![0-9a-fA-F]{2})", part):
-                raise ValueError
-        decoded = [unquote(part, errors="strict") for part in parts[1:]]
-        for part in decoded:
-            if (
-                part in ("", ".", "..")
-                or not part.isascii()
-                or any(ord(c) < 32 or ord(c) == 127 or c in "/\\:" for c in part)
-                or part != part.strip()
-            ):
-                raise ValueError
-        owner, repo, ref, file_parts = _extract_segments(host, decoded)
+        decoded = _validate_decoded_parts(parsed.path.split("/"))
+        want_directory = kind == "directory" or (
+            kind == "auto"
+            and not decoded[-1].lower().endswith(".gguf")
+            and ("tree" in decoded[2:4] or len(decoded) == 2)
+        )
+        if want_directory:
+            owner, repo, ref, sub_parts = _extract_directory_segments(host, decoded)
+            target_kind = "directory"
+        else:
+            owner, repo, ref, sub_parts = _extract_segments(host, decoded)
+            target_kind = "gguf"
         if not _OWNER_REPO.fullmatch(owner) or not _OWNER_REPO.fullmatch(repo):
             raise ValueError
         if (
@@ -129,12 +173,11 @@ def parse_resolvable_source(raw_url: str) -> ResolvableModelSource:
             or any(ord(c) < 33 or ord(c) == 127 or c in "/\\:" for c in ref)
         ):
             raise ValueError
-        if not file_parts:
-            raise ValueError
-        file_path = "/".join(file_parts)
-        if not file_path.endswith(".gguf") or len(file_parts[-1]) <= len(".gguf"):
-            raise ValueError
-        return ResolvableModelSource(PLATFORMS[host], f"{owner}/{repo}", ref, file_path)
+        rel_path = "/".join(sub_parts)
+        if target_kind == "gguf":
+            if not sub_parts or not rel_path.endswith(".gguf") or len(sub_parts[-1]) <= len(".gguf"):
+                raise ValueError
+        return ResolvableModelSource(PLATFORMS[host], f"{owner}/{repo}", ref, rel_path, target_kind)
     except ValueError, UnicodeError:
         raise PreparationError("invalid_model_source") from None
 
@@ -180,7 +223,7 @@ def _resolve_huggingface_revision(
     return sha.lower()
 
 
-def _extract_modelscope_sha(data: dict, file_path: str) -> str:
+def _extract_modelscope_sha(data: dict, file_path: str, *, directory: bool = False) -> str:
     if data.get("Success") is False or (
         isinstance(data.get("Code"), int) and data.get("Code") != 200
     ):
@@ -189,18 +232,34 @@ def _extract_modelscope_sha(data: dict, file_path: str) -> str:
     payload = data.get("Data") if isinstance(data.get("Data"), dict) else data
     files = payload.get("Files")
     if isinstance(files, list):
-        for item in files:
-            if not isinstance(item, dict) or item.get("Path") != file_path:
-                continue
-            rev = item.get("Revision")
-            if isinstance(rev, str) and _SHA40.fullmatch(rev):
-                return rev.lower()
-            break
+        if directory:
+            prefix = f"{file_path}/" if file_path else ""
+            for item in files:
+                if not isinstance(item, dict):
+                    continue
+                item_path = item.get("Path")
+                if prefix and (not isinstance(item_path, str) or not item_path.startswith(prefix)):
+                    continue
+                rev = item.get("Revision")
+                if isinstance(rev, str) and _SHA40.fullmatch(rev):
+                    return rev.lower()
+            if prefix:
+                raise PreparationError(
+                    _RESOLVE_FAILED, details=failure_details("resolve", "not_found")
+                )
         else:
-            raise PreparationError(
-                _RESOLVE_FAILED,
-                details=failure_details("resolve", "not_found"),
-            )
+            for item in files:
+                if not isinstance(item, dict) or item.get("Path") != file_path:
+                    continue
+                rev = item.get("Revision")
+                if isinstance(rev, str) and _SHA40.fullmatch(rev):
+                    return rev.lower()
+                break
+            else:
+                raise PreparationError(
+                    _RESOLVE_FAILED,
+                    details=failure_details("resolve", "not_found"),
+                )
     for candidate in (
         payload.get("Revision"),
         payload.get("sha"),
@@ -229,7 +288,67 @@ def _resolve_modelscope_revision(
             _RESOLVE_FAILED,
             details=failure_details("resolve", classify_http_status(resp.status_code)),
         )
-    return _extract_modelscope_sha(_parse_json_object(resp, stage="resolve"), parsed.path)
+    return _extract_modelscope_sha(
+        _parse_json_object(resp, stage="resolve"),
+        parsed.path,
+        directory=(parsed.kind == "directory"),
+    )
+
+
+def _probe_directory_bytes(
+    client: httpx.Client,
+    parsed: ResolvableModelSource,
+    revision: str,
+    headers: dict[str, str],
+) -> int | None:
+    if parsed.platform == "huggingface":
+        suffix = f"/{quote(parsed.path, safe='/')}" if parsed.path else ""
+        url = (
+            f"https://huggingface.co/api/models/{parsed.repository}"
+            f"/tree/{revision}{suffix}?recursive=true"
+        )
+    else:
+        query = urlencode({"Revision": revision, "Recursive": "True"})
+        url = f"https://modelscope.cn/api/v1/models/{parsed.repository}/repo/files?{query}"
+    resp = client.get(url, headers=headers)
+    if resp.status_code in (401, 403, 404, 429):
+        raise PreparationError(
+            _RESOLVE_FAILED,
+            details=failure_details("probe", classify_http_status(resp.status_code)),
+        )
+    if resp.status_code != 200:
+        return None
+    try:
+        payload = strict_json_loads(resp.text)
+    except ContractError, ValueError:
+        return None
+    total = 0
+    if parsed.platform == "huggingface" and isinstance(payload, list):
+        for item in payload:
+            if not isinstance(item, dict) or item.get("type") != "file":
+                continue
+            raw_size = item.get("size")
+            if raw_size is None and isinstance(item.get("lfs"), dict):
+                raw_size = item["lfs"].get("size")
+            if type(raw_size) is int and raw_size > 0:
+                total += raw_size
+        return total if total > 0 else None
+    if parsed.platform == "modelscope" and isinstance(payload, dict):
+        data = payload.get("Data") if isinstance(payload.get("Data"), dict) else payload
+        files = data.get("Files")
+        if isinstance(files, list):
+            prefix = f"{parsed.path}/" if parsed.path else ""
+            for item in files:
+                if not isinstance(item, dict):
+                    continue
+                item_path = item.get("Path")
+                if prefix and (not isinstance(item_path, str) or not item_path.startswith(prefix)):
+                    continue
+                raw_size = item.get("Size")
+                if type(raw_size) is int and raw_size > 0:
+                    total += raw_size
+            return total if total > 0 else None
+    return None
 
 
 def _probe_download_bytes(
@@ -272,6 +391,31 @@ def _resolve_with_client(
     else:
         revision = _resolve_modelscope_revision(client, parsed, api_headers)
 
+    if parsed.kind == "directory":
+        suffix = f"/{quote(parsed.path, safe='/')}" if parsed.path else ""
+        pinned_url = f"https://{parsed.host}/{parsed.repository}/tree/{revision}{suffix}"
+        dir_source = parse_directory_source(pinned_url)
+        total_bytes = _probe_directory_bytes(client, parsed, revision, api_headers)
+        filename = (
+            dir_source.subpath.rsplit("/", 1)[-1]
+            if dir_source.subpath
+            else dir_source.repository.rsplit("/", 1)[-1]
+        )
+        return {
+            "definition": "model-resolve.v1",
+            "kind": "directory",
+            "platform": dir_source.platform,
+            "repository": dir_source.repository,
+            "revision": dir_source.revision,
+            "path": dir_source.subpath,
+            "pinned_url": dir_source.pinned_url,
+            "download_url": dir_source.pinned_url,
+            "filename": filename,
+            "bytes": total_bytes,
+            "already_pinned": already_pinned,
+            "model_requests_sent": 0,
+        }
+
     pinned_url = (
         f"https://{parsed.host}/{parsed.repository}/blob/{revision}/"
         f"{quote(parsed.path, safe='/')}"
@@ -297,13 +441,14 @@ def _resolve_with_client(
 def resolve_model_url(
     url: str,
     *,
+    kind: str = "auto",
     token_env: str | None = None,
     timeout_seconds: int | float = 30,
     proxy_origin: str | None = None,
     client: httpx.Client | None = None,
 ) -> dict:
-    """Resolve one HF/ModelScope GGUF URL to a pinned commit revision and optional size."""
-    parsed = parse_resolvable_source(url)
+    """Resolve one HF/ModelScope GGUF or directory URL to a pinned commit revision."""
+    parsed = parse_resolvable_source(url, kind=kind)
     validate_proxy_origin(proxy_origin)
     _timeout(timeout_seconds)
     token = _token(token_env)

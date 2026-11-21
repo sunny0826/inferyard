@@ -103,6 +103,7 @@ class CommandRequest:
     port: int | None = None
     model_source_url: str | None = None
     model_token_env: str | None = None
+    model_kind: str = "auto"
     model_timeout_seconds: float = 1800
     model_source_record: Path | None = None
     engine_source_url: str | None = None

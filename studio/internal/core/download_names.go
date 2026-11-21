@@ -12,16 +12,42 @@ import (
 
 var shortCommitSuffix = regexp.MustCompile(`-[0-9a-f]{7,40}$`)
 
+func directorySourceName(sourceURL string) (string, bool) {
+	u, err := url.Parse(strings.TrimSpace(sourceURL))
+	if err != nil || u.Path == "" {
+		return "", false
+	}
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) >= 5 && parts[0] == "models" && parts[3] == "tree" {
+		if len(parts) > 5 {
+			return parts[len(parts)-1], true
+		}
+		return parts[2], true
+	}
+	if len(parts) >= 4 && parts[2] == "tree" {
+		if len(parts) > 4 {
+			return parts[len(parts)-1], true
+		}
+		return parts[1], true
+	}
+	return "", false
+}
+
 func SuggestDownloadSlug(kind, sourceURL string) string {
 	fallback := "model"
 	if kind == "engine" {
 		fallback = "engine"
 	}
-	u, err := url.Parse(strings.TrimSpace(sourceURL))
-	if err != nil || u.Path == "" {
-		return fallback
+	var base string
+	if name, ok := directorySourceName(sourceURL); ok && kind == "model" {
+		base = name
+	} else {
+		u, err := url.Parse(strings.TrimSpace(sourceURL))
+		if err != nil || u.Path == "" {
+			return fallback
+		}
+		base = path.Base(u.Path)
 	}
-	base := path.Base(u.Path)
 	if decoded, err := url.PathUnescape(base); err == nil && decoded != "" {
 		base = decoded
 	}
@@ -70,6 +96,9 @@ func SuggestDownloadSlug(kind, sourceURL string) string {
 func ResolveDownloadDisplayName(kind, sourceURL string) string {
 	if entry, ok := CatalogEntryByURL(sourceURL); ok {
 		return entry.DisplayName()
+	}
+	if name, ok := directorySourceName(sourceURL); ok && kind == "model" {
+		return name
 	}
 	if u, err := url.Parse(strings.TrimSpace(sourceURL)); err == nil && u.Path != "" {
 		base := path.Base(u.Path)

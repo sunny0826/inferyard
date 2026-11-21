@@ -17,6 +17,7 @@ from inferyard.provisioning.http_client import open_http_client, origin_of, vali
 from inferyard.provisioning.model_source import (
     DEFINITION_V3,
     PARSER,
+    parse_gguf_shard_filename,
     parse_source,
     validate_token_env,
 )
@@ -123,15 +124,49 @@ def acquire(
     out,
     token_env=None,
     *,
+    kind="auto",
     timeout_seconds=1800,
     client=None,
     progress_stream=False,
     resume=False,
     proxy_origin=None,
 ):
-    source = parse_source(url)
+    if kind not in ("auto", "gguf", "directory"):
+        raise PreparationError("invalid_model_source")
     validate_proxy_origin(proxy_origin)
+    _timeout(timeout_seconds)
     token = _token(token_env)
+    is_tree_url = isinstance(url, str) and "/tree/" in url
+    if kind == "directory" or (kind == "auto" and is_tree_url):
+        from inferyard.provisioning.model_bundle_download import acquire_directory_model
+
+        return acquire_directory_model(
+            url,
+            out,
+            token,
+            timeout_factory=_timeout,
+            timeout_seconds=timeout_seconds,
+            client=client,
+            progress_stream=progress_stream,
+            resume=resume,
+            proxy_origin=proxy_origin,
+        )
+    source = parse_source(url)
+    filename = source.path.rsplit("/", 1)[-1]
+    if parse_gguf_shard_filename(filename) is not None:
+        from inferyard.provisioning.model_bundle_download import acquire_sharded_gguf
+
+        return acquire_sharded_gguf(
+            source,
+            out,
+            token,
+            timeout_factory=_timeout,
+            timeout_seconds=timeout_seconds,
+            client=client,
+            progress_stream=progress_stream,
+            resume=resume,
+            proxy_origin=proxy_origin,
+        )
     out = Path(out).absolute() if resume else new_path(out)
     emitter = ProgressEmitter(enabled=progress_stream)
     try:

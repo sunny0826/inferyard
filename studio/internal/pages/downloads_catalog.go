@@ -67,7 +67,16 @@ func (s *viewState) catalogChoices(c *ui.Context, kind core.CatalogKind, platfor
 						*target = entry.URL
 					}
 					ui.Column(c).Padding(0, 0, 0, c.Theme().Space(6)).Gap(t.Density.Hairline).Children(func() {
-						ui.Text(c, core.PlatformLabel(entry.Platform)+" · "+catalogHumanSize(entry.Bytes)).
+						caption := core.PlatformLabel(entry.Platform)
+						if entry.Format == "directory" {
+							caption += " · 目录模型"
+						}
+						if entry.Bytes > 0 {
+							caption += " · " + catalogHumanSize(entry.Bytes)
+						} else if entry.Format == "directory" {
+							caption += " · 自动生成清单"
+						}
+						ui.Text(c, caption).
 							FontSize(t.Type.Caption).TextColor(c.Theme().TextMuted)
 						if entry.Note != "" {
 							ui.Text(c, entry.Note).FontSize(t.Type.Caption).TextColor(stateColor(c, stateWarning))
@@ -115,7 +124,9 @@ func catalogDetails(c *ui.Context, source string) {
 			ui.Text(c, "版本 "+entry.Revision).Selectable()
 		}
 		ui.Text(c, catalogSize(entry.Bytes)).TextColor(c.Theme().TextMuted)
-		ui.Text(c, "SHA256 "+entry.SHA256).Selectable().TextColor(c.Theme().TextMuted)
+		if entry.SHA256 != "" {
+			ui.Text(c, "SHA256 "+entry.SHA256).Selectable().TextColor(c.Theme().TextMuted)
+		}
 	})
 }
 
