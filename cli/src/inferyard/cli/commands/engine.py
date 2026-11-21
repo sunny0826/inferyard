@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from inferyard.cli.commands.engine_detect import add_detect_subcommands
+
 
 def add_commands(commands):
     engine = commands.add_parser(
@@ -18,6 +20,18 @@ def add_commands(commands):
         type=float,
         default=1800,
         help="positive finite seconds per network operation (default: 1800)",
+    )
+    acquire.add_argument(
+        "--progress-stream",
+        dest="progress_stream",
+        action="store_true",
+        help="emit single-line JSON transfer progress events on stderr",
+    )
+    acquire.add_argument(
+        "--resume",
+        dest="resume_transfer",
+        action="store_true",
+        help="resume an incomplete .part download when present",
     )
     prepare = actions.add_parser(
         "prepare",
@@ -37,6 +51,18 @@ def add_commands(commands):
         default=1800,
         help="positive finite seconds per network operation (default: 1800)",
     )
+    prepare.add_argument(
+        "--progress-stream",
+        dest="progress_stream",
+        action="store_true",
+        help="emit single-line JSON transfer progress events on stderr",
+    )
+    prepare.add_argument(
+        "--resume",
+        dest="resume_transfer",
+        action="store_true",
+        help="resume an incomplete .part download when present",
+    )
     check = actions.add_parser(
         "check",
         help="macOS/Windows: read-only engine verification; runs --version (30s); no writes",
@@ -46,3 +72,4 @@ def add_commands(commands):
     source.add_argument("--engine", dest="engine_path", type=Path)
     source.add_argument("--runtime-receipt", type=Path)
     source.add_argument("--installation", type=Path)
+    add_detect_subcommands(actions)

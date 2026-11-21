@@ -28,6 +28,11 @@ from inferyard.provisioning.preparation_io import (
     require_platform,
 )
 from inferyard.provisioning.runtime_archive import safe_member, zip_entries
+from inferyard.provisioning.transfer_progress import (
+    ProgressEmitter,
+    download_resumable_part,
+    open_output_directory,
+)
 
 _ENGINE_BINARIES = ("llama-server", "llama-server.exe")
 _TAR_ERRORS = (tarfile.TarError, gzip.BadGzipFile, EOFError, zlib.error)
@@ -84,10 +89,27 @@ def _validate_runtime_profile(
     return profile
 
 
-def _download_staged(client, url, path, expected_sha256):
+def _download_staged(
+    client,
+    url,
+    path,
+    expected_sha256,
+    *,
+    emitter=None,
+    base_offset=0,
+    combined_total=None,
+):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("wb") as stream:
-        size, digest = download_to_stream(client, url, stream, expected_sha256=expected_sha256)
+        size, digest = download_to_stream(
+            client,
+            url,
+            stream,
+            expected_sha256=expected_sha256,
+            emitter=emitter,
+            base_offset=base_offset,
+            combined_total=combined_total,
+        )
         stream.flush()
         os.fsync(stream.fileno())
     return size, digest
@@ -262,6 +284,87 @@ def _install_binary(binary_path, filename, out):
     return output, output.path / filename
 
 
+def _stage_resumable_archives(
+    source,
+    out,
+    *,
+    expected_sha256,
+    runtime_source,
+    runtime_expected_sha256,
+    client,
+    emitter,
+    combined_total,
+):
+    part_name = source.filename + ".part"
+    runtime_part_name = None
+    allowed_parts = {part_name}
+    if runtime_source is not None:
+        runtime_part_name = runtime_source.filename + ".part"
+        if runtime_part_name == part_name:
+            runtime_part_name = runtime_source.filename + ".runtime.part"
+        allowed_parts.add(runtime_part_name)
+    output = open_output_directory(
+        out,
+        resume=True,
+        allowed_parts=allowed_parts,
+        final_names={
+            "engine-prepare.json",
+            "runtime-receipt.json",
+            source.filename,
+            "llama-server",
+            "llama-server.exe",
+        },
+    )
+    try:
+        engine_bytes, engine_sha256 = download_resumable_part(
+            client,
+            source.download_url,
+            output,
+            part_name,
+            incomplete_reason="engine_acquire_incomplete",
+            resume=True,
+            expected_sha256=expected_sha256,
+            emitter=emitter,
+            base_offset=0,
+            combined_total=combined_total,
+        )
+        if runtime_source is not None:
+            download_resumable_part(
+                client,
+                runtime_source.download_url,
+                output,
+                runtime_part_name,
+                incomplete_reason="engine_acquire_incomplete",
+                resume=True,
+                expected_sha256=runtime_expected_sha256,
+                emitter=emitter,
+                base_offset=engine_bytes,
+                combined_total=combined_total,
+            )
+    except PreparationError as exc:
+        if exc.reason == "engine_checksum_mismatch":
+            try:
+                os.rmdir(output.path)
+            except OSError:
+                pass
+        raise
+    staging = Path(tempfile.mkdtemp(prefix=".engine-prepare-", dir=out.parent))
+    try:
+        archive_path = staging / "engine" / source.filename
+        archive_path.parent.mkdir(parents=True, exist_ok=True)
+        os.rename(output.path / part_name, archive_path)
+        runtime_archive_path = None
+        if runtime_source is not None:
+            runtime_archive_path = staging / "runtime" / runtime_source.filename
+            runtime_archive_path.parent.mkdir(parents=True, exist_ok=True)
+            os.rename(output.path / runtime_part_name, runtime_archive_path)
+        os.rmdir(output.path)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    return staging, archive_path, runtime_archive_path, engine_bytes, engine_sha256
+
+
 def _prepare_loaded(
     source,
     out,
@@ -271,21 +374,63 @@ def _prepare_loaded(
     runtime_profile,
     runtime_source,
     runtime_expected_sha256,
+    profile_info,
     client,
+    emitter,
+    resume,
 ):
-    staging = Path(tempfile.mkdtemp(prefix=".engine-prepare-", dir=out.parent))
-    try:
-        archive_path = staging / "engine" / source.filename
-        engine_bytes, engine_sha256 = _download_staged(
-            client, source.download_url, archive_path, expected_sha256
-        )
-        runtime_archive_path = None
-        if runtime_source is not None:
-            runtime_archive_path = staging / "runtime" / runtime_source.filename
-            _download_staged(
-                client, runtime_source.download_url, runtime_archive_path, runtime_expected_sha256
+    combined_total = None
+    effective_sha256 = expected_sha256
+    effective_runtime_sha256 = runtime_expected_sha256
+    if profile_info is not None:
+        by_role = {archive["role"]: archive for archive in profile_info["archives"]}
+        combined_total = sum(archive["bytes"] for archive in profile_info["archives"])
+        if effective_sha256 is None:
+            effective_sha256 = by_role["engine"]["sha256"]
+        if effective_runtime_sha256 is None and "runtime" in by_role:
+            effective_runtime_sha256 = by_role["runtime"]["sha256"]
+    if resume:
+        staging, archive_path, runtime_archive_path, engine_bytes, engine_sha256 = (
+            _stage_resumable_archives(
+                source,
+                out,
+                expected_sha256=effective_sha256,
+                runtime_source=runtime_source,
+                runtime_expected_sha256=effective_runtime_sha256,
+                client=client,
+                emitter=emitter,
+                combined_total=combined_total,
             )
+        )
+    else:
+        staging = Path(tempfile.mkdtemp(prefix=".engine-prepare-", dir=out.parent))
+        archive_path = staging / "engine" / source.filename
+        runtime_archive_path = None
+    try:
+        if not resume:
+            engine_bytes, engine_sha256 = _download_staged(
+                client,
+                source.download_url,
+                archive_path,
+                expected_sha256,
+                emitter=emitter,
+                base_offset=0,
+                combined_total=combined_total,
+            )
+            if runtime_source is not None:
+                runtime_archive_path = staging / "runtime" / runtime_source.filename
+                _download_staged(
+                    client,
+                    runtime_source.download_url,
+                    runtime_archive_path,
+                    runtime_expected_sha256,
+                    emitter=emitter,
+                    base_offset=engine_bytes,
+                    combined_total=combined_total,
+                )
+        total_bytes = combined_total if combined_total is not None else engine_bytes
         if runtime_profile is not None:
+            emitter.update("extracting", total_bytes, total_bytes)
             win_details = windows_runtime_prepare.prepare(
                 SimpleNamespace(
                     out=out,
@@ -294,6 +439,7 @@ def _prepare_loaded(
                     runtime_archive=runtime_archive_path,
                 )
             )
+            emitter.update("preparing", total_bytes, total_bytes)
             return {
                 **win_details,
                 "bytes": engine_bytes,
@@ -301,12 +447,15 @@ def _prepare_loaded(
                 "runtime_receipt": win_details["receipt"],
                 "source_record": None,
             }
+        if kind in ("tar_gz", "zip"):
+            emitter.update("extracting", total_bytes, total_bytes)
         if kind == "tar_gz":
             output, engine_path = _extract_tar(archive_path, out)
         elif kind == "zip":
             output, engine_path = _extract_zip(archive_path, out)
         else:
             output, engine_path = _install_binary(archive_path, source.filename, out)
+        emitter.update("preparing", total_bytes, total_bytes)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     if os.name != "nt":
@@ -345,6 +494,8 @@ def prepare(
     runtime_expected_sha256=None,
     timeout_seconds=1800,
     client=None,
+    progress_stream=False,
+    resume=False,
 ):
     source = parse_engine_source(url)
     runtime_source = parse_engine_source(runtime_url) if runtime_url is not None else None
@@ -356,7 +507,14 @@ def prepare(
         raise PreparationError("invalid_input")
     _timeout(timeout_seconds)
     try:
-        out = new_path(out)
+        if resume:
+            candidate = Path(out).absolute()
+            parent = candidate.parent.resolve(strict=True)
+            if not parent.is_dir():
+                raise NotADirectoryError(parent)
+            out = parent / candidate.name
+        else:
+            out = new_path(out)
     except OSError as exc:
         raise PreparationError(
             "io_error",
@@ -364,8 +522,9 @@ def prepare(
             details=failure_details("prepare", classify_os_error(exc)),
         ) from None
     kind = None
+    profile_info = None
     if runtime_profile is not None:
-        _validate_runtime_profile(
+        profile_info = _validate_runtime_profile(
             runtime_profile,
             runtime_source is not None,
             expected_sha256,
@@ -373,6 +532,7 @@ def prepare(
         )
     else:
         kind = _archive_kind(source.filename)
+    emitter = ProgressEmitter(enabled=progress_stream)
     return run_with_client(
         timeout_seconds,
         client,
@@ -384,6 +544,9 @@ def prepare(
             runtime_profile=runtime_profile,
             runtime_source=runtime_source,
             runtime_expected_sha256=runtime_expected_sha256,
+            profile_info=profile_info,
             client=active,
+            emitter=emitter,
+            resume=resume,
         ),
     )

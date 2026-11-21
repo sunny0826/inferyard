@@ -66,7 +66,10 @@ def create(request):
         raise PreparationError("ac_power_required")
     context = request.context_size or 8192
     served = request.served_model or "inferyard-local-model"
-    args, cwd = startup(installation, model, served, context, request.port, request.server_pid)
+    port = 48857 if request.port is None else request.port
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise PreparationError("invalid_input")
+    args, cwd = startup(installation, model, served, context, port, request.server_pid)
     config = deepcopy(CONFIG_DEFAULTS)
     config.update(
         schema_version=3,
@@ -98,7 +101,7 @@ def create(request):
             "served_model": served,
         },
         endpoint={
-            "url": f"http://127.0.0.1:{request.port}",
+            "url": f"http://127.0.0.1:{port}",
             "server_pid": 1,
             "process_start_ticks": 1,
         },

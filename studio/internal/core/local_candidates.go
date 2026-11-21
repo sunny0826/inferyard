@@ -72,7 +72,7 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		return nil, Err("local_engine_installation_changed")
 	}
 	family := *check.Family
-	port := "48857"
+	port := strconv.Itoa(DefaultBenchmarkPort)
 	if family == "lmstudio" {
 		if req.ServicePID <= 0 {
 			return nil, Err("local_engine_lmstudio_background_pid_required")
@@ -82,8 +82,15 @@ func (s *Service) PrepareLocalCandidates(ctx context.Context, req LocalCandidate
 		if failure != nil {
 			return nil, failure
 		}
-	} else if req.ServicePID != 0 {
-		return nil, Err("invalid_request")
+	} else {
+		if req.ServicePID != 0 {
+			return nil, Err("invalid_request")
+		}
+		allocated, err := ChooseFreeLoopbackPort(DefaultBenchmarkPort)
+		if err != nil || allocated <= 0 {
+			return nil, Err("internal_error")
+		}
+		port = strconv.Itoa(allocated)
 	}
 	seen := map[string]bool{}
 	candidates := []CandidateRun{}

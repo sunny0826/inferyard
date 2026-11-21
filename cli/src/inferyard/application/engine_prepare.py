@@ -18,6 +18,8 @@ def execute(request):
             runtime_url=getattr(request, "runtime_source_url", None),
             runtime_expected_sha256=getattr(request, "runtime_expected_sha256", None),
             timeout_seconds=request.engine_timeout_seconds,
+            progress_stream=getattr(request, "progress_stream", False),
+            resume=getattr(request, "resume_transfer", False),
         )
     except PreparationError as exc:
         cause = exc.details.get("failure_cause") if isinstance(exc.details, dict) else None

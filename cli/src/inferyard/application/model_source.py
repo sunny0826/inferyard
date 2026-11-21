@@ -15,6 +15,8 @@ def execute(request):
             request.out,
             request.model_token_env,
             timeout_seconds=request.model_timeout_seconds,
+            progress_stream=getattr(request, "progress_stream", False),
+            resume=getattr(request, "resume_transfer", False),
         )
     except PreparationError as exc:
         cause = exc.details.get("failure_cause") if isinstance(exc.details, dict) else None

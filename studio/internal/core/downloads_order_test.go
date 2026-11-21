@@ -17,7 +17,13 @@ func TestDownloadsNewestFirst(t *testing.T) {
 		if v, ok := version(args); ok {
 			return v, nil
 		}
-		target := args[len(args)-1]
+		target := ""
+		for i := 0; i+1 < len(args); i++ {
+			if args[i] == "--out" {
+				target = args[i+1]
+				break
+			}
+		}
 		_ = os.MkdirAll(target, 0o700)
 		_ = os.WriteFile(filepath.Join(target, "model.gguf.part"), []byte("1234"), 0o600)
 		done <- struct{}{}

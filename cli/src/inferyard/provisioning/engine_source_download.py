@@ -1,22 +1,29 @@
-"""In-process engine acquisition: one URL, one new directory, one rename."""
+"""In-process engine acquisition: one URL, one directory, atomic rename."""
 
 import hashlib
 import math
 import os
+from pathlib import Path
 import re
 from datetime import UTC, datetime
 
 import httpx
 
+from inferyard.platforms.platform_io import sync_directory
 from inferyard.provisioning.acquire_errors import (
     classify_http_status,
     classify_httpx_error,
     classify_os_error,
     failure_details,
 )
-from inferyard.provisioning.preparation_io import NewDirectory, PreparationError, new_path
 from inferyard.provisioning.engine_source import DEFINITION, PARSER, parse_engine_source
-from inferyard.platforms.platform_io import sync_directory
+from inferyard.provisioning.preparation_io import PreparationError, new_path
+from inferyard.provisioning.transfer_progress import (
+    ProgressEmitter,
+    download_resumable_part,
+    open_output_directory,
+    parse_content_length,
+)
 
 INCOMPLETE = "engine_acquire_incomplete"
 
@@ -55,7 +62,16 @@ def _publish(output, temporary, final):
     sync_directory(output.path)
 
 
-def download_to_stream(client, url, stream, *, expected_sha256=None):
+def download_to_stream(
+    client,
+    url,
+    stream,
+    *,
+    expected_sha256=None,
+    emitter=None,
+    base_offset=0,
+    combined_total=None,
+):
     expected = validate_sha256(expected_sha256)
     digest, size = hashlib.sha256(), 0
     with client.stream("GET", url, headers={"Accept-Encoding": "identity"}) as opened:
@@ -69,10 +85,20 @@ def download_to_stream(client, url, stream, *, expected_sha256=None):
                 INCOMPLETE,
                 details=failure_details("download_open", "unexpected_content_encoding"),
             )
+        file_total = parse_content_length(opened.headers)
+        reported_total = combined_total if combined_total is not None else file_total
+        if emitter is not None:
+            emitter.update("downloading", base_offset, reported_total)
         for chunk in opened.iter_raw():
             stream.write(chunk)
             digest.update(chunk)
             size += len(chunk)
+            if emitter is not None:
+                emitter.update("downloading", base_offset + size, reported_total)
+        if emitter is not None:
+            emitter.update("downloading", base_offset + size, reported_total, force=True)
+    if emitter is not None:
+        emitter.update("verifying", base_offset + size, reported_total or (base_offset + size))
     actual = digest.hexdigest()
     if expected is not None and actual != expected:
         raise PreparationError(
@@ -105,17 +131,31 @@ def run_with_client(timeout_seconds, client, action):
         ) from None
 
 
-def _download(client, source, out):
-    output = NewDirectory(out)
+def _download(client, source, out, *, emitter, resume):
     temporary = source.filename + ".part"
+    output = open_output_directory(
+        out,
+        resume=resume,
+        allowed_parts={temporary, "engine-source.json.part"},
+        final_names={source.filename, "engine-source.json"},
+    )
     try:
-        with output.stream(temporary) as stream:
-            size, digest = download_to_stream(client, source.download_url, stream)
+        size, digest = download_resumable_part(
+            client,
+            source.download_url,
+            output,
+            temporary,
+            incomplete_reason=INCOMPLETE,
+            resume=resume,
+            emitter=emitter,
+        )
+        emitter.update("preparing", size, size)
         _publish(output, temporary, source.filename)
         output.json("engine-source.json.part", _record(source, size, digest))
         _publish(output, "engine-source.json.part", "engine-source.json")
     except BaseException:
-        for part in (temporary, "engine-source.json.part"):
+        cleanup = ("engine-source.json.part",) if resume else (temporary, "engine-source.json.part")
+        for part in cleanup:
             try:
                 (output.path / part).unlink()
             except OSError:
@@ -132,7 +172,12 @@ def _download(client, source, out):
     }
 
 
-def acquire(url, out, *, timeout_seconds=1800, client=None):
+def acquire(url, out, *, timeout_seconds=1800, client=None, progress_stream=False, resume=False):
     source = parse_engine_source(url)
-    out = new_path(out)
-    return run_with_client(timeout_seconds, client, lambda active: _download(active, source, out))
+    out = Path(out).absolute() if resume else new_path(out)
+    emitter = ProgressEmitter(enabled=progress_stream)
+    return run_with_client(
+        timeout_seconds,
+        client,
+        lambda active: _download(active, source, out, emitter=emitter, resume=resume),
+    )

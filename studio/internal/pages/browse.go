@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"path/filepath"
+
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
@@ -16,11 +18,13 @@ type browseSpec struct {
 const browseFailureMessage = "无法打开选择窗口；可手动输入路径。"
 
 var (
-	browseCLI          = browseSpec{key: "cli", title: "选择 CLI 可执行文件"}
-	browseInstallation = browseSpec{key: "installation", title: "选择 installation.json", extensions: []string{"json"}}
-	browseWorkspace    = browseSpec{key: "workspace", title: "选择工作区目录", folder: true}
-	browseResults      = browseSpec{key: "results", title: "选择结果目录", folder: true}
-	browseModels       = browseSpec{key: "models", title: "选择模型目录", folder: true}
+	browseCLI           = browseSpec{key: "cli", title: "选择 CLI 可执行文件"}
+	browseInstallation  = browseSpec{key: "installation", title: "选择 installation.json", extensions: []string{"json"}}
+	browseExecutable    = browseSpec{key: "engine-exec", title: "选择引擎可执行文件或虚拟环境 Python"}
+	browseModelsRootDir = browseSpec{key: "engine-models-root", title: "选择 LM Studio 模型目录", folder: true}
+	browseWorkspace     = browseSpec{key: "workspace", title: "选择工作区目录", folder: true}
+	browseResults       = browseSpec{key: "results", title: "选择结果目录", folder: true}
+	browseModels        = browseSpec{key: "models", title: "选择模型目录", folder: true}
 )
 
 func (s *viewState) pathField(c *ui.Context, label string, value *string, spec browseSpec) ui.Element {
@@ -42,6 +46,21 @@ func (s *viewState) canBrowse() bool {
 }
 
 func (s *viewState) browsePath(value *string, spec browseSpec) {
+	if s.preview != nil && (spec.key == browseExecutable.key || spec.key == browseModelsRootDir.key) {
+		root := emptyText(s.settings.Effective.WorkspaceRoot)
+		if root == "" {
+			root = emptyText(s.settings.Settings.WorkspaceRoot)
+		}
+		if root == "" {
+			root = "/preview"
+		}
+		if spec.key == browseModelsRootDir.key {
+			*value = filepath.Join(root, "lmstudio-models")
+		} else {
+			*value = filepath.Join(root, "engines", "llama-server")
+		}
+		return
+	}
 	if s.simulate(previewBrowsePath{key: spec.key}) {
 		return
 	}

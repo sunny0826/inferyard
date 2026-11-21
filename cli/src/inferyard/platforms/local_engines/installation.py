@@ -1,21 +1,118 @@
 """Complete declared runtime inventories, including bytecode and link targets."""
 
+import json
 import os
 import platform
 import stat
 import subprocess
+import tempfile
 from pathlib import Path
 
 from inferyard.contracts.engine_profiles import DIRECTORY_FAMILIES
 from inferyard.contracts.local_environment import validate_installation_environment
 from inferyard.contracts.schemas_local_engines import INSTALLATION
-from inferyard.contracts.validation import validate_value, strict_json_loads
+from inferyard.contracts.validation import strict_json_loads, validate_value
 from inferyard.data.local_engine.bootstrap import import_paths
 from inferyard.errors import PreflightError
-from inferyard.platforms.identity import hash_file
+from inferyard.platforms.identity import FileIdentity, hash_file
 
 RUNTIME = "local-engine-runtime.v1"
 _FILE_CACHE = {}
+_DISK_CACHE_DEFINITION = "runtime-hash-cache.v1"
+_MAX_DISK_CACHE_BYTES = 32 * 1024 * 1024
+_MAX_DISK_CACHE_ENTRIES = 50_000
+_HEX_LOWER = frozenset("0123456789abcdef")
+
+
+def _hash_cache_path() -> Path:
+    return Path.home() / ".cache" / "inferyard" / "runtime-hash-cache.v1.json"
+
+
+def _load_disk_cache() -> dict:
+    try:
+        path = _hash_cache_path()
+        if path.is_symlink() or (path.parent.exists() and path.parent.is_symlink()):
+            return {}
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_size > _MAX_DISK_CACHE_BYTES:
+            return {}
+        data = strict_json_loads(path.read_text(encoding="utf-8"))
+        if (
+            not isinstance(data, dict)
+            or data.get("definition") != _DISK_CACHE_DEFINITION
+            or not isinstance(data.get("entries"), dict)
+        ):
+            return {}
+        return dict(data["entries"])
+    except (OSError, ValueError, TypeError, RuntimeError):
+        return {}
+
+
+def _save_disk_cache(entries: dict) -> None:
+    tmp_path = None
+    try:
+        path = _hash_cache_path()
+        cache_dir = path.parent
+        if path.is_symlink() or (cache_dir.exists() and cache_dir.is_symlink()):
+            return
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        if len(entries) > _MAX_DISK_CACHE_ENTRIES:
+            trimmed = dict(list(entries.items())[-_MAX_DISK_CACHE_ENTRIES:])
+        else:
+            trimmed = entries
+        payload = json.dumps(
+            {"definition": _DISK_CACHE_DEFINITION, "entries": trimmed},
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        )
+        fd, tmp_name = tempfile.mkstemp(
+            dir=cache_dir, prefix="runtime-hash-cache-", suffix=".tmp"
+        )
+        tmp_path = Path(tmp_name)
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(payload)
+            stream.flush()
+        os.chmod(tmp_path, 0o600)
+        os.replace(tmp_path, path)
+        tmp_path = None
+    except (OSError, ValueError, TypeError, RuntimeError):
+        if tmp_path is not None:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def _lookup_disk_cache(entries: dict, path: Path, stamps: tuple) -> FileIdentity | None:
+    try:
+        entry = entries.get(str(path))
+        if not isinstance(entry, list) or len(entry) != 7:
+            return None
+        dev, ino, size, mtime_ns, ctime_ns, resolved, digest = entry
+        if (
+            type(dev) is not int
+            or type(ino) is not int
+            or type(size) is not int
+            or type(mtime_ns) is not int
+            or type(ctime_ns) is not int
+            or type(resolved) is not str
+            or type(digest) is not str
+            or len(digest) != 64
+            or not set(digest) <= _HEX_LOWER
+        ):
+            return None
+        st = path.stat()
+        if not stat.S_ISREG(st.st_mode):
+            return None
+        disk_stamp = (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+        if disk_stamp != stamps[5:10] or disk_stamp != (dev, ino, size, mtime_ns, ctime_ns):
+            return None
+        if str(path.resolve(strict=True)) != resolved:
+            return None
+        return FileIdentity(resolved, digest, st.st_size, st.st_dev, st.st_ino, st.st_mtime_ns)
+    except (OSError, ValueError, TypeError, RuntimeError):
+        return None
 
 
 def darwin():
@@ -66,7 +163,18 @@ def read_installation(path):
         raise PreflightError("local_engine_installation_unreadable") from exc
 
 
-def inventory(root):
+def _allowed_bases(root, allowed_roots):
+    bases = allowed_roots if allowed_roots is not None else (root,)
+    resolved = []
+    for item in bases:
+        try:
+            resolved.append(Path(item).resolve(strict=True))
+        except OSError:
+            continue
+    return tuple(dict.fromkeys(resolved))
+
+
+def inventory(root, allowed_roots=None):
     def stamp(path, info, target):
         if not stat.S_ISREG(target.st_mode):
             raise PreflightError("local_engine_non_regular_asset")
@@ -86,19 +194,40 @@ def inventory(root):
 
     if not root.is_dir():
         return {root.name: stamp(root, root.lstat(), root.stat())}
-    if root.is_symlink():
+    root_resolved = root.resolve(strict=True)
+    allowed = _allowed_bases(root_resolved, allowed_roots)
+    if root.is_symlink() and (
+        allowed_roots is None
+        or not any(root_resolved == base or root_resolved.is_relative_to(base) for base in allowed)
+    ):
         raise PreflightError("local_engine_directory_symlink")
-    result, pending = {}, [(str(root), "")]
+    root_stat = root.stat()
+    result = {}
+    pending = [(str(root), "", frozenset({(root_stat.st_dev, root_stat.st_ino)}))]
     while pending:
-        directory, prefix = pending.pop()
+        directory, prefix, ancestors = pending.pop()
         with os.scandir(directory) as entries:
             for entry in entries:
                 info = entry.stat(follow_symlinks=False)
                 name = prefix + entry.name
-                if entry.is_dir():
-                    if entry.is_symlink():
-                        raise PreflightError("local_engine_directory_symlink")
-                    pending.append((entry.path, name + "/"))
+                if entry.is_symlink():
+                    try:
+                        target_stat = entry.stat()
+                        target = Path(entry.path).resolve(strict=True)
+                    except (OSError, RuntimeError) as exc:
+                        raise PreflightError("local_engine_directory_symlink") from exc
+                    if stat.S_ISDIR(target_stat.st_mode):
+                        dir_id = (target_stat.st_dev, target_stat.st_ino)
+                        if dir_id in ancestors or not any(
+                            target == base or target.is_relative_to(base) for base in allowed
+                        ):
+                            raise PreflightError("local_engine_directory_symlink")
+                        pending.append((entry.path, name + "/", ancestors | {dir_id}))
+                    else:
+                        result[name] = stamp(entry.path, info, target_stat)
+                elif entry.is_dir(follow_symlinks=False):
+                    dir_id = (info.st_dev, info.st_ino)
+                    pending.append((entry.path, name + "/", ancestors | {dir_id}))
                 else:
                     result[name] = stamp(entry.path, info, entry.stat())
     return result
@@ -157,10 +286,36 @@ def _roots(declaration, python_roots):
     return selected
 
 
-def _snapshot(roots):
+def _record_disk_cache(disk_entries: dict, path: Path, identity: FileIdentity) -> bool:
+    try:
+        st = path.stat()
+        if (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns) != (
+            identity.device,
+            identity.inode,
+            identity.size,
+            identity.mtime_ns,
+        ):
+            return False
+        disk_entries[str(path)] = [
+            st.st_dev,
+            st.st_ino,
+            st.st_size,
+            st.st_mtime_ns,
+            st.st_ctime_ns,
+            identity.path,
+            identity.sha256,
+        ]
+        return True
+    except OSError:
+        return False
+
+
+def _snapshot(roots, *, allowed_roots=None):
     snapshots, identities = [], []
+    disk_entries = _load_disk_cache()
+    disk_dirty = False
     for root in roots:
-        before = inventory(root)
+        before = inventory(root, allowed_roots=allowed_roots)
         directory = root.is_dir()
         entries = []
         for name, stamps in sorted(before.items()):
@@ -168,7 +323,11 @@ def _snapshot(roots):
             cache_key = (str(path), stamps)
             identity = _FILE_CACHE.get(cache_key)
             if identity is None:
-                identity = hash_file(path)
+                identity = _lookup_disk_cache(disk_entries, path, stamps)
+                if identity is None:
+                    identity = hash_file(path)
+                    if _record_disk_cache(disk_entries, path, identity):
+                        disk_dirty = True
                 _FILE_CACHE[cache_key] = identity
             identities.append(identity)
             entries.append(
@@ -179,9 +338,11 @@ def _snapshot(roots):
                     "symlink": stamps[-1],
                 }
             )
-        if inventory(root) != before:
+        if inventory(root, allowed_roots=allowed_roots) != before:
             raise PreflightError("local_engine_runtime_changed_during_hash")
         snapshots.append({"path": str(root), "entries": entries})
+    if disk_dirty:
+        _save_disk_cache(disk_entries)
     return snapshots, identities
 
 
@@ -197,7 +358,11 @@ def _freeze(value):
             from inferyard.platforms.local_engines.python_sources import resolve_sources
 
             resolve_sources(python, declaration, roots)
-        snapshots, identities = _snapshot(roots)
+        allowed_roots = [Path(p) for p in declaration["runtime_roots"]]
+        allowed_roots.extend(p for p in roots if p.is_dir())
+        if python is not None:
+            allowed_roots.extend([Path(python["base_prefix"]), Path(python["prefix"])])
+        snapshots, identities = _snapshot(roots, allowed_roots=allowed_roots)
         from inferyard.platforms.local_engines.closure import verify_libraries
 
         unresolved = verify_libraries(

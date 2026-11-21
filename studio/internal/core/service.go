@@ -26,6 +26,7 @@ type Options struct {
 	OrphanStopTimeout  time.Duration
 	SettingsPath       string
 	Execute            Executor
+	ExecStream         func(context.Context, func(string), string, ...string) (inferyard.Execution, error)
 	HostStatePath      string
 	EngineStartTimeout time.Duration
 }
@@ -50,6 +51,7 @@ type Service struct {
 	settings          UserSettings
 	settingsPath      string
 	exec              Executor
+	execStream        func(context.Context, func(string), string, ...string) (inferyard.Execution, error)
 	Bus               *EventBus
 	device            DeviceResponse
 	deviceGeneration  uint64
@@ -101,9 +103,26 @@ func New(ctx context.Context, o Options) (*Service, error) {
 		o.Execute = func(ctx context.Context, path string, args ...string) (inferyard.Execution, error) {
 			return (inferyard.Client{Path: path}).Exec(ctx, args...)
 		}
+		if o.ExecStream == nil {
+			o.ExecStream = func(ctx context.Context, onLine func(string), path string, args ...string) (inferyard.Execution, error) {
+				return (inferyard.Client{Path: path}).ExecStream(ctx, onLine, args...)
+			}
+		}
+	}
+	if o.ExecStream == nil {
+		execFn := o.Execute
+		o.ExecStream = func(ctx context.Context, onLine func(string), path string, args ...string) (inferyard.Execution, error) {
+			out, err := execFn(ctx, path, args...)
+			if onLine != nil && len(out.Stderr) > 0 {
+				for _, line := range strings.Split(strings.TrimRight(string(out.Stderr), "\r\n"), "\n") {
+					onLine(strings.TrimRight(line, "\r"))
+				}
+			}
+			return out, err
+		}
 	}
 	serviceCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
-	s := &Service{ctx: serviceCtx, cancel: cancel, shutdownDone: make(chan struct{}), queueDone: make(chan struct{}), settingsPath: o.SettingsPath, exec: o.Execute, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout, checks: map[string]engineCheckEntry{}, checkInflight: map[string]bool{}, checkSupported: true, checkSem: make(chan struct{}, 2), checkRetry: time.Minute}
+	s := &Service{ctx: serviceCtx, cancel: cancel, shutdownDone: make(chan struct{}), queueDone: make(chan struct{}), settingsPath: o.SettingsPath, exec: o.Execute, execStream: o.ExecStream, Bus: NewEventBus(), wake: make(chan struct{}, 1), hostStatePath: o.HostStatePath, engineTimeout: o.EngineStartTimeout, checks: map[string]engineCheckEntry{}, checkInflight: map[string]bool{}, checkSupported: true, checkSem: make(chan struct{}, 2), checkRetry: time.Minute}
 	raw, err := os.ReadFile(o.SettingsPath)
 	if err == nil {
 		if err = json.Unmarshal(raw, &s.settings); err != nil {

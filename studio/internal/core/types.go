@@ -228,6 +228,7 @@ type DownloadResult struct {
 
 type DownloadTask struct {
 	Kind            string          `json:"kind"`
+	DisplayName     string          `json:"display_name,omitempty"`
 	ProgressReason  *string         `json:"progress_reason"`
 	EnginePath      *string         `json:"engine_path"`
 	TaskId          string          `json:"task_id"`
@@ -237,7 +238,9 @@ type DownloadTask struct {
 	OutDir          string          `json:"out_dir"`
 	FileName        *string         `json:"file_name"`
 	DownloadedBytes int64           `json:"downloaded_bytes"`
+	TotalBytes      *int64          `json:"total_bytes"`
 	BytesPerSecond  *float64        `json:"bytes_per_second"`
+	Stage           string          `json:"stage,omitempty"`
 	StartedAt       string          `json:"started_at"`
 	FinishedAt      *string         `json:"finished_at"`
 	Result          *DownloadResult `json:"result"`
@@ -253,7 +256,8 @@ func (t DownloadTask) MarshalJSON() ([]byte, error) {
 	type task DownloadTask
 	var downloaded *int64
 	var rate *float64
-	if t.Kind != "engine" {
+	hasProgress := t.Kind != "engine" || t.DownloadedBytes > 0 || t.BytesPerSecond != nil || (t.TotalBytes != nil && t.ProgressReason == nil)
+	if hasProgress {
 		downloaded = &t.DownloadedBytes
 		rate = t.BytesPerSecond
 	}

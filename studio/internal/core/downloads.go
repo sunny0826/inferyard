@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -16,6 +17,7 @@ type downloadEntry struct {
 	Task     DownloadTask
 	cancel   context.CancelFunc
 	tokenEnv string
+	resume   bool
 }
 
 var outputName = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
@@ -66,27 +68,36 @@ func (s *Service) CreateModelDownload(req CreateDownloadRequest, tokenEnv string
 		return DownloadTask{}, Err("invalid_request")
 	}
 	u := downloadNameDefaults(s.userSettings())
-	if u.ModelsRoot == nil {
-		return DownloadTask{}, Conflict("settings_incomplete")
+	root, apiErr := s.downloadRoot("model", u)
+	if apiErr != nil {
+		return DownloadTask{}, apiErr
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
 		return DownloadTask{}, Err("cli_unavailable")
-	}
-	if e := os.MkdirAll(*u.ModelsRoot, 0700); e != nil {
-		return DownloadTask{}, Err("internal_error")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closing {
 		return DownloadTask{}, Err("service_closing")
 	}
-	name, dir, failure := s.downloadOutputLocked(*u.ModelsRoot, req.OutName, u.ModelDownloadName)
+	base := resolveAutoDownloadName("model", u.ModelDownloadName, req.SourceUrl)
+	name, dir, failure := s.downloadOutputLocked(root, req.OutName, base)
 	if failure != nil {
 		return DownloadTask{}, failure
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
-	d := &downloadEntry{Task: DownloadTask{Kind: "model", TaskId: uuid(), State: "downloading", SourceUrl: req.SourceUrl, OutName: name, OutDir: dir, StartedAt: now()}, cancel: cancel, tokenEnv: tokenEnv}
+	d := &downloadEntry{Task: DownloadTask{
+		Kind:        "model",
+		DisplayName: ResolveDownloadDisplayName("model", req.SourceUrl),
+		TaskId:      uuid(),
+		State:       "downloading",
+		SourceUrl:   req.SourceUrl,
+		OutName:     name,
+		OutDir:      dir,
+		TotalBytes:  catalogTotalBytes(req.SourceUrl),
+		StartedAt:   now(),
+	}, cancel: cancel, tokenEnv: tokenEnv}
 	s.downloads = append(s.downloads, d)
 	s.Bus.Publish("download.state", map[string]any{"task": d.Task})
 	go s.download(ctx, *p.Path, d)
@@ -121,13 +132,18 @@ func (s *Service) download(ctx context.Context, binary string, d *downloadEntry)
 		out inferyard.Execution
 		err error
 	}
+	var streamSeen atomic.Bool
 	done := make(chan result, 1)
 	go func() {
-		args := []string{"model", "acquire", "--source", d.Task.SourceUrl, "--out", d.Task.OutDir}
+		args := []string{"model", "acquire", "--progress-stream"}
+		if d.resume {
+			args = append(args, "--resume")
+		}
 		if d.tokenEnv != "" {
 			args = append(args, "--token-env", d.tokenEnv)
 		}
-		o, e := s.exec(ctx, binary, args...)
+		args = append(args, "--source", d.Task.SourceUrl, "--out", d.Task.OutDir)
+		o, e := s.execStream(ctx, s.newStderrProgressHandler(d, &streamSeen), binary, args...)
 		done <- result{o, e}
 	}()
 	ticker := time.NewTicker(time.Second)
@@ -143,12 +159,20 @@ func (s *Service) download(ctx context.Context, binary string, d *downloadEntry)
 			return
 		}
 		for _, entry := range entries {
-			if !strings.HasSuffix(entry.Name(), ".part") {
+			if !strings.HasSuffix(entry.Name(), ".part") || strings.HasSuffix(entry.Name(), ".json.part") {
 				continue
 			}
 			info, e := entry.Info()
 			if e != nil || !info.Mode().IsRegular() {
 				continue
+			}
+			if streamSeen.Load() {
+				s.mu.Lock()
+				if d.Task.FileName == nil {
+					d.Task.FileName = ptr(entry.Name())
+				}
+				s.mu.Unlock()
+				break
 			}
 			at := time.Now()
 			window = append(window, reading{at, info.Size()})
@@ -163,7 +187,7 @@ func (s *Service) download(ctx context.Context, binary string, d *downloadEntry)
 			d.Task.FileName = ptr(entry.Name())
 			d.Task.DownloadedBytes = info.Size()
 			d.Task.BytesPerSecond = rate
-			s.Bus.Publish("download.progress", map[string]any{"task_id": d.Task.TaskId, "downloaded_bytes": info.Size(), "bytes_per_second": rate, "utc": now()})
+			s.Bus.Publish("download.progress", map[string]any{"task_id": d.Task.TaskId, "downloaded_bytes": info.Size(), "total_bytes": d.Task.TotalBytes, "bytes_per_second": rate, "utc": now()})
 			s.mu.Unlock()
 			break
 		}
@@ -197,6 +221,7 @@ loop:
 		if e != nil || result.Bytes < 0 || len(result.Sha256) != 64 {
 			return false
 		}
+		d.Task.Stage = ""
 		d.Task.Result = &result
 		d.Task.DownloadedBytes = result.Bytes
 		return true
@@ -239,37 +264,35 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 		return DownloadTask{}, Err("invalid_request")
 	}
 	u := downloadNameDefaults(s.userSettings())
-	workspace := str(u.WorkspaceRoot)
-	if workspace == "" {
-		return DownloadTask{}, Conflict("settings_incomplete")
-	}
-	root, err := Resolve(workspace, "engines")
-	if s.paths != nil {
-		root, err = Resolve(s.paths.Engines, s.paths.Engines)
-	}
-	if err != nil {
-		return DownloadTask{}, Err("invalid_request")
+	root, apiErr := s.downloadRoot("engine", u)
+	if apiErr != nil {
+		return DownloadTask{}, apiErr
 	}
 	p := s.probe(u)
 	if p.Status != "ok" {
 		return DownloadTask{}, Err("cli_unavailable")
-	}
-	if e := os.MkdirAll(root, 0755); e != nil {
-		return DownloadTask{}, Err("internal_error")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closing {
 		return DownloadTask{}, Err("service_closing")
 	}
-	outName, dir, failure := s.downloadOutputLocked(root, outName, u.EngineDownloadName)
+	base := resolveAutoDownloadName("engine", u.EngineDownloadName, source)
+	outName, dir, failure := s.downloadOutputLocked(root, outName, base)
 	if failure != nil {
 		return DownloadTask{}, failure
 	}
 	ctx, cancel := context.WithCancel(s.ctx)
 	d := &downloadEntry{Task: DownloadTask{
-		Kind: "engine", TaskId: uuid(), State: "downloading", SourceUrl: source,
-		OutName: outName, OutDir: dir, StartedAt: now(),
+		Kind:           "engine",
+		DisplayName:    ResolveDownloadDisplayName("engine", source),
+		TaskId:         uuid(),
+		State:          "downloading",
+		SourceUrl:      source,
+		OutName:        outName,
+		OutDir:         dir,
+		TotalBytes:     catalogTotalBytes(source),
+		StartedAt:      now(),
 		ProgressReason: ptr("engine_transfer_progress_unavailable"),
 	}, cancel: cancel}
 	s.downloads = append(s.downloads, d)
@@ -278,7 +301,7 @@ func (s *Service) CreateEngineDownload(source, outName string) (DownloadTask, *A
 	return clone(d.Task), nil
 }
 
-func enginePrepareArgs(sourceURL, outDir string) []string {
+func enginePrepareArgs(sourceURL, outDir string, resume bool) []string {
 	args := []string{"engine", "prepare", "--source", sourceURL, "--out", outDir}
 	if entry, ok := CatalogEntryByURL(sourceURL); ok {
 		if entry.SHA256 != "" {
@@ -294,16 +317,23 @@ func enginePrepareArgs(sourceURL, outDir string) []string {
 			args = append(args, "--runtime-expected-sha256", entry.RuntimeSHA256)
 		}
 	}
+	args = append(args, "--progress-stream")
+	if resume {
+		args = append(args, "--resume")
+	}
 	return args
 }
 
 func (s *Service) downloadEngine(ctx context.Context, binary string, d *downloadEntry) {
 	defer d.cancel()
-	s.Bus.Publish("download.progress", map[string]any{
-		"task_id": d.Task.TaskId, "downloaded_bytes": nil, "bytes_per_second": nil,
-		"progress_reason": d.Task.ProgressReason, "utc": now(),
-	})
-	out, execErr := s.exec(ctx, binary, enginePrepareArgs(d.Task.SourceUrl, d.Task.OutDir)...)
+	if d.Task.ProgressReason != nil {
+		s.Bus.Publish("download.progress", map[string]any{
+			"task_id": d.Task.TaskId, "downloaded_bytes": nil, "bytes_per_second": nil,
+			"total_bytes": d.Task.TotalBytes, "progress_reason": d.Task.ProgressReason, "utc": now(),
+		})
+	}
+	var streamSeen atomic.Bool
+	out, execErr := s.execStream(ctx, s.newStderrProgressHandler(d, &streamSeen), binary, enginePrepareArgs(d.Task.SourceUrl, d.Task.OutDir, d.resume)...)
 	s.mu.Lock()
 	s.finishDownloadLocked(ctx, d, out, execErr, func(cr inferyard.CommandResult, parseErr error) bool {
 		if parseErr != nil {
@@ -317,6 +347,7 @@ func (s *Service) downloadEngine(ctx context.Context, binary string, d *download
 		if err := json.Unmarshal(cr.Details, &details); err != nil || details.Engine == "" || details.Bytes < 0 || len(details.Sha256) != 64 {
 			return false
 		}
+		d.Task.Stage = ""
 		d.Task.EnginePath = ptr(details.Engine)
 		d.Task.Result = &DownloadResult{Bytes: details.Bytes, Sha256: details.Sha256}
 		return true

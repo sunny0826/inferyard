@@ -61,6 +61,12 @@ class CommandRequest:
     extension_spec: Path | None = None
     models_roots: list[Path] | None = None
     engine_roots: list[Path] | None = None
+    extra_paths: list[Path] | None = None
+    family: str | None = None
+    executable: Path | None = None
+    working_directory: Path | None = None
+    runtime_roots: list[Path] | None = None
+    models_root: Path | None = None
     model_path: Path | None = None
     fit_engines: list[str] | None = None
     fit_engine: str | None = None
@@ -104,6 +110,8 @@ class CommandRequest:
     runtime_source_url: str | None = None
     runtime_expected_sha256: str | None = None
     engine_timeout_seconds: float = 1800
+    progress_stream: bool = False
+    resume_transfer: bool = False
     protect_pids: list[int] | None = None
     workspace: Path | None = None
     temperature_stop_override_reason: str | None = None
