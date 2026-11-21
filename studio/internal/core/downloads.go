@@ -142,6 +142,9 @@ func (s *Service) download(ctx context.Context, binary string, d *downloadEntry)
 		if d.tokenEnv != "" {
 			args = append(args, "--token-env", d.tokenEnv)
 		}
+		if proxy := s.downloadProxy(); proxy != "" {
+			args = append(args, "--proxy-origin", proxy)
+		}
 		args = append(args, "--source", d.Task.SourceUrl, "--out", d.Task.OutDir)
 		o, e := s.execStream(ctx, s.newStderrProgressHandler(d, &streamSeen), binary, args...)
 		done <- result{o, e}
@@ -333,7 +336,11 @@ func (s *Service) downloadEngine(ctx context.Context, binary string, d *download
 		})
 	}
 	var streamSeen atomic.Bool
-	out, execErr := s.execStream(ctx, s.newStderrProgressHandler(d, &streamSeen), binary, enginePrepareArgs(d.Task.SourceUrl, d.Task.OutDir, d.resume)...)
+	args := enginePrepareArgs(d.Task.SourceUrl, d.Task.OutDir, d.resume)
+	if proxy := s.downloadProxy(); proxy != "" {
+		args = append(args, "--proxy-origin", proxy)
+	}
+	out, execErr := s.execStream(ctx, s.newStderrProgressHandler(d, &streamSeen), binary, args...)
 	s.mu.Lock()
 	s.finishDownloadLocked(ctx, d, out, execErr, func(cr inferyard.CommandResult, parseErr error) bool {
 		if parseErr != nil {

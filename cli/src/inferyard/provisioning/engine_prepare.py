@@ -496,6 +496,7 @@ def prepare(
     client=None,
     progress_stream=False,
     resume=False,
+    proxy_origin=None,
 ):
     source = parse_engine_source(url)
     runtime_source = parse_engine_source(runtime_url) if runtime_url is not None else None
@@ -549,4 +550,5 @@ def prepare(
             emitter=emitter,
             resume=resume,
         ),
+        proxy_origin=proxy_origin,
     )

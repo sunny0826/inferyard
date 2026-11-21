@@ -18,6 +18,8 @@ type CatalogEntry struct {
 	Title         string
 	Family        string
 	URL           string
+	MirrorLabel   string
+	MirrorURL     string
 	Bytes         int64
 	SHA256        string
 	Profile       string
@@ -84,7 +86,7 @@ func CatalogEntryByURL(url string) (CatalogEntry, bool) {
 		return CatalogEntry{}, false
 	}
 	for _, entry := range catalogEntries {
-		if entry.URL == url {
+		if entry.URL == url || (entry.MirrorURL != "" && entry.MirrorURL == url) {
 			return entry, true
 		}
 	}
@@ -154,8 +156,8 @@ func (e CatalogEntry) SharesTitle() bool {
 }
 
 func DefaultModelURL() string {
-	for _, entry := range catalogEntries {
-		if entry.ID == "model-smollm2-135m" {
+	for _, id := range []string{"model-qwen3-0.6b-q8", "model-smollm2-135m"} {
+		if entry, ok := CatalogEntryByID(id); ok && entry.Downloadable() {
 			return entry.URL
 		}
 	}
