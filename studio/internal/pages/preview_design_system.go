@@ -12,12 +12,14 @@ import (
 )
 
 type dsShowcaseState struct {
-	segment   string
-	selected  string
-	switchOn  bool
-	checked   bool
-	radio     string
-	inputText string
+	segment     string
+	selected    string
+	switchOn    bool
+	checked     bool
+	radio       string
+	inputText   string
+	badEnv      string
+	selectedRow int
 }
 
 func (p *previewSession) designSystemView(c *ui.Context) {
@@ -33,6 +35,7 @@ func (p *previewSession) designSystemView(c *ui.Context) {
 					checked:   true,
 					radio:     "local",
 					inputText: "INFERYARD_API_KEY",
+					badEnv:    "sk-plaintext-invalid",
 				}
 			})
 			root.Children(func() {
@@ -184,34 +187,67 @@ func dsTypographySection(c *ui.Context) {
 func dsComponentsSection(c *ui.Context, st *dsShowcaseState) {
 	t := tokens(c)
 	card(c, "四、基础组件与状态语义映射", func() {
-		section(c, "按钮层级（石墨单色 Primary + 克制 Secondary + 绯红 Danger）", func() {
+		section(c, "按钮层级与尺寸（Primary / Secondary / Outline / Ghost / Danger / IconButton）", func() {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
 				primaryButton(c, "开始测评")
 				button(c, "刷新状态")
+				outlineButton(c, "次要描边")
+				ghostButton(c, "清空筛选")
 				dangerButton(c, "停止服务")
 				primaryActionButton(c, "核验中", true)
+				iconButton(c, lucide.RefreshCw, "刷新列表", components.IconButtonPlain)
+				iconButton(c, lucide.Copy, "复制路径", components.IconButtonCompact)
+			})
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				sizedButton(c, components.ButtonPrimary, sizeSM, "SM 按钮")
+				sizedButton(c, components.ButtonPrimary, sizeMD, "MD 按钮")
+				sizedButton(c, components.ButtonPrimary, sizeLG, "LG 按钮")
 			})
 		})
-		section(c, "状态徽章与内联通知（方案 A：钢蓝运行态 + 3 态结果色）", func() {
+		section(c, "状态徽章（Soft / Outline / Dot × SM / MD）与内联通知", func() {
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-				statusBadge(c, "排队中", stateColor(c, stateNeutral))
-				statusBadge(c, "运行中", stateColor(c, stateActive))
-				statusBadge(c, "提示", stateColor(c, stateInfo))
-				statusBadge(c, "完整收尾", stateColor(c, stateSuccess))
-				statusBadge(c, "运行不完整", stateColor(c, stateWarning))
-				statusBadge(c, "工具错误", stateColor(c, stateDanger))
+				badge(c, "排队中", stateNeutral, badgeOptions{Style: badgeSoft})
+				badge(c, "运行中", stateActive, badgeOptions{Style: badgeSoft})
+				badge(c, "完整收尾", stateSuccess, badgeOptions{Style: badgeSoft})
+				badge(c, "运行不完整", stateWarning, badgeOptions{Style: badgeSoft})
+				badge(c, "工具错误", stateDanger, badgeOptions{Style: badgeSoft})
 			})
-			stateBanner(c, stateInfo, lucide.Info, func(fg ui.Color) {
-				ui.Text(c, "信息提示（Info）：当前使用本地发现的服务端点，仅保存环境变量名。").TextColor(fg)
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
+				badge(c, "Outline · 信息", stateInfo, badgeOptions{Style: badgeOutline, Size: sizeSM})
+				badge(c, "Outline · 通过", stateSuccess, badgeOptions{Style: badgeOutline, Size: sizeSM})
+				badge(c, "Dot · 运行中", stateActive, badgeOptions{Style: badgeDot})
+				badge(c, "Dot · 就绪", stateSuccess, badgeOptions{Style: badgeDot})
+				badge(c, "Dot · 告警", stateWarning, badgeOptions{Style: badgeDot})
+				badge(c, "Dot · 失败", stateDanger, badgeOptions{Style: badgeDot})
 			})
-			stateBanner(c, stateSuccess, lucide.CircleCheck, func(fg ui.Color) {
-				ui.Text(c, "成功（Success）：所有题目已完成并落盘原始证据。").TextColor(fg)
+			noticeBanner(c, noticeBannerOptions{
+				Kind:    stateInfo,
+				Size:    bannerCompact,
+				Message: "Compact Info：当前使用本地发现的服务端点，仅保存环境变量名。",
 			})
-			stateBanner(c, stateWarning, lucide.TriangleAlert, func(fg ui.Color) {
-				ui.Text(c, "告警（Warning）：存在 2 项缺测采样，报告将保持缺测标记。").TextColor(fg)
+			noticeBanner(c, noticeBannerOptions{
+				Kind:    stateSuccess,
+				Title:   "测评已完成",
+				Message: "所有题目已结束并落盘原始证据目录。",
 			})
-			stateBanner(c, stateDanger, lucide.CircleAlert, func(fg ui.Color) {
-				ui.Text(c, "错误（Danger）：服务连接已断开 · engine_unreachable").TextColor(fg)
+			noticeBanner(c, noticeBannerOptions{
+				Kind:    stateWarning,
+				Message: "告警（Warning）：存在 2 项缺测采样，报告将保持缺测标记。",
+			})
+			noticeBanner(c, noticeBannerOptions{
+				Kind:    stateDanger,
+				Title:   "服务连接已断开 · engine_unreachable",
+				Message: "请检查本地推理服务是否仍在运行，确认后重新绑定。",
+				Actions: func() {
+					button(c, "重新探测")
+					ghostButton(c, "前往设置")
+				},
+				Details: func() {
+					componentFoldKeyed(c, "ds-banner-details", "错误详情", func() {
+						keyValueRow(c, "endpoint", "http://127.0.0.1:1234", true)
+						keyValueRow(c, "pid", "4001", true)
+					})
+				},
 			})
 			ui.Column(c).FillWidth().Gap(t.Density.Row).Children(func() {
 				ui.Text(c, "进度条（进行中 · 钢蓝 62%）").FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
@@ -222,7 +258,7 @@ func dsComponentsSection(c *ui.Context, st *dsShowcaseState) {
 				progressBar(c, -1, "不确定进度")
 			})
 		})
-		section(c, "表单与选择控件", func() {
+		section(c, "表单与选择控件（含字段校验与开关行）", func() {
 			segmentedField(c, "上下文档位（Segmented · R=12 → 8）", "", &st.segment, []components.NativeSelectOption[string]{
 				{Label: "16K", Value: "16K"},
 				{Label: "32K", Value: "32K"},
@@ -235,15 +271,53 @@ func dsComponentsSection(c *ui.Context, st *dsShowcaseState) {
 				"DeepSeek-R1-Distill-Qwen-14B-Q4_K_M.gguf",
 				"Llama-3.3-70B-Instruct-Q4_K_M.gguf",
 			})
-			field(c, "凭据环境变量（api_key_env）", &st.inputText)
+			monoField(c, "凭据环境变量（正常态）", "仅保存环境变量名，不落盘明文密钥。", "例如 INFERYARD_API_KEY", tokenNameError(st.inputText), &st.inputText)
+			monoField(c, "凭据环境变量（校验失败态）", "", "例如 INFERYARD_API_KEY", tokenNameError(st.badEnv), &st.badEnv)
+			switchField(c, "自动采样系统资源", "测评期间按固定频率采集内存与温度曲线，即时生效。", &st.switchOn)
 			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Section).Children(func() {
-				components.Switch(c, &st.switchOn, "自动采样资源")
 				components.Checkbox(c, &st.checked, "保留原始输出目录")
 				components.Radio(c, &st.radio, "local", "本地引擎")
 				components.Radio(c, &st.radio, "external", "外部服务")
 			})
 			componentFoldKeyed(c, "ds-fold-demo", "口径说明与观测依据（Collapsible 折叠区）", func() {
 				ui.Text(c, "次要说明与原始路径统一收进折叠区，避免主界面堆叠防御性文案。").TextColor(t.Color.FgSecondary)
+			})
+		})
+		section(c, "列表行、键值对与空态组件", func() {
+			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Row), materialInset).Children(func() {
+				rows := []struct {
+					title, sub, status string
+					kind               stateKind
+				}{
+					{"Qwen2.5-14B-Instruct-Q4_K_M.gguf", "llama-server · 64K 上下文", "运行中", stateActive},
+					{"DeepSeek-R1-Distill-Qwen-14B.gguf", "LM Studio · 常规题集", "完整收尾", stateSuccess},
+					{"Llama-3.3-70B-Instruct.gguf", "mlx-lm · 显存采样缺测", "运行不完整", stateWarning},
+				}
+				for i, item := range rows {
+					idx := i
+					listRow(c, listRowOptions{
+						Title:    item.title,
+						Subtitle: item.sub,
+						Selected: st.selectedRow == idx,
+						Trailing: func() { badge(c, item.status, item.kind, badgeOptions{Style: badgeDot, Size: sizeSM}) },
+						OnClick:  func() { st.selectedRow = idx },
+					})
+				}
+			})
+			applyMaterial(c, ui.Column(c).FillWidth().Padding(t.Density.Stack), materialInset).Children(func() {
+				keyValueRow(c, "运行目录", "/Users/demo/.inferyard/runs/20261121-001", false)
+				keyValueRow(c, "吞吐中位数", "84.26 tok/s", true)
+				keyValueRow(c, "GPU 温度峰值", "", true)
+			})
+			emptyState(c, emptyStateOptions{
+				Icon:        lucide.FileSearch,
+				Title:       "暂无匹配的测评报告",
+				Description: "当前筛选条件下没有记录，可清空筛选或发起新测评。",
+				Surface:     emptySunken,
+				Action: func() {
+					primaryButton(c, "新建测评任务")
+					ghostButton(c, "清空筛选")
+				},
 			})
 		})
 	})
