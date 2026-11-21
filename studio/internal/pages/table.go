@@ -43,12 +43,18 @@ func pageTable(c *ui.Context, s *pageTableState, label string, columns []ui.Tabl
 				if s.Label != nil {
 					rowLabel = s.Label(i)
 				}
-				row := components.TableRow(c, key, rowLabel, *s.Selected == i, func(col int) { cell(i, col) })
+				selected := *s.Selected == i
+				row := components.TableRow(c, key, rowLabel, selected, func(col int) { cell(i, col) })
 				rows[i] = row
 				submit := row.Shortcut(0, ui.KeyEnter) || row.DoubleClicked()
 				if row.Clicked() || row.Focused() || submit {
 					*s.Selected, s.selectedKey = i, key
-					row.Selected(true)
+					selected = true
+					row.AccessSelected(true)
+				}
+				if selected {
+					t := tokens(c)
+					row.Background(t.Color.AccentSelection).TextColor(t.Color.FgPrimary)
 				}
 				if submit {
 					s.submitted = true

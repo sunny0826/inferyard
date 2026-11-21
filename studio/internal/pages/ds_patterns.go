@@ -133,7 +133,7 @@ func filterableTable(c *ui.Context, opts filterableTableOptions) {
 				if opts.Query != nil {
 					box := components.TextBox(c, opts.Query, components.TextBoxOptions{}).Width(240).MaxWidthPercent(100)
 					if opts.SearchPlaceholder != "" {
-						box.Placeholder(opts.SearchPlaceholder)
+						box.Placeholder(opts.SearchPlaceholder).Label(opts.SearchPlaceholder)
 					}
 				}
 				if opts.Filters != nil {

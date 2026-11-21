@@ -172,57 +172,65 @@ func selectField[T comparable](c *ui.Context, name, description string, selected
 	}
 }
 
+func segmentedControl[T comparable](c *ui.Context, name string, selected *T, options []components.NativeSelectOption[T]) ui.Element {
+	if len(options) == 0 {
+		return ui.Element{}
+	}
+	t := tokens(c)
+	idx := 0
+	for i, option := range options {
+		if option.Value == *selected {
+			idx = i
+			break
+		}
+	}
+	seg := ui.SegmentedBase(c, &idx, len(options))
+	trackRadius := t.Radius.Floating
+	trackPad := t.Density.Tight
+	itemRadius := concentricRadius(trackRadius, trackPad)
+	track := seg.Track.AlignItems(ui.Center).Gap(t.Density.Tight).
+		Padding(trackPad).Radius(trackRadius).
+		Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Label(name).
+		Children(func() {
+			for i, option := range options {
+				active := i == idx
+				item := seg.Segment(i).
+					AlignItems(ui.Center).Justify(ui.Center).
+					Padding(t.Density.Tight, t.Density.Stack).
+					Radius(itemRadius).
+					Label(option.Label).
+					Disabled(option.Disabled)
+				if active {
+					border := t.Color.BorderSubtle
+					if c.Preferences().HighContrast {
+						border = stateColor(c, stateActive)
+					}
+					applyShadow(item.Background(t.Color.Surface).Border(1, border), t.Elevation.XS)
+				} else if item.Hovered() && !option.Disabled {
+					item.Background(t.Color.Surface.Alpha(.6))
+				}
+				item.Children(func() {
+					label := ui.Text(c, option.Label).SingleLine()
+					if active {
+						label.Bold().TextColor(t.Color.FgPrimary)
+					} else {
+						label.TextColor(t.Color.FgSecondary)
+					}
+				})
+			}
+		})
+	if seg.Track.Changed() && idx >= 0 && idx < len(options) && !options[idx].Disabled {
+		*selected = options[idx].Value
+	}
+	return track
+}
+
 func segmentedField[T comparable](c *ui.Context, name, description string, selected *T, options []components.NativeSelectOption[T]) {
 	if len(options) == 0 {
 		return
 	}
 	f := ui.Field(c, name, func() {
-		t := tokens(c)
-		idx := 0
-		for i, option := range options {
-			if option.Value == *selected {
-				idx = i
-				break
-			}
-		}
-		seg := ui.SegmentedBase(c, &idx, len(options))
-		trackRadius := t.Radius.Floating
-		trackPad := t.Density.Tight
-		itemRadius := concentricRadius(trackRadius, trackPad)
-		seg.Track.AlignSelf(ui.Start).AlignItems(ui.Center).Gap(t.Density.Tight).
-			Padding(trackPad).Radius(trackRadius).
-			Background(t.Color.Sunken).Border(1, t.Color.BorderSubtle).Label(name).
-			Children(func() {
-				for i, option := range options {
-					active := i == idx
-					item := seg.Segment(i).
-						AlignItems(ui.Center).Justify(ui.Center).
-						Padding(t.Density.Tight+1, t.Density.Stack).
-						Radius(itemRadius).
-						Label(option.Label).
-						Disabled(option.Disabled)
-					if active {
-						border := t.Color.BorderSubtle
-						if c.Preferences().HighContrast {
-							border = stateColor(c, stateActive)
-						}
-						applyShadow(item.Background(t.Color.Surface).Border(1, border), t.Elevation.XS)
-					} else if item.Hovered() && !option.Disabled {
-						item.Background(t.Color.Surface.Alpha(.6))
-					}
-					item.Children(func() {
-						label := ui.Text(c, option.Label).SingleLine()
-						if active {
-							label.Bold().TextColor(t.Color.FgPrimary)
-						} else {
-							label.TextColor(t.Color.FgSecondary)
-						}
-					})
-				}
-			})
-		if seg.Track.Changed() && idx >= 0 && idx < len(options) && !options[idx].Disabled {
-			*selected = options[idx].Value
-		}
+		segmentedControl(c, name, selected, options).AlignSelf(ui.Start)
 	})
 	if description != "" {
 		f.Description(description)

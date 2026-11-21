@@ -55,7 +55,7 @@ func dsPatternsSection(c *ui.Context, st *dsShowcaseState) {
 					st.tableStatus = "all"
 				},
 				Filters: func() {
-					segmentedField(c, "", "", &st.tableStatus, []components.NativeSelectOption[string]{
+					segmentedControl(c, "状态筛选", &st.tableStatus, []components.NativeSelectOption[string]{
 						{Label: "全部", Value: "all"},
 						{Label: "完整", Value: "complete"},
 						{Label: "不完整", Value: "partial"},

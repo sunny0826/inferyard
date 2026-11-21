@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/components"
 	"inferyard/studio/internal/core"
 )
 
@@ -115,5 +116,40 @@ func TestDSSettingsFormSection(t *testing.T) {
 	tt.Frame()
 	if tt.HasText("有未保存修改") {
 		t.Fatalf("dirty badge remained after save: %v", tt.Texts())
+	}
+}
+
+func TestDSFilterToolbarVerticalAlignment(t *testing.T) {
+	query := ""
+	status := "all"
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(studioThemeFor(c, false))
+		filterableTable(c, filterableTableOptions{
+			SearchPlaceholder: "搜索模型或引擎",
+			Query:             &query,
+			Filters: func() {
+				segmentedControl(c, "状态筛选", &status, []components.NativeSelectOption[string]{
+					{Label: "全部", Value: "all"},
+					{Label: "完整", Value: "complete"},
+				})
+			},
+			TotalCount:    1,
+			FilteredCount: 1,
+			Table:         func() { ui.Text(c, "行 1") },
+		})
+	}, 900, 400)
+	tt.Frame()
+	searchRect, ok := tt.Find("搜索模型或引擎")
+	if !ok {
+		t.Fatal("search input not found")
+	}
+	segRect, ok := tt.Find("状态筛选")
+	if !ok {
+		t.Fatal("segmented control not found")
+	}
+	searchMid := searchRect.Y + searchRect.H/2
+	segMid := segRect.Y + segRect.H/2
+	if diff := searchMid - segMid; diff < -1.5 || diff > 1.5 {
+		t.Fatalf("toolbar controls misaligned: search mid=%.1f (rect=%v), segmented mid=%.1f (rect=%v)", searchMid, searchRect, segMid, segRect)
 	}
 }
