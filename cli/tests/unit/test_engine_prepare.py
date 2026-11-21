@@ -1,6 +1,7 @@
 """Unit tests for engine download streaming, safe preparation, and CLI command registration."""
 
 import copy
+import gzip
 import hashlib
 import io
 import json
@@ -63,25 +64,26 @@ class _FakeClient:
 
 def _tar_gz_bytes(entries):
     buf = io.BytesIO()
-    with tarfile.open(fileobj=buf, mode="w:gz") as package:
-        for entry in entries:
-            kind, name, *rest = entry
-            info = tarfile.TarInfo(name)
-            if kind == "dir":
-                info.type, info.mode = tarfile.DIRTYPE, rest[0] if rest else 0o755
-                package.addfile(info)
-            elif kind in ("symlink", "hardlink"):
-                info.type = tarfile.SYMTYPE if kind == "symlink" else tarfile.LNKTYPE
-                info.linkname = rest[0]
-                package.addfile(info)
-            elif kind == "fifo":
-                info.type = tarfile.FIFOTYPE
-                package.addfile(info)
-            else:
-                data = rest[0]
-                info.size = len(data)
-                info.mode = rest[1] if len(rest) > 1 else 0o644
-                package.addfile(info, io.BytesIO(data))
+    with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:
+        with tarfile.open(fileobj=gz, mode="w") as package:
+            for entry in entries:
+                kind, name, *rest = entry
+                info = tarfile.TarInfo(name)
+                if kind == "dir":
+                    info.type, info.mode = tarfile.DIRTYPE, rest[0] if rest else 0o755
+                    package.addfile(info)
+                elif kind in ("symlink", "hardlink"):
+                    info.type = tarfile.SYMTYPE if kind == "symlink" else tarfile.LNKTYPE
+                    info.linkname = rest[0]
+                    package.addfile(info)
+                elif kind == "fifo":
+                    info.type = tarfile.FIFOTYPE
+                    package.addfile(info)
+                else:
+                    data = rest[0]
+                    info.size = len(data)
+                    info.mode = rest[1] if len(rest) > 1 else 0o644
+                    package.addfile(info, io.BytesIO(data))
     return buf.getvalue()
 
 
