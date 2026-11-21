@@ -359,12 +359,20 @@ func verifyAssetTreeSafe(target string, isDir bool) error {
 		}
 		return nil
 	}
-	return filepath.WalkDir(target, func(_ string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+	canonTarget, err := canonical(target)
+	if err != nil {
+		return errUnsafeAssetTree
+	}
+	return filepath.WalkDir(canonTarget, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
 		}
 		if d.Type()&os.ModeSymlink != 0 {
-			return errUnsafeAssetTree
+			resolved, linkErr := filepath.EvalSymlinks(path)
+			if linkErr != nil || !withinCanonicalDir(canonTarget, resolved) || isSealedEvidenceMarker(filepath.Base(resolved)) {
+				return errUnsafeAssetTree
+			}
+			return nil
 		}
 		if !d.IsDir() && isSealedEvidenceMarker(d.Name()) {
 			return errUnsafeAssetTree
