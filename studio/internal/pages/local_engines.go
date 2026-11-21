@@ -217,20 +217,20 @@ func (s *viewState) localSelectionView(c *ui.Context) {
 
 func (s *viewState) localInstallationsView(c *ui.Context) {
 	card(c, "已有本地引擎", func() {
-		ui.Text(c, "注册本地引擎安装声明（支持 llama.cpp、MLX、vLLM、SGLang、LM Studio）。")
-		componentFold(c, "installation.json 字段说明", func() {
-			ui.Text(c, "声明 definition 为 local-engine-installation.v1，填写 family、executable、working_directory、runtime_roots 与 environment 绝对路径。")
-		})
-		s.pathField(c, "安装声明 JSON 路径", &s.installationPath, browseInstallation).
-			Description("已准备好的 installation.json 绝对路径。").
-			Error(s.browseError(browseInstallation.key, ""))
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
-			if primaryActionButton(c, "注册引擎", s.actionBusy("install-register")).Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
-				s.changeInstallation("register", s.installationPath)
-			}
-			if secondaryActionButton(c, "重新核验引擎", s.actionBusy("install-recheck")).Disabled(s.busy).Clicked() {
-				s.changeInstallation("recheck", "")
-			}
+		s.localEngineWizardView(c)
+		componentFold(c, "高级：直接导入已有 installation.json", func() {
+			ui.Text(c, "注册本地引擎安装声明（支持 llama.cpp、MLX、vLLM、SGLang、LM Studio）。")
+			componentFold(c, "installation.json 字段说明", func() {
+				ui.Text(c, "声明 definition 为 local-engine-installation.v1，填写 family、executable、working_directory、runtime_roots 与 environment 绝对路径。")
+			})
+			s.pathField(c, "安装声明 JSON 路径", &s.installationPath, browseInstallation).
+				Description("已准备好的 installation.json 绝对路径。").
+				Error(s.browseError(browseInstallation.key, pathError(s.installationPath)))
+			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+				if primaryActionButton(c, "导入并注册", s.actionBusy("install-register")).Disabled(s.busy || s.installationPath == "" || pathError(s.installationPath) != "").Clicked() {
+					s.changeInstallation("register", s.installationPath)
+				}
+			})
 		})
 		for _, path := range s.settings.Settings.EngineInstallations {
 			path := path
