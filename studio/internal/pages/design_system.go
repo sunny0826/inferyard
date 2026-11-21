@@ -113,15 +113,12 @@ func errorAnnouncement(e *core.ApiError) string {
 
 func (s *viewState) submissionFailed(e *core.ApiError) {
 	s.failure = e
+	s.failurePage = s.selected
 	delete(s.announcedErrors, errorAnnouncement(e))
 }
 
 func (s *viewState) consumeFeedback(c *ui.Context) {
-	if s.pendingToast != "" {
-		message := s.pendingToast
-		s.pendingToast = ""
-		c.AddToast(ui.Toast{ID: message, Title: message})
-	}
+	s.flushToasts(c)
 	s.announceChanges(c)
 }
 

@@ -235,14 +235,29 @@ func (s *viewState) guideWorkAs(action string, fn func() (string, *core.ApiError
 
 func (s *viewState) feedback(c *ui.Context) {
 	if s.failure != nil {
-		if !s.stepOwnsError(s.failure) {
-			errorView(c, s.failure)
+		if s.failurePage != "" && s.failurePage != s.selected {
+			s.failure = nil
+			s.failurePage = ""
+		} else if !s.stepOwnsError(s.failure) {
+			errorRecoveryBanner(c, s.failure, func() {
+				if ghostButton(c, "关闭").Clicked() {
+					s.failure = nil
+					s.failurePage = ""
+				}
+			})
 		}
-	} else if s.refreshFailure != "" {
+	}
+	if s.failure == nil && s.refreshFailure != "" {
 		noticeBanner(c, noticeBannerOptions{
 			Kind:    stateDanger,
 			Size:    bannerCompact,
 			Message: s.refreshFailure,
+			Actions: func() {
+				button(c, "重试").OnClick(s.refreshAction)
+				if ghostButton(c, "关闭").Clicked() {
+					s.refreshFailure = ""
+				}
+			},
 		})
 	}
 }

@@ -70,10 +70,10 @@ func runMain() (exitCode int) {
 		mygo.App.SetWindowStateStore(windowStates)
 	}
 	runApp(ctx, func() {
-		desktop.Subscribe(ctx, service.Bus, func(message desktop.Message) error {
+		suppress := pages.New(ctx, service, "")
+		desktop.SubscribeWithFilter(ctx, service.Bus, suppress, func(message desktop.Message) error {
 			return mygo.NewNotification(mygo.NotificationOptions{Title: message.Title, Body: message.Body}).Show()
 		}, log.Printf)
-		pages.New(ctx, service, "")
 		status.report("ready", "")
 	})
 	return exitCode

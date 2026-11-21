@@ -185,7 +185,7 @@ func (w *viewState) startEngine() {
 			return "", core.Err("cancelled")
 		}
 		if bundle.NextAction == "resume" || blockedPlan(bundle) {
-			return "服务已就绪。", nil
+			return "服务已就绪", nil
 		}
 		command, _, e := benchmarkBindCommand(workspace, bundle, state)
 		if e != nil {
@@ -198,7 +198,7 @@ func (w *viewState) startEngine() {
 		if r.ExitCode != 0 {
 			return "", wizardFailure(r)
 		}
-		return "服务已启动并重新绑定。", nil
+		return "服务已启动并重新绑定", nil
 	})
 }
 func (w *viewState) stopEngine() {
@@ -207,7 +207,7 @@ func (w *viewState) stopEngine() {
 	}
 	w.guideWork(func() (string, *core.ApiError) {
 		_, e := w.stopEngineCall()
-		return "已请求停止服务。", e
+		return "已请求停止服务", e
 	})
 }
 func setArg(args []string, flag, value string) []string {
@@ -268,7 +268,7 @@ func (w *viewState) executeBindingFor(target, command string, e *core.ApiError) 
 			return "", e
 		}
 		w.updateView(w.clearRecoveredBinding)
-		return "绑定完成。", nil
+		return "绑定完成", nil
 	})
 }
 
@@ -436,7 +436,7 @@ func (s *viewState) prepareEnvironment() {
 		e := prepareEnvironmentSteps(s.ctx, s.service.Readiness, func(ctx context.Context) (string, *core.ApiError) {
 			return s.service.InstallCLI(ctx, func(message string) { s.win.Update(func() { s.cliInstallStatus = message }) })
 		}, func() *core.ApiError { _, e := s.service.Provision(); return e }, s.service.WizardExecute)
-		return "环境已准备。", e
+		return "环境已准备", e
 	})
 }
 func (s *viewState) checkWorkspaceDevice() {
@@ -456,12 +456,12 @@ func (s *viewState) checkWorkspaceDevice() {
 			return "", e
 		}
 		if missingModelResult(r) {
-			return "请先准备本地模型，再继续测评。", nil
+			return "", nil
 		}
 		if r.ExitCode != 0 {
 			return "", wizardFailure(r)
 		}
-		return "设备检查完成。", nil
+		return "设备检查完成", nil
 	})
 }
 func (s *viewState) taskBundles() []inferyard.BundleProgress {

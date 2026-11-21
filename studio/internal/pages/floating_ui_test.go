@@ -9,19 +9,19 @@ import (
 
 func TestPopconfirmClosesOnEscapeWithoutHidingTrigger(t *testing.T) {
 	s := testState()
-	s.settings.Settings.EngineInstallations = []string{"/opt/llama/installation.json"}
-	tt := ui.NewTester(s.localInstallationsView, 1120, 1200)
+	s.downloads = []core.DownloadTask{{TaskId: "dl-1", Kind: "model", OutName: "qwen", State: "downloading"}}
+	tt := ui.NewTester(s.downloadsView, 1120, 1200)
 
-	click(t, tt, "移除注册")
-	if !tt.HasText("确认移除注册") {
+	click(t, tt, "取消下载")
+	if !tt.HasText("确认取消下载") {
 		t.Fatalf("popconfirm did not open: %v", tt.Texts())
 	}
-	if !tt.HasText("移除注册") {
+	if !tt.HasText("取消下载") {
 		t.Fatalf("trigger disappeared while popconfirm was open: %v", tt.Texts())
 	}
 	tt.Key(0, ui.KeyEscape)
 	tt.Frame()
-	if tt.HasText("确认移除注册") || s.pendingDestructive != (destructiveRequest{}) {
+	if tt.HasText("确认取消下载") || s.pendingDestructive != (destructiveRequest{}) {
 		t.Fatalf("Escape did not dismiss popconfirm: pending=%+v", s.pendingDestructive)
 	}
 }

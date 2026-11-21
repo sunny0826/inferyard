@@ -107,6 +107,7 @@ func (s *viewState) cornerStatus(c *ui.Context) {
 				})
 			})
 		}
+		s.notificationBell(c)
 	})
 }
 
@@ -238,8 +239,20 @@ func (s *viewState) startManagedEngine() {
 	if s.simulate(previewManagedEngine{candidate: candidate}) {
 		return
 	}
+	const toastID = "start-managed-engine"
+	s.engineStartToastID = toastID
+	s.enqueueProgressToast(toastID, "正在开启引擎…")
 	s.guideWorkAs("start-engine", func() (string, *core.ApiError) {
-		_, e := s.service.StartEngine(candidate)
-		return "已请求开启引擎。", e
+		state, e := s.service.StartEngine(candidate)
+		if e != nil {
+			s.engineStartToastID = ""
+			s.dismissToast(toastID)
+			return "", e
+		}
+		if state.State == "running" {
+			s.engineStartToastID = ""
+			s.resolveProgressToast(toastID, "引擎已就绪", "", nil)
+		}
+		return "", nil
 	})
 }

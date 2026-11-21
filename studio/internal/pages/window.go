@@ -27,13 +27,13 @@ var navigation = []struct {
 	{"settings", "设置", lucide.Settings},
 }
 
-func New(ctx context.Context, service *core.Service, page string) {
+func New(ctx context.Context, service *core.Service, page string) func(core.Event) bool {
 	ctx, cancel := context.WithCancel(ctx)
-	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), denied: map[string]bool{}, speed: &speedWorkspace{context: inferyard.ContextSpeed64K}}
 	title := "InferYard Studio"
 	if paths := service.BoundPaths(); paths != nil {
 		title = paths.WindowTitle
 	}
+	s := &viewState{ctx: ctx, service: service, selected: firstOpen(page, service.FirstRun()), windowTitle: title, denied: map[string]bool{}, speed: &speedWorkspace{context: inferyard.ContextSpeed64K}}
 	shell := sidebar.NewShell(pageShellOptions(title, "inferyard-studio-main", s.leftNav, s.contentView))
 	w := shell.Window()
 	s.win = w
@@ -49,10 +49,15 @@ func New(ctx context.Context, service *core.Service, page string) {
 			case <-wake:
 				events, reset, next := service.Bus.After(cursor)
 				cursor = next
+				if len(events) > 0 {
+					batch := events
+					s.win.Update(func() { s.ingestCoreEvents(batch) })
+				}
 				s.refresh(fullRefresh(events, reset))
 			}
 		}
 	}()
+	return s.shouldSuppressOSNotification
 }
 func firstOpen(page string, first bool) string {
 	if strings.TrimPrefix(page, "/") != "" {
@@ -128,8 +133,16 @@ type viewState struct {
 	historyError, reportsError, detailError                                             *core.ApiError
 	loaded, busy, settingsLoaded                                                        bool
 	busyAction                                                                          string
+	windowTitle                                                                         string
 	pendingToast                                                                        string
+	pendingToasts                                                                       []toastSpec
+	activeToastID                                                                       string
+	toastPhase                                                                          int
+	notifs                                                                              *notificationCenter
+	lastManualReportID                                                                  string
+	engineStartToastID                                                                  string
 	failure                                                                             *core.ApiError
+	failurePage                                                                         string
 	workspace, cliPath, results, models                                                 string
 	bindingStale                                                                        bool
 	task                                                                                benchmarkTask
@@ -347,9 +360,14 @@ func (s *viewState) finishWork(message string, e *core.ApiError) {
 	s.busy = false
 	s.busyAction = ""
 	s.failure = e
+	if e != nil {
+		s.failurePage = s.selected
+	} else {
+		s.failurePage = ""
+	}
 	s.pendingToast = ""
-	if e == nil {
-		s.pendingToast = message
+	if e == nil && message != "" {
+		s.enqueueStatusToast(message)
 	}
 }
 func (s *viewState) selectTask(id string) {
@@ -411,6 +429,8 @@ func (s *viewState) contentView(c *ui.Context) {
 			})
 		})
 	})
+	s.studioNotifications(c)
+	studioToasts(c)
 }
 
 func (s *viewState) loadingView(c *ui.Context) {

@@ -76,7 +76,7 @@ func (s *viewState) refreshDevice() {
 	if s.simulate(previewRefreshDevice) {
 		return
 	}
-	s.workAs("refresh-device", func() (string, *core.ApiError) { return "设备信息已更新。", s.service.RefreshDevice() })
+	s.workAs("refresh-device", func() (string, *core.ApiError) { return "设备信息已更新", s.service.RefreshDevice() })
 }
 
 func (s *viewState) deviceCollectionBlocked() bool { return s.busy || s.device.Refreshing }

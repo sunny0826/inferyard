@@ -1,0 +1,204 @@
+package pages
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/egoist/mygo/ui"
+	"inferyard/studio/internal/core"
+)
+
+func TestStatusToastShowsOneAtATimeWithoutButtons(t *testing.T) {
+	s := readyState("settings")
+	tt := ui.NewTester(s.view, 1120, 800)
+
+	s.enqueueStatusToast("设置已保存")
+	tt.Frame()
+	if !tt.HasText("设置已保存") {
+		t.Fatalf("status toast did not render: %v", tt.Texts())
+	}
+	if tt.HasText("关闭提示") {
+		t.Fatalf("status toast should not render close button: %v", tt.Texts())
+	}
+
+	s.enqueueStatusToast("设备信息已更新")
+	tt.Frame()
+	if !tt.HasText("设备信息已更新") {
+		t.Fatalf("second toast did not replace first: %v", tt.Texts())
+	}
+	if tt.HasText("设置已保存") {
+		t.Fatalf("older toast remained visible when newer arrived: %v", tt.Texts())
+	}
+}
+
+func TestActionToastUndoMorphsToRestoredState(t *testing.T) {
+	s := readyState("settings")
+	s.modelName, s.engineName = "custom-m", "custom-e"
+	tt := ui.NewTester(s.view, 1120, 800)
+
+	reverted := false
+	s.enqueueActionToast("undo-names", "已恢复默认目录名", "撤销", "已恢复原目录名", 6*time.Second, func() {
+		reverted = true
+		s.modelName, s.engineName = "custom-m", "custom-e"
+	})
+	tt.Frame()
+	if !tt.HasText("已恢复默认目录名") || !tt.HasText("撤销") {
+		t.Fatalf("action toast missing text or button: %v", tt.Texts())
+	}
+
+	click(t, tt, "撤销")
+	tt.Frame()
+	if !reverted {
+		t.Fatal("undo callback did not run")
+	}
+	if !tt.HasText("已恢复原目录名") {
+		t.Fatalf("toast did not morph to restored message: %v", tt.Texts())
+	}
+}
+
+func TestProgressToastResolvesWithActionAndDismissesOnFailure(t *testing.T) {
+	s := readyState("reports")
+	tt := ui.NewTester(s.view, 1120, 800)
+
+	s.enqueueProgressToast("report-job", "正在生成报告…")
+	tt.Frame()
+	if !tt.HasText("正在生成报告…") {
+		t.Fatalf("progress toast did not render: %v", tt.Texts())
+	}
+
+	opened := false
+	s.resolveProgressToast("report-job", "报告已生成", "查看报告", func() { opened = true })
+	tt.Frame()
+	if !tt.HasText("报告已生成") || !tt.HasText("查看报告") {
+		t.Fatalf("resolved progress toast missing result or action: %v", tt.Texts())
+	}
+	click(t, tt, "查看报告")
+	if !opened {
+		t.Fatal("resolved progress toast action did not fire")
+	}
+
+	s.enqueueProgressToast("fail-job", "正在开启引擎…")
+	tt.Frame()
+	if !tt.HasText("正在开启引擎…") {
+		t.Fatalf("second progress toast did not render: %v", tt.Texts())
+	}
+	s.dismissToast("fail-job")
+	tt.Frame()
+	if tt.HasText("正在开启引擎…") {
+		t.Fatalf("dismissed progress toast still visible: %v", tt.Texts())
+	}
+}
+
+func TestNotificationStackCapsAtThreeAndKeepsDecisionItemsInBell(t *testing.T) {
+	s := readyState("reports")
+	tt := ui.NewTester(s.view, 1120, 800)
+
+	s.pushNotification(studioNotification{Title: "通知 1", Body: "第一条普通通知", Kind: stateInfo})
+	s.pushNotification(studioNotification{Title: "通知 2", Body: "第二条失败通知", Kind: stateDanger, NeedsDecision: true})
+	s.pushNotification(studioNotification{Title: "通知 3", Body: "第三条完成通知", Kind: stateSuccess})
+	s.pushNotification(studioNotification{Title: "通知 4", Body: "第四条最新通知", Kind: stateSuccess})
+	tt.Frame()
+
+	if !tt.HasText("通知 4") {
+		t.Fatalf("newest notification missing: %v", tt.Texts())
+	}
+	if got := s.notifications().unreadCount(); got != 4 {
+		t.Fatalf("unread count = %d, want 4", got)
+	}
+	if !strings.HasPrefix(s.notifications().lastWindowTitle, "(4) ") {
+		t.Fatalf("window title did not include unread count: %q", s.notifications().lastWindowTitle)
+	}
+
+	s.clearScreenNotifications()
+	tt.Frame()
+	if len(s.notifications().screenItems()) != 0 {
+		t.Fatalf("screen notifications not cleared: %d", len(s.notifications().screenItems()))
+	}
+	// NeedsDecision item must remain in bell inbox until handled.
+	inbox := s.notifications().inboxItems()
+	if len(inbox) != 1 || inbox[0].Title != "通知 2" {
+		t.Fatalf("expected NeedsDecision notification to remain in inbox, got %+v", inbox)
+	}
+	if got := s.notifications().unreadCount(); got != 1 {
+		t.Fatalf("unread count after clear = %d, want 1", got)
+	}
+
+	// Open bell popover and verify decision item is still accessible.
+	s.notifications().bellOpen = true
+	tt.Frame()
+	if !tt.HasText("通知 2") {
+		t.Fatalf("bell inbox did not display retained decision notification: %v", tt.Texts())
+	}
+}
+
+func TestCoreEventsIngestIntoNotificationsAndSkipManualReportDuplicate(t *testing.T) {
+	s := readyState("settings")
+	s.engine = "llama-cpp"
+	s.lastManualReportID = "rep-manual"
+
+	mustJSON := func(v any) json.RawMessage {
+		raw, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+
+	bundle := "core"
+	s.ingestCoreEvents([]core.Event{
+		{Type: "report.created", Data: mustJSON(map[string]any{"report": map[string]any{"report_id": "rep-manual"}})},
+		{Type: "report.created", Data: mustJSON(map[string]any{"report": map[string]any{"report_id": "rep-auto"}})},
+		{Type: "run.state", Data: mustJSON(map[string]any{"task": map[string]any{"task_id": "t1", "kind": "benchmark", "state": "failed", "bundle": &bundle}})},
+		{Type: "download.state", Data: mustJSON(map[string]any{"task": map[string]any{"task_id": "d1", "kind": "model", "state": "done", "out_name": "qwen"}})},
+		{Type: "engine.state", Data: mustJSON(map[string]any{"engine": map[string]any{"state": "orphaned"}})},
+		{Type: "engine.check", Data: mustJSON(map[string]any{"engine": "llama-cpp", "eligibility": core.EngineEligibility{State: core.EngineCheckIneligible, Reason: "runtime_receipt_missing"}})},
+	})
+
+	items := s.notifications().items
+	if len(items) != 5 {
+		t.Fatalf("expected 5 notifications (manual report skipped), got %d", len(items))
+	}
+	for _, item := range items {
+		if strings.Contains(item.Body, "rep-manual") {
+			t.Fatalf("manual report should not produce duplicate notification: %+v", item)
+		}
+	}
+}
+
+func TestFeedbackBannerScopedToTriggerPageAndDismissible(t *testing.T) {
+	s := readyState("settings")
+	s.submissionFailed(&core.ApiError{Code: "io_error", Message: "写入失败"})
+	tt := ui.NewTester(s.view, 1120, 800)
+
+	if !tt.HasText("写入失败 · io_error") {
+		t.Fatalf("failure banner did not render on trigger page: %v", tt.Texts())
+	}
+
+	s.selected = "reports"
+	tt.Frame()
+	if tt.HasText("写入失败 · io_error") || s.failure != nil {
+		t.Fatalf("failure banner leaked across pages: failure=%+v", s.failure)
+	}
+}
+
+func TestToastAndNotificationsRenderInDarkAndReducedMotion(t *testing.T) {
+	s := readyState("reports")
+	s.enqueueStatusToast("这是一条用于验证暗色与减弱动态模式渲染的长文本状态提示")
+	s.pushNotification(studioNotification{
+		Title: "下载完成",
+		Body:  "模型 qwen 已就绪，可前往任务页开始测评。",
+		Kind:  stateSuccess,
+	})
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.Theme().Dark = true
+		s.view(c)
+	}, 420, 720)
+	if !tt.HasText("这是一条用于验证暗色与减弱动态模式渲染的长文本状态提示") {
+		t.Fatalf("long toast did not render on narrow dark layout: %v", tt.Texts())
+	}
+	if !tt.HasText("下载完成") {
+		t.Fatalf("notification did not render on narrow dark layout: %v", tt.Texts())
+	}
+}

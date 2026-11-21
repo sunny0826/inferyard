@@ -49,12 +49,8 @@ func (s *viewState) reportView(c *ui.Context) {
 	s.reportBackLink(c)
 	if report.failure != nil {
 		s.header(c, "报告 "+id)
-		noticeBanner(c, noticeBannerOptions{
-			Kind:    stateDanger,
-			Message: "无法读取",
-			Actions: func() {
-				button(c, "重新读取报告").OnClick(func() { s.openReport(report.reference) })
-			},
+		errorRecoveryBanner(c, report.failure, func() {
+			button(c, "重新读取报告").OnClick(func() { s.openReport(report.reference) })
 		})
 		return
 	}

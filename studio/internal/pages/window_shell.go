@@ -21,11 +21,3 @@ func pageShellOptions(title, stateKey string, left, content func(*ui.Context)) s
 		Toasts:    components.ToastOptions{Placement: components.ToastTop},
 	}
 }
-
-func studioToasts(c *ui.Context) {
-	o := components.ToastOptions{Placement: components.ToastTop}
-	if o.Placement.Top() {
-		o.Inset += sidebar.HeaderHeight(c)
-	}
-	components.Toasts(c, o)
-}

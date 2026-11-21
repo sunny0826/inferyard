@@ -3,6 +3,7 @@ package pages
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -232,17 +233,33 @@ func (s *viewState) localInstallationsView(c *ui.Context) {
 			}
 		})
 		for _, path := range s.settings.Settings.EngineInstallations {
+			path := path
 			ui.Row(c.Key(path)).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
 				ui.Text(c, path)
-				if s.destructiveAction(c, destructiveOption{
-					kind: destructiveRemoveInstallation, id: path, label: "移除注册", confirmLabel: "确认移除注册",
-					prompt:   "将从设置中移除该本地引擎安装声明（不删除磁盘文件）；如需再次使用需重新注册。",
-					disabled: s.busy,
-				}) {
-					s.changeInstallation("remove", path)
+				if dangerButton(c, "移除注册").AlignSelf(ui.Start).Disabled(s.busy).Clicked() {
+					s.removeInstallationWithUndo(path)
 				}
 			})
 		}
+	})
+}
+
+func (s *viewState) removeInstallationWithUndo(path string) {
+	if s.simulate(previewInstallation{action: "remove", path: path}) {
+		return
+	}
+	if s.service == nil {
+		return
+	}
+	s.workAs("install-remove-"+path, func() (string, *core.ApiError) {
+		_, err := s.service.RemoveEngineInstallation(path)
+		if err == nil {
+			removedPath := path
+			s.enqueueActionToast("undo-remove-installation", "已移除引擎注册", "撤销", "已恢复引擎注册", 6*time.Second, func() {
+				s.changeInstallation("register", removedPath)
+			})
+		}
+		return "", err
 	})
 }
 
@@ -256,17 +273,21 @@ func (s *viewState) changeInstallation(action, path string) {
 	}
 	s.workAs(key, func() (string, *core.ApiError) {
 		var err *core.ApiError
+		message := "本地引擎列表已更新"
 		switch action {
 		case "register":
 			_, err = s.service.RegisterEngineInstallation(s.ctx, path)
+			message = "已注册本地引擎"
 		case "remove":
 			_, err = s.service.RemoveEngineInstallation(path)
+			message = "已移除引擎注册"
 		case "recheck":
 			s.service.InvalidateEngineChecks()
+			message = "已开始重新核验引擎"
 		default:
 			err = core.Err("invalid_request")
 		}
-		return "本地引擎列表已更新。", err
+		return message, err
 	})
 }
 

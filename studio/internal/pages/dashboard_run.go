@@ -210,8 +210,7 @@ func (w *viewState) serviceView(c *ui.Context) {
 		searchableSelectField(c, "已启动的本机进程", "", "输入 PID 或进程名搜索…", "未找到匹配 %q 的本机进程", &w.process, options)
 		field(c, "服务地址", &w.bindEndpoint).Description("本机 http 或 https URL").Error(urlError(w.bindEndpoint))
 		if secondaryActionButton(c, "连接并核验进程", w.binding).AlignSelf(ui.Start).Disabled(w.busy || w.running() != nil || w.process == "" || w.bindEndpoint == "").Clicked() {
-			if message := urlError(w.bindEndpoint); message != "" {
-				w.submissionFailed(&core.ApiError{Code: "invalid_request", Message: message})
+			if urlError(w.bindEndpoint) != "" {
 				return
 			}
 			pid, _, _ := strings.Cut(w.process, " · ")
@@ -262,7 +261,7 @@ func (w *viewState) runView(c *ui.Context) {
 			}
 			w.guideWork(func() (string, *core.ApiError) {
 				_, e := w.cancelRunTask(id)
-				return "已请求取消，等待安全收尾。", e
+				return "已请求取消，等待安全收尾", e
 			})
 		}
 		return
@@ -298,7 +297,7 @@ func (w *viewState) runView(c *ui.Context) {
 		w.guideWork(func() (string, *core.ApiError) {
 			defer cancel()
 			e := executeExistingBundle(ctx, bundle, workspace, state, w.service.WizardExecute)
-			return "运行已加入队列。", e
+			return "运行已加入队列", e
 		})
 	}
 

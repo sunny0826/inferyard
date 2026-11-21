@@ -164,7 +164,7 @@ func (s *viewState) resume() {
 			s.selected = "dashboard"
 			s.selectTask(task.TaskId)
 		})
-		return "续测已加入队列。", e
+		return "续测已加入队列", e
 	})
 }
 
