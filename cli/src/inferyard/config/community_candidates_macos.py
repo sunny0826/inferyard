@@ -5,6 +5,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from inferyard.contracts.schemas import CONFIG_DEFAULTS
+from inferyard.provisioning.preparation_io import PreparationError
 
 
 def build_config(
@@ -25,6 +26,9 @@ def build_config(
     revision=None,
     port=48857,
 ):
+    port = 48857 if port is None else port
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise PreparationError("invalid_input")
     config = deepcopy(CONFIG_DEFAULTS)
     config.update(
         schema_version=3,

@@ -57,7 +57,7 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	modelOptions := []components.NativeSelectOption[string]{{Value: "", Label: "请选择模型"}}
 	for _, m := range w.registry.Models {
 		if m.Available {
-			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m), Disabled: !w.compatibleModel(m)})
+			modelOptions = append(modelOptions, components.NativeSelectOption[string]{Value: m.Name, Label: modelLabel(m) + w.incompatibleModelSuffix(m), Disabled: !w.compatibleModel(m)})
 		}
 	}
 
@@ -81,6 +81,16 @@ func (w *viewState) candidateFields(c *ui.Context) {
 	}
 	w.bundleSelection(c)
 	w.localSelectionView(c)
+	if summary := launchSummaryLine(w); summary != "" {
+		ui.Text(c, summary).FontSize(tokens(c).Type.Caption).TextColor(c.Theme().TextMuted)
+	}
+	if notice := lmStudioHandoffNotice(w); notice != "" {
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateInfo,
+			Size:    bannerCompact,
+			Message: notice,
+		})
+	}
 	createDisabled := w.environmentMissing() || !w.preflightReady() || w.busy || w.engine == "" || w.model == "" || revoked || len(w.checkedBundles()) == 0 || w.engineState.State == "orphaned" || w.localSelectionError() != ""
 	if revoked {
 		el := w.eligibility(w.engine)
