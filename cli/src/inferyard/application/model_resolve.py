@@ -12,6 +12,7 @@ def execute(request):
     try:
         details = resolve_model_url(
             request.model_source_url,
+            kind=getattr(request, "model_kind", "auto"),
             token_env=request.model_token_env,
             timeout_seconds=request.model_timeout_seconds,
             proxy_origin=getattr(request, "proxy_origin", None),

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import quote, unquote, urlencode, urlsplit
 
+from inferyard.platforms.asset_scan import parse_gguf_shard_filename
 from inferyard.provisioning.preparation_io import PreparationError, read_json
 
 DEFINITION = "remote_model_source.v1"
@@ -18,6 +19,14 @@ ENVIRONMENT_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 PLATFORMS = {"huggingface.co": "huggingface", "modelscope.cn": "modelscope"}
 MISMATCH = "model_source_metadata_mismatch"
 BUDGET_KEYS = frozenset({"total_seconds", "read_seconds", "cleanup_seconds", "max_bytes"})
+
+
+def build_file_download_url(platform: str, repository: str, revision: str, file_path: str) -> str:
+    host = "huggingface.co" if platform == "huggingface" else "modelscope.cn"
+    if platform == "huggingface":
+        return f"https://{host}/{repository}/resolve/{revision}/{quote(file_path, safe='/')}"
+    query = urlencode({"Revision": revision, "FilePath": file_path})
+    return f"https://{host}/api/v1/models/{repository}/repo?{query}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,46 +42,84 @@ class ModelSource:
 
     @property
     def download_url(self):
-        if self.platform == "huggingface":
-            return (
-                f"https://{self.host}/{self.repository}/resolve/{self.revision}/"
-                f"{quote(self.path, safe='/')}"
-            )
-        query = urlencode({"Revision": self.revision, "FilePath": self.path})
-        return f"https://{self.host}/api/v1/models/{self.repository}/repo?{query}"
+        return build_file_download_url(self.platform, self.repository, self.revision, self.path)
+
+
+@dataclass(frozen=True, slots=True)
+class ModelDirectorySource:
+    platform: str
+    repository: str
+    revision: str
+    subpath: str = ""
+
+    @property
+    def host(self) -> str:
+        return "huggingface.co" if self.platform == "huggingface" else "modelscope.cn"
+
+    @property
+    def pinned_url(self) -> str:
+        suffix = f"/{quote(self.subpath, safe='/')}" if self.subpath else ""
+        return f"https://{self.host}/{self.repository}/tree/{self.revision}{suffix}"
+
+
+def _validate_url_parts(url: str):
+    if (
+        not isinstance(url, str)
+        or not url.isascii()
+        or any(ord(c) < 33 or ord(c) == 127 for c in url)
+        or "?" in url
+        or "#" in url
+    ):
+        raise ValueError
+    parsed = urlsplit(url)
+    host = parsed.netloc.lower()
+    if parsed.scheme != "https" or host not in PLATFORMS:
+        raise ValueError
+    parts = parsed.path.split("/")
+    for part in parts[1:]:
+        if re.search(r"%(?![0-9a-fA-F]{2})", part):
+            raise ValueError
+    decoded = [unquote(part, errors="strict") for part in parts[1:]]
+    for part in decoded:
+        if (
+            part in ("", ".", "..")
+            or not part.isascii()
+            or any(ord(c) < 32 or ord(c) == 127 or c in "/\\:" for c in part)
+            or part != part.strip()
+        ):
+            raise ValueError
+    return host, parts, decoded
+
+
+def parse_directory_source(url: str, *, allow_file_parent: bool = False) -> ModelDirectorySource:
+    try:
+        host, parts, decoded = _validate_url_parts(url)
+        if len(parts) < 5 or parts[0] != "":
+            raise ValueError
+        mode = parts[3]
+        if mode not in ("tree",) and not (allow_file_parent and mode == "blob" and len(parts) >= 6):
+            raise ValueError
+        if not REVISION.fullmatch(parts[4]):
+            raise ValueError
+        owner, repo = decoded[:2]
+        if any(not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", p) for p in (owner, repo)):
+            raise ValueError
+        tail = decoded[4:]
+        if mode == "blob":
+            tail = tail[:-1]
+        subpath = "/".join(tail)
+        return ModelDirectorySource(PLATFORMS[host], f"{owner}/{repo}", parts[4].lower(), subpath)
+    except ValueError, UnicodeError:
+        raise PreparationError("invalid_model_source") from None
 
 
 def parse_source(url):
     try:
-        if (
-            not isinstance(url, str)
-            or not url.isascii()
-            or any(ord(c) < 33 or ord(c) == 127 for c in url)
-            or "?" in url
-            or "#" in url
-        ):
-            raise ValueError
-        parsed = urlsplit(url)
-        host = parsed.netloc.lower()
-        if parsed.scheme != "https" or host not in PLATFORMS:
-            raise ValueError
-        parts = parsed.path.split("/")
+        host, parts, decoded = _validate_url_parts(url)
         if len(parts) < 6 or parts[0] != "" or parts[3] != "blob":
             raise ValueError
         if not REVISION.fullmatch(parts[4]):
             raise ValueError
-        for part in parts[1:]:
-            if re.search(r"%(?![0-9a-fA-F]{2})", part):
-                raise ValueError
-        decoded = [unquote(part, errors="strict") for part in parts[1:]]
-        for part in decoded:
-            if (
-                part in ("", ".", "..")
-                or not part.isascii()
-                or any(ord(c) < 32 or ord(c) == 127 or c in "/\\:" for c in part)
-                or part != part.strip()
-            ):
-                raise ValueError
         owner, repo = decoded[:2]
         if any(not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", p) for p in (owner, repo)):
             raise ValueError

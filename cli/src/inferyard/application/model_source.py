@@ -14,6 +14,7 @@ def execute(request):
             request.model_source_url,
             request.out,
             request.model_token_env,
+            kind=getattr(request, "model_kind", "auto"),
             timeout_seconds=request.model_timeout_seconds,
             progress_stream=getattr(request, "progress_stream", False),
             resume=getattr(request, "resume_transfer", False),

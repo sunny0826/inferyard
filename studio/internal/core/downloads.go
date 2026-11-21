@@ -23,48 +23,54 @@ type downloadEntry struct {
 var outputName = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 var revision = regexp.MustCompile(`^[a-fA-F0-9]{40}$`)
 
-func validSource(source string) bool {
+func parsePinnedSourceParts(source string) ([]string, bool) {
 	u, e := url.Parse(source)
 	if e != nil || u.Scheme != "https" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
-		return false
+		return nil, false
 	}
 	if u.Host != "huggingface.co" && u.Host != "modelscope.cn" {
-		return false
+		return nil, false
 	}
 	for _, c := range source {
 		if c < 33 || c >= 127 {
-			return false
+			return nil, false
 		}
 	}
 	p := strings.Split(strings.TrimPrefix(u.EscapedPath(), "/"), "/")
 	for i, part := range p {
 		decoded, e := url.PathUnescape(part)
 		if e != nil {
-			return false
+			return nil, false
 		}
 		p[i] = decoded
 		for _, c := range decoded {
 			if c < 32 || c >= 127 || strings.ContainsRune("/\\:", c) {
-				return false
+				return nil, false
 			}
 		}
-		if strings.TrimSpace(decoded) != decoded {
-			return false
+		if part == "" || part == "." || part == ".." || decoded == "" || decoded == "." || decoded == ".." || strings.TrimSpace(decoded) != decoded || strings.Contains(decoded, "\\") {
+			return nil, false
 		}
 	}
 	owner := regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	if len(p) < 5 || !owner.MatchString(p[0]) || !owner.MatchString(p[1]) || p[0] == "" || p[1] == "" || p[2] != "blob" || !revision.MatchString(p[3]) || !strings.HasSuffix(p[len(p)-1], ".gguf") {
-		return false
+	if len(p) < 4 || !owner.MatchString(p[0]) || !owner.MatchString(p[1]) || !revision.MatchString(p[3]) {
+		return nil, false
 	}
-	for _, part := range p {
-		if part == "" || part == "." || part == ".." || strings.Contains(part, "\\") {
-			return false
-		}
-	}
-	return true
+	return p, true
 }
+
+func validSource(source string) bool {
+	p, ok := parsePinnedSourceParts(source)
+	return ok && len(p) >= 5 && p[2] == "blob" && strings.HasSuffix(p[len(p)-1], ".gguf")
+}
+
+func validDirectorySource(source string) bool {
+	p, ok := parsePinnedSourceParts(source)
+	return ok && len(p) >= 4 && p[2] == "tree" && (len(p) == 4 || !strings.HasSuffix(p[len(p)-1], ".gguf"))
+}
+
 func (s *Service) CreateModelDownload(req CreateDownloadRequest, tokenEnv string) (DownloadTask, *ApiError) {
-	if (req.OutName != "" && !ValidDownloadName(req.OutName)) || !validSource(req.SourceUrl) || (tokenEnv != "" && !envName.MatchString(tokenEnv)) {
+	if (req.OutName != "" && !ValidDownloadName(req.OutName)) || (!validSource(req.SourceUrl) && !validDirectorySource(req.SourceUrl)) || (tokenEnv != "" && !envName.MatchString(tokenEnv)) {
 		return DownloadTask{}, Err("invalid_request")
 	}
 	u := downloadNameDefaults(s.userSettings())
@@ -136,6 +142,9 @@ func (s *Service) download(ctx context.Context, binary string, d *downloadEntry)
 	done := make(chan result, 1)
 	go func() {
 		args := []string{"model", "acquire", "--progress-stream"}
+		if validDirectorySource(d.Task.SourceUrl) {
+			args = append(args, "--kind", "directory")
+		}
 		if d.resume {
 			args = append(args, "--resume")
 		}

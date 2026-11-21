@@ -53,4 +53,8 @@ func TestCatalogEntriesAreUniqueAndComplete(t *testing.T) {
 	if !ok || winCUDA.Profile == "" || winCUDA.RuntimeURL == "" || !winCUDA.Downloadable() {
 		t.Fatalf("unexpected windows cuda entry: %+v", winCUDA)
 	}
+	mlxModel, ok := CatalogEntryByID("model-qwen3-0.6b-mlx")
+	if !ok || mlxModel.Format != "directory" || !mlxModel.Downloadable() {
+		t.Fatalf("unexpected mlx directory catalog entry: %+v", mlxModel)
+	}
 }

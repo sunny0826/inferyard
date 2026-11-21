@@ -114,10 +114,9 @@ var catalogEntries = []CatalogEntry{
 		Reason:   "LM Studio 需自行安装并加载模型，再在设置页注册 installation.json 连接已有服务。",
 	},
 	{
-		ID: "model-qwen3-0.6b-mlx", Kind: CatalogModel, Title: "Qwen3-0.6B-4bit（目录模型）",
-		Family: "mlx-lm", URL: "https://huggingface.co/mlx-community/Qwen3-0.6B-4bit/blob/73e3e38d981303bc594367cd910ea6eb48349da8/model.safetensors",
-		Bytes: 335450584, SHA256: "392e8d466d56100ada00eb82031fb854297fc9e389b7d303eba3af114e87bce2",
+		ID: "model-qwen3-0.6b-mlx", Kind: CatalogModel, Format: "directory", Title: "Qwen3-0.6B-4bit（目录模型）",
+		Family: "mlx-lm", URL: "https://huggingface.co/mlx-community/Qwen3-0.6B-4bit/tree/73e3e38d981303bc594367cd910ea6eb48349da8",
 		Revision: "73e3e38d981303bc594367cd910ea6eb48349da8", Platform: "darwin/arm64",
-		Reason: "目录模型需整目录放入模型目录，单文件下载仅支持 GGUF。",
+		Note: "目录模型 · mlx-lm（含配置、分词器与权重，下载后自动生成资产清单）。",
 	},
 }

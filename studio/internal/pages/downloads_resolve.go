@@ -45,7 +45,7 @@ func customModelURLError(value string) string {
 		return err
 	}
 	if !core.IsResolvableModelURL(trimmed) {
-		return "请输入 HuggingFace 或 ModelScope 的 .gguf 地址（支持 /blob、/resolve 或 /file/view）。"
+		return "请输入 HuggingFace 或 ModelScope 的 .gguf 或 /tree 目录地址（支持 /blob、/resolve、/tree）。"
 	}
 	return ""
 }
@@ -245,6 +245,22 @@ func previewResolveModelURL(raw string) inferyard.ModelResolve {
 			repo = parts[1] + "/" + parts[2]
 		} else if len(parts) >= 2 {
 			repo = parts[0] + "/" + parts[1]
+		}
+	}
+	if strings.Contains(raw, "/tree/") {
+		repoName := path.Base(strings.TrimSuffix(repo, "/"))
+		pinned := "https://" + host + "/" + repo + "/tree/" + rev
+		return inferyard.ModelResolve{
+			Definition:    inferyard.ModelResolveDefinition,
+			Kind:          "directory",
+			Platform:      platform,
+			Repository:    repo,
+			Revision:      rev,
+			PinnedURL:     pinned,
+			DownloadURL:   pinned,
+			Filename:      repoName,
+			Bytes:         size,
+			AlreadyPinned: alreadyPinned,
 		}
 	}
 	pinned := "https://" + host + "/" + repo + "/blob/" + rev + "/" + filename

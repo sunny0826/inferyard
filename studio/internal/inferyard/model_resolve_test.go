@@ -54,6 +54,28 @@ func TestParseModelResolveValidDirectAndWrapped(t *testing.T) {
 	if wrappedParsed.Platform != "modelscope" || wrappedParsed.Bytes != nil || !wrappedParsed.AlreadyPinned {
 		t.Fatalf("unexpected wrapped resolved payload: %+v", wrappedParsed)
 	}
+
+	dirPayload := []byte(`{
+		"definition": "model-resolve.v1",
+		"kind": "directory",
+		"platform": "huggingface",
+		"repository": "mlx-community/Qwen3-0.6B-4bit",
+		"revision": "73e3e38d981303bc594367cd910ea6eb48349da8",
+		"path": "",
+		"pinned_url": "https://huggingface.co/mlx-community/Qwen3-0.6B-4bit/tree/73e3e38d981303bc594367cd910ea6eb48349da8",
+		"download_url": "https://huggingface.co/mlx-community/Qwen3-0.6B-4bit/tree/73e3e38d981303bc594367cd910ea6eb48349da8",
+		"filename": "Qwen3-0.6B-4bit",
+		"bytes": 335450584,
+		"already_pinned": true,
+		"model_requests_sent": 0
+	}`)
+	dirParsed, err := ParseModelResolve(dirPayload)
+	if err != nil {
+		t.Fatalf("ParseModelResolve(directory) unexpected error: %v", err)
+	}
+	if dirParsed.Kind != "directory" || dirParsed.Filename != "Qwen3-0.6B-4bit" {
+		t.Fatalf("unexpected directory resolve payload: %+v", dirParsed)
+	}
 }
 
 func TestParseModelResolveRejectsInvalidInputs(t *testing.T) {

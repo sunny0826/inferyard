@@ -15,6 +15,7 @@ const (
 type CatalogEntry struct {
 	ID            string
 	Kind          CatalogKind
+	Format        string
 	Title         string
 	Family        string
 	URL           string
@@ -40,7 +41,7 @@ func (e CatalogEntry) Downloadable() bool {
 	case CatalogEngine:
 		return isLlamaArchive(e.URL) && validEngineSource(e.URL)
 	case CatalogModel:
-		return validSource(e.URL)
+		return validSource(e.URL) || (e.Format == "directory" && validDirectorySource(e.URL))
 	}
 	return false
 }

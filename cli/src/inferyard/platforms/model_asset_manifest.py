@@ -16,9 +16,54 @@ def runtime_manifest(plan):
     return model_manifest(path)
 
 
-def model_asset_manifest(path, *, definition="model-assets.v2"):
-    from inferyard.platforms.engine_fit import file_stamp, model_manifest, stable_file_digest
+def _single_gguf_entry(target, *, expected_count=None, expected_index=None):
+    from inferyard.platforms.engine_fit import file_stamp, stable_file_digest
     from inferyard.platforms.gguf_metadata import read_metadata
+
+    if target.is_symlink():
+        raise PreflightError("engine_fit_directory_symlink")
+    resolved = target.resolve(strict=True)
+    if not resolved.is_file() or resolved.suffix.lower() != ".gguf":
+        raise PreflightError("engine_fit_single_gguf_required")
+    before = file_stamp(resolved.stat())
+    sha, size = stable_file_digest(resolved)
+    metadata = read_metadata(resolved, extra_keys=("split.count", "split.no"))
+    count, index = metadata.get("split.count"), metadata.get("split.no")
+    if expected_count is not None:
+        if (count is not None and (type(count) is not int or count != expected_count)) or (
+            index is not None and (type(index) is not int or index != expected_index)
+        ):
+            raise PreflightError("engine_fit_split_gguf_unsupported")
+    elif (count is not None and type(count) is not int) or (
+        index is not None and type(index) is not int
+    ):
+        raise PreflightError("engine_fit_split_gguf_unsupported")
+    if file_stamp(resolved.stat()) != before:
+        raise PreflightError("engine_fit_model_changed_during_hash")
+    return resolved, {"path": resolved.name, "sha256": sha, "size": size}, count, index
+
+
+def _multi_shard_gguf_entries(root, total):
+    from inferyard.platforms.asset_scan import parse_gguf_shard_filename
+
+    parsed = parse_gguf_shard_filename(root.name)
+    if parsed is None or parsed[1] != 1 or parsed[2] != total:
+        raise PreflightError("engine_fit_split_gguf_incomplete")
+    prefix = parsed[0]
+    entries = []
+    for shard_no in range(1, total + 1):
+        shard_path = root.parent / f"{prefix}-{shard_no:05d}-of-{total:05d}.gguf"
+        if not shard_path.exists() and not shard_path.is_symlink():
+            raise PreflightError("engine_fit_split_gguf_incomplete")
+        _, entry, _, _ = _single_gguf_entry(
+            shard_path, expected_count=total, expected_index=shard_no - 1
+        )
+        entries.append(entry)
+    return entries
+
+
+def model_asset_manifest(path, *, definition="model-assets.v2"):
+    from inferyard.platforms.engine_fit import model_manifest
 
     path = Path(path)
     if path.is_symlink():
@@ -34,20 +79,17 @@ def model_asset_manifest(path, *, definition="model-assets.v2"):
         )
         return {"kind": "directory", **model_manifest(path, definition=definition)}
     try:
-        root = path.resolve(strict=True)
-        if not root.is_file() or root.suffix.lower() != ".gguf":
-            raise PreflightError("engine_fit_single_gguf_required")
-        before = file_stamp(root.stat())
-        sha, size = stable_file_digest(root)
-        metadata = read_metadata(root, extra_keys=("split.count", "split.no"))
-        count, index = metadata.get("split.count"), metadata.get("split.no")
-        if (count is not None and (type(count) is not int or count != 1)) or (
-            index is not None and (type(index) is not int or index != 0)
-        ):
+        root, entry, count, index = _single_gguf_entry(path)
+        if index is not None and index != 0:
             raise PreflightError("engine_fit_split_gguf_unsupported")
-        if file_stamp(root.stat()) != before:
-            raise PreflightError("engine_fit_model_changed_during_hash")
-        entries = [{"path": root.name, "sha256": sha, "size": size}]
+        if count is not None and count != 1:
+            if count < 1:
+                raise PreflightError("engine_fit_split_gguf_unsupported")
+            entries = _multi_shard_gguf_entries(root, count)
+        else:
+            entries = [entry]
         return {"kind": "gguf", "path": str(root), "sha256": digest(entries), "files": entries}
+    except PreflightError:
+        raise
     except (OSError, ValueError) as exc:
         raise PreflightError("engine_fit_model_unreadable") from exc

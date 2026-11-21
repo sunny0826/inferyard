@@ -19,6 +19,7 @@ var (
 
 type ModelResolve struct {
 	Definition        string `json:"definition"`
+	Kind              string `json:"kind,omitempty"`
 	Platform          string `json:"platform"`
 	Repository        string `json:"repository"`
 	Revision          string `json:"revision"`
@@ -36,17 +37,26 @@ func validResolveRepo(repo string) bool {
 	return len(parts) == 2 && resolveRepoPart.MatchString(parts[0]) && resolveRepoPart.MatchString(parts[1])
 }
 
-func validResolvePath(filePath string) bool {
-	if filePath == "" || strings.HasPrefix(filePath, "/") || strings.HasSuffix(filePath, "/") ||
-		strings.Contains(filePath, "\\") || !strings.HasSuffix(filePath, ".gguf") {
+func validResolveSubpath(filePath string) bool {
+	if filePath == "" {
+		return true
+	}
+	if strings.HasPrefix(filePath, "/") || strings.HasSuffix(filePath, "/") || strings.Contains(filePath, "\\") {
 		return false
 	}
-	parts := strings.Split(filePath, "/")
-	for _, part := range parts {
+	for _, part := range strings.Split(filePath, "/") {
 		if part == "" || part == "." || part == ".." {
 			return false
 		}
 	}
+	return true
+}
+
+func validResolvePath(filePath string) bool {
+	if filePath == "" || !validResolveSubpath(filePath) || !strings.HasSuffix(filePath, ".gguf") {
+		return false
+	}
+	parts := strings.Split(filePath, "/")
 	return len(parts[len(parts)-1]) > len(".gguf")
 }
 
@@ -69,8 +79,14 @@ func validResolveHost(platform, rawURL string) bool {
 func ParseModelResolve(raw []byte) (ModelResolve, error) {
 	invalid := errors.New("invalid model resolve result")
 	data, err := unwrapStrictCommandDetails(raw, "model resolve", "resolved")
-	if err != nil || !discoveryFields(
-		data,
+	if err != nil {
+		return ModelResolve{}, invalid
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(data, &fields) != nil || fields == nil {
+		return ModelResolve{}, invalid
+	}
+	required := []string{
 		"definition",
 		"platform",
 		"repository",
@@ -82,18 +98,25 @@ func ParseModelResolve(raw []byte) (ModelResolve, error) {
 		"bytes",
 		"already_pinned",
 		"model_requests_sent",
-	) {
-		return ModelResolve{}, invalid
 	}
-	var fields map[string]json.RawMessage
-	if json.Unmarshal(data, &fields) != nil || !isStrictBoolJSON(fields["already_pinned"]) {
-		return ModelResolve{}, invalid
+	for _, k := range required {
+		if _, ok := fields[k]; !ok {
+			return ModelResolve{}, invalid
+		}
 	}
-	if bytes.Equal(bytes.TrimSpace(fields["model_requests_sent"]), []byte("null")) {
+	for k := range fields {
+		switch k {
+		case "definition", "kind", "platform", "repository", "revision", "path", "pinned_url", "download_url", "filename", "bytes", "already_pinned", "model_requests_sent":
+		default:
+			return ModelResolve{}, invalid
+		}
+	}
+	if !isStrictBoolJSON(fields["already_pinned"]) || bytes.Equal(bytes.TrimSpace(fields["model_requests_sent"]), []byte("null")) {
 		return ModelResolve{}, invalid
 	}
 	var wire struct {
 		Definition        string `json:"definition"`
+		Kind              string `json:"kind"`
 		Platform          string `json:"platform"`
 		Repository        string `json:"repository"`
 		Revision          string `json:"revision"`
@@ -109,20 +132,31 @@ func ParseModelResolve(raw []byte) (ModelResolve, error) {
 		wire.ModelRequestsSent == nil || *wire.ModelRequestsSent != 0 {
 		return ModelResolve{}, invalid
 	}
-	if !validResolveRepo(wire.Repository) || !resolveHex40.MatchString(wire.Revision) || !validResolvePath(wire.Path) {
+	if kindRaw, hasKind := fields["kind"]; hasKind && (bytes.Equal(bytes.TrimSpace(kindRaw), []byte("null")) || (wire.Kind != "gguf" && wire.Kind != "directory")) {
 		return ModelResolve{}, invalid
 	}
-	if wire.Filename != path.Base(wire.Path) || !validResolveHost(wire.Platform, wire.PinnedURL) || !validResolveHost(wire.Platform, wire.DownloadURL) {
+	if !validResolveRepo(wire.Repository) || !resolveHex40.MatchString(wire.Revision) ||
+		!validResolveHost(wire.Platform, wire.PinnedURL) || !validResolveHost(wire.Platform, wire.DownloadURL) ||
+		strings.Contains(wire.PinnedURL, "?") {
 		return ModelResolve{}, invalid
 	}
-	if !strings.Contains(wire.PinnedURL, "/"+wire.Repository+"/blob/"+wire.Revision+"/") || strings.Contains(wire.PinnedURL, "?") {
-		return ModelResolve{}, invalid
+	if wire.Kind == "directory" {
+		if !validResolveSubpath(wire.Path) || strings.TrimSpace(wire.Filename) == "" ||
+			!strings.Contains(wire.PinnedURL, "/"+wire.Repository+"/tree/"+wire.Revision) {
+			return ModelResolve{}, invalid
+		}
+	} else {
+		if !validResolvePath(wire.Path) || wire.Filename != path.Base(wire.Path) ||
+			!strings.Contains(wire.PinnedURL, "/"+wire.Repository+"/blob/"+wire.Revision+"/") {
+			return ModelResolve{}, invalid
+		}
 	}
 	if wire.Bytes != nil && *wire.Bytes <= 0 {
 		return ModelResolve{}, invalid
 	}
 	return ModelResolve{
 		Definition:        wire.Definition,
+		Kind:              wire.Kind,
 		Platform:          wire.Platform,
 		Repository:        wire.Repository,
 		Revision:          wire.Revision,

@@ -92,7 +92,7 @@ func IsResolvableModelURL(raw string) bool {
 			}
 		}
 	}
-	owner, repo, ref, fileParts, ok := extractResolvableParts(host, parts)
+	owner, repo, mode, ref, fileParts, ok := extractResolvableParts(host, parts)
 	if !ok || !resolvableRepoPart.MatchString(owner) || !resolvableRepoPart.MatchString(repo) {
 		return false
 	}
@@ -104,6 +104,12 @@ func IsResolvableModelURL(raw string) bool {
 			return false
 		}
 	}
+	if mode == "tree" {
+		if len(fileParts) > 0 && strings.HasSuffix(strings.ToLower(fileParts[len(fileParts)-1]), ".gguf") {
+			return false
+		}
+		return true
+	}
 	if len(fileParts) == 0 {
 		return false
 	}
@@ -111,19 +117,22 @@ func IsResolvableModelURL(raw string) bool {
 	return strings.HasSuffix(last, ".gguf") && len(last) > len(".gguf")
 }
 
-func extractResolvableParts(host string, parts []string) (owner, repo, ref string, fileParts []string, ok bool) {
-	if host == "modelscope.cn" && len(parts) >= 6 && parts[0] == "models" {
-		if parts[3] == "blob" || parts[3] == "resolve" {
-			return parts[1], parts[2], parts[4], parts[5:], true
+func extractResolvableParts(host string, parts []string) (owner, repo, mode, ref string, fileParts []string, ok bool) {
+	if host == "modelscope.cn" && len(parts) >= 5 && parts[0] == "models" {
+		if parts[3] == "blob" || parts[3] == "resolve" || parts[3] == "tree" {
+			return parts[1], parts[2], parts[3], parts[4], parts[5:], true
 		}
 		if len(parts) >= 7 && parts[3] == "file" && parts[4] == "view" {
-			return parts[1], parts[2], parts[5], parts[6:], true
+			return parts[1], parts[2], "blob", parts[5], parts[6:], true
 		}
 	}
-	if len(parts) < 5 || (parts[2] != "blob" && parts[2] != "resolve") {
-		return "", "", "", nil, false
+	if len(parts) >= 4 && parts[2] == "tree" {
+		return parts[0], parts[1], "tree", parts[3], parts[4:], true
 	}
-	return parts[0], parts[1], parts[3], parts[4:], true
+	if len(parts) < 5 || (parts[2] != "blob" && parts[2] != "resolve") {
+		return "", "", "", "", nil, false
+	}
+	return parts[0], parts[1], parts[2], parts[3], parts[4:], true
 }
 
 func (s *Service) ResolveModelURL(ctx context.Context, rawURL, tokenEnv string) (inferyard.ModelResolve, *ApiError) {
@@ -140,6 +149,9 @@ func (s *Service) ResolveModelURL(ctx context.Context, rawURL, tokenEnv string) 
 		return inferyard.ModelResolve{}, Err("invalid_request")
 	}
 	args := []string{"model", "resolve", "--source", rawURL}
+	if strings.Contains(rawURL, "/tree/") {
+		args = append(args, "--kind", "directory")
+	}
 	if tokenEnv != "" {
 		args = append(args, "--token-env", tokenEnv)
 	}
@@ -165,7 +177,7 @@ func (s *Service) ResolveModelURL(ctx context.Context, rawURL, tokenEnv string) 
 }
 
 func (s *Service) CreateOrResolveModelDownload(ctx context.Context, req CreateDownloadRequest, tokenEnv string) (DownloadTask, *ApiError) {
-	if validSource(req.SourceUrl) {
+	if validSource(req.SourceUrl) || validDirectorySource(req.SourceUrl) {
 		return s.CreateModelDownload(req, tokenEnv)
 	}
 	if (req.OutName != "" && !ValidDownloadName(req.OutName)) || !IsResolvableModelURL(req.SourceUrl) || (tokenEnv != "" && !envName.MatchString(tokenEnv)) {

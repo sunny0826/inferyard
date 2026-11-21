@@ -255,14 +255,18 @@ def recommend(hardware, models, *, model_loaded=False):
 
 
 def discover_models(roots, model_path=None):
-    from inferyard.platforms.asset_scan import inspect_gguf_file
+    from inferyard.platforms.asset_scan import inspect_gguf_entries, parse_gguf_shard_filename
 
-    paths = (
-        [Path(model_path)]
-        if model_path
-        else sorted({p for root in roots for p in Path(root).rglob("*.gguf")})
-    )
-    return [inspect_gguf_file(path, metadata_reader=read_metadata) for path in paths]
+    if model_path:
+        target = Path(model_path)
+        parsed = parse_gguf_shard_filename(target.name)
+        if parsed is not None:
+            prefix, _idx, total = parsed
+            paths = sorted(target.parent.glob(f"{prefix}-*-of-{total:05d}.gguf")) or [target]
+            return inspect_gguf_entries(paths, metadata_reader=read_metadata)
+        return inspect_gguf_entries([target], metadata_reader=read_metadata)
+    paths = sorted({p for root in roots for p in Path(root).rglob("*.gguf")})
+    return inspect_gguf_entries(paths, metadata_reader=read_metadata)
 
 
 def platform_capabilities(system):

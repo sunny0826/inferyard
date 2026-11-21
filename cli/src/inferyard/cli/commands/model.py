@@ -39,8 +39,15 @@ def add_commands(commands):
         dest="proxy_origin",
         help="explicit http(s) proxy origin (scheme://host[:port])",
     )
+    acquire.add_argument(
+        "--kind",
+        dest="model_kind",
+        choices=("auto", "gguf", "directory"),
+        default="auto",
+        help="model format to acquire (default: auto)",
+    )
     resolve = actions.add_parser(
-        "resolve", help="resolve one HF/ModelScope GGUF URL to a pinned revision"
+        "resolve", help="resolve one HF/ModelScope GGUF or directory URL to a pinned revision"
     )
     resolve.set_defaults(command="model resolve")
     resolve.add_argument("--source", dest="model_source_url", required=True)
@@ -58,4 +65,11 @@ def add_commands(commands):
         "--proxy-origin",
         dest="proxy_origin",
         help="explicit http(s) proxy origin (scheme://host[:port])",
+    )
+    resolve.add_argument(
+        "--kind",
+        dest="model_kind",
+        choices=("auto", "gguf", "directory"),
+        default="auto",
+        help="model format to resolve (default: auto)",
     )

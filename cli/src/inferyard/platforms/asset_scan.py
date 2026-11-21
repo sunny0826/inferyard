@@ -5,6 +5,7 @@ from __future__ import annotations
 import errno
 import json
 import os
+import re
 import shutil
 import stat
 from collections.abc import Iterator
@@ -16,6 +17,21 @@ MODEL_SCAN_DEPTH = 4
 ENGINE_SCAN_DEPTH = 4
 SKIP_DIRECTORIES = frozenset({"venv", "env", "node_modules", "site-packages", "__pycache__"})
 ENGINE_BINARY_NAMES = frozenset({"llama-server", "llama-server.exe"})
+GGUF_SHARD_PATTERN = re.compile(
+    r"^(?P<prefix>.+)-(?P<index>\d{5})-of-(?P<total>\d{5})\.gguf$", re.IGNORECASE
+)
+
+
+def parse_gguf_shard_filename(name: str) -> tuple[str, int, int] | None:
+    """Return (prefix, 1-based shard index, shard total) for *-NNNNN-of-MMMMM.gguf."""
+    match = GGUF_SHARD_PATTERN.fullmatch(name)
+    if match is None:
+        return None
+    index = int(match.group("index"))
+    total = int(match.group("total"))
+    if total < 2 or not (1 <= index <= total):
+        return None
+    return match.group("prefix"), index, total
 
 
 def _safe_resolve_text(path: Path) -> str:
@@ -205,10 +221,9 @@ def _has_chat_template(tokenizer_config_path: Path | None) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
-def _gguf_asset(path: Path, stem: str) -> dict:
-    info = inspect_gguf_file(path, fallback_name=stem)
+def _gguf_asset_from_info(info: dict, stem: str) -> dict:
     if info["status"] == "available":
-        chat_ok = bool(info["chat_template_available"])
+        chat_ok = bool(info.get("chat_template_available"))
         return {
             "path": info["path"],
             "name": info["name"],
@@ -221,14 +236,70 @@ def _gguf_asset(path: Path, stem: str) -> dict:
         }
     return {
         "path": info["path"],
-        "name": stem,
+        "name": info.get("name") or stem,
         "format": "gguf",
-        "size_bytes": None,
+        "size_bytes": info.get("size_bytes"),
         "architecture": None,
         "context_length": None,
         "available": False,
-        "reason": "invalid_or_unreadable_gguf",
+        "reason": info.get("reason") or "invalid_or_unreadable_gguf",
     }
+
+
+def _gguf_asset(path: Path, stem: str) -> dict:
+    return _gguf_asset_from_info(inspect_gguf_file(path, fallback_name=stem), stem)
+
+
+def inspect_gguf_entries(paths: list[Path], *, metadata_reader=read_metadata) -> list[dict]:
+    """Inspect GGUF files, collapsing multi-shard sets per directory into single model entries."""
+    standalone: list[Path] = []
+    groups: dict[tuple[str, str, int], dict[int, Path]] = {}
+    for candidate in paths:
+        parsed = parse_gguf_shard_filename(candidate.name)
+        if parsed is None:
+            standalone.append(candidate)
+            continue
+        prefix, index, total = parsed
+        key = (_safe_resolve_text(candidate.parent), prefix, total)
+        groups.setdefault(key, {})[index] = candidate
+
+    results = [inspect_gguf_file(p, metadata_reader=metadata_reader) for p in standalone]
+    for (_dir_key, prefix, total), shards in sorted(groups.items()):
+        primary_idx = 1 if 1 in shards else min(shards)
+        primary = shards[primary_idx]
+        total_size = 0
+        all_readable = True
+        for idx in range(1, total + 1):
+            shard_path = shards.get(idx)
+            if shard_path is None:
+                all_readable = False
+                continue
+            try:
+                st = shard_path.stat()
+                if not stat.S_ISREG(st.st_mode):
+                    all_readable = False
+                    continue
+                total_size += int(st.st_size)
+            except OSError:
+                all_readable = False
+        if not all_readable or 1 not in shards or len(shards) != total:
+            results.append(
+                {
+                    "path": _safe_resolve_text(primary),
+                    "name": prefix,
+                    "size_bytes": total_size if total_size > 0 else None,
+                    "status": "unavailable",
+                    "reason": "split_gguf_incomplete",
+                }
+            )
+            continue
+        info = inspect_gguf_file(primary, metadata_reader=metadata_reader, fallback_name=prefix)
+        if info["status"] == "available":
+            info = {**info, "size_bytes": total_size}
+        else:
+            info = {**info, "name": prefix}
+        results.append(info)
+    return results
 
 
 def _disk_free_bytes(root: Path) -> int | None:
@@ -276,6 +347,7 @@ def _scan_models_root(
         config_path: Path | None = None
         tokenizer_config_path: Path | None = None
         dir_size = 0
+        gguf_files: list[Path] = []
         for entry in entries:
             entry_path = current_dir / entry.name
             resolved = _resolve_controlled_file(entry_path, allowed_roots)
@@ -283,14 +355,7 @@ def _scan_models_root(
                 continue
             lower = entry.name.lower()
             if lower.endswith(".gguf"):
-                asset = _gguf_asset(resolved, entry_path.stem)
-                if asset["path"] not in seen_paths:
-                    seen_paths.add(asset["path"])
-                    models.append(asset)
-                    model_sizes[asset["path"]] = asset["size_bytes"] or 0
-                if asset["path"] not in counted:
-                    counted.add(asset["path"])
-                    usage += model_sizes.get(asset["path"], 0)
+                gguf_files.append(resolved)
                 continue
             if entry.name.startswith("."):
                 continue
@@ -309,6 +374,15 @@ def _scan_models_root(
                 lower.startswith("pytorch_model") and lower.endswith(".bin")
             ):
                 has_weights = True
+        for info in inspect_gguf_entries(gguf_files):
+            asset = _gguf_asset_from_info(info, Path(info["path"]).stem)
+            if asset["path"] not in seen_paths:
+                seen_paths.add(asset["path"])
+                models.append(asset)
+                model_sizes[asset["path"]] = asset["size_bytes"] or 0
+            if asset["path"] not in counted:
+                counted.add(asset["path"])
+                usage += model_sizes.get(asset["path"], 0)
         if has_config and has_tokenizer and has_weights:
             dir_key = str(current_dir)
             if dir_key not in seen_paths:
