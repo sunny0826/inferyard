@@ -29,6 +29,8 @@ def _normalize_path_collections(
         "report_runs",
         "models_roots",
         "engine_roots",
+        "extra_paths",
+        "runtime_roots",
         "left_runs",
         "right_runs",
         "left_configs",
@@ -170,6 +172,8 @@ def build_request(
         or args.command == "engine acquire"
         or args.command == "engine prepare"
         or args.command == "engine check"
+        or args.command == "engine detect"
+        or args.command == "engine init-installation"
         or args.command == "assets scan"
         or args.command.startswith("engine-fit ")
     )

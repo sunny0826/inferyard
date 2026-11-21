@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from inferyard.cli.commands.engine_detect import add_detect_subcommands
+
 
 def add_commands(commands):
     engine = commands.add_parser(
@@ -70,3 +72,4 @@ def add_commands(commands):
     source.add_argument("--engine", dest="engine_path", type=Path)
     source.add_argument("--runtime-receipt", type=Path)
     source.add_argument("--installation", type=Path)
+    add_detect_subcommands(actions)

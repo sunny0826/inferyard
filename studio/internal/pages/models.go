@@ -63,11 +63,17 @@ func (s *viewState) modelsView(c *ui.Context) {
 				Title:   "尚未发现可用引擎。",
 				Surface: emptySunken,
 				Action: func() {
-					button(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
+						button(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+						button(c, "添加本地引擎").OnClick(func() { s.selected = "settings" })
+					})
 				},
 			})
 			return
 		}
+		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
+			button(c, "添加本地引擎").OnClick(func() { s.selected = "settings" })
+		})
 		ui.Text(c, s.engineFit()).TextColor(t.Color.FgSecondary)
 		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
 			for _, engine := range s.registry.Engines {

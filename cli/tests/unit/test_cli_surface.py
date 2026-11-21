@@ -34,6 +34,8 @@ CASES = [
     ["--schema", "service_discovery"],
     ["engine", "check", "--help"],
     ["engine", "prepare", "--help"],
+    ["engine", "detect", "--help"],
+    ["engine", "init-installation", "--help"],
     ["assets", "scan", "--help"],
     ["--schema", "engine_check"],
     ["progress", "--help"],

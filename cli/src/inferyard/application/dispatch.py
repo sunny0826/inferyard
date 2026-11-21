@@ -44,6 +44,10 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         from inferyard.application.engine_check import execute
 
         return execute(request)
+    if request.command in ("engine detect", "engine init-installation"):
+        from inferyard.application.engine_detect import execute
+
+        return execute(request)
     if request.command in (
         "init",
         "runtime prepare",

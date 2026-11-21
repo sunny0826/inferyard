@@ -61,6 +61,12 @@ class CommandRequest:
     extension_spec: Path | None = None
     models_roots: list[Path] | None = None
     engine_roots: list[Path] | None = None
+    extra_paths: list[Path] | None = None
+    family: str | None = None
+    executable: Path | None = None
+    working_directory: Path | None = None
+    runtime_roots: list[Path] | None = None
+    models_root: Path | None = None
     model_path: Path | None = None
     fit_engines: list[str] | None = None
     fit_engine: str | None = None
