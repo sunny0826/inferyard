@@ -62,6 +62,7 @@ var previewScenes = []struct {
 		}}
 	}},
 	{"设计系统 · Token 与材质", func(s *viewState) { s.selected = "design_system" }},
+	{"下载 · 引擎目录原型", previewDownloadsPrototype},
 }
 
 func previewDenseResources(s *viewState) {

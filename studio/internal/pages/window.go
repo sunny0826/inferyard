@@ -95,6 +95,8 @@ type viewState struct {
 	registry                                                                            core.Registry
 	checks                                                                              core.EngineCheckOverview
 	installationPath, localPID, localEndpoint, localBindingTask                         string
+	wizardOpenRequested                                                                 bool
+	wizardPresetFamily                                                                  string
 	model                                                                               string
 	announcedPage, promptPage                                                           string
 	announcedErrors                                                                     map[string]bool
@@ -165,7 +167,7 @@ type viewState struct {
 	engineFailureCleared                                                                string
 	localUsedPIDs                                                                       map[int64]bool
 	localPendingPIDs                                                                    map[string]int64
-	modelURL, modelName, tokenEnv, engineURL, engineName, downloadProxy                   string
+	modelURL, modelName, tokenEnv, engineURL, engineName, downloadProxy                 string
 	historyTable                                                                        pageTableState
 	reportChoices                                                                       ui.Selection[any]
 	scrolls                                                                             map[string]*ui.ScrollState
@@ -515,4 +517,10 @@ func (s *viewState) shouldVerifyEngines(full, visible bool, now time.Time) bool 
 	}
 	s.lastEngineVerification = now
 	return true
+}
+
+func (s *viewState) openLocalEngineWizard(family string) {
+	s.wizardOpenRequested = true
+	s.wizardPresetFamily = family
+	s.navigateTo("models", "")
 }

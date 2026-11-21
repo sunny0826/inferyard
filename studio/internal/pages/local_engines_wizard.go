@@ -40,6 +40,15 @@ func (s *viewState) localEngineWizardView(c *ui.Context) {
 	w := ui.Local(container, "wizard-state", func() localEngineWizardState {
 		return localEngineWizardState{family: "llama-cpp"}
 	})
+	if s.wizardPresetFamily != "" {
+		for _, opt := range localEngineFamilyOptions {
+			if opt.Value == s.wizardPresetFamily {
+				w.family = s.wizardPresetFamily
+				break
+			}
+		}
+		s.wizardPresetFamily = ""
+	}
 	if w.family == "" {
 		w.family = "llama-cpp"
 	}

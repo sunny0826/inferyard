@@ -21,6 +21,10 @@ func (s *viewState) modelsView(c *ui.Context) {
 	host := ui.Column(c.Key("models-page-host")).FillWidth().Gap(t.Density.Section)
 	pending := ui.Local(host, "pending-delete", func() pendingAssetDelete { return pendingAssetDelete{} })
 	wizardOpen := ui.Local(host, "local-engine-wizard-open", func() bool { return false })
+	if s.wizardOpenRequested {
+		*wizardOpen = true
+		s.wizardOpenRequested = false
+	}
 	host.Children(func() {
 		s.header(c, "模型")
 		s.modelsPageActions(c, wizardOpen)
