@@ -23,7 +23,7 @@ func (s *viewState) modelsView(c *ui.Context) {
 		errorView(c, s.registry.ModelError)
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
 			button(c, "下载更多").OnClick(func() { s.selected = "downloads" })
-			refreshButton(c, "刷新", s.registry.Refreshing || s.refreshing).Disabled(s.registry.Refreshing || s.busy).OnClick(s.refreshAction)
+			refreshButton(c, "刷新", s.registry.Refreshing || s.refreshing).Disabled(s.registry.Refreshing || s.busy).OnClick(s.refreshAssetsAction)
 		})
 		if len(s.registry.Models) == 0 {
 			emptyGuideCard(c, emptyGuideOptions{
@@ -173,7 +173,11 @@ func (s *viewState) engineStateLine(engine core.EngineAsset) string {
 	case core.EngineCheckChecking:
 		parts = append(parts, "核验中…")
 	case core.EngineCheckIneligible:
-		parts = append(parts, "不可用："+human(el.Reason))
+		reason := "不可用：" + human(el.Reason)
+		if el.Release != "" {
+			reason += "（需要 " + el.Release + "）"
+		}
+		parts = append(parts, reason)
 	default:
 		if !s.checks.Supported {
 			parts = append(parts, "未核验（CLI 过旧）")
@@ -214,6 +218,21 @@ func (s *viewState) engineFit() string {
 		return fmt.Sprintf("核验中…（%d 个可用 · %d 个不可用）", eligible, ineligible)
 	}
 	return fmt.Sprintf("%d 个可用 · %d 个不可用", eligible, ineligible)
+}
+
+func (s *viewState) refreshAssetsAction() {
+	if s.simulate(previewReload) {
+		return
+	}
+	if s.busy {
+		return
+	}
+	if s.service != nil {
+		_ = s.service.RefreshAssets()
+		_ = s.service.RefreshDevice()
+		go s.service.VerifyEngines()
+	}
+	go s.refresh(true)
 }
 
 func (s *viewState) adoptDownloadedEngine() {

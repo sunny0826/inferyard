@@ -13,17 +13,21 @@ const (
 )
 
 type CatalogEntry struct {
-	ID       string
-	Kind     CatalogKind
-	Title    string
-	Family   string
-	URL      string
-	Bytes    int64
-	SHA256   string
-	Revision string
-	Platform string
-	Reason   string
-	Note     string
+	ID            string
+	Kind          CatalogKind
+	Title         string
+	Family        string
+	URL           string
+	Bytes         int64
+	SHA256        string
+	Profile       string
+	RuntimeURL    string
+	RuntimeBytes  int64
+	RuntimeSHA256 string
+	Revision      string
+	Platform      string
+	Reason        string
+	Note          string
 }
 
 func (e CatalogEntry) Downloadable() bool {

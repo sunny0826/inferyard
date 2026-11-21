@@ -15,6 +15,50 @@ func human(code string) string {
 		return "本地安装声明未通过核验，请检查声明和运行环境。"
 	case "local_engine_requires_darwin_arm64":
 		return "此本地引擎流程目前仅支持 Apple Silicon macOS。"
+	case "local_engine_json_unreadable":
+		return "本地引擎安装声明 JSON 无法读取或格式无效，请检查 installation.json。"
+	case "local_engine_absolute_path_required":
+		return "本地引擎安装声明中的路径必须为绝对路径。"
+	case "local_engine_locator_missing":
+		return "本地引擎安装声明缺少定位或入口字段，请补充完整后重试。"
+	case "local_engine_runtime_root_invalid":
+		return "本地引擎运行时根目录无效或不存在，请检查安装目录。"
+	case "local_engine_cwd_invalid":
+		return "本地引擎工作目录无效，请检查声明中的工作目录路径。"
+	case "local_engine_executable_invalid":
+		return "本地引擎可执行文件无效或不可执行，请检查路径与权限。"
+	case "local_engine_models_root_required_for_lmstudio_only":
+		return "仅 LM Studio 安装声明需要指定模型目录，其他本地引擎请移除该字段。"
+	case "local_engine_non_regular_asset":
+		return "本地引擎资产不是常规文件，未通过完整性核验。"
+	case "local_engine_directory_symlink":
+		return "本地引擎目录包含符号链接，未通过安全与一致性核验。"
+	case "local_engine_python_venv_required":
+		return "此 Python 本地引擎需要使用虚拟环境（venv）中的 Python 解释器。"
+	case "local_engine_python_probe_failed":
+		return "Python 本地引擎环境探测失败，请检查虚拟环境与依赖是否完整。"
+	case "local_engine_runtime_changed_during_hash":
+		return "校验期间本地引擎运行时文件发生变化，请确认无后台改动后重试。"
+	case "local_engine_runtime_unreadable":
+		return "无法读取本地引擎运行时文件，请检查目录权限与文件完整性。"
+	case "local_engine_runtime_invalid":
+		return "本地引擎运行时环境无效或不完整，请检查安装内容。"
+	case "local_engine_runtime_changed":
+		return "本地引擎运行时环境在准备或核验后发生变化，请重新核验引擎。"
+	case "local_engine_python_import_path_invalid":
+		return "本地引擎的 Python 模块导入路径无效，请检查安装声明配置。"
+	case "local_engine_import_root_undeclared":
+		return "本地引擎使用了未在安装声明中申明的 Python 导入根目录。"
+	case "local_engine_python_entrypoint_invalid":
+		return "本地引擎的 Python 入口脚本无效，请检查路径与格式。"
+	case "local_engine_python_entrypoint_missing":
+		return "未找到本地引擎声明的 Python 入口脚本，请检查文件路径。"
+	case "local_engine_mapping_unverified":
+		return "无法核验本地引擎的动态库或路径映射。"
+	case "local_engine_macho_unreadable":
+		return "无法读取本地引擎的 Mach-O 二进制信息，请检查文件完整性。"
+	case "local_engine_mapped_library_closure_unverified":
+		return "未能完整核验本地引擎加载的动态库依赖闭包。"
 	case "local_engine_service_reused":
 		return "上一测评题集的服务不能重复使用，请重新启动服务并填写新的后台 PID。"
 	case "local_engine_lmstudio_background_pid_required", "local_engine_external_binding_required":
@@ -105,6 +149,36 @@ func human(code string) string {
 		return "CLI 自动安装失败，可重试或改用「手动指定路径」。"
 	case "install_version_unknown":
 		return "无法确定要安装的 CLI 版本，请按安装指南手动安装。"
+	case "ac_power_required":
+		return "macOS 测评需接通交流电源后运行，请插上电源适配器后重试。"
+	case "chat_template_unavailable":
+		return "模型缺少聊天模板，无法用于当前对话测评。"
+	case "model_acquire_incomplete":
+		return "模型下载未完成，请检查下方具体原因与网络或目录状态后重试。"
+	case "engine_acquire_incomplete":
+		return "引擎下载未完成，请检查下方具体原因与网络或目录状态后重试。"
+	case "engine_checksum_mismatch":
+		return "引擎下载校验和不匹配，文件可能已损坏，请重新下载。"
+	case "token_env_missing":
+		return "指定的访问凭据环境变量未设置或内容无效，请在系统环境中配置后重试。"
+	case "auth_required":
+		return "远端服务拒绝访问（HTTP 401/403），请检查访问凭据与权限后重试。"
+	case "rate_limited":
+		return "远端下载请求触发限流（HTTP 429），请稍后重试。"
+	case "upstream_http_error":
+		return "远端服务器返回异常 HTTP 状态，请稍后重试或检查下载地址。"
+	case "unexpected_content_encoding":
+		return "远端响应使用了不支持的内容编码（需 identity 原始字节流），下载已中止。"
+	case "network_timeout":
+		return "网络请求或读取超时，请检查网络连接后重试。"
+	case "connection_error":
+		return "网络连接失败或中断，请检查网络及代理配置后重试。"
+	case "transfer_error":
+		return "下载传输过程中发生网络协议或传输错误，请重试。"
+	case "disk_full":
+		return "磁盘可用空间不足，无法继续写入文件，请清理磁盘空间后重试。"
+	case "permission_denied":
+		return "没有足够的文件或目录写入权限，请检查目标目录权限后重试。"
 	case "engine_unpack_failed":
 		return "引擎归档解包失败，请检查来源后重试。"
 	case "engine_binary_missing":
@@ -198,7 +272,7 @@ func human(code string) string {
 	case "invalid_request":
 		return "输入不符合要求，请检查路径、URL 和环境变量名。"
 	case "not_found":
-		return "所需文件或记录不存在，请检查工作区状态后重试。"
+		return "所需文件、记录或远端资源不存在，请检查路径、工作区状态或下载地址后重试。"
 	case "conflict":
 		return "操作与当前状态冲突，请刷新进度后重试。"
 	case "internal_error":

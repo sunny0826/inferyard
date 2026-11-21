@@ -32,6 +32,14 @@ def default_backend(request: CommandRequest) -> tuple[int, CommandResult]:
         from inferyard.application.engine_source import execute
 
         return execute(request)
+    if request.command == "engine prepare":
+        from inferyard.application.engine_prepare import execute
+
+        return execute(request)
+    if request.command == "assets scan":
+        from inferyard.application.asset_scan import execute
+
+        return execute(request)
     if request.command == "engine check":
         from inferyard.application.engine_check import execute
 

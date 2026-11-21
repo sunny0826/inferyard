@@ -29,6 +29,7 @@ type Options struct {
 	HostStatePath      string
 	EngineStartTimeout time.Duration
 }
+
 type Service struct {
 	paths             *BoundPaths
 	orphan            *orphanEngine
@@ -52,6 +53,8 @@ type Service struct {
 	Bus               *EventBus
 	device            DeviceResponse
 	deviceGeneration  uint64
+	assets            AssetsState
+	assetsGen         uint64
 	history           RunHistoryResponse
 	rebuilding        bool
 	runs              []*runEntry
@@ -128,6 +131,7 @@ func New(ctx context.Context, o Options) (*Service, error) {
 		}
 	}()
 	if s.settings.ModelsRoot != nil {
+		s.RefreshAssets()
 		s.RefreshDevice()
 	}
 	return s, nil
@@ -178,8 +182,24 @@ func exitError(out inferyard.Execution, err error) *ApiError {
 		code = "cli_blocked"
 	}
 	e := Err(code)
-	if r, p := inferyard.Parse(out.Stdout); p == nil && r.Limitations != nil {
-		e.Limitations = r.Limitations
+	if r, p := inferyard.Parse(out.Stdout); p == nil {
+		if r.Limitations != nil {
+			e.Limitations = r.Limitations
+		}
+		if len(r.Details) > 0 && string(r.Details) != "null" {
+			var parsed map[string]any
+			if json.Unmarshal(r.Details, &parsed) == nil {
+				sanitized := map[string]any{}
+				for _, key := range []string{"failure_stage", "failure_cause"} {
+					if v, ok := parsed[key].(string); ok && v != "" {
+						sanitized[key] = v
+					}
+				}
+				if len(sanitized) > 0 {
+					e.Details = sanitized
+				}
+			}
+		}
 	}
 	return e
 }
@@ -352,11 +372,15 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 	}
 	s.mu.Lock()
 	changed := str(u.ResultsRoot) != str(s.settings.ResultsRoot)
-	if str(u.ModelsRoot) != str(s.settings.ModelsRoot) {
+	modelsChanged := str(u.ModelsRoot) != str(s.settings.ModelsRoot)
+	if modelsChanged {
 		s.deviceGeneration++
 		s.device.Snapshot = nil
 		s.device.CapturedAt = nil
 		s.device.LastError = nil
+		s.device.Refreshing = false
+		s.assetsGen++
+		s.assets = AssetsState{}
 	}
 	if workspaceChanged {
 		s.engine = nil
@@ -371,6 +395,10 @@ func (s *Service) saveSettings(u UserSettings) (SettingsResponse, *ApiError) {
 	}
 	if changed {
 		go s.rebuild(u)
+	}
+	if modelsChanged && u.ModelsRoot != nil {
+		s.RefreshAssets()
+		s.RefreshDevice()
 	}
 	return s.Settings(), nil
 }
@@ -435,10 +463,10 @@ func (s *Service) RefreshDevice() *ApiError {
 		}
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		s.device.Refreshing = false
 		if gen != s.deviceGeneration {
 			return
 		}
+		s.device.Refreshing = false
 		if failure == nil {
 			s.device.Snapshot = snapshot
 			s.device.CapturedAt = ptr(now())

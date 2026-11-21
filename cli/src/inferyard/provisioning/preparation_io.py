@@ -16,9 +16,10 @@ from inferyard.platforms.platform_io import is_reparse
 
 
 class PreparationError(RuntimeError):
-    def __init__(self, reason, code=2):
+    def __init__(self, reason, code=2, *, details=None):
         self.reason = reason
         self.code = code
+        self.details = details
         super().__init__(reason)
 
 

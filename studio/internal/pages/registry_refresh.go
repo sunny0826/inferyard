@@ -8,7 +8,7 @@ func fullRefresh(events []core.Event, reset bool) bool {
 	}
 	for _, event := range events {
 		switch event.Type {
-		case "sync.reset", "report.created", "run.state", "engine.state", "download.state", "device.updated":
+		case "sync.reset", "report.created", "run.state", "engine.state", "download.state", "device.updated", "assets.updated":
 			return true
 		}
 	}

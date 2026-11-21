@@ -19,6 +19,24 @@ def add_commands(commands):
         default=1800,
         help="positive finite seconds per network operation (default: 1800)",
     )
+    prepare = actions.add_parser(
+        "prepare",
+        help="download, verify, and unpack one engine archive into a new directory",
+    )
+    prepare.set_defaults(command="engine prepare")
+    prepare.add_argument("--source", dest="engine_source_url", required=True)
+    prepare.add_argument("--out", type=Path, required=True)
+    prepare.add_argument("--expected-sha256")
+    prepare.add_argument("--profile", dest="runtime_profile")
+    prepare.add_argument("--runtime-source", dest="runtime_source_url")
+    prepare.add_argument("--runtime-expected-sha256")
+    prepare.add_argument(
+        "--timeout-seconds",
+        dest="engine_timeout_seconds",
+        type=float,
+        default=1800,
+        help="positive finite seconds per network operation (default: 1800)",
+    )
     check = actions.add_parser(
         "check",
         help="macOS/Windows: read-only engine verification; runs --version (30s); no writes",
