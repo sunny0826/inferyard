@@ -33,7 +33,7 @@ func (s *viewState) cancelSpeed() {
 		return
 	}
 	id := s.speed.current.id
-	s.work(func() (string, *core.ApiError) { return "", cancelSpeedFlow(s.service, id) })
+	s.work(func() (string, *core.ApiError) { return "已请求取消专项测评", cancelSpeedFlow(s.service, id) })
 }
 
 func speedFromTask(t core.RunTask) *speedTask {

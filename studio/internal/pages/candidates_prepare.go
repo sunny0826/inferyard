@@ -82,9 +82,13 @@ func (s *viewState) startBenchmark() {
 			s.task.failure = e
 			if e != nil {
 				s.failedBundle = s.task.bindings.failedBundle
+			} else {
+				s.resolveProgressToast("benchmark-report-toast", "任务报告已生成", "查看报告", func() {
+					s.navigateTo("reports", "")
+				})
 			}
 		})
-		return "任务报告已生成。", e
+		return "", e
 	})
 }
 
@@ -341,8 +345,12 @@ func (s *viewState) retryBenchmark() {
 			s.task.failure = e
 			if e != nil {
 				s.failedBundle = s.task.bindings.failedBundle
+			} else {
+				s.resolveProgressToast("benchmark-report-toast", "任务报告已生成", "查看报告", func() {
+					s.navigateTo("reports", "")
+				})
 			}
 		})
-		return "任务报告已生成。", e
+		return "", e
 	})
 }

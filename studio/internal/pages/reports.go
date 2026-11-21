@@ -141,9 +141,22 @@ func (s *viewState) reportSourcesDialog(c *ui.Context) {
 						if s.simulate(previewCreateReport{paths: paths}) {
 							return
 						}
+						const toastID = "create-report-toast"
+						s.enqueueProgressToast(toastID, "正在生成报告…")
 						s.workAs("create-report", func() (string, *core.ApiError) {
 							report, e := s.service.CreateReport(core.CreateReportRequest{RunPaths: paths})
-							return "已生成 " + report.ReportId, e
+							if e != nil {
+								s.win.Update(func() { s.dismissToast(toastID) })
+								return "", e
+							}
+							reportID := report.ReportId
+							s.win.Update(func() {
+								s.lastManualReportID = reportID
+								s.resolveProgressToast(toastID, "报告已生成", "查看报告", func() {
+									s.openReport(reportID)
+								})
+							})
+							return "", nil
 						})
 					}
 					if button(c, "关闭").AlignSelf(ui.Start).Clicked() {

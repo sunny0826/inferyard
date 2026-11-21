@@ -98,7 +98,7 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 			}
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.service.CancelDownload(task.TaskId)
-				return "已请求取消下载。", e
+				return "已请求取消下载", e
 			})
 		}
 	}
@@ -116,7 +116,7 @@ func (s *viewState) downloadActions(c *ui.Context, task core.DownloadTask) {
 			} else {
 				_, e = s.service.CreateModelDownload(core.CreateDownloadRequest{SourceUrl: task.SourceUrl}, "")
 			}
-			return "已重新创建下载任务，使用新目录名。", e
+			return "已重新创建下载任务", e
 		})
 	})
 }

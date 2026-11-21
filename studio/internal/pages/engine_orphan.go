@@ -17,9 +17,9 @@ func (s *viewState) stopOrphanButton(c *ui.Context) {
 		s.work(func() (string, *core.ApiError) {
 			state, e := s.service.StopOrphanEngine()
 			if state.State == "stopped" {
-				return "遗留引擎已退出，已清除记录。", e
+				return "遗留引擎已退出，已清除记录", e
 			}
-			return "已请求停止遗留服务，等待收尾。", e
+			return "已请求停止遗留服务，等待收尾", e
 		})
 	}
 	if orphanRecordRecoverable(s.engineState) {
@@ -34,7 +34,7 @@ func (s *viewState) stopOrphanButton(c *ui.Context) {
 			}
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.service.DiscardOrphanRecord()
-				return "已删除遗留记录，未终止任何进程。", e
+				return "已删除遗留记录，未终止任何进程", e
 			})
 		}
 	}

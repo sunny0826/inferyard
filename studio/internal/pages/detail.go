@@ -49,7 +49,7 @@ func (s *viewState) detailView(c *ui.Context) {
 			}
 			s.work(func() (string, *core.ApiError) {
 				_, e := s.cancelRunTask(id)
-				return "已请求取消，等待安全收尾。", e
+				return "已请求取消，等待安全收尾", e
 			})
 		}
 		componentFold(c, "运行原始字段", func() { detailRawFields(c, t) })

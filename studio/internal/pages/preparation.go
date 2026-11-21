@@ -3,6 +3,7 @@ package pages
 import (
 	"encoding/json"
 	"path/filepath"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"inferyard/studio/internal/core"
@@ -172,7 +173,7 @@ func (s *viewState) settingsView(c *ui.Context) {
 					return
 				}
 				submitted := s.settingsDraft()
-				s.workAs("save-paths", func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, "设置已保存。") })
+				s.workAs("save-paths", func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, "设置已保存") })
 			}
 		},
 	})
@@ -276,10 +277,19 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 				}
 				submitted := s.settingsDraft()
 				s.workAs("save-download-names", func() (string, *core.ApiError) {
-					return s.persistSettings(patch, submitted, "下载目录名已保存。")
+					return s.persistSettings(patch, submitted, "下载目录名已保存")
 				})
 			}
-			button(c, "恢复默认值").Disabled(s.busy).OnClick(func() { s.modelName, s.engineName = "model", "engine" })
+			button(c, "恢复默认值").Disabled(s.busy).OnClick(func() {
+				prevModel, prevEngine := s.modelName, s.engineName
+				if prevModel == "model" && prevEngine == "engine" {
+					return
+				}
+				s.modelName, s.engineName = "model", "engine"
+				s.enqueueActionToast("undo-download-names", "已恢复默认目录名", "撤销", "已恢复原目录名", 6*time.Second, func() {
+					s.modelName, s.engineName = prevModel, prevEngine
+				})
+			})
 		},
 	})
 }
