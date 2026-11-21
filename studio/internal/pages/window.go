@@ -155,6 +155,8 @@ type viewState struct {
 	resumeSource                                                                        *core.RunSummary
 	resumeDiscardConfirm                                                                bool
 	reportDialogOpen, reportDiscardConfirm                                              bool
+	settingsLeaveConfirm                                                                bool
+	pendingNavAction                                                                    func()
 	endpoint, pid                                                                       string
 	denied                                                                              map[string]bool
 	bindFailure                                                                         *core.ApiError
@@ -389,8 +391,6 @@ func (s *viewState) view(c *ui.Context) {
 		ui.Column(c).Width(205).Shrink(0).Children(func() { s.leftNav(c) })
 		s.contentView(c)
 	})
-	s.resumeDialog(c)
-	studioToasts(c)
 }
 
 func (s *viewState) contentView(c *ui.Context) {
@@ -429,6 +429,8 @@ func (s *viewState) contentView(c *ui.Context) {
 			})
 		})
 	})
+	s.resumeDialog(c)
+	s.settingsDiscardDialog(c)
 	s.studioNotifications(c)
 	studioToasts(c)
 }

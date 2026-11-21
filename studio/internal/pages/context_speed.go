@@ -124,7 +124,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 	}
 	reason := s.speedStartBlockReason()
 	if engineLocked(s.engineState.State) {
-		if s.destructiveAction(c, destructiveOption{
+		if s.destructiveDialog(c, destructiveOption{
 			kind: destructiveStopEngine, label: "停止当前服务", confirmLabel: "确认停止当前服务",
 			prompt:   "将停止 Studio 启动的模型服务；长上下文专项测评需要重新启动服务后才能开始。",
 			disabled: s.busy || s.engineState.State == "stopping",

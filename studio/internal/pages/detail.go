@@ -34,11 +34,19 @@ func (s *viewState) detailView(c *ui.Context) {
 		statusBadge(c, taskLabel(t), runColor(c, t))
 		ui.Text(c, "运行目录："+displayName(text(t.RunPath))).Selectable()
 		errorView(c, t.Error)
-		if s.destructiveAction(c, destructiveOption{
+		wholeRound := s.task.stage != ""
+		cancelOption := destructiveOption{
 			kind: destructiveCancelRun, id: t.TaskId, label: "取消任务", confirmLabel: "确认取消任务",
-			prompt:   cancelRunPrompt(s.task.stage != ""),
+			prompt:   cancelRunPrompt(wholeRound),
 			disabled: (s.busy && s.task.stage == "") || terminal(t.State) || t.State == "cancelling",
-		}) {
+		}
+		var cancelConfirmed bool
+		if wholeRound {
+			cancelConfirmed = s.destructiveDialog(c, cancelOption)
+		} else {
+			cancelConfirmed = s.destructiveAction(c, cancelOption)
+		}
+		if cancelConfirmed {
 			if s.task.stage != "" {
 				s.newBenchmark()
 				return

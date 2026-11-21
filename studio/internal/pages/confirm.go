@@ -194,16 +194,21 @@ func cancelRunPrompt(lastRound bool) string {
 }
 
 func (w *viewState) cancelRunGate(c *ui.Context, id, state string) bool {
-	return w.destructiveAction(c, destructiveOption{
+	wholeRound := w.task.stage != ""
+	option := destructiveOption{
 		kind: destructiveCancelRun, id: id, label: "取消运行", confirmLabel: "确认取消运行",
 		dismissLabel: "保持运行",
-		prompt:       cancelRunPrompt(w.task.stage != ""),
+		prompt:       cancelRunPrompt(wholeRound),
 		disabled:     (w.busy && w.task.stage == "") || state == "cancelling",
-	})
+	}
+	if wholeRound {
+		return w.destructiveDialog(c, option)
+	}
+	return w.destructiveAction(c, option)
 }
 
 func (w *viewState) stopEngineGate(c *ui.Context) bool {
-	return w.destructiveAction(c, destructiveOption{
+	return w.destructiveDialog(c, destructiveOption{
 		kind: destructiveStopEngine, label: "停止服务", confirmLabel: "确认停止服务",
 		dismissLabel: "保持服务运行",
 		prompt:       "将停止 Studio 启动的模型服务；正在加载的模型会中断，之后需要重新启动并绑定。",
