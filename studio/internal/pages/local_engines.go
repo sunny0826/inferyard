@@ -210,7 +210,7 @@ func (s *viewState) localSelectionView(c *ui.Context) {
 		}
 	}
 	if reason := s.localSelectionError(); reason != "" {
-		ui.Text(c, reason).TextColor(stateColor(c, stateWarning))
+		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason})
 	}
 }
 
@@ -286,7 +286,7 @@ func (s *viewState) awaitingLocalServiceView(c *ui.Context) {
 			s.localServicePicker(c, "新的后台 PID", "本机服务地址")
 			pid, err := strconv.ParseInt(s.localPID, 10, 64)
 			if err == nil && pid > 0 && s.localPIDUsed(pid) {
-				ui.Text(c, human("local_engine_service_reused")).TextColor(stateColor(c, stateWarning))
+				noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: human("local_engine_service_reused")})
 			}
 			button(c, "连接并继续此测评题集").Disabled(s.localSelectionInvalid(pid, err)).OnClick(func() {
 				s.connectHandoffService(task.TaskId, pid)

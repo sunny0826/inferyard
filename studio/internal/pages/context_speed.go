@@ -120,7 +120,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		ui.Text(c, "超时、内存、磁盘及设备限制由 CLI 核验；容量不足或题库尚未批准时拒绝执行。")
 	})
 	if s.preview != nil {
-		ui.Text(c, "模拟数据；数值不代表模型性能。").TextColor(stateColor(c, stateWarning))
+		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: "模拟数据；数值不代表模型性能。"})
 	}
 	reason := s.speedStartBlockReason()
 	if engineLocked(s.engineState.State) {
@@ -133,7 +133,7 @@ func (s *viewState) speedSelection(c *ui.Context) bool {
 		}
 	}
 	if reason != "" {
-		ui.Text(c, reason).TextColor(stateColor(c, stateWarning))
+		noticeBanner(c, noticeBannerOptions{Kind: stateWarning, Size: bannerCompact, Message: reason})
 	}
 	if s.eligibility(s.engine).Reason == "cli_outdated" {
 		button(c, "打开 CLI 设置").OnClick(func() { s.selected = "settings" })
@@ -340,14 +340,23 @@ func (s *viewState) speedResultView(c *ui.Context) {
 		return
 	}
 	if w.readError != "" {
-		ui.Text(c, w.readError).TextColor(stateColor(c, stateDanger))
-		primaryButton(c, "重新读取结果").OnClick(func() { s.openSpeed(r.id) })
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateDanger,
+			Message: w.readError,
+			Actions: func() {
+				primaryButton(c, "重新读取结果").OnClick(func() { s.openSpeed(r.id) })
+			},
+		})
 		return
 	}
 	if r.stage == speedCancelled {
-		ui.Text(c, "任务已取消。已完成的测量已保留；未完成项显示为 —。")
+		infoBanner(c, "任务已取消。已完成的测量已保留；未完成项显示为 —。")
 	} else if r.summary == nil {
-		ui.Text(c, "测量结果不满足完整汇总条件；请展开诊断详情查看缺测或校验原因。").TextColor(stateColor(c, stateWarning))
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateWarning,
+			Size:    bannerCompact,
+			Message: "测量结果不满足完整汇总条件；请展开诊断详情查看缺测或校验原因。",
+		})
 	}
 	card(c, "测量结果", func() {
 		if r.summary != nil {

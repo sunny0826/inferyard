@@ -57,16 +57,19 @@ func deviceMeasurement(v deviceObject, key string, capacity bool) string {
 	return value
 }
 func deviceRow(c *ui.Context, label, value string) {
+	t := tokens(c)
 	if compactLayout(c) {
-		ui.Column(c).Gap(tokens(c).Density.Tight).Children(func() {
-			ui.Text(c, label).TextColor(c.Theme().TextMuted)
-			ui.Text(c, value).Selectable().Label(label + "：" + value)
+		ui.Column(c).Gap(t.Density.Tight).Children(func() {
+			ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+			ui.Text(c, value).FontFeatures("tnum").Selectable().Label(label + "：" + value)
 		})
 		return
 	}
-	ui.Row(c).Gap(tokens(c).Density.Section).Children(func() {
-		ui.Text(c, label).Width(c.Theme().Rem(10)).TextColor(c.Theme().TextMuted)
-		ui.Text(c, value).Grow(1).MinWidth(0).Selectable().Label(label + "：" + value)
+	ui.Row(c).AlignItems(ui.Start).Gap(t.Density.Section).Padding(t.Density.Hairline, 0).Children(func() {
+		ui.Box(c).Width(c.Theme().Rem(10)).Shrink(0).Padding(2, 0, 0, 0).Children(func() {
+			ui.Text(c, label).FontSize(t.Type.Caption).TextColor(t.Color.FgSecondary)
+		})
+		ui.Text(c, value).Grow(1).MinWidth(0).FontFeatures("tnum").Selectable().Label(label + "：" + value)
 	})
 }
 func (s *viewState) refreshDevice() {
