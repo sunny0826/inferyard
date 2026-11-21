@@ -60,27 +60,34 @@ func (s *viewState) taskAssetsView(c *ui.Context) {
 			available   bool
 		}{{"engine", "引擎", assets.engine}, {"model", "模型", assets.model}} {
 			status := "待下载"
+			kind := stateNeutral
 			if asset.available {
 				status = "已发现"
+				kind = stateSuccess
 			} else {
 				for _, task := range s.downloads {
 					if task.Kind == asset.kind && task.State == "downloading" {
 						status = "下载中"
+						kind = stateActive
 						break
 					}
 				}
 			}
-			ui.Text(c, asset.label+" · "+status)
+			badge(c, asset.label+" · "+status, kind, badgeOptions{Style: badgeDot})
 		}
 		if s.registry.Refreshing {
-			ui.Text(c, "正在读取本地资源…")
+			ui.Text(c, "正在读取本地资源…").TextColor(tokens(c).Color.FgSecondary)
 		}
 		errorView(c, s.registry.ModelError)
 		shown := map[string]bool{}
 		for _, bundle := range s.taskBundles() {
 			reason := emptyText(bundle.BlockedReason)
 			if reason != "" && reason != "no_local_model" && !shown[reason] {
-				ui.Text(c, human(reason)).TextColor(stateColor(c, stateDanger))
+				noticeBanner(c, noticeBannerOptions{
+					Kind:    stateDanger,
+					Size:    bannerCompact,
+					Message: human(reason),
+				})
 				shown[reason] = true
 			}
 		}

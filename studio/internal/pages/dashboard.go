@@ -84,8 +84,13 @@ func (s *viewState) dashboardView(c *ui.Context) {
 	s.stageView(c)
 	s.awaitingLocalServiceView(c)
 	if len(s.task.start.localCandidates) > 0 && s.task.failure != nil && !s.busy {
-		ui.Text(c, "已完成题集将保留，确认问题解决后仅重试未完成项。")
-		button(c, "重试未完成的测评题集").OnClick(s.retryBenchmark)
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateWarning,
+			Message: "已完成题集将保留，确认问题解决后仅重试未完成项。",
+			Actions: func() {
+				button(c, "重试未完成的测评题集").OnClick(s.retryBenchmark)
+			},
+		})
 	}
 	for _, task := range s.tasks {
 		if task.Kind != "context_speed" && emptyText(task.RunPath) == "" {
@@ -122,23 +127,38 @@ func (s *viewState) conclusionView(c *ui.Context) {
 		failed := s.failedBundles()
 		for _, b := range s.taskBundles() {
 			if task := s.liveBundleTask(b.Bundle); task != nil {
-				ui.Text(c, b.Bundle+" · "+taskLabel(*task))
+				kind := stateActive
+				if task.Queued && task.State == "starting" {
+					kind = stateNeutral
+				}
+				badge(c, b.Bundle+" · "+taskLabel(*task), kind, badgeOptions{Style: badgeDot})
 				continue
 			}
 			if failed[b.Bundle] {
-				ui.Text(c, b.Bundle+" · 失败").TextColor(stateColor(c, stateDanger))
+				badge(c, b.Bundle+" · 失败", stateDanger, badgeOptions{Style: badgeDot})
 				continue
 			}
-			ui.Text(c, b.Bundle+" · "+stateLabel(b.Phase))
+			kind := stateNeutral
+			switch b.Phase {
+			case "run_complete":
+				kind = stateSuccess
+			case "run_incomplete":
+				kind = stateWarning
+			}
+			badge(c, b.Bundle+" · "+stateLabel(b.Phase), kind, badgeOptions{Style: badgeDot})
 			if b.BlockedReason != nil {
 				if *b.BlockedReason == "no_local_model" && s.availableTaskAssets().model && s.preparingTask() {
 					continue
 				}
-				color := stateColor(c, stateDanger)
+				bannerKind := stateDanger
 				if b.Phase == "run_incomplete" {
-					color = stateColor(c, stateWarning)
+					bannerKind = stateWarning
 				}
-				ui.Text(c, human(*b.BlockedReason)).TextColor(color)
+				noticeBanner(c, noticeBannerOptions{
+					Kind:    bannerKind,
+					Size:    bannerCompact,
+					Message: human(*b.BlockedReason),
+				})
 			}
 		}
 		if s.task.failure != nil || s.bindFailure != nil {
@@ -147,7 +167,11 @@ func (s *viewState) conclusionView(c *ui.Context) {
 			if cause != nil {
 				code = cause.Code
 			}
-			ui.Text(c, "当前任务已中止："+human(code)+"。原因与恢复操作见下方当前阶段。").TextColor(stateColor(c, stateDanger))
+			noticeBanner(c, noticeBannerOptions{
+				Kind:    stateDanger,
+				Size:    bannerCompact,
+				Message: "当前任务已中止：" + human(code) + "。原因与恢复操作见下方当前阶段。",
+			})
 		}
 	})
 }

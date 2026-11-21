@@ -134,38 +134,47 @@ func (s *viewState) settingsView(c *ui.Context) {
 	if s.service != nil && s.service.BoundPaths() != nil {
 		p := s.service.BoundPaths()
 		card(c, "开发环境 · 固定路径", func() {
-			for _, line := range []string{"来源：" + p.Source, "CLI：" + p.CLI, "工作区：" + p.Workspace, "结果：" + p.Results, "模型：" + p.Models, "引擎：" + p.Engines} {
-				ui.Text(c, line)
-			}
+			keyValueRow(c, "来源", p.Source, false)
+			keyValueRow(c, "CLI", p.CLI, false)
+			keyValueRow(c, "工作区", p.Workspace, false)
+			keyValueRow(c, "结果", p.Results, false)
+			keyValueRow(c, "模型", p.Models, false)
+			keyValueRow(c, "引擎", p.Engines, false)
 		})
 		s.localInstallationsView(c)
 		s.downloadNamesView(c)
 		return
 	}
-	card(c, "路径设置", func() {
-		s.pathFields(c)
-		ui.Text(c, "新建工作区请手动输入完整路径；保存后在任务页点击「准备环境」创建。").TextColor(c.Theme().TextMuted)
-		settingsNotice(c, s.pathsEdited(), "路径有未保存的修改，点击保存后生效。")
-		if primaryActionButton(c, "保存", s.actionBusy("save-paths")).Disabled(!s.canSavePaths()).Clicked() {
-			if !s.validateSettings() {
-				return
-			}
-			patch := map[string]json.RawMessage{}
-			for _, entry := range []struct{ key, value, previous string }{{"inferyard_path", s.cliPath, emptyText(s.settings.Settings.InferyardPath)}, {"workspace_root", s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)}, {"results_root", s.results, emptyText(s.settings.Settings.ResultsRoot)}, {"models_root", s.models, emptyText(s.settings.Settings.ModelsRoot)}} {
-				if entry.value != entry.previous {
-					var value any = entry.value
-					if entry.key == "inferyard_path" && entry.value == "" {
-						value = nil
-					}
-					patch[entry.key], _ = json.Marshal(value)
+	settingsFormSection(c, settingsFormOptions{
+		Title:       "路径设置",
+		Description: "新建工作区请手动输入完整路径；保存后在任务页点击「准备环境」创建。",
+		Dirty:       s.pathsEdited(),
+		Fields: func() {
+			s.pathFields(c)
+			settingsNotice(c, s.pathsEdited(), "路径有未保存的修改，点击保存后生效。")
+		},
+		Actions: func() {
+			if primaryActionButton(c, "保存", s.actionBusy("save-paths")).Disabled(!s.canSavePaths()).Clicked() {
+				if !s.validateSettings() {
+					return
 				}
+				patch := map[string]json.RawMessage{}
+				for _, entry := range []struct{ key, value, previous string }{{"inferyard_path", s.cliPath, emptyText(s.settings.Settings.InferyardPath)}, {"workspace_root", s.workspace, emptyText(s.settings.Effective.WorkspaceRoot)}, {"results_root", s.results, emptyText(s.settings.Settings.ResultsRoot)}, {"models_root", s.models, emptyText(s.settings.Settings.ModelsRoot)}} {
+					if entry.value != entry.previous {
+						var value any = entry.value
+						if entry.key == "inferyard_path" && entry.value == "" {
+							value = nil
+						}
+						patch[entry.key], _ = json.Marshal(value)
+					}
+				}
+				if s.simulate(previewSettings{patch: patch}) {
+					return
+				}
+				submitted := s.settingsDraft()
+				s.workAs("save-paths", func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, "设置已保存。") })
 			}
-			if s.simulate(previewSettings{patch: patch}) {
-				return
-			}
-			submitted := s.settingsDraft()
-			s.workAs("save-paths", func() (string, *core.ApiError) { return s.persistSettings(patch, submitted, "设置已保存。") })
-		}
+		},
 	})
 	s.localInstallationsView(c)
 	s.downloadNamesView(c)
@@ -246,14 +255,18 @@ func (s *viewState) pathFields(c *ui.Context) {
 }
 
 func (s *viewState) downloadNamesView(c *ui.Context) {
-	card(c, "下载目录名", func() {
-		ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
-			field(c, "模型下载目录名", &s.modelName).Error(downloadNameError(s.modelName))
-			field(c, "引擎下载目录名", &s.engineName).Error(downloadNameError(s.engineName))
-		})
-		ui.Text(c, "仅允许字母、数字、.、_、-；重名时自动追加序号（默认 model / engine）。").TextColor(c.Theme().TextMuted)
-		settingsNotice(c, s.downloadNamesEdited(), downloadNamesNotice(s.modelName, s.engineName))
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(tokens(c).Density.Row).Children(func() {
+	settingsFormSection(c, settingsFormOptions{
+		Title:       "下载目录名",
+		Description: "仅允许字母、数字、.、_、-；重名时自动追加序号（默认 model / engine）。",
+		Dirty:       s.downloadNamesEdited(),
+		Fields: func() {
+			ui.Column(c).Gap(tokens(c).Density.Row).Children(func() {
+				field(c, "模型下载目录名", &s.modelName).Error(downloadNameError(s.modelName))
+				field(c, "引擎下载目录名", &s.engineName).Error(downloadNameError(s.engineName))
+			})
+			settingsNotice(c, s.downloadNamesEdited(), downloadNamesNotice(s.modelName, s.engineName))
+		},
+		Actions: func() {
 			if primaryActionButton(c, "保存下载目录名", s.actionBusy("save-download-names")).Disabled(!s.canSaveDownloadNames()).Clicked() {
 				patch := map[string]json.RawMessage{}
 				patch["model_download_name"], _ = json.Marshal(s.modelName)
@@ -267,7 +280,7 @@ func (s *viewState) downloadNamesView(c *ui.Context) {
 				})
 			}
 			button(c, "恢复默认值").Disabled(s.busy).OnClick(func() { s.modelName, s.engineName = "model", "engine" })
-		})
+		},
 	})
 }
 
