@@ -12,14 +12,19 @@ import (
 )
 
 type dsShowcaseState struct {
-	segment     string
-	selected    string
-	switchOn    bool
-	checked     bool
-	radio       string
-	inputText   string
-	badEnv      string
-	selectedRow int
+	segment       string
+	selected      string
+	switchOn      bool
+	checked       bool
+	radio         string
+	inputText     string
+	badEnv        string
+	selectedRow   int
+	tableQuery    string
+	tableStatus   string
+	tableState    pageTableState
+	formDirty     bool
+	formEndpoint  string
 }
 
 func (p *previewSession) designSystemView(c *ui.Context) {
@@ -33,9 +38,12 @@ func (p *previewSession) designSystemView(c *ui.Context) {
 					selected:  "Qwen2.5-14B-Instruct-Q4_K_M.gguf",
 					switchOn:  true,
 					checked:   true,
-					radio:     "local",
-					inputText: "INFERYARD_API_KEY",
-					badEnv:    "sk-plaintext-invalid",
+					radio:        "local",
+					inputText:    "INFERYARD_API_KEY",
+					badEnv:       "sk-plaintext-invalid",
+					tableStatus:  "all",
+					formDirty:    true,
+					formEndpoint: "http://127.0.0.1:1234",
 				}
 			})
 			root.Children(func() {
@@ -52,6 +60,7 @@ func (p *previewSession) designSystemView(c *ui.Context) {
 				dsMaterialAndRadiusSection(c)
 				dsTypographySection(c)
 				dsComponentsSection(c, st)
+				dsPatternsSection(c, st)
 			})
 		})
 	})

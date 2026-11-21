@@ -31,31 +31,7 @@ func stateBanner(c *ui.Context, kind stateKind, icon func() *ui.SVG, fn func(for
 }
 
 func errorView(c *ui.Context, e *core.ApiError) {
-	if e == nil {
-		return
-	}
-	message := e.Message
-	if message == "" {
-		message = human(e.Code)
-	}
-	if e.Code == "conflict" {
-		if reason, ok := e.Details["reason"].(string); ok {
-			if label := conflictReasonLabel(reason); label != "" {
-				message = label
-			}
-		}
-	}
-	stateBanner(c, stateDanger, lucide.CircleAlert, func(foreground ui.Color) {
-		ui.Text(c, message+" · "+e.Code).TextColor(foreground)
-		for _, v := range e.Limitations {
-			ui.Text(c, human(v)+" · "+v).TextColor(foreground)
-		}
-		if len(e.Details) > 0 {
-			componentFoldKeyed(c, "error-details-"+e.Code, "错误详情", func() {
-				kvview(c, "kv-error-details", e.Details)
-			})
-		}
-	})
+	errorRecoveryBanner(c, e, nil)
 }
 
 func conflictReasonLabel(reason string) string {
