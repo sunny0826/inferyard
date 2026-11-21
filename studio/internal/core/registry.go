@@ -15,11 +15,14 @@ import (
 )
 
 type Registry struct {
-	ModelError    *ApiError
-	Refreshing    bool
-	Models        []ModelAsset
-	Engines       []EngineAsset
-	DefaultEngine string
+	ModelError      *ApiError
+	Refreshing      bool
+	Models          []ModelAsset
+	Engines         []EngineAsset
+	DefaultEngine   string
+	TotalModelBytes int64
+	DiskFreeBytes   *int64
+	ModelRoots      []string
 }
 type ModelAsset struct {
 	Name          string
@@ -29,6 +32,8 @@ type ModelAsset struct {
 	ContextLength *int64
 	Available     bool
 	Reason        string
+	Path          string
+	Deletable     bool
 }
 type EngineAsset struct {
 	Name           string
@@ -36,19 +41,26 @@ type EngineAsset struct {
 	Kind           string
 	Source         string
 	LatestDownload bool
+	Path           string
+	Deletable      bool
 }
 type registryEntry struct {
-	path, source         string
-	installation, family string
-	receipt, displayName string
-	model                ModelAsset
-	engine               EngineAsset
-	modified, downloaded time.Time
+	path, rawPath, source string
+	installation, family  string
+	receipt, displayName  string
+	model                 ModelAsset
+	engine                EngineAsset
+	modified, downloaded  time.Time
 }
 type registryData struct {
 	modelError      *ApiError
 	refreshing      bool
 	models, engines []registryEntry
+	modelRoots      []string
+	resultsRoot     *string
+	wsEngines       string
+	totalModelBytes int64
+	diskFreeBytes   *int64
 }
 
 func scanEngineBinaries(roots ...string) []registryEntry {
@@ -179,7 +191,12 @@ func (s *Service) registry() registryData {
 		tasks[i] = clone(d.Task)
 	}
 	s.mu.Unlock()
-	data := registryData{refreshing: assets.AssetsRefreshing || device.Refreshing}
+	data := registryData{
+		refreshing:  assets.AssetsRefreshing || device.Refreshing,
+		modelRoots:  activeModelRoots(u),
+		resultsRoot: u.ResultsRoot,
+		wsEngines:   workspaceEnginesRoot(u, s.paths),
+	}
 	models := map[string]int{}
 	var scanned *inferyard.AssetScan
 	if assets.Parsed != nil {
@@ -207,8 +224,9 @@ func (s *Service) registry() registryData {
 			}
 			models[path] = len(data.models)
 			data.models = append(data.models, registryEntry{
-				path:   path,
-				source: source,
+				path:    path,
+				rawPath: model.Path,
+				source:  source,
 				model: ModelAsset{
 					Name:          filepath.Base(path),
 					Format:        model.Format,
@@ -255,15 +273,15 @@ func (s *Service) registry() registryData {
 					reason = "chat_template_unavailable"
 				}
 				models[path] = len(data.models)
-				data.models = append(data.models, registryEntry{path: path, source: "设备快照", model: ModelAsset{
+				data.models = append(data.models, registryEntry{path: path, rawPath: model.Path, source: "设备快照", model: ModelAsset{
 					Name: filepath.Base(path), Format: "gguf", SizeBytes: model.SizeBytes, Architecture: model.Architecture,
 					ContextLength: model.ContextLength, Available: available, Reason: reason,
 				}})
 			}
 		}
-		if u.ModelsRoot != nil {
-			local, failure := scanDirectoryModels(*u.ModelsRoot)
-			if data.modelError == nil {
+		for i, root := range data.modelRoots {
+			local, failure := scanDirectoryModels(root)
+			if i == 0 && data.modelError == nil {
 				data.modelError = failure
 			}
 			for _, entry := range local {
@@ -318,7 +336,7 @@ func (s *Service) registry() registryData {
 				continue
 			}
 			completed, _ := time.Parse(time.RFC3339Nano, str(task.FinishedAt))
-			entry := registryEntry{path: path, source: "引擎下载 · " + filepath.Base(task.OutDir), receipt: engineReceipt(path), displayName: engineReadableName(path, filepath.Base(task.OutDir), task.SourceUrl), modified: info.ModTime(), downloaded: completed}
+			entry := registryEntry{path: path, rawPath: str(task.EnginePath), source: "引擎下载 · " + filepath.Base(task.OutDir), receipt: engineReceipt(path), displayName: engineReadableName(path, filepath.Base(task.OutDir), task.SourceUrl), modified: info.ModTime(), downloaded: completed}
 			if i, found := engines[path]; found {
 				data.engines[i] = entry
 			} else {
@@ -369,6 +387,7 @@ func (s *Service) registry() registryData {
 	if len(data.engines) > 0 && !data.engines[0].downloaded.IsZero() {
 		data.engines[0].engine.LatestDownload = true
 	}
+	data.totalModelBytes, data.diskFreeBytes = registryStorageMetrics(u, data.modelRoots, data.models, scanned)
 	return data
 }
 
@@ -426,12 +445,26 @@ func nameEntries(entries []registryEntry, engine bool) {
 
 func (s *Service) Registry() Registry {
 	data := s.registry()
-	result := Registry{Models: []ModelAsset{}, Engines: []EngineAsset{}, ModelError: data.modelError, Refreshing: data.refreshing}
+	result := Registry{
+		Models:          []ModelAsset{},
+		Engines:         []EngineAsset{},
+		ModelError:      data.modelError,
+		Refreshing:      data.refreshing,
+		TotalModelBytes: data.totalModelBytes,
+		DiskFreeBytes:   data.diskFreeBytes,
+		ModelRoots:      data.modelRoots,
+	}
 	for _, e := range data.models {
-		result.Models = append(result.Models, e.model)
+		m := e.model
+		m.Path = e.path
+		m.Deletable = isModelDeletable(e.rawPath, e.path, data.modelRoots, data.resultsRoot)
+		result.Models = append(result.Models, m)
 	}
 	for _, e := range data.engines {
-		result.Engines = append(result.Engines, e.engine)
+		eng := e.engine
+		eng.Path = e.path
+		eng.Deletable = isEngineDeletable(e.rawPath, e.path, eng.Kind, data.wsEngines, data.resultsRoot)
+		result.Engines = append(result.Engines, eng)
 	}
 	if len(result.Engines) > 0 {
 		result.DefaultEngine = result.Engines[0].Name

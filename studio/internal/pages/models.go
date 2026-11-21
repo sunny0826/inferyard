@@ -17,86 +17,82 @@ func validName(s string) bool { return core.ValidDownloadName(s) }
 func quote(s string) string   { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
 
 func (s *viewState) modelsView(c *ui.Context) {
-	s.header(c, "模型")
-	card(c, "已安装的模型", func() {
-		t := tokens(c)
-		errorView(c, s.registry.ModelError)
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-			button(c, "下载更多").OnClick(func() { s.selected = "downloads" })
-			refreshButton(c, "刷新", s.registry.Refreshing || s.refreshing).Disabled(s.registry.Refreshing || s.busy).OnClick(s.refreshAssetsAction)
-		})
-		if len(s.registry.Models) == 0 {
-			emptyGuideCard(c, emptyGuideOptions{
-				Icon:    lucide.Layers,
-				Title:   "尚未发现本地模型。",
-				Surface: emptySunken,
-				Action: func() {
-					button(c, "到下载页").OnClick(func() { s.selected = "downloads" })
-				},
+	t := tokens(c)
+	host := ui.Column(c.Key("models-page-host")).FillWidth().Gap(t.Density.Section)
+	pending := ui.Local(host, "pending-delete", func() pendingAssetDelete { return pendingAssetDelete{} })
+	wizardOpen := ui.Local(host, "local-engine-wizard-open", func() bool { return false })
+	host.Children(func() {
+		s.header(c, "模型")
+		s.modelsPageActions(c, wizardOpen)
+		if *wizardOpen {
+			card(c, "注册本地引擎", func() {
+				s.localEngineWizardView(c)
+				button(c, "收起").OnClick(func() { *wizardOpen = false })
 			})
-			return
 		}
-		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
-			for _, model := range s.registry.Models {
-				m := model
-				c.Key(m.Name)
-				listRow(c, listRowOptions{
-					Title:    modelLabel(m),
-					Subtitle: modelDetails(m),
-					Trailing: func() {
-						ui.Row(c).AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-							if !m.Available {
-								badge(c, "不可用", stateWarning, badgeOptions{Style: badgeDot, Size: sizeSM})
-							}
-							modelTaskAction(c, s, m)
+		card(c, "已安装的模型", func() {
+			errorView(c, s.registry.ModelError)
+			s.modelStorageAndRootsView(c)
+			if len(s.registry.Models) == 0 {
+				emptyGuideCard(c, emptyGuideOptions{
+					Icon:    lucide.Layers,
+					Title:   "尚未发现本地模型。",
+					Surface: emptySunken,
+					Action: func() {
+						button(c, "到下载页").OnClick(func() { s.selected = "downloads" })
+					},
+				})
+				return
+			}
+			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
+				for _, model := range s.registry.Models {
+					m := model
+					c.Key(m.Name)
+					listRow(c, listRowOptions{
+						Title:    modelLabel(m),
+						Subtitle: modelDetails(m),
+						Trailing: func() { s.modelRowTrailing(c, m, pending) },
+					})
+				}
+			})
+		})
+		card(c, "已安装的引擎", func() {
+			if len(s.registry.Engines) == 0 {
+				emptyGuideCard(c, emptyGuideOptions{
+					Icon:    lucide.Cpu,
+					Title:   "尚未发现可用引擎。",
+					Surface: emptySunken,
+					Action: func() {
+						ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
+							button(c, "前往下载").OnClick(func() { s.selected = "downloads" })
+							button(c, "配置本地引擎").OnClick(func() { *wizardOpen = true })
 						})
 					},
 				})
+				return
 			}
-		})
-	})
-	card(c, "已安装的引擎", func() {
-		t := tokens(c)
-		if len(s.registry.Engines) == 0 {
-			emptyGuideCard(c, emptyGuideOptions{
-				Icon:    lucide.Cpu,
-				Title:   "尚未发现可用引擎。",
-				Surface: emptySunken,
-				Action: func() {
-					ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-						button(c, "到下载页").OnClick(func() { s.selected = "downloads" })
-						button(c, "添加本地引擎").OnClick(func() { s.selected = "settings" })
+			ui.Text(c, s.engineFit()).TextColor(t.Color.FgSecondary)
+			applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
+				for _, engine := range s.registry.Engines {
+					eng := engine
+					c.Key(eng.Name)
+					listRow(c, listRowOptions{
+						Title:    eng.Name,
+						Subtitle: s.engineStateLine(eng),
+						Trailing: func() { s.engineRowTrailing(c, eng, pending) },
 					})
-				},
+				}
 			})
-			return
-		}
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-			button(c, "添加本地引擎").OnClick(func() { s.selected = "settings" })
 		})
-		ui.Text(c, s.engineFit()).TextColor(t.Color.FgSecondary)
-		applyMaterial(c, ui.Column(c).FillWidth().Gap(t.Density.Tight).Padding(t.Density.Tight), materialInset).Children(func() {
-			for _, engine := range s.registry.Engines {
-				eng := engine
-				c.Key(eng.Name)
-				listRow(c, listRowOptions{
-					Title:    eng.Name,
-					Subtitle: s.engineStateLine(eng),
-					Trailing: func() {
-						label, kind := s.engineBadgeState(eng)
-						badge(c, label, kind, badgeOptions{Style: badgeDot, Size: sizeSM})
-					},
-				})
+		card(c, "本机运行的服务", func() {
+			if len(s.registry.Models) == 0 || len(s.registry.Engines) == 0 {
+				s.managedServiceView(c)
+				return
 			}
+			s.discoveryView(c, false)
 		})
 	})
-	card(c, "本机运行的服务", func() {
-		if len(s.registry.Models) == 0 || len(s.registry.Engines) == 0 {
-			s.managedServiceView(c)
-			return
-		}
-		s.discoveryView(c, false)
-	})
+	s.assetDeleteDialog(c, pending)
 }
 
 func modelTaskAction(c *ui.Context, s *viewState, model core.ModelAsset) {

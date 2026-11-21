@@ -29,16 +29,26 @@ type ScannedEngine struct {
 	ModifiedNs int64   `json:"modified_ns"`
 }
 
+type ScannedRoot struct {
+	Path           string `json:"path"`
+	Kind           string `json:"kind"`
+	DiskUsageBytes int64  `json:"disk_usage_bytes"`
+	DiskFreeBytes  *int64 `json:"disk_free_bytes"`
+}
+
 type AssetScan struct {
 	Definition        string          `json:"definition"`
 	Models            []ScannedModel  `json:"models"`
 	Engines           []ScannedEngine `json:"engines"`
+	Roots             []ScannedRoot   `json:"roots,omitempty"`
+	TotalModelBytes   *int64          `json:"total_model_bytes,omitempty"`
 	ModelRequestsSent int             `json:"model_requests_sent"`
 }
 
 var (
 	assetScanModelKeys  = []string{"path", "name", "format", "size_bytes", "architecture", "context_length", "available", "reason"}
 	assetScanEngineKeys = []string{"path", "receipt", "modified_ns"}
+	assetScanRootKeys   = []string{"path", "kind", "disk_usage_bytes", "disk_free_bytes"}
 )
 
 func ParseAssetScan(raw []byte) (AssetScan, error) {
@@ -71,24 +81,59 @@ func ParseAssetScan(raw []byte) (AssetScan, error) {
 			data = details
 		}
 	}
-	if !discoveryFields(data, "definition", "models", "engines", "model_requests_sent") {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(data, &obj) != nil || obj == nil {
+		return AssetScan{}, invalid
+	}
+	expected := []string{"definition", "models", "engines", "model_requests_sent"}
+	_, hasRoots := obj["roots"]
+	if hasRoots {
+		expected = append(expected, "roots")
+	}
+	_, hasTotal := obj["total_model_bytes"]
+	if hasTotal {
+		if bytes.Equal(bytes.TrimSpace(obj["total_model_bytes"]), []byte("null")) {
+			return AssetScan{}, invalid
+		}
+		expected = append(expected, "total_model_bytes")
+	}
+	if !discoveryFields(data, expected...) {
 		return AssetScan{}, invalid
 	}
 	var wire struct {
 		Definition        string            `json:"definition"`
 		Models            []json.RawMessage `json:"models"`
 		Engines           []json.RawMessage `json:"engines"`
+		Roots             []json.RawMessage `json:"roots"`
+		TotalModelBytes   *int64            `json:"total_model_bytes"`
 		ModelRequestsSent *int              `json:"model_requests_sent"`
 	}
 	if json.Unmarshal(data, &wire) != nil || wire.Definition != AssetScanDefinition ||
 		wire.Models == nil || wire.Engines == nil || wire.ModelRequestsSent == nil || *wire.ModelRequestsSent != 0 {
 		return AssetScan{}, invalid
 	}
+	if hasRoots && wire.Roots == nil {
+		return AssetScan{}, invalid
+	}
+	if hasTotal && (wire.TotalModelBytes == nil || *wire.TotalModelBytes < 0) {
+		return AssetScan{}, invalid
+	}
 	out := AssetScan{
 		Definition:        wire.Definition,
 		Models:            make([]ScannedModel, 0, len(wire.Models)),
 		Engines:           make([]ScannedEngine, 0, len(wire.Engines)),
+		TotalModelBytes:   wire.TotalModelBytes,
 		ModelRequestsSent: *wire.ModelRequestsSent,
+	}
+	if hasRoots {
+		out.Roots = make([]ScannedRoot, 0, len(wire.Roots))
+		for _, rawRoot := range wire.Roots {
+			root, err := parseScannedRoot(rawRoot)
+			if err != nil {
+				return AssetScan{}, invalid
+			}
+			out.Roots = append(out.Roots, root)
+		}
 	}
 	for _, rawModel := range wire.Models {
 		model, err := parseScannedModel(rawModel)
@@ -182,4 +227,34 @@ func parseScannedEngine(raw json.RawMessage) (ScannedEngine, error) {
 		return ScannedEngine{}, invalid
 	}
 	return e, nil
+}
+
+func parseScannedRoot(raw json.RawMessage) (ScannedRoot, error) {
+	invalid := errors.New("invalid scanned root")
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil || obj == nil {
+		return ScannedRoot{}, invalid
+	}
+	for k := range obj {
+		if !slices.Contains(assetScanRootKeys, k) {
+			return ScannedRoot{}, invalid
+		}
+	}
+	for _, req := range []string{"path", "kind", "disk_usage_bytes"} {
+		v, ok := obj[req]
+		if !ok || bytes.Equal(bytes.TrimSpace(v), []byte("null")) {
+			return ScannedRoot{}, invalid
+		}
+	}
+	var r ScannedRoot
+	if json.Unmarshal(raw, &r) != nil {
+		return ScannedRoot{}, invalid
+	}
+	if strings.TrimSpace(r.Path) == "" || (r.Kind != "models" && r.Kind != "engines") || r.DiskUsageBytes < 0 {
+		return ScannedRoot{}, invalid
+	}
+	if r.DiskFreeBytes != nil && *r.DiskFreeBytes < 0 {
+		return ScannedRoot{}, invalid
+	}
+	return r, nil
 }
