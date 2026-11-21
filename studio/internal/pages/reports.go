@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
 
@@ -53,8 +54,11 @@ func (s *viewState) reportsView(c *ui.Context) {
 
 func (s *viewState) speedReportsTabView(c *ui.Context) {
 	if s.speed == nil || len(s.speed.history) == 0 {
-		card(c, "长上下文专项", func() {
-			ui.Text(c, "暂无专项历史任务。在任务页选择「长上下文速度」后开始专项测评。")
+		emptyGuideCard(c, emptyGuideOptions{
+			Icon:        lucide.Gauge,
+			Title:       "长上下文专项",
+			Description: "暂无专项历史任务。在任务页选择「长上下文速度」后开始专项测评。",
+			Surface:     emptyCard,
 		})
 		return
 	}

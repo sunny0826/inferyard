@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/oneo-me/onevra/source/components"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
 
@@ -48,13 +49,22 @@ func (s *viewState) reportView(c *ui.Context) {
 	s.reportBackLink(c)
 	if report.failure != nil {
 		s.header(c, "报告 "+id)
-		ui.Text(c, "无法读取").TextColor(stateColor(c, stateDanger))
-		button(c, "重新读取报告").AlignSelf(ui.Start).OnClick(func() { s.openReport(report.reference) })
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateDanger,
+			Message: "无法读取",
+			Actions: func() {
+				button(c, "重新读取报告").OnClick(func() { s.openReport(report.reference) })
+			},
+		})
 		return
 	}
 	if len(report.index.Runs) == 0 {
 		s.header(c, "报告 "+id)
-		ui.Text(c, "报告中暂无运行数据。")
+		emptyGuideCard(c, emptyGuideOptions{
+			Icon:        lucide.FileText,
+			Title:       "报告中暂无运行数据。",
+			Surface:     emptyCard,
+		})
 		return
 	}
 	run := report.index.Runs[report.run]

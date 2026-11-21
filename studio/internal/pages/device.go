@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
 
@@ -108,35 +109,39 @@ func (s *viewState) deviceView(c *ui.Context) {
 	if snapshot != nil && parseError == nil {
 		deviceHardware(c, snapshot.object("hardware"))
 	}
-	errorView(c, s.device.LastError)
-	if s.device.LastError != nil {
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-			s.deviceRefreshButton(c, "重试")
-			if button(c, "前往设置").Clicked() {
-				s.selected = "settings"
-			}
-		})
-	}
+	errorRecoveryBanner(c, s.device.LastError, func() {
+		s.deviceRefreshButton(c, "重试")
+		if button(c, "前往设置").Clicked() {
+			s.selected = "settings"
+		}
+	})
 	if parseError != nil {
-		ui.Text(c, "设备快照无法读取，请重新采集或检查设置。").TextColor(stateColor(c, stateDanger))
-		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.Row).Children(func() {
-			s.deviceRefreshButton(c, "重新采集设备")
-			button(c, "检查设备设置").OnClick(func() { s.selected = "settings" })
+		noticeBanner(c, noticeBannerOptions{
+			Kind:    stateDanger,
+			Message: "设备快照无法读取，请重新采集或检查设置。",
+			Actions: func() {
+				s.deviceRefreshButton(c, "重新采集设备")
+				button(c, "检查设备设置").OnClick(func() { s.selected = "settings" })
+			},
 		})
 		return
 	}
 	if snapshot == nil && s.device.LastError == nil && !s.device.Refreshing {
-		ui.Column(c).AlignItems(ui.Center).Gap(t.Density.Stack).Padding(t.Card.EmptyPadding).Background(c.Theme().Surface).Radius(t.Radius.Surface).Border(t.Card.Edge, c.Theme().Border).Children(func() {
-			heading(c, "尚无设备快照", 2)
-			ui.Text(c, "采集本机硬件与 GPU 信息。").TextColor(c.Theme().TextMuted)
-			ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
-				if primaryButton(c, "采集设备信息").Disabled(s.deviceCollectionBlocked()).Clicked() {
-					s.refreshDevice()
-				}
-				if button(c, "前往设置").Clicked() {
-					s.selected = "settings"
-				}
-			})
+		emptyGuideCard(c, emptyGuideOptions{
+			Icon:        lucide.Cpu,
+			Title:       "尚无设备快照",
+			Description: "采集本机硬件与 GPU 信息。",
+			Surface:     emptyCard,
+			Action: func() {
+				ui.Row(c).Wrap().AlignItems(ui.Center).Gap(t.Density.CardGap).Children(func() {
+					if primaryButton(c, "采集设备信息").Disabled(s.deviceCollectionBlocked()).Clicked() {
+						s.refreshDevice()
+					}
+					if button(c, "前往设置").Clicked() {
+						s.selected = "settings"
+					}
+				})
+			},
 		})
 	}
 }

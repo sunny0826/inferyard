@@ -4,13 +4,15 @@ import (
 	"fmt"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/oneo-me/onevra/source/icons/lucide"
 	"inferyard/studio/internal/core"
 )
 
 func (s *viewState) reportsTableView(c *ui.Context) {
-	errorView(c, s.reportsError)
 	if s.reportsError != nil {
-		button(c, "重试读取报告").AlignSelf(ui.Start).OnClick(s.refreshAction)
+		errorRecoveryBanner(c, s.reportsError, func() {
+			button(c, "重试读取报告").OnClick(s.refreshAction)
+		})
 		return
 	}
 	if !s.loaded {
@@ -18,8 +20,15 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 		return
 	}
 	if len(s.reports) == 0 {
-		ui.Text(c, "暂无报告。可新建任务，或从历史运行生成报告。")
-		button(c, "新任务").AlignSelf(ui.Start).OnClick(s.newBenchmark)
+		emptyGuideCard(c, emptyGuideOptions{
+			Icon:        lucide.FileText,
+			Title:       "暂无报告",
+			Description: "暂无报告。可新建任务，或从历史运行生成报告。",
+			Surface:     emptyCard,
+			Action: func() {
+				primaryButton(c, "新任务").OnClick(s.newBenchmark)
+			},
+		})
 		return
 	}
 	for _, report := range s.reports {
@@ -29,8 +38,7 @@ func (s *viewState) reportsTableView(c *ui.Context) {
 
 func reportCard(c *ui.Context, report core.ReportSummary, open func()) {
 	t := tokens(c)
-	ui.Column(c.Key(report.ReportId)).MinWidth(0).Gap(t.Density.Row).Padding(t.Density.CardGap).
-		Background(c.Theme().Surface).Radius(t.Radius.Inset).Border(t.Card.Edge, c.Theme().Border).Children(func() {
+	applyMaterial(c, ui.Column(c.Key(report.ReportId)).MinWidth(0).Gap(t.Density.Row).Padding(t.Card.Padding), materialCard).Children(func() {
 		ui.Text(c, reportHeading(report)).Bold()
 		ui.Text(c, reportSubheading(report)).TextColor(c.Theme().TextMuted)
 		if report.Unreadable {
